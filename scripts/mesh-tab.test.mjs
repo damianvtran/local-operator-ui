@@ -2272,33 +2272,130 @@ test("a refused decision renders its sentence, and the tray splits waiting from 
 		"the header counts the waiting set - the same number the rail badge wears",
 	);
 	/*
-	 * THE RECORDS SECTION STARTS OPEN ON A FAILURE, and only on a failure: the
-	 * store's `failed` is "the state a person should not miss", and a collapsed
-	 * section is exactly how it goes missed. The reader's toggle wins from then
-	 * on (`recordsChoice`), which is why the default is an override, not state.
+	 * THE SETTLED SECTION IS THE READER'S, AND ONLY THE READER'S (operator ask,
+	 * 2026-10-13). It used to open ITSELF while a `failed` record was inside —
+	 * the store's `failed` is "the state a person should not miss", and a
+	 * collapsed section is exactly how it goes missed. The operator's literal
+	 * complaint was the reverse: a settled record must not greet the reader
+	 * EXPANDED. So the section starts closed in every state, nothing opens it but
+	 * the press, and the failure is signalled inside the collapsed summary.
+	 *
+	 * THE OLD PINS ARE REPLACED RATHER THAN DROPPED, and the negative half is the
+	 * important one: `recordsChoice`/`recordsOpen` were the controlled pair whose
+	 * default followed the data, so asserting their ABSENCE is what stops the
+	 * auto-open from returning through the one expression that carried it.
+	 */
+	assert.doesNotMatch(
+		tray,
+		/recordsChoice/,
+		"no data-driven default survives beside the reader's own open state",
+	);
+	assert.doesNotMatch(
+		tray,
+		/recordsOpen\s*\?\?|\?\? records\.some/,
+		"the open state follows the reader's press and nothing else — the auto-open expression is gone",
+	);
+	assert.match(
+		tray,
+		/const \[recordsOpen, setRecordsOpen\] = useState\(false\);/,
+		"the section starts closed in every state, failed record or not",
+	);
+	assert.match(
+		tray,
+		/onOpenChange=\{setRecordsOpen\}/,
+		"still controlled, because `refusalAttached` reads the open state the primitive would otherwise own",
+	);
+	assert.match(
+		tray,
+		/const recordsSignalled = records\.some\(\(row\) => row\.state === "failed"\);/,
+		"a failed record inside is SIGNALLED rather than auto-expanded",
+	);
+	assert.match(
+		tray,
+		/className="size-1\.5 rounded-full bg-danger"/,
+		"the signal is the app's one 'needs the reader' fill, in the summary the reader can see while the section is shut",
+	);
+	/*
+	 * THE SIGNAL IS WORDS AS WELL AS A DOT (design round 1, D2): the header's own
+	 * signal is words (`2 waiting`), so a colour-only dot left a sighted reader
+	 * without a name for it. The count is asserted, not just the `text-danger`
+	 * class, because the WORDS are what a screen reader reads — the `sr-only`
+	 * sentence this replaced is gone, and a bare dot without the text would have
+	 * lost the accessible name it carried.
 	 */
 	assert.match(
 		tray,
-		/const \[recordsChoice, setRecordsChoice\] = useState<boolean \| null>\(null\);/,
+		/const failedCount = records\.filter\(\(row\) => row\.state === "failed"\)\.length;/,
+		"the failed count is derived from the same set the rows are",
 	);
 	assert.match(
 		tray,
-		/recordsChoice \?\? records\.some\(\(row\) => row\.state === "failed"\);/,
+		/<span className="text-danger">\{failedCount\} failed<\/span>/,
+		"and it is stated in words beside the dot, in the row state's own ink",
+	);
+	/*
+	 * THE SECTION SEPARATES ITSELF WHEN A PROMPT SITS ABOVE IT (design round 1,
+	 * D1): the waiting list's `divide-y` stops at its last card, so without the
+	 * rule the toggle shares the card's rhythm and reads as one more of its rows.
+	 * The pin names the CONDITION, because a section that always drew the hairline
+	 * would add one to the settled-only panel, which has no card above it.
+	 */
+	assert.match(
+		tray,
+		/className=\{cn\(waiting\.length > 0 && "border-hairline border-t pt-3"\)\}/,
+		"the settled section draws its hairline only when a waiting card is above it",
 	);
 	assert.match(
 		tray,
-		/onOpenChange=\{setRecordsChoice\}/,
-		"the disclosure is controlled, so the default and the reader's choice cannot disagree",
+		/\t+\t+\t+\t\tSettled approvals\n/,
+		"the section is named for what it holds — 'Records' nested in the prompts' panel was the operator's complaint",
 	);
 	assert.match(
 		tray,
-		/<span className="text-meta">Records \(\{records\.length\}\)<\/span>/,
-		"the toggle names the section and its count",
+		/<span className="text-ink-dim">\(\{records\.length\}\)<\/span>/,
+		"the toggle still carries the count",
 	);
 	assert.match(
 		tray,
 		/data-tour-tag="mesh-approvals-records"/,
 		"the records list is one labelled region, inside the disclosure",
+	);
+	/*
+	 * A RECORD'S STATE IS TEXT, NOT A CHIP (operator ask, 2026-10-13): the tray was
+	 * a bordered card whose every row led with a `Badge`, and six chips down a
+	 * settled section read as six calls to action. The register is asserted, not
+	 * just the absence of the import, because `stateInk` is what the shipped row
+	 * actually paints — the same "only what needs the reader is coloured" rule
+	 * `integration-row.tsx`'s status column states.
+	 */
+	assert.match(
+		tray,
+		/<span className=\{cn\("text-meta", stateInk\(row\.state\)\)\}>/,
+	);
+	assert.match(tray, /function stateInk\(state: string\): string \{/);
+	assert.match(tray, /if \(state === "failed"\) return "text-danger";/);
+	assert.doesNotMatch(
+		tray,
+		/chipVariant|<Badge/,
+		"no chip wall, no badge primitive — the state line is plain text in a status ink",
+	);
+	/*
+	 * AND THE PANEL IS NOT A BOX (operator ask, 2026-10-13). The tray was
+	 * `rounded-lg border border-hairline bg-surface p-3`, matched to the mesh tab's
+	 * own empty-state panel; that panel keeps its border (it stands in for the
+	 * canvas region), while a list follows the app's borderless list sections —
+	 * `project-todos.tsx`/`project-updates.tsx`, "borderless entries, the chat
+	 * page's chrome: hairlines, no box".
+	 */
+	assert.doesNotMatch(
+		tray,
+		/rounded-lg border border-hairline bg-surface p-3/,
+		"the tray is not a second bordered panel beside the canvas's",
+	);
+	assert.match(
+		tray,
+		/data-tour-tag="mesh-approvals-tray"\n\t\t\tclassName="flex flex-col gap-3"/,
+		"the tray keeps the page's own gutter and draws no panel",
 	);
 	/*
 	 * WHAT A CARD SAYS, IN ORDER: the plain-language summary, then the controls,
@@ -2955,6 +3052,7 @@ test("every approvals frame that follows an interaction carries the shutter latc
 	};
 	for (const name of [
 		"ApprovalsRecordsOpen",
+		"ApprovalsStoppedOpen",
 		"ApprovalsDecisionWrites",
 		"ApprovalRefused",
 		"ApprovalsDetailsOpen",

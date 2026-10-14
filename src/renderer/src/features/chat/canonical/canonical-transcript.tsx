@@ -68,6 +68,7 @@ import {
 	type FocusEvent,
 	type MouseEvent,
 	type PointerEvent,
+	type ReactNode,
 	type RefObject,
 	memo,
 	useCallback,
@@ -176,6 +177,13 @@ import {
 	workedSecondsOf,
 } from "./trace-fold-model";
 import {
+	type EntryDescriptor,
+	candidateSlots,
+	deferAggregateFormation,
+	estimateEntryHeight,
+} from "./transcript-dom-window";
+import { type SlotExtent, TranscriptEntrySlot } from "./transcript-entry-slot";
+import {
 	TRANSCRIPT_DRAG_SLOP_PX,
 	clickTargetIsControl,
 	modalIsOpen,
@@ -208,6 +216,11 @@ import {
 	runsOf,
 	splitFirstLine,
 } from "./transcript-rows";
+import {
+	TranscriptViewState,
+	TranscriptViewStateContext,
+	useTranscriptViewBoolean,
+} from "./transcript-view-state";
 import { turnAnswerMarkClass } from "./turn-answer-rail";
 import {
 	ALIGN_WALK_MAX_PAGES,
@@ -235,6 +248,11 @@ import { useCheckpoints } from "./use-checkpoints";
 import { useCrossSessionVisibility } from "./use-cross-session-hidden";
 import { useLinkSubject } from "./use-link-subject";
 import { useScrollPaging } from "./use-scroll-paging";
+import {
+	type TranscriptMountAdapter,
+	transcriptDomWindowEnabled,
+	useTranscriptDomWindow,
+} from "./use-transcript-dom-window";
 import { useTurnAnswerRail } from "./use-turn-answer-rail";
 import {
 	type WorkingLineState,
@@ -856,7 +874,7 @@ const UserRow = memo(function UserRow({
 	 * on a turn that is already fully visible. Skipped while expanded, where the
 	 * clamp is off and the box would always report itself as fitting.
 	 */
-	const [expanded, setExpanded] = useState(false);
+	const [expanded, setExpanded] = useTranscriptViewBoolean(record.id);
 	const [clamped, setClamped] = useState(false);
 	const bodyRef = useRef<HTMLDivElement>(null);
 	/*
@@ -2459,6 +2477,32 @@ const WakeRow = memo(function WakeRow({
 });
 // ---------------------------------------------------------------- list
 
+// Rich markdown bodies own disclosure/editor state not yet migrated to the
+// transcript registry. The opt-in virtualizer must not reset that state.
+const STATEFUL_TRANSCRIPT_MARKUP = /```|!\[|<|\$\$/;
+const estimateBuckets = new WeakMap<object, { text: string; bucket: number }>();
+function estimateBucket(record: object, text: string): number {
+	const cached = estimateBuckets.get(record);
+	if (cached?.text === text) return cached.bucket;
+	let lines = 1;
+	for (let index = 0; index < text.length; index += 1)
+		if (text.charCodeAt(index) === 10) lines += 1;
+	const bucket = Math.floor(Math.max(text.length / 100, lines) / 8);
+	estimateBuckets.set(record, { text, bucket });
+	return bucket;
+}
+const entryRecordRevisions = new WeakMap<object, number>();
+let nextEntryRecordRevision = 0;
+function entryRecordRevision(record: object): number {
+	let revision = entryRecordRevisions.get(record);
+	if (revision === undefined) {
+		nextEntryRecordRevision += 1;
+		revision = nextEntryRecordRevision;
+		entryRecordRevisions.set(record, revision);
+	}
+	return revision;
+}
+
 /** Development row-render counter; read by the perf readout below. */
 const rowRenderCount = { current: 0 };
 
@@ -2549,8 +2593,15 @@ const atItemTierGroup = (group: SectionGroup): SectionGroup => {
 	return copy;
 };
 
+// Keep one opaque child for disclosure exit retention, but do not construct
+// thousands of row elements for an unopened aggregate on every streamed token.
+const DeferredTranscriptRows = ({ render }: { render: () => ReactNode }) => (
+	<>{render()}</>
+);
+
 const TranscriptRow = memo(function TranscriptRow({
 	row,
+	enter = false,
 	isSmallView,
 	scope,
 	conversationId,
@@ -2578,6 +2629,7 @@ const TranscriptRow = memo(function TranscriptRow({
 	onInterruptTurn,
 }: {
 	row: Row;
+	enter?: boolean;
 	isSmallView: boolean;
 	scope: AttachmentScope | null;
 	conversationId?: string;
@@ -2628,6 +2680,7 @@ const TranscriptRow = memo(function TranscriptRow({
 	onInterruptTurn?: () => void;
 }) {
 	rowRenderCount.current += 1;
+	const entered = useRef(enter);
 	const { record } = row;
 	let body: JSX.Element | null;
 	switch (record.kind) {
@@ -2752,7 +2805,10 @@ const TranscriptRow = memo(function TranscriptRow({
 					? "true"
 					: undefined
 			}
-			className={cn(GAP[row.gap][isSmallView ? 1 : 0])}
+			className={cn(
+				GAP[row.gap][isSmallView ? 1 : 0],
+				entered.current && "lo-transcript-arrival",
+			)}
 		>
 			{body}
 		</div>
@@ -2861,6 +2917,29 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		anchors: new Set(),
 	});
 	const sessionId = frontend?.session_id ?? null;
+	const transcriptEpoch = useRef(transcript.viewEpoch);
+	transcriptEpoch.current = transcript.viewEpoch;
+	const entriesRef = useRef<HTMLDivElement>(null);
+	const mountAdapter = useRef<TranscriptMountAdapter | null>(null);
+	const virtualCue = useRef<{
+		enabled: boolean;
+		entryIds: ReadonlyMap<string, readonly string[]>;
+		order: ReadonlyMap<string, number>;
+	} | null>(null);
+	const [domWindowRequested] = useState(transcriptDomWindowEnabled);
+	const slotExtents = useRef(new Map<string, SlotExtent>());
+	const previousSlotPlan = useRef<{
+		entries: EntryDescriptor[];
+		heights: Map<string, number>;
+		representations: Map<string, string>;
+	}>({ entries: [], heights: new Map(), representations: new Map() });
+	const rawRecords = useRef(transcript.records);
+	rawRecords.current = transcript.records;
+	const arrivalLedger = useRef<{
+		session: string | null;
+		epoch: number;
+		ids: Set<string>;
+	} | null>(null);
 	/*
 	 * The attachment scope: the caller's when it supplied one (the child
 	 * reader), otherwise the live session with no child. One value, computed
@@ -3017,6 +3096,15 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 */
 	const foldSession = useRef(sessionId);
 	if (sessionId !== null) foldSession.current = sessionId;
+	const viewState = useRef({
+		session: foldSession.current,
+		store: new TranscriptViewState(),
+	});
+	if (viewState.current.session !== foldSession.current)
+		viewState.current = {
+			session: foldSession.current,
+			store: new TranscriptViewState(),
+		};
 	const [foldOpen, setFoldOpen] = useState<{
 		session: string | null;
 		entries: readonly FoldOpenEntry[];
@@ -3033,7 +3121,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * registry exists to fix, one scroll later.
 	 */
 	const setFoldOpenFor = (ids: readonly string[], open: boolean) => {
-		const keep = new Set(transcript.records.map((record) => record.id));
+		const keep = new Set(rawRecords.current.map((record) => record.id));
 		setFoldOpen((current) => ({
 			session: foldSession.current,
 			entries: withFoldOpen(
@@ -3333,7 +3421,12 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * checkpoint at the reading position.
 	 */
 	const { activeId: activeCheckpointId, loadedIds: loadedCheckpointIds } =
-		useActiveCheckpoint(containerRef, rows, checkpoints.checkpoints);
+		useActiveCheckpoint(
+			containerRef,
+			rows,
+			checkpoints.checkpoints,
+			virtualCue,
+		);
 	/*
 	 * ONE in-flight page for the walk-side consumers — the align fetch below
 	 * and the jump walk — while the READER's own scroll path keeps the pager's
@@ -3739,6 +3832,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		mayAutoWalk,
 		followingTail,
 		acknowledgeOwnWrite,
+		layout: scrollLayout,
 	} = useScrollPaging({
 		containerRef,
 		sessionKey: sessionId,
@@ -3829,38 +3923,76 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				region?.querySelector<HTMLElement>("[data-lo-transcript-content]") ??
 				null;
 			if (!region || !root) return;
-			const reachable = await ensureReachable({
-				isReachable: () => isRecordReachable(root, id),
-				rowDistance: () => {
-					const index = rowsRef.current.findIndex(
-						(row) => row.record.id === id,
+			const generation = foldSession.current;
+			const epoch = transcriptEpoch.current;
+			const release = mountAdapter.current?.acquire(id);
+			try {
+				// Only the opt-in adapter schedules a DOM lease commit. The intrinsic
+				// path must retain its synchronous history/refusal behavior.
+				if (mountAdapter.current?.requested)
+					await new Promise<void>((resolve) =>
+						requestAnimationFrame(() => resolve()),
 					);
-					return index === -1 ? null : rowsRef.current.length - index;
-				},
-				mount: (distance) => {
-					/*
-					 * The row's EXACT distance - no margin. The old +16 rows were the
-					 * centring era's headroom (Q-2: a page-leading target had nothing
-					 * above it to centre against and clamped, -254 px), and the jump
-					 * now anchors the row's TOP at the scrollport's top (issue #680),
-					 * where the margin buys nothing: for the oldest mounted row the
-					 * oldest-end clamp IS the anchor, and the landing's settle
-					 * re-measures after this write commits. A viewport-derived margin
-					 * comes back only if the rendered matrix shows a case that needs it
-					 * (the frames decide, never a fixed row guess).
-					 */
-					setWindowSize((current) =>
-						current >= distance ? current : distance,
-					);
-				},
-				loadOlder: walkLoadOlder,
-			});
-			if (!reachable) {
-				showInfoToast(missCopy);
-				return;
+				const reachable = await ensureReachable({
+					isReachable: () =>
+						foldSession.current !== generation ||
+						transcriptEpoch.current !== epoch ||
+						isRecordReachable(root, id),
+					rowDistance: () => {
+						const index = rowsRef.current.findIndex(
+							(row) => row.record.id === id,
+						);
+						return index === -1 ? null : rowsRef.current.length - index;
+					},
+					mount: (distance) => {
+						/*
+						 * The row's EXACT distance - no margin. The old +16 rows were the
+						 * centring era's headroom (Q-2: a page-leading target had nothing
+						 * above it to centre against and clamped, -254 px), and the jump
+						 * now anchors the row's TOP at the scrollport's top (issue #680),
+						 * where the margin buys nothing: for the oldest mounted row the
+						 * oldest-end clamp IS the anchor, and the landing's settle
+						 * re-measures after this write commits. A viewport-derived margin
+						 * comes back only if the rendered matrix shows a case that needs it
+						 * (the frames decide, never a fixed row guess).
+						 */
+						setWindowSize((current) =>
+							current >= distance ? current : distance,
+						);
+					},
+					loadOlder: walkLoadOlder,
+				});
+				if (
+					foldSession.current !== generation ||
+					transcriptEpoch.current !== epoch
+				)
+					return;
+				if (!reachable) {
+					showInfoToast(missCopy);
+					return;
+				}
+				const outcome = await jumpToEntry(
+					root,
+					region,
+					id,
+					() =>
+						foldSession.current === generation &&
+						transcriptEpoch.current === epoch,
+				);
+				if (
+					foldSession.current !== generation ||
+					transcriptEpoch.current !== epoch
+				)
+					return;
+				if (outcome === "missing") showInfoToast(missCopy);
+			} finally {
+				// Retain the target through reveal, expansion, landing and a range
+				// read at the destination; DOM omission is never a history miss.
+				await new Promise<void>((resolve) =>
+					requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+				);
+				release?.();
 			}
-			const outcome = await jumpToEntry(root, region, id);
-			if (outcome === "missing") showInfoToast(missCopy);
 		},
 		[containerRef, walkLoadOlder],
 	);
@@ -3966,6 +4098,39 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * being hidden, it IS the collapse.
 	 */
 	const [focusedRecordId, setFocusedRecordId] = useState<string | null>(null);
+	const [selectionActive, setSelectionActive] = useState(false);
+	useLayoutEffect(() => {
+		const read = () => {
+			const selection =
+				typeof window === "undefined" ? null : window.getSelection();
+			setSelectionActive(
+				Boolean(selection?.toString()) &&
+					Boolean(
+						selection?.rangeCount &&
+							containerRef.current &&
+							selection.getRangeAt(0).intersectsNode(containerRef.current),
+					),
+			);
+		};
+		document.addEventListener("selectionchange", read);
+		read();
+		return () => document.removeEventListener("selectionchange", read);
+	}, [containerRef]);
+
+	const selection =
+		typeof window === "undefined" ? null : window.getSelection();
+	const selectedNode = selection?.anchorNode ?? selection?.focusNode;
+	const selectedElement =
+		typeof Element !== "undefined" && selectedNode instanceof Element
+			? selectedNode
+			: selectedNode?.parentElement;
+	const selectedRecord = selectionActive
+		? selectedElement?.closest<HTMLElement>("[data-record-id]")
+		: null;
+	const selectedRecordId = selectedRecord?.hasAttribute("data-run-ids")
+		? null
+		: (selectedRecord?.dataset.recordId ?? null);
+
 	const handleTranscriptFocus = useCallback(
 		(event: FocusEvent<HTMLDivElement>) => {
 			const row = (event.target as Element).closest("[data-record-id]");
@@ -4022,7 +4187,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * collapse.
 	 */
 	const selectionInsideTranscript = useCallback((): boolean => {
-		const selection = window.getSelection();
+		const selection =
+			typeof window === "undefined" ? null : window.getSelection();
 		const region = containerRef.current;
 		if (!selection || selection.isCollapsed || !region) return false;
 		const node = selection.anchorNode ?? selection.focusNode;
@@ -4119,7 +4285,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	const collapseInputs = useMemo(
 		() => ({
 			live: working !== null || gate !== null,
-			focusHold: focusedRecordId,
+			focusHold: focusedRecordId ?? selectedRecordId,
 			openRuns,
 			/*
 			 * THE READER'S DISPLAY MODE (issue #756), read HERE and parsed on the way
@@ -4156,6 +4322,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		}),
 		[
 			focusedRecordId,
+			selectedRecordId,
 			gate,
 			hide,
 			openFrame,
@@ -4618,6 +4785,258 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * withheld from a run that carries a bar: the bar states both, one per turn
 	 * (`feet.get(...) ?? null` and the caption block share one switch).
 	 */
+
+	// A view slot may own the two pre-threshold entries. chatEntries itself and
+	// its row/segment IDs remain the authoritative, unchanged model partition.
+
+	const deferredFolds = new Set<string>();
+	for (const entry of chatEntries) {
+		if (entry.kind !== "group" || entry.group.kind !== "run") continue;
+		const group = entry.group;
+		if (slotExtents.current.get(group.id)?.representation !== "inline")
+			continue;
+		const owner = Array.from(
+			containerRef.current?.querySelectorAll<HTMLElement>(
+				"[data-lo-entry-key]",
+			) ?? [],
+		).find((element) => element.dataset.loEntryKey === group.id);
+		const selectedOwner = Boolean(
+			owner &&
+				selection?.rangeCount &&
+				selection.toString() &&
+				selection.getRangeAt(0).intersectsNode(owner),
+		);
+		const interacting =
+			selectedOwner ||
+			group.rows.some((row) => row.record.id === focusedRecordId) ||
+			Boolean(owner?.querySelector('button[aria-expanded="true"]'));
+		if (
+			deferAggregateFormation(
+				slotExtents.current.get(group.id)?.representation,
+				interacting,
+			)
+		)
+			deferredFolds.add(group.id);
+	}
+	const entryFacts = chatEntries.map((entry) => {
+		const group = entry.kind === "group" ? entry.group : null;
+		const entryRows =
+			entry.kind === "bar"
+				? entry.children.flatMap((child) =>
+						child.kind === "run" ? child.rows : [child.row],
+					)
+				: group?.kind === "run"
+					? group.rows
+					: group
+						? [group.row]
+						: [];
+		const first = entryRows[0];
+		const key =
+			entry.kind === "bar"
+				? `turn-summary:${entry.segment.key}`
+				: group?.kind === "run"
+					? group.id
+					: first.record.id;
+		const ids =
+			entry.kind === "bar"
+				? entry.segment.segmentIds
+				: entryRows.map((row) => row.record.id);
+		const gap =
+			entry.kind === "bar"
+				? entry.segment.gap
+				: entry.afterBar && first.gap === "trace"
+					? "item"
+					: group?.kind === "run"
+						? group.gap
+						: first.gap;
+		const omitted =
+			group?.kind === "row" &&
+			group.row.record.kind === "tool" &&
+			isQuietTurnCall(group.row.record);
+		const deferred = group?.kind === "run" && deferredFolds.has(group.id);
+		const media =
+			entry.kind === "bar"
+				? entry.images.length > 0
+				: group?.kind === "run"
+					? group.images.length > 0
+					: "images" in first.record && Boolean(first.record.images?.length);
+		const open =
+			entry.kind === "bar"
+				? openRuns.has(entry.segment.key)
+				: group?.kind === "run" && foldOpenOf(foldOpen.entries, ids);
+		const active = entryRows.some(({ record }) =>
+			record.kind === "assistant"
+				? record.streaming
+				: record.kind === "tool" && record.phase !== "done",
+		);
+		// Closed aggregates carry controlled state and no descendant payload.
+		// Individual tool bodies, rich markdown, media and supplement/editor trees
+		// still own local interaction state: opt-in fails open rather than erase it.
+		const unsafe =
+			!omitted &&
+			(deferred ||
+				media ||
+				(entry.kind === "bar" || group?.kind === "run"
+					? open
+					: entryRows.some(({ record }) => {
+							if (record.kind !== "user" && record.kind !== "assistant")
+								return true;
+							return STATEFUL_TRANSCRIPT_MARKUP.test(record.text);
+						})));
+		const type =
+			entry.kind === "bar"
+				? "turn"
+				: group?.kind === "run" && !deferred
+					? "fold"
+					: first.record.kind;
+		const text =
+			entry.kind === "bar"
+				? (entry.segment.facts.title ?? "")
+				: group?.kind === "run" && !deferred
+					? group.summary.units.join(", ")
+					: entryRows
+							.map(({ record }) => ("text" in record ? record.text : ""))
+							.join("\n");
+		const bucket = domWindowRequested ? estimateBucket(first.record, text) : 0;
+		const userExpanded =
+			first.record.kind === "user" &&
+			viewState.current.store.read(first.record.id);
+		return {
+			key,
+			renderSignature: entryRows
+				.map((row) => entryRecordRevision(row.record))
+				.join(","),
+			firstId: ids[0],
+			ids,
+			gap,
+			open,
+			omitted,
+			type,
+			text,
+			bucket,
+			userExpanded,
+			media,
+			active,
+			unsafe,
+			representation:
+				entry.kind === "bar"
+					? "turn"
+					: group?.kind === "run" && !deferred
+						? "fold"
+						: "inline",
+			candidate:
+				deferred ||
+				(group?.kind === "row" &&
+					((first.record.kind === "tool" && !isQuietTurnCall(first.record)) ||
+						isInternalReceipt(first.record))),
+			boundary: gap === "turn" || gap === "first",
+		};
+	});
+	const slots = candidateSlots(
+		entryFacts.map((fact) => ({
+			...fact,
+			representation: fact.representation === "inline" ? "inline" : "aggregate",
+		})),
+	);
+	const descriptors: EntryDescriptor[] = slots.map((slot) => {
+		const facts = slot.indices.map((index) => entryFacts[index]);
+		return {
+			key: slot.key,
+			recordIds: facts.flatMap((fact) => fact.ids),
+			signature: `${facts.map((fact) => `${fact.key}:${fact.ids.join(",")}:${fact.representation}:${fact.gap}:${fact.userExpanded}:${fact.media}:${fact.unsafe}:${fact.renderSignature}`).join("|")}:${isSmallView}`,
+			// Estimates are fixed for each entry regime; actual mounted boxes replace
+			// them before paint. They are not an asserted native measurement.
+			estimate: facts.reduce(
+				(sum, fact) =>
+					sum +
+					(!domWindowRequested || fact.omitted
+						? 0
+						: estimateEntryHeight(
+								fact.type,
+								fact.text,
+								{ first: 0, trace: 2, item: 12, turn: 32 }[fact.gap],
+								containerRef.current?.clientWidth || 810,
+							)),
+				0,
+			),
+			estimateKind: `${facts[0].type}:${facts[0].bucket}:${facts[0].open}:${facts[0].userExpanded}`,
+			gapPx: { first: 0, trace: 2, item: 12, turn: 32 }[facts[0].gap],
+			estimateType: facts[0].type,
+			estimateText: facts[0].text,
+			omitted: facts.every((fact) => fact.omitted),
+			collapsed: facts[0].representation !== "inline" && !facts[0].open,
+			active: facts.some((fact) => fact.active),
+			unsafe: facts.some((fact) => fact.unsafe),
+		};
+	});
+	const domWindow = useTranscriptDomWindow({
+		entries: descriptors,
+		regionRef: containerRef,
+		entriesRef,
+		layout: scrollLayout,
+		sessionKey: `${foldSession.current ?? ""}:${transcript.viewEpoch}`,
+		requested: domWindowRequested,
+		contentPresent: !holdPlaceholder && !collapsed,
+	});
+	mountAdapter.current = domWindow;
+	virtualCue.current = {
+		order: transcript.index,
+		enabled: domWindow.enabled,
+		entryIds: new Map(descriptors.map((entry) => [entry.key, entry.recordIds])),
+	};
+	// Arrival is a model-tail event, never a history prepend or DOM remount.
+	if (
+		arrivalLedger.current?.session !== foldSession.current ||
+		arrivalLedger.current?.epoch !== transcript.viewEpoch
+	) {
+		arrivalLedger.current = {
+			session: foldSession.current,
+			epoch: transcript.viewEpoch,
+			ids: new Set(rows.map((row) => row.record.id)),
+		};
+		slotExtents.current.clear();
+		previousSlotPlan.current = {
+			entries: [],
+			heights: new Map(),
+			representations: new Map(),
+		};
+	}
+	const known = arrivalLedger.current.ids;
+	let lastKnown = -1;
+	rows.forEach((row, index) => {
+		if (known.has(row.record.id)) lastKnown = index;
+	});
+	const arriving = new Set(
+		paneIsLive ? rows.slice(lastKnown + 1).map((row) => row.record.id) : [],
+	);
+	useLayoutEffect(() => {
+		for (const row of rows) known.add(row.record.id);
+		viewState.current.store.prune(
+			new Set(rawRecords.current.map((record) => record.id)),
+		);
+		previousSlotPlan.current = {
+			entries: descriptors,
+			heights: new Map(
+				descriptors.map((entry, index) => [
+					entry.key,
+					domWindow.enabled
+						? domWindow.prefix[index + 1] - domWindow.prefix[index]
+						: (slotExtents.current.get(entry.key)?.height ?? entry.estimate) +
+							(slotExtents.current.get(entry.key)?.gap ?? 0),
+				]),
+			),
+			representations: new Map(
+				slots.map((slot) => [
+					slot.key,
+					entryFacts[slot.indices[0]].representation,
+				]),
+			),
+		};
+		const keys = new Set(slots.map((slot) => slot.key));
+		for (const key of slotExtents.current.keys())
+			if (!keys.has(key)) slotExtents.current.delete(key);
+	});
+
 	const renderGroup = (
 		group: SectionGroup,
 		suppressClosingLine: boolean,
@@ -4628,8 +5047,34 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		 * opens restores the block in the same commit. False for every other row.
 		 */
 		supplementCondensed = false,
-	) =>
-		group.kind === "run" ? (
+	) => {
+		if (group.kind === "run" && deferredFolds.has(group.id))
+			return group.rows.map((row, index) => (
+				<TranscriptRow
+					key={row.record.id}
+					row={index === 0 ? atTraceTier(row) : row}
+					enter={arriving.has(row.record.id) && row.record.kind !== "assistant"}
+					isSmallView={isSmallView}
+					scope={mediaScope}
+					conversationId={conversationId}
+					labelPending={
+						row.record.kind === "tool" &&
+						labelPending?.has(row.record.toolCallId) === true
+					}
+					labelHoldLate={labelHoldLate === true}
+					labelMarked={
+						row.record.kind === "tool" &&
+						labelMarked?.has(row.record.toolCallId) === true
+					}
+					foot={suppressClosingLine ? null : (feet.get(row.record.id) ?? null)}
+					closingLineSuppressed={suppressClosingLine}
+					undelivered={undelivered}
+					answerRail={answerRail}
+					stopping={stopping === true}
+					onInterruptTurn={onInterruptTurn}
+				/>
+			));
+		return group.kind === "run" ? (
 			<TraceFold
 				key={group.id}
 				/*
@@ -4697,37 +5142,48 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				 */
 				mediaCount={soleImageGroup ? 0 : group.images.length}
 			>
-				{group.rows.map((row, index) => (
-					<TranscriptRow
-						key={row.record.id}
-						row={index === 0 ? atTraceTier(row) : row}
-						isSmallView={isSmallView}
-						scope={mediaScope}
-						conversationId={conversationId}
-						labelPending={
-							row.record.kind === "tool" &&
-							labelPending?.has(row.record.toolCallId) === true
-						}
-						labelHoldLate={labelHoldLate === true}
-						labelMarked={
-							row.record.kind === "tool" &&
-							labelMarked?.has(row.record.toolCallId) === true
-						}
-						foot={
-							suppressClosingLine ? null : (feet.get(row.record.id) ?? null)
-						}
-						closingLineSuppressed={suppressClosingLine}
-						undelivered={undelivered}
-						answerRail={answerRail}
-						stopping={stopping === true}
-						onInterruptTurn={onInterruptTurn}
-					/>
-				))}
+				<DeferredTranscriptRows
+					render={() =>
+						group.rows.map((row, index) => (
+							<TranscriptRow
+								key={row.record.id}
+								row={index === 0 ? atTraceTier(row) : row}
+								enter={
+									arriving.has(row.record.id) && row.record.kind !== "assistant"
+								}
+								isSmallView={isSmallView}
+								scope={mediaScope}
+								conversationId={conversationId}
+								labelPending={
+									row.record.kind === "tool" &&
+									labelPending?.has(row.record.toolCallId) === true
+								}
+								labelHoldLate={labelHoldLate === true}
+								labelMarked={
+									row.record.kind === "tool" &&
+									labelMarked?.has(row.record.toolCallId) === true
+								}
+								foot={
+									suppressClosingLine ? null : (feet.get(row.record.id) ?? null)
+								}
+								closingLineSuppressed={suppressClosingLine}
+								undelivered={undelivered}
+								answerRail={answerRail}
+								stopping={stopping === true}
+								onInterruptTurn={onInterruptTurn}
+							/>
+						))
+					}
+				/>
 			</TraceFold>
 		) : (
 			<TranscriptRow
 				key={group.row.record.id}
 				row={group.row}
+				enter={
+					arriving.has(group.row.record.id) &&
+					group.row.record.kind !== "assistant"
+				}
 				isSmallView={isSmallView}
 				scope={mediaScope}
 				conversationId={conversationId}
@@ -4750,6 +5206,130 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				supplementCondensed={supplementCondensed}
 				onInterruptTurn={onInterruptTurn}
 			/>
+		);
+	};
+
+	const renderEntry = (entry: (typeof chatEntries)[number]) =>
+		entry.kind === "bar" ? (
+			<TurnSummary
+				/*
+				 * Prefixed: the segment's key is a ROW ID (`runsOf`: the closing
+				 * answer's, else the run's last row's; later segments append
+				 * `#<row>`), and the run's groups render as their own children
+				 * elsewhere in the same list - an unprefixed key collided with
+				 * one of them (two children, one key) and React silently
+				 * dropped one of the pair. The prefix also states which
+				 * collided: the replaced slot is not the bar.
+				 */
+				key={`turn-summary:${entry.segment.key}`}
+				recordIds={entry.runIds}
+				/*
+				 * The ids THIS bar hides. With several bars in a run, the
+				 * run's ids alone cannot say which bar holds a row, and the
+				 * reveal walk (`failed-row-jump.ts`) would open the FIRST bar
+				 * of the run for a row in the second - one unrequested
+				 * expansion per bar in between.
+				 */
+				segmentIds={entry.segment.segmentIds}
+				/*
+				 * The bar stands where the FIRST hidden row stood, so it
+				 * carries that row's identity: a lookup for the row finds the
+				 * bar that replaced its slot.
+				 */
+				anchorRecordId={entry.segment.firstId}
+				className={GAP[entry.segment.gap][isSmallView ? 1 : 0]}
+				durationS={entry.segment.facts.durationS}
+				actionCount={entry.segment.facts.actions}
+				/*
+				 * The count is a minimum while the segment's head is cut
+				 * (`N+ actions`): see `TurnSummaryFacts.partial` - the bar says
+				 * so in its own vocabulary rather than stating a total it
+				 * cannot know.
+				 */
+				partial={entry.segment.facts.partial}
+				title={entry.segment.facts.title}
+				/*
+				 * The quiet group's own clauses, when this bar is one (design §5):
+				 * the family word arrives as `label`, and the count/span here. The
+				 * bar prints them INSTEAD of `Took`/`N actions` - a group
+				 * counts receipts, not work - and the span is null for a
+				 * head-cut group, which states `N+` and no duration.
+				 */
+				group={
+					entry.segment.facts.group === null
+						? null
+						: {
+								count: entry.segment.facts.group.count,
+								spanS: quietGroupSpanS(entry.segment.facts.group),
+							}
+				}
+				stampTs={entry.segment.stampTs}
+				label={entry.segment.label}
+				completed={entry.segment.completed}
+				open={openRuns.has(entry.segment.key)}
+				onOpenChange={(next) =>
+					openBar(entry.segment.key, entry.segment.firstId, next)
+				}
+				/*
+				 * The span's pictures, while the rows that draw them are
+				 * unmounted - the same composition and the same rule as
+				 * `renderGroup`'s: rendered only while collapsed, and not
+				 * passed at all for a run that produced none.
+				 */
+				condensedMedia={
+					entry.images.length > 0
+						? (expand: () => void) => (
+								<FoldMedia
+									images={entry.images}
+									scope={mediaScope}
+									onRevealMore={expand}
+									indent="flush"
+								/>
+							)
+						: undefined
+				}
+				mediaCount={entry.images.length}
+			>
+				{entry.children.map((child, index) =>
+					/*
+					 * The first hidden group drops to the trace tier, the way
+					 * `TraceFold` demotes its first row: the bar replaces the
+					 * group's slot, so the group cannot also keep the turn-tier
+					 * margin it earned as the turn's opener (D2). Every other
+					 * group keeps the gap the unfolded list gave it.
+					 *
+					 * The third argument is the span's sole-image-group fact,
+					 * named with both of its effects at the parameter's own
+					 * comment: D3/U6's duplicate rule for the clause, and
+					 * U8's uncapped strip so one press reaches the rest.
+					 */
+					renderGroup(
+						index === 0 ? atTraceTierGroup(child) : child,
+						true,
+						child.kind === "run" &&
+							entry.images.length > 0 &&
+							child.images.length === entry.images.length,
+					),
+				)}
+			</TurnSummary>
+		) : (
+			/*
+			 * The first group under a bar re-tiers to the item step;
+			 * every later group and every other run's groups keep the
+			 * gap the unfolded list gave them.
+			 */
+			renderGroup(
+				entry.afterBar ? atItemTierGroup(entry.group) : entry.group,
+				entry.suppressClosingLine,
+				false,
+				/*
+				 * The supplement block's condensed reading, computed at RENDER
+				 * time against the live `openRuns` - see `supplementRun` on
+				 * the entry. False for every row but the block's.
+				 */
+				entry.supplementRun !== undefined &&
+					runIsCondensed(entry.supplementRun, openRuns),
+			)
 		);
 
 	return (
@@ -4933,7 +5513,12 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					 * finding is about, is here.
 					 */
 					tabIndex={transcript.records.length === 0 || holdPlaceholder ? -1 : 0}
-					role="log"
+					role={domWindow.enabled ? "region" : "log"}
+					aria-live={domWindow.enabled ? "off" : undefined}
+					data-lo-transcript-scroll
+					data-lo-dom-window={domWindow.enabled ? "on" : "off"}
+					data-lo-dom-window-reason={domWindow.reason}
+					data-lo-dom-pinned={domWindow.pinned}
 					aria-label={CHAT_REGION_LABEL.transcript}
 					// Only the `windowed` branch renders that id, so the description has to
 					// track the branch rather than the looser "history exists" condition it
@@ -5226,155 +5811,137 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 							 * mounts and answers `null`, so those surfaces keep the OS hand-off
 							 * they had and nothing about their tree changes shape.
 							 */
-							<CanvasPaneProvider conversationId={conversationId}>
-								{/*
-								 * THE ROWS, WITH §E2's AGGREGATION TIER APPLIED.
-								 *
-								 * `foldRuns` decides which consecutive actions become one summary
-								 * line, and it never reorders them: the fold is keyed by its FIRST
-								 * row, so it cannot claim a place ahead of the action that opens it,
-								 * and the rows inside it are the same `TranscriptRow`s with the same
-								 * ids in the same DOM - which is what keeps every `data-record-id`
-								 * lookup (the failure jump among them) working the same whether a
-								 * run happens to be folded or not.
-								 *
-								 * ONE THING THE FOLD NEEDS FROM MAIN THAT THE ROWS DO NOT CARRY THEMSELVES:
-								 * `labelPending` is a Set on this component and a BOOLEAN on the row,
-								 * resolved here for #490's reason (see `TranscriptRow`'s props). The
-								 * fold onto `origin/main` that brought #490 under this redesign removed
-								 * the `visible.map` this replaced, so the resolution is re-expressed at
-								 * the two call sites rather than kept as main's single one - and the
-								 * SAME treatment applies to #520's `labelHoldLate`/`labelMarked` pair:
-								 * the Set resolves against the row's own `toolCallId` at each call site,
-								 * so a held or mark-ended row states its column inside a fold exactly
-								 * as it would standing alone.
-								 */}
-								{chatEntries.map((entry) =>
-									entry.kind === "bar" ? (
-										<TurnSummary
-											/*
-											 * Prefixed: the segment's key is a ROW ID (`runsOf`: the closing
-											 * answer's, else the run's last row's; later segments append
-											 * `#<row>`), and the run's groups render as their own children
-											 * elsewhere in the same list - an unprefixed key collided with
-											 * one of them (two children, one key) and React silently
-											 * dropped one of the pair. The prefix also states which
-											 * collided: the replaced slot is not the bar.
-											 */
-											key={`turn-summary:${entry.segment.key}`}
-											recordIds={entry.runIds}
-											/*
-											 * The ids THIS bar hides. With several bars in a run, the
-											 * run's ids alone cannot say which bar holds a row, and the
-											 * reveal walk (`failed-row-jump.ts`) would open the FIRST bar
-											 * of the run for a row in the second - one unrequested
-											 * expansion per bar in between.
-											 */
-											segmentIds={entry.segment.segmentIds}
-											/*
-											 * The bar stands where the FIRST hidden row stood, so it
-											 * carries that row's identity: a lookup for the row finds the
-											 * bar that replaced its slot.
-											 */
-											anchorRecordId={entry.segment.firstId}
-											className={GAP[entry.segment.gap][isSmallView ? 1 : 0]}
-											durationS={entry.segment.facts.durationS}
-											actionCount={entry.segment.facts.actions}
-											/*
-											 * The count is a minimum while the segment's head is cut
-											 * (`N+ actions`): see `TurnSummaryFacts.partial` - the bar says
-											 * so in its own vocabulary rather than stating a total it
-											 * cannot know.
-											 */
-											partial={entry.segment.facts.partial}
-											title={entry.segment.facts.title}
-											/*
-											 * The quiet group's own clauses, when this bar is one (design §5):
-											 * the family word arrives as `label`, and the count/span here. The
-											 * bar prints them INSTEAD of `Took`/`N actions` - a group
-											 * counts receipts, not work - and the span is null for a
-											 * head-cut group, which states `N+` and no duration.
-											 */
-											group={
-												entry.segment.facts.group === null
-													? null
-													: {
-															count: entry.segment.facts.group.count,
-															spanS: quietGroupSpanS(entry.segment.facts.group),
-														}
-											}
-											stampTs={entry.segment.stampTs}
-											label={entry.segment.label}
-											completed={entry.segment.completed}
-											open={openRuns.has(entry.segment.key)}
-											onOpenChange={(next) =>
-												openBar(entry.segment.key, entry.segment.firstId, next)
-											}
-											/*
-											 * The span's pictures, while the rows that draw them are
-											 * unmounted - the same composition and the same rule as
-											 * `renderGroup`'s: rendered only while collapsed, and not
-											 * passed at all for a run that produced none.
-											 */
-											condensedMedia={
-												entry.images.length > 0
-													? (expand: () => void) => (
-															<FoldMedia
-																images={entry.images}
-																scope={mediaScope}
-																onRevealMore={expand}
-																indent="flush"
-															/>
+							<TranscriptViewStateContext.Provider
+								key={`${foldSession.current}:${transcript.viewEpoch}`}
+								value={viewState.current.store}
+							>
+								<CanvasPaneProvider conversationId={conversationId}>
+									{/*
+									 * THE ROWS, WITH §E2's AGGREGATION TIER APPLIED.
+									 *
+									 * `foldRuns` decides which consecutive actions become one summary
+									 * line, and it never reorders them: the fold is keyed by its FIRST
+									 * row, so it cannot claim a place ahead of the action that opens it,
+									 * and the rows inside it are the same `TranscriptRow`s with the same
+									 * ids in the same DOM - which is what keeps every `data-record-id`
+									 * lookup (the failure jump among them) working the same whether a
+									 * run happens to be folded or not.
+									 *
+									 * ONE THING THE FOLD NEEDS FROM MAIN THAT THE ROWS DO NOT CARRY THEMSELVES:
+									 * `labelPending` is a Set on this component and a BOOLEAN on the row,
+									 * resolved here for #490's reason (see `TranscriptRow`'s props). The
+									 * fold onto `origin/main` that brought #490 under this redesign removed
+									 * the `visible.map` this replaced, so the resolution is re-expressed at
+									 * the two call sites rather than kept as main's single one - and the
+									 * SAME treatment applies to #520's `labelHoldLate`/`labelMarked` pair:
+									 * the Set resolves against the row's own `toolCallId` at each call site,
+									 * so a held or mark-ended row states its column inside a fold exactly
+									 * as it would standing alone.
+									 */}
+									<div
+										ref={entriesRef}
+										data-lo-transcript-entries
+										className="flex shrink-0 flex-col"
+									>
+										{domWindow.pieces.map((piece) => {
+											if (piece.kind === "spacer")
+												return (
+													<div
+														key={`spacer:${piece.start}:${piece.end}`}
+														aria-hidden="true"
+														data-lo-transcript-spacer
+														className="shrink-0"
+														style={{
+															height: piece.height,
+															overflowAnchor: "none",
+														}}
+													/>
+												);
+											const slot = slots[piece.index];
+											const descriptor = descriptors[piece.index];
+											const facts = slot.indices.map(
+												(index) => entryFacts[index],
+											);
+											const gap = { first: 0, trace: 2, item: 12, turn: 32 }[
+												facts[0].gap
+											];
+											if (facts.every((fact) => fact.omitted)) return null;
+											const oldPlan = previousSlotPlan.current;
+											const structural =
+												oldPlan.representations.get(slot.key) !==
+												facts[0].representation;
+											const oldPieces = structural
+												? oldPlan.entries.filter((entry) =>
+														entry.recordIds.every((id) =>
+															descriptor.recordIds.includes(id),
+														),
+													)
+												: [];
+											// Read only the changing span's OLD mounted boxes. Omitted pieces
+											// already have exact scalar spacer contributions in the old prefix.
+											const oldHeights = oldPieces.map(
+												(entry) =>
+													Array.from(
+														containerRef.current?.querySelectorAll<HTMLElement>(
+															"[data-lo-entry-key]",
+														) ?? [],
+													)
+														.find(
+															(element) =>
+																element.dataset.loEntryKey === entry.key,
 														)
-													: undefined
-											}
-											mediaCount={entry.images.length}
-										>
-											{entry.children.map((child, index) =>
-												/*
-												 * The first hidden group drops to the trace tier, the way
-												 * `TraceFold` demotes its first row: the bar replaces the
-												 * group's slot, so the group cannot also keep the turn-tier
-												 * margin it earned as the turn's opener (D2). Every other
-												 * group keeps the gap the unfolded list gave it.
-												 *
-												 * The third argument is the span's sole-image-group fact,
-												 * named with both of its effects at the parameter's own
-												 * comment: D3/U6's duplicate rule for the clause, and
-												 * U8's uncapped strip so one press reaches the rest.
-												 */
-												renderGroup(
-													index === 0 ? atTraceTierGroup(child) : child,
-													true,
-													child.kind === "run" &&
-														entry.images.length > 0 &&
-														child.images.length === entry.images.length,
-												),
-											)}
-										</TurnSummary>
-									) : (
-										/*
-										 * The first group under a bar re-tiers to the item step;
-										 * every later group and every other run's groups keep the
-										 * gap the unfolded list gave them.
-										 */
-										renderGroup(
-											entry.afterBar
-												? atItemTierGroup(entry.group)
-												: entry.group,
-											entry.suppressClosingLine,
-											false,
-											/*
-											 * The supplement block's condensed reading, computed at RENDER
-											 * time against the live `openRuns` - see `supplementRun` on
-											 * the entry. False for every row but the block's.
-											 */
-											entry.supplementRun !== undefined &&
-												runIsCondensed(entry.supplementRun, openRuns),
-										)
-									),
-								)}
-							</CanvasPaneProvider>
+														?.getBoundingClientRect().height ??
+													oldPlan.heights.get(entry.key),
+											);
+											const fromHeight =
+												oldHeights.length &&
+												oldHeights.every((height) => height !== undefined)
+													? oldHeights.reduce<number>(
+															(sum, height) => sum + (height ?? 0),
+															0,
+														) - gap
+													: null;
+											const firstOldGap =
+												slotExtents.current.get(slot.key)?.gap ?? gap;
+											const fromFirstHeight =
+												oldHeights[0] === undefined
+													? null
+													: oldHeights[0] - firstOldGap;
+											return (
+												<TranscriptEntrySlot
+													key={slot.key}
+													entryKey={slot.key}
+													signature={descriptor.signature}
+													sessionKey={`${foldSession.current}:${transcript.viewEpoch}`}
+													expanded={facts[0].open}
+													anchorHeader={
+														facts[0].candidate ||
+														facts[0].representation !== "inline"
+													}
+													recordIds={descriptor.recordIds}
+													representation={facts[0].representation}
+													gap={gap}
+													media={facts.some((fact) => fact.media)}
+													live={paneIsLive}
+													arrival={
+														descriptor.recordIds.some((id) =>
+															arriving.has(id),
+														) && facts[0].representation !== "inline"
+													}
+													fromHeight={fromHeight}
+													fromFirstHeight={fromFirstHeight}
+													layout={scrollLayout}
+													extents={slotExtents.current}
+												>
+													{slot.indices.flatMap((index) =>
+														renderEntry(chatEntries[index]),
+													)}
+												</TranscriptEntrySlot>
+											);
+										})}
+									</div>
+								</CanvasPaneProvider>
+							</TranscriptViewStateContext.Provider>
 						)}
 
 						{/*

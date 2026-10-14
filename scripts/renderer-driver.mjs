@@ -227,8 +227,16 @@ import { createRequire } from "node:module";
 import { connect, createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { basename, join, resolve, sep } from "node:path";
+/*
+ * A NATIVE dependency, and its ONE import-time side effect is recorded here
+ * rather than hidden: loading sharp's vendored libvips sets `VIPSHOME` to the
+ * bundled path (measured; pinned by `renderer-driver-api.test.mjs`). It is the
+ * only process-level effect an import of this module has — see the facade
+ * below for the rest of the import contract.
+ */
 import sharp from "sharp";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
+import { isEntryPoint } from "./entry-point.mjs";
 import { EVIDENCE_TZ } from "./evidence-tz.mjs";
 import {
 	COPY_FIXTURE_SESSION,
@@ -905,6 +913,32 @@ function writeAppCwdEnv(extraLines = []) {
 	);
 }
 
+/**
+ * Create this run's scratch tree. Idempotent, and SHARED: `main()` calls it
+ * once at setup, `launchApp` re-ensures it per boot (a caller that imports
+ * this module owns only its own dirs, and a boot must not ENOENT on the
+ * scratch `.env` because one of them went missing), and
+ * `prepareDriverContext` exposes the same call to that caller.
+ */
+function ensureScratchTree() {
+	mkdirSync(HOME_DIR, { recursive: true });
+	mkdirSync(CONFIG_DIR, { recursive: true });
+	mkdirSync(APP_CWD, { recursive: true });
+	mkdirSync(FRAMES, { recursive: true });
+}
+
+/**
+ * Point the scratch `.env` at the backend binding this run owns. The URL is
+ * the app's own transport binding (`VITE_LOCAL_OPERATOR_API_URL`), so this is
+ * the wiring rather than metadata: `main()` calls it with the `--backend` URL
+ * or its dead port, and `prepareDriverContext` is the caller-facing door to
+ * the same call.
+ */
+function bindBackend(apiUrl) {
+	APP_API_URL = apiUrl;
+	writeAppCwdEnv();
+}
+
 const transcript = [];
 let failures = 0;
 
@@ -1115,17 +1149,33 @@ async function reapLiveBoots({ code, why }) {
 	process.exit(code);
 }
 
-process.on("exit", () => {
-	for (const handle of liveBoots) {
-		try {
-			process.kill(handle.pid, "SIGKILL");
-		} catch {
-			/* already gone */
+/**
+ * Install the process-level reapers: the last-resort synchronous exit hook and
+ * the SIGINT/SIGTERM paths that tear a run down like its normal exit.
+ *
+ * CALLED FROM `main()`, NOT AT IMPORT — and that is the contract, not a
+ * detail: a caller that IMPORTS this module must not inherit handlers that
+ * `process.exit` its process. Measured against the Q1 acceptance caller: with
+ * these installed at import, a SIGTERM ran this module's exit(143) before the
+ * caller's own async cleanup could finish. The CLI installs them before its
+ * first boot, so nothing about a direct run changes.
+ */
+function installReapers() {
+	process.on("exit", () => {
+		for (const handle of liveBoots) {
+			try {
+				process.kill(handle.pid, "SIGKILL");
+			} catch {
+				/* already gone */
+			}
 		}
-	}
-});
-process.on("SIGINT", () => void reapLiveBoots({ code: 130, why: "SIGINT" }));
-process.on("SIGTERM", () => void reapLiveBoots({ code: 143, why: "SIGTERM" }));
+	});
+	process.on("SIGINT", () => void reapLiveBoots({ code: 130, why: "SIGINT" }));
+	process.on(
+		"SIGTERM",
+		() => void reapLiveBoots({ code: 143, why: "SIGTERM" }),
+	);
+}
 
 /**
  * Every process on the machine whose command line names THIS run's scratch tag.
@@ -1169,8 +1219,12 @@ function thisRunsProcesses() {
 async function launchApp({
 	armed,
 	apiUrl,
-	logName,
-	tag,
+	/*
+	 * Defaults for the two names a caller that is NOT the CLI has no reason to
+	 * know: the CLI passes both, so its behaviour is unchanged.
+	 */
+	logName = "app.log",
+	tag = "boot",
 	/*
 	 * Extra lines for the scratch `.env` this boot runs with, and extra variables
 	 * for its environment. Both exist for the gate's `.env` cases below, which
@@ -1182,6 +1236,39 @@ async function launchApp({
 	dotenvLines = [],
 	envExtra = {},
 }) {
+	/*
+	 * THE BACKEND BINDING IS REQUIRED, AND ITS ABSENCE IS A REFUSAL RATHER
+	 * THAN A GUESS. `writeAppCwdEnv` writes `VITE_LOCAL_OPERATOR_API_URL` from
+	 * `APP_API_URL`, so a launch with no binding would point the app at the
+	 * string `null` — or at whatever default the app then falls back to. The
+	 * CLI binds one before its first boot (`bindBackend`); a caller binds one
+	 * with `prepareDriverContext({ apiUrl })`, or per call through this
+	 * argument.
+	 */
+	/*
+	 * A PER-CALL BINDING GOES THROUGH THE SAME CONTRACT AS
+	 * `prepareDriverContext`'s, BEFORE any assignment: `""`, whitespace and a
+	 * non-string are refusals, not bindings — an empty URL would point the app
+	 * at the empty string — and a rejected call must not poison a prior valid
+	 * binding for later calls that omit the argument (measured: a `null` call
+	 * used to clear the binding a following omitted-argument call needed).
+	 */
+	if (apiUrl !== undefined) {
+		if (typeof apiUrl !== "string" || apiUrl.trim() === "") {
+			throw new Error(
+				"launchApp's apiUrl must be a non-empty string — the same contract prepareDriverContext applies, because the scratch .env points the app at exactly this URL",
+			);
+		}
+		APP_API_URL = apiUrl;
+	}
+	if (APP_API_URL === null) {
+		throw new Error(
+			"launchApp has no backend binding: call prepareDriverContext({ apiUrl }) first, or pass apiUrl — the scratch .env points the app at exactly that URL",
+		);
+	}
+	// Per boot, and idempotent: a caller owns only its own dirs, and the
+	// scratch `.env` write must not ENOENT because one of them went missing.
+	ensureScratchTree();
 	writeAppCwdEnv(dotenvLines);
 	/*
 	 * `withNotificationsOff`: this rig boots the real app, whose backend
@@ -1325,7 +1412,9 @@ async function launchApp({
 		logPath,
 		stream,
 		flush,
-		apiUrl,
+		// The ACTUAL binding this boot was launched against (set above), not
+		// the per-call argument, which may have been omitted.
+		apiUrl: APP_API_URL,
 	};
 	/*
 	 * Registered before anything can throw, so the reaper above owns every boot
@@ -1696,6 +1785,77 @@ function verb(cdp, name, payload) {
 		`window.__loDevDriver.call(${JSON.stringify(name)}, ${JSON.stringify(payload ?? null)})`,
 	);
 }
+
+/**
+ * ---- the importable surface --------------------------------------------------
+ *
+ * WHY THIS EXISTS, AND WHY IT IS EXACTLY THIS SMALL. The Q1 acceptance caller
+ * must drive this file's own machinery — attach to the app's CDP, call the
+ * dev-driver verbs, capture frames, and own the boot lifecycle — without
+ * re-implementing any of it and without importing this file running `main()`.
+ * Every member below is the EXISTING implementation, exported by name: nothing
+ * is copied, wrapped or given a second behaviour. It is a frozen object rather
+ * than loose named exports so the surface cannot accrete by accident — adding
+ * a fact here is a review decision, and these six are the only ones the Q1
+ * caller needs.
+ *
+ * THE IMPORT CONTRACT, STATED EXACTLY. An import of this module: runs no
+ * `main()`, creates no scratch tree, registers NO process handlers (the
+ * reapers are installed from `main()`, see `installReapers`), and writes no
+ * driver environment variables. The one process-level effect is the vendored
+ * native image dependency above setting `VIPSHOME` at load — a fact of that
+ * package, pinned by the test rather than papered over. A caller that needs a
+ * run binds one with `prepareDriverContext` (below) and launches with
+ * `launchApp`.
+ *
+ * WHAT IT DOES NOT CHANGE. The CLI is untouched: `main()` runs only when this
+ * file is the process's entry point (`scripts/entry-point.mjs`), so
+ * `node scripts/renderer-driver.mjs …` behaves exactly as before. The app tree
+ * a caller targets is chosen the same way it always was — `process.cwd()` at
+ * import (`ROOT`; Electron is resolved from there) — so importing from a
+ * caller whose cwd is another build drives that build with no new option.
+ * Import nothing else: the rest of this module is scene machinery whose
+ * contract is the CLI, not an API.
+ */
+
+/**
+ * Bind a caller's run and create its scratch tree, exactly as the CLI's setup
+ * does: the SAME `ensureScratchTree`/`bindBackend` calls, not a second
+ * implementation. The caller owns only its own dirs, profile, resources and
+ * backend binding — everything else (paths, the app's cwd `.env`, the frames
+ * directory) is this module's existing scratch convention.
+ *
+ * `apiUrl` is REQUIRED and becomes the app's own transport binding
+ * (`VITE_LOCAL_OPERATOR_API_URL` in the scratch `.env`), so the app can reach
+ * exactly the backend the caller owns and nothing else; a missing or blank
+ * value is a refusal rather than a silent `null`.
+ */
+export function prepareDriverContext({ apiUrl } = {}) {
+	if (typeof apiUrl !== "string" || apiUrl.trim() === "") {
+		throw new Error(
+			"prepareDriverContext needs the caller's backend binding: apiUrl must be a non-empty string — the scratch .env points the app at exactly this URL",
+		);
+	}
+	ensureScratchTree();
+	bindBackend(apiUrl);
+	return Object.freeze({
+		scratch: SCRATCH,
+		home: HOME_DIR,
+		config: CONFIG_DIR,
+		appCwd: APP_CWD,
+		frames: FRAMES,
+		apiUrl,
+	});
+}
+
+export const rendererDriverApi = Object.freeze({
+	CdpClient,
+	launchApp,
+	prepareDriverContext,
+	verb,
+	capture,
+	reapLiveBoots,
+});
 
 /** How many RPC envelopes this run has sent, for their ids. */
 let rpcSequence = 0;
@@ -42853,6 +43013,9 @@ async function main() {
 	say(
 		`renderer-driver: frame timezone pinned to ${EVIDENCE_TZ} (ambient TZ=${ambientTz})`,
 	);
+	// The reapers belong to the CLI's lifetime: installed here, never at
+	// import, so an importing caller's own signal handling stays its own.
+	installReapers();
 	await assertBuildIsCurrent();
 	/*
 	 * Hygiene first, before this run adds a tree of its own. See
@@ -42866,10 +43029,7 @@ async function main() {
 			"abandoned scratch trees",
 			`${reaped.seen} seen, ${reaped.live} owned by a live pid (kept), ${reaped.young} younger than ${Math.round(REAP_AFTER_MS / 60000)}m (kept), ${reaped.removed.length} removed${reaped.removed.length ? `: ${reaped.removed.join(", ")}` : ""}`,
 		);
-	mkdirSync(HOME_DIR, { recursive: true });
-	mkdirSync(CONFIG_DIR, { recursive: true });
-	mkdirSync(APP_CWD, { recursive: true });
-	mkdirSync(FRAMES, { recursive: true });
+	ensureScratchTree();
 
 	// The scratch `.env` at the app's cwd: this is what keeps the run off the
 	// operator's backend, because main loads `.env` from cwd with `override: true`.
@@ -42889,8 +43049,7 @@ async function main() {
 		);
 		process.exit(2);
 	}
-	APP_API_URL = apiUrl;
-	writeAppCwdEnv();
+	bindBackend(apiUrl);
 	if (BACKEND) note("csp for this run's backend", widenCspForBackend(BACKEND));
 
 	if (BACKEND_RECORDS) {
@@ -43507,16 +43666,25 @@ async function main() {
 	process.exit(failures === 0 ? 0 : 1);
 }
 
-main().catch(async (error) => {
-	say(`\n[FAIL] the run threw: ${error?.stack ?? error}`);
-	const handle = app;
-	if (handle) {
-		const log = await readAppLog(handle);
-		say("\n---- app log (tail) ----");
-		say(log.split("\n").slice(-40).join("\n"));
-	}
-	// Every boot, not just the scene's: a throw in the middle of the gate's four
-	// leaves whichever ones are still up, and the reaper is the one path that
-	// knows all of them.
-	await reapLiveBoots({ code: 1, why: "the run threw" });
-});
+/*
+ * The CLI entry, guarded so an IMPORT of this module is inert. Before this
+ * guard the footer ran `main()` unconditionally, so `import` executed a whole
+ * CLI run's worth of work. `isEntryPoint` is the house comparison
+ * (`scripts/entry-point.mjs`): a lexical `import.meta.url` string test
+ * silently no-ops through a symlinked directory, which on macOS is ordinary.
+ */
+if (isEntryPoint(import.meta.url)) {
+	main().catch(async (error) => {
+		say(`\n[FAIL] the run threw: ${error?.stack ?? error}`);
+		const handle = app;
+		if (handle) {
+			const log = await readAppLog(handle);
+			say("\n---- app log (tail) ----");
+			say(log.split("\n").slice(-40).join("\n"));
+		}
+		// Every boot, not just the scene's: a throw in the middle of the gate's four
+		// leaves whichever ones are still up, and the reaper is the one path that
+		// knows all of them.
+		await reapLiveBoots({ code: 1, why: "the run threw" });
+	});
+}

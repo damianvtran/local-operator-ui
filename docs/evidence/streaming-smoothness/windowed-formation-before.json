@@ -1,0 +1,49 @@
+{
+  "telemetryOptedOut": true,
+  "window": "on",
+  "reason": "windowed",
+  "fetchedRecords": 58,
+  "fetchedPages": 0,
+  "pinned": "2",
+  "images": 0,
+  "codeBlocks": 0,
+  "mountedEntries": 10,
+  "mountedRows": 11,
+  "domNodes": 217,
+  "spacers": 1,
+  "spacerHeights": [
+    5023.890625
+  ],
+  "entryHeights": [
+    108.796875,
+    106.3984375,
+    108.796875,
+    106.3984375,
+    108.796875,
+    106.3984375,
+    76.796875,
+    34.3984375,
+    54,
+    368.78125
+  ],
+  "scrollTop": -100,
+  "scrollHeight": 6309,
+  "clientHeight": 560,
+  "slotHeight": 42,
+  "phase": "settled",
+  "inlineTools": 2,
+  "aggregateHeaders": 0,
+  "contextDocumentY": 5802.2734375,
+  "reactCommitMs": [
+    0.09999999403953552,
+    0.09999999403953552,
+    0.09999999403953552,
+    0.10000002384185791,
+    0.09999999403953552,
+    0.09999999403953552,
+    0.09999999403953552,
+    0.20000001788139343,
+    0.09999999403953552,
+    0.09999999403953552
+  ]
+}

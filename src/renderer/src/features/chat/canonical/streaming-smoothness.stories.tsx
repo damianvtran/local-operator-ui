@@ -1,0 +1,1185 @@
+import type { Meta, StoryObj } from "@storybook/react";
+import { usePostHog } from "posthog-js/react";
+import { Profiler, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
+import "../../../styles/index.css";
+import type { DesktopRequest } from "../../../../../shared/desktop-contract";
+import type { CanonicalFrontendState } from "../../../../../shared/desktop-session-contract";
+import { CanonicalTranscript } from "./canonical-transcript";
+import type { TranscriptRecord, TranscriptState } from "./transcript-reducer";
+
+const TS = 1_760_000_000_000;
+const assistant = (id: string, text: string): TranscriptRecord => ({
+	kind: "assistant",
+	id,
+	ts: TS,
+	text,
+	streaming: false,
+	complete: true,
+	stopReason: null,
+	error: false,
+});
+const tool = (id: string): TranscriptRecord => ({
+	kind: "tool",
+	id,
+	ts: TS,
+	toolCallId: id,
+	toolName: "read",
+	intent: "Reading the fixture",
+	args: { path: `fixture-${id}.md` },
+	phase: "done",
+	argumentBytes: 0,
+	output: "ok",
+	isError: false,
+	notRunReason: null,
+	notRunKind: null,
+	neverSent: false,
+	durationS: 0.1,
+	startedAt: null,
+	endedAt: null,
+	images: [],
+	added: 0,
+	removed: 0,
+	diff: null,
+	stopped: false,
+});
+const longRecords = (): TranscriptRecord[] =>
+	Array.from({ length: 200 }, (_, index) =>
+		index % 2 === 0
+			? {
+					kind: "user",
+					id: `smooth-u-${index}`,
+					ts: TS + index,
+					text: `Checkpoint ${index}: keep this ordered transcript stable while reading.`,
+					images: [],
+				}
+			: assistant(
+					`smooth-a-${index}`,
+					`Answer ${index}. This is a deterministic plain-text transcript entry. The reader may stay in older history while new output arrives at the tail. No media, code editor or hidden tool-body state is represented by this fixture.`,
+				),
+	);
+const mixedRecords = (): TranscriptRecord[] =>
+	Array.from({ length: 40 }, (_, index) => [
+		{
+			id: `mixed-u-${index}`,
+			ts: TS + index * 5,
+			kind: "user" as const,
+			text: `Review the implementation of synthetic module ${index}.`,
+			images:
+				index === 37
+					? [
+							{
+								id: "mixed-artifact:0",
+								data: "iVBORw0KGgoAAAANSUhEUgAAAIAAAABACAIAAABdtOgoAAAAqUlEQVR4nO3TMREAIBDEwAdxeMEVUpGxTdbAFZlb576Js+F2CuD1AKwAWAGwAmAFwAqAFQArAFYArABYAbACYAXACoAVACsAVgCsAFgBsAJgBcAKgBUAKwBWAKwAWAGwAmAFwAqAFQArAFYArABYAbACYAXACoAVACsAVgCsAFgBsAJgBcAKgBUAKwBWAKwAWAGwAmAFwAqAFQArAFYArABYAbACYAUY6wNp0gHPxbZcbgAAAABJRU5ErkJggg==",
+								attachment: null,
+								mimeType: "image/png",
+								width: 128,
+								height: 64,
+								name: "synthetic-artifact.png",
+							},
+						]
+					: [],
+		},
+		...Array.from({ length: 3 }, (_, action) => ({
+			...tool(`mixed-t-${index}-${action}`),
+			ts: TS + index * 5 + action + 1,
+		})),
+		{
+			...assistant(
+				`mixed-a-${index}`,
+				index === 31
+					? "The mixed fixture includes a real fenced-code renderer.\n\n```ts\nconst result = await readFixture();\nconsole.log(result);\n```"
+					: index === 39
+						? "The live mixed tail continues streaming without unmounting the media or fenced-code islands."
+						: `Module ${index} is complete. The three settled reads stay folded.`,
+			),
+			ts: TS + index * 5 + 4,
+			complete: index !== 39,
+			streaming: index === 39,
+		},
+	]).flat();
+
+const stateOf = (records: TranscriptRecord[]): TranscriptState => ({
+	records,
+	index: new Map(records.map((record, index) => [record.id, index])),
+	generation: 1,
+	compacting: false,
+	compactingSince: 0,
+	viewEpoch: 0,
+	oldestId: null,
+	oldestTs: 0,
+	hasMore: false,
+	argsByCall: new Map(),
+});
+
+/**
+ * Controls operate on the shipped transcript, not a facsimile. Numeric output
+ * is part of the story so the authorized browser can read geometry without
+ * injecting a second browser stack. Synthetic wheel attribution is named here;
+ * it is not evidence of hardware momentum, touch or scrollbar-drag behaviour.
+ */
+function Frame({
+	formation = false,
+	mixed = false,
+	longFormation = false,
+	durable = false,
+	motion = false,
+	interactions = false,
+}: {
+	formation?: boolean;
+	mixed?: boolean;
+	longFormation?: boolean;
+	durable?: boolean;
+	motion?: boolean;
+	interactions?: boolean;
+}) {
+	const analytics = usePostHog();
+	// Storybook's older shared decorator initializes analytics unconditionally;
+	// the fixture must opt out on that actual client, not trust a main-process
+	// telemetry variable which the standalone Vite preview does not consume.
+	useLayoutEffect(() => analytics?.opt_out_capturing(), [analytics]);
+	const regionRef = useRef<HTMLDivElement>(null);
+	const [transportReady, setTransportReady] = useState(!interactions);
+	const transportRequests = useRef<string[]>([]);
+	useLayoutEffect(() => {
+		if (!interactions) return;
+		// Scoped synthetic transport: the real rail/jump/mount adapter runs, but
+		// this renderer fixture must never ask the operator's durable sessions.
+		const original = window.api;
+		window.api = {
+			...original,
+			desktop: {
+				...original?.desktop,
+				request: async (request: DesktopRequest) => {
+					transportRequests.current.push(request.op);
+					return request.op === "sessions.checkpoints"
+						? {
+								status: 200,
+								body: {
+									result: {
+										session_id: "smooth-interactions",
+										index: { state: "ready" },
+										checkpoints: [
+											{
+												id: "smooth-u-140",
+												kind: "user",
+												turn: 71,
+												ts: TS / 1000,
+												seq: 140,
+												text: "Old loaded target",
+											},
+										],
+									},
+								},
+							}
+						: {
+								status: 404,
+								body: { detail: "Synthetic fixture has no backend" },
+							};
+				},
+			},
+		} as typeof window.api;
+		setTransportReady(true);
+		return () => {
+			window.api = original;
+		};
+	}, [interactions]);
+	const seed = () =>
+		motion
+			? [
+					...longRecords().slice(-48),
+					assistant(
+						"smooth-context",
+						"Upstream context stays at the same document-space origin.",
+					),
+					{
+						kind: "user" as const,
+						id: "motion-u",
+						ts: TS,
+						text: "Read two synthetic files, then finish this turn.",
+						images: [],
+					},
+					tool("smooth-t1"),
+					tool("smooth-t2"),
+					{
+						...assistant(
+							"motion-answer",
+							"The synthetic turn is still streaming.",
+						),
+						streaming: true,
+						complete: false,
+					},
+				]
+			: mixed
+				? mixedRecords()
+				: formation
+					? [
+							// Stay within the existing 60-row MODEL cap while exercising a long
+							// DOM canvas. Head trimming is an independent model-origin change,
+							// not a representation-motion displacement.
+							...(longFormation ? longRecords().slice(-54) : []),
+							assistant(
+								"smooth-context",
+								"Upstream context stays at the same document-space origin.",
+							),
+							tool("smooth-t1"),
+							tool("smooth-t2"),
+							...(longFormation
+								? [
+										{
+											...assistant(
+												"smooth-after",
+												Array.from(
+													{ length: 12 },
+													(_, index) =>
+														`Downstream live line ${index}: preserve the reader above this continuing response.`,
+												).join("\n\n"),
+											),
+											streaming: true,
+											complete: false,
+										},
+									]
+								: []),
+						]
+					: durable
+						? longRecords().slice(-60)
+						: longRecords();
+	const [records, setRecords] = useState(seed);
+	const currentRecords = useRef(records);
+	currentRecords.current = records;
+	const extendCandidate = (current: TranscriptRecord[]) => {
+		const suffix = current.findIndex((record) => record.id === "smooth-after");
+		return suffix < 0
+			? [...current, tool("smooth-t3")]
+			: [
+					...current.slice(0, suffix),
+					tool("smooth-t3"),
+					...current.slice(suffix),
+				];
+	};
+	const [hasMore, setHasMore] = useState(durable);
+	const [loadingOlder, setLoadingOlder] = useState(false);
+	const fetchedPages = useRef(0);
+	const loadOlder = async () => {
+		if (!durable || !hasMore) return false;
+		fetchedPages.current += 1;
+		setLoadingOlder(true);
+		await new Promise((resolve) => window.setTimeout(resolve, 50));
+		setRecords((current) => [...longRecords().slice(120, 140), ...current]);
+		setHasMore(false);
+		setLoadingOlder(false);
+		return true;
+	};
+	const [mount, setMount] = useState(0);
+	useEffect(() => {
+		if (!new URLSearchParams(location.search).has("reducedMotion")) return;
+		// Story-local JS preference fixture, not native OS/browser media emulation.
+		// This exercises the slot's immediate-swap policy; CSS media rules still
+		// follow the browser preference and are outside this fixture's proof.
+		const original = window.matchMedia.bind(window);
+		window.matchMedia = (query) =>
+			query === "(prefers-reduced-motion: reduce)"
+				? Object.defineProperty(original(query), "matches", { value: true })
+				: original(query);
+		return () => {
+			window.matchMedia = original;
+		};
+	}, []);
+	useEffect(() => {
+		if (!new URLSearchParams(location.search).has("fastFormation")) return;
+		const timer = window.setTimeout(
+			() =>
+				document
+					.querySelector<HTMLButtonElement>("[data-fast-formation]")
+					?.click(),
+			0,
+		);
+		return () => window.clearTimeout(timer);
+	}, []);
+	const parked = useRef<{ id: string; y: number } | null>(null);
+	const [report, setReport] = useState("No measurement yet.");
+	useLayoutEffect(() => {
+		// Same-origin mirror for the harness's top-document read action. The
+		// visible story report remains the source; no browser script is injected.
+		const mirror = window.parent.document.createElement("pre");
+		mirror.dataset.loRendererProof = "streaming-smoothness";
+		mirror.hidden = true;
+		mirror.textContent = report;
+		window.parent.document.body.append(mirror);
+		return () => mirror.remove();
+	}, [report]);
+	const [busy, setBusy] = useState(false);
+	const [narrow, setNarrow] = useState(false);
+	const commits = useRef<number[]>([]);
+	const inspect = () => {
+		const region = regionRef.current;
+		if (!region) return {};
+		const slot = region.querySelector<HTMLElement>(
+			"[data-lo-entry-key=smooth-t1] [data-lo-transition-phase]",
+		);
+		const context = region.querySelector<HTMLElement>(
+			"[data-record-id=smooth-context]",
+		);
+		return {
+			telemetryOptedOut: analytics?.has_opted_out_capturing(),
+			fontsStatus: document.fonts.status,
+			reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)")
+				.matches,
+			mountedRecordIds: Array.from(
+				region.querySelectorAll<HTMLElement>("[data-record-id]"),
+				(node) => node.dataset.recordId,
+			),
+			parkedAnchor: parked.current,
+			parkedAnchorDelta: parked.current
+				? (() => {
+						const node = region.querySelector<HTMLElement>(
+							`[data-record-id="${parked.current.id}"]`,
+						);
+						return node
+							? node.getBoundingClientRect().top - parked.current.y
+							: null;
+					})()
+				: null,
+			window: region.dataset.loDomWindow,
+			reason: region.dataset.loDomWindowReason,
+			fetchedRecords: currentRecords.current.length,
+			fetchedPages: fetchedPages.current,
+			pinned: region.dataset.loDomPinned,
+			images: region.querySelectorAll("img").length,
+			codeBlocks: region.querySelectorAll("pre").length,
+			mountedEntries: region.querySelectorAll("[data-lo-entry-key]").length,
+			mountedRows: region.querySelectorAll("[data-record-id]").length,
+			domNodes: region.querySelectorAll("*").length,
+			spacers: region.querySelectorAll("[data-lo-transcript-spacer]").length,
+			spacerHeights: [
+				...region.querySelectorAll<HTMLElement>("[data-lo-transcript-spacer]"),
+			].map((node) => node.getBoundingClientRect().height),
+			entryHeights: [
+				...region.querySelectorAll<HTMLElement>("[data-lo-entry-key]"),
+			].map((node) => node.getBoundingClientRect().height),
+			scrollTop: region.scrollTop,
+			scrollHeight: region.scrollHeight,
+			clientHeight: region.clientHeight,
+			clientWidth: region.clientWidth,
+			scrollWidth: region.scrollWidth,
+			slotHeight: slot?.getBoundingClientRect().height,
+			fromHeight: slot?.dataset.loFromHeight,
+			targetHeight: slot?.dataset.loTargetHeight,
+			phase: slot?.dataset.loTransitionPhase,
+			inlineTools: region.querySelectorAll('[data-record-kind="tool"]').length,
+			aggregateHeaders: region.querySelectorAll("[data-fold-ids]").length,
+			contextDocumentY: context
+				? context.getBoundingClientRect().top -
+					(region
+						.querySelector<HTMLElement>("[data-lo-transcript-content]")
+						?.getBoundingClientRect().top ?? 0)
+				: null,
+			reactCommitMs: commits.current.slice(-10),
+		};
+	};
+
+	const pausedCleanup = useRef<(() => void) | null>(null);
+	useEffect(() => () => pausedCleanup.current?.(), []);
+	const freezeFormation = () => {
+		const region = regionRef.current;
+		if (!region) return;
+		pausedCleanup.current?.();
+		const nativeTimeout = window.setTimeout.bind(window);
+		const heldTimers: { id: number; finish: () => void }[] = [];
+		const animations: Animation[] = [];
+		// Story-only deterministic evidence: the shipped 240ms missing-event
+		// cleanup is suspended while CSS time is sampled. Normal probes above
+		// keep the actual ceiling. Restore the timer function on capture/release.
+		window.setTimeout = ((
+			callback: TimerHandler,
+			delay?: number,
+			...args: unknown[]
+		) => {
+			if (
+				delay === undefined ||
+				delay > 240 ||
+				typeof callback !== "function" ||
+				!callback.name.startsWith("finish")
+			)
+				return nativeTimeout(callback, delay, ...args);
+			const finish = () => callback(...args);
+			const id = nativeTimeout(finish, 60_000);
+			heldTimers.push({ id, finish });
+			return id;
+		}) as typeof window.setTimeout;
+		const release = () => {
+			window.setTimeout = nativeTimeout;
+			region.removeEventListener("transitionrun", freeze);
+			for (const animation of animations) animation.play();
+			for (const timer of heldTimers) {
+				clearTimeout(timer.id);
+				timer.finish();
+			}
+			pausedCleanup.current = null;
+		};
+		const freezeAt = (shell: HTMLElement) => {
+			animations.push(...shell.getAnimations({ subtree: true }));
+			for (const animation of animations) animation.pause();
+			const samples = [0, 90, 180].map((time) => {
+				for (const animation of animations) animation.currentTime = time;
+				return {
+					cssTimeMs: time,
+					computedHeight: window.getComputedStyle(shell).height,
+					...inspect(),
+				};
+			});
+			for (const animation of animations) animation.currentTime = 90;
+			window.setTimeout = nativeTimeout;
+			region.removeEventListener("transitionrun", freeze);
+			setReport(
+				JSON.stringify(
+					{
+						pausedCSS: true,
+						cleanupBoundSuspended: true,
+						animations: animations.length,
+						samples,
+					},
+					null,
+					2,
+				),
+			);
+		};
+		const freeze = (event: TransitionEvent) => {
+			if (event.propertyName === "height")
+				freezeAt(event.target as HTMLElement);
+		};
+		pausedCleanup.current = release;
+		region.addEventListener("transitionrun", freeze);
+		flushSync(() => setRecords(extendCandidate));
+		const shell = region.querySelector<HTMLElement>(
+			"[data-lo-entry-key=smooth-t1] [data-lo-transition-phase]",
+		);
+		if (shell) freezeAt(shell);
+	};
+
+	const measure = () => setReport(JSON.stringify(inspect(), null, 2));
+	const park = () => {
+		const region = regionRef.current;
+		if (!region) return;
+		region.scrollTop = -(region.scrollHeight - region.clientHeight) / 2;
+		region.dispatchEvent(new WheelEvent("wheel", { deltaY: -1 }));
+		requestAnimationFrame(() => {
+			const edge = region.getBoundingClientRect().top + region.clientTop;
+			const node = Array.from(
+				region.querySelectorAll<HTMLElement>("[data-record-id]"),
+			).find((row) => row.getBoundingClientRect().bottom > edge);
+			parked.current = node?.dataset.recordId
+				? { id: node.dataset.recordId, y: node.getBoundingClientRect().top }
+				: null;
+			measure();
+		});
+	};
+	const probe = (change: () => void) => {
+		const region = regionRef.current;
+		if (!region) return;
+		setBusy(true);
+		commits.current = [];
+		const edge = region.getBoundingClientRect().top + region.clientTop;
+		const anchor = [
+			...region.querySelectorAll<HTMLElement>("[data-record-id]"),
+		].find((node) => node.getBoundingClientRect().bottom > edge);
+		const anchorId = anchor?.dataset.recordId;
+		const beforeY = anchor?.getBoundingClientRect().top ?? 0;
+		const before = inspect();
+		const frames: object[] = [];
+		const deltas: number[] = [];
+		const intervals: number[] = [];
+		let previous = performance.now();
+		change();
+		const sample = (time: number) => {
+			intervals.push(time - previous);
+			previous = time;
+			const node = anchorId
+				? region.querySelector<HTMLElement>(`[data-record-id="${anchorId}"]`)
+				: null;
+			const delta = node ? node.getBoundingClientRect().top - beforeY : null;
+			if (delta !== null) deltas.push(delta);
+			const geometry = inspect();
+			frames.push({ frame: frames.length, anchorDelta: delta, ...geometry });
+			if (frames.length < 20) requestAnimationFrame(sample);
+			else {
+				setBusy(false);
+				setReport(
+					JSON.stringify(
+						{
+							before,
+							anchorId,
+							maxAnchorFrameDeltaPx: Math.max(0, ...deltas.map(Math.abs)),
+							frameIntervalsMs: intervals,
+							first: frames[0],
+							mid: frames[5],
+							after: frames[19],
+							heights: frames.map(
+								(frame) => (frame as { slotHeight?: number }).slotHeight,
+							),
+						},
+						null,
+						2,
+					),
+				);
+			}
+		};
+		requestAnimationFrame(sample);
+	};
+	const profileBurst = () => {
+		const region = regionRef.current;
+		if (!region) return;
+		const originalRect = HTMLElement.prototype.getBoundingClientRect;
+		const originalStyle = window.getComputedStyle;
+		let rectReads = 0;
+		let styleReads = 0;
+		HTMLElement.prototype.getBoundingClientRect = function () {
+			if (region.contains(this)) rectReads += 1;
+			return originalRect.call(this);
+		};
+		window.getComputedStyle = ((element: Element, pseudo?: string | null) => {
+			if (region.contains(element)) styleReads += 1;
+			return originalStyle.call(window, element, pseudo);
+		}) as typeof window.getComputedStyle;
+		commits.current = [];
+		const samples: number[] = [];
+		const start = performance.now();
+		try {
+			for (let index = 0; index < 20; index += 1) {
+				const before = performance.now();
+				flushSync(() =>
+					setRecords((current) =>
+						current.map((record, position) =>
+							position === current.length - 1 && record.kind === "assistant"
+								? {
+										...record,
+										text: `${record.text} Token${index}.`,
+										complete: false,
+										streaming: true,
+									}
+								: record,
+						),
+					),
+				);
+				samples.push(performance.now() - before);
+			}
+		} finally {
+			HTMLElement.prototype.getBoundingClientRect = originalRect;
+			window.getComputedStyle = originalStyle;
+		}
+		const wallMs = performance.now() - start;
+		setReport(
+			JSON.stringify(
+				{
+					...inspect(),
+					flushes: 20,
+					wallMs,
+					maxFlushMs: Math.max(...samples),
+					meanFlushMs: wallMs / 20,
+					rectReads,
+					styleReads,
+					reactCommitMs: commits.current,
+					timingScope:
+						"synchronous React flush and layout effects only; deferred observer/paint work excluded",
+				},
+				null,
+				2,
+			),
+		);
+	};
+	const motionCapture = useRef<{
+		animations: Animation[];
+		shell: HTMLElement;
+		payload: HTMLElement;
+		times: number[];
+		samples: object[];
+	} | null>(null);
+	const sampleMotion = (index: number) => {
+		const capture = motionCapture.current;
+		if (!capture) return;
+		const time = capture.times[index];
+		for (const animation of capture.animations) animation.currentTime = time;
+		const sample = {
+			cssTimeMs: time,
+			shellHeight: capture.shell.getBoundingClientRect().height,
+			payloadHeight: capture.payload.getBoundingClientRect().height,
+			opacity: window.getComputedStyle(
+				((capture.animations[0]?.effect as KeyframeEffect | null)
+					?.target as HTMLElement) ?? capture.payload,
+			).opacity,
+			parentOpacity: window.getComputedStyle(capture.payload).opacity,
+			animationNames: capture.animations.map(
+				(animation) =>
+					(animation as CSSAnimation).animationName ?? "transition",
+			),
+			animationDurations: capture.animations.map(
+				(animation) => animation.effect?.getTiming().duration,
+			),
+			inkHeight: (
+				((capture.animations[0]?.effect as KeyframeEffect | null)
+					?.target as HTMLElement) ?? capture.payload
+			).getBoundingClientRect().height,
+			payloads: capture.shell.querySelectorAll("[data-lo-slot-payload]").length,
+			turnBars: regionRef.current?.querySelectorAll("[data-turn-summary]")
+				.length,
+			...inspect(),
+		};
+		capture.samples[index] = sample;
+		setReport(
+			JSON.stringify(
+				{
+					rendererCSSCapture: true,
+					animationCount: capture.animations.length,
+					sample,
+					samples: capture.samples,
+				},
+				null,
+				2,
+			),
+		);
+	};
+	const freezeMotion = (kind: "tool" | "answer" | "turn") => {
+		pausedCleanup.current?.();
+		const region = regionRef.current;
+		if (!region) return;
+		const before = inspect();
+		const nativeTimeout = window.setTimeout;
+		const heldTimers: { id: number; finish: () => void }[] = [];
+		const animations: Animation[] = [];
+		// Freeze the actual production CSS, including its cleanup deadline. This
+		// is a stepped renderer measurement, not a foreground frame-rate test.
+		window.setTimeout = ((
+			handler: TimerHandler,
+			delay?: number,
+			...args: unknown[]
+		) => {
+			if (delay === 180 && typeof handler === "function") {
+				const finish = () => handler(...args);
+				const id = nativeTimeout(finish, 120_000);
+				heldTimers.push({ id, finish });
+				return id;
+			}
+			return nativeTimeout(handler, delay, ...args);
+		}) as typeof window.setTimeout;
+		flushSync(() =>
+			setRecords((current) =>
+				kind === "turn"
+					? current.map((record) =>
+							record.id === "motion-answer" && record.kind === "assistant"
+								? { ...record, streaming: false, complete: true }
+								: record,
+						)
+					: [
+							...current,
+							kind === "tool"
+								? tool("motion-arrival")
+								: assistant(
+										"motion-settled-answer",
+										"Settled answer negative control: no extra parent fade.",
+									),
+						],
+			),
+		);
+		window.setTimeout = nativeTimeout;
+		const row =
+			kind === "turn"
+				? region.querySelector<HTMLElement>("[data-turn-summary]")
+				: region.querySelector<HTMLElement>(
+						`[data-record-id="${kind === "tool" ? "motion-arrival" : "motion-settled-answer"}"]`,
+					);
+		const entry = row?.closest<HTMLElement>("[data-lo-entry-key]");
+		const shell = entry?.querySelector<HTMLElement>(
+			"[data-lo-transition-phase]",
+		);
+		const payload = shell?.querySelector<HTMLElement>("[data-lo-slot-payload]");
+		if (!shell || !payload) {
+			for (const timer of heldTimers) {
+				clearTimeout(timer.id);
+				timer.finish();
+			}
+			setReport(
+				JSON.stringify(
+					{
+						blocked: "Motion target did not mount",
+						kind,
+						before,
+						after: inspect(),
+					},
+					null,
+					2,
+				),
+			);
+			return;
+		}
+		animations.push(...shell.getAnimations({ subtree: true }));
+		for (const animation of animations) animation.pause();
+		motionCapture.current = {
+			animations,
+			shell,
+			payload,
+			times: kind === "turn" ? [0, 90, 180] : [0, 120, 240],
+			samples: [],
+		};
+		pausedCleanup.current = () => {
+			for (const animation of animations) animation.finish();
+			for (const timer of heldTimers) {
+				clearTimeout(timer.id);
+				timer.finish();
+			}
+			motionCapture.current = null;
+			pausedCleanup.current = null;
+		};
+		sampleMotion(0);
+	};
+	const jumpOld = () => {
+		const region = regionRef.current;
+		const tick = region?.parentElement?.querySelector<HTMLButtonElement>(
+			"[data-checkpoint-id=smooth-u-140]",
+		);
+		if (!region || !tick) {
+			setReport("BLOCKED: synthetic old-target rail tick absent");
+			return;
+		}
+		const before = inspect();
+		const observer = new MutationObserver(() => {
+			const target = region.querySelector<HTMLElement>(
+				"[data-record-id=smooth-u-140][data-jump-highlight]",
+			);
+			if (!target) return;
+			observer.disconnect();
+			setReport(
+				JSON.stringify(
+					{
+						interaction:
+							"old-target rail jump through production mount adapter",
+						before,
+						landed: true,
+						highlight: target.getAttribute("data-jump-highlight"),
+						targetOffset:
+							target.getBoundingClientRect().top -
+							region.getBoundingClientRect().top,
+						transportRequests: transportRequests.current,
+						after: inspect(),
+					},
+					null,
+					2,
+				),
+			);
+		});
+		observer.observe(region, {
+			subtree: true,
+			attributes: true,
+			attributeFilter: ["data-jump-highlight"],
+		});
+		window.setTimeout(() => observer.disconnect(), 30_000);
+		tick.click();
+	};
+	const focusRetention = () => {
+		const region = regionRef.current;
+		const control = region?.querySelector<HTMLButtonElement>(
+			"[data-lo-entry-key] button",
+		);
+		if (!region || !control) {
+			setReport("BLOCKED: no mounted row control");
+			return;
+		}
+		control.focus({ preventScroll: true });
+		const describe = () => ({
+			tag: document.activeElement?.tagName,
+			label: document.activeElement?.getAttribute("aria-label"),
+			entry: document.activeElement?.closest<HTMLElement>("[data-lo-entry-key]")
+				?.dataset.loEntryKey,
+		});
+		const before = describe();
+		const beforeGeometry = inspect();
+		region.scrollTop = -(region.scrollHeight - region.clientHeight) / 2;
+		region.dispatchEvent(new Event("scroll"));
+		flushSync(() =>
+			setRecords((current) => [
+				...current,
+				assistant("focus-append", "Append while a row control holds focus."),
+			]),
+		);
+		requestAnimationFrame(() =>
+			setReport(
+				JSON.stringify(
+					{
+						interaction: "DOM focus and programmatic window move",
+						before,
+						beforeGeometry,
+						after: describe(),
+						sameElement: document.activeElement === control,
+						connected: control.isConnected,
+						geometry: inspect(),
+					},
+					null,
+					2,
+				),
+			),
+		);
+	};
+	const selectionBoundary = () => {
+		const region = regionRef.current;
+		const selection = window.getSelection();
+		const tail = region?.querySelector<HTMLElement>(
+			"[data-record-id=smooth-a-199]",
+		);
+		if (!region || !selection || !tail) {
+			setReport("BLOCKED: selection seed missing");
+			return;
+		}
+		const range = document.createRange();
+		range.selectNodeContents(tail);
+		selection.removeAllRanges();
+		selection.addRange(range);
+		flushSync(() => document.dispatchEvent(new Event("selectionchange")));
+		const old = region.querySelector<HTMLElement>(
+			"[data-record-id=smooth-u-140]",
+		);
+		if (!old) {
+			setReport("BLOCKED: selection fallback did not mount boundary");
+			return;
+		}
+		// Select message text endpoints, not the tail answer's ephemeral action/
+		// timestamp footer (answer election legitimately moves that on append).
+		const messageText = (root: HTMLElement, prefix: string) => {
+			const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+			for (let node = walker.nextNode(); node; node = walker.nextNode())
+				if (node.textContent?.startsWith(prefix)) return node;
+			return null;
+		};
+		const start = messageText(old, "Checkpoint 140:");
+		const end = messageText(tail, "Answer 199.");
+		if (!start || !end) {
+			setReport("BLOCKED: message text endpoints missing");
+			return;
+		}
+		range.setStart(start, 0);
+		range.setEnd(end, end.textContent?.length ?? 0);
+		selection.removeAllRanges();
+		selection.addRange(range);
+		const before = selection.toString();
+		flushSync(() =>
+			setRecords((current) => [
+				...current,
+				assistant(
+					"selection-append",
+					"Append outside the selected history range.",
+				),
+			]),
+		);
+		setReport(
+			JSON.stringify(
+				{
+					interaction: "DOM Range across previously omitted boundary",
+					selectedCharsBefore: before.length,
+					selectedCharsAfter: selection.toString().length,
+					sameText: selection.toString() === before,
+					oldConnected: old.isConnected,
+					tailConnected: tail.isConnected,
+					geometry: inspect(),
+				},
+				null,
+				2,
+			),
+		);
+	};
+	const toggle = (enabled: boolean) => {
+		window.localStorage.setItem(
+			"canonicalTranscriptDomWindow",
+			enabled ? "on" : "off",
+		);
+		pausedCleanup.current?.();
+		setRecords(seed());
+		setHasMore(durable);
+		setLoadingOlder(false);
+		fetchedPages.current = 0;
+		setBusy(false);
+		setMount((value) => value + 1);
+		setReport("Remounted same source and fixture; measure after settling.");
+	};
+	const urlCapture = useRef<(params: URLSearchParams) => void>(() => {});
+	urlCapture.current = (params) => {
+		const capture = params.get("motionCapture");
+		const flow = params.get("flow");
+		if (capture === "tool" || capture === "answer" || capture === "turn") {
+			freezeMotion(capture);
+			for (const index of [0, 1, 2]) sampleMotion(index);
+			sampleMotion(Number(params.get("cssSample") ?? 0));
+		} else if (flow === "jump") jumpOld();
+		else if (flow === "focus") focusRetention();
+		else if (flow === "selection") selectionBoundary();
+	};
+	useEffect(() => {
+		if (!transportReady) return;
+		// The authorized host exposes iframe nodes in snapshots, but CSS reads
+		// stay in the top document. Manager-URL controls invoke the SAME handlers
+		// without a bare preview navigation or a second browser stack.
+		const params = new URLSearchParams(window.parent.location.search);
+		if (!params.has("motionCapture") && !params.has("flow")) return;
+		if (params.get("narrow") === "1") setNarrow(true);
+		window.localStorage.setItem("canonicalTranscriptDomWindow", "on");
+		setMount((value) => value + 1);
+		let cancelled = false;
+		let timer = 0;
+		void document.fonts.ready.then(() => {
+			timer = window.setTimeout(() => {
+				if (!cancelled) urlCapture.current(params);
+			}, 500);
+		});
+		return () => {
+			cancelled = true;
+			window.clearTimeout(timer);
+		};
+	}, [transportReady]);
+	return (
+		<div className="bg-surface text-ink p-4">
+			<div className="mb-3 flex flex-wrap gap-3">
+				<button type="button" onClick={() => toggle(false)}>
+					Flag off
+				</button>
+				<button type="button" onClick={() => toggle(true)}>
+					Flag on
+				</button>
+				<button
+					data-fast-formation
+					type="button"
+					onClick={() => {
+						flushSync(() => toggle(true));
+						(() => {
+							const region = regionRef.current;
+							if (!region) return;
+							region.scrollTop = -100;
+							region.dispatchEvent(
+								new WheelEvent("wheel", { deltaY: -100, bubbles: true }),
+							);
+							const before = inspect();
+							freezeFormation();
+							requestAnimationFrame(() => {
+								const mid = inspect();
+								// Font completion is asynchronous and used to discard omitted
+								// measurements AFTER the formation's first apparently-good frame.
+								void document.fonts.ready.then(() =>
+									requestAnimationFrame(() =>
+										requestAnimationFrame(() =>
+											setReport(
+												JSON.stringify(
+													{
+														fastSequence: true,
+														before,
+														mid,
+														afterFonts: inspect(),
+													},
+													null,
+													2,
+												),
+											),
+										),
+									),
+								);
+							});
+						})();
+					}}
+				>
+					Fast formation sequence
+				</button>
+				<button type="button" onClick={freezeFormation}>
+					Freeze formation at 90ms
+				</button>
+				<button type="button" onClick={() => pausedCleanup.current?.()}>
+					Release CSS capture
+				</button>
+				<button type="button" onClick={measure}>
+					Measure
+				</button>
+				<button type="button" onClick={() => freezeMotion("tool")}>
+					Freeze live tool arrival
+				</button>
+				<button type="button" onClick={() => freezeMotion("answer")}>
+					Freeze settled answer control
+				</button>
+				<button type="button" onClick={() => freezeMotion("turn")}>
+					Freeze live turn bar
+				</button>
+				{[0, 1, 2].map((index) => (
+					<button key={index} type="button" onClick={() => sampleMotion(index)}>
+						CSS sample {index}
+					</button>
+				))}
+				<button type="button" onClick={() => setNarrow((value) => !value)}>
+					Toggle 390px canvas
+				</button>
+				{interactions && (
+					<>
+						<button type="button" onClick={jumpOld}>
+							Jump to old loaded row
+						</button>
+						<button type="button" onClick={focusRetention}>
+							Probe focus retention
+						</button>
+						<button type="button" onClick={selectionBoundary}>
+							Select across omitted boundary
+						</button>
+					</>
+				)}
+				<button type="button" disabled={busy} onClick={park}>
+					Park reader
+				</button>
+				<button
+					type="button"
+					disabled={busy}
+					onClick={() =>
+						probe(() =>
+							setRecords((current) => [
+								...current,
+								assistant(
+									`smooth-new-${current.length}`,
+									"A new answer arrives at the tail while the reader is parked.",
+								),
+							]),
+						)
+					}
+				>
+					Append tail
+				</button>
+				<button
+					type="button"
+					disabled={busy}
+					onClick={() => probe(() => setRecords(extendCandidate))}
+				>
+					Two to three
+				</button>
+				<button
+					type="button"
+					disabled={busy}
+					onClick={() =>
+						probe(() => {
+							const region = regionRef.current;
+							const entries = [
+								...(region?.querySelectorAll<HTMLElement>(
+									"[data-lo-entry-key]",
+								) ?? []),
+							];
+							const top = region?.getBoundingClientRect().top ?? 0;
+							const firstVisible = entries.findIndex(
+								(entry) => entry.getBoundingClientRect().bottom > top,
+							);
+							const prefix = entries[firstVisible - 1];
+							const suffix = entries
+								.slice(firstVisible + 1)
+								.find(
+									(entry) => Number.parseFloat(entry.style.paddingTop) >= 30,
+								);
+							if (!prefix || !suffix) {
+								setReport(
+									"BLOCKED: park with a measurable prefix and 32px suffix gap first.",
+								);
+								return;
+							}
+							prefix.style.paddingTop = `${Number.parseFloat(prefix.style.paddingTop) + 30}px`;
+							suffix.style.paddingTop = `${Number.parseFloat(suffix.style.paddingTop) - 30}px`;
+						})
+					}
+				>
+					Equal extent redistribution
+				</button>
+				<button type="button" onClick={profileBurst}>
+					Profile 20 token flushes
+				</button>
+				<button
+					type="button"
+					onClick={() => {
+						const region = regionRef.current;
+						if (region) {
+							region.scrollTop = -100;
+							region.dispatchEvent(
+								new WheelEvent("wheel", { deltaY: -100, bubbles: true }),
+							);
+						}
+					}}
+				>
+					Read near formation
+				</button>
+				<button
+					type="button"
+					onClick={() => {
+						const region = regionRef.current;
+						if (region) {
+							region.scrollTop = region.clientHeight - region.scrollHeight;
+							region.dispatchEvent(
+								new WheelEvent("wheel", { deltaY: -100, bubbles: true }),
+							);
+						}
+					}}
+				>
+					Request older at head
+				</button>
+			</div>
+			<div
+				className="flex flex-col"
+				style={{ width: narrow ? 390 : 1024, height: 560 }}
+			>
+				<Profiler
+					id="real-transcript"
+					onRender={(_id, _phase, duration) => {
+						commits.current.push(duration);
+					}}
+				>
+					{transportReady && (
+						<CanonicalTranscript
+							key={mount}
+							frontend={
+								interactions
+									? ({
+											session_id: "smooth-interactions",
+										} as CanonicalFrontendState)
+									: undefined
+							}
+							transcript={{ ...stateOf(records), hasMore }}
+							gate={null}
+							waiting={false}
+							starting={false}
+							startingAfterId={null}
+							loadingOlder={loadingOlder}
+							onLoadOlder={loadOlder}
+							containerRef={regionRef}
+							isSmallView={narrow}
+							status="live"
+							failure={null}
+							awaitingHydration={false}
+							onReconnect={() => {}}
+							workingLine={{
+								activity: "Working on the synthetic fixture",
+								phase: "thinking",
+								clock: false,
+							}}
+						/>
+					)}
+				</Profiler>
+			</div>
+			<pre
+				data-lo-smoothness-report
+				className="mt-4 whitespace-pre-wrap text-code-sm"
+			>
+				{report}
+			</pre>
+		</div>
+	);
+}
+const meta: Meta = {
+	title: "Chat/Streaming smoothness",
+	parameters: { layout: "fullscreen" },
+};
+export default meta;
+type Story = StoryObj;
+export const LongTranscript: Story = { render: () => <Frame /> };
+export const TwoToThree: Story = { render: () => <Frame formation /> };
+export const MixedTranscript: Story = { render: () => <Frame mixed /> };
+export const WindowedFormation: Story = {
+	render: () => <Frame formation longFormation />,
+};
+export const DurableOlder: Story = { render: () => <Frame durable /> };
+export const MotionPaths: Story = { render: () => <Frame motion /> };
+export const LeaseInteractions: Story = {
+	render: () => <Frame interactions />,
+};

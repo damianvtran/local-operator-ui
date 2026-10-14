@@ -39,7 +39,8 @@ const { DesktopFeedRelay } = await import(
 
 const cacheBundle = await build({
 	stdin: {
-		contents: 'export * from "./src/renderer/src/shared/store/paint-cache";',
+		contents: `export * from "./src/renderer/src/shared/store/paint-cache";
+			export { dropLiveRecords } from "./src/renderer/src/features/chat/canonical/transcript-reducer";`,
 		resolveDir: process.cwd(),
 	},
 	// The renderer's path aliases, which electron-vite supplies in the app and
@@ -808,4 +809,176 @@ test("the sidebar's 5 s poll is gone, and the feed is what replaced it", () => {
 		!source.includes('row.attention?.unseen && "font-semibold"'),
 		"the unread mark must not reflow the row",
 	);
+});
+
+// Exact-output and structural work bounds for the synchronous unmount write.
+const user = (id, text = "small") => ({ kind: "user", id, ts: 1, text });
+function bytesOf(records) {
+	if (records.length === 0) return 0;
+	try {
+		return new TextEncoder().encode(JSON.stringify(records)).length;
+	} catch {
+		return Number.POSITIVE_INFINITY;
+	}
+}
+
+// The old linear trim is the independent output oracle. Keep it intentionally
+// simple: an estimate or an alternate serializer would mask a budget regression.
+function legacy(state) {
+	const capped = cache
+		.dropLiveRecords(state)
+		.records.slice(-cache.PAINT_CACHE_MAX_ROWS);
+	let start = 0;
+	let bytes = bytesOf(capped);
+	while (start < capped.length && bytes > cache.PAINT_CACHE_SESSION_BYTES) {
+		start += 1;
+		bytes = bytesOf(capped.slice(start));
+	}
+	return { records: capped.slice(start), bytes };
+}
+function countSerializations(run) {
+	const original = JSON.stringify;
+	let calls = 0;
+	JSON.stringify = function (value, ...args) {
+		if (Array.isArray(value)) calls += 1;
+		return original.call(this, value, ...args);
+	};
+	try {
+		run();
+	} finally {
+		JSON.stringify = original;
+	}
+	return calls;
+}
+
+test("heavy public writePaint needs at most nine exact suffix serializations", () => {
+	cache.__resetPaintCache();
+	const rows = Array.from({ length: 200 }, (_, i) =>
+		user(`heavy-${i}`, "x".repeat(65 * 1024)),
+	);
+	const calls = countSerializations(() =>
+		cache.writePaint("heavy", { transcript: transcriptOf(rows) }),
+	);
+	assert.ok(
+		calls <= 9,
+		`200 rows serialized ${calls} whole suffixes; expected <=9`,
+	);
+	const painted = cache.readPaint("heavy");
+	assert.equal(painted.transcript.records.length, 15);
+	assert.ok(cache.__paintCacheStats().bytes <= cache.PAINT_CACHE_SESSION_BYTES);
+});
+
+test("small public writes keep the one-measure fast path, empty writes measure nothing", () => {
+	cache.__resetPaintCache();
+	assert.equal(
+		countSerializations(() =>
+			cache.writePaint("small", { transcript: transcriptOf([user("one")]) }),
+		),
+		1,
+	);
+	assert.equal(
+		countSerializations(() =>
+			cache.writePaint("small", { transcript: transcriptOf([]) }),
+		),
+		0,
+	);
+	assert.equal(cache.readPaint("small"), null);
+});
+
+test("retained rows and exact byte count equal the longest legacy suffix", () => {
+	const cyclic = user("cycle");
+	cyclic.self = cyclic;
+	const oversized = user(
+		"oversized",
+		"z".repeat(cache.PAINT_CACHE_SESSION_BYTES),
+	);
+	const samples = [
+		[],
+		[user("one")],
+		[oversized],
+		[oversized, user("new")],
+		[user("old"), oversized],
+		[cyclic, user("new")],
+		[user("old"), cyclic, user("new")],
+		[user("old"), cyclic],
+		[user("bigint", 1n), user("new")],
+		Array.from({ length: 225 }, (_, i) => user(`tiny-${i}`)),
+		Array.from({ length: 34 }, (_, i) =>
+			user(`utf8-${i}`, '界🙂\\"\n'.repeat(5000)),
+		),
+		Array.from({ length: 34 }, (_, i) =>
+			user(`mixed-${i}`, (i % 2 ? "ASCII" : "界🙂").repeat(i * 250)),
+		),
+	];
+	// Probe the byte cap itself, not just obviously large/small pages. The row's
+	// structural JSON overhead is accounted for, so <= remains distinct from <.
+	const overhead = bytesOf([user("boundary", "")]);
+	for (const delta of [-1, 0, 1])
+		samples.push([
+			user(
+				"boundary",
+				"x".repeat(cache.PAINT_CACHE_SESSION_BYTES - overhead + delta),
+			),
+		]);
+	for (const records of samples) {
+		cache.__resetPaintCache();
+		const input = transcriptOf(records);
+		const expected = legacy(input);
+		cache.writePaint("equivalent", { transcript: input });
+		const painted = cache.readPaint("equivalent");
+		assert.deepEqual(painted?.transcript.records ?? [], expected.records);
+		assert.equal(cache.__paintCacheStats().bytes, expected.bytes);
+		if (painted) {
+			for (const [i, record] of expected.records.entries()) {
+				assert.equal(painted.transcript.records[i], record);
+				assert.equal(painted.transcript.index.get(record.id), i);
+			}
+			assert.equal(painted.transcript.oldestId, null);
+			assert.equal(painted.transcript.hasMore, false);
+			assert.equal(painted.transcript.argsByCall.size, 0);
+		}
+	}
+});
+
+test("trimming preserves live filtering and carried label/replay identity gates", () => {
+	cache.__resetPaintCache();
+	const tool = (id, args) => ({
+		kind: "tool",
+		id,
+		ts: 1,
+		toolCallId: id,
+		phase: "done",
+		args,
+	});
+	const rows = [
+		tool("trimmed"),
+		user("oversized", "x".repeat(cache.PAINT_CACHE_SESSION_BYTES)),
+		tool("held"),
+		tool("with-args", { command: "echo" }),
+		tool("settled"),
+		{
+			kind: "assistant",
+			id: "streaming",
+			ts: 1,
+			streaming: true,
+			text: "live",
+		},
+		{ ...tool("running"), phase: "running" },
+	];
+	const labels = new Set(["trimmed", "held", "with-args", "running", "absent"]);
+	cache.writePaint("labels", {
+		transcript: transcriptOf(rows),
+		owedLabels: labels,
+		markLabels: labels,
+		replayBorn: new Set(["held", "trimmed", "absent"]),
+	});
+	const painted = cache.readPaint("labels");
+	assert.deepEqual(
+		painted.transcript.records.map((r) => r.id),
+		["held", "with-args", "settled"],
+	);
+	assert.deepEqual([...painted.owedLabels], ["held"]);
+	assert.deepEqual([...painted.markLabels], ["held"]);
+	assert.deepEqual([...painted.replayBorn], ["held"]);
+	assert.equal(painted.transcript.index.size, 3);
 });

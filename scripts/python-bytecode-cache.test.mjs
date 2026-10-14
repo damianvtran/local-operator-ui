@@ -3828,3 +3828,95 @@ test("a successful retry holds its finished state and does not ask to quit over 
 		);
 	});
 });
+
+test("the backend spawn is handed no agent-shell markers, from a marked launch", async () => {
+	const { BackendServiceManager } = await loadMainProcess();
+
+	// The environment the app INHERITED, made to carry what an agent's `bash`
+	// tool sets. This is the measured shape of the regression (operator,
+	// 2026-10-13): the app was started from an agent's shell, seeded `shellEnv`
+	// from `{ ...process.env }`, and spawned its backend with a copy - so the
+	// `lop serve` backend stamped every session it minted, the operator's New
+	// Chat included, `origin.json = {"origin": "agent-shell"}`, hiding it from
+	// the sidebar, the phone list and the picker.
+	const markerNames = [
+		"LOCAL_OPERATOR_AGENT_SHELL",
+		"LOCAL_OPERATOR_AGENT_MAY_DELEGATE",
+		"LOCAL_OPERATOR_ALLOW_NESTED_SESSION",
+	];
+	const originals = new Map(
+		markerNames.map((name) => [name, process.env[name]]),
+	);
+	for (const name of markerNames) process.env[name] = "1";
+	const originalUnrelated = process.env.LO_MARKER_TEST_KEEP;
+	process.env.LO_MARKER_TEST_KEEP = "kept";
+
+	const withheld = () => new Promise(() => {});
+	const originalLoad = BackendServiceManager.prototype.loadMacOSEnvironment;
+	const originalConfigDir = process.env.LOCAL_OPERATOR_CONFIG_DIR;
+	BackendServiceManager.prototype.loadMacOSEnvironment = withheld;
+	process.env.LOCAL_OPERATOR_CONFIG_DIR = join(PATHS.home, "marker-config");
+
+	const managers = [];
+	try {
+		for (const globalInstall of [true, false]) {
+			const label = globalInstall ? "global install" : "bundled venv";
+			globalThis.__loSpawns.length = 0;
+
+			const manager = new BackendServiceManager();
+			managers.push(manager);
+			manager.managerMaySpawn = true;
+			manager.checkExistingBackend = async () => false;
+			manager.checkLocalOperatorExists = async () => globalInstall;
+			manager.resolveGlobalConsole = async () => "/fixture/local-operator";
+			manager.checkHealth = async () => true;
+			manager.configuredOriginOccupancy = async () => null;
+
+			assert.equal(
+				await manager.start(),
+				true,
+				`${label}: start() should spawn`,
+			);
+			const [spawned] = globalThis.__loSpawns;
+			const env = spawned.options.env;
+
+			for (const name of markerNames) {
+				assert.ok(
+					!(name in env),
+					`${label}: the backend spawn must not carry ${name}`,
+				);
+			}
+			// The strip drops three names and nothing else: an unrelated variable
+			// and the launching PATH both survive, which is the half a
+			// "markers absent" assertion would miss.
+			assert.equal(
+				env.LO_MARKER_TEST_KEEP,
+				"kept",
+				`${label}: unrelated vars survive`,
+			);
+			assert.ok(
+				env.PATH.endsWith(process.env.PATH),
+				`${label}: PATH survives the strip`,
+			);
+		}
+	} finally {
+		BackendServiceManager.prototype.loadMacOSEnvironment = originalLoad;
+		for (const [name, value] of originals) {
+			// biome-ignore lint/performance/noDelete: an ABSENT variable is not an empty one; `process.env.X = undefined` stores the string "undefined"
+			if (value === undefined) delete process.env[name];
+			else process.env[name] = value;
+		}
+		if (originalUnrelated === undefined)
+			// biome-ignore lint/performance/noDelete: an ABSENT variable is not an empty one; `process.env.X = undefined` stores the string "undefined"
+			delete process.env.LO_MARKER_TEST_KEEP;
+		else process.env.LO_MARKER_TEST_KEEP = originalUnrelated;
+		if (originalConfigDir === undefined)
+			// biome-ignore lint/performance/noDelete: an ABSENT variable is not an empty one; `process.env.X = undefined` stores the string "undefined"
+			delete process.env.LOCAL_OPERATOR_CONFIG_DIR;
+		else process.env.LOCAL_OPERATOR_CONFIG_DIR = originalConfigDir;
+		for (const manager of managers) {
+			manager.isRunning = false;
+			await manager.stop();
+		}
+	}
+});

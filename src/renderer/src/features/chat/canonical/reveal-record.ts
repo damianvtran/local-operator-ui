@@ -225,7 +225,9 @@ export type JumpOutcome = "landed" | "missing";
 async function landOnTop(
 	region: HTMLElement,
 	target: HTMLElement,
+	isCurrent: () => boolean,
 ): Promise<void> {
+	if (!isCurrent() || !target.isConnected) return;
 	/*
 	 * `settleGeneration += 1` is its own statement, not an assignment expression:
 	 * the repo's Biome rates `noAssignInExpressions` an error (review round 2's
@@ -276,7 +278,13 @@ async function landOnTop(
 		let resolved = false;
 		for (let frame = 0; frame < JUMP_ANCHOR_MAX_FRAMES; frame += 1) {
 			await nextFrame();
-			if (yielded || generation !== settleGeneration) break;
+			if (
+				!isCurrent() ||
+				!target.isConnected ||
+				yielded ||
+				generation !== settleGeneration
+			)
+				break;
 			const drift =
 				target.getBoundingClientRect().top -
 				region.getBoundingClientRect().top -
@@ -331,6 +339,7 @@ async function landOnTop(
 					for (let frame = 0; frame < JUMP_LANDING_GUARD_FRAMES; frame += 1) {
 						await nextFrame();
 						if (
+							!isCurrent() ||
 							yielded ||
 							generation !== settleGeneration ||
 							!guardRegion.isConnected ||
@@ -382,7 +391,7 @@ async function landOnTop(
 	 * Skipped when the reader took over (their own events drive the cue) or a
 	 * newer settle superseded this one (that settle asks for its own).
 	 */
-	if (!yielded && generation === settleGeneration) {
+	if (isCurrent() && !yielded && generation === settleGeneration) {
 		/*
 		 * The scroller's OWN realm builds the event: the bare global can be a
 		 * different realm's `Event` (the test harness runs the module under Node
@@ -400,10 +409,19 @@ export function jumpToEntry(
 	root: ParentNode,
 	region: HTMLElement,
 	id: string,
+	isCurrent: () => boolean = () => true,
 ): Promise<JumpOutcome> {
+	// A session/view replacement may reuse ids and DOM. Connectivity alone
+	// cannot authorize an old promise to move or highlight the new transcript.
+	if (!isCurrent()) return Promise.resolve("missing");
 	return new Promise((resolve) => {
 		revealRecord(root, id, {
+			isCurrent,
 			onRevealed: (target) => {
+				if (!isCurrent()) {
+					resolve("missing");
+					return;
+				}
 				/*
 				 * The wash paints at the reveal, not after the settle: it is the
 				 * arrival cue, and it belongs to the target row wherever the settle
@@ -411,7 +429,7 @@ export function jumpToEntry(
 				 * reader took over), matching the contract above.
 				 */
 				paintJumpHighlight(target);
-				void landOnTop(region, target).then(() => {
+				void landOnTop(region, target, isCurrent).then(() => {
 					/*
 					 * RE-ASSERT AFTER THE SETTLE (QA round 2's fate call): the wash is
 					 * imperative DOM state, and a late mount commit - a page landing
@@ -423,10 +441,14 @@ export function jumpToEntry(
 					 * and a wash whose 1400ms ran out during a slow cold settle comes
 					 * back at the moment the reader actually arrives.
 					 */
-					if (target.isConnected && !target.hasAttribute(JUMP_HIGHLIGHT_ATTR)) {
+					if (
+						isCurrent() &&
+						target.isConnected &&
+						!target.hasAttribute(JUMP_HIGHLIGHT_ATTR)
+					) {
 						paintJumpHighlight(target);
 					}
-					resolve("landed");
+					resolve(isCurrent() ? "landed" : "missing");
 				});
 			},
 			onMissing: () => {

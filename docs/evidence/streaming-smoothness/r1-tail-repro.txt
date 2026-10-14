@@ -1,0 +1,25 @@
+✖ a non-split list/indented-code close retains the live tail and newest arrival node (22.053792ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1404.5265
+
+✖ failing tests:
+
+test at scripts/streaming-markdown-parity.test.mjs:480:1
+✖ a non-split list/indented-code close retains the live tail and newest arrival node (22.053792ms)
+  AssertionError [ERR_ASSERTION]: closing the preceding block must not remount the live paragraph (sameNode=false)
+      at TestContext.<anonymous> (file:///Users/damian/local-operator-ui/.worktrees/streaming-smoothness/scripts/streaming-markdown-parity.test.mjs:493:11)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

@@ -226,6 +226,30 @@ const StreamingPerfHarness = ({
 		let position = 0;
 		const collected: ChunkSample[] = [];
 
+		// The browser tool's bounded accessibility snapshot can omit the table
+		// once the large document fills the tree. Keep the same measured samples
+		// machine-readable in console output; this adds no work inside a chunk.
+		const report = (pointMs: number | null = null) => {
+			const total = collected.reduce((sum, sample) => sum + sample.ms, 0);
+			console.info(
+				"[streaming-perf]",
+				JSON.stringify({
+					mode,
+					fixtureChars: fixture.length,
+					streamedChars: end,
+					charsPerChunk,
+					chunks: collected.length,
+					totalMs: total,
+					meanMsPerChunk: total / collected.length,
+					frameBudgetMs: FRAME_BUDGET_MS,
+					overBudgetChunks: collected.filter(
+						(sample) => sample.ms > FRAME_BUDGET_MS,
+					).length,
+					pointChars: pointAt ?? null,
+					pointMs,
+				}),
+			);
+		};
 		const finish = () => {
 			setSamples([...collected]);
 
@@ -237,16 +261,16 @@ const StreamingPerfHarness = ({
 				window.setTimeout(() => {
 					const start = performance.now();
 					flushSync(() => setText(target));
-					setPointSample({
-						size: target.length,
-						ms: performance.now() - start,
-					});
+					const pointMs = performance.now() - start;
+					setPointSample({ size: target.length, ms: pointMs });
+					report(pointMs);
 					runningRef.current = false;
 					setRunning(false);
 				}, 0);
 				return;
 			}
 
+			report();
 			runningRef.current = false;
 			setRunning(false);
 		};

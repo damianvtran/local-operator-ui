@@ -1,3 +1,7 @@
+import {
+	desktopFeatureState,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 import { Spinner } from "@shared/components/common/spinner";
 import {
 	Badge,
@@ -28,6 +32,7 @@ import {
 	GitPullRequest,
 	Globe,
 	Info,
+	MonitorSmartphone,
 	MoreHorizontal,
 	Pencil,
 	Rows3,
@@ -43,6 +48,8 @@ import { archiveControlLabel } from "../chat-archived";
  * door per surface, one implementation of what is copied and what it says.
  */
 import { copySessionId } from "../copy-session-id";
+import { moveGateReason, moveGateTone } from "../device/chat-device-model";
+import { useChatDeviceStore } from "../device/chat-device-store";
 import { useSessionCommand } from "../pickers/use-picker-backend";
 import {
 	TRANSCRIPT_DISPLAY_MODE_OPTIONS,
@@ -317,6 +324,40 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	asksScope = "session",
 	asksOpen = false,
 }) => {
+	/*
+	 * THE MOVE ITEM'S OWN FACTS, read here for the same reason the chip reads them in
+	 * `ChatDeviceSlot`: the gate is not a preference of this menu, it is the backend's
+	 * own answer about whether a conversation can be moved at all. `peers` is what
+	 * makes any device surface exist (a control for a capability the backend cannot
+	 * serve advertises something that cannot work - `app.tsx`'s rule), and
+	 * `session_transfer` gates the move inside that. Read here rather than threaded
+	 * from the page, so the menu and the chip cannot drift about which gate is closed.
+	 */
+	const capabilities = useDesktopCapabilities();
+	const peerState = desktopFeatureState(capabilities.data, "peers");
+	const transferState = desktopFeatureState(
+		capabilities.data,
+		"session_transfer",
+	);
+	/*
+	 * THE REASON THE DOOR IS SHUT, FROM EACH GATE'S OWN STATE (design round 1, D1/D2).
+	 * `peerState` is the outer gate - without `peers` no device surface exists at all -
+	 * so it is asked first; the inner gate's reason (`below-version`) is the fallback.
+	 * `undefined` when both are enabled.
+	 */
+	const moveReason =
+		moveGateReason(peerState) ?? moveGateReason(transferState) ?? undefined;
+	/* The reason's ink follows the STATE (design round 2, D8): a wait is not a gate. */
+	const moveTone = moveGateTone(
+		moveGateReason(peerState) !== null ? peerState : transferState,
+	);
+	const requestPicker = useChatDeviceStore((s) => s.requestPicker);
+	/*
+	 * The overflow menu's own open state and the pending move, both needed together:
+	 * see the menu root's note on why the ask waits for the menu to close.
+	 */
+	const [menuOpen, setMenuOpen] = useState(false);
+	const moveRequestedRef = useRef(false);
 	const setCanvasOpen = useUiPreferencesStore((s) => s.setCanvasOpen);
 	const isCanvasOpen = useUiPreferencesStore((s) => s.isCanvasOpen);
 	/*
@@ -1121,7 +1162,19 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 					onToggleBrowser ||
 					onOpenConsole ||
 					onOpenOptions) && (
-					<DropdownMenu>
+					<DropdownMenu
+						/*
+						 * CONTROLLED, because the move item must not open the picker until this
+						 * menu has CLOSED. Measured (QA Q-1): this menu is a Radix modal menu, so
+						 * opening it dismisses any other layer, and the picker opened in the same
+						 * selection is torn down with this menu's close - the picker painted ~3 ms
+						 * then vanished, so a press did nothing a user could see. The item therefore
+						 * only marks the intent (`moveRequestedRef`); the ask is issued from THIS
+						 * menu's own close handler on the next frame, once the modal layer is gone.
+						 */
+						open={menuOpen}
+						onOpenChange={setMenuOpen}
+					>
 						<DropdownMenuTrigger asChild>
 							<Button
 								variant="ghost"
@@ -1139,7 +1192,29 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 								<MoreHorizontal aria-hidden="true" />
 							</Button>
 						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end" className="min-w-45">
+						<DropdownMenuContent
+							align="end"
+							className="min-w-45"
+							/*
+							 * THE ASK IS ISSUED HERE, AND NOWHERE ELSE. Measured (QA Q-1, then
+							 * re-measured on this branch): the picker opened from the item's own
+							 * `onSelect` - or from this menu's `onOpenChange` even a frame later - is
+							 * dismissed within one frame. Two teardowns do it, and only this hook is
+							 * after both: closing a Radix modal menu restores focus to its trigger, and
+							 * an open menu dismisses any other layer. `onCloseAutoFocus` is the
+							 * focus-restore callback Radix runs AFTER the close has settled, so the ask
+							 * lands on a quiet page - which is why the picker then stays up. It also
+							 * suppresses the default for the one case that matters: the picker can
+							 * return focus itself when it closes.
+							 */
+							onCloseAutoFocus={(event) => {
+								if (moveRequestedRef.current) {
+									moveRequestedRef.current = false;
+									if (sessionId) requestPicker(sessionId);
+									event.preventDefault();
+								}
+							}}
+						>
 							{/*
 							 * COPY SESSION ID (#893), AT THE TOP - above the transcript-display submenu
 							 * and therefore above the first separator.
@@ -1171,6 +1246,89 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 								>
 									<Copy aria-hidden="true" />
 									<span>Copy session ID</span>
+								</DropdownMenuItem>
+							)}
+							{/*
+							 * MOVE TO ANOTHER DEVICE, VISIBLE IN EVERY STATE the chip is not.
+							 *
+							 * WHY IT IS HERE AND NOT ONLY ON THE CHIP: the chip that carries the placement
+							 * fact is LAST in the title block and the first thing the block clips at narrow
+							 * and docked widths, and it is labelled as a FACT ("On this device"), never as
+							 * an action - so a user scanning the header for a way to move the conversation
+							 * finds neither the words nor, once the control is gated, any trace that the
+							 * operation exists (the chip collapses to `null` with no placeholder). This
+							 * item is that discoverable door: it names the operation in the menu the user
+							 * already opens for row actions, and it stays VISIBLE WHEN THE GATE IS SHUT,
+							 * disabled with the reason the picker itself would give - so the gate is
+							 * EXPLAINED rather than hidden.
+							 *
+							 * IT OPENS THE SAME PICKER, not a new path: the press only asks (`requestPicker`)
+							 * and `ChatHeaderDevice` - which owns the picker and the confirmation - reacts by
+							 * opening the DevicePickerModel it already builds. Nothing here selects a
+							 * destination or bypasses `MoveConfirmDialog`, so the destructive default (a
+							 * live move deletes the source copy unless Keep is chosen) is unchanged.
+							 *
+							 * NO SEPARATOR ABOVE IT: it belongs to the copy-id / display group (things the
+							 * reader does to THIS conversation), above the separator that parts them from
+							 * the archive/delete pair.
+							 */}
+							{sessionId && (
+								<DropdownMenuItem
+									data-session-move-action
+									title={moveReason}
+									data-move-reason={moveReason}
+									/*
+									 * `aria-disabled` RATHER THAN RADIX's `disabled`, and it is this repository's own
+									 * convention (the picker's rows say why three times): a genuinely disabled item is
+									 * filtered out of the focus candidates, so a keyboard reader could not land on the
+									 * row whose whole job is to be READ. The element stays focusable and the press is
+									 * ignored instead.
+									 *
+									 * THE REASON RIDES THE ROW, in the picker's own shape: the name stays legible on its
+									 * own line and the cause sits muted beneath it, because a reason relegated to a
+									 * `title` tooltip is one a reader must hunt for - and the whole defect this slice
+									 * fixes is a gate the user could not see. `text-warning` is the app's ink for a
+									 * statement about a state rather than an error.
+									 */
+									aria-disabled={moveReason ? true : undefined}
+									onSelect={() => {
+										if (moveReason) return;
+										/*
+										 * MARK THE INTENT; THE MENU'S CLOSE ISSUES THE ASK. Selecting an item
+										 * closes this menu as part of the selection, and opening the picker
+										 * synchronously here put it inside that teardown (see the root's note).
+										 */
+										moveRequestedRef.current = true;
+									}}
+									className={cn(
+										moveReason &&
+											"cursor-not-allowed data-[highlighted]:bg-transparent data-[highlighted]:text-ink-muted",
+									)}
+								>
+									<MonitorSmartphone aria-hidden="true" />
+									<span className="flex min-w-0 flex-col items-start gap-0.5">
+										<span>Move to another device…</span>
+										{moveReason ? (
+											/*
+											 * THE REASON WRAPS WITHIN A CAPPED WIDTH (design round 1 D4, then measured
+											 * in round 2 D7). `min-w-0` alone let the longest reason set the panel:
+											 * measured 233px at `enabled` against 284px at `below-version`, so the
+											 * menu widened by whatever the four sentences happened to be. `max-w-52`
+											 * (13rem) clamps the reason column so it WRAPS instead of pushing the
+											 * panel; the name row above is left to size the menu. It is an ARBITRARY
+											 * value because this theme's spacing scale has no `max-w-52` step (v4
+											 * emitted no rule for it - measured `max-width: none`).
+											 */
+											<span
+												className={cn(
+													"max-w-[11rem] whitespace-normal text-meta",
+													moveTone === "dim" ? "text-ink-dim" : "text-warning",
+												)}
+											>
+												{moveReason}
+											</span>
+										) : null}
+									</span>
 								</DropdownMenuItem>
 							)}
 							{/*
