@@ -235,14 +235,14 @@ export const SettingsFilterBar: FC<SettingsFilterBarProps> = ({
 							)
 						: showAdvanced
 							? t(
-									"ui.settings.configuration.settings_filter_bar.advancedcount_advanced_settings_shown_expand_all_to_see_them",
-									{ advancedCount: String(advancedCount) },
+									"ui.settings.configuration.settings_filter_bar.advanced_shown",
+									{ count: advancedCount },
 								)
 							: t(
-									"ui.settings.configuration.settings_filter_bar.corecount_core_settings_advancedcount_advanced",
+									"ui.settings.configuration.settings_filter_bar.core_and_advanced",
 									{
-										coreCount: String(coreCount),
-										advancedCount: String(advancedCount),
+										coreCount,
+										advancedCount,
 									},
 								)}
 			</p>

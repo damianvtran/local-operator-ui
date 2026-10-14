@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
+import { TYPE, parse } from "@formatjs/icu-messageformat-parser";
 import { build } from "esbuild";
 import {
 	inEnforcedScope,
@@ -83,6 +84,38 @@ test("settings helper quantities preserve English for 0, 1 and 2, including fall
 				),
 				`${count} ${count === 1 ? "setting" : "settings"}`,
 			);
+			// Each of these reads a noun that must agree with the number; the English
+			// singular is a real `one` arm, never an `other`-only "1 settings".
+			assert.equal(
+				runtime.t(
+					"ui.settings.configuration.settings_filter_bar.advanced_shown",
+					{ count },
+				),
+				count === 1
+					? "1 advanced setting shown \u2014 Expand all to see it"
+					: `${count} advanced settings shown \u2014 Expand all to see them`,
+			);
+			assert.equal(
+				runtime.t(
+					"ui.settings.configuration.settings_filter_bar.core_and_advanced",
+					{ coreCount: count, advancedCount: count },
+				),
+				`${count} core ${count === 1 ? "setting" : "settings"}, ${count} advanced`,
+			);
+			assert.equal(
+				runtime.t("ui.settings.speech.speech_section.missing_voice_rows", {
+					count,
+					rows: "pace",
+				}),
+				`This backend does not register pace yet, so ${count === 1 ? "that row is" : "those rows are"} not shown.`,
+			);
+			assert.equal(
+				runtime.t(
+					"ui.settings.integrations.integration_model.minutes_min_ago",
+					{ minutes: count },
+				),
+				`${count} min ago`,
+			);
 		}
 	}
 	runtime.setLocale("en");
@@ -125,8 +158,39 @@ test("whole messages keep interpolation and markup-adjacent spaces intact", () =
 		"Add keys for Example MCP",
 	);
 	assert.equal(
-		`${runtime.t("ui.settings.configuration.backend_setting_row.needs")}automatic removal${runtime.t("ui.settings.configuration.backend_setting_row.on_nothing_here_is_saved_while_it_is_off")}`,
+		runtime.t("ui.settings.configuration.backend_setting_row.gate_note", {
+			gate: "automatic removal",
+		}),
 		"Needs automatic removal on. Nothing here is saved while it is off.",
+	);
+	// Select arms carry the optional clauses, so a translator can reorder them.
+	assert.equal(
+		runtime.t(
+			"ui.settings.configuration.retention_duration_control.idle_window_status",
+			{ duration: "3 days", isDefault: "yes" },
+		),
+		"3 days with no activity (default)",
+	);
+	assert.equal(
+		runtime.t(
+			"ui.settings.configuration.retention_duration_control.idle_window_status",
+			{ duration: "3 days", isDefault: "no" },
+		),
+		"3 days with no activity",
+	);
+	assert.equal(
+		runtime.t(
+			"ui.settings.integrations.integration_sign_in_dialog.browser_approval_notice",
+			{ name: "Notion", replaces: "yes" },
+		),
+		"Local Operator opens your browser so you can approve access to Notion. This replaces the sign-in it has now.",
+	);
+	assert.equal(
+		runtime.t(
+			"ui.settings.integrations.integration_sign_in_dialog.browser_approval_notice",
+			{ name: "Notion", replaces: "no" },
+		),
+		"Local Operator opens your browser so you can approve access to Notion.",
 	);
 });
 
@@ -260,4 +324,39 @@ test("zero-ceiling ratchet rejects a new literal and accepts the extracted contr
 		true,
 	);
 	assert.equal(inEnforcedScope(path, ["src/i18n/"]), false);
+});
+
+// A counted noun written as `{count} things` renders "1 things" in English and has no
+// plural arm for ru/ar. Any count-like placeholder must therefore sit inside a real
+// ICU plural carrying `one` and `other`; this walks every settings key so a later
+// extraction cannot reintroduce the shape.
+const COUNT_LIKE = /^(count|n|total|num|number|\w*Count|days|hours|minutes)$/;
+test("every count-like placeholder in the settings catalogues is a real ICU plural", () => {
+	const offenders = [];
+	for (const [key, message] of Object.entries(catalogue)) {
+		const plurals = new Map();
+		const plain = new Set();
+		const walk = (nodes) => {
+			for (const node of nodes) {
+				if (node.type === TYPE.plural) {
+					plurals.set(node.value, Object.keys(node.options));
+					for (const option of Object.values(node.options)) walk(option.value);
+				} else if (node.type === TYPE.select) {
+					for (const option of Object.values(node.options)) walk(option.value);
+				} else if (node.type === TYPE.argument || node.type === TYPE.number) {
+					plain.add(node.value);
+				}
+			}
+		};
+		walk(parse(message));
+		for (const [name, arms] of plurals) {
+			if (!(arms.includes("one") && arms.includes("other")))
+				offenders.push(`${key}: {${name}} lacks one/other`);
+		}
+		for (const name of plain) {
+			if (COUNT_LIKE.test(name) && !plurals.has(name))
+				offenders.push(`${key}: {${name}} is not inside a plural`);
+		}
+	}
+	assert.deepEqual(offenders, []);
 });

@@ -2137,6 +2137,9 @@ export type MessageParams = {
 		range: string;
 	};
 	"ui.settings.configuration.retention_duration_control.days": undefined;
+	"ui.settings.configuration.retention_duration_control.duration_default": {
+		duration: string;
+	};
 	"ui.settings.configuration.retention_duration_control.exact_time": undefined;
 	"ui.settings.configuration.retention_duration_control.hours": undefined;
 	"ui.settings.configuration.retention_duration_control.idle_window_status": {
@@ -2151,9 +2154,6 @@ export type MessageParams = {
 	};
 	"ui.settings.configuration.retention_duration_control.use_duration": {
 		duration: string;
-	};
-	"ui.settings.configuration.retention_duration_control.value1_default": {
-		value1: string;
 	};
 	"ui.settings.configuration.setting_combobox.could_not_list_models": undefined;
 	"ui.settings.configuration.setting_combobox.could_not_list_models_2": undefined;
@@ -2170,14 +2170,14 @@ export type MessageParams = {
 	};
 	"ui.settings.configuration.setting_control.one_hop_per_line_as_provider_model_effort_an_empty_chain_moves_to": undefined;
 	"ui.settings.configuration.setting_control.press_the_keys_you_want_esc_cancels": undefined;
-	"ui.settings.configuration.settings_filter_bar.advancedcount_advanced_settings_shown_expand_all_to_see_them": {
-		advancedCount: string;
+	"ui.settings.configuration.settings_filter_bar.advanced_shown": {
+		count: number;
 	};
 	"ui.settings.configuration.settings_filter_bar.clear_search": undefined;
 	"ui.settings.configuration.settings_filter_bar.collapse_all": undefined;
-	"ui.settings.configuration.settings_filter_bar.corecount_core_settings_advancedcount_advanced": {
-		coreCount: string;
-		advancedCount: string;
+	"ui.settings.configuration.settings_filter_bar.core_and_advanced": {
+		coreCount: number;
+		advancedCount: number;
 	};
 	"ui.settings.configuration.settings_filter_bar.discard_all": undefined;
 	"ui.settings.configuration.settings_filter_bar.expand_all": undefined;
@@ -2300,8 +2300,8 @@ export type MessageParams = {
 	"ui.settings.integrations.integration_model.codex_cli": undefined;
 	"ui.settings.integrations.integration_model.connect": undefined;
 	"ui.settings.integrations.integration_model.connected": undefined;
-	"ui.settings.integrations.integration_model.connected_value1": {
-		value1: string;
+	"ui.settings.integrations.integration_model.connected_with_tools": {
+		tools: string;
 	};
 	"ui.settings.integrations.integration_model.connecting": undefined;
 	"ui.settings.integrations.integration_model.continue_sign_in": undefined;
@@ -2310,6 +2310,7 @@ export type MessageParams = {
 	"ui.settings.integrations.integration_model.copy_ready_explanation": undefined;
 	"ui.settings.integrations.integration_model.copy_setup_prompt": undefined;
 	"ui.settings.integrations.integration_model.couldn_t_start": undefined;
+	"ui.settings.integrations.integration_model.days_ago": { days: number };
 	"ui.settings.integrations.integration_model.defined_in_a_file_this_app_doesn_t_write_remove_it_there": undefined;
 	"ui.settings.integrations.integration_model.defined_in_origin_s_config_remove_it_there": {
 		origin: string;
@@ -2320,7 +2321,7 @@ export type MessageParams = {
 	"ui.settings.integrations.integration_model.fix": undefined;
 	"ui.settings.integrations.integration_model.give_it_a_name": undefined;
 	"ui.settings.integrations.integration_model.global": undefined;
-	"ui.settings.integrations.integration_model.hours_h_ago": { hours: string };
+	"ui.settings.integrations.integration_model.hours_h_ago": { hours: number };
 	"ui.settings.integrations.integration_model.imported_from_a_project_file": undefined;
 	"ui.settings.integrations.integration_model.imported_from_origin": {
 		origin: string;
@@ -2335,7 +2336,7 @@ export type MessageParams = {
 	"ui.settings.integrations.integration_model.just_now": undefined;
 	"ui.settings.integrations.integration_model.local_command": undefined;
 	"ui.settings.integrations.integration_model.minutes_min_ago": {
-		minutes: string;
+		minutes: number;
 	};
 	"ui.settings.integrations.integration_model.needs_a_key": undefined;
 	"ui.settings.integrations.integration_model.needs_attention": undefined;
@@ -2380,20 +2381,19 @@ export type MessageParams = {
 	"ui.settings.integrations.integration_model.this_project": undefined;
 	"ui.settings.integrations.integration_model.too_many_sign_ins_and_tests_are_waiting_try_again_in_a_moment": undefined;
 	"ui.settings.integrations.integration_model.tool_count": { count: number };
+	"ui.settings.integrations.integration_model.tools_when_last_checked": {
+		tools: string;
+	};
 	"ui.settings.integrations.integration_model.try_again": undefined;
 	"ui.settings.integrations.integration_model.update_key": undefined;
 	"ui.settings.integrations.integration_model.use_letters_numbers_dots_dashes_underscores_or_colons_with_no_spa": undefined;
-	"ui.settings.integrations.integration_model.value1_d_ago": { value1: string };
-	"ui.settings.integrations.integration_model.value1_when_last_checked": {
-		value1: string;
-	};
 	"ui.settings.integrations.integration_model.vs_code": undefined;
-	"ui.settings.integrations.integration_model.worked_earlier_value1": {
-		value1: string;
+	"ui.settings.integrations.integration_model.worked_earlier_with_tools": {
+		tools: string;
 	};
-	"ui.settings.integrations.integration_model.worked_value1_value2": {
-		value1: string;
-		value2: string;
+	"ui.settings.integrations.integration_model.worked_when_with_tools": {
+		when: string;
+		tools: string;
 	};
 	"ui.settings.integrations.integration_row.agents_in_every_chat_lose_access_to_name": {
 		name: string;
@@ -2458,23 +2458,23 @@ export type MessageParams = {
 	"ui.settings.integrations.mcp_management_section.integrations_let_agents_read_and_act_in_your_other_tools_like_not": undefined;
 	"ui.settings.integrations.mcp_management_section.integrations_need_a_newer_local_operator_backend_update_it_and_re": undefined;
 	"ui.settings.integrations.mcp_management_section.loading_integrations": undefined;
-	"ui.settings.integrations.mcp_management_section.no_integration_matches_value1": {
-		value1: string;
-	};
 	"ui.settings.integrations.mcp_management_section.no_integrations_match_this_search": undefined;
 	"ui.settings.integrations.mcp_management_section.no_integrations_yet": undefined;
+	"ui.settings.integrations.mcp_management_section.no_match_for_name": {
+		asked: string;
+	};
 	"ui.settings.integrations.mcp_management_section.removed_name": {
 		name: string;
 	};
 	"ui.settings.integrations.mcp_management_section.retry": undefined;
 	"ui.settings.integrations.mcp_management_section.search_integrations": undefined;
-	"ui.settings.integrations.mcp_management_section.search_value1": {
-		value1: string;
+	"ui.settings.integrations.mcp_management_section.search_integrations_placeholder": {
+		integrations: string;
 	};
 	"ui.settings.integrations.mcp_management_section.setup_steps_copied_paste_them_into_a_chat": undefined;
-	"ui.settings.integrations.mcp_management_section.showing_value1_value2_is_not_one_of_your_integrations": {
-		value1: string;
-		value2: string;
+	"ui.settings.integrations.mcp_management_section.showing_fallback_for_unknown": {
+		shown: string;
+		asked: string;
 	};
 	"ui.settings.integrations.mcp_management_section.start_a_chat": undefined;
 	"ui.settings.integrations.mcp_management_section.this_chat_s_folder_no_longer_exists_so_only_global_integrations_a": undefined;
@@ -2482,9 +2482,7 @@ export type MessageParams = {
 	"ui.settings.integrations.use_integrations.a_saved_value_already_exists_for_this_key_tick_label_to_overwrite": {
 		label: string;
 	};
-	"ui.settings.integrations.use_integrations.not_saved_value1_the_encrypted_store_may_be_locked": {
-		value1: string;
-	};
+	"ui.settings.integrations.use_integrations.keys_not_saved": { keys: string };
 	"ui.settings.integrations.use_integrations.that_header_can_t_carry_this_key_it_may_already_be_set_on_the_ser": undefined;
 	"ui.settings.language.dialog.description": undefined;
 	"ui.settings.language.dialog.loading": undefined;
@@ -2605,7 +2603,10 @@ export type MessageParams = {
 	"ui.settings.speech.speech_section.copy_backend_older_sentence": undefined;
 	"ui.settings.speech.speech_section.copy_unavailable_sentence": undefined;
 	"ui.settings.speech.speech_section.how_the_assistant_sounds_when_it_speaks_aloud": undefined;
-	"ui.settings.speech.speech_section.missing_voice_rows": { rows: string };
+	"ui.settings.speech.speech_section.missing_voice_rows": {
+		count: number;
+		rows: string;
+	};
 	"ui.settings.speech.speech_section.no_provider": undefined;
 	"ui.settings.speech.speech_section.not_available": undefined;
 	"ui.settings.speech.speech_section.nothing_yet": undefined;

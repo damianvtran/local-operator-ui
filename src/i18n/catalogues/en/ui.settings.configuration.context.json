@@ -1,587 +1,633 @@
 {
 	"ui.settings.configuration.backend_setting_row.read_only": {
-		"role": "Inline settings control status/readout",
-		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
-		"length": "Compact existing settings/list control; English is 9 characters before placeholder expansion. Keep short.",
-		"note": "backend setting row: rendered in span inside span. Composition (message names mark slots): <span> {[read_only]} </span>"
+		"role": "Small badge in a setting row's title line",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 9 characters.",
+		"note": "Marks a setting the user cannot edit here, because the server owns it. Not the same as disabled."
 	},
 	"ui.settings.configuration.backend_setting_row.use_default": {
-		"role": "Button action label",
-		"tone": "Brief imperative. No enthusiasm or extra punctuation.",
-		"length": "Compact existing settings/list control; English is 11 characters before placeholder expansion. Keep short.",
-		"note": "backend setting row: rendered in Button inside div. Restores the registry default into this row. Keep distinct from Discard, which removes unsaved edits. Composition (message names mark slots): <Button aria-label={t( \"ui.settings.configuration.backend_setting_row.use_default_for_label\", { label: String(setting.label) }, )} > <Undo2 /> {[use_default]} </Button>"
+		"role": "Ghost button on a changed setting row",
+		"tone": "Plain imperative; no exclamation, no please.",
+		"length": "Button label; one line, never wraps. English is 11 characters; keep it a short verb phrase of similar width.",
+		"note": "Puts the registry default value back for this one setting. Has an undo-arrow icon. Its accessible name is \"Use default for {label}\". Distinct from Discard, which only drops unsaved edits."
 	},
 	"ui.settings.configuration.backend_setting_row.set_in_the_credential_manager_this_value_carries_inline_credentia": {
-		"role": "Inline settings control status/readout",
-		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
-		"length": "Compact existing settings/list control; English is 89 characters before placeholder expansion. Keep short.",
-		"note": "backend setting row: rendered in span inside div. Composition (message names mark slots): <span> {t( \"ui.settings.configuration.backend_setting_row.set_in_the_credential_manager_this_value_carries_inline_credentia\", )} </span>"
+		"role": "Replaces the value of a setting that holds a secret",
+		"tone": "Calm, factual sentence; no blame, no alarm.",
+		"length": "Inline message that wraps in an alert or helper line. English is 89 characters.",
+		"note": "The value is withheld on purpose: it contains inline credentials or query parameters. Tells the user to manage it in the credential manager instead."
 	},
 	"ui.settings.configuration.backend_setting_row.retry": {
-		"role": "Button action label",
-		"tone": "Brief imperative. No enthusiasm or extra punctuation.",
-		"length": "Compact existing settings/list control; English is 5 characters before placeholder expansion. Keep short.",
-		"note": "backend setting row: rendered in Button inside div. Repeats the failed action/read. This is not a full application restart. Composition (message names mark slots): <Button > <RotateCcw /> {[retry]} </Button>"
+		"role": "Button inside an inline save-failure alert on a setting row",
+		"tone": "Plain imperative; no exclamation, no please.",
+		"length": "Button label; one line, never wraps. English is 5 characters; keep it a short verb phrase of similar width.",
+		"note": "Re-submits the user's retained draft; it does not re-read the field."
 	},
 	"ui.settings.configuration.backend_setting_row.saving": {
-		"role": "Button action label",
-		"tone": "Brief imperative. No enthusiasm or extra punctuation.",
-		"length": "Compact existing settings/list control; English is 6 characters before placeholder expansion. Keep short.",
-		"note": "backend setting row: rendered in Button inside div. Composition (message names mark slots): <Button > {saving ? [saving] : [save]} </Button>"
+		"role": "Same row Save button while the write is in flight",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Button label; one line, never wraps. English is 6 characters; keep it a short verb phrase of similar width.",
+		"note": "Replaces \"Save\" for a moment. English has no ellipsis."
 	},
 	"ui.settings.configuration.backend_setting_row.save": {
-		"role": "Button action label",
-		"tone": "Brief imperative. No enthusiasm or extra punctuation.",
-		"length": "Compact existing settings/list control; English is 4 characters before placeholder expansion. Keep short.",
-		"note": "backend setting row: rendered in Button inside div. Composition (message names mark slots): <Button > {saving ? [saving] : [save]} </Button>"
+		"role": "Primary button on an edited setting row",
+		"tone": "Plain imperative; no exclamation, no please.",
+		"length": "Button label; one line, never wraps. English is 4 characters; keep it a short verb phrase of similar width.",
+		"note": "Writes this one setting to the configuration file."
 	},
 	"ui.settings.configuration.backend_setting_row.not_set": {
-		"role": "Inline settings control status/readout",
-		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
-		"length": "Compact existing settings/list control; English is 7 characters before placeholder expansion. Keep short.",
-		"note": "backend setting row: rendered in span inside div. Composition (message names mark slots): <span> {serialize(setting.value) || [not_set]} </span>"
+		"role": "Read-only value shown when a setting has no value",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 7 characters.",
+		"note": "Shown in place of an empty read-only value."
 	},
 	"ui.settings.configuration.backend_setting_row.use_default_for_label": {
-		"role": "Accessible control name; not visible body copy",
-		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
-		"length": "Compact existing control/readout; English source is 23 characters before variable expansion. Avoid adding explanatory prose.",
-		"note": "backend setting row: aria-label on Button. Restores the registry default into this row. Keep distinct from Discard, which removes unsaved edits. Composition (message names mark slots): <Button aria-label={t( \"ui.settings.configuration.backend_setting_row.use_default_for_label\", { label: String(setting.label) }, )} > <Undo2 /> {[use_default]} </Button> Reorder placeholders as grammar requires; do not copy English word order mechanically.",
+		"role": "Accessible name of the row's Use default button",
+		"tone": "Calm, factual sentence; no blame, no alarm.",
+		"length": "Screen-reader-only accessible name (not painted); length is free but keep it a natural spoken phrase. English is 23 characters.",
+		"note": "Eight identical visible buttons exist, so each is named after its row.",
 		"placeholders": {
-			"label": "Displayed setting.label. Value inserted verbatim; do not translate technical identifiers, integration/provider names, or user-entered text. Caller supplies String(setting.label). Caller supplies String(setting.label). Caller supplies String(setting.label). Caller supplies String(setting.label). Caller supplies String(setting.label). The localized visible field/action label; keep it recognizable in accessible names. Caller supplies String(setting.label). The localized visible field/action label; keep it recognizable in accessible names."
+			"label": "The localized label of the setting this button belongs to, for example \"Default model\"."
 		}
 	},
 	"ui.settings.configuration.backend_settings_drafts.enter_a_whole_number": {
-		"role": "Validation/error explanation",
-		"tone": "Neutral and helpful; explain the failure without blaming the user.",
-		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
-		"note": "backend settings drafts: error returned/read by editOutcome."
+		"role": "Inline validation message under a number field",
+		"tone": "Neutral warning; says what happened and the next step, never blames the user.",
+		"length": "Inline message that wraps in an alert or helper line. English is 21 characters.",
+		"note": "Shown when the typed text is not an integer."
 	},
 	"ui.settings.configuration.backend_settings_drafts.enter_a_finite_number": {
-		"role": "Validation/error explanation",
-		"tone": "Neutral and helpful; explain the failure without blaming the user.",
-		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
-		"note": "backend settings drafts: error returned/read by editOutcome."
+		"role": "Inline validation message under a number field",
+		"tone": "Neutral warning; says what happened and the next step, never blames the user.",
+		"length": "Inline message that wraps in an alert or helper line. English is 22 characters.",
+		"note": "Shown when the typed number is infinite or not a number."
 	},
 	"ui.settings.configuration.backend_settings_drafts.nothing_has_been_edited_yet": {
-		"role": "Inline settings control status/readout",
-		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
-		"length": "Compact existing settings/list control; English is 28 characters before placeholder expansion. Keep short.",
-		"note": "backend settings drafts: error returned/read by editOutcome."
+		"role": "Message when Save is pressed with no change",
+		"tone": "Calm, factual sentence; no blame, no alarm.",
+		"length": "Inline message that wraps in an alert or helper line. English is 28 characters.",
+		"note": "Informational; not an error in the user's input."
 	},
 	"ui.settings.configuration.backend_settings_section.searchable_settings_need_a_newer_local_operator_server_update_the": {
-		"role": "Inline warning/error explanation",
-		"tone": "Neutral and helpful; explain the failure without blaming the user.",
-		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
-		"note": "backend settings section: rendered in Alert. Composition (message names mark slots): <Alert> {t( \"ui.settings.configuration.backend_settings_section.searchable_settings_need_a_newer_local_operator_server_update_the\", )} </Alert> Preserve product/protocol names and machine tokens."
+		"role": "Warning alert replacing the settings list",
+		"tone": "Neutral warning; says what happened and the next step, never blames the user.",
+		"length": "Inline message that wraps in an alert or helper line. English is 124 characters.",
+		"note": "The connected server is too old for the searchable settings registry. Tells the user to update and restart it. \"Local Operator\" is the product name."
 	},
 	"ui.settings.configuration.backend_settings_section.loading_settings": {
-		"role": "Loading status announced with spinner",
-		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
-		"length": "Compact existing settings/list control; English is 16 characters before placeholder expansion. Keep short.",
-		"note": "backend settings section: label on Spinner. Composition (message names mark slots): <Spinner />"
+		"role": "Accessible name of the loading spinner",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Screen-reader-only accessible name (not painted); length is free but keep it a natural spoken phrase. English is 16 characters.",
+		"note": "Spoken while the settings registry loads."
 	},
 	"ui.settings.configuration.backend_settings_section.no_settings_match_this_search_clear_the_search_field_to_see_every": {
-		"role": "Settings explanatory paragraph",
-		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
-		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
-		"note": "backend settings section: rendered in p inside div. Composition (message names mark slots): <p> {t( \"ui.settings.configuration.backend_settings_section.no_settings_match_this_search_clear_the_search_field_to_see_every\", )} </p>"
+		"role": "Empty-state line when a search finds nothing",
+		"tone": "Plain, friendly second person; explains rather than commands.",
+		"length": "Inline message that wraps in an alert or helper line. English is 81 characters.",
+		"note": "Followed by nothing else; it names the remedy itself."
 	},
 	"ui.settings.configuration.backend_settings_section.takes_effect_immediately": {
-		"role": "Inline settings control status/readout",
-		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
-		"length": "Compact existing settings/list control; English is 24 characters before placeholder expansion. Keep short.",
-		"note": "backend settings section: live returned/read by SCOPE_LABELS."
+		"role": "Scope tag on a setting row",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 24 characters.",
+		"note": "Says when a changed value applies: at once. Sits beside sentence-case siblings \"Takes effect the next time the app starts\" and \"...for new conversations\"."
 	},
 	"ui.settings.configuration.backend_settings_section.takes_effect_the_next_time_the_app_starts": {
-		"role": "Inline settings control status/readout",
-		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
-		"length": "Compact existing settings/list control; English is 41 characters before placeholder expansion. Keep short.",
-		"note": "backend settings section: \"new launch\" returned/read by SCOPE_LABELS."
+		"role": "Scope tag on a setting row",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 41 characters.",
+		"note": "Applies only after the next app launch."
 	},
 	"ui.settings.configuration.backend_settings_section.takes_effect_for_new_conversations": {
-		"role": "Inline settings control status/readout",
-		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
-		"length": "Compact existing settings/list control; English is 34 characters before placeholder expansion. Keep short.",
-		"note": "backend settings section: \"new sessions\" returned/read by SCOPE_LABELS."
+		"role": "Scope tag on a setting row",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 34 characters.",
+		"note": "Applies to conversations started after the change; open conversations keep the old value."
 	},
 	"ui.settings.configuration.backend_settings_section.the_setting_could_not_be_saved": {
-		"role": "Validation/error explanation",
-		"tone": "Neutral and helpful; explain the failure without blaming the user.",
-		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
-		"note": "backend settings section: rendered in saveRow."
+		"role": "Inline failure message on a row",
+		"tone": "Neutral warning; says what happened and the next step, never blames the user.",
+		"length": "Inline message that wraps in an alert or helper line. English is 31 characters.",
+		"note": "Fallback when the failure has no message of its own."
 	},
 	"ui.settings.configuration.backend_settings_section.the_setting_could_not_be_reset": {
-		"role": "Validation/error explanation",
-		"tone": "Neutral and helpful; explain the failure without blaming the user.",
-		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
-		"note": "backend settings section: rendered in resetRow."
+		"role": "Inline failure message on a row",
+		"tone": "Neutral warning; says what happened and the next step, never blames the user.",
+		"length": "Inline message that wraps in an alert or helper line. English is 31 characters.",
+		"note": "Fallback when restoring the default failed and the error carried no message."
 	},
 	"ui.settings.configuration.backend_settings_section.your_settings_could_not_be_loaded": {
-		"role": "Validation/error explanation",
-		"tone": "Neutral and helpful; explain the failure without blaming the user.",
-		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
-		"note": "backend settings section: rendered in { sentence: pairingSentence, remedy }."
+		"role": "Warning alert text when the registry read fails",
+		"tone": "Neutral warning; says what happened and the next step, never blames the user.",
+		"length": "Inline message that wraps in an alert or helper line. English is 34 characters.",
+		"note": "A general sentence; the next step, if any, is a separate Retry button."
 	},
 	"ui.settings.configuration.backend_settings_section.retry": {
-		"role": "Button action label",
-		"tone": "Brief imperative. No enthusiasm or extra punctuation.",
-		"length": "Compact existing settings/list control; English is 5 characters before placeholder expansion. Keep short.",
-		"note": "backend settings section: rendered in Button inside div. Repeats the failed action/read. This is not a full application restart. Composition (message names mark slots): <Button onClick={() => { // Retry what actually broke. On the gated path capabilities are // the fault and the reason this query never ran, so re-asking // only the gated query would re-fail against the same unfixed // cause without ever retrying it. if (capabilities.isError) void capabilities.refetch(); else void settingsQuery.refetch(); }} > {retrying ? t( \"ui.settings.configuration.backend_settings_section.retrying\", ) : [retry]} </Button>"
+		"role": "Button in the load-failure alert",
+		"tone": "Plain imperative; no exclamation, no please.",
+		"length": "Button label; one line, never wraps. English is 5 characters; keep it a short verb phrase of similar width.",
+		"note": "Re-reads the settings registry."
 	},
 	"ui.settings.configuration.backend_settings_section.advanced_settings_are_hidden_here": {
-		"role": "Settings explanatory paragraph",
-		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
-		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
-		"note": "backend settings section: rendered in p inside div. Composition (message names mark slots): <p> {advancedHeld > 0 ? t( \"ui.settings.configuration.backend_settings_section.advanced_settings_are_hidden_here\", ) : t( \"ui.settings.configuration.backend_settings_section.nothing_in_this_section_matches\", )} </p>"
+		"role": "Empty-state line in a section whose rows are all advanced",
+		"tone": "Calm, factual sentence; no blame, no alarm.",
+		"length": "Inline message that wraps in an alert or helper line. English is 34 characters.",
+		"note": "Explains why a section shows nothing; the Show advanced button follows."
 	},
 	"ui.settings.configuration.backend_settings_section.nothing_in_this_section_matches": {
-		"role": "Settings explanatory paragraph",
-		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
-		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
-		"note": "backend settings section: rendered in p inside div. Composition (message names mark slots): <p> {advancedHeld > 0 ? t( \"ui.settings.configuration.backend_settings_section.advanced_settings_are_hidden_here\", ) : t( \"ui.settings.configuration.backend_settings_section.nothing_in_this_section_matches\", )} </p>"
+		"role": "Empty-state line in a section under a search filter",
+		"tone": "Calm, factual sentence; no blame, no alarm.",
+		"length": "Inline message that wraps in an alert or helper line. English is 32 characters.",
+		"note": "No row of this section matches the current search."
 	},
 	"ui.settings.configuration.delegated_cleanup_notice.open_settings": {
-		"role": "Button action label",
-		"tone": "Brief imperative. No enthusiasm or extra punctuation.",
-		"length": "Compact existing settings/list control; English is 13 characters before placeholder expansion. Keep short.",
-		"note": "delegated cleanup notice: rendered in Button inside span. Composition (message names mark slots): <Button> {t( \"ui.settings.configuration.delegated_cleanup_notice.open_settings\", )} </Button>"
+		"role": "Button in a one-time notice strip",
+		"tone": "Plain imperative; no exclamation, no please.",
+		"length": "Button label; one line, never wraps. English is 13 characters; keep it a short verb phrase of similar width.",
+		"note": "Opens the Settings page at the delegated-work cleanup setting."
 	},
 	"ui.settings.configuration.delegated_cleanup_notice.dismiss_this_notice": {
-		"role": "Accessible control name; not visible body copy",
-		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
-		"length": "Compact existing control/readout; English source is 19 characters before variable expansion. Avoid adding explanatory prose.",
-		"note": "delegated cleanup notice: aria-label on Button. Composition (message names mark slots): <Button > <X /> </Button>"
+		"role": "Accessible name of the notice's close (X) button",
+		"tone": "Plain imperative; no exclamation, no please.",
+		"length": "Screen-reader-only accessible name (not painted); length is free but keep it a natural spoken phrase. English is 19 characters.",
+		"note": "Icon-only close button on the cleanup notice banner; this is its accessible name. Hides the notice permanently, not just for this visit."
 	},
 	"ui.settings.configuration.delegated_retention_copy.sessions_started_by_subagents_agent_shells_and_background_runs_su": {
-		"role": "Inline settings control status/readout",
-		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
-		"length": "Compact existing settings/list control; English is 71 characters before placeholder expansion. Keep short.",
-		"note": "delegated retention copy: rendered in Line inside div. Composition (message names mark slots): <Line > {t( \"ui.settings.configuration.delegated_retention_copy.sessions_started_by_subagents_agent_shells_and_background_runs_su\", )}{\" \"} <code> { \"lop exec\" } </code> {t( \"ui.settings.configuration.delegated_retention_copy.never_your_own_conversations_or_the_workstreams_in_your_sidebar\", )} </Line>"
+		"role": "First half of the \"Removed:\" explainer line",
+		"tone": "Helpful explanatory prose in second person.",
+		"length": "Part of a longer visible sentence, not standalone. English is 71 characters.",
+		"note": "A sentence split around a literal code sample: this part ends with \"such as\", then comes the monospace command \"lop exec\", then the next message. Translate so the code sample fits grammatically between the two halves; do not translate the command."
 	},
 	"ui.settings.configuration.delegated_retention_copy.never_your_own_conversations_or_the_workstreams_in_your_sidebar": {
-		"role": "Inline settings control status/readout",
-		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
-		"length": "Compact existing settings/list control; English is 66 characters before placeholder expansion. Keep short.",
-		"note": "delegated retention copy: rendered in Line inside div. Composition (message names mark slots): <Line > {t( \"ui.settings.configuration.delegated_retention_copy.sessions_started_by_subagents_agent_shells_and_background_runs_su\", )}{\" \"} <code> { \"lop exec\" } </code> {t( \"ui.settings.configuration.delegated_retention_copy.never_your_own_conversations_or_the_workstreams_in_your_sidebar\", )} </Line>"
+		"role": "Second half of the \"Removed:\" explainer line",
+		"tone": "Helpful explanatory prose in second person.",
+		"length": "Part of a longer visible sentence, not standalone. English is 66 characters.",
+		"note": "Starts with a full stop that ends the sentence after the command sample; keep the leading \". \" exactly. \"Workstreams\" are the projects listed in the sidebar."
 	},
 	"ui.settings.configuration.delegated_retention_copy.anything_running_or_waiting_anything_whose_parent_conversation_wa": {
-		"role": "Inline settings control status/readout",
-		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
-		"length": "Compact existing settings/list control; English is 155 characters before placeholder expansion. Keep short.",
-		"note": "delegated retention copy: rendered in Line inside div. Composition (message names mark slots): <Line> {t( \"ui.settings.configuration.delegated_retention_copy.anything_running_or_waiting_anything_whose_parent_conversation_wa\", )} </Line>"
+		"role": "Text after the \"Kept:\" term",
+		"tone": "Helpful explanatory prose in second person.",
+		"length": "Wrapping paragraph in the settings content column (about 60-70 characters per line); no length cap, keep every fact. English is 155 characters.",
+		"note": "Lower-case sentence continuing the bold \"Kept:\" term; it lists what cleanup spares. Keep it a list starting lower case."
 	},
 	"ui.settings.configuration.delegated_retention_copy.after_the_time_below_with_no_activity_checked_when_the_app_starts": {
-		"role": "Inline settings control status/readout",
-		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
-		"length": "Compact existing settings/list control; English is 149 characters before placeholder expansion. Keep short.",
-		"note": "delegated retention copy: rendered in Line inside div. Composition (message names mark slots): <Line> {t( \"ui.settings.configuration.delegated_retention_copy.after_the_time_below_with_no_activity_checked_when_the_app_starts\", )} </Line>"
+		"role": "Text after the \"When:\" term",
+		"tone": "Helpful explanatory prose in second person.",
+		"length": "Wrapping paragraph in the settings content column (about 60-70 characters per line); no length cap, keep every fact. English is 149 characters.",
+		"note": "Lower-case sentence continuing the bold \"When:\" term; says cleanup runs at app start in limited batches. \"The time below\" is the retention control just underneath."
 	},
 	"ui.settings.configuration.language_dialog.the_language_could_not_be_saved": {
-		"role": "Validation/error explanation",
-		"tone": "Neutral and helpful; explain the failure without blaming the user.",
-		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
-		"note": "language dialog: rendered in save."
+		"role": "Inline failure message in the language dialog",
+		"tone": "Neutral warning; says what happened and the next step, never blames the user.",
+		"length": "Inline message that wraps in an alert or helper line. English is 32 characters.",
+		"note": "Shown when writing the interface language failed."
 	},
 	"ui.settings.configuration.language_dialog.your_settings_could_not_be_loaded": {
-		"role": "Validation/error explanation",
-		"tone": "Neutral and helpful; explain the failure without blaming the user.",
-		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
-		"note": "language dialog: rendered in { sentence: pairingSentence, remedy }."
+		"role": "Warning in the language dialog when the registry read fails",
+		"tone": "Neutral warning; says what happened and the next step, never blames the user.",
+		"length": "Inline message that wraps in an alert or helper line. English is 34 characters.",
+		"note": "Same wording as the Settings page alert but a separate surface."
 	},
 	"ui.settings.configuration.retention_duration.enter_a_whole_number_of_hours_or_days": {
-		"role": "Validation/error explanation",
-		"tone": "Neutral and helpful; explain the failure without blaming the user.",
-		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
-		"note": "retention duration: error returned/read by validateHours."
+		"role": "Inline validation message under the exact-time field",
+		"tone": "Neutral warning; says what happened and the next step, never blames the user.",
+		"length": "Inline message that wraps in an alert or helper line. English is 38 characters.",
+		"note": "Shown when the typed text is not a whole number."
 	},
 	"ui.settings.configuration.retention_duration.month_count": {
-		"role": "Dynamic count/status sentence",
-		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
-		"length": "Compact existing settings/list control; English is 47 characters before placeholder expansion. Keep short.",
-		"note": "retention duration: rendered in formatHours. Reorder placeholders as grammar requires; do not copy English word order mechanically.",
+		"role": "Duration value inside other messages",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Part of a longer visible sentence, not standalone. English is 47 characters.",
+		"note": "A complete localized duration such as \"1 month\". Used as {duration} in other messages. Plural: English has one/other only. ru needs few/many; ar needs zero/two/few/many; supply every arm your language requires and keep # where the number belongs.",
 		"placeholders": {
-			"count": "Numeric quantity; determines ICU plural category. Caller supplies hours / HOURS_PER_MONTH. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies hours / HOURS_PER_MONTH. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies hours / HOURS_PER_MONTH. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies hours / HOURS_PER_MONTH. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies hours / HOURS_PER_MONTH. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies hours / HOURS_PER_MONTH. Numeric ICU plural quantity; keep # inside plural arms."
+			"count": "Whole number of months, used only to choose the plural form and shown as #."
 		}
 	},
 	"ui.settings.configuration.retention_duration.day_count": {
-		"role": "Dynamic count/status sentence",
-		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
-		"length": "Compact existing settings/list control; English is 43 characters before placeholder expansion. Keep short.",
-		"note": "retention duration: rendered in formatHours. Reorder placeholders as grammar requires; do not copy English word order mechanically.",
+		"role": "Duration value inside other messages",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Part of a longer visible sentence, not standalone. English is 43 characters.",
+		"note": "Such as \"3 days\". Used for whole-day values of 3 or more. Plural: English has one/other only. ru needs few/many; ar needs zero/two/few/many; supply every arm your language requires and keep # where the number belongs.",
 		"placeholders": {
-			"count": "Numeric quantity; determines ICU plural category. Caller supplies hours / HOURS_PER_DAY. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies hours / HOURS_PER_DAY. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies hours / HOURS_PER_DAY. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies hours / HOURS_PER_DAY. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies hours / HOURS_PER_DAY. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies hours / HOURS_PER_DAY. Numeric ICU plural quantity; keep # inside plural arms."
+			"count": "Whole number of days, used only to choose the plural form and shown as #."
 		}
 	},
 	"ui.settings.configuration.retention_duration.hour_count": {
-		"role": "Dynamic count/status sentence",
-		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
-		"length": "Compact existing settings/list control; English is 45 characters before placeholder expansion. Keep short.",
-		"note": "retention duration: rendered in formatHours. Reorder placeholders as grammar requires; do not copy English word order mechanically.",
+		"role": "Duration value inside other messages",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Part of a longer visible sentence, not standalone. English is 45 characters.",
+		"note": "Such as \"48 hours\". Used for values under 3 days and for values not a whole number of days. Plural: English has one/other only. ru needs few/many; ar needs zero/two/few/many; supply every arm your language requires and keep # where the number belongs.",
 		"placeholders": {
-			"count": "Numeric quantity; determines ICU plural category. Caller supplies hours. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies hours. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies hours. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies hours. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies hours. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies hours. Numeric ICU plural quantity; keep # inside plural arms."
+			"count": "Whole number of hours, used only to choose the plural form and shown as #."
 		}
 	},
 	"ui.settings.configuration.retention_duration.maximum_days": {
-		"role": "Inline settings control status/readout",
-		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
-		"length": "Compact existing settings/list control; English is 55 characters before placeholder expansion. Keep short.",
-		"note": "retention duration: rendered in upper. Reorder placeholders as grammar requires; do not copy English word order mechanically.",
+		"role": "Upper bound of an allowed range",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Part of a longer visible sentence, not standalone. English is 55 characters.",
+		"note": "Reads \"1 month (30 days)\". The bracketed days restate the month in days. Plural: English has one/other only. ru needs few/many; ar needs zero/two/few/many; supply every arm your language requires and keep # where the number belongs.",
 		"placeholders": {
-			"duration": "Rendered UI value inserted verbatim; never translate the value. Caller supplies formatHours(spec.max). Caller supplies formatHours(spec.max). Caller supplies formatHours(spec.max). Caller supplies formatHours(spec.max). Caller supplies formatHours(spec.max). A complete localized duration in words, such as 48 hours; do not add another unit. Caller supplies formatHours(spec.max). A complete localized duration in words, such as 48 hours; do not add another unit.",
-			"days": "Numeric quantity; determines ICU plural category. Caller supplies spec.max / HOURS_PER_DAY. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies spec.max / HOURS_PER_DAY. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies spec.max / HOURS_PER_DAY. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies spec.max / HOURS_PER_DAY. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies spec.max / HOURS_PER_DAY. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies spec.max / HOURS_PER_DAY. Numeric ICU plural quantity; keep # inside plural arms."
+			"days": "Whole number of days; plural arms apply.",
+			"duration": "Localized duration already containing its unit, for example \"1 month\"."
 		}
 	},
 	"ui.settings.configuration.retention_duration.range": {
-		"role": "Inline settings control status/readout",
-		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
-		"length": "Compact existing settings/list control; English is 31 characters before placeholder expansion. Keep short.",
-		"note": "retention duration: rendered in rangeSentence. Reorder placeholders as grammar requires; do not copy English word order mechanically.",
+		"role": "Allowed range inside a validation sentence",
+		"tone": "Calm, factual sentence; no blame, no alarm.",
+		"length": "Part of a longer visible sentence, not standalone. English is 31 characters.",
+		"note": "Reads \"between 2 hours and 1 month (30 days)\". Inserted at the end of \"Choose a time {range}.\"",
 		"placeholders": {
-			"minimum": "Rendered UI value inserted verbatim; never translate the value. Caller supplies formatHours(spec.min). Caller supplies formatHours(spec.min). Caller supplies formatHours(spec.min). Caller supplies formatHours(spec.min). Caller supplies formatHours(spec.min). A complete localized duration in words, such as 48 hours; do not add another unit. Caller supplies formatHours(spec.min). A complete localized duration in words, such as 48 hours; do not add another unit.",
-			"maximum": "Rendered UI value inserted verbatim; never translate the value. Caller supplies upper. Caller supplies upper. Caller supplies upper. Caller supplies upper. Caller supplies upper. Caller supplies upper."
+			"maximum": "Localized upper bound, which may already contain a bracketed day count.",
+			"minimum": "Localized lower bound including unit."
 		}
 	},
 	"ui.settings.configuration.retention_duration.too_long": {
-		"role": "Validation/error explanation",
-		"tone": "Neutral and helpful; explain the failure without blaming the user.",
-		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
-		"note": "retention duration: error returned/read by validateHours. Reorder placeholders as grammar requires; do not copy English word order mechanically.",
+		"role": "Inline validation message under the exact-time field",
+		"tone": "Neutral warning; says what happened and the next step, never blames the user.",
+		"length": "Inline message that wraps in an alert or helper line. English is 46 characters.",
+		"note": "Says the entered time is above the maximum and states the allowed range.",
 		"placeholders": {
-			"duration": "Rendered UI value inserted verbatim; never translate the value. Caller supplies formatHours(hours). Caller supplies formatHours(hours). Caller supplies formatHours(hours). Caller supplies formatHours(hours). Caller supplies formatHours(hours). A complete localized duration in words, such as 48 hours; do not add another unit. Caller supplies formatHours(hours). A complete localized duration in words, such as 48 hours; do not add another unit.",
-			"range": "Rendered UI value inserted verbatim; never translate the value. Caller supplies rangeSentence(spec). Caller supplies rangeSentence(spec). Caller supplies rangeSentence(spec). Caller supplies rangeSentence(spec). Caller supplies rangeSentence(spec). A complete localized allowed-range phrase, such as between 2 hours and 1 month (30 days). Caller supplies rangeSentence(spec). A complete localized allowed-range phrase, such as between 2 hours and 1 month (30 days)."
+			"duration": "Localized duration the user typed, for example \"90 days\".",
+			"range": "Localized allowed-range phrase, for example \"between 2 hours and 1 month (30 days)\"."
 		}
 	},
 	"ui.settings.configuration.retention_duration.too_short": {
-		"role": "Validation/error explanation",
-		"tone": "Neutral and helpful; explain the failure without blaming the user.",
-		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
-		"note": "retention duration: error returned/read by validateHours. Reorder placeholders as grammar requires; do not copy English word order mechanically.",
+		"role": "Inline validation message under the exact-time field",
+		"tone": "Neutral warning; says what happened and the next step, never blames the user.",
+		"length": "Inline message that wraps in an alert or helper line. English is 47 characters.",
+		"note": "Says the entered time is below the minimum and states the allowed range.",
 		"placeholders": {
-			"duration": "Rendered UI value inserted verbatim; never translate the value. Caller supplies formatHours(hours). Caller supplies formatHours(hours). Caller supplies formatHours(hours). Caller supplies formatHours(hours). Caller supplies formatHours(hours). A complete localized duration in words, such as 48 hours; do not add another unit. Caller supplies formatHours(hours). A complete localized duration in words, such as 48 hours; do not add another unit.",
-			"range": "Rendered UI value inserted verbatim; never translate the value. Caller supplies rangeSentence(spec). Caller supplies rangeSentence(spec). Caller supplies rangeSentence(spec). Caller supplies rangeSentence(spec). Caller supplies rangeSentence(spec). A complete localized allowed-range phrase, such as between 2 hours and 1 month (30 days). Caller supplies rangeSentence(spec). A complete localized allowed-range phrase, such as between 2 hours and 1 month (30 days)."
+			"duration": "Localized duration the user typed, for example \"1 hour\".",
+			"range": "Localized allowed-range phrase, for example \"between 2 hours and 1 month (30 days)\"."
 		}
 	},
 	"ui.settings.configuration.retention_duration_control.exact_time": {
-		"role": "Visible field/group label",
-		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
-		"length": "Compact existing settings/list control; English is 10 characters before placeholder expansion. Keep short.",
-		"note": "retention duration control: rendered in label inside div. Composition (message names mark slots): <label htmlFor={`${ids}-count`} > {[exact_time]} </label>"
+		"role": "Label beside the exact-entry number field",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Field or row label above/beside a control; one line. English is 10 characters.",
+		"note": "Introduces a number field and a unit dropdown."
 	},
 	"ui.settings.configuration.retention_duration_control.hours": {
-		"role": "Option/tab label",
-		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
-		"length": "Compact existing settings/list control; English is 5 characters before placeholder expansion. Keep short.",
-		"note": "retention duration control: rendered in SelectItem inside SelectContent. Composition (message names mark slots): <SelectItem> {[hours]} </SelectItem>"
+		"role": "Unit option in the exact-entry dropdown",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Option in a dropdown list; one line. English is 5 characters.",
+		"note": "Plural unit word standing alone, lower case. The dropdown value is the machine token \"hours\"."
 	},
 	"ui.settings.configuration.retention_duration_control.days": {
-		"role": "Option/tab label",
-		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
-		"length": "Compact existing settings/list control; English is 4 characters before placeholder expansion. Keep short.",
-		"note": "retention duration control: rendered in SelectItem inside SelectContent. Composition (message names mark slots): <SelectItem> {[days]} </SelectItem>"
+		"role": "Unit option in the exact-entry dropdown",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Option in a dropdown list; one line. English is 4 characters.",
+		"note": "Plural unit word standing alone, lower case. The dropdown value is the machine token \"days\"."
 	},
 	"ui.settings.configuration.retention_duration_control.label_common_choices": {
-		"role": "Accessible control name; not visible body copy",
-		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
-		"length": "Compact existing control/readout; English source is 23 characters before variable expansion. Avoid adding explanatory prose.",
-		"note": "retention duration control: aria-label on TabsList. Composition (message names mark slots): <TabsList aria-label={t( \"ui.settings.configuration.retention_duration_control.label_common_choices\", { label: String(setting.label) }, )} // The track is `h-8 w-fit` for a short list; nine stops wrap inside it // at a narrow column instead of overflowing the row. > {spec.stops.map((hours) => ( <TabsTrigger title={ hours === spec.defaultHours ? t( \"ui.settings.configuration.retention_duration_control.value1_default\", { value1: String(formatHours(hours)) }, ) : formatHours(hours) } > {} <span>{shortLabel(hours)}</span> <span>{formatHours(hours)}</span> </TabsTrigger> ))} </TabsList> Reorder placeholders as grammar requires; do not copy English word order mechanically.",
+		"role": "Accessible name of the preset-stops tab list",
+		"tone": "Calm, factual sentence; no blame, no alarm.",
+		"length": "Screen-reader-only accessible name (not painted); length is free but keep it a natural spoken phrase. English is 23 characters.",
+		"note": "Names the row of quick choices such as 2h, 6h, 48h.",
 		"placeholders": {
-			"label": "Displayed setting.label. Value inserted verbatim; do not translate technical identifiers, integration/provider names, or user-entered text. Caller supplies String(setting.label). Caller supplies String(setting.label). Caller supplies String(setting.label). Caller supplies String(setting.label). Caller supplies String(setting.label). The localized visible field/action label; keep it recognizable in accessible names. Caller supplies String(setting.label). The localized visible field/action label; keep it recognizable in accessible names."
-		}
-	},
-	"ui.settings.configuration.retention_duration_control.value1_default": {
-		"role": "Hover tooltip",
-		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
-		"length": "Compact existing control/readout; English source is 18 characters before variable expansion. Avoid adding explanatory prose.",
-		"note": "retention duration control: title on TabsTrigger. Composition (message names mark slots): <TabsTrigger title={ hours === spec.defaultHours ? t( \"ui.settings.configuration.retention_duration_control.value1_default\", { value1: String(formatHours(hours)) }, ) : formatHours(hours) } > {} <span>{shortLabel(hours)}</span> <span>{formatHours(hours)}</span> </TabsTrigger> Reorder placeholders as grammar requires; do not copy English word order mechanically.",
-		"placeholders": {
-			"value1": "Displayed formatHours(hours). Value inserted verbatim; do not translate technical identifiers, integration/provider names, or user-entered text. Caller supplies String(formatHours(hours)). Caller supplies String(formatHours(hours)). Caller supplies String(formatHours(hours)). Caller supplies String(formatHours(hours)). Caller supplies String(formatHours(hours)). A complete localized duration in words, such as 48 hours; do not add another unit. Caller supplies String(formatHours(hours)). A complete localized duration in words, such as 48 hours; do not add another unit."
+			"label": "Localized label of the setting, for example \"Remove after\"."
 		}
 	},
 	"ui.settings.configuration.retention_duration_control.label_unit": {
-		"role": "Accessible control name; not visible body copy",
-		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
-		"length": "Compact existing control/readout; English source is 13 characters before variable expansion. Avoid adding explanatory prose.",
-		"note": "retention duration control: aria-label on SelectTrigger. Composition (message names mark slots): <SelectTrigger aria-label={t( \"ui.settings.configuration.retention_duration_control.label_unit\", { label: String(setting.label) }, )} > <SelectValue /> </SelectTrigger> Reorder placeholders as grammar requires; do not copy English word order mechanically.",
+		"role": "Accessible name of the unit dropdown",
+		"tone": "Calm, factual sentence; no blame, no alarm.",
+		"length": "Screen-reader-only accessible name (not painted); length is free but keep it a natural spoken phrase. English is 13 characters.",
+		"note": "Names the hours/days dropdown.",
 		"placeholders": {
-			"label": "Displayed setting.label. Value inserted verbatim; do not translate technical identifiers, integration/provider names, or user-entered text. Caller supplies String(setting.label). Caller supplies String(setting.label). Caller supplies String(setting.label). Caller supplies String(setting.label). Caller supplies String(setting.label). The localized visible field/action label; keep it recognizable in accessible names. Caller supplies String(setting.label). The localized visible field/action label; keep it recognizable in accessible names."
+			"label": "Localized label of the setting, for example \"Remove after\"."
 		}
 	},
 	"ui.settings.configuration.setting_combobox.could_not_list_models": {
-		"role": "Validation/error explanation",
-		"tone": "Neutral and helpful; explain the failure without blaming the user.",
-		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
-		"note": "setting combobox: rendered in listing."
+		"role": "Danger helper text under the model field",
+		"tone": "Neutral warning; says what happened and the next step, never blames the user.",
+		"length": "Inline message that wraps in an alert or helper line. English is 22 characters.",
+		"note": "The model list query failed; ends with a full stop. Followed by the error remedy from the backend when present."
 	},
 	"ui.settings.configuration.setting_combobox.could_not_list_providers": {
-		"role": "Validation/error explanation",
-		"tone": "Neutral and helpful; explain the failure without blaming the user.",
-		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
-		"note": "setting combobox: rendered in emptyText."
+		"role": "Empty-list text in the provider dropdown",
+		"tone": "Neutral warning; says what happened and the next step, never blames the user.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 24 characters.",
+		"note": "The provider list query failed. No full stop in English."
 	},
 	"ui.settings.configuration.setting_combobox.no_providers": {
-		"role": "Inline settings control status/readout",
-		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
-		"length": "Compact existing settings/list control; English is 12 characters before placeholder expansion. Keep short.",
-		"note": "setting combobox: rendered in emptyText."
+		"role": "Empty-list text in the provider dropdown",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 12 characters.",
+		"note": "The registry returned zero providers."
 	},
 	"ui.settings.configuration.setting_combobox.provider_list_unavailable": {
-		"role": "Validation/error explanation",
-		"tone": "Neutral and helpful; explain the failure without blaming the user.",
-		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
-		"note": "setting combobox: rendered in emptyText."
+		"role": "Empty-list text in the provider dropdown",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 25 characters.",
+		"note": "The connected server does not offer a provider list."
 	},
 	"ui.settings.configuration.setting_combobox.could_not_list_models_2": {
-		"role": "Validation/error explanation",
-		"tone": "Neutral and helpful; explain the failure without blaming the user.",
-		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
-		"note": "setting combobox: rendered in emptyText."
+		"role": "Empty-list text in the model dropdown",
+		"tone": "Neutral warning; says what happened and the next step, never blames the user.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 21 characters.",
+		"note": "Same meaning as the helper text but shorter, no full stop, used inside the dropdown."
 	},
 	"ui.settings.configuration.setting_combobox.nothing_matches_that_model": {
-		"role": "Inline settings control status/readout",
-		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
-		"length": "Compact existing settings/list control; English is 26 characters before placeholder expansion. Keep short.",
-		"note": "setting combobox: rendered in emptyText."
+		"role": "Empty-list text in the model dropdown after typing",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 26 characters.",
+		"note": "The typed text matches no model."
 	},
 	"ui.settings.configuration.setting_combobox.model_list_unavailable": {
-		"role": "Validation/error explanation",
-		"tone": "Neutral and helpful; explain the failure without blaming the user.",
-		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
-		"note": "setting combobox: rendered in emptyText."
+		"role": "Empty-list text in the model dropdown",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 22 characters.",
+		"note": "The server cannot list models."
 	},
 	"ui.settings.configuration.setting_combobox.loading_providers": {
-		"role": "Inline settings control status/readout",
-		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
-		"length": "Compact existing settings/list control; English is 17 characters before placeholder expansion. Keep short.",
-		"note": "setting combobox: busyLabel on SearchableSelect. Composition (message names mark slots): <SearchableSelect onOpenChange={(open) => { if (open) setOpened(true); }} onSelect={(option) => { setPickedName(option.name); onValueChange(option.id); }} customRowLabel={(text) => [use_text], }) } helperText={helper ? <span {...helperProps}>{helper}</span> : undefined} />"
+		"role": "Busy label of the provider dropdown",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Screen-reader-only accessible name (not painted); length is free but keep it a natural spoken phrase. English is 17 characters.",
+		"note": "Spoken and shown as the busy label of the provider dropdown while the provider registry loads."
 	},
 	"ui.settings.configuration.setting_combobox.loading_models": {
-		"role": "Inline settings control status/readout",
-		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
-		"length": "Compact existing settings/list control; English is 14 characters before placeholder expansion. Keep short.",
-		"note": "setting combobox: busyLabel on SearchableSelect. Composition (message names mark slots): <SearchableSelect onOpenChange={(open) => { if (open) setOpened(true); }} onSelect={(option) => { setPickedName(option.name); onValueChange(option.id); }} customRowLabel={(text) => [use_text], }) } helperText={helper ? <span {...helperProps}>{helper}</span> : undefined} />"
+		"role": "Busy label of the model dropdown",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Screen-reader-only accessible name (not painted); length is free but keep it a natural spoken phrase. English is 14 characters.",
+		"note": "Spoken and shown as the busy label of the model dropdown while the model catalogue loads."
 	},
 	"ui.settings.configuration.setting_combobox.use_text": {
-		"role": "Inline settings control status/readout",
-		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
-		"length": "Compact existing settings/list control; English is 12 characters before placeholder expansion. Keep short.",
-		"note": "setting combobox: customRowLabel on SearchableSelect. Composition (message names mark slots): <SearchableSelect onOpenChange={(open) => { if (open) setOpened(true); }} onSelect={(option) => { setPickedName(option.name); onValueChange(option.id); }} customRowLabel={(text) => [use_text], }) } helperText={helper ? <span {...helperProps}>{helper}</span> : undefined} /> Reorder placeholders as grammar requires; do not copy English word order mechanically.",
+		"role": "Custom-value row at the end of a dropdown",
+		"tone": "Plain imperative; no exclamation, no please.",
+		"length": "Option in a dropdown list; one line. English is 12 characters.",
+		"note": "Lets the user keep what they typed even though it is not a listed item.",
 		"placeholders": {
-			"text": "Displayed text. Value inserted verbatim; do not translate technical identifiers, integration/provider names, or user-entered text. Caller supplies String(text). Caller supplies String(text). Caller supplies String(text). Caller supplies String(text). Caller supplies String(text). Caller supplies String(text)."
+			"text": "The exact text the user typed. Insert verbatim between the quotation marks; use your language's quotation marks."
 		}
 	},
 	"ui.settings.configuration.setting_control.press_the_keys_you_want_esc_cancels": {
-		"role": "Inline settings control status/readout",
-		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
-		"length": "Compact existing settings/list control; English is 37 characters before placeholder expansion. Keep short.",
-		"note": "setting control: rendered in span inside span. Composition (message names mark slots): <span> {t( \"ui.settings.configuration.setting_control.press_the_keys_you_want_esc_cancels\", )} </span>"
+		"role": "Text shown inside a hotkey field while recording",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 37 characters.",
+		"note": "Same instruction as in the keyboard-shortcuts section. \"Esc\" is the Escape key."
 	},
 	"ui.settings.configuration.setting_control.one_hop_per_line_as_provider_model_effort_an_empty_chain_moves_to": {
-		"role": "Settings explanatory paragraph",
-		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
-		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
-		"note": "setting control: rendered in p inside div. Composition (message names mark slots): <p> {t( \"ui.settings.configuration.setting_control.one_hop_per_line_as_provider_model_effort_an_empty_chain_moves_to\", )} </p>"
+		"role": "Help text under the fallback-chain editor",
+		"tone": "Helpful explanatory prose in second person.",
+		"length": "Wrapping paragraph in the settings content column (about 60-70 characters per line); no length cap, keep every fact. English is 88 characters.",
+		"note": "A \"hop\" is one provider/model step in a fallback chain. Keep \"provider/model\" and \"(effort)\" as written: they show the line format the user must type."
 	},
 	"ui.settings.configuration.setting_control.label_press_the_key_you_want": {
-		"role": "Accessible control name; not visible body copy",
-		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
-		"length": "Compact existing control/readout; English source is 31 characters before variable expansion. Avoid adding explanatory prose.",
-		"note": "setting control: aria-label on Input. Reorder placeholders as grammar requires; do not copy English word order mechanically.",
+		"role": "Accessible name of a hotkey capture field",
+		"tone": "Calm, factual sentence; no blame, no alarm.",
+		"length": "Screen-reader-only accessible name (not painted); length is free but keep it a natural spoken phrase. English is 31 characters.",
+		"note": "Spoken as the setting label, a colon, then the instruction.",
 		"placeholders": {
-			"label": "Displayed label. Value inserted verbatim; do not translate technical identifiers, integration/provider names, or user-entered text. Caller supplies String(label). Caller supplies String(label). Caller supplies String(label). Caller supplies String(label). Caller supplies String(label). Caller supplies String(label)."
+			"label": "Localized label of the hotkey setting."
 		}
 	},
 	"ui.settings.configuration.settings_filter_bar.search_settings_by_name_description_or_key": {
-		"role": "Empty-input placeholder",
-		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
-		"length": "Compact existing control/readout; English source is 43 characters before variable expansion. Avoid adding explanatory prose.",
-		"note": "settings filter bar: placeholder on Input. Composition (message names mark slots): <Input onKeyDown={(event) => { if (event.key === \"Escape\" && query) onQueryChange(\"\"); }} />"
+		"role": "Placeholder in the settings search box",
+		"tone": "Plain imperative; no exclamation, no please.",
+		"length": "Placeholder inside an empty input; clipped at the input width (~24-40 characters). English is 43 characters.",
+		"note": "Tells what the search matches. \"Key\" is the technical setting name such as session.cleanup.max_sessions."
 	},
 	"ui.settings.configuration.settings_filter_bar.search_settings": {
-		"role": "Accessible control name; not visible body copy",
-		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
-		"length": "Compact existing control/readout; English source is 15 characters before variable expansion. Avoid adding explanatory prose.",
-		"note": "settings filter bar: aria-label on Input. Composition (message names mark slots): <Input onKeyDown={(event) => { if (event.key === \"Escape\" && query) onQueryChange(\"\"); }} />"
+		"role": "Accessible name of the search box",
+		"tone": "Plain imperative; no exclamation, no please.",
+		"length": "Screen-reader-only accessible name (not painted); length is free but keep it a natural spoken phrase. English is 15 characters.",
+		"note": "The visible hint is the placeholder; this is the short spoken name."
 	},
 	"ui.settings.configuration.settings_filter_bar.clear_search": {
-		"role": "Accessible control name; not visible body copy",
-		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
-		"length": "Compact existing control/readout; English source is 12 characters before variable expansion. Avoid adding explanatory prose.",
-		"note": "settings filter bar: aria-label on Button. Clears only the settings search query, not settings or saved values. Composition (message names mark slots): <Button > <X /> </Button>"
+		"role": "Accessible name of the X button inside the search box",
+		"tone": "Plain imperative; no exclamation, no please.",
+		"length": "Screen-reader-only accessible name (not painted); length is free but keep it a natural spoken phrase. English is 12 characters.",
+		"note": "Empties the query only."
 	},
 	"ui.settings.configuration.settings_filter_bar.settings_filters": {
-		"role": "Visible field/group label",
-		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
-		"length": "Compact existing settings/list control; English is 16 characters before placeholder expansion. Keep short.",
-		"note": "settings filter bar: rendered in legend inside fieldset. Composition (message names mark slots): <legend> {t( \"ui.settings.configuration.settings_filter_bar.settings_filters\", )} </legend>"
+		"role": "Screen-reader legend of the filter button group",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Screen-reader-only accessible name (not painted); length is free but keep it a natural spoken phrase. English is 16 characters.",
+		"note": "Visually hidden group name for Modified / Show advanced."
 	},
 	"ui.settings.configuration.settings_filter_bar.modified": {
-		"role": "Button action label",
-		"tone": "Brief imperative. No enthusiasm or extra punctuation.",
-		"length": "Compact existing settings/list control; English is 8 characters before placeholder expansion. Keep short.",
-		"note": "settings filter bar: rendered in Button inside div. Composition (message names mark slots): <Button > {[modified]} <Badge>{modifiedCount}</Badge> </Button>"
+		"role": "Toggle chip",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Button label; one line, never wraps. English is 8 characters; keep it a short verb phrase of similar width.",
+		"note": "Filters the list to settings that differ from their default. A state adjective, not an action."
 	},
 	"ui.settings.configuration.settings_filter_bar.show_advanced": {
-		"role": "Button action label",
-		"tone": "Brief imperative. No enthusiasm or extra punctuation.",
-		"length": "Compact existing settings/list control; English is 13 characters before placeholder expansion. Keep short.",
-		"note": "settings filter bar: rendered in Button inside div. Reveals advanced registry rows without changing permission or a saved setting. Composition (message names mark slots): <Button > {[show_advanced]} </Button>"
+		"role": "Toggle chip",
+		"tone": "Plain imperative; no exclamation, no please.",
+		"length": "Button label; one line, never wraps. English is 13 characters; keep it a short verb phrase of similar width.",
+		"note": "Includes advanced settings in the list."
 	},
 	"ui.settings.configuration.settings_filter_bar.discard_all": {
-		"role": "Button action label",
-		"tone": "Brief imperative. No enthusiasm or extra punctuation.",
-		"length": "Compact existing settings/list control; English is 11 characters before placeholder expansion. Keep short.",
-		"note": "settings filter bar: rendered in Button inside div. Discards all unsaved setting edits; it does not reset saved settings to defaults. Composition (message names mark slots): <Button > {[discard_all]} </Button>"
+		"role": "Button, visible only when there are unsaved edits",
+		"tone": "Plain imperative; no exclamation, no please.",
+		"length": "Button label; one line, never wraps. English is 11 characters; keep it a short verb phrase of similar width.",
+		"note": "Throws away every unsaved edit. Distinct from \"Use default\"."
 	},
 	"ui.settings.configuration.settings_filter_bar.expand_all": {
-		"role": "Button action label",
-		"tone": "Brief imperative. No enthusiasm or extra punctuation.",
-		"length": "Compact existing settings/list control; English is 10 characters before placeholder expansion. Keep short.",
-		"note": "settings filter bar: rendered in Button inside div. Composition (message names mark slots): <Button> {[expand_all]} </Button>"
+		"role": "Toolbar button",
+		"tone": "Plain imperative; no exclamation, no please.",
+		"length": "Button label; one line, never wraps. English is 10 characters; keep it a short verb phrase of similar width.",
+		"note": "Opens every settings group."
 	},
 	"ui.settings.configuration.settings_filter_bar.collapse_all": {
-		"role": "Button action label",
-		"tone": "Brief imperative. No enthusiasm or extra punctuation.",
-		"length": "Compact existing settings/list control; English is 12 characters before placeholder expansion. Keep short.",
-		"note": "settings filter bar: rendered in Button inside div. Composition (message names mark slots): <Button> {[collapse_all]} </Button>"
+		"role": "Toolbar button",
+		"tone": "Plain imperative; no exclamation, no please.",
+		"length": "Button label; one line, never wraps. English is 12 characters; keep it a short verb phrase of similar width.",
+		"note": "Closes every settings group."
 	},
 	"ui.settings.configuration.settings_filter_bar.saving": {
-		"role": "Button action label",
-		"tone": "Brief imperative. No enthusiasm or extra punctuation.",
-		"length": "Compact existing settings/list control; English is 6 characters before placeholder expansion. Keep short.",
-		"note": "settings filter bar: rendered in Button inside div. Composition (message names mark slots): <Button > {savingAll ? [saving] : [save_all]} </Button>"
+		"role": "The Save all button while writes run",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Button label; one line, never wraps. English is 6 characters; keep it a short verb phrase of similar width.",
+		"note": "Replaces \"Save all\"."
 	},
 	"ui.settings.configuration.settings_filter_bar.save_all": {
-		"role": "Button action label",
-		"tone": "Brief imperative. No enthusiasm or extra punctuation.",
-		"length": "Compact existing settings/list control; English is 8 characters before placeholder expansion. Keep short.",
-		"note": "settings filter bar: rendered in Button inside div. Saves every retained draft, including rows in collapsed groups. Not a filesystem save. Composition (message names mark slots): <Button > {savingAll ? [saving] : [save_all]} </Button>"
+		"role": "Primary toolbar button, visible only with unsaved edits",
+		"tone": "Plain imperative; no exclamation, no please.",
+		"length": "Button label; one line, never wraps. English is 8 characters; keep it a short verb phrase of similar width.",
+		"note": "Writes every edited setting."
 	},
 	"ui.settings.configuration.settings_filter_bar.unsaved_count": {
-		"role": "Dynamic count/status sentence",
-		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
-		"length": "Compact existing settings/list control; English is 65 characters before placeholder expansion. Keep short.",
-		"note": "settings filter bar: rendered in span inside div. Composition (message names mark slots): <span> {t( \"ui.settings.configuration.settings_filter_bar.unsaved_count\", { count: unsavedCount }, )} </span> Reorder placeholders as grammar requires; do not copy English word order mechanically.",
+		"role": "Counter beside Discard all / Save all",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 65 characters.",
+		"note": "Counts edited-but-unsaved settings, for example \"3 unsaved changes\". Plural: English has one/other only. ru needs few/many; ar needs zero/two/few/many; supply every arm your language requires and keep # where the number belongs.",
 		"placeholders": {
-			"count": "Numeric quantity; determines ICU plural category. Caller supplies unsavedCount. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies unsavedCount. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies unsavedCount. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies unsavedCount. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies unsavedCount. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies unsavedCount. Numeric ICU plural quantity; keep # inside plural arms."
+			"count": "Number of unsaved changes."
 		}
 	},
 	"ui.settings.configuration.settings_filter_bar.search_count": {
-		"role": "Dynamic count/status sentence",
-		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
-		"length": "Compact existing settings/list control; English is 116 characters before placeholder expansion. Keep short.",
-		"note": "settings filter bar: rendered in p inside div. Composition (message names mark slots): <p> {matchCount !== null ? [search_count] : modifiedOnly ? t( \"ui.settings.configuration.settings_filter_bar.modified_count\", { count: modifiedCount }, ) : showAdvanced ? t( \"ui.settings.configuration.settings_filter_bar.advancedcount_advanced_settings_shown_expand_all_to_see_them\", { advancedCount: String(advancedCount) }, ) : t( \"ui.settings.configuration.settings_filter_bar.corecount_core_settings_advancedcount_advanced\", { coreCount: String(coreCount), advancedCount: String(advancedCount), }, )} </p> Reorder placeholders as grammar requires; do not copy English word order mechanically.",
+		"role": "Result line under the search box",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 116 characters.",
+		"note": "Two counts in one sentence: results and sections, for example \"12 results in 3 sections\". Each count has its own plural. Plural: English has one/other only. ru needs few/many; ar needs zero/two/few/many; supply every arm your language requires and keep # where the number belongs.",
 		"placeholders": {
-			"matchCount": "Numeric quantity; determines ICU plural category. Caller supplies matchCount. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies matchCount. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies matchCount. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies matchCount. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies matchCount. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies matchCount. Numeric ICU plural quantity; keep # inside plural arms.",
-			"sectionCount": "Numeric quantity; determines ICU plural category. Caller supplies matchSections. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies matchSections. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies matchSections. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies matchSections. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies matchSections. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies matchSections. Numeric ICU plural quantity; keep # inside plural arms."
+			"matchCount": "Number of matching settings; plural applies.",
+			"sectionCount": "Number of sections containing them; plural applies."
 		}
 	},
 	"ui.settings.configuration.settings_filter_bar.modified_count": {
-		"role": "Dynamic count/status sentence",
-		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
-		"length": "Compact existing settings/list control; English is 69 characters before placeholder expansion. Keep short.",
-		"note": "settings filter bar: rendered in p inside div. Composition (message names mark slots): <p> {matchCount !== null ? [search_count] : modifiedOnly ? t( \"ui.settings.configuration.settings_filter_bar.modified_count\", { count: modifiedCount }, ) : showAdvanced ? t( \"ui.settings.configuration.settings_filter_bar.advancedcount_advanced_settings_shown_expand_all_to_see_them\", { advancedCount: String(advancedCount) }, ) : t( \"ui.settings.configuration.settings_filter_bar.corecount_core_settings_advancedcount_advanced\", { coreCount: String(coreCount), advancedCount: String(advancedCount), }, )} </p> Reorder placeholders as grammar requires; do not copy English word order mechanically.",
+		"role": "Result line when the Modified chip is on",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 69 characters.",
+		"note": "For example \"4 modified settings\". Plural: English has one/other only. ru needs few/many; ar needs zero/two/few/many; supply every arm your language requires and keep # where the number belongs.",
 		"placeholders": {
-			"count": "Numeric quantity; determines ICU plural category. Caller supplies modifiedCount. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies modifiedCount. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies modifiedCount. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies modifiedCount. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies modifiedCount. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies modifiedCount. Numeric ICU plural quantity; keep # inside plural arms."
-		}
-	},
-	"ui.settings.configuration.settings_filter_bar.advancedcount_advanced_settings_shown_expand_all_to_see_them": {
-		"role": "Dynamic count/status sentence",
-		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
-		"length": "Compact existing settings/list control; English is 64 characters before placeholder expansion. Keep short.",
-		"note": "settings filter bar: rendered in p inside div. Composition (message names mark slots): <p> {matchCount !== null ? [search_count] : modifiedOnly ? t( \"ui.settings.configuration.settings_filter_bar.modified_count\", { count: modifiedCount }, ) : showAdvanced ? t( \"ui.settings.configuration.settings_filter_bar.advancedcount_advanced_settings_shown_expand_all_to_see_them\", { advancedCount: String(advancedCount) }, ) : t( \"ui.settings.configuration.settings_filter_bar.corecount_core_settings_advancedcount_advanced\", { coreCount: String(coreCount), advancedCount: String(advancedCount), }, )} </p> Reorder placeholders as grammar requires; do not copy English word order mechanically.",
-		"placeholders": {
-			"advancedCount": "Displayed advancedCount. Value inserted verbatim; do not translate technical identifiers, integration/provider names, or user-entered text. Caller supplies String(advancedCount). Numeric ICU plural quantity; keep # inside plural arms. Caller supplies String(advancedCount). Numeric ICU plural quantity; keep # inside plural arms. Caller supplies String(advancedCount). Numeric ICU plural quantity; keep # inside plural arms. Caller supplies String(advancedCount). Numeric ICU plural quantity; keep # inside plural arms. Caller supplies String(advancedCount). Numeric ICU plural quantity; keep # inside plural arms. Caller supplies String(advancedCount). Numeric ICU plural quantity; keep # inside plural arms."
-		}
-	},
-	"ui.settings.configuration.settings_filter_bar.corecount_core_settings_advancedcount_advanced": {
-		"role": "Dynamic count/status sentence",
-		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
-		"length": "Compact existing settings/list control; English is 51 characters before placeholder expansion. Keep short.",
-		"note": "settings filter bar: rendered in p inside div. Composition (message names mark slots): <p> {matchCount !== null ? [search_count] : modifiedOnly ? t( \"ui.settings.configuration.settings_filter_bar.modified_count\", { count: modifiedCount }, ) : showAdvanced ? t( \"ui.settings.configuration.settings_filter_bar.advancedcount_advanced_settings_shown_expand_all_to_see_them\", { advancedCount: String(advancedCount) }, ) : t( \"ui.settings.configuration.settings_filter_bar.corecount_core_settings_advancedcount_advanced\", { coreCount: String(coreCount), advancedCount: String(advancedCount), }, )} </p> Reorder placeholders as grammar requires; do not copy English word order mechanically.",
-		"placeholders": {
-			"coreCount": "Displayed coreCount. Value inserted verbatim; do not translate technical identifiers, integration/provider names, or user-entered text. Caller supplies String(coreCount). Numeric ICU plural quantity; keep # inside plural arms. Caller supplies String(coreCount). Numeric ICU plural quantity; keep # inside plural arms. Caller supplies String(coreCount). Numeric ICU plural quantity; keep # inside plural arms. Caller supplies String(coreCount). Numeric ICU plural quantity; keep # inside plural arms. Caller supplies String(coreCount). Numeric ICU plural quantity; keep # inside plural arms. Caller supplies String(coreCount). Numeric ICU plural quantity; keep # inside plural arms.",
-			"advancedCount": "Displayed advancedCount. Value inserted verbatim; do not translate technical identifiers, integration/provider names, or user-entered text. Caller supplies String(advancedCount). Numeric ICU plural quantity; keep # inside plural arms. Caller supplies String(advancedCount). Numeric ICU plural quantity; keep # inside plural arms. Caller supplies String(advancedCount). Numeric ICU plural quantity; keep # inside plural arms. Caller supplies String(advancedCount). Numeric ICU plural quantity; keep # inside plural arms. Caller supplies String(advancedCount). Numeric ICU plural quantity; keep # inside plural arms. Caller supplies String(advancedCount). Numeric ICU plural quantity; keep # inside plural arms."
+			"count": "Number of settings that differ from their default."
 		}
 	},
 	"ui.settings.configuration.settings_group_header.changed_from_the_default": {
-		"role": "Accessible control name; not visible body copy",
-		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
-		"length": "Compact existing control/readout; English source is 24 characters before variable expansion. Avoid adding explanatory prose.",
-		"note": "settings group header: aria-label on span. Composition (message names mark slots): <span />"
+		"role": "Accessible name of the small dot beside a changed group",
+		"tone": "Calm, factual sentence; no blame, no alarm.",
+		"length": "Screen-reader-only accessible name (not painted); length is free but keep it a natural spoken phrase. English is 24 characters.",
+		"note": "The dot is colour only visually; this is its spoken meaning."
 	},
 	"ui.settings.configuration.settings_group_header.setting_count": {
-		"role": "Dynamic count/status sentence",
-		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
-		"length": "Compact existing settings/list control; English is 51 characters before placeholder expansion. Keep short.",
-		"note": "settings group header: summary on span. Composition (message names mark slots): <span> {t( \"ui.settings.configuration.settings_group_header.setting_count\", { count: rowCount }, )} </span> Reorder placeholders as grammar requires; do not copy English word order mechanically.",
+		"role": "Count beside a group title",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 51 characters.",
+		"note": "For example \"8 settings\". Plural: English has one/other only. ru needs few/many; ar needs zero/two/few/many; supply every arm your language requires and keep # where the number belongs.",
 		"placeholders": {
-			"count": "Numeric quantity; determines ICU plural category. Caller supplies rowCount. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies rowCount. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies rowCount. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies rowCount. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies rowCount. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies rowCount. Numeric ICU plural quantity; keep # inside plural arms."
+			"count": "Number of settings in the group."
 		}
 	},
 	"ui.settings.configuration.settings_page.configuration_information": {
-		"role": "Settings section heading",
-		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
-		"length": "Compact existing settings/list control; English is 25 characters before placeholder expansion. Keep short.",
-		"note": "settings page: title on SettingsSection. Heading for read-only metadata about the loaded configuration, not editable setting controls. Composition (message names mark slots): <SettingsSection > <InfoGrid> <InfoItem value={ <span>{config.version}</span> } /> <InfoItem /> <InfoItem /> <InfoItem /> </InfoGrid> </SettingsSection>"
+		"role": "Settings section heading (h2)",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Section or list heading; one line, sentence case. English is 25 characters.",
+		"note": "Heading of a read-only block: version, created, last modified, description."
 	},
 	"ui.settings.configuration.settings_page.system_information_about_the_current_configuration": {
-		"role": "Settings row/section explanatory help",
-		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
-		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
-		"note": "settings page: description on SettingsSection. Composition (message names mark slots): <SettingsSection > <InfoGrid> <InfoItem value={ <span>{config.version}</span> } /> <InfoItem /> <InfoItem /> <InfoItem /> </InfoGrid> </SettingsSection>"
+		"role": "Description under the section heading",
+		"tone": "Helpful explanatory prose in second person.",
+		"length": "Wrapping paragraph in the settings content column (about 60-70 characters per line); no length cap, keep every fact. English is 51 characters.",
+		"note": "Says the block shows facts about the configuration file, not controls."
 	},
 	"ui.settings.configuration.settings_page.version": {
-		"role": "Visible field/control label",
-		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
-		"length": "Compact existing settings/list control; English is 7 characters before placeholder expansion. Keep short.",
-		"note": "settings page: label on InfoItem. Composition (message names mark slots): <InfoItem value={ <span>{config.version}</span> } />"
+		"role": "Info-grid label",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Field or row label above/beside a control; one line. English is 7 characters.",
+		"note": "The configuration file's version, not the app version."
 	},
 	"ui.settings.configuration.settings_page.created": {
-		"role": "Visible field/control label",
-		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
-		"length": "Compact existing settings/list control; English is 7 characters before placeholder expansion. Keep short.",
-		"note": "settings page: label on InfoItem. Composition (message names mark slots): <InfoItem />"
+		"role": "Info-grid label",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Field or row label above/beside a control; one line. English is 7 characters.",
+		"note": "When the configuration was first created."
 	},
 	"ui.settings.configuration.settings_page.last_modified": {
-		"role": "Visible field/control label",
-		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
-		"length": "Compact existing settings/list control; English is 13 characters before placeholder expansion. Keep short.",
-		"note": "settings page: label on InfoItem. Composition (message names mark slots): <InfoItem />"
+		"role": "Info-grid label",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Field or row label above/beside a control; one line. English is 13 characters.",
+		"note": "When the configuration last changed. The value is a formatted date and time."
 	},
 	"ui.settings.configuration.settings_page.description": {
-		"role": "Visible field/control label",
-		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
-		"length": "Compact existing settings/list control; English is 11 characters before placeholder expansion. Keep short.",
-		"note": "settings page: label on InfoItem. Composition (message names mark slots): <InfoItem />"
+		"role": "Info-grid label",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Field or row label above/beside a control; one line. English is 11 characters.",
+		"note": "Free-text description of the configuration."
 	},
 	"ui.settings.configuration.settings_page.no_description_available": {
-		"role": "Inline settings control status/readout",
-		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
-		"length": "Compact existing settings/list control; English is 24 characters before placeholder expansion. Keep short.",
-		"note": "settings page: value on InfoItem. Composition (message names mark slots): <InfoItem />"
+		"role": "Value when the configuration has no description",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 24 characters.",
+		"note": "Shown in place of an empty description."
 	},
 	"ui.settings.configuration.backend_settings_section.retrying": {
-		"role": "Button action label",
-		"tone": "Brief imperative. No enthusiasm or extra punctuation.",
-		"length": "Compact existing settings/list control; English is 8 characters before placeholder expansion. Keep short.",
-		"note": "backend settings section: rendered in Button inside div. Composition (message names mark slots): <Button onClick={() => { // Retry what actually broke. On the gated path capabilities are // the fault and the reason this query never ran, so re-asking // only the gated query would re-fail against the same unfixed // cause without ever retrying it. if (capabilities.isError) void capabilities.refetch(); else void settingsQuery.refetch(); }} > {retrying ? t( \"ui.settings.configuration.backend_settings_section.retrying\", ) : [retry]} </Button>"
+		"role": "The Retry button while the re-read runs",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Button label; one line, never wraps. English is 8 characters; keep it a short verb phrase of similar width.",
+		"note": "Replaces \"Retry\" during the refetch; the button is disabled."
 	},
 	"ui.settings.configuration.delegated_retention_copy.removed": {
-		"role": "Inline definition heading",
-		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
-		"length": "Compact existing settings/list control; English is 8 characters before placeholder expansion. Keep short.",
-		"note": "delegated retention copy: term on Line. Composition (message names mark slots): <Line > {t( \"ui.settings.configuration.delegated_retention_copy.sessions_started_by_subagents_agent_shells_and_background_runs_su\", )}{\" \"} <code> { \"lop exec\" } </code> {t( \"ui.settings.configuration.delegated_retention_copy.never_your_own_conversations_or_the_workstreams_in_your_sidebar\", )} </Line>"
+		"role": "Bold run-in term of the first explainer line",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Field or row label above/beside a control; one line. English is 8 characters.",
+		"note": "Followed by a space and the next message as one sentence. \"Removed:\" introduces what automatic cleanup deletes. Keep the trailing colon."
 	},
 	"ui.settings.configuration.delegated_retention_copy.kept": {
-		"role": "Inline definition heading",
-		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
-		"length": "Compact existing settings/list control; English is 5 characters before placeholder expansion. Keep short.",
-		"note": "delegated retention copy: term on Line. Composition (message names mark slots): <Line> {t( \"ui.settings.configuration.delegated_retention_copy.anything_running_or_waiting_anything_whose_parent_conversation_wa\", )} </Line>"
+		"role": "Bold run-in term of the second explainer line",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Field or row label above/beside a control; one line. English is 5 characters.",
+		"note": "Introduces what cleanup never deletes. Keep the trailing colon."
 	},
 	"ui.settings.configuration.delegated_retention_copy.when": {
-		"role": "Inline definition heading",
-		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
-		"length": "Compact existing settings/list control; English is 5 characters before placeholder expansion. Keep short.",
-		"note": "delegated retention copy: term on Line. Composition (message names mark slots): <Line> {t( \"ui.settings.configuration.delegated_retention_copy.after_the_time_below_with_no_activity_checked_when_the_app_starts\", )} </Line>"
+		"role": "Bold run-in term of the third explainer line",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Field or row label above/beside a control; one line. English is 5 characters.",
+		"note": "Introduces when cleanup runs. Keep the trailing colon."
+	},
+	"ui.settings.configuration.backend_setting_row.gate_note": {
+		"role": "Dim note under a setting that depends on a switch",
+		"tone": "Calm, factual sentence; no blame, no alarm.",
+		"length": "Inline message that wraps in an alert or helper line. English is 55 characters.",
+		"note": "Names the controlling switch and says nothing is saved while it is off. English: \"Needs {gate} on.\"",
+		"placeholders": {
+			"gate": "The localized label of the controlling switch, for example \"automatic removal\". It sits mid-sentence, so keep case and gender agreement flexible."
+		}
+	},
+	"ui.settings.configuration.backend_settings_section.show_advanced_count": {
+		"role": "Button in an empty section that reveals held-back rows",
+		"tone": "Plain imperative; no exclamation, no please.",
+		"length": "Button label; one line, never wraps. English is 62 characters; keep it a short verb phrase of similar width.",
+		"note": "\"Show 14 advanced\" reveals 14 advanced settings. \"advanced\" stands for \"advanced settings\"; the noun is elided to keep the button short, so agree it with the number in your language. Plural arms are identical in English because the elided noun does not change. Plural: English has one/other only. ru needs few/many; ar needs zero/two/few/many; supply every arm your language requires and keep # where the number belongs.",
+		"placeholders": {
+			"count": "Number of advanced settings currently hidden; \"advanced\" elides \"settings\", so agree it with this number."
+		}
+	},
+	"ui.settings.configuration.settings_group_header.advanced_count": {
+		"role": "Count beside a group title when advanced rows are held back",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 52 characters.",
+		"note": "For example \"14 advanced\". The noun \"settings\" is elided; agree it with the number. Plural: English has one/other only. ru needs few/many; ar needs zero/two/few/many; supply every arm your language requires and keep # where the number belongs.",
+		"placeholders": {
+			"count": "Number of advanced settings held back."
+		}
+	},
+	"ui.settings.configuration.retention_duration_control.idle_window_status": {
+		"role": "Status line under the retention control",
+		"tone": "Calm, factual sentence; no blame, no alarm.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 73 characters.",
+		"note": "Restates the entered window: \"48 hours with no activity (default)\". The default marker is appended only when it applies.",
+		"placeholders": {
+			"duration": "Localized duration, for example \"48 hours\".",
+			"isDefault": "Select token \"yes\" or \"no\". yes appends \" (default)\". Never translate the tokens."
+		}
+	},
+	"ui.settings.configuration.retention_duration_control.use_duration": {
+		"role": "Button offered next to a validation error",
+		"tone": "Plain imperative; no exclamation, no please.",
+		"length": "Button label; one line, never wraps. English is 14 characters; keep it a short verb phrase of similar width.",
+		"note": "Applies the nearest allowed value, for example \"Use 1 month\".",
+		"placeholders": {
+			"duration": "Localized duration of the suggested value, for example \"1 month\"."
+		}
+	},
+	"ui.settings.configuration.retention_duration_control.duration_default": {
+		"role": "Tooltip on the preset stop that is the default",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Hover/focus tooltip; wraps at about 30 characters per line. English is 20 characters.",
+		"note": "Says which stop is the default, for example \"48 hours (default)\".",
+		"placeholders": {
+			"duration": "Localized duration, for example \"48 hours\"."
+		}
+	},
+	"ui.settings.configuration.settings_filter_bar.advanced_shown": {
+		"role": "Result line when Show advanced is on",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 129 characters.",
+		"note": "Says how many advanced settings are now included and where to open them. Plural: English has one/other only. ru needs few/many; ar needs zero/two/few/many; supply every arm your language requires and keep # where the number belongs.",
+		"placeholders": {
+			"count": "Number of advanced settings."
+		}
+	},
+	"ui.settings.configuration.settings_filter_bar.core_and_advanced": {
+		"role": "Default result line",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 127 characters.",
+		"note": "For example \"40 core settings, 14 advanced\". \"Advanced\" elides \"advanced settings\". Plural: English has one/other only. ru needs few/many; ar needs zero/two/few/many; supply every arm your language requires and keep # where the number belongs.",
+		"placeholders": {
+			"advancedCount": "Number of advanced settings held back; the elided noun agrees with this number.",
+			"coreCount": "Number of everyday settings."
+		}
 	}
 }

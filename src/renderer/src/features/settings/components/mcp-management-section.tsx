@@ -1284,8 +1284,8 @@ export const McpManagementSection: FC<{
 								setFilter("");
 							}}
 							placeholder={t(
-								"ui.settings.integrations.mcp_management_section.search_value1",
-								{ value1: String(integrationCountLabel(servers.length)) },
+								"ui.settings.integrations.mcp_management_section.search_integrations_placeholder",
+								{ integrations: integrationCountLabel(servers.length) },
 							)}
 							aria-label={t(
 								"ui.settings.integrations.mcp_management_section.search_integrations",
@@ -1297,18 +1297,18 @@ export const McpManagementSection: FC<{
 				{target?.kind === "miss" && servers.length > 0 ? (
 					<p className="text-body-sm text-ink-muted">
 						{t(
-							"ui.settings.integrations.mcp_management_section.no_integration_matches_value1",
-							{ value1: String(target.asked) },
+							"ui.settings.integrations.mcp_management_section.no_match_for_name",
+							{ asked: String(target.asked) },
 						)}
 					</p>
 				) : null}
 				{target?.kind === "matched" && target.unresolved ? (
 					<p className="text-body-sm text-ink-muted">
 						{t(
-							"ui.settings.integrations.mcp_management_section.showing_value1_value2_is_not_one_of_your_integrations",
+							"ui.settings.integrations.mcp_management_section.showing_fallback_for_unknown",
 							{
-								value1: String(target.name),
-								value2: String(target.unresolved),
+								shown: String(target.name),
+								asked: String(target.unresolved),
 							},
 						)}
 					</p>

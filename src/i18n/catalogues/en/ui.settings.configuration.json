@@ -42,7 +42,6 @@
 	"ui.settings.configuration.retention_duration_control.hours": "hours",
 	"ui.settings.configuration.retention_duration_control.days": "days",
 	"ui.settings.configuration.retention_duration_control.label_common_choices": "{label}: common choices",
-	"ui.settings.configuration.retention_duration_control.value1_default": "{value1} (default)",
 	"ui.settings.configuration.retention_duration_control.label_unit": "{label}: unit",
 	"ui.settings.configuration.setting_combobox.could_not_list_models": "Could not list models.",
 	"ui.settings.configuration.setting_combobox.could_not_list_providers": "Could not list providers",
@@ -71,8 +70,6 @@
 	"ui.settings.configuration.settings_filter_bar.unsaved_count": "{count, plural, one {# unsaved change} other {# unsaved changes}}",
 	"ui.settings.configuration.settings_filter_bar.search_count": "{matchCount, plural, one {# result} other {# results}} in {sectionCount, plural, one {# section} other {# sections}}",
 	"ui.settings.configuration.settings_filter_bar.modified_count": "{count, plural, one {# modified setting} other {# modified settings}}",
-	"ui.settings.configuration.settings_filter_bar.advancedcount_advanced_settings_shown_expand_all_to_see_them": "{advancedCount} advanced settings shown — Expand all to see them",
-	"ui.settings.configuration.settings_filter_bar.corecount_core_settings_advancedcount_advanced": "{coreCount} core settings, {advancedCount} advanced",
 	"ui.settings.configuration.settings_group_header.changed_from_the_default": "Changed from the default",
 	"ui.settings.configuration.settings_group_header.setting_count": "{count, plural, one {# setting} other {# settings}}",
 	"ui.settings.configuration.settings_page.configuration_information": "Configuration information",
@@ -87,8 +84,11 @@
 	"ui.settings.configuration.delegated_retention_copy.kept": "Kept:",
 	"ui.settings.configuration.delegated_retention_copy.when": "When:",
 	"ui.settings.configuration.backend_setting_row.gate_note": "Needs {gate} on. Nothing here is saved while it is off.",
-	"ui.settings.configuration.backend_settings_section.show_advanced_count": "Show {count, number} advanced",
-	"ui.settings.configuration.settings_group_header.advanced_count": "{count, number} advanced",
+	"ui.settings.configuration.backend_settings_section.show_advanced_count": "{count, plural, one {Show # advanced} other {Show # advanced}}",
+	"ui.settings.configuration.settings_group_header.advanced_count": "{count, plural, one {# advanced} other {# advanced}}",
 	"ui.settings.configuration.retention_duration_control.idle_window_status": "{duration} with no activity{isDefault, select, yes { (default)} other {}}",
-	"ui.settings.configuration.retention_duration_control.use_duration": "Use {duration}"
+	"ui.settings.configuration.retention_duration_control.use_duration": "Use {duration}",
+	"ui.settings.configuration.retention_duration_control.duration_default": "{duration} (default)",
+	"ui.settings.configuration.settings_filter_bar.advanced_shown": "{count, plural, one {# advanced setting shown — Expand all to see it} other {# advanced settings shown — Expand all to see them}}",
+	"ui.settings.configuration.settings_filter_bar.core_and_advanced": "{coreCount, plural, one {# core setting} other {# core settings}}, {advancedCount, plural, one {# advanced} other {# advanced}}"
 }

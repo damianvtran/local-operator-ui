@@ -142,8 +142,8 @@ export const RetentionDurationControl: FC<RetentionDurationControlProps> = ({
 							title={
 								hours === spec.defaultHours
 									? t(
-											"ui.settings.configuration.retention_duration_control.value1_default",
-											{ value1: String(formatHours(hours)) },
+											"ui.settings.configuration.retention_duration_control.duration_default",
+											{ duration: String(formatHours(hours)) },
 										)
 									: formatHours(hours)
 							}

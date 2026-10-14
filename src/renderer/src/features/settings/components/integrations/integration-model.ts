@@ -429,15 +429,15 @@ export function relativeTime(now: number, then: number): string {
 	const minutes = Math.round(seconds / 60);
 	if (minutes < 60)
 		return t("ui.settings.integrations.integration_model.minutes_min_ago", {
-			minutes: String(minutes),
+			minutes,
 		});
 	const hours = Math.round(minutes / 60);
 	if (hours < 24)
 		return t("ui.settings.integrations.integration_model.hours_h_ago", {
-			hours: String(hours),
+			hours,
 		});
-	return t("ui.settings.integrations.integration_model.value1_d_ago", {
-		value1: String(Math.round(hours / 24)),
+	return t("ui.settings.integrations.integration_model.days_ago", {
+		days: Math.round(hours / 24),
 	});
 }
 
@@ -607,9 +607,12 @@ export function integrationStatus(
 			return {
 				label:
 					typeof row.tool_count === "number"
-						? t("ui.settings.integrations.integration_model.connected_value1", {
-								value1: String(toolCountLabel(row.tool_count)),
-							})
+						? t(
+								"ui.settings.integrations.integration_model.connected_with_tools",
+								{
+									tools: String(toolCountLabel(row.tool_count)),
+								},
+							)
 						: t("ui.settings.integrations.integration_model.connected"),
 				tone: "success",
 				detail: null,
@@ -782,15 +785,15 @@ export function integrationStatus(
 					label:
 						workedAt !== null
 							? t(
-									"ui.settings.integrations.integration_model.worked_value1_value2",
+									"ui.settings.integrations.integration_model.worked_when_with_tools",
 									{
-										value1: String(relativeTime(now, workedAt)),
-										value2: String(toolCountLabel(row.tool_count as number)),
+										when: String(relativeTime(now, workedAt)),
+										tools: String(toolCountLabel(row.tool_count as number)),
 									},
 								)
 							: t(
-									"ui.settings.integrations.integration_model.worked_earlier_value1",
-									{ value1: String(toolCountLabel(row.tool_count as number)) },
+									"ui.settings.integrations.integration_model.worked_earlier_with_tools",
+									{ tools: String(toolCountLabel(row.tool_count as number)) },
 								),
 					tone: "success",
 					detail: null,
@@ -936,8 +939,8 @@ export function integrationMeta(
 		typeof row.tool_count === "number"
 	)
 		parts.push(
-			t("ui.settings.integrations.integration_model.value1_when_last_checked", {
-				value1: String(toolCountLabel(row.tool_count)),
+			t("ui.settings.integrations.integration_model.tools_when_last_checked", {
+				tools: String(toolCountLabel(row.tool_count)),
 			}),
 		);
 	if (projectScopeAvailable)

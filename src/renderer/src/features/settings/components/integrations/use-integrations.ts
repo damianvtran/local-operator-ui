@@ -294,10 +294,9 @@ export function credentialsRefusalMessage(
 			"ui.settings.integrations.use_integrations.that_header_can_t_carry_this_key_it_may_already_be_set_on_the_ser",
 		);
 	const failed = failedIds.length ? failedIds : Object.keys(values);
-	return t(
-		"ui.settings.integrations.use_integrations.not_saved_value1_the_encrypted_store_may_be_locked",
-		{ value1: String(failed.join(", ")) },
-	);
+	return t("ui.settings.integrations.use_integrations.keys_not_saved", {
+		keys: String(failed.join(", ")),
+	});
 }
 
 /**

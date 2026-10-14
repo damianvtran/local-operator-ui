@@ -17,5 +17,5 @@
 	"ui.settings.speech.speech_section.copy_backend_older_sentence": "This backend does not serve the voicing surface. Update the backend to tune how the assistant sounds.",
 	"ui.settings.speech.speech_section.copy_unavailable_sentence": "Speech availability could not be read.",
 	"ui.settings.speech.speech_section.ready": "Ready",
-	"ui.settings.speech.speech_section.missing_voice_rows": "This backend does not register {rows} yet, so those rows are not shown."
+	"ui.settings.speech.speech_section.missing_voice_rows": "{count, plural, one {This backend does not register {rows} yet, so that row is not shown.} other {This backend does not register {rows} yet, so those rows are not shown.}}"
 }

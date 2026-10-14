@@ -669,6 +669,7 @@ export const SpeechSection: FC<SpeechSectionProps> = ({ sectionRef }) => {
 				{voiceRows.missing.length > 0 && (
 					<p className="text-meta text-ink-dim">
 						{t("ui.settings.speech.speech_section.missing_voice_rows", {
+							count: voiceRows.missing.length,
 							rows: voiceRows.missing.join(", "),
 						})}
 					</p>

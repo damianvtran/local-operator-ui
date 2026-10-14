@@ -1,134 +1,134 @@
 {
 	"ui.settings.navigation.settings_page.the_local_operator_server_is_taking_longer_than_usual_to_answer_i": {
-		"role": "Settings explanatory paragraph",
-		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
-		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
-		"note": "settings page: rendered in p inside div. Composition (message names mark slots): <p> {t( \"ui.settings.navigation.settings_page.the_local_operator_server_is_taking_longer_than_usual_to_answer_i\", )} </p> Preserve product/protocol names and machine tokens."
+		"role": "Warning shown while settings are slow to load",
+		"tone": "Calm, factual sentence; no blame, no alarm.",
+		"length": "Inline message that wraps in an alert or helper line. English is 125 characters.",
+		"note": "Appears after a delay with a Retry button. Product name \"Local Operator\" stays; the sentence also tells the user it will keep trying."
 	},
 	"ui.settings.navigation.settings_page.your_settings_could_not_be_loaded": {
-		"role": "Validation/error explanation",
-		"tone": "Neutral and helpful; explain the failure without blaming the user.",
-		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
-		"note": "settings page: rendered in { sentence: loadErrorSentence, remedy: loadErrorRemedy }."
+		"role": "Alert heading when the settings read fails",
+		"tone": "Neutral warning; says what happened and the next step, never blames the user.",
+		"length": "Inline message that wraps in an alert or helper line. English is 34 characters.",
+		"note": "Generic failure sentence; a more specific remedy sentence may be shown beside it."
 	},
 	"ui.settings.navigation.settings_page.sign_in_to_the_services_your_agents_think_with_new_chats_use_your": {
-		"role": "Settings row/section explanatory help",
-		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
-		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
-		"note": "settings page: description on SettingsSection. Composition (message names mark slots): <SettingsSection > <ProviderGrid /> </SettingsSection>"
+		"role": "Description under the Model providers heading",
+		"tone": "Plain, friendly second person; explains rather than commands.",
+		"length": "Wrapping paragraph in the settings content column (about 60-70 characters per line); no length cap, keep every fact. English is 81 characters.",
+		"note": "Two short sentences. \"The services your agents think with\" means AI model providers; keep that figurative reading plain."
 	},
 	"ui.settings.navigation.settings_page.backend_settings": {
-		"role": "Settings section heading",
-		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
-		"length": "Compact existing settings/list control; English is 16 characters before placeholder expansion. Keep short.",
-		"note": "settings page: title on SettingsSection. Composition (message names mark slots): <SettingsSection > <BackendSettingsSection hideInterfaceLanguage /> </SettingsSection>"
+		"role": "Settings section heading (h2)",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Section or list heading; one line, sentence case. English is 16 characters.",
+		"note": "Heading of the full registry section; same words as the sidebar entry."
 	},
 	"ui.settings.navigation.settings_page.every_setting_the_backend_registry_owns_searchable_with_typed_edi": {
-		"role": "Settings row/section explanatory help",
-		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
-		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
-		"note": "settings page: description on SettingsSection. Composition (message names mark slots): <SettingsSection > <BackendSettingsSection hideInterfaceLanguage /> </SettingsSection>"
+		"role": "Description under the Backend settings heading",
+		"tone": "Helpful explanatory prose in second person.",
+		"length": "Wrapping paragraph in the settings content column (about 60-70 characters per line); no length cap, keep every fact. English is 83 characters.",
+		"note": "Terse list: every server setting, searchable, with editors suited to each value type, and scopes. \"Scopes\" means when a change takes effect (now, next launch, new conversations)."
 	},
 	"ui.settings.navigation.settings_page.retry": {
-		"role": "Button action label",
-		"tone": "Brief imperative. No enthusiasm or extra punctuation.",
-		"length": "Compact existing settings/list control; English is 5 characters before placeholder expansion. Keep short.",
-		"note": "settings page: rendered in Button inside div. Repeats the failed action/read. This is not a full application restart. Composition (message names mark slots): <Button > {isConfigFetching ? [retrying] : [retry]} </Button>"
+		"role": "Button in the load-failure alert",
+		"tone": "Plain imperative; no exclamation, no please.",
+		"length": "Button label; one line, never wraps. English is 5 characters; keep it a short verb phrase of similar width.",
+		"note": "Re-requests the settings after a failure."
 	},
 	"ui.settings.navigation.settings_page.loading_settings": {
-		"role": "Loading status announced with spinner",
-		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
-		"length": "Compact existing settings/list control; English is 16 characters before placeholder expansion. Keep short.",
-		"note": "settings page: label on Spinner. Composition (message names mark slots): <Spinner />"
+		"role": "Accessible label of the full-page spinner",
+		"tone": "Calm, factual sentence; no blame, no alarm.",
+		"length": "Screen-reader-only accessible name (not painted); length is free but keep it a natural spoken phrase. English is 16 characters.",
+		"note": "Spoken while the page loads. Not painted."
 	},
 	"ui.settings.navigation.settings_sidebar.settings_sections": {
-		"role": "Accessible control name; not visible body copy",
-		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
-		"length": "Compact existing control/readout; English source is 17 characters before variable expansion. Avoid adding explanatory prose.",
-		"note": "settings sidebar: aria-label on nav. Composition (message names mark slots): <nav > {} <div> {SECTION_GROUPS.map((group) => { const groupSections = sections.filter((s) => group.ids.includes(s.id), ); if (groupSections.length === 0) return null; return ( <div> {} {labelled && ( <div> {group.label} </div> )} {} <ul> {groupSections.map(renderSection)} </ul> </div> ); })} </div> </nav>"
+		"role": "Accessible name of the settings navigation landmark",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Screen-reader-only accessible name (not painted); length is free but keep it a natural spoken phrase. English is 17 characters.",
+		"note": "Names the nav landmark for screen readers. Not painted."
 	},
 	"ui.settings.navigation.settings_sidebar.general": {
-		"role": "Navigation/list group heading",
-		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
-		"length": "Compact existing settings/list control; English is 7 characters before placeholder expansion. Keep short.",
-		"note": "Groups settings sidebar destinations under General. It is not an editable setting."
+		"role": "Sidebar group heading",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Section or list heading; one line, sentence case. English is 7 characters.",
+		"note": "Heading above General settings, Appearance, Speech voicing and Keyboard shortcuts in the left rail. Not the word for a military general."
 	},
 	"ui.settings.navigation.settings_sidebar.backend": {
-		"role": "Navigation/list group heading",
-		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
-		"length": "Compact existing settings/list control; English is 7 characters before placeholder expansion. Keep short.",
-		"note": "Groups settings sidebar destinations under Backend. It is not an editable setting."
+		"role": "Sidebar group heading",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Section or list heading; one line, sentence case. English is 7 characters.",
+		"note": "Heading above the Backend settings entry. \"Backend\" is the local Local Operator server process."
 	},
 	"ui.settings.navigation.settings_sidebar.system": {
-		"role": "Navigation/list group heading",
-		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
-		"length": "Compact existing settings/list control; English is 6 characters before placeholder expansion. Keep short.",
-		"note": "Groups settings sidebar destinations under System. It is not an editable setting."
+		"role": "Sidebar group heading",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Section or list heading; one line, sentence case. English is 6 characters.",
+		"note": "Heading above Application updates. The computer/application system, not a body system."
 	},
 	"ui.settings.navigation.settings_sidebar.general_settings": {
-		"role": "Settings sidebar destination label",
-		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
-		"length": "Compact existing settings/list control; English is 16 characters before placeholder expansion. Keep short.",
-		"note": "Names the General settings section in both expanded sidebar text and the collapsed icon tooltip. Keep consistent with that section heading."
+		"role": "Sidebar item and collapsed-rail tooltip",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Field or row label above/beside a control; one line. English is 16 characters.",
+		"note": "Destination that scrolls to the model and configuration settings. Must read as a sibling of the other nine items."
 	},
 	"ui.settings.navigation.settings_sidebar.radient_account": {
-		"role": "Settings sidebar destination label",
-		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
-		"length": "Compact existing settings/list control; English is 15 characters before placeholder expansion. Keep short.",
-		"note": "Names the Radient account section in both expanded sidebar text and the collapsed icon tooltip. Keep consistent with that section heading."
+		"role": "Sidebar item and collapsed-rail tooltip",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Field or row label above/beside a control; one line. English is 15 characters.",
+		"note": "Destination for the Radient sign-in and credits. \"Radient\" is a brand name; do not translate it."
 	},
 	"ui.settings.navigation.settings_sidebar.integrations": {
-		"role": "Settings sidebar destination label",
-		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
-		"length": "Compact existing settings/list control; English is 12 characters before placeholder expansion. Keep short.",
-		"note": "Names the Integrations section in both expanded sidebar text and the collapsed icon tooltip. Keep consistent with that section heading."
+		"role": "Sidebar item and collapsed-rail tooltip",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Field or row label above/beside a control; one line. English is 12 characters.",
+		"note": "Destination for connecting external tools and services. Same word as the section heading."
 	},
 	"ui.settings.navigation.settings_sidebar.appearance": {
-		"role": "Settings sidebar destination label",
-		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
-		"length": "Compact existing settings/list control; English is 10 characters before placeholder expansion. Keep short.",
-		"note": "Names the Appearance section in both expanded sidebar text and the collapsed icon tooltip. Keep consistent with that section heading."
+		"role": "Sidebar item and collapsed-rail tooltip",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Field or row label above/beside a control; one line. English is 10 characters.",
+		"note": "Destination for theme and display options."
 	},
 	"ui.settings.navigation.settings_sidebar.speech_voicing": {
-		"role": "Settings sidebar destination label",
-		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
-		"length": "Compact existing settings/list control; English is 14 characters before placeholder expansion. Keep short.",
-		"note": "Names the Speech voicing section in both expanded sidebar text and the collapsed icon tooltip. Keep consistent with that section heading."
+		"role": "Sidebar item and collapsed-rail tooltip",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Field or row label above/beside a control; one line. English is 14 characters.",
+		"note": "Destination for how the assistant sounds when it speaks. \"Voicing\" means choosing and tuning the speaking voice."
 	},
 	"ui.settings.navigation.settings_sidebar.keyboard_shortcuts": {
-		"role": "Settings sidebar destination label",
-		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
-		"length": "Compact existing settings/list control; English is 18 characters before placeholder expansion. Keep short.",
-		"note": "Names the Keyboard shortcuts section in both expanded sidebar text and the collapsed icon tooltip. Keep consistent with that section heading."
+		"role": "Sidebar item and collapsed-rail tooltip",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Field or row label above/beside a control; one line. English is 18 characters.",
+		"note": "Destination for the rebindable key bindings."
 	},
 	"ui.settings.navigation.settings_sidebar.model_providers": {
-		"role": "Settings sidebar destination label",
-		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
-		"length": "Compact existing settings/list control; English is 15 characters before placeholder expansion. Keep short.",
-		"note": "Names the Model providers section in both expanded sidebar text and the collapsed icon tooltip. Keep consistent with that section heading."
+		"role": "Sidebar item and collapsed-rail tooltip",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Field or row label above/beside a control; one line. English is 15 characters.",
+		"note": "Destination for signing in to AI model providers such as OpenAI. A provider is a company serving models."
 	},
 	"ui.settings.navigation.settings_sidebar.backend_settings": {
-		"role": "Settings sidebar destination label",
-		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
-		"length": "Compact existing settings/list control; English is 16 characters before placeholder expansion. Keep short.",
-		"note": "Names the Backend settings section in both expanded sidebar text and the collapsed icon tooltip. Keep consistent with that section heading."
+		"role": "Sidebar item and collapsed-rail tooltip",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Field or row label above/beside a control; one line. English is 16 characters.",
+		"note": "Destination for the searchable list of every server setting."
 	},
 	"ui.settings.navigation.settings_sidebar.application_updates": {
-		"role": "Settings sidebar destination label",
-		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
-		"length": "Compact existing settings/list control; English is 19 characters before placeholder expansion. Keep short.",
-		"note": "Names the Application updates section in both expanded sidebar text and the collapsed icon tooltip. Keep consistent with that section heading."
+		"role": "Sidebar item and collapsed-rail tooltip",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Field or row label above/beside a control; one line. English is 19 characters.",
+		"note": "Destination for update checks and app information."
 	},
 	"ui.settings.navigation.settings_sidebar.account": {
-		"role": "Navigation/list group heading",
-		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
-		"length": "Compact existing settings/list control; English is 7 characters before placeholder expansion. Keep short.",
-		"note": "Groups settings sidebar destinations under Account. It is not an editable setting."
+		"role": "Sidebar group heading",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Section or list heading; one line, sentence case. English is 7 characters.",
+		"note": "Heading above Integrations, Model providers and Radient account. The user's account, not a bank account."
 	},
 	"ui.settings.navigation.settings_page.retrying": {
-		"role": "Button action label",
-		"tone": "Brief imperative. No enthusiasm or extra punctuation.",
-		"length": "Compact existing settings/list control; English is 8 characters before placeholder expansion. Keep short.",
-		"note": "settings page: rendered in Button inside div. Composition (message names mark slots): <Button > {isConfigFetching ? [retrying] : [retry]} </Button>"
+		"role": "Disabled state of the Retry button",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Button label; one line, never wraps. English is 8 characters; keep it a short verb phrase of similar width.",
+		"note": "Shown while the re-request is running. Present-progressive, one word."
 	}
 }
