@@ -237,7 +237,12 @@ const {
 } = await import(bundlePath.href);
 
 /** The store is module state: every case starts from the same resolved value. */
-const resetStore = () => applyCapabilities(null);
+const resetStore = () => {
+	// A watch refetch must describe this case, not the previous case's French
+	// answer; otherwise slow runs can also change the reset button's language.
+	setCapabilitiesLanguage("en");
+	applyCapabilities(null);
+};
 
 const LANGUAGE_ROW = '[data-setting-key="language"]';
 const TIME_FORMAT_ROW = '[data-setting-key="display.time_format"]';
@@ -511,7 +516,39 @@ test(
 			() => Boolean(resetButton(HOSTING_ROW)),
 			"the hosting row is off its default in the configured fixture",
 		);
+		/*
+		 * WHAT IS OBSERVED IS THE INVALIDATION, NOT THE WIRE. The question is whether
+		 * the hosting write MARKED the capabilities chain stale (that is what
+		 * `renegotiateLanguage` does), and the query cache says so directly. The
+		 * earlier form counted `capabilities` calls on the bridge inside a 150 ms
+		 * window after the write, which also counted the query's OWN poll: the
+		 * capabilities observer refetches every `CAPABILITY_WATCH_MS` (30 s) whether
+		 * or not anything was written, so a runner slow enough to stretch this case
+		 * past one period read the poll as a renegotiation (failed on `main` at
+		 * 30.1-30.2 s with `1 !== 0`, and green on the rerun). A call is a symptom
+		 * with two possible causes; an invalidation has one.
+		 */
+		const invalidations = [];
+		const unsubscribe = mounted.client.getQueryCache().subscribe((event) => {
+			if (
+				event.type === "updated" &&
+				event.action.type === "invalidate" &&
+				event.query.queryKey[0] === desktopKeys.capabilities[0] &&
+				event.query.queryKey[1] === desktopKeys.capabilities[1]
+			) {
+				invalidations.push(event.query.queryKey);
+			}
+		});
+		t.after(unsubscribe);
 		const before = apiCalls.length;
+		// Exercise the watch's legitimate read without waiting thirty seconds.
+		// The negative assertion must distinguish this from a write invalidation.
+		await act(async () => {
+			await mounted.client.refetchQueries({
+				queryKey: desktopKeys.capabilities,
+				exact: true,
+			});
+		});
 		await click(resetButton(HOSTING_ROW), "the reset button must exist");
 		await settle(
 			() =>
@@ -522,14 +559,20 @@ test(
 					),
 			"the hosting reset must reach the wire",
 		);
-		// The refetch the save path always performs is the settings list; give
-		// the chain a beat to show any capabilities call it would make.
-		await act(async () => {
-			await new Promise((resolve) => setTimeout(resolve, 150));
-		});
+		/*
+		 * The save path's last step is the settings-list refetch, and it runs AFTER
+		 * `renegotiateIfLanguage` in `resetRow`. Waiting for that refetch to reach
+		 * the wire is therefore the event that says the point where an invalidation
+		 * would have happened has passed - a condition, not a duration.
+		 */
+		await settle(() => {
+			const since = apiCalls.slice(before);
+			const reset = since.findIndex((call) => call.op === "settings.reset");
+			return since.slice(reset + 1).some((call) => call.op === "settings.list");
+		}, "the settings list must be refetched after the hosting reset");
+		unsubscribe();
 		assert.equal(
-			apiCalls.slice(before).filter((call) => call.op === "capabilities")
-				.length,
+			invalidations.length,
 			0,
 			"only the language key may renegotiate the capabilities chain",
 		);

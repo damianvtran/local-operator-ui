@@ -580,7 +580,12 @@ const mount = async (rows) => {
 	const root = createRoot(container);
 	/** One client per mount, and no retries: nothing here presses a query's control. */
 	const queryClient = new QueryClient({
-		defaultOptions: { queries: { retry: false } },
+		// Removing a mutation from the cache does not cancel its GC timer;
+		// this mount owns no cache history worth keeping after unmount.
+		defaultOptions: {
+			queries: { retry: false, gcTime: 0 },
+			mutations: { gcTime: 0 },
+		},
 	});
 	await act(async () => {
 		root.render(
@@ -657,6 +662,9 @@ const mount = async (rows) => {
 		},
 		unmount: async () => {
 			await act(async () => root.unmount());
+			// Unsubscribe arms five-minute query GC timers. Release this mount's
+			// cache now; retaining it pins both the worker and its bundled UI in RAM.
+			queryClient.clear();
 			container.remove();
 		},
 	};
