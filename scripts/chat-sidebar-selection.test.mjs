@@ -1579,8 +1579,19 @@ const settingsClasses = (isActive, labelled) =>
 	).split(/\s+/);
 
 test("settings destinations share a resting ground and hover in both layouts", () => {
+	assert.equal(
+		JSON.parse(read("src/i18n/catalogues/en/ui.settings.navigation.json"))[
+			"ui.settings.navigation.settings_sidebar.settings_sections"
+		],
+		"Settings sections",
+	);
 	assert.ok(
-		literalClassAt(SETTINGS_RAIL, 'aria-label="Settings sections"', "after")
+		// Anchor the translated accessible name, not its former inline English.
+		literalClassAt(
+			SETTINGS_RAIL,
+			'aria-label={t( "ui.settings.navigation.settings_sidebar.settings_sections", )}',
+			"after",
+		)
 			.split(/\s+/)
 			.includes("bg-surface"),
 	);
