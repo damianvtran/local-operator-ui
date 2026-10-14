@@ -1,5 +1,7 @@
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { ShieldAlert } from "lucide-react";
@@ -122,7 +124,8 @@ export function requesterLabel(
 	 */
 	options?: { short?: boolean },
 ): string {
-	if (!requesterSessionId) return "An agent";
+	if (!requesterSessionId)
+		return t("ui.browser.browser_consent_request.an_agent");
 	const name = sessionDisplayName(requesterSessionId, sessions);
 	/*
 	 * A SESSION THE APP CANNOT NAME IS NAMED IN ITS OWN WORDS, not with its id (UX
@@ -159,15 +162,18 @@ export function requesterLabel(
 	const named = name !== requesterSessionId;
 	if (options?.short) {
 		if (named) return name;
-		return listed ? "Untitled chat" : "Another session";
+		return listed
+			? t("ui.browser.browser_consent_request.untitled_chat")
+			: t("ui.browser.browser_consent_request.another_session");
 	}
 	// The long form distinguishes a conversation the user NAMED from one they have
 	// not, which is the whole instruction the card is giving. `name` alone cannot: it
 	// is a title in one case and a fallback in the other, so the test is whether the
 	// rule fell back rather than whether a title exists.
-	if (named) return `The agent in '${name}'`;
-	if (listed) return "The agent in 'Untitled chat'";
-	return "An agent from another session";
+	if (named) return t("ui.browser.browser_consent_request.agent_in", { name });
+	if (listed)
+		return t("ui.browser.browser_consent_request.the_agent_in_untitled_chat");
+	return t("ui.browser.browser_consent_request.an_agent_from_another_session");
 }
 
 export const BrowserConsentRequest: FC<BrowserConsentRequestProps> = ({
@@ -177,6 +183,7 @@ export const BrowserConsentRequest: FC<BrowserConsentRequestProps> = ({
 	onDecide,
 	layout = "inline",
 }) => {
+	useI18nLocale();
 	const sessions = useCanonicalSessionsStore((state) => state.sessions);
 	const who = requesterLabel(request.requesterSessionId, sessions);
 	/** Which control THIS user pressed, so the busy cue can sit next to it rather than
@@ -206,7 +213,7 @@ export const BrowserConsentRequest: FC<BrowserConsentRequestProps> = ({
 			data-tour-tag="browser-consent-busy"
 		>
 			<Spinner size="sm" />
-			Recording your choice…
+			{t("ui.browser.browser_consent_request.recording_your_choice")}
 		</span>
 	);
 	/** The trailing form is kept only for a decision this card did not originate. */
@@ -225,17 +232,16 @@ export const BrowserConsentRequest: FC<BrowserConsentRequestProps> = ({
 				/>
 				<div className="min-w-0 grow">
 					<p className="text-body text-ink" data-tour-tag="browser-consent-who">
-						{who} wants to open{" "}
+						{who} {t("ui.browser.browser_consent_request.wants_to_open")}{" "}
 						<span className="font-mono text-mono-sm">{request.authority}</span>.
 					</p>
 					{/* The two facts the user has to know to answer well, stated once each
 					    and in this order: what the grant buys, and that refusing the agent
 					    does not close the site to them. */}
 					<p className="text-body-sm text-ink-muted">
-						This browser keeps sign-ins across conversations and app restarts,
-						so an agent you approve here can use those signed-in accounts on the
-						sites you allow it. You can open this site yourself either way —
-						this only controls what the agent may reach.
+						{t(
+							"ui.browser.browser_consent_request.this_browser_keeps_sign_ins_across_conversations",
+						)}
 					</p>
 					{remaining && (
 						// How long the AGENT is still waiting. A user deciding whether to
@@ -263,7 +269,7 @@ export const BrowserConsentRequest: FC<BrowserConsentRequestProps> = ({
 					onClick={() => decide("once")}
 					data-tour-tag="browser-consent-once"
 				>
-					Allow once
+					{t("ui.browser.browser_consent_request.allow_once")}
 				</Button>
 				{cueAfter("once")}
 				<Button
@@ -273,7 +279,7 @@ export const BrowserConsentRequest: FC<BrowserConsentRequestProps> = ({
 					onClick={() => decide("session")}
 					data-tour-tag="browser-consent-session"
 				>
-					Allow until the app quits
+					{t("ui.browser.browser_consent_request.allow_until_the_app_quits")}
 				</Button>
 				{cueAfter("session")}
 				<Button
@@ -283,7 +289,7 @@ export const BrowserConsentRequest: FC<BrowserConsentRequestProps> = ({
 					onClick={() => decide("site")}
 					data-tour-tag="browser-consent-site"
 				>
-					Always allow this site
+					{t("ui.browser.browser_consent_request.always_allow_this_site")}
 				</Button>
 				{cueAfter("site")}
 				{request.broad && (
@@ -295,7 +301,8 @@ export const BrowserConsentRequest: FC<BrowserConsentRequestProps> = ({
 							onClick={() => decide("domain")}
 							data-tour-tag="browser-consent-domain"
 						>
-							Allow all of {request.broad.key}
+							{t("ui.browser.browser_consent_request.allow_all_of")}
+							{request.broad.key}
 						</Button>
 						{cueAfter("domain")}
 					</>
@@ -308,7 +315,7 @@ export const BrowserConsentRequest: FC<BrowserConsentRequestProps> = ({
 					data-tour-tag="browser-consent-deny"
 					className={cn("@max-4xl:ml-auto")}
 				>
-					Don't allow
+					{t("ui.browser.browser_consent_request.don_t_allow")}
 				</Button>
 				{cueAfter("deny")}
 				{busy && pressed === null && cue}
@@ -331,25 +338,52 @@ export const BrowserConsentRequest: FC<BrowserConsentRequestProps> = ({
 				}
 				data-tour-tag="browser-consent-scopes"
 			>
-				<dt className={termClass}>Allow once</dt>
-				<dd>one navigation, for that conversation, up to ten minutes</dd>
-				<dt className={termClass}>Allow until the app quits</dt>
-				<dd>this site, for this run only, and for every conversation</dd>
-				<dt className={termClass}>Always allow this site</dt>
-				<dd>kept until you revoke it, and shared with every conversation</dd>
+				<dt className={termClass}>
+					{t("ui.browser.browser_consent_request.allow_once")}
+				</dt>
+				<dd>
+					{t(
+						"ui.browser.browser_consent_request.one_navigation_for_that_conversation_up_to",
+					)}
+				</dd>
+				<dt className={termClass}>
+					{t("ui.browser.browser_consent_request.allow_until_the_app_quits")}
+				</dt>
+				<dd>
+					{t(
+						"ui.browser.browser_consent_request.this_site_for_this_run_only_and",
+					)}
+				</dd>
+				<dt className={termClass}>
+					{t("ui.browser.browser_consent_request.always_allow_this_site")}
+				</dt>
+				<dd>
+					{t(
+						"ui.browser.browser_consent_request.kept_until_you_revoke_it_and_shared",
+					)}
+				</dd>
 				{request.broad && (
 					<>
-						<dt className={termClass}>Allow all of {request.broad.key}</dt>
+						<dt className={termClass}>
+							{t("ui.browser.browser_consent_request.allow_all_of")}
+							{request.broad.key}
+						</dt>
 						<dd>
-							every site under {request.broad.key}, kept until you revoke it,
-							shared with every conversation
+							{t("ui.browser.browser_consent_request.every_site_under")}
+							{request.broad.key}
+							{t(
+								"ui.browser.browser_consent_request.kept_until_you_revoke_it_shared_with",
+							)}
 						</dd>
 					</>
 				)}
-				<dt className={termClass}>Don't allow</dt>
+				<dt className={termClass}>
+					{t("ui.browser.browser_consent_request.don_t_allow")}
+				</dt>
 				<dd>
-					the agent stops asking about this site until you revoke the denial in
-					Approvals
+					{t(
+						"ui.browser.browser_consent_request.the_agent_stops_asking_about_this_site",
+					)}
 				</dd>
 			</dl>
 		</div>

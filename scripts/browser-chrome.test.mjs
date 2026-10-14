@@ -2986,8 +2986,17 @@ test("the pinned strip control appears only when a tab is off screen, and counts
 		"the new-tab control shares toolbar ghost grammar and keeps an eight-pixel gap",
 	);
 	assert.ok(
-		strip.includes("`All tabs, ${tabsOffScreen} not shown`"),
+		/aria-label=\{t\(\s*"ui\.browser\.browser_tab_strip\.all_tabs_unshown_accessible",\s*\{\s*count: tabsOffScreen,?\s*\},?\s*\)\}/.test(
+			strip,
+		),
 		"and it is in the accessible name, not only in the tooltip, in the words D10 revised: the count is measured from the rows' boxes, so a row clipped at its right edge is counted, and `not shown` is true of it where `more tabs` was not",
+	);
+	const english = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.browser.json", "utf8"),
+	);
+	assert.equal(
+		english["ui.browser.browser_tab_strip.all_tabs_unshown_accessible"],
+		"All tabs, {count, plural, other {# not shown}}",
 	);
 	assert.ok(
 		strip.includes('querySelectorAll("[data-tab-id]")'),

@@ -91,6 +91,7 @@ export function mount(container, props) {
  * to take again. See the D10 case below for why that matters.
  */
 export * as stories from "./src/renderer/src/features/browser/components/browser-file-transfer-row.stories";
+export { t as tr, setLocale, registerCatalogue, clearRegisteredCatalogues } from "./src/i18n";
 `;
 
 const bundle = await build({
@@ -116,7 +117,15 @@ const bundlePath = new URL(
 	import.meta.url,
 );
 await writeFile(bundlePath, bundle.outputFiles[0].text);
-const { mount, stories } = await import(bundlePath.href);
+const {
+	mount,
+	stories,
+	tr,
+	setLocale,
+	registerCatalogue,
+	clearRegisteredCatalogues,
+} = await import(bundlePath.href);
+setLocale("en");
 await unlink(bundlePath);
 
 const DIR =
@@ -613,4 +622,30 @@ test("EVERY committed story specimen paints, which is the defect D10 was (review
 		null,
 		"the Nothing specimen renders nothing by design",
 	);
+});
+
+// Exercise the subscription on an already-mounted shipped row, not a new render fixture.
+test("a mounted transfer row refreshes language and absent messages keep English plurals", async (t) => {
+	const saved = await open(t, { transfers: activity([note()]) });
+	try {
+		assert.ok(saved.spoken().includes("was saved to"));
+		registerCatalogue("fr", {
+			"ui.browser.browser_file_transfer_row.was_saved_to": "Fixture saved to",
+		});
+		await act(() => setLocale("fr"));
+		assert.ok(saved.spoken().includes("Fixture saved to"), saved.spoken());
+		for (const count of [0, 1, 21]) {
+			assert.equal(
+				tr("ui.browser.browser_tab_strip.close_other_tabs", { count }),
+				`Close ${count} other ${count === 1 ? "tab" : "tabs"}`,
+			);
+			assert.equal(
+				tr("ui.browser.browser_approvals_tray.header_waiting", { count }),
+				`${count} ${count === 1 ? "approval" : "approvals"} waiting`,
+			);
+		}
+	} finally {
+		clearRegisteredCatalogues();
+		await act(() => setLocale("en"));
+	}
 });

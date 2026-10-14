@@ -4,6 +4,7 @@ import {
 	shouldForgetConsentAttention,
 	useConsentAttention,
 } from "@shared/browser-consent-attention";
+import { t } from "@shared/i18n";
 import { showInfoToast } from "@shared/utils/toast-manager";
 import { useEffect, useRef } from "react";
 import { readApprovalClock } from "../model/approval-queue-model";
@@ -87,7 +88,11 @@ export function useConsentAttentionLifetime(): void {
 			const landed = readBrowserProjection().state?.pendingConsent;
 			if (landed === undefined) return;
 			if (isConsentAttentionLive(owed, landed, readApprovalClock())) return;
-			showInfoToast("That request is no longer waiting.");
+			showInfoToast(
+				t(
+					"ui.browser.use_consent_attention_lifetime.that_request_is_no_longer_waiting",
+				),
+			);
 		});
 	}, [attention]);
 
