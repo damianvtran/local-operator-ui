@@ -4403,7 +4403,18 @@ test("empty streaming placeholder protects the first actual token and never remo
 	]) {
 		const plan = planOf([...rows, answer("token-a", update)], true);
 		assertAllAnswersVisible(plan, ["ia-final", "token-a"]);
-		assert.equal(internalSpanOf(plan, "token-p").key, initial.key);
+		const current = internalSpanOf(plan, "token-p");
+		/* R3 restores default bounded keys to the visible answer. The raw planner
+		 * cannot promise qg identity after that boundary arrives; the existing UI
+		 * overlap transfer preserves the reader-open key. Pin both halves instead
+		 * of requiring every closed/history bar to use a live qg key forever. */
+		assert.equal(current.key, "seg:token-a");
+		const retained = aliasesV2(
+			snapshotV2([epV2(initial.key, initial.segmentIds)], [initial.key]),
+			[epV2(current.key, current.segmentIds)],
+			{ outsideCurrentIds: ["ia-final", "token-a"] },
+		);
+		assert.equal(retained.episodes[0].key, initial.key);
 	}
 });
 
@@ -4708,6 +4719,11 @@ test("head-cut peer + spawn counts one contained action despite huge parent/job 
 		.find((s) => s.segmentIds.includes("count-p"));
 	assert.equal(bar.internal, null, "the opening receipt is not an episode");
 	assert.deepEqual(bar.segmentIds, ["count-p", "count-t"]);
+	assert.equal(
+		before.runs[0].factApplied,
+		false,
+		"wire-backed aggregate was not applied to disclosure rows",
+	);
 	assert.equal(
 		before.runs.flatMap((r) => r.segments).some((s) => s.facts.actions > 1),
 		false,
@@ -5259,4 +5275,85 @@ test("paintedRows and widenTarget measure with the render's older-rows input (R2
 		painted < 60,
 		`the live episode is counted as hidden, got ${painted}`,
 	);
+});
+
+// R3-2 architect ruling: older rows prove a cut, not an unseen settled answer.
+// Keep the live-only seed; a settled fragment must wait for an actual answer
+// anchor before a lone receipt can make it an internal episode.
+test("R3-2: settled answerless head-cut receipt work paints without a loaded anchor", () => {
+	const rows = [
+		peerRow("r3-peer"),
+		tool("r3-t1"),
+		tool("r3-t2"),
+		tool("r3-t3"),
+	];
+	const span = internalSpanOf(
+		collapsePlan(rows, { live: false, olderRowsExist: true }),
+		"r3-peer",
+	);
+	assert.equal(
+		span.collapsed,
+		false,
+		"older rows alone do not establish settled work",
+	);
+	assert.equal(span.internal, null);
+});
+
+test("R3-2: settled receipt work folds once its preceding answer actually loads", () => {
+	const rows = [
+		answer("r3-anchor"),
+		peerRow("r3-peer"),
+		tool("r3-t1"),
+		tool("r3-t2"),
+		tool("r3-t3"),
+	];
+	const span = internalSpanOf(
+		collapsePlan(rows, { live: false, olderRowsExist: true }),
+		"r3-peer",
+	);
+	assert.equal(
+		span.collapsed,
+		true,
+		"loaded settled answer establishes the continuation",
+	);
+	assert.equal(span.internal.receipts, 1);
+});
+
+test("R3: announcement ownership aliases only previously known qg episodes, with pinned exclusion and bounded refusals", () => {
+	const origin = epV2("qg:ann-p", ["ann-p", "ann-t"]);
+	const bounded = epV2("seg:ann-final", ["ann-p", "ann-t", "ann-t2"]);
+	const prior = snapshotV2([origin], [origin.key], null, ["ann-final"]);
+	assert.equal(
+		aliasesV2(prior, [bounded], { outsideCurrentIds: ["ann-final"] })
+			.episodes[0].key,
+		origin.key,
+	);
+	// This is the effect's ownership predicate: UNKNOWN live keys never enter
+	// knownKeys. Structural eligibility alone cannot burn their future sentence.
+	const unannounced = snapshotV2([origin], []);
+	assert.equal(unannounced.keys.size, 0);
+	assert.equal(aliasesV2(unannounced, [bounded]).episodes[0].key, bounded.key);
+	const swallowsPinned = epV2("seg:other", ["ann-p", "ann-t", "ann-final"]);
+	assert.equal(
+		aliasesV2(prior, [swallowsPinned]).episodes[0].key,
+		"seg:other",
+		"a prior visible anchor cannot become episode-private work",
+	);
+	const split = [epV2("seg:one", ["ann-p"]), epV2("seg:two", ["ann-t"])];
+	assert.deepEqual(
+		aliasesV2(prior, split).episodes.map((e) => e.key),
+		["seg:one", "seg:two"],
+	);
+	const reorder = epV2("seg:order", ["ann-t", "ann-p"]);
+	assert.equal(aliasesV2(prior, [reorder]).episodes[0].key, reorder.key);
+	const lost = epV2("seg:lost", ["ann-t"]);
+	assert.equal(aliasesV2(prior, [lost]).episodes[0].key, lost.key);
+	const overflow = snapshotV2([
+		epV2(
+			"qg:overflow",
+			Array.from({ length: 4097 }, (_, i) => `overflow-${i}`),
+		),
+	]);
+	assert.equal(overflow.reason, "prior-id-limit");
+	assert.equal(aliasesV2(overflow, [bounded]).reason, "prior-id-limit");
 });
