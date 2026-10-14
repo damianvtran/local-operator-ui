@@ -1,37 +1,43 @@
 {
 	"ui.chat.composer_media.recording": {
-		"role": "composer recording status",
-		"tone": "short, neutral; preserve sentence case",
-		"note": "Fixed-width status beside recording dot."
+		"role": "recording status",
+		"tone": "short state label, sentence case",
+		"maxCells": 18,
+		"note": "Status beside the recording dot; shrink-0, so it must not wrap or truncate. maxCells is an advisory translation target, not measured fit."
 	},
 	"ui.chat.composer_media.confirms": {
-		"role": "composer keyboard hint",
-		"tone": "short, neutral; preserve sentence case",
-		"note": "Follows the separately rendered Enter keycap; lowercase verb."
+		"role": "keyboard hint after Enter keycap",
+		"tone": "lowercase verb; no capital or trailing punctuation",
+		"maxCells": 12,
+		"note": "Follows a separately rendered Enter keycap. Keep a short lowercase verb; maxCells is advisory, not measured fit."
 	},
 	"ui.chat.composer_media.cancels": {
-		"role": "composer keyboard hint",
-		"tone": "short, neutral; preserve sentence case",
-		"note": "Follows the separately rendered Esc keycap; lowercase verb."
+		"role": "keyboard hint after Esc keycap",
+		"tone": "lowercase verb; no capital or trailing punctuation",
+		"maxCells": 12,
+		"note": "Follows a separately rendered Esc keycap. Keep a short lowercase verb; maxCells is advisory, not measured fit."
 	},
 	"ui.chat.composer_media.pasted_type": {
-		"role": "attachment tile copy",
-		"tone": "short, neutral; preserve sentence case",
-		"note": "Fallback filename for pasted data URI. mimeType is an unchanged technical MIME identifier."
+		"role": "pasted attachment fallback filename",
+		"tone": "short noun phrase, sentence case",
+		"note": "Keep {mimeType} verbatim: technical values include application/pdf. Word order may change around the placeholder. The 100px tile caption truncates; keep translated prose short but do not truncate or translate the MIME identifier itself."
 	},
 	"ui.chat.composer_media.pasted_file": {
-		"role": "attachment tile copy",
-		"tone": "short, neutral; preserve sentence case",
-		"note": "Fallback filename when pasted data URI has no name or MIME type."
+		"role": "pasted attachment fallback filename",
+		"tone": "short noun phrase, sentence case",
+		"maxCells": 20,
+		"note": "Fallback when the pasted data URI has no name or MIME type. A 100px tile caption may truncate; maxCells is advisory, not measured fit."
 	},
 	"ui.chat.composer_media.preview_failed": {
-		"role": "attachment tile copy",
-		"tone": "short, neutral; preserve sentence case",
-		"note": "Media decode failure tooltip; file-bridge failure reasons remain owned by the shared hook."
+		"role": "media decode failure tooltip",
+		"tone": "short neutral failure phrase, sentence case",
+		"maxCells": 32,
+		"note": "Media decode failure tooltip. File-bridge failures remain owned by the shared hook; maxCells is advisory, not measured fit."
 	},
 	"ui.chat.composer_media.remove_attachment": {
-		"role": "attachment tile copy",
-		"tone": "short, neutral; preserve sentence case",
-		"note": "Tooltip and accessible name of the attachment remove button."
+		"role": "remove control tooltip and accessible name",
+		"tone": "short imperative action, sentence case",
+		"maxCells": 24,
+		"note": "Tooltip and accessible name of the attachment remove button. maxCells is an advisory translation target, not measured fit."
 	}
 }
