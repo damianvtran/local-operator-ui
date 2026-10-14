@@ -82,6 +82,12 @@ export function hubLinkMark(link: HubLinkView): HubLinkMarkView {
 			!KNOWN_STATES.has(status.state) ||
 			REVIEW_STATES.has(status.state) ||
 			(status.state === "failed" && !status.retryable) ||
+			// An operation ID is not a reviewed proposal or a future-write grant.
+			// OFF outbound failures open detail; only an explicitly held receipt
+			// can reconcile a prior manual publication without a new preview.
+			(direction === "push" &&
+				!link.policy.autoPush &&
+				(status.state === "failed" || status.state === "retry-wait")) ||
 			(direction === "push" &&
 				link.policy.autoPush &&
 				!status.effective &&

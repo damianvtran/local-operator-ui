@@ -209,18 +209,19 @@ export function HubLinkGroup({ link }: { link: HubLink }) {
 									})}
 								</p>
 							)}
-							{view[direction].retryable && (
-								<Button
-									variant="outline"
-									size="sm"
-									disabled={busy}
-									onClick={() =>
-										run({ action: "retry", linkId: link.link_id, direction })
-									}
-								>
-									{t("ui.hub.links.retry")}
-								</Button>
-							)}
+							{view[direction].retryable &&
+								(direction === "pull" || link.policy.auto_push) && (
+									<Button
+										variant="outline"
+										size="sm"
+										disabled={busy}
+										onClick={() =>
+											run({ action: "retry", linkId: link.link_id, direction })
+										}
+									>
+										{t("ui.hub.links.retry")}
+									</Button>
+								)}
 						</div>
 					);
 				})}

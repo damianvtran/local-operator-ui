@@ -99,7 +99,10 @@ test("paused outgoing preference outranks incoming activity, without changing po
 test("retry is directional and only offered when service admits it", () => {
 	assert.deepEqual(
 		hubLinkMark(
-			link({ push: direction({ state: "failed", retryable: true }) }),
+			link({
+				policy: { subscribe: true, autoPush: true, revision: "r" },
+				push: direction({ state: "failed", retryable: true }),
+			}),
 		),
 		{ kind: "failed", direction: "push", action: "retry" },
 	);
@@ -420,4 +423,22 @@ test("same immutable editor survives changed fetched bytes but another source do
 		teamEditorIdentity(team),
 		teamEditorIdentity({ ...team, id: "team-2" }),
 	);
+});
+
+test("OFF outbound retry cannot infer future-write consent from an operation ID", () => {
+	const mark = hubLinkMark(
+		link({
+			policy: { subscribe: false, autoPush: false, revision: "r" },
+			push: direction({
+				state: "failed",
+				retryable: true,
+				operationId: "prior-operation",
+			}),
+		}),
+	);
+	assert.deepEqual(mark, {
+		kind: "review",
+		direction: "push",
+		action: "detail",
+	});
 });
