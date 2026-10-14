@@ -1,4 +1,3 @@
-import { t } from "@shared/i18n";
 /**
  * Page stepper for the sidebars.
  *
@@ -15,8 +14,10 @@ import { t } from "@shared/i18n";
  */
 
 import { Button } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { FC } from "react";
+import { t } from "../../../../../i18n/messages";
 
 /**
  * Props for the CompactPagination component
@@ -40,6 +41,7 @@ export const CompactPagination: FC<CompactPaginationProps> = ({
 	count,
 	onChange,
 }) => {
+	useI18nLocale();
 	const handlePrevious = () => {
 		if (page > 1) {
 			onChange(page - 1);

@@ -65,6 +65,26 @@ test("field chrome retains its caller-owned field name and current-value suffix"
 	);
 });
 
+for (const count of [0, 1, 2]) {
+	test(`pagination position at ${count} is a label, not a counted page noun`, () => {
+		assert.equal(
+			t("ui.common.forms.pagination.position", {
+				page: "1",
+				count: String(count),
+			}),
+			`Page 1 of ${count}`,
+		);
+		assert.equal(
+			t("ui.common.forms.searchable_select.clear_value"),
+			"Clear value",
+		);
+		assert.equal(
+			t("ui.common.forms.searchable_select.no_matches"),
+			"No matches",
+		);
+	});
+}
+
 test("conflict choices and account sign-in keep their distinct meanings", () => {
 	assert.equal(
 		t("ui.common.editing.conflict"),

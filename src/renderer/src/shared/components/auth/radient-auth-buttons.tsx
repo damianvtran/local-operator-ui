@@ -1,4 +1,3 @@
-import { t } from "@shared/i18n";
 /**
  * @file radient-auth-buttons.tsx
  * @description
@@ -18,8 +17,10 @@ import {
 import { Spinner } from "@shared/components/common/spinner";
 import { Alert } from "@shared/components/ui";
 import { radientUserKeys } from "@shared/hooks/use-radient-user-query";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useQueryClient } from "@tanstack/react-query";
 import type { FC } from "react";
+import { t } from "../../../../../i18n/messages";
 
 const RADIENT_PROVIDER_ID = "radient";
 
@@ -40,6 +41,7 @@ export const RadientAuthButtons: FC<RadientAuthButtonsProps> = ({
 		"ui.common.account.radient_auth_buttons.connect_your_radient_account_to_use_radient_services",
 	),
 }) => {
+	useI18nLocale();
 	const queryClient = useQueryClient();
 	const capabilities = useDesktopCapabilities();
 	const enabled = desktopFeatureEnabled(capabilities.data, "auth");

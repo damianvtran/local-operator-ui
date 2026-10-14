@@ -1,4 +1,3 @@
-import { t } from "@shared/i18n";
 /**
  * Inline text field with an explicit save step.
  *
@@ -19,11 +18,13 @@ import { t } from "@shared/i18n";
  */
 
 import { Button, Input, Label, Textarea } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Check, Eraser, Pencil, X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import type React from "react";
 import type { ChangeEvent, FC, FocusEvent, KeyboardEvent } from "react";
+import { t } from "../../../../../i18n/messages";
 
 type EditableFieldProps = {
 	/**
@@ -91,6 +92,7 @@ export const EditableField: FC<EditableFieldProps> = ({
 	isSaving: externalIsSaving = false,
 	readOnly = false,
 }) => {
+	useI18nLocale();
 	const [isEditing, setIsEditing] = useState(false);
 	const [editValue, setEditValue] = useState(value);
 	const [displayValue, setDisplayValue] = useState(value);

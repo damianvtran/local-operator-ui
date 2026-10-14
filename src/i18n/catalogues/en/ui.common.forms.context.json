@@ -154,6 +154,34 @@
 		"note": "Names the diagnostic detail block in the shared panel; trailing colon introduces its contents.",
 		"length": "One control row; avoid adding a sentence."
 	},
+	"ui.common.forms.searchable_select.clear_the": {
+		"role": "button accessible name",
+		"tone": "Direct field-specific clear action.",
+		"note": "Named selection-clear affordance; existing field-name lowercasing is preserved and onClear is still caller-owned.",
+		"placeholders": {
+			"detail": "The existing field name after its original lowercasing operation; do not treat as an identifier or translation key."
+		}
+	},
+	"ui.common.forms.searchable_select.clear_value": {
+		"role": "button accessible name",
+		"tone": "Direct value-removal action.",
+		"note": "Fallback clear affordance when this shared select has no field name; clears the selection and closes the menu, not the whole form.",
+		"length": "Two words."
+	},
+	"ui.common.forms.searchable_select.no_matches": {
+		"role": "empty-state",
+		"tone": "Short search-result fact.",
+		"note": "Shared searchable-select filtered options list has no matches; not a backend failure or missing-model catalogue claim.",
+		"length": "Two-word empty-state row."
+	},
+	"ui.common.forms.searchable_select.use": {
+		"role": "composed status or accessible copy",
+		"tone": "Preserve the existing factual wording.",
+		"note": "src/renderer/src/shared/components/ui/searchable-select.tsx; composition of Use \"{text}\"",
+		"placeholders": {
+			"text": "Existing display value from text; retain verbatim, never use as a translation key."
+		}
+	},
 	"ui.common.forms.select.unlisted_value": {
 		"role": "input status hint",
 		"tone": "Factual reassurance.",

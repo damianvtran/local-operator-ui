@@ -1,3 +1,11 @@
+import { Spinner } from "@shared/components/common/spinner";
+import {
+	Button,
+	Label,
+	Popover,
+	PopoverAnchor,
+	PopoverContent,
+} from "@shared/components/ui";
 /**
  * Text input with a suggestion list, and an explicit save step.
  *
@@ -9,15 +17,7 @@
  * `aria-activedescendant` instead of moving DOM focus, which would take focus
  * out of the input the user is still typing in.
  */
-import { Spinner } from "@shared/components/common/spinner";
-import {
-	Button,
-	Label,
-	Popover,
-	PopoverAnchor,
-	PopoverContent,
-} from "@shared/components/ui";
-import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Check, X } from "lucide-react";
 import {
@@ -29,6 +29,7 @@ import {
 	useState,
 } from "react";
 import type { ChangeEvent, KeyboardEvent, ReactNode } from "react";
+import { t } from "../../../../../i18n/messages";
 
 /**
  * Option type for autocomplete suggestions
@@ -128,6 +129,7 @@ export const AutocompleteField = ({
 	filterOptions,
 	allowFreeText = true,
 }: AutocompleteFieldProps) => {
+	useI18nLocale();
 	const [inputValue, setInputValue] = useState(value);
 	const [editValue, setEditValue] = useState(value);
 	const [originalValue, setOriginalValue] = useState(value);

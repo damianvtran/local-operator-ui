@@ -1,9 +1,3 @@
-import { Button } from "@shared/components/ui";
-import { t } from "@shared/i18n";
-import { withPathBreaks } from "@shared/lib/path-breaks";
-import { Check, Copy } from "lucide-react";
-import { useState } from "react";
-
 /**
  * Machine voice at the bottom of a panel, labelled and copyable.
  *
@@ -27,6 +21,14 @@ import { useState } from "react";
  * below). The label, the value's register and the copy control are the same in
  * both, so the two surfaces still read as one pattern rather than two.
  */
+
+import { Button } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
+import { withPathBreaks } from "@shared/lib/path-breaks";
+import { Check, Copy } from "lucide-react";
+import { useState } from "react";
+import { t } from "../../../../../i18n/messages";
+
 export const PanelDetails = ({
 	detail,
 	stacked = false,
@@ -46,6 +48,7 @@ export const PanelDetails = ({
 	 */
 	stacked?: boolean;
 }) => {
+	useI18nLocale();
 	const [copied, setCopied] = useState(false);
 	/* Named, not a bare "Copy": both by-hand panels carry a copy button beside the
 	   command well as well as this one, and only position said which copied what

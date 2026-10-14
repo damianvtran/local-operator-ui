@@ -1,4 +1,9 @@
-import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
+
+// Copy-bearing projections are intentionally recomputed after the locale hook
+// repaints; caching formatted strings would retain the prior language. Network
+// and structural-data caches remain in place.
+import { t } from "../../../../../i18n/messages";
 /**
  * Model Select Component
  *
@@ -140,20 +145,23 @@ const ModelDescription: FC<{ markdown: string }> = ({ markdown }) => (
 	</div>
 );
 
-const RecommendedStar: FC = () => (
-	<Tooltip
-		content={t(
-			"ui.common.models.model_select.recommended_based_on_community_usage_and_feedback",
-		)}
-	>
-		<span className="flex items-center text-warning">
-			<Star size={12} aria-hidden="true" />
-			<span className="sr-only">
-				{t("ui.common.models.model_select.recommended")}
+const RecommendedStar: FC = () => {
+	useI18nLocale();
+	return (
+		<Tooltip
+			content={t(
+				"ui.common.models.model_select.recommended_based_on_community_usage_and_feedback",
+			)}
+		>
+			<span className="flex items-center text-warning">
+				<Star size={12} aria-hidden="true" />
+				<span className="sr-only">
+					{t("ui.common.models.model_select.recommended")}
+				</span>
 			</span>
-		</span>
-	</Tooltip>
-);
+		</Tooltip>
+	);
+};
 
 /**
  * Model Select Component
@@ -169,6 +177,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 	allowCustom = true,
 	allowDefault = true,
 }) => {
+	useI18nLocale();
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	/*
@@ -252,7 +261,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 	}, [hostingId, refreshModels, isModelsLoading]);
 
 	// Convert models to autocomplete options, ensuring uniqueness by ID and specific ordering
-	const modelOptions: ModelOption[] = useMemo(() => {
+	const modelOptions: ModelOption[] = (() => {
 		const finalOptions: ModelOption[] = [];
 		const addedIds = new Set<string>();
 
@@ -311,10 +320,10 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 		}
 
 		return finalOptions;
-	}, [availableModels, value, hostingId, allowDefault]);
+	})();
 
 	// Helper text to show when no models are available
-	const helperText = useMemo(() => {
+	const helperText = (() => {
 		if (!hostingId && !allowDefault) {
 			return t("ui.common.models.model_select.select_a_hosting_provider_first");
 		}
@@ -346,10 +355,10 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 				: t("ui.common.models.model_select.no_models_available");
 		}
 		return undefined;
-	}, [availableModels.length, hostingId, allowDefault, modelOptions, value]);
+	})();
 
 	// Find the current selected option
-	const selectedOption = useMemo(() => {
+	const selectedOption = (() => {
 		if (
 			(!value || value.trim() === "") &&
 			!allowDefault &&
@@ -388,7 +397,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 			description: t("ui.common.models.model_select.custom_model"),
 			model: undefined,
 		};
-	}, [value, modelOptions, hostingId, allowDefault, availableModels.length]);
+	})();
 
 	const save = async (modelId: string) => {
 		try {

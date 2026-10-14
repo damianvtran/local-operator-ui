@@ -403,6 +403,10 @@ export type MessageParams = {
 	"ui.common.forms.panel_details.copied": undefined;
 	"ui.common.forms.panel_details.copy_details": undefined;
 	"ui.common.forms.panel_details.details": undefined;
+	"ui.common.forms.searchable_select.clear_the": { detail: string };
+	"ui.common.forms.searchable_select.clear_value": undefined;
+	"ui.common.forms.searchable_select.no_matches": undefined;
+	"ui.common.forms.searchable_select.use": { text: string };
 	"ui.common.forms.select.unlisted_value": undefined;
 	"ui.common.loading.page": undefined;
 	"ui.common.models.default": undefined;

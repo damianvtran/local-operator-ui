@@ -21,5 +21,9 @@
 	"ui.common.forms.panel_details.copied": "Copied",
 	"ui.common.forms.panel_details.copy_details": "Copy details",
 	"ui.common.forms.panel_details.details": "Details:",
+	"ui.common.forms.searchable_select.clear_the": "Clear the {detail}",
+	"ui.common.forms.searchable_select.clear_value": "Clear value",
+	"ui.common.forms.searchable_select.no_matches": "No matches",
+	"ui.common.forms.searchable_select.use": "Use \"{text}\"",
 	"ui.common.forms.select.unlisted_value": "Not in any listing; saved as typed."
 }

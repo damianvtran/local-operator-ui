@@ -1,4 +1,3 @@
-import { t } from "@shared/i18n";
 /**
  * The feedback row: the sentences a field has to say while it is not simply
  * resting - the transient "saved" caption, a refusal beside the control that
@@ -17,8 +16,10 @@ import { t } from "@shared/i18n";
  * hook decides), because a description pointing at an absent node is noise.
  */
 
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import type { FC } from "react";
+import { t } from "../../../../../i18n/messages";
 import type { InlineEditPhase } from "./inline-edit-model";
 
 /** The conflict row's fixed interaction words: a choice, not a status. */
@@ -49,6 +50,7 @@ export const InlineEditFeedback: FC<InlineEditFeedbackProps> = ({
 	api,
 	className,
 }) => {
+	useI18nLocale();
 	const { phase, error, conflict } = api;
 	if (phase === "saved") {
 		/*

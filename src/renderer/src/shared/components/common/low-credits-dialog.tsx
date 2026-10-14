@@ -1,10 +1,11 @@
 import RadientIcon from "@renderer/assets/radient-icon-1024x1024.png";
 import { Spinner } from "@shared/components/common/spinner";
 import { useRadientPricesQuery } from "@shared/hooks/use-radient-prices-query";
-import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useLowCreditsStore } from "@shared/store/low-credits-store";
 import { ExternalLink } from "lucide-react";
 import type { FC } from "react";
+import { t } from "../../../../../i18n/messages";
 import { BaseDialog, PrimaryButton, SecondaryButton } from "./base-dialog";
 
 export type LowCreditsDialogProps = {
@@ -18,6 +19,7 @@ export const LowCreditsDialog: FC<LowCreditsDialogProps> = ({
 	onClose,
 	onGoToConsole,
 }) => {
+	useI18nLocale();
 	const { setHasBeenNotified } = useLowCreditsStore();
 	const {
 		prices,

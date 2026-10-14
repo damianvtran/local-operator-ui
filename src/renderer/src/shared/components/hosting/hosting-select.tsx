@@ -1,4 +1,9 @@
-import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
+
+// Copy-bearing projections are intentionally recomputed after the locale hook
+// repaints; caching formatted strings would retain the prior language. Network
+// and structural-data caches remain in place.
+import { t } from "../../../../../i18n/messages";
 /**
  * Hosting Select Component
  *
@@ -104,6 +109,7 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 	allowCustom = true,
 	allowDefault = true,
 }) => {
+	useI18nLocale();
 	const capabilities = useDesktopCapabilities();
 	const censusEnabled = desktopFeatureEnabled(capabilities.data, "auth");
 	const census = useDesktopProviders(censusEnabled);
@@ -170,7 +176,7 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 	]);
 
 	// Convert hosting providers to autocomplete options
-	const hostingOptions: HostingOption[] = useMemo(() => {
+	const hostingOptions: HostingOption[] = (() => {
 		const options: HostingOption[] = [];
 		if (allowDefault) {
 			options.push({
@@ -237,13 +243,7 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 		}
 
 		return options;
-	}, [
-		availableHostingProviders,
-		value,
-		allowCustom,
-		allowDefault,
-		censusFailed,
-	]);
+	})();
 
 	/*
 	 * "No hosting providers available" under a select that is displaying
@@ -253,7 +253,7 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 	 * came from somewhere and the reader can see it, so the line would be
 	 * telling them their own setting does not exist.
 	 */
-	const helperText = useMemo(() => {
+	const helperText = (() => {
 		/*
 		 * A failed census empties the list for a reason that has nothing to do
 		 * with the user's credentials, so it gets the reason rather than the
@@ -276,17 +276,10 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 			return emptyHelperText;
 		}
 		return undefined;
-	}, [
-		availableHostingProviders.length,
-		filterByCredentials,
-		emptyHelperText,
-		value,
-		censusFailed,
-		census.error,
-	]);
+	})();
 
 	// Find the current selected option
-	const selectedOption = useMemo(() => {
+	const selectedOption = (() => {
 		// If value is empty and default is not allowed, or if there are no options at all
 		// when default is not allowed, treat as no selection.
 		if (
@@ -313,7 +306,7 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 				provider: undefined,
 			}
 		);
-	}, [value, hostingOptions, allowDefault, availableHostingProviders.length]);
+	})();
 
 	// Persist a hosting id and pull the model list that belongs to it. The
 	// refresh is best-effort: a stale model list is recoverable, a lost hosting

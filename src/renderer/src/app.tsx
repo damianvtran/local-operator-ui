@@ -1,3 +1,4 @@
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import type { FC } from "react";
 import { Suspense, lazy, useEffect } from "react";
 import {
@@ -42,9 +43,9 @@ import {
 	noteConsentAttention,
 } from "@shared/browser-consent-attention";
 import { useSuppressBrowserView } from "@shared/browser-view-policy";
-import { t } from "@shared/i18n";
 import { useI18nLocaleSync } from "@shared/i18n/locale-sync";
 import { useKeymapShortcuts } from "@shared/keymap/use-keymap-shortcuts";
+import { t } from "../../i18n/messages";
 
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog";
@@ -131,6 +132,7 @@ const BrowserWebauthnPrompt = lazy(() =>
  * Handles routing and layout for the entire application
  */
 const App: FC = () => {
+	useI18nLocale();
 	/*
 	 * The window chrome's live half: which sides the OS put its controls on, and the
 	 * full-screen fact. Mounted once, here, because it writes attributes on the
