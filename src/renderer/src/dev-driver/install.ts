@@ -1,3 +1,4 @@
+import { finderThumbnailStats } from "@features/chat/components/canvas/finder-thumbnails";
 /**
  * The renderer dev driver: the verbs a scene is written in.
  *
@@ -426,6 +427,8 @@ export function installDevDriver(): string[] {
 		}),
 
 		/** The state the verbs write into, so a scene can report what it changed. */
+		/** Read-only resource counters for the Files render-window evidence. */
+		filesFacts: () => finderThumbnailStats(),
 		state: () => {
 			const preferences = useUiPreferencesStore.getState();
 			const sessions = useCanonicalSessionsStore.getState();

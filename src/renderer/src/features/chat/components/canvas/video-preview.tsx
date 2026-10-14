@@ -89,7 +89,9 @@ const ArtifactVideoPreview: FC<{ document: CanvasDocument }> = ({
 			attachment: artifact?.digest ?? null,
 			mimeType: artifact?.contentType ?? "video/mp4",
 		},
-		artifact ? { sessionId: artifact.sessionId, childId: null } : null,
+		artifact
+			? { sessionId: artifact.sessionId, childId: artifact.childId ?? null }
+			: null,
 	);
 	const [playbackFailed, setPlaybackFailed] = useState(false);
 	return (
@@ -105,7 +107,10 @@ const ArtifactVideoPreview: FC<{ document: CanvasDocument }> = ({
 						saveName={artifactFileName(artifact)}
 						resolveBytes={() =>
 							fetchAttachmentBlob(
-								{ sessionId: artifact.sessionId, childId: null },
+								{
+									sessionId: artifact.sessionId,
+									childId: artifact.childId ?? null,
+								},
 								artifact.digest,
 							)
 						}
