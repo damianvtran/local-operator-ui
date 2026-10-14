@@ -2825,6 +2825,42 @@ function planRun(
 	);
 
 	/*
+	 * ONE BAR WHILE THE TURN THINKS. A LIVE internal episode must not add a
+	 * SECOND bar to a run that already has one standing: PR-4 #2 measures
+	 * `barsOf() === 1` while the settled turn's bar is on screen, and the
+	 * operator's contract is that that bar stays the same element and stays
+	 * condensed. An episode arriving when nothing else in the run has condensed
+	 * IS that one bar, so it still compacts - the live tests' fixture is exactly
+	 * that shape (its run has no other collapsed segment), which is what keeps
+	 * its single live group, its appends and its footer clock intact.
+	 *
+	 * THE BOUND IS THE OTHER BAR, NOT THE EPISODE. The live boundary does not
+	 * separate these cases and neither does phase: measured on both fixtures,
+	 *   F1 (live tests): settledAt=1 (active-final), liveFrom=2, episode span
+	 *     [active-p,active-t] -> span.from 2 >= liveFrom 2, at the boundary;
+	 *   F2 (PR-4 #2):     settledAt=2 (answer:1),     liveFrom=3, episode span
+	 *     [wake:1,tool:2]      -> span.from 3 >= liveFrom 3, at the boundary;
+	 * and both report afterAnswer=false, completed=false, group=null,
+	 * receipts=1, live=true - identical in every field describing the episode.
+	 * So the predicate has to read what ELSE the run is already hiding: F1's
+	 * only collapsed segment is the episode itself, while F2's already has
+	 * `tool:1` standing before the wake episode arrives.
+	 *
+	 * Settled spans, real receipt groups and `groupKeepsItsBar` are untouched by
+	 * construction: only a segment that is BOTH live and already collapsed is
+	 * suppressed, and only while a sibling collapsed segment exists in the SAME
+	 * run. At settlement `internal.live` reads false, the gate stops applying,
+	 * and the second bar plus its one announcement appear as PR-4 #2 expects.
+	 */
+	for (let gateIndex = 0; gateIndex < segments.length; gateIndex += 1) {
+		const gateSegment = segments[gateIndex];
+		if (!gateSegment.collapsed || gateSegment.internal?.live !== true) continue;
+		if (segments.some((other, i) => i !== gateIndex && other.collapsed)) {
+			segments[gateIndex] = { ...gateSegment, collapsed: false };
+		}
+	}
+
+	/*
 	 * Disclosure figures describe the rows THIS bar expands, not an indexed
 	 * run remainder. Even an exact whole-run fact includes off-page/prior or
 	 * follow-up work that is not a child of this disclosure. A very large fact
