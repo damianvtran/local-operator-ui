@@ -102,7 +102,6 @@ const {
 	surfacesForSession,
 	pickActiveSurface,
 	surfaceTitle,
-	clearsItselfAfterExit,
 	consoleCompletionHooks,
 } = module_;
 
@@ -596,7 +595,9 @@ test("the slot's one default is 80 console columns, and the sweep's console widt
 	// And the rows must USE it: a constant nothing reads would pass the check above
 	// while every frame stayed at the old number.
 	const rows =
-		source.match(/\["console-pane--[a-z-]+", ([A-Za-z_0-9]+), \d+\]/g) ?? [];
+		source.match(
+			/\["console-pane--[a-z-]+", (?:CONSOLE_PANE_WIDTH|\d+), \d+\]/g,
+		) ?? [];
 	/*
 	 * COUNTED FROM THE STORY FILE RATHER THAN TYPED HERE. This read `12`, which is exactly the
 	 * kind of number that goes stale in silence: design round 4 added a story (D21's
@@ -615,8 +616,11 @@ test("the slot's one default is 80 console columns, and the sweep's console widt
 		`the sweep carries ${rows.length} console-pane rows for ${stories.length} stories — every story needs a row, because \`--only=\` filters the sweep's own list rather than Storybook's index`,
 	);
 	assert.ok(
-		rows.every((row) => row.includes("CONSOLE_PANE_WIDTH")),
-		"and every one of them is captured at that width",
+		rows.every(
+			(row) =>
+				row.includes("CONSOLE_PANE_WIDTH") || row.includes(", 320, 520]"),
+		),
+		"and every one of them is captured at that width (the narrow-pane row is the one deliberate exception, at 320)",
 	);
 });
 
@@ -630,61 +634,29 @@ test("the slot's one default is 80 console columns, and the sweep's console widt
  * them in the field — a non-zero code (the error stays readable), a code main never
  * observed, and a row restored from history (there the history is the point).
  */
-test("a clean exit clears itself; a non-zero code and a restored row do not (#929)", () => {
-	const surface = (overrides) => readConsoleSurface(listing(overrides));
-	assert.equal(
-		clearsItselfAfterExit(surface({ running: false, exit_code: 0 })),
-		true,
-		"a shell that exited 0 during this run is the row the pane clears after the beat",
-	);
-	assert.equal(
-		clearsItselfAfterExit(surface({ running: false, exit_code: 3 })),
-		false,
-		"a non-zero exit keeps its row, so the error stays readable",
-	);
-	assert.equal(
-		clearsItselfAfterExit(surface({ running: false, exit_code: null })),
-		false,
-		"an exit whose code was never observed keeps its row (only a clean OBSERVED exit clears)",
-	);
-	assert.equal(
-		clearsItselfAfterExit(
-			surface({ running: false, exit_code: 0, live: false }),
-		),
-		false,
-		"a surface restored after a relaunch keeps its row — nothing ended in this run",
-	);
-	assert.equal(
-		clearsItselfAfterExit(surface({ running: true, exit_code: 0 })),
-		false,
-		"a running surface is not ended, whatever code it last reported",
-	);
-});
-
-/*
- * THE BEAT'S SIZE AND ITS ARMING, pinned at the source level on purpose: the render
- * suite deliberately does not assert the delay as a clock fact, because measured
- * 2026-10-10 a 10 ms timer inside that suite's own polling loop stretched to 9.4 s
- * on this host, and a "still present at half a beat" assertion there is a coin toss
- * under load. What is pinned here is the policy's number and its use: the constant
- * is declared, its value sits in the brief, user-perceptible band, and the timer is
- * armed with THAT constant rather than a literal a later edit could shrink to zero.
- */
-test("the clean exit's beat is the shipped constant, in the brief band (#929)", () => {
+test("renderer never owns automatic completion deletion", () => {
 	const paneSource = readFileSync(
 		"src/renderer/src/features/console/components/console-pane.tsx",
 		"utf8",
 	);
-	const declared = paneSource.match(/const EXIT_DISMISS_AFTER_MS = (\d+);/);
-	assert.ok(declared, "the pane no longer declares the clean exit's beat");
-	const beat = Number(declared[1]);
-	assert.ok(
-		beat >= 2000 && beat <= 10_000,
-		`the beat left the brief, user-perceptible band: ${beat}ms — under two seconds the notice cannot be read, and a beat this long is a lingering row with extra steps`,
+	assert.ok(!paneSource.includes("EXIT_DISMISS_AFTER_MS"));
+	assert.ok(!paneSource.includes("exitDismissTimers"));
+	assert.ok(!paneSource.includes("clearsItselfAfterExit"));
+});
+
+test("aggregate console capacity is additive and rejects malformed numbers", () => {
+	assert.equal(readConsoleSnapshot({ available: true }).capacity, undefined);
+	assert.deepEqual(
+		readConsoleSnapshot({
+			available: true,
+			capacity: { live: 64, archived: 33, limit: 128 },
+		}).capacity,
+		{ live: 64, archived: 33, limit: 128 },
 	);
-	assert.ok(
-		paneSource.includes("}, EXIT_DISMISS_AFTER_MS)"),
-		"the beat effect arms its timer with something other than the shipped constant",
+	assert.equal(
+		readConsoleSnapshot({ capacity: { live: -1, archived: 0, limit: 128 } })
+			.capacity,
+		undefined,
 	);
 });
 
@@ -984,5 +956,96 @@ test("the request is an event and not a preference: persisting it would run a sh
 		store,
 		/partialize: persistedUiPreferences,/,
 		"the store must persist through the filter this test pins, not through a closure beside it",
+	);
+});
+
+test("the compact/full summary breakpoints are complementary and sit at 460px", async () => {
+	/*
+	 * D18's GAP AND THE BREAKPOINT DISPUTE, settled by an executable compile rather
+	 * than an argument. The pane's header carries two spans: the compact spelling
+	 * hidden ABOVE the breakpoint and the full spelling hidden BELOW it. Tailwind v4
+	 * compiles `@min-[X]` to `(width >= X)` and `@max-[X]` to `(width < X)`, so a
+	 * MATCHED pair is complementary at every width — exactly one span renders, at
+	 * X included, with no gap and no double-render. This test compiles the shipped
+	 * tokens with the repo's own Tailwind and asserts that, so a future edit that
+	 * mismatches the pair (e.g. `@min-[461px]` beside `@max-[460px]`, which would
+	 * render BOTH at 460, or `@min-[460px]` beside `@max-[459px]`, which would render
+	 * NEITHER) fails here rather than in a browser nobody re-measured.
+	 *
+	 * It also pins the breakpoint AT 460: the round-3 width sweep found the surface's
+	 * command name clipped to 0–6px between 420 and ~446 beside the full 228px
+	 * summary, so the compact spelling must take over by 460.
+	 */
+	const { compile } = await import("tailwindcss");
+	const TW = join(
+		process.cwd(),
+		"node_modules/.pnpm/tailwindcss@4.3.3/node_modules/tailwindcss",
+	);
+	const compileCss = async (candidates) => {
+		const sheet = readFileSync(join(TW, "index.css"), "utf8");
+		const compiler = await compile('@import "tailwindcss";', {
+			base: process.cwd(),
+			loadStylesheet: async () => ({
+				path: "tw.css",
+				base: TW,
+				content: sheet,
+			}),
+			loadModule: async () => ({}),
+		});
+		return compiler.build(candidates);
+	};
+
+	const paneSource = readFileSync(
+		join(
+			process.cwd(),
+			"src/renderer/src/features/console/components/console-pane.tsx",
+		),
+		"utf8",
+	);
+	/*
+	 * The tokens are read off the SOURCE, so this test judges the pair the pane
+	 * actually ships rather than a copy. `@min-[460px]/consolepane` hides the compact
+	 * span above 460; `@max-[460px]/consolepane` hides the full span below it.
+	 */
+	const compactHiddenAt = paneSource.match(
+		/@min-\[(\d+)px\]\/consolepane:hidden/,
+	);
+	const fullHiddenAt = paneSource.match(/@max-\[(\d+)px\]\/consolepane:hidden/);
+	assert.ok(compactHiddenAt, "the compact span's @min token is gone");
+	assert.ok(fullHiddenAt, "the full span's @max token is gone");
+	assert.equal(
+		compactHiddenAt[1],
+		fullHiddenAt[1],
+		`the pair must share one breakpoint: compact hides at ${compactHiddenAt[1]}, full hides at ${fullHiddenAt[1]} — a mismatch renders both or neither at the boundary`,
+	);
+	assert.equal(
+		Number(fullHiddenAt[1]),
+		460,
+		"the compact spelling must take over at 460px (D18: below ~446 the command name is clipped to nothing)",
+	);
+
+	const css = await compileCss([
+		"@container/consolepane",
+		`@min-[${compactHiddenAt[1]}px]/consolepane:hidden`,
+		`@max-[${fullHiddenAt[1]}px]/consolepane:hidden`,
+	]);
+	const at = `(width >= ${compactHiddenAt[1]}px)`;
+	const below = `(width < ${fullHiddenAt[1]}px)`;
+	assert.ok(
+		css.includes(`@container consolepane ${below}`),
+		`the @max token must compile to \`${below}\` (Tailwind v4's "< X"), which is what makes the pair complementary`,
+	);
+	assert.ok(
+		css.includes(`@container consolepane ${at}`),
+		`the @min token must compile to \`${at}\` (Tailwind v4's ">= X")`,
+	);
+	/*
+	 * THE GAPLESS PROPERTY, stated as the complement itself: hide-above >= X and
+	 * hide-below < X partition the widths, so for every X exactly one spelling shows.
+	 */
+	assert.equal(
+		Number(compactHiddenAt[1]),
+		Number(fullHiddenAt[1]),
+		"a matched pair is the gapless property; see the boundary note above",
 	);
 });

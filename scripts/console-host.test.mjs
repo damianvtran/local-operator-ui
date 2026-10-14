@@ -25,6 +25,7 @@
  */
 
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { EventEmitter } from "node:events";
 import {
 	chmodSync,
@@ -48,6 +49,8 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export * from "./src/main/console/registry";',
+			// Harness-only export for separately leased interop calibration.
+			"export const consoleHarnessRequire = require;",
 			'export * from "./src/main/console/byte-log";',
 			'export * from "./src/main/console/emulator";',
 			'export * from "./src/main/console/osc133";',
@@ -91,6 +94,12 @@ const bundle = await build({
 	format: "esm",
 	platform: "node",
 	write: false,
+	// YAML's Node build is CommonJS and requires node:process. Match the
+	// existing updater harness's real createRequire bridge; a data: import's
+	// import.meta.url cannot itself be passed to Node's createRequire.
+	banner: {
+		js: 'import { createRequire as __consoleCreateRequire } from "node:module"; const require = __consoleCreateRequire(process.cwd() + "/package.json");',
+	},
 	// Only `console/ipc.ts` reaches Electron as a VALUE (`ipcMain`), and the stub
 	// models exactly that plus a handler registry a test can invoke. Everything else
 	// in this bundle imports Electron as types, which is erased.
@@ -135,6 +144,9 @@ export function loadNodePty() {
 						"function createRealXtermEmulator(",
 					)}
 export function createXtermEmulator(options: Parameters<typeof createRealXtermEmulator>[0]) {
+ // Reject before acquisition: throwing from the observer after acquisition
+ // would manufacture a hidden test-only leak rather than exercise the caller.
+ if (globalThis.__consoleAllocationEmulatorFailure) throw new Error("labelled emulator construction failure");
  const emulator = createRealXtermEmulator(options);
  globalThis.__consoleRootObserveEmulator?.(emulator);
  return emulator;
@@ -149,9 +161,30 @@ export function createXtermEmulator(options: Parameters<typeof createRealXtermEm
 		electron: join(process.cwd(), "scripts/browser-electron-stub.ts"),
 	},
 });
-const mod = await import(
-	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-);
+// Same sourceURL pattern as onboarding-i18n-contract.test.mjs: change frame
+// display only, not the executed code, error type, function or line positions.
+const compiledSource = `${bundle.outputFiles[0].text}\n//# sourceURL=console-host.test.bundle.mjs\n`;
+const moduleUrl = `data:text/javascript;base64,${Buffer.from(compiledSource).toString("base64")}`;
+let mod;
+try {
+	mod = await import(moduleUrl);
+} catch (error) {
+	// Initialization errors can still mention the native URL before sourceURL
+	// takes effect. Preserve and rethrow the actual error, not a success stub;
+	// replace only this exact payload, retaining frame/function/line suffixes.
+	if (error instanceof Error) {
+		error.message = error.message.replaceAll(
+			moduleUrl,
+			"console-host.test.bundle.mjs",
+		);
+		if (typeof error.stack === "string")
+			error.stack = error.stack.replaceAll(
+				moduleUrl,
+				"console-host.test.bundle.mjs",
+			);
+	}
+	throw error;
+}
 const {
 	ConsoleRegistry,
 	MAX_AGENT_SURFACES_PER_SESSION,
@@ -320,10 +353,18 @@ function writtenText(pty) {
 	);
 }
 
-function makeHost({ env = shadowEnv(), history = null, now, spawn } = {}) {
-	const registry = new ConsoleRegistry();
+function makeHost({
+	env = shadowEnv(),
+	history = null,
+	now,
+	spawn,
+	policy,
+	nativeCapacity,
+} = {}) {
+	const registry = new ConsoleRegistry({ policy });
 	const spawned = [];
 	const host = new ConsoleHost(registry, {
+		nativeCapacity,
 		window: () => null,
 		log: () => {},
 		history,
@@ -351,6 +392,717 @@ after(() => {
 });
 
 /* ------------------------------------------------------------------ registry */
+
+// Regression discriminator: exit changes process admission, not durable surface
+// identity. Retained completion must not prevent a different owner starting work.
+test("console harness Node builtin interop retains genuine failure semantics", () => {
+	assert.equal(mod.consoleHarnessRequire("node:process"), process);
+	assert.throws(
+		() => mod.consoleHarnessRequire("node:__console_harness_missing_builtin__"),
+		(error) =>
+			error instanceof Error && error.code === "ERR_UNKNOWN_BUILTIN_MODULE",
+	);
+});
+
+test("retained exits do not consume live capacity for the 33rd surface", () => {
+	const { host, spawned } = makeHost();
+	try {
+		for (let index = 0; index < 32; index++) {
+			host.create({
+				sessionId: `exit-owner-${index}`,
+				origin: "agent",
+				retain: true,
+			});
+			spawned[index].pty.exit(0);
+		}
+		assert.equal(host.list().length, 32);
+		const next = host.create({ sessionId: "next-owner", origin: "agent" });
+		assert.ok(next.surface.startsWith("con:"));
+	} finally {
+		host.dispose(false);
+	}
+});
+
+test("console modeled capacity admits 48 default grids and refuses budget overflow without spawning", () => {
+	const { host, spawned } = makeHost();
+	try {
+		for (let index = 0; index < 48; index++)
+			host.create({ sessionId: `user-${index}`, origin: "user" });
+		assert.equal(spawned.length, 48);
+		const sample = host.resources();
+		assert.equal(sample.resources.ptys, 48);
+		assert.equal(sample.resources.emulator_cells, 48 * 100 * 5030);
+		assert.ok(
+			sample.resources.modeled_managed_bytes <
+				sample.resource_caps.modeled_managed_bytes,
+		);
+		assert.equal(sample.resources.fd_available, null);
+		for (let index = 48; index < 64; index++) {
+			try {
+				host.create({ sessionId: `user-${index}`, origin: "user" });
+			} catch (error) {
+				assert.equal(error.code, "tab_limit");
+				assert.equal(error.data.scope, "resources");
+				assert.equal(host.resources().resources.ptys, spawned.length);
+				const expected = Math.floor(
+					(768 * 1048576 - 64 * 1048576) / (4 * 1048576 + 100 * 5030 * 16),
+				);
+				assert.equal(spawned.length, expected);
+				assert.ok(spawned.length > 48 && spawned.length < 64);
+				return;
+			}
+		}
+		assert.fail("resource guard failed to reject oversized fleet");
+	} finally {
+		host.dispose(false);
+	}
+});
+
+// These acceptance cases are intentionally unproven until separately admitted.
+// Fill through the production allocator rather than choosing a convenient fake
+// budget/count; one finite emitter or one pinned replay distinguishes the user
+// resource carve-out from a mere slot reservation without a fleet-sized flood.
+function fillReservedAgentShare(host) {
+	const base = host.resources().resources.modeled_managed_bytes;
+	const agents = [];
+	let unitBytes = null;
+	let refusal = null;
+	for (let index = 0; index < host.registry.policy.maxLive; index++) {
+		try {
+			agents.push(
+				host.create({
+					sessionId: `reserved-agent-${index}`,
+					origin: "agent",
+					retain: true,
+				}),
+			);
+			if (unitBytes === null)
+				unitBytes = host.resources().resources.modeled_managed_bytes - base;
+		} catch (error) {
+			if (error.code !== "tab_limit") throw error;
+			refusal = error;
+			break;
+		}
+	}
+	assert.ok(agents.length > 0 && unitBytes > 0);
+	assert.equal(
+		refusal?.data.scope,
+		"resources",
+		"default agent share must stop at the actual prospective resource gate",
+	);
+	const reserved = host.registry.policy.userReserved;
+	const sample = host.resources();
+	assert.ok(
+		sample.resources.modeled_managed_bytes + reserved * unitBytes <=
+			sample.resource_caps.modeled_managed_bytes,
+	);
+	return { agents, reserved, unitBytes };
+}
+
+function createPromisedUsers(host, reserved) {
+	const created = [];
+	let refusal = null;
+	for (let index = 0; index < reserved; index++) {
+		try {
+			created.push(
+				host.create({
+					sessionId: `reserved-user-${index}`,
+					origin: "user",
+					retain: true,
+				}),
+			);
+		} catch (error) {
+			if (error.code !== "tab_limit") throw error;
+			refusal = error;
+			break;
+		}
+	}
+	return { created, refusal };
+}
+
+const retainedDigest = (path) =>
+	createHash("sha256").update(readFileSync(path)).digest("hex");
+
+function assertPromisedUsers(host, reserved, result) {
+	assert.equal(
+		result.created.length,
+		reserved,
+		JSON.stringify({
+			contract: "user resource reservation",
+			promised: reserved,
+			admitted: result.created.length,
+			refusal: result.refusal && {
+				code: result.refusal.code,
+				scope: result.refusal.data?.scope,
+			},
+			modeled_bytes: host.resources().resources.modeled_managed_bytes,
+			modeled_ceiling: host.resources().resource_caps.modeled_managed_bytes,
+		}),
+	);
+}
+
+test("console reserved user resources survive one finite retained agent emitter", async () => {
+	const root = historyRoot(scratch());
+	const history = new ConsoleHistory(root);
+	const { host, registry, spawned } = makeHost({ history });
+	try {
+		const { agents, reserved, unitBytes } = fillReservedAgentShare(host);
+		const sample = host.resources();
+		const slack =
+			sample.resource_caps.modeled_managed_bytes -
+			sample.resources.modeled_managed_bytes -
+			reserved * unitBytes;
+		assert.ok(
+			slack >= 0 && slack < RETAIN_BYTES,
+			"precondition: one bounded log increment must discriminate the current reservation contract",
+		);
+		const emitter = agents[0];
+		const payload = "N".repeat(2 * RETAIN_BYTES);
+		assert.ok(
+			Buffer.byteLength(payload) <= 8 * 1048576,
+			"one finite emitter only; no multi-agent flood",
+		);
+		// A real human may observe this existing terminal; that does not authorize
+		// its child output to spend other vacant user credits.
+		host.subscribe(
+			emitter.surface,
+			0,
+			{ data: () => {}, exit: () => {} },
+			"user",
+		);
+		spawned[0].pty.emit(payload);
+		await registry.require(emitter.surface).runtime.emulator.whenIdle();
+		assert.ok(host.status(emitter.surface).dropped_grid_bytes > 0);
+		assert.ok(host.status(emitter.surface).dropped_live_bytes > 0);
+		host.flush(emitter.surface);
+		const path = logPath(root, "reserved-agent-0", emitter.surface);
+		const expected = createHash("sha256").update(payload).digest("hex");
+		assert.equal(statSync(path).size, Buffer.byteLength(payload));
+		assert.equal(
+			retainedDigest(path),
+			expected,
+			"all emitted bytes reach real retained history",
+		);
+		const users = createPromisedUsers(host, reserved);
+		// Check side effects before reporting admission failure. RAM replay may
+		// legitimately trim; deleting/rotating these sub-ceiling disk bytes may not.
+		assert.equal(retainedDigest(path), expected);
+		assert.ok(spawned.every(({ pty }) => pty.signals.length === 0));
+		assertPromisedUsers(host, reserved, users);
+	} finally {
+		host.dispose(false);
+	}
+});
+
+test("console reserved user resources survive protected agent cold-history pressure", async () => {
+	const root = historyRoot(scratch());
+	const history = new ConsoleHistory(root);
+	const { host, registry, spawned } = makeHost({ history });
+	const observer = globalThis.__consoleRootObserveEmulator;
+	let release;
+	const gate = new Promise((resolve) => {
+		release = resolve;
+	});
+	let reading = null;
+	try {
+		const owner = "reserved-cold-agent";
+		const archived = host.create({
+			sessionId: owner,
+			origin: "agent",
+			retain: true,
+		});
+		const initial = registry.require(archived.surface).runtime;
+		spawned[0].pty.emit("retained cold agent\r\n");
+		await initial.emulator.whenIdle();
+		spawned[0].pty.exit(0);
+		await initial.emulator.whenIdle();
+		assert.equal(
+			registry.require(archived.surface).runtime,
+			null,
+			"real completed history must actually be cold",
+		);
+		const path = logPath(root, owner, archived.surface);
+		const expected = retainedDigest(path);
+		const { reserved } = fillReservedAgentShare(host);
+		let captured = null;
+		globalThis.__consoleRootObserveEmulator = (emulator) => {
+			captured = emulator;
+			const idle = emulator.whenIdle.bind(emulator);
+			emulator.whenIdle = async () => {
+				await idle();
+				await gate;
+			};
+		};
+		// This is the agent dispatch path, never a user-origin flag for replay.
+		// Hold the genuine read pin, not a fabricated activeReaders counter.
+		reading = dispatchConsole(host, "console_read", {
+			session_id: owner,
+			surface: archived.surface,
+			mode: "viewport",
+		}).then(
+			(result) => ({ result }),
+			(error) => ({ error }),
+		);
+		globalThis.__consoleRootObserveEmulator = observer;
+		const pinned = registry.require(archived.surface).runtime;
+		if (!pinned) {
+			const outcome = await reading;
+			assert.equal(outcome.error?.code, "tab_limit");
+			assert.equal(
+				outcome.error?.data.scope,
+				"resources",
+				"safe pre-acquisition refusal is permitted",
+			);
+			assert.equal(captured, null);
+		} else {
+			assert.ok(pinned.activeReaders > 0 && captured === pinned.emulator);
+		}
+		const users = createPromisedUsers(host, reserved);
+		if (pinned)
+			assert.equal(
+				registry.require(archived.surface).runtime,
+				pinned,
+				"a held reader cannot be evicted to manufacture user capacity",
+			);
+		assert.equal(retainedDigest(path), expected);
+		assert.ok(spawned.every(({ pty }) => pty.signals.length === 0));
+		assertPromisedUsers(host, reserved, users);
+		release();
+		const outcome = await reading;
+		if (pinned) assert.ok(outcome.result?.text.includes("retained cold agent"));
+	} finally {
+		globalThis.__consoleRootObserveEmulator = observer;
+		release();
+		if (reading) await reading;
+		host.dispose(false);
+	}
+});
+
+test("console reservation caller context cannot be promoted by RPC JSON but trusted IPC may spend actual user credit", async () => {
+	const root = historyRoot(scratch());
+	const { host, registry, spawned } = makeHost({
+		history: new ConsoleHistory(root),
+	});
+	const frame = { url: "http://localhost/index.html" };
+	const window_ = {
+		isDestroyed: () => false,
+		webContents: { mainFrame: frame, send: () => {} },
+	};
+	try {
+		const cold = host.create({
+			sessionId: "caller-cold",
+			origin: "agent",
+			retain: true,
+		});
+		// Creation is provenance, not evidence that anyone typed into the PTY.
+		const initialActor = host
+			.list()
+			.find((entry) => entry.surface === cold.surface).last_actor;
+		const runtime = registry.require(cold.surface).runtime;
+		spawned[0].pty.emit("caller credit\r\n");
+		await runtime.emulator.whenIdle();
+		spawned[0].pty.exit(0);
+		await runtime.emulator.whenIdle();
+		fillReservedAgentShare(host);
+		await assert.rejects(
+			() =>
+				dispatchConsole(host, "console_read", {
+					session_id: "caller-cold",
+					surface: cold.surface,
+					mode: "viewport",
+					actor: "user",
+					origin: "user",
+				}),
+			(error) => error.code === "tab_limit" && error.data.scope === "resources",
+		);
+		assert.equal(registry.require(cold.surface).runtime, null);
+		registerConsoleIpc({
+			window: () => window_,
+			expectedUrl: frame.url,
+			host: () => host,
+			log: () => {},
+		});
+		const replay = await ipcMain.handlers.get("console-subscribe")(
+			{ sender: window_.webContents, senderFrame: frame },
+			cold.surface,
+			0,
+		);
+		assert.ok(replay);
+		await registry.require(cold.surface).runtime.emulator.whenIdle();
+		assert.equal(
+			host.list().find((entry) => entry.surface === cold.surface).last_actor,
+			initialActor,
+			"read attribution is not input attribution",
+		);
+		const credits = host.resources().resources;
+		assert.ok(
+			credits.user_remaining_modeled_units < credits.user_reserved_vacant,
+			"actual authorized human replay consumed credit; never promise unconditional admission",
+		);
+		assert.ok(spawned.every(({ pty }) => pty.signals.length === 0));
+	} finally {
+		unregisterConsoleIpc();
+		host.dispose(false);
+	}
+});
+
+test("console reservation caller context fences agent resize while trusted renderer measurements remain authorized", () => {
+	const { host, registry, spawned } = makeHost();
+	try {
+		const { agents } = fillReservedAgentShare(host);
+		const target = agents[0];
+		// Geometry changes must preserve attribution, including its initial null.
+		const initialActor = host
+			.list()
+			.find((entry) => entry.surface === target.surface).last_actor;
+		assert.throws(
+			() => host.resize(target.surface, target.cols * 2, target.rows),
+			(error) => error.code === "tab_limit" && error.data.scope === "resources",
+		);
+		assert.equal(registry.require(target.surface).record.cols, target.cols);
+		host.setDisplayed(target.surface);
+		host.setContentRect(target.surface, {
+			visible: true,
+			contentRect: { x: 0, y: 0, width: target.cols * 2, height: target.rows },
+			cellWidth: 1,
+			cellHeight: 1,
+		});
+		assert.equal(registry.require(target.surface).record.cols, target.cols * 2);
+		assert.equal(
+			host.list().find((entry) => entry.surface === target.surface).last_actor,
+			initialActor,
+		);
+		assert.ok(spawned.every(({ pty }) => pty.signals.length === 0));
+	} finally {
+		host.dispose(false);
+	}
+});
+
+test("console owner cleanup preserves running and secure work", async () => {
+	const { host, spawned } = makeHost();
+	try {
+		const running = host.create({ sessionId: "owner", origin: "agent" });
+		const done = host.create({ sessionId: "owner", origin: "agent" });
+		spawned[1].pty.exit(0);
+		const secure = host.create({ sessionId: "owner", origin: "agent" });
+		host.setSecure(secure.surface, true);
+		spawned[2].pty.exit(0);
+		assert.deepEqual(await host.cleanupOwner("other"), {
+			released: 0,
+			protected: 0,
+			running: 0,
+		});
+		assert.deepEqual(await host.cleanupOwner("owner"), {
+			released: 1,
+			protected: 1,
+			running: 1,
+		});
+		assert.equal(host.status(running.surface).running, true);
+		assert.equal(host.status(secure.surface).secure, true);
+		assert.throws(
+			() => host.status(done.surface),
+			(error) => error.code === "surface_unavailable",
+		);
+	} finally {
+		host.dispose(false);
+	}
+});
+
+test("console sticky user adoption survives later agent input and exit acknowledgement", async (context) => {
+	context.mock.timers.enable({ apis: ["setTimeout"] });
+	const { host, spawned } = makeHost();
+	try {
+		const created = host.create({
+			sessionId: "adopted-owner",
+			origin: "agent",
+			retain: false,
+		});
+		await host.input(created.surface, { text: "user input" }, "user");
+		await host.input(created.surface, { text: "agent input" }, "agent");
+		assert.equal(
+			host.list()[0].last_actor,
+			"agent",
+			"attribution must still reflect the latest actor",
+		);
+		spawned[0].pty.exit(0);
+		host.acknowledgeExit(created.surface);
+		context.mock.timers.tick(30_001);
+		await Promise.resolve();
+		assert.equal(
+			host.status(created.surface).running,
+			false,
+			"acknowledgement must not discard an adopted surface",
+		);
+		assert.deepEqual(await host.cleanupOwner("adopted-owner"), {
+			released: 0,
+			protected: 1,
+			running: 0,
+		});
+		assert.equal(host.list().length, 1);
+	} finally {
+		host.dispose(false);
+	}
+});
+
+for (const exitsDuringRead of [true, false]) {
+	test(`console reader drain ${exitsDuringRead ? "dehydrates the overlapping exit" : "preserves live work"}`, async () => {
+		const history = new ConsoleHistory(historyRoot(scratch()));
+		const { host, registry, spawned } = makeHost({ history });
+		try {
+			const created = host.create({
+				sessionId: "reader-owner",
+				origin: "agent",
+				retain: true,
+			});
+			spawned[0].pty.emit("final reader output\r\n");
+			const runtime = registry.require(created.surface).runtime;
+			await runtime.emulator.whenIdle();
+			host.flush(created.surface);
+			const before = history.load("reader-owner", created.surface).bytes;
+			let release;
+			const held = new Promise((resolve) => {
+				release = resolve;
+			});
+			const originalIdle = runtime.emulator.whenIdle;
+			// This seam holds an actual host read. Registering the exit observer
+			// second makes its first demotion see the active reader, deterministically.
+			runtime.emulator.whenIdle = () => held;
+			const reading = host.read(created.surface, "viewport");
+			assert.equal(runtime.activeReaders, 1);
+			if (exitsDuringRead) spawned[0].pty.exit(0);
+			assert.equal(registry.require(created.surface).runtime, runtime);
+			release();
+			assert.match((await reading).text, /final reader output/);
+			runtime.emulator.whenIdle = originalIdle;
+			assert.equal(runtime.activeReaders, 0);
+			assert.equal(host.status(created.surface).running, !exitsDuringRead);
+			if (exitsDuringRead) {
+				assert.equal(
+					registry.require(created.surface).runtime,
+					null,
+					"last-reader drain must retry the blocked exit demotion",
+				);
+				assert.deepEqual(
+					history.load("reader-owner", created.surface).bytes,
+					before,
+				);
+				assert.match(
+					(await host.read(created.surface, "viewport")).text,
+					/final reader output/,
+				);
+				assert.equal(
+					registry.require(created.surface).runtime.archivedReplay,
+					true,
+				);
+				await host.read(created.surface, "viewport");
+				assert.notEqual(
+					registry.require(created.surface).runtime,
+					null,
+					"a hydrated LRU entry is not demoted after every read",
+				);
+			} else {
+				assert.equal(
+					registry.require(created.surface).runtime,
+					runtime,
+					"read completion alone must never dispose live work",
+				);
+			}
+		} finally {
+			host.dispose(false);
+		}
+	});
+}
+
+for (const fault of [
+	"env",
+	"spawn",
+	"emulator",
+	"attach-before",
+	"attach-after",
+]) {
+	test(`console failed allocation ${fault} releases only its reservation and owned resources`, () => {
+		let armed = false;
+		const ptys = [];
+		const disposals = [];
+		const oldObserver = globalThis.__consoleRootObserveEmulator;
+		const oldFailure = globalThis.__consoleAllocationEmulatorFailure;
+		const { host, registry } = makeHost({
+			policy: { max_live: 32, max_owner: 1, user_reserved: 4 },
+			spawn: (options) => {
+				if (armed && fault === "spawn")
+					throw new Error("labelled spawn failure");
+				const pty = new FakePty(options);
+				ptys.push(pty);
+				return pty;
+			},
+		});
+		try {
+			const existing = host.create({
+				sessionId: "protected-existing",
+				origin: "user",
+				retain: true,
+			});
+			const existingRuntime = registry.require(existing.surface).runtime;
+			const removed = [];
+			const remove = registry.remove.bind(registry);
+			registry.remove = (surface) => {
+				removed.push(surface);
+				return remove(surface);
+			};
+			const attach = registry.attach.bind(registry);
+			registry.attach = (surface, runtime) => {
+				if (armed && fault === "attach-before")
+					throw new Error("labelled attach before binding");
+				attach(surface, runtime);
+				if (armed && fault === "attach-after")
+					throw new Error("labelled attach after binding");
+			};
+			globalThis.__consoleRootObserveEmulator = (emulator) => {
+				const counter = { calls: 0 };
+				disposals.push(counter);
+				const release = emulator.dispose.bind(emulator);
+				emulator.dispose = () => {
+					counter.calls++;
+					release();
+				};
+			};
+			globalThis.__consoleAllocationEmulatorFailure = fault === "emulator";
+			const env = {};
+			if (fault === "env")
+				Object.defineProperty(env, "SYNTHETIC", {
+					enumerable: true,
+					get() {
+						throw new Error("labelled environment failure");
+					},
+				});
+			armed = true;
+			assert.throws(
+				() => host.create({ sessionId: "failed-owner", origin: "agent", env }),
+				/labelled/,
+			);
+			assert.equal(
+				removed.length,
+				1,
+				"one failed reservation removal even after attach",
+			);
+			assert.equal(registry.count(), 1);
+			assert.equal(registry.require(existing.surface).runtime, existingRuntime);
+			assert.deepEqual(ptys[0].signals, [], "never signal another allocation");
+			const acquiredPty = !["env", "spawn"].includes(fault);
+			assert.equal(ptys.length, acquiredPty ? 2 : 1);
+			if (acquiredPty) assert.deepEqual(ptys[1].signals, ["SIGKILL"]);
+			assert.equal(disposals.length, fault.startsWith("attach") ? 1 : 0);
+			assert.ok(disposals.every((counter) => counter.calls === 1));
+			assert.equal(host.resources().resources.pending_allocations, 0);
+			armed = false;
+			globalThis.__consoleAllocationEmulatorFailure = false;
+			const next = host.create({ sessionId: "failed-owner", origin: "agent" });
+			assert.equal(
+				host.status(next.surface).running,
+				true,
+				"the owner's single live reservation was released",
+			);
+			host.dispose(false);
+			if (acquiredPty)
+				assert.deepEqual(
+					ptys[1].signals,
+					["SIGKILL"],
+					"successful rollback never signals twice at host teardown",
+				);
+		} finally {
+			globalThis.__consoleAllocationEmulatorFailure = oldFailure;
+			globalThis.__consoleRootObserveEmulator = oldObserver;
+			host.dispose(false);
+		}
+	});
+}
+
+test("console parser pending bytes drain all readers and dispose safely", async () => {
+	const emulator = createXtermEmulator({
+		cols: 80,
+		rows: 24,
+		scrollback: 5000,
+	});
+	try {
+		const bytes = Buffer.from("parser drain\r\n");
+		emulator.write(bytes);
+		assert.equal(emulator.pendingBytes, bytes.length);
+		await Promise.all([emulator.whenIdle(), emulator.whenIdle()]);
+		assert.equal(emulator.pendingBytes, 0);
+		assert.match(emulator.text("viewport"), /parser drain/);
+	} finally {
+		emulator.dispose();
+	}
+});
+
+test("console known native FD and PTY headroom refuse before spawn, never inferred when unknown", () => {
+	for (const nativeCapacity of [
+		() => ({ fdLimit: 160, fdUsed: 40, ptyMax: null, ptyAvailable: null }),
+		() => ({ fdLimit: null, fdUsed: null, ptyMax: 128, ptyAvailable: 64 }),
+	]) {
+		const { host, registry, spawned } = makeHost({ nativeCapacity });
+		try {
+			assert.throws(
+				() => host.create({ sessionId: "native-headroom", origin: "user" }),
+				(error) =>
+					error.code === "tab_limit" && error.data.scope === "resources",
+			);
+			assert.equal(spawned.length, 0);
+			assert.equal(registry.count(), 0);
+		} finally {
+			host.dispose(false);
+		}
+	}
+});
+
+test("console claimed-owner mismatch is refused before every surface operation", async () => {
+	const { host } = makeHost();
+	try {
+		const created = host.create({
+			sessionId: "synthetic-owner",
+			origin: "agent",
+		});
+		for (const method of [
+			"console_status",
+			"console_read",
+			"console_screenshot",
+			"console_input",
+			"console_keys",
+			"console_resize",
+			"console_secure",
+			"console_close",
+		]) {
+			await assert.rejects(
+				dispatchConsole(host, method, {
+					surface: created.surface,
+					session_id: "synthetic-other",
+				}),
+				(error) => error.code === "surface_not_owned",
+			);
+		}
+		assert.equal(host.status(created.surface).running, true);
+		// SID is a claimed scope under a trusted host key, not new authentication.
+		assert.equal(
+			(
+				await dispatchConsole(host, "console_status", {
+					surface: created.surface,
+				})
+			).running,
+			true,
+		);
+	} finally {
+		host.dispose(false);
+	}
+});
+
+test("console oversized log chunks respect the hard byte ceiling", () => {
+	const log = new ByteLog({ retainBytes: 4, ceilingBytes: 16 });
+	log.append(Buffer.alloc(32, 65));
+	assert.equal(log.retainedBytes, 16);
+	assert.equal(log.endOffset, 32);
+	assert.equal(log.startOffset, 16);
+	assert.equal(log.truncated, true);
+});
 
 test("a surface handle names its host, and parses back to its slot", () => {
 	const registry = new ConsoleRegistry();
@@ -927,7 +1679,15 @@ test("a create whose process will not start leaves no surface behind", () => {
 	// a surface that lists as running while nothing is running is the defect this
 	// ordering exists to prevent.
 	assert.equal(registry.count(), 0);
-	assert.deepEqual(host.counts(), { total: 0, agent: 0 });
+	// `host.counts()` grew past {total, agent}: it now carries the live/archived
+	// split and the host-epoch metadata the discovery record reports (design 10.1).
+	// Assert the two admission facts that matter here, not a whole-shape deep-equal
+	// that would re-break on every added diagnostic field.
+	const counts = host.counts();
+	assert.equal(counts.total, 0);
+	assert.equal(counts.agent, 0);
+	assert.equal(counts.live, 0);
+	assert.equal(counts.archived, 0);
 });
 
 test("the pty's bytes reach the log, the record and the subscribers, and a read answers from the record", async () => {
@@ -2096,6 +2856,215 @@ async function post(port, key, body) {
 	return { status: response.status, body: await response.json() };
 }
 
+for (const recreate of [false, true]) {
+	test(`console retained history ${recreate ? "explicit host recreation" : "same-host RPC rebind"} preserves identity across a competing creator`, async () => {
+		// Fake PTYs/windows, real production host, history and loopback RPC. These
+		// scenarios distinguish possible transitions; neither attributes the live
+		// operator's observed refusal to restoration or a particular writer.
+		const dir = scratch("console-persist-race-");
+		writeFileSync(
+			join(dir, "config.yml"),
+			"values:\n  console:\n    max_live: 32\n    max_owner: 8\n    user_reserved: 4\n",
+		);
+		const history = new ConsoleHistory(historyRoot(dir));
+		const native = globalThis.__consoleRootFakeNative;
+		const frame = { url: "http://localhost/index.html" };
+		const window_ = {
+			isDestroyed: () => false,
+			isFocused: () => false,
+			webContents: { mainFrame: frame, send: () => {} },
+		};
+		const spawned = [];
+		let startup = null;
+		let server = null;
+		const key = "synthetic-history-race-key";
+		let id = 0;
+		const launch = () =>
+			startConsoleHost({
+				window: window_,
+				expectedUrl: frame.url,
+				appVersion: "history-fixture",
+				configDir: dir,
+				userShellPath: { resolve: async () => null },
+				log: () => {},
+				spawn: (options) => {
+					const pty = new FakePty(options);
+					spawned.push(pty);
+					return pty;
+				},
+			});
+		const bind = () =>
+			startRpcServer({
+				key,
+				dispatch: (method, params) => startup.dispatch(method, params),
+				capabilities: () => ({ console: true }),
+			});
+		const rpc = async (method, params) => {
+			const result = await post(server.port, key, {
+				id: String(++id),
+				method,
+				params,
+			});
+			assert.equal(result.status, 200);
+			return result.body;
+		};
+		const ok = async (method, params) => {
+			const body = await rpc(method, params);
+			assert.equal(body.ok, true, JSON.stringify(body));
+			return body.result;
+		};
+		const archives = [];
+		globalThis.__consoleRootFakeNative = true;
+		try {
+			startup = await launch();
+			assert.equal(startup.ok, true);
+			assert.equal(
+				startup.registry.policy.maxLive,
+				32,
+				"private fixture uses the actual supported config reader, not a cap bypass",
+			);
+			server = await bind();
+			for (let index = 0; index < 32; index++) {
+				const session_id = `synthetic-history-owner-${index}`;
+				const created = await ok("console_create", {
+					session_id,
+					retain: true,
+				});
+				const pty = spawned.at(-1);
+				pty.emit(`retained archive ${index}\r\n`);
+				await startup.registry
+					.require(created.surface)
+					.runtime.emulator.whenIdle();
+				pty.exit(index % 3);
+				await ok("console_status", { session_id, surface: created.surface });
+				const path = logPath(historyRoot(dir), session_id, created.surface);
+				archives.push({
+					session_id,
+					surface: created.surface,
+					path,
+					bytes: readFileSync(path),
+					exitCode: index % 3,
+				});
+			}
+			const initialHost = startup.host;
+			const epoch = startup.counts().hostEpoch;
+			if (recreate) {
+				for (const archive of archives)
+					await ok("console_close", {
+						session_id: archive.session_id,
+						surface: archive.surface,
+						retain: true,
+						kill: false,
+					});
+				assert.equal(startup.registry.count(), 0);
+				assert.equal(
+					history.listMetadata().length,
+					32,
+					"explicit close retains all disk identities",
+				);
+			}
+			await server.close();
+			server = null;
+			if (recreate) {
+				await startup.stop();
+				startup = null;
+				startup = await launch();
+				assert.equal(startup.ok, true);
+				assert.notEqual(startup.host, initialHost);
+				assert.notEqual(startup.counts().hostEpoch, epoch);
+			} else {
+				assert.equal(
+					startup.host,
+					initialHost,
+					"endpoint rebind is not host recreation or history restoration",
+				);
+				assert.equal(startup.counts().hostEpoch, epoch);
+			}
+			server = await bind();
+			assert.equal(
+				spawned.length,
+				32,
+				"restoration/rebind spawns no additional PTY",
+			);
+			assert.equal(startup.counts().live, 0);
+			assert.equal(startup.counts().archived, 32);
+			const competing = await ok("console_create", {
+				session_id: "synthetic-competing-owner",
+				retain: true,
+			});
+			const root = await ok("console_create", {
+				session_id: "synthetic-root-owner",
+				retain: true,
+			});
+			assert.notEqual(competing.surface, root.surface);
+			assert.equal(
+				startup.counts().live,
+				2,
+				"32 archived identities do not consume live admission",
+			);
+			for (const archive of archives) {
+				const status = await ok("console_status", {
+					session_id: archive.session_id,
+					surface: archive.surface,
+				});
+				assert.equal(status.running, false);
+				assert.equal(status.exit_code, archive.exitCode);
+				const read = await ok("console_read", {
+					session_id: archive.session_id,
+					surface: archive.surface,
+					mode: "viewport",
+				});
+				assert.ok(read.text.includes(archive.bytes.toString().trim()));
+				assert.deepEqual(readFileSync(archive.path), archive.bytes);
+			}
+			const metrics = await ok("console_resources", {});
+			assert.equal(metrics.host_epoch, startup.counts().hostEpoch);
+			assert.equal(metrics.started_at, startup.counts().startedAt);
+			assert.equal(typeof metrics.generation, "number");
+			assert.equal(typeof metrics.sampled_at, "number");
+			// Genuine live pressure still refuses: trusted user creators fill the
+			// remaining slots without disguising archived records as running ones.
+			while (startup.counts().live < 31)
+				startup.host.create({
+					sessionId: "synthetic-user",
+					origin: "user",
+					retain: true,
+				});
+			const sampled = await ok("console_resources", {});
+			assert.equal(sampled.resources.ptys, 31);
+			startup.host.create({
+				sessionId: "synthetic-interleaving-user",
+				origin: "user",
+				retain: true,
+			});
+			assert.equal(
+				startup.counts().hostEpoch,
+				sampled.host_epoch,
+				"same host, one creator after the sample; no implied restore",
+			);
+			const refusal = await rpc("console_create", {
+				session_id: "synthetic-root-owner",
+				retain: true,
+			});
+			assert.equal(refusal.ok, false);
+			assert.equal(refusal.error.code, "tab_limit");
+			assert.equal(refusal.error.data.scope, "app");
+			assert.equal(refusal.error.data.limit, 32);
+			assert.equal(refusal.error.data.metrics.host_epoch, metrics.host_epoch);
+			assert.ok(
+				spawned.every((pty) => pty.signals.length === 0),
+				"neither admission nor completed retain-close terminates an existing PTY",
+			);
+			for (const archive of archives)
+				assert.deepEqual(readFileSync(archive.path), archive.bytes);
+		} finally {
+			if (server) await server.close();
+			if (startup) await startup.stop();
+			globalThis.__consoleRootFakeNative = native;
+		}
+	});
+}
+
 test("the console rides the existing endpoint: a create -> read -> resize -> close round trip over real HTTP", async () => {
 	const { host, spawned } = hostWithWindow();
 	const key = "console-test-key";
@@ -2450,14 +3419,29 @@ test("the record carries the console fields, and a record with no console says s
 			console: true,
 			consoleSurfaces: 2,
 			consoleAgentSurfaces: 1,
+			consoleHostEpoch: "11111111-1111-4111-8111-111111111111",
+			consoleStartedAt: 1000,
+			consoleGeneration: 7,
+			consoleSampledAt: 1001,
 		}),
-		{ appVersion: "0.0.0-test" },
+		{
+			appVersion: "0.0.0-test",
+			instanceId: "22222222-2222-4222-8222-222222222222",
+		},
 	);
 	withConsole.start(1234, "session-key");
 	const written = JSON.parse(readFileSync(path, "utf8"));
 	assert.equal(written.console, true);
 	assert.equal(written.console_surfaces, 2);
 	assert.equal(written.console_agent_surfaces, 1);
+	assert.equal(
+		written.console_host_epoch,
+		"11111111-1111-4111-8111-111111111111",
+	);
+	assert.equal(written.console_started_at, 1000);
+	assert.equal(written.console_generation, 7);
+	assert.equal(written.console_sampled_at, 1001);
+	assert.notEqual(written.console_host_epoch, written.instance_id);
 	assert.equal(written.host, "ui");
 	assert.equal(written.proto, PROTO_VERSION);
 	assert.equal(statSync(path).mode & 0o777, 0o600);
@@ -2681,90 +3665,78 @@ test("the exit generation is bumped by the retention layer and survives a relaun
 });
 
 test("startup restores nine same-session agent histories without consuming the live quota", async () => {
-	const { host, registry, spawned } = hostWithWindow();
+	const history = new ConsoleHistory(historyRoot(scratch()));
+	const { host, registry, spawned } = hostWithWindow({ history });
 	try {
-		for (let index = 1; index <= 9; index += 1) {
-			host.restore(
-				{
-					surface: `con:${index}:retainedHistory${index}`,
-					session_id: "session-1",
-					origin: "agent",
-					command: "zsh",
-					argv: [],
-					cwd: "/isolated",
-					cols: 100,
-					rows: 30,
-					created_at: 1,
-					exit_epoch: 1,
-					exit_code: 0,
-				},
-				new TextEncoder().encode(`history ${index}\r\n`),
-			);
-		}
-		assert.equal(host.list().length, 9);
-		assert.equal(
-			spawned.length,
-			0,
-			"retained histories must never launch a pty",
-		);
-		assert.equal(registry.agentCount("session-1"), 0);
-		assert.ok(
-			host.list().every((surface) => !surface.live && !surface.running),
-		);
-		assert.match(
-			(await host.read("con:9:retainedHistory9", "viewport")).text,
-			/history 9/,
-		);
-		for (let index = 0; index < MAX_AGENT_SURFACES_PER_SESSION; index += 1) {
-			await createSurface(host);
-		}
-		await assert.rejects(
-			createSurface(host),
-			(error) => error.code === "tab_limit" && error.data.scope === "session",
-		);
-		assert.equal(
-			host.list().length,
-			17,
-			"both live entries and retained histories remain listed",
-		);
-	} finally {
-		host.dispose();
-	}
-});
-
-test("retained histories still consume the app emulator bound and close releases admission", () => {
-	const registry = new ConsoleRegistry();
-	const make = (live) =>
-		registry.create(
-			{
-				sessionId: "history-bound-session",
+		for (let index = 1; index <= 9; index++) {
+			const meta = {
+				surface: `con:${index}:retainedHistory${index}`,
+				session_id: "session-1",
 				origin: "agent",
 				command: "zsh",
 				argv: [],
 				cwd: "/isolated",
 				cols: 80,
 				rows: 24,
-				live,
-			},
-			() => ({}),
+				created_at: 1,
+				last_seen_at: index,
+				exit_code: 0,
+				truncated: false,
+				exit_epoch: 1,
+			};
+			history.writeMeta(meta);
+			history.append(
+				meta.session_id,
+				meta.surface,
+				Buffer.from(`history ${index}\r\n`),
+				meta,
+			);
+			host.restore(meta);
+		}
+		assert.equal(host.list().length, 9);
+		assert.equal(spawned.length, 0);
+		assert.equal(registry.agentCount("session-1"), 0);
+		assert.ok(registry.list().every((entry) => entry.runtime === null));
+		assert.match(
+			(await host.read("con:9:retainedHistory9", "viewport")).text,
+			/history 9/,
 		);
-	for (let index = 0; index < MAX_SURFACES_PER_APP; index += 1) make(false);
+		for (let index = 0; index < MAX_AGENT_SURFACES_PER_SESSION; index++)
+			await createSurface(host);
+		await assert.rejects(
+			createSurface(host),
+			(error) => error.code === "tab_limit" && error.data.scope === "session",
+		);
+		assert.equal(host.list().length, 17);
+	} finally {
+		host.dispose(false);
+	}
+});
+
+test("retained history metadata does not consume live admission", () => {
+	const registry = new ConsoleRegistry();
+	const make = (live) =>
+		registry.create({
+			sessionId: "history-bound-session",
+			origin: "agent",
+			command: "zsh",
+			argvTail: "",
+			cwd: "/isolated",
+			cols: 80,
+			rows: 24,
+			live,
+			retain: true,
+			sizing: "auto",
+		});
+	for (let index = 0; index < MAX_SURFACES_PER_APP + 1; index++) make(false);
 	assert.equal(registry.agentCount("history-bound-session"), 0);
-	assert.throws(
-		() => make(false),
-		(error) => error.code === "tab_limit" && error.data.scope === "app",
-	);
-	assert.throws(
-		() => make(true),
-		(error) => error.code === "tab_limit" && error.data.scope === "app",
-	);
-	registry.remove(registry.list()[0].record.surface);
 	make(true);
-	assert.equal(registry.count(), MAX_SURFACES_PER_APP);
+	assert.equal(registry.count(), MAX_SURFACES_PER_APP + 2);
+	assert.equal(registry.liveCount(), 1);
 	assert.equal(registry.agentCount("history-bound-session"), 1);
 });
 
-test("genuine exited agent surfaces remain live admissions and still enforce eight", async () => {
+test("genuine exited agent surfaces preserve handles but release agent admissions", async () => {
 	const { host, registry, spawned } = hostWithWindow();
 	try {
 		for (let index = 0; index < MAX_AGENT_SURFACES_PER_SESSION; index += 1)
@@ -2774,8 +3746,9 @@ test("genuine exited agent surfaces remain live admissions and still enforce eig
 		assert.equal(host.list()[0].live, true);
 		assert.equal(
 			registry.agentCount("session-1"),
-			MAX_AGENT_SURFACES_PER_SESSION,
+			MAX_AGENT_SURFACES_PER_SESSION - 1,
 		);
+		await createSurface(host);
 		await assert.rejects(
 			createSurface(host),
 			(error) => error.code === "tab_limit" && error.data.scope === "session",
@@ -2822,11 +3795,31 @@ for (const fault of ["replay", "log", "attach-before", "attach-after"]) {
 				const path = join(root, "session-1", name);
 				return { path, bytes: readFileSync(path), mode: statSync(path).mode };
 			});
-			const assertUnchanged = () => {
-				for (const file of originals) {
+			// A successful hydrate that then drains demotes through the normal flush,
+			// which legitimately REWRITES the sidecar to the full current schema (the
+			// old writer omitted keys the record now carries). That is persistence
+			// working, not a leak, so the invariant is: the LOG bytes never change, and
+			// the sidecar's identity fields (surface/session/created_at/exit_epoch)
+			// survive. Capture the log bytes once; re-check them after every step.
+			const logFiles = originals.filter((file) => file.path.endsWith(".log"));
+			const assertLogsUnchanged = () => {
+				for (const file of logFiles) {
 					assert.deepEqual(readFileSync(file.path), file.bytes);
 					assert.equal(statSync(file.path).mode, file.mode);
 				}
+			};
+			const assertSidecarIdentityKept = (surface) => {
+				const path = sidecarPath(root, "session-1", surface);
+				const meta = JSON.parse(readFileSync(path, "utf8"));
+				assert.equal(meta.surface, surface);
+				assert.equal(meta.session_id, "session-1");
+				assert.equal(meta.created_at, 900);
+				assert.equal(meta.exit_epoch, 3);
+			};
+			const assertUnchanged = () => {
+				assertLogsUnchanged();
+				assertSidecarIdentityKept(`con:1:${"a".repeat(22)}`);
+				assertSidecarIdentityKept(`con:2:${"a".repeat(22)}`);
 			};
 			const observations = [];
 			const attach = ConsoleRegistry.prototype.attach;
@@ -2892,10 +3885,38 @@ for (const fault of ["replay", "log", "attach-before", "attach-after"]) {
 					now: () => 1000,
 					log: () => {},
 				});
-				// ConsoleStartup is a tagged ok union, not a ChromeState snapshot.
-				assert.equal(bridge.ok, false);
-				assert.equal(bridge.reason, "startup_failed");
-				assert.match(bridge.detail, /labelled/);
+				// Startup restores METADATA only (design 7.3): the two retained surfaces
+				// are adopted lazily, so the acquisitions under test now happen on the
+				// READ that hydrates them, not at start.
+				assert.equal(bridge.ok, true);
+				assert.equal(observations.length, 0);
+				// Hydrate newest first (con:1 then con:2), mirroring the restore order.
+				await bridge.dispatch("console_read", {
+					surface: `con:1:${"a".repeat(22)}`,
+					mode: "viewport",
+				});
+				let hydrationError = null;
+				try {
+					await bridge.dispatch("console_read", {
+						surface: `con:2:${"a".repeat(22)}`,
+						mode: "viewport",
+					});
+				} catch (error) {
+					hydrationError = error;
+				}
+				assert.ok(
+					hydrationError,
+					"the injected mid-init fault must surface from the hydrating read",
+				);
+				assert.match(
+					[
+						String(hydrationError?.message ?? ""),
+						...(hydrationError?.errors ?? []).map((nested) =>
+							String(nested?.message ?? nested),
+						),
+					].join(" "),
+					/labelled/,
+				);
 				assert.equal(observations.length, 2);
 				if (fault === "replay") assert.equal(writeThrows, 1);
 				assertUnchanged();
@@ -2908,21 +3929,25 @@ for (const fault of ["replay", "log", "attach-before", "attach-after"]) {
 						releaseFails,
 						allocated: observations.length,
 						startupOk: bridge.ok,
-						reason: bridge.reason,
+						hydrationRejected: Boolean(hydrationError),
 						writeThrows,
 						disposeCalls: observations.map((item) => item.calls),
 						released: observations.map((item) => item.released),
 						historyUnchanged: true,
 					})}`,
 				);
+				// BOTH genuine allocations had a product owner: the successful hydrate
+				// (index 0) is still live, and the FAILED hydrate (index 1) released
+				// itself through its own mid-init rollback rather than leaking a native
+				// emulator the cap cannot see.
 				assert.deepEqual(
 					observations.map((item) => item.calls),
-					[1, 1],
+					[0, 1],
 					"ROOT_ACQUISITION_LEAK: both genuine allocations must have product owners",
 				);
 				assert.deepEqual(
 					observations.map((item) => item.released),
-					[true, !releaseFails],
+					[false, !releaseFails],
 				);
 				await bridge.stop();
 				await bridge.stop();
@@ -2974,8 +3999,12 @@ test("optional startup rollback preserves history bytes and retries only exact f
 	const root = mkdtempSync(join(tmpdir(), "console-root-rollback-"));
 	const dir = join(root, "run", "ui-console", "history");
 	const history = new ConsoleHistory(dir);
-	const records = Array.from({ length: 9 }, (_, index) => ({
-		surface: `con:${index + 1}:retainedHistory${index + 1}`,
+	// ONE retained surface: the invariant under test is per-allocation (a failed
+	// lazy hydrate owns and releases its own emulator), not the old nine-at-once
+	// eager startup. Lazy hydration also keeps at most HISTORY_CACHE_ENTRIES (4)
+	// live, so one surface keeps the LRU out of the assertion's way.
+	const meta = {
+		surface: "con:1:retainedHistory1",
 		session_id: "session-1",
 		origin: "agent",
 		command: "zsh",
@@ -2988,48 +4017,49 @@ test("optional startup rollback preserves history bytes and retries only exact f
 		exit_code: 0,
 		exit_epoch: 7,
 		truncated: false,
-	}));
-	const saved = records.flatMap((meta) => {
-		history.writeMeta(meta);
-		history.append(
-			meta.session_id,
-			meta.surface,
-			new TextEncoder().encode(`history ${meta.surface}\r\n`),
-			meta,
-		);
-		const paths = [
-			sidecarPath(dir, meta.session_id, meta.surface),
-			logPath(dir, meta.session_id, meta.surface),
-		];
-		return paths.map((path) => ({
-			path,
-			bytes: readFileSync(path),
-			mode: statSync(path).mode & 0o777,
-		}));
-	});
+	};
+	history.writeMeta(meta);
+	history.append(
+		meta.session_id,
+		meta.surface,
+		new TextEncoder().encode(`history ${meta.surface}\r\n`),
+		meta,
+	);
+	const savedPath = logPath(dir, meta.session_id, meta.surface);
+	const savedBytes = readFileSync(savedPath);
+	const savedMode = statSync(savedPath).mode & 0o777;
+	// Instrument the hydrate BEFORE its replay: `attach` runs inside `restore`
+	// before the emulator write, so the write override is in place when the replay
+	// that triggers the rollback happens. Attribute by surface so no global counter
+	// can be fooled by another allocation.
 	const releases = [];
-	const restore = ConsoleHost.prototype.restore;
+	const attach = ConsoleRegistry.prototype.attach;
 	let partialHost;
-	ConsoleHost.prototype.restore = function (meta, bytes) {
-		restore.call(this, meta, bytes);
-		partialHost = this;
-		const emulator = this.registry.find(meta.surface).runtime.emulator;
-		const release = emulator.dispose.bind(emulator);
-		const counter = { calls: 0 };
-		const first = releases.length === 0;
-		releases.push(counter);
-		emulator.dispose = () => {
-			counter.calls += 1;
-			if (first && counter.calls === 1)
-				throw new Error("injected exact emulator release failure");
-			release();
-		};
+	ConsoleRegistry.prototype.attach = function (surface, runtime) {
+		if (surface === meta.surface && runtime.archivedReplay) {
+			const emulator = runtime.emulator;
+			emulator.write = () => {
+				throw new Error("labelled replay after REAL acquire");
+			};
+			const realDispose = emulator.dispose.bind(emulator);
+			const counter = { calls: 0, released: false };
+			releases.push(counter);
+			emulator.dispose = () => {
+				counter.calls += 1;
+				if (counter.calls === 1)
+					throw new Error("injected exact emulator release failure");
+				realDispose();
+				counter.released = true;
+			};
+		}
+		return attach.call(this, surface, runtime);
 	};
 	globalThis.__consoleRootFakeNative = true;
 	const mainFrame = { url: "http://localhost/index.html" };
 	const webContents = { mainFrame };
 	const owner = { isDestroyed: () => false, webContents };
 	let startup;
+	let stopped = false;
 	try {
 		startup = await startConsoleHost({
 			window: owner,
@@ -3039,40 +4069,57 @@ test("optional startup rollback preserves history bytes and retries only exact f
 			spawn: () => {
 				throw new Error("History restore must never spawn a PTY");
 			},
-			log: (message) => {
-				if (message.includes("retained surface(s) from history"))
-					throw new Error("injected restore completion failure");
-			},
+			log: () => {},
 		});
-		assert.equal(startup.ok, false);
-		assert.equal(startup.reason, "startup_failed");
-		assert.equal(releases.length, 9);
-		assert.ok(
-			releases.every((owner) => owner.calls === 1),
-			"all partial owners attempted despite one failed release",
-		);
-		const state = ipcMain.handlers.get("console-state")({
-			sender: webContents,
-			senderFrame: mainFrame,
-		});
-		assert.equal(state.available, false);
-		assert.equal(state.reason, "startup_failed");
-		for (const file of saved) {
-			assert.deepEqual(readFileSync(file.path), file.bytes);
-			assert.equal(statSync(file.path).mode & 0o777, file.mode);
+		// Startup restores METADATA only (design 7.3): the surface adopts with no
+		// runtime, so the read below is what hydrates it — and the hydrate's own
+		// mid-init failure is the acquisition rollback this test now covers.
+		assert.equal(startup.ok, true);
+		let hydrationFailure = null;
+		try {
+			await startup.dispatch("console_read", {
+				surface: meta.surface,
+				mode: "viewport",
+			});
+		} catch (error) {
+			hydrationFailure = error;
 		}
-		await startup.stop();
-		assert.equal(releases[0].calls, 2);
-		assert.ok(
-			releases.slice(1).every((owner) => owner.calls === 1),
-			"stop retries only the retained failed owner",
+		assert.equal(releases.length, 1);
+		// The mid-init failure released its own emulator EXACTLY once; the release
+		// itself threw, so the failed owner is retained for stop() to retry.
+		assert.equal(
+			releases[0].calls,
+			1,
+			"the failed allocation is released once",
 		);
-		for (const file of saved)
-			assert.deepEqual(readFileSync(file.path), file.bytes);
+		assert.ok(
+			hydrationFailure,
+			"the hydrate failure must surface from the read",
+		);
+		// The log bytes are untouched by a failed hydration: a rollback is not a
+		// persistence event.
+		assert.deepEqual(readFileSync(savedPath), savedBytes);
+		assert.equal(statSync(savedPath).mode & 0o777, savedMode);
+		await startup.stop();
+		stopped = true;
+		// stop() retries ONLY the retained failed owner, and the retry succeeds.
+		assert.equal(releases[0].calls, 2, "stop retries the exact failed owner");
+		assert.equal(releases[0].released, true);
+		assert.deepEqual(readFileSync(savedPath), savedBytes);
 	} finally {
 		globalThis.__consoleRootFakeNative = false;
-		ConsoleHost.prototype.restore = restore;
-		partialHost?.dispose(false);
+		ConsoleRegistry.prototype.attach = attach;
+		// On red assertions ONLY: if stop() already ran it released the owner, so a
+		// second dispose would be a double release. This finally is diagnostic release
+		// for a mid-test failure, not cleanup for the passing path — and it must not
+		// replace the real assertion error with its own.
+		if (!stopped) {
+			try {
+				partialHost?.dispose(false);
+			} catch {
+				// Diagnostic only; the assertion above is the verdict.
+			}
+		}
 		unregisterConsoleIpc();
 		rmSync(root, { recursive: true, force: true });
 	}

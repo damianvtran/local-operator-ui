@@ -30,6 +30,7 @@ import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { parse as parseYaml } from "yaml";
+import { type ConsolePolicy, consolePolicy } from "./console/policy";
 import { DEFAULT_QUICK_SEND_VALUE } from "./hotkey-registration";
 
 /** The config file's name, the same constant the backend's `config.py` uses. */
@@ -66,6 +67,22 @@ export function quickSendConfigPath(
 	env: NodeJS.ProcessEnv = process.env,
 ): string {
 	return join(quickSendConfigDir(env), CONFIG_FILE_NAME);
+}
+
+/** Console admission must work even before the backend daemon is reachable.
+ * It shares this module's config root and atomic-file watch, not a second store.
+ * Invalid YAML keeps the last good live policy rather than killing work. */
+export function readConsolePolicy(
+	env: NodeJS.ProcessEnv = process.env,
+): ConsolePolicy | null {
+	try {
+		const parsed = parseYaml(readFileSync(quickSendConfigPath(env), "utf8"));
+		return consolePolicy(parsed?.values?.console);
+	} catch (error) {
+		return (error as NodeJS.ErrnoException).code === "ENOENT"
+			? consolePolicy()
+			: null;
+	}
 }
 
 export interface QuickSendReading {
@@ -170,6 +187,9 @@ export interface QuickSendWatcher {
 export function watchQuickSend(options: {
 	onValue: (value: string) => void;
 	onProblem: (message: string) => void;
+	/** Other main-process consumers share the same rename-safe config signal;
+	 * this fires independently of whether the hotkey's value changed. */
+	onConfigChange?: () => void;
 	env?: NodeJS.ProcessEnv;
 	/** Overridable for tests; the shipped values are the constants above. */
 	intervalMs?: number;
@@ -190,6 +210,7 @@ export function watchQuickSend(options: {
 
 	function readAndEmit(): void {
 		if (stopped) return;
+		options.onConfigChange?.();
 		const reading = readQuickSendValue(env);
 		if (reading.problem !== undefined) {
 			/*

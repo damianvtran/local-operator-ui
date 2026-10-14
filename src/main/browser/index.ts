@@ -893,7 +893,17 @@ async function initializeBrowserHost(
 			() => {
 				const consoleCounts = consoleStartup.ok
 					? consoleStartup.counts()
-					: { total: 0, agent: 0 };
+					: {
+							total: 0,
+							agent: 0,
+							live: 0,
+							archived: 0,
+							maxLive: 0,
+							hostEpoch: undefined,
+							startedAt: undefined,
+							generation: undefined,
+							sampledAt: undefined,
+						};
 				return {
 					tabs: registry.count(),
 					agentTabs: registry.agentTabCount(),
@@ -901,6 +911,17 @@ async function initializeBrowserHost(
 					console: consoleStartup.ok,
 					consoleSurfaces: consoleCounts.total,
 					consoleAgentSurfaces: consoleCounts.agent,
+					consoleLive: consoleCounts.live,
+					consoleArchived: consoleCounts.archived,
+					consoleMaxLive: consoleCounts.maxLive,
+					// Console recreation and a window rebind are distinct lifecycle events.
+					// Never infer the former from the app's stable process instance alone.
+					...(consoleStartup.ok && {
+						consoleHostEpoch: consoleCounts.hostEpoch,
+						consoleStartedAt: consoleCounts.startedAt,
+						consoleGeneration: consoleCounts.generation,
+						consoleSampledAt: consoleCounts.sampledAt,
+					}),
 				};
 			},
 			{

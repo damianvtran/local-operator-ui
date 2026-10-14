@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { homedir } from "node:os";
 import { basename, isAbsolute } from "node:path";
 import type { BrowserWindow, NativeImage } from "electron";
@@ -6,13 +7,25 @@ import { ByteLog, type ByteLogSlice } from "./byte-log";
 import { hasTerminalContent } from "./capture";
 import {
 	type ConsoleEmulator,
+	type ConsoleGridState,
 	type ConsoleReadMode,
 	createXtermEmulator,
 } from "./emulator";
 import { ConsoleError } from "./errors";
 import type { ConsoleHistory, ConsoleHistoryMeta } from "./history";
 import { NAMED_KEYS, encodeNamedKey } from "./keys";
+import type { NativeCapacity } from "./native-capacity";
 import { type Osc133Mark, Osc133Scanner } from "./osc133";
+import {
+	CELL_BUDGET,
+	CELL_RESERVATION_BYTES,
+	EXIT_ACK_GRACE_MS,
+	HISTORY_CACHE_ENTRIES,
+	LOG_BUDGET_BYTES,
+	LOG_RESERVATION_BYTES,
+	MANAGED_BUDGET_BYTES,
+	PENDING_BUDGET_BYTES,
+} from "./policy";
 import type {
 	ConsoleReveal,
 	ConsoleSurfaceListing,
@@ -222,6 +235,8 @@ export interface ConsoleHostOptions {
 	/** The environment a surface inherits from, defaults to `process.env`. */
 	env?: NodeJS.ProcessEnv;
 	now?: () => number;
+	/** Production probes THIS app's native limits; fake-PTY tests inject facts. */
+	nativeCapacity?: () => NativeCapacity;
 	/** Called for each OSC 133 mark (§12.1 rung 2). PR B's blip and notifier are
 	 * its consumers; nothing in this file acts on a mark itself. */
 	onMark?: (surface: string, mark: Osc133Mark) => void;
@@ -285,6 +300,9 @@ export interface SurfaceRuntime {
 	 * reader compares two readings rather than treating a number as "how far behind the
 	 * pane is right now" — a pane that caught up still reports the bytes it missed. */
 	droppedLiveBytes: number;
+	droppedGridBytes: number;
+	activeReaders: number;
+	archivedReplay: boolean;
 	pendingTimer: NodeJS.Timeout | null;
 	/** The armed flush of this surface's retained bytes (§7.2). One timer per
 	 * surface, so a second chunk joins the pending write instead of adding one. */
@@ -365,6 +383,43 @@ export class ConsoleHost {
 	// Acquisition precedes runtime construction/registry adoption. Keep the exact
 	// emulator until adoption succeeds; startup rollback must also own that gap.
 	private readonly unboundRestoreEmulators = new Set<ConsoleEmulator>();
+	/** Unlike the app-process instance ID, this changes for each console host. */
+	private readonly hostEpoch = randomUUID();
+	private readonly startedAt: number;
+	// Keep failed releases owned and fail closed on further admission. Losing a
+	// thrown cleanup reference would make its native usage invisible to the cap.
+	private readonly failedAllocations = new Set<{
+		pty: PtyHandle | null;
+		emulator: ConsoleEmulator | null;
+	}>();
+
+	private releaseFailedAllocation(allocation: {
+		pty: PtyHandle | null;
+		emulator: ConsoleEmulator | null;
+	}): unknown[] {
+		const failures: unknown[] = [];
+		if (allocation.pty) {
+			// No usable handle was published for this failed launch. A cooperative
+			// TERM could be ignored forever; only this newly acquired PTY is killed.
+			try {
+				allocation.pty.kill("SIGKILL");
+				allocation.pty = null;
+			} catch (error) {
+				failures.push(error);
+			}
+		}
+		if (allocation.emulator) {
+			try {
+				allocation.emulator.dispose();
+				allocation.emulator = null;
+			} catch (error) {
+				failures.push(error);
+			}
+		}
+		if (!allocation.pty && !allocation.emulator)
+			this.failedAllocations.delete(allocation);
+		return failures;
+	}
 	private readonly options: ConsoleHostOptions;
 	private readonly now: () => number;
 	private readonly env: NodeJS.ProcessEnv;
@@ -376,16 +431,25 @@ export class ConsoleHost {
 		this.registry = registry;
 		this.options = options;
 		this.now = options.now ?? (() => Date.now() / 1000);
+		this.startedAt = this.now();
 		this.env = options.env ?? process.env;
+		registry.refusalMetrics = () => this.resources();
 	}
 
 	/** How many surfaces exist, and how many of them an agent made. The record's
 	 * own two numbers (§10.1). */
-	counts(): { total: number; agent: number } {
+	counts() {
 		const all = this.registry.list();
 		return {
 			total: all.length,
 			agent: all.filter((entry) => entry.record.origin === "agent").length,
+			live: all.filter((entry) => entry.record.running).length,
+			archived: all.filter((entry) => !entry.record.running).length,
+			maxLive: this.registry.policy.maxLive,
+			hostEpoch: this.hostEpoch,
+			startedAt: this.startedAt,
+			generation: this.registry.metrics().generation,
+			sampledAt: this.now(),
 		};
 	}
 
@@ -398,6 +462,12 @@ export class ConsoleHost {
 	 * removes the record rather than leaving a surface that lists as running.
 	 */
 	create(options: CreateSurfaceOptions): CreateSurfaceResult {
+		if (this.failedAllocations.size)
+			throw new ConsoleError(
+				"console_unavailable",
+				"A failed console allocation still owns resources pending cleanup",
+				{ reason: "allocation_cleanup_pending", metrics: this.resources() },
+			);
 		const cols = options.cols ?? DEFAULT_COLS;
 		const rows = options.rows ?? DEFAULT_ROWS;
 		// The clamp is the internal safety net, not the caller's feedback: the wire
@@ -422,95 +492,124 @@ export class ConsoleHost {
 			sizing: options.sizing ?? "auto",
 		});
 		const surface = entry.record.surface;
-		const env = surfaceEnvironment({
-			base: this.env,
-			sessionId: options.sessionId,
-			surface,
-			overrides: options.env,
-		});
-		// The spawn is wrapped so a refusal is TYPED and so the record this method
-		// just wrote is removed: a surface that lists as running while nothing is
-		// running is the defect this ordering exists to prevent. A helper rather than
-		// a `try` around a `let`, because the value is assigned exactly once.
-		const startProcess = (): PtyHandle => {
-			try {
-				return this.options.spawn({
-					file: command,
-					args,
-					cwd,
-					env,
-					cols: grid.cols,
-					rows: grid.rows,
-				});
-			} catch (error) {
-				this.registry.remove(surface);
-				throw new ConsoleError(
-					"console_unavailable",
-					`the surface's process could not start: ${error instanceof Error ? error.message : String(error)}`,
-					{ reason: "spawn_failed" },
-				);
-			}
-		};
-		const pty = startProcess();
-		const runtime: SurfaceRuntime = {
-			pty,
-			log: new ByteLog(),
-			emulator: createXtermEmulator({
+		let pty: PtyHandle | null = null;
+		let emulator: ConsoleEmulator | null = null;
+		try {
+			// Creation provenance is assigned by trusted code at this boundary:
+			// RPC hardcodes agent; only authorized renderer/internal code uses user.
+			// Existing records' origins NEVER choose a subsequent caller context.
+			this.requireResourceBudget(options.origin === "user" ? "user" : "agent");
+			const env = surfaceEnvironment({
+				base: this.env,
+				sessionId: options.sessionId,
+				surface,
+				overrides: options.env,
+			});
+			// Preserve the typed spawn refusal; the enclosing rollback owns every
+			// reservation and acquired resource, including attach-before/after faults.
+			const startProcess = (): PtyHandle => {
+				try {
+					return this.options.spawn({
+						file: command,
+						args,
+						cwd,
+						env,
+						cols: grid.cols,
+						rows: grid.rows,
+					});
+				} catch (error) {
+					throw new ConsoleError(
+						"console_unavailable",
+						`the surface's process could not start: ${error instanceof Error ? error.message : String(error)}`,
+						{ reason: "spawn_failed" },
+					);
+				}
+			};
+			pty = startProcess();
+			emulator = createXtermEmulator({
 				cols: grid.cols,
 				rows: grid.rows,
 				scrollback: SCROLLBACK_LINES,
-			}),
-			scanner: new Osc133Scanner(),
-			subscribers: new Set(),
-			pending: [],
-			pendingBytes: 0,
-			droppedLiveBytes: 0,
-			pendingTimer: null,
-			persistTimer: null,
-			seq: 0,
-			rect: null,
-			theme: null,
-			lastMark: null,
-			exitDelivered: false,
-			exitWaiters: [],
-		};
-		this.registry.attach(surface, runtime);
-
-		pty.onData((data) => this.consume(surface, data));
-		pty.onExit((event) => this.exited(surface, event.exitCode));
-
-		// The initial input is written after the listeners exist, so a program that
-		// answers immediately cannot beat the record.
-		if (options.input) pty.write(options.input);
-
-		if (entry.record.retain) this.flush(surface);
-		this.options.log(
-			`[console] surface ${redactSurface(surface)} started: ${basename(command)} in ${cwd} at ${grid.cols}x${grid.rows} (${options.origin})`,
-		);
-		this.options.onChanged?.();
-
-		const reveal = this.resolveReveal(options.reveal ?? "none");
-		if (reveal !== "none") {
-			this.options.onReveal?.({
-				surface,
-				sessionId: options.sessionId,
-				mode: reveal,
 			});
+			const runtime: SurfaceRuntime = {
+				pty,
+				log: new ByteLog(),
+				emulator,
+				scanner: new Osc133Scanner(),
+				subscribers: new Set(),
+				pending: [],
+				pendingBytes: 0,
+				droppedLiveBytes: 0,
+				droppedGridBytes: 0,
+				activeReaders: 0,
+				archivedReplay: false,
+				pendingTimer: null,
+				persistTimer: null,
+				seq: 0,
+				rect: null,
+				theme: null,
+				lastMark: null,
+				exitDelivered: false,
+				exitWaiters: [],
+			};
+			this.registry.attach(surface, runtime);
+
+			pty.onData((data) => this.consume(surface, data));
+			pty.onExit((event) => this.exited(surface, event.exitCode));
+
+			// The initial input is written after the listeners exist, so a program that
+			// answers immediately cannot beat the record.
+			if (options.input) pty.write(options.input);
+
+			if (entry.record.retain) this.flush(surface);
+			this.options.log(
+				`[console] surface ${redactSurface(surface)} started: ${basename(command)} in ${cwd} at ${grid.cols}x${grid.rows} (${options.origin})`,
+			);
+			this.options.onChanged?.();
+
+			const reveal = this.resolveReveal(options.reveal ?? "none");
+			if (reveal !== "none") {
+				this.options.onReveal?.({
+					surface,
+					sessionId: options.sessionId,
+					mode: reveal,
+				});
+			}
+			return {
+				surface,
+				cols: grid.cols,
+				rows: grid.rows,
+				pid: pty.pid,
+				live: true,
+				// `reveal` is the intent after the focus rule; `revealed` says whether a
+				// pane was asked for at all. They differ exactly when `reveal: "open"` was
+				// downgraded because raising the window is not something this app does
+				// (design 10.4), and a caller that cannot tell the two apart would believe
+				// the user was shown something they were not.
+				reveal,
+				revealed: reveal !== "none",
+			};
+		} catch (error) {
+			// One reservation, one removal, even when attach bound the runtime
+			// before throwing. Only this allocation's acquired resources are owned.
+			const removed = this.registry.remove(surface);
+			if (removed?.runtime) {
+				if (removed.runtime.pendingTimer)
+					clearTimeout(removed.runtime.pendingTimer);
+				if (removed.runtime.persistTimer)
+					clearTimeout(removed.runtime.persistTimer);
+				removed.runtime.subscribers.clear();
+			}
+			const allocation = { pty, emulator };
+			this.failedAllocations.add(allocation);
+			const failures = this.releaseFailedAllocation(allocation);
+			if (failures.length)
+				throw new AggregateError(
+					[error, ...failures],
+					"Console allocation failed and its cleanup remains pending",
+				);
+			throw error;
 		}
-		return {
-			surface,
-			cols: grid.cols,
-			rows: grid.rows,
-			pid: pty.pid,
-			live: true,
-			// `reveal` is the intent after the focus rule; `revealed` says whether a
-			// pane was asked for at all. They differ exactly when `reveal: "open"` was
-			// downgraded because raising the window is not something this app does
-			// (design 10.4), and a caller that cannot tell the two apart would believe
-			// the user was shown something they were not.
-			reveal,
-			revealed: reveal !== "none",
-		};
 	}
 
 	/**
@@ -539,25 +638,32 @@ export class ConsoleHost {
 	 * the surface printed. The listing says so, which is the whole honesty
 	 * requirement: nothing here pretends a process is running.
 	 */
-	restore(meta: ConsoleHistoryMeta, bytes: Uint8Array): void {
-		const existing = this.registry.list(meta.session_id);
-		if (existing.some((entry) => entry.record.surface === meta.surface)) return;
+	restore(
+		meta: ConsoleHistoryMeta,
+		bytes?: Uint8Array,
+		actor: ConsoleActor = "agent",
+	): void {
+		const existing = this.registry.find(meta.surface);
+		if (existing?.runtime) return;
+		this.archives.set(meta.surface, meta);
 		const grid = clampGrid(meta.cols, meta.rows);
-		const entry = this.registry.create({
-			// The handle the history recorded, so a caller holding one across a relaunch
-			// finds the same surface rather than a lookalike with a new nonce.
-			surface: meta.surface,
-			live: false,
-			sessionId: meta.session_id,
-			origin: meta.origin,
-			command: meta.command,
-			argvTail: meta.argv.join(" "),
-			cwd: meta.cwd,
-			cols: grid.cols,
-			rows: grid.rows,
-			retain: true,
-			sizing: "auto",
-		});
+		const entry =
+			existing ??
+			this.registry.create({
+				// The handle the history recorded, so a caller holding one across a relaunch
+				// finds the same surface rather than a lookalike with a new nonce.
+				surface: meta.surface,
+				live: false,
+				sessionId: meta.session_id,
+				origin: meta.origin,
+				command: meta.command,
+				argvTail: meta.argv.join(" "),
+				cwd: meta.cwd,
+				cols: grid.cols,
+				rows: grid.rows,
+				retain: true,
+				sizing: "auto",
+			});
 		// THE TWO FACTS THE SIDECAR OWNS AND A FRESH RECORD DOES NOT, seeded before
 		// anything can rewrite them (§7.3). `created_at` is the one durable record of
 		// when this surface was made, and `persist()` writes "now" when it does not
@@ -572,6 +678,24 @@ export class ConsoleHost {
 		this.exitEpoch.set(
 			meta.surface,
 			Number.isFinite(meta.exit_epoch) ? meta.exit_epoch : 0,
+		);
+		if (!existing)
+			this.registry.update(meta.surface, {
+				running: false,
+				exitCode: meta.exit_code,
+				live: false,
+				secure: meta.secure === true,
+				lastActivity: meta.last_seen_at,
+			});
+		// Metadata restore has no native/runtime cost. Reads and pane subscriptions
+		// hydrate through one cache so history never steals process admission.
+		if (bytes === undefined) return;
+		this.evictArchiveRuntime();
+		this.requireResourceBudget(
+			actor,
+			grid.cols * (grid.rows + SCROLLBACK_LINES),
+			bytes.length,
+			bytes.length,
 		);
 		const emulator = createXtermEmulator({
 			cols: grid.cols,
@@ -591,6 +715,9 @@ export class ConsoleHost {
 			pending: [],
 			pendingBytes: 0,
 			droppedLiveBytes: 0,
+			droppedGridBytes: 0,
+			activeReaders: 0,
+			archivedReplay: false,
 			pendingTimer: null,
 			persistTimer: null,
 			seq: 0,
@@ -601,20 +728,61 @@ export class ConsoleHost {
 			exitWaiters: [],
 		};
 		// Adopt BEFORE replay/log initialization, either of which may throw. If
-		// attach itself fails, the acquisition inventory still owns the emulator;
-		// rollback deduplicates the case where attach bound it before throwing.
-		this.registry.attach(entry.record.surface, runtime);
-		this.unboundRestoreEmulators.delete(emulator);
-		// Replay, not deserialize: the headless build ships no `addon-serialize`,
-		// and the retained parse is bounded to 4 MiB and paid once (§5.4/§7.1).
-		emulator.write(bytes);
-		runtime.log.append(bytes);
-		this.registry.update(entry.record.surface, {
-			running: false,
-			exitCode: meta.exit_code,
-			live: false,
-			lastActivity: meta.last_seen_at,
-		});
+		// attach itself fails, this allocation still owns the emulator.
+		runtime.archivedReplay = true;
+		const facts = this.archiveFacts.get(meta.surface);
+		runtime.droppedLiveBytes =
+			facts?.droppedLiveBytes ?? meta.dropped_live_bytes ?? 0;
+		runtime.droppedGridBytes =
+			facts?.droppedGridBytes ?? meta.dropped_grid_bytes ?? 0;
+		runtime.theme = facts?.theme ?? null;
+		runtime.lastMark = facts?.lastMark ?? null;
+		// Lazy hydration replaces the old eager startup restore, so this allocation
+		// runs on a read, OUTSIDE any startup rollback: attach, replay and log
+		// initialization all sit inside ONE ownership boundary this allocation
+		// holds itself. Without it, a mid-init throw leaked a native emulator where
+		// the cap could not see it.
+		try {
+			this.registry.attach(entry.record.surface, runtime);
+			this.unboundRestoreEmulators.delete(emulator);
+			// Replay, not deserialize: the headless build ships no `addon-serialize`,
+			// and the retained parse is bounded to 4 MiB and paid once (§5.4/§7.1).
+			emulator.write(bytes);
+			runtime.log.append(bytes);
+			// Replaying disk bytes is not new output to append to that same file.
+			this.persistedBytes.set(meta.surface, runtime.log.endOffset);
+			if (!existing)
+				this.registry.update(entry.record.surface, {
+					running: false,
+					exitCode: meta.exit_code,
+					live: false,
+					lastActivity: meta.last_seen_at,
+				});
+		} catch (error) {
+			// Detach the half-built runtime so admission counts no ghost, then release
+			// only this allocation's emulator. A release that itself throws stays in
+			// failedAllocations, so a later stop retries the exact object owner rather
+			// than leaking native usage the cap cannot see.
+			this.unboundRestoreEmulators.delete(emulator);
+			const owned = this.registry.find(entry.record.surface);
+			if (owned?.runtime === runtime) owned.runtime = null;
+			const allocation = { pty: null, emulator };
+			this.failedAllocations.add(allocation);
+			const failures = this.releaseFailedAllocation(allocation);
+			if (failures.length)
+				throw new AggregateError(
+					[error, ...failures],
+					"Console history hydration failed and its cleanup remains pending",
+				);
+			throw error;
+		}
+	}
+
+	/** Keep RPC ownership validation at the host boundary without exposing the
+	 * registry or its foreign runtimes. The caller decides whether an owner was
+	 * supplied, preserving older nonce-capability clients that omit it. */
+	assertOwned(surface: string, owner: string): void {
+		this.registry.requireOwned(surface, owner);
 	}
 
 	/** Every surface, optionally one session's, as the wire reports it. */
@@ -661,6 +829,9 @@ export class ConsoleHost {
 		entry: ConsoleRegistryEntry<SurfaceRuntime>,
 		actor: ConsoleActor,
 	): void {
+		// Co-pilot attribution may change again, but human adoption is ownership
+		// intent: later agent input must never make this surface auto-disposable.
+		if (actor === "user") this.adoptedSurfaces.add(entry.record.surface);
 		if (entry.record.lastActor === actor) return;
 		entry.record.lastActor = actor;
 		this.options.onChanged?.();
@@ -670,7 +841,8 @@ export class ConsoleHost {
 	status(surface: string): Record<string, unknown> {
 		const entry = this.registry.require(surface);
 		const runtime = entry.runtime;
-		const grid = runtime?.emulator.grid;
+		const facts = this.archiveFacts.get(surface);
+		const grid = runtime?.emulator.grid ?? facts?.grid;
 		return {
 			running: entry.record.running,
 			exit_code: entry.record.exitCode,
@@ -681,7 +853,11 @@ export class ConsoleHost {
 			cols: entry.record.cols,
 			rows: entry.record.rows,
 			live: entry.record.live,
-			truncated: runtime?.log.truncated ?? false,
+			truncated:
+				runtime?.log.truncated ||
+				facts?.truncated ||
+				this.archives.get(surface)?.truncated ||
+				false,
 			// The LIVE VIEW's own loss, which is not the log's `truncated`: the ring
 			// drops history it was told to bound, this drops frames a subscriber could
 			// not take. Two numbers because they answer two different questions, and a
@@ -689,7 +865,10 @@ export class ConsoleHost {
 			//
 			// MONOTONIC for the life of the surface: it accumulates and does not reset,
 			// so two readings compare and neither means "how far behind the pane is now".
-			dropped_live_bytes: runtime?.droppedLiveBytes ?? 0,
+			dropped_live_bytes:
+				runtime?.droppedLiveBytes ?? facts?.droppedLiveBytes ?? 0,
+			dropped_grid_bytes:
+				runtime?.droppedGridBytes ?? facts?.droppedGridBytes ?? 0,
 			modes: grid?.modes ?? null,
 			cursor: grid?.cursor ?? null,
 			last_activity: entry.record.lastActivity,
@@ -717,23 +896,33 @@ export class ConsoleHost {
 		surface: string,
 		mode: ConsoleReadMode,
 		window?: { start?: number; count?: number },
+		actor: ConsoleActor = "agent",
 	): Promise<Record<string, unknown>> {
 		const entry = this.registry.require(surface);
-		const runtime = this.requireRuntime(entry);
 		this.refuseWhenSecure(entry);
-		await runtime.emulator.whenIdle();
-		const grid = runtime.emulator.grid;
-		return {
-			text: runtime.emulator.text(mode, window),
-			cols: grid.cols,
-			rows: grid.rows,
-			cursor: grid.cursor,
-			truncated: runtime.log.truncated,
-			live: entry.record.live,
-			mode,
-		};
+		return this.withReadRuntime(
+			entry,
+			async (runtime) => {
+				await runtime.emulator.whenIdle();
+				const grid = runtime.emulator.grid;
+				return {
+					text: runtime.emulator.text(mode, window),
+					cols: grid.cols,
+					rows: grid.rows,
+					cursor: grid.cursor,
+					truncated:
+						runtime.log.truncated ||
+						this.archiveFacts.get(surface)?.truncated ||
+						this.archives.get(surface)?.truncated ||
+						false,
+					dropped_grid_bytes: runtime.droppedGridBytes,
+					live: entry.record.live,
+					mode,
+				};
+			},
+			actor,
+		);
 	}
-
 	/**
 	 * `console_screenshot`: the app's own window, cropped to the pane's reported
 	 * rect, photographed with `capturePage` (design 13.2's first row); or, when no
@@ -747,78 +936,88 @@ export class ConsoleHost {
 	 * is what every capture in this repo runs in — is exactly that case. The
 	 * offscreen path repeats the same discipline in its own module.
 	 */
-	async screenshot(surface: string): Promise<Record<string, unknown>> {
+	async screenshot(
+		surface: string,
+		actor: ConsoleActor = "agent",
+	): Promise<Record<string, unknown>> {
 		const entry = this.registry.require(surface);
-		const runtime = this.requireRuntime(entry);
 		this.refuseWhenSecure(entry);
-		const report = runtime.rect;
-		if (this.displayed !== surface || !report || !report.visible) {
-			/*
-			 * No pane is looking at this surface, so there is nothing to photograph: the
-			 * honest answer is a faithful reconstruction from the record, and the result
-			 * says so (`rendered: "offscreen"`) rather than passing itself off as a
-			 * photograph of a screen.
-			 *
-			 * The BYTES ARE THE RECORD'S OWN retained log, read at the moment of the
-			 * call: the capture view replays them into a fresh terminal, which is the
-			 * design's "replay, not serialize" (§7.3) and the only representation that
-			 * survives a relaunch. What is NOT done here is re-reading a live surface — a
-			 * frame has to be a function of the bytes it declares, or two captures of the
-			 * same surface are not comparable and cannot be evidence.
-			 */
-			const capture = this.options.captureOffscreen;
-			if (!capture) {
-				throw new ConsoleError(
-					"capture_unavailable",
-					"no pane is displaying this surface, and this host has no capture view to reconstruct a frame with",
-					{ rendered: null },
+		return this.withReadRuntime(
+			entry,
+			async (runtime) => {
+				const report = runtime.rect;
+				if (this.displayed !== surface || !report || !report.visible) {
+					/*
+					 * No pane is looking at this surface, so there is nothing to photograph: the
+					 * honest answer is a faithful reconstruction from the record, and the result
+					 * says so (`rendered: "offscreen"`) rather than passing itself off as a
+					 * photograph of a screen.
+					 *
+					 * The BYTES ARE THE RECORD'S OWN retained log, read at the moment of the
+					 * call: the capture view replays them into a fresh terminal, which is the
+					 * design's "replay, not serialize" (§7.3) and the only representation that
+					 * survives a relaunch. What is NOT done here is re-reading a live surface — a
+					 * frame has to be a function of the bytes it declares, or two captures of the
+					 * same surface are not comparable and cannot be evidence.
+					 */
+					const capture = this.options.captureOffscreen;
+					if (!capture) {
+						throw new ConsoleError(
+							"capture_unavailable",
+							"no pane is displaying this surface, and this host has no capture view to reconstruct a frame with",
+							{ rendered: null },
+						);
+					}
+					const grid = runtime.emulator.grid;
+					const frame = await capture({
+						surface,
+						cols: grid.cols,
+						rows: grid.rows,
+						theme: runtime.theme,
+						bytes: runtime.log.read(0).bytes,
+					});
+					return {
+						image_base64: frame.png.toString("base64"),
+						cols: grid.cols,
+						rows: grid.rows,
+						rendered: "offscreen",
+						theme: runtime.theme,
+						live: entry.record.live,
+						// Which renderer painted the reconstruction, reported rather than
+						// assumed: the DOM pin is what makes an offscreen frame possible at all.
+						renderer: frame.renderer,
+						attempts: frame.attempts,
+					};
+				}
+				const window = this.options.window();
+				if (!window || window.isDestroyed()) {
+					throw new ConsoleError(
+						"capture_unavailable",
+						"this app's window is not available to photograph",
+						{ rendered: null },
+					);
+				}
+				const rect = cropToWindow(
+					report.contentRect,
+					window.getContentBounds(),
 				);
-			}
-			const grid = runtime.emulator.grid;
-			const frame = await capture({
-				surface,
-				cols: grid.cols,
-				rows: grid.rows,
-				theme: runtime.theme,
-				bytes: runtime.log.read(0).bytes,
-			});
-			return {
-				image_base64: frame.png.toString("base64"),
-				cols: grid.cols,
-				rows: grid.rows,
-				rendered: "offscreen",
-				theme: runtime.theme,
-				live: entry.record.live,
-				// Which renderer painted the reconstruction, reported rather than
-				// assumed: the DOM pin is what makes an offscreen frame possible at all.
-				renderer: frame.renderer,
-				attempts: frame.attempts,
-			};
-		}
-		const window = this.options.window();
-		if (!window || window.isDestroyed()) {
-			throw new ConsoleError(
-				"capture_unavailable",
-				"this app's window is not available to photograph",
-				{ rendered: null },
-			);
-		}
-		const rect = cropToWindow(report.contentRect, window.getContentBounds());
-		const png = await this.captureWithRetry(window, rect);
-		const grid = runtime.emulator.grid;
-		return {
-			image_base64: png.toString("base64"),
-			cols: grid.cols,
-			rows: grid.rows,
-			// Named, not implied (13.2): this frame is a photograph of the app's own
-			// window, so it is what a person is looking at rather than a
-			// reconstruction of the record.
-			rendered: "displayed",
-			theme: runtime.theme,
-			live: entry.record.live,
-		};
+				const png = await this.captureWithRetry(window, rect);
+				const grid = runtime.emulator.grid;
+				return {
+					image_base64: png.toString("base64"),
+					cols: grid.cols,
+					rows: grid.rows,
+					// Named, not implied (13.2): this frame is a photograph of the app's own
+					// window, so it is what a person is looking at rather than a
+					// reconstruction of the record.
+					rendered: "displayed",
+					theme: runtime.theme,
+					live: entry.record.live,
+				};
+			},
+			actor,
+		);
 	}
-
 	/**
 	 * A displayed frame, retried once, and REFUSED when it has no content twice (Q-2).
 	 *
@@ -875,7 +1074,7 @@ export class ConsoleHost {
 		actor: ConsoleActor = "agent",
 	): Promise<Record<string, unknown>> {
 		const entry = this.registry.require(surface);
-		const runtime = this.requireRuntime(entry);
+		const runtime = this.requireRuntime(entry, actor);
 		this.requireRunning(entry);
 		const raw = payload.bytes ?? ENCODER.encode(payload.text ?? "");
 		if (raw.length > MAX_INPUT_BYTES) {
@@ -913,7 +1112,7 @@ export class ConsoleHost {
 		actor: ConsoleActor = "agent",
 	): Promise<Record<string, unknown>> {
 		const entry = this.registry.require(surface);
-		const runtime = this.requireRuntime(entry);
+		const runtime = this.requireRuntime(entry, actor);
 		this.requireRunning(entry);
 		await runtime.emulator.whenIdle();
 		const modes = runtime.emulator.grid.modes;
@@ -957,7 +1156,12 @@ export class ConsoleHost {
 	 * `console_resize`: the explicit writer, and the only one besides a displayed
 	 * pane's rect (§8.4).
 	 */
-	resize(surface: string, cols: number, rows: number): Record<string, unknown> {
+	resize(
+		surface: string,
+		cols: number,
+		rows: number,
+		actor: ConsoleActor = "agent",
+	): Record<string, unknown> {
 		const entry = this.registry.require(surface);
 		if (entry.record.sizing === "fixed") {
 			throw new ConsoleError(
@@ -968,14 +1172,14 @@ export class ConsoleHost {
 				{ reason: "fixed" },
 			);
 		}
-		this.applyGrid(entry, cols, rows);
+		this.applyGrid(entry, cols, rows, actor);
 		return { cols: entry.record.cols, rows: entry.record.rows };
 	}
 
 	/** The pane's report: measurement in, grid decision out (§8.2). */
 	setContentRect(surface: string, report: ConsoleContentReport): void {
 		const entry = this.registry.require(surface);
-		const runtime = this.requireRuntime(entry);
+		const runtime = this.requireRuntime(entry, "user");
 		runtime.rect = report;
 		runtime.theme = report.theme ?? null;
 		// A pane that is not visible measures a box nobody is looking at. Its rect is
@@ -995,7 +1199,7 @@ export class ConsoleHost {
 		const cols = Math.floor(report.contentRect.width / report.cellWidth);
 		const rows = Math.floor(report.contentRect.height / report.cellHeight);
 		if (!Number.isFinite(cols) || !Number.isFinite(rows)) return;
-		this.applyGrid(entry, cols, rows);
+		this.applyGrid(entry, cols, rows, "user");
 	}
 
 	/** The pane unmounted or switched surface: forget the rect, and send no resize
@@ -1119,9 +1323,10 @@ export class ConsoleHost {
 		surface: string,
 		fromByte: number,
 		subscriber: ConsoleSubscriber,
+		actor: ConsoleActor = "agent",
 	): ByteLogSlice {
 		const entry = this.registry.require(surface);
-		const runtime = this.requireRuntime(entry);
+		const runtime = this.requireRuntime(entry, actor);
 		const replay = runtime.log.read(fromByte);
 		runtime.subscribers.add(subscriber);
 		// Replay covers everything up to the log's end, and the frames that follow
@@ -1177,14 +1382,28 @@ export class ConsoleHost {
 			available: true,
 			total: counts.total,
 			agent: counts.agent,
-			displayed_surface: this.displayed,
+			metrics: this.resources(),
+			capacity: {
+				live: counts.live,
+				archived: counts.archived,
+				limit: counts.maxLive,
+			},
+			displayed_surface:
+				sessionId &&
+				this.displayed &&
+				this.registry.find(this.displayed)?.record.sessionId !== sessionId
+					? null
+					: this.displayed,
 			surfaces: this.registry.list(sessionId).map((entry) => ({
 				...this.listing(entry),
 				secure: entry.record.secure,
 				retain: entry.record.retain,
 				sizing: entry.record.sizing,
 				displayed: entry.record.surface === this.displayed,
-				last_mark: entry.runtime?.lastMark ?? null,
+				last_mark:
+					entry.runtime?.lastMark ??
+					this.archiveFacts.get(entry.record.surface)?.lastMark ??
+					null,
 			})),
 		};
 	}
@@ -1213,12 +1432,28 @@ export class ConsoleHost {
 		// future pty that hands over raw bytes instead must carry a streaming decoder
 		// with it; decoding each chunk independently would corrupt exactly there.
 		const bytes = Buffer.from(data, "utf8");
-		// The record is fed always; only the LOG is skipped while secure, because the
-		// log is what is durably retained (§11.4.4). A record that skipped the bytes
-		// would put main out of step with the pane, which is the one thing the
-		// single-authority rule forbids.
-		runtime.emulator.write(new Uint8Array(bytes));
-		if (!entry.record.secure) runtime.log.append(new Uint8Array(bytes));
+		// Secure spans suppress durable capture. Resource pressure may also defer
+		// parser/delivery input, but observable counters distinguish that bounded
+		// degradation from loss of already-retained disk history.
+		// Flush agent surplus durably before trimming ONLY replay RAM. Producer
+		// output is untrusted, never authorized by stored creator provenance.
+		if (!entry.record.secure) {
+			runtime.log.append(new Uint8Array(bytes));
+			if (!this.projectResources().fits) {
+				this.flush(surface);
+				if (
+					!entry.record.retain ||
+					(this.persistedBytes.get(surface) ?? 0) >= runtime.log.endOffset
+				)
+					runtime.log.trimMemory(LOG_RESERVATION_BYTES);
+			}
+		}
+		if (this.projectResources("agent", 0, 0, bytes.length).fits) {
+			runtime.emulator.write(new Uint8Array(bytes));
+		} else {
+			// Parser degradation is explicit and distinct from durable byte loss.
+			runtime.droppedGridBytes += bytes.length;
+		}
 		for (const mark of runtime.scanner.feed(new Uint8Array(bytes))) {
 			runtime.lastMark = mark;
 			this.options.onMark?.(surface, mark);
@@ -1238,6 +1473,12 @@ export class ConsoleHost {
 		if (runtime.subscribers.size === 0) return;
 		runtime.pending.push(bytes);
 		runtime.pendingBytes += bytes.length;
+		while (!this.projectResources().fits && runtime.pending.length > 0) {
+			const oldest = runtime.pending.shift();
+			if (!oldest) break;
+			runtime.pendingBytes -= oldest.length;
+			runtime.droppedLiveBytes += oldest.length;
+		}
 		/*
 		 * THE DROP-OLDEST CEILING (see `LIVE_PENDING_MAX_BYTES`). One chunk is kept even
 		 * when it alone is over the ceiling: a frame that arrives late is still a frame,
@@ -1303,6 +1544,9 @@ export class ConsoleHost {
 		this.bumpExitEpoch(entry);
 		if (entry.record.retain) this.flush(surface);
 		const runtime = entry.runtime;
+		// node-pty owns the closed descriptor after onExit; retaining its JS handle
+		// must not be mistaken for native admission or a signal target.
+		runtime.pty = null;
 		for (const waiter of runtime.exitWaiters.splice(0)) waiter(exitCode);
 		if (!runtime.exitDelivered) {
 			runtime.exitDelivered = true;
@@ -1321,6 +1565,33 @@ export class ConsoleHost {
 			sessionId: entry.record.sessionId,
 			exitCode,
 		});
+		// Wait for the final emulator parse before releasing a reloadable runtime.
+		// Pane subscribers and secure views remain pinned; no process is killed.
+		void runtime.emulator
+			.whenIdle()
+			.then(() => {
+				const current = this.registry.find(surface);
+				if (
+					!current ||
+					current.runtime !== runtime ||
+					current.record.running ||
+					!current.record.retain ||
+					current.record.secure ||
+					current.runtime.subscribers.size ||
+					surface === this.displayed ||
+					!this.options.history
+				)
+					return;
+				this.flush(surface);
+				if ((this.persistedBytes.get(surface) ?? 0) < runtime.log.endOffset)
+					return;
+				if (this.dehydrate(current)) this.options.onChanged?.();
+			})
+			.catch((error) =>
+				this.options.log(
+					`[console] history demotion deferred: ${String(error)}`,
+				),
+			);
 	}
 
 	/** Apply a grid change: clamp, compare, and only then touch the record and the
@@ -1329,10 +1600,19 @@ export class ConsoleHost {
 		entry: ConsoleRegistryEntry<SurfaceRuntime>,
 		cols: number,
 		rows: number,
+		actor: ConsoleActor = "agent",
 	): void {
 		const grid = clampGrid(cols, rows);
 		if (grid.cols === entry.record.cols && grid.rows === entry.record.rows)
 			return;
+		const previous = { cols: entry.record.cols, rows: entry.record.rows };
+		this.registry.update(entry.record.surface, grid);
+		try {
+			this.requireResourceBudget(actor);
+		} catch (error) {
+			this.registry.update(entry.record.surface, previous);
+			throw error;
+		}
 		this.registry.update(entry.record.surface, {
 			cols: grid.cols,
 			rows: grid.rows,
@@ -1359,9 +1639,330 @@ export class ConsoleHost {
 		this.registry.update(entry.record.surface, { lastActivity: this.now() });
 	}
 
+	private nativeFacts: NativeCapacity = {
+		fdLimit: null,
+		fdUsed: null,
+		ptyMax: null,
+		ptyAvailable: null,
+	};
+	private nativeSampledAt: number | null = null;
+	private readonly archives = new Map<string, ConsoleHistoryMeta>();
+	private readonly archiveFacts = new Map<
+		string,
+		{
+			grid: ConsoleGridState;
+			truncated: boolean;
+			droppedLiveBytes: number;
+			droppedGridBytes: number;
+			lastMark: Osc133Mark | null;
+			theme: string | null;
+		}
+	>();
+	private readonly runtimeUse = new Map<string, number>();
+	private runtimeClock = 0;
+	private readonly exitAckTimers = new Map<string, NodeJS.Timeout>();
+	// Restarted histories are already protected by live:false. This lifetime
+	// ledger survives runtime dehydration, and is removed only on explicit close.
+	private readonly adoptedSurfaces = new Set<string>();
+
+	/** Counts are safe across owners; identifiers and terminal content are not.
+	 * Cell charges model reserved storage, never arbitrary child RSS. Unknown OS
+	 * FD/PTY availability is honest rather than borrowed from a shell's ulimit. */
+	resources() {
+		let logBytes = 0;
+		let pendingBytes = 0;
+		let cells = 0;
+		let ptys = 0;
+		let protectedCount = 0;
+		for (const entry of this.registry.list()) {
+			const runtime = entry.runtime;
+			logBytes += Math.max(
+				runtime?.log.retainedBytes ?? 0,
+				entry.record.running ? LOG_RESERVATION_BYTES : 0,
+			);
+			pendingBytes +=
+				(runtime?.pendingBytes ?? 0) + (runtime?.emulator.pendingBytes ?? 0);
+			if (runtime || entry.record.running)
+				cells += entry.record.cols * (entry.record.rows + SCROLLBACK_LINES);
+			if (entry.record.running && runtime?.pty) ptys += 1;
+			if (
+				entry.record.origin === "user" ||
+				this.adoptedSurfaces.has(entry.record.surface) ||
+				entry.record.retain ||
+				entry.record.secure ||
+				!entry.record.live ||
+				entry.record.surface === this.displayed ||
+				runtime?.subscribers.size ||
+				runtime?.activeReaders
+			)
+				protectedCount += 1;
+		}
+		// Actual human work/config reductions can already consume credit. These
+		// are conservative modeled default-grid units, NEVER an OS/RSS promise.
+		const liveUsers = this.registry
+			.list()
+			.filter(
+				(entry) => entry.record.running && entry.record.origin === "user",
+			).length;
+		const vacant = Math.max(0, this.registry.policy.userReserved - liveUsers);
+		const defaultCells = DEFAULT_COLS * (DEFAULT_ROWS + SCROLLBACK_LINES);
+		const rawManaged =
+			logBytes +
+			pendingBytes +
+			cells * CELL_RESERVATION_BYTES +
+			64 * 1024 * 1024;
+		const remaining = Math.max(
+			0,
+			Math.min(
+				vacant,
+				this.registry.policy.maxLive - this.registry.liveCount(),
+				Math.floor(
+					(MANAGED_BUDGET_BYTES - rawManaged) /
+						(LOG_RESERVATION_BYTES + defaultCells * CELL_RESERVATION_BYTES),
+				),
+				Math.floor((LOG_BUDGET_BYTES - logBytes) / LOG_RESERVATION_BYTES),
+				Math.floor((CELL_BUDGET - cells) / defaultCells),
+			),
+		);
+		return {
+			...this.registry.metrics(),
+			host_epoch: this.hostEpoch,
+			started_at: this.startedAt,
+			resources: {
+				user_reserved_vacant: vacant,
+				user_remaining_modeled_units:
+					pendingBytes > PENDING_BUDGET_BYTES ? 0 : remaining,
+				pending_allocations: this.failedAllocations.size,
+				ptys,
+				log_bytes: logBytes,
+				pending_bytes: pendingBytes,
+				emulator_cells: cells,
+				protected: protectedCount,
+				modeled_managed_bytes:
+					logBytes +
+					pendingBytes +
+					cells * CELL_RESERVATION_BYTES +
+					64 * 1024 * 1024,
+				fd_available:
+					this.nativeFacts.fdLimit !== null && this.nativeFacts.fdUsed !== null
+						? Math.max(0, this.nativeFacts.fdLimit - this.nativeFacts.fdUsed)
+						: null,
+				pty_available: this.nativeFacts.ptyAvailable,
+				native_sampled_at: this.nativeSampledAt,
+				pty_reservations: this.registry.liveCount(),
+				os_capacity:
+					this.nativeFacts.fdLimit === null ||
+					this.nativeFacts.ptyAvailable === null
+						? "partly unknown"
+						: "known",
+				accounting: "modeled managed storage; excludes child RSS",
+			},
+			resource_caps: {
+				log_bytes: LOG_BUDGET_BYTES,
+				pending_bytes: PENDING_BUDGET_BYTES,
+				emulator_cells: CELL_BUDGET,
+				modeled_managed_bytes: MANAGED_BUDGET_BYTES,
+				native_ptys:
+					this.nativeFacts.ptyMax === null
+						? 128
+						: Math.max(0, Math.min(128, this.nativeFacts.ptyMax - 64)),
+			},
+		};
+	}
+
+	/** Default/untrusted work includes the vacant user resource credit in EVERY
+	 * projected vector. Stored creator provenance is never caller permission.
+	 * Only trusted renderer/internal callers may pass user context explicitly. */
+	private projectResources(
+		actor: ConsoleActor = "agent",
+		extraCells = 0,
+		extraLogBytes = 0,
+		extraPendingBytes = 0,
+	) {
+		const sample = this.resources();
+		const resources = { ...sample.resources };
+		const liveUsers = this.registry
+			.list()
+			.filter(
+				(entry) => entry.record.running && entry.record.origin === "user",
+			).length;
+		const reserved =
+			actor === "user"
+				? 0
+				: Math.max(0, this.registry.policy.userReserved - liveUsers);
+		const cells =
+			extraCells + reserved * DEFAULT_COLS * (DEFAULT_ROWS + SCROLLBACK_LINES);
+		const log = extraLogBytes + reserved * LOG_RESERVATION_BYTES;
+		resources.emulator_cells += cells;
+		resources.log_bytes += log;
+		resources.pending_bytes += extraPendingBytes;
+		resources.modeled_managed_bytes +=
+			log + extraPendingBytes + cells * CELL_RESERVATION_BYTES;
+		const fits =
+			resources.log_bytes <= LOG_BUDGET_BYTES &&
+			resources.pending_bytes <= PENDING_BUDGET_BYTES &&
+			resources.emulator_cells <= CELL_BUDGET &&
+			resources.modeled_managed_bytes <= MANAGED_BUDGET_BYTES;
+		return { sample, resources, reserved, fits };
+	}
+
+	private requireResourceBudget(
+		actor: ConsoleActor = "agent",
+		extraCells = 0,
+		extraLogBytes = 0,
+		extraPendingBytes = 0,
+	): void {
+		if (this.options.nativeCapacity) {
+			this.nativeFacts = this.options.nativeCapacity();
+			this.nativeSampledAt = this.now();
+		}
+		const { sample, resources, reserved, fits } = this.projectResources(
+			actor,
+			extraCells,
+			extraLogBytes,
+			extraPendingBytes,
+		);
+		const nativeCeiling =
+			this.nativeFacts.ptyMax === null
+				? 128
+				: Math.max(0, Math.min(128, this.nativeFacts.ptyMax - 64));
+		const starting = this.registry
+			.list()
+			.filter((entry) => entry.record.running && !entry.runtime).length;
+		if (
+			!fits ||
+			(starting > 0 &&
+				(this.registry.liveCount() > nativeCeiling ||
+					(resources.fd_available !== null &&
+						resources.fd_available < 128 + 4 * starting) ||
+					(resources.pty_available !== null &&
+						resources.pty_available < 64 + starting)))
+		) {
+			throw new ConsoleError(
+				"tab_limit",
+				"console managed resource budget reached; completed history can be released without stopping live work",
+				{
+					scope: "resources",
+					metrics: sample,
+					proposed_resources: resources,
+					reserved_user_slots: reserved,
+				},
+			);
+		}
+	}
+
+	/** Acknowledgement is explicit evidence the owner observed completion. An idle
+	 * process is never eligible, and every protection is rechecked at timer fire. */
+	acknowledgeExit(surface: string): void {
+		const entry = this.registry.find(surface);
+		if (!entry || entry.record.running || this.exitAckTimers.has(surface))
+			return;
+		if (
+			entry.record.origin !== "agent" ||
+			this.adoptedSurfaces.has(entry.record.surface) ||
+			entry.record.retain ||
+			entry.record.secure ||
+			!entry.record.live ||
+			surface === this.displayed ||
+			entry.runtime?.subscribers.size ||
+			entry.runtime?.activeReaders
+		)
+			return;
+		const timer = setTimeout(() => {
+			this.exitAckTimers.delete(surface);
+			const current = this.registry.find(surface);
+			if (
+				!current ||
+				current.record.running ||
+				current.record.origin !== "agent" ||
+				this.adoptedSurfaces.has(current.record.surface) ||
+				current.record.retain ||
+				current.record.secure ||
+				!current.record.live ||
+				surface === this.displayed ||
+				current.runtime?.subscribers.size ||
+				current.runtime?.activeReaders
+			)
+				return;
+			void this.close(surface, { retain: false }).catch((error) =>
+				this.options.log(
+					`[console] completed cleanup refused: ${String(error)}`,
+				),
+			);
+		}, EXIT_ACK_GRACE_MS);
+		timer.unref?.();
+		this.exitAckTimers.set(surface, timer);
+	}
+
+	/** Owner cleanup cannot terminate processes, and preserves retained files.
+	 * Counts only are returned so this is safe to expose as a lifecycle hook. */
+	async cleanupOwner(
+		sessionId: string,
+	): Promise<{ released: number; protected: number; running: number }> {
+		let released = 0;
+		let protectedCount = 0;
+		let running = 0;
+		for (const entry of this.registry.list(sessionId)) {
+			if (entry.record.running) {
+				running += 1;
+				continue;
+			}
+			if (
+				entry.record.secure ||
+				entry.record.origin === "user" ||
+				this.adoptedSurfaces.has(entry.record.surface) ||
+				!entry.record.live ||
+				entry.record.surface === this.displayed ||
+				entry.runtime?.subscribers.size ||
+				entry.runtime?.activeReaders
+			) {
+				protectedCount += 1;
+				continue;
+			}
+			if (entry.record.retain) {
+				/*
+				 * AN ELIGIBLE RETAINED SURFACE THAT IS ALREADY DEHYDRATED COUNTS AS
+				 * RELEASED, not protected (QA round 1, Q-2). `dehydrate()` returning
+				 * false for a null runtime is about the flush timer - there is nothing
+				 * left to drop - but the resource question is already answered: the
+				 * surface holds no emulator and no in-memory bytes, so nothing is
+				 * "still in use". Reporting it protected made the cleanup-result copy
+				 * ("{n} is still in use and was left open") describe a finished,
+				 * retained terminal as busy. Every other reason to protect one (secure,
+				 * user-origin, adopted, non-live, displayed, subscribed, read) was
+				 * already filtered above, so a null runtime here is a release-ready
+				 * surface whose bytes are on disk and whose memory is already back.
+				 */
+				if (!entry.runtime || this.dehydrate(entry)) released += 1;
+				else protectedCount += 1;
+			} else {
+				await this.close(entry.record.surface, { retain: false });
+				released += 1;
+			}
+		}
+		return { released, protected: protectedCount, running };
+	}
+
 	private requireRuntime(
 		entry: ConsoleRegistryEntry<SurfaceRuntime>,
+		actor: ConsoleActor = "agent",
 	): SurfaceRuntime {
+		this.runtimeUse.set(entry.record.surface, ++this.runtimeClock);
+		if (!entry.runtime) {
+			const meta = this.archives.get(entry.record.surface);
+			if (meta) {
+				const loaded = this.options.history?.load(
+					meta.session_id,
+					meta.surface,
+				);
+				if (!loaded)
+					throw new ConsoleError(
+						"surface_unavailable",
+						"retained history could not be loaded safely",
+					);
+				this.restore(meta, loaded.bytes, actor);
+			}
+		}
 		if (!entry.runtime) {
 			throw new ConsoleError(
 				"console_unavailable",
@@ -1370,6 +1971,103 @@ export class ConsoleHost {
 			);
 		}
 		return entry.runtime;
+	}
+
+	private async withReadRuntime<T>(
+		entry: ConsoleRegistryEntry<SurfaceRuntime>,
+		operation: (runtime: SurfaceRuntime) => Promise<T>,
+		actor: ConsoleActor = "agent",
+	): Promise<T> {
+		const runtime = this.requireRuntime(entry, actor);
+		runtime.activeReaders += 1;
+		try {
+			return await operation(runtime);
+		} finally {
+			runtime.activeReaders -= 1;
+			// Exit's first demotion may have been blocked by this reader. Retry
+			// when the last pin drains, without throwing away an actual hydrated
+			// LRU entry or overriding a successful read with housekeeping failure.
+			if (
+				!runtime.archivedReplay &&
+				entry.runtime === runtime &&
+				!entry.record.running &&
+				runtime.activeReaders === 0
+			) {
+				try {
+					if (this.dehydrate(entry)) this.options.onChanged?.();
+				} catch (error) {
+					this.options.log(
+						`[console] reader-drained demotion deferred: ${String(error)}`,
+					);
+				}
+			}
+		}
+	}
+
+	private dehydrate(entry: ConsoleRegistryEntry<SurfaceRuntime>): boolean {
+		const runtime = entry.runtime;
+		if (
+			!runtime ||
+			entry.record.running ||
+			!entry.record.retain ||
+			entry.record.secure ||
+			entry.record.surface === this.displayed ||
+			runtime.subscribers.size ||
+			runtime.activeReaders ||
+			runtime.emulator.pendingBytes ||
+			!this.options.history
+		)
+			return false;
+		this.flush(entry.record.surface);
+		if (
+			(this.persistedBytes.get(entry.record.surface) ?? 0) <
+			runtime.log.endOffset
+		)
+			return false;
+		this.archiveFacts.set(entry.record.surface, {
+			grid: runtime.emulator.grid,
+			truncated:
+				runtime.log.truncated ||
+				this.archives.get(entry.record.surface)?.truncated ||
+				false,
+			droppedLiveBytes: runtime.droppedLiveBytes,
+			droppedGridBytes: runtime.droppedGridBytes,
+			lastMark: runtime.lastMark,
+			theme: runtime.theme,
+		});
+		if (runtime.pendingTimer) clearTimeout(runtime.pendingTimer);
+		runtime.pending = [];
+		runtime.pendingBytes = 0;
+		runtime.emulator.dispose();
+		entry.runtime = null;
+		return true;
+	}
+
+	private evictArchiveRuntime(): void {
+		const hydrated = this.registry
+			.list()
+			.filter((item) => !item.record.running && item.runtime?.archivedReplay)
+			.sort(
+				(a, b) =>
+					(this.runtimeUse.get(a.record.surface) ?? 0) -
+					(this.runtimeUse.get(b.record.surface) ?? 0),
+			);
+		if (hydrated.length < HISTORY_CACHE_ENTRIES) return;
+		const candidate = hydrated.find(
+			(item) =>
+				item.record.retain &&
+				!item.record.secure &&
+				item.record.surface !== this.displayed &&
+				item.runtime?.subscribers.size === 0 &&
+				item.runtime.activeReaders === 0 &&
+				item.runtime.emulator.pendingBytes === 0,
+		);
+		if (!candidate || !this.dehydrate(candidate))
+			throw new ConsoleError(
+				"tab_limit",
+				"history replay cache is occupied by protected or undrained views",
+				{ scope: "history_cache", limit: HISTORY_CACHE_ENTRIES },
+			);
 	}
 
 	private requireRunning(entry: ConsoleRegistryEntry<SurfaceRuntime>): void {
@@ -1432,7 +2130,11 @@ export class ConsoleHost {
 			exit_code: record.exitCode,
 			truncated: runtime.log.truncated,
 			exit_epoch: this.exitEpoch.get(surface) ?? 0,
+			secure: record.secure,
+			dropped_live_bytes: runtime.droppedLiveBytes,
+			dropped_grid_bytes: runtime.droppedGridBytes,
 		};
+		this.archives.set(surface, meta);
 		if (!this.createdAt.has(surface))
 			this.createdAt.set(surface, meta.created_at);
 		if (!this.persistedBytes.has(surface)) this.persistedBytes.set(surface, 0);
@@ -1442,7 +2144,13 @@ export class ConsoleHost {
 			const slice = runtime.log.read(already);
 			// `append` may rotate, which sets `meta.truncated` — so the meta is written
 			// AFTER the append and its signature computed from the post-append value.
-			history.append(record.sessionId, surface, slice.bytes, meta);
+			const appended = history.append(
+				record.sessionId,
+				surface,
+				slice.bytes,
+				meta,
+			);
+			if (!appended.written) return;
 			this.persistedBytes.set(surface, slice.to);
 		}
 		const signature = metaSignature(meta);
@@ -1545,6 +2253,13 @@ export class ConsoleHost {
 			// close had already escalated to SIGKILL.
 		}
 		this.registry.remove(surface);
+		const ackTimer = this.exitAckTimers.get(surface);
+		if (ackTimer) clearTimeout(ackTimer);
+		this.exitAckTimers.delete(surface);
+		this.adoptedSurfaces.delete(surface);
+		this.archives.delete(surface);
+		this.archiveFacts.delete(surface);
+		this.runtimeUse.delete(surface);
 		this.createdAt.delete(surface);
 		this.persistedBytes.delete(surface);
 		this.metaSignatures.delete(surface);
@@ -1554,6 +2269,11 @@ export class ConsoleHost {
 
 	/** Stop everything: every pty, every record, every subscriber. */
 	dispose(persistHistory = true): void {
+		const allocationFailures = [...this.failedAllocations].flatMap(
+			(allocation) => this.releaseFailedAllocation(allocation),
+		);
+		for (const timer of this.exitAckTimers.values()) clearTimeout(timer);
+		this.exitAckTimers.clear();
 		// A startup rollback has not read the complete history yet. Persisting its
 		// partial emulators would turn a recoverable startup error into data loss.
 		if (
@@ -1636,6 +2356,11 @@ export class ConsoleHost {
 		this.persistedBytes.clear();
 		this.metaSignatures.clear();
 		this.exitEpoch.clear();
+		if (allocationFailures.length)
+			throw new AggregateError(
+				allocationFailures,
+				"Failed console allocation cleanup remains incomplete",
+			);
 	}
 
 	/** Creation times, kept here rather than on the wire record: nothing outside
@@ -1670,6 +2395,9 @@ function metaSignature(meta: ConsoleHistoryMeta): string {
 		meta.cols,
 		meta.rows,
 		meta.exit_epoch,
+		meta.secure === true,
+		meta.dropped_live_bytes ?? 0,
+		meta.dropped_grid_bytes ?? 0,
 		Math.floor(meta.last_seen_at),
 	].join("|");
 }

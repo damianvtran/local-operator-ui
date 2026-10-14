@@ -1,9 +1,13 @@
 import {
 	appendFileSync,
 	chmodSync,
+	closeSync,
 	existsSync,
+	fstatSync,
 	mkdirSync,
+	openSync,
 	readFileSync,
+	readSync,
 	readdirSync,
 	renameSync,
 	rmSync,
@@ -11,7 +15,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
-import { RETAIN_BYTES } from "./byte-log";
+import { CEILING_BYTES, RETAIN_BYTES } from "./byte-log";
 import type { SurfaceOrigin } from "./protocol";
 
 /**
@@ -89,6 +93,10 @@ export interface ConsoleHistoryMeta {
 	 * (§7.3, §10.6). A sidecar written before this field existed reads as 0, which
 	 * is why every reader normalises it rather than trusting the file. */
 	exit_epoch: number;
+	/** Additive protection across restart; old sidecars default false. */
+	secure?: boolean;
+	dropped_live_bytes?: number;
+	dropped_grid_bytes?: number;
 }
 
 export interface ConsoleHistoryOptions {
@@ -184,7 +192,7 @@ export class ConsoleHistory {
 		surface: string,
 		bytes: Uint8Array,
 		meta: ConsoleHistoryMeta,
-	): { rotated: boolean } {
+	): { rotated: boolean; written: boolean } {
 		const path = logPath(this.root, sessionId, surface);
 		try {
 			mkdirSync(dirname(path), { recursive: true, mode: HISTORY_DIR_MODE });
@@ -196,7 +204,8 @@ export class ConsoleHistory {
 			} catch {
 				size = 0;
 			}
-			if (size <= HISTORY_ROTATE_BYTES) return { rotated: false };
+			if (size <= HISTORY_ROTATE_BYTES)
+				return { rotated: false, written: true };
 			// Rewrite with the newest retained window. Read-then-write rather than a
 			// tail seek: the window is 4 MiB, the operation is once per 8 MiB appended,
 			// and a partial read that guessed at a UTF-8 boundary would corrupt the
@@ -210,12 +219,12 @@ export class ConsoleHistory {
 			meta.truncated = true;
 			meta.last_seen_at = this.now();
 			this.writeMeta(meta);
-			return { rotated: true };
+			return { rotated: true, written: true };
 		} catch {
 			// Persistence is a convenience for the next launch; it must never take a
 			// running surface down. The host logs its own line when a surface asked to
 			// be retained, and `console_status` reports `retain`, not "retained".
-			return { rotated: false };
+			return { rotated: false, written: false };
 		}
 	}
 
@@ -226,10 +235,31 @@ export class ConsoleHistory {
 		try {
 			const meta = parseMeta(readFileSync(metaPath, "utf8"));
 			const logFile = logPath(this.root, sessionId, surface);
-			const bytes = existsSync(logFile)
-				? readFileSync(logFile)
-				: Buffer.alloc(0);
-			return { meta, bytes: new Uint8Array(bytes) };
+			if (!existsSync(logFile)) return { meta, bytes: new Uint8Array() };
+			const fd = openSync(logFile, "r");
+			try {
+				const size = fstatSync(fd).size;
+				const length = Math.min(size, CEILING_BYTES);
+				const bytes = Buffer.alloc(length);
+				let read = 0;
+				while (read < length) {
+					const got = readSync(
+						fd,
+						bytes,
+						read,
+						length - read,
+						size - length + read,
+					);
+					if (got === 0) break;
+					read += got;
+				}
+				// A crash/manual enlargement may exceed normal rotation. Bound
+				// hydration without ever rewriting the retained file under pressure.
+				if (size > length) meta.truncated = true;
+				return { meta, bytes: bytes.subarray(0, read) };
+			} finally {
+				closeSync(fd);
+			}
 		} catch {
 			return null;
 		}
@@ -257,9 +287,18 @@ export class ConsoleHistory {
 	 * number of sessions here is small enough that a readdir is not a cost.
 	 */
 	list(sessionId?: string): LoadedSurface[] {
+		return this.listMetadata(sessionId).flatMap((meta) => {
+			const loaded = this.load(meta.session_id, meta.surface);
+			return loaded ? [loaded] : [];
+		});
+	}
+
+	/** Startup must not open every retained log before choosing what to display.
+	 * Sidecars alone describe archived identity; byte replay is demand-driven. */
+	listMetadata(sessionId?: string): ConsoleHistoryMeta[] {
 		const sessions =
 			sessionId === undefined ? this.sessionDirs() : [fileStem(sessionId)];
-		const loaded: LoadedSurface[] = [];
+		const loaded: ConsoleHistoryMeta[] = [];
 		for (const stem of sessions) {
 			const dir = join(this.root, stem);
 			let files: string[];
@@ -272,11 +311,7 @@ export class ConsoleHistory {
 				if (!file.endsWith(".json")) continue;
 				try {
 					const meta = parseMeta(readFileSync(join(dir, file), "utf8"));
-					const logFile = join(dir, `${file.slice(0, -".json".length)}.log`);
-					const bytes = existsSync(logFile)
-						? readFileSync(logFile)
-						: Buffer.alloc(0);
-					loaded.push({ meta, bytes: new Uint8Array(bytes) });
+					loaded.push(meta);
 				} catch {
 					// A corrupt sidecar is skipped rather than fatal: one bad file must
 					// not hide every other surface from a listing.

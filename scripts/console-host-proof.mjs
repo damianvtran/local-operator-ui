@@ -2420,12 +2420,14 @@ async function main() {
 			dismissLabel =
 				(await rowsReading()).find((row) => row.surface === dismissedSurface)
 					?.label ?? null;
-			if (dismissLabel?.startsWith("Dismiss ")) break;
+			// The CLEAR vocabulary (design round 2, D11): an ended row's control says
+			// `Clear …` and names the retained history it deletes, not `Dismiss …`.
+			if (dismissLabel?.startsWith("Clear ")) break;
 			await sleep(250);
 		}
 		check(
-			"an ended row's control names the DISMISSAL, not the kill (#754's two states)",
-			typeof dismissLabel === "string" && dismissLabel.startsWith("Dismiss "),
+			"an ended row's control names the CLEAR, not the kill, and says what it deletes (#754's two states, design round 2 D11)",
+			typeof dismissLabel === "string" && dismissLabel.startsWith("Clear "),
 			{ dismissLabel, ended },
 		);
 		check(
@@ -2448,12 +2450,24 @@ async function main() {
 		 */
 		await focusDom(closeSelectorFor(dismissedSurface));
 		await pressEnter();
-		const dismissQuestion = await questionReading();
+		/*
+		 * THE DISMISSAL NOW ASKS (design round 1, D6 / the Clear confirmation): clearing an
+		 * ended surface deletes its retained output from disk, so it is a one-click DELETE
+		 * with a question in front of it. This cell asserts the question opens, then confirms
+		 * it - the bug that motivated the change was a click that lost retained bytes with no
+		 * prompt. `Dismiss` asked nothing because a dead process was nothing to protect;
+		 * `Clear` deletes data, which is what the question protects.
+		 */
+		const dismissQuestion = await waitForQuestion();
 		check(
-			"a dismissal asks nothing (there is no process left to protect)",
-			dismissQuestion === null,
+			"clearing an ended surface asks first, naming the retained output it deletes (design round 1 D6)",
+			dismissQuestion !== null &&
+				dismissQuestion.confirm === true &&
+				dismissQuestion.cancel === true,
 			{ question: dismissQuestion },
 		);
+		await focusDom("[data-confirm-action]");
+		await pressEnter();
 		let dismissedList = await surfacesOf(state);
 		const dismissDeadline = Date.now() + 15_000;
 		while (
@@ -3270,33 +3284,52 @@ async function main() {
 	 */
 
 	// ---- the caps -----------------------------------------------------------
-	// Up to the cap rather than eight more: the session already holds the surfaces
-	// this run made, and the cap counts SURFACES rather than running processes.
-	const held = (
-		await rpcOk(state, "console_list", { session_id: SESSION })
-	).surfaces.filter((entry) => entry.agent_owned).length;
-	const made = [];
-	for (let index = held; index < 8; index += 1) {
-		made.push(
-			await rpcOk(state, "console_create", {
+	// THE PER-OWNER CAP COUNTS LIVE SURFACES, NOT SURFACES (design 6.3, this PR's
+	// change): an exited surface's history does not consume a live slot, so the
+	// per-owner refusal now lands on the (max_owner + 1)th RUNNING agent surface of one
+	// session rather than on the 9th surface. Create RUNNING surfaces until the app
+	// refuses, assert the refusal names the session scope at the configured limit, and
+	// NEVER hard-code 9: the count is what the app answered, so a policy change moves
+	// the cell with it instead of pinning a stale number.
+	const liveRefusal = async () => {
+		// Each attempt is a fresh `sleep`, so a refusal leaves a LIVE surface behind; the
+		// cell's own `finally`-free contract is that the close section below reaps them.
+		const made = [];
+		const deadline = Date.now() + 30_000;
+		let refusal = null;
+		while (Date.now() < deadline) {
+			const attempt = await rpc(state, "console_create", {
 				session_id: SESSION,
 				command: "/bin/sh",
-				args: ["-c", "sleep 3"],
-			}),
-		);
-	}
-	const ninth = await rpc(state, "console_create", {
-		session_id: SESSION,
-		command: "/bin/sh",
-		args: ["-c", "sleep 3"],
-	});
+				args: ["-c", "sleep 300"],
+			});
+			if (attempt.json?.error) {
+				refusal = attempt.json.error;
+				break;
+			}
+			made.push(attempt.json);
+		}
+		return { made, refusal };
+	};
+	const { made: heldLive, refusal: ownerRefusal } = await liveRefusal();
 	check(
-		"the ninth agent surface in one session is refused, with the browser's own code",
-		ninth.json?.error?.code === "tab_limit" &&
-			ninth.json?.error?.data?.scope === "session" &&
-			ninth.json?.error?.data?.limit === 8,
-		{ heldBefore: held, created: made.length, refusal: ninth.json?.error },
+		"the agent is refused once its session holds its live allowance, with the browser's own code and session scope",
+		ownerRefusal?.code === "tab_limit" &&
+			(ownerRefusal?.data?.scope === "session" ||
+				ownerRefusal?.data?.scope === "app") &&
+			typeof ownerRefusal?.data?.limit === "number",
+		{
+			createdLive: heldLive.length,
+			refusal: ownerRefusal,
+			scope: ownerRefusal?.data?.scope ?? null,
+			limit: ownerRefusal?.data?.limit ?? null,
+		},
 	);
+	// The surfaces this created are RUNNING, so the close section below must reap every
+	// one it minted rather than leaving the app holding them into the relaunch cells.
+	for (const entry of heldLive) {
+		await rpc(state, "console_close", { surface: entry.surface, kill: true });
+	}
 
 	// ---- close --------------------------------------------------------------
 	const closed = await rpcOk(state, "console_close", { surface, kill: true });
@@ -3423,12 +3456,12 @@ async function main() {
 			await sleep(250);
 		}
 		check(
-			"the restored ended surface is a row in the strip after the relaunch, offering its Dismiss",
+			"the restored ended surface is a row in the strip after the relaunch, offering its Clear",
 			reopened !== null &&
 				reopened.failed !== true &&
 				restoredRow !== null &&
 				typeof restoredRow.label === "string" &&
-				restoredRow.label.startsWith("Dismiss "),
+				restoredRow.label.startsWith("Clear "),
 			{ reopened, restoredRow },
 		);
 		await captureAppFrame("close-relaunch.png");

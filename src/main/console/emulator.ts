@@ -67,6 +67,8 @@ export interface ConsoleEmulator {
 	resize(cols: number, rows: number): void;
 	text(mode: ConsoleReadMode, window?: ConsoleReadWindow): string;
 	readonly grid: ConsoleGridState;
+	/** Bytes xterm still owns, released only by its parse callback. */
+	readonly pendingBytes: number;
 	/** Resolves once everything written so far has been parsed into the grid. */
 	whenIdle(): Promise<void>;
 	dispose(): void;
@@ -107,13 +109,14 @@ export function createXtermEmulator(
 	// In-flight writes, so `whenIdle` can await the drain. Counted rather than
 	// polled: xterm's `write` callback fires per queued chunk, in order.
 	let pending = 0;
-	let idle: (() => void) | null = null;
+	let pendingBytes = 0;
+	let disposed = false;
+	const idle = new Set<() => void>();
 
 	const settleIfIdle = (): void => {
 		if (pending > 0) return;
-		const resolve = idle;
-		idle = null;
-		resolve?.();
+		for (const resolve of idle) resolve();
+		idle.clear();
 	};
 
 	/** The text of one absolute line, or "" past the end of the buffer. */
@@ -132,11 +135,22 @@ export function createXtermEmulator(
 
 	return {
 		write(bytes: Uint8Array): void {
+			if (disposed) return;
 			pending += 1;
-			terminal.write(bytes, () => {
+			pendingBytes += bytes.byteLength;
+			try {
+				terminal.write(bytes, () => {
+					if (disposed) return;
+					pending -= 1;
+					pendingBytes -= bytes.byteLength;
+					settleIfIdle();
+				});
+			} catch (error) {
 				pending -= 1;
+				pendingBytes -= bytes.byteLength;
 				settleIfIdle();
-			});
+				throw error;
+			}
 		},
 
 		resize(cols: number, rows: number): void {
@@ -186,14 +200,20 @@ export function createXtermEmulator(
 			};
 		},
 
+		get pendingBytes(): number {
+			return pendingBytes;
+		},
+
 		whenIdle(): Promise<void> {
 			if (pending === 0) return Promise.resolve();
-			return new Promise<void>((resolve) => {
-				idle = resolve;
-			});
+			return new Promise<void>((resolve) => idle.add(resolve));
 		},
 
 		dispose(): void {
+			disposed = true;
+			pending = 0;
+			pendingBytes = 0;
+			settleIfIdle();
 			terminal.dispose();
 		},
 	};
