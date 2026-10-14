@@ -93,6 +93,43 @@ test("the unmutated tree passes the gate this file mutates", () => {
 	assert.match(out, /Contrast contract holds: \d+ assertions across 59 themes/);
 });
 
+test("the Settings flat-surface contract accepts the tree and rejects selected-fill returns", () => {
+	// A rejection is meaningful only after this exact copied tree passes. Mutate
+	// the shipped rail, not the gate, so stale pins cannot masquerade as coverage.
+	assert.match(
+		runGate(),
+		/Contrast contract holds: \d+ assertions across 59 themes/,
+	);
+	const path = join(
+		probeRoot,
+		"src/renderer/src/features/settings/components/settings-sidebar.tsx",
+	);
+	const before = readFileSync(path, "utf8");
+	for (const [from, to, diagnostic] of [
+		[
+			"bg-transparent",
+			"bg-row-selected",
+			"settings rail continuous resting surface",
+		],
+		[
+			'isActive ? "font-semibold text-ink" : "text-ink-muted"',
+			'isActive ? rowCurrent : "text-ink-muted"',
+			"settings rail current-page ink and weight",
+		],
+	]) {
+		assert.ok(
+			before.includes(from),
+			`Settings mutation anchor missing: ${from}`,
+		);
+		try {
+			writeFileSync(path, before.replace(from, to));
+			assert.ok(runGate().includes(`FAIL  ${diagnostic}:`));
+		} finally {
+			writeFileSync(path, before);
+		}
+	}
+});
+
 test("the cast floor fires when a hover desaturates below its panel's half", () => {
 	/*
 	 * `tokyoNight` is the palette the defect was measured on: its panel carries
