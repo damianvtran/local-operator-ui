@@ -50,6 +50,8 @@ import {
 	TableRow,
 } from "@shared/components/ui/table";
 import { Textarea } from "@shared/components/ui/textarea";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
@@ -277,6 +279,8 @@ export function TeamDetail({
 		requestAnimationFrame(() => headingRef.current?.focus());
 	}, []);
 	const navigate = useNavigate();
+	// Subscribes this pane to locale; the conflict copy re-translates on switch.
+	useI18nLocale();
 
 	const dirty = creating
 		? Boolean(name.trim() || draft.description || draft.members.length)
@@ -595,21 +599,16 @@ export function TeamDetail({
 			 */}
 			{editing && conflict ? (
 				<Alert variant="warning" data-testid="team-conflict">
-					<AlertTitle>This changed while you were editing</AlertTitle>
+					<AlertTitle>{t("ui.hub.conflict.title")}</AlertTitle>
 					<AlertDescription>
-						<span className="block">
-							Something else - a configuration run, or another window - wrote to
-							this team after you opened it. Your edits are kept; saving would
-							only ever write the fields you changed, and only from the version
-							you saw. Reload to start from the current one.
-						</span>
+						<span className="block">{t("ui.hub.conflict.body")}</span>
 						<Button
 							variant="secondary"
 							size="sm"
 							className="mt-2"
 							onClick={cancel}
 						>
-							Reload the saved version
+							{t("ui.hub.conflict.reload")}
 						</Button>
 					</AlertDescription>
 				</Alert>

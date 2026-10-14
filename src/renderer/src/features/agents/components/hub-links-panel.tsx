@@ -33,6 +33,7 @@ import { formatDateTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useEffect, useId, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { hubLinkView } from "../hub-link-adapter";
 import { hubDirectionStateText, hubReasonText } from "../hub-link-copy";
 import { hubPreviewIsCurrent, hubPreviewMatches } from "../hub-preview-binding";
@@ -488,36 +489,64 @@ export function HubUnresolvedSource({
 	row,
 	source,
 	organizations,
+	isAuthenticated,
+	onSignIn,
 }: {
 	row: HubUnresolvedLink;
 	/** The approved/configured credential-free source this app already holds. */
 	source: string;
 	/** The viewer's verified organizations; a stated org scope picks one. */
 	organizations: { tenant_id: string; tenant_name: string }[];
+	/** A signed-out viewer cannot reach any organization destination. */
+	isAuthenticated: boolean;
+	onSignIn: () => void;
 }) {
 	useI18nLocale();
 	const [open, setOpen] = useState(false);
-	const [target, setTarget] = useState<string>("public");
+	/*
+	 * NO PRE-SELECTION (UX U1 / design D3). The scope starts EMPTY — "" is not a
+	 * destination — so confirming is a deliberate choice rather than a press of the
+	 * default. Pre-selecting Public would make an irreversible publish the outcome
+	 * of inaction, which is exactly what this control must not do.
+	 */
+	const [target, setTarget] = useState<string>("");
 	const resolution = useHubSourceResolution();
-	const targetIsOrg = target !== "public";
+	/*
+	 * Focus moves INTO the confirmation region when it opens, so a deliberate
+	 * irreversible act is not one keystroke from a control the reader cannot see
+	 * (UX U4). The region is focusable by its own heading; nothing is auto-pressed.
+	 */
+	const resolveRegionRef = useRef<HTMLDivElement>(null);
+	useEffect(() => {
+		if (open) resolveRegionRef.current?.focus();
+	}, [open]);
+	const targetIsOrg = target !== "public" && target !== "";
 	const org = targetIsOrg
 		? organizations.find((candidate) => candidate.tenant_id === target)
 		: null;
-	// A half-stated destination cannot be confirmed: an org target with no known
-	// organization is refused here rather than composed into a guessed scope.
-	const destinationKnown = !targetIsOrg || !!org;
+	// A half-stated destination cannot be confirmed: nothing selected, or an org
+	// target with no known organization, is refused here rather than composed into
+	// a guessed scope.
+	const destinationKnown = target !== "" && (!targetIsOrg || !!org);
+	const chose = destinationKnown && (targetIsOrg || target === "public");
 	return (
 		<section
 			className="flex min-w-0 flex-col gap-1 py-3"
 			data-hub-source-unresolved={row.local_id}
 		>
 			<h4 className="break-words text-body-sm text-ink">{row.name}</h4>
-			<p className="text-body-sm text-warning">
-				{t("ui.hub.links.source_unavailable")}
+			{/*
+			 * Design D5-D12: name the STATE, not the bare hub id. The id is a
+			 * diagnostic, not an origin, so it moves beside the label rather than
+			 * being the row's heading (the h4/h3 flip is fixed by this being a label
+			 * and the id a muted detail).
+			 */}
+			<p className="text-body-sm text-warning" data-hub-unresolved-label>
+				{t("ui.hub.links.source_not_confirmed")}
 			</p>
-			<code className="break-all text-mono-sm text-ink-muted">
-				{row.hub_id}
-			</code>
+			<p className="break-all text-mono-sm text-ink-dim">
+				{t("ui.hub.links.source_address", { address: row.hub_id })}
+			</p>
 			{/*
 			 * SOURCE CONFIRMATION, stated by the operator, never inferred.
 			 *
@@ -529,7 +558,11 @@ export function HubUnresolvedSource({
 			 * (`origin-conflict`), so this control never fabricates a link or a policy.
 			 */}
 			{open ? (
-				<div className="mt-1 flex flex-col gap-2">
+				<div
+					ref={resolveRegionRef}
+					tabIndex={-1}
+					className="mt-1 flex flex-col gap-2 outline-none"
+				>
 					<h5 className="text-body-sm text-ink">
 						{t("ui.hub.links.resolve_title")}
 					</h5>
@@ -539,22 +572,50 @@ export function HubUnresolvedSource({
 					<code className="break-all text-mono-sm text-ink-muted">
 						{source}
 					</code>
-					<label className="text-body-sm text-ink">
-						{t("ui.hub.links.source_address", { address: source })}
-						<select
-							className="mt-1 w-full rounded-md border border-control bg-surface px-2 py-1 text-body-sm text-ink"
-							value={target}
-							disabled={resolution.isPending}
-							onChange={(event) => setTarget(event.target.value)}
-						>
-							<option value="public">{t("ui.hub.links.source_public")}</option>
-							{organizations.map((candidate) => (
-								<option key={candidate.tenant_id} value={candidate.tenant_id}>
-									{candidate.tenant_name}
-								</option>
-							))}
-						</select>
-					</label>
+					{/*
+					 * Design D5-D12: the irreversibility warning is a body-level
+					 * callout in warning ink, not a quiet meta line — it states a
+					 * permanent consequence and must read like one.
+					 */}
+					<p className="rounded-md border border-warning/40 bg-warning/5 px-3 py-2 text-body-sm text-warning">
+						{t("ui.hub.links.resolve_irreversible")}
+					</p>
+					{isAuthenticated ? (
+						<label className="text-body-sm text-ink">
+							{t("ui.hub.links.scope_label")}
+							<select
+								className="mt-1 w-full rounded-md border border-control bg-surface px-2 py-1 text-body-sm text-ink"
+								value={target}
+								disabled={resolution.isPending}
+								onChange={(event) => setTarget(event.target.value)}
+							>
+								{/* An empty option keeps confirming a deliberate choice. */}
+								<option value="" disabled />
+								<option value="public">{t("ui.hub.links.scope_public")}</option>
+								{organizations.map((candidate) => (
+									<option key={candidate.tenant_id} value={candidate.tenant_id}>
+										{t("ui.hub.links.scope_private", {
+											organization: candidate.tenant_name,
+										})}
+									</option>
+								))}
+							</select>
+						</label>
+					) : (
+						/*
+						 * A signed-out viewer gets the reason and the way back in, never
+						 * a bare Public-only chooser (UX U1): the destinations they care
+						 * about are their organizations, and offering only Public would
+						 * push an irreversible publish at someone who cannot reach it.
+						 */
+						<Button variant="outline" onClick={onSignIn}>
+							{t("ui.hub.links.sign_in_to_publish", {
+								organization: t("ui.hub.links.scope_private", {
+									organization: row.name,
+								}),
+							})}
+						</Button>
+					)}
 					<div className="flex flex-wrap gap-2">
 						<Button
 							variant="outline"
@@ -564,7 +625,7 @@ export function HubUnresolvedSource({
 							{t("ui.hub.subscriptions.cancel")}
 						</Button>
 						<Button
-							disabled={resolution.isPending || !destinationKnown}
+							disabled={resolution.isPending || !chose}
 							onClick={() =>
 								resolution.mutate({
 									kind: row.kind,
@@ -576,14 +637,29 @@ export function HubUnresolvedSource({
 								})
 							}
 						>
-							{t("ui.hub.links.resolve_action")}
+							{resolution.isPending
+								? t("ui.hub.links.resolve_action_confirming")
+								: resolution.isSuccess
+									? t("ui.hub.links.resolve_action_done")
+									: t("ui.hub.links.resolve_action_confirm")}
 						</Button>
 					</div>
-					{/* Refusal (a differing KNOWN scope) is not a resolved row: the old
-					 * state is byte-unchanged, and the operator is told so. */}
+					{/* A refusal is not a resolved row: the old state is byte-unchanged.
+					 * Item 7 (UX U5): distinguish the KNOWN-scope conflict from any
+					 * other failure instead of one blanket sentence. */}
 					{resolution.error ? (
 						<p role="alert" className="text-body-sm text-danger">
-							{t("ui.hub.links.resolve_conflict")}
+							{/* Item 7 (UX U5): a KNOWN-scope conflict has its own named
+							 * sentence; every other refusal shows the real service reason
+							 * via `hubReasonText` when one is carried, and only falls back
+							 * to the generic sentence when it is not. */}
+							{resolution.error instanceof DesktopControlError &&
+							resolution.error.code === "origin-conflict"
+								? t("ui.hub.links.resolve_conflict")
+								: resolution.error instanceof DesktopControlError &&
+										resolution.error.code
+									? hubReasonText(resolution.error.code)
+									: t("ui.hub.links.resolve_failed_generic")}
 						</p>
 					) : null}
 				</div>
@@ -617,6 +693,7 @@ export function HubLinksPanel({
 	 * the active organization as the destination.
 	 */
 	const { isAuthenticated } = useRadientAuth();
+	const navigate = useNavigate();
 	const { memberships } = useMembershipsQuery({
 		enabled: enabled && isAuthenticated,
 	});
@@ -709,6 +786,8 @@ export function HubLinksPanel({
 							row={row}
 							source={approvedSource}
 							organizations={organizations}
+							isAuthenticated={isAuthenticated}
+							onSignIn={() => navigate("/settings")}
 						/>
 					))}
 				</div>

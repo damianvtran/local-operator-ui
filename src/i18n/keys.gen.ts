@@ -140,6 +140,9 @@ export type MessageParams = {
 	"ui.console.unavailable.pty.detail": undefined;
 	"ui.console.unavailable.title": undefined;
 	"ui.console.unavailable.unknown.detail": undefined;
+	"ui.hub.conflict.body": undefined;
+	"ui.hub.conflict.reload": undefined;
+	"ui.hub.conflict.title": undefined;
 	"ui.hub.links.acknowledge_baseline": undefined;
 	"ui.hub.links.action_failed": {
 		direction: string;
@@ -179,11 +182,21 @@ export type MessageParams = {
 	"ui.hub.links.publication_pending": undefined;
 	"ui.hub.links.published": { item: string; source: string };
 	"ui.hub.links.resolve_action": undefined;
+	"ui.hub.links.resolve_action_confirm": undefined;
+	"ui.hub.links.resolve_action_confirming": undefined;
+	"ui.hub.links.resolve_action_done": undefined;
 	"ui.hub.links.resolve_conflict": undefined;
 	"ui.hub.links.resolve_description": { item: string };
+	"ui.hub.links.resolve_failed_generic": undefined;
+	"ui.hub.links.resolve_irreversible": undefined;
 	"ui.hub.links.resolve_title": undefined;
 	"ui.hub.links.retry": undefined;
+	"ui.hub.links.scope_label": undefined;
+	"ui.hub.links.scope_private": { organization: string };
+	"ui.hub.links.scope_public": undefined;
+	"ui.hub.links.sign_in_to_publish": { organization: string };
 	"ui.hub.links.source_address": { address: string };
+	"ui.hub.links.source_not_confirmed": undefined;
 	"ui.hub.links.source_private": { organization: string };
 	"ui.hub.links.source_public": undefined;
 	"ui.hub.links.source_unavailable": undefined;

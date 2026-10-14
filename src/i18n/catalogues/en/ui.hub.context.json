@@ -593,5 +593,70 @@
 		"role": "error status",
 		"tone": "plain, precise; a confirmation is deliberate and not silently reversible; no inference of source or scope",
 		"note": "Shown when the service refuses the confirmation because the stored origin has a DIFFERENT KNOWN scope. The old state is left byte-unchanged, so the copy must say nothing was changed and must not promise a retry that could overwrite. Not a generic failure; no raw provider/credential bytes. Wrap naturally; no fixed width cap."
+	},
+	"ui.hub.links.scope_label": {
+		"role": "form label",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Labels the destination chooser for a legacy source confirmation. Deliberately 'Publish scope', NOT the hub URL, because the control chooses a DESTINATION (Public vs a named organization), not an address. No placeholders; wraps naturally."
+	},
+	"ui.hub.links.scope_public": {
+		"role": "select option",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "The public destination. A copy; not a safe default for an irreversible act, which is why the select is NOT pre-selected (UX U1 / design D3). No placeholders."
+	},
+	"ui.hub.links.scope_private": {
+		"role": "select option",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "A named organization destination: '{organization} · Private'. {organization} is a verified display label, never inferred from the active picker. No fixed width; the option wraps."
+	},
+	"ui.hub.links.sign_in_to_publish": {
+		"role": "link/button",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Shown when the viewer is signed out, in place of offering a destination they cannot reach. {organization} is a verified label; the affordance opens sign-in and never publishes. No inline literal elsewhere."
+	},
+	"ui.hub.links.resolve_action_confirm": {
+		"role": "button label",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "The deliberate confirmation press for the source-confirmation act. Distinct from the opener ({ui.hub.links.resolve_action}) so two buttons never read the same (UX U4). No placeholders."
+	},
+	"ui.hub.links.resolve_action_confirming": {
+		"role": "status",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Pending state of the confirm press while the service answers. Ellipsis is intentional; no promise of success. No placeholders."
+	},
+	"ui.hub.links.resolve_action_done": {
+		"role": "status",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Success state after the service confirms the source. States the fact, never a permission grant. No placeholders."
+	},
+	"ui.hub.links.resolve_failed_generic": {
+		"role": "error",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Generic refusal sentence for a source confirmation that did not resolve. The REAL cause rides {hubReasonText} beside it where one exists (UX U5); this is only the fallback, and it must not promise resolution. No placeholders."
+	},
+	"ui.hub.links.source_not_confirmed": {
+		"role": "status",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Label for a legacy unknown-origin row: names the state instead of the bare hub id, which is a diagnostic and not an origin. Replaces rendering the raw id as the row heading (design D5-D12). No placeholders."
+	},
+	"ui.hub.links.resolve_irreversible": {
+		"role": "body",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "The irreversibility warning beside the confirm control, raised to a body-level callout (design D5-D12). Must not weaken: it states that a wrong source is permanent. No placeholders; wraps at a comfortable measure."
+	},
+	"ui.hub.conflict.title": {
+		"role": "heading",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "The team editor's definition-CAS conflict banner title, mirroring the agent pane so both editors describe the same event the same way. Was a hard-coded English literal (MINOR-4). No placeholders."
+	},
+	"ui.hub.conflict.body": {
+		"role": "body",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "The team editor's conflict explanation: an out-of-band write after the editor opened; edits are kept; save writes only changed fields from the seen version; reload starts from current. No placeholders."
+	},
+	"ui.hub.conflict.reload": {
+		"role": "button label",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "The team editor's reload action in the conflict banner. Names the outcome (the saved version). No placeholders."
 	}
 }
