@@ -35,6 +35,7 @@ import enUiCanvas from "./catalogues/en/ui.canvas.json";
 import enUiChatComposer from "./catalogues/en/ui.chat.composer.json";
 import enUiChatComposerMedia from "./catalogues/en/ui.chat.composer_media.json";
 import enUiChatDialogs from "./catalogues/en/ui.chat.dialogs.json";
+import enUiChatHeader from "./catalogues/en/ui.chat.header.json";
 import enUiChat from "./catalogues/en/ui.chat.json";
 import enUiChatSidebarView from "./catalogues/en/ui.chat.sidebar_view.json";
 import enUiCodeReview from "./catalogues/en/ui.code_review.json";
@@ -114,6 +115,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiChatComposer,
 	...enUiChatComposerMedia,
 	...enUiChatDialogs,
+	...enUiChatHeader,
 	...enUiChat,
 	...enUiChatSidebarView,
 	...enUiCodeReview,
@@ -770,6 +772,16 @@ export type MessageParams = {
 	"ui.chat.dialogs.cancel": undefined;
 	"ui.chat.dialogs.delete_action": undefined;
 	"ui.chat.dialogs.delete_title": undefined;
+	"ui.chat.header.actions": undefined;
+	"ui.chat.header.archived": undefined;
+	"ui.chat.header.archived_hint": undefined;
+	"ui.chat.header.close_run_details": undefined;
+	"ui.chat.header.conversation_name": undefined;
+	"ui.chat.header.copy_id": undefined;
+	"ui.chat.header.delete": undefined;
+	"ui.chat.header.move_device": undefined;
+	"ui.chat.header.open_run_details": undefined;
+	"ui.chat.header.transcript_display": undefined;
 	"ui.chat.highlights.file_resolution_failed": undefined;
 	"ui.chat.skill_invocation.instructions_label": undefined;
 	"ui.chat.skill_invocation.trigger_label": { token: string };

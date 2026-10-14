@@ -1,0 +1,61 @@
+{
+	"ui.chat.header.conversation_name": {
+		"role": "inline rename input accessible name",
+		"tone": "short noun phrase",
+		"maxCells": 24,
+		"note": "Labels the conversation title input, not the whole header. maxCells is advisory, not measured fit."
+	},
+	"ui.chat.header.archived_hint": {
+		"role": "archived badge native title tooltip",
+		"tone": "plain state and restoration explanation",
+		"note": "Explains why an archived conversation is absent from the chat list."
+	},
+	"ui.chat.header.archived": {
+		"role": "archived state badge",
+		"tone": "single state word, sentence case",
+		"maxCells": 16,
+		"note": "State marker, not the archive action. maxCells is advisory, not measured fit."
+	},
+	"ui.chat.header.actions": {
+		"role": "overflow trigger accessible name",
+		"tone": "short noun phrase",
+		"maxCells": 28,
+		"note": "Opens the current conversation action menu. maxCells is advisory, not measured fit."
+	},
+	"ui.chat.header.copy_id": {
+		"role": "overflow menu item",
+		"tone": "short imperative phrase",
+		"maxCells": 24,
+		"note": "Copies session ID to clipboard. ID is the existing technical abbreviation. maxCells is advisory, not measured fit."
+	},
+	"ui.chat.header.move_device": {
+		"role": "overflow menu item",
+		"tone": "short imperative phrase with ellipsis",
+		"maxCells": 32,
+		"note": "Opens destination-device selection; Unicode ellipsis U+2026 must remain in English. maxCells is advisory, not measured fit."
+	},
+	"ui.chat.header.transcript_display": {
+		"role": "overflow submenu trigger",
+		"tone": "short noun phrase",
+		"maxCells": 28,
+		"note": "Opens the conversation transcript display-mode submenu; active mode is separately rendered. maxCells is advisory, not measured fit."
+	},
+	"ui.chat.header.delete": {
+		"role": "danger overflow menu item",
+		"tone": "short imperative phrase with ellipsis",
+		"maxCells": 28,
+		"note": "Opens permanent-delete confirmation, not immediate deletion. U+2026 in English. maxCells is advisory, not measured fit."
+	},
+	"ui.chat.header.close_run_details": {
+		"role": "overflow menu item, run-details toggle label while the pane is open",
+		"tone": "short imperative action, sentence case",
+		"maxCells": 20,
+		"note": "States the action the row takes: it closes the run-details pane. Its sibling open_run_details carries the opposite state. maxCells is advisory, not measured fit."
+	},
+	"ui.chat.header.open_run_details": {
+		"role": "overflow menu item, run-details toggle label while the pane is closed",
+		"tone": "short imperative action, sentence case",
+		"maxCells": 20,
+		"note": "States the action the row takes: it opens the run-details pane. Its sibling close_run_details carries the opposite state. maxCells is advisory, not measured fit."
+	}
+}
