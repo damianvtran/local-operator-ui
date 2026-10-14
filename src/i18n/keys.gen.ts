@@ -160,12 +160,17 @@ export type MessageParams = {
 	"ui.settings.language.general.write_error": { message: string };
 	"ui.settings.language.palette_action": undefined;
 	"ui.settings.page.title": undefined;
+	"ui.settings.profile.account_checking": undefined;
+	"ui.settings.profile.account_read_failed_refused": undefined;
+	"ui.settings.profile.account_read_failed_retry": undefined;
 	"ui.settings.profile.description_anonymous": undefined;
 	"ui.settings.profile.description_authenticated": undefined;
 	"ui.settings.profile.display_name.label": undefined;
 	"ui.settings.profile.display_name.placeholder": undefined;
 	"ui.settings.profile.email.label": undefined;
 	"ui.settings.profile.email.placeholder": undefined;
+	"ui.settings.profile.retry": undefined;
+	"ui.settings.profile.retrying": undefined;
 	"ui.settings.profile.title": undefined;
 	"ui.settings.section.interface_language.help": undefined;
 	"ui.settings.section.interface_language.label": undefined;

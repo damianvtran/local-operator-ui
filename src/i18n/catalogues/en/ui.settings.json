@@ -32,5 +32,10 @@
 	"ui.settings.section.interface_language.label": "Interface language",
 	"ui.settings.tour.action": "Take the tour",
 	"ui.settings.tour.description": "Missed the application onboarding tour or want a refresher? Start it again here.",
-	"ui.settings.tour.title": "Application tour"
+	"ui.settings.tour.title": "Application tour",
+	"ui.settings.profile.account_checking": "Checking your Radient account…",
+	"ui.settings.profile.account_read_failed_retry": "Your Radient account could not be read, so the name and email below are placeholders rather than your account details. Retry.",
+	"ui.settings.profile.account_read_failed_refused": "Your Radient account could not be read, so the name and email below are placeholders rather than your account details. Retry, or sign in to Radient again.",
+	"ui.settings.profile.retry": "Retry",
+	"ui.settings.profile.retrying": "Retrying"
 }

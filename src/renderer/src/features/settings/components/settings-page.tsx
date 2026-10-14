@@ -1026,7 +1026,7 @@ export const SettingsPage: FC = () => {
 								 */}
 								{accountReadChecking && (
 									<p className="text-meta text-ink-dim">
-										Checking your Radient account…
+										{t("ui.settings.profile.account_checking")}
 									</p>
 								)}
 								{/*
@@ -1069,12 +1069,11 @@ export const SettingsPage: FC = () => {
 									<Alert variant="warning">
 										<div className="flex items-center justify-between gap-3">
 											<span>
-												Your Radient account could not be read, so the name and
-												email below are placeholders rather than your account
-												details.
-												{accountRead === "refused"
-													? " Retry, or sign in to Radient again."
-													: " Retry."}
+												{t(
+													accountRead === "refused"
+														? "ui.settings.profile.account_read_failed_refused"
+														: "ui.settings.profile.account_read_failed_retry",
+												)}
 											</span>
 											{/*
 											 * WHAT THIS REPORTS IS THE READER'S OWN PRESS (qa round 3, Q1).
@@ -1099,7 +1098,9 @@ export const SettingsPage: FC = () => {
 												onClick={() => refreshUser()}
 												disabled={isAccountRefreshing}
 											>
-												{isAccountRefreshing ? "Retrying" : "Retry"}
+												{isAccountRefreshing
+													? t("ui.settings.profile.retrying")
+													: t("ui.settings.profile.retry")}
 											</Button>
 										</div>
 									</Alert>
