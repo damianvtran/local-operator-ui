@@ -1612,6 +1612,132 @@
 					"status": "audited"
 				}
 			]
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.settings.account",
+			"source_sha256": "f62724dfe75691f8bab3b5a9efb77a1cb7b95110427dc2e09e3f674fcdf2cfb6",
+			"target_sha256": "9a31c61ee1ced8fe61dcb2a7984ed92627047e82ec31041b9d5aec6dd407720c",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-14",
+				"note": "34 keys translated by LLM reasoning, no translation service. Programme glossary and French style guide from core i18n/; existing UI French terminology retained. Source PR #1057 at c0212c00b8fcb5f028f2ea09b227889fec2b3ad9. Independent audit pending; no rendered French frame."
+			},
+			"auditors": [],
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.settings.appearance",
+			"source_sha256": "f5db8989cc542fededba171769b0fbaa940cec562de6eccc07347c0f41c784d1",
+			"target_sha256": "85a5a8aae6a375bc4c5ab14d489dd49f523bf1c3d153b0ad4085d7494cc7509a",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-14",
+				"note": "10 keys translated by LLM reasoning, no translation service. Programme glossary and French style guide from core i18n/; existing UI French terminology retained. Source PR #1057 at c0212c00b8fcb5f028f2ea09b227889fec2b3ad9. Independent audit pending; no rendered French frame."
+			},
+			"auditors": [],
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.settings.configuration",
+			"source_sha256": "7a6064e0d4109393839a0dcc1383b017f3fabaea3e78088c45ce21e77578546a",
+			"target_sha256": "c25aa10b29fe45b8fdcd62983091d3d8e3ef58d7631bc60bf8ebb24f342f6bf9",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-14",
+				"note": "92 keys translated by LLM reasoning, no translation service. Programme glossary and French style guide from core i18n/; existing UI French terminology retained. Source PR #1057 at c0212c00b8fcb5f028f2ea09b227889fec2b3ad9. Independent audit pending; no rendered French frame."
+			},
+			"auditors": [],
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.settings.integrations",
+			"source_sha256": "a2868a88c9948b353adaa78046aa78132c93d6181d6eedd637edba2ec18c6d8e",
+			"target_sha256": "688283ed37bf232328ba188b40f62095e254286ab6e1a628557684b07b1dcb89",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-14",
+				"note": "218 keys translated by LLM reasoning, no translation service. Programme glossary and French style guide from core i18n/; existing UI French terminology retained. Source PR #1057 at c0212c00b8fcb5f028f2ea09b227889fec2b3ad9. Independent audit pending; no rendered French frame."
+			},
+			"auditors": [],
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.settings.model",
+			"source_sha256": "5a09b6ed49e8501d14a6f8052a70ce15ce5104ec8da3756c6b576e6e4d150cf1",
+			"target_sha256": "d0df02884cbc6face19ac17f6ae02a0239c01ab960c388da616f32f706a7a2d7",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-14",
+				"note": "32 keys translated by LLM reasoning, no translation service. Programme glossary and French style guide from core i18n/; existing UI French terminology retained. Source PR #1057 at c0212c00b8fcb5f028f2ea09b227889fec2b3ad9. Independent audit pending; no rendered French frame."
+			},
+			"auditors": [],
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.settings.navigation",
+			"source_sha256": "b0db379acf4e4c13bed8f4fb3f7e551c0b1ebc3dd52ef4508a9797c5fdcf3dbc",
+			"target_sha256": "1f87d43f79c874f2621ba4995dffad112589e12004b0cea039fae1f0fae683d5",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-14",
+				"note": "22 keys translated by LLM reasoning, no translation service. Programme glossary and French style guide from core i18n/; existing UI French terminology retained. Source PR #1057 at c0212c00b8fcb5f028f2ea09b227889fec2b3ad9. Independent audit pending; no rendered French frame."
+			},
+			"auditors": [],
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.settings.shortcuts",
+			"source_sha256": "39560cc2eb681fae44113a3e237ea9a2a1d879366a34fae09e432abd42c765c9",
+			"target_sha256": "4831f744d9535947dc665c3d3c284d8a1a18b14f3ed03cc1c2c86468be127a8e",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-14",
+				"note": "9 keys translated by LLM reasoning, no translation service. Programme glossary and French style guide from core i18n/; existing UI French terminology retained. Source PR #1057 at c0212c00b8fcb5f028f2ea09b227889fec2b3ad9. Independent audit pending; no rendered French frame."
+			},
+			"auditors": [],
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.settings.speech",
+			"source_sha256": "36b1321c4660c345b6c40dfa753e0e233228a66868cfe78218c4ce573609574d",
+			"target_sha256": "483d7fa4401fcf1d08d59830127d41f8bf202e9452425ccbe82968fd488833e7",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-14",
+				"note": "19 keys translated by LLM reasoning, no translation service. Programme glossary and French style guide from core i18n/; existing UI French terminology retained. Source PR #1057 at c0212c00b8fcb5f028f2ea09b227889fec2b3ad9. Independent audit pending; no rendered French frame."
+			},
+			"auditors": [],
+			"status": "translated"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.settings.updates",
+			"source_sha256": "6597aeea3a3a0495f1ba0d9a7ce8078f455d970b53647dbc8350e00fbc9099b2",
+			"target_sha256": "d4af20e2ecf219418539a422da690f7e9593e7c1ca34b96eae222dcc3c1faac5",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-14",
+				"note": "29 keys translated by LLM reasoning, no translation service. Programme glossary and French style guide from core i18n/; existing UI French terminology retained. Source PR #1057 at c0212c00b8fcb5f028f2ea09b227889fec2b3ad9. Independent audit pending; no rendered French frame."
+			},
+			"auditors": [],
+			"status": "translated"
 		}
 	]
 }

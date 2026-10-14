@@ -1,0 +1,11 @@
+{
+	"ui.settings.shortcuts.keyboard_shortcuts_section.clear": "Effacer",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.reset": "Réinitialiser",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.press_the_keys_you_want_esc_cancels": "Appuyez sur les touches souhaitées ; Esc annule.",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.keyboard_shortcuts": "Raccourcis clavier",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.shortcuts_for_the_panel_rail_focus_a_field_and_press_the_keys_you": "Raccourcis de la barre des panneaux. Activez un champ, puis appuyez sur les touches souhaitées. Esc annule, Réinitialiser rétablit le raccourci par défaut et Effacer supprime le raccourci.",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.no_shortcut": "Aucun raccourci",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.label_press_the_keys_you_want": "{label} : appuyez sur les touches souhaitées",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.clear_label_s_shortcut": "Effacer le raccourci de {label}",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.reset_label_to_its_default": "Rétablir le raccourci par défaut de {label}"
+}

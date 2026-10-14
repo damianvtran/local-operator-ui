@@ -73,7 +73,16 @@ import esUiOnboarding from "./catalogues/es/ui.onboarding.json";
 import esUiSettings from "./catalogues/es/ui.settings.json";
 import frUiConsole from "./catalogues/fr/ui.console.json";
 import frUiOnboarding from "./catalogues/fr/ui.onboarding.json";
+import frUiSettingsAccount from "./catalogues/fr/ui.settings.account.json";
+import frUiSettingsAppearance from "./catalogues/fr/ui.settings.appearance.json";
+import frUiSettingsConfiguration from "./catalogues/fr/ui.settings.configuration.json";
+import frUiSettingsIntegrations from "./catalogues/fr/ui.settings.integrations.json";
 import frUiSettings from "./catalogues/fr/ui.settings.json";
+import frUiSettingsModel from "./catalogues/fr/ui.settings.model.json";
+import frUiSettingsNavigation from "./catalogues/fr/ui.settings.navigation.json";
+import frUiSettingsShortcuts from "./catalogues/fr/ui.settings.shortcuts.json";
+import frUiSettingsSpeech from "./catalogues/fr/ui.settings.speech.json";
+import frUiSettingsUpdates from "./catalogues/fr/ui.settings.updates.json";
 import hiUiConsole from "./catalogues/hi/ui.console.json";
 import hiUiOnboarding from "./catalogues/hi/ui.onboarding.json";
 import hiUiSettings from "./catalogues/hi/ui.settings.json";
@@ -151,7 +160,16 @@ export const bundledCatalogues: Readonly<
 	fr: {
 		...frUiConsole,
 		...frUiOnboarding,
+		...frUiSettingsAccount,
+		...frUiSettingsAppearance,
+		...frUiSettingsConfiguration,
+		...frUiSettingsIntegrations,
 		...frUiSettings,
+		...frUiSettingsModel,
+		...frUiSettingsNavigation,
+		...frUiSettingsShortcuts,
+		...frUiSettingsSpeech,
+		...frUiSettingsUpdates,
 	},
 	hi: {
 		...hiUiConsole,
