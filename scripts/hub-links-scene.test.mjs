@@ -25,6 +25,7 @@ const DRIVER = "scripts/renderer-driver.mjs";
 const STUB = "docs/evidence/hub-links/harness/stub-daemon.mjs";
 const TYPES = "src/renderer/src/shared/api/local-operator/hub-links.ts";
 const HOOKS = "src/renderer/src/shared/api/local-operator/hub-link-hooks.ts";
+const PANEL = "src/renderer/src/features/agents/components/hub-links-panel.tsx";
 
 test("the hub-links scene is registered and backend-gated", () => {
 	const driver = readFileSync(DRIVER, "utf8");
@@ -74,6 +75,18 @@ test("the stub fixture answers the frozen inventory shape and its resolve arm", 
 	// The resolve arm records the real literal under the renamed key.
 	assert.match(stub, /baseline_state: "adopt-unknown"/);
 	assert.doesNotMatch(stub, /"adopted"/);
+});
+
+test("the hub-links panel imports every hook it calls", () => {
+	const panel = readFileSync(PANEL, "utf8");
+	// A bare `useHubLinks(enabled)` with no import is a runtime ReferenceError the
+	// scene surfaced as a crashed route (ErrorBoundary) — and the linter cannot
+	// see an unresolved identifier, so this is the cheap source guard in front of
+	// the typecheck CI runs.
+	assert.match(
+		panel,
+		/import \{\s*useHubLinks\s*\} from "@shared\/api\/local-operator\/hub-link-hooks";/,
+	);
 });
 
 test("the policy write consumes the PATCH's {link_id, policy} snapshot, never a full HubLink", () => {

@@ -8,6 +8,7 @@ import {
 	useHubLinkActions,
 	useHubSourceResolution,
 } from "@shared/api/local-operator/hub-link-actions";
+import { useHubLinks } from "@shared/api/local-operator/hub-link-hooks";
 import {
 	type HubLink,
 	type HubLinkKind,

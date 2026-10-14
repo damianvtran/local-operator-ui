@@ -168,6 +168,16 @@ const route = (method, pathname, query, body) => {
 	if (method === "GET" && pathname === "/health") {
 		return ok({
 			status: "ok",
+			/*
+			 * `pid` is REQUIRED, not decoration: `discovery.ts` matches the answering
+			 * process's pid against the serve record's and REJECTS the record as
+			 * `identity-mismatch` when it is absent ("The answering PID does not match
+			 * the record."), so a daemon that answers without it is never admitted and
+			 * the app stays offline. Measured: the first run of this scene answered
+			 * `/health` without `pid` and the driver logged `no valid daemon among 1
+			 * record(s)`.
+			 */
+			pid: process.pid,
 			instance_id: INSTANCE_ID,
 			version: "0.0.0-stub",
 			prefix: process.cwd(),
