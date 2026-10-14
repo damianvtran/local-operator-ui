@@ -1277,3 +1277,53 @@ test("family-only exhaustion never claims included quota is exhausted", () => {
 		/credits will continue/,
 	);
 });
+
+test("spent xai on-demand does not bind a healthy included plan", () => {
+	const included = limit({
+		id: "included",
+		shared: true,
+		amount: amount({ used_fraction: 0.2 }),
+	});
+	// Real normalized on-demand shape: shared, paid, funded but fraction spent.
+	const spent = limit({
+		id: "on-demand",
+		shared: true,
+		paid_fallback: true,
+		available: true,
+		amount: amount({
+			used: 25,
+			limit: 25,
+			remaining: 10,
+			used_fraction: 1,
+			unit: "usd",
+		}),
+	});
+	const value = report({ provider: "xai", limits: [included, spent] });
+	const block = providerBlocks([value], NOW, NOW)[0];
+	assert.notEqual(block.binding?.limit.id, "on-demand");
+	assert.equal(block.rows.length, 2);
+	for (const available of [false, null]) {
+		const blocked = report({
+			provider: "xai",
+			limits: [included, { ...spent, available }],
+		});
+		assert.notEqual(
+			providerBlocks([blocked], NOW, NOW)[0].binding?.limit.id,
+			"on-demand",
+		);
+	}
+});
+
+test("finite paid wallets are reported balances rather than missing limits", () => {
+	for (const available of [true, false, null]) {
+		const wallet = limit({
+			paid_fallback: true,
+			available,
+			amount: amount({ remaining: 123.5, unit: "credits" }),
+		});
+		const stats = collectStats([report({ limits: [wallet] })]);
+		assert.equal(stats.reportedBalances, 1);
+		assert.equal(stats.withoutLimit, 0);
+		assert.equal(stats.unreported, 0);
+	}
+});

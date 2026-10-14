@@ -584,6 +584,7 @@ export type UsageStats = {
 	warning: number;
 	/** Reported a number, but no denominator to measure it against. */
 	withoutLimit: number;
+	reportedBalances?: number;
 	/** Reported no number at all. */
 	unreported: number;
 };
@@ -609,7 +610,9 @@ export const collectStats = (reports: UsageReport[]): UsageStats => {
 			else if (status === "unknown") {
 				// The row prints SOMETHING whenever the amount carries a number, so
 				// the same test the row uses decides which word the tally uses.
-				if (formatAmount(limit.amount)) stats.withoutLimit += 1;
+				if (limit.paid_fallback && formatAmount(limit.amount))
+					stats.reportedBalances = (stats.reportedBalances ?? 0) + 1;
+				else if (formatAmount(limit.amount)) stats.withoutLimit += 1;
 				else stats.unreported += 1;
 			}
 			// A status word this view does not know is counted as a window and
@@ -647,6 +650,11 @@ export const statsTerms = (stats: UsageStats): StatsTerm[] => {
 			label: `model cap${stats.tierExhausted === 1 ? "" : "s"} exhausted`,
 		});
 	if (stats.warning) terms.push({ count: stats.warning, label: "near limit" });
+	if (stats.reportedBalances)
+		terms.push({
+			count: stats.reportedBalances,
+			label: `reported balance${stats.reportedBalances === 1 ? "" : "s"}`,
+		});
 	if (stats.withoutLimit)
 		terms.push({ count: stats.withoutLimit, label: "without a limit" });
 	if (stats.unreported)
@@ -880,9 +888,11 @@ export const limitRow = (limit: UsageLimit, nowMs: number): LimitRow => {
 				? t("ui.chat.usage.blocked")
 				: limit.available !== true
 					? t("ui.chat.usage.eligibility_unknown")
-					: limit.unlimited
-						? t("ui.chat.usage.unlimited")
-						: "",
+					: !paidUsable(limit)
+						? t("ui.chat.usage.blocked")
+						: limit.unlimited
+							? t("ui.chat.usage.unlimited")
+							: "",
 		countdown: formatCountdown(resetsInMs(limit, nowMs)),
 		subordinate: limit.tier !== "",
 	};
@@ -943,7 +953,15 @@ export const providerBlocks = (
 					},
 					nowMs,
 				)
-			: bindingSummary(report, nowMs),
+			: // A spent or blocked paid alternative does not exhaust a healthy
+				// included plan. Keep its row/eligibility note, not a false gate.
+				bindingSummary(
+					{
+						...report,
+						limits: report.limits.filter((limit) => !limit.paid_fallback),
+					},
+					nowMs,
+				),
 		note: [accountNote(report, nowMs, headerMs), creditContinuation(report)]
 			.filter(Boolean)
 			.join(" "),
