@@ -5546,7 +5546,11 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				 * the entry. False for every row but the block's.
 				 */
 				entry.supplementRun !== undefined &&
-					runIsCondensed(entry.supplementRun, openRuns),
+					entry.group.kind === "row" &&
+					entry.group.row.record.kind === "supplement" &&
+					runIsCondensed(entry.supplementRun, openRuns, {
+						artifactOwner: entry.group.row.record.anchor,
+					}),
 			)
 		);
 
