@@ -5397,6 +5397,50 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				</p>
 			)}
 			{/*
+			 * THE SOURCE-UNAVAILABLE NOTICE (design round 1, §1/§2). A polite,
+			 * NON-TERMINAL statement: the conversation is readable, its durable rows
+			 * are correct, only the SOURCE-INDEX wave that would confirm message
+			 * order has failed for now. It is deliberately NOT the failure notice - it
+			 * does not set `status`, does not enter `canonicalTranscriptTerminal`, and
+			 * does not retire the working claim, so the working line keeps painting
+			 * beside it (the `RestoredRunning` shape). It sits in the pane column,
+			 * outside the scroller, because it must stay visible while a long
+			 * transcript scrolls and a collapsed pane must not clip it.
+			 *
+			 * GATED ON THE FLAG ALONE (§4): never on `journal_order_state ===
+			 * "unsupported"`. A local-only daemon that cannot order a peer source has
+			 * nothing to retry, and `unsupported` never sets the flag, so that frame is
+			 * pixel-identical to the no-flag baseline. Any transport statement outranks
+			 * it (§3): shown only while the stream is live and the pane is neither
+			 * missing nor stale, so the pane never makes two claims at once.
+			 */}
+			{transcript.journalSourceUnavailable === true &&
+				status === "live" &&
+				!missing &&
+				!stale && (
+					<output
+						data-lo-source-unavailable
+						className={cn(
+							"flex shrink-0 flex-wrap items-center gap-3 px-4 pt-4",
+							CHAT_MEASURE,
+						)}
+					>
+						<p className="text-body-sm text-warning">
+							This conversation is readable, but its message order couldn't be
+							confirmed with the source just now.
+						</p>
+						{/*
+						 * The SAME control the failure notice carries, not a new one: same prop,
+						 * same label, same accessible name - the two are never on screen together
+						 * (this one is gated to a live, non-failed pane), so there is no duplicate
+						 * name. Pressing it clears the flag at once (see `reopen`).
+						 */}
+						<Button variant="outline" size="sm" onClick={onReconnect}>
+							Reconnect
+						</Button>
+					</output>
+				)}
+			{/*
 			 * §D5's placement: the rail is a SIBLING of the scroll box, not a child
 			 * of it — an absolutely-positioned child of an `overflow: auto` box
 			 * scrolls away with the content it is supposed to index. This wrapper

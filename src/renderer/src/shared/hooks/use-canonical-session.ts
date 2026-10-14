@@ -5210,6 +5210,17 @@ export function useCanonicalSessionStream(
 				failure: null,
 				status:
 					current.status === "unavailable" ? "connecting" : current.status,
+				/*
+				 * THE USER'S PRESS CLEARS THE SOURCE-UNAVAILABLE FLAG (design round 1,
+				 * §3, the doc comment this finally makes true). The notice offers
+				 * `Reconnect`, so pressing it must take the notice away AT ONCE - that
+				 * is the acknowledgement - rather than leaving it until a ready answer
+				 * happens to arrive. Clearing here (same commit that clears `failure`)
+				 * is the smallest honest feedback: no spinner, no "Retrying…" label.
+				 * If the wave fails again, the 10 s bound or an `unavailable` answer
+				 * re-asserts the flag.
+				 */
+				transcript: markSourceUnavailable(current.transcript, false),
 			}));
 			if (!viewRef.current.hydrated) {
 				// The painted set comes from the VIEW here, not from a batch of frames:
