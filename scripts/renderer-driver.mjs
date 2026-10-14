@@ -43207,20 +43207,96 @@ async function sceneHubLinks(cdp, app) {
 			const row = document.querySelector('[data-hub-source-unresolved]');
 			if (!row) return null;
 			const select = row.querySelector('select');
-			return select ? { options: select.options.length } : null;
+			if (!select) return { signedOut: true };
+			return {
+				options: select.options.length,
+				value: select.value,
+				emptyOption: select.options[0] ? select.options[0].value : null,
+			};
 		})()`,
 		15_000,
 	);
+	/*
+	 * UX U1 (design D3): the chooser starts EMPTY - no Public destination is
+	 * pre-selected - so confirming is a deliberate act, not a press of the
+	 * default. The empty first option is the spent slot that keeps it so.
+	 *
+	 * A SIGNED-OUT run has no chooser at all: the destinations a viewer without an
+	 * account could reach are none, so the row shows the sign-in-to-publish
+	 * affordance instead. That is a different state, asserted on its own.
+	 */
+	if (chooser.ok && chooser.last.signedOut) {
+		const affordance = await cdp.evaluate(`(() => {
+			const row = document.querySelector('[data-hub-source-unresolved]');
+			const btn = row && row.querySelector('button');
+			return btn ? { text: btn.textContent } : null;
+		})()`);
+		check(
+			"a signed-out viewer gets a sign-in-to-publish affordance, not a Public-only chooser",
+			affordance !== null &&
+				/sign in/i.test(affordance.text) &&
+				!/Public/.test(affordance.text),
+			JSON.stringify(affordance),
+		);
+		await captureSettled(cdp, `hub-links-${size}-${theme}-resolve-signed-out`);
+		return;
+	}
 	check(
-		"the chooser offers the approved source with a Public destination",
-		chooser.ok && chooser.last.options >= 1,
+		"the scope chooser starts EMPTY: no irreversible Public is pre-selected",
+		chooser.ok && chooser.last.value === "" && chooser.last.emptyOption === "",
+		JSON.stringify(chooser.last),
+	);
+	check(
+		"the chooser offers Public plus every verified organization",
+		chooser.ok && chooser.last.options >= 2,
 		JSON.stringify(chooser.last),
 	);
 	await captureSettled(cdp, `hub-links-${size}-${theme}-resolve-open`);
 	/*
-	 * The confirm button is the second control in the row once the chooser is
-	 * open (cancel, then confirm); press it by its own role so the act is named.
+	 * The confirm button is DISABLED while nothing is chosen - the guard that
+	 * makes the empty default safe. Assert that before choosing.
 	 */
+	const confirmDisabled = await cdp.evaluate(`(() => {
+		const row = document.querySelector('[data-hub-source-unresolved]');
+		const confirm = row && row.querySelector('button:last-of-type');
+		return confirm ? confirm.disabled : null;
+	})()`);
+	check(
+		"the confirm control is DISABLED until a destination is chosen",
+		confirmDisabled === true,
+		`disabled=${confirmDisabled}`,
+	);
+	/*
+	 * A DELIBERATE choice: drive the select's own change with a real event, the way
+	 * a reader picks a destination, then confirm. Setting `value` alone on a React
+	 * select does not fire its handler, so the native setter is called and the
+	 * change is dispatched.
+	 */
+	await cdp.evaluate(`(() => {
+		const row = document.querySelector('[data-hub-source-unresolved]');
+		const select = row && row.querySelector('select');
+		if (!select) return;
+		const setter = Object.getOwnPropertyDescriptor(
+			window.HTMLSelectElement.prototype,
+			'value',
+		).set;
+		setter.call(select, 'public');
+		select.dispatchEvent(new Event('change', { bubbles: true }));
+	})()`);
+	const chosen = await waitForCondition(
+		cdp,
+		`(() => {
+			const row = document.querySelector('[data-hub-source-unresolved]');
+			const confirm = row && row.querySelector('button:last-of-type');
+			return confirm && !confirm.disabled ? true : null;
+		})()`,
+		10_000,
+	);
+	check(
+		"choosing a destination enables the confirm control",
+		chosen.ok,
+		`after ${chosen.waitedMs ?? "?"}ms: ${JSON.stringify(chosen.last)}`,
+	);
 	const confirmed = await verb(
 		cdp,
 		"press",
@@ -43266,6 +43342,138 @@ async function sceneHubLinks(cdp, app) {
 			kinds.rowIds.length >= 1 &&
 			kinds.rowIds.every((id) => !String(id).includes("skill")),
 		JSON.stringify(kinds),
+	);
+
+	/*
+	 * THE ORG DESTINATION (design/UX): a named private org link renders its source
+	 * as "<organization> · Private", not a bare URL and not "Public". The stub's
+	 * `lopdev` TEAM row is `visibility: "org"`, tenant Minerva, so its detail page
+	 * is where that wording is photographed.
+	 */
+	await verb(cdp, "navigate", "/agents?kind=team&name=lopdev");
+	const orgRow = await waitForCondition(
+		cdp,
+		`(() => {
+			const pane = document.querySelector('[data-agents-pane]');
+			const row = pane && pane.querySelector('[data-hub-link]');
+			if (!row) return null;
+			const heading = row.querySelector('h3');
+			return heading ? { source: heading.textContent } : null;
+		})()`,
+		30_000,
+	);
+	check(
+		"an org-scoped link names its organization and privacy, not Public or a bare URL",
+		orgRow.ok &&
+			/·\s*Private/.test(orgRow.last.source) &&
+			/Minerva/.test(orgRow.last.source),
+		JSON.stringify(orgRow.last),
+	);
+	await captureSettled(cdp, `hub-links-${size}-${theme}-org-source`);
+
+	/*
+	 * THE SIDEBAR MARK (design §Sidebar line 48, CODE MAJOR-2). The chat sidebar
+	 * draws one mark per linked row and the AGGREGATE mark for a multi-origin item.
+	 * The stub gives `reviewer` two origins (aggregate) and `coder` one (quiet).
+	 *
+	 * BELOW THE DOCK THRESHOLD the sidebar is a SHEET, not a dock (`SIDEBAR_DOCK_MIN_PX`
+	 * = 1024, `chat-sidebar-layout.ts`), so it is closed by default and its rows -
+	 * and their marks - are legitimately not in the DOM. The marks are a docked-
+	 * sidebar surface, so a narrow run NOTES that and skips the block rather than
+	 * asserting a state the layout does not have; the narrow frames are of the PANEL.
+	 */
+	const WIDE_ENOUGH_TO_DOCK = WINDOW_WIDTH >= 1024;
+	if (!WIDE_ENOUGH_TO_DOCK) {
+		note(
+			"sidebar marks skipped: the sidebar is a sheet below the 1024px dock threshold",
+			`window width ${WINDOW_WIDTH}`,
+		);
+		return;
+	}
+	await verb(cdp, "navigate", "/chat");
+	const sidebar = await waitForCondition(
+		cdp,
+		`(() => {
+			const marks = document.querySelectorAll('[data-hub-mark]');
+			const aggregate = document.querySelector('[data-testid="hub-mark-aggregate"]');
+			return marks.length > 0
+				? {
+						marks: Array.from(marks).map((m) => m.getAttribute('data-hub-mark')),
+						aggregate: aggregate ? Number(aggregate.getAttribute('data-hub-mark-count')) : null,
+					}
+				: null;
+		})()`,
+		30_000,
+	);
+	check(
+		"the sidebar draws a hub mark per linked row",
+		sidebar.ok && sidebar.last.marks.length >= 1,
+		`after ${sidebar.waitedMs ?? "?"}ms: ${JSON.stringify(sidebar.last)}`,
+	);
+	check(
+		"a multi-origin item draws ONE aggregate mark carrying its origin count",
+		sidebar.ok &&
+			sidebar.last.aggregate !== null &&
+			sidebar.last.aggregate >= 2,
+		JSON.stringify(sidebar.last),
+	);
+	await captureSettled(cdp, `hub-links-${size}-${theme}-sidebar-marks`);
+
+	/*
+	 * THE AGGREGATE PRESS opens the Hub links DETAIL rather than a policy popover:
+	 * with several destinations there is no single policy to edit, so the press
+	 * routes to the detail page (MAJOR-2's own contract).
+	 */
+	const aggregatePress = await verb(
+		cdp,
+		"press",
+		'[data-testid="hub-mark-aggregate"]',
+	);
+	check(
+		"the aggregate mark is a real press",
+		aggregatePress.hitTest === true,
+		JSON.stringify({
+			hitTest: aggregatePress.hitTest,
+			hit: aggregatePress.hit,
+		}),
+	);
+	/*
+	 * The press routes to the item's DETAIL page (`/agents?kind=agent&name=reviewer`),
+	 * where the panel mounts COLLAPSED (item 4). Assert the route landed on the
+	 * reviewer detail, then expand the pane and assert BOTH of the row's origins
+	 * render - the aggregate opening detail is exactly what gives a multi-origin
+	 * item its per-origin controls.
+	 */
+	const detailOpened = await waitForCondition(
+		cdp,
+		`(() => {
+			const pane = document.querySelector('[data-agents-pane]');
+			if (!pane) return null;
+			const nameField = document.querySelector('[data-agents-pane] [data-entity-name]');
+			const heading = pane.querySelector('h2, h1');
+			return { name: nameField ? nameField.textContent : heading ? heading.textContent : null };
+		})()`,
+		20_000,
+	);
+	check(
+		"the aggregate press opens the multi-origin item's detail page",
+		detailOpened.ok,
+		`after ${detailOpened.waitedMs ?? "?"}ms: ${JSON.stringify(detailOpened.last)}`,
+	);
+	await verb(cdp, "press", '[data-agents-pane] button[aria-expanded="false"]');
+	const origins = await waitForCondition(
+		cdp,
+		`(() => {
+			const pane = document.querySelector('[data-agents-pane]');
+			const rows = pane ? pane.querySelectorAll('[data-hub-link]') : [];
+			return rows.length >= 2 ? { count: rows.length } : null;
+		})()`,
+		15_000,
+	);
+	check(
+		"the detail expands to show BOTH origins of the multi-origin item",
+		origins.ok && origins.last.count >= 2,
+		`after ${origins.waitedMs ?? "?"}ms: ${JSON.stringify(origins.last)}`,
 	);
 }
 

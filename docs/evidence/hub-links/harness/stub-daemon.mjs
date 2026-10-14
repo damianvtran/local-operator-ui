@@ -38,6 +38,12 @@ const arg = (name, fallback = null) => {
 };
 
 const PORT = Number(arg("port", "18234"));
+/*
+ * Whether this run pretends a Radient account is signed in. Default ON, because
+ * the org destination and the empty scope chooser are both signed-in states; a
+ * `--signed-out` run photographs the sign-in-to-publish affordance instead.
+ */
+const SIGNED_OUT = process.argv.includes("--signed-out");
 const RECORDS = arg("records", null);
 const INSTANCE_ID = randomUUID();
 const startedAt = Date.now() / 1000;
@@ -119,6 +125,58 @@ const links = [
 			attempts: 3,
 			next_retry_at: "2026-10-13T11:00:00Z",
 		}),
+		push: direction({ state: "idle", enabled: false }),
+	},
+	{
+		/*
+		 * A SINGLE-origin healthy link for another agent, so the sidebar draws the
+		 * ordinary quiet mark (one fixed 24px slot) beside the aggregate mark on the
+		 * multi-origin `reviewer` row.
+		 */
+		link_id: "link-public-coder",
+		kind: "agent",
+		local_id: "agent-2",
+		name: "coder",
+		hub_id: "hub-agent-coder",
+		hub_source: SOURCE,
+		visibility: "public",
+		tenant_id: null,
+		tenant_name: null,
+		policy: { subscribe: true, auto_push: false, revision: "rev-coder-1" },
+		eligibility: { can_auto_push: true, reason: null },
+		baseline_state: "pull",
+		remote_revision: "rev-remote-coder",
+		auto_will_apply: true,
+		auto_will_push: false,
+		pull: direction({ state: "idle" }),
+		push: direction({ state: "idle", enabled: false }),
+	},
+	{
+		/*
+		 * A SECOND origin for the SAME local agent (`reviewer`), so the sidebar
+		 * draws the AGGREGATE mark (design §Sidebar line 48, CODE MAJOR-2): an item
+		 * with two destinations has no single editable policy, so the row shows one
+		 * mark that opens detail rather than silently picking the first source.
+		 */
+		link_id: "link-public-agent-2",
+		kind: "agent",
+		local_id: "agent-1",
+		name: "reviewer",
+		hub_id: "hub-agent-reviewer-2",
+		hub_source: SOURCE,
+		visibility: "org",
+		tenant_id: TENANT_ID,
+		tenant_name: TENANT_NAME,
+		policy: { subscribe: false, auto_push: false, revision: "rev-agens-2" },
+		eligibility: {
+			can_auto_push: false,
+			reason: "auto-push is not enabled for this destination",
+		},
+		baseline_state: "pull",
+		remote_revision: null,
+		auto_will_apply: false,
+		auto_will_push: false,
+		pull: direction({ state: "idle" }),
 		push: direction({ state: "idle", enabled: false }),
 	},
 	{
@@ -215,7 +273,14 @@ const route = (method, pathname, query, body) => {
 				radient: 1,
 				profile_catalogue: 1,
 				team_catalogue: 1,
-				session_catalogue: 1,
+				/*
+				 * 2, not 1: the CHAT SIDEBAR (where the hub marks live, design
+				 * §Sidebar line 48) gates its entity list on `session_catalogue >= 2`
+				 * (`desktopFeatureState(capabilities.data, "session_catalogue", 2)`),
+				 * and a 1 there draws the "Update the backend" notice instead of the
+				 * rows - so the marks this scene is for would never mount.
+				 */
+				session_catalogue: 2,
 				/*
 				 * THE CAPABILITY THIS SCENE IS OF. A daemon that does not advertise
 				 * `hub_links` leaves the panel unmounted entirely (`enabled` is
@@ -244,6 +309,87 @@ const route = (method, pathname, query, body) => {
 	 * the hub panel rides in. The linked rows' `local_id`s name these records, so
 	 * the panel's `linksForLocalItem` filter resolves them here.
 	 */
+	/*
+	 * THE RADIENT PROXY (`POST /v1/desktop/radient`), which the app's auth hook
+	 * and membership selector read. Two operations matter here: `account` (the
+	 * signed-in probe — a stored credential's account read) and `memberships.list`
+	 * (the caller's own orgs). A signed-OUT run answers `account` with a 409,
+	 * which `isSignedOut` reads as the answer "no credential" rather than a fault,
+	 * so the app lands unauthenticated and draws the affordance.
+	 */
+	if (method === "POST" && pathname === "/v1/desktop/radient") {
+		const operation = body?.operation;
+		if (operation === "account") {
+			if (SIGNED_OUT) {
+				return {
+					status: 409,
+					body: {
+						detail: {
+							code: "radient-not-authenticated",
+							message: "no Radient credential is stored",
+						},
+					},
+				};
+			}
+			/*
+			 * THE DOUBLY-NESTED ENVELOPE: the radient proxy unwraps `body.result`
+			 * (desktopResult) and then reads `envelope.result` (radientProxy), so a
+			 * Radient answer is `{result: {data: {msg, result: <payload>}}}`. A bare
+			 * `{result: <payload>}` parses to `undefined` and the app reads signed-out.
+			 */
+			return ok({
+				data: {
+					msg: "ok",
+					result: {
+						account: {
+							id: "acct-stub",
+							tenant_id: TENANT_ID,
+							email: "stub@example.invalid",
+							name: "Stub Operator",
+							role: "owner",
+							status: "active",
+							created_at: "2026-01-01T00:00:00Z",
+							updated_at: "2026-01-01T00:00:00Z",
+						},
+						identity: {
+							email: "stub@example.invalid",
+							provider: "google",
+							provider_id: "stub-provider-id",
+						},
+					},
+				},
+			});
+		}
+		if (operation === "memberships.list") {
+			if (SIGNED_OUT) {
+				return {
+					status: 409,
+					body: { detail: { code: "radient-not-authenticated" } },
+				};
+			}
+			return ok({
+				data: {
+					msg: "ok",
+					result: {
+						memberships: [
+							{
+								tenant_id: TENANT_ID,
+								tenant_name: TENANT_NAME,
+								role: "owner",
+								status: "active",
+								is_home: true,
+								plan: { status: "active", seats: 5 },
+							},
+						],
+					},
+				},
+			});
+		}
+		return {
+			status: 503,
+			body: { detail: `the stub has no answer for radient op ${operation}` },
+		};
+	}
 	if (method === "GET" && pathname === "/v1/desktop/profiles") {
 		return ok({
 			profiles: [
