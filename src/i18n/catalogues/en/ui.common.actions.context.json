@@ -1,12 +1,14 @@
 {
 	"ui.common.actions.close": {
-		"role": "accessible name",
-		"tone": "Preserve the existing concise interface wording.",
-		"note": "Shared action across interface surfaces. Keep the original meaning and punctuation."
+		"role": "close button accessible name",
+		"tone": "Short dismissal verb.",
+		"note": "Shared dialog/sheet close affordance; dismisses the surface without quitting the app.",
+		"length": "One word; icon-button accessible name."
 	},
 	"ui.common.actions.retry_again": {
-		"role": "visible interface text",
-		"tone": "Preserve the existing concise interface wording.",
-		"note": "Shared action across interface surfaces. Keep the original meaning and punctuation."
+		"role": "button label",
+		"tone": "Calm recovery action.",
+		"note": "Shared failure recovery: attempts the failed action again; not navigation or reload by definition.",
+		"length": "Two-word button."
 	}
 }
