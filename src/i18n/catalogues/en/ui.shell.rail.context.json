@@ -19,7 +19,8 @@
 			"subject": "Chat-owned already-formatted queue scope.",
 			"count": "Uncapped request count.",
 			"countText": "Existing decimal count text from String(count); separate from ICU cardinal so English does not gain thousands separators."
-		}
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
 	},
 	"ui.shell.rail.browser.aria": {
 		"role": "button accessible name",
@@ -39,7 +40,8 @@
 			"chord": "Empty when unbound, otherwise the already-formatted platform keyboard chord including leading space and parentheses.",
 			"count": "Uncapped pending browser approvals.",
 			"countText": "Existing decimal count text from String(count); separate from ICU cardinal so English does not gain thousands separators."
-		}
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
 	},
 	"ui.shell.rail.browser.tooltip": {
 		"role": "tooltip",
@@ -61,7 +63,8 @@
 			"chord": "Empty when unbound, otherwise the already-formatted platform keyboard chord including leading space and parentheses.",
 			"count": "Uncapped pending browser approvals.",
 			"countText": "Existing decimal count text from String(count); separate from ICU cardinal so English does not gain thousands separators."
-		}
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
 	},
 	"ui.shell.rail.canvas.aria": {
 		"role": "button accessible name",
@@ -81,7 +84,8 @@
 			"chord": "Empty when unbound, otherwise the already-formatted platform keyboard chord including leading space and parentheses.",
 			"count": "Number of canvas files.",
 			"countText": "Existing decimal count text from String(count); separate from ICU cardinal so English does not gain thousands separators."
-		}
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
 	},
 	"ui.shell.rail.canvas.tooltip": {
 		"role": "tooltip",
@@ -103,7 +107,8 @@
 			"chord": "Empty when unbound, otherwise the already-formatted platform keyboard chord including leading space and parentheses.",
 			"count": "Number of canvas files.",
 			"countText": "Existing decimal count text from String(count); separate from ICU cardinal so English does not gain thousands separators."
-		}
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
 	},
 	"ui.shell.rail.code.aria": {
 		"role": "button accessible name",
@@ -134,7 +139,8 @@
 		"placeholders": {
 			"count": "Number of code requests mentioned.",
 			"countText": "Existing decimal count text from String(count); separate from ICU cardinal so English does not gain thousands separators."
-		}
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
 	},
 	"ui.shell.rail.code.opened": {
 		"role": "status clause",
@@ -144,7 +150,8 @@
 		"placeholders": {
 			"count": "Number of code requests opened.",
 			"countText": "Existing decimal count text from String(count); separate from ICU cardinal so English does not gain thousands separators."
-		}
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
 	},
 	"ui.shell.rail.code.tooltip": {
 		"role": "tooltip",
@@ -187,7 +194,8 @@
 			"chord": "Empty when unbound, otherwise the already-formatted platform keyboard chord including leading space and parentheses.",
 			"count": "Unseen completed console commands.",
 			"countText": "Existing decimal count text from String(count); separate from ICU cardinal so English does not gain thousands separators."
-		}
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
 	},
 	"ui.shell.rail.console.tooltip": {
 		"role": "tooltip",
@@ -209,6 +217,7 @@
 			"chord": "Empty when unbound, otherwise the already-formatted platform keyboard chord including leading space and parentheses.",
 			"count": "Unseen completed console commands.",
 			"countText": "Existing decimal count text from String(count); separate from ICU cardinal so English does not gain thousands separators."
-		}
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
 	}
 }

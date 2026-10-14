@@ -25,12 +25,17 @@
  * the TOOLTIP keeps the verb, because a sighted pointer user is reading the action
  * the press will take, and its sentences are the header's verbatim.
  *
+ * LOCALE REPAINT BELONGS TO THE REACT CONSUMER. These derivations deliberately
+ * remain framework-free and read the messages leaf at call time; PanelRail
+ * subscribes through useI18nLocale so a language change calls them again. Do not
+ * cache their formatted return values across a locale change.
+ *
  * A COUNT IS NEVER CAPPED HERE. The `9+` cap belongs to the drawn badge
  * (`countLabel(count, 9)`), a geometry fact about a 16px glyph; the name a screen
  * reader hears and the tooltip a pointer reads carry the exact number.
  */
 
-import { t } from "../../../../../i18n";
+import { t } from "../../../../../i18n/messages";
 
 import {
 	type AskScope,
