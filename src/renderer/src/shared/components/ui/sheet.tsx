@@ -1,4 +1,5 @@
 import { useSuppressBrowserView } from "@shared/browser-view-policy";
+import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import { type VariantProps, cva } from "class-variance-authority";
 import { X } from "lucide-react";
@@ -126,7 +127,7 @@ export const SheetContent = forwardRef<
 							variant="ghost"
 							size="icon-sm"
 							className="absolute top-4 right-4"
-							aria-label="Close"
+							aria-label={t("ui.common.actions.close")}
 						>
 							<X aria-hidden="true" />
 						</Button>

@@ -1,4 +1,5 @@
 import { Button } from "@shared/components/ui";
+import { t } from "@shared/i18n";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
 import { RotateCw, TriangleAlert } from "lucide-react";
 import type React from "react";
@@ -67,26 +68,33 @@ const ErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => (
 		<TriangleAlert size={48} aria-hidden="true" className="text-danger" />
 
 		<div className="flex flex-col gap-2">
-			<h2 className="text-title text-ink">Something went wrong</h2>
+			<h2 className="text-title text-ink">
+				{t("ui.common.errors.error_boundary.something_went_wrong")}
+			</h2>
 			<p className="max-w-150 text-body text-ink-muted">
-				The application encountered an error. Try again, or contact support if
-				the problem persists.
+				{t(
+					"ui.common.errors.error_boundary.the_application_encountered_an_error_try_again_or_contact_support",
+				)}
 			</p>
 		</div>
 
 		<Button variant="primary" onClick={resetErrorBoundary}>
 			<RotateCw aria-hidden="true" />
-			Try again
+			{t("ui.common.actions.retry_again")}
 		</Button>
 
 		{isDevelopmentMode() && (
 			<div className="w-full max-w-200 overflow-auto rounded-md bg-sunken p-4 text-left">
-				<h3 className="mb-1 text-heading text-ink">Error details</h3>
+				<h3 className="mb-1 text-heading text-ink">
+					{t("ui.common.errors.error_boundary.error_details")}
+				</h3>
 				<pre className="mb-4 whitespace-pre-wrap text-ink-muted text-mono-sm">
 					{error?.message}
 				</pre>
 
-				<h3 className="mb-1 text-heading text-ink">Stack trace</h3>
+				<h3 className="mb-1 text-heading text-ink">
+					{t("ui.common.errors.error_boundary.stack_trace")}
+				</h3>
 				<pre className="whitespace-pre-wrap text-ink-muted text-mono-sm">
 					{error?.stack}
 				</pre>

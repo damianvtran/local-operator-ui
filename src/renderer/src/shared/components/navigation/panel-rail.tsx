@@ -6,6 +6,7 @@ import type {
 } from "@features/chat/components/run-details/run-detail-model";
 import { RunDetailsTrigger } from "@features/chat/components/run-details/run-details-trigger";
 import { Badge, countLabel } from "@shared/components/ui";
+import { t } from "@shared/i18n";
 import { displayChord } from "@shared/keymap/keymap-chord";
 import type { ActionId } from "@shared/keymap/keymap-registry";
 import { cn } from "@shared/lib/utils";
@@ -332,7 +333,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 				ref={rootRef}
 				role="toolbar"
 				aria-orientation="vertical"
-				aria-label="Panels"
+				aria-label={t("ui.shell.panel_rail.panels")}
 				data-panel-rail=""
 				onKeyDown={onKeyDown}
 				onFocus={onFocus}

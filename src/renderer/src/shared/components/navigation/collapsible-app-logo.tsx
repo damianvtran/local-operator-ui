@@ -1,4 +1,5 @@
 import { BrandMark } from "@shared/components/common/brand-mark";
+import { t } from "@shared/i18n";
 import type { FC } from "react";
 
 type CollapsibleAppLogoProps = {
@@ -42,11 +43,13 @@ export const CollapsibleAppLogo: FC<CollapsibleAppLogoProps> = ({
 		    says "Local Operator", and an alt text would announce it twice. */}
 		<BrandMark
 			className="size-6"
-			label={expanded ? undefined : "Local Operator"}
+			label={
+				expanded ? undefined : t("ui.shell.collapsible_app_logo.local_operator")
+			}
 		/>
 		{expanded && (
 			<span className="truncate font-semibold text-body text-ink">
-				Local Operator
+				{t("ui.shell.collapsible_app_logo.local_operator")}
 			</span>
 		)}
 	</div>

@@ -39,6 +39,7 @@ import { UserProfileSidebar } from "@shared/components/navigation/user-profile-s
 import { Badge, Button, Tooltip } from "@shared/components/ui";
 import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
 import { useCurrentView } from "@shared/hooks/use-route-params";
+import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import {
 	CATALOGUE_HEAD_PAGE,
@@ -445,20 +446,25 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						attention: aidaMissed,
 						attentionTag: "nav-aida-badge",
 						attentionName: (count: number) =>
-							`${aidaName}, ${count} missed message${count === 1 ? "" : "s"}`,
+							t("ui.shell.sidebar_navigation.aida_missed", {
+								name: aidaName,
+								count,
+							}),
 						/*
 						 * Her working mark: the same two facts the badge carries, for the state
 						 * that is true while she is mid-turn (see `use-aida-working.ts`), with
 						 * the row's own sentence for the name.
 						 */
 						working: aidaWorking,
-						workingName: `${aidaName}, working`,
+						workingName: t("ui.shell.sidebar_navigation.aida_working", {
+							name: aidaName,
+						}),
 					},
 				]
 			: []),
 		{
 			icon: Bot,
-			label: "Agents",
+			label: t("ui.shell.sidebar_navigation.agents"),
 			path: "/agents",
 			isActive: currentView === "agents",
 			tourTag: "nav-item-agents",
@@ -471,7 +477,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			? [
 					{
 						icon: FolderKanban,
-						label: "Projects",
+						label: t("ui.shell.sidebar_navigation.projects"),
 						path: "/projects",
 						isActive: currentView === "projects",
 						tourTag: "nav-item-projects",
@@ -480,7 +486,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			: []),
 		{
 			icon: CalendarDays,
-			label: "Schedules",
+			label: t("ui.shell.sidebar_navigation.schedules"),
 			path: "/schedules",
 			isActive: currentView === "schedules",
 			tourTag: "nav-item-schedules",
@@ -490,7 +496,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			// the user can use and an agent can drive, and the design's own word for
 			// it is the tab it opens (design 11.9).
 			icon: Globe,
-			label: "Browser",
+			label: t("ui.shell.sidebar_navigation.browser"),
 			path: "/browser",
 			isActive: currentView === "browser",
 			tourTag: "nav-item-browser",
@@ -501,11 +507,14 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			 * whenever the badge is drawn, in BOTH widths.
 			 */
 			attentionTag: "nav-browser-badge",
-			attentionName: (count) => `Browser, ${count} waiting`,
+			attentionName: (count) =>
+				t("ui.shell.sidebar_navigation.browser_waiting", {
+					count: String(count),
+				}),
 		},
 		{
 			icon: Store,
-			label: "Agent hub",
+			label: t("ui.shell.sidebar_navigation.agent_hub"),
 			path: "/agent-hub",
 			isActive: currentView === "agent-hub",
 			tourTag: "nav-item-agent-hub",
@@ -529,13 +538,16 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			? [
 					{
 						icon: Network,
-						label: "Mesh",
+						label: t("ui.shell.sidebar_navigation.mesh"),
 						path: "/mesh",
 						isActive: currentView === "mesh",
 						tourTag: "nav-item-mesh",
 						attention: meshWaiting,
 						attentionTag: "nav-mesh-badge",
-						attentionName: (count: number) => `Mesh, ${count} waiting`,
+						attentionName: (count: number) =>
+							t("ui.shell.sidebar_navigation.mesh_waiting", {
+								count: String(count),
+							}),
 					},
 				]
 			: []),
@@ -735,10 +747,10 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 */
 	const toggleLabel =
 		mode === "overlay"
-			? "Close sidebar"
+			? t("ui.shell.sidebar_navigation.close_sidebar")
 			: expanded
-				? "Collapse sidebar"
-				: "Expand sidebar";
+				? t("ui.shell.sidebar_navigation.collapse_sidebar")
+				: t("ui.shell.sidebar_navigation.expand_sidebar");
 	const ToggleGlyph =
 		mode === "overlay" ? X : expanded ? ChevronLeft : ChevronRight;
 	const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
@@ -785,7 +797,9 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 * absent catalogue would be the shortcut claiming a capability the app has
 	 * just said it does not have.
 	 */
-	const newChatLabel = `New chat (${newChatShortcutCap(isMac).replace("+", "")})`;
+	const newChatLabel = t("ui.shell.sidebar_navigation.new_chat_shortcut", {
+		shortcut: newChatShortcutCap(isMac).replace("+", ""),
+	});
 	/*
 	 * BOTH DOORS IN THE NAME (design/UX round 2, U3; re-pointed by issue #850):
 	 * this row is where the app teaches the search chords, and there are two of
@@ -800,8 +814,14 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 * row: one cap is the row's budget, and two chords in the name is already the
 	 * most a rail row can carry.
 	 */
-	const searchLabel = `Search (${paletteDoorLabel("everything", isMac)}) — chats (${paletteDoorLabel("chats", isMac)})`;
-	const searchTitle = `Search everything (${paletteDoorLabel("everything", isMac)}) · your chats (${paletteDoorLabel("chats", isMac)})`;
+	const searchLabel = t("ui.shell.sidebar_navigation.search_accessible", {
+		everything: paletteDoorLabel("everything", isMac),
+		chats: paletteDoorLabel("chats", isMac),
+	});
+	const searchTitle = t("ui.shell.sidebar_navigation.search_tooltip", {
+		everything: paletteDoorLabel("everything", isMac),
+		chats: paletteDoorLabel("chats", isMac),
+	});
 	const primaryRow = (
 		icon: LucideIcon,
 		label: string,
@@ -845,7 +865,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	};
 	const newChatRow = primaryRow(
 		MessageSquarePlus,
-		"New chat",
+		t("ui.shell.sidebar_navigation.new_chat"),
 		newChatShortcutCap(isMac),
 		{
 			onClick: stageNewChat,
@@ -862,7 +882,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	);
 	const searchRowExpanded = primaryRow(
 		Search,
-		"Search",
+		t("ui.shell.sidebar_navigation.search"),
 		paletteDoorCaps("everything", isMac),
 		{
 			onClick: openCommandPalette,
@@ -960,13 +980,13 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 * the tag rather than the menu item.
 	 */
 	const settingsGear = (
-		<Tooltip content="Settings" side="top">
+		<Tooltip content={t("ui.shell.sidebar_navigation.settings")} side="top">
 			<button
 				type="button"
 				data-tour-tag="nav-item-settings"
 				onClick={() => navigate("/settings")}
 				aria-current={currentView === "settings" ? "page" : undefined}
-				aria-label="Settings"
+				aria-label={t("ui.shell.sidebar_navigation.settings")}
 				className={cn(
 					"flex size-8 shrink-0 items-center justify-center rounded-sm text-ink-muted",
 					"transition-colors duration-fast ease-out-quart",

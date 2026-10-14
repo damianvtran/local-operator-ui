@@ -1,0 +1,27 @@
+{
+	"ui.common.errors.error_boundary.error_details": {
+		"role": "visible interface text",
+		"tone": "Preserve the existing concise interface wording.",
+		"note": "src/renderer/src/shared/components/common/error-boundary.tsx; Error details. Keep the original meaning and punctuation."
+	},
+	"ui.common.errors.error_boundary.something_went_wrong": {
+		"role": "visible interface text",
+		"tone": "Preserve the existing concise interface wording.",
+		"note": "src/renderer/src/shared/components/common/error-boundary.tsx; Something went wrong. Keep the original meaning and punctuation."
+	},
+	"ui.common.errors.error_boundary.stack_trace": {
+		"role": "visible interface text",
+		"tone": "Preserve the existing concise interface wording.",
+		"note": "src/renderer/src/shared/components/common/error-boundary.tsx; Stack trace. Keep the original meaning and punctuation."
+	},
+	"ui.common.errors.error_boundary.the_application_encountered_an_error_try_again_or_contact_support": {
+		"role": "visible interface text",
+		"tone": "Preserve the existing concise interface wording.",
+		"note": "src/renderer/src/shared/components/common/error-boundary.tsx; The application encountered an error. Try again, or contact support if the problem persists.. Keep the original meaning and punctuation."
+	},
+	"ui.common.errors.searchable_select.not_in_any_listing_saved_as_typed": {
+		"role": "visible interface text",
+		"tone": "Preserve the existing concise interface wording.",
+		"note": "src/renderer/src/shared/components/ui/searchable-select.tsx; Not in any listing; saved as typed.. Keep the original meaning and punctuation."
+	}
+}

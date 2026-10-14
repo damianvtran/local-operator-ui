@@ -1,0 +1,147 @@
+{
+	"ui.shell.collapsible_app_logo.local_operator": {
+		"role": "navigation label or accessible action name",
+		"tone": "Concise, sentence case; preserve brand names.",
+		"note": "Shell chrome: Local Operator"
+	},
+	"ui.shell.panel_rail.panels": {
+		"role": "accessible name",
+		"tone": "Preserve the existing concise interface wording.",
+		"note": "src/renderer/src/shared/components/navigation/panel-rail.tsx; Panels. Keep the original meaning and punctuation."
+	},
+	"ui.shell.sidebar_navigation.agent_hub": {
+		"role": "navigation label or accessible action name",
+		"tone": "Concise, sentence case; preserve brand names.",
+		"note": "Shell chrome: Agent hub"
+	},
+	"ui.shell.sidebar_navigation.agents": {
+		"role": "navigation label or accessible action name",
+		"tone": "Concise, sentence case; preserve brand names.",
+		"note": "Shell chrome: Agents"
+	},
+	"ui.shell.sidebar_navigation.aida_missed": {
+		"role": "navigation accessible name or tooltip",
+		"tone": "Brief descriptive phrase.",
+		"note": "Preserve dynamic user name, count and platform shortcut tokens; counts describe pending work."
+	},
+	"ui.shell.sidebar_navigation.aida_working": {
+		"role": "navigation accessible name or tooltip",
+		"tone": "Brief descriptive phrase.",
+		"note": "Preserve dynamic user name, count and platform shortcut tokens; counts describe pending work."
+	},
+	"ui.shell.sidebar_navigation.browser": {
+		"role": "navigation label or accessible action name",
+		"tone": "Concise, sentence case; preserve brand names.",
+		"note": "Shell chrome: Browser"
+	},
+	"ui.shell.sidebar_navigation.browser_waiting": {
+		"role": "navigation accessible name or tooltip",
+		"tone": "Brief descriptive phrase.",
+		"note": "Preserve dynamic user name, count and platform shortcut tokens; counts describe pending work."
+	},
+	"ui.shell.sidebar_navigation.close_sidebar": {
+		"role": "navigation label or accessible action name",
+		"tone": "Concise, sentence case; preserve brand names.",
+		"note": "Shell chrome: Close sidebar"
+	},
+	"ui.shell.sidebar_navigation.collapse_sidebar": {
+		"role": "navigation label or accessible action name",
+		"tone": "Concise, sentence case; preserve brand names.",
+		"note": "Shell chrome: Collapse sidebar"
+	},
+	"ui.shell.sidebar_navigation.expand_sidebar": {
+		"role": "navigation label or accessible action name",
+		"tone": "Concise, sentence case; preserve brand names.",
+		"note": "Shell chrome: Expand sidebar"
+	},
+	"ui.shell.sidebar_navigation.mesh": {
+		"role": "navigation label or accessible action name",
+		"tone": "Concise, sentence case; preserve brand names.",
+		"note": "Shell chrome: Mesh"
+	},
+	"ui.shell.sidebar_navigation.mesh_waiting": {
+		"role": "navigation accessible name or tooltip",
+		"tone": "Brief descriptive phrase.",
+		"note": "Preserve dynamic user name, count and platform shortcut tokens; counts describe pending work."
+	},
+	"ui.shell.sidebar_navigation.new_chat": {
+		"role": "navigation label or accessible action name",
+		"tone": "Concise, sentence case; preserve brand names.",
+		"note": "Shell chrome: New chat"
+	},
+	"ui.shell.sidebar_navigation.new_chat_shortcut": {
+		"role": "navigation accessible name or tooltip",
+		"tone": "Brief descriptive phrase.",
+		"note": "Preserve dynamic user name, count and platform shortcut tokens; counts describe pending work."
+	},
+	"ui.shell.sidebar_navigation.projects": {
+		"role": "navigation label or accessible action name",
+		"tone": "Concise, sentence case; preserve brand names.",
+		"note": "Shell chrome: Projects"
+	},
+	"ui.shell.sidebar_navigation.schedules": {
+		"role": "navigation label or accessible action name",
+		"tone": "Concise, sentence case; preserve brand names.",
+		"note": "Shell chrome: Schedules"
+	},
+	"ui.shell.sidebar_navigation.search": {
+		"role": "navigation label or accessible action name",
+		"tone": "Concise, sentence case; preserve brand names.",
+		"note": "Shell chrome: Search"
+	},
+	"ui.shell.sidebar_navigation.search_accessible": {
+		"role": "navigation accessible name or tooltip",
+		"tone": "Brief descriptive phrase.",
+		"note": "Preserve dynamic user name, count and platform shortcut tokens; counts describe pending work."
+	},
+	"ui.shell.sidebar_navigation.search_tooltip": {
+		"role": "navigation accessible name or tooltip",
+		"tone": "Brief descriptive phrase.",
+		"note": "Preserve dynamic user name, count and platform shortcut tokens; counts describe pending work."
+	},
+	"ui.shell.sidebar_navigation.settings": {
+		"role": "accessible name",
+		"tone": "Preserve the existing concise interface wording.",
+		"note": "src/renderer/src/shared/components/navigation/sidebar-navigation.tsx; Settings. Keep the original meaning and punctuation."
+	},
+	"ui.shell.user_profile_sidebar.account_settings": {
+		"role": "navigation label or accessible action name",
+		"tone": "Concise, sentence case; preserve brand names.",
+		"note": "Shell chrome: Account settings"
+	},
+	"ui.shell.user_profile_sidebar.account_unavailable": {
+		"role": "navigation label or accessible action name",
+		"tone": "Concise, sentence case; preserve brand names.",
+		"note": "Shell chrome: Account unavailable"
+	},
+	"ui.shell.user_profile_sidebar.checking_account": {
+		"role": "navigation label or accessible action name",
+		"tone": "Concise, sentence case; preserve brand names.",
+		"note": "Shell chrome: Checking account…"
+	},
+	"ui.shell.user_profile_sidebar.privacy_and_security": {
+		"role": "visible interface text",
+		"tone": "Preserve the existing concise interface wording.",
+		"note": "src/renderer/src/shared/components/navigation/user-profile-sidebar.tsx; Privacy and security. Keep the original meaning and punctuation."
+	},
+	"ui.shell.user_profile_sidebar.reconnect_radient": {
+		"role": "navigation label or accessible action name",
+		"tone": "Concise, sentence case; preserve brand names.",
+		"note": "Shell chrome: Reconnect Radient"
+	},
+	"ui.shell.user_profile_sidebar.settings": {
+		"role": "visible interface text",
+		"tone": "Preserve the existing concise interface wording.",
+		"note": "src/renderer/src/shared/components/navigation/user-profile-sidebar.tsx; Settings. Keep the original meaning and punctuation."
+	},
+	"ui.shell.user_profile_sidebar.sign_out": {
+		"role": "visible interface text",
+		"tone": "Preserve the existing concise interface wording.",
+		"note": "src/renderer/src/shared/components/navigation/user-profile-sidebar.tsx; Sign out. Keep the original meaning and punctuation."
+	},
+	"ui.shell.user_profile_sidebar.user": {
+		"role": "navigation label or accessible action name",
+		"tone": "Concise, sentence case; preserve brand names.",
+		"note": "Shell chrome: User"
+	}
+}

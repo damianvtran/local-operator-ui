@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * The searchable select: a combobox that filters, commits a stored id, shows a
  * different label, and always still accepts free text.
@@ -936,7 +937,9 @@ export const SearchableSelect = forwardRef<
 										</span>
 									</div>
 									<div className="text-meta text-ink-muted">
-										Not in any listing; saved as typed.
+										{t(
+											"ui.common.errors.searchable_select.not_in_any_listing_saved_as_typed",
+										)}
 									</div>
 								</li>
 							),

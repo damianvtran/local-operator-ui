@@ -1,0 +1,12 @@
+{
+	"ui.common.actions.close": {
+		"role": "accessible name",
+		"tone": "Preserve the existing concise interface wording.",
+		"note": "Shared action across interface surfaces. Keep the original meaning and punctuation."
+	},
+	"ui.common.actions.retry_again": {
+		"role": "visible interface text",
+		"tone": "Preserve the existing concise interface wording.",
+		"note": "Shared action across interface surfaces. Keep the original meaning and punctuation."
+	}
+}

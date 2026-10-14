@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import { X } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
@@ -123,7 +124,7 @@ export const DialogContent = forwardRef<
 							variant="ghost"
 							size="icon-sm"
 							className="absolute top-4 right-4"
-							aria-label="Close"
+							aria-label={t("ui.common.actions.close")}
 							disabled={closeDisabled}
 						>
 							<X aria-hidden="true" />
