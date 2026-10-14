@@ -1,0 +1,320 @@
+{
+	"_comment": "Sanitised from real rows of session 9c59d684d16b (generate_image x3 shapes, read of an attachment .bin). Digests, names, prompts and paths are replaced. The video_status row is SYNTHETIC: built from the receipt text in local_operator/video/jobs.py finish_video_result, because no real generate_video row exists on the machine that produced this fixture. The pruned row is the shape session/transcript.py _pruned_entry leaves: content blanked, provider_payload kept.",
+	"entries": [
+		{
+			"id": "fixture-row-1",
+			"ts": 1791759801,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "Generated 1 image with Radient (fixture-model), 576x1024 \u2014 attached to the session (digest c97e5b930eb5a08d7e4c7836046694d9). Cost $0.03."
+					},
+					{
+						"kind": "image",
+						"content_type": "image/jpeg",
+						"attachment": "c97e5b930eb5a08d7e4c7836046694d9",
+						"source_url": "https://media.example.invalid/generated.jpg",
+						"size_bytes": 305664,
+						"width": 576,
+						"height": 1024,
+						"name": "fixture-model-01.jpg"
+					}
+				],
+				"tool_call_id": "call_fx_1",
+				"tool_name": "generate_image",
+				"provider_payload": {
+					"details": {
+						"provider": "radient",
+						"model": "fixture-model",
+						"prompt": "[prompt removed from the fixture]",
+						"seed": null,
+						"cost_usd": 0.03,
+						"cost_source": "reported",
+						"billing_basis": "billed"
+					},
+					"useless": false,
+					"duration_s": 17.06754120788537
+				}
+			}
+		},
+		{
+			"id": "fixture-row-2",
+			"ts": 1791759802,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "Generated 1 image with OpenRouter (bytedance-seed/seedream-4.5), portrait_16_9 \u2014 attached to the session (digest 10c9e2cde0416ca92132df8805841b00). Cost $0.04."
+					},
+					{
+						"kind": "image",
+						"content_type": "image/jpeg",
+						"attachment": "10c9e2cde0416ca92132df8805841b00",
+						"size_bytes": 1314865,
+						"name": "fixture-model-02.jpg"
+					}
+				],
+				"tool_call_id": "call_fx_2",
+				"tool_name": "generate_image",
+				"provider_payload": {
+					"details": {
+						"provider": "openrouter",
+						"model": "fixture-model",
+						"prompt": "[prompt removed from the fixture]",
+						"seed": null,
+						"cost_usd": 0.04,
+						"cost_source": "reported",
+						"billing_basis": "billed"
+					},
+					"useless": false,
+					"duration_s": 24.183250000001863
+				}
+			}
+		},
+		{
+			"id": "fixture-row-3",
+			"ts": 1791759803,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "Edited 1 image with Radient (openai/gpt-image-2.5/sunburst/edit), square_hd \u2014 attached to the session (digest d4e06766e751a61f6bcdec13d149fd15). Cost $0.05268."
+					},
+					{
+						"kind": "image",
+						"content_type": "image/png",
+						"attachment": "d4e06766e751a61f6bcdec13d149fd15",
+						"source_url": "https://media.example.invalid/generated.jpg",
+						"size_bytes": 1809287,
+						"width": 1024,
+						"height": 1024,
+						"name": "fixture-model-03.png"
+					}
+				],
+				"tool_call_id": "call_fx_3",
+				"tool_name": "generate_image",
+				"provider_payload": {
+					"details": {
+						"provider": "radient",
+						"model": "fixture-model",
+						"prompt": "[prompt removed from the fixture]",
+						"seed": null,
+						"cost_usd": 0.05268,
+						"cost_source": "reported",
+						"billing_basis": "billed",
+						"strength": 0.6,
+						"source_image_path": "/Users/damian/.local-operator/sessions/9c59d684d16b/scratchpad/art-refs/hala-avatar-yt.jpg"
+					},
+					"useless": false,
+					"duration_s": 41.83237070799805
+				}
+			}
+		},
+		{
+			"id": "fixture-row-bin-call",
+			"ts": 1791984996.187638,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"content": [
+					{
+						"text": "Looking at the screenshot."
+					}
+				],
+				"tool_calls": [
+					{
+						"id": "call_fx_bin",
+						"name": "read",
+						"arguments": {
+							"i": "Inspecting",
+							"path": "/Users/fixture/.local-operator/attachments/e7d599f81e3d0dc277c10ed107c173ee.bin"
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "fixture-row-bin",
+			"ts": 1791984996.1901572,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "Image /Users/fixture/.local-operator/attachments/e7d599f81e3d0dc277c10ed107c173ee.bin (image/png, 358x184, 19425 bytes)"
+					},
+					{
+						"attachment": "e7d599f81e3d0dc277c10ed107c173ee",
+						"mime_type": "image/png"
+					}
+				],
+				"tool_call_id": "call_fx_bin",
+				"tool_name": "read",
+				"provider_payload": {
+					"details": {
+						"path": "/Users/fixture/.local-operator/attachments/e7d599f81e3d0dc277c10ed107c173ee.bin",
+						"mime_type": "image/png"
+					},
+					"useless": false,
+					"duration_s": 0.024870916997315362
+				}
+			}
+		},
+		{
+			"id": "fixture-row-video",
+			"ts": 1791759900,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "Video ready \u2014 job vj_fixture \u00b7 model fixture-video \u00b7 5s \u00b7 $0.4 (reported) \u00b7 attached: digest 4453935a0400201bef7e8fa6222079af, 95db550b55ff7f38e075c0eea583f324"
+					}
+				],
+				"tool_call_id": "call_fx_vid",
+				"tool_name": "video_status",
+				"provider_payload": {
+					"details": {
+						"job": "vj_fixture",
+						"digest": "4453935a0400201bef7e8fa6222079af",
+						"digests": [
+							"4453935a0400201bef7e8fa6222079af",
+							"95db550b55ff7f38e075c0eea583f324"
+						],
+						"content_type": "video/mp4",
+						"duration_s": 5,
+						"model": "fixture-video",
+						"provider": "radient"
+					},
+					"useless": false,
+					"duration_s": 0.1
+				}
+			}
+		},
+		{
+			"id": "fixture-row-hash",
+			"ts": 1791759950,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "exit code: 0\n--- stdout ---\n47afbac9f2854e6ed9f3556f8505baf9  build/app.zip\nmanifest digest e43a1805ebed1eb85514f705f1bb560d"
+					}
+				],
+				"tool_call_id": "call_fx_hash",
+				"tool_name": "bash",
+				"provider_payload": {
+					"details": {},
+					"useless": false,
+					"duration_s": 0.1
+				}
+			}
+		},
+		{
+			"id": "fixture-row-pruned",
+			"ts": 1791759802,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "[tool result pruned to save context]"
+					}
+				],
+				"tool_call_id": "call_fx_pruned",
+				"tool_name": "generate_image",
+				"provider_payload": {
+					"details": {
+						"provider": "openrouter",
+						"model": "fixture-model",
+						"prompt": "[prompt removed from the fixture]",
+						"seed": null,
+						"cost_usd": 0.04,
+						"cost_source": "reported",
+						"billing_basis": "billed"
+					},
+					"useless": false,
+					"duration_s": 24.183250000001863
+				}
+			}
+		},
+		{
+			"id": "fixture-row-shot",
+			"ts": 1791759960,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "Screenshot saved."
+					},
+					{
+						"attachment": "c7325171e2c1a252ad4124e2bd7f4377",
+						"mime_type": "image/png"
+					}
+				],
+				"tool_call_id": "call_fx_shot",
+				"tool_name": "browser",
+				"provider_payload": {
+					"details": {},
+					"useless": false,
+					"duration_s": 0.1
+				}
+			}
+		},
+		{
+			"id": "fixture-row-1b",
+			"ts": 1791759851,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "Generated 1 image with Radient (fixture-model), 576x1024 \u2014 attached to the session (digest c97e5b930eb5a08d7e4c7836046694d9). Cost $0.03."
+					},
+					{
+						"kind": "image",
+						"content_type": "image/jpeg",
+						"attachment": "c97e5b930eb5a08d7e4c7836046694d9",
+						"source_url": "https://media.example.invalid/generated.jpg",
+						"size_bytes": 305664,
+						"width": 576,
+						"height": 1024,
+						"name": "fixture-model-01.jpg"
+					}
+				],
+				"tool_call_id": "call_fx_1b",
+				"tool_name": "generate_image",
+				"provider_payload": {
+					"details": {
+						"provider": "radient",
+						"model": "fixture-model",
+						"prompt": "[prompt removed from the fixture]",
+						"seed": null,
+						"cost_usd": 0.03,
+						"cost_source": "reported",
+						"billing_basis": "billed"
+					},
+					"useless": false,
+					"duration_s": 17.06754120788537
+				}
+			}
+		}
+	]
+}

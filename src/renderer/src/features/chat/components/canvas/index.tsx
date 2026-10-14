@@ -864,10 +864,20 @@ const CanvasComponent: FC<CanvasProps> = ({
 							 * and OUTSIDE `CanvasContent` so every viewer gets it - including
 							 * the ones with no chrome bar of their own.
 							 */}
-							<DocumentFreshnessBar
-								document={activeDocument}
-								conversationId={conversationId}
-							/>
+							{/*
+							 * Not for an artifact: the line states when the FILE was last
+							 * modified and offers to re-read it from disk, and an artifact is
+							 * content-addressed bytes in the attachment store - immutable by
+							 * construction, with no file to stat. Its probe of `artifact:<digest>`
+							 * would answer "missing" and stamp "No longer on disk" on a picture
+							 * that is fine.
+							 */}
+							{!activeDocument.artifact && (
+								<DocumentFreshnessBar
+									document={activeDocument}
+									conversationId={conversationId}
+								/>
+							)}
 							{/*
 							 * KEYED BY THE DOCUMENT'S OWN IDENTITY (round 5). The viewers keep
 							 * local state - a buffer, a dirty flag, an original content ref -

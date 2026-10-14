@@ -280,7 +280,9 @@ const CanvasTabsComponent: FC<CanvasTabsProps> = ({
 									isSelected ? CANVAS_DOCUMENT_PANEL_ID : undefined
 								}
 								tabIndex={isSelected ? 0 : -1}
-								title={doc.path ?? doc.title}
+								// An artifact's path is its `artifact:<digest>` identity, which is
+								// not somewhere a reader can go; its title is the useful tooltip.
+								title={doc.artifact ? doc.title : (doc.path ?? doc.title)}
 								ref={(node) => {
 									if (node) {
 										tabRefs.current.set(doc.id, node);
