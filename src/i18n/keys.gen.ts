@@ -141,8 +141,17 @@ export type MessageParams = {
 	"ui.console.unavailable.title": undefined;
 	"ui.console.unavailable.unknown.detail": undefined;
 	"ui.hub.links.acknowledge_baseline": undefined;
-	"ui.hub.links.action_failed": { direction: string; item: string; source: string };
-	"ui.hub.links.action_result": { direction: string; item: string; source: string; outcome: string };
+	"ui.hub.links.action_failed": {
+		direction: string;
+		item: string;
+		source: string;
+	};
+	"ui.hub.links.action_result": {
+		direction: string;
+		item: string;
+		source: string;
+		outcome: string;
+	};
 	"ui.hub.links.actual_model": { model: string };
 	"ui.hub.links.available": { item: string; source: string };
 	"ui.hub.links.busy": { direction: string; item: string; source: string };
@@ -151,7 +160,12 @@ export type MessageParams = {
 	"ui.hub.links.direction_push": undefined;
 	"ui.hub.links.empty": undefined;
 	"ui.hub.links.failed": { direction: string; item: string; source: string };
-	"ui.hub.links.healthy": { item: string; source: string; subscribe: string; autoPush: string };
+	"ui.hub.links.healthy": {
+		item: string;
+		source: string;
+		subscribe: string;
+		autoPush: string;
+	};
 	"ui.hub.links.last_success": { time: string };
 	"ui.hub.links.load_failed": undefined;
 	"ui.hub.links.loading": undefined;
@@ -251,7 +265,10 @@ export type MessageParams = {
 	"ui.hub.subscriptions.pull": undefined;
 	"ui.hub.subscriptions.save_failed": { setting: string; source: string };
 	"ui.hub.subscriptions.saving": { setting: string; source: string };
-	"ui.hub.subscriptions.source_separation": { currentSource: string; newSource: string };
+	"ui.hub.subscriptions.source_separation": {
+		currentSource: string;
+		newSource: string;
+	};
 	"ui.hub.subscriptions.subscribe": undefined;
 	"ui.hub.subscriptions.subscribe_description": { source: string };
 	"ui.hub.subscriptions.unsupported": undefined;
