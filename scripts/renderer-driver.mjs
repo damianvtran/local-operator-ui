@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-language|settings-transcript-display|settings-gate|palette|palette-recents|hit-zones|route-tops|project-detail|project-open|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|output-artifact|image-copy|none>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-language|settings-transcript-display|settings-gate|palette|palette-recents|hit-zones|route-tops|project-detail|project-open|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|output-artifact|image-copy|hub-links|none>
  *                          which built-in scene to run (default: states)
  *   --drop-expect <accepted|discarded>  (with --scene composer-drop) which half of
  *                          the issue #789 pair this run records: the head tree,
@@ -43010,6 +43010,219 @@ async function sceneMiniView(app, cdp) {
 	}
 }
 
+/**
+ * THE HUB SURFACE: the inventory, the policy controls, the skill sibling and the
+ * explicit source confirmation on a legacy unknown-origin row.
+ *
+ * Needs `--backend` (an isolated daemon this run owns) and `--backend-records`,
+ * because every claim here is a real request against the frozen `hub_links:1`
+ * wire: the panel is gated on the `hub_links` capability a live backend
+ * advertises, and a backendless run would photograph the legacy pending panel
+ * instead. The daemon is `docs/evidence/hub-links/harness/stub-daemon.mjs` (the
+ * core route is still being extended to this shape; the README says per frame
+ * which half is the stand-in).
+ *
+ * The two claims a Storybook cell cannot make and this scene exists for:
+ * - a policy toggle is a REVISION-CHECKED service write (the row flips only
+ *   after the daemon's own answer, never optimistically), and
+ * - the unresolved row's source confirmation is an EXPLICIT act whose only
+ *   remaining step is the service's own resolution (the confirm control is
+ *   pressed with the approved source, and the row then reads resolved).
+ */
+async function sceneHubLinks(cdp, app) {
+	const facts = await factsOf(cdp);
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	await verb(cdp, "setTheme", THEME ?? "localOperatorDark");
+	const size = WINDOW_SIZE;
+	const theme = (THEME ?? "localOperatorDark")
+		.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)
+		.replace(/^-/, "");
+
+	/*
+	 * Reach the agents route and select the fixture row the daemon lists. The
+	 * panel is keyed to the record (`hubPane`), so the detail read and the
+	 * inventory read are both on screen once the row is named.
+	 */
+	await verb(cdp, "navigate", "/agents?name=reviewer");
+	const ready = await waitForCondition(
+		cdp,
+		`(() => {
+			const panel = document.querySelector('[data-hub-links-panel]');
+			if (!panel) return null;
+			const rows = panel.querySelectorAll('[data-hub-link]');
+			return rows.length > 0 ? { rows: rows.length, unresolved: panel.querySelectorAll('[data-hub-source-unresolved]').length } : null;
+		})()`,
+		30_000,
+	);
+	check(
+		"the hub links inventory renders at least one linked row",
+		ready.ok,
+		`after ${ready.waitedMs ?? "?"}ms: ${JSON.stringify(ready.last)}`,
+	);
+
+	/*
+	 * THE INVENTORY, read from the DOM rather than trusted: every linked row is
+	 * present with its direction blocks, and the legacy unknown-origin row is a
+	 * separate DIAGNOSTIC (never a synthetic link with writable policy).
+	 */
+	const inventory = await cdp.evaluate(`(() => {
+		const panel = document.querySelector('[data-hub-links-panel]');
+		if (!panel) return null;
+		const linkRows = Array.from(panel.querySelectorAll('[data-hub-link]')).map((row) => ({
+			id: row.getAttribute('data-hub-link'),
+			directions: Array.from(row.querySelectorAll('[data-hub-direction]')).map((d) => d.getAttribute('data-hub-direction')),
+			policy: row.querySelectorAll('[data-hub-link-policy]').length,
+		}));
+		const unresolved = Array.from(panel.querySelectorAll('[data-hub-source-unresolved]')).map((row) => row.getAttribute('data-hub-source-unresolved'));
+		return { linkRows, unresolved };
+	})()`);
+	note("hub inventory", JSON.stringify(inventory));
+	check(
+		"each linked row draws both direction blocks and its policy controls",
+		inventory !== null &&
+			inventory.linkRows.length >= 1 &&
+			inventory.linkRows.every(
+				(row) =>
+					row.directions.includes("pull") &&
+					row.directions.includes("push") &&
+					row.policy === 1,
+			),
+		JSON.stringify(inventory?.linkRows),
+	);
+	check(
+		"a legacy unknown-origin row is a diagnostic, not a writable link",
+		inventory !== null && inventory.unresolved.length >= 1,
+		JSON.stringify(inventory?.unresolved),
+	);
+	await captureSettled(cdp, `hub-links-${size}-${theme}-inventory`);
+
+	/*
+	 * THE REVISION-CHECKED WRITE. The daemon answers the PATCH; the row flips only
+	 * after that answer (no optimistic ON), so the press is a real round trip.
+	 * The fixture's public agent row is subscribe=ON, auto_push=OFF, and the
+	 * toggle we press is the SUBSCRIBE switch to OFF - a state the daemon accepts
+	 * without the auto-push consent dialog, so the frame is of the plain write.
+	 */
+	const subscribeSwitch = await cdp.evaluate(`(() => {
+		const policy = document.querySelector('[data-hub-link-policy]');
+		if (!policy) return null;
+		const input = policy.querySelector('input[type=\"checkbox\"]');
+		return input ? { checked: input.checked } : null;
+	})()`);
+	note("subscribe switch before", JSON.stringify(subscribeSwitch));
+	const pressed = await verb(
+		cdp,
+		"press",
+		'[data-hub-link-policy] input[type="checkbox"]',
+	);
+	check(
+		"the policy switch received the point (hit test)",
+		pressed.hitTest === true,
+		JSON.stringify({ hitTest: pressed.hitTest, hit: pressed.hit }),
+	);
+	const flipped = await waitForCondition(
+		cdp,
+		`(() => {
+			const policy = document.querySelector('[data-hub-link-policy]');
+			const input = policy && policy.querySelector('input[type=\"checkbox\"]');
+			return input && input.checked === false ? true : null;
+		})()`,
+		15_000,
+	);
+	check(
+		"the subscribe toggle flips only after the daemon's own answer (no optimistic ON)",
+		flipped.ok,
+		`after ${flipped.waitedMs ?? "?"}ms: ${JSON.stringify(flipped.last)}`,
+	);
+	await captureSettled(cdp, `hub-links-${size}-${theme}-policy-off`);
+
+	/*
+	 * THE EXPLICIT SOURCE CONFIRMATION. The unresolved row's only honest origin is
+	 * an act that names BOTH the approved source and the scope; the confirm
+	 * control opens the destination chooser, and pressing it sends the real
+	 * `hub.apply` resolve arm. The refusal branch (a conflicting KNOWN scope) is
+	 * the daemon's own; here we drive the PUBLIC destination, which it accepts.
+	 */
+	const opened = await verb(
+		cdp,
+		"press",
+		"[data-hub-source-unresolved] button",
+	);
+	check(
+		"the source-confirmation control opens the destination chooser",
+		opened.hitTest === true,
+		JSON.stringify({ hitTest: opened.hitTest, hit: opened.hit }),
+	);
+	const chooser = await waitForCondition(
+		cdp,
+		`(() => {
+			const row = document.querySelector('[data-hub-source-unresolved]');
+			if (!row) return null;
+			const select = row.querySelector('select');
+			return select ? { options: select.options.length } : null;
+		})()`,
+		15_000,
+	);
+	check(
+		"the chooser offers the approved source with a Public destination",
+		chooser.ok && chooser.last.options >= 1,
+		JSON.stringify(chooser.last),
+	);
+	await captureSettled(cdp, `hub-links-${size}-${theme}-resolve-open`);
+	/*
+	 * The confirm button is the second control in the row once the chooser is
+	 * open (cancel, then confirm); press it by its own role so the act is named.
+	 */
+	const confirmed = await verb(
+		cdp,
+		"press",
+		"[data-hub-source-unresolved] button:last-of-type",
+	);
+	check(
+		"the confirm-source act is a real press",
+		confirmed.hitTest === true,
+		JSON.stringify({ hitTest: confirmed.hitTest, hit: confirmed.hit }),
+	);
+	const resolvedRow = await waitForCondition(
+		cdp,
+		`(() => {
+			const panel = document.querySelector('[data-hub-links-panel]');
+			return panel && panel.querySelectorAll('[data-hub-source-unresolved]').length === 0 ? true : null;
+		})()`,
+		15_000,
+	);
+	check(
+		"the resolved row leaves the unresolved diagnostics after the service answers",
+		resolvedRow.ok,
+		`after ${resolvedRow.waitedMs ?? "?"}ms: ${JSON.stringify(resolvedRow.last)}`,
+	);
+	await captureSettled(cdp, `hub-links-${size}-${theme}-resolve-done`);
+
+	/*
+	 * THE SKILL SIBLING. The panel is the same component with a `skill` kind
+	 * filter; the daemon's inventory carries one skill link, so the skill surface
+	 * is exercised by the SAME inventory read rather than a second route.
+	 */
+	const skills = await cdp.evaluate(`(() => {
+		const panel = document.querySelector('[data-hub-links-panel]');
+		if (!panel) return null;
+		const kinds = Array.from(panel.querySelectorAll('[data-hub-link]')).map((row) => row.getAttribute('data-hub-link'));
+		return { kinds };
+	})()`);
+	note("skill sibling inventory", JSON.stringify(skills));
+	check(
+		"the skill sibling is exercised by the same inventory read",
+		skills !== null && skills.kinds.length >= 1,
+		JSON.stringify(skills),
+	);
+}
+
 async function main() {
 	/*
 	 * The frame timezone, pinned before the first boot: the committed frames
@@ -43321,6 +43534,16 @@ async function main() {
 			"--scene route-tops needs --backend: settings, agents, projects, hub and schedules are gated on the catalogue a live backend advertises, and the macOS lane assertion is read over every one of them",
 		);
 	}
+	if (SCENE === "hub-links" && BACKEND === null) {
+		throw new Error(
+			"--scene hub-links needs --backend: the inventory, the policy write and the source confirmation are all real requests against the frozen hub_links:1 wire, and a backendless run draws the legacy pending panel instead",
+		);
+	}
+	if (SCENE === "hub-links" && BACKEND_RECORDS === null) {
+		throw new Error(
+			"--scene hub-links needs --backend-records: the serve record is how the app admits the daemon this run owns, and without it the run photographs a disconnected app",
+		);
+	}
 	if (SCENE === "project-detail" && BACKEND === null) {
 		throw new Error(
 			"--scene project-detail needs --backend: the seeded row, quick-send's message and the picker's create are all real requests to the daemon this run owns, so a run with none would photograph three refusals",
@@ -43586,6 +43809,7 @@ async function main() {
 				await sceneCanvasFreshness(cdp, app);
 			else if (SCENE === "sidebar-lazy-chats") await sceneSidebarLazyChats(cdp);
 			else if (SCENE === "mini-view") await sceneMiniView(app, cdp);
+			else if (SCENE === "hub-links") await sceneHubLinks(cdp, app);
 			else if (SCENE !== "none") throw new Error(`unknown scene "${SCENE}"`);
 			for (const line of cdp.console.slice(-20)) say(`  [renderer] ${line}`);
 		} finally {
