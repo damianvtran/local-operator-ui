@@ -3,6 +3,8 @@ import { usePostHog } from "posthog-js/react";
 import { Profiler, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import "../../../styles/index.css";
+import type { DesktopRequest } from "../../../../../shared/desktop-contract";
+import type { CanonicalFrontendState } from "../../../../../shared/desktop-session-contract";
 import { CanonicalTranscript } from "./canonical-transcript";
 import type { TranscriptRecord, TranscriptState } from "./transcript-reducer";
 
@@ -121,11 +123,15 @@ function Frame({
 	mixed = false,
 	longFormation = false,
 	durable = false,
+	motion = false,
+	interactions = false,
 }: {
 	formation?: boolean;
 	mixed?: boolean;
 	longFormation?: boolean;
 	durable?: boolean;
+	motion?: boolean;
+	interactions?: boolean;
 }) {
 	const analytics = usePostHog();
 	// Storybook's older shared decorator initializes analytics unconditionally;
@@ -133,41 +139,111 @@ function Frame({
 	// telemetry variable which the standalone Vite preview does not consume.
 	useLayoutEffect(() => analytics?.opt_out_capturing(), [analytics]);
 	const regionRef = useRef<HTMLDivElement>(null);
-	const seed = () =>
-		mixed
-			? mixedRecords()
-			: formation
-				? [
-						// Stay within the existing 60-row MODEL cap while exercising a long
-						// DOM canvas. Head trimming is an independent model-origin change,
-						// not a representation-motion displacement.
-						...(longFormation ? longRecords().slice(-54) : []),
-						assistant(
-							"smooth-context",
-							"Upstream context stays at the same document-space origin.",
-						),
-						tool("smooth-t1"),
-						tool("smooth-t2"),
-						...(longFormation
-							? [
-									{
-										...assistant(
-											"smooth-after",
-											Array.from(
-												{ length: 12 },
-												(_, index) =>
-													`Downstream live line ${index}: preserve the reader above this continuing response.`,
-											).join("\n\n"),
-										),
-										streaming: true,
-										complete: false,
+	const [transportReady, setTransportReady] = useState(!interactions);
+	const transportRequests = useRef<string[]>([]);
+	useLayoutEffect(() => {
+		if (!interactions) return;
+		// Scoped synthetic transport: the real rail/jump/mount adapter runs, but
+		// this renderer fixture must never ask the operator's durable sessions.
+		const original = window.api;
+		window.api = {
+			...original,
+			desktop: {
+				...original?.desktop,
+				request: async (request: DesktopRequest) => {
+					transportRequests.current.push(request.op);
+					return request.op === "sessions.checkpoints"
+						? {
+								status: 200,
+								body: {
+									result: {
+										session_id: "smooth-interactions",
+										index: { state: "ready" },
+										checkpoints: [
+											{
+												id: "smooth-u-140",
+												kind: "user",
+												turn: 71,
+												ts: TS / 1000,
+												seq: 140,
+												text: "Old loaded target",
+											},
+										],
 									},
-								]
-							: []),
-					]
-				: durable
-					? longRecords().slice(-60)
-					: longRecords();
+								},
+							}
+						: {
+								status: 404,
+								body: { detail: "Synthetic fixture has no backend" },
+							};
+				},
+			},
+		} as typeof window.api;
+		setTransportReady(true);
+		return () => {
+			window.api = original;
+		};
+	}, [interactions]);
+	const seed = () =>
+		motion
+			? [
+					...longRecords().slice(-48),
+					assistant(
+						"smooth-context",
+						"Upstream context stays at the same document-space origin.",
+					),
+					{
+						kind: "user" as const,
+						id: "motion-u",
+						ts: TS,
+						text: "Read two synthetic files, then finish this turn.",
+						images: [],
+					},
+					tool("smooth-t1"),
+					tool("smooth-t2"),
+					{
+						...assistant(
+							"motion-answer",
+							"The synthetic turn is still streaming.",
+						),
+						streaming: true,
+						complete: false,
+					},
+				]
+			: mixed
+				? mixedRecords()
+				: formation
+					? [
+							// Stay within the existing 60-row MODEL cap while exercising a long
+							// DOM canvas. Head trimming is an independent model-origin change,
+							// not a representation-motion displacement.
+							...(longFormation ? longRecords().slice(-54) : []),
+							assistant(
+								"smooth-context",
+								"Upstream context stays at the same document-space origin.",
+							),
+							tool("smooth-t1"),
+							tool("smooth-t2"),
+							...(longFormation
+								? [
+										{
+											...assistant(
+												"smooth-after",
+												Array.from(
+													{ length: 12 },
+													(_, index) =>
+														`Downstream live line ${index}: preserve the reader above this continuing response.`,
+												).join("\n\n"),
+											),
+											streaming: true,
+											complete: false,
+										},
+									]
+								: []),
+						]
+					: durable
+						? longRecords().slice(-60)
+						: longRecords();
 	const [records, setRecords] = useState(seed);
 	const currentRecords = useRef(records);
 	currentRecords.current = records;
@@ -222,7 +298,18 @@ function Frame({
 	}, []);
 	const parked = useRef<{ id: string; y: number } | null>(null);
 	const [report, setReport] = useState("No measurement yet.");
+	useLayoutEffect(() => {
+		// Same-origin mirror for the harness's top-document read action. The
+		// visible story report remains the source; no browser script is injected.
+		const mirror = window.parent.document.createElement("pre");
+		mirror.dataset.loRendererProof = "streaming-smoothness";
+		mirror.hidden = true;
+		mirror.textContent = report;
+		window.parent.document.body.append(mirror);
+		return () => mirror.remove();
+	}, [report]);
 	const [busy, setBusy] = useState(false);
+	const [narrow, setNarrow] = useState(false);
 	const commits = useRef<number[]>([]);
 	const inspect = () => {
 		const region = regionRef.current;
@@ -273,6 +360,8 @@ function Frame({
 			scrollTop: region.scrollTop,
 			scrollHeight: region.scrollHeight,
 			clientHeight: region.clientHeight,
+			clientWidth: region.clientWidth,
+			scrollWidth: region.scrollWidth,
 			slotHeight: slot?.getBoundingClientRect().height,
 			fromHeight: slot?.dataset.loFromHeight,
 			targetHeight: slot?.dataset.loTargetHeight,
@@ -498,6 +587,303 @@ function Frame({
 			),
 		);
 	};
+	const motionCapture = useRef<{
+		animations: Animation[];
+		shell: HTMLElement;
+		payload: HTMLElement;
+		times: number[];
+		samples: object[];
+	} | null>(null);
+	const sampleMotion = (index: number) => {
+		const capture = motionCapture.current;
+		if (!capture) return;
+		const time = capture.times[index];
+		for (const animation of capture.animations) animation.currentTime = time;
+		const sample = {
+			cssTimeMs: time,
+			shellHeight: capture.shell.getBoundingClientRect().height,
+			payloadHeight: capture.payload.getBoundingClientRect().height,
+			opacity: getComputedStyle(
+				((capture.animations[0]?.effect as KeyframeEffect | null)
+					?.target as HTMLElement) ?? capture.payload,
+			).opacity,
+			parentOpacity: getComputedStyle(capture.payload).opacity,
+			animationNames: capture.animations.map(
+				(animation) =>
+					(animation as CSSAnimation).animationName ?? "transition",
+			),
+			animationDurations: capture.animations.map(
+				(animation) => animation.effect?.getTiming().duration,
+			),
+			inkHeight: (
+				((capture.animations[0]?.effect as KeyframeEffect | null)
+					?.target as HTMLElement) ?? capture.payload
+			).getBoundingClientRect().height,
+			payloads: capture.shell.querySelectorAll("[data-lo-slot-payload]").length,
+			turnBars: regionRef.current?.querySelectorAll("[data-turn-summary]")
+				.length,
+			...inspect(),
+		};
+		capture.samples[index] = sample;
+		setReport(
+			JSON.stringify(
+				{
+					rendererCSSCapture: true,
+					animationCount: capture.animations.length,
+					sample,
+					samples: capture.samples,
+				},
+				null,
+				2,
+			),
+		);
+	};
+	const freezeMotion = (kind: "tool" | "answer" | "turn") => {
+		pausedCleanup.current?.();
+		const region = regionRef.current;
+		if (!region) return;
+		const before = inspect();
+		const nativeTimeout = window.setTimeout;
+		const heldTimers: { id: number; finish: () => void }[] = [];
+		const animations: Animation[] = [];
+		// Freeze the actual production CSS, including its cleanup deadline. This
+		// is a stepped renderer measurement, not a foreground frame-rate test.
+		window.setTimeout = ((
+			handler: TimerHandler,
+			delay?: number,
+			...args: unknown[]
+		) => {
+			if (delay === 180 && typeof handler === "function") {
+				const finish = () => handler(...args);
+				const id = nativeTimeout(finish, 120_000);
+				heldTimers.push({ id, finish });
+				return id;
+			}
+			return nativeTimeout(handler, delay, ...args);
+		}) as typeof window.setTimeout;
+		flushSync(() =>
+			setRecords((current) =>
+				kind === "turn"
+					? current.map((record) =>
+							record.id === "motion-answer" && record.kind === "assistant"
+								? { ...record, streaming: false, complete: true }
+								: record,
+						)
+					: [
+							...current,
+							kind === "tool"
+								? tool("motion-arrival")
+								: assistant(
+										"motion-settled-answer",
+										"Settled answer negative control: no extra parent fade.",
+									),
+						],
+			),
+		);
+		window.setTimeout = nativeTimeout;
+		const row =
+			kind === "turn"
+				? region.querySelector<HTMLElement>("[data-turn-summary]")
+				: region.querySelector<HTMLElement>(
+						`[data-record-id="${kind === "tool" ? "motion-arrival" : "motion-settled-answer"}"]`,
+					);
+		const entry = row?.closest<HTMLElement>("[data-lo-entry-key]");
+		const shell = entry?.querySelector<HTMLElement>(
+			"[data-lo-transition-phase]",
+		);
+		const payload = shell?.querySelector<HTMLElement>("[data-lo-slot-payload]");
+		if (!shell || !payload) {
+			for (const timer of heldTimers) {
+				clearTimeout(timer.id);
+				timer.finish();
+			}
+			setReport(
+				JSON.stringify(
+					{
+						blocked: "Motion target did not mount",
+						kind,
+						before,
+						after: inspect(),
+					},
+					null,
+					2,
+				),
+			);
+			return;
+		}
+		animations.push(...shell.getAnimations({ subtree: true }));
+		for (const animation of animations) animation.pause();
+		motionCapture.current = {
+			animations,
+			shell,
+			payload,
+			times: kind === "turn" ? [0, 90, 180] : [0, 120, 240],
+			samples: [],
+		};
+		pausedCleanup.current = () => {
+			for (const animation of animations) animation.finish();
+			for (const timer of heldTimers) {
+				clearTimeout(timer.id);
+				timer.finish();
+			}
+			motionCapture.current = null;
+			pausedCleanup.current = null;
+		};
+		sampleMotion(0);
+	};
+	const jumpOld = () => {
+		const region = regionRef.current;
+		const tick = region?.parentElement?.querySelector<HTMLButtonElement>(
+			"[data-checkpoint-id=smooth-u-140]",
+		);
+		if (!region || !tick) {
+			setReport("BLOCKED: synthetic old-target rail tick absent");
+			return;
+		}
+		const before = inspect();
+		const observer = new MutationObserver(() => {
+			const target = region.querySelector<HTMLElement>(
+				"[data-record-id=smooth-u-140][data-jump-highlight]",
+			);
+			if (!target) return;
+			observer.disconnect();
+			setReport(
+				JSON.stringify(
+					{
+						interaction:
+							"old-target rail jump through production mount adapter",
+						before,
+						landed: true,
+						highlight: target.getAttribute("data-jump-highlight"),
+						targetOffset:
+							target.getBoundingClientRect().top -
+							region.getBoundingClientRect().top,
+						transportRequests: transportRequests.current,
+						after: inspect(),
+					},
+					null,
+					2,
+				),
+			);
+		});
+		observer.observe(region, {
+			subtree: true,
+			attributes: true,
+			attributeFilter: ["data-jump-highlight"],
+		});
+		window.setTimeout(() => observer.disconnect(), 30_000);
+		tick.click();
+	};
+	const focusRetention = () => {
+		const region = regionRef.current;
+		const control = region?.querySelector<HTMLButtonElement>(
+			"[data-lo-entry-key] button",
+		);
+		if (!region || !control) {
+			setReport("BLOCKED: no mounted row control");
+			return;
+		}
+		control.focus({ preventScroll: true });
+		const describe = () => ({
+			tag: document.activeElement?.tagName,
+			label: document.activeElement?.getAttribute("aria-label"),
+			entry: document.activeElement?.closest<HTMLElement>("[data-lo-entry-key]")
+				?.dataset.loEntryKey,
+		});
+		const before = describe();
+		const beforeGeometry = inspect();
+		region.scrollTop = -(region.scrollHeight - region.clientHeight) / 2;
+		region.dispatchEvent(new Event("scroll"));
+		flushSync(() =>
+			setRecords((current) => [
+				...current,
+				assistant("focus-append", "Append while a row control holds focus."),
+			]),
+		);
+		requestAnimationFrame(() =>
+			setReport(
+				JSON.stringify(
+					{
+						interaction: "DOM focus and programmatic window move",
+						before,
+						beforeGeometry,
+						after: describe(),
+						sameElement: document.activeElement === control,
+						connected: control.isConnected,
+						geometry: inspect(),
+					},
+					null,
+					2,
+				),
+			),
+		);
+	};
+	const selectionBoundary = () => {
+		const region = regionRef.current;
+		const selection = window.getSelection();
+		const tail = region?.querySelector<HTMLElement>(
+			"[data-record-id=smooth-a-199]",
+		);
+		if (!region || !selection || !tail) {
+			setReport("BLOCKED: selection seed missing");
+			return;
+		}
+		const range = document.createRange();
+		range.selectNodeContents(tail);
+		selection.removeAllRanges();
+		selection.addRange(range);
+		flushSync(() => document.dispatchEvent(new Event("selectionchange")));
+		const old = region.querySelector<HTMLElement>(
+			"[data-record-id=smooth-u-140]",
+		);
+		if (!old) {
+			setReport("BLOCKED: selection fallback did not mount boundary");
+			return;
+		}
+		// Select message text endpoints, not the tail answer's ephemeral action/
+		// timestamp footer (answer election legitimately moves that on append).
+		const messageText = (root: HTMLElement, prefix: string) => {
+			const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+			for (let node = walker.nextNode(); node; node = walker.nextNode())
+				if (node.textContent?.startsWith(prefix)) return node;
+			return null;
+		};
+		const start = messageText(old, "Checkpoint 140:");
+		const end = messageText(tail, "Answer 199.");
+		if (!start || !end) {
+			setReport("BLOCKED: message text endpoints missing");
+			return;
+		}
+		range.setStart(start, 0);
+		range.setEnd(end, end.textContent?.length ?? 0);
+		selection.removeAllRanges();
+		selection.addRange(range);
+		const before = selection.toString();
+		flushSync(() =>
+			setRecords((current) => [
+				...current,
+				assistant(
+					"selection-append",
+					"Append outside the selected history range.",
+				),
+			]),
+		);
+		setReport(
+			JSON.stringify(
+				{
+					interaction: "DOM Range across previously omitted boundary",
+					selectedCharsBefore: before.length,
+					selectedCharsAfter: selection.toString().length,
+					sameText: selection.toString() === before,
+					oldConnected: old.isConnected,
+					tailConnected: tail.isConnected,
+					geometry: inspect(),
+				},
+				null,
+				2,
+			),
+		);
+	};
 	const toggle = (enabled: boolean) => {
 		window.localStorage.setItem(
 			"canonicalTranscriptDomWindow",
@@ -512,6 +898,40 @@ function Frame({
 		setMount((value) => value + 1);
 		setReport("Remounted same source and fixture; measure after settling.");
 	};
+	const urlCapture = useRef<(params: URLSearchParams) => void>(() => {});
+	urlCapture.current = (params) => {
+		const capture = params.get("motionCapture");
+		const flow = params.get("flow");
+		if (capture === "tool" || capture === "answer" || capture === "turn") {
+			freezeMotion(capture);
+			for (const index of [0, 1, 2]) sampleMotion(index);
+			sampleMotion(Number(params.get("cssSample") ?? 0));
+		} else if (flow === "jump") jumpOld();
+		else if (flow === "focus") focusRetention();
+		else if (flow === "selection") selectionBoundary();
+	};
+	useEffect(() => {
+		if (!transportReady) return;
+		// The authorized host exposes iframe nodes in snapshots, but CSS reads
+		// stay in the top document. Manager-URL controls invoke the SAME handlers
+		// without a bare preview navigation or a second browser stack.
+		const params = new URLSearchParams(window.parent.location.search);
+		if (!params.has("motionCapture") && !params.has("flow")) return;
+		if (params.get("narrow") === "1") setNarrow(true);
+		window.localStorage.setItem("canonicalTranscriptDomWindow", "on");
+		setMount((value) => value + 1);
+		let cancelled = false;
+		let timer = 0;
+		void document.fonts.ready.then(() => {
+			timer = window.setTimeout(() => {
+				if (!cancelled) urlCapture.current(params);
+			}, 500);
+		});
+		return () => {
+			cancelled = true;
+			window.clearTimeout(timer);
+		};
+	}, [transportReady]);
 	return (
 		<div className="bg-surface text-ink p-4">
 			<div className="mb-3 flex flex-wrap gap-3">
@@ -572,6 +992,36 @@ function Frame({
 				<button type="button" onClick={measure}>
 					Measure
 				</button>
+				<button type="button" onClick={() => freezeMotion("tool")}>
+					Freeze live tool arrival
+				</button>
+				<button type="button" onClick={() => freezeMotion("answer")}>
+					Freeze settled answer control
+				</button>
+				<button type="button" onClick={() => freezeMotion("turn")}>
+					Freeze live turn bar
+				</button>
+				{[0, 1, 2].map((index) => (
+					<button key={index} type="button" onClick={() => sampleMotion(index)}>
+						CSS sample {index}
+					</button>
+				))}
+				<button type="button" onClick={() => setNarrow((value) => !value)}>
+					Toggle 390px canvas
+				</button>
+				{interactions && (
+					<>
+						<button type="button" onClick={jumpOld}>
+							Jump to old loaded row
+						</button>
+						<button type="button" onClick={focusRetention}>
+							Probe focus retention
+						</button>
+						<button type="button" onClick={selectionBoundary}>
+							Select across omitted boundary
+						</button>
+					</>
+				)}
 				<button type="button" disabled={busy} onClick={park}>
 					Park reader
 				</button>
@@ -665,34 +1115,46 @@ function Frame({
 					Request older at head
 				</button>
 			</div>
-			<div className="flex flex-col" style={{ width: 1024, height: 560 }}>
+			<div
+				className="flex flex-col"
+				style={{ width: narrow ? 390 : 1024, height: 560 }}
+			>
 				<Profiler
 					id="real-transcript"
 					onRender={(_id, _phase, duration) => {
 						commits.current.push(duration);
 					}}
 				>
-					<CanonicalTranscript
-						key={mount}
-						transcript={{ ...stateOf(records), hasMore }}
-						gate={null}
-						waiting={false}
-						starting={false}
-						startingAfterId={null}
-						loadingOlder={loadingOlder}
-						onLoadOlder={loadOlder}
-						containerRef={regionRef}
-						isSmallView={false}
-						status="live"
-						failure={null}
-						awaitingHydration={false}
-						onReconnect={() => {}}
-						workingLine={{
-							activity: "Working on the synthetic fixture",
-							phase: "thinking",
-							clock: false,
-						}}
-					/>
+					{transportReady && (
+						<CanonicalTranscript
+							key={mount}
+							frontend={
+								interactions
+									? ({
+											session_id: "smooth-interactions",
+										} as CanonicalFrontendState)
+									: undefined
+							}
+							transcript={{ ...stateOf(records), hasMore }}
+							gate={null}
+							waiting={false}
+							starting={false}
+							startingAfterId={null}
+							loadingOlder={loadingOlder}
+							onLoadOlder={loadOlder}
+							containerRef={regionRef}
+							isSmallView={narrow}
+							status="live"
+							failure={null}
+							awaitingHydration={false}
+							onReconnect={() => {}}
+							workingLine={{
+								activity: "Working on the synthetic fixture",
+								phase: "thinking",
+								clock: false,
+							}}
+						/>
+					)}
 				</Profiler>
 			</div>
 			<pre
@@ -717,3 +1179,7 @@ export const WindowedFormation: Story = {
 	render: () => <Frame formation longFormation />,
 };
 export const DurableOlder: Story = { render: () => <Frame durable /> };
+export const MotionPaths: Story = { render: () => <Frame motion /> };
+export const LeaseInteractions: Story = {
+	render: () => <Frame interactions />,
+};

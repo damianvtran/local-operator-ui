@@ -161,13 +161,67 @@ async function mounted(
 	};
 }
 
-test("default off mounts all entries without measurement or observer work", async () => {
+test("flag off mounts all entries without window measurement or coordinator transactions", async () => {
 	reads = 0;
-	const view = await mounted(false);
+	const calls = [];
+	const offEntries = entries.map((entry) =>
+		entry.key === "e40"
+			? { ...entry, collapsed: true, recordIds: ["parent", "r40"] }
+			: entry,
+	);
+	const view = await mounted(
+		false,
+		{
+			begin: () => calls.push("begin"),
+			commit: () => {
+				calls.push("commit");
+				document.querySelector("[data-region]").scrollTop = 5;
+				calls.push("write");
+				return true;
+			},
+			heldId: () => "r40",
+			retarget: () => calls.push("retarget"),
+			cancel() {},
+		},
+		offEntries,
+	);
 	try {
 		assert.equal(view.host.querySelectorAll("[data-lo-entry-key]").length, 60);
 		assert.equal(reads, 0);
 		assert.equal(view.get().enabled, false);
+		assert.deepEqual(calls, []);
+		assert.equal(view.host.querySelector("[data-region]").scrollTop, 0);
+	} finally {
+		await view.close();
+	}
+});
+
+test("a successful later commit recovers a transient missing-held-node fallback", async () => {
+	let healthy = false;
+	const layout = {
+		begin() {},
+		commit: () => healthy,
+		heldId: () => null,
+		cancel() {},
+	};
+	const view = await mounted(true, layout);
+	try {
+		assert.equal(view.get().reason, "missing-held-node");
+		healthy = true;
+		await act(async () =>
+			view.root.render(
+				React.createElement(Harness, {
+					entries: [...entries],
+					requested: true,
+					layout,
+					report: () => {},
+				}),
+			),
+		);
+		assert.equal(
+			view.host.querySelectorAll("[data-lo-entry-key]").length < 60,
+			true,
+		);
 	} finally {
 		await view.close();
 	}

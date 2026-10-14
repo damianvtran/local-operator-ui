@@ -734,6 +734,10 @@ export function useScrollPaging({
 		anchor.current.sample = { ...held, extent: el.scrollHeight };
 	}, [containerRef, measureHeld, refreshReaderHold, writeLayout]);
 
+	const followingLayout = useCallback(() => {
+		const region = containerRef.current;
+		return region !== null && region.scrollTop === 0;
+	}, [containerRef]);
 	const layout = useMemo(
 		() =>
 			createScrollLayoutCoordinator({
@@ -745,7 +749,9 @@ export function useScrollPaging({
 				sample: sampleAnchor,
 				measure: measureHeld,
 				inputRevision: () => travel.current.revision,
-				following: () => measure()?.followingTail === true,
+				// The policy's 24px epsilon grants ownership; it is not permission
+				// to undo a reader's deliberate small scroll away from the tail.
+				following: followingLayout,
 				write: writeLayout,
 				rebase: refreshReaderHold,
 				replaceHeld: (sample) => {
@@ -758,7 +764,13 @@ export function useScrollPaging({
 					navigating.current = active;
 				},
 			}),
-		[sampleAnchor, measureHeld, measure, writeLayout, refreshReaderHold],
+		[
+			sampleAnchor,
+			measureHeld,
+			followingLayout,
+			writeLayout,
+			refreshReaderHold,
+		],
 	);
 
 	/** Hold the reader's place across the next `ANCHOR_HOLD_MS` of settling. */

@@ -18,6 +18,7 @@ import {
 import type { ScrollLayoutCoordinator } from "./transcript-scroll-layout";
 
 export type TranscriptMountAdapter = {
+	requested: boolean;
 	acquire: (id: string) => () => void;
 };
 
@@ -69,8 +70,12 @@ export function useTranscriptDomWindow({
 	const [fault, setFault] = useState<string | null>(null);
 	const generation = useRef(sessionKey);
 	const committedSession = useRef(sessionKey);
-	const latest = useRef(entries);
-	latest.current = entries;
+	const descriptors = useMemo(
+		() => new Map(entries.map((entry) => [entry.key, entry])),
+		[entries],
+	);
+	const latest = useRef(descriptors);
+	latest.current = descriptors;
 	const generationChanged = generation.current !== sessionKey;
 	if (generationChanged) {
 		generation.current = sessionKey;
@@ -108,9 +113,11 @@ export function useTranscriptDomWindow({
 	}, [entries]);
 	// Capture BEFORE projecting leases/ranges. Beginning only after projection
 	// can choose a row the projection has just scheduled for unmount.
-	if (!contentPresent) layout.cancel();
-	else if (committedSession.current === sessionKey) layout.begin();
-	let held = layout.heldId();
+	if (requested) {
+		if (!contentPresent) layout.cancel();
+		else if (committedSession.current === sessionKey) layout.begin();
+	}
+	let held = requested ? layout.heldId() : null;
 	const owner = held ? recordToEntry.get(held) : undefined;
 	if (
 		owner !== undefined &&
@@ -188,8 +195,10 @@ export function useTranscriptDomWindow({
 
 	useLayoutEffect(() => {
 		committedSession.current = sessionKey;
-		if (contentPresent && !layout.commit() && requested)
-			setFault("missing-held-node");
+		if (requested && contentPresent) {
+			// A vanished row is a transient fail-open, not a session-long opt-out.
+			setFault(layout.commit() ? null : "missing-held-node");
+		}
 		const area = entriesRef.current;
 		if (!area || !requested || !contentPresent) return;
 		const width = area.getBoundingClientRect().width;
@@ -202,9 +211,7 @@ export function useTranscriptDomWindow({
 		for (const element of area.querySelectorAll<HTMLElement>(
 			"[data-lo-entry-key]",
 		)) {
-			const descriptor = entries.find(
-				(entry) => entry.key === element.dataset.loEntryKey,
-			);
+			const descriptor = descriptors.get(element.dataset.loEntryKey ?? "");
 			if (
 				!descriptor ||
 				!element.isConnected ||
@@ -263,9 +270,7 @@ export function useTranscriptDomWindow({
 			for (const observation of observations) {
 				const element = observation.target as HTMLElement;
 				if (!element.isConnected) continue;
-				const descriptor = latest.current.find(
-					(entry) => entry.key === element.dataset.loEntryKey,
-				);
+				const descriptor = latest.current.get(element.dataset.loEntryKey ?? "");
 				if (
 					!descriptor ||
 					!element.isConnected ||
@@ -433,6 +438,7 @@ export function useTranscriptDomWindow({
 		[layout, requested],
 	);
 	return {
+		requested,
 		prefix,
 		pinned: statePins.length,
 		pieces,

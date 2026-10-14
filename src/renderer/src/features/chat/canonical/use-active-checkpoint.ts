@@ -171,7 +171,7 @@ export const useActiveCheckpoint = (
 					best = checkpoint.id;
 				}
 			}
-		} else if (virtualModel?.current?.enabled) {
+		} else {
 			// The user checkpoint may be several screens outside overscan. Use
 			// the first intersecting record's predecessor in FULL model order;
 			// never infer 'unloaded' or pin every checkpoint from DOM absence.

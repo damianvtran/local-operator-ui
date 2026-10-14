@@ -276,6 +276,9 @@ function mountHook(options = {}) {
 		get scrollTop() {
 			return scrollTop;
 		},
+		get layout() {
+			return handle.layout;
+		},
 		get widenCalls() {
 			return widenCalls;
 		},
@@ -475,6 +478,37 @@ test("after the reader's gesture settles, a later layout change is corrected aga
 			hook.scrollTop,
 			-176,
 			"the standing sample absorbs the change after a settle",
+		);
+	} finally {
+		hook.close();
+	}
+});
+
+test("the layout coordinator never erases a deliberate 10px tail-away scroll", () => {
+	const hook = mountHook();
+	try {
+		hook.setScrollTop(0);
+		hook.layout.begin();
+		hook.setScrollTop(-10);
+		hook.scrollEvent();
+		hook.layout.commit();
+		assert.equal(hook.scrollTop, -10);
+		// A new transaction must not reinterpret the policy's 24px ownership
+		// epsilon as a tail snap after that input revision has settled.
+		hook.layout.begin();
+		hook.layout.commit();
+		assert.equal(hook.scrollTop, -10);
+		hook.setScrollTop(0);
+		hook.layout.begin();
+		hook.setScrollTop(-0.25);
+		hook.scrollEvent();
+		hook.layout.commit();
+		hook.layout.begin();
+		hook.layout.commit();
+		assert.equal(
+			hook.scrollTop,
+			-0.25,
+			"subpixel reader input is not a tail pin",
 		);
 	} finally {
 		hook.close();

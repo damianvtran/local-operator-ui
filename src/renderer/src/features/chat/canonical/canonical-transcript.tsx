@@ -3927,9 +3927,12 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			const epoch = transcriptEpoch.current;
 			const release = mountAdapter.current?.acquire(id);
 			try {
-				await new Promise<void>((resolve) =>
-					requestAnimationFrame(() => resolve()),
-				);
+				// Only the opt-in adapter schedules a DOM lease commit. The intrinsic
+				// path must retain its synchronous history/refusal behavior.
+				if (mountAdapter.current?.requested)
+					await new Promise<void>((resolve) =>
+						requestAnimationFrame(() => resolve()),
+					);
 				const reachable = await ensureReachable({
 					isReachable: () =>
 						foldSession.current !== generation ||
@@ -4792,9 +4795,11 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		const group = entry.group;
 		if (slotExtents.current.get(group.id)?.representation !== "inline")
 			continue;
-		const owner = containerRef.current?.querySelector<HTMLElement>(
-			`[data-lo-entry-key="${CSS.escape(group.id)}"]`,
-		);
+		const owner = Array.from(
+			containerRef.current?.querySelectorAll<HTMLElement>(
+				"[data-lo-entry-key]",
+			) ?? [],
+		).find((element) => element.dataset.loEntryKey === group.id);
 		const selectedOwner = Boolean(
 			owner &&
 				selection?.rangeCount &&
@@ -5508,8 +5513,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					 * finding is about, is here.
 					 */
 					tabIndex={transcript.records.length === 0 || holdPlaceholder ? -1 : 0}
-					role={domWindowRequested ? "region" : "log"}
-					aria-live={domWindowRequested ? "off" : undefined}
+					role={domWindow.enabled ? "region" : "log"}
+					aria-live={domWindow.enabled ? "off" : undefined}
 					data-lo-transcript-scroll
 					data-lo-dom-window={domWindow.enabled ? "on" : "off"}
 					data-lo-dom-window-reason={domWindow.reason}
@@ -5876,9 +5881,14 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 											// already have exact scalar spacer contributions in the old prefix.
 											const oldHeights = oldPieces.map(
 												(entry) =>
-													containerRef.current
-														?.querySelector<HTMLElement>(
-															`[data-lo-entry-key="${CSS.escape(entry.key)}"]`,
+													Array.from(
+														containerRef.current?.querySelectorAll<HTMLElement>(
+															"[data-lo-entry-key]",
+														) ?? [],
+													)
+														.find(
+															(element) =>
+																element.dataset.loEntryKey === entry.key,
 														)
 														?.getBoundingClientRect().height ??
 													oldPlan.heights.get(entry.key),

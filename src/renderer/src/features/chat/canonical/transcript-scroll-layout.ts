@@ -58,7 +58,7 @@ export function createScrollLayoutCoordinator(options: {
 				return true;
 			}
 			if (current.tail) {
-				options.write("tail");
+				if (options.following()) options.write("tail");
 				return true;
 			}
 			const after = current.sample ? options.measure(current.sample.id) : null;
