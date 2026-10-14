@@ -4772,13 +4772,21 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		 * it: while the turn is being written an internal episode is presentation,
 		 * never a settle. Its key is still left unannounced, so the ONE settle
 		 * sentence lands exactly once when the pane goes quiet.
+		 *
+		 * ONLY THE UNSETTLED EPISODE IS SILENCED (reviewer F2). Membership alone
+		 * (`internal != null`) also silenced every SETTLED history episode during a
+		 * live pass, so none was recorded in `previous.keys` and the first settle
+		 * announced them all again. `internal.unsettled` is the planner's own
+		 * "inside the cycle still being written" fact (it survives a streaming
+		 * answer appending after the episode, which `internal.live` does not).
 		 */
 		const announced = (segment: {
 			collapsed: boolean;
-			internal?: unknown;
+			internal?: { unsettled: boolean } | null;
 			key: string;
 		}) =>
-			segment.collapsed && !(collapseInputs.live && segment.internal != null);
+			segment.collapsed &&
+			!(collapseInputs.live && segment.internal?.unsettled === true);
 		const rowIds = planRowIds(collapse.runs);
 		const previous = announcedPlan.current;
 		if (previous === null) {

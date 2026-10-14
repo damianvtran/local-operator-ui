@@ -5000,3 +5000,115 @@ test("v2 alias 12: overflow never retains stale partial maps/current arrays", ()
 		"no retained current full array",
 	);
 });
+
+/*
+ * REVIEWER ROUND 1 - F2/F3/F4, each measured against the base snapshot with the
+ * same builders before it was fixed.
+ */
+test("F2: only the episode in the cycle still being written is unsettled", () => {
+	/*
+	 * The announce effect must silence the UNSETTLED episode while the turn thinks
+	 * and nothing else. Keying it on episode membership also silenced every
+	 * settled history episode during a live pass, so none was recorded and the
+	 * first settle re-announced them all (reviewer replica ['qg:w1','seg:a5']).
+	 */
+	const rows = [
+		user("f2-u"),
+		answer("f2-a0"),
+		peerRow("f2-w1"),
+		tool("f2-t1", {}, "trace"),
+		answer("f2-a1"),
+		peerRow("f2-w2"),
+		tool("f2-t2", { phase: "running" }, "trace"),
+	];
+	const live = planOf(rows, true);
+	assert.equal(internalSpanOf(live, "f2-w1").internal.unsettled, false);
+	assert.equal(internalSpanOf(live, "f2-w2").internal.unsettled, true);
+	const settled = planOf(rows, false);
+	assert.equal(
+		internalSpanOf(settled, "f2-w2").internal.unsettled,
+		false,
+		"a settled pane has no unsettled episode",
+	);
+});
+
+test("F2: an episode stays unsettled when a streaming answer appends after it", () => {
+	/* `internal.live` carries a tail-position condition and flips false on the
+	 * append; the announce gate needs the fact that does not. */
+	const plan = planOf(
+		[
+			user("f2s-u"),
+			answer("f2s-a0"),
+			peerRow("f2s-w1"),
+			tool("f2s-t1", {}, "trace"),
+			answer("f2s-a1", { streaming: true, complete: false }),
+		],
+		true,
+	);
+	const span = internalSpanOf(plan, "f2s-w1");
+	assert.equal(span.internal.live, false);
+	assert.equal(span.internal.unsettled, true);
+});
+
+test("F3: a settled bar's own media keeps that bar when a receipt arrives after it", () => {
+	/*
+	 * Pinning media run-wide once ANY receipt existed tore the picture out of the
+	 * settled bar that owned it: base holds `seg:f3-a1[f3-media]` collapsed and the
+	 * pin dropped that bar entirely, painting the media loose.
+	 */
+	const plan = planOf(
+		[
+			user("f3-u"),
+			tool("f3-media", { toolName: "generate_image", phase: "done" }, "trace"),
+			answer("f3-a1"),
+			peerRow("f3-p1"),
+			tool("f3-t1", {}, "trace"),
+		],
+		false,
+	);
+	const bar = internalSpanOf(plan, "f3-media");
+	assert.equal(bar.collapsed, true, "the settled bar still holds its media");
+	assert.equal(bar.key, "seg:f3-a1");
+	assert.equal(bar.internal ?? null, null);
+});
+
+test("F3: media owned AFTER the first receipt stays inline", () => {
+	const plan = planOf(
+		[
+			user("f3b-u"),
+			answer("f3b-a1"),
+			peerRow("f3b-p1"),
+			tool("f3b-media", { toolName: "generate_image", phase: "done" }, "trace"),
+			tool("f3b-t1", {}, "trace"),
+		],
+		false,
+	);
+	assert.equal(
+		allCollapsedIds(plan).has("f3b-media"),
+		false,
+		"a picture produced inside the episode is never hidden by it",
+	);
+});
+
+test("F4: a reader-opened live episode is not un-collapsed by a landing head", () => {
+	/*
+	 * The one-bar gate suppresses a live episode when an ordinary bar also stands,
+	 * which closes a disclosure the reader opened - silently, because the key is
+	 * unchanged and the re-collapse patch never runs. `openRuns` must win.
+	 */
+	const rows = [
+		user("f4-u"),
+		tool("f4-t0", {}, "trace"),
+		answer("f4-a0"),
+		peerRow("f4-w2"),
+		tool("f4-t2", { phase: "running" }, "trace"),
+	];
+	const closed = internalSpanOf(planOf(rows, true), "f4-w2");
+	assert.equal(closed.collapsed, false, "without an open key the gate yields");
+	const opened = internalSpanOf(
+		collapsePlan(rows, { live: true, openRuns: new Set([closed.key]) }),
+		"f4-w2",
+	);
+	assert.equal(opened.collapsed, true, "the reader's open episode survives");
+	assert.equal(opened.key, closed.key, "and keeps its identity");
+});
