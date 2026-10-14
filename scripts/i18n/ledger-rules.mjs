@@ -32,8 +32,8 @@
  *    distinct-instance rule only means something if the ids are real.
  *  - `receipt_sha256` is the sha256 of the receipt file the audit wrote, so a
  *    row records WHAT it was derived from. `receipt` is the path; a repo-relative
- *    path under `i18n/receipts/` is verified by the gate (the file travels with
- *    the repo), a machine-local path is a legacy pointer the gate cannot verify.
+ *    path under `i18n/receipts/` is required and verified by the gate so the file
+ *    travels with the repo. Machine-local pointers are refused, not grandfathered.
  */
 
 import { createHash } from "node:crypto";
@@ -76,7 +76,9 @@ export function isPlaceholderInstance(value) {
 	if (typeof value !== "string") return true;
 	const trimmed = value.trim().toLowerCase();
 	return (
-		trimmed.length < MIN_INSTANCE_LENGTH || PLACEHOLDER_INSTANCES.has(trimmed)
+		trimmed.length < MIN_INSTANCE_LENGTH ||
+		!/^[a-z0-9_-]+$/.test(value) ||
+		PLACEHOLDER_INSTANCES.has(trimmed)
 	);
 }
 
@@ -115,6 +117,19 @@ export function countFindings(findings) {
 	const counts = { blocker: 0, major: 0, minor: 0, nit: 0 };
 	const errors = [];
 	for (const [position, finding] of findings.entries()) {
+		if (!finding || typeof finding !== "object" || Array.isArray(finding)) {
+			errors.push(`finding ${position + 1} is malformed`);
+			continue;
+		}
+		if (
+			finding.severity !== undefined &&
+			finding.sev !== undefined &&
+			String(finding.severity).trim().toLowerCase() !==
+				String(finding.sev).trim().toLowerCase()
+		) {
+			errors.push(`finding ${position + 1} has conflicting severity fields`);
+			continue;
+		}
 		const word = finding?.severity ?? finding?.sev;
 		if (
 			typeof word === "string" &&
@@ -199,6 +214,12 @@ export function validateAuditorEntry(auditor, where, label) {
 		);
 	}
 
+	if (!isRepoReceiptPath(auditor?.receipt)) {
+		failures.push(
+			`${where}: ${label} must name a verifiable receipt under ${RECEIPTS_DIR}/`,
+		);
+	}
+
 	if (!isSha256(auditor?.receipt_sha256)) {
 		failures.push(
 			`${where}: ${label} records no \`receipt_sha256\` - the row must say which receipt it was derived from`,
@@ -220,8 +241,7 @@ export const RECEIPTS_DIR = "i18n/receipts";
 export function isRepoReceiptPath(value) {
 	return (
 		typeof value === "string" &&
-		value.startsWith(`${RECEIPTS_DIR}/`) &&
-		!value.includes("..")
+		/^i18n\/receipts\/[a-z0-9_-]+\.json$/.test(value)
 	);
 }
 

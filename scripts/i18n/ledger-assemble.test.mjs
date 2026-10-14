@@ -434,7 +434,7 @@ test("NEGATIVE: --auditor-model must match the receipt's model", () => {
 test("NEGATIVE: a receipt with no findings field is refused (absent is not zero)", () => {
 	withTree((root) => {
 		const body = receiptFor();
-		delete body.findings;
+		body.findings = undefined;
 		refusal(
 			() => run(root, { receipt: writeReceipt(root, "nof.json", body) }),
 			/no `findings` field/,
@@ -541,6 +541,7 @@ const GOOD = {
 	result: "clean",
 	instance: "run-aaaaaaaa",
 	findings: { blocker: 0, major: 0, minor: 0, nit: 0 },
+	receipt: "i18n/receipts/run-aaaaaaaa.json",
 	receipt_sha256: "a".repeat(64),
 };
 
@@ -728,7 +729,7 @@ test("a multi-namespace receipt is scoped per namespace and a finding that names
 				findings: [{ severity: "MAJOR", key: "demo.other.x" }],
 			},
 		};
-		delete body.findings;
+		body.findings = undefined;
 		const out = run(root, {
 			auditorInstance: "run-hhhhhhhh",
 			receipt: writeReceipt(root, "m.json", body),
@@ -904,4 +905,96 @@ test("resultSupportedBy and supportedStatus never promote beyond the evidence", 
 		"changes_requested",
 	);
 	assert.equal(supportedStatus([GOOD], "t", "fr/x"), "audited");
+});
+
+test("NEGATIVE: malformed findings cannot disappear or downgrade a severity bucket", () => {
+	for (const findings of [
+		null,
+		"clean",
+		0,
+		{},
+		{ MAJOR: {} },
+		{ MAJRO: [] },
+		{ MAJOR: [null] },
+		{ MAJOR: [{ severity: "NIT" }] },
+		[{ severity: "NIT", sev: "MAJOR" }],
+	]) {
+		withTree((root) => {
+			const receipt = writeReceipt(
+				root,
+				"malformed.json",
+				receiptFor({ findings }),
+			);
+			refusal(() => run(root, { receipt }), /findings|severity|finding/);
+			assert.equal(existsSync(join(root, "i18n/ledger.json")), false);
+		});
+	}
+});
+
+test("NEGATIVE: a single namespace block cannot borrow global hashes or hash substrings", () => {
+	for (const block of [
+		{ status: "passed", findings: [] },
+		{
+			status: "passed",
+			findings: [],
+			hashes: ["prefix" + sha(FR), sha(EN) + "suffix"],
+		},
+	]) {
+		withTree((root) => {
+			const receipt = writeReceipt(
+				root,
+				"borrowed.json",
+				receiptFor({ extra: { namespaces: { "demo.words": block } } }),
+			);
+			refusal(() => run(root, { receipt }), /does not name/);
+		});
+	}
+});
+
+test("NEGATIVE: receipt instances cannot escape their destination directory", () => {
+	for (const instance of [
+		"../escape",
+		"aaaaaa/../../escape",
+		"aaaaaa\\escape",
+		" abcdef",
+		"abcdef ",
+	]) {
+		withTree((root) => {
+			const receipt = writeReceipt(
+				root,
+				"unsafe.json",
+				receiptFor({ instance }),
+			);
+			refusal(
+				() => run(root, { receipt, auditorInstance: instance }),
+				/placeholder/,
+			);
+		});
+	}
+});
+
+test("NEGATIVE: a missing model cannot be supplied by a command-line assertion", () => {
+	withTree((root) => {
+		const body = receiptFor();
+		body.model = undefined;
+		refusal(
+			() => run(root, { receipt: writeReceipt(root, "no-model.json", body) }),
+			/model/,
+		);
+	});
+});
+
+test("NEGATIVE: an instance collision in another namespace is refused without its receipt copy", () => {
+	withTree((root) => {
+		run(root);
+		const ledger = ledgerOf(root);
+		ledger.entries[0].namespace = "other.words";
+		writeFileSync(join(root, "i18n/ledger.json"), JSON.stringify(ledger));
+		rmSync(join(root, ledger.entries[0].auditors[0].receipt));
+		const changed = receiptFor({ extra: { note: "different bytes" } });
+		refusal(
+			() => run(root, { receipt: writeReceipt(root, "changed.json", changed) }),
+			/different receipt/,
+		);
+	});
 });

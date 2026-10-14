@@ -1,0 +1,105 @@
+{
+  "auditor": "i18n-auditor (fr, independent second pass)",
+  "model": "anthropic/claude-sonnet-5-5",
+  "instance": "1eb058b7891c",
+  "date": "2026-10-14",
+  "worktree": "~/local-operator-ui/.worktrees/i18n-fr-console (HEAD e36b2dae3 + uncommitted working-tree changes as audited)",
+  "validators": {
+    "generate.mjs --check": "keys.gen.ts byte-identical to a fresh generation",
+    "locale-parity.test.mjs": "7 tests, 7 pass, 0 fail"
+  },
+  "namespaces": {
+    "ui.onboarding": {
+      "status": "passed",
+      "keys": 47,
+      "fr_sha256": "a907d1385223e3e8849ace6ccbaee7535968a87600bc7dda5a3dd173e9450b67",
+      "en_sha256": "b086c241aa70e44cdaab8f02d20e5aaac33d4732df09204481afc4128c08a6ae"
+    },
+    "ui.settings": {
+      "status": "passed",
+      "keys": 39,
+      "fr_sha256": "b3861dc03be8ee05f5253dcf5929c96c1646781a41fc5e2a1acf7aca42a1ba2a",
+      "en_sha256": "3395192289d49f4d4a4e64a072fbb394ca37e760f3d13fb2f2a295167ae4f571",
+      "sidecar_sha256": "b1f31ea57c6c5aeb9281923e4c4f3c414b3e4aca6ae5adc00370ab686160a655"
+    }
+  },
+  "mechanical": {
+    "keys": "47/47 and 39/39, no add/drop, valid JSON",
+    "placeholders": "{brand},{name},{message},{locale},{language},{current,number},{total,number},{total,plural} names/types identical to EN (script-checked per key)",
+    "plural": "steps_total has one/many/other, no few; Intl.PluralRules fr: 0,1->one, 2->other, 1e6->many, 1.5e6->other; 'd’étapes' elision correct",
+    "typography": "every : ; ? ! in prose is preceded by U+202F (scripted, zero U+0020 or NBSP/U+2009 cases); zero ASCII apostrophes/quotes/'...'; no double/edge spaces; em dashes spaced",
+    "glossary": "session/agent/modèle/fournisseur/appareil/conversation(chat)/Paramètres consistent; vous throughout; 'réglage' (singular setting) used consistently in settings, not recorded in the fr guide (observation only)",
+    "fit": "longest value 251 chars (connect.intro, wrapping paragraph), 196 (settings alert, wraps beside shrink-0 button); step_of is whitespace-nowrap and short; no maxCells hints in the settings sidecar"
+  },
+  "recently_changed_keys": {
+    "ui.onboarding.modal.step_of": "OK: 'Étape {current} sur {total}', number types kept; call site passes numbers (onboarding-modal.tsx:445)",
+    "ui.onboarding.modal.steps_total": "OK: valid one/many/other with correct d’ elision",
+    "ui.onboarding.connect.intro": "OK: no quoted control label; meaning of the rest identical; U+202F before : and ?"
+  },
+  "coder_authored_keys": "5 keys scrutinised: accuracy, polarity, vous-imperative, U+202F before ';' and the two failure variants differing only in the closing instruction all verified. No blocker/major; two minors (retrying, 'valeurs par défaut').",
+  "findings": {
+    "BLOCKER": [],
+    "MAJOR": [],
+    "MINOR": [
+      {
+        "sev": "MINOR",
+        "key": "ui.settings.profile.retrying (coder) + ui.settings.language.dialog.retrying",
+        "current": "Nouvel essai",
+        "problem": "Noun phrase ('new attempt'), not the present-progressive state the sidecar asks for; on a disabled in-flight button it reads like an action label. Both keys are identical so the fix is uniform.",
+        "suggest": "Nouvelle tentative…"
+      },
+      {
+        "sev": "MINOR",
+        "key": "ui.settings.profile.account_read_failed_retry / _refused (coder)",
+        "current": "…sont donc des valeurs par défaut, et non les informations de votre compte.",
+        "problem": "The EN point is that 'User' / 'user@example.com' are stand-ins, not real data. 'valeurs par défaut' can be read as legitimate app defaults; the warning's whole job is to say the fields are not the user's.",
+        "suggest": "…sont donc des valeurs d’exemple, et non les informations de votre compte."
+      },
+      {
+        "sev": "MINOR",
+        "key": "ui.onboarding.search.row.get_your",
+        "current": "Obtenir {name}",
+        "problem": "{name} is the English catalogue name ('Tavily API key'), giving 'Obtenir Tavily API key' (bare English noun phrase, no determiner; 'your' dropped).",
+        "suggest": "Obtenir votre {name} (votre is gender-neutral, so safe for an English noun phrase)"
+      }
+    ],
+    "NIT": [
+      {
+        "sev": "NIT",
+        "key": "ui.onboarding.default_model.intro",
+        "current": "Chaque agent pourra en changer.",
+        "problem": "Drops 'later'; 'en changer' is a little elliptical.",
+        "suggest": "Chaque agent pourra en choisir un autre plus tard."
+      },
+      {
+        "sev": "NIT",
+        "key": "ui.onboarding.connect.intro",
+        "current": "Les autres options sont regroupées plus bas.",
+        "problem": "Accurate and the deliberate no-quote design (verified: the 'More providers' disclosure follows the featured rows in provider-catalog.ts), but 'options' is vaguer than the EN subject.",
+        "suggest": "Les autres fournisseurs sont regroupés plus bas."
+      },
+      {
+        "sev": "NIT",
+        "key": "ui.onboarding.default_model.connected_pick",
+        "current": "Choisissez le modèle des nouvelles conversations.",
+        "problem": "'should use' (à utiliser) is lost; reads as if the model already belonged to new chats.",
+        "suggest": "Choisissez le modèle à utiliser pour les nouvelles conversations."
+      },
+      {
+        "sev": "NIT",
+        "key": "ui.onboarding.modal.action.skip_for_now",
+        "current": "Plus tard",
+        "problem": "Idiomatic and short, but drops the 'skip' verb used by the sibling action.skip ('Passer'); acceptable.",
+        "suggest": "Passer pour l’instant (only if width allows)"
+      },
+      {
+        "sev": "NIT",
+        "key": "ui.settings.profile.description_anonymous / _authenticated",
+        "current": "Les informations de votre profil affichées dans l’application ne sont pas transmises aux agents.",
+        "problem": "Two EN sentences merged; the participle 'affichées' can be read restrictively (only displayed info is withheld). Meaning otherwise preserved.",
+        "suggest": "Les informations de votre profil sont affichées dans l’application. Elles ne sont pas transmises aux agents."
+      }
+    ]
+  },
+  "note": "No BLOCKER/MAJOR. 3 minors + 5 nits optional; polish only."
+}
