@@ -887,7 +887,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 					    truncates. */}
 					<span
 						className={cn(
-							"shrink-0 text-meta text-ink-dim @max-[420px]/consolepane:hidden",
+							"shrink-0 text-meta text-ink-dim @max-[460px]/consolepane:hidden",
 						)}
 					>
 						{t("ui.console.pane.label")}
@@ -945,11 +945,20 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 									{/* THE COMPACT SPELLING BELOW 420px (design round 2, D7): the full
 									 * sentence is 199px and would overflow the header cluster. The same
 									 * two numbers, one line, whole sentence still in the tooltip.
-									 * The pair OVERLAPS by a pixel on purpose (compact hides at >=421,
-									 * full hides at <=420): a matching 420/420 pair leaves exactly 420px
-									 * with no summary at all, the disappearing-label class this round
-									 * exists to fix. */}
-									<span className="@min-[421px]/consolepane:hidden">
+									 *
+									 * The pair is COMPLEMENTARY, not overlapped (design round 3, the breakpoint
+									 * dispute): Tailwind v4 compiles `@min-[X]` to `(width >= X)` and
+									 * `@max-[X]` to `(width < X)`, so a matched pair has no gap at exactly X
+									 * and no width shows BOTH. An earlier commit here moved the compact bound
+									 * to `@min-[421px]`, believing 420/420 left a gap — wrong: it would show
+									 * both spans at 420. The matched pair is correct and stays matched.
+									 *
+									 * 460px, not 420 (D18): below ~446 the surface's command name (the §6.5
+									 * load-bearing `zsh`) was clipped to 0–6px beside the full 228px summary,
+									 * so the band where a user most needs the command name was exactly where
+									 * it vanished. The compact spelling gives the command its room back.
+									 */}
+									<span className="@min-[460px]/consolepane:hidden">
 										{session.snapshot.capacity.archived > 0
 											? t(
 													"ui.console.capacity.summary_compact",
@@ -960,7 +969,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 													session.snapshot.capacity,
 												)}
 									</span>
-									<span className="@max-[420px]/consolepane:hidden">
+									<span className="@max-[460px]/consolepane:hidden">
 										{t(
 											"ui.console.capacity.summary",
 											session.snapshot.capacity,
@@ -1098,9 +1107,21 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 			{session.cleanupNotice !== null ? (
 				<output
 					className={cn(
-						"absolute top-10 right-2 left-2 z-10 block truncate rounded-sm border border-control bg-elevated px-2 py-1 text-meta text-ink-muted shadow-md",
+						/*
+						 * POINTER-TRANSPARENT (design round 3, D15): the notice is status text, not a
+						 * control, so it must never intercept a click on the tab strip underneath —
+						 * the whole point of Clear is that the user is about to look at that list.
+						 *
+						 * IT WRAPS RATHER THAN TRUNCATES (D16): at the 320px floor `truncate` cut the
+						 * "left open" half off mid-sentence, and that half is the part telling the
+						 * user some surfaces were NOT cleared. The overlay is out of flow, so it can
+						 * grow to a second line; `title` carries the whole sentence for the one
+						 * narrow case that still clips.
+						 */
+						"pointer-events-none absolute top-10 right-2 left-2 z-10 rounded-sm border border-control bg-elevated px-2 py-1 text-meta text-ink-muted shadow-md",
 					)}
 					data-tour-tag="console-cleanup-result"
+					title={session.cleanupNotice}
 				>
 					{session.cleanupNotice}
 				</output>
@@ -1268,7 +1289,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 										 * the act does to the output rather than repeating the verb
 										 * (it used to read "Dismiss … — Dismiss terminal and …").
 										 */
-										aria-label={`${row.running ? "Close" : "Dismiss"} ${surfaceTitle(row)}, tab ${index + 1} of ${surfaces.length}${!row.running && row.retain ? " — deletes retained output" : ""}`}
+										aria-label={`${row.running ? "Close" : "Clear"} ${surfaceTitle(row)}, tab ${index + 1} of ${surfaces.length}${!row.running && row.retain ? " — deletes retained output" : ""}`}
 										onClick={() => requestSurfaceClose(row)}
 										className={cn(
 											"me-0.5 transition-opacity",
