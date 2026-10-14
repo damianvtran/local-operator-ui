@@ -526,19 +526,38 @@ export const ReleaseResult: Story = {
 		/>
 	),
 	play: async ({ canvasElement }) => {
-		const clear = canvasElement.querySelector(
-			'[aria-label="Clear finished agent terminals"]',
+		/*
+		 * BOUNDED POLL, NOT A SINGLE QUERY (design round 3, D14). A cold load commits
+		 * the pane's first render before the host's projection hydrates the capacity
+		 * header, so a `querySelector` at play time found no Clear button on 4/4 cold
+		 * loads and the throw stopped the sweep. This mirrors the `Selected` story's
+		 * own bounded polling: wait for the control (≤6s), press it, then wait for the
+		 * notice rather than a fixed beat.
+		 */
+		const waitFor = async <T,>(
+			find: () => T | null,
+			label: string,
+		): Promise<T> => {
+			for (let i = 0; i < 60; i++) {
+				const found = find();
+				if (found !== null) return found;
+				await new Promise((resolve) => setTimeout(resolve, 100));
+			}
+			throw new Error(label);
+		};
+		const clear = await waitFor(
+			() =>
+				canvasElement.querySelector<HTMLButtonElement>(
+					'[aria-label="Clear finished agent terminals"]',
+				),
+			"the Clear control never rendered",
 		);
-		expect(clear, "the Clear control is not rendered").not.toBeNull();
-		(clear as HTMLButtonElement).click();
-		/* The notice is set after the awaited stub answers; a short beat lets it
-		 * paint so the sweep captures the populated frame rather than the pre-click
-		 * one. */
-		await new Promise((resolve) => setTimeout(resolve, 150));
-		expect(
-			canvasElement.querySelector('[data-tour-tag="console-cleanup-result"]'),
+		clear.click();
+		await waitFor(
+			() =>
+				canvasElement.querySelector('[data-tour-tag="console-cleanup-result"]'),
 			"the Clear result notice never rendered",
-		).not.toBeNull();
+		);
 	},
 };
 

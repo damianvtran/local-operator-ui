@@ -290,7 +290,7 @@ test("the control is reachable by mouse and keyboard, and its label names the st
 	);
 	assert.ok(
 		PANE_CODE.includes(
-			'aria-label={`${row.running ? "Close" : "Dismiss"} ${surfaceTitle(row)}, tab ${index + 1} of ${surfaces.length}${!row.running && row.retain ? " — deletes retained output" : ""}`}',
+			'aria-label={`${row.running ? "Close" : "Clear"} ${surfaceTitle(row)}, tab ${index + 1} of ${surfaces.length}${!row.running && row.retain ? " — deletes retained output" : ""}`}',
 		),
 		"the accessible name no longer names the state, the terminal and the position",
 	);
