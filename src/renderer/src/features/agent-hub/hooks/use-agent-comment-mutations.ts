@@ -8,9 +8,9 @@ import type {
 	UpdateAgentCommentRequest,
 } from "@shared/api/radient/types";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
-import { t } from "@shared/i18n";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { t } from "../../../../../i18n/messages";
 import { agentCommentsKeys } from "./use-agent-comments-query"; // Import query keys
 
 /**

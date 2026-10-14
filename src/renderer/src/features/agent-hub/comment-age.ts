@@ -1,6 +1,6 @@
 import { formatDistanceStrict } from "date-fns";
 import { enUS } from "date-fns/locale/en-US";
-import { t } from "../../../../i18n";
+import { t } from "../../../../i18n/messages";
 
 /**
  * Keep date-fns' existing strict rounding/DST behavior, but localize its stable

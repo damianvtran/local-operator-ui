@@ -11,11 +11,11 @@ import {
 	Tooltip,
 } from "@shared/components/ui";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { MessageCircle, Save, SquarePen, Trash2, X } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
+import { t } from "../../../../../i18n/messages";
 import { commentAge } from "../comment-age";
 import {
 	useCreateAgentCommentMutation,
