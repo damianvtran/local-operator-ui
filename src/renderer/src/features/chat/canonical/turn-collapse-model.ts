@@ -47,7 +47,6 @@
  * session's shared outcome predicate the day it lands.
  */
 
-import { isImageGenTool } from "./image-gen-card-model";
 import {
 	EMPTY_SENDER,
 	type PeerSender,
@@ -55,6 +54,7 @@ import {
 } from "../components/trace/receipt-row-model";
 import { isPartialDelivery } from "../components/trace/tool-row-model";
 import type { TranscriptDisplayMode } from "../transcript-display-mode";
+import { isImageGenTool } from "./image-gen-card-model";
 import { freezeRecordDeep } from "./record-immutability";
 import {
 	type FoldableAction,
@@ -161,9 +161,19 @@ export function runIsCondensed(
 		// An ambient internal bar is not the expansion owner of an answer's
 		// files/frames. Only that answer's stamped work bar can condense them;
 		// an unrelated closed segment (or an uncertain head) is not permission.
-		if (run.answerId !== options.artifactOwner || run.segments.some(s => s.internal != null)) return false;
-		return run.segments.some(s => s.collapsed && !s.facts.partial && s.stampTs !== null &&
-			s.stampTs === run.stampTs && !openRuns?.has(s.key));
+		if (
+			run.answerId !== options.artifactOwner ||
+			run.segments.some((s) => s.internal != null)
+		)
+			return false;
+		return run.segments.some(
+			(s) =>
+				s.collapsed &&
+				!s.facts.partial &&
+				s.stampTs !== null &&
+				s.stampTs === run.stampTs &&
+				!openRuns?.has(s.key),
+		);
 	}
 	return run.segments.some(
 		(segment) => segment.collapsed && !openRuns?.has(segment.key),
@@ -329,7 +339,6 @@ function isQuietGroupTrigger(record: TranscriptRecord): boolean {
 	return trigger !== null && trigger !== "user";
 }
 
-
 /**
  * Presentation eligibility is positive RECEIPT provenance, not a quiet outcome.
  * In particular, eval code/stdout and completion-attention ineligibility say
@@ -340,8 +349,12 @@ function isInternalEpisodeOrigin(record: TranscriptRecord): boolean {
 	if (record.kind === "notice") {
 		// applyEvent(subagent_end) owns this reserved canonical-ID namespace
 		// (transcript-reducer.ts); generic INFO/local notices are not job status.
-		return record.level === "info" && record.complete !== true &&
-			record.id.startsWith("subagent:") && record.id.length > "subagent:".length;
+		return (
+			record.level === "info" &&
+			record.complete !== true &&
+			record.id.startsWith("subagent:") &&
+			record.id.length > "subagent:".length
+		);
 	}
 	if (record.kind !== "custom" || record.level === "error") return false;
 	const trigger = triggerOf(record);
@@ -349,9 +362,13 @@ function isInternalEpisodeOrigin(record: TranscriptRecord): boolean {
 	if (trigger === "hub_message") {
 		// Reply/steer intent is already normalized once by the receipt producer.
 		// Unknown historical intent stays visible; never recover it from prose.
-		return record.receipt !== undefined &&
-			(record.receipt.direction === "to_parent" || record.receipt.direction === "to_child") &&
-			record.receipt.expectsReply === false && record.receipt.steer === false;
+		return (
+			record.receipt !== undefined &&
+			(record.receipt.direction === "to_parent" ||
+				record.receipt.direction === "to_child") &&
+			record.receipt.expectsReply === false &&
+			record.receipt.steer === false
+		);
 	}
 	return true;
 }
@@ -359,7 +376,11 @@ function isInternalEpisodeOrigin(record: TranscriptRecord): boolean {
 /** Both turn and action folds must retain actual material owners inline. */
 export function ownsMaterialArtifact(record: TranscriptRecord): boolean {
 	if (record.kind === "supplement") return true;
-	if ((record.kind === "tool" || record.kind === "custom") && record.images?.length) return true;
+	if (
+		(record.kind === "tool" || record.kind === "custom") &&
+		record.images?.length
+	)
+		return true;
 	// Before output bytes exist, the generating card already owns loading/error
 	// and cancellation UI; keep ALL phases, not only successful picture rows.
 	return record.kind === "tool" && isImageGenTool(record.toolName);
@@ -369,20 +390,42 @@ function internalEpisodeBoundary(record: TranscriptRecord): boolean {
 	// Empty/streaming assistants are future user text. Pin before the first
 	// token, not only once prose happens to paint; otherwise the first token
 	// would briefly mount inside a closed disclosure (the 0.27 regression).
-	if (record.kind === "user" || record.kind === "assistant" ||
-		record.kind === "ask_response" || record.kind === "ask_timeout") return true;
+	if (
+		record.kind === "user" ||
+		record.kind === "ask_response" ||
+		record.kind === "ask_timeout"
+	)
+		return true;
+	/*
+	 * A SETTLED assistant row is prose the existing visibility rule already owns:
+	 * a commentary close folds with the receipt that prompted it (the wake's own
+	 * span, `narration-only in-betweens`). Only an EMPTY or still-streaming one is
+	 * FUTURE text - pin it BEFORE the first token, or that token would briefly
+	 * mount inside a closed disclosure (the 0.27 regression). Pinning every
+	 * assistant row instead tore settled prose out of condensing spans.
+	 */
+	if (record.kind === "assistant")
+		return record.text === "" || record.streaming === true;
 	// FoldMedia is picture-only. Retain the actual artifact row/player inline,
 	// including videos, rather than substitute a thumbnail or hide its payload.
 	if (ownsMaterialArtifact(record)) return true;
-	if (record.kind === "notice" || record.kind === "custom") return !isInternalEpisodeOrigin(record);
-	if (record.kind === "tool") return record.toolName === "ask" ||
-		isFailedCall(record) || record.stopped === true || record.neverSent === true ||
-		(record.notRunReason !== undefined && record.notRunReason !== null);
+	if (record.kind === "notice" || record.kind === "custom")
+		return !isInternalEpisodeOrigin(record);
+	if (record.kind === "tool")
+		return (
+			record.toolName === "ask" ||
+			isFailedCall(record) ||
+			record.stopped === true ||
+			record.neverSent === true ||
+			(record.notRunReason !== undefined && record.notRunReason !== null)
+		);
 	return staysVisibleWhileCollapsed(record);
 }
 
 /** Protect only receipt-context rows; ordinary human work keeps its old policy. */
-function internalEpisodePins(records: readonly TranscriptRecord[]): { pins: ReadonlySet<TranscriptRecord> } {
+function internalEpisodePins(records: readonly TranscriptRecord[]): {
+	pins: ReadonlySet<TranscriptRecord>;
+} {
 	const pins = new Set<TranscriptRecord>();
 	let receiptContext = false;
 	for (let i = 0; i < records.length; i += 1) {
@@ -394,6 +437,17 @@ function internalEpisodePins(records: readonly TranscriptRecord[]): { pins: Read
 		}
 		if (record.kind === "user") receiptContext = false;
 	}
+	/*
+	 * A MATERIAL OWNER IN A RUN THAT CARRIES AN EPISODE stays inline, wherever it
+	 * sits relative to the receipt: pictures, video and owned files are not the
+	 * episode's private work to hide, and the bar's strip substitutes a thumbnail
+	 * for a row that is unmounted. A run with NO episode keeps the base folding -
+	 * its pictures ride its own bar and its strip - which is what six ruled
+	 * design/UX tests pin.
+	 */
+	if (records.some(isInternalEpisodeOrigin))
+		for (const record of records)
+			if (ownsMaterialArtifact(record)) pins.add(record);
 	return { pins };
 }
 
@@ -407,8 +461,11 @@ export type InternalEpisodeFacts = {
 };
 
 function internalEpisodeOf(
-	records: readonly TranscriptRecord[], span: SegmentSpan, headLoaded: boolean,
-	live: boolean, humanPending: boolean,
+	records: readonly TranscriptRecord[],
+	span: SegmentSpan,
+	headLoaded: boolean,
+	live: boolean,
+	humanPending: boolean,
 ): InternalEpisodeFacts | null {
 	if (!isInternalEpisodeOrigin(records[span.from])) return null;
 	// V4/typed quiet closure was derived once for the loaded run. Neither a
@@ -2533,24 +2590,50 @@ function planRun(
 		from,
 		paints: paintsSomething,
 		isStatement: isStatementRow,
-		pinned: (record) => staysVisibleWhileCollapsed(record) || ownsMaterialArtifact(record) || internalContext.pins.has(record),
+		/*
+		 * MATERIAL OWNERS ARE PINNED INSIDE A RECEIPT EPISODE ONLY
+		 * (`internalEpisodeBoundary`), never for every run: an ordinary human turn
+		 * still folds its pictures under its own bar with the strip, which is the
+		 * base behaviour six ruled design/UX tests pin. Pinning them globally
+		 * stopped those runs collapsing at all.
+		 */
+		pinned: (record) =>
+			staysVisibleWhileCollapsed(record) || internalContext.pins.has(record),
 		mode,
 	});
 	// Reuse authoritative RESPONSE closes for old-core rows without a V4 stop
 	// marker. Explicit toolUse/refusal/error endings are not a completed human
 	// response; no new answer election or body interpretation is introduced.
-	const responseCloses = new Set(partition.cycles.filter(cycle => {
-		const record = records[cycle.closeIndex];
-		return cycle.class === "response" && record.kind === "assistant" && !record.streaming &&
-			(record.stopReason == null || reportsCompletedThought(record));
-	}).map(cycle => records[cycle.closeIndex]));
+	const responseCloses = new Set(
+		partition.cycles
+			.filter((cycle) => {
+				const record = records[cycle.closeIndex];
+				return (
+					cycle.class === "response" &&
+					record.kind === "assistant" &&
+					!record.streaming &&
+					(record.stopReason == null || reportsCompletedThought(record))
+				);
+			})
+			.map((cycle) => records[cycle.closeIndex]),
+	);
 	const humanPendingBefore: boolean[] = [];
 	let humanPending = false;
 	for (const record of records) {
 		humanPendingBefore.push(humanPending);
-		if (record.kind === "user" || (record.kind === "custom" &&
-			(record.receipt?.expectsReply === true || record.receipt?.steer === true))) humanPending = true;
-		else if (responseCloses.has(record) || reportsCompletedThought(record) || isQuietTurnClose(record)) humanPending = false;
+		if (
+			record.kind === "user" ||
+			(record.kind === "custom" &&
+				(record.receipt?.expectsReply === true ||
+					record.receipt?.steer === true))
+		)
+			humanPending = true;
+		else if (
+			responseCloses.has(record) ||
+			reportsCompletedThought(record) ||
+			isQuietTurnClose(record)
+		)
+			humanPending = false;
 	}
 	const answerAt = partition.answer?.closeIndex ?? null;
 	const answerId = answerAt === null ? null : records[answerAt].id;
@@ -2644,7 +2727,16 @@ function planRun(
 			 * LATER visible row exists anywhere in the load: only the conversation's
 			 * last run can grow from its tail, so only there can the group still grow.
 			 */
-			const internal = internalEpisodeOf(records, span, headLoaded, live && span.to >= liveFrom && span.to === records.length - 1 && run.endIndex === rows.length - 1, humanPendingBefore[span.from]);
+			const internal = internalEpisodeOf(
+				records,
+				span,
+				headLoaded,
+				live &&
+					span.to >= liveFrom &&
+					span.to === records.length - 1 &&
+					run.endIndex === rows.length - 1,
+				humanPendingBefore[span.from],
+			);
 			const group = quietGroupOfSegment(records, span, {
 				spanHeadLoaded: headLoaded,
 				open:
@@ -2665,26 +2757,35 @@ function planRun(
 				span.to === runRows.length - 1 && run.endIndex === rows.length - 1;
 			// A receipt episode retains its qg identity when a visible boundary closes
 			// it. Appendability alone must not drop the reader's expansion on close.
-			const key = appendable || internal !== null
-				? `qg:${segRows[0].record.id}`
-				: `seg:${
-						afterAnswer
-							? segRows[0].record.id
-							: (runRows[span.to + 1] ?? segRows[segRows.length - 1]).record.id
-					}`;
+			const key =
+				appendable || internal !== null
+					? `qg:${segRows[0].record.id}`
+					: `seg:${
+							afterAnswer
+								? segRows[0].record.id
+								: (runRows[span.to + 1] ?? segRows[segRows.length - 1]).record
+										.id
+						}`;
 
-			const label = labelOfSegment(records, partition.cycles, span, group) ??
-				(internal !== null && records[span.from].kind === "notice" ? "Job result" : null);
+			const label =
+				labelOfSegment(records, partition.cycles, span, group) ??
+				(internal !== null && records[span.from].kind === "notice"
+					? "Job result"
+					: null);
 			/*
 			 * Only positive receipt-origin spans may compact while live. Settlement
 			 * is a lifecycle fact, not permission to show private work loosely.
 			 * A peer landing in unanswered human work does not change that work's
 			 * presentation, and arbitrary tool-only suffixes never earn this rule.
 			 */
-			const groupKeepsItsBar = internal !== null && group !== null && settledAt >= span.from;
+			const groupKeepsItsBar =
+				internal !== null && group !== null && settledAt >= span.from;
 			const collapsedHere =
 				(collapsible || internal !== null) &&
-				(liveFrom < 0 || span.to < liveFrom || groupKeepsItsBar || internal !== null) &&
+				(liveFrom < 0 ||
+					span.to < liveFrom ||
+					groupKeepsItsBar ||
+					internal !== null) &&
 				!(
 					focusHold !== null &&
 					!openRuns.has(key) &&
@@ -2699,14 +2800,16 @@ function planRun(
 				afterAnswer,
 				label,
 				internal,
-				completed: internal?.live ? false : segmentIsCompleted(
-					records,
-					partition.cycles,
-					span,
-					answerAt,
-					label !== null,
-					quietCloseAt,
-				),
+				completed: internal?.live
+					? false
+					: segmentIsCompleted(
+							records,
+							partition.cycles,
+							span,
+							answerAt,
+							label !== null,
+							quietCloseAt,
+						),
 				collapsed: collapsedHere,
 				stampTs:
 					i === nearest && answerAt !== null && preAnswerCount === 1
