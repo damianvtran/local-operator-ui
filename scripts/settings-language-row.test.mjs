@@ -277,18 +277,19 @@ const resetButton = (selector) => {
 };
 
 /**
- * Poll a condition under `act`, which is what lets the interaction's async
- * chain (op -> invalidation -> refetch -> store -> render) finish: every sleep
- * runs inside `act`, so React's effects and the query cache's notifications
- * flush between checks instead of warning about updates outside it.
+ * Observe the write/refetch/render chain without awaiting React's entire queue.
+ * Radix's floating controls keep scheduling while mounted: an async act drain
+ * can wait forever even after the settings operation finished (CI timed out
+ * the non-language case at 60s). Yield outside act and flush synchronously at
+ * each observation, so the deadline bounds the wait rather than only its first
+ * iteration. The condition, not elapsed time, proves the operation finished.
  */
 const settle = async (cond, note, ms = 4000) => {
 	const start = Date.now();
 	while (Date.now() - start < ms) {
+		act(() => {});
 		if (cond()) return;
-		await act(async () => {
-			await new Promise((resolve) => setTimeout(resolve, 25));
-		});
+		await new Promise((resolve) => setTimeout(resolve, 25));
 	}
 	assert.ok(cond(), note);
 };
@@ -297,7 +298,7 @@ const mount = async (t) => {
 	const mounted = { client: null, root: null, container: null };
 	t.after(async () => {
 		try {
-			await act(async () => {
+			act(() => {
 				mounted.root?.unmount();
 			});
 		} finally {
@@ -344,7 +345,7 @@ const mount = async (t) => {
 			),
 		);
 	mounted.render = render;
-	await act(async () => {
+	act(() => {
 		render({});
 	});
 	return mounted;
@@ -362,14 +363,14 @@ const LocaleSync = () => {
 };
 
 const rerender = async (mounted, props) => {
-	await act(async () => {
+	act(() => {
 		mounted.render(props);
 	});
 };
 
 const click = async (el, note) => {
 	assert.ok(el, note);
-	await act(async () => {
+	act(() => {
 		el.dispatchEvent(
 			new bootstrapDOM.window.MouseEvent("click", { bubbles: true }),
 		);
@@ -433,11 +434,9 @@ test(
 		}
 		// A second locale proves the line FOLLOWS the store rather than being
 		// the picker's default restated.
-		await act(async () => {
-			setCapabilitiesLanguage("fr");
-			await mounted.client.refetchQueries({
-				queryKey: desktopKeys.capabilities,
-			});
+		setCapabilitiesLanguage("fr");
+		await mounted.client.refetchQueries({
+			queryKey: desktopKeys.capabilities,
 		});
 		await settle(
 			() => noteOf(LANGUAGE_ROW) === EFFECTIVE_NOTE_FR,
@@ -543,11 +542,9 @@ test(
 		const before = apiCalls.length;
 		// Exercise the watch's legitimate read without waiting thirty seconds.
 		// The negative assertion must distinguish this from a write invalidation.
-		await act(async () => {
-			await mounted.client.refetchQueries({
-				queryKey: desktopKeys.capabilities,
-				exact: true,
-			});
+		await mounted.client.refetchQueries({
+			queryKey: desktopKeys.capabilities,
+			exact: true,
 		});
 		await click(resetButton(HOSTING_ROW), "the reset button must exist");
 		await settle(

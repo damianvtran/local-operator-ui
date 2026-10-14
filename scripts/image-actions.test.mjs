@@ -60,6 +60,7 @@ const bundle = await build({
 				blobFromDataUrl,
 				classifyAttachmentSource,
 				classifyImageSource,
+				downloadBlob,
 				hasImageActions,
 				httpImageFetchable,
 				imageActions,
@@ -98,6 +99,7 @@ const {
 	classifyAttachmentSource,
 	classifyImageSource,
 	createBlobUrl,
+	downloadBlob,
 	hasImageActions,
 	httpImageFetchable,
 	imageActions,
@@ -412,4 +414,54 @@ test("the shipped markdown renderer wires the image component in", () => {
 		MARKDOWN_IMG_IMPORT,
 		"and the map's entry must be imported",
 	);
+});
+
+// Native download completion is not observed here. Pin what the renderer controls:
+// the name, click, and a bounded delay before revoking its temporary URL (R1-3).
+test("downloadBlob clicks the named download and keeps its URL alive for 60 seconds", () => {
+	const saved = {
+		window: globalThis.window,
+		document: globalThis.document,
+		URL: globalThis.URL,
+	};
+	const anchor = {
+		click() {
+			this.clicked = true;
+		},
+	};
+	let timer;
+	let revoked = false;
+	try {
+		globalThis.URL = {
+			createObjectURL: () => "blob:save",
+			revokeObjectURL: () => {
+				revoked = true;
+			},
+		};
+		globalThis.window = {
+			setTimeout(fn, ms) {
+				timer = { fn, ms };
+			},
+		};
+		globalThis.document = {
+			createElement: () => anchor,
+			body: { appendChild() {}, removeChild() {} },
+		};
+		downloadBlob(
+			new Blob(["video"], { type: "video/mp4" }),
+			"Video abcdef12.mp4",
+		);
+		assert.equal(anchor.download, "Video abcdef12.mp4");
+		assert.equal(anchor.href, "blob:save");
+		assert.equal(anchor.clicked, true);
+		assert.equal(revoked, false);
+		assert.equal(timer.ms, 60_000);
+		timer.fn();
+		assert.equal(revoked, true);
+	} finally {
+		for (const [key, value] of Object.entries(saved)) {
+			if (value === undefined) delete globalThis[key];
+			else globalThis[key] = value;
+		}
+	}
 });
