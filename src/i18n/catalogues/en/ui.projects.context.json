@@ -1526,10 +1526,10 @@
 		}
 	},
 	"ui.projects.project_model.completed_total": {
-		"role": "project model: field, view or status label for “…/…”",
-		"tone": "Concise neutral label, retaining English sentence case.",
-		"note": "English source: {completed}/{total}. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site.",
-		"length": "English is 19 source characters. Keep this as a compact single control/status label; prefer comparable width, do not add an explanatory sentence.",
+		"role": "Milestones column in the Projects list: completed milestone count over total milestone count",
+		"tone": "Compact numeric ratio, not a percentage or a sentence.",
+		"note": "English source: {completed}/{total}. Both placeholders are already localized digit strings produced by shared formatNumber(..., { useGrouping: false }); the typed message accepts strings, not raw numbers. Keep completed as numerator and total as denominator, preserving the slash without added spaces. No noun is printed, so this ratio is intentionally invariant rather than an ICU count plural. The model omits the entire label when total is zero or negative.",
+		"length": "Keep the compact two-count fraction in its existing table cell; do not expand it into a verbal progress sentence.",
 		"placeholders": {
 			"completed": "Runtime binding on project-model: completed: formatNumber(completed, { useGrouping: false })",
 			"total": "Runtime binding on project-model: total: formatNumber(total, { useGrouping: false })"

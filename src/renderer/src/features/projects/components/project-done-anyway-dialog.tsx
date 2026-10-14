@@ -1,4 +1,4 @@
-import { formatNumber, t } from "@shared/i18n";
+import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The deliberate close: "this project has open milestones - mark it done

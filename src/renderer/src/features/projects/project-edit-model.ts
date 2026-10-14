@@ -1,4 +1,4 @@
-import { formatNumber, t } from "@shared/i18n";
+import { t } from "@shared/i18n";
 /**
  * The detail page's inline editing, as a pure model: the per-field rules the
  * wire will enforce, checked before any request; the changed-fields
@@ -162,9 +162,7 @@ export function projectTagsFieldRule(raw: string): {
 		return {
 			tags,
 			error: t("ui.projects.project_edit_model.up_to_project_tags_max_tags", {
-				PROJECT_TAGS_MAX: formatNumber(PROJECT_TAGS_MAX, {
-					useGrouping: false,
-				}),
+				PROJECT_TAGS_MAX,
 			}),
 		};
 	for (const tag of tags) {

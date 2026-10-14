@@ -411,7 +411,7 @@ export function milestoneCountLabel(completed: number, total: number): string {
 	if (total <= 0) return "";
 	return t("ui.projects.project_model.completed_total", {
 		completed: formatNumber(completed, { useGrouping: false }),
-		total: total,
+		total: formatNumber(total, { useGrouping: false }),
 	});
 }
 
