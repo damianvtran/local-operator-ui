@@ -550,3 +550,227 @@ test("turn end (agent_end) reorders nothing", () => {
 	s.emit({ type: "agent_end", generation: 1, messages: [] });
 	assert.deepEqual(s.order(), before);
 });
+
+/* ------------------------------------- parallel calls followed by more rows */
+
+/*
+ * REVIEW R1-M1 / QA Q2. The first version ranked unplaced parallel calls by their
+ * committed slot AHEAD of arrival index, so the next text row (no slot) sorted
+ * above a sibling call with slot >= 1 and hopped below it when the wake landed -
+ * 991 of 4000 fuzzed turns with up to three parallel calls. This generator builds
+ * whole turns the way the harness emits them (`harness/loop.py`): a message with
+ * N calls, `tool_call_compose` for each (sometimes absent), the batch STARTING in
+ * slot order and ENDING in any order, then the next message; the journal
+ * persists the assistant row and then the results in SLOT order, and its wakes
+ * arrive in that order some frames later. A deterministic PRNG, so a failure
+ * names its seed.
+ */
+function prng(seed) {
+	let x = seed >>> 0 || 1;
+	return () => {
+		x ^= x << 13;
+		x >>>= 0;
+		x ^= x >>> 17;
+		x ^= x << 5;
+		x >>>= 0;
+		return x / 0x100000000;
+	};
+}
+
+function fuzzTurn(seed, lane) {
+	const rand = prng(seed);
+	const pick = (n) => Math.floor(rand() * n);
+	const journal = lane !== "legacy";
+	let clock = 1_000_000;
+	let seq = 0;
+	let state = R.applyHistoryPage(
+		R.EMPTY_TRANSCRIPT,
+		{
+			entries: [
+				{
+					id: "u1",
+					type: "message",
+					ts: 1000,
+					payload: userPayload("u1", "go"),
+					...(journal ? { journal_seq: 0 } : {}),
+				},
+			],
+			has_more: false,
+			cursor_missing: false,
+			...(journal
+				? { journal_generation: "g", journal_order_state: "ready" }
+				: {}),
+		},
+		{ authoritative: true, peerSource: lane === "peer" },
+	);
+	const observed = [];
+	const emit = (event) => {
+		clock += 50;
+		seq += 1;
+		state = R.applyEvent(state, event, clock, { frame: { epoch: "e", seq } });
+		observed.push(state.records.map((record) => record.id));
+	};
+	const committed = ["u1"];
+	const settled = ["u1"];
+	const wakeQueue = []; // [dueFrame, row]
+	let frame = 0;
+	let journalSeq = 0;
+	let lastDue = 0;
+	const owe = (row) => {
+		journalSeq += 1;
+		// Wakes are emitted in journal order, so a later row never overtakes an
+		// earlier one, but each trails by a random number of frames.
+		lastDue = Math.max(lastDue, frame + pick(6) * (pick(4) === 0 ? 4 : 1));
+		wakeQueue.push([lastDue, { ...row, journal_seq: journalSeq }]);
+	};
+	const tick = () => {
+		frame += 1;
+		while (wakeQueue.length > 0 && wakeQueue[0][0] <= frame) {
+			const [, row] = wakeQueue.shift();
+			if (journal)
+				emit({
+					type: "journal_order_ready",
+					journal_generation: "g",
+					rows: [row],
+				});
+		}
+	};
+	const messages = 1 + pick(4);
+	let call = 0;
+	for (let m = 1; m <= messages + 1; m++) {
+		const id = `m${m}`;
+		const last = m === messages + 1;
+		const n = last ? 0 : 1 + pick(3);
+		const ids = Array.from({ length: n }, () => `c${++call}`);
+		emit({ type: "message_start", message: text(id, "") });
+		tick();
+		emit({
+			type: "message_update",
+			message: text(id, ""),
+			delta: `T${m}`,
+		});
+		tick();
+		if (rand() < 0.7)
+			for (const c of ids) {
+				emit({
+					type: "tool_call_compose",
+					tool_call_id: c,
+					tool_name: "bash",
+					argument_bytes: 5,
+				});
+				tick();
+			}
+		emit({
+			type: "message_end",
+			message: text(
+				id,
+				`T${m}`,
+				ids.map((c) => call_(c)),
+			),
+		});
+		committed.push(id);
+		settled.push(id);
+		owe(assistantRow(id, 0));
+		tick();
+		for (const c of ids) {
+			emit(bash(c, c));
+			tick();
+		}
+		const ends = ids.slice();
+		for (let i = ends.length - 1; i > 0; i--) {
+			const j = pick(i + 1);
+			[ends[i], ends[j]] = [ends[j], ends[i]];
+		}
+		for (const c of ends) {
+			emit(done(c));
+			tick();
+		}
+		for (const c of ids) {
+			committed.push(`r-${c}`);
+			settled.push(`tool:${c}`);
+			owe(toolRow(`r-${c}`, c, 0));
+		}
+	}
+	while (wakeQueue.length > 0) tick();
+	return { observed, final: observed.at(-1), settled };
+}
+const call_ = call;
+
+for (const lane of ["journal", "peer", "legacy"]) {
+	test(`fuzz, ${lane} lane: 1-3 parallel calls then more text - no painted row hops, final order is committed order`, () => {
+		for (let seed = 1; seed <= 1500; seed++) {
+			const { observed, final, settled } = fuzzTurn(seed, lane);
+			const steps = observed.map((order, i) => ({ at: `step ${i}`, order }));
+			assert.deepEqual(hops(steps), [], `seed ${seed}`);
+			assert.deepEqual(final, settled, `seed ${seed}`);
+		}
+	});
+}
+
+test("the reported shape: two parallel calls, then the next text, before any wake", () => {
+	const s = session({ journal: true });
+	s.emit({ type: "message_start", message: text("m1", "") });
+	s.emit({
+		type: "message_end",
+		message: text("m1", "A", [call("c1"), call("c2")]),
+	});
+	s.emit(bash("c1", "a"));
+	s.emit(bash("c2", "b"));
+	s.emit(done("c1"));
+	s.emit(done("c2"));
+	s.emit({ type: "message_start", message: text("m2", "") });
+	assert.deepEqual(s.order(), ["u1", "m1", "tool:c1", "tool:c2", "m2"]);
+	s.emit({ type: "message_end", message: text("m2", "B", [call("c3")]) });
+	// A call paints a row when it starts (or composes), not at message_end.
+	s.emit(bash("c3", "c"));
+	assert.deepEqual(s.order(), [
+		"u1",
+		"m1",
+		"tool:c1",
+		"tool:c2",
+		"m2",
+		"tool:c3",
+	]);
+	s.ready(
+		assistantRow("m1", 1),
+		toolRow("r1", "c1", 2),
+		toolRow("r2", "c2", 3),
+	);
+	assert.deepEqual(s.order(), [
+		"u1",
+		"m1",
+		"tool:c1",
+		"tool:c2",
+		"m2",
+		"tool:c3",
+	]);
+});
+
+test("mid-turn join (applyLiveSeed) with parallel calls then text keeps arrival order", () => {
+	const seed = [
+		{ type: "agent_start", generation: 1 },
+		{ type: "message_start", message: text("m1", "") },
+		{ type: "message_end", message: text("m1", "A", [call("c1"), call("c2")]) },
+		bash("c1", "a"),
+		bash("c2", "b"),
+		done("c1"),
+		done("c2"),
+		{ type: "message_start", message: text("m2", "") },
+		{ type: "message_update", message: text("m2", ""), delta: "B" },
+	];
+	const base = R.applyHistoryPage(
+		R.EMPTY_TRANSCRIPT,
+		pageOf([durable("u1", 0, userPayload("u1", "go"))]),
+		{ authoritative: true },
+	);
+	const state = R.applyLiveSeed(
+		base,
+		{ streaming: true, generation: 1, live_events: seed },
+		5_000_000,
+		{ epoch: "e", seq: 10 },
+	);
+	assert.deepEqual(
+		state.records.map((record) => record.id),
+		["u1", "m1", "tool:c1", "tool:c2", "m2"],
+	);
+});

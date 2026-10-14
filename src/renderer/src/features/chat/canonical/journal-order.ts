@@ -337,6 +337,61 @@ function arrivalPlacement(
 }
 
 /**
+ * Put the unplaced parallel calls of ONE assistant row in their committed slot
+ * order, in the positions those calls already occupy.
+ *
+ * WHY A POST-PASS AND NOT A RANK TERM. Parallel calls START and END in
+ * completion order, but the journal persists their results in slot order
+ * (`harness/loop.py::_execute_batch` extends `results` by slot), so until their
+ * wakes land the live order has to be corrected to what will be committed. The
+ * first version added the slot as a rank-tuple element ahead of `index`; a
+ * tuple compares EVERY row on it, and a row with no slot (text) then sorted
+ * ahead of a sibling call with slot >= 1 - the next text painted between two
+ * parallel calls and hopped below them when the wake landed (review R1-M1, QA
+ * Q2). The slot is only meaningful between two calls of the same owner, so it
+ * is applied only there: the calls swap among THEMSELVES, every other row keeps
+ * the slot the arrival chain gave it, and nothing about a call's place relative
+ * to text can change.
+ *
+ * Only calls with no coordinate of their own take part: a placed call is
+ * ordered by its journal_seq, which already is the committed order.
+ */
+function siblingSlotOrder(
+	state: TranscriptState,
+	ordered: TranscriptRecord[],
+): TranscriptRecord[] {
+	const owners = state.journalCallOwners;
+	const slots = state.journalCallSlots;
+	if (!owners || !slots) return ordered;
+	const groups = new Map<string, number[]>();
+	ordered.forEach((record, at) => {
+		if (record.kind !== "tool" || ordinal(record.journalSeq)) return;
+		const owner = owners.get(record.toolCallId);
+		if (owner === undefined || !slots.has(record.toolCallId)) return;
+		const seats = groups.get(owner);
+		if (seats) seats.push(at);
+		else groups.set(owner, [at]);
+	});
+	let result = ordered;
+	for (const seats of groups.values()) {
+		if (seats.length < 2) continue;
+		const bySlot = seats
+			.map((at) => ordered[at])
+			.sort(
+				(a, b) =>
+					(slots.get((a as { toolCallId: string }).toolCallId) ?? 0) -
+					(slots.get((b as { toolCallId: string }).toolCallId) ?? 0),
+			);
+		if (bySlot.every((record, i) => record === ordered[seats[i]])) continue;
+		if (result === ordered) result = ordered.slice();
+		seats.forEach((at, i) => {
+			result[at] = bySlot[i];
+		});
+	}
+	return result;
+}
+
+/**
  * One transitive tuple policy, never an ordinal/time pairwise hybrid. Confirmed
  * rows use same-domain source positions; causal children use their verified
  * owner position plus their OWN ordinal. Unknown rows keep admission order in
@@ -417,7 +472,7 @@ export function journalOrderedRecords(
 			record.provisional === true &&
 			own === undefined
 		)
-			return [1, 0, 0, 0, 0, index];
+			return [1, 0, 0, 0, index];
 		const anchor =
 			record.kind === "supplement"
 				? record.anchor
@@ -439,10 +494,6 @@ export function journalOrderedRecords(
 					placement,
 					owner !== undefined ? 1 : own !== undefined ? 0 : 2,
 					own ?? Number.MAX_SAFE_INTEGER,
-					// Unplaced siblings of one owner keep their committed slot order.
-					record.kind === "tool"
-						? (state.journalCallSlots?.get(record.toolCallId) ?? 0)
-						: 0,
 					index,
 				];
 	};
@@ -459,8 +510,11 @@ export function journalOrderedRecords(
 		return 0;
 	});
 	if (!changed && ranked.every((row, index) => row.index === index))
-		return input;
-	return ranked.map((row) => row.record);
+		return siblingSlotOrder(state, input);
+	return siblingSlotOrder(
+		state,
+		ranked.map((row) => row.record),
+	);
 }
 
 /**
@@ -566,7 +620,7 @@ function journalOrderedPeerRecords(
 			record.provisional === true &&
 			own === undefined
 		)
-			return [1, 0, 0, 0, 0, index];
+			return [1, 0, 0, 0, index];
 		const anchor =
 			record.kind === "supplement"
 				? record.anchor
@@ -588,10 +642,6 @@ function journalOrderedPeerRecords(
 					placementSeq,
 					owner !== undefined ? 1 : own !== undefined ? 0 : 2,
 					own ?? Number.MAX_SAFE_INTEGER,
-					// Unplaced siblings of one owner keep their committed slot order.
-					record.kind === "tool"
-						? (state.journalCallSlots?.get(record.toolCallId) ?? 0)
-						: 0,
 					index,
 				];
 	};
@@ -608,8 +658,11 @@ function journalOrderedPeerRecords(
 		return 0;
 	});
 	if (!changed && ranked.every((row, index) => row.index === index))
-		return input;
-	return ranked.map((row) => row.record);
+		return siblingSlotOrder(state, input);
+	return siblingSlotOrder(
+		state,
+		ranked.map((row) => row.record),
+	);
 }
 
 /** Raw IDs only: the index cannot resolve a virtual `tool:...` record key. */

@@ -45,6 +45,7 @@ import "./markdown.css";
 import { MAX_PROBE_PATHS } from "../../../../../shared/desktop-contract";
 import { containsRenderableMath } from "./markdown-math";
 import { MermaidDiagram } from "./mermaid-diagram";
+import { SEPARATOR_CLASS, SEPARATOR_RUN } from "./slash-token";
 
 // katex.min.css is unconditional dead weight for the vast majority of messages,
 // which contain no math. Vite turns this dynamic import into a chunk that
@@ -117,7 +118,7 @@ type MarkdownRendererProps = {
 };
 
 const LANGUAGE_REGEX = /language-(\w+)/;
-const WHITESPACE_RUN = /\s+/;
+const WHITESPACE_RUN = SEPARATOR_RUN;
 /*
  * A list or an indented-code block is only ended by a blank line when the NEXT
  * line does not continue it, and that is normally unknowable until the line is
@@ -126,7 +127,7 @@ const WHITESPACE_RUN = /\s+/;
  * a list marker/digit (`-`, `*`, `+`, `1.`), so a first character outside that
  * set ends the block however the line goes on.
  */
-const PARTIAL_LINE_ENDS_BLOCK = /^[^\s\d*+-]/;
+const PARTIAL_LINE_ENDS_BLOCK = new RegExp(`^[^${SEPARATOR_CLASS}\\d*+-]`);
 const NEWLINE_REGEX = /\n$/;
 
 /**
@@ -725,6 +726,22 @@ MarkdownRenderer.displayName = "MarkdownRenderer";
 export const streamingRenderStats = { settled: 0, tail: 0 };
 
 /**
+ * The open block's component map: the shipped map with the anchor made inert.
+ *
+ * A half-written link target is not a target: `https://example.com/pl` would
+ * autolink to a URL that does not exist, and a complete `[label](url)` is still
+ * inside a paragraph that may yet grow. The label/URL text paints in place and
+ * the anchor appears when the block closes - the guarantee the old plain-text tail
+ * gave (`a block still being written has no anchor`), kept now that the tail is
+ * parsed. A fragment, not a `<span>`, so the DOM differs from the closed form by
+ * the anchor element alone.
+ */
+const OPEN_BLOCK_COMPONENTS: Components = {
+	...MARKDOWN_COMPONENTS,
+	a: ({ children }) => <>{children}</>,
+};
+
+/**
  * One block of a streaming message - closed, or still being written.
  *
  * THE SAME COMPONENT, AT THE SAME KEY, FOR BOTH. A closed block's source is
@@ -741,14 +758,17 @@ export const streamingRenderStats = { settled: 0, tail: 0 };
  * a mounted element: the DOM the reader is looking at is the DOM that settles,
  * with no remount, no re-layout and no flash.
  *
- * COST. The open block is re-parsed per frame; closed blocks never. That is
- * bounded by the size of ONE block, not of the message (the property
- * `markdown-blocks.ts` was written for), measured in
- * `scripts/streaming-render-budget.mjs`. The one block whose size is unbounded in
- * practice is an open code fence, which is why it is NOT parsed per frame: its
- * body is painted directly into the exact `<pre><code class="language-x">` a
- * parse would produce (`OpenFenceBody`), so a growing fence costs one text-node
- * update per frame.
+ * COST. The open block is re-parsed per frame; closed blocks never. The cost
+ * grows with the size of the OPEN BLOCK, not of the message - and one block can
+ * be message-sized (a 300-item list, a 13 KB paragraph, a 200-row table), where
+ * measured per-flush cost passes the 16.7 ms frame (QA Q5: p50 10.6 ms for a
+ * 22 KB list). The scanner splits a list per item only when blank lines do, so
+ * that case is a known limit of this design, not a bound. The one block whose
+ * size is unbounded in practice and that IS cheap is an open code fence, which
+ * is why it is NOT parsed per frame: its body is painted directly into the exact
+ * `<pre><code class="language-x">` a parse would produce (`OpenFenceBody`), so a
+ * growing fence costs one text-node update per frame. Nested fences are the
+ * exception and take the parsed path (see `fence` below).
  *
  * LINKIFY follows `closed`: a closed block's source can never change again, so a
  * path inside it is a finished path; the open block is never scanned
@@ -761,22 +781,6 @@ export const streamingRenderStats = { settled: 0, tail: 0 };
  * `citations` is OFF: nothing on this path is a user turn, so a chip here could
  * only dress up text the MODEL wrote.
  */
-/**
- * The open block's component map: the shipped map with the anchor made inert.
- *
- * A half-written link target is not a target: `https://example.com/pl` would
- * autolink to a URL that does not exist, and a complete `[label](url)` is still
- * inside a paragraph that may yet grow. The label/URL text paints in place and
- * the anchor appears when the block closes - the guarantee the old plain-text tail
- * gave (`a block still being written has no anchor`), kept now that the tail is
- * parsed. A fragment, not a `<span>`, so the DOM differs from the closed form by
- * the anchor element alone.
- */
-const OPEN_BLOCK_COMPONENTS: Components = {
-	...MARKDOWN_COMPONENTS,
-	a: ({ children }) => <>{children}</>,
-};
-
 const ParsedBlock = memo(
 	({ source, closed }: { source: string; closed: boolean }) => {
 		if (closed) streamingRenderStats.settled += 1;
@@ -785,10 +789,16 @@ const ParsedBlock = memo(
 			() => (closed ? source : closeOpenMarkdown(source)),
 			[closed, source],
 		);
-		const fence = useMemo(
-			() => (closed ? null : openFenceOf(source)),
-			[closed, source],
-		);
+		/*
+		 * A fence nested in a list item or quote is NOT painted directly: its `<pre>`
+		 * belongs inside that item, and a sibling `<pre>` would move into it on close
+		 * (review R1-m1). It takes the parsed path, with only its closer appended.
+		 */
+		const fence = useMemo(() => {
+			if (closed) return null;
+			const open = openFenceOf(source);
+			return open !== null && !open.nested ? open : null;
+		}, [closed, source]);
 		const { remarkPlugins, rehypePlugins } = useMathPipeline(
 			display,
 			closed,
