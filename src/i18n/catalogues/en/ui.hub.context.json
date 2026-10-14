@@ -687,6 +687,46 @@
 	"ui.hub.links.unresolved_mark": {
 		"role": "aria label",
 		"tone": "plain, precise; safety statements must not weaken or promise success",
-		"note": "The roster affordance for a link whose source is not confirmed: names the state and the one action it opens. NOT a healthy mark and not a policy menu. No placeholders."
+		"note": "The roster affordance for a link whose source is not confirmed: NAMES the row ({item}, an escaped display byte) and the one action it opens (D25 - two unresolved rows both truncate, so the mark must say which it belongs to). {item} is an escaped display byte."
+	},
+	"ui.hub.links.mixed": {
+		"role": "status",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "The collapsed summary's value for a policy pair the group's rows DISAGREE on. A group overclaim (stating rows[0]'s policy for all) is a false claim about the user's config (D24), so a disagreement reads 'Mixed' rather than naming one row. No placeholders."
+	},
+	"ui.hub.links.aggregate_mark": {
+		"role": "aria label",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "The aggregate roster mark's announced label: the origin count ({count}, an ICU plural) and the rolled-up worst state ({state}, a localised mark_* sentence). Both were visual-only/aria-hidden before (D23). Numeric ICU plural; {state} is localised copy, not a raw code."
+	},
+	"ui.hub.links.mark_healthy": {
+		"role": "mark state",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "The aggregate mark's 'healthy' state word, folded into its aria-label. Plain adjective, no placeholders."
+	},
+	"ui.hub.links.mark_review": {
+		"role": "mark state",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "The aggregate mark's 'review' state word (a row needs a decision). No placeholders."
+	},
+	"ui.hub.links.mark_failed": {
+		"role": "mark state",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "The aggregate mark's 'failed' state word (an action did not complete). No placeholders."
+	},
+	"ui.hub.links.mark_available": {
+		"role": "mark state",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "The aggregate mark's 'available' state word (an update waits to be applied). No placeholders."
+	},
+	"ui.hub.links.mark_busy": {
+		"role": "mark state",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "The aggregate mark's 'busy' state word (an operation is in flight). No placeholders."
+	},
+	"ui.hub.links.mark_applied": {
+		"role": "mark state",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "The aggregate mark's 'applied' state word (an operation completed). No placeholders."
 	}
 }

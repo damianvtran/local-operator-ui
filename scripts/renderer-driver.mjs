@@ -43079,6 +43079,22 @@ async function sceneHubLinks(cdp, app) {
 	 * the same frame) BEFORE expanding, and assert the unresolved affordance is
 	 * present on the roster in this state too.
 	 */
+	/*
+	 * D24: the collapsed summary must NOT state one row's policy for a group that
+	 * disagrees. The reviewer fixture is exactly that case - origin 1 Subscribe On,
+	 * origin 2 (Minerva · Private) Subscribe Off - so the pair must read "Mixed".
+	 */
+	const collapsedSummary = await cdp.evaluate(`(() => {
+		const trigger = document.querySelector('[data-hub-links-panel] button[aria-expanded]');
+		return trigger ? trigger.textContent : null;
+	})()`);
+	check(
+		"a collapsed multi-origin summary states Mixed, never one row's policy for the group",
+		collapsedSummary !== null &&
+			/Mixed/.test(collapsedSummary) &&
+			!/Subscribe On/.test(collapsedSummary),
+		JSON.stringify({ summary: collapsedSummary }),
+	);
 	await captureSettled(cdp, `hub-links-${size}-${theme}-collapsed`);
 	/*
 	 * The roster affordance is asserted only where the sidebar DOCKED: below the
@@ -43099,6 +43115,19 @@ async function sceneHubLinks(cdp, app) {
 			"an unresolved-only item draws the source-not-confirmed roster affordance",
 			collapsedMarks.unresolved === true,
 			JSON.stringify(collapsedMarks),
+		);
+		/*
+		 * D25: the mark NAMES its row. Two unresolved items both truncate to
+		 * "legac…", so an unnamed mark cannot be attributed.
+		 */
+		const unresolvedNamed = await cdp.evaluate(`(() => {
+			const el = document.querySelector('[data-testid="hub-mark-unresolved"]');
+			return el ? el.getAttribute('aria-label') : null;
+		})()`);
+		check(
+			"the unresolved mark's label names its row",
+			unresolvedNamed !== null && /legacy-/i.test(unresolvedNamed),
+			JSON.stringify({ label: unresolvedNamed }),
 		);
 	}
 	await verb(cdp, "press", '[data-agents-pane] button[aria-expanded="false"]');
@@ -43281,6 +43310,21 @@ async function sceneHubLinks(cdp, app) {
 				(affordanceText.match(/Private/g) ?? []).length === 0 &&
 				(unresolvedItem === null || !affordanceText.includes(unresolvedItem)),
 			JSON.stringify({ text: affordanceText, item: unresolvedItem }),
+		);
+		/*
+		 * Fold (correctness): the "Choose a scope to continue" hint belongs to the
+		 * signed-in chooser; signed out the chooser is not on screen, so the hint
+		 * must be absent rather than contradicting the surface.
+		 */
+		const hintPresent = await cdp.evaluate(`(() => {
+			const row = document.querySelector('[data-hub-source-unresolved]');
+			if (!row) return null;
+			return /choose a scope/i.test(row.textContent || '');
+		})()`);
+		check(
+			"the signed-out surface shows no 'Choose a scope' hint (no chooser is on screen)",
+			hintPresent === false,
+			JSON.stringify({ hintPresent }),
 		);
 		await captureSettled(cdp, `hub-links-${size}-${theme}-resolve-signed-out`);
 		return;

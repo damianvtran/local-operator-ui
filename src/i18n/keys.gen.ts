@@ -156,6 +156,7 @@ export type MessageParams = {
 		outcome: string;
 	};
 	"ui.hub.links.actual_model": { model: string };
+	"ui.hub.links.aggregate_mark": { count: number; state: string };
 	"ui.hub.links.available": { item: string; source: string };
 	"ui.hub.links.busy": { direction: string; item: string; source: string };
 	"ui.hub.links.confirm_publish": undefined;
@@ -173,6 +174,13 @@ export type MessageParams = {
 	"ui.hub.links.links_count": { count: number };
 	"ui.hub.links.load_failed": undefined;
 	"ui.hub.links.loading": undefined;
+	"ui.hub.links.mark_applied": undefined;
+	"ui.hub.links.mark_available": undefined;
+	"ui.hub.links.mark_busy": undefined;
+	"ui.hub.links.mark_failed": undefined;
+	"ui.hub.links.mark_healthy": undefined;
+	"ui.hub.links.mark_review": undefined;
+	"ui.hub.links.mixed": undefined;
 	"ui.hub.links.prefer_local": undefined;
 	"ui.hub.links.prefer_remote": undefined;
 	"ui.hub.links.preview_changed": undefined;
@@ -206,7 +214,7 @@ export type MessageParams = {
 	"ui.hub.links.sources_count": { count: number };
 	"ui.hub.links.title": undefined;
 	"ui.hub.links.unknown_baseline": undefined;
-	"ui.hub.links.unresolved_mark": undefined;
+	"ui.hub.links.unresolved_mark": { item: string };
 	"ui.hub.links.updated": { item: string; source: string };
 	"ui.hub.skills.catalogue_failed": { source: string };
 	"ui.hub.skills.empty": undefined;

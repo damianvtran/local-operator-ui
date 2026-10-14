@@ -13,7 +13,7 @@ import {
 	PopoverContent,
 } from "@shared/components/ui/popover";
 import { Tooltip } from "@shared/components/ui/tooltip";
-import { t } from "@shared/i18n";
+import { type WithoutParams, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
@@ -220,11 +220,17 @@ export function HubLinkSidebarMark({
  * (there is no policy to edit on a row with no confirmed origin).
  */
 export function HubUnresolvedMark({
+	item,
 	staged,
 	onResolve,
-}: { staged: boolean; onResolve: () => void }) {
+}: { item: string; staged: boolean; onResolve: () => void }) {
 	useI18nLocale();
-	const label = t("ui.hub.links.unresolved_mark");
+	/*
+	 * D25: the label NAMES the row. Two unresolved items both truncate to "legac…"
+	 * in the roster, so a mark that did not name its item left the reader unable to
+	 * tell which one it belongs to.
+	 */
+	const label = t("ui.hub.links.unresolved_mark", { item });
 	return (
 		<Tooltip content={label} side="right" disableHoverableContent>
 			<button
@@ -298,7 +304,23 @@ export function HubLinkAggregateMark({
 		"healthy",
 	);
 	const Glyph = ICON[worst as keyof typeof ICON] ?? Link2;
-	const label = t("ui.hub.links.title");
+	/*
+	 * D23: the count and the rolled-up state were aria-hidden visual-only, so a
+	 * screen reader heard "Hub links" and nothing about either. Both are folded
+	 * INTO the label, which is the only thing announced.
+	 */
+	const MARK_STATE_KEY: Record<string, WithoutParams> = {
+		healthy: "ui.hub.links.mark_healthy",
+		review: "ui.hub.links.mark_review",
+		failed: "ui.hub.links.mark_failed",
+		available: "ui.hub.links.mark_available",
+		busy: "ui.hub.links.mark_busy",
+		applied: "ui.hub.links.mark_applied",
+	};
+	const label = t("ui.hub.links.aggregate_mark", {
+		count: links.length,
+		state: t(MARK_STATE_KEY[worst] ?? "ui.hub.links.mark_healthy"),
+	});
 	return (
 		<Tooltip content={label} side="right" disableHoverableContent>
 			<button
@@ -322,7 +344,7 @@ export function HubLinkAggregateMark({
 				<Glyph aria-hidden="true" className="size-3.5" />
 				<span
 					aria-hidden="true"
-					className="absolute -right-0.5 -bottom-0.5 flex h-3 min-w-3 items-center justify-center rounded-full bg-surface px-0.5 text-[9px] leading-none text-ink-muted"
+					className="absolute -right-0.5 -bottom-0.5 flex h-3 min-w-3 items-center justify-center rounded-full bg-surface px-0.5 text-meta-sm leading-none text-ink-muted"
 				>
 					{links.length}
 				</span>

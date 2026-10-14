@@ -6713,10 +6713,14 @@ export function ChatSidebar({
 					)}
 					{unresolvedOrigins.length > 0 && (
 						<HubUnresolvedMark
+							item={name}
 							staged={staged}
 							onResolve={() =>
 								navigate(
-									`/agents?kind=${kind}&name=${encodeURIComponent(name)}&resolve=1`,
+									/* A fresh token per press: a repeat press on the SAME
+									 * already-open row must re-open/re-focus it, which a
+									 * constant `=1` cannot do (CODE MINOR-E). */
+									`/agents?kind=${kind}&name=${encodeURIComponent(name)}&resolve=${Date.now()}`,
 								)
 							}
 						/>

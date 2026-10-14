@@ -136,5 +136,13 @@
 	"ui.hub.links.scope_required": "Choose a scope to continue",
 	"ui.hub.links.sources_count": "{count, plural, one {# source} other {# sources}}",
 	"ui.hub.links.links_count": "{count, plural, one {# link} other {# links}}",
-	"ui.hub.links.unresolved_mark": "Source not confirmed. Confirm the source."
+	"ui.hub.links.unresolved_mark": "{item}: source not confirmed. Confirm the source.",
+	"ui.hub.links.mixed": "Mixed",
+	"ui.hub.links.aggregate_mark": "{count, plural, one {# link} other {# links}}; {state}",
+	"ui.hub.links.mark_healthy": "up to date",
+	"ui.hub.links.mark_review": "needs review",
+	"ui.hub.links.mark_failed": "failed",
+	"ui.hub.links.mark_available": "update available",
+	"ui.hub.links.mark_busy": "working",
+	"ui.hub.links.mark_applied": "applied"
 }

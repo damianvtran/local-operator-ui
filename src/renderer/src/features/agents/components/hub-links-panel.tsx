@@ -685,8 +685,10 @@ export function HubUnresolvedSource({
 					 * Item 7 (UX U5): distinguish the KNOWN-scope conflict from any
 					 * other failure instead of one blanket sentence. */}
 					{/* UX U8: the confirm stays disabled until a scope is chosen; the hint
-					 * names the missing step while it is. */}
-					{!chose && !resolution.isPending ? (
+					 * names the missing step while it is. Signed OUT there is no chooser
+					 * on screen (the sign-in affordance stands in for it), so the sentence
+					 * would contradict the surface - hide it then (D-fold, correctness). */}
+					{!chose && !resolution.isPending && isAuthenticated ? (
 						<p className="text-meta text-ink-muted">
 							{t("ui.hub.links.scope_required")}
 						</p>
@@ -745,7 +747,14 @@ export function HubLinksPanel({
 	 * reader ON the act rather than on a collapsed panel they must open.
 	 */
 	const [searchParams] = useSearchParams();
-	const openResolve = searchParams.get("resolve") === "1";
+	/*
+	 * The `resolve` value is a REQUEST TOKEN, not a boolean: the sidebar affordance
+	 * writes a fresh value on every press, so a second press for the SAME
+	 * already-open row re-mounts the region open/focused instead of no-opping
+	 * (CODE MINOR-E). A plain `=1` would leave `initialOpen`-seeded state unchanged.
+	 */
+	const resolveRequest = searchParams.get("resolve");
+	const openResolve = resolveRequest !== null;
 	const { memberships } = useMembershipsQuery({
 		enabled: enabled && isAuthenticated,
 	});
@@ -789,6 +798,19 @@ export function HubLinksPanel({
 				? "ui.hub.subscriptions.configured_on"
 				: "ui.hub.subscriptions.configured_off",
 		);
+	/*
+	 * D24: a group policy is stated ONLY when EVERY row agrees. Reading the pair
+	 * off `rows[0]` made a multi-origin item OVERCLAIM - the summary said
+	 * "Subscribe On" while the second origin ("Minerva · Private") was Off, which
+	 * is a false claim about the user's own configuration. Where the rows differ,
+	 * the pair reads "mixed" rather than naming one row's policy for the group.
+	 */
+	const agreeOn = (value: (link: HubLink) => boolean) => {
+		const first = rows[0] ? value(rows[0]) : false;
+		return rows.every((link) => value(link) === first);
+	};
+	const groupOnOff = (value: (link: HubLink) => boolean) =>
+		agreeOn(value) ? onOff(value(rows[0])) : t("ui.hub.links.mixed");
 	const summaryState = (() => {
 		if (rows.length > 0) {
 			const first = rows[0];
@@ -798,9 +820,9 @@ export function HubLinksPanel({
 					: "";
 			return `${hubLinkSourceName(first)}${origins} · ${t(
 				"ui.hub.subscriptions.subscribe",
-			)} ${onOff(first.policy.subscribe)} · ${t(
+			)} ${groupOnOff((link) => link.policy.subscribe)} · ${t(
 				"ui.hub.subscriptions.auto_push",
-			)} ${onOff(first.policy.auto_push)}`;
+			)} ${groupOnOff((link) => link.policy.auto_push)}`;
 		}
 		if (unresolved.length > 0) {
 			const count =
@@ -872,7 +894,11 @@ export function HubLinksPanel({
 					))}
 					{unresolved.map((row) => (
 						<HubUnresolvedSource
-							key={`${row.kind}:${row.local_id}`}
+							/* CODE MINOR-E: the key carries the request timestamp, so a
+							 * SECOND `?resolve=1` press for the SAME already-open row
+							 * REMOUNTS the region open/focused instead of no-opping on
+							 * mount-only state (`initialOpen` seeds `useState` once). */
+							key={`${row.kind}:${row.local_id}:${resolveRequest}`}
 							row={row}
 							source={approvedSource}
 							organizations={organizations}
