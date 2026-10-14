@@ -55,8 +55,8 @@ import { useLanguageDialogStore } from "./language-dialog-store";
 import { settingHelpId } from "./setting-combobox";
 import {
 	DIALOG_EFFECTIVE_SURFACE,
-	languageIdentifierFor,
 	SettingControl,
+	languageIdentifierFor,
 	settingEffectiveId,
 	settingEffectiveIdFor,
 } from "./setting-control";
@@ -281,8 +281,7 @@ export const GeneralLanguageSetting: FC<{ focus?: boolean }> = ({
 											? "ui.settings.language.general.last_known"
 											: "ui.settings.language.general.effective",
 										{
-											locale:
-												languageIdentifierFor(locale)?.name ?? locale,
+											locale: languageIdentifierFor(locale)?.name ?? locale,
 										},
 									)
 								: t("ui.settings.language.general.no_resolution")}
