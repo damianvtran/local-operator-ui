@@ -84,6 +84,9 @@ test("an unterminated fence closes with its own marker; a closed one is left alo
 		marker: "```",
 		info: "mermaid",
 		body: "graph TD",
+		indent: "",
+		nested: false,
+		held: 0,
 	});
 });
 
@@ -155,4 +158,68 @@ test("every prefix: a complete prefix is a fixed point and the painted prefix ne
 			`not a fixed point: ${JSON.stringify(text)}`,
 		);
 	}
+});
+
+/* ------------------------------------------- review round 1 (R1, D, Q) */
+
+test("a half-typed closing fence is held back, never painted as a code line (D2)", () => {
+	for (const partial of ["`", "``"]) {
+		const source = `\`\`\`ts\nconst a = 1;\n${partial}`;
+		const fence = openFenceOf(source);
+		assert.equal(fence.body, "const a = 1;\n");
+		assert.equal(fence.held, partial.length);
+		assert.equal(closed(source), "```ts\nconst a = 1;\n```");
+	}
+	// Not a closer: a code line that merely STARTS with a backtick, and a run as
+	// long as the opener (which really closes the fence).
+	assert.equal(openFenceOf("```\n`x").body, "`x");
+	assert.equal(openFenceOf("```\nx\n```"), null);
+});
+
+test("a fence in a list item is nested, keeps its indent on the closer, and is not a direct paint (R1-m1)", () => {
+	const source = "1. step\n   ```sh\n   run";
+	const fence = openFenceOf(source);
+	assert.equal(fence.nested, true);
+	assert.equal(closed(source), "1. step\n   ```sh\n   run\n   ```");
+	assert.equal(openFenceOf("go\n\n```sh\nrun").nested, false);
+});
+
+test("an indented code block gets no stray closer (R1-m1)", () => {
+	assert.equal(closed("    ```\nx"), "    ```\nx");
+	assert.equal(closed("    a *b"), "    a *b");
+});
+
+test("a bare `[` is literal until a target begins (R1-m2)", () => {
+	assert.equal(closed("x = arr[0"), "x = arr[0");
+	assert.equal(closed("array[i] and arr[j"), "array[i] and arr[j");
+	assert.equal(closed("see [1"), "see [1");
+	// A label that can still become a link keeps painting without its bracket.
+	assert.equal(closed("see [the docs"), "see the docs");
+	assert.equal(closed("see [the docs]("), "see the docs");
+	assert.equal(closed("see [the docs](http://exa"), "see the docs");
+});
+
+test("globs, arithmetic and identifiers are not emphasis (R1-m3, Q3)", () => {
+	for (const text of [
+		"match *.ts files",
+		"src/**/*.ts",
+		"Run cat *.txt and then *.md files.",
+		"a*b and x*y",
+		"costs $5*2 and $10",
+		"The __init__ method and __dunder__init are special.",
+		"Press the ` key to open.",
+		"wrote a footnote*",
+	])
+		assert.equal(closed(text), text, text);
+	// Real emphasis still closes.
+	assert.equal(closed("a *real one"), "a *real one*");
+	assert.equal(closed("a **bold"), "a **bold**");
+});
+
+test("the digits of an ordered-list marker after a blank line are held (D1)", () => {
+	for (const tail of ["1", "12", "1.", "1. "])
+		assert.equal(closed(`- a\n- b\n\n${tail}`), "- a\n- b\n\n");
+	assert.equal(closed("- a\n\n1. s"), "- a\n\n1. s");
+	// A number that ends a prose line is a number.
+	assert.equal(closed("total:\n42"), "total:\n42");
 });

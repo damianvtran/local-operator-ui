@@ -57,6 +57,7 @@ const TRAILING_WHITESPACE = /\s+$/;
 const BLANK_LINE_RUN = /\n[ \t]*\n/g;
 const TABLE_ROW = /^[ ]{0,3}\|/;
 const BACKTICK = /`/g;
+const DIGITS_ONLY = /^\d+$/;
 
 const isWhitespace = (char: string | undefined): boolean =>
 	char === undefined || char === "" || WHITESPACE.test(char);
@@ -79,8 +80,23 @@ export type OpenFence = {
 	marker: string;
 	/** The info string (`ts`, `mermaid`, ...), trimmed; empty when none. */
 	info: string;
-	/** The code written so far, without the opening line. */
+	/**
+	 * The code written so far, without the opening line and WITHOUT a trailing
+	 * partial closing fence (see `held`): the writer typing the first one or two
+	 * backticks of the closer is not writing code.
+	 */
 	body: string;
+	/** The opening line's own indent, which the appended closer must repeat. */
+	indent: string;
+	/**
+	 * Fence inside a list item or quote. Its `<pre>` belongs INSIDE that item, so
+	 * painting it as a sibling of the text before it (what the direct fence paint
+	 * does) would move it on close: such a fence is parsed like any other block
+	 * and only gets its closer from here (review R1-m1).
+	 */
+	nested: boolean;
+	/** Length of the partial closing fence held back from `body` (0 when none). */
+	held: number;
 };
 
 export function openFenceOf(source: string): OpenFence | null {
@@ -89,6 +105,7 @@ export function openFenceOf(source: string): OpenFence | null {
 	let start = -1;
 	let marker = "";
 	let info = "";
+	let indent = "";
 	while (offset <= source.length) {
 		const next = source.indexOf("\n", offset);
 		const end = next === -1 ? source.length : next;
@@ -102,6 +119,7 @@ export function openFenceOf(source: string): OpenFence | null {
 				start = offset;
 				marker = open[1];
 				info = open[2].trim();
+				indent = line.slice(0, line.indexOf(open[1]));
 			}
 		} else {
 			let index = 0;
@@ -118,12 +136,53 @@ export function openFenceOf(source: string): OpenFence | null {
 	}
 	if (fence === null || start < 0) return null;
 	const bodyStart = source.indexOf("\n", start);
+	let body = bodyStart === -1 ? "" : source.slice(bodyStart + 1);
+	/*
+	 * A HALF-TYPED CLOSER IS NOT CODE (design review D2). The last line, when it
+	 * is only 1..length-1 fence characters, is the writer mid-closer: painting it
+	 * as a body line grew the `<pre>` by a line and shrank it again when the third
+	 * backtick arrived. It is held back; a fence whose closer is complete never
+	 * reaches here (the loop above closed it). Whole-line only - `` `x `` is code.
+	 */
+	let held = 0;
+	const lastBreak = body.lastIndexOf("\n");
+	const lastLine = body.slice(lastBreak + 1).replace(CARRIAGE_RETURN_END, "");
+	if (
+		bodyStart !== -1 &&
+		lastLine.trimStart() !== "" &&
+		lastLine.trimStart().length < marker.length &&
+		[...lastLine.trimStart()].every((char) => char === marker[0]) &&
+		lastLine.length - lastLine.trimStart().length < 4
+	) {
+		held = body.length - (lastBreak + 1);
+		body = body.slice(0, lastBreak + 1);
+	}
+	const before = source.slice(0, start);
 	return {
-		before: source.slice(0, start),
+		before,
 		marker,
 		info,
-		body: bodyStart === -1 ? "" : source.slice(bodyStart + 1),
+		body,
+		indent,
+		nested: indent !== "" && inListOrQuote(before),
+		held,
 	};
+}
+
+/**
+ * Whether the text directly before an indented fence is a list item or quote
+ * the fence would belong to: its paragraph (no blank line between) holds a
+ * list/quote line. A fence after a blank line is a top-level fence unless it is
+ * indented past the item's content, which this does not try to decide - it
+ * errs toward the parsed path, which is always correct and merely repaints.
+ */
+function inListOrQuote(before: string): boolean {
+	const lines = before.replace(TRAILING_BLANK, "").split("\n");
+	for (let i = lines.length - 1; i >= 0; i--) {
+		if (BLOCK_LINE_START.test(lines[i])) return true;
+		if (lines[i].trim() === "") return false;
+	}
+	return false;
 }
 
 /**
@@ -148,12 +207,21 @@ export function closeOpenMarkdown(source: string): string {
 					fence.before.slice(0, fence.before.length - gap.length),
 				),
 			) + gap;
-		const tail = source.slice(fence.before.length);
-		return head + tail + (tail.endsWith("\n") ? "" : "\n") + fence.marker;
+		// A held partial closer is dropped from the parse copy too, or it would
+		// sit in the code as a literal line above the real closer.
+		const tail = source.slice(fence.before.length, source.length - fence.held);
+		return (
+			head +
+			tail +
+			(tail.endsWith("\n") ? "" : "\n") +
+			fence.indent +
+			fence.marker
+		);
 	}
 	return closeLastUnit(withoutDanglingTail(source));
 }
 
+const INDENTED_CODE = /^(?: {4}|\t)/;
 const BLOCK_LINE_START = /^[ ]{0,3}(?:[-+*]|\d{1,9}[.)])[ \t]|^[ ]{0,3}>/;
 
 /**
@@ -175,6 +243,9 @@ function closeLastUnit(text: string): string {
 		offset += line.length + 1;
 	}
 	if (TABLE_ROW.test(text.slice(start))) return text;
+	// An indented code block (no list item above it) is code: its backticks and
+	// asterisks are not inline syntax, and a "closer" would be a stray literal.
+	if (INDENTED_CODE.test(text.slice(start))) return text;
 	return text.slice(0, start) + closeInline(text.slice(start));
 }
 
@@ -187,6 +258,14 @@ function closeLastUnit(text: string): string {
  */
 const BARE_MARKER_LINE =
 	/(^|\n)[ ]{0,3}(?:#{1,6}|[-+*=]|>+|\d{1,9}[.)])[ \t]*$/;
+/**
+ * The digits of an ordered-list marker BEFORE its dot (design review D1): after a
+ * blank line a lone `1` paints as a one-character paragraph, vanishes when the
+ * `.` arrives (the marker above) and becomes a list a character later - a 30px
+ * collapse under the reader, twice. Only after a blank line, so a number that
+ * ends a prose line (`total:\n42`) is never held.
+ */
+const BARE_LIST_DIGITS = /(\n[ \t]*\n)[ ]{0,3}\d{1,9}[ \t]*$/;
 
 /**
  * An unfinished link or image at the very end: `[label](http://exa`, `[label](`,
@@ -210,11 +289,21 @@ function withoutDanglingTail(text: string): string {
 		if (image) {
 			out = out.slice(0, lineStart + image.index);
 		} else {
+			// A `[` is a link label's start only where one can start: at the line
+			// start or after a space/punctuation, never glued to a word (`arr[0`,
+			// `arrj`) and never a bare number (`[1`, a citation). Stripping those
+			// rewrote painted text (review R1-m2). What it keeps costs a visible `[`
+			// on a real label until `](` arrives, which the strip then drops.
 			const link = DANGLING_LINK.exec(line);
-			if (link) out = out.slice(0, lineStart + link.index) + link[1];
+			if (link) {
+				const glued = isWordChar(line[link.index - 1]);
+				const bareNumber = !link[0].includes("](") && DIGITS_ONLY.test(link[1]);
+				if (!glued && !bareNumber)
+					out = out.slice(0, lineStart + link.index) + link[1];
+			}
 		}
 	}
-	return out.replace(BARE_MARKER_LINE, "$1");
+	return out.replace(BARE_MARKER_LINE, "$1").replace(BARE_LIST_DIGITS, "$1");
 }
 
 function closeInline(text: string): string {
@@ -254,8 +343,36 @@ function closeInline(text: string): string {
 			!isWhitespace(before) &&
 			(!isPunctuation(before) || isWhitespace(after) || isPunctuation(after));
 		const intraWord = char === "_" && isWordChar(before) && isWordChar(after);
-		const canOpen = leftFlanking && !intraWord;
+		/*
+		 * WHERE THE REAL PARSE WOULD NEVER HAVE OPENED, BUT THE FLANKING RULE DOES
+		 * (review R1-m3, QA Q3). Flanking says `*.ts` and `src/**\/*.ts` may open
+		 * emphasis; in practice a `*` glued to a path separator or a dot is a glob,
+		 * and one inside a word (`a*b`, `$5*2`) is arithmetic. Opening them painted
+		 * the rest of the paragraph italic, then reverted to literal when the block
+		 * settled without a closer - a visible rewrite. Refusing the OPEN costs only
+		 * `a*b*c` live italics, which the settled parse restores. A closer is
+		 * unaffected.
+		 */
+		const globLike =
+			char === "*" &&
+			(before === "/" ||
+				after === "/" ||
+				after === "." ||
+				(isWordChar(before) && isWordChar(after)));
+		const canOpen = leftFlanking && !intraWord && !globLike;
 		const canClose = rightFlanking && !intraWord;
+		// `__dunder__init`: an intra-word `_` run closes nothing in CommonMark, so
+		// an opener of the same marker that began THIS WORD (no space since) was an
+		// identifier, not emphasis. Dropping it keeps the paragraph literal.
+		if (intraWord) {
+			const same = openers.map((o) => o.marker).lastIndexOf(char.repeat(run));
+			if (
+				same !== -1 &&
+				!WHITESPACE.test(text.slice(openers[same].at, i)) &&
+				openers.length - 1 === same
+			)
+				openers.length = same;
+		}
 		// A run is consumed two-at-a-time as strong, then one as emphasis, which
 		// is what CommonMark's `***x***` reduces to.
 		let remaining = run;
@@ -287,7 +404,15 @@ function closeInline(text: string): string {
 		}
 		// A delimiter run at the very end that neither opened nor closed anything
 		// is the writer mid-marker (`foo **`): paint without it.
-		if (remaining > 0 && i + run === text.length)
+		// Only when it can be a half-typed marker: after whitespace, or beside an
+		// open delimiter of the same family (`**bold*` is `**bold**` arriving). A
+		// `*` glued to a word with nothing open (`a footnote*`) is literal text, and
+		// stripping it dropped the asterisk from the screen until a letter followed.
+		if (
+			remaining > 0 &&
+			i + run === text.length &&
+			(isWhitespace(before) || openers.some((o) => o.marker[0] === char))
+		)
 			strip = Math.min(strip, position);
 		i += run - 1;
 	}
@@ -299,7 +424,10 @@ function closeInline(text: string): string {
 		const written = text.slice(code.at + code.length);
 		if (written.trim() === "") {
 			strip = Math.min(strip, code.at);
-		} else {
+		} else if (!WHITESPACE.test(written[0])) {
+			// A backtick followed by a space is prose (`press the ` key`), not a span
+			// opener a writer is about to fill: no closer, so it stays literal as it
+			// will once settled (QA Q3). A pair that DOES close is untouched above.
 			// Anything opened inside the code span never was an opener.
 			while (openers.length > 0 && openers[openers.length - 1].at > code.at)
 				openers.pop();

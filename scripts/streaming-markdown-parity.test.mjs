@@ -302,6 +302,27 @@ const CORPUS = [
 		].join("\n"),
 	},
 	{
+		// R1-m1/R1-m4: numbered steps with an indented fence, the shape agent output
+		// is full of. The fence's <pre> belongs INSIDE its <li>; a direct paint put
+		// it beside the list while open and moved it on close.
+		name: "fence-in-list-item",
+		payload: ["npm install", "node server"],
+		text: [
+			"Steps:",
+			"",
+			"1. Install it",
+			"   ```sh",
+			"   npm install",
+			"   ```",
+			"2. Run it",
+			"   ```sh",
+			"   node server",
+			"   ```",
+			"",
+			"Done.",
+		].join("\n"),
+	},
+	{
 		name: "open-tail",
 		payload: ["trails off", "still being written"],
 		text: [
@@ -438,6 +459,45 @@ test("the open block is formatted while it is open: no raw markup flash, no anch
 			Array.from(container.querySelectorAll("li")).map((li) => li.textContent),
 			["one", "tw"],
 		);
+		await act(async () => root.unmount());
+	} finally {
+		dom.restore();
+	}
+});
+
+test("a fence nested in a list item is inside its <li> while open, and a half-typed closer paints nothing (R1-m1, D2)", async () => {
+	const dom = mountDom();
+	try {
+		const container = dom.window.document.getElementById("root");
+		const root = createRoot(container);
+		const render = (content) =>
+			act(async () => {
+				root.render(createElement(StreamingMarkdown, { content }));
+			});
+		await render("1. step\n   ```sh\n   run");
+		const pre = container.querySelector("pre");
+		assert.equal(pre?.parentElement?.tagName, "LI", "the <pre> is in its item");
+		const opened = pre;
+		await render("1. step\n   ```sh\n   run\n   ```");
+		assert.equal(container.querySelector("pre")?.parentElement?.tagName, "LI");
+		assert.ok(opened.isConnected, "closing the fence kept the <pre> element");
+		// A top-level fence: the half-typed closer is not a code line.
+		await render("```ts\nconst a = 1;\n`");
+		assert.equal(container.querySelector("pre")?.textContent, "const a = 1;\n");
+		await render("```ts\nconst a = 1;\n``");
+		assert.equal(container.querySelector("pre")?.textContent, "const a = 1;\n");
+		await render("```ts\nconst a = 1;\n```");
+		// The closer arriving changes no text: the code the reader was looking at is
+		// the code that stays. ELEMENT identity is deliberately NOT asserted - a
+		// closed fence goes through the full parse (highlighting, mermaid), so its
+		// <pre> is a new element with identical markup and geometry (QA Q6).
+		// Compared as strings: a failing assertion on DOM nodes makes the runner
+		// inspect the whole jsdom graph (it took the machine to 5 GB once).
+		assert.equal(
+			container.querySelector("pre")?.textContent?.trimEnd(),
+			"const a = 1;",
+		);
+		assert.ok(!(container.textContent ?? "").includes("`"));
 		await act(async () => root.unmount());
 	} finally {
 		dom.restore();
