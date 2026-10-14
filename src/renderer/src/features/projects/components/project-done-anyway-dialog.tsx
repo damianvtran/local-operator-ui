@@ -1,3 +1,4 @@
+import { formatNumber, t } from "@shared/i18n";
 /**
  * The deliberate close: "this project has open milestones - mark it done
  * anyway?".
@@ -151,7 +152,9 @@ export const ProjectDoneAnywayDialog: FC<ProjectDoneAnywayDialogProps> = ({
 		<BaseDialog
 			open={open}
 			onClose={onClose}
-			title="Mark done with open milestones?"
+			title={t(
+				"ui.projects.project_done_anyway_dialog.mark_done_with_open_milestones",
+			)}
 			dataTourTag="project-done-anyway-dialog"
 			maxWidth="xs"
 			/*
@@ -191,7 +194,7 @@ export const ProjectDoneAnywayDialog: FC<ProjectDoneAnywayDialogProps> = ({
 						onClick={onClose}
 						disabled={submitting}
 					>
-						Cancel
+						{t("ui.projects.project_done_anyway_dialog.cancel")}
 					</SecondaryButton>
 					{/*
 					 * A GONE PROJECT HAS NOTHING TO OPEN: the secondary action
@@ -206,7 +209,7 @@ export const ProjectDoneAnywayDialog: FC<ProjectDoneAnywayDialogProps> = ({
 					)}
 					{failure?.gone ? (
 						<PrimaryButton data-project-force-close="" onClick={onClose}>
-							Close
+							{t("ui.projects.project_done_anyway_dialog.close")}
 						</PrimaryButton>
 					) : (
 						<PrimaryButton
@@ -230,7 +233,7 @@ export const ProjectDoneAnywayDialog: FC<ProjectDoneAnywayDialogProps> = ({
 							) : (
 								<span aria-hidden="true" className="size-3.5 shrink-0" />
 							)}
-							Mark done anyway
+							{t("ui.projects.project_done_anyway_dialog.mark_done_anyway")}
 						</PrimaryButton>
 					)}
 				</div>
@@ -245,8 +248,13 @@ export const ProjectDoneAnywayDialog: FC<ProjectDoneAnywayDialogProps> = ({
 				 */}
 				<p className="text-body-sm text-ink break-words">
 					{projectLabel
-						? `${projectLabel} moves to Done and its milestones stay open.`
-						: "The project moves to Done and its milestones stay open."}
+						? t(
+								"ui.projects.project_done_anyway_dialog.projectlabel_moves_to_done_and_its_milestones_stay_open",
+								{ projectLabel: String(projectLabel) },
+							)
+						: t(
+								"ui.projects.project_done_anyway_dialog.the_project_moves_to_done_and_its_milestones_stay_open",
+							)}
 				</p>
 				{/*
 				 * WHAT IS OPEN, as a statement: the title asks the question, so
@@ -270,7 +278,12 @@ export const ProjectDoneAnywayDialog: FC<ProjectDoneAnywayDialogProps> = ({
 				 */}
 				{names.length > DONE_GATE_NAMES_SHOWN + 1 && (
 					<div className="px-1.5">
-						<Disclosure summary={`Show all ${names.length} open milestones`}>
+						<Disclosure
+							summary={t(
+								"ui.projects.project_done_anyway_dialog.show_all_length_open_milestones",
+								{ length: formatNumber(names.length, { useGrouping: false }) },
+							)}
+						>
 							<ul
 								data-project-open-milestones=""
 								className="flex flex-col gap-1 py-1 text-body-sm text-ink-muted"

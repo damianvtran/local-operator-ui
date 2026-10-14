@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { bundledEnglish } from "../../../../../i18n/keys.gen";
 /**
  * The board's time-window control: the model's ladder drawn as a Select.
  *
@@ -46,7 +48,9 @@ import { BOARD_WINDOWS, type BoardWindow } from "../project-model";
  * read the same sentence the panel paints.
  */
 export const BOARD_WINDOW_HINT =
-	"Shows projects last updated within this window; older ones are hidden.";
+	bundledEnglish[
+		"ui.projects.board_window_select.shows_projects_last_updated_within_this_window_older_ones_are_hid"
+	];
 
 export const BoardWindowSelect: FC<{
 	value: BoardWindow;
@@ -62,7 +66,13 @@ export const BoardWindowSelect: FC<{
 			 * this control). The primitive renders `children` alone for a null
 			 * `content`, so the control stays - only the claim goes.
 			 */
-			content={value === "all" ? null : BOARD_WINDOW_HINT}
+			content={
+				value === "all"
+					? null
+					: t(
+							"ui.projects.board_window_select.shows_projects_last_updated_within_this_window_older_ones_are_hid",
+						)
+			}
 			side="bottom"
 			/*
 			 * CLOSES ON LEAVE, the same rule the card title's tooltip carries (QA round
@@ -74,7 +84,9 @@ export const BoardWindowSelect: FC<{
 			disableHoverableContent
 		>
 			<SelectTrigger
-				aria-label="Projects updated within"
+				aria-label={t(
+					"ui.projects.board_window_select.projects_updated_within",
+				)}
 				/*
 				 * `cn`, not a bare className: the primitive's base carries `w-full`,
 				 * and only tailwind-merge (which `cn` registers the app's scales

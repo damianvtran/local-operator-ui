@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * The detail page's linked-sessions block: one row per linked session, the
  * unlink and per-row message controls, the quick-send strip, and the pickers
@@ -128,7 +129,9 @@ export const ProjectLinks: FC<ProjectLinksProps> = ({
 	return (
 		<section className="flex flex-col gap-3">
 			<div className="flex flex-wrap items-center justify-between gap-3">
-				<h2 className="text-title text-ink">Linked sessions</h2>
+				<h2 className="text-title text-ink">
+					{t("ui.projects.project_links.linked_sessions")}
+				</h2>
 				<div className="flex items-center gap-2">
 					<Button
 						variant="secondary"
@@ -138,7 +141,7 @@ export const ProjectLinks: FC<ProjectLinksProps> = ({
 						data-tour-tag="project-start-session"
 					>
 						<MessageSquarePlus />
-						New session
+						{t("ui.projects.project_links.new_session")}
 					</Button>
 					<Button
 						variant="secondary"
@@ -148,15 +151,16 @@ export const ProjectLinks: FC<ProjectLinksProps> = ({
 						data-tour-tag="project-link-session"
 					>
 						<Link2 />
-						Link session
+						{t("ui.projects.project_links.link_session")}
 					</Button>
 				</div>
 			</div>
 
 			{links.length === 0 ? (
 				<p className="text-body-sm text-ink-muted">
-					No sessions linked yet. Link the conversations that are working on
-					this project so its progress stays with them.
+					{t(
+						"ui.projects.project_links.no_sessions_linked_yet_link_the_conversations_that_are_working_on",
+					)}
 				</p>
 			) : (
 				/*
@@ -204,7 +208,7 @@ export const ProjectLinks: FC<ProjectLinksProps> = ({
 								</button>
 								{link.runtime?.busy === true && (
 									<span className="shrink-0 text-meta text-ink-muted">
-										busy
+										{t("ui.projects.project_links.busy")}
 									</span>
 								)}
 								{subagents && (
@@ -223,8 +227,12 @@ export const ProjectLinks: FC<ProjectLinksProps> = ({
 										variant="ghost"
 										size="icon-sm"
 										disabled={busy}
-										aria-label={`Message ${title}`}
-										title={`Message ${title}`}
+										aria-label={t("ui.projects.project_links.message_title", {
+											title: String(title),
+										})}
+										title={t("ui.projects.project_links.message_title", {
+											title: String(title),
+										})}
 										onClick={() => {
 											setSendTarget(link.session_id);
 											setFocusTick((tick) => tick + 1);
@@ -237,7 +245,9 @@ export const ProjectLinks: FC<ProjectLinksProps> = ({
 									variant="ghost"
 									size="icon-sm"
 									disabled={busy}
-									aria-label={`Unlink ${title}`}
+									aria-label={t("ui.projects.project_links.unlink_title", {
+										title: String(title),
+									})}
 									onClick={() => onUnlink(link.session_id)}
 								>
 									<Unlink />
@@ -272,22 +282,22 @@ export const ProjectLinks: FC<ProjectLinksProps> = ({
 			<BaseDialog
 				open={pickerOpen}
 				onClose={() => setPickerOpen(false)}
-				title="Link a session"
+				title={t("ui.projects.project_links.link_a_session")}
 				maxWidth="sm"
 				dataTourTag="project-link-dialog"
 				actions={
 					<SecondaryButton onClick={() => setPickerOpen(false)}>
-						Close
+						{t("ui.projects.project_links.close")}
 					</SecondaryButton>
 				}
 			>
 				<div className="flex flex-col gap-2 px-1 py-1">
-					<Label>Session</Label>
+					<Label>{t("ui.projects.project_links.session")}</Label>
 					<SearchableSelect
 						showLabel={false}
-						ariaLabel="Search sessions"
-						busyLabel="Loading sessions"
-						placeholder="Search conversations"
+						ariaLabel={t("ui.projects.project_links.search_sessions")}
+						busyLabel={t("ui.projects.project_links.loading_sessions")}
+						placeholder={t("ui.projects.project_links.search_conversations")}
 						options={options}
 						selected={null}
 						onSelect={(option) => {
@@ -296,7 +306,9 @@ export const ProjectLinks: FC<ProjectLinksProps> = ({
 						}}
 					/>
 					<p className="text-meta text-ink-muted">
-						Conversations already linked to this project are not listed.
+						{t(
+							"ui.projects.project_links.conversations_already_linked_to_this_project_are_not_listed",
+						)}
 					</p>
 				</div>
 			</BaseDialog>

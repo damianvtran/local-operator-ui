@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * The List view's team band (issue #703, RESHAPED on operator direction).
  *
@@ -73,7 +74,7 @@
 
 import { cn } from "@shared/lib/utils";
 import type { FC, HTMLAttributes } from "react";
-import { NO_TEAM_LABEL, projectsCountLabel } from "../project-model";
+import { projectsCountLabel } from "../project-model";
 
 export type TeamSectionHeaderProps = Omit<
 	HTMLAttributes<HTMLDivElement>,
@@ -110,7 +111,7 @@ export const TeamSectionHeader: FC<TeamSectionHeaderProps> = ({
 		)}
 	>
 		<h3 id={headingId} className="truncate text-ink">
-			{team ?? NO_TEAM_LABEL}
+			{team ?? t("ui.projects.project_model.no_team")}
 		</h3>
 		<span
 			className="shrink-0 text-ink-muted"

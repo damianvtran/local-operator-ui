@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * The Filters popover's body, shared by its two entry points (U2/§2.4): the
  * toolbar's Filters button opens it complete, and a column header opens it
@@ -41,7 +42,6 @@ import {
 	isFilterEmpty,
 } from "../project-filters";
 import {
-	DEFAULT_SORT_LABEL,
 	type SortKey,
 	type SortSpec,
 	firstSortDirection,
@@ -193,7 +193,11 @@ const ColumnSortGroup: FC<{
 	const radioValue = spec === null ? "default" : sorted ? "sorted" : "other";
 	return (
 		<fieldset className="m-0 flex flex-col gap-0.5 border-0 p-0">
-			<legend className="sr-only">{`Sort by ${sortColumnLabel(column)}`}</legend>
+			<legend className="sr-only">
+				{t("ui.projects.project_filters_panel.sort_by_sortcolumnlabel_column", {
+					sortColumnLabel_column: String(sortColumnLabel(column)),
+				})}
+			</legend>
 			<label className="flex cursor-pointer items-center gap-2 rounded-sm px-1 py-1 text-body-sm hover:bg-sunken">
 				<input
 					type="radio"
@@ -208,7 +212,7 @@ const ColumnSortGroup: FC<{
 						radioValue === "default" ? "text-ink" : "text-ink-muted",
 					)}
 				>
-					{DEFAULT_SORT_LABEL}
+					{t("ui.projects.project_sort.default_as_listed")}
 				</span>
 			</label>
 			<label className="flex cursor-pointer items-center gap-2 rounded-sm px-1 py-1 text-body-sm hover:bg-sunken">
@@ -243,7 +247,20 @@ const ColumnSortGroup: FC<{
 						"min-w-0 flex-1 truncate",
 						radioValue === "sorted" ? "text-ink" : "text-ink-muted",
 					)}
-				>{`Sort by ${sortColumnLabel(column)}, ${sortDirectionWords(column, sorted ? currentDirection : firstSortDirection(column))}`}</span>
+				>
+					{t(
+						"ui.projects.project_filters_panel.sort_by_sortcolumnlabel_column_value2",
+						{
+							sortColumnLabel_column: String(sortColumnLabel(column)),
+							value2: String(
+								sortDirectionWords(
+									column,
+									sorted ? currentDirection : firstSortDirection(column),
+								),
+							),
+						},
+					)}
+				</span>
 			</label>
 		</fieldset>
 	);
@@ -303,10 +320,12 @@ export const ProjectFiltersPanel: FC<ProjectFiltersPanelProps> = ({
 		<div className="flex flex-col">
 			{scope === undefined && (
 				<div className="flex items-center justify-between gap-3 border-b border-hairline px-3 py-2">
-					<span className="text-body-sm text-ink-muted">Filters</span>
+					<span className="text-body-sm text-ink-muted">
+						{t("ui.projects.project_filters_panel.filters")}
+					</span>
 					{anythingActive && (
 						<Button variant="link" size="sm" onClick={onClearAll}>
-							Clear all
+							{t("ui.projects.project_filters_panel.clear_all")}
 						</Button>
 					)}
 				</div>
@@ -314,7 +333,9 @@ export const ProjectFiltersPanel: FC<ProjectFiltersPanelProps> = ({
 			{sort && (
 				<div className="flex flex-col gap-0.5 border-b border-hairline px-3 py-2">
 					<span className="px-1 text-meta text-ink-muted">
-						{`Sort by ${sortColumnLabel(sort.key)}`}
+						{t("ui.projects.project_filters_panel.sort_by_key", {
+							key: String(sortColumnLabel(sort.key)),
+						})}
 					</span>
 					<ColumnSortGroup
 						column={sort.key}

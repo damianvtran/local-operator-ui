@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * The tab's view switcher and the choice's persistence.
  *
@@ -30,9 +31,24 @@ export type ProjectsView = "list" | "board" | "timeline";
 export const PROJECTS_VIEW_STORAGE_KEY = "projects-view";
 
 const VIEWS: { value: ProjectsView; label: string }[] = [
-	{ value: "list", label: "List" },
-	{ value: "board", label: "Board" },
-	{ value: "timeline", label: "Timeline" },
+	{
+		value: "list",
+		get label() {
+			return t("ui.projects.projects_view_switcher.list");
+		},
+	},
+	{
+		value: "board",
+		get label() {
+			return t("ui.projects.projects_view_switcher.board");
+		},
+	},
+	{
+		value: "timeline",
+		get label() {
+			return t("ui.projects.projects_view_switcher.timeline");
+		},
+	},
 ];
 
 /**
@@ -67,7 +83,10 @@ export const ProjectsViewSwitcher: FC<{
 	onChange: (view: ProjectsView) => void;
 }> = ({ value, onChange }) => (
 	<Tabs value={value} onValueChange={(next) => onChange(next as ProjectsView)}>
-		<TabsList aria-label="Project view" data-tour-tag="projects-view-switcher">
+		<TabsList
+			aria-label={t("ui.projects.projects_view_switcher.project_view")}
+			data-tour-tag="projects-view-switcher"
+		>
 			{VIEWS.map((view) => (
 				<TabsTrigger key={view.value} value={view.value}>
 					{view.label}
