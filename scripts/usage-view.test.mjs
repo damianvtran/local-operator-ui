@@ -61,6 +61,120 @@ const {
 
 const NOW = 1_760_000_000_000;
 
+const MUSE_PASSIVE = "Last response allowance; refresh does not query Muse.";
+const MUSE_STALE =
+	"Stale response allowance; current usage unknown; refresh does not query Muse.";
+const museReport = (over = {}) =>
+	report({
+		provider: "meta-muse",
+		fetched_at: NOW - 30_000,
+		notes: MUSE_PASSIVE,
+		limits: [
+			limit({
+				id: "meta-muse:window",
+				label: "5 hour",
+				amount: amount({ used_fraction: 0 }),
+				resets_at_ms: NOW + 300_000,
+			}),
+			limit({
+				id: "meta-muse:weekly",
+				label: "7 day",
+				amount: amount({ used_fraction: 0.99 }),
+				resets_at_ms: NOW + 600_000,
+			}),
+		],
+		...over,
+	});
+
+test("Muse retains vetted passive provenance with real 0/99 meters", () => {
+	const [block] = providerBlocks([museReport()], NOW, NOW);
+	assert.match(block.note, /Last response allowance/);
+	assert.match(block.note, /Observed just now/);
+	assert.deepEqual(
+		block.rows.map((r) => r.amount),
+		["0% used", "99% used"],
+	);
+});
+
+test("Muse unknown keeps observation age without misleading empty windows", () => {
+	for (const notes of [
+		MUSE_STALE,
+		"Stale sign-in allowance; current usage unknown; refresh does not query Muse.",
+	]) {
+		const [block] = providerBlocks(
+			[
+				museReport({
+					limits: [],
+					notes,
+					state: "unavailable",
+					fetched_at: NOW - 86_400_000,
+				}),
+			],
+			NOW,
+			NOW,
+		);
+		assert.match(block.note, /current usage unknown/);
+		assert.match(block.note, /Observed 1d ago/);
+		assert.equal(block.emptyNote, "");
+	}
+});
+
+test("Muse meters expire at backend TTL or either reset without mutating input", () => {
+	for (const over of [
+		{ fetched_at: NOW - 300_001 },
+		{
+			limits: [
+				limit({ resets_at_ms: NOW, amount: amount({ used_fraction: 0.99 }) }),
+			],
+		},
+		{ fetched_at: 0 },
+		{ fetched_at: Number.NaN },
+	]) {
+		const input = museReport(over);
+		const [block] = providerBlocks([input], NOW, NOW);
+		assert.equal(block.rows.length, 0);
+		assert.equal(block.binding, null);
+		assert.equal(block.degraded, true);
+		assert.match(block.note, /current usage unknown|No allowance observation/);
+		assert.ok(input.limits.length);
+	}
+	assert.equal(
+		providerBlocks([museReport({ fetched_at: NOW - 300_000 })], NOW, NOW)[0]
+			.rows.length,
+		2,
+	);
+});
+
+test("Muse never surfaces unknown provider notes or changes unrelated reports", () => {
+	for (const input of [
+		museReport({ notes: "secret upstream diagnostic" }),
+		museReport({ provider: "anthropic" }),
+	]) {
+		const [block] = providerBlocks([input], NOW, NOW);
+		assert.equal(block.note, "");
+		assert.equal(block.rows.length, 2);
+	}
+});
+
+test("Muse missing observation explains passive refresh without inventing age", () => {
+	const [block] = providerBlocks(
+		[
+			museReport({
+				limits: [],
+				fetched_at: 0,
+				state: "unavailable",
+				notes:
+					"No allowance observation recorded; refresh does not query Muse.",
+			}),
+		],
+		NOW,
+		NOW,
+	);
+	assert.match(block.note, /No allowance observation recorded/);
+	assert.doesNotMatch(block.note, /Observed/);
+	assert.equal(block.emptyNote, "");
+});
+
 /** An amount with every field explicit, the way the route actually sends it. */
 const amount = (over = {}) => ({
 	used: null,
