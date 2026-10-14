@@ -2,12 +2,12 @@ import type { AgentCreate } from "@shared/api/local-operator/types";
 import { Spinner } from "@shared/components/common/spinner";
 import { Button, Input, Label, Textarea } from "@shared/components/ui";
 import { useCreateAgent } from "@shared/hooks";
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { Bot, ExternalLink } from "lucide-react";
 import type { FC, FormEvent } from "react";
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { t } from "../../../../../i18n/messages";
 import { BaseDialog, PrimaryButton, SecondaryButton } from "./base-dialog";
 
 type CreateAgentDialogProps = {

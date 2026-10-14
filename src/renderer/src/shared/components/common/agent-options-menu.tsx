@@ -6,7 +6,6 @@ import {
 	DropdownMenuTrigger,
 } from "@shared/components/ui";
 import { useDeleteAgent } from "@shared/hooks/use-agent-mutations";
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import {
@@ -20,6 +19,7 @@ import {
 } from "lucide-react";
 import type { CSSProperties, FC } from "react";
 import { useRef, useState } from "react";
+import { t } from "../../../../../i18n/messages";
 import { ConfirmationModal } from "./confirmation-modal";
 
 type AgentOptionsMenuProps = {

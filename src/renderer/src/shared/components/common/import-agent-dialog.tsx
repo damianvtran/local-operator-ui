@@ -7,12 +7,13 @@
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { Spinner } from "@shared/components/common/spinner";
 import { useImportAgent } from "@shared/hooks/use-agent-mutations";
-import { type WithoutParams, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { FileInput as FileImportIcon, Upload } from "lucide-react";
 import type { FC } from "react";
 import { useCallback, useRef, useState } from "react";
+import type { WithoutParams } from "../../../../../i18n/keys.gen";
+import { t } from "../../../../../i18n/messages";
 import { BaseDialog, PrimaryButton, SecondaryButton } from "./base-dialog";
 
 /**
