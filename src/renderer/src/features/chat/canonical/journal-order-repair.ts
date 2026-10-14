@@ -11,6 +11,17 @@ import {
 import type { TranscriptState } from "./transcript-reducer";
 
 /**
+ * The per-flight dispatch seal: for each read kind, the ids this flight has
+ * already asked. The repair loop owns it and hands it to `sweep` so a caller
+ * can avoid re-choosing a kind whose ids are already sealed (review round 1,
+ * M1). Exported as a named type so the sweep's second parameter is explicit at
+ * both ends rather than inferred.
+ */
+export type JournalRepairSeal = (
+	kind: "authority" | "lookup" | "payload",
+) => ReadonlySet<string>;
+
+/**
  * Resolve cached IDs in bounded same-source batches on the existing snapshot
  * route. A 512-ID wire limit is not a limit on the cache's ordering guarantee.
  * Missing IDs are tried once per sweep; a distinct ready fact, including a
@@ -59,7 +70,17 @@ export async function repairJournalOrder<T>(deps: {
 	 * sweep has no dispatchable debt this iteration - never a dead read, and
 	 * never the authority fallback a bare `undefined` means.
 	 */
-	sweep?: (state: TranscriptState) =>
+	sweep?: (
+		state: TranscriptState,
+		/**
+		 * The ids this flight has already dispatched under each kind, so a caller
+		 * honours the per-flight seal (review round 1, M1): a fact id already asked
+		 * THIS flight is not offered to the lookup stage again, which lets the loop
+		 * fall through to the body stage instead of ending on a kind with nothing
+		 * new to dispatch.
+		 */
+		attempted: JournalRepairSeal,
+	) =>
 		| {
 				kind: "authority" | "lookup" | "payload" | "none";
 				path: string;
@@ -94,7 +115,7 @@ export async function repairJournalOrder<T>(deps: {
 		const before = deps.getTranscript();
 		const read = journalOrderRead(before);
 		const revision = read.revision;
-		const shape = deps.sweep?.(before);
+		const shape = deps.sweep?.(before, attemptedIds);
 		if (shape?.kind === "none") return { kind: "complete", transcript: before };
 		const kind = shape?.kind ?? "authority";
 		const ids = journalOrderIdBatch(
@@ -150,7 +171,7 @@ export async function repairJournalOrder<T>(deps: {
 					continue;
 				}
 			}
-			const nextShape = deps.sweep?.(latest);
+			const nextShape = deps.sweep?.(latest, attemptedIds);
 			if (nextShape?.kind === "none")
 				return { kind: "complete", transcript: latest };
 			const nextKind = nextShape?.kind ?? "authority";

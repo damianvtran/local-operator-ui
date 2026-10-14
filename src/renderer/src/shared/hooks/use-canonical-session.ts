@@ -39,7 +39,10 @@ import {
 	journalLookupIds,
 	journalOrderRead,
 } from "@features/chat/canonical/journal-order";
-import { repairJournalOrder } from "@features/chat/canonical/journal-order-repair";
+import {
+	type JournalRepairSeal,
+	repairJournalOrder,
+} from "@features/chat/canonical/journal-order-repair";
 import {
 	entryRecordKey,
 	openFrameCoversHeld,
@@ -4865,6 +4868,17 @@ export function useCanonicalSessionStream(
 			 */
 			streamPeerSourceRef.current = null;
 			peerStreamEpochRef.current += 1;
+			/*
+			 * THE WAVE TIMER DIES WITH THE SUBSCRIPTION (review round 1, m3; the CI
+			 * hang). It is the one new handle this diff opens, so closing the stream that
+			 * armed it must cancel it: an armed `setTimeout` outliving its view is what
+			 * keeps the Node event loop alive past the last test.
+			 */
+			if (sourceWaveTimerRef.current) {
+				window.clearTimeout(sourceWaveTimerRef.current);
+				sourceWaveTimerRef.current = 0;
+			}
+			sourceWaveTokenRef.current += 1;
 			if (!closing) return;
 			closingIntentionally = true;
 			// Cleared in `finally`, not left standing: the browser transport emits its
@@ -5869,6 +5883,21 @@ export function useCanonicalSessionStream(
 		 */
 		const sourceWaveAfterAnswer = (response: OrderRepairResponse): void => {
 			if (!response.peer) return;
+			/*
+			 * A STALE ANSWER WRITES NOTHING (review round 1, m3). `commitView` dropped
+			 * this response if the view it was dispatched for is gone; the wave
+			 * bookkeeping must apply the same fences, or a response that landed after a
+			 * `/clear` (view epoch moved) or a close/rebind (stream epoch moved) would
+			 * arm or flag a view that is not the one on screen. Read the CURRENT state
+			 * and check both epochs plus the session before touching the timer or the
+			 * flag.
+			 */
+			if (
+				sessionRef.current !== requested ||
+				viewRef.current.transcript.viewEpoch !== epoch ||
+				peerStreamEpochRef.current !== response.streamEpoch
+			)
+				return;
 			const page =
 				response.kind === "authority"
 					? response.frame.payload.history
@@ -5879,6 +5908,19 @@ export function useCanonicalSessionStream(
 					window.clearTimeout(sourceWaveTimerRef.current);
 					sourceWaveTimerRef.current = 0;
 				}
+				/*
+				 * A GENUINE READY ANSWER CLEARS THE FLAG EXPLICITLY (review round 1, M2).
+				 * Relying on the ready commit's side effect was not "clearing on retry" -
+				 * the retry affordance this state is supposed to hang off has to see the
+				 * flag go away when the answer it asked for arrives, so this writer states
+				 * that transition rather than leaving it implicit.
+				 */
+				commitView((current) => {
+					const transcript = markSourceUnavailable(current.transcript, false);
+					return transcript === current.transcript
+						? current
+						: { ...current, transcript };
+				});
 				return;
 			}
 			if (state === "unavailable") {
@@ -5886,6 +5928,15 @@ export function useCanonicalSessionStream(
 					window.clearTimeout(sourceWaveTimerRef.current);
 					sourceWaveTimerRef.current = 0;
 				}
+				/*
+				 * A FENCE-MISMATCH CORRECTION IS SELF-HEALING, NOT TERMINAL (review round
+				 * 1, m2). An `unavailable` answer carrying `reconcile: true` + a generation
+				 * is the rebuilt-source correction: the reducer recorded it as an OWED
+				 * authoritative read that follows immediately and clears the state, so
+				 * flagging here only flickers an error for a state the app is actively
+				 * fixing. Only a terminal `unavailable` (no owed read behind it) is stated.
+				 */
+				if (page.reconcile === true) return;
 				commitView((current) => {
 					const transcript = markSourceUnavailable(current.transcript, true);
 					return transcript === current.transcript
@@ -5900,10 +5951,21 @@ export function useCanonicalSessionStream(
 				sourceWaveTimerRef.current = 0;
 			}
 			const token = ++sourceWaveTokenRef.current;
+			/*
+			 * THE TIMER IS THE ONE NEW HANDLE THIS DIFF OPENS, and it MUST NOT
+			 * OUTLIVE ITS VIEW (review round 1, m3; this is the CI `Desktop Tests`
+			 * HANG signature): an armed `setTimeout` keeping the Node event loop alive
+			 * is exactly how a suite reaches its last test and never prints a summary.
+			 * Cancelled from three places - here on a newer answer, in the effect
+			 * cleanup, and in `closeStream` (below) - and the callback re-checks the
+			 * session, the token AND both epochs before it writes.
+			 */
 			sourceWaveTimerRef.current = window.setTimeout(() => {
 				sourceWaveTimerRef.current = 0;
 				if (sourceWaveTokenRef.current !== token) return;
 				if (sessionRef.current !== requested) return;
+				if (viewRef.current.transcript.viewEpoch !== epoch) return;
+				if (peerStreamEpochRef.current !== response.streamEpoch) return;
 				commitView((current) => {
 					const transcript = markSourceUnavailable(current.transcript, true);
 					return transcript === current.transcript
@@ -5929,7 +5991,7 @@ export function useCanonicalSessionStream(
 			 * returned here are the exact bytes each read builder emits, because the
 			 * loop sizes its batch budget against them.
 			 */
-			sweep: (state) => {
+			sweep: (state, attemptedFor: JournalRepairSeal) => {
 				if (!peerScopedNow()) return undefined;
 				if (state.orderNeedsReconcile === true)
 					return {
@@ -5962,7 +6024,7 @@ export function useCanonicalSessionStream(
 				 * carry the domain fence, so a mismatch is answered `unavailable` +
 				 * `reconcile` and never facts or bodies for another domain.
 				 */
-				const facts = journalFactsNeeded(state);
+				const facts = journalFactsNeeded(state, attemptedFor?.("lookup"));
 				if (facts.length > 0) {
 					const query = new URLSearchParams({
 						limit: "100",
@@ -5992,6 +6054,12 @@ export function useCanonicalSessionStream(
 						query,
 					};
 				}
+				/*
+				 * NOTHING NEW FOR EITHER STAGE. `none` ends the flight honestly; a stale
+				 * fact id already sealed THIS flight is deliberately NOT offered to the
+				 * lookup stage (review round 1, M1) - the loop would find nothing new to
+				 * ask and end anyway, after re-cutting a batch it cannot dispatch.
+				 */
 				return {
 					kind: "none" as const,
 					path: `/v1/desktop/sessions/${requested}/history`,
@@ -6097,6 +6165,7 @@ export function useCanonicalSessionStream(
 											current.transcript,
 											response.page,
 											orderRead,
+											revision,
 										)
 									: applyPeerSourceFacts(current.transcript, response.page, {
 											authoritative: false,
