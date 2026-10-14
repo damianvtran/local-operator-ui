@@ -723,7 +723,7 @@ type TranscriptPayloadRecord =
 
 export type TranscriptRecord = TranscriptPayloadRecord & JournalPosition;
 
-	export type TranscriptState = {
+export type TranscriptState = {
 	/** Order revision is independent of turn generation, view epoch and planner facts. */
 	journalMode?: boolean;
 	journalGeneration?: string;
@@ -3580,8 +3580,11 @@ function admitPeerBodyRecord(
 	) {
 		/* The released copy drops the hold flags; everything else, including
 		really all the durable fields, is the incoming row's. */
-		const { provisional: _provisional, local: _local, ...released } =
-			admitted as Extract<TranscriptRecord, { kind: "user" }>;
+		const {
+			provisional: _provisional,
+			local: _local,
+			...released
+		} = admitted as Extract<TranscriptRecord, { kind: "user" }>;
 		return released;
 	}
 	return admitted;
@@ -3632,10 +3635,7 @@ function peerAdmissionSets(state: TranscriptState): {
  * rank claim.
  */
 function stripPeerAdmission(record: TranscriptRecord): TranscriptRecord {
-	if (
-		record.journalSeq === undefined &&
-		record.journalGeneration === undefined
-	)
+	if (record.journalSeq === undefined && record.journalGeneration === undefined)
 		return record;
 	const stripped: TranscriptRecord = { ...record };
 	delete (stripped as unknown as { journalSeq?: number }).journalSeq;
@@ -3697,9 +3697,9 @@ function markPeerBodiesOwed(
 	if (state.journalPeerSource !== true) return state;
 	const { carried, admitted } = peerAdmissionSets(state);
 	const revision = state.orderRevision ?? 0;
-	let owed = state.journalBodyOwed;
+	const owed = state.journalBodyOwed;
 	let owedCopy: Map<string, number> | null = null;
-	let voidSet = state.journalSourceVoid;
+	const voidSet = state.journalSourceVoid;
 	let voidCopy: Set<string> | null = null;
 	for (const id of ids) {
 		if (typeof id !== "string" || id.length < 1 || id.length > 128) continue;
@@ -3735,9 +3735,9 @@ function clearPeerAdmissions(
 			? { ...state, journalSourceUnavailable: undefined }
 			: state;
 	if (ids.length === 0) return base;
-	let owed = base.journalBodyOwed;
+	const owed = base.journalBodyOwed;
 	let owedCopy: Map<string, number> | null = null;
-	let voidSet = base.journalSourceVoid;
+	const voidSet = base.journalSourceVoid;
 	let voidCopy: Set<string> | null = null;
 	for (const id of ids) {
 		if (owed?.has(id)) {
@@ -5458,9 +5458,7 @@ export function applyEvent(
 								: now / 1000,
 						type: "message",
 						payload: { kind: row.custom_type ? "custom" : "message", ...row },
-						...(acceptedDomain && peerOrdinal(seq)
-							? { journal_seq: seq }
-							: {}),
+						...(acceptedDomain && peerOrdinal(seq) ? { journal_seq: seq } : {}),
 					};
 				}),
 				has_more: state.hasMore,
@@ -5509,8 +5507,7 @@ export function applyEvent(
 					const unattested = rowIds.filter(
 						(id) => !peerOrdinal(familyOrdinals?.[id]),
 					);
-					if (unattested.length > 0)
-						next = owePeerRows(next, unattested);
+					if (unattested.length > 0) next = owePeerRows(next, unattested);
 				} else {
 					/*
 					 * No accepted domain: the bodies painted (they are real rows, not
