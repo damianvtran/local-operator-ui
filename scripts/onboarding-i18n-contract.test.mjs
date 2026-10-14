@@ -418,7 +418,7 @@ test("diagnostic CI stays retired while the manual utility remains registered", 
 		text.indexOf("  test:\n"),
 		text.indexOf("  evidence:\n"),
 	);
-	assert.match(desktop, /timeout-minutes: 35/);
+	assert.match(desktop, /timeout-minutes: 50/);
 	assert.equal((desktop.match(/pnpm test:desktop 2>&1/g) ?? []).length, 1);
 });
 
