@@ -992,6 +992,9 @@ const api = {
 	console: {
 		state: (sessionId?: string | null): Promise<unknown> =>
 			ipcRenderer.invoke("console-state", sessionId ?? null),
+		/** Completed agent surfaces only; retained history stays on disk. */
+		cleanupOwner: (sessionId: string): Promise<unknown> =>
+			ipcRenderer.invoke("console-cleanup-owner", sessionId),
 		/** Create a surface the USER asked for. Main sets the origin to `user`; the
 		 * renderer cannot name it, because provenance is not a renderer's to claim. */
 		createSurface: (request: {

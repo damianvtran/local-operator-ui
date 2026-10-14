@@ -101,6 +101,7 @@ export interface ConsoleSessionApi {
 	) => Promise<void>;
 	/** Turn secure input on or off for one surface (§11.4). */
 	setSecure: (surface: string, on: boolean) => void;
+	cleanupOwner: () => Promise<void>;
 }
 
 /** How long a burst of signals collapses into one read. */
@@ -281,6 +282,18 @@ export const useConsoleSession = (
 		[read],
 	);
 
+	const cleanupOwner = useCallback(async () => {
+		const cleanup = window.api?.console?.cleanupOwner;
+		if (!sessionId || !cleanup) return;
+		try {
+			await cleanup(sessionId);
+			await read();
+		} catch (failure) {
+			if (alive.current)
+				setError(failure instanceof Error ? failure.message : String(failure));
+		}
+	}, [sessionId, read]);
+
 	const setSecure = useCallback(
 		(surface: string, on: boolean) => {
 			const api = window.api?.console;
@@ -306,5 +319,6 @@ export const useConsoleSession = (
 		createSurface,
 		closeSurface,
 		setSecure,
+		cleanupOwner,
 	};
 };

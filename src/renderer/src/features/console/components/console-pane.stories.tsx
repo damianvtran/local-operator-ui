@@ -161,6 +161,7 @@ const REAL_API = window.api;
  */
 const installFixture = (options: {
 	surfaces: SurfaceFixture[];
+	capacity?: { live: number; archived: number; limit: number };
 	/** Never answers, for the loading state. */
 	hang?: boolean;
 	/**
@@ -183,6 +184,23 @@ const installFixture = (options: {
 		total: options.surfaces.length,
 		agent: options.surfaces.filter((s) => s.agent_owned).length,
 		displayed_surface: null,
+		capacity: options.capacity,
+		// Synthetic presentation data only, never native capacity/RSS evidence.
+		metrics: options.capacity
+			? {
+					resources: {
+						log_bytes: options.capacity.live * 4 * 1048576,
+						pending_bytes: 0,
+						emulator_cells: options.capacity.live * 100 * 5030,
+						modeled_managed_bytes:
+							options.capacity.live * (4 * 1048576 + 100 * 5030 * 16) +
+							64 * 1048576,
+						protected: options.surfaces.filter(
+							(row) => row.origin === "user" || row.retain || row.secure,
+						).length,
+					},
+				}
+			: undefined,
 		surfaces: options.surfaces,
 	});
 	const record =
@@ -210,6 +228,7 @@ const installFixture = (options: {
 	const stub = {
 		state: record("state"),
 		createSurface: record("createSurface"),
+		cleanupOwner: record("cleanupOwner"),
 		// THE BEAT'S CLOSE, ANSWERED (agent review round 1, F-1): #929's clean-exit
 		// default calls `closeSurface` ~4s after an `Ended` story mounts, and a stub
 		// without this member threw out of the timer on every open. `record` resolves
@@ -241,6 +260,7 @@ const installFixture = (options: {
 /** The pane, on a draft or in a conversation. */
 const Frame: FC<{
 	surfaces: SurfaceFixture[];
+	capacity?: { live: number; archived: number; limit: number };
 	sessionId?: string | null;
 	hang?: boolean;
 	unavailable?: { reason: string; detail: string };
@@ -257,6 +277,7 @@ const Frame: FC<{
 	height?: number;
 }> = ({
 	surfaces,
+	capacity,
 	sessionId = THIS_CONVERSATION,
 	hang,
 	unavailable,
@@ -267,7 +288,7 @@ const Frame: FC<{
 }) => {
 	// Installed during render: see `installFixture` for why an effect is one commit
 	// too late for a component whose input is the projection.
-	installFixture({ surfaces, hang, unavailable });
+	installFixture({ surfaces, capacity, hang, unavailable });
 	useEffect(() => {
 		useUiPreferencesStore.setState({
 			consoleUnseen: (unseen ?? []).map((surface) => ({
@@ -371,6 +392,27 @@ const paintSelection = (canvasElement: HTMLElement) => {
 
 /** The lens with more than one surface, one of them opened by an agent: the
  * provenance marker (§6.5) and the recall case (§6.2) in one frame. */
+/** Aggregate presentation plus protected retained completion. The host/IPC
+ * lifecycle is independently exercised; this story is rendered review evidence. */
+export const CapacityAndRetainedHistory: Story = {
+	render: () => (
+		<Frame
+			capacity={{ live: 48, archived: 33, limit: 128 }}
+			surfaces={[
+				surface({ surface: "con:1:capacityRunning", last_activity: NOW + 1 }),
+				surface({
+					surface: "con:2:capacityRetained",
+					origin: "agent",
+					agent_owned: true,
+					running: false,
+					exit_code: 0,
+					retain: true,
+				}),
+			]}
+		/>
+	),
+};
+
 export const TwoSurfaces: Story = {
 	render: () => (
 		<Frame

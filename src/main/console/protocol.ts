@@ -21,6 +21,8 @@
 /** The console namespace's method names, in the order §10.2 lists them. */
 export const CONSOLE_METHODS = [
 	"console_list",
+	"console_resources",
+	"console_cleanup",
 	"console_create",
 	"console_status",
 	"console_read",
@@ -88,6 +90,8 @@ export type SurfaceOrigin = "user" | "agent";
  */
 export const CONSOLE_COMMAND_TIMEOUTS_S: Record<ConsoleMethod, number> = {
 	console_list: 20.0,
+	console_resources: 20.0,
+	console_cleanup: 30.0,
 	console_create: 30.0,
 	console_status: 20.0,
 	console_read: 20.0,

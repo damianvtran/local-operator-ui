@@ -1,4 +1,10 @@
 {
+	"ui.console.capacity.summary": "{live, number} live / {limit, number} ceiling · {archived, number} completed",
+	"ui.console.capacity.help": "App-wide counts only. Managed resources can admit fewer terminals than the configured ceiling. Completed history does not use process slots.",
+	"ui.console.capacity.resources": "Modeled managed storage: {memory, number} MiB. Logs: {logs, number} MiB. Pending output: {pending, number} MiB. Terminal cells: {cells, number}. Protected terminals: {protected, number}. This excludes child-process memory.",
+	"ui.console.cleanup.label": "Release completed agent terminals",
+	"ui.console.dismiss_history": "Dismiss terminal and delete retained output",
+	"ui.console.cleanup.help": "Releases completed agent terminals in this conversation and keeps retained output on disk. Running, secure, user-controlled and displayed terminals are left alone.",
 	"ui.console.close.body": "This ends the program running here and removes its tab.",
 	"ui.console.close.busy": "Closing…",
 	"ui.console.close.confirm": "Close terminal",

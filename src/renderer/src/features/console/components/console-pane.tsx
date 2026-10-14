@@ -5,13 +5,20 @@ import {
 	isConsoleUnseen,
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
-import { Bot, Lock, LockOpen, PanelRightClose, Plus, X } from "lucide-react";
+import {
+	Archive,
+	Bot,
+	Lock,
+	LockOpen,
+	PanelRightClose,
+	Plus,
+	X,
+} from "lucide-react";
 import { type FC, useEffect, useMemo, useRef, useState } from "react";
 import { useConsoleBlipPulse } from "../hooks/use-console-attention";
 import { useConsoleSession } from "../hooks/use-console-session";
 import {
 	type ConsoleSurface,
-	clearsItselfAfterExit,
 	consoleOpenAction,
 	pickActiveSurface,
 	surfaceTitle,
@@ -43,24 +50,6 @@ import {
  */
 const REVEAL_ON_HOVER_OR_FOCUS =
 	"pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100";
-
-/**
- * HOW LONG A CLEAN EXIT'S ENDED NOTICE STANDS BEFORE ITS SURFACE CLEARS ITSELF
- * (#929).
- *
- * The beat IS the notice: a shell that exits from under a user replaces its
- * terminal with the ended banner (its exit code on the banner's second line), and
- * that banner needs to be readable before the row goes — an instant removal would
- * read as a crash. Four seconds is sized on the notice rather than the queue:
- * long enough for a glance at the two lines, short enough that a window of
- * cleanly-exited shells does not need clearing out by hand.
- *
- * THE POLICY IS `clearsItselfAfterExit`'s (clean exit only; a non-zero code and a
- * restored row stay); this constant is only how long the pane waits before it
- * runs the same dismissal the row's X runs. Exported because the render suite
- * drives real timers and must wait on THIS number rather than on a copy of it.
- */
-export const EXIT_DISMISS_AFTER_MS = 4000;
 
 /**
  * The console: the FOURTH occupant of the conversation's right slot.
@@ -244,14 +233,8 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 	 * this would be restored at the next launch, which is exactly the friction
 	 * #754's repro reports ("restart the app: the ended tab is still in the strip").
 	 *
-	 * AMENDED (#929, 2026-10-10): an ended surface no longer waits for its X at all —
-	 * a shell that exited CLEANLY during this run has its row cleared by the pane
-	 * itself after `EXIT_DISMISS_AFTER_MS`, one beat of the ended banner as the
-	 * notice, through this same dismissal (the beat effect below). The X keeps every
-	 * case the beat does not take: a non-zero exit code STAYS so the error remains
-	 * readable, a row restored from history STAYS because there the history is the
-	 * point, and both are dismissed by hand exactly as before. One dismissal, two
-	 * triggers — never a second mechanism for the automatic one.
+	 * Automatic release is now the host's completed-only lifecycle policy, not
+	 * a pane timer. The explicit X remains a user choice to discard this history.
 	 */
 	const requestSurfaceClose = (row: ConsoleSurface) => {
 		setCloseRefusal(null);
@@ -345,91 +328,8 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 		if (entry) focusAfterRemoval.current = null;
 	}, [pendingClose, surfaces]);
 
-	/**
-	 * The latest listing for the beat's callback, which fires after a render or many
-	 * and must judge the row against the surfaces as they are NOW — not as they were
-	 * when the timer was armed (the row may have been dismissed by hand, or by an
-	 * agent's close, while the beat ran).
-	 */
-	const latestSurfaces = useRef(surfaces);
-	latestSurfaces.current = surfaces;
-	/** One beat timer per surface, keyed by id. A REF rather than state because
-	 * nothing paints from it and a re-render must not restart a beat. */
-	const exitDismissTimers = useRef(
-		new Map<string, ReturnType<typeof setTimeout>>(),
-	);
-	/**
-	 * The dismissal helper, read through a ref for the same reason `latestSurfaces`
-	 * is one: the beat's effect keys on the LISTING alone, and depending on a
-	 * function re-created every render would either re-run it constantly or lie
-	 * about what the timer's callback actually reads. The press path calls
-	 * `dismissEndedSurface` directly; only the timer goes through this.
-	 */
-	const dismissEndedSurfaceRef = useRef(dismissEndedSurface);
-	dismissEndedSurfaceRef.current = dismissEndedSurface;
-
-	/*
-	 * THE CLEAN EXIT'S BEAT (#929): a surface whose shell exited CLEANLY during this
-	 * run clears itself one beat after this pane shows it ended, through the SAME
-	 * dismissal the row's X runs (`dismissEndedSurface`) — no second mechanism and no
-	 * quiet path to main.
-	 *
-	 * THE DECISION IS THE LISTING'S, not the exit frame's: `clearsItselfAfterExit`
-	 * reads `(live, running, exit_code)`, which is already main's own projection of
-	 * the exit — the mirror's exit event only refreshes this listing, so the policy
-	 * has one input and no row reconstructed from history (`live: false`) can ever
-	 * qualify.
-	 *
-	 * THE BEAT STARTS WHEN THE PANE FIRST SEES the qualifying row — the exit arriving
-	 * under an open pane is that moment, and a surface that ended while the pane was
-	 * closed or in another conversation gets its beat on the next open, from the same
-	 * code path. That is deliberate: the beat is the NOTICE (the ended banner with
-	 * its exit code), and a notice a user can see requires a pane. What must NOT
-	 * happen either way is a beat that lives past its subject, which is why the
-	 * timer is dropped when the row leaves the listing and re-checks the row — gone,
-	 * running again, no longer a clean exit — at expiry, so a manual X during the
-	 * beat is not followed by a second close.
-	 */
-	useEffect(() => {
-		const timers = exitDismissTimers.current;
-		const wanted = new Set<string>();
-		for (const row of surfaces) {
-			if (!clearsItselfAfterExit(row)) continue;
-			wanted.add(row.surface);
-			if (timers.has(row.surface)) continue;
-			timers.set(
-				row.surface,
-				setTimeout(() => {
-					timers.delete(row.surface);
-					const current = latestSurfaces.current.find(
-						(candidate) => candidate.surface === row.surface,
-					);
-					if (!current || !clearsItselfAfterExit(current)) return;
-					dismissEndedSurfaceRef.current(current);
-				}, EXIT_DISMISS_AFTER_MS),
-			);
-		}
-		for (const [surface, timer] of timers) {
-			if (wanted.has(surface)) continue;
-			clearTimeout(timer);
-			timers.delete(surface);
-		}
-	}, [surfaces]);
-
-	/*
-	 * A BEAT BELONGS TO A MOUNTED PANE. Unmounting clears every timer: the notice is
-	 * the pane's, and leaving one armed would fire a dismissal against a hook that
-	 * has gone — which a remount would answer with a fresh beat anyway (the row still
-	 * being listed, still qualifying).
-	 */
-	useEffect(
-		() => () => {
-			for (const timer of exitDismissTimers.current.values())
-				clearTimeout(timer);
-			exitDismissTimers.current.clear();
-		},
-		[],
-	);
+	// Automatic completion release belongs to the host's acknowledged-exit
+	// lifecycle. A renderer timer must never discard retained/user/secure output.
 
 	/*
 	 * THE HANDOFF (UX round 1, U1). The target is the row that now holds the lens —
@@ -944,6 +844,43 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 					) : null}
 				</div>
 				<div className={cn("flex shrink-0 items-center gap-1")}>
+					{session.snapshot.capacity ? (
+						<>
+							<Tooltip
+								content={
+									session.snapshot.resources
+										? `${t("ui.console.capacity.summary", session.snapshot.capacity)}. ${t("ui.console.capacity.help")} ${t("ui.console.capacity.resources", { memory: Math.ceil(session.snapshot.resources.modeledBytes / 1048576), logs: Math.ceil(session.snapshot.resources.logBytes / 1048576), pending: Math.ceil(session.snapshot.resources.pendingBytes / 1048576), cells: session.snapshot.resources.cells, protected: session.snapshot.resources.protected })}`
+										: t("ui.console.capacity.help")
+								}
+							>
+								<span
+									className="max-w-40 truncate text-ink-muted text-xs"
+									data-tour-tag="console-capacity"
+								>
+									{t("ui.console.capacity.summary", session.snapshot.capacity)}
+								</span>
+							</Tooltip>
+							<Tooltip content={t("ui.console.cleanup.help")}>
+								<Button
+									variant="ghost"
+									size="icon-sm"
+									aria-label={t("ui.console.cleanup.label")}
+									onClick={() => void session.cleanupOwner()}
+									disabled={
+										!surfaces.some(
+											(item) =>
+												item.agentOwned &&
+												!item.running &&
+												!item.secure &&
+												item.surface !== surface?.surface,
+										)
+									}
+								>
+									<Archive aria-hidden="true" />
+								</Button>
+							</Tooltip>
+						</>
+					) : null}
 					{/* The `+` in the pane's own chrome, beside the surface list (§6.1). It
 					    is present in the empty state too, where it is the control a
 					    first-run user actually uses. */}
@@ -1160,7 +1097,13 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 								 * tabbing — the reveal never gates reachability, only sight.
 								 */}
 								<Tooltip
-									content={row.running ? "Close terminal" : "Dismiss terminal"}
+									content={
+										row.running
+											? "Close terminal"
+											: row.retain
+												? t("ui.console.dismiss_history")
+												: "Dismiss terminal"
+									}
 								>
 									<Button
 										variant="ghost"
@@ -1173,7 +1116,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 										 * rather than of a collision. The tooltip keeps the shorter sentence:
 										 * a pointer is already on the row it would act on.
 										 */
-										aria-label={`${row.running ? "Close" : "Dismiss"} ${surfaceTitle(row)}, tab ${index + 1} of ${surfaces.length}`}
+										aria-label={`${row.running ? "Close" : "Dismiss"} ${surfaceTitle(row)}, tab ${index + 1} of ${surfaces.length}${!row.running && row.retain ? ` — ${t("ui.console.dismiss_history")}` : ""}`}
 										onClick={() => requestSurfaceClose(row)}
 										className={cn(
 											"me-0.5 transition-opacity",

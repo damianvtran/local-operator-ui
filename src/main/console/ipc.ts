@@ -59,6 +59,7 @@ export interface RegisterConsoleIpcOptions {
  * The first group is invoked by the renderer; the second is pushed by main. */
 export const CONSOLE_IPC_CHANNELS = [
 	"console-state",
+	"console-cleanup-owner",
 	"console-create-surface",
 	"console-close-surface",
 	"console-open-pane",
@@ -103,6 +104,11 @@ export function registerConsoleIpc(options: RegisterConsoleIpcOptions): void {
 		if (!host) throw new Error("The console is not running.");
 		return host;
 	}
+
+	ipcMain.handle("console-cleanup-owner", (event, sessionId: unknown) => {
+		const host = authorize(event);
+		return host.cleanupOwner(stringOrThrow(sessionId, "sessionId"));
+	});
 
 	ipcMain.handle("console-state", (event, sessionId: unknown) => {
 		assertTrustedSender(event);
@@ -305,7 +311,9 @@ export function registerConsoleIpc(options: RegisterConsoleIpcOptions): void {
 					});
 				},
 			};
-			const replay = host.subscribe(token, from, subscriber);
+			// This handler already validated the trusted frame. Stored origin and
+			// caller JSON never grant this context to the agent RPC path.
+			const replay = host.subscribe(token, from, subscriber, "user");
 			return {
 				surface: token,
 				replay_base64: Buffer.from(replay.bytes).toString("base64"),
