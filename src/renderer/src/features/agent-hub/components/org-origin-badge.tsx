@@ -1,4 +1,6 @@
 import { Badge } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Users } from "lucide-react";
 import type React from "react";
@@ -33,25 +35,28 @@ import type React from "react";
 export const OrgOriginBadge: React.FC<{
 	orgName?: string | null;
 	className?: string;
-}> = ({ orgName, className }) => (
-	<Badge
-		variant="neutral"
-		className={cn("gap-1", className)}
-		data-testid="agent-org-badge"
-		/*
-		 * A title rather than a Tooltip: this badge sits inside the card's own
-		 * "open details" button, and a tooltip on a nested element inside a button
-		 * is a second interactive affordance inside the first. The title carries the
-		 * same sentence to a pointer reader, and the label itself carries it to
-		 * everyone.
-		 */
-		title={
-			orgName
-				? `Shared with ${orgName}, not the public hub`
-				: "Shared with an organization, not the public hub"
-		}
-	>
-		<Users aria-hidden="true" />
-		{orgName ?? "Organization"}
-	</Badge>
-);
+}> = ({ orgName, className }) => {
+	useI18nLocale();
+	return (
+		<Badge
+			variant="neutral"
+			className={cn("gap-1", className)}
+			data-testid="agent-org-badge"
+			/*
+			 * A title rather than a Tooltip: this badge sits inside the card's own
+			 * "open details" button, and a tooltip on a nested element inside a button
+			 * is a second interactive affordance inside the first. The title carries the
+			 * same sentence to a pointer reader, and the label itself carries it to
+			 * everyone.
+			 */
+			title={
+				orgName
+					? t("ui.hub.taxonomy.origin.named", { name: orgName })
+					: t("ui.hub.taxonomy.origin.unnamed")
+			}
+		>
+			<Users aria-hidden="true" />
+			{orgName ?? t("ui.hub.taxonomy.origin.organization")}
+		</Badge>
+	);
+};

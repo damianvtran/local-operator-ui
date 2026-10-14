@@ -1,0 +1,110 @@
+{
+	"ui.hub.taxonomy.category.investment": {
+		"role": "Hub category label, shared between category rail and agent pills",
+		"tone": "Short sentence-case category noun; keep the meaning of the taxonomy.",
+		"note": "The underlying snake_case identifier is a backend filter and is never translated. Unknown categories retain their source label."
+	},
+	"ui.hub.taxonomy.category.accounting": {
+		"role": "Hub category label, shared between category rail and agent pills",
+		"tone": "Short sentence-case category noun; keep the meaning of the taxonomy.",
+		"note": "The underlying snake_case identifier is a backend filter and is never translated. Unknown categories retain their source label."
+	},
+	"ui.hub.taxonomy.category.healthcare": {
+		"role": "Hub category label, shared between category rail and agent pills",
+		"tone": "Short sentence-case category noun; keep the meaning of the taxonomy.",
+		"note": "The underlying snake_case identifier is a backend filter and is never translated. Unknown categories retain their source label."
+	},
+	"ui.hub.taxonomy.category.legal": {
+		"role": "Hub category label, shared between category rail and agent pills",
+		"tone": "Short sentence-case category noun; keep the meaning of the taxonomy.",
+		"note": "The underlying snake_case identifier is a backend filter and is never translated. Unknown categories retain their source label."
+	},
+	"ui.hub.taxonomy.category.software": {
+		"role": "Hub category label, shared between category rail and agent pills",
+		"tone": "Short sentence-case category noun; keep the meaning of the taxonomy.",
+		"note": "The underlying snake_case identifier is a backend filter and is never translated. Unknown categories retain their source label."
+	},
+	"ui.hub.taxonomy.category.security": {
+		"role": "Hub category label, shared between category rail and agent pills",
+		"tone": "Short sentence-case category noun; keep the meaning of the taxonomy.",
+		"note": "The underlying snake_case identifier is a backend filter and is never translated. Unknown categories retain their source label."
+	},
+	"ui.hub.taxonomy.category.role_play": {
+		"role": "Hub category label, shared between category rail and agent pills",
+		"tone": "Short sentence-case category noun; keep the meaning of the taxonomy.",
+		"note": "The underlying snake_case identifier is a backend filter and is never translated. Unknown categories retain their source label."
+	},
+	"ui.hub.taxonomy.category.personal_assistance": {
+		"role": "Hub category label, shared between category rail and agent pills",
+		"tone": "Short sentence-case category noun; keep the meaning of the taxonomy.",
+		"note": "The underlying snake_case identifier is a backend filter and is never translated. Unknown categories retain their source label."
+	},
+	"ui.hub.taxonomy.category.education": {
+		"role": "Hub category label, shared between category rail and agent pills",
+		"tone": "Short sentence-case category noun; keep the meaning of the taxonomy.",
+		"note": "The underlying snake_case identifier is a backend filter and is never translated. Unknown categories retain their source label."
+	},
+	"ui.hub.taxonomy.category.marketing": {
+		"role": "Hub category label, shared between category rail and agent pills",
+		"tone": "Short sentence-case category noun; keep the meaning of the taxonomy.",
+		"note": "The underlying snake_case identifier is a backend filter and is never translated. Unknown categories retain their source label."
+	},
+	"ui.hub.taxonomy.category.sales": {
+		"role": "Hub category label, shared between category rail and agent pills",
+		"tone": "Short sentence-case category noun; keep the meaning of the taxonomy.",
+		"note": "The underlying snake_case identifier is a backend filter and is never translated. Unknown categories retain their source label."
+	},
+	"ui.hub.taxonomy.category.research": {
+		"role": "Hub category label, shared between category rail and agent pills",
+		"tone": "Short sentence-case category noun; keep the meaning of the taxonomy.",
+		"note": "The underlying snake_case identifier is a backend filter and is never translated. Unknown categories retain their source label."
+	},
+	"ui.hub.taxonomy.category.analysis": {
+		"role": "Hub category label, shared between category rail and agent pills",
+		"tone": "Short sentence-case category noun; keep the meaning of the taxonomy.",
+		"note": "The underlying snake_case identifier is a backend filter and is never translated. Unknown categories retain their source label."
+	},
+	"ui.hub.taxonomy.category.management": {
+		"role": "Hub category label, shared between category rail and agent pills",
+		"tone": "Short sentence-case category noun; keep the meaning of the taxonomy.",
+		"note": "The underlying snake_case identifier is a backend filter and is never translated. Unknown categories retain their source label."
+	},
+	"ui.hub.taxonomy.category.social_media": {
+		"role": "Hub category label, shared between category rail and agent pills",
+		"tone": "Short sentence-case category noun; keep the meaning of the taxonomy.",
+		"note": "The underlying snake_case identifier is a backend filter and is never translated. Unknown categories retain their source label."
+	},
+	"ui.hub.taxonomy.category.other": {
+		"role": "Hub category label, shared between category rail and agent pills",
+		"tone": "Short sentence-case category noun; keep the meaning of the taxonomy.",
+		"note": "The underlying snake_case identifier is a backend filter and is never translated. Unknown categories retain their source label."
+	},
+	"ui.hub.taxonomy.heading": {
+		"role": "Category rail section header",
+		"tone": "Compact, neutral; organization-private and public hub provenance must remain distinct.",
+		"note": "Preserve organization names and filtering identifiers unchanged."
+	},
+	"ui.hub.taxonomy.all": {
+		"role": "Reset-category-filter control",
+		"tone": "Compact, neutral; organization-private and public hub provenance must remain distinct.",
+		"note": "Preserve organization names and filtering identifiers unchanged."
+	},
+	"ui.hub.taxonomy.origin.named": {
+		"role": "Named organization provenance title on an agent badge",
+		"tone": "Compact, neutral; organization-private and public hub provenance must remain distinct.",
+		"note": "Preserve organization names and filtering identifiers unchanged.",
+		"placeholders": {
+			"name": "Organization display name supplied by membership data, unchanged; not a translated product label."
+		}
+	},
+	"ui.hub.taxonomy.origin.unnamed": {
+		"role": "Unknown-organization provenance title on an agent badge",
+		"tone": "Compact, neutral; organization-private and public hub provenance must remain distinct.",
+		"note": "Preserve organization names and filtering identifiers unchanged."
+	},
+	"ui.hub.taxonomy.origin.organization": {
+		"role": "Fallback organization badge label when its name is unavailable",
+		"tone": "Compact, neutral; organization-private and public hub provenance must remain distinct.",
+		"note": "Preserve organization names and filtering identifiers unchanged."
+	}
+}
