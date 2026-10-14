@@ -2855,7 +2855,20 @@ function planRun(
 	for (let gateIndex = 0; gateIndex < segments.length; gateIndex += 1) {
 		const gateSegment = segments[gateIndex];
 		if (!gateSegment.collapsed || gateSegment.internal?.live !== true) continue;
-		if (segments.some((other, i) => i !== gateIndex && other.collapsed)) {
+		/*
+		 * ONLY AN ORDINARY BAR CLAIMS THE ONE-BAR QUOTA. A sibling live episode
+		 * is not the pre-existing bar the operator's contract protects - that bar
+		 * is the settled turn's own, non-episode fold. Yielding to a fellow
+		 * episode left the second receipt episode of an episode-carrying run loose
+		 * (the media regression: `asset-j` stayed painted), so `internal == null`
+		 * is what distinguishes the bar that must stay the same element.
+		 */
+		if (
+			segments.some(
+				(other, i) =>
+					i !== gateIndex && other.collapsed && other.internal == null,
+			)
+		) {
 			segments[gateIndex] = { ...gateSegment, collapsed: false };
 		}
 	}

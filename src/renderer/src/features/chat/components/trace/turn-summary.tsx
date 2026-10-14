@@ -153,7 +153,10 @@ export type TurnSummaryProps = {
 	episode?: {
 		receipts: number;
 		active: boolean;
-		phaseLine: Pick<WorkingLineProps, "activity" | "phase" | "startedAt" | "clock"> | null;
+		phaseLine: Pick<
+			WorkingLineProps,
+			"activity" | "phase" | "startedAt" | "clock"
+		> | null;
 	} | null;
 	/**
 	 * The quiet group's clauses, when this bar is one (design §5, rev 2): the
@@ -247,8 +250,10 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 	 * states its own - never a second reading of the same number.
 	 */
 	const receiptCount = episode?.receipts ?? group?.count;
-	const groupClauseTitle = receiptCount === undefined ? null :
-		`At least ${receiptCount} messages — earlier rows are not loaded`;
+	const groupClauseTitle =
+		receiptCount === undefined
+			? null
+			: `At least ${receiptCount} messages — earlier rows are not loaded`;
 
 	/*
 	 * The bar's root, held so the strip's `+N` press can hand focus to the bar's
@@ -402,17 +407,38 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 						{episode?.active ? (
 							<>
 								{label !== null && <Dot />}
-								<span className="shrink-0 text-body-sm text-ink-muted" title={partial ? (groupClauseTitle ?? undefined) : undefined} aria-label={partial ? (groupClauseTitle ?? undefined) : undefined}>
+								<span
+									className="shrink-0 text-body-sm text-ink-muted"
+									title={partial ? (groupClauseTitle ?? undefined) : undefined}
+									aria-label={
+										partial ? (groupClauseTitle ?? undefined) : undefined
+									}
+								>
 									{partial ? `${episode.receipts}+` : episode.receipts}
 								</span>
-								{actionCount > 0 && <><Dot /><span className="shrink-0 text-body-sm text-ink-muted" title={partial ? actionClauseTitle : undefined}>{actionClause}</span></>}
-								{episode.phaseLine !== null && <><Dot /><WorkingLine
-									activity={episode.phaseLine.activity}
-									phase={episode.phaseLine.phase}
-									startedAt={episode.phaseLine.startedAt}
-									clock={episode.phaseLine.clock}
-									className="min-w-0"
-								/></>}
+								{actionCount > 0 && (
+									<>
+										<Dot />
+										<span
+											className="shrink-0 text-body-sm text-ink-muted"
+											title={partial ? actionClauseTitle : undefined}
+										>
+											{actionClause}
+										</span>
+									</>
+								)}
+								{episode.phaseLine !== null && (
+									<>
+										<Dot />
+										<WorkingLine
+											activity={episode.phaseLine.activity}
+											phase={episode.phaseLine.phase}
+											startedAt={episode.phaseLine.startedAt}
+											clock={episode.phaseLine.clock}
+											className="min-w-0"
+										/>
+									</>
+								)}
 							</>
 						) : group !== null ? (
 							<>
@@ -424,11 +450,10 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 										partial ? (groupClauseTitle ?? undefined) : undefined
 									}
 								>
-									{partial ? `${episode?.receipts ?? group.count}+` : `${episode?.receipts ?? group.count}`}
+									{partial
+										? `${episode?.receipts ?? group.count}+`
+										: `${episode?.receipts ?? group.count}`}
 								</span>
-								{/* Receipt cardinality is not action cardinality: show the
-								    direct tools that opening this same bar can inspect. */}
-								{actionCount > 0 && <><Dot /><span className="shrink-0 text-body-sm text-ink-muted" title={partial ? actionClauseTitle : undefined}>{actionClause}</span></>}
 								{group.spanS !== null && (
 									<>
 										<Dot />

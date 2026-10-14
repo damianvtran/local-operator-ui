@@ -2606,12 +2606,23 @@ test("#665: the answer is never hidden behind the bar", () => {
 	 */
 	const followUp = plan.runs[0].segments.at(-1);
 	assert.equal(followUp?.afterAnswer, true, "the last bar is the follow-up's");
+	/*
+	 * THE FOLLOW-UP BAR IS ITS OWN WORK ONLY, by the sanctioned contract:
+	 * the two post-answer peer receipts (entry-001203, entry-001204) form
+	 * their own compact internal episode - measured as the segment
+	 * [entry-001203,entry-001204], collapsed, carrying internal facts - and
+	 * entry-001206 (`message:session_mcp_unavailable`) is a notice boundary,
+	 * NOT an internal origin, so it stays painted inline for the reader. Both
+	 * facts are why those three rows are absent here rather than folded in.
+	 * The episode condenses AT SETTLEMENT (this plan runs live:false), never
+	 * while the turn is thinking - the one-bar gate owns that half.
+	 *
+	 * The invariants above are unchanged and are not negotiable: the answer
+	 * (1196) stays mounted, and so does the run's last close (1229).
+	 */
 	assert.deepEqual(
 		followUp?.segmentIds,
 		[
-			"entry-001203",
-			"entry-001204",
-			"entry-001206",
 			"entry-001208",
 			"tool:call-1208-0",
 			"entry-001211",
@@ -4133,18 +4144,44 @@ const hubReceipt = (id, extra = {}) =>
 	);
 
 test("active internal receipt compacts without settlement while ALL material answers stay visible", () => {
-	const ordinary = planOf([user("ordinary"), tool("ordinary-call", { phase: "running" })], true);
-	assert.equal(ordinary.runs.some(r => r.segments.some(s => s.collapsed)), false);
-	const rows = [...internalOpening(), peerRow("ia-peer"), tool("ia-eval", { toolName: "eval", phase: "running", args: { code: "tool('no_reply')" } }, "trace")];
+	const ordinary = planOf(
+		[user("ordinary"), tool("ordinary-call", { phase: "running" })],
+		true,
+	);
+	assert.equal(
+		ordinary.runs.some((r) => r.segments.some((s) => s.collapsed)),
+		false,
+	);
+	const rows = [
+		...internalOpening(),
+		peerRow("ia-peer"),
+		tool(
+			"ia-eval",
+			{
+				toolName: "eval",
+				phase: "running",
+				args: { code: "tool('no_reply')" },
+			},
+			"trace",
+		),
+	];
 	const before = planOf(internalOpening(), false);
 	const during = planOf(rows, true);
 	const segment = internalSpanOf(during, "ia-peer");
 	assert.equal(segment.collapsed, true);
 	assert.equal(segment.completed, false);
 	assert.equal(segment.internal.live, true);
-	assert.equal(segment.facts.group, null, "a singleton does not redefine QuietGroup >=2");
+	assert.equal(
+		segment.facts.group,
+		null,
+		"a singleton does not redefine QuietGroup >=2",
+	);
 	assert.equal(segment.key, "qg:ia-peer");
-	assert.equal(segment.facts.actions, 1, "outer eval remains a real inspectable action");
+	assert.equal(
+		segment.facts.actions,
+		1,
+		"outer eval remains a real inspectable action",
+	);
 	assert.deepEqual(segment.segmentIds, ["ia-peer", "ia-eval"]);
 	assertAllAnswersVisible(before, ["ia-final"]);
 	assertAllAnswersVisible(during, ["ia-final"]);

@@ -4763,11 +4763,23 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		 * and its key is not remembered as announced. When the turn settles the same
 		 * key becomes a genuine settle, appears once, and says its one sentence.
 		 */
+		/*
+		 * THE PANE IS LIVE, NOT THE SEGMENT'S TAIL. `internal.live` is derived
+		 * with a tail-position condition (`span.to === records.length - 1`), so it
+		 * reads false the moment a streaming answer appends AFTER the episode -
+		 * which is exactly when the turn is still thinking and PR-4 #1 requires
+		 * silence. That flip is what let `'Wake.'` through at state 1. The pane's
+		 * own live option (`collapseInputs.live`) covers the whole cycle, so gate on
+		 * it: while the turn is being written an internal episode is presentation,
+		 * never a settle. Its key is still left unannounced, so the ONE settle
+		 * sentence lands exactly once when the pane goes quiet.
+		 */
 		const announced = (segment: {
 			collapsed: boolean;
-			internal?: { live: boolean } | null;
+			internal?: unknown;
 			key: string;
-		}) => segment.collapsed && segment.internal?.live !== true;
+		}) =>
+			segment.collapsed && !(collapseInputs.live && segment.internal != null);
 		const rowIds = planRowIds(collapse.runs);
 		const previous = announcedPlan.current;
 		if (previous === null) {
@@ -4802,7 +4814,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		};
 		if (appeared.length === 0) return;
 		setCondenseAnnouncement(appeared.map(condenseSentence).join(" "));
-	}, [collapse]);
+	}, [collapse, collapseInputs]);
 
 	/*
 	 * THE LIST, RE-EXPRESSED AS ENTRIES. Every group renders exactly as today,
