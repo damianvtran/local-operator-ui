@@ -266,6 +266,22 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 			 */
 			const kind = viewerFor(fileDoc.path, fileDoc.type);
 
+			/*
+			 * A session artifact opens BY DIGEST, before anything that assumes a
+			 * path. There is nothing to probe (a stat of `artifact:<digest>` can only
+			 * answer "missing"), nothing to read over the file bridge, and no OS
+			 * fallback to hand it to (the OS cannot open a store entry). The viewer
+			 * resolves the bytes itself from `document.artifact`, the way the
+			 * transcript's own pictures do, so the document carries no content and
+			 * nothing here can put a payload (or a `blob:` URL) into the persisted
+			 * store. The store entry is the same document the row holds, so the tab
+			 * and the Files row stay one identity.
+			 */
+			if (fileDoc.artifact) {
+				openDocument({ ...fileDoc, content: "" });
+				return;
+			}
+
 			if (fileDoc.path.startsWith("data:")) {
 				// A data URI's own text IS its content, so it needs no read: the
 				// bytes are already in the string.

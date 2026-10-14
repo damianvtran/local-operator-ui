@@ -10,6 +10,7 @@ import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import {
 	ClipboardCopy,
 	Copy,
+	Download,
 	Ellipsis,
 	ExternalLink,
 	File as FileIcon,
@@ -22,6 +23,7 @@ import {
 	type ImageActionId,
 	barePath,
 	classifyAttachmentSource,
+	downloadBlob,
 	imageActions,
 	pngForClipboard,
 	resolveCopyableImage,
@@ -77,6 +79,26 @@ export type ImageActionsMenuProps = {
 	 * in reach must not be promised one.
 	 */
 	onShowInCanvas?: (() => void) | undefined;
+	/**
+	 * For a session artifact: what the bytes are. A video is offered `Save as...`
+	 * and no clipboard copy (there is no video clipboard form).
+	 */
+	mediaKind?: "image" | "video";
+	/**
+	 * For a session artifact: the name `Save as...` proposes
+	 * (`artifactFileName`). Required for that entry to work, which is why the
+	 * entry is withheld without it.
+	 */
+	saveName?: string;
+	/**
+	 * Where the bytes come from when the surface does not hold a painted URL.
+	 *
+	 * A Files row mounts one menu per row and does not resolve every row's
+	 * picture (the thumbnail is lazy and a video row has none), so a copy or save
+	 * from the menu fetches by digest on demand. The viewers, which already hold
+	 * the painted `blob:`, do not pass it and resolve through `src` as before.
+	 */
+	resolveBytes?: () => Promise<Blob>;
 	tooltip?: string;
 	"aria-label"?: string;
 };
@@ -85,6 +107,7 @@ export type ImageActionsMenuProps = {
 const ACTION_ICONS: Record<ImageActionId, React.ReactNode> = {
 	"open-file": <FileIcon aria-hidden="true" />,
 	"show-in-canvas": <LayoutGrid aria-hidden="true" />,
+	"save-as": <Download aria-hidden="true" />,
 	"open-folder": <FolderOpen aria-hidden="true" />,
 	"copy-file-path": <ClipboardCopy aria-hidden="true" />,
 	"copy-image": <Copy aria-hidden="true" />,
@@ -97,6 +120,9 @@ export const ImageActionsMenu = ({
 	src,
 	label,
 	onShowInCanvas,
+	mediaKind,
+	saveName,
+	resolveBytes,
 	tooltip = "Image actions",
 	"aria-label": ariaLabel,
 }: ImageActionsMenuProps) => {
@@ -104,7 +130,8 @@ export const ImageActionsMenu = ({
 	const actions = imageActions(kind, {
 		canShowInCanvas: Boolean(onShowInCanvas),
 		source: src ?? file,
-	});
+		mediaKind,
+	}).filter((action) => action.id !== "save-as" || Boolean(saveName));
 	if (actions.length === 0) return null;
 
 	/**
@@ -149,13 +176,32 @@ export const ImageActionsMenu = ({
 			if (typeof ClipboardItem === "undefined") {
 				throw new Error("this window cannot write an image to the clipboard");
 			}
-			const bytes = await resolveCopyableImage(kind, file, src);
+			const bytes = resolveBytes
+				? await resolveBytes()
+				: await resolveCopyableImage(kind, file, src);
 			const png = await pngForClipboard(bytes);
 			await navigator.clipboard.write([new ClipboardItem({ [png.type]: png })]);
 			showSuccessToast("Image copied to clipboard");
 		} catch (error) {
 			console.error("Failed to copy image: ", error);
 			showErrorToast("Failed to copy image");
+		}
+	};
+
+	/*
+	 * Save the bytes through the platform's save dialog. The bytes are resolved
+	 * the way a copy resolves them, and the dialog (not this code) chooses where
+	 * they land, so nothing here writes to a path.
+	 */
+	const saveAs = async () => {
+		try {
+			const bytes = resolveBytes
+				? await resolveBytes()
+				: await resolveCopyableImage(kind, file, src);
+			downloadBlob(bytes, saveName ?? "download");
+		} catch (error) {
+			console.error("Failed to save file: ", error);
+			showErrorToast("Failed to save file");
 		}
 	};
 
@@ -183,6 +229,9 @@ export const ImageActionsMenu = ({
 				return;
 			case "copy-image":
 				void copyImage();
+				return;
+			case "save-as":
+				void saveAs();
 				return;
 			case "copy-image-url":
 				void copyText(

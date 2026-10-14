@@ -1,0 +1,96 @@
+{
+  "label": "wide",
+  "session": "a1f0c0de0001",
+  "window": "1380x900",
+  "themes": {
+    "dark": {
+      "frame": "<scratch>/frames/before/files-wide-dark.png",
+      "reading": {
+        "innerWidth": 1380,
+        "innerHeight": 900,
+        "dock": {
+          "x": 776,
+          "y": 32,
+          "w": 560,
+          "h": 868
+        },
+        "dockMode": "docked",
+        "scroller": {
+          "x": 776,
+          "y": 116,
+          "w": 560,
+          "h": 784
+        },
+        "rowCount": 1,
+        "rows": [
+          {
+            "text": "promo-notes.md 0 KB",
+            "box": {
+              "x": 784,
+              "y": 124,
+              "w": 544,
+              "h": 36
+            },
+            "insideDock": true,
+            "thumb": null
+          }
+        ],
+        "header": "Filter 1 file promo-notes.md 0 KB"
+      }
+    },
+    "light": {
+      "frame": "<scratch>/frames/before/files-wide-light.png",
+      "reading": {
+        "innerWidth": 1380,
+        "innerHeight": 900,
+        "dock": {
+          "x": 776,
+          "y": 32,
+          "w": 560,
+          "h": 868
+        },
+        "dockMode": "docked",
+        "scroller": {
+          "x": 776,
+          "y": 116,
+          "w": 560,
+          "h": 784
+        },
+        "rowCount": 1,
+        "rows": [
+          {
+            "text": "promo-notes.md 0 KB",
+            "box": {
+              "x": 784,
+              "y": 124,
+              "w": 544,
+              "h": 36
+            },
+            "insideDock": true,
+            "thumb": null
+          }
+        ],
+        "header": "Filter 1 file promo-notes.md 0 KB"
+      }
+    }
+  },
+  "facts": {
+    "windowMode": "headless",
+    "appVersion": "0.34.40",
+    "platform": "darwin",
+    "title": "Local Operator",
+    "windowSize": {
+      "width": 1380,
+      "height": 900
+    },
+    "contentBounds": {
+      "width": 1380,
+      "height": 900
+    },
+    "visible": false,
+    "focused": false,
+    "minimized": false,
+    "frames": [],
+    "outDir": "<scratch>/frames/before"
+  }
+}

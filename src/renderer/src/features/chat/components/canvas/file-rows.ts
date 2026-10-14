@@ -1,7 +1,9 @@
 import type {
+	CanvasArtifact,
 	CanvasDocument,
 	CanvasDocumentType,
 } from "@features/chat/types/canvas";
+import { isArtifactPath } from "@features/chat/utils/artifact-identity";
 import { stripFileUrl } from "@features/chat/utils/canvas-document";
 import { getFileName } from "@features/chat/utils/get-file-name";
 /*
@@ -218,6 +220,16 @@ export function kindGroupOf(type?: CanvasDocumentType): FileKindGroup {
 export type FileRow = {
 	/** The document as stored, so the click handler keeps its identity. */
 	document: CanvasDocument;
+	/**
+	 * The session artifact this row stands for, or `null` for a file.
+	 *
+	 * Lifted off the document so the row component branches on ONE field rather
+	 * than re-deriving it from `document.artifact` and `document.path` in three
+	 * places. Non-null means the row has no path: its thumbnail comes from the
+	 * attachment store by digest, it is never probed, and `name` is the
+	 * producer's name (there is no basename to read).
+	 */
+	artifact: CanvasArtifact | null;
 	/** The name line, read from the path rather than the title. */
 	name: string;
 	/**
@@ -312,10 +324,69 @@ export function countLabel(
  * a whole base64 payload into a haystack would cost more than the panel is
  * worth. Its name (or the `Pasted file` fallback) is what it can be found by.
  */
-function searchTextFor(name: string, path: string, title: string): string {
+function searchTextFor(
+	name: string,
+	path: string,
+	title: string,
+	artifact: CanvasArtifact | null,
+): string {
+	// An artifact's "path" is an identity, not somewhere a person would look for
+	// it, so it contributes its name, its kind word and its digest head (the
+	// tiebreak the row prints) instead.
+	if (artifact)
+		return fold(
+			`${name}\n${artifact.kind}\n${artifact.digest.slice(0, ARTIFACT_TIEBREAK_LENGTH)}`,
+		);
 	if (path.startsWith("data:")) return fold(`${name}\n${title}`);
 	const stripped = stripFileUrl(path);
 	return fold(`${name}\n${stripped}\n${abbreviateHome(stripped)}`);
+}
+
+/**
+ * How much of a digest is drawn as the same-name tiebreak: 8 hex characters,
+ * which is 4.3 billion values - far past the dozens of rows one conversation
+ * holds - in the width of the directory slot the line borrows.
+ */
+export const ARTIFACT_TIEBREAK_LENGTH = 8;
+
+/**
+ * The artifact a document stands for, or `null`.
+ *
+ * Both conditions, because the two facts can disagree in a persisted store: a
+ * document carrying `artifact` is the authority, and an `artifact:` path with no
+ * block (not produced by this code) is not one this list can fetch bytes for, so
+ * it is NOT treated as an artifact and falls through to the path rules, which
+ * show it as the unopenable thing it is rather than a thumbnail that fails.
+ */
+function artifactOf(document: CanvasDocument): CanvasArtifact | null {
+	return document.artifact && isArtifactPath(document.path)
+		? document.artifact
+		: null;
+}
+
+/**
+ * The leading visual's media kind: `image`/`video` get a thumbnail, `null` the
+ * type glyph.
+ *
+ * An artifact VIDEO has no thumbnail: a poster frame would mean fetching and
+ * decoding the whole clip per row, and the file read a path-backed video
+ * thumbnail uses is exactly what an artifact does not have. It wears the video
+ * glyph, the same fallback a decode failure gets. (A poster is a follow-up that
+ * wants the backend to cut one.)
+ */
+function mediaOf(
+	document: CanvasDocument,
+	artifact: CanvasArtifact | null,
+): FileRow["media"] {
+	if (artifact) return artifact.kind === "image" ? "image" : null;
+	return document.type === "image" || document.type === "video"
+		? document.type
+		: null;
+}
+
+/** An artifact's name line: the producer's name, never a basename of its id. */
+function artifactName(document: CanvasDocument): string {
+	return document.title || (document.artifact?.digest ?? document.path);
 }
 
 /**
@@ -329,15 +400,31 @@ function searchTextFor(name: string, path: string, title: string): string {
 export function buildFileRows(documents: CanvasDocument[]): FileRow[] {
 	const basenameCounts = new Map<string, number>();
 	for (const document of documents) {
-		const name = getFileName(document.path);
+		const name = artifactOf(document)
+			? artifactName(document)
+			: getFileName(document.path);
 		basenameCounts.set(name, (basenameCounts.get(name) ?? 0) + 1);
 	}
 
 	return documents.map((document) => {
-		const name = getFileName(document.path);
-		const directory =
-			parentDirectory(document.path) ?? parentDirectory(document.title);
-		const parent = directory === null ? null : displayParent(directory);
+		const artifact = artifactOf(document);
+		const name = artifact ? artifactName(document) : getFileName(document.path);
+		const directory = artifact
+			? null
+			: (parentDirectory(document.path) ?? parentDirectory(document.title));
+		/*
+		 * An artifact has no directory, but it DOES have the thing a directory line
+		 * exists to supply: something that tells two same-named rows apart. A model
+		 * names its outputs from a template ("<model>-01.jpg"), so one real session's
+		 * 69 pictures share three names. The head of the digest is that tiebreak,
+		 * drawn in the same slot and in the same machine-voice mono, and, like a
+		 * directory, only when a clash exists.
+		 */
+		const parent = artifact
+			? artifact.digest.slice(0, ARTIFACT_TIEBREAK_LENGTH)
+			: directory === null
+				? null
+				: displayParent(directory);
 		/*
 		 * A MISSING file gets no leading visual, whatever its type.
 		 *
@@ -352,6 +439,7 @@ export function buildFileRows(documents: CanvasDocument[]): FileRow[] {
 		const missing = document.availability === "missing";
 		return {
 			document,
+			artifact,
 			name,
 			parent,
 			showParent: (basenameCounts.get(name) ?? 0) > 1 && parent !== null,
@@ -360,12 +448,21 @@ export function buildFileRows(documents: CanvasDocument[]): FileRow[] {
 			// says otherwise.
 			missing,
 			kind: kindGroupOf(document.type),
-			media:
-				!missing && (document.type === "image" || document.type === "video")
-					? document.type
-					: null,
+			/*
+			 * An artifact VIDEO has no thumbnail: a poster frame would mean fetching
+			 * and decoding the whole clip per row, and the file path the video
+			 * thumbnail uses is exactly what an artifact does not have. It wears the
+			 * video glyph, the same fallback a decode failure gets. (A poster is a
+			 * follow-up that wants the backend to cut one.)
+			 */
+			media: missing ? null : mediaOf(document, artifact),
 			size: sizeLabel(document.sizeBytes),
-			search: searchTextFor(name, document.path, document.title || name),
+			search: searchTextFor(
+				name,
+				document.path,
+				document.title || name,
+				artifact,
+			),
 		};
 	});
 }
