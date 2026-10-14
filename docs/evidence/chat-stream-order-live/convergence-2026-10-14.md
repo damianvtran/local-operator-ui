@@ -1,7 +1,9 @@
 # Streaming transcript convergence — 2026-10-14
 
 Old reviewed head: `f79bfcef099f55a8c5b7a55d85998958a72fbede`. Original merge-base: `2bfc2eae26f6d47ad774ad1289e57354a94310d4`.
-Fetched upstream: `34371562d4e7fe4af160327494d10ed46f314235`. Rebased source head before this documentation-only record: `7de630c73a6fec0319b6914318d7f23b23e353bb`.
+Actual fetched rebase/proof base: `65708b16a40141a40ddb3a4f12dc4943e2fa67e6` (release 0.34.40). Rebased source head before this documentation-only record: `7de630c73a6fec0319b6914318d7f23b23e353bb`.
+
+After the rebase, upstream advanced to `34371562d4e7fe4af160327494d10ed46f314235`, a release-only bump to 0.34.41. That later fetch was not the rebase base and is not the upstream tree used in the compatibility proof below.
 
 ## Content compatibility
 
