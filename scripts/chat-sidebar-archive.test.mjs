@@ -879,14 +879,38 @@ test("the confirmation asks the reversible question, and the copy is written in 
 	assert.match(dialog, /candidateTitle === null \? "\?" : "\\u201d\?"/);
 	assert.match(dialog, /className="min-w-0 truncate"/);
 	/*
-	 * AND IT IS NOT THE DANGER DIALOG. `isDangerous={false}` is this component's default, which
-	 * is exactly why it is spelled at the call site: the archive is reversible and the danger
-	 * role belongs to the act that is not - the delete dialog beside it, which is the pair a
-	 * reader is meant to be able to tell apart at a glance.
+	 * The operator explicitly wants the archive confirmation's danger treatment,
+	 * superseding the earlier reversible/non-danger rationale. Pin the call-site
+	 * opt-in: the shared modal's default must not silently make this primary again.
 	 */
-	assert.match(dialog, /isDangerous=\{false\}/);
+	assert.match(dialog, /isDangerous=\{true\}/);
 	assert.match(dialog, /confirmText="Archive"/);
 	assert.match(dialog, /cancelText="Cancel"/);
+});
+
+test("danger treatment keeps Cancel first without an archive autofocus override", () => {
+	/*
+	 * Danger is a presentation choice, not permission to move the safe default.
+	 * The shared modal keeps Cancel first for Radix's initial focus; the archive
+	 * caller must not override that ordering or introduce an Enter shortcut.
+	 * These source anchors are not a substitute for the real keyboard QA flow.
+	 */
+	const dialog = code(ARCHIVE_DIALOG);
+	const modal = code(
+		"src/renderer/src/shared/components/common/confirmation-modal.tsx",
+	);
+	const actions = modal.slice(
+		modal.indexOf("const dialogActions ="),
+		modal.indexOf("return (", modal.indexOf("const dialogActions =")),
+	);
+	assert.match(actions, /<SecondaryButton[\s\S]*?data-cancel-action/);
+	assert.match(actions, /isDangerous \? \([\s\S]*?<DangerButton/);
+	assert.ok(
+		actions.indexOf("data-cancel-action") <
+			actions.indexOf("data-confirm-action"),
+		"danger styling moved confirmation ahead of the safe action",
+	);
+	assert.doesNotMatch(dialog, /autoFocus|onOpenAutoFocus|onKeyDown/);
 });
 
 test("every cancel path clears the candidate and writes nothing", () => {

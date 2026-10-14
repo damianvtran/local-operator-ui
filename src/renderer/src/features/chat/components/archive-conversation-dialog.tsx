@@ -183,13 +183,11 @@ export const ArchiveConversationDialog: FC = () => {
 			confirmText="Archive"
 			cancelText="Cancel"
 			/*
-			 * NOT DANGEROUS, and that is the design's whole point (`isDangerous={false}`
-			 * is also this component's default, so it is spelled for the reader rather
-			 * than for the compiler): archiving is reversible and the danger role is
-			 * reserved for the act that is not. The delete dialog beside it is the
-			 * sibling precedent, and the two are meant to be told apart at a glance.
+			 * The operator explicitly prefers danger treatment for this confirmation,
+			 * superseding the earlier reversible/non-danger rationale. Styling does
+			 * not change the safe Cancel focus or the archive/Undo semantics.
 			 */
-			isDangerous={false}
+			isDangerous={true}
 			onConfirm={() => {
 				if (!candidate) return;
 				const { sessionId, fromRow } = candidate;
