@@ -106,5 +106,11 @@
   "ui.hub.status.too_large": "These changes exceed the safe processing limit. Your copy has been preserved.",
   "ui.hub.status.skill_validation": "The skill does not meet the required file and metadata rules.",
   "ui.hub.status.unsafe_publication": "This destination cannot safely receive the current content. Review the destination-specific copy.",
-  "ui.hub.status.other_error": "This action is paused. Open link details to review the cause."
+  "ui.hub.status.other_error": "This action is paused. Open link details to review the cause.",
+  "ui.hub.skills.search": "Search skills",
+  "ui.hub.skills.search_loaded": "Search covers this loaded page.",
+  "ui.hub.skills.open_detail": "View {item}",
+  "ui.hub.skills.catalogue_failed": "Skills from {source} could not be loaded. Retry.",
+  "ui.hub.skills.installed_alias": "Pulled {item} from {source}",
+  "ui.hub.skills.session_selection": "Skill files are available on their next read. Newly selected skill descriptions are included in the next session."
 }
