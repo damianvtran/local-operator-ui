@@ -407,13 +407,27 @@ jobs:
     # being hit, not a hang, so the ceiling was clipping the suite this job
     # exists to run, and it is raised so the suite can finish and be read. Nothing else changes: the job still runs the suite once,
     # fails on any red, and the whole-tree count assertions stand.
+    #
+    # RAISED FROM 35 TO 50 on 2026-10-14, measured rather than guessed again:
+    # the 2026-09-26 figure above is stale. `main`'s five most recent successful
+    # Desktop Tests runs (38582941365, 38579912186, 38572407387, 38568822437,
+    # 38565863630) took 31m59s / 27m25s / 31m37s / 31m49s / 23m40s - so `main`
+    # itself now finishes within about 3 minutes of the old ceiling, and a
+    # feature head ran straight into it on two consecutive attempts, both
+    # cancelled mid-suite at the cap with the suite still emitting tests when
+    # it was cut. The cap was the bound being hit, not a hang, so the ceiling is raised
+    # again so the suite this job exists to run can finish and be read. The
+    # growth from about 11 minutes (2026-09-26) to about 32 minutes is
+    # UNMEASURED and out of scope here. Nothing else changes: the job still runs
+    # the suite once, fails on any red, and the whole-tree count assertions
+    # stand.
     name: Desktop Tests
     needs: [changes]
     if: >-
       !cancelled() &&
       needs.changes.outputs.unit != 'false'
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 50
 
     steps:
       - name: Checkout code

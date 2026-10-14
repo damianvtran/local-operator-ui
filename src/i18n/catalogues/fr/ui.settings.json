@@ -34,8 +34,8 @@
 	"ui.settings.tour.description": "Vous avez manqué la visite guidée ou souhaitez la revoir ? Relancez-la ici.",
 	"ui.settings.tour.title": "Visite guidée",
 	"ui.settings.profile.account_checking": "Vérification de votre compte Radient…",
-	"ui.settings.profile.account_read_failed_retry": "Votre compte Radient n’a pas pu être lu ; le nom et l’adresse e-mail ci-dessous sont donc des valeurs provisoires plutôt que les informations de votre compte. Réessayez.",
-	"ui.settings.profile.account_read_failed_refused": "Votre compte Radient n’a pas pu être lu ; le nom et l’adresse e-mail ci-dessous sont donc des valeurs provisoires plutôt que les informations de votre compte. Réessayez, ou reconnectez-vous à Radient.",
+	"ui.settings.profile.account_read_failed_retry": "Votre compte Radient n’a pas pu être lu ; le nom et l’adresse e-mail ci-dessous sont donc des valeurs par défaut, et non les informations de votre compte. Réessayez.",
+	"ui.settings.profile.account_read_failed_refused": "Votre compte Radient n’a pas pu être lu ; le nom et l’adresse e-mail ci-dessous sont donc des valeurs par défaut, et non les informations de votre compte. Réessayez, ou reconnectez-vous à Radient.",
 	"ui.settings.profile.retry": "Réessayer",
 	"ui.settings.profile.retrying": "Nouvel essai"
 }

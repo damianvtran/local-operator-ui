@@ -1,0 +1,31 @@
+✔ the reported four-frame sequence: B stays between its calls, never below sed (5.0175ms)
+✔ no wake latency, in any combination, makes a painted row hop (146.496125ms)
+✔ older backend (no journal order): arrival order, same answer (0.358292ms)
+✔ parallel calls: start order and end order differ, committed slot order wins live and after (0.353375ms)
+✔ steering mid-turn: the steer lands between the rows it arrived between (0.296208ms)
+✔ interruption: a stopped call and the text around it stay where they arrived (0.178375ms)
+✔ mid-turn join: seeded live_events then live frames and late wakes keep one order (1.794208ms)
+✔ reconcile: the persisted page replaces the live rows without moving them (1.049792ms)
+✔ remote / peer-source lane: facts rank, bodies own - the same arrival chain holds (1.303667ms)
+✔ history_delta rows join at arrival, not at the top (0.857083ms)
+✔ turn end (agent_end) reorders nothing (0.64775ms)
+✔ fuzz, journal lane: 1-3 parallel calls then more text - no painted row hops, final order is committed order (139.540167ms)
+✔ fuzz, peer lane: 1-3 parallel calls then more text - no painted row hops, final order is committed order (133.71525ms)
+✔ fuzz, legacy lane: 1-3 parallel calls then more text - no painted row hops, final order is committed order (31.06675ms)
+✔ the reported shape: two parallel calls, then the next text, before any wake (0.289834ms)
+✔ mid-turn join (applyLiveSeed) with parallel calls then text keeps arrival order (0.173667ms)
+✔ random correction order, journal: later placement cannot overtake an earlier unplaced arrival (36.239583ms)
+✔ random correction order, peer: later placement cannot overtake an earlier unplaced arrival (33.061792ms)
+✔ R3 lone fact plus duplicate, no compose/non-slot starts, peer=false (0.3545ms)
+✔ R3 lone fact plus duplicate, no compose/non-slot starts, peer=true (0.146375ms)
+✔ 205 actual correction ordinals then three persisted history pages, peer=false (24.849958ms)
+✔ 205 actual correction ordinals then three persisted history pages, peer=true (30.277542ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 22
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 952.754791
+[run_bounded] node rc=0 wall=1.3s

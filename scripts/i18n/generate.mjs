@@ -77,6 +77,34 @@ const HEADER = `/**
 /** TS annotation per placeholder kind — the map the RFC's spike exercised. */
 const IDENTIFIER_RE = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
 const WORD_SPLIT_RE = /[^A-Za-z0-9]+/;
+const PATH_RUN_RE = /\d+|\D/g;
+const DIGIT_RUN_RE = /^\d+$/;
+
+/**
+ * Biome uses natural digit-run order, but otherwise compares code units (case
+ * included). Locale collation would fold/reorder case; numeric Number coercion
+ * would lose precision on long runs. BigInt keeps both constraints explicit.
+ */
+function compareCataloguePaths(left, right) {
+	const a = left.match(PATH_RUN_RE) ?? [];
+	const b = right.match(PATH_RUN_RE) ?? [];
+	for (let index = 0; index < Math.min(a.length, b.length); index += 1) {
+		const x = a[index];
+		const y = b[index];
+		if (x === y) continue;
+		if (DIGIT_RUN_RE.test(x) && DIGIT_RUN_RE.test(y)) {
+			const numberX = BigInt(x);
+			const numberY = BigInt(y);
+			if (numberX !== numberY) return numberX < numberY ? -1 : 1;
+		}
+		// Equal values with different zero padding are ordered at this run,
+		// before a later suffix: chat02b precedes chat2a in Biome. Non-digit
+		// differences use the same case-sensitive code-unit comparison.
+		return x < y ? -1 : 1;
+	}
+	if (a.length !== b.length) return a.length < b.length ? -1 : 1;
+	return left < right ? -1 : left > right ? 1 : 0;
+}
 
 const TYPE_BY_KIND = {
 	argument: "string",
@@ -251,10 +279,12 @@ export function readBundles(cataloguesDir) {
 		const imports = files.map((file) => {
 			const namespace = file.slice(0, -".json".length);
 			const identifier = bundleIdentifier(locale, namespace);
+			const path = `./catalogues/${locale}/${file}`;
 			return {
 				file,
 				identifier,
-				line: `import ${identifier} from "./catalogues/${locale}/${file}";`,
+				path,
+				line: `import ${identifier} from "${path}";`,
 			};
 		});
 		return { locale, imports };
@@ -273,12 +303,13 @@ export function renderKeysModule(cataloguesDir) {
 		);
 	}
 
+	// Biome orders these sibling JSON imports by natural module path, not identifier.
+	// Nested namespaces put ui.chat.composer.json before ui.chat.json, while
+	// their generated identifiers have the opposite order. Match the lint gate
+	// at generation time so freshness and import organization can both pass.
 	const imports = bundles
 		.flatMap((bundle) => bundle.imports)
-		.sort((a, b) => (a.file < b.file ? -1 : a.file > b.file ? 1 : 0))
-		.sort((a, b) =>
-			a.identifier < b.identifier ? -1 : a.identifier > b.identifier ? 1 : 0,
-		);
+		.sort((a, b) => compareCataloguePaths(a.path, b.path));
 
 	const enSpread = enBundle.imports
 		.map((entry) => `\t...${entry.identifier},`)
