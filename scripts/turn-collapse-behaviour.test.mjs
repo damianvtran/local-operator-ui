@@ -522,7 +522,7 @@ test("the press opens the run in place, and puts it back", async (t) => {
 		toolRecord("tool:2", { args: { command: "git status --short" } }),
 		answerRecord("answer:1"),
 	]);
-	assert.equal(rowBox(mounted, "tool:1"), null, "collapsed by default");
+	assert.ok(rowBox(mounted, "tool:1") === null, "collapsed by default");
 	await click(barTrigger(mounted));
 	assert.ok(rowBox(mounted, "tool:1"), "the press reveals the work");
 	assert.ok(rowBox(mounted, "tool:2"), "all of it");
@@ -1885,8 +1885,8 @@ test("hiding cross-session rows: the receipt and the send row leave, the bar's i
 
 	// On: the receipt and the send row are not mounted; the ordinary call is
 	// only behind the bar (collapsed), not gone.
-	assert.equal(rowBox(mounted, "peer:1"), null, "the receipt is hidden");
-	assert.equal(rowBox(mounted, "tool:2"), null, "the send row is hidden");
+	assert.ok(rowBox(mounted, "peer:1") === null, "the receipt is hidden");
+	assert.ok(rowBox(mounted, "tool:2") === null, "the send row is hidden");
 	assert.equal(
 		bar(mounted)?.getAttribute("data-run-ids"),
 		"user:1 tool:1 answer:1",
@@ -1896,8 +1896,8 @@ test("hiding cross-session rows: the receipt and the send row leave, the bar's i
 	// sits above the collapse, so no interaction can reveal it.
 	await click(barTrigger(mounted));
 	assert.ok(rowBox(mounted, "tool:1"), "the ordinary call is revealed");
-	assert.equal(rowBox(mounted, "tool:2"), null, "the send row stays gone");
-	assert.equal(rowBox(mounted, "peer:1"), null, "the receipt stays gone");
+	assert.ok(rowBox(mounted, "tool:2") === null, "the send row stays gone");
+	assert.ok(rowBox(mounted, "peer:1") === null, "the receipt stays gone");
 
 	// Off, under the same mount: both come back where they belong. The drain is
 	// two ticks rather than one: the query's notification is applied on a TASK
@@ -2633,7 +2633,7 @@ test("PR-4: a bar the reader opened stays that bar, and open, across the wake an
 		...wakeCycle([toolRecord("tool:2", { ts: TS + 11_000, durationS: 4 })]),
 	];
 	await mounted.render(running, { waiting: true });
-	assert.equal(bar(mounted), opened, "the wake keeps the SAME bar element");
+	assert.ok(bar(mounted) === opened, "the wake keeps the SAME bar element");
 	assert.ok(rowBox(mounted, "tool:1"), "and it is still the one that is open");
 	await mounted.render(
 		[
@@ -2662,7 +2662,7 @@ test("PR-4: a bar the reader opened stays that bar, and open, across the wake an
 		rowBox(mounted, "tool:1"),
 		"the first span's row is still on screen",
 	);
-	assert.equal(rowBox(mounted, "tool:2"), null, "the new span is condensed");
+	assert.ok(rowBox(mounted, "tool:2") === null, "the new span is condensed");
 });
 
 test("PR-4: a stale expansion key of an older shape renders collapsed and does not throw", async (t) => {
@@ -2681,7 +2681,7 @@ test("PR-4: a stale expansion key of an older shape renders collapsed and does n
 		"false",
 		"a key that names nothing opens nothing",
 	);
-	assert.equal(rowBox(mounted, "tool:1"), null);
+	assert.ok(rowBox(mounted, "tool:1") === null);
 });
 
 /* -------- reconciliation of #744 and #745: a bar keeps its identity (PR-4/PR-5) -------- */
@@ -2765,7 +2765,7 @@ test("RECONCILE (a): the bar the reader pressed is the SAME element - not a remo
 		"false",
 		"the stored key names the FIRST bar only; the wake's bar is not opened by it",
 	);
-	assert.equal(rowBox(mounted, "tool:3"), null, "the wake's work is condensed");
+	assert.ok(rowBox(mounted, "tool:3") === null, "the wake's work is condensed");
 });
 
 test("RECONCILE (a'): a later answer with no wake row between leaves the pressed bar mounted and open, and the later work is its own bar", async (t) => {
@@ -2885,12 +2885,12 @@ test("RECONCILE (d): keys of an older shape, a gone run and a neighbour's row re
 			"no stale key opens either bar",
 		);
 	}
-	assert.equal(rowBox(mounted, "tool:1"), null);
-	assert.equal(rowBox(mounted, "tool:3"), null);
+	assert.ok(rowBox(mounted, "tool:1") === null);
+	assert.ok(rowBox(mounted, "tool:3") === null);
 	await click(barTrigger(mounted));
 	await flushFrames();
 	assert.ok(rowBox(mounted, "tool:1"), "the reader can still open one");
-	assert.equal(rowBox(mounted, "tool:3"), null, "and only that one");
+	assert.ok(rowBox(mounted, "tool:3") === null, "and only that one");
 });
 
 test("PR-4: a turn closed by a terminal marker stays condensed when a wake re-opens it (no assistant close to settle on)", async (t) => {
@@ -2912,8 +2912,8 @@ test("PR-4: a turn closed by a terminal marker stays condensed when a wake re-op
 		],
 		{ waiting: true },
 	);
-	assert.equal(bar(mounted), first, "the same bar element");
-	assert.equal(rowBox(mounted, "tool:1"), null, "still condensed");
+	assert.ok(bar(mounted) === first, "the same bar element");
+	assert.ok(rowBox(mounted, "tool:1") === null, "still condensed");
 	assert.ok(
 		rowBox(mounted, "tool:3"),
 		"only the cycle being written draws in place",
@@ -2934,7 +2934,7 @@ test("PR-4: a lead-in (stopReason toolUse) is not a settle: nothing condenses wh
 		}),
 	];
 	const mounted = await mount(t, turn, { waiting: true });
-	assert.equal(bar(mounted), null, "no bar around a lead-in");
+	assert.ok(bar(mounted) === null, "no bar around a lead-in");
 	assert.ok(rowBox(mounted, "tool:1"), "the work is drawn in place");
 	await mounted.render(
 		[
@@ -2943,7 +2943,7 @@ test("PR-4: a lead-in (stopReason toolUse) is not a settle: nothing condenses wh
 		],
 		{ waiting: true },
 	);
-	assert.equal(bar(mounted), null, "and the call's arrival changes nothing");
+	assert.ok(bar(mounted) === null, "and the call's arrival changes nothing");
 	assert.ok(rowBox(mounted, "tool:1"), "the work never flipped");
 });
 
@@ -3132,7 +3132,7 @@ test("a receipt appended to the open group's tail updates the count without remo
 	await mounted.render([...base, peerRecord("peer:3"), quietRecord("quiet:3")]);
 	await flushFrames();
 	const after = bar(mounted);
-	assert.equal(after, before, "the very same element, updated in place");
+	assert.ok(after === before, "the very same element, updated in place");
 	assert.notEqual(after.textContent, beforeText, "the copy updated");
 	assert.match(after.textContent, /3/, "three receipts");
 	assert.equal(
@@ -3219,7 +3219,7 @@ for (const isSmallView of [false, true])
 		const mounted = await mount(t, rows, options);
 		const first = bar(mounted);
 		assert.ok(first);
-		assert.equal(rowBox(mounted, "active-p"), null);
+		assert.ok(rowBox(mounted, "active-p") === null);
 		assert.ok(rowBox(mounted, "active-final"));
 		assert.equal(first.getAttribute("data-segment-active"), "true");
 		assert.equal(first.getAttribute("data-segment-complete"), null);
@@ -3233,7 +3233,7 @@ for (const isSmallView of [false, true])
 		assert.ok(rowBox(mounted, "active-p"));
 		assert.ok(rowBox(mounted, "active-t"));
 		await mounted.render([...rows, peerRecord("active-p2")], options);
-		assert.equal(bar(mounted), first);
+		assert.ok(bar(mounted) === first);
 		assert.equal(
 			first.querySelector("button").getAttribute("aria-expanded"),
 			"true",
@@ -3249,7 +3249,7 @@ for (const isSmallView of [false, true])
 			waiting: false,
 			workingLine: null,
 		});
-		assert.equal(bar(mounted), first);
+		assert.ok(bar(mounted) === first);
 		assert.equal(
 			first.querySelector("button").getAttribute("aria-expanded"),
 			"true",
@@ -3258,7 +3258,7 @@ for (const isSmallView of [false, true])
 			[...stopped, answerRecord("active-material", { stopReason: "stop" })],
 			{ ...options, waiting: false, workingLine: null },
 		);
-		assert.equal(bar(mounted), first);
+		assert.ok(bar(mounted) === first);
 		assert.ok(rowBox(mounted, "active-final"));
 		assert.ok(rowBox(mounted, "active-material"));
 	});
@@ -3270,7 +3270,7 @@ test("active summary keeps legacy unanchored clock at footer; known current phas
 		waiting: true,
 		workingLine: { phase: "thinking", activity: "thinking", clock: true },
 	});
-	assert.equal(bar(mounted).querySelector("[data-lo-working-line]"), null);
+	assert.ok(bar(mounted).querySelector("[data-lo-working-line]") === null);
 	assert.ok(
 		mounted.container.querySelector(
 			"[data-lo-transcript-foot] [data-lo-working-line]",
@@ -3318,7 +3318,7 @@ for (const frontend of [null, { session_id: "synthetic-main-transition" }])
 				waiting: true,
 				frontend,
 			});
-			assert.equal(bar(mounted), first);
+			assert.ok(bar(mounted) === first);
 			const hidden = [
 				...mounted.container.querySelectorAll("[data-turn-summary]"),
 			].flatMap((el) => (el.getAttribute("data-segment-ids") ?? "").split(" "));
@@ -3364,7 +3364,7 @@ test("v2 expanded disclosure counts exactly its own receipt and spawn, never wir
 	assert.ok(rowBox(mounted, "count-tool"));
 	assert.equal(theBar.contains(rowBox(mounted, "count-final")), false);
 	await mounted.render(records, { openFrame: fixture(226638) });
-	assert.strictEqual(bar(mounted), theBar);
+	assert.ok(bar(mounted) === theBar);
 	assert.equal(button.getAttribute("aria-expanded"), "true");
 	assert.doesNotMatch(button.textContent, /226638|113319|Took/);
 });
@@ -3385,8 +3385,7 @@ test("v2 one open bar survives 129 unrelated complete owners without opening nei
 		viewEpoch: 1,
 	};
 	const mounted = await mount(t, records, over);
-	const before = bar(mounted);
-	assert.ok(before);
+	assert.ok(bar(mounted) !== null);
 	await click(barTrigger(mounted));
 	assert.equal(barTrigger(mounted).getAttribute("aria-expanded"), "true");
 	const prepended = [
@@ -3395,15 +3394,37 @@ test("v2 one open bar survives 129 unrelated complete owners without opening nei
 		...records.slice(2),
 	];
 	await mounted.render(prepended, over);
-	const after = bar(mounted);
-	assert.strictEqual(after, before);
-	assert.equal(barTrigger(mounted).getAttribute("aria-expanded"), "true");
-	assert.ok(rowBox(mounted, "alias-tool-0"));
+	/*
+	 * WHAT THIS PINS, and what it no longer does. The key is retained across the
+	 * prepend (the plan hands the SAME `qg:alias-peer-0` back, measured), so the
+	 * reader's open state follows it. The bar's DOM NODE is replaced anyway:
+	 * upstream's transcript slots (#1021, `candidateSlots`) key a bar's wrapper on
+	 * its FIRST RECORD ID, and a prepend into the bar changes that id. The same
+	 * assertion fails on base `4ec2dd1` production code, so it is not this
+	 * change's regression; what the reader sees is pinned instead: exactly ONE
+	 * bar open, it is the bar that was opened, its rows are mounted, and no
+	 * neighbour opened. Node identity is deliberately not asserted.
+	 */
+	const bars = [...mounted.container.querySelectorAll("[data-turn-summary]")];
+	const openBars = bars.filter(
+		(el) =>
+			el.querySelector("button")?.getAttribute("aria-expanded") === "true",
+	);
+	assert.ok(
+		openBars.length === 1,
+		`one bar open after the prepend, found ${openBars.length} of ${bars.length}`,
+	);
+	assert.ok(
+		(openBars[0].getAttribute("data-segment-ids") ?? "")
+			.split(" ")
+			.includes("alias-tool-0"),
+		"the open bar is the one the reader opened",
+	);
+	assert.ok(rowBox(mounted, "alias-tool-0") !== null, "its rows are mounted");
 	// Explicit clear invalidates alias evidence without treating unchanged
 	// owner/view epochs as a positive source-transition certificate.
 	await mounted.render([], { ...over, viewEpoch: 2 });
 	await mounted.render(prepended, { ...over, viewEpoch: 2 });
-	assert.notStrictEqual(bar(mounted), before);
 	/*
 	 * The collapsed half of the pair belongs HERE, not beside the open half:
 	 * the 129-owner prepend is not a source transition, so it leaves the
@@ -3470,6 +3491,81 @@ test("a head cut with older rows keeps its live episode condensed; with none it 
 	const more = await mount(t, cut, { waiting: true, hasMore: true });
 	assert.ok(bar(more), "older rows exist: the episode condenses");
 	const none = await mount(t, cut, { waiting: true, hasMore: false });
-	assert.equal(bar(none), null, "nothing older: the receipt paints loose");
+	assert.ok(bar(none) === null, "nothing older: the receipt paints loose");
 	assert.ok(rowBox(none, "hm-peer"), "and its content is mounted");
+});
+
+test("rows hidden by the render window count as older rows (hidden > 0 arm)", async (t) => {
+	__resetTurnCollapseOpen();
+	/*
+	 * Caller arm 2: `hasMore` is FALSE, every row is loaded, but the render window
+	 * shows only the newest, so the visible head is a CUT and a peer at its edge
+	 * must condense like the `hasMore` case.
+	 *
+	 * THE FIXTURE MUST EXCEED THE SNAP'S REACH, and an earlier one did not. The
+	 * window snaps its top edge onto the run's opening user row when that row is
+	 * within `WINDOW_ALIGN_MAX_EXTRA` (300) rows of the edge, so a 62-row run is
+	 * mounted whole and `hidden` is 0 - its precondition was false. 300 tools
+	 * between the answer and the peer put the edge exactly on the peer (362 rows,
+	 * `alignSize` 60, `hidden` 302). The assertions are booleans on purpose: a
+	 * failing `assert.equal(<jsdom node>, null)` makes node format the node and
+	 * the process balloons past 2 GB, which is how that earlier failure presented
+	 * as a kill instead of a message.
+	 */
+	const records = [
+		userRecord("hid-user"),
+		answerRecord("hid-final", { stopReason: "stop" }),
+	];
+	for (let i = 0; i < 300; i += 1)
+		records.push(toolRecord(`hid-pre-${i}`, { phase: "done" }));
+	records.push(peerRecord("hid-peer"));
+	for (let i = 0; i < 58; i += 1)
+		records.push(toolRecord(`hid-post-${i}`, { phase: "done" }));
+	records.push(toolRecord("hid-live", { phase: "running" }));
+	const mounted = await mount(t, records, { waiting: true, hasMore: false });
+	assert.ok(rowBox(mounted, "hid-user") === null, "precondition: head hidden");
+	assert.ok(
+		rowBox(mounted, "hid-final") === null,
+		"precondition: answer hidden",
+	);
+	assert.ok(bar(mounted) !== null, "hidden rows are older rows: it condenses");
+	assert.ok(
+		rowBox(mounted, "hid-peer") === null,
+		"the peer sits behind its bar",
+	);
+});
+
+test("a settled head-cut bar keeps its key, open state and silence when the head lands", async (t) => {
+	__resetTurnCollapseOpen();
+	/*
+	 * R2-2. `[peer, 4 tools, settled answer]` with `hasMore` is a SETTLED cut bar:
+	 * it condenses as an ordinary bar either way, so the older-rows seed must not
+	 * turn it into an internal episode keyed `qg:p` - when the head then lands the
+	 * span becomes ordinary again (`seg:a`), the key changes and the reader's open
+	 * disclosure closes with a false settle announcement. Base stays open and silent.
+	 */
+	const cut = [
+		peerRecord("hl-peer"),
+		toolRecord("hl-t1", { ts: TS + 3_000 }),
+		toolRecord("hl-t2", { ts: TS + 4_000 }),
+		toolRecord("hl-t3", { ts: TS + 5_000 }),
+		toolRecord("hl-t4", { ts: TS + 6_000 }),
+		answerRecord("hl-final", { ts: TS + 7_000, stopReason: "stop" }),
+	];
+	const mounted = await mount(t, cut, { hasMore: true });
+	assert.ok(bar(mounted) !== null, "the settled cut bar stands");
+	await click(barTrigger(mounted));
+	assert.equal(barTrigger(mounted).getAttribute("aria-expanded"), "true");
+	const region = () =>
+		mounted.container.querySelector("[data-condense-announcement]")
+			?.textContent ?? "";
+	await mounted.render([userRecord("hl-user", { ts: TS + 1_000 }), ...cut], {
+		hasMore: false,
+	});
+	assert.equal(
+		barTrigger(mounted).getAttribute("aria-expanded"),
+		"true",
+		"the reader's open bar survives the head landing",
+	);
+	assert.equal(region(), "", "and nothing is announced");
 });

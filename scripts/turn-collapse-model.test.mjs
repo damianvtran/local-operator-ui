@@ -5173,11 +5173,10 @@ test("olderRowsExist is part of the plan's options key", () => {
 
 test("olderRowsThanWindow: either an unloaded page or a window-hidden head means older rows exist", () => {
 	/*
-	 * The caller's derivation of `olderRowsExist`, as a pure function so the
-	 * `hidden > 0` arm has coverage that completes in milliseconds. A mounted
-	 * fixture for it (62 records, enough to make the render window hide the head)
-	 * never finished in this lane's environments; see the helper's doc comment for
-	 * what IS and is NOT covered.
+	 * The caller's derivation of `olderRowsExist`, as a pure function so each arm
+	 * is pinned in milliseconds. The `hidden > 0` arm is ALSO mount-tested
+	 * (`rows hidden by the render window...` in the behaviour file, 362 rows); see
+	 * the helper's doc comment for why that fixture has to be that tall.
 	 */
 	assert.equal(olderRowsThanWindow(true, 0), true, "hasMore alone");
 	assert.equal(olderRowsThanWindow(true, 12), true, "hasMore wins over hidden");
@@ -5192,5 +5191,72 @@ test("olderRowsThanWindow: either an unloaded page or a window-hidden head means
 		olderRowsThanWindow(undefined, 3),
 		true,
 		"absent hasMore, hidden",
+	);
+});
+
+test("olderRowsExist seeds only the LIVE span: a settled head-cut bar is not an episode (R2-2)", () => {
+	/* `[peer, 4 tools, answer]`, settled. It condenses as an ordinary bar whether
+	 * or not older rows exist, so the seed must not change what it is: same key,
+	 * no episode. Otherwise the head landing re-keys `qg:p` -> `seg:a`. */
+	const rows = [
+		peerRow("sl-peer"),
+		tool("sl-t1"),
+		tool("sl-t2"),
+		tool("sl-t3"),
+		tool("sl-t4"),
+		answer("sl-final"),
+	];
+	const of = (older) =>
+		internalSpanOf(
+			collapsePlan(rows, { live: false, olderRowsExist: older }),
+			"sl-peer",
+		);
+	const without = of(false);
+	const withOlder = of(true);
+	assert.equal(withOlder.internal, null, "not an episode");
+	assert.equal(withOlder.key, without.key, "the same key either way");
+	assert.equal(withOlder.collapsed, without.collapsed);
+});
+
+test("a live head-cut episode states minimum-only counts and no invented duration", () => {
+	/* Restored from the original head-cut count test (R2-4): the live episode that
+	 * the older-rows seed keeps condensed still counts one contained action, one
+	 * receipt and no duration - the figures a cut span can honestly state. */
+	const rows = [
+		peerRow("lc-peer"),
+		tool("lc-t", { phase: "running", durationS: 2.6 }),
+	];
+	const span = internalSpanOf(
+		collapsePlan(rows, { live: true, olderRowsExist: true }),
+		"lc-peer",
+	);
+	assert.equal(span.facts.actions, 1);
+	assert.equal(span.internal.receipts, 1);
+	assert.equal(
+		span.facts.durationS,
+		null,
+		"a cut head cannot state a duration",
+	);
+});
+
+test("paintedRows and widenTarget measure with the render's older-rows input (R2-3)", () => {
+	/* The widen's currency must be the render's. With a run taller than the snap's
+	 * reach the window edge lands on the peer, `hidden > 0`, the render condenses
+	 * the live episode - so the metric must count it as hidden too. */
+	const rows = [user("pw-user"), answer("pw-final")];
+	for (let i = 0; i < 300; i += 1) rows.push(tool(`pw-pre-${i}`));
+	rows.push(peerRow("pw-peer"));
+	for (let i = 0; i < 58; i += 1) rows.push(tool(`pw-post-${i}`));
+	rows.push(tool("pw-live", { phase: "running" }, "trace"));
+	const opts = {
+		step: 60,
+		live: true,
+		snapMaxExtra: 300,
+		completedRunMaxExtra: 720,
+	};
+	const painted = paintedRows(rows, 60, opts);
+	assert.ok(
+		painted < 60,
+		`the live episode is counted as hidden, got ${painted}`,
 	);
 });
