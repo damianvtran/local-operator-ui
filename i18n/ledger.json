@@ -1645,7 +1645,7 @@
 			"locale": "fr",
 			"namespace": "ui.settings.configuration",
 			"source_sha256": "7a6064e0d4109393839a0dcc1383b017f3fabaea3e78088c45ce21e77578546a",
-			"target_sha256": "c25aa10b29fe45b8fdcd62983091d3d8e3ef58d7631bc60bf8ebb24f342f6bf9",
+			"target_sha256": "4adfd0c7f889632acde4b92e9a560032d5062553de78328875863f5082a76a09",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -1673,7 +1673,7 @@
 			"locale": "fr",
 			"namespace": "ui.settings.model",
 			"source_sha256": "5a09b6ed49e8501d14a6f8052a70ce15ce5104ec8da3756c6b576e6e4d150cf1",
-			"target_sha256": "d0df02884cbc6face19ac17f6ae02a0239c01ab960c388da616f32f706a7a2d7",
+			"target_sha256": "924425cecd9dca0c1201ab8830540b75e8e9b2300b867274c4ddaf10de55478b",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -1729,7 +1729,7 @@
 			"locale": "fr",
 			"namespace": "ui.settings.updates",
 			"source_sha256": "6597aeea3a3a0495f1ba0d9a7ce8078f455d970b53647dbc8350e00fbc9099b2",
-			"target_sha256": "d4af20e2ecf219418539a422da690f7e9593e7c1ca34b96eae222dcc3c1faac5",
+			"target_sha256": "7eea13683957ef5dd0b20c66b61f1f33bf667ff898ce6927dc553a9b32bee658",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",

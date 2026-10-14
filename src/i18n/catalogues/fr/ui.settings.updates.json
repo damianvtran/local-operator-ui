@@ -2,7 +2,7 @@
 	"ui.settings.updates.app_updates_section.application_updates_and_info": "Mises à jour et informations",
 	"ui.settings.updates.app_updates_section.check_for_updates_and_view_information_about_your_local_operator_": "Vérifiez les mises à jour et consultez les informations sur votre installation de Local Operator.",
 	"ui.settings.updates.app_updates_section.application_version": "Version de l’application",
-	"ui.settings.updates.app_updates_section.the_version_of_the_local_operator_user_interface_application": "La version de l’application d’interface de Local Operator.",
+	"ui.settings.updates.app_updates_section.the_version_of_the_local_operator_user_interface_application": "La version de l’application de bureau Local Operator, qui fournit l’interface utilisateur.",
 	"ui.settings.updates.app_updates_section.server_version": "Version du serveur",
 	"ui.settings.updates.app_updates_section.the_version_of_the_local_operator_api_server_backend_and_the_addr": "La version du serveur API de Local Operator et l’adresse du service auprès duquel elle a été lue.",
 	"ui.settings.updates.app_updates_section.not_answering": "Ne répond pas",

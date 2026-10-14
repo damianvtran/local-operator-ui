@@ -1,6 +1,6 @@
 {
 	"ui.settings.configuration.backend_setting_row.read_only": "Lecture seule",
-	"ui.settings.configuration.backend_setting_row.use_default": "Valeur par défaut",
+	"ui.settings.configuration.backend_setting_row.use_default": "Rétablir",
 	"ui.settings.configuration.backend_setting_row.set_in_the_credential_manager_this_value_carries_inline_credentia": "À définir dans le gestionnaire d’identifiants : cette valeur contient des identifiants intégrés ou des paramètres de requête.",
 	"ui.settings.configuration.backend_setting_row.retry": "Réessayer",
 	"ui.settings.configuration.backend_setting_row.saving": "Enregistrement",

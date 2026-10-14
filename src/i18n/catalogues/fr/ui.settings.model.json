@@ -20,7 +20,7 @@
 	"ui.settings.model.system_prompt.cancel": "Annuler",
 	"ui.settings.model.system_prompt.last_modified": "Dernière modification :",
 	"ui.settings.model.system_prompt.system_prompt": "Prompt système",
-	"ui.settings.model.system_prompt.every_local_operator_agent_receives_this_prompt_in_addition_to_it": "Chaque agent Local Operator reçoit ce prompt en plus de ses propres instructions. Indiquez-y vos attentes générales et les informations que tous les agents doivent connaître sur vous, comme votre nom, votre lieu de résidence ou vos préférences. Il est transmis au fournisseur d’hébergement sélectionné.",
+	"ui.settings.model.system_prompt.every_local_operator_agent_receives_this_prompt_in_addition_to_it": "Chaque agent Local Operator reçoit ce prompt en plus de ses propres instructions. Indiquez-y vos attentes générales et les informations que tous les agents doivent connaître sur vous, comme votre nom, l’endroit où vous vous trouvez ou vos préférences. Il est transmis au fournisseur d’hébergement sélectionné.",
 	"ui.settings.model.system_prompt.loading_system_prompt": "Chargement du prompt système",
 	"ui.settings.model.system_prompt.save_changes": "Enregistrer les modifications",
 	"ui.settings.model.system_prompt.unknown_error": "Erreur inconnue",
