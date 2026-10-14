@@ -1,0 +1,205 @@
+{
+	"ui.settings.model.backend_setting_combos.search_providers": {
+		"role": "Search input placeholder in provider/model settings combobox",
+		"tone": "Brief imperative search hint.",
+		"length": "One-line empty input hint; English is 16 characters.",
+		"note": "Shown before typing in the hosting-provider picker. Models/providers are items to search, not names of search engines."
+	},
+	"ui.settings.model.backend_setting_combos.search_models": {
+		"role": "Search input placeholder in provider/model settings combobox",
+		"tone": "Brief imperative search hint.",
+		"length": "One-line empty input hint; English is 13 characters.",
+		"note": "Shown before typing in the AI-model picker. Models/providers are items to search, not names of search engines."
+	},
+	"ui.settings.model.model_setting_options.signed_in": {
+		"role": "Supporting help/status detail",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 9 characters before placeholder expansion. Keep short.",
+		"note": "model setting options: description returned/read by modelOptions."
+	},
+	"ui.settings.model.model_setting_options.needs_sign_in": {
+		"role": "Supporting help/status detail",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 13 characters before placeholder expansion. Keep short.",
+		"note": "model setting options: description returned/read by modelOptions."
+	},
+	"ui.settings.model.model_setting_options.custom_model": {
+		"role": "Supporting help/status detail",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 12 characters before placeholder expansion. Keep short.",
+		"note": "model setting options: description returned/read by currentValueRows."
+	},
+	"ui.settings.model.model_setting_options.custom_value": {
+		"role": "Supporting help/status detail",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 12 characters before placeholder expansion. Keep short.",
+		"note": "model setting options: description returned/read by currentValueRows."
+	},
+	"ui.settings.model.model_setting_options.models_for_name": {
+		"role": "Model/provider option supporting text",
+		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
+		"length": "Compact existing settings/list control; English is 17 characters before placeholder expansion. Keep short.",
+		"note": "model setting options: rendered in modelScopeNotice. Reorder placeholders as grammar requires; do not copy English word order mechanically.",
+		"placeholders": {
+			"name": "Displayed name. Value inserted verbatim; do not translate technical identifiers, integration/provider names, or user-entered text. Caller supplies String(name). Caller supplies String(name). Caller supplies String(name). Caller supplies String(name). User-supplied integration/project/provider name or entered search text. Insert verbatim, never translate. Caller supplies String(name). User-supplied integration/project/provider name or entered search text. Insert verbatim, never translate."
+		}
+	},
+	"ui.settings.model.model_setting_options.no_models_listed_for_name_showing_all_models": {
+		"role": "Model/provider option supporting text",
+		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
+		"length": "Compact existing settings/list control; English is 48 characters before placeholder expansion. Keep short.",
+		"note": "model setting options: rendered in modelScopeNotice. Reorder placeholders as grammar requires; do not copy English word order mechanically.",
+		"placeholders": {
+			"name": "Displayed name. Value inserted verbatim; do not translate technical identifiers, integration/provider names, or user-entered text. Caller supplies String(name). Caller supplies String(name). Caller supplies String(name). Caller supplies String(name). User-supplied integration/project/provider name or entered search text. Insert verbatim, never translate. Caller supplies String(name). User-supplied integration/project/provider name or entered search text. Insert verbatim, never translate."
+		}
+	},
+	"ui.settings.model.model_setting_options.provider_group_0": {
+		"role": "Provider-picker group heading",
+		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
+		"length": "Compact existing settings/list control; English is 12 characters before placeholder expansion. Keep short.",
+		"note": "Labels a readiness bucket in the hosting-provider picker. The persisted provider IDs and English readiness discriminators are not translated. Services already configured for use."
+	},
+	"ui.settings.model.model_setting_options.provider_group_1": {
+		"role": "Provider-picker group heading",
+		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
+		"length": "Compact existing settings/list control; English is 22 characters before placeholder expansion. Keep short.",
+		"note": "Labels a readiness bucket in the hosting-provider picker. The persisted provider IDs and English readiness discriminators are not translated. Local model services that require a server process to be running."
+	},
+	"ui.settings.model.model_setting_options.provider_group_2": {
+		"role": "Provider-picker group heading",
+		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
+		"length": "Compact existing settings/list control; English is 13 characters before placeholder expansion. Keep short.",
+		"note": "Labels a readiness bucket in the hosting-provider picker. The persisted provider IDs and English readiness discriminators are not translated. Cloud providers that require the user to authenticate."
+	},
+	"ui.settings.model.settings_page.model_settings": {
+		"role": "Settings section heading",
+		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
+		"length": "Compact existing settings/list control; English is 14 characters before placeholder expansion. Keep short.",
+		"note": "settings page: title on SettingsSection. Heading for the default AI model/provider controls used by agents without their own overrides. Composition (message names mark slots): <SettingsSection > <div> <HostingSelect /> <ModelSelect /> <Alert > {t( \"ui.settings.model.settings_page.you_need_a_radient_account_or_your_own_api_keys_to_reach_cloud_pr\", )} </Alert> </div> </SettingsSection>"
+	},
+	"ui.settings.model.settings_page.configure_the_default_ai_model_and_hosting_providers_used_for_gen": {
+		"role": "Settings row/section explanatory help",
+		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
+		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
+		"note": "settings page: description on SettingsSection. Composition (message names mark slots): <SettingsSection > <div> <HostingSelect /> <ModelSelect /> <Alert > {t( \"ui.settings.model.settings_page.you_need_a_radient_account_or_your_own_api_keys_to_reach_cloud_pr\", )} </Alert> </div> </SettingsSection>"
+	},
+	"ui.settings.model.settings_page.you_need_a_radient_account_or_your_own_api_keys_to_reach_cloud_pr": {
+		"role": "Inline warning/error explanation",
+		"tone": "Neutral and helpful; explain the failure without blaming the user.",
+		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
+		"note": "settings page: rendered in Alert inside div. Composition (message names mark slots): <Alert > {t( \"ui.settings.model.settings_page.you_need_a_radient_account_or_your_own_api_keys_to_reach_cloud_pr\", )} </Alert> Preserve product/protocol names and machine tokens."
+	},
+	"ui.settings.model.settings_page.model_providers": {
+		"role": "Settings section heading",
+		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
+		"length": "Compact existing settings/list control; English is 15 characters before placeholder expansion. Keep short.",
+		"note": "settings page: title on SettingsSection. Composition (message names mark slots): <SettingsSection > <ProviderGrid /> </SettingsSection>"
+	},
+	"ui.settings.model.settings_page.no_hosting_options": {
+		"role": "Inline settings control status/readout",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 106 characters before placeholder expansion. Keep short.",
+		"note": "settings page: emptyHelperText on HostingSelect. Composition (message names mark slots): <HostingSelect /> Preserve product/protocol names and machine tokens."
+	},
+	"ui.settings.model.system_prompt.instructions": {
+		"role": "Inline settings control status/readout",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 12 characters before placeholder expansion. Keep short.",
+		"note": "system prompt: rendered in Label inside div. Composition (message names mark slots): <Label> {[instructions]} </Label>"
+	},
+	"ui.settings.model.system_prompt.enter_instructions_for_how_all_agents_should_behave_and_respond_t": {
+		"role": "Empty-input placeholder",
+		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
+		"length": "Compact existing control/readout; English source is 83 characters before variable expansion. Avoid adding explanatory prose.",
+		"note": "system prompt: placeholder on Textarea. Composition (message names mark slots): <Textarea />"
+	},
+	"ui.settings.model.system_prompt.cancel": {
+		"role": "Button action label",
+		"tone": "Brief imperative. No enthusiasm or extra punctuation.",
+		"length": "Compact existing settings/list control; English is 6 characters before placeholder expansion. Keep short.",
+		"note": "system prompt: rendered in Button inside div. Composition (message names mark slots): <Button> {[cancel]} </Button>"
+	},
+	"ui.settings.model.system_prompt.last_modified": {
+		"role": "Settings explanatory paragraph",
+		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
+		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
+		"note": "system prompt: rendered in p inside div. Composition (message names mark slots): <p> {[last_modified]}{\" \"} {} <span> {formatCalendarDateTime(systemPromptData.last_modified)} </span> </p>"
+	},
+	"ui.settings.model.system_prompt.system_prompt": {
+		"role": "Settings section heading",
+		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
+		"length": "Compact existing settings/list control; English is 13 characters before placeholder expansion. Keep short.",
+		"note": "system prompt: title on SettingsSection. Composition (message names mark slots): <SettingsSection > {isLoading ? ( // Reserves the editor's height so the section does not jump once // the prompt arrives. <div> <Spinner /> </div> ) : error ? ( <Alert> {[failed_to_load_system_prompt]}{\" \"} {error instanceof Error ? error.message : [unknown_error]} </Alert> ) : ( renderContent() )} </SettingsSection>"
+	},
+	"ui.settings.model.system_prompt.every_local_operator_agent_receives_this_prompt_in_addition_to_it": {
+		"role": "Settings row/section explanatory help",
+		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
+		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
+		"note": "system prompt: description on SettingsSection. Composition (message names mark slots): <SettingsSection > {isLoading ? ( // Reserves the editor's height so the section does not jump once // the prompt arrives. <div> <Spinner /> </div> ) : error ? ( <Alert> {[failed_to_load_system_prompt]}{\" \"} {error instanceof Error ? error.message : [unknown_error]} </Alert> ) : ( renderContent() )} </SettingsSection> Preserve product/protocol names and machine tokens."
+	},
+	"ui.settings.model.system_prompt.loading_system_prompt": {
+		"role": "Loading status announced with spinner",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 21 characters before placeholder expansion. Keep short.",
+		"note": "system prompt: label on Spinner. Composition (message names mark slots): <Spinner />"
+	},
+	"ui.settings.model.system_prompt.failed_to_load_system_prompt": {
+		"role": "Inline warning/error explanation",
+		"tone": "Neutral and helpful; explain the failure without blaming the user.",
+		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
+		"note": "system prompt: rendered in Alert inside SettingsSection. Composition (message names mark slots): <Alert> {[failed_to_load_system_prompt]}{\" \"} {error instanceof Error ? error.message : [unknown_error]} </Alert>"
+	},
+	"ui.settings.model.system_prompt.save_changes": {
+		"role": "Button action label",
+		"tone": "Brief imperative. No enthusiasm or extra punctuation.",
+		"length": "Compact existing settings/list control; English is 12 characters before placeholder expansion. Keep short.",
+		"note": "system prompt: rendered in Button inside div. Composition (message names mark slots): <Button > {} {isSaving ? <Spinner /> : <Save />} {isSaving ? [saving] : [save_changes]} </Button>"
+	},
+	"ui.settings.model.system_prompt.unknown_error": {
+		"role": "Inline warning/error explanation",
+		"tone": "Neutral and helpful; explain the failure without blaming the user.",
+		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
+		"note": "system prompt: rendered in Alert inside SettingsSection. Composition (message names mark slots): <Alert> {[failed_to_load_system_prompt]}{\" \"} {error instanceof Error ? error.message : [unknown_error]} </Alert>"
+	},
+	"ui.settings.model.model_setting_options.copy_sign_in_unknown_group": {
+		"role": "Model-picker group heading",
+		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
+		"length": "Compact existing settings/list control; English is 21 characters before placeholder expansion. Keep short.",
+		"note": "Heading when the credential store could not be read: neither authenticated nor unauthenticated may be claimed."
+	},
+	"ui.settings.model.model_setting_options.copy_current_value_group": {
+		"role": "Model-picker group heading",
+		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
+		"length": "Compact existing settings/list control; English is 13 characters before placeholder expansion. Keep short.",
+		"note": "Heading for the stored model/provider value absent from the current listing, retained so the field never loses the current selection."
+	},
+	"ui.settings.model.model_setting_options.copy_signed_in_group": {
+		"role": "Model-picker group heading",
+		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
+		"length": "Compact existing settings/list control; English is 9 characters before placeholder expansion. Keep short.",
+		"note": "Heading for models with a usable provider credential. Authentication is not a claim that a local server is running."
+	},
+	"ui.settings.model.model_setting_options.copy_needs_sign_in_group": {
+		"role": "Model-picker group heading",
+		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
+		"length": "Compact existing settings/list control; English is 13 characters before placeholder expansion. Keep short.",
+		"note": "Heading for models whose cloud provider needs authentication before use."
+	},
+	"ui.settings.model.system_prompt.saving": {
+		"role": "Button action label",
+		"tone": "Brief imperative. No enthusiasm or extra punctuation.",
+		"length": "Compact existing settings/list control; English is 9 characters before placeholder expansion. Keep short.",
+		"note": "system prompt: rendered in Button inside div. Composition (message names mark slots): <Button > {} {isSaving ? <Spinner /> : <Save />} {isSaving ? [saving] : [save_changes]} </Button>"
+	},
+	"ui.settings.model.model_setting_options.provider_detail": {
+		"role": "Model-picker row supporting status detail",
+		"tone": "Compact, neutral state readout; comma-separated English facts are one message, not fragments.",
+		"length": "Single secondary line under the model name; keep brief.",
+		"note": "Names the provider and optionally whether it is accessed via an aggregator and whether a usable provider credential is present. This is not a claim that the remote/local service is currently running.",
+		"placeholders": {
+			"provider": "Provider display name from the registry or capitalized provider ID. Insert verbatim.",
+			"aggregated": "Stable select token yes/no. yes means this model is accessed through an aggregator. Never translate the selector tokens.",
+			"credential": "Stable select token unknown/missing/signed_in. unknown omits the credential claim; missing means no usable credential; signed_in means a provider credential is held. Never translate the selector tokens."
+		}
+	}
+}

@@ -1,0 +1,22 @@
+{
+	"ui.settings.speech.speech_section.try_again": "Try again",
+	"ui.settings.speech.speech_section.retry": "Retry",
+	"ui.settings.speech.speech_section.speaks_through": "Speaks through",
+	"ui.settings.speech.speech_section.availability": "Availability",
+	"ui.settings.speech.speech_section.this_backend_does_not_register": "This backend does not register ",
+	"ui.settings.speech.speech_section.yet_so_those_rows_are_not_shown": " yet, so those rows are not shown.",
+	"ui.settings.speech.speech_section.the_setting_could_not_be_saved": "The setting could not be saved.",
+	"ui.settings.speech.speech_section.the_setting_could_not_be_reset": "The setting could not be reset.",
+	"ui.settings.speech.speech_section.speech_voicing": "Speech voicing",
+	"ui.settings.speech.speech_section.how_the_assistant_sounds_when_it_speaks_aloud": "How the assistant sounds when it speaks aloud.",
+	"ui.settings.speech.speech_section.speech_settings_could_not_be_loaded": "Speech settings could not be loaded.",
+	"ui.settings.speech.speech_section.nothing_yet": "Nothing yet",
+	"ui.settings.speech.speech_section.no_provider": "No provider",
+	"ui.settings.speech.speech_section.available": "(available)",
+	"ui.settings.speech.speech_section.not_available": "(not available)",
+	"ui.settings.speech.speech_settings_model.radient_pass": "Radient Pass",
+	"ui.settings.speech.speech_settings_model.no_provider": "No provider",
+	"ui.settings.speech.speech_section.copy_backend_older_sentence": "This backend does not serve the voicing surface. Update the backend to tune how the assistant sounds.",
+	"ui.settings.speech.speech_section.copy_unavailable_sentence": "Speech availability could not be read.",
+	"ui.settings.speech.speech_section.ready": "Ready"
+}

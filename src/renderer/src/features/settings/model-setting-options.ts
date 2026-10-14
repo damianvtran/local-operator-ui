@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * The option lists the settings comboboxes show, as pure functions.
  *
@@ -60,6 +61,8 @@ export type CatalogueInput =
  * its wording keeps the two surfaces describing one unknown the same way.
  */
 export const SIGN_IN_UNKNOWN_GROUP = "Sign-in state unknown";
+const SIGN_IN_UNKNOWN_GROUP_KEY =
+	"ui.settings.model.model_setting_options.copy_sign_in_unknown_group";
 
 /**
  * The heading for a stored value no listing contains.
@@ -68,10 +71,14 @@ export const SIGN_IN_UNKNOWN_GROUP = "Sign-in state unknown";
  * or duplicate the heading of a group it is not really in.
  */
 export const CURRENT_VALUE_GROUP = "Current value";
+const CURRENT_VALUE_GROUP_KEY =
+	"ui.settings.model.model_setting_options.copy_current_value_group";
 
 /** The two states a known-credentials listing distinguishes. */
-const SIGNED_IN_GROUP = "Signed in";
-const NEEDS_SIGN_IN_GROUP = "Needs sign-in";
+const SIGNED_IN_GROUP =
+	"ui.settings.model.model_setting_options.copy_signed_in_group";
+const NEEDS_SIGN_IN_GROUP =
+	"ui.settings.model.model_setting_options.copy_needs_sign_in_group";
 
 /**
  * A provider id as the sub-line writes it.
@@ -83,6 +90,20 @@ const NEEDS_SIGN_IN_GROUP = "Needs sign-in";
  * row does not make, and inventing a table of names here would be a second
  * source of truth for them.
  */
+// One message owns the provider sub-line so translated facts can reorder;
+// concatenated English comma-suffixes cannot express another language's grammar.
+function modelProviderDetail(
+	provider: string,
+	aggregated: boolean,
+	credential: "unknown" | "missing" | "signed_in",
+): string {
+	return t("ui.settings.model.model_setting_options.provider_detail", {
+		provider,
+		aggregated: aggregated ? "yes" : "no",
+		credential,
+	});
+}
+
 const providerLabel = (provider: string): string =>
 	provider ? provider.charAt(0).toUpperCase() + provider.slice(1) : provider;
 
@@ -113,6 +134,19 @@ const PROVIDER_GROUP_ORDER = [
  * providers unconditionally, so a "Connected" badge would claim a connection to
  * servers that are not running.
  */
+function providerGroupLabel(group: string): string {
+	switch (group) {
+		case "Ready to use":
+			return t("ui.settings.model.model_setting_options.provider_group_0");
+		case "Needs a running server":
+			return t("ui.settings.model.model_setting_options.provider_group_1");
+		case "Needs sign-in":
+			return t("ui.settings.model.model_setting_options.provider_group_2");
+		default:
+			return group;
+	}
+}
+
 export function providerOptions(
 	providers: readonly DesktopProvider[],
 ): SearchableOption[] {
@@ -127,7 +161,9 @@ export function providerOptions(
 			id: provider.id,
 			name: provider.name,
 			description: readiness.label,
-			group: readiness.group,
+			// Keep readiness.group as the cross-lane discriminator. Only the rendered
+			// heading is localised; translating the map keys would drop providers.
+			group: providerGroupLabel(readiness.group),
 		});
 	}
 	return PROVIDER_GROUP_ORDER.flatMap((group) => buckets.get(group) ?? []);
@@ -241,8 +277,8 @@ export function modelOptions(
 	const rows = scopedModelRows(catalogue, options);
 
 	const signInGroup = (row: CatalogueModelRow): string => {
-		if (!known) return SIGN_IN_UNKNOWN_GROUP;
-		return row.connected ? SIGNED_IN_GROUP : NEEDS_SIGN_IN_GROUP;
+		if (!known) return t(SIGN_IN_UNKNOWN_GROUP_KEY);
+		return row.connected ? t(SIGNED_IN_GROUP) : t(NEEDS_SIGN_IN_GROUP);
 	};
 	const groupOf = (row: CatalogueModelRow): string =>
 		options.kind === "provider-model" ? row.provider : signInGroup(row);
@@ -276,12 +312,15 @@ export function modelOptions(
 					options.kind === "provider-model"
 						? known
 							? row.connected
-								? "Signed in"
-								: "Needs sign-in"
+								? t("ui.settings.model.model_setting_options.signed_in")
+								: t("ui.settings.model.model_setting_options.needs_sign_in")
 							: undefined
-						: `${options.providerNames?.[row.provider] ?? providerLabel(row.provider)}${
-								row.aggregated ? ", aggregated" : ""
-							}${known && !row.connected ? ", no credential" : ""}`,
+						: modelProviderDetail(
+								options.providerNames?.[row.provider] ??
+									providerLabel(row.provider),
+								row.aggregated,
+								known && !row.connected ? "missing" : "unknown",
+							),
 				group: groupOf(row),
 			});
 		}
@@ -331,8 +370,13 @@ export function modelScopeNotice(
 	const name = options.hostingLabel ?? providerLabel(hosting);
 	const known = rows.some((row) => row.provider === hosting);
 	return known
-		? `Models for ${name}`
-		: `No models listed for ${name}. Showing all models.`;
+		? t("ui.settings.model.model_setting_options.models_for_name", {
+				name: String(name),
+			})
+		: t(
+				"ui.settings.model.model_setting_options.no_models_listed_for_name_showing_all_models",
+				{ name: String(name) },
+			);
 }
 
 /**
@@ -393,17 +437,20 @@ function currentValueRows(
 			id: current,
 			name: real?.selector ?? current,
 			description: real
-				? `${options.providerNames?.[real.provider] ?? providerLabel(real.provider)}${
+				? modelProviderDetail(
+						options.providerNames?.[real.provider] ??
+							providerLabel(real.provider),
+						false,
 						catalogue?.credentials_known === false
-							? ""
+							? "unknown"
 							: real.connected
-								? ", signed in"
-								: ", no credential"
-					}`
+								? "signed_in"
+								: "missing",
+					)
 				: options.kind === "model"
-					? "Custom model"
-					: "Custom value",
-			group: CURRENT_VALUE_GROUP,
+					? t("ui.settings.model.model_setting_options.custom_model")
+					: t("ui.settings.model.model_setting_options.custom_value"),
+			group: t(CURRENT_VALUE_GROUP_KEY),
 		},
 	];
 }

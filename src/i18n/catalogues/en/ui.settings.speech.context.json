@@ -1,0 +1,122 @@
+{
+	"ui.settings.speech.speech_section.try_again": {
+		"role": "Button action label",
+		"tone": "Brief imperative. No enthusiasm or extra punctuation.",
+		"length": "Compact existing settings/list control; English is 9 characters before placeholder expansion. Keep short.",
+		"note": "speech section: rendered in Button inside div. Composition (message names mark slots): <Button> <RotateCw /> {[try_again]} </Button>"
+	},
+	"ui.settings.speech.speech_section.retry": {
+		"role": "Button action label",
+		"tone": "Brief imperative. No enthusiasm or extra punctuation.",
+		"length": "Compact existing settings/list control; English is 5 characters before placeholder expansion. Keep short.",
+		"note": "speech section: rendered in Button inside div. Repeats the failed action/read. This is not a full application restart. Composition (message names mark slots): <Button onClick={() => { void settingsQuery.refetch(); }} > {[retry]} </Button>"
+	},
+	"ui.settings.speech.speech_section.speaks_through": {
+		"role": "Visible field/control label",
+		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
+		"length": "Compact existing settings/list control; English is 14 characters before placeholder expansion. Keep short.",
+		"note": "speech section: label on InfoItem. Composition (message names mark slots): <InfoItem />"
+	},
+	"ui.settings.speech.speech_section.availability": {
+		"role": "Visible field/control label",
+		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
+		"length": "Compact existing settings/list control; English is 12 characters before placeholder expansion. Keep short.",
+		"note": "speech section: label on InfoItem. Composition (message names mark slots): <InfoItem />"
+	},
+	"ui.settings.speech.speech_section.this_backend_does_not_register": {
+		"role": "Settings explanatory paragraph",
+		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
+		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
+		"note": "speech section: rendered in p inside div. Composition (message names mark slots): <p> {t( \"ui.settings.speech.speech_section.this_backend_does_not_register\", )} {voiceRows.missing.join(\", \")} {t( \"ui.settings.speech.speech_section.yet_so_those_rows_are_not_shown\", )} </p> This is a markup-adjacent fragment. Its leading/trailing space is intentional; do not omit or add boundary spaces."
+	},
+	"ui.settings.speech.speech_section.yet_so_those_rows_are_not_shown": {
+		"role": "Settings explanatory paragraph",
+		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
+		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
+		"note": "speech section: rendered in p inside div. Composition (message names mark slots): <p> {t( \"ui.settings.speech.speech_section.this_backend_does_not_register\", )} {voiceRows.missing.join(\", \")} {t( \"ui.settings.speech.speech_section.yet_so_those_rows_are_not_shown\", )} </p> This is a markup-adjacent fragment. Its leading/trailing space is intentional; do not omit or add boundary spaces."
+	},
+	"ui.settings.speech.speech_section.the_setting_could_not_be_saved": {
+		"role": "Validation/error explanation",
+		"tone": "Neutral and helpful; explain the failure without blaming the user.",
+		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
+		"note": "speech section: rendered in saveRow."
+	},
+	"ui.settings.speech.speech_section.the_setting_could_not_be_reset": {
+		"role": "Validation/error explanation",
+		"tone": "Neutral and helpful; explain the failure without blaming the user.",
+		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
+		"note": "speech section: rendered in resetRow."
+	},
+	"ui.settings.speech.speech_section.speech_voicing": {
+		"role": "Inline settings control status/readout",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 14 characters before placeholder expansion. Keep short.",
+		"note": "speech section: rendered in title."
+	},
+	"ui.settings.speech.speech_section.how_the_assistant_sounds_when_it_speaks_aloud": {
+		"role": "Inline settings control status/readout",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 46 characters before placeholder expansion. Keep short.",
+		"note": "speech section: rendered in description."
+	},
+	"ui.settings.speech.speech_section.speech_settings_could_not_be_loaded": {
+		"role": "Validation/error explanation",
+		"tone": "Neutral and helpful; explain the failure without blaming the user.",
+		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
+		"note": "speech section: rendered in { sentence }."
+	},
+	"ui.settings.speech.speech_section.nothing_yet": {
+		"role": "Inline settings control status/readout",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 11 characters before placeholder expansion. Keep short.",
+		"note": "speech section: value on InfoItem. Composition (message names mark slots): <InfoItem />"
+	},
+	"ui.settings.speech.speech_section.no_provider": {
+		"role": "Inline settings control status/readout",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 11 characters before placeholder expansion. Keep short.",
+		"note": "speech section: value on InfoItem. Composition (message names mark slots): <InfoItem />"
+	},
+	"ui.settings.speech.speech_section.available": {
+		"role": "Inline settings control status/readout",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 11 characters before placeholder expansion. Keep short.",
+		"note": "speech section: rendered in span inside span. Composition (message names mark slots): <span > {\" \"} {rung.available ? [available] : t( \"ui.settings.speech.speech_section.not_available\", )} </span>"
+	},
+	"ui.settings.speech.speech_section.not_available": {
+		"role": "Inline settings control status/readout",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 15 characters before placeholder expansion. Keep short.",
+		"note": "speech section: rendered in span inside span. Composition (message names mark slots): <span > {\" \"} {rung.available ? [available] : t( \"ui.settings.speech.speech_section.not_available\", )} </span>"
+	},
+	"ui.settings.speech.speech_settings_model.radient_pass": {
+		"role": "Inline settings control status/readout",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 12 characters before placeholder expansion. Keep short.",
+		"note": "speech settings model: provider_tts_radient returned/read by PATH_NAMES. Preserve product/protocol names and machine tokens."
+	},
+	"ui.settings.speech.speech_settings_model.no_provider": {
+		"role": "Inline settings control status/readout",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 11 characters before placeholder expansion. Keep short.",
+		"note": "speech settings model: none returned/read by PATH_NAMES."
+	},
+	"ui.settings.speech.speech_section.copy_backend_older_sentence": {
+		"role": "Inline warning/error explanation",
+		"tone": "Neutral and helpful; explain the failure without blaming the user.",
+		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
+		"note": "speech section: rendered in Alert inside SettingsSection. Composition (message names mark slots): <Alert>{t(BACKEND_OLDER_SENTENCE)}</Alert>"
+	},
+	"ui.settings.speech.speech_section.copy_unavailable_sentence": {
+		"role": "Inline warning/error explanation",
+		"tone": "Neutral and helpful; explain the failure without blaming the user.",
+		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
+		"note": "speech section: rendered in span inside div. Composition (message names mark slots): <span>{t(UNAVAILABLE_SENTENCE_KEY)}</span>"
+	},
+	"ui.settings.speech.speech_section.ready": {
+		"role": "Inline settings control status/readout",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 5 characters before placeholder expansion. Keep short.",
+		"note": "speech section: value on InfoItem. Composition (message names mark slots): <InfoItem />"
+	}
+}

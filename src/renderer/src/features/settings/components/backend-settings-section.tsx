@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The full backend settings registry as searchable, typed editors.
  *
@@ -84,9 +86,21 @@ export const backendSettingsKeys = {
  * beside a sentence-case "Takes effect immediately" (design D3).
  */
 const SCOPE_LABELS: Record<string, string> = {
-	live: "Takes effect immediately",
-	"new launch": "Takes effect the next time the app starts",
-	"new sessions": "Takes effect for new conversations",
+	get live() {
+		return t(
+			"ui.settings.configuration.backend_settings_section.takes_effect_immediately",
+		);
+	},
+	get "new launch"() {
+		return t(
+			"ui.settings.configuration.backend_settings_section.takes_effect_the_next_time_the_app_starts",
+		);
+	},
+	get "new sessions"() {
+		return t(
+			"ui.settings.configuration.backend_settings_section.takes_effect_for_new_conversations",
+		);
+	},
 };
 
 type BackendSettingsSectionProps = {
@@ -129,6 +143,7 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	hideInterfaceLanguage = false,
 	initialFilter = "",
 }) => {
+	useI18nLocale();
 	const capabilities = useDesktopCapabilities();
 	/*
 	 * AT THE TOP, unconditionally (review round 4, R4-1): this used to be called
@@ -521,7 +536,9 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 					setting.key,
 					error instanceof Error
 						? error.message
-						: "The setting could not be saved.",
+						: t(
+								"ui.settings.configuration.backend_settings_section.the_setting_could_not_be_saved",
+							),
 				);
 				return false;
 			}
@@ -560,7 +577,9 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 					setting.key,
 					error instanceof Error
 						? error.message
-						: "The setting could not be reset.",
+						: t(
+								"ui.settings.configuration.backend_settings_section.the_setting_could_not_be_reset",
+							),
 				);
 			}
 		},
@@ -750,8 +769,9 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	if (capabilities.data && !enabled) {
 		return (
 			<Alert variant="warning">
-				Searchable settings need a newer Local Operator server. Update the
-				server and restart the app to manage these settings here.
+				{t(
+					"ui.settings.configuration.backend_settings_section.searchable_settings_need_a_newer_local_operator_server_update_the",
+				)}
 			</Alert>
 		);
 	}
@@ -769,7 +789,12 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	if (settingsQuery.isLoading || capabilities.isLoading) {
 		return (
 			<div className="flex h-40 items-center justify-center">
-				<Spinner size="lg" label="Loading settings" />
+				<Spinner
+					size="lg"
+					label={t(
+						"ui.settings.configuration.backend_settings_section.loading_settings",
+					)}
+				/>
 			</div>
 		);
 	}
@@ -805,7 +830,9 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 		const { sentence: pairingSentence, remedy } = pairingCardCopy(
 			/* `?? null`: no answer yet keeps the fallback branch, as no cause does (the hook's three states). */
 			pairingCause ?? null,
-			"Your settings could not be loaded.",
+			t(
+				"ui.settings.configuration.backend_settings_section.your_settings_could_not_be_loaded",
+			),
 			loadError,
 		);
 		return (
@@ -833,7 +860,11 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 							}}
 							disabled={retrying}
 						>
-							{retrying ? "Retrying" : "Retry"}
+							{retrying
+								? t(
+										"ui.settings.configuration.backend_settings_section.retrying",
+									)
+								: t("ui.settings.configuration.backend_settings_section.retry")}
 						</Button>
 					)}
 				</div>
@@ -884,8 +915,9 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 				// than at the bar, and it names the way out that is actually there.
 				<div className="flex flex-col items-center py-6 text-center">
 					<p className="text-body-sm text-ink-muted">
-						No settings match this search. Clear the search field to see every
-						setting again.
+						{t(
+							"ui.settings.configuration.backend_settings_section.no_settings_match_this_search_clear_the_search_field_to_see_every",
+						)}
 					</p>
 				</div>
 			)}
@@ -980,8 +1012,12 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 									<div className="flex items-center gap-2 px-1 py-2">
 										<p className="text-body-sm text-ink-muted">
 											{advancedHeld > 0
-												? "Advanced settings are hidden here."
-												: "Nothing in this section matches."}
+												? t(
+														"ui.settings.configuration.backend_settings_section.advanced_settings_are_hidden_here",
+													)
+												: t(
+														"ui.settings.configuration.backend_settings_section.nothing_in_this_section_matches",
+													)}
 										</p>
 										{advancedHeld > 0 && (
 											<Button
@@ -989,7 +1025,13 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 												size="sm"
 												onClick={() => setShowAdvanced(true)}
 											>
-												Show {advancedHeld} advanced
+												{t(
+													"ui.settings.configuration.backend_settings_section.show",
+												)}
+												{advancedHeld}
+												{t(
+													"ui.settings.configuration.backend_settings_section.advanced",
+												)}
 											</Button>
 										)}
 									</div>

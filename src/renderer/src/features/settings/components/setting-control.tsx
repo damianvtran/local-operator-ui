@@ -158,6 +158,7 @@ function desktopChordAllowed(binding: string): boolean {
  * fabricated answer there is worse than an absent one.
  */
 const DesktopHotkeyDetails = () => {
+	useI18nLocale();
 	const [registration, setRegistration] =
 		useState<MiniViewRegistrationState | null>(null);
 	const platform = useMemo(rendererPlatform, []);
@@ -261,6 +262,7 @@ const HotkeyInput = ({
 	desktop?: boolean;
 	onChange: (value: string) => void;
 }) => {
+	useI18nLocale();
 	/*
 	 * The refusal holds until the next captured chord: it explains the LAST
 	 * press, so it must not linger once a different (accepted) chord replaces
@@ -277,7 +279,10 @@ const HotkeyInput = ({
 				readOnly
 				value={value}
 				disabled={disabled}
-				aria-label={`${label}: press the key you want`}
+				aria-label={t(
+					"ui.settings.configuration.setting_control.label_press_the_key_you_want",
+					{ label: String(label) },
+				)}
 				className="font-mono text-body-sm"
 				onKeyDown={(event) => {
 					// Cancel/commit first: a keystroke that ends the edit is not a
@@ -301,7 +306,9 @@ const HotkeyInput = ({
 				}}
 			/>
 			<span className="text-meta text-ink-dim">
-				Press the keys you want; Esc cancels.
+				{t(
+					"ui.settings.configuration.setting_control.press_the_keys_you_want_esc_cancels",
+				)}
 			</span>
 			{refusal ? (
 				<output className="text-meta text-danger">{refusal}</output>
@@ -418,6 +425,7 @@ export function languageChoices(setting: BackendSetting) {
 }
 
 const LanguageFlag: FC<{ country: string }> = ({ country }) => {
+	useI18nLocale();
 	/*
 	 * Explicit artwork rather than generated bands: a repeated pigment (Spain's
 	 * two reds) has no natural list index to key on, so each band carries the
@@ -497,8 +505,12 @@ const LanguageFlag: FC<{ country: string }> = ({ country }) => {
 					<path
 						d={
 							country === "vn"
-								? "M12 3l1.5 3.5 4 .4-3 2.6 1 3.8-3.5-2-3.5 2 1-3.8-3-2.6 4-.4z"
-								: "M5 2l1 2.4 2.5.2-2 1.6.7 2.5L5 7.3 2.8 8.7l.7-2.5-2-1.6L4 4.4z"
+								? t(
+										"ui.settings.configuration.setting_control.m12_3l1_5_3_5_4_4_3_2_6_1_3_8_3_5_2_3_5_2_1_3_8_3_2_6_4_4z",
+									)
+								: t(
+										"ui.settings.configuration.setting_control.m5_2l1_2_4_2_5_2_2_1_6_7_2_5l5_7_3_2_8_8_7l_7_2_5_2_1_6l4_4_4z",
+									)
 						}
 						fill="#ffde00"
 					/>
@@ -528,6 +540,7 @@ export const LanguageChoiceLabel: FC<{
 	 */
 	disabled?: boolean;
 }> = ({ value, fallback, disabled = false }) => {
+	useI18nLocale();
 	const identity = languageIdentifierFor(value);
 	if (!identity)
 		return (
@@ -550,7 +563,15 @@ export const LanguageChoiceLabel: FC<{
 		 * is what stops the surrounding Latin UI from re-ordering the run.
 		 */
 		<span className="inline-flex min-w-0 items-center gap-2">
-			<span className={disabled ? "opacity-45 saturate-50" : undefined}>
+			<span
+				className={
+					disabled
+						? t(
+								"ui.settings.configuration.setting_control.opacity_45_saturate_50",
+							)
+						: undefined
+				}
+			>
 				<LanguageFlag country={identity.country} />
 			</span>
 			<bdi
@@ -636,6 +657,7 @@ export const SettingControl = ({
 	suppressEffectiveNote = false,
 	effectiveNoteId: effectiveNoteIdProp,
 }: SettingControlProps) => {
+	useI18nLocale();
 	/*
 	 * The searchable combobox branch, keyed on the setting's KEY rather than on
 	 * its kind, and placed before the switch so it cannot be reached by a later
@@ -853,8 +875,9 @@ export const SettingControl = ({
 						</div>
 					))}
 					<p className="text-meta text-ink-dim">
-						One hop per line, as provider/model (effort). An empty chain moves
-						to the next provider.
+						{t(
+							"ui.settings.configuration.setting_control.one_hop_per_line_as_provider_model_effort_an_empty_chain_moves_to",
+						)}
 					</p>
 				</div>
 			);

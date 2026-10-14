@@ -3,6 +3,8 @@ import { Spinner } from "@shared/components/common/spinner";
 import { Alert, Button, Label, Textarea } from "@shared/components/ui";
 import { useSystemPrompt } from "@shared/hooks/use-system-prompt";
 import { useUpdateSystemPrompt } from "@shared/hooks/use-update-system-prompt";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { formatCalendarDateTime } from "@shared/utils/date-utils";
 import { NotebookPen, Save } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -18,6 +20,7 @@ import { SettingsSection } from "./settings-section";
  * disarms save and reset.
  */
 export const SystemPrompt: FC = () => {
+	useI18nLocale();
 	const {
 		data: systemPromptData,
 		isLoading,
@@ -70,13 +73,17 @@ export const SystemPrompt: FC = () => {
 	const renderContent = () => (
 		<div className="flex flex-col gap-4">
 			<div className="flex flex-col gap-2">
-				<Label htmlFor="app-system-prompt">Instructions</Label>
+				<Label htmlFor="app-system-prompt">
+					{t("ui.settings.model.system_prompt.instructions")}
+				</Label>
 				<Textarea
 					id="app-system-prompt"
 					name="systemPrompt"
 					value={systemPrompt}
 					onChange={handleInputChange}
-					placeholder="Enter instructions for how all agents should behave and respond to your requests..."
+					placeholder={t(
+						"ui.settings.model.system_prompt.enter_instructions_for_how_all_agents_should_behave_and_respond_t",
+					)}
 					className="min-h-50"
 				/>
 			</div>
@@ -89,21 +96,23 @@ export const SystemPrompt: FC = () => {
 				>
 					{/*
 					 * The spinner carries no label here: the button's own text
-					 * already says "Saving...", and a labelled spinner would
+					 * already says t("ui.settings.model.system_prompt.saving"), and a labelled spinner would
 					 * announce the same fact a second time.
 					 */}
 					{isSaving ? <Spinner size="sm" /> : <Save />}
-					{isSaving ? "Saving..." : "Save changes"}
+					{isSaving
+						? t("ui.settings.model.system_prompt.saving")
+						: t("ui.settings.model.system_prompt.save_changes")}
 				</Button>
 
 				<Button onClick={handleReset} disabled={!isEdited || isSaving}>
-					Cancel
+					{t("ui.settings.model.system_prompt.cancel")}
 				</Button>
 			</div>
 
 			{systemPromptData?.last_modified && (
 				<p className="text-ink-dim text-meta">
-					Last modified:{" "}
+					{t("ui.settings.model.system_prompt.last_modified")}{" "}
 					{/* A timestamp is machine voice, so the value is monospace. */}
 					<span className="font-mono text-mono-sm">
 						{formatCalendarDateTime(systemPromptData.last_modified)}
@@ -115,20 +124,27 @@ export const SystemPrompt: FC = () => {
 
 	return (
 		<SettingsSection
-			title="System prompt"
+			title={t("ui.settings.model.system_prompt.system_prompt")}
 			icon={NotebookPen}
-			description="Every Local Operator agent receives this prompt in addition to its own instructions, so it is the place for baseline expectations and for details you want every agent to know about you, such as your name, location, or preferences. It is sent to your selected hosting provider."
+			description={t(
+				"ui.settings.model.system_prompt.every_local_operator_agent_receives_this_prompt_in_addition_to_it",
+			)}
 		>
 			{isLoading ? (
 				// Reserves the editor's height so the section does not jump once
 				// the prompt arrives.
 				<div className="flex min-h-50 items-center justify-center">
-					<Spinner size="lg" label="Loading system prompt" />
+					<Spinner
+						size="lg"
+						label={t("ui.settings.model.system_prompt.loading_system_prompt")}
+					/>
 				</div>
 			) : error ? (
 				<Alert variant="danger">
-					Failed to load system prompt:{" "}
-					{error instanceof Error ? error.message : "Unknown error"}
+					{t("ui.settings.model.system_prompt.failed_to_load_system_prompt")}{" "}
+					{error instanceof Error
+						? error.message
+						: t("ui.settings.model.system_prompt.unknown_error")}
 				</Alert>
 			) : (
 				renderContent()

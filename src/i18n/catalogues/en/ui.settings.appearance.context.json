@@ -1,0 +1,62 @@
+{
+	"ui.settings.appearance.settings_page.appearance": {
+		"role": "Settings section heading",
+		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
+		"length": "Compact existing settings/list control; English is 10 characters before placeholder expansion. Keep short.",
+		"note": "settings page: title on SettingsSection. Composition (message names mark slots): <SettingsSection > <div> <ThemeSelector /> {} <ToggleSetting /> {} <TranscriptDisplayModeSetting /> </div> </SettingsSection>"
+	},
+	"ui.settings.appearance.settings_page.customize_the_look_and_feel_of_local_operator": {
+		"role": "Settings row/section explanatory help",
+		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
+		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
+		"note": "settings page: description on SettingsSection. Composition (message names mark slots): <SettingsSection > <div> <ThemeSelector /> {} <ToggleSetting /> {} <TranscriptDisplayModeSetting /> </div> </SettingsSection> Preserve product/protocol names and machine tokens."
+	},
+	"ui.settings.appearance.settings_page.show_agent_reasoning": {
+		"role": "Visible field/control label",
+		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
+		"length": "Compact existing settings/list control; English is 20 characters before placeholder expansion. Keep short.",
+		"note": "settings page: label on ToggleSetting. Composition (message names mark slots): <ToggleSetting />"
+	},
+	"ui.settings.appearance.settings_page.adds_the_agent_s_reasoning_and_thinking_rows_to_conversations_the": {
+		"role": "Settings row/section explanatory help",
+		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
+		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
+		"note": "settings page: description on ToggleSetting. Composition (message names mark slots): <ToggleSetting />"
+	},
+	"ui.settings.appearance.theme_selector.dark": {
+		"role": "Visible settings control/group label",
+		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
+		"length": "Compact existing settings/list control; English is 4 characters before placeholder expansion. Keep short.",
+		"note": "theme selector: label returned/read by groups."
+	},
+	"ui.settings.appearance.theme_selector.light": {
+		"role": "Visible settings control/group label",
+		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
+		"length": "Compact existing settings/list control; English is 5 characters before placeholder expansion. Keep short.",
+		"note": "theme selector: label returned/read by groups."
+	},
+	"ui.settings.appearance.transcript_display_mode_setting.transcript_display": {
+		"role": "Transcript-display tab option label",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 18 characters before placeholder expansion. Keep short.",
+		"note": "Switches between grouping transcript rows by completed turn and keeping each response separate. Persisted by-turn/by-response tokens are not translated."
+	},
+	"ui.settings.appearance.transcript_display_mode_setting.by_turn_condenses_each_turn_to_its_answer_by_response_keeps_every": {
+		"role": "Settings explanatory paragraph",
+		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
+		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
+		"note": "transcript display mode setting: rendered in p inside div. Composition (message names mark slots): <p> {t( \"ui.settings.appearance.transcript_display_mode_setting.by_turn_condenses_each_turn_to_its_answer_by_response_keeps_every\", )} </p>"
+	},
+	"ui.settings.appearance.transcript_display_mode_setting.by_turn": {
+		"role": "Option/tab label",
+		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
+		"length": "Compact existing settings/list control; English is 7 characters before placeholder expansion. Keep short.",
+		"note": "transcript display mode setting: rendered in TabsTrigger inside TabsList. Composition (message names mark slots): <TabsTrigger> {option.value === \"by-turn\" ? t( \"ui.settings.appearance.transcript_display_mode_setting.by_turn\", ) : t( \"ui.settings.appearance.transcript_display_mode_setting.by_response\", )} </TabsTrigger>"
+	},
+	"ui.settings.appearance.transcript_display_mode_setting.by_response": {
+		"role": "Option/tab label",
+		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
+		"length": "Compact existing settings/list control; English is 11 characters before placeholder expansion. Keep short.",
+		"note": "transcript display mode setting: rendered in TabsTrigger inside TabsList. Composition (message names mark slots): <TabsTrigger> {option.value === \"by-turn\" ? t( \"ui.settings.appearance.transcript_display_mode_setting.by_turn\", ) : t( \"ui.settings.appearance.transcript_display_mode_setting.by_response\", )} </TabsTrigger>"
+	}
+}

@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The Backend settings section's control row: what is shown, how much of it, and
  * what is unsaved.
@@ -83,119 +85,134 @@ export const SettingsFilterBar: FC<SettingsFilterBarProps> = ({
 	savingAll,
 	onSaveAll,
 	onDiscardAll,
-}) => (
-	<div className="flex flex-col gap-2">
-		<div className="flex flex-wrap items-center gap-3">
-			<div className={cn("relative", FIELD_WIDTH)}>
-				<Search
-					size={16}
-					className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-dim"
-					aria-hidden="true"
-				/>
-				<Input
-					value={query}
-					onChange={(event) => onQueryChange(event.target.value)}
-					/*
-					 * Escape clears, because the field is where a reader who wants their
-					 * list back is already looking: without it the only way out of a
-					 * search was the ✕ (a mouse) or select-all-and-delete (UX round 1,
-					 * U5). It clears only when there is something to clear, so Escape
-					 * stays available to whatever else on the page may want it.
-					 */
-					onKeyDown={(event) => {
-						if (event.key === "Escape" && query) onQueryChange("");
-					}}
-					placeholder="Search settings by name, description or key"
-					aria-label="Search settings"
-					className="pl-9"
-				/>
-				{query && (
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						className="absolute top-1/2 right-1 -translate-y-1/2"
-						onClick={() => onQueryChange("")}
-						aria-label="Clear search"
-					>
-						<X aria-hidden="true" />
-					</Button>
-				)}
-			</div>
+}) => {
+	useI18nLocale();
+	return (
+		<div className="flex flex-col gap-2">
+			<div className="flex flex-wrap items-center gap-3">
+				<div className={cn("relative", FIELD_WIDTH)}>
+					<Search
+						size={16}
+						className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-dim"
+						aria-hidden="true"
+					/>
+					<Input
+						value={query}
+						onChange={(event) => onQueryChange(event.target.value)}
+						/*
+						 * Escape clears, because the field is where a reader who wants their
+						 * list back is already looking: without it the only way out of a
+						 * search was the ✕ (a mouse) or select-all-and-delete (UX round 1,
+						 * U5). It clears only when there is something to clear, so Escape
+						 * stays available to whatever else on the page may want it.
+						 */
+						onKeyDown={(event) => {
+							if (event.key === "Escape" && query) onQueryChange("");
+						}}
+						placeholder={t(
+							"ui.settings.configuration.settings_filter_bar.search_settings_by_name_description_or_key",
+						)}
+						aria-label={t(
+							"ui.settings.configuration.settings_filter_bar.search_settings",
+						)}
+						className="pl-9"
+					/>
+					{query && (
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							className="absolute top-1/2 right-1 -translate-y-1/2"
+							onClick={() => onQueryChange("")}
+							aria-label={t(
+								"ui.settings.configuration.settings_filter_bar.clear_search",
+							)}
+						>
+							<X aria-hidden="true" />
+						</Button>
+					)}
+				</div>
 
-			{/* Two filters, one idiom. `Modified` counts so the chip is worth
+				{/* Two filters, one idiom. `Modified` counts so the chip is worth
 			    pressing before it is pressed; `Show advanced` is a view of the
 			    same list rather than a permission, so it is a toggle beside it
 			    and not a navigation. */}
-			<fieldset className="m-0 border-0 p-0">
-				<legend className="sr-only">Settings filters</legend>
-				<div className="flex gap-0.5 rounded-md bg-sunken p-0.5">
-					<Button
-						variant="ghost"
-						size="sm"
-						aria-pressed={modifiedOnly}
-						onClick={() => onModifiedOnlyChange(!modifiedOnly)}
-						className={cn(
-							modifiedOnly && "bg-surface text-ink hover:bg-surface",
+				<fieldset className="m-0 border-0 p-0">
+					<legend className="sr-only">
+						{t(
+							"ui.settings.configuration.settings_filter_bar.settings_filters",
 						)}
-					>
-						Modified
-						<Badge variant="neutral">{modifiedCount}</Badge>
-					</Button>
-					<Button
-						variant="ghost"
-						size="sm"
-						aria-pressed={showAdvanced}
-						onClick={() => onShowAdvancedChange(!showAdvanced)}
-						className={cn(
-							showAdvanced && "bg-surface text-ink hover:bg-surface",
-						)}
-					>
-						Show advanced
-					</Button>
-				</div>
-			</fieldset>
-
-			<div className="ml-auto flex items-center gap-2">
-				{/* The unsaved state, which is the whole of what changed about the
-				    save model. Both affordances act on every draft the section
-				    holds, including the ones inside a section the reader has
-				    collapsed — a draft survives a collapse here rather than being
-				    discarded with its row. */}
-				{unsavedCount > 0 && (
-					<>
-						<span className="text-meta text-ink-dim">
-							{unsavedCount === 1
-								? "1 unsaved change"
-								: `${unsavedCount} unsaved changes`}
-						</span>
+					</legend>
+					<div className="flex gap-0.5 rounded-md bg-sunken p-0.5">
 						<Button
-							variant="primary"
+							variant="ghost"
 							size="sm"
-							disabled={savingAll}
-							onClick={onSaveAll}
+							aria-pressed={modifiedOnly}
+							onClick={() => onModifiedOnlyChange(!modifiedOnly)}
+							className={cn(
+								modifiedOnly && "bg-surface text-ink hover:bg-surface",
+							)}
 						>
-							{savingAll ? "Saving" : "Save all"}
+							{t("ui.settings.configuration.settings_filter_bar.modified")}
+							<Badge variant="neutral">{modifiedCount}</Badge>
 						</Button>
 						<Button
 							variant="ghost"
 							size="sm"
-							disabled={savingAll}
-							onClick={onDiscardAll}
+							aria-pressed={showAdvanced}
+							onClick={() => onShowAdvancedChange(!showAdvanced)}
+							className={cn(
+								showAdvanced && "bg-surface text-ink hover:bg-surface",
+							)}
 						>
-							Discard all
+							{t("ui.settings.configuration.settings_filter_bar.show_advanced")}
 						</Button>
-					</>
-				)}
-				<Button variant="ghost" size="sm" onClick={onExpandAll}>
-					Expand all
-				</Button>
-				<Button variant="ghost" size="sm" onClick={onCollapseAll}>
-					Collapse all
-				</Button>
-			</div>
-		</div>
+					</div>
+				</fieldset>
 
-		{/* One line, and it answers the question the field raises: how much is
+				<div className="ml-auto flex items-center gap-2">
+					{/* The unsaved state, which is the whole of what changed about the
+				    save model. Both affordances act on every draft the section
+				    holds, including the ones inside a section the reader has
+				    collapsed — a draft survives a collapse here rather than being
+				    discarded with its row. */}
+					{unsavedCount > 0 && (
+						<>
+							<span className="text-meta text-ink-dim">
+								{t(
+									"ui.settings.configuration.settings_filter_bar.unsaved_count",
+									{ count: unsavedCount },
+								)}
+							</span>
+							<Button
+								variant="primary"
+								size="sm"
+								disabled={savingAll}
+								onClick={onSaveAll}
+							>
+								{savingAll
+									? t("ui.settings.configuration.settings_filter_bar.saving")
+									: t("ui.settings.configuration.settings_filter_bar.save_all")}
+							</Button>
+							<Button
+								variant="ghost"
+								size="sm"
+								disabled={savingAll}
+								onClick={onDiscardAll}
+							>
+								{t("ui.settings.configuration.settings_filter_bar.discard_all")}
+							</Button>
+						</>
+					)}
+					<Button variant="ghost" size="sm" onClick={onExpandAll}>
+						{t("ui.settings.configuration.settings_filter_bar.expand_all")}
+					</Button>
+					<Button variant="ghost" size="sm" onClick={onCollapseAll}>
+						{t("ui.settings.configuration.settings_filter_bar.collapse_all")}
+					</Button>
+				</div>
+			</div>
+
+			{/* One line, and it answers the question the field raises: how much is
 		    there, and what did my query find. Stated in the registry's own units
 		    ("settings"), never in rows or matches the user cannot count.
 
@@ -205,16 +222,30 @@ export const SettingsFilterBar: FC<SettingsFilterBarProps> = ({
 		    UX round 1, U12), and `Show advanced` says what it just admitted
 		    rather than leaving the reader to discover that the chip reveals rows
 		    inside sections they have not opened (UX round 1, U3). */}
-		<p className="text-meta text-ink-dim" aria-live="polite">
-			{matchCount !== null
-				? `${matchCount} ${matchCount === 1 ? "result" : "results"} in ${matchSections} ${
-						matchSections === 1 ? "section" : "sections"
-					}`
-				: modifiedOnly
-					? `${modifiedCount} modified ${modifiedCount === 1 ? "setting" : "settings"}`
-					: showAdvanced
-						? `${advancedCount} advanced settings shown — Expand all to see them`
-						: `${coreCount} core settings, ${advancedCount} advanced`}
-		</p>
-	</div>
-);
+			<p className="text-meta text-ink-dim" aria-live="polite">
+				{matchCount !== null
+					? t("ui.settings.configuration.settings_filter_bar.search_count", {
+							matchCount: matchCount,
+							sectionCount: matchSections,
+						})
+					: modifiedOnly
+						? t(
+								"ui.settings.configuration.settings_filter_bar.modified_count",
+								{ count: modifiedCount },
+							)
+						: showAdvanced
+							? t(
+									"ui.settings.configuration.settings_filter_bar.advancedcount_advanced_settings_shown_expand_all_to_see_them",
+									{ advancedCount: String(advancedCount) },
+								)
+							: t(
+									"ui.settings.configuration.settings_filter_bar.corecount_core_settings_advancedcount_advanced",
+									{
+										coreCount: String(coreCount),
+										advancedCount: String(advancedCount),
+									},
+								)}
+			</p>
+		</div>
+	);
+};

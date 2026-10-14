@@ -71,6 +71,7 @@ import { ThemeSelector } from "./theme-selector";
 import { TranscriptDisplayModeSetting } from "./transcript-display-mode-setting";
 
 const BillingInfo: FC = () => {
+	useI18nLocale();
 	const {
 		data: creditData,
 		isLoading,
@@ -87,18 +88,21 @@ const BillingInfo: FC = () => {
 			 */}
 			<h3 className="mb-3 flex items-center gap-2 text-heading text-ink">
 				<CreditCard size={16} className="shrink-0 text-ink-dim" />
-				Radient Pass
+				{t("ui.settings.account.settings_page.radient_pass")}
 			</h3>
 			{isLoading && <Skeleton className="h-6 w-36" />}
 			{error && (
 				<Alert variant="warning">
-					Could not load your credit balance. {error.message}
+					{t(
+						"ui.settings.account.settings_page.could_not_load_your_credit_balance",
+					)}
+					{error.message}
 				</Alert>
 			)}
 			{creditData && !isLoading && !error && (
 				<div className="flex flex-col gap-3 sm:flex-row sm:items-center">
 					<p className="flex-1 text-body-sm text-ink-muted">
-						Available credits{" "}
+						{t("ui.settings.account.settings_page.available_credits")}{" "}
 						<span className="font-medium text-ink">
 							{creditData.balance.toFixed(2)}
 						</span>
@@ -110,7 +114,7 @@ const BillingInfo: FC = () => {
 							rel="noopener noreferrer"
 						>
 							<CirclePlus />
-							Add credits
+							{t("ui.settings.account.settings_page.add_credits")}
 						</a>
 					</Button>
 				</div>
@@ -122,8 +126,18 @@ const BillingInfo: FC = () => {
 type UsageMetric = "credits" | "tokens";
 
 const USAGE_METRICS: { id: UsageMetric; label: string }[] = [
-	{ id: "credits", label: "Credits" },
-	{ id: "tokens", label: "Tokens" },
+	{
+		id: "credits",
+		get label() {
+			return t("ui.settings.account.settings_page.credits");
+		},
+	},
+	{
+		id: "tokens",
+		get label() {
+			return t("ui.settings.account.settings_page.tokens");
+		},
+	},
 ];
 
 /**
@@ -134,6 +148,7 @@ const USAGE_METRICS: { id: UsageMetric; label: string }[] = [
  */
 
 const UsageInfo: FC = () => {
+	useI18nLocale();
 	const [dataType, setDataType] = useState<UsageMetric>("credits");
 
 	const usageParams = useMemo(() => {
@@ -185,7 +200,7 @@ const UsageInfo: FC = () => {
 			<div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<h3 className="flex items-center gap-2 text-heading text-ink">
 					<ChartLine size={16} className="shrink-0 text-ink-dim" />
-					Usage (last 30 days)
+					{t("ui.settings.account.settings_page.usage_last_30_days")}
 				</h3>
 				{/*
 				 * A segmented pair rather than `Tabs`: the two options change which
@@ -194,7 +209,9 @@ const UsageInfo: FC = () => {
 				 * does not exist. `aria-pressed` describes what these actually are.
 				 */}
 				<fieldset className="m-0 w-fit border-0 p-0">
-					<legend className="sr-only">Usage metric</legend>
+					<legend className="sr-only">
+						{t("ui.settings.account.settings_page.usage_metric")}
+					</legend>
 					<div className="flex gap-0.5 rounded-md bg-sunken p-0.5">
 						{USAGE_METRICS.map(({ id, label }) => (
 							<Button
@@ -217,7 +234,10 @@ const UsageInfo: FC = () => {
 			{isLoading && <Skeleton className="h-62 w-full" />}
 			{error && (
 				<Alert variant="warning">
-					Could not load your usage data. {error.message}
+					{t(
+						"ui.settings.account.settings_page.could_not_load_your_usage_data",
+					)}
+					{error.message}
 				</Alert>
 			)}
 			{!isLoading && !error && usageData && chartData.length > 0 && (
@@ -237,7 +257,9 @@ const UsageInfo: FC = () => {
 			)}
 			{!isLoading && !error && (!usageData || chartData.length === 0) && (
 				<p className="text-body-sm text-ink-muted">
-					No usage recorded in the last 30 days.
+					{t(
+						"ui.settings.account.settings_page.no_usage_recorded_in_the_last_30_days",
+					)}
 				</p>
 			)}
 		</div>
@@ -255,29 +277,32 @@ const UsageInfo: FC = () => {
  * page as having two levels of grouping where it has one. A brand mark is not
  * a reason to leave the type scale.
  */
-const RadientSectionTitle: FC = () => (
-	<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-		<h2 className="flex items-center gap-2 text-heading text-ink">
-			<RadientMark size={16} className="shrink-0 text-ink-dim" />
-			Radient account
-		</h2>
-		<Button
-			variant="secondary"
-			size="sm"
-			className="self-start sm:self-center"
-			asChild
-		>
-			<a
-				href="https://console.radienthq.com"
-				target="_blank"
-				rel="noopener noreferrer"
+const RadientSectionTitle: FC = () => {
+	useI18nLocale();
+	return (
+		<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+			<h2 className="flex items-center gap-2 text-heading text-ink">
+				<RadientMark size={16} className="shrink-0 text-ink-dim" />
+				{t("ui.settings.account.settings_page.radient_account")}
+			</h2>
+			<Button
+				variant="secondary"
+				size="sm"
+				className="self-start sm:self-center"
+				asChild
 			>
-				Go to Radient console
-				<ExternalLink />
-			</a>
-		</Button>
-	</div>
-);
+				<a
+					href="https://console.radienthq.com"
+					target="_blank"
+					rel="noopener noreferrer"
+				>
+					{t("ui.settings.account.settings_page.go_to_radient_console")}
+					<ExternalLink />
+				</a>
+			</Button>
+		</div>
+	);
+};
 
 export const SettingsPage: FC = () => {
 	/*
@@ -331,7 +356,9 @@ export const SettingsPage: FC = () => {
 		pairingCardCopy(
 			/* `?? null`: no answer yet keeps the fallback branch, as no cause does (the hook's three states). */
 			pairingCause ?? null,
-			"Your settings could not be loaded.",
+			t(
+				"ui.settings.navigation.settings_page.your_settings_could_not_be_loaded",
+			),
 			configError,
 		);
 	const updateConfigMutation = useUpdateConfig();
@@ -831,7 +858,9 @@ export const SettingsPage: FC = () => {
 								onClick={() => void refetch()}
 								disabled={isConfigFetching}
 							>
-								{isConfigFetching ? "Retrying" : "Retry"}
+								{isConfigFetching
+									? t("ui.settings.navigation.settings_page.retrying")
+									: t("ui.settings.navigation.settings_page.retry")}
 							</Button>
 						)}
 					</div>
@@ -868,7 +897,11 @@ export const SettingsPage: FC = () => {
 			>
 				<Spinner
 					size="lg"
-					label={isSlowLoad ? undefined : "Loading settings"}
+					label={
+						isSlowLoad
+							? undefined
+							: t("ui.settings.navigation.settings_page.loading_settings")
+					}
 				/>
 				{/* A bounded wait is still a silent one. Until the deadline expires
 				    this spinner is pixel-identical to the unrecoverable spinner of
@@ -881,8 +914,9 @@ export const SettingsPage: FC = () => {
 				    offer a retry"), which made the machinery the subject. */}
 				{isSlowLoad && (
 					<p className="max-w-sm text-center text-body-sm text-ink-muted">
-						The Local Operator server is taking longer than usual to answer. If
-						it does not respond, you will be able to retry from here.
+						{t(
+							"ui.settings.navigation.settings_page.the_local_operator_server_is_taking_longer_than_usual_to_answer_i",
+						)}
 					</p>
 				)}
 			</div>
@@ -897,7 +931,9 @@ export const SettingsPage: FC = () => {
 				    discipline as the classifier's `unknown` -- state the failure and
 				    stop rather than guessing an action that may not fix it. */}
 				<Alert variant="warning" className="w-full max-w-xl">
-					Your settings could not be loaded.
+					{t(
+						"ui.settings.navigation.settings_page.your_settings_could_not_be_loaded",
+					)}
 				</Alert>
 			</div>
 		);
@@ -1078,11 +1114,11 @@ export const SettingsPage: FC = () => {
 											{/*
 											 * WHAT THIS REPORTS IS THE READER'S OWN PRESS (qa round 3, Q1).
 											 * `isAccountRefreshing` is the mutation's pending state, and that mutation
-											 * awaits its refetch - so the control says "Retrying" exactly while the
+											 * awaits its refetch - so the control says t("ui.settings.navigation.settings_page.retrying") exactly while the
 											 * re-read this press began is running, and an ordinary fetch (the client's
 											 * own retries included) leaves it saying "Retry", enabled. The first version
 											 * read `isFetching`, which is true for those retries too: for a read that
-											 * never answers the control read "Retrying", disabled, with nobody having
+											 * never answers the control read t("ui.settings.navigation.settings_page.retrying"), disabled, with nobody having
 											 * pressed anything, beside copy that says "Retry."
 											 *
 											 * The alert STAYS MOUNTED while that re-read is out (the hook keeps the
@@ -1197,9 +1233,11 @@ export const SettingsPage: FC = () => {
 							    rows below it. One picture, one meaning. */}
 							<SettingsSection
 								id="model-settings"
-								title="Model settings"
+								title={t("ui.settings.model.settings_page.model_settings")}
 								icon={SlidersHorizontal}
-								description="Configure the default AI model and hosting providers used for generating responses. This will be used for all agents that don't have a specific model or hosting provider configured. You can override these settings for individual agents in the agent settings."
+								description={t(
+									"ui.settings.model.settings_page.configure_the_default_ai_model_and_hosting_providers_used_for_gen",
+								)}
 							>
 								<div className="flex flex-col gap-4">
 									<HostingSelect
@@ -1213,7 +1251,9 @@ export const SettingsPage: FC = () => {
 										   would send the reader to the page they are already on. Settings'
 										   own model section says "below" instead: same door, same words,
 										   no second sentence. */
-										emptyHelperText="No hosting providers available. Sign in to a provider, or add a provider's API key below, under Providers."
+										emptyHelperText={t(
+											"ui.settings.model.settings_page.no_hosting_options",
+										)}
 									/>
 									<ModelSelect
 										value={config.values.model_name}
@@ -1227,10 +1267,9 @@ export const SettingsPage: FC = () => {
 										variant="neutral"
 										icon={<Info className="size-4" aria-hidden="true" />}
 									>
-										You need a Radient account or your own API keys to reach
-										cloud providers. If you don't see more hosting providers and
-										models here, sign in to Radient, or add a provider's API key
-										below, under Providers.
+										{t(
+											"ui.settings.model.settings_page.you_need_a_radient_account_or_your_own_api_keys_to_reach_cloud_pr",
+										)}
 									</Alert>
 								</div>
 							</SettingsSection>
@@ -1238,31 +1277,42 @@ export const SettingsPage: FC = () => {
 							<SystemPrompt />
 
 							<SettingsSection
-								title="Configuration information"
+								title={t(
+									"ui.settings.configuration.settings_page.configuration_information",
+								)}
 								icon={Info}
-								description="System information about the current configuration."
+								description={t(
+									"ui.settings.configuration.settings_page.system_information_about_the_current_configuration",
+								)}
 							>
 								<InfoGrid>
 									<InfoItem
-										label="Version"
+										label={t("ui.settings.configuration.settings_page.version")}
 										value={
 											<span className="text-mono-sm">{config.version}</span>
 										}
 									/>
 									<InfoItem
-										label="Created"
+										label={t("ui.settings.configuration.settings_page.created")}
 										value={formatCalendarDate(config.metadata.created_at)}
 									/>
 									<InfoItem
-										label="Last modified"
+										label={t(
+											"ui.settings.configuration.settings_page.last_modified",
+										)}
 										value={formatCalendarDateTime(
 											config.metadata.last_modified,
 										)}
 									/>
 									<InfoItem
-										label="Description"
+										label={t(
+											"ui.settings.configuration.settings_page.description",
+										)}
 										value={
-											config.metadata.description || "No description available"
+											config.metadata.description ||
+											t(
+												"ui.settings.configuration.settings_page.no_description_available",
+											)
 										}
 									/>
 								</InfoGrid>
@@ -1270,9 +1320,11 @@ export const SettingsPage: FC = () => {
 						</div>
 
 						<SettingsSection
-							title="Appearance"
+							title={t("ui.settings.appearance.settings_page.appearance")}
 							icon={Contrast}
-							description="Customize the look and feel of Local Operator"
+							description={t(
+								"ui.settings.appearance.settings_page.customize_the_look_and_feel_of_local_operator",
+							)}
 							sectionRef={sectionRefs.appearance}
 							dataTourTag="settings-appearance-section"
 						>
@@ -1299,8 +1351,12 @@ export const SettingsPage: FC = () => {
 								 */}
 								<ToggleSetting
 									value={showAgentReasoning}
-									label="Show agent reasoning"
-									description="Adds the agent's Reasoning and Thinking rows to conversations. They stay closed until you open one. Reasoning only: narration the agent writes as prose mid-turn is transcript content, not reasoning — never removed by either display mode (by turn folds it behind the turn's bars, by response keeps it on screen)."
+									label={t(
+										"ui.settings.appearance.settings_page.show_agent_reasoning",
+									)}
+									description={t(
+										"ui.settings.appearance.settings_page.adds_the_agent_s_reasoning_and_thinking_rows_to_conversations_the",
+									)}
 									onChange={async (next) => setShowAgentReasoning(next)}
 								/>
 								{/*
@@ -1337,9 +1393,11 @@ export const SettingsPage: FC = () => {
 						 * credentials. `/provider`, `/login` and `/logout` land here.
 						 */}
 						<SettingsSection
-							title="Model providers"
+							title={t("ui.settings.model.settings_page.model_providers")}
 							icon={Plug}
-							description="Sign in to the services your agents think with. New chats use your default model."
+							description={t(
+								"ui.settings.navigation.settings_page.sign_in_to_the_services_your_agents_think_with_new_chats_use_your",
+							)}
 							sectionRef={sectionRefs.providers}
 						>
 							<ProviderGrid
@@ -1360,9 +1418,11 @@ export const SettingsPage: FC = () => {
 						/>
 
 						<SettingsSection
-							title="Radient account"
+							title={t("ui.settings.account.settings_page.radient_account")}
 							titleComponent={<RadientSectionTitle />}
-							description="Your Radient account, Radient Pass details and credits. To use Radient models, sign in under Model providers."
+							description={t(
+								"ui.settings.account.settings_page.your_radient_account_radient_pass_details_and_credits_to_use_radi",
+							)}
 							sectionRef={sectionRefs.radient}
 							dataTourTag="settings-radient-account-section"
 						>
@@ -1390,9 +1450,11 @@ export const SettingsPage: FC = () => {
 						</SettingsSection>
 
 						<SettingsSection
-							title="Backend settings"
+							title={t("ui.settings.navigation.settings_page.backend_settings")}
 							icon={Settings}
-							description="Every setting the backend registry owns, searchable, with typed editors and scopes."
+							description={t(
+								"ui.settings.navigation.settings_page.every_setting_the_backend_registry_owns_searchable_with_typed_edi",
+							)}
 							sectionRef={sectionRefs.backend}
 						>
 							<BackendSettingsSection

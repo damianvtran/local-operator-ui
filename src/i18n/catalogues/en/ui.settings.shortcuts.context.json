@@ -1,0 +1,65 @@
+{
+	"ui.settings.shortcuts.keyboard_shortcuts_section.clear": {
+		"role": "Button action label",
+		"tone": "Brief imperative. No enthusiasm or extra punctuation.",
+		"length": "Compact existing settings/list control; English is 5 characters before placeholder expansion. Keep short.",
+		"note": "keyboard shortcuts section: rendered in Button inside div. Composition (message names mark slots): <Button aria-label={t( \"ui.settings.shortcuts.keyboard_shortcuts_section.clear_label_s_shortcut\", { label: String(label) }, )} onClick={() => { clearShortcutBinding(action.id); fieldRef.current?.focus(); }} > {[clear]} </Button>"
+	},
+	"ui.settings.shortcuts.keyboard_shortcuts_section.reset": {
+		"role": "Button action label",
+		"tone": "Brief imperative. No enthusiasm or extra punctuation.",
+		"length": "Compact existing settings/list control; English is 5 characters before placeholder expansion. Keep short.",
+		"note": "keyboard shortcuts section: rendered in Button inside div. Composition (message names mark slots): <Button aria-label={t( \"ui.settings.shortcuts.keyboard_shortcuts_section.reset_label_to_its_default\", { label: String(label) }, )} onClick={() => { setShortcutBinding(action.id, null); fieldRef.current?.focus(); }} > {[reset]} </Button>"
+	},
+	"ui.settings.shortcuts.keyboard_shortcuts_section.press_the_keys_you_want_esc_cancels": {
+		"role": "Keyboard-capture field empty/recording-state readout",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 37 characters before placeholder expansion. Keep short.",
+		"note": "Displayed inside the shortcut-capture field when no chord is assigned, or while recording. Actual key names/chord glyphs stay machine tokens. keyboard shortcuts section: rendered in span inside div. Composition (message names mark slots): <span> {t( \"ui.settings.shortcuts.keyboard_shortcuts_section.press_the_keys_you_want_esc_cancels\", )} </span>"
+	},
+	"ui.settings.shortcuts.keyboard_shortcuts_section.keyboard_shortcuts": {
+		"role": "Settings section heading",
+		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
+		"length": "Compact existing settings/list control; English is 18 characters before placeholder expansion. Keep short.",
+		"note": "keyboard shortcuts section: title on SettingsSection. Composition (message names mark slots): <SettingsSection > <div> {KEYMAP_ACTIONS.map((action) => ( <ShortcutRow /> ))} </div> </SettingsSection>"
+	},
+	"ui.settings.shortcuts.keyboard_shortcuts_section.shortcuts_for_the_panel_rail_focus_a_field_and_press_the_keys_you": {
+		"role": "Settings row/section explanatory help",
+		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
+		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
+		"note": "keyboard shortcuts section: description on SettingsSection. Composition (message names mark slots): <SettingsSection > <div> {KEYMAP_ACTIONS.map((action) => ( <ShortcutRow /> ))} </div> </SettingsSection>"
+	},
+	"ui.settings.shortcuts.keyboard_shortcuts_section.no_shortcut": {
+		"role": "Keyboard-capture field empty/recording-state readout",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 11 characters before placeholder expansion. Keep short.",
+		"note": "Displayed inside the shortcut-capture field when no chord is assigned, or while recording. Actual key names/chord glyphs stay machine tokens. keyboard shortcuts section: value on Input."
+	},
+	"ui.settings.shortcuts.keyboard_shortcuts_section.label_press_the_keys_you_want": {
+		"role": "Accessible control name; not visible body copy",
+		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
+		"length": "Compact existing control/readout; English source is 32 characters before variable expansion. Avoid adding explanatory prose.",
+		"note": "keyboard shortcuts section: aria-label on Input. Reorder placeholders as grammar requires; do not copy English word order mechanically.",
+		"placeholders": {
+			"label": "Displayed label. Value inserted verbatim; do not translate technical identifiers, integration/provider names, or user-entered text. Caller supplies String(label). Caller supplies String(label). Caller supplies String(label). Caller supplies String(label). Caller supplies String(label)."
+		}
+	},
+	"ui.settings.shortcuts.keyboard_shortcuts_section.clear_label_s_shortcut": {
+		"role": "Accessible control name; not visible body copy",
+		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
+		"length": "Compact existing control/readout; English source is 24 characters before variable expansion. Avoid adding explanatory prose.",
+		"note": "keyboard shortcuts section: aria-label on Button. Composition (message names mark slots): <Button aria-label={t( \"ui.settings.shortcuts.keyboard_shortcuts_section.clear_label_s_shortcut\", { label: String(label) }, )} onClick={() => { clearShortcutBinding(action.id); fieldRef.current?.focus(); }} > {[clear]} </Button> Reorder placeholders as grammar requires; do not copy English word order mechanically.",
+		"placeholders": {
+			"label": "Displayed label. Value inserted verbatim; do not translate technical identifiers, integration/provider names, or user-entered text. Caller supplies String(label). Caller supplies String(label). Caller supplies String(label). Caller supplies String(label). Caller supplies String(label)."
+		}
+	},
+	"ui.settings.shortcuts.keyboard_shortcuts_section.reset_label_to_its_default": {
+		"role": "Accessible control name; not visible body copy",
+		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
+		"length": "Compact existing control/readout; English source is 28 characters before variable expansion. Avoid adding explanatory prose.",
+		"note": "keyboard shortcuts section: aria-label on Button. Composition (message names mark slots): <Button aria-label={t( \"ui.settings.shortcuts.keyboard_shortcuts_section.reset_label_to_its_default\", { label: String(label) }, )} onClick={() => { setShortcutBinding(action.id, null); fieldRef.current?.focus(); }} > {[reset]} </Button> Reorder placeholders as grammar requires; do not copy English word order mechanically.",
+		"placeholders": {
+			"label": "Displayed label. Value inserted verbatim; do not translate technical identifiers, integration/provider names, or user-entered text. Caller supplies String(label). Caller supplies String(label). Caller supplies String(label). Caller supplies String(label). Caller supplies String(label)."
+		}
+	}
+}

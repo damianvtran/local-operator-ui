@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The Speech voicing group: how the assistant sounds when it speaks aloud.
  *
@@ -97,7 +99,7 @@ type SpeechSectionProps = {
  * what is wrong with the server.
  */
 const BACKEND_OLDER_SENTENCE =
-	"This backend does not serve the voicing surface. Update the backend to tune how the assistant sounds.";
+	"ui.settings.speech.speech_section.copy_backend_older_sentence";
 
 /**
  * What the group says when the report is missing, whether the request failed or
@@ -116,6 +118,8 @@ const BACKEND_OLDER_SENTENCE =
  * either photograph the wrong arm or assert a string nothing renders.
  */
 export const UNAVAILABLE_SENTENCE = "Speech availability could not be read.";
+const UNAVAILABLE_SENTENCE_KEY =
+	"ui.settings.speech.speech_section.copy_unavailable_sentence";
 
 /**
  * The panel's local boundary: a subtree that crashes becomes one honest
@@ -138,17 +142,20 @@ export const UNAVAILABLE_SENTENCE = "Speech availability could not be read.";
  * gives the reader the button the built-in fallback has, beside the sentence this
  * surface owns.
  */
-const PanelFallback = ({ resetErrorBoundary }: FallbackProps) => (
-	<Alert variant="warning">
-		<div className="flex flex-col items-start gap-3">
-			<span>{UNAVAILABLE_SENTENCE}</span>
-			<Button variant="secondary" onClick={resetErrorBoundary}>
-				<RotateCw aria-hidden="true" />
-				Try again
-			</Button>
-		</div>
-	</Alert>
-);
+const PanelFallback = ({ resetErrorBoundary }: FallbackProps) => {
+	useI18nLocale();
+	return (
+		<Alert variant="warning">
+			<div className="flex flex-col items-start gap-3">
+				<span>{t(UNAVAILABLE_SENTENCE_KEY)}</span>
+				<Button variant="secondary" onClick={resetErrorBoundary}>
+					<RotateCw aria-hidden="true" />
+					{t("ui.settings.speech.speech_section.try_again")}
+				</Button>
+			</div>
+		</Alert>
+	);
+};
 
 /** Which of the group's four renderings a feature state admits. */
 function groupState(state: DesktopFeatureState): "ready" | "older" | "pairing" {
@@ -158,6 +165,7 @@ function groupState(state: DesktopFeatureState): "ready" | "older" | "pairing" {
 }
 
 export const SpeechSection: FC<SpeechSectionProps> = ({ sectionRef }) => {
+	useI18nLocale();
 	const capabilities = useDesktopCapabilities();
 	const pairingCause = usePairingCause();
 	const featureState = desktopFeatureState(capabilities.data, "tts");
@@ -285,7 +293,9 @@ export const SpeechSection: FC<SpeechSectionProps> = ({ sectionRef }) => {
 				setting.key,
 				error instanceof Error
 					? error.message
-					: "The setting could not be saved.",
+					: t(
+							"ui.settings.speech.speech_section.the_setting_could_not_be_saved",
+						),
 			);
 		}
 	};
@@ -311,7 +321,9 @@ export const SpeechSection: FC<SpeechSectionProps> = ({ sectionRef }) => {
 				setting.key,
 				error instanceof Error
 					? error.message
-					: "The setting could not be reset.",
+					: t(
+							"ui.settings.speech.speech_section.the_setting_could_not_be_reset",
+						),
 			);
 		}
 	};
@@ -342,13 +354,17 @@ export const SpeechSection: FC<SpeechSectionProps> = ({ sectionRef }) => {
 	const loadError = (capabilities.data ? null : capabilities.error) ?? null;
 	const settingsError = settingsQuery.error;
 
-	const title = "Speech voicing";
-	const description = "How the assistant sounds when it speaks aloud.";
+	const title = t("ui.settings.speech.speech_section.speech_voicing");
+	const description = t(
+		"ui.settings.speech.speech_section.how_the_assistant_sounds_when_it_speaks_aloud",
+	);
 
 	if (state === "pairing") {
 		const { sentence } = pairingCardCopy(
 			pairingCause ?? null,
-			"Speech settings could not be loaded.",
+			t(
+				"ui.settings.speech.speech_section.speech_settings_could_not_be_loaded",
+			),
 			loadError,
 		);
 		return (
@@ -371,7 +387,7 @@ export const SpeechSection: FC<SpeechSectionProps> = ({ sectionRef }) => {
 				description={description}
 				sectionRef={sectionRef}
 			>
-				<Alert variant="warning">{BACKEND_OLDER_SENTENCE}</Alert>
+				<Alert variant="warning">{t(BACKEND_OLDER_SENTENCE)}</Alert>
 			</SettingsSection>
 		);
 	}
@@ -379,7 +395,9 @@ export const SpeechSection: FC<SpeechSectionProps> = ({ sectionRef }) => {
 	if (settingsError || !settings) {
 		const { sentence, remedy } = pairingCardCopy(
 			pairingCause ?? null,
-			"Speech settings could not be loaded.",
+			t(
+				"ui.settings.speech.speech_section.speech_settings_could_not_be_loaded",
+			),
 			settingsError,
 		);
 		return (
@@ -401,7 +419,7 @@ export const SpeechSection: FC<SpeechSectionProps> = ({ sectionRef }) => {
 									void settingsQuery.refetch();
 								}}
 							>
-								Retry
+								{t("ui.settings.speech.speech_section.retry")}
 							</Button>
 						)}
 					</div>
@@ -475,7 +493,7 @@ export const SpeechSection: FC<SpeechSectionProps> = ({ sectionRef }) => {
 							<Alert variant="warning">
 								<div className="flex items-center justify-between gap-3">
 									<span>
-										{UNAVAILABLE_SENTENCE}{" "}
+										{t(UNAVAILABLE_SENTENCE_KEY)}{" "}
 										{pathsQuery.error instanceof Error
 											? pathsQuery.error.message
 											: ""}
@@ -497,7 +515,7 @@ export const SpeechSection: FC<SpeechSectionProps> = ({ sectionRef }) => {
 											void pathsQuery.refetch();
 										}}
 									>
-										Retry
+										{t("ui.settings.speech.speech_section.retry")}
 									</Button>
 								</div>
 							</Alert>
@@ -517,16 +535,22 @@ export const SpeechSection: FC<SpeechSectionProps> = ({ sectionRef }) => {
 							<>
 								<InfoGrid>
 									<InfoItem
-										label="Speaks through"
+										label={t(
+											"ui.settings.speech.speech_section.speaks_through",
+										)}
 										value={
 											availability.serving
 												? speechPathName(availability.serving)
-												: "Nothing yet"
+												: t("ui.settings.speech.speech_section.nothing_yet")
 										}
 									/>
 									<InfoItem
-										label="Availability"
-										value={availability.servable ? "Ready" : "No provider"}
+										label={t("ui.settings.speech.speech_section.availability")}
+										value={
+											availability.servable
+												? t("ui.settings.speech.speech_section.ready")
+												: t("ui.settings.speech.speech_section.no_provider")
+										}
 									/>
 								</InfoGrid>
 								{/*
@@ -591,7 +615,11 @@ export const SpeechSection: FC<SpeechSectionProps> = ({ sectionRef }) => {
 													}
 												>
 													{" "}
-													{rung.available ? "(available)" : "(not available)"}
+													{rung.available
+														? t("ui.settings.speech.speech_section.available")
+														: t(
+																"ui.settings.speech.speech_section.not_available",
+															)}
 												</span>
 											</span>
 											<span className="text-meta text-ink-dim">
@@ -640,8 +668,13 @@ export const SpeechSection: FC<SpeechSectionProps> = ({ sectionRef }) => {
 				 */}
 				{voiceRows.missing.length > 0 && (
 					<p className="text-meta text-ink-dim">
-						This backend does not register {voiceRows.missing.join(", ")} yet,
-						so those rows are not shown.
+						{t(
+							"ui.settings.speech.speech_section.this_backend_does_not_register",
+						)}
+						{voiceRows.missing.join(", ")}
+						{t(
+							"ui.settings.speech.speech_section.yet_so_those_rows_are_not_shown",
+						)}
 					</p>
 				)}
 			</div>

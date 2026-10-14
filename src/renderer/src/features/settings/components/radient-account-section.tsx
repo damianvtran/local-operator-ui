@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * @file radient-account-section.tsx
  * @description
@@ -50,6 +52,7 @@ type RadientAccountSectionProps = {
 const VerifyToClaimCallout: FC<{ verification: AccountVerification }> = ({
 	verification,
 }) => {
+	useI18nLocale();
 	const { prices } = useRadientPricesQuery();
 	const amount = verification.grant_amount ?? prices?.default_new_credits;
 	const { sentence, action } = verifyCopy(
@@ -81,6 +84,7 @@ const VerifyToClaimCallout: FC<{ verification: AccountVerification }> = ({
 export const RadientAccountSection: FC<RadientAccountSectionProps> = ({
 	onAfterCredentialUpdate,
 }) => {
+	useI18nLocale();
 	const { isAuthenticated, user, isLoading, accountRead, signOut } =
 		useRadientAuth();
 	const isSigningOut = useUserStore((state) => state.isSigningOut);
@@ -106,10 +110,10 @@ export const RadientAccountSection: FC<RadientAccountSectionProps> = ({
 			<>
 				<InfoGrid>
 					<InfoItem
-						label="Status"
+						label={t("ui.settings.account.radient_account_section.status")}
 						value={
 							<span className="inline-flex items-center gap-2">
-								Connected
+								{t("ui.settings.account.radient_account_section.connected")}
 								{/* The status string arrives lowercase from the API. */}
 								<Badge variant="success" className="capitalize">
 									{account.status}
@@ -117,23 +121,32 @@ export const RadientAccountSection: FC<RadientAccountSectionProps> = ({
 							</span>
 						}
 					/>
-					<InfoItem label="Name" value={account.name || "Not provided"} />
-					<InfoItem label="Email" value={account.email} />
+					<InfoItem
+						label={t("ui.settings.account.radient_account_section.name")}
+						value={
+							account.name ||
+							t("ui.settings.account.radient_account_section.not_provided")
+						}
+					/>
+					<InfoItem
+						label={t("ui.settings.account.radient_account_section.email")}
+						value={account.email}
+					/>
 					{/* Identifiers are machine voice, so they take the mono step. */}
 					<InfoItem
-						label="Account ID"
+						label={t("ui.settings.account.radient_account_section.account_id")}
 						value={<span className="text-mono-sm">{account.id}</span>}
 					/>
 					<InfoItem
-						label="Tenant ID"
+						label={t("ui.settings.account.radient_account_section.tenant_id")}
 						value={<span className="text-mono-sm">{account.tenant_id}</span>}
 					/>
 					<InfoItem
-						label="Provider"
+						label={t("ui.settings.account.radient_account_section.provider")}
 						value={<span className="capitalize">{identity.provider}</span>}
 					/>
 					<InfoItem
-						label="Created"
+						label={t("ui.settings.account.radient_account_section.created")}
 						value={formatCalendarDate(account.created_at)}
 					/>
 				</InfoGrid>
@@ -165,11 +178,15 @@ export const RadientAccountSection: FC<RadientAccountSectionProps> = ({
 				 */}
 				<div className="mt-8">
 					<p className="text-body-sm text-ink-muted">
-						Need to sign out or switch accounts?
+						{t(
+							"ui.settings.account.radient_account_section.need_to_sign_out_or_switch_accounts",
+						)}
 					</p>
 					<Button variant="danger" className="mt-3" onClick={handleSignOut}>
 						<LogOut />
-						Sign out from Radient
+						{t(
+							"ui.settings.account.radient_account_section.sign_out_from_radient",
+						)}
 					</Button>
 				</div>
 			</>
@@ -208,12 +225,18 @@ export const RadientAccountSection: FC<RadientAccountSectionProps> = ({
 	 */
 	const signInLead = useMemo(() => {
 		if (accountRead === "refused") {
-			return "Radient refused the sign-in this app is holding, so your account details could not be read. Signing in again below replaces it.";
+			return t(
+				"ui.settings.account.radient_account_section.radient_refused_the_sign_in_this_app_is_holding_so_your_account_d",
+			);
 		}
 		if (isRadientAccountFailure(accountRead)) {
-			return "Your Radient account could not be read, so this app cannot show your account details.";
+			return t(
+				"ui.settings.account.radient_account_section.your_radient_account_could_not_be_read_so_this_app_cannot_show_yo",
+			);
 		}
-		return "You are not currently signed in to Radient.";
+		return t(
+			"ui.settings.account.radient_account_section.you_are_not_currently_signed_in_to_radient",
+		);
 	}, [accountRead]);
 
 	const signInSection = useMemo(() => {
@@ -222,12 +245,10 @@ export const RadientAccountSection: FC<RadientAccountSectionProps> = ({
 		return (
 			<div>
 				<p className="text-body-sm text-ink-muted">
-					{signInLead} Sign in to access your account details or sign up to get
-					free credits and unified access to models, tools, and more with
-					Radient Pass. Radient's automatic model router will automatically
-					select the best model for your agents to balance cost and performance.
-					It is often cheaper to use Radient Pass than to use single AI
-					providers due to automatic cost optimization.
+					{signInLead}
+					{t(
+						"ui.settings.account.radient_account_section.sign_in_to_access_your_account_details_or_sign_up_to_get_free_cre",
+					)}
 				</p>
 				<div className="mt-6">
 					<RadientAuthButtons
@@ -247,7 +268,12 @@ export const RadientAccountSection: FC<RadientAccountSectionProps> = ({
 	if (isLoading || isSigningOut) {
 		return (
 			<div className="flex min-h-36 flex-col items-center justify-center gap-3">
-				<Spinner size="lg" label="Loading account" />
+				<Spinner
+					size="lg"
+					label={t(
+						"ui.settings.account.radient_account_section.loading_account",
+					)}
+				/>
 				{/*
 				 * A caption as well as the ring, in the app's one register for "not
 				 * authoritative yet" (`branding.md` section 8: `text-meta text-ink-dim`,
@@ -273,7 +299,9 @@ export const RadientAccountSection: FC<RadientAccountSectionProps> = ({
 				 */}
 				{!isSigningOut && (
 					<p className="text-meta text-ink-dim">
-						Loading your Radient account details…
+						{t(
+							"ui.settings.account.radient_account_section.loading_your_radient_account_details",
+						)}
 					</p>
 				)}
 			</div>

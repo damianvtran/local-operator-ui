@@ -4,6 +4,8 @@ import {
 } from "@shared/api/local-operator";
 import { Tooltip } from "@shared/components/ui";
 import { apiConfig } from "@shared/config";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { Download, Info } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
@@ -51,7 +53,27 @@ const daemonAddress = (url: string | null): string | null => {
  * version" are indistinguishable to someone reading a support request back to
  * us — the tooltip is what tells them which number to quote.
  */
+// Version reads are cached across language changes. Translate only their
+// known presentation states at render time; actual versions and daemon URLs stay verbatim.
+function versionDisplay(value: string): string {
+	switch (value) {
+		case "Loading...":
+			return t("ui.settings.updates.app_updates_section.state_loading");
+		case "Not connected":
+			return t("ui.settings.updates.app_updates_section.state_not_connected");
+		case "Not attached":
+			return t("ui.settings.updates.app_updates_section.state_not_attached");
+		case "Version unknown":
+			return t("ui.settings.updates.app_updates_section.state_version_unknown");
+		case "Unavailable":
+			return t("ui.settings.updates.app_updates_section.state_unavailable");
+		default:
+			return value;
+	}
+}
+
 export const AppUpdatesSection: FC = () => {
+	useI18nLocale();
 	/*
 	 * Null while unknown rather than the string "Loading...", because this value is
 	 * handed to the update card and printed as the version that IS running (design
@@ -283,22 +305,31 @@ export const AppUpdatesSection: FC = () => {
 
 	return (
 		<SettingsSection
-			title="Application updates and info"
+			title={t(
+				"ui.settings.updates.app_updates_section.application_updates_and_info",
+			)}
 			icon={Download}
-			description="Check for updates and view information about your Local Operator installation."
+			description={t(
+				"ui.settings.updates.app_updates_section.check_for_updates_and_view_information_about_your_local_operator_",
+			)}
 			dataTourTag="settings-app-updates-section"
 		>
 			<div className="flex flex-col gap-6">
 				<InfoGrid>
 					{renderInfoItem(
-						"Application version",
-						appVersion ?? "Loading...",
-						"The version of the Local Operator user interface application.",
+						t("ui.settings.updates.app_updates_section.application_version"),
+						appVersion ??
+							t("ui.settings.updates.app_updates_section.state_loading"),
+						t(
+							"ui.settings.updates.app_updates_section.the_version_of_the_local_operator_user_interface_application",
+						),
 					)}
 					{renderInfoItem(
-						"Server version",
-						serverVersion.value,
-						"The version of the Local Operator API server backend, and the address of the daemon it was read from.",
+						t("ui.settings.updates.app_updates_section.server_version"),
+						versionDisplay(serverVersion.value),
+						t(
+							"ui.settings.updates.app_updates_section.the_version_of_the_local_operator_api_server_backend_and_the_addr",
+						),
 						{
 							valueTooltip: serverVersion.detail,
 							valueHoverTarget: true,
@@ -308,26 +339,34 @@ export const AppUpdatesSection: FC = () => {
 							// name), and the banner renders that state with it. A row that is
 							// still attached must not borrow the word that the banner uses to
 							// mean something else.
-							statusNote: serverVersion.degraded ? "Not answering" : undefined,
+							statusNote: serverVersion.degraded
+								? t("ui.settings.updates.app_updates_section.not_answering")
+								: undefined,
 							valueClassName: serverVersion.degraded
 								? "text-ink-muted"
 								: undefined,
 						},
 					)}
 					{renderInfoItem(
-						"Platform",
+						t("ui.settings.updates.app_updates_section.platform"),
 						`${platformInfo.platform} (${platformInfo.arch})`,
-						"The operating system and architecture your application is running on.",
+						t(
+							"ui.settings.updates.app_updates_section.the_operating_system_and_architecture_your_application_is_running",
+						),
 					)}
 					{renderInfoItem(
-						"Node.js version",
-						platformInfo.nodeVersion,
-						"The JavaScript runtime environment version.",
+						t("ui.settings.updates.app_updates_section.node_js_version"),
+						versionDisplay(platformInfo.nodeVersion),
+						t(
+							"ui.settings.updates.app_updates_section.the_javascript_runtime_environment_version",
+						),
 					)}
 					{renderInfoItem(
-						"Electron version",
-						platformInfo.electronVersion,
-						"The framework version enabling this desktop application.",
+						t("ui.settings.updates.app_updates_section.electron_version"),
+						versionDisplay(platformInfo.electronVersion),
+						t(
+							"ui.settings.updates.app_updates_section.the_framework_version_enabling_this_desktop_application",
+						),
 					)}
 				</InfoGrid>
 

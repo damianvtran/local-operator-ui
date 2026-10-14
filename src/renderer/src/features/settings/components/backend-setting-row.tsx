@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * One registry setting, as one line of a table.
  *
@@ -105,6 +107,7 @@ export const BackendSettingRow: FC<BackendSettingRowProps> = ({
 	onReset,
 	effectiveHosting = "",
 }) => {
+	useI18nLocale();
 	/*
 	 * The desktop's own words for the few rows whose registry copy is written for
 	 * the terminal (`backend-setting-copy.ts`). Applied HERE, once, so the label,
@@ -151,7 +154,9 @@ export const BackendSettingRow: FC<BackendSettingRowProps> = ({
 				// behind its reveal: a value a reader cannot edit and cannot
 				// immediately explain reads as broken (UX round 1, U10). Plain
 				// text, not a badge — a state, like the changed dot beside it.
-				<span className="text-meta text-ink-dim">Read-only</span>
+				<span className="text-meta text-ink-dim">
+					{t("ui.settings.configuration.backend_setting_row.read_only")}
+				</span>
 			)}
 			{setting.warning && (
 				<span className="text-meta text-danger">{setting.warning}</span>
@@ -168,7 +173,11 @@ export const BackendSettingRow: FC<BackendSettingRowProps> = ({
 	 */
 	const gateNote = gatedOff && gate && (
 		<p className="text-meta text-ink-dim">
-			Needs {gate.label} on. Nothing here is saved while it is off.
+			{t("ui.settings.configuration.backend_setting_row.needs")}
+			{gate.label}
+			{t(
+				"ui.settings.configuration.backend_setting_row.on_nothing_here_is_saved_while_it_is_off",
+			)}
 		</p>
 	);
 
@@ -280,7 +289,10 @@ export const BackendSettingRow: FC<BackendSettingRowProps> = ({
 						// `self-center` against a two-line label, and no effect at all
 						// on a line the control has to itself.
 						"flex shrink-0 items-center gap-2 self-center",
-						wideControl && "min-w-0 flex-1 items-start",
+						wideControl &&
+							t(
+								"ui.settings.configuration.backend_setting_row.min_w_0_flex_1_items_start",
+							),
 						/*
 						 * A floor, so the row's WRAP takes over: without one the control is a
 						 * flex-1 shrinking to whatever the label leaves (100px at a 420px
@@ -315,10 +327,13 @@ export const BackendSettingRow: FC<BackendSettingRowProps> = ({
 							onClick={onReset}
 							/* Eight of these render identically in one tab order, so each
 							   names the row it belongs to (UX round 1, U8). */
-							aria-label={`Use default for ${setting.label}`}
+							aria-label={t(
+								"ui.settings.configuration.backend_setting_row.use_default_for_label",
+								{ label: String(setting.label) },
+							)}
 						>
 							<Undo2 aria-hidden="true" />
-							Use default
+							{t("ui.settings.configuration.backend_setting_row.use_default")}
 						</Button>
 					)}
 					{dirty && (
@@ -328,7 +343,9 @@ export const BackendSettingRow: FC<BackendSettingRowProps> = ({
 							disabled={disabled}
 							onClick={onSave}
 						>
-							{saving ? "Saving" : "Save"}
+							{saving
+								? t("ui.settings.configuration.backend_setting_row.saving")
+								: t("ui.settings.configuration.backend_setting_row.save")}
 						</Button>
 					)}
 					{/*
@@ -349,12 +366,14 @@ export const BackendSettingRow: FC<BackendSettingRowProps> = ({
 							// for this key has to be able to see that it exists and why
 							// it cannot be edited here.
 							<span className="text-meta text-ink-dim">
-								Set in the credential manager: this value carries inline
-								credentials or query parameters.
+								{t(
+									"ui.settings.configuration.backend_setting_row.set_in_the_credential_manager_this_value_carries_inline_credentia",
+								)}
 							</span>
 						) : setting.kind === "readonly" ? (
 							<span className="text-body-sm text-ink-muted">
-								{serialize(setting.value) || "Not set"}
+								{serialize(setting.value) ||
+									t("ui.settings.configuration.backend_setting_row.not_set")}
 							</span>
 						) : (
 							<SettingControl
@@ -397,7 +416,7 @@ export const BackendSettingRow: FC<BackendSettingRowProps> = ({
 								onClick={onSave}
 							>
 								<RotateCcw aria-hidden="true" />
-								Retry
+								{t("ui.settings.configuration.backend_setting_row.retry")}
 							</Button>
 						</div>
 					</Alert>

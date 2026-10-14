@@ -1,4 +1,6 @@
 import { Tooltip, TooltipProvider } from "@shared/components/ui/tooltip";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { type ThemeName, themes } from "@shared/themes";
@@ -661,21 +663,23 @@ const measureTileGrids = (root: Element): TileGridGroup[] =>
 	});
 
 export const ThemeSelector: FC = () => {
+	useI18nLocale();
 	const { themeName, setTheme } = useUiPreferencesStore();
 
-	const groups = useMemo(() => {
+	// Group headings read the active catalogue each render; IDs and sorting stay stable.
+	const groups = (() => {
 		const all = Object.values(themes);
 		return [
 			{
-				label: "Dark",
+				label: t("ui.settings.appearance.theme_selector.dark"),
 				items: all.filter((t) => t.theme.palette.mode === "dark"),
 			},
 			{
-				label: "Light",
+				label: t("ui.settings.appearance.theme_selector.light"),
 				items: all.filter((t) => t.theme.palette.mode === "light"),
 			},
 		].filter((group) => group.items.length > 0);
-	}, []);
+	})();
 
 	/*
 	 * The tile the tab stop follows: the one that has focus, so Tab-away and

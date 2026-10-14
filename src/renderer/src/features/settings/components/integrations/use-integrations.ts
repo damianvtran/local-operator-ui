@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * The data half of Settings > Integrations: one document, whichever route
  * serves it, plus the controls that change it.
@@ -276,7 +277,10 @@ export function credentialsRefusalMessage(
 		 * same way the checkbox derives it, so the two cannot drift again.
 		 */
 		const label = replaceControlLabel(Object.keys(values).length);
-		return `A saved value already exists for this key. Tick \u201c${label}\u201d to overwrite it.`;
+		return t(
+			"ui.settings.integrations.use_integrations.a_saved_value_already_exists_for_this_key_tick_label_to_overwrite",
+			{ label: String(label) },
+		);
 	}
 	if (code === "invalid_target")
 		/*
@@ -286,9 +290,14 @@ export function credentialsRefusalMessage(
 		 * WRITTEN, and saying so is the difference between a user fixing the header
 		 * and a user hunting a lock that is not locked (R2-1).
 		 */
-		return "That header can't carry this key. It may already be set on the server, or belong to the transport - try a different header name. Nothing was saved.";
+		return t(
+			"ui.settings.integrations.use_integrations.that_header_can_t_carry_this_key_it_may_already_be_set_on_the_ser",
+		);
 	const failed = failedIds.length ? failedIds : Object.keys(values);
-	return `Not saved: ${failed.join(", ")}. The encrypted store may be locked.`;
+	return t(
+		"ui.settings.integrations.use_integrations.not_saved_value1_the_encrypted_store_may_be_locked",
+		{ value1: String(failed.join(", ")) },
+	);
 }
 
 /**

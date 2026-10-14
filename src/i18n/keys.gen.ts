@@ -52,7 +52,16 @@ import enUiOnboarding from "./catalogues/en/ui.onboarding.json";
 import enUiProjects from "./catalogues/en/ui.projects.json";
 import enUiProviders from "./catalogues/en/ui.providers.json";
 import enUiSchedules from "./catalogues/en/ui.schedules.json";
+import enUiSettingsAccount from "./catalogues/en/ui.settings.account.json";
+import enUiSettingsAppearance from "./catalogues/en/ui.settings.appearance.json";
+import enUiSettingsConfiguration from "./catalogues/en/ui.settings.configuration.json";
+import enUiSettingsIntegrations from "./catalogues/en/ui.settings.integrations.json";
 import enUiSettings from "./catalogues/en/ui.settings.json";
+import enUiSettingsModel from "./catalogues/en/ui.settings.model.json";
+import enUiSettingsNavigation from "./catalogues/en/ui.settings.navigation.json";
+import enUiSettingsShortcuts from "./catalogues/en/ui.settings.shortcuts.json";
+import enUiSettingsSpeech from "./catalogues/en/ui.settings.speech.json";
+import enUiSettingsUpdates from "./catalogues/en/ui.settings.updates.json";
 import enUiShell from "./catalogues/en/ui.shell.json";
 import enUiShellRail from "./catalogues/en/ui.shell.rail.json";
 import frUiConsole from "./catalogues/fr/ui.console.json";
@@ -92,7 +101,16 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiProjects,
 	...enUiProviders,
 	...enUiSchedules,
+	...enUiSettingsAccount,
+	...enUiSettingsAppearance,
+	...enUiSettingsConfiguration,
+	...enUiSettingsIntegrations,
 	...enUiSettings,
+	...enUiSettingsModel,
+	...enUiSettingsNavigation,
+	...enUiSettingsShortcuts,
+	...enUiSettingsSpeech,
+	...enUiSettingsUpdates,
 	...enUiShell,
 	...enUiShellRail,
 };
@@ -2011,6 +2029,456 @@ export type MessageParams = {
 	"ui.schedules.wake_conversation_row.edit_wake": undefined;
 	"ui.schedules.wake_conversation_row.open_conversation": undefined;
 	"ui.schedules.wake_conversation_row.show_fewer": undefined;
+	"ui.settings.account.radient_account_section.account_id": undefined;
+	"ui.settings.account.radient_account_section.connected": undefined;
+	"ui.settings.account.radient_account_section.created": undefined;
+	"ui.settings.account.radient_account_section.email": undefined;
+	"ui.settings.account.radient_account_section.loading_account": undefined;
+	"ui.settings.account.radient_account_section.loading_your_radient_account_details": undefined;
+	"ui.settings.account.radient_account_section.name": undefined;
+	"ui.settings.account.radient_account_section.need_to_sign_out_or_switch_accounts": undefined;
+	"ui.settings.account.radient_account_section.not_provided": undefined;
+	"ui.settings.account.radient_account_section.provider": undefined;
+	"ui.settings.account.radient_account_section.radient_refused_the_sign_in_this_app_is_holding_so_your_account_d": undefined;
+	"ui.settings.account.radient_account_section.sign_in_to_access_your_account_details_or_sign_up_to_get_free_cre": undefined;
+	"ui.settings.account.radient_account_section.sign_out_from_radient": undefined;
+	"ui.settings.account.radient_account_section.status": undefined;
+	"ui.settings.account.radient_account_section.tenant_id": undefined;
+	"ui.settings.account.radient_account_section.you_are_not_currently_signed_in_to_radient": undefined;
+	"ui.settings.account.radient_account_section.your_radient_account_could_not_be_read_so_this_app_cannot_show_yo": undefined;
+	"ui.settings.account.settings_page.add_credits": undefined;
+	"ui.settings.account.settings_page.available_credits": undefined;
+	"ui.settings.account.settings_page.could_not_load_your_credit_balance": undefined;
+	"ui.settings.account.settings_page.could_not_load_your_usage_data": undefined;
+	"ui.settings.account.settings_page.credits": undefined;
+	"ui.settings.account.settings_page.go_to_radient_console": undefined;
+	"ui.settings.account.settings_page.no_usage_recorded_in_the_last_30_days": undefined;
+	"ui.settings.account.settings_page.radient_account": undefined;
+	"ui.settings.account.settings_page.radient_pass": undefined;
+	"ui.settings.account.settings_page.tokens": undefined;
+	"ui.settings.account.settings_page.usage_last_30_days": undefined;
+	"ui.settings.account.settings_page.usage_metric": undefined;
+	"ui.settings.account.settings_page.your_radient_account_radient_pass_details_and_credits_to_use_radi": undefined;
+	"ui.settings.account.settings_usage_chart.credits_consumed": undefined;
+	"ui.settings.account.settings_usage_chart.credits_summary": { days: number };
+	"ui.settings.account.settings_usage_chart.tokens_summary": { days: number };
+	"ui.settings.account.settings_usage_chart.tokens_used": undefined;
+	"ui.settings.appearance.settings_page.adds_the_agent_s_reasoning_and_thinking_rows_to_conversations_the": undefined;
+	"ui.settings.appearance.settings_page.appearance": undefined;
+	"ui.settings.appearance.settings_page.customize_the_look_and_feel_of_local_operator": undefined;
+	"ui.settings.appearance.settings_page.show_agent_reasoning": undefined;
+	"ui.settings.appearance.theme_selector.dark": undefined;
+	"ui.settings.appearance.theme_selector.light": undefined;
+	"ui.settings.appearance.transcript_display_mode_setting.by_response": undefined;
+	"ui.settings.appearance.transcript_display_mode_setting.by_turn": undefined;
+	"ui.settings.appearance.transcript_display_mode_setting.by_turn_condenses_each_turn_to_its_answer_by_response_keeps_every": undefined;
+	"ui.settings.appearance.transcript_display_mode_setting.transcript_display": undefined;
+	"ui.settings.configuration.backend_setting_row.min_w_0_flex_1_items_start": undefined;
+	"ui.settings.configuration.backend_setting_row.needs": undefined;
+	"ui.settings.configuration.backend_setting_row.not_set": undefined;
+	"ui.settings.configuration.backend_setting_row.on_nothing_here_is_saved_while_it_is_off": undefined;
+	"ui.settings.configuration.backend_setting_row.read_only": undefined;
+	"ui.settings.configuration.backend_setting_row.retry": undefined;
+	"ui.settings.configuration.backend_setting_row.save": undefined;
+	"ui.settings.configuration.backend_setting_row.saving": undefined;
+	"ui.settings.configuration.backend_setting_row.set_in_the_credential_manager_this_value_carries_inline_credentia": undefined;
+	"ui.settings.configuration.backend_setting_row.use_default": undefined;
+	"ui.settings.configuration.backend_setting_row.use_default_for_label": {
+		label: string;
+	};
+	"ui.settings.configuration.backend_settings_drafts.enter_a_finite_number": undefined;
+	"ui.settings.configuration.backend_settings_drafts.enter_a_whole_number": undefined;
+	"ui.settings.configuration.backend_settings_drafts.nothing_has_been_edited_yet": undefined;
+	"ui.settings.configuration.backend_settings_section.advanced": undefined;
+	"ui.settings.configuration.backend_settings_section.advanced_settings_are_hidden_here": undefined;
+	"ui.settings.configuration.backend_settings_section.loading_settings": undefined;
+	"ui.settings.configuration.backend_settings_section.no_settings_match_this_search_clear_the_search_field_to_see_every": undefined;
+	"ui.settings.configuration.backend_settings_section.nothing_in_this_section_matches": undefined;
+	"ui.settings.configuration.backend_settings_section.retry": undefined;
+	"ui.settings.configuration.backend_settings_section.retrying": undefined;
+	"ui.settings.configuration.backend_settings_section.searchable_settings_need_a_newer_local_operator_server_update_the": undefined;
+	"ui.settings.configuration.backend_settings_section.show": undefined;
+	"ui.settings.configuration.backend_settings_section.takes_effect_for_new_conversations": undefined;
+	"ui.settings.configuration.backend_settings_section.takes_effect_immediately": undefined;
+	"ui.settings.configuration.backend_settings_section.takes_effect_the_next_time_the_app_starts": undefined;
+	"ui.settings.configuration.backend_settings_section.the_setting_could_not_be_reset": undefined;
+	"ui.settings.configuration.backend_settings_section.the_setting_could_not_be_saved": undefined;
+	"ui.settings.configuration.backend_settings_section.your_settings_could_not_be_loaded": undefined;
+	"ui.settings.configuration.delegated_cleanup_notice.dismiss_this_notice": undefined;
+	"ui.settings.configuration.delegated_cleanup_notice.open_settings": undefined;
+	"ui.settings.configuration.delegated_retention_copy.after_the_time_below_with_no_activity_checked_when_the_app_starts": undefined;
+	"ui.settings.configuration.delegated_retention_copy.anything_running_or_waiting_anything_whose_parent_conversation_wa": undefined;
+	"ui.settings.configuration.delegated_retention_copy.kept": undefined;
+	"ui.settings.configuration.delegated_retention_copy.never_your_own_conversations_or_the_workstreams_in_your_sidebar": undefined;
+	"ui.settings.configuration.delegated_retention_copy.removed": undefined;
+	"ui.settings.configuration.delegated_retention_copy.sessions_started_by_subagents_agent_shells_and_background_runs_su": undefined;
+	"ui.settings.configuration.delegated_retention_copy.when": undefined;
+	"ui.settings.configuration.language_dialog.the_language_could_not_be_saved": undefined;
+	"ui.settings.configuration.language_dialog.your_settings_could_not_be_loaded": undefined;
+	"ui.settings.configuration.retention_duration.day_count": { count: number };
+	"ui.settings.configuration.retention_duration.enter_a_whole_number_of_hours_or_days": undefined;
+	"ui.settings.configuration.retention_duration.hour_count": { count: number };
+	"ui.settings.configuration.retention_duration.maximum_days": {
+		duration: string;
+		days: number;
+	};
+	"ui.settings.configuration.retention_duration.month_count": { count: number };
+	"ui.settings.configuration.retention_duration.range": {
+		minimum: string;
+		maximum: string;
+	};
+	"ui.settings.configuration.retention_duration.too_long": {
+		duration: string;
+		range: string;
+	};
+	"ui.settings.configuration.retention_duration.too_short": {
+		duration: string;
+		range: string;
+	};
+	"ui.settings.configuration.retention_duration_control.days": undefined;
+	"ui.settings.configuration.retention_duration_control.default": undefined;
+	"ui.settings.configuration.retention_duration_control.exact_time": undefined;
+	"ui.settings.configuration.retention_duration_control.hours": undefined;
+	"ui.settings.configuration.retention_duration_control.label_common_choices": {
+		label: string;
+	};
+	"ui.settings.configuration.retention_duration_control.label_unit": {
+		label: string;
+	};
+	"ui.settings.configuration.retention_duration_control.use": undefined;
+	"ui.settings.configuration.retention_duration_control.value1_default": {
+		value1: string;
+	};
+	"ui.settings.configuration.retention_duration_control.with_no_activity": undefined;
+	"ui.settings.configuration.setting_combobox.could_not_list_models": undefined;
+	"ui.settings.configuration.setting_combobox.could_not_list_models_2": undefined;
+	"ui.settings.configuration.setting_combobox.could_not_list_providers": undefined;
+	"ui.settings.configuration.setting_combobox.loading_models": undefined;
+	"ui.settings.configuration.setting_combobox.loading_providers": undefined;
+	"ui.settings.configuration.setting_combobox.model_list_unavailable": undefined;
+	"ui.settings.configuration.setting_combobox.no_providers": undefined;
+	"ui.settings.configuration.setting_combobox.nothing_matches_that_model": undefined;
+	"ui.settings.configuration.setting_combobox.provider_list_unavailable": undefined;
+	"ui.settings.configuration.setting_combobox.use_text": { text: string };
+	"ui.settings.configuration.setting_control.label_press_the_key_you_want": {
+		label: string;
+	};
+	"ui.settings.configuration.setting_control.m12_3l1_5_3_5_4_4_3_2_6_1_3_8_3_5_2_3_5_2_1_3_8_3_2_6_4_4z": undefined;
+	"ui.settings.configuration.setting_control.m5_2l1_2_4_2_5_2_2_1_6_7_2_5l5_7_3_2_8_8_7l_7_2_5_2_1_6l4_4_4z": undefined;
+	"ui.settings.configuration.setting_control.one_hop_per_line_as_provider_model_effort_an_empty_chain_moves_to": undefined;
+	"ui.settings.configuration.setting_control.opacity_45_saturate_50": undefined;
+	"ui.settings.configuration.setting_control.press_the_keys_you_want_esc_cancels": undefined;
+	"ui.settings.configuration.settings_filter_bar.advancedcount_advanced_settings_shown_expand_all_to_see_them": {
+		advancedCount: string;
+	};
+	"ui.settings.configuration.settings_filter_bar.clear_search": undefined;
+	"ui.settings.configuration.settings_filter_bar.collapse_all": undefined;
+	"ui.settings.configuration.settings_filter_bar.corecount_core_settings_advancedcount_advanced": {
+		coreCount: string;
+		advancedCount: string;
+	};
+	"ui.settings.configuration.settings_filter_bar.discard_all": undefined;
+	"ui.settings.configuration.settings_filter_bar.expand_all": undefined;
+	"ui.settings.configuration.settings_filter_bar.modified": undefined;
+	"ui.settings.configuration.settings_filter_bar.modified_count": {
+		count: number;
+	};
+	"ui.settings.configuration.settings_filter_bar.save_all": undefined;
+	"ui.settings.configuration.settings_filter_bar.saving": undefined;
+	"ui.settings.configuration.settings_filter_bar.search_count": {
+		matchCount: number;
+		sectionCount: number;
+	};
+	"ui.settings.configuration.settings_filter_bar.search_settings": undefined;
+	"ui.settings.configuration.settings_filter_bar.search_settings_by_name_description_or_key": undefined;
+	"ui.settings.configuration.settings_filter_bar.settings_filters": undefined;
+	"ui.settings.configuration.settings_filter_bar.show_advanced": undefined;
+	"ui.settings.configuration.settings_filter_bar.unsaved_count": {
+		count: number;
+	};
+	"ui.settings.configuration.settings_group_header.advanced": undefined;
+	"ui.settings.configuration.settings_group_header.changed_from_the_default": undefined;
+	"ui.settings.configuration.settings_group_header.setting_count": {
+		count: number;
+	};
+	"ui.settings.configuration.settings_page.configuration_information": undefined;
+	"ui.settings.configuration.settings_page.created": undefined;
+	"ui.settings.configuration.settings_page.description": undefined;
+	"ui.settings.configuration.settings_page.last_modified": undefined;
+	"ui.settings.configuration.settings_page.no_description_available": undefined;
+	"ui.settings.configuration.settings_page.system_information_about_the_current_configuration": undefined;
+	"ui.settings.configuration.settings_page.version": undefined;
+	"ui.settings.integrations.add_integration_form.add_integration": undefined;
+	"ui.settings.integrations.add_integration_form.all_chats": undefined;
+	"ui.settings.integrations.add_integration_form.arguments": undefined;
+	"ui.settings.integrations.add_integration_form.available_in": undefined;
+	"ui.settings.integrations.add_integration_form.cancel": undefined;
+	"ui.settings.integrations.add_integration_form.command": undefined;
+	"ui.settings.integrations.add_integration_form.copy_add_integration_pickup_note": undefined;
+	"ui.settings.integrations.add_integration_form.copy_transport_hint": undefined;
+	"ui.settings.integrations.add_integration_form.e_g_notion": undefined;
+	"ui.settings.integrations.add_integration_form.e_g_npx": undefined;
+	"ui.settings.integrations.add_integration_form.enter_the_command_to_run": undefined;
+	"ui.settings.integrations.add_integration_form.every_chat_in_any_folder": undefined;
+	"ui.settings.integrations.add_integration_form.how_it_runs": undefined;
+	"ui.settings.integrations.add_integration_form.https_mcp_example_com_mcp": undefined;
+	"ui.settings.integrations.add_integration_form.if_it_needs_a_sign_in_or_a_key_you_ll_be_asked_after_it_s_added": undefined;
+	"ui.settings.integrations.add_integration_form.local_command": undefined;
+	"ui.settings.integrations.add_integration_form.name": undefined;
+	"ui.settings.integrations.add_integration_form.one_per_line": undefined;
+	"ui.settings.integrations.add_integration_form.only_chats_working_in_projectlabel": {
+		projectLabel: string;
+	};
+	"ui.settings.integrations.add_integration_form.remote_url": undefined;
+	"ui.settings.integrations.add_integration_form.this_project": undefined;
+	"ui.settings.integrations.add_integration_form.url": undefined;
+	"ui.settings.integrations.credential_manifest.api_key_for_accessing_openai_models_like_gpt_4o_o3_mini_and_gpt_4": undefined;
+	"ui.settings.integrations.credential_manifest.api_key_for_alibaba_cloud_ai_models_offering_a_range_of_language_": undefined;
+	"ui.settings.integrations.credential_manifest.api_key_for_anthropic_s_claude_models_known_for_agentic_code_gene": undefined;
+	"ui.settings.integrations.credential_manifest.api_key_for_brave_search_an_independent_web_index_with_its_own_cr": undefined;
+	"ui.settings.integrations.credential_manifest.api_key_for_deepseek_ai_models_specialized_in_code_generation_and": undefined;
+	"ui.settings.integrations.credential_manifest.api_key_for_exa_a_search_api_built_for_ai_applications_agents_can": undefined;
+	"ui.settings.integrations.credential_manifest.api_key_for_fal_used_by_agents_for_generating_interpreting_and_un": undefined;
+	"ui.settings.integrations.credential_manifest.api_key_for_google_ai_studio_providing_access_to_gemini_and_other": undefined;
+	"ui.settings.integrations.credential_manifest.api_key_for_kimi_ai_providing_advanced_language_models_with_stron": undefined;
+	"ui.settings.integrations.credential_manifest.api_key_for_mistral_ai_models_known_for_efficient_and_powerful_la": undefined;
+	"ui.settings.integrations.credential_manifest.api_key_for_openrouter_which_provides_access_to_various_ai_models": undefined;
+	"ui.settings.integrations.credential_manifest.api_key_for_parallel_a_web_search_api_for_ai_agents_agents_can_al": undefined;
+	"ui.settings.integrations.credential_manifest.api_key_for_perplexity_s_sonar_search_perplexity_is_best_effort_a": undefined;
+	"ui.settings.integrations.credential_manifest.api_key_for_search_engine_results_page_api_allowing_access_to_sea": undefined;
+	"ui.settings.integrations.credential_manifest.api_key_for_tavily_a_search_api_designed_specifically_for_ai_appl": undefined;
+	"ui.settings.integrations.credential_manifest.api_key_for_xai_providing_access_to_grok_and_other_advanced_xai_m": undefined;
+	"ui.settings.integrations.credential_manifest.api_key_for_your_radient_pass_radient_pass_provides_you_unified_a": undefined;
+	"ui.settings.integrations.credential_manifest.name_alibaba_cloud_api_key": undefined;
+	"ui.settings.integrations.credential_manifest.name_anthropic_api_key": undefined;
+	"ui.settings.integrations.credential_manifest.name_brave_api_key": undefined;
+	"ui.settings.integrations.credential_manifest.name_deepseek_api_key": undefined;
+	"ui.settings.integrations.credential_manifest.name_exa_api_key": undefined;
+	"ui.settings.integrations.credential_manifest.name_fal_api_key": undefined;
+	"ui.settings.integrations.credential_manifest.name_google_access_token": undefined;
+	"ui.settings.integrations.credential_manifest.name_google_ai_studio_api_key": undefined;
+	"ui.settings.integrations.credential_manifest.name_google_refresh_token": undefined;
+	"ui.settings.integrations.credential_manifest.name_google_token_expiry_timestamp": undefined;
+	"ui.settings.integrations.credential_manifest.name_kimi_api_key": undefined;
+	"ui.settings.integrations.credential_manifest.name_mistral_api_key": undefined;
+	"ui.settings.integrations.credential_manifest.name_openai_api_key": undefined;
+	"ui.settings.integrations.credential_manifest.name_openrouter_api_key": undefined;
+	"ui.settings.integrations.credential_manifest.name_parallel_api_key": undefined;
+	"ui.settings.integrations.credential_manifest.name_perplexity_api_key": undefined;
+	"ui.settings.integrations.credential_manifest.name_serp_api_key": undefined;
+	"ui.settings.integrations.credential_manifest.name_tavily_api_key": undefined;
+	"ui.settings.integrations.credential_manifest.name_xai_api_key": undefined;
+	"ui.settings.integrations.credential_manifest.oauth_2_0_access_token_for_google_apis_used_by_local_operator_for": undefined;
+	"ui.settings.integrations.credential_manifest.oauth_2_0_refresh_token_for_google_apis_used_to_obtain_new_access": undefined;
+	"ui.settings.integrations.credential_manifest.timestamp_in_milliseconds_since_epoch_indicating_when_the_current": undefined;
+	"ui.settings.integrations.integration_key_dialog.add_keys_heading": {
+		count: number;
+		name: string;
+	};
+	"ui.settings.integrations.integration_key_dialog.cancel": undefined;
+	"ui.settings.integrations.integration_key_dialog.e_g_authorization_or_x_api_key": undefined;
+	"ui.settings.integrations.integration_key_dialog.keys_are_saved_encrypted_on_this_computer_other_integrations_that": undefined;
+	"ui.settings.integrations.integration_key_dialog.keys_are_saved_encrypted_on_this_computer_this_one_is_stored_unde": undefined;
+	"ui.settings.integrations.integration_key_dialog.save_and_test": undefined;
+	"ui.settings.integrations.integration_key_dialog.saving": undefined;
+	"ui.settings.integrations.integration_key_dialog.the_header_this_server_wants_the_key_in": undefined;
+	"ui.settings.integrations.integration_key_dialog.this_server_declares_no_key_of_its_own_so_local_operator_adds_one": undefined;
+	"ui.settings.integrations.integration_model.a_sign_in_or_test_is_already_running_wait_for_it_to_finish_or_can": undefined;
+	"ui.settings.integrations.integration_model.add_key": undefined;
+	"ui.settings.integrations.integration_model.an_integration_named_trimmed_already_exists": {
+		trimmed: string;
+	};
+	"ui.settings.integrations.integration_model.an_integration_with_this_name_already_exists_choose_another_name": undefined;
+	"ui.settings.integrations.integration_model.available": undefined;
+	"ui.settings.integrations.integration_model.cancel": undefined;
+	"ui.settings.integrations.integration_model.check_again": undefined;
+	"ui.settings.integrations.integration_model.claude_code": undefined;
+	"ui.settings.integrations.integration_model.codex_cli": undefined;
+	"ui.settings.integrations.integration_model.connect": undefined;
+	"ui.settings.integrations.integration_model.connected": undefined;
+	"ui.settings.integrations.integration_model.connected_value1": {
+		value1: string;
+	};
+	"ui.settings.integrations.integration_model.connecting": undefined;
+	"ui.settings.integrations.integration_model.continue_sign_in": undefined;
+	"ui.settings.integrations.integration_model.copy_catalog_refusal_fallback": undefined;
+	"ui.settings.integrations.integration_model.copy_not_connected_explanation": undefined;
+	"ui.settings.integrations.integration_model.copy_ready_explanation": undefined;
+	"ui.settings.integrations.integration_model.copy_setup_prompt": undefined;
+	"ui.settings.integrations.integration_model.couldn_t_start": undefined;
+	"ui.settings.integrations.integration_model.defined_in_a_file_this_app_doesn_t_write_remove_it_there": undefined;
+	"ui.settings.integrations.integration_model.defined_in_origin_s_config_remove_it_there": {
+		origin: string;
+	};
+	"ui.settings.integrations.integration_model.disconnect": undefined;
+	"ui.settings.integrations.integration_model.enter_a_full_url_like_https_mcp_example_com_mcp": undefined;
+	"ui.settings.integrations.integration_model.enter_the_server_s_url": undefined;
+	"ui.settings.integrations.integration_model.fix": undefined;
+	"ui.settings.integrations.integration_model.give_it_a_name": undefined;
+	"ui.settings.integrations.integration_model.global": undefined;
+	"ui.settings.integrations.integration_model.hours_h_ago": { hours: string };
+	"ui.settings.integrations.integration_model.imported_from_a_project_file": undefined;
+	"ui.settings.integrations.integration_model.imported_from_origin": {
+		origin: string;
+	};
+	"ui.settings.integrations.integration_model.integration_count": {
+		count: number;
+	};
+	"ui.settings.integrations.integration_model.integrations_are_still_starting_try_again_in_a_moment": undefined;
+	"ui.settings.integrations.integration_model.it_doesn_t_use_browser_sign_in": undefined;
+	"ui.settings.integrations.integration_model.it_no_longer_exists_the_list_has_been_refreshed": undefined;
+	"ui.settings.integrations.integration_model.it_s_defined_in_another_tool_s_config_so_it_can_t_be_changed_here": undefined;
+	"ui.settings.integrations.integration_model.just_now": undefined;
+	"ui.settings.integrations.integration_model.local_command": undefined;
+	"ui.settings.integrations.integration_model.minutes_min_ago": {
+		minutes: string;
+	};
+	"ui.settings.integrations.integration_model.needs_a_key": undefined;
+	"ui.settings.integrations.integration_model.needs_attention": undefined;
+	"ui.settings.integrations.integration_model.needs_sign_in": undefined;
+	"ui.settings.integrations.integration_model.no_reason_was_given": undefined;
+	"ui.settings.integrations.integration_model.not_connected": undefined;
+	"ui.settings.integrations.integration_model.open_config_file": undefined;
+	"ui.settings.integrations.integration_model.ready": undefined;
+	"ui.settings.integrations.integration_model.reconnect": undefined;
+	"ui.settings.integrations.integration_model.reload": undefined;
+	"ui.settings.integrations.integration_model.remote_url": undefined;
+	"ui.settings.integrations.integration_model.remove": undefined;
+	"ui.settings.integrations.integration_model.remove_in_its_own_file": undefined;
+	"ui.settings.integrations.integration_model.remove_in_origin": {
+		origin: string;
+	};
+	"ui.settings.integrations.integration_model.remove_the_or_part_of_the_url_keys_are_added_after_it_s_saved": undefined;
+	"ui.settings.integrations.integration_model.remove_the_username_or_password_from_the_url_keys_are_added_after": undefined;
+	"ui.settings.integrations.integration_model.replace_keys": { count: number };
+	"ui.settings.integrations.integration_model.retry": undefined;
+	"ui.settings.integrations.integration_model.sign_in": undefined;
+	"ui.settings.integrations.integration_model.sign_in_again": undefined;
+	"ui.settings.integrations.integration_model.sign_in_didn_t_finish": undefined;
+	"ui.settings.integrations.integration_model.sign_out": undefined;
+	"ui.settings.integrations.integration_model.sign_out_again": undefined;
+	"ui.settings.integrations.integration_model.sign_out_didn_t_finish": undefined;
+	"ui.settings.integrations.integration_model.signed_out": undefined;
+	"ui.settings.integrations.integration_model.signing_in": undefined;
+	"ui.settings.integrations.integration_model.signing_out": undefined;
+	"ui.settings.integrations.integration_model.status_unavailable": undefined;
+	"ui.settings.integrations.integration_model.test": undefined;
+	"ui.settings.integrations.integration_model.test_connection": undefined;
+	"ui.settings.integrations.integration_model.that_configuration_isn_t_valid_check_the_command_or_the_url_then_": undefined;
+	"ui.settings.integrations.integration_model.that_sign_in_or_test_isn_t_running_any_more_try_again": undefined;
+	"ui.settings.integrations.integration_model.the_config_file_couldn_t_be_written_check_that_it_isn_t_read_only": undefined;
+	"ui.settings.integrations.integration_model.the_server_refused_it_so_nothing_was_changed": undefined;
+	"ui.settings.integrations.integration_model.the_sign_in_is_still_saved": undefined;
+	"ui.settings.integrations.integration_model.the_url_must_start_with_https_or_http": undefined;
+	"ui.settings.integrations.integration_model.the_url_needs_a_host_name": undefined;
+	"ui.settings.integrations.integration_model.there_s_no_separate_project_config_here_so_it_can_only_be_added_g": undefined;
+	"ui.settings.integrations.integration_model.this_looks_like_two_urls_pasted_together_enter_just_one": undefined;
+	"ui.settings.integrations.integration_model.this_project": undefined;
+	"ui.settings.integrations.integration_model.too_many_sign_ins_and_tests_are_waiting_try_again_in_a_moment": undefined;
+	"ui.settings.integrations.integration_model.tool_count": { count: number };
+	"ui.settings.integrations.integration_model.try_again": undefined;
+	"ui.settings.integrations.integration_model.update_key": undefined;
+	"ui.settings.integrations.integration_model.use_letters_numbers_dots_dashes_underscores_or_colons_with_no_spa": undefined;
+	"ui.settings.integrations.integration_model.value1_d_ago": { value1: string };
+	"ui.settings.integrations.integration_model.value1_when_last_checked": {
+		value1: string;
+	};
+	"ui.settings.integrations.integration_model.vs_code": undefined;
+	"ui.settings.integrations.integration_model.worked_earlier_value1": {
+		value1: string;
+	};
+	"ui.settings.integrations.integration_model.worked_value1_value2": {
+		value1: string;
+		value2: string;
+	};
+	"ui.settings.integrations.integration_row.agents_in_every_chat_lose_access_to_name": {
+		name: string;
+	};
+	"ui.settings.integrations.integration_row.its_saved_credential_is_removed_too": undefined;
+	"ui.settings.integrations.integration_row.keep": undefined;
+	"ui.settings.integrations.integration_row.more_actions_for_name": {
+		name: string;
+	};
+	"ui.settings.integrations.integration_row.remove": undefined;
+	"ui.settings.integrations.integration_row.remove_name": { name: string };
+	"ui.settings.integrations.integration_row.sign_out": undefined;
+	"ui.settings.integrations.integration_row.sign_out_of_name": { name: string };
+	"ui.settings.integrations.integration_row.the_saved_sign_in_is_removed_too": undefined;
+	"ui.settings.integrations.integration_sign_in_dialog.cancel_sign_in": undefined;
+	"ui.settings.integrations.integration_sign_in_dialog.check_the_server_s_settings_then_try_again": undefined;
+	"ui.settings.integrations.integration_sign_in_dialog.check_the_server_s_url_and_your_network_then_try_again": undefined;
+	"ui.settings.integrations.integration_sign_in_dialog.close": undefined;
+	"ui.settings.integrations.integration_sign_in_dialog.continue_in_browser": undefined;
+	"ui.settings.integrations.integration_sign_in_dialog.copy_the_sign_in_link": undefined;
+	"ui.settings.integrations.integration_sign_in_dialog.done": undefined;
+	"ui.settings.integrations.integration_sign_in_dialog.local_operator_opens_your_browser_so_you_can_approve_access_to": undefined;
+	"ui.settings.integrations.integration_sign_in_dialog.open_the_sign_in_page": undefined;
+	"ui.settings.integrations.integration_sign_in_dialog.press_try_again_when_you_are_ready": undefined;
+	"ui.settings.integrations.integration_sign_in_dialog.sign_in_cancelled": undefined;
+	"ui.settings.integrations.integration_sign_in_dialog.sign_in_didn_t_finish": undefined;
+	"ui.settings.integrations.integration_sign_in_dialog.sign_in_link_copied": undefined;
+	"ui.settings.integrations.integration_sign_in_dialog.sign_in_to_name": {
+		name: string;
+	};
+	"ui.settings.integrations.integration_sign_in_dialog.signed_in_to_name_agents_can_use_it_now": {
+		name: string;
+	};
+	"ui.settings.integrations.integration_sign_in_dialog.starting_sign_in": undefined;
+	"ui.settings.integrations.integration_sign_in_dialog.the_server_didn_t_say_why": undefined;
+	"ui.settings.integrations.integration_sign_in_dialog.this_replaces_the_sign_in_it_has_now": undefined;
+	"ui.settings.integrations.integration_sign_in_dialog.this_server_doesn_t_publish_a_browser_sign_in_add_its_key_instead": undefined;
+	"ui.settings.integrations.integration_sign_in_dialog.this_server_doesn_t_publish_a_browser_sign_in_check_the_server_s_": undefined;
+	"ui.settings.integrations.integration_sign_in_dialog.this_server_may_not_accept_sign_ins_from_local_operator_check_the": undefined;
+	"ui.settings.integrations.integration_sign_in_dialog.this_server_may_not_accept_sign_ins_from_local_operator_check_the_2": undefined;
+	"ui.settings.integrations.integration_sign_in_dialog.try_again": undefined;
+	"ui.settings.integrations.integration_sign_in_dialog.waiting_for_you_to_approve_access_to_name": {
+		name: string;
+	};
+	"ui.settings.integrations.integration_sign_in_dialog.your_browser_didn_t_open_and_no_link_was_provided_cancel_and_try_": undefined;
+	"ui.settings.integrations.integration_sign_in_dialog.your_browser_didn_t_open_open_this_link_to_approve_access": undefined;
+	"ui.settings.integrations.integration_sign_in_dialog.your_browser_opened_approve_access_to_name_there_then_come_back_h": {
+		name: string;
+	};
+	"ui.settings.integrations.mcp_management_section.add_integration": undefined;
+	"ui.settings.integrations.mcp_management_section.clear_search": undefined;
+	"ui.settings.integrations.mcp_management_section.copy_section_description": undefined;
+	"ui.settings.integrations.mcp_management_section.copy_section_title": undefined;
+	"ui.settings.integrations.mcp_management_section.dismiss": undefined;
+	"ui.settings.integrations.mcp_management_section.integrations_can_be_managed_here_once_a_chat_has_started": undefined;
+	"ui.settings.integrations.mcp_management_section.integrations_couldn_t_be_loaded": undefined;
+	"ui.settings.integrations.mcp_management_section.integrations_let_agents_read_and_act_in_your_other_tools_like_not": undefined;
+	"ui.settings.integrations.mcp_management_section.integrations_need_a_newer_local_operator_backend_update_it_and_re": undefined;
+	"ui.settings.integrations.mcp_management_section.loading_integrations": undefined;
+	"ui.settings.integrations.mcp_management_section.no_integration_matches_value1": {
+		value1: string;
+	};
+	"ui.settings.integrations.mcp_management_section.no_integrations_match_this_search": undefined;
+	"ui.settings.integrations.mcp_management_section.no_integrations_yet": undefined;
+	"ui.settings.integrations.mcp_management_section.removed_name": {
+		name: string;
+	};
+	"ui.settings.integrations.mcp_management_section.retry": undefined;
+	"ui.settings.integrations.mcp_management_section.search_integrations": undefined;
+	"ui.settings.integrations.mcp_management_section.search_value1": {
+		value1: string;
+	};
+	"ui.settings.integrations.mcp_management_section.setup_steps_copied_paste_them_into_a_chat": undefined;
+	"ui.settings.integrations.mcp_management_section.showing_the_integrations_for": undefined;
+	"ui.settings.integrations.mcp_management_section.showing_value1_value2_is_not_one_of_your_integrations": {
+		value1: string;
+		value2: string;
+	};
+	"ui.settings.integrations.mcp_management_section.start_a_chat": undefined;
+	"ui.settings.integrations.mcp_management_section.this_chat_s_folder_no_longer_exists_so_only_global_integrations_a": undefined;
+	"ui.settings.integrations.mcp_management_section.updating_local_operator_removes_this_step": undefined;
+	"ui.settings.integrations.mcp_management_section.your_most_recent_chat": undefined;
+	"ui.settings.integrations.use_integrations.a_saved_value_already_exists_for_this_key_tick_label_to_overwrite": {
+		label: string;
+	};
+	"ui.settings.integrations.use_integrations.not_saved_value1_the_encrypted_store_may_be_locked": {
+		value1: string;
+	};
+	"ui.settings.integrations.use_integrations.that_header_can_t_carry_this_key_it_may_already_be_set_on_the_ser": undefined;
 	"ui.settings.language.dialog.description": undefined;
 	"ui.settings.language.dialog.loading": undefined;
 	"ui.settings.language.dialog.retry": undefined;
@@ -2050,6 +2518,133 @@ export type MessageParams = {
 	"ui.settings.tour.action": undefined;
 	"ui.settings.tour.description": undefined;
 	"ui.settings.tour.title": undefined;
+	"ui.settings.model.backend_setting_combos.search_models": undefined;
+	"ui.settings.model.backend_setting_combos.search_providers": undefined;
+	"ui.settings.model.model_setting_options.copy_current_value_group": undefined;
+	"ui.settings.model.model_setting_options.copy_needs_sign_in_group": undefined;
+	"ui.settings.model.model_setting_options.copy_sign_in_unknown_group": undefined;
+	"ui.settings.model.model_setting_options.copy_signed_in_group": undefined;
+	"ui.settings.model.model_setting_options.custom_model": undefined;
+	"ui.settings.model.model_setting_options.custom_value": undefined;
+	"ui.settings.model.model_setting_options.models_for_name": { name: string };
+	"ui.settings.model.model_setting_options.needs_sign_in": undefined;
+	"ui.settings.model.model_setting_options.no_models_listed_for_name_showing_all_models": {
+		name: string;
+	};
+	"ui.settings.model.model_setting_options.provider_detail": {
+		provider: string;
+		aggregated: string;
+		credential: string;
+	};
+	"ui.settings.model.model_setting_options.provider_group_0": undefined;
+	"ui.settings.model.model_setting_options.provider_group_1": undefined;
+	"ui.settings.model.model_setting_options.provider_group_2": undefined;
+	"ui.settings.model.model_setting_options.signed_in": undefined;
+	"ui.settings.model.settings_page.configure_the_default_ai_model_and_hosting_providers_used_for_gen": undefined;
+	"ui.settings.model.settings_page.model_providers": undefined;
+	"ui.settings.model.settings_page.model_settings": undefined;
+	"ui.settings.model.settings_page.no_hosting_options": undefined;
+	"ui.settings.model.settings_page.you_need_a_radient_account_or_your_own_api_keys_to_reach_cloud_pr": undefined;
+	"ui.settings.model.system_prompt.cancel": undefined;
+	"ui.settings.model.system_prompt.enter_instructions_for_how_all_agents_should_behave_and_respond_t": undefined;
+	"ui.settings.model.system_prompt.every_local_operator_agent_receives_this_prompt_in_addition_to_it": undefined;
+	"ui.settings.model.system_prompt.failed_to_load_system_prompt": undefined;
+	"ui.settings.model.system_prompt.instructions": undefined;
+	"ui.settings.model.system_prompt.last_modified": undefined;
+	"ui.settings.model.system_prompt.loading_system_prompt": undefined;
+	"ui.settings.model.system_prompt.save_changes": undefined;
+	"ui.settings.model.system_prompt.saving": undefined;
+	"ui.settings.model.system_prompt.system_prompt": undefined;
+	"ui.settings.model.system_prompt.unknown_error": undefined;
+	"ui.settings.navigation.settings_page.backend_settings": undefined;
+	"ui.settings.navigation.settings_page.every_setting_the_backend_registry_owns_searchable_with_typed_edi": undefined;
+	"ui.settings.navigation.settings_page.loading_settings": undefined;
+	"ui.settings.navigation.settings_page.retry": undefined;
+	"ui.settings.navigation.settings_page.retrying": undefined;
+	"ui.settings.navigation.settings_page.sign_in_to_the_services_your_agents_think_with_new_chats_use_your": undefined;
+	"ui.settings.navigation.settings_page.the_local_operator_server_is_taking_longer_than_usual_to_answer_i": undefined;
+	"ui.settings.navigation.settings_page.your_settings_could_not_be_loaded": undefined;
+	"ui.settings.navigation.settings_sidebar.account": undefined;
+	"ui.settings.navigation.settings_sidebar.appearance": undefined;
+	"ui.settings.navigation.settings_sidebar.application_updates": undefined;
+	"ui.settings.navigation.settings_sidebar.backend": undefined;
+	"ui.settings.navigation.settings_sidebar.backend_settings": undefined;
+	"ui.settings.navigation.settings_sidebar.general": undefined;
+	"ui.settings.navigation.settings_sidebar.general_settings": undefined;
+	"ui.settings.navigation.settings_sidebar.integrations": undefined;
+	"ui.settings.navigation.settings_sidebar.keyboard_shortcuts": undefined;
+	"ui.settings.navigation.settings_sidebar.model_providers": undefined;
+	"ui.settings.navigation.settings_sidebar.radient_account": undefined;
+	"ui.settings.navigation.settings_sidebar.settings_sections": undefined;
+	"ui.settings.navigation.settings_sidebar.speech_voicing": undefined;
+	"ui.settings.navigation.settings_sidebar.system": undefined;
+	"ui.settings.shortcuts.keyboard_shortcuts_section.clear": undefined;
+	"ui.settings.shortcuts.keyboard_shortcuts_section.clear_label_s_shortcut": {
+		label: string;
+	};
+	"ui.settings.shortcuts.keyboard_shortcuts_section.keyboard_shortcuts": undefined;
+	"ui.settings.shortcuts.keyboard_shortcuts_section.label_press_the_keys_you_want": {
+		label: string;
+	};
+	"ui.settings.shortcuts.keyboard_shortcuts_section.no_shortcut": undefined;
+	"ui.settings.shortcuts.keyboard_shortcuts_section.press_the_keys_you_want_esc_cancels": undefined;
+	"ui.settings.shortcuts.keyboard_shortcuts_section.reset": undefined;
+	"ui.settings.shortcuts.keyboard_shortcuts_section.reset_label_to_its_default": {
+		label: string;
+	};
+	"ui.settings.shortcuts.keyboard_shortcuts_section.shortcuts_for_the_panel_rail_focus_a_field_and_press_the_keys_you": undefined;
+	"ui.settings.speech.speech_section.availability": undefined;
+	"ui.settings.speech.speech_section.available": undefined;
+	"ui.settings.speech.speech_section.copy_backend_older_sentence": undefined;
+	"ui.settings.speech.speech_section.copy_unavailable_sentence": undefined;
+	"ui.settings.speech.speech_section.how_the_assistant_sounds_when_it_speaks_aloud": undefined;
+	"ui.settings.speech.speech_section.no_provider": undefined;
+	"ui.settings.speech.speech_section.not_available": undefined;
+	"ui.settings.speech.speech_section.nothing_yet": undefined;
+	"ui.settings.speech.speech_section.ready": undefined;
+	"ui.settings.speech.speech_section.retry": undefined;
+	"ui.settings.speech.speech_section.speaks_through": undefined;
+	"ui.settings.speech.speech_section.speech_settings_could_not_be_loaded": undefined;
+	"ui.settings.speech.speech_section.speech_voicing": undefined;
+	"ui.settings.speech.speech_section.the_setting_could_not_be_reset": undefined;
+	"ui.settings.speech.speech_section.the_setting_could_not_be_saved": undefined;
+	"ui.settings.speech.speech_section.this_backend_does_not_register": undefined;
+	"ui.settings.speech.speech_section.try_again": undefined;
+	"ui.settings.speech.speech_section.yet_so_those_rows_are_not_shown": undefined;
+	"ui.settings.speech.speech_settings_model.no_provider": undefined;
+	"ui.settings.speech.speech_settings_model.radient_pass": undefined;
+	"ui.settings.updates.app_updates_section.application_updates_and_info": undefined;
+	"ui.settings.updates.app_updates_section.application_version": undefined;
+	"ui.settings.updates.app_updates_section.check_for_updates_and_view_information_about_your_local_operator_": undefined;
+	"ui.settings.updates.app_updates_section.electron_version": undefined;
+	"ui.settings.updates.app_updates_section.node_js_version": undefined;
+	"ui.settings.updates.app_updates_section.not_answering": undefined;
+	"ui.settings.updates.app_updates_section.platform": undefined;
+	"ui.settings.updates.app_updates_section.server_version": undefined;
+	"ui.settings.updates.app_updates_section.state_loading": undefined;
+	"ui.settings.updates.app_updates_section.state_not_attached": undefined;
+	"ui.settings.updates.app_updates_section.state_not_connected": undefined;
+	"ui.settings.updates.app_updates_section.state_unavailable": undefined;
+	"ui.settings.updates.app_updates_section.state_version_unknown": undefined;
+	"ui.settings.updates.app_updates_section.the_framework_version_enabling_this_desktop_application": undefined;
+	"ui.settings.updates.app_updates_section.the_javascript_runtime_environment_version": undefined;
+	"ui.settings.updates.app_updates_section.the_operating_system_and_architecture_your_application_is_running": undefined;
+	"ui.settings.updates.app_updates_section.the_version_of_the_local_operator_api_server_backend_and_the_addr": undefined;
+	"ui.settings.updates.app_updates_section.the_version_of_the_local_operator_user_interface_application": undefined;
+	"ui.settings.updates.update_following.application_updates": undefined;
+	"ui.settings.updates.update_following.how_much_of_a_version_change_shows_the_update_notice_at_the_botto": undefined;
+	"ui.settings.updates.update_following.major_help": undefined;
+	"ui.settings.updates.update_following.major_label": undefined;
+	"ui.settings.updates.update_following.minor_help": undefined;
+	"ui.settings.updates.update_following.minor_label": undefined;
+	"ui.settings.updates.update_following.patch_help": undefined;
+	"ui.settings.updates.update_following.patch_label": undefined;
+	"ui.settings.updates.update_following.server_updates": undefined;
+	"ui.settings.updates.update_following.surface_choice": {
+		surface: string;
+		choice: string;
+	};
+	"ui.settings.updates.update_following.update_notifications": undefined;
 	"ui.shell.collapsible_app_logo.local_operator": undefined;
 	"ui.shell.panel_rail.panels": undefined;
 	"ui.shell.sidebar_navigation.agent_hub": undefined;

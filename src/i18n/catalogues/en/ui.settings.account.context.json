@@ -1,0 +1,212 @@
+{
+	"ui.settings.account.radient_account_section.status": {
+		"role": "Visible field/control label",
+		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
+		"length": "Compact existing settings/list control; English is 6 characters before placeholder expansion. Keep short.",
+		"note": "radient account section: label on InfoItem. Composition (message names mark slots): <InfoItem value={ <span> {[connected]} {} <Badge> {account.status} </Badge> </span> } />"
+	},
+	"ui.settings.account.radient_account_section.connected": {
+		"role": "Dynamic count/status sentence",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 9 characters before placeholder expansion. Keep short.",
+		"note": "radient account section: value on span. Composition (message names mark slots): <span> {[connected]} {} <Badge> {account.status} </Badge> </span>"
+	},
+	"ui.settings.account.radient_account_section.name": {
+		"role": "Visible field/control label",
+		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
+		"length": "Compact existing settings/list control; English is 4 characters before placeholder expansion. Keep short.",
+		"note": "radient account section: label on InfoItem. Composition (message names mark slots): <InfoItem />"
+	},
+	"ui.settings.account.radient_account_section.email": {
+		"role": "Visible field/control label",
+		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
+		"length": "Compact existing settings/list control; English is 5 characters before placeholder expansion. Keep short.",
+		"note": "radient account section: label on InfoItem. Composition (message names mark slots): <InfoItem />"
+	},
+	"ui.settings.account.radient_account_section.account_id": {
+		"role": "Visible field/control label",
+		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
+		"length": "Compact existing settings/list control; English is 10 characters before placeholder expansion. Keep short.",
+		"note": "radient account section: label on InfoItem. Composition (message names mark slots): <InfoItem value={<span>{account.id}</span>} />"
+	},
+	"ui.settings.account.radient_account_section.tenant_id": {
+		"role": "Visible field/control label",
+		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
+		"length": "Compact existing settings/list control; English is 9 characters before placeholder expansion. Keep short.",
+		"note": "radient account section: label on InfoItem. Composition (message names mark slots): <InfoItem value={<span>{account.tenant_id}</span>} />"
+	},
+	"ui.settings.account.radient_account_section.provider": {
+		"role": "Visible field/control label",
+		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
+		"length": "Compact existing settings/list control; English is 8 characters before placeholder expansion. Keep short.",
+		"note": "radient account section: label on InfoItem. Composition (message names mark slots): <InfoItem value={<span>{identity.provider}</span>} />"
+	},
+	"ui.settings.account.radient_account_section.created": {
+		"role": "Visible field/control label",
+		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
+		"length": "Compact existing settings/list control; English is 7 characters before placeholder expansion. Keep short.",
+		"note": "radient account section: label on InfoItem. Composition (message names mark slots): <InfoItem />"
+	},
+	"ui.settings.account.radient_account_section.need_to_sign_out_or_switch_accounts": {
+		"role": "Dynamic count/status sentence",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 36 characters before placeholder expansion. Keep short.",
+		"note": "radient account section: rendered in p inside div. Composition (message names mark slots): <p> {t( \"ui.settings.account.radient_account_section.need_to_sign_out_or_switch_accounts\", )} </p>"
+	},
+	"ui.settings.account.radient_account_section.sign_out_from_radient": {
+		"role": "Button action label",
+		"tone": "Brief imperative. No enthusiasm or extra punctuation.",
+		"length": "Compact existing settings/list control; English is 21 characters before placeholder expansion. Keep short.",
+		"note": "radient account section: rendered in Button inside div. Composition (message names mark slots): <Button> <LogOut /> {t( \"ui.settings.account.radient_account_section.sign_out_from_radient\", )} </Button> Preserve product/protocol names and machine tokens."
+	},
+	"ui.settings.account.radient_account_section.sign_in_to_access_your_account_details_or_sign_up_to_get_free_cre": {
+		"role": "Dynamic count/status sentence",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 366 characters before placeholder expansion. Keep short.",
+		"note": "radient account section: rendered in p inside div. Composition (message names mark slots): <p> {signInLead} {t( \"ui.settings.account.radient_account_section.sign_in_to_access_your_account_details_or_sign_up_to_get_free_cre\", )} </p> This is a markup-adjacent fragment. Its leading/trailing space is intentional; do not omit or add boundary spaces. Preserve product/protocol names and machine tokens."
+	},
+	"ui.settings.account.radient_account_section.loading_account": {
+		"role": "Loading status announced with spinner",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 15 characters before placeholder expansion. Keep short.",
+		"note": "radient account section: label on Spinner. Composition (message names mark slots): <Spinner />"
+	},
+	"ui.settings.account.radient_account_section.loading_your_radient_account_details": {
+		"role": "Dynamic count/status sentence",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 37 characters before placeholder expansion. Keep short.",
+		"note": "radient account section: rendered in p inside div. Composition (message names mark slots): <p> {t( \"ui.settings.account.radient_account_section.loading_your_radient_account_details\", )} </p> Preserve product/protocol names and machine tokens."
+	},
+	"ui.settings.account.radient_account_section.not_provided": {
+		"role": "Dynamic count/status sentence",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 12 characters before placeholder expansion. Keep short.",
+		"note": "radient account section: value on InfoItem. Composition (message names mark slots): <InfoItem />"
+	},
+	"ui.settings.account.radient_account_section.radient_refused_the_sign_in_this_app_is_holding_so_your_account_d": {
+		"role": "Dynamic count/status sentence",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 127 characters before placeholder expansion. Keep short.",
+		"note": "radient account section: rendered in signInLead. Preserve product/protocol names and machine tokens."
+	},
+	"ui.settings.account.radient_account_section.your_radient_account_could_not_be_read_so_this_app_cannot_show_yo": {
+		"role": "Dynamic count/status sentence",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 85 characters before placeholder expansion. Keep short.",
+		"note": "radient account section: rendered in signInLead. Preserve product/protocol names and machine tokens."
+	},
+	"ui.settings.account.radient_account_section.you_are_not_currently_signed_in_to_radient": {
+		"role": "Dynamic count/status sentence",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 43 characters before placeholder expansion. Keep short.",
+		"note": "radient account section: rendered in signInLead. Preserve product/protocol names and machine tokens."
+	},
+	"ui.settings.account.settings_page.radient_pass": {
+		"role": "Section/subsection heading",
+		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
+		"length": "Compact existing settings/list control; English is 12 characters before placeholder expansion. Keep short.",
+		"note": "settings page: rendered in h3 inside div. Composition (message names mark slots): <h3> <CreditCard /> {[radient_pass]} </h3> Preserve product/protocol names and machine tokens."
+	},
+	"ui.settings.account.settings_page.could_not_load_your_credit_balance": {
+		"role": "Inline warning/error explanation",
+		"tone": "Neutral and helpful; explain the failure without blaming the user.",
+		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
+		"note": "settings page: rendered in Alert inside div. Composition (message names mark slots): <Alert> {t( \"ui.settings.account.settings_page.could_not_load_your_credit_balance\", )} {error.message} </Alert> This is a markup-adjacent fragment. Its leading/trailing space is intentional; do not omit or add boundary spaces."
+	},
+	"ui.settings.account.settings_page.available_credits": {
+		"role": "Dynamic count/status sentence",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 17 characters before placeholder expansion. Keep short.",
+		"note": "settings page: rendered in p inside div. Composition (message names mark slots): <p> {[available_credits]}{\" \"} <span> {creditData.balance.toFixed(2)} </span> </p>"
+	},
+	"ui.settings.account.settings_page.add_credits": {
+		"role": "Button action label",
+		"tone": "Brief imperative. No enthusiasm or extra punctuation.",
+		"length": "Compact existing settings/list control; English is 11 characters before placeholder expansion. Keep short.",
+		"note": "settings page: rendered in a inside Button. Composition (message names mark slots): <a > <CirclePlus /> {[add_credits]} </a>"
+	},
+	"ui.settings.account.settings_page.usage_last_30_days": {
+		"role": "Section/subsection heading",
+		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
+		"length": "Compact existing settings/list control; English is 20 characters before placeholder expansion. Keep short.",
+		"note": "settings page: rendered in h3 inside div. Composition (message names mark slots): <h3> <ChartLine /> {[usage_last_30_days]} </h3>"
+	},
+	"ui.settings.account.settings_page.usage_metric": {
+		"role": "Visible field/group label",
+		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
+		"length": "Compact existing settings/list control; English is 12 characters before placeholder expansion. Keep short.",
+		"note": "settings page: rendered in legend inside fieldset. Composition (message names mark slots): <legend> {[usage_metric]} </legend>"
+	},
+	"ui.settings.account.settings_page.could_not_load_your_usage_data": {
+		"role": "Inline warning/error explanation",
+		"tone": "Neutral and helpful; explain the failure without blaming the user.",
+		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
+		"note": "settings page: rendered in Alert inside div. Composition (message names mark slots): <Alert> {t( \"ui.settings.account.settings_page.could_not_load_your_usage_data\", )} {error.message} </Alert> This is a markup-adjacent fragment. Its leading/trailing space is intentional; do not omit or add boundary spaces."
+	},
+	"ui.settings.account.settings_page.no_usage_recorded_in_the_last_30_days": {
+		"role": "Dynamic count/status sentence",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 38 characters before placeholder expansion. Keep short.",
+		"note": "settings page: rendered in p inside div. Composition (message names mark slots): <p> {t( \"ui.settings.account.settings_page.no_usage_recorded_in_the_last_30_days\", )} </p>"
+	},
+	"ui.settings.account.settings_page.radient_account": {
+		"role": "Section/subsection heading",
+		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
+		"length": "Compact existing settings/list control; English is 15 characters before placeholder expansion. Keep short.",
+		"note": "settings page: rendered in h2 inside div. Composition (message names mark slots): <h2> <RadientMark /> {[radient_account]} </h2> Preserve product/protocol names and machine tokens."
+	},
+	"ui.settings.account.settings_page.go_to_radient_console": {
+		"role": "Button action label",
+		"tone": "Brief imperative. No enthusiasm or extra punctuation.",
+		"length": "Compact existing settings/list control; English is 21 characters before placeholder expansion. Keep short.",
+		"note": "settings page: rendered in a inside Button. Composition (message names mark slots): <a > {[go_to_radient_console]} <ExternalLink /> </a> Preserve product/protocol names and machine tokens."
+	},
+	"ui.settings.account.settings_page.your_radient_account_radient_pass_details_and_credits_to_use_radi": {
+		"role": "Settings row/section explanatory help",
+		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
+		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
+		"note": "settings page: description on SettingsSection. Composition (message names mark slots): <SettingsSection > {} <div> <RadientAccountSection onAfterCredentialUpdate={() => { refreshModels(); refetchCredentials(); }} /> {isAuthenticated && ( <> <BillingInfo /> <UsageInfo /> </> )} </div> </SettingsSection> Preserve product/protocol names and machine tokens."
+	},
+	"ui.settings.account.settings_page.credits": {
+		"role": "Visible settings control/group label",
+		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
+		"length": "Compact existing settings/list control; English is 7 characters before placeholder expansion. Keep short.",
+		"note": "settings page: label returned/read by USAGE_METRICS."
+	},
+	"ui.settings.account.settings_page.tokens": {
+		"role": "Visible settings control/group label",
+		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
+		"length": "Compact existing settings/list control; English is 6 characters before placeholder expansion. Keep short.",
+		"note": "settings page: label returned/read by USAGE_METRICS."
+	},
+	"ui.settings.account.settings_usage_chart.credits_consumed": {
+		"role": "Dynamic count/status sentence",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 16 characters before placeholder expansion. Keep short.",
+		"note": "settings usage chart: name on Line. Composition (message names mark slots): <Line activeDot={{ r: 4, strokeWidth: 0 }} />"
+	},
+	"ui.settings.account.settings_usage_chart.tokens_used": {
+		"role": "Dynamic count/status sentence",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 11 characters before placeholder expansion. Keep short.",
+		"note": "settings usage chart: name on Line. Composition (message names mark slots): <Line activeDot={{ r: 4, strokeWidth: 0 }} />"
+	},
+	"ui.settings.account.settings_usage_chart.credits_summary": {
+		"role": "Screen-reader chart summary",
+		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
+		"length": "Compact existing control/readout; English source is 106 characters before variable expansion. Avoid adding explanatory prose.",
+		"note": "settings usage chart: srSummary on ChartFrame. Composition (message names mark slots): <ChartFrame srSummary={ metric === \"credits\" ? [credits_summary] : [tokens_summary] } yTickFormatter={(value) => metric === \"credits\" ? `$${value.toFixed(2)}` : formatTokens(value) } > <LineChart> <Line activeDot={{ r: 4, strokeWidth: 0 }} /> </LineChart> </ChartFrame> Reorder placeholders as grammar requires; do not copy English word order mechanically.",
+		"placeholders": {
+			"days": "Numeric quantity; determines ICU plural category. Caller supplies data.length. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies data.length. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies data.length. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies data.length. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies data.length. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies data.length. Numeric ICU plural quantity; keep # inside plural arms."
+		}
+	},
+	"ui.settings.account.settings_usage_chart.tokens_summary": {
+		"role": "Screen-reader chart summary",
+		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
+		"length": "Compact existing control/readout; English source is 101 characters before variable expansion. Avoid adding explanatory prose.",
+		"note": "settings usage chart: srSummary on ChartFrame. Composition (message names mark slots): <ChartFrame srSummary={ metric === \"credits\" ? [credits_summary] : [tokens_summary] } yTickFormatter={(value) => metric === \"credits\" ? `$${value.toFixed(2)}` : formatTokens(value) } > <LineChart> <Line activeDot={{ r: 4, strokeWidth: 0 }} /> </LineChart> </ChartFrame> Reorder placeholders as grammar requires; do not copy English word order mechanically.",
+		"placeholders": {
+			"days": "Numeric quantity; determines ICU plural category. Caller supplies data.length. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies data.length. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies data.length. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies data.length. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies data.length. Numeric ICU plural quantity; keep # inside plural arms. Caller supplies data.length. Numeric ICU plural quantity; keep # inside plural arms."
+		}
+	}
+}

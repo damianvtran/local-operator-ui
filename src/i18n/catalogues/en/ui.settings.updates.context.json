@@ -1,0 +1,180 @@
+{
+	"ui.settings.updates.app_updates_section.application_updates_and_info": {
+		"role": "Settings section heading",
+		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
+		"length": "Compact existing settings/list control; English is 28 characters before placeholder expansion. Keep short.",
+		"note": "app updates section: title on SettingsSection."
+	},
+	"ui.settings.updates.app_updates_section.check_for_updates_and_view_information_about_your_local_operator_": {
+		"role": "Settings row/section explanatory help",
+		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
+		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
+		"note": "app updates section: description on SettingsSection. Preserve product/protocol names and machine tokens."
+	},
+	"ui.settings.updates.app_updates_section.application_version": {
+		"role": "Read-only application-info field label",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 19 characters before placeholder expansion. Keep short.",
+		"note": "Names the Application version row in Application updates and info. Keep Node.js/Electron as product names; this is not an action."
+	},
+	"ui.settings.updates.app_updates_section.the_version_of_the_local_operator_user_interface_application": {
+		"role": "Application-info field tooltip",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact control/status text; English source is 61 characters before placeholder expansion. Do not add explanatory prose.",
+		"note": "Explains the meaning of the nearby version/platform readout: The version of the Local Operator user interface application.. It is informational, not an update instruction."
+	},
+	"ui.settings.updates.app_updates_section.server_version": {
+		"role": "Read-only application-info field label",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 14 characters before placeholder expansion. Keep short.",
+		"note": "Names the Server version row in Application updates and info. Keep Node.js/Electron as product names; this is not an action."
+	},
+	"ui.settings.updates.app_updates_section.the_version_of_the_local_operator_api_server_backend_and_the_addr": {
+		"role": "Application-info field tooltip",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact control/status text; English source is 101 characters before placeholder expansion. Do not add explanatory prose.",
+		"note": "Explains the meaning of the nearby version/platform readout: The version of the Local Operator API server backend, and the address of the daemon it was read from.. It is informational, not an update instruction."
+	},
+	"ui.settings.updates.app_updates_section.not_answering": {
+		"role": "Application-info field tooltip",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact control/status text; English source is 13 characters before placeholder expansion. Do not add explanatory prose.",
+		"note": "Explains the meaning of the nearby version/platform readout: Not answering. It is informational, not an update instruction."
+	},
+	"ui.settings.updates.app_updates_section.platform": {
+		"role": "Read-only application-info field label",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 8 characters before placeholder expansion. Keep short.",
+		"note": "Names the Platform row in Application updates and info. Keep Node.js/Electron as product names; this is not an action."
+	},
+	"ui.settings.updates.app_updates_section.the_operating_system_and_architecture_your_application_is_running": {
+		"role": "Application-info field tooltip",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact control/status text; English source is 69 characters before placeholder expansion. Do not add explanatory prose.",
+		"note": "Explains the meaning of the nearby version/platform readout: The operating system and architecture your application is running on.. It is informational, not an update instruction."
+	},
+	"ui.settings.updates.app_updates_section.node_js_version": {
+		"role": "Read-only application-info field label",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 15 characters before placeholder expansion. Keep short.",
+		"note": "Names the Node.js version row in Application updates and info. Keep Node.js/Electron as product names; this is not an action."
+	},
+	"ui.settings.updates.app_updates_section.the_javascript_runtime_environment_version": {
+		"role": "Application-info field tooltip",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact control/status text; English source is 43 characters before placeholder expansion. Do not add explanatory prose.",
+		"note": "Explains the meaning of the nearby version/platform readout: The JavaScript runtime environment version.. It is informational, not an update instruction."
+	},
+	"ui.settings.updates.app_updates_section.electron_version": {
+		"role": "Read-only application-info field label",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 16 characters before placeholder expansion. Keep short.",
+		"note": "Names the Electron version row in Application updates and info. Keep Node.js/Electron as product names; this is not an action."
+	},
+	"ui.settings.updates.app_updates_section.the_framework_version_enabling_this_desktop_application": {
+		"role": "Application-info field tooltip",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact control/status text; English source is 56 characters before placeholder expansion. Do not add explanatory prose.",
+		"note": "Explains the meaning of the nearby version/platform readout: The framework version enabling this desktop application.. It is informational, not an update instruction."
+	},
+	"ui.settings.updates.app_updates_section.state_loading": {
+		"role": "Backend/application version readout fallback state",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 10 characters before placeholder expansion. Keep short.",
+		"note": "Replaces an absent version/status reading with 'Loading...'; it is not itself a version. Actual version strings and daemon addresses are never translated."
+	},
+	"ui.settings.updates.app_updates_section.state_not_connected": {
+		"role": "Backend/application version readout fallback state",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 13 characters before placeholder expansion. Keep short.",
+		"note": "Replaces an absent version/status reading with 'Not connected'; it is not itself a version. Actual version strings and daemon addresses are never translated."
+	},
+	"ui.settings.updates.app_updates_section.state_not_attached": {
+		"role": "Backend/application version readout fallback state",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 12 characters before placeholder expansion. Keep short.",
+		"note": "Replaces an absent version/status reading with 'Not attached'; it is not itself a version. Actual version strings and daemon addresses are never translated."
+	},
+	"ui.settings.updates.app_updates_section.state_version_unknown": {
+		"role": "Backend/application version readout fallback state",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 15 characters before placeholder expansion. Keep short.",
+		"note": "Replaces an absent version/status reading with 'Version unknown'; it is not itself a version. Actual version strings and daemon addresses are never translated."
+	},
+	"ui.settings.updates.app_updates_section.state_unavailable": {
+		"role": "Validation/error explanation",
+		"tone": "Neutral and helpful; explain the failure without blaming the user.",
+		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
+		"note": "app updates section: rendered in versionDisplay."
+	},
+	"ui.settings.updates.update_following.update_notifications": {
+		"role": "Section/subsection heading",
+		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
+		"length": "Compact existing settings/list control; English is 20 characters before placeholder expansion. Keep short.",
+		"note": "update following: rendered in h3 inside div. Composition (message names mark slots): <h3> {[update_notifications]} </h3>"
+	},
+	"ui.settings.updates.update_following.how_much_of_a_version_change_shows_the_update_notice_at_the_botto": {
+		"role": "Settings explanatory paragraph",
+		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
+		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
+		"note": "update following: rendered in p inside div. Composition (message names mark slots): <p> {t( \"ui.settings.updates.update_following.how_much_of_a_version_change_shows_the_update_notice_at_the_botto\", )} </p>"
+	},
+	"ui.settings.updates.update_following.application_updates": {
+		"role": "Update-notification settings row label",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 19 characters before placeholder expansion. Keep short.",
+		"note": "Names which separately versioned surface this notification policy applies to: Application updates. Application is the desktop UI, server is the backend daemon."
+	},
+	"ui.settings.updates.update_following.server_updates": {
+		"role": "Update-notification settings row label",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 14 characters before placeholder expansion. Keep short.",
+		"note": "Names which separately versioned surface this notification policy applies to: Server updates. Application is the desktop UI, server is the backend daemon."
+	},
+	"ui.settings.updates.update_following.patch_label": {
+		"role": "Notification-policy select option",
+		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
+		"length": "Compact existing settings/list control; English is 13 characters before placeholder expansion. Keep short.",
+		"note": "Policy for unsolicited update notices, not the result of manually checking for updates. Every release Persisted patch/minor/major enum tokens remain English; before 1.0 a minor bump is breaking."
+	},
+	"ui.settings.updates.update_following.patch_help": {
+		"role": "Notification-policy selected-option help",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 32 characters before placeholder expansion. Keep short.",
+		"note": "Policy for unsolicited update notices, not the result of manually checking for updates. Patch, minor and major versions. Persisted patch/minor/major enum tokens remain English; before 1.0 a minor bump is breaking."
+	},
+	"ui.settings.updates.update_following.minor_label": {
+		"role": "Notification-policy select option",
+		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
+		"length": "Compact existing settings/list control; English is 20 characters before placeholder expansion. Keep short.",
+		"note": "Policy for unsolicited update notices, not the result of manually checking for updates. Minor and major only Persisted patch/minor/major enum tokens remain English; before 1.0 a minor bump is breaking."
+	},
+	"ui.settings.updates.update_following.minor_help": {
+		"role": "Notification-policy selected-option help",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 21 characters before placeholder expansion. Keep short.",
+		"note": "Policy for unsolicited update notices, not the result of manually checking for updates. Skips patch releases. Persisted patch/minor/major enum tokens remain English; before 1.0 a minor bump is breaking."
+	},
+	"ui.settings.updates.update_following.major_label": {
+		"role": "Notification-policy select option",
+		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
+		"length": "Compact existing settings/list control; English is 21 characters before placeholder expansion. Keep short.",
+		"note": "Policy for unsolicited update notices, not the result of manually checking for updates. Breaking changes only Persisted patch/minor/major enum tokens remain English; before 1.0 a minor bump is breaking."
+	},
+	"ui.settings.updates.update_following.major_help": {
+		"role": "Notification-policy selected-option help",
+		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
+		"length": "Compact existing settings/list control; English is 70 characters before placeholder expansion. Keep short.",
+		"note": "Policy for unsolicited update notices, not the result of manually checking for updates. Skips patches and minors. Before 1.0 a new minor is a breaking change. Persisted patch/minor/major enum tokens remain English; before 1.0 a minor bump is breaking."
+	},
+	"ui.settings.updates.update_following.surface_choice": {
+		"role": "Accessible control name; not visible body copy",
+		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
+		"length": "Compact existing control/readout; English source is 19 characters before variable expansion. Avoid adding explanatory prose.",
+		"note": "update following: aria-label on SelectTrigger. Composition (message names mark slots): <SelectTrigger aria-label={[surface_choice]} > <SelectValue /> </SelectTrigger> Reorder placeholders as grammar requires; do not copy English word order mechanically.",
+		"placeholders": {
+			"surface": "Rendered UI value inserted verbatim; never translate the value. Caller supplies SURFACE_LABELS[type]. Caller supplies SURFACE_LABELS[type]. Caller supplies SURFACE_LABELS[type]. Caller supplies SURFACE_LABELS[type]. Localized application/server update surface label. Caller supplies SURFACE_LABELS[type]. Localized application/server update surface label.",
+			"choice": "Rendered UI value inserted verbatim; never translate the value. Caller supplies SEGMENT_COPY[followed].label. Caller supplies SEGMENT_COPY[followed].label. Caller supplies SEGMENT_COPY[followed].label. Caller supplies SEGMENT_COPY[followed].label. The localized visible field/action label; keep it recognizable in accessible names. Caller supplies SEGMENT_COPY[followed].label. The localized visible field/action label; keep it recognizable in accessible names."
+		}
+	}
+}
