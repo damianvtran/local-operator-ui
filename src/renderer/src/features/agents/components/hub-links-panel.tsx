@@ -13,6 +13,7 @@ import {
 	type HubLink,
 	type HubLinkKind,
 	type HubUnresolvedLink,
+	baselineIsKnown,
 	linksForLocalItem,
 } from "@shared/api/local-operator/hub-links";
 import { Button } from "@shared/components/ui/button";
@@ -30,6 +31,7 @@ import { apiConfig } from "@shared/config/api-config";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { formatDateTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
+import { cn } from "@shared/lib/utils";
 import { useEffect, useId, useRef, useState } from "react";
 import { hubLinkView } from "../hub-link-adapter";
 import { hubDirectionStateText, hubReasonText } from "../hub-link-copy";
@@ -72,7 +74,8 @@ export function HubLinkGroup({ link }: { link: HubLink }) {
 	const safeActionRef = useRef<HTMLButtonElement>(null);
 	const ackId = useId();
 	const busy = actions.isPending || isBusy(link);
-	const unknownBaseline = link.baseline_state !== "known";
+	// Known-ness is the provenance literal; only `adopt-unknown` is unknown.
+	const unknownBaseline = !baselineIsKnown(link.baseline_state);
 
 	const activePreview = publishPreview ?? incomingPreview;
 	useEffect(() => {
@@ -173,7 +176,22 @@ export function HubLinkGroup({ link }: { link: HubLink }) {
 							<h4 className="text-body-sm text-ink">
 								{directionLabel(direction)}
 							</h4>
-							<p className="text-body-sm text-ink-muted">
+							{/*
+							 * Item 8 (UX U6): the state sentence was always `ink-muted`,
+							 * so a FAILED direction looked as calm as an idle one. The ink
+							 * now follows the state's severity, and `available` (an action
+							 * the reader may take) reads as accent rather than dim.
+							 */}
+							<p
+								className={cn(
+									"text-body-sm",
+									status.state === "failed"
+										? "text-danger"
+										: status.state === "available"
+											? "text-accent"
+											: "text-ink-muted",
+								)}
+							>
 								{hubDirectionStateText(status)}
 							</p>
 							{status.error_class && (
@@ -256,7 +274,7 @@ export function HubLinkGroup({ link }: { link: HubLink }) {
 					disabled={
 						busy ||
 						!link.remote_revision ||
-						link.baseline_state !== "known" ||
+						!baselineIsKnown(link.baseline_state) ||
 						(link.visibility === "org" && !link.tenant_name)
 					}
 					onClick={() => run({ action: "preview", linkId: link.link_id })}
@@ -618,10 +636,46 @@ export function HubLinksPanel({
 			(!kind || row.kind === kind) &&
 			(!name || (localId ? row.local_id === localId : row.name === name)),
 	);
+	/*
+	 * Item 4 (UX elevated + design D2): the panel used to mount OPEN above the
+	 * agent's title and displaced primary content ~40%. It now defaults COLLAPSED
+	 * with a one-line summary, and the reader opens it. A healthy link therefore
+	 * never displaces the page; the summary still names the source and the two
+	 * independent policy facts so the collapsed row is informative rather than a
+	 * bare heading. The summary is COMPOSED from existing keys (title + source +
+	 * every row's on/off), so it needs no new catalogue copy.
+	 */
+	const summaryState =
+		rows.length > 0
+			? `${hubLinkSourceName(rows[0])} · Subscribe ${t(
+					rows[0].policy.subscribe
+						? "ui.hub.subscriptions.configured_on"
+						: "ui.hub.subscriptions.configured_off",
+				)} · Auto-push ${t(
+					rows[0].policy.auto_push
+						? "ui.hub.subscriptions.configured_on"
+						: "ui.hub.subscriptions.configured_off",
+				)}`
+			: unresolved.length > 0
+				? t("ui.hub.links.source_unavailable")
+				: t("ui.hub.links.empty");
+	/*
+	 * Auto-open ONLY when a row needs the reader: an unresolved diagnostic, or a
+	 * direction in a state that asks for attention (`available` wants an apply;
+	 * `failed` wants a retry). A healthy/idle link stays collapsed, which is the
+	 * acceptance criterion: a healthy link must not displace primary content.
+	 */
+	const needsAttention =
+		unresolved.length > 0 ||
+		rows.some((link) =>
+			[link.pull.state, link.push.state].some(
+				(state) => state === "available" || state === "failed",
+			),
+		);
 	return (
 		<Disclosure
-			summary={t("ui.hub.links.title")}
-			defaultOpen
+			summary={`${t("ui.hub.links.title")} · ${summaryState}`}
+			defaultOpen={needsAttention}
 			className="min-w-0"
 			data-hub-links-panel
 		>

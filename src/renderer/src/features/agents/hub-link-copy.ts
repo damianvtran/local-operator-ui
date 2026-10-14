@@ -69,6 +69,10 @@ export function hubDirectionStateText(status: HubDirectionStatus): string {
 		case "missing":
 			return t("ui.hub.status.missing");
 		default:
-			return t("ui.hub.status.unknown", { state: status.state });
+			// UX U3: the raw `{state}` token and the nonexistent "link details"
+			// action both leaked here. Degrade to a sentence that names no token and
+			// offers no action the surface does not have; the real code rides the
+			// reason text (`hubReasonText`) where one exists.
+			return t("ui.hub.status.other_error");
 	}
 }

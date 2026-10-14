@@ -224,3 +224,41 @@ export function HubLinkExpandedPolicy({ link }: { link: HubLink }) {
 		</div>
 	);
 }
+
+/**
+ * The AGGREGATE mark (design §Sidebar line 48, CODE MAJOR-2): an item linked to
+ * MORE THAN ONE origin draws one mark that opens the Hub links detail rather than
+ * drawing nothing. It is deliberately not a policy popover — with several
+ * destinations to choose between there is no single policy to edit here, so the
+ * press only opens detail, where the per-link controls live.
+ */
+export function HubLinkAggregateMark({
+	links,
+	staged,
+	onDetail,
+}: { links: HubLink[]; staged: boolean; onDetail: () => void }) {
+	useI18nLocale();
+	const label = t("ui.hub.links.title");
+	return (
+		<Tooltip content={label} side="right" disableHoverableContent>
+			<button
+				type="button"
+				data-hub-mark="aggregate"
+				data-testid="hub-mark-aggregate"
+				data-hub-mark-count={links.length}
+				aria-label={label}
+				className={cn(
+					"flex size-6 shrink-0 items-center justify-center rounded-md text-ink-dim",
+					!staged && "hover:bg-row-hover",
+					"focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-1",
+				)}
+				onClick={(event) => {
+					event.stopPropagation();
+					onDetail();
+				}}
+			>
+				<Link2 aria-hidden="true" className="size-3.5" />
+			</button>
+		</Tooltip>
+	);
+}

@@ -28,6 +28,7 @@ const HOOKS = "src/renderer/src/shared/api/local-operator/hub-link-hooks.ts";
 const ACTIONS =
 	"src/renderer/src/shared/api/local-operator/hub-link-actions.ts";
 const PANEL = "src/renderer/src/features/agents/components/hub-links-panel.tsx";
+const VIEW = "src/renderer/src/features/agents/hub-link-view.ts";
 
 test("the hub-links scene is registered and backend-gated", () => {
 	const driver = readFileSync(DRIVER, "utf8");
@@ -124,4 +125,53 @@ test("the policy write consumes the PATCH's {link_id, policy} snapshot, never a 
 		code,
 		/row\.link_id === link_id \? \{ \.\.\.row, policy \} : row/,
 	);
+});
+
+test("the stub emits only real wire direction states", () => {
+	// DESIGN D1 / QA Q1: the stub used "healthy"/"never"/"pending", none of which
+	// core emits (service.py _direction_status answers idle|failed|merging|available).
+	// A stub on a fictional vocabulary would let the scene pass against states the
+	// real backend never sends. Pin every `state:` literal the stub emits to the
+	// renderer's own known-state set.
+	const stub = readFileSync(STUB, "utf8");
+	const view = readFileSync(VIEW, "utf8");
+	const knownBlock = /const KNOWN_STATES = new Set\(\[([\s\S]*?)\]\)/.exec(
+		view,
+	);
+	assert.ok(
+		knownBlock,
+		"hub-link-view.ts no longer exposes a KNOWN_STATES set",
+	);
+	const known = new Set(
+		[...knownBlock[1].matchAll(/"([^"]+)"/g)].map((m) => m[1]),
+	);
+	// busy states ride named sets; fold their literals in so the pin covers them.
+	for (const m of view.matchAll(/new Set\(\[([^\]]*)\]\)/g)) {
+		for (const lit of m[1].matchAll(/"([^"]+)"/g)) known.add(lit[1]);
+	}
+	// A bare `state:` only — `baseline_state` is a different field (the provenance
+	// literal), so the lookbehind excludes any prefixed `*_state`.
+	const emitted = [...stub.matchAll(/(?<![\w])state:\s*"([^"]+)"/g)].map(
+		(m) => m[1],
+	);
+	assert.ok(emitted.length > 0, "the stub emits no direction states to check");
+	for (const state of emitted) {
+		assert.ok(
+			known.has(state),
+			`the stub emits state "${state}", which hub-link-view.ts does not know`,
+		);
+	}
+});
+
+test('baseline known-ness follows the provenance literal, not a "known" sentinel', () => {
+	// CODE MAJOR-1: core writes recorded_by (pull/publish/merge-*/adopt/
+	// adopt-unknown); the old `=== "known"` read EVERY real row as unknown. The
+	// helper is the single source, and a real wire row must read as known.
+	const types = readFileSync(TYPES, "utf8");
+	assert.match(types, /export function baselineIsKnown\(/);
+	assert.match(types, /return recordedBy !== "adopt-unknown";/);
+	const code = types.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+	// The type must be the provenance domain, never the retired sentinel union.
+	assert.match(code, /baseline_state: HubRecordedBy;/);
+	assert.doesNotMatch(code, /baseline_state: "known" \| "unknown"/);
 });

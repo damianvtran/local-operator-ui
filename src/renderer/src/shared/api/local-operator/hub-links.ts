@@ -8,6 +8,28 @@
  */
 export type HubLinkKind = "agent" | "team" | "skill";
 export type HubLinkDirection = "pull" | "push";
+/**
+ * The `recorded_by` provenance literal core writes (provenance.py `RecordedBy`).
+ * `adopt-unknown` is the one value that means the baseline is NOT vouched for
+ * (a link over a differing copy, `UNKNOWN_BASELINE`); every other value records a
+ * known common ancestor. The union is closed for the known set and admits any
+ * other string, because a future core value must read as "not unknown" rather
+ * than crash a renderer — but `adopt-unknown` is the ONLY value that reads as
+ * unknown, so this is not a permissive fallback.
+ */
+export type HubRecordedBy =
+	| "pull"
+	| "publish"
+	| "merge-pull"
+	| "merge-push"
+	| "adopt"
+	| "adopt-unknown"
+	| (string & {});
+
+/** A baseline is known unless it is explicitly the unknown-origin sentinel. */
+export function baselineIsKnown(recordedBy: HubRecordedBy): boolean {
+	return recordedBy !== "adopt-unknown";
+}
 export type HubDirectionStatus = {
 	state: string;
 	classification: string | null;
@@ -37,7 +59,7 @@ export type HubLink = {
 	tenant_name: string | null;
 	policy: { subscribe: boolean; auto_push: boolean; revision: string };
 	eligibility: { can_auto_push: boolean; reason: string | null };
-	baseline_state: "known" | "unknown" | "mixed-lineage";
+	baseline_state: HubRecordedBy;
 	remote_revision: string | null;
 	auto_will_apply: boolean;
 	auto_will_push: boolean;
@@ -71,12 +93,13 @@ export type HubLinks = { links: HubLink[]; unresolved: HubUnresolvedLink[] };
  * so a refusal arrives as an error, not as a resolved row with a swapped tenant.
  *
  * `baseline_state` is the recorded-by literal the BACKEND wrote, under the
- * stable key core renamed it to (head 323a55a40): the resolve arm always writes
- * `make_record(..., "adopt-unknown")` (service.py:303), so a confirmation yields
- * `"adopt-unknown"`, while the separate equal-text auto path writes `"adopt"`.
- * Both are admitted defensively; the receipt's earlier shorthand `"adopted"` is
- * NOT a value any path emits and must never appear. Key the unresolved->adopt
- * transition on `baseline_state === "adopt-unknown"` for this arm.
+ * stable key core renamed it to: the resolve arm always writes `"adopt-unknown"`
+ * (a source/scope confirmed with no vouched common ancestor), while the separate
+ * equal-text auto path writes `"adopt"`. Both are admitted defensively; the
+ * earlier shorthand `"adopted"` is NOT a value any path emits and must never
+ * appear. Key the unresolved->adopt transition on `baseline_state ===
+ * "adopt-unknown"` for this arm. (No source line numbers or commit heads: they
+ * rot across repos.)
  */
 export type HubSourceResolution = {
 	source: string;

@@ -43050,6 +43050,28 @@ async function sceneHubLinks(cdp, app) {
 	 * inventory read are both on screen once the row is named.
 	 */
 	await verb(cdp, "navigate", "/agents?name=reviewer");
+	/*
+	 * THE PANEL DEFAULTS COLLAPSED (item 4), so the scene OPENS it the way a reader
+	 * does: the pane's own disclosure trigger (`aria-expanded`) is a real press.
+	 * The healthy row must not auto-open, which is the whole point of item 4 — so
+	 * the collapsed state here is itself the acceptance signal before we expand.
+	 */
+	const collapsed = await waitForCondition(
+		cdp,
+		`(() => {
+			const pane = document.querySelector('[data-agents-pane]');
+			if (!pane) return null;
+			const trigger = pane.querySelector('button[aria-expanded]');
+			return trigger ? { expanded: trigger.getAttribute('aria-expanded') } : null;
+		})()`,
+		30_000,
+	);
+	check(
+		"a healthy link mounts the hub panel COLLAPSED (does not displace primary content)",
+		collapsed.ok && collapsed.last.expanded === "false",
+		`after ${collapsed.waitedMs ?? "?"}ms: ${JSON.stringify(collapsed.last)}`,
+	);
+	await verb(cdp, "press", '[data-agents-pane] button[aria-expanded="false"]');
 	const ready = await waitForCondition(
 		cdp,
 		`(() => {

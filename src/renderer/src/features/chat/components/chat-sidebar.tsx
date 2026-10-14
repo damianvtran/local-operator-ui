@@ -266,6 +266,7 @@ import { ChatRowHoverIntent } from "./chat-row-hover-intent";
 import { ChatRowTitle } from "./chat-row-title";
 import { ChatSidebarViewMenu } from "./chat-sidebar-view-menu";
 import {
+	HubLinkAggregateMark,
 	HubLinkExpandedPolicy,
 	HubLinkSidebarMark,
 } from "./hub-link-sidebar-mark";
@@ -6471,6 +6472,10 @@ export function ChatSidebar({
 		// The ordinary one-origin row has direct action; ambiguity opens detail.
 		const linkedOrigin =
 			linkedOrigins.length === 1 ? linkedOrigins[0] : undefined;
+		// CODE MAJOR-2: more than one origin drew NOTHING before. Now it draws one
+		// aggregate mark that opens the Hub links detail (design §Sidebar line 48),
+		// where the per-link policy controls live. A zero-origin row draws neither.
+		const aggregateOrigins = linkedOrigins.length > 1 ? linkedOrigins : null;
 		return (
 			<div key={key} data-entity>
 				<div
@@ -6681,6 +6686,13 @@ export function ChatSidebar({
 					{linkedOrigin && (
 						<HubLinkSidebarMark
 							link={linkedOrigin}
+							staged={staged}
+							onDetail={() => openHubDetail(kind, name)}
+						/>
+					)}
+					{aggregateOrigins && (
+						<HubLinkAggregateMark
+							links={aggregateOrigins}
 							staged={staged}
 							onDetail={() => openHubDetail(kind, name)}
 						/>

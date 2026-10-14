@@ -49,7 +49,7 @@ const TENANT_NAME = "Minerva";
 
 /** A direction status whose shape is the receipt's rich `HubDirectionStatus`. */
 const direction = (overrides = {}) => ({
-	state: "healthy",
+	state: "idle",
 	classification: null,
 	enabled: true,
 	last_checked_at: null,
@@ -84,15 +84,15 @@ const links = [
 		tenant_name: null,
 		policy: { subscribe: true, auto_push: false, revision: "rev-agens-1" },
 		eligibility: { can_auto_push: true, reason: null },
-		baseline_state: "known",
+		baseline_state: "pull",
 		remote_revision: "rev-remote-1",
 		auto_will_apply: true,
 		auto_will_push: false,
 		pull: direction({
-			state: "healthy",
+			state: "idle",
 			last_success_at: "2026-10-13T10:00:00Z",
 		}),
-		push: direction({ state: "never", enabled: false }),
+		push: direction({ state: "idle", enabled: false }),
 	},
 	{
 		link_id: "link-org-team",
@@ -109,7 +109,7 @@ const links = [
 			can_auto_push: false,
 			reason: "auto-push is not enabled for this destination",
 		},
-		baseline_state: "unknown",
+		baseline_state: "adopt-unknown",
 		remote_revision: null,
 		auto_will_apply: false,
 		auto_will_push: false,
@@ -119,7 +119,7 @@ const links = [
 			attempts: 3,
 			next_retry_at: "2026-10-13T11:00:00Z",
 		}),
-		push: direction({ state: "never", enabled: false }),
+		push: direction({ state: "idle", enabled: false }),
 	},
 	{
 		link_id: "link-skill",
@@ -133,12 +133,12 @@ const links = [
 		tenant_name: null,
 		policy: { subscribe: true, auto_push: true, revision: "rev-skill-1" },
 		eligibility: { can_auto_push: true, reason: null },
-		baseline_state: "known",
+		baseline_state: "pull",
 		remote_revision: "rev-remote-skill",
 		auto_will_apply: true,
 		auto_will_push: true,
 		pull: direction(),
-		push: direction({ state: "pending", operation_id: "op-push-1" }),
+		push: direction({ state: "idle", operation_id: "op-push-1" }),
 	},
 ];
 
@@ -379,12 +379,12 @@ const route = (method, pathname, query, body) => {
 					can_auto_push: false,
 					reason: "a newly adopted source has no auto-push grant yet",
 				},
-				baseline_state: "unknown",
+				baseline_state: "adopt",
 				remote_revision: null,
 				auto_will_apply: false,
 				auto_will_push: false,
-				pull: direction({ state: "never" }),
-				push: direction({ state: "never", enabled: false }),
+				pull: direction({ state: "idle" }),
+				push: direction({ state: "idle", enabled: false }),
 			};
 			if (!legacyResolved) {
 				legacyResolved = true;

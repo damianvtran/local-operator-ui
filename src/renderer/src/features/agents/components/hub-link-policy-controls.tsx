@@ -110,6 +110,16 @@ export function HubLinkPolicyControls({
 					onCheckedChange={(value) => save({ subscribe: value }, "subscribe")}
 				/>
 			</div>
+			{/*
+			 * Item 9 (UX U7 / D7): the pause sentence is caused by SUBSCRIBE being
+			 * off, so it belongs with the Subscribe row, not under Auto-push where it
+			 * read as an outbound statement. It is a concern of the INBOUND direction.
+			 */}
+			{!link.policy.subscribe && (
+				<p className="text-meta text-ink-muted">
+					{t("ui.hub.subscriptions.manual_available")}
+				</p>
+			)}
 			<div className="flex items-start justify-between gap-4">
 				<div className="min-w-0">
 					<label htmlFor={`${id}-push`} className="text-body-sm text-ink">
@@ -144,11 +154,6 @@ export function HubLinkPolicyControls({
 								reason: unavailableReason,
 							})
 						: unavailableReason}
-				</p>
-			)}
-			{!link.policy.subscribe && (
-				<p className="text-meta text-ink-muted">
-					{t("ui.hub.subscriptions.manual_available")}
 				</p>
 			)}
 			{write.isPending && (

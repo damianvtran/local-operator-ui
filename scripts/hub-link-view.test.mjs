@@ -15,6 +15,15 @@ const bundled = await build({
 	format: "esm",
 	platform: "node",
 	logLevel: "silent",
+	/*
+	 * The adapter now imports a VALUE (`baselineIsKnown`) from `@shared/...`, not
+	 * only types, so the alias has to resolve — a type-only import was previously
+	 * elided and never needed it. Same alias the sibling hub suites use.
+	 */
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+		"@features": "./src/renderer/src/features",
+	},
 });
 const {
 	initialSkillPreviewMatches,

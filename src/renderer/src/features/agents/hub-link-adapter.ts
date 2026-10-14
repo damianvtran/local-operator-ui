@@ -1,6 +1,7 @@
-import type {
-	HubDirectionStatus,
-	HubLink,
+import {
+	type HubDirectionStatus,
+	type HubLink,
+	baselineIsKnown,
 } from "@shared/api/local-operator/hub-links";
 import type { HubLinkDirectionView, HubLinkView } from "./hub-link-view";
 
@@ -68,11 +69,17 @@ export function hubLinkView(link: HubLink): HubLinkView {
 			source.visibility !== "unavailable",
 		autoPushUnavailableReason: link.eligibility.reason,
 		canEditPolicy: true,
+		/*
+		 * Known-ness is the provenance literal, NOT a `"known"` sentinel: core
+		 * writes `recorded_by` (pull, publish, the merge pair, adopt, adopt-unknown),
+		 * so the old `=== "known"` comparison read EVERY real row as unknown and
+		 * disabled publish/direct-apply. `adopt-unknown` is the only unknown value.
+		 */
 		pull: directionView(
 			link.pull,
 			link.auto_will_apply,
 			null,
-			link.baseline_state === "known" &&
+			baselineIsKnown(link.baseline_state) &&
 				link.pull.classification === "remote-only",
 		),
 		push: directionView(
