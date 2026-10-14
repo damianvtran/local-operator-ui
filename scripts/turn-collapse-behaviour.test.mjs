@@ -3390,11 +3390,17 @@ test("v2 one open bar survives 129 unrelated complete owners without opening nei
 	assert.strictEqual(after, before);
 	assert.equal(barTrigger(mounted).getAttribute("aria-expanded"), "true");
 	assert.ok(rowBox(mounted, "alias-tool-0"));
-	assert.equal(barTrigger(mounted).getAttribute("aria-expanded"), "false");
 	// Explicit clear invalidates alias evidence without treating unchanged
 	// owner/view epochs as a positive source-transition certificate.
 	await mounted.render([], { ...over, viewEpoch: 2 });
 	await mounted.render(prepended, { ...over, viewEpoch: 2 });
 	assert.notStrictEqual(bar(mounted), before);
+	/*
+	 * The collapsed half of the pair belongs HERE, not beside the open half:
+	 * the 129-owner prepend is not a source transition, so it leaves the
+	 * reader's bar open, and only the explicit epoch clear above is one, so
+	 * only now does the bar stand collapsed again.
+	 */
+	assert.equal(barTrigger(mounted).getAttribute("aria-expanded"), "false");
 	__resetTurnCollapseOpen();
 });
