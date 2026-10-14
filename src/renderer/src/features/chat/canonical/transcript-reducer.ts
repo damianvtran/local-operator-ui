@@ -729,6 +729,8 @@ export type TranscriptState = {
 	journalGeneration?: string;
 	journalPositions?: Map<string, SourceCoordinate>;
 	journalCallOwners?: Map<string, string>;
+	/** Each call's index in its owner's `tool_calls`: the committed sibling order. */
+	journalCallSlots?: Map<string, number>;
 	orderRevision?: number;
 	orderNeedsReconcile?: boolean;
 	/** Distinct incoming domain wakes a building-index repair once ready. */
@@ -1778,6 +1780,13 @@ function upsert(state: TranscriptState, record: TranscriptRecord) {
 					...record,
 					...(current.sourceEntryId
 						? { sourceEntryId: record.sourceEntryId ?? current.sourceEntryId }
+						: {}),
+					// The arrival slot is the ROW's, not the frame's: every live frame
+					// rebuilds the record, and a rebuild that dropped the stamp would
+					// have `stampArrival` re-derive it against a list that has moved
+					// since (the hop `scripts/stream-order-live.test.mjs` pins).
+					...(current.sourceAdmissionAnchor && !record.sourceAdmissionAnchor
+						? { sourceAdmissionAnchor: current.sourceAdmissionAnchor }
 						: {}),
 					...(current.journalGeneration
 						? {

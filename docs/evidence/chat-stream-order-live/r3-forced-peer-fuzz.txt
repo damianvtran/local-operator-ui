@@ -1,0 +1,13 @@
+Independent generator source: QA session 9d91264a827a, qa/fuzz3-lanes.mjs; executed here against this remediation source. No browser/backend session or installation.
+LANE=peer MAXC=3 seed=1 turns=1500
+{"hop":0,"final":0,"total":1500} {"text":0,"toolpair":0}
+[run_bounded] node rc=0 wall=0.9s
+LANE=peer MAXC=3 seed=7 turns=1500
+{"hop":0,"final":0,"total":1500} {"text":0,"toolpair":0}
+[run_bounded] node rc=0 wall=0.8s
+LANE=peer MAXC=3 seed=30 turns=1500
+{"hop":0,"final":0,"total":1500} {"text":0,"toolpair":0}
+[run_bounded] node rc=0 wall=0.7s
+LANE=peer MAXC=3 seed=42 turns=1500
+{"hop":0,"final":0,"total":1500} {"text":0,"toolpair":0}
+[run_bounded] node rc=0 wall=0.7s
