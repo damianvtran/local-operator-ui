@@ -728,8 +728,7 @@ export class ConsoleHost {
 			exitWaiters: [],
 		};
 		// Adopt BEFORE replay/log initialization, either of which may throw. If
-		// attach itself fails, the acquisition inventory still owns the emulator;
-		// rollback deduplicates the case where attach bound it before throwing.
+		// attach itself fails, this allocation still owns the emulator.
 		runtime.archivedReplay = true;
 		const facts = this.archiveFacts.get(meta.surface);
 		runtime.droppedLiveBytes =
@@ -738,21 +737,45 @@ export class ConsoleHost {
 			facts?.droppedGridBytes ?? meta.dropped_grid_bytes ?? 0;
 		runtime.theme = facts?.theme ?? null;
 		runtime.lastMark = facts?.lastMark ?? null;
-		this.registry.attach(entry.record.surface, runtime);
-		this.unboundRestoreEmulators.delete(emulator);
-		// Replay, not deserialize: the headless build ships no `addon-serialize`,
-		// and the retained parse is bounded to 4 MiB and paid once (§5.4/§7.1).
-		emulator.write(bytes);
-		runtime.log.append(bytes);
-		// Replaying disk bytes is not new output to append to that same file.
-		this.persistedBytes.set(meta.surface, runtime.log.endOffset);
-		if (!existing)
-			this.registry.update(entry.record.surface, {
-				running: false,
-				exitCode: meta.exit_code,
-				live: false,
-				lastActivity: meta.last_seen_at,
-			});
+		// Lazy hydration replaces the old eager startup restore, so this allocation
+		// runs on a read, OUTSIDE any startup rollback: attach, replay and log
+		// initialization all sit inside ONE ownership boundary this allocation
+		// holds itself. Without it, a mid-init throw leaked a native emulator where
+		// the cap could not see it.
+		try {
+			this.registry.attach(entry.record.surface, runtime);
+			this.unboundRestoreEmulators.delete(emulator);
+			// Replay, not deserialize: the headless build ships no `addon-serialize`,
+			// and the retained parse is bounded to 4 MiB and paid once (§5.4/§7.1).
+			emulator.write(bytes);
+			runtime.log.append(bytes);
+			// Replaying disk bytes is not new output to append to that same file.
+			this.persistedBytes.set(meta.surface, runtime.log.endOffset);
+			if (!existing)
+				this.registry.update(entry.record.surface, {
+					running: false,
+					exitCode: meta.exit_code,
+					live: false,
+					lastActivity: meta.last_seen_at,
+				});
+		} catch (error) {
+			// Detach the half-built runtime so admission counts no ghost, then release
+			// only this allocation's emulator. A release that itself throws stays in
+			// failedAllocations, so a later stop retries the exact object owner rather
+			// than leaking native usage the cap cannot see.
+			this.unboundRestoreEmulators.delete(emulator);
+			const owned = this.registry.find(entry.record.surface);
+			if (owned?.runtime === runtime) owned.runtime = null;
+			const allocation = { pty: null, emulator };
+			this.failedAllocations.add(allocation);
+			const failures = this.releaseFailedAllocation(allocation);
+			if (failures.length)
+				throw new AggregateError(
+					[error, ...failures],
+					"Console history hydration failed and its cleanup remains pending",
+				);
+			throw error;
+		}
 	}
 
 	/** Keep RPC ownership validation at the host boundary without exposing the

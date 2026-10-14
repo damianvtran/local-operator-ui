@@ -2127,6 +2127,13 @@ export const STORIES = [
 	["console-pane--restored", CONSOLE_PANE_WIDTH, 560],
 	["console-pane--secure", CONSOLE_PANE_WIDTH, 520],
 	/*
+	 * The capacity/retained-history state (this round's own addition): a live count
+	 * beside archived history, the pair the cap split is about. It needs a frame for
+	 * the same reason every other state does — `--only=` filters this list rather
+	 * than Storybook's index, so a story with no row here is silently unrendered.
+	 */
+	["console-pane--capacity-and-retained-history", CONSOLE_PANE_WIDTH, 560],
+	/*
 	 * D21's own state, and the reason it is here rather than only in the component's
 	 * stories: the selection became load-bearing this round (1.11:1 -> the accent, gated by
 	 * `check-themes`) and no frame anywhere in the set showed one, so its appearance was

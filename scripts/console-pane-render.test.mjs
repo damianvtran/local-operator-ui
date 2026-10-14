@@ -789,7 +789,7 @@ test("a running close asks first and only the confirm reaches the bridge; an end
 		);
 		assert.equal(
 			closeOf("con:2:ended").getAttribute("aria-label"),
-			"Dismiss zsh, tab 2 of 2",
+			"Dismiss zsh, tab 2 of 2 — Dismiss terminal and delete retained output",
 		);
 
 		// A RUNNING close asks before it does anything.
