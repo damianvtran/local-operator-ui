@@ -344,7 +344,7 @@ export function HubLinkAggregateMark({
 				<Glyph aria-hidden="true" className="size-3.5" />
 				<span
 					aria-hidden="true"
-					className="absolute -right-0.5 -bottom-0.5 flex h-3 min-w-3 items-center justify-center rounded-full bg-surface px-0.5 text-meta-sm leading-none text-ink-muted"
+					className="absolute -right-0.5 -bottom-0.5 flex h-3 min-w-3 items-center justify-center rounded-full border border-control bg-surface px-0.5 text-meta-sm leading-none text-ink-muted"
 				>
 					{links.length}
 				</span>
