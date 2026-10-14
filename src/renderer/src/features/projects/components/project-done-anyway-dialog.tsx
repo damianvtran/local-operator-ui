@@ -1,4 +1,5 @@
 import { formatNumber, t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The deliberate close: "this project has open milestones - mark it done
  * anyway?".
@@ -83,6 +84,7 @@ export const ProjectDoneAnywayDialog: FC<ProjectDoneAnywayDialogProps> = ({
 	secondaryLabel,
 	onSecondary,
 }) => {
+	useI18nLocale();
 	const [submitting, setSubmitting] = useState(false);
 	/*
 	 * The failure keeps its two facts apart: the sentence to show, and whether
@@ -281,7 +283,7 @@ export const ProjectDoneAnywayDialog: FC<ProjectDoneAnywayDialogProps> = ({
 						<Disclosure
 							summary={t(
 								"ui.projects.project_done_anyway_dialog.show_all_length_open_milestones",
-								{ length: formatNumber(names.length, { useGrouping: false }) },
+								{ length: names.length },
 							)}
 						>
 							<ul

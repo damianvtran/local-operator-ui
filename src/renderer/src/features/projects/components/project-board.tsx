@@ -206,6 +206,7 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 	movingKeys = [],
 	teamLabelFor = (name) => name,
 }) => {
+	useI18nLocale();
 	/*
 	 * The order is board state, read once per mount from the guarded store the
 	 * view switcher also reads, and written on every move: a failed read or
@@ -1248,6 +1249,7 @@ const BoardCard: FC<BoardCardProps> = ({
  * never opens a popover on is exactly the waste the counts exist to avoid.
  */
 const CardSessionsPopover: FC<{ project: DesktopProject }> = ({ project }) => {
+	useI18nLocale();
 	const [open, setOpen] = useState(false);
 	const navigate = useNavigate();
 	const detail = useProjectDetail(project.id, open);

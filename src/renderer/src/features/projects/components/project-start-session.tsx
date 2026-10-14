@@ -1,4 +1,5 @@
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The start-session picker: choose who a new session runs with — a team, an
  * agent, or nothing in particular — and start it against this project.
@@ -81,6 +82,7 @@ export const ProjectStartSessionDialog: FC<ProjectStartSessionDialogProps> = ({
 	teamsEnabled,
 	profilesEnabled,
 }) => {
+	useI18nLocale();
 	const [selection, setSelection] =
 		useState<StartSessionSelection>(START_SESSION_PLAIN);
 	const [refusal, setRefusal] = useState<string | null>(null);

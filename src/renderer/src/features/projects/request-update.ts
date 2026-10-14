@@ -224,7 +224,7 @@ export function requestUpdateResultToast(
 			"ui.projects.request_update.requested_updates_from_delivered_of_total_sessions_on_display",
 			{
 				delivered: formatNumber(delivered, { useGrouping: false }),
-				total: formatNumber(total, { useGrouping: false }),
+				total: total,
 				display: String(display),
 			},
 		);
@@ -266,7 +266,7 @@ export function requestUpdateResultToast(
 			title = t(
 				"ui.projects.request_update.could_not_reach_any_of_the_total_linked_sessions_on_display",
 				{
-					total: formatNumber(total, { useGrouping: false }),
+					total: total,
 					display: String(display),
 				},
 			);
@@ -283,7 +283,7 @@ export function requestUpdateResultToast(
 			"ui.projects.request_update.could_not_reach_failed_of_the_total_linked_sessions_on_display_de",
 			{
 				failed: formatNumber(failed, { useGrouping: false }),
-				total: formatNumber(total, { useGrouping: false }),
+				total: total,
 				display: String(display),
 				value4: String(namesClause(unconfirmedNames)),
 			},

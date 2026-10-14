@@ -1,4 +1,5 @@
 import { formatNumber, t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The Projects tab's search/filter toolbar: the search field, the Filters
  * button and popover, the result count, and the chips row under the switcher.
@@ -115,6 +116,7 @@ export const ProjectsSearchControls: FC<ProjectsSearchControlsProps> = ({
 	disabled = false,
 	searchFieldRef,
 }) => {
+	useI18nLocale();
 	const [filtersOpen, setFiltersOpen] = useState(false);
 	/* Set by the popover header's Clear all; read once by the close-focus
 	 * guard below so the suppressed restore applies only to that path. */
@@ -317,6 +319,7 @@ export const ProjectsFilterChips: FC<ProjectsFilterChipsProps> = ({
 	hideClearAll = false,
 	searchFieldRef,
 }) => {
+	useI18nLocale();
 	/*
 	 * The post-commit focus handoff (see the header). `chip` targets the chip
 	 * that took the removed one's slot — the row re-renders without it in the

@@ -1,4 +1,5 @@
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The quick-send strip: pick a linked session, type a message, send it — from
  * the project view, without opening the conversation.
@@ -114,6 +115,7 @@ export const ProjectQuickSend: FC<ProjectQuickSendProps> = ({
 	onSend,
 	focusTick,
 }) => {
+	useI18nLocale();
 	const inputRef = useRef<MessageInputHandle | null>(null);
 	const recordingProbe = useRadientCredentialProbe();
 	/*

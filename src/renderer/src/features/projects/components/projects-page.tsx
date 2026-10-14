@@ -1,4 +1,5 @@
 import { formatNumber, t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The Projects route: the tab's gate, the List view, and the two-screen shape
  * (`/projects` and `/projects/:projectId`).
@@ -168,6 +169,7 @@ const GATE_COPY: Record<string, string> = {
 export const ProjectsPage: FC<{ nowMs?: number }> = ({
 	nowMs = Date.now(),
 }) => {
+	useI18nLocale();
 	const { projectId } = useParams<{ projectId?: string }>();
 	const navigate = useNavigate();
 	const capabilities = useDesktopCapabilities();
@@ -417,7 +419,7 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 						length: formatNumber(visibleProjects.length, {
 							useGrouping: false,
 						}),
-						length_2: formatNumber(projects.length, { useGrouping: false }),
+						length_2: projects.length,
 					});
 	const listReady = list.isSuccess && projects.length > 0;
 	/*

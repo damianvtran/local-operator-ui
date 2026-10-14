@@ -1788,6 +1788,8 @@ export type MessageParams = {
 	"ui.projects.count.todo": { count: number };
 	"ui.projects.count.undated": { count: number };
 	"ui.projects.count.update": { count: number };
+	"ui.projects.examples.owner": undefined;
+	"ui.projects.examples.team": undefined;
 	"ui.projects.project_board.actions_for_displayname": { displayName: string };
 	"ui.projects.project_board.after_label": { label: string };
 	"ui.projects.project_board.before_label": { label: string };
@@ -1874,28 +1876,28 @@ export type MessageParams = {
 		projectLabel: string;
 	};
 	"ui.projects.project_done_anyway_dialog.show_all_length_open_milestones": {
-		length: string;
+		length: number;
 	};
 	"ui.projects.project_done_anyway_dialog.the_project_moves_to_done_and_its_milestones_stay_open": undefined;
 	"ui.projects.project_edit_model.a_project_with_this_key_already_exists": undefined;
 	"ui.projects.project_edit_model.dates_are_yyyy_mm_dd_or_empty": undefined;
 	"ui.projects.project_edit_model.estimates_are_greater_than_0_and_at_most_1000": undefined;
 	"ui.projects.project_edit_model.keep_the_description_within_value1_characters": {
-		value1: string;
+		value1: number;
 	};
 	"ui.projects.project_edit_model.owners": undefined;
 	"ui.projects.project_edit_model.teams": undefined;
 	"ui.projects.project_edit_model.teams_are_at_most_value2_characters": {
 		teams: string;
-		value2: string;
+		value2: number;
 	};
 	"ui.projects.project_edit_model.the_project_was_not_saved": undefined;
 	"ui.projects.project_edit_model.the_target_date_is_before_the_start_date": undefined;
 	"ui.projects.project_edit_model.titles_are_at_most_value1_characters": {
-		value1: string;
+		value1: number;
 	};
 	"ui.projects.project_edit_model.up_to_project_tags_max_tags": {
-		PROJECT_TAGS_MAX: string;
+		PROJECT_TAGS_MAX: number;
 	};
 	"ui.projects.project_editors.a_short_name_for_the_workstream": undefined;
 	"ui.projects.project_editors.add_a_title": undefined;
@@ -2063,7 +2065,7 @@ export type MessageParams = {
 	"ui.projects.project_model.last_7_days": undefined;
 	"ui.projects.project_model.last_90_days": undefined;
 	"ui.projects.project_model.live": undefined;
-	"ui.projects.project_model.live_live": { live: string };
+	"ui.projects.project_model.live_live": { live: number };
 	"ui.projects.project_model.milestones_are_still_open_on_this_project_complete_or_remove_them": undefined;
 	"ui.projects.project_model.milestones_milestones": { milestones: string };
 	"ui.projects.project_model.missing": undefined;
@@ -2213,7 +2215,7 @@ export type MessageParams = {
 	};
 	"ui.projects.projects_page.length_of_length_2_projects": {
 		length: string;
-		length_2: string;
+		length_2: number;
 	};
 	"ui.projects.projects_page.loading_projects": undefined;
 	"ui.projects.projects_page.moved_to_label": { label: string };
@@ -2273,12 +2275,12 @@ export type MessageParams = {
 		display: string;
 	};
 	"ui.projects.request_update.could_not_reach_any_of_the_total_linked_sessions_on_display": {
-		total: string;
+		total: number;
 		display: string;
 	};
 	"ui.projects.request_update.could_not_reach_failed_of_the_total_linked_sessions_on_display_de": {
 		failed: string;
-		total: string;
+		total: number;
 		display: string;
 		value4: string;
 	};
@@ -2304,7 +2306,7 @@ export type MessageParams = {
 	};
 	"ui.projects.request_update.requested_updates_from_delivered_of_total_sessions_on_display": {
 		delivered: string;
-		total: string;
+		total: number;
 		display: string;
 	};
 	"ui.projects.request_update.requesting_updates": undefined;

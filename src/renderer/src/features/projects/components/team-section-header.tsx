@@ -1,4 +1,5 @@
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The List view's team band (issue #703, RESHAPED on operator direction).
  *
@@ -102,22 +103,25 @@ export const TeamSectionHeader: FC<TeamSectionHeaderProps> = ({
 	headingId,
 	className,
 	...rest
-}) => (
-	<div
-		{...rest}
-		className={cn(
-			"flex h-8 cursor-default items-center gap-2 bg-surface px-3 text-meta",
-			className,
-		)}
-	>
-		<h3 id={headingId} className="truncate text-ink">
-			{team ?? t("ui.projects.project_model.no_team")}
-		</h3>
-		<span
-			className="shrink-0 text-ink-muted"
-			aria-label={projectsCountLabel(count)}
+}) => {
+	useI18nLocale();
+	return (
+		<div
+			{...rest}
+			className={cn(
+				"flex h-8 cursor-default items-center gap-2 bg-surface px-3 text-meta",
+				className,
+			)}
 		>
-			{count}
-		</span>
-	</div>
-);
+			<h3 id={headingId} className="truncate text-ink">
+				{team ?? t("ui.projects.project_model.no_team")}
+			</h3>
+			<span
+				className="shrink-0 text-ink-muted"
+				aria-label={projectsCountLabel(count)}
+			>
+				{count}
+			</span>
+		</div>
+	);
+};

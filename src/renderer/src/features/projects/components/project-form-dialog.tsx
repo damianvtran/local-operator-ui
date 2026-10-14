@@ -1,4 +1,5 @@
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The CREATE sheet for a project, used by the tab's `New project` — the
  * Linear-style replacement for the small two-column dialog.
@@ -81,6 +82,11 @@ import {
  * owner, team, dates, estimate) — applied by the page after the create lands.
  * Absent when the author filled none of them.
  */
+// Identifier examples stay ASCII, and their exemption lives outside JSX so
+// a future neighboring product label cannot inherit a broad element exemption.
+const PROJECT_KEY_EXAMPLE =
+	/* i18n: ignore example identifier; must not be translated */ "payments-migration";
+
 export type ProjectFormSubmit = {
 	fields: ProjectCreateFields;
 	followUp?: ProjectEditFields;
@@ -127,6 +133,7 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 	onClose,
 	onSubmit,
 }) => {
+	useI18nLocale();
 	const [form, setForm] = useState<FormState>(EMPTY_FORM);
 	const [errors, setErrors] = useState<
 		Partial<Record<keyof FormState, string>>
@@ -407,7 +414,7 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 								setKeyTouched(true);
 								set("name", event.target.value);
 							}}
-							placeholder="payments-migration"
+							placeholder={PROJECT_KEY_EXAMPLE}
 							aria-invalid={Boolean(errors.name)}
 							className="h-7 max-w-56 font-mono text-mono-sm"
 						/>
@@ -570,7 +577,7 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 							data-project-owner=""
 							value={form.owner}
 							onChange={(event) => set("owner", event.target.value)}
-							placeholder="atlas"
+							placeholder={t("ui.projects.examples.owner")}
 							aria-invalid={Boolean(errors.owner)}
 						/>
 						{errors.owner && (
@@ -586,7 +593,7 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 							id={`${fieldId}-team`}
 							value={form.team}
 							onChange={(event) => set("team", event.target.value)}
-							placeholder="platform"
+							placeholder={t("ui.projects.examples.team")}
 							aria-invalid={Boolean(errors.team)}
 						/>
 						{errors.team && (

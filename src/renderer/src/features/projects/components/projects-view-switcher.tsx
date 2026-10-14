@@ -1,4 +1,5 @@
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The tab's view switcher and the choice's persistence.
  *
@@ -81,17 +82,23 @@ export function writeProjectsView(view: ProjectsView): void {
 export const ProjectsViewSwitcher: FC<{
 	value: ProjectsView;
 	onChange: (view: ProjectsView) => void;
-}> = ({ value, onChange }) => (
-	<Tabs value={value} onValueChange={(next) => onChange(next as ProjectsView)}>
-		<TabsList
-			aria-label={t("ui.projects.projects_view_switcher.project_view")}
-			data-tour-tag="projects-view-switcher"
+}> = ({ value, onChange }) => {
+	useI18nLocale();
+	return (
+		<Tabs
+			value={value}
+			onValueChange={(next) => onChange(next as ProjectsView)}
 		>
-			{VIEWS.map((view) => (
-				<TabsTrigger key={view.value} value={view.value}>
-					{view.label}
-				</TabsTrigger>
-			))}
-		</TabsList>
-	</Tabs>
-);
+			<TabsList
+				aria-label={t("ui.projects.projects_view_switcher.project_view")}
+				data-tour-tag="projects-view-switcher"
+			>
+				{VIEWS.map((view) => (
+					<TabsTrigger key={view.value} value={view.value}>
+						{view.label}
+					</TabsTrigger>
+				))}
+			</TabsList>
+		</Tabs>
+	);
+};

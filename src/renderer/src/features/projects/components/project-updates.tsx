@@ -64,6 +64,7 @@ function attachmentName(attachment: DesktopProjectAttachment): string {
 const UpdateDataAttachment: FC<{ attachment: DesktopProjectAttachment }> = ({
 	attachment,
 }) => {
+	useI18nLocale();
 	const name = attachmentName(attachment);
 	const size = attachmentSizeText(attachment.bytes);
 	return (
@@ -105,6 +106,7 @@ const UpdateDataAttachment: FC<{ attachment: DesktopProjectAttachment }> = ({
 const UpdateImageAttachment: FC<{ attachment: DesktopProjectAttachment }> = ({
 	attachment,
 }) => {
+	useI18nLocale();
 	const name = attachmentName(attachment);
 	const state = useFileBlobUrl(attachment.path, {
 		mimeType: mimeTypeForPath(attachment.name || attachment.path),

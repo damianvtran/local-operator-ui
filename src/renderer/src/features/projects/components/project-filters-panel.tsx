@@ -1,4 +1,5 @@
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The Filters popover's body, shared by its two entry points (U2/§2.4): the
  * toolbar's Filters button opens it complete, and a column header opens it
@@ -30,7 +31,7 @@ import { t } from "@shared/i18n";
 import { Button, Checkbox, Label } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import type { FC, ReactNode } from "react";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { DesktopProject } from "../../../../../shared/desktop-control-contract";
 import {
 	FACET_LABELS,
@@ -181,6 +182,7 @@ const ColumnSortGroup: FC<{
 	spec: SortSpec | null;
 	onChange: (spec: SortSpec | null) => void;
 }> = ({ column, spec, onChange }) => {
+	useI18nLocale();
 	const name = useId();
 	const sorted = spec !== null && spec.key === column;
 	const currentDirection = sorted ? spec.direction : firstSortDirection(column);
@@ -301,20 +303,16 @@ export const ProjectFiltersPanel: FC<ProjectFiltersPanelProps> = ({
 	scope,
 	sort,
 }) => {
-	/*
-	 * Nine sections over an 800-row listing are recomputed only while this
-	 * panel is mounted (i.e. while it is open) and only when its own inputs
-	 * change — the memo keys are the exact inputs `facetOptions` reads.
-	 */
-	const sections = useMemo(
-		() =>
-			scope === undefined
-				? facetSections(projects, state, todayMs)
-				: scope === null
-					? []
-					: [facetOptions(scope, projects, state, todayMs)],
-		[scope, projects, state, todayMs],
-	);
+	useI18nLocale();
+	// The option model reads the locale store while deriving its labels. A
+	// rows-only memo would retain the old language after this subscription
+	// rerenders; derive these small, visible sections at render time instead.
+	const sections =
+		scope === undefined
+			? facetSections(projects, state, todayMs)
+			: scope === null
+				? []
+				: [facetOptions(scope, projects, state, todayMs)];
 	const anythingActive = !isFilterEmpty(state) || query.trim() !== "";
 	return (
 		<div className="flex flex-col">

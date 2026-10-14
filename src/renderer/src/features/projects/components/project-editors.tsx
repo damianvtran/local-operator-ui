@@ -107,6 +107,13 @@ import { ProjectDoneAnywayDialog } from "./project-done-anyway-dialog";
 import { ProjectStatusBadge } from "./project-status-badge";
 
 /** The one write door every field here commits through. */
+// Identifier examples stay ASCII, and their exemption lives outside JSX so
+// a future neighboring product label cannot inherit a broad element exemption.
+const PROJECT_KEY_CREATE_EXAMPLE =
+	/* i18n: ignore example identifier; must not be translated */ "project-key";
+const PROJECT_KEY_EDIT_EXAMPLE =
+	/* i18n: ignore example identifier; must not be translated */ "project-key";
+
 export type CommitProjectFields = (
 	fields: ProjectEditFields,
 	/**
@@ -446,6 +453,7 @@ export const ProjectHeaderIdentity: FC<{
 	project: DesktopProjectView;
 	commit: CommitProjectFields;
 }> = ({ project, commit }) => {
+	useI18nLocale();
 	const title = project.title ?? "";
 	const [addingTitle, setAddingTitle] = useState(false);
 	/*
@@ -507,7 +515,7 @@ export const ProjectHeaderIdentity: FC<{
 						labels={editLabels("key", t("ui.projects.project_editors.key"))}
 						commit={commit}
 						maxLength={PROJECT_KEY_MAX_CHARS}
-						placeholder="project-key"
+						placeholder={PROJECT_KEY_CREATE_EXAMPLE}
 						ramp="text-body"
 						bare
 						controlsClassName="self-center"
@@ -565,7 +573,7 @@ export const ProjectHeaderIdentity: FC<{
 					labels={editLabels("key", t("ui.projects.project_editors.key"))}
 					commit={commit}
 					maxLength={PROJECT_KEY_MAX_CHARS}
-					placeholder="project-key"
+					placeholder={PROJECT_KEY_EDIT_EXAMPLE}
 					mono
 				/>
 			)}
@@ -595,6 +603,7 @@ export const ProjectStatusField: FC<{
 	project: DesktopProjectView;
 	commit: CommitProjectFields;
 }> = ({ project, commit }) => {
+	useI18nLocale();
 	const [menuOpen, setMenuOpen] = useState(false);
 	const capabilities = useDesktopCapabilities();
 	const forceDoneOffered = desktopFeatureEnabled(
@@ -851,6 +860,7 @@ export const ProjectDescriptionBlock: FC<{
 	project: DesktopProjectView;
 	commit: CommitProjectFields;
 }> = ({ project, commit }) => {
+	useI18nLocale();
 	const [preview, setPreview] = useState(false);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const addDescriptionRef = useRef<HTMLButtonElement | null>(null);
@@ -1042,22 +1052,25 @@ export const ProjectOwnerField: FC<{
 	commit: CommitProjectFields;
 	autoBegin?: boolean;
 	onRetire?: (outcome: "cancelled" | "filled") => void;
-}> = ({ project, commit, autoBegin = false, onRetire }) => (
-	<TextField
-		field="owner"
-		value={project.owner ?? ""}
-		label={t("ui.projects.project_editors.owner")}
-		display={<span className="text-body-sm text-ink">{project.owner}</span>}
-		commitFields={(next) => ({ owner: next.trim() })}
-		validate={(next) => projectAttributionRule(next, "owner")}
-		labels={editLabels("owner", t("ui.projects.project_editors.owner"))}
-		commit={commit}
-		maxLength={PROJECT_ATTRIBUTION_MAX_CHARS}
-		placeholder="atlas"
-		autoBegin={autoBegin}
-		onRetire={onRetire}
-	/>
-);
+}> = ({ project, commit, autoBegin = false, onRetire }) => {
+	useI18nLocale();
+	return (
+		<TextField
+			field="owner"
+			value={project.owner ?? ""}
+			label={t("ui.projects.project_editors.owner")}
+			display={<span className="text-body-sm text-ink">{project.owner}</span>}
+			commitFields={(next) => ({ owner: next.trim() })}
+			validate={(next) => projectAttributionRule(next, "owner")}
+			labels={editLabels("owner", t("ui.projects.project_editors.owner"))}
+			commit={commit}
+			maxLength={PROJECT_ATTRIBUTION_MAX_CHARS}
+			placeholder={t("ui.projects.examples.owner")}
+			autoBegin={autoBegin}
+			onRetire={onRetire}
+		/>
+	);
+};
 
 /** Team row; same shape as Owner, its own 80-character copy. */
 export const ProjectTeamField: FC<{
@@ -1072,24 +1085,27 @@ export const ProjectTeamField: FC<{
 	label?: string | null;
 	autoBegin?: boolean;
 	onRetire?: (outcome: "cancelled" | "filled") => void;
-}> = ({ project, commit, label = null, autoBegin = false, onRetire }) => (
-	<TextField
-		field="team"
-		value={project.team ?? ""}
-		label={t("ui.projects.project_editors.team")}
-		display={
-			<span className="text-body-sm text-ink">{label ?? project.team}</span>
-		}
-		commitFields={(next) => ({ team: next.trim() })}
-		validate={(next) => projectAttributionRule(next, "team")}
-		labels={editLabels("team", t("ui.projects.project_editors.team"))}
-		commit={commit}
-		maxLength={PROJECT_ATTRIBUTION_MAX_CHARS}
-		placeholder="platform"
-		autoBegin={autoBegin}
-		onRetire={onRetire}
-	/>
-);
+}> = ({ project, commit, label = null, autoBegin = false, onRetire }) => {
+	useI18nLocale();
+	return (
+		<TextField
+			field="team"
+			value={project.team ?? ""}
+			label={t("ui.projects.project_editors.team")}
+			display={
+				<span className="text-body-sm text-ink">{label ?? project.team}</span>
+			}
+			commitFields={(next) => ({ team: next.trim() })}
+			validate={(next) => projectAttributionRule(next, "team")}
+			labels={editLabels("team", t("ui.projects.project_editors.team"))}
+			commit={commit}
+			maxLength={PROJECT_ATTRIBUTION_MAX_CHARS}
+			placeholder={t("ui.projects.examples.team")}
+			autoBegin={autoBegin}
+			onRetire={onRetire}
+		/>
+	);
+};
 
 /**
  * One planning date row (Start or Target).
@@ -1167,6 +1183,7 @@ export const ProjectEstimateField: FC<{
 	autoBegin?: boolean;
 	onRetire?: (outcome: "cancelled" | "filled") => void;
 }> = ({ project, commit, autoBegin = false, onRetire }) => {
+	useI18nLocale();
 	const base = {
 		estimate: project.estimate,
 		unit: (project.estimate_unit === "days" ? "days" : "points") as
@@ -1285,6 +1302,7 @@ export const ProjectTagsField: FC<{
 	autoBegin?: boolean;
 	onRetire?: (outcome: "cancelled" | "filled") => void;
 }> = ({ project, commit, autoBegin = false, onRetire }) => {
+	useI18nLocale();
 	const [open, setOpen] = useState(autoBegin);
 	useEffect(() => {
 		if (open && project.tags.length > 0) {

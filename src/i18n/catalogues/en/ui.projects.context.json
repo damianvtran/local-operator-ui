@@ -14,84 +14,105 @@
 	"ui.projects.count.milestones_are": {
 		"role": "count: explanatory sentence for “{count, plural, one {… milestone is} other {… milestones are}}”",
 		"tone": "Plain explanatory prose; preserve consequences and qualifiers.",
-		"note": "English source: {count, plural, one {{count, number, ::group-off} milestone is} other {{count, number, ::group-off} milestones are}}. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site. ICU plural selects count morphology; nested number ::group-off keeps the original ungrouped English spelling.",
+		"note": "English source: {count, plural, one {{count, number, ::group-off} milestone is} other {{count, number, ::group-off} milestones are}}. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site. ICU plural selects count morphology; nested number ::group-off keeps the original ungrouped English spelling. Count grammar uses real ICU one/other arms, not an English suffix. Russian translators need few/many arms; Arabic translators need zero/two (and locale-appropriate few/many) arms. English 0/1/2 exercises other/one/other.",
 		"length": "English is 116 source characters. Existing feedback may wrap; keep the same sentence/paragraph count, no additional instructions.",
 		"placeholders": {
-			"count": "Runtime binding on project-model: count"
-		}
+			"count": "Raw numeric count passed to ICU; not a preformatted string. ICU number ::group-off preserves ungrouped English digits."
+		},
+		"plural": "ru: add few/many; ar: add zero/two; preserve the message’s count variable and existing numeric formatting."
 	},
 	"ui.projects.count.moved_open": {
 		"role": "count: status or explanatory feedback for “Moved to … with {open, plural, one {… milestone} other {… milestones}} still open”",
 		"tone": "Quiet factual statement; preserve the distinction between unavailable, refused and pending.",
-		"note": "English source: Moved to {status} with {open, plural, one {{open, number, ::group-off} milestone} other {{open, number, ::group-off} milestones}} still open. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site. ICU plural selects count morphology; nested number ::group-off keeps the original ungrouped English spelling.",
+		"note": "English source: Moved to {status} with {open, plural, one {{open, number, ::group-off} milestone} other {{open, number, ::group-off} milestones}} still open. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site. ICU plural selects count morphology; nested number ::group-off keeps the original ungrouped English spelling. Count grammar uses real ICU one/other arms, not an English suffix. Russian translators need few/many arms; Arabic translators need zero/two (and locale-appropriate few/many) arms. English 0/1/2 exercises other/one/other.",
 		"length": "English is 140 source characters. Existing feedback may wrap; keep the same sentence/paragraph count, no additional instructions.",
 		"placeholders": {
 			"status": "Runtime binding on project-model: status: statusLabel, open",
-			"open": "Runtime binding on project-model: status: statusLabel, open"
-		}
+			"open": "Raw numeric count passed to ICU; not a preformatted string. ICU number ::group-off preserves ungrouped English digits."
+		},
+		"plural": "ru: add few/many; ar: add zero/two; preserve the message’s count variable and existing numeric formatting."
 	},
 	"ui.projects.count.project": {
 		"role": "count: explanatory sentence for “{count, plural, one {… project} other {… projects}}”",
 		"tone": "Plain explanatory prose; preserve consequences and qualifiers.",
-		"note": "English source: {count, plural, one {{count, number, ::group-off} project} other {{count, number, ::group-off} projects}}. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site. ICU plural selects count morphology; nested number ::group-off keeps the original ungrouped English spelling.",
+		"note": "English source: {count, plural, one {{count, number, ::group-off} project} other {{count, number, ::group-off} projects}}. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site. ICU plural selects count morphology; nested number ::group-off keeps the original ungrouped English spelling. Count grammar uses real ICU one/other arms, not an English suffix. Russian translators need few/many arms; Arabic translators need zero/two (and locale-appropriate few/many) arms. English 0/1/2 exercises other/one/other.",
 		"length": "English is 105 source characters. Existing feedback may wrap; keep the same sentence/paragraph count, no additional instructions.",
 		"placeholders": {
-			"count": "Runtime binding on project-model: count"
-		}
+			"count": "Raw numeric count passed to ICU; not a preformatted string. ICU number ::group-off preserves ungrouped English digits."
+		},
+		"plural": "ru: add few/many; ar: add zero/two; preserve the message’s count variable and existing numeric formatting."
 	},
 	"ui.projects.count.session": {
 		"role": "count: explanatory sentence for “{count, plural, one {… session} other {… sessions}}”",
 		"tone": "Plain explanatory prose; preserve consequences and qualifiers.",
-		"note": "English source: {count, plural, one {{count, number, ::group-off} session} other {{count, number, ::group-off} sessions}}. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site. ICU plural selects count morphology; nested number ::group-off keeps the original ungrouped English spelling.",
+		"note": "English source: {count, plural, one {{count, number, ::group-off} session} other {{count, number, ::group-off} sessions}}. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site. ICU plural selects count morphology; nested number ::group-off keeps the original ungrouped English spelling. Count grammar uses real ICU one/other arms, not an English suffix. Russian translators need few/many arms; Arabic translators need zero/two (and locale-appropriate few/many) arms. English 0/1/2 exercises other/one/other.",
 		"length": "English is 105 source characters. Existing feedback may wrap; keep the same sentence/paragraph count, no additional instructions.",
 		"placeholders": {
-			"count": "Runtime binding on project-model: count"
-		}
+			"count": "Raw numeric count passed to ICU; not a preformatted string. ICU number ::group-off preserves ungrouped English digits."
+		},
+		"plural": "ru: add few/many; ar: add zero/two; preserve the message’s count variable and existing numeric formatting."
 	},
 	"ui.projects.count.subagent": {
 		"role": "count: explanatory sentence for “{count, plural, one {… subagent} other {… subagents}}”",
 		"tone": "Plain explanatory prose; preserve consequences and qualifiers.",
-		"note": "English source: {count, plural, one {{count, number, ::group-off} subagent} other {{count, number, ::group-off} subagents}}. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site. ICU plural selects count morphology; nested number ::group-off keeps the original ungrouped English spelling.",
+		"note": "English source: {count, plural, one {{count, number, ::group-off} subagent} other {{count, number, ::group-off} subagents}}. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site. ICU plural selects count morphology; nested number ::group-off keeps the original ungrouped English spelling. Count grammar uses real ICU one/other arms, not an English suffix. Russian translators need few/many arms; Arabic translators need zero/two (and locale-appropriate few/many) arms. English 0/1/2 exercises other/one/other.",
 		"length": "English is 107 source characters. Existing feedback may wrap; keep the same sentence/paragraph count, no additional instructions.",
 		"placeholders": {
-			"count": "Runtime binding on project-model: count: summary.settled"
-		}
+			"count": "Raw numeric count passed to ICU; not a preformatted string. ICU number ::group-off preserves ungrouped English digits."
+		},
+		"plural": "ru: add few/many; ar: add zero/two; preserve the message’s count variable and existing numeric formatting."
 	},
 	"ui.projects.count.subagent_running": {
 		"role": "count: explanatory sentence for “{count, plural, one {… subagent running} other {… subagents running}}”",
 		"tone": "Plain explanatory prose; preserve consequences and qualifiers.",
-		"note": "English source: {count, plural, one {{count, number, ::group-off} subagent running} other {{count, number, ::group-off} subagents running}}. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site. ICU plural selects count morphology; nested number ::group-off keeps the original ungrouped English spelling.",
+		"note": "English source: {count, plural, one {{count, number, ::group-off} subagent running} other {{count, number, ::group-off} subagents running}}. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site. ICU plural selects count morphology; nested number ::group-off keeps the original ungrouped English spelling. Count grammar uses real ICU one/other arms, not an English suffix. Russian translators need few/many arms; Arabic translators need zero/two (and locale-appropriate few/many) arms. English 0/1/2 exercises other/one/other.",
 		"length": "English is 123 source characters. Existing feedback may wrap; keep the same sentence/paragraph count, no additional instructions.",
 		"placeholders": {
-			"count": "Runtime binding on project-model: count: summary.running"
-		}
+			"count": "Raw numeric count passed to ICU; not a preformatted string. ICU number ::group-off preserves ungrouped English digits."
+		},
+		"plural": "ru: add few/many; ar: add zero/two; preserve the message’s count variable and existing numeric formatting."
 	},
 	"ui.projects.count.todo": {
 		"role": "count: explanatory sentence for “{count, plural, one {… todo} other {… todos}}”",
 		"tone": "Plain explanatory prose; preserve consequences and qualifiers.",
-		"note": "English source: {count, plural, one {{count, number, ::group-off} todo} other {{count, number, ::group-off} todos}}. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site. ICU plural selects count morphology; nested number ::group-off keeps the original ungrouped English spelling.",
+		"note": "English source: {count, plural, one {{count, number, ::group-off} todo} other {{count, number, ::group-off} todos}}. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site. ICU plural selects count morphology; nested number ::group-off keeps the original ungrouped English spelling. Count grammar uses real ICU one/other arms, not an English suffix. Russian translators need few/many arms; Arabic translators need zero/two (and locale-appropriate few/many) arms. English 0/1/2 exercises other/one/other.",
 		"length": "English is 99 source characters. Existing feedback may wrap; keep the same sentence/paragraph count, no additional instructions.",
 		"placeholders": {
-			"count": "Runtime binding on project-model: count: summary.total"
-		}
+			"count": "Raw numeric count passed to ICU; not a preformatted string. ICU number ::group-off preserves ungrouped English digits."
+		},
+		"plural": "ru: add few/many; ar: add zero/two; preserve the message’s count variable and existing numeric formatting."
 	},
 	"ui.projects.count.undated": {
 		"role": "count: explanatory sentence for “{count, plural, one {… project without dates} other {… projects without dates}}”",
 		"tone": "Plain explanatory prose; preserve consequences and qualifiers.",
-		"note": "English source: {count, plural, one {{count, number, ::group-off} project without dates} other {{count, number, ::group-off} projects without dates}}. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site. ICU plural selects count morphology; nested number ::group-off keeps the original ungrouped English spelling.",
+		"note": "English source: {count, plural, one {{count, number, ::group-off} project without dates} other {{count, number, ::group-off} projects without dates}}. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site. ICU plural selects count morphology; nested number ::group-off keeps the original ungrouped English spelling. Count grammar uses real ICU one/other arms, not an English suffix. Russian translators need few/many arms; Arabic translators need zero/two (and locale-appropriate few/many) arms. English 0/1/2 exercises other/one/other.",
 		"length": "English is 133 source characters. Existing feedback may wrap; keep the same sentence/paragraph count, no additional instructions.",
 		"placeholders": {
-			"count": "Runtime binding on timeline-model: count"
-		}
+			"count": "Raw numeric count passed to ICU; not a preformatted string. ICU number ::group-off preserves ungrouped English digits."
+		},
+		"plural": "ru: add few/many; ar: add zero/two; preserve the message’s count variable and existing numeric formatting."
 	},
 	"ui.projects.count.update": {
 		"role": "count: explanatory sentence for “{count, plural, one {… update} other {… updates}}”",
 		"tone": "Plain explanatory prose; preserve consequences and qualifiers.",
-		"note": "English source: {count, plural, one {{count, number, ::group-off} update} other {{count, number, ::group-off} updates}}. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site. ICU plural selects count morphology; nested number ::group-off keeps the original ungrouped English spelling.",
+		"note": "English source: {count, plural, one {{count, number, ::group-off} update} other {{count, number, ::group-off} updates}}. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site. ICU plural selects count morphology; nested number ::group-off keeps the original ungrouped English spelling. Count grammar uses real ICU one/other arms, not an English suffix. Russian translators need few/many arms; Arabic translators need zero/two (and locale-appropriate few/many) arms. English 0/1/2 exercises other/one/other.",
 		"length": "English is 103 source characters. Existing feedback may wrap; keep the same sentence/paragraph count, no additional instructions.",
 		"placeholders": {
-			"count": "Runtime binding on project-model: count"
-		}
+			"count": "Raw numeric count passed to ICU; not a preformatted string. ICU number ::group-off preserves ungrouped English digits."
+		},
+		"plural": "ru: add few/many; ar: add zero/two; preserve the message’s count variable and existing numeric formatting."
+	},
+	"ui.projects.examples.owner": {
+		"role": "Owner input illustrative placeholder in create form and inline property editor",
+		"tone": "Neutral example name, lowercase like the existing English placeholder.",
+		"length": "English has 5 characters; keep a compact sample that fits one input line.",
+		"note": "An illustrative owner name, not actual project data, identity, lookup key or protocol token. Translators may substitute a locally natural sample name. Existing owner text is never translated. Same example appears in both create and edit; keep them consistent."
+	},
+	"ui.projects.examples.team": {
+		"role": "Team input illustrative placeholder in create form and inline property editor",
+		"tone": "Neutral example name, lowercase like the existing English placeholder.",
+		"length": "English has 8 characters; keep a compact sample that fits one input line.",
+		"note": "An illustrative team name, not a stored team slug or a catalogue lookup key. Translators may localize the sample name for a natural team example. Actual typed/saved team values remain verbatim. Use the same sample in create and inline edit."
 	},
 	"ui.projects.project_board.actions_for_displayname": {
 		"role": "project board: field, view or status label for “Actions for …”",
@@ -528,11 +549,12 @@
 	"ui.projects.project_done_anyway_dialog.show_all_length_open_milestones": {
 		"role": "project done anyway dialog: action/accessibility label for “Show all … open milestones”",
 		"tone": "Direct imperative; retain the current action and punctuation.",
-		"note": "English source: Show all {length} open milestones. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site.",
+		"note": "English source: Show all {length} open milestones. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site. Count grammar uses real ICU one/other arms, not an English suffix. Russian translators need few/many arms; Arabic translators need zero/two (and locale-appropriate few/many) arms. English 0/1/2 exercises other/one/other.",
 		"length": "English is 33 source characters. Keep this as a compact single control/status label; prefer comparable width, do not add an explanatory sentence.",
 		"placeholders": {
-			"length": "Runtime binding on project-done-anyway-dialog: length: formatNumber(names.length, { useGrouping: false })"
-		}
+			"length": "Raw numeric count passed to ICU; not a preformatted string. ICU number ::group-off preserves ungrouped English digits."
+		},
+		"plural": "ru: add few/many; ar: add zero/two; preserve the message’s count variable and existing numeric formatting."
 	},
 	"ui.projects.project_done_anyway_dialog.the_project_moves_to_done_and_its_milestones_stay_open": {
 		"role": "project done anyway dialog: explanatory sentence for “The project moves to Done and its milestones stay open.”",
@@ -561,11 +583,12 @@
 	"ui.projects.project_edit_model.keep_the_description_within_value1_characters": {
 		"role": "project edit model: explanatory sentence for “Keep the description within … characters.”",
 		"tone": "Plain explanatory prose; preserve consequences and qualifiers.",
-		"note": "English source: Keep the description within {value1} characters.. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site.",
+		"note": "English source: Keep the description within {value1} characters.. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site. Count grammar uses real ICU one/other arms, not an English suffix. Russian translators need few/many arms; Arabic translators need zero/two (and locale-appropriate few/many) arms. English 0/1/2 exercises other/one/other.",
 		"length": "English is 48 source characters. Existing feedback may wrap; keep the same sentence/paragraph count, no additional instructions.",
 		"placeholders": {
-			"value1": "Runtime binding on project-edit-model: value1: formatNumber(PROJECT_DESCRIPTION_MAX_CHARS, {"
-		}
+			"value1": "Raw numeric count passed to ICU; not a preformatted string. ICU number ::group-off preserves ungrouped English digits."
+		},
+		"plural": "ru: add few/many; ar: add zero/two; preserve the message’s count variable and existing numeric formatting."
 	},
 	"ui.projects.project_edit_model.owners": {
 		"role": "project edit model: field, view or status label for “Owners”",
@@ -582,12 +605,13 @@
 	"ui.projects.project_edit_model.teams_are_at_most_value2_characters": {
 		"role": "project edit model: explanatory sentence for “… are at most … characters.”",
 		"tone": "Plain explanatory prose; preserve consequences and qualifiers.",
-		"note": "English source: {teams} are at most {value2} characters.. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site.",
+		"note": "English source: {teams} are at most {value2} characters.. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site. Count grammar uses real ICU one/other arms, not an English suffix. Russian translators need few/many arms; Arabic translators need zero/two (and locale-appropriate few/many) arms. English 0/1/2 exercises other/one/other.",
 		"length": "English is 40 source characters. Existing feedback may wrap; keep the same sentence/paragraph count, no additional instructions.",
 		"placeholders": {
 			"teams": "Runtime binding on project-edit-model: teams: String(",
-			"value2": "Runtime binding on project-edit-model: value2: formatNumber(PROJECT_ATTRIBUTION_MAX_CHARS, {"
-		}
+			"value2": "Raw numeric count passed to ICU; not a preformatted string. ICU number ::group-off preserves ungrouped English digits."
+		},
+		"plural": "ru: add few/many; ar: add zero/two; preserve the message’s count variable and existing numeric formatting."
 	},
 	"ui.projects.project_edit_model.the_project_was_not_saved": {
 		"role": "project edit model: status or explanatory feedback for “The project was not saved.”",
@@ -604,20 +628,22 @@
 	"ui.projects.project_edit_model.titles_are_at_most_value1_characters": {
 		"role": "project edit model: explanatory sentence for “Titles are at most … characters.”",
 		"tone": "Plain explanatory prose; preserve consequences and qualifiers.",
-		"note": "English source: Titles are at most {value1} characters.. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site.",
+		"note": "English source: Titles are at most {value1} characters.. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site. Count grammar uses real ICU one/other arms, not an English suffix. Russian translators need few/many arms; Arabic translators need zero/two (and locale-appropriate few/many) arms. English 0/1/2 exercises other/one/other.",
 		"length": "English is 39 source characters. Existing feedback may wrap; keep the same sentence/paragraph count, no additional instructions.",
 		"placeholders": {
-			"value1": "Runtime binding on project-edit-model: value1: formatNumber(PROJECT_TITLE_MAX_CHARS, { useGrouping: false })"
-		}
+			"value1": "Raw numeric count passed to ICU; not a preformatted string. ICU number ::group-off preserves ungrouped English digits."
+		},
+		"plural": "ru: add few/many; ar: add zero/two; preserve the message’s count variable and existing numeric formatting."
 	},
 	"ui.projects.project_edit_model.up_to_project_tags_max_tags": {
 		"role": "project edit model: field, view or status label for “Up to … tags.”",
 		"tone": "Concise neutral label, retaining English sentence case.",
-		"note": "English source: Up to {PROJECT_TAGS_MAX} tags.. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site.",
+		"note": "English source: Up to {PROJECT_TAGS_MAX} tags.. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site. Count grammar uses real ICU one/other arms, not an English suffix. Russian translators need few/many arms; Arabic translators need zero/two (and locale-appropriate few/many) arms. English 0/1/2 exercises other/one/other.",
 		"length": "English is 30 source characters. Keep this as a compact single control/status label; prefer comparable width, do not add an explanatory sentence.",
 		"placeholders": {
-			"PROJECT_TAGS_MAX": "Runtime binding on project-edit-model: PROJECT_TAGS_MAX: formatNumber(PROJECT_TAGS_MAX, {"
-		}
+			"PROJECT_TAGS_MAX": "Raw numeric count passed to ICU; not a preformatted string. ICU number ::group-off preserves ungrouped English digits."
+		},
+		"plural": "ru: add few/many; ar: add zero/two; preserve the message’s count variable and existing numeric formatting."
 	},
 	"ui.projects.project_editors.a_short_name_for_the_workstream": {
 		"role": "project editors: field, view or status label for “A short name for the workstream”",
@@ -1603,11 +1629,12 @@
 	"ui.projects.project_model.live_live": {
 		"role": "project model: field, view or status label for “… live”",
 		"tone": "Concise neutral label, retaining English sentence case.",
-		"note": "English source: {live} live. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site.",
+		"note": "English source: {live} live. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site. English live is intentionally an invariant adjective with the session noun omitted; both one/other arms keep the same English word. Russian needs few/many; Arabic needs zero/two and locale-appropriate few/many. live is a raw numeric session count.",
 		"length": "English is 11 source characters. Keep this as a compact single control/status label; prefer comparable width, do not add an explanatory sentence.",
 		"placeholders": {
-			"live": "Runtime binding on project-model: live: formatNumber(live, { useGrouping: false })"
-		}
+			"live": "Raw live-session count; ICU number ::group-off preserves original ungrouped digits."
+		},
+		"plural": "English adjective invariant; ru add few/many; ar add zero/two."
 	},
 	"ui.projects.project_model.milestones_are_still_open_on_this_project_complete_or_remove_them": {
 		"role": "project model: status or explanatory feedback for “Milestones are still open on this project. Complete or remove them, then mark it done.”",
@@ -2420,12 +2447,13 @@
 	"ui.projects.projects_page.length_of_length_2_projects": {
 		"role": "projects page: field, view or status label for “… of … projects”",
 		"tone": "Concise neutral label, retaining English sentence case.",
-		"note": "English source: {length} of {length_2} projects. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site.",
+		"note": "English source: {length} of {length_2} projects. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site. Count grammar uses real ICU one/other arms, not an English suffix. Russian translators need few/many arms; Arabic translators need zero/two (and locale-appropriate few/many) arms. English 0/1/2 exercises other/one/other.",
 		"length": "English is 31 source characters. Keep this as a compact single control/status label; prefer comparable width, do not add an explanatory sentence.",
 		"placeholders": {
 			"length": "Runtime binding on projects-page: length: formatNumber(visibleProjects.length, {",
-			"length_2": "Runtime binding on projects-page: length_2: formatNumber(projects.length, { useGrouping: false })"
-		}
+			"length_2": "Raw numeric count passed to ICU; not a preformatted string. ICU number ::group-off preserves ungrouped English digits."
+		},
+		"plural": "ru: add few/many; ar: add zero/two; preserve the message’s count variable and existing numeric formatting."
 	},
 	"ui.projects.projects_page.loading_projects": {
 		"role": "projects page: status or explanatory feedback for “Loading projects…”",
@@ -2700,34 +2728,37 @@
 	"ui.projects.request_update.could_not_reach_any_of_the_total_linked_sessions_on_display": {
 		"role": "request update: status or explanatory feedback for “Could not reach any of the … linked sessions on ….”",
 		"tone": "Quiet factual statement; preserve the distinction between unavailable, refused and pending.",
-		"note": "English source: Could not reach any of the {total} linked sessions on {display}.. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site.",
+		"note": "English source: Could not reach any of the {total} linked sessions on {display}.. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site. Count grammar uses real ICU one/other arms, not an English suffix. Russian translators need few/many arms; Arabic translators need zero/two (and locale-appropriate few/many) arms. English 0/1/2 exercises other/one/other.",
 		"length": "English is 64 source characters. Existing feedback may wrap; keep the same sentence/paragraph count, no additional instructions.",
 		"placeholders": {
-			"total": "Runtime binding on request-update: total: formatNumber(total, { useGrouping: false })",
+			"total": "Raw numeric count passed to ICU; not a preformatted string. ICU number ::group-off preserves ungrouped English digits.",
 			"display": "Runtime binding on request-update: display: String(display)"
-		}
+		},
+		"plural": "ru: add few/many; ar: add zero/two; preserve the message’s count variable and existing numeric formatting."
 	},
 	"ui.projects.request_update.could_not_reach_failed_of_the_total_linked_sessions_on_display_de": {
 		"role": "request update: status or explanatory feedback for “Could not reach … of the … linked sessions on …. Delivery to … could not be confirmed.”",
 		"tone": "Quiet factual statement; preserve the distinction between unavailable, refused and pending.",
-		"note": "English source: Could not reach {failed} of the {total} linked sessions on {display}. Delivery to {value4} could not be confirmed.. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site.",
+		"note": "English source: Could not reach {failed} of the {total} linked sessions on {display}. Delivery to {value4} could not be confirmed.. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site. Count grammar uses real ICU one/other arms, not an English suffix. Russian translators need few/many arms; Arabic translators need zero/two (and locale-appropriate few/many) arms. English 0/1/2 exercises other/one/other.",
 		"length": "English is 114 source characters. Existing feedback may wrap; keep the same sentence/paragraph count, no additional instructions.",
 		"placeholders": {
 			"failed": "Runtime binding on request-update: failed: formatNumber(failed, { useGrouping: false })",
-			"total": "Runtime binding on request-update: total: formatNumber(total, { useGrouping: false })",
+			"total": "Raw numeric count passed to ICU; not a preformatted string. ICU number ::group-off preserves ungrouped English digits.",
 			"display": "Runtime binding on request-update: display: String(display)",
 			"value4": "Runtime binding on request-update: value4: String(namesClause(unconfirmedNames))"
-		}
+		},
+		"plural": "ru: add few/many; ar: add zero/two; preserve the message’s count variable and existing numeric formatting."
 	},
 	"ui.projects.request_update.delivered": {
 		"role": "request update: status or explanatory feedback for “{delivered, plural, one {Requested an update from … session on ….} other {Requested updates from … sessions on ….}}”",
 		"tone": "Quiet factual statement; preserve the distinction between unavailable, refused and pending.",
-		"note": "English source: {delivered, plural, one {Requested an update from {delivered, number, ::group-off} session on {display}.} other {Requested updates from {delivered, number, ::group-off} sessions on {display}.}}. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site. ICU plural selects count morphology; nested number ::group-off keeps the original ungrouped English spelling.",
+		"note": "English source: {delivered, plural, one {Requested an update from {delivered, number, ::group-off} session on {display}.} other {Requested updates from {delivered, number, ::group-off} sessions on {display}.}}. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site. ICU plural selects count morphology; nested number ::group-off keeps the original ungrouped English spelling. Count grammar uses real ICU one/other arms, not an English suffix. Russian translators need few/many arms; Arabic translators need zero/two (and locale-appropriate few/many) arms. English 0/1/2 exercises other/one/other.",
 		"length": "English is 193 source characters. Existing feedback may wrap; keep the same sentence/paragraph count, no additional instructions.",
 		"placeholders": {
-			"delivered": "Runtime binding on request-update: delivered, display",
+			"delivered": "Raw numeric count passed to ICU; not a preformatted string. ICU number ::group-off preserves ungrouped English digits.",
 			"display": "Runtime binding on request-update: delivered, display"
-		}
+		},
+		"plural": "ru: add few/many; ar: add zero/two; preserve the message’s count variable and existing numeric formatting."
 	},
 	"ui.projects.request_update.delivery_to_value1_could_not_be_confirmed": {
 		"role": "request update: status or explanatory feedback for “ Delivery to … could not be confirmed.”",
@@ -2762,11 +2793,12 @@
 	"ui.projects.request_update.never_started": {
 		"role": "request update: explanatory sentence for “{total, plural, one … other {The … linked sessions have not started yet — they become recipients after their first message.}}”",
 		"tone": "Plain explanatory prose; preserve consequences and qualifiers.",
-		"note": "English source: {total, plural, one {The linked session has not started yet — it becomes a recipient after its first message.} other {The {total, number, ::group-off} linked sessions have not started yet — they become recipients after their first message.}}. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site. ICU plural selects count morphology; nested number ::group-off keeps the original ungrouped English spelling.",
+		"note": "English source: {total, plural, one {The linked session has not started yet — it becomes a recipient after its first message.} other {The {total, number, ::group-off} linked sessions have not started yet — they become recipients after their first message.}}. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site. ICU plural selects count morphology; nested number ::group-off keeps the original ungrouped English spelling. Count grammar uses real ICU one/other arms, not an English suffix. Russian translators need few/many arms; Arabic translators need zero/two (and locale-appropriate few/many) arms. English 0/1/2 exercises other/one/other.",
 		"length": "English is 241 source characters. Existing feedback may wrap; keep the same sentence/paragraph count, no additional instructions.",
 		"placeholders": {
-			"total": "Runtime binding on request-update: total"
-		}
+			"total": "Raw numeric count passed to ICU; not a preformatted string. ICU number ::group-off preserves ungrouped English digits."
+		},
+		"plural": "ru: add few/many; ar: add zero/two; preserve the message’s count variable and existing numeric formatting."
 	},
 	"ui.projects.request_update.no_linked_sessions_to_ask_link_a_session_to_display_first": {
 		"role": "request update: status or explanatory feedback for “No linked sessions to ask. Link a session to … first.”",
@@ -2780,13 +2812,14 @@
 	"ui.projects.request_update.requested_updates_from_delivered_of_total_sessions_on_display": {
 		"role": "request update: status or explanatory feedback for “Requested updates from … of … sessions on ….”",
 		"tone": "Quiet factual statement; preserve the distinction between unavailable, refused and pending.",
-		"note": "English source: Requested updates from {delivered} of {total} sessions on {display}.. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site.",
+		"note": "English source: Requested updates from {delivered} of {total} sessions on {display}.. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site. Count grammar uses real ICU one/other arms, not an English suffix. Russian translators need few/many arms; Arabic translators need zero/two (and locale-appropriate few/many) arms. English 0/1/2 exercises other/one/other.",
 		"length": "English is 68 source characters. Existing feedback may wrap; keep the same sentence/paragraph count, no additional instructions.",
 		"placeholders": {
 			"delivered": "Runtime binding on request-update: delivered: formatNumber(delivered, { useGrouping: false })",
-			"total": "Runtime binding on request-update: total: formatNumber(total, { useGrouping: false })",
+			"total": "Raw numeric count passed to ICU; not a preformatted string. ICU number ::group-off preserves ungrouped English digits.",
 			"display": "Runtime binding on request-update: display: String(display)"
-		}
+		},
+		"plural": "ru: add few/many; ar: add zero/two; preserve the message’s count variable and existing numeric formatting."
 	},
 	"ui.projects.request_update.requesting_updates": {
 		"role": "request update: field, view or status label for “Requesting updates…”",
@@ -2817,11 +2850,12 @@
 	"ui.projects.timeline.read_failed": {
 		"role": "timeline: status or explanatory feedback for “Milestones could not be read for {count, plural, one {… project} other {… projects}}.”",
 		"tone": "Quiet factual statement; preserve the distinction between unavailable, refused and pending.",
-		"note": "English source: Milestones could not be read for {count, plural, one {{count, number, ::group-off} project} other {{count, number, ::group-off} projects}}.. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site. ICU plural selects count morphology; nested number ::group-off keeps the original ungrouped English spelling.",
+		"note": "English source: Milestones could not be read for {count, plural, one {{count, number, ::group-off} project} other {{count, number, ::group-off} projects}}.. Each binding below names the actual value/formatter used here. Keep all placeholder names; do not translate dynamic names or formatter output. Any outer emphasis/span markup remains at the call site. ICU plural selects count morphology; nested number ::group-off keeps the original ungrouped English spelling. Count grammar uses real ICU one/other arms, not an English suffix. Russian translators need few/many arms; Arabic translators need zero/two (and locale-appropriate few/many) arms. English 0/1/2 exercises other/one/other.",
 		"length": "English is 139 source characters. Existing feedback may wrap; keep the same sentence/paragraph count, no additional instructions.",
 		"placeholders": {
-			"count": "Runtime binding on project-timeline: count: failedDetails"
-		}
+			"count": "Raw numeric count passed to ICU; not a preformatted string. ICU number ::group-off preserves ungrouped English digits."
+		},
+		"plural": "ru: add few/many; ar: add zero/two; preserve the message’s count variable and existing numeric formatting."
 	},
 	"ui.projects.use_request_update.could_not_request_updates_endedsentence_message": {
 		"role": "use request update: status or explanatory feedback for “Could not request updates: …”",

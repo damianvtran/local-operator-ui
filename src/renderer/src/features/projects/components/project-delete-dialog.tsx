@@ -1,4 +1,5 @@
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The delete confirmation, with the typed NAME the route requires.
  *
@@ -41,6 +42,7 @@ export const ProjectDeleteDialog: FC<ProjectDeleteDialogProps> = ({
 	onClose,
 	onConfirm,
 }) => {
+	useI18nLocale();
 	const [typed, setTyped] = useState("");
 	const [refusal, setRefusal] = useState<string | null>(null);
 	const [submitting, setSubmitting] = useState(false);

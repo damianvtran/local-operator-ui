@@ -1,4 +1,5 @@
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The detail page's linked-sessions block: one row per linked session, the
  * unlink and per-row message controls, the quick-send strip, and the pickers
@@ -83,6 +84,7 @@ export const ProjectLinks: FC<ProjectLinksProps> = ({
 	onQuickSend,
 	onStartSession,
 }) => {
+	useI18nLocale();
 	const navigate = useNavigate();
 	const sessions = useCanonicalSessionsStore((state) => state.sessions);
 	const [pickerOpen, setPickerOpen] = useState(false);

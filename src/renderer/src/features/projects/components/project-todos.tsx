@@ -1,4 +1,5 @@
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The linked sessions' to-dos, aggregated into rows.
  *
@@ -26,6 +27,7 @@ export type ProjectTodosProps = {
 };
 
 export const ProjectTodos: FC<ProjectTodosProps> = ({ links }) => {
+	useI18nLocale();
 	const aggregate = todosAggregate(links);
 	const rows = links.filter((link) => link.todos !== null);
 	return (

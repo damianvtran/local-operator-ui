@@ -1,4 +1,5 @@
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The detail header's "Request update" button: one secondary control with
  * three label states, leading the Edit/Delete cluster.
@@ -59,6 +60,7 @@ export type ProjectRequestUpdateButtonProps = {
 export const ProjectRequestUpdateButton: FC<
 	ProjectRequestUpdateButtonProps
 > = ({ project }) => {
+	useI18nLocale();
 	const capabilities = useDesktopCapabilities();
 	const request = useRequestProjectUpdate();
 	const { sending, cooling, cooldownRemainingMs } = useRequestUpdateState(

@@ -1,4 +1,5 @@
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * One project's detail screen (`/projects/:projectId`).
  *
@@ -125,6 +126,7 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 	projectKey,
 	nowMs,
 }) => {
+	useI18nLocale();
 	const navigate = useNavigate();
 	const capabilities = useDesktopCapabilities();
 	/*

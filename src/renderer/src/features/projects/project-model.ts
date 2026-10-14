@@ -411,16 +411,14 @@ export function milestoneCountLabel(completed: number, total: number): string {
 	if (total <= 0) return "";
 	return t("ui.projects.project_model.completed_total", {
 		completed: formatNumber(completed, { useGrouping: false }),
-		total: formatNumber(total, { useGrouping: false }),
+		total: total,
 	});
 }
 
 /** `2 live`, or `""` for zero — a chip that says nothing is not drawn. */
 export function liveSessionsLabel(live: number): string {
 	if (live <= 0) return "";
-	return t("ui.projects.project_model.live_live", {
-		live: formatNumber(live, { useGrouping: false }),
-	});
+	return t("ui.projects.project_model.live_live", { live });
 }
 
 /** `1 session` / `3 sessions`, or `""` for zero. */

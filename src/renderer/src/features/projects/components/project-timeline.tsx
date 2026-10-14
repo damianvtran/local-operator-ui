@@ -1,4 +1,5 @@
 import { formatNumber, t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The tab's Timeline view: a time-scaled schedule — bars, milestone marks and
  * a today marker — under a pinned name column.
@@ -112,6 +113,7 @@ export const ProjectTimeline: FC<ProjectTimelineProps> = ({
 	onRetryDetails,
 	teamLabelFor = (name) => name,
 }) => {
+	useI18nLocale();
 	const [manual, setManual] = useState<TimelineTier | null>(null);
 	const [width, setWidth] = useState(0);
 	/*

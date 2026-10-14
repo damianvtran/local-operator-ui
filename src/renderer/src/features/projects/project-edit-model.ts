@@ -63,7 +63,7 @@ export function projectTitleRule(title: string): string | null {
 	if (title.trim().length > PROJECT_TITLE_MAX_CHARS)
 		return t(
 			"ui.projects.project_edit_model.titles_are_at_most_value1_characters",
-			{ value1: formatNumber(PROJECT_TITLE_MAX_CHARS, { useGrouping: false }) },
+			{ value1: PROJECT_TITLE_MAX_CHARS },
 		);
 	return null;
 }
@@ -74,9 +74,7 @@ export function projectDescriptionRule(description: string): string | null {
 		return t(
 			"ui.projects.project_edit_model.keep_the_description_within_value1_characters",
 			{
-				value1: formatNumber(PROJECT_DESCRIPTION_MAX_CHARS, {
-					useGrouping: false,
-				}),
+				value1: PROJECT_DESCRIPTION_MAX_CHARS,
 			},
 		);
 	return null;
@@ -103,9 +101,7 @@ export function projectAttributionRule(
 						? t("ui.projects.project_edit_model.owners")
 						: t("ui.projects.project_edit_model.teams"),
 				),
-				value2: formatNumber(PROJECT_ATTRIBUTION_MAX_CHARS, {
-					useGrouping: false,
-				}),
+				value2: PROJECT_ATTRIBUTION_MAX_CHARS,
 			},
 		);
 	return null;
