@@ -178,6 +178,10 @@ export type MessageParams = {
 	"ui.hub.links.preview_warnings": undefined;
 	"ui.hub.links.publication_pending": undefined;
 	"ui.hub.links.published": { item: string; source: string };
+	"ui.hub.links.resolve_action": undefined;
+	"ui.hub.links.resolve_conflict": undefined;
+	"ui.hub.links.resolve_description": { item: string };
+	"ui.hub.links.resolve_title": undefined;
 	"ui.hub.links.retry": undefined;
 	"ui.hub.links.source_address": { address: string };
 	"ui.hub.links.source_private": { organization: string };

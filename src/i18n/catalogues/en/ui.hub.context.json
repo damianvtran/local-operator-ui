@@ -573,5 +573,25 @@
 		"role": "pending operation status",
 		"tone": "neutral uncertainty; no false success, failure, cancellation or permission grant",
 		"note": "Only for explicit pending-reconciliation with no authoritative accepted publication, or unknown post-dispatch observation timeout once that branch is wired. UI180s is an observation wait, not cancellation or proof of no remote mutation. Retry means resubmit ORIGINAL request UUID/receipt/pin/body/scoped target through existing service after fresh permission checks; never fresh preview/listing/force/cross-scope fallback. Revoked permission can keep operation unresolved. Do not promise resolution or automatic retry. Remote success with incomplete LOCAL policy settlement continues to use separate policy_pending copy. No placeholders; no raw provider/credential/payload bytes; operation correlation is not publication authority. Wrap naturally, no fixed width/cell cap."
+	},
+	"ui.hub.links.resolve_title": {
+		"role": "heading",
+		"tone": "plain, precise; a confirmation is deliberate and not silently reversible; no inference of source or scope",
+		"note": "Title for an explicit source-confirmation act on a legacy unknown-origin row. It is a deliberate confirmation, not an inference: the operator states the source and scope. Do not imply the app guessed or that confirmation is reversible in place. Wrap naturally; no fixed width/cell cap."
+	},
+	"ui.hub.links.resolve_description": {
+		"role": "disclosure body",
+		"tone": "plain, precise; a confirmation is deliberate and not silently reversible; no inference of source or scope",
+		"note": "States the consequence of confirming a source. {item} is escaped UNTRUSTED user-authored display bytes, never authority and never interpolated as markup. The sentence must make clear a wrong source is not later corrected in place - it requires a separate local copy - so the operator does not treat this as a reversible toggle. No Public/current-organization inference. Wrap naturally; no fixed width cap."
+	},
+	"ui.hub.links.resolve_action": {
+		"role": "button",
+		"tone": "plain, precise; a confirmation is deliberate and not silently reversible; no inference of source or scope",
+		"note": "Explicit confirmation of the stated source and scope. It materializes the real link; it is not an apply, pull, publish or policy switch. Label stays stable so assistive tech and the disabled state read the same words. No hard character cap; the button may wrap its label."
+	},
+	"ui.hub.links.resolve_conflict": {
+		"role": "error status",
+		"tone": "plain, precise; a confirmation is deliberate and not silently reversible; no inference of source or scope",
+		"note": "Shown when the service refuses the confirmation because the stored origin has a DIFFERENT KNOWN scope. The old state is left byte-unchanged, so the copy must say nothing was changed and must not promise a retry that could overwrite. Not a generic failure; no raw provider/credential bytes. Wrap naturally; no fixed width cap."
 	}
 }
