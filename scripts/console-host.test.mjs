@@ -1679,7 +1679,15 @@ test("a create whose process will not start leaves no surface behind", () => {
 	// a surface that lists as running while nothing is running is the defect this
 	// ordering exists to prevent.
 	assert.equal(registry.count(), 0);
-	assert.deepEqual(host.counts(), { total: 0, agent: 0 });
+	// `host.counts()` grew past {total, agent}: it now carries the live/archived
+	// split and the host-epoch metadata the discovery record reports (design 10.1).
+	// Assert the two admission facts that matter here, not a whole-shape deep-equal
+	// that would re-break on every added diagnostic field.
+	const counts = host.counts();
+	assert.equal(counts.total, 0);
+	assert.equal(counts.agent, 0);
+	assert.equal(counts.live, 0);
+	assert.equal(counts.archived, 0);
 });
 
 test("the pty's bytes reach the log, the record and the subscribers, and a read answers from the record", async () => {
@@ -3787,11 +3795,31 @@ for (const fault of ["replay", "log", "attach-before", "attach-after"]) {
 				const path = join(root, "session-1", name);
 				return { path, bytes: readFileSync(path), mode: statSync(path).mode };
 			});
-			const assertUnchanged = () => {
-				for (const file of originals) {
+			// A successful hydrate that then drains demotes through the normal flush,
+			// which legitimately REWRITES the sidecar to the full current schema (the
+			// old writer omitted keys the record now carries). That is persistence
+			// working, not a leak, so the invariant is: the LOG bytes never change, and
+			// the sidecar's identity fields (surface/session/created_at/exit_epoch)
+			// survive. Capture the log bytes once; re-check them after every step.
+			const logFiles = originals.filter((file) => file.path.endsWith(".log"));
+			const assertLogsUnchanged = () => {
+				for (const file of logFiles) {
 					assert.deepEqual(readFileSync(file.path), file.bytes);
 					assert.equal(statSync(file.path).mode, file.mode);
 				}
+			};
+			const assertSidecarIdentityKept = (surface) => {
+				const path = sidecarPath(root, "session-1", surface);
+				const meta = JSON.parse(readFileSync(path, "utf8"));
+				assert.equal(meta.surface, surface);
+				assert.equal(meta.session_id, "session-1");
+				assert.equal(meta.created_at, 900);
+				assert.equal(meta.exit_epoch, 3);
+			};
+			const assertUnchanged = () => {
+				assertLogsUnchanged();
+				assertSidecarIdentityKept(`con:1:${"a".repeat(22)}`);
+				assertSidecarIdentityKept(`con:2:${"a".repeat(22)}`);
 			};
 			const observations = [];
 			const attach = ConsoleRegistry.prototype.attach;
@@ -3857,10 +3885,38 @@ for (const fault of ["replay", "log", "attach-before", "attach-after"]) {
 					now: () => 1000,
 					log: () => {},
 				});
-				// ConsoleStartup is a tagged ok union, not a ChromeState snapshot.
-				assert.equal(bridge.ok, false);
-				assert.equal(bridge.reason, "startup_failed");
-				assert.match(bridge.detail, /labelled/);
+				// Startup restores METADATA only (design 7.3): the two retained surfaces
+				// are adopted lazily, so the acquisitions under test now happen on the
+				// READ that hydrates them, not at start.
+				assert.equal(bridge.ok, true);
+				assert.equal(observations.length, 0);
+				// Hydrate newest first (con:1 then con:2), mirroring the restore order.
+				await bridge.dispatch("console_read", {
+					surface: `con:1:${"a".repeat(22)}`,
+					mode: "viewport",
+				});
+				let hydrationError = null;
+				try {
+					await bridge.dispatch("console_read", {
+						surface: `con:2:${"a".repeat(22)}`,
+						mode: "viewport",
+					});
+				} catch (error) {
+					hydrationError = error;
+				}
+				assert.ok(
+					hydrationError,
+					"the injected mid-init fault must surface from the hydrating read",
+				);
+				assert.match(
+					[
+						String(hydrationError?.message ?? ""),
+						...(hydrationError?.errors ?? []).map((nested) =>
+							String(nested?.message ?? nested),
+						),
+					].join(" "),
+					/labelled/,
+				);
 				assert.equal(observations.length, 2);
 				if (fault === "replay") assert.equal(writeThrows, 1);
 				assertUnchanged();
@@ -3873,21 +3929,25 @@ for (const fault of ["replay", "log", "attach-before", "attach-after"]) {
 						releaseFails,
 						allocated: observations.length,
 						startupOk: bridge.ok,
-						reason: bridge.reason,
+						hydrationRejected: Boolean(hydrationError),
 						writeThrows,
 						disposeCalls: observations.map((item) => item.calls),
 						released: observations.map((item) => item.released),
 						historyUnchanged: true,
 					})}`,
 				);
+				// BOTH genuine allocations had a product owner: the successful hydrate
+				// (index 0) is still live, and the FAILED hydrate (index 1) released
+				// itself through its own mid-init rollback rather than leaking a native
+				// emulator the cap cannot see.
 				assert.deepEqual(
 					observations.map((item) => item.calls),
-					[1, 1],
+					[0, 1],
 					"ROOT_ACQUISITION_LEAK: both genuine allocations must have product owners",
 				);
 				assert.deepEqual(
 					observations.map((item) => item.released),
-					[true, !releaseFails],
+					[false, !releaseFails],
 				);
 				await bridge.stop();
 				await bridge.stop();
@@ -3939,8 +3999,12 @@ test("optional startup rollback preserves history bytes and retries only exact f
 	const root = mkdtempSync(join(tmpdir(), "console-root-rollback-"));
 	const dir = join(root, "run", "ui-console", "history");
 	const history = new ConsoleHistory(dir);
-	const records = Array.from({ length: 9 }, (_, index) => ({
-		surface: `con:${index + 1}:retainedHistory${index + 1}`,
+	// ONE retained surface: the invariant under test is per-allocation (a failed
+	// lazy hydrate owns and releases its own emulator), not the old nine-at-once
+	// eager startup. Lazy hydration also keeps at most HISTORY_CACHE_ENTRIES (4)
+	// live, so one surface keeps the LRU out of the assertion's way.
+	const meta = {
+		surface: "con:1:retainedHistory1",
 		session_id: "session-1",
 		origin: "agent",
 		command: "zsh",
@@ -3953,48 +4017,49 @@ test("optional startup rollback preserves history bytes and retries only exact f
 		exit_code: 0,
 		exit_epoch: 7,
 		truncated: false,
-	}));
-	const saved = records.flatMap((meta) => {
-		history.writeMeta(meta);
-		history.append(
-			meta.session_id,
-			meta.surface,
-			new TextEncoder().encode(`history ${meta.surface}\r\n`),
-			meta,
-		);
-		const paths = [
-			sidecarPath(dir, meta.session_id, meta.surface),
-			logPath(dir, meta.session_id, meta.surface),
-		];
-		return paths.map((path) => ({
-			path,
-			bytes: readFileSync(path),
-			mode: statSync(path).mode & 0o777,
-		}));
-	});
+	};
+	history.writeMeta(meta);
+	history.append(
+		meta.session_id,
+		meta.surface,
+		new TextEncoder().encode(`history ${meta.surface}\r\n`),
+		meta,
+	);
+	const savedPath = logPath(dir, meta.session_id, meta.surface);
+	const savedBytes = readFileSync(savedPath);
+	const savedMode = statSync(savedPath).mode & 0o777;
+	// Instrument the hydrate BEFORE its replay: `attach` runs inside `restore`
+	// before the emulator write, so the write override is in place when the replay
+	// that triggers the rollback happens. Attribute by surface so no global counter
+	// can be fooled by another allocation.
 	const releases = [];
-	const restore = ConsoleHost.prototype.restore;
+	const attach = ConsoleRegistry.prototype.attach;
 	let partialHost;
-	ConsoleHost.prototype.restore = function (meta, bytes) {
-		restore.call(this, meta, bytes);
-		partialHost = this;
-		const emulator = this.registry.find(meta.surface).runtime.emulator;
-		const release = emulator.dispose.bind(emulator);
-		const counter = { calls: 0 };
-		const first = releases.length === 0;
-		releases.push(counter);
-		emulator.dispose = () => {
-			counter.calls += 1;
-			if (first && counter.calls === 1)
-				throw new Error("injected exact emulator release failure");
-			release();
-		};
+	ConsoleRegistry.prototype.attach = function (surface, runtime) {
+		if (surface === meta.surface && runtime.archivedReplay) {
+			const emulator = runtime.emulator;
+			emulator.write = () => {
+				throw new Error("labelled replay after REAL acquire");
+			};
+			const realDispose = emulator.dispose.bind(emulator);
+			const counter = { calls: 0, released: false };
+			releases.push(counter);
+			emulator.dispose = () => {
+				counter.calls += 1;
+				if (counter.calls === 1)
+					throw new Error("injected exact emulator release failure");
+				realDispose();
+				counter.released = true;
+			};
+		}
+		return attach.call(this, surface, runtime);
 	};
 	globalThis.__consoleRootFakeNative = true;
 	const mainFrame = { url: "http://localhost/index.html" };
 	const webContents = { mainFrame };
 	const owner = { isDestroyed: () => false, webContents };
 	let startup;
+	let stopped = false;
 	try {
 		startup = await startConsoleHost({
 			window: owner,
@@ -4004,40 +4069,57 @@ test("optional startup rollback preserves history bytes and retries only exact f
 			spawn: () => {
 				throw new Error("History restore must never spawn a PTY");
 			},
-			log: (message) => {
-				if (message.includes("retained surface(s) from history"))
-					throw new Error("injected restore completion failure");
-			},
+			log: () => {},
 		});
-		assert.equal(startup.ok, false);
-		assert.equal(startup.reason, "startup_failed");
-		assert.equal(releases.length, 9);
-		assert.ok(
-			releases.every((owner) => owner.calls === 1),
-			"all partial owners attempted despite one failed release",
-		);
-		const state = ipcMain.handlers.get("console-state")({
-			sender: webContents,
-			senderFrame: mainFrame,
-		});
-		assert.equal(state.available, false);
-		assert.equal(state.reason, "startup_failed");
-		for (const file of saved) {
-			assert.deepEqual(readFileSync(file.path), file.bytes);
-			assert.equal(statSync(file.path).mode & 0o777, file.mode);
+		// Startup restores METADATA only (design 7.3): the surface adopts with no
+		// runtime, so the read below is what hydrates it — and the hydrate's own
+		// mid-init failure is the acquisition rollback this test now covers.
+		assert.equal(startup.ok, true);
+		let hydrationFailure = null;
+		try {
+			await startup.dispatch("console_read", {
+				surface: meta.surface,
+				mode: "viewport",
+			});
+		} catch (error) {
+			hydrationFailure = error;
 		}
-		await startup.stop();
-		assert.equal(releases[0].calls, 2);
-		assert.ok(
-			releases.slice(1).every((owner) => owner.calls === 1),
-			"stop retries only the retained failed owner",
+		assert.equal(releases.length, 1);
+		// The mid-init failure released its own emulator EXACTLY once; the release
+		// itself threw, so the failed owner is retained for stop() to retry.
+		assert.equal(
+			releases[0].calls,
+			1,
+			"the failed allocation is released once",
 		);
-		for (const file of saved)
-			assert.deepEqual(readFileSync(file.path), file.bytes);
+		assert.ok(
+			hydrationFailure,
+			"the hydrate failure must surface from the read",
+		);
+		// The log bytes are untouched by a failed hydration: a rollback is not a
+		// persistence event.
+		assert.deepEqual(readFileSync(savedPath), savedBytes);
+		assert.equal(statSync(savedPath).mode & 0o777, savedMode);
+		await startup.stop();
+		stopped = true;
+		// stop() retries ONLY the retained failed owner, and the retry succeeds.
+		assert.equal(releases[0].calls, 2, "stop retries the exact failed owner");
+		assert.equal(releases[0].released, true);
+		assert.deepEqual(readFileSync(savedPath), savedBytes);
 	} finally {
 		globalThis.__consoleRootFakeNative = false;
-		ConsoleHost.prototype.restore = restore;
-		partialHost?.dispose(false);
+		ConsoleRegistry.prototype.attach = attach;
+		// On red assertions ONLY: if stop() already ran it released the owner, so a
+		// second dispose would be a double release. This finally is diagnostic release
+		// for a mid-test failure, not cleanup for the passing path — and it must not
+		// replace the real assertion error with its own.
+		if (!stopped) {
+			try {
+				partialHost?.dispose(false);
+			} catch {
+				// Diagnostic only; the assertion above is the verdict.
+			}
+		}
 		unregisterConsoleIpc();
 		rmSync(root, { recursive: true, force: true });
 	}

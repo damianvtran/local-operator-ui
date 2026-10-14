@@ -8,10 +8,12 @@ export const DEFAULT_USER_RESERVED = 16;
 export const LOG_BUDGET_BYTES = 512 * 1024 * 1024;
 export const LOG_RESERVATION_BYTES = 4 * 1024 * 1024;
 export const PENDING_BUDGET_BYTES = 32 * 1024 * 1024;
-export const HISTORY_CACHE_BYTES = 64 * 1024 * 1024;
+// The retained-history cache is bounded by ENTRY COUNT, not a byte envelope: each
+// hydrated emulator's cells are already charged against MANAGED_BUDGET_BYTES at
+// admission (requireResourceBudget), so a second byte bound here would double-count
+// and could evict a surface whose bytes are the only thing keeping its pane readable.
 export const HISTORY_CACHE_ENTRIES = 4;
 export const CELL_BUDGET = 64 * 1024 * 1024;
-export const SCRATCH_BUDGET_BYTES = 64 * 1024 * 1024;
 export const MANAGED_BUDGET_BYTES = 768 * 1024 * 1024;
 // Pinned xterm 6 BufferLine allocates Uint32Array(3 * columns): 12 bytes per
 // cell before line objects, combined characters and extended attributes. Charge
