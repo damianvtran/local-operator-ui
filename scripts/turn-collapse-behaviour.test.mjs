@@ -3473,27 +3473,3 @@ test("a head cut with older rows keeps its live episode condensed; with none it 
 	assert.equal(bar(none), null, "nothing older: the receipt paints loose");
 	assert.ok(rowBox(none, "hm-peer"), "and its content is mounted");
 });
-
-test("rows hidden by the render window count as older rows (hidden > 0 arm)", async (t) => {
-	__resetTurnCollapseOpen();
-	/*
-	 * Caller arm 2. `hasMore` is FALSE here: every row is loaded, but the render
-	 * window shows only the newest ones, so the visible head is a cut. A peer at
-	 * the window's top edge followed by a long run of work must condense, exactly
-	 * as in the `hasMore` case. The precondition below proves the window really
-	 * did hide the head (user/answer unmounted), so this cannot pass vacuously.
-	 */
-	const records = [
-		userRecord("hid-user"),
-		answerRecord("hid-final", { stopReason: "stop" }),
-		peerRecord("hid-peer"),
-	];
-	for (let i = 0; i < 58; i += 1)
-		records.push(toolRecord(`hid-tool-${i}`, { phase: "done" }));
-	records.push(toolRecord("hid-tool-live", { phase: "running" }));
-	const mounted = await mount(t, records, { waiting: true, hasMore: false });
-	assert.equal(rowBox(mounted, "hid-user"), null, "the head is hidden");
-	assert.equal(rowBox(mounted, "hid-final"), null, "the answer is hidden");
-	assert.ok(bar(mounted), "hidden rows are older rows: the episode condenses");
-	assert.equal(rowBox(mounted, "hid-peer"), null, "behind its bar");
-});

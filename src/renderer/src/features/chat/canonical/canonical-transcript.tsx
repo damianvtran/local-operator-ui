@@ -242,6 +242,7 @@ import {
 	collapsePlanInputKey,
 	collapseRowsKey,
 	initialAlignWalkState,
+	olderRowsThanWindow,
 	paintedRows,
 	runIsCondensed,
 	snapWindowToRunBoundary,
@@ -4406,7 +4407,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			 * read a receipt at the edge as the run's opening content. In the plan's
 			 * options key, so a page landing re-plans.
 			 */
-			olderRowsExist: Boolean(transcript.hasMore) || hidden > 0,
+			olderRowsExist: olderRowsThanWindow(transcript.hasMore, hidden),
 		}),
 		[
 			focusedRecordId,

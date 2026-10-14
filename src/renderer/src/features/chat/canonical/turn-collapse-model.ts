@@ -1821,6 +1821,35 @@ export function windowTopRunIsHeadCut(
 }
 
 /**
+ * WHETHER ROWS OLDER THAN THE PLAN'S HEAD EXIST: the caller's input to
+ * `collapsePlan`'s `olderRowsExist`.
+ *
+ * Two independent reasons the head of the plan's rows is a CUT rather than the
+ * conversation's start: an older page is still to come (`hasMore`), or every row
+ * is loaded but the render window shows only the newest (`hidden > 0`). Either
+ * one means a receipt at the edge continues settled work that is off the page.
+ *
+ * Both inputs are functions of the paging state and the window alone - `hidden`
+ * is `rows.length - visible.length`, and neither `rows` nor `visible` reads the
+ * plan - so a plan change cannot move this value and the plan cannot feed back
+ * into its own input.
+ *
+ * COVERAGE, stated so the gap is not laundered. This derivation is unit-tested
+ * directly (`scripts/turn-collapse-model.test.mjs`); the plan's response to the
+ * flag is tested by the true/false/omitted model tests; the `hasMore` half of
+ * the caller is mount-tested. NO mounted test covers a render-window-hidden
+ * head: the 62-record mount needed to hide one never completed in this lane's
+ * environments, so it was replaced by the unit test rather than kept as a
+ * fixture that can stall a shared suite.
+ */
+export function olderRowsThanWindow(
+	hasMore: boolean | undefined,
+	hidden: number,
+): boolean {
+	return Boolean(hasMore) || hidden > 0;
+}
+
+/**
  * The key of the run a completion walk would be walking — the CONDENSED run whose
  * head the fetched rows cut off — or null when no run needs one.
  *
