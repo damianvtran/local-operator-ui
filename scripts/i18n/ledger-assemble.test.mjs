@@ -19,6 +19,7 @@ import {
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
+	readdirSync,
 	rmSync,
 	writeFileSync,
 } from "node:fs";
@@ -719,6 +720,7 @@ test("a multi-namespace receipt is scoped per namespace and a finding that names
 		body.namespaces = {
 			"demo.words": {
 				status: "passed",
+				sha256: { fr: sha(FR), en: sha(EN) },
 				findings: [{ severity: "MINOR", key: "demo.words.plain" }],
 			},
 			"demo.other": {
@@ -743,7 +745,10 @@ test("a multi-namespace receipt is scoped per namespace and a finding that names
 			instance: "run-iiiiiiii",
 			findings: [{ severity: "MAJOR", key: "unattributable" }],
 		});
-		body.namespaces = { "demo.words": {}, "demo.other": {} };
+		body.namespaces = {
+			"demo.words": { sha256: { fr: sha(FR), en: sha(EN) } },
+			"demo.other": {},
+		};
 		refusal(
 			() =>
 				run(root, {
@@ -754,6 +759,121 @@ test("a multi-namespace receipt is scoped per namespace and a finding that names
 			/names no namespace/,
 		);
 	});
+});
+
+/*
+ * ONE audit run covering several namespaces is ONE receipt file with a
+ * `namespaces` block per namespace, each naming its OWN two hashes. The tool is
+ * invoked once per namespace against the same file; the in-repo copy is written
+ * once and verified identical on every later call (immutable evidence).
+ */
+function multiTree() {
+	const root = buildTree();
+	const second = [
+		"demo.more",
+		`${JSON.stringify({ "demo.more.a": "A" }, null, "\t")}\n`,
+		`${JSON.stringify({ "demo.more.a": "Un" }, null, "\t")}\n`,
+	];
+	writeFileSync(join(root, "src/i18n/catalogues/en/demo.more.json"), second[1]);
+	writeFileSync(join(root, "src/i18n/catalogues/fr/demo.more.json"), second[2]);
+	return { root, second };
+}
+
+const multiReceipt = ({ crossed = false, second }) => {
+	const own = {
+		"demo.words": { fr: sha(FR), en: sha(EN) },
+		"demo.more": { fr: sha(second[2]), en: sha(second[1]) },
+	};
+	if (crossed)
+		[own["demo.words"], own["demo.more"]] = [
+			own["demo.more"],
+			own["demo.words"],
+		];
+	return {
+		auditor: "i18n-auditor",
+		model: MODEL,
+		instance: "run-multi-0001",
+		status: "passed",
+		namespaces: {
+			"demo.words": {
+				status: "passed",
+				sha256: own["demo.words"],
+				findings: [],
+			},
+			"demo.more": {
+				status: "passed",
+				sha256: own["demo.more"],
+				findings: [{ severity: "MINOR", key: "demo.more.a" }],
+			},
+		},
+	};
+};
+
+test("ONE receipt file covers several namespaces: assembled once per namespace, one copy in the repo", () => {
+	const { root, second } = multiTree();
+	try {
+		const receipt = writeReceipt(root, "multi.json", multiReceipt({ second }));
+		const base = { auditorInstance: "run-multi-0001", receipt };
+		const a = run(root, { ...base, file: FILE });
+		const b = run(root, {
+			...base,
+			file: "src/i18n/catalogues/fr/demo.more.json",
+			result: "clean-with-findings",
+		});
+		assert.equal(a.status, "audited");
+		assert.equal(b.status, "audited");
+		assert.deepEqual(
+			b.audit.findings,
+			{ blocker: 0, major: 0, minor: 1, nit: 0 },
+			"each row counts only its own namespace's findings",
+		);
+		assert.deepEqual(a.audit.findings, {
+			blocker: 0,
+			major: 0,
+			minor: 0,
+			nit: 0,
+		});
+		assert.equal(
+			a.audit.receipt_sha256,
+			b.audit.receipt_sha256,
+			"both rows point at the same receipt content",
+		);
+		assert.deepEqual(readdirSync(join(root, "i18n", "receipts")), [
+			"run-multi-0001.json",
+		]);
+		assert.deepEqual(
+			checkLedger({ repo: root }).failures,
+			[],
+			"the gate accepts both rows",
+		);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
+test("NEGATIVE: a namespace cannot borrow another namespace's hashes inside one receipt", () => {
+	const { root, second } = multiTree();
+	try {
+		// Every hash on disk appears somewhere in this receipt, but each namespace's
+		// block names the OTHER namespace's bytes: nothing was audited at its own.
+		const receipt = writeReceipt(
+			root,
+			"crossed.json",
+			multiReceipt({ crossed: true, second }),
+		);
+		refusal(
+			() =>
+				run(root, { auditorInstance: "run-multi-0001", receipt, file: FILE }),
+			/does not name the (target|English source) bytes on disk/,
+		);
+		assert.equal(
+			existsSync(join(root, "i18n", "ledger.json")),
+			false,
+			"nothing written",
+		);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
 });
 
 test("resultSupportedBy and supportedStatus never promote beyond the evidence", () => {

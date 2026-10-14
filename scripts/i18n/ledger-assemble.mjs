@@ -327,7 +327,22 @@ export function assemble(options) {
 			`the receipt names model ${JSON.stringify(identity.model)}, not --auditor-model ${JSON.stringify(options.auditorModel)}`,
 		);
 	}
-	const leaves = new Set(stringLeaves(receipt));
+	/*
+	 * WHERE THE HASHES MAY COME FROM. A receipt for ONE namespace may name its
+	 * hashes anywhere in the file. A receipt covering SEVERAL (one audit run, one
+	 * immutable `i18n/receipts/<instance>.json`, referenced by one row per
+	 * namespace) must name each namespace's hashes INSIDE that namespace's own
+	 * block: searching the whole file would let ui.console borrow the hashes
+	 * ui.settings names, and every hash would be "present" while no namespace had
+	 * actually been audited at its own bytes.
+	 */
+	const blocks =
+		receipt.namespaces && typeof receipt.namespaces === "object"
+			? receipt.namespaces
+			: {};
+	const searched =
+		Object.keys(blocks).length > 1 ? (blocks[namespace] ?? {}) : receipt;
+	const leaves = new Set(stringLeaves(searched));
 	for (const [name, hash] of [
 		["target", target_sha256],
 		["English source", source_sha256],
