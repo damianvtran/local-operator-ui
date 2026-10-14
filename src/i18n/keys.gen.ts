@@ -154,7 +154,7 @@ export type MessageParams = {
 	"ui.agents.settings.system_prompt.loading_system_prompt": undefined;
 	"ui.agents.settings.system_prompt.system_instructions_that_define_the_agent_s": undefined;
 	"ui.agents.starters.action.all_builtins": undefined;
-	"ui.agents.starters.action.all_count": { count: string };
+	"ui.agents.starters.action.all_count": { count: number };
 	"ui.agents.starters.action.done": undefined;
 	"ui.agents.starters.available": { count: number };
 	"ui.agents.starters.progress.accessible": { step: string; total: string };
@@ -165,14 +165,14 @@ export type MessageParams = {
 		name: string;
 	};
 	"ui.agents.starters.server_unanswered": undefined;
-	"ui.agents.starters.summary.already_present": { count: string };
+	"ui.agents.starters.summary.already_present": { count: number };
 	"ui.agents.starters.summary.collisions": { count: number; names: string };
 	"ui.agents.starters.summary.empty": undefined;
-	"ui.agents.starters.summary.failed": { count: string };
-	"ui.agents.starters.summary.installed": { count: string };
+	"ui.agents.starters.summary.failed": { count: number };
+	"ui.agents.starters.summary.installed": { count: number };
 	"ui.agents.starters.summary.sentence": { parts: string };
 	"ui.agents.starters.summary.separator": undefined;
-	"ui.agents.starters.summary.skipped": { count: string };
+	"ui.agents.starters.summary.skipped": { count: number };
 	"ui.browser.chrome.accessible_tab": {
 		title: string;
 		loading: string;

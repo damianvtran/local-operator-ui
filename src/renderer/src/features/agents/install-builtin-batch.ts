@@ -126,25 +126,25 @@ export const summarySentence = (summary: InstallSummary): string => {
 	if (summary.installed > 0)
 		parts.push(
 			t("ui.agents.starters.summary.installed", {
-				count: String(summary.installed),
+				count: summary.installed,
 			}),
 		);
 	if (summary.alreadyPresent > 0)
 		parts.push(
 			t("ui.agents.starters.summary.already_present", {
-				count: String(summary.alreadyPresent),
+				count: summary.alreadyPresent,
 			}),
 		);
 	if (summary.skipped.length > 0)
 		parts.push(
 			t("ui.agents.starters.summary.skipped", {
-				count: String(summary.skipped.length),
+				count: summary.skipped.length,
 			}),
 		);
 	if (summary.failed.length > 0)
 		parts.push(
 			t("ui.agents.starters.summary.failed", {
-				count: String(summary.failed.length),
+				count: summary.failed.length,
 			}),
 		);
 	if (parts.length === 0) parts.push(t("ui.agents.starters.summary.empty"));

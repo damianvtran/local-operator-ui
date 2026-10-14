@@ -237,7 +237,7 @@ export const InstallBuiltinAgents: FC<InstallBuiltinAgentsProps> = ({
 						</span>
 						<span className="shrink-0 font-medium text-accent">
 							{t("ui.agents.starters.action.all_count", {
-								count: String(total),
+								count: total,
 							})}
 						</span>
 					</button>

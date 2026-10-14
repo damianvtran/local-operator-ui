@@ -1,121 +1,144 @@
 {
 	"ui.agents.starters.server_unanswered": {
-		"role": "Built-in installation status",
-		"tone": "Compact, factual; distinguish installed, already present, skipped and failed.",
-		"note": "Counts are ungrouped to preserve the existing English output. Built-in names are identifiers and must not be translated."
+		"role": "Fallback error line for a failed individual install with no exception message",
+		"tone": "Neutral failure statement; do not promise a retry.",
+		"length_hint": "One short error sentence under the failed built-in name.",
+		"note": "Used only when a thrown error has no readable message. It is not a progress or success status."
 	},
 	"ui.agents.starters.summary.installed": {
-		"role": "Batch installation receipt",
-		"tone": "Compact, factual; distinguish installed, already present, skipped and failed.",
-		"note": "Counts are ungrouped to preserve the existing English output. Built-in names are identifiers and must not be translated.",
+		"role": "Successfully installed-count clause in the final batch receipt",
+		"tone": "Lowercase outcome fragment, no terminal punctuation.",
+		"length_hint": "Compact clause in one summary sentence, about 11 characters plus digits.",
+		"note": "One successful-install bucket, omitted when zero. Joined with other nonempty clauses using summary.separator; summary.sentence supplies the final period.",
+		"plural_guidance": "Use CLDR branches needed by the target language (for example ru/pl few and many; ar zero, two, few and many). Keep {count} ungrouped in every branch: use the plain argument, never # or {count, number}, to preserve identifier-like receipt counts.",
 		"placeholders": {
-			"count": "Number of available agents or outcomes; plural selects the noun where present."
+			"count": "Number of successful new installations; nonnegative integer. Numeric plural selector; print it ungrouped via {count}."
 		}
 	},
 	"ui.agents.starters.summary.already_present": {
-		"role": "Batch installation receipt",
-		"tone": "Compact, factual; distinguish installed, already present, skipped and failed.",
-		"note": "Counts are ungrouped to preserve the existing English output. Built-in names are identifiers and must not be translated.",
+		"role": "Already-installed-count clause in the final batch receipt",
+		"tone": "Lowercase no-op outcome fragment, not a new-install claim.",
+		"length_hint": "Compact clause in one summary sentence, about 17 characters plus digits.",
+		"note": "Counts built-ins the backend reported already present, not successful new copies. Omitted when zero; joined with other clauses, no period here.",
+		"plural_guidance": "Use CLDR branches needed by the target language (for example ru/pl few and many; ar zero, two, few and many). Keep {count} ungrouped in every branch: use the plain argument, never # or {count, number}, to preserve identifier-like receipt counts.",
 		"placeholders": {
-			"count": "Number of available agents or outcomes; plural selects the noun where present."
+			"count": "Number of idempotent already-present outcomes; nonnegative integer. Numeric plural selector; print it ungrouped via {count}."
 		}
 	},
 	"ui.agents.starters.summary.skipped": {
-		"role": "Batch installation receipt",
-		"tone": "Compact, factual; distinguish installed, already present, skipped and failed.",
-		"note": "Counts are ungrouped to preserve the existing English output. Built-in names are identifiers and must not be translated.",
+		"role": "Name-collision-count clause in the final batch receipt",
+		"tone": "Lowercase skipped-outcome fragment; do not call it success.",
+		"length_hint": "Compact clause in one summary sentence, about 9 characters plus digits.",
+		"note": "Counts names owned by other local agents. Omitted when zero; joined with other clauses. Detailed names follow in summary.collisions.",
+		"plural_guidance": "Use CLDR branches needed by the target language (for example ru/pl few and many; ar zero, two, few and many). Keep {count} ungrouped in every branch: use the plain argument, never # or {count, number}, to preserve identifier-like receipt counts.",
 		"placeholders": {
-			"count": "Number of available agents or outcomes; plural selects the noun where present."
+			"count": "Number of names skipped because another local agent owns them; nonnegative integer. Numeric plural selector; print it ungrouped via {count}."
 		}
 	},
 	"ui.agents.starters.summary.failed": {
-		"role": "Batch installation receipt",
-		"tone": "Compact, factual; distinguish installed, already present, skipped and failed.",
-		"note": "Counts are ungrouped to preserve the existing English output. Built-in names are identifiers and must not be translated.",
+		"role": "Failed-install-count clause in the final batch receipt",
+		"tone": "Lowercase failure fragment, separate from skipped names.",
+		"length_hint": "Compact clause in one summary sentence, about 8 characters plus digits.",
+		"note": "Counts install errors other than a name collision. Omitted when zero; joined with other clauses. Each failure also gets its own server-message line.",
+		"plural_guidance": "Use CLDR branches needed by the target language (for example ru/pl few and many; ar zero, two, few and many). Keep {count} ungrouped in every branch: use the plain argument, never # or {count, number}, to preserve identifier-like receipt counts.",
 		"placeholders": {
-			"count": "Number of available agents or outcomes; plural selects the noun where present."
+			"count": "Number of failed attempts excluding name collisions; nonnegative integer. Numeric plural selector; print it ungrouped via {count}."
 		}
 	},
 	"ui.agents.starters.summary.empty": {
-		"role": "Batch installation receipt",
-		"tone": "Compact, factual; distinguish installed, already present, skipped and failed.",
-		"note": "Counts are ungrouped to preserve the existing English output. Built-in names are identifiers and must not be translated."
+		"role": "Receipt contents for a batch with no counted outcomes",
+		"tone": "Brief neutral result, initial capital, no period.",
+		"length_hint": "One short result clause, about 18 English characters.",
+		"note": "Used as the sole parts value when all buckets are empty; summary.sentence appends the period. Not the initial uninstalled-agents empty state."
 	},
 	"ui.agents.starters.summary.sentence": {
-		"role": "Batch installation receipt",
-		"tone": "Compact, factual; distinguish installed, already present, skipped and failed.",
-		"note": "Counts are ungrouped to preserve the existing English output. Built-in names are identifiers and must not be translated.",
+		"role": "Final punctuation wrapper around batch receipt clauses",
+		"tone": "One completed factual sentence.",
+		"length_hint": "Single summary line; may wrap if many outcome buckets exist.",
+		"note": "Owns the final period. Individual outcome clauses must not add their own periods; empty-result copy also passes through this wrapper.",
 		"placeholders": {
-			"parts": "Ordered nonempty outcome clauses, joined by the localized separator; the message supplies terminal punctuation."
+			"parts": "Ordered nonempty localized outcome fragments joined with summary.separator, or the summary.empty string; no terminal period yet."
 		}
 	},
 	"ui.agents.starters.summary.separator": {
-		"role": "Batch installation receipt",
-		"tone": "Compact, factual; distinguish installed, already present, skipped and failed.",
-		"note": "Separator between outcome clauses, including the trailing space. No final punctuation here; summary.sentence supplies it."
+		"role": "Separator joining nonempty outcome clauses in batch receipt",
+		"tone": "Composition punctuation only, not standalone copy.",
+		"length_hint": "Two characters in English, comma followed by a space.",
+		"note": "Separates ordered installed, already-present, skipped and failed fragments. Do not add terminal punctuation; summary.sentence owns that."
 	},
 	"ui.agents.starters.summary.collisions": {
-		"role": "Batch installation receipt",
-		"tone": "Compact, factual; distinguish installed, already present, skipped and failed.",
-		"note": "Counts are ungrouped to preserve the existing English output. Built-in names are identifiers and must not be translated.",
+		"role": "Additional receipt sentence naming skipped built-ins",
+		"tone": "Factual name-collision explanation; not a failure or install success.",
+		"length_hint": "Paragraph beneath the summary, wraps for many quoted names.",
+		"note": "Only shown for one or more skipped names. Explain that the user already holds local agents with these names; do not translate the names themselves.",
+		"plural_guidance": "Use CLDR branches needed by the target language (for example ru/pl few and many; ar zero, two, few and many). Keep {count} ungrouped in every branch: use the plain argument, never # or {count, number}, to preserve identifier-like receipt counts.",
 		"placeholders": {
-			"count": "Number of available agents or outcomes; plural selects the noun where present.",
-			"names": "Already quoted built-in names, joined by comma and space.",
-			"name": "Unchanged canonical built-in name currently being installed."
+			"count": "Number of skipped names, equal to the number of entries in names; positive integer. Numeric plural selector; print it ungrouped via {count}.",
+			"names": "Comma-and-space-joined canonical names, each already wrapped in straight double quotes; interpolate unchanged.",
+			"name": "Canonical built-in identifier currently being installed; unchanged and unquoted here."
 		}
 	},
 	"ui.agents.starters.action.all_builtins": {
-		"role": "Built-in installation action label",
-		"tone": "Compact, factual; distinguish installed, already present, skipped and failed.",
-		"note": "Counts are ungrouped to preserve the existing English output. Built-in names are identifiers and must not be translated."
+		"role": "Empty-agents shortcut button that starts installing every built-in",
+		"tone": "Clear action verb and built-in scope.",
+		"length_hint": "One compact small button label, about 27 English characters.",
+		"note": "Shown when the host sidebar has no user agents; starts the batch rather than opening the public hub."
 	},
 	"ui.agents.starters.available": {
-		"role": "Built-in installation status",
-		"tone": "Compact, factual; distinguish installed, already present, skipped and failed.",
-		"note": "Counts are ungrouped to preserve the existing English output. Built-in names are identifiers and must not be translated.",
+		"role": "Available-built-in count in populated-sidebar install shortcut",
+		"tone": "Quiet availability status, not an installed count.",
+		"length_hint": "One row beside action.all_count; compact count and noun, about 26 characters plus digits.",
+		"note": "Names how many packaged built-ins the local backend offers. These can include already-installed profiles; this is not the success receipt.",
+		"plural_guidance": "Use CLDR branches needed by the target language (for example ru/pl few and many; ar zero, two, few and many). Keep {count} ungrouped in every branch: use the plain argument, never # or {count, number}, to preserve identifier-like receipt counts.",
 		"placeholders": {
-			"count": "Number of available agents or outcomes; plural selects the noun where present."
+			"count": "Total available packaged built-ins, not installed outcomes; nonnegative integer. Numeric plural selector; print it ungrouped via {count}."
 		}
 	},
 	"ui.agents.starters.action.all_count": {
-		"role": "Built-in installation action label",
-		"tone": "Compact, factual; distinguish installed, already present, skipped and failed.",
-		"note": "Counts are ungrouped to preserve the existing English output. Built-in names are identifiers and must not be translated.",
+		"role": "Trailing action label on available-built-ins shortcut row",
+		"tone": "Brief install-all action.",
+		"length_hint": "Shares one row with available; about 12 characters plus digits.",
+		"note": "Starts installing all available built-ins. The numeric count is the same total displayed by available, not a completed-install count.",
+		"plural_guidance": "Use CLDR branches needed by the target language (for example ru/pl few and many; ar zero, two, few and many). Keep {count} ungrouped in every branch: use the plain argument, never # or {count, number}, to preserve identifier-like receipt counts.",
 		"placeholders": {
-			"count": "Number of available agents or outcomes; plural selects the noun where present."
+			"count": "Total built-ins the action will attempt, equal to available.count; nonnegative integer. Numeric plural selector; print it ungrouped via {count}."
 		}
 	},
 	"ui.agents.starters.progress.accessible": {
-		"role": "Built-in installation progress accessible name",
-		"tone": "Compact, factual; distinguish installed, already present, skipped and failed.",
-		"note": "Counts are ungrouped to preserve the existing English output. Built-in names are identifiers and must not be translated.",
+		"role": "Accessible label of the determinate installation progress meter",
+		"tone": "Complete description for a screen reader.",
+		"length_hint": "Screen-reader text only; no visible width budget.",
+		"note": "Names progress while a batch is running. step is the current one-based attempt; total is the whole batch size.",
 		"placeholders": {
-			"step": "One-based index of the agent being installed.",
-			"total": "Number of built-in agents in this batch."
+			"step": "One-based index of the attempt in flight, converted to an ungrouped digit string.",
+			"total": "Total attempt count for this batch, converted to an ungrouped digit string."
 		}
 	},
 	"ui.agents.starters.progress.named": {
-		"role": "Built-in installation status",
-		"tone": "Compact, factual; distinguish installed, already present, skipped and failed.",
-		"note": "Counts are ungrouped to preserve the existing English output. Built-in names are identifiers and must not be translated.",
+		"role": "Visible running-install status with the active built-in name",
+		"tone": "Quiet in-progress sentence; retain the ellipsis.",
+		"length_hint": "One compact status line under the meter; may wrap for a long identifier.",
+		"note": "Shown while an agent name is in flight. Describes the current attempt, not a completed count.",
 		"placeholders": {
-			"step": "One-based index of the agent being installed.",
-			"total": "Number of built-in agents in this batch.",
-			"name": "Unchanged canonical built-in name currently being installed."
+			"step": "One-based index of the attempt in flight, converted to an ungrouped digit string.",
+			"total": "Total attempt count for this batch, converted to an ungrouped digit string.",
+			"name": "Canonical built-in identifier currently being installed; unchanged and unquoted here."
 		}
 	},
 	"ui.agents.starters.progress.count": {
-		"role": "Built-in installation status",
-		"tone": "Compact, factual; distinguish installed, already present, skipped and failed.",
-		"note": "Counts are ungrouped to preserve the existing English output. Built-in names are identifiers and must not be translated.",
+		"role": "Visible running-install status between named attempts",
+		"tone": "Quiet in-progress sentence, not the terminal receipt.",
+		"length_hint": "One compact status line under the meter, about 20 characters plus two numbers.",
+		"note": "Shown when no current name is available; done counts completed attempts. The ellipsis means the batch is still running.",
 		"placeholders": {
-			"total": "Number of built-in agents in this batch.",
-			"done": "Number of completed installation attempts."
+			"total": "Total attempt count for this batch, converted to an ungrouped digit string.",
+			"done": "Completed attempt count (successes, skips and failures), converted to an ungrouped digit string."
 		}
 	},
 	"ui.agents.starters.action.done": {
-		"role": "Built-in installation action label",
-		"tone": "Compact, factual; distinguish installed, already present, skipped and failed.",
-		"note": "Counts are ungrouped to preserve the existing English output. Built-in names are identifiers and must not be translated."
+		"role": "Button dismissing the finished installation receipt",
+		"tone": "Single completion/dismissal action word.",
+		"length_hint": "Small 28px-high button; about 4 English characters.",
+		"note": "Appears after the batch ends; receives focus, then returns focus to the original install shortcut when dismissed. It does not install anything."
 	}
 }
