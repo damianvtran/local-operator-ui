@@ -1,0 +1,130 @@
+{
+	"schema": 1,
+	"note": "Translation provenance ledger (RFC §6). One entry per (locale, namespace): the SHA-256 of the ENGLISH source as translated, the SHA-256 of the translated file as audited, and the agent/model that produced and audited it. `status` is the honest state of that pair - `audited` means an INDEPENDENT auditor (a different agent from the translator) passed it; `translated` means it has not been audited yet and must NOT be released. A shipped locale/namespace with no entry here, or with a status below `audited`, fails the release gate closed (scripts/i18n/ledger-check.mjs, which re-derives both hashes from the files at check time - an entry whose recorded hash no longer matches is stale, and staleness is a failure, not a warning). This file lives OUTSIDE src/i18n/catalogues/ so the generator never ingests it as a message namespace. RULE: a namespace edit after its audit flips its row to pending until re-audited; every auditor carries a distinct `instance` and a passing `result`, enforced by ledger-check.mjs.",
+	"entries": [
+		{
+			"locale": "fr",
+			"namespace": "ui.settings",
+			"source_sha256": "3395192289d49f4d4a4e64a072fbb394ca37e760f3d13fb2f2a295167ae4f571",
+			"target_sha256": "b3861dc03be8ee05f5253dcf5929c96c1646781a41fc5e2a1acf7aca42a1ba2a",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-13",
+				"note": "34 keys. 5 keys (ui.settings.profile.account_checking, account_read_failed_retry, account_read_failed_refused, retry, retrying) were authored by the implementing coder for PR #1017, not a translator; both passes below audited them in depth."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-14",
+					"result": "clean-with-findings",
+					"instance": "1eb058b7891c",
+					"receipt": "~/.local-operator/sessions/1eb058b7891c/scratchpad/fr-audit-1018-B-receipt.json",
+					"receipt_sha256": "569acfea48e8edf6682a030d0e615691ed1aee526a421cab103904c358473070",
+					"scope": "full independent pass, every key, at the target_sha256 recorded here",
+					"note": "0 BLOCKER/MAJOR; MINOR/NIT recorded, not churned."
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-14",
+					"result": "clean-with-findings",
+					"instance": "2557ef7bd15a",
+					"receipt": "~/.local-operator/sessions/2557ef7bd15a/scratchpad/fr-audit-1018-C-receipt.json",
+					"receipt_sha256": "904c688714c3138a515c31033fb2f9c472fe70eb39a0b1c42280d71c6fb7b1ed",
+					"scope": "full independent pass, every key, at the target_sha256 recorded here",
+					"note": "0 BLOCKER/MAJOR on settings; MINOR/NIT recorded, not churned."
+				}
+			],
+			"status": "audited",
+			"remediation": "An earlier pass (instance 991ad030da3a, changes_requested on e57a0904...) raised one MAJOR (plain space before \";\" in two coder-authored keys); fixed by the owner and re-audited by the two passes above."
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.console",
+			"source_sha256": "5866f4328ab5031be5b35cd04d805f1d1ca163d2f6b1770cb497de37eae0fd09",
+			"target_sha256": "b91225996f0776e002f49f24aed35f02f31461ac88447f7db71acbff189303a2",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol (original 30 keys, 2026-10-13); anthropic/claude-sonnet-5-5 (24 keys added 2026-10-14)",
+				"date": "2026-10-14"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-14",
+					"result": "clean-with-findings",
+					"instance": "7b95cdaf3ac1",
+					"receipt": "~/.local-operator/sessions/7b95cdaf3ac1/scratchpad/fr-audit-1018-G-receipt.json",
+					"receipt_sha256": "b0dda9067248f43a76d4655eb240aa3906229453260354f04caebb7aa3bc702e",
+					"scope": "full independent pass, every key, at the target_sha256 recorded here",
+					"note": "0 BLOCKER/MAJOR; MINOR/NIT recorded, not churned. The receipt file names its own instance \"scratchpad\"; the unique id is the session 7b95cdaf3ac1 the auditor reported."
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-14",
+					"result": "clean-with-findings",
+					"instance": "5091a70eeedc",
+					"receipt": "~/.local-operator/sessions/5091a70eeedc/scratchpad/fr-audit-1018-H-receipt.json",
+					"receipt_sha256": "9ea19d405a0d264dc81de7c158b2f7c6f200285e2849a17bf48d8595fa551d08",
+					"scope": "full independent pass, every key, at the target_sha256 recorded here",
+					"note": "0 BLOCKER/MAJOR; MINOR/NIT recorded, not churned."
+				}
+			],
+			"status": "audited",
+			"remediation": "Earlier passes on older bytes (instances 340d8507700f passed, 1eab2890ffb8 and f8a1676020e1 changes_requested) raised MAJORs on number agreement (capacity.summary/summary_compact/archived) and fit; fixed by the owner and re-audited by the two passes above."
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.onboarding",
+			"source_sha256": "b086c241aa70e44cdaab8f02d20e5aaac33d4732df09204481afc4128c08a6ae",
+			"target_sha256": "ac45bc9c21115e53b07e4d71c2adddb2789678d0417d75432c2cc8a31c758d17",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol (original 45 keys, 2026-10-13); anthropic/claude-sonnet-5-5 (modal.step_of, modal.steps_total, connect.intro reword, 2026-10-14)",
+				"date": "2026-10-14",
+				"note": "ui.onboarding.modal.error.aida_open_failed was reworded by the implementing coder applying an auditor-suggested wording (instance 2557ef7bd15a MAJOR: missing elision before a vowel-initial name); it is covered by the narrow and full passes below."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-14",
+					"result": "clean-with-findings",
+					"instance": "32763f5fdd6a",
+					"receipt": "~/.local-operator/sessions/32763f5fdd6a/scratchpad/fr-audit-1018-I-receipt.json",
+					"receipt_sha256": "8a09f49d80db88542d088868a3fa959c83b414ce7bace06c8be92ec509c79cc2",
+					"scope": "full independent pass, every key, at the target_sha256 recorded here",
+					"note": "0 BLOCKER/MAJOR; MINOR/NIT recorded, not churned."
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-14",
+					"result": "clean-with-findings",
+					"instance": "5129ab3aa331",
+					"receipt": "~/.local-operator/sessions/5129ab3aa331/scratchpad/fr-audit-1018-J-receipt.json",
+					"receipt_sha256": "8b7758f111dec698eabb121cb7dedef6ea48f3cc282a45319695a09ee1fc0b4f",
+					"scope": "full independent pass, every key, at the target_sha256 recorded here",
+					"note": "0 BLOCKER/MAJOR; MINOR/NIT recorded, not churned."
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-14",
+					"result": "clean",
+					"instance": "5a44927fd8ce",
+					"receipt": "~/.local-operator/sessions/5a44927fd8ce/scratchpad/fr-audit-1018-D-receipt.json",
+					"receipt_sha256": "1965f89261f8bf01b1573881c837cce9dbd065831545d0212b46ff0821aa88c7",
+					"scope": "narrow re-audit of the one key ui.onboarding.modal.error.aida_open_failed at the recorded target_sha256, plus a diff-vs-HEAD check that only 4 keys differ",
+					"note": "passed; NITs only."
+				}
+			],
+			"status": "audited",
+			"remediation": "Earlier passes on older bytes (instances 1eb058b7891c passed and 2557ef7bd15a changes_requested) raised one MAJOR (ui.onboarding.modal.error.aida_open_failed: missing elision before a vowel-initial name); fixed by the owner, covered by the narrow re-audit (5a44927fd8ce) and by the two full passes at the recorded bytes (32763f5fdd6a, 5129ab3aa331)."
+		}
+	]
+}
