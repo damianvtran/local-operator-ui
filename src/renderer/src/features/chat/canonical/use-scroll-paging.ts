@@ -3,6 +3,7 @@ import {
 	useCallback,
 	useEffect,
 	useLayoutEffect,
+	useMemo,
 	useRef,
 	useState,
 } from "react";
@@ -25,6 +26,7 @@ import {
 	noteSettled,
 	spendWindows,
 } from "./scroll-paging";
+import { createScrollLayoutCoordinator } from "./transcript-scroll-layout";
 
 /**
  * The DOM half of scroll-driven history paging: read real input, ask
@@ -243,6 +245,7 @@ export type ScrollPagingOptions = {
 };
 
 export type ScrollPagingHandle = {
+	layout: import("./transcript-scroll-layout").ScrollLayoutCoordinator;
 	/** What the top slot should render. */
 	slotState: OlderHistoryState;
 	/**
@@ -537,12 +540,21 @@ export function useScrollPaging({
 		const el = containerRef.current;
 		if (!el) return null;
 		const top = el.getBoundingClientRect().top;
-		for (const row of el.querySelectorAll<HTMLElement>("[data-record-id]")) {
-			const rect = row.getBoundingClientRect();
+		for (const row of el.querySelectorAll<HTMLElement>(
+			"[data-record-id], [data-lo-layout-anchor]",
+		)) {
+			// A header marker owns only its trigger, not its entire expanded body.
+			// Otherwise a late diff/image ABOVE the visible child would hold the
+			// offscreen parent instead of the reader's actual record.
+			const point =
+				row.dataset.loLayoutAnchor || row.hasAttribute("data-run-ids")
+					? (row.querySelector<HTMLElement>("button[aria-expanded]") ?? row)
+					: row;
+			const rect = point.getBoundingClientRect();
 			// The first row whose BOTTOM is still below the viewport top: the row
 			// the reader is actually looking at, including one scrolled halfway off.
 			if (rect.bottom > top) {
-				const id = row.dataset.recordId;
+				const id = row.dataset.recordId ?? row.dataset.loLayoutAnchor;
 				if (!id) continue;
 				return {
 					id,
@@ -571,7 +583,7 @@ export function useScrollPaging({
 			const el = containerRef.current;
 			if (!el) return null;
 			const row = el.querySelector<HTMLElement>(
-				`[data-record-id="${CSS.escape(id)}"]`,
+				`[data-record-id="${CSS.escape(id)}"], [data-lo-layout-anchor="${CSS.escape(id)}"]`,
 			);
 			if (!row) return null;
 			return {
@@ -644,11 +656,23 @@ export function useScrollPaging({
 		};
 	}, [containerRef, sampleAnchor]);
 
+	const navigating = useRef(false);
+	const writeLayout = useCallback(
+		(drift: number | "tail") => {
+			const el = containerRef.current;
+			if (!el) return;
+			const before = el.scrollTop;
+			el.scrollTop = drift === "tail" ? 0 : before + drift;
+			acknowledgeOwnWrite(before, el.scrollTop);
+		},
+		[containerRef, acknowledgeOwnWrite],
+	);
+
 	/** Re-assert the held anchor. Cheap, and a no-op on a stable extent. */
 	const correctAnchor = useCallback(() => {
 		const el = containerRef.current;
 		const held = anchor.current.sample;
-		if (!el || !held) return;
+		if (!el || !held || navigating.current) return;
 		/*
 		 * THE TAIL GATE. At the tail the reader is following, not holding: the
 		 * newest content must stay pinned, and a correction fired out there would
@@ -690,9 +714,7 @@ export function useScrollPaging({
 			 * observation that settled it is in the evidence README (`scrollTop -100`
 			 * => offset +100) so the next reader does not have to re-derive it.
 			 */
-			el.scrollTop += drift;
-			// Acknowledge the offset the write produced, not a count (R3-1).
-			ownWritePosition.current = el.scrollTop;
+			writeLayout(drift);
 		}
 		if (expired) {
 			/*
@@ -710,7 +732,34 @@ export function useScrollPaging({
 		// invariant being defended, and re-reading it would let each correction
 		// ratify whatever the previous one failed to fix.
 		anchor.current.sample = { ...held, extent: el.scrollHeight };
-	}, [containerRef, measureHeld, refreshReaderHold]);
+	}, [containerRef, measureHeld, refreshReaderHold, writeLayout]);
+
+	const layout = useMemo(
+		() =>
+			createScrollLayoutCoordinator({
+				held: () =>
+					anchor.current.inputRevision === travel.current.revision &&
+					anchor.current.until > performance.now()
+						? anchor.current.sample
+						: null,
+				sample: sampleAnchor,
+				measure: measureHeld,
+				inputRevision: () => travel.current.revision,
+				following: () => measure()?.followingTail === true,
+				write: writeLayout,
+				rebase: refreshReaderHold,
+				replaceHeld: (sample) => {
+					anchor.current.sample = sample;
+					anchor.current.inputRevision = travel.current.revision;
+				},
+				onMissingAnchor: (id) =>
+					console.warn("Transcript layout lost its leased anchor", id),
+				onNavigation: (active) => {
+					navigating.current = active;
+				},
+			}),
+		[sampleAnchor, measureHeld, measure, writeLayout, refreshReaderHold],
+	);
 
 	/** Hold the reader's place across the next `ANCHOR_HOLD_MS` of settling. */
 	const holdAnchor = useCallback(() => {
@@ -1493,6 +1542,7 @@ export function useScrollPaging({
 	);
 
 	return {
+		layout,
 		slotState,
 		requestOlder,
 		mayAutoWalk,

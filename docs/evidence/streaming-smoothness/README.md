@@ -1,5 +1,9 @@
 # Streaming smoothness evidence
 
+## Expanded transcript window and formation pass (2026-10-13)
+
+[Expanded implementation, F5 derived root cause, final-source renderer matrix and actual gate outputs](EXPANDED.md). This is the latest evidence for entry-level virtualization and atomic formation. In particular, the historical `windowed-formation-mid.json` is a FAIL; the fast cold-navigation rerun is `windowed-formation-fast-fixed.json`. Park/append has a recorded subpixel residual, not a literal-zero pass, and reduced-motion evidence covers a story-local JS preference fixture, not native CSS media emulation. Older sections below retain their original narrower scope and provenance.
+
 ## Scope and provenance
 
 Base: `732f2163cdc72749815a6bec52e7682467b015af` (`origin/main` at implementation start). The canonical assistant row already used `StreamingMarkdown`; this change does not rewire it. The production changes are text-only aggregate folds' opt-in disclosure animation and the pending-prose-tail layout fix discovered during the required settle regression. Round-one remediation keeps media presentation swaps atomic and preserves live-tail node identity through a block close.

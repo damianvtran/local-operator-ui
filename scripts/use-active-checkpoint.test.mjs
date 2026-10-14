@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { unlink, writeFile } from "node:fs/promises";
 import { test } from "node:test";
 import { build } from "esbuild";
@@ -35,9 +36,9 @@ const bundle = await build({
 			 * queries, and every render hands its answer to the tracker so a
 			 * test reads the LAST one after any sequence of events.
 			 */
-			export function Harness({ rows, checkpoints, track }) {
+			export function Harness({ rows, checkpoints, track, virtualModel }) {
 				const ref = useRef(null);
-				const cue = useActiveCheckpoint(ref, rows, checkpoints);
+				const cue = useActiveCheckpoint(ref, rows, checkpoints, virtualModel);
 				track(cue);
 				return createElement(
 					"div",
@@ -53,6 +54,27 @@ const bundle = await build({
 		`,
 		resolveDir: process.cwd(),
 	},
+	plugins:
+		process.env.LO_ACTIVE_CUE_BASELINE === "1"
+			? [
+					{
+						name: "pinned-negative-control",
+						setup(builder) {
+							builder.onLoad({ filter: /use-active-checkpoint\.ts$/ }, () => ({
+								loader: "ts",
+								contents: execFileSync(
+									"git",
+									[
+										"show",
+										"5a8f8f4528b9:src/renderer/src/features/chat/canonical/use-active-checkpoint.ts",
+									],
+									{ encoding: "utf8" },
+								),
+							}));
+						},
+					},
+				]
+			: [],
 	bundle: true,
 	format: "esm",
 	platform: "node",
@@ -110,7 +132,7 @@ const rect = (top) => ({
  * dispatched by hand; `window`'s two schedulers resolve against `globalThis`
  * so `t.mock.timers` drives both.
  */
-async function mountCue({ rows, checkpoints }) {
+async function mountCue({ rows, checkpoints, virtualModel = null }) {
 	const dom = new JSDOM("<!doctype html><div id='root'></div>", {
 		url: "http://localhost/",
 	});
@@ -153,6 +175,7 @@ async function mountCue({ rows, checkpoints }) {
 				React.createElement(Harness, {
 					rows: nextRows,
 					checkpoints: nextCheckpoints,
+					virtualModel,
 					track,
 				}),
 			);
@@ -220,6 +243,47 @@ async function mountCue({ rows, checkpoints }) {
 		},
 	};
 }
+
+test("offscreen checkpoint predecessor remains active in an answer-only virtual viewport", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout", "Date"] });
+	const virtualModel = {
+		current: { enabled: false, entryIds: new Map([["a2", ["a2"]]]) },
+	};
+	const cue = await mountCue({
+		rows: [row("u1"), row("a1"), row("u2"), row("a2")],
+		checkpoints: [user("u1"), user("u2")],
+		virtualModel,
+	});
+	try {
+		cue.setTops({ u1: 0, a1: 60, u2: 200, a2: 300 });
+		cue.scroll();
+		t.mock.timers.tick(16);
+		await cue.flush();
+		assert.equal(
+			cue.latest().activeId,
+			"u1",
+			"negative control must start on a different checkpoint",
+		);
+		virtualModel.current.enabled = true;
+		const region = document.querySelector("[data-region]");
+		for (const id of ["u1", "a1", "u2"])
+			region.querySelector(`[data-record-id=${id}]`).remove();
+		const answer = region.querySelector("[data-record-id=a2]");
+		answer.dataset.loEntryKey = "a2";
+		answer.getBoundingClientRect = () => ({
+			...rect(-30),
+			bottom: 300,
+			height: 330,
+		});
+		await act(async () =>
+			region.dispatchEvent(new window.Event("lo:transcript-layout")),
+		);
+		assert.equal(cue.latest().activeId, "u2");
+		assert.deepEqual([...cue.latest().loadedIds], ["u1", "a1", "u2", "a2"]);
+	} finally {
+		await cue.close();
+	}
+});
 
 test("a pull that ends on a transient re-reads once the scroll goes idle (N1)", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout", "Date"] });

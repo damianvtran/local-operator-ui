@@ -761,6 +761,15 @@ longer than 240ms, and only something entering the screen earns that.
   not pay for forty hidden payloads. Reduced motion removes the transition and
   exit retention. The chevron still swaps (`ChevronRight` ⇄ `ChevronDown`)
   rather than rotating; folding hides rows in place, never reorders them.
+- **Structural transcript replacements use one persistent slot and one payload.**
+  Two inline actions becoming a three-action fold, and text-only turn segments
+  becoming a bar, may interpolate their measured scalar extent for 180ms while
+  the new ink fades. The leading gap and upstream document geometry stay fixed;
+  the shared scroll-layout owner preserves the reader's anchor during genuine
+  downstream reflow. No outgoing tree, duplicated media, sibling transforms or
+  height-from-zero entrance. Media, offscreen updates and reduced motion swap
+  atomically. Newly appended non-answer row ink may enter over 240ms; streamed
+  answers keep their existing chunk fade, never an additional parent fade.
 - **Indeterminate liveness is exempt from the 240ms ceiling** — a shimmer or a
   spinner that must run until the machine stops cannot be capped at 240ms. One
   such element per surface, `opacity` or `background-position` only, never a
