@@ -43085,7 +43085,11 @@ async function sceneHubLinks(cdp, app) {
 	 * origin 2 (Minerva · Private) Subscribe Off - so the pair must read "Mixed".
 	 */
 	const collapsedSummary = await cdp.evaluate(`(() => {
-		const trigger = document.querySelector('[data-hub-links-panel] button[aria-expanded]');
+		// The same trigger the collapsed check above found: the pane-scoped
+		// hub-panel disclosure. The hub-panel marker attribute is not forwarded by
+		// Disclosure, so the pane-scoped selector is the proof.
+		const pane = document.querySelector('[data-agents-pane]');
+		const trigger = pane && pane.querySelector('button[aria-expanded]');
 		return trigger ? trigger.textContent : null;
 	})()`);
 	check(
