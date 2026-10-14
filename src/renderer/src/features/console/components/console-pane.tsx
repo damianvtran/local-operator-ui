@@ -1053,15 +1053,17 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 						<Tooltip
 							content={
 								surface.secure
-									? "Stop secure input"
-									: "Secure input: stop recording this terminal"
+									? t("ui.console.secure_toggle.stop")
+									: t("ui.console.secure_toggle.start_tooltip")
 							}
 						>
 							<Button
 								variant="ghost"
 								size="icon-sm"
 								aria-label={
-									surface.secure ? "Stop secure input" : "Secure input"
+									surface.secure
+										? t("ui.console.secure_toggle.stop")
+										: t("ui.console.secure_toggle.start")
 								}
 								aria-pressed={surface.secure}
 								className={cn(surface.secure && "text-accent")}
@@ -1207,8 +1209,8 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 											className={cn("flex shrink-0 items-center")}
 											title={
 												row.agentOwned
-													? "An agent opened this console"
-													: "An agent has typed into this console"
+													? t("ui.console.tab.agent_opened")
+													: t("ui.console.tab.agent_typed")
 											}
 										>
 											<Bot
@@ -1228,7 +1230,9 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 									) : null}
 									{!row.running ? (
 										<span className={cn("text-ink-dim text-mono-sm")}>
-											{row.exitCode === null ? "ended" : row.exitCode}
+											{row.exitCode === null
+												? t("ui.console.tab.ended")
+												: row.exitCode}
 										</span>
 									) : null}
 									{isConsoleUnseen(unseen, row.surface) ? (
@@ -1289,7 +1293,18 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 										 * the act does to the output rather than repeating the verb
 										 * (it used to read "Dismiss … — Dismiss terminal and …").
 										 */
-										aria-label={`${row.running ? "Close" : "Clear"} ${surfaceTitle(row)}, tab ${index + 1} of ${surfaces.length}${!row.running && row.retain ? " — deletes retained output" : ""}`}
+										aria-label={t(
+											row.running
+												? "ui.console.tab.close_label"
+												: row.retain
+													? "ui.console.tab.clear_label_retained"
+													: "ui.console.tab.clear_label",
+											{
+												title: surfaceTitle(row),
+												index: index + 1,
+												total: surfaces.length,
+											},
+										)}
 										onClick={() => requestSurfaceClose(row)}
 										className={cn(
 											"me-0.5 transition-opacity",

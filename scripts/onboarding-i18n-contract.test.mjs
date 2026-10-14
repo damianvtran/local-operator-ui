@@ -9,7 +9,7 @@
  * such counterexample passed that shape, so this file uses the shapes that
  * kill them:
  *
- *   1. VALUE PINS - all 45 committed English sentences, stated inline, never
+ *   1. VALUE PINS - all 47 committed English sentences, stated inline, never
  *      read from the catalogue as their own oracle. The key set is closed.
  *   2. CALL-SITE BINDING lives in `scripts/i18n/check-strings.test.mjs`:
  *      the binding contract (real `t()` call nodes, exact producers, branch
@@ -168,6 +168,16 @@ const CONTRACT = [
 		"onboarding-modal.tsx",
 	],
 	[
+		"ui.onboarding.modal.step_of",
+		"Step {current, number} of {total, number}",
+		"onboarding-modal.tsx",
+	],
+	[
+		"ui.onboarding.modal.steps_total",
+		"{total, plural, one {# step} other {# steps}}",
+		"onboarding-modal.tsx",
+	],
+	[
 		"ui.onboarding.modal.title.connect_provider",
 		"Connect an AI account",
 		"onboarding-modal.tsx",
@@ -257,7 +267,7 @@ const CONTRACT = [
 ];
 
 /**
- * key -> [[parameter name, exact producer expression source]] for the 12
+ * key -> [[parameter name, exact producer expression source]] for the 14
  * parameterised messages. The expressions are the committed call-site
  * producers, compared as AST slices with whitespace normalised: a comment
  * decoy cannot satisfy a node, and a same-shape wrong producer (a different
@@ -267,6 +277,14 @@ const PARAM_SITES = [
 	["ui.onboarding.modal.title.extras_with_name", [["name", "aidaName"]]],
 	["ui.onboarding.modal.action.meet", [["name", "aidaName"]]],
 	["ui.onboarding.modal.error.aida_open_failed", [["name", "aidaName"]]],
+	[
+		"ui.onboarding.modal.step_of",
+		[
+			["current", "activeIndex + 1"],
+			["total", "STEP_SEQUENCE.length"],
+		],
+	],
+	["ui.onboarding.modal.steps_total", [["total", "STEP_SEQUENCE.length"]]],
 	["ui.onboarding.extras.next_meet", [["name", "aidaName"]]],
 	["ui.onboarding.extras.greeting_owed", [["name", "aidaName"]]],
 	["ui.onboarding.extras.greeting_done", [["name", "aidaName"]]],
@@ -544,7 +562,7 @@ test("every key's committed English is byte-exact in the catalogue, and the set 
 	assert.deepEqual(
 		Object.keys(catalogue).sort(),
 		CONTRACT.map(([key]) => key),
-		"the catalogue's key set moved from the committed 45",
+		"the catalogue's key set moved from the committed 47",
 	);
 	for (const [key, expected] of CONTRACT) {
 		assert.equal(

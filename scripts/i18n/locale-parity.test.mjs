@@ -41,8 +41,22 @@ const SOURCE_LOCALE = "en";
  * a UI token. An entry here is a claim that gets reviewed, not a silencer.
  */
 const IDENTICAL_OK = new Map([
-	// (none yet — a locale that copies English should fail until a real
-	// translation lands or an entry here names why it must stay identical.)
+	[
+		"ui.console.pane.label",
+		// A shared UI term, not a copy of untranslated English: French uses
+		// « Console » for this surface verbatim, and the English string IS that same
+		// common noun. The translation is correct as identical — the exemption is
+		// about the WORD, not about skipping work. Naming the key here is the claim;
+		// the reason is what makes it reviewable.
+		"shared UI term: the French word for this pane is the same common noun",
+	],
+	[
+		"ui.console.capacity.summary_compact_bare",
+		// `{live, number}/{limit, number}`: placeholders and a slash, no words. There
+		// is nothing to translate, and a French value that differed would only be
+		// invented punctuation. Identical is the correct translation here.
+		"language-neutral counter: only placeholders and '/', no words to translate",
+	],
 ]);
 
 function localeDirs() {
@@ -99,7 +113,9 @@ function argumentNames(message) {
 }
 
 const english = new Map();
+const englishNamespaces = new Set();
 for (const file of messageFiles(SOURCE_LOCALE)) {
+	englishNamespaces.add(file);
 	for (const [key, message] of Object.entries(
 		readCatalogue(SOURCE_LOCALE, file),
 	)) {
@@ -151,6 +167,43 @@ for (const locale of localeDirs().filter((name) => name !== SOURCE_LOCALE)) {
 			duplicates,
 			[],
 			`keys defined in more than one file in ${locale}`,
+		);
+	});
+
+	test(`[${locale}] carries EVERY key of each namespace file it ships`, () => {
+		/*
+		 * COMPLETE, NOT A SUBSET (root acceptance, all-locale rollout). A locale file
+		 * present in the tree IS a claim that this locale supports that namespace, and
+		 * the runtime would silently fall back to English for any key it omits — a
+		 * gap that reads as "translated" on screen. So a shipped locale file must
+		 * carry the SAME key set as its English source: no missing key, no extra one.
+		 *
+		 * This is the check the earlier shape lacked: the per-key checks below can all
+		 * pass while a locale drops ten keys, because each surviving value is fine on
+		 * its own.
+		 */
+		const gaps = [];
+		for (const file of messageFiles(locale)) {
+			if (!englishNamespaces.has(file)) continue; // no English source: the keys test reports it
+			const enKeys = Object.keys(readCatalogue(SOURCE_LOCALE, file)).sort();
+			const localeKeys = Object.keys(readCatalogue(locale, file)).sort();
+			const missing = enKeys.filter((key) => !localeKeys.includes(key));
+			const extra = localeKeys.filter((key) => !enKeys.includes(key));
+			if (missing.length) {
+				gaps.push(
+					`${file}: missing ${missing.length} (${missing.slice(0, 3).join(", ")}${missing.length > 3 ? "…" : ""})`,
+				);
+			}
+			if (extra.length) {
+				gaps.push(
+					`${file}: extra ${extra.length} (${extra.slice(0, 3).join(", ")}…)`,
+				);
+			}
+		}
+		assert.deepEqual(
+			gaps,
+			[],
+			`${locale} must carry a complete key set for every namespace file it ships`,
 		);
 	});
 
