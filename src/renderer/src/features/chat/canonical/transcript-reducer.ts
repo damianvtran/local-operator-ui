@@ -3811,15 +3811,33 @@ export function applyJournalOrderMetadata(
 		next = rememberJournalCalls(next, { ...entry.payload, id: entry.id });
 	/*
 	 * THE LOCAL LANE'S COMMIT WRITES THE LANE BACK TO LOCAL. This function is
-	 * the LOCAL repair's authoritative read (peer conversations settled their
-	 * owed reconcile through `applyPeerSourceFacts` since the complete
-	 * consumer landed), so a conversation the catalogue has moved back home
-	 * resumes the local admission semantics at its next local read - the
-	 * finite, observable transition instead of a lane flag that outlives its
-	 * owner. A conversation that was never peer is unchanged (the flag write
-	 * is a no-op when the lane already reads local).
+	 * the LOCAL repair's authoritative commit (peer conversations settle their
+	 * owed reconcile through `applyPeerSourceFacts`; `applyHistoryPage` writes
+	 * both when the caller says which lane it is in), so a conversation the
+	 * catalogue has moved back home resumes the local admission semantics at its
+	 * next local read - the finite, observable transition instead of a lane flag
+	 * that outlives its owner. A conversation that was never peer is unchanged
+	 * (the flag write is a no-op when the lane already reads local).
+	 *
+	 * THE LANE'S SIDE STATE GOES WITH IT: a local lane ranks by facts-stamp
+	 * records and admits bodies on the local page path, so peer debt, void and
+	 * the readiness latch must not linger over it (they would leave peer
+	 * semantics mutating a conversation that no longer declares).
 	 */
-	return journalOrderedState(finalizePeerLane(next, false));
+	const landing = finalizePeerLane(next, false);
+	return journalOrderedState(
+		landing.journalPeerSource === undefined &&
+			!landing.journalBodyOwed &&
+			!landing.journalSourceVoid &&
+			landing.journalSourceUnavailable === undefined
+			? landing
+			: {
+					...landing,
+					journalBodyOwed: undefined,
+					journalSourceVoid: undefined,
+					journalSourceUnavailable: undefined,
+				},
+	);
 }
 
 /**
@@ -3885,7 +3903,7 @@ export function applyPeerSourceFacts(
 	let next = receiveJournalOrder(
 		state,
 		page,
-		page.entries.map((entry) => ({
+		(page.entries ?? []).map((entry) => ({
 			id: entry.id,
 			journal_seq: entry.journal_seq,
 			role: entry.payload?.role,
@@ -3903,7 +3921,7 @@ export function applyPeerSourceFacts(
 	if (verified) {
 		const attested = [
 			...Object.keys(page.journal_ordinals ?? {}),
-			...page.entries.map((entry) => entry.id),
+			...(page.entries ?? []).map((entry) => entry.id),
 		];
 		if (attested.length > 0) next = markPeerBodiesOwed(next, attested);
 		const missing = (page.journal_missing_ids ?? []).filter(

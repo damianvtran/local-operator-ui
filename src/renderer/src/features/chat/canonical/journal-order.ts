@@ -404,6 +404,23 @@ function journalOrderedPeerRecords(
 			};
 		if (fact) placement.set(record.id, fact);
 	}
+	/*
+	 * THE FACT-MAP'S REVERSE INDEX, AND WHY IT IS NOT THE FORWARD ONE.
+	 *
+	 * `placement` is keyed by RECORD id, which for a supplement is the synthetic
+	 * `supplement:<anchor>` — so looking an ANCHOR's own record up by the anchor
+	 * id finds nothing, and a fact-placed supplement would fall to the unplaced
+	 * suffix even though its anchor is on screen. The legacy ranker reads the
+	 * committed `journalPositions` for exactly this and kept the behaviour; this
+	 * lane must too, or "facts rank" would quietly stop for supplements and
+	 * reviews that sit beside a still-pending body.
+	 */
+	const factFor = (record: TranscriptRecord | undefined): SourceCoordinate | undefined =>
+		record === undefined
+			? undefined
+			: (placement.get(record.id) ??
+				positions?.get(record.sourceEntryId ?? record.id) ??
+				positions?.get(record.id));
 	let changed = false;
 	const records = input.slice();
 	let admissionAnchor: string | undefined;
@@ -427,7 +444,7 @@ function journalOrderedPeerRecords(
 	}
 	const byId = new Map(records.map((record) => [record.id, record]));
 	const seqOf = (record: TranscriptRecord | undefined): number | undefined =>
-		record === undefined ? undefined : placement.get(record.id)?.seq;
+		factFor(record)?.seq;
 	const rank = (record: TranscriptRecord, index: number): number[] => {
 		const own = seqOf(record);
 		if (
@@ -507,6 +524,22 @@ export function journalLookupIds(state: TranscriptState): string[] {
 	 * nothing to admit and is not a lookup question.
 	 */
 	requested.push(...journalBodyOwedIds(state));
+	/*
+	 * AND A PROVEN ABSENCE IS NOT RE-ASKED. The union's whole point is to ask
+	 * about ids that could still resolve; an id a payload answer already settled
+	 * as missing (`journalSourceVoid`) has had its answer, and asking again - in
+	 * the lookup or through the body owed-set it would otherwise rejoin - is the
+	 * token retry loop the contract forbids ("proven-absent... never re-asked
+	 * without a new causal fact"). A new fact is what clears the void: a fresh
+	 * admitted body, or a rotation (which drops the whole void set). Rows the
+	 * void covers therefore simply drop out of this union.
+	 */
+	if (state.journalSourceVoid?.size)
+		for (let index = requested.length - 1; index >= 0; index--) {
+			const value = requested[index];
+			if (typeof value === "string" && state.journalSourceVoid.has(value))
+				requested.splice(index, 1);
+		}
 	if (!state.journalPositions?.has(state.oldestId ?? ""))
 		requested.push(state.oldestId);
 	return [
