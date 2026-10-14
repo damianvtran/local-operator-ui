@@ -5425,7 +5425,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 							CHAT_MEASURE,
 						)}
 					>
-						<p className="text-pretty text-body-sm text-warning">
+						<p className="text-body-sm text-warning">
 							This conversation is readable, but its message order couldn't be
 							confirmed with the source just now.
 						</p>

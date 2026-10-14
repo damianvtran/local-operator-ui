@@ -19,7 +19,7 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
-import { useEffect, useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 import "../../../styles/index.css";
 import type { DesktopHistoryPage } from "../../../../../shared/desktop-session-contract";
 import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-notice";
@@ -90,6 +90,57 @@ const auditFrame = (expectedWorkingLines: number, notice: boolean): void => {
 		throw new Error(`transcript ground ${painted} is not the canvas ${token}`);
 };
 
+/**
+ * Assert the transcript's OWN scroller really moved to the requested end, and
+ * that the end means what it says — the check whose ABSENCE let two identical
+ * "top"/"bottom" frames ship (design round 2, D6). The scroller is
+ * `flex-col-reverse` and pinned at `scrollTop = 0` at the LIVE TAIL, so:
+ *
+ *   - `top` (the OLDEST end) is the far NEGATIVE offset, and the newest row must
+ *     be out of view there;
+ *   - `bottom` (the NEWEST end / tail) is `0`, and the oldest row must be out of
+ *     view there.
+ *
+ * Both frames then show different rows, and the assertion fails at capture if the
+ * scroller did not move to the position it claims.
+ */
+const auditScroll = (end: "top" | "bottom"): void => {
+	const region = document.querySelector<HTMLElement>(
+		"[data-lo-transcript-scroll]",
+	);
+	if (!region) throw new Error("no [data-lo-transcript-scroll] region");
+	const span = region.scrollHeight - region.clientHeight;
+	if (span <= 2)
+		throw new Error(
+			`the pane did not overflow (odd=${region.scrollHeight} client=${region.clientHeight}): nothing to scroll`,
+		);
+	const expected = end === "bottom" ? 0 : -span;
+	if (Math.abs(region.scrollTop - expected) > 2)
+		throw new Error(
+			`scrollTop ${region.scrollTop}, expected ${expected} (span ${span})`,
+		);
+	const rowInView = (id: string): boolean => {
+		const row = region.querySelector<HTMLElement>(`[data-record-id="${id}"]`);
+		if (!row) return false;
+		const box = row.getBoundingClientRect();
+		const port = region.getBoundingClientRect();
+		return box.bottom > port.top && box.top < port.bottom;
+	};
+	const oldest = `${LONG_PREFIX}0`;
+	const newest = `${LONG_PREFIX}${LONG_ROWS - 1}`;
+	if (end === "top") {
+		if (!rowInView(oldest))
+			throw new Error(`${oldest} not in view at the top end`);
+		if (rowInView(newest))
+			throw new Error(`${newest} is in view at the top end: not scrolled`);
+	} else {
+		if (!rowInView(newest))
+			throw new Error(`${newest} not in view at the tail`);
+		if (rowInView(oldest))
+			throw new Error(`${oldest} is in view at the tail: not scrolled`);
+	}
+};
+
 /** One instant for every durable row, so the fixed frames are reproducible. */
 const BASE = 1_760_000_000;
 
@@ -147,16 +198,19 @@ const SHORT_ROWS: DesktopHistoryPage["entries"] = [
 const SHORT = peerTranscript(SHORT_ROWS);
 
 /** A long conversation, so the scroller has something to scroll. */
+const LONG_ROWS = 40;
+/** The id prefix the long rows share, so the scroll audit can name the two ends. */
+const LONG_PREFIX = "long-";
 const LONG = peerTranscript(
-	Array.from({ length: 40 }, (_, i) =>
+	Array.from({ length: LONG_ROWS }, (_, i) =>
 		i % 2 === 0
 			? user(
-					`long-${i}`,
+					`${LONG_PREFIX}${i}`,
 					i,
 					`Message ${i} in a conversation long enough to fill the scroller.`,
 				)
 			: assistant(
-					`long-${i}`,
+					`${LONG_PREFIX}${i}`,
 					i,
 					`Reply ${i}, also long enough that the transcript overflows its box.`,
 				),
@@ -218,8 +272,22 @@ const Frame = ({
 	failure?: SessionFailureNotice | null;
 	missing?: boolean;
 	stale?: boolean;
-	/** A fixed scroller height, for the long frames. Content-sized when omitted. */
+	/**
+	 * The pane's fixed height, for the long frames. It must be BOUNDED for the
+	 * transcript's own scroller to have anything to scroll: the scroller is a child
+	 * of this box, and an unbounded box lets its content grow past the frame instead
+	 * of overflowing (design round 2, D6 — the cause of the two long frames being
+	 * pixel-identical). Content-sized only for the short frames.
+	 */
 	height?: number;
+	/**
+	 * Place the transcript's OWN scroller for the long frames. NOTE THE AXIS: the
+	 * scroller is `flex-col-reverse` and pinned at `scrollTop = 0` at the LIVE TAIL,
+	 * so this transcript's convention is INVERTED - "bottom" (newest) is `0` and
+	 * "top" (oldest) is the far negative end. (The round-2 review's fixed-rate note
+	 * assumed a normal scroller; `auditScroll` cross-checks the pinned end so the two
+	 * frames cannot silently agree.)
+	 */
 	scroll?: "top" | "bottom";
 	width?: number;
 	/**
@@ -231,18 +299,31 @@ const Frame = ({
 	 */
 	waiting?: boolean;
 }) => {
+	/*
+	 * The transcript's OWN scroller. `containerRef` is handed to `CanonicalTranscript`
+	 * and IS its `[data-lo-transcript-scroll]` element (verified at
+	 * `canonical-transcript.tsx`: the div carrying `data-lo-transcript-scroll` is the
+	 * one `ref={containerRef}`), so driving `containerRef` drives the real scroller.
+	 * The earlier version bound this ref to the story's own wrapper instead, so the
+	 * assignment landed on an element with nothing to scroll.
+	 */
 	const containerRef = useRef<HTMLDivElement>(null);
-	useEffect(() => {
-		const box = containerRef.current;
-		if (!box || !scroll) return;
-		box.scrollTop = scroll === "bottom" ? box.scrollHeight : 0;
+	/*
+	 * `useLayoutEffect`, so the offset is set BEFORE the frame paints: the transcript's
+	 * own effects (child-first) have already run, so nothing re-anchors the scroller
+	 * after this, and a capture cannot photograph the pre-scroll position.
+	 */
+	useLayoutEffect(() => {
+		const region = containerRef.current;
+		if (!region || !scroll) return;
+		const span = region.scrollHeight - region.clientHeight;
+		region.scrollTop = scroll === "bottom" ? 0 : -span;
 	}, [scroll]);
 	return (
 		<div className="flex flex-col gap-2 bg-canvas p-6" style={{ width }}>
 			<p className="text-body-sm text-ink-muted">{caption}</p>
 			<div
-				className="min-h-0 flex-1 overflow-y-auto"
-				ref={containerRef}
+				className="flex min-h-0 flex-col"
 				style={height ? { height } : undefined}
 			>
 				<CanonicalTranscript
@@ -298,8 +379,10 @@ export const ShownRunning: Story = {
 };
 
 /**
- * 2a. Long transcript scrolled to the top: the notice is outside the scroller,
- * so it is still visible here.
+ * 2a. Long transcript scrolled to the OLDEST end: the notice is outside the
+ * scroller, so it is still visible while the oldest rows sit in view and the
+ * newest row is off the far end. The story's own `auditScroll` rejects the frame
+ * if the scroller did not actually move there (design round 2, D6).
  */
 export const LongTop: Story = {
 	render: () => (
@@ -307,15 +390,19 @@ export const LongTop: Story = {
 			transcript={flagged(LONG)}
 			height={420}
 			scroll="top"
-			caption="Long transcript scrolled to the top: the notice stays visible — it is outside the scroller and does not scroll away."
+			caption="Long transcript scrolled to the oldest end: the notice stays visible — it is outside the scroller and does not scroll away."
 		/>
 	),
-	play: async () => auditFrame(0, true),
+	play: async () => {
+		auditFrame(0, true);
+		auditScroll("top");
+	},
 };
 
 /**
- * 2b. The same transcript scrolled to the bottom: the notice is still visible,
- * and the bottom-anchored rows still sit at the bottom.
+ * 2b. The same transcript at the LIVE TAIL: the notice is still visible and the
+ * newest rows sit at the bottom anchor. The two frames now show DIFFERENT rows,
+ * which is the point the round-2 review found missing.
  */
 export const LongBottom: Story = {
 	render: () => (
@@ -323,10 +410,13 @@ export const LongBottom: Story = {
 			transcript={flagged(LONG)}
 			height={420}
 			scroll="bottom"
-			caption="Long transcript scrolled to the bottom: the notice is still there and the rows keep their bottom anchor."
+			caption="Long transcript at the live tail: the notice is still there and the newest rows keep their bottom anchor."
 		/>
 	),
-	play: async () => auditFrame(0, true),
+	play: async () => {
+		auditFrame(0, true);
+		auditScroll("bottom");
+	},
 };
 
 /**
