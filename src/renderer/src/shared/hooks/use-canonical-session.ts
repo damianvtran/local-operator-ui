@@ -5331,6 +5331,7 @@ export function useCanonicalSessionStream(
 		journalOrder,
 		peerDeclarable,
 		peerScopedNow,
+		streamDeclaredNow,
 	]);
 
 	/*
@@ -5341,6 +5342,17 @@ export function useCanonicalSessionStream(
 	 * connect effect covers the catalogue's placement. The predicate inside
 	 * decides everything and spends the same single budget.
 	 */
+	/*
+	 * `peerJournalSource` IS THE TRIGGER, NOT A BODY READ: the effect's own body
+	 * calls `ensurePeerRebindRef.current?.()`, and that predicate reads the
+	 * capability LIVE (through `peerDeclarable`'s ref). React's rule cannot see
+	 * that, so it reads the dep as excess and would have it dropped - and dropping
+	 * it is exactly the defect this effect exists to fix: a capability that arrives
+	 * late must adopt the conversation via ONE rebind, which only happens if THIS
+	 * effect re-runs when the capability moves. Intentional omission-of-a-body-read,
+	 * so the ignore is the honest spelling rather than a silent dependency.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: peerJournalSource is the trigger (read live through the rebind ref), not a body reference
 	useEffect(() => {
 		if (!sessionId || !enabled) return;
 		ensurePeerRebindRef.current?.();
@@ -6303,7 +6315,7 @@ export function useCanonicalSessionStream(
 				);
 		}
 		return outcome;
-	}, [commitView, sessionId, peerScopedNow]);
+	}, [commitView, sessionId, peerScopedNow, streamDeclaredNow]);
 	const loadOlder = useCallback(
 		async (): Promise<boolean> =>
 			(await loadOlderDetailed()).kind === "applied",
@@ -6391,7 +6403,7 @@ export function useCanonicalSessionStream(
 				refreshingTailRef.current = false;
 			}
 		},
-		[commitView, sessionId, peerScopedNow],
+		[commitView, sessionId, peerScopedNow, streamDeclaredNow],
 	);
 
 	// Registered for as long as this pane is on screen, so the store's echo

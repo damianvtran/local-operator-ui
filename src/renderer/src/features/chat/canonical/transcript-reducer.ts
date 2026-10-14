@@ -3637,11 +3637,21 @@ function peerAdmissionSets(state: TranscriptState): {
 function stripPeerAdmission(record: TranscriptRecord): TranscriptRecord {
 	if (record.journalSeq === undefined && record.journalGeneration === undefined)
 		return record;
-	const stripped: TranscriptRecord = { ...record };
-	delete (stripped as unknown as { journalSeq?: number }).journalSeq;
-	delete (stripped as unknown as { journalGeneration?: string })
-		.journalGeneration;
-	return stripped;
+	/*
+	 * NON-MUTATING STRIP (biome `lint/performance/noDelete`): destructure the two
+	 * rank-claim fields OUT and keep the rest, rather than deleting them off a
+	 * clone. Same result - the coordinate is gone, the body and every other field
+	 * stay - with no `delete`, which deoptimises the object shape.
+	 */
+	const {
+		journalSeq: _journalSeq,
+		journalGeneration: _journalGeneration,
+		...rest
+	} = record as TranscriptRecord & {
+		journalSeq?: number;
+		journalGeneration?: string;
+	};
+	return rest as TranscriptRecord;
 }
 
 /**
@@ -3967,23 +3977,23 @@ export function applyPeerSourcePayload(
 	orderRead?: JournalOrderRead,
 	/**
 	 * The order revision at dispatch. A present/missing id whose body-owed stamp
-		* is NEWER than this was re-debted after the read left (a same-domain wake can
+	 * is NEWER than this was re-debted after the read left (a same-domain wake can
 	 * re-owe an id in place), and its answer describes a body state that is now
 	 * stale - so it neither admits the body nor settles absence (review round 1,
 	 * m1; contract: "Per-ID body-owed revisions fence body acceptance"). Absent
-		* keeps the historical unfenced shape.
-		*/
-		dispatchRevision?: number,
-		): TranscriptState {
-		let next = receiveJournalOrder(state, page, [], false, orderRead, {
+	 * keeps the historical unfenced shape.
+	 */
+	dispatchRevision?: number,
+): TranscriptState {
+	let next = receiveJournalOrder(state, page, [], false, orderRead, {
 		peer: true,
-		});
-		next = finalizePeerLane(next, true);
-		const owed = next.journalBodyOwed;
-		const acceptanceSuperseded = (id: string): boolean =>
+	});
+	next = finalizePeerLane(next, true);
+	const owed = next.journalBodyOwed;
+	const acceptanceSuperseded = (id: string): boolean =>
 		dispatchRevision !== undefined &&
-		(owed?.get(id) ?? -Infinity) > dispatchRevision;
-		const matching =
+		(owed?.get(id) ?? Number.NEGATIVE_INFINITY) > dispatchRevision;
+	const matching =
 		page.journal_order_state === "ready" &&
 		typeof page.journal_generation === "string" &&
 		page.journal_generation === next.journalGeneration;

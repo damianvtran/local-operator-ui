@@ -601,8 +601,8 @@ export function journalBodyOwedIds(state: TranscriptState): string[] {
  * lane exists to stop paying twice).
  *
  * IT ALSO EXCLUDES IDS THIS FLIGHT ALREADY ASKED (review round 1, M1): the
-	* repair loop seals each dispatched kind per flight, and a caller that ignores
-	* that seal (the hook's sweep asks this of the transcript alone) would keep
+ * repair loop seals each dispatched kind per flight, and a caller that ignores
+ * that seal (the hook's sweep asks this of the transcript alone) would keep
  * choosing `lookup` for an id already asked and answered this flight - so the
  * loop, seeing nothing NEW to ask under that kind, would end the flight and
  * the body debt stamped by rotation would never reach the payload stage. With
