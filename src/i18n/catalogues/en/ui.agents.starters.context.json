@@ -74,8 +74,7 @@
 		"plural_guidance": "Use CLDR branches needed by the target language (for example ru/pl few and many; ar zero, two, few and many). Keep {count} ungrouped in every branch: use the plain argument, never # or {count, number}, to preserve identifier-like receipt counts.",
 		"placeholders": {
 			"count": "Number of skipped names, equal to the number of entries in names; positive integer. Numeric plural selector; print it ungrouped via {count}.",
-			"names": "Comma-and-space-joined canonical names, each already wrapped in straight double quotes; interpolate unchanged.",
-			"name": "Canonical built-in identifier currently being installed; unchanged and unquoted here."
+			"names": "Comma-and-space-joined canonical names, each already wrapped in straight double quotes; interpolate unchanged."
 		}
 	},
 	"ui.agents.starters.action.all_builtins": {

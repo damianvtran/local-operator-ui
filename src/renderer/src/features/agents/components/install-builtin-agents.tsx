@@ -1,7 +1,6 @@
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import type { ReusableProfile } from "@shared/api/local-operator/profile-hooks";
 import { Button, Progress } from "@shared/components/ui";
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
@@ -14,6 +13,9 @@ import {
 	useRef,
 	useState,
 } from "react";
+// Keep formatting on the framework-free leaf; the renderer barrel also loads
+// language-write query hooks that this component does not need.
+import { t } from "../../../../../i18n/messages";
 import {
 	type InstallSummary,
 	installBuiltins,
