@@ -275,15 +275,39 @@ export function moveGateReason(state: DesktopFeatureState): string | null {
 		case "enabled":
 			return null;
 		case "unknown":
-			/* Loading-honest: no answer has arrived, so no claim about the backend. */
-			return "checking whether a conversation can be moved…";
+			/*
+			 * Loading-honest AND SHORT (design round 2, D7): this line is transient
+			 * (the first frames of every window) and it used to be the longest of the
+			 * four, so it alone set the panel's width. "checking…" says the same thing
+			 * in one word.
+			 */
+			return "checking…";
 		case "unpaired":
-			/* A pairing fact, not a capability one - the app holds no credential. */
-			return "pair this device with a network first";
+			/*
+			 * A CREDENTIAL fact, in the app's own words for it (design round 2, D6):
+			 * `unpaired` is `desktop_available === false` - the app holds no bearer for
+			 * the backend, which `backend-error.ts`'s `BACKEND_PANE_SENTENCE.unpaired`
+			 * calls "the app is not paired with the running server". "Network" in this
+			 * app means the device MESH, so the old wording sent the user to create or
+			 * join a mesh, which does not fix a missing credential.
+			 */
+			return "this app is not paired with the backend";
 		case "below-version":
 			/* The backend answered and does not advertise the capability. */
 			return "this backend cannot move a conversation";
 	}
+}
+
+/**
+ * The ink the reason line is painted in (design round 2, D8).
+ *
+ * A WAIT IS NOT A GATE: `unknown` is the first frames of every window, and a
+ * contended amber line there reads as something being wrong. The quiet ink says
+ * "still checking" where the warning ink says "this cannot run". `enabled` never
+ * renders a reason, so its tone is unused and `ink-dim` is the harmless default.
+ */
+export function moveGateTone(state: DesktopFeatureState): "warning" | "dim" {
+	return state === "unknown" ? "dim" : "warning";
 }
 
 /**

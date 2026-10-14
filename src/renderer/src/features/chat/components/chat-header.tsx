@@ -48,7 +48,7 @@ import { archiveControlLabel } from "../chat-archived";
  * door per surface, one implementation of what is copied and what it says.
  */
 import { copySessionId } from "../copy-session-id";
-import { moveGateReason } from "../device/chat-device-model";
+import { moveGateReason, moveGateTone } from "../device/chat-device-model";
 import { useChatDeviceStore } from "../device/chat-device-store";
 import { useSessionCommand } from "../pickers/use-picker-backend";
 import {
@@ -334,19 +334,23 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	 * from the page, so the menu and the chip cannot drift about which gate is closed.
 	 */
 	const capabilities = useDesktopCapabilities();
+	const peerState = desktopFeatureState(capabilities.data, "peers");
+	const transferState = desktopFeatureState(
+		capabilities.data,
+		"session_transfer",
+	);
 	/*
 	 * THE REASON THE DOOR IS SHUT, FROM EACH GATE'S OWN STATE (design round 1, D1/D2).
-	 * `moveGateReason` reads the whole four-state answer rather than a boolean, so a
-	 * loading or unpaired capability is not reported as a backend that cannot move.
-	 * `peers` is asked first because it is the outer gate - without it no device
-	 * surface exists at all. Absent (`undefined`) when both are enabled.
+	 * `peerState` is the outer gate - without `peers` no device surface exists at all -
+	 * so it is asked first; the inner gate's reason (`below-version`) is the fallback.
+	 * `undefined` when both are enabled.
 	 */
 	const moveReason =
-		moveGateReason(desktopFeatureState(capabilities.data, "peers")) ??
-		moveGateReason(
-			desktopFeatureState(capabilities.data, "session_transfer"),
-		) ??
-		undefined;
+		moveGateReason(peerState) ?? moveGateReason(transferState) ?? undefined;
+	/* The reason's ink follows the STATE (design round 2, D8): a wait is not a gate. */
+	const moveTone = moveGateTone(
+		moveGateReason(peerState) !== null ? peerState : transferState,
+	);
 	const requestPicker = useChatDeviceStore((s) => s.requestPicker);
 	/*
 	 * The overflow menu's own open state and the pending move, both needed together:
@@ -1306,12 +1310,21 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 										<span>Move to another device…</span>
 										{moveReason ? (
 											/*
-											 * THE REASON WRAPS WITHIN THE MENU'S WIDTH rather than stretching it
-											 * (design round 1, D4): a sentence that widened the panel by 40-60px would
-											 * shove every other row to a width this item alone decided. `min-w-0` on
-											 * the parent is what lets this child shrink instead of the panel.
+											 * THE REASON WRAPS WITHIN A CAPPED WIDTH (design round 1 D4, then measured
+											 * in round 2 D7). `min-w-0` alone let the longest reason set the panel:
+											 * measured 233px at `enabled` against 284px at `below-version`, so the
+											 * menu widened by whatever the four sentences happened to be. `max-w-52`
+											 * (13rem) clamps the reason column so it WRAPS instead of pushing the
+											 * panel; the name row above is left to size the menu. It is an ARBITRARY
+											 * value because this theme's spacing scale has no `max-w-52` step (v4
+											 * emitted no rule for it - measured `max-width: none`).
 											 */
-											<span className="text-meta text-warning whitespace-normal">
+											<span
+												className={cn(
+													"max-w-[11rem] whitespace-normal text-meta",
+													moveTone === "dim" ? "text-ink-dim" : "text-warning",
+												)}
+											>
 												{moveReason}
 											</span>
 										) : null}
