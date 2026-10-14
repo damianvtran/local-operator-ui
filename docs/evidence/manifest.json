@@ -1903,7 +1903,9 @@
       "settings-keyboard-shortcuts--recording",
       "settings-keyboard-shortcuts--refused",
       "settings-keyboard-shortcuts--cleared",
-      "mesh-tab--approvals-stopped-open"
+      "mesh-tab--approvals-stopped-open",
+      "session-archive--archive-confirm-settings",
+      "session-archive--archive-confirm"
     ],
     "refreshedThemes": [
       "localOperatorDark",
