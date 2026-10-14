@@ -1,7 +1,12 @@
 import type {
+	CanvasArtifact,
 	CanvasDocument,
 	CanvasDocumentType,
 } from "@features/chat/types/canvas";
+import {
+	artifactPath,
+	fallbackArtifactName,
+} from "@features/chat/utils/artifact-identity";
 import { getFileTypeFromPath } from "@features/chat/utils/file-types";
 import { getFileName } from "@features/chat/utils/get-file-name";
 
@@ -78,5 +83,41 @@ export function canvasDocumentForPath(
 		document.lastAgentModified = options.lastAgentModified;
 	if (options.readMtimeMs !== undefined)
 		document.readMtimeMs = options.readMtimeMs;
+	return document;
+}
+
+/**
+ * The document for a session artifact: media with a digest and no file.
+ *
+ * Kept beside `canvasDocumentForPath` so there is still ONE module that decides
+ * what a `CanvasDocument` literal looks like, and so the rules that make a path
+ * document safe are visibly the ones an artifact document opts out of:
+ *
+ * - `id` and `path` are `artifact:<digest>` (`utils/artifact-identity.ts`), so
+ *   the store dedupes an artifact by its content and nothing mistakes the id for
+ *   a file to probe, read or reveal.
+ * - `type` is the artifact's own kind, because there is no extension to derive
+ *   one from; `viewerFor` falls through to its type table for exactly this.
+ * - `content` is empty and `availability` is left absent, as for any mention: a
+ *   probe cannot answer for an artifact, and an unanswered tile renders
+ *   normally. The bytes are fetched by the viewers, by digest, when opened.
+ * - `title` is the producer's name when it gave one, else kind + digest head.
+ *   Names repeat across generations (one real session has 69 pictures under
+ *   three names), so the list adds the digest head when two rows collide.
+ */
+export function canvasDocumentForArtifact(
+	artifact: CanvasArtifact,
+): CanvasDocument {
+	const path = artifactPath(artifact.digest);
+	const document: CanvasDocument = {
+		id: path,
+		title:
+			artifact.name ?? fallbackArtifactName(artifact.kind, artifact.digest),
+		path,
+		content: "",
+		type: artifact.kind,
+		artifact,
+	};
+	if (artifact.sizeBytes !== undefined) document.sizeBytes = artifact.sizeBytes;
 	return document;
 }
