@@ -244,14 +244,17 @@ const Monogram: FC<{ provider: DesktopProvider }> = ({ provider }) => (
 const RowList: FC<{ children: ReactNode; label?: string }> = ({
 	children,
 	label,
-}) => (
-	<ul
-		aria-label={label}
-		className="flex flex-col divide-y divide-hairline overflow-hidden rounded-[14px] bg-surface"
-	>
-		{children}
-	</ul>
-);
+}) => {
+	useI18nLocale();
+	return (
+		<ul
+			aria-label={label}
+			className="flex flex-col divide-y divide-hairline overflow-hidden rounded-[14px] bg-surface"
+		>
+			{children}
+		</ul>
+	);
+};
 
 type ProviderGridProps = {
 	/** Called once any provider reports a stored credential. */
@@ -802,13 +805,11 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 									 */
 									className={open ? "bg-control text-on-accent" : undefined}
 									aria-expanded={open}
-									aria-label={`Manage ${brandOf(provider)}`}
+									aria-label={t("ui.providers.provider_grid.manage", {
+										brand: brandOf(provider),
+									})}
 								>
-									<MoreHorizontal
-										aria-hidden={t("ui.providers.provider_grid.manage", {
-											brand: brandOf(provider),
-										})}
-									/>
+									<MoreHorizontal aria-hidden="true" />
 								</Button>
 							</DropdownMenuTrigger>
 							<DropdownMenuContent

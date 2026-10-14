@@ -237,7 +237,7 @@
 	"ui.providers.provider_catalog.more_providers_and": {
 		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",
 		"tone": "Plain factual status/explanation; preserve source confidence",
-		"note": "Disclosure names the first hidden vendors, then counts other cloud providers; count excludes local rows, which contribute the separate local models phrase. Length: paragraph can wrap within the existing provider panel."
+		"note": "Disclosure names the first hidden vendors, then counts other cloud providers; count excludes local rows, which contribute the separate local models phrase. Length: paragraph can wrap within the existing provider panel. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
 	},
 	"ui.providers.provider_catalog.more_providers_variant_41": {
 		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",
@@ -947,11 +947,11 @@
 	"ui.providers.provider_detail.code_expiry": {
 		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
 		"tone": "Plain factual status/explanation; preserve source confidence",
-		"note": "Whole device-code expiry caption. minutes is the existing rounded-up deadline in minutes; preserve English min at every count; use ICU forms for translated grammar. Length: paragraph can wrap within the existing provider panel."
+		"note": "Whole device-code expiry caption. minutes is the existing rounded-up deadline in minutes; preserve English min at every count; use ICU forms for translated grammar. Length: paragraph can wrap within the existing provider panel. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
 	},
 	"ui.providers.provider_detail.link_expiry": {
 		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
 		"tone": "Plain factual status/explanation; preserve source confidence",
-		"note": "Whole browser-link expiry caption with the same rounded-up minutes calculation; must not imply that a key expires. Length: paragraph can wrap within the existing provider panel."
+		"note": "Whole browser-link expiry caption with the same rounded-up minutes calculation; must not imply that a key expires. Length: paragraph can wrap within the existing provider panel. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
 	}
 }

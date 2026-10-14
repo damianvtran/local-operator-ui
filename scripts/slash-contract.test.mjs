@@ -53,6 +53,8 @@ const bundle = await build({
 	bundle: true,
 	format: "esm",
 	platform: "node",
+	// Provider presentation now shares the renderer's typed i18n door.
+	alias: { "@shared": `${process.cwd()}/src/renderer/src/shared` },
 	write: false,
 });
 const {

@@ -128,6 +128,7 @@ import {
 const LocalProviderReachability: FC<{ provider: DesktopProvider }> = ({
 	provider,
 }) => {
+	useI18nLocale();
 	const [testing, setTesting] = useState(false);
 	const [result, setResult] = useState<{
 		reachable: boolean;
@@ -252,6 +253,7 @@ const SecretInput: FC<{
 	invalid?: boolean;
 	describedBy?: string;
 }> = ({ id, value, onChange, label, invalid, describedBy }) => {
+	useI18nLocale();
 	const [visible, setVisible] = useState(false);
 	return (
 		<div className="relative">
@@ -347,6 +349,7 @@ const SignedIn: FC<{
 	tone = "success",
 	verdict,
 }) => {
+	useI18nLocale();
 	/*
 	 * A verdict this panel cannot repeat as a success. `Needs sign-in` is both the
 	 * refusal and the not-confirmed arm (`unknown` with a credential): in the first the

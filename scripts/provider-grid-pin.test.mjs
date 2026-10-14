@@ -799,6 +799,19 @@ test("provider extraction preserves the pinned control and verdict copy", () => 
 	);
 });
 
+test("connected provider menu keeps the localized trigger name and a decorative icon", () => {
+	const html = render(
+		census().map((provider) => ({
+			...provider,
+			has_credential: true,
+			configured: true,
+		})),
+	);
+	assert.match(html, /aria-label="Manage Radient"/);
+	assert.match(html, /class="[^"]*lucide-ellipsis[^"]*" aria-hidden="true"/);
+	assert.doesNotMatch(html, /aria-hidden="Manage /);
+});
+
 // Runtime proof, not source-only: static provider rows must not freeze the startup locale.
 test("provider labels refresh and missing namespaces keep English counts", () => {
 	try {
