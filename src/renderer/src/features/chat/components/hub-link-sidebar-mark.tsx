@@ -20,6 +20,7 @@ import {
 	Check,
 	CircleAlert,
 	CircleArrowDown,
+	CircleHelp,
 	Link2,
 	LoaderCircle,
 	TriangleAlert,
@@ -209,6 +210,44 @@ export function HubLinkSidebarMark({
 	);
 }
 
+/**
+ * The UNRESOLVED affordance (CODE MAJOR-B, design §Sidebar): an item present in
+ * `inventory.unresolved` but ABSENT from `inventory.links` drew NOTHING - the one
+ * indicator the operator asked for was missing exactly when the item has
+ * something to act on (the source-confirmation act). It is deliberately DISTINCT
+ * from every healthy/aggregate mark: a different glyph (a question, not a link)
+ * and its own aria label, and it opens the resolve flow rather than a policy menu
+ * (there is no policy to edit on a row with no confirmed origin).
+ */
+export function HubUnresolvedMark({
+	staged,
+	onResolve,
+}: { staged: boolean; onResolve: () => void }) {
+	useI18nLocale();
+	const label = t("ui.hub.links.unresolved_mark");
+	return (
+		<Tooltip content={label} side="right" disableHoverableContent>
+			<button
+				type="button"
+				data-hub-mark="unresolved"
+				data-testid="hub-mark-unresolved"
+				aria-label={label}
+				className={cn(
+					"flex size-6 shrink-0 items-center justify-center rounded-md text-warning",
+					!staged && "hover:bg-row-hover",
+					"focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-1",
+				)}
+				onClick={(event) => {
+					event.stopPropagation();
+					onResolve();
+				}}
+			>
+				<CircleHelp aria-hidden="true" className="size-3.5" />
+			</button>
+		</Tooltip>
+	);
+}
+
 /** Expansion is the user's act; a poll never inserts flags into a collapsed name. */
 export function HubLinkExpandedPolicy({ link }: { link: HubLink }) {
 	useI18nLocale();
@@ -238,6 +277,27 @@ export function HubLinkAggregateMark({
 	onDetail,
 }: { links: HubLink[]; staged: boolean; onDetail: () => void }) {
 	useI18nLocale();
+	/*
+	 * UX U10 (design D14): the aggregate used to be pixel-identical to a single
+	 * healthy mark, so a row with three origins looked exactly like a row with one
+	 * and rolled up nothing. It now takes the WORST origin state through the same
+	 * `hubLinkMark` ladder the single mark uses - a failure at one origin is not
+	 * hidden behind a healthy one - and shows the origin COUNT as a badge.
+	 */
+	const RANK: Record<string, number> = {
+		healthy: 0,
+		applied: 1,
+		available: 2,
+		busy: 3,
+		failed: 4,
+		review: 5,
+	};
+	const marks = links.map((link) => hubLinkMark(hubLinkView(link)));
+	const worst = marks.reduce(
+		(acc, mark) => (RANK[mark.kind] > RANK[acc] ? mark.kind : acc),
+		"healthy",
+	);
+	const Glyph = ICON[worst as keyof typeof ICON] ?? Link2;
 	const label = t("ui.hub.links.title");
 	return (
 		<Tooltip content={label} side="right" disableHoverableContent>
@@ -246,9 +306,11 @@ export function HubLinkAggregateMark({
 				data-hub-mark="aggregate"
 				data-testid="hub-mark-aggregate"
 				data-hub-mark-count={links.length}
+				data-hub-mark-state={worst}
 				aria-label={label}
 				className={cn(
-					"flex size-6 shrink-0 items-center justify-center rounded-md text-ink-dim",
+					"relative flex size-6 shrink-0 items-center justify-center rounded-md",
+					INK[worst as keyof typeof INK] ?? "text-ink-dim",
 					!staged && "hover:bg-row-hover",
 					"focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-1",
 				)}
@@ -257,7 +319,13 @@ export function HubLinkAggregateMark({
 					onDetail();
 				}}
 			>
-				<Link2 aria-hidden="true" className="size-3.5" />
+				<Glyph aria-hidden="true" className="size-3.5" />
+				<span
+					aria-hidden="true"
+					className="absolute -right-0.5 -bottom-0.5 flex h-3 min-w-3 items-center justify-center rounded-full bg-surface px-0.5 text-[9px] leading-none text-ink-muted"
+				>
+					{links.length}
+				</span>
 			</button>
 		</Tooltip>
 	);

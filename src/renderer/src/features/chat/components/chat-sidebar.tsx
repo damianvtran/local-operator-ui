@@ -26,7 +26,10 @@ import {
 	useHubUpdates,
 } from "@shared/api/local-operator/hub-hooks";
 import { useHubLinks } from "@shared/api/local-operator/hub-link-hooks";
-import { linksForLocalItem } from "@shared/api/local-operator/hub-links";
+import {
+	linksForLocalItem,
+	unresolvedForLocalItem,
+} from "@shared/api/local-operator/hub-links";
 import {
 	type HubItemKind,
 	type HubMark,
@@ -269,6 +272,7 @@ import {
 	HubLinkAggregateMark,
 	HubLinkExpandedPolicy,
 	HubLinkSidebarMark,
+	HubUnresolvedMark,
 } from "./hub-link-sidebar-mark";
 import {
 	HubHeadingControls,
@@ -6476,6 +6480,16 @@ export function ChatSidebar({
 		// aggregate mark that opens the Hub links detail (design §Sidebar line 48),
 		// where the per-link policy controls live. A zero-origin row draws neither.
 		const aggregateOrigins = linkedOrigins.length > 1 ? linkedOrigins : null;
+		/*
+		 * CODE MAJOR-B: an item in `inventory.unresolved` but NOT in
+		 * `inventory.links` drew nothing, and the legacy HubUpdateMark is suppressed
+		 * once hub_links is advertised - so an item needing the source-confirmation
+		 * act had no indicator at all. The unresolved reader is the second half.
+		 */
+		const unresolvedOrigins =
+			fullHubLinks && linkedOrigins.length === 0
+				? unresolvedForLocalItem(hubLinks.data, kind, localId, name)
+				: [];
 		return (
 			<div key={key} data-entity>
 				<div
@@ -6695,6 +6709,16 @@ export function ChatSidebar({
 							links={aggregateOrigins}
 							staged={staged}
 							onDetail={() => openHubDetail(kind, name)}
+						/>
+					)}
+					{unresolvedOrigins.length > 0 && (
+						<HubUnresolvedMark
+							staged={staged}
+							onResolve={() =>
+								navigate(
+									`/agents?kind=${kind}&name=${encodeURIComponent(name)}&resolve=1`,
+								)
+							}
 						/>
 					)}
 					{!fullHubLinks && hubMark && hubItem && (

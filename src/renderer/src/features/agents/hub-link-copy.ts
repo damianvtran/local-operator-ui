@@ -37,6 +37,14 @@ export function hubReasonText(reason: string | null | undefined): string {
 			return t("ui.hub.status.skill_validation");
 		case "unsafe-publication":
 			return t("ui.hub.status.unsafe_publication");
+		/*
+		 * UX U3' (design D18): a transport failure is NOT a paused action - the
+		 * row's own line says a retry is scheduled - so it gets its own sentence
+		 * rather than the cause-neutral default.
+		 */
+		case "hub-error":
+		case "transport":
+			return t("ui.hub.status.transport_error");
 		default:
 			return t("ui.hub.status.other_error");
 	}

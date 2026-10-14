@@ -215,6 +215,17 @@ const unresolved = [
 		hub_id: "hub-agent-legacy",
 		reason: "source-unresolved",
 	},
+	/*
+	 * An unresolved-only item (no row in `links`): the roster must show the
+	 * "source not confirmed" affordance for it (CODE MAJOR-B).
+	 */
+	{
+		kind: "agent",
+		local_id: "agent-legacy-solo",
+		name: "legacy-solo",
+		hub_id: "hub-agent-legacy-solo",
+		reason: "source-unresolved",
+	},
 ];
 
 /** Whether the source confirmation has been accepted for the legacy row. */
@@ -402,6 +413,11 @@ const route = (method, pathname, query, body) => {
 				 * healthy sibling's.
 				 */
 				{ name: "legacy-helper", source: "custom", description: "" },
+				/*
+				 * An item present ONLY in `unresolved` (no healthy link row): the roster
+				 * affordance (CODE MAJOR-B) is for exactly this case.
+				 */
+				{ name: "legacy-solo", source: "custom", description: "" },
 			],
 		});
 	}
@@ -425,7 +441,9 @@ const route = (method, pathname, query, body) => {
 					? "agent-1"
 					: name === "legacy-helper"
 						? "agent-legacy"
-						: "agent-2",
+						: name === "legacy-solo"
+							? "agent-legacy-solo"
+							: "agent-2",
 			description: "",
 			instructions: "",
 			tools: [],

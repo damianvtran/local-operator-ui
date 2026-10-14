@@ -581,7 +581,7 @@
 	},
 	"ui.hub.links.resolve_description": {
 		"role": "disclosure body",
-		"tone": "plain, precise; a confirmation is deliberate and not silently reversible; no inference of source or scope",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
 		"note": "States the consequence of confirming a source. {item} is escaped UNTRUSTED user-authored display bytes, never authority and never interpolated as markup. The sentence must make clear a wrong source is not later corrected in place - it requires a separate local copy - so the operator does not treat this as a reversible toggle. No Public/current-organization inference. Wrap naturally; no fixed width cap."
 	},
 	"ui.hub.links.resolve_action": {
@@ -658,5 +658,35 @@
 		"role": "button label",
 		"tone": "plain, precise; safety statements must not weaken or promise success",
 		"note": "The team editor's reload action in the conflict banner. Names the outcome (the saved version). No placeholders."
+	},
+	"ui.hub.status.transport_error": {
+		"role": "error",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "A transport failure that will retry. Distinct from other_error (a paused action) because the row's own line says a retry is scheduled; naming it 'paused' contradicted that (UX U3'). No placeholders."
+	},
+	"ui.hub.links.scope_placeholder": {
+		"role": "select placeholder",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "The disabled first option of the blank scope chooser, so an empty select reads as an unanswered question rather than a filled one (UX U8). No placeholders."
+	},
+	"ui.hub.links.scope_required": {
+		"role": "hint",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Beside the still-disabled Confirm while no scope is chosen. States the missing step, never the outcome. No placeholders."
+	},
+	"ui.hub.links.sources_count": {
+		"role": "summary",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "The collapsed summary's origin count when an item has more than one origin ({count} is an ICU plural). Says how many destinations there are, never which one wins. Numeric ICU plural."
+	},
+	"ui.hub.links.links_count": {
+		"role": "summary",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "The collapsed summary's link count for the detail page (several independent links). {count} is an ICU plural. Numeric ICU plural."
+	},
+	"ui.hub.links.unresolved_mark": {
+		"role": "aria label",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "The roster affordance for a link whose source is not confirmed: names the state and the one action it opens. NOT a healthy mark and not a policy menu. No placeholders."
 	}
 }

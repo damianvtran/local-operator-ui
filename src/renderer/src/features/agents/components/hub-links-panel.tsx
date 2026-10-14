@@ -32,8 +32,9 @@ import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { formatDateTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
+import { showSuccessToast } from "@shared/utils/toast-manager";
 import { useEffect, useId, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { hubLinkView } from "../hub-link-adapter";
 import { hubDirectionStateText, hubReasonText } from "../hub-link-copy";
 import { hubPreviewIsCurrent, hubPreviewMatches } from "../hub-preview-binding";
@@ -42,10 +43,14 @@ import {
 	hubLinkSourceName,
 } from "./hub-link-policy-controls";
 
+/*
+ * UX U3'/design D20: an unparseable timestamp degrades to the same cause-neutral
+ * sentence, with NO raw `{state}` token and no action the surface does not have.
+ */
 const hubTime = (value: string) =>
 	Number.isFinite(Date.parse(value))
 		? formatDateTime(new Date(value))
-		: t("ui.hub.status.unknown", { state: "invalid-timestamp" });
+		: t("ui.hub.status.unknown");
 
 const isBusy = (link: HubLink) =>
 	[link.pull.state, link.push.state].some((state) =>
@@ -171,7 +176,10 @@ export function HubLinkGroup({ link }: { link: HubLink }) {
 					return (
 						<div
 							key={direction}
-							className="min-w-0"
+							/* UX U10/design D21: one explicit column gap normalises
+							 * the spacing, so a control (Retry) is not stranded ~4px
+							 * under its own "Next retry:" line at a narrow width. */
+							className="flex min-w-0 flex-col items-start gap-1"
 							data-hub-direction={direction}
 						>
 							<h4 className="text-body-sm text-ink">
@@ -491,6 +499,7 @@ export function HubUnresolvedSource({
 	organizations,
 	isAuthenticated,
 	onSignIn,
+	initialOpen,
 }: {
 	row: HubUnresolvedLink;
 	/** The approved/configured credential-free source this app already holds. */
@@ -500,9 +509,11 @@ export function HubUnresolvedSource({
 	/** A signed-out viewer cannot reach any organization destination. */
 	isAuthenticated: boolean;
 	onSignIn: () => void;
+	/** Opened on arrival for a `?resolve=1` deep link from the sidebar affordance. */
+	initialOpen?: boolean;
 }) {
 	useI18nLocale();
-	const [open, setOpen] = useState(false);
+	const [open, setOpen] = useState(initialOpen ?? false);
 	/*
 	 * NO PRE-SELECTION (UX U1 / design D3). The scope starts EMPTY — "" is not a
 	 * destination — so confirming is a deliberate choice rather than a press of the
@@ -517,9 +528,25 @@ export function HubUnresolvedSource({
 	 * (UX U4). The region is focusable by its own heading; nothing is auto-pressed.
 	 */
 	const resolveRegionRef = useRef<HTMLDivElement>(null);
+	const openerRef = useRef<HTMLButtonElement>(null);
+	/*
+	 * UX U4': opening moves focus INTO the region (a deliberate irreversible act is
+	 * never a keystroke from an unseen control), and CANCEL returns focus to the
+	 * opener so the reader is not dropped back to `body`.
+	 */
 	useEffect(() => {
 		if (open) resolveRegionRef.current?.focus();
 	}, [open]);
+	/*
+	 * UX U4': a completed confirmation is announced, not merely reflected in the
+	 * button's own label - a polite toast is the one channel that tells a
+	 * screen-reader user the act succeeded after the region unmounts. Fired once
+	 * per success transition.
+	 */
+	useEffect(() => {
+		if (resolution.isSuccess)
+			showSuccessToast(t("ui.hub.links.resolve_action_done"));
+	}, [resolution.isSuccess]);
 	const targetIsOrg = target !== "public" && target !== "";
 	const org = targetIsOrg
 		? organizations.find((candidate) => candidate.tenant_id === target)
@@ -589,8 +616,12 @@ export function HubUnresolvedSource({
 								disabled={resolution.isPending}
 								onChange={(event) => setTarget(event.target.value)}
 							>
-								{/* An empty option keeps confirming a deliberate choice. */}
-								<option value="" disabled />
+								{/* UX U8 (design D19): a disabled PLACEHOLDER, so the blank
+								 * select reads as an unanswered question rather than a filled
+								 * one, while keeping confirming a deliberate choice. */}
+								<option value="" disabled>
+									{t("ui.hub.links.scope_placeholder")}
+								</option>
 								<option value="public">{t("ui.hub.links.scope_public")}</option>
 								{organizations.map((candidate) => (
 									<option key={candidate.tenant_id} value={candidate.tenant_id}>
@@ -608,19 +639,25 @@ export function HubUnresolvedSource({
 						 * about are their organizations, and offering only Public would
 						 * push an irreversible publish at someone who cannot reach it.
 						 */
+						/*
+						 * UX U1' (design D13, QA Q2): a signed-out viewer has NO
+						 * organization list, so naming one - let alone the ITEM - as the
+						 * destination is a lie the copy then compounded into
+						 * "… · Private · Private". The affordance states the act (choose a
+						 * scope by signing in) and names no destination at all.
+						 */
 						<Button variant="outline" onClick={onSignIn}>
-							{t("ui.hub.links.sign_in_to_publish", {
-								organization: t("ui.hub.links.scope_private", {
-									organization: row.name,
-								}),
-							})}
+							{t("ui.hub.links.sign_in_to_publish")}
 						</Button>
 					)}
 					<div className="flex flex-wrap gap-2">
 						<Button
 							variant="outline"
 							disabled={resolution.isPending}
-							onClick={() => setOpen(false)}
+							onClick={() => {
+								setOpen(false);
+								openerRef.current?.focus();
+							}}
 						>
 							{t("ui.hub.subscriptions.cancel")}
 						</Button>
@@ -647,6 +684,13 @@ export function HubUnresolvedSource({
 					{/* A refusal is not a resolved row: the old state is byte-unchanged.
 					 * Item 7 (UX U5): distinguish the KNOWN-scope conflict from any
 					 * other failure instead of one blanket sentence. */}
+					{/* UX U8: the confirm stays disabled until a scope is chosen; the hint
+					 * names the missing step while it is. */}
+					{!chose && !resolution.isPending ? (
+						<p className="text-meta text-ink-muted">
+							{t("ui.hub.links.scope_required")}
+						</p>
+					) : null}
 					{resolution.error ? (
 						<p role="alert" className="text-body-sm text-danger">
 							{/* Item 7 (UX U5): a KNOWN-scope conflict has its own named
@@ -665,6 +709,7 @@ export function HubUnresolvedSource({
 				</div>
 			) : (
 				<Button
+					ref={openerRef}
 					variant="outline"
 					size="sm"
 					className="mt-1 self-start"
@@ -694,6 +739,13 @@ export function HubLinksPanel({
 	 */
 	const { isAuthenticated } = useRadientAuth();
 	const navigate = useNavigate();
+	/*
+	 * A `?resolve=1` deep link (the sidebar's unresolved affordance) opens the
+	 * source-confirmation region on arrival, so the roster indicator lands the
+	 * reader ON the act rather than on a collapsed panel they must open.
+	 */
+	const [searchParams] = useSearchParams();
+	const openResolve = searchParams.get("resolve") === "1";
 	const { memberships } = useMembershipsQuery({
 		enabled: enabled && isAuthenticated,
 	});
@@ -722,20 +774,43 @@ export function HubLinksPanel({
 	 * bare heading. The summary is COMPOSED from existing keys (title + source +
 	 * every row's on/off), so it needs no new catalogue copy.
 	 */
-	const summaryState =
-		rows.length > 0
-			? `${hubLinkSourceName(rows[0])} · Subscribe ${t(
-					rows[0].policy.subscribe
-						? "ui.hub.subscriptions.configured_on"
-						: "ui.hub.subscriptions.configured_off",
-				)} · Auto-push ${t(
-					rows[0].policy.auto_push
-						? "ui.hub.subscriptions.configured_on"
-						: "ui.hub.subscriptions.configured_off",
-				)}`
-			: unresolved.length > 0
-				? t("ui.hub.links.source_unavailable")
-				: t("ui.hub.links.empty");
+	/*
+	 * UX U9 (design D16, CODE NIT-1): the summary describes ALL the rows, not just
+	 * the first, and names a COUNT when an item has several origins - "2 sources"
+	 * is the fact that distinguishes an aggregate from a single origin. The
+	 * vocabulary is the SURFACE's own ("Source not confirmed" here matched the
+	 * row's label; it used to read "Source unavailable", a different state). Every
+	 * piece is a catalogue string, so a copy edit cannot leave a stray literal
+	 * behind.
+	 */
+	const onOff = (value: boolean) =>
+		t(
+			value
+				? "ui.hub.subscriptions.configured_on"
+				: "ui.hub.subscriptions.configured_off",
+		);
+	const summaryState = (() => {
+		if (rows.length > 0) {
+			const first = rows[0];
+			const origins =
+				rows.length > 1
+					? ` · ${t("ui.hub.links.sources_count", { count: rows.length })}`
+					: "";
+			return `${hubLinkSourceName(first)}${origins} · ${t(
+				"ui.hub.subscriptions.subscribe",
+			)} ${onOff(first.policy.subscribe)} · ${t(
+				"ui.hub.subscriptions.auto_push",
+			)} ${onOff(first.policy.auto_push)}`;
+		}
+		if (unresolved.length > 0) {
+			const count =
+				unresolved.length > 1
+					? ` · ${t("ui.hub.links.links_count", { count: unresolved.length })}`
+					: "";
+			return `${t("ui.hub.links.source_not_confirmed")}${count}`;
+		}
+		return t("ui.hub.links.empty");
+	})();
 	/*
 	 * Auto-open ONLY when a row needs the reader: an unresolved diagnostic, or a
 	 * direction in a state that asks for attention (`available` wants an apply;
@@ -749,10 +824,25 @@ export function HubLinksPanel({
 				(state) => state === "available" || state === "failed",
 			),
 		);
+	/*
+	 * CODE MINOR-C: the panel's own open state, hoisted OUT of `Disclosure`.
+	 * `needsAttention` is known only after the async inventory answers, but
+	 * `Disclosure`'s uncontrolled `defaultOpen` seeds `useState` ONCE - on the
+	 * pre-answer render - so a cold load never auto-opened on an available/failed
+	 * payload. One state here, synced on the transition INTO attention, opens on
+	 * the answer without a second owner fighting the reader's clicks.
+	 */
+	const [open, setOpen] = useState(needsAttention);
+	const wasAttention = useRef(needsAttention);
+	useEffect(() => {
+		if (needsAttention && !wasAttention.current) setOpen(true);
+		wasAttention.current = needsAttention;
+	}, [needsAttention]);
 	return (
 		<Disclosure
+			open={open}
+			onOpenChange={setOpen}
 			summary={`${t("ui.hub.links.title")} · ${summaryState}`}
-			defaultOpen={needsAttention}
 			className="min-w-0"
 			data-hub-links-panel
 		>
@@ -788,6 +878,7 @@ export function HubLinksPanel({
 							organizations={organizations}
 							isAuthenticated={isAuthenticated}
 							onSignIn={() => navigate("/settings")}
+							initialOpen={openResolve}
 						/>
 					))}
 				</div>

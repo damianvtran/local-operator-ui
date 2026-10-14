@@ -43071,6 +43071,28 @@ async function sceneHubLinks(cdp, app) {
 		collapsed.ok && collapsed.last.expanded === "false",
 		`after ${collapsed.waitedMs ?? "?"}ms: ${JSON.stringify(collapsed.last)}`,
 	);
+	/*
+	 * THE COLLAPSED FRAME (design D15): the scene used to press the panel open
+	 * before photographing anything, so no frame existed at the state item 4 is
+	 * ABOUT - the reviewer measuring the healthy title's position had nothing to
+	 * measure. Photograph the collapsed panel (with the sidebar's roster marks in
+	 * the same frame) BEFORE expanding, and assert the unresolved affordance is
+	 * present on the roster in this state too.
+	 */
+	const collapsedMarks = await cdp.evaluate(`(() => {
+		const marks = Array.from(document.querySelectorAll('[data-hub-mark]')).map((m) =>
+			m.getAttribute('data-hub-mark'),
+		);
+		const unresolved = document.querySelector('[data-testid="hub-mark-unresolved"]');
+		return { marks, unresolved: unresolved !== null };
+	})()`);
+	note("collapsed state roster marks", JSON.stringify(collapsedMarks));
+	check(
+		"an unresolved-only item draws the source-not-confirmed roster affordance",
+		collapsedMarks.unresolved === true,
+		JSON.stringify(collapsedMarks),
+	);
+	await captureSettled(cdp, `hub-links-${size}-${theme}-collapsed`);
 	await verb(cdp, "press", '[data-agents-pane] button[aria-expanded="false"]');
 	const ready = await waitForCondition(
 		cdp,

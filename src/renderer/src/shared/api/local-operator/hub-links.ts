@@ -127,3 +127,31 @@ export function linksForLocalItem(
 			(localId ? link.local_id === localId : link.name === name),
 	);
 }
+
+/**
+ * The unresolved DIAGNOSTICS for one local item (CODE MAJOR-B, design §Sidebar).
+ *
+ * `linksForLocalItem` reads only `inventory.links`, so an item that is present in
+ * `inventory.unresolved` but absent from `inventory.links` renders NO roster mark:
+ * the one thing the operator asked for - a subtle indicator beside an item when
+ * there is something to act on - is missing exactly when the item needs the
+ * source-confirmation act. Worse, once `hub_links` is advertised the legacy
+ * `HubUpdateMark` is suppressed, so nothing stands in. This reader is the second
+ * half: the caller draws a DISTINCT "source not confirmed" affordance from it.
+ *
+ * `kind` is narrowed to the resolve arm's own domain (agent|team) because a skill
+ * can never be an unresolved row - the panel's resolve control is never wired to
+ * one - so the roster lookup must not offer an affordance that has no action.
+ */
+export function unresolvedForLocalItem(
+	inventory: HubLinks | undefined,
+	kind: HubLinkKind,
+	localId: string | undefined,
+	name: string,
+): HubUnresolvedLink[] {
+	return (inventory?.unresolved ?? []).filter(
+		(diagnostic) =>
+			diagnostic.kind === kind &&
+			(localId ? diagnostic.local_id === localId : diagnostic.name === name),
+	);
+}
