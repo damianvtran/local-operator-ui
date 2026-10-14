@@ -20,6 +20,8 @@ import { ModelSelect } from "@shared/components/hosting/model-select";
 import { Tooltip } from "@shared/components/ui";
 import { useConfig } from "@shared/hooks/use-config";
 import type { useUpdateAgent } from "@shared/hooks/use-update-agent";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { formatCalendarDate } from "@shared/utils/date-utils";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { Calendar, Cpu, GitBranch, IdCard, Info } from "lucide-react";
@@ -71,6 +73,8 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 	refetchAgent,
 	initialSelectedAgentId,
 }) => {
+	// Subscribe without remounting: language changes must not discard unsaved fields.
+	useI18nLocale();
 	const { data: config, isLoading: isConfigLoading } = useConfig();
 
 	// currentHosting reflects the hosting provider that ModelSelect should use.
@@ -124,12 +128,12 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 			 */}
 			<EditableField
 				value={selectedAgent.name}
-				label="Agent name"
-				placeholder="Enter agent name..."
+				label={t("ui.agents.settings.general.agent_name")}
+				placeholder={t("ui.agents.settings.general.enter_agent_name")}
 				isSaving={savingField === "name"}
 				onSave={async (value) => {
 					if (!value.trim()) {
-						showErrorToast("Agent name cannot be empty");
+						showErrorToast(t("ui.agents.settings.general.error.empty_name"));
 						return;
 					}
 					setSavingField("name");
@@ -258,10 +262,14 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 						 * is nothing to choose until hosting is set.
 						 */
 						<div className="relative">
-							<Tooltip content="Select a hosting provider first, and then select the AI model that you want to use.  Each model has different capabilities and costs.  Recommended: Automatic">
+							<Tooltip
+								content={t(
+									"ui.agents.settings.general.select_a_hosting_provider_first_and_then",
+								)}
+							>
 								<div className="mb-1.5 flex w-fit items-center gap-2 text-body-sm text-ink-muted">
 									<Cpu size={16} aria-hidden="true" />
-									Model
+									{t("ui.agents.settings.general.model")}
 								</div>
 							</Tooltip>
 							{/* `rounded-sm` because the real control it stands in for is an
@@ -269,7 +277,9 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 							    the layout moved when it did not. */}
 							<div className="flex h-8 w-full items-center rounded-sm border border-control bg-surface px-3">
 								<span className="truncate text-body-sm text-ink-disabled">
-									Select a hosting provider first...
+									{t(
+										"ui.agents.settings.general.select_a_hosting_provider_first",
+									)}
 								</span>
 							</div>
 						</div>
@@ -284,7 +294,7 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 			 */}
 			<h2 className="mt-4 flex items-center gap-2 text-heading text-ink">
 				<Info size={16} className="shrink-0 text-ink-dim" />
-				Agent information
+				{t("ui.agents.settings.general.agent_information")}
 			</h2>
 
 			{/*
@@ -298,8 +308,8 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 			<div className="flex flex-col gap-4">
 				<EditableField
 					value={selectedAgent.description || ""}
-					label="Description"
-					placeholder="Enter agent description..."
+					label={t("ui.agents.settings.general.description")}
+					placeholder={t("ui.agents.settings.general.enter_agent_description")}
 					multiline
 					rows={3}
 					isSaving={savingField === "description"}
@@ -328,8 +338,8 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 
 				<TagsInputChips
 					value={selectedAgent.tags || []}
-					label="Tags"
-					placeholder="Add tag..."
+					label={t("ui.agents.settings.general.tags")}
+					placeholder={t("ui.agents.settings.general.add_tag")}
 					disabled={tagsSaving}
 					onChange={async (tags) => {
 						if (
@@ -359,8 +369,8 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 
 				<CategoriesInputChips
 					value={selectedAgent.categories || []}
-					label="Categories"
-					placeholder="Add category..."
+					label={t("ui.agents.settings.general.categories")}
+					placeholder={t("ui.agents.settings.general.add_category")}
 					disabled={categoriesSaving}
 					onChange={async (categories) => {
 						if (
@@ -393,7 +403,7 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 						label={
 							<>
 								<IdCard size={12} aria-hidden="true" />
-								ID
+								{t("ui.agents.settings.general.id")}
 							</>
 						}
 						// Machine voice: the id is an identifier, not prose.
@@ -405,7 +415,7 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 						label={
 							<>
 								<Calendar size={12} aria-hidden="true" />
-								Created
+								{t("ui.agents.settings.general.created")}
 							</>
 						}
 						/* A calendar date, not a message timestamp. `toLocaleString`
@@ -420,7 +430,7 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 						label={
 							<>
 								<GitBranch size={12} aria-hidden="true" />
-								Version
+								{t("ui.agents.settings.general.version")}
 							</>
 						}
 						value={selectedAgent.version}

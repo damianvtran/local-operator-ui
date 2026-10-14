@@ -1,5 +1,7 @@
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { useUpdateAgent } from "@shared/hooks/use-update-agent";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { Bot } from "lucide-react";
 import { useState } from "react";
 import type { FC } from "react";
@@ -54,6 +56,8 @@ export const AgentSettings: FC<AgentSettingsProps> = ({
 	refetchAgent,
 	initialSelectedAgentId,
 }) => {
+	// Subscribe without remounting: language changes must not discard unsaved fields.
+	useI18nLocale();
 	const [savingField, setSavingField] = useState<string | null>(null);
 	const updateAgentMutation = useUpdateAgent();
 
@@ -107,10 +111,11 @@ export const AgentSettings: FC<AgentSettingsProps> = ({
 					    only thing that could earn it is a control, and there is none
 					    here — the list this points at is already on screen. */}
 					<Bot size={48} className="text-ink-dim" aria-hidden="true" />
-					<h2 className="text-heading text-ink">No agent selected</h2>
+					<h2 className="text-heading text-ink">
+						{t("ui.agents.settings.agent.no_agent_selected")}
+					</h2>
 					<p className="max-w-md text-body-sm text-ink-muted">
-						Select an agent from the list on the left to view its configuration
-						and details.
+						{t("ui.agents.settings.agent.select_an_agent_from_the_list_on")}
 					</p>
 				</div>
 			)}

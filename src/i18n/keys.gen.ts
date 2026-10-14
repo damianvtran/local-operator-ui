@@ -22,6 +22,7 @@
  */
 
 import enUiAgents from "./catalogues/en/ui.agents.json";
+import enUiAgentsSettings from "./catalogues/en/ui.agents.settings.json";
 import enUiBrowserChrome from "./catalogues/en/ui.browser.chrome.json";
 import enUiBrowser from "./catalogues/en/ui.browser.json";
 import enUiCanvas from "./catalogues/en/ui.canvas.json";
@@ -42,6 +43,7 @@ import frUiSettings from "./catalogues/fr/ui.settings.json";
 /** The bundled en catalogue: every `src/i18n/catalogues/en` message, flat. */
 export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgents,
+	...enUiAgentsSettings,
 	...enUiBrowserChrome,
 	...enUiBrowser,
 	...enUiCanvas,
@@ -71,6 +73,64 @@ export const bundledCatalogues: Readonly<
 
 /** One entry per bundled message id, shaped by the message's own arguments. */
 export type MessageParams = {
+	"ui.agents.settings.agent.no_agent_selected": undefined;
+	"ui.agents.settings.agent.select_an_agent_from_the_list_on": undefined;
+	"ui.agents.settings.chat.about_advanced_chat_settings": undefined;
+	"ui.agents.settings.chat.advanced_chat_settings": undefined;
+	"ui.agents.settings.chat.advanced_settings_to_change_how_the_agent": undefined;
+	"ui.agents.settings.chat.controls_cumulative_probability_of_tokens_to_sample": undefined;
+	"ui.agents.settings.chat.controls_randomness_in_responses_0_0_1": undefined;
+	"ui.agents.settings.chat.empty": undefined;
+	"ui.agents.settings.chat.enter_stop_sequences_one_per_line": undefined;
+	"ui.agents.settings.chat.error.invalid_seed": undefined;
+	"ui.agents.settings.chat.frequency_penalty": undefined;
+	"ui.agents.settings.chat.increases_diversity_by_lowering_likelihood_of_prompt": undefined;
+	"ui.agents.settings.chat.length_and_stopping": undefined;
+	"ui.agents.settings.chat.limits_tokens_to_sample_from_at_each": undefined;
+	"ui.agents.settings.chat.max_tokens": undefined;
+	"ui.agents.settings.chat.maximum_tokens_to_generate_in_response": undefined;
+	"ui.agents.settings.chat.not_set_yet": undefined;
+	"ui.agents.settings.chat.presence_penalty": undefined;
+	"ui.agents.settings.chat.random_number_seed_for_deterministic_generation": undefined;
+	"ui.agents.settings.chat.random_number_seed_for_deterministic_generation_detail": undefined;
+	"ui.agents.settings.chat.reduces_repetition_by_lowering_likelihood_of_repeated": undefined;
+	"ui.agents.settings.chat.repetition": undefined;
+	"ui.agents.settings.chat.sampling": undefined;
+	"ui.agents.settings.chat.seed": undefined;
+	"ui.agents.settings.chat.sequences_that_will_cause_the_model_to": undefined;
+	"ui.agents.settings.chat.set_custom_values_for_any_of_these": undefined;
+	"ui.agents.settings.chat.set_to_default": { value: string };
+	"ui.agents.settings.chat.stop_sequences": undefined;
+	"ui.agents.settings.chat.temperature": undefined;
+	"ui.agents.settings.chat.top_k": undefined;
+	"ui.agents.settings.chat.top_p": undefined;
+	"ui.agents.settings.general.add_category": undefined;
+	"ui.agents.settings.general.add_tag": undefined;
+	"ui.agents.settings.general.agent_information": undefined;
+	"ui.agents.settings.general.agent_name": undefined;
+	"ui.agents.settings.general.categories": undefined;
+	"ui.agents.settings.general.created": undefined;
+	"ui.agents.settings.general.description": undefined;
+	"ui.agents.settings.general.enter_agent_description": undefined;
+	"ui.agents.settings.general.enter_agent_name": undefined;
+	"ui.agents.settings.general.error.empty_name": undefined;
+	"ui.agents.settings.general.id": undefined;
+	"ui.agents.settings.general.model": undefined;
+	"ui.agents.settings.general.select_a_hosting_provider_first": undefined;
+	"ui.agents.settings.general.select_a_hosting_provider_first_and_then": undefined;
+	"ui.agents.settings.general.tags": undefined;
+	"ui.agents.settings.general.version": undefined;
+	"ui.agents.settings.security.about_security_instructions": undefined;
+	"ui.agents.settings.security.enter_instructions_for_the_security_agent": undefined;
+	"ui.agents.settings.security.security_instructions": undefined;
+	"ui.agents.settings.security.security_instructions_that_guide_the_agent_s": undefined;
+	"ui.agents.settings.security.this_prompt_is_directed_to_the_ai": undefined;
+	"ui.agents.settings.system_prompt.about_agent_instructions": undefined;
+	"ui.agents.settings.system_prompt.agent_instructions": undefined;
+	"ui.agents.settings.system_prompt.define_the_agent_s_role_personality_or": undefined;
+	"ui.agents.settings.system_prompt.enter_instructions_for_the_agent": undefined;
+	"ui.agents.settings.system_prompt.loading_system_prompt": undefined;
+	"ui.agents.settings.system_prompt.system_instructions_that_define_the_agent_s": undefined;
 	"ui.browser.chrome.accessible_tab": {
 		title: string;
 		loading: string;
