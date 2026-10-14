@@ -93,7 +93,49 @@ function drain() {
 					throw new Error("Too large to preview");
 				const bytes = await finderOriginal(entry.document);
 				if (bytes.size > READ_CAP) throw new Error("Too large to preview");
-				const image = await createImageBitmap(bytes);
+				const width = entry.document.artifact?.width;
+				const height = entry.document.artifact?.height;
+				const scale =
+					width && height ? Math.min(1, 640 / Math.max(width, height)) : null;
+				// Ask Chromium to downsample during bitmap creation when the index
+				// supplies dimensions, rather than holding four full-resolution
+				// generated pictures just to paint 180px tiles.
+				const options: ImageBitmapOptions =
+					scale && width && height
+						? {
+								resizeWidth: Math.max(1, Math.round(width * scale)),
+								resizeHeight: Math.max(1, Math.round(height * scale)),
+								resizeQuality: "high",
+							}
+						: { resizeWidth: 640, resizeQuality: "high" };
+				let image: ImageBitmap | HTMLImageElement;
+				let vectorUrl: string | null = null;
+				if (
+					bytes.type === "image/svg+xml" ||
+					entry.document.path.toLowerCase().endsWith(".svg")
+				) {
+					// Chromium rejects SVG in createImageBitmap. Image-document mode
+					// disables script/external subresources; never insert provider SVG
+					// markup into this document. Rasterise into the same capped canvas.
+					vectorUrl = URL.createObjectURL(bytes);
+					const vector = new Image();
+					vector.src = vectorUrl;
+					try {
+						await vector.decode();
+					} catch (error) {
+						URL.revokeObjectURL(vectorUrl);
+						throw error;
+					}
+					const ratio = Math.min(
+						1,
+						640 / Math.max(vector.naturalWidth, vector.naturalHeight),
+					);
+					vector.width = Math.max(1, Math.round(vector.naturalWidth * ratio));
+					vector.height = Math.max(1, Math.round(vector.naturalHeight * ratio));
+					image = vector;
+				} else {
+					image = await createImageBitmap(bytes, options);
+				}
 				decodes++;
 				try {
 					const ratio = Math.min(1, 640 / Math.max(image.width, image.height));
@@ -110,7 +152,8 @@ function drain() {
 						url: createBlobUrl(await thumbnail.arrayBuffer(), "image/png"),
 					});
 				} finally {
-					image.close();
+					if ("close" in image) image.close();
+					if (vectorUrl) URL.revokeObjectURL(vectorUrl);
 				}
 			} catch (error) {
 				publish(entry, {

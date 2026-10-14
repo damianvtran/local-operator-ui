@@ -85,6 +85,7 @@ import {
 	canonicalTranscriptTerminal,
 } from "../canonical/transcript-pane";
 import { useMentionedFiles } from "../canonical/use-mentioned-files";
+import { useSessionFiles } from "../canonical/use-session-files";
 import {
 	workingLineClaimed,
 	workingLineInputFor,
@@ -1281,8 +1282,13 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const files = (canvasState ?? defaultCanvasState).files;
 		// The one number the panel, the view switcher and the canvas button all
 		// state: how many files the agent has been seen to touch.
-		const mentionedFileCount = (canvasState ?? defaultCanvasState)
-			.mentionedFiles.length;
+		// One inventory owns both the rail and the open canvas. Reading a disabled
+		// legacy scanner here made the rail deny files the backend already listed.
+		const indexedFiles = useSessionFiles(sessionId, true, turnTerminal);
+		const mentionedFileCount =
+			indexedFiles.mode === "index"
+				? indexedFiles.total
+				: (canvasState ?? defaultCanvasState).mentionedFiles.length;
 
 		// The slot's ONE default while nothing has been dragged
 		// (`DEFAULT_RIGHT_SLOT_WIDTH`, #872 follow-up): the run panel opens at the
@@ -2891,6 +2897,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								turnTerminal={turnTerminal}
 								currentWorkingDirectory={cwd}
 								fileCount={mentionedFileCount}
+								fileIndex={indexedFiles}
 								scan={filesScan}
 								/*
 								 * The pane's goals come off the SAME canonical frontend the composer

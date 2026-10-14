@@ -92,6 +92,10 @@ export function indexedDocument(
 		return canvasDocumentForPath(row.ref.path, metadata);
 	return {
 		...metadata,
+		// Transcript and index opens address one content identity, not two tabs.
+		// Retain the service handle separately for path materialisation only.
+		id: `artifact:${row.ref.digest}`,
+		indexedFileId: row.id,
 		path: `artifact:${row.ref.digest}`,
 		artifact: {
 			digest: row.ref.digest,

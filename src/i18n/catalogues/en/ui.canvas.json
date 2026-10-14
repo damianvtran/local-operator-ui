@@ -6,8 +6,13 @@
 	"ui.canvas.files.documents": "Documents",
 	"ui.canvas.files.spreadsheets": "Spreadsheets",
 	"ui.canvas.files.other": "Other",
+	"ui.canvas.files.audio": "Audio",
+	"ui.canvas.files.code": "Code",
+	"ui.canvas.files.presentations": "Presentations",
+	"ui.canvas.files.archives": "Archives",
 	"ui.canvas.files.files": "Files",
 	"ui.canvas.files.search": "Search files by name or folder",
+	"ui.canvas.files.searchPlaceholder": "Search files",
 	"ui.canvas.files.sort": "Sort by",
 	"ui.canvas.files.order": "Order",
 	"ui.canvas.files.group": "Group by kind",
@@ -43,5 +48,11 @@
 	"ui.canvas.files.inSession": "In session",
 	"ui.canvas.files.count": "{count, plural, one {# file} other {# files}}",
 	"ui.canvas.files.narrowCount": "{shown} of {total} files",
-	"ui.canvas.files.gone": "No longer in the session"
+	"ui.canvas.files.gone": "No longer in the session",
+	"ui.canvas.files.earlier": "Search earlier messages",
+	"ui.canvas.files.imageActions": "Image actions",
+	"ui.canvas.files.fileActions": "File actions",
+	"ui.canvas.files.saveError": "Could not save the file",
+	"ui.canvas.files.prepareError": "Could not prepare a local copy for this action",
+	"ui.canvas.files.pathCopyNote": "Open, folder and path actions create a local copy in this conversation's scratchpad."
 }

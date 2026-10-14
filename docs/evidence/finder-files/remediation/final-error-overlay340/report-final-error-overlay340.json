@@ -1,0 +1,75 @@
+{
+  "label": "final-error-overlay340",
+  "session": "b1f1de000001",
+  "window": {
+    "width": 920,
+    "height": 800
+  },
+  "themes": {
+    "dark": {
+      "frame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/final-error-overlay340/files-final-error-overlay340-dark.png",
+      "reading": {
+        "innerWidth": 920,
+        "innerHeight": 800,
+        "dock": {
+          "x": 536,
+          "y": 32,
+          "w": 340,
+          "h": 768
+        },
+        "dockMode": "overlay",
+        "scroller": {
+          "x": 536,
+          "y": 152,
+          "w": 340,
+          "h": 648
+        },
+        "rowCount": 0,
+        "rows": [],
+        "header": "↑ Filter Open folder The file index could not be read. Retry to reconnect. Retry"
+      }
+    },
+    "light": {
+      "frame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/final-error-overlay340/files-final-error-overlay340-light.png",
+      "reading": {
+        "innerWidth": 920,
+        "innerHeight": 800,
+        "dock": {
+          "x": 536,
+          "y": 32,
+          "w": 340,
+          "h": 768
+        },
+        "dockMode": "overlay",
+        "scroller": {
+          "x": 536,
+          "y": 152,
+          "w": 340,
+          "h": 648
+        },
+        "rowCount": 0,
+        "rows": [],
+        "header": "↑ Filter Open folder The file index could not be read. Retry to reconnect. Retry"
+      }
+    }
+  },
+  "facts": {
+    "windowMode": "headless",
+    "appVersion": "0.34.42",
+    "platform": "darwin",
+    "title": "Local Operator",
+    "windowSize": {
+      "width": 920,
+      "height": 800
+    },
+    "contentBounds": {
+      "width": 920,
+      "height": 800
+    },
+    "visible": false,
+    "focused": false,
+    "minimized": false,
+    "frames": [],
+    "outDir": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/final-error-overlay340"
+  }
+}

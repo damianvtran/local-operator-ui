@@ -6,6 +6,7 @@ export type FinderPreferences = {
 	order: "asc" | "desc";
 	group: boolean;
 	workingOpen: boolean;
+	closedSections: string[];
 	kinds: FileKindGroup[];
 };
 export const DEFAULT_FINDER: FinderPreferences = {
@@ -13,6 +14,7 @@ export const DEFAULT_FINDER: FinderPreferences = {
 	order: "asc",
 	group: true,
 	workingOpen: false,
+	closedSections: [],
 	kinds: [],
 };
 const SORTS = ["recent", "name", "kind", "modified", "created", "size"];
@@ -40,6 +42,22 @@ export function sanitizeFinderPreferences(value: unknown): FinderPreferences {
 		order: data.order === "desc" ? "desc" : "asc",
 		group: typeof data.group === "boolean" ? data.group : true,
 		workingOpen: data.workingOpen === true,
+		closedSections: Array.isArray(data.closedSections)
+			? [
+					...new Set(
+						data.closedSections.filter((id) =>
+							[
+								"Highlights",
+								"Images",
+								"Videos",
+								"Documents",
+								"Spreadsheets",
+								"Other",
+							].includes(id),
+						),
+					),
+				]
+			: [],
 		kinds: Array.isArray(data.kinds)
 			? [...new Set(data.kinds.filter((kind) => KINDS.includes(kind)))]
 			: [],
@@ -143,7 +161,7 @@ export function finderSections(
 			id: "Highlights",
 			label: "Highlights",
 			items: highlights,
-			open: !closed.has("Highlights"),
+			open: narrowing || !closed.has("Highlights"),
 			highlights: true,
 		});
 	if (highlights.length && working.length) {
@@ -179,7 +197,7 @@ export function finderSections(
 					id: kind,
 					label: kind,
 					items: grouped,
-					open: !closed.has(kind),
+					open: narrowing || !closed.has(kind),
 					highlights: false,
 				});
 		}
@@ -303,6 +321,16 @@ export function finderNeighbor(
 		return candidate.items[
 			Math.min(position.column, candidate.items.length - 1)
 		].row.document.id;
+	}
+	if (key.startsWith("Page")) {
+		// A page stride past the final band still has a keyboard destination.
+		// Clamp to the boundary rather than stranding focus near either end.
+		const bands = layout.bands.filter((candidate) => candidate.items.length);
+		const boundary = direction < 0 ? bands[0] : bands.at(-1);
+		return (
+			boundary?.items[direction < 0 ? 0 : boundary.items.length - 1]?.row
+				.document.id ?? null
+		);
 	}
 	return null;
 }

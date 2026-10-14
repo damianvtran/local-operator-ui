@@ -585,6 +585,7 @@ test("a v1 blob loses only the retired chatMeasureWidth (#895)", () => {
 			order: "asc",
 			group: true,
 			workingOpen: false,
+			closedSections: [],
 			kinds: [],
 		},
 	});
@@ -599,6 +600,7 @@ test("a v1 blob is passed through untouched, apart from the v3 handover", () => 
 			order: "asc",
 			group: true,
 			workingOpen: false,
+			closedSections: [],
 			kinds: [],
 		},
 	});
@@ -903,6 +905,7 @@ test("v4 Files sort/disclosure/group/type filter are persisted with no search qu
 		sort: "size",
 		order: "desc",
 		workingOpen: true,
+		closedSections: ["Highlights", "Images"],
 		kinds: ["images"],
 	});
 	const written = JSON.parse(memory.get("ui-preferences-storage"));
@@ -912,11 +915,16 @@ test("v4 Files sort/disclosure/group/type filter are persisted with no search qu
 		order: "desc",
 		group: true,
 		workingOpen: true,
+		closedSections: ["Highlights", "Images"],
 		kinds: ["images"],
 	});
 	assert.equal("query" in written.state.finderFiles, false);
 	await useUiPreferencesStore.persist.rehydrate();
 	assert.equal(useUiPreferencesStore.getState().finderFiles.sort, "size");
+	assert.deepEqual(
+		useUiPreferencesStore.getState().finderFiles.closedSections,
+		["Highlights", "Images"],
+	);
 	assert.deepEqual(useUiPreferencesStore.getState().finderFiles.kinds, [
 		"images",
 	]);

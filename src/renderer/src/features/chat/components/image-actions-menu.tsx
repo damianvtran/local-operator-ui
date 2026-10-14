@@ -6,6 +6,7 @@ import {
 	DropdownMenuTrigger,
 	Tooltip,
 } from "@shared/components/ui";
+import { cn } from "@shared/lib/utils";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import {
 	ClipboardCopy,
@@ -19,6 +20,7 @@ import {
 	Link,
 	Maximize2,
 } from "lucide-react";
+import { t } from "../../../../../i18n";
 import { AttachmentGoneError } from "../canonical/use-attachment-url";
 import {
 	type ImageAction,
@@ -63,6 +65,9 @@ export type ImageActionsMenuProps = {
 	/** Controlled only by Finder's context/key menu; ordinary callers stay uncontrolled. */
 	open?: boolean;
 	onOpenChange?: (open: boolean) => void;
+	/** Finder's roving row is visible; its hover-only ellipsis is not a safe
+	 * focus landing. Other surfaces keep Radix's normal trigger restoration. */
+	onCloseAutoFocus?: (event: Event) => void;
 	triggerTabIndex?: number;
 	/** Resolves a real local path only when a path action is explicitly chosen. */
 	resolvePath?: () => Promise<string>;
@@ -145,6 +150,7 @@ export const ImageActionsMenu = ({
 	label,
 	open,
 	onOpenChange,
+	onCloseAutoFocus,
 	triggerTabIndex,
 	resolvePath,
 	missing,
@@ -253,7 +259,7 @@ export const ImageActionsMenu = ({
 			try {
 				path = await resolvePath();
 			} catch {
-				showErrorToast("Couldn't save the file");
+				showErrorToast(t("ui.canvas.files.prepareError"));
 				return;
 			}
 		}
@@ -332,10 +338,19 @@ export const ImageActionsMenu = ({
 			</Tooltip>
 
 			<DropdownMenuContent
+				onCloseAutoFocus={onCloseAutoFocus}
 				align="end"
 				className="min-w-45"
 				onClick={(e) => e.stopPropagation()}
 			>
+				{resolvePath && (
+					<div
+						role="note"
+						className={cn("max-w-64 px-2 py-1 text-meta text-ink-muted")}
+					>
+						{t("ui.canvas.files.pathCopyNote")}
+					</div>
+				)}
 				{actions.map((action) => (
 					<DropdownMenuItem key={action.id} onSelect={() => perform(action)}>
 						{ACTION_ICONS[action.id]}

@@ -7,7 +7,6 @@ import {
 	remoteOwnedId,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
-import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	type SessionFile,
@@ -53,8 +52,6 @@ export function useSessionFiles(
 	enabled: boolean,
 	revisionHint = 0,
 ) {
-	const sort = useUiPreferencesStore((state) => state.finderFiles.sort);
-	const order = useUiPreferencesStore((state) => state.finderFiles.order);
 	const remote = useCanonicalSessionsStore((state) =>
 		sessionId
 			? remoteOwnedId(state.sessions, state.placementFacts, sessionId)
@@ -68,7 +65,9 @@ export function useSessionFiles(
 		: capable || remote
 			? "index"
 			: "fallback";
-	const sourceKey = `${sessionId ?? "draft"}:${mode}:${sort}:${order}:${remote}`;
+	// Display sorting is local; it cannot change inventory ownership or restart
+	// pagination. Only a different session/authority may hide the former paths.
+	const sourceKey = `${sessionId ?? "draft"}:${mode}:${remote}`;
 	const [ownedSnapshot, setOwnedSnapshot] = useState<{
 		key: string;
 		value: Omit<FileIndexState, "mode">;
@@ -77,6 +76,8 @@ export function useSessionFiles(
 	// frame of the previous session's absolute paths from entering the new view.
 	const snapshot =
 		ownedSnapshot.key === sourceKey ? ownedSnapshot.value : EMPTY;
+	const latestSnapshot = useRef(snapshot);
+	latestSnapshot.current = snapshot;
 	const [retry, setRetry] = useState(0);
 	const epoch = useRef(0);
 	const refresh = useCallback(() => setRetry((value) => value + 1), []);
@@ -109,7 +110,10 @@ export function useSessionFiles(
 				wake = resolve;
 				timer = setTimeout(resolve, ms);
 			});
-		setSnapshot(EMPTY);
+		// Same-source refresh keeps the displayed generation until a complete pass
+		// can replace it. Painting EMPTY here loses focus and pins an empty list
+		// when the reader is hovering while a settled turn asks for a refresh.
+		setSnapshot((old) => ({ ...old, state: "loading", error: null }));
 		// An old daemon cannot give a peer index, and its transcript paths name the
 		// OTHER device. Hold the unsupported state instead of probing this disk.
 		if (remote && !capable) {
@@ -120,12 +124,17 @@ export function useSessionFiles(
 			});
 			return;
 		}
-		if (!enabled || mode !== "index" || !sessionId) return;
+		if (!sessionId) {
+			setSnapshot({ ...EMPTY, state: "ready" });
+			return;
+		}
+		if (!enabled || mode !== "index") return;
 		void (async () => {
 			let rows: SessionFile[] = [];
 			let revision: number | null = null;
 			let cursor: string | null = null;
 			let resets = 0;
+			let retainGeneration = latestSnapshot.current.rows.length > 0;
 			const cursors = new Set<string>();
 			try {
 				for (let poll = 0; poll < 60 && live(); ) {
@@ -133,8 +142,8 @@ export function useSessionFiles(
 						op: "sessions.files",
 						sessionId,
 						scope: "family",
-						sort,
-						order,
+						sort: "recent",
+						order: "desc",
 						limit: 200,
 						...(cursor ? { cursor } : {}),
 					});
@@ -169,31 +178,35 @@ export function useSessionFiles(
 					const reset =
 						page.cursor_reset ||
 						(revision !== null && revision !== page.revision);
-					rows = mergeFilesPage(rows, page, revision);
-					revision = page.revision;
-					setSnapshot({
-						state:
-							page.state === "ready" && page.next_cursor
-								? "loading"
-								: page.state,
-						rows,
-						total: page.total,
-						statComplete: page.stat_complete,
-						error: null,
-						coveredBytes: page.scan?.covered_bytes ?? 0,
-						totalBytes: page.scan?.total_bytes ?? 0,
-					});
-					// An unannounced revision change is not an offset into the new index.
-					// Restart from page one unless the service itself sent cursor_reset.
-					if (reset && !page.cursor_reset) {
+					// A revision change matters only while consuming a cursor. Backfill
+					// publishes a new revision per slice; a fresh page-one poll is an
+					// expected new generation, not one of the defensive restart budget.
+					if (cursor && reset && !page.cursor_reset) {
 						cursor = null;
 						rows = [];
+						revision = null;
+						cursors.clear();
 						if (++resets > 4)
 							throw new Error(
 								"Files are changing quickly. Retry after the current turn finishes.",
 							);
 						continue;
 					}
+					rows = mergeFilesPage(rows, page, revision);
+					revision = page.revision;
+					if (!retainGeneration || !page.next_cursor)
+						setSnapshot({
+							state:
+								page.state === "ready" && page.next_cursor
+									? "loading"
+									: page.state,
+							rows,
+							total: page.total,
+							statComplete: page.stat_complete,
+							error: null,
+							coveredBytes: page.scan?.covered_bytes ?? 0,
+							totalBytes: page.scan?.total_bytes ?? 0,
+						});
 					cursor = page.next_cursor;
 					if (cursor) {
 						if (page.cursor_reset) cursors.clear();
@@ -205,12 +218,15 @@ export function useSessionFiles(
 						continue;
 					}
 					if (page.state === "ready") return;
+					retainGeneration = true;
+					resets = 0;
 					poll++;
 					cursors.clear();
 					await delay(Math.min(5000, 1000 + poll * 100));
 					// Re-read a building index from page one. It can grow without the
 					// former partial index retaining a row now absent from the service.
 					rows = [];
+					revision = null;
 					cursor = null;
 				}
 				if (live())
@@ -243,8 +259,6 @@ export function useSessionFiles(
 		sessionId,
 		retry,
 		revisionHint,
-		sort,
-		order,
 		remote,
 		capable,
 		sourceKey,
