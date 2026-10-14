@@ -1,1 +1,7 @@
-{}
+{
+	"ui.chat.usage.continue": "Included quota used; credits will continue.",
+	"ui.chat.usage.family_caps": "Model-family caps still apply.",
+	"ui.chat.usage.blocked": "Spend unavailable",
+	"ui.chat.usage.eligibility_unknown": "Spend eligibility unknown",
+	"ui.chat.usage.unlimited": "Unlimited paid allowance"
+}
