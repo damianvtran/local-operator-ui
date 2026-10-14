@@ -1,0 +1,70 @@
+✖ random correction order, journal: later placement cannot overtake an earlier unplaced arrival (7.794042ms)
+✔ random correction order, peer: later placement cannot overtake an earlier unplaced arrival (33.308958ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 1
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 132.393875
+
+✖ failing tests:
+
+test at scripts/stream-order-live.test.mjs:782:2
+✖ random correction order, journal: later placement cannot overtake an earlier unplaced arrival (7.794042ms)
+  AssertionError [ERR_ASSERTION]: seed 30
+  + actual - expected
+  
+  + [
+  +   {
+  +     after: [
+  +       'u1',
+  +       'm1',
+  +       'tool:c2',
+  +       'tool:c1',
+  +       'm2'
+  +     ],
+  +     at: 'step 13',
+  +     before: [
+  +       'u1',
+  +       'm1',
+  +       'tool:c1',
+  +       'tool:c2',
+  +       'm2'
+  +     ]
+  +   },
+  +   {
+  +     after: [
+  +       'u1',
+  +       'm1',
+  +       'tool:c1',
+  +       'tool:c2',
+  +       'm2'
+  +     ],
+  +     at: 'step 14',
+  +     before: [
+  +       'u1',
+  +       'm1',
+  +       'tool:c2',
+  +       'tool:c1',
+  +       'm2'
+  +     ]
+  +   }
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/damian/local-operator-ui/.worktrees/stream-order-live-md/scripts/stream-order-live.test.mjs:785:11)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.start (node:internal/test_runner/test:1242:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ { at: 'step 13', before: [Array], after: [Array] }, { at: 'step 14', before: [Array], after: [Array] } ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+[run_bounded] node rc=1 wall=0.5s

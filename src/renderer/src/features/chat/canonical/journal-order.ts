@@ -337,6 +337,54 @@ function arrivalPlacement(
 }
 
 /**
+ * Delay USING a coordinate when an earlier live arrival still has none.
+ *
+ * Owner commit wakes follow append order, but that is not a transport contract:
+ * a cold desktop history read also emits corrections, in page / requested-id
+ * order, in 128-row chunks. A real history route with reverse order_ids emitted
+ * seqs 203..77 before 76..0. Those wakes can interleave with owner wakes after
+ * reconnect. Using a later text's coordinate immediately moves it above an
+ * earlier tool whose coordinate is still unknown, then back when that wake lands
+ * (QA round 2 N1). Keep the coordinate as a fact, but rank the live arrival by
+ * its chain until all earlier arrivals in that chain are placed. Durable rows
+ * loaded without an arrival anchor keep their authoritative order immediately.
+ * This never changes body provenance or source facts in the peer lane.
+ */
+function gapSafeCoordinates(
+	byId: ReadonlyMap<string, TranscriptRecord>,
+	raw: (record: TranscriptRecord | undefined) => number | undefined,
+): (record: TranscriptRecord | undefined) => number | undefined {
+	const ready = new Map<string, boolean>();
+	return (record) => {
+		if (!record) return undefined;
+		const own = raw(record);
+		if (own === undefined) return undefined;
+		const path: string[] = [];
+		const seen = new Set<string>();
+		let at: TranscriptRecord | undefined = record;
+		let complete = true;
+		while (at) {
+			if (ready.has(at.id)) {
+				complete = ready.get(at.id) === true;
+				break;
+			}
+			if (seen.has(at.id) || raw(at) === undefined) {
+				complete = false;
+				break;
+			}
+			seen.add(at.id);
+			path.push(at.id);
+			at =
+				at.sourceAdmissionAnchor === undefined
+					? undefined
+					: byId.get(at.sourceAdmissionAnchor);
+		}
+		for (const id of path) ready.set(id, complete);
+		return complete ? own : undefined;
+	};
+}
+
+/**
  * Put the unplaced parallel calls of ONE assistant row in their committed slot
  * order, in the positions those calls already occupy.
  *
@@ -353,8 +401,9 @@ function arrivalPlacement(
  * the slot the arrival chain gave it, and nothing about a call's place relative
  * to text can change.
  *
- * Only calls with no coordinate of their own take part: a placed call is
- * ordered by its journal_seq, which already is the committed order.
+ * Coordinate arrival can be out of order too (cold read corrections). All
+ * known sibling slots take part: their committed slot order is valid whether
+ * either result's coordinate has arrived, and remains valid when both have.
  */
 function siblingSlotOrder(
 	state: TranscriptState,
@@ -365,7 +414,7 @@ function siblingSlotOrder(
 	if (!owners || !slots) return ordered;
 	const groups = new Map<string, number[]>();
 	ordered.forEach((record, at) => {
-		if (record.kind !== "tool" || ordinal(record.journalSeq)) return;
+		if (record.kind !== "tool") return;
 		const owner = owners.get(record.toolCallId);
 		if (owner === undefined || !slots.has(record.toolCallId)) return;
 		const seats = groups.get(owner);
@@ -459,12 +508,14 @@ export function journalOrderedRecords(
 	if (stampArrival(records, isPlaced)) changed = true;
 	const chain = new Map<string, number | undefined>();
 	const byId = new Map(records.map((record) => [record.id, record]));
-	const seqOf = (record: TranscriptRecord | undefined): number | undefined =>
+	const seqOf = gapSafeCoordinates(byId, (record) =>
 		record !== undefined &&
 		record.journalGeneration === generation &&
 		ordinal(record.journalSeq)
 			? record.journalSeq
-			: undefined;
+			: undefined,
+	);
+	const rankPlaced = (record: TranscriptRecord) => seqOf(record) !== undefined;
 	const rank = (record: TranscriptRecord, index: number): number[] => {
 		const own = seqOf(record);
 		if (
@@ -484,7 +535,7 @@ export function journalOrderedRecords(
 			typeof anchor === "string" ? seqOf(byId.get(anchor)) : undefined;
 		const admitted =
 			own === undefined
-				? arrivalPlacement(record, byId, isPlaced, seqOf, chain)
+				? arrivalPlacement(record, byId, rankPlaced, seqOf, chain)
 				: undefined;
 		const placement = owner ?? own ?? admitted;
 		return placement === undefined

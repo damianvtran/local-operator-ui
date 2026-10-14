@@ -577,7 +577,7 @@ function prng(seed) {
 	};
 }
 
-function fuzzTurn(seed, lane) {
+function fuzzTurn(seed, lane, randomWakes = false) {
 	const rand = prng(seed);
 	const pick = (n) => Math.floor(rand() * n);
 	const journal = lane !== "legacy";
@@ -620,8 +620,11 @@ function fuzzTurn(seed, lane) {
 		journalSeq += 1;
 		// Wakes are emitted in journal order, so a later row never overtakes an
 		// earlier one, but each trails by a random number of frames.
-		lastDue = Math.max(lastDue, frame + pick(6) * (pick(4) === 0 ? 4 : 1));
+		lastDue = randomWakes
+			? frame + pick(25)
+			: Math.max(lastDue, frame + pick(6) * (pick(4) === 0 ? 4 : 1));
 		wakeQueue.push([lastDue, { ...row, journal_seq: journalSeq }]);
+		if (randomWakes) wakeQueue.sort((a, b) => a[0] - b[0]);
 	};
 	const tick = () => {
 		frame += 1;
@@ -774,3 +777,17 @@ test("mid-turn join (applyLiveSeed) with parallel calls then text keeps arrival 
 		["u1", "m1", "tool:c1", "tool:c2", "m2"],
 	);
 });
+
+for (const lane of ["journal", "peer"]) {
+	test(`random correction order, ${lane}: later placement cannot overtake an earlier unplaced arrival`, () => {
+		for (let seed = 1; seed <= 500; seed++) {
+			const { observed, final, settled } = fuzzTurn(seed, lane, true);
+			assert.deepEqual(
+				hops(observed.map((order, i) => ({ at: `step ${i}`, order }))),
+				[],
+				`seed ${seed}`,
+			);
+			assert.deepEqual(final, settled, `seed ${seed}`);
+		}
+	});
+}
