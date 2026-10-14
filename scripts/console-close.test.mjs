@@ -410,6 +410,16 @@ test("the dialog asks the question with the safe answer defaulted, and the pane'
 		"ui.console.close.kept drifted from the committed sentence",
 	);
 	assert.equal(
+		catalogue["ui.console.dismiss.title"],
+		"Clear this terminal?",
+		"ui.console.dismiss.title drifted from the committed sentence",
+	);
+	assert.equal(
+		catalogue["ui.console.dismiss.confirm"],
+		"Clear terminal",
+		"ui.console.dismiss.confirm drifted from the committed sentence",
+	);
+	assert.equal(
 		catalogue["ui.console.pane.close"],
 		"Close console",
 		"ui.console.pane.close drifted from the committed sentence",

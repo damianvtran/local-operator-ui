@@ -835,7 +835,18 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 			 * (`chat-layout.tsx`), because a pane-only change leaves this tone meeting
 			 * the lane at y32 (§6.1, §9.4).
 			 */
-			className={cn("flex h-full flex-col bg-elevated")}
+			className={cn(
+				/*
+				 * A CONTAINER for the header's narrow form (design round 2, D7): the
+				 * right cluster must adapt to the PANE's own width, not the window's,
+				 * and 320px (the slot's documented floor) is a width the pane really
+				 * meets. Container queries are how the rest of the app asks this
+				 * question (`older-history-slot`, `session-status-strip`), so the
+				 * summary switches to a compact spelling and the title yields below
+				 * 420px rather than overprinting or spilling the Close control.
+				 */
+				"relative flex h-full flex-col bg-elevated @container/consolepane",
+			)}
 			data-tour-tag="console-pane"
 		>
 			{/*
@@ -871,8 +882,14 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 			>
 				<div className={cn("flex min-w-0 items-center gap-2")}>
 					{/* The pane's title at the slot's own title step, not louder: the pane's
-					    contents name it, which is the browser pane's measured D4. */}
-					<span className={cn("shrink-0 text-meta text-ink-dim")}>
+					    contents name it, which is the browser pane's measured D4. It yields to
+					    the surface's command at narrow widths (D7); the command already
+					    truncates. */}
+					<span
+						className={cn(
+							"shrink-0 text-meta text-ink-dim @max-[420px]/consolepane:hidden",
+						)}
+					>
 						{t("ui.console.pane.label")}
 					</span>
 					{/* The surface's own command, which §6.5 makes load-bearing: a person
@@ -912,15 +929,48 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 								<Button
 									variant="ghost"
 									size="sm"
-									className="shrink-0 whitespace-nowrap px-1 text-ink-muted text-xs"
+									className={cn(
+										"shrink-0 whitespace-nowrap px-1 text-xs",
+										/* THE AT-LIMIT STATE IS VISIBLE (design round 2, D10): at
+										 * live >= limit a new terminal will be refused, so the ink
+										 * steps up to `warning` (a design role, not a hex) and the
+										 * text carries "· full". The quiet state stays muted. */
+										session.snapshot.capacity.live >=
+											session.snapshot.capacity.limit
+											? "text-warning"
+											: "text-ink-muted",
+									)}
 									data-tour-tag="console-capacity"
 								>
-									{t("ui.console.capacity.summary", session.snapshot.capacity)}
-									{session.snapshot.capacity.archived > 0
-										? t(
-												"ui.console.capacity.archived",
-												session.snapshot.capacity,
-											)
+									{/* THE COMPACT SPELLING BELOW 420px (design round 2, D7): the full
+									 * sentence is 199px and would overflow the header cluster. The same
+									 * two numbers, one line, whole sentence still in the tooltip. */}
+									<span className="@min-[420px]/consolepane:hidden">
+										{session.snapshot.capacity.archived > 0
+											? t(
+													"ui.console.capacity.summary_compact",
+													session.snapshot.capacity,
+												)
+											: t(
+													"ui.console.capacity.summary_compact_bare",
+													session.snapshot.capacity,
+												)}
+									</span>
+									<span className="@max-[420px]/consolepane:hidden">
+										{t(
+											"ui.console.capacity.summary",
+											session.snapshot.capacity,
+										)}
+										{session.snapshot.capacity.archived > 0
+											? t(
+													"ui.console.capacity.archived",
+													session.snapshot.capacity,
+												)
+											: null}
+									</span>
+									{session.snapshot.capacity.live >=
+									session.snapshot.capacity.limit
+										? t("ui.console.capacity.full")
 										: null}
 								</Button>
 							</Tooltip>
@@ -1044,7 +1094,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 			{session.cleanupNotice !== null ? (
 				<output
 					className={cn(
-						"mx-2 mt-1 block rounded-sm bg-elevated px-2 py-1 text-meta text-ink-muted",
+						"absolute top-10 right-2 left-2 z-10 block truncate rounded-sm border border-control bg-elevated px-2 py-1 text-meta text-ink-muted shadow-md",
 					)}
 					data-tour-tag="console-cleanup-result"
 				>
