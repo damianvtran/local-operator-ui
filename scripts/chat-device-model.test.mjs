@@ -1169,9 +1169,44 @@ test("the header offers an explicit move door, visible and explained in every st
 		/<span className="text-meta text-warning">\s*\{moveReason\}/,
 	);
 	/*
-	 * IT OPENS THE EXISTING PICKER, never a second path: the press only asks.
+	 * IT OPENS THE EXISTING PICKER, never a second path: the press only marks the
+	 * intent, and the menu's own close autofocus issues the ask.
 	 */
-	assert.match(header, /requestPicker\(sessionId\)/);
+	assert.match(
+		header,
+		/onCloseAutoFocus=\{\(event\) => \{/,
+		"the ask is issued from the menu's close autofocus, not the item's select",
+	);
+	assert.match(
+		header,
+		/moveRequestedRef\.current = true/,
+		"the item marks the intent rather than opening the ask itself",
+	);
+	/*
+	 * QA Q-1: opening the picker while the overflow menu is still closing tears it
+	 * down - the modal menu restores focus to its trigger and dismisses any other
+	 * layer - so the ask must be issued from the CLOSE-AUTOFOCUS callback Radix runs
+	 * after the close settles, never synchronously on the item's own select and not
+	 * on `onOpenChange` either (measured: still one frame).
+	 */
+	const onSelect = header.slice(
+		header.indexOf("data-session-move-action"),
+		header.indexOf(
+			"</DropdownMenuItem>",
+			header.indexOf("data-session-move-action"),
+		),
+	);
+	assert.doesNotMatch(
+		onSelect,
+		/requestPicker\(sessionId\)/,
+		"the item must not issue the ask synchronously - that is the dead press",
+	);
+	assert.match(header, /open=\{menuOpen\}/, "the menu is controlled");
+	assert.match(
+		header,
+		/if \(moveRequestedRef\.current\) \{\s*moveRequestedRef\.current = false;\s*if \(sessionId\) requestPicker\(sessionId\);/,
+		"the ask fires only on the menu's close autofocus",
+	);
 });
 
 test("the picker ask is a token the picker's own effect consumes, once", () => {

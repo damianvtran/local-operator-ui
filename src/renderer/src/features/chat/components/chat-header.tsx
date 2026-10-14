@@ -349,6 +349,12 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			? "this build cannot move a conversation yet"
 			: undefined;
 	const requestPicker = useChatDeviceStore((s) => s.requestPicker);
+	/*
+	 * The overflow menu's own open state and the pending move, both needed together:
+	 * see the menu root's note on why the ask waits for the menu to close.
+	 */
+	const [menuOpen, setMenuOpen] = useState(false);
+	const moveRequestedRef = useRef(false);
 	const setCanvasOpen = useUiPreferencesStore((s) => s.setCanvasOpen);
 	const isCanvasOpen = useUiPreferencesStore((s) => s.isCanvasOpen);
 	/*
@@ -1153,7 +1159,19 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 					onToggleBrowser ||
 					onOpenConsole ||
 					onOpenOptions) && (
-					<DropdownMenu>
+					<DropdownMenu
+						/*
+						 * CONTROLLED, because the move item must not open the picker until this
+						 * menu has CLOSED. Measured (QA Q-1): this menu is a Radix modal menu, so
+						 * opening it dismisses any other layer, and the picker opened in the same
+						 * selection is torn down with this menu's close - the picker painted ~3 ms
+						 * then vanished, so a press did nothing a user could see. The item therefore
+						 * only marks the intent (`moveRequestedRef`); the ask is issued from THIS
+						 * menu's own close handler on the next frame, once the modal layer is gone.
+						 */
+						open={menuOpen}
+						onOpenChange={setMenuOpen}
+					>
 						<DropdownMenuTrigger asChild>
 							<Button
 								variant="ghost"
@@ -1171,7 +1189,29 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 								<MoreHorizontal aria-hidden="true" />
 							</Button>
 						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end" className="min-w-45">
+						<DropdownMenuContent
+							align="end"
+							className="min-w-45"
+							/*
+							 * THE ASK IS ISSUED HERE, AND NOWHERE ELSE. Measured (QA Q-1, then
+							 * re-measured on this branch): the picker opened from the item's own
+							 * `onSelect` - or from this menu's `onOpenChange` even a frame later - is
+							 * dismissed within one frame. Two teardowns do it, and only this hook is
+							 * after both: closing a Radix modal menu restores focus to its trigger, and
+							 * an open menu dismisses any other layer. `onCloseAutoFocus` is the
+							 * focus-restore callback Radix runs AFTER the close has settled, so the ask
+							 * lands on a quiet page - which is why the picker then stays up. It also
+							 * suppresses the default for the one case that matters: the picker can
+							 * return focus itself when it closes.
+							 */
+							onCloseAutoFocus={(event) => {
+								if (moveRequestedRef.current) {
+									moveRequestedRef.current = false;
+									if (sessionId) requestPicker(sessionId);
+									event.preventDefault();
+								}
+							}}
+						>
 							{/*
 							 * COPY SESSION ID (#893), AT THE TOP - above the transcript-display submenu
 							 * and therefore above the first separator.
@@ -1250,7 +1290,12 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 									aria-disabled={moveReason ? true : undefined}
 									onSelect={() => {
 										if (moveReason) return;
-										requestPicker(sessionId);
+										/*
+										 * MARK THE INTENT; THE MENU'S CLOSE ISSUES THE ASK. Selecting an item
+										 * closes this menu as part of the selection, and opening the picker
+										 * synchronously here put it inside that teardown (see the root's note).
+										 */
+										moveRequestedRef.current = true;
 									}}
 									className={cn(
 										moveReason &&
