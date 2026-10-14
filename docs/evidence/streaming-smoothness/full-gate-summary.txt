@@ -1,0 +1,20 @@
+=== lint: pnpm lint
+Checked 1285 files in 1036ms. No fixes applied.
+Found 168 warnings.
+=== lint: pnpm lint:scripts
+=== check-types: pnpm check-types
+=== check-types: pnpm check-edit-diffs
+=== check-types: node scripts/test-validate-release.mjs
+=== check-types: node --test scripts/test-release-safety.mjs scripts/test-publish-workflow.mjs scripts/test-version-bump-guard.mjs scripts/ci-scope.test.mjs
+=== check-types: node --test scripts/appimage-update-info.test.mjs
+=== check-types: node --test scripts/release-baseline.test.mjs scripts/release-candidate.test.mjs scripts/entry-point.test.mjs scripts/require-report.test.mjs
+=== check-types: bash scripts/require-report.sh "Build environment contracts" node scripts/check-build-env.mjs
+=== test: pnpm test:desktop
+ℹ tests 8096
+ℹ pass 8073
+ℹ fail 17
+ℹ skipped 6
+!!! test failed (rc=1): pnpm test:desktop
+Baseline same-code controls (732f2163cdc): localStorage.setItem undefined; updater actual global-unknown != expected uv-tool.
+Node v26.5.0 compatibility control: node --no-experimental-webstorage --test scripts/session-load-recovery.test.mjs =>18 passed,0 failed.
+This full local run preceded the bounded tail remediation. No full local duplicate; final delta suites and CI cover the remediation.

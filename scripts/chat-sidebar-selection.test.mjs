@@ -1,6 +1,7 @@
 /**
- * The current row's ground, executable — in the chat sidebar and in the settings
- * rail.
+ * The selected conversation's ground and the settings destinations' flat rail,
+ * executable. Settings deliberately opts out of the persistent chat fill; its
+ * current-page dot and weight identify a destination on a continuous surface.
  *
  *     node --test scripts/chat-sidebar-selection.test.mjs
  *
@@ -10,10 +11,9 @@
  * `accent-wash`, which is ΔE00 1.05 from `surface` in tokyoNight — no mark at
  * all — while the hover step the same rows carry measures 4.58 there, so the
  * pointer read as the current row and the current row did not. The settings rail
- * (round 1, D2) is the same pairing on the same ground and is covered here for
- * that reason: it is one class in another file for one role decision, and a
- * second file asserting the same property for the same decision would be two
- * instruments for one fact.
+ * originally shared that selected-fill contract. It now has a deliberately
+ * different resting-surface contract, asserted below in both layouts, while
+ * the chat consumers retain their original fill checks.
  *
  * THREE THINGS THIS FILE ASSERTS, AND WHY EACH NEEDS ITS OWN INSTRUMENT:
  *
@@ -34,8 +34,8 @@
  *      and requires the file to account for every one of them, so a control
  *      added to a row cannot be resolved by nobody;
  *   3. every current-row state in those two panels takes the same role — the
- *      four chat call sites, the entity row's three elements, and the settings
- *      rail's row are one fact.
+ *      the chat call sites and the entity row's elements are one fact. Settings
+ *      destinations are the documented flat-surface exception.
  *
  * TWO OF THE INSTRUMENTS THIS FILE CARRIED ARE RETIRED WITH THE SURFACES THEY
  * MEASURED (operator ask, 2026-09-18: the sidebar's per-row browser mark was removed),
@@ -92,12 +92,6 @@ const ROOT = process.cwd();
 const SIDEBAR = "src/renderer/src/features/chat/components/chat-sidebar.tsx";
 const SETTINGS_RAIL =
 	"src/renderer/src/features/settings/components/settings-sidebar.tsx";
-/*
- * The path the one consumer imports the role BY, named once because the one-spelling test
- * asserts it verbatim: this is the string that makes the settings rail read
- * the chat panel's declaration instead of carrying its own, so it is the thing to hold.
- */
-const SIDEBAR_MODULE = "@features/chat/components/chat-sidebar";
 const read = (relative) => readFileSync(join(ROOT, relative), "utf8");
 
 /*
@@ -594,33 +588,6 @@ const CURRENT = [
 			current: false,
 		},
 	},
-	{
-		/*
-		 * `rowCurrent` IS STUBBED HERE SINCE ROUND 5 (design D22, agent A-7), and the stub
-		 * moving with the component is the instrument's contract rather than a detail:
-		 * the rail's current branch reads the symbol it imports from the chat panel, so a
-		 * guard that did not name it would throw `ReferenceError` inside the resolved
-		 * expression instead of asserting anything. The VALUE is this file's own read of
-		 * the declaration (`literalOf(SIDEBAR, "rowCurrent")`), so the rail is measured
-		 * against the app's role — and that declaration is asserted to be the tree's
-		 * only spelling in the test above.
-		 */
-		what: "the settings rail's current section",
-		file: SETTINGS_RAIL,
-		expression: () =>
-			expressionAfter(
-				SETTINGS_RAIL,
-				'aria-current={isActive ? "page" : undefined}',
-			),
-		stubs: { revealArmed: true, labelled: true, isActive: true, rowCurrent },
-		ground: true,
-		notCurrent: {
-			revealArmed: true,
-			labelled: true,
-			isActive: false,
-			rowCurrent,
-		},
-	},
 ];
 
 test("the current row's ground is a step off its panel, not a wash", () => {
@@ -674,22 +641,10 @@ test("a current row carries a non-colour step, and a row that is not current doe
 		rowCurrent.includes("font-medium"),
 		`the current row must carry a second signal beside its ground: the two row states are told apart by their fill, so colour alone leaves the reader without a non-colour mark to fall back on — on \`obsidian\` and on any palette whose panel has almost no cast, this weight IS the mark. Got:\n${rowCurrent}`,
 	);
-	const rail = CURRENT.find((site) => site.file === SETTINGS_RAIL);
-	assert.notEqual(
-		rail,
-		undefined,
-		"the settings rail is no longer in `CURRENT`",
-	);
-	const active = merged(rail.file, rail.expression(), rail.stubs);
-	assert.ok(
-		active.includes("font-medium"),
-		`the settings rail's current row no longer carries the step the chat sidebar was moved onto, so the two rails disagree about how a current row is marked:\n${active}`,
-	);
-	const inactive = merged(rail.file, rail.expression(), rail.notCurrent);
-	assert.ok(
-		!inactive.includes("font-medium"),
-		`a row that is NOT current must not be heavier than the one that is:\n${inactive}`,
-	);
+	for (const site of CURRENT.filter((entry) => entry.notCurrent)) {
+		const inactive = merged(site.file, site.expression(), site.notCurrent);
+		assert.ok(!inactive.split(/\s+/).includes("font-medium"));
+	}
 });
 
 test("the current-row role is spelled once in the shipped tree, and imported everywhere else", () => {
@@ -723,7 +678,7 @@ test("the current-row role is spelled once in the shipped tree, and imported eve
 	assert.deepEqual(
 		spelled,
 		[{ file: SIDEBAR, literal: rowCurrent }],
-		`the current-row role is spelled outside its one declaration. It is OWNED by ${SIDEBAR} and imported by the settings rail; a copy is what drifted twice (design rounds 3 and 4, D17 and D19), and a copy on a surface whose frames ship is a committed picture of a row the app does not draw. Delete the copy and import \`rowCurrent\` instead: ${JSON.stringify(spelled)}`,
+		`the current-row role is spelled outside its one declaration. It is OWNED by ${SIDEBAR} and imported by selected-row consumers; a copy is what drifted twice (design rounds 3 and 4, D17 and D19), and a copy on a surface whose frames ship is a committed picture of a row the app does not draw. Delete the copy and import \`rowCurrent\` instead: ${JSON.stringify(spelled)}`,
 	);
 	/*
 	 * THE DECLARATION ITSELF, which the four-term read above cannot see once a copy has
@@ -744,14 +699,6 @@ test("the current-row role is spelled once in the shipped tree, and imported eve
 		[SIDEBAR],
 		`\`rowCurrent\` is declared in ${declarations.length} file(s) (${JSON.stringify(declarations)}) where the tree keeps ONE, in ${SIDEBAR}. A second declaration shadows the import it sits beside, so the row still reads the name and paints something else: import the symbol, do not declare it`,
 	);
-	for (const file of [SETTINGS_RAIL]) {
-		assert.ok(
-			code
-				.get(file)
-				.includes(`import { rowCurrent } from "${SIDEBAR_MODULE}";`),
-			`${file} no longer imports the current-row role from ${SIDEBAR_MODULE}, so it is deciding the row's ground for itself again`,
-		);
-	}
 });
 
 test("the entity row's name button paints the ground inside its wrapper, and no element is boxed twice", () => {
@@ -1044,16 +991,9 @@ test("the file accounts for every hover ground the two panels declare", () => {
 		[
 			SETTINGS_RAIL,
 			{
-				// The inactive section's own step (1).
+				// Both current and inactive settings destinations share this hover.
+				// Their common idle ground is checked by settingsClasses below.
 				"hover:bg-row-hover": 1,
-				// NO role-hover literal HERE ANY MORE: since round 5 the rail's current
-				// branch applies the chat panel's imported `rowCurrent` (design D22,
-				// agent A-7), so the role's hover half is no longer a literal in this
-				// file at all. That half of the row is accounted for by the
-				// declaration's own count in `SIDEBAR` and by the rail's `CURRENT`
-				// entry, which resolves this expression through the shipped `cn` and
-				// fails without the ground; the one spelling is asserted in the test
-				// above.
 			},
 		],
 	]);
@@ -1260,7 +1200,7 @@ test("no row surface in the tree hovers or selects on a ground role", () => {
 /*
  * And the other half of the same rule: the two role names are painted through the
  * ONE declaration of the selected-row mark. Every selected row in the app takes
- * `rowCurrent` — the chat list, the settings rail, the app rail, both agent
+ * `rowCurrent` — the chat list, the app rail, both agent
  * rosters and the categories sidebar — so a surface that spells its own
  * `bg-row-selected` is a second copy of the role, which is what drifted twice
  * (design rounds 3 and 4, D17/D19) and what the single-spelling test above
@@ -1446,37 +1386,6 @@ const ROW_STATE_GROUNDS = [
 	},
 	{
 		/*
-		 * THE RAIL IS THE ROWS' PLANE AGAIN (2026-09-30). The nav is `surface`
-		 * and the rows sit directly on it. The rail held `elevated` from
-		 * 2026-09-27 to separate itself from the app sidebar, and paid for the
-		 * rung with a SPLIT ground: the nav wore the rung and each group's LIST
-		 * carried the `surface` the rows were authored against. That split is
-		 * what the operator reported as mismatched blocks inside the rail
-		 * ("the buttons/tabs are not the same color as the background on the
-		 * settings left sidebar"), so the rung is given up rather than the
-		 * split kept.
-		 *
-		 * The ground is therefore resolved as a plain literal on the element
-		 * whose class list is one string — the nav — rather than through the
-		 * shipped `cn` over a list's expression, which is what the split
-		 * required. The property is unchanged: a row state has to be painted on
-		 * `surface`, and this entry still reads the element the rows are
-		 * actually painted on.
-		 */
-		what: "the settings rail",
-		rowFile: SETTINGS_RAIL,
-		expression: () =>
-			expressionAfter(
-				SETTINGS_RAIL,
-				'aria-current={isActive ? "page" : undefined}',
-			),
-		stubs: { labelled: true, isActive: true, rowCurrent },
-		ground: () =>
-			literalClassAt(SETTINGS_RAIL, 'aria-label="Settings sections"', "after"),
-		groundFile: SETTINGS_RAIL,
-	},
-	{
-		/*
 		 * THE SURFACE THIS TABLE WAS WRITTEN FOR. Its `<nav>` was `bg-sunken` and
 		 * the ground now has to come from the row's own element's ANCESTOR, which is
 		 * why this one entry resolves a `cn(...)` rather than a literal: the rail's
@@ -1646,6 +1555,53 @@ test("every call site that paints a row state is painted on `surface`", () => {
  * `cn("flex flex-col gap-0.5 bg-surface")` fails this test and nothing else in
  * either suite.
  */
+/* Settings destinations intentionally differ from selected conversations: the
+ * operator requested one resting surface even on the current section. Resolve
+ * the shipped cn expression in both layouts, not a replica of its class list. */
+const settingsClasses = (isActive, labelled) =>
+	merged(
+		SETTINGS_RAIL,
+		expressionAfter(
+			SETTINGS_RAIL,
+			'aria-current={isActive ? "page" : undefined}',
+		),
+		{ isActive, labelled, rowCurrent },
+	).split(/\s+/);
+
+test("settings destinations share a resting ground and hover in both layouts", () => {
+	assert.ok(
+		literalClassAt(SETTINGS_RAIL, 'aria-label="Settings sections"', "after")
+			.split(/\s+/)
+			.includes("bg-surface"),
+	);
+	for (const labelled of [true, false]) {
+		for (const isActive of [true, false]) {
+			const classes = settingsClasses(isActive, labelled);
+			assert.deepEqual(
+				classes.filter((token) => token.startsWith("bg-")),
+				["bg-transparent"],
+				`settings current=${isActive} labelled=${labelled} must reveal the rail's own ground`,
+			);
+			assert.ok(classes.includes("hover:bg-row-hover"));
+			assert.equal(classes.includes("font-semibold"), isActive);
+			assert.ok(!classes.some((token) => /^(border|shadow)-/.test(token)));
+		}
+	}
+	assert.ok(!code.get(SETTINGS_RAIL).includes("rowCurrent"));
+});
+
+test("settings current-page cue occupies the gutter without changing accessible names", () => {
+	const rail = sourceOf(SETTINGS_RAIL);
+	assert.match(rail, /aria-current=\{isActive \? "page" : undefined\}/);
+	assert.match(rail, /aria-label=\{labelled \? undefined : section\.label\}/);
+	assert.match(
+		rail,
+		/isActive && \(\s*<span\s+aria-hidden="true"\s+className="absolute left-1 top-1\/2 size-1 -translate-y-1\/2 rounded-full bg-accent"/,
+	);
+	assert.match(rail, /isActive \? "text-accent" : "text-ink-dim"/);
+	assert.match(rail, /<Tooltip content=\{section\.label\} side="right">/);
+});
+
 test("the settings rail's group lists carry no ground of their own", () => {
 	const classes = literalClassAt(SETTINGS_RAIL, "<ul", "after")
 		.split(/\s+/)

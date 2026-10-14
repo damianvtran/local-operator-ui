@@ -1,4 +1,3 @@
-import { rowCurrent } from "@features/chat/components/chat-sidebar";
 import { RadientMark } from "@shared/components/common/radient-mark";
 import { Tooltip } from "@shared/components/ui/tooltip";
 import { useMediaQuery } from "@shared/hooks/use-media-query";
@@ -118,15 +117,12 @@ const SECTION_GROUPS: { label: string; ids: string[] }[] = [
  * the accent wash behind it is invisible to assistive tech — colour alone is
  * not a state.
  *
- * The active row is the rail's single accent spend (its accent icon, over the
- * `rowSelected` ground this rail imports from the chat panel, plus that role's
- * 2px accent bar and `font-medium`), so hover takes the OTHER row role,
- * `rowHover`, rather than a second tint. Both are the palette's own accent hue
- * at two strengths; neither is a ground, and `elevated` is not a row state at
- * all — that boundary is the reason the pair exists.
- * Its label stays `ink` rather than going accent: tinting the ground and the
- * mark and the text is three signals for one state, and it makes the row you
- * are already on the loudest text in the rail.
+ * Unlike selected conversations, settings destinations share one resting
+ * ground, including the current page (the operator requested matching
+ * backgrounds). Current-page ink, semibold weight, an accent glyph and a
+ * decorative dot in the existing gutter carry the state; `aria-current`
+ * carries it for assistive technology. All destinations use the same hover
+ * ground. The dot is absolute so neither labels nor collapsed icons reflow.
  *
  * ## Density
  *
@@ -204,71 +200,21 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 				aria-label={labelled ? undefined : section.label}
 				data-tour-tag={TOUR_TAGS[section.id]}
 				className={cn(
-					"flex h-8 w-full items-center rounded-sm text-left text-body-sm",
+					"relative flex h-8 w-full items-center rounded-sm bg-transparent text-left text-body-sm hover:bg-row-hover hover:text-ink",
 					"transition-colors duration-fast ease-out-quart",
 					labelled ? "justify-start gap-2 px-3" : "justify-center",
-					/*
-					 * The current destination's ground: `rowSelected` — the role authored for
-					 * the row the reader is ON, one of the two the row-state pass added, with
-					 * `rowHover` for the row under the pointer. Both are tints of the
-					 * palette's own `accent` hue at two strengths rather than of the panel's
-					 * own cast, and the selected one is asserted at ΔE00 **4.0** off `surface`
-					 * AND **2.0** off `rowHover`, with a 1.5-5.0 `L*` step in the direction the
-					 * mode runs, a chroma ceiling, and the 2px `accent` bar the role brings
-					 * with it. Its doc in `palette-contract.ts` states the rule;
-					 * `scripts/contrast-contract.mjs` asserts it per palette.
-					 *
-					 * The role it replaced was `highlight`: a step toward the PANEL's own
-					 * cast, bought on LIGHTNESS — the one axis the band had already spent —
-					 * which is why the operator twice reported the row as lost beside a
-					 * hovered neighbour. (The earlier reading of this palette, "3.51 on
-					 * `iceberg`, capped by its own well", was wrong: iceberg measures 4.12,
-					 * above that band's floor.)
-					 *
-					 * It was `accentWash` before that role existed, which is ΔE00 **1.05** on
-					 * this ground in tokyoNight (`#262B3F` on `#24283B`, the pair the app
-					 * computes and the pair every citation of it here uses) — a row with no
-					 * ground at all, marked only by its accent glyph and weight. The wash is
-					 * not invisible everywhere: the app rail painted the SAME wash, and on the
-					 * `sunken` ground that rail then carried it measured 9.6 and did read, so the
-					 * role was fine and the panel under it was the problem — which is why this is
-					 * a role of its own rather than a change to the wash. (The rail is `surface`
-					 * since the row-state refinement, for the reason its own ground note gives:
-					 * it is a surface that paints `rowCurrent`.)
-					 *
-					 * It then spent a round on `sunken`, and that is what the operator
-					 * reported: `sunken` is RECESSED, always a well rather than a mark, and
-					 * 3.75-14.94 from `surface` — a dark box rather than a highlight.
-					 * `hover:` states the ground again because a hover variant outranks a
-					 * bare background, so without it the pointer would replace the mark on
-					 * the row the user is already on — and the INACTIVE branch takes
-					 * `hover:bg-row-hover`, because a row's hover is a row state too and
-					 * `elevated`, which it used, is a GROUND: it is every menu, popover and
-					 * tooltip in the app. That boundary is what the two roles exist to draw.
-					 *
-					 * No EDGE, deliberately, and this rail is the second place the boundary was
-					 * retired from rather than the first: an earlier round of this branch drew a
-					 * 1px `outline-control` ring here, which is `docs/branding.md` § 2's *sole
-					 * visual boundary of an input, select, checkbox or outlined button* — and
-					 * both rails drew it with the same 1px, radius and ink as the search field
-					 * above the chat list, so the row read as a filled field (design round 1,
-					 * D3). The mark is the ground and the weight — and it USED to be a 2px
-					 * `accent` bar as well, which the row-state refinement removed: the bar's
-					 * square overlay painted over the row's own `rounded-md`, so removing it is
-					 * what restored the operator's left rounding, and the refined roles rank the
-					 * pair on the fill's own step and cast instead. See
-					 * `features/chat/components/chat-sidebar.tsx`'s `rowCurrent` block: one
-					 * decision, two call sites — and since round 5 (design D22, agent A-7) the
-					 * terms are IMPORTED from that block rather than spelled a second time
-					 * here. This rail's copy was the one design round 4's D19 was raised
-					 * against, a term apart from the specimen's: a hand-written replica of a
-					 * role is a role that can drift, and two of the three replicas did.
-					 */
-					isActive
-						? rowCurrent
-						: "text-ink-muted hover:bg-row-hover hover:text-ink",
+					/* A settings destination is not a selected conversation. Keep the
+					 * resting rail continuous as requested; ink, weight, the glyph
+					 * and a gutter dot identify the current page without a plate. */
+					isActive ? "font-semibold text-ink" : "text-ink-muted",
 				)}
 			>
+				{isActive && (
+					<span
+						aria-hidden="true"
+						className="absolute left-1 top-1/2 size-1 -translate-y-1/2 rounded-full bg-accent"
+					/>
+				)}
 				{/* Decorative in both layouts: labelled, the text beside it names the
 				    destination; unlabelled, the button's own `aria-label` does. */}
 				<span
@@ -300,13 +246,10 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 
 	/* The rail's ground is `surface`, and its rows sit directly on it.
 	 *
-	 * A surface that paints `rowCurrent` or `hover:bg-row-hover` has to BE
-	 * `surface` (`docs/design/row-states-refinement.md` § 4). Both roles are
-	 * authored as steps OF the panel's own colour, so on a rung the fill lands
-	 * inside the ladder instead of out of the panel — resolved off `elevated`
-	 * the current fill falls under the 2.0 field floor on 16 of 59 palettes
-	 * (minimum ΔE00 0.47, `duskfox`). This rail paints both roles, so it wears
-	 * `surface`, the same ground as the app sidebar beside it.
+	 * The hover role is authored against `surface`
+	 * (`docs/design/row-states-refinement.md` § 4), so this remains the same
+	 * ground as the app sidebar beside it. The current destination no longer
+	 * spends a separate fill, but that does not change the hover's contract.
 	 *
 	 * That is where it started, and where it comes back after a round on
 	 * `elevated`. The rail took the rung on 2026-09-27 to separate itself from

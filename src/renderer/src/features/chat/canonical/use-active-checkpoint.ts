@@ -104,6 +104,11 @@ export const useActiveCheckpoint = (
 	regionRef: RefObject<HTMLElement | null>,
 	rows: readonly ActiveCueRow[],
 	checkpoints: readonly Checkpoint[],
+	virtualModel?: RefObject<{
+		enabled: boolean;
+		entryIds: ReadonlyMap<string, readonly string[]>;
+		order?: ReadonlyMap<string, number>;
+	} | null>,
 ): { activeId: string | null; loadedIds: ReadonlySet<string> } => {
 	const [activeCheckpointId, setActiveCheckpointId] = useState<string | null>(
 		null,
@@ -138,6 +143,8 @@ export const useActiveCheckpoint = (
 			),
 		[checkpoints, loadedCheckpointIds],
 	);
+	const modelRows = useRef(rows);
+	modelRows.current = rows;
 	const syncActiveCheckpoint = useCallback(() => {
 		const region = regionRef.current;
 		if (region === null) return;
@@ -147,20 +154,73 @@ export const useActiveCheckpoint = (
 		let bestTop = Number.NEGATIVE_INFINITY;
 		let first: string | null = null;
 		let last: string | null = null;
-		for (const checkpoint of loadedCheckpoints) {
-			const element = region.querySelector(
-				`[data-record-id="${CSS.escape(checkpoint.id)}"]`,
-			);
-			if (element === null) continue;
-			if (first === null) first = checkpoint.id;
-			last = checkpoint.id;
-			const elementTop = element.getBoundingClientRect().top;
-			if (
-				elementTop <= top + TRANSCRIPT_TOP_FADE_PX + 1 &&
-				elementTop > bestTop
-			) {
-				bestTop = elementTop;
-				best = checkpoint.id;
+		if (!virtualModel?.current?.enabled) {
+			for (const checkpoint of loadedCheckpoints) {
+				const element = region.querySelector(
+					`[data-record-id="${CSS.escape(checkpoint.id)}"]`,
+				);
+				if (element === null) continue;
+				if (first === null) first = checkpoint.id;
+				last = checkpoint.id;
+				const elementTop = element.getBoundingClientRect().top;
+				if (
+					elementTop <= top + TRANSCRIPT_TOP_FADE_PX + 1 &&
+					elementTop > bestTop
+				) {
+					bestTop = elementTop;
+					best = checkpoint.id;
+				}
+			}
+		} else {
+			// The user checkpoint may be several screens outside overscan. Use
+			// the first intersecting record's predecessor in FULL model order;
+			// never infer 'unloaded' or pin every checkpoint from DOM absence.
+			const ordered =
+				virtualModel.current.order ??
+				new Map(modelRows.current.map((row, index) => [row.record.id, index]));
+			let readingIndex = -1;
+			for (const entry of region.querySelectorAll<HTMLElement>(
+				"[data-lo-entry-key]",
+			)) {
+				if (
+					entry.getBoundingClientRect().bottom <=
+					top + TRANSCRIPT_TOP_FADE_PX + 1
+				)
+					continue;
+				const intersecting = [
+					...entry.querySelectorAll<HTMLElement>("[data-record-id]"),
+				].find(
+					(element) =>
+						element.getBoundingClientRect().bottom >
+						top + TRANSCRIPT_TOP_FADE_PX + 1,
+				);
+				const id =
+					intersecting?.dataset.recordId ??
+					virtualModel.current.entryIds.get(
+						entry.dataset.loEntryKey ?? "",
+					)?.[0];
+				readingIndex = id ? (ordered.get(id) ?? -1) : -1;
+				break;
+			}
+			best = null;
+			let predecessorIndex = -1;
+			let firstIndex = Number.POSITIVE_INFINITY;
+			let lastIndex = -1;
+			for (const checkpoint of loadedCheckpoints) {
+				const index = ordered.get(checkpoint.id);
+				if (index === undefined) continue;
+				if (index < firstIndex) {
+					first = checkpoint.id;
+					firstIndex = index;
+				}
+				if (index > lastIndex) {
+					last = checkpoint.id;
+					lastIndex = index;
+				}
+				if (index <= readingIndex && index > predecessorIndex) {
+					best = checkpoint.id;
+					predecessorIndex = index;
+				}
 			}
 		}
 		/*
@@ -178,7 +238,7 @@ export const useActiveCheckpoint = (
 		if (atBottom) best = last;
 		else if (atTop) best = first;
 		setActiveCheckpointId((previous) => (previous === best ? previous : best));
-	}, [regionRef, loadedCheckpoints]);
+	}, [regionRef, loadedCheckpoints, virtualModel]);
 	/*
 	 * The scroll listener reads the scan through a ref (UI perf audit A2): the
 	 * listener must be attached ONCE per region, but the scan it calls changes
@@ -219,8 +279,11 @@ export const useActiveCheckpoint = (
 			}, ACTIVE_CUE_SETTLE_MS);
 		};
 		region.addEventListener("scroll", onScroll, { passive: true });
+		const onLayout = () => syncRef.current();
+		region.addEventListener("lo:transcript-layout", onLayout);
 		return () => {
 			region.removeEventListener("scroll", onScroll);
+			region.removeEventListener("lo:transcript-layout", onLayout);
 			if (frame !== 0) window.cancelAnimationFrame(frame);
 			window.clearTimeout(settle);
 		};

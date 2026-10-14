@@ -58,15 +58,13 @@
  * as the reader, and a second open-state owner beside the disclosure's own is
  * exactly how the two end up disagreeing about whether the fold is open.
  *
- * WHAT THE SHARED PRIMITIVE STILL DOES NOT GIVE THIS LINE, stated rather than
- * quietly skipped: §B7's named 180ms transition. `Disclosure` UNMOUNTS its
- * children (`isOpen && children`), so the fold appears and disappears rather
- * than growing and shrinking — and making it animate means keeping children
- * mounted for every caller, including every tool row in the transcript, where
- * an unmounted body is what keeps a forty-row turn cheap to scroll. That is a
- * change to a shared primitive with a real regression surface, so it is not
- * this commit's: the two states are legible in the frames, and the transition
- * is named as deferred on the PR rather than half-done here.
+ * Text-only aggregates opt into §B7's 180ms fold transition. The shared
+ * primitive clips an intrinsically sized grid, retains children only during
+ * closing, and unmounts them afterward. Media-bearing aggregates keep an atomic
+ * swap: exit retention plus the condensed strip would paint each picture twice
+ * and add the strip's height before shrinking. Immediate replacement preserves
+ * one presentation and monotonic geometry in both directions, including a fold
+ * restored already open. Individual tool details keep the same immediate path.
  *
  * ## The fold never reorders anything
  *
@@ -140,8 +138,8 @@ export type TraceFoldProps = {
 	/**
 	 * Media the run produced, drawn UNDER the condensed header.
 	 *
-	 * The rows inside a collapsed fold are unmounted (`Disclosure` renders
-	 * `isOpen && children`), so a picture a call produced went with them: the
+	 * The rows inside a settled collapsed fold are unmounted (the animated
+	 * disclosure retains them only during its exit), so a picture a call produced went with them: the
 	 * reader had to expand the group to see the artifact, which is the cost
 	 * condensing exists to remove. This is the fold's own copy of the principle
 	 * #537 applied to metadata — the condensed state carries the facts the rows
@@ -271,6 +269,11 @@ export const TraceFold = ({
 			data-fold-ids={recordIds.join(" ")}
 		>
 			<Disclosure
+				// Disable only media EXIT retention: row pictures and the strip swap
+				// in one commit. Keep the wrapper while open so a run's first picture
+				// cannot remount tool details the reader already opened. A media open
+				// mounts this wrapper expanded, hence is also an atomic replacement.
+				animate={open || !condensedMedia}
 				/*
 				 * CONTROLLED, because the app closes this fold as well as the reader
 				 * (`open`/`onOpenChange` above): the alternative is the reader's state

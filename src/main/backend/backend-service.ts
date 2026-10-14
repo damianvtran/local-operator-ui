@@ -69,6 +69,7 @@ import {
 	readInstallIdentity,
 	resolveGlobalConsoleScript,
 } from "../update-install";
+import { withoutAgentShellMarker } from "./agent-shell-spawn-env";
 import { backendConfig } from "./config";
 import {
 	DETACHED_AFTER_MS,
@@ -1603,7 +1604,7 @@ export class BackendServiceManager {
 	 * operator (see the comment on that entry, and `./notification-launch`).
 	 */
 	private backendSpawnEnv(): Record<string, string | undefined> {
-		return {
+		return withoutAgentShellMarker({
 			...withPythonBytecodeCache(this.shellEnv, this.appDataPath),
 			// Managed starts rotate the token; set after the spread so the spawn
 			// can never inherit a stale one from the shell environment. `start()`
@@ -1626,7 +1627,7 @@ export class BackendServiceManager {
 			 * unstated key is left alone.
 			 */
 			...resolveNotificationLaunch(launchEnv),
-		};
+		});
 	}
 
 	/**

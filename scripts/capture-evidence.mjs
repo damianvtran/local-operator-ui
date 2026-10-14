@@ -11101,6 +11101,12 @@ export const STORIES = [
 	],
 	["mesh-tab--approvals-stopped", 1380, 900],
 	[
+		"mesh-tab--approvals-stopped-open",
+		1380,
+		900,
+		{ expectSentence: "Abandon" },
+	],
+	[
 		"mesh-tab--approvals-stopped-refused",
 		1380,
 		900,

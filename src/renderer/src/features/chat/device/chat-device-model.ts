@@ -21,6 +21,7 @@
  * below, which renders the cold sentence whenever nobody told us otherwise.
  */
 
+import type { DesktopFeatureState } from "@shared/api/local-operator/desktop-hooks";
 import type { MovePlan } from "../../mesh/mesh-drop";
 import { lossSentence } from "../../mesh/mesh-drop";
 import type { NetworkSummary, PeerRow } from "../../mesh/mesh-types";
@@ -252,6 +253,62 @@ export type DevicePickerModel = {
 /** The exact consequence the default (deleting) move carries. */
 export const MOVE_FOOTER =
 	"The copy on this device is deleted when the move commits.";
+
+/**
+ * Why the header's move item stands down, from the capability answer's OWN state.
+ *
+ * WHY THIS IS A VALUE AND NOT AN INLINE EXPRESSION (design round 1, D1).
+ * `desktopFeatureState` answers FOUR states, and the first version of the item
+ * collapsed three of them into one sentence - so a user whose capabilities had
+ * simply not arrived yet (the first frames of every window), or whose app holds
+ * no credential for the backend, were told their BACKEND cannot move a
+ * conversation. Both are conditions with their own truth and their own remedy.
+ * `enabled` returns `null`: there is nothing to explain, and the item is live.
+ *
+ * ONE TERM FOR BOTH GATES (D2): `peers` and `session_transfer` are both features
+ * the BACKEND advertises, so naming the app binary ("this build") was the wrong
+ * party, and "yet" promised a roadmap the UI cannot back - a backend either
+ * advertises the capability or it does not.
+ */
+export function moveGateReason(state: DesktopFeatureState): string | null {
+	switch (state) {
+		case "enabled":
+			return null;
+		case "unknown":
+			/*
+			 * Loading-honest AND SHORT (design round 2, D7): this line is transient
+			 * (the first frames of every window) and it used to be the longest of the
+			 * four, so it alone set the panel's width. "checking…" says the same thing
+			 * in one word.
+			 */
+			return "checking…";
+		case "unpaired":
+			/*
+			 * A CREDENTIAL fact, in the app's own words for it (design round 2, D6):
+			 * `unpaired` is `desktop_available === false` - the app holds no bearer for
+			 * the backend, which `backend-error.ts`'s `BACKEND_PANE_SENTENCE.unpaired`
+			 * calls "the app is not paired with the running server". "Network" in this
+			 * app means the device MESH, so the old wording sent the user to create or
+			 * join a mesh, which does not fix a missing credential.
+			 */
+			return "this app is not paired with the backend";
+		case "below-version":
+			/* The backend answered and does not advertise the capability. */
+			return "this backend cannot move a conversation";
+	}
+}
+
+/**
+ * The ink the reason line is painted in (design round 2, D8).
+ *
+ * A WAIT IS NOT A GATE: `unknown` is the first frames of every window, and a
+ * contended amber line there reads as something being wrong. The quiet ink says
+ * "still checking" where the warning ink says "this cannot run". `enabled` never
+ * renders a reason, so its tone is unused and `ink-dim` is the harmless default.
+ */
+export function moveGateTone(state: DesktopFeatureState): "warning" | "dim" {
+	return state === "unknown" ? "dim" : "warning";
+}
 
 /**
  * Why a third device cannot be picked from a pane that no longer holds the
