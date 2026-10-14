@@ -6564,7 +6564,13 @@ test("the sanitiser strips a path, controls, bidi overrides and reserved stems",
 test("/health carries the capabilities this build serves", async () => {
 	const response = await fetch(rpcUrl(HEALTH_PATH));
 	const body = await response.json();
+	// The literal pin, kept literal on purpose: its job is to FAIL when
+	// `HOST_CAPABILITIES` gains or loses a method, so a peer is never told the
+	// host serves something it does not. The two console methods lead the list
+	// because they are the newest additions (the console host's own reads).
 	assert.deepEqual(body.capabilities, [
+		"console_resources",
+		"console_cleanup",
 		"styles",
 		"hit_test",
 		"ancestors",
