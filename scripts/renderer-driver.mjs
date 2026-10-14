@@ -5036,11 +5036,21 @@ async function sceneSessionArchive(cdp) {
 			confirmState.cancelFocused === true,
 		JSON.stringify(confirmState),
 	);
+	/*
+	 * THE CONFIRM IS THE DANGER ROLE NOW (operator preference, 2026-10-13): the archive
+	 * confirmation was briefly the reversible/non-danger caller of the shared modal (the
+	 * comment in `confirmation-modal.tsx` still records that history), and the operator
+	 * asked for the danger treatment anyway. So this check asserts the NEW required
+	 * behaviour - the confirm button CARRIES the danger role - where it used to assert the
+	 * absence of it. Do not revert it: the safe half of the claim, the body stating the way
+	 * back, is unchanged, and the delete dialog's own `delete-dialog` frame is still the
+	 * sibling that keeps the role for the act that cannot be undone.
+	 */
 	check(
-		"and the question is the REVERSIBLE one: the body states the way back, and neither button is painted in the danger role the delete dialog keeps for itself",
+		"and the question states the way back: the body names the undo and the restore, and the confirm button CARRIES the danger role (the operator's styling override of the delete dialog's own role)",
 		(confirmState.text ?? "").includes(
 			"It leaves your lists. You can undo for 8 seconds; after that, search above your chats, turn on “Include archived”, then Unarchive it.",
-		) && !/danger/.test(confirmState.confirmClass ?? ""),
+		) && /danger/.test(confirmState.confirmClass ?? ""),
 		JSON.stringify(confirmState),
 	);
 	await clickAt(cdp, "[data-cancel-action]");
