@@ -63,6 +63,26 @@ const {
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 
+/*
+ * THE STORE, bundled the same way, for the one value the header's new door owns:
+ * `requestPicker` is the ask the overflow item issues and the picker's own effect
+ * consumes, and it is a pure store transition - no DOM needed to pin it.
+ */
+const storeBundle = await build({
+	stdin: {
+		contents:
+			'export * from "./src/renderer/src/features/chat/device/chat-device-store";',
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+});
+const { useChatDeviceStore } = await import(
+	`data:text/javascript;base64,${Buffer.from(storeBundle.outputFiles[0].text).toString("base64")}`
+);
+
 const SELF = "d_self";
 const BUILD = "d_build";
 const PIXEL = "d_pixel";
@@ -1091,5 +1111,122 @@ test("the self count is this device's own conversations, never another device's"
 		]),
 		3,
 		"remote rows are the exclusion; everything else belongs to this device",
+	);
+});
+
+/*
+ * THE DISCOVERABLE DOOR (the fix this slice exists for). The chip that carries the
+ * placement fact is LAST in the title block, clipped first at narrow widths, and
+ * labelled as a fact rather than an action - so a user scanning the header for a way
+ * to move the conversation finds nothing, and when the gate is shut they find no
+ * trace of the operation at all. The overflow menu now names it, in every state.
+ *
+ * WHAT IS PINNED HERE, and what is answered where:
+ * - the header SOURCE carries the item, the two-gate reason and the store ask (a
+ *   source read, because the menu is JSX that no value-level test can reach without a
+ *   DOM - the same trade `chat-sidebar-archive.test.mjs` and this file's own anchor
+ *   test make);
+ * - the STORE transition the ask rides is a value (`requestPicker` increments a
+ *   per-pane token), because the token is what turns a press in one component tree
+ *   into an opened picker in another.
+ */
+test("the header offers an explicit move door, visible and explained in every state", () => {
+	const header = code(
+		"src/renderer/src/features/chat/components/chat-header.tsx",
+	);
+	/* The item exists at all - the whole point of the slice. */
+	assert.match(header, /data-session-move-action/, "the move item must exist");
+	assert.match(
+		header,
+		/<span>Move to another device…<\/span>/,
+		"the item names the operation in words a scanning user reads",
+	);
+	/*
+	 * THE TWO GATES, read from the SAME predicate the chip's slot reads, and the
+	 * same reason strings. A capability the backend withholds and a build that
+	 * withholds the move are DIFFERENT facts about the user (server vs app), so
+	 * they are different sentences.
+	 */
+	assert.match(
+		header,
+		/desktopFeatureState\(capabilities\.data, "peers"\) === "enabled"/,
+	);
+	assert.match(
+		header,
+		/desktopFeatureState\(capabilities\.data, "session_transfer"\) === "enabled"/,
+	);
+	assert.match(header, /"this backend cannot move a conversation yet"/);
+	assert.match(header, /"this build cannot move a conversation yet"/);
+	/*
+	 * VISIBLE BUT NOT DEAD: the reason rides the row as a line (`text-warning`), the
+	 * press is ignored through `aria-disabled` rather than Radix's focus-filtering
+	 * `disabled`, and the reason is not buried in a `title` alone.
+	 */
+	assert.match(header, /aria-disabled=\{moveReason \? true : undefined\}/);
+	assert.match(header, /if \(moveReason\) return;/);
+	assert.match(
+		header,
+		/<span className="text-meta text-warning">\s*\{moveReason\}/,
+	);
+	/*
+	 * IT OPENS THE EXISTING PICKER, never a second path: the press only asks.
+	 */
+	assert.match(header, /requestPicker\(sessionId\)/);
+});
+
+test("the picker ask is a token the picker's own effect consumes, once", () => {
+	/*
+	 * The ask travels by store because the two surfaces share no prop path (the menu
+	 * is in `chat-header.tsx`, the picker in the separate `ChatDeviceSlot` tree). The
+	 * token is what makes a second press re-open a closed picker while a stale token
+	 * cannot pop it open unbidden.
+	 */
+	const { requestPicker } = useChatDeviceStore.getState();
+	/*
+	 * `getState()` IS RE-READ AFTER EVERY WRITE, deliberately: the store replaces the
+	 * record rather than mutating it, so a snapshot captured once would keep naming the
+	 * pre-press object and assert nothing about the transition that actually happened.
+	 */
+	assert.deepEqual(
+		useChatDeviceStore.getState().pickerRequests,
+		{},
+		"the store starts with no pending ask",
+	);
+	requestPicker("s_1");
+	assert.equal(useChatDeviceStore.getState().pickerRequests.s_1, 1);
+	requestPicker("s_1");
+	assert.equal(
+		useChatDeviceStore.getState().pickerRequests.s_1,
+		2,
+		"a second press is a NEW event, not a no-op a boolean could not express",
+	);
+	requestPicker("s_2");
+	assert.equal(useChatDeviceStore.getState().pickerRequests.s_2, 1);
+	assert.equal(
+		useChatDeviceStore.getState().pickerRequests.s_1,
+		2,
+		"panes carry their own token",
+	);
+	/*
+	 * AND THE CONSUMER READS THE SAME SHAPE: the effect opens on a token that differs
+	 * from the one this mount last served, which is what keeps a value left in the
+	 * store from opening the picker on a frame nobody asked for.
+	 */
+	const device = code(
+		"src/renderer/src/features/chat/device/chat-header-device.tsx",
+	);
+	assert.match(
+		device,
+		/sessionId \? s\.pickerRequests\[sessionId\] : undefined/,
+	);
+	assert.match(
+		device,
+		/pickerRequest !== servedRequestRef\.current/,
+		"a stale token is not a fresh ask",
+	);
+	assert.match(
+		device,
+		/const servedRequestRef = useRef\(pickerRequest\)/,
+		"the mount seeds the last-served token",
 	);
 });
