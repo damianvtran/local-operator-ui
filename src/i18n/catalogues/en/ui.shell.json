@@ -3,7 +3,7 @@
 	"ui.shell.panel_rail.panels": "Panels",
 	"ui.shell.sidebar_navigation.agent_hub": "Agent hub",
 	"ui.shell.sidebar_navigation.agents": "Agents",
-	"ui.shell.sidebar_navigation.aida_missed": "{name}, {count, plural, one {# missed message} other {# missed messages}}",
+	"ui.shell.sidebar_navigation.aida_missed": "{name}, {count, plural, one {{count, number, ::group-off} missed message} other {{count, number, ::group-off} missed messages}}",
 	"ui.shell.sidebar_navigation.aida_working": "{name}, working",
 	"ui.shell.sidebar_navigation.browser": "Browser",
 	"ui.shell.sidebar_navigation.browser_waiting": "Browser, {count} waiting",

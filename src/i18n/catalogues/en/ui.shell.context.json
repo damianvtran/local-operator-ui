@@ -25,7 +25,7 @@
 	"ui.shell.sidebar_navigation.aida_missed": {
 		"role": "navigation accessible name",
 		"tone": "Matter-of-fact notification count.",
-		"note": "Names the chief-of-staff row with unread messages; singular and plural must agree with count.",
+		"note": "Names the chief-of-staff row with unread messages; singular and plural must agree with count. The number skeleton disables grouping to preserve the original English decimal count spelling even at 1000; cardinal selection remains numeric.",
 		"placeholders": {
 			"name": "User-configured chief-of-staff display name, verbatim.",
 			"count": "Number of missed messages; ICU plural cardinal."
