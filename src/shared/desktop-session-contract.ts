@@ -1581,6 +1581,22 @@ export type CanonicalContentBlock = {
 	attachment?: string;
 	mime_type?: string;
 };
+/**
+ * One durable row as a page, a payload subset or a dependency subset carries
+ * it. `ts_source` is the WIRE READER'S OWN statement about the ts beside it
+ * (docs/DESKTOP_API.md): `entry` is the stored row's own time (the only true
+ * one), `unstated` means no provable entry time exists for this row, `served`
+ * is a legacy serve-stamp. An absent `ts_source` means a legacy daemon whose
+ * `ts` keeps today's meaning.
+ */
+export type DesktopHistoryEntry = {
+	id: string;
+	ts: number;
+	type: string;
+	payload: Record<string, unknown>;
+	journal_seq?: number;
+	ts_source?: "entry" | "unstated" | "served";
+};
 export type DesktopHistoryPage = {
 	/** Opaque equality domain; never publication seq or a sortable UUID. */
 	journal_generation?: string;
@@ -1595,13 +1611,31 @@ export type DesktopHistoryPage = {
 	 * read settle it — see `receiveJournalOrder`'s reconcile branch.
 	 */
 	reconcile?: boolean;
-	entries: Array<{
-		id: string;
-		ts: number;
-		type: string;
-		payload: Record<string, unknown>;
-		journal_seq?: number;
-	}>;
+	/*
+	 * THE PAYLOAD PURPOSE'S PER-ID PARTITION (docs/DESKTOP_API.md, the purpose
+	 * table; local_operator/server/models/desktop_sessions.py `HistoryPage`).
+	 * Present only on a `source_read=payload` answer from a peer source, and
+	 * each id lands in EXACTLY one of the four states — they are not
+	 * interchangeable: `present` bodies rode `entries`; `missing` is proven
+	 * absent under this generation; `unavailable` is present but unsafe or
+	 * unprojectable; `remaining` is budget-deferred, not failure. Bodies for
+	 * ids the request did not name (a tool call's companion conversation
+	 * payload, a prune's media) ride `dependency_entries`, named here so no
+	 * consumer mistakes them for requested rows.
+	 */
+	source_present_ids?: string[];
+	source_missing_ids?: string[];
+	source_unavailable_ids?: string[];
+	source_remaining_ids?: string[];
+	/**
+	 * The owner's explicit smaller-batch retry: a follow-up request should carry
+	 * THESE ids, never the identical full set again ("never a silent
+	 * truncation").
+	 */
+	source_retry_ids?: string[];
+	source_dependency_ids?: string[];
+	dependency_entries?: DesktopHistoryEntry[];
+	entries: DesktopHistoryEntry[];
 	has_more: boolean;
 	cursor_missing: boolean;
 	/*

@@ -55,6 +55,15 @@ export type OlderLoaderDeps = {
 	) => TranscriptState;
 	/** The host's in-flight flag (`loadingOlder`). Called true on dispatch, false on settle. */
 	setLoading?: (loading: boolean) => void;
+	/**
+	 * Whether the subscription that will RECEIVE this page declared the
+	 * complete peer-source contract (read at apply time; the host owns the
+	 * witness). It switches the merge's lane rules on for a peer conversation -
+	 * page rows admit their bodies, resets preserve unrelated holds - and is
+	 * absent, i.e. false, for every legacy host and every undeclared stream, so
+	 * the local lane's behavior is byte-for-byte unchanged.
+	 */
+	peerSource?: () => boolean;
 };
 
 /**
@@ -135,13 +144,12 @@ export function createOlderLoader() {
 				 * an ordinary tail-type read instead - which can only move it further
 				 * back in time, never forward.
 				 */
-				return applyHistoryPage(
-					current,
-					page,
-					current.oldestId === anchorAtDispatch
+				return applyHistoryPage(current, page, {
+					...(current.oldestId === anchorAtDispatch
 						? { pagedBefore: anchor }
-						: undefined,
-				);
+						: {}),
+					...(deps.peerSource?.() === true ? { peerSource: true } : {}),
+				});
 			});
 			// A source reset can win inside the commit boundary too. Calling a
 			// refused updater "applied" would make the reveal walk treat no page
