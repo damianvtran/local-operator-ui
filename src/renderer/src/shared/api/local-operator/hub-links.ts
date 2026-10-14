@@ -53,6 +53,23 @@ export type HubUnresolvedLink = {
 	reason: "source-unresolved";
 };
 export type HubLinks = { links: HubLink[]; unresolved: HubUnresolvedLink[] };
+/**
+ * The result of an explicit source confirmation on a legacy unknown-origin row
+ * (proposed additive wire, b-wire-receipt §Part 2).
+ *
+ * The real `link` comes from the service's canonical identity computation, never
+ * a synthetic id, and `resolved.scope_known` is always true on success: the whole
+ * point of the act is that a source+scope is now stated and recorded. A differing
+ * KNOWN scope is refused (`origin-conflict`) with the old state byte-unchanged,
+ * so a refusal arrives as an error, not as a resolved row with a swapped tenant.
+ */
+export type HubSourceResolution = {
+	source: string;
+	visibility: "public" | "org";
+	tenant_id: string | null;
+	baseline: "adopted" | "adopt-unknown";
+	scope_known: true;
+};
 export type HubLinkPolicyPatch = {
 	subscribe?: boolean;
 	auto_push?: boolean;

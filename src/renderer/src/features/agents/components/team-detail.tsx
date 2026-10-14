@@ -232,6 +232,19 @@ export function TeamDetail({
 	const [error, setError] = useState<string | null>(null);
 	const [errorField, setErrorField] = useState<FieldTarget>(null);
 	const [confirmDiscard, setConfirmDiscard] = useState(false);
+	/*
+	 * WHETHER THE RECORD MOVED UNDER AN OPEN DRAFT (CAS conflict). The agent pane
+	 * has carried a `conflict` banner for a while; the team pane had NO such state,
+	 * so a background configuration run or another window that rewrote this team
+	 * left the closed form showing the new values with no signal, and a save from
+	 * stale text would silently revert the concurrent write. This is the minimal
+	 * team half of the same contract (draft-safety finding), NOT a team
+	 * revamp: the state drives one banner and the CAS echo below.
+	 */
+	const [conflict, setConflict] = useState(false);
+	/* The edit-open base revision, held stable while dirty - see the agent pane's
+	 * `baseRevisionRef` note for why a refetch must not rebase it. */
+	const baseRevisionRef = useRef<string | undefined>(team?.definition_revision);
 	const headingRef = useRef<HTMLHeadingElement>(null);
 	/** The collaboration field, so a refused create puts the caret in it (D14). */
 	const teamInstructionsRef = useRef<HTMLTextAreaElement>(null);
@@ -319,6 +332,8 @@ export function TeamDetail({
 		setError(null);
 		setErrorField(null);
 		setConfirmDiscard(false);
+		// A reopen/reload establishes a NEW base revision from the fetched team.
+		baseRevisionRef.current = team?.definition_revision;
 		const next = draftOf(team);
 		setBase(next);
 		setDraft(next);
@@ -381,6 +396,7 @@ export function TeamDetail({
 						name: team.name,
 						requestId: crypto.randomUUID(),
 						fields: changedFields(base, draft),
+						expectedDefinitionRevision: baseRevisionRef.current,
 					})
 				: await desktopResult<ReusableTeam>({
 						op: "teams.create",
@@ -397,6 +413,9 @@ export function TeamDetail({
 			const next = draftOf(result);
 			setBase(next);
 			setDraft(next);
+			setConflict(false);
+			// Adopt the write's own new revision as the base for a later save.
+			baseRevisionRef.current = result.definition_revision;
 			setEditing(false);
 			onSaved(result.name);
 			/*
@@ -407,6 +426,19 @@ export function TeamDetail({
 			if (creating) requestHeadingFocus();
 			requestAnimationFrame(() => headingRef.current?.focus());
 		} catch (caught) {
+			/*
+			 * A CONCURRENT-EDIT REFUSAL: the record moved since this edit opened, so the
+			 * write was rejected before touching anything. Show the conflict banner and
+			 * KEEP the draft; do not re-read the base token here (a deliberate reload
+			 * reconciles). Keyed on the backend's machine code, not status alone.
+			 */
+			const code = (caught as { code?: unknown })?.code;
+			if (code === "local-concurrent-edit") {
+				setConflict(true);
+				setError(null);
+				setErrorField(null);
+				return;
+			}
 			const copy = refusalCopy(
 				caught instanceof Error
 					? caught.message
@@ -512,7 +544,14 @@ export function TeamDetail({
 								New team chat
 							</Button>
 							<HubTeamPublication team={team} />
-							<Button variant="secondary" onClick={() => setEditing(true)}>
+							<Button
+								variant="secondary"
+								onClick={() => {
+									// Capture the edit-open base revision (held stable while dirty).
+									baseRevisionRef.current = team.definition_revision;
+									setEditing(true);
+								}}
+							>
 								Edit
 							</Button>
 							{askEnabled ? (
@@ -541,6 +580,40 @@ export function TeamDetail({
 					</Alert>
 				) : null}
 			</header>
+
+			{/*
+			 * THE CONFLICT BANNER, the team half of the agent pane's.
+			 *
+			 * It says the RECORD moved under a draft that is still being typed - a
+			 * configuration run or another window wrote to this team after the edit
+			 * opened, so this edit's base is no longer what the backend holds. Saving
+			 * from it would either revert somebody else's write (silently, once, before
+			 * the CAS field existed) or, now, be refused on a stale revision. Shown only
+			 * while editing AND only after a real refusal, never for a harmless refetch
+			 * that returned identical values. Wording mirrors the agent pane's banner so
+			 * the two editors describe the same event the same way.
+			 */}
+			{editing && conflict ? (
+				<Alert variant="warning" data-testid="team-conflict">
+					<AlertTitle>This changed while you were editing</AlertTitle>
+					<AlertDescription>
+						<span className="block">
+							Something else - a configuration run, or another window - wrote to
+							this team after you opened it. Your edits are kept; saving would
+							only ever write the fields you changed, and only from the version
+							you saw. Reload to start from the current one.
+						</span>
+						<Button
+							variant="secondary"
+							size="sm"
+							className="mt-2"
+							onClick={cancel}
+						>
+							Reload the saved version
+						</Button>
+					</AlertDescription>
+				</Alert>
+			) : null}
 
 			{/* noValidate — the team form validates in `save()` (D14). */}
 			<form

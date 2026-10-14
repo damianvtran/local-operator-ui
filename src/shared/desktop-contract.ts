@@ -90,6 +90,17 @@ const requestId = z
 	.string()
 	.regex(/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/);
 /**
+ * An OPAQUE definition-revision token, echoed verbatim on a definition write.
+ *
+ * Mirrors the frozen "no client-side hash" rule (b-wire-receipt-definition-cas-
+ * and-adopt.md): the value is only ever read from a GET and sent back, never
+ * derived here, so the shape is a bounded opaque string rather than a pattern
+ * this layer would have to keep in step with the backend's digest. `.nullish()`
+ * so an explicit `null` is the documented legacy unconditional write, and the
+ * endpoint passes it through unchanged.
+ */
+const definitionRevision = z.string().min(1).max(512).nullish();
+/**
  * A mesh device or network id (`d_`/`n_` + hex today), on its way into a URL path.
  *
  * MIRRORS `MESH_ID_PATTERN` in `local_operator/server/models/desktop_mesh.py`, and
@@ -1046,6 +1057,23 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		.strict(),
 	z.object({ op: z.literal("profiles.list") }).strict(),
 	z.object({ op: z.literal("profiles.get"), name: profileName }).strict(),
+	/*
+	 * Definition CAS (proposed additive wire, b-wire-receipt-definition-cas-and-adopt).
+	 * `expectedDefinitionRevision` is an opaque echo of the `definition_revision` the
+	 * editor was opened with; absent/null is the LEGACY unconditional write and is
+	 * NOT a protected dirty-edit guarantee, so a caller that wants CAS protection
+	 * must send it. Strict like every field here: a typo must 400, not silently
+	 * become an unconditional write.
+	 */
+	z
+		.object({
+			op: z.literal("profiles.update"),
+			name: profileName,
+			requestId,
+			fields: profileFields,
+			expectedDefinitionRevision: definitionRevision.optional(),
+		})
+		.strict(),
 	z
 		.object({ op: z.literal("profiles.install"), name: profileName, requestId })
 		.strict(),
@@ -1058,14 +1086,6 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 				description: z.string().max(8000),
 				instructions: z.string().min(1).max(8000),
 			}),
-		})
-		.strict(),
-	z
-		.object({
-			op: z.literal("profiles.update"),
-			name: profileName,
-			requestId,
-			fields: profileFields,
 		})
 		.strict(),
 	/*
@@ -1160,6 +1180,19 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			prefer: z.enum(["local", "remote"]).optional(),
 			acknowledgeUnknownBaseline: z.boolean().optional(),
 			dryRun: z.boolean().optional(),
+			/*
+			 * LEGACY UNKNOWN-ORIGIN SOURCE CONFIRMATION (proposed additive wire,
+			 * b-wire-receipt §Part 2). An EXPLICIT act that states a destination the
+			 * caller asserts: it materializes the real baseline identity and scope,
+			 * it never infers Public or the active organization. `resolve_source`
+			 * selects the branch; the source/scope triple is REQUIRED with it so a
+			 * half-stated destination cannot compose a guessed origin. The service
+			 * refuses a conflicting known scope with `origin-conflict`.
+			 */
+			resolveSource: z.literal(true).optional(),
+			hubSource: z.string().min(1).max(2048).optional(),
+			visibility: z.enum(["public", "org"]).optional(),
+			tenantId: z.string().min(1).max(128).nullable().optional(),
 		})
 		.strict(),
 	z
@@ -1192,19 +1225,25 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		.strict(),
 	z.object({ op: z.literal("teams.list") }).strict(),
 	z.object({ op: z.literal("teams.get"), name: profileName }).strict(),
-	z
-		.object({
-			op: z.literal("teams.create"),
-			requestId,
-			fields: teamFields.extend({ name: z.string().min(1).max(64) }),
-		})
-		.strict(),
+	/*
+	 * Team CAS is the same optional opaque echo as the profile arm: absent/null is
+	 * the legacy unconditional write, a supplied stale/malformed value is refused
+	 * 409 `local-concurrent-edit` before any write under the definition lock.
+	 */
 	z
 		.object({
 			op: z.literal("teams.update"),
 			name: profileName,
 			requestId,
 			fields: teamFields,
+			expectedDefinitionRevision: definitionRevision.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("teams.create"),
+			requestId,
+			fields: teamFields.extend({ name: z.string().min(1).max(64) }),
 		})
 		.strict(),
 	z
@@ -3419,6 +3458,37 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 				path: ["previewReceipt"],
 			});
 			return;
+		}
+		/*
+		 * The resolve arm is a SOURCE CONFIRMATION, not an application: it must
+		 * carry the full stated destination and must NOT ride a preview/apply. A
+		 * half-stated destination is refused here rather than composed into a
+		 * guessed origin (the same fail-closed rule the publication target
+		 * follows), and the public/org pairing is required with `hubSource` present.
+		 */
+		if (request.op === "hub.apply" && request.resolveSource === true) {
+			const scopePaired =
+				(request.visibility === "public" && request.tenantId === null) ||
+				(request.visibility === "org" &&
+					typeof request.tenantId === "string" &&
+					request.tenantId.length > 0);
+			if (
+				!request.hubSource ||
+				!scopePaired ||
+				request.acknowledgeUnknownBaseline !== true ||
+				request.linkId !== undefined ||
+				request.previewReceipt !== undefined ||
+				request.confirmApply !== undefined ||
+				request.prefer !== undefined
+			) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message:
+						"Confirming a source requires its exact stated destination and the unknown-baseline acknowledgement, with no link, preview or preference",
+					path: ["hubSource"],
+				});
+				return;
+			}
 		}
 		if (
 			request.op === "hub.push" &&
@@ -6012,7 +6082,23 @@ export function desktopEndpoint(request: DesktopRequest): {
 			return {
 				path: `/v1/desktop/profiles/${encodeURIComponent(request.name)}`,
 				method: "PATCH",
-				body: { request_id: request.requestId, ...request.fields },
+				body: {
+					request_id: request.requestId,
+					...request.fields,
+					/*
+					 * The opaque echo travels ALONGSIDE the fields, never inside them: the
+					 * edit body is `exclude_unset`-merged on the backend, so a revision
+					 * nested in `fields` could be mistaken for an editable property. Sent
+					 * only when present, so absence stays the legacy unconditional write.
+					 */
+					...(request.expectedDefinitionRevision !== undefined &&
+					request.expectedDefinitionRevision !== null
+						? {
+								expected_definition_revision:
+									request.expectedDefinitionRevision,
+							}
+						: {}),
+				},
 			};
 		case "hub.updates":
 			return { path: "/v1/desktop/hub/updates", method: "GET" };
@@ -6115,6 +6201,21 @@ export function desktopEndpoint(request: DesktopRequest): {
 							}
 						: {}),
 					...(request.dryRun !== undefined ? { dry_run: request.dryRun } : {}),
+					/*
+					 * The source-confirmation branch travels on the SAME apply route with an
+					 * explicit flag, never a new endpoint. `resolve_source:true` plus the
+					 * stated scope triple is the whole act; the service materializes the
+					 * real identity/link and preserves any known scope (refusing a conflict
+					 * with `origin-conflict`), so nothing here infers Public or an org.
+					 */
+					...(request.resolveSource === true
+						? {
+								resolve_source: true,
+								hub_source: request.hubSource as string,
+								visibility: request.visibility as "public" | "org",
+								tenant_id: request.tenantId ?? null,
+							}
+						: {}),
 				},
 			};
 		case "hub.applyAll":
@@ -6170,7 +6271,18 @@ export function desktopEndpoint(request: DesktopRequest): {
 			return {
 				path: `/v1/desktop/teams/${encodeURIComponent(request.name)}`,
 				method: "PATCH",
-				body: { request_id: request.requestId, ...request.fields },
+				body: {
+					request_id: request.requestId,
+					...request.fields,
+					/* Opaque echo beside the fields; absent/null = legacy unconditional. */
+					...(request.expectedDefinitionRevision !== undefined &&
+					request.expectedDefinitionRevision !== null
+						? {
+								expected_definition_revision:
+									request.expectedDefinitionRevision,
+							}
+						: {}),
+				},
 			};
 		case "sessions.list": {
 			/*

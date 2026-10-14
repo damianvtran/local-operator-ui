@@ -2,7 +2,13 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { desktopResult } from "./desktop-api";
 import { useHubActionStore } from "./hub-action-store";
 import { hubLinksKey } from "./hub-link-hooks";
-import type { HubLinkDirection, HubLinkKind, HubLinks } from "./hub-links";
+import type {
+	HubLink,
+	HubLinkDirection,
+	HubLinkKind,
+	HubLinks,
+	HubSourceResolution,
+} from "./hub-links";
 import type { HubMergeReport, HubUpdates } from "./hub-updates";
 
 /** Core-owned wrapper binds the exact reviewed server projection, not raw pins. */
@@ -50,6 +56,14 @@ export type HubLinkActionResponse = {
 	status: HubUpdates;
 	links: HubLinks;
 	preview?: HubPullPreview | HubPushPreview | null;
+	/**
+	 * Present only on an explicit source confirmation (the `resolve` action): the
+	 * real link the service materialized plus the scope it recorded. Absent on
+	 * every ordinary apply/check/retry, so a caller cannot read a resolution off a
+	 * run that did not make one.
+	 */
+	link?: HubLink;
+	resolved?: HubSourceResolution;
 };
 export type HubLinkAction =
 	| { action: "check"; linkId: string }
@@ -151,4 +165,63 @@ export function useHubLinkActions(linkId: string) {
 		},
 	});
 	return { ...mutation, isPending: mutation.isPending || sharedPending };
+}
+
+/** The stated destination a source confirmation carries; never inferred. */
+export type HubSourceResolutionInput = {
+	kind: HubLinkKind;
+	localId: string;
+	name: string;
+	hubSource: string;
+	visibility: "public" | "org";
+	tenantId: string | null;
+};
+
+/**
+ * Explicit source confirmation for a legacy unknown-origin row.
+ *
+ * SEPARATE from `useHubLinkActions`, and deliberately so: that hook is keyed by a
+ * `link_id`, and the whole point of this act is that no link exists yet. The
+ * destination is STATED by the caller (source + visibility + tenant) and never
+ * inferred from the active organization or a display name; the service owns the
+ * real identity computation and refuses a conflicting KNOWN scope with
+ * `origin-conflict`, leaving the old state byte-unchanged. `kind`/`name` address
+ * the LOCAL row by its immutable identity; `hubId` echoes the stored suggestion
+ * so the caller cannot choose a different remote id.
+ *
+ * The mutation reuses the same shared pending store as the link actions, keyed by
+ * the local row, so a sidebar/detail pair cannot fire two confirmations at once.
+ */
+export function useHubSourceResolution() {
+	const client = useQueryClient();
+	const mutation = useMutation({
+		onMutate: (input: HubSourceResolutionInput) => {
+			const key = `resolve:${input.kind}:${input.localId}`;
+			const store = useHubActionStore.getState();
+			if (store.pending.has(key)) throw new Error("hub-action-busy");
+			store.begin(key);
+			return key;
+		},
+		mutationFn: (input: HubSourceResolutionInput) =>
+			desktopResult<HubLinkActionResponse>({
+				op: "hub.apply",
+				requestId: crypto.randomUUID(),
+				kind: input.kind,
+				name: input.name,
+				resolveSource: true,
+				hubSource: input.hubSource,
+				visibility: input.visibility,
+				tenantId: input.tenantId,
+				acknowledgeUnknownBaseline: true,
+			}),
+		onSuccess: (response) => {
+			client.setQueryData(hubLinksKey, response.links);
+			client.setQueryData(["desktop", "hub-updates"], response.status);
+		},
+		onSettled: (_data, _error, _input, pendingKey) => {
+			if (pendingKey) useHubActionStore.getState().end(pendingKey);
+			void client.invalidateQueries({ queryKey: hubLinksKey });
+		},
+	});
+	return mutation;
 }

@@ -1,11 +1,13 @@
+import { useMembershipsQuery } from "@features/agent-hub/hooks/use-memberships-query";
+import { usableOrgs } from "@features/agent-hub/org-access";
 import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
 import {
 	type HubLinkAction,
 	type HubPullPreview,
 	type HubPushPreview,
 	useHubLinkActions,
+	useHubSourceResolution,
 } from "@shared/api/local-operator/hub-link-actions";
-import { useHubLinks } from "@shared/api/local-operator/hub-link-hooks";
 import {
 	type HubLink,
 	type HubLinkKind,
@@ -23,6 +25,8 @@ import {
 	DialogTitle,
 } from "@shared/components/ui/dialog";
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { apiConfig } from "@shared/config/api-config";
+import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { formatDateTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useEffect, useId, useRef, useState } from "react";
@@ -461,8 +465,28 @@ export function HubLinkGroup({ link }: { link: HubLink }) {
 }
 
 /** Unknown legacy origin is a diagnostic, never a fabricated public policy row. */
-export function HubUnresolvedSource({ row }: { row: HubUnresolvedLink }) {
+export function HubUnresolvedSource({
+	row,
+	source,
+	organizations,
+}: {
+	row: HubUnresolvedLink;
+	/** The approved/configured credential-free source this app already holds. */
+	source: string;
+	/** The viewer's verified organizations; a stated org scope picks one. */
+	organizations: { tenant_id: string; tenant_name: string }[];
+}) {
 	useI18nLocale();
+	const [open, setOpen] = useState(false);
+	const [target, setTarget] = useState<string>("public");
+	const resolution = useHubSourceResolution();
+	const targetIsOrg = target !== "public";
+	const org = targetIsOrg
+		? organizations.find((candidate) => candidate.tenant_id === target)
+		: null;
+	// A half-stated destination cannot be confirmed: an org target with no known
+	// organization is refused here rather than composed into a guessed scope.
+	const destinationKnown = !targetIsOrg || !!org;
 	return (
 		<section
 			className="flex min-w-0 flex-col gap-1 py-3"
@@ -475,6 +499,85 @@ export function HubUnresolvedSource({ row }: { row: HubUnresolvedLink }) {
 			<code className="break-all text-mono-sm text-ink-muted">
 				{row.hub_id}
 			</code>
+			{/*
+			 * SOURCE CONFIRMATION, stated by the operator, never inferred.
+			 *
+			 * The row is a diagnostic with no origin, so the only honest way to give
+			 * it one is an explicit act that names the source AND the scope. The
+			 * app contributes the one approved source it already holds; the operator
+			 * chooses Public or one of their VERIFIED organizations. The service owns
+			 * the real identity/link computation and refuses a conflicting known scope
+			 * (`origin-conflict`), so this control never fabricates a link or a policy.
+			 */}
+			{open ? (
+				<div className="mt-1 flex flex-col gap-2">
+					<h5 className="text-body-sm text-ink">
+						{t("ui.hub.links.resolve_title")}
+					</h5>
+					<p className="text-meta text-ink-muted">
+						{t("ui.hub.links.resolve_description", { item: row.name })}
+					</p>
+					<code className="break-all text-mono-sm text-ink-muted">
+						{source}
+					</code>
+					<label className="text-body-sm text-ink">
+						{t("ui.hub.links.source_address", { address: source })}
+						<select
+							className="mt-1 w-full rounded-md border border-control bg-surface px-2 py-1 text-body-sm text-ink"
+							value={target}
+							disabled={resolution.isPending}
+							onChange={(event) => setTarget(event.target.value)}
+						>
+							<option value="public">{t("ui.hub.links.source_public")}</option>
+							{organizations.map((candidate) => (
+								<option key={candidate.tenant_id} value={candidate.tenant_id}>
+									{candidate.tenant_name}
+								</option>
+							))}
+						</select>
+					</label>
+					<div className="flex flex-wrap gap-2">
+						<Button
+							variant="outline"
+							disabled={resolution.isPending}
+							onClick={() => setOpen(false)}
+						>
+							{t("ui.hub.subscriptions.cancel")}
+						</Button>
+						<Button
+							disabled={resolution.isPending || !destinationKnown}
+							onClick={() =>
+								resolution.mutate({
+									kind: row.kind,
+									localId: row.local_id,
+									name: row.name,
+									hubSource: source,
+									visibility: targetIsOrg ? "org" : "public",
+									tenantId: targetIsOrg ? (org?.tenant_id ?? null) : null,
+								})
+							}
+						>
+							{t("ui.hub.links.resolve_action")}
+						</Button>
+					</div>
+					{/* Refusal (a differing KNOWN scope) is not a resolved row: the old
+					 * state is byte-unchanged, and the operator is told so. */}
+					{resolution.error ? (
+						<p role="alert" className="text-body-sm text-danger">
+							{t("ui.hub.links.resolve_conflict")}
+						</p>
+					) : null}
+				</div>
+			) : (
+				<Button
+					variant="outline"
+					size="sm"
+					className="mt-1 self-start"
+					onClick={() => setOpen(true)}
+				>
+					{t("ui.hub.links.resolve_action")}
+				</Button>
+			)}
 		</section>
 	);
 }
@@ -488,6 +591,21 @@ export function HubLinksPanel({
 }: { enabled: boolean; kind?: HubLinkKind; name?: string; localId?: string }) {
 	useI18nLocale();
 	const inventory = useHubLinks(enabled);
+	/*
+	 * The ONE approved source this app already holds, plus the viewer's VERIFIED
+	 * organizations. A source confirmation may name only these: the operator picks
+	 * Public or one verified org, and the app never invents a base URL or infers
+	 * the active organization as the destination.
+	 */
+	const { isAuthenticated } = useRadientAuth();
+	const { memberships } = useMembershipsQuery({
+		enabled: enabled && isAuthenticated,
+	});
+	const organizations = usableOrgs(memberships).map((org) => ({
+		tenant_id: org.tenant_id,
+		tenant_name: org.tenant_name,
+	}));
+	const approvedSource = apiConfig.radientBaseUrl;
 	if (!enabled) return null;
 	const rows =
 		kind && name
@@ -534,6 +652,8 @@ export function HubLinksPanel({
 						<HubUnresolvedSource
 							key={`${row.kind}:${row.local_id}`}
 							row={row}
+							source={approvedSource}
+							organizations={organizations}
 						/>
 					))}
 				</div>

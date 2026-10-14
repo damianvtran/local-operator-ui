@@ -668,3 +668,114 @@ test("Skills draft mount and scope authority do not depend on inventory bytes", 
 	assert.match(hook, skillsDraftPins.requestId);
 	assert.match(publication, skillsDraftPins.operation);
 });
+
+const casUuid = "44444444-4444-4444-8444-444444444444";
+
+test("definition CAS echoes the opaque revision beside the fields, never inside them", () => {
+	const base = {
+		op: "profiles.update",
+		name: "coder",
+		requestId: casUuid,
+		fields: { description: "d" },
+	};
+	// Absent/null = the legacy unconditional write: no revision key on the wire.
+	for (const rev of [undefined, null]) {
+		const body = desktopEndpoint(
+			desktopRequestSchema.parse({ ...base, expectedDefinitionRevision: rev }),
+		).body;
+		assert.equal("expected_definition_revision" in body, false);
+		assert.equal(body.description, "d");
+	}
+	// A supplied opaque token travels BESIDE the fields, not nested in them.
+	const body = desktopEndpoint(
+		desktopRequestSchema.parse({
+			...base,
+			expectedDefinitionRevision: "rev-abc",
+		}),
+	).body;
+	assert.equal(body.expected_definition_revision, "rev-abc");
+	assert.equal(body.fields, undefined);
+	assert.deepEqual(body.description, "d");
+	// Strict: a typo must be refused rather than silently dropping CAS protection.
+	assert.equal(
+		desktopRequestSchema.safeParse({ ...base, expecteddefinitionrevision: "x" })
+			.success,
+		false,
+	);
+});
+
+test("team definition CAS mirrors the profile arm", () => {
+	const base = {
+		op: "teams.update",
+		name: "squad",
+		requestId: casUuid,
+		fields: { description: "d" },
+	};
+	assert.equal(desktopRequestSchema.safeParse(base).success, true);
+	assert.equal(
+		desktopEndpoint(
+			desktopRequestSchema.parse({
+				...base,
+				expectedDefinitionRevision: "rev-1",
+			}),
+		).body.expected_definition_revision,
+		"rev-1",
+	);
+	assert.equal(
+		desktopEndpoint(desktopRequestSchema.parse(base)).body
+			.expected_definition_revision,
+		undefined,
+	);
+});
+
+test("source resolution requires the full stated destination and refuses guessed scope", () => {
+	const base = {
+		op: "hub.apply",
+		requestId: casUuid,
+		kind: "agent",
+		name: "legacy",
+		resolveSource: true,
+		hubSource: "https://hub.invalid/api/v1",
+		acknowledgeUnknownBaseline: true,
+	};
+	// Public: paired null tenant, composed on the existing apply route.
+	const pub = desktopEndpoint(
+		desktopRequestSchema.parse({
+			...base,
+			visibility: "public",
+			tenantId: null,
+		}),
+	);
+	assert.equal(pub.path, "/v1/desktop/hub/updates/apply");
+	assert.equal(pub.body.resolve_source, true);
+	assert.equal(pub.body.hub_source, "https://hub.invalid/api/v1");
+	assert.equal(pub.body.visibility, "public");
+	assert.equal(pub.body.tenant_id, null);
+	// Org: non-null tenant.
+	assert.equal(
+		desktopRequestSchema.safeParse({
+			...base,
+			visibility: "org",
+			tenantId: "org-one",
+		}).success,
+		true,
+	);
+	// Half-stated destinations and a missing acknowledgement are refused BEFORE the wire.
+	for (const bad of [
+		{ ...base, visibility: "public", tenantId: "org-one" },
+		{ ...base, visibility: "org", tenantId: null },
+		{ ...base, visibility: "org" },
+		{ ...base, visibility: "public" },
+		{
+			...base,
+			visibility: "public",
+			tenantId: null,
+			acknowledgeUnknownBaseline: false,
+		},
+	])
+		assert.equal(
+			desktopRequestSchema.safeParse(bad).success,
+			false,
+			JSON.stringify(bad),
+		);
+});
