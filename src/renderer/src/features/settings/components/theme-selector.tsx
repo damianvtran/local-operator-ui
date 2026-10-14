@@ -666,20 +666,19 @@ export const ThemeSelector: FC = () => {
 	useI18nLocale();
 	const { themeName, setTheme } = useUiPreferencesStore();
 
-	// Group headings read the active catalogue each render; IDs and sorting stay stable.
-	const groups = (() => {
-		const all = Object.values(themes);
-		return [
-			{
-				label: t("ui.settings.appearance.theme_selector.dark"),
-				items: all.filter((t) => t.theme.palette.mode === "dark"),
-			},
-			{
-				label: t("ui.settings.appearance.theme_selector.light"),
-				items: all.filter((t) => t.theme.palette.mode === "light"),
-			},
-		].filter((group) => group.items.length > 0);
-	})();
+	// Not memoized: the headings come from t(), and a memo with no dependencies would
+	// keep the previous language after a live switch. Only two filters run per render.
+	const all = Object.values(themes);
+	const groups = [
+		{
+			label: t("ui.settings.appearance.theme_selector.dark"),
+			items: all.filter((theme) => theme.theme.palette.mode === "dark"),
+		},
+		{
+			label: t("ui.settings.appearance.theme_selector.light"),
+			items: all.filter((theme) => theme.theme.palette.mode === "light"),
+		},
+	].filter((group) => group.items.length > 0);
 
 	/*
 	 * The tile the tab stop follows: the one that has focus, so Tab-away and

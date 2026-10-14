@@ -505,12 +505,8 @@ const LanguageFlag: FC<{ country: string }> = ({ country }) => {
 					<path
 						d={
 							country === "vn"
-								? t(
-										"ui.settings.configuration.setting_control.m12_3l1_5_3_5_4_4_3_2_6_1_3_8_3_5_2_3_5_2_1_3_8_3_2_6_4_4z",
-									)
-								: t(
-										"ui.settings.configuration.setting_control.m5_2l1_2_4_2_5_2_2_1_6_7_2_5l5_7_3_2_8_8_7l_7_2_5_2_1_6l4_4_4z",
-									)
+								? "M12 3l1.5 3.5 4 .4-3 2.6 1 3.8-3.5-2-3.5 2 1-3.8-3-2.6 4-.4z"
+								: "M5 2l1 2.4 2.5.2-2 1.6.7 2.5L5 7.3 2.8 8.7l.7-2.5-2-1.6L4 4.4z"
 						}
 						fill="#ffde00"
 					/>
@@ -563,15 +559,7 @@ export const LanguageChoiceLabel: FC<{
 		 * is what stops the surrounding Latin UI from re-ordering the run.
 		 */
 		<span className="inline-flex min-w-0 items-center gap-2">
-			<span
-				className={
-					disabled
-						? t(
-								"ui.settings.configuration.setting_control.opacity_45_saturate_50",
-							)
-						: undefined
-				}
-			>
+			<span className={disabled ? "opacity-45 saturate-50" : undefined}>
 				<LanguageFlag country={identity.country} />
 			</span>
 			<bdi

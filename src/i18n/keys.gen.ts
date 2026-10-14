@@ -2048,8 +2048,9 @@ export type MessageParams = {
 	"ui.settings.account.radient_account_section.your_radient_account_could_not_be_read_so_this_app_cannot_show_yo": undefined;
 	"ui.settings.account.settings_page.add_credits": undefined;
 	"ui.settings.account.settings_page.available_credits": undefined;
-	"ui.settings.account.settings_page.could_not_load_your_credit_balance": undefined;
-	"ui.settings.account.settings_page.could_not_load_your_usage_data": undefined;
+	"ui.settings.account.settings_page.credit_balance_load_failed": {
+		reason: string;
+	};
 	"ui.settings.account.settings_page.credits": undefined;
 	"ui.settings.account.settings_page.go_to_radient_console": undefined;
 	"ui.settings.account.settings_page.no_usage_recorded_in_the_last_30_days": undefined;
@@ -2057,6 +2058,7 @@ export type MessageParams = {
 	"ui.settings.account.settings_page.radient_pass": undefined;
 	"ui.settings.account.settings_page.tokens": undefined;
 	"ui.settings.account.settings_page.usage_last_30_days": undefined;
+	"ui.settings.account.settings_page.usage_load_failed": { reason: string };
 	"ui.settings.account.settings_page.usage_metric": undefined;
 	"ui.settings.account.settings_page.your_radient_account_radient_pass_details_and_credits_to_use_radi": undefined;
 	"ui.settings.account.settings_usage_chart.credits_consumed": undefined;
@@ -2073,10 +2075,8 @@ export type MessageParams = {
 	"ui.settings.appearance.transcript_display_mode_setting.by_turn": undefined;
 	"ui.settings.appearance.transcript_display_mode_setting.by_turn_condenses_each_turn_to_its_answer_by_response_keeps_every": undefined;
 	"ui.settings.appearance.transcript_display_mode_setting.transcript_display": undefined;
-	"ui.settings.configuration.backend_setting_row.min_w_0_flex_1_items_start": undefined;
-	"ui.settings.configuration.backend_setting_row.needs": undefined;
+	"ui.settings.configuration.backend_setting_row.gate_note": { gate: string };
 	"ui.settings.configuration.backend_setting_row.not_set": undefined;
-	"ui.settings.configuration.backend_setting_row.on_nothing_here_is_saved_while_it_is_off": undefined;
 	"ui.settings.configuration.backend_setting_row.read_only": undefined;
 	"ui.settings.configuration.backend_setting_row.retry": undefined;
 	"ui.settings.configuration.backend_setting_row.save": undefined;
@@ -2089,7 +2089,6 @@ export type MessageParams = {
 	"ui.settings.configuration.backend_settings_drafts.enter_a_finite_number": undefined;
 	"ui.settings.configuration.backend_settings_drafts.enter_a_whole_number": undefined;
 	"ui.settings.configuration.backend_settings_drafts.nothing_has_been_edited_yet": undefined;
-	"ui.settings.configuration.backend_settings_section.advanced": undefined;
 	"ui.settings.configuration.backend_settings_section.advanced_settings_are_hidden_here": undefined;
 	"ui.settings.configuration.backend_settings_section.loading_settings": undefined;
 	"ui.settings.configuration.backend_settings_section.no_settings_match_this_search_clear_the_search_field_to_see_every": undefined;
@@ -2097,7 +2096,9 @@ export type MessageParams = {
 	"ui.settings.configuration.backend_settings_section.retry": undefined;
 	"ui.settings.configuration.backend_settings_section.retrying": undefined;
 	"ui.settings.configuration.backend_settings_section.searchable_settings_need_a_newer_local_operator_server_update_the": undefined;
-	"ui.settings.configuration.backend_settings_section.show": undefined;
+	"ui.settings.configuration.backend_settings_section.show_advanced_count": {
+		count: number;
+	};
 	"ui.settings.configuration.backend_settings_section.takes_effect_for_new_conversations": undefined;
 	"ui.settings.configuration.backend_settings_section.takes_effect_immediately": undefined;
 	"ui.settings.configuration.backend_settings_section.takes_effect_the_next_time_the_app_starts": undefined;
@@ -2136,20 +2137,24 @@ export type MessageParams = {
 		range: string;
 	};
 	"ui.settings.configuration.retention_duration_control.days": undefined;
-	"ui.settings.configuration.retention_duration_control.default": undefined;
 	"ui.settings.configuration.retention_duration_control.exact_time": undefined;
 	"ui.settings.configuration.retention_duration_control.hours": undefined;
+	"ui.settings.configuration.retention_duration_control.idle_window_status": {
+		duration: string;
+		isDefault: string;
+	};
 	"ui.settings.configuration.retention_duration_control.label_common_choices": {
 		label: string;
 	};
 	"ui.settings.configuration.retention_duration_control.label_unit": {
 		label: string;
 	};
-	"ui.settings.configuration.retention_duration_control.use": undefined;
+	"ui.settings.configuration.retention_duration_control.use_duration": {
+		duration: string;
+	};
 	"ui.settings.configuration.retention_duration_control.value1_default": {
 		value1: string;
 	};
-	"ui.settings.configuration.retention_duration_control.with_no_activity": undefined;
 	"ui.settings.configuration.setting_combobox.could_not_list_models": undefined;
 	"ui.settings.configuration.setting_combobox.could_not_list_models_2": undefined;
 	"ui.settings.configuration.setting_combobox.could_not_list_providers": undefined;
@@ -2163,10 +2168,7 @@ export type MessageParams = {
 	"ui.settings.configuration.setting_control.label_press_the_key_you_want": {
 		label: string;
 	};
-	"ui.settings.configuration.setting_control.m12_3l1_5_3_5_4_4_3_2_6_1_3_8_3_5_2_3_5_2_1_3_8_3_2_6_4_4z": undefined;
-	"ui.settings.configuration.setting_control.m5_2l1_2_4_2_5_2_2_1_6_7_2_5l5_7_3_2_8_8_7l_7_2_5_2_1_6l4_4_4z": undefined;
 	"ui.settings.configuration.setting_control.one_hop_per_line_as_provider_model_effort_an_empty_chain_moves_to": undefined;
-	"ui.settings.configuration.setting_control.opacity_45_saturate_50": undefined;
 	"ui.settings.configuration.setting_control.press_the_keys_you_want_esc_cancels": undefined;
 	"ui.settings.configuration.settings_filter_bar.advancedcount_advanced_settings_shown_expand_all_to_see_them": {
 		advancedCount: string;
@@ -2196,7 +2198,9 @@ export type MessageParams = {
 	"ui.settings.configuration.settings_filter_bar.unsaved_count": {
 		count: number;
 	};
-	"ui.settings.configuration.settings_group_header.advanced": undefined;
+	"ui.settings.configuration.settings_group_header.advanced_count": {
+		count: number;
+	};
 	"ui.settings.configuration.settings_group_header.changed_from_the_default": undefined;
 	"ui.settings.configuration.settings_group_header.setting_count": {
 		count: number;
@@ -2404,6 +2408,10 @@ export type MessageParams = {
 	"ui.settings.integrations.integration_row.sign_out": undefined;
 	"ui.settings.integrations.integration_row.sign_out_of_name": { name: string };
 	"ui.settings.integrations.integration_row.the_saved_sign_in_is_removed_too": undefined;
+	"ui.settings.integrations.integration_sign_in_dialog.browser_approval_notice": {
+		name: string;
+		replaces: string;
+	};
 	"ui.settings.integrations.integration_sign_in_dialog.cancel_sign_in": undefined;
 	"ui.settings.integrations.integration_sign_in_dialog.check_the_server_s_settings_then_try_again": undefined;
 	"ui.settings.integrations.integration_sign_in_dialog.check_the_server_s_url_and_your_network_then_try_again": undefined;
@@ -2411,7 +2419,6 @@ export type MessageParams = {
 	"ui.settings.integrations.integration_sign_in_dialog.continue_in_browser": undefined;
 	"ui.settings.integrations.integration_sign_in_dialog.copy_the_sign_in_link": undefined;
 	"ui.settings.integrations.integration_sign_in_dialog.done": undefined;
-	"ui.settings.integrations.integration_sign_in_dialog.local_operator_opens_your_browser_so_you_can_approve_access_to": undefined;
 	"ui.settings.integrations.integration_sign_in_dialog.open_the_sign_in_page": undefined;
 	"ui.settings.integrations.integration_sign_in_dialog.press_try_again_when_you_are_ready": undefined;
 	"ui.settings.integrations.integration_sign_in_dialog.sign_in_cancelled": undefined;
@@ -2425,7 +2432,6 @@ export type MessageParams = {
 	};
 	"ui.settings.integrations.integration_sign_in_dialog.starting_sign_in": undefined;
 	"ui.settings.integrations.integration_sign_in_dialog.the_server_didn_t_say_why": undefined;
-	"ui.settings.integrations.integration_sign_in_dialog.this_replaces_the_sign_in_it_has_now": undefined;
 	"ui.settings.integrations.integration_sign_in_dialog.this_server_doesn_t_publish_a_browser_sign_in_add_its_key_instead": undefined;
 	"ui.settings.integrations.integration_sign_in_dialog.this_server_doesn_t_publish_a_browser_sign_in_check_the_server_s_": undefined;
 	"ui.settings.integrations.integration_sign_in_dialog.this_server_may_not_accept_sign_ins_from_local_operator_check_the": undefined;
@@ -2440,6 +2446,9 @@ export type MessageParams = {
 		name: string;
 	};
 	"ui.settings.integrations.mcp_management_section.add_integration": undefined;
+	"ui.settings.integrations.mcp_management_section.borrowed_chat_notice": {
+		chat: string;
+	};
 	"ui.settings.integrations.mcp_management_section.clear_search": undefined;
 	"ui.settings.integrations.mcp_management_section.copy_section_description": undefined;
 	"ui.settings.integrations.mcp_management_section.copy_section_title": undefined;
@@ -2463,7 +2472,6 @@ export type MessageParams = {
 		value1: string;
 	};
 	"ui.settings.integrations.mcp_management_section.setup_steps_copied_paste_them_into_a_chat": undefined;
-	"ui.settings.integrations.mcp_management_section.showing_the_integrations_for": undefined;
 	"ui.settings.integrations.mcp_management_section.showing_value1_value2_is_not_one_of_your_integrations": {
 		value1: string;
 		value2: string;
@@ -2471,7 +2479,6 @@ export type MessageParams = {
 	"ui.settings.integrations.mcp_management_section.start_a_chat": undefined;
 	"ui.settings.integrations.mcp_management_section.this_chat_s_folder_no_longer_exists_so_only_global_integrations_a": undefined;
 	"ui.settings.integrations.mcp_management_section.updating_local_operator_removes_this_step": undefined;
-	"ui.settings.integrations.mcp_management_section.your_most_recent_chat": undefined;
 	"ui.settings.integrations.use_integrations.a_saved_value_already_exists_for_this_key_tick_label_to_overwrite": {
 		label: string;
 	};
@@ -2548,9 +2555,9 @@ export type MessageParams = {
 	"ui.settings.model.system_prompt.cancel": undefined;
 	"ui.settings.model.system_prompt.enter_instructions_for_how_all_agents_should_behave_and_respond_t": undefined;
 	"ui.settings.model.system_prompt.every_local_operator_agent_receives_this_prompt_in_addition_to_it": undefined;
-	"ui.settings.model.system_prompt.failed_to_load_system_prompt": undefined;
 	"ui.settings.model.system_prompt.instructions": undefined;
 	"ui.settings.model.system_prompt.last_modified": undefined;
+	"ui.settings.model.system_prompt.load_failed": { reason: string };
 	"ui.settings.model.system_prompt.loading_system_prompt": undefined;
 	"ui.settings.model.system_prompt.save_changes": undefined;
 	"ui.settings.model.system_prompt.saving": undefined;
@@ -2598,6 +2605,7 @@ export type MessageParams = {
 	"ui.settings.speech.speech_section.copy_backend_older_sentence": undefined;
 	"ui.settings.speech.speech_section.copy_unavailable_sentence": undefined;
 	"ui.settings.speech.speech_section.how_the_assistant_sounds_when_it_speaks_aloud": undefined;
+	"ui.settings.speech.speech_section.missing_voice_rows": { rows: string };
 	"ui.settings.speech.speech_section.no_provider": undefined;
 	"ui.settings.speech.speech_section.not_available": undefined;
 	"ui.settings.speech.speech_section.nothing_yet": undefined;
@@ -2608,9 +2616,7 @@ export type MessageParams = {
 	"ui.settings.speech.speech_section.speech_voicing": undefined;
 	"ui.settings.speech.speech_section.the_setting_could_not_be_reset": undefined;
 	"ui.settings.speech.speech_section.the_setting_could_not_be_saved": undefined;
-	"ui.settings.speech.speech_section.this_backend_does_not_register": undefined;
 	"ui.settings.speech.speech_section.try_again": undefined;
-	"ui.settings.speech.speech_section.yet_so_those_rows_are_not_shown": undefined;
 	"ui.settings.speech.speech_settings_model.no_provider": undefined;
 	"ui.settings.speech.speech_settings_model.radient_pass": undefined;
 	"ui.settings.updates.app_updates_section.application_updates_and_info": undefined;

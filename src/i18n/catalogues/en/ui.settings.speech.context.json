@@ -23,18 +23,6 @@
 		"length": "Compact existing settings/list control; English is 12 characters before placeholder expansion. Keep short.",
 		"note": "speech section: label on InfoItem. Composition (message names mark slots): <InfoItem />"
 	},
-	"ui.settings.speech.speech_section.this_backend_does_not_register": {
-		"role": "Settings explanatory paragraph",
-		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
-		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
-		"note": "speech section: rendered in p inside div. Composition (message names mark slots): <p> {t( \"ui.settings.speech.speech_section.this_backend_does_not_register\", )} {voiceRows.missing.join(\", \")} {t( \"ui.settings.speech.speech_section.yet_so_those_rows_are_not_shown\", )} </p> This is a markup-adjacent fragment. Its leading/trailing space is intentional; do not omit or add boundary spaces."
-	},
-	"ui.settings.speech.speech_section.yet_so_those_rows_are_not_shown": {
-		"role": "Settings explanatory paragraph",
-		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
-		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
-		"note": "speech section: rendered in p inside div. Composition (message names mark slots): <p> {t( \"ui.settings.speech.speech_section.this_backend_does_not_register\", )} {voiceRows.missing.join(\", \")} {t( \"ui.settings.speech.speech_section.yet_so_those_rows_are_not_shown\", )} </p> This is a markup-adjacent fragment. Its leading/trailing space is intentional; do not omit or add boundary spaces."
-	},
 	"ui.settings.speech.speech_section.the_setting_could_not_be_saved": {
 		"role": "Validation/error explanation",
 		"tone": "Neutral and helpful; explain the failure without blaming the user.",

@@ -93,10 +93,9 @@ const BillingInfo: FC = () => {
 			{isLoading && <Skeleton className="h-6 w-36" />}
 			{error && (
 				<Alert variant="warning">
-					{t(
-						"ui.settings.account.settings_page.could_not_load_your_credit_balance",
-					)}
-					{error.message}
+					{t("ui.settings.account.settings_page.credit_balance_load_failed", {
+						reason: error.message,
+					})}
 				</Alert>
 			)}
 			{creditData && !isLoading && !error && (
@@ -234,10 +233,9 @@ const UsageInfo: FC = () => {
 			{isLoading && <Skeleton className="h-62 w-full" />}
 			{error && (
 				<Alert variant="warning">
-					{t(
-						"ui.settings.account.settings_page.could_not_load_your_usage_data",
-					)}
-					{error.message}
+					{t("ui.settings.account.settings_page.usage_load_failed", {
+						reason: error.message,
+					})}
 				</Alert>
 			)}
 			{!isLoading && !error && usageData && chartData.length > 0 && (

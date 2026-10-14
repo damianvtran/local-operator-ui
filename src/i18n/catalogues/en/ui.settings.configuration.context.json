@@ -5,18 +5,6 @@
 		"length": "Compact existing settings/list control; English is 9 characters before placeholder expansion. Keep short.",
 		"note": "backend setting row: rendered in span inside span. Composition (message names mark slots): <span> {[read_only]} </span>"
 	},
-	"ui.settings.configuration.backend_setting_row.needs": {
-		"role": "Settings explanatory paragraph",
-		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
-		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
-		"note": "backend setting row: rendered in p. Composition (message names mark slots): <p> {[needs]} {gate.label} {t( \"ui.settings.configuration.backend_setting_row.on_nothing_here_is_saved_while_it_is_off\", )} </p> This is a markup-adjacent fragment. Its leading/trailing space is intentional; do not omit or add boundary spaces."
-	},
-	"ui.settings.configuration.backend_setting_row.on_nothing_here_is_saved_while_it_is_off": {
-		"role": "Settings explanatory paragraph",
-		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
-		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
-		"note": "backend setting row: rendered in p. Composition (message names mark slots): <p> {[needs]} {gate.label} {t( \"ui.settings.configuration.backend_setting_row.on_nothing_here_is_saved_while_it_is_off\", )} </p> This is a markup-adjacent fragment. Its leading/trailing space is intentional; do not omit or add boundary spaces."
-	},
 	"ui.settings.configuration.backend_setting_row.use_default": {
 		"role": "Button action label",
 		"tone": "Brief imperative. No enthusiasm or extra punctuation.",
@@ -34,12 +22,6 @@
 		"tone": "Brief imperative. No enthusiasm or extra punctuation.",
 		"length": "Compact existing settings/list control; English is 5 characters before placeholder expansion. Keep short.",
 		"note": "backend setting row: rendered in Button inside div. Repeats the failed action/read. This is not a full application restart. Composition (message names mark slots): <Button > <RotateCcw /> {[retry]} </Button>"
-	},
-	"ui.settings.configuration.backend_setting_row.min_w_0_flex_1_items_start": {
-		"role": "Inline settings control status/readout",
-		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
-		"length": "Compact existing settings/list control; English is 26 characters before placeholder expansion. Keep short.",
-		"note": "backend setting row: className on div."
 	},
 	"ui.settings.configuration.backend_setting_row.saving": {
 		"role": "Button action label",
@@ -103,18 +85,6 @@
 		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
 		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
 		"note": "backend settings section: rendered in p inside div. Composition (message names mark slots): <p> {t( \"ui.settings.configuration.backend_settings_section.no_settings_match_this_search_clear_the_search_field_to_see_every\", )} </p>"
-	},
-	"ui.settings.configuration.backend_settings_section.show": {
-		"role": "Button action label",
-		"tone": "Brief imperative. No enthusiasm or extra punctuation.",
-		"length": "Compact existing settings/list control; English is 5 characters before placeholder expansion. Keep short.",
-		"note": "backend settings section: rendered in Button inside div. Composition (message names mark slots): <Button > {t( \"ui.settings.configuration.backend_settings_section.show\", )} {advancedHeld} {t( \"ui.settings.configuration.backend_settings_section.advanced\", )} </Button> This is a markup-adjacent fragment. Its leading/trailing space is intentional; do not omit or add boundary spaces."
-	},
-	"ui.settings.configuration.backend_settings_section.advanced": {
-		"role": "Button action label",
-		"tone": "Brief imperative. No enthusiasm or extra punctuation.",
-		"length": "Compact existing settings/list control; English is 9 characters before placeholder expansion. Keep short.",
-		"note": "backend settings section: rendered in Button inside div. Composition (message names mark slots): <Button > {t( \"ui.settings.configuration.backend_settings_section.show\", )} {advancedHeld} {t( \"ui.settings.configuration.backend_settings_section.advanced\", )} </Button> This is a markup-adjacent fragment. Its leading/trailing space is intentional; do not omit or add boundary spaces."
 	},
 	"ui.settings.configuration.backend_settings_section.takes_effect_immediately": {
 		"role": "Inline settings control status/readout",
@@ -309,24 +279,6 @@
 		"length": "Compact existing settings/list control; English is 4 characters before placeholder expansion. Keep short.",
 		"note": "retention duration control: rendered in SelectItem inside SelectContent. Composition (message names mark slots): <SelectItem> {[days]} </SelectItem>"
 	},
-	"ui.settings.configuration.retention_duration_control.with_no_activity": {
-		"role": "Settings explanatory paragraph",
-		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
-		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
-		"note": "retention duration control: rendered in p inside div. Composition (message names mark slots): <p > {formatHours(verdict.hours)} {t( \"ui.settings.configuration.retention_duration_control.with_no_activity\", )} {verdict.hours === spec.defaultHours ? [default] : \"\"} </p> This is a markup-adjacent fragment. Its leading/trailing space is intentional; do not omit or add boundary spaces."
-	},
-	"ui.settings.configuration.retention_duration_control.use": {
-		"role": "Button action label",
-		"tone": "Brief imperative. No enthusiasm or extra punctuation.",
-		"length": "Compact existing settings/list control; English is 4 characters before placeholder expansion. Keep short.",
-		"note": "retention duration control: rendered in Button inside div. Composition (message names mark slots): <Button > {[use]} {formatHours(verdict.nearest)} </Button> This is a markup-adjacent fragment. Its leading/trailing space is intentional; do not omit or add boundary spaces."
-	},
-	"ui.settings.configuration.retention_duration_control.default": {
-		"role": "Settings explanatory paragraph",
-		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
-		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
-		"note": "retention duration control: rendered in p inside div. Composition (message names mark slots): <p > {formatHours(verdict.hours)} {t( \"ui.settings.configuration.retention_duration_control.with_no_activity\", )} {verdict.hours === spec.defaultHours ? [default] : \"\"} </p> This is a markup-adjacent fragment. Its leading/trailing space is intentional; do not omit or add boundary spaces."
-	},
 	"ui.settings.configuration.retention_duration_control.label_common_choices": {
 		"role": "Accessible control name; not visible body copy",
 		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
@@ -428,24 +380,6 @@
 		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
 		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
 		"note": "setting control: rendered in p inside div. Composition (message names mark slots): <p> {t( \"ui.settings.configuration.setting_control.one_hop_per_line_as_provider_model_effort_an_empty_chain_moves_to\", )} </p>"
-	},
-	"ui.settings.configuration.setting_control.m12_3l1_5_3_5_4_4_3_2_6_1_3_8_3_5_2_3_5_2_1_3_8_3_2_6_4_4z": {
-		"role": "Inline settings control status/readout",
-		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
-		"length": "Compact existing settings/list control; English is 60 characters before placeholder expansion. Keep short.",
-		"note": "setting control: d on path. Composition (message names mark slots): <path />"
-	},
-	"ui.settings.configuration.setting_control.m5_2l1_2_4_2_5_2_2_1_6_7_2_5l5_7_3_2_8_8_7l_7_2_5_2_1_6l4_4_4z": {
-		"role": "Inline settings control status/readout",
-		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
-		"length": "Compact existing settings/list control; English is 62 characters before placeholder expansion. Keep short.",
-		"note": "setting control: d on path. Composition (message names mark slots): <path />"
-	},
-	"ui.settings.configuration.setting_control.opacity_45_saturate_50": {
-		"role": "Inline settings control status/readout",
-		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
-		"length": "Compact existing settings/list control; English is 22 characters before placeholder expansion. Keep short.",
-		"note": "setting control: className on span. Composition (message names mark slots): <span > <LanguageFlag /> </span>"
 	},
 	"ui.settings.configuration.setting_control.label_press_the_key_you_want": {
 		"role": "Accessible control name; not visible body copy",
@@ -574,12 +508,6 @@
 		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
 		"length": "Compact existing control/readout; English source is 24 characters before variable expansion. Avoid adding explanatory prose.",
 		"note": "settings group header: aria-label on span. Composition (message names mark slots): <span />"
-	},
-	"ui.settings.configuration.settings_group_header.advanced": {
-		"role": "Inline settings control status/readout",
-		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
-		"length": "Compact existing settings/list control; English is 9 characters before placeholder expansion. Keep short.",
-		"note": "settings group header: summary on span. Composition (message names mark slots): <span> {advancedCount} {t( \"ui.settings.configuration.settings_group_header.advanced\", )} </span> This is a markup-adjacent fragment. Its leading/trailing space is intentional; do not omit or add boundary spaces."
 	},
 	"ui.settings.configuration.settings_group_header.setting_count": {
 		"role": "Dynamic count/status sentence",

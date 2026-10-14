@@ -993,12 +993,6 @@
 		"length": "Compact existing settings/list control; English is 9 characters before placeholder expansion. Keep short.",
 		"note": "integration sign in dialog: actions on PrimaryButton. Composition (message names mark slots): <PrimaryButton > {t( \"ui.settings.integrations.integration_sign_in_dialog.try_again\", )} </PrimaryButton>"
 	},
-	"ui.settings.integrations.integration_sign_in_dialog.local_operator_opens_your_browser_so_you_can_approve_access_to": {
-		"role": "Settings explanatory paragraph",
-		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
-		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
-		"note": "integration sign in dialog: rendered in p inside div. Composition (message names mark slots): <p> {t( \"ui.settings.integrations.integration_sign_in_dialog.local_operator_opens_your_browser_so_you_can_approve_access_to\", )}{\" \"} {name}. {action === \"reauth\" ? t( \"ui.settings.integrations.integration_sign_in_dialog.this_replaces_the_sign_in_it_has_now\", ) : \"\"} </p> Preserve product/protocol names and machine tokens."
-	},
 	"ui.settings.integrations.integration_sign_in_dialog.starting_sign_in": {
 		"role": "Settings explanatory paragraph",
 		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
@@ -1095,12 +1089,6 @@
 		"length": "Compact existing settings/list control; English is 5 characters before placeholder expansion. Keep short.",
 		"note": "integration sign in dialog: actions on SecondaryButton. Composition (message names mark slots): <SecondaryButton > {progress?.tone === \"success\" ? [done] : t( \"ui.settings.integrations.integration_sign_in_dialog.close\", )} </SecondaryButton>"
 	},
-	"ui.settings.integrations.integration_sign_in_dialog.this_replaces_the_sign_in_it_has_now": {
-		"role": "Settings explanatory paragraph",
-		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
-		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
-		"note": "integration sign in dialog: rendered in p inside div. Composition (message names mark slots): <p> {t( \"ui.settings.integrations.integration_sign_in_dialog.local_operator_opens_your_browser_so_you_can_approve_access_to\", )}{\" \"} {name}. {action === \"reauth\" ? t( \"ui.settings.integrations.integration_sign_in_dialog.this_replaces_the_sign_in_it_has_now\", ) : \"\"} </p> This is a markup-adjacent fragment. Its leading/trailing space is intentional; do not omit or add boundary spaces."
-	},
 	"ui.settings.integrations.integration_sign_in_dialog.sign_in_link_copied": {
 		"role": "Button action label",
 		"tone": "Brief imperative. No enthusiasm or extra punctuation.",
@@ -1154,18 +1142,6 @@
 		"tone": "Neutral and helpful; explain the failure without blaming the user.",
 		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
 		"note": "mcp management section: rendered in Alert inside SettingsSection. Composition (message names mark slots): <Alert> {t( \"ui.settings.integrations.mcp_management_section.integrations_need_a_newer_local_operator_backend_update_it_and_re\", )} </Alert> Preserve product/protocol names and machine tokens."
-	},
-	"ui.settings.integrations.mcp_management_section.showing_the_integrations_for": {
-		"role": "Settings explanatory paragraph",
-		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
-		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
-		"note": "mcp management section: rendered in p inside div. Composition (message names mark slots): <p> {t( \"ui.settings.integrations.mcp_management_section.showing_the_integrations_for\", )}{\" \"} {integrations.borrowed.title?.trim() || integrations.borrowed.session_id.slice(0, 6)} {t( \"ui.settings.integrations.mcp_management_section.your_most_recent_chat\", )} </p>"
-	},
-	"ui.settings.integrations.mcp_management_section.your_most_recent_chat": {
-		"role": "Settings explanatory paragraph",
-		"tone": "Plain explanatory prose; preserve the source’s level of detail.",
-		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
-		"note": "mcp management section: rendered in p inside div. Composition (message names mark slots): <p> {t( \"ui.settings.integrations.mcp_management_section.showing_the_integrations_for\", )}{\" \"} {integrations.borrowed.title?.trim() || integrations.borrowed.session_id.slice(0, 6)} {t( \"ui.settings.integrations.mcp_management_section.your_most_recent_chat\", )} </p>"
 	},
 	"ui.settings.integrations.mcp_management_section.integrations_can_be_managed_here_once_a_chat_has_started": {
 		"role": "Settings explanatory paragraph",

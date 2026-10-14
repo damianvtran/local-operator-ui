@@ -155,7 +155,6 @@
 	"ui.settings.integrations.integration_sign_in_dialog.cancel_sign_in": "Cancel sign-in",
 	"ui.settings.integrations.integration_sign_in_dialog.continue_in_browser": "Continue in browser",
 	"ui.settings.integrations.integration_sign_in_dialog.try_again": "Try again",
-	"ui.settings.integrations.integration_sign_in_dialog.local_operator_opens_your_browser_so_you_can_approve_access_to": "Local Operator opens your browser so you can approve access to",
 	"ui.settings.integrations.integration_sign_in_dialog.starting_sign_in": "Starting sign-in…",
 	"ui.settings.integrations.integration_sign_in_dialog.copy_the_sign_in_link": "Copy the sign-in link",
 	"ui.settings.integrations.integration_sign_in_dialog.open_the_sign_in_page": "Open the sign-in page",
@@ -172,7 +171,6 @@
 	"ui.settings.integrations.integration_sign_in_dialog.check_the_server_s_url_and_your_network_then_try_again": "Check the server's URL and your network, then try again.",
 	"ui.settings.integrations.integration_sign_in_dialog.check_the_server_s_settings_then_try_again": "Check the server's settings, then try again.",
 	"ui.settings.integrations.integration_sign_in_dialog.close": "Close",
-	"ui.settings.integrations.integration_sign_in_dialog.this_replaces_the_sign_in_it_has_now": " This replaces the sign-in it has now.",
 	"ui.settings.integrations.integration_sign_in_dialog.sign_in_link_copied": "Sign-in link copied.",
 	"ui.settings.integrations.integration_sign_in_dialog.your_browser_opened_approve_access_to_name_there_then_come_back_h": "Your browser opened. Approve access to {name} there, then come back here.",
 	"ui.settings.integrations.integration_sign_in_dialog.waiting_for_you_to_approve_access_to_name": "Waiting for you to approve access to {name}…",
@@ -180,8 +178,6 @@
 	"ui.settings.integrations.integration_sign_in_dialog.sign_in_to_name": "Sign in to {name}",
 	"ui.settings.integrations.mcp_management_section.add_integration": "Add integration",
 	"ui.settings.integrations.mcp_management_section.integrations_need_a_newer_local_operator_backend_update_it_and_re": "Integrations need a newer Local Operator backend. Update it and restart the app to manage them here.",
-	"ui.settings.integrations.mcp_management_section.showing_the_integrations_for": "Showing the integrations for",
-	"ui.settings.integrations.mcp_management_section.your_most_recent_chat": ", your most recent chat.",
 	"ui.settings.integrations.mcp_management_section.integrations_can_be_managed_here_once_a_chat_has_started": "Integrations can be managed here once a chat has started.",
 	"ui.settings.integrations.mcp_management_section.start_a_chat": "Start a chat",
 	"ui.settings.integrations.mcp_management_section.updating_local_operator_removes_this_step": "Updating Local Operator removes this step.",
@@ -218,5 +214,7 @@
 	"ui.settings.integrations.integration_model.disconnect": "Disconnect",
 	"ui.settings.integrations.integration_model.global": "Global",
 	"ui.settings.integrations.integration_key_dialog.add_keys_heading": "{count, plural, one {Add the key for {name}} other {Add keys for {name}}}",
-	"ui.settings.integrations.integration_key_dialog.saving": "Saving…"
+	"ui.settings.integrations.integration_key_dialog.saving": "Saving…",
+	"ui.settings.integrations.mcp_management_section.borrowed_chat_notice": "Showing the integrations for {chat}, your most recent chat.",
+	"ui.settings.integrations.integration_sign_in_dialog.browser_approval_notice": "Local Operator opens your browser so you can approve access to {name}.{replaces, select, yes { This replaces the sign-in it has now.} other {}}"
 }

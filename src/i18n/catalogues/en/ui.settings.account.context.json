@@ -107,12 +107,6 @@
 		"length": "Compact existing settings/list control; English is 12 characters before placeholder expansion. Keep short.",
 		"note": "settings page: rendered in h3 inside div. Composition (message names mark slots): <h3> <CreditCard /> {[radient_pass]} </h3> Preserve product/protocol names and machine tokens."
 	},
-	"ui.settings.account.settings_page.could_not_load_your_credit_balance": {
-		"role": "Inline warning/error explanation",
-		"tone": "Neutral and helpful; explain the failure without blaming the user.",
-		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
-		"note": "settings page: rendered in Alert inside div. Composition (message names mark slots): <Alert> {t( \"ui.settings.account.settings_page.could_not_load_your_credit_balance\", )} {error.message} </Alert> This is a markup-adjacent fragment. Its leading/trailing space is intentional; do not omit or add boundary spaces."
-	},
 	"ui.settings.account.settings_page.available_credits": {
 		"role": "Dynamic count/status sentence",
 		"tone": "Matter-of-fact state/readout, not a promise that the service is healthy.",
@@ -136,12 +130,6 @@
 		"tone": "Compact noun phrase in sentence case; preserve proper nouns.",
 		"length": "Compact existing settings/list control; English is 12 characters before placeholder expansion. Keep short.",
 		"note": "settings page: rendered in legend inside fieldset. Composition (message names mark slots): <legend> {[usage_metric]} </legend>"
-	},
-	"ui.settings.account.settings_page.could_not_load_your_usage_data": {
-		"role": "Inline warning/error explanation",
-		"tone": "Neutral and helpful; explain the failure without blaming the user.",
-		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
-		"note": "settings page: rendered in Alert inside div. Composition (message names mark slots): <Alert> {t( \"ui.settings.account.settings_page.could_not_load_your_usage_data\", )} {error.message} </Alert> This is a markup-adjacent fragment. Its leading/trailing space is intentional; do not omit or add boundary spaces."
 	},
 	"ui.settings.account.settings_page.no_usage_recorded_in_the_last_30_days": {
 		"role": "Dynamic count/status sentence",

@@ -9,7 +9,7 @@
 	"ui.settings.account.radient_account_section.created": "Created",
 	"ui.settings.account.radient_account_section.need_to_sign_out_or_switch_accounts": "Need to sign out or switch accounts?",
 	"ui.settings.account.radient_account_section.sign_out_from_radient": "Sign out from Radient",
-	"ui.settings.account.radient_account_section.sign_in_to_access_your_account_details_or_sign_up_to_get_free_cre": " Sign in to access your account details or sign up to get free credits and unified access to models, tools, and more with Radient Pass. Radient's automatic model router will automatically select the best model for your agents to balance cost and performance. It is often cheaper to use Radient Pass than to use single AI providers due to automatic cost optimization.",
+	"ui.settings.account.radient_account_section.sign_in_to_access_your_account_details_or_sign_up_to_get_free_cre": "Sign in to access your account details or sign up to get free credits and unified access to models, tools, and more with Radient Pass. Radient's automatic model router will automatically select the best model for your agents to balance cost and performance. It is often cheaper to use Radient Pass than to use single AI providers due to automatic cost optimization.",
 	"ui.settings.account.radient_account_section.loading_account": "Loading account",
 	"ui.settings.account.radient_account_section.loading_your_radient_account_details": "Loading your Radient account details…",
 	"ui.settings.account.radient_account_section.not_provided": "Not provided",
@@ -17,12 +17,10 @@
 	"ui.settings.account.radient_account_section.your_radient_account_could_not_be_read_so_this_app_cannot_show_yo": "Your Radient account could not be read, so this app cannot show your account details.",
 	"ui.settings.account.radient_account_section.you_are_not_currently_signed_in_to_radient": "You are not currently signed in to Radient.",
 	"ui.settings.account.settings_page.radient_pass": "Radient Pass",
-	"ui.settings.account.settings_page.could_not_load_your_credit_balance": "Could not load your credit balance. ",
 	"ui.settings.account.settings_page.available_credits": "Available credits",
 	"ui.settings.account.settings_page.add_credits": "Add credits",
 	"ui.settings.account.settings_page.usage_last_30_days": "Usage (last 30 days)",
 	"ui.settings.account.settings_page.usage_metric": "Usage metric",
-	"ui.settings.account.settings_page.could_not_load_your_usage_data": "Could not load your usage data. ",
 	"ui.settings.account.settings_page.no_usage_recorded_in_the_last_30_days": "No usage recorded in the last 30 days.",
 	"ui.settings.account.settings_page.radient_account": "Radient account",
 	"ui.settings.account.settings_page.go_to_radient_console": "Go to Radient console",
@@ -32,5 +30,7 @@
 	"ui.settings.account.settings_usage_chart.credits_consumed": "Credits consumed",
 	"ui.settings.account.settings_usage_chart.tokens_used": "Tokens used",
 	"ui.settings.account.settings_usage_chart.credits_summary": "Credits consumed over the last 30 days, plotted per day across {days, plural, one {# day} other {# days}}.",
-	"ui.settings.account.settings_usage_chart.tokens_summary": "Tokens used over the last 30 days, plotted per day across {days, plural, one {# day} other {# days}}."
+	"ui.settings.account.settings_usage_chart.tokens_summary": "Tokens used over the last 30 days, plotted per day across {days, plural, one {# day} other {# days}}.",
+	"ui.settings.account.settings_page.credit_balance_load_failed": "Could not load your credit balance. {reason}",
+	"ui.settings.account.settings_page.usage_load_failed": "Could not load your usage data. {reason}"
 }

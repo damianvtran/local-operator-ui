@@ -183,9 +183,9 @@ export const SettingsGroupHeader = ({
 							)}
 							{advancedCount > 0 && (
 								<span className="shrink-0 text-meta text-ink-dim">
-									{advancedCount}
 									{t(
-										"ui.settings.configuration.settings_group_header.advanced",
+										"ui.settings.configuration.settings_group_header.advanced_count",
+										{ count: advancedCount },
 									)}
 								</span>
 							)}

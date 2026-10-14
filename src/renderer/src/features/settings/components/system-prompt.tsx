@@ -141,10 +141,12 @@ export const SystemPrompt: FC = () => {
 				</div>
 			) : error ? (
 				<Alert variant="danger">
-					{t("ui.settings.model.system_prompt.failed_to_load_system_prompt")}{" "}
-					{error instanceof Error
-						? error.message
-						: t("ui.settings.model.system_prompt.unknown_error")}
+					{t("ui.settings.model.system_prompt.load_failed", {
+						reason:
+							error instanceof Error
+								? error.message
+								: t("ui.settings.model.system_prompt.unknown_error"),
+					})}
 				</Alert>
 			) : (
 				renderContent()

@@ -143,12 +143,6 @@
 		"length": "Compact existing settings/list control; English is 21 characters before placeholder expansion. Keep short.",
 		"note": "system prompt: label on Spinner. Composition (message names mark slots): <Spinner />"
 	},
-	"ui.settings.model.system_prompt.failed_to_load_system_prompt": {
-		"role": "Inline warning/error explanation",
-		"tone": "Neutral and helpful; explain the failure without blaming the user.",
-		"length": "Wrapping text in the settings content column; preserve all explanatory information.",
-		"note": "system prompt: rendered in Alert inside SettingsSection. Composition (message names mark slots): <Alert> {[failed_to_load_system_prompt]}{\" \"} {error instanceof Error ? error.message : [unknown_error]} </Alert>"
-	},
 	"ui.settings.model.system_prompt.save_changes": {
 		"role": "Button action label",
 		"tone": "Brief imperative. No enthusiasm or extra punctuation.",

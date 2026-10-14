@@ -173,11 +173,9 @@ export const BackendSettingRow: FC<BackendSettingRowProps> = ({
 	 */
 	const gateNote = gatedOff && gate && (
 		<p className="text-meta text-ink-dim">
-			{t("ui.settings.configuration.backend_setting_row.needs")}
-			{gate.label}
-			{t(
-				"ui.settings.configuration.backend_setting_row.on_nothing_here_is_saved_while_it_is_off",
-			)}
+			{t("ui.settings.configuration.backend_setting_row.gate_note", {
+				gate: String(gate.label),
+			})}
 		</p>
 	);
 
@@ -289,10 +287,7 @@ export const BackendSettingRow: FC<BackendSettingRowProps> = ({
 						// `self-center` against a two-line label, and no effect at all
 						// on a line the control has to itself.
 						"flex shrink-0 items-center gap-2 self-center",
-						wideControl &&
-							t(
-								"ui.settings.configuration.backend_setting_row.min_w_0_flex_1_items_start",
-							),
+						wideControl && "min-w-0 flex-1 items-start",
 						/*
 						 * A floor, so the row's WRAP takes over: without one the control is a
 						 * flex-1 shrinking to whatever the label leaves (100px at a 420px

@@ -668,13 +668,9 @@ export const SpeechSection: FC<SpeechSectionProps> = ({ sectionRef }) => {
 				 */}
 				{voiceRows.missing.length > 0 && (
 					<p className="text-meta text-ink-dim">
-						{t(
-							"ui.settings.speech.speech_section.this_backend_does_not_register",
-						)}
-						{voiceRows.missing.join(", ")}
-						{t(
-							"ui.settings.speech.speech_section.yet_so_those_rows_are_not_shown",
-						)}
+						{t("ui.settings.speech.speech_section.missing_voice_rows", {
+							rows: voiceRows.missing.join(", "),
+						})}
 					</p>
 				)}
 			</div>

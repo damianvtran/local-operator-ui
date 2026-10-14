@@ -220,13 +220,13 @@ export const RetentionDurationControl: FC<RetentionDurationControlProps> = ({
 						disabled ? "text-ink-disabled" : "text-ink-muted",
 					)}
 				>
-					{formatHours(verdict.hours)}
 					{t(
-						"ui.settings.configuration.retention_duration_control.with_no_activity",
+						"ui.settings.configuration.retention_duration_control.idle_window_status",
+						{
+							duration: formatHours(verdict.hours),
+							isDefault: verdict.hours === spec.defaultHours ? "yes" : "no",
+						},
 					)}
-					{verdict.hours === spec.defaultHours
-						? t("ui.settings.configuration.retention_duration_control.default")
-						: ""}
 				</p>
 			) : (
 				// Announced politely as it changes: this appears while typing, so it is
@@ -245,8 +245,10 @@ export const RetentionDurationControl: FC<RetentionDurationControlProps> = ({
 							disabled={disabled}
 							onClick={() => onValueChange(String(verdict.nearest))}
 						>
-							{t("ui.settings.configuration.retention_duration_control.use")}
-							{formatHours(verdict.nearest)}
+							{t(
+								"ui.settings.configuration.retention_duration_control.use_duration",
+								{ duration: formatHours(verdict.nearest) },
+							)}
 						</Button>
 					)}
 				</div>

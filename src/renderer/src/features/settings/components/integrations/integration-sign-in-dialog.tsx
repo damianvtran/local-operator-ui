@@ -365,14 +365,9 @@ export const IntegrationSignInDialog: FC<IntegrationSignInDialogProps> = ({
 				{phase.kind === "ready" ? (
 					<p className="-mx-1.5">
 						{t(
-							"ui.settings.integrations.integration_sign_in_dialog.local_operator_opens_your_browser_so_you_can_approve_access_to",
-						)}{" "}
-						{name}.
-						{action === "reauth"
-							? t(
-									"ui.settings.integrations.integration_sign_in_dialog.this_replaces_the_sign_in_it_has_now",
-								)
-							: ""}
+							"ui.settings.integrations.integration_sign_in_dialog.browser_approval_notice",
+							{ name, replaces: action === "reauth" ? "yes" : "no" },
+						)}
 					</p>
 				) : null}
 				{phase.kind === "starting" ? (

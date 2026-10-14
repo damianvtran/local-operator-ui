@@ -22,7 +22,6 @@
 	"ui.settings.model.system_prompt.system_prompt": "System prompt",
 	"ui.settings.model.system_prompt.every_local_operator_agent_receives_this_prompt_in_addition_to_it": "Every Local Operator agent receives this prompt in addition to its own instructions, so it is the place for baseline expectations and for details you want every agent to know about you, such as your name, location, or preferences. It is sent to your selected hosting provider.",
 	"ui.settings.model.system_prompt.loading_system_prompt": "Loading system prompt",
-	"ui.settings.model.system_prompt.failed_to_load_system_prompt": "Failed to load system prompt:",
 	"ui.settings.model.system_prompt.save_changes": "Save changes",
 	"ui.settings.model.system_prompt.unknown_error": "Unknown error",
 	"ui.settings.model.model_setting_options.copy_sign_in_unknown_group": "Sign-in state unknown",
@@ -30,5 +29,6 @@
 	"ui.settings.model.model_setting_options.copy_signed_in_group": "Signed in",
 	"ui.settings.model.model_setting_options.copy_needs_sign_in_group": "Needs sign-in",
 	"ui.settings.model.system_prompt.saving": "Saving...",
-	"ui.settings.model.model_setting_options.provider_detail": "{provider}{aggregated, select, yes {, aggregated} other {}}{credential, select, signed_in {, signed in} missing {, no credential} other {}}"
+	"ui.settings.model.model_setting_options.provider_detail": "{provider}{aggregated, select, yes {, aggregated} other {}}{credential, select, signed_in {, signed in} missing {, no credential} other {}}",
+	"ui.settings.model.system_prompt.load_failed": "Failed to load system prompt: {reason}"
 }

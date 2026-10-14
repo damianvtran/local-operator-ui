@@ -372,9 +372,9 @@ export const McpManagementSection: FC<{
 				: servers,
 		[servers, search],
 	);
-	// Group headings read the active catalogue each render; IDs and sorting stay stable.
-	const groups = (() =>
-		groupIntegrations(visible, operations, integrations.memories))();
+	// Not memoized: group titles come from t(), so a memo keyed on data alone would
+	// keep the previous language after a live switch. IDs and ordering stay stable.
+	const groups = groupIntegrations(visible, operations, integrations.memories);
 
 	/* The row the sign-in dialog belongs to, or none while it is closed. */
 	const signInRow =
@@ -1161,12 +1161,12 @@ export const McpManagementSection: FC<{
 				{integrations.route === "session" && integrations.borrowed ? (
 					<p className="text-body-sm text-ink-muted">
 						{t(
-							"ui.settings.integrations.mcp_management_section.showing_the_integrations_for",
-						)}{" "}
-						{integrations.borrowed.title?.trim() ||
-							integrations.borrowed.session_id.slice(0, 6)}
-						{t(
-							"ui.settings.integrations.mcp_management_section.your_most_recent_chat",
+							"ui.settings.integrations.mcp_management_section.borrowed_chat_notice",
+							{
+								chat:
+									integrations.borrowed.title?.trim() ||
+									integrations.borrowed.session_id.slice(0, 6),
+							},
 						)}
 					</p>
 				) : null}

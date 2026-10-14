@@ -1026,11 +1026,8 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 												onClick={() => setShowAdvanced(true)}
 											>
 												{t(
-													"ui.settings.configuration.backend_settings_section.show",
-												)}
-												{advancedHeld}
-												{t(
-													"ui.settings.configuration.backend_settings_section.advanced",
+													"ui.settings.configuration.backend_settings_section.show_advanced_count",
+													{ count: advancedHeld },
 												)}
 											</Button>
 										)}

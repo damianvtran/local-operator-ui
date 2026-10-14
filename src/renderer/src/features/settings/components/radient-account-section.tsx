@@ -26,7 +26,7 @@ import {
 	verifyCopy,
 } from "@shared/utils/radient-account-copy";
 import { Info, LogOut } from "lucide-react";
-import { type FC, useCallback, useMemo } from "react";
+import { type FC, useCallback } from "react";
 import { InfoGrid, InfoItem } from "./settings-section";
 
 type RadientAccountSectionProps = {
@@ -97,7 +97,9 @@ export const RadientAccountSection: FC<RadientAccountSectionProps> = ({
 		}
 	}, [signOut]);
 
-	const accountInfoSection = useMemo(() => {
+	// Not memoized: these bodies call t(), and a memo keyed on data alone would keep the
+	// previous language after a live switch (useI18nLocale re-renders but cannot bust it).
+	const accountInfoSection = (() => {
 		if (!isAuthenticated || !user?.radientUser) return null;
 
 		const { account, identity, verification } = user.radientUser;
@@ -191,7 +193,7 @@ export const RadientAccountSection: FC<RadientAccountSectionProps> = ({
 				</div>
 			</>
 		);
-	}, [isAuthenticated, user?.radientUser, handleSignOut]);
+	})();
 
 	/*
 	 * The section's opening sentence, which is the only place this section says
@@ -223,7 +225,7 @@ export const RadientAccountSection: FC<RadientAccountSectionProps> = ({
 	 * does next - the rule `backend-error.ts` records for the same mistake on the
 	 * settings surface.
 	 */
-	const signInLead = useMemo(() => {
+	const signInLead = (() => {
 		if (accountRead === "refused") {
 			return t(
 				"ui.settings.account.radient_account_section.radient_refused_the_sign_in_this_app_is_holding_so_your_account_d",
@@ -237,15 +239,15 @@ export const RadientAccountSection: FC<RadientAccountSectionProps> = ({
 		return t(
 			"ui.settings.account.radient_account_section.you_are_not_currently_signed_in_to_radient",
 		);
-	}, [accountRead]);
+	})();
 
-	const signInSection = useMemo(() => {
+	const signInSection = (() => {
 		if (isAuthenticated && user) return null;
 
 		return (
 			<div>
 				<p className="text-body-sm text-ink-muted">
-					{signInLead}
+					{signInLead}{" "}
 					{t(
 						"ui.settings.account.radient_account_section.sign_in_to_access_your_account_details_or_sign_up_to_get_free_cre",
 					)}
@@ -263,7 +265,7 @@ export const RadientAccountSection: FC<RadientAccountSectionProps> = ({
 				</div>
 			</div>
 		);
-	}, [isAuthenticated, user, signInLead, onAfterCredentialUpdate]);
+	})();
 
 	if (isLoading || isSigningOut) {
 		return (
