@@ -16,11 +16,14 @@
  */
 
 import { Button } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { Plug } from "lucide-react";
 import type { FC } from "react";
 import { useConnectProviderStore } from "./connect-provider-store";
 
 export const ConnectProviderCard: FC = () => {
+	useI18nLocale();
 	const openConnect = useConnectProviderStore((state) => state.openConnect);
 	return (
 		<section
@@ -31,23 +34,26 @@ export const ConnectProviderCard: FC = () => {
 			<Plug size={20} className="text-ink-muted" aria-hidden="true" />
 			<div className="flex flex-col gap-1">
 				<h3 id="connect-provider-card-title" className="text-heading text-ink">
-					Connect a model provider to start
+					{t(
+						"ui.providers.connect_provider_card.connect_a_model_provider_to_start",
+					)}
 				</h3>
 				<p className="text-body-sm text-ink-muted">
-					Sign in with Claude, ChatGPT or Radient, or add an API key. It takes
-					about a minute.
+					{t(
+						"ui.providers.connect_provider_card.sign_in_with_claude_chatgpt_or_radient",
+					)}
 				</p>
 			</div>
 			<div className="flex flex-wrap items-center gap-2">
 				<Button variant="primary" size="md" onClick={() => openConnect()}>
-					Connect a provider
+					{t("ui.providers.connect_provider_card.connect_a_provider")}
 				</Button>
 				<Button
 					variant="ghost"
 					size="md"
 					onClick={() => openConnect({ group: "local" })}
 				>
-					Use a model on this computer
+					{t("ui.providers.connect_provider_card.use_a_model_on_this_computer")}
 				</Button>
 			</div>
 		</section>
@@ -60,15 +66,16 @@ export const ConnectProviderCard: FC = () => {
  * the user types, not after.
  */
 export const NoProviderLine: FC = () => {
+	useI18nLocale();
 	const openConnect = useConnectProviderStore((state) => state.openConnect);
 	return (
 		<p
 			className="flex items-center gap-1 text-ink-dim text-meta"
 			data-no-provider-line=""
 		>
-			No model provider connected ·
+			{t("ui.providers.connect_provider_card.no_model_provider_connected")}
 			<Button variant="link" size="sm" onClick={() => openConnect()}>
-				Connect
+				{t("ui.providers.connect_provider_card.connect")}
 			</Button>
 		</p>
 	);

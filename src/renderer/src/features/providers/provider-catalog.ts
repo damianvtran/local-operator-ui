@@ -22,6 +22,7 @@ import type {
 	DesktopProvider,
 	ProviderMethod,
 } from "@shared/api/local-operator/desktop-api";
+import { t } from "@shared/i18n";
 
 /*
  * The patterns this module matches, hoisted so each is compiled once rather
@@ -133,7 +134,8 @@ export function moreProvidersSummary(
 			 * no room for "LM Studio, Ollama, vLLM, ..." - the disclosure names them
 			 * row by row.
 			 */
-			if (rest.local.length > 0) parts.push("local models");
+			if (rest.local.length > 0)
+				parts.push(t("ui.providers.provider_catalog.local_models"));
 			continue;
 		}
 		const bucket = rest[group];
@@ -146,11 +148,21 @@ export function moreProvidersSummary(
 		}
 	}
 	const others = cloud.length - named;
-	if (parts.length === 0) return "More providers";
+	if (parts.length === 0)
+		return t("ui.providers.provider_catalog.more_providers");
 	if (others > 0)
-		return `More providers: ${parts.join(", ")} and ${others} more`;
-	if (parts.length === 1) return `More providers: ${parts[0]}`;
-	return `More providers: ${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
+		return t("ui.providers.provider_catalog.more_providers_and", {
+			providers: parts.join(", "),
+			count: others,
+		});
+	if (parts.length === 1)
+		return t("ui.providers.provider_catalog.more_providers_variant_41", {
+			provider: parts[0],
+		});
+	return t("ui.providers.provider_catalog.more_providers_and_variant_42", {
+		providers: parts.slice(0, -1).join(", "),
+		last: parts[parts.length - 1],
+	});
 }
 
 /** "Anthropic (Claude Pro/Max)" -> "Anthropic"; a name without one is kept. */
@@ -199,28 +211,34 @@ function qualifierOf(label: string): string | null {
  * mechanism. Keyed by `method_id`, which the backend guarantees is stable.
  * Anything absent falls back to the label's own qualifier, then to the kind.
  */
-const METHOD_NAMES: Record<string, string> = {
-	anthropic: "Claude subscription",
-	openai: "ChatGPT subscription",
-	"openai-device": "ChatGPT, with a code",
-	radient: "Browser sign-in",
-	kimi: "Moonshot account",
-	"xai-oauth": "SuperGrok account",
-	"zai-oauth": "Browser sign-in",
-	"alibaba-token-plan-oauth": "Token Plan account",
-};
+// Resolve labels on demand: the same provider rows survive a live language change.
+const methodNames = (): Record<string, string> => ({
+	anthropic: t("ui.providers.provider_catalog.claude_subscription"),
+	openai: t("ui.providers.provider_catalog.chatgpt_subscription"),
+	"openai-device": t("ui.providers.provider_catalog.chatgpt_with_a_code"),
+	radient: t("ui.providers.provider_catalog.browser_sign_in"),
+	kimi: t("ui.providers.provider_catalog.moonshot_account"),
+	"xai-oauth": t("ui.providers.provider_catalog.supergrok_account"),
+	"zai-oauth": t("ui.providers.provider_catalog.browser_sign_in"),
+	"alibaba-token-plan-oauth": t(
+		"ui.providers.provider_catalog.token_plan_account",
+	),
+});
 
 /**
  * One method's tab label. Never repeats the provider's name, so the tab and the
  * primary button below it can never share an accessible name (design D4).
  */
 export function methodName(method: ProviderMethod): string {
-	if (method.kind === "api_key") return "API key";
-	const named = METHOD_NAMES[method.method_id];
+	if (method.kind === "api_key")
+		return t("ui.providers.provider_catalog.api_key");
+	const named = methodNames()[method.method_id];
 	if (named) return named;
 	const qualifier = qualifierOf(method.label);
 	if (qualifier) return qualifier;
-	return method.kind === "device" ? "Sign in with a code" : "Sign in";
+	return method.kind === "device"
+		? t("ui.providers.provider_catalog.sign_in_with_a_code")
+		: t("ui.providers.provider_catalog.sign_in");
 }
 
 /**
@@ -235,23 +253,30 @@ export function methodName(method: ProviderMethod): string {
  * - and only the plan side was described at all: a reader could not tell whether
  * adding a key charged them again (UX round 1 U8).
  */
-const METHOD_BLURBS: Record<string, string> = {
-	anthropic: "Use your Claude Pro or Max plan. No extra charge.",
-	openai: "Use your ChatGPT Plus or Pro plan. No extra charge.",
-	"openai-device":
-		"Use your ChatGPT plan, signing in with a one-time code. No extra charge.",
-	radient: "One browser sign-in. Nothing to paste.",
-};
+const methodBlurbs = (): Record<string, string> => ({
+	anthropic: t("ui.providers.provider_catalog.use_your_claude_pro_or_max_plan"),
+	openai: t("ui.providers.provider_catalog.use_your_chatgpt_plus_or_pro_plan"),
+	"openai-device": t(
+		"ui.providers.provider_catalog.use_your_chatgpt_plan_signing_in_with",
+	),
+	radient: t(
+		"ui.providers.provider_catalog.one_browser_sign_in_nothing_to_paste",
+	),
+});
 
 export function methodBlurb(
 	method: ProviderMethod,
 	provider: { name: string },
 ): string {
-	const blurb = METHOD_BLURBS[method.method_id];
+	const blurb = methodBlurbs()[method.method_id];
 	if (blurb) return blurb;
 	if (method.kind === "device")
-		return `Sign in to your ${brandOf(provider)} account with a one-time code.`;
-	return `Sign in with your ${brandOf(provider)} account.`;
+		return t("ui.providers.provider_catalog.sign_in_to_your_account_with_a", {
+			brand: brandOf(provider),
+		});
+	return t("ui.providers.provider_catalog.sign_in_with_your_account", {
+		brand: brandOf(provider),
+	});
 }
 
 /** Two letters for the row's tile: word initials, inner capitals, or a prefix. */
@@ -274,9 +299,15 @@ export function monogramOf(brand: string): string {
 export type ProviderGroup = "subscription" | "key" | "local";
 
 export const GROUP_HEADINGS: Record<ProviderGroup, string> = {
-	subscription: "Use a subscription",
-	key: "Use an API key",
-	local: "Run models on this computer",
+	get subscription() {
+		return t("ui.providers.provider_catalog.use_a_subscription");
+	},
+	get key() {
+		return t("ui.providers.provider_catalog.use_an_api_key");
+	},
+	get local() {
+		return t("ui.providers.provider_catalog.run_models_on_this_computer");
+	},
 };
 
 export function providerGroup(provider: DesktopProvider): ProviderGroup {
@@ -290,17 +321,24 @@ export function providerGroup(provider: DesktopProvider): ProviderGroup {
 /** The row's one action, named for what it does. */
 export function rowActionLabel(provider: DesktopProvider): string {
 	const group = providerGroup(provider);
-	if (group === "local") return "Set up";
-	if (group === "key") return "Add key";
-	return "Sign in";
+	if (group === "local") return t("ui.providers.provider_catalog.set_up");
+	if (group === "key") return t("ui.providers.provider_catalog.add_key");
+	return t("ui.providers.provider_catalog.sign_in");
 }
 
 /** The row's meta line in the Add block: the method in plain words. */
 export function addRowMeta(provider: DesktopProvider): string {
 	const group = providerGroup(provider);
-	if (group === "local") return `Needs ${brandOf(provider)} running`;
-	if (group === "key") return "Paste an API key";
-	return `Sign in with your ${accountNameOf(provider)} account`;
+	if (group === "local")
+		return t("ui.providers.provider_catalog.needs_running", {
+			brand: brandOf(provider),
+		});
+	if (group === "key")
+		return t("ui.providers.provider_catalog.paste_an_api_key");
+	return t(
+		"ui.providers.provider_catalog.sign_in_with_your_account_variant_93",
+		{ account: accountNameOf(provider) },
+	);
 }
 
 /**
@@ -421,14 +459,14 @@ export function addRowsByGroup(
 export function connectedRowMeta(
 	provider: DesktopProvider,
 	defaultModelName: string | null,
-	signIn: string | null = "Signed in",
+	signIn: string | null = t("ui.providers.provider_catalog.signed_in"),
 ): string | null {
 	const group = providerGroup(provider);
 	const how =
 		group === "local"
-			? "On this computer"
+			? t("ui.providers.provider_catalog.on_this_computer")
 			: group === "key"
-				? "API key saved"
+				? t("ui.providers.provider_catalog.api_key_saved")
 				: signIn;
 	return [how, defaultModelName].filter(Boolean).join(" · ") || null;
 }
@@ -491,13 +529,13 @@ export function unfinishedMessage(
 	if (operation.state === "expired")
 		return operation.message ===
 			"This sign-in is no longer available. Start again."
-			? "This sign-in is no longer available, so it was stopped."
-			: "The sign-in link expired.";
+			? t("ui.providers.provider_catalog.this_sign_in_is_no_longer_available")
+			: t("ui.providers.provider_catalog.the_sign_in_link_expired");
 	if (operation.state === "cancelled")
 		return operation.message === SUPERSEDED_MESSAGE
-			? "A newer sign-in replaced this one."
-			: "You cancelled sign-in.";
+			? t("ui.providers.provider_catalog.a_newer_sign_in_replaced_this_one")
+			: t("ui.providers.provider_catalog.you_cancelled_sign_in");
 	return operation.message && operation.message !== "Sign-in failed."
 		? operation.message
-		: `${brand} didn't confirm the sign-in.`;
+		: t("ui.providers.provider_catalog.didn_t_confirm_the_sign_in", { brand });
 }
