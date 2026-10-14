@@ -152,7 +152,8 @@ export function isWaitingApproval(state: string): boolean {
  *
  * (It counted the whole flight before the 2026-10-03 split; the store's own
  * "failed is the state a person should not miss" concern now rides the tray's
- * records section, which opens by default while a failed record is in it.)
+ * settled-approvals section, which states it with a quiet dot in the closed
+ * summary rather than by opening itself — operator ask, 2026-10-13.)
  */
 export function waitingApprovalCount(rows: readonly MeshApprovalRow[]): number {
 	return rows.filter((row) => isWaitingApproval(row.state)).length;

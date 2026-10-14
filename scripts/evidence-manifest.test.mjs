@@ -4041,6 +4041,20 @@ const BRANCH_RECORDS = [
 	 * bare, so it joins this list and not `STAMP_BINDING_NOTES`.
 	 */
 	"spendBreakdownPassNote",
+	/*
+	 * And this branch's own rebase re-point (`feat/mesh-approvals-quiet`, PR
+	 * #1031): the record that the three pass citations (`head`,
+	 * `partialCapture.refreshedAtHead`, `partialCapture.addedAtHead`) were
+	 * re-pointed at the REBASED replay of the commit that carried the frames,
+	 * because the pre-rebase SHAs are no ref's ancestor after the force-push.
+	 * Registered for the list's own reason: a fold that started from main's
+	 * manifest would drop it, and with it the only statement of why those three
+	 * fields read the way they do and of the `merge-base --is-ancestor` and
+	 * tree reads that established the replay is the same source and scripts
+	 * trees. It quotes bare commit SHAs and never the retired tree pair, so it
+	 * joins this list and not `STAMP_BINDING_NOTES`.
+	 */
+	"meshApprovalsRebaseRepointNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
