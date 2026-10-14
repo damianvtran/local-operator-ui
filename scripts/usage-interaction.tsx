@@ -121,16 +121,49 @@ else if (["paid", "blocked", "unlimited", "family"].includes(scenario ?? "")) {
 	const report = harness.payload.reports[0];
 	report.identity = null;
 	const used = scenario === "family" ? 20 : 100;
-	report.limits[0].amount = { used, limit: 100, remaining: 100 - used, used_fraction: used / 100, unit: "percent" };
-	report.limits.push({ ...report.limits[0], id: "paid", label: "Extra credits", shared: false,
-		paid_fallback: true, available: scenario !== "blocked", unlimited: scenario === "unlimited",
-		window: "lifetime", resets_at: null, resets_at_ms: null,
-		amount: { used: null, limit: null, remaining: scenario === "unlimited" ? null : 123.5,
-			used_fraction: null, unit: "credits" } });
-	if (scenario === "family") report.limits.push({ ...report.limits[0], id: "opus", label: "Opus 7-day",
-		shared: false, tier: "opus", window: "7 day", amount: { used: 100, limit: 100, remaining: 0, used_fraction: 1, unit: "percent" } });
+	report.limits[0].amount = {
+		used,
+		limit: 100,
+		remaining: 100 - used,
+		used_fraction: used / 100,
+		unit: "percent",
+	};
+	report.limits.push({
+		...report.limits[0],
+		id: "paid",
+		label: "Extra credits",
+		shared: false,
+		paid_fallback: true,
+		available: scenario !== "blocked",
+		unlimited: scenario === "unlimited",
+		window: "lifetime",
+		resets_at: null,
+		resets_at_ms: null,
+		amount: {
+			used: null,
+			limit: null,
+			remaining: scenario === "unlimited" ? null : 123.5,
+			used_fraction: null,
+			unit: "credits",
+		},
+	});
+	if (scenario === "family")
+		report.limits.push({
+			...report.limits[0],
+			id: "opus",
+			label: "Opus 7-day",
+			shared: false,
+			tier: "opus",
+			window: "7 day",
+			amount: {
+				used: 100,
+				limit: 100,
+				remaining: 0,
+				used_fraction: 1,
+				unit: "percent",
+			},
+		});
 }
-
 
 /*
  * The fake bridge. Shaped exactly like the preload API's `desktop.request`, so
@@ -175,7 +208,10 @@ for (const mode of ["answer", "fail", "release"] as const) {
 	button.textContent = `Carrier ${mode}`;
 	button.onclick = () => {
 		if (mode === "release") harness.release();
-		else { harness.mode = mode; void client.invalidateQueries(); }
+		else {
+			harness.mode = mode;
+			void client.invalidateQueries();
+		}
 	};
 	controls.append(button);
 }

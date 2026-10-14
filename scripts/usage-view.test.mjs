@@ -1158,8 +1158,11 @@ test("the binding summary separates its label from its number", () => {
 });
 
 test("paid credit eligibility is explicit and fraction-first without invented bars", () => {
-	const wallet = limit({ paid_fallback: true, available: true,
-		amount: amount({ remaining: 61899.95877, unit: "credits" }) });
+	const wallet = limit({
+		paid_fallback: true,
+		available: true,
+		amount: amount({ remaining: 61899.95877, unit: "credits" }),
+	});
 	assert.equal(paidUsable(wallet), true);
 	assert.equal(limitRow(wallet, NOW).fraction, null);
 	assert.match(limitRow(wallet, NOW).amount, /credits left/);
@@ -1168,38 +1171,109 @@ test("paid credit eligibility is explicit and fraction-first without invented ba
 		assert.equal(paidUsable(blocked), false);
 		assert.match(limitRow(blocked, NOW).amount, /credits left/);
 	}
-	assert.equal(limitRow({ ...wallet, available: false }, NOW).eligibilityNote, "Spend unavailable");
-	assert.equal(paidUsable({ ...wallet, amount: amount({ remaining: 100, used_fraction: 1 }) }), false);
-	assert.equal(paidUsable({ ...wallet, amount: amount({ remaining: NaN }) }), false);
-	assert.equal(paidUsable({ ...wallet, unlimited: true, amount: amount() }), true);
+	assert.equal(
+		limitRow({ ...wallet, available: false }, NOW).eligibilityNote,
+		"Spend unavailable",
+	);
+	assert.equal(
+		paidUsable({
+			...wallet,
+			amount: amount({ remaining: 100, used_fraction: 1 }),
+		}),
+		false,
+	);
+	assert.equal(
+		paidUsable({ ...wallet, amount: amount({ remaining: Number.NaN }) }),
+		false,
+	);
+	assert.equal(
+		paidUsable({ ...wallet, unlimited: true, amount: amount() }),
+		true,
+	);
 });
 
 test("included exhaustion continues on payable credits but family caps remain", () => {
 	const plan = limit({ amount: amount({ used_fraction: 1 }) });
-	const wallet = limit({ id: "paid", paid_fallback: true, available: true,
-		amount: amount({ remaining: 50, unit: "credits" }) });
-	const scoped = limit({ id: "family", tier: "opus", shared: false,
-		amount: amount({ used_fraction: 1 }) });
+	const wallet = limit({
+		id: "paid",
+		paid_fallback: true,
+		available: true,
+		amount: amount({ remaining: 50, unit: "credits" }),
+	});
+	const scoped = limit({
+		id: "family",
+		tier: "opus",
+		shared: false,
+		amount: amount({ used_fraction: 1 }),
+	});
 	const value = report({ limits: [plan, wallet, scoped] });
 	assert.match(creditContinuation(value), /credits will continue/);
 	assert.match(creditContinuation(value), /Model-family caps still apply/);
 	assert.equal(providerBlocks([value], NOW, NOW)[0].binding.limit.id, "family");
-	assert.equal(providerBlocks([report({ limits: [plan, wallet] })], NOW, NOW)[0].binding, null);
-	assert.equal(creditContinuation(report({ limits: [plan, { ...wallet, available: false }] })), "");
-	assert.equal(providerBlocks([report({ limits: [plan, { ...wallet, supersedes_tiers: true }, scoped] })], NOW, NOW)[0].binding, null);
+	assert.equal(
+		providerBlocks([report({ limits: [plan, wallet] })], NOW, NOW)[0].binding,
+		null,
+	);
+	assert.equal(
+		creditContinuation(
+			report({ limits: [plan, { ...wallet, available: false }] }),
+		),
+		"",
+	);
+	assert.equal(
+		providerBlocks(
+			[
+				report({
+					limits: [plan, { ...wallet, supersedes_tiers: true }, scoped],
+				}),
+			],
+			NOW,
+			NOW,
+		)[0].binding,
+		null,
+	);
 });
 
 test("family-only exhaustion never claims included quota is exhausted", () => {
 	const shared = limit({ amount: amount({ used_fraction: 0.2 }) });
-	const family = limit({ tier: "opus", shared: false, amount: amount({ used_fraction: 1 }) });
-	const wallet = limit({ paid_fallback: true, available: true,
-		amount: amount({ remaining: 25, unit: "credits" }) });
+	const family = limit({
+		tier: "opus",
+		shared: false,
+		amount: amount({ used_fraction: 1 }),
+	});
+	const wallet = limit({
+		paid_fallback: true,
+		available: true,
+		amount: amount({ remaining: 25, unit: "credits" }),
+	});
 	const value = report({ limits: [shared, family, wallet] });
-	assert.doesNotMatch(creditContinuation(value), /Included quota used|credits will continue/);
+	assert.doesNotMatch(
+		creditContinuation(value),
+		/Included quota used|credits will continue/,
+	);
 	assert.match(creditContinuation(value), /Model-family caps still apply/);
 	assert.equal(providerBlocks([value], NOW, NOW)[0].binding.limit.tier, "opus");
-	assert.equal(creditContinuation(report({ limits: [{ ...shared, shared: undefined,
-		amount: amount({ used_fraction: 1 }) }, wallet] })), "");
-	assert.match(creditContinuation(report({ limits: [{ ...shared,
-		amount: amount({ used_fraction: 1 }) }, wallet] })), /credits will continue/);
+	assert.equal(
+		creditContinuation(
+			report({
+				limits: [
+					{
+						...shared,
+						shared: undefined,
+						amount: amount({ used_fraction: 1 }),
+					},
+					wallet,
+				],
+			}),
+		),
+		"",
+	);
+	assert.match(
+		creditContinuation(
+			report({
+				limits: [{ ...shared, amount: amount({ used_fraction: 1 }) }, wallet],
+			}),
+		),
+		/credits will continue/,
+	);
 });
