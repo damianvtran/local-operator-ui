@@ -43,13 +43,14 @@
  * RECEIPT CONTRACT (what an auditor writes; `ledger-assemble.test.mjs` pins it):
  *   { "auditor": "i18n-auditor", "model": "<actual model>", "instance": "<run id>",
  *     "status": "passed" | "changes_requested",
- *     "sha256": { "fr": "<hex>", "en": "<hex>" },        // any nesting; both must appear
+ *     "namespace": "ui.console", "sha256": { "fr": "<hex>", "en": "<hex>" },
  *     "findings": [ { "severity": "MINOR", "key": "ui.x.y", ... } ] }
  *   Severity may be spelled `severity` or `sev`; `findings` may also be an object
  *   keyed by severity whose values are arrays. A receipt covering several
- *   namespaces puts them under `namespaces.<ns>` (each with its own `status` and
- *   `findings`), or lists top-level findings whose `key` starts with the
- *   namespace. `INFO` remarks are observations and are not counted.
+ *   namespaces puts them under `namespaces.<ns>` (each with its own status and
+ *   role-labelled source/target hashes). Findings may live in each block or in a
+ *   receipt-wide list whose keys name their namespace. Identity/model aliases
+ *   must agree; no missing auditor identity is invented. `INFO` is not counted.
  *
  * Receipts are copied byte-for-byte into i18n/receipts/<instance>.json. The gate
  * requires that portable evidence and re-hashes it; there is no machine-local
@@ -76,12 +77,13 @@ import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
 	ALL_RESULTS,
-	PASSING_RESULTS,
 	RECEIPTS_DIR,
+	ReceiptRefusal as Refusal,
 	SEVERITIES,
-	countFindings,
+	compareReceiptAudit,
+	deriveReceiptAudit,
 	isPlaceholderInstance,
-	isSha256,
+	isRepoReceiptPath,
 	sha256Hex,
 	supportedStatus,
 	validateAuditSet,
@@ -92,145 +94,13 @@ const SOURCE_LOCALE = "en";
 const LEDGER_RELATIVE = join("i18n", "ledger.json");
 
 /** A refusal: the tool understood the request and will not do it. Exit 2, no write. */
-export class Refusal extends Error {}
+export { ReceiptRefusal as Refusal } from "./ledger-rules.mjs";
 
 const refuse = (message) => {
 	throw new Refusal(message);
 };
 
-/** Every string value in a JSON value, at any depth (receipts nest hashes differently). */
-function* stringLeaves(value) {
-	if (typeof value === "string") yield value;
-	else if (Array.isArray(value))
-		for (const item of value) yield* stringLeaves(item);
-	else if (value && typeof value === "object")
-		for (const item of Object.values(value)) yield* stringLeaves(item);
-}
-
-/** Flatten `findings` (array, or object keyed by severity) to an array of finding objects. */
-function flattenFindings(findings) {
-	if (Array.isArray(findings)) return findings;
-	if (findings && typeof findings === "object") {
-		const flat = [];
-		if (Object.keys(findings).length === 0)
-			refuse("findings must be an explicit array or severity-keyed object");
-		for (const [severity, list] of Object.entries(findings)) {
-			// Validate empty buckets too: a typo is not evidence of zero majors.
-			if (countFindings([{ severity }]).errors.length || !Array.isArray(list)) {
-				refuse(
-					`findings.${severity} must name a recognised severity and contain an array`,
-				);
-			}
-			for (const item of list) {
-				if (!item || typeof item !== "object" || Array.isArray(item)) {
-					refuse(`findings.${severity} contains a malformed finding`);
-				}
-				const word = item.severity ?? item.sev ?? severity;
-				// A member cannot downgrade the severity of its enclosing bucket.
-				if (
-					String(word).trim().toLowerCase() !== severity.trim().toLowerCase()
-				) {
-					refuse(`findings.${severity} contains a conflicting severity`);
-				}
-				flat.push({ ...item, severity: word });
-			}
-		}
-		return flat;
-	}
-	refuse("findings must be an explicit array or severity-keyed object");
-}
-
-/**
- * Resolve the part of a receipt that speaks about ONE namespace: its status and
- * its findings. See the receipt contract in the header.
- */
-function receiptScope(receipt, namespace) {
-	const names =
-		receipt.namespaces && typeof receipt.namespaces === "object"
-			? Object.keys(receipt.namespaces)
-			: [];
-	if (names.length > 0 && !names.includes(namespace)) {
-		refuse(`the receipt covers ${names.join(", ")} but not ${namespace}`);
-	}
-	const scoped = names.length > 0 ? receipt.namespaces[namespace] : undefined;
-	const status = scoped?.status ?? receiptIdentity(receipt).status;
-
-	// A namespace block that carries its OWN findings speaks for itself.
-	if (scoped && scoped.findings !== undefined) {
-		return { status, findings: flattenFindings(scoped.findings) };
-	}
-
-	// Otherwise the findings are the receipt's top-level ones. With ONE namespace
-	// (or none named) they are all this namespace's. With several they must be
-	// attributed by key prefix, and a finding that names no namespace is REFUSED
-	// rather than dropped: a dropped finding is a MAJOR that can hide.
-	// ABSENT IS NOT ZERO. A receipt with no `findings` field at all (a narrow
-	// addendum that points at an earlier full audit, say) says nothing about
-	// severity; counting it as zero would turn silence into a `clean`. An explicit
-	// empty array is the only way to record "no findings".
-	if (receipt.findings === undefined || receipt.findings === null) {
-		refuse(
-			"the receipt has no `findings` field - absent is not zero; record an explicit `findings: []` (or the findings) so severity can be counted",
-		);
-	}
-	const all = flattenFindings(receipt.findings);
-	if (names.length <= 1) return { status, findings: all };
-	const mine = [];
-	for (const finding of all) {
-		const key = String(finding?.key ?? "");
-		const owner = names.find((name) => key.startsWith(`${name}.`));
-		if (!owner) {
-			refuse(
-				`a finding (${JSON.stringify(key.slice(0, 50))}) names no namespace of a multi-namespace receipt, so it cannot be attributed`,
-			);
-		}
-		if (owner === namespace) mine.push(finding);
-	}
-	return { status, findings: mine };
-}
-
-/**
- * Read a receipt's identity and verdict from the shapes auditors actually write.
- *
- * Inspected against real receipts (the fr audits here and the es/ru/vi final
- * addenda of the locale-shipping lane), which differ:
- *   - instance: `instance`, or `auditor.instance`;
- *   - model:    `model`, or `auditor.model` / `auditor.actual_model`;
- *   - verdict:  `status` (`passed` | `changes_requested`), or `result`
- *               (`clean` | `clean-with-findings` | `changes_requested`).
- * Anything else resolves to undefined and is refused by the caller: a receipt this
- * tool cannot read is not guessed at.
- */
-export function receiptIdentity(receipt) {
-	const auditor =
-		receipt.auditor && typeof receipt.auditor === "object"
-			? receipt.auditor
-			: {};
-	const verdictWord = receipt.status ?? receipt.result;
-	const status =
-		verdictWord === "passed" || PASSING_RESULTS.has(verdictWord)
-			? "passed"
-			: verdictWord === "changes_requested"
-				? "changes_requested"
-				: undefined;
-	return {
-		instance: receipt.instance ?? auditor.instance,
-		model: receipt.model ?? auditor.model ?? auditor.actual_model,
-		status,
-	};
-}
-
-/** The result a receipt supports: its counts and status decide, not the operator. */
-export function resultSupportedBy(status, counts) {
-	if (
-		status === "changes_requested" ||
-		counts.blocker > 0 ||
-		counts.major > 0
-	) {
-		return "changes_requested";
-	}
-	return counts.minor + counts.nit > 0 ? "clean-with-findings" : "clean";
-}
+export { receiptIdentity, resultSupportedBy } from "./ledger-rules.mjs";
 
 function readJson(path, what) {
 	try {
@@ -313,72 +183,27 @@ export function assemble(options) {
 	if (!existsSync(receiptAbsolute))
 		refuse(`receipt ${options.receipt} does not exist`);
 	const receiptBytes = readFileSync(receiptAbsolute);
-	const receipt = readJson(receiptAbsolute, "the receipt");
-	if (!receipt || typeof receipt !== "object" || Array.isArray(receipt)) {
-		refuse("the receipt must be a JSON object");
-	}
-
-	const identity = receiptIdentity(receipt);
-	if (isPlaceholderInstance(identity.instance)) {
-		refuse(
-			`the receipt records instance ${JSON.stringify(identity.instance)}, which is missing or a placeholder - it does not evidence a run`,
-		);
-	}
-	if (identity.instance !== options.auditorInstance) {
+	const derived = deriveReceiptAudit(receiptBytes, {
+		locale,
+		namespace,
+		sourceHash: source_sha256,
+		targetHash: target_sha256,
+	});
+	const identity = derived;
+	if (identity.instance !== options.auditorInstance)
 		refuse(
 			`the receipt is instance ${JSON.stringify(identity.instance)}, not the --auditor-instance ${JSON.stringify(options.auditorInstance)}`,
 		);
-	}
-	if (!identity.model || identity.model !== options.auditorModel) {
+	if (identity.model !== options.auditorModel)
 		refuse(
 			`the receipt names model ${JSON.stringify(identity.model)}, not --auditor-model ${JSON.stringify(options.auditorModel)}`,
 		);
-	}
-	/*
-	 * WHERE THE HASHES MAY COME FROM. An unscoped receipt may nest its hashes.
-	 * Once namespace blocks exist, even just ONE, each namespace must name its
-	 * hashes INSIDE its own block. One audit run may cover several namespaces
-	 * through one immutable `i18n/receipts/<instance>.json` referenced by each row.
-	 * Searching the whole file would let ui.console borrow the hashes
-	 * ui.settings names, and every hash would be "present" while no namespace had
-	 * actually been audited at its own bytes.
-	 */
-	const blocks =
-		receipt.namespaces && typeof receipt.namespaces === "object"
-			? receipt.namespaces
-			: {};
-	const searched =
-		Object.keys(blocks).length > 0 ? (blocks[namespace] ?? {}) : receipt;
-	const leaves = new Set(stringLeaves(searched));
-	for (const [name, hash] of [
-		["target", target_sha256],
-		["English source", source_sha256],
-	]) {
-		if (!leaves.has(hash)) {
-			refuse(
-				`the receipt does not name the ${name} bytes on disk (${hash.slice(0, 12)}...) - it audited a different file`,
-			);
-		}
-	}
-
-	const { status: receiptStatus, findings } = receiptScope(receipt, namespace);
-	if (!["passed", "changes_requested"].includes(receiptStatus)) {
+	const counts = derived.findings;
+	const supported = derived.result;
+	if (options.result !== supported)
 		refuse(
-			`the receipt's status for ${namespace} is ${JSON.stringify(receiptStatus)}, not passed | changes_requested`,
+			`--result ${options.result} is not supported by the receipt (${SEVERITIES.map((s) => `${counts[s]} ${s}`).join(", ")}): it supports ${supported}`,
 		);
-	}
-	const { counts, errors } = countFindings(findings);
-	if (errors.length)
-		refuse(`the receipt's findings are not countable: ${errors.join("; ")}`);
-	const supported = resultSupportedBy(receiptStatus, counts);
-	if (options.result !== supported) {
-		refuse(
-			`--result ${options.result} is not supported by the receipt (status ${receiptStatus}, ${SEVERITIES.map((s) => `${counts[s]} ${s}`).join(", ")}): it supports ${supported}`,
-		);
-	}
-	if (receiptStatus === "passed" && !PASSING_RESULTS.has(supported)) {
-		refuse("the receipt says passed but its findings include a blocker/major");
-	}
 
 	/* ---- the row ---- */
 	const ledger = existsSync(ledgerPath)
@@ -408,13 +233,45 @@ export function assemble(options) {
 	let row = ledger.entries.find(
 		(entry) => entry.locale === locale && entry.namespace === namespace,
 	);
+	// An idempotent write must not launder forged row claims back into valid
+	// evidence. Verify existing audits against their own immutable receipts before
+	// replacing anything. Stale rows bind their old hashes and are then archived.
+	for (const recorded of row?.auditors ?? []) {
+		if (!isRepoReceiptPath(recorded.receipt))
+			refuse("existing audit has no portable receipt");
+		const path = join(repo, recorded.receipt);
+		if (!existsSync(path)) refuse("existing audit receipt is missing");
+		const bytes = readFileSync(path);
+		if (sha256Hex(bytes) !== recorded.receipt_sha256)
+			refuse("receipt already exists with different content");
+		const evidence = deriveReceiptAudit(bytes, {
+			locale,
+			namespace,
+			sourceHash: row.source_sha256,
+			targetHash: row.target_sha256,
+		});
+		const mismatches = compareReceiptAudit(recorded, evidence);
+		if (mismatches.length)
+			refuse(`existing audit ${recorded.instance}: ${mismatches.join("; ")}`);
+	}
+	if (
+		row &&
+		row.status !==
+			supportedStatus(
+				row.auditors,
+				row.translator?.agent,
+				`${locale}/${namespace}`,
+			)
+	) {
+		refuse("existing row status contradicts its receipt-backed audits");
+	}
 	const stale =
 		row &&
 		(row.source_sha256 !== source_sha256 ||
 			row.target_sha256 !== target_sha256);
 
 	if (!row) {
-		if (!options.translatorAgent) {
+		if (!options.translatorAgent?.trim() || !options.translatorModel?.trim()) {
 			refuse(
 				`no row for ${locale}/${namespace} yet: --translator-agent (and --translator-model) are required to create one`,
 			);
@@ -468,11 +325,7 @@ export function assemble(options) {
 	}
 
 	const audit = {
-		agent: String(
-			typeof receipt.auditor === "string"
-				? receipt.auditor
-				: (receipt.auditor?.agent ?? "i18n-auditor"),
-		).split(/\s|\(/)[0],
+		agent: derived.agent,
 		model: options.auditorModel,
 		date: options.date,
 		result: options.result,
