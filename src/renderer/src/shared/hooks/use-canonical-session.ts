@@ -34,10 +34,15 @@
 import {
 	type JournalOrderRead,
 	currentOrderRevision,
+	journalBodyOwedIds,
+	journalFactsNeeded,
 	journalLookupIds,
 	journalOrderRead,
 } from "@features/chat/canonical/journal-order";
-import { repairJournalOrder } from "@features/chat/canonical/journal-order-repair";
+import {
+	type JournalRepairSeal,
+	repairJournalOrder,
+} from "@features/chat/canonical/journal-order-repair";
 import {
 	entryRecordKey,
 	openFrameCoversHeld,
@@ -54,12 +59,15 @@ import {
 	applyHistoryPage,
 	applyJournalOrderMetadata,
 	applyLiveSeed,
+	applyPeerSourceFacts,
+	applyPeerSourcePayload,
 	clearTranscript,
 	isDurableOwnerRow,
 	labelGapCandidates,
 	labelTargetsBehind,
 	labelTargetsBehindIds,
 	markLiveRecordsTruncated,
+	markSourceUnavailable,
 	pageLabels,
 	pageOpensTurn,
 	pageOrphanResultInstants,
@@ -89,7 +97,10 @@ import { useAsideStore } from "@shared/store/aside-store";
  * renders. `chat-page`'s `send` reaches for the same `getState()` for the same
  * reason.
  */
-import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import {
+	remoteOwnedId,
+	useCanonicalSessionsStore,
+} from "@shared/store/canonical-sessions-store";
 import { dropPaint, readPaint, writePaint } from "@shared/store/paint-cache";
 import { forgetTurnCollapseOpen } from "@shared/store/turn-collapse-open";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -697,6 +708,24 @@ export const STREAM_SNAPSHOT_DEADLINE_MS = 20_000;
  * extra connection per stall, re-earned only by a snapshot.
  */
 export const STREAM_SNAPSHOT_RECHECK_MS = 10_000;
+
+/**
+ * THE PEER AVAILABILITY WAVE'S CLIENT BOUND.
+ *
+ * A declared read may be answered `building`; the owner's own wait for a
+ * cold index is 4 s INSIDE that hop, and the contract's answer for a failed
+ * wave is a bounded `unavailable` beside the reconcile correction. Core can
+ * still answer a literal `building` while its failed latch suppresses the
+ * completion wake (real slow-owner reproduction, 2026-10-13: building at
+ * +4.01 s, no wake, explicit later retry after real ready succeeded), and the
+ * renderer cannot see that latch. So after a `building` ANSWER the wave gets
+ * one client bound: if no ready fact arrives within it, the transcript states
+ * the truthful unavailable (`journalSourceUnavailable`) and only a real ready
+ * answer or the user's own retry path clears it. This is a statement, never
+ * a re-read - the repair loop is wake-driven and this timer dispatches
+ * nothing.
+ */
+export const PEER_SOURCE_WAVE_BOUND_MS = 10_000;
 
 /**
  * Delay before retry number `attempt` (1-based). Past the end of the schedule
@@ -2185,6 +2214,21 @@ export function useCanonicalSessionStream(
 		 */
 		openFrame?: boolean;
 		journalOrder?: boolean;
+		/**
+		 * THE COMPLETE PEER-SOURCE CAPABILITY (`features.peer_journal_source`),
+		 * read by the CALLER off the backend's capabilities like its sibling above.
+		 * What it gates: the `peer_journal_source=1` declaration on a peer
+		 * conversation's reads and its events subscription, and the facts-only
+		 * `source_read=metadata` lookup the cached-ID order repair takes for one.
+		 * FALSE is the fail-closed default: every request keeps today's bytes and
+		 * a remote conversation keeps its legacy ordering lane.
+		 *
+		 * Unlike `openFrame` there is no "unit" a late flip could mis-serve - the
+		 * declaration rides each request at the moment it is built, and each
+		 * reconnect re-evaluates it for the stream - which is why it is a plain
+		 * ref like `journalOrder` and not a state input.
+		 */
+		peerJournalSource?: boolean;
 	} = {},
 ): CanonicalSessionHandle {
 	const openFrame = options.openFrame === true;
@@ -2193,6 +2237,116 @@ export function useCanonicalSessionStream(
 	journalOrderRef.current = journalOrder;
 	const openFrameRef = useRef(openFrame);
 	openFrameRef.current = openFrame;
+	const peerJournalSource = options.peerJournalSource === true;
+	const peerJournalSourceRef = useRef(peerJournalSource);
+	peerJournalSourceRef.current = peerJournalSource;
+	/**
+	 * The CURRENT subscription's own complete-contract declaration, as sent:
+	 * `{sessionId, peer}` while a stream this hook opened is live, null
+	 * otherwise. Reads consult it because the declaration is also the permission
+	 * to answer `building`, and only a subscription that made the same
+	 * declaration receives the availability wake that settles it (see
+	 * `peerScopedNow`).
+	 */
+	const streamPeerSourceRef = useRef<{
+		sessionId: string;
+		peer: boolean;
+	} | null>(null);
+	/**
+	 * THE DECLARATION'S READ WITNESS: bumped on every connect and every close,
+	 * so a peer response can commit only while the subscription it declared for
+	 * is still the current one. A close, a rebind or a reconnect in between
+	 * means the availability wake this read's facts need has nowhere to arrive,
+	 * and its bodies were projected for a declaration that no longer exists
+	 * (agent review of S1, finding 3: "a lookup already dispatched can commit
+	 * after closure" - reconnect within one view does not rotate the order
+	 * revision, so this is the fence that actually observes it).
+	 */
+	const peerStreamEpochRef = useRef(0);
+	/**
+	 * THE AVAILABILITY WAVE'S CLIENT LATCH: a timer token armed when a declared
+	 * read answers `building`. When it fires still-current, the wave expired
+	 * without a ready fact and the transcript states that truthfully. Nothing
+	 * re-arms it but a new answer, so this is a statement, never a poll.
+	 */
+	const sourceWaveTimerRef = useRef(0);
+	const sourceWaveTokenRef = useRef(0);
+	/**
+	 * ONE DECLARED REBIND per visit: a conversation that connected before the
+	 * catalogue placed it remote (or before the capability arrived) gets
+	 * exactly one fresh declared subscription; every later change rides the
+	 * ordinary reconnect paths. The value is the session id the rebind was
+	 * spent on, so a new conversation is a new budget while a re-render of this
+	 * one is not.
+	 */
+	const peerRebindRef = useRef<string | null>(null);
+	const ensurePeerRebindRef = useRef<(() => void) | null>(null);
+	/**
+	 * The declaration's two conversation-independent halves: the capability is
+	 * advertised AND the catalogue places this conversation on another device.
+	 * `remoteOwnedId` is the one evidence this app has for the second half (a
+	 * placement fact, or the row's own wire fields); absence is "not asked / not
+	 * answered" and is never read as remote, so a local conversation - and a
+	 * deep-linked peer the catalogue has not carried yet - stays byte-legacy.
+	 */
+	const peerDeclarable = useCallback(() => {
+		// No conversation, nothing to declare: the hook runs with an undefined id
+		// on New chat, where every request builder is already behind this flag.
+		if (!sessionId) return false;
+		if (!journalOrderRef.current || !peerJournalSourceRef.current) return false;
+		const state = useCanonicalSessionsStore.getState();
+		return remoteOwnedId(state.sessions, state.placementFacts, sessionId);
+	}, [sessionId]);
+	/**
+	 * Whether a READ of this conversation may declare the complete contract
+	 * right now: `peerDeclarable` AND this conversation's own live subscription
+	 * went out with the same declaration.
+	 *
+	 * WHY THE SUBSCRIPTION COUPLING IS LOAD-BEARING: a declared read may be
+	 * answered `building` - an honest state whose only settlement is the
+	 * availability lane's wake, delivered to subscribers that declared. A read
+	 * that declared while the stream had not would emit facts this viewer
+	 * cannot settle, which is the partial transport release the contract
+	 * forbids; and a read that stays legacy cannot mint that debt, because an
+	 * undeclared peer answer degrades to `unsupported`, which stores nothing.
+	 * A catalogue fact that lands after the connection leaves the READS legacy
+	 * until the stream's next connect re-evaluates it - the same fail-closed
+	 * direction every other negotiation here takes.
+	 *
+	 * Read at the moment each request is built, never baked into state. A
+	 * `useCallback` (as the hooks that capture it already do for `commitView`)
+	 * because it IS a reactive input of theirs: its identity moves with
+	 * `sessionId`, and its other reads are refs, which are deliberately not
+	 * declared.
+	 */
+	const peerScopedNow = useCallback(() => {
+		const stream = streamPeerSourceRef.current;
+		return (
+			peerDeclarable() &&
+			stream !== null &&
+			stream.sessionId === sessionId &&
+			stream.peer
+		);
+	}, [peerDeclarable, sessionId]);
+	/**
+	 * Whether the CURRENT live subscription of this conversation declared the
+	 * complete contract - the LANE a page commit belongs to.
+	 *
+	 * WHY THIS IS WEAKER THAN `peerScopedNow`, ON PURPOSE. A READ asks "may I
+	 * declare right now?" - capability and placement AND the live stream, all
+	 * re-evaluated at dispatch, fail-closed. A COMMIT asks "which lane do the
+	 * bytes I am folding belong to?" - and the answer is the subscription that
+	 * delivered them, which stays declared for its whole lifetime. Reading the
+	 * stricter predicate at apply time would flap a lane mid-stream whenever a
+	 * catalogue fact moved, and folding a peer subscription's page under legacy
+	 * rules (or the reverse) is exactly the inconsistency the lane flag exists
+	 * to prevent. A reconnect is what changes a lane, and it changes this
+	 * witness at the same moment.
+	 */
+	const streamDeclaredNow = useCallback(() => {
+		const stream = streamPeerSourceRef.current;
+		return stream !== null && stream.sessionId === sessionId && stream.peer;
+	}, [sessionId]);
 	const [view, setView] = useState<CanonicalSessionView>(() => {
 		const seed = enabled && sessionId ? paintSeed(sessionId) : null;
 		return {
@@ -3161,6 +3315,8 @@ export function useCanonicalSessionStream(
 										0,
 										512,
 									),
+									// Peer-scoped like the stream's own declaration; see `peerScopedNow`.
+									...(peerScopedNow() ? { peerJournalSource: true } : {}),
 								}
 							: {}),
 					});
@@ -3300,6 +3456,7 @@ export function useCanonicalSessionStream(
 					const transcript = applyHistoryPage(state.transcript, page, {
 						authoritative: true,
 						orderRead,
+						peerSource: streamDeclaredNow(),
 					});
 					/*
 					 * THE IDS **THIS COMMIT** LABELLED ARE RELEASED IN THE SAME COMMIT, and
@@ -4212,6 +4369,7 @@ export function useCanonicalSessionStream(
 								transcript = applyHistoryPage(transcript, snapshot.history, {
 									authoritative: true,
 									orderRead: dispatched,
+									peerSource: streamDeclaredNow(),
 								});
 								performance.mark("lop:open:history:end");
 								performance.measure(
@@ -4702,6 +4860,25 @@ export function useCanonicalSessionStream(
 		const closeStream = () => {
 			const closing = dispose;
 			dispose = null;
+			/*
+			 * THE DECLARATION DIES WITH ITS SUBSCRIPTION. Reads consult this ref to
+			 * decide whether they may declare, and a handle that no longer exists
+			 * must not authorize one - its wakes have nowhere to arrive. Cleared
+			 * before the early return so even a no-op close clears it.
+			 */
+			streamPeerSourceRef.current = null;
+			peerStreamEpochRef.current += 1;
+			/*
+			 * THE WAVE TIMER DIES WITH THE SUBSCRIPTION (review round 1, m3; the CI
+			 * hang). It is the one new handle this diff opens, so closing the stream that
+			 * armed it must cancel it: an armed `setTimeout` outliving its view is what
+			 * keeps the Node event loop alive past the last test.
+			 */
+			if (sourceWaveTimerRef.current) {
+				window.clearTimeout(sourceWaveTimerRef.current);
+				sourceWaveTimerRef.current = 0;
+			}
+			sourceWaveTokenRef.current += 1;
 			if (!closing) return;
 			closingIntentionally = true;
 			// Cleared in `finally`, not left standing: the browser transport emits its
@@ -4747,6 +4924,15 @@ export function useCanonicalSessionStream(
 					reopen();
 				}, STREAM_SNAPSHOT_RECHECK_MS);
 			}, STREAM_SNAPSHOT_DEADLINE_MS);
+			/*
+			 * THE STREAM'S OWN DECLARATION, decided here because THIS is the request
+			 * that must be able to settle what it starts: a connection that declared
+			 * is what lets later reads of this conversation declare (the availability
+			 * wake rides it), and one that did not leaves every read legacy until the
+			 * next connect re-evaluates it. `peerDeclarable` deliberately does NOT
+			 * consult the stream ref - this is the subscription creating it.
+			 */
+			const peerDeclared = peerDeclarable();
 			dispose = subscribeDesktopStream(
 				{
 					sessionId,
@@ -4760,6 +4946,7 @@ export function useCanonicalSessionStream(
 									0,
 									512,
 								),
+								...(peerDeclared ? { peerJournalSource: true } : {}),
 							}
 						: {}),
 				},
@@ -4929,6 +5116,15 @@ export function useCanonicalSessionStream(
 					}
 				},
 			);
+			/*
+			 * RECORDED ONLY NOW, once the handle exists: from here until the next
+			 * closeStream the reads that consult `peerScopedNow` may declare, and from
+			 * the moment this handle is gone they must not. The pair is the same
+			 * `peerDeclared` this subscription's args carried, never a re-derivation -
+			 * the record must equal the request that went out.
+			 */
+			streamPeerSourceRef.current = { sessionId, peer: peerDeclared };
+			peerStreamEpochRef.current += 1;
 		};
 
 		/*
@@ -5014,6 +5210,17 @@ export function useCanonicalSessionStream(
 				failure: null,
 				status:
 					current.status === "unavailable" ? "connecting" : current.status,
+				/*
+				 * THE USER'S PRESS CLEARS THE SOURCE-UNAVAILABLE FLAG (design round 1,
+				 * §3, the doc comment this finally makes true). The notice offers
+				 * `Reconnect`, so pressing it must take the notice away AT ONCE - that
+				 * is the acknowledgement - rather than leaving it until a ready answer
+				 * happens to arrive. Clearing here (same commit that clears `failure`)
+				 * is the smallest honest feedback: no spinner, no "Retrying…" label.
+				 * If the wave fails again, the 10 s bound or an `unavailable` answer
+				 * re-asserts the flag.
+				 */
+				transcript: markSourceUnavailable(current.transcript, false),
 			}));
 			if (!viewRef.current.hydrated) {
 				// The painted set comes from the VIEW here, not from a batch of frames:
@@ -5056,13 +5263,62 @@ export function useCanonicalSessionStream(
 		// Same lifetime rule for the resync: it is addressable by session id from
 		// another feature, and it must not outlive the pane it re-reads for.
 		const unregisterResync = __registerCanonicalResync(sessionId, resync);
+		/*
+		 * LATE DECLARATION ADOPTION, exactly once per conversation visit.
+		 *
+		 * A connection that went out undeclared stays usable but legacy; the
+		 * catalogue's placement fact and the capability can both land AFTER it, on
+		 * an otherwise healthy long-lived stream, and then nothing re-evaluates
+		 * the declaration (the effect's inputs are stable callbacks, and the
+		 * placement is read through `getState`). This is the one deliberate
+		 * exception: when either half arrives for a conversation whose live
+		 * stream did not declare, close it and open ONE fresh declared
+		 * subscription. Not a second one for this visit - the ordinary reconnect
+		 * paths own everything after, and a conversation whose declaration is
+		 * already live is left alone.
+		 */
+		const ensurePeerRebind = () => {
+			if (!enabled || !sessionId) return;
+			if (peerRebindRef.current === sessionId) return;
+			const stream = streamPeerSourceRef.current;
+			if (stream === null || stream.sessionId !== sessionId) return;
+			if (stream.peer) return;
+			if (!peerDeclarable()) return;
+			peerRebindRef.current = sessionId;
+			closeStream();
+			connect();
+		};
+		ensurePeerRebindRef.current = ensurePeerRebind;
+		/*
+		 * THE CATALOGUE'S PLACEMENT ARRIVING LATE. The store is the only carrier
+		 * of `placementFacts`; subscribing here (rather than widening the effect
+		 * deps) keeps the ONE rebind budget explicit: the listener answers every
+		 * store change, the predicate decides, and `peerRebindRef` spends it.
+		 */
+		const unsubscribePeerRebind = useCanonicalSessionsStore.subscribe(() => {
+			ensurePeerRebind();
+		});
 
 		return () => {
 			generationRef.current += 1;
 			retryRef.current = null;
 			hydrateRef.current = null;
+			ensurePeerRebindRef.current = null;
+			unsubscribePeerRebind();
+			if (sourceWaveTimerRef.current) {
+				window.clearTimeout(sourceWaveTimerRef.current);
+				sourceWaveTimerRef.current = 0;
+			}
 			unregisterResync();
-			dispose?.();
+			/*
+			 * CLOSE, not the bare handle (agent review of S1, finding 3):
+			 * `closeStream` also clears the declaration ref (reads may no longer
+			 * declare through a subscription that is gone) and bumps the read
+			 * epoch (a peer response still in flight loses its witness). The
+			 * `closingIntentionally` bracket inside it is what keeps the
+			 * transport's own `end` from being read as a failure.
+			 */
+			closeStream();
 			if (raf) cancelAnimationFrame(raf);
 			if (fallback) clearTimeout(fallback);
 			if (retryTimer) clearTimeout(retryTimer);
@@ -5079,7 +5335,39 @@ export function useCanonicalSessionStream(
 			clearSnapshotTimer();
 			pending.current = [];
 		};
-	}, [commitView, sessionId, enabled, journalOrder]);
+	}, [
+		commitView,
+		sessionId,
+		enabled,
+		journalOrder,
+		peerDeclarable,
+		peerScopedNow,
+		streamDeclaredNow,
+	]);
+
+	/*
+	 * THE CAPABILITY ARRIVING LATE: the other half of the one-shot rebind
+	 * above. The connect effect itself already restarts on `journalOrder`
+	 * (capability arrival for the ORDER lane); this effect covers the
+	 * complete-contract capability, and the store subscription inside the
+	 * connect effect covers the catalogue's placement. The predicate inside
+	 * decides everything and spends the same single budget.
+	 */
+	/*
+	 * `peerJournalSource` IS THE TRIGGER, NOT A BODY READ: the effect's own body
+	 * calls `ensurePeerRebindRef.current?.()`, and that predicate reads the
+	 * capability LIVE (through `peerDeclarable`'s ref). React's rule cannot see
+	 * that, so it reads the dep as excess and would have it dropped - and dropping
+	 * it is exactly the defect this effect exists to fix: a capability that arrives
+	 * late must adopt the conversation via ONE rebind, which only happens if THIS
+	 * effect re-runs when the capability moves. Intentional omission-of-a-body-read,
+	 * so the ignore is the honest spelling rather than a silent dependency.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: peerJournalSource is the trigger (read live through the rebind ref), not a body reference
+	useEffect(() => {
+		if (!sessionId || !enabled) return;
+		ensurePeerRebindRef.current?.();
+	}, [sessionId, enabled, peerJournalSource]);
 
 	// A different session is a different transcript; the reconnect cursor is
 	// per-session too, so both reset together.
@@ -5577,28 +5865,302 @@ export function useCanonicalSessionStream(
 		orderRepairFlight.current = true;
 		let completed: TranscriptState | null = null;
 		let lastDispatched = transcript;
+		/*
+		 * One sweep's response: the authoritative session GET's frame, or the
+		 * facts-only lookup's own page (the owner's answer is page-shaped - the
+		 * frozen four-key envelope plus source facts - with `entries` always
+		 * empty). The kind is carried with the bytes so `page`/`commit` route
+		 * without re-deriving it, and `commit` can hold each kind to its own
+		 * authority: only the authoritative one may install a domain or settle a
+		 * demand.
+		 */
+		type OrderRepairResponse =
+			| {
+					kind: "authority";
+					frame: Extract<DesktopSessionFrame, { type: "snapshot" }>;
+					peer: boolean;
+					streamEpoch: number;
+			  }
+			| {
+					kind: "lookup";
+					page: DesktopHistoryPage;
+					peer: boolean;
+					streamEpoch: number;
+			  }
+			| {
+					kind: "payload";
+					page: DesktopHistoryPage;
+					peer: boolean;
+					streamEpoch: number;
+			  };
+		/*
+		 * THE ANSWER'S WAVE BOOKKEEPING, kept beside `commit` because it needs the
+		 * same response and the same refs. `ready` cancels the latch timer (the
+		 * fact arrived - the commit itself clears the flag); `unavailable` is an
+		 * explicit truthful terminal answer, stated at once; `building` arms the
+		 * bounded client latch, whose expiry is the only writer of the truthful
+		 * unavailable state (no polling, no re-arm without a new answer).
+		 * `unsupported` is intrinsic - a local-only daemon cannot order a peer
+		 * source - so it gets no latch and no retry pressure, per the contract's
+		 * own vocabulary.
+		 */
+		const sourceWaveAfterAnswer = (response: OrderRepairResponse): void => {
+			if (!response.peer) return;
+			/*
+			 * A STALE ANSWER WRITES NOTHING (review round 1, m3). `commitView` dropped
+			 * this response if the view it was dispatched for is gone; the wave
+			 * bookkeeping must apply the same fences, or a response that landed after a
+			 * `/clear` (view epoch moved) or a close/rebind (stream epoch moved) would
+			 * arm or flag a view that is not the one on screen. Read the CURRENT state
+			 * and check both epochs plus the session before touching the timer or the
+			 * flag.
+			 */
+			if (
+				sessionRef.current !== requested ||
+				viewRef.current.transcript.viewEpoch !== epoch ||
+				peerStreamEpochRef.current !== response.streamEpoch
+			)
+				return;
+			const page =
+				response.kind === "authority"
+					? response.frame.payload.history
+					: response.page;
+			const state = page.journal_order_state;
+			if (state === "ready") {
+				if (sourceWaveTimerRef.current) {
+					window.clearTimeout(sourceWaveTimerRef.current);
+					sourceWaveTimerRef.current = 0;
+				}
+				/*
+				 * A GENUINE READY ANSWER CLEARS THE FLAG EXPLICITLY (review round 1, M2).
+				 * Relying on the ready commit's side effect was not "clearing on retry" -
+				 * the retry affordance this state is supposed to hang off has to see the
+				 * flag go away when the answer it asked for arrives, so this writer states
+				 * that transition rather than leaving it implicit.
+				 */
+				commitView((current) => {
+					const transcript = markSourceUnavailable(current.transcript, false);
+					return transcript === current.transcript
+						? current
+						: { ...current, transcript };
+				});
+				return;
+			}
+			if (state === "unavailable") {
+				if (sourceWaveTimerRef.current) {
+					window.clearTimeout(sourceWaveTimerRef.current);
+					sourceWaveTimerRef.current = 0;
+				}
+				/*
+				 * A FENCE-MISMATCH CORRECTION IS SELF-HEALING, NOT TERMINAL (review round
+				 * 1, m2). An `unavailable` answer carrying `reconcile: true` + a generation
+				 * is the rebuilt-source correction: the reducer recorded it as an OWED
+				 * authoritative read that follows immediately and clears the state, so
+				 * flagging here only flickers an error for a state the app is actively
+				 * fixing. Only a terminal `unavailable` (no owed read behind it) is stated.
+				 */
+				if (page.reconcile === true) return;
+				commitView((current) => {
+					const transcript = markSourceUnavailable(current.transcript, true);
+					return transcript === current.transcript
+						? current
+						: { ...current, transcript };
+				});
+				return;
+			}
+			if (state !== "building") return;
+			if (sourceWaveTimerRef.current) {
+				window.clearTimeout(sourceWaveTimerRef.current);
+				sourceWaveTimerRef.current = 0;
+			}
+			const token = ++sourceWaveTokenRef.current;
+			/*
+			 * THE TIMER IS THE ONE NEW HANDLE THIS DIFF OPENS, and it MUST NOT
+			 * OUTLIVE ITS VIEW (review round 1, m3; this is the CI `Desktop Tests`
+			 * HANG signature): an armed `setTimeout` keeping the Node event loop alive
+			 * is exactly how a suite reaches its last test and never prints a summary.
+			 * Cancelled from three places - here on a newer answer, in the effect
+			 * cleanup, and in `closeStream` (below) - and the callback re-checks the
+			 * session, the token AND both epochs before it writes.
+			 */
+			sourceWaveTimerRef.current = window.setTimeout(() => {
+				sourceWaveTimerRef.current = 0;
+				if (sourceWaveTokenRef.current !== token) return;
+				if (sessionRef.current !== requested) return;
+				if (viewRef.current.transcript.viewEpoch !== epoch) return;
+				if (peerStreamEpochRef.current !== response.streamEpoch) return;
+				commitView((current) => {
+					const transcript = markSourceUnavailable(current.transcript, true);
+					return transcript === current.transcript
+						? current
+						: { ...current, transcript };
+				});
+			}, PEER_SOURCE_WAVE_BOUND_MS);
+		};
 		void repairJournalOrder({
 			getTranscript: () => viewRef.current.transcript,
 			isCurrent: () =>
 				sessionRef.current === requested &&
 				viewRef.current.transcript.viewEpoch === epoch,
-			read: (orderIds) => {
+			/**
+			 * THE READ DECISION, stated once for this conversation: while it is
+			 * peer-scoped, an owed reconcile takes ONE COALESCED AUTHORITATIVE read on
+			 * the existing session GET (the contract's own settle for an unmatched
+			 * domain - "asks for one coalesced authoritative snapshot rather than
+			 * switching generations"), and every ordinary sweep takes the FACTS-ONLY
+			 * lookup (no bodies over the wire - the reason this repair was
+			 * re-pointed). `undefined` keeps the historical single authoritative
+			 * read, byte-for-byte, for everything else. The paths and fixed queries
+			 * returned here are the exact bytes each read builder emits, because the
+			 * loop sizes its batch budget against them.
+			 */
+			sweep: (state, attemptedFor: JournalRepairSeal) => {
+				if (!peerScopedNow()) return undefined;
+				if (state.orderNeedsReconcile === true)
+					return {
+						kind: "authority" as const,
+						path: `/v1/desktop/sessions/${requested}`,
+						query: new URLSearchParams({
+							journal_order: "1",
+							peer_journal_source: "1",
+						}),
+					};
+				const generation = state.journalGeneration;
+				/*
+				 * No installable domain and no owed reconcile: every typed purpose is
+				 * fenced on `expected_journal_generation`, so there is nothing a peer
+				 * read could settle in this state - `none` says that instead of
+				 * emitting an unfenced read, and the loop ends the flight rather
+				 * than falling back to the local authority shape.
+				 */
+				if (typeof generation !== "string" || generation.length === 0)
+					return {
+						kind: "none" as const,
+						path: `/v1/desktop/sessions/${requested}/history`,
+						query: new URLSearchParams(),
+					};
+				/*
+				 * FACTS FIRST, BODIES SECOND, one kind per iteration: an id that lacks
+				 * a same-domain FACT takes the metadata lookup (a coordinate is the
+				 * cheap half and ranks the row immediately); an id whose fact is in
+				 * hand but whose BODY is not admitted takes the payload subset. Both
+				 * carry the domain fence, so a mismatch is answered `unavailable` +
+				 * `reconcile` and never facts or bodies for another domain.
+				 */
+				const facts = journalFactsNeeded(state, attemptedFor?.("lookup"));
+				if (facts.length > 0) {
+					const query = new URLSearchParams({
+						limit: "100",
+						journal_order: "1",
+						peer_journal_source: "1",
+						source_read: "metadata",
+						expected_journal_generation: generation,
+					});
+					return {
+						kind: "lookup" as const,
+						path: `/v1/desktop/sessions/${requested}/history`,
+						query,
+					};
+				}
+				const owed = journalBodyOwedIds(state);
+				if (owed.length > 0) {
+					const query = new URLSearchParams({
+						limit: "100",
+						journal_order: "1",
+						peer_journal_source: "1",
+						source_read: "payload",
+						expected_journal_generation: generation,
+					});
+					return {
+						kind: "payload" as const,
+						path: `/v1/desktop/sessions/${requested}/history`,
+						query,
+					};
+				}
+				/*
+				 * NOTHING NEW FOR EITHER STAGE. `none` ends the flight honestly; a stale
+				 * fact id already sealed THIS flight is deliberately NOT offered to the
+				 * lookup stage (review round 1, M1) - the loop would find nothing new to
+				 * ask and end anyway, after re-cutting a batch it cannot dispatch.
+				 */
+				return {
+					kind: "none" as const,
+					path: `/v1/desktop/sessions/${requested}/history`,
+					query: new URLSearchParams(),
+				};
+			},
+			read: async (orderIds, kind): Promise<OrderRepairResponse> => {
 				// Seal only the fact actually dispatched, including a helper follow-up.
 				// A further wake after the flight's bound must remain unattempted debt.
 				lastDispatched = viewRef.current.transcript;
 				orderRepairStamp.current = stampFor(lastDispatched);
-				return desktopResult<
+				/*
+				 * THE READ'S WITNESS, captured at dispatch: the declaration this read
+				 * presents AND the subscription epoch it presents it under. `commit`
+				 * compares the epoch before a peer response may land, so a response
+				 * whose subscription has since closed or rebound cannot commit.
+				 */
+				const peer = peerScopedNow();
+				const streamEpoch = peerStreamEpochRef.current;
+				if (kind === "lookup" || kind === "payload") {
+					/*
+					 * A typed purpose is only ever asked for a peer-scoped conversation
+					 * (the sweep decided it in this same tick), so the declaration here
+					 * is unconditional: a typed purpose without its declaration is
+					 * refused by the daemon's own boundary, and emitting refusal-shaped
+					 * requests would be the partial release the sweep exists to prevent.
+					 * The payload fence is required and rides whenever this view holds a
+					 * domain (the sweep only selects the kind while one is installed);
+					 * a mismatch is answered `unavailable` + `reconcile` with the CURRENT
+					 * generation, never bodies for another one.
+					 */
+					const generation = viewRef.current.transcript.journalGeneration;
+					const page = await desktopResult<DesktopHistoryPage>({
+						op: "sessions.history",
+						sessionId: requested,
+						limit: 100,
+						journalOrder: true,
+						orderIds,
+						peerJournalSource: true,
+						sourceRead: kind === "payload" ? "payload" : "metadata",
+						...(typeof generation === "string" && generation.length > 0
+							? { expectedJournalGeneration: generation }
+							: {}),
+					});
+					return kind === "payload"
+						? { kind: "payload", page, peer, streamEpoch }
+						: { kind: "lookup", page, peer, streamEpoch };
+				}
+				const frame = await desktopResult<
 					Extract<DesktopSessionFrame, { type: "snapshot" }>
 				>({
 					op: "sessions.get",
 					sessionId: requested,
 					journalOrder: true,
 					orderIds,
+					...(peer ? { peerJournalSource: true } : {}),
 				});
+				return { kind: "authority", frame, peer, streamEpoch };
 			},
-			page: (snapshot) => snapshot.payload.history,
+			page: (response) =>
+				response.kind === "authority"
+					? response.frame.payload.history
+					: response.page,
 			lookupPath: `/v1/desktop/sessions/${requested}`,
-			commit: (snapshot, revision, orderRead) => {
+			commit: (response, revision, orderRead) => {
+				/*
+				 * THE READ WITNESS GATE: a peer response commits only while the
+				 * subscription epoch it was dispatched under is current. A close, a
+				 * rebind or a reconnect in between means the availability wake this
+				 * read's facts would need has nowhere to arrive, and its bodies were
+				 * projected for a declaration that no longer exists. Local reads keep
+				 * the historical fences below, byte-for-byte.
+				 */
+				if (
+					response.peer &&
+					peerStreamEpochRef.current !== response.streamEpoch
+				)
+					return;
 				commitView((current) => {
 					if (
 						sessionRef.current !== requested ||
@@ -5608,13 +6170,32 @@ export function useCanonicalSessionStream(
 						return current;
 					return {
 						...current,
-						transcript: applyJournalOrderMetadata(
-							current.transcript,
-							snapshot.payload.history,
-							orderRead,
-						),
+						transcript:
+							response.kind === "authority"
+								? response.peer
+									? applyPeerSourceFacts(
+											current.transcript,
+											response.frame.payload.history,
+											{ authoritative: true, orderRead },
+										)
+									: applyJournalOrderMetadata(
+											current.transcript,
+											response.frame.payload.history,
+											orderRead,
+										)
+								: response.kind === "payload"
+									? applyPeerSourcePayload(
+											current.transcript,
+											response.page,
+											orderRead,
+											revision,
+										)
+									: applyPeerSourceFacts(current.transcript, response.page, {
+											authoritative: false,
+										}),
 					};
 				});
+				sourceWaveAfterAnswer(response);
 			},
 		})
 			.then((outcome) => {
@@ -5651,7 +6232,14 @@ export function useCanonicalSessionStream(
 					setOrderRepairWake((wake) => wake + 1);
 				}
 			});
-	}, [commitView, sessionId, journalOrder, view.transcript, orderRepairWake]);
+	}, [
+		commitView,
+		sessionId,
+		journalOrder,
+		peerScopedNow,
+		view.transcript,
+		orderRepairWake,
+	]);
 
 	const loadOlderDetailed = useCallback(async (): Promise<LoadOlderOutcome> => {
 		const loader = olderLoader.current;
@@ -5693,6 +6281,8 @@ export function useCanonicalSessionStream(
 									0,
 									512,
 								),
+								// Peer-scoped like the stream's own declaration; see `peerScopedNow`.
+								...(peerScopedNow() ? { peerJournalSource: true } : {}),
 							}
 						: {}),
 				}),
@@ -5717,6 +6307,7 @@ export function useCanonicalSessionStream(
 						: { ...current, loadingOlder: loading },
 				);
 			},
+			peerSource: streamDeclaredNow,
 		});
 		/*
 		 * The failed row's single writer (R2): every caller lands here, so a failure
@@ -5735,7 +6326,7 @@ export function useCanonicalSessionStream(
 				);
 		}
 		return outcome;
-	}, [commitView, sessionId]);
+	}, [commitView, sessionId, peerScopedNow, streamDeclaredNow]);
 	const loadOlder = useCallback(
 		async (): Promise<boolean> =>
 			(await loadOlderDetailed()).kind === "applied",
@@ -5772,6 +6363,8 @@ export function useCanonicalSessionStream(
 									0,
 									512,
 								),
+								// Peer-scoped like the stream's own declaration; see `peerScopedNow`.
+								...(peerScopedNow() ? { peerJournalSource: true } : {}),
 							}
 						: {}),
 				});
@@ -5800,6 +6393,7 @@ export function useCanonicalSessionStream(
 								 */
 								transcript: applyHistoryPage(current.transcript, page, {
 									keepPaging: true,
+									peerSource: streamDeclaredNow(),
 								}),
 							},
 				);
@@ -5820,7 +6414,7 @@ export function useCanonicalSessionStream(
 				refreshingTailRef.current = false;
 			}
 		},
-		[commitView, sessionId],
+		[commitView, sessionId, peerScopedNow, streamDeclaredNow],
 	);
 
 	// Registered for as long as this pane is on screen, so the store's echo

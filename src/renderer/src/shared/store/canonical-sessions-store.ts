@@ -3502,6 +3502,32 @@ export function remoteOwnedIds(
 }
 
 /**
+ * ONE id's answer to the same question, for a caller that holds one id at a
+ * time: the complete peer-source declaration is scoped to a conversation the
+ * catalogue places on another device, and the request builders ask about the
+ * conversation they are building for rather than the whole list.
+ *
+ * SAME TWO SOURCES, same rule as {@link remoteOwnedIds} - a placement fact, OR
+ * the row's own `locality` - restated over one id so a builder is not made to
+ * materialise every remote id to answer a question about one. ABSENCE IS NOT
+ * REMOTE: an id with no fact and no row (a deep-linked conversation the
+ * catalogue has not carried yet, a draft) reads false, and the declaration
+ * fails closed to the legacy lane rather than declaring for a conversation
+ * this client cannot prove is a peer's.
+ */
+export function remoteOwnedId(
+	sessions: CanonicalSessionRow[],
+	facts: Record<string, PlacementFact>,
+	id: string,
+): boolean {
+	if (facts[id]?.locality === "remote") return true;
+	for (const row of sessions) {
+		if (row.session_id === id && row.locality === "remote") return true;
+	}
+	return false;
+}
+
+/**
  * The rows an unscoped answer OWNS: the ones no loaded scope holds.
  *
  * THIS IS THE MOST DANGEROUS DECISION IN THE PAGED CATALOGUE, which is why it is

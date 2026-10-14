@@ -736,6 +736,43 @@ export type TranscriptState = {
 	/** Ready-wake identity: dispatch witnesses settle old debt without erasing a
 	 * distinct wake during the read. Not a second source revision counter. */
 	orderDemand?: { generation?: string };
+	/**
+	 * The PEER-SOURCE lane marker: true while the last source commit of this
+	 * conversation came from a DECLARED peer consumer. It gates every
+	 * peer-specific admission rule (facts rank but do not stamp, releases need
+	 * bodies, resets preserve unrelated holds); a local conversation - and a
+	 * conversation the catalogue has not placed - never carries it, so the
+	 * local lane stays byte-for-byte the pre-contract one. A moved-home session
+	 * is written back to false by its next local commit: once the owner is this
+	 * machine, the local lane's own semantics are the honest ones again.
+	 */
+	journalPeerSource?: boolean;
+	/**
+	 * PER-ID BODY DEBT: raw ids whose loaded body is not admitted under the
+	 * current source domain. Value = the order revision the debt was stamped
+	 * at. Stamped by every facts-only commit (a coordinate is not a body), for
+	 * every loaded row on a domain rotation (old bodies are suspect by
+	 * construction), and by family-less recovery-delta rows (unattested text);
+	 * cleared only by a same-generation body admission, a proven-absent answer
+	 * (`journalSourceVoid`) or a cleared view. Never stored ON a record, so
+	 * carrying debt never relabels anything it owes.
+	 */
+	journalBodyOwed?: Map<string, number>;
+	/**
+	 * PROVEN ABSENCE under the current domain (the payload purpose's `missing`
+	 * partition, and the lookup's named missing ids). Distinct from an unsafe
+	 * or budget-deferred body, which stays owed. A void id is not re-asked
+	 * without a new causal fact (a rotation or a fresh admitted body), which is
+	 * what keeps "missing" from becoming a token retry loop.
+	 */
+	journalSourceVoid?: Set<string>;
+	/**
+	 * TRUTHFUL READINESS: a declared availability read answered `building` and
+	 * no ready fact arrived within the client's bounded wave. Set only by that
+	 * expiry, cleared by any ready source fact or an explicit user retry; the
+	 * repair never polls, so this is a statement, not a state that self-heals.
+	 */
+	journalSourceUnavailable?: boolean;
 	/** Ordered oldest -> newest. */
 	records: TranscriptRecord[];
 	/** id -> index for O(1) coalescing; rebuilt on every structural change. */
@@ -3486,9 +3523,282 @@ function previousRecordForSupplement(
 }
 
 /**
- * A cached-ID lookup uses the existing snapshot route, but its tail is NOT a
- * paging or payload read. Repair only proven coordinates and verified owners;
- * retain the reader's cursor, text, image references and admitted row set.
+ * The ordered projection a fresh coordinate set demands.
+ *
+ * SHARED BY THE TWO METADATA PRODUCERS below - a verified page's coordinates
+ * and a facts-only lookup - so one re-rank/freeze rule serves both, and the
+ * DEV emit guard rides every new record clone (production keeps that guard's
+ * no-op semantics).
+ */
+function journalOrderedState(next: TranscriptState): TranscriptState {
+	const ordered = journalOrderedRecords(next, next.records);
+	if (ordered === next.records) return next;
+	const records = ordered.map(freezeRecordDeep);
+	return { ...next, records, index: withIndex(records) };
+}
+
+/* ----------------------------------------------------- complete peer-source */
+
+/** ≥0 safe integer — the ordinal shape every source facts map uses. */
+const peerOrdinal = (value: unknown): value is number =>
+	typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+
+/**
+ * ADMIT ONE BODY: write the coordinate the body came with onto its record.
+ *
+ * This is the ONLY writer of `journalSeq`/`journalGeneration` in the peer
+ * lane, and every caller holds a fresh body for the same id in the SAME
+ * commit (a page's row, the delta family's attested row, a payload subset
+ * entry). That is exactly what makes the stamp a truthful admission marker
+ * for `journalOrderedPeerRecords`: in this lane
+ * `record.journalGeneration === the current generation` means "this text was
+ * read under this domain", and every facts-only producer is forbidden from
+ * writing it.
+ *
+ * A held user column dies here, with its body: `provisional`/`local` are the
+ * optimistic send's stand-ins for "the owner's durable row is not in hand",
+ * and admitting that row is the event they were waiting for. A facts-only
+ * commit can never reach this function, which is how the contract's "Lookup
+ * coordinates do not ... release a provisional/local user" holds by
+ * construction rather than by review.
+ */
+function admitPeerBodyRecord(
+	record: TranscriptRecord,
+	entryId: string,
+	generation: string,
+	seq: number,
+): TranscriptRecord {
+	const admitted: TranscriptRecord = {
+		...record,
+		sourceEntryId: entryId,
+		journalSeq: seq,
+		journalGeneration: generation,
+	};
+	if (
+		record.kind === "user" &&
+		(record.provisional === true || record.local === true)
+	) {
+		/* The released copy drops the hold flags; everything else, including
+		really all the durable fields, is the incoming row's. */
+		const {
+			provisional: _provisional,
+			local: _local,
+			...released
+		} = admitted as Extract<TranscriptRecord, { kind: "user" }>;
+		return released;
+	}
+	return admitted;
+}
+
+/**
+ * The carried/admitted raw-id sets of one view: `carried` is every id some
+ * record still speaks for (the raw id a source could answer about), and
+ * `admitted` is every id whose body field was written by a body-carrying
+ * commit. Together they are the fence that keeps debt and admission from
+ * being claimed for rows this view no longer holds.
+ */
+function peerAdmissionSets(state: TranscriptState): {
+	carried: Set<string>;
+	admitted: Set<string>;
+} {
+	const carried = new Set<string>();
+	const admitted = new Set<string>();
+	for (const record of state.records) {
+		const id =
+			record.sourceEntryId ??
+			(record.kind === "tool" || record.kind === "supplement"
+				? null
+				: record.id);
+		if (typeof id !== "string" || id.length < 1 || id.length > 128) continue;
+		carried.add(id);
+		if (
+			record.journalGeneration === state.journalGeneration &&
+			peerOrdinal(record.journalSeq)
+		)
+			admitted.add(id);
+	}
+	return { carried, admitted };
+}
+
+/**
+ * STRIP A BODY'S ADMISSION: drop the coordinate fields a record no longer
+ * deserves.
+ *
+ * THE ONE CASE THIS EXISTS FOR: a commit REPLACED the body a record's
+ * `journalSeq`/`journalGeneration` was read with (a recovery delta's
+ * unattested row, an unverified page row) without a same-commit coordinate to
+ * put in their place. Leaving the old stamp on the new text is a rank claim
+ * about a body that no longer exists - the same class of lie as stamping a
+ * stale body with a fresh coordinate, just reversed (the reading pinned in
+ * the assessment as "new body on an old coordinate"). `sourceEntryId` stays:
+ * it is the row's IDENTITY (what a later fact or body read must match), not a
+ * rank claim.
+ */
+function stripPeerAdmission(record: TranscriptRecord): TranscriptRecord {
+	if (record.journalSeq === undefined && record.journalGeneration === undefined)
+		return record;
+	/*
+	 * NON-MUTATING STRIP (biome `lint/performance/noDelete`): destructure the two
+	 * rank-claim fields OUT and keep the rest, rather than deleting them off a
+	 * clone. Same result - the coordinate is gone, the body and every other field
+	 * stay - with no `delete`, which deoptimises the object shape.
+	 */
+	const {
+		journalSeq: _journalSeq,
+		journalGeneration: _journalGeneration,
+		...rest
+	} = record as TranscriptRecord & {
+		journalSeq?: number;
+		journalGeneration?: string;
+	};
+	return rest as TranscriptRecord;
+}
+
+/**
+ * OWE REPLACED BODIES: strip the orphaned admission from the named rows, then
+ * state their body debt. Used by the recovery-delta fold, where the replacement
+ * body has NO source-proof of its own (the event stream is not a store read),
+ * so the contract's "a family-less row stays body-owed until a real verified
+ * source-body read" is the only honest state. `markPeerBodiesOwed` then owes
+ * them - it skips ADMITTED rows, and these are exactly the rows whose
+ * admission was just stripped.
+ */
+function owePeerRows(
+	state: TranscriptState,
+	ids: Iterable<string>,
+): TranscriptState {
+	const idSet = new Set<string>();
+	for (const id of ids)
+		if (typeof id === "string" && id.length > 0 && id.length <= 128)
+			idSet.add(id);
+	if (idSet.size === 0) return state;
+	let changed = false;
+	const records = state.records.map((record) => {
+		const id =
+			record.sourceEntryId ??
+			(record.kind === "tool" || record.kind === "supplement"
+				? null
+				: record.id);
+		if (id === null || !idSet.has(id)) return record;
+		const stripped = stripPeerAdmission(record);
+		if (stripped !== record) changed = true;
+		return stripped;
+	});
+	let next = changed ? { ...state, records } : state;
+	next = markPeerBodiesOwed(next, idSet);
+	return next;
+}
+
+/**
+ * MARK BODY DEBT for the ids a facts-only producer just attested: carried,
+ * not admitted, so the loaded body still needs a same-generation body read
+ * (the payload purpose). The revision stamp is the order revision the debt
+ * was stated at, so a future commit can hold an admission to the revision it
+ * was dispatched under. An id leaving the void set here is not a violation of
+ * "missing never fabricated": an ATTESTED id is proven PRESENT, which is the
+ * new causal fact that expires an old absence. Only ids a record carries can
+ * owe anything — a lookup answer about an id this view does not hold is not
+ * a question a body read could settle.
+ */
+function markPeerBodiesOwed(
+	state: TranscriptState,
+	ids: Iterable<string>,
+): TranscriptState {
+	if (state.journalPeerSource !== true) return state;
+	const { carried, admitted } = peerAdmissionSets(state);
+	const revision = state.orderRevision ?? 0;
+	const owed = state.journalBodyOwed;
+	let owedCopy: Map<string, number> | null = null;
+	const voidSet = state.journalSourceVoid;
+	let voidCopy: Set<string> | null = null;
+	for (const id of ids) {
+		if (typeof id !== "string" || id.length < 1 || id.length > 128) continue;
+		if (!carried.has(id) || admitted.has(id)) continue;
+		if (!owedCopy) owedCopy = new Map(owed ?? []);
+		owedCopy.set(id, revision);
+		if (voidSet?.has(id)) {
+			if (!voidCopy) voidCopy = new Set(voidSet);
+			voidCopy.delete(id);
+		}
+	}
+	if (!owedCopy) return state;
+	return {
+		...state,
+		journalBodyOwed: owedCopy,
+		...(voidCopy ? { journalSourceVoid: voidCopy } : {}),
+	};
+}
+
+/**
+ * CLEAR ADMITTED DEBT: the counterpart of `markPeerBodiesOwed`, run by every
+ * commit that carried the body for the named ids. `clearWave` additionally
+ * retires the truthful-unavailable latch (a ready answer is the fact the
+ * latch was waiting for).
+ */
+function clearPeerAdmissions(
+	state: TranscriptState,
+	ids: readonly string[],
+	clearWave: boolean,
+): TranscriptState {
+	const base =
+		clearWave && state.journalSourceUnavailable === true
+			? { ...state, journalSourceUnavailable: undefined }
+			: state;
+	if (ids.length === 0) return base;
+	const owed = base.journalBodyOwed;
+	let owedCopy: Map<string, number> | null = null;
+	const voidSet = base.journalSourceVoid;
+	let voidCopy: Set<string> | null = null;
+	for (const id of ids) {
+		if (owed?.has(id)) {
+			if (!owedCopy) owedCopy = new Map(owed);
+			owedCopy.delete(id);
+		}
+		if (voidSet?.has(id)) {
+			if (!voidCopy) voidCopy = new Set(voidSet);
+			voidCopy.delete(id);
+		}
+	}
+	if (!owedCopy && !voidCopy) return base;
+	return {
+		...base,
+		...(owedCopy ? { journalBodyOwed: owedCopy } : {}),
+		...(voidCopy ? { journalSourceVoid: voidCopy } : {}),
+	};
+}
+
+/**
+ * WRITE THE LANE FLAG a commit belongs to. Both directions matter: a local
+ * commit on a conversation the catalogue has moved back home writes `false`
+ * so the local lane's own semantics resume, and the write only allocates
+ * when the flag actually moves (a no-op commit keeps its identity, which the
+ * reducer tests' identity gates rely on).
+ */
+function finalizePeerLane(
+	state: TranscriptState,
+	peer: boolean,
+): TranscriptState {
+	if ((state.journalPeerSource === true) === peer) return state;
+	return { ...state, journalPeerSource: peer };
+}
+
+/** A ready answer is the fact the availability latch was waiting for. */
+function clearWaveOnReady(
+	state: TranscriptState,
+	page: Pick<DesktopHistoryPage, "journal_order_state">,
+): TranscriptState {
+	if (page.journal_order_state !== "ready") return state;
+	if (state.journalSourceUnavailable !== true) return state;
+	return { ...state, journalSourceUnavailable: undefined };
+}
+
+/**
+ * The AUTHORITATIVE metadata commit: the local cached-ID repair's snapshot
+ * read, and the session GET a peer conversation's owed reconcile settles
+ * through. Its tail is NOT a paging or payload read: repair only proven
+ * coordinates and verified owners; retain the reader's cursor, text, image
+ * references and admitted row set. Under session/view/read witnesses this is
+ * the one path that may install a different order domain.
  */
 export function applyJournalOrderMetadata(
 	state: TranscriptState,
@@ -3509,12 +3819,258 @@ export function applyJournalOrderMetadata(
 	);
 	for (const entry of page.entries)
 		next = rememberJournalCalls(next, { ...entry.payload, id: entry.id });
-	const ordered = journalOrderedRecords(next, next.records);
-	if (ordered === next.records) return next;
-	// Metadata is another canonical producer: its new record clones need the
-	// existing DEV emit guard too. Production keeps that guard's no-op semantics.
-	const records = ordered.map(freezeRecordDeep);
-	return { ...next, records, index: withIndex(records) };
+	/*
+	 * THE LOCAL LANE'S COMMIT WRITES THE LANE BACK TO LOCAL. This function is
+	 * the LOCAL repair's authoritative commit (peer conversations settle their
+	 * owed reconcile through `applyPeerSourceFacts`; `applyHistoryPage` writes
+	 * both when the caller says which lane it is in), so a conversation the
+	 * catalogue has moved back home resumes the local admission semantics at its
+	 * next local read - the finite, observable transition instead of a lane flag
+	 * that outlives its owner. A conversation that was never peer is unchanged
+	 * (the flag write is a no-op when the lane already reads local).
+	 *
+	 * THE LANE'S SIDE STATE GOES WITH IT: a local lane ranks by facts-stamp
+	 * records and admits bodies on the local page path, so peer debt, void and
+	 * the readiness latch must not linger over it (they would leave peer
+	 * semantics mutating a conversation that no longer declares).
+	 */
+	const landing = finalizePeerLane(next, false);
+	return journalOrderedState(
+		landing.journalPeerSource === undefined &&
+			!landing.journalBodyOwed &&
+			!landing.journalSourceVoid &&
+			landing.journalSourceUnavailable === undefined
+			? landing
+			: {
+					...landing,
+					journalBodyOwed: undefined,
+					journalSourceVoid: undefined,
+					journalSourceUnavailable: undefined,
+				},
+	);
+}
+
+/**
+ * A facts-only lookup answer (the peer `source_read=metadata` read): the
+ * non-authoritative spelling of `applyPeerSourceFacts`. Same lane rules -
+ * facts rank, nothing stamps, nothing releases - and no install and no
+ * demand settle: "the generation rides the answer so the client knows a
+ * re-read is owed, not as an authority to install". Entries are empty by
+ * contract, so no body, cursor, causal-owner or frontend state can ride this
+ * path; a `reconcile` correction records its debt through
+ * `receiveJournalOrder`'s own branch.
+ */
+export function applyJournalOrderLookup(
+	state: TranscriptState,
+	page: Pick<
+		DesktopHistoryPage,
+		| "journal_generation"
+		| "journal_order_state"
+		| "journal_ordinals"
+		| "journal_missing_ids"
+		| "reconcile"
+		| "entries"
+	>,
+): TranscriptState {
+	return applyPeerSourceFacts(state, page, { authoritative: false });
+}
+
+/**
+ * THE PEER FACTS COMMIT — the facts-only lookup and the authority bootstrap.
+ *
+ * WHAT "FACTS-ONLY" MEANS HERE, precisely: the answer's generation may
+ * install (the AUTHORITATIVE spelling only, which is the one coalesced read
+ * an owed reconcile settles through); its ordinals and the rows' `journal_seq`
+ * land in the facts channel (`journalPositions`), which ranks rows; and every
+ * id the answer ATTESTED that this view carries without an admitted body is
+ * marked body-owed. Nothing else moves. This commit never writes a row's
+ * `journalSeq`/`journalGeneration`, never releases a held user, never takes
+ * call ownership from the entries that served as facts, and never touches
+ * text, images, cursors, `has_more`, or the frontend - the complete
+ * contract's "metadata: requested raw-ID facts only; no body/cursor/frontend
+ * effects" and the authority bootstrap's "never incidentally adopt page
+ * bodies, causal call owners, tail/cursor coverage or frontend state" are one
+ * rule in this one place.
+ *
+ * An answer that names ids MISSING under its own ready domain settles them as
+ * void (proven absent - never re-asked without a new causal fact), and the
+ * same verified-view gate governs it as the payload commit: a statement
+ * about another domain is a demand, not a fact about this one.
+ */
+export function applyPeerSourceFacts(
+	state: TranscriptState,
+	page: Pick<
+		DesktopHistoryPage,
+		| "journal_generation"
+		| "journal_order_state"
+		| "journal_ordinals"
+		| "journal_missing_ids"
+		| "reconcile"
+		| "entries"
+	>,
+	options: { authoritative: boolean; orderRead?: JournalOrderRead },
+): TranscriptState {
+	let next = receiveJournalOrder(
+		state,
+		page,
+		(page.entries ?? []).map((entry) => ({
+			id: entry.id,
+			journal_seq: entry.journal_seq,
+			role: entry.payload?.role,
+			tool_call_id: entry.payload?.tool_call_id,
+		})),
+		options.authoritative,
+		options.orderRead,
+		{ peer: true },
+	);
+	next = finalizePeerLane(next, true);
+	const verified =
+		page.journal_order_state === "ready" &&
+		typeof page.journal_generation === "string" &&
+		page.journal_generation === next.journalGeneration;
+	if (verified) {
+		const attested = [
+			...Object.keys(page.journal_ordinals ?? {}),
+			...(page.entries ?? []).map((entry) => entry.id),
+		];
+		if (attested.length > 0) next = markPeerBodiesOwed(next, attested);
+		const missing = (page.journal_missing_ids ?? []).filter(
+			(id): id is string =>
+				typeof id === "string" && id.length > 0 && id.length <= 128,
+		);
+		if (missing.length > 0) {
+			next = clearPeerAdmissions(next, missing, false);
+			const voided = new Set(next.journalSourceVoid ?? []);
+			for (const id of missing) voided.add(id);
+			next = { ...next, journalSourceVoid: voided };
+		}
+	}
+	next = clearWaveOnReady(next, page);
+	return journalOrderedState(next);
+}
+
+/**
+ * THE VERIFIED-SUBSET COMMIT: one `source_read=payload` answer.
+ *
+ * A subset answer is NOT a page. It may never move a cursor, `has_more`, the
+ * oldest stamp, the frontend, or any row the request did not name - and its
+ * bodies are admitted ONLY where a record already carries the id (an unseen
+ * companion has no consumer yet; the page that paints its row admits it, and
+ * inventing rows from a subset is exactly the "page/cursor/tail coverage" a
+ * subset cannot claim). Each entry arrives WITH its `journal_seq` and its own
+ * entry time, so one commit does both halves of the atomic release: the body
+ * replaces the loaded one, and `admitPeerBodyRecord` stamps the coordinate,
+ * clears the debt and releases the held user it stood for.
+ *
+ * The partition is applied exactly as the contract states it: a `present`
+ * body clears debt; `missing` is proven absent (void; the debt dies with the
+ * proof, and a new fact - rotation or a fresh admitted body - is what would
+ * re-open it); `unavailable` (unsafe/unprojectable) and `remaining`
+ * (budget-deferred) KEEP their debt - they are distinct statements, and only
+ * the owner's explicit `source_retry_ids` asks for a smaller follow-up this
+ * sweep. Bodies from any other domain are never admitted: without a matching,
+ * ready answer this commit only records what `receiveJournalOrder` owes.
+ */
+export function applyPeerSourcePayload(
+	state: TranscriptState,
+	page: DesktopHistoryPage,
+	orderRead?: JournalOrderRead,
+	/**
+	 * The order revision at dispatch. A present/missing id whose body-owed stamp
+	 * is NEWER than this was re-debted after the read left (a same-domain wake can
+	 * re-owe an id in place), and its answer describes a body state that is now
+	 * stale - so it neither admits the body nor settles absence (review round 1,
+	 * m1; contract: "Per-ID body-owed revisions fence body acceptance"). Absent
+	 * keeps the historical unfenced shape.
+	 */
+	dispatchRevision?: number,
+): TranscriptState {
+	let next = receiveJournalOrder(state, page, [], false, orderRead, {
+		peer: true,
+	});
+	next = finalizePeerLane(next, true);
+	const owed = next.journalBodyOwed;
+	const acceptanceSuperseded = (id: string): boolean =>
+		dispatchRevision !== undefined &&
+		(owed?.get(id) ?? Number.NEGATIVE_INFINITY) > dispatchRevision;
+	const matching =
+		page.journal_order_state === "ready" &&
+		typeof page.journal_generation === "string" &&
+		page.journal_generation === next.journalGeneration;
+	const entries = matching
+		? [...(page.entries ?? []), ...(page.dependency_entries ?? [])]
+		: [];
+	const admitted: string[] = [];
+	let records = next.records;
+	let index = next.index;
+	if (entries.length > 0) {
+		const updated = new Map<string, TranscriptRecord>();
+		for (const entry of entries) {
+			if (typeof entry.id !== "string" || entry.id === "") continue;
+			if (acceptanceSuperseded(entry.id)) continue;
+			const toolKey = `tool:${String(entry.payload?.tool_call_id ?? "")}`;
+			const position = index.get(entry.id) ?? index.get(toolKey);
+			const current = position === undefined ? undefined : records[position];
+			if (!current) continue;
+			let record = durableRecord(entry, current);
+			if (!record) continue;
+			record = { ...record, sourceEntryId: entry.id };
+			if (peerOrdinal(entry.journal_seq)) {
+				record = admitPeerBodyRecord(
+					record,
+					entry.id,
+					page.journal_generation as string,
+					entry.journal_seq,
+				);
+				admitted.push(entry.id);
+			} else {
+				// A present body without its own ordinal admits nothing; the old
+				// coordinate must not stay over the new text (contract-invalid
+				// answer, handled as an honest unverified replacement).
+				record = stripPeerAdmission(record);
+			}
+			updated.set(current.id, freezeRecordDeep(record));
+		}
+		if (updated.size > 0) {
+			records = records.map((record) => updated.get(record.id) ?? record);
+			index = withIndex(records);
+		}
+	}
+	let result: TranscriptState =
+		records === next.records ? next : { ...next, records, index };
+	if (matching) {
+		result = clearPeerAdmissions(result, admitted, false);
+		const missing = (page.source_missing_ids ?? []).filter(
+			(id): id is string =>
+				typeof id === "string" &&
+				id.length > 0 &&
+				id.length <= 128 &&
+				!acceptanceSuperseded(id),
+		);
+		if (missing.length > 0) {
+			result = clearPeerAdmissions(result, missing, false);
+			const voided = new Set(result.journalSourceVoid ?? []);
+			for (const id of missing) voided.add(id);
+			result = { ...result, journalSourceVoid: voided };
+		}
+	}
+	result = clearWaveOnReady(result, page);
+	return journalOrderedState(result);
+}
+
+/**
+ * THE BOUNDED WAVE'S EXPIRY, stated where the repair loop can write it (see
+ * `journalSourceUnavailable`): a declared availability read answered
+ * `building` and no ready fact arrived within the client's bound. The loop
+ * polls nothing, so this is a terminal statement for the wave - any later
+ * ready fact or an explicit user retry clears it.
+ */
+export function markSourceUnavailable(
+	state: TranscriptState,
+	unavailable = true,
+): TranscriptState {
+	if ((state.journalSourceUnavailable === true) === unavailable) return state;
+	return { ...state, journalSourceUnavailable: unavailable };
 }
 
 export function applyHistoryPage(
@@ -3553,10 +4109,36 @@ export function applyHistoryPage(
 		/** Only snapshots/reconcile may install a new source domain. */
 		authoritative?: boolean;
 		orderRead?: JournalOrderRead;
+		/**
+		 * THE PEER-SOURCE LANE for this merge. True only when the request that
+		 * produced this page was DECLARED (`peer_journal_source=1`), decided at
+		 * dispatch time by the same predicate that decided the wire bytes: a page
+		 * fetched undeclared is byte-legacy and must apply byte-legacy. In the
+		 * lane, page rows ARE body admissions (fresh text plus same-read
+		 * `journal_seq` in one commit), a reset preserves unrelated held/local
+		 * rows, and the flag this commit writes is how the lane is remembered
+		 * for the delta folds that carry no option slot.
+		 */
+		peerSource?: boolean;
 	} = {},
 ): TranscriptState {
 	let state = initialState;
 	const previousOrder = state;
+	const admittedPeerIds: string[] = [];
+	/*
+	 * THE MERGE'S OWN FINISH: lane flag, cleared admissions, cleared wave -
+	 * every return below goes through it so no exit can leave a peer page
+	 * half-applied (a flag written without its debt clear, or the reverse).
+	 */
+	const finish = (result: TranscriptState): TranscriptState =>
+		finalizePeerLane(
+			clearPeerAdmissions(
+				result,
+				admittedPeerIds,
+				options.peerSource === true && page.journal_order_state === "ready",
+			),
+			options.peerSource === true,
+		);
 	state = receiveJournalOrder(
 		state,
 		page,
@@ -3568,6 +4150,7 @@ export function applyHistoryPage(
 		})),
 		options.authoritative === true,
 		options.orderRead,
+		{ peer: options.peerSource === true },
 	);
 	// A mismatched non-authoritative response cannot mutate payload, identity,
 	// paging or ownership. Its only effect is one authoritative repair request.
@@ -3575,7 +4158,20 @@ export function applyHistoryPage(
 		page.journal_generation &&
 		page.journal_generation !== state.journalGeneration
 	)
-		return state;
+		return finish(state);
+	/*
+	 * SAME-GENERATION PAGE ROWS ARE BODY ADMISSIONS in this lane: the entries
+	 * arrive carrying their text and their `journal_seq` TOGETHER, which is
+	 * the contract's one atomic release ("fresh projected bodies and same-read
+	 * coordinates together"). A facts-only commit can never satisfy this - its
+	 * entries are empty - so the stamp below is exactly the boundary between a
+	 * coordinate and a body.
+	 */
+	const peerAdmits =
+		options.peerSource === true &&
+		typeof page.journal_generation === "string" &&
+		page.journal_generation.length > 0 &&
+		page.journal_generation === state.journalGeneration;
 	for (const entry of page.entries)
 		state = rememberJournalCalls(state, { ...entry.payload, id: entry.id });
 	/*
@@ -3621,6 +4217,34 @@ export function applyHistoryPage(
 		let record = durableRecord(entry, previous);
 		if (record && state.journalMode)
 			record = { ...record, sourceEntryId: entry.id };
+		if (record && peerAdmits && peerOrdinal(entry.journal_seq)) {
+			/*
+			 * THE ADMISSION ITSELF: this row's body was read under the accepted
+			 * generation, so its coordinate is written WITH it and its debt dies
+			 * in the same commit. A page row that names no ordinal (a building
+			 * index, a legacy producer) admits nothing - the body paints, the
+			 * coordinate stays unknown, and the sweep's lookup/payload pair is
+			 * what settles it.
+			 */
+			record = admitPeerBodyRecord(
+				record,
+				entry.id,
+				page.journal_generation as string,
+				entry.journal_seq,
+			);
+			admittedPeerIds.push(entry.id);
+		} else if (record && options.peerSource === true) {
+			/*
+			 * AN UNVERIFIED PEER PAGE REPLACED THIS ROW'S BODY: the old
+			 * coordinate must not stay over the new text (see
+			 * `stripPeerAdmission`). The faction is stripped, not owed - the page
+			 * IS a source-store read (unlike a delta row, whose body has no
+			 * proof of its own), so the row keeps its fresh body and merely
+			 * drops to the unknown-order class until a verified fact or page
+			 * lands.
+			 */
+			record = stripPeerAdmission(record);
+		}
 		if (record) incoming.push(freezeRecordDeep(record));
 	}
 	// Tool call args live on the assistant row's `tool_calls`; carry the intent
@@ -3691,8 +4315,34 @@ export function applyHistoryPage(
 			})
 		: state.records;
 
+	/*
+	 * A FULL REPLACEMENT (a reset delta's fold) rebuilds the viewport from the
+	 * incoming set - but a PEER reset must not erase UNRELATED held/local rows:
+	 * an optimistic send belongs to this viewer, not to the owner's replaced
+	 * viewport, and the owner's reset says nothing about it. Rows the reset
+	 * DOES name are replaced by their durable versions in the merge below. The
+	 * local lane keeps the historical EMPTY base byte-for-byte (the inherited
+	 * reset loss is documented, not inherited into the complete contract -
+	 * assessment finding 2, reset reading).
+	 */
+	const incomingIds = new Set(page.entries.map((entry) => entry.id));
+	const preservedHolds =
+		options.peerSource === true && options.replace === true
+			? state.records.filter(
+					(record) =>
+						record.kind === "user" &&
+						(record.provisional === true || record.local === true) &&
+						!incomingIds.has(record.id),
+				)
+			: [];
 	const base = options.replace
-		? EMPTY_TRANSCRIPT
+		? preservedHolds.length > 0
+			? {
+					...EMPTY_TRANSCRIPT,
+					records: preservedHolds,
+					index: withIndex(preservedHolds),
+				}
+			: EMPTY_TRANSCRIPT
 		: { ...state, records: backfilled };
 	const byId = new Map(base.records.map((record) => [record.id, record]));
 	let changed =
@@ -3843,7 +4493,7 @@ export function applyHistoryPage(
 		!retiresPass &&
 		released.size === 0
 	)
-		return state;
+		return finish(state);
 
 	// Durable rows first, then this page's new rows, in TIME order with ties
 	// broken by the position each already had — so a page that lands out of order
@@ -3884,9 +4534,9 @@ export function applyHistoryPage(
 		 * earlier" affordance back on a transcript that already held everything —
 		 * and resumed the mentioned-files scan's paging (review round 3, R3-5).
 		 */
-		return { ...state, records, index: withIndex(records), argsByCall };
+		return finish({ ...state, records, index: withIndex(records), argsByCall });
 	}
-	return {
+	return finish({
 		...state,
 		records,
 		index: withIndex(records),
@@ -3907,7 +4557,7 @@ export function applyHistoryPage(
 		 */
 		compacting: retiresPass ? false : state.compacting,
 		compactingSince: retiresPass ? 0 : state.compactingSince,
-	};
+	});
 }
 
 // ------------------------------------------------------------------- seal
@@ -4760,19 +5410,87 @@ export function applyEvent(
 			 * the next read will paint it under.
 			 */
 			const identified = rows.filter((row) => String(row.id ?? "") !== "");
+			/*
+			 * THE DECLARED SOURCE-FACT FAMILY (docs/DESKTOP_API.md "Recovery-delta
+			 * source facts"): `journal_generation`, `journal_ordinals`,
+			 * `entry_times` may ride a recovery delta ONLY for a subscriber that
+			 * declared the complete contract - the bridge strips them for every
+			 * other subscriber, live and replay alike ("a non-declaring
+			 * subscriber's history_delta frame is byte-identical to the
+			 * pre-contract event"). Their PRESENCE is therefore the declaration's
+			 * own proof: no wire watcher is needed to trust them, and the state
+			 * flag covers the complement case this contract CALLS design - the
+			 * omitted family, where a peer conversation's rows settle through the
+			 * sweep (lookup facts, then payload bodies) rather than a wrong
+			 * display.
+			 *
+			 * ALL-OR-NOTHING is the sender's promise; the receiver's half is that
+			 * a row is admitted ONLY when the family attests it in the ACCEPTED
+			 * domain. An unattested row is never upgraded by the claim beside it
+			 * ("a partial map under a packet-level claim would over-release rows
+			 * the owner never attested"), and a family whose domain is not this
+			 * view's is a BOOTSTRAP debt, not a rank: the rows paint (nothing is
+			 * lost), but they carry no coordinate, no owner-stamped time and no
+			 * verified stamp until the one coalesced authority read installs and
+			 * the payload fallback admits them - "records authoritative-bootstrap
+			 * demand instead of mixing bodies with old ranks".
+			 */
+			const familyGeneration =
+				typeof event.journal_generation === "string" &&
+				event.journal_generation.length > 0
+					? event.journal_generation
+					: undefined;
+			const familyOrdinals =
+				event.journal_ordinals &&
+				typeof event.journal_ordinals === "object" &&
+				!Array.isArray(event.journal_ordinals)
+					? (event.journal_ordinals as Record<string, unknown>)
+					: undefined;
+			const familyTimes =
+				event.entry_times &&
+				typeof event.entry_times === "object" &&
+				!Array.isArray(event.entry_times)
+					? (event.entry_times as Record<string, unknown>)
+					: undefined;
+			const familyAt =
+				"journal_generation" in event ||
+				"journal_ordinals" in event ||
+				"entry_times" in event;
+			const peerLane = state.journalPeerSource === true || familyAt;
+			const acceptedDomain =
+				peerLane &&
+				familyGeneration !== undefined &&
+				familyGeneration === state.journalGeneration;
+			const rowIds = identified
+				.map((row) => String(row.id ?? ""))
+				.filter((id) => id.length > 0 && id.length <= 128);
 			const page: DesktopHistoryPage = {
-				entries: identified.map((row) => ({
-					id: String(row.id ?? ""),
-					// The frame carries no entry time, so the reader's arrival second is
-					// the only stamp it can be given here. Dating these rows needs the
-					// entry `ts` on the wire — the PR's "not addressed" section names
-					// this producer and the two others beside it in the runtime.
-					ts: now / 1000,
-					type: "message",
-					payload: { kind: row.custom_type ? "custom" : "message", ...row },
-				})),
+				entries: identified.map((row) => {
+					const id = String(row.id ?? "");
+					const seq = familyOrdinals?.[id];
+					const entryTs = familyTimes?.[id];
+					return {
+						id,
+						/*
+						 * Attested rows take the OWNER-STAMPED entry time ("with true
+						 * times"); a row outside the entry_times SUBSET - or outside an
+						 * accepted family altogether - has no provable time and keeps
+						 * the reader's arrival stamp, never a fabricated one.
+						 */
+						ts:
+							acceptedDomain &&
+							typeof entryTs === "number" &&
+							Number.isFinite(entryTs)
+								? entryTs
+								: now / 1000,
+						type: "message",
+						payload: { kind: row.custom_type ? "custom" : "message", ...row },
+						...(acceptedDomain && peerOrdinal(seq) ? { journal_seq: seq } : {}),
+					};
+				}),
 				has_more: state.hasMore,
 				cursor_missing: false,
+				...(acceptedDomain ? { journal_generation: familyGeneration } : {}),
 			};
 			// `reset` is the producer stating that this replay REPLACES the viewport
 			// rather than extending it (`HistoryDeltaEvent.reset`, "a replay-changing
@@ -4798,10 +5516,51 @@ export function applyEvent(
 			// healed by a remount. `statedByOwner: false` merges the rows by id
 			// but joins the tail block with them; the page that states the send
 			// still ends the hold and returns everything to owner instants.
-			return applyHistoryPage(state, page, {
+			let next = applyHistoryPage(state, page, {
 				replace: event.reset === true,
 				statedByOwner: event.reset === true,
+				peerSource: peerLane,
 			});
+			if (peerLane && rowIds.length > 0) {
+				if (acceptedDomain) {
+					/*
+					 * The rows the family did NOT attest stay owed (defensive per-row
+					 * check - the sender promises all-or-nothing, and a violation must
+					 * not over-release). The attested rows were admitted by the merge
+					 * itself and need no help; in particular there is NO supporting
+					 * order wake or token in this path - the accepted domain SETTLES
+					 * ITS OWN rows.
+					 */
+					const unattested = rowIds.filter(
+						(id) => !peerOrdinal(familyOrdinals?.[id]),
+					);
+					if (unattested.length > 0) next = owePeerRows(next, unattested);
+				} else {
+					/*
+					 * No accepted domain: the bodies painted (they are real rows, not
+					 * lost data) but their text is unattested under the loaded domain,
+					 * so every row is body-owed, and a CLAIMED domain is a bootstrap
+					 * debt - the authority read installs it, the payload fallback then
+					 * admits the bodies under it.
+					 */
+					next = owePeerRows(next, rowIds);
+					if (familyGeneration !== undefined) {
+						next = receiveJournalOrder(
+							next,
+							{
+								journal_generation: familyGeneration,
+								journal_order_state: "ready",
+							},
+							[],
+							false,
+							undefined,
+							{ peer: true },
+						);
+						next = finalizePeerLane(next, true);
+					}
+				}
+			}
+			return next;
 		}
 		case "tool_call_compose": {
 			const callId = String(event.tool_call_id ?? "");

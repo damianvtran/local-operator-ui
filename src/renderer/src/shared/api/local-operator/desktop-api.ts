@@ -669,6 +669,16 @@ export function subscribeDesktopStream(
 		openFrame?: boolean;
 		journalOrder?: boolean;
 		orderIds?: string[];
+		/**
+		 * The complete peer-source declaration, forwarded on the same rule as
+		 * `openFrame`: only this renderer's own negotiation may say it reads the
+		 * complete-contract family (the peer-origin wakes and the recovery
+		 * delta's declared keys), and the caller scopes it to a conversation on
+		 * another device whose subscription already declared it. Absent — a local
+		 * conversation, or a peer opened before the catalogue placed it — keeps
+		 * the subscription's shape exactly as it was.
+		 */
+		peerJournalSource?: boolean;
 	},
 	onEvent: (event: {
 		kind: "data" | "error" | "end";
@@ -714,6 +724,13 @@ export function subscribeDesktopStream(
 	// otherwise a real cold quiet correction is silently filtered out here.
 	if (args.journalOrder === true) {
 		query.set("journal_order", "1");
+		/*
+		 * Set BEFORE the ids: the dev proxy re-validates and re-composes the
+		 * query, and its own `appendJournalOrderIds` sizes the ids' budget against
+		 * everything already present — the same order `desktop-contract`'s
+		 * builders use, so one stream has one spelling on every transport.
+		 */
+		if (args.peerJournalSource === true) query.set("peer_journal_source", "1");
 		appendJournalOrderIds(query, "/__desktop/stream", args.orderIds ?? []);
 	}
 	const source = new EventSource(`/__desktop/stream?${query}`);
