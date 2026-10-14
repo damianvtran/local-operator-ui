@@ -1150,7 +1150,28 @@ test("the keyboard contract: Tab enters the FOCUSED link's toolbar, and Escape h
 	/* The reader is on the first link; the pointer rests on the second. */
 	await frame.dispatch(report, "focusin");
 	await frame.dispatch(shots, "pointerover", { clientX: 200, clientY: 372 });
-	await new Promise((resolve) => setTimeout(resolve, 200));
+	assert.match(
+		frame.document
+			.querySelector("[data-lo-link-toolbar]")
+			?.getAttribute("aria-label") ?? "",
+		/opoint_adverse_media_query_failures/,
+		"pointer entry must not bypass the shipped hover dwell",
+	);
+	/*
+	 * The shipped dwell stays 120ms; a wall-clock sleep is not proof its React
+	 * update committed. CI's loaded runner resumed the 200ms assertion before
+	 * that render. Yield outside act, then synchronously flush each observation:
+	 * an awaited act drain also waits on the toolbar's perpetual tooltip loop.
+	 */
+	const deadline = Date.now() + 4000;
+	while (Date.now() < deadline) {
+		act(() => {});
+		const label = frame.document
+			.querySelector("[data-lo-link-toolbar]")
+			?.getAttribute("aria-label");
+		if (label?.includes("Screenshot 2026-09-17")) break;
+		await new Promise((resolve) => setTimeout(resolve, 25));
+	}
 	const pointed = frame.document.querySelector("[data-lo-link-toolbar]");
 	assert.match(
 		pointed.getAttribute("aria-label") ?? "",
