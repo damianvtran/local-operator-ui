@@ -939,7 +939,7 @@ test("NEGATIVE: a single namespace block cannot borrow global hashes or hash sub
 		{
 			status: "passed",
 			findings: [],
-			hashes: ["prefix" + sha(FR), sha(EN) + "suffix"],
+			hashes: [`prefix${sha(FR)}`, `${sha(EN)}suffix`],
 		},
 	]) {
 		withTree((root) => {
@@ -1192,7 +1192,7 @@ const INTEGRITY_CASES = [
 		(ctx) => {
 			ctx.raw = JSON.stringify(ctx.body).replace(
 				'"fr":',
-				'"fr":"' + sha("different") + '","fr":',
+				`"fr":"${sha("different")}","fr":`,
 			);
 		},
 	],
@@ -1201,9 +1201,9 @@ for (const [label, change] of INTEGRITY_CASES) {
 	test(`REAL gate + writer refuse: ${label} (immutable receipt)`, () => {
 		withTree((root) => {
 			run(root);
-			const ledger = ledgerOf(root),
-				row = ledger.entries[0],
-				body = receiptFor();
+			const ledger = ledgerOf(root);
+			const row = ledger.entries[0];
+			const body = receiptFor();
 			const ctx = { root, row, body };
 			change(ctx);
 			const bytes = ctx.raw ?? JSON.stringify(body);
@@ -1212,8 +1212,8 @@ for (const [label, change] of INTEGRITY_CASES) {
 			row.auditors[0].receipt_sha256 = sha(bytes);
 			writeFileSync(join(root, "i18n/ledger.json"), JSON.stringify(ledger));
 			const before = readFileSync(join(root, "i18n/ledger.json"));
-			const gate = gateCommand(root),
-				writer = writerCommand(root);
+			const gate = gateCommand(root);
+			const writer = writerCommand(root);
 			assert.equal(gate.status, 1, `${label}: ${gate.stdout} ${gate.stderr}`);
 			assert.equal(
 				writer.status,
