@@ -48,6 +48,7 @@ import { archiveControlLabel } from "../chat-archived";
  * door per surface, one implementation of what is copied and what it says.
  */
 import { copySessionId } from "../copy-session-id";
+import { moveGateReason } from "../device/chat-device-model";
 import { useChatDeviceStore } from "../device/chat-device-store";
 import { useSessionCommand } from "../pickers/use-picker-backend";
 import {
@@ -333,21 +334,19 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	 * from the page, so the menu and the chip cannot drift about which gate is closed.
 	 */
 	const capabilities = useDesktopCapabilities();
-	const peersEnabled =
-		desktopFeatureState(capabilities.data, "peers") === "enabled";
-	const transferEnabled =
-		desktopFeatureState(capabilities.data, "session_transfer") === "enabled";
 	/*
-	 * THE REASON THE DOOR IS SHUT, in plain language, so the control explains its gate
-	 * instead of vanishing (the defect this slice answers: a user scanning header
-	 * actions found nothing and could not tell whether the feature existed). Absent
-	 * entirely when the door is open - `undefined` is "nothing to explain".
+	 * THE REASON THE DOOR IS SHUT, FROM EACH GATE'S OWN STATE (design round 1, D1/D2).
+	 * `moveGateReason` reads the whole four-state answer rather than a boolean, so a
+	 * loading or unpaired capability is not reported as a backend that cannot move.
+	 * `peers` is asked first because it is the outer gate - without it no device
+	 * surface exists at all. Absent (`undefined`) when both are enabled.
 	 */
-	const moveReason = !peersEnabled
-		? "this backend cannot move a conversation yet"
-		: !transferEnabled
-			? "this build cannot move a conversation yet"
-			: undefined;
+	const moveReason =
+		moveGateReason(desktopFeatureState(capabilities.data, "peers")) ??
+		moveGateReason(
+			desktopFeatureState(capabilities.data, "session_transfer"),
+		) ??
+		undefined;
 	const requestPicker = useChatDeviceStore((s) => s.requestPicker);
 	/*
 	 * The overflow menu's own open state and the pending move, both needed together:
@@ -1303,10 +1302,16 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 									)}
 								>
 									<MonitorSmartphone aria-hidden="true" />
-									<span className="flex flex-col items-start gap-0.5">
+									<span className="flex min-w-0 flex-col items-start gap-0.5">
 										<span>Move to another device…</span>
 										{moveReason ? (
-											<span className="text-meta text-warning">
+											/*
+											 * THE REASON WRAPS WITHIN THE MENU'S WIDTH rather than stretching it
+											 * (design round 1, D4): a sentence that widened the panel by 40-60px would
+											 * shove every other row to a width this item alone decided. `min-w-0` on
+											 * the parent is what lets this child shrink instead of the panel.
+											 */
+											<span className="text-meta text-warning whitespace-normal">
 												{moveReason}
 											</span>
 										) : null}

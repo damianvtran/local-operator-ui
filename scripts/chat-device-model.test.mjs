@@ -59,6 +59,7 @@ const {
 	placementSentence,
 	PAIRING_GUIDANCE,
 	MOVE_FOOTER,
+	moveGateReason,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -1142,21 +1143,46 @@ test("the header offers an explicit move door, visible and explained in every st
 		"the item names the operation in words a scanning user reads",
 	);
 	/*
-	 * THE TWO GATES, read from the SAME predicate the chip's slot reads, and the
-	 * same reason strings. A capability the backend withholds and a build that
-	 * withholds the move are DIFFERENT facts about the user (server vs app), so
-	 * they are different sentences.
+	/*
+	 * THE REASON COMES FROM THE CAPABILITY'S OWN STATE (design round 1, D1/D2).
+	 * `desktopFeatureState` answers four states, and three of them are NOT "the
+	 * backend cannot move": `unknown` is no answer yet, `unpaired` is a credential
+	 * fact, and only `below-version` is the backend withholding the capability. One
+	 * term is used for both gates (`peers` and `session_transfer` are both backend
+	 * features - naming the app binary was the wrong party, D2).
 	 */
 	assert.match(
 		header,
-		/desktopFeatureState\(capabilities\.data, "peers"\) === "enabled"/,
+		/moveGateReason\(desktopFeatureState\(capabilities\.data, "peers"\)\)/,
 	);
 	assert.match(
 		header,
-		/desktopFeatureState\(capabilities\.data, "session_transfer"\) === "enabled"/,
+		/moveGateReason\(\s*desktopFeatureState\(capabilities\.data, "session_transfer"\),?\s*\)/,
 	);
-	assert.match(header, /"this backend cannot move a conversation yet"/);
-	assert.match(header, /"this build cannot move a conversation yet"/);
+	assert.equal(
+		moveGateReason("enabled"),
+		null,
+		"an enabled door has nothing to explain",
+	);
+	assert.equal(
+		moveGateReason("unknown"),
+		"checking whether a conversation can be moved…",
+		"no answer is a loading fact, not a backend that cannot move",
+	);
+	assert.equal(
+		moveGateReason("unpaired"),
+		"pair this device with a network first",
+		"no credential is a pairing fact",
+	);
+	assert.equal(
+		moveGateReason("below-version"),
+		"this backend cannot move a conversation",
+	);
+	assert.doesNotMatch(
+		moveGateReason("below-version"),
+		/yet/,
+		"the UI cannot promise a roadmap",
+	);
 	/*
 	 * VISIBLE BUT NOT DEAD: the reason rides the row as a line (`text-warning`), the
 	 * press is ignored through `aria-disabled` rather than Radix's focus-filtering
@@ -1166,7 +1192,7 @@ test("the header offers an explicit move door, visible and explained in every st
 	assert.match(header, /if \(moveReason\) return;/);
 	assert.match(
 		header,
-		/<span className="text-meta text-warning">\s*\{moveReason\}/,
+		/<span className="text-meta text-warning whitespace-normal">\s*\{moveReason\}/,
 	);
 	/*
 	 * IT OPENS THE EXISTING PICKER, never a second path: the press only marks the

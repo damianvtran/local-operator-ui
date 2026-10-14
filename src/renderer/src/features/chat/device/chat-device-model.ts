@@ -21,6 +21,7 @@
  * below, which renders the cold sentence whenever nobody told us otherwise.
  */
 
+import type { DesktopFeatureState } from "@shared/api/local-operator/desktop-hooks";
 import type { MovePlan } from "../../mesh/mesh-drop";
 import { lossSentence } from "../../mesh/mesh-drop";
 import type { NetworkSummary, PeerRow } from "../../mesh/mesh-types";
@@ -252,6 +253,38 @@ export type DevicePickerModel = {
 /** The exact consequence the default (deleting) move carries. */
 export const MOVE_FOOTER =
 	"The copy on this device is deleted when the move commits.";
+
+/**
+ * Why the header's move item stands down, from the capability answer's OWN state.
+ *
+ * WHY THIS IS A VALUE AND NOT AN INLINE EXPRESSION (design round 1, D1).
+ * `desktopFeatureState` answers FOUR states, and the first version of the item
+ * collapsed three of them into one sentence - so a user whose capabilities had
+ * simply not arrived yet (the first frames of every window), or whose app holds
+ * no credential for the backend, were told their BACKEND cannot move a
+ * conversation. Both are conditions with their own truth and their own remedy.
+ * `enabled` returns `null`: there is nothing to explain, and the item is live.
+ *
+ * ONE TERM FOR BOTH GATES (D2): `peers` and `session_transfer` are both features
+ * the BACKEND advertises, so naming the app binary ("this build") was the wrong
+ * party, and "yet" promised a roadmap the UI cannot back - a backend either
+ * advertises the capability or it does not.
+ */
+export function moveGateReason(state: DesktopFeatureState): string | null {
+	switch (state) {
+		case "enabled":
+			return null;
+		case "unknown":
+			/* Loading-honest: no answer has arrived, so no claim about the backend. */
+			return "checking whether a conversation can be moved…";
+		case "unpaired":
+			/* A pairing fact, not a capability one - the app holds no credential. */
+			return "pair this device with a network first";
+		case "below-version":
+			/* The backend answered and does not advertise the capability. */
+			return "this backend cannot move a conversation";
+	}
+}
 
 /**
  * Why a third device cannot be picked from a pane that no longer holds the
