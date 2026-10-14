@@ -835,6 +835,11 @@ test("a typed /archive STAGES the confirmation, and /unarchive still writes stra
 });
 
 test("the confirmation asks the reversible question, and the copy is written in ONE place", () => {
+	const labels = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.chat.dialogs.json", "utf8"),
+	);
+	assert.equal(labels["ui.chat.dialogs.archive_action"], "Archive");
+	assert.equal(labels["ui.chat.dialogs.cancel"], "Cancel");
 	const dialog = code(ARCHIVE_DIALOG);
 	const copy = code(ARCHIVE_CONFIRM);
 	/*
@@ -890,8 +895,11 @@ test("the confirmation asks the reversible question, and the copy is written in 
 	 * opt-in: the shared modal's default must not silently make this primary again.
 	 */
 	assert.match(dialog, /isDangerous=\{true\}/);
-	assert.match(dialog, /confirmText="Archive"/);
-	assert.match(dialog, /cancelText="Cancel"/);
+	assert.match(
+		dialog,
+		/confirmText=\{t\("ui\.chat\.dialogs\.archive_action"\)\}/,
+	);
+	assert.match(dialog, /cancelText=\{t\("ui\.chat\.dialogs\.cancel"\)\}/);
 });
 
 test("danger treatment keeps Cancel first without an archive autofocus override", () => {
