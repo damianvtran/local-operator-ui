@@ -57,7 +57,7 @@ const handle = await launchApp({
 const report = {
 	label: LABEL,
 	session: SESSION,
-	window: arg("--window-size"),
+	window: null,
 	themes: {},
 };
 let code = 0;
@@ -100,6 +100,7 @@ try {
 		)
 		.catch(() => null);
 	report.facts = facts;
+	report.window = facts?.windowSize ?? arg("--window-size");
 
 	for (const [theme, name] of [
 		["dark", "localOperatorDark"],
@@ -147,7 +148,17 @@ try {
 			last = n;
 			await sleep(300);
 		}
-		await sleep(1500);
+		// The thumbnail retry (2 s, then 6 s) means a digest that is gone shows its
+		// skeleton for ~8 s before settling on the glyph. `--states` photographs that
+		// window, then waits it out so every settled frame is deterministic rather
+		// than a race against the timer.
+		if (process.argv.includes("--states")) {
+			const early = await capture(cdp, `files-${LABEL}-retrying-${theme}`, {
+				assertPalette: false,
+			});
+			report.themes[theme] = { earlyFrame: early.path ?? early };
+		}
+		await sleep(process.argv.includes("--states") ? 11_000 : 1500);
 		const reading = await cdp.evaluate(`(() => {
 			const box = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) }; };
 			const rows = [...document.querySelectorAll('[data-tour-tag="file-row"]')];
@@ -173,7 +184,11 @@ try {
 			};
 		})()`);
 		const frame = await capture(cdp, `files-${LABEL}-${theme}`);
-		report.themes[theme] = { frame: frame.path ?? frame, reading };
+		report.themes[theme] = {
+			...(report.themes[theme] ?? {}),
+			frame: frame.path ?? frame,
+			reading,
+		};
 		console.log(
 			`[${LABEL}/${theme}] rows=${reading.rowCount} thumbs-decoded=${reading.rows.filter((r) => r.thumb?.decoded).length} dock=${JSON.stringify(reading.dock)} mode=${reading.dockMode}`,
 		);
@@ -182,8 +197,6 @@ try {
 		// The real flows, in the dark palette: the row menu, then an image row, then
 		// the video row, each opened by a click the way a user does it.
 		await verb(cdp, "setTheme", "localOperatorDark");
-		const rowIndex = (needle) =>
-			`[...document.querySelectorAll('[data-tour-tag="file-row"]')].findIndex((r) => r.innerText.includes(${JSON.stringify(needle)}))`;
 		const clickRow = (needle) =>
 			cdp.evaluate(
 				`(() => { const rows = [...document.querySelectorAll('[data-tour-tag="file-row"]')]; const row = rows.find((r) => r.innerText.includes(${JSON.stringify(needle)})); const open = row?.querySelector('button'); if (!open) return false; open.click(); return true; })()`,
@@ -264,6 +277,54 @@ try {
 			await capture(cdp, `files-${LABEL}-viewer-video`, {
 				assertPalette: false,
 			})
+		).path;
+	}
+	if (process.argv.includes("--states")) {
+		report.states = {};
+		const open = (needle) =>
+			cdp.evaluate(
+				`(() => { const row = [...document.querySelectorAll('[data-tour-tag="file-row"]')].find((r) => r.innerText.includes(${JSON.stringify(needle)})); const b = row?.querySelector('button'); if (!b) return false; b.click(); return true; })()`,
+			);
+		const toFiles = async () => {
+			await cdp.evaluate(
+				`document.querySelector('button[aria-label^="Files view"]')?.click(); true`,
+			);
+			await sleep(900);
+		};
+		await verb(cdp, "setTheme", "localOperatorDark");
+		await toFiles();
+		report.states.goneOpened = await open("gone.png");
+		await sleep(2500);
+		report.states.goneViewer = await cdp.evaluate(
+			`(document.querySelector('#canvas-document-panel') ?? document.body).innerText.replace(/\\s+/g, ' ').trim().slice(0, 160)`,
+		);
+		report.states.goneFrame = (
+			await capture(cdp, `files-${LABEL}-viewer-gone-dark`)
+		).path;
+		// The tall picture in the viewer, in light: design D1's crop is measured
+		// against the pane's bottom edge rather than eyeballed.
+		await toFiles();
+		await verb(cdp, "setTheme", "localOperatorLight");
+		await open("0466de15");
+		await sleep(2500);
+		report.states.tallViewer = await cdp.evaluate(`(() => {
+			const dock = document.querySelector('[data-tour-tag="canvas-dock"]').getBoundingClientRect();
+			const img = document.querySelector('#canvas-document-panel img');
+			const r = img ? img.getBoundingClientRect() : null;
+			return { dockBottom: Math.round(dock.bottom), imgTop: r && Math.round(r.top), imgBottom: r && Math.round(r.bottom), imgInsideDock: r ? r.bottom <= dock.bottom + 0.5 : null, innerHeight: window.innerHeight };
+		})()`);
+		report.states.tallViewerFrame = (
+			await capture(cdp, `files-${LABEL}-viewer-image-light`)
+		).path;
+		// Same-name tabs: both pictures that share a producer name, open at once.
+		await toFiles();
+		await open("412b2a3d");
+		await sleep(1500);
+		report.states.tabs = await cdp.evaluate(
+			`[...document.querySelectorAll('[role="tab"]')].map((t) => ({ label: t.textContent.trim(), title: t.getAttribute('title') }))`,
+		);
+		report.states.tabsFrame = (
+			await capture(cdp, `files-${LABEL}-tabs-light`)
 		).path;
 	}
 	writeFileSync(

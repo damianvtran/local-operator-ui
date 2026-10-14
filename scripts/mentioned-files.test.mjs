@@ -78,8 +78,11 @@ const bundle = await build({
 			export { canvasDocumentForPath, canvasDocumentForArtifact } from "./src/renderer/src/features/chat/utils/canvas-document";
 			export { applyHistoryPage, EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
 			export {
+				artifactCue,
 				artifactFileName,
 				artifactPath,
+				artifactTabLabels,
+				artifactTooltip,
 				digestOfAttachmentBinPath,
 				isArtifactPath,
 			} from "./src/renderer/src/features/chat/utils/artifact-identity";
@@ -125,8 +128,11 @@ const {
 	canvasDocumentForArtifact,
 	applyHistoryPage,
 	EMPTY_TRANSCRIPT,
+	artifactCue,
 	artifactFileName,
 	artifactPath,
+	artifactTabLabels,
+	artifactTooltip,
 	digestOfAttachmentBinPath,
 	isArtifactPath,
 	classifyImageSource,
@@ -2000,11 +2006,160 @@ test("A16. the Save as name is the producer's when it has an extension, else bui
 			kind: "video",
 			contentType: "video/webm",
 		}),
-		`Video ${D(1).slice(0, 8)}-${D(1).slice(0, 8)}.webm`,
+		`Video ${D(1).slice(0, 8)}.webm`,
 	);
 	// A producer-supplied name can never propose a directory.
 	assert.equal(
 		artifactFileName({ ...base, name: "../../etc/x.png" }).includes("/"),
 		false,
+	);
+});
+
+/* ----------------------------- the video completion row (agent review R1-1) */
+
+/*
+ * `generate_video` returns only "Video generation started" and runs detached, so
+ * the receipt (`Video ready ... attached: digest <hex>`) reaches the transcript as
+ * a `job_result` CUSTOM row the session manager delivers when the job settles.
+ * That is the ordinary way a video arrives; `video_status` is only the model
+ * checking up. The two fixture rows were built by the backend's own
+ * `Session._job_result_message` and written through `Transcript.append_message`
+ * (see the fixture's `_comment`), so this is the durable shape, not a hand-made
+ * one.
+ */
+test("A17. a video's job_result completion row becomes a video artifact row", () => {
+	const records = artifactRecords(["fixture-row-jobresult-video"]);
+	assert.equal(
+		records[0].kind,
+		"custom",
+		"the reducer keeps it as a custom row",
+	);
+	assert.equal(records[0].customType, "job_result");
+	const [video] = artifacts(records);
+	assert.equal(video.artifact.kind, "video");
+	assert.equal(video.artifact.digest, "1f".repeat(16));
+	assert.equal(video.path, `artifact:${"1f".repeat(16)}`);
+});
+
+test("A18. NEGATIVE: a bash job's job_result carrying `manifest digest <hex>` is not an artifact", () => {
+	const records = artifactRecords(["fixture-row-jobresult-bash"]);
+	assert.equal(records[0].customType, "job_result");
+	assert.deepEqual(extractMentionedPaths(records), []);
+});
+
+test("A19. NEGATIVE: the receipt sentence from a NON job_result custom row, or mid-line, is not read", () => {
+	const receipt = `Video ready \u2014 job vj_x \u00b7 attached: digest ${"3c".repeat(16)}`;
+	const row = (customType, text) => ({
+		kind: "custom",
+		id: `c-${customType}`,
+		ts: 0,
+		customType,
+		text,
+		level: "info",
+		category: null,
+		provider: null,
+		headline: text,
+		detail: null,
+	});
+	assert.equal(
+		artifacts([row("job_result", `background job 'v' completed:\n${receipt}`)])
+			.length,
+		1,
+	);
+	assert.equal(
+		artifacts([row("peer", `background job 'v' completed:\n${receipt}`)])
+			.length,
+		0,
+	);
+	// The sentence must START a line: a checksum tool echoing it inside a longer line is not it.
+	assert.equal(artifacts([row("job_result", `echo "x ${receipt}"`)]).length, 0);
+	// And the bare word `digest` from a job that never says "Video ready" is not enough.
+	assert.equal(
+		artifacts([row("job_result", `attached: digest ${"3c".repeat(16)}`)])
+			.length,
+		0,
+	);
+});
+
+test("A20. the video from a completion row and the same video from video_status are ONE row", () => {
+	const [completion] = artifactRecords(["fixture-row-jobresult-video"]);
+	const [status] = artifactRecords(["fixture-row-video"]);
+	const sameStatus = {
+		...status,
+		output: `Video ready — job vj_fixture · attached: digest ${"1f".repeat(16)}`,
+		images: [],
+	};
+	const mentions = artifacts([completion, sameStatus]);
+	assert.equal(mentions.length, 1);
+	assert.equal(mentions[0].artifact.digest, "1f".repeat(16));
+});
+
+/* -------------------- remediation of the round-1 UX findings (U1-U4, Q1, Q3) */
+
+test("A21. the Save as name never repeats the digest head (U1 / Q3)", () => {
+	const nameless = artifactFileName({
+		digest: D(1),
+		kind: "video",
+		contentType: "video/mp4",
+	});
+	assert.equal(nameless, `Video ${D(1).slice(0, 8)}.mp4`);
+	assert.equal(
+		nameless.split(D(1).slice(0, 8)).length,
+		2,
+		"the head appears exactly once",
+	);
+	// A bare producer label still gets the suffix, so two saves do not collide.
+	assert.equal(
+		artifactFileName({
+			digest: D(1),
+			kind: "image",
+			name: "Hero",
+			contentType: "image/png",
+		}),
+		`Hero-${D(1).slice(0, 8)}.png`,
+	);
+});
+
+test("A22. two open artifacts that share a name get distinct tab labels; unique ones and files keep their title (U2 / Q1)", () => {
+	const doc = (id, title, digest) => ({
+		id,
+		title,
+		artifact: digest ? { digest } : undefined,
+	});
+	const a = "a".repeat(32);
+	const b = "b".repeat(32);
+	const labels = artifactTabLabels([
+		doc("artifact:a", "model-01.jpg", a),
+		doc("artifact:b", "model-01.jpg", b),
+		doc("artifact:c", "model-02.jpg", "c".repeat(32)),
+		doc("/tmp/model-01.jpg", "model-01.jpg", null),
+	]);
+	assert.equal(labels.get("artifact:a"), "model-01.jpg \u00b7 aaaaaaaa");
+	assert.equal(labels.get("artifact:b"), "model-01.jpg \u00b7 bbbbbbbb");
+	assert.equal(labels.get("artifact:c"), "model-02.jpg");
+	assert.equal(
+		labels.get("/tmp/model-01.jpg"),
+		"model-01.jpg",
+		"a file is never relabelled",
+	);
+	// Closing the twin restores the plain name.
+	assert.equal(
+		artifactTabLabels([doc("artifact:a", "model-01.jpg", a)]).get("artifact:a"),
+		"model-01.jpg",
+	);
+});
+
+test("A23. an artifact's tooltip carries the digest head and says where it lives (U2 / U4 / D7)", () => {
+	const tip = artifactTooltip({ digest: D(1), kind: "image", title: "x.jpg" });
+	assert.equal(
+		tip,
+		`x.jpg \u00b7 ${D(1).slice(0, 8)} \u00b7 ${artifactCue("image")}`,
+	);
+	assert.match(artifactCue("video"), /kept in this session/);
+	// A nameless artifact's title already carries the head; it is not repeated.
+	const head = D(1).slice(0, 8);
+	assert.equal(
+		artifactTooltip({ digest: D(1), kind: "video", title: `Video ${head}` }),
+		`Video ${head} \u00b7 ${artifactCue("video")}`,
 	);
 });

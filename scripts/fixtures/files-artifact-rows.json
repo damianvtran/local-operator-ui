@@ -1,5 +1,5 @@
 {
-	"_comment": "Sanitised from real rows of session 9c59d684d16b (generate_image x3 shapes, read of an attachment .bin). Digests, names, prompts and paths are replaced. The video_status row is SYNTHETIC: built from the receipt text in local_operator/video/jobs.py finish_video_result, because no real generate_video row exists on the machine that produced this fixture. The pruned row is the shape session/transcript.py _pruned_entry leaves: content blanked, provider_payload kept.",
+	"_comment": "Sanitised from real rows of session 9c59d684d16b (generate_image x3 shapes, read of an attachment .bin). Digests, names, prompts and paths are replaced. The video_status row is SYNTHETIC: built from the receipt text in local_operator/video/jobs.py finish_video_result, because no real generate_video row exists on the machine that produced this fixture. The pruned row is the shape session/transcript.py _pruned_entry leaves: content blanked, provider_payload kept. The two job_result rows (video completion, bash 'manifest digest' negative control) are the DURABLE shape the session manager writes: built by the backend's own Session._job_result_message and written through Transcript.append_message, then re-ided and re-timed (the digest is a fixture value).",
 	"entries": [
 		{
 			"id": "fixture-row-1",
@@ -110,7 +110,7 @@
 						"cost_source": "reported",
 						"billing_basis": "billed",
 						"strength": 0.6,
-						"source_image_path": "/Users/damian/.local-operator/sessions/9c59d684d16b/scratchpad/art-refs/hala-avatar-yt.jpg"
+						"source_image_path": "/Users/fixture/scratch/ref.jpg"
 					},
 					"useless": false,
 					"duration_s": 41.83237070799805
@@ -313,6 +313,42 @@
 					},
 					"useless": false,
 					"duration_s": 17.06754120788537
+				}
+			}
+		},
+		{
+			"id": "fixture-row-jobresult-video",
+			"ts": 1791760000,
+			"type": "message",
+			"payload": {
+				"kind": "custom",
+				"custom_type": "job_result",
+				"attribution": "user",
+				"details": {
+					"job_id": "job_video_fx",
+					"text": "background job 'Video generation (t2v, 5s, Radient)' completed:\nVideo ready \u2014 job vj_fixture \u00b7 model fixture-video \u00b7 5s \u00b7 $0.4 (reported) \u00b7 attached: digest 1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f",
+					"job": "vj_fixture",
+					"digest": "1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f",
+					"digests": ["1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f"],
+					"content_type": "video/mp4",
+					"duration_s": 5.0,
+					"model": "fixture-video",
+					"provider": "fixture",
+					"cost_usd": 0.4
+				}
+			}
+		},
+		{
+			"id": "fixture-row-jobresult-bash",
+			"ts": 1791760001,
+			"type": "message",
+			"payload": {
+				"kind": "custom",
+				"custom_type": "job_result",
+				"attribution": "user",
+				"details": {
+					"job_id": "job_bash_fx",
+					"text": "background job 'bash: sha256sum release.tar' completed:\n2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e  release.tar\nmanifest digest 2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e"
 				}
 			}
 		}

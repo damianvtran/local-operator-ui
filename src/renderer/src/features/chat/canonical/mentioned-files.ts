@@ -45,10 +45,16 @@
  *    bury the panel under every screenshot the agent ever took (thousands in a
  *    long session), and the ones worth keeping already arrive as a path.
  * 2. `digest <hex>` / `attached: digest <hex>, <hex>` in the output of the
- *    generating tools (`generate_image`, `generate_video`, `video_status`). A
- *    video result is text only - its receipt has no content block - so this is
- *    the only door a video has. Restricted to those tool names: a 32-hex run in
- *    `bash` output is a hash, not a file.
+ *    generating tools (`generate_image`, `video_status`), and in a video job's
+ *    COMPLETION ROW. A video result is text only - its receipt has no content
+ *    block - and `generate_video` itself returns only "Video generation started"
+ *    (the job is detached), so the receipt reaches the transcript as a
+ *    `job_result` custom row the session manager delivers when the job settles
+ *    (`harness/jobs.py` `JOB_RESULT_MESSAGE_TYPE`, `session.py`
+ *    `_job_result_message`). That row is the ORDINARY way a video arrives; a
+ *    `video_status` call is only the model checking up. Restricted to these
+ *    sources: a 32-hex run in `bash` output is a hash, not a file, and bash and
+ *    task jobs deliver `job_result` rows too, with arbitrary output.
  * 3. a read path into the attachment store, `.../attachments/<digest>.bin`.
  *    That path used to become an `other` tile for a `.bin` nothing can open; the
  *    digest is in its name, so it is mapped to the artifact it is instead.
@@ -365,6 +371,21 @@ const ARTIFACT_TOOLS = new Set([
 ]);
 
 /**
+ * The receipt sentence a settled VIDEO job delivers (`video/jobs.py`
+ * `finish_video_result`): `Video ready - job <id> ... attached: digest <hex>`.
+ *
+ * It is the gate on a `job_result` row, and the sentence rather than the bare
+ * word `digest` on purpose: a `job_result` row carries whatever a bash or task
+ * job printed, and "manifest digest <hex>" from a checksum tool is not media.
+ * Anchored to a line start (`m`) because the row's body is
+ * `background job '<label>' completed:\n<receipt>` - the receipt is its own line.
+ */
+const VIDEO_RECEIPT = new RegExp(
+	`^Video ready \\u2014 job [^\\n]*?attached: digest\\s+${DIGEST_PATTERN}`,
+	"m",
+);
+
+/**
  * `digest <hex>` and `attached: digest <hex>, <hex>` (`image_tool.py` caption,
  * `video/jobs.py` receipt). The list form is what a multi-asset result prints,
  * so one match yields several digests. Anchored on the word `digest`, never on
@@ -384,7 +405,6 @@ const DIGEST_TOKEN = new RegExp(DIGEST_PATTERN, "g");
  * identity, so the richer one must be produced first.
  */
 function artifactMentionsOf(record: TranscriptRecord): MentionedPath[] {
-	if (record.kind !== "tool") return [];
 	const found: MentionedPath[] = [];
 	const push = (digest: string, artifact: ArtifactMention) =>
 		found.push({
@@ -392,6 +412,18 @@ function artifactMentionsOf(record: TranscriptRecord): MentionedPath[] {
 			source: "artifact",
 			artifact,
 		});
+	if (record.kind === "custom") {
+		// A detached video job's completion, delivered as a `job_result` row (see
+		// the module header). Kind comes from the sentence: only a video job writes it.
+		if (record.customType === "job_result" && VIDEO_RECEIPT.test(record.text)) {
+			for (const phrase of record.text.matchAll(DIGEST_PHRASE)) {
+				for (const digest of phrase[1].match(DIGEST_TOKEN) ?? [])
+					push(digest, { digest, kind: "video" });
+			}
+		}
+		return found;
+	}
+	if (record.kind !== "tool") return found;
 	for (const image of record.images) {
 		// A block without `kind` is a legacy image (a browser screenshot, a
 		// pasted picture): not generated media. See the module header.

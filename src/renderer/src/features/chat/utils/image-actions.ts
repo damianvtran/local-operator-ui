@@ -335,9 +335,7 @@ export async function resolveCopyableImage(
 	src?: string,
 ): Promise<Blob> {
 	if (kind === "data") return blobFromDataUrl(file);
-	// An artifact's painted source IS a `blob:` this module's cache built (the
-	// attachment resolver publishes it), so its bytes are found the same way.
-	if (kind === "blob" || kind === "artifact") {
+	if (kind === "blob") {
 		const blob = blobAt(src ?? file);
 		if (blob === null) {
 			throw new Error("These image bytes are not available in this window");
@@ -475,6 +473,9 @@ function decodeImage(url: string): Promise<HTMLImageElement> {
 	});
 }
 
+/** See `downloadBlob`: how long the object URL outlives the click. */
+const DOWNLOAD_REVOKE_DELAY_MS = 60_000;
+
 /**
  * Hand bytes to the platform's save dialog.
  *
@@ -482,10 +483,13 @@ function decodeImage(url: string): Promise<HTMLImageElement> {
  * admits (`downloadVerdict`: only the app's own `blob:` exports from a trusted
  * document may write a file), and Electron answers it with the native save
  * dialog, so the user picks the destination and the app never names a path. The
- * mermaid diagram export is the other caller of the same mechanism. The object
- * URL is revoked on the next task rather than synchronously: the download
- * starts from the click, and revoking inside it can cancel the request in
- * Chromium.
+ * mermaid diagram export uses the same anchor; it is not timing evidence for a
+ * large generated clip.
+ *
+ * A zero-delay revoke left no margin for Chromium to consume a large blob
+ * (review R1-3). Keep the handle alive for 60 seconds instead. This is a bounded
+ * safety margin, not a claim about the native dialog's timing: OS save completion
+ * is not observed here, and memory is bounded to one temporary blob per save.
  */
 export function downloadBlob(blob: Blob, fileName: string): void {
 	const url = URL.createObjectURL(blob);
@@ -495,5 +499,5 @@ export function downloadBlob(blob: Blob, fileName: string): void {
 	document.body.appendChild(anchor);
 	anchor.click();
 	document.body.removeChild(anchor);
-	window.setTimeout(() => URL.revokeObjectURL(url), 0);
+	window.setTimeout(() => URL.revokeObjectURL(url), DOWNLOAD_REVOKE_DELAY_MS);
 }

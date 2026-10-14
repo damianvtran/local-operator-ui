@@ -56,8 +56,13 @@ globalThis.URL = {
 	},
 };
 globalThis.Blob = class Blob {
-	constructor(parts) {
+	constructor(parts, options) {
 		this.parts = parts;
+		// `type` is what `fetchAttachmentBlob` hands the clipboard / save dialog.
+		this.type = options?.type ?? "";
+	}
+	get size() {
+		return this.parts.reduce((sum, part) => sum + (part.byteLength ?? 0), 0);
 	}
 };
 
@@ -170,7 +175,7 @@ function mount(hook, props, { strict = false } = {}) {
 const bundle = await build({
 	stdin: {
 		contents:
-			'export { useAttachmentUrl } from "./src/renderer/src/features/chat/canonical/use-attachment-url";',
+			'export { useAttachmentUrl, fetchAttachmentBlob, AttachmentGoneError } from "./src/renderer/src/features/chat/canonical/use-attachment-url";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -218,9 +223,10 @@ const bundle = await build({
 });
 globalThis.__useState = useState;
 globalThis.__useEffect = useEffect;
-const { useAttachmentUrl } = await import(
-	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-);
+const { useAttachmentUrl, fetchAttachmentBlob, AttachmentGoneError } =
+	await import(
+		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+	);
 
 /*
  * Every assertion below reads the BLOB LEDGER rather than the module's private
@@ -589,4 +595,72 @@ test("a null scope issues no request at all", async () => {
 		"and the row renders the unavailable note",
 	);
 	row.unmount();
+});
+
+/*
+ * `fetchAttachmentBlob`: the bytes a row's `Copy image` / `Save as...` act on,
+ * fetched on demand because a Files row does not paint every picture. Agent review
+ * R1-5 named this seam as testable and untested. The two failure classes matter
+ * because the toast says different things for them (UX U3): a 404 is "no longer in
+ * the session", anything else is the relay failing and a retry may clear it.
+ */
+test("fetchAttachmentBlob returns the bytes as a typed Blob and holds no cache entry", async () => {
+	reset();
+	const digest = digestFor(20);
+	const pending = fetchAttachmentBlob(
+		{ sessionId: "8ca681d7aa73", childId: null },
+		digest,
+	);
+	assert.deepEqual(requests[0].request, {
+		op: "sessions.attachment",
+		sessionId: "8ca681d7aa73",
+		digest,
+	});
+	settleLast("video/mp4");
+	const blob = await pending;
+	assert.equal(blob.type, "video/mp4");
+	assert.equal(blob.size, 1);
+	assert.equal(
+		blobs.created,
+		0,
+		"a one-shot action publishes no URL into the refcounted cache",
+	);
+});
+
+test("fetchAttachmentBlob: a 404 is AttachmentGoneError, any other failure is a plain retryable error", async () => {
+	reset();
+	const gone = fetchAttachmentBlob(
+		{ sessionId: "s", childId: null },
+		digestFor(21),
+	);
+	requests.pop().resolve({ kind: "error", status: 404, detail: "gone" });
+	await assert.rejects(gone, (error) => error instanceof AttachmentGoneError);
+	const blip = fetchAttachmentBlob(
+		{ sessionId: "s", childId: null },
+		digestFor(22),
+	);
+	requests.pop().resolve({ kind: "error", status: 502, detail: "relay" });
+	await assert.rejects(
+		blip,
+		(error) =>
+			!(error instanceof AttachmentGoneError) &&
+			/right now/.test(error.message),
+	);
+});
+
+test("fetchAttachmentBlob uses the child-scoped op when a child id is given", async () => {
+	reset();
+	const digest = digestFor(23);
+	const pending = fetchAttachmentBlob(
+		{ sessionId: "s", childId: "c1" },
+		digest,
+	);
+	assert.deepEqual(requests[0].request, {
+		op: "subagents.attachment",
+		sessionId: "s",
+		childId: "c1",
+		digest,
+	});
+	settleLast();
+	await pending;
 });
