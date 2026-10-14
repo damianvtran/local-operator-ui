@@ -1,5 +1,9 @@
 import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
 import type { ReusableProfile } from "@shared/api/local-operator/profile-hooks";
+// This bookkeeping module never renders. Use the framework-free core, like
+// usage-view-model, rather than pulling the renderer's language-write/query hooks
+// into callers that only need to format a batch receipt.
+import { t } from "../../../../i18n";
 
 /**
  * Install a list of built-in profiles one at a time, and report what happened
@@ -61,7 +65,7 @@ export const installBuiltin = async (
 			message:
 				error instanceof Error && error.message
 					? error.message
-					: "The server did not answer.",
+					: t("ui.agents.starters.server_unanswered"),
 		};
 	}
 };
@@ -119,14 +123,34 @@ export const summariseInstalls = (
  */
 export const summarySentence = (summary: InstallSummary): string => {
 	const parts: string[] = [];
-	if (summary.installed > 0) parts.push(`${summary.installed} installed`);
+	if (summary.installed > 0)
+		parts.push(
+			t("ui.agents.starters.summary.installed", {
+				count: String(summary.installed),
+			}),
+		);
 	if (summary.alreadyPresent > 0)
-		parts.push(`${summary.alreadyPresent} already present`);
+		parts.push(
+			t("ui.agents.starters.summary.already_present", {
+				count: String(summary.alreadyPresent),
+			}),
+		);
 	if (summary.skipped.length > 0)
-		parts.push(`${summary.skipped.length} skipped`);
-	if (summary.failed.length > 0) parts.push(`${summary.failed.length} failed`);
-	if (parts.length === 0) parts.push("Nothing to install");
-	return `${parts.join(", ")}.`;
+		parts.push(
+			t("ui.agents.starters.summary.skipped", {
+				count: String(summary.skipped.length),
+			}),
+		);
+	if (summary.failed.length > 0)
+		parts.push(
+			t("ui.agents.starters.summary.failed", {
+				count: String(summary.failed.length),
+			}),
+		);
+	if (parts.length === 0) parts.push(t("ui.agents.starters.summary.empty"));
+	return t("ui.agents.starters.summary.sentence", {
+		parts: parts.join(t("ui.agents.starters.summary.separator")),
+	});
 };
 
 /**
@@ -148,6 +172,9 @@ export const summaryExceptionSentence = (
 ): string | null => {
 	if (summary.skipped.length === 0) return null;
 	const names = summary.skipped.map((name) => `"${name}"`).join(", ");
-	const noun = summary.skipped.length === 1 ? "an agent" : "agents";
-	return `Skipped ${summary.skipped.length}: you already have ${noun} called ${names}.`;
+	// Keep the count and noun together: translators choose their own plural branches.
+	return t("ui.agents.starters.summary.collisions", {
+		count: summary.skipped.length,
+		names,
+	});
 };

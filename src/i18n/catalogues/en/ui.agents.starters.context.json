@@ -1,0 +1,121 @@
+{
+	"ui.agents.starters.server_unanswered": {
+		"role": "Built-in installation status",
+		"tone": "Compact, factual; distinguish installed, already present, skipped and failed.",
+		"note": "Counts are ungrouped to preserve the existing English output. Built-in names are identifiers and must not be translated."
+	},
+	"ui.agents.starters.summary.installed": {
+		"role": "Batch installation receipt",
+		"tone": "Compact, factual; distinguish installed, already present, skipped and failed.",
+		"note": "Counts are ungrouped to preserve the existing English output. Built-in names are identifiers and must not be translated.",
+		"placeholders": {
+			"count": "Number of available agents or outcomes; plural selects the noun where present."
+		}
+	},
+	"ui.agents.starters.summary.already_present": {
+		"role": "Batch installation receipt",
+		"tone": "Compact, factual; distinguish installed, already present, skipped and failed.",
+		"note": "Counts are ungrouped to preserve the existing English output. Built-in names are identifiers and must not be translated.",
+		"placeholders": {
+			"count": "Number of available agents or outcomes; plural selects the noun where present."
+		}
+	},
+	"ui.agents.starters.summary.skipped": {
+		"role": "Batch installation receipt",
+		"tone": "Compact, factual; distinguish installed, already present, skipped and failed.",
+		"note": "Counts are ungrouped to preserve the existing English output. Built-in names are identifiers and must not be translated.",
+		"placeholders": {
+			"count": "Number of available agents or outcomes; plural selects the noun where present."
+		}
+	},
+	"ui.agents.starters.summary.failed": {
+		"role": "Batch installation receipt",
+		"tone": "Compact, factual; distinguish installed, already present, skipped and failed.",
+		"note": "Counts are ungrouped to preserve the existing English output. Built-in names are identifiers and must not be translated.",
+		"placeholders": {
+			"count": "Number of available agents or outcomes; plural selects the noun where present."
+		}
+	},
+	"ui.agents.starters.summary.empty": {
+		"role": "Batch installation receipt",
+		"tone": "Compact, factual; distinguish installed, already present, skipped and failed.",
+		"note": "Counts are ungrouped to preserve the existing English output. Built-in names are identifiers and must not be translated."
+	},
+	"ui.agents.starters.summary.sentence": {
+		"role": "Batch installation receipt",
+		"tone": "Compact, factual; distinguish installed, already present, skipped and failed.",
+		"note": "Counts are ungrouped to preserve the existing English output. Built-in names are identifiers and must not be translated.",
+		"placeholders": {
+			"parts": "Ordered nonempty outcome clauses, joined by the localized separator; the message supplies terminal punctuation."
+		}
+	},
+	"ui.agents.starters.summary.separator": {
+		"role": "Batch installation receipt",
+		"tone": "Compact, factual; distinguish installed, already present, skipped and failed.",
+		"note": "Separator between outcome clauses, including the trailing space. No final punctuation here; summary.sentence supplies it."
+	},
+	"ui.agents.starters.summary.collisions": {
+		"role": "Batch installation receipt",
+		"tone": "Compact, factual; distinguish installed, already present, skipped and failed.",
+		"note": "Counts are ungrouped to preserve the existing English output. Built-in names are identifiers and must not be translated.",
+		"placeholders": {
+			"count": "Number of available agents or outcomes; plural selects the noun where present.",
+			"names": "Already quoted built-in names, joined by comma and space.",
+			"name": "Unchanged canonical built-in name currently being installed."
+		}
+	},
+	"ui.agents.starters.action.all_builtins": {
+		"role": "Built-in installation action label",
+		"tone": "Compact, factual; distinguish installed, already present, skipped and failed.",
+		"note": "Counts are ungrouped to preserve the existing English output. Built-in names are identifiers and must not be translated."
+	},
+	"ui.agents.starters.available": {
+		"role": "Built-in installation status",
+		"tone": "Compact, factual; distinguish installed, already present, skipped and failed.",
+		"note": "Counts are ungrouped to preserve the existing English output. Built-in names are identifiers and must not be translated.",
+		"placeholders": {
+			"count": "Number of available agents or outcomes; plural selects the noun where present."
+		}
+	},
+	"ui.agents.starters.action.all_count": {
+		"role": "Built-in installation action label",
+		"tone": "Compact, factual; distinguish installed, already present, skipped and failed.",
+		"note": "Counts are ungrouped to preserve the existing English output. Built-in names are identifiers and must not be translated.",
+		"placeholders": {
+			"count": "Number of available agents or outcomes; plural selects the noun where present."
+		}
+	},
+	"ui.agents.starters.progress.accessible": {
+		"role": "Built-in installation progress accessible name",
+		"tone": "Compact, factual; distinguish installed, already present, skipped and failed.",
+		"note": "Counts are ungrouped to preserve the existing English output. Built-in names are identifiers and must not be translated.",
+		"placeholders": {
+			"step": "One-based index of the agent being installed.",
+			"total": "Number of built-in agents in this batch."
+		}
+	},
+	"ui.agents.starters.progress.named": {
+		"role": "Built-in installation status",
+		"tone": "Compact, factual; distinguish installed, already present, skipped and failed.",
+		"note": "Counts are ungrouped to preserve the existing English output. Built-in names are identifiers and must not be translated.",
+		"placeholders": {
+			"step": "One-based index of the agent being installed.",
+			"total": "Number of built-in agents in this batch.",
+			"name": "Unchanged canonical built-in name currently being installed."
+		}
+	},
+	"ui.agents.starters.progress.count": {
+		"role": "Built-in installation status",
+		"tone": "Compact, factual; distinguish installed, already present, skipped and failed.",
+		"note": "Counts are ungrouped to preserve the existing English output. Built-in names are identifiers and must not be translated.",
+		"placeholders": {
+			"total": "Number of built-in agents in this batch.",
+			"done": "Number of completed installation attempts."
+		}
+	},
+	"ui.agents.starters.action.done": {
+		"role": "Built-in installation action label",
+		"tone": "Compact, factual; distinguish installed, already present, skipped and failed.",
+		"note": "Counts are ungrouped to preserve the existing English output. Built-in names are identifiers and must not be translated."
+	}
+}
