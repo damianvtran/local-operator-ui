@@ -318,7 +318,9 @@ export function modelOptions(
 						: modelProviderDetail(
 								options.providerNames?.[row.provider] ??
 									providerLabel(row.provider),
-								row.aggregated,
+								// Older catalogues omit this optional flag; absence never
+								// asserted aggregation in the pre-i18n provider detail.
+								row.aggregated ?? false,
 								known && !row.connected ? "missing" : "unknown",
 							),
 				group: groupOf(row),
