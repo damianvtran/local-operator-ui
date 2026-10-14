@@ -43,6 +43,7 @@
  *     seen a device-level role, and nothing renders one as if it were.
  */
 
+import { formatRelativeTime, t } from "@shared/i18n";
 import { deviceReach, reachWords } from "./mesh-reach";
 import {
 	type NetworkMember,
@@ -310,13 +311,13 @@ export function meshNodeCount(graph: MeshGraph): number {
  */
 export function agoSentence(seconds: number): string {
 	const s = Math.max(0, Math.round(seconds));
-	if (s < 60) return "just now";
+	if (s < 60) return t("ui.mesh.mesh_graph.just_now");
 	const m = Math.floor(s / 60);
-	if (m < 60) return `${m} ${m === 1 ? "minute" : "minutes"} ago`;
+	if (m < 60) return formatRelativeTime(-m, "minute");
 	const h = Math.floor(m / 60);
-	if (h < 48) return `${h} ${h === 1 ? "hour" : "hours"} ago`;
+	if (h < 48) return formatRelativeTime(-h, "hour");
 	const d = Math.floor(h / 24);
-	return `${d} ${d === 1 ? "day" : "days"} ago`;
+	return formatRelativeTime(-d, "day");
 }
 
 /**
@@ -329,7 +330,9 @@ export function agoSentence(seconds: number): string {
  * printed twice, once under a heartbeat's name).
  */
 export function lastStatusFrameSentence(seconds: number): string {
-	return `last status frame ${agoSentence(seconds)}`;
+	return t("ui.mesh.mesh_graph.last_status_frame", {
+		age: agoSentence(seconds),
+	});
 }
 
 /**
@@ -342,8 +345,8 @@ export function lastStatusFrameSentence(seconds: number): string {
  * dash, and neither surface invents a count.
  */
 export function conversationUnit(count: number | null): string {
-	if (count === null) return "conversations not reported";
-	return count === 1 ? "conversation" : "conversations";
+	if (count === null) return t("ui.mesh.mesh_graph.conversations_not_reported");
+	return t("ui.mesh.mesh_graph.conversation_unit", { count });
 }
 
 /**
@@ -356,7 +359,7 @@ export function conversationUnit(count: number | null): string {
  * site, because "1 conversations" is what a bare template produced.
  */
 function conversationsSentence(count: number): string {
-	return `${count} ${conversationUnit(count)}`;
+	return t("ui.mesh.mesh_card.conversation_count", { count });
 }
 
 /**
@@ -391,14 +394,16 @@ function statLine(device: MeshDevice, nowSeconds: number): string {
 		device.memberships.length > 0 &&
 		device.memberships.every((m) => !m.active)
 	)
-		return "revoked membership";
+		return t("ui.mesh.mesh_graph.revoked_membership");
 	switch (device.state) {
 		case "self":
 			return device.sessionCount === null
-				? "this device"
-				: `this device · ${conversationsSentence(device.sessionCount)}`;
+				? t("ui.mesh.mesh_drop.this_device")
+				: t("ui.mesh.mesh_graph.self_conversations", {
+						conversations: conversationsSentence(device.sessionCount),
+					});
 		case "suspect":
-			return "identity suspect";
+			return t("ui.mesh.mesh_graph.identity_suspect");
 		case "unreachable":
 			/*
 			 * THE WORD COMES FROM THE REACH MODEL, which is what stops this sentence telling the
@@ -419,7 +424,9 @@ function statLine(device: MeshDevice, nowSeconds: number): string {
 			 * never been seen and whose sessions the relay did not count - and it says
 			 * which of the two is missing rather than drawing an empty line.
 			 */
-			return parts.length ? parts.join(" · ") : "no sessions reported";
+			return parts.length
+				? parts.join(" · ")
+				: t("ui.mesh.mesh_graph.no_sessions_reported");
 		}
 	}
 }
@@ -474,10 +481,10 @@ export function deviceStatLine(device: MeshDevice, nowSeconds: number): string {
 export function meshSummary(graph: MeshGraph): string {
 	const parts: string[] = [];
 	parts.push(
-		`${graph.networks.length} ${graph.networks.length === 1 ? "network" : "networks"}`,
+		t("ui.mesh.mesh_graph.network_count", { count: graph.networks.length }),
 	);
 	parts.push(
-		`${graph.devices.length} ${graph.devices.length === 1 ? "device" : "devices"}`,
+		t("ui.mesh.mesh_graph.device_count", { count: graph.devices.length }),
 	);
 	const reaches = graph.devices.map((device) => deviceReach(device));
 	const suspected = graph.devices.filter((device) => device.suspect).length;
@@ -485,16 +492,25 @@ export function meshSummary(graph: MeshGraph): string {
 	const unanswered = reaches.filter((reach) => reach === "unanswered").length;
 	const notAsked = reaches.filter((reach) => reach === "not-attempted").length;
 	const unknown = reaches.filter((reach) => reach === "unknown").length;
-	if (suspected) parts.push(`${suspected} of them suspected`);
-	if (reached) parts.push(`${reached} reached`);
-	if (unanswered) parts.push(`${unanswered} no answer`);
-	if (notAsked) parts.push(`${notAsked} not asked`);
-	if (unknown) parts.push(`${unknown} unknown`);
+	if (suspected)
+		parts.push(t("ui.mesh.mesh_graph.suspected_count", { count: suspected }));
+	if (reached)
+		parts.push(t("ui.mesh.mesh_graph.reached_count", { count: reached }));
+	if (unanswered)
+		parts.push(t("ui.mesh.mesh_graph.no_answer_count", { count: unanswered }));
+	if (notAsked)
+		parts.push(t("ui.mesh.mesh_graph.not_asked_count", { count: notAsked }));
+	if (unknown)
+		parts.push(t("ui.mesh.mesh_graph.unknown_count", { count: unknown }));
 	if (graph.selfDeviceId !== null) {
 		const self = graph.devices.find(
 			(device) => device.id === graph.selfDeviceId,
 		);
-		parts.push(`this device is ${self ? self.label : graph.selfDeviceId}`);
+		parts.push(
+			t("ui.mesh.mesh_graph.self_identity", {
+				device: self ? self.label : graph.selfDeviceId,
+			}),
+		);
 	}
 	return parts.join(" · ");
 }

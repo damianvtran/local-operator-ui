@@ -30,6 +30,8 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	MoreHorizontal,
@@ -42,7 +44,7 @@ import { resolveDrop } from "./mesh-drop";
 import type { MeshDevice, MeshGraph } from "./mesh-graph";
 import { agoSentence, conversationUnit } from "./mesh-graph";
 import { chipFact, chipLabel } from "./mesh-node";
-import { SUSPECT_WORDS, deviceReach, reachWords } from "./mesh-reach";
+import { deviceReach, reachWords, suspectWords } from "./mesh-reach";
 import type { DeviceSessions } from "./mesh-sessions";
 import type { MeshSessionRow } from "./mesh-types";
 
@@ -87,16 +89,16 @@ export function moveDestinations(
 			destinations.push({
 				deviceId: device.id,
 				label: selfLabel,
-				verb: "Recall to this device",
-				keepVerb: "Copy here, leave it there",
+				verb: t("ui.mesh.mesh_card.recall_to_this_device"),
+				keepVerb: t("ui.mesh.mesh_card.copy_here_leave_it_there"),
 			});
 			continue;
 		}
 		destinations.push({
 			deviceId: device.id,
 			label: device.label,
-			verb: `Move to ${device.label}`,
-			keepVerb: `Copy to ${device.label}`,
+			verb: t("ui.mesh.mesh_card.move_to", { device: device.label }),
+			keepVerb: t("ui.mesh.mesh_card.copy_to", { device: device.label }),
 		});
 	}
 	return destinations;
@@ -306,6 +308,8 @@ export const DevicePanel: FC<{
 	onInvite,
 	onRemoveMember,
 }) => {
+	useI18nLocale();
+	useI18nLocale();
 	const reach = deviceReach(device);
 	/*
 	 * ESCAPE CLOSES THE PANEL, AND RETURNS FOCUS TO THE NODE THAT OPENED IT (UX review
@@ -350,24 +354,34 @@ export const DevicePanel: FC<{
 	const countWords =
 		device.sessionCount === null
 			? conversationUnit(null)
-			: `${device.sessionCount} ${conversationUnit(device.sessionCount)}`;
+			: t("ui.mesh.mesh_card.conversation_count", {
+					count: device.sessionCount,
+				});
 	/*
 	 * A SUSPECT IDENTITY WINS THE HEADER (the design's own ordering: a security fact about
 	 * the member record outranks every probe result), and the reach is still one line below
 	 * in the Status section - so the header never has to say two things at once.
 	 */
 	const headWords = device.suspect
-		? SUSPECT_WORDS
-		: [revoked ? "revoked membership" : countWords, reachWords(reach)]
+		? suspectWords()
+		: [
+				revoked ? t("ui.mesh.mesh_card.revoked_membership") : countWords,
+				reachWords(reach),
+			]
 				.filter(Boolean)
 				.join(" · ");
 	const shownOf =
 		sessionTotal > sessions.rows.length
-			? `${sessions.rows.length} of ${sessionTotal}`
+			? t("ui.mesh.mesh_card.shown_of", {
+					shown: sessions.rows.length,
+					total: sessionTotal,
+				})
 			: `${sessions.rows.length}`;
 	return (
 		<aside
-			aria-label={`${device.label} details`}
+			aria-label={t("ui.mesh.mesh_card.device_details", {
+				device: device.label,
+			})}
 			data-mesh-panel={device.id}
 			className="flex w-80 shrink-0 flex-col gap-3 overflow-y-auto rounded-md border border-hairline bg-surface p-4"
 		>
@@ -379,7 +393,7 @@ export const DevicePanel: FC<{
 					data-mesh-panel-close=""
 					onClick={onClose}
 				>
-					Close
+					{t("ui.mesh.mesh_actions.close")}
 				</Button>
 				<h2 className="text-body-sm text-ink">{device.label}</h2>
 				{/*
@@ -408,7 +422,9 @@ export const DevicePanel: FC<{
 			<Separator />
 
 			<section className="flex flex-col gap-2">
-				<h3 className="text-meta text-ink-dim">Memberships</h3>
+				<h3 className="text-meta text-ink-dim">
+					{t("ui.mesh.mesh_card.memberships")}
+				</h3>
 				<ul className="m-0 flex list-none flex-col gap-2 p-0">
 					{device.memberships.map((membership) => (
 						<li key={membership.networkId} className="flex flex-col gap-1">
@@ -424,7 +440,7 @@ export const DevicePanel: FC<{
 								{membership.capabilities.length > 0
 									? ` · ${membership.capabilities.join(", ")}`
 									: ""}
-								{membership.active ? "" : " · revoked"}
+								{membership.active ? "" : t("ui.mesh.mesh_card.revoked")}
 							</span>
 							{canInvite && membership.active && (
 								<Button
@@ -434,7 +450,8 @@ export const DevicePanel: FC<{
 									data-mesh-remove-member={`${membership.networkId}:${device.id}`}
 									onClick={() => onRemoveMember(device, membership.networkId)}
 								>
-									Remove from {membership.networkName}…
+									{t("ui.mesh.mesh_card.remove_from")}
+									{membership.networkName}…
 								</Button>
 							)}
 						</li>
@@ -448,7 +465,7 @@ export const DevicePanel: FC<{
 						data-mesh-invite={device.id}
 						onClick={() => onInvite(device)}
 					>
-						Invite to a network…
+						{t("ui.mesh.mesh_actions.invite_to_a_network")}
 					</Button>
 				)}
 			</section>
@@ -492,13 +509,16 @@ export const DevicePanel: FC<{
 			 */}
 			<section className="flex shrink-0 flex-col gap-2">
 				<h3 className="text-meta text-ink-dim">
-					Conversations <span className="text-ink-disabled">({shownOf})</span>
+					{t("ui.mesh.mesh_card.conversations")}
+					<span className="text-ink-disabled">({shownOf})</span>
 				</h3>
 				{sessions.rows.length === 0 ? (
 					<p className="text-meta text-ink-dim">
 						{device.sessionCount === null
-							? "This device did not report its conversations."
-							: "No conversations here."}
+							? t(
+									"ui.mesh.mesh_card.this_device_did_not_report_its_conversations",
+								)
+							: t("ui.mesh.mesh_card.no_conversations_here")}
 					</p>
 				) : (
 					<ul className="m-0 flex list-none flex-col gap-1 p-0">
@@ -532,7 +552,7 @@ export const DevicePanel: FC<{
 								</span>
 								{movingSessionId === session.id ? (
 									<span className="shrink-0 text-meta text-ink-muted">
-										moving…
+										{t("ui.mesh.mesh_card.moving")}
 									</span>
 								) : (
 									<SessionMoveMenu
@@ -545,7 +565,9 @@ export const DevicePanel: FC<{
 										trigger={
 											<MoreHorizontal aria-hidden="true" className="size-4" />
 										}
-										triggerLabel={`Move ${chipLabel(session)}`}
+										triggerLabel={t("ui.mesh.mesh_card.move_conversation", {
+											conversation: chipLabel(session),
+										})}
 									/>
 								)}
 							</li>
@@ -571,9 +593,13 @@ export const DevicePanel: FC<{
 			 * relay's listener from a dial target, so calling it a listener would be a guess.
 			 */}
 			<section className="flex flex-col gap-2">
-				<h3 className="text-meta text-ink-dim">Network addresses</h3>
+				<h3 className="text-meta text-ink-dim">
+					{t("ui.mesh.mesh_card.network_addresses")}
+				</h3>
 				{device.endpoints.length === 0 ? (
-					<p className="text-meta text-ink-dim">No address published.</p>
+					<p className="text-meta text-ink-dim">
+						{t("ui.mesh.mesh_card.no_address_published")}
+					</p>
 				) : (
 					<ul className="m-0 flex list-none flex-col gap-1 p-0">
 						{device.endpoints.map((endpoint) => (
@@ -585,7 +611,7 @@ export const DevicePanel: FC<{
 									{endpoint}
 								</span>
 								<span className="shrink-0 text-meta text-ink-dim">
-									advertised
+									{t("ui.mesh.mesh_card.advertised")}
 								</span>
 							</li>
 						))}
@@ -609,17 +635,23 @@ export const DevicePanel: FC<{
 			 * is never re-worded.
 			 */}
 			<section className="flex flex-col gap-2">
-				<h3 className="text-meta text-ink-dim">Status</h3>
+				<h3 className="text-meta text-ink-dim">
+					{t("ui.mesh.mesh_card.status")}
+				</h3>
 				<dl className="m-0 flex flex-col gap-1">
 					<div className="flex items-baseline justify-between gap-2">
-						<dt className="text-meta text-ink-dim">Reach</dt>
+						<dt className="text-meta text-ink-dim">
+							{t("ui.mesh.mesh_card.reach")}
+						</dt>
 						<dd className="m-0 text-body-sm text-ink">{reachWords(reach)}</dd>
 					</div>
 					<div className="flex items-baseline justify-between gap-2">
-						<dt className="text-meta text-ink-dim">Last status frame</dt>
+						<dt className="text-meta text-ink-dim">
+							{t("ui.mesh.mesh_card.last_status_frame")}
+						</dt>
 						<dd className="m-0 text-body-sm text-ink">
 							{device.lastSeenAt === null
-								? "never"
+								? t("ui.mesh.mesh_card.never")
 								: agoSentence(nowSeconds - device.lastSeenAt)}
 						</dd>
 					</div>
@@ -638,7 +670,7 @@ export const DevicePanel: FC<{
 				data-mesh-show-in-list={device.id}
 				onClick={() => onShowInList(device.id)}
 			>
-				Show in list
+				{t("ui.mesh.mesh_card.show_in_list")}
 			</Button>
 		</aside>
 	);

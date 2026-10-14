@@ -72,6 +72,8 @@
 
 import { Alert, Button } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { ShieldCheck } from "lucide-react";
 import type { FC } from "react";
@@ -125,7 +127,9 @@ function stateInk(state: string): string {
  * gloss says the write does.
  */
 function recordActionLabel(state: string): string {
-	return state === "failed" ? "Abandon" : "Stop";
+	return state === "failed"
+		? t("ui.mesh.mesh_approvals_tray.abandon")
+		: t("ui.mesh.mesh_approvals_tray.stop");
 }
 
 /**
@@ -143,33 +147,43 @@ function stateHints(state: string): { term: string; text: string }[] {
 		case "requested":
 			return [
 				{
-					term: "Signing",
-					text: "Approving signs with this machine's operator key; the system may ask for it.",
+					term: t("ui.mesh.mesh_approvals_tray.signing"),
+					text: t(
+						"ui.mesh.mesh_approvals_tray.approving_signs_with_this_machine_s_operator",
+					),
 				},
 			];
 		case "approved":
 			return [
 				{
-					term: "Next",
-					text: "An agent runs the install and connect.",
+					term: t("ui.mesh.mesh_approvals_tray.next"),
+					text: t(
+						"ui.mesh.mesh_approvals_tray.an_agent_runs_the_install_and_connect",
+					),
 				},
 				{
-					term: "Stop",
-					text: "Stopping now denies the request; nothing has run yet.",
+					term: t("ui.mesh.mesh_approvals_tray.stop"),
+					text: t(
+						"ui.mesh.mesh_approvals_tray.stopping_now_denies_the_request_nothing_has",
+					),
 				},
 			];
 		case "connecting":
 			return [
 				{
-					term: "Stop",
-					text: "Stopping now denies the request; the runner stops at its next step.",
+					term: t("ui.mesh.mesh_approvals_tray.stop"),
+					text: t(
+						"ui.mesh.mesh_approvals_tray.stopping_now_denies_the_request_the_runner",
+					),
 				},
 			];
 		case "failed":
 			return [
 				{
-					term: "After a stop",
-					text: "The runner stopped before it finished. Abandoning denies the request; a retry re-enters the same record instead.",
+					term: t("ui.mesh.mesh_approvals_tray.after_a_stop"),
+					text: t(
+						"ui.mesh.mesh_approvals_tray.the_runner_stopped_before_it_finished_abandoning",
+					),
 				},
 			];
 		default:
@@ -221,6 +235,7 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 	nowSeconds,
 	networkNames,
 }) => {
+	useI18nLocale();
 	/*
 	 * THE BUSY GATE IS THE SURFACE'S, not the row's (agent review round 1,
 	 * finding 3): the browser tray this surface models disables every control
@@ -301,16 +316,20 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 		 * them has stopped drawing.
 		 */
 		<section
-			aria-label="Approvals"
+			aria-label={t("ui.mesh.mesh_approvals_tray.approvals")}
 			data-tour-tag="mesh-approvals-tray"
 			className="flex flex-col gap-3"
 		>
 			<div className="flex flex-wrap items-center gap-2">
 				<ShieldCheck aria-hidden="true" className="size-4 text-ink-muted" />
-				<h2 className="text-body-sm text-ink">Approvals</h2>
+				<h2 className="text-body-sm text-ink">
+					{t("ui.mesh.mesh_approvals_tray.approvals")}
+				</h2>
 				{waiting.length > 0 && (
 					<span className="text-meta text-ink-dim">
-						{waiting.length === 1 ? "1 waiting" : `${waiting.length} waiting`}
+						{t("ui.mesh.mesh_approvals_tray.waiting_count", {
+							count: waiting.length,
+						})}
 					</span>
 				)}
 			</div>
@@ -319,7 +338,7 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 				<div className="flex flex-wrap items-center gap-2">
 					<p className="min-w-0 flex-1 text-meta text-ink-muted">{error}</p>
 					<Button variant="secondary" size="sm" onClick={onRetry}>
-						Ask again
+						{t("ui.mesh.mesh_approvals_tray.ask_again")}
 					</Button>
 				</div>
 			)}
@@ -386,7 +405,7 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 					className={cn(waiting.length > 0 && "border-hairline border-t pt-3")}
 					summary={
 						<span className="flex items-center gap-1.5 text-meta text-ink-muted">
-							Settled approvals
+							{t("ui.mesh.mesh_approvals_tray.settled_approvals")}
 							<span className="text-ink-dim">({records.length})</span>
 							{recordsSignalled && (
 								<span
@@ -395,7 +414,11 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 								/>
 							)}
 							{failedCount > 0 && (
-								<span className="text-danger">{failedCount} failed</span>
+								<span className="text-danger">
+									{t("ui.mesh.mesh_approvals_tray.failed_count", {
+										count: failedCount,
+									})}
+								</span>
 							)}
 						</span>
 					}
@@ -521,8 +544,9 @@ const MeshApprovalCard: FC<{
 					className="text-meta text-ink-muted"
 					data-tour-tag="mesh-approval-stopped-note"
 				>
-					The runner stopped before it finished. It stays retryable until its
-					window closes; Abandon denies the request.
+					{t(
+						"ui.mesh.mesh_approvals_tray.the_runner_stopped_before_it_finished_it",
+					)}
 				</p>
 			)}
 
@@ -536,7 +560,7 @@ const MeshApprovalCard: FC<{
 							onClick={() => onDecide(row.approvalId, "approve")}
 							data-tour-tag="mesh-approval-approve"
 						>
-							Approve
+							{t("ui.mesh.mesh_approvals_tray.approve")}
 						</Button>
 					)}
 					{canDeny && (
@@ -551,14 +575,18 @@ const MeshApprovalCard: FC<{
 								waiting ? "mesh-approval-deny" : "mesh-approval-stop"
 							}
 						>
-							{waiting ? "Deny" : recordActionLabel(row.state)}
+							{waiting
+								? t("ui.mesh.mesh_approvals_tray.deny")
+								: recordActionLabel(row.state)}
 						</Button>
 					)}
 					{pending && (
 						<span className="text-meta text-ink-dim">
 							{pending.decision === "approve"
-								? "Waiting for the signing prompt…"
-								: "Writing the decision…"}
+								? t(
+										"ui.mesh.mesh_approvals_tray.waiting_for_the_signing_prompt",
+									)
+								: t("ui.mesh.mesh_approvals_tray.writing_the_decision")}
 						</span>
 					)}
 				</div>
@@ -573,7 +601,11 @@ const MeshApprovalCard: FC<{
 			 */}
 			<Disclosure
 				chevronClassName="text-ink-dim"
-				summary={<span className="text-meta">Details</span>}
+				summary={
+					<span className="text-meta">
+						{t("ui.mesh.mesh_approvals_tray.details")}
+					</span>
+				}
 			>
 				{entries.length > 0 && (
 					<dl

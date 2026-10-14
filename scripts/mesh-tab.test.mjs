@@ -57,6 +57,7 @@ const bundle = await build({
 			export * from "./src/renderer/src/features/mesh/mesh-drop";
 			export * from "./src/renderer/src/features/mesh/mesh-drag";
 			export * from "./src/renderer/src/features/mesh/mesh-approvals";
+ export { t, setLocale, registerCatalogue, clearRegisteredCatalogues } from "./src/i18n";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -101,6 +102,8 @@ const contractBundle = await build({
 	conditions: ["import"],
 	write: false,
 });
+
+mesh.setLocale("en");
 
 const contractRuntime = await import(
 	`data:text/javascript;base64,${Buffer.from(contractBundle.outputFiles[0].text).toString("base64")}`
@@ -2268,7 +2271,7 @@ test("a refused decision renders its sentence, and the tray splits waiting from 
 	);
 	assert.match(
 		tray,
-		/\{waiting\.length === 1 \? "1 waiting" : `\$\{waiting\.length\} waiting`\}/,
+		/t\("ui\.mesh\.mesh_approvals_tray\.waiting_count",\s*\{\s*count: waiting\.length,?\s*\}\)/,
 		"the header counts the waiting set - the same number the rail badge wears",
 	);
 	/*
@@ -2330,7 +2333,7 @@ test("a refused decision renders its sentence, and the tray splits waiting from 
 	);
 	assert.match(
 		tray,
-		/<span className="text-danger">\{failedCount\} failed<\/span>/,
+		/<span className="text-danger">\s*\{t\("ui\.mesh\.mesh_approvals_tray\.failed_count",\s*\{\s*count: failedCount,?\s*\}\)\}/,
 		"and it is stated in words beside the dot, in the row state's own ink",
 	);
 	/*
@@ -2347,7 +2350,7 @@ test("a refused decision renders its sentence, and the tray splits waiting from 
 	);
 	assert.match(
 		tray,
-		/\t+\t+\t+\t\tSettled approvals\n/,
+		/t\("ui\.mesh\.mesh_approvals_tray\.settled_approvals"\)/,
 		"the section is named for what it holds — 'Records' nested in the prompts' panel was the operator's complaint",
 	);
 	assert.match(
@@ -2457,8 +2460,14 @@ test("a refused decision renders its sentence, and the tray splits waiting from 
 	 * contradiction the operator reported was exactly `Approved` beside `Deny`.
 	 */
 	assert.match(tray, /const waiting = isWaitingApproval\(row\.state\);/);
-	assert.match(tray, /\{waiting \? "Deny" : recordActionLabel\(row\.state\)\}/);
-	assert.match(tray, /return state === "failed" \? "Abandon" : "Stop";/);
+	assert.match(
+		tray,
+		/\{waiting\s*\? t\("ui\.mesh\.mesh_approvals_tray\.deny"\)\s*: recordActionLabel\(row\.state\)\}/,
+	);
+	assert.match(
+		tray,
+		/return state === "failed"\s*\? t\("ui\.mesh\.mesh_approvals_tray\.abandon"\)\s*: t\("ui\.mesh\.mesh_approvals_tray\.stop"\);/,
+	);
 	/*
 	 * AND THE PAGE ACTUALLY PASSES IT (agent review round 4, R4-4): the tray pin
 	 * above proves the clause CAN name the network, while dropping the prop at the
@@ -3467,7 +3476,7 @@ test("the one gesture the protocol refuses is not a drag, and every drag has a m
 	);
 	// The affordance that DOES admit a device, where a reader meets it.
 	const card = source("src/renderer/src/features/mesh/mesh-card.tsx");
-	assert.match(card, /Invite to a network/);
+	assert.match(card, /ui\.mesh\.mesh_actions\.invite_to_a_network/);
 	// And every drag outcome is reachable from a menu (the plan's accessibility rule).
 	assert.match(card, /export const SessionMoveMenu/);
 	assert.match(
@@ -3500,7 +3509,7 @@ test("a refusal is rendered from the receipt rather than paraphrased", () => {
 		/\{refusal\?\.code\}/,
 		"with its code beside it, so a support conversation and a log agree",
 	);
-	assert.match(actions, /Wait for the turn to finish/);
+	assert.match(actions, /ui\.mesh\.mesh_actions\.wait_for_the_turn_to_finish/);
 	/*
 	 * THE UNDO'S LABEL IS THE PLAN'S OWN VERB (agent review round 1, F3 / UX U4): the button
 	 * said "Erase the copy" while the request it sent was a recall that leaves this device
@@ -3622,7 +3631,7 @@ test("the cap's two chips stay legible, and the title's head survives the trunca
 	);
 	assert.match(
 		node,
-		/aria-label=\{`Show all \$\{sessionTotal\} conversations`\}/,
+		/aria-label=\{t\("ui\.mesh\.mesh_node\.show_all_conversations",\s*\{\s*count: sessionTotal,?\s*\}\)\}/,
 		"the affordance moves to the accessible name, which costs no width",
 	);
 	/*
@@ -4146,7 +4155,7 @@ test("the panel lists the addresses and labels the rotation stamp (D5, D4)", () 
 	 */
 	assert.match(
 		panel,
-		/Network addresses[\s\S]*?font-mono text-body-sm text-ink[\s\S]*?advertised/,
+		/ui\.mesh\.mesh_card\.network_addresses[\s\S]*?font-mono text-body-sm text-ink[\s\S]*?ui\.mesh\.mesh_card\.advertised/,
 		"each published address is its own row, in the machine's own voice, and the side that published it is named",
 	);
 	assert.doesNotMatch(
@@ -4163,7 +4172,7 @@ test("the panel lists the addresses and labels the rotation stamp (D5, D4)", () 
 	 */
 	assert.match(
 		panel,
-		/Last status frame[\s\S]*?device\.lastSeenAt === null[\s\S]*?"never"[\s\S]*?agoSentence\(/,
+		/ui\.mesh\.mesh_card\.last_status_frame[\s\S]*?device\.lastSeenAt === null[\s\S]*?ui\.mesh\.mesh_card\.never[\s\S]*?agoSentence\(/,
 		"the section names the stamp and prints `never` for a null rather than 1970",
 	);
 	assert.doesNotMatch(
@@ -4171,4 +4180,54 @@ test("the panel lists the addresses and labels the rotation stamp (D5, D4)", () 
 		/seen \$\{|\bseen just now\b/,
 		"and no surface says `seen …` any more: one stamp, one noun",
 	);
+});
+
+// Source pins follow typed messages; their catalogue contract must still say the same English.
+test("mesh extraction keeps pinned labels and source-language plural fallback", () => {
+	const en = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.mesh.json", "utf8"),
+	);
+	assert.equal(
+		en["ui.mesh.mesh_actions.invite_to_a_network"],
+		"Invite to a network…",
+	);
+	assert.equal(
+		en["ui.mesh.mesh_actions.wait_for_the_turn_to_finish"],
+		"Wait for the turn to finish",
+	);
+	assert.equal(en["ui.mesh.mesh_card.network_addresses"], "Network addresses");
+	assert.equal(en["ui.mesh.mesh_card.advertised"], "advertised");
+	assert.equal(en["ui.mesh.mesh_card.last_status_frame"], "Last status frame");
+	assert.equal(en["ui.mesh.mesh_card.never"], "never");
+	assert.equal(en["ui.mesh.mesh_approvals_tray.deny"], "Deny");
+	assert.equal(en["ui.mesh.mesh_approvals_tray.abandon"], "Abandon");
+	assert.equal(en["ui.mesh.mesh_approvals_tray.stop"], "Stop");
+	assert.equal(
+		en["ui.mesh.mesh_approvals_tray.settled_approvals"],
+		"Settled approvals",
+	);
+	try {
+		mesh.registerCatalogue("fr", {
+			"ui.mesh.mesh_reach.no_answer": "Fixture no answer",
+		});
+		mesh.setLocale("fr");
+		assert.equal(mesh.reachWords("unanswered"), "Fixture no answer");
+		for (const count of [0, 1, 21]) {
+			assert.equal(
+				mesh.t("ui.mesh.mesh_graph.network_count", { count }),
+				`${count} ${count === 1 ? "network" : "networks"}`,
+			);
+			assert.equal(
+				mesh.t("ui.mesh.mesh_approvals_tray.waiting_count", { count }),
+				`${count} waiting`,
+			);
+			assert.equal(
+				mesh.t("ui.mesh.mesh_node.show_all_conversations", { count }),
+				`Show all ${count} conversations`,
+			);
+		}
+	} finally {
+		mesh.clearRegisteredCatalogues();
+		mesh.setLocale("en");
+	}
 });

@@ -52,6 +52,7 @@
  * avoids.
  */
 
+import { t } from "@shared/i18n";
 import type { MeshDevice, MeshNetwork } from "./mesh-graph";
 import { type MeshSessionRow, sessionIsBusy } from "./mesh-types";
 
@@ -160,7 +161,10 @@ export function planConfirm(
 		// THE LABEL NAMES THE VERB THE INDICATOR NAMED, so the dialog cannot claim a
 		// different operation from the one the drop offered (Grafana's node contract:
 		// one meaning per channel).
-		confirmLabel: plan.to === "local" ? "Recall it" : "Move it",
+		confirmLabel:
+			plan.to === "local"
+				? t("ui.mesh.mesh_drop.recall_it")
+				: t("ui.mesh.mesh_drop.move_it"),
 		/*
 		 * RISK IS CARRIED RATHER THAN FOLDED INTO THE SENTENCE, because it decides the
 		 * dialog's EMPHASIS and not merely its words: a session with a live runtime
@@ -185,7 +189,10 @@ export function planConfirm(
  * dialog comes to say "the copy here is deleted" about a copy that is not here.
  */
 export function lossSentence(deletedOn: string, gainedBy: string): string {
-	return `The copy on ${deletedOn} is deleted once ${gainedBy} has it.`;
+	return t("ui.mesh.mesh_drop.copy_loss", {
+		source: deletedOn,
+		destination: gainedBy,
+	});
 }
 
 /**
@@ -204,7 +211,10 @@ export function lossSentence(deletedOn: string, gainedBy: string): string {
  * the runtime holds.
  */
 function runtimeSentence(session: MeshSessionRow, where: string): string {
-	return `${session.name || "This conversation"} is running ${where} right now.`;
+	return t("ui.mesh.mesh_drop.running_now", {
+		conversation: session.name || t("ui.mesh.mesh_drop.this_conversation"),
+		where,
+	});
 }
 
 /** Where a device's label is shown; the id's tail when it never told us a name. */
@@ -231,24 +241,40 @@ function deviceRefusal(
 		return {
 			kind: "refused",
 			code: "suspect_device",
-			sentence: `${device.label} has a duplicated key${device.reason ? ` (${device.reason})` : ""}, so nothing is moved to it until that is resolved.`,
-			remedy: { kind: "open", label: "See this device", deviceId },
+			sentence: t("ui.mesh.mesh_drop.duplicate_key", {
+				device: device.label,
+				reason: device.reason ? ` (${device.reason})` : "",
+			}),
+			remedy: {
+				kind: "open",
+				label: t("ui.mesh.mesh_drop.see_this_device"),
+				deviceId,
+			},
 		};
 	}
 	if (device.memberships.every((membership) => !membership.active)) {
 		return {
 			kind: "refused",
 			code: "revoked_membership",
-			sentence: `${device.label} is no longer a member of any network this device shares.`,
-			remedy: { kind: "open", label: "See this device", deviceId },
+			sentence: t("ui.mesh.mesh_drop.no_shared_network", {
+				device: device.label,
+			}),
+			remedy: {
+				kind: "open",
+				label: t("ui.mesh.mesh_drop.see_this_device"),
+				deviceId,
+			},
 		};
 	}
 	if (!device.reachable) {
 		return {
 			kind: "refused",
 			code: "unreachable",
-			sentence: `${device.label} is not answering${device.reason ? ` (${device.reason})` : ""}, so nothing was moved.`,
-			remedy: { kind: "resume", label: "Check again" },
+			sentence: t("ui.mesh.mesh_drop.no_answer", {
+				device: device.label,
+				reason: device.reason ? ` (${device.reason})` : "",
+			}),
+			remedy: { kind: "resume", label: t("ui.mesh.mesh_actions.check_again") },
 		};
 	}
 	return null;
@@ -286,7 +312,9 @@ export function resolveDrop(
 		return {
 			kind: "refused",
 			code: "not_a_device",
-			sentence: `A conversation lives on a device. ${network?.label ?? "A network"} holds devices, not conversations.`,
+			sentence: t("ui.mesh.mesh_drop.network_not_destination", {
+				network: network?.label ?? t("ui.mesh.mesh_drop.a_network"),
+			}),
 			remedy: null,
 		};
 	}
@@ -302,10 +330,12 @@ export function resolveDrop(
 		return {
 			kind: "refused",
 			code: "busy",
-			sentence: `${session.name || "This conversation"} has a turn in flight, so it is not moved — the refusal changes nothing.`,
+			sentence: t("ui.mesh.mesh_drop.turn_in_flight", {
+				conversation: session.name || t("ui.mesh.mesh_drop.this_conversation"),
+			}),
 			remedy: {
 				kind: "wait",
-				label: "Wait for the turn to finish",
+				label: t("ui.mesh.mesh_actions.wait_for_the_turn_to_finish"),
 				waitS: 300,
 			},
 			/*
@@ -321,8 +351,13 @@ export function resolveDrop(
 				keep: false,
 				verb:
 					target.deviceId === selfDeviceId
-						? "Recall to this device"
-						: `Move to ${peerLabel(devices.get(target.deviceId), target.deviceId)}`,
+						? t("ui.mesh.mesh_card.recall_to_this_device")
+						: t("ui.mesh.mesh_card.move_to", {
+								device: peerLabel(
+									devices.get(target.deviceId),
+									target.deviceId,
+								),
+							}),
 				waitS: 0,
 				lost: null,
 			},
@@ -344,7 +379,7 @@ export function resolveDrop(
 		? deviceRefusal(destination, target.deviceId)
 		: {
 				code: "unknown_device",
-				sentence: "That device is no longer in any network this tab can read.",
+				sentence: t("ui.mesh.mesh_drop.that_device_is_no_longer_in_any"),
 				remedy: null,
 			};
 	if (refused) return { kind: "refused", ...refused };
@@ -365,8 +400,14 @@ export function resolveDrop(
 			return {
 				kind: "refused",
 				code: "unreachable",
-				sentence: `${ownerLabel} is not answering${owner.reason ? ` (${owner.reason})` : ""}, so it could not hand this conversation over.`,
-				remedy: { kind: "resume", label: "Check again" },
+				sentence: t("ui.mesh.mesh_drop.owner_no_answer", {
+					device: ownerLabel,
+					reason: owner.reason ? ` (${owner.reason})` : "",
+				}),
+				remedy: {
+					kind: "resume",
+					label: t("ui.mesh.mesh_actions.check_again"),
+				},
 			};
 		}
 		if (target.deviceId !== selfDeviceId) {
@@ -379,7 +420,7 @@ export function resolveDrop(
 			return {
 				kind: "refused",
 				code: "third_device",
-				sentence: `This conversation is on ${ownerLabel}. It has to travel through this device: recall it here first.`,
+				sentence: t("ui.mesh.mesh_drop.recall_first", { owner: ownerLabel }),
 				remedy: null,
 			};
 		}
@@ -391,11 +432,11 @@ export function resolveDrop(
 			sessionId: session.id,
 			to: "local",
 			keep: false,
-			verb: "Recall to this device",
+			verb: t("ui.mesh.mesh_card.recall_to_this_device"),
 			waitS: 0,
 			lost: hasLiveRuntime(session)
-				? `${runtimeSentence(session, `on ${ownerLabel}`)} ${lossSentence(ownerLabel, "this device")}`
-				: lossSentence(ownerLabel, "this device"),
+				? `${runtimeSentence(session, t("ui.mesh.mesh_drop.on_owner", { owner: ownerLabel }))} ${lossSentence(ownerLabel, t("ui.mesh.mesh_drop.this_device"))}`
+				: lossSentence(ownerLabel, t("ui.mesh.mesh_drop.this_device")),
 		};
 		return {
 			kind: "plan",
@@ -408,7 +449,7 @@ export function resolveDrop(
 				{
 					...plan,
 					keep: true,
-					verb: "Copy here, leave it there",
+					verb: t("ui.mesh.mesh_card.copy_here_leave_it_there"),
 					lost: null,
 				},
 			],
@@ -429,11 +470,11 @@ export function resolveDrop(
 		sessionId: session.id,
 		to: target.deviceId,
 		keep: false,
-		verb: `Move to ${destinationLabel}`,
+		verb: t("ui.mesh.mesh_card.move_to", { device: destinationLabel }),
 		waitS: 0,
 		lost: risky
-			? `${runtimeSentence(session, "on this device")} ${lossSentence("this device", destinationLabel)}`
-			: lossSentence("this device", destinationLabel),
+			? `${runtimeSentence(session, t("ui.mesh.mesh_drop.on_this_device"))} ${lossSentence(t("ui.mesh.mesh_drop.this_device"), destinationLabel)}`
+			: lossSentence(t("ui.mesh.mesh_drop.this_device"), destinationLabel),
 	};
 	return {
 		kind: "plan",
@@ -443,7 +484,7 @@ export function resolveDrop(
 			{
 				...plan,
 				keep: true,
-				verb: `Copy to ${destinationLabel}`,
+				verb: t("ui.mesh.mesh_card.copy_to", { device: destinationLabel }),
 				lost: null,
 			},
 		],
@@ -462,7 +503,7 @@ export function resolveDrop(
  */
 export function hoverSentence(verdict: DropVerdict): string | null {
 	if (verdict.kind === "refused")
-		return `Drop will be refused: ${verdict.sentence}`;
+		return t("ui.mesh.mesh_drop.drop_refusal", { sentence: verdict.sentence });
 	if (verdict.kind === "plan") return verdict.plan.verb;
 	return null;
 }

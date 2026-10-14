@@ -31,6 +31,7 @@
  * pointer. `NODE_HEIGHT` therefore includes the band, always.
  */
 
+import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import { Monitor, Network, ShieldAlert } from "lucide-react";
 import type { FC } from "react";
@@ -211,7 +212,9 @@ export function chipFact(
 			: words;
 	}
 	if (session.live_state.trim()) return session.live_state.trim();
-	return session.locality === "local" ? "on this device" : `on ${ownerLabel}`;
+	return session.locality === "local"
+		? t("ui.mesh.mesh_drop.on_this_device")
+		: t("ui.mesh.mesh_node.on_device", { device: ownerLabel });
 }
 
 /*
@@ -285,11 +288,15 @@ export const MeshNetworkNode: FC<NetworkNodeProps> = ({
 				 * the number on screen - the plan § 5's node contract, and #498's design
 				 * round 1, D10.
 				 */
-				title={`epoch ${network.epoch}`}
+				title={t("ui.mesh.mesh_list.epoch", { epoch: network.epoch })}
 				className="block truncate text-meta text-ink-dim"
 			>
-				{network.memberCount} {network.memberCount === 1 ? "device" : "devices"}
-				{network.revokedCount > 0 ? ` · ${network.revokedCount} revoked` : ""}
+				{t("ui.mesh.mesh_graph.device_count", { count: network.memberCount })}
+				{network.revokedCount > 0
+					? t("ui.mesh.mesh_list.revoked_count", {
+							count: network.revokedCount,
+						})
+					: ""}
 			</span>
 		</span>
 	</li>
@@ -526,12 +533,14 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 					</span>
 					{working && (
 						<span data-mesh-working="" className="shrink-0 text-info">
-							working
+							{t("ui.mesh.mesh_node.working")}
 						</span>
 					)}
 					{device.memberships.length > 1 && (
 						<span className="min-w-0 truncate text-ink-dim">
-							· {device.memberships.length} networks
+							{t("ui.mesh.mesh_node.memberships", {
+								count: device.memberships.length,
+							})}
 						</span>
 					)}
 				</span>
@@ -545,7 +554,9 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 			 * only place the whole list is offered.
 			 */}
 			<ul
-				aria-label={`Conversations on ${device.label}`}
+				aria-label={t("ui.mesh.mesh_node.conversations_on", {
+					device: device.label,
+				})}
 				className={cn(
 					/*
 					 * THE BAND IS A FIXED 24 px, EMPTY OR NOT (`NODE_CHIP_BAND`): it is awarded by
@@ -605,7 +616,10 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 							// The second number is the CATALOGUE's when it named one, because
 							// "4 of 37" over a page of 8 rows is a wrong total rather than a
 							// rounded one (`deviceSessionTotal`).
-							title={`Showing ${sessions.shown.length} of ${sessionTotal} conversations`}
+							title={t("ui.mesh.mesh_node.shown_conversations", {
+								shown: sessions.shown.length,
+								total: sessionTotal,
+							})}
 							/*
 							 * THE WORD "MORE" IS IN THE NAME, NOT ON THE CONTROL (design review round 2,
 							 * D8). Measured in the shipped renderer at the pinned 200 px: the full `+4 more`
@@ -617,7 +631,9 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 							 * The affordance is not the word: the button's own name and its tooltip both
 							 * still say what it opens, and the panel it opens is the whole list.
 							 */
-							aria-label={`Show all ${sessionTotal} conversations`}
+							aria-label={t("ui.mesh.mesh_node.show_all_conversations", {
+								count: sessionTotal,
+							})}
 						>
 							+{sessions.hidden}
 						</button>
@@ -690,7 +706,7 @@ const SessionChip: FC<SessionChipProps> = ({
 			// biome-ignore lint/a11y/useSemanticElements: `role="status"` has no semantic element of its own; `<output>` is for a form's result, and this is a live region inside a list item.
 			<li role="status" data-mesh-session={session.id} data-mesh-moving="true">
 				<span className="flex min-h-6 items-center rounded-sm bg-sunken px-1.5 text-meta text-ink-muted">
-					moving…
+					{t("ui.mesh.mesh_card.moving")}
 				</span>
 			</li>
 		);
@@ -708,7 +724,11 @@ const SessionChip: FC<SessionChipProps> = ({
 				// also start a text selection or a native scroll while it is happening.
 				style={{ touchAction: "none" }}
 				title={`${chipLabel(session)} · ${fact}`}
-				aria-label={`${chipLabel(session)}, ${fact}. Opens ${ownerLabel}.`}
+				aria-label={t("ui.mesh.mesh_node.open_conversation", {
+					conversation: chipLabel(session),
+					fact,
+					owner: ownerLabel,
+				})}
 				onPointerDown={(event) => onPointerDown(event, session)}
 				onClick={() => onClick(session)}
 				className={cn(

@@ -59,6 +59,7 @@ import {
 	type DesktopControlError,
 	desktopResult,
 } from "@shared/api/local-operator/desktop-api";
+import { t } from "@shared/i18n";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef } from "react";
 import { type MeshGraph, meshGraph } from "./mesh-graph";
@@ -333,7 +334,10 @@ export function meshReadState(
 export function meshErrorMessage(error: unknown): string {
 	const authored = (error as Partial<DesktopControlError> | null)?.message;
 	if (typeof authored === "string" && authored.trim()) return authored.trim();
-	return backendLoadErrorMessage("The mesh could not be read.", error);
+	return backendLoadErrorMessage(
+		t("ui.mesh.mesh_store.the_mesh_could_not_be_read"),
+		error,
+	);
 }
 
 /* ------------------------------------------------------------------- model */
@@ -492,8 +496,9 @@ export function useMeshTransfer() {
 					kind: "unconfirmed",
 					refusal: {
 						code: "unconfirmed",
-						sentence:
-							"The move answered, and this app could not read which session it moved. Read the list again before asking for another.",
+						sentence: t(
+							"ui.mesh.mesh_store.the_move_answered_and_this_app_could",
+						),
 						status: 200,
 						unconfirmed: true,
 					},
