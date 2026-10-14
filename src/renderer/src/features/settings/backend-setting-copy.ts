@@ -29,6 +29,7 @@
  */
 
 import type { BackendSetting } from "@shared/api/local-operator/desktop-api";
+import { type WithoutParams, t } from "@shared/i18n";
 import { sectionForSettingKey } from "./promoted-setting-sections";
 import {
 	DELEGATED_ENABLED_KEY,
@@ -42,7 +43,24 @@ type RowCopy = {
 	gateLabel?: string;
 };
 
-export const ROW_COPY: Record<string, RowCopy> = {
+/*
+ * COPY IS RESOLVED PER RENDER, NOT AT MODULE LOAD (the French activation bug).
+ *
+ * A `t()` call inside a module-level object literal evaluates ONCE, when the
+ * module is first imported, and freezes whatever locale was active then. That is
+ * the defect the operator hit: switching to Francais would leave these rows
+ * English until a reload, and a second switch would keep the older language. So
+ * this table holds TRANSLATION KEYS and `rowCopyFor` resolves them through `t()`
+ * when it runs - each render - which is what lets the locale subscription reach
+ * them.
+ */
+type RowCopyKeys = {
+	label: WithoutParams;
+	help: WithoutParams;
+	gateLabel?: WithoutParams;
+};
+
+const ROW_COPY_KEYS: Record<string, RowCopyKeys> = {
 	/*
 	 * The language row. Two user-visible reasons it is overridden:
 	 *
@@ -57,10 +75,19 @@ export const ROW_COPY: Record<string, RowCopy> = {
 	 * page; here the reader cannot see it, so the sentence says it once.
 	 */
 	language: {
-		label: "Interface language",
-		help: "Interface language, one setting shared with the terminal. auto follows your operating system, falling back to English.",
+		label: "ui.settings.section.interface_language.label",
+		help: "ui.settings.section.interface_language.help",
 	},
+};
 
+/*
+ * Rows NOT yet extracted: their copy is still an English literal, resolved as-is.
+ * Keeping them in a separate literal table (rather than feeding a literal to
+ * `t()`) is what lets one row migrate to keys at a time without a type lie - the
+ * string scanner holds these as known debt, and each later wave moves a row from
+ * here into `ROW_COPY_KEYS`.
+ */
+const ROW_COPY_LITERALS: Record<string, RowCopy> = {
 	[DELEGATED_ENABLED_KEY]: {
 		label: "Remove delegated sessions automatically",
 		help: "Applies to subagent runs, agent shells and background runs only.",
@@ -84,6 +111,25 @@ const SECTION_TITLES: Record<string, string> = {
 	session_delegated: "Delegated work: subagents and background sessions",
 };
 
+/**
+ * A keyed row's copy, resolved in the CURRENT locale at call time.
+ *
+ * The only way to a label: `ROW_COPY_KEYS` holds keys, so no caller can read a
+ * stale load-time string. This indirection is what the French activation fix
+ * turns on.
+ */
+function rowCopyFor(key: string): RowCopy | undefined {
+	const keys = ROW_COPY_KEYS[key];
+	if (keys) {
+		return {
+			label: t(keys.label),
+			help: t(keys.help),
+			...(keys.gateLabel ? { gateLabel: t(keys.gateLabel) } : {}),
+		};
+	}
+	return ROW_COPY_LITERALS[key];
+}
+
 /** A section's title as this page shows it. */
 export function sectionTitle(section: { name: string; title: string }): string {
 	return SECTION_TITLES[section.name] ?? section.title;
@@ -91,7 +137,7 @@ export function sectionTitle(section: { name: string; title: string }): string {
 
 /** The setting with the desktop's words applied, or the same object untouched. */
 export function presentSetting(setting: BackendSetting): BackendSetting {
-	const copy = ROW_COPY[setting.key];
+	const copy = rowCopyFor(setting.key);
 	/*
 	 * A PROMOTED key reports the section its control actually lives in, so the
 	 * palette's per-key row hints where its `?setting=` link lands rather than
@@ -106,5 +152,5 @@ export function presentSetting(setting: BackendSetting): BackendSetting {
 
 /** The phrase a gated child's note should use for the switch `key`. */
 export function gateLabelFor(key: string, fallback: string): string {
-	return ROW_COPY[key]?.gateLabel ?? fallback;
+	return rowCopyFor(key)?.gateLabel ?? fallback;
 }

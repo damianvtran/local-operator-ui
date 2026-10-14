@@ -40,9 +40,10 @@ import {
 	type MessageParams,
 	type WithParams,
 	type WithoutParams,
+	bundledCatalogues,
 	bundledEnglish,
 } from "./keys.gen";
-import { currentLocale } from "./locale";
+import { DEFAULT_LOCALE, currentLocale } from "./locale";
 
 export type { MessageKey, MessageParams, WithParams, WithoutParams };
 
@@ -75,7 +76,37 @@ export function clearRegisteredCatalogues(): void {
 }
 
 function messageFor(key: string, locale: string): string | undefined {
-	return registered.get(locale)?.[key] ?? bundledEnglish[key];
+	/*
+	 * PER-KEY EN FALLBACK (French activation bug). Order: served catalogue for
+	 * this locale (the `wire.*` seam), then the client's own bundle for this
+	 * locale (generated from `catalogues/<locale>/`), then the English source.
+	 * A locale that is missing a key therefore renders the English string — never
+	 * a raw key, never a blank — which is the RFC §2.5 fallback and the reason a
+	 * partially translated locale degrades per key rather than per screen.
+	 *
+	 * The TAGGED locale is passed so the formatter runs with the target locale's
+	 * plural/date rules once a message is found — but an EN-FALLBACK message must
+	 * format with ENGLISH rules, or a `{count, plural, one {…}}` English string
+	 * could pluralise by French rules. `translate()` below picks the formatting
+	 * tag from which catalogue actually answered.
+	 */
+	const served = registered.get(locale)?.[key];
+	if (served !== undefined) return served;
+	const bundled = bundledCatalogues[locale]?.[key];
+	if (bundled !== undefined) return bundled;
+	return bundledEnglish[key];
+}
+
+/**
+ * The locale whose RULES should format `key` in `locale`: the target locale when
+ * its own catalogue answered (served or bundled), English when the lookup fell
+ * through to the English source. Returns the catalogue tag alongside the message
+ * so `translate()` never formats an English string with French plural rules.
+ */
+function sourceTagFor(key: string, locale: string): string {
+	if (registered.get(locale)?.[key] !== undefined) return locale;
+	if (bundledCatalogues[locale]?.[key] !== undefined) return locale;
+	return DEFAULT_LOCALE;
 }
 
 /*
@@ -111,8 +142,14 @@ export function translate(
 ): string {
 	const message = messageFor(key, locale);
 	if (message === undefined) return key;
+	/*
+	 * Format with the tag that actually ANSWERED (see `sourceTagFor`): a French
+	 * message formats as `fr`, an English fallback as `en`. Falling back on the
+	 * message without switching the tag is the mixed-language bug this avoids.
+	 */
+	const tag = sourceTagFor(key, locale);
 	try {
-		const rendered = formatterFor(locale, message).format(params);
+		const rendered = formatterFor(tag, message).format(params);
 		return typeof rendered === "string" ? rendered : String(rendered);
 	} catch {
 		return key;

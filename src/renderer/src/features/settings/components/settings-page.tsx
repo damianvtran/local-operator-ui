@@ -25,6 +25,8 @@ import {
 } from "@shared/hooks/use-radient-user-query";
 import { useUpdateConfig } from "@shared/hooks/use-update-config";
 import { useUsageRollup } from "@shared/hooks/use-usage-rollup";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -278,6 +280,17 @@ const RadientSectionTitle: FC = () => (
 );
 
 export const SettingsPage: FC = () => {
+	/*
+	 * SUBSCRIBE to the i18n locale, or a language switch would not repaint this
+	 * page. `t()` is a plain function read at call time - it does not subscribe -
+	 * so a component that calls it must also read the store through
+	 * `useI18nLocale()` for React to re-render it when the locale changes (the
+	 * pattern every other t() consumer here uses). Without this line the header
+	 * and section copy would keep the OLD language until an unrelated repaint,
+	 * which is half the bug this PR fixes. The value is unused on purpose: the
+	 * subscription is the point, and the t() calls below read the store directly.
+	 */
+	useI18nLocale();
 	const laneLeadingColumn = useLaneLeadingColumn("surface");
 	const showAgentReasoning = useUiPreferencesStore(
 		(state) => state.showAgentReasoning,
@@ -978,16 +991,20 @@ export const SettingsPage: FC = () => {
 				 * Settings all cap the detail pane and none of them column it.
 				 */}
 				<div className="mx-auto flex w-full max-w-4xl flex-col gap-8 pb-8">
-					<PageHeader title="Settings" icon={Settings} />
+					<PageHeader title={t("ui.settings.page.title")} icon={Settings} />
 					<div className="flex flex-col gap-8">
 						<div ref={sectionRefs.general} className="flex flex-col gap-8">
 							<GeneralLanguageSetting
 								focus={settingFocusKey === LANGUAGE_SETTING_KEY}
 							/>
 							<SettingsSection
-								title="User profile"
+								title={t("ui.settings.profile.title")}
 								icon={User}
-								description={`Your user profile information displayed in the application. This information is not provided to the agents. ${isAuthenticated ? "These details are provided through your Radient account." : ""}`}
+								description={t(
+									isAuthenticated
+										? "ui.settings.profile.description_authenticated"
+										: "ui.settings.profile.description_anonymous",
+								)}
 							>
 								{/*
 								 * The status slot above the fields, in the app's one register for "this
@@ -1009,7 +1026,7 @@ export const SettingsPage: FC = () => {
 								 */}
 								{accountReadChecking && (
 									<p className="text-meta text-ink-dim">
-										Checking your Radient account…
+										{t("ui.settings.profile.account_checking")}
 									</p>
 								)}
 								{/*
@@ -1052,12 +1069,11 @@ export const SettingsPage: FC = () => {
 									<Alert variant="warning">
 										<div className="flex items-center justify-between gap-3">
 											<span>
-												Your Radient account could not be read, so the name and
-												email below are placeholders rather than your account
-												details.
-												{accountRead === "refused"
-													? " Retry, or sign in to Radient again."
-													: " Retry."}
+												{t(
+													accountRead === "refused"
+														? "ui.settings.profile.account_read_failed_refused"
+														: "ui.settings.profile.account_read_failed_retry",
+												)}
 											</span>
 											{/*
 											 * WHAT THIS REPORTS IS THE READER'S OWN PRESS (qa round 3, Q1).
@@ -1082,7 +1098,9 @@ export const SettingsPage: FC = () => {
 												onClick={() => refreshUser()}
 												disabled={isAccountRefreshing}
 											>
-												{isAccountRefreshing ? "Retrying" : "Retry"}
+												{isAccountRefreshing
+													? t("ui.settings.profile.retrying")
+													: t("ui.settings.profile.retry")}
 											</Button>
 										</div>
 									</Alert>
@@ -1126,8 +1144,10 @@ export const SettingsPage: FC = () => {
 								<div className="flex flex-col gap-4">
 									<EditableField
 										value={userStore.profile.name}
-										label="Display name"
-										placeholder="Enter your name..."
+										label={t("ui.settings.profile.display_name.label")}
+										placeholder={t(
+											"ui.settings.profile.display_name.placeholder",
+										)}
 										isSaving={savingField === "user_name"}
 										onSave={async (value) => {
 											setSavingField("user_name");
@@ -1141,8 +1161,8 @@ export const SettingsPage: FC = () => {
 									/>
 									<EditableField
 										value={userStore.profile.email}
-										label="Email address"
-										placeholder="Enter your email..."
+										label={t("ui.settings.profile.email.label")}
+										placeholder={t("ui.settings.profile.email.placeholder")}
 										isSaving={savingField === "user_email"}
 										onSave={async (value) => {
 											setSavingField("user_email");
@@ -1158,8 +1178,8 @@ export const SettingsPage: FC = () => {
 							</SettingsSection>
 
 							<SettingsSection
-								title="Application tour"
-								description="Missed the application onboarding tour or want a refresher? Start it again here."
+								title={t("ui.settings.tour.title")}
+								description={t("ui.settings.tour.description")}
 							>
 								<Button
 									variant="secondary"
@@ -1168,7 +1188,7 @@ export const SettingsPage: FC = () => {
 									}}
 								>
 									<CirclePlay />
-									Take the tour
+									{t("ui.settings.tour.action")}
 								</Button>
 							</SettingsSection>
 
