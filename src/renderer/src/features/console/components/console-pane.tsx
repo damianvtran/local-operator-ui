@@ -166,6 +166,13 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 	 * terminal described by bytes nobody will call `close` about.
 	 */
 	const [pendingClose, setPendingClose] = useState<string | null>(null);
+	/*
+	 * THE QUESTION OWED BY A DISMISSAL (design round 1, D6). A retained exit's X
+	 * used to delete its output in one click with no confirmation, while the
+	 * running-close path already asked. It is the SAME modal with different copy,
+	 * so a second dialog is not added — only a second reason to open this one.
+	 */
+	const [pendingDismiss, setPendingDismiss] = useState<string | null>(null);
 	const [closing, setClosing] = useState(false);
 	/**
 	 * The refusal of the last confirmed press, in main's own words, and the counter
@@ -243,6 +250,16 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 			setPendingClose(row.surface);
 			return;
 		}
+		/*
+		 * A RETAINED EXIT ASKS FIRST (design round 1, D6): its X deletes output from
+		 * disk, which is not a one-click act. An exit that was NOT retained has
+		 * nothing on disk to lose, so it still dismisses outright.
+		 */
+		if (row.retain) {
+			focusAfterRemoval.current = row.surface;
+			setPendingDismiss(row.surface);
+			return;
+		}
 		dismissEndedSurface(row);
 	};
 
@@ -285,6 +302,20 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 	 * silent detach the day main's own default changed, which is a promise this
 	 * button cannot keep.
 	 */
+	/**
+	 * The dismissal's confirm (design round 1, D6): the retained exit's output is
+	 * deleted from disk. There is no `kill` — the process is already gone — and no
+	 * refusal state is kept, because the only refusal this path can meet is the
+	 * racing removal, which the withdraw effect above closes on the listing it just
+	 * re-read.
+	 */
+	const confirmSurfaceDismiss = () => {
+		if (pendingDismiss === null) return;
+		const row = surfaces.find((item) => item.surface === pendingDismiss);
+		setPendingDismiss(null);
+		if (row) dismissEndedSurface(row);
+	};
+
 	const confirmSurfaceClose = () => {
 		if (pendingClose === null) return;
 		setClosing(true);
@@ -317,16 +348,30 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 	 * ended).
 	 */
 	useEffect(() => {
-		if (pendingClose === null) return;
-		const entry = surfaces.find((row) => row.surface === pendingClose);
-		if (entry?.running) return;
-		setPendingClose(null);
+		if (pendingClose === null && pendingDismiss === null) return;
+		const entry = surfaces.find(
+			(row) => row.surface === (pendingClose ?? pendingDismiss),
+		);
+		if (pendingClose !== null) {
+			if (entry?.running) return;
+			setPendingClose(null);
+			/*
+			 * The keyboard is owed a handoff only when the ROW is gone; a row that stayed
+			 * (it exited) keeps its own control, and the dialog's own restore lands on it.
+			 */
+			if (entry) focusAfterRemoval.current = null;
+			return;
+		}
 		/*
-		 * The keyboard is owed a handoff only when the ROW is gone; a row that stayed
-		 * (it exited) keeps its own control, and the dialog's own restore lands on it.
+		 * A DISMISSAL'S QUESTION WITHDRAWS on the same rule: while the row is still a
+		 * retained exit the act it names is the act on offer, so the question stands;
+		 * once the row left the listing, or is no longer retained (something already
+		 * dismissed or restored it), the question is withdrawn.
 		 */
+		if (entry?.retain) return;
+		setPendingDismiss(null);
 		if (entry) focusAfterRemoval.current = null;
-	}, [pendingClose, surfaces]);
+	}, [pendingClose, pendingDismiss, surfaces]);
 
 	// Automatic completion release belongs to the host's acknowledged-exit
 	// lifecycle. A renderer timer must never discard retained/user/secure output.
@@ -354,7 +399,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 		 * the moment this effect is waiting for — and the write must not happen
 		 * under an open modal.
 		 */
-		if (pendingClose !== null) return;
+		if (pendingClose !== null || pendingDismiss !== null) return;
 		if (surfaces.some((row) => row.surface === removed)) return;
 		let timer: ReturnType<typeof setTimeout> | null = null;
 		let attempts = 0;
@@ -383,7 +428,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 		return () => {
 			if (timer !== null) clearTimeout(timer);
 		};
-	}, [surfaces, surface, pendingClose]);
+	}, [surfaces, surface, pendingClose, pendingDismiss]);
 
 	/*
 	 * The lens follows what is actually shown, and that write is what makes the
@@ -846,19 +891,38 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 				<div className={cn("flex shrink-0 items-center gap-1")}>
 					{session.snapshot.capacity ? (
 						<>
+							{/*
+							 * THE SUMMARY IS NOT TRUNCATED (design round 1, D1): the completed/kept
+							 * half — the only visible mention of retained history — used to be cut
+							 * mid-word by `max-w-40 truncate`. The command title to its left already
+							 * has `min-w-0`, so the summary is allowed its full width instead.
+							 *
+							 * THE TRIGGER IS FOCUSABLE (D1): the explanation was hover-only on a plain
+							 * span, so a keyboard user could not reach it. A ghost button with a
+							 * focus ring opens the same panel on focus (Radix opens a tooltip on
+							 * focus), and the summary itself is its visible label.
+							 */}
 							<Tooltip
 								content={
 									session.snapshot.resources
 										? `${t("ui.console.capacity.summary", session.snapshot.capacity)}. ${t("ui.console.capacity.help")} ${t("ui.console.capacity.resources", { memory: Math.ceil(session.snapshot.resources.modeledBytes / 1048576), logs: Math.ceil(session.snapshot.resources.logBytes / 1048576), pending: Math.ceil(session.snapshot.resources.pendingBytes / 1048576), cells: session.snapshot.resources.cells, protected: session.snapshot.resources.protected })}`
-										: t("ui.console.capacity.help")
+										: `${t("ui.console.capacity.summary", session.snapshot.capacity)}. ${t("ui.console.capacity.help")}`
 								}
 							>
-								<span
-									className="max-w-40 truncate text-ink-muted text-xs"
+								<Button
+									variant="ghost"
+									size="sm"
+									className="shrink-0 whitespace-nowrap px-1 text-ink-muted text-xs"
 									data-tour-tag="console-capacity"
 								>
 									{t("ui.console.capacity.summary", session.snapshot.capacity)}
-								</span>
+									{session.snapshot.capacity.archived > 0
+										? t(
+												"ui.console.capacity.archived",
+												session.snapshot.capacity,
+											)
+										: null}
+								</Button>
 							</Tooltip>
 							<Tooltip content={t("ui.console.cleanup.help")}>
 								<Button
@@ -869,10 +933,19 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 									disabled={
 										!surfaces.some(
 											(item) =>
+												/*
+												 * MIRRORS THE HOST'S PROTECTIONS (design round 1, D6): the host
+												 * skips running, secure, non-live, displayed and adopted
+												 * surfaces, so enabling the button on one the host will skip
+												 * would be a press that does nothing. `displayed` is the
+												 * renderer's own view of adoption-by-attention; the remaining
+												 * host-side protections are covered by `live`.
+												 */
 												item.agentOwned &&
 												!item.running &&
 												!item.secure &&
-												item.surface !== surface?.surface,
+												item.live &&
+												!item.displayed,
 										)
 									}
 								>
@@ -959,6 +1032,25 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 					</Tooltip>
 				</div>
 			</div>
+			{/*
+			 * THE RELEASE RESULT (design round 1, D2). The button used to give no answer,
+			 * so a user could not tell released-from-kept-from-deleted; that outcome now
+			 * lands here. It is a polite `<output>` region (the implicit status role) so a
+			 * screen reader hears it without an interruption, and it sits below the header
+			 * so it does not reflow the 40px bar. It is replaced by the next release's own
+			 * result and cleared when the pane unmounts, rather than kept as a stale
+			 * sentence after the counters have moved on.
+			 */}
+			{session.cleanupNotice !== null ? (
+				<output
+					className={cn(
+						"mx-2 mt-1 block rounded-sm bg-elevated px-2 py-1 text-meta text-ink-muted",
+					)}
+					data-tour-tag="console-cleanup-result"
+				>
+					{session.cleanupNotice}
+				</output>
+			) : null}
 			{surfaces.length > 0 ? (
 				/* THE PANE'S OWN LIST, which is also its lens (§6.1's "one more control
 				   in the header cluster" is the slot's trigger; this is the pane's). A row
@@ -1099,10 +1191,10 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 								<Tooltip
 									content={
 										row.running
-											? "Close terminal"
+											? t("ui.console.close.confirm")
 											: row.retain
 												? t("ui.console.dismiss_history")
-												: "Dismiss terminal"
+												: t("ui.console.dismiss.confirm")
 									}
 								>
 									<Button
@@ -1116,7 +1208,13 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 										 * rather than of a collision. The tooltip keeps the shorter sentence:
 										 * a pointer is already on the row it would act on.
 										 */
-										aria-label={`${row.running ? "Close" : "Dismiss"} ${surfaceTitle(row)}, tab ${index + 1} of ${surfaces.length}${!row.running && row.retain ? ` — ${t("ui.console.dismiss_history")}` : ""}`}
+										/*
+										 * THE NAME IS NOT DOUBLED (design round 1, D6): the prefix
+										 * already says Dismiss, so the suffix states only what
+										 * the act does to the output rather than repeating the verb
+										 * (it used to read "Dismiss … — Dismiss terminal and …").
+										 */
+										aria-label={`${row.running ? "Close" : "Dismiss"} ${surfaceTitle(row)}, tab ${index + 1} of ${surfaces.length}${!row.running && row.retain ? " — deletes retained output" : ""}`}
 										onClick={() => requestSurfaceClose(row)}
 										className={cn(
 											"me-0.5 transition-opacity",
@@ -1140,16 +1238,25 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 			 * asked about is itself the record of what the answer would close.
 			 */}
 			<ConsoleCloseDialog
-				open={pendingClose !== null}
+				open={pendingClose !== null || pendingDismiss !== null}
 				busy={closing}
-				keepsOutput={pendingRow?.retain ?? false}
+				/*
+				 * A RETAINED DISMISSAL KEEPS NOTHING, so `keepsOutput` is false on that
+				 * path (the dialog then says what deleting means); a running close keeps
+				 * output only when the row is retained.
+				 */
+				keepsOutput={pendingDismiss === null && (pendingRow?.retain ?? false)}
+				kind={pendingDismiss !== null ? "dismiss" : "close"}
 				refusal={closeRefusal}
 				refusalSeq={closeRefusalSeq}
-				onConfirm={confirmSurfaceClose}
+				onConfirm={
+					pendingDismiss !== null ? confirmSurfaceDismiss : confirmSurfaceClose
+				}
 				onCancel={() => {
 					focusAfterRemoval.current = null;
 					setCloseRefusal(null);
 					setPendingClose(null);
+					setPendingDismiss(null);
 				}}
 			/>
 		</div>

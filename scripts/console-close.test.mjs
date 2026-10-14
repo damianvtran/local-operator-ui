@@ -177,7 +177,9 @@ test("a running row's press asks first, and only the confirm kills", () => {
 	// The ask goes through the dialog component, not an ad-hoc confirm.
 	assert.ok(
 		PANE_CODE.includes("<ConsoleCloseDialog") &&
-			PANE_CODE.includes("open={pendingClose !== null}"),
+			PANE_CODE.includes(
+				"open={pendingClose !== null || pendingDismiss !== null}",
+			),
 		"the question is not the ConsoleCloseDialog the copy lives in",
 	);
 });
@@ -277,13 +279,18 @@ test("the control is reachable by mouse and keyboard, and its label names the st
 	 */
 	assert.ok(
 		PANE_CODE.includes(
-			'content={row.running ? "Close terminal" : "Dismiss terminal"}',
-		),
+			'row.running\n\t\t\t\t\t\t\t? t("ui.console.close.confirm")\n\t\t\t\t\t\t\t: row.retain\n\t\t\t\t\t\t\t\t? t("ui.console.dismiss_history")\n\t\t\t\t\t\t\t\t: t("ui.console.dismiss.confirm")',
+		) ||
+			/* Whitespace-tolerant form: the three-way branch is the pin, not the exact
+			 * indentation Biome leaves it at. */
+			PANE_CODE.replace(/\s+/g, " ").includes(
+				'row.running ? t("ui.console.close.confirm") : row.retain ? t("ui.console.dismiss_history") : t("ui.console.dismiss.confirm")',
+			),
 		"the tooltip no longer follows the row's state",
 	);
 	assert.ok(
 		PANE_CODE.includes(
-			'aria-label={`${row.running ? "Close" : "Dismiss"} ${surfaceTitle(row)}, tab ${index + 1} of ${surfaces.length}`}',
+			'aria-label={`${row.running ? "Close" : "Dismiss"} ${surfaceTitle(row)}, tab ${index + 1} of ${surfaces.length}${!row.running && row.retain ? " — deletes retained output" : ""}`}',
 		),
 		"the accessible name no longer names the state, the terminal and the position",
 	);
@@ -367,9 +374,12 @@ test("the dialog asks the question with the safe answer defaulted, and the pane'
 	 * copy actually lives now.
 	 */
 	assert.ok(
-		dialog.includes('t("ui.console.close.title")') &&
-			dialog.includes('t("ui.console.close.body")') &&
-			dialog.includes('t("ui.console.close.confirm")'),
+		dialog.includes('"ui.console.close.title"') &&
+			dialog.includes('"ui.console.close.body"') &&
+			dialog.includes('"ui.console.close.confirm"') &&
+			dialog.includes('"ui.console.dismiss.title"') &&
+			dialog.includes('"ui.console.dismiss.body"') &&
+			dialog.includes('"ui.console.dismiss.confirm"'),
 		"the question's copy moved away from the keys this change committed",
 	);
 	const catalogue = JSON.parse(read("src/i18n/catalogues/en/ui.console.json"));
@@ -417,7 +427,9 @@ test("the dialog asks the question with the safe answer defaulted, and the pane'
 		"the refusal or the conditional reassurance left the dialog",
 	);
 	assert.ok(
-		PANE_CODE.includes("keepsOutput={pendingRow?.retain ?? false}") &&
+		PANE_CODE.includes(
+			"keepsOutput={pendingDismiss === null && (pendingRow?.retain ?? false)}",
+		) &&
 			PANE_CODE.includes("refusal={closeRefusal}") &&
 			PANE_CODE.includes("refusalSeq={closeRefusalSeq}"),
 		"the pane no longer feeds the dialog the row's own retention and its refusal",
