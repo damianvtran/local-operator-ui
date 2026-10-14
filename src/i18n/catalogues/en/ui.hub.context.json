@@ -568,5 +568,10 @@
     "role": "supporting status",
     "tone": "plain, precise; do not strengthen execution, source safety, synchronization or session guarantees",
     "note": "After actual successful pull: file/body/reference bytes become available at next read; session semantic description selection remains frozen. Newly selected descriptions enter the next session, not the existing prompt. Do not promise automatic skill selection, execution, or re-prompting. Wrap naturally; no fixed width cap."
+  },
+  "ui.hub.links.publication_pending": {
+    "role": "pending operation status",
+    "tone": "neutral uncertainty; no false success, failure, cancellation or permission grant",
+    "note": "Only for explicit pending-reconciliation with no authoritative accepted publication, or unknown post-dispatch observation timeout once that branch is wired. UI180s is an observation wait, not cancellation or proof of no remote mutation. Retry means resubmit ORIGINAL request UUID/receipt/pin/body/scoped target through existing service after fresh permission checks; never fresh preview/listing/force/cross-scope fallback. Revoked permission can keep operation unresolved. Do not promise resolution or automatic retry. Remote success with incomplete LOCAL policy settlement continues to use separate policy_pending copy. No placeholders; no raw provider/credential/payload bytes; operation correlation is not publication authority. Wrap naturally, no fixed width/cell cap."
   }
 }

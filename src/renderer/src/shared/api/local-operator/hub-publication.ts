@@ -58,7 +58,7 @@ export type SkillPublicationResult = {
 		content_revision: number;
 		operation_id: string;
 		sync_contract: { revision_cas: number; skills: number };
-	};
+	} | null;
 };
 
 /** Draft identity is not a fake link_id. Core validates fresh ALL-file bytes too. */

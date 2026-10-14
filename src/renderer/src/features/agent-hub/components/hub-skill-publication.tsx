@@ -257,6 +257,12 @@ export function HubSkillPublication({
 						)}
 					</div>
 				)}
+			{/* An explicit202/null outcome is not remote success or safe re-create.
+			 * Same-operation replay and timeout handling follow the frozen engine
+			 * contract; this status must never reuse "Publication succeeded". */}
+			{action.data?.publication === null && action.data.local_link_receipt?.state === "pending-reconciliation" && (
+				<output className="text-body-sm text-warning">{t("ui.hub.links.publication_pending")}</output>
+			)}
 			{action.data?.publication && (
 				<output className="text-body-sm text-ink">
 					{publicationPolicyAcknowledged(action.data)

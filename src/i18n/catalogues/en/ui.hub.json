@@ -112,5 +112,6 @@
   "ui.hub.skills.open_detail": "View {item}",
   "ui.hub.skills.catalogue_failed": "Skills from {source} could not be loaded. Retry.",
   "ui.hub.skills.installed_alias": "Pulled {item} from {source}",
-  "ui.hub.skills.session_selection": "Skill files are available on their next read. Newly selected skill descriptions are included in the next session."
+  "ui.hub.skills.session_selection": "Skill files are available on their next read. Newly selected skill descriptions are included in the next session.",
+  "ui.hub.links.publication_pending": "The publication outcome is not yet confirmed. Retry this same operation to reconcile it."
 }
