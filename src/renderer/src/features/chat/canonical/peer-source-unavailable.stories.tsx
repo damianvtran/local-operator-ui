@@ -32,6 +32,64 @@ import {
 	markSourceUnavailable,
 } from "./transcript-reducer";
 
+/**
+ * The DOM facts the design round's audit reads by hand, asserted IN the story so
+ * a frame that loses them fails at capture rather than on inspection (design
+ * round 1):
+ *
+ *   - `[data-lo-working-line]` present exactly `expectedWorkingLines` times —
+ *     D1's discriminator: the frame that must prove the notice does NOT retire
+ *     the working claim is worthless if the line is not there.
+ *   - the transcript actually painted on the theme's canvas ink — the check that
+ *     the capture's theme arg RESOLVED (D2), read from the pixels behind the
+ *     region rather than trusted from the arg.
+ *   - `[data-lo-source-unavailable]` present exactly when the flag is set.
+ */
+const HEX6 = /^#([0-9a-f]{6})$/i;
+
+const hexToRgb = (hex: string): string | null => {
+	const match = HEX6.exec(hex.trim());
+	if (!match) return null;
+	const n = Number.parseInt(match[1], 16);
+	return `rgb(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255})`;
+};
+
+const auditFrame = (expectedWorkingLines: number, notice: boolean): void => {
+	const lines = document.querySelectorAll("[data-lo-working-line]").length;
+	if (lines !== expectedWorkingLines)
+		throw new Error(
+			`working line count ${lines}, expected ${expectedWorkingLines}`,
+		);
+	const notices = document.querySelectorAll(
+		"[data-lo-source-unavailable]",
+	).length;
+	if (notices !== (notice ? 1 : 0))
+		throw new Error(
+			`source notice count ${notices}, expected ${notice ? 1 : 0}`,
+		);
+	let node: HTMLElement | null = document.querySelector<HTMLElement>(
+		'[data-chat-region="transcript"]',
+	);
+	let painted: string | null = null;
+	while (node) {
+		const bg = getComputedStyle(node).backgroundColor;
+		if (bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent") {
+			painted = bg;
+			break;
+		}
+		node = node.parentElement;
+	}
+	const token = hexToRgb(
+		getComputedStyle(document.documentElement).getPropertyValue("--lo-canvas"),
+	);
+	if (!token)
+		throw new Error(
+			"no --lo-canvas token: the capture's theme arg did not resolve",
+		);
+	if (painted !== token)
+		throw new Error(`transcript ground ${painted} is not the canvas ${token}`);
+};
+
 /** One instant for every durable row, so the fixed frames are reproducible. */
 const BASE = 1_760_000_000;
 
@@ -152,6 +210,7 @@ const Frame = ({
 	height,
 	scroll,
 	width,
+	waiting = false,
 }: {
 	transcript: TranscriptState;
 	caption: string;
@@ -163,6 +222,14 @@ const Frame = ({
 	height?: number;
 	scroll?: "top" | "bottom";
 	width?: number;
+	/**
+	 * The owner is generating and nothing has painted yet for this turn. Passed for
+	 * the frames that must show the working line beside the notice (design round 1,
+	 * D1): `deriveWorkingLine` returns null when neither `waiting` nor `starting` is
+	 * set, so a frame claiming "the notice does not retire the working claim" has to
+	 * set one of them to have a line to show.
+	 */
+	waiting?: boolean;
 }) => {
 	const containerRef = useRef<HTMLDivElement>(null);
 	useEffect(() => {
@@ -181,7 +248,7 @@ const Frame = ({
 				<CanonicalTranscript
 					transcript={transcript}
 					gate={null}
-					waiting={false}
+					waiting={waiting}
 					starting={false}
 					loadingOlder={false}
 					onLoadOlder={async () => true}
@@ -222,10 +289,12 @@ type Story = StoryObj;
 export const ShownRunning: Story = {
 	render: () => (
 		<Frame
+			waiting
 			transcript={flagged(running())}
 			caption="Unavailable, turn running: the notice sits above the rows and the working line keeps painting beside it — it is NOT terminal."
 		/>
 	),
+	play: async () => auditFrame(1, true),
 };
 
 /**
@@ -241,6 +310,7 @@ export const LongTop: Story = {
 			caption="Long transcript scrolled to the top: the notice stays visible — it is outside the scroller and does not scroll away."
 		/>
 	),
+	play: async () => auditFrame(0, true),
 };
 
 /**
@@ -256,6 +326,7 @@ export const LongBottom: Story = {
 			caption="Long transcript scrolled to the bottom: the notice is still there and the rows keep their bottom anchor."
 		/>
 	),
+	play: async () => auditFrame(0, true),
 };
 
 /**
@@ -270,6 +341,7 @@ export const UnsupportedNothing: Story = {
 			caption="Unsupported: a local-only source that cannot order a peer conversation. The flag is never set, so nothing is shown — identical to the baseline below."
 		/>
 	),
+	play: async () => auditFrame(0, false),
 };
 
 /** 3b. The no-flag baseline the `unsupported` frame must diff against exactly. */
@@ -280,6 +352,7 @@ export const NoFlagBaseline: Story = {
 			caption="Baseline: the same transcript with no flag at all — the frame the unsupported story must match byte for byte."
 		/>
 	),
+	play: async () => auditFrame(0, false),
 };
 
 /**
@@ -294,6 +367,7 @@ export const ClearedAfterReady: Story = {
 			caption="Cleared after ready: a genuine ready answer cleared the flag, so the notice is gone and the transcript is just the readable conversation."
 		/>
 	),
+	play: async () => auditFrame(0, false),
 };
 
 /**
@@ -309,20 +383,23 @@ export const OutrankedByTerminal: Story = {
 			caption="Outranked by terminal: an unavailable stream with a failure outranks the source notice — exactly one notice and exactly one Reconnect, never two."
 		/>
 	),
+	/*
+	 * The flag is SET, but `status="unavailable"` retires the working line and the
+	 * source notice stands down to the terminal notice: no `[data-lo-working-line]`,
+	 * no `[data-lo-source-unavailable]` — the frame proves the outranking.
+	 */
+	play: async () => auditFrame(0, false),
 };
 
 /**
- * 6. Narrow (360 px), flag set, turn running: the notice wraps and its Reconnect
- * button must clear the search overlay's top-right slot. The overlay itself is a
- * document-level surface; this frame pins the narrow geometry the DOM audit uses
- * to check the two rects for overlap.
+ * 6. Narrow (360 px) is covered by `ShownRunning` captured at 360, which the
+ * render rig takes for every story. A SEPARATE narrow story duplicated it (design
+ * round 1, D5), and the one thing that would make it distinct — the in-thread
+ * search overlay composed over the transcript — is the overlay set's own
+ * integration phase, which `thread-search-overlay.stories.tsx` documents as
+ * deliberately uncovered there too (the panel needs the real `findThreadMessages`
+ * transport, which this static-transcript harness does not provide). Rather than
+ * ship an overlay frame that could misstate the panel's offset, the narrow
+ * question stays with the `shown-running` 360 capture: there is no
+ * `narrow-wrapped` story.
  */
-export const NarrowWrapped: Story = {
-	render: () => (
-		<Frame
-			width={360}
-			transcript={flagged(running())}
-			caption="Narrow (360px), flag set and turn running: the notice wraps, so its Reconnect must clear the search overlay's top-right slot."
-		/>
-	),
-};
