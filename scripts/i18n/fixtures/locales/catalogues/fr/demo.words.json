@@ -1,0 +1,5 @@
+{
+	"demo.words.hello": "Bonjour, {name} !",
+	"demo.words.files": "{count, plural, one {# fichier} other {# fichiers}}",
+	"demo.words.plain": "texte simple, sans paramètres"
+}

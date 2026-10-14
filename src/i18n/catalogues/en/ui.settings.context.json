@@ -1,0 +1,92 @@
+{
+	"ui.settings.page.title": {
+		"role": "settings page header",
+		"tone": "single noun, no article",
+		"note": "The Settings page's own title. Short; it sits beside a gear icon."
+	},
+	"ui.settings.profile.description_anonymous": {
+		"role": "section description (signed out)",
+		"tone": "one plain sentence",
+		"note": "Same opening as the authenticated variant minus the account sentence; the two must not diverge in wording for the shared part."
+	},
+	"ui.settings.profile.description_authenticated": {
+		"role": "section description (authenticated)",
+		"tone": "two plain sentences",
+		"note": "Reads as one paragraph. Second sentence says the details come from the Radient account."
+	},
+	"ui.settings.profile.display_name.label": {
+		"role": "field label",
+		"tone": "two-word noun phrase",
+		"note": "A short field label above an input."
+	},
+	"ui.settings.profile.display_name.placeholder": {
+		"role": "input placeholder",
+		"tone": "imperative hint",
+		"note": "Shown in an empty text input; ends with an ellipsis."
+	},
+	"ui.settings.profile.email.label": {
+		"role": "field label",
+		"tone": "two-word noun phrase",
+		"note": "A short field label above an input."
+	},
+	"ui.settings.profile.email.placeholder": {
+		"role": "input placeholder",
+		"tone": "imperative hint",
+		"note": "Shown in an empty text input; ends with an ellipsis."
+	},
+	"ui.settings.profile.title": {
+		"role": "settings section heading",
+		"tone": "two-word noun phrase",
+		"note": "Names the section holding display name and email."
+	},
+	"ui.settings.section.interface_language.help": {
+		"role": "settings row help",
+		"tone": "two plain sentences",
+		"note": "Says the setting is shared with the terminal and that 'auto' follows the OS, falling back to English. The literal token `auto` names a picker option and must stay untranslated."
+	},
+	"ui.settings.section.interface_language.label": {
+		"role": "settings row label",
+		"tone": "two-word noun phrase",
+		"note": "Must contain the word for 'language' so the settings search finds it; scoped to the whole app."
+	},
+	"ui.settings.tour.action": {
+		"role": "button label",
+		"tone": "imperative, three words",
+		"note": "Starts the onboarding tour. Sits beside a play-in-circle icon."
+	},
+	"ui.settings.tour.description": {
+		"role": "section description",
+		"tone": "two-question sentence, friendly",
+		"note": "Asks whether the reader missed or wants a refresher, then says to start it here."
+	},
+	"ui.settings.tour.title": {
+		"role": "settings section heading",
+		"tone": "two-word noun phrase",
+		"note": "Names the section that restarts the onboarding tour."
+	},
+	"ui.settings.profile.account_checking": {
+		"role": "profile section status line while the account read is in flight",
+		"tone": "plain present-progressive sentence, ends with an ellipsis",
+		"note": "Shown above the name/email fields so placeholder defaults are not read as the user's own details."
+	},
+	"ui.settings.profile.account_read_failed_retry": {
+		"role": "profile section warning when the account read failed (generic failure)",
+		"tone": "two plain sentences; second is a short imperative",
+		"note": "Whole-sentence variant: the trailing instruction differs by failure class, so it is part of the message, not a concatenated suffix."
+	},
+	"ui.settings.profile.account_read_failed_refused": {
+		"role": "profile section warning when the backend refused the Radient credential",
+		"tone": "two plain sentences; second offers retry or signing in again",
+		"note": "Whole-sentence variant used only when the backend named radient_credential_refused; must match the retry variant except for the closing instruction."
+	},
+	"ui.settings.profile.retry": {
+		"role": "button label in the account-read warning",
+		"tone": "single imperative verb",
+		"note": "Re-reads the Radient account."
+	},
+	"ui.settings.profile.retrying": {
+		"role": "button label while that re-read is running",
+		"tone": "single present-progressive word",
+		"note": "Disabled state of the Retry button after the reader's own press."
+	}
+}

@@ -486,7 +486,7 @@ test(
 		);
 		assert.equal(
 			document.querySelector(DIALOG_NOTE).textContent,
-			"In effect: en",
+			"In effect: English",
 		);
 		const saveButton = document.querySelector("[data-language-save]");
 		assert.ok(saveButton, "the save button must render");

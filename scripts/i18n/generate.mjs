@@ -187,30 +187,128 @@ export function readCatalogues(cataloguesDir) {
 }
 
 /** The full `keys.gen.ts` text for `entries`, byte-stable for a given input. */
-export function renderKeysModule(cataloguesDir) {
-	const { files, entries } = readCatalogues(cataloguesDir);
+/** A namespace's camelCase identifier, prefixed by the locale (`frUiAgents`). */
+function bundleIdentifier(locale, namespace) {
+	const camel = (value) =>
+		value
+			.split(WORD_SPLIT_RE)
+			.filter(Boolean)
+			.map((part, index) =>
+				index === 0
+					? part.charAt(0).toLowerCase() + part.slice(1)
+					: part.charAt(0).toUpperCase() + part.slice(1),
+			)
+			.join("");
+	return `${camel(locale)}${camel(namespace).charAt(0).toUpperCase()}${camel(namespace).slice(1)}`;
+}
 
-	const imports = files
-		.map((file) => {
+/**
+ * Every locale directory, each with its namespace files and import lines.
+ *
+ * WHY PER-LOCALE BUNDLES (the French activation bug, 2026-10-13). The runtime
+ * can only ever return English while `keys.gen.ts` imports nothing but
+ * `catalogues/en/*`: the active locale is `fr`, the store says so truthfully,
+ * and every lookup still reads the en map. A client bundles its own namespaces
+ * (RFC §2.1), so the generated module carries one flat map per locale and
+ * `messages.ts` selects by the active locale with a per-key en fallback.
+ *
+ * The KEY MAP (`MessageParams`) stays derived from `en` alone — en is the source
+ * of truth for which keys exist — while the translation files only have to be a
+ * subset of those keys (checked by the parity guard, not by this generator).
+ */
+export function readBundles(cataloguesDir) {
+	const locales = readdirSync(cataloguesDir, { withFileTypes: true })
+		.filter((dirent) => dirent.isDirectory())
+		.map((dirent) => dirent.name)
+		.sort();
+	return locales.map((locale) => {
+		const dir = join(cataloguesDir, locale);
+		const files = readdirSync(dir)
+			.filter(
+				(name) => name.endsWith(".json") && !name.endsWith(".context.json"),
+			)
+			.sort();
+		/*
+		 * ONE KEY, ONE FILE, PER LOCALE (review round 1, R4). Two files in the same
+		 * locale defining the same key would silently shadow in the spread below
+		 * (the later file wins), which is the §2.2 collision rule the en reader
+		 * already enforces. The check is repeated here for every locale so a
+		 * translated namespace cannot re-declare a key another file owns.
+		 */
+		const owner = new Map();
+		for (const file of files) {
+			const data = JSON.parse(readFileSync(join(dir, file), "utf8"));
+			for (const key of Object.keys(data)) {
+				const previous = owner.get(key);
+				if (previous) {
+					throw new Error(
+						`${locale}/${file}: ${key} is already defined in ${locale}/${previous} — a key belongs to one namespace file`,
+					);
+				}
+				owner.set(key, file);
+			}
+		}
+		const imports = files.map((file) => {
 			const namespace = file.slice(0, -".json".length);
-			const identifier = namespace
-				.split(WORD_SPLIT_RE)
-				.filter(Boolean)
-				.map((part, index) =>
-					index === 0
-						? part.charAt(0).toLowerCase() + part.slice(1)
-						: part.charAt(0).toUpperCase() + part.slice(1),
-				)
-				.join("");
+			const identifier = bundleIdentifier(locale, namespace);
 			return {
 				file,
 				identifier,
-				line: `import ${identifier} from "./catalogues/en/${file}";`,
+				line: `import ${identifier} from "./catalogues/${locale}/${file}";`,
 			};
-		})
-		.sort((a, b) => (a.file < b.file ? -1 : a.file > b.file ? 1 : 0));
+		});
+		return { locale, imports };
+	});
+}
 
-	const spread = imports.map((entry) => `\t...${entry.identifier},`).join("\n");
+/** The full `keys.gen.ts` text for `entries`, byte-stable for a given input. */
+export function renderKeysModule(cataloguesDir) {
+	const { entries } = readCatalogues(cataloguesDir);
+
+	const bundles = readBundles(cataloguesDir);
+	const enBundle = bundles.find((bundle) => bundle.locale === "en");
+	if (!enBundle) {
+		throw new Error(
+			"no `en` catalogue directory — every locale falls back to it",
+		);
+	}
+
+	const imports = bundles
+		.flatMap((bundle) => bundle.imports)
+		.sort((a, b) => (a.file < b.file ? -1 : a.file > b.file ? 1 : 0))
+		.sort((a, b) =>
+			a.identifier < b.identifier ? -1 : a.identifier > b.identifier ? 1 : 0,
+		);
+
+	const enSpread = enBundle.imports
+		.map((entry) => `\t...${entry.identifier},`)
+		.join("\n");
+
+	/*
+	 * `bundledCatalogues[locale]` is the client's own messages for that locale;
+	 * `messages.ts` layers the served `wire.*` set on top and falls back to
+	 * `bundledEnglish` per key. `bundledEnglish` stays exported: it is what a
+	 * lookup degrades to, and the runtime tests read it directly.
+	 */
+	const localeEntries = bundles
+		.map((bundle) => {
+			if (bundle.locale === "en") return "\ten: bundledEnglish,";
+			const body = bundle.imports
+				.map((entry) => `\t\t...${entry.identifier},`)
+				.join("\n");
+			/*
+			 * An identifier-safe tag is emitted BARE (`fr: {`), a hyphenated one
+			 * quoted (`"zh-CN": {`) - which is what `biome check` leaves standing,
+			 * and the drift check compares the emitted bytes to that.
+			 */
+			const key = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(bundle.locale)
+				? bundle.locale
+				: JSON.stringify(bundle.locale);
+			return `\t${key}: {\n${body}\n\t},`;
+		})
+		.join("\n");
+
+	const spread = enSpread;
 
 	const members = [];
 	for (const entry of entries) {
@@ -260,6 +358,20 @@ export function renderKeysModule(cataloguesDir) {
 		"/** The bundled en catalogue: every `src/i18n/catalogues/en` message, flat. */",
 		"export const bundledEnglish: Readonly<Record<string, string>> = {",
 		spread,
+		"};",
+		"",
+		/*
+		 * PER-LOCALE BUNDLES (the French activation bug). Every locale directory
+		 * under `catalogues/` gets a flat map here; `en` aliases `bundledEnglish`.
+		 * `messages.ts` selects by the active locale and falls back to
+		 * `bundledEnglish` per key, so a locale that is missing a key degrades to
+		 * the English source rather than to a raw key or a blank.
+		 */
+		"/** The client's own messages per locale; `en` is `bundledEnglish` itself. */",
+		"export const bundledCatalogues: Readonly<",
+		"\tRecord<string, Readonly<Record<string, string>>>",
+		"> = {",
+		localeEntries,
 		"};",
 		"",
 		"/** One entry per bundled message id, shaped by the message's own arguments. */",

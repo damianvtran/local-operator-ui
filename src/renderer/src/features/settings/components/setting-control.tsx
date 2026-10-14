@@ -611,7 +611,15 @@ const EffectiveLanguage = ({ id }: { id?: string }) => {
 	 */
 	return (
 		<span id={id} aria-live="polite" className="text-meta text-ink-dim">
-			{t("ui.settings.language.effective", { locale })}
+			{/*
+			 * The native name, not the raw tag (design round 1, D4): the picker
+			 * the reader just used names languages natively, so the caption that
+			 * confirms the switch does too. A locale the table does not know
+			 * falls back to the raw tag rather than naming nothing.
+			 */}
+			{t("ui.settings.language.effective", {
+				locale: languageIdentifierFor(locale)?.name ?? locale,
+			})}
 		</span>
 	);
 };
@@ -758,7 +766,7 @@ export const SettingControl = ({
 												 * carries `whitespace-nowrap` so it cannot break the row into
 												 * two lines beside the RTL label (UX U2).
 												 */
-												<span className="shrink-0 text-caption text-ink-dim whitespace-nowrap">
+												<span className="ml-2 shrink-0 text-caption text-ink-dim whitespace-nowrap">
 													{t("ui.settings.language.general.unavailable_choice")}
 												</span>
 											)}
