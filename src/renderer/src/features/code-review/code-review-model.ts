@@ -457,7 +457,10 @@ export function rowHasPendingCi(row: CodeRequestRow): boolean {
 /** `1 comment` / `6 comments`, or null at 0 (the clause is omitted, §1). */
 export function commentClause(count: number | null | undefined): string | null {
 	if (count === null || count === undefined || count <= 0) return null;
-	return count === 1 ? "1 comment" : `${count} comments`;
+	return t("ui.code_review.comments.count", {
+		count,
+		countText: String(count),
+	});
 }
 
 /**
@@ -469,12 +472,16 @@ export function commentClause(count: number | null | undefined): string | null {
  */
 export function updatedClause(updatedAtSec: number, nowMs: number): string {
 	const seconds = Math.max(0, Math.floor(nowMs / 1000 - updatedAtSec));
-	if (seconds < 60) return "updated just now";
+	if (seconds < 60) return t("ui.code_review.age.just_now");
 	const minutes = Math.floor(seconds / 60);
-	if (minutes < 60) return `updated ${minutes} min ago`;
+	if (minutes < 60)
+		return t("ui.code_review.age.minutes", { amount: String(minutes) });
 	const hours = Math.floor(minutes / 60);
-	if (hours < 24) return `updated ${hours} h ago`;
-	return `updated ${Math.floor(hours / 24)} d ago`;
+	if (hours < 24)
+		return t("ui.code_review.age.hours", { amount: String(hours) });
+	return t("ui.code_review.age.days", {
+		amount: String(Math.floor(hours / 24)),
+	});
 }
 
 /**
@@ -495,9 +502,9 @@ export function relationTag(row: CodeRequestRow): string | null {
 		case "mentioned":
 			return null;
 		case "unknown":
-			return viaTag(row.via) ?? "unknown — possibly opened";
+			return viaTag(row.via) ?? t("ui.code_review.relation.unknown");
 		case "inherited":
-			return "inherited";
+			return t("ui.code_review.relation.inherited");
 		default:
 			return null;
 	}
@@ -509,10 +516,14 @@ export function viaTag(
 ): string | null {
 	if (!via) return null;
 	if (rowViaPath(via).length > 0) {
-		return `via subagent ${rowViaPath(via).join(" › ")}`;
+		return t("ui.code_review.relation.subagent_path", {
+			path: rowViaPath(via).join(" › "),
+		});
 	}
 	const fallback = via.agent_role ?? via.label;
-	return fallback ? `via subagent ${fallback}` : "via subagent";
+	return fallback
+		? t("ui.code_review.relation.subagent_fallback", { name: fallback })
+		: t("ui.code_review.relation.subagent");
 }
 
 /** The propagation chain, tolerating an event that carried only the flat fields. */
@@ -538,17 +549,31 @@ function rowViaPath(via: DesktopCodeRequestVia): string[] {
 export function actedTag(row: CodeRequestRow): string | null {
 	if (row.acted.length === 0) return null;
 	const words = row.acted.map(actWord);
-	return `you ${words.join(", ")}`;
+	return t("ui.code_review.activity.you", { acts: words.join(", ") });
 }
 
 const ACT_WORDS: Record<string, string> = {
-	comment: "commented",
-	merge: "merged",
-	review: "reviewed",
-	push: "pushed",
-	edit: "edited",
-	close: "closed",
-	ready: "marked ready",
+	get comment() {
+		return t("ui.code_review.activity.comment");
+	},
+	get merge() {
+		return t("ui.code_review.activity.merge");
+	},
+	get review() {
+		return t("ui.code_review.activity.review");
+	},
+	get push() {
+		return t("ui.code_review.activity.push");
+	},
+	get edit() {
+		return t("ui.code_review.activity.edit");
+	},
+	get close() {
+		return t("ui.code_review.activity.close");
+	},
+	get ready() {
+		return t("ui.code_review.activity.ready");
+	},
 };
 
 const actWord = (act: string): string => ACT_WORDS[act] ?? act;
@@ -570,8 +595,8 @@ export function attentionCause(rows: readonly CodeRequestRow[]): string | null {
 		return ci.status === "failure" || (finite(ci.failed) ?? 0) > 0;
 	});
 	const causes = [
-		findings ? "findings open" : null,
-		checks ? "checks failing" : null,
+		findings ? t("ui.code_review.attention.findings") : null,
+		checks ? t("ui.code_review.attention.checks") : null,
 	].filter((cause): cause is string => cause !== null);
 	return causes.length > 0 ? causes.join(" · ") : null;
 }
@@ -762,7 +787,7 @@ export function forgeDisplayName(host: string): string {
  * (§7), singular spelled by the function rather than a hand-written plural.
  */
 export function chipClause(count: number): string {
-	return t("ui.code_review.chip.count", { count });
+	return t("ui.code_review.chip.count", { count, countText: String(count) });
 }
 
 /**

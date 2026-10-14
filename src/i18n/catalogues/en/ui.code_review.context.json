@@ -1,11 +1,108 @@
 {
+	"ui.code_review.activity.close": {
+		"role": "action-result clause",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "Past-tense action performed by this session: close. Rendered within you {acts}; machine action discriminator remains unchanged.",
+		"length": "One compact row tail; omit the clause rather than restating zero."
+	},
+	"ui.code_review.activity.comment": {
+		"role": "action-result clause",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "Past-tense action performed by this session: comment. Rendered within you {acts}; machine action discriminator remains unchanged.",
+		"length": "One compact row tail; omit the clause rather than restating zero."
+	},
+	"ui.code_review.activity.edit": {
+		"role": "action-result clause",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "Past-tense action performed by this session: edit. Rendered within you {acts}; machine action discriminator remains unchanged.",
+		"length": "One compact row tail; omit the clause rather than restating zero."
+	},
+	"ui.code_review.activity.merge": {
+		"role": "action-result clause",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "Past-tense action performed by this session: merge. Rendered within you {acts}; machine action discriminator remains unchanged.",
+		"length": "One compact row tail; omit the clause rather than restating zero."
+	},
+	"ui.code_review.activity.push": {
+		"role": "action-result clause",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "Past-tense action performed by this session: push. Rendered within you {acts}; machine action discriminator remains unchanged.",
+		"length": "One compact row tail; omit the clause rather than restating zero."
+	},
+	"ui.code_review.activity.ready": {
+		"role": "action-result clause",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "Past-tense action performed by this session: ready. Rendered within you {acts}; machine action discriminator remains unchanged.",
+		"length": "One compact row tail; omit the clause rather than restating zero."
+	},
+	"ui.code_review.activity.review": {
+		"role": "action-result clause",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "Past-tense action performed by this session: review. Rendered within you {acts}; machine action discriminator remains unchanged.",
+		"length": "One compact row tail; omit the clause rather than restating zero."
+	},
+	"ui.code_review.activity.you": {
+		"role": "provenance status",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "Session actions performed on this request; relation/provenance remains a separate tag.",
+		"length": "One compact row tail; omit the clause rather than restating zero.",
+		"placeholders": {
+			"acts": "Localized known action words or unknown wire actions, joined by comma-space."
+		}
+	},
+	"ui.code_review.age.days": {
+		"role": "relative-time status",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "Whole days since the last update; does not introduce a date-format change.",
+		"length": "One compact row tail; omit the clause rather than restating zero.",
+		"placeholders": {
+			"amount": "Whole-day age as decimal text."
+		}
+	},
+	"ui.code_review.age.hours": {
+		"role": "relative-time status",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "Whole hours since last update, under one day; abbreviation is existing English copy.",
+		"length": "One compact row tail; omit the clause rather than restating zero.",
+		"placeholders": {
+			"amount": "Whole-hour age as decimal text."
+		}
+	},
+	"ui.code_review.age.just_now": {
+		"role": "relative-time status",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "Updated less than a minute ago, including a future timestamp from clock skew; does not mean a write just happened.",
+		"length": "One compact row tail; omit the clause rather than restating zero."
+	},
+	"ui.code_review.age.minutes": {
+		"role": "relative-time status",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "Whole minutes since the last forge state update; retain abbreviated minute register.",
+		"length": "One compact row tail; omit the clause rather than restating zero.",
+		"placeholders": {
+			"amount": "Nonnegative whole-minute age as existing decimal text."
+		}
+	},
+	"ui.code_review.attention.checks": {
+		"role": "attention status",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "Forge checks have failed; do not label them agent-review findings.",
+		"length": "One compact row tail; omit the clause rather than restating zero."
+	},
+	"ui.code_review.attention.findings": {
+		"role": "attention status",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "Agent-review findings remain unresolved; independent of CI status.",
+		"length": "One compact row tail; omit the clause rather than restating zero."
+	},
 	"ui.code_review.chip.count": {
 		"role": "status",
 		"tone": "Count plus lowercase scope noun.",
 		"note": "Composer code-review chip count: code requests opened or mentioned by this conversation; neither is an agent-review finding count.",
 		"length": "One row; avoid adding an explanatory sentence.",
 		"placeholders": {
-			"count": "Cardinal count of code requests; plural selection when ICU plural is present."
+			"count": "Cardinal count of code requests; plural selection when ICU plural is present.",
+			"countText": "Existing decimal request count, without new grouping punctuation."
 		}
 	},
 	"ui.code_review.chip.mentioned": {
@@ -249,6 +346,16 @@
 		"note": "Provenance is uncertain: the session may have opened this request, but its evidence did not prove that.",
 		"length": "One row; avoid adding an explanatory sentence."
 	},
+	"ui.code_review.comments.count": {
+		"role": "status count",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "Number of forge discussion comments, not agent-review findings. Null/zero counts are omitted before formatting.",
+		"length": "One compact row tail; omit the clause rather than restating zero.",
+		"placeholders": {
+			"count": "Cardinal comment count for plural agreement.",
+			"countText": "Existing decimal count display without added grouping."
+		}
+	},
 	"ui.code_review.host.cooling": {
 		"role": "error/status",
 		"tone": "Calm factual caveat, never claim current state from stale data.",
@@ -332,6 +439,42 @@
 		"tone": "Lowercase review-state clause.",
 		"note": "A review exists but its verdict was not stated.",
 		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.relation.inherited": {
+		"role": "provenance status",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "Row inherited from another conversation; frozen wire shape has no parent identity, so do not invent one.",
+		"length": "One compact row tail; omit the clause rather than restating zero."
+	},
+	"ui.code_review.relation.subagent": {
+		"role": "provenance status",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "A subagent propagation event with no usable role/path; no identity is invented.",
+		"length": "One compact row tail; omit the clause rather than restating zero."
+	},
+	"ui.code_review.relation.subagent_fallback": {
+		"role": "provenance status",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "Older event only supplied a flat role or label; display it rather than claiming a full chain.",
+		"length": "One compact row tail; omit the clause rather than restating zero.",
+		"placeholders": {
+			"name": "Flat subagent role or label, verbatim."
+		}
+	},
+	"ui.code_review.relation.subagent_path": {
+		"role": "provenance status",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "Names the propagation chain of subagents; path names and separator are caller-owned.",
+		"length": "One compact row tail; omit the clause rather than restating zero.",
+		"placeholders": {
+			"path": "Ordered user/agent role names joined by the existing arrow separator, verbatim."
+		}
+	},
+	"ui.code_review.relation.unknown": {
+		"role": "provenance status",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "Provenance evidence was insufficient to prove this conversation opened the request; retain the uncertainty.",
+		"length": "One compact row tail; omit the clause rather than restating zero."
 	},
 	"ui.code_review.row.fetching": {
 		"role": "loading status",

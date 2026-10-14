@@ -8,7 +8,7 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export { t, setLocale, registerCatalogue, clearRegisteredCatalogues } from "./src/i18n";',
-			'export { chipClause, laneStateClause, ciClause } from "./src/renderer/src/features/code-review/code-review-model";',
+			'export { chipClause, laneStateClause, ciClause, commentClause, updatedClause, viaTag, actedTag } from "./src/renderer/src/features/code-review/code-review-model";',
 			'export { PALETTE_SECTION_TITLES, SCOPE_LEGEND, parsePaletteQuery, paletteEmptyStateCopy } from "./src/renderer/src/features/command-palette/palette-search";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -26,6 +26,18 @@ test("English feature copy preserves singular, plural and unknown wire fallback"
 	runtime.setLocale("en");
 	assert.equal(runtime.chipClause(1), "1 code request");
 	assert.equal(runtime.chipClause(3), "3 code requests");
+	assert.equal(runtime.chipClause(1000), "1000 code requests");
+	assert.equal(runtime.commentClause(1), "1 comment");
+	assert.equal(runtime.commentClause(1000), "1000 comments");
+	assert.equal(runtime.updatedClause(0, 120_000), "updated 2 min ago");
+	assert.equal(
+		runtime.viaTag({ path: ["coder", "reviewer"] }),
+		"via subagent coder › reviewer",
+	);
+	assert.equal(
+		runtime.actedTag({ acted: ["comment", "future-action"] }),
+		"you commented, future-action",
+	);
 	assert.equal(
 		runtime.laneStateClause({ state: "remediation_posted", round: 2 }),
 		"Round 2 · remediation posted · awaiting re-review",
