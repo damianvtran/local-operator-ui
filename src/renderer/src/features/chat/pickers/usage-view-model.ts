@@ -21,7 +21,9 @@
  * `docs/evidence/chat-usage/SPEC.md`.
  */
 
-export type UsageUnit = "usd" | "percent" | "tokens" | "requests" | "unknown";
+import { t } from "../../../../../i18n";
+
+export type UsageUnit = "usd" | "percent" | "tokens" | "requests" | "credits" | "unknown";
 
 /** The consumed/remaining numbers for one window, as the vendor reported them. */
 export type UsageAmount = {
@@ -48,6 +50,11 @@ export type UsageLimit = {
 	tier: string;
 	/** True for the account-wide umbrella windows. */
 	shared: boolean;
+	/** Additive vendor eligibility, not an inference from wallet funding. */
+	paid_fallback?: boolean;
+	available?: boolean | null;
+	supersedes_tiers?: boolean;
+	unlimited?: boolean;
 };
 
 /** One provider's quota state at one instant. */
@@ -133,6 +140,7 @@ export const UNIT_LABELS: Record<string, string> = {
 	percent: "%",
 	tokens: "tokens",
 	requests: "req",
+	credits: "credits",
 	unknown: "",
 };
 
@@ -473,6 +481,32 @@ export const formatAge = (ms: number): string => {
  * a user to stop working when they only needed to change model. Ordering is
  * the Python's tuple compare `(shared, fraction)`.
  */
+/**
+ * Presentation equivalent of UsageLimit.paid_usable(), never a routing decision.
+ * Measured fraction wins over positive wallet funding; only explicit vendor
+ * eligibility unlocks a paid alternative. Older payloads omit these additive
+ * flags and retain the original included-quota presentation.
+ */
+export const paidUsable = (limit: UsageLimit): boolean => {
+	if (!limit.paid_fallback || limit.available !== true) return false;
+	if (limit.unlimited) return true;
+	const fraction = fractionOf(limit.amount);
+	if (fraction !== null) return Number.isFinite(fraction) && fraction >= 0 && fraction < 1;
+	const remaining = limit.amount.remaining;
+	return remaining !== null && Number.isFinite(remaining) && remaining > 0;
+};
+
+/** Included exhaustion is informational when explicitly eligible credit can serve. */
+export const creditContinuation = (report: UsageReport): string => {
+	const payable = report.limits.filter(paidUsable);
+	const sharedExhausted = report.limits.some((limit) => !limit.paid_fallback && limit.shared === true && !limit.tier &&
+		(fractionOf(limit.amount) ?? -1) >= 1);
+	const retainedTier = report.limits.some((limit) => limit.tier &&
+		(fractionOf(limit.amount) ?? -1) >= 1) && !payable.some((limit) => limit.supersedes_tiers);
+	return [payable.length && sharedExhausted ? t("ui.chat.usage.continue") : "",
+		retainedTier ? t("ui.chat.usage.family_caps") : ""].filter(Boolean).join(" ");
+};
+
 export const bindingLimit = (report: UsageReport): UsageLimit | null => {
 	let best: UsageLimit | null = null;
 	let bestKey: [number, number] | null = null;
@@ -805,6 +839,7 @@ export type LimitRow = {
 	/** 0..1 clamped, or null when unmeasurable — a null bar draws NO fill. */
 	fraction: number | null;
 	amount: string;
+	eligibilityNote: string;
 	countdown: string;
 	/** A per-model cap is subordinate to the shared rows (SPEC rule 8). */
 	subordinate: boolean;
@@ -816,7 +851,12 @@ export const limitRow = (limit: UsageLimit, nowMs: number): LimitRow => {
 		limit,
 		status: effectiveStatus(limit),
 		fraction: fraction === null ? null : Math.max(0, Math.min(1, fraction)),
-		amount: amountText(limit.amount),
+		amount: amountText(limit.paid_fallback && limit.amount.remaining !== null
+			? { ...limit.amount, used: null } : limit.amount),
+		eligibilityNote: !limit.paid_fallback ? ""
+			: limit.available === false ? t("ui.chat.usage.blocked")
+				: limit.available !== true ? t("ui.chat.usage.eligibility_unknown")
+					: limit.unlimited ? t("ui.chat.usage.unlimited") : "",
 		countdown: formatCountdown(resetsInMs(limit, nowMs)),
 		subordinate: limit.tier !== "",
 	};
@@ -862,8 +902,12 @@ export const providerBlocks = (
 ): ProviderBlock[] =>
 	reports.map((report) => ({
 		report,
-		binding: bindingSummary(report, nowMs),
-		note: accountNote(report, nowMs, headerMs),
+		binding: report.limits.some(paidUsable) ? bindingSummary({
+			...report,
+			limits: report.limits.filter((limit) => !limit.paid_fallback && limit.tier &&
+				!report.limits.some((paid) => paidUsable(paid) && paid.supersedes_tiers)),
+		}, nowMs) : bindingSummary(report, nowMs),
+		note: [accountNote(report, nowMs, headerMs), creditContinuation(report)].filter(Boolean).join(" "),
 		rows: report.limits.map((limit) => limitRow(limit, nowMs)),
 		// A healthy-green dot on a two-hour-old meter is the block's
 		// highest-contrast element saying "fine" while the note says otherwise.

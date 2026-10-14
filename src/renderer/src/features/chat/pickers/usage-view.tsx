@@ -29,6 +29,7 @@ import { SNAPSHOT_READ_OPTIONS } from "@shared/api/query-client";
 import { Button } from "@shared/components/ui/button";
 import { Skeleton } from "@shared/components/ui/skeleton";
 import { cn } from "@shared/lib/utils";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { type Query, useQuery } from "@tanstack/react-query";
 import { type FC, useCallback, useEffect, useRef, useState } from "react";
 import { PickerHost } from "./picker-host";
@@ -255,6 +256,7 @@ const LimitRowView: FC<{ row: LimitRow; degraded: boolean }> = ({
 				)}
 			>
 				{row.amount}
+				{row.eligibilityNote && <span className="block font-sans text-meta">{row.eligibilityNote}</span>}
 				<span className={cn("sr-only")}>, {statusWord(row)}</span>
 			</span>
 			{/* A window with no countdown still occupies its cell, so the rows that do
@@ -393,6 +395,7 @@ export type UsageReportsProps = {
  * the blocks scan as one table instead of several that happen to be stacked.
  */
 export const UsageReports: FC<UsageReportsProps> = ({ reports, now }) => {
+	useI18nLocale();
 	// The baseline blocks are aged against is the set's newest CONFIRMATION, not
 	// the response's stamp. See `newestConfirmedMs` for what the difference cost.
 	const blocks = providerBlocks(reports, now, newestConfirmedMs(reports, now));
