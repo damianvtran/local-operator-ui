@@ -1145,18 +1145,47 @@ const peerDeps = (getState, setState, read) => ({
 				}),
 			};
 		const generation = state.journalGeneration;
-		const query = new URLSearchParams({
-			limit: "100",
-			journal_order: "1",
-			peer_journal_source: "1",
-			source_read: "metadata",
-		});
-		if (typeof generation === "string" && generation.length > 0)
-			query.set("expected_journal_generation", generation);
+		/*
+		 * THE THREE-KIND SWEEP (the hook's own): facts first, bodies second, one
+		 * kind per iteration. A kind that is fixed to "lookup" would never dispatch
+		 * the payload subset - the read that actually admits the body the facts
+		 * lookup owed - so the chain would settle coordinates and return, exactly
+		 * the defect this cell pins when it goes missing.
+		 */
+		if (typeof generation !== "string" || generation.length === 0)
+			return {
+				kind: "none",
+				path: "/v1/desktop/sessions/aaaaaaaaaaaa/history",
+				query: new URLSearchParams(),
+			};
+		if (R.journalFactsNeeded(state).length > 0)
+			return {
+				kind: "lookup",
+				path: "/v1/desktop/sessions/aaaaaaaaaaaa/history",
+				query: new URLSearchParams({
+					limit: "100",
+					journal_order: "1",
+					peer_journal_source: "1",
+					source_read: "metadata",
+					expected_journal_generation: generation,
+				}),
+			};
+		if (R.journalBodyOwedIds(state).length > 0)
+			return {
+				kind: "payload",
+				path: "/v1/desktop/sessions/aaaaaaaaaaaa/history",
+				query: new URLSearchParams({
+					limit: "100",
+					journal_order: "1",
+					peer_journal_source: "1",
+					source_read: "payload",
+					expected_journal_generation: generation,
+				}),
+			};
 		return {
-			kind: "lookup",
+			kind: "none",
 			path: "/v1/desktop/sessions/aaaaaaaaaaaa/history",
-			query,
+			query: new URLSearchParams(),
 		};
 	},
 	commit: (response, revision, orderRead) => {

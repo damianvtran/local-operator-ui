@@ -97,9 +97,10 @@ export default { useState, useEffect, useLayoutEffect, useInsertionEffect, useRe
 const bundle = await build({
 	stdin: {
 		contents: `
-			export { useCanonicalSessionStream } from "./src/renderer/src/shared/hooks/use-canonical-session";
+				export { useCanonicalSessionStream } from "./src/renderer/src/shared/hooks/use-canonical-session";
 			export { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
-			export { desktopEndpoint } from "./src/shared/desktop-contract";`,
+			export { desktopEndpoint } from "./src/shared/desktop-contract";
+			export { journalBodyOwedIds } from "./src/renderer/src/features/chat/canonical/journal-order";`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -150,6 +151,7 @@ const {
 	useCanonicalSessionStream,
 	useCanonicalSessionsStore,
 	desktopEndpoint,
+	journalBodyOwedIds,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -351,12 +353,16 @@ async function pump() {
 	await settle();
 }
 
-/** The repair's own reads: the facts-only lookups and the order-carrying GETs. */
+/** The repair's own reads: the facts-only lookups, the typed payload subsets
+ * and the order-carrying GETs. The payload subset is part of the chain (the
+ * facts lookup owes the body; the payload admits it), so it must be counted
+ * here or a completed three-read chain reads as two. */
 const repairReads = () =>
 	requests.filter(
 		(request) =>
 			(request.op === "sessions.history" &&
-				request.sourceRead === "metadata") ||
+				(request.sourceRead === "metadata" ||
+					request.sourceRead === "payload")) ||
 			(request.op === "sessions.get" && request.journalOrder === true),
 	);
 
@@ -571,20 +577,6 @@ test("a delta-born row's accepted family is admitted atomically at its owner-sta
 test("a rebuilt source never installs from the lookup; the owed reconcile settles through ONE declared session GET", async () => {
 	const h = await peerMount({
 		history: page([messageRow(ROW_EARLY, "where am I?")], "peer-A"),
-		historyHandler: async (request) => {
-			if (request.sourceRead === "metadata")
-				// The rebuilt source: facts belong to another domain, and the
-				// answer is a correction, never an authority to install.
-				return {
-					entries: [],
-					has_more: false,
-					cursor_missing: false,
-					journal_order_state: "unavailable",
-					journal_generation: "peer-B",
-					reconcile: true,
-				};
-			return { entries: [], has_more: false, cursor_missing: false };
-		},
 		snapshotHandler: async () =>
 			snapshotFrame(
 				9,
@@ -606,6 +598,7 @@ test("a rebuilt source never installs from the lookup; the owed reconcile settle
 					reconcile: true,
 				};
 			if (request.sourceRead === "payload")
+				// The typed body read that admits the owed row under peer-B.
 				return {
 					entries: [{ ...messageRow(ROW_EARLY, "where am I?"), journal_seq: 0 }],
 					has_more: false,
@@ -618,7 +611,20 @@ test("a rebuilt source never installs from the lookup; the owed reconcile settle
 		},
 	});
 	const reads = repairReads();
-	assert.ok(reads.length >= 3, "lookup, authority, then payload");
+	/*
+	 * THREE READS, AND THE CONTRACT REQUIRES THE THIRD (docs/DESKTOP_API.md,
+	 * complete peer-source contract): "The authority bootstrap uses the existing
+	 * session GET but applies only source metadata ... never incidentally adopt
+	 * page bodies, causal call owners, tail/cursor coverage or frontend state.
+	 * Explicit verified page/body acceptance is a DIFFERENT typed path." So the
+	 * authoritative read installs peer-B and leaves row-early PAYLOAD-OWED; the
+	 * typed payload subset - "fresh projected bodies and same-read coordinates
+	 * together" - is what admits the body and clears the debt, so it IS
+	 * dispatched. The earlier "the authority page already settled it" reading was
+	 * wrong (it would have the authority read adopt page bodies, which the
+	 * contract forbids) and is corrected here; the assertion below is unchanged.
+	 */
+	assert.ok(reads.length >= 3, "lookup, authority, then the payload subset");
 	assert.equal(reads[0].op, "sessions.history");
 	assert.equal(reads[0].sourceRead, "metadata");
 	assert.equal(reads[0].expectedJournalGeneration, "peer-A");
@@ -626,6 +632,9 @@ test("a rebuilt source never installs from the lookup; the owed reconcile settle
 	assert.ok(authority, "the owed reconcile took the session GET");
 	assert.equal(authority.peerJournalSource, true);
 	assert.equal(authority.orderIds.length, 1);
+	// The terminal read admits the owed body under peer-B, which settles the debt.
+	assert.equal(reads.at(-1).sourceRead, "payload");
+	assert.deepEqual(journalBodyOwedIds(h.get().transcript), []);
 	assert.equal(h.get().transcript.journalGeneration, "peer-B");
 	assert.equal(h.get().transcript.orderNeedsReconcile, false);
 	assert.equal(

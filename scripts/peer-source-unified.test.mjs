@@ -331,10 +331,12 @@ test("proven-missing settles as void without fabrication; unavailable and remain
 	// unavailable/remaining: still owed, still distinct from absence
 	assert.ok(R.journalLookupIds(state).includes("b"));
 	assert.ok(R.journalLookupIds(state).includes("c"));
-	// and nothing was fabricated onto the missing row
+	// and nothing was fabricated onto the missing row: it keeps only its own
+	// sourceEntryId (its identity, written by the merge every delta row passes
+	// through) and NO coordinate the missing answer never gave it.
 	const a = byId(state, "a");
 	assert.equal(a.journalGeneration, undefined);
-	assert.equal(a.sourceEntryId, undefined);
+	assert.equal(a.journalSeq, undefined);
 });
 
 test("a ready answer retires the truthful-unavailable latch; unsupported does not arm anything", () => {
