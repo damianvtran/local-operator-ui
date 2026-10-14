@@ -18,9 +18,12 @@
  *     costs one line of chrome, not a wall. A `failed` record inside does NOT
  *     expand the section (operator ask, 2026-10-13: a settled record must not
  *     greet the reader expanded), and the store's own concern — `failed` is
- *     "the state a person should not miss" — is carried by a quiet dot in the
- *     closed summary instead, so the signal survives the collapse without
- *     spending the reader's layout on it.
+ *     "the state a person should not miss" — is carried by the words `N failed`
+ *     (in `text-danger`) in the closed summary (design round 1, D2 added the
+ *     text to the dot), so the signal survives the collapse without spending
+ *     the reader's layout on it. The section also draws a `border-t` hairline
+ *     when a waiting card sits above it (D1), so it reads as a section rather
+ *     than as that card's next disclosure.
  *
  * THE REGISTER IS THE APP'S QUIET ONE, and this surface used to be the odd one
  * out (operator ask, 2026-10-13: the tray was a bordered, padded card whose
@@ -260,6 +263,8 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 	 */
 	const [recordsOpen, setRecordsOpen] = useState(false);
 	const recordsSignalled = records.some((row) => row.state === "failed");
+	/** How many settled records carry the state the store says not to miss. */
+	const failedCount = records.filter((row) => row.state === "failed").length;
 
 	/*
 	 * A REFUSAL ATTACHES TO ITS RECORD only while that record is DRAWN — the card
@@ -347,18 +352,38 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 			 */}
 			{/*
 			 * THE FAILED SIGNAL RIDES THE SUMMARY, NOT THE DEFAULT (operator ask,
-			 * 2026-10-13). `bg-danger` is the app's one "needs the reader" fill
-			 * (`integration-row.tsx`'s status dot, `chat-status-strip.tsx`'s), measured
-			 * 4.23:1 at its worst over the four grounds these rows sit on — above the 3:1
-			 * non-text floor, so the dot is legible in every palette — and `sr-only`
-			 * states it in words, because a colour is not a sentence a screen reader can
-			 * read.
+			 * 2026-10-13; wording corrected by QA round 1, Q2). `bg-danger` is the app's
+			 * one "needs the reader" fill (`integration-row.tsx`'s status dot,
+			 * `chat-status-strip.tsx`'s). The 4.23:1 QA round 1 derives is the sweep's
+			 * worst over the four row grounds; the dot itself paints only on the PAGE
+			 * ground, where the worst is 4.69:1 — so the figure is the conservative one,
+			 * and either clears the 3:1 non-text floor in every palette.
+			 *
+			 * THE WORDS CARRY IT TOO (design round 1, D2): the header's own signal is
+			 * words (`2 waiting`), so a bare dot left a sighted reader with colour as the
+			 * only channel. `N failed` beside the label states it in the same idiom and
+			 * the same ink the row's own state line wears (`stateInk`), which is also why
+			 * the separate `sr-only` sentence is gone — the visible words are what a
+			 * screen reader reads, and saying it twice was redundancy rather than
+			 * accessibility. The dot stays beside them: it is the app's own "needs the
+			 * reader" mark and costs the summary nothing.
 			 */}
 			{records.length > 0 && (
 				<Disclosure
 					open={recordsOpen}
 					onOpenChange={setRecordsOpen}
 					chevronClassName="text-ink-dim"
+					/*
+					 * THE HAIRLINE CARRIES INTO THE SECTION WHEN A PROMPT SITS ABOVE IT
+					 * (design round 1, D1). The waiting list's `divide-y` stops at its last
+					 * card, so in the mixed state the toggle shared that card's own rhythm
+					 * (`Approve` -> `Details` ~26px, card -> toggle ~27px, same left edge and
+					 * chevron) and read as one more disclosure of the card rather than a
+					 * section of its own. The rule and the `pt-3` are what the lists already
+					 * use to separate unlike blocks; a settled-only panel has no card above
+					 * it and draws neither.
+					 */
+					className={cn(waiting.length > 0 && "border-hairline border-t pt-3")}
 					summary={
 						<span className="flex items-center gap-1.5 text-meta text-ink-muted">
 							Settled approvals
@@ -369,8 +394,8 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 									className="size-1.5 rounded-full bg-danger"
 								/>
 							)}
-							{recordsSignalled && (
-								<span className="sr-only">, including one that failed</span>
+							{failedCount > 0 && (
+								<span className="text-danger">{failedCount} failed</span>
 							)}
 						</span>
 					}

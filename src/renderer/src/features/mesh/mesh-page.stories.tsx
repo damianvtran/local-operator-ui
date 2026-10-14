@@ -2017,6 +2017,44 @@ export const ApprovalsStopped: Story = {
 };
 
 /**
+ * A stopped runner with its section OPENED by the reader (design round 1, D3):
+ * `stateInk("failed")` is the tray's one coloured state ink and `Abandon` is a
+ * settled row's write, and neither was rendered in a committed frame — the
+ * `approvals-stopped` frame is deliberately SHUT, and `ApprovalsStoppedRefused`
+ * opens the section but is captured after closing it. So this state exists to
+ * put the coloured state line and the `Abandon` button on a picture.
+ *
+ * The play presses the toggle, so the frame and `aria-expanded` cannot
+ * disagree, and the shutter latch holds the rig until the row is drawn (design
+ * round 1, D9).
+ */
+export const ApprovalsStoppedOpen: Story = {
+	render: () => {
+		installBridge({
+			...singleDeviceFixture(),
+			approvals: [
+				approvalRecord({
+					approval_id: "ap_f4i1l2e3d4x",
+					state: "failed",
+					name: "lab-node",
+					host: "lab-node.local",
+					user: "ops",
+				}),
+			],
+		});
+		holdShutter('[data-tour-tag="mesh-approvals-records"]');
+		return <MeshPage />;
+	},
+	play: async () => {
+		const user = userEvent.setup();
+		await user.click(
+			await screen.findByRole("button", { name: /^Settled approvals \(/ }),
+		);
+		await screen.findByRole("button", { name: "Abandon" });
+	},
+};
+
+/**
  * A refusal that outlives the section it was about (design round 1, D1's
  * second arm): `Abandon` on the `failed` record is refused by the store, the
  * reader closes the section, and the refusal STAYS on screen under the list —
