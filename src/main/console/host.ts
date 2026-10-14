@@ -1920,7 +1920,20 @@ export class ConsoleHost {
 				continue;
 			}
 			if (entry.record.retain) {
-				if (this.dehydrate(entry)) released += 1;
+				/*
+				 * AN ELIGIBLE RETAINED SURFACE THAT IS ALREADY DEHYDRATED COUNTS AS
+				 * RELEASED, not protected (QA round 1, Q-2). `dehydrate()` returning
+				 * false for a null runtime is about the flush timer - there is nothing
+				 * left to drop - but the resource question is already answered: the
+				 * surface holds no emulator and no in-memory bytes, so nothing is
+				 * "still in use". Reporting it protected made the cleanup-result copy
+				 * ("{n} is still in use and was left open") describe a finished,
+				 * retained terminal as busy. Every other reason to protect one (secure,
+				 * user-origin, adopted, non-live, displayed, subscribed, read) was
+				 * already filtered above, so a null runtime here is a release-ready
+				 * surface whose bytes are on disk and whose memory is already back.
+				 */
+				if (!entry.runtime || this.dehydrate(entry)) released += 1;
 				else protectedCount += 1;
 			} else {
 				await this.close(entry.record.surface, { retain: false });
