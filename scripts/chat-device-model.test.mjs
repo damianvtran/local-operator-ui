@@ -60,6 +60,7 @@ const {
 	PAIRING_GUIDANCE,
 	MOVE_FOOTER,
 	moveGateReason,
+	moveGateTone,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -1153,11 +1154,12 @@ test("the header offers an explicit move door, visible and explained in every st
 	 */
 	assert.match(
 		header,
-		/moveGateReason\(desktopFeatureState\(capabilities\.data, "peers"\)\)/,
+		/moveGateReason\(peerState\) \?\? moveGateReason\(transferState\) \?\? undefined/,
 	);
+	assert.match(header, /desktopFeatureState\(capabilities\.data, "peers"\)/);
 	assert.match(
 		header,
-		/moveGateReason\(\s*desktopFeatureState\(capabilities\.data, "session_transfer"\),?\s*\)/,
+		/desktopFeatureState\(\s*capabilities\.data,\s*"session_transfer",\s*\)/,
 	);
 	assert.equal(
 		moveGateReason("enabled"),
@@ -1166,13 +1168,13 @@ test("the header offers an explicit move door, visible and explained in every st
 	);
 	assert.equal(
 		moveGateReason("unknown"),
-		"checking whether a conversation can be moved…",
+		"checking…",
 		"no answer is a loading fact, not a backend that cannot move",
 	);
 	assert.equal(
 		moveGateReason("unpaired"),
-		"pair this device with a network first",
-		"no credential is a pairing fact",
+		"this app is not paired with the backend",
+		"no credential is a pairing fact, in the app's own words for it (D6)",
 	);
 	assert.equal(
 		moveGateReason("below-version"),
@@ -1184,16 +1186,19 @@ test("the header offers an explicit move door, visible and explained in every st
 		"the UI cannot promise a roadmap",
 	);
 	/*
-	 * VISIBLE BUT NOT DEAD: the reason rides the row as a line (`text-warning`), the
-	 * press is ignored through `aria-disabled` rather than Radix's focus-filtering
-	 * `disabled`, and the reason is not buried in a `title` alone.
+	 * VISIBLE BUT NOT DEAD: the reason rides the row as a line, the press is ignored
+	 * through `aria-disabled` rather than Radix's focus-filtering `disabled`, and the
+	 * reason is not buried in a `title` alone. The ink follows the STATE (D8): a wait
+	 * (`unknown`) is dim, a gate is warning.
 	 */
 	assert.match(header, /aria-disabled=\{moveReason \? true : undefined\}/);
 	assert.match(header, /if \(moveReason\) return;/);
-	assert.match(
-		header,
-		/<span className="text-meta text-warning whitespace-normal">\s*\{moveReason\}/,
-	);
+	assert.match(header, /moveTone === "dim"/);
+	assert.match(header, /"text-ink-dim"/);
+	assert.match(header, /max-w-\[11rem\] whitespace-normal text-meta/);
+	assert.equal(moveGateTone("unknown"), "dim", "a wait is not a gate");
+	assert.equal(moveGateTone("below-version"), "warning");
+	assert.equal(moveGateTone("unpaired"), "warning");
 	/*
 	 * IT OPENS THE EXISTING PICKER, never a second path: the press only marks the
 	 * intent, and the menu's own close autofocus issues the ask.
