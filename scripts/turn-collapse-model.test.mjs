@@ -62,6 +62,7 @@ const {
 	alignWalkStateFor,
 	initialAlignWalkState,
 	collapsePlan,
+	collapsePlanOptionsKey,
 	isFailedCall,
 	paintedRows,
 	runsOf,
@@ -5111,4 +5112,60 @@ test("F4: a reader-opened live episode is not un-collapsed by a landing head", (
 	);
 	assert.equal(opened.collapsed, true, "the reader's open episode survives");
 	assert.equal(opened.key, closed.key, "and keeps its identity");
+});
+
+test("olderRowsExist: a head-cut episode condenses only when older rows are known to exist", () => {
+	/*
+	 * The architect's discriminator for the head-cut contradiction. The seed is
+	 * `!headLoaded && olderRowsExist`, so it moves ONLY a span at the loaded edge,
+	 * and defaults off so every existing caller keeps today's behaviour.
+	 */
+	const rows = [
+		peerRow("oe-peer"),
+		tool("oe-tool", { phase: "running" }, "trace"),
+	];
+	const none = internalSpanOf(
+		collapsePlan(rows, { live: true, olderRowsExist: false }),
+		"oe-peer",
+	);
+	assert.equal(none.collapsed, false);
+	assert.equal(none.internal, null);
+	const unset = internalSpanOf(collapsePlan(rows, { live: true }), "oe-peer");
+	assert.equal(unset.collapsed, false, "omitted defaults to today's behaviour");
+	const older = internalSpanOf(
+		collapsePlan(rows, { live: true, olderRowsExist: true }),
+		"oe-peer",
+	);
+	assert.equal(older.collapsed, true);
+	assert.notEqual(older.internal, null);
+});
+
+test("olderRowsExist does not widen a run whose own head is loaded", () => {
+	/* `[user, peer, tool]` has its opening user row on hand, so nothing older is
+	 * missing from THIS run whatever the paging state says: the receipt opens the
+	 * run's content and still paints. */
+	const rows = [
+		user("ow-user"),
+		peerRow("ow-peer"),
+		tool("ow-tool", { phase: "running" }, "trace"),
+	];
+	const span = internalSpanOf(
+		collapsePlan(rows, { live: true, olderRowsExist: true }),
+		"ow-peer",
+	);
+	assert.equal(span.collapsed, false);
+	assert.equal(span.internal, null);
+});
+
+test("olderRowsExist is part of the plan's options key", () => {
+	/* Without it the caller's plan memo would not re-plan when a page lands. */
+	assert.notEqual(
+		collapsePlanOptionsKey({ live: true, olderRowsExist: true }),
+		collapsePlanOptionsKey({ live: true, olderRowsExist: false }),
+	);
+	assert.equal(
+		collapsePlanOptionsKey({ live: true }),
+		collapsePlanOptionsKey({ live: true, olderRowsExist: false }),
+		"omitted equals false",
+	);
 });

@@ -508,6 +508,7 @@ function internalEpisodeOf(
 	live: boolean,
 	unsettled: boolean,
 	humanPending: boolean,
+	olderRowsExist: boolean,
 ): InternalEpisodeFacts | null {
 	if (!isInternalEpisodeOrigin(records[span.from])) return null;
 
@@ -547,7 +548,25 @@ function internalEpisodeOf(
 	 * receipts - never the row's text, and never a "which producer was this"
 	 * inference, so an unstamped old-core row is not guessed about.
 	 */
-	let settledBefore = false;
+	/*
+	 * SEEDED FROM THE PAGING STATE AT THE LOADED EDGE, and only there.
+	 *
+	 * At a head cut the answer this episode continues is off-page, so the loop
+	 * below cannot see it. When older rows are known to exist (`olderRowsExist`)
+	 * the settled work is real but unloaded: assuming it keeps a head-cut episode
+	 * condensed instead of flipping it to loose rows the moment a page cut drops
+	 * the answer. `!headLoaded` is what stops this widening past the edge - a
+	 * span inside the page has its whole run behind it on hand and is decided by
+	 * the loop alone. With nothing older to arrive the receipt genuinely opens the
+	 * run and still paints (QA Q1/Q2, reviewer F1).
+	 *
+	 * RESIDUAL, stated plainly: at a true loaded edge with older rows and a lone
+	 * receipt the reader sees a bar until the head lands. The completion walk
+	 * normally turns it back into rows, but a blocked walk (page budget, off-tail
+	 * reader) leaves it behind a bar until opened, and the bar's label cannot say
+	 * whether a failed `job_result` is inside.
+	 */
+	let settledBefore = !headLoaded && olderRowsExist;
 	for (let i = 0; i < span.from; i += 1) {
 		const before = records[i];
 		if (before.kind === "assistant" && before.streaming !== true) {
@@ -1232,6 +1251,20 @@ export function collapsePlan(
 		 * refuses the fact rather than stating a figure that may have moved.
 		 */
 		factPage?: FactPageIdentity | null;
+		/**
+		 * Whether rows OLDER than the loaded head exist (the caller's paging state:
+		 * `hasMore`, or rows the render window hides). Defaults to false, so every
+		 * caller that does not know keeps today's behaviour.
+		 *
+		 * WHY THE PLAN NEEDS IT. An internal episode may collapse only on settled
+		 * work, and the settled answer it continues is read from the LOADED records.
+		 * At a head cut that answer is simply off-page: a plan that cannot tell "the
+		 * run really starts with this receipt" from "an older page has not landed"
+		 * treats both as the first and paints the second loose until the head
+		 * arrives. This is the one fact that separates them. It is consulted only at
+		 * the loaded edge (`!headLoaded`), never for a span inside the page.
+		 */
+		olderRowsExist?: boolean;
 	},
 ): CollapsePlan {
 	dbgCollapsePlanCalls.count += 1;
@@ -1260,6 +1293,7 @@ export function collapsePlan(
 				options.runFacts,
 				options.hideCrossSession === true,
 				options.factPage,
+				options.olderRowsExist === true,
 				/*
 				 * THE SETTLE LATCH, spent the way `live` is: on the NEWEST run only.
 				 * `watchedRunId` names the run the pane has watched being written; the
@@ -1547,9 +1581,16 @@ export function collapsePlanOptionsKey(options: {
 	 * reason, and only ever written when a run is actually latched.
 	 */
 	watchedRunId?: string | null;
+	/**
+	 * IN THE KEY because it flips a head-cut episode between condensed and loose:
+	 * without it the caller's plan memo would not re-plan when a page lands or
+	 * `hasMore` clears, and the bar would stay as the previous pass left it.
+	 */
+	olderRowsExist?: boolean;
 }): string {
 	const parts: string[] = [
 		options.live ? "live" : "settled",
+		options.olderRowsExist ? "older" : "head",
 		options.mode ?? "",
 		options.focusHold ?? "",
 		options.hideCrossSession ? "hide" : "show",
@@ -2592,6 +2633,8 @@ function planRun(
 	 * exactly as it was.
 	 */
 	factPage: FactPageIdentity | null | undefined = undefined,
+	/** See `collapsePlan`'s `olderRowsExist`. Default false = every old caller. */
+	olderRowsExist = false,
 	/**
 	 * Whether this run is the one the pane has WATCHED live (the settle latch,
 	 * see `collapsePlan`'s option). Threaded for the newest run only, the way
@@ -2839,6 +2882,7 @@ function planRun(
 					run.endIndex === rows.length - 1,
 				live && span.to >= liveFrom,
 				humanPendingBefore[span.from],
+				olderRowsExist,
 			);
 			const group = quietGroupOfSegment(records, span, {
 				spanHeadLoaded: headLoaded,

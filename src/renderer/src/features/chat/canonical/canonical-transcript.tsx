@@ -372,7 +372,14 @@ function condenseSentence(segment: SegmentPlan): string {
 		 * the noun twice (design round 1 nit). Same rule as below: the span clause
 		 * only when the bar carries one.
 		 */
-		parts.push(`${segment.facts.group.count}`);
+		/*
+		 * THE FIGURE IS THE ONE THE BAR PRINTS. `turn-summary.tsx` prints
+		 * `episode.receipts ?? group.count`; a `subagent:` notice is an episode
+		 * origin but not a quiet-group trigger, so the two can differ (`[wake,
+		 * subagent notice, wake]`: group 2, receipts 3) and a screen-reader user
+		 * was told a different number from the one on screen (reviewer F6).
+		 */
+		parts.push(`${segment.internal?.receipts ?? segment.facts.group.count}`);
 		const spanS = quietGroupSpanS(segment.facts.group);
 		if (spanS !== null) parts.push(formatDuration(spanS));
 	} else {
@@ -4391,14 +4398,25 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			 * cannot be split, must not be taken at all.
 			 */
 			hideCrossSession: hide,
+			/*
+			 * OLDER ROWS EXIST (architect ruling): the paging state says a page above
+			 * the loaded head is still to come (`hasMore`) or the render window is
+			 * hiding rows that are loaded (`hidden`). Either way the head of this
+			 * list is a CUT, not the conversation's start, and the plan must not
+			 * read a receipt at the edge as the run's opening content. In the plan's
+			 * options key, so a page landing re-plans.
+			 */
+			olderRowsExist: Boolean(transcript.hasMore) || hidden > 0,
 		}),
 		[
 			focusedRecordId,
 			selectedRecordId,
 			gate,
 			hide,
+			hidden,
 			openFrame,
 			openRuns,
+			transcript.hasMore,
 			transcriptDisplayMode,
 			watchedRun,
 			working,
