@@ -643,6 +643,18 @@ test("a mounted transfer row refreshes language and absent messages keep English
 				tr("ui.browser.browser_approvals_tray.header_waiting", { count }),
 				`${count} ${count === 1 ? "approval" : "approvals"} waiting`,
 			);
+			assert.equal(
+				tr("ui.browser.browser_tab_strip.close_conversation_tabs", { count }),
+				`Close all ${count} ${count === 1 ? "tab" : "tabs"} in this conversation`,
+			);
+			assert.equal(
+				tr("ui.browser.browser_file_transfer_row.byte_count", { count }),
+				`${count} ${count === 1 ? "byte" : "bytes"}`,
+			);
+			assert.equal(
+				tr("ui.browser.browser_file_transfer_row.call_limit", { count }),
+				`was not saved: this call has already saved its limit of ${count} ${count === 1 ? "file" : "files"}.`,
+			);
 		}
 	} finally {
 		clearRegisteredCatalogues();
