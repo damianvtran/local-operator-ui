@@ -12,14 +12,26 @@
  *     tab — a pending approval is the most important fact here, and a prompt
  *     hidden behind any control is the failure this surface exists to remove.
  *   - RECORDS: everything the read carries besides them — decided, running,
- *     stopped, terminal — behind a `Disclosure` that starts closed. The closure
- *     is the archive-dump guard the old tray argued for, kept: a record nobody
- *     opened costs one line of chrome, not a wall. It opens ITSELF while a
- *     `failed` record is inside — the store's own words, "the state a person
- *     should not miss"; the FIRST press of its toggle takes ownership from
- *     then on, and until that press the default keeps following the data, so
- *     the section folds away again once the last `failed` resolves (QA round
- *     1, O2 — stated rather than special-cased).
+ *     stopped, terminal — behind a `Disclosure` labelled "Settled approvals"
+ *     that starts closed and is opened only by the reader. The closure is the
+ *     archive-dump guard the old tray argued for, kept: a record nobody opened
+ *     costs one line of chrome, not a wall. A `failed` record inside does NOT
+ *     expand the section (operator ask, 2026-10-13: a settled record must not
+ *     greet the reader expanded), and the store's own concern — `failed` is
+ *     "the state a person should not miss" — is carried by a quiet dot in the
+ *     closed summary instead, so the signal survives the collapse without
+ *     spending the reader's layout on it.
+ *
+ * THE REGISTER IS THE APP'S QUIET ONE, and this surface used to be the odd one
+ * out (operator ask, 2026-10-13: the tray was a bordered, padded card whose
+ * every row led with a chip). The tray now matches the app's borderless list
+ * sections — `project-todos.tsx` and `project-updates.tsx` state the pattern in
+ * their own words, "borderless entries, the chat page's chrome: hairlines, no
+ * box" — so the sets are `divide-y divide-hairline` groups on the page's ground
+ * with no panel around them, and a record's state is a line of text rather than
+ * a Badge, in the register `IntegrationRow`'s status column already keeps: only
+ * the state that needs the reader is coloured, and a settled row states itself
+ * more quietly than a waiting one.
  *     HOW FAR BACK IT DRAWS IS THE STORE'S BOUND, NOT THIS FILE'S (agent review
  *     round 1, R1-2): the section is the read's own fold — everything besides
  *     the waiting set, oldest first — and the read's retention is the store's
@@ -55,8 +67,9 @@
  * anything.
  */
 
-import { Alert, Badge, Button } from "@shared/components/ui";
+import { Alert, Button } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { cn } from "@shared/lib/utils";
 import { ShieldCheck } from "lucide-react";
 import type { FC } from "react";
 import { Fragment, useMemo, useState } from "react";
@@ -76,14 +89,25 @@ import {
 	isWaitingApproval,
 } from "./mesh-approvals";
 
-/** The chip's semantic register per state; each is the Badge primitive's own triple. */
-function chipVariant(
-	state: string,
-): "attention" | "danger" | "success" | "neutral" {
-	if (state === "requested") return "attention";
-	if (state === "failed") return "danger";
-	if (state === "connected") return "success";
-	return "neutral";
+/**
+ * The INK a row's state line wears, in the app's own status register.
+ *
+ * `IntegrationRow`'s status column states the rule this follows: "only states
+ * that ask for attention are coloured; a healthy or idle row reads in muted ink
+ * so the page's colour points at work". So `failed` — the store's own "the state
+ * a person should not miss" — is the only coloured one, and `requested` is
+ * `ink-muted` rather than `ink` because it is the card's state line and not the
+ * ask itself, which the summary sentence below states at full `ink`.
+ *
+ * The state used to be a `Badge` chip. A chip is a filled, bordered object, and
+ * six of them stacked down a settled section read as six calls to action; the
+ * operator's register complaint was about exactly that, so the state is text now
+ * and carries no fill at all.
+ */
+function stateInk(state: string): string {
+	if (state === "failed") return "text-danger";
+	if (isWaitingApproval(state)) return "text-ink-muted";
+	return "text-ink-dim";
 }
 
 /**
@@ -219,15 +243,23 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 	);
 
 	/*
-	 * THE RECORDS SECTION'S OPEN STATE, in three parts: the reader's toggle wins;
-	 * absent a choice it follows the data — open while a `failed` record is inside
-	 * (the store's state "a person should not miss"), closed otherwise. The
-	 * override belongs to the visit rather than to a render, so a poll that keeps
-	 * delivering the same failed record cannot re-open a section the reader closed.
+	 * THE SECTION IS THE READER'S, AND ONLY THE READER'S (operator ask,
+	 * 2026-10-13). It used to open ITSELF while a `failed` record was inside —
+	 * the store's `failed` being "the state a person should not miss" — but a
+	 * settled record must not greet the reader expanded, so the section starts
+	 * closed in every state and the failure is signalled INSIDE the collapsed
+	 * summary (the dot below) instead of by spending the reader's layout on it.
+	 *
+	 * STILL CONTROLLED, deliberately: the open state is read HERE rather than
+	 * left inside the primitive because `refusalAttached` below needs it — a
+	 * decision refused on a record inside the section has to render under the
+	 * list once the section is shut, and an uncontrolled disclosure would leave
+	 * the tray unable to tell. What changed is only the DEFAULT: `false`, with no
+	 * third term following the data, so a poll that keeps delivering the same
+	 * failed record cannot re-open a section the reader closed.
 	 */
-	const [recordsChoice, setRecordsChoice] = useState<boolean | null>(null);
-	const recordsOpen =
-		recordsChoice ?? records.some((row) => row.state === "failed");
+	const [recordsOpen, setRecordsOpen] = useState(false);
+	const recordsSignalled = records.some((row) => row.state === "failed");
 
 	/*
 	 * A REFUSAL ATTACHES TO ITS RECORD only while that record is DRAWN — the card
@@ -248,10 +280,25 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 		return null;
 
 	return (
+		/*
+		 * BORDERLESS, ON THE PAGE'S OWN GROUND (operator ask, 2026-10-13). This was a
+		 * bordered, padded card - a `rounded-lg` box on `surface` inside a `p-3` - matched
+		 * to the mesh tab's own empty-state panel. The empty-state panel KEEPS its
+		 * border: it is a stand-in for the canvas region and a box is what says so. A
+		 * list of approvals is not a region, and the app draws its borderless lists
+		 * the other way — `project-todos.tsx` and `project-updates.tsx`, "borderless
+		 * entries, the chat page's chrome: hairlines, no box" — so the tray now follows
+		 * the list register and no longer paints a second bordered panel beside the
+		 * canvas's.
+		 *
+		 * The padding goes with the box: the page's `p-6` is already this block's
+		 * gutter, and a leftover `p-3` would inset the rows from rules the panel around
+		 * them has stopped drawing.
+		 */
 		<section
 			aria-label="Approvals"
 			data-tour-tag="mesh-approvals-tray"
-			className="flex flex-col gap-3 rounded-lg border border-hairline bg-surface p-3"
+			className="flex flex-col gap-3"
 		>
 			<div className="flex flex-wrap items-center gap-2">
 				<ShieldCheck aria-hidden="true" className="size-4 text-ink-muted" />
@@ -292,18 +339,40 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 			{refusal && !refusalAttached && <MeshDecisionRefusal refusal={refusal} />}
 
 			{/*
-			 * THE RECORDS SECTION. `Disclosure` is the app's one disclosure idiom
-			 * (branding § Disclosure), so the toggle, the chevron swap and the
-			 * `aria-expanded` state are the primitive's — and its controlled form is
-			 * what lets the failure default above coexist with the reader's own choice.
+			 * THE SETTLED SECTION IS NAMED FOR WHAT IT HOLDS. It read `Records (N)`
+			 * nested inside the same bordered panel as the prompts, which is what made
+			 * it not recognisable as an approvals section of its own (operator ask,
+			 * 2026-10-13) — the label says what the section is, the count says how many,
+			 * and the chevron is the primitive's own open/close affordance.
+			 */}
+			{/*
+			 * THE FAILED SIGNAL RIDES THE SUMMARY, NOT THE DEFAULT (operator ask,
+			 * 2026-10-13). `bg-danger` is the app's one "needs the reader" fill
+			 * (`integration-row.tsx`'s status dot, `chat-status-strip.tsx`'s), measured
+			 * 4.23:1 at its worst over the four grounds these rows sit on — above the 3:1
+			 * non-text floor, so the dot is legible in every palette — and `sr-only`
+			 * states it in words, because a colour is not a sentence a screen reader can
+			 * read.
 			 */}
 			{records.length > 0 && (
 				<Disclosure
 					open={recordsOpen}
-					onOpenChange={setRecordsChoice}
+					onOpenChange={setRecordsOpen}
 					chevronClassName="text-ink-dim"
 					summary={
-						<span className="text-meta">Records ({records.length})</span>
+						<span className="flex items-center gap-1.5 text-meta text-ink-muted">
+							Settled approvals
+							<span className="text-ink-dim">({records.length})</span>
+							{recordsSignalled && (
+								<span
+									aria-hidden="true"
+									className="size-1.5 rounded-full bg-danger"
+								/>
+							)}
+							{recordsSignalled && (
+								<span className="sr-only">, including one that failed</span>
+							)}
+						</span>
 					}
 				>
 					<ul
@@ -364,9 +433,16 @@ const MeshApprovalCard: FC<{
 			data-tour-tag="mesh-approval-card"
 		>
 			<div className="flex flex-wrap items-center gap-2">
-				<Badge variant={chipVariant(row.state)}>
+				{/*
+				 * THE STATE IS A LINE OF TEXT, not a chip (operator ask, 2026-10-13): a
+				 * Badge here is a filled, bordered object, and a settled section's rows are
+				 * records rather than six stacked calls to action. The accessible name is
+				 * unchanged — this is the same `approvalStateLabel` — so nothing a screen
+				 * reader hears depends on which register the words are painted in.
+				 */}
+				<span className={cn("text-meta", stateInk(row.state))}>
 					{approvalStateLabel(row.state)}
-				</Badge>
+				</span>
 				<div className="grow" />
 				{/*
 				 * THE WINDOW PRINTS ONLY WHILE IT IS THE READER'S TO ACT ON (design
