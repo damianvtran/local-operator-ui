@@ -442,8 +442,13 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 			<div className="flex shrink-0 items-center gap-3">
 				<span className="whitespace-nowrap text-ink-dim text-meta">
 					{activeIndex >= 0
-						? `Step ${activeIndex + 1} of ${STEP_SEQUENCE.length}`
-						: `${STEP_SEQUENCE.length} steps`}
+						? t("ui.onboarding.modal.step_of", {
+								current: activeIndex + 1,
+								total: STEP_SEQUENCE.length,
+							})
+						: t("ui.onboarding.modal.steps_total", {
+								total: STEP_SEQUENCE.length,
+							})}
 				</span>
 				{/* `list`, not a bare row of buttons: it has a length, and a screen
 				    reader saying "6 items" is the same fact the count above shows. */}

@@ -288,9 +288,18 @@ test("the control is reachable by mouse and keyboard, and its label names the st
 			),
 		"the tooltip no longer follows the row's state",
 	);
+	/*
+	 * The accessible name is now three catalogue messages (close / clear / clear
+	 * with retained output), chosen by the same state the old template branched
+	 * on, each fed the terminal's title and the tablist position. The pin binds
+	 * the BRANCH and the three PARAMETERS at the call site; the sentence each
+	 * message renders is pinned in the catalogue and by the render suite
+	 * (`console-pane-render.test.mjs` asserts "Close zsh, tab 1 of 2").
+	 */
+	const nameCall = PANE_CODE.replace(/\s+/g, " ");
 	assert.ok(
-		PANE_CODE.includes(
-			'aria-label={`${row.running ? "Close" : "Clear"} ${surfaceTitle(row)}, tab ${index + 1} of ${surfaces.length}${!row.running && row.retain ? " — deletes retained output" : ""}`}',
+		nameCall.includes(
+			'aria-label={t( row.running ? "ui.console.tab.close_label" : row.retain ? "ui.console.tab.clear_label_retained" : "ui.console.tab.clear_label", { title: surfaceTitle(row), index: index + 1, total: surfaces.length, }, )}',
 		),
 		"the accessible name no longer names the state, the terminal and the position",
 	);
@@ -301,7 +310,7 @@ test("the control is reachable by mouse and keyboard, and its label names the st
 	 * that changes with a neighbour's presence is a name a reader cannot rely on.
 	 */
 	assert.ok(
-		PANE_CODE.includes("tab ${index + 1} of ${surfaces.length}"),
+		nameCall.includes("index: index + 1, total: surfaces.length,"),
 		"the accessible name no longer carries the tablist's own position",
 	);
 });

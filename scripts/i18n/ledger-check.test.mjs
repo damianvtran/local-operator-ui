@@ -71,6 +71,7 @@ function buildTree({ mutate } = {}) {
 						model: "test",
 						date: "2026-10-13",
 						result: "clean",
+						instance: "audit-run-a",
 					},
 				],
 				status: "audited",
@@ -265,6 +266,103 @@ test("NEGATIVE: an auditor who IS the translator fails (independence)", () => {
 			);
 		},
 	);
+});
+
+/*
+ * F2 (code review round 1): the gate used to read only `status` and the agent
+ * name, so a recorded FAILED audit and a second audit that was the same run
+ * both passed. Each case below mutates ONE field of the control fixture, so a
+ * failure is attributable to exactly that rule.
+ */
+const withAuditors = (auditors) => ({
+	mutate: ({ writeLedger, ledger }) => {
+		writeLedger({
+			...ledger,
+			entries: [{ ...ledger.entries[0], auditors }],
+		});
+	},
+});
+const audit = (overrides = {}) => ({
+	agent: "i18n-auditor",
+	model: "test",
+	date: "2026-10-13",
+	result: "clean",
+	instance: "audit-run-a",
+	...overrides,
+});
+
+test("NEGATIVE: a failed audit result cannot back an audited entry", () => {
+	withTree(withAuditors([audit({ result: "fail" })]), (root) => {
+		const { failures } = checkLedger({ repo: root });
+		assert.ok(
+			failures.some((f) => f.includes("not a passing result")),
+			`a failed result must fail; got ${JSON.stringify(failures)}`,
+		);
+	});
+});
+
+test("NEGATIVE: an auditor with no recorded result fails", () => {
+	withTree(withAuditors([audit({ result: undefined })]), (root) => {
+		const { failures } = checkLedger({ repo: root });
+		assert.ok(
+			failures.some((f) => f.includes("not a passing result")),
+			`a missing result must fail; got ${JSON.stringify(failures)}`,
+		);
+	});
+});
+
+test("CONTROL: a clean-with-findings audit (MINOR/NIT recorded, not churned) PASSES", () => {
+	withTree(withAuditors([audit({ result: "clean-with-findings" })]), (root) => {
+		const { failures } = checkLedger({ repo: root });
+		assert.deepEqual(
+			failures,
+			[],
+			"a passing audit with recorded minors passes",
+		);
+	});
+});
+
+test("CONTROL: findings remediated, then a clean re-audit by a distinct run, PASSES", () => {
+	withTree(
+		withAuditors([
+			audit({ result: "clean-with-findings", instance: "audit-run-a" }),
+			audit({ result: "clean", instance: "audit-run-b" }),
+		]),
+		(root) => {
+			const { failures } = checkLedger({ repo: root });
+			assert.deepEqual(
+				failures,
+				[],
+				"a remediated then re-audited entry passes",
+			);
+		},
+	);
+});
+
+test("NEGATIVE: two audits that share one instance are not two audits", () => {
+	withTree(
+		withAuditors([
+			audit({ instance: "audit-run-a" }),
+			audit({ instance: "audit-run-a" }),
+		]),
+		(root) => {
+			const { failures } = checkLedger({ repo: root });
+			assert.ok(
+				failures.some((f) => f.includes("share one `instance`")),
+				`a repeated instance must fail; got ${JSON.stringify(failures)}`,
+			);
+		},
+	);
+});
+
+test("NEGATIVE: an auditor with no instance id fails", () => {
+	withTree(withAuditors([audit({ instance: undefined })]), (root) => {
+		const { failures } = checkLedger({ repo: root });
+		assert.ok(
+			failures.some((f) => f.includes("has no `instance`")),
+			`a missing instance must fail; got ${JSON.stringify(failures)}`,
+		);
+	});
 });
 
 test("the REAL repository's ledger passes (the shipped fr/ui.settings entry)", () => {

@@ -50,6 +50,13 @@ const IDENTICAL_OK = new Map([
 		// the reason is what makes it reviewable.
 		"shared UI term: the French word for this pane is the same common noun",
 	],
+	[
+		"ui.console.capacity.summary_compact_bare",
+		// `{live, number}/{limit, number}`: placeholders and a slash, no words. There
+		// is nothing to translate, and a French value that differed would only be
+		// invented punctuation. Identical is the correct translation here.
+		"language-neutral counter: only placeholders and '/', no words to translate",
+	],
 ]);
 
 function localeDirs() {

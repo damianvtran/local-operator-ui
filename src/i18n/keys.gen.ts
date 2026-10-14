@@ -117,6 +117,19 @@ export type MessageParams = {
 	"ui.console.pane.needs_conversation.title": undefined;
 	"ui.console.pane.surfaces": undefined;
 	"ui.console.secure": undefined;
+	"ui.console.secure_toggle.start": undefined;
+	"ui.console.secure_toggle.start_tooltip": undefined;
+	"ui.console.secure_toggle.stop": undefined;
+	"ui.console.tab.agent_opened": undefined;
+	"ui.console.tab.agent_typed": undefined;
+	"ui.console.tab.clear_label": { title: string; index: number; total: number };
+	"ui.console.tab.clear_label_retained": {
+		title: string;
+		index: number;
+		total: number;
+	};
+	"ui.console.tab.close_label": { title: string; index: number; total: number };
+	"ui.console.tab.ended": undefined;
 	"ui.console.unavailable.disabled.detail": undefined;
 	"ui.console.unavailable.disabled.title": undefined;
 	"ui.console.unavailable.pty.detail": undefined;
@@ -148,6 +161,8 @@ export type MessageParams = {
 	"ui.onboarding.modal.action.skip_for_now": undefined;
 	"ui.onboarding.modal.action.skip_to_chat": undefined;
 	"ui.onboarding.modal.error.aida_open_failed": { name: string };
+	"ui.onboarding.modal.step_of": { current: number; total: number };
+	"ui.onboarding.modal.steps_total": { total: number };
 	"ui.onboarding.modal.title.connect_provider": undefined;
 	"ui.onboarding.modal.title.default_model": undefined;
 	"ui.onboarding.modal.title.extras": undefined;

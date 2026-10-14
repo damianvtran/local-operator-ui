@@ -1,5 +1,5 @@
 {
-	"ui.onboarding.connect.intro": "Local Operator a besoin d’un compte IA pour fonctionner. Radient est le plus simple : une connexion dans le navigateur, rien à coller. Vous payez déjà pour ChatGPT ou Claude ? Connectez-vous avec ce compte. Les autres options se trouvent dans Autres fournisseurs.",
+	"ui.onboarding.connect.intro": "Local Operator a besoin d’un compte IA pour fonctionner. Radient est le plus simple : une connexion dans le navigateur, rien à coller. Vous payez déjà pour ChatGPT ou Claude ? Connectez-vous avec ce compte. Les autres options sont regroupées plus bas.",
 	"ui.onboarding.default_model.block.loading_models": "Chargement des modèles…",
 	"ui.onboarding.default_model.block.pick_a_model": "Choisissez un modèle pour continuer.",
 	"ui.onboarding.default_model.change": "Modifier",
@@ -24,7 +24,7 @@
 	"ui.onboarding.modal.action.skip": "Passer",
 	"ui.onboarding.modal.action.skip_for_now": "Plus tard",
 	"ui.onboarding.modal.action.skip_to_chat": "Passer à la conversation",
-	"ui.onboarding.modal.error.aida_open_failed": "La conversation de {name} n’a pas pu être ouverte. Vous êtes donc dans une nouvelle conversation.",
+	"ui.onboarding.modal.error.aida_open_failed": "Impossible d’ouvrir la conversation avec {name} ; une nouvelle conversation a été ouverte à la place.",
 	"ui.onboarding.modal.title.connect_provider": "Connecter un compte IA",
 	"ui.onboarding.modal.title.default_model": "Votre modèle par défaut",
 	"ui.onboarding.modal.title.extras": "Recherche web (facultative)",
@@ -43,5 +43,7 @@
 	"ui.onboarding.search.row.placeholder": "Collez votre clé API",
 	"ui.onboarding.search.row.save_failed": "La clé n’a pas pu être enregistrée.",
 	"ui.onboarding.search.row.saved": "Enregistré",
-	"ui.onboarding.search.row.saving": "Enregistrement : {name}"
+	"ui.onboarding.search.row.saving": "Enregistrement : {name}",
+	"ui.onboarding.modal.step_of": "Étape {current, number} sur {total, number}",
+	"ui.onboarding.modal.steps_total": "{total, plural, one {# étape} many {# d’étapes} other {# étapes}}"
 }

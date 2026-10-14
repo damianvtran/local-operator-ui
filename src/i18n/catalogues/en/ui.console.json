@@ -43,5 +43,14 @@
 	"ui.console.unavailable.disabled.title": "The console is switched off for this run",
 	"ui.console.unavailable.pty.detail": "Terminal support did not load for this run. Updating Local Operator restores it, and the app's log names the reason.",
 	"ui.console.unavailable.title": "The console is not available in this app",
-	"ui.console.unavailable.unknown.detail": "This window could not reach the console, and did not say why. The app's log carries the reason."
+	"ui.console.unavailable.unknown.detail": "This window could not reach the console, and did not say why. The app's log carries the reason.",
+	"ui.console.tab.ended": "ended",
+	"ui.console.tab.agent_opened": "An agent opened this console",
+	"ui.console.tab.agent_typed": "An agent has typed into this console",
+	"ui.console.tab.close_label": "Close {title}, tab {index, number} of {total, number}",
+	"ui.console.tab.clear_label": "Clear {title}, tab {index, number} of {total, number}",
+	"ui.console.tab.clear_label_retained": "Clear {title}, tab {index, number} of {total, number} — deletes retained output",
+	"ui.console.secure_toggle.stop": "Stop secure input",
+	"ui.console.secure_toggle.start": "Secure input",
+	"ui.console.secure_toggle.start_tooltip": "Secure input: stop recording this terminal"
 }

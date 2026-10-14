@@ -23,7 +23,11 @@
  *    translated-then-edited file is no longer the thing that was audited);
  *  - `status` is `audited`, there is at least one auditor, and at least one
  *    auditor is a DIFFERENT agent from the translator (independence by agent,
- *    which is what the process requires — not by model).
+ *    which is what the process requires — not by model);
+ *  - every auditor's `result` is a passing one (`clean` or `clean-with-findings`;
+ *    a failed or unrecorded audit cannot back `audited`), and every auditor carries a distinct
+ *    `instance` id, because one agent name on two audits does not evidence two
+ *    runs.
  *
  * AND it closes the other direction: every locale directory present in the tree
  * must have a ledger entry for every namespace file it ships. A file that is
@@ -174,6 +178,49 @@ export function checkLedger({ repo = REPO } = {}) {
 			if (!independent) {
 				failures.push(
 					`${where}: every auditor is the translator's own agent — the audit must be independent`,
+				);
+			}
+
+			/*
+			 * AUDIT RESULTS ARE EVIDENCE, NOT DECORATION (code review round 1, F2).
+			 * `status: "audited"` is a claim; the per-auditor `result` is what
+			 * backs it. Without this a `result: "fail"` entry that still said
+			 * `audited` passed the gate, and so would an entry whose only audit
+			 * ended `clean-with-findings` (findings raised, never re-verified).
+			 * So: every recorded result must be one the process treats as a
+			 * pass, and the LAST audit — the one that saw the file as it now
+			 * stands — must be a plain `clean`.
+			 */
+			const passing = new Set(["clean", "clean-with-findings"]);
+			for (const [position, auditor] of auditors.entries()) {
+				if (!passing.has(auditor?.result)) {
+					failures.push(
+						`${where}: auditor ${position + 1} result is ${JSON.stringify(auditor?.result)}, not a passing result (${[...passing].join(" / ")}) — a failed or unrecorded audit cannot back an "audited" entry`,
+					);
+				}
+			}
+
+			/*
+			 * TWO AUDITS MUST BE TWO INSTANCES. Every auditor carries the same
+			 * agent name ("i18n-auditor"), so the name proves a role, not a second
+			 * pair of eyes: the programme's "second independent audit" rule is
+			 * only met if the passes are distinct runs. `instance` is that
+			 * evidence — the audit run's own id (session or job id of the run
+			 * that produced the receipt) — and it must be present and unique
+			 * within the entry. It is a claim the gate can compare, not one it
+			 * can verify against the run; the receipt it names is what a
+			 * reviewer opens.
+			 */
+			const instances = auditors.map((auditor) =>
+				typeof auditor?.instance === "string" ? auditor.instance.trim() : "",
+			);
+			if (instances.some((instance) => instance === "")) {
+				failures.push(
+					`${where}: an auditor has no \`instance\` — record the audit run's own id so distinct audits are evidenced`,
+				);
+			} else if (new Set(instances).size !== instances.length) {
+				failures.push(
+					`${where}: two auditors share one \`instance\` — a second audit must be a distinct run`,
 				);
 			}
 		}
