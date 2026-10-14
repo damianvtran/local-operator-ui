@@ -468,6 +468,34 @@ function internalEpisodeOf(
 	humanPending: boolean,
 ): InternalEpisodeFacts | null {
 	if (!isInternalEpisodeOrigin(records[span.from])) return null;
+
+	/*
+	 * A TRANSCRIPT WHOSE ONLY ROW IS AN EPISODE ORIGIN IS NOT AN EPISODE.
+	 *
+	 * WHY THIS IS SEPARATE FROM `isInternalEpisodeOrigin`. A `job_result` (and a
+	 * `monitor_prompt`) is not ambient incoming chatter: it is the agent finishing
+	 * something it owns, so the cycle it opens inherits the previous cycle's class
+	 * - which is exactly why `turn-segments.ts` lists both in
+	 * `CONTINUATION_CUSTOMS` and why the delivery-family suite asserts they DO
+	 * open a condensed live episode. Making them non-origins would strand that
+	 * suite, so the origin stands.
+	 *
+	 * WHAT THIS GUARDS. When such a row is the transcript's ENTIRE content there
+	 * is nothing to condense around it: the episode would swallow the only thing
+	 * the reader has, and its headline - the job's verdict and, with `detail`, its
+	 * supporting output - never paints. That is the regression this fixes, from
+	 * `canonical-notice.test.mjs`, which renders one lone `job_result` notice and
+	 * asserts the full headline survives. A boundary notice with no siblings is
+	 * content, not packaging.
+	 *
+	 * WHY SO NARROW. Keyed on the row standing ALONE (`records.length === 1`),
+	 * not on its `customType`: the two families are otherwise field-identical
+	 * (same `kind`, `customType`, `level: "info"`, `attribution: "system"`, and
+	 * both carry a `headline`), so any customType- or field-based rule would
+	 * either miss this case or fold a real job receipt. The row-with-siblings
+	 * case keeps condensing, pinned by the delivery-family expectations.
+	 */
+	if (records.length === 1 && records[0].kind === "custom") return null;
 	// V4/typed quiet closure was derived once for the loaded run. Neither a
 	// toolUse lead-in nor eval text can make unanswered human work internal.
 	let receipts = 0;
