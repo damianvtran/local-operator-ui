@@ -3277,8 +3277,17 @@ test("active summary keeps legacy unanchored clock at footer; known current phas
 		),
 	);
 	const since = Date.now() - 8000;
+	/*
+	 * `hasMore: true` is the FIXTURE's honest statement of what a head cut is: an
+	 * older page exists and has not landed, so the dropped answer is off-page, not
+	 * absent. Without it `rows.slice(2)` is a conversation that genuinely OPENS
+	 * with a receipt, which paints loose (QA Q1/Q2) - and the original fixture,
+	 * which never said older rows existed, failed with `bar(mounted)` null for
+	 * exactly that reason. The expectations below are unchanged.
+	 */
 	await mounted.render(rows.slice(2), {
 		waiting: true,
+		hasMore: true,
 		workingLine: {
 			phase: "thinking",
 			activity: "thinking",
@@ -3403,4 +3412,88 @@ test("v2 one open bar survives 129 unrelated complete owners without opening nei
 	 */
 	assert.equal(barTrigger(mounted).getAttribute("aria-expanded"), "false");
 	__resetTurnCollapseOpen();
+});
+
+test("F6: a group bar's printed receipt count and its announcement agree", async (t) => {
+	__resetTurnCollapseOpen();
+	/*
+	 * Reviewer F6. A `subagent:` notice is an episode origin but not a quiet-group
+	 * trigger, so `[wake, subagent notice, wake]` has `facts.group.count === 2`
+	 * and `internal.receipts === 3`. The bar prints the receipts figure; the live
+	 * region announced the group figure, so a screen-reader user was told a
+	 * different number from the one on screen. One source for both.
+	 */
+	const running = [
+		userRecord("f6-user", { ts: TS }),
+		answerRecord("f6-final", { ts: TS + 1_000, stopReason: "stop" }),
+		wakeRecord("f6-w1", { ts: TS + 2_000 }),
+		noticeRecord("subagent:f6", {
+			ts: TS + 3_000,
+			level: "info",
+			complete: false,
+			text: "Subagent finished",
+		}),
+		wakeRecord("f6-w2", { ts: TS + 4_000 }),
+		toolRecord("f6-tool", { ts: TS + 5_000, durationS: 1 }),
+	];
+	const mounted = await mount(t, running, { waiting: true });
+	const region = () =>
+		mounted.container.querySelector("[data-condense-announcement]")
+			?.textContent ?? "";
+	await mounted.render(
+		[
+			...running,
+			answerRecord("f6-final-2", { ts: TS + 6_000, stopReason: "stop" }),
+		],
+		{},
+	);
+	const printed = [...bar(mounted).textContent.matchAll(/\d+/g)].map(
+		(m) => m[0],
+	);
+	assert.ok(printed.includes("3"), `the bar prints 3 receipts: ${printed}`);
+	assert.match(region(), /\b3\b/, `the announcement says 3: "${region()}"`);
+	assert.doesNotMatch(region(), /\b2\b/, "and never the group-only figure");
+});
+
+test("a head cut with older rows keeps its live episode condensed; with none it paints", async (t) => {
+	__resetTurnCollapseOpen();
+	/*
+	 * The architect's resolution of the head-cut contradiction, caller arm 1
+	 * (`hasMore`). `[peer, running tool]` at the loaded edge: if an older page is
+	 * still to come the answer this episode continues is off-page, so it condenses;
+	 * if nothing is older the receipt genuinely opens the conversation and paints.
+	 */
+	const cut = [
+		peerRecord("hm-peer"),
+		toolRecord("hm-tool", { toolName: "eval", phase: "running" }),
+	];
+	const more = await mount(t, cut, { waiting: true, hasMore: true });
+	assert.ok(bar(more), "older rows exist: the episode condenses");
+	const none = await mount(t, cut, { waiting: true, hasMore: false });
+	assert.equal(bar(none), null, "nothing older: the receipt paints loose");
+	assert.ok(rowBox(none, "hm-peer"), "and its content is mounted");
+});
+
+test("rows hidden by the render window count as older rows (hidden > 0 arm)", async (t) => {
+	__resetTurnCollapseOpen();
+	/*
+	 * Caller arm 2. `hasMore` is FALSE here: every row is loaded, but the render
+	 * window shows only the newest ones, so the visible head is a cut. A peer at
+	 * the window's top edge followed by a long run of work must condense, exactly
+	 * as in the `hasMore` case. The precondition below proves the window really
+	 * did hide the head (user/answer unmounted), so this cannot pass vacuously.
+	 */
+	const records = [
+		userRecord("hid-user"),
+		answerRecord("hid-final", { stopReason: "stop" }),
+		peerRecord("hid-peer"),
+	];
+	for (let i = 0; i < 58; i += 1)
+		records.push(toolRecord(`hid-tool-${i}`, { phase: "done" }));
+	records.push(toolRecord("hid-tool-live", { phase: "running" }));
+	const mounted = await mount(t, records, { waiting: true, hasMore: false });
+	assert.equal(rowBox(mounted, "hid-user"), null, "the head is hidden");
+	assert.equal(rowBox(mounted, "hid-final"), null, "the answer is hidden");
+	assert.ok(bar(mounted), "hidden rows are older rows: the episode condenses");
+	assert.equal(rowBox(mounted, "hid-peer"), null, "behind its bar");
 });
