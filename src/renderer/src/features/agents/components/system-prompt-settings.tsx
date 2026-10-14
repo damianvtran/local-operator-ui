@@ -11,11 +11,11 @@ import {
 	useAgentSystemPrompt,
 	useUpdateAgentSystemPrompt,
 } from "@shared/hooks/use-agent-system-prompt";
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { Info, NotebookPen } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
+import { t } from "../../../../../i18n/messages";
 
 type SystemPromptSettingsProps = {
 	/**

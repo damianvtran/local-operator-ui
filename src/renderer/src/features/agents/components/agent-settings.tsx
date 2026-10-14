@@ -1,10 +1,10 @@
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { useUpdateAgent } from "@shared/hooks/use-update-agent";
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { Bot } from "lucide-react";
 import { useState } from "react";
 import type { FC } from "react";
+import { t } from "../../../../../i18n/messages";
 import { ChatSettings } from "./chat-settings";
 import { GeneralSettings } from "./general-settings";
 import { SecuritySettings } from "./security-settings";

@@ -11,10 +11,10 @@ import type {
 import { EditableField } from "@shared/components/common/editable-field";
 import { Button, Tooltip } from "@shared/components/ui";
 import type { useUpdateAgent } from "@shared/hooks/use-update-agent";
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { Info, Shield } from "lucide-react";
 import type { FC } from "react";
+import { t } from "../../../../../i18n/messages";
 
 type SecuritySettingsProps = {
 	/**

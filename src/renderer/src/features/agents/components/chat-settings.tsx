@@ -12,12 +12,12 @@ import { EditableField } from "@shared/components/common/editable-field";
 import { SliderSetting } from "@shared/components/common/slider-setting";
 import { Button, Tooltip } from "@shared/components/ui";
 import type { useUpdateAgent } from "@shared/hooks/use-update-agent";
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { ChevronDown, ChevronRight, Info, Settings } from "lucide-react";
 import type { FC, ReactNode } from "react";
 import { useEffect, useId, useState } from "react";
+import { t } from "../../../../../i18n/messages";
 
 type ChatSettingsProps = {
 	/**
@@ -93,24 +93,34 @@ const UnsetSetting: FC<UnsetSettingProps> = ({
 	description,
 	defaultLabel,
 	onSet,
-}) => (
-	<div className="flex items-start justify-between gap-4">
-		<div className="min-w-0">
-			<div className="flex items-baseline gap-2">
-				<span className="text-body-sm text-ink">{label}</span>
-				<span className="text-meta text-ink-dim">
-					{t("ui.agents.settings.chat.not_set_yet")}
-				</span>
+}) => {
+	// This row also renders in isolation; observe locale changes independently
+	// rather than relying on its parent to refresh the default-value button.
+	useI18nLocale();
+	return (
+		<div className="flex items-start justify-between gap-4">
+			<div className="min-w-0">
+				<div className="flex items-baseline gap-2">
+					<span className="text-body-sm text-ink">{label}</span>
+					<span className="text-meta text-ink-dim">
+						{t("ui.agents.settings.chat.not_set_yet")}
+					</span>
+				</div>
+				<p className="mt-1 text-meta text-ink-dim">{description}</p>
 			</div>
-			<p className="mt-1 text-meta text-ink-dim">{description}</p>
+			<Button
+				variant="secondary"
+				size="sm"
+				className="shrink-0"
+				onClick={onSet}
+			>
+				{t("ui.agents.settings.chat.set_to_default", {
+					value: String(defaultLabel),
+				})}
+			</Button>
 		</div>
-		<Button variant="secondary" size="sm" className="shrink-0" onClick={onSet}>
-			{t("ui.agents.settings.chat.set_to_default", {
-				value: String(defaultLabel),
-			})}
-		</Button>
-	</div>
-);
+	);
+};
 
 /**
  * A named run of related parameters.
