@@ -143,8 +143,10 @@ can open. The list now has a second kind of row, and these are the decisions:
 - **Admission is by evidence, in three places** (`mentioned-files.ts`, source
   `artifact`): an image block the reducer marked with `kind` (a legacy block - a
   browser screenshot - is not generated media and is NOT admitted); `digest <hex>`
-  in the result text of exactly `generate_image`, `generate_video` and
-  `video_status` (32 hex characters in `bash` output are a hash, not an artifact);
+  in the result text of `generate_image`, `generate_video` and `video_status`,
+  or the real detached-video delivery: a `job_result` custom row whose text
+  starts a line with `Video ready — job ... attached: digest <hex>`. Bare
+  digests in bash/task completion rows stay excluded;
   and a read path of the form `.../attachments/<digest>.bin`, mapped to the
   artifact it names instead of a `.bin` tile.
 - **The thumbnail is the transcript's own resolver.** `useAttachmentSource`
@@ -156,6 +158,13 @@ can open. The list now has a second kind of row, and these are the decisions:
   probe could only answer "missing" and stamp a receipt on a fine picture), the
   freshness bar is not drawn for one (it states a file's last write; the bytes are
   immutable), and the tab's tooltip is the title, not the identity.
+- **Tabs and tooltips carry the same tiebreak.** Two open artifacts that share a
+  name get the digest head appended to their tab labels (only on a clash, like
+  the row), and an artifact's tooltip is `name . digest head . Generated image,
+  kept in this session`, which is also what explains why Open folder is absent.
+  The thumbnail has its own `outline-1 -outline-offset-1 outline-hairline` edge (a picture
+  whose pixels match the list ground otherwise vanishes), and a missed thumbnail
+  fetch is retried twice (2 s, 6 s) before settling on the glyph.
 - **The directory line's tiebreak is the digest head** (`ARTIFACT_TIEBREAK_LENGTH`
   = 8 hex), in the directory's slot, drawn on a name clash only - models name
   their outputs from a template, so 69 pictures shared three names. It is also
@@ -165,6 +174,11 @@ can open. The list now has a second kind of row, and these are the decisions:
   save dialog through a `blob:` download, so the app never names a path) and, for
   a picture, Copy image. Open file / Open folder / Copy file path are absent by
   construction until a backend can materialise a file.
+- **Known limit: a clip is fetched whole.** The bytes cross the media relay as one
+  blob capped at 32 MiB (`MAX_DOWNLOAD_BYTES`, `src/main/desktop-media.ts`); a
+  longer clip answers 502, the viewer says "could not be played" and Save as says
+  the bytes are not available right now. Range playback and a poster frame want
+  the backend.
 - **Known limit, pinned by a test:** a pruned tool result keeps no digest anywhere
   in the transcript today, so it yields no row. Surfacing those wants the backend
   to record the digest in the result's `details` (a follow-up that needs no UI

@@ -3,7 +3,10 @@ import type {
 	CanvasDocument,
 	CanvasDocumentType,
 } from "@features/chat/types/canvas";
-import { isArtifactPath } from "@features/chat/utils/artifact-identity";
+import {
+	ARTIFACT_HEAD_LENGTH,
+	isArtifactPath,
+} from "@features/chat/utils/artifact-identity";
 import { stripFileUrl } from "@features/chat/utils/canvas-document";
 import { getFileName } from "@features/chat/utils/get-file-name";
 /*
@@ -347,7 +350,7 @@ function searchTextFor(
  * which is 4.3 billion values - far past the dozens of rows one conversation
  * holds - in the width of the directory slot the line borrows.
  */
-export const ARTIFACT_TIEBREAK_LENGTH = 8;
+export const ARTIFACT_TIEBREAK_LENGTH = ARTIFACT_HEAD_LENGTH;
 
 /**
  * The artifact a document stands for, or `null`.

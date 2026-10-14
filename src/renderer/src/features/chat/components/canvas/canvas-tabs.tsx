@@ -8,8 +8,20 @@ import {
 } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import { Check, ChevronDown, X } from "lucide-react";
-import { type FC, memo, useCallback, useEffect, useRef, useState } from "react";
+import {
+	type FC,
+	memo,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import type { CanvasDocument } from "../../types/canvas";
+import {
+	artifactTabLabels,
+	artifactTooltip,
+} from "../../utils/artifact-identity";
 import { tabFollowingClose } from "./tab-selection";
 
 type CanvasTabsProps = {
@@ -120,6 +132,10 @@ const CanvasTabsComponent: FC<CanvasTabsProps> = ({
 		// `documents` is a dependency because adding or closing a tab changes
 		// the scrollable width without resizing the strip itself.
 	}, [documents]);
+
+	// Before the early return below, with the other hooks. See `artifactTabLabels`:
+	// only a clashing artifact name changes, so a file tab's label is its title.
+	const labels = useMemo(() => artifactTabLabels(documents), [documents]);
 
 	// The active id can point at a document that has just been closed, so the
 	// selection is derived rather than stored: falling back to the first tab
@@ -282,7 +298,11 @@ const CanvasTabsComponent: FC<CanvasTabsProps> = ({
 								tabIndex={isSelected ? 0 : -1}
 								// An artifact's path is its `artifact:<digest>` identity, which is
 								// not somewhere a reader can go; its title is the useful tooltip.
-								title={doc.artifact ? doc.title : (doc.path ?? doc.title)}
+								title={
+									doc.artifact
+										? artifactTooltip({ ...doc.artifact, title: doc.title })
+										: (doc.path ?? doc.title)
+								}
 								ref={(node) => {
 									if (node) {
 										tabRefs.current.set(doc.id, node);
@@ -299,13 +319,13 @@ const CanvasTabsComponent: FC<CanvasTabsProps> = ({
 									isSelected ? "text-ink" : "text-ink-muted",
 								)}
 							>
-								{doc.title}
+								{labels.get(doc.id) ?? doc.title}
 							</button>
 
 							<Button
 								variant="ghost"
 								size="icon-sm"
-								aria-label={`Close ${doc.title}`}
+								aria-label={`Close ${labels.get(doc.id) ?? doc.title}`}
 								onClick={(e) => handleCloseTab(e, doc.id)}
 								className={cn(
 									"size-5 [&_svg]:size-3",
@@ -356,7 +376,9 @@ const CanvasTabsComponent: FC<CanvasTabsProps> = ({
 									aria-hidden="true"
 									className={cn(doc.id !== selectedId && "invisible")}
 								/>
-								<span className={cn("truncate")}>{doc.title}</span>
+								<span className={cn("truncate")}>
+									{labels.get(doc.id) ?? doc.title}
+								</span>
 							</DropdownMenuItem>
 						))}
 					</DropdownMenuContent>

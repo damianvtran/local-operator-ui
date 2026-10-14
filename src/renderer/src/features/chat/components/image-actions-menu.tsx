@@ -18,6 +18,7 @@ import {
 	LayoutGrid,
 	Link,
 } from "lucide-react";
+import { AttachmentGoneError } from "../canonical/use-attachment-url";
 import {
 	type ImageAction,
 	type ImageActionId,
@@ -115,6 +116,18 @@ const ACTION_ICONS: Record<ImageActionId, React.ReactNode> = {
 	"open-in-browser": <ExternalLink aria-hidden="true" />,
 };
 
+/**
+ * The toast for a failed copy or save. A gone artifact says so, in the viewer's
+ * own words ("no longer in the session"), because the row looks healthy until a
+ * fetch fails and "Failed to save file" gives the reader no way to tell a blip
+ * from a loss (UX U3). Everything else keeps the established fixed copy: the
+ * specific sentence reaches the log, as before.
+ */
+const failureSentence = (fallback: string, error: unknown): string =>
+	error instanceof AttachmentGoneError
+		? `${fallback}: it is no longer in the session`
+		: fallback;
+
 export const ImageActionsMenu = ({
 	file,
 	src,
@@ -184,7 +197,7 @@ export const ImageActionsMenu = ({
 			showSuccessToast("Image copied to clipboard");
 		} catch (error) {
 			console.error("Failed to copy image: ", error);
-			showErrorToast("Failed to copy image");
+			showErrorToast(failureSentence("Failed to copy image", error));
 		}
 	};
 
@@ -201,7 +214,7 @@ export const ImageActionsMenu = ({
 			downloadBlob(bytes, saveName ?? "download");
 		} catch (error) {
 			console.error("Failed to save file: ", error);
-			showErrorToast("Failed to save file");
+			showErrorToast(failureSentence("Failed to save file", error));
 		}
 	};
 
