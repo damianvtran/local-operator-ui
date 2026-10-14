@@ -21,6 +21,7 @@
  * | `file-url` | a `file://` URL anywhere | the URL alone; no extension required |
  * | `tool-arg` | a value under a path key in tool `args` | absolute, `~`-prefixed, or resolvable against the session cwd; extension optional |
  * | `prose` | assistant/user text, tool `output`, diff bodies | absolute (or `~`) **and** a known extension |
+ * | `artifact` | a generated image/video's digest (see below) | a 32-hex store digest, from a source that states one |
  *
  * A `file://` URL is something the app itself wrote — the canvas hands paths to
  * the OS that way — so it is admitted without asking what the file is. A path
@@ -29,6 +30,39 @@
  * is not needed. Prose is the only place where a string can look like a path
  * without being one, so prose is the only tier that demands both a known shape
  * (absolute) and a known format (extension).
+ *
+ * ## Artifacts: files that have a digest and no path
+ *
+ * `generate_image` and `generate_video` register their output in the attachment
+ * store (`cache_media`) and the transcript carries only the content digest -
+ * never a path - so the four path tiers above cannot see them at all. In one
+ * real session 69 generated pictures yielded ZERO mentions. The `artifact` tier
+ * reads the three places a digest survives:
+ *
+ * 1. a tool record's `images[]` entries that the reducer built from an
+ *    ARTIFACT block (`kind` set). A legacy image block (no `kind`) is a browser
+ *    screenshot or a pasted picture the model was shown; admitting those would
+ *    bury the panel under every screenshot the agent ever took (thousands in a
+ *    long session), and the ones worth keeping already arrive as a path.
+ * 2. `digest <hex>` / `attached: digest <hex>, <hex>` in the output of the
+ *    generating tools (`generate_image`, `video_status`), and in a video job's
+ *    COMPLETION ROW. A video result is text only - its receipt has no content
+ *    block - and `generate_video` itself returns only "Video generation started"
+ *    (the job is detached), so the receipt reaches the transcript as a
+ *    `job_result` custom row the session manager delivers when the job settles
+ *    (`harness/jobs.py` `JOB_RESULT_MESSAGE_TYPE`, `session.py`
+ *    `_job_result_message`). That row is the ORDINARY way a video arrives; a
+ *    `video_status` call is only the model checking up. Restricted to these
+ *    sources: a 32-hex run in `bash` output is a hash, not a file, and bash and
+ *    task jobs deliver `job_result` rows too, with arbitrary output.
+ * 3. a read path into the attachment store, `.../attachments/<digest>.bin`.
+ *    That path used to become an `other` tile for a `.bin` nothing can open; the
+ *    digest is in its name, so it is mapped to the artifact it is instead.
+ *
+ * An artifact mention's `path` is `artifact:<digest>` (`utils/artifact-identity`)
+ * so the dedupe-by-path rule below needs no second code path, and its
+ * `artifact` field carries what the block stated. The scanner does not know the
+ * session (it is a pure function of records); the hook attaches it.
  *
  * ## What is deliberately NOT admitted
  *
@@ -57,6 +91,12 @@
  * for `node --test` without a browser.
  */
 
+import type { CanvasArtifact } from "@features/chat/types/canvas";
+import {
+	DIGEST_PATTERN,
+	artifactPath,
+	digestOfAttachmentBinPath,
+} from "@features/chat/utils/artifact-identity";
 import { KNOWN_EXTENSIONS } from "@features/chat/utils/file-kind";
 import {
 	API_PATH_PREFIXES,
@@ -73,7 +113,17 @@ import {
 import type { TranscriptRecord } from "./transcript-reducer";
 
 /** Where a mention was found. Strongest first; the first find wins. */
-export type MentionedFileSource = "file-url" | "tool-arg" | "prose";
+export type MentionedFileSource =
+	| "file-url"
+	| "tool-arg"
+	| "prose"
+	| "artifact";
+
+/**
+ * What a transcript stated about an artifact, minus the session it belongs to
+ * (which the scanner, being a pure function of records, cannot know).
+ */
+export type ArtifactMention = Omit<CanvasArtifact, "sessionId">;
 
 export type MentionedPath = {
 	/**
@@ -88,6 +138,11 @@ export type MentionedPath = {
 	 */
 	path: string;
 	source: MentionedFileSource;
+	/**
+	 * Present exactly when `source` is `artifact`; `path` is then
+	 * `artifact:<digest>`, an identity and not a filesystem path.
+	 */
+	artifact?: ArtifactMention;
 };
 
 /**
@@ -301,6 +356,132 @@ function recordText(record: TranscriptRecord): {
 	}
 }
 
+/**
+ * The tools whose result text states the digest of media they generated.
+ *
+ * An allow-list, not a pattern over every tool: 32 hex characters are an MD5,
+ * a UUID without dashes or a cache key in the output of `bash`, `read` and
+ * `eval` constantly, and none of those is an artifact. These three are the
+ * producers of the two sentences below, so the name is part of the evidence.
+ */
+const ARTIFACT_TOOLS = new Set([
+	"generate_image",
+	"generate_video",
+	"video_status",
+]);
+
+/**
+ * The receipt sentence a settled VIDEO job delivers (`video/jobs.py`
+ * `finish_video_result`): `Video ready - job <id> ... attached: digest <hex>`.
+ *
+ * It is the gate on a `job_result` row, and the sentence rather than the bare
+ * word `digest` on purpose: a `job_result` row carries whatever a bash or task
+ * job printed, and "manifest digest <hex>" from a checksum tool is not media.
+ * Anchored to a line start (`m`) because the row's body is
+ * `background job '<label>' completed:\n<receipt>` - the receipt is its own line.
+ */
+const VIDEO_RECEIPT = new RegExp(
+	`^Video ready \\u2014 job [^\\n]*?attached: digest\\s+${DIGEST_PATTERN}`,
+	"m",
+);
+
+/**
+ * `digest <hex>` and `attached: digest <hex>, <hex>` (`image_tool.py` caption,
+ * `video/jobs.py` receipt). The list form is what a multi-asset result prints,
+ * so one match yields several digests. Anchored on the word `digest`, never on
+ * bare hex, so a hash printed beside other text is not read.
+ */
+const DIGEST_PHRASE = new RegExp(
+	`digest\\s+(${DIGEST_PATTERN}(?:\\s*,\\s*${DIGEST_PATTERN})*)`,
+	"g",
+);
+const DIGEST_TOKEN = new RegExp(DIGEST_PATTERN, "g");
+
+/**
+ * The artifact mentions one tool record states, in the order it states them.
+ *
+ * Structured first: a block with metadata (name, dimensions, content type) beats
+ * the same digest named in prose, and the caller keeps the FIRST mention of an
+ * identity, so the richer one must be produced first.
+ */
+function artifactMentionsOf(record: TranscriptRecord): MentionedPath[] {
+	const found: MentionedPath[] = [];
+	const push = (digest: string, artifact: ArtifactMention) =>
+		found.push({
+			path: artifactPath(digest),
+			source: "artifact",
+			artifact,
+		});
+	if (record.kind === "custom") {
+		// A detached video job's completion, delivered as a `job_result` row (see
+		// the module header). Kind comes from the sentence: only a video job writes it.
+		if (record.customType === "job_result" && VIDEO_RECEIPT.test(record.text)) {
+			for (const phrase of record.text.matchAll(DIGEST_PHRASE)) {
+				for (const digest of phrase[1].match(DIGEST_TOKEN) ?? [])
+					push(digest, { digest, kind: "video" });
+			}
+		}
+		return found;
+	}
+	if (record.kind !== "tool") return found;
+	for (const image of record.images) {
+		// A block without `kind` is a legacy image (a browser screenshot, a
+		// pasted picture): not generated media. See the module header.
+		if (!image.attachment || image.kind === undefined) continue;
+		if (image.kind === "audio") continue;
+		const artifact: ArtifactMention = {
+			digest: image.attachment,
+			kind: image.kind,
+			contentType: image.mimeType,
+		};
+		if (image.name) artifact.name = image.name;
+		if (typeof image.sizeBytes === "number")
+			artifact.sizeBytes = image.sizeBytes;
+		if (typeof image.width === "number") artifact.width = image.width;
+		if (typeof image.height === "number") artifact.height = image.height;
+		if (typeof image.durationS === "number")
+			artifact.durationS = image.durationS;
+		push(image.attachment, artifact);
+	}
+	if (ARTIFACT_TOOLS.has(record.toolName) && record.output) {
+		// A video result is text only, so its kind comes from the tool that
+		// produced it. `video_status` and `generate_video` are the video tools;
+		// an image caption always arrives with a block (above) when not pruned.
+		const kind = record.toolName === "generate_image" ? "image" : "video";
+		for (const phrase of record.output.matchAll(DIGEST_PHRASE)) {
+			for (const digest of phrase[1].match(DIGEST_TOKEN) ?? [])
+				push(digest, { digest, kind });
+		}
+	}
+	return found;
+}
+
+/**
+ * The artifact a read path into the attachment store stands for.
+ *
+ * The record's own image block for that digest, when it has one, says what the
+ * bytes are; otherwise they are treated as an image (the store's `.bin` reads in
+ * real transcripts are pasted screenshots), and the viewer's decode check is the
+ * backstop for the rare video.
+ */
+function artifactForBinPath(
+	digest: string,
+	record: TranscriptRecord,
+): ArtifactMention {
+	const block =
+		record.kind === "tool"
+			? record.images.find(
+					(image) => image.attachment === digest && image.kind !== "audio",
+				)
+			: undefined;
+	const artifact: ArtifactMention = {
+		digest,
+		kind: block?.kind === "video" ? "video" : "image",
+	};
+	if (block?.mimeType) artifact.contentType = block.mimeType;
+	return artifact;
+}
+
 /** Extract from one record, in tier order so the stronger source wins. */
 function extractFromRecord(
 	record: TranscriptRecord,
@@ -310,11 +491,33 @@ function extractFromRecord(
 	const found: MentionedPath[] = [];
 	const seen = new Set<string>();
 	const push = (path: string, source: MentionedFileSource) => {
+		// A read path into the attachment store is an ARTIFACT's address, not a
+		// file the user has: map it to the identity it names rather than to a
+		// `.bin` tile. Done here, at the single admission point every path tier
+		// passes through, so no tier can leak one.
+		const digest = digestOfAttachmentBinPath(path);
+		if (digest !== null) {
+			const identity = artifactPath(digest);
+			if (seen.has(identity)) return;
+			seen.add(identity);
+			found.push({
+				path: identity,
+				source: "artifact",
+				artifact: artifactForBinPath(digest, record),
+			});
+			return;
+		}
 		if (seen.has(path)) return;
 		seen.add(path);
 		found.push({ path, source });
 	};
 
+	// Tier 0: generated media, which has a digest and never a path.
+	for (const mention of artifactMentionsOf(record)) {
+		if (seen.has(mention.path)) continue;
+		seen.add(mention.path);
+		found.push(mention);
+	}
 	// Tier 1: a `file://` URL anywhere in the record's own words.
 	for (const body of [text, output]) {
 		if (!body) continue;

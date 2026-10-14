@@ -14,6 +14,44 @@ export type CanvasDocumentType =
 	| "other";
 
 /**
+ * The identity of a session ARTIFACT: media the harness generated and filed in
+ * the attachment store (`generate_image`, `generate_video`), which has bytes and
+ * a content digest but no path on the user's disk.
+ *
+ * Carried on a `CanvasDocument` so the Files list, the canvas viewers and the
+ * actions menu can all reach the bytes through the attachment route
+ * (`sessions.attachment`, scoped by `sessionId` + `digest`) without a path. See
+ * `utils/artifact-identity.ts` for why the document's `id`/`path` is
+ * `artifact:<digest>` and not a filesystem path.
+ *
+ * Every field is a fact the transcript stated; none is a URL. The canvas store
+ * persists to `localStorage` with no `partialize`, so a `blob:` URL must never
+ * live here - it would be a dead tab after a restart. The digest is the stable
+ * handle and the viewers resolve it to a URL per mount.
+ */
+export type CanvasArtifact = {
+	/** The attachment store's key: 32 lowercase hex characters. */
+	digest: string;
+	/** `image` paints in the image viewer, `video` in the player. */
+	kind: "image" | "video";
+	/**
+	 * The conversation the bytes are served through. The attachment route is
+	 * scoped to the transcript that REFERENCES a digest, so a bare digest cannot be
+	 * fetched; the session that mentioned it can.
+	 */
+	sessionId: string;
+	/** From the artifact block, when the row carried one; absent on a text-only mention. */
+	contentType?: string;
+	/** The producer's display handle ("flux-dev-01.jpg"). Never a filesystem path. */
+	name?: string;
+	sizeBytes?: number;
+	width?: number;
+	height?: number;
+	/** Seconds; video only. */
+	durationS?: number;
+};
+
+/**
  * Represents a markdown document in the canvas
  */
 export type CanvasDocument = {
@@ -85,6 +123,20 @@ export type CanvasDocument = {
 	 * preview" before a read is attempted, rather than after it fails.
 	 */
 	sizeBytes?: number;
+
+	/**
+	 * Present when this document is a session artifact rather than a file: its
+	 * bytes live in the attachment store and its `id`/`path` is
+	 * `artifact:<digest>`. Absent means a file on disk (or a `data:` document),
+	 * which is every document that existed before this field.
+	 *
+	 * Optional and additive on purpose: documents already persisted in
+	 * `localStorage` carry no such field and keep working unchanged. Every
+	 * consumer that probes, reads or reveals `path` must branch on this first -
+	 * `artifact:<digest>` is not a path and a probe of it would report the
+	 * artifact "no longer on disk".
+	 */
+	artifact?: CanvasArtifact;
 };
 
 /**

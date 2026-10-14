@@ -1,4 +1,9 @@
+import {
+	fetchAttachmentBlob,
+	useAttachmentSource,
+} from "@features/chat/canonical/use-attachment-url";
 import type { CanvasDocument } from "@features/chat/types/canvas";
+import { artifactFileName } from "@features/chat/utils/artifact-identity";
 import { mimeTypeForPath } from "@features/chat/utils/file-kind";
 import { useFileBlobUrl } from "@shared/hooks/use-file-blob-url";
 import { cn } from "@shared/lib/utils";
@@ -48,7 +53,89 @@ import {
  */
 const ImagePreviewComponent: FC<{ document: CanvasDocument }> = ({
 	document,
+}) =>
+	document.artifact ? (
+		<ArtifactImagePreview document={document} />
+	) : (
+		<PathImagePreview document={document} />
+	);
+
+/**
+ * A generated picture, shown from the attachment store by digest.
+ *
+ * The path viewer above reads a file over the file bridge; an artifact has no
+ * file, so this one resolves `document.artifact.digest` through the transcript's
+ * own resolver (`useAttachmentSource`) - the same blob cache, the same refcount,
+ * and a picture already open in the chat costs no second fetch. Same chrome and
+ * same states as the path viewer, so the four media viewers still read as one
+ * surface; what differs is only what is absent: there is no `Open in default
+ * app` (the OS cannot open a store entry), and the `Show in canvas` entry is
+ * absent for the usual reason (this IS the canvas). `Save as...` takes its place
+ * as the way out of the app.
+ */
+const ArtifactImagePreview: FC<{ document: CanvasDocument }> = ({
+	document,
 }) => {
+	const artifact = document.artifact;
+	const source = useAttachmentSource(
+		{
+			data: null,
+			attachment: artifact?.digest ?? null,
+			mimeType: artifact?.contentType ?? "image/png",
+		},
+		artifact ? { sessionId: artifact.sessionId, childId: null } : null,
+	);
+	const [undecodableUrl, setUndecodableUrl] = useState<string | null>(null);
+	const readyUrl = source.state === "ready" ? source.url : null;
+	const url =
+		readyUrl !== null && readyUrl !== undecodableUrl ? readyUrl : null;
+	return (
+		<div
+			className={cn("flex h-full min-h-0 w-full flex-1 flex-col bg-elevated")}
+		>
+			<ViewerChrome>
+				{artifact ? (
+					<ImageActionsMenu
+						file={document.path}
+						src={url ?? undefined}
+						label={document.title}
+						mediaKind="image"
+						saveName={artifactFileName(artifact)}
+						resolveBytes={() =>
+							fetchAttachmentBlob(
+								{ sessionId: artifact.sessionId, childId: null },
+								artifact.digest,
+							)
+						}
+					/>
+				) : null}
+			</ViewerChrome>
+			{url !== null ? (
+				<div className={cn("flex min-h-0 flex-1 items-center justify-center")}>
+					<img
+						src={url}
+						alt={document.title}
+						onError={() => setUndecodableUrl(url)}
+						className={cn("h-full w-full bg-sunken object-contain")}
+					/>
+				</div>
+			) : source.state === "resolving" ? (
+				<FileViewerState quiet title="Opening…" />
+			) : (
+				<FileViewerState
+					title={
+						readyUrl !== null
+							? "This image could not be shown"
+							: "This image is no longer in the session"
+					}
+					detail={document.title}
+				/>
+			)}
+		</div>
+	);
+};
+
+const PathImagePreview: FC<{ document: CanvasDocument }> = ({ document }) => {
 	const state = useFileBlobUrl(document.path, {
 		mtimeMs: document.lastAgentModified,
 		mimeType: mimeTypeForPath(document.path),
@@ -90,7 +177,9 @@ const ImagePreviewComponent: FC<{ document: CanvasDocument }> = ({
 		   body behind the media, so it takes the drawer's rung rather than the
 		   conversation's `canvas`, which would leave the pane's tone under a changed
 		   bar. */
-		<div className={cn("flex h-full w-full flex-col bg-elevated")}>
+		<div
+			className={cn("flex h-full min-h-0 w-full flex-1 flex-col bg-elevated")}
+		>
 			<ViewerChrome path={document.path}>
 				{/*
 				 * The image viewer's own actions, beside the chrome's open button.

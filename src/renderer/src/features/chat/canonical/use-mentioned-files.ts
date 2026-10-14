@@ -48,7 +48,10 @@
  */
 
 import type { CanvasDocument } from "@features/chat/types/canvas";
-import { canvasDocumentForPath } from "@features/chat/utils/canvas-document";
+import {
+	canvasDocumentForArtifact,
+	canvasDocumentForPath,
+} from "@features/chat/utils/canvas-document";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -74,6 +77,16 @@ type MentionedFilesOptions = {
 	records: readonly TranscriptRecord[] | null;
 	/** The session's working directory, for resolving a relative candidate. */
 	cwd?: string | null;
+	/**
+	 * The canonical session the records belong to, for artifact tiles.
+	 *
+	 * An artifact's bytes are fetched by `(sessionId, digest)`, and a scan over
+	 * records is a pure function that cannot know which session they came from -
+	 * so the hook, which sits where both are known, stamps it on. Absent (a draft)
+	 * means there is nothing to fetch bytes through, so artifact mentions are not
+	 * filed at all rather than filed as tiles that could never paint.
+	 */
+	sessionId?: string | null;
 	/** False for a legacy backend, a draft with no session, or a still-loading view. */
 	enabled: boolean;
 	/**
@@ -227,6 +240,7 @@ export function useMentionedFiles({
 	conversationId,
 	records,
 	cwd,
+	sessionId,
 	enabled,
 	scan,
 }: MentionedFilesOptions): MentionScanHandle {
@@ -301,6 +315,10 @@ export function useMentionedFiles({
 		const mentions = extractMentionedPaths(records, cwd ?? undefined);
 		const fresh: MentionedPath[] = [];
 		for (const mention of mentions) {
+			// Without a session there is no route to fetch an artifact's bytes
+			// through; it is left UNrequested (not remembered) so it is filed on the
+			// pass that does have one.
+			if (mention.source === "artifact" && !sessionId) continue;
 			if (book.requested.has(mention.path)) continue;
 			book.requested.add(mention.path);
 			fresh.push(mention);
@@ -317,14 +335,26 @@ export function useMentionedFiles({
 		if (fresh.length > 0)
 			addMentionedFilesBatch(
 				conversationId,
-				fresh.map((mention) => canvasDocumentForPath(mention.path)),
+				fresh.map((mention) =>
+					mention.source === "artifact" && mention.artifact && sessionId
+						? canvasDocumentForArtifact({ ...mention.artifact, sessionId })
+						: canvasDocumentForPath(mention.path),
+				),
 			);
 
 		// `probeFiles` is absent outside the Electron preload (browser
 		// development), where there is nothing to stat; the tiles stay as added.
 		if (typeof window.api?.probeFiles !== "function") return;
 
-		const asked = [...fresh.map((mention) => mention.path), ...retry];
+		// An artifact is not on the disk, so a stat of `artifact:<digest>` could
+		// only answer "missing" and stamp a receipt on a picture that is fine.
+		const asked = [
+			...fresh
+				.filter((mention) => mention.source !== "artifact")
+				.map((mention) => mention.path),
+			...retry,
+		];
+		if (asked.length === 0) return;
 		const chunks: string[][] = [];
 		for (let index = 0; index < asked.length; index += MAX_PROBE_PATHS)
 			chunks.push(asked.slice(index, index + MAX_PROBE_PATHS));
@@ -356,7 +386,14 @@ export function useMentionedFiles({
 				}
 			}
 		})();
-	}, [enabled, conversationId, records, cwd, addMentionedFilesBatch]);
+	}, [
+		enabled,
+		conversationId,
+		records,
+		cwd,
+		sessionId,
+		addMentionedFilesBatch,
+	]);
 
 	/*
 	 * The completeness driver.

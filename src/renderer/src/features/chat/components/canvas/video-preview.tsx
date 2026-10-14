@@ -6,8 +6,14 @@ import { apiConfig } from "@shared/config";
 import { useFileBlobUrl } from "@shared/hooks/use-file-blob-url";
 import { cn } from "@shared/lib/utils";
 import { type FC, memo, useMemo, useState } from "react";
+import {
+	fetchAttachmentBlob,
+	useAttachmentSource,
+} from "../../canonical/use-attachment-url";
 import type { CanvasDocument } from "../../types/canvas";
+import { artifactFileName } from "../../utils/artifact-identity";
 import { mimeTypeForPath } from "../../utils/file-kind";
+import { ImageActionsMenu } from "../image-actions-menu";
 import {
 	FileViewerState,
 	OpenInOsButton,
@@ -55,7 +61,87 @@ import { useSignedStaticUrl } from "./use-signed-static-url";
  */
 const VideoPreviewComponent: FC<{ document: CanvasDocument }> = ({
 	document,
+}) =>
+	document.artifact ? (
+		<ArtifactVideoPreview document={document} />
+	) : (
+		<PathVideoPreview document={document} />
+	);
+
+/**
+ * A generated clip, played from the attachment store by digest.
+ *
+ * Neither of the path viewer's two attempts applies: there is no file for the
+ * static route to serve and none for the bridge to read. The bytes arrive over
+ * the media relay as one blob (the transcript's own player, `canonical-video`,
+ * does the same), so the first frame waits on the whole clip - the cost the path
+ * viewer's second attempt also pays, and the reason a clip over the relay's
+ * ceiling would show the "could not be played" state below. Range playback for
+ * artifacts is a backend capability this change deliberately does not assume.
+ */
+const ArtifactVideoPreview: FC<{ document: CanvasDocument }> = ({
+	document,
 }) => {
+	const artifact = document.artifact;
+	const source = useAttachmentSource(
+		{
+			data: null,
+			attachment: artifact?.digest ?? null,
+			mimeType: artifact?.contentType ?? "video/mp4",
+		},
+		artifact ? { sessionId: artifact.sessionId, childId: null } : null,
+	);
+	const [playbackFailed, setPlaybackFailed] = useState(false);
+	return (
+		<div
+			className={cn("flex h-full min-h-0 w-full flex-1 flex-col bg-elevated")}
+		>
+			<ViewerChrome>
+				{artifact ? (
+					<ImageActionsMenu
+						file={document.path}
+						label={document.title}
+						mediaKind="video"
+						saveName={artifactFileName(artifact)}
+						resolveBytes={() =>
+							fetchAttachmentBlob(
+								{ sessionId: artifact.sessionId, childId: null },
+								artifact.digest,
+							)
+						}
+					/>
+				) : null}
+			</ViewerChrome>
+			{source.state === "resolving" ? (
+				<FileViewerState quiet title="Opening…" />
+			) : source.state === "missing" || playbackFailed ? (
+				<FileViewerState
+					title={
+						playbackFailed
+							? "This video could not be played"
+							: "This video is no longer in the session"
+					}
+					detail={document.title}
+				/>
+			) : (
+				<div
+					className={cn("flex flex-1 items-center justify-center bg-sunken")}
+				>
+					{/* biome-ignore lint/a11y/useMediaCaption: a generated clip carries no caption track; the bytes are the provider's. */}
+					<video
+						src={source.url}
+						controls
+						preload="metadata"
+						onError={() => setPlaybackFailed(true)}
+						className={cn("max-h-full max-w-full object-contain")}
+					/>
+				</div>
+			)}
+		</div>
+	);
+};
+
+const PathVideoPreview: FC<{ document: CanvasDocument }> = ({ document }) => {
 	/*
 	 * One switch, one direction. A route failure is permanent for this mount — a
 	 * 403 will not un-refuse itself, and a stopped backend coming back is worth
@@ -85,7 +171,9 @@ const VideoPreviewComponent: FC<{ document: CanvasDocument }> = ({
 	   conversation's `canvas`, which would leave the pane's tone under a changed
 	   bar. */
 	return (
-		<div className={cn("flex h-full w-full flex-col bg-elevated")}>
+		<div
+			className={cn("flex h-full min-h-0 w-full flex-1 flex-col bg-elevated")}
+		>
 			<ViewerChrome path={document.path} />
 			{source === "route" ? (
 				<RouteVideo
