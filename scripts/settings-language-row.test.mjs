@@ -384,14 +384,14 @@ const TEST_TIMEOUT_MS = 60_000;
  * locale — and these expectations have to say so. They were written as the
  * English sentence alone, which passed only while no French catalogue existed:
  * the note then always fell back to English. Shipping the French catalogue made
- * the note render « Langue utilisée : fr » at locale `fr` (the behaviour this
+ * the note render « Langue utilisée : Français » at locale `fr` (the behaviour this
  * suite's own cases are about), which is correct and falsifies an
  * English-only expectation. Both spellings are pinned explicitly, including the
  * narrow no-break space French requires before the colon, so a change to EITHER
  * copy is visible here rather than silently absorbed.
  */
-const EFFECTIVE_NOTE_EN = "In effect: en";
-const EFFECTIVE_NOTE_FR = "Langue utilisée\u202f: fr";
+const EFFECTIVE_NOTE_EN = "In effect: English";
+const EFFECTIVE_NOTE_FR = "Langue utilisée\u202f: Français";
 
 test(
 	"the language row shows the store's active locale, and only that row does",
