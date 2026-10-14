@@ -134,6 +134,77 @@ export function artifactFileName(artifact: {
 		(artifact.kind === "video" ? "mp4" : "png");
 	const given = artifact.name?.replace(/[\\/]/g, "-").trim();
 	if (given && HAS_EXTENSION.test(given)) return given;
-	const stem = given || fallbackArtifactName(artifact.kind, artifact.digest);
-	return `${stem}-${artifact.digest.slice(0, 8)}.${extension}`;
+	// The fallback name already ends in the digest head, so only a producer's
+	// bare label needs the suffix to stay unique (`Hero-412b2a3d.png`); appending
+	// it to the fallback proposed `Video 9277c383-9277c383.mp4` (UX U1 / QA Q3).
+	if (!given)
+		return `${fallbackArtifactName(artifact.kind, artifact.digest)}.${extension}`;
+	return `${given}-${artifact.digest.slice(0, 8)}.${extension}`;
+}
+
+/** How much of a digest the UI prints as a tiebreak. Shared by the row and the tab. */
+export const ARTIFACT_HEAD_LENGTH = 8;
+
+/**
+ * The sentence that says where an artifact lives.
+ *
+ * A path row's tooltip is its path, which tells the reader the file is on their
+ * disk and why `Open folder` exists. An artifact has no path, so without this the
+ * shorter menu (no Open file / Open folder) is unexplained (UX U4, design D7).
+ */
+export function artifactCue(kind: "image" | "video"): string {
+	return `Generated ${kind}, kept in this session`;
+}
+
+/**
+ * The tooltip for an artifact's row or tab: name, digest head, where it lives.
+ *
+ * The digest head is what tells two same-named artifacts apart, the way a path
+ * does for files. Models name outputs from a template, so one real session held
+ * 69 pictures under three names.
+ */
+export function artifactTooltip(artifact: {
+	digest: string;
+	kind: "image" | "video";
+	title: string;
+}): string {
+	const head = artifact.digest.slice(0, ARTIFACT_HEAD_LENGTH);
+	// A nameless artifact's title IS `Video <head>` (`fallbackArtifactName`), so
+	// repeating the head would read `Video 9277c383 . 9277c383`.
+	const named = artifact.title.includes(head)
+		? artifact.title
+		: `${artifact.title} \u00b7 ${head}`;
+	return `${named} \u00b7 ${artifactCue(artifact.kind)}`;
+}
+
+/**
+ * Tab labels for a set of open documents: an artifact whose name another open
+ * artifact shares gets its digest head appended, and nothing else changes.
+ *
+ * On a CLASH only, for the reason the Files row draws its tiebreak on a clash
+ * only: a name that is already unique is the better label. Two tabs both reading
+ * `fixture-model-01.jpg` were indistinguishable, with identical tooltips (UX U2 /
+ * QA Q1).
+ */
+export function artifactTabLabels(
+	documents: ReadonlyArray<{
+		id: string;
+		title: string;
+		artifact?: { digest: string } | undefined;
+	}>,
+): Map<string, string> {
+	const counts = new Map<string, number>();
+	for (const doc of documents)
+		if (doc.artifact) counts.set(doc.title, (counts.get(doc.title) ?? 0) + 1);
+	const labels = new Map<string, string>();
+	for (const doc of documents) {
+		const clash = doc.artifact && (counts.get(doc.title) ?? 0) > 1;
+		labels.set(
+			doc.id,
+			clash && doc.artifact
+				? `${doc.title} \u00b7 ${doc.artifact.digest.slice(0, ARTIFACT_HEAD_LENGTH)}`
+				: doc.title,
+		);
+	}
+	return labels;
 }

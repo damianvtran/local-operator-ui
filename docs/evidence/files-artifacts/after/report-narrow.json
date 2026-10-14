@@ -1,10 +1,13 @@
 {
   "label": "narrow",
   "session": "a1f0c0de0001",
-  "window": "760x800",
+  "window": {
+    "width": 800,
+    "height": 800
+  },
   "themes": {
     "dark": {
-      "frame": "<scratch>/frames/after/files-narrow-dark.png",
+      "frame": "<scratch>/evidence/frames2/after/files-narrow-dark.png",
       "reading": {
         "innerWidth": 800,
         "innerHeight": 800,
@@ -21,7 +24,7 @@
           "w": 220,
           "h": 684
         },
-        "rowCount": 5,
+        "rowCount": 7,
         "rows": [
           {
             "text": "fixture-model-01.jpg 412b2a3d",
@@ -101,7 +104,7 @@
             "thumb": null
           },
           {
-            "text": "promo-notes.md",
+            "text": "paper-ground.png",
             "box": {
               "x": 544,
               "y": 268,
@@ -109,14 +112,47 @@
               "h": 36
             },
             "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 480,
+              "naturalHeight": 480,
+              "srcScheme": "blob",
+              "box": {
+                "x": 552,
+                "y": 272,
+                "w": 28,
+                "h": 28
+              }
+            }
+          },
+          {
+            "text": "gone.png",
+            "box": {
+              "x": 544,
+              "y": 304,
+              "w": 204,
+              "h": 36
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "promo-notes.md",
+            "box": {
+              "x": 544,
+              "y": 340,
+              "w": 204,
+              "h": 36
+            },
+            "insideDock": true,
             "thumb": null
           }
         ],
-        "header": "Filter 5 files fixture-model-01.jpg 412b2a3d fixture-model-01.jpg 0466de15 fixture-model-02.jpg Video f07be5f5 promo-notes.md"
+        "header": "Filter 7 files fixture-model-01.jpg 412b2a3d fixture-model-01.jpg 0466de15 fixture-model-02.jpg Video f07be5f5 paper-ground.png gone.png promo-notes.md"
       }
     },
     "light": {
-      "frame": "<scratch>/frames/after/files-narrow-light.png",
+      "frame": "<scratch>/evidence/frames2/after/files-narrow-light.png",
       "reading": {
         "innerWidth": 800,
         "innerHeight": 800,
@@ -133,7 +169,7 @@
           "w": 220,
           "h": 684
         },
-        "rowCount": 5,
+        "rowCount": 7,
         "rows": [
           {
             "text": "fixture-model-01.jpg 412b2a3d",
@@ -213,7 +249,7 @@
             "thumb": null
           },
           {
-            "text": "promo-notes.md",
+            "text": "paper-ground.png",
             "box": {
               "x": 544,
               "y": 268,
@@ -221,16 +257,49 @@
               "h": 36
             },
             "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 480,
+              "naturalHeight": 480,
+              "srcScheme": "blob",
+              "box": {
+                "x": 552,
+                "y": 272,
+                "w": 28,
+                "h": 28
+              }
+            }
+          },
+          {
+            "text": "gone.png",
+            "box": {
+              "x": 544,
+              "y": 304,
+              "w": 204,
+              "h": 36
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "promo-notes.md",
+            "box": {
+              "x": 544,
+              "y": 340,
+              "w": 204,
+              "h": 36
+            },
+            "insideDock": true,
             "thumb": null
           }
         ],
-        "header": "Filter 5 files fixture-model-01.jpg 412b2a3d fixture-model-01.jpg 0466de15 fixture-model-02.jpg Video f07be5f5 promo-notes.md"
+        "header": "Filter 7 files fixture-model-01.jpg 412b2a3d fixture-model-01.jpg 0466de15 fixture-model-02.jpg Video f07be5f5 paper-ground.png gone.png promo-notes.md"
       }
     }
   },
   "facts": {
     "windowMode": "headless",
-    "appVersion": "0.34.39",
+    "appVersion": "0.34.40",
     "platform": "darwin",
     "title": "Local Operator",
     "windowSize": {
@@ -245,6 +314,6 @@
     "focused": false,
     "minimized": false,
     "frames": [],
-    "outDir": "<scratch>/frames/after"
+    "outDir": "<scratch>/evidence/frames2/after"
   }
 }

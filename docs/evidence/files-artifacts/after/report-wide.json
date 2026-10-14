@@ -1,10 +1,14 @@
 {
   "label": "wide",
   "session": "a1f0c0de0001",
-  "window": "1380x900",
+  "window": {
+    "width": 1380,
+    "height": 900
+  },
   "themes": {
     "dark": {
-      "frame": "<scratch>/frames/after/files-wide-dark.png",
+      "earlyFrame": "<scratch>/evidence/frames2/after/files-wide-retrying-dark.png",
+      "frame": "<scratch>/evidence/frames2/after/files-wide-dark.png",
       "reading": {
         "innerWidth": 1380,
         "innerHeight": 900,
@@ -21,7 +25,7 @@
           "w": 560,
           "h": 784
         },
-        "rowCount": 5,
+        "rowCount": 7,
         "rows": [
           {
             "text": "fixture-model-01.jpg 412b2a3d 23 KB",
@@ -101,7 +105,7 @@
             "thumb": null
           },
           {
-            "text": "promo-notes.md 0 KB",
+            "text": "paper-ground.png 2 KB",
             "box": {
               "x": 784,
               "y": 268,
@@ -109,14 +113,48 @@
               "h": 36
             },
             "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 480,
+              "naturalHeight": 480,
+              "srcScheme": "blob",
+              "box": {
+                "x": 792,
+                "y": 272,
+                "w": 28,
+                "h": 28
+              }
+            }
+          },
+          {
+            "text": "gone.png 2 KB",
+            "box": {
+              "x": 784,
+              "y": 304,
+              "w": 544,
+              "h": 36
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "promo-notes.md 0 KB",
+            "box": {
+              "x": 784,
+              "y": 340,
+              "w": 544,
+              "h": 36
+            },
+            "insideDock": true,
             "thumb": null
           }
         ],
-        "header": "Filter 5 files fixture-model-01.jpg 412b2a3d 23 KB fixture-model-01.jpg 0466de15 22 KB fixture-model-02.jpg 34 KB Video f07be5f5 promo-notes.md 0 KB"
+        "header": "Filter 7 files fixture-model-01.jpg 412b2a3d 23 KB fixture-model-01.jpg 0466de15 22 KB fixture-model-02.jpg 34 KB Video f07be5f5 paper-ground.png 2 KB gone.png "
       }
     },
     "light": {
-      "frame": "<scratch>/frames/after/files-wide-light.png",
+      "earlyFrame": "<scratch>/evidence/frames2/after/files-wide-retrying-light.png",
+      "frame": "<scratch>/evidence/frames2/after/files-wide-light.png",
       "reading": {
         "innerWidth": 1380,
         "innerHeight": 900,
@@ -133,7 +171,7 @@
           "w": 560,
           "h": 784
         },
-        "rowCount": 5,
+        "rowCount": 7,
         "rows": [
           {
             "text": "fixture-model-01.jpg 412b2a3d 23 KB",
@@ -213,7 +251,7 @@
             "thumb": null
           },
           {
-            "text": "promo-notes.md 0 KB",
+            "text": "paper-ground.png 2 KB",
             "box": {
               "x": 784,
               "y": 268,
@@ -221,16 +259,49 @@
               "h": 36
             },
             "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 480,
+              "naturalHeight": 480,
+              "srcScheme": "blob",
+              "box": {
+                "x": 792,
+                "y": 272,
+                "w": 28,
+                "h": 28
+              }
+            }
+          },
+          {
+            "text": "gone.png 2 KB",
+            "box": {
+              "x": 784,
+              "y": 304,
+              "w": 544,
+              "h": 36
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "promo-notes.md 0 KB",
+            "box": {
+              "x": 784,
+              "y": 340,
+              "w": 544,
+              "h": 36
+            },
+            "insideDock": true,
             "thumb": null
           }
         ],
-        "header": "Filter 5 files fixture-model-01.jpg 412b2a3d 23 KB fixture-model-01.jpg 0466de15 22 KB fixture-model-02.jpg 34 KB Video f07be5f5 promo-notes.md 0 KB"
+        "header": "Filter 7 files fixture-model-01.jpg 412b2a3d 23 KB fixture-model-01.jpg 0466de15 22 KB fixture-model-02.jpg 34 KB Video f07be5f5 paper-ground.png 2 KB gone.png "
       }
     }
   },
   "facts": {
     "windowMode": "headless",
-    "appVersion": "0.34.39",
+    "appVersion": "0.34.40",
     "platform": "darwin",
     "title": "Local Operator",
     "windowSize": {
@@ -245,7 +316,7 @@
     "focused": false,
     "minimized": false,
     "frames": [],
-    "outDir": "<scratch>/frames/after"
+    "outDir": "<scratch>/evidence/frames2/after"
   },
   "interact": {
     "imageMenu": [
@@ -253,7 +324,7 @@
       "Save as…",
       "Copy image"
     ],
-    "imageMenuFrame": "<scratch>/frames/after/files-wide-menu-image.png",
+    "imageMenuFrame": "<scratch>/evidence/frames2/after/files-wide-menu-image.png",
     "videoMenu": [
       "Show in canvas",
       "Save as…"
@@ -261,7 +332,7 @@
     "clickedImage": true,
     "imageViewer": {
       "tab": "fixture-model-01.jpg",
-      "tabTitle": "fixture-model-01.jpg",
+      "tabTitle": "fixture-model-01.jpg · 0466de15 · Generated image, kept in this session",
       "img": {
         "decoded": true,
         "w": 576,
@@ -271,7 +342,7 @@
       "freshnessBar": false,
       "noLongerOnDisk": false
     },
-    "imageViewerFrame": "<scratch>/frames/after/files-wide-viewer-image.png",
+    "imageViewerFrame": "<scratch>/evidence/frames2/after/files-wide-viewer-image.png",
     "clickedVideo": true,
     "videoViewer": {
       "video": {
@@ -284,6 +355,38 @@
       },
       "noLongerOnDisk": false
     },
-    "videoViewerFrame": "<scratch>/frames/after/files-wide-viewer-video.png"
+    "videoViewerFrame": "<scratch>/evidence/frames2/after/files-wide-viewer-video.png"
+  },
+  "states": {
+    "goneOpened": true,
+    "goneViewer": "This image is no longer in the session gone.png",
+    "goneFrame": "<scratch>/evidence/frames2/after/files-wide-viewer-gone-dark.png",
+    "tallViewer": {
+      "dockBottom": 900,
+      "imgTop": 146,
+      "imgBottom": 900,
+      "imgInsideDock": true,
+      "innerHeight": 900
+    },
+    "tallViewerFrame": "<scratch>/evidence/frames2/after/files-wide-viewer-image-light.png",
+    "tabs": [
+      {
+        "label": "fixture-model-01.jpg · 0466de15",
+        "title": "fixture-model-01.jpg · 0466de15 · Generated image, kept in this session"
+      },
+      {
+        "label": "Video f07be5f5",
+        "title": "Video f07be5f5 · Generated video, kept in this session"
+      },
+      {
+        "label": "gone.png",
+        "title": "gone.png · ec167ad3 · Generated image, kept in this session"
+      },
+      {
+        "label": "fixture-model-01.jpg · 412b2a3d",
+        "title": "fixture-model-01.jpg · 412b2a3d · Generated image, kept in this session"
+      }
+    ],
+    "tabsFrame": "<scratch>/evidence/frames2/after/files-wide-tabs-light.png"
   }
 }
