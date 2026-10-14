@@ -1,14 +1,12 @@
 import logo from "@assets/icon.png";
 import { Button } from "@shared/components/ui";
+import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import { Check, CircleAlert } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import {
-	INSTALL_EXPECTATION,
 	INSTALL_PHASES,
-	INSTALL_PHASE_DETAILS,
-	INSTALL_PHASE_LABELS,
 	type InstallFailure,
 	type InstallPhase,
 	type InstallTiming,
@@ -113,17 +111,33 @@ export type InstallPanelProps = {
  *
  * Tabular figures so the ticking clock does not move the line sideways.
  */
+const PHASE_LABEL_KEYS = {
+	python: "ui.installer.phase.label.python",
+	environment: "ui.installer.phase.label.environment",
+	components: "ui.installer.phase.label.components",
+	verify: "ui.installer.phase.label.verify",
+} as const;
+const PHASE_DETAIL_KEYS = {
+	python: "ui.installer.phase.detail.python",
+	environment: "ui.installer.phase.detail.environment",
+	components: "ui.installer.phase.detail.components",
+	verify: "ui.installer.phase.detail.verify",
+} as const;
+
 export function installStatusLine(
 	phase: InstallPhase | null,
 	timing: InstallTiming | null | undefined,
 	now: number,
 ): string | null {
 	if (phase === null) return null;
-	const step = `Step ${INSTALL_PHASES.indexOf(phase) + 1} of ${INSTALL_PHASES.length}`;
+	const step = t("ui.installer.status.step", {
+		step: String(INSTALL_PHASES.indexOf(phase) + 1),
+		total: String(INSTALL_PHASES.length),
+	});
 	if (!timing) return step;
 	const elapsed = formatElapsed(now - timing.startedAt);
 	const eta = installEta(timing.platform, phase, now - timing.phaseStartedAt);
-	return `${step} \u00b7 ${elapsed} elapsed \u00b7 ${eta}`;
+	return t("ui.installer.status.elapsed", { step, elapsed, eta });
 }
 
 /** One tick a second while the run is live, so the clock moves. */
@@ -336,7 +350,7 @@ const PhaseRow: React.FC<{
 								: "text-ink-dim",
 				)}
 			>
-				{INSTALL_PHASE_LABELS[phase]}
+				{t(PHASE_LABEL_KEYS[phase])}
 			</span>
 			<span className="sr-only">
 				{state === "done"
@@ -508,10 +522,10 @@ export const InstallPanel: React.FC<InstallPanelProps> = ({
 		? // The sentence the whole screen was waiting for. Leaving the phase's own
 			// "what happens next" here said "Starting the backend once to check it comes
 			// up" over a check that had already passed.
-			"Setup complete."
+			t("ui.installer.installer_panel.setup_complete")
 		: phase === null
-			? "Getting started."
-			: INSTALL_PHASE_DETAILS[phase];
+			? t("ui.installer.installer_panel.getting_started")
+			: t(PHASE_DETAIL_KEYS[phase]);
 	/*
 	 * The stage's name, for the live region alone.
 	 *
@@ -522,7 +536,7 @@ export const InstallPanel: React.FC<InstallPanelProps> = ({
 	 * is a fragment with no subject.
 	 */
 	const liveLabel =
-		installed || phase === null ? null : INSTALL_PHASE_LABELS[phase];
+		installed || phase === null ? null : t(PHASE_LABEL_KEYS[phase]);
 
 	return (
 		/*
@@ -549,7 +563,9 @@ export const InstallPanel: React.FC<InstallPanelProps> = ({
 				aria-hidden="true"
 				className="size-10 rounded-lg object-contain"
 			/>
-			<h1 className="mt-3 text-title text-ink">Local Operator</h1>
+			<h1 className="mt-3 text-title text-ink">
+				{t("ui.installer.installer_panel.local_operator")}
+			</h1>
 			{/*
 			 * The expectation, in the one sentence the screen has for it. It names
 			 * the WAIT, which the screen this replaced did in "This takes a few
@@ -595,7 +611,7 @@ export const InstallPanel: React.FC<InstallPanelProps> = ({
 						installed && "invisible",
 					)}
 				>
-					{INSTALL_EXPECTATION}
+					{t("ui.installer.expectation")}
 				</p>
 			)}
 			{/*
@@ -731,19 +747,20 @@ export const InstallPanel: React.FC<InstallPanelProps> = ({
 					 * there by the time this screen could appear.
 					 */}
 					<p className="mt-2 max-w-90 text-body-sm text-ink-muted">
-						Setup keeps everything it installs in its own folder; nothing of
-						yours was touched.
+						{t(
+							"ui.installer.installer_panel.setup_keeps_everything_it_installs_in_its_own_folder_nothing_of_y",
+						)}
 					</p>
 					<div className="mt-3 flex items-center gap-3">
 						<Button variant="secondary" onClick={onRetry}>
-							Try again
+							{t("ui.common.actions.retry_again")}
 						</Button>
 						{/*
 						 * "Quit" and not "Close": this window is the whole app, so the
 						 * button that ends the process is not dismissing anything (UX U11).
 						 */}
 						<Button variant="ghost" onClick={onCancel}>
-							Quit
+							{t("ui.installer.installer_panel.quit")}
 						</Button>
 					</div>
 				</div>
@@ -759,7 +776,7 @@ export const InstallPanel: React.FC<InstallPanelProps> = ({
 						 */
 						disabled={installed}
 					>
-						Cancel setup
+						{t("ui.installer.installer_panel.cancel_setup")}
 					</Button>
 					{/*
 					 * What leaving this window does, on a wait of one to five minutes.
@@ -775,8 +792,9 @@ export const InstallPanel: React.FC<InstallPanelProps> = ({
 					 */}
 					{!installed && (
 						<p className="text-meta text-ink-dim">
-							You can minimize this window and keep working. Closing it stops
-							setup.
+							{t(
+								"ui.installer.installer_panel.you_can_minimize_this_window_and_keep_working_closing_it_stops_se",
+							)}
 						</p>
 					)}
 				</div>

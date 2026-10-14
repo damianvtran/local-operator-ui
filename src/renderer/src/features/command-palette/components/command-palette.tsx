@@ -18,6 +18,7 @@ import {
 import { useClearAgentConversation } from "@shared/hooks/use-clear-agent-conversation";
 import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
 import { useAgentRouteParam } from "@shared/hooks/use-route-params";
+import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import {
@@ -67,16 +68,32 @@ const LIST_ID = "command-palette-results";
  * column of chits restating what the section heading already says.
  */
 const KIND_VERBS: Record<PaletteItem["kind"], string> = {
-	page: "Go",
-	action: "Run",
-	panel: "Open",
-	chat: "Open",
-	agent: "Open",
+	get page() {
+		return t("ui.command_palette.command_palette.go");
+	},
+	get action() {
+		return t("ui.command_palette.command_palette.run");
+	},
+	get panel() {
+		return t("ui.command_palette.command_palette.open");
+	},
+	get chat() {
+		return t("ui.command_palette.command_palette.open");
+	},
+	get agent() {
+		return t("ui.command_palette.command_palette.open");
+	},
 	// A team row opens a chat too (issue #849), so the same verb: what the row does
 	// is unchanged by the entity class, and the HINT is where the class is said.
-	team: "Open",
-	"settings-section": "Open",
-	setting: "Open",
+	get team() {
+		return t("ui.command_palette.command_palette.open");
+	},
+	get "settings-section"() {
+		return t("ui.command_palette.command_palette.open");
+	},
+	get setting() {
+		return t("ui.command_palette.command_palette.open");
+	},
 };
 
 /**
@@ -811,7 +828,9 @@ export const CommandPalette: FC = () => {
 				>
 					{/* The palette announces itself; the title is not drawn, because the
 					    field's placeholder already says what to do. */}
-					<DialogTitle className="sr-only">Command palette</DialogTitle>
+					<DialogTitle className="sr-only">
+						{t("ui.command_palette.command_palette.command_palette")}
+					</DialogTitle>
 
 					{/*
 					 * The query field is drawn from parts rather than from `Input`: a
@@ -836,7 +855,9 @@ export const CommandPalette: FC = () => {
 							aria-activedescendant={activeItem?.id}
 							aria-autocomplete="list"
 							autoComplete="off"
-							placeholder="Search chats, settings, pages and actions"
+							placeholder={t(
+								"ui.command_palette.command_palette.search_chats_settings_pages_and_actions",
+							)}
 							value={localQuery}
 							onChange={(event) => setLocalQuery(event.target.value)}
 							/*
@@ -881,7 +902,9 @@ export const CommandPalette: FC = () => {
 							<Button
 								variant="ghost"
 								size="icon-sm"
-								aria-label="Clear search"
+								aria-label={t(
+									"ui.command_palette.command_palette.clear_search",
+								)}
 								onClick={() => {
 									setLocalQuery("");
 									// Focus stays in the field: clearing is an edit, not a
@@ -920,7 +943,7 @@ export const CommandPalette: FC = () => {
 								// biome-ignore lint/a11y/useSemanticElements: `select`/`option` is a native popup control, not a listbox whose rows are browsed by aria-activedescendant while focus stays in a text field.
 								role="listbox"
 								id={LIST_ID}
-								aria-label="Results"
+								aria-label={t("ui.command_palette.command_palette.results")}
 								/* Focusable only programmatically: the query field keeps focus,
 								   and this is here so the container can be scrolled into view. */
 								tabIndex={-1}
@@ -992,13 +1015,18 @@ export const CommandPalette: FC = () => {
 					 */}
 					{hasResults && hasTerms && chats.awaiting && (
 						<p className="px-4 pt-2 text-ink-dim text-meta">
-							Searching conversations…
+							{t("ui.command_palette.command_palette.searching_conversations")}
 						</p>
 					)}
 					{hasTerms && chats.overLong && (
 						<p className="px-4 pt-2 text-ink-dim text-meta">
-							Search terms are limited to {SESSION_SEARCH_MAX_CHARS} characters,
-							so chats are matched by name.
+							{t(
+								"ui.command_palette.command_palette.search_terms_are_limited_to",
+							)}
+							{SESSION_SEARCH_MAX_CHARS}{" "}
+							{t(
+								"ui.command_palette.command_palette.characters_so_chats_are_matched_by_name",
+							)}
 						</p>
 					)}
 					{hasTerms &&
@@ -1007,8 +1035,12 @@ export const CommandPalette: FC = () => {
 						!chats.pending && (
 							<p className="px-4 pt-2 text-ink-dim text-meta">
 								{chats.unreachable
-									? "Conversation search is unavailable while the backend is unreachable, so chats are matched by name."
-									: "Chats are matched by name. Update Local Operator to search inside conversations."}
+									? t(
+											"ui.command_palette.command_palette.conversation_search_is_unavailable_while_the_backend_is_unreachab",
+										)
+									: t(
+											"ui.command_palette.command_palette.chats_are_matched_by_name_update_local_operator_to_search_inside_",
+										)}
 							</p>
 						)}
 
@@ -1044,7 +1076,7 @@ export const CommandPalette: FC = () => {
 								))}
 								<span className="ml-auto flex items-center gap-1.5">
 									<KeyboardShortcut shortcut="esc" />
-									to close
+									{t("ui.command_palette.command_palette.to_close")}
 								</span>
 							</>
 						) : (
@@ -1060,11 +1092,11 @@ export const CommandPalette: FC = () => {
 									{stepCaps.map((cap) => (
 										<KeyboardShortcut key={cap} shortcut={cap} joined />
 									))}
-									to move
+									{t("ui.command_palette.command_palette.to_move")}
 								</span>
 								<span className="flex items-center gap-1.5">
 									<KeyboardShortcut shortcut="↵" />
-									to run
+									{t("ui.command_palette.command_palette.to_run")}
 								</span>
 								<span className="flex items-center gap-1.5">
 									{outcome.clipped && (
@@ -1079,8 +1111,14 @@ export const CommandPalette: FC = () => {
 										 */
 										<span>
 											{hasTerms
-												? `showing the best ${matchCount} of ${outcome.total} matches`
-												: `showing ${matchCount} of ${outcome.total}`}
+												? t("ui.command_palette.matches.best", {
+														count: String(matchCount),
+														total: String(outcome.total),
+													})
+												: t("ui.command_palette.matches.showing", {
+														count: String(matchCount),
+														total: String(outcome.total),
+													})}
 										</span>
 									)}
 								</span>
@@ -1092,7 +1130,7 @@ export const CommandPalette: FC = () => {
 								 */}
 								<span className="ml-auto flex items-center gap-1.5">
 									<KeyboardShortcut shortcut="esc" />
-									to close
+									{t("ui.command_palette.command_palette.to_close")}
 								</span>
 							</>
 						)}
@@ -1101,10 +1139,12 @@ export const CommandPalette: FC = () => {
 			</Dialog>
 			<ConfirmationModal
 				open={isClearConfirmationOpen}
-				title="Clear this conversation?"
-				message="Every message in it is deleted from this computer, and there is no undo. The agent itself is not affected."
-				confirmText="Clear"
-				cancelText="Cancel"
+				title={t("ui.command_palette.command_palette.clear_this_conversation")}
+				message={t(
+					"ui.command_palette.command_palette.every_message_in_it_is_deleted_from_this_computer_and_there_is_no",
+				)}
+				confirmText={t("ui.command_palette.command_palette.clear")}
+				cancelText={t("ui.common.actions.cancel")}
 				isDangerous
 				onConfirm={confirmClearConversation}
 				onCancel={() => setIsClearConfirmationOpen(false)}

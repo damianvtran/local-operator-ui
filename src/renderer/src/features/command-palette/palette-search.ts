@@ -1,8 +1,10 @@
+// Search stays React-free; display copy reads the same core runtime as the renderer.
+import { t } from "../../../../i18n";
 /**
  * The command palette's search: what a query means, which rows it admits, and
  * in what order they are offered.
  *
- * Pure and synchronous, with no React and no imports at all, so it is exercised
+ * Pure and synchronous, with no React; translated display copy uses the i18n core, so it is exercised
  * in memory by `scripts/palette-search.test.mjs` rather than through a browser.
  * That is the same split `features/chat/chat-search.ts` makes for the sidebar,
  * and for the same reason: "what matches" is the one part of a search surface
@@ -342,26 +344,37 @@ export function paletteEmptyStateCopy(input: {
 	 * what is being done. No hint — advice to "try another word" is advice
 	 * about an answer nobody has seen yet.
 	 */
-	if (awaiting) return { line: "Searching conversations…", hint: null };
+	if (awaiting)
+		return {
+			line: t("ui.command_palette.palette_search.searching_conversations"),
+			hint: null,
+		};
 	if (scope === "chat" && !hasTerms) {
 		return catalogue === "loading"
-			? { line: "Loading conversations…", hint: null }
+			? {
+					line: t("ui.command_palette.palette_search.loading_conversations"),
+					hint: null,
+				}
 			: {
-					line: "No conversations yet",
-					hint: "Start a chat and it will show up here.",
+					line: t("ui.command_palette.palette_search.no_conversations_yet"),
+					hint: t(
+						"ui.command_palette.palette_search.start_a_chat_and_it_will_show_up_here",
+					),
 				};
 	}
 	if (hasTerms) {
 		const glyph = SCOPE_LEGEND.find((entry) => entry.scope === scope)?.glyph;
 		return {
-			line: `No matches for “${terms}”`,
+			line: t("ui.command_palette.empty.no_matches", { terms }),
 			hint: glyph
-				? `Try another word, or backspace ${glyph} to search everything.`
-				: "Try another word, or narrow the search with a prefix below.",
+				? t("ui.command_palette.empty.backspace", { glyph })
+				: t(
+						"ui.command_palette.palette_search.try_another_word_or_narrow_the_search_with_a_prefix_below",
+					),
 		};
 	}
 	return {
-		line: "Nothing to show yet",
+		line: t("ui.command_palette.palette_search.nothing_to_show_yet"),
 		/*
 		 * "an agent or team by name": the `@` scope draws a roster of BOTH since
 		 * issue #849, so naming only the agent would under-describe the list this
@@ -369,7 +382,9 @@ export function paletteEmptyStateCopy(input: {
 		 * sentence under `>`, `#` and `,`) - this is the roster's own addition, not
 		 * the gate-aware copy UX U2 records as owed.
 		 */
-		hint: "Search for a chat, an agent or team by name, a setting, or a page such as Schedules.",
+		hint: t(
+			"ui.command_palette.palette_search.search_for_a_chat_an_agent_or_team_by_name_a_setting_or_a_page_su",
+		),
 	};
 }
 
@@ -460,10 +475,34 @@ export const SCOPE_LEGEND: {
 	scope: PaletteScope;
 	label: string;
 }[] = [
-	{ glyph: ">", scope: "command", label: "Commands and pages" },
-	{ glyph: "#", scope: "chat", label: "Chats" },
-	{ glyph: "@", scope: "agent", label: "Agents and teams" },
-	{ glyph: ",", scope: "setting", label: "Settings" },
+	{
+		glyph: ">",
+		scope: "command",
+		get label() {
+			return t("ui.command_palette.palette_search.commands_and_pages");
+		},
+	},
+	{
+		glyph: "#",
+		scope: "chat",
+		get label() {
+			return t("ui.command_palette.palette_search.chats");
+		},
+	},
+	{
+		glyph: "@",
+		scope: "agent",
+		get label() {
+			return t("ui.command_palette.palette_search.agents_and_teams");
+		},
+	},
+	{
+		glyph: ",",
+		scope: "setting",
+		get label() {
+			return t("ui.command_palette.palette_search.settings");
+		},
+	},
 ];
 
 /**
@@ -812,13 +851,27 @@ export function scoreItem(
  * "Preferences" would be teaching a second name for each.
  */
 export const PALETTE_GROUP_TITLES: Record<PaletteGroup, string> = {
-	navigation: "Go to",
-	chats: "Chats",
-	agents: "Agents",
-	teams: "Teams",
-	actions: "Actions",
-	panels: "Panels",
-	settings: "Settings",
+	get navigation() {
+		return t("ui.command_palette.palette_search.go_to");
+	},
+	get chats() {
+		return t("ui.command_palette.palette_search.chats");
+	},
+	get agents() {
+		return t("ui.command_palette.palette_search.agents");
+	},
+	get teams() {
+		return t("ui.command_palette.palette_search.teams");
+	},
+	get actions() {
+		return t("ui.command_palette.palette_search.actions");
+	},
+	get panels() {
+		return t("ui.command_palette.palette_search.panels");
+	},
+	get settings() {
+		return t("ui.command_palette.palette_search.settings");
+	},
 };
 
 /**
@@ -827,9 +880,33 @@ export const PALETTE_GROUP_TITLES: Record<PaletteGroup, string> = {
  * rename moves one table and the view cannot drift from it.
  */
 export const PALETTE_SECTION_TITLES: Record<PaletteSectionKey, string> = {
-	...PALETTE_GROUP_TITLES,
-	unread: "Unread",
-	recents: "Recents",
+	get navigation() {
+		return PALETTE_GROUP_TITLES.navigation;
+	},
+	get chats() {
+		return PALETTE_GROUP_TITLES.chats;
+	},
+	get agents() {
+		return PALETTE_GROUP_TITLES.agents;
+	},
+	get teams() {
+		return PALETTE_GROUP_TITLES.teams;
+	},
+	get actions() {
+		return PALETTE_GROUP_TITLES.actions;
+	},
+	get panels() {
+		return PALETTE_GROUP_TITLES.panels;
+	},
+	get settings() {
+		return PALETTE_GROUP_TITLES.settings;
+	},
+	get unread() {
+		return t("ui.command_palette.palette_search.unread");
+	},
+	get recents() {
+		return t("ui.command_palette.palette_search.recents");
+	},
 };
 
 /**
@@ -1395,7 +1472,7 @@ export function buildPanelItems(
 		hint: panel.hint,
 		icon: panel.icon,
 		keywords: panel.keywords,
-		verb: "Open",
+		verb: t("ui.command_palette.palette_search.open"),
 		target: { type: "panel" as const, destination: panel.destination },
 		order: index,
 		featured: true,
@@ -1459,7 +1536,8 @@ export function buildChatItem(
 		id: `chat-${row.session_id}`,
 		kind: "chat",
 		group: "chats",
-		name: row.title?.trim() || "Untitled chat",
+		name:
+			row.title?.trim() || t("ui.command_palette.palette_search.untitled_chat"),
 		icon: "conversation",
 		hint: binding || undefined,
 		target: { type: "session", sessionId: row.session_id },

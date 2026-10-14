@@ -1,0 +1,466 @@
+{
+	"ui.command_palette.command_palette.characters_so_chats_are_matched_by_name": {
+		"role": "status hint",
+		"tone": "Explain the fallback and, for older backends, the update remedy.",
+		"note": "Conversation content search unavailable; title matching still works. This is not an empty-results message.",
+		"length": "One explanatory sentence; wrapping allowed."
+	},
+	"ui.command_palette.command_palette.chats_are_matched_by_name_update_local_operator_to_search_inside_": {
+		"role": "status hint",
+		"tone": "Explain the fallback and, for older backends, the update remedy.",
+		"note": "Conversation content search unavailable; title matching still works. This is not an empty-results message.",
+		"length": "One explanatory sentence; wrapping allowed."
+	},
+	"ui.command_palette.command_palette.clear": {
+		"role": "button or command verb",
+		"tone": "Short direct action.",
+		"note": "Palette action clear: Enter performs the selected row action; this label is not a search identifier.",
+		"length": "One-word control or footer verb."
+	},
+	"ui.command_palette.command_palette.clear_search": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination clear search: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.command_palette.clear_this_conversation": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination clear this conversation: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.command_palette.command_palette": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination command palette: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.command_palette.conversation_search_is_unavailable_while_the_backend_is_unreachab": {
+		"role": "status hint",
+		"tone": "Explain the fallback and, for older backends, the update remedy.",
+		"note": "Conversation content search unavailable; title matching still works. This is not an empty-results message.",
+		"length": "One explanatory sentence; wrapping allowed."
+	},
+	"ui.command_palette.command_palette.every_message_in_it_is_deleted_from_this_computer_and_there_is_no": {
+		"role": "confirmation explanation",
+		"tone": "Explicit irreversible consequence, no euphemism.",
+		"note": "Clearing a conversation deletes its local messages irreversibly, but does not delete the agent definition.",
+		"length": "Dialog paragraph; do not truncate the consequence."
+	},
+	"ui.command_palette.command_palette.go": {
+		"role": "button or command verb",
+		"tone": "Short direct action.",
+		"note": "Palette action go: Enter performs the selected row action; this label is not a search identifier.",
+		"length": "One-word control or footer verb."
+	},
+	"ui.command_palette.command_palette.open": {
+		"role": "button or command verb",
+		"tone": "Short direct action.",
+		"note": "Palette action open: Enter performs the selected row action; this label is not a search identifier.",
+		"length": "One-word control or footer verb."
+	},
+	"ui.command_palette.command_palette.results": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination results: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.command_palette.run": {
+		"role": "button or command verb",
+		"tone": "Short direct action.",
+		"note": "Palette action run: Enter performs the selected row action; this label is not a search identifier.",
+		"length": "One-word control or footer verb."
+	},
+	"ui.command_palette.command_palette.search_chats_settings_pages_and_actions": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination search chats settings pages and actions: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.command_palette.search_terms_are_limited_to": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination search terms are limited to: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.command_palette.searching_conversations": {
+		"role": "loading status",
+		"tone": "Short ongoing action with ellipsis.",
+		"note": "Palette searching conversations: request is unanswered, so do not claim no results yet.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.command_palette.to_close": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination to close: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.command_palette.to_move": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination to move: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.command_palette.to_run": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination to run: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.empty.backspace": {
+		"role": "empty-state",
+		"tone": "Plain absence plus a concrete next step.",
+		"note": "Palette backspace: distinguish an empty catalogue from no query matches; the prefix hint teaches widening the current search.",
+		"length": "Two-line empty state; wrapping is allowed.",
+		"placeholders": {
+			"glyph": "Scope prefix character, e.g. #; machine syntax stays verbatim."
+		}
+	},
+	"ui.command_palette.empty.no_matches": {
+		"role": "empty-state",
+		"tone": "Plain absence plus a concrete next step.",
+		"note": "Palette no matches: distinguish an empty catalogue from no query matches; the prefix hint teaches widening the current search.",
+		"length": "Two-line empty state; wrapping is allowed.",
+		"placeholders": {
+			"terms": "User search terms, verbatim inside curly quotation marks."
+		}
+	},
+	"ui.command_palette.matches.best": {
+		"role": "status",
+		"tone": "Lowercase compact result summary.",
+		"note": "Palette result-cap best: count shown is not total matches; the best wording is reserved for the ranked subset.",
+		"length": "One row; avoid adding an explanatory sentence.",
+		"placeholders": {
+			"count": "Cardinal count of displayed results or recorded events; plural selection when ICU plural is present.",
+			"total": "Total matching items or total installer steps, as named by this message."
+		}
+	},
+	"ui.command_palette.matches.showing": {
+		"role": "status",
+		"tone": "Lowercase compact result summary.",
+		"note": "Palette result-cap showing: count shown is not total matches; the best wording is reserved for the ranked subset.",
+		"length": "One row; avoid adding an explanatory sentence.",
+		"placeholders": {
+			"count": "Cardinal count of displayed results or recorded events; plural selection when ICU plural is present.",
+			"total": "Total matching items or total installer steps, as named by this message."
+		}
+	},
+	"ui.command_palette.palette_search.actions": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination actions: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.palette_search.agents": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination agents: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.palette_search.agents_and_teams": {
+		"role": "legend label",
+		"tone": "Collective destination nouns.",
+		"note": "Explains the palette scope prefix; the glyph and machine scope identifier remain unchanged.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.palette_search.chats": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination chats: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.palette_search.commands_and_pages": {
+		"role": "legend label",
+		"tone": "Collective destination nouns.",
+		"note": "Explains the palette scope prefix; the glyph and machine scope identifier remain unchanged.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.palette_search.go_to": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination go to: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.palette_search.loading_conversations": {
+		"role": "loading status",
+		"tone": "Short ongoing action with ellipsis.",
+		"note": "Palette loading conversations: request is unanswered, so do not claim no results yet.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.palette_search.no_conversations_yet": {
+		"role": "empty-state",
+		"tone": "Plain absence plus a concrete next step.",
+		"note": "Palette no conversations yet: distinguish an empty catalogue from no query matches; the prefix hint teaches widening the current search.",
+		"length": "Two-line empty state; wrapping is allowed."
+	},
+	"ui.command_palette.palette_search.nothing_to_show_yet": {
+		"role": "empty-state",
+		"tone": "Plain absence plus a concrete next step.",
+		"note": "Palette nothing to show yet: distinguish an empty catalogue from no query matches; the prefix hint teaches widening the current search.",
+		"length": "Two-line empty state; wrapping is allowed."
+	},
+	"ui.command_palette.palette_search.open": {
+		"role": "button or command verb",
+		"tone": "Short direct action.",
+		"note": "Palette action open: Enter performs the selected row action; this label is not a search identifier.",
+		"length": "One-word control or footer verb."
+	},
+	"ui.command_palette.palette_search.panels": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination panels: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.palette_search.recents": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination recents: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.palette_search.search_for_a_chat_an_agent_or_team_by_name_a_setting_or_a_page_su": {
+		"role": "empty-state",
+		"tone": "Plain absence plus a concrete next step.",
+		"note": "Palette search for a chat an agent or team by name a setting or a page su: distinguish an empty catalogue from no query matches; the prefix hint teaches widening the current search.",
+		"length": "Two-line empty state; wrapping is allowed."
+	},
+	"ui.command_palette.palette_search.searching_conversations": {
+		"role": "loading status",
+		"tone": "Short ongoing action with ellipsis.",
+		"note": "Palette searching conversations: request is unanswered, so do not claim no results yet.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.palette_search.settings": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination settings: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.palette_search.start_a_chat_and_it_will_show_up_here": {
+		"role": "empty-state",
+		"tone": "Plain absence plus a concrete next step.",
+		"note": "Palette start a chat and it will show up here: distinguish an empty catalogue from no query matches; the prefix hint teaches widening the current search.",
+		"length": "Two-line empty state; wrapping is allowed."
+	},
+	"ui.command_palette.palette_search.teams": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination teams: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.palette_search.try_another_word_or_narrow_the_search_with_a_prefix_below": {
+		"role": "empty-state",
+		"tone": "Plain absence plus a concrete next step.",
+		"note": "Palette try another word or narrow the search with a prefix below: distinguish an empty catalogue from no query matches; the prefix hint teaches widening the current search.",
+		"length": "Two-line empty state; wrapping is allowed."
+	},
+	"ui.command_palette.palette_search.unread": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination unread: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.palette_search.untitled_chat": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination untitled chat: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.use_palette_sources.agent_chat": {
+		"role": "row hint",
+		"tone": "Short category hint.",
+		"note": "Distinguishes an agent-targeted draft from a same-named team row; agent names stay user-owned.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.use_palette_sources.agent_hub": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination agent hub: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.use_palette_sources.agent_settings": {
+		"role": "row hint",
+		"tone": "Short category hint.",
+		"note": "Opens the selected agent configuration rather than a conversation.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.use_palette_sources.analytics": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination analytics: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.use_palette_sources.app_backend_and_environment": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination app backend and environment: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.use_palette_sources.browser": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination browser: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.use_palette_sources.change": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination change: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.use_palette_sources.chat": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination chat: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.use_palette_sources.clear": {
+		"role": "button or command verb",
+		"tone": "Short direct action.",
+		"note": "Palette action clear: Enter performs the selected row action; this label is not a search identifier.",
+		"length": "One-word control or footer verb."
+	},
+	"ui.command_palette.use_palette_sources.clear_conversation": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination clear conversation: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.use_palette_sources.close": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination close: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.use_palette_sources.close_canvas": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination close canvas: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.use_palette_sources.connect": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination connect: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.use_palette_sources.connect_a_model_provider": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination connect a model provider: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.use_palette_sources.create": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination create: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.use_palette_sources.create_agent": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination create agent: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.use_palette_sources.credits_limits_and_spend": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination credits limits and spend: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.use_palette_sources.diagnostics_for_this_conversation": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination diagnostics for this conversation: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.use_palette_sources.in_conversation": {
+		"role": "row hint",
+		"tone": "Short category hint.",
+		"note": "Search matched message content rather than only the conversation title.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.use_palette_sources.info": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination info: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.use_palette_sources.mesh": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination mesh: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.use_palette_sources.my_agents": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination my agents: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.use_palette_sources.new_chat": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination new chat: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.use_palette_sources.open": {
+		"role": "button or command verb",
+		"tone": "Short direct action.",
+		"note": "Palette action open: Enter performs the selected row action; this label is not a search identifier.",
+		"length": "One-word control or footer verb."
+	},
+	"ui.command_palette.use_palette_sources.open_canvas": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination open canvas: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.use_palette_sources.projects": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination projects: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.use_palette_sources.provider_usage": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination provider usage: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.use_palette_sources.schedules": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination schedules: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.use_palette_sources.session": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination session: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.use_palette_sources.settings": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination settings: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.use_palette_sources.start": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination start: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.use_palette_sources.team_chat": {
+		"role": "row hint",
+		"tone": "Short category hint.",
+		"note": "Distinguishes a team-targeted draft from an agent row; the target remains keyed by team slug.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.use_palette_sources.usage_over_time": {
+		"role": "command/page label",
+		"tone": "Sentence-case destination noun or action phrase.",
+		"note": "Palette destination usage over time: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"length": "One row; avoid adding an explanatory sentence."
+	}
+}

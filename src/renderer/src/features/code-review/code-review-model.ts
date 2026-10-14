@@ -1,3 +1,5 @@
+// Derivations stay React-free while sharing the renderer's catalogue runtime.
+import { t } from "../../../../i18n";
 /**
  * The Code review pane's copy and its derivations, as pure functions.
  *
@@ -47,9 +49,9 @@ const LANE_ORDER = ["agent", "design", "qa", "ux"] as const;
 export function laneDisplayName(lane: string): string {
 	switch (lane) {
 		case "agent":
-			return "Code";
+			return t("ui.code_review.code_review_model.code");
 		case "design":
-			return "Design";
+			return t("ui.code_review.code_review_model.design");
 		case "qa":
 			return "QA";
 		case "ux":
@@ -68,11 +70,21 @@ type LaneState =
 	| "unstated";
 
 const LANE_STATE_WORDS: Record<LaneState, string> = {
-	findings_open: "findings open",
-	remediation_posted: "remediation posted",
-	clean: "clean",
-	terminal: "terminal",
-	unstated: "reviewed — verdict not stated",
+	get findings_open() {
+		return t("ui.code_review.lane.state.findings_open");
+	},
+	get remediation_posted() {
+		return t("ui.code_review.lane.state.remediation_posted");
+	},
+	get clean() {
+		return t("ui.code_review.lane.state.clean");
+	},
+	get terminal() {
+		return t("ui.code_review.lane.state.terminal");
+	},
+	get unstated() {
+		return t("ui.code_review.lane.state.unstated");
+	},
 };
 
 /**
@@ -89,7 +101,8 @@ export function laneStateClause(lane: {
 	state: string;
 	round?: number | null;
 }): string {
-	if (lane.state === "awaiting_review") return "No agent review yet";
+	if (lane.state === "awaiting_review")
+		return t("ui.code_review.code_review_model.no_agent_review_yet");
 	const word = LANE_STATE_WORDS[lane.state as LaneState] ?? lane.state.trim();
 	/*
 	 * `remediation posted` alone does not say what is being waited on (design
@@ -97,7 +110,9 @@ export function laneStateClause(lane: {
 	 * re-review", and the clause carries it so the row reads at a glance.
 	 */
 	const state =
-		lane.state === "remediation_posted" ? `${word} · awaiting re-review` : word;
+		lane.state === "remediation_posted"
+			? t("ui.code_review.lane.awaiting_rereview", { state: word })
+			: word;
 	/*
 	 * A lane whose latest comment carried no placeable round prints the state
 	 * WITHOUT a number. "Round undefined" was the defect F2 caught: the wire
@@ -106,7 +121,7 @@ export function laneStateClause(lane: {
 	 */
 	const round = lane.round;
 	if (typeof round === "number" && Number.isFinite(round)) {
-		return `Round ${round} · ${state}`;
+		return t("ui.code_review.lane.round", { round: String(round), state });
 	}
 	return state;
 }
@@ -129,9 +144,10 @@ export function laneFreshnessClause(
 	if (lane.freshness !== "stale") return null;
 	const reviewed = lane.reviewed_head?.slice(0, 7) ?? "";
 	const head = headSha?.slice(0, 7) ?? "";
-	if (reviewed && head) return `stale — reviewed ${reviewed}, head ${head}`;
-	if (reviewed) return `stale — reviewed ${reviewed}`;
-	return "stale";
+	if (reviewed && head)
+		return t("ui.code_review.lane.stale_head", { reviewed, head });
+	if (reviewed) return t("ui.code_review.lane.stale_reviewed", { reviewed });
+	return t("ui.code_review.lane.stale");
 }
 
 /** One rendered lane row: the name, its segment strip, and the joined clause. */
@@ -313,17 +329,33 @@ export function statePill(row: CodeRequestRow): {
 } | null {
 	const summary = row.summary;
 	if (!summary) return null;
-	if (summary.draft) return { label: "Draft", variant: "outline" };
+	if (summary.draft)
+		return {
+			label: t("ui.code_review.code_review_model.draft"),
+			variant: "outline",
+		};
 	switch (summary.state) {
 		case "open":
-			return { label: "Open", variant: "info" };
+			return {
+				label: t("ui.code_review.code_review_model.open"),
+				variant: "info",
+			};
 		case "merged":
-			return { label: "Merged", variant: "success" };
+			return {
+				label: t("ui.code_review.code_review_model.merged"),
+				variant: "success",
+			};
 		case "closed":
-			return { label: "Closed", variant: "neutral" };
+			return {
+				label: t("ui.code_review.code_review_model.closed"),
+				variant: "neutral",
+			};
 		default:
 			return {
-				label: summary.state.trim() === "" ? "Unknown" : summary.state.trim(),
+				label:
+					summary.state.trim() === ""
+						? t("ui.code_review.code_review_model.unknown")
+						: summary.state.trim(),
 				variant: "neutral",
 			};
 	}
@@ -354,28 +386,55 @@ export function ciClause(
 	const passed = finite(ci.passed);
 	const total = finite(ci.total);
 	if (failed !== null && failed > 0) {
-		return { text: `${failed} failing`, tone: "danger" };
+		return {
+			text: t("ui.code_review.ci.failing", { count: String(failed) }),
+			tone: "danger",
+		};
 	}
 	if (ci.status === "failure") {
-		return { text: "CI failing", tone: "danger" };
+		return {
+			text: t("ui.code_review.code_review_model.ci_failing"),
+			tone: "danger",
+		};
 	}
 	if (ci.status === "none" || (total !== null && total === 0)) {
-		return { text: "No checks yet", tone: "muted" };
+		return {
+			text: t("ui.code_review.code_review_model.no_checks_yet"),
+			tone: "muted",
+		};
 	}
 	if (pending !== null && pending > 0) {
-		return { text: "CI running", tone: "muted" };
+		return {
+			text: t("ui.code_review.code_review_model.ci_running"),
+			tone: "muted",
+		};
 	}
 	if (ci.status === "pending") {
-		return { text: "CI pending", tone: "muted" };
+		return {
+			text: t("ui.code_review.code_review_model.ci_pending"),
+			tone: "muted",
+		};
 	}
 	if (ci.status === "unknown") {
-		return { text: "No checks yet", tone: "muted" };
+		return {
+			text: t("ui.code_review.code_review_model.no_checks_yet"),
+			tone: "muted",
+		};
 	}
 	if (total !== null && total > 0 && passed !== null) {
-		return { text: `${passed}/${total} passed`, tone: "plain" };
+		return {
+			text: t("ui.code_review.ci.passed", {
+				passed: String(passed),
+				total: String(total),
+			}),
+			tone: "plain",
+		};
 	}
 	if (ci.status === "success") {
-		return { text: "CI passed", tone: "plain" };
+		return {
+			text: t("ui.code_review.code_review_model.ci_passed"),
+			tone: "plain",
+		};
 	}
 	/* A settled run this build cannot classify: claim nothing. */
 	return null;
@@ -539,7 +598,9 @@ export function needsAttention(rows: readonly CodeRequestRow[]): boolean {
  * field is absent.
  */
 export function refreshCaption(row: CodeRequestRow): string | null {
-	return row.refresh_error ? `Couldn't refresh: ${row.refresh_error}` : null;
+	return row.refresh_error
+		? t("ui.code_review.row.refresh_error", { error: row.refresh_error })
+		: null;
 }
 
 /**
@@ -633,21 +694,27 @@ export function rowNotice(row: CodeRequestRow): string | null {
 			return row.refresh_error ? refreshCaption(row) : (row.reason ?? null);
 		case "stale":
 			return row.refresh_error
-				? `Stale — last known, not current: ${row.refresh_error}`
-				: "Stale — last known state, not current.";
+				? t("ui.code_review.row.stale_error", { error: row.refresh_error })
+				: t(
+						"ui.code_review.code_review_model.stale_last_known_state_not_current",
+					);
 		case "unauthenticated":
 			/* The resolved no-login outcome - the remedy lives here. */
 			return row.reason ?? linkOnlyRemedy(row);
 		case "cooling":
 			return (
 				row.reason ??
-				"Cooling — this host is rate-limited; nothing was fetched yet."
+				t(
+					"ui.code_review.code_review_model.cooling_this_host_is_rate_limited_nothing_was_fetched_yet",
+				)
 			);
 		case "failed":
 			return (
 				row.reason ??
 				refreshCaption(row) ??
-				"Couldn't fetch this pass — will retry."
+				t(
+					"ui.code_review.code_review_model.couldn_t_fetch_this_pass_will_retry",
+				)
 			);
 		case "untracked":
 			/* The hint is a genuine "not tracked" signal here. */
@@ -676,7 +743,10 @@ export function coolingClauses(
 			const time = `${String(at.getHours()).padStart(2, "0")}:${String(
 				at.getMinutes(),
 			).padStart(2, "0")}`;
-			return `${forgeDisplayName(host)} rate-limited until ${time}.`;
+			return t("ui.code_review.host.cooling", {
+				host: forgeDisplayName(host),
+				time,
+			});
 		});
 }
 
@@ -692,7 +762,7 @@ export function forgeDisplayName(host: string): string {
  * (§7), singular spelled by the function rather than a hand-written plural.
  */
 export function chipClause(count: number): string {
-	return count === 1 ? "1 code request" : `${count} code requests`;
+	return t("ui.code_review.chip.count", { count });
 }
 
 /**
@@ -711,8 +781,12 @@ export function chipLabel(
 	open = false,
 ): string {
 	const halves = [
-		opened > 0 ? `${opened} opened` : null,
-		mentioned > 0 ? `${mentioned} mentioned` : null,
+		opened > 0
+			? t("ui.code_review.chip.opened", { count: String(opened) })
+			: null,
+		mentioned > 0
+			? t("ui.code_review.chip.mentioned", { count: String(mentioned) })
+			: null,
 	].filter((half): half is string => half !== null);
 	const details = halves.length > 0 ? `, ${halves.join(" · ")}` : "";
 	const mark = cause ? `, ${cause}` : "";
@@ -723,7 +797,9 @@ export function chipLabel(
 	 * screen. The rail item relabels itself the same way; the press still
 	 * never closes, so this is a state statement, not a toggle's label.
 	 */
-	const lead = open ? "Code review is showing" : "Open code review";
+	const lead = open
+		? t("ui.code_review.code_review_model.code_review_is_showing")
+		: t("ui.code_review.code_review_model.open_code_review");
 	return `${lead} — ${chipClause(count)}${details}${mark}`;
 }
 
@@ -736,7 +812,9 @@ export function chipLabel(
  */
 export function linkOnlyRemedy(row: CodeRequestRow): string {
 	const hint = row.link_only_hint?.trim();
-	return hint && hint !== "" ? hint : "Link only";
+	return hint && hint !== ""
+		? hint
+		: t("ui.code_review.code_review_model.link_only");
 }
 
 /**
@@ -745,7 +823,10 @@ export function linkOnlyRemedy(row: CodeRequestRow): string {
  * as exact (agent review F8).
  */
 export function toolOutputNote(count: number, truncated: boolean): string {
-	return `${count}${truncated ? "+" : ""} more seen in tool output`;
+	return t("ui.code_review.tool.more", {
+		count: String(count),
+		capped: truncated ? "+" : "",
+	});
 }
 
 /**
@@ -786,10 +867,10 @@ export function rowAriaLabel(row: CodeRequestRow): string {
 	if (clauses.length > 0) {
 		parts.push(clauses.join("; "));
 	} else if (rowIsLoading(row)) {
-		parts.push("fetching its current state");
+		parts.push(t("ui.code_review.row.fetching"));
 	} else if (row.link_only) {
 		parts.push(linkOnlyRemedy(row));
 	}
-	parts.push("opens in your browser");
+	parts.push(t("ui.code_review.row.opens_browser"));
 	return parts.join(", ");
 }
