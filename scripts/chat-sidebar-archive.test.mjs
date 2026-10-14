@@ -572,13 +572,19 @@ test("the archived state is a pill badge with its own restore control beside it"
 	 * marker was `{/*\n\t\t\t\t * THE CONVERSATION'S OWN MENU`, which a sliced source can never
 	 * match: `code()` STRIPS comments on purpose, "so a rule can never be satisfied by prose
 	 * about the rule". It never matched, `between` fell through to the end of the file, and the
-	 * array's assertions were being asked of the whole header. `<DropdownMenu>` is the next
-	 * element after the pill block and is the boundary this slice wants.
+	 * array's assertions were being asked of the whole header. The menu root's own opener is the
+	 * next element after the pill block and is the boundary this slice wants.
+	 *
+	 * MATCHED WITHOUT ITS PROPS (re-spelled 2026-10-14), so the marker survives the root gaining
+	 * attributes: it used to be the literal `<DropdownMenu>`, and making the menu controlled
+	 * (`open={menuOpen}` and the rest) turned it into `<DropdownMenu` + props - which broke this
+	 * slice with "no longer contains \"<DropdownMenu>\"". The bare opener still names the same
+	 * element, and a future prop addition cannot re-break it.
 	 */
 	const pill = between(
 		HEADER,
 		"archiveEnabled && archived && (",
-		"<DropdownMenu>",
+		"<DropdownMenu",
 	);
 	const source = code(HEADER);
 	const at = source.indexOf("data-session-archived-pill");
