@@ -34,6 +34,18 @@ that did not answer, and `Ask again`) and `approvals-machine-authority` (the
 `local_authority` kind's machine-block head) - which brings the set to the **forty-five**
 below; their BEFORE halves are `approvals-before/` inside this set (see its own paragraph).
 
+**The quiet-settled-section pass (operator ask, 2026-10-13) re-shoots the twelve and adds a
+thirteenth** - the settled section became a named, already-closed `Settled approvals (N)`
+with the failure signalled in its summary, and the tray dropped its bordered panel for the
+app's borderless list register, so every approvals frame's copy moved and the twelve were
+re-taken. `approvals-stopped-open` is the added state (design round 1, D3): the section
+opened by the reader over a `failed` record, which is the only frame that renders the one
+coloured state ink (`text-danger`) and the `Abandon` write - `approvals-stopped` is
+deliberately shut and `approvals-stopped-refused` closes the section before its frame. That
+brings the set to the **forty-six** below; the run is
+`node scripts/capture-evidence.mjs --only=mesh-tab--approval
+--themes=localOperatorLight,localOperatorDark --allow-backend`.
+
 **The approvals pair is `approvals-before/` inside this set** (design round 1, D5). Its
 three states - `approvals-waiting`, `approvals-decision-writes` and `approval-refused` -
 are the same three this set carries as their after halves, rendered by `origin/main`'s
@@ -135,7 +147,7 @@ node scripts/capture-evidence.mjs --only=mesh-tab--approval \
 swapped in for the run, as its pair paragraph records.
 
 **Two conventions for reading the played frames.** The 2px accent ring around a pressed
-control (the `Records` toggle in the two open frames, and the same ring the dialog rows in
+control (the `Settled approvals` toggle in the two open frames, and the same ring the dialog rows in
 this set carry) is the story `play`'s programmatic focus, not an open-state style a pointer
 user sees (design round 1, D8). And every approvals story whose frame follows an interaction
 holds the rig's own shutter latch - `holdShutter`, mirrored from `agent-hub.stories.tsx`,
@@ -315,10 +327,11 @@ missing row proves nothing a reader could check.
 | `many-conversations-bottom/…` | the same panel parked at its maximum scroll | the state the stacking claim lives in (design round 1, D3): below the whole catalogue come Network addresses, Status, Reach, Last status frame and Show in list as one clean column - every frame before it showed the list's top only, so "the sections stack below the list" had no frame of its own |
 | `approvals-waiting/…` | one record WAITING on the operator | the prompt the live panel exists for, and nothing else on it: the summary sentence (one sentence - it wraps to two lines at app width, design round 1, D6), the countdown, Approve/Deny/`Details`. NO `play`, on purpose: the still is the ASKING state |
 | `approvals-details-open/…` | the `Details` disclosure OPEN | requirement 3's rendered evidence (design round 1, D1): the per-scope consequence list, the `where · hostKey` provenance and the `Signing` gloss, one click from the sentence |
-| `approvals-records/…` | records only, section collapsed | a settled request leaves the live panel: no count over the flight (`Records (3)` and nothing else), and nothing settled wears `Deny` |
-| `approvals-records-open/…` | the same, expanded | the row leads with the ask's title alone (UX round 1, U2) - not the six-clause decision sentence per row - with its one remaining write (`Stop`; never `Deny` beside `Approved`) |
-| `approvals-mixed/…`, `approvals-mixed-narrow/…` | two waiting + two settled in ONE card, at 1380x900 and 1024x768 | the everyday shape the split creates (design round 1, D2; UX round 1, U4): `2 waiting` above a closed `Records (2)`, the `gap-3` between the lists, and the summary's own wrap at the narrow width |
-| `approvals-stopped/…` | a runner that stopped | the one state whose section opens itself: `Failed`, the card's own note (it stays retryable until its window closes; `Abandon` denies the request - UX round 1, U1), and an intentional absence: no countdown on a stopped runner (D3/U3) |
+| `approvals-records/…` | settled records, section collapsed | a settled request leaves the live panel and collapses into a stated section: no count over the flight, nothing settled wears `Deny`, and the tray draws no bordered panel (operator ask, 2026-10-13 - the quiet totals the app's borderless list sections) |
+| `approvals-records-open/…` | the same, expanded by the reader | the row leads with the ask's title alone (UX round 1, U2) - not the six-clause decision sentence per row - with its one remaining write (`Stop`; never `Deny` beside `Approved`), and its state as a line of text rather than a chip |
+| `approvals-mixed/…`, `approvals-mixed-narrow/…` | two waiting + two settled in ONE group, at 1380x900 and 1024x768 | the everyday shape the split creates (design round 1, D2; UX round 1, U4): `2 waiting` above a closed `Settled approvals (2)`, the `gap-3` between the lists, and the summary's own wrap at the narrow width |
+| `approvals-stopped/…` | a runner that stopped | the one state whose section used to open ITSELF: it stays shut now (operator ask, 2026-10-13) and the failure is signalled by the quiet danger dot **and the words `1 failed`** (`text-danger`) in the closed summary (design round 1, D2 added the text), so a settled record does not greet the reader expanded while the state a person should not miss is still visible |
+| `approvals-stopped-open/…` | the same, opened by the reader | design round 1's D3 frame: the `Failed` state line in `text-danger` (the tray's one coloured state ink) with the stopped-runner note and the `Abandon` write - neither was on a committed frame before, because the shut frame above and `approvals-stopped-refused` (which closes the section) both leave them unrendered |
 | `approvals-stopped-refused/…` | a refusal that outlives its section | D1's second arm: `Abandon` refused (`approval_already_connected`), the section closed, and the sentence + code still on screen under the list - the case a naive attach would swallow |
 | `approvals-decision-writes/…` | the approve, executed | the button writes, the read moves, and the record lands in the opened section as `Approved` wearing `Stop` - with the count that read `1 waiting` over it gone |
 | `approval-refused/…` | a decision the store refused | the sentence travels verbatim and the code rides BESIDE it on one wrapped row (the fix design round 1, D7 re-measured against the before twin); the card stays waiting |

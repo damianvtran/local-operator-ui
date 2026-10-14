@@ -1943,16 +1943,16 @@ export const ApprovalsRecordsOpen: Story = {
 	play: async () => {
 		const user = userEvent.setup();
 		await user.click(
-			await screen.findByRole("button", { name: /^Records \(/ }),
+			await screen.findByRole("button", { name: /^Settled approvals \(/ }),
 		);
 	},
 };
 
 /**
  * The everyday shape the split creates (design round 1, D2; UX round 1, U4):
- * a waiting prompt AND the records section in ONE card — here two waiting
- * requests above `Records (2)` at rest, closed. The `gap-3` between the
- * waiting list and the toggle, and the divider behaviour around both lists,
+ * a waiting prompt AND the settled section in ONE group — here two waiting
+ * requests above the closed `Settled approvals (2)` toggle. The `gap-3` between
+ * the waiting list and the toggle, and the divider behaviour around both lists,
  * are only visible in this composition; every earlier frame carried either a
  * prompt or record rows, never both. Two waiting rows also answer U4(b) -
  * the "several waiting + several settled" panel the operator actually meets -
@@ -1992,8 +1992,11 @@ export const ApprovalsMixed: Story = {
 
 /**
  * A stopped runner: `failed` is the one record state the store says "a person
- * should not miss", so the section opens itself while one is inside, and the
- * record's remaining write wears its consequence - "Abandon", never "Deny".
+ * should not miss", and the operator's literal ask is that it NOT greet the
+ * reader expanded (operator ask, 2026-10-13) — so the section stays SHUT and
+ * the failure is carried by the quiet danger dot in the closed summary, which
+ * is what this frame photographs. The remaining write still wears its
+ * consequence — "Abandon", never "Deny" — one press away inside the section.
  */
 export const ApprovalsStopped: Story = {
 	render: () => {
@@ -2010,6 +2013,44 @@ export const ApprovalsStopped: Story = {
 			],
 		});
 		return <MeshPage />;
+	},
+};
+
+/**
+ * A stopped runner with its section OPENED by the reader (design round 1, D3):
+ * `stateInk("failed")` is the tray's one coloured state ink and `Abandon` is a
+ * settled row's write, and neither was rendered in a committed frame — the
+ * `approvals-stopped` frame is deliberately SHUT, and `ApprovalsStoppedRefused`
+ * opens the section but is captured after closing it. So this state exists to
+ * put the coloured state line and the `Abandon` button on a picture.
+ *
+ * The play presses the toggle, so the frame and `aria-expanded` cannot
+ * disagree, and the shutter latch holds the rig until the row is drawn (design
+ * round 1, D9).
+ */
+export const ApprovalsStoppedOpen: Story = {
+	render: () => {
+		installBridge({
+			...singleDeviceFixture(),
+			approvals: [
+				approvalRecord({
+					approval_id: "ap_f4i1l2e3d4x",
+					state: "failed",
+					name: "lab-node",
+					host: "lab-node.local",
+					user: "ops",
+				}),
+			],
+		});
+		holdShutter('[data-tour-tag="mesh-approvals-records"]');
+		return <MeshPage />;
+	},
+	play: async () => {
+		const user = userEvent.setup();
+		await user.click(
+			await screen.findByRole("button", { name: /^Settled approvals \(/ }),
+		);
+		await screen.findByRole("button", { name: "Abandon" });
 	},
 };
 
@@ -2048,16 +2089,20 @@ export const ApprovalsStoppedRefused: Story = {
 	},
 	play: async () => {
 		const user = userEvent.setup();
-		/* The section opened itself on the failed record; abandon it, and the
-		   store answers with the sentence below. Five seconds, for the same
+		/* The section starts shut (operator ask, 2026-10-13) — nothing opens it but
+		   the press, not the failed record inside. Open it, abandon the record, and
+		   the store answers with the sentence below. Five seconds, for the same
 		   retry-backoff reason as `ApprovalRefused`'s own wait. */
+		await user.click(
+			await screen.findByRole("button", { name: /^Settled approvals \(/ }),
+		);
 		await user.click(await screen.findByRole("button", { name: "Abandon" }));
 		await screen.findByText(/already connected/, undefined, {
 			timeout: 5_000,
 		});
 		/* Close the section: the refusal must re-home under the list. */
 		await user.click(
-			await screen.findByRole("button", { name: /^Records \(/ }),
+			await screen.findByRole("button", { name: /^Settled approvals \(/ }),
 		);
 		await waitFor(() =>
 			expect(
@@ -2092,7 +2137,7 @@ export const ApprovalsDecisionWrites: Story = {
 		await user.click(await screen.findByRole("button", { name: "Approve" }));
 		/* The record LEFT the panel: no waiting count, one record in the section. */
 		await user.click(
-			await screen.findByRole("button", { name: /^Records \(/ }),
+			await screen.findByRole("button", { name: /^Settled approvals \(/ }),
 		);
 		await screen.findByText("Approved");
 	},
