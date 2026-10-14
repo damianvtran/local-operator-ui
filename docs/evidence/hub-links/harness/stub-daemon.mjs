@@ -188,6 +188,18 @@ const route = (method, pathname, query, body) => {
 	if (method === "POST" && pathname === "/v1/desktop/claim") {
 		return ok({ claimed: true });
 	}
+	/*
+	 * The app's ATTACH PROBE: `backend-service.ts` probes the daemon with a
+	 * one-row session list before it attaches, and a 503 here reads as "answered
+	 * this app's desktop read with HTTP 503" — the app then refuses to attach and
+	 * every surface shows "Server is offline", which is what the first run of this
+	 * scene measured. An EMPTY list is the honest answer (this fixture has no
+	 * sessions; the hub frames are about a rule's policy, not a transcript), and
+	 * it answers the probe the way a real daemon with no sessions would.
+	 */
+	if (method === "GET" && pathname === "/v1/desktop/sessions") {
+		return ok({ sessions: [], truncated: false });
+	}
 	if (method === "GET" && pathname === "/v1/capabilities") {
 		return ok({
 			desktop_contract: 1,
