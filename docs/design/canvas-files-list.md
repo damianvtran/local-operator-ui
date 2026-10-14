@@ -119,6 +119,60 @@ most rows did not need. The line is inline, so a clash costs no row height; on
 every other row the line goes to the name, which is the thing being scanned.
 `docs/evidence/canvas-workspace/files-narrow/` is that width, rendered.
 
+### Generated media is a row too, and has no path (artifact rows)
+
+`generate_image` and `generate_video` register their output in the attachment
+store (`cache_media`) and the transcript carries only the content DIGEST: a
+`record.images[]` entry with `kind`/`attachment`/`name`/dimensions on an image
+result, `attached: digest <hex>, <hex>` in a video result's text (a video
+receipt has no content block at all). A path-only list could not see any of it:
+in the session this was found in, 69 generated pictures produced no rows, and
+`read` of an attachment `.bin` produced a junk `other` tile for a file nothing
+can open. The list now has a second kind of row, and these are the decisions:
+
+- **The identity is `artifact:<digest>`, in the document's `id` AND `path`**
+  (`utils/artifact-identity.ts`). Content-addressed, so the store's dedupe by id
+  collapses the same picture mentioned in a block, in prose and in a later `read`
+  to one row; and never a valid path (no leading `/` or `~`, no extension), so a
+  consumer that forgets to branch on it fails closed - nothing probes, reads or
+  reveals it - rather than asking the disk for a file called `artifact:...`.
+  The facts ride on an optional `CanvasDocument.artifact`
+  (`{digest, kind, sessionId, contentType?, name?, sizeBytes?, width?, height?,
+  durationS?}`), which a persisted store written before it existed simply lacks.
+  `FileRow.artifact` lifts it so the row branches on one field.
+- **Admission is by evidence, in three places** (`mentioned-files.ts`, source
+  `artifact`): an image block the reducer marked with `kind` (a legacy block - a
+  browser screenshot - is not generated media and is NOT admitted); `digest <hex>`
+  in the result text of exactly `generate_image`, `generate_video` and
+  `video_status` (32 hex characters in `bash` output are a hash, not an artifact);
+  and a read path of the form `.../attachments/<digest>.bin`, mapped to the
+  artifact it names instead of a `.bin` tile.
+- **The thumbnail is the transcript's own resolver.** `useAttachmentSource`
+  fetches the bytes by `(sessionId, digest)` over the media relay into the same
+  refcounted blob cache the chat's pictures use, so a picture already on screen
+  in the chat costs the row nothing. An artifact VIDEO wears the video glyph: a
+  poster frame would mean fetching and decoding a whole clip per row.
+- **Nothing here touches the disk.** The scanner does not stat an artifact (a
+  probe could only answer "missing" and stamp a receipt on a fine picture), the
+  freshness bar is not drawn for one (it states a file's last write; the bytes are
+  immutable), and the tab's tooltip is the title, not the identity.
+- **The directory line's tiebreak is the digest head** (`ARTIFACT_TIEBREAK_LENGTH`
+  = 8 hex), in the directory's slot, drawn on a name clash only - models name
+  their outputs from a template, so 69 pictures shared three names. It is also
+  searchable, with the kind word.
+- **Actions are the shipped picture menu's** (`ImageActionsMenu`, the `artifact`
+  set in `utils/image-actions.ts`): Show in canvas, Save as... (the platform's
+  save dialog through a `blob:` download, so the app never names a path) and, for
+  a picture, Copy image. Open file / Open folder / Copy file path are absent by
+  construction until a backend can materialise a file.
+- **Known limit, pinned by a test:** a pruned tool result keeps no digest anywhere
+  in the transcript today, so it yields no row. Surfacing those wants the backend
+  to record the digest in the result's `details` (a follow-up that needs no UI
+  change beyond reading it).
+
+Evidence: `docs/evidence/files-artifacts/` - the same session before and after,
+two palettes by two widths, plus the row menu and both viewers.
+
 ---
 
 ## 2. Search

@@ -39,6 +39,7 @@
 
 import { desktopMedia } from "@shared/api/local-operator/desktop-api";
 import {
+	blobAt,
 	createBlobUrl,
 	peek,
 	publish,
@@ -155,6 +156,41 @@ function fetchAttachment(
 	})();
 	inflight.set(digest, record);
 	return record.promise;
+}
+
+/**
+ * One digest's bytes as a `Blob`, fetched on demand and held by nobody.
+ *
+ * For an action (`Copy image`, `Save as...`) on a surface that does not paint the
+ * picture itself - a Files row mounts one menu per row and resolves only the
+ * thumbnails in view. A warm cache entry is reused (`blobAt` on the painted
+ * URL); otherwise the bytes come over the same media relay as `fetchAttachment`
+ * but are NOT published into the refcounted URL cache: nothing would retain an
+ * entry created for a single action, and an unretained entry is the leak that
+ * cache's rules exist to prevent. Throws a sentence a toast can carry.
+ */
+export async function fetchAttachmentBlob(
+	scope: AttachmentScope,
+	digest: string,
+): Promise<Blob> {
+	const warm = peek(digest);
+	const held = warm ? blobAt(warm) : null;
+	if (held) return held;
+	const result = await desktopMedia(
+		scope.childId
+			? {
+					op: "subagents.attachment",
+					sessionId: scope.sessionId,
+					childId: scope.childId,
+					digest,
+				}
+			: { op: "sessions.attachment", sessionId: scope.sessionId, digest },
+		null,
+	);
+	if (result.kind !== "bytes") {
+		throw new Error("These image bytes are not available");
+	}
+	return new Blob([result.data as BlobPart], { type: result.mimeType });
 }
 
 /** One requester stopped waiting. The last one to leave discards the result. */
