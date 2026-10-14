@@ -1480,13 +1480,16 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			/** The peer-scoped declaration; see `sessions.get` above. */
 			peerJournalSource: z.boolean().optional(),
 			/*
-			 * THE FACTS-ONLY SOURCE PURPOSE (`source_read=metadata`, peer sessions
-			 * only). `payload` is DELIBERATELY absent from this union until its own
-			 * slice consumes bodies: a purpose IS a complete read, and emitting one
-			 * whose facts the viewer cannot settle is the partial release the
-			 * contract forbids (docs/DESKTOP_API.md, the purpose table).
+			 * THE TYPED SOURCE PURPOSES (`source_read`, peer sessions only).
+			 * `metadata` is the facts-only lookup; `payload` is the verified
+			 * body-subset read and REQUIRES `expectedJournalGeneration` beside it -
+			 * the builder below withholds the purpose entirely without that fence,
+			 * because a payload answer whose expected domain the caller cannot state
+			 * is the partial release the contract forbids (docs/DESKTOP_API.md, the
+			 * purpose table: "Expected accepted generation REQUIRED; fresh projected
+			 * bodies and same-read coordinates together").
 			 */
-			sourceRead: z.literal("metadata").optional(),
+			sourceRead: z.enum(["metadata", "payload"]).optional(),
 			/*
 			 * The lookup's domain fence: the generation the caller's loaded records
 			 * belong to. The owner answers a mismatch as `unavailable` with the
@@ -6046,7 +6049,21 @@ export function desktopEndpoint(request: DesktopRequest): {
 				 * hop (the ids ARE the lookup; the opt-in is how they travel).
 				 */
 				if (request.peerJournalSource) query.set("peer_journal_source", "1");
-				if (request.sourceRead) query.set("source_read", request.sourceRead);
+				/*
+				 * THE PAYLOAD FENCE IS EMISSION, not advice: a payload purpose is
+				 * emitted only when the caller can state the expected generation
+				 * (the same absence-of-field discipline as every other bounded
+				 * negotiation here - the request degrades to an ordinary
+				 * journal-order read rather than emitting a purpose whose facts
+				 * could not be settled). `metadata` keeps its optional fence.
+				 */
+				if (request.sourceRead === "metadata")
+					query.set("source_read", "metadata");
+				else if (
+					request.sourceRead === "payload" &&
+					request.expectedJournalGeneration
+				)
+					query.set("source_read", "payload");
 				if (request.expectedJournalGeneration)
 					query.set(
 						"expected_journal_generation",
