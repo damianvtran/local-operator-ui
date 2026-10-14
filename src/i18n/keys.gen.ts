@@ -162,6 +162,7 @@ export type MessageParams = {
 	"ui.hub.links.preview_payload": { source: string };
 	"ui.hub.links.preview_pull": undefined;
 	"ui.hub.links.preview_warnings": undefined;
+	"ui.hub.links.publication_pending": undefined;
 	"ui.hub.links.published": { item: string; source: string };
 	"ui.hub.links.retry": undefined;
 	"ui.hub.links.source_address": { address: string };
@@ -171,12 +172,15 @@ export type MessageParams = {
 	"ui.hub.links.title": undefined;
 	"ui.hub.links.unknown_baseline": undefined;
 	"ui.hub.links.updated": { item: string; source: string };
+	"ui.hub.skills.catalogue_failed": { source: string };
 	"ui.hub.skills.empty": undefined;
 	"ui.hub.skills.file_count": { count: number };
 	"ui.hub.skills.files": undefined;
 	"ui.hub.skills.initial_policy_description": undefined;
+	"ui.hub.skills.installed_alias": { item: string; source: string };
 	"ui.hub.skills.loading": undefined;
 	"ui.hub.skills.local_exists": undefined;
+	"ui.hub.skills.open_detail": { item: string };
 	"ui.hub.skills.policy_pending": undefined;
 	"ui.hub.skills.publish_title": undefined;
 	"ui.hub.skills.pull_failed": undefined;
@@ -185,8 +189,11 @@ export type MessageParams = {
 	"ui.hub.skills.remote_empty": undefined;
 	"ui.hub.skills.revision": { revision: string };
 	"ui.hub.skills.scope": { source: string };
+	"ui.hub.skills.search": undefined;
 	"ui.hub.skills.search_empty": undefined;
+	"ui.hub.skills.search_loaded": undefined;
 	"ui.hub.skills.select_authored": undefined;
+	"ui.hub.skills.session_selection": undefined;
 	"ui.hub.skills.text_limits": undefined;
 	"ui.hub.skills.title": undefined;
 	"ui.hub.skills.unavailable": undefined;
