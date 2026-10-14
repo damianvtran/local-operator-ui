@@ -4,10 +4,11 @@ import { build } from "esbuild";
 
 /*
  * THE COMPLETE PEER-SOURCE CONTRACT'S CONSUMER HALF, driven through the REAL
- * hook (stage S1): the `peer_journal_source` declaration's peer scoping on the
- * subscription and the reads, the facts-only `source_read=metadata` lookup the
- * cached-ID order repair is re-pointed to, and the ONE coalesced authoritative
- * session GET an owed reconcile settles through.
+ * hook (the unified consumer): the `peer_journal_source` declaration's peer
+ * scoping on the subscription and the reads, the facts-only
+ * `source_read=metadata` lookup the cached-ID order repair takes, the typed
+ * `source_read=payload` subset that admits the bodies those facts owed, and the
+ * ONE coalesced authoritative session GET an owed reconcile settles through.
  *
  * HOW. The same harness `scripts/frontend-replace.test.mjs` uses: the shipped
  * hook, the shipped store and the shipped reducer, with a cell-based React
@@ -431,7 +432,7 @@ test("the declaration rides a peer subscription; a local conversation's stays ab
 	assert.equal(subscriptions.at(-1).args.peerJournalSource, undefined);
 });
 
-test("a peer conversation's cached IDs resolve through the facts-only lookup, with the exact wire shape", async () => {
+test("a peer conversation's cached IDs resolve through the facts-only lookup, then the typed payload subset, with the exact wire shape", async () => {
 	const h = await peerMount({
 		// One cached row the page could not attest: it drives the repair.
 		history: page([messageRow(ROW_EARLY, "where am I?")], "peer-A"),
@@ -445,6 +446,15 @@ test("a peer conversation's cached IDs resolve through the facts-only lookup, wi
 					journal_generation: "peer-A",
 					journal_ordinals: { [ROW_EARLY]: 3 },
 					journal_missing_ids: [],
+				};
+			if (request.sourceRead === "payload")
+				return {
+					entries: [{ ...messageRow(ROW_EARLY, "where am I?"), journal_seq: 3 }],
+					has_more: false,
+					cursor_missing: false,
+					journal_order_state: "ready",
+					journal_generation: "peer-A",
+					source_present_ids: [ROW_EARLY],
 				};
 			return { entries: [], has_more: false, cursor_missing: false };
 		},
@@ -462,7 +472,24 @@ test("a peer conversation's cached IDs resolve through the facts-only lookup, wi
 	assert.ok(built.includes("source_read=metadata"), built);
 	assert.ok(built.includes("peer_journal_source=1"), built);
 	assert.ok(built.includes("expected_journal_generation=peer-A"), built);
-	// No order-carrying session GET was needed: the lookup settled the sweep.
+	/*
+	 * THE OTHER HALF OF THE CHAIN (the unified commit): the facts lookup proves
+	 * the coordinate and OWES the body, and the typed payload subset is what
+	 * admits it under the accepted generation with its own coordinate. The old
+	 * S1 reading settled the row on the lookup's coordinate alone - which the
+	 * complete contract forbids (a coordinate is not a body).
+	 */
+	const payload = requests.find(
+		(request) => request.sourceRead === "payload",
+	);
+	assert.ok(payload, "the owed body took the typed payload subset");
+	assert.equal(payload.peerJournalSource, true);
+	assert.equal(payload.expectedJournalGeneration, "peer-A");
+	assert.ok(payload.orderIds.includes(ROW_EARLY));
+	const payloadPath = desktopEndpoint(payload).path;
+	assert.ok(payloadPath.includes("source_read=payload"), payloadPath);
+	assert.ok(payloadPath.includes("expected_journal_generation=peer-A"), payloadPath);
+	// No order-carrying session GET was needed: the pair settled the sweep.
 	assert.equal(
 		requests.filter(
 			(request) =>
@@ -475,7 +502,7 @@ test("a peer conversation's cached IDs resolve through the facts-only lookup, wi
 	assert.equal(record.journalGeneration, "peer-A");
 });
 
-test("a delta-born row settles through the facts-only lookup; the unconsumed family is inert (stage S2's evidence)", async () => {
+test("a delta-born row's accepted family is admitted atomically at its owner-stamped ordinal (no supporting wake)", async () => {
 	const h = await peerMount({
 		history: page(
 			[
@@ -492,21 +519,23 @@ test("a delta-born row settles through the facts-only lookup; the unconsumed fam
 					cursor_missing: false,
 					journal_order_state: "ready",
 					journal_generation: "peer-A",
-					// THE DISCRIMINATOR: the lookup says 1; the delta's own family
-					// below says 41. S1 consumes only the lookup.
 					journal_ordinals: Object.fromEntries(
-						request.orderIds.map((id) => [id, id === ROW_MISSED ? 1 : 0]),
+						request.orderIds.map((id) => [id, 0]),
 					),
 				};
 			return { entries: [], has_more: false, cursor_missing: false };
 		},
 	});
 	const before = repairReads().length;
-	// A recovery delta carrying a row this viewer never streamed — WITH the
-	// complete contract's family keys beside it, exactly as a declared
-	// subscriber now receives them. Stage S1 does NOT fold the family (that is
-	// S2's witnessed-path consumption); the row must still settle, through the
-	// same facts-only lookup every other cached id takes.
+	/*
+	 * A recovery delta carrying a row this viewer never streamed, WITH the
+	 * complete contract's family keys beside it, exactly as a declared
+	 * subscriber receives them. The unified consumer admits the row ATOMICALLY
+	 * on its accepted domain: the family's owner-stamped ordinal is the
+	 * coordinate, and no lookup, wake or token is needed to settle it. The old
+	 * S1 expectation ("consumes only the lookup's coordinate, not the family's
+	 * 41") belonged to the stage that ignored the family.
+	 */
 	deliver({
 		session_id: SESSION,
 		epoch: BRIDGE_EPOCH,
@@ -527,19 +556,15 @@ test("a delta-born row settles through the facts-only lookup; the unconsumed fam
 		},
 	});
 	await pump();
-	const reads = repairReads();
-	assert.ok(reads.length > before, "the delta's unresolved row earned a sweep");
-	const lookup = reads.at(-1);
-	assert.equal(lookup.op, "sessions.history");
-	assert.equal(lookup.sourceRead, "metadata");
-	assert.deepEqual(lookup.orderIds, [ROW_MISSED]);
+	assert.equal(
+		repairReads().length,
+		before,
+		"the accepted family self-settled: no lookup, no supporting wake",
+	);
 	const row = h.get().transcript.records.find((r) => r.id === ROW_MISSED);
 	assert.ok(row, "the delta row is painted");
-	assert.equal(
-		row.journalSeq,
-		1,
-		"the lookup's coordinate settled it - not the unconsumed family's 41",
-	);
+	assert.equal(row.journalSeq, 41, "the family's own ordinal admits the row");
+	assert.equal(row.journalGeneration, "peer-A");
 	assert.equal(h.get().transcript.journalGeneration, "peer-A");
 });
 
@@ -568,9 +593,32 @@ test("a rebuilt source never installs from the lookup; the owed reconcile settle
 					"peer-B",
 				),
 			),
+		historyHandler: async (request) => {
+			if (request.sourceRead === "metadata")
+				// The rebuilt source: facts belong to another domain, and the
+				// answer is a correction, never an authority to install.
+				return {
+					entries: [],
+					has_more: false,
+					cursor_missing: false,
+					journal_order_state: "unavailable",
+					journal_generation: "peer-B",
+					reconcile: true,
+				};
+			if (request.sourceRead === "payload")
+				return {
+					entries: [{ ...messageRow(ROW_EARLY, "where am I?"), journal_seq: 0 }],
+					has_more: false,
+					cursor_missing: false,
+					journal_order_state: "ready",
+					journal_generation: "peer-B",
+					source_present_ids: [ROW_EARLY],
+				};
+			return { entries: [], has_more: false, cursor_missing: false };
+		},
 	});
 	const reads = repairReads();
-	assert.ok(reads.length >= 2, "lookup then authority");
+	assert.ok(reads.length >= 3, "lookup, authority, then payload");
 	assert.equal(reads[0].op, "sessions.history");
 	assert.equal(reads[0].sourceRead, "metadata");
 	assert.equal(reads[0].expectedJournalGeneration, "peer-A");
@@ -607,7 +655,7 @@ test("a peer ready wake settles through one declared authority read", async () =
 	assert.equal(h.get().transcript.journalGeneration, "peer-A");
 });
 
-test("a catalogue fact that lands after the connection leaves the reads legacy until the next connect", async () => {
+test("a catalogue fact that lands after the connection adopts exactly one declared rebind", async () => {
 	const h = await peerMount({
 		placement: null,
 		history: page([messageRow(ROW_EARLY, "where am I?")], "peer-A"),
@@ -624,37 +672,40 @@ test("a catalogue fact that lands after the connection leaves the reads legacy u
 			return { entries: [], has_more: false, cursor_missing: false };
 		},
 		snapshotHandler: async () =>
-			// The undeclared peer answer degrades to `unsupported` with no
-			// generation — the legacy byte-shape — so nothing can be adopted.
-			snapshotFrame(9, {
-				entries: [],
-				has_more: false,
-				cursor_missing: false,
-				journal_order_state: "unsupported",
-			}),
+			snapshotFrame(
+				9,
+				page(
+					[{ ...messageRow(ROW_EARLY, "where am I?"), journal_seq: 3 }],
+					"peer-A",
+				),
+			),
 	});
 	// Undeclared at connect: the repair's read is the legacy order-carrying
 	// GET, exactly the shape this renderer has always sent.
 	const first = repairReads().find((request) => request.op === "sessions.get");
 	assert.ok(first, "the repair took the legacy read");
 	assert.equal(first.peerJournalSource, undefined);
-	// A late catalogue fact must NOT declare off the back of an undeclared
-	// subscription: no wake could settle what such a read starts.
+	/*
+	 * THE LATE CATALOGUE FACT NOW ADOPTS THE CONVERSATION (the unified
+	 * consumer's one declared rebind): a placement that lands on an otherwise
+	 * healthy undeclared stream closes it and opens ONE declared subscription,
+	 * so the complete contract is actually consumed rather than waiting for an
+	 * unrelated reconnect. The old expectation ("the reads stay legacy until the
+	 * next connect") was the S1 gap the assessment recorded as finding 3.
+	 */
 	useCanonicalSessionsStore.setState({
 		placementFacts: {
 			[SESSION]: { locality: "remote", owner_device: "d_peer", at: 2 },
 		},
 	});
-	const declaredBefore = repairReads().length;
+	await pump();
+	const declared = subscriptions.filter((entry) => !entry.disposed).at(-1);
+	assert.equal(declared.args.peerJournalSource, true, "one declared rebind");
+	// And a later wake's authority read now declares through that subscription.
 	deliver(readyWake(4));
 	await pump();
 	const next = repairReads().at(-1);
 	assert.equal(next.op, "sessions.get");
-	assert.equal(next.peerJournalSource, undefined);
-	assert.equal(repairReads().length, declaredBefore + 1);
-	assert.equal(
-		requests.some((request) => request.sourceRead === "metadata"),
-		false,
-	);
+	assert.equal(next.peerJournalSource, true);
 	assert.equal(h.get().transcript.journalGeneration, "peer-A");
 });

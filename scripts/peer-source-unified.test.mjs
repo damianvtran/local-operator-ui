@@ -369,34 +369,50 @@ test("the peer sweep walks facts before bodies, honours the explicit smaller-bat
 		isCurrent: () => true,
 		read: async (requested, kind) => {
 			dispatched.push({ kind, requested });
+			/*
+			 * THE RESPONSE IS THE SHAPE THE LOOP'S `page`/`commit` CONTRACT
+			 * DECLARES: `{kind, page}`. A bare page here made `page(response)` read
+			 * `response.journal_order_state` off a page and then hand `undefined` to
+			 * `applyPeerSourcePayload`, so the sweep saw one apply and completed
+			 * (leading here to the one-read `['lookup']` outcome).
+			 */
 			if (kind === "lookup")
-				return page([], "scope-A", {
-					journal_ordinals: Object.fromEntries(
-						requested.map((id) => [id, 200]),
-					),
-				});
+				return {
+					kind,
+					page: page([], "scope-A", {
+						journal_ordinals: Object.fromEntries(
+							requested.map((id) => [id, 200]),
+						),
+					}),
+				};
 			if (dispatched.filter((call) => call.kind === "payload").length === 1)
-				return page([], "scope-A", {
-					source_present_ids: [],
-					source_missing_ids: [],
-					source_unavailable_ids: [],
-					source_remaining_ids: requested,
-					source_retry_ids: requested.slice(0, 1),
-				});
-			return page(
-				requested.map((id) => entry(id, id, 200)),
-				"scope-A",
-				{ source_present_ids: requested },
-			);
+				return {
+					kind,
+					page: page([], "scope-A", {
+						source_present_ids: [],
+						source_missing_ids: [],
+						source_unavailable_ids: [],
+						source_remaining_ids: requested,
+						source_retry_ids: requested.slice(0, 1),
+					}),
+				};
+			return {
+				kind,
+				page: page(
+					requested.map((id) => entry(id, id, 200)),
+					"scope-A",
+					{ source_present_ids: requested },
+				),
+			};
 		},
-		page: (response) => response,
+		page: (response) => response.page,
 		lookupPath: "/v1/desktop/sessions/aaaaaaaaaaaa",
 		commit: (response, revision, orderRead) => {
 			if (R.currentOrderRevision(state) !== revision) return;
 			if (response.kind === "payload")
-				state = R.applyPeerSourcePayload(state, response, orderRead);
+				state = R.applyPeerSourcePayload(state, response.page, orderRead);
 			else if (response.kind === "lookup")
-				state = R.applyPeerSourceFacts(state, response, {
+				state = R.applyPeerSourceFacts(state, response.page, {
 					authoritative: false,
 				});
 		},

@@ -971,6 +971,8 @@ const lookupPage = (generation, ordinals = {}, extra = {}) => ({
 	...(Object.keys(ordinals).length ? { journal_ordinals: ordinals } : {}),
 	...extra,
 });
+/** The loop response shape the peer repair contract declares: `{kind, page}`. */
+const asResponse = (kind, pageShape) => ({ kind, page: pageShape });
 
 test("peer declarations carry the exact wire shape; undeclared requests stay byte-identical", () => {
 	const authority = R.desktopEndpoint({
@@ -1028,15 +1030,30 @@ test("a facts-only lookup admits same-domain coordinates without an install, a s
 	const held = state.records.find((record) => record.id === "unattested");
 	const cursor = state.oldestId;
 	const revision = state.orderRevision;
-	const next = R.applyJournalOrderLookup(
+	const next = R.applyPeerSourceFacts(
 		state,
 		lookupPage("scope-A", { send: 1 }),
+		{ authoritative: false },
 	);
 	const healed = next.records.find((record) => record.id === "send");
-	assert.equal(healed.provisional, undefined);
-	assert.equal(healed.local, undefined);
+	/*
+	 * THE FACTS ARE NOT A BODY (complete peer contract, finding 1): the plus one
+	 * declared lookup gives the send its same-domain COORDINATE, and neither
+	 * releases the hold nor reattests anything — `provisional`/`local` STAY (only
+	 * a body-carrying commit, `applyPeerSourcePayload` or an accepted page, ends
+	 * the hold and stamps the record). This is the behaviour the architect's RED
+	 * reading flipped; the old expectation (hold released on coordinates alone)
+	 * belonged to the facts-only S1 that this commit replaces.
+	 */
+	assert.equal(healed.provisional, true);
+	assert.equal(healed.local, true);
 	assert.equal(healed.images, image);
-	assert.equal(healed.journalSeq, 1);
+	assert.equal(healed.journalSeq, undefined);
+	// Same-channel facts DID land: the lookup's coordinate is in the fact map,
+	// so the sweep can rank the row without re-asking for its fact.
+	assert.equal(next.journalPositions.get("send")?.seq, 1);
+	// And the carried, unattested body is now owed for a payload read.
+	assert.ok(R.journalBodyOwedIds(next).includes("send"));
 	// The answer did not attest "unattested", so its held state is NOT
 	// stripped: same record object, hold intact.
 	assert.equal(
@@ -1052,11 +1069,18 @@ test("a lookup under a rebuilt source records the debt and never installs; the a
 	let state = start([row("present", 0)]);
 	state = R.appendPendingUser(state, "send", "own send", [], 1000);
 	const records = state.records;
-	state = R.applyJournalOrderLookup(state, {
-		journal_order_state: "unavailable",
-		journal_generation: "scope-B",
-		reconcile: true,
-	});
+	state = R.applyPeerSourceFacts(
+		state,
+		{
+			entries: [],
+			has_more: false,
+			cursor_missing: false,
+			journal_order_state: "unavailable",
+			journal_generation: "scope-B",
+			reconcile: true,
+		},
+		{ authoritative: false },
+	);
 	// "the generation rides the answer so the client knows a re-read is owed,
 	// not as an authority to install": nothing moved.
 	assert.equal(state.journalGeneration, "scope-A");
@@ -1137,10 +1161,25 @@ const peerDeps = (getState, setState, read) => ({
 	},
 	commit: (response, revision, orderRead) => {
 		if (R.currentOrderRevision(getState()) !== revision) return;
+		/*
+		 * THE HOOK'S OWN ROUTING: a peer conversation settles its owed reconcile
+		 * through the PEER authoritative commit (`applyPeerSourceFacts` with
+		 * `authoritative: true`), never the local metadata commit — the local one
+		 * now writes the lane back to local, which would drop the peer debt the
+		 * authority read just incurred and cut the chain short. Payload bodies
+		 * admit through the subset commit; an ordinary lookup is facts-only.
+		 */
 		setState(
 			response.kind === "authority"
-				? R.applyJournalOrderMetadata(getState(), response.page, orderRead)
-				: R.applyJournalOrderLookup(getState(), response.page),
+				? R.applyPeerSourceFacts(getState(), response.page, {
+						authoritative: true,
+						orderRead,
+					})
+				: response.kind === "payload"
+					? R.applyPeerSourcePayload(getState(), response.page, orderRead)
+					: R.applyPeerSourceFacts(getState(), response.page, {
+							authoritative: false,
+						}),
 		);
 	},
 });
@@ -1178,6 +1217,15 @@ test("peer sweeps take the facts-only lookup; an owed reconcile takes one author
 						page: lookupPage("scope-B", { present: 0 }),
 					};
 				}
+				if (kind === "payload")
+					return {
+						kind,
+						page: page(
+							orderIds.map((id, at) => row(id, at === 0 ? 0 : 1)),
+							"scope-B",
+							{ source_present_ids: [...orderIds] },
+						),
+					};
 				return {
 					kind,
 					page: page([], "scope-B", {
@@ -1187,10 +1235,19 @@ test("peer sweeps take the facts-only lookup; an owed reconcile takes one author
 			},
 		),
 	);
+	/*
+	 * THE CHAIN (the unified commit), and its four exact reads: the facts lookup
+	 * that meets the rebuilt source, the ONE coalesced authoritative read its owed
+	 * reconcile earns (which installs scope-B and owes every loaded body), the
+	 * re-lookup that places whatever B can attest, and the typed payload subset
+	 * that admits the owed bodies under B and settles the debt. The old
+	 * `['lookup','authority','lookup']` shape was the S1 sweep; the terminal
+	 * payload read is what makes the complete contract's body recovery real.
+	 */
 	assert.equal(outcome.kind, "complete");
 	assert.deepEqual(
 		calls.map((call) => call.kind),
-		["lookup", "authority", "lookup"],
+		["lookup", "authority", "lookup", "payload"],
 	);
 	// Every batch is bounded, and the lookup batch's own wire shape fits the
 	// encoded budget the loop sized it against.
