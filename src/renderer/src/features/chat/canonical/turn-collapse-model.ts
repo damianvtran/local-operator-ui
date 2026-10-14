@@ -560,13 +560,22 @@ function internalEpisodeOf(
 	 * the loop alone. With nothing older to arrive the receipt genuinely opens the
 	 * run and still paints (QA Q1/Q2, reviewer F1).
 	 *
+	 * `&& unsettled` (agent review round 2, R2-2). The seed exists for a LIVE
+	 * span whose answer is off-page. A SETTLED cut span - `[peer, 4 tools,
+	 * answer]` - condenses as an ordinary bar whether or not older rows exist, so
+	 * seeding it only changed what it IS: an episode keyed `qg:p` while the head
+	 * is missing, an ordinary bar keyed `seg:a` once the head lands. The key then
+	 * changed under the reader: their open disclosure closed and the new bar was
+	 * announced, where base stays open and silent. Scoping to the unsettled span
+	 * leaves the settled shape identical before and after the head arrives.
+	 *
 	 * RESIDUAL, stated plainly: at a true loaded edge with older rows and a lone
 	 * receipt the reader sees a bar until the head lands. The completion walk
 	 * normally turns it back into rows, but a blocked walk (page budget, off-tail
 	 * reader) leaves it behind a bar until opened, and the bar's label cannot say
 	 * whether a failed `job_result` is inside.
 	 */
-	let settledBefore = !headLoaded && olderRowsExist;
+	let settledBefore = !headLoaded && olderRowsExist && unsettled;
 	for (let i = 0; i < span.from; i += 1) {
 		const before = records[i];
 		if (before.kind === "assistant" && before.streaming !== true) {
@@ -1834,13 +1843,17 @@ export function windowTopRunIsHeadCut(
  * plan - so a plan change cannot move this value and the plan cannot feed back
  * into its own input.
  *
- * COVERAGE, stated so the gap is not laundered. This derivation is unit-tested
- * directly (`scripts/turn-collapse-model.test.mjs`); the plan's response to the
- * flag is tested by the true/false/omitted model tests; the `hasMore` half of
- * the caller is mount-tested. NO mounted test covers a render-window-hidden
- * head: the 62-record mount needed to hide one never completed in this lane's
- * environments, so it was replaced by the unit test rather than kept as a
- * fixture that can stall a shared suite.
+ * COVERAGE. This derivation is unit-tested directly
+ * (`scripts/turn-collapse-model.test.mjs`), the plan's response to the flag is
+ * tested by the true/false/omitted model tests, the `hasMore` half of the caller
+ * is mount-tested, and the `hidden > 0` half is mount-tested too
+ * (`rows hidden by the render window...`, 362 rows). That fixture has to exceed
+ * the window snap's reach: the snap moves the top edge onto the run's opening
+ * user row when it is within `WINDOW_ALIGN_MAX_EXTRA` (300) rows, so a run of
+ * ~62 rows is mounted whole and `hidden` is 0. An earlier 62-row fixture failed
+ * its own precondition for that reason, and its failing node-valued assertion
+ * made the runner format a jsdom node and run out of memory - which looked like
+ * a host kill and was not.
  */
 export function olderRowsThanWindow(
 	hasMore: boolean | undefined,
@@ -2031,6 +2044,15 @@ export function paintedRows(
 		 * account of what it is for).
 		 */
 		watchedRunId?: string | null;
+		/**
+		 * The paging state's `hasMore` (agent review round 2, R2-3). The render hands
+		 * `collapsePlan` `olderRowsExist`, which is `hasMore` OR rows hidden by the
+		 * window; this count is the widen's currency, and a currency the render does
+		 * not use is not the reader's (the same reasoning as `mode` above). The hidden
+		 * half is derived HERE from the window being measured, because it differs per
+		 * candidate size. Omitted is false, the shipped behaviour.
+		 */
+		hasMore?: boolean;
 		snapMaxExtra: number;
 		completedRunMaxExtra: number;
 	},
@@ -2064,6 +2086,10 @@ export function paintedRows(
 		 * its own about what a mode means (see the option's doc).
 		 */
 		mode: options.mode,
+		olderRowsExist: olderRowsThanWindow(
+			options.hasMore,
+			total - visible.length,
+		),
 	});
 	let hidden = 0;
 	for (const run of plan.runs) {
@@ -2146,6 +2172,8 @@ export function widenTarget(
 		 * carries the account).
 		 */
 		watchedRunId?: string | null;
+		/** See `paintedRows`'s `hasMore`; passed straight through to it. */
+		hasMore?: boolean;
 		snapMaxExtra: number;
 		completedRunMaxExtra: number;
 	},

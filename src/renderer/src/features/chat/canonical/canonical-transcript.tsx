@@ -3186,6 +3186,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		openRuns: ReadonlySet<string> | undefined;
 		/** The reader's mode, for the widen's paint count (see this ref's note). */
 		mode: TranscriptDisplayMode;
+		/** The paging state's `hasMore`, for the widen's paint count (R2-3). */
+		hasMore: boolean;
 		/**
 		 * The settlement latch (operator report, 2026-10-16), threaded like
 		 * `live`/`openRuns` so the widen's painted count reads the plan the render
@@ -3208,6 +3210,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		openRuns: undefined,
 		mode: DEFAULT_TRANSCRIPT_DISPLAY_MODE,
 		watchedRunId: null,
+		hasMore: false,
 		mounted: 0,
 	});
 	// One previous loaded plan, bounded across ALL episodes. This is identity
@@ -3845,6 +3848,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					mode: widenInputs.current.mode,
 					/* The latch, same reason as the mode: one measurement, one plan (see the ref). */
 					watchedRunId: widenInputs.current.watchedRunId,
+					hasMore: widenInputs.current.hasMore,
 					snapMaxExtra: WINDOW_ALIGN_MAX_EXTRA,
 					// The render's OWN second bound (the completed-run allowance), so the
 					// step's painted delta is measured against the window the component
@@ -3885,6 +3889,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				openRuns: widenInputs.current.openRuns,
 				mode: widenInputs.current.mode,
 				watchedRunId: widenInputs.current.watchedRunId,
+				hasMore: widenInputs.current.hasMore,
 				snapMaxExtra: WINDOW_ALIGN_MAX_EXTRA,
 				completedRunMaxExtra: WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
 			}),
@@ -4149,6 +4154,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		openRuns,
 		mode: parseTranscriptDisplayMode(transcriptDisplayMode),
 		watchedRunId: watchedRun,
+		hasMore: Boolean(transcript.hasMore),
 		mounted: alignSize,
 	};
 
