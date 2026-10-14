@@ -63,6 +63,11 @@ export const bundledCatalogues: Readonly<
 
 /** One entry per bundled message id, shaped by the message's own arguments. */
 export type MessageParams = {
+	"ui.chat.usage.blocked": undefined;
+	"ui.chat.usage.continue": undefined;
+	"ui.chat.usage.eligibility_unknown": undefined;
+	"ui.chat.usage.family_caps": undefined;
+	"ui.chat.usage.unlimited": undefined;
 	"ui.console.capacity.archived": { archived: number };
 	"ui.console.capacity.full": undefined;
 	"ui.console.capacity.help": undefined;
