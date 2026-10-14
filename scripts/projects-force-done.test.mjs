@@ -826,7 +826,12 @@ const componentBundle = await build({
 			import { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";
 			export function mount(container, project, commit) {
 				const client = new QueryClient({
-					defaultOptions: { queries: { retry: false, gcTime: 0 } },
+					// MutationCache.clear removes records, not their GC timers. Both
+					// cache kinds need zero retention in a throwaway test client.
+					defaultOptions: {
+						queries: { retry: false, gcTime: 0 },
+						mutations: { gcTime: 0 },
+					},
 				});
 				const root = createRoot(container);
 				const render = (nextProject) =>
@@ -849,7 +854,12 @@ const componentBundle = await build({
 			}
 			export function mountBoard(container) {
 				const client = new QueryClient({
-					defaultOptions: { queries: { retry: false, gcTime: 0 } },
+					// MutationCache.clear removes records, not their GC timers. Both
+					// cache kinds need zero retention in a throwaway test client.
+					defaultOptions: {
+						queries: { retry: false, gcTime: 0 },
+						mutations: { gcTime: 0 },
+					},
 				});
 				const root = createRoot(container);
 				root.render(
@@ -1078,6 +1088,18 @@ const mountField = async (commit) => {
 	document.body.append(container);
 	const app = components.mount(container, { ...PROJECT }, commit);
 	await flush();
+	/*
+	 * The force door depends on an asynchronous capabilities answer. Three clicks
+	 * are not a synchronization barrier: delaying the stub 50 ms reproduces the
+	 * missing-door CI failure. Await negotiation even for the no-capability case,
+	 * where absence of a door means nothing until the backend has answered.
+	 */
+	await poll(
+		() => app.client.getQueryData(["desktop", "capabilities"]) !== undefined,
+		"the capabilities negotiation to land in the cache",
+		10_000,
+	);
+	await flush();
 	await clickIt(
 		'[data-project-field="status"] [data-inline-edit-control="begin"]',
 	);
@@ -1096,6 +1118,9 @@ const mountField = async (commit) => {
 const unmountField = async (app, container) => {
 	app.root.unmount();
 	await flush();
+	// Release each mount's cache; zero GC retention above also prevents mutation
+	// timers (which cache removal does not cancel) keeping the worker alive.
+	app.client.clear();
 	if (container?.isConnected) container.remove();
 };
 

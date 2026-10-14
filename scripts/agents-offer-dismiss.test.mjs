@@ -411,6 +411,9 @@ const mount = async () => {
 		},
 		unmount: async () => {
 			await act(async () => root.unmount());
+			// Unsubscribe arms five-minute query GC timers. Release this mount's
+			// cache now; retaining it pins both the worker and its bundled UI in RAM.
+			queryClient.clear();
 			container.remove();
 		},
 	};

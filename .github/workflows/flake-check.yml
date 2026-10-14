@@ -1,0 +1,61 @@
+name: Focused flake check
+
+# Three small, non-native lanes, not a second Desktop Tests suite. A scheduled
+# sample catches retention/order regressions without multiplying every PR's cost.
+on:
+  schedule:
+    - cron: '23 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: focused-flake-check
+  cancel-in-progress: false
+
+jobs:
+  repeat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '10.29.2'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Repeat small lanes in rotating order
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(scripts/agents-offer-dismiss.test.mjs scripts/projects-force-done.test.mjs scripts/settings-language-row.test.mjs)
+          minimums=(6 33 3)
+          printf '## Focused flake sample\n\nThree serial repetitions; no retries or failure suppression.\n\n| Round | Lane | Result |\n|---|---|---|\n' >> "$GITHUB_STEP_SUMMARY"
+          for round in 0 1 2; do
+            for offset in 0 1 2; do
+              index=$(((round + offset) % 3))
+              file="${files[$index]}"
+              iso=$(mktemp -d "$RUNNER_TEMP/flake-home.XXXXXX")
+              # A fresh HOME per lane and a clean environment prevent the sample
+              # from inheriting operator sessions or a previous lane's cache.
+              set +e
+              env -i PATH="$PATH" HOME="$iso" CI=1 TERM=xterm-256color \
+                LOCAL_OPERATOR_CONFIG_DIR="$iso/.local-operator" \
+                timeout --kill-after=5s 60s node scripts/run-desktop-tests.mjs \
+                --test-concurrency=1 "$file" > "$RUNNER_TEMP/flake-lane.log" 2>&1
+              rc=$?
+              set -e
+              cat "$RUNNER_TEMP/flake-lane.log"
+              printf '| %s | `%s` | exit %s |\n' "$((round + 1))" "$file" "$rc" >> "$GITHUB_STEP_SUMMARY"
+              # Node 22 can count a file with no matching test names as one
+              # passing file. Require the lane's real case count, not just >0.
+              passed=$(awk '/^# pass / {print $3}' "$RUNNER_TEMP/flake-lane.log")
+              if [ "$rc" -ne 0 ] || ! [[ "$passed" =~ ^[0-9]+$ ]] || [ "$passed" -lt "${minimums[$index]}" ] || ! grep -q '^# fail 0$' "$RUNNER_TEMP/flake-lane.log"; then
+                exit 1
+              fi
+            done
+          done
