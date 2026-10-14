@@ -72,8 +72,12 @@ const bundle = await build({
 mkdirSync(CACHE, { recursive: true });
 const bundlePath = join(CACHE, "tooltip.mjs");
 writeFileSync(bundlePath, bundle.outputFiles[0].text);
-const { suppressedOverlayIds, registerBrowserViewRect, Tooltip, TooltipProvider } =
-	await import(pathToFileURL(bundlePath).href);
+const {
+	suppressedOverlayIds,
+	registerBrowserViewRect,
+	Tooltip,
+	TooltipProvider,
+} = await import(pathToFileURL(bundlePath).href);
 
 /* ------------------------------------------------------------------ harness */
 
@@ -276,7 +280,11 @@ test("`suppressed` (the team mark owns the pointer) stands the registration down
 			await api.render(flyout({ suppressed: true }));
 			await frames(4);
 			assert.equal(api.$("[role=tooltip]"), null, "the card stands down");
-			assert.deepEqual(suppressedOverlayIds(), [], "and so does the page's pause");
+			assert.deepEqual(
+				suppressedOverlayIds(),
+				[],
+				"and so does the page's pause",
+			);
 			await api.render(flyout({ suppressed: false }));
 			await frames();
 			assert.equal(
