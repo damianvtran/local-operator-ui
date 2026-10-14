@@ -234,6 +234,7 @@ declare global {
 			 */
 			console: {
 				state: (sessionId?: string | null) => Promise<unknown>;
+				cleanupOwner?: (sessionId: string) => Promise<unknown>;
 				/** A surface the USER asked for. Main sets the origin to `user`. */
 				createSurface: (request: {
 					sessionId: string;

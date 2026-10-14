@@ -117,6 +117,26 @@ export class ByteLog {
 		return this.retained;
 	}
 
+	/** Fleet pressure trims memory only. The host flushes retained output first;
+	 * this must never rewrite or remove a durable history file. Absolute offsets
+	 * still make a dropped prefix observable to replay callers. */
+	trimMemory(ceiling: number): void {
+		const limit = Math.max(0, Math.floor(ceiling));
+		while (this.retained > limit && this.chunks.length > 0) {
+			const first = this.chunks[0];
+			const remove = Math.min(first.bytes.length, this.retained - limit);
+			this.retained -= remove;
+			this.dropped += remove;
+			this.start = first.offset + remove;
+			if (remove === first.bytes.length) this.chunks.shift();
+			else
+				this.chunks[0] = {
+					offset: this.start,
+					bytes: Uint8Array.from(first.bytes.subarray(remove)),
+				};
+		}
+	}
+
 	/** Whether any byte has ever been dropped, i.e. the log is not complete. */
 	get truncated(): boolean {
 		return this.dropped > 0;
@@ -181,7 +201,10 @@ export class ByteLog {
 		// The newest bytes are kept whatever they cost: `retainBytes` is the window a
 		// subscriber replays from, and dropping below it would make `from_byte`
 		// unresolvable for a caller that is exactly one chunk behind.
-		const keep = Math.max(this.retainBytes, newestChunkBytes);
+		const keep = Math.min(
+			this.ceilingBytes,
+			Math.max(this.retainBytes, newestChunkBytes),
+		);
 		while (this.chunks.length > 1 && this.retained > keep) {
 			const oldest = this.chunks[0];
 			// Never drop the newest chunk, even when it alone exceeds `keep`.

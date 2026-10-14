@@ -24,6 +24,8 @@ import type { ConsoleMethod, ConsoleReveal } from "./protocol";
 /** Every method this namespace answers, for the dispatcher's own exhaustiveness. */
 const METHODS: readonly ConsoleMethod[] = [
 	"console_list",
+	"console_resources",
+	"console_cleanup",
 	"console_create",
 	"console_status",
 	"console_read",
@@ -47,6 +49,12 @@ export async function dispatchConsole(
 	method: ConsoleMethod,
 	params: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
+	// New callers carry their stable owner on every surface operation. Missing
+	// identity keeps nonce-capability compatibility with older clients; when an
+	// identity is supplied it is a fence, never an invitation to globally list.
+	const owner = optionalString(params.session_id, "session_id");
+	if (owner !== undefined && params.surface !== undefined)
+		host.assertOwned(requiredSurface(params.surface), owner);
 	switch (method) {
 		case "console_list": {
 			const sessionId = optionalString(params.session_id, "session_id");
@@ -90,18 +98,26 @@ export async function dispatchConsole(
 				}),
 			};
 		}
+		case "console_resources": {
+			return host.resources();
+		}
+		case "console_cleanup": {
+			return host.cleanupOwner(requiredString(params.session_id, "session_id"));
+		}
 		case "console_status": {
-			return host.status(requiredSurface(params.surface));
+			const surface = requiredSurface(params.surface);
+			const result = host.status(surface);
+			host.acknowledgeExit(surface);
+			return result;
 		}
 		case "console_read": {
-			return host.read(
-				requiredSurface(params.surface),
-				requiredMode(params.mode),
-				{
-					start: optionalCount(params.start, "start"),
-					count: optionalCount(params.count, "count"),
-				},
-			);
+			const surface = requiredSurface(params.surface);
+			const result = await host.read(surface, requiredMode(params.mode), {
+				start: optionalCount(params.start, "start"),
+				count: optionalCount(params.count, "count"),
+			});
+			host.acknowledgeExit(surface);
+			return result;
 		}
 		case "console_screenshot": {
 			const format = optionalString(params.format, "format");
