@@ -64,6 +64,41 @@ test("English feature copy preserves singular, plural and unknown wire fallback"
 	);
 });
 
+for (const count of [0, 1, 2]) {
+	test(`counted result/comment nouns and invariant status clauses at ${count}`, () => {
+		assert.equal(
+			runtime.t("ui.code_review.comments.count", {
+				count,
+				countText: String(count),
+			}),
+			`${count} comment${count === 1 ? "" : "s"}`,
+		);
+		assert.equal(
+			runtime.t("ui.code_review.tool.more", {
+				count,
+				countText: String(count),
+				capped: "",
+			}),
+			`${count} more seen in tool output`,
+		);
+		assert.equal(
+			runtime.t("ui.code_review.ci.failing", {
+				count,
+				countText: String(count),
+			}),
+			`${count} failing`,
+		);
+		assert.equal(
+			runtime.t("ui.command_palette.matches.best", {
+				countText: String(count),
+				total: count,
+				totalText: String(count),
+			}),
+			`showing the best ${count} of ${count} match${count === 1 ? "" : "es"}`,
+		);
+	});
+}
+
 test("display headings read current locale without translating scope identifiers", () => {
 	try {
 		runtime.registerCatalogue("fr", {

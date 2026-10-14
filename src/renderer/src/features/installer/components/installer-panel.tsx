@@ -1,10 +1,11 @@
 import logo from "@assets/icon.png";
 import { Button } from "@shared/components/ui";
-import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Check, CircleAlert } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
+import { t } from "../../../../../i18n/messages";
 import {
 	INSTALL_PHASES,
 	type InstallFailure,
@@ -291,6 +292,7 @@ const PhaseRow: React.FC<{
 	state: PhaseState;
 	last: boolean;
 }> = ({ phase, state, last }) => {
+	useI18nLocale();
 	return (
 		<li
 			aria-current={state === "active" ? "step" : undefined}
@@ -490,6 +492,7 @@ export const InstallPanel: React.FC<InstallPanelProps> = ({
 	onCancel,
 	onRetry,
 }) => {
+	useI18nLocale();
 	const reasonRef = useRef<HTMLParagraphElement | null>(null);
 	const running = !installed && failure === null;
 	const now = useTick(running && Boolean(timing), pinnedNow);

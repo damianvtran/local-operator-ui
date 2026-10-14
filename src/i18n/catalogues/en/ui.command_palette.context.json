@@ -128,12 +128,14 @@
 	"ui.command_palette.matches.best": {
 		"role": "status",
 		"tone": "Lowercase compact result summary.",
-		"note": "Palette result-cap best: count shown is not total matches; the best wording is reserved for the ranked subset.",
+		"note": "Rendered only for a clipped ranked search, so the existing reachable English uses plural matches (total exceeds shown rows). Singular is explicit for a one-result fixture/future cap; count is shown rows, total governs the result noun.",
 		"length": "One row; avoid adding an explanatory sentence.",
 		"placeholders": {
-			"count": "Cardinal count of displayed results or recorded events; plural selection when ICU plural is present.",
-			"total": "Total matching items or total installer steps, as named by this message."
-		}
+			"total": "Numeric total matching-result cardinal; determines match/matches.",
+			"totalText": "Existing decimal total without added English grouping.",
+			"countText": "Number of shown ranked rows rendered as existing decimal text."
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
 	},
 	"ui.command_palette.matches.showing": {
 		"role": "status",

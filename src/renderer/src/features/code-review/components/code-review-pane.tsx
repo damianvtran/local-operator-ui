@@ -1,10 +1,11 @@
 import { PanelNotice } from "@features/chat/pickers/panels/panel-states";
 import { Button, Separator, Skeleton } from "@shared/components/ui";
-import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { PanelRightClose, RefreshCw } from "lucide-react";
 import { type FC, type Ref, useEffect, useRef, useState } from "react";
+import { t } from "../../../../../i18n/messages";
 import type { DesktopCodeRequestsList } from "../../../../../shared/desktop-contract";
 import { COMPOSER_TEXTAREA_SELECTOR } from "../../chat/composer-field";
 import { ownsEscapeOutsideComposer } from "../../chat/hooks/use-interrupt-on-escape";
@@ -147,6 +148,7 @@ export const CodeReviewPaneBody: FC<CodeReviewPaneBodyProps> = ({
 	pendingRevealMs,
 	rootRef,
 }) => {
+	useI18nLocale();
 	const cooling = coolingClauses(data?.cooling, nowMs);
 	const groups = groupRows(data?.rows ?? []);
 	return (

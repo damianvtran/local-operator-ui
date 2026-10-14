@@ -1,8 +1,9 @@
 import { Badge } from "@shared/components/ui";
-import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { ArrowUpRight, GitPullRequest } from "lucide-react";
 import type { FC } from "react";
+import { t } from "../../../../../i18n/messages";
 import { openUrlTarget } from "../../chat/utils/link-open";
 import {
 	type CodeRequestRow as CodeRequestRowData,
@@ -71,6 +72,7 @@ export const CodeReviewRow: FC<CodeReviewRowProps> = ({
 	nowMs,
 	pendingRevealMs,
 }) => {
+	useI18nLocale();
 	const pill = statePill(row);
 	const relation = [relationTag(row), actedTag(row)]
 		.filter((tag): tag is string => tag !== null)

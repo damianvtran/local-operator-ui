@@ -1,5 +1,5 @@
 // Derivations stay React-free while sharing the renderer's catalogue runtime.
-import { t } from "../../../../i18n";
+import { t } from "../../../../i18n/messages";
 /**
  * The Code review pane's copy and its derivations, as pure functions.
  *
@@ -387,7 +387,10 @@ export function ciClause(
 	const total = finite(ci.total);
 	if (failed !== null && failed > 0) {
 		return {
-			text: t("ui.code_review.ci.failing", { count: String(failed) }),
+			text: t("ui.code_review.ci.failing", {
+				count: failed,
+				countText: String(failed),
+			}),
 			tone: "danger",
 		};
 	}
@@ -475,12 +478,19 @@ export function updatedClause(updatedAtSec: number, nowMs: number): string {
 	if (seconds < 60) return t("ui.code_review.age.just_now");
 	const minutes = Math.floor(seconds / 60);
 	if (minutes < 60)
-		return t("ui.code_review.age.minutes", { amount: String(minutes) });
+		return t("ui.code_review.age.minutes", {
+			amount: minutes,
+			amountText: String(minutes),
+		});
 	const hours = Math.floor(minutes / 60);
 	if (hours < 24)
-		return t("ui.code_review.age.hours", { amount: String(hours) });
+		return t("ui.code_review.age.hours", {
+			amount: hours,
+			amountText: String(hours),
+		});
 	return t("ui.code_review.age.days", {
-		amount: String(Math.floor(hours / 24)),
+		amount: Math.floor(hours / 24),
+		amountText: String(Math.floor(hours / 24)),
 	});
 }
 
@@ -807,10 +817,16 @@ export function chipLabel(
 ): string {
 	const halves = [
 		opened > 0
-			? t("ui.code_review.chip.opened", { count: String(opened) })
+			? t("ui.code_review.chip.opened", {
+					count: opened,
+					countText: String(opened),
+				})
 			: null,
 		mentioned > 0
-			? t("ui.code_review.chip.mentioned", { count: String(mentioned) })
+			? t("ui.code_review.chip.mentioned", {
+					count: mentioned,
+					countText: String(mentioned),
+				})
 			: null,
 	].filter((half): half is string => half !== null);
 	const details = halves.length > 0 ? `, ${halves.join(" · ")}` : "";
@@ -849,7 +865,8 @@ export function linkOnlyRemedy(row: CodeRequestRow): string {
  */
 export function toolOutputNote(count: number, truncated: boolean): string {
 	return t("ui.code_review.tool.more", {
-		count: String(count),
+		count: count,
+		countText: String(count),
 		capped: truncated ? "+" : "",
 	});
 }

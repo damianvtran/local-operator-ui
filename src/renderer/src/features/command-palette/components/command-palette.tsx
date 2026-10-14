@@ -18,7 +18,7 @@ import {
 import { useClearAgentConversation } from "@shared/hooks/use-clear-agent-conversation";
 import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
 import { useAgentRouteParam } from "@shared/hooks/use-route-params";
-import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import {
@@ -39,6 +39,7 @@ import {
 	useState,
 } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { t } from "../../../../../i18n/messages";
 import { SESSION_SEARCH_MAX_CHARS } from "../../../../../shared/desktop-contract";
 import {
 	PALETTE_SECTION_TITLES,
@@ -159,6 +160,7 @@ const currentPanelIdentity = (): string | undefined => {
 };
 
 export const CommandPalette: FC = () => {
+	useI18nLocale();
 	const navigate = useNavigate();
 	const location = useLocation();
 
@@ -1112,8 +1114,9 @@ export const CommandPalette: FC = () => {
 										<span>
 											{hasTerms
 												? t("ui.command_palette.matches.best", {
-														count: String(matchCount),
-														total: String(outcome.total),
+														countText: String(matchCount),
+														total: outcome.total,
+														totalText: String(outcome.total),
 													})
 												: t("ui.command_palette.matches.showing", {
 														count: String(matchCount),

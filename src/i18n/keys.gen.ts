@@ -175,16 +175,16 @@ export type MessageParams = {
 	"ui.code_review.activity.ready": undefined;
 	"ui.code_review.activity.review": undefined;
 	"ui.code_review.activity.you": { acts: string };
-	"ui.code_review.age.days": { amount: string };
-	"ui.code_review.age.hours": { amount: string };
+	"ui.code_review.age.days": { amount: number; amountText: string };
+	"ui.code_review.age.hours": { amount: number; amountText: string };
 	"ui.code_review.age.just_now": undefined;
-	"ui.code_review.age.minutes": { amount: string };
+	"ui.code_review.age.minutes": { amount: number; amountText: string };
 	"ui.code_review.attention.checks": undefined;
 	"ui.code_review.attention.findings": undefined;
 	"ui.code_review.chip.count": { count: number; countText: string };
-	"ui.code_review.chip.mentioned": { count: string };
-	"ui.code_review.chip.opened": { count: string };
-	"ui.code_review.ci.failing": { count: string };
+	"ui.code_review.chip.mentioned": { count: number; countText: string };
+	"ui.code_review.chip.opened": { count: number; countText: string };
+	"ui.code_review.ci.failing": { count: number; countText: string };
 	"ui.code_review.ci.passed": { passed: string; total: string };
 	"ui.code_review.code_review_model.ci_failing": undefined;
 	"ui.code_review.code_review_model.ci_passed": undefined;
@@ -241,7 +241,11 @@ export type MessageParams = {
 	"ui.code_review.row.opens_browser": undefined;
 	"ui.code_review.row.refresh_error": { error: string };
 	"ui.code_review.row.stale_error": { error: string };
-	"ui.code_review.tool.more": { count: string; capped: string };
+	"ui.code_review.tool.more": {
+		count: number;
+		countText: string;
+		capped: string;
+	};
 	"ui.command_palette.command_palette.characters_so_chats_are_matched_by_name": undefined;
 	"ui.command_palette.command_palette.chats_are_matched_by_name_update_local_operator_to_search_inside_": undefined;
 	"ui.command_palette.command_palette.clear": undefined;
@@ -262,7 +266,11 @@ export type MessageParams = {
 	"ui.command_palette.command_palette.to_run": undefined;
 	"ui.command_palette.empty.backspace": { glyph: string };
 	"ui.command_palette.empty.no_matches": { terms: string };
-	"ui.command_palette.matches.best": { count: string; total: string };
+	"ui.command_palette.matches.best": {
+		total: number;
+		countText: string;
+		totalText: string;
+	};
 	"ui.command_palette.matches.showing": { count: string; total: string };
 	"ui.command_palette.palette_search.actions": undefined;
 	"ui.command_palette.palette_search.agents": undefined;

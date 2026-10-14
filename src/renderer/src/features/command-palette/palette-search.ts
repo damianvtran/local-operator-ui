@@ -1,5 +1,5 @@
 // Search stays React-free; display copy reads the same core runtime as the renderer.
-import { t } from "../../../../i18n";
+import { t } from "../../../../i18n/messages";
 /**
  * The command palette's search: what a query means, which rows it admits, and
  * in what order they are offered.

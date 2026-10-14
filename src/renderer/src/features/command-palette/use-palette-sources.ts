@@ -28,6 +28,11 @@
  * over an array; what it never costs is a round trip.
  */
 
+import { useI18nLocale } from "@shared/i18n/use-locale";
+
+// Copy-bearing projections are intentionally recomputed after the locale hook
+// repaints; caching formatted strings would retain the prior language. Network
+// and structural-data caches remain in place.
 import {
 	SESSION_RANK_LABEL,
 	matchesLabel,
@@ -52,7 +57,6 @@ import { teamDisplayName } from "@shared/api/local-operator/team-display";
 import { useAgents } from "@shared/hooks/use-agents";
 import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
-import { t } from "@shared/i18n";
 import {
 	LEGACY_CATALOGUE_PAGE,
 	panelSessionIdOfView,
@@ -65,6 +69,7 @@ import {
 } from "@shared/store/ui-preferences-store";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef } from "react";
+import { t } from "../../../../i18n/messages";
 import type { SessionSearchHit } from "../../../../shared/desktop-session-contract";
 import {
 	type PaletteCatalogueState,
@@ -251,6 +256,7 @@ export function usePaletteItems({
 	hasConversation,
 	isCanvasOpen,
 }: PaletteSourceInput): PaletteSources {
+	useI18nLocale();
 	const { scope, terms } = parsePaletteQuery(query);
 	const wantsChats = scope === null || scope === "chat";
 	const wantsAgents = scope === null || scope === "agent";
@@ -522,7 +528,7 @@ export function usePaletteItems({
 	 * memo would not rebuild when the fact settles.
 	 */
 	const archiveFacts = useCanonicalSessionsStore((state) => state.archiveFacts);
-	const chatItems = useMemo(() => {
+	const chatItems = (() => {
 		if (!wantsChats) return [];
 		const { rows } = searchChats(sessions, terms, hits, {}, archiveView);
 		const byId = new Map((hits ?? []).map((hit) => [hit.id, hit]));
@@ -606,18 +612,7 @@ export function usePaletteItems({
 				archived: recents.archived,
 			} satisfies PaletteItem;
 		});
-	}, [
-		sessions,
-		terms,
-		hits,
-		wantsChats,
-		archiveView,
-		teamLabels,
-		conversationRecents,
-		displayedSessionId,
-		archiveEnabled,
-		archiveFacts,
-	]);
+	})();
 
 	/* -------------------------------- agents -------------------------------- */
 
@@ -643,7 +638,7 @@ export function usePaletteItems({
 			: undefined,
 	);
 
-	const agentItems = useMemo(() => {
+	const agentItems = (() => {
 		if (!wantsAgents) return [];
 		const seen = new Set<string>();
 		const agents: { id: string; name: string; tags?: string[] }[] = [];
@@ -722,17 +717,11 @@ export function usePaletteItems({
 		// Definition order is the backend's own (newest first), which is the order
 		// a browse list wants and a stable tie-break a search can rely on.
 		return items.map((item, index) => ({ ...item, order: index }));
-	}, [
-		canStageDraft,
-		roster.data,
-		nameFiltered.data,
-		terms.length,
-		wantsAgents,
-	]);
+	})();
 
 	/* -------------------------------- teams -------------------------------- */
 
-	const teamItems = useMemo(() => {
+	const teamItems = (() => {
 		if (!wantsTeams) return [];
 		/*
 		 * One row per team (issue #849), from the SAME `useTeams` call the chat rows'
@@ -763,7 +752,7 @@ export function usePaletteItems({
 			featured: terms.length === 0,
 			order: index,
 		}));
-	}, [canStageDraft, teamNames.data, terms.length, wantsTeams]);
+	})();
 
 	/* ------------------------------- settings ------------------------------- */
 
@@ -774,7 +763,7 @@ export function usePaletteItems({
 		staleTime: 10_000,
 	});
 
-	const settingItems = useMemo(() => {
+	const settingItems = (() => {
 		if (!wantsSettings) return [];
 		return [
 			...buildSettingsSectionItems(DEFAULT_SETTINGS_SECTIONS),
@@ -790,7 +779,7 @@ export function usePaletteItems({
 				(registry.data?.settings ?? []).map(presentSetting),
 			),
 		];
-	}, [registry.data, wantsSettings]);
+	})();
 
 	/* ------------------------------ panels ------------------------------ */
 
@@ -861,7 +850,7 @@ export function usePaletteItems({
 	 */
 	const sessionPanelsAvailable = Boolean(activeSessionId);
 
-	const panelItems = useMemo(() => {
+	const panelItems = (() => {
 		if (!canStageDraft || desktopPlaneRefused) return [];
 		return buildPanelItems([
 			{
@@ -941,45 +930,26 @@ export function usePaletteItems({
 				],
 			},
 		]);
-	}, [
-		canStageDraft,
-		desktopPlaneRefused,
-		paneCanPresent,
-		sessionPanelsAvailable,
-	]);
+	})();
 
 	/* ------------------------ destinations and actions ---------------------- */
 
-	const items = useMemo(
-		() => [
-			...buildNavigationItems(pages),
-			...buildActionItems(
-				buildPaletteActions({
-					isOnChatPage,
-					hasConversation,
-					isCanvasOpen,
-					canStageDraft,
-				}),
-			),
-			...panelItems,
-			...settingItems,
-			...agentItems,
-			...teamItems,
-			...chatItems,
-		],
-		[
-			isOnChatPage,
-			hasConversation,
-			isCanvasOpen,
-			canStageDraft,
-			pages,
-			panelItems,
-			settingItems,
-			agentItems,
-			teamItems,
-			chatItems,
-		],
-	);
+	const items = (() => [
+		...buildNavigationItems(pages),
+		...buildActionItems(
+			buildPaletteActions({
+				isOnChatPage,
+				hasConversation,
+				isCanvasOpen,
+				canStageDraft,
+			}),
+		),
+		...panelItems,
+		...settingItems,
+		...agentItems,
+		...teamItems,
+		...chatItems,
+	])();
 
 	return {
 		items,
