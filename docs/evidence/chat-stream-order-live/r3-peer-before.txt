@@ -1,0 +1,57 @@
+✔ R3 lone fact plus duplicate, no compose/non-slot starts, peer=false (4.154083ms)
+✖ R3 lone fact plus duplicate, no compose/non-slot starts, peer=true (1.39775ms)
+✔ 205 actual correction ordinals then three persisted history pages, peer=false (63.348042ms)
+✔ 205 actual correction ordinals then three persisted history pages, peer=true (51.530333ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 3
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 476.545333
+
+✖ failing tests:
+
+test at scripts/stream-order-live.test.mjs:799:2
+✖ R3 lone fact plus duplicate, no compose/non-slot starts, peer=true (1.39775ms)
+  AssertionError [ERR_ASSERTION]: [{"id":"rc1","type":"message","role":"tool","tool_call_id":"c1","journal_seq":4}]
+  + actual - expected
+  
+    [
+      'u1',
+      'm0',
+      'm1',
+      'tool:c0',
+      'tool:c1',
+  +   'm2',
+      'tool:c2',
+  -   'm2'
+    ]
+  
+      at TestContext.<anonymous> (file:///Users/damian/local-operator-ui/.worktrees/stream-order-live-md/scripts/stream-order-live.test.mjs:824:11)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [
+      'u1',      'm0',
+      'm1',      'tool:c0',
+      'tool:c1', 'm2',
+      'tool:c2'
+    ],
+    expected: [
+      'u1',      'm0',
+      'm1',      'tool:c0',
+      'tool:c1', 'tool:c2',
+      'm2'
+    ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+[run_bounded] node rc=1 wall=0.9s

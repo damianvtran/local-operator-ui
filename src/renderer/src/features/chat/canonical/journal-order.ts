@@ -6,7 +6,11 @@ export type JournalPosition = {
 	sourceEntryId?: string;
 	journalSeq?: number;
 	journalGeneration?: string;
-	/** Provisional admission slot, not a fabricated own entry coordinate. */
+	/**
+	 * The row this one ARRIVED behind, stamped once (`stampArrival`) and carried
+	 * across record rebuilds. A provisional slot resolved transitively to the
+	 * first placed row - not a fabricated own entry coordinate, not a timestamp.
+	 */
 	sourceAdmissionAnchor?: string;
 };
 export type SourceCoordinate = { entryId: string; seq: number };
@@ -184,7 +188,17 @@ export function receiveJournalOrder(
 	return next;
 }
 
-/** Track causal ownership from the actual message payload, never its clock. */
+/**
+ * Track causal ownership from the actual message payload, never its clock.
+ *
+ * Records, per call id, the assistant row that owns it AND the call's index in
+ * that row's `tool_calls`. The index is the sibling order the journal commits
+ * (results are persisted in slot order, `harness/loop.py::_execute_batch`
+ * extends `results` by slot, not by completion), so an unplaced call row can be
+ * ranked where its committed twin will land even when parallel calls START or
+ * END in another order - which is what makes the live order equal the committed
+ * one without a per-block sequence on the wire.
+ */
 export function rememberJournalCalls(
 	state: TranscriptState,
 	message: Record<string, unknown>,
@@ -196,18 +210,234 @@ export function rememberJournalCalls(
 	)
 		return state;
 	let owners = state.journalCallOwners ?? new Map<string, string>();
-	const before = owners;
-	for (const call of message.tool_calls as Array<Record<string, unknown>>) {
-		if (
-			!call ||
-			typeof call.id !== "string" ||
-			owners.get(call.id) === message.id
-		)
+	let slots = state.journalCallSlots ?? new Map<string, number>();
+	const ownersBefore = owners;
+	const slotsBefore = slots;
+	(message.tool_calls as Array<Record<string, unknown>>).forEach(
+		(call, slot) => {
+			if (!call || typeof call.id !== "string") return;
+			if (owners.get(call.id) !== message.id) {
+				if (owners === ownersBefore) owners = new Map(owners);
+				owners.set(call.id, message.id as string);
+			}
+			if (slots.get(call.id) !== slot) {
+				if (slots === slotsBefore) slots = new Map(slots);
+				slots.set(call.id, slot);
+			}
+		},
+	);
+	return owners === ownersBefore && slots === slotsBefore
+		? state
+		: { ...state, journalCallOwners: owners, journalCallSlots: slots };
+}
+
+/**
+ * Stamp every UNPLACED row with the row it ARRIVED behind, once, and keep it.
+ *
+ * WHY THIS IS A FACT OF ARRIVAL AND NOT A LOOKUP. A live row has no
+ * `journal_seq` until the runtime's `journal_order_ready` wake names it, and
+ * that wake trails the frame that painted the row by an unbounded number of
+ * frames (`serving.py::emit_order` runs after a durable-index refresh). Until
+ * it lands, the only thing that can place the row is where it joined the
+ * transcript. The earlier rule stamped "the nearest PLACED predecessor at the
+ * moment of derivation" and let any record rebuild (`message_end`,
+ * `tool_execution_*`, `tool_call_compose` all build fresh records) drop the
+ * stamp, so it was re-derived against whatever the placement state had become.
+ * Two sibling unplaced rows - an assistant row and its own call - then pointed
+ * at different placed rows, ranked apart, and swapped: the operator's "text hops
+ * below its own tool call". Placement moves as wakes land; arrival does not.
+ *
+ * So the anchor is the IMMEDIATE predecessor at admission (placed or not),
+ * stamped once; `upsert` carries it across rebuilds. Placement is then resolved
+ * transitively by `arrivalPlacement`, so an unplaced row still ranks exactly
+ * where the row it followed ranks, however the wakes interleave. No timestamp
+ * is read: a placed row ranks by `journal_seq`, an unplaced one by the chain.
+ *
+ * A pending local echo is never stamped and ends a chain: its own position is
+ * unproved, so replies behind it stay in the provisional block until the source
+ * places the send (the rule the previous stamping loop also kept).
+ *
+ * SELF-HEALING: an anchor whose row left the list (a retired compose
+ * placeholder, a removed ask row) names nothing, so the row is re-stamped
+ * behind whatever precedes it now rather than falling into the unplaced suffix.
+ *
+ * Returns whether any record was replaced; `records` is edited in place (the
+ * caller owns a copy).
+ */
+function stampArrival(
+	records: TranscriptRecord[],
+	placed: (record: TranscriptRecord) => boolean,
+): boolean {
+	const ids = new Set(records.map((record) => record.id));
+	let changed = false;
+	let previous: TranscriptRecord | undefined;
+	for (let i = 0; i < records.length; i++) {
+		const record = records[i];
+		if (record.kind === "user" && record.provisional === true) {
+			previous = record;
 			continue;
-		if (owners === before) owners = new Map(owners);
-		owners.set(call.id, message.id);
+		}
+		if (
+			!placed(record) &&
+			previous &&
+			(record.sourceAdmissionAnchor === undefined ||
+				!ids.has(record.sourceAdmissionAnchor))
+		) {
+			records[i] = { ...record, sourceAdmissionAnchor: previous.id };
+			changed = true;
+		}
+		previous = records[i];
 	}
-	return owners === before ? state : { ...state, journalCallOwners: owners };
+	return changed;
+}
+
+/**
+ * The `journal_seq` an unplaced row ranks behind: follow its arrival chain
+ * (`stampArrival`) to the first PLACED row. Undefined when the chain ends at a
+ * pending echo, at a row that left the list, or loops - the row then keeps the
+ * unplaced suffix, in admission order.
+ *
+ * `memo` is shared across one ranking pass: a run of N unplaced rows resolves
+ * in O(N) rather than walking N chains.
+ */
+function arrivalPlacement(
+	record: TranscriptRecord,
+	byId: ReadonlyMap<string, TranscriptRecord>,
+	terminal: (record: TranscriptRecord) => boolean,
+	seqOf: (record: TranscriptRecord | undefined) => number | undefined,
+	memo: Map<string, number | undefined>,
+): number | undefined {
+	const path: string[] = [];
+	const seen = new Set<string>();
+	let at: TranscriptRecord | undefined = record;
+	let answer: number | undefined;
+	while (at !== undefined) {
+		if (memo.has(at.id)) {
+			answer = memo.get(at.id);
+			break;
+		}
+		// `terminal` is the lane's own definition of "placed": the local lane
+		// stops at any row with a coordinate, the peer lane only at an admitted
+		// body (a fact-placed row without its body is not yet evidence about
+		// what followed it, so the walk passes through it).
+		if (terminal(at)) {
+			answer = seqOf(at);
+			break;
+		}
+		if (at.kind === "user" && at.provisional === true) break;
+		if (seen.has(at.id)) break;
+		seen.add(at.id);
+		path.push(at.id);
+		at = at.sourceAdmissionAnchor
+			? byId.get(at.sourceAdmissionAnchor)
+			: undefined;
+	}
+	for (const id of path) memo.set(id, answer);
+	return answer;
+}
+
+/**
+ * Delay USING a coordinate when an earlier live arrival still has none.
+ *
+ * Owner commit wakes follow append order, but that is not a transport contract:
+ * a cold desktop history read also emits corrections, in page / requested-id
+ * order, in 128-row chunks. A real history route with reverse order_ids emitted
+ * seqs 203..77 before 76..0. Those wakes can interleave with owner wakes after
+ * reconnect. Using a later text's coordinate immediately moves it above an
+ * earlier tool whose coordinate is still unknown, then back when that wake lands
+ * (QA round 2 N1). Keep the coordinate as a fact, but rank the live arrival by
+ * its chain until all earlier arrivals in that chain are placed. Durable rows
+ * loaded without an arrival anchor keep their authoritative order immediately.
+ * This never changes body provenance or source facts in the peer lane.
+ */
+function gapSafeCoordinates(
+	byId: ReadonlyMap<string, TranscriptRecord>,
+	raw: (record: TranscriptRecord | undefined) => number | undefined,
+): (record: TranscriptRecord | undefined) => number | undefined {
+	const ready = new Map<string, boolean>();
+	return (record) => {
+		if (!record) return undefined;
+		const own = raw(record);
+		if (own === undefined) return undefined;
+		const path: string[] = [];
+		const seen = new Set<string>();
+		let at: TranscriptRecord | undefined = record;
+		let complete = true;
+		while (at) {
+			if (ready.has(at.id)) {
+				complete = ready.get(at.id) === true;
+				break;
+			}
+			if (seen.has(at.id) || raw(at) === undefined) {
+				complete = false;
+				break;
+			}
+			seen.add(at.id);
+			path.push(at.id);
+			at =
+				at.sourceAdmissionAnchor === undefined
+					? undefined
+					: byId.get(at.sourceAdmissionAnchor);
+		}
+		for (const id of path) ready.set(id, complete);
+		return complete ? own : undefined;
+	};
+}
+
+/**
+ * Put the unplaced parallel calls of ONE assistant row in their committed slot
+ * order, in the positions those calls already occupy.
+ *
+ * WHY A POST-PASS AND NOT A RANK TERM. Parallel calls START and END in
+ * completion order, but the journal persists their results in slot order
+ * (`harness/loop.py::_execute_batch` extends `results` by slot), so until their
+ * wakes land the live order has to be corrected to what will be committed. The
+ * first version added the slot as a rank-tuple element ahead of `index`; a
+ * tuple compares EVERY row on it, and a row with no slot (text) then sorted
+ * ahead of a sibling call with slot >= 1 - the next text painted between two
+ * parallel calls and hopped below them when the wake landed (review R1-M1, QA
+ * Q2). The slot is only meaningful between two calls of the same owner, so it
+ * is applied only there: the calls swap among THEMSELVES, every other row keeps
+ * the slot the arrival chain gave it, and nothing about a call's place relative
+ * to text can change.
+ *
+ * Coordinate arrival can be out of order too (cold read corrections). All
+ * known sibling slots take part: their committed slot order is valid whether
+ * either result's coordinate has arrived, and remains valid when both have.
+ */
+function siblingSlotOrder(
+	state: TranscriptState,
+	ordered: TranscriptRecord[],
+): TranscriptRecord[] {
+	const owners = state.journalCallOwners;
+	const slots = state.journalCallSlots;
+	if (!owners || !slots) return ordered;
+	const groups = new Map<string, number[]>();
+	ordered.forEach((record, at) => {
+		if (record.kind !== "tool") return;
+		const owner = owners.get(record.toolCallId);
+		if (owner === undefined || !slots.has(record.toolCallId)) return;
+		const seats = groups.get(owner);
+		if (seats) seats.push(at);
+		else groups.set(owner, [at]);
+	});
+	let result = ordered;
+	for (const seats of groups.values()) {
+		if (seats.length < 2) continue;
+		const bySlot = seats
+			.map((at) => ordered[at])
+			.sort(
+				(a, b) =>
+					(slots.get((a as { toolCallId: string }).toolCallId) ?? 0) -
+					(slots.get((b as { toolCallId: string }).toolCallId) ?? 0),
+			);
+		if (bySlot.every((record, i) => record === ordered[seats[i]])) continue;
+		if (result === ordered) result = ordered.slice();
+		seats.forEach((at, i) => {
+			result[at] = bySlot[i];
+		});
+	}
+	return result;
 }
 
 /**
@@ -272,34 +502,20 @@ export function journalOrderedRecords(
 		}
 		return next;
 	});
-	// Keep an unknown admission with the block it followed, rather than pinning
-	// every old streamed reply below all newer confirmed windows. This is an
-	// explicit provisional slot, not source authority; exact carriage/metadata
-	// supersedes it. No timestamp or pairwise mixed comparator is involved.
-	let admissionAnchor: string | undefined;
-	for (let i = 0; i < records.length; i++) {
-		const record = records[i];
-		if (record.kind === "user" && record.provisional === true) {
-			// A fresh send's own position is still unproved. Keep its replies
-			// in that provisional block until source metadata places the send.
-			admissionAnchor = record.id;
-		} else if (
-			record.journalGeneration === generation &&
-			ordinal(record.journalSeq)
-		) {
-			admissionAnchor = record.id;
-		} else if (!record.sourceAdmissionAnchor && admissionAnchor) {
-			records[i] = { ...record, sourceAdmissionAnchor: admissionAnchor };
-			changed = true;
-		}
-	}
+	// An unplaced row keeps the slot its ARRIVAL gave it; see `stampArrival`.
+	const isPlaced = (record: TranscriptRecord) =>
+		record.journalGeneration === generation && ordinal(record.journalSeq);
+	if (stampArrival(records, isPlaced)) changed = true;
+	const chain = new Map<string, number | undefined>();
 	const byId = new Map(records.map((record) => [record.id, record]));
-	const seqOf = (record: TranscriptRecord | undefined): number | undefined =>
+	const seqOf = gapSafeCoordinates(byId, (record) =>
 		record !== undefined &&
 		record.journalGeneration === generation &&
 		ordinal(record.journalSeq)
 			? record.journalSeq
-			: undefined;
+			: undefined,
+	);
+	const rankPlaced = (record: TranscriptRecord) => seqOf(record) !== undefined;
 	const rank = (record: TranscriptRecord, index: number): number[] => {
 		const own = seqOf(record);
 		if (
@@ -317,9 +533,10 @@ export function journalOrderedRecords(
 					: undefined;
 		const owner =
 			typeof anchor === "string" ? seqOf(byId.get(anchor)) : undefined;
-		const admitted = record.sourceAdmissionAnchor
-			? seqOf(byId.get(record.sourceAdmissionAnchor))
-			: undefined;
+		const admitted =
+			own === undefined
+				? arrivalPlacement(record, byId, rankPlaced, seqOf, chain)
+				: undefined;
 		const placement = owner ?? own ?? admitted;
 		return placement === undefined
 			? [1, 0, 0, 0, index]
@@ -344,8 +561,11 @@ export function journalOrderedRecords(
 		return 0;
 	});
 	if (!changed && ranked.every((row, index) => row.index === index))
-		return input;
-	return ranked.map((row) => row.record);
+		return siblingSlotOrder(state, input);
+	return siblingSlotOrder(
+		state,
+		ranked.map((row) => row.record),
+	);
 }
 
 /**
@@ -425,28 +645,25 @@ function journalOrderedPeerRecords(
 				positions?.get(record.id));
 	let changed = false;
 	const records = input.slice();
-	let admissionAnchor: string | undefined;
-	for (let i = 0; i < records.length; i++) {
-		const record = records[i];
-		if (record.kind === "user" && record.provisional === true) {
-			// A fresh send's own position is still unproved. Keep its replies
-			// in that provisional block until source metadata places the send.
-			admissionAnchor = record.id;
-		} else if (
-			record.journalGeneration === generation &&
-			ordinal(record.journalSeq)
-		) {
-			// ONLY an admitted body anchors its replies here: a fact-placed row
-			// without its body is not yet evidence about its neighbours.
-			admissionAnchor = record.id;
-		} else if (!record.sourceAdmissionAnchor && admissionAnchor) {
-			records[i] = { ...record, sourceAdmissionAnchor: admissionAnchor };
-			changed = true;
-		}
-	}
+	// Stamping skips only rows that carry an admitted body's coordinate; a row
+	// placed by a FACT alone is stamped too (harmless: its own coordinate wins).
+	const admittedBody = (record: TranscriptRecord) =>
+		record.journalGeneration === generation && ordinal(record.journalSeq);
+	if (stampArrival(records, admittedBody)) changed = true;
+	const chain = new Map<string, number | undefined>();
 	const byId = new Map(records.map((record) => [record.id, record]));
-	const seqOf = (record: TranscriptRecord | undefined): number | undefined =>
-		factFor(record)?.seq;
+	/*
+	 * Facts rank without reattesting bodies, but a lone later fact must not cut
+	 * an arrival chain ahead of an earlier unresolved row. The local lane already
+	 * gates coordinate USE on that gap; peer facts need the SAME gate (R3-M1).
+	 * With no compose frames and non-slot-order tool starts, a single result fact
+	 * otherwise dragged the following answer between its siblings, twice when
+	 * the same correction was replayed. Nothing is removed from `placement` or
+	 * journalPositions and no body provenance/hold is changed by this gate.
+	 */
+	const seqOf = gapSafeCoordinates(byId, (record) => factFor(record)?.seq);
+	const hasCoordinate = (record: TranscriptRecord) =>
+		seqOf(record) !== undefined;
 	const rank = (record: TranscriptRecord, index: number): number[] => {
 		const own = seqOf(record);
 		if (
@@ -464,9 +681,10 @@ function journalOrderedPeerRecords(
 					: undefined;
 		const owner =
 			typeof anchor === "string" ? seqOf(byId.get(anchor)) : undefined;
-		const admitted = record.sourceAdmissionAnchor
-			? seqOf(byId.get(record.sourceAdmissionAnchor))
-			: undefined;
+		const admitted =
+			own === undefined
+				? arrivalPlacement(record, byId, hasCoordinate, seqOf, chain)
+				: undefined;
 		const placementSeq = owner ?? own ?? admitted;
 		return placementSeq === undefined
 			? [1, 0, 0, 0, index]
@@ -491,8 +709,11 @@ function journalOrderedPeerRecords(
 		return 0;
 	});
 	if (!changed && ranked.every((row, index) => row.index === index))
-		return input;
-	return ranked.map((row) => row.record);
+		return siblingSlotOrder(state, input);
+	return siblingSlotOrder(
+		state,
+		ranked.map((row) => row.record),
+	);
 }
 
 /** Raw IDs only: the index cannot resolve a virtual `tool:...` record key. */

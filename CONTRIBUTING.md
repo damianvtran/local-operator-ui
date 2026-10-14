@@ -127,15 +127,36 @@ Always run these tools before submitting a pull request. They will also be run i
 
 ## Testing
 
-We use Jest for testing:
+Desktop contracts use Node's built-in test runner (Node 22 in CI):
 
 ```bash
-pnpm test
+pnpm test:desktop
+# During development, run only the affected lanes, serially:
+node scripts/run-desktop-tests.mjs --test-concurrency=1 scripts/settings-language-row.test.mjs
 ```
 
-- Keep tests in the same directory as the components they test
-- Aim for 80%+ test coverage for new features
-- Use React Testing Library for component tests
+Run targeted lanes locally and let CI run the complete suite. The weekly
+`Focused flake check` workflow repeats three small DOM lanes in rotating order
+and writes actual exit statuses to its Actions summary; it never retries a red
+lane or launches Electron. It can also be dispatched manually.
+
+### Flake rules
+
+- Wait for a request, cache transition, or DOM condition, not a fixed sleep.
+  A hang bound must fail with the condition being awaited; do not assert elapsed
+  wall time or widen a timeout without reproducing the cause.
+- A negative assertion needs a completion event. Count the operation that proves
+  the behavior, not an unrelated background poll that happens in the same window.
+- Own and dispose resources per mount: unmount React roots, clear query clients,
+  and configure **both queries and mutations** with zero GC retention in disposable
+  clients. Mutation-cache removal alone does not cancel its five-minute GC timer.
+- Reset module state, stub answers, locale, clocks, and timezone between cases.
+  Restore globals only after roots and observers have been torn down.
+- Use unique temporary directories and loopback port `0`, not shared paths or
+  fixed ports. Isolate HOME/config and remove inherited `CMUX_*` session identity.
+- Reproduce a flake before fixing it, then repeat the affected lanes serially in
+  different orders. Keep failures visible; blanket retries, skips, and forced exits
+  hide races and leaked handles rather than repair them.
 
 ## Contribution Workflow
 
