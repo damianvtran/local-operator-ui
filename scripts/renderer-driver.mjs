@@ -43053,10 +43053,10 @@ async function sceneHubLinks(cdp, app) {
 	const ready = await waitForCondition(
 		cdp,
 		`(() => {
-			const panel = document.querySelector('[data-hub-links-panel]');
-			if (!panel) return null;
-			const rows = panel.querySelectorAll('[data-hub-link]');
-			return rows.length > 0 ? { rows: rows.length, unresolved: panel.querySelectorAll('[data-hub-source-unresolved]').length } : null;
+			const pane = document.querySelector('[data-agents-pane]');
+			if (!pane) return null;
+			const rows = pane.querySelectorAll('[data-hub-link]');
+			return rows.length > 0 ? { rows: rows.length, unresolved: pane.querySelectorAll('[data-hub-source-unresolved]').length } : null;
 		})()`,
 		30_000,
 	);
@@ -43072,14 +43072,14 @@ async function sceneHubLinks(cdp, app) {
 	 * separate DIAGNOSTIC (never a synthetic link with writable policy).
 	 */
 	const inventory = await cdp.evaluate(`(() => {
-		const panel = document.querySelector('[data-hub-links-panel]');
-		if (!panel) return null;
-		const linkRows = Array.from(panel.querySelectorAll('[data-hub-link]')).map((row) => ({
+		const pane = document.querySelector('[data-agents-pane]');
+		if (!pane) return null;
+		const linkRows = Array.from(pane.querySelectorAll('[data-hub-link]')).map((row) => ({
 			id: row.getAttribute('data-hub-link'),
 			directions: Array.from(row.querySelectorAll('[data-hub-direction]')).map((d) => d.getAttribute('data-hub-direction')),
 			policy: row.querySelectorAll('[data-hub-link-policy]').length,
 		}));
-		const unresolved = Array.from(panel.querySelectorAll('[data-hub-source-unresolved]')).map((row) => row.getAttribute('data-hub-source-unresolved'));
+		const unresolved = Array.from(pane.querySelectorAll('[data-hub-source-unresolved]')).map((row) => row.getAttribute('data-hub-source-unresolved'));
 		return { linkRows, unresolved };
 	})()`);
 	note("hub inventory", JSON.stringify(inventory));
@@ -43112,14 +43112,14 @@ async function sceneHubLinks(cdp, app) {
 	const subscribeSwitch = await cdp.evaluate(`(() => {
 		const policy = document.querySelector('[data-hub-link-policy]');
 		if (!policy) return null;
-		const input = policy.querySelector('input[type=\"checkbox\"]');
-		return input ? { checked: input.checked } : null;
+		const sw = policy.querySelector('button[role="switch"]');
+		return sw ? { state: sw.getAttribute('data-state') } : null;
 	})()`);
 	note("subscribe switch before", JSON.stringify(subscribeSwitch));
 	const pressed = await verb(
 		cdp,
 		"press",
-		'[data-hub-link-policy] input[type="checkbox"]',
+		'[data-hub-link-policy] button[role="switch"]',
 	);
 	check(
 		"the policy switch received the point (hit test)",
@@ -43130,8 +43130,8 @@ async function sceneHubLinks(cdp, app) {
 		cdp,
 		`(() => {
 			const policy = document.querySelector('[data-hub-link-policy]');
-			const input = policy && policy.querySelector('input[type=\"checkbox\"]');
-			return input && input.checked === false ? true : null;
+			const sw = policy && policy.querySelector('button[role="switch"]');
+			return sw && sw.getAttribute('data-state') === 'unchecked' ? true : null;
 		})()`,
 		15_000,
 	);
@@ -43192,8 +43192,8 @@ async function sceneHubLinks(cdp, app) {
 	const resolvedRow = await waitForCondition(
 		cdp,
 		`(() => {
-			const panel = document.querySelector('[data-hub-links-panel]');
-			return panel && panel.querySelectorAll('[data-hub-source-unresolved]').length === 0 ? true : null;
+			const pane = document.querySelector('[data-agents-pane]');
+			return pane && pane.querySelectorAll('[data-hub-source-unresolved]').length === 0 ? true : null;
 		})()`,
 		15_000,
 	);
@@ -43209,17 +43209,21 @@ async function sceneHubLinks(cdp, app) {
 	 * filter; the daemon's inventory carries one skill link, so the skill surface
 	 * is exercised by the SAME inventory read rather than a second route.
 	 */
-	const skills = await cdp.evaluate(`(() => {
-		const panel = document.querySelector('[data-hub-links-panel]');
-		if (!panel) return null;
-		const kinds = Array.from(panel.querySelectorAll('[data-hub-link]')).map((row) => row.getAttribute('data-hub-link'));
-		return { kinds };
+	const kinds = await cdp.evaluate(`(() => {
+		const pane = document.querySelector('[data-agents-pane]');
+		if (!pane) return null;
+		return { rowIds: Array.from(pane.querySelectorAll('[data-hub-link]')).map((row) => row.getAttribute('data-hub-link')) };
 	})()`);
-	note("skill sibling inventory", JSON.stringify(skills));
+	note(
+		"agent pane row ids (skill rows stay out of this kind filter)",
+		JSON.stringify(kinds),
+	);
 	check(
-		"the skill sibling is exercised by the same inventory read",
-		skills !== null && skills.kinds.length >= 1,
-		JSON.stringify(skills),
+		"the agent pane renders its own rows and no skill row leaks in",
+		kinds !== null &&
+			kinds.rowIds.length >= 1 &&
+			kinds.rowIds.every((id) => !String(id).includes("skill")),
+		JSON.stringify(kinds),
 	);
 }
 
