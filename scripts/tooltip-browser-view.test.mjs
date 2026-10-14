@@ -1,0 +1,342 @@
+/**
+ * Every tooltip hides the native browser view while it is painted over it.
+ *
+ *     node scripts/run-desktop-tests.mjs scripts/tooltip-browser-view.test.mjs
+ *
+ * WHY THIS FILE EXISTS. A `WebContentsView` paints above all DOM, so a tooltip whose
+ * panel lands inside the view's rect is invisible. The sidebar's conversation flyout
+ * opens `right`, into the content area, and with the Browser route open only the
+ * sliver over the sidebar's edge survived (operator report). The cure is the panel
+ * rail's measured registration (#872), moved into the shared `Tooltip` so no call
+ * site has to remember it. This pins that funnel: the predicate, the release paths,
+ * and the `suppressed`/`disabled` props the flyout depends on.
+ *
+ * jsdom has no layout, so the panel's rect is STATED by each case - the instrument is
+ * the policy's decision (does this box overlap the registered view rect), not a pixel.
+ * `scripts/panel-rail.test.mjs` keeps the rail's own cases. NOT visual evidence.
+ */
+
+import assert from "node:assert/strict";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { after, test } from "node:test";
+import { pathToFileURL } from "node:url";
+import { build } from "esbuild";
+import { JSDOM } from "jsdom";
+import React, { act } from "react";
+
+const ROOT = resolve(import.meta.dirname, "..");
+
+const bootstrap = new JSDOM("<!doctype html>", { url: "http://localhost/" });
+globalThis.window = bootstrap.window;
+globalThis.document = bootstrap.window.document;
+const { createRoot } = await import("react-dom/client");
+after(() => {
+	bootstrap.window.close();
+	for (const name of ["window", "document"]) {
+		Reflect.deleteProperty(globalThis, name);
+	}
+});
+
+const EXTERNAL = /^(react|react-dom)(\/.*)?$/;
+const BARE_SPECIFIER = /^[^./]/;
+const CACHE = join(ROOT, "node_modules", ".cache", "tooltip-browser-view");
+const bundle = await build({
+	stdin: {
+		contents: `
+			export { suppressedOverlayIds, registerBrowserViewRect } from "./src/renderer/src/shared/browser-view-policy";
+			export { Tooltip, TooltipProvider } from "./src/renderer/src/shared/components/ui/tooltip";
+		`,
+		resolveDir: ROOT,
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	jsx: "automatic",
+	mainFields: ["module", "main"],
+	conditions: ["import", "module", "default"],
+	plugins: [
+		{
+			name: "react-stays-out",
+			setup(builder) {
+				builder.onResolve({ filter: BARE_SPECIFIER }, (args) =>
+					EXTERNAL.test(args.path) ? { path: args.path, external: true } : null,
+				);
+			},
+		},
+	],
+	loader: { ".css": "empty" },
+	alias: { "@shared": resolve(ROOT, "src/renderer/src/shared") },
+	write: false,
+});
+mkdirSync(CACHE, { recursive: true });
+const bundlePath = join(CACHE, "tooltip.mjs");
+writeFileSync(bundlePath, bundle.outputFiles[0].text);
+const { suppressedOverlayIds, registerBrowserViewRect, Tooltip, TooltipProvider } =
+	await import(pathToFileURL(bundlePath).href);
+
+/* ------------------------------------------------------------------ harness */
+
+/*
+ * The browser route at 1280x900: the sidebar's right edge is ~300px and the view's
+ * rect starts after it. The flyout's box below sits at the row's right edge and
+ * runs into the view; the "chrome band" box sits above the view's top.
+ */
+const VIEW = { x: 300, y: 120, width: 980, height: 780 };
+const FLYOUT = { x: 290, y: 200, width: 256, height: 64 };
+const ABOVE_VIEW = { x: 400, y: 80, width: 120, height: 28 };
+
+async function mount(run) {
+	const dom = new JSDOM("<!doctype html><div id='root'></div>", {
+		url: "http://localhost/",
+		pretendToBeVisual: true,
+	});
+	const { window } = dom;
+	const shims = {
+		window,
+		document: window.document,
+		HTMLElement: window.HTMLElement,
+		Element: window.Element,
+		Node: window.Node,
+		Event: window.Event,
+		// Radix dispatches its "another tooltip opened" signal as a BARE CustomEvent.
+		CustomEvent: window.CustomEvent,
+		requestAnimationFrame: window.requestAnimationFrame.bind(window),
+		cancelAnimationFrame: window.cancelAnimationFrame.bind(window),
+		getComputedStyle: window.getComputedStyle.bind(window),
+		IS_REACT_ACT_ENVIRONMENT: true,
+		ResizeObserver: class {
+			observe() {}
+			unobserve() {}
+			disconnect() {}
+		},
+	};
+	const originals = new Map();
+	for (const [key, value] of Object.entries(shims)) {
+		originals.set(key, Object.getOwnPropertyDescriptor(globalThis, key));
+		Object.defineProperty(globalThis, key, {
+			configurable: true,
+			writable: true,
+			value,
+		});
+	}
+	/* The panel's painted box, as the case states it. */
+	let panelRect = FLYOUT;
+	const proto = window.HTMLElement.prototype;
+	const original = proto.getBoundingClientRect;
+	proto.getBoundingClientRect = function () {
+		if (this.hasAttribute?.("data-lo-tooltip-panel")) {
+			const r = panelRect;
+			return {
+				left: r.x,
+				top: r.y,
+				right: r.x + r.width,
+				bottom: r.y + r.height,
+				x: r.x,
+				y: r.y,
+				width: r.width,
+				height: r.height,
+			};
+		}
+		return original.call(this);
+	};
+	const root = createRoot(window.document.getElementById("root"));
+	const api = {
+		window,
+		document: window.document,
+		$: (selector) => window.document.querySelector(selector),
+		render: async (node) => {
+			await act(async () => root.render(node));
+		},
+		setPanelRect: (rect) => {
+			panelRect = rect;
+		},
+	};
+	try {
+		await run(api);
+	} finally {
+		await act(async () => root.unmount());
+		proto.getBoundingClientRect = original;
+		for (const [key, descriptor] of originals) {
+			if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+			else Reflect.deleteProperty(globalThis, key);
+		}
+		window.close();
+	}
+}
+
+/* Long enough for the hook's placement frames (8) under jsdom's ~16ms rAF. */
+const frames = (n = 14) =>
+	act(async () => {
+		await new Promise((done) => setTimeout(done, n * 20));
+	});
+
+/** The sidebar row flyout's props, as `chat-sidebar.tsx` passes them. */
+const flyout = (extra = {}) =>
+	React.createElement(
+		TooltipProvider,
+		null,
+		React.createElement(
+			Tooltip,
+			{
+				content: "Pinned conversation title",
+				side: "right",
+				align: "start",
+				disableHoverableContent: true,
+				overlayName: "sidebar-row-flyout",
+				...extra,
+			},
+			React.createElement("button", { id: "row", type: "button" }, "row"),
+		),
+	);
+
+const named = (prefix) =>
+	suppressedOverlayIds().filter((id) => id.startsWith(`${prefix}:`));
+
+/* -------------------------------------------------------------------- cases */
+
+test("the sidebar flyout that REACHES the view hides it for exactly as long as it is open", async () => {
+	const release = registerBrowserViewRect(() => VIEW);
+	try {
+		await mount(async (api) => {
+			await api.render(flyout());
+			assert.deepEqual(suppressedOverlayIds(), [], "nothing at rest");
+			act(() => api.$("#row").focus());
+			await frames();
+			assert.ok(api.$("[role=tooltip]"), "the flyout is open");
+			assert.equal(
+				named("sidebar-row-flyout").length,
+				1,
+				"an open flyout over the view registers once, under its own name",
+			);
+			act(() => api.$("#row").blur());
+			await frames(4);
+			assert.deepEqual(suppressedOverlayIds(), [], "closing releases it");
+		});
+	} finally {
+		release();
+	}
+	assert.deepEqual(suppressedOverlayIds(), [], "unmount leaves nothing");
+});
+
+test("a tooltip that does NOT reach the view leaves the page drawn (no flash)", async () => {
+	const release = registerBrowserViewRect(() => VIEW);
+	try {
+		await mount(async (api) => {
+			api.setPanelRect(ABOVE_VIEW);
+			await api.render(flyout());
+			act(() => api.$("#row").focus());
+			await frames();
+			assert.ok(api.$("[role=tooltip]"), "the tooltip is open");
+			assert.deepEqual(suppressedOverlayIds(), [], "but the view is untouched");
+		});
+	} finally {
+		release();
+	}
+});
+
+test("with no browser surface mounted, nothing registers", async () => {
+	await mount(async (api) => {
+		await api.render(flyout());
+		act(() => api.$("#row").focus());
+		await frames();
+		assert.ok(api.$("[role=tooltip]"));
+		assert.deepEqual(suppressedOverlayIds(), []);
+	});
+});
+
+test("an unnamed tooltip registers as `tooltip`", async () => {
+	const release = registerBrowserViewRect(() => VIEW);
+	try {
+		await mount(async (api) => {
+			await api.render(
+				React.createElement(
+					Tooltip,
+					{ content: "hint", side: "right" },
+					React.createElement("button", { id: "t", type: "button" }, "t"),
+				),
+			);
+			act(() => api.$("#t").focus());
+			await frames();
+			assert.equal(named("tooltip").length, 1);
+		});
+	} finally {
+		release();
+	}
+});
+
+test("`suppressed` (the team mark owns the pointer) stands the registration down with the card", async () => {
+	const release = registerBrowserViewRect(() => VIEW);
+	try {
+		await mount(async (api) => {
+			await api.render(flyout({ suppressed: false }));
+			act(() => api.$("#row").focus());
+			await frames();
+			assert.equal(named("sidebar-row-flyout").length, 1, "open: registered");
+			await api.render(flyout({ suppressed: true }));
+			await frames(4);
+			assert.equal(api.$("[role=tooltip]"), null, "the card stands down");
+			assert.deepEqual(suppressedOverlayIds(), [], "and so does the page's pause");
+			await api.render(flyout({ suppressed: false }));
+			await frames();
+			assert.equal(
+				named("sidebar-row-flyout").length,
+				1,
+				"the card returns over the view, re-measured, and re-registers",
+			);
+		});
+	} finally {
+		release();
+	}
+});
+
+test("`disabled` (a drag is armed) releases, and the next open measures afresh", async () => {
+	const release = registerBrowserViewRect(() => VIEW);
+	try {
+		await mount(async (api) => {
+			await api.render(flyout());
+			act(() => api.$("#row").focus());
+			await frames();
+			assert.equal(named("sidebar-row-flyout").length, 1);
+			await api.render(flyout({ disabled: true }));
+			await frames(4);
+			assert.equal(api.$("[role=tooltip]"), null, "rendered bare");
+			assert.deepEqual(suppressedOverlayIds(), [], "nothing held");
+			await api.render(flyout());
+			/* The bare render remounted the button, so focus it again: a real open. */
+			act(() => api.$("#row").focus());
+			await frames();
+			assert.equal(
+				named("sidebar-row-flyout").length,
+				1,
+				"a later real open registers again (the mirrored state was reset)",
+			);
+		});
+	} finally {
+		release();
+	}
+});
+
+test("a caller's onOpenChange still hears every uncontrolled open and close", async () => {
+	const seen = [];
+	await mount(async (api) => {
+		await api.render(flyout({ onOpenChange: (open) => seen.push(open) }));
+		act(() => api.$("#row").focus());
+		await frames(2);
+		act(() => api.$("#row").blur());
+		await frames(2);
+	});
+	assert.deepEqual(seen, [true, false]);
+});
+
+test("the sidebar's row flyout is the call site that names itself", () => {
+	const sidebar = readFileSync(
+		join(ROOT, "src/renderer/src/features/chat/components/chat-sidebar.tsx"),
+		"utf8",
+	);
+	const start = sidebar.indexOf("const withFlyout = ");
+	assert.ok(start > 0, "the flyout helper exists");
+	const helper = sidebar.slice(start, sidebar.indexOf("</Tooltip>", start));
+	assert.match(helper, /side="right"/);
+	assert.match(helper, /overlayName="sidebar-row-flyout"/);
+});

@@ -1,3 +1,4 @@
+import { useSuppressBrowserViewWhileReaching } from "@shared/browser-view-policy";
 import { cn } from "@shared/lib/utils";
 import { Tooltip as TooltipPrimitive } from "radix-ui";
 import {
@@ -251,6 +252,14 @@ export type TooltipProps = {
 	 * Radix's uncontrolled-to-controlled warning.
 	 */
 	onOpenChange?: (open: boolean) => void;
+	/**
+	 * The id prefix this tooltip registers under with the browser-view policy while
+	 * its painted panel reaches the native view (see `Tooltip` below). Only a name:
+	 * it is what the browser surface publishes as `data-suppressed-by`, so a caller
+	 * whose tooltips a test or a reader must tell apart from the rest names them
+	 * (`panel-rail-tooltip`, `sidebar-row-flyout`); every other tooltip is `tooltip`.
+	 */
+	overlayName?: string;
 	/** Applied to the tooltip panel, not to the trigger. */
 	className?: string;
 	/* No `defaultOpen`: it was added here to photograph tooltip strings, then
@@ -272,6 +281,7 @@ export const Tooltip = ({
 	disabled = false,
 	suppressed,
 	onOpenChange,
+	overlayName = "tooltip",
 	className,
 }: TooltipProps) => {
 	const hasProvider = useContext(TooltipProviderPresence);
@@ -290,12 +300,49 @@ export const Tooltip = ({
 		if (controlling) reportOpen.current?.(shown);
 	}, [controlling, shown]);
 
-	if (
+	const bare =
 		(disabled && !suppressed) ||
 		content === null ||
 		content === undefined ||
-		content === ""
-	) {
+		content === "";
+	/*
+	 * On the UNCONTROLLED path a bare render unmounts the Radix root without it ever
+	 * reporting a close, so the `open` mirrored below would stay `true` past the
+	 * panel, and the next real open - reported as `true` again - would not change it,
+	 * so the registration would never re-measure. The controlled path keeps its state
+	 * on purpose: that root is this component's, and it re-opens as it did before.
+	 */
+	useEffect(() => {
+		if (bare && !controlling) setOpen(false);
+	}, [bare, controlling]);
+
+	/*
+	 * EVERY TOOLTIP THAT REACHES THE NATIVE BROWSER VIEW HIDES IT FOR AS LONG AS IT
+	 * IS PAINTED THERE. A `WebContentsView` paints above all DOM, so a panel that
+	 * lands inside its rect is invisible: the sidebar's conversation flyout opens
+	 * `right`, into the content area, and with the Browser route open only the sliver
+	 * over the sidebar's own edge survived (operator report). That is the panel rail's
+	 * problem (#872) for a different side, and the cure is the same measured
+	 * registration, made here rather than per call site for the reason `BaseDialog`
+	 * registers every dialog: a tooltip added next year must not silently vanish over
+	 * the page. MEASURED, not blanket - `useSuppressBrowserViewWhileReaching` reads the
+	 * painted panel against the rect the browser surface reports to main - so the
+	 * hundreds of tooltips that never reach the view (the chrome band's, anything with
+	 * no browser surface mounted) register nothing and cannot flash the page; the ones
+	 * that do pay the flash the policy header records as unmeasured (probe P11).
+	 *
+	 * Fed what is PAINTED: the controlled path's `shown` (so `suppressed` stands the
+	 * registration down with the panel), the root's own report otherwise, and nothing
+	 * while the child renders bare.
+	 */
+	const contentRef = useRef<HTMLDivElement | null>(null);
+	useSuppressBrowserViewWhileReaching(
+		!bare && (controlling ? shown : open),
+		overlayName,
+		() => contentRef.current,
+	);
+
+	if (bare) {
 		return <>{children}</>;
 	}
 
@@ -311,12 +358,18 @@ export const Tooltip = ({
 			 * hover/focus opens still go through `onOpenChange`.
 			 */
 			open={controlling ? (suppressed ? false : open) : undefined}
+			/*
+			 * The uncontrolled path records the root's answer too, for the browser-view
+			 * registration above; a handler does not make a Radix root controlled (only
+			 * `open` does), so this changes nothing about who owns the state.
+			 */
 			onOpenChange={
 				controlling
 					? setOpen
-					: onOpenChange
-						? (next) => onOpenChange(next)
-						: undefined
+					: (next) => {
+							setOpen(next);
+							onOpenChange?.(next);
+						}
 			}
 			delayDuration={delayDuration}
 			disableHoverableContent={disableHoverableContent}
@@ -324,6 +377,7 @@ export const Tooltip = ({
 			<TooltipTrigger asChild>{children}</TooltipTrigger>
 			<TooltipPortal>
 				<TooltipContent
+					ref={contentRef}
 					side={side}
 					align={align}
 					sideOffset={sideOffset}

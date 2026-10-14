@@ -36,8 +36,14 @@ import {
  * - EVERY dialog registers itself, in `BaseDialog` — one funnel, so a dialog
  *   added next year does not silently become invisible over the browser.
  * - The browser feature's own menus and pickers register when they open.
- * - The panel rail's tooltips (`"panel-rail-tooltip"`, #872) register for as long
- *   as one is open AND ONLY IF IT REACHES THE VIEW. They open LEFT, into the pane,
+ * - EVERY TOOLTIP registers, in the shared `Tooltip` wrapper (`ui/tooltip.tsx`) -
+ *   one funnel, for `BaseDialog`'s reason - for as long as it is open AND ONLY IF
+ *   IT REACHES THE VIEW. The sidebar's conversation flyout (`"sidebar-row-flyout"`)
+ *   opens RIGHT, into the content area, and was clipped to the sliver over the
+ *   sidebar's edge before it did; a tooltip that does not name itself registers as
+ *   `"tooltip"`.
+ * - The panel rail's tooltips (`"panel-rail-tooltip"`, #872) were the first to
+ *   register that way, and the measurement came from them. They open LEFT, into the pane,
  *   and which of them lands inside the view's rect is a MEASUREMENT, not a list:
  *   at 1280x900 with a run present only the Canvas item's tooltip does (23 of its
  *   27px), the other three end above the view's top, and on a draft none does.
@@ -51,7 +57,11 @@ import {
  *
  * - **Tooltips and menus in the chrome band.** The band is outside the view's
  *   rect, so nothing there is occluded, and hiding the view every time a pointer
- *   rested on a tab would flash the page for no reason.
+ *   rested on a tab would flash the page for no reason. A band tooltip goes through
+ *   the same `Tooltip` funnel as every other and the MEASUREMENT keeps it out: its
+ *   painted box does not overlap the view's rect. One whose panel did cross the
+ *   view's top edge would register, which is the point - it would otherwise be
+ *   partly hidden.
  * - **The in-flow banners.** They occupy their own space in the shell rather
  *   than painting over the content area.
  *
@@ -348,7 +358,8 @@ export function useSuppressedOverlayIds(): string {
  * A follow-up worth having: route app-wide notices into the chrome band while the
  * browser route is the active one.
  *
- * **Menus, selects, popovers and tooltips** did not register, for a different reason:
+ * **Menus, selects, popovers and (until the shared-`Tooltip` funnel, above)
+ * tooltips** did not register, for a different reason:
  * the ones this feature used to open were anchored in the chrome band, which is
  * outside the view's rectangle, so nothing there was occluded and hiding the view
  * for a hover hint would flash the page for nothing. A menu opened from a PAGE is
