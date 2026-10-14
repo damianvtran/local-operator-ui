@@ -822,6 +822,15 @@ const publicationTools = z
  * body actually lives. A field this renderer does not send is a field whose
  * local value is the one the author wrote.
  */
+// Local policy/replay options are never part of the published manifest. Omitted
+// fields preserve legacy calls; explicit draft flags require durable request ID.
+const publicationPolicyFields = {
+	requestId: requestId.optional(),
+	subscribe: z.boolean().optional(),
+	autoPush: z.boolean().optional(),
+	confirmPublicEgress: z.boolean().optional(),
+};
+
 const publicationDocument = z
 	.object({
 		name: publicationName,
@@ -1075,6 +1084,38 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	 */
 	z
 		.object({ op: z.literal("hub.updates") })
+		.strict(),
+	// Initial skill publication uses an actual discovered source and managed
+	// alias, never a synthetic link ID or a private-directory clone.
+	z
+		.object({
+			op: z.literal("hub.skillPull"),
+			requestId,
+			hubId: id,
+			hubSource: z.string().min(1).max(2048),
+			visibility: z.enum(["public", "org"]),
+			tenantId: id.nullable(),
+			localAlias: profileName,
+			subscribe: z.boolean().optional(),
+			autoPush: z.boolean().optional(),
+			confirmPublicEgress: z.boolean().optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("hub.skillPublish"),
+			requestId,
+			dryRun: z.boolean(),
+			sourceSkill: profileName,
+			localAlias: profileName,
+			visibility: z.enum(["public", "org"]),
+			tenantId: id.nullable(),
+			subscribe: z.boolean(),
+			autoPush: z.boolean(),
+			confirmPublicEgress: z.boolean(),
+			previewReceipt: z.string().min(1).max(4096).optional(),
+			confirmPublish: z.literal(true).optional(),
+		})
 		.strict(),
 	// Full inventory is additive: old callers still receive pending agents/teams
 	// only. Policy revision is required even for a single independent toggle so
@@ -2071,6 +2112,7 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			op: z.literal("agent.publish"),
 			agentId: id,
 			document: publicationDocument.optional(),
+			...publicationPolicyFields,
 			/*
 			 * The publication TARGET (§4.4/§4.7). Both travel together or neither does,
 			 * and the rule is a `superRefine` on the whole UNION (below) rather than a
@@ -2104,8 +2146,19 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			// republish that did not name one would have to guess which public row to
 			// overwrite — and guessing here overwrites somebody's listing.
 			hubAgentId: id,
+			expectedRemoteRevision: z.string().min(1).max(512).optional(),
 			document: publicationDocument.optional(),
+			...publicationPolicyFields,
 			/** The publication target, on the same terms as `agent.publish` above. */
+			visibility: z.literal("org").optional(),
+			tenantId: id.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team.publish"),
+			teamId: id,
+			...publicationPolicyFields,
 			visibility: z.literal("org").optional(),
 			tenantId: id.optional(),
 		})
@@ -3295,6 +3348,34 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
  */
 export const desktopRequestSchema = desktopRequestUnion.superRefine(
 	(request, ctx) => {
+		if (request.op === "hub.skillPull" || request.op === "hub.skillPublish") {
+			if (
+				(request.visibility === "public" && request.tenantId !== null) ||
+				(request.visibility === "org" && !request.tenantId)
+			) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: "A skill destination requires explicit paired scope",
+					path: ["tenantId"],
+				});
+				return;
+			}
+			if (
+				request.op === "hub.skillPublish" &&
+				(request.dryRun
+					? request.previewReceipt !== undefined ||
+						request.confirmPublish !== undefined
+					: !request.previewReceipt || request.confirmPublish !== true)
+			) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message:
+						"An initial skill publication requires its reviewed draft receipt",
+					path: ["previewReceipt"],
+				});
+				return;
+			}
+		}
 		// Stable links and legacy name selectors are mutually exclusive. Never
 		// let one surface's active organization/name override a scoped origin.
 		if (
@@ -3503,7 +3584,24 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 			}
 			return;
 		}
-		if (request.op !== "agent.publish" && request.op !== "agent.republish") {
+		if (
+			request.op !== "agent.publish" &&
+			request.op !== "agent.republish" &&
+			request.op !== "team.publish"
+		) {
+			return;
+		}
+		if (
+			(request.subscribe !== undefined ||
+				request.autoPush !== undefined ||
+				request.confirmPublicEgress !== undefined) &&
+			!request.requestId
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "Initial link policy needs a durable publication request ID",
+				path: ["requestId"],
+			});
 			return;
 		}
 		// The same presence test the composer's assert uses (S-2): one predicate for
@@ -4638,6 +4736,8 @@ const HUB_WRITE_OPS: ReadonlySet<string> = new Set([
 	"hub.apply",
 	"hub.retry",
 	"hub.push",
+	"hub.skillPublish",
+	"hub.skillPull",
 	"hub.check",
 	"hub.applyAll",
 ]);
@@ -4647,6 +4747,8 @@ function hubWriteDeadlineMs(op: string): number | null {
 		case "hub.apply":
 		case "hub.retry":
 		case "hub.push":
+		case "hub.skillPublish":
+		case "hub.skillPull":
 			return HUB_ITEM_WRITE_DEADLINE_MS;
 		case "hub.check":
 			return HUB_CHECK_DEADLINE_MS;
@@ -5739,6 +5841,25 @@ function wakeTiming(request: {
 	};
 }
 
+/** Policy and replay flags stay local; an omitted legacy option remains omitted. */
+function publicationPolicyBody(request: {
+	requestId?: string;
+	subscribe?: boolean;
+	autoPush?: boolean;
+	confirmPublicEgress?: boolean;
+}): Record<string, unknown> {
+	return {
+		...(request.requestId ? { request_id: request.requestId } : {}),
+		...(request.subscribe !== undefined
+			? { subscribe: request.subscribe }
+			: {}),
+		...(request.autoPush !== undefined ? { auto_push: request.autoPush } : {}),
+		...(request.confirmPublicEgress !== undefined
+			? { confirm_public_egress: request.confirmPublicEgress }
+			: {}),
+	};
+}
+
 /**
  * Refuse a publication target that names only one of its two fields.
  *
@@ -5895,6 +6016,48 @@ export function desktopEndpoint(request: DesktopRequest): {
 			};
 		case "hub.updates":
 			return { path: "/v1/desktop/hub/updates", method: "GET" };
+		case "hub.skillPull":
+			return {
+				path: "/v1/desktop/hub/skills/pull",
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					hub_id: request.hubId,
+					hub_source: request.hubSource,
+					visibility: request.visibility,
+					tenant_id: request.tenantId,
+					local_alias: request.localAlias,
+					...(request.subscribe !== undefined
+						? { subscribe: request.subscribe }
+						: {}),
+					...(request.autoPush !== undefined
+						? { auto_push: request.autoPush }
+						: {}),
+					...(request.confirmPublicEgress !== undefined
+						? { confirm_public_egress: request.confirmPublicEgress }
+						: {}),
+				},
+			};
+		case "hub.skillPublish":
+			return {
+				path: "/v1/desktop/hub/skills/publish",
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					dry_run: request.dryRun,
+					source_skill: request.sourceSkill,
+					local_alias: request.localAlias,
+					visibility: request.visibility,
+					tenant_id: request.tenantId,
+					subscribe: request.subscribe,
+					auto_push: request.autoPush,
+					confirm_public_egress: request.confirmPublicEgress,
+					...(request.previewReceipt
+						? { preview_receipt: request.previewReceipt }
+						: {}),
+					...(request.confirmPublish ? { confirm_publish: true } : {}),
+				},
+			};
 		case "hub.links":
 			return {
 				path: `/v1/desktop/hub/links${request.kind ? `?kind=${request.kind}` : ""}`,
@@ -6557,7 +6720,10 @@ export function desktopEndpoint(request: DesktopRequest): {
 				// there is no override, because the route's input model forbids extras
 				// and still wants a JSON OBJECT — an omitted body makes a legal call
 				// answer 422.
-				body: { document: request.document ?? {} },
+				body: {
+					document: request.document ?? {},
+					...publicationPolicyBody(request),
+				},
 			};
 		}
 		case "agent.republish": {
@@ -6583,7 +6749,24 @@ export function desktopEndpoint(request: DesktopRequest): {
 				body: {
 					hub_agent_id: request.hubAgentId,
 					document: request.document ?? {},
+					...publicationPolicyBody(request),
+					...(request.expectedRemoteRevision
+						? { expected_remote_revision: request.expectedRemoteRevision }
+						: {}),
 				},
+			};
+		}
+		case "team.publish": {
+			assertPairedPublicationTarget(request);
+			const query = new URLSearchParams();
+			if (request.visibility === "org" && request.tenantId) {
+				query.set("visibility", "org");
+				query.set("tenant_id", request.tenantId);
+			}
+			return {
+				path: `/v1/teams/${request.teamId}/publish${query.size ? `?${query}` : ""}`,
+				method: "POST",
+				body: publicationPolicyBody(request),
 			};
 		}
 		case "team.pull": {

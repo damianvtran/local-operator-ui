@@ -198,6 +198,8 @@ function MemberCols() {
 	);
 }
 
+import { HubTeamPublication } from "./hub-team-publication";
+
 export function TeamDetail({
 	team,
 	agents,
@@ -509,6 +511,7 @@ export function TeamDetail({
 							>
 								New team chat
 							</Button>
+							<HubTeamPublication team={team} />
 							<Button variant="secondary" onClick={() => setEditing(true)}>
 								Edit
 							</Button>

@@ -7,7 +7,7 @@ import { build } from "esbuild";
 const bundled = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/features/agents/definition-editor-identity"; export * from "./src/renderer/src/features/agents/hub-link-view"; export * from "./src/renderer/src/features/agents/hub-preview-binding"; export * from "./src/renderer/src/features/agents/hub-link-adapter"; export * from "./src/renderer/src/shared/api/local-operator/hub-links"; export {desktopRequestSchema,desktopEndpoint} from "./src/shared/desktop-contract";',
+			'export * from "./src/renderer/src/shared/api/local-operator/hub-publication"; export * from "./src/renderer/src/features/agents/definition-editor-identity"; export * from "./src/renderer/src/features/agents/hub-link-view"; export * from "./src/renderer/src/features/agents/hub-preview-binding"; export * from "./src/renderer/src/features/agents/hub-link-adapter"; export * from "./src/renderer/src/shared/api/local-operator/hub-links"; export {desktopRequestSchema,desktopEndpoint} from "./src/shared/desktop-contract";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -17,6 +17,8 @@ const bundled = await build({
 	logLevel: "silent",
 });
 const {
+	initialSkillPreviewMatches,
+	publicationPolicyAcknowledged,
 	profileEditorIdentity,
 	teamEditorIdentity,
 	hubLinkMark,
@@ -441,4 +443,228 @@ test("OFF outbound retry cannot infer future-write consent from an operation ID"
 		direction: "push",
 		action: "detail",
 	});
+});
+
+test("initial skill confirmation binds source alias scope flags expiry and full proposal", () => {
+	const draft = {
+		sourceSkill: "authored",
+		localAlias: "public-copy",
+		visibility: "public",
+		tenantId: null,
+		subscribe: true,
+		autoPush: false,
+		confirmPublicEgress: false,
+	};
+	const preview = {
+		kind: "skill",
+		direction: "push",
+		publication: "create",
+		can_confirm: true,
+		preview_receipt: "viewed",
+		source_skill: "authored",
+		local_alias: "public-copy",
+		visibility: "public",
+		tenant_id: null,
+		local_fingerprint: "local",
+		draft_fingerprint: "draft",
+		proposal_fingerprint: "proposal",
+		expires_at: "2030-01-01T00:00:00Z",
+		policy: { subscribe: true, auto_push: false, confirm_public_egress: false },
+		proposal: {
+			kind: "skill",
+			fields: {
+				document_version: 1,
+				name: "authored",
+				description: "description",
+				files: [{ path: "SKILL.md", content: "reviewed full body" }],
+			},
+		},
+	};
+	assert.equal(initialSkillPreviewMatches(preview, draft, 0), true);
+	for (const changed of [
+		{ sourceSkill: "another" },
+		{ localAlias: "org-copy" },
+		{ visibility: "org", tenantId: "org-one" },
+		{ subscribe: false },
+		{ autoPush: true },
+		{ confirmPublicEgress: true },
+	])
+		assert.equal(
+			initialSkillPreviewMatches(preview, { ...draft, ...changed }, 0),
+			false,
+		);
+	for (const changed of [
+		{ can_confirm: false },
+		{ direction: "pull" },
+		{ publication: "update" },
+		{ expires_at: "invalid" },
+		{ expires_at: "1970-01-01T00:00:00Z" },
+		{ proposal: { kind: "agent", fields: { document_version: 1 } } },
+	])
+		assert.equal(
+			initialSkillPreviewMatches({ ...preview, ...changed }, draft, 0),
+			false,
+		);
+});
+
+test("remote success and pending receipts do not acknowledge stored policies", () => {
+	const confirmed = rawLink();
+	const complete = {
+		link: confirmed,
+		local_link_receipt: {
+			state: "complete",
+			operation_id: "operation",
+			link_id: confirmed.link_id,
+			safe_message: null,
+		},
+	};
+	assert.equal(publicationPolicyAcknowledged(complete), true);
+	assert.equal(
+		publicationPolicyAcknowledged({ ...complete, link: null }),
+		false,
+	);
+	assert.equal(
+		publicationPolicyAcknowledged({
+			...complete,
+			local_link_receipt: {
+				...complete.local_link_receipt,
+				state: "pending-reconciliation",
+			},
+		}),
+		false,
+	);
+	assert.equal(
+		publicationPolicyAcknowledged({
+			...complete,
+			local_link_receipt: {
+				...complete.local_link_receipt,
+				link_id: "another-link",
+			},
+		}),
+		false,
+	);
+	assert.equal(
+		publicationPolicyAcknowledged({
+			...complete,
+			link: { ...confirmed, policy: { ...confirmed.policy, revision: "" } },
+		}),
+		false,
+	);
+	assert.equal(
+		publicationPolicyAcknowledged({ publication: { accepted_document: {} } }),
+		false,
+	);
+});
+
+test("initial transports preserve exact echo arms and reject guessed scope or consent", () => {
+	const base = {
+		op: "hub.skillPublish",
+		requestId: "11111111-1111-4111-8111-111111111111",
+		sourceSkill: "authored",
+		localAlias: "public-copy",
+		visibility: "public",
+		tenantId: null,
+		subscribe: true,
+		autoPush: false,
+		confirmPublicEgress: false,
+		dryRun: true,
+	};
+	assert.equal(desktopRequestSchema.safeParse(base).success, true);
+	const preview = desktopEndpoint(base);
+	assert.equal(preview.path, "/v1/desktop/hub/skills/publish");
+	assert.equal(preview.body.source_skill, "authored");
+	assert.equal(preview.body.local_alias, "public-copy");
+	assert.equal(preview.body.subscribe, true);
+	assert.equal(preview.body.auto_push, false);
+	assert.equal(
+		desktopRequestSchema.safeParse({ ...base, tenantId: "org-one" }).success,
+		false,
+	);
+	assert.equal(
+		desktopRequestSchema.safeParse({ ...base, dryRun: false }).success,
+		false,
+	);
+	const confirmed = {
+		...base,
+		dryRun: false,
+		previewReceipt: "viewed-token",
+		confirmPublish: true,
+	};
+	assert.equal(desktopRequestSchema.safeParse(confirmed).success, true);
+	assert.equal(desktopEndpoint(confirmed).body.preview_receipt, "viewed-token");
+	const initial = {
+		op: "agent.publish",
+		agentId: "local",
+		requestId: "22222222-2222-4222-8222-222222222222",
+		subscribe: false,
+		autoPush: false,
+		confirmPublicEgress: false,
+	};
+	assert.equal(desktopRequestSchema.safeParse(initial).success, true);
+	assert.deepEqual(desktopEndpoint(initial).body, {
+		document: {},
+		request_id: "22222222-2222-4222-8222-222222222222",
+		subscribe: false,
+		auto_push: false,
+		confirm_public_egress: false,
+	});
+	assert.equal(
+		desktopRequestSchema.safeParse({ ...initial, requestId: undefined })
+			.success,
+		false,
+	);
+	const team = {
+		op: "team.publish",
+		teamId: "local",
+		requestId: "33333333-3333-4333-8333-333333333333",
+		visibility: "org",
+		tenantId: "org-one",
+		subscribe: true,
+		autoPush: false,
+		confirmPublicEgress: false,
+	};
+	assert.equal(desktopRequestSchema.safeParse(team).success, true);
+	assert.equal(
+		desktopEndpoint(team).path,
+		"/v1/teams/local/publish?visibility=org&tenant_id=org-one",
+	);
+	assert.equal(
+		desktopRequestSchema.safeParse({ ...team, visibility: undefined }).success,
+		false,
+	);
+});
+
+const skillsDraftPins = {
+	scopeKey: /key=\{`skills:\$\{scope\}`\}/,
+	privateLoss: /!scopeIsAvailable && view !== "skills"/,
+	keptForm:
+		/<HubSkillPublication[\s\S]*?enabled=\{supported && accessible && signedIn\}/,
+	inventoryDependency: /\[[^\]]*installed\.data[^\]]*\]/,
+	destination: /destinationRef\.current === destination/,
+	scopedQuery: /scope\.visibility,[\s\S]*?scope\.tenantId/,
+	requestId: /requestId: input.requestId/,
+	operation: /operation|request\.current/,
+};
+
+test("Skills draft mount and scope authority do not depend on inventory bytes", async () => {
+	const { readFileSync } = await import("node:fs");
+	const read = (path) => readFileSync(path, "utf8");
+	const page = read("src/renderer/src/features/agent-hub/agent-hub-page.tsx");
+	const library = read(
+		"src/renderer/src/features/agent-hub/components/hub-skills-library.tsx",
+	);
+	const publication = read(
+		"src/renderer/src/features/agent-hub/components/hub-skill-publication.tsx",
+	);
+	const hook = read(
+		"src/renderer/src/features/agent-hub/hooks/use-hub-skills.ts",
+	);
+	assert.match(page, skillsDraftPins.scopeKey);
+	assert.match(page, skillsDraftPins.privateLoss);
+	assert.match(library, skillsDraftPins.keptForm);
+	assert.doesNotMatch(publication, skillsDraftPins.inventoryDependency);
+	assert.match(publication, skillsDraftPins.destination);
+	assert.match(hook, skillsDraftPins.scopedQuery);
+	assert.match(hook, skillsDraftPins.requestId);
+	assert.match(publication, skillsDraftPins.operation);
 });
