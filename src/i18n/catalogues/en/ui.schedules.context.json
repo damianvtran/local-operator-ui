@@ -6,7 +6,8 @@
 		"placeholders": {
 			"hidden": "Actual runtime binding in scheduled-task-model: hidden"
 		},
-		"note": "English source: Show {hidden, plural, one {{hidden, number, ::group-off} more wake} other {{hidden, number, ::group-off} more wakes}}. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. ICU plural chooses the noun form; count formatting uses ICU number ::group-off to preserve ungrouped English digits. "
+		"note": "English source: Show {hidden, plural, one {{hidden, number, ::group-off} more wake} other {{hidden, number, ::group-off} more wakes}}. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. ICU plural chooses the noun form; count formatting uses ICU number ::group-off to preserve ungrouped English digits.  Real ICU one/other arms select the counted noun. Russian translators need few/many arms; Arabic translators need zero/two and locale-appropriate few/many. English 0/1/2 selects other/one/other.",
+		"plural": "ru: add few/many; ar: add zero/two; preserve the count parameter and its existing ICU numeric style."
 	},
 	"ui.schedules.count.keep_runs": {
 		"role": "Wake-count/remaining-run labels — Ends picker option preserving remaining run budget",
@@ -15,7 +16,19 @@
 		"placeholders": {
 			"left": "Actual runtime binding in scheduled-task-model: left"
 		},
-		"note": "English source: Keep {left, plural, one {{left, number, ::group-off} run} other {{left, number, ::group-off} runs}} left. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. ICU plural chooses the noun form; count formatting uses ICU number ::group-off to preserve ungrouped English digits. "
+		"note": "English source: Keep {left, plural, one {{left, number, ::group-off} run} other {{left, number, ::group-off} runs}} left. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. ICU plural chooses the noun form; count formatting uses ICU number ::group-off to preserve ungrouped English digits.  Real ICU one/other arms select the counted noun. Russian translators need few/many arms; Arabic translators need zero/two and locale-appropriate few/many. English 0/1/2 selects other/one/other.",
+		"plural": "ru: add few/many; ar: add zero/two; preserve the count parameter and its existing ICU numeric style."
+	},
+	"ui.schedules.count.list_truncated": {
+		"role": "Schedules overview truncated-list footnote: visible versus total conversation count",
+		"tone": "Factual count, not a complete-list claim.",
+		"length": "Keep one brief footnote sentence; English example is Showing 1 of 2 conversations with wakes.",
+		"note": "shown is the visible row count; total is the backend count. Both are raw numbers. The total count owns the singular/plural conversation noun. The existing paragraph markup stays unchanged; no authored name is translated. Real ICU one/other arms select the counted noun. Russian translators need few/many arms; Arabic translators need zero/two and locale-appropriate few/many. English 0/1/2 selects other/one/other.",
+		"placeholders": {
+			"shown": "listing.data.entries.length, raw visible count, ICU number ::group-off.",
+			"total": "listing.data.total, raw backend count selecting ICU plural."
+		},
+		"plural": "ru: add few/many; ar: add zero/two; preserve the count parameter and its existing ICU numeric style."
 	},
 	"ui.schedules.count.ran": {
 		"role": "Wake-count/remaining-run labels — past-run count beside an armed wake line",
@@ -24,7 +37,8 @@
 		"placeholders": {
 			"fired": "Actual runtime binding in scheduled-task-model: fired"
 		},
-		"note": "English source: Ran {fired, plural, one {{fired, number, ::group-off} time} other {{fired, number, ::group-off} times}}. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. ICU plural chooses the noun form; count formatting uses ICU number ::group-off to preserve ungrouped English digits. "
+		"note": "English source: Ran {fired, plural, one {{fired, number, ::group-off} time} other {{fired, number, ::group-off} times}}. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. ICU plural chooses the noun form; count formatting uses ICU number ::group-off to preserve ungrouped English digits.  Real ICU one/other arms select the counted noun. Russian translators need few/many arms; Arabic translators need zero/two and locale-appropriate few/many. English 0/1/2 selects other/one/other.",
+		"plural": "ru: add few/many; ar: add zero/two; preserve the count parameter and its existing ICU numeric style."
 	},
 	"ui.schedules.count.wake": {
 		"role": "Wake-count/remaining-run labels — row-header wake tally (without “armed”)",
@@ -33,7 +47,8 @@
 		"placeholders": {
 			"count": "Actual runtime binding in scheduled-task-model: count"
 		},
-		"note": "English source: {count, plural, one {{count, number, ::group-off} wake} other {{count, number, ::group-off} wakes}}. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. ICU plural chooses the noun form; count formatting uses ICU number ::group-off to preserve ungrouped English digits. "
+		"note": "English source: {count, plural, one {{count, number, ::group-off} wake} other {{count, number, ::group-off} wakes}}. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. ICU plural chooses the noun form; count formatting uses ICU number ::group-off to preserve ungrouped English digits.  Real ICU one/other arms select the counted noun. Russian translators need few/many arms; Arabic translators need zero/two and locale-appropriate few/many. English 0/1/2 selects other/one/other.",
+		"plural": "ru: add few/many; ar: add zero/two; preserve the count parameter and its existing ICU numeric style."
 	},
 	"ui.schedules.legacy.activated": {
 		"role": "Legacy agent-schedule status/cadence — derived feedback text: “Schedule activated.”",
@@ -840,12 +855,6 @@
 		"length": "English source is 153 characters. Keep the existing sentence/paragraph count; feedback may wrap at the same surface width.",
 		"note": "English source: Ask an agent in chat to do something on a regular basis — “send me the news at 8am every day” — and it will appear here. You can also set one up by hand.. This is the explanatory/status paragraph in the schedules overview page, not stored prompt text or a backend token. "
 	},
-	"ui.schedules.schedules_page.conversations_with_wakes": {
-		"role": "Schedules overview page — explanatory/status paragraph: “conversations with wakes.”",
-		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
-		"length": "English source is 25 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
-		"note": "Final noun phrase of Showing <visible> of <total> conversations with wakes. JSX supplies the space before this phrase; keep final period. Total exceeds the backend list cap in this branch."
-	},
 	"ui.schedules.schedules_page.could_not_cancel_the_wake": {
 		"role": "Schedules overview page — state-dependent action/feedback label: “Could not cancel the wake.”",
 		"tone": "Plain refusal; retain the failed operation, do not imply success or offer an unimplemented retry.",
@@ -954,12 +963,6 @@
 		"length": "English source is 22 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
 		"note": "English source: No scheduled tasks yet. This is the explanatory/status paragraph in the schedules overview page, not stored prompt text or a backend token. "
 	},
-	"ui.schedules.schedules_page.of": {
-		"role": "Schedules overview page — explanatory/status paragraph: “ of ”",
-		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
-		"length": "English source is 4 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
-		"note": "Truncated-list footnote separator: Showing <visible> of <total> conversations with wakes. Preserve spaces on both sides and translate with showing and conversations_with_wakes."
-	},
 	"ui.schedules.schedules_page.open_conversation": {
 		"role": "Schedules overview page — repeat-unit dropdown option: “Open conversation”",
 		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
@@ -989,12 +992,6 @@
 		"tone": "Compact control or field label, matching the displayed English case and punctuation.",
 		"length": "English source is 9 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
 		"note": "English source: Schedules. This is the dialog title or hover title in the schedules overview page, not stored prompt text or a backend token. "
-	},
-	"ui.schedules.schedules_page.showing": {
-		"role": "Schedules overview page — explanatory/status paragraph: “Showing ”",
-		"tone": "Concise neutral label, matching English sentence case.",
-		"length": "English source is 8 characters. Keep comparable width in this button/menu/picker choice; do not add a sentence.",
-		"note": "Truncated-list footnote prefix: Showing <visible count> of <total count> conversations with wakes. Both counts are separate formatNumber(..., { useGrouping: false }) values. Keep trailing space; do not suggest this is a complete list."
 	},
 	"ui.schedules.schedules_page.these_run_on_the_older_agent_schedule_engine_new_scheduled_tasks": {
 		"role": "Schedules overview page — explanatory/status paragraph: “These run on the older agent-schedule engine. New scheduled tasks are created as wakes, in a conversation.”",
@@ -1034,7 +1031,8 @@
 			"length": "Actual runtime binding in scheduled-task-model: length, \t\t\t\t\tmax: WAKE_MESSAGE_MAX_CHARS,",
 			"max": "Actual runtime binding in scheduled-task-model: max: WAKE_MESSAGE_MAX_CHARS"
 		},
-		"note": "English source: This prompt is {length, number} characters, and a wake holds at most {max, number}. Shorten it to save.. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. The prompt-length numbers use ICU number with grouping (English cap 2,000 from WAKE_MESSAGE_MAX_CHARS), matching the prior toLocaleString output. "
+		"note": "English source: This prompt is {length, number} characters, and a wake holds at most {max, number}. Shorten it to save.. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. The prompt-length numbers use ICU number with grouping (English cap 2,000 from WAKE_MESSAGE_MAX_CHARS), matching the prior toLocaleString output.  Real ICU one/other arms select the counted noun. Russian translators need few/many arms; Arabic translators need zero/two and locale-appropriate few/many. English 0/1/2 selects other/one/other.",
+		"plural": "ru: add few/many; ar: add zero/two; preserve the count parameter and its existing ICU numeric style."
 	},
 	"ui.schedules.validation.run_budget": {
 		"role": "Wake form inline validation — Ends/run-budget refusal after the wake has already fired",
@@ -1044,7 +1042,8 @@
 			"alreadyRun": "Actual runtime binding in scheduled-task-model: alreadyRun: input.alreadyRun",
 			"budget": "Actual runtime binding in scheduled-task-model: budget: input.alreadyRun + 1"
 		},
-		"note": "English source: This wake has already run {alreadyRun, plural, one {{alreadyRun, number, ::group-off} time} other {{alreadyRun, number, ::group-off} times}}, so the run budget has to be at least {budget, number, ::group-off}.. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. ICU plural chooses the noun form; count formatting uses ICU number ::group-off to preserve ungrouped English digits. "
+		"note": "English source: This wake has already run {alreadyRun, plural, one {{alreadyRun, number, ::group-off} time} other {{alreadyRun, number, ::group-off} times}}, so the run budget has to be at least {budget, number, ::group-off}.. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. ICU plural chooses the noun form; count formatting uses ICU number ::group-off to preserve ungrouped English digits.  Real ICU one/other arms select the counted noun. Russian translators need few/many arms; Arabic translators need zero/two and locale-appropriate few/many. English 0/1/2 selects other/one/other.",
+		"plural": "ru: add few/many; ar: add zero/two; preserve the count parameter and its existing ICU numeric style."
 	},
 	"ui.schedules.validation.wake_ceiling": {
 		"role": "Wake form inline validation — conversation-at-capacity refusal when adding a wake",
@@ -1053,7 +1052,8 @@
 		"placeholders": {
 			"count": "Actual runtime binding in scheduled-task-model: count: input.existingWakeCount"
 		},
-		"note": "English source: This conversation already has {count, plural, one {{count, number, ::group-off} wake} other {{count, number, ::group-off} wakes}}, the most it can hold. Cancel one to add another.. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. ICU plural chooses the noun form; count formatting uses ICU number ::group-off to preserve ungrouped English digits. "
+		"note": "English source: This conversation already has {count, plural, one {{count, number, ::group-off} wake} other {{count, number, ::group-off} wakes}}, the most it can hold. Cancel one to add another.. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. ICU plural chooses the noun form; count formatting uses ICU number ::group-off to preserve ungrouped English digits.  Real ICU one/other arms select the counted noun. Russian translators need few/many arms; Arabic translators need zero/two and locale-appropriate few/many. English 0/1/2 selects other/one/other.",
+		"plural": "ru: add few/many; ar: add zero/two; preserve the count parameter and its existing ICU numeric style."
 	},
 	"ui.schedules.wake_conversation_row.cancel_wake": {
 		"role": "Conversation wake row — content control copy: “Cancel wake”",

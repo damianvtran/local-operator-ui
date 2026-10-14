@@ -29,6 +29,7 @@ import {
 } from "@shared/components/ui";
 import { useAgents } from "@shared/hooks/use-agents";
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { ChevronDown, Info, Save, SquareX } from "lucide-react";
@@ -84,6 +85,7 @@ const AgentSelect: FC<{
 	loading: boolean;
 	invalid: boolean;
 }> = ({ options, selected, onSelect, onQueryChange, loading, invalid }) => {
+	useI18nLocale();
 	const baseId = useId();
 	const inputId = `${baseId}-input`;
 	const listId = `${baseId}-listbox`;
@@ -330,6 +332,7 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 	onSubmit,
 	initialData,
 }) => {
+	useI18nLocale();
 	const [formData, setFormData] = useState<FormDataType>(defaultFormState);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [agentSearchQuery, setAgentSearchQuery] = useState("");

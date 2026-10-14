@@ -3,6 +3,7 @@ import { AgentsApi } from "@shared/api/local-operator/agents-api";
 import { Button, Skeleton, Switch, Tooltip } from "@shared/components/ui";
 import { apiConfig } from "@shared/config";
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { SquarePen, Trash2 } from "lucide-react";
@@ -95,6 +96,7 @@ export const ScheduleListItem: FC<ScheduleListItemProps> = ({
 	onToggleActive,
 	nowMs = Date.now(),
 }) => {
+	useI18nLocale();
 	const { data: agentName, isLoading: isLoadingAgentName } = useAgentName(
 		schedule.agent_id,
 	);

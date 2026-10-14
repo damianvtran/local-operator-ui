@@ -57,7 +57,8 @@ import { ConfirmationModal } from "@shared/components/common/confirmation-modal"
 import { PageHeader } from "@shared/components/common/page-header";
 import { Spinner } from "@shared/components/common/spinner";
 import { Alert, Button } from "@shared/components/ui";
-import { formatNumber, t } from "@shared/i18n";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { useQueryClient } from "@tanstack/react-query";
@@ -109,6 +110,7 @@ export type SchedulesPageProps = {
 export const SchedulesPage: FC<SchedulesPageProps> = ({
 	nowMs = Date.now(),
 }) => {
+	useI18nLocale();
 	const navigate = useNavigate();
 	const [dialog, setDialog] = useState<DialogState | null>(null);
 	const [pendingCancel, setPendingCancel] = useState<PendingCancel | null>(
@@ -570,11 +572,10 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 				    so a client can say "showing N of M" (the reviewer's R7). */}
 				{!listing.isLoading && listing.data?.truncated && (
 					<p className="border-hairline border-t px-4 py-3 text-body-sm text-ink-dim">
-						{t("ui.schedules.schedules_page.showing")}
-						{formatNumber(listing.data.entries.length, { useGrouping: false })}
-						{t("ui.schedules.schedules_page.of")}
-						{formatNumber(listing.data.total, { useGrouping: false })}{" "}
-						{t("ui.schedules.schedules_page.conversations_with_wakes")}
+						{t("ui.schedules.count.list_truncated", {
+							shown: listing.data.entries.length,
+							total: listing.data.total,
+						})}
 					</p>
 				)}
 

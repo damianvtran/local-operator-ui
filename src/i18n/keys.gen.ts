@@ -1767,6 +1767,7 @@ export type MessageParams = {
 	"ui.providers.sign_in_flow.sign_in_could_not_start": undefined;
 	"ui.schedules.count.hidden": { hidden: number };
 	"ui.schedules.count.keep_runs": { left: number };
+	"ui.schedules.count.list_truncated": { shown: number; total: number };
 	"ui.schedules.count.ran": { fired: number };
 	"ui.schedules.count.wake": { count: number };
 	"ui.schedules.legacy.activated": undefined;
@@ -1923,7 +1924,6 @@ export type MessageParams = {
 	"ui.schedules.scheduled_task_model.wakes_repeat_no_more_often_than_once_a_minute": undefined;
 	"ui.schedules.scheduled_task_model.your_home_folder": undefined;
 	"ui.schedules.schedules_page.ask_an_agent_in_chat_to_do_something_on_a_regular_basis_send_me_t": undefined;
-	"ui.schedules.schedules_page.conversations_with_wakes": undefined;
 	"ui.schedules.schedules_page.could_not_cancel_the_wake": undefined;
 	"ui.schedules.schedules_page.could_not_cancel_the_wake_message": {
 		message: string;
@@ -1948,13 +1948,11 @@ export type MessageParams = {
 	"ui.schedules.schedules_page.loading_scheduled_tasks": undefined;
 	"ui.schedules.schedules_page.new_scheduled_task": undefined;
 	"ui.schedules.schedules_page.no_scheduled_tasks_yet": undefined;
-	"ui.schedules.schedules_page.of": undefined;
 	"ui.schedules.schedules_page.open_conversation": undefined;
 	"ui.schedules.schedules_page.refresh_scheduled_tasks": undefined;
 	"ui.schedules.schedules_page.schedule_removed": undefined;
 	"ui.schedules.schedules_page.schedule_updated": undefined;
 	"ui.schedules.schedules_page.schedules": undefined;
-	"ui.schedules.schedules_page.showing": undefined;
 	"ui.schedules.schedules_page.these_run_on_the_older_agent_schedule_engine_new_scheduled_tasks": undefined;
 	"ui.schedules.schedules_page.try_again": undefined;
 	"ui.schedules.schedules_page.wake_cancelled": undefined;

@@ -72,6 +72,7 @@ import {
 	Textarea,
 } from "@shared/components/ui";
 import { formatNumber, t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
@@ -203,6 +204,7 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 	nowMs = Date.now(),
 	edit = null,
 }) => {
+	useI18nLocale();
 	const isEdit = edit !== null;
 	const [destination, setDestination] = useState<Destination>("new");
 	const [conversationId, setConversationId] = useState<string | null>(null);
