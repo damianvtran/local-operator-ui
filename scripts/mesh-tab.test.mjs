@@ -2315,10 +2315,35 @@ test("a refused decision renders its sentence, and the tray splits waiting from 
 		/className="size-1\.5 rounded-full bg-danger"/,
 		"the signal is the app's one 'needs the reader' fill, in the summary the reader can see while the section is shut",
 	);
+	/*
+	 * THE SIGNAL IS WORDS AS WELL AS A DOT (design round 1, D2): the header's own
+	 * signal is words (`2 waiting`), so a colour-only dot left a sighted reader
+	 * without a name for it. The count is asserted, not just the `text-danger`
+	 * class, because the WORDS are what a screen reader reads — the `sr-only`
+	 * sentence this replaced is gone, and a bare dot without the text would have
+	 * lost the accessible name it carried.
+	 */
 	assert.match(
 		tray,
-		/<span className="sr-only">/,
-		"and it is stated in words, because a dot is not a sentence a screen reader reads",
+		/const failedCount = records\.filter\(\(row\) => row\.state === "failed"\)\.length;/,
+		"the failed count is derived from the same set the rows are",
+	);
+	assert.match(
+		tray,
+		/<span className="text-danger">\{failedCount\} failed<\/span>/,
+		"and it is stated in words beside the dot, in the row state's own ink",
+	);
+	/*
+	 * THE SECTION SEPARATES ITSELF WHEN A PROMPT SITS ABOVE IT (design round 1,
+	 * D1): the waiting list's `divide-y` stops at its last card, so without the
+	 * rule the toggle shares the card's rhythm and reads as one more of its rows.
+	 * The pin names the CONDITION, because a section that always drew the hairline
+	 * would add one to the settled-only panel, which has no card above it.
+	 */
+	assert.match(
+		tray,
+		/className=\{cn\(waiting\.length > 0 && "border-hairline border-t pt-3"\)\}/,
+		"the settled section draws its hairline only when a waiting card is above it",
 	);
 	assert.match(
 		tray,
@@ -3027,6 +3052,7 @@ test("every approvals frame that follows an interaction carries the shutter latc
 	};
 	for (const name of [
 		"ApprovalsRecordsOpen",
+		"ApprovalsStoppedOpen",
 		"ApprovalsDecisionWrites",
 		"ApprovalRefused",
 		"ApprovalsDetailsOpen",
