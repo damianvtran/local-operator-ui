@@ -303,6 +303,13 @@ test("`disabled` (a drag is armed) releases, and the next open measures afresh",
 			assert.equal(api.$("[role=tooltip]"), null, "rendered bare");
 			assert.deepEqual(suppressedOverlayIds(), [], "nothing held");
 			await api.render(flyout());
+			/*
+			 * The drag settles and the pointer arrives LATER - past the hook's placement
+			 * frames. Reopening at once would be measured off a stale "open" and pass
+			 * even without the reset; this wait is what makes the case bite (measured:
+			 * with the reset removed and no wait, all eight cases still passed).
+			 */
+			await frames();
 			/* The bare render remounted the button, so focus it again: a real open. */
 			act(() => api.$("#row").focus());
 			await frames();
