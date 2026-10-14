@@ -25,6 +25,8 @@ import {
 	useHubActions,
 	useHubUpdates,
 } from "@shared/api/local-operator/hub-hooks";
+import { useHubLinks } from "@shared/api/local-operator/hub-link-hooks";
+import { linksForLocalItem } from "@shared/api/local-operator/hub-links";
 import {
 	type HubItemKind,
 	type HubMark,
@@ -263,6 +265,10 @@ import { ChatRemoteMark } from "./chat-remote-mark";
 import { ChatRowHoverIntent } from "./chat-row-hover-intent";
 import { ChatRowTitle } from "./chat-row-title";
 import { ChatSidebarViewMenu } from "./chat-sidebar-view-menu";
+import {
+	HubLinkExpandedPolicy,
+	HubLinkSidebarMark,
+} from "./hub-link-sidebar-mark";
 import {
 	HubHeadingControls,
 	HubRowNote,
@@ -1328,6 +1334,8 @@ export function ChatSidebar({
 		ready && desktopFeatureEnabled(capabilities.data, "hub_updates"),
 	);
 	const hubItems = hubItemIndex(hubUpdates.data);
+	const fullHubLinks = desktopFeatureEnabled(capabilities.data, "hub_links");
+	const hubLinks = useHubLinks(ready && fullHubLinks);
 	const hub = useHubActions();
 	// Whether the backend tracks any hub-linked item at all: the check control is
 	// drawn only for a user the hub concerns, so everyone else pays nothing.
@@ -6451,6 +6459,18 @@ export function ChatSidebar({
 		const hubKey = hubItemKey(kind, name);
 		const hubItem = hubItems.get(hubKey);
 		const hubMark = hubMarkFor(hubItem);
+		const localId =
+			kind === "team"
+				? teams.data?.find((row) => row.name === name)?.id
+				: (profiles.data?.find((row) => row.name === name)?.agent_id ??
+					undefined);
+		const linkedOrigins = fullHubLinks
+			? linksForLocalItem(hubLinks.data, kind, localId, name)
+			: [];
+		// Even malformed multi-origin inventory cannot pick the first destination.
+		// The ordinary one-origin row has direct action; ambiguity opens detail.
+		const linkedOrigin =
+			linkedOrigins.length === 1 ? linkedOrigins[0] : undefined;
 		return (
 			<div key={key} data-entity>
 				<div
@@ -6658,7 +6678,14 @@ export function ChatSidebar({
 							</button>
 						</Tooltip>
 					)}
-					{hubMark && hubItem && (
+					{linkedOrigin && (
+						<HubLinkSidebarMark
+							link={linkedOrigin}
+							staged={staged}
+							onDetail={() => openHubDetail(kind, name)}
+						/>
+					)}
+					{!fullHubLinks && hubMark && hubItem && (
 						<HubUpdateMark
 							item={hubItem}
 							mark={hubMark}
@@ -6687,6 +6714,9 @@ export function ChatSidebar({
 				{hub.notes[hubKey] && <HubRowNote note={hub.notes[hubKey]} />}
 				{open && (
 					<div>
+						{linkedOrigins.map((link) => (
+							<HubLinkExpandedPolicy key={link.link_id} link={link} />
+						))}
 						{/*
 						 * THE VIEWED CONVERSATION, FIRST WHEN THE BOUND WITHHELD IT, AND
 						 * LABELLED.

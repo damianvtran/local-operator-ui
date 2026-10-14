@@ -1076,10 +1076,32 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	z
 		.object({ op: z.literal("hub.updates") })
 		.strict(),
+	// Full inventory is additive: old callers still receive pending agents/teams
+	// only. Policy revision is required even for a single independent toggle so
+	// an intervening direct config edit cannot be silently overwritten.
+	z
+		.object({
+			op: z.literal("hub.links"),
+			kind: z.enum(["agent", "team", "skill"]).optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("hub.policy"),
+			requestId,
+			linkId: z.string().min(1).max(256),
+			expectedPolicyRevision: z.string().min(1).max(256),
+			subscribe: z.boolean().optional(),
+			autoPush: z.boolean().optional(),
+			confirmPublicEgress: z.boolean().optional(),
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("hub.check"),
 			requestId,
+			linkId: z.string().min(1).max(256).optional(),
+			direction: z.enum(["pull", "push"]).optional(),
 			kind: hubItemKind.optional(),
 			name: profileName.optional(),
 		})
@@ -1088,8 +1110,12 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		.object({
 			op: z.literal("hub.apply"),
 			requestId,
-			kind: hubItemKind,
-			name: profileName,
+			previewReceipt: z.string().min(1).max(4096).optional(),
+			confirmApply: z.literal(true).optional(),
+			linkId: z.string().min(1).max(256).optional(),
+			direction: z.literal("pull").optional(),
+			kind: hubItemKind.optional(),
+			name: profileName.optional(),
 			prefer: z.enum(["local", "remote"]).optional(),
 			acknowledgeUnknownBaseline: z.boolean().optional(),
 			dryRun: z.boolean().optional(),
@@ -1106,8 +1132,21 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		.object({
 			op: z.literal("hub.retry"),
 			requestId,
-			kind: hubItemKind,
-			name: profileName,
+			linkId: z.string().min(1).max(256).optional(),
+			direction: z.enum(["pull", "push"]).optional(),
+			kind: hubItemKind.optional(),
+			name: profileName.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("hub.push"),
+			requestId,
+			linkId: z.string().min(1).max(256),
+			direction: z.literal("push"),
+			dryRun: z.boolean(),
+			previewReceipt: z.string().min(1).max(4096).optional(),
+			confirmPublish: z.literal(true).optional(),
 		})
 		.strict(),
 	z.object({ op: z.literal("teams.list") }).strict(),
@@ -2773,6 +2812,8 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 						"org_agents.list",
 						"org_team.get",
 						"org_teams.list",
+						"org_skills.list",
+						"org_skill.get",
 						/*
 						 * The verification-email resend (core PR2,
 						 * `feat/quota-notice-resend`): it maps to the upstream's JWT-only
@@ -2790,6 +2831,7 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 					agent_id: id.optional(),
 					comment_id: id.optional(),
 					team_id: id.optional(),
+					skill_id: id.optional(),
 					query: z
 						.record(z.union([z.string().max(1024), z.number().int()]))
 						.optional(),
@@ -3253,6 +3295,77 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
  */
 export const desktopRequestSchema = desktopRequestUnion.superRefine(
 	(request, ctx) => {
+		// Stable links and legacy name selectors are mutually exclusive. Never
+		// let one surface's active organization/name override a scoped origin.
+		if (
+			request.op === "hub.check" ||
+			request.op === "hub.apply" ||
+			request.op === "hub.retry"
+		) {
+			const hasLink = request.linkId !== undefined;
+			const hasLegacy =
+				request.kind !== undefined || request.name !== undefined;
+			if (
+				(hasLink && hasLegacy) ||
+				(request.op !== "hub.check" &&
+					!hasLink &&
+					(!request.kind || !request.name)) ||
+				(request.op === "hub.retry" && hasLink && !request.direction) ||
+				(request.direction === "push" && !hasLink)
+			) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message:
+						"A hub action requires one unambiguous selector and an explicit retry direction",
+					path: ["linkId"],
+				});
+				return;
+			}
+		}
+		if (
+			request.op === "hub.apply" &&
+			(request.previewReceipt !== undefined ||
+				request.confirmApply !== undefined) &&
+			(!request.linkId ||
+				request.dryRun ||
+				!request.previewReceipt ||
+				request.confirmApply !== true)
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message:
+					"A viewed incoming application requires its scoped preview receipt and confirmation",
+				path: ["previewReceipt"],
+			});
+			return;
+		}
+		if (
+			request.op === "hub.push" &&
+			(request.dryRun
+				? request.previewReceipt !== undefined ||
+					request.confirmPublish !== undefined
+				: !request.previewReceipt || request.confirmPublish !== true)
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message:
+					"A confirmed publication requires its reviewed preview receipt",
+				path: ["previewReceipt"],
+			});
+			return;
+		}
+		if (
+			request.op === "hub.policy" &&
+			request.subscribe === undefined &&
+			request.autoPush === undefined
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "A hub policy change must name subscribe or autoPush",
+				path: ["subscribe"],
+			});
+			return;
+		}
 		/*
 		 * AN ANSWER CARRIES ONE OF THREE SHAPES, and which one is decided by two
 		 * mutually exclusive selectors: `askId` (a queued ask) or `epoch`+`requestId`
@@ -4524,6 +4637,7 @@ const HUB_APPLY_ALL_DEADLINE_MS = 5 * HUB_ITEM_WRITE_DEADLINE_MS;
 const HUB_WRITE_OPS: ReadonlySet<string> = new Set([
 	"hub.apply",
 	"hub.retry",
+	"hub.push",
 	"hub.check",
 	"hub.applyAll",
 ]);
@@ -4532,6 +4646,7 @@ function hubWriteDeadlineMs(op: string): number | null {
 	switch (op) {
 		case "hub.apply":
 		case "hub.retry":
+		case "hub.push":
 			return HUB_ITEM_WRITE_DEADLINE_MS;
 		case "hub.check":
 			return HUB_CHECK_DEADLINE_MS;
@@ -4675,6 +4790,7 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"config.get",
 	"credentials.list",
 	"hub.updates",
+	"hub.links",
 	"info.get",
 	"instructions.get",
 	"legacy.agent.get",
@@ -5779,12 +5895,37 @@ export function desktopEndpoint(request: DesktopRequest): {
 			};
 		case "hub.updates":
 			return { path: "/v1/desktop/hub/updates", method: "GET" };
+		case "hub.links":
+			return {
+				path: `/v1/desktop/hub/links${request.kind ? `?kind=${request.kind}` : ""}`,
+				method: "GET",
+			};
+		case "hub.policy":
+			return {
+				path: `/v1/desktop/hub/links/${encodeURIComponent(request.linkId)}`,
+				method: "PATCH",
+				body: {
+					request_id: request.requestId,
+					expected_policy_revision: request.expectedPolicyRevision,
+					...(request.subscribe !== undefined
+						? { subscribe: request.subscribe }
+						: {}),
+					...(request.autoPush !== undefined
+						? { auto_push: request.autoPush }
+						: {}),
+					...(request.confirmPublicEgress !== undefined
+						? { confirm_public_egress: request.confirmPublicEgress }
+						: {}),
+				},
+			};
 		case "hub.check":
 			return {
 				path: "/v1/desktop/hub/updates/check",
 				method: "POST",
 				body: {
 					request_id: request.requestId,
+					...(request.linkId ? { link_id: request.linkId } : {}),
+					...(request.direction ? { direction: request.direction } : {}),
 					...(request.kind ? { kind: request.kind } : {}),
 					...(request.name ? { name: request.name } : {}),
 				},
@@ -5795,8 +5936,14 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "POST",
 				body: {
 					request_id: request.requestId,
-					kind: request.kind,
-					name: request.name,
+					...(request.previewReceipt
+						? { preview_receipt: request.previewReceipt }
+						: {}),
+					...(request.confirmApply ? { confirm_apply: true } : {}),
+					...(request.linkId ? { link_id: request.linkId } : {}),
+					...(request.direction ? { direction: request.direction } : {}),
+					...(request.kind ? { kind: request.kind } : {}),
+					...(request.name ? { name: request.name } : {}),
 					...(request.prefer ? { prefer: request.prefer } : {}),
 					...(request.acknowledgeUnknownBaseline !== undefined
 						? {
@@ -5822,8 +5969,25 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "POST",
 				body: {
 					request_id: request.requestId,
-					kind: request.kind,
-					name: request.name,
+					...(request.linkId ? { link_id: request.linkId } : {}),
+					...(request.direction ? { direction: request.direction } : {}),
+					...(request.kind ? { kind: request.kind } : {}),
+					...(request.name ? { name: request.name } : {}),
+				},
+			};
+		case "hub.push":
+			return {
+				path: "/v1/desktop/hub/updates/push",
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					link_id: request.linkId,
+					direction: request.direction,
+					dry_run: request.dryRun,
+					...(request.previewReceipt
+						? { preview_receipt: request.previewReceipt }
+						: {}),
+					...(request.confirmPublish ? { confirm_publish: true } : {}),
 				},
 			};
 		case "teams.list":
