@@ -38,6 +38,7 @@ import enUiProviders from "./catalogues/en/ui.providers.json";
 import enUiSchedules from "./catalogues/en/ui.schedules.json";
 import enUiSettings from "./catalogues/en/ui.settings.json";
 import enUiShell from "./catalogues/en/ui.shell.json";
+import enUiShellRail from "./catalogues/en/ui.shell.rail.json";
 import frUiConsole from "./catalogues/fr/ui.console.json";
 import frUiOnboarding from "./catalogues/fr/ui.onboarding.json";
 import frUiSettings from "./catalogues/fr/ui.settings.json";
@@ -61,6 +62,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiSchedules,
 	...enUiSettings,
 	...enUiShell,
+	...enUiShellRail,
 };
 
 /** The client's own messages per locale; `en` is `bundledEnglish` itself. */
@@ -572,6 +574,67 @@ export type MessageParams = {
 	"ui.shell.user_profile_sidebar.settings": undefined;
 	"ui.shell.user_profile_sidebar.sign_out": undefined;
 	"ui.shell.user_profile_sidebar.user": undefined;
+	"ui.shell.rail.ask.aria": { chord: string; subject: string };
+	"ui.shell.rail.ask.aria_count": {
+		chord: string;
+		subject: string;
+		count: number;
+		countText: string;
+	};
+	"ui.shell.rail.browser.aria": { chord: string };
+	"ui.shell.rail.browser.aria_count": {
+		chord: string;
+		count: number;
+		countText: string;
+	};
+	"ui.shell.rail.browser.tooltip": { state: string; chord: string };
+	"ui.shell.rail.browser.tooltip_count": {
+		state: string;
+		chord: string;
+		count: number;
+		countText: string;
+	};
+	"ui.shell.rail.canvas.aria": { chord: string };
+	"ui.shell.rail.canvas.aria_count": {
+		chord: string;
+		count: number;
+		countText: string;
+	};
+	"ui.shell.rail.canvas.tooltip": { state: string; chord: string };
+	"ui.shell.rail.canvas.tooltip_count": {
+		state: string;
+		chord: string;
+		count: number;
+		countText: string;
+	};
+	"ui.shell.rail.code.aria": { chord: string; mark: string };
+	"ui.shell.rail.code.aria_details": {
+		chord: string;
+		details: string;
+		mark: string;
+	};
+	"ui.shell.rail.code.mentioned": { count: number; countText: string };
+	"ui.shell.rail.code.opened": { count: number; countText: string };
+	"ui.shell.rail.code.tooltip": { state: string; chord: string; mark: string };
+	"ui.shell.rail.code.tooltip_details": {
+		state: string;
+		chord: string;
+		details: string;
+		mark: string;
+	};
+	"ui.shell.rail.console.aria": { chord: string };
+	"ui.shell.rail.console.aria_count": {
+		chord: string;
+		count: number;
+		countText: string;
+	};
+	"ui.shell.rail.console.tooltip": { state: string; chord: string };
+	"ui.shell.rail.console.tooltip_count": {
+		state: string;
+		chord: string;
+		count: number;
+		countText: string;
+	};
 };
 
 export type MessageKey = keyof MessageParams;
