@@ -23,6 +23,10 @@ import { checkLedger } from "./ledger-check.mjs";
 
 const sha256 = (text) => createHash("sha256").update(text).digest("hex");
 
+/** Severity counts of a clean audit, and a stand-in receipt hash (the gate only checks it is a sha256). */
+const NO_FINDINGS = { blocker: 0, major: 0, minor: 0, nit: 0 };
+const RECEIPT_SHA = "a".repeat(64);
+
 /** A minimal, COMPLETE and correctly-audited tree for one locale/namespace. */
 function buildTree({ mutate } = {}) {
 	const root = mkdtempSync(join(tmpdir(), "i18n-ledger-"));
@@ -71,7 +75,9 @@ function buildTree({ mutate } = {}) {
 						model: "test",
 						date: "2026-10-13",
 						result: "clean",
-						instance: "audit-run-a",
+						instance: "audit-run-aaaa",
+						findings: NO_FINDINGS,
+						receipt_sha256: RECEIPT_SHA,
 					},
 				],
 				status: "audited",
@@ -287,7 +293,9 @@ const audit = (overrides = {}) => ({
 	model: "test",
 	date: "2026-10-13",
 	result: "clean",
-	instance: "audit-run-a",
+	instance: "audit-run-aaaa",
+	findings: NO_FINDINGS,
+	receipt_sha256: RECEIPT_SHA,
 	...overrides,
 });
 
@@ -312,21 +320,33 @@ test("NEGATIVE: an auditor with no recorded result fails", () => {
 });
 
 test("CONTROL: a clean-with-findings audit (MINOR/NIT recorded, not churned) PASSES", () => {
-	withTree(withAuditors([audit({ result: "clean-with-findings" })]), (root) => {
-		const { failures } = checkLedger({ repo: root });
-		assert.deepEqual(
-			failures,
-			[],
-			"a passing audit with recorded minors passes",
-		);
-	});
+	withTree(
+		withAuditors([
+			audit({
+				result: "clean-with-findings",
+				findings: { ...NO_FINDINGS, minor: 2, nit: 1 },
+			}),
+		]),
+		(root) => {
+			const { failures } = checkLedger({ repo: root });
+			assert.deepEqual(
+				failures,
+				[],
+				"a passing audit with recorded minors passes",
+			);
+		},
+	);
 });
 
 test("CONTROL: findings remediated, then a clean re-audit by a distinct run, PASSES", () => {
 	withTree(
 		withAuditors([
-			audit({ result: "clean-with-findings", instance: "audit-run-a" }),
-			audit({ result: "clean", instance: "audit-run-b" }),
+			audit({
+				result: "clean-with-findings",
+				instance: "audit-run-aaaa",
+				findings: { ...NO_FINDINGS, minor: 1 },
+			}),
+			audit({ result: "clean", instance: "audit-run-bbbb" }),
 		]),
 		(root) => {
 			const { failures } = checkLedger({ repo: root });
@@ -342,8 +362,8 @@ test("CONTROL: findings remediated, then a clean re-audit by a distinct run, PAS
 test("NEGATIVE: two audits that share one instance are not two audits", () => {
 	withTree(
 		withAuditors([
-			audit({ instance: "audit-run-a" }),
-			audit({ instance: "audit-run-a" }),
+			audit({ instance: "audit-run-aaaa" }),
+			audit({ instance: "audit-run-aaaa" }),
 		]),
 		(root) => {
 			const { failures } = checkLedger({ repo: root });

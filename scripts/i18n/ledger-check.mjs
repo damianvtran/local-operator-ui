@@ -24,10 +24,11 @@
  *  - `status` is `audited`, there is at least one auditor, and at least one
  *    auditor is a DIFFERENT agent from the translator (independence by agent,
  *    which is what the process requires — not by model);
- *  - every auditor's `result` is a passing one (`clean` or `clean-with-findings`;
- *    a failed or unrecorded audit cannot back `audited`), and every auditor carries a distinct
- *    `instance` id, because one agent name on two audits does not evidence two
- *    runs.
+ *  - every auditor's `result` is passing (`clean` | `clean-with-findings`),
+ *    records severity counts with ZERO blocker and ZERO major, carries a distinct
+ *    and real `instance` id (not a placeholder such as "scratchpad") and a
+ *    `receipt_sha256` - see `ledger-rules.mjs`, shared with the writer
+ *    `ledger-assemble.mjs`; a receipt kept under `i18n/receipts/` is re-hashed.
  *
  * AND it closes the other direction: every locale directory present in the tree
  * must have a ledger entry for every namespace file it ships. A file that is
@@ -43,6 +44,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { isRepoReceiptPath, validateAuditSet } from "./ledger-rules.mjs";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -167,60 +169,42 @@ export function checkLedger({ repo = REPO } = {}) {
 				`${where}: status is ${JSON.stringify(entry.status)}, not "audited" — an unaudited locale must not ship`,
 			);
 		}
-		const auditors = Array.isArray(entry.auditors) ? entry.auditors : [];
-		if (auditors.length === 0) {
-			failures.push(`${where}: no auditor recorded`);
-		} else {
-			const translatorAgent = entry.translator?.agent;
-			const independent = auditors.some(
-				(auditor) => auditor?.agent && auditor.agent !== translatorAgent,
-			);
-			if (!independent) {
-				failures.push(
-					`${where}: every auditor is the translator's own agent — the audit must be independent`,
-				);
-			}
+		/*
+		 * Audit set: independence, result vocabulary, severity counts, distinct and
+		 * real `instance` ids, receipt hash. ALL of it lives in `ledger-rules.mjs`,
+		 * which `ledger-assemble.mjs` imports too, so the writer can never produce a
+		 * row this gate then refuses, and the rules are changed in one place.
+		 *
+		 * M1 (#1041 review): the previous comment here promised "the LAST audit must
+		 * be a plain `clean`" while the code accepted any passing label. Decision:
+		 * do NOT require a plain `clean`. `clean-with-findings` is the programme's
+		 * own outcome for "no blocker/major, minors and nits recorded, not churned",
+		 * so that rule would fail honest rows for no defect - and it would still be a
+		 * label, not a measurement. Instead each audit records SEVERITY COUNTS and a
+		 * passing audit must record zero blocker and zero major (M2): the gate can
+		 * now tell a MAJOR-bearing audit from a minors-only one.
+		 */
+		failures.push(
+			...validateAuditSet(entry.auditors, entry.translator?.agent, where),
+		);
 
-			/*
-			 * AUDIT RESULTS ARE EVIDENCE, NOT DECORATION (code review round 1, F2).
-			 * `status: "audited"` is a claim; the per-auditor `result` is what
-			 * backs it. Without this a `result: "fail"` entry that still said
-			 * `audited` passed the gate, and so would an entry whose only audit
-			 * ended `clean-with-findings` (findings raised, never re-verified).
-			 * So: every recorded result must be one the process treats as a
-			 * pass, and the LAST audit — the one that saw the file as it now
-			 * stands — must be a plain `clean`.
-			 */
-			const passing = new Set(["clean", "clean-with-findings"]);
-			for (const [position, auditor] of auditors.entries()) {
-				if (!passing.has(auditor?.result)) {
-					failures.push(
-						`${where}: auditor ${position + 1} result is ${JSON.stringify(auditor?.result)}, not a passing result (${[...passing].join(" / ")}) — a failed or unrecorded audit cannot back an "audited" entry`,
-					);
-				}
-			}
-
-			/*
-			 * TWO AUDITS MUST BE TWO INSTANCES. Every auditor carries the same
-			 * agent name ("i18n-auditor"), so the name proves a role, not a second
-			 * pair of eyes: the programme's "second independent audit" rule is
-			 * only met if the passes are distinct runs. `instance` is that
-			 * evidence — the audit run's own id (session or job id of the run
-			 * that produced the receipt) — and it must be present and unique
-			 * within the entry. It is a claim the gate can compare, not one it
-			 * can verify against the run; the receipt it names is what a
-			 * reviewer opens.
-			 */
-			const instances = auditors.map((auditor) =>
-				typeof auditor?.instance === "string" ? auditor.instance.trim() : "",
-			);
-			if (instances.some((instance) => instance === "")) {
+		/*
+		 * M3: a receipt that lives IN the repo (`i18n/receipts/...`) travels with it,
+		 * so the gate re-hashes it. A machine-local receipt path (`~/...`, written
+		 * by an auditor into its scratchpad) cannot be re-opened from a clone; for
+		 * those the gate holds the row to carrying a receipt hash and a real
+		 * instance (above) and says so here rather than pretending to verify them.
+		 */
+		for (const [position, auditor] of (entry.auditors ?? []).entries()) {
+			if (!isRepoReceiptPath(auditor?.receipt)) continue;
+			const receiptFile = join(repo, auditor.receipt);
+			if (!existsSync(receiptFile)) {
 				failures.push(
-					`${where}: an auditor has no \`instance\` — record the audit run's own id so distinct audits are evidenced`,
+					`${where}: auditor ${position + 1} names receipt ${auditor.receipt}, which is not in the repo`,
 				);
-			} else if (new Set(instances).size !== instances.length) {
+			} else if (sha256File(receiptFile) !== auditor.receipt_sha256) {
 				failures.push(
-					`${where}: two auditors share one \`instance\` — a second audit must be a distinct run`,
+					`${where}: auditor ${position + 1}'s receipt ${auditor.receipt} no longer matches its recorded receipt_sha256`,
 				);
 			}
 		}
