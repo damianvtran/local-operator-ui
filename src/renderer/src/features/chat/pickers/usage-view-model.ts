@@ -68,7 +68,8 @@ export type UsageReport = {
 	provider: string;
 	fetched_at: number;
 	limits: UsageLimit[];
-	notes: null;
+	/** Only the backend's fixed Muse provenance vocabulary is displayable. */
+	notes: string | null;
 	identity: string | null;
 	consecutive_failures: number;
 	usage_unavailable: boolean;
@@ -90,6 +91,59 @@ export type UsagePayload = {
 	reports: UsageReport[];
 	source: "cached" | "live" | string;
 	fetched_at: number;
+};
+
+// Mirrors providers/usage.py: a passive allowance is evidence from an ordinary
+// serving reply, never a quota probe. Keep a finite vocabulary so diagnostics
+// from other providers (or a malformed payload) cannot become user-facing copy.
+export const MUSE_OBSERVATION_TTL_MS = 5 * 60 * 1000;
+const MUSE_PASSIVE_NOTE =
+	"Last response allowance; refresh does not query Muse.";
+const MUSE_STALE_NOTE =
+	"Stale response allowance; current usage unknown; refresh does not query Muse.";
+const MUSE_NO_OBSERVATION_NOTE =
+	"No allowance observation recorded; refresh does not query Muse.";
+const MUSE_USAGE_NOTES = new Set([
+	MUSE_PASSIVE_NOTE,
+	MUSE_STALE_NOTE,
+	MUSE_NO_OBSERVATION_NOTE,
+	"Stale sign-in allowance; current usage unknown; refresh does not query Muse.",
+]);
+
+export const hasMuseAllowanceNote = (report: UsageReport): boolean =>
+	report.provider === "meta-muse" &&
+	typeof report.notes === "string" &&
+	MUSE_USAGE_NOTES.has(report.notes);
+
+/** Age an open pane without mutating the shared query payload or buying inference. */
+export const currentUsageReport = (
+	report: UsageReport,
+	nowMs: number,
+): UsageReport => {
+	if (!hasMuseAllowanceNote(report) || report.state === "reauth_required")
+		return report;
+	const dated = Number.isFinite(report.fetched_at) && report.fetched_at > 0;
+	const expired =
+		report.notes === MUSE_PASSIVE_NOTE &&
+		(!dated ||
+			nowMs - report.fetched_at > MUSE_OBSERVATION_TTL_MS ||
+			report.limits.some(
+				(limit) =>
+					typeof limit.resets_at_ms === "number" &&
+					Number.isFinite(limit.resets_at_ms) &&
+					limit.resets_at_ms <= nowMs,
+			));
+	if (report.notes === MUSE_PASSIVE_NOTE && !expired) return report;
+	return {
+		...report,
+		limits: [],
+		state: "unavailable",
+		notes: expired
+			? dated
+				? MUSE_STALE_NOTE
+				: MUSE_NO_OBSERVATION_NOTE
+			: report.notes,
+	};
 };
 
 /** The four words this view has a colour and a screen-reader phrase for. */
@@ -786,11 +840,19 @@ export const isStale = (report: UsageReport, headerMs: number): boolean =>
  * otherwise rendered as a heading with silence under it.
  */
 export const accountNote = (
-	report: UsageReport,
+	input: UsageReport,
 	nowMs: number,
 	headerMs: number,
 ): string => {
+	const report = currentUsageReport(input, nowMs);
 	const fetchedAt = report.fetched_at || 0;
+	if (hasMuseAllowanceNote(report) && report.state !== "reauth_required") {
+		const observed =
+			Number.isFinite(fetchedAt) && fetchedAt > 0
+				? ` Observed ${formatAge(Math.max(0, nowMs - fetchedAt))}.`
+				: "";
+		return `${report.notes}${observed}`;
+	}
 	const age =
 		fetchedAt && report.limits.length
 			? formatAge(Math.max(0, nowMs - fetchedAt))
@@ -936,47 +998,53 @@ export const providerBlocks = (
 	nowMs: number,
 	headerMs: number,
 ): ProviderBlock[] =>
-	reports.map((report) => ({
-		report,
-		binding: report.limits.some(paidUsable)
-			? bindingSummary(
-					{
-						...report,
-						limits: report.limits.filter(
-							(limit) =>
-								!limit.paid_fallback &&
-								limit.tier &&
-								!report.limits.some(
-									(paid) => paidUsable(paid) && paid.supersedes_tiers,
-								),
-						),
-					},
-					nowMs,
-				)
-			: // A spent or blocked paid alternative does not exhaust a healthy
-				// included plan. Keep its row/eligibility note, not a false gate.
-				bindingSummary(
-					{
-						...report,
-						limits: report.limits.filter((limit) => !limit.paid_fallback),
-					},
-					nowMs,
-				),
-		note: [accountNote(report, nowMs, headerMs), creditContinuation(report)]
-			.filter(Boolean)
-			.join(" "),
-		rows: report.limits.map((limit) => limitRow(limit, nowMs)),
-		// A healthy-green dot on a two-hour-old meter is the block's
-		// highest-contrast element saying "fine" while the note says otherwise.
-		// `state` is the authoritative field (SPEC "Data contract"); `available`
-		// and `partial` both mean the numbers are the vendor's current answer,
-		// and a failure streak alone is not staleness (SPEC rule 10).
-		degraded:
-			report.state === "reauth_required" ||
-			report.state === "unavailable" ||
-			isStale(report, headerMs),
-		emptyNote: report.limits.length ? "" : NO_WINDOWS,
-	}));
+	reports
+		.map((report) => currentUsageReport(report, nowMs))
+		.map((report) => ({
+			report,
+			binding: report.limits.some(paidUsable)
+				? bindingSummary(
+						{
+							...report,
+							limits: report.limits.filter(
+								(limit) =>
+									!limit.paid_fallback &&
+									limit.tier &&
+									!report.limits.some(
+										(paid) => paidUsable(paid) && paid.supersedes_tiers,
+									),
+							),
+						},
+						nowMs,
+					)
+				: // A spent or blocked paid alternative does not exhaust a healthy
+					// included plan. Keep its row/eligibility note, not a false gate.
+					bindingSummary(
+						{
+							...report,
+							limits: report.limits.filter((limit) => !limit.paid_fallback),
+						},
+						nowMs,
+					),
+			note: [accountNote(report, nowMs, headerMs), creditContinuation(report)]
+				.filter(Boolean)
+				.join(" "),
+			rows: report.limits.map((limit) => limitRow(limit, nowMs)),
+			// A healthy-green dot on a two-hour-old meter is the block's
+			// highest-contrast element saying "fine" while the note says otherwise.
+			// `state` is the authoritative field (SPEC "Data contract"); `available`
+			// and `partial` both mean the numbers are the vendor's current answer,
+			// and a failure streak alone is not staleness (SPEC rule 10).
+			degraded:
+				report.state === "reauth_required" ||
+				report.state === "unavailable" ||
+				isStale(report, headerMs),
+			emptyNote:
+				report.limits.length ||
+				(hasMuseAllowanceNote(report) && report.state !== "reauth_required")
+					? ""
+					: NO_WINDOWS,
+		}));
 
 /**
  * `Cached report, 3m ago.` — the view's description line.

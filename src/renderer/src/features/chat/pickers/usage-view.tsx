@@ -42,7 +42,9 @@ import {
 	type UsagePayload,
 	type UsageReport,
 	collectStats,
+	currentUsageReport,
 	describeSource,
+	hasMuseAllowanceNote,
 	newestConfirmedMs,
 	providerBlocks,
 	statsTerms,
@@ -345,11 +347,13 @@ const ProviderBlockView: FC<{ block: ProviderBlock }> = ({ block }) => (
 			)}
 			{/* With no meters at all there is no binding window to protect, so the
 			    heading may carry the probe failure itself. */}
-			{!block.binding && block.report.state === "unavailable" && (
-				<span className={cn("ml-auto text-ink-dim text-meta")}>
-					Usage unavailable
-				</span>
-			)}
+			{!block.binding &&
+				block.report.state === "unavailable" &&
+				!hasMuseAllowanceNote(block.report) && (
+					<span className={cn("ml-auto text-ink-dim text-meta")}>
+						Usage unavailable
+					</span>
+				)}
 		</div>
 		{block.note && (
 			<p
@@ -378,7 +382,9 @@ const ProviderBlockView: FC<{ block: ProviderBlock }> = ({ block }) => (
 		) : (
 			/* A block holding only its heading reads as a rendering defect rather
 			   than as an answer, which is why the TUI prints the same line. */
-			<p className={cn("pt-1.5 text-ink-dim text-meta")}>{block.emptyNote}</p>
+			block.emptyNote && (
+				<p className={cn("pt-1.5 text-ink-dim text-meta")}>{block.emptyNote}</p>
+			)
 		)}
 	</section>
 );
@@ -556,7 +562,11 @@ export const UsageDialog: FC<UsageDialogProps> = ({
 	outcome = null,
 	now,
 }) => {
-	const reports = payload?.reports ?? [];
+	// The local clock already repaints countdowns. Age passive receipts on that
+	// same tick, including the tally, without re-querying or buying inference.
+	const reports = (payload?.reports ?? []).map((report) =>
+		currentUsageReport(report, now),
+	);
 	const actionRef = useRef<HTMLButtonElement>(null);
 	const bodyRef = useRef<HTMLElement>(null);
 
