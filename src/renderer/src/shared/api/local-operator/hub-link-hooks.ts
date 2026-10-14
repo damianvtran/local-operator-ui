@@ -39,6 +39,18 @@ export type HubPolicyWrite = {
 };
 
 /**
+ * What the PATCH returns: the link's id and its new policy snapshot, and NOTHING
+ * else. Core's `desktop_hub.py` patch route answers `{link_id, policy}` — a
+ * revision-checked write touches policy alone, so it does not re-emit the whole
+ * `HubLink`. Reading this as `{link: HubLink}` (the earlier assumption) would
+ * leave `link` undefined on a real answer and throw on `link.link_id`.
+ */
+export type HubPolicyWriteResult = {
+	link_id: string;
+	policy: { subscribe: boolean; auto_push: boolean; revision: string };
+};
+
+/**
  * No optimistic preferences: an ON glyph promises a durable service ack. Use the
  * captured revision for this press and refresh after conflicts/errors too, so an
  * external config edit is shown rather than silently overwritten on retry. The
@@ -48,7 +60,7 @@ export function useHubLinkPolicy() {
 	const client = useQueryClient();
 	return useMutation({
 		mutationFn: ({ link, patch }: HubPolicyWrite) =>
-			desktopResult<{ link: HubLink }>({
+			desktopResult<HubPolicyWriteResult>({
 				op: "hub.policy",
 				requestId: crypto.randomUUID(),
 				linkId: link.link_id,
@@ -61,13 +73,20 @@ export function useHubLinkPolicy() {
 					? { confirmPublicEgress: patch.confirm_public_egress }
 					: {}),
 			}),
-		onSuccess: ({ link }) => {
+		onSuccess: ({ link_id, policy }) => {
+			/*
+			 * PATCH the row's POLICY IN PLACE, never replace the row: only policy
+			 * is returned, so a replacement built from the answer would drop every
+			 * other field (name, source, directions, eligibility). The new
+			 * `policy.revision` is what the next press's `expectedPolicyRevision`
+			 * must carry, which is why it is written into the cache here.
+			 */
 			client.setQueryData<HubLinks>(hubLinksKey, (previous) =>
 				previous
 					? {
 							...previous,
 							links: previous.links.map((row) =>
-								row.link_id === link.link_id ? link : row,
+								row.link_id === link_id ? { ...row, policy } : row,
 							),
 						}
 					: previous,

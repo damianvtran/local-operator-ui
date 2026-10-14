@@ -24,6 +24,7 @@ import { test } from "node:test";
 const DRIVER = "scripts/renderer-driver.mjs";
 const STUB = "docs/evidence/hub-links/harness/stub-daemon.mjs";
 const TYPES = "src/renderer/src/shared/api/local-operator/hub-links.ts";
+const HOOKS = "src/renderer/src/shared/api/local-operator/hub-link-hooks.ts";
 
 test("the hub-links scene is registered and backend-gated", () => {
 	const driver = readFileSync(DRIVER, "utf8");
@@ -73,4 +74,24 @@ test("the stub fixture answers the frozen inventory shape and its resolve arm", 
 	// The resolve arm records the real literal under the renamed key.
 	assert.match(stub, /baseline_state: "adopt-unknown"/);
 	assert.doesNotMatch(stub, /"adopted"/);
+});
+
+test("the policy write consumes the PATCH's {link_id, policy} snapshot, never a full HubLink", () => {
+	const hooks = readFileSync(HOOKS, "utf8");
+	const code = hooks.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+	// Core's PATCH answers {link_id, policy} (desktop_hub.py patch_link).
+	assert.match(code, /HubPolicyWriteResult = \{/);
+	assert.match(code, /link_id: string;/);
+	assert.match(
+		code,
+		/policy: \{ subscribe: boolean; auto_push: boolean; revision: string \};/,
+	);
+	// Never the assumed {link: HubLink} shape.
+	assert.doesNotMatch(code, /desktopResult<\{ link: HubLink \}>/);
+	// The row's POLICY is patched in place (spread previous row), never replaced
+	// wholesale from a response that carries only policy.
+	assert.match(
+		code,
+		/row\.link_id === link_id \? \{ \.\.\.row, policy \} : row/,
+	);
 });
