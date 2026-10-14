@@ -51,7 +51,7 @@
  * nobody wrote down than a new spelling of "we never asked".
  */
 
-import { t } from "@shared/i18n";
+import { t } from "../../../../i18n/messages";
 import type { MeshDevice } from "./mesh-graph";
 import type { MeshSessionRow } from "./mesh-types";
 import { sessionIsBusy } from "./mesh-types";

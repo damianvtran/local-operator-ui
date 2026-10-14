@@ -43,13 +43,13 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import { PageHeader } from "@shared/components/common/page-header";
 import { Alert, Button, Skeleton } from "@shared/components/ui";
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { Network } from "lucide-react";
 import { type FC, useCallback, useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
+import { t } from "../../../../i18n/messages";
 import {
 	InviteDialog,
 	MoveConfirmDialog,

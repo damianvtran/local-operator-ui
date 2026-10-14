@@ -59,9 +59,11 @@ import {
 	type DesktopControlError,
 	desktopResult,
 } from "@shared/api/local-operator/desktop-api";
-import { t } from "@shared/i18n";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef } from "react";
+// Sidebar and peer readers also bundle this module. The renderer barrel pulls
+// language-write/query helpers into that graph; formatting uses only the pure leaf.
+import { t } from "../../../../i18n/messages";
 import { type MeshGraph, meshGraph } from "./mesh-graph";
 import { type MeshMembership, meshMembership } from "./mesh-membership";
 import {

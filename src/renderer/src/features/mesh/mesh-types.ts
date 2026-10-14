@@ -43,8 +43,8 @@
  * second dialect of the same rules.
  */
 
-import { t } from "@shared/i18n";
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
+import { t } from "../../../../i18n/messages";
 
 /* ------------------------------------------------------------- coercions */
 

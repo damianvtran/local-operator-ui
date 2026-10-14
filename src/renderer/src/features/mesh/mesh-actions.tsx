@@ -43,11 +43,13 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@shared/components/ui";
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { ArrowRight, Check, Copy, Loader2 } from "lucide-react";
 import { type FC, useEffect, useId, useState } from "react";
+// Chat device controls reuse these dialogs. Keep translation independent of
+// language-writing capabilities; the locale subscription is the separate hook leaf.
+import { t } from "../../../../i18n/messages";
 import type { MovePlan } from "./mesh-drop";
 import { planConfirm } from "./mesh-drop";
 import { INVITE_ROLES, type InviteRole } from "./mesh-store";

@@ -52,8 +52,8 @@ import {
 	type DesktopControlError,
 	desktopResult,
 } from "@shared/api/local-operator/desktop-api";
-import { t } from "@shared/i18n";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { t } from "../../../../i18n/messages";
 import { meshKeys } from "./mesh-store";
 import { deviceLabel, flag, strings, text, time } from "./mesh-types";
 

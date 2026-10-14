@@ -30,7 +30,6 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@shared/components/ui";
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
@@ -40,6 +39,7 @@ import {
 	TriangleAlert,
 } from "lucide-react";
 import { type FC, useEffect } from "react";
+import { t } from "../../../../i18n/messages";
 import { resolveDrop } from "./mesh-drop";
 import type { MeshDevice, MeshGraph } from "./mesh-graph";
 import { agoSentence, conversationUnit } from "./mesh-graph";

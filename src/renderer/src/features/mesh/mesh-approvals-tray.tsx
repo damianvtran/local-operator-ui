@@ -72,12 +72,12 @@
 
 import { Alert, Button } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { ShieldCheck } from "lucide-react";
 import type { FC } from "react";
 import { Fragment, useMemo, useState } from "react";
+import { t } from "../../../../i18n/messages";
 import {
 	type ApprovalDecision,
 	type MeshApprovalRow,

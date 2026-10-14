@@ -54,7 +54,7 @@
  *    carried by more than one device contributes to **no group at all**.
  */
 
-import { t } from "@shared/i18n";
+import { t } from "../../../../i18n/messages";
 import type { MeshDevice } from "./mesh-graph";
 import type { SlotMap } from "./mesh-positions";
 

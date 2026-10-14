@@ -43,7 +43,8 @@
  *     seen a device-level role, and nothing renders one as if it were.
  */
 
-import { formatRelativeTime, t } from "@shared/i18n";
+import { formatRelativeTime } from "../../../../i18n/format";
+import { t } from "../../../../i18n/messages";
 import { deviceReach, reachWords } from "./mesh-reach";
 import {
 	type NetworkMember,

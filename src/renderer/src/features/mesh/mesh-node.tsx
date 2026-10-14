@@ -31,11 +31,11 @@
  * pointer. `NODE_HEIGHT` therefore includes the band, always.
  */
 
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Monitor, Network, ShieldAlert } from "lucide-react";
 import type { FC } from "react";
+import { t } from "../../../../i18n/messages";
 import { DRAG_THRESHOLD_PX } from "./mesh-drag";
 import type { DeviceState, MeshDevice, MeshNetwork } from "./mesh-graph";
 import { conversationUnit, deviceStatLine } from "./mesh-graph";

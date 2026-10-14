@@ -16,11 +16,11 @@
  */
 
 import { Button, Separator } from "@shared/components/ui";
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { MoreHorizontal, ShieldAlert } from "lucide-react";
 import { type FC, useMemo, useState } from "react";
+import { t } from "../../../../i18n/messages";
 import {
 	type MoveDestination,
 	SessionMoveMenu,

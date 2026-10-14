@@ -52,7 +52,7 @@
  * avoids.
  */
 
-import { t } from "@shared/i18n";
+import { t } from "../../../../i18n/messages";
 import type { MeshDevice, MeshNetwork } from "./mesh-graph";
 import { type MeshSessionRow, sessionIsBusy } from "./mesh-types";
 
