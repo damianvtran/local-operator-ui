@@ -21,7 +21,6 @@ import { useExportAgent } from "@shared/hooks/use-agent-mutations";
 import { useAgent } from "@shared/hooks/use-agents";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { useAgentRouteParam } from "@shared/hooks/use-route-params";
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
@@ -35,6 +34,7 @@ import {
 import { useEffect, useState } from "react";
 import type { FC } from "react";
 import { useNavigate } from "react-router-dom";
+import { t } from "../../../../../i18n/messages";
 import { AgentSettings } from "./agent-settings";
 import { AgentsSidebar } from "./agents-sidebar";
 import { UploadAgentDialog } from "./upload-agent-dialog";

@@ -36,6 +36,7 @@ import {
 } from "@shared/hooks";
 import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -43,6 +44,7 @@ import { Bot } from "lucide-react";
 import type { FC } from "react";
 import { memo, useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { t } from "../../../../../i18n/messages";
 import { UploadAgentDialog } from "./upload-agent-dialog";
 
 /**

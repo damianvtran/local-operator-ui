@@ -55,10 +55,10 @@ import {
 	hubMarkFor,
 } from "@shared/api/local-operator/hub-updates";
 import { Button } from "@shared/components/ui/button";
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useState } from "react";
+import { t } from "../../../../../i18n/messages";
 
 const asText = (value: unknown): string =>
 	value === null || value === undefined
