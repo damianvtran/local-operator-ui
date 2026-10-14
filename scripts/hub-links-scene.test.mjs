@@ -175,3 +175,33 @@ test('baseline known-ness follows the provenance literal, not a "known" sentinel
 	assert.match(code, /baseline_state: HubRecordedBy;/);
 	assert.doesNotMatch(code, /baseline_state: "known" \| "unknown"/);
 });
+
+test("the public-egress consent body states the reversibility limit, without em dashes", () => {
+	const catalogue = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.hub.json", "utf8"),
+	);
+	const body = catalogue["ui.hub.subscriptions.enable_public"];
+	// The dialog that mints a PUBLIC grant must say that turning auto-push off stops
+	// future publishing but does not recall what is already public.
+	assert.match(body, /Turning auto-push off later stops future publishing/);
+	assert.match(body, /does not take back anything that is already public/);
+	// The placeholder contract is unchanged, so keys.gen.ts needs no regeneration.
+	assert.match(body, /\{item\}/);
+	assert.doesNotMatch(body, /\u2014/);
+});
+
+test("the auto-push switch is described by its pause line only while that line renders", () => {
+	// Source pin only: no renderer here, so this cannot see the DOM. It pins the two
+	// halves of the wiring so one cannot be removed without the other.
+	const src = readFileSync(
+		"src/renderer/src/features/agents/components/hub-link-policy-controls.tsx",
+		"utf8",
+	);
+	assert.match(
+		src,
+		/aria-describedby=\{line !== "none" \? `\$\{id\}-push-line` : undefined\}/,
+	);
+	assert.match(src, /<p id=\{`\$\{id\}-push-line`\}/);
+	// The paused/reason line renders under exactly the condition describedby uses.
+	assert.match(src, /\{line !== "none" && \(/);
+});

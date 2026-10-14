@@ -134,6 +134,9 @@ export function HubLinkPolicyControls({
 				</div>
 				<Switch
 					id={`${id}-push`}
+					// Point at the line only while it renders; a dangling idref is worse
+					// than none. The aria-label stays the name; this adds the reason.
+					aria-describedby={line !== "none" ? `${id}-push-line` : undefined}
 					checked={link.policy.auto_push}
 					disabled={write.isPending || (!link.policy.auto_push && unavailable)}
 					aria-label={`${t("ui.hub.subscriptions.auto_push")}: ${source}`}
@@ -151,7 +154,7 @@ export function HubLinkPolicyControls({
 				/>
 			</div>
 			{line !== "none" && (
-				<p className="text-meta text-warning">
+				<p id={`${id}-push-line`} className="text-meta text-warning">
 					{line === "paused"
 						? t("ui.hub.subscriptions.effective_paused", {
 								reason: unavailableReason,

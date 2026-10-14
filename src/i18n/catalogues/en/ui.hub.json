@@ -23,7 +23,7 @@
 	"ui.hub.subscriptions.pull": "Pull now",
 	"ui.hub.subscriptions.preview_publish": "Preview publish",
 	"ui.hub.subscriptions.enable_title": "Enable auto-push to {source}?",
-	"ui.hub.subscriptions.enable_public": "Future changes to {item} may be published publicly without asking each time. Changes from private sources are paused for review.",
+	"ui.hub.subscriptions.enable_public": "Future changes to {item} may be published publicly without asking each time. Changes from private sources are paused for review. Turning auto-push off later stops future publishing, but it does not take back anything that is already public.",
 	"ui.hub.subscriptions.enable_private": "Future changes to {item} may be published to {organization} without asking each time. Only people allowed to access that organization can receive them.",
 	"ui.hub.subscriptions.enable_safety": "Concurrent changes on the hub are merged or paused for review, never overwritten silently.",
 	"ui.hub.subscriptions.cancel": "Cancel",
