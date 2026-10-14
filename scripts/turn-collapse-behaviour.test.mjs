@@ -405,13 +405,16 @@ const mount = async (t, records, over = {}) => {
 						transcript: {
 							...transcriptOf(next),
 							hasMore: nextOver.hasMore ?? false,
+							viewEpoch: nextOver.viewEpoch,
 						},
+						openFrame: nextOver.openFrame,
 						gate: nextOver.gate ?? null,
 						waiting: nextOver.waiting ?? false,
+						workingLine: nextOver.workingLine,
 						loadingOlder: false,
 						onLoadOlder: nextOver.onLoadOlder ?? (async () => true),
 						containerRef: { current: mounted.container },
-						isSmallView: false,
+						isSmallView: nextOver.isSmallView ?? false,
 						status: "live",
 						failure: null,
 						awaitingHydration: false,
@@ -3184,4 +3187,100 @@ test("F3: the receipt that forms the group neither re-collapses the bar nor re-a
 		"peer:1 tool:1 quiet:1 peer:2",
 		"the bar now hides the grown span, row for row",
 	);
+});
+
+
+const activeSourceRows = () => [userRecord("active-u"), answerRecord("active-final", { stopReason: "stop" }), peerRecord("active-p"), toolRecord("active-t", { toolName: "eval", phase: "running", output: "Full original synthetic result" })];
+for (const isSmallView of [false, true]) test(`active receipt disclosure preserves append, actual phase clock, and every material answer (${isSmallView ? "small" : "wide"})`, async t => {
+	__resetTurnCollapseOpen();
+	const frontend = { session_id: "synthetic-active-" + isSmallView };
+	const phase = { phase: "thinking", activity: "thinking", startedAt: Date.now() - 8000, clock: true };
+	const options = { frontend, waiting: true, workingLine: phase, isSmallView };
+	const rows = activeSourceRows();
+	const mounted = await mount(t, rows, options);
+	const first = bar(mounted);
+	assert.ok(first);
+	assert.equal(rowBox(mounted, "active-p"), null);
+	assert.ok(rowBox(mounted, "active-final"));
+	assert.equal(first.getAttribute("data-segment-active"), "true");
+	assert.equal(first.getAttribute("data-segment-complete"), null);
+	assert.doesNotMatch(first.textContent, /Took/);
+	assert.match(first.textContent, /thinking/);
+	assert.equal(mounted.container.querySelectorAll("[data-lo-working-line]").length, 1);
+	await click(first.querySelector("button"));
+	assert.ok(rowBox(mounted, "active-p"));
+	assert.ok(rowBox(mounted, "active-t"));
+	await mounted.render([...rows, peerRecord("active-p2")], options);
+	assert.equal(bar(mounted), first);
+	assert.equal(first.querySelector("button").getAttribute("aria-expanded"), "true");
+	assert.ok(rowBox(mounted, "active-p2"));
+	const stopped = [...rows.map(r => r.id === "active-t" ? { ...r, phase: "done" } : r), peerRecord("active-p2"), quietRecord("active-q")];
+	await mounted.render(stopped, { ...options, waiting: false, workingLine: null });
+	assert.equal(bar(mounted), first);
+	assert.equal(first.querySelector("button").getAttribute("aria-expanded"), "true");
+	await mounted.render([...stopped, answerRecord("active-material", { stopReason: "stop" })], { ...options, waiting: false, workingLine: null });
+	assert.equal(bar(mounted), first);
+	assert.ok(rowBox(mounted, "active-final"));
+	assert.ok(rowBox(mounted, "active-material"));
+});
+
+test("active summary keeps legacy unanchored clock at footer; known current phase survives a head cut", async t => {
+	__resetTurnCollapseOpen();
+	const rows = activeSourceRows();
+	const mounted = await mount(t, rows, { waiting: true, workingLine: { phase: "thinking", activity: "thinking", clock: true } });
+	assert.equal(bar(mounted).querySelector("[data-lo-working-line]"), null);
+	assert.ok(mounted.container.querySelector("[data-lo-transcript-foot] [data-lo-working-line]"));
+	const since = Date.now() - 8000;
+	await mounted.render(rows.slice(2), { waiting: true, workingLine: { phase: "thinking", activity: "thinking", clock: true, startedAt: since } });
+	assert.ok(bar(mounted).querySelector("[data-lo-working-line]"));
+	assert.equal(mounted.container.querySelectorAll("[data-lo-working-line]").length, 1);
+	assert.doesNotMatch(bar(mounted).textContent, /Took/);
+});
+
+for (const frontend of [null, { session_id: "synthetic-main-transition" }]) test(`future empty assistant and first real token stay outside internal disclosure before/during/after (${frontend ? "main" : "embedded"})`, async t => {
+	__resetTurnCollapseOpen();
+	const rows = activeSourceRows();
+	const mounted = await mount(t, rows, { waiting: true, frontend });
+	const first = bar(mounted);
+	for (const shape of [{ text: "", streaming: true }, { text: "Actual material progress", streaming: true }, { text: "Actual material answer", streaming: false, stopReason: "stop" }]) {
+		await mounted.render([...rows, answerRecord("future-answer", shape)], { waiting: true, frontend });
+		assert.equal(bar(mounted), first);
+		const hidden = [...mounted.container.querySelectorAll("[data-turn-summary]")].flatMap(el => (el.getAttribute("data-segment-ids") ?? "").split(" "));
+		assert.equal(hidden.includes("future-answer"), false);
+		assert.equal(hidden.includes("active-final"), false);
+	}
+});
+
+/* V2 rendered SOURCE controls; JSX/focus still requires actual later execution. */
+test("v2 expanded disclosure counts exactly its own receipt and spawn, never wire totals", async t => {
+	const records = [peerRecord("count-peer"), toolRecord("count-tool", { toolName: "task", durationS: 2.6 }), answerRecord("count-final", { stopReason: "stop" })];
+	const fixture = n => ({ runs: new Map([["count-final", { actions: n, workedSeconds: n === 113319 ? 50340 : 100680, failed: 0, complete: true, openingUserId: "offpage", closingAnswerId: "count-final", crossSessionActions: 0, crossSessionWorkedSeconds: 0 }]]), page: { ids: new Set(records.map(r => r.id)) } });
+	const mounted = await mount(t, records, { openFrame: fixture(113319) });
+	const bar = barBox(mounted, "count-peer"); assert.ok(bar); const button = triggerOf(bar);
+	assert.match(button.textContent, /1\+? action/); assert.doesNotMatch(button.textContent, /113319|13h59|Took/);
+	await click(button); assert.ok(rowBox(mounted, "count-peer")); assert.ok(rowBox(mounted, "count-tool"));
+	assert.equal(bar.contains(rowBox(mounted, "count-final")), false);
+	await mounted.render(records, { openFrame: fixture(226638) });
+	assert.strictEqual(barBox(mounted, "count-peer"), bar); assert.equal(button.getAttribute("aria-expanded"), "true");
+	assert.doesNotMatch(button.textContent, /226638|113319|Took/);
+});
+test("v2 one open bar survives 129 unrelated complete owners without opening neighbors", async t => {
+	__resetTurnCollapseOpen();
+	const records = [userRecord("alias-user"), answerRecord("alias-final", { stopReason: "stop" })];
+	for (let i = 0; i < 129; i++) records.push(peerRecord(`alias-peer-${i}`), toolRecord(`alias-tool-${i}`), answerRecord(`alias-answer-${i}`, { stopReason: "stop" }));
+	const over = { frontend: { session_id: "synthetic-alias-129" }, viewEpoch: 1 };
+	const mounted = await mount(t, records, over); const before = barBox(mounted, "alias-peer-0"); assert.ok(before);
+	await click(triggerOf(before)); assert.equal(triggerOf(before).getAttribute("aria-expanded"), "true");
+	const prepended = [...records.slice(0, 2), peerRecord("alias-prefix"), ...records.slice(2)];
+	await mounted.render(prepended, over);
+	const after = barBox(mounted, "alias-prefix"); assert.strictEqual(after, before);
+	assert.equal(triggerOf(after).getAttribute("aria-expanded"), "true");
+	assert.ok(rowBox(mounted, "alias-tool-0"));
+	assert.equal(triggerOf(barBox(mounted, "alias-peer-1")).getAttribute("aria-expanded"), "false");
+	// Explicit clear invalidates alias evidence without treating unchanged
+	// owner/view epochs as a positive source-transition certificate.
+	await mounted.render([], { ...over, viewEpoch: 2 });
+	await mounted.render(prepended, { ...over, viewEpoch: 2 });
+	assert.notStrictEqual(barBox(mounted, "alias-prefix"), before);
+	__resetTurnCollapseOpen();
 });

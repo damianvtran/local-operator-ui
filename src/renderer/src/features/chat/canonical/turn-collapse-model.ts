@@ -47,6 +47,7 @@
  * session's shared outcome predicate the day it lands.
  */
 
+import { isImageGenTool } from "./image-gen-card-model";
 import {
 	EMPTY_SENDER,
 	type PeerSender,
@@ -81,6 +82,7 @@ import {
 	type TurnCycle,
 	boundaryKindOf,
 	isQuietTurnCall,
+	isQuietTurnClose,
 	isTerminalMarker,
 	labelOfSegment,
 	partitionRun,
@@ -153,7 +155,16 @@ export function staysVisibleWhileCollapsed(record: TranscriptRecord): boolean {
 export function runIsCondensed(
 	run: RunCollapsePlan,
 	openRuns: ReadonlySet<string> | undefined,
+	options?: { artifactOwner: string },
 ): boolean {
+	if (options !== undefined) {
+		// An ambient internal bar is not the expansion owner of an answer's
+		// files/frames. Only that answer's stamped work bar can condense them;
+		// an unrelated closed segment (or an uncertain head) is not permission.
+		if (run.answerId !== options.artifactOwner || run.segments.some(s => s.internal != null)) return false;
+		return run.segments.some(s => s.collapsed && !s.facts.partial && s.stampTs !== null &&
+			s.stampTs === run.stampTs && !openRuns?.has(s.key));
+	}
 	return run.segments.some(
 		(segment) => segment.collapsed && !openRuns?.has(segment.key),
 	);
@@ -316,6 +327,101 @@ function groupSplitterOf(record: TranscriptRecord): boolean {
 function isQuietGroupTrigger(record: TranscriptRecord): boolean {
 	const trigger = triggerOf(record);
 	return trigger !== null && trigger !== "user";
+}
+
+
+/**
+ * Presentation eligibility is positive RECEIPT provenance, not a quiet outcome.
+ * In particular, eval code/stdout and completion-attention ineligibility say
+ * nothing about silence. An unstamped old-core hub user remains a user boundary.
+ */
+function isInternalEpisodeOrigin(record: TranscriptRecord): boolean {
+	if (record.kind === "peer" || record.kind === "wake") return true;
+	if (record.kind === "notice") {
+		// applyEvent(subagent_end) owns this reserved canonical-ID namespace
+		// (transcript-reducer.ts); generic INFO/local notices are not job status.
+		return record.level === "info" && record.complete !== true &&
+			record.id.startsWith("subagent:") && record.id.length > "subagent:".length;
+	}
+	if (record.kind !== "custom" || record.level === "error") return false;
+	const trigger = triggerOf(record);
+	if (trigger === null || trigger === "user") return false;
+	if (trigger === "hub_message") {
+		// Reply/steer intent is already normalized once by the receipt producer.
+		// Unknown historical intent stays visible; never recover it from prose.
+		return record.receipt !== undefined &&
+			(record.receipt.direction === "to_parent" || record.receipt.direction === "to_child") &&
+			record.receipt.expectsReply === false && record.receipt.steer === false;
+	}
+	return true;
+}
+
+/** Both turn and action folds must retain actual material owners inline. */
+export function ownsMaterialArtifact(record: TranscriptRecord): boolean {
+	if (record.kind === "supplement") return true;
+	if ((record.kind === "tool" || record.kind === "custom") && record.images?.length) return true;
+	// Before output bytes exist, the generating card already owns loading/error
+	// and cancellation UI; keep ALL phases, not only successful picture rows.
+	return record.kind === "tool" && isImageGenTool(record.toolName);
+}
+
+function internalEpisodeBoundary(record: TranscriptRecord): boolean {
+	// Empty/streaming assistants are future user text. Pin before the first
+	// token, not only once prose happens to paint; otherwise the first token
+	// would briefly mount inside a closed disclosure (the 0.27 regression).
+	if (record.kind === "user" || record.kind === "assistant" ||
+		record.kind === "ask_response" || record.kind === "ask_timeout") return true;
+	// FoldMedia is picture-only. Retain the actual artifact row/player inline,
+	// including videos, rather than substitute a thumbnail or hide its payload.
+	if (ownsMaterialArtifact(record)) return true;
+	if (record.kind === "notice" || record.kind === "custom") return !isInternalEpisodeOrigin(record);
+	if (record.kind === "tool") return record.toolName === "ask" ||
+		isFailedCall(record) || record.stopped === true || record.neverSent === true ||
+		(record.notRunReason !== undefined && record.notRunReason !== null);
+	return staysVisibleWhileCollapsed(record);
+}
+
+/** Protect only receipt-context rows; ordinary human work keeps its old policy. */
+function internalEpisodePins(records: readonly TranscriptRecord[]): { pins: ReadonlySet<TranscriptRecord> } {
+	const pins = new Set<TranscriptRecord>();
+	let receiptContext = false;
+	for (let i = 0; i < records.length; i += 1) {
+		const record = records[i];
+		if (isInternalEpisodeOrigin(record)) receiptContext = true;
+		if (receiptContext && internalEpisodeBoundary(record)) {
+			pins.add(record);
+			receiptContext = false;
+		}
+		if (record.kind === "user") receiptContext = false;
+	}
+	return { pins };
+}
+
+export type InternalEpisodeFacts = {
+	/** Counts physical canonical receipts, never labels or guessed job IDs. */
+	receipts: number;
+	/** Null at a loaded-head cut: no invented off-page start or elapsed time. */
+	firstTs: number | null;
+	/** Ongoing presentation, NOT successful/completed lifecycle. */
+	live: boolean;
+};
+
+function internalEpisodeOf(
+	records: readonly TranscriptRecord[], span: SegmentSpan, headLoaded: boolean,
+	live: boolean, humanPending: boolean,
+): InternalEpisodeFacts | null {
+	if (!isInternalEpisodeOrigin(records[span.from])) return null;
+	// V4/typed quiet closure was derived once for the loaded run. Neither a
+	// toolUse lead-in nor eval text can make unanswered human work internal.
+	let receipts = 0;
+	let quietClose = false;
+	for (let i = span.from; i <= span.to; i += 1) {
+		if (internalEpisodeBoundary(records[i])) return null;
+		if (isInternalEpisodeOrigin(records[i])) receipts += 1;
+		if (isQuietTurnClose(records[i])) quietClose = true;
+	}
+	if (humanPending && !quietClose) return null;
+	return { receipts, firstTs: headLoaded ? records[span.from].ts : null, live };
 }
 
 /**
@@ -687,8 +793,9 @@ export type SegmentPlan = {
 	 * (`turn-collapse-open.ts`), so a new shape simply renders every bar collapsed
 	 * once - there is never a key to migrate.
 	 *
-	 * A span still IN FLIGHT (see `planRun`) is not a bar yet, so no reader can hold
-	 * its key; the key it has when it settles is the one it keeps.
+	 * Ordinary human work still waits for settlement. Positive internal receipt
+	 * spans can already be bars while live; their qg identity survives closure.
+	 * Loaded-head key transfer is bounded and requires proved canonical overlap.
 	 */
 	key: string;
 	/** The hidden rows, in order. */
@@ -705,6 +812,8 @@ export type SegmentPlan = {
 	label: string | null;
 	/** A settled follow-up: the bar carries the completion mark. */
 	completed: boolean;
+	/** Receipt-origin presentation facts; separate from shared QuietGroup >=2. */
+	internal?: InternalEpisodeFacts | null;
 	/**
 	 * Whether this bar renders (the run condenses AND the focus hold did not stand
 	 * this span open). False means its rows are simply drawn in place.
@@ -2419,13 +2528,30 @@ function planRun(
 			: run.opensWithUserRow &&
 				fact?.openingUserId != null &&
 				rows[run.openingIndex]?.record.id === fact.openingUserId;
+	const internalContext = internalEpisodePins(records);
 	const partition = partitionRun(records, {
 		from,
 		paints: paintsSomething,
 		isStatement: isStatementRow,
-		pinned: staysVisibleWhileCollapsed,
+		pinned: (record) => staysVisibleWhileCollapsed(record) || ownsMaterialArtifact(record) || internalContext.pins.has(record),
 		mode,
 	});
+	// Reuse authoritative RESPONSE closes for old-core rows without a V4 stop
+	// marker. Explicit toolUse/refusal/error endings are not a completed human
+	// response; no new answer election or body interpretation is introduced.
+	const responseCloses = new Set(partition.cycles.filter(cycle => {
+		const record = records[cycle.closeIndex];
+		return cycle.class === "response" && record.kind === "assistant" && !record.streaming &&
+			(record.stopReason == null || reportsCompletedThought(record));
+	}).map(cycle => records[cycle.closeIndex]));
+	const humanPendingBefore: boolean[] = [];
+	let humanPending = false;
+	for (const record of records) {
+		humanPendingBefore.push(humanPending);
+		if (record.kind === "user" || (record.kind === "custom" &&
+			(record.receipt?.expectsReply === true || record.receipt?.steer === true))) humanPending = true;
+		else if (responseCloses.has(record) || reportsCompletedThought(record) || isQuietTurnClose(record)) humanPending = false;
+	}
 	const answerAt = partition.answer?.closeIndex ?? null;
 	const answerId = answerAt === null ? null : records[answerAt].id;
 	/*
@@ -2491,7 +2617,6 @@ function planRun(
 	 * Recorded during the map rather than searched for afterwards, so the flag the
 	 * segment was built with and the span this block patches cannot drift apart.
 	 */
-	let cutSpan = -1;
 
 	const segments: SegmentPlan[] = partition.segments.map(
 		(span: SegmentSpan, i): SegmentPlan => {
@@ -2512,7 +2637,6 @@ function planRun(
 			 * added for.
 			 */
 			const headLoaded = !(span.from === from && !headLoadedIsTheRunsOwn);
-			if (!headLoaded) cutSpan = i;
 			/*
 			 * THE GROUP, when this span is one (design §5): >= 2 delivery receipts
 			 * with nothing the reader can see between them. `spanHeadLoaded` is the
@@ -2520,6 +2644,7 @@ function planRun(
 			 * LATER visible row exists anywhere in the load: only the conversation's
 			 * last run can grow from its tail, so only there can the group still grow.
 			 */
+			const internal = internalEpisodeOf(records, span, headLoaded, live && span.to >= liveFrom && span.to === records.length - 1 && run.endIndex === rows.length - 1, humanPendingBefore[span.from]);
 			const group = quietGroupOfSegment(records, span, {
 				spanHeadLoaded: headLoaded,
 				open:
@@ -2538,7 +2663,9 @@ function planRun(
 			 */
 			const appendable =
 				span.to === runRows.length - 1 && run.endIndex === rows.length - 1;
-			const key = appendable
+			// A receipt episode retains its qg identity when a visible boundary closes
+			// it. Appendability alone must not drop the reader's expansion on close.
+			const key = appendable || internal !== null
 				? `qg:${segRows[0].record.id}`
 				: `seg:${
 						afterAnswer
@@ -2546,36 +2673,18 @@ function planRun(
 							: (runRows[span.to + 1] ?? segRows[segRows.length - 1]).record.id
 					}`;
 
-			const label = labelOfSegment(records, partition.cycles, span, group);
+			const label = labelOfSegment(records, partition.cycles, span, group) ??
+				(internal !== null && records[span.from].kind === "notice" ? "Job result" : null);
 			/*
-			 * A GROUP BAR STAYS A BAR WHILE IT GROWS (design §5, rev 2): the open tail
-			 * group "may increase its count (single-line bar, no geometry change)" -
-			 * so a span that IS a group whose receipts have SETTLED is exempt from the
-			 * live split. Without the exemption a receipt arriving after the group
-			 * settled extends the span past `liveFrom` and un-condenses ALL of it
-			 * (every receipt the reader had already seen settle unrolling again) -
-			 * the jitter the group shape exists to remove. The rows a group hides are
-			 * receipts and their calls; the working line still states what is being
-			 * written.
-			 *
-			 * SETTLED IS THE LINE, and it is structural rather than a clock: the run's
-			 * settled point (`settledAt`) must fall at or after this span's start, so
-			 * something in the span has finished. A GROUP WITH NOTHING SETTLED INSIDE
-			 * IS STILL BEING WRITTEN and draws in place, exactly as the live cycle
-			 * always has - the shape `session-load-sequence.test.mjs` pins: two
-			 * receipts arriving in a run's own running cycle paint as rows, because no
-			 * close has said the stretch is over. Folding them into a bar the moment a
-			 * second one lands would hide a message the reader just watched arrive, and
-			 * would overrule the liveness rule ("only the in-flight cycle draws in
-			 * place") for a bar that never existed: the design's growth promise is made
-			 * to a bar whose rows have settled. The moment any part of the span settles
-			 * - a quiet close, an answer the splitter cuts at, a marker - the bar takes
-			 * over and the promise applies from there.
+			 * Only positive receipt-origin spans may compact while live. Settlement
+			 * is a lifecycle fact, not permission to show private work loosely.
+			 * A peer landing in unanswered human work does not change that work's
+			 * presentation, and arbitrary tool-only suffixes never earn this rule.
 			 */
-			const groupKeepsItsBar = group !== null && settledAt >= span.from;
+			const groupKeepsItsBar = internal !== null && group !== null && settledAt >= span.from;
 			const collapsedHere =
-				collapsible &&
-				(liveFrom < 0 || span.to < liveFrom || groupKeepsItsBar) &&
+				(collapsible || internal !== null) &&
+				(liveFrom < 0 || span.to < liveFrom || groupKeepsItsBar || internal !== null) &&
 				!(
 					focusHold !== null &&
 					!openRuns.has(key) &&
@@ -2589,7 +2698,8 @@ function planRun(
 				gap: segmentGap(segRows[0], span.from > from),
 				afterAnswer,
 				label,
-				completed: segmentIsCompleted(
+				internal,
+				completed: internal?.live ? false : segmentIsCompleted(
 					records,
 					partition.cycles,
 					span,
@@ -2612,164 +2722,31 @@ function planRun(
 	);
 
 	/*
-	 * THE HEAD-CUT SPAN TAKES ITS FIGURES FROM THE RUN (`RunFact`), which is what
-	 * makes a bar right on the frame the reader first sees it instead of after the
-	 * align walk has fetched the head in.
-	 *
-	 * SUBTRACTION, NOT SUBSTITUTION, and the difference is the reader's arithmetic:
-	 * the fact states the WHOLE run's totals, while this bar stands for one span of
-	 * it - a pinned row (a compaction, a terminal marker) splits a run into several
-	 * bars, and a bar that stated the run's total beside a sibling stating its own
-	 * rows would not add up. Every other span is fully loaded by construction (see
-	 * `cutSpan`), so the run's total minus their known work IS this span's, exactly,
-	 * and the ladder still sums to the turn's figure (D1).
-	 *
-	 * WHAT THE FACTS DO NOT MOVE: the class sentence (`title`), which is a phrase
-	 * about the actions this span HAS; `failed`/`firstFailedId`, which no bar prints
-	 * and the failure jump reads off the rows in hand anyway. A run whose page
-	 * carries no fact, or a fact this build cannot read, keeps every loaded-rows
-	 * answer it had - the fallback is the point, not a degradation.
+	 * Disclosure figures describe the rows THIS bar expands, not an indexed
+	 * run remainder. Even an exact whole-run fact includes off-page/prior or
+	 * follow-up work that is not a child of this disclosure. A very large fact
+	 * must never turn [receipt, one tool] into thousands of inspectable actions.
+	 * `factsOf(segRows)` is therefore authoritative for EVERY bar; a missing
+	 * head keeps its duration unknown. Whole-run figures remain in openFrame's
+	 * separately scoped wire facts, not in an unlabeled segment header.
 	 */
-	const cutSegment = cutSpan >= 0 ? segments[cutSpan] : null;
-	/*
-	 * Whether the cut span's figure is a FLOOR rather than its total (see the floor
-	 * check below). Declared here because the run-level ladder states the same
-	 * thing about the figure it sums.
-	 */
-	let cutIsFloor = false;
-	if (factTotals !== null && cutSegment !== null) {
-		let knownActions = 0;
-		let knownWorked = 0;
-		for (const [i, segment] of segments.entries()) {
-			if (i === cutSpan) continue;
-			knownActions += segment.facts.actions;
-			knownWorked += workedSeconds(segment.rows) ?? 0;
-		}
-		const actions = Math.max(0, factTotals.actions - knownActions);
-		const worked =
-			factTotals.workedSeconds === null
-				? null
-				: Math.max(0, factTotals.workedSeconds - knownWorked);
-		/*
-		 * THE FLOOR CHECK (agent review round 2, M2). A figure below the number of tool
-		 * rows the bar itself hides cannot be the span's total, whatever the wire
-		 * says: the count is then a FLOOR, and the bar has exactly one way to say so -
-		 * the `+`. Two things make it bite: a hidden cross-session row the backend
-		 * counted in `action_count` but not in the split it publishes (a `send` whose
-		 * body was dropped is counted before the `body_dropped` branch and skipped by
-		 * it), and a row that arrived after the page was published, which the wire had
-		 * not seen. Both are cases where the honest answer is "it is bigger than this",
-		 * and the alternative - a `partial: false` number that the rows underneath it
-		 * already contradict - is the class of claim this lane exists to delete.
-		 */
-		const hiddenTools = cutSegment.rows.filter(
-			(row) => row.record.kind === "tool",
-		).length;
-		cutIsFloor = hiddenTools > actions;
-		/*
-		 * A FLOOR IS STATED AS THE LARGER FIGURE (agent review round 3, m1). The wire's
-		 * figure cannot be the span's total when the bar's own rows already exceed it
-		 * (either cause above), and stating the smaller one beside a `+` understates the
-		 * work on screen: `1+` over three visible rows, with the walk retired by the very
-		 * fact that produced it, is a claim nothing can complete. `max` keeps the honest
-		 * half of both readings - the wire's figure when it is larger, the rows in hand
-		 * when it is not - and the `+` still says it is not the total.
-		 */
-		const stated = cutIsFloor ? Math.max(actions, hiddenTools) : actions;
-		segments[cutSpan] = {
-			...cutSegment,
-			facts: {
-				...cutSegment.facts,
-				actions: stated,
-				/*
-				 * The head-cut span's duration gate, lifted by the fact: the sum is no
-				 * longer a fragment of the turn's work but the turn's own, so the `1s`
-				 * floor and the never-a-`0s`-claim rule are the only ones left (the same
-				 * pair `factsOf` applies to a loaded head).
-				 */
-				durationS: worked !== null && worked >= 1 ? worked : null,
-				/*
-				 * `complete: false` is the server saying the index dropped a row body
-				 * inside this run, so the count is a FLOOR - the bar's `+` - and the
-				 * floor check above is the client's own version of the same statement,
-				 * for the rows the server could not have counted.
-				 */
-				/*
-				 * `partial` also when the fact was corrected by rows that arrived after the
-				 * page (B2) and the run is still live - OR is the watched run (agent review
-				 * round 1, R1-2): the latch keeps the run unfinished in every pass, so a
-				 * liveness dip must not drop the `+` for a frame while the hide set holds
-				 * still - one transient, one answer, in both readings.
-				 */
-				partial:
-					!factTotals.complete ||
-					cutIsFloor ||
-					((live || watched) &&
-						factAppended !== null &&
-						factAppended.length > 0),
-			},
-		};
-	}
-
 	/* The turn's own totals: the run through its answer, commentary excluded. */
 	const turnRows = answerAt === null ? runRows : runRows.slice(0, answerAt + 1);
 	/*
 	 * The run-level figures have no reader of their own today, but they are what a
-	 * consumer reads to state the turn's whole work, so they must not be left
-	 * contradicting the bars beneath them: when a cut span took the facts, the
-	 * pre-answer bars sum to exactly the turn's figure, and re-deriving the totals
-	 * from those bars is what keeps the two in step (D1's ladder, now over facts).
-	 * WITH NO CUT SPAN, the loaded fold stands untouched - including for a run
-	 * whose head is cut at a PINNED row, where the loaded spans are whole and the
-	 * rows above them are not hidden by any bar.
+	 * consumer reads to state this loaded turn's work. They stay in that same
+	 * loaded population; an off-page wire total cannot be reconstructed by
+	 * summing disclosure children. Head uncertainty remains explicit.
 	 */
 	const turnFacts = factsOf(turnRows, {
 		partial: !headLoadedIsTheRunsOwn,
 		headLoaded: headLoadedIsTheRunsOwn,
 	});
-	const ladder = (() => {
-		if (factTotals === null || cutSpan < 0) return null;
-		let actions = 0;
-		let worked = 0;
-		for (const segment of segments) {
-			if (segment.afterAnswer) continue;
-			actions += segment.facts.actions;
-			worked += segment.facts.durationS ?? 0;
-		}
-		return {
-			actions,
-			worked,
-			/*
-			 * `partial` carries the bar's own live-correction term as well (agent review
-			 * round 4, m2), read the anchored way (round 1, R1-2): the bars beneath say
-			 * `N+` while a live or watched run is being corrected by rows that arrived
-			 * after the page, and a ladder summing them must not state the same figure
-			 * as final. Nothing reads this today, which is exactly why the two must not
-			 * drift before a reader arrives.
-			 */
-			partial:
-				!factTotals.complete ||
-				cutIsFloor ||
-				((live || watched) && factAppended !== null && factAppended.length > 0),
-			/*
-			 * The run-level `failed` is the WIRE's own count for the run as
-			 * published - the same population `action_count` covers - so it cannot
-			 * be a double count (round 2, B1: a woken run's follow-up is already
-			 * inside the wire's figure) and cannot disagree with the figure it came
-			 * from. It is deliberately NOT the ladder's population: `actions` above
-			 * is the turn's PRE-ANSWER work by D1's rule, while the wire counts a
-			 * woken run's post-answer rows too. Nothing reads this figure today; a
-			 * future reader that wants the turn's own failures must sum them from
-			 * the bars rather than take this one.
-			 */
-			failed: factTotals.failed,
-		};
-	})();
 	const hidden = segments.flatMap((segment) => segment.rows);
 	return {
 		key: run.key,
 		run,
-		factApplied: factTotals !== null && cutSpan >= 0,
+		factApplied: false, // No disclosure population was replaced by a wire aggregate.
 		/*
 		 * A bar renders iff there is something to hide, this is not the run a live
 		 * turn is being written in, and the run can be honestly summarised: its
@@ -2781,16 +2758,7 @@ function planRun(
 		recordIds: runRows.map((row) => row.record.id),
 		hidden,
 		gap: segments[0]?.gap ?? "item",
-		facts:
-			ladder === null
-				? turnFacts
-				: {
-						...turnFacts,
-						actions: ladder.actions,
-						durationS: ladder.worked >= 1 ? ladder.worked : null,
-						partial: ladder.partial,
-						failed: ladder.failed,
-					},
+		facts: turnFacts,
 		answerId,
 		stampTs: answerAt === null ? null : records[answerAt].ts,
 		segments,
