@@ -455,7 +455,9 @@ test("a peer conversation's cached IDs resolve through the facts-only lookup, th
 				};
 			if (request.sourceRead === "payload")
 				return {
-					entries: [{ ...messageRow(ROW_EARLY, "where am I?"), journal_seq: 3 }],
+					entries: [
+						{ ...messageRow(ROW_EARLY, "where am I?"), journal_seq: 3 },
+					],
 					has_more: false,
 					cursor_missing: false,
 					journal_order_state: "ready",
@@ -485,16 +487,17 @@ test("a peer conversation's cached IDs resolve through the facts-only lookup, th
 	 * S1 reading settled the row on the lookup's coordinate alone - which the
 	 * complete contract forbids (a coordinate is not a body).
 	 */
-	const payload = requests.find(
-		(request) => request.sourceRead === "payload",
-	);
+	const payload = requests.find((request) => request.sourceRead === "payload");
 	assert.ok(payload, "the owed body took the typed payload subset");
 	assert.equal(payload.peerJournalSource, true);
 	assert.equal(payload.expectedJournalGeneration, "peer-A");
 	assert.ok(payload.orderIds.includes(ROW_EARLY));
 	const payloadPath = desktopEndpoint(payload).path;
 	assert.ok(payloadPath.includes("source_read=payload"), payloadPath);
-	assert.ok(payloadPath.includes("expected_journal_generation=peer-A"), payloadPath);
+	assert.ok(
+		payloadPath.includes("expected_journal_generation=peer-A"),
+		payloadPath,
+	);
 	// No order-carrying session GET was needed: the pair settled the sweep.
 	assert.equal(
 		requests.filter(
@@ -600,7 +603,9 @@ test("a rebuilt source never installs from the lookup; the owed reconcile settle
 			if (request.sourceRead === "payload")
 				// The typed body read that admits the owed row under peer-B.
 				return {
-					entries: [{ ...messageRow(ROW_EARLY, "where am I?"), journal_seq: 0 }],
+					entries: [
+						{ ...messageRow(ROW_EARLY, "where am I?"), journal_seq: 0 },
+					],
 					has_more: false,
 					cursor_missing: false,
 					journal_order_state: "ready",
@@ -717,4 +722,83 @@ test("a catalogue fact that lands after the connection adopts exactly one declar
 	assert.equal(next.op, "sessions.get");
 	assert.equal(next.peerJournalSource, true);
 	assert.equal(h.get().transcript.journalGeneration, "peer-A");
+});
+
+/*
+ * THE M2 SURFACE'S SOURCE HALF (review round 1), driven through the real hook.
+ *
+ * `journalSourceUnavailable` is the flag the notice reads. Its writers are the
+ * wave bookkeeping in the hook (`sourceWaveAfterAnswer`) and nothing else, and
+ * the design round found the doc comment promising a clear on the user's press
+ * that `reopen` did not perform. These two cells hold that promise: a terminal
+ * `unavailable` answer flags the wave, the user's press clears it AT ONCE -
+ * before any ready answer - and an `unsupported` answer (a local-only source
+ * that cannot order a peer conversation) never sets it, so the `unsupported`
+ * frame shows nothing.
+ */
+
+test("the user's press clears the source-unavailable flag, and unsupported never sets it", async () => {
+	/*
+	 * A terminal `unavailable` answer: the wave failed and no owed read is
+	 * behind it (`reconcile` is absent), so the flag is stated at once.
+	 */
+	const h = await peerMount({
+		history: page([messageRow(ROW_EARLY, "where am I?")], "peer-A"),
+		historyHandler: async (request) => {
+			if (request.sourceRead === "metadata")
+				return {
+					entries: [],
+					has_more: false,
+					cursor_missing: false,
+					journal_order_state: "unavailable",
+					journal_generation: "peer-A",
+				};
+			return { entries: [], has_more: false, cursor_missing: false };
+		},
+	});
+	await pump();
+	assert.equal(
+		h.get().transcript.journalSourceUnavailable,
+		true,
+		"a terminal unavailable answer flags the wave",
+	);
+	/*
+	 * THE PRESS CLEARS IT AT ONCE. `retry` is `reopen`, whose commitView now
+	 * writes `markSourceUnavailable(transcript, false)`: pressing Reconnect must
+	 * take the notice away as the acknowledgement, not leave it waiting for a
+	 * ready answer that may never come.
+	 */
+	h.get().retry();
+	await pump();
+	assert.equal(
+		h.get().transcript.journalSourceUnavailable,
+		false,
+		"the user's press clears the flag before any ready answer",
+	);
+
+	/*
+	 * `unsupported` is INTRINSIC - a local-only source cannot order a peer
+	 * conversation - so it never flags and the frame shows nothing. The
+	 * answer reaches the same bookkeeping and falls through untouched.
+	 */
+	const u = await peerMount({
+		history: page([messageRow(ROW_EARLY, "where am I?")], "peer-A"),
+		historyHandler: async (request) => {
+			if (request.sourceRead === "metadata")
+				return {
+					entries: [],
+					has_more: false,
+					cursor_missing: false,
+					journal_order_state: "unsupported",
+					journal_generation: "peer-A",
+				};
+			return { entries: [], has_more: false, cursor_missing: false };
+		},
+	});
+	await pump();
+	assert.equal(
+		u.get().transcript.journalSourceUnavailable,
+		undefined,
+		"an unsupported source never sets the flag",
+	);
 });
