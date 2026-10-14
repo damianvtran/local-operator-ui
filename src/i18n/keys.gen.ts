@@ -26,6 +26,7 @@ import enUiBrowserChrome from "./catalogues/en/ui.browser.chrome.json";
 import enUiBrowser from "./catalogues/en/ui.browser.json";
 import enUiCanvas from "./catalogues/en/ui.canvas.json";
 import enUiChat from "./catalogues/en/ui.chat.json";
+import enUiChatSidebarView from "./catalogues/en/ui.chat.sidebar_view.json";
 import enUiCodeReview from "./catalogues/en/ui.code_review.json";
 import enUiCommandPalette from "./catalogues/en/ui.command_palette.json";
 import enUiCommonActions from "./catalogues/en/ui.common.actions.json";
@@ -55,6 +56,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiBrowser,
 	...enUiCanvas,
 	...enUiChat,
+	...enUiChatSidebarView,
 	...enUiCodeReview,
 	...enUiCommandPalette,
 	...enUiCommonActions,
@@ -173,6 +175,28 @@ export type MessageParams = {
 	"ui.chat.usage.eligibility_unknown": undefined;
 	"ui.chat.usage.family_caps": undefined;
 	"ui.chat.usage.unlimited": undefined;
+	"ui.chat.sidebar_view.active_first": undefined;
+	"ui.chat.sidebar_view.agent_team": undefined;
+	"ui.chat.sidebar_view.clock_hint": undefined;
+	"ui.chat.sidebar_view.created": undefined;
+	"ui.chat.sidebar_view.group_by": undefined;
+	"ui.chat.sidebar_view.hidden": { count: number };
+	"ui.chat.sidebar_view.last_active": undefined;
+	"ui.chat.sidebar_view.most_recent": undefined;
+	"ui.chat.sidebar_view.move_down": { section: string };
+	"ui.chat.sidebar_view.move_up": { section: string };
+	"ui.chat.sidebar_view.one_list": undefined;
+	"ui.chat.sidebar_view.order_by": undefined;
+	"ui.chat.sidebar_view.section.agents": undefined;
+	"ui.chat.sidebar_view.section.older": undefined;
+	"ui.chat.sidebar_view.section.pinned": undefined;
+	"ui.chat.sidebar_view.section.running": undefined;
+	"ui.chat.sidebar_view.section.teams": undefined;
+	"ui.chat.sidebar_view.section.today": undefined;
+	"ui.chat.sidebar_view.section.week": undefined;
+	"ui.chat.sidebar_view.sections": undefined;
+	"ui.chat.sidebar_view.time_basis": undefined;
+	"ui.chat.sidebar_view.time_section": undefined;
 	"ui.code_review.activity.close": undefined;
 	"ui.code_review.activity.comment": undefined;
 	"ui.code_review.activity.edit": undefined;
