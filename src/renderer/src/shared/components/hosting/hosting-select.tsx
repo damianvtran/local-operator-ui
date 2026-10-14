@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * Hosting Select Component
  *
@@ -97,7 +98,9 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 	onSave,
 	isSaving = false,
 	filterByCredentials = true,
-	emptyHelperText = "No hosting providers available. Sign in to a provider, or add a provider's API key in Settings, under Providers.",
+	emptyHelperText = t(
+		"ui.common.models.hosting_select.no_hosting_providers_available_sign_in_to_a_provider_or_add_a_pro",
+	),
 	allowCustom = true,
 	allowDefault = true,
 }) => {
@@ -172,8 +175,10 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 		if (allowDefault) {
 			options.push({
 				id: "",
-				name: "Default",
-				description: "Clear hosting provider selection",
+				name: t("ui.common.models.default"),
+				description: t(
+					"ui.common.models.hosting_select.clear_hosting_provider_selection",
+				),
 				provider: undefined,
 			});
 		}
@@ -204,7 +209,9 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 					name: customProvider.name,
 					description: censusFailed
 						? customProvider.description
-						: `${customProvider.description} (Requires additional credentials)`,
+						: t("ui.common.models.hosting_select.detail", {
+								description: String(customProvider.description),
+							}),
 					provider: customProvider,
 				});
 			} else if (allowCustom) {
@@ -212,11 +219,15 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 				options.push({
 					id: value,
 					name: value,
-					description: "Custom hosting provider",
+					description: t(
+						"ui.common.models.hosting_select.custom_hosting_provider",
+					),
 					provider: {
 						id: value,
 						name: value,
-						description: "Custom hosting provider",
+						description: t(
+							"ui.common.models.hosting_select.custom_hosting_provider",
+						),
 						url: "",
 						requiredCredentials: [],
 						supportedModels: [],
@@ -296,7 +307,9 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 			hostingOptions.find((option) => option.id === value) || {
 				id: value,
 				name: value,
-				description: "Custom hosting provider",
+				description: t(
+					"ui.common.models.hosting_select.custom_hosting_provider",
+				),
 				provider: undefined,
 			}
 		);
@@ -344,10 +357,14 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 
 	return (
 		<SearchableSelect
-			label="Hosting provider"
+			label={t("ui.common.models.hosting_select.hosting_provider")}
 			icon={<Server size={16} aria-hidden="true" />}
-			labelTooltip="Select the AI provider that you want to use.  Each provider has different models available.  Recommended: Radient"
-			placeholder="Select a hosting provider..."
+			labelTooltip={t(
+				"ui.common.models.hosting_select.select_the_ai_provider_that_you_want_to_use_each_provider_has_dif",
+			)}
+			placeholder={t(
+				"ui.common.models.hosting_select.select_a_hosting_provider",
+			)}
 			options={hostingOptions}
 			selected={selectedOption}
 			onSelect={(option) => {
@@ -362,7 +379,7 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 			}
 			helperText={helperText}
 			busy={isSaving || isSubmitting}
-			busyLabel="Saving hosting provider"
+			busyLabel={t("ui.common.models.hosting_select.saving_hosting_provider")}
 			disabled={isDisabled}
 		/>
 	);

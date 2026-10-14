@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * The feedback row: the sentences a field has to say while it is not simply
  * resting - the transient "saved" caption, a refusal beside the control that
@@ -108,13 +109,13 @@ export const InlineEditFeedback: FC<InlineEditFeedbackProps> = ({
 					onClick={() => api.accept()}
 					className="cursor-pointer text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:text-ink"
 				>
-					Retry
+					{t("ui.common.actions.retry")}
 				</button>
 			)}
 			{conflict !== null && (
 				<span className="flex flex-wrap items-center gap-2">
 					<span className="text-meta text-warning">
-						{INLINE_EDIT_CONFLICT_SENTENCE}
+						{t("ui.common.editing.conflict")}
 					</span>
 					{/* Real buttons, labelled, in the tab order - the same rule as
 					 * the slot's check and x. They are deliberately NOT
@@ -127,7 +128,7 @@ export const InlineEditFeedback: FC<InlineEditFeedbackProps> = ({
 						onClick={api.keepMine}
 						className="cursor-pointer text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:text-ink"
 					>
-						{INLINE_EDIT_KEEP_MINE}
+						{t("ui.common.editing.keep_mine")}
 					</button>
 					<button
 						type="button"
@@ -135,7 +136,7 @@ export const InlineEditFeedback: FC<InlineEditFeedbackProps> = ({
 						onClick={api.useTheirs}
 						className="cursor-pointer text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:text-ink"
 					>
-						{INLINE_EDIT_USE_THEIRS}
+						{t("ui.common.editing.use_theirs")}
 					</button>
 				</span>
 			)}

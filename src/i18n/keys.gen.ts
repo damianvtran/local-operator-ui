@@ -28,10 +28,14 @@ import enUiCanvas from "./catalogues/en/ui.canvas.json";
 import enUiChat from "./catalogues/en/ui.chat.json";
 import enUiCodeReview from "./catalogues/en/ui.code_review.json";
 import enUiCommandPalette from "./catalogues/en/ui.command_palette.json";
+import enUiCommonAccount from "./catalogues/en/ui.common.account.json";
 import enUiCommonActions from "./catalogues/en/ui.common.actions.json";
 import enUiCommonConnection from "./catalogues/en/ui.common.connection.json";
+import enUiCommonEditing from "./catalogues/en/ui.common.editing.json";
 import enUiCommonErrors from "./catalogues/en/ui.common.errors.json";
 import enUiCommonForms from "./catalogues/en/ui.common.forms.json";
+import enUiCommonLoading from "./catalogues/en/ui.common.loading.json";
+import enUiCommonModels from "./catalogues/en/ui.common.models.json";
 import enUiCommonUpdates from "./catalogues/en/ui.common.updates.json";
 import enUiConsole from "./catalogues/en/ui.console.json";
 import enUiHub from "./catalogues/en/ui.hub.json";
@@ -56,10 +60,14 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiChat,
 	...enUiCodeReview,
 	...enUiCommandPalette,
+	...enUiCommonAccount,
 	...enUiCommonActions,
 	...enUiCommonConnection,
+	...enUiCommonEditing,
 	...enUiCommonErrors,
 	...enUiCommonForms,
+	...enUiCommonLoading,
+	...enUiCommonModels,
 	...enUiCommonUpdates,
 	...enUiConsole,
 	...enUiHub,
@@ -329,6 +337,24 @@ export type MessageParams = {
 	"ui.command_palette.use_palette_sources.start": undefined;
 	"ui.command_palette.use_palette_sources.team_chat": undefined;
 	"ui.command_palette.use_palette_sources.usage_over_time": undefined;
+	"ui.common.account.low_credits_dialog.could_not_load_bonus_credit_information": undefined;
+	"ui.common.account.low_credits_dialog.detail": { detail: string };
+	"ui.common.account.low_credits_dialog.get_more_credits": undefined;
+	"ui.common.account.low_credits_dialog.in_bonus_credits_with_your_first_purchase": undefined;
+	"ui.common.account.low_credits_dialog.it_s_pay_as_you_go_with_no_commitments_load_up_what_you_need_star": undefined;
+	"ui.common.account.low_credits_dialog.maybe_later": undefined;
+	"ui.common.account.low_credits_dialog.plus_get": undefined;
+	"ui.common.account.low_credits_dialog.radient_automatic_is_often_cheaper_than_bringing_your_own_key_its": undefined;
+	"ui.common.account.low_credits_dialog.radient_icon": undefined;
+	"ui.common.account.low_credits_dialog.radient_pass": undefined;
+	"ui.common.account.low_credits_dialog.running_low_on_radient_credits": undefined;
+	"ui.common.account.low_credits_dialog.unlock_the_full_power_of_local_operator_with": undefined;
+	"ui.common.account.low_credits_dialog.you_can_also_reach_the_radient_console_from_settings_at_any_time": undefined;
+	"ui.common.account.radient_auth_buttons.connect_your_radient_account_to_use_radient_services": undefined;
+	"ui.common.account.radient_auth_buttons.loading_sign_in_options": undefined;
+	"ui.common.account.radient_auth_buttons.radient_is_not_available_from_this_backend_s_provider_registry": undefined;
+	"ui.common.account.radient_auth_buttons.sign_in_to_radient": undefined;
+	"ui.common.account.radient_auth_buttons.signing_in_needs_a_newer_local_operator_backend_update_the_backen": undefined;
 	"ui.common.actions.cancel": undefined;
 	"ui.common.actions.close": undefined;
 	"ui.common.actions.retry": undefined;
@@ -345,11 +371,64 @@ export type MessageParams = {
 	};
 	"ui.common.connection.floating_alert.dismiss": undefined;
 	"ui.common.connection.provider.requires": { provider: string };
+	"ui.common.editing.conflict": undefined;
+	"ui.common.editing.keep_mine": undefined;
+	"ui.common.editing.use_theirs": undefined;
 	"ui.common.errors.error_boundary.error_details": undefined;
 	"ui.common.errors.error_boundary.something_went_wrong": undefined;
 	"ui.common.errors.error_boundary.stack_trace": undefined;
 	"ui.common.errors.error_boundary.the_application_encountered_an_error_try_again_or_contact_support": undefined;
+	"ui.common.forms.autocomplete_field.cancel_editing": { label: string };
+	"ui.common.forms.autocomplete_field.enter_value": undefined;
+	"ui.common.forms.autocomplete_field.save": { label: string };
+	"ui.common.forms.autocomplete_field.save_changes": undefined;
+	"ui.common.forms.autocomplete_field.saving": { label: string };
+	"ui.common.forms.compact_pagination.next_page": undefined;
+	"ui.common.forms.compact_pagination.previous_page": undefined;
+	"ui.common.forms.editable_field.cancel_escape": undefined;
+	"ui.common.forms.editable_field.clear": undefined;
+	"ui.common.forms.editable_field.clear_field": undefined;
+	"ui.common.forms.editable_field.clear_v2": { label: string };
+	"ui.common.forms.editable_field.clearing": undefined;
+	"ui.common.forms.editable_field.current_value": {
+		detail: string;
+		detail2: string;
+	};
+	"ui.common.forms.editable_field.edit": undefined;
+	"ui.common.forms.editable_field.edit_v2": { label: string };
+	"ui.common.forms.editable_field.save_changes_enter": undefined;
+	"ui.common.forms.editable_field.saving": undefined;
+	"ui.common.forms.field.click_to_edit": undefined;
+	"ui.common.forms.pagination.position": { page: string; count: string };
+	"ui.common.forms.panel_details.copied": undefined;
+	"ui.common.forms.panel_details.copy_details": undefined;
+	"ui.common.forms.panel_details.details": undefined;
 	"ui.common.forms.select.unlisted_value": undefined;
+	"ui.common.loading.page": undefined;
+	"ui.common.models.default": undefined;
+	"ui.common.models.hosting_select.clear_hosting_provider_selection": undefined;
+	"ui.common.models.hosting_select.custom_hosting_provider": undefined;
+	"ui.common.models.hosting_select.detail": { description: string };
+	"ui.common.models.hosting_select.hosting_provider": undefined;
+	"ui.common.models.hosting_select.no_hosting_providers_available_sign_in_to_a_provider_or_add_a_pro": undefined;
+	"ui.common.models.hosting_select.saving_hosting_provider": undefined;
+	"ui.common.models.hosting_select.select_a_hosting_provider": undefined;
+	"ui.common.models.hosting_select.select_the_ai_provider_that_you_want_to_use_each_provider_has_dif": undefined;
+	"ui.common.models.model_select.auto_recommended": undefined;
+	"ui.common.models.model_select.clear_model_selection": undefined;
+	"ui.common.models.model_select.custom_model": undefined;
+	"ui.common.models.model_select.general": undefined;
+	"ui.common.models.model_select.loading_models": undefined;
+	"ui.common.models.model_select.model": undefined;
+	"ui.common.models.model_select.no_models_available": undefined;
+	"ui.common.models.model_select.no_models_available_for_selected_provider": undefined;
+	"ui.common.models.model_select.no_models_for": { name: string };
+	"ui.common.models.model_select.other_models": undefined;
+	"ui.common.models.model_select.recommended": undefined;
+	"ui.common.models.model_select.recommended_based_on_community_usage_and_feedback": undefined;
+	"ui.common.models.model_select.select_a_hosting_provider_first": undefined;
+	"ui.common.models.model_select.select_a_model": undefined;
+	"ui.common.models.model_select.select_the_ai_model_that_you_want_to_use_each_model_has_different": undefined;
 	"ui.common.updates.check_for_updates_button.check_for_updates": undefined;
 	"ui.common.updates.check_for_updates_button.checking": undefined;
 	"ui.common.updates.check_for_updates_button.detail": {

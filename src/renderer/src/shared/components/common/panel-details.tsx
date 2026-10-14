@@ -1,4 +1,5 @@
 import { Button } from "@shared/components/ui";
+import { t } from "@shared/i18n";
 import { withPathBreaks } from "@shared/lib/path-breaks";
 import { Check, Copy } from "lucide-react";
 import { useState } from "react";
@@ -70,7 +71,9 @@ export const PanelDetails = ({
 			}}
 		>
 			{copied ? <Check /> : <Copy />}
-			{copied ? "Copied" : "Copy details"}
+			{copied
+				? t("ui.common.forms.panel_details.copied")
+				: t("ui.common.forms.panel_details.copy_details")}
 		</Button>
 	);
 	return (
@@ -83,7 +86,9 @@ export const PanelDetails = ({
 		>
 			{stacked ? (
 				<>
-					<span className="text-meta text-ink-dim">Details:</span>
+					<span className="text-meta text-ink-dim">
+						{t("ui.common.forms.panel_details.details")}
+					</span>
 					<span className="font-mono text-mono-sm break-all text-ink-dim">
 						{withPathBreaks(detail)}
 					</span>
@@ -91,7 +96,9 @@ export const PanelDetails = ({
 				</>
 			) : (
 				<>
-					<span className="shrink-0 text-meta text-ink-dim">Details:</span>
+					<span className="shrink-0 text-meta text-ink-dim">
+						{t("ui.common.forms.panel_details.details")}
+					</span>
 					{/* `font-mono` and not only `text-mono-sm`: the latter is a SIZE token
 					    (0.75rem), so the value rendered in the body face and a path or an
 					    OSStatus constant lost the distinction between l/I/1 and 0/O that

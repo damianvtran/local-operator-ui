@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * Inline text field with an explicit save step.
  *
@@ -85,7 +86,7 @@ export const EditableField: FC<EditableFieldProps> = ({
 	onSave,
 	multiline = false,
 	rows = 4,
-	placeholder = "Enter value...",
+	placeholder = t("ui.common.forms.autocomplete_field.enter_value"),
 	icon,
 	isSaving: externalIsSaving = false,
 	readOnly = false,
@@ -356,7 +357,9 @@ export const EditableField: FC<EditableFieldProps> = ({
 					>
 						{isSaving ? (
 							<span className="px-2 text-ink-dim text-meta">
-								{isClearing ? "Clearing..." : "Saving..."}
+								{isClearing
+									? t("ui.common.forms.editable_field.clearing")
+									: t("ui.common.forms.editable_field.saving")}
 							</span>
 						) : (
 							<>
@@ -365,8 +368,12 @@ export const EditableField: FC<EditableFieldProps> = ({
 										variant="ghost"
 										size="icon-sm"
 										onClick={handleSave}
-										title="Save changes (Enter)"
-										aria-label={`Save ${label}`}
+										title={t(
+											"ui.common.forms.editable_field.save_changes_enter",
+										)}
+										aria-label={t("ui.common.forms.autocomplete_field.save", {
+											label: String(label),
+										})}
 										className="text-success hover:bg-success-wash hover:text-success"
 									>
 										<Check />
@@ -376,8 +383,11 @@ export const EditableField: FC<EditableFieldProps> = ({
 									variant="ghost"
 									size="icon-sm"
 									onClick={handleCancel}
-									title="Cancel (Escape)"
-									aria-label={`Cancel editing ${label}`}
+									title={t("ui.common.forms.editable_field.cancel_escape")}
+									aria-label={t(
+										"ui.common.forms.autocomplete_field.cancel_editing",
+										{ label: String(label) },
+									)}
 									className="text-danger hover:bg-danger-wash hover:text-danger"
 								>
 									<X />
@@ -387,11 +397,13 @@ export const EditableField: FC<EditableFieldProps> = ({
 										variant="danger"
 										size="sm"
 										onClick={clearField}
-										title="Clear field"
-										aria-label={`Clear ${label}`}
+										title={t("ui.common.forms.editable_field.clear_field")}
+										aria-label={t("ui.common.forms.editable_field.clear_v2", {
+											label: String(label),
+										})}
 									>
 										<Eraser />
-										Clear
+										{t("ui.common.forms.editable_field.clear")}
 									</Button>
 								)}
 							</>
@@ -408,7 +420,12 @@ export const EditableField: FC<EditableFieldProps> = ({
 					<button
 						type="button"
 						onClick={handleEdit}
-						aria-label={`Current value: ${displayValue || placeholder}.${readOnly ? "" : " Click to edit."}`}
+						aria-label={t("ui.common.forms.editable_field.current_value", {
+							detail: String(displayValue || placeholder),
+							detail2: String(
+								readOnly ? "" : t("ui.common.forms.field.click_to_edit"),
+							),
+						})}
 						onKeyDown={handleDisplayContainerKeyDown}
 						disabled={readOnly}
 						className={cn(
@@ -439,8 +456,10 @@ export const EditableField: FC<EditableFieldProps> = ({
 							variant="ghost"
 							size="icon-sm"
 							onClick={handleEdit}
-							title="Edit"
-							aria-label={`Edit ${label}`}
+							title={t("ui.common.forms.editable_field.edit")}
+							aria-label={t("ui.common.forms.editable_field.edit_v2", {
+								label: String(label),
+							})}
 							tabIndex={-1}
 							className={cn(
 								"absolute top-1/2 right-1.5 -translate-y-1/2",
@@ -455,8 +474,10 @@ export const EditableField: FC<EditableFieldProps> = ({
 							variant="danger"
 							size="sm"
 							onClick={clearField}
-							title="Clear field"
-							aria-label={`Clear ${label}`}
+							title={t("ui.common.forms.editable_field.clear_field")}
+							aria-label={t("ui.common.forms.editable_field.clear_v2", {
+								label: String(label),
+							})}
 							tabIndex={-1}
 							className={cn(
 								"absolute top-1/2 right-9 -translate-y-1/2",
@@ -464,7 +485,7 @@ export const EditableField: FC<EditableFieldProps> = ({
 							)}
 						>
 							<Eraser />
-							Clear
+							{t("ui.common.forms.editable_field.clear")}
 						</Button>
 					)}
 				</div>

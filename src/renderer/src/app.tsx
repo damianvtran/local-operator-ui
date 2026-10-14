@@ -42,6 +42,7 @@ import {
 	noteConsentAttention,
 } from "@shared/browser-consent-attention";
 import { useSuppressBrowserView } from "@shared/browser-view-policy";
+import { t } from "@shared/i18n";
 import { useI18nLocaleSync } from "@shared/i18n/locale-sync";
 import { useKeymapShortcuts } from "@shared/keymap/use-keymap-shortcuts";
 
@@ -807,7 +808,7 @@ const App: FC = () => {
 								<Suspense
 									fallback={
 										<div className="flex grow items-center justify-center">
-											<Spinner size="lg" label="Loading page" />
+											<Spinner size="lg" label={t("ui.common.loading.page")} />
 										</div>
 									}
 								>

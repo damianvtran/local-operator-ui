@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * Page stepper for the sidebars.
  *
@@ -63,13 +64,16 @@ export const CompactPagination: FC<CompactPaginationProps> = ({
 				size="icon-sm"
 				onClick={handlePrevious}
 				disabled={page <= 1}
-				aria-label="Previous page"
+				aria-label={t("ui.common.forms.compact_pagination.previous_page")}
 			>
 				<ChevronLeft />
 			</Button>
 
 			<span className="select-none text-meta text-ink-dim">
-				Page {page} of {count}
+				{t("ui.common.forms.pagination.position", {
+					page: String(page),
+					count: String(count),
+				})}
 			</span>
 
 			<Button
@@ -77,7 +81,7 @@ export const CompactPagination: FC<CompactPaginationProps> = ({
 				size="icon-sm"
 				onClick={handleNext}
 				disabled={page >= count}
-				aria-label="Next page"
+				aria-label={t("ui.common.forms.compact_pagination.next_page")}
 			>
 				<ChevronRight />
 			</Button>

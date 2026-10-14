@@ -17,6 +17,7 @@ import {
 	PopoverAnchor,
 	PopoverContent,
 } from "@shared/components/ui";
+import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import { Check, X } from "lucide-react";
 import {
@@ -119,7 +120,7 @@ export const AutocompleteField = ({
 	label,
 	options,
 	onSave,
-	placeholder = "Enter value...",
+	placeholder = t("ui.common.forms.autocomplete_field.enter_value"),
 	icon,
 	isSaving = false,
 	helperText,
@@ -358,7 +359,12 @@ export const AutocompleteField = ({
 
 						<div className="absolute top-1/2 right-1.5 z-10 flex -translate-y-1/2 items-center gap-1">
 							{isSaving ? (
-								<Spinner size="sm" label={`Saving ${label}`} />
+								<Spinner
+									size="sm"
+									label={t("ui.common.forms.autocomplete_field.saving", {
+										label: String(label),
+									})}
+								/>
 							) : (
 								showActions && (
 									<>
@@ -366,8 +372,12 @@ export const AutocompleteField = ({
 											variant="ghost"
 											size="icon-sm"
 											onClick={handleSave}
-											title="Save changes"
-											aria-label={`Save ${label}`}
+											title={t(
+												"ui.common.forms.autocomplete_field.save_changes",
+											)}
+											aria-label={t("ui.common.forms.autocomplete_field.save", {
+												label: String(label),
+											})}
 											className="text-success hover:bg-success-wash hover:text-success"
 										>
 											<Check />
@@ -376,8 +386,11 @@ export const AutocompleteField = ({
 											variant="ghost"
 											size="icon-sm"
 											onClick={handleCancel}
-											title="Cancel"
-											aria-label={`Cancel editing ${label}`}
+											title={t("ui.common.actions.cancel")}
+											aria-label={t(
+												"ui.common.forms.autocomplete_field.cancel_editing",
+												{ label: String(label) },
+											)}
 											className="text-danger hover:bg-danger-wash hover:text-danger"
 										>
 											<X />
