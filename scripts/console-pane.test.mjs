@@ -595,7 +595,9 @@ test("the slot's one default is 80 console columns, and the sweep's console widt
 	// And the rows must USE it: a constant nothing reads would pass the check above
 	// while every frame stayed at the old number.
 	const rows =
-		source.match(/\["console-pane--[a-z-]+", ([A-Za-z_0-9]+), \d+\]/g) ?? [];
+		source.match(
+			/\["console-pane--[a-z-]+", (?:CONSOLE_PANE_WIDTH|\d+), \d+\]/g,
+		) ?? [];
 	/*
 	 * COUNTED FROM THE STORY FILE RATHER THAN TYPED HERE. This read `12`, which is exactly the
 	 * kind of number that goes stale in silence: design round 4 added a story (D21's
@@ -614,8 +616,11 @@ test("the slot's one default is 80 console columns, and the sweep's console widt
 		`the sweep carries ${rows.length} console-pane rows for ${stories.length} stories — every story needs a row, because \`--only=\` filters the sweep's own list rather than Storybook's index`,
 	);
 	assert.ok(
-		rows.every((row) => row.includes("CONSOLE_PANE_WIDTH")),
-		"and every one of them is captured at that width",
+		rows.every(
+			(row) =>
+				row.includes("CONSOLE_PANE_WIDTH") || row.includes(", 320, 520]"),
+		),
+		"and every one of them is captured at that width (the narrow-pane row is the one deliberate exception, at 320)",
 	);
 });
 

@@ -789,7 +789,7 @@ test("a running close asks first and only the confirm reaches the bridge; an end
 		);
 		assert.equal(
 			closeOf("con:2:ended").getAttribute("aria-label"),
-			"Dismiss zsh, tab 2 of 2 — Dismiss terminal and delete retained output",
+			"Dismiss zsh, tab 2 of 2 — deletes retained output",
 		);
 
 		// A RUNNING close asks before it does anything.
@@ -843,9 +843,15 @@ test("a running close asks first and only the confirm reaches the bridge; an end
 			"the keyboard was left on the document body after the close",
 		);
 
-		// An ENDED close is a dismissal: no question, `retain: false`, gone.
+		// An ENDED RETAINED close asks first too, because its X deletes output from
+		// disk (design round 1, D6).
 		await press(closeOf("con:2:ended"));
-		assert.equal(confirmDialog(), null, "a dismissal asked a question");
+		assert.ok(
+			await waitFor(() => confirmDialog() !== null),
+			"a retained dismissal went through without a question",
+		);
+		assert.match(confirmDialog().textContent, /Dismiss this terminal\?/);
+		await press(confirmDialog().querySelector("[data-confirm-action]"));
 		assert.ok(
 			await waitFor(() => bridge.calls.close.length === 2),
 			"the dismissal did not reach the bridge",

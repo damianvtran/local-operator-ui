@@ -390,10 +390,15 @@ const paintSelection = (canvasElement: HTMLElement) => {
 	return true;
 };
 
-/** The lens with more than one surface, one of them opened by an agent: the
- * provenance marker (§6.5) and the recall case (§6.2) in one frame. */
-/** Aggregate presentation plus protected retained completion. The host/IPC
- * lifecycle is independently exercised; this story is rendered review evidence. */
+/**
+ * Aggregate presentation plus protected retained completion. The host/IPC
+ * lifecycle is independently exercised; this story is rendered review evidence.
+ *
+ * THE QUIET MID-STATE: 48 live, 33 kept, well under the limit. It is NOT the
+ * at-limit or Release-ready state — those are their own stories below (design
+ * round 1, D5), so a reviewer sees the indicator CHANGE and sees Release ENABLED
+ * rather than only this one frame with the act disabled.
+ */
 export const CapacityAndRetainedHistory: Story = {
 	render: () => (
 		<Frame
@@ -413,6 +418,53 @@ export const CapacityAndRetainedHistory: Story = {
 	),
 };
 
+/**
+ * THE INDICATOR AT THE LIMIT (design round 1, D5): live === limit, so the summary
+ * reads the ceiling it is about, as a frame rather than a number. The pane must
+ * read the same; nothing here changes colour by state.
+ */
+export const AtCapacity: Story = {
+	render: () => (
+		<Frame
+			capacity={{ live: 128, archived: 4, limit: 128 }}
+			surfaces={[
+				surface({ surface: "con:1:atCapacityRunning", last_activity: NOW + 1 }),
+				/*
+				 * A finished AGENT surface with retained output, NOT displayed and NOT
+				 * the active tab, so the Release predicate is satisfied and the button
+				 * is ENABLED — the state the previous single story never showed (there
+				 * the only agent row was the active tab, so Release was forever
+				 * disabled).
+				 */
+				surface({
+					surface: "con:2:releaseReadyAgent",
+					origin: "agent",
+					agent_owned: true,
+					running: false,
+					exit_code: 0,
+					retain: true,
+					last_activity: NOW - 30,
+				}),
+			]}
+		/>
+	),
+};
+
+/**
+ * NARROW PANE (design round 1, D5): ~320px. The summary must not be clipped and
+ * must not push the tab strip off the box; this is the frame that proves the fix
+ * holds where the old `max-w-40 truncate` was worst.
+ */
+export const NarrowPane: Story = {
+	render: () => (
+		<div className="bg-surface p-0" style={{ width: 320, height: 520 }}>
+			<ConsolePane sessionId={THIS_CONVERSATION} onClose={() => {}} />
+		</div>
+	),
+};
+
+/** The lens with more than one surface, one of them opened by an agent: the
+ * provenance marker (§6.5) and the recall case (§6.2) in one frame. */
 export const TwoSurfaces: Story = {
 	render: () => (
 		<Frame

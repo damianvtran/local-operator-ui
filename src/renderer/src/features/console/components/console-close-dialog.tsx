@@ -38,6 +38,13 @@ export interface ConsoleCloseDialogProps {
 	/** Whether the pending surface's history is persisted (§7.2), straight off the
 	 * row: only then does the question promise the output is kept. */
 	keepsOutput: boolean;
+	/**
+	 * Which question this is (design round 1, D6). The running close and the
+	 * retained dismissal share the modal but not the copy: a close says what ends,
+	 * a dismissal says what is deleted. Defaulted to `close` so the existing call
+	 * sites are unchanged.
+	 */
+	kind?: "close" | "dismiss";
 	/** The refusal of the last confirmed press, in the handler's own words; `null`
 	 * while nothing was refused. */
 	refusal: string | null;
@@ -52,6 +59,7 @@ export const ConsoleCloseDialog: FC<ConsoleCloseDialogProps> = ({
 	open,
 	busy,
 	keepsOutput,
+	kind = "close",
 	refusal,
 	refusalSeq,
 	onConfirm,
@@ -59,10 +67,20 @@ export const ConsoleCloseDialog: FC<ConsoleCloseDialogProps> = ({
 }) => (
 	<ConfirmationModal
 		open={open}
-		title={t("ui.console.close.title")}
+		title={t(
+			kind === "dismiss"
+				? "ui.console.dismiss.title"
+				: "ui.console.close.title",
+		)}
 		message={
 			<>
-				<p>{t("ui.console.close.body")}</p>
+				<p>
+					{t(
+						kind === "dismiss"
+							? "ui.console.dismiss.body"
+							: "ui.console.close.body",
+					)}
+				</p>
 				{keepsOutput ? (
 					<p className="pt-2">{t("ui.console.close.kept")}</p>
 				) : null}
@@ -71,7 +89,11 @@ export const ConsoleCloseDialog: FC<ConsoleCloseDialogProps> = ({
 				) : null}
 			</>
 		}
-		confirmText={t("ui.console.close.confirm")}
+		confirmText={t(
+			kind === "dismiss"
+				? "ui.console.dismiss.confirm"
+				: "ui.console.close.confirm",
+		)}
 		busyText={t("ui.console.close.busy")}
 		busy={busy}
 		isDangerous

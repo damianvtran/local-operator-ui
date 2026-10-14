@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	type ConsoleSnapshot,
@@ -44,6 +45,14 @@ export interface ConsoleSessionApi {
 	 * The first cut put both in `error`, so every refused create rendered the
 	 * unavailable state with its "update the app" advice. */
 	createError: string | null;
+	/** The outcome of the last Release, when it produced one; `null` before any
+	 * release has been asked for.
+	 *
+	 * A THIRD CHANNEL, NOT `error` (design round 1, D2): Release succeeded but the
+	 * user still needs to know what it did — how many finished agent terminals were
+	 * cleared versus left open because they are in use. Putting that in `error`
+	 * would render the failure banner for a success. */
+	cleanupNotice: string | null;
 	/** Read the projection again. */
 	refresh: () => void;
 	/** Tell main a pane is showing this surface (it never resizes anything). */
@@ -114,6 +123,17 @@ export const useConsoleSession = (
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [createError, setCreateError] = useState<string | null>(null);
+	const [cleanupNotice, setCleanupNotice] = useState<string | null>(null);
+	/*
+	 * BRIEF (design round 1, D2): the Release result is a status, not a permanent
+	 * line, so it hides itself after a beat. The timer is cleared on unmount and on a
+	 * newer notice, so a fast second press does not get the first one's dismissal.
+	 */
+	useEffect(() => {
+		if (cleanupNotice === null) return;
+		const timer = setTimeout(() => setCleanupNotice(null), 6000);
+		return () => clearTimeout(timer);
+	}, [cleanupNotice]);
 	const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const alive = useRef(true);
 
@@ -286,7 +306,18 @@ export const useConsoleSession = (
 		const cleanup = window.api?.console?.cleanupOwner;
 		if (!sessionId || !cleanup) return;
 		try {
-			await cleanup(sessionId);
+			const result = (await cleanup(sessionId)) as {
+				released?: number;
+				protected?: number;
+			} | null;
+			const released = result?.released ?? 0;
+			const held = result?.protected ?? 0;
+			if (alive.current)
+				setCleanupNotice(
+					released > 0
+						? t("ui.console.cleanup.result", { released, protected: held })
+						: t("ui.console.cleanup.result_none"),
+				);
 			await read();
 		} catch (failure) {
 			if (alive.current)
@@ -313,6 +344,7 @@ export const useConsoleSession = (
 		loading,
 		error,
 		createError,
+		cleanupNotice,
 		refresh: () => void read(),
 		showSurface,
 		reportContent,
