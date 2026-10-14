@@ -445,9 +445,39 @@ function internalEpisodePins(records: readonly TranscriptRecord[]): {
 	 * its pictures ride its own bar and its strip - which is what six ruled
 	 * design/UX tests pin.
 	 */
-	if (records.some(isInternalEpisodeOrigin))
-		for (const record of records)
+	/*
+	 * A MATERIAL OWNER IN A RUN THAT CARRIES AN EPISODE stays inline - but only
+	 * from the span the episode lives in, not from the whole run.
+	 *
+	 * WHY THE LOWER BOUND IS THE LAST SETTLED ANSWER BEFORE THE FIRST ORIGIN.
+	 * Rows before that answer belong to a bar that SETTLED on its own: pinning
+	 * them reached backwards and tore the picture out of its own bar (base holds
+	 * `seg:a1[media1] collapsed=true`; the run-wide pin dropped that bar and
+	 * painted the media loose, losing its strip and re-keying `seg:a1` to
+	 * `seg:i1`). Rows AFTER that answer and before the first receipt are the
+	 * episode's own span - a picture there is exactly what the ruled inline
+	 * behaviour protects ("produced image and video rows stay inline outside
+	 * internal folds", `where === "before"`), so the bound is the answer and not
+	 * the first receipt. With no settled answer before the origin there is no
+	 * settled bar to protect and the bound is the run's start.
+	 */
+	const firstOrigin = records.findIndex((record) =>
+		isInternalEpisodeOrigin(record),
+	);
+	if (firstOrigin >= 0) {
+		let lowerBound = 0;
+		for (let i = firstOrigin - 1; i >= 0; i -= 1) {
+			const before = records[i];
+			if (before.kind === "assistant" && before.streaming !== true) {
+				lowerBound = i + 1;
+				break;
+			}
+		}
+		for (let i = lowerBound; i < records.length; i += 1) {
+			const record = records[i];
 			if (ownsMaterialArtifact(record)) pins.add(record);
+		}
+	}
 	return { pins };
 }
 
@@ -458,6 +488,17 @@ export type InternalEpisodeFacts = {
 	firstTs: number | null;
 	/** Ongoing presentation, NOT successful/completed lifecycle. */
 	live: boolean;
+	/**
+	 * The episode sits in the cycle STILL BEING WRITTEN: the pane is live and the
+	 * span reaches `liveFrom`. Unlike `live` it carries no tail-position
+	 * condition, so it stays true when a streaming answer appends after the
+	 * episode. The settle announcement reads this, not `live` and not mere
+	 * membership: `live` flips false on that append (a wake re-opening a settled
+	 * turn would announce mid-cycle), while membership alone also silences every
+	 * SETTLED history episode during a live pass, so the first settle re-announced
+	 * old bars (reviewer F2: `['qg:w1','seg:a5']`).
+	 */
+	unsettled: boolean;
 };
 
 function internalEpisodeOf(
@@ -465,6 +506,7 @@ function internalEpisodeOf(
 	span: SegmentSpan,
 	headLoaded: boolean,
 	live: boolean,
+	unsettled: boolean,
 	humanPending: boolean,
 ): InternalEpisodeFacts | null {
 	if (!isInternalEpisodeOrigin(records[span.from])) return null;
@@ -533,7 +575,12 @@ function internalEpisodeOf(
 	 * two narrower tests where one general one was needed.
 	 */
 	if (!settledBefore && receipts < 2) return null;
-	return { receipts, firstTs: headLoaded ? records[span.from].ts : null, live };
+	return {
+		receipts,
+		firstTs: headLoaded ? records[span.from].ts : null,
+		live,
+		unsettled,
+	};
 }
 
 /**
@@ -2790,6 +2837,7 @@ function planRun(
 					span.to >= liveFrom &&
 					span.to === records.length - 1 &&
 					run.endIndex === rows.length - 1,
+				live && span.to >= liveFrom,
 				humanPendingBefore[span.from],
 			);
 			const group = quietGroupOfSegment(records, span, {
@@ -2910,6 +2958,15 @@ function planRun(
 	for (let gateIndex = 0; gateIndex < segments.length; gateIndex += 1) {
 		const gateSegment = segments[gateIndex];
 		if (!gateSegment.collapsed || gateSegment.internal?.live !== true) continue;
+		/*
+		 * THE READER'S OWN EXPANSION OUTRANKS THE BAR COUNT. Suppressing a live
+		 * episode makes it paint loose, which closes the disclosure that reader
+		 * opened - and because the key is unchanged the re-collapse patch in the
+		 * transcript never runs, so it closes SILENTLY. A segment this reader has
+		 * open is therefore left collapsed: `openRuns` is the store's own answer,
+		 * and honouring it costs nothing when it is absent.
+		 */
+		if (openRuns?.has(gateSegment.key)) continue;
 		/*
 		 * ONLY AN ORDINARY BAR CLAIMS THE ONE-BAR QUOTA. A sibling live episode
 		 * is not the pre-existing bar the operator's contract protects - that bar
