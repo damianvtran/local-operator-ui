@@ -72,3 +72,45 @@ interaction separately.
 - `after-dark.png`: 217525 bytes, PNG (2560, 1440), SHA256 `958ed445544cbd040531f2687ef815635bcfcf83d5fae8fa0bab5c3c9f82bf33`
 - `after-collapsed-dark.png`: 170190 bytes, PNG (2560, 1440), SHA256 `70800284149168b253e6ff68b1439f62ec033a09140f3763b666724e7af4ae16`
 - `after-light.png`: 215691 bytes, PNG (2560, 1440), SHA256 `f789ff71b8b4c039fbc2f61ae3beb4d31e4c08d7e3906408e367357edc217959`
+
+## Independent QA pointer-flow evidence
+
+Source: independent qa-tester report round1, actual model openai/gpt-6.1-sol:
+https://github.com/damianvtran/local-operator-ui/pull/1025#issuecomment-6157749274
+The QA tester used one harness browser tab and independently clicked Appearance
+in expanded and actual900px collapsed renderers. Current source head:
+13cd21d17182e8e3573300412835f17a36260a6c (byte-identical renderer/scripts
+to earlier photographed headfe414fc26).
+
+Expanded General→Appearance frames show a moved current dot, visible2px accent
+focus outline and actual destination theme grid. QA measured selected row
+204×32 at y71.4, dot4×4 at y85.4, and destination anchor y79.78.
+Collapsed click frames show moved current state and scroll; collapsed styles and
+post-click aria metrics were tool-blocked, not claimed measured. These images
+replace neither the manager-before provenance nor the disclosed stale manager
+post-click frame; they are separately captured independent interaction evidence.
+
+Pointer flow PASS; keyboard/forced hover/native/live backend NOT exercised.
+The isolated scoped regression is QA2pass0fail277.5ms. QA separately disclosed
+an unisolated source-only24/24 run; it does not substitute for isolated/full CI.
+
+![qa1025-dark-general.png](qa1025-dark-general.png)
+
+- `qa1025-dark-general.png`: 217525 bytes, PNG (2560, 1440), SHA256 `958ed445544cbd040531f2687ef815635bcfcf83d5fae8fa0bab5c3c9f82bf33`
+
+![qa1025-dark-appearance.png](qa1025-dark-appearance.png)
+
+- `qa1025-dark-appearance.png`: 266019 bytes, PNG (2560, 1440), SHA256 `7e5e7c5c1e0394b2fc1e368b4df947efa07993600e4db6411edc00a3b995a573`
+
+![qa1025-light-general.png](qa1025-light-general.png)
+
+- `qa1025-light-general.png`: 215691 bytes, PNG (2560, 1440), SHA256 `f789ff71b8b4c039fbc2f61ae3beb4d31e4c08d7e3906408e367357edc217959`
+
+![qa1025-collapsed-general.png](qa1025-collapsed-general.png)
+
+- `qa1025-collapsed-general.png`: 170194 bytes, PNG (2560, 1440), SHA256 `ab7b67ec76cc84e3a693f2c0c458a8297b250d570bb8dbd16e6b22560d1c70af`
+
+![qa1025-collapsed-appearance.png](qa1025-collapsed-appearance.png)
+
+- `qa1025-collapsed-appearance.png`: 195271 bytes, PNG (2560, 1440), SHA256 `c42f7c125b5aac864f00e4c6ebc48b9b300f0ba56cab4c20a4743052e00884f2`
+
