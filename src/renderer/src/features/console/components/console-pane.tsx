@@ -944,8 +944,12 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 								>
 									{/* THE COMPACT SPELLING BELOW 420px (design round 2, D7): the full
 									 * sentence is 199px and would overflow the header cluster. The same
-									 * two numbers, one line, whole sentence still in the tooltip. */}
-									<span className="@min-[420px]/consolepane:hidden">
+									 * two numbers, one line, whole sentence still in the tooltip.
+									 * The pair OVERLAPS by a pixel on purpose (compact hides at >=421,
+									 * full hides at <=420): a matching 420/420 pair leaves exactly 420px
+									 * with no summary at all, the disappearing-label class this round
+									 * exists to fix. */}
+									<span className="@min-[421px]/consolepane:hidden">
 										{session.snapshot.capacity.archived > 0
 											? t(
 													"ui.console.capacity.summary_compact",
