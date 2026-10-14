@@ -57,7 +57,7 @@ const call = (id) => ({ id, function: { name: "bash", arguments: "{}" } });
 const result = { content: [{ type: "text", text: "ok" }] };
 
 /** One live frame at a time on a single clock, with a real `(epoch, seq)`. */
-function session({ journal }) {
+function session({ journal, peerSource = false }) {
 	let clock = 1_000_000;
 	let seq = 0;
 	let state = R.applyHistoryPage(
@@ -83,7 +83,7 @@ function session({ journal }) {
 				? { journal_generation: "g", journal_order_state: "ready" }
 				: {}),
 		},
-		{ authoritative: true },
+		{ authoritative: true, peerSource },
 	);
 	return {
 		get state() {
@@ -675,7 +675,16 @@ function fuzzTurn(seed, lane, randomWakes = false) {
 		settled.push(id);
 		owe(assistantRow(id, 0));
 		tick();
-		for (const c of ids) {
+		// Random corrections also exercise no-compose/non-slot START order: the
+		// earlier generator shuffled END only, masking the peer admission gap.
+		const starts = ids.slice();
+		if (randomWakes) {
+			for (let i = starts.length - 1; i > 0; i--) {
+				const j = pick(i + 1);
+				[starts[i], starts[j]] = [starts[j], starts[i]];
+			}
+		}
+		for (const c of starts) {
 			emit(bash(c, c));
 			tick();
 		}
@@ -789,5 +798,108 @@ for (const lane of ["journal", "peer"]) {
 			);
 			assert.deepEqual(final, settled, `seed ${seed}`);
 		}
+	});
+}
+
+// QA's R3 reduction: no compose rows, START order differs from committed slot
+// order, and a lone sibling fact arrives before its owner. A duplicate wake is
+// significant: using that fact as a chain terminal moved text a second time.
+for (const peerSource of [false, true]) {
+	test(`R3 lone fact plus duplicate, no compose/non-slot starts, peer=${peerSource}`, () => {
+		const s = session({ journal: true, peerSource });
+		for (const [id, body, calls] of [
+			["m0", "Intro", []],
+			["m1", "Reading", [call("c0"), call("c1"), call("c2")]],
+		]) {
+			s.emit({ type: "message_start", message: text(id, "") });
+			s.emit({ type: "message_update", message: text(id, ""), delta: body });
+			s.emit({ type: "message_end", message: text(id, body, calls) });
+		}
+		for (const c of ["c2", "c0", "c1"]) s.emit(bash(c, c));
+		for (const c of ["c1", "c2", "c0"]) s.emit(done(c));
+		s.emit({ type: "message_start", message: text("m2", "") });
+		const expected = ["u1", "m0", "m1", "tool:c0", "tool:c1", "tool:c2", "m2"];
+		assert.deepEqual(s.order(), expected);
+		for (const rows of [
+			[toolRow("rc1", "c1", 4)],
+			[toolRow("rc1", "c1", 4)],
+			[assistantRow("m1", 2)],
+			[assistantRow("m2", 6)],
+			[toolRow("rc0", "c0", 3)],
+			[toolRow("rc2", "c2", 5)],
+			[assistantRow("m0", 1)],
+		]) {
+			s.ready(...rows);
+			assert.deepEqual(s.order(), expected, JSON.stringify(rows));
+		}
+		assert.equal(s.state.journalPositions.get("rc1").seq, 4, "fact retained");
+	});
+}
+
+for (const peerSource of [false, true]) {
+	test(`205 actual correction ordinals then three persisted history pages, peer=${peerSource}`, () => {
+		const s = session({ journal: true, peerSource });
+		const facts = [];
+		const entries = [durable("u1", 0, userPayload("u1", "go"))];
+		for (let i = 0; i < 68; i++) {
+			const id = `batch${i}`;
+			const c0 = `b${i}a`;
+			const c1 = `b${i}b`;
+			const at = i * 3 + 1;
+			s.emit({ type: "message_start", message: text(id, "") });
+			s.emit({
+				type: "message_end",
+				message: text(id, "Reading", [call(c0), call(c1)]),
+			});
+			for (const c of [c1, c0]) s.emit(bash(c, c));
+			for (const c of [c0, c1]) s.emit(done(c));
+			facts.push(
+				assistantRow(id, at),
+				toolRow(`r${c0}`, c0, at + 1),
+				toolRow(`r${c1}`, c1, at + 2),
+			);
+			entries.push(
+				durable(id, at, text(id, "Reading", [call(c0), call(c1)])),
+				durable(`r${c0}`, at + 1, toolPayload(`r${c0}`, c0)),
+				durable(`r${c1}`, at + 2, toolPayload(`r${c1}`, c1)),
+			);
+		}
+		s.emit({ type: "message_start", message: text("final", "") });
+		s.emit({ type: "message_end", message: text("final", "Answer") });
+		entries.push(durable("final", 205, text("final", "Answer")));
+		const expected = s.order();
+		// Exact wire order independently captured by QA and coder from the real
+		// cold history route: 128 rows [203,204,202..77], then 77 [76..0].
+		const bySeq = new Map(facts.map((row) => [row.journal_seq, row]));
+		bySeq.set(0, { id: "u1", type: "message", role: "user", journal_seq: 0 });
+		const seqs = [203, 204, ...Array.from({ length: 203 }, (_, i) => 202 - i)];
+		for (const chunk of [seqs.slice(0, 128), seqs.slice(128)]) {
+			s.ready(...chunk.map((seq) => bySeq.get(seq)));
+			assert.deepEqual(s.order(), expected);
+		}
+		s.ready(assistantRow("final", 205));
+		assert.deepEqual(s.order(), expected);
+		let next = s.state;
+		for (const chunk of [
+			entries.slice(138),
+			entries.slice(69, 138),
+			entries.slice(0, 69),
+		]) {
+			next = R.applyHistoryPage(next, pageOf(chunk), {
+				authoritative: true,
+				peerSource,
+			});
+			assert.deepEqual(
+				next.records.map((r) => r.id),
+				expected,
+				"history page must not hop",
+			);
+		}
+		for (const row of entries)
+			assert.equal(
+				next.journalPositions.get(row.id)?.seq,
+				row.journal_seq,
+				`fact retained ${row.id}`,
+			);
 	});
 }

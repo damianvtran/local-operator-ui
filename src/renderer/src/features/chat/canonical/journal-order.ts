@@ -652,18 +652,18 @@ function journalOrderedPeerRecords(
 	if (stampArrival(records, admittedBody)) changed = true;
 	const chain = new Map<string, number | undefined>();
 	const byId = new Map(records.map((record) => [record.id, record]));
-	const seqOf = (record: TranscriptRecord | undefined): number | undefined =>
-		factFor(record)?.seq;
 	/*
-	 * A FACT is a place even without its body: it states where the row sits in
-	 * the journal, and a row that ARRIVED behind it sits behind it. Walking
-	 * through a fact-placed row to what IT followed would rank the newer row
-	 * above the older one (the remote-session hop pinned in
-	 * `scripts/stream-order-live.test.mjs`). What a fact-only row may not do -
-	 * reattest a body or release a hold - is untouched: this only ranks.
+	 * Facts rank without reattesting bodies, but a lone later fact must not cut
+	 * an arrival chain ahead of an earlier unresolved row. The local lane already
+	 * gates coordinate USE on that gap; peer facts need the SAME gate (R3-M1).
+	 * With no compose frames and non-slot-order tool starts, a single result fact
+	 * otherwise dragged the following answer between its siblings, twice when
+	 * the same correction was replayed. Nothing is removed from `placement` or
+	 * journalPositions and no body provenance/hold is changed by this gate.
 	 */
+	const seqOf = gapSafeCoordinates(byId, (record) => factFor(record)?.seq);
 	const hasCoordinate = (record: TranscriptRecord) =>
-		factFor(record) !== undefined;
+		seqOf(record) !== undefined;
 	const rank = (record: TranscriptRecord, index: number): number[] => {
 		const own = seqOf(record);
 		if (
