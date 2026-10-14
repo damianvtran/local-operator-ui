@@ -281,6 +281,8 @@ export interface UploadResult {
  * advertising something it does not serve.
  */
 export const HOST_CAPABILITIES: readonly Method[] = [
+	"console_resources",
+	"console_cleanup",
 	"styles",
 	"hit_test",
 	"ancestors",

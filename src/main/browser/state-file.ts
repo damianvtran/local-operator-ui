@@ -81,6 +81,14 @@ export interface BrowserHostStateFile {
 	console: boolean;
 	console_surfaces: number;
 	console_agent_surfaces: number;
+	console_live: number;
+	console_archived: number;
+	console_max_live: number;
+	/** Console lifetime, distinct from the stable app process-generation ID. */
+	console_host_epoch?: string;
+	console_started_at?: number;
+	console_generation?: number;
+	console_sampled_at?: number;
 }
 
 /** What the record reports about the live host, read fresh on every write. */
@@ -94,6 +102,13 @@ export interface BrowserHostFacts {
 	console?: boolean;
 	consoleSurfaces?: number;
 	consoleAgentSurfaces?: number;
+	consoleLive?: number;
+	consoleArchived?: number;
+	consoleMaxLive?: number;
+	consoleHostEpoch?: string;
+	consoleStartedAt?: number;
+	consoleGeneration?: number;
+	consoleSampledAt?: number;
 }
 
 /**
@@ -232,6 +247,21 @@ export class BrowserStateWriter {
 				console: facts.console ?? false,
 				console_surfaces: facts.consoleSurfaces ?? 0,
 				console_agent_surfaces: facts.consoleAgentSurfaces ?? 0,
+				console_live: facts.consoleLive ?? 0,
+				console_archived: facts.consoleArchived ?? 0,
+				console_max_live: facts.consoleMaxLive ?? 0,
+				...(facts.consoleHostEpoch && {
+					console_host_epoch: facts.consoleHostEpoch,
+				}),
+				...(facts.consoleStartedAt !== undefined && {
+					console_started_at: facts.consoleStartedAt,
+				}),
+				...(facts.consoleGeneration !== undefined && {
+					console_generation: facts.consoleGeneration,
+				}),
+				...(facts.consoleSampledAt !== undefined && {
+					console_sampled_at: facts.consoleSampledAt,
+				}),
 				heartbeat_at: this.now() / 1000,
 				started_at: this.startedAt || this.now() / 1000,
 			};

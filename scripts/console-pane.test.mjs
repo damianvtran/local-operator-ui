@@ -102,7 +102,6 @@ const {
 	surfacesForSession,
 	pickActiveSurface,
 	surfaceTitle,
-	clearsItselfAfterExit,
 	consoleCompletionHooks,
 } = module_;
 
@@ -630,61 +629,29 @@ test("the slot's one default is 80 console columns, and the sweep's console widt
  * them in the field — a non-zero code (the error stays readable), a code main never
  * observed, and a row restored from history (there the history is the point).
  */
-test("a clean exit clears itself; a non-zero code and a restored row do not (#929)", () => {
-	const surface = (overrides) => readConsoleSurface(listing(overrides));
-	assert.equal(
-		clearsItselfAfterExit(surface({ running: false, exit_code: 0 })),
-		true,
-		"a shell that exited 0 during this run is the row the pane clears after the beat",
-	);
-	assert.equal(
-		clearsItselfAfterExit(surface({ running: false, exit_code: 3 })),
-		false,
-		"a non-zero exit keeps its row, so the error stays readable",
-	);
-	assert.equal(
-		clearsItselfAfterExit(surface({ running: false, exit_code: null })),
-		false,
-		"an exit whose code was never observed keeps its row (only a clean OBSERVED exit clears)",
-	);
-	assert.equal(
-		clearsItselfAfterExit(
-			surface({ running: false, exit_code: 0, live: false }),
-		),
-		false,
-		"a surface restored after a relaunch keeps its row — nothing ended in this run",
-	);
-	assert.equal(
-		clearsItselfAfterExit(surface({ running: true, exit_code: 0 })),
-		false,
-		"a running surface is not ended, whatever code it last reported",
-	);
-});
-
-/*
- * THE BEAT'S SIZE AND ITS ARMING, pinned at the source level on purpose: the render
- * suite deliberately does not assert the delay as a clock fact, because measured
- * 2026-10-10 a 10 ms timer inside that suite's own polling loop stretched to 9.4 s
- * on this host, and a "still present at half a beat" assertion there is a coin toss
- * under load. What is pinned here is the policy's number and its use: the constant
- * is declared, its value sits in the brief, user-perceptible band, and the timer is
- * armed with THAT constant rather than a literal a later edit could shrink to zero.
- */
-test("the clean exit's beat is the shipped constant, in the brief band (#929)", () => {
+test("renderer never owns automatic completion deletion", () => {
 	const paneSource = readFileSync(
 		"src/renderer/src/features/console/components/console-pane.tsx",
 		"utf8",
 	);
-	const declared = paneSource.match(/const EXIT_DISMISS_AFTER_MS = (\d+);/);
-	assert.ok(declared, "the pane no longer declares the clean exit's beat");
-	const beat = Number(declared[1]);
-	assert.ok(
-		beat >= 2000 && beat <= 10_000,
-		`the beat left the brief, user-perceptible band: ${beat}ms — under two seconds the notice cannot be read, and a beat this long is a lingering row with extra steps`,
+	assert.ok(!paneSource.includes("EXIT_DISMISS_AFTER_MS"));
+	assert.ok(!paneSource.includes("exitDismissTimers"));
+	assert.ok(!paneSource.includes("clearsItselfAfterExit"));
+});
+
+test("aggregate console capacity is additive and rejects malformed numbers", () => {
+	assert.equal(readConsoleSnapshot({ available: true }).capacity, undefined);
+	assert.deepEqual(
+		readConsoleSnapshot({
+			available: true,
+			capacity: { live: 64, archived: 33, limit: 128 },
+		}).capacity,
+		{ live: 64, archived: 33, limit: 128 },
 	);
-	assert.ok(
-		paneSource.includes("}, EXIT_DISMISS_AFTER_MS)"),
-		"the beat effect arms its timer with something other than the shipped constant",
+	assert.equal(
+		readConsoleSnapshot({ capacity: { live: -1, archived: 0, limit: 128 } })
+			.capacity,
+		undefined,
 	);
 });
 

@@ -52,6 +52,21 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 
 /** One entry per bundled message id, shaped by the message's own arguments. */
 export type MessageParams = {
+	"ui.console.capacity.help": undefined;
+	"ui.console.capacity.resources": {
+		memory: number;
+		logs: number;
+		pending: number;
+		cells: number;
+		protected: number;
+	};
+	"ui.console.capacity.summary": {
+		live: number;
+		limit: number;
+		archived: number;
+	};
+	"ui.console.cleanup.help": undefined;
+	"ui.console.cleanup.label": undefined;
 	"ui.console.close.body": undefined;
 	"ui.console.close.busy": undefined;
 	"ui.console.close.confirm": undefined;
@@ -60,6 +75,7 @@ export type MessageParams = {
 	"ui.console.create_failed.detail": undefined;
 	"ui.console.create_failed.retry": undefined;
 	"ui.console.create_failed.title": undefined;
+	"ui.console.dismiss_history": undefined;
 	"ui.console.empty.detail": undefined;
 	"ui.console.empty.title": undefined;
 	"ui.console.ended.exit_code": { code: string };

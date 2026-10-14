@@ -1,6 +1,11 @@
 import { join } from "node:path";
 import type { BrowserWindow } from "electron";
 import { localOperatorConfigDir } from "../browser/state-file";
+import {
+	type QuickSendWatcher,
+	readConsolePolicy,
+	watchQuickSend,
+} from "../local-config";
 import { type UserShellPath, withUserShellPath } from "../shell-path";
 import { ConsoleCaptureView } from "./capture";
 import {
@@ -16,8 +21,12 @@ import {
 	type SurfaceRuntime,
 } from "./host";
 import { registerConsoleIpc, unregisterConsoleIpc } from "./ipc";
+import {
+	type NativeCapacityProbe,
+	nativeCapacityProbe,
+} from "./native-capacity";
 import { type PtyModule, helperStatus, loadNodePty, spawnPty } from "./pty";
-import { ConsoleRegistry, MAX_SURFACES_PER_APP } from "./registry";
+import { ConsoleRegistry } from "./registry";
 
 /**
  * The console host: wiring, lifecycle, and what the app reports about it.
@@ -84,6 +93,7 @@ export const CONSOLE_DEFAULTED_OPTIONS = [
 	"configDir",
 	/** Defaults to on (design 7.3); a rig turns it off to assert a fresh app. */
 	"restoreHistory",
+	"nativePython",
 	/** Defaults to the real pty; every test injects a fake. */
 	"spawn",
 	/*
@@ -141,6 +151,9 @@ export interface StartConsoleHostOptions {
 	 * a rig turns it off to assert that a fresh app has no surfaces, and a test
 	 * turns it on to assert that a relaunch does. */
 	restoreHistory?: boolean;
+	/** Caller-verified executable only; absence reports FD limit unknown rather
+	 * than launching a guessed interpreter or consulting a shell's ulimit. */
+	nativePython?: string;
 	/** The pty seam, injectable for tests. */
 	spawn?: (options: SpawnOptions) => PtyHandle;
 	/**
@@ -171,7 +184,7 @@ export type ConsoleStartup =
 			host: ConsoleHost;
 			registry: ConsoleRegistry<SurfaceRuntime>;
 			/** The two numbers the discovery record carries (design 10.1). */
-			counts: () => { total: number; agent: number };
+			counts: () => ReturnType<ConsoleHost["counts"]>;
 			/** Route one console method. Answers only for console names. */
 			dispatch: (
 				method: string,
@@ -294,6 +307,8 @@ export async function startConsoleHost(
 	let hostRef: ConsoleHost | null = null;
 	let capture: ConsoleCaptureView | null = null;
 	let host: ConsoleHost | null = null;
+	let policyWatcher: QuickSendWatcher | null = null;
+	let capacityProbe: NativeCapacityProbe | null = null;
 	let rollbackOwners: Array<() => void> = [];
 	const cleanupStartupOwners = (): void => {
 		const pending: Array<() => void> = [];
@@ -317,7 +332,35 @@ export async function startConsoleHost(
 		const history = new ConsoleHistory(
 			join(configDir, "run", "ui-console", "history"),
 		);
-		const registry = new ConsoleRegistry<SurfaceRuntime>();
+		const policyEnv = { ...process.env, LOCAL_OPERATOR_CONFIG_DIR: configDir };
+		const policy = readConsolePolicy(policyEnv);
+		const registry = new ConsoleRegistry<SurfaceRuntime>({
+			policy: policy
+				? {
+						max_live: policy.maxLive,
+						max_owner: policy.maxOwner,
+						user_reserved: policy.userReserved,
+					}
+				: undefined,
+		});
+		policyWatcher = watchQuickSend({
+			env: policyEnv,
+			onValue: () => {},
+			onProblem: (message) => log(`[console] config watch: ${message}`),
+			onConfigChange: () => {
+				const updated = readConsolePolicy(policyEnv);
+				if (updated)
+					registry.setPolicy({
+						max_live: updated.maxLive,
+						max_owner: updated.maxOwner,
+						user_reserved: updated.userReserved,
+					});
+				else
+					log("[console] invalid config; keeping last good admission policy");
+			},
+		});
+		const ownedWatcher = policyWatcher;
+		rollbackOwners.push(() => ownedWatcher.stop());
 		/*
 		 * The completion seam (design 12): the state-change push the renderer refetches
 		 * on, and the banner when nobody is looking at the surface. Both are the host's
@@ -350,7 +393,13 @@ export async function startConsoleHost(
 				: null;
 		const captureView = capture;
 		if (captureView) rollbackOwners.push(() => captureView.dispose());
+		capacityProbe = options.spawn
+			? null
+			: nativeCapacityProbe(options.nativePython);
+		const ownedProbe = capacityProbe;
+		if (ownedProbe) rollbackOwners.push(() => ownedProbe.stop());
 		host = new ConsoleHost(registry, {
+			nativeCapacity: capacityProbe ?? undefined,
 			window: () => options.window,
 			log,
 			history,
@@ -409,11 +458,10 @@ export async function startConsoleHost(
 		rollbackOwners.push(() => ownedHost.dispose(false));
 		if (options.restoreHistory !== false) {
 			const retained = history
-				.list()
-				.sort((a, b) => b.meta.last_seen_at - a.meta.last_seen_at)
-				.slice(0, MAX_SURFACES_PER_APP);
-			for (const surface of retained) {
-				host.restore(surface.meta, surface.bytes);
+				.listMetadata()
+				.sort((a, b) => b.last_seen_at - a.last_seen_at);
+			for (const meta of retained) {
+				host.restore(meta);
 			}
 			if (retained.length > 0) {
 				// The count and the honesty in one line: nothing restored here is running,
@@ -462,6 +510,8 @@ export async function startConsoleHost(
 				return dispatchConsole(readyHost, method, params);
 			},
 			stop: async () => {
+				policyWatcher?.stop();
+				capacityProbe?.stop();
 				unregisterConsoleIpc();
 				// The capture view is a renderer process of its own (design 13.3), so it is
 				// released explicitly on quit rather than left to the app's teardown: an
@@ -491,6 +541,8 @@ export async function startConsoleHost(
 			reason: "startup_failed",
 			detail,
 			stop: async () => {
+				policyWatcher?.stop();
+				capacityProbe?.stop();
 				unregisterConsoleIpc();
 				cleanupStartupOwners();
 			},

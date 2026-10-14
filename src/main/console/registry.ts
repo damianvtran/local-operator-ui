@@ -1,5 +1,10 @@
 import { randomBytes } from "node:crypto";
 import { ConsoleError } from "./errors";
+import {
+	type ConsolePolicy,
+	DEFAULT_LIVE_LIMIT,
+	consolePolicy,
+} from "./policy";
 import type { SurfaceOrigin } from "./protocol";
 
 /**
@@ -27,24 +32,14 @@ import type { SurfaceOrigin } from "./protocol";
  * appears — a trace, an error, a listing. */
 export const SURFACE_PREFIX = "con";
 
-/** How many surfaces one session's *agent* may hold, mirroring the browser's
- * `MAX_AGENT_TABS = 8` and its reasoning: nothing else bounds how many an agent
- * fleet can open. A user's own surfaces are not capped within the app total.
- *
- * THIS IS THE SOFTER OF THE TWO BOUNDS, and saying so is part of enforcing it: a
- * per-session cap is only as strong as the session identity the caller carries,
- * and an RPC caller carries none (§10.1 — the key is per-host, which
- * `requireOwned` states at its own call site). A caller that varies `session_id`
- * therefore walks past this 8 and arrives at the app-wide 32 below, which is the
- * only bound nothing can name its way around. §6.3's numbers are enforced as
- * written; this is the note that says which of them is a guarantee rather than a
- * policy. */
+/** Default per-owner STARTING/RUNNING agent allowance. The owner identifier is
+ * claimed under the trusted app key, not a new authentication boundary. Keeping
+ * this small prevents one ordinary conversation occupying the whole fleet. */
 export const MAX_AGENT_SURFACES_PER_SESSION = 8;
 
-/** The app-wide bound, user and agent surfaces together. This is a resource
- * bound, not a UI one: every surface holds a pty, a byte log (≤16 MiB) and a
- * headless terminal. */
-export const MAX_SURFACES_PER_APP = 32;
+/** Default live ceiling only. Archived handles consume no native admission;
+ * host byte/cell/native budgets may admit less than the configured ceiling. */
+export const MAX_SURFACES_PER_APP = DEFAULT_LIVE_LIMIT;
 
 /** How much of a nonce a redacted handle shows: enough to prefix-match your own
  * token against a listing, far too little to reconstruct it. Same rule and same
@@ -148,6 +143,7 @@ export interface CreateSurfaceInput {
 }
 
 export interface ConsoleRegistryOptions {
+	policy?: unknown;
 	now?: () => number;
 	nonce?: () => string;
 }
@@ -160,8 +156,48 @@ export class ConsoleRegistry<R> {
 	 * than a reuse of the current size, so a handle never names a surface that was
 	 * closed and a later one that took its place. */
 	private nextSlot = 1;
+	policy: ConsolePolicy;
+	private generation = 0;
+	/** Filled by the owning host; this registry never owns a PTY or its log. */
+	refusalMetrics?: () => unknown;
+
+	setPolicy(value: unknown): void {
+		this.policy = consolePolicy(value);
+		this.generation += 1;
+	}
+
+	/** Aggregate-only diagnostics: never leak an owner's identifier or command. */
+	metrics() {
+		const states = {
+			starting: { user: 0, agent: 0 },
+			running: { user: 0, agent: 0 },
+			exited: { user: 0, agent: 0 },
+			restored: { user: 0, agent: 0 },
+		};
+		for (const entry of this.entries.values()) {
+			const state = !entry.record.live
+				? "restored"
+				: !entry.record.running
+					? "exited"
+					: entry.runtime === null
+						? "starting"
+						: "running";
+			states[state][entry.record.origin] += 1;
+		}
+		return {
+			generation: this.generation,
+			sampled_at: this.now(),
+			states,
+			caps: { ...this.policy },
+		};
+	}
+
+	liveCount(): number {
+		return this.list().filter((entry) => entry.record.running).length;
+	}
 
 	constructor(options: ConsoleRegistryOptions = {}) {
+		this.policy = consolePolicy(options.policy);
 		this.now = options.now ?? (() => Date.now() / 1000);
 		this.nonce =
 			options.nonce ?? (() => randomBytes(NONCE_BYTES).toString("base64url"));
@@ -180,10 +216,10 @@ export class ConsoleRegistry<R> {
 		return this.entries.size;
 	}
 
-	/** How many live surfaces were created by that session's agent. */
+	/** How many STARTING/RUNNING surfaces this owner's agent holds. */
 	agentCount(sessionId: string): number {
 		return this.list(sessionId).filter(
-			(entry) => entry.record.origin === "agent" && entry.record.live,
+			(entry) => entry.record.origin === "agent" && entry.record.running,
 		).length;
 	}
 
@@ -196,22 +232,45 @@ export class ConsoleRegistry<R> {
 	 * everywhere the existing taxonomy fits (§10.6).
 	 */
 	create(input: CreateSurfaceInput): ConsoleRegistryEntry<R> {
-		if (this.count() >= MAX_SURFACES_PER_APP) {
+		if (input.live !== false && this.liveCount() >= this.policy.maxLive) {
 			throw new ConsoleError(
 				"tab_limit",
-				`this app is already holding ${MAX_SURFACES_PER_APP} console surfaces; close one first`,
-				{ limit: MAX_SURFACES_PER_APP, scope: "app" },
+				`this app has reached its live console limit (${this.policy.maxLive}); completed history does not consume slots`,
+				{
+					limit: this.policy.maxLive,
+					scope: "app",
+					metrics: this.refusalMetrics?.() ?? this.metrics(),
+				},
 			);
 		}
 		if (
 			input.live !== false &&
 			input.origin === "agent" &&
-			this.agentCount(input.sessionId) >= MAX_AGENT_SURFACES_PER_SESSION
+			this.agentCount(input.sessionId) >= this.policy.maxOwner
 		) {
 			throw new ConsoleError(
 				"tab_limit",
-				`this session's agent is already running ${MAX_AGENT_SURFACES_PER_SESSION} console surfaces; close one first`,
-				{ limit: MAX_AGENT_SURFACES_PER_SESSION, scope: "session" },
+				`this session's agent has reached its live console allowance (${this.policy.maxOwner})`,
+				{
+					limit: this.policy.maxOwner,
+					scope: "session",
+					metrics: this.refusalMetrics?.() ?? this.metrics(),
+				},
+			);
+		}
+		if (
+			input.live !== false &&
+			input.origin === "agent" &&
+			this.liveCount() >= this.policy.maxLive - this.policy.userReserved
+		) {
+			throw new ConsoleError(
+				"tab_limit",
+				"remaining live console slots are reserved for user terminals",
+				{
+					scope: "user_reserved",
+					limit: this.policy.maxLive - this.policy.userReserved,
+					metrics: this.refusalMetrics?.() ?? this.metrics(),
+				},
 			);
 		}
 		const adopted = input.surface ? parseSurface(input.surface) : null;
@@ -239,12 +298,14 @@ export class ConsoleRegistry<R> {
 		};
 		const entry: ConsoleRegistryEntry<R> = { record, runtime: null };
 		this.entries.set(record.surface, entry);
+		this.generation += 1;
 		return entry;
 	}
 
 	/** Attach the host's runtime to an entry it just created. */
 	attach(surface: string, runtime: R): void {
 		this.require(surface).runtime = runtime;
+		this.generation += 1;
 	}
 
 	/**
@@ -286,14 +347,11 @@ export class ConsoleRegistry<R> {
 	 * `owner_refused` precedent, spelled the console's way so a caller need not
 	 * substring-match a message.
 	 *
-	 * WHO CALLS IT, stated because a fence nobody stands at is theatre: the
-	 * session-scoped callers are the pane's own ops and the harness tool, and neither
-	 * is in this PR — the RPC call carries no session identity (the key is per-host,
-	 * §10.1), so there is nothing for THIS process to compare a handle against. What
-	 * PR A does enforce is the filter half of §15: `console-state`/`console_list`
-	 * answer one session's surfaces, which is what the pane renders and what the tool
-	 * reads. The refusal is defined and tested here so the seam exists when a caller
-	 * has an identity to check.
+	 * Current harness callers include their stable owner on every surface op and
+	 * dispatch checks it before accessing the runtime. This is a claimed scope
+	 * under the existing trusted host key, not independent authentication. Older
+	 * SID-less clients retain nonce-capability compatibility, so no stronger
+	 * authorization guarantee is invented for mixed-version deployments.
 	 */
 	requireOwned(
 		surface: string,
@@ -314,6 +372,7 @@ export class ConsoleRegistry<R> {
 	update(surface: string, patch: Partial<ConsoleSurfaceRecord>): void {
 		const entry = this.require(surface);
 		entry.record = { ...entry.record, ...patch, surface: entry.record.surface };
+		this.generation += 1;
 	}
 
 	/**
@@ -327,6 +386,7 @@ export class ConsoleRegistry<R> {
 		const entry = this.entries.get(surface);
 		if (!entry) return null;
 		this.entries.delete(surface);
+		this.generation += 1;
 		return entry;
 	}
 

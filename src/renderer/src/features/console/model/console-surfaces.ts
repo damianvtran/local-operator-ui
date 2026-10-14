@@ -86,6 +86,15 @@ export interface ConsoleMark {
 
 /** The whole projection, narrowed. */
 export interface ConsoleSnapshot {
+	/** Additive aggregate diagnostics; absent on an older desktop host. */
+	capacity?: { live: number; archived: number; limit: number };
+	resources?: {
+		modeledBytes: number;
+		logBytes: number;
+		pendingBytes: number;
+		cells: number;
+		protected: number;
+	};
 	/** False when the console host is off or failed to start (§15): the pane says
 	 * so instead of showing an empty list, which would claim there are none. */
 	available: boolean;
@@ -167,6 +176,38 @@ export const readConsoleSurface = (value: unknown): ConsoleSurface | null => {
 export const readConsoleSnapshot = (value: unknown): ConsoleSnapshot => {
 	if (!value || typeof value !== "object") return { ...EMPTY_SNAPSHOT };
 	const state = value as Record<string, unknown>;
+	const capacity =
+		state.capacity && typeof state.capacity === "object"
+			? (state.capacity as Record<string, unknown>)
+			: null;
+	const metrics =
+		state.metrics && typeof state.metrics === "object"
+			? (state.metrics as Record<string, unknown>)
+			: null;
+	const resources =
+		metrics?.resources && typeof metrics.resources === "object"
+			? (metrics.resources as Record<string, unknown>)
+			: null;
+	const managed =
+		resources &&
+		[
+			resources.modeled_managed_bytes,
+			resources.log_bytes,
+			resources.pending_bytes,
+			resources.emulator_cells,
+			resources.protected,
+		].every(
+			(value) =>
+				typeof value === "number" && Number.isFinite(value) && value >= 0,
+		)
+			? {
+					modeledBytes: resources.modeled_managed_bytes as number,
+					logBytes: resources.log_bytes as number,
+					pendingBytes: resources.pending_bytes as number,
+					cells: resources.emulator_cells as number,
+					protected: resources.protected as number,
+				}
+			: undefined;
 	const surfaces = Array.isArray(state.surfaces)
 		? state.surfaces
 				.map(readConsoleSurface)
@@ -174,6 +215,19 @@ export const readConsoleSnapshot = (value: unknown): ConsoleSnapshot => {
 		: [];
 	return {
 		available: booleanOr(state.available),
+		resources: managed,
+		capacity:
+			capacity &&
+			[capacity.live, capacity.archived, capacity.limit].every(
+				(value) =>
+					typeof value === "number" && Number.isFinite(value) && value >= 0,
+			)
+				? {
+						live: capacity.live as number,
+						archived: capacity.archived as number,
+						limit: capacity.limit as number,
+					}
+				: undefined,
 		reason: typeof state.reason === "string" ? state.reason : null,
 		detail: typeof state.detail === "string" ? state.detail : null,
 		total: numberOr(state.total, surfaces.length),
@@ -294,31 +348,8 @@ export const surfaceTitle = (surface: ConsoleSurface): string => {
 	return surface.surface;
 };
 
-/**
- * Whether a surface that has ENDED clears itself from the pane after a beat
- * (#929).
- *
- * THREE CASES, told apart by facts the listing already carries:
- *
- *  - `live && !running && exitCode === 0` — the shell exited CLEANLY during this
- *    app run. This is the case the operator's report is about ("an ended terminal
- *    stays open until dismissed"): the pane lets the ended banner stand for a
- *    beat and then clears the row, instead of waiting for the tab's X.
- *  - `live && !running` with a non-zero code (or a code main never observed) —
- *    an ERROR exit STAYS. Removing it would take the one piece of evidence the
- *    failure has with it, and reading that evidence is not on a timer.
- *  - `!live` — a surface reconstructed from persisted history after a relaunch.
- *    Nothing ended in this process, and there the HISTORY is the point: it stays
- *    until the user dismisses it, exactly as before #929.
- *
- * WHY A MODEL FUNCTION rather than the condition inline in the pane's effect:
- * the truth table is the policy, and a policy read off one expression in an
- * effect is how "non-zero keeps the row" turns into "anything not running
- * clears" in a later edit without anyone noticing. The pane owns the TIMING
- * (`EXIT_DISMISS_AFTER_MS`) and the dismissal itself; this owns the rule.
- */
-export const clearsItselfAfterExit = (surface: ConsoleSurface): boolean =>
-	surface.live && !surface.running && surface.exitCode === 0;
+/** Completion cleanup is host-owned. The renderer never infers permission to
+ * delete history from an exit code; explicit user dismissal remains separate. */
 
 /**
  * The completion marks a surface is carrying, as a comparable value.
