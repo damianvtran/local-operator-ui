@@ -6896,6 +6896,42 @@ const get = (url, optionsOrCallback, maybeCallback) => {
 		handlers: {},
 	};
 	state().calls.push(record);
+	/*
+	 * Scripted delivery for cases that drive a read to an ANSWER rather than
+	 * to its timeout: the autoRespond hook on the fixture state returns a
+	 * body object to answer with, or an error object to fail the request. On a microtask, so the
+	 * shipped code has wired its handlers. Absent, the request simply never
+	 * answers, which is what the timeout case above relies on.
+	 */
+	const callback =
+		typeof optionsOrCallback === "function" ? optionsOrCallback : maybeCallback;
+	if (typeof state().autoRespond === "function") {
+		queueMicrotask(() => {
+			const outcome = state().autoRespond?.(record);
+			if (!outcome) return;
+			if (outcome.error) {
+				record.handlers.error?.(outcome.error);
+				return;
+			}
+			const handlers = {};
+			const res = {
+				on(event, handler) {
+					handlers[event] = handler;
+					return res;
+				},
+			};
+			callback?.(res);
+			handlers.data?.(outcome.body ?? "");
+			if (outcome.responseError) {
+				// Mid-body abort: partial bytes, then the response errors and
+				// the request stays silent — Node's shape for a destroyed
+				// socket, and the exit round 3's R3-1 pins.
+				handlers.error?.(outcome.responseError);
+				return;
+			}
+			handlers.end?.();
+		});
+	}
 	const request = {
 		on(event, handler) {
 			record.handlers[event] = handler;
@@ -9858,6 +9894,136 @@ test("the server channel's rule names its four states from the readings", async 
 });
 
 /**
+ * The 2026-10-12 race, as the rule that closes it: PyPI names a version
+ * before its files finish uploading, so the published-version read must
+ * answer only once the release carries an artifact the installer can
+ * download. Driven through the pure module, because this is the rule's own
+ * case and `checkForBackendUpdates` consumes exactly its answer.
+ */
+test("a PyPI version with no downloadable wheel yet is not published", async () => {
+	const { rule, dir } = await loadVerdictRule();
+	try {
+		const wheel = {
+			filename: "local_operator-0.70.13-py3-none-any.whl",
+			packagetype: "bdist_wheel",
+			yanked: false,
+			url: "https://files.pythonhosted.org/packages/local_operator-0.70.13-py3-none-any.whl",
+			digests: { sha256: "a".repeat(64) },
+		};
+		const macWheel = {
+			...wheel,
+			filename: "local_operator-0.70.13-py3-none-macosx_11_0_universal2.whl",
+			url: "https://files.pythonhosted.org/packages/local_operator-0.70.13-py3-none-macosx_11_0_universal2.whl",
+		};
+		const sdist = {
+			filename: "local_operator-0.70.13.tar.gz",
+			packagetype: "sdist",
+			yanked: false,
+			url: "https://files.pythonhosted.org/packages/local_operator-0.70.13.tar.gz",
+		};
+		// The race itself: newest version named, nothing to download yet.
+		assert.equal(
+			rule.publishedVersionFromPypi(
+				{
+					info: { version: "0.70.13" },
+					urls: [],
+					releases: { "0.70.13": [] },
+				},
+				"linux",
+			),
+			null,
+		);
+		// Mid-upload shapes: an sdist alone, a yanked wheel, a wheel with no
+		// URL — none of them is an artifact an installer can take.
+		for (const urls of [
+			[sdist],
+			[{ ...wheel, yanked: true }],
+			[{ ...wheel, yanked: "broken metadata" }],
+			[{ ...wheel, url: "" }],
+			[{ ...wheel, digests: {} }],
+		]) {
+			assert.equal(
+				rule.publishedVersionFromPypi(
+					{ info: { version: "0.70.13" }, urls },
+					"linux",
+				),
+				null,
+				JSON.stringify(urls),
+			);
+		}
+		// Ready: a downloadable wheel is named, on either file list.
+		assert.equal(
+			rule.publishedVersionFromPypi(
+				{ info: { version: "0.70.13" }, urls: [sdist, wheel] },
+				"linux",
+			),
+			"0.70.13",
+		);
+		assert.equal(
+			rule.publishedVersionFromPypi(
+				{
+					info: { version: "0.70.13" },
+					releases: { "0.70.13": [wheel] },
+				},
+				"linux",
+			),
+			"0.70.13",
+		);
+		// The platform half (review round 1, U1): the inter-wheel window.
+		// On macOS the pure wheel alone does not install — the offer feeds
+		// an installer that pins the universal2 wheel — and off macOS the
+		// macOS wheel alone installs nothing.
+		assert.equal(
+			rule.publishedVersionFromPypi(
+				{ info: { version: "0.70.13" }, urls: [wheel] },
+				"darwin",
+			),
+			null,
+		);
+		assert.equal(
+			rule.publishedVersionFromPypi(
+				{ info: { version: "0.70.13" }, urls: [wheel, macWheel] },
+				"darwin",
+			),
+			"0.70.13",
+		);
+		assert.equal(
+			rule.publishedVersionFromPypi(
+				{ info: { version: "0.70.13" }, urls: [macWheel] },
+				"linux",
+			),
+			null,
+		);
+		// The body seam the service actually calls (U2): real JSON text in,
+		// named-vs-ready out; malformed text is unreadable, never a throw.
+		assert.deepEqual(
+			rule.readPypiReleaseBody(
+				JSON.stringify({ info: { version: "0.70.13" }, urls: [] }),
+				"linux",
+			),
+			{ namedVersion: "0.70.13", readyVersion: null },
+		);
+		assert.deepEqual(
+			rule.readPypiReleaseBody(
+				JSON.stringify({ info: { version: "0.70.13" }, urls: [wheel] }),
+				"linux",
+			),
+			{ namedVersion: "0.70.13", readyVersion: "0.70.13" },
+		);
+		assert.deepEqual(rule.readPypiReleaseBody("not json", "linux"), {
+			namedVersion: null,
+			readyVersion: null,
+		});
+		// Unreadable documents stay unreadable, not "ready at version null".
+		for (const payload of [null, {}, { info: {} }, { info: { version: "" } }]) {
+			assert.equal(rule.publishedVersionFromPypi(payload, "linux"), null);
+		}
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+/**
  * The other half of Q2: the fix must not reclassify anything this product
  * actually publishes. These are the comparisons the update path has always
  * made, kept as themselves so a future tightening of the grammar names the
@@ -11099,6 +11265,96 @@ test("the PyPI and npm registry reads are bounded by their own socket timeouts",
 	} finally {
 		if (interval) clearInterval(interval);
 		// biome-ignore lint/performance/noDelete: teardown of a fixture global; every reader uses `?.`/`??`/truthiness, and ABSENT is what "no override for this case" means - `= undefined` would leave the property present.
+		delete globalThis.__loTestPaths;
+		// biome-ignore lint/performance/noDelete: same teardown rule as above.
+		delete globalThis.__loTestHttps;
+		rmSync(serviceDir, { recursive: true, force: true });
+		rmSync(fixtureDir, { recursive: true, force: true });
+		rmSync(home, { recursive: true, force: true });
+	}
+});
+
+test("a failed PyPI read after a not-ready read does not repeat the publishing sentence", async () => {
+	const home = mkdtempSync(join(tmpdir(), "lo-pypi-pending-"));
+	const userData = join(home, "userData");
+	const fixtureDir = join(home, "service");
+	mkdirSync(userData, { recursive: true });
+	mkdirSync(fixtureDir, { recursive: true });
+	globalThis.__loTestPaths = {
+		home,
+		userData,
+		appData: userData,
+		temp: tmpdir(),
+	};
+	const { service, serviceDir } = await loadUpdateServiceModule({
+		httpsStub: true,
+	});
+	let interval = null;
+	try {
+		const updateService = new service.UpdateService(
+			{
+				isDestroyed: () => false,
+				webContents: { send: () => {}, isDestroyed: () => false },
+			},
+			{ getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL },
+		);
+		interval = updateService.updateCheckInterval;
+		const state = { calls: [] };
+		globalThis.__loTestHttps = state;
+		/*
+		 * UX round 2, U2, through the shipped method itself: the readiness
+		 * read answers "named, not ready", then later reads learn nothing.
+		 * `pendingPypiVersion` is the sole input to the manual check's
+		 * publishing sentence (the branch tests `installedVersion &&
+		 * this.pendingPypiVersion`), so its state after each read IS whether
+		 * that sentence can be produced.
+		 */
+		state.autoRespond = () => ({
+			body: JSON.stringify({ info: { version: "9.9.9" }, urls: [] }),
+		});
+		assert.equal(await updateService.getLatestPypiVersion(), null);
+		assert.equal(updateService.pendingPypiVersion, "9.9.9");
+
+		// Transport failure: the read learned nothing, the verdict must go.
+		state.autoRespond = () => ({
+			error: new Error("getaddrinfo ENOTFOUND pypi.org"),
+		});
+		assert.equal(await updateService.getLatestPypiVersion(), null);
+		assert.equal(updateService.pendingPypiVersion, null);
+
+		// Mid-body abort (R3-1): from a SET pending verdict, the promise
+		// must settle AND clear it — never hang, never leave it standing.
+		state.autoRespond = () => ({
+			body: JSON.stringify({ info: { version: "9.9.9" }, urls: [] }),
+		});
+		assert.equal(await updateService.getLatestPypiVersion(), null);
+		assert.equal(updateService.pendingPypiVersion, "9.9.9");
+		state.autoRespond = () => ({
+			body: '{"info": {"ver',
+			responseError: new Error("read ECONNRESET"),
+		});
+		assert.equal(await updateService.getLatestPypiVersion(), null);
+		assert.equal(updateService.pendingPypiVersion, null);
+		state.autoRespond = () => ({
+			body: JSON.stringify({ info: { version: "9.9.9" }, urls: [] }),
+		});
+		assert.equal(await updateService.getLatestPypiVersion(), null);
+		assert.equal(updateService.pendingPypiVersion, "9.9.9");
+
+		// Socket timeout: routes through destroy into the same error path.
+		state.autoRespond = () => ({
+			body: JSON.stringify({ info: { version: "9.9.9" }, urls: [] }),
+		});
+		assert.equal(await updateService.getLatestPypiVersion(), null);
+		assert.equal(updateService.pendingPypiVersion, "9.9.9");
+		state.autoRespond = null;
+		const stalled = updateService.getLatestPypiVersion();
+		state.calls.at(-1).handlers.timeout();
+		assert.equal(await stalled, null);
+		assert.equal(updateService.pendingPypiVersion, null);
+	} finally {
+		if (interval) clearInterval(interval);
+		// biome-ignore lint/performance/noDelete: teardown of a fixture global; ABSENT is what "no override" means.
 		delete globalThis.__loTestPaths;
 		// biome-ignore lint/performance/noDelete: same teardown rule as above.
 		delete globalThis.__loTestHttps;

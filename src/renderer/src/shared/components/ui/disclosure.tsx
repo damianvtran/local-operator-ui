@@ -11,9 +11,9 @@
  * Deliberately minimal:
  * - The chevron swaps instantly rather than rotating: § 5 permits transform
  *   transitions only for entrances, and a rotate-on-toggle is not one.
- * - Content mounts on open with no height animation. The old MUI Collapse
- *   animated height, which reads as chrome; opening is a colour-less state
- *   change, not an entrance worth 240ms.
+ * - Content normally mounts only while open. Aggregate trace folds opt into
+ *   a 180ms height/opacity transition: the body survives only its closing
+ *   transition, not every closed tool row's lifetime.
  * - Focus comes from the global `:focus-visible` outline in styles/index.css;
  *   nothing is redeclared here.
  * - The trigger's geometry and the expanded content's are the component's,
@@ -30,13 +30,16 @@
  */
 
 import { TEXT_SURFACE_ATTR } from "@shared/components/ui/text-surface";
+import { useMediaQuery } from "@shared/hooks/use-media-query";
 import { cn } from "@shared/lib/utils";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import {
 	type KeyboardEvent as ReactKeyboardEvent,
 	type MouseEvent as ReactMouseEvent,
 	type ReactNode,
+	useEffect,
 	useId,
+	useLayoutEffect,
 	useRef,
 	useState,
 } from "react";
@@ -49,8 +52,8 @@ export type DisclosureProps = {
 	 */
 	summary: ReactNode;
 	/**
-	 * Content revealed when open. Rendered only while open, and optional only
-	 * because the `disabled` branch structurally cannot render it — a caller
+	 * Content revealed when open (retained briefly during an opted-in exit),
+	 * and optional only because the `disabled` branch cannot render it — a caller
 	 * with nothing to disclose would otherwise have to pass `children={null}`,
 	 * which is the type describing a shape the component does not have. Omit
 	 * it only together with `disabled`.
@@ -62,6 +65,12 @@ export type DisclosureProps = {
 	 * IGNORED when `open` is supplied: the caller owns the state then.
 	 */
 	defaultOpen?: boolean;
+	/**
+	 * Opt-in aggregate-fold motion; ordinary tool details keep their old markup
+	 * and immediate unmount. Closed bodies are retained only during the exit,
+	 * so a long transcript does not pay for every hidden tool payload.
+	 */
+	animate?: boolean;
 	/**
 	 * CONTROLLED open state, for the one caller whose state the APP has to change
 	 * as well as the reader: the trace fold condenses its finished sections, and a
@@ -293,6 +302,7 @@ export const Disclosure = ({
 	summary,
 	children,
 	defaultOpen = false,
+	animate = false,
 	open,
 	chevron = "leading",
 	className,
@@ -583,7 +593,15 @@ export const Disclosure = ({
 			 * such caller patched at its own call site with `[&>div:empty]:hidden`.
 			 * Gating both the box and the attribute on `children` removes the false
 			 * relationship, the 8px, and the workaround. */}
-			{isOpen && children != null && (
+			{animate && children != null ? (
+				<AnimatedDisclosureBody
+					id={contentId}
+					open={isOpen}
+					indent={chevron === "leading"}
+				>
+					{children}
+				</AnimatedDisclosureBody>
+			) : isOpen && children != null ? (
 				<div
 					id={contentId}
 					className={cn(
@@ -593,7 +611,95 @@ export const Disclosure = ({
 				>
 					{children}
 				</div>
+			) : null}
+		</div>
+	);
+};
+
+/**
+ * Intrinsic grid sizing avoids measuring a tool payload on every streaming
+ * update. The inner min-height/overflow pair lets 0fr really collapse, including
+ * its padding; the outer clip prevents a scrollbar during interpolation.
+ *
+ * This is a separate component so default-off callers subscribe to no media
+ * query and acquire no lifecycle or wrapper changes. Only the exit retains
+ * children, and both accessibility gates close immediately, not 180ms later.
+ */
+const AnimatedDisclosureBody = ({
+	id,
+	open,
+	indent,
+	children,
+}: {
+	id: string;
+	open: boolean;
+	indent: boolean;
+	children: ReactNode;
+}) => {
+	const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+	const [retained, setRetained] = useState(open);
+	const [expanded, setExpanded] = useState(open);
+
+	useLayoutEffect(() => {
+		if (!open || reduceMotion) {
+			setExpanded(open);
+			return;
+		}
+		setRetained(true);
+		// A remounted body needs a painted 0fr start before its 1fr target.
+		// Two frames avoid a forced layout and cancel cleanly on a rapid reversal.
+		let frame = requestAnimationFrame(() => {
+			frame = requestAnimationFrame(() => setExpanded(true));
+		});
+		return () => cancelAnimationFrame(frame);
+	}, [open, reduceMotion]);
+
+	useEffect(() => {
+		if (open || !retained) return;
+		if (reduceMotion) {
+			setRetained(false);
+			return;
+		}
+		// transitionend normally releases at 180ms. Hidden tabs/cancelled CSS
+		// transitions may never emit it, so bound retention to the motion ceiling.
+		const timer = setTimeout(() => setRetained(false), 240);
+		return () => clearTimeout(timer);
+	}, [open, retained, reduceMotion]);
+
+	return (
+		<div
+			id={id}
+			data-disclosure-body="animated"
+			aria-hidden={!open}
+			// React 18 forwards inert as a string attribute, not a boolean prop.
+			{...(!open ? { inert: "" } : {})}
+			className={cn(
+				"grid overflow-hidden transition-[grid-template-rows,opacity] duration-base ease-out-quart motion-reduce:transition-none",
+				expanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
 			)}
+			onTransitionEnd={(event) => {
+				// Nested tool transitions and opacity ending must not truncate height.
+				if (
+					!open &&
+					event.target === event.currentTarget &&
+					event.propertyName === "grid-template-rows"
+				) {
+					setRetained(false);
+				}
+			}}
+		>
+			<div className={cn("min-h-0 overflow-hidden")}>
+				{(open || (retained && !reduceMotion)) && (
+					<div
+						className={cn(
+							"flex flex-col gap-2 pt-1 pb-1",
+							indent && CONTENT_INDENT,
+						)}
+					>
+						{children}
+					</div>
+				)}
+			</div>
 		</div>
 	);
 };

@@ -1,0 +1,27 @@
+{
+  "telemetryOptedOut": true,
+  "window": "off",
+  "reason": "disabled",
+  "mountedEntries": 60,
+  "mountedRows": 60,
+  "domNodes": 1214,
+  "spacers": 0,
+  "scrollTop": 0,
+  "scrollHeight": 6561,
+  "clientHeight": 560,
+  "inlineTools": 0,
+  "aggregateHeaders": 0,
+  "contextDocumentY": null,
+  "reactCommitMs": [
+    0.09999999403953552,
+    0,
+    0,
+    0,
+    0.19999998807907104,
+    0.09999999403953552,
+    0.7999999821186066,
+    0.09999999403953552,
+    0.19999998807907104,
+    0.09999999403953552
+  ]
+}

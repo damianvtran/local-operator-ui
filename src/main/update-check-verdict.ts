@@ -241,6 +241,160 @@ export const serverChannelVerdict = ({
 };
 
 /**
+ * One file entry in PyPI's JSON document, as the readiness rule reads it.
+ *
+ * Only the fields that decide installability are named; the document
+ * carries hashes, upload times and comment text this rule has no use for.
+ */
+export type PypiFileEntry = {
+	packagetype?: unknown;
+	yanked?: unknown;
+	url?: unknown;
+	filename?: unknown;
+	digests?: unknown;
+};
+
+/** What one PyPI document says, before any version comparison is made. */
+export type PypiReleaseReading = {
+	/** The version `info.version` names, ready or not; null when unreadable. */
+	namedVersion: string | null;
+	/** `namedVersion` once this platform's installer wheel is downloadable. */
+	readyVersion: string | null;
+};
+
+// Lowercase only, matching the backend twin's digest test
+// (`_installer_wheel`): PyPI serves lowercase hex, and the two checkers
+// must not disagree about the same document over letter case.
+const SHA256_HEX = /^[0-9a-f]{64}$/;
+
+/**
+ * Whether one file entry is the wheel THIS platform's backend installer
+ * would pin — the acceptance the offer has to mirror, because the press
+ * feeds `lop update`.
+ *
+ * The backend's own rule (`local_operator/update.py`, `_installer_wheel`,
+ * over the evidence `_fresh_publication` pins) is: on macOS only the
+ * `macosx_11_0_universal2` wheel (the signed key agent rides in it); off
+ * macOS a wheel whose tags the host's Python accepts — which, for the
+ * artifacts this project actually publishes (a pure wheel, the macOS
+ * wheel, an sdist), is exactly the `py3-none-any` pure wheel. In both
+ * cases: non-yanked, an https files.pythonhosted.org URL, and a SHA256
+ * digest to pin against. A platform-specific wheel for some other OS is
+ * not mirrored here because the publish set contains none; if one is
+ * ever added, this rule and its backend twin must learn it together.
+ */
+const isInstallerWheel = (
+	entry: unknown,
+	version: string,
+	platform: string,
+): boolean => {
+	if (!entry || typeof entry !== "object") return false;
+	const file = entry as PypiFileEntry;
+	if (file.packagetype !== "bdist_wheel" || file.yanked) return false;
+	if (typeof file.url !== "string") return false;
+	let url: URL;
+	try {
+		url = new URL(file.url);
+	} catch {
+		return false;
+	}
+	if (url.protocol !== "https:" || url.hostname !== "files.pythonhosted.org")
+		return false;
+	const digests = file.digests;
+	const sha256 =
+		digests && typeof digests === "object"
+			? (digests as { sha256?: unknown }).sha256
+			: null;
+	if (typeof sha256 !== "string" || !SHA256_HEX.test(sha256)) return false;
+	if (typeof file.filename !== "string") return false;
+	if (!file.filename.startsWith(`local_operator-${version}-`)) return false;
+	return platform === "darwin"
+		? file.filename.endsWith("-py3-none-macosx_11_0_universal2.whl")
+		: file.filename.endsWith("-py3-none-any.whl");
+};
+
+/**
+ * The published version in a PyPI JSON document, or null when the release
+ * it names is not yet downloadable.
+ *
+ * WHY THE FILE LIST, NOT THE VERSION STRING: PyPI flips `info.version`
+ * when a release is created, before its files finish uploading — the
+ * backend's publish workflow uploads the pure wheel, the macOS wheel and
+ * the sdist in one sequential pass. A check that reads only the version
+ * therefore offers a release the installer cannot download, which is the
+ * operator's 2026-10-12 report: the offer appeared minutes after
+ * publication and `lop update` exited 1 because 0.70.13's artifacts were
+ * not on PyPI yet. And "some wheel" is not enough either (review round
+ * 1): the wheels land one after another, and the installer this offer
+ * feeds takes a platform-specific one (`isInstallerWheel` above), so
+ * readiness is that wheel's presence in the SAME document. An sdist
+ * alone does not count — this project always publishes wheels, so an
+ * sdist-only moment is a release still mid-upload.
+ *
+ * `releases[version]` is the fallback for documents that omit `urls`.
+ * The guarantee this supports is precise, and no stronger: on the same
+ * PyPI document, this rule and the backend checker's twin
+ * (`local_operator/update.py`, same acceptance rule) name the same
+ * ready version for the artifacts this project publishes. It is not a
+ * promise about two reads at different instants — PyPI can move between
+ * the app's read and the installer's, and the installer still pins and
+ * verifies its own download when it runs.
+ */
+export const pypiReleaseReading = (
+	payload: unknown,
+	platform: string,
+): PypiReleaseReading => {
+	const unreadable: PypiReleaseReading = {
+		namedVersion: null,
+		readyVersion: null,
+	};
+	if (!payload || typeof payload !== "object") return unreadable;
+	const info = (payload as { info?: unknown }).info;
+	if (!info || typeof info !== "object") return unreadable;
+	const version = (info as { version?: unknown }).version;
+	if (typeof version !== "string" || !version.trim()) return unreadable;
+	const trimmed = version.trim();
+	const downloadable = (files: unknown): boolean =>
+		Array.isArray(files) &&
+		files.some((entry) => isInstallerWheel(entry, trimmed, platform));
+	let ready = downloadable((payload as { urls?: unknown }).urls);
+	if (!ready) {
+		const releases = (payload as { releases?: unknown }).releases;
+		if (releases && typeof releases === "object") {
+			ready = downloadable((releases as Record<string, unknown>)[trimmed]);
+		}
+	}
+	return { namedVersion: trimmed, readyVersion: ready ? trimmed : null };
+};
+
+/**
+ * The ready version in a PyPI document, or null. Kept as the one-string
+ * shape the first round's callers and tests already use;
+ * `pypiReleaseReading` is the form that also remembers what was named.
+ */
+export const publishedVersionFromPypi = (
+	payload: unknown,
+	platform: string,
+): string | null => pypiReleaseReading(payload, platform).readyVersion;
+
+/**
+ * One response BODY read as a release reading: the parse seam the update
+ * service's transport hands its bytes to (review round 1, U2). Extracted
+ * here so the shipped parse → rule wiring is exercisable with real JSON
+ * text — malformed JSON is an unreadable reading, never a throw.
+ */
+export const readPypiReleaseBody = (
+	body: string,
+	platform: string,
+): PypiReleaseReading => {
+	try {
+		return pypiReleaseReading(JSON.parse(body), platform);
+	} catch {
+		return { namedVersion: null, readyVersion: null };
+	}
+};
+
+/**
  * A verdict from the two channel statuses.
  *
  * The affirmation is derived here rather than passed in, so no caller can

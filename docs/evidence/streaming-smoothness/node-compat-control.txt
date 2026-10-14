@@ -1,0 +1,56 @@
+[zustand persist middleware] Unable to update item 'canonical-sessions-storage', the given storage is currently unavailable.
+[zustand persist middleware] Unable to update item 'canonical-sessions-storage', the given storage is currently unavailable.
+✔ completion pulses ignore wait-latch starts and steering (168.470083ms)
+[zustand persist middleware] Unable to update item 'canonical-sessions-storage', the given storage is currently unavailable.
+[zustand persist middleware] Unable to update item 'canonical-sessions-storage', the given storage is currently unavailable.
+[zustand persist middleware] Unable to update item 'canonical-sessions-storage', the given storage is currently unavailable.
+✔ a stream that never opens is retried without a receipt, within a bounded schedule (162.648667ms)
+[zustand persist middleware] Unable to update item 'canonical-sessions-storage', the given storage is currently unavailable.
+[zustand persist middleware] Unable to update item 'canonical-sessions-storage', the given storage is currently unavailable.
+✔ an applied snapshot page is what proves history, and a missing one stays unproven until the reconcile lands (68.611167ms)
+[zustand persist middleware] Unable to update item 'canonical-sessions-storage', the given storage is currently unavailable.
+✔ a gapped open does not turn a terminal failure into a reconnect (84.902917ms)
+[zustand persist middleware] Unable to update item 'canonical-sessions-storage', the given storage is currently unavailable.
+✔ a failed history read on an empty transcript is retried, then surfaced instead of swallowed (66.984125ms)
+[zustand persist middleware] Unable to update item 'canonical-sessions-storage', the given storage is currently unavailable.
+✔ a stream that says nothing lands on the lost-connection notice at the snapshot deadline (D1) (80.659416ms)
+[zustand persist middleware] Unable to update item 'canonical-sessions-storage', the given storage is currently unavailable.
+✔ a stream that opens but never snapshots lands on the lost-connection notice at the snapshot deadline (D1) (63.105458ms)
+[zustand persist middleware] Unable to update item 'canonical-sessions-storage', the given storage is currently unavailable.
+✔ the snapshot deadline drops the held readings while the painted frontend stays (56.089541ms)
+[zustand persist middleware] Unable to update item 'canonical-sessions-storage', the given storage is currently unavailable.
+[zustand persist middleware] Unable to update item 'canonical-sessions-storage', the given storage is currently unavailable.
+✔ a fired bound re-checks once by itself, heals when the owner answers, and never loops (D5) (101.989834ms)
+[zustand persist middleware] Unable to update item 'canonical-sessions-storage', the given storage is currently unavailable.
+[zustand persist middleware] Unable to update item 'canonical-sessions-storage', the given storage is currently unavailable.
+✔ an empty applied page IS a claim the app may make (53.993458ms)
+[zustand persist middleware] Unable to update item 'canonical-sessions-storage', the given storage is currently unavailable.
+[zustand persist middleware] Unable to update item 'canonical-sessions-storage', the given storage is currently unavailable.
+[zustand persist middleware] Unable to update item 'canonical-sessions-storage', the given storage is currently unavailable.
+✔ a cold empty read proves nothing, and the warm re-arms the read (61.387166ms)
+[zustand persist middleware] Unable to update item 'canonical-sessions-storage', the given storage is currently unavailable.
+[zustand persist middleware] Unable to update item 'canonical-sessions-storage', the given storage is currently unavailable.
+[zustand persist middleware] Unable to update item 'canonical-sessions-storage', the given storage is currently unavailable.
+✔ a warm that lands as a frontend.update re-arms the read and folds its envelope (62.004666ms)
+[zustand persist middleware] Unable to update item 'canonical-sessions-storage', the given storage is currently unavailable.
+[zustand persist middleware] Unable to update item 'canonical-sessions-storage', the given storage is currently unavailable.
+[zustand persist middleware] Unable to update item 'canonical-sessions-storage', the given storage is currently unavailable.
+✔ a warm landing while the cold read is in flight cannot prove the stale page (78.404542ms)
+[zustand persist middleware] Unable to update item 'canonical-sessions-storage', the given storage is currently unavailable.
+[zustand persist middleware] Unable to update item 'canonical-sessions-storage', the given storage is currently unavailable.
+[zustand persist middleware] Unable to update item 'canonical-sessions-storage', the given storage is currently unavailable.
+✔ the retry's read is painted while it is out, and a second press does not stack (85.5135ms)
+[zustand persist middleware] Unable to update item 'canonical-sessions-storage', the given storage is currently unavailable.
+✔ Retry during a pending stream retry opens ONE subscription and leaves no orphan (R1-1) (94.747ms)
+[zustand persist middleware] Unable to update item 'canonical-sessions-storage', the given storage is currently unavailable.
+✔ resync during a pending stream retry opens ONE subscription and leaves no orphan (round 2, M2) (95.964666ms)
+✔ every transport detail maps to ONE product sentence, and none of them leaks transport register (D1) (0.323125ms)
+✔ a server flap does not re-ask or cancel a read on the way down, and refreshes on the way up (0.586292ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1679.397292

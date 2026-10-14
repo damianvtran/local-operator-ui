@@ -80,6 +80,44 @@ role in the same call collide and one is dropped **silently** — the component
 still looks right because colour inherits from `body`, until it renders on a
 ground where it does not.
 
+## Internationalization: maintainer pointer
+
+- **Core:** `src/i18n/` owns the typed catalogue, ICU-message `t()` and locale-aware
+  formatters; React bindings live in `src/renderer/src/shared/i18n/`. Use `t()` for
+  interface copy, not text-as-key or a second translation mechanism. English is
+  bundled as the per-key fallback; `registerCatalogue(locale, messages)` layers
+  additional messages over it.
+- **Language has one owner:** the backend `language` setting. General Settings'
+  interface-language picker writes it through `settings.edit`; the UI reads the
+  resolved tag from `GET /v1/capabilities` when `features.i18n` is advertised.
+  `auto` follows the backend's OS-locale resolver (subject to its override and
+  shipped-locale rules). Before negotiation, or with an older backend, the UI
+  uses `navigator.language`, then `en`. Do not add a localStorage preference or
+  use `setLocale()` as a production override; backend choices own availability.
+- **Add a string:** put a stable semantic `ui.<area>.<name>` key in
+  `src/i18n/catalogues/en/ui.<area>.json` (for example
+  `ui.settings.language.external_notice` in `ui.settings.json`). Use ICU
+  placeholders for values/plurals rather than concatenated sentences; optional
+  sibling `ui.<area>.context.json` files describe translator context, not keys.
+  Run `node scripts/i18n/generate.mjs` and commit `src/i18n/keys.gen.ts` with the
+  catalogue change. `t()`'s generated types reject unknown keys and missing,
+  extra-on-bare-key or wrongly typed parameters at compile time.
+- **Add a locale:** mirror the namespace files under
+  `src/i18n/catalogues/<locale>/`, preserving English keys and ICU arguments.
+  Today the generator bundles **only `en`**: a new directory is not discovered
+  at runtime. Wire its messages through `registerCatalogue()` and coordinate
+  backend locale eligibility/rollout; the picker must not advertise an
+  unavailable locale. Do not hand-edit generated types for translations.
+- **Commands/gate:** `pnpm check-i18n` runs generator freshness (`--check`) plus
+  `scripts/i18n/check-strings.mjs`; `pnpm check-types` checks typed call sites.
+  The scanner ratchets literal JSX text and copy attributes against
+  `i18n/baseline.json`: only its `enforced` prefixes block, other areas remain
+  advisory. Lower ceilings with `node scripts/i18n/check-strings.mjs --update
+  <paths>` when extracting copy; exemptions in `i18n/allowlist.json` or
+  `i18n: ignore` comments require a reason. It does not yet scan every string
+  expression. No locale-management CLI is defined in this UI repo; these are
+  its existing developer commands, not a client-side language-setting command.
+
 ## Useful Commands
 
 - Install deps: `pnpm install`

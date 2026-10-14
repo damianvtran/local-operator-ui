@@ -123,6 +123,8 @@ export function isRecordReachable(root: ParentNode, id: string): boolean {
 const REVEAL_MAX_DEPTH = 3;
 
 export type RevealHandlers = {
+	/** Cancel an old-session async walk even if the new transcript reuses ids. */
+	isCurrent?: () => boolean;
 	/** The row, once every layer above it is open. */
 	onRevealed: (target: HTMLElement) => void;
 	/**
@@ -146,6 +148,10 @@ export function revealRecord(
 	handlers: RevealHandlers,
 ): void {
 	const settle = (depth: number): void => {
+		if (handlers.isCurrent && !handlers.isCurrent()) {
+			handlers.onMissing();
+			return;
+		}
 		const target = root.querySelector<HTMLElement>(
 			`[data-record-id="${id}"]:not([data-turn-summary])`,
 		);

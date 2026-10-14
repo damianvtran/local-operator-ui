@@ -126,6 +126,53 @@ const regionAt = (region, { scroll, top, clientTop = 0, clientHeight }) => {
  * drives it in the app).
  */
 
+test("cancelled session-generation navigation cannot scroll or highlight a reused target", async () => {
+	const { window, region, root } = makeDom(
+		'<div data-record-id="cancelled-target">New session row with a reused id</div>',
+	);
+	try {
+		regionAt(region, { scroll: -400, top: 0, clientHeight: 300 });
+		const target = root.querySelector("[data-record-id]");
+		measure(target, { top: 120, height: 40 });
+		const result = await jumpToEntry(
+			root,
+			region,
+			"cancelled-target",
+			() => false,
+		);
+		assert.equal(result, "missing");
+		assert.equal(region.scrollTop, -400);
+		assert.equal(target.hasAttribute(JUMP_HIGHLIGHT_ATTR), false);
+	} finally {
+		window.close();
+	}
+});
+
+test("session cancellation between nested gate frames cannot open the new session's reused-id detail", async () => {
+	const { window, region, root } = makeDom(
+		'<div data-fold-ids="stale-target"><button aria-expanded="false">Old gate</button></div>',
+	);
+	let current = true;
+	let newClicks = 0;
+	try {
+		root.querySelector("button").addEventListener("click", () => {
+			current = false;
+			root.innerHTML =
+				'<div data-record-id="stale-target"><button aria-expanded="false">New detail</button></div>';
+			root.querySelector("button").addEventListener("click", () => {
+				newClicks += 1;
+			});
+		});
+		assert.equal(
+			await jumpToEntry(root, region, "stale-target", () => current),
+			"missing",
+		);
+		assert.equal(newClicks, 0);
+	} finally {
+		window.close();
+	}
+});
+
 test("the loop loads pages until the row is in the model, then mounts to it", async () => {
 	const state = { reachable: false, rowAt: null, loaded: 0, mounts: [] };
 	const result = await ensureReachable({
