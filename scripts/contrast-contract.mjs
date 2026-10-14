@@ -3030,8 +3030,8 @@ const STRUCTURAL_CALL_SITES = [
 		 *
 		 * WHY A ROLE OF ITS OWN, AND NOT A PALETTE ROW FOR THE WASH. `accent-wash` is
 		 * not invisible everywhere: the app rail paints it on `sunken`, where it
-		 * measures 9.6 in tokyoNight, and the settings rail is the OTHER `surface`
-		 * panel and takes the same role (the pin below). Strengthening the role
+		 * measures 9.6 in tokyoNight. Settings now intentionally keeps one flat
+		 * resting surface and pins its separate current-page cues below. Strengthening the role
 		 * would make every hover tint in the app louder to fix the panels that draw
 		 * it on `surface`. A role of their own was the alternative, and it is what
 		 * shipped: the ROW-STATE pair, `rowHover` and `rowSelected`, asserted against
@@ -3183,35 +3183,57 @@ const STRUCTURAL_CALL_SITES = [
 		must: "font-mono text-ink-dim text-mono-sm",
 		why: "a cap annotates rather than states, so its ink has to sit at or BELOW the label it explains; the step above (`ink-muted`) is the role this app prints legend labels in, and at that step the palette's keys measured 6.76-6.83:1 against labels at 4.55:1 and 3.87:1 (and the active row's `Go` 4.54:1 against its own `\u21b5` cap at 7.02:1) — an inversion no floor row can see, because both roles clear every floor on every ground a cap renders on",
 	},
+	/* Settings is intentionally flat at rest, unlike selected conversations.
+	 * Pin the roles actually painted so the gate cannot reject the correct tree
+	 * or silently accept a return of the retired selected plate. Palette floors
+	 * and every chat-row pin remain unchanged; these checks only bind this rail. */
 	{
-		/*
-		 * The settings rail's current row, which was the same defect on the same
-		 * ground: the rows read against `surface`, which the rail's own nav carries
-		 * (the rail held `bg-elevated` from 2026-09-27 until it was re-grounded
-		 * flat on 2026-09-30, and the group lists carry no ground of their own any
-		 * more), and it marked its current section with `accent-wash` — ΔE00 1.05
-		 * in tokyoNight
-		 * (`#262B3F` on `#24283B`), a row with no ground at all, identifiable only by
-		 * its accent glyph and weight. It is here rather than in a set of its own
-		 * because it is one class for one role decision (round 1, design D2).
-		 * Every citation of this pair in this file and in the two panels' sources
-		 * uses that palette pair; the frames' own bytes render about one step off it
-		 * in both values, which `docs/evidence/chat-sidebar-selection/README.md`
-		 * states where it gives the frame readings.
-		 *
-		 * THE RAIL NO LONGER SPELLS THE CLASS (round 5: design D22, agent A-7). It
-		 * imported the chat panel's declaration after the copy that stood here — the
-		 * one design round 4's D19 was raised against — turned out to be the second
-		 * of two that drifted a term each. So this pin names the SYMBOL the rail
-		 * applies, and the four terms themselves are pinned once, at the declaration
-		 * above; a rail that stops applying the role fails here, a role whose terms
-		 * change fails there, and `scripts/chat-sidebar-selection.test.mjs` resolves
-		 * this very expression through the shipped `cn` and fails without the ground.
-		 */
-		what: "settings rail current-row ground",
+		what: "settings rail continuous resting surface",
 		file: "src/renderer/src/features/settings/components/settings-sidebar.tsx",
-		must: "? rowCurrent",
-		why: "the same `surface` ground as the chat panel, where the wash measured ΔE00 1.05 and the current destination had no mark at all, and where `sunken` put a recessed box on a menu row; the `hover:` half is in the pin because this rail's inactive rows carry `hover:bg-row-hover`, which would otherwise replace the mark under the pointer, and the weight is in it because the row's mark is the ground plus the weight — there is no longer an `outline-control` half in either panel (design round 1, D3): the ring is retired, because that role is § 2's sole boundary of a control and both rails drew it with the search field's own ink and geometry. The rail applies the chat panel's exported `rowCurrent` rather than a copy of its terms (round 5, D22): one role, one declaration, and no string here left to drift a term",
+		must: '"relative flex h-8 w-full items-center rounded-sm bg-transparent text-left text-body-sm hover:bg-row-hover hover:text-ink"',
+		why: "Current and inactive Settings destinations intentionally reveal the same surface; persistent selected fill belongs to chat, not this local navigation exception.",
+	},
+	{
+		what: "settings rail current-page ink and weight",
+		file: "src/renderer/src/features/settings/components/settings-sidebar.tsx",
+		must: 'isActive ? "font-semibold text-ink" : "text-ink-muted"',
+		why: "Weight and the stronger ink preserve the current-page cue without reintroducing a filled plate.",
+	},
+	{
+		what: "settings rail current-page accent glyph",
+		file: "src/renderer/src/features/settings/components/settings-sidebar.tsx",
+		must: 'isActive ? "text-accent" : "text-ink-dim"',
+		why: "The glyph must remain legible on both surface and rowHover; the existing global ink and accent floors still apply.",
+	},
+	{
+		what: "settings rail decorative gutter marker",
+		file: "src/renderer/src/features/settings/components/settings-sidebar.tsx",
+		must: '"absolute left-1 top-1/2 size-1 -translate-y-1/2 rounded-full bg-accent"',
+		why: "The absolute dot is a shape cue when collapsed labels disappear, not a new boundary or a flex item that moves its neighbours.",
+	},
+	{
+		what: "settings rail current-only marker",
+		file: "src/renderer/src/features/settings/components/settings-sidebar.tsx",
+		must: '{isActive && (\n\t\t\t\t\t<span\n\t\t\t\t\t\taria-hidden="true"',
+		why: "The gutter cue belongs only to the current page and is decorative, leaving the native button as the sole target and accessible name.",
+	},
+	{
+		what: "settings rail accessible current page",
+		file: "src/renderer/src/features/settings/components/settings-sidebar.tsx",
+		must: 'aria-current={isActive ? "page" : undefined}',
+		why: "A flat resting ground must not remove the nonvisual current-page state.",
+	},
+	{
+		what: "settings rail collapsed accessible name",
+		file: "src/renderer/src/features/settings/components/settings-sidebar.tsx",
+		must: "aria-label={labelled ? undefined : section.label}",
+		why: "Collapsed glyphs need the destination name even while their tooltip is closed.",
+	},
+	{
+		what: "settings rail collapsed tooltip",
+		file: "src/renderer/src/features/settings/components/settings-sidebar.tsx",
+		must: '<Tooltip content={section.label} side="right">',
+		why: "The collapsed rail keeps the existing visible name on pointer and keyboard focus; no interaction handler is changed.",
 	},
 	{
 		/*
@@ -4881,8 +4903,8 @@ for (const { id, palette: p } of palettes) {
 	 *     sidebar-navigation.tsx`, and the categories column in
 	 *     `features/agent-hub/agent-hub-page.tsx`), the rail taking
 	 *     `border-r border-hairline` for the boundary the tonal step used to carry.
-	 *     All six `rowCurrent` surfaces are therefore on `surface`: the chat
-	 *     sidebar, the settings rail, the app rail, the categories rail, the agents
+	 *     The `rowCurrent` surfaces are therefore on `surface`: the chat
+	 *     sidebar, the app rail, the categories rail, the agents
 	 *     sidebar and the agents page's roster.
 	 *     WHAT THE WITHDRAWAL STILL ACCEPTS is the one ground class that is not a
 	 *     row's backdrop at all: a SELECTED ROW CAN BE THE SAME COLOUR AS A

@@ -171,16 +171,34 @@ function trimRecords(records: TranscriptState["records"]): {
 	bytes: number;
 } {
 	const capped = records.slice(-PAINT_CACHE_MAX_ROWS);
-	let start = 0;
-	let bytes = measure(capped);
-	while (start < capped.length && bytes > PAINT_CACHE_SESSION_BYTES) {
-		// Step in one row at a time rather than estimating: the row that crosses
-		// the ceiling is not necessarily the smallest, and an estimate that
-		// overshoots would drop rows the budget could afford.
-		start += 1;
-		bytes = measure(capped.slice(start));
+	const bytes = measure(capped);
+	if (bytes <= PAINT_CACHE_SESSION_BYTES) return { records: capped, bytes };
+	/*
+	 * This write runs synchronously in the old pane's unmount cleanup and can
+	 * block renderer work during a switch. Measuring every shrinking suffix encodes
+	 * the same large rows: 200 heavy rows can encode over a gigabyte just to keep
+	 * 1 MiB. Suffix sizes only decrease as rows are removed (an unserialisable
+	 * row keeps the size infinite until it is removed), so search the first FIT
+	 * using the SAME exact UTF-8 measure, not per-row estimates. The empty suffix
+	 * is the known fitting endpoint, even when the newest row cannot be cached.
+	 * At the 200-row ceiling this costs at most nine measurements, and small
+	 * paints above still cost one. Keep the fitting size with its endpoint so
+	 * the byte budget and retained suffix cannot disagree.
+	 */
+	let nonFit = 0;
+	let fit = capped.length;
+	let fitBytes = 0;
+	while (fit - nonFit > 1) {
+		const middle = Math.floor((nonFit + fit) / 2);
+		const middleBytes = measure(capped.slice(middle));
+		if (middleBytes > PAINT_CACHE_SESSION_BYTES) {
+			nonFit = middle;
+		} else {
+			fit = middle;
+			fitBytes = middleBytes;
+		}
 	}
-	return { records: capped.slice(start), bytes };
+	return { records: capped.slice(fit), bytes: fitBytes };
 }
 
 /**

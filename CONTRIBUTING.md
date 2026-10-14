@@ -111,6 +111,7 @@ We enforce consistent code style and quality checks:
   ```
 
 - **TypeScript**: Strict type checking is enforced
+- **Internationalization**: See [AGENTS.md's maintainer pointer](AGENTS.md#internationalization-maintainer-pointer) for catalogue/string additions, locale ownership and i18n gates.
 
 Always run these tools before submitting a pull request. They will also be run in the CI pipeline on any branches with the `dev-` prefix and on PRs merged to `main`.
 
