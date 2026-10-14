@@ -39,6 +39,8 @@ import {
 	type ComponentPropsWithoutRef,
 	type ReactNode,
 	forwardRef,
+	useEffect,
+	useRef,
 	useState,
 } from "react";
 import { MoveConfirmDialog } from "../../mesh/mesh-actions";
@@ -52,6 +54,7 @@ import {
 	placementLabel,
 	placementSentence,
 } from "./chat-device-model";
+import { useChatDeviceStore } from "./chat-device-store";
 
 /** The dot's ink: `warning` when a device did not answer, `ink-muted` otherwise. */
 const STATE_DOT = {
@@ -300,15 +303,26 @@ const DevicePicker = ({
 	busy,
 	onPick,
 	onCheckAgain,
+	open,
+	onOpenChange,
 	children,
 }: {
 	model: DevicePickerModel;
 	busy: boolean;
 	onPick: (row: DeviceRow) => void;
 	onCheckAgain: () => void;
+	/**
+	 * The picker's open state, LIFTED because two doors reach it: the chip itself
+	 * (an uncontrolled press) and the header's `Move to another device` menu item,
+	 * which lives in a different component tree and can only ask through the store.
+	 * Radix takes `open`/`onOpenChange` on the Root, so the chip keeps working
+	 * unchanged and the store's ask lands on the same panel.
+	 */
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
 	children: ReactNode;
 }) => (
-	<DropdownMenu modal={false}>
+	<DropdownMenu modal={false} open={open} onOpenChange={onOpenChange}>
 		<DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
 		<DropdownMenuContent
 			align="start"
@@ -455,6 +469,35 @@ export const ChatHeaderDevice = ({
 		alternatives: MovePlan[];
 		risky: boolean;
 	} | null>(null);
+	/*
+	 * THE HEADER MENU'S DOOR. The picker's open state is owned here, above the
+	 * `DevicePicker` Radix root, because the chip and the overflow item both open it:
+	 * the chip toggles this state directly, and the menu item INCREMENTS a store token
+	 * (it cannot reach this component's props - it lives in `chat-header.tsx`, two
+	 * trees away). The effect below turns a NEW token into an open panel. `open` also
+	 * covers the chip path, so a chip press and a menu press are the same state.
+	 */
+	const [open, setOpen] = useState(false);
+	const pickerRequest = useChatDeviceStore((s) =>
+		sessionId ? s.pickerRequests[sessionId] : undefined,
+	);
+	/*
+	 * THE TOKEN IS CONSUMED ONCE. A counter is compared against the last value THIS
+	 * mount acted on rather than read for truthiness, so a stale token left in the
+	 * store (the pane re-mounted, or a chip press having been served earlier) cannot
+	 * pop the picker open on a frame the user did not ask for. Seeded with the value
+	 * present at mount, which is "nobody asked yet" for this mount.
+	 */
+	const servedRequestRef = useRef(pickerRequest);
+	useEffect(() => {
+		if (
+			pickerRequest !== undefined &&
+			pickerRequest !== servedRequestRef.current
+		) {
+			servedRequestRef.current = pickerRequest;
+			setOpen(true);
+		}
+	}, [pickerRequest]);
 
 	const choose = (row: DeviceRow) => {
 		const recall = row.deviceId === model.self.deviceId;
@@ -500,6 +543,8 @@ export const ChatHeaderDevice = ({
 				busy={busy}
 				onCheckAgain={onCheckAgain}
 				onPick={choose}
+				open={open}
+				onOpenChange={setOpen}
 			>
 				<ChipButton placement={placement} />
 			</DevicePicker>
