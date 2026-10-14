@@ -705,8 +705,15 @@ test("the publish dialog offers the org target and disables a plan-blocked one",
 		/target: targetIsOrg\s*\?\s*\{ visibility: "org", tenantId: targetTenant \}\s*:\s*undefined,/,
 		"the target reaches the transport, and no target means the public hub",
 	);
-	// An org target never carries the remembered PUBLIC listing id.
-	assert.match(dialog, /options\?\.asNewListing \|\| targetIsOrg/);
+	// An org target never carries the remembered PUBLIC listing id. The
+	// expression changed shape when the exact link's hub_id became the source of
+	// truth for a linked origin (9cd43fba8); the invariant is the same: when no
+	// confirmed link exists, an org target resolves to null rather than the
+	// persisted public listing id.
+	assert.match(
+		dialog,
+		/targetLink\?\.hub_id \?\?\s*\(targetIsOrg \? null : \(listing\?\.hubAgentId \?\? null\)\)/,
+	);
 });
 
 /*

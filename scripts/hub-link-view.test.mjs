@@ -779,3 +779,19 @@ test("source resolution requires the full stated destination and refuses guessed
 			JSON.stringify(bad),
 		);
 });
+
+test("source-resolution baseline field tracks core's emitted key and literals", async () => {
+	const { readFileSync } = await import("node:fs");
+	const links = readFileSync(
+		"src/renderer/src/shared/api/local-operator/hub-links.ts",
+		"utf8",
+	);
+	// Core renamed the response key to `baseline_state` (desktop_hub.py:246-258 at
+	// head 323a55a40) and its real literals are "adopt"/"adopt-unknown". The old
+	// receipt shorthand "adopted" is emitted by no path and must not appear in the
+	// declaration (prose may name it as the retired shorthand).
+	const code = links.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+	assert.match(code, /baseline_state: "adopt" \| "adopt-unknown";/);
+	assert.doesNotMatch(code, /"adopted"/);
+	assert.doesNotMatch(code, /baseline: "/);
+});

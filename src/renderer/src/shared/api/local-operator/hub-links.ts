@@ -62,12 +62,20 @@ export type HubLinks = { links: HubLink[]; unresolved: HubUnresolvedLink[] };
  * point of the act is that a source+scope is now stated and recorded. A differing
  * KNOWN scope is refused (`origin-conflict`) with the old state byte-unchanged,
  * so a refusal arrives as an error, not as a resolved row with a swapped tenant.
+ *
+ * `baseline_state` is the recorded-by literal the BACKEND wrote, under the
+ * stable key core renamed it to (head 323a55a40): the resolve arm always writes
+ * `make_record(..., "adopt-unknown")` (service.py:303), so a confirmation yields
+ * `"adopt-unknown"`, while the separate equal-text auto path writes `"adopt"`.
+ * Both are admitted defensively; the receipt's earlier shorthand `"adopted"` is
+ * NOT a value any path emits and must never appear. Key the unresolved->adopt
+ * transition on `baseline_state === "adopt-unknown"` for this arm.
  */
 export type HubSourceResolution = {
 	source: string;
 	visibility: "public" | "org";
 	tenant_id: string | null;
-	baseline: "adopted" | "adopt-unknown";
+	baseline_state: "adopt" | "adopt-unknown";
 	scope_known: true;
 };
 export type HubLinkPolicyPatch = {
