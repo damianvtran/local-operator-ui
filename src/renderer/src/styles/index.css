@@ -4,7 +4,8 @@
 @import "./themes.generated.css";
 
 /* Arrival is ink only: reserve final layout immediately and never replay on
- * history restore or virtual remount. Streamed answers own their chunk fade. */
+ * history restore or virtual remount. Streamed answers have no arrival
+ * fade at all: live text is the committed DOM, parsed per block. */
 @keyframes lo-transcript-arrival {
 	from {
 		opacity: 0;

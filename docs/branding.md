@@ -769,7 +769,9 @@ longer than 240ms, and only something entering the screen earns that.
   downstream reflow. No outgoing tree, duplicated media, sibling transforms or
   height-from-zero entrance. Media, offscreen updates and reduced motion swap
   atomically. Newly appended non-answer row ink may enter over 240ms; streamed
-  answers keep their existing chunk fade, never an additional parent fade.
+  answers appear in place with no per-arrival fade (live and committed text are
+  ONE parsed DOM, and a per-arrival wrapper would be a second one), and never get
+  a parent fade either.
 - **Indeterminate liveness is exempt from the 240ms ceiling** — a shimmer or a
   spinner that must run until the machine stops cannot be capped at 240ms. One
   such element per surface, `opacity` or `background-position` only, never a
