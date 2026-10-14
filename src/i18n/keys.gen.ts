@@ -27,6 +27,7 @@ import enUiBrowser from "./catalogues/en/ui.browser.json";
 import enUiCanvas from "./catalogues/en/ui.canvas.json";
 import enUiChat from "./catalogues/en/ui.chat.json";
 import enUiConsole from "./catalogues/en/ui.console.json";
+import enUiHubComments from "./catalogues/en/ui.hub.comments.json";
 import enUiHub from "./catalogues/en/ui.hub.json";
 import enUiMesh from "./catalogues/en/ui.mesh.json";
 import enUiOnboarding from "./catalogues/en/ui.onboarding.json";
@@ -47,6 +48,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiCanvas,
 	...enUiChat,
 	...enUiConsole,
+	...enUiHubComments,
 	...enUiHub,
 	...enUiMesh,
 	...enUiOnboarding,
@@ -226,6 +228,35 @@ export type MessageParams = {
 	"ui.console.unavailable.pty.detail": undefined;
 	"ui.console.unavailable.title": undefined;
 	"ui.console.unavailable.unknown.detail": undefined;
+	"ui.hub.comments.age.days": { count: number };
+	"ui.hub.comments.age.fallback": { duration: string };
+	"ui.hub.comments.age.hours": { count: number };
+	"ui.hub.comments.age.minutes": { count: number };
+	"ui.hub.comments.age.months": { count: number };
+	"ui.hub.comments.age.seconds": { count: number };
+	"ui.hub.comments.age.years": { count: number };
+	"ui.hub.comments.author.unknown": undefined;
+	"ui.hub.comments.delete.confirm": undefined;
+	"ui.hub.comments.delete.label": undefined;
+	"ui.hub.comments.edit.cancel": undefined;
+	"ui.hub.comments.edit.label": undefined;
+	"ui.hub.comments.edit.save": undefined;
+	"ui.hub.comments.edit.saving": undefined;
+	"ui.hub.comments.empty": undefined;
+	"ui.hub.comments.form.label": undefined;
+	"ui.hub.comments.form.placeholder": undefined;
+	"ui.hub.comments.form.posting": undefined;
+	"ui.hub.comments.form.sign_in": undefined;
+	"ui.hub.comments.form.submit": undefined;
+	"ui.hub.comments.heading": undefined;
+	"ui.hub.comments.load_error": { reason: string };
+	"ui.hub.comments.mutation.delete_failed": { reason: string };
+	"ui.hub.comments.mutation.deleted": undefined;
+	"ui.hub.comments.mutation.post_failed": { reason: string };
+	"ui.hub.comments.mutation.posted": undefined;
+	"ui.hub.comments.mutation.unauthorized": undefined;
+	"ui.hub.comments.mutation.update_failed": { reason: string };
+	"ui.hub.comments.mutation.updated": undefined;
 	"ui.hub.conflict.body": undefined;
 	"ui.hub.conflict.reload": undefined;
 	"ui.hub.conflict.title": undefined;

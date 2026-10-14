@@ -11,10 +11,12 @@ import {
 	Tooltip,
 } from "@shared/components/ui";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
-import { formatDistanceToNowStrict } from "date-fns";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { MessageCircle, Save, SquarePen, Trash2, X } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
+import { commentAge } from "../comment-age";
 import {
 	useCreateAgentCommentMutation,
 	useDeleteAgentCommentMutation,
@@ -32,6 +34,8 @@ type CommentsSectionProps = {
 export const CommentsSection: React.FC<CommentsSectionProps> = ({
 	agentId,
 }) => {
+	// Refresh labels and ages without discarding an in-progress comment edit.
+	useI18nLocale();
 	const { isAuthenticated, user } = useRadientAuth();
 	const [newComment, setNewComment] = useState("");
 	// State for inline editing
@@ -96,7 +100,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 	const handleDeleteComment = async (commentId: string) => {
 		if (!isAuthenticated || !agentId) return;
 
-		if (window.confirm("Are you sure you want to delete this comment?")) {
+		if (window.confirm(t("ui.hub.comments.delete.confirm"))) {
 			try {
 				await deleteCommentMutation.mutateAsync({ agentId, commentId });
 			} catch (err) {
@@ -114,19 +118,21 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 
 	return (
 		<div className="mt-6">
-			<h2 className="mb-4 font-semibold text-heading text-ink">Comments</h2>
+			<h2 className="mb-4 font-semibold text-heading text-ink">
+				{t("ui.hub.comments.heading")}
+			</h2>
 
 			{/* Comment input form (only if authenticated) */}
 			{isAuthenticated ? (
 				<div className="mb-4 flex flex-col gap-1.5">
 					<Label htmlFor="new-comment">
 						<MessageCircle size={14} aria-hidden="true" />
-						Leave a comment
+						{t("ui.hub.comments.form.label")}
 					</Label>
 					<form onSubmit={handleCommentSubmit} className="flex flex-col gap-3">
 						<Textarea
 							id="new-comment"
-							placeholder="Share your thoughts..."
+							placeholder={t("ui.hub.comments.form.placeholder")}
 							rows={3}
 							value={newComment}
 							onChange={(event) => setNewComment(event.target.value)}
@@ -139,16 +145,16 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 							className="self-end"
 						>
 							{createCommentMutation.isPending ? (
-								<Spinner size="sm" label="Posting comment" />
+								<Spinner size="sm" label={t("ui.hub.comments.form.posting")} />
 							) : (
-								"Post comment"
+								t("ui.hub.comments.form.submit")
 							)}
 						</Button>
 					</form>
 				</div>
 			) : (
 				<p className="mt-6 mb-4 text-body-sm text-ink-muted">
-					Sign in to leave comments.
+					{t("ui.hub.comments.form.sign_in")}
 				</p>
 			)}
 
@@ -177,14 +183,14 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 			)}
 			{error && (
 				<p role="alert" className="my-6 text-body-sm text-danger">
-					Failed to load comments: {error.message}
+					{t("ui.hub.comments.load_error", { reason: error.message })}
 				</p>
 			)}
 			{!isLoading && !error && (
 				<ul className="flex flex-col gap-6">
 					{comments.length === 0 ? (
 						<li className="text-body-sm text-ink-muted">
-							No comments yet. Yours would be the first.
+							{t("ui.hub.comments.empty")}
 						</li>
 					) : (
 						comments.map((comment) =>
@@ -204,7 +210,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 											value={editText}
 											onChange={(event) => setEditText(event.target.value)}
 											autoFocus
-											aria-label="Edit comment"
+											aria-label={t("ui.hub.comments.edit.label")}
 										/>
 										<div className="flex justify-end gap-2">
 											<Button
@@ -213,7 +219,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 												onClick={handleCancelEdit}
 											>
 												<X />
-												Cancel
+												{t("ui.hub.comments.edit.cancel")}
 											</Button>
 											<Button
 												variant="primary"
@@ -224,11 +230,14 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 												}
 											>
 												{updateCommentMutation.isPending ? (
-													<Spinner size="xs" label="Saving comment" />
+													<Spinner
+														size="xs"
+														label={t("ui.hub.comments.edit.saving")}
+													/>
 												) : (
 													<Save />
 												)}
-												Save
+												{t("ui.hub.comments.edit.save")}
 											</Button>
 										</div>
 									</div>
@@ -247,18 +256,16 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 										<div className="flex w-full items-center justify-between">
 											<div>
 												<p className="font-medium text-body text-ink">
-													{comment.account_metadata?.name || "Anonymous"}
+													{comment.account_metadata?.name ||
+														t("ui.hub.comments.author.unknown")}
 												</p>
 												<p className="text-ink-muted text-meta">
-													{formatDistanceToNowStrict(
-														new Date(comment.created_at),
-													)}{" "}
-													ago
+													{commentAge(new Date(comment.created_at))}
 												</p>
 											</div>
 											{canEditOrDelete(comment) && (
 												<div className="flex gap-0.5">
-													<Tooltip content="Edit comment">
+													<Tooltip content={t("ui.hub.comments.edit.label")}>
 														{/* Disable edit button while another edit is in progress */}
 														<Button
 															variant="ghost"
@@ -267,19 +274,19 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 																handleEditComment(comment.id, comment.text)
 															}
 															disabled={!!editingCommentId}
-															aria-label="Edit comment"
+															aria-label={t("ui.hub.comments.edit.label")}
 														>
 															<SquarePen />
 														</Button>
 													</Tooltip>
-													<Tooltip content="Delete comment">
+													<Tooltip content={t("ui.hub.comments.delete.label")}>
 														{/* Disable delete button while an edit is in progress */}
 														<Button
 															variant="ghost"
 															size="icon-sm"
 															onClick={() => handleDeleteComment(comment.id)}
 															disabled={!!editingCommentId}
-															aria-label="Delete comment"
+															aria-label={t("ui.hub.comments.delete.label")}
 														>
 															<Trash2 />
 														</Button>

@@ -8,6 +8,7 @@ import type {
 	UpdateAgentCommentRequest,
 } from "@shared/api/radient/types";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
+import { t } from "@shared/i18n";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { agentCommentsKeys } from "./use-agent-comments-query"; // Import query keys
@@ -25,7 +26,8 @@ export const useCreateAgentCommentMutation = () => {
 			data: CreateAgentCommentRequest;
 		}) => {
 			const { agentId, data } = variables;
-			if (!isAuthenticated) throw new Error("Authentication required.");
+			if (!isAuthenticated)
+				throw new Error(t("ui.hub.comments.mutation.unauthorized"));
 			return createAgentComment(agentId, data);
 		},
 		onSuccess: (_, variables) => {
@@ -33,10 +35,12 @@ export const useCreateAgentCommentMutation = () => {
 			queryClient.invalidateQueries({
 				queryKey: agentCommentsKeys.list(variables.agentId),
 			});
-			showSuccessToast("Comment posted");
+			showSuccessToast(t("ui.hub.comments.mutation.posted"));
 		},
 		onError: (error) => {
-			showErrorToast(`Failed to post comment: ${error.message}`);
+			showErrorToast(
+				t("ui.hub.comments.mutation.post_failed", { reason: error.message }),
+			);
 		},
 	});
 };
@@ -55,7 +59,8 @@ export const useUpdateAgentCommentMutation = () => {
 			data: UpdateAgentCommentRequest;
 		}) => {
 			const { agentId, commentId, data } = variables;
-			if (!isAuthenticated) throw new Error("Authentication required.");
+			if (!isAuthenticated)
+				throw new Error(t("ui.hub.comments.mutation.unauthorized"));
 			return updateAgentComment(agentId, commentId, data);
 		},
 		onSuccess: (_, variables) => {
@@ -63,10 +68,12 @@ export const useUpdateAgentCommentMutation = () => {
 			queryClient.invalidateQueries({
 				queryKey: agentCommentsKeys.list(variables.agentId),
 			});
-			showSuccessToast("Comment updated");
+			showSuccessToast(t("ui.hub.comments.mutation.updated"));
 		},
 		onError: (error) => {
-			showErrorToast(`Failed to update comment: ${error.message}`);
+			showErrorToast(
+				t("ui.hub.comments.mutation.update_failed", { reason: error.message }),
+			);
 		},
 	});
 };
@@ -81,7 +88,8 @@ export const useDeleteAgentCommentMutation = () => {
 	return useMutation({
 		mutationFn: async (variables: { agentId: string; commentId: string }) => {
 			const { agentId, commentId } = variables;
-			if (!isAuthenticated) throw new Error("Authentication required.");
+			if (!isAuthenticated)
+				throw new Error(t("ui.hub.comments.mutation.unauthorized"));
 			return deleteAgentComment(agentId, commentId);
 		},
 		onSuccess: (_, variables) => {
@@ -89,10 +97,12 @@ export const useDeleteAgentCommentMutation = () => {
 			queryClient.invalidateQueries({
 				queryKey: agentCommentsKeys.list(variables.agentId),
 			});
-			showSuccessToast("Comment deleted");
+			showSuccessToast(t("ui.hub.comments.mutation.deleted"));
 		},
 		onError: (error) => {
-			showErrorToast(`Failed to delete comment: ${error.message}`);
+			showErrorToast(
+				t("ui.hub.comments.mutation.delete_failed", { reason: error.message }),
+			);
 		},
 	});
 };
