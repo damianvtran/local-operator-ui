@@ -278,20 +278,27 @@ const FacetSection: FC<{
 		selected: boolean;
 	}[];
 	onToggle: (facet: FilterFacetKey, value: FilterOptionValue) => void;
-}> = ({ facet, options, onToggle }) => (
-	<div className="flex flex-col gap-0.5 border-b border-hairline px-3 py-2 last:border-b-0">
-		<span className="px-1 text-meta text-ink-muted">{FACET_LABELS[facet]}</span>
-		{options.map((option) => (
-			<FacetOptionRow
-				key={`${facet}:${option.value ?? "none"}`}
-				label={option.label}
-				count={option.count}
-				selected={option.selected}
-				onToggle={() => onToggle(facet, option.value)}
-			/>
-		))}
-	</div>
-);
+}> = ({ facet, options, onToggle }) => {
+	// The section reads translated facet metadata itself, so it must remain
+	// locale-aware even when mounted without the full filters panel.
+	useI18nLocale();
+	return (
+		<div className="flex flex-col gap-0.5 border-b border-hairline px-3 py-2 last:border-b-0">
+			<span className="px-1 text-meta text-ink-muted">
+				{FACET_LABELS[facet]}
+			</span>
+			{options.map((option) => (
+				<FacetOptionRow
+					key={`${facet}:${option.value ?? "none"}`}
+					label={option.label}
+					count={option.count}
+					selected={option.selected}
+					onToggle={() => onToggle(facet, option.value)}
+				/>
+			))}
+		</div>
+	);
+};
 
 export const ProjectFiltersPanel: FC<ProjectFiltersPanelProps> = ({
 	projects,
