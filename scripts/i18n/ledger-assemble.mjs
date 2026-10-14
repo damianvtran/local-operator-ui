@@ -51,10 +51,9 @@
  *   `findings`), or lists top-level findings whose `key` starts with the
  *   namespace. `INFO` remarks are observations and are not counted.
  *
- * LIMIT (stated, not hidden): receipts are machine-local files an agent wrote, so
- * the row records the receipt's sha256 and path but the repo cannot re-open it. The
- * gate checks the row is internally consistent and carries a real `instance`, a
- * receipt hash and severity counts; it cannot prove the audit happened.
+ * Receipts are copied byte-for-byte into i18n/receipts/<instance>.json. The gate
+ * requires that portable evidence and re-hashes it; there is no machine-local
+ * legacy allowance. Neither tool can prove who authored the receipt.
  *
  * USAGE:
  *   node scripts/i18n/ledger-assemble.mjs --locale fr \
@@ -113,19 +112,32 @@ function flattenFindings(findings) {
 	if (Array.isArray(findings)) return findings;
 	if (findings && typeof findings === "object") {
 		const flat = [];
+		if (Object.keys(findings).length === 0)
+			refuse("findings must be an explicit array or severity-keyed object");
 		for (const [severity, list] of Object.entries(findings)) {
-			if (!Array.isArray(list)) continue;
-			for (const item of list) {
-				flat.push(
-					typeof item === "object" && item !== null
-						? { severity, ...item }
-						: { severity, key: String(item) },
+			// Validate empty buckets too: a typo is not evidence of zero majors.
+			if (countFindings([{ severity }]).errors.length || !Array.isArray(list)) {
+				refuse(
+					`findings.${severity} must name a recognised severity and contain an array`,
 				);
+			}
+			for (const item of list) {
+				if (!item || typeof item !== "object" || Array.isArray(item)) {
+					refuse(`findings.${severity} contains a malformed finding`);
+				}
+				const word = item.severity ?? item.sev ?? severity;
+				// A member cannot downgrade the severity of its enclosing bucket.
+				if (
+					String(word).trim().toLowerCase() !== severity.trim().toLowerCase()
+				) {
+					refuse(`findings.${severity} contains a conflicting severity`);
+				}
+				flat.push({ ...item, severity: word });
 			}
 		}
 		return flat;
 	}
-	return [];
+	refuse("findings must be an explicit array or severity-keyed object");
 }
 
 /**
@@ -232,14 +244,6 @@ function expandHome(path) {
 	return path.startsWith("~/") ? join(homedir(), path.slice(2)) : path;
 }
 
-/** Store a path home-relative (`~/...`) or repo-relative, never an absolute home path. */
-function portablePath(repo, absolute) {
-	const inRepo = relative(repo, absolute);
-	if (!inRepo.startsWith("..") && !inRepo.startsWith(sep)) return inRepo;
-	const inHome = relative(homedir(), absolute);
-	return !inHome.startsWith("..") ? `~/${inHome}` : absolute;
-}
-
 /**
  * Assemble (or update) the row for one locale/namespace.
  *
@@ -310,6 +314,9 @@ export function assemble(options) {
 		refuse(`receipt ${options.receipt} does not exist`);
 	const receiptBytes = readFileSync(receiptAbsolute);
 	const receipt = readJson(receiptAbsolute, "the receipt");
+	if (!receipt || typeof receipt !== "object" || Array.isArray(receipt)) {
+		refuse("the receipt must be a JSON object");
+	}
 
 	const identity = receiptIdentity(receipt);
 	if (isPlaceholderInstance(identity.instance)) {
@@ -322,17 +329,17 @@ export function assemble(options) {
 			`the receipt is instance ${JSON.stringify(identity.instance)}, not the --auditor-instance ${JSON.stringify(options.auditorInstance)}`,
 		);
 	}
-	if (identity.model && identity.model !== options.auditorModel) {
+	if (!identity.model || identity.model !== options.auditorModel) {
 		refuse(
 			`the receipt names model ${JSON.stringify(identity.model)}, not --auditor-model ${JSON.stringify(options.auditorModel)}`,
 		);
 	}
 	/*
-	 * WHERE THE HASHES MAY COME FROM. A receipt for ONE namespace may name its
-	 * hashes anywhere in the file. A receipt covering SEVERAL (one audit run, one
-	 * immutable `i18n/receipts/<instance>.json`, referenced by one row per
-	 * namespace) must name each namespace's hashes INSIDE that namespace's own
-	 * block: searching the whole file would let ui.console borrow the hashes
+	 * WHERE THE HASHES MAY COME FROM. An unscoped receipt may nest its hashes.
+	 * Once namespace blocks exist, even just ONE, each namespace must name its
+	 * hashes INSIDE its own block. One audit run may cover several namespaces
+	 * through one immutable `i18n/receipts/<instance>.json` referenced by each row.
+	 * Searching the whole file would let ui.console borrow the hashes
 	 * ui.settings names, and every hash would be "present" while no namespace had
 	 * actually been audited at its own bytes.
 	 */
@@ -341,13 +348,13 @@ export function assemble(options) {
 			? receipt.namespaces
 			: {};
 	const searched =
-		Object.keys(blocks).length > 1 ? (blocks[namespace] ?? {}) : receipt;
+		Object.keys(blocks).length > 0 ? (blocks[namespace] ?? {}) : receipt;
 	const leaves = new Set(stringLeaves(searched));
 	for (const [name, hash] of [
 		["target", target_sha256],
 		["English source", source_sha256],
 	]) {
-		if (![...leaves].some((value) => value.includes(hash))) {
+		if (!leaves.has(hash)) {
 			refuse(
 				`the receipt does not name the ${name} bytes on disk (${hash.slice(0, 12)}...) - it audited a different file`,
 			);
@@ -379,6 +386,25 @@ export function assemble(options) {
 		: { schema: 1, entries: [] };
 	if (!Array.isArray(ledger.entries))
 		refuse("the ledger has no `entries` array");
+	// One run may cover several namespaces, but never two different receipts.
+	// Check ledger history too: a missing receipt copy must not bypass collisions.
+	for (const entry of ledger.entries) {
+		const recorded = [
+			...(entry.auditors ?? []),
+			...(entry.superseded ?? []).flatMap((old) => old.auditors ?? []),
+		];
+		if (
+			recorded.some(
+				(audit) =>
+					audit.instance === options.auditorInstance &&
+					audit.receipt_sha256 !== sha256Hex(receiptBytes),
+			)
+		) {
+			refuse(
+				`instance ${options.auditorInstance} is already recorded on ${entry.locale}/${entry.namespace} with a different receipt`,
+			);
+		}
+	}
 	let row = ledger.entries.find(
 		(entry) => entry.locale === locale && entry.namespace === namespace,
 	);
@@ -471,7 +497,7 @@ export function assemble(options) {
 				`instance ${audit.instance} is already recorded on ${locale}/${namespace} with a different receipt - one run is one audit; a second audit needs its own instance`,
 			);
 		}
-		row.auditors[existing] = audit;
+		row.auditors[existing] = { ...row.auditors[existing], ...audit };
 	} else {
 		row.auditors.push(audit);
 	}

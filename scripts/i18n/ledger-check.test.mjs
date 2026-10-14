@@ -25,7 +25,7 @@ const sha256 = (text) => createHash("sha256").update(text).digest("hex");
 
 /** Severity counts of a clean audit, and a stand-in receipt hash (the gate only checks it is a sha256). */
 const NO_FINDINGS = { blocker: 0, major: 0, minor: 0, nit: 0 };
-const RECEIPT_SHA = "a".repeat(64);
+const RECEIPT_SHA = sha256("{}");
 
 /** A minimal, COMPLETE and correctly-audited tree for one locale/namespace. */
 function buildTree({ mutate } = {}) {
@@ -77,6 +77,7 @@ function buildTree({ mutate } = {}) {
 						result: "clean",
 						instance: "audit-run-aaaa",
 						findings: NO_FINDINGS,
+						receipt: "i18n/receipts/audit-run-aaaa.json",
 						receipt_sha256: RECEIPT_SHA,
 					},
 				],
@@ -84,7 +85,9 @@ function buildTree({ mutate } = {}) {
 			},
 		],
 	};
-	mkdirSync(join(root, "i18n"), { recursive: true });
+	mkdirSync(join(root, "i18n", "receipts"), { recursive: true });
+	writeFileSync(join(root, "i18n/receipts/audit-run-aaaa.json"), "{}");
+	writeFileSync(join(root, "i18n/receipts/audit-run-bbbb.json"), "{}");
 	const writeLedger = (value) =>
 		writeFileSync(
 			join(root, "i18n", "ledger.json"),
@@ -295,6 +298,7 @@ const audit = (overrides = {}) => ({
 	result: "clean",
 	instance: "audit-run-aaaa",
 	findings: NO_FINDINGS,
+	receipt: "i18n/receipts/audit-run-aaaa.json",
 	receipt_sha256: RECEIPT_SHA,
 	...overrides,
 });
@@ -402,4 +406,21 @@ test("the REAL repository's ledger passes (the shipped fr/ui.settings entry)", (
 		[],
 		`the repository ledger must be clean: ${failures.join("; ")}`,
 	);
+});
+
+test("NEGATIVE: machine-local and traversal receipt paths have no legacy allowance", () => {
+	for (const receipt of [
+		"~/old-receipt.json",
+		"/old-receipt.json",
+		"i18n/receipts/../escape.json",
+		"i18n/receipts/unsafe\\receipt.json",
+	]) {
+		withTree(withAuditors([audit({ receipt })]), (root) => {
+			assert.ok(
+				checkLedger({ repo: root }).failures.some((failure) =>
+					failure.includes("verifiable receipt"),
+				),
+			);
+		});
+	}
 });

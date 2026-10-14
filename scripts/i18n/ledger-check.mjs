@@ -189,11 +189,9 @@ export function checkLedger({ repo = REPO } = {}) {
 		);
 
 		/*
-		 * M3: a receipt that lives IN the repo (`i18n/receipts/...`) travels with it,
-		 * so the gate re-hashes it. A machine-local receipt path (`~/...`, written
-		 * by an auditor into its scratchpad) cannot be re-opened from a clone; for
-		 * those the gate holds the row to carrying a receipt hash and a real
-		 * instance (above) and says so here rather than pretending to verify them.
+		 * Receipts must travel with the repo. Shared validation above rejects
+		 * machine-local/unsafe paths; valid paths are then checked against disk.
+		 * No legacy exception: migration must use the original receipt bytes.
 		 */
 		for (const [position, auditor] of (entry.auditors ?? []).entries()) {
 			if (!isRepoReceiptPath(auditor?.receipt)) continue;
