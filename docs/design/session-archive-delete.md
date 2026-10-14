@@ -119,6 +119,18 @@ lives - it is drawn only once a query is typed, in the sidebar's search block, a
 header's `Archived` pill, `/unarchive`). A question in front of the act that puts a
 conversation BACK would be a confirmation for the safe half of the pair.
 
+**THE CONFIRM CARRIES THE DANGER ROLE, BY OPERATOR PREFERENCE (2026-10-13).** This
+section first had the archive as the shared modal's reversible, non-danger caller -
+the delete dialog kept the danger role for the act that could not be undone, and this
+one read as an ordinary primary. The operator asked for the danger treatment instead,
+explicitly overriding that earlier choice, so the archive confirmation now passes
+`isDangerous={true}` and its confirm button reads in the danger role the delete dialog
+also uses. What did NOT change with the styling: Cancel still holds the keyboard and is
+still the first, safe action (danger is ink, not permission to move the safe default),
+the body still states the way back, and the act is still reversible. A future reader
+should not revert this to non-danger: it is the operator's preference, recorded here
+and at the call site, not an accident of the dialog's shared styling.
+
 **THE ONE DEVIATION FROM THE CONSULTATION SPEC, and its reason.** The spec
 (`SPEC-archive-confirm-and-pinned-strip.md` §1) asked for the delete dialog's own busy
 state and in-dialog refusal rendering. This dialog has neither: it CLOSES on confirm, and
