@@ -4545,10 +4545,24 @@ test("bounded internal identity and expansion survive prepend/replay but never g
 	);
 });
 
+/*
+ * THE MINIMUM-ONLY HEAD-CUT FACTS, pinned on a shape the rule still folds.
+ *
+ * The head-cut IS `span.from === 0` - the loaded page starts inside the run -
+ * so it cannot be combined with "an answer precedes the episode": there is
+ * nothing before index 0 to precede it. What the folding episode therefore
+ * needs here is a SECOND receipt, which is the rule's other arm: a genuine run
+ * of exchanges. The single-receipt variant of this same shape now PAINTS (see
+ * the test below), which is QA round 1's Q1.
+ */
 test("head-cut receipt counts are minimum-only, with no invented whole-episode duration", () => {
 	const segment = internalSpanOf(
 		planOf(
-			[jobReceipt("cut-job"), tool("cut-call", { phase: "running" }, "trace")],
+			[
+				jobReceipt("cut-job"),
+				jobReceipt("cut-job-2"),
+				tool("cut-call", { phase: "running" }, "trace"),
+			],
 			true,
 		),
 		"cut-job",
@@ -4557,6 +4571,27 @@ test("head-cut receipt counts are minimum-only, with no invented whole-episode d
 	assert.equal(segment.facts.partial, true);
 	assert.equal(segment.internal.firstTs, null);
 	assert.equal(segment.facts.durationS, null);
+});
+
+/*
+ * QA round 1, Q1 - the plan-level contract for an episode that OPENS the run
+ * with ONE receipt: there is no settled work before it and no run of exchanges
+ * to batch, so it paints. Rendering proves the content reaches the reader
+ * (`canonical-notice.test.mjs`); this pins the plan.
+ */
+test("a single receipt opening the run paints: no settled work, no run to batch", () => {
+	for (const origin of [
+		jobReceipt("open-job"),
+		peerRow("open-peer"),
+		row("open-wake", "wake", { text: "Synthetic wake" }),
+	]) {
+		const segment = internalSpanOf(
+			planOf([origin, tool("open-call", { phase: "running" }, "trace")], true),
+			origin.record.id,
+		);
+		assert.equal(segment.collapsed, false, origin.record.id);
+		assert.equal(segment.internal, null, origin.record.id);
+	}
 });
 
 test("all material artifact owners stay inline, including generated loading/error and owned files", () => {
@@ -4649,15 +4684,33 @@ test("head-cut peer + spawn counts one contained action despite huge parent/job 
 		]),
 		factPage: { ids: new Set(rows.map((r) => r.record.id)) },
 	};
+	/*
+	 * THE RULE (QA round 1, Q1). `[peer, tool]` opens the run: one receipt and no
+	 * settled answer before it, so there is neither settled work to continue nor
+	 * a run of exchanges to batch, and the span is NOT an internal episode. That
+	 * is the stronger form of this test's original point - with no episode there
+	 * is nothing to condense the receipt into, so the parent's 113,319 actions
+	 * have nothing to inflate.
+	 *
+	 * WHY THE ASSERTION IS `internal === null` AND NOT `collapsed === false`:
+	 * this shape is the run's TAIL with the answer at the end, and an ordinary
+	 * (non-internal) span still condenses here exactly as it did on base. What
+	 * the rule governs is the internal-episode classification, not whether an
+	 * ordinary span folds - that distinction is the whole point of the gate. The
+	 * foldable head-cut shape that still pins minimum-only counts and a collapsed
+	 * internal episode is the >=2-receipt case in this file.
+	 */
 	const before = collapsePlan(rows, options);
 	const bar = before.runs
 		.flatMap((r) => r.segments)
 		.find((s) => s.segmentIds.includes("count-p"));
+	assert.equal(bar.internal, null, "the opening receipt is not an episode");
 	assert.deepEqual(bar.segmentIds, ["count-p", "count-t"]);
-	assert.equal(bar.facts.actions, 1);
-	assert.equal(bar.internal.receipts, 1);
-	assert.equal(bar.facts.durationS, null, "unknown head cannot borrow 13h59m");
-	assert.equal(before.runs[0].factApplied, false);
+	assert.equal(
+		before.runs.flatMap((r) => r.segments).some((s) => s.facts.actions > 1),
+		false,
+		"no bar may state the parent's aggregate as this span's own work",
+	);
 	for (const segment of before.runs.flatMap((r) => r.segments))
 		assert.equal(segment.segmentIds.includes("count-a"), false);
 	const after = collapsePlan(rows, {
