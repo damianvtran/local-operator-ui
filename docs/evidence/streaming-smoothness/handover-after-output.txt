@@ -1,0 +1,11 @@
+    - InlineTextBox "streaming: x=85; y=167.5; width=810; height=113.59375; scroll=114; client=114"
+    - InlineTextBox "H2.: y=167.5; h=22.3984375; margin=0px/8px; line=22.4px; text=\"Streaming handover\""
+    - InlineTextBox "P.: y=197.8984375; h=22.3984375; margin=8px/8px; line=22.4px; text=\"The closed paragraph stays in place when the answer settles.\""
+    - InlineTextBox "P.lo-stream-tail: y=228.296875; h=22.3984375; margin=8px/8px; line=22.4px; text=\"The trace fold keeps each row in order.\""
+    - InlineTextBox "P.lo-stream-tail: y=258.6953125; h=22.3984375; margin=8px/0px; line=22.4px; text=\"The answer is ready.\""
+    - InlineTextBox "settled: x=85; y=167.5; width=810; height=113.59375; scroll=114; client=114"
+    - InlineTextBox "H2.: y=167.5; h=22.3984375; margin=0px/8px; line=22.4px; text=\"Streaming handover\""
+    - InlineTextBox "P.: y=197.8984375; h=22.3984375; margin=8px/8px; line=22.4px; text=\"The closed paragraph stays in place when the answer settles.\""
+    - InlineTextBox "P.: y=228.296875; h=22.3984375; margin=8px/8px; line=22.4px; text=\"The trace fold keeps each row in order.\""
+    - InlineTextBox "P.: y=258.6953125; h=22.3984375; margin=8px/0px; line=22.4px; text=\"The answer is ready.\""
+    - region "Notifications alt+T" [e283]
