@@ -2353,6 +2353,12 @@ const SPAWN_SITES = [
 		1,
 		"the signature probe's runner: `file` is the parameter a test injects, and the only value the app itself passes is `/usr/bin/codesign` with an explicit argv (`-dv --verbose=4`, `-d --entitlements - --xml`). No interpreter, and no environment of its own: the child inherits this process's",
 	),
+	passThrough(
+		"src/main/console/native-capacity.ts",
+		"execFile",
+		1,
+		"the console host's native-capacity probe: the executable is `readNumber`'s parameter, and the app's own callers pass `/usr/sbin/sysctl` (its one real call site). A caller MAY hand it a caller-verified python (`nativeCapacityProbe(trustedPython)`), so this is a pass-through rather than a no-interpreter command — and it needs no bytecode guard because it never inherits an environment: its `env` is a FIXED minimal allowlist (`PATH`, `LANG`, `LC_ALL`), so no ambient `PYTHON*` variable can reach the child, and the python form runs `-I -S -c` (isolated, which also ignores `PYTHON*`) importing only the C extension `resource`, so it writes no `.pyc` anywhere",
+	),
 ];
 
 test("every child-process spawn site is enumerated, and the python ones carry the guards", () => {
