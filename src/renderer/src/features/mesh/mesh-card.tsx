@@ -213,55 +213,58 @@ export const SessionMoveMenu: FC<{
 	onOpenChange,
 	trigger,
 	triggerLabel,
-}) => (
-	<DropdownMenu onOpenChange={onOpenChange}>
-		<DropdownMenuTrigger asChild>
-			<button
-				type="button"
-				aria-label={triggerLabel}
-				data-mesh-session-menu={session.id}
-				disabled={disabled || destinations.length === 0}
-				className="rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 disabled:text-ink-disabled"
-			>
-				{trigger}
-			</button>
-		</DropdownMenuTrigger>
-		<DropdownMenuContent align="start" className="min-w-56">
-			<DropdownMenuLabel>{chipLabel(session)}</DropdownMenuLabel>
-			<DropdownMenuSeparator />
-			{destinations.map((destination) => (
-				<DropdownMenuItem
-					key={destination.deviceId}
-					data-mesh-move-to={destination.deviceId}
-					/*
-					 * A DESTINATION THAT CAN ONLY REFUSE IS NOT OFFERED (UX review round 1, U3):
-					 * the item is disabled and carries the route's own sentence, so the reader
-					 * learns why from the menu instead of from a refusal after committing. The
-					 * reason is in `title` because the menu has no room for a paragraph, and the
-					 * same sentence is what the drag states prospectively.
-					 */
-					disabled={Boolean(destination.refused)}
-					title={destination.refused ?? undefined}
-					onSelect={() => onChoose(destination, false)}
+}) => {
+	useI18nLocale();
+	return (
+		<DropdownMenu onOpenChange={onOpenChange}>
+			<DropdownMenuTrigger asChild>
+				<button
+					type="button"
+					aria-label={triggerLabel}
+					data-mesh-session-menu={session.id}
+					disabled={disabled || destinations.length === 0}
+					className="rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 disabled:text-ink-disabled"
 				>
-					{destination.verb}
-				</DropdownMenuItem>
-			))}
-			<DropdownMenuSeparator />
-			{destinations.map((destination) => (
-				<DropdownMenuItem
-					key={`keep-${destination.deviceId}`}
-					data-mesh-copy-to={destination.deviceId}
-					disabled={Boolean(destination.refused)}
-					title={destination.refused ?? undefined}
-					onSelect={() => onChoose(destination, true)}
-				>
-					{destination.keepVerb}
-				</DropdownMenuItem>
-			))}
-		</DropdownMenuContent>
-	</DropdownMenu>
-);
+					{trigger}
+				</button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="start" className="min-w-56">
+				<DropdownMenuLabel>{chipLabel(session)}</DropdownMenuLabel>
+				<DropdownMenuSeparator />
+				{destinations.map((destination) => (
+					<DropdownMenuItem
+						key={destination.deviceId}
+						data-mesh-move-to={destination.deviceId}
+						/*
+						 * A DESTINATION THAT CAN ONLY REFUSE IS NOT OFFERED (UX review round 1, U3):
+						 * the item is disabled and carries the route's own sentence, so the reader
+						 * learns why from the menu instead of from a refusal after committing. The
+						 * reason is in `title` because the menu has no room for a paragraph, and the
+						 * same sentence is what the drag states prospectively.
+						 */
+						disabled={Boolean(destination.refused)}
+						title={destination.refused ?? undefined}
+						onSelect={() => onChoose(destination, false)}
+					>
+						{destination.verb}
+					</DropdownMenuItem>
+				))}
+				<DropdownMenuSeparator />
+				{destinations.map((destination) => (
+					<DropdownMenuItem
+						key={`keep-${destination.deviceId}`}
+						data-mesh-copy-to={destination.deviceId}
+						disabled={Boolean(destination.refused)}
+						title={destination.refused ?? undefined}
+						onSelect={() => onChoose(destination, true)}
+					>
+						{destination.keepVerb}
+					</DropdownMenuItem>
+				))}
+			</DropdownMenuContent>
+		</DropdownMenu>
+	);
+};
 
 /**
  * One device, in full: its state, its memberships, its conversations and its actions.
@@ -308,7 +311,6 @@ export const DevicePanel: FC<{
 	onInvite,
 	onRemoveMember,
 }) => {
-	useI18nLocale();
 	useI18nLocale();
 	const reach = deviceReach(device);
 	/*

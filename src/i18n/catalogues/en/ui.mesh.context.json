@@ -212,7 +212,7 @@
 	"ui.mesh.mesh_approvals_tray.waiting_count": {
 		"role": "status or explanatory text — approvals waiting/settled tray",
 		"tone": "Factual and restrained",
-		"note": "Approvals waiting/settled tray: names/explains waiting count. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+		"note": "Approvals waiting/settled tray: names/explains waiting count. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale’s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
 	},
 	"ui.mesh.mesh_approvals_tray.ask_again": {
 		"role": "button/menu choice — approvals waiting/settled tray",
@@ -497,12 +497,12 @@
 	"ui.mesh.mesh_approvals.expires_minutes": {
 		"role": "approval/permission explanation — onboarding authority approval",
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
-		"note": "Onboarding authority approval: names/explains expires minutes. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+		"note": "Onboarding authority approval: names/explains expires minutes. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale’s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
 	},
 	"ui.mesh.mesh_approvals.expires_hours": {
 		"role": "approval/permission explanation — onboarding authority approval",
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
-		"note": "Onboarding authority approval: names/explains expires hours. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+		"note": "Onboarding authority approval: names/explains expires hours. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale’s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
 	},
 	"ui.mesh.mesh_approvals.the_approvals_could_not_be_read": {
 		"role": "approval/permission explanation — onboarding authority approval",
@@ -542,7 +542,7 @@
 	"ui.mesh.mesh_card.conversation_count": {
 		"role": "status or explanatory text — device detail panel and conversation move menu",
 		"tone": "Factual and restrained",
-		"note": "Device detail panel and conversation move menu: names/explains conversation count. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+		"note": "Device detail panel and conversation move menu: names/explains conversation count. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale’s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility."
 	},
 	"ui.mesh.mesh_card.revoked_membership": {
 		"role": "status or explanatory text — device detail panel and conversation move menu",
@@ -772,37 +772,37 @@
 	"ui.mesh.mesh_graph.network_count": {
 		"role": "device/census status phrase — mesh device/census summary",
 		"tone": "Factual and restrained",
-		"note": "Mesh device/census summary: names/explains network count. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined."
+		"note": "Mesh device/census summary: names/explains network count. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale’s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility."
 	},
 	"ui.mesh.mesh_graph.device_count": {
 		"role": "dialog/section heading — mesh device/census summary",
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
-		"note": "Mesh device/census summary: names/explains device count. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+		"note": "Mesh device/census summary: names/explains device count. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale’s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility."
 	},
 	"ui.mesh.mesh_graph.suspected_count": {
 		"role": "device/census status phrase — mesh device/census summary",
 		"tone": "Factual and restrained",
-		"note": "Mesh device/census summary: names/explains suspected count. Identity/membership security state, not mere lack of a network response. Preserve the lockout or identity warning. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined."
+		"note": "Mesh device/census summary: names/explains suspected count. Identity/membership security state, not mere lack of a network response. Preserve the lockout or identity warning. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale’s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
 	},
 	"ui.mesh.mesh_graph.reached_count": {
 		"role": "device/census status phrase — mesh device/census summary",
 		"tone": "Factual and restrained",
-		"note": "Mesh device/census summary: names/explains reached count. Report only the observed reach/census fact: silence, not attempted and not reported are different states; the status frame is not a heartbeat. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined."
+		"note": "Mesh device/census summary: names/explains reached count. Report only the observed reach/census fact: silence, not attempted and not reported are different states; the status frame is not a heartbeat. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale’s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
 	},
 	"ui.mesh.mesh_graph.no_answer_count": {
 		"role": "device/census status phrase — mesh device/census summary",
 		"tone": "Factual and restrained",
-		"note": "Mesh device/census summary: names/explains no answer count. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined."
+		"note": "Mesh device/census summary: names/explains no answer count. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale’s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
 	},
 	"ui.mesh.mesh_graph.not_asked_count": {
 		"role": "device/census status phrase — mesh device/census summary",
 		"tone": "Factual and restrained",
-		"note": "Mesh device/census summary: names/explains not asked count. Report only the observed reach/census fact: silence, not attempted and not reported are different states; the status frame is not a heartbeat. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined."
+		"note": "Mesh device/census summary: names/explains not asked count. Report only the observed reach/census fact: silence, not attempted and not reported are different states; the status frame is not a heartbeat. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale’s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
 	},
 	"ui.mesh.mesh_graph.unknown_count": {
 		"role": "device/census status phrase — mesh device/census summary",
 		"tone": "Factual and restrained",
-		"note": "Mesh device/census summary: names/explains unknown count. Report only the observed reach/census fact: silence, not attempted and not reported are different states; the status frame is not a heartbeat. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined."
+		"note": "Mesh device/census summary: names/explains unknown count. Report only the observed reach/census fact: silence, not attempted and not reported are different states; the status frame is not a heartbeat. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale’s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
 	},
 	"ui.mesh.mesh_graph.self_identity": {
 		"role": "device/census status phrase — mesh device/census summary",
@@ -842,7 +842,7 @@
 	"ui.mesh.mesh_list.revoked_count": {
 		"role": "dialog/section heading — mesh device table",
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
-		"note": "Mesh device table: names/explains revoked count. Identity/membership security state, not mere lack of a network response. Preserve the lockout or identity warning. Placeholders: count = count of the named objects/states; ICU controls grammar. Inline fragment: preserve boundary spaces; its adjacent name/value stays in the existing markup. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+		"note": "Mesh device table: names/explains revoked count. Identity/membership security state, not mere lack of a network response. Preserve the lockout or identity warning. Placeholders: count = count of the named objects/states; ICU controls grammar. Inline fragment: preserve boundary spaces; its adjacent name/value stays in the existing markup. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale’s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
 	},
 	"ui.mesh.mesh_list.revoked": {
 		"role": "status or explanatory text — mesh device table",
@@ -862,7 +862,7 @@
 	"ui.mesh.mesh_list.show_all_panel": {
 		"role": "status or explanatory text — mesh device table",
 		"tone": "Factual and restrained",
-		"note": "Mesh device table: names/explains show all panel. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+		"note": "Mesh device table: names/explains show all panel. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale’s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
 	},
 	"ui.mesh.mesh_list.answered_the_peer_read_but_is_in": {
 		"role": "status or explanatory text — mesh device table",
@@ -887,12 +887,12 @@
 	"ui.mesh.mesh_node.shown_conversations": {
 		"role": "hover tooltip — network/device canvas node",
 		"tone": "Factual and restrained",
-		"note": "Network/device canvas node: names/explains shown conversations. Placeholders: shown = visible row count; total = known total; missing census must not be coerced to zero. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+		"note": "Network/device canvas node: names/explains shown conversations. Placeholders: shown = visible row count; total = known total; missing census must not be coerced to zero. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale’s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility."
 	},
 	"ui.mesh.mesh_node.show_all_conversations": {
 		"role": "accessible control/region name — network/device canvas node",
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
-		"note": "Network/device canvas node: names/explains show all conversations. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
+		"note": "Network/device canvas node: names/explains show all conversations. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale’s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility."
 	},
 	"ui.mesh.mesh_node.open_conversation": {
 		"role": "accessible control/region name — network/device canvas node",
@@ -1052,17 +1052,17 @@
 	"ui.mesh.mesh_node.memberships": {
 		"role": "status or explanatory text — network/device canvas node",
 		"tone": "Factual and restrained",
-		"note": "Network/device canvas node: names/explains memberships. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+		"note": "Network/device canvas node: names/explains memberships. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale’s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility."
 	},
 	"ui.mesh.mesh_graph.conversation_unit": {
 		"role": "device/census status phrase — mesh device/census summary",
 		"tone": "Factual and restrained",
-		"note": "Mesh device/census summary: names/explains conversation unit. Placeholders: count = count of the named objects/states; ICU controls grammar; conversation = operator-supplied conversation title or localized fallback; conversations = runtime value, preserve verbatim. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined."
+		"note": "Mesh device/census summary: names/explains conversation unit. Placeholders: count = count of the named objects/states; ICU controls grammar; conversation = operator-supplied conversation title or localized fallback; conversations = runtime value, preserve verbatim. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale’s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
 	},
 	"ui.mesh.mesh_approvals_tray.failed_count": {
 		"role": "summary prop — approvals waiting/settled tray",
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
-		"note": "Approvals waiting/settled tray: names/explains failed count. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the summary prop compact, around the English footprint; no hard cell cap is defined."
+		"note": "Approvals waiting/settled tray: names/explains failed count. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the summary prop compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale’s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
 	},
 	"ui.mesh.mesh_list.sort_conversations": {
 		"role": "status or explanatory text — mesh device table",
@@ -1072,6 +1072,6 @@
 	"ui.mesh.mesh_list.conversation_count": {
 		"role": "status or explanatory text — mesh device table",
 		"tone": "Factual and restrained",
-		"note": "Mesh device table: names/explains conversation count. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+		"note": "Mesh device table: names/explains conversation count. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale’s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility."
 	}
 }

@@ -464,6 +464,7 @@ const MeshApprovalCard: FC<{
 	/** Id -> name, for the summary's join clause (UX round 1, U1); absent until the mesh read lands. */
 	networkNames?: ReadonlyMap<string, string>;
 }> = ({ row, pending, busy, refusal, onDecide, nowSeconds, networkNames }) => {
+	useI18nLocale();
 	const waiting = isWaitingApproval(row.state);
 	const head = approvalHead(row);
 	const summary = approvalSummary(row, networkNames);
@@ -670,15 +671,18 @@ const MeshApprovalCard: FC<{
  */
 const MeshDecisionRefusal: FC<{
 	refusal: { code: string; sentence: string };
-}> = ({ refusal }) => (
-	<Alert
-		variant="warning"
-		className="text-meta"
-		data-tour-tag="mesh-approval-refusal"
-	>
-		<span className="flex min-w-0 flex-wrap items-center gap-2">
-			<span className="min-w-0 flex-1">{refusal.sentence}</span>
-			<span className="shrink-0 font-mono text-ink-dim">{refusal.code}</span>
-		</span>
-	</Alert>
-);
+}> = ({ refusal }) => {
+	useI18nLocale();
+	return (
+		<Alert
+			variant="warning"
+			className="text-meta"
+			data-tour-tag="mesh-approval-refusal"
+		>
+			<span className="flex min-w-0 flex-wrap items-center gap-2">
+				<span className="min-w-0 flex-1">{refusal.sentence}</span>
+				<span className="shrink-0 font-mono text-ink-dim">{refusal.code}</span>
+			</span>
+		</Alert>
+	);
+};

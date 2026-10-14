@@ -32,6 +32,7 @@
  */
 
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Monitor, Network, ShieldAlert } from "lucide-react";
 import type { FC } from "react";
@@ -262,45 +263,48 @@ export const MeshNetworkNode: FC<NetworkNodeProps> = ({
 	x,
 	y,
 	refused,
-}) => (
-	<li
-		data-mesh-network={network.id}
-		data-mesh-network-refused={refused ? "true" : undefined}
-		className={cn(
-			"absolute flex items-center gap-2 rounded-md border bg-elevated px-3",
-			// A refusal is the WARNING role and never the accent: the accent is spent on
-			// "this device", and a lane that lit up in it would read as "drop here".
-			refused ? "border-warning" : "border-hairline",
-		)}
-		style={{ left: x, top: y, width: NODE_WIDTH, height: NETWORK_HEIGHT }}
-	>
-		<Network aria-hidden="true" className="size-4 shrink-0 text-ink-muted" />
-		<span className="min-w-0 flex-1">
-			<span className="block truncate text-body-sm text-ink">
-				{network.label}
+}) => {
+	useI18nLocale();
+	return (
+		<li
+			data-mesh-network={network.id}
+			data-mesh-network-refused={refused ? "true" : undefined}
+			className={cn(
+				"absolute flex items-center gap-2 rounded-md border bg-elevated px-3",
+				// A refusal is the WARNING role and never the accent: the accent is spent on
+				// "this device", and a lane that lit up in it would read as "drop here".
+				refused ? "border-warning" : "border-hairline",
+			)}
+			style={{ left: x, top: y, width: NODE_WIDTH, height: NETWORK_HEIGHT }}
+		>
+			<Network aria-hidden="true" className="size-4 shrink-0 text-ink-muted" />
+			<span className="min-w-0 flex-1">
+				<span className="block truncate text-body-sm text-ink">
+					{network.label}
+				</span>
+				<span
+					/*
+					 * The member count, and `epoch` as the element's `title` rather than as a
+					 * second line: a lane has one line of room, and the epoch is the fact a
+					 * reader consults once (when something was revoked) rather than the one
+					 * they scan. Keeping it in the title spends no vertical space and keeps
+					 * the number on screen - the plan § 5's node contract, and #498's design
+					 * round 1, D10.
+					 */
+					title={t("ui.mesh.mesh_list.epoch", { epoch: network.epoch })}
+					className="block truncate text-meta text-ink-dim"
+				>
+					{t("ui.mesh.mesh_graph.device_count", { count: network.memberCount })}
+					{network.revokedCount > 0
+						? t("ui.mesh.mesh_list.revoked_count", {
+								count: network.revokedCount,
+							})
+						: ""}
+				</span>
 			</span>
-			<span
-				/*
-				 * The member count, and `epoch` as the element's `title` rather than as a
-				 * second line: a lane has one line of room, and the epoch is the fact a
-				 * reader consults once (when something was revoked) rather than the one
-				 * they scan. Keeping it in the title spends no vertical space and keeps
-				 * the number on screen - the plan § 5's node contract, and #498's design
-				 * round 1, D10.
-				 */
-				title={t("ui.mesh.mesh_list.epoch", { epoch: network.epoch })}
-				className="block truncate text-meta text-ink-dim"
-			>
-				{t("ui.mesh.mesh_graph.device_count", { count: network.memberCount })}
-				{network.revokedCount > 0
-					? t("ui.mesh.mesh_list.revoked_count", {
-							count: network.revokedCount,
-						})
-					: ""}
-			</span>
-		</span>
-	</li>
-);
+		</li>
+	);
+};
 
 type DeviceNodeProps = {
 	device: MeshDevice;
@@ -345,6 +349,7 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 	onChipClick,
 	onShowAllSessions,
 }) => {
+	useI18nLocale();
 	/*
 	 * WHAT THE NODE SAYS, and what it deliberately does not.
 	 *
@@ -700,6 +705,7 @@ const SessionChip: FC<SessionChipProps> = ({
 	onPointerDown,
 	onClick,
 }) => {
+	useI18nLocale();
 	const fact = chipFact(session, ownerLabel, ownerReach);
 	if (moving) {
 		return (

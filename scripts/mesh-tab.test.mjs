@@ -4223,7 +4223,22 @@ test("mesh extraction keeps pinned labels and source-language plural fallback", 
 			);
 			assert.equal(
 				mesh.t("ui.mesh.mesh_node.show_all_conversations", { count }),
-				`Show all ${count} conversations`,
+				`Show all ${count} ${count === 1 ? "conversation" : "conversations"}`,
+			);
+			assert.equal(
+				mesh.t("ui.mesh.mesh_node.shown_conversations", {
+					shown: count,
+					total: count,
+				}),
+				`Showing ${count} of ${count} ${count === 1 ? "conversation" : "conversations"}`,
+			);
+			assert.equal(
+				mesh.t("ui.mesh.mesh_node.memberships", { count }),
+				`· ${count} ${count === 1 ? "network" : "networks"}`,
+			);
+			assert.equal(
+				mesh.t("ui.mesh.mesh_graph.device_count", { count }),
+				`${count} ${count === 1 ? "device" : "devices"}`,
 			);
 		}
 	} finally {

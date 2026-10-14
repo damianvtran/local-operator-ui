@@ -460,8 +460,9 @@ export const MeshList: FC<MeshListProps> = ({
 				 * a device the relay says is there.
 				 */
 				<p className="text-meta text-warning">
-					{graph.unmatchedPeers.length}{" "}
-					{graph.unmatchedPeers.length === 1 ? "device" : "devices"}{" "}
+					{t("ui.mesh.mesh_graph.device_count", {
+						count: graph.unmatchedPeers.length,
+					})}{" "}
 					{t("ui.mesh.mesh_list.answered_the_peer_read_but_is_in")}
 				</p>
 			)}
