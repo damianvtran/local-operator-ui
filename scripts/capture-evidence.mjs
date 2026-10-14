@@ -2142,6 +2142,12 @@ export const STORIES = [
 	["console-pane--at-capacity", CONSOLE_PANE_WIDTH, 560],
 	["console-pane--narrow-pane", 320, 520],
 	/*
+	 * D2/D8's rendered outcome (design round 2): the Clear stub answers a non-zero
+	 * released count, so the `Cleared N…` notice is a frame. A story with no row
+	 * here is silently unrendered.
+	 */
+	["console-pane--release-result", CONSOLE_PANE_WIDTH, 560],
+	/*
 	 * D21's own state, and the reason it is here rather than only in the component's
 	 * stories: the selection became load-bearing this round (1.11:1 -> the accent, gated by
 	 * `check-themes`) and no frame anywhere in the set showed one, so its appearance was

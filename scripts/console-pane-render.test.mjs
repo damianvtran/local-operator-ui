@@ -850,7 +850,7 @@ test("a running close asks first and only the confirm reaches the bridge; an end
 			await waitFor(() => confirmDialog() !== null),
 			"a retained dismissal went through without a question",
 		);
-		assert.match(confirmDialog().textContent, /Dismiss this terminal\?/);
+		assert.match(confirmDialog().textContent, /Clear this terminal\?/);
 		await press(confirmDialog().querySelector("[data-confirm-action]"));
 		assert.ok(
 			await waitFor(() => bridge.calls.close.length === 2),

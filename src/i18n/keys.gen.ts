@@ -53,6 +53,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 /** One entry per bundled message id, shaped by the message's own arguments. */
 export type MessageParams = {
 	"ui.console.capacity.archived": { archived: number };
+	"ui.console.capacity.full": undefined;
 	"ui.console.capacity.help": undefined;
 	"ui.console.capacity.resources": {
 		memory: number;
@@ -62,6 +63,12 @@ export type MessageParams = {
 		protected: number;
 	};
 	"ui.console.capacity.summary": { live: number; limit: number };
+	"ui.console.capacity.summary_compact": {
+		live: number;
+		limit: number;
+		archived: number;
+	};
+	"ui.console.capacity.summary_compact_bare": { live: number; limit: number };
 	"ui.console.cleanup.help": undefined;
 	"ui.console.cleanup.label": undefined;
 	"ui.console.cleanup.result": { released: number; protected: number };

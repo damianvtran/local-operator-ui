@@ -162,6 +162,9 @@ const REAL_API = window.api;
 const installFixture = (options: {
 	surfaces: SurfaceFixture[];
 	capacity?: { live: number; archived: number; limit: number };
+	/** The {released, protected} the Clear stub answers with, so the result notice's
+	 * `Cleared N…` branch has a frame (design round 2, D2/D8). */
+	cleanupResult?: { released: number; protected: number };
 	/** Never answers, for the loading state. */
 	hang?: boolean;
 	/**
@@ -223,6 +226,15 @@ const installFixture = (options: {
 					to_byte: 0,
 					truncated: false,
 				});
+			/*
+			 * THE CLEAR'S ANSWER (design round 2, D2/D8): a stub that always answers
+			 * `released: 0` can only ever render the `result_none` branch, which is why
+			 * the round-2 reviewer could verify `Cleared N…` from code alone. When a
+			 * fixture names `cleanupResult`, the stub answers it, so the branch is a
+			 * captured frame.
+			 */
+			if (op === "cleanupOwner" && options.cleanupResult)
+				return Promise.resolve({ ...state(), ...options.cleanupResult });
 			return Promise.resolve(state());
 		};
 	const stub = {
@@ -261,6 +273,10 @@ const installFixture = (options: {
 const Frame: FC<{
 	surfaces: SurfaceFixture[];
 	capacity?: { live: number; archived: number; limit: number };
+	/** The released/protected counts the Clear stub answers with, so the pane's
+	 * `Cleared N…` branch is a RENDERED frame rather than a code-only claim (design
+	 * round 2, D2/D8). */
+	cleanupResult?: { released: number; protected: number };
 	sessionId?: string | null;
 	hang?: boolean;
 	unavailable?: { reason: string; detail: string };
@@ -275,9 +291,15 @@ const Frame: FC<{
 	 * ended and restored banners (§7.3, D6). Every other state is the same box, so a
 	 * difference between two frames is a difference in the pane. */
 	height?: number;
+	/** The pane box's width. Defaults to the slot's one default; the narrow frame
+	 * passes 320 (design round 2, D8's NarrowPane, which must render the REAL
+	 * header at the slot's floor, not the unavailable fallback a fixture-less
+	 * story produces). */
+	width?: number;
 }> = ({
 	surfaces,
 	capacity,
+	cleanupResult,
 	sessionId = THIS_CONVERSATION,
 	hang,
 	unavailable,
@@ -285,10 +307,11 @@ const Frame: FC<{
 	unseenAgeMs = 0,
 	unseenSession,
 	height = 520,
+	width = DEFAULT_RIGHT_SLOT_WIDTH,
 }) => {
 	// Installed during render: see `installFixture` for why an effect is one commit
 	// too late for a component whose input is the projection.
-	installFixture({ surfaces, capacity, hang, unavailable });
+	installFixture({ surfaces, capacity, hang, unavailable, cleanupResult });
 	useEffect(() => {
 		useUiPreferencesStore.setState({
 			consoleUnseen: (unseen ?? []).map((surface) => ({
@@ -300,10 +323,7 @@ const Frame: FC<{
 		return () => useUiPreferencesStore.setState({ consoleUnseen: [] });
 	}, [unseen, sessionId, unseenAgeMs, unseenSession]);
 	return (
-		<div
-			className="bg-surface p-0"
-			style={{ width: DEFAULT_RIGHT_SLOT_WIDTH, height }}
-		>
+		<div className="bg-surface p-0" style={{ width, height }}>
 			<ConsolePane sessionId={sessionId} onClose={() => {}} />
 		</div>
 	);
@@ -457,10 +477,69 @@ export const AtCapacity: Story = {
  */
 export const NarrowPane: Story = {
 	render: () => (
-		<div className="bg-surface p-0" style={{ width: 320, height: 520 }}>
-			<ConsolePane sessionId={THIS_CONVERSATION} onClose={() => {}} />
-		</div>
+		<Frame
+			/* THE REAL HEADER, not the unavailable fallback (design round 2, D8): the
+			 * story installs the same capacity fixture as AtCapacity, so the sweep
+			 * photographs the compact summary at the slot's 320px floor. */
+			width={320}
+			capacity={{ live: 128, archived: 4, limit: 128 }}
+			surfaces={[
+				surface({ surface: "con:1:narrowRunning", last_activity: NOW + 1 }),
+				surface({
+					surface: "con:2:narrowReadyAgent",
+					origin: "agent",
+					agent_owned: true,
+					running: false,
+					exit_code: 0,
+					retain: true,
+					last_activity: NOW - 30,
+				}),
+			]}
+		/>
 	),
+};
+
+/**
+ * THE RELEASE OUTCOME, RENDERED (design round 2, D2/D8): the stub answers
+ * `{released: 3, protected: 1}`, so the `Cleared 3 finished agent terminals.`
+ * notice is a frame rather than a code-only claim. The story is a static
+ * screenshot, so the notice is shown by a `play` pressing Clear once — the real
+ * handler, the real channel.
+ */
+export const ReleaseResult: Story = {
+	render: () => (
+		<Frame
+			capacity={{ live: 128, archived: 4, limit: 128 }}
+			cleanupResult={{ released: 3, protected: 1 }}
+			surfaces={[
+				surface({ surface: "con:1:releaseRunning", last_activity: NOW + 1 }),
+				surface({
+					surface: "con:2:releaseReadyAgent",
+					origin: "agent",
+					agent_owned: true,
+					running: false,
+					exit_code: 0,
+					retain: true,
+					last_activity: NOW - 30,
+				}),
+			]}
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		const clear = canvasElement.querySelector(
+			'[aria-label="Clear finished agent terminals"]',
+		);
+		expect(clear, "the Clear control is not rendered").not.toBeNull();
+		(clear as HTMLButtonElement).click();
+		/* The notice is set after the awaited stub answers; a short beat lets it
+		 * paint so the sweep captures the populated frame rather than the pre-click
+		 * one. */
+		await new Promise((resolve) => setTimeout(resolve, 150));
+		expect(
+			canvasElement.querySelector('[data-tour-tag="console-cleanup-result"]'),
+			"the Clear result notice never rendered",
+		).not.toBeNull();
+	},
 };
 
 /** The lens with more than one surface, one of them opened by an agent: the
