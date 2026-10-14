@@ -32,6 +32,7 @@ import enUiAgentsStarters from "./catalogues/en/ui.agents.starters.json";
 import enUiBrowserChrome from "./catalogues/en/ui.browser.chrome.json";
 import enUiBrowser from "./catalogues/en/ui.browser.json";
 import enUiCanvas from "./catalogues/en/ui.canvas.json";
+import enUiChatComposer from "./catalogues/en/ui.chat.composer.json";
 import enUiChatComposerMedia from "./catalogues/en/ui.chat.composer_media.json";
 import enUiChatDialogs from "./catalogues/en/ui.chat.dialogs.json";
 import enUiChat from "./catalogues/en/ui.chat.json";
@@ -110,6 +111,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiBrowserChrome,
 	...enUiBrowser,
 	...enUiCanvas,
+	...enUiChatComposer,
 	...enUiChatComposerMedia,
 	...enUiChatDialogs,
 	...enUiChat,
@@ -735,6 +737,28 @@ export type MessageParams = {
 	"ui.canvas.files.unreadable": undefined;
 	"ui.canvas.files.videos": undefined;
 	"ui.canvas.files.working": undefined;
+	"ui.chat.composer.ask_aside": undefined;
+	"ui.chat.composer.attach_file": undefined;
+	"ui.chat.composer.cancel_recording": undefined;
+	"ui.chat.composer.cancel_recording_hint": undefined;
+	"ui.chat.composer.clear_message": undefined;
+	"ui.chat.composer.confirm_recording": undefined;
+	"ui.chat.composer.confirm_recording_hint": undefined;
+	"ui.chat.composer.delivery_remedies_hint": undefined;
+	"ui.chat.composer.message": undefined;
+	"ui.chat.composer.processing_audio": undefined;
+	"ui.chat.composer.send_message": undefined;
+	"ui.chat.composer.start_recording": undefined;
+	"ui.chat.composer.start_recording_hint": {
+		shortcut: string;
+		pushToTalk: string;
+	};
+	"ui.chat.composer.starting": undefined;
+	"ui.chat.composer.starting_recording": undefined;
+	"ui.chat.composer.stop": undefined;
+	"ui.chat.composer.stop_agent": undefined;
+	"ui.chat.composer.stop_work_hint": undefined;
+	"ui.chat.composer.welcome": undefined;
 	"ui.chat.composer_media.cancels": undefined;
 	"ui.chat.composer_media.confirms": undefined;
 	"ui.chat.composer_media.pasted_file": undefined;

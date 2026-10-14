@@ -1,0 +1,115 @@
+{
+	"ui.chat.composer.clear_message": {
+		"role": "clear-message control accessible name",
+		"tone": "short imperative action",
+		"note": "Resolved during render; retain the existing control meaning and do not alter key-binding labels. maxCells is an advisory translation target, not measured fit.",
+		"maxCells": 20
+	},
+	"ui.chat.composer.message": {
+		"role": "textarea accessible name",
+		"tone": "short noun phrase",
+		"note": "Accessible name of the textarea; not a placeholder. maxCells is an advisory translation target, not measured fit.",
+		"maxCells": 20
+	},
+	"ui.chat.composer.attach_file": {
+		"role": "control tooltip and/or accessible name",
+		"tone": "short imperative action, sentence case; no trailing punctuation",
+		"note": "Resolved during render; retain the existing control meaning and do not alter key-binding labels. maxCells is an advisory translation target, not measured fit.",
+		"maxCells": 24
+	},
+	"ui.chat.composer.start_recording": {
+		"role": "control tooltip and/or accessible name",
+		"tone": "short imperative action, sentence case; no trailing punctuation",
+		"note": "Resolved during render; retain the existing control meaning and do not alter key-binding labels. maxCells is an advisory translation target, not measured fit.",
+		"maxCells": 24
+	},
+	"ui.chat.composer.confirm_recording": {
+		"role": "control tooltip and/or accessible name",
+		"tone": "short imperative action, sentence case; no trailing punctuation",
+		"note": "Resolved during render; retain the existing control meaning and do not alter key-binding labels. maxCells is an advisory translation target, not measured fit.",
+		"maxCells": 24
+	},
+	"ui.chat.composer.confirm_recording_hint": {
+		"role": "control tooltip with keyboard binding",
+		"tone": "short imperative action, sentence case",
+		"note": "Resolved during render; retain the existing control meaning and do not alter key-binding labels. maxCells is an advisory translation target, not measured fit.",
+		"maxCells": 80
+	},
+	"ui.chat.composer.cancel_recording": {
+		"role": "control tooltip and/or accessible name",
+		"tone": "short imperative action, sentence case; no trailing punctuation",
+		"note": "Resolved during render; retain the existing control meaning and do not alter key-binding labels. maxCells is an advisory translation target, not measured fit.",
+		"maxCells": 24
+	},
+	"ui.chat.composer.cancel_recording_hint": {
+		"role": "control tooltip with keyboard binding",
+		"tone": "short imperative action, sentence case",
+		"note": "Resolved during render; retain the existing control meaning and do not alter key-binding labels. maxCells is an advisory translation target, not measured fit.",
+		"maxCells": 80
+	},
+	"ui.chat.composer.stop": {
+		"role": "control tooltip and/or accessible name",
+		"tone": "short imperative action, sentence case; no trailing punctuation",
+		"note": "Resolved during render; retain the existing control meaning and do not alter key-binding labels. maxCells is an advisory translation target, not measured fit.",
+		"maxCells": 24
+	},
+	"ui.chat.composer.stop_work_hint": {
+		"role": "control tooltip with keyboard binding",
+		"tone": "short imperative action, sentence case",
+		"note": "Resolved during render; retain the existing control meaning and do not alter key-binding labels. maxCells is an advisory translation target, not measured fit.",
+		"maxCells": 80
+	},
+	"ui.chat.composer.stop_agent": {
+		"role": "control tooltip and/or accessible name",
+		"tone": "short imperative action, sentence case; no trailing punctuation",
+		"note": "Resolved during render; retain the existing control meaning and do not alter key-binding labels. maxCells is an advisory translation target, not measured fit.",
+		"maxCells": 24
+	},
+	"ui.chat.composer.ask_aside": {
+		"role": "control tooltip and/or accessible name",
+		"tone": "short imperative action, sentence case; no trailing punctuation",
+		"note": "Resolved during render; retain the existing control meaning and do not alter key-binding labels. maxCells is an advisory translation target, not measured fit.",
+		"maxCells": 24
+	},
+	"ui.chat.composer.send_message": {
+		"role": "control tooltip and/or accessible name",
+		"tone": "short imperative action, sentence case; no trailing punctuation",
+		"note": "Resolved during render; retain the existing control meaning and do not alter key-binding labels. maxCells is an advisory translation target, not measured fit.",
+		"maxCells": 24
+	},
+	"ui.chat.composer.starting": {
+		"role": "composer asynchronous status",
+		"tone": "brief ongoing-state phrase, sentence case",
+		"note": "Compact status while microphone acquisition is pending. maxCells is an advisory translation target, not measured fit.",
+		"maxCells": 24
+	},
+	"ui.chat.composer.starting_recording": {
+		"role": "composer asynchronous status",
+		"tone": "brief ongoing-state phrase, sentence case",
+		"note": "Full status while microphone acquisition is pending. maxCells is an advisory translation target, not measured fit.",
+		"maxCells": 24
+	},
+	"ui.chat.composer.start_recording_hint": {
+		"role": "control tooltip with keyboard binding",
+		"tone": "short imperative action, sentence case",
+		"note": "shortcut and pushToTalk are existing platform key-binding labels; preserve both arguments. Tooltip only. maxCells is an advisory translation target, not measured fit.",
+		"maxCells": 80
+	},
+	"ui.chat.composer.processing_audio": {
+		"role": "composer asynchronous status",
+		"tone": "brief ongoing-state phrase, sentence case",
+		"note": "Resolved during render; retain the existing control meaning and do not alter key-binding labels. maxCells is an advisory translation target, not measured fit.",
+		"maxCells": 24
+	},
+	"ui.chat.composer.welcome": {
+		"role": "empty conversation heading",
+		"tone": "friendly direct question",
+		"note": "Empty conversation welcome heading, not a send action. maxCells is an advisory translation target, not measured fit.",
+		"maxCells": 48
+	},
+	"ui.chat.composer.delivery_remedies_hint": {
+		"role": "composer control accessible name, tooltip or status",
+		"tone": "short neutral sentence case; English punctuation unchanged",
+		"note": "Screen-reader-only navigation hint above textarea. Send again/Edit are controls in the conversation; Shift+Tab is a keyboard token."
+	}
+}
