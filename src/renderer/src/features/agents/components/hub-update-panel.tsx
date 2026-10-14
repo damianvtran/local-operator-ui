@@ -55,6 +55,8 @@ import {
 	hubMarkFor,
 } from "@shared/api/local-operator/hub-updates";
 import { Button } from "@shared/components/ui/button";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useState } from "react";
 
@@ -102,10 +104,12 @@ export function differingRegions(
 function Preview({
 	regions,
 }: { regions: { field: string; region: HubMergeRegion }[] }) {
+	// Refresh translated copy without resetting the current selection or action.
+	useI18nLocale();
 	if (!regions.length)
 		return (
 			<p className="text-meta text-ink-muted">
-				No differences to show: the hub's version matches yours.
+				{t("ui.agents.navigation.updates.preview.empty")}
 			</p>
 		);
 	return (
@@ -120,15 +124,21 @@ function Preview({
 					</p>
 					<div className="grid gap-2 sm:grid-cols-2">
 						<div>
-							<p className="text-ink-muted">Yours</p>
+							<p className="text-ink-muted">
+								{t("ui.agents.navigation.updates.preview.local")}
+							</p>
 							<pre className="max-h-40 overflow-auto whitespace-pre-wrap rounded-sm border border-hairline p-2 text-ink">
-								{asText(region.local) || "(nothing)"}
+								{asText(region.local) ||
+									t("ui.agents.navigation.updates.preview.nothing")}
 							</pre>
 						</div>
 						<div>
-							<p className="text-ink-muted">The hub's</p>
+							<p className="text-ink-muted">
+								{t("ui.agents.navigation.updates.preview.remote")}
+							</p>
 							<pre className="max-h-40 overflow-auto whitespace-pre-wrap rounded-sm border border-hairline p-2 text-ink">
-								{asText(region.remote) || "(nothing)"}
+								{asText(region.remote) ||
+									t("ui.agents.navigation.updates.preview.nothing")}
 							</pre>
 						</div>
 					</div>
@@ -148,6 +158,8 @@ export function HubUpdatePanel({
 	/** `desktopFeatureEnabled(capabilities, "hub_updates")` - the caller already holds capabilities. */
 	enabled: boolean;
 }) {
+	// Refresh translated copy without resetting the current selection or action.
+	useI18nLocale();
 	const updates = useHubUpdates(enabled);
 	const hub = useHubActions();
 	const [preview, setPreview] = useState<HubMergeReport[] | null>(null);
@@ -162,7 +174,7 @@ export function HubUpdatePanel({
 		return (
 			<section
 				data-testid="hub-update-panel"
-				aria-label="Hub update"
+				aria-label={t("ui.agents.navigation.updates.accessible")}
 				className="mb-8 rounded-md border border-hairline p-3 text-body-sm"
 			>
 				<p
@@ -190,7 +202,7 @@ export function HubUpdatePanel({
 	return (
 		<section
 			data-testid="hub-update-panel"
-			aria-label="Hub update"
+			aria-label={t("ui.agents.navigation.updates.accessible")}
 			className={cn(
 				"mb-8 space-y-2 rounded-md border p-3 text-body-sm",
 				STATE_BORDER[mark.kind],
@@ -209,16 +221,12 @@ export function HubUpdatePanel({
 			)}
 			{decision && unknownBaseline && (
 				<p className="text-meta text-ink-muted">
-					Nothing records what you changed on this device. Either choice adds
-					the hub's additions and deletes nothing of yours; where the two
-					versions differ, your choice decides which wording stays.
+					{t("ui.agents.navigation.updates.baseline_unknown")}
 				</p>
 			)}
 			{decision && !unknownBaseline && (
 				<p className="text-meta text-ink-muted">
-					Where the two versions differ, your choice decides which wording
-					stays. Everything else is merged, and your current version is saved as
-					a backup first.
+					{t("ui.agents.navigation.updates.merge_guidance")}
 				</p>
 			)}
 			<div className="flex flex-wrap gap-2">
@@ -231,7 +239,9 @@ export function HubUpdatePanel({
 							!busy && hub.canWrite && void hub.applyItem(kind, name)
 						}
 					>
-						{busy ? "Updating…" : "Update from the hub"}
+						{busy
+							? t("ui.agents.navigation.updates.action.updating")
+							: t("ui.agents.navigation.updates.action.update")}
 					</Button>
 				)}
 				{mark.kind === "failed" && mark.retryable && (
@@ -243,7 +253,9 @@ export function HubUpdatePanel({
 							!busy && hub.canWrite && void hub.retryItem(kind, name)
 						}
 					>
-						{busy ? "Retrying…" : "Retry"}
+						{busy
+							? t("ui.agents.navigation.updates.action.retrying")
+							: t("ui.agents.navigation.updates.action.retry")}
 					</Button>
 				)}
 				{decision && (
@@ -254,7 +266,9 @@ export function HubUpdatePanel({
 							aria-disabled={busy || !hub.canWrite || undefined}
 							onClick={() => !busy && hub.canWrite && void previewNow()}
 						>
-							{busy && !preview ? "Loading…" : "Preview the differences"}
+							{busy && !preview
+								? t("ui.agents.navigation.updates.action.loading")
+								: t("ui.agents.navigation.updates.action.preview")}
 						</Button>
 						<Button
 							size="sm"
@@ -266,7 +280,7 @@ export function HubUpdatePanel({
 								void hub.applyItem(kind, name, options("local"))
 							}
 						>
-							Keep mine where they differ
+							{t("ui.agents.navigation.updates.action.keep_local")}
 						</Button>
 						<Button
 							size="sm"
@@ -278,7 +292,7 @@ export function HubUpdatePanel({
 								void hub.applyItem(kind, name, options("remote"))
 							}
 						>
-							Use the hub's where they differ
+							{t("ui.agents.navigation.updates.action.use_remote")}
 						</Button>
 					</>
 				)}

@@ -124,7 +124,10 @@ const AgentsSidebarItem: FC<AgentsSidebarItemProps> = ({
 	onAgentDeleted,
 	onUploadAgentToHub,
 }) => {
-	const description = agent.description || "No description";
+	// Refresh translated copy without resetting the current selection or action.
+	useI18nLocale();
+	const description =
+		agent.description || t("ui.agents.navigation.sidebar.no_description");
 
 	return (
 		<li className="group relative">
@@ -198,7 +201,7 @@ const AgentsSidebarItem: FC<AgentsSidebarItemProps> = ({
 					"group-focus-within:pointer-events-auto group-focus-within:opacity-100",
 				)}
 			>
-				<Tooltip content="Agent options">
+				<Tooltip content={t("ui.agents.navigation.sidebar.options")}>
 					<span>
 						<AgentOptionsMenu
 							agentId={agent.id}
@@ -256,6 +259,8 @@ const AgentsSidebarComponent: FC<AgentsSidebarProps> = ({
 	onSelectAgent,
 }) => {
 	const navigate = useNavigate();
+	// The memoized sidebar must also observe locale changes directly.
+	useI18nLocale();
 	const [searchQuery, setSearchQuery] = useState("");
 	const openCreateAgentDialog = useUiPreferencesStore(
 		(state) => state.openCreateAgentDialog,
@@ -465,18 +470,21 @@ const AgentsSidebarComponent: FC<AgentsSidebarProps> = ({
 	return (
 		<div className="flex h-full w-full flex-col overflow-hidden bg-surface">
 			<SidebarHeader
-				title="Agents"
+				title={t("ui.agents.navigation.sidebar.title")}
 				searchQuery={searchQuery}
 				onSearchChange={(query) => setSearchQuery(query)}
 				onNewAgentClick={openCreateAgentDialog}
 				onImportAgentClick={handleOpenImportDialog}
-				importAgentTooltip="Import an agent from a ZIP file"
+				importAgentTooltip={t("ui.agents.navigation.sidebar.import_hint")}
 			/>
 
 			{isLoading ? (
 				<div className="flex flex-1 items-center justify-center">
 					{/* Nothing beside it says what is loading, so the spinner names itself. */}
-					<Spinner size="lg" label="Loading agents" />
+					<Spinner
+						size="lg"
+						label={t("ui.agents.navigation.sidebar.loading")}
+					/>
 				</div>
 			) : isError ? (
 				<Alert
@@ -489,7 +497,7 @@ const AgentsSidebarComponent: FC<AgentsSidebarProps> = ({
 					className="m-4 w-auto"
 				>
 					<AlertDescription>
-						Failed to load agents. Please try again.
+						{t("ui.agents.navigation.sidebar.error")}
 					</AlertDescription>
 					<Button
 						variant="ghost"
@@ -497,12 +505,14 @@ const AgentsSidebarComponent: FC<AgentsSidebarProps> = ({
 						className="self-start"
 						onClick={() => refetch()}
 					>
-						Retry
+						{t("ui.agents.navigation.sidebar.retry")}
 					</Button>
 				</Alert>
 			) : combinedAgents.length === 0 && !isLoading ? ( // Check combinedAgents and isLoading
 				<p className="p-6 text-center text-body-sm text-ink-muted">
-					{searchQuery ? "No agents match your search" : "No agents found"}
+					{searchQuery
+						? t("ui.agents.navigation.sidebar.search_empty")
+						: t("ui.agents.navigation.sidebar.empty")}
 				</p>
 			) : (
 				<TooltipProvider

@@ -22,6 +22,7 @@
  */
 
 import enUiAgents from "./catalogues/en/ui.agents.json";
+import enUiAgentsNavigation from "./catalogues/en/ui.agents.navigation.json";
 import enUiAgentsRefusals from "./catalogues/en/ui.agents.refusals.json";
 import enUiAgentsSettings from "./catalogues/en/ui.agents.settings.json";
 import enUiAgentsStarters from "./catalogues/en/ui.agents.starters.json";
@@ -60,6 +61,7 @@ import frUiSettings from "./catalogues/fr/ui.settings.json";
 /** The bundled en catalogue: every `src/i18n/catalogues/en` message, flat. */
 export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgents,
+	...enUiAgentsNavigation,
 	...enUiAgentsRefusals,
 	...enUiAgentsSettings,
 	...enUiAgentsStarters,
@@ -107,6 +109,38 @@ export const bundledCatalogues: Readonly<
 
 /** One entry per bundled message id, shaped by the message's own arguments. */
 export type MessageParams = {
+	"ui.agents.navigation.legacy.chat": undefined;
+	"ui.agents.navigation.legacy.chat_named": { name: string };
+	"ui.agents.navigation.legacy.export": undefined;
+	"ui.agents.navigation.legacy.more_actions": undefined;
+	"ui.agents.navigation.legacy.subtitle": undefined;
+	"ui.agents.navigation.legacy.title": undefined;
+	"ui.agents.navigation.legacy.unnamed_agent": undefined;
+	"ui.agents.navigation.legacy.upload": undefined;
+	"ui.agents.navigation.sidebar.empty": undefined;
+	"ui.agents.navigation.sidebar.error": undefined;
+	"ui.agents.navigation.sidebar.import_hint": undefined;
+	"ui.agents.navigation.sidebar.loading": undefined;
+	"ui.agents.navigation.sidebar.no_description": undefined;
+	"ui.agents.navigation.sidebar.options": undefined;
+	"ui.agents.navigation.sidebar.retry": undefined;
+	"ui.agents.navigation.sidebar.search_empty": undefined;
+	"ui.agents.navigation.sidebar.title": undefined;
+	"ui.agents.navigation.updates.accessible": undefined;
+	"ui.agents.navigation.updates.action.keep_local": undefined;
+	"ui.agents.navigation.updates.action.loading": undefined;
+	"ui.agents.navigation.updates.action.preview": undefined;
+	"ui.agents.navigation.updates.action.retry": undefined;
+	"ui.agents.navigation.updates.action.retrying": undefined;
+	"ui.agents.navigation.updates.action.update": undefined;
+	"ui.agents.navigation.updates.action.updating": undefined;
+	"ui.agents.navigation.updates.action.use_remote": undefined;
+	"ui.agents.navigation.updates.baseline_unknown": undefined;
+	"ui.agents.navigation.updates.merge_guidance": undefined;
+	"ui.agents.navigation.updates.preview.empty": undefined;
+	"ui.agents.navigation.updates.preview.local": undefined;
+	"ui.agents.navigation.updates.preview.nothing": undefined;
+	"ui.agents.navigation.updates.preview.remote": undefined;
 	"ui.agents.refusals.class.effect.proactive": undefined;
 	"ui.agents.refusals.class.effect.reactive": undefined;
 	"ui.agents.refusals.class.error.install_landed": { reason: string };
