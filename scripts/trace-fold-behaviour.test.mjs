@@ -31,9 +31,9 @@ import React, { act } from "react";
  * states LOOK like; it cannot say why a fold that was open is now closed, and
  * the closes this file polices are transitions with guards rather than states.
  * jsdom has no layout engine, so "the rows are visible" is asserted as the
- * component's own contract - the rows are in the DOM, and the collapsed state
- * unmounts them (`Disclosure` renders `isOpen && children`) - never as
- * geometry. Pixels live on the rig (`scripts/scroll-shift-evidence.mjs`) and in
+ * component's own contract - a text-only exit retains rows until height
+ * completion or the 240ms missing-event bound; steady closed bodies have no
+ * rows, and media folds swap immediately - never as geometry. Pixels live on the rig (`scripts/scroll-shift-evidence.mjs`) and in
  * `docs/evidence/scroll-shift/`.
  *
  * The harness is this repository's committed one for a rendered surface: esbuild
@@ -71,6 +71,14 @@ globalThis.document = bootstrapDOM.window.document;
 // says it is a test one (`scripts/browser-file-transfer-row.test.mjs:48`'s
 // rule); without it every act() below floods stderr (agent review R5).
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+// CSS motion is not simulated by jsdom. The query is a controllable negative
+// control: reduction must remove the exit body immediately, not after a timer.
+let reduceMotion = false;
+window.matchMedia = () => ({
+	matches: reduceMotion,
+	addEventListener() {},
+	removeEventListener() {},
+});
 const { createRoot } = await import("react-dom/client");
 after(() => {
 	bootstrapDOM.window.close();
@@ -83,6 +91,7 @@ const bundle = await build({
 		contents: `
 			import { createElement } from "react";
 			export { TraceFold } from "./src/renderer/src/features/chat/components/trace/trace-fold";
+			export { Disclosure } from "./src/renderer/src/shared/components/ui/disclosure";
 			export { foldSummary, foldSummarySpec } from "./src/renderer/src/features/chat/canonical/trace-fold-model";
 			export { createElement };
 		`,
@@ -119,9 +128,8 @@ const bundlePath = new URL(
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 after(() => unlink(bundlePath).catch(() => {}));
 
-const { TraceFold, createElement, foldSummary, foldSummarySpec } = await import(
-	bundlePath.href
-);
+const { TraceFold, Disclosure, createElement, foldSummary, foldSummarySpec } =
+	await import(bundlePath.href);
 
 /**
  * Controlled the way the transcript drives it, so the mount exercises the
@@ -129,12 +137,13 @@ const { TraceFold, createElement, foldSummary, foldSummarySpec } = await import(
  * press is reported upward, and the harness keeps that state across
  * re-renders the way the transcript's registry does (`fold-open.ts`).
  */
-const ControlledFold = ({ initialOpen = false, ...props }) => {
+const ControlledFold = ({ initialOpen = false, rowMedia, ...props }) => {
 	const [open, setOpen] = React.useState(initialOpen);
 	return createElement(
 		TraceFold,
 		{ ...props, open, onOpenChange: setOpen },
 		createElement("span", { "data-testid": "fold-row" }, "row"),
+		rowMedia,
 	);
 };
 
@@ -185,7 +194,7 @@ const liveClause = (mounted) =>
 	mounted.container.querySelector("[data-fold-live]")?.textContent ?? null;
 const spanText = (mounted) =>
 	mounted.container.querySelector("[data-fold-span]")?.textContent ?? null;
-const click = async (mounted) => {
+const click = async (mounted, finish = true) => {
 	const trigger = mounted.container.querySelector("button");
 	assert.ok(trigger, "the fold's trigger exists");
 	await act(async () => {
@@ -193,6 +202,18 @@ const click = async (mounted) => {
 			new window.MouseEvent("click", { bubbles: true, cancelable: true }),
 		);
 	});
+	if (finish && trigger.getAttribute("aria-expanded") === "false") {
+		await finishExit(mounted);
+	}
+};
+
+// Dispatch the browser's completion, not an assertion about jsdom geometry.
+const finishExit = async (mounted, propertyName = "grid-template-rows") => {
+	const body = mounted.container.querySelector("[data-disclosure-body]");
+	if (!body) return;
+	const event = new window.Event("transitionend", { bubbles: true });
+	Object.defineProperty(event, "propertyName", { value: propertyName });
+	await act(async () => body.dispatchEvent(event));
 };
 
 /*
@@ -215,6 +236,143 @@ const click = async (mounted) => {
  */
 const mediaStrip = () =>
 	createElement("span", { "data-testid": "fold-media" }, "picture");
+
+test("aggregate exit retains rows only until height completes, inert immediately", async (t) => {
+	const mounted = await mount(t, { span: null, live: null });
+	await click(mounted);
+	await click(mounted, false);
+	const body = mounted.container.querySelector("[data-disclosure-body]");
+	assert.equal(rows(mounted), 1, "the exit has a body to interpolate");
+	assert.equal(body.getAttribute("aria-hidden"), "true");
+	assert.equal(body.hasAttribute("inert"), true);
+	await finishExit(mounted, "opacity");
+	assert.equal(
+		rows(mounted),
+		1,
+		"opacity must not truncate the height transition",
+	);
+	await finishExit(mounted);
+	assert.equal(rows(mounted), 0, "closed steady state retains no payload");
+});
+
+test("rapid reopen ignores a stale close completion", async (t) => {
+	const mounted = await mount(t, { span: null, live: null });
+	await click(mounted);
+	await click(mounted, false);
+	await click(mounted);
+	await finishExit(mounted);
+	const body = mounted.container.querySelector("[data-disclosure-body]");
+	assert.equal(rows(mounted), 1);
+	assert.equal(body.getAttribute("aria-hidden"), "false");
+	assert.equal(body.hasAttribute("inert"), false);
+});
+
+test("cancelled transitions cannot keep a closed payload mounted indefinitely", async (t) => {
+	const mounted = await mount(t, { span: null, live: null });
+	await click(mounted);
+	await click(mounted, false);
+	await act(async () => new Promise((resolve) => setTimeout(resolve, 260)));
+	assert.equal(
+		rows(mounted),
+		0,
+		"the bounded fallback releases a missing end event",
+	);
+});
+
+test("reduced motion closes without transient retention", async (t) => {
+	reduceMotion = true;
+	t.after(() => {
+		reduceMotion = false;
+	});
+	const mounted = await mount(t, { span: null, live: null });
+	await click(mounted);
+	await click(mounted, false);
+	assert.equal(rows(mounted), 0);
+});
+
+test("default-off disclosures retain immediate unmount and original body markup", async (t) => {
+	const container = document.createElement("div");
+	document.body.appendChild(container);
+	const root = createRoot(container);
+	t.after(async () => {
+		await act(async () => root.unmount());
+		container.remove();
+	});
+	await act(async () =>
+		root.render(
+			createElement(
+				Disclosure,
+				{
+					summary: "Tool detail",
+				},
+				createElement("span", { "data-testid": "fold-row" }, "payload"),
+			),
+		),
+	);
+	const mounted = { container };
+	await click(mounted);
+	assert.equal(rows(mounted), 1);
+	assert.equal(container.querySelector("[data-disclosure-body]"), null);
+	await click(mounted, false);
+	assert.equal(rows(mounted), 0);
+});
+
+test("a media fold swaps its image atomically, with no duplicate exit-retained row", async (t) => {
+	const mounted = await mount(t, {
+		span: null,
+		live: null,
+		rowMedia: createElement("img", {
+			src: "expanded-fixture",
+			alt: "Expanded picture",
+		}),
+		condensedMedia: () =>
+			createElement("img", { src: "strip-fixture", alt: "Condensed picture" }),
+	});
+	for (let press = 0; press < 4; press += 1) {
+		assert.equal(
+			mounted.container.querySelectorAll("img").length,
+			1,
+			"exactly one presentation at every swap",
+		);
+		if (
+			mounted.container
+				.querySelector("button")
+				.getAttribute("aria-expanded") === "false"
+		) {
+			assert.equal(
+				mounted.container.querySelector("[data-disclosure-body]"),
+				null,
+				"a closed media fold must not retain the outgoing representation",
+			);
+		}
+		await click(mounted, false);
+	}
+	assert.equal(mounted.container.querySelectorAll("img").length, 1);
+});
+
+test("the first media arriving while open does not remount existing tool content", async (t) => {
+	const mounted = await mount(t, { span: null, live: null });
+	await click(mounted);
+	const row = mounted.container.querySelector('[data-testid="fold-row"]');
+	await mounted.render({
+		span: null,
+		live: null,
+		rowMedia: createElement("img", {
+			src: "expanded-fixture",
+			alt: "Expanded picture",
+		}),
+		condensedMedia: () =>
+			createElement("img", { src: "strip-fixture", alt: "Condensed picture" }),
+	});
+	assert.ok(
+		mounted.container.querySelector('[data-testid="fold-row"]') === row,
+		"changing media availability must not reset already-open tool disclosures",
+	);
+	assert.equal(mounted.container.querySelectorAll("img").length, 1);
+	await click(mounted, false);
+	assert.equal(rows(mounted), 0, "the later media close is atomic");
+	assert.equal(mounted.container.querySelectorAll("img").length, 1);
+});
 
 test("a condensed run keeps the pictures its rows would have drawn", async (t) => {
 	/*

@@ -752,16 +752,24 @@ isolation.**
 **Motion** — durations 80 / 120 / 180 / 240ms. Nothing in this app animates for
 longer than 240ms, and only something entering the screen earns that.
 
-- **A disclosure does not animate its fold, and the reason is mechanical rather
-  than aesthetic.** The shared `Disclosure`
-  (`src/renderer/src/shared/components/ui/disclosure.tsx`) renders its children
-  only while it is open (`isOpen && children`), so there is nothing for a height
-  transition to interpolate. Making the fold animate means keeping children
-  mounted for every caller — including every tool row in the transcript — and an
-  unmounted body is exactly what keeps a forty-row turn cheap to scroll. The
-  chevron still swaps (`ChevronRight` ⇄ `ChevronDown`) rather than rotating, and
-  the swap is what tells the reader the fold opened. 180ms is therefore named but
-  unspent here; it stays in the ramp for entrances.
+- **Text-only aggregate trace folds opt into a 180ms height/opacity transition;
+  media-bearing folds and individual tool disclosures remain immediate.** The
+  shared `Disclosure` clips an intrinsically sized grid and retains children
+  only during closing, then unmounts them. Media folds atomically swap expanded
+  pictures for their condensed strip: retaining both would duplicate pictures
+  and grow the fold before shrinking it. A closed forty-row turn therefore does
+  not pay for forty hidden payloads. Reduced motion removes the transition and
+  exit retention. The chevron still swaps (`ChevronRight` ⇄ `ChevronDown`)
+  rather than rotating; folding hides rows in place, never reorders them.
+- **Structural transcript replacements use one persistent slot and one payload.**
+  Two inline actions becoming a three-action fold, and text-only turn segments
+  becoming a bar, may interpolate their measured scalar extent for 180ms while
+  the new ink fades. The leading gap and upstream document geometry stay fixed;
+  the shared scroll-layout owner preserves the reader's anchor during genuine
+  downstream reflow. No outgoing tree, duplicated media, sibling transforms or
+  height-from-zero entrance. Media, offscreen updates and reduced motion swap
+  atomically. Newly appended non-answer row ink may enter over 240ms; streamed
+  answers keep their existing chunk fade, never an additional parent fade.
 - **Indeterminate liveness is exempt from the 240ms ceiling** — a shimmer or a
   spinner that must run until the machine stops cannot be capped at 240ms. One
   such element per surface, `opacity` or `background-position` only, never a

@@ -1,0 +1,92 @@
+✔ I1: the cell rules make a table cell's min-content its longest word (2.632084ms)
+✔ I1: the wrapper rule contains, scrolls and carries the margin (2.167334ms)
+✔ I9: one shared wrapper module, no hooks, no measuring (3.239542ms)
+✔ I9: both render maps wire the ONE shared component, not a copy (0.612083ms)
+✔ I1/I9: the class is named in one source file only (503.618541ms)
+✔ a table renders inside the wrapper on the transcript map (15.957959ms)
+✔ the citations map inherits the wrapper through its spread (2.96525ms)
+✔ the projects surface renders the same wrapper from the same module (2.280125ms)
+✔ the fixtures carry the shapes the edge states exist for (0.512292ms)
+✔ the capture registers the edge states, after-half only (3.882292ms)
+✔ the mixed-case fixture links a three-shas shape rather than replacing it (0.317542ms)
+✔ the code-in-cells fixture carries spans the override has to win against (0.186042ms)
+✔ the user-turn state carries the reported table in a user record (0.068584ms)
+✔ the split loses nothing, reorders nothing, and settles blocks for good (2.818208ms)
+✔ the in-flight tail preserves literal payload, using paragraph layout only at a pending prose boundary (121.62025ms)
+✔ an incomplete next prose line has settled paragraph boxes, while list/fence blanks stay literal (7.403833ms)
+✔ every construct's payload text is painted, in order, at every flush (84.642792ms)
+✔ the settled paint is byte-identical to a fresh whole-message render (63.856959ms)
+✔ a closed block is linkified and the open tail stays prose (4.998875ms)
+Query data cannot be undefined. Please make sure to return a value other than undefined from your query function. Affected query key: ["internet-connectivity"]
+Credentials connectivity error: Server is offline. Please check your connection.
+Credentials connectivity error: Server is offline. Please check your connection.
+Query data cannot be undefined. Please make sure to return a value other than undefined from your query function. Affected query key: ["internet-connectivity"]
+Credentials connectivity error: Server is offline. Please check your connection.
+Credentials connectivity error: Server is offline. Please check your connection.
+Query data cannot be undefined. Please make sure to return a value other than undefined from your query function. Affected query key: ["internet-connectivity"]
+Credentials connectivity error: Server is offline. Please check your connection.
+Credentials connectivity error: Server is offline. Please check your connection.
+Query data cannot be undefined. Please make sure to return a value other than undefined from your query function. Affected query key: ["internet-connectivity"]
+Credentials connectivity error: Server is offline. Please check your connection.
+Credentials connectivity error: Server is offline. Please check your connection.
+Query data cannot be undefined. Please make sure to return a value other than undefined from your query function. Affected query key: ["internet-connectivity"]
+Credentials connectivity error: Server is offline. Please check your connection.
+Credentials connectivity error: Server is offline. Please check your connection.
+Query data cannot be undefined. Please make sure to return a value other than undefined from your query function. Affected query key: ["internet-connectivity"]
+Credentials connectivity error: Server is offline. Please check your connection.
+Credentials connectivity error: Server is offline. Please check your connection.
+Query data cannot be undefined. Please make sure to return a value other than undefined from your query function. Affected query key: ["internet-connectivity"]
+Credentials connectivity error: Server is offline. Please check your connection.
+Credentials connectivity error: Server is offline. Please check your connection.
+Query data cannot be undefined. Please make sure to return a value other than undefined from your query function. Affected query key: ["internet-connectivity"]
+Credentials connectivity error: Server is offline. Please check your connection.
+Credentials connectivity error: Server is offline. Please check your connection.
+Query data cannot be undefined. Please make sure to return a value other than undefined from your query function. Affected query key: ["internet-connectivity"]
+Credentials connectivity error: Server is offline. Please check your connection.
+Credentials connectivity error: Server is offline. Please check your connection.
+✔ the transcript row renders incrementally while streaming and whole once settled, corpus-wide (136.663958ms)
+✔ a closed block asks once per spelling; the open tail and every delta ask nothing (5.864708ms)
+✔ aggregate exit retains rows only until height completes, inert immediately (27.777292ms)
+✔ rapid reopen ignores a stale close completion (4.447666ms)
+✔ cancelled transitions cannot keep a closed payload mounted indefinitely (263.91675ms)
+✔ reduced motion closes without transient retention (3.357042ms)
+✔ default-off disclosures retain immediate unmount and original body markup (2.162ms)
+✔ a condensed run keeps the pictures its rows would have drawn (2.641625ms)
+✔ a run with no pictures is the group it was (1.527208ms)
+✔ the picture does not flicker at the settle transition (3.375875ms)
+✔ a group arrives condensed and names the running call (2.461209ms)
+✔ the reader's press opens it, and conversation updates leave it open (6.371292ms)
+✔ the reader's own press is the only close, in both directions (5.8615ms)
+✔ the section ending while the fold is open never closes it (5.216042ms)
+✔ a fold the reader opens after its section ended stays open (2.836458ms)
+✔ no stamps, no clock - and never a `0s` (3.813125ms)
+✔ a live span computes against now and keeps ticking (1.564292ms)
+✔ the painted count line is the capped one, and it may wrap (9.170167ms)
+✔ a sentence summary is painted to wrap, not held whole (0.998292ms)
+✔ incoming receipts bridge actions without impersonating actions (1.089416ms)
+✔ three or more consecutive actions fold; two do not (0.156916ms)
+✔ the fold is a view, never a reorder (0.151625ms)
+✔ a receipt, a statement or an unknown row breaks a run (0.093709ms)
+✔ the summary is generated from the counts by class (0.421958ms)
+✔ the count line names the kinds in the app's own vocabulary (6.119167ms)
+✔ the count line caps its segments and folds the tail into `and N other actions` (0.396917ms)
+✔ the action classes are the ledgers' own names, case-folded (0.063292ms)
+✔ the span is last completion minus first start, gaps included (0.12225ms)
+✔ a live run keeps its span end open for the caller's clock (0.112292ms)
+✔ a run that cannot date itself reports null, never zero (0.06375ms)
+✔ the live clause names the call being watched, in the row's words (0.148625ms)
+✔ a turn's foot counts its own actions, and names its first failure (0.283334ms)
+✔ receipt-owned image refs survive a mixed fold in source order (0.161417ms)
+✔ a run's images are its actions' images, in row order (0.0665ms)
+✔ a run with no pictures yields none, and a user row never contributes (0.062333ms)
+✔ the strip's slots are one row, and past the cap the last of them is the count (0.134417ms)
+✔ the uncapped strip never strands a single tile, and every row is at most one capped row wide (D5) (0.247125ms)
+✔ the header's image clause names the count, and a run with none has no clause (0.042083ms)
+ℹ tests 57
+ℹ suites 0
+ℹ pass 57
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2572.536125
