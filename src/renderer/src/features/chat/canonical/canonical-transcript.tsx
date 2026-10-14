@@ -1352,19 +1352,20 @@ const AssistantRow = memo(function AssistantRow({
 				 * commit time over a 3KB/753-flush stream 3.2-4.2s, mean 4.3-5.6ms per
 				 * flush; a 6KB/1506-flush stream 10.7-12.2s, mean 7.1-8.1ms per flush,
 				 * worst 45-184ms — against a 16.7ms frame budget. The incremental
-				 * renderer holds closed blocks memoised and paints the open tail as
-				 * text: the same streams cost 0.26-0.47s total, mean 0.2-0.6ms per
-				 * flush, and cost does NOT grow with the message.
+				 * renderer holds closed blocks memoised and parses only the open
+				 * block (optimistically closed): cost is bounded by ONE block and
+				 * does NOT grow with the message (`streaming-live-markdown.test.mjs`
+				 * counts the renders).
 				 *
 				 * THE HANDOVER IS THE CORRECTNESS RULE, not a detail: the moment the row
 				 * settles, the WHOLE message goes through `MarkdownRenderer` — the same
 				 * renderer every settled row has always used — so the final paint is the
 				 * authoritative full parse and the streaming path's per-block rendering
 				 * can never be what a reader is left with. What the incremental path
-				 * shows mid-flight is the parsed closed blocks plus the open block as
-				 * text (its documented trade: `**bold**` reads literally until its
-				 * paragraph closes); what settles is exactly what the full parse makes
-				 * of the same string.
+				 * shows mid-flight is the parsed closed blocks plus the open block,
+				 * parsed with its missing closers supplied (`markdown-remend.ts`), in
+				 * the same component at the same key - so the settle moves no node;
+				 * what settles is exactly what the full parse makes of the same string.
 				 */}
 				{record.streaming ? (
 					<StreamingMarkdown
@@ -1380,9 +1381,9 @@ const AssistantRow = memo(function AssistantRow({
 						/*
 						 * Linkification is the settled row's, and the streaming half is
 						 * deliberately not handed this prop: `StreamingMarkdown` linkifies a
-						 * block the moment it CLOSES (`StableBlock`'s own note: a closed
+						 * block the moment it CLOSES (`ParsedBlock`'s own note: a closed
 						 * block's source can never change again, so a path inside it is a
-						 * finished path), while the open tail is painted as text and is never
+						 * finished path), while the open block is parsed but never linked or
 						 * scanned — so `/Users/x/opoint-renewal-2026-09-1` cannot become a
 						 * link to a path that does not exist. That is the same hazard the
 						 * old `linkify={!record.streaming}` line refused, now enforced per

@@ -43,5 +43,7 @@
 	"ui.onboarding.search.row.placeholder": "Paste your API key",
 	"ui.onboarding.search.row.save_failed": "The key could not be saved.",
 	"ui.onboarding.search.row.saved": "Saved",
-	"ui.onboarding.search.row.saving": "Saving {name}"
+	"ui.onboarding.search.row.saving": "Saving {name}",
+	"ui.onboarding.modal.step_of": "Step {current, number} of {total, number}",
+	"ui.onboarding.modal.steps_total": "{total, plural, one {# step} other {# steps}}"
 }

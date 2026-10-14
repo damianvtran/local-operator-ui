@@ -440,6 +440,16 @@ const BINDING = [
 		"onboarding-modal.tsx",
 	],
 	[
+		"ui.onboarding.modal.step_of",
+		"Step {current, number} of {total, number}",
+		"onboarding-modal.tsx",
+	],
+	[
+		"ui.onboarding.modal.steps_total",
+		"{total, plural, one {# step} other {# steps}}",
+		"onboarding-modal.tsx",
+	],
+	[
 		"ui.onboarding.modal.title.connect_provider",
 		"Connect an AI account",
 		"onboarding-modal.tsx",
@@ -539,6 +549,14 @@ const PARAM_SITES = [
 	["ui.onboarding.modal.title.extras_with_name", [["name", "aidaName"]]],
 	["ui.onboarding.modal.action.meet", [["name", "aidaName"]]],
 	["ui.onboarding.modal.error.aida_open_failed", [["name", "aidaName"]]],
+	[
+		"ui.onboarding.modal.step_of",
+		[
+			["current", "activeIndex + 1"],
+			["total", "STEP_SEQUENCE.length"],
+		],
+	],
+	["ui.onboarding.modal.steps_total", [["total", "STEP_SEQUENCE.length"]]],
 	["ui.onboarding.extras.next_meet", [["name", "aidaName"]]],
 	["ui.onboarding.extras.greeting_owed", [["name", "aidaName"]]],
 	["ui.onboarding.extras.greeting_done", [["name", "aidaName"]]],
