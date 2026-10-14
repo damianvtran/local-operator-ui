@@ -43096,8 +43096,8 @@ async function sceneHubLinks(cdp, app) {
 		JSON.stringify(inventory?.linkRows),
 	);
 	check(
-		"a legacy unknown-origin row is a diagnostic, not a writable link",
-		inventory !== null && inventory.unresolved.length >= 1,
+		"the unresolved diagnostics are item-scoped: a healthy item's page shows none",
+		inventory !== null && inventory.unresolved.length === 0,
 		JSON.stringify(inventory?.unresolved),
 	);
 	await captureSettled(cdp, `hub-links-${size}-${theme}-inventory`);
@@ -43141,6 +43141,26 @@ async function sceneHubLinks(cdp, app) {
 		`after ${flipped.waitedMs ?? "?"}ms: ${JSON.stringify(flipped.last)}`,
 	);
 	await captureSettled(cdp, `hub-links-${size}-${theme}-policy-off`);
+
+	/*
+	 * THE LEGACY UNKNOWN-ORIGIN ROW, on ITS OWN item page. The panel narrows
+	 * `unresolved` to the current item by local id, so the diagnostic and its
+	 * confirm-source control render only where the unresolved item is selected.
+	 */
+	await verb(cdp, "navigate", "/agents?name=legacy-helper");
+	const unresolvedReady = await waitForCondition(
+		cdp,
+		`(() => {
+			const pane = document.querySelector('[data-agents-pane]');
+			return pane && pane.querySelector('[data-hub-source-unresolved]') ? true : null;
+		})()`,
+		30_000,
+	);
+	check(
+		"the unresolved legacy row renders its diagnostic on its own item page",
+		unresolvedReady.ok,
+		`after ${unresolvedReady.waitedMs ?? "?"}ms: ${JSON.stringify(unresolvedReady.last)}`,
+	);
 
 	/*
 	 * THE EXPLICIT SOURCE CONFIRMATION. The unresolved row's only honest origin is

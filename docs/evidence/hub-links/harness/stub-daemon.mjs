@@ -249,6 +249,13 @@ const route = (method, pathname, query, body) => {
 			profiles: [
 				{ name: "reviewer", source: "custom", description: "" },
 				{ name: "coder", source: "custom", description: "" },
+				/*
+				 * The LEGACY unknown-origin item, listed so its own detail page can be
+				 * opened: the panel narrows `unresolved` to the CURRENT item by local id, so
+				 * the confirm-source control only renders on this item's page, not on a
+				 * healthy sibling's.
+				 */
+				{ name: "legacy-helper", source: "custom", description: "" },
 			],
 		});
 	}
@@ -262,7 +269,17 @@ const route = (method, pathname, query, body) => {
 			name,
 			kind: "role",
 			source: "custom",
-			agent_id: "agent-1",
+			/*
+			 * A STABLE id per name, so the pane's own local id matches the inventory row
+			 * (`linksForLocalItem` / the unresolved filter compare on it). The legacy
+			 * item's id is the one its unresolved diagnostic carries.
+			 */
+			agent_id:
+				name === "reviewer"
+					? "agent-1"
+					: name === "legacy-helper"
+						? "agent-legacy"
+						: "agent-2",
 			description: "",
 			instructions: "",
 			tools: [],
