@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * The quiet update indicator: what an unsolicited release looks like now.
  *
@@ -101,8 +102,12 @@ export type QuietIndicatorOffer = {
  * this copy using ~110px of it, so length was never the constraint.
  */
 const SURFACE_COPY: Record<UpdateType, string> = {
-	[UpdateType.UI]: "Application update",
-	[UpdateType.BACKEND]: "Server update",
+	get [UpdateType.UI]() {
+		return t("ui.common.updates.update_quiet_indicator.application_update");
+	},
+	get [UpdateType.BACKEND]() {
+		return t("ui.common.updates.update_quiet_indicator.server_update");
+	},
 };
 
 /**
@@ -257,7 +262,9 @@ export const UpdateQuietIndicatorView: FC<{
 				<button
 					type="button"
 					data-update-indicator-dismiss=""
-					aria-label="Dismiss update notice"
+					aria-label={t(
+						"ui.common.updates.update_quiet_indicator.dismiss_update_notice",
+					)}
 					onClick={onDismiss}
 					className={cn(
 						"flex h-6 items-center rounded-md px-1.5 text-ink-muted",

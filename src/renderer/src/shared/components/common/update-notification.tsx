@@ -2,6 +2,7 @@ import { useSuppressBrowserView } from "@shared/browser-view-policy";
 import { FloatingAlert } from "@shared/components/common/floating-alert";
 import { Button, Progress } from "@shared/components/ui";
 import { useElapsedSince } from "@shared/hooks/use-elapsed-since";
+import { t } from "@shared/i18n";
 import { formatByteSize } from "@shared/lib/format-bytes";
 import { cn } from "@shared/lib/utils";
 import {
@@ -87,7 +88,7 @@ const skewKey = (notice: {
  * the restart" was pricing the outage and the wait for a server that is already
  * offline. Spelled once is still achieved - twice, not twice stated.
  */
-const RESTART_OUTAGE_BOUND = "usually a few seconds, up to half a minute";
+const RESTART_OUTAGE_BOUND = () => t("ui.common.updates.restart.outage_bound");
 
 /**
  * The bound the DRAINING phase states: the rebuild install leg is the one press
@@ -102,8 +103,10 @@ const RESTART_OUTAGE_BOUND = "usually a few seconds, up to half a minute";
  * The number is still the gate's own `FLEET_DRAIN_BUDGET_MS`, and
  * `scripts/update-fleet-drain.test.mjs` still holds this copy to it.
  */
-const RESTART_DRAIN_BOUND =
-	"The app waits up to ten minutes for them, then stops rather than cutting a turn short, so nothing in flight is cut off";
+const RESTART_DRAIN_BOUND = () =>
+	t(
+		"ui.common.updates.update_notification.the_app_waits_up_to_ten_minutes_for_them_then_stops_rather_than_c",
+	);
 
 /**
  * The cost of the restart for a server that is UP and behind the install: this
@@ -121,7 +124,11 @@ const RESTART_DRAIN_BOUND =
  * the same one the restart phase's sibling carries, so the two cannot drift
  * apart.
  */
-const RESTART_COST_SENTENCE = `Restarting puts the server offline while it comes back - ${RESTART_OUTAGE_BOUND}. Nothing in flight is cut off, and sessions that are still working move onto the new build when they next stop or go idle.`;
+const RESTART_COST_SENTENCE = () =>
+	t(
+		"ui.common.updates.update_notification.restarting_puts_the_server_offline_while_it_comes_back",
+		{ restartoutagebound: RESTART_OUTAGE_BOUND() },
+	);
 
 /**
  * The cost of the SAME press on a server that is not running (design D13): the
@@ -134,7 +141,11 @@ const RESTART_COST_SENTENCE = `Restarting puts the server offline while it comes
  * is also why the operator's directive of 2026-09-29 removed the restart-leg
  * drains - there is no wait left to price here either.
  */
-const RESTART_COST_SENTENCE_SERVER_DOWN = `The server is already offline, so the only cost left is the wait for it to come back - ${RESTART_OUTAGE_BOUND}.`;
+const RESTART_COST_SENTENCE_SERVER_DOWN = () =>
+	t(
+		"ui.common.updates.update_notification.the_server_is_already_offline_so_the_only_cost_left_is_the",
+		{ restartoutagebound: RESTART_OUTAGE_BOUND() },
+	);
 
 /**
  * What the panel says when the server update failed and named no reason.
@@ -170,8 +181,12 @@ const RESTART_COST_SENTENCE_SERVER_DOWN = `The server is already offline, so the
  */
 const serverUpdateFailedMessage = (targetVersion: string | null | undefined) =>
 	targetVersion
-		? `The server update to ${targetVersion} did not complete.`
-		: "The server update did not complete.";
+		? t("ui.common.updates.update_notification.the_server_update_to", {
+				targetversion: String(targetVersion),
+			})
+		: t(
+				"ui.common.updates.update_notification.the_server_update_did_not_complete",
+			);
 
 /**
  * How long the press has been waiting for the fleet, in words.
@@ -190,14 +205,12 @@ const serverUpdateFailedMessage = (targetVersion: string | null | undefined) =>
  */
 const waitElapsedLabel = (waitedMs: number): string => {
 	const seconds = Math.max(1, Math.round(waitedMs / 1000));
-	const unit = (value: number, name: string) =>
-		`${value} ${name}${value === 1 ? "" : "s"}`;
-	if (seconds < 60) return `Waiting ${unit(seconds, "second")} so far`;
+	if (seconds < 60) return t("ui.common.updates.wait.seconds", { seconds });
 	const rest = seconds % 60;
 	const minutes = Math.floor(seconds / 60);
 	return rest === 0
-		? `Waiting ${unit(minutes, "minute")} so far`
-		: `Waiting ${unit(minutes, "minute")} ${unit(rest, "second")} so far`;
+		? t("ui.common.updates.wait.minutes", { minutes })
+		: t("ui.common.updates.wait.minutes_seconds", { minutes, seconds: rest });
 };
 
 type BackendUpdateInfo = {
@@ -394,10 +407,26 @@ type ManualUpdateInfo = {
 
 /** Headings for the refusal states, sentence case, one line each. */
 const INSTALL_BLOCK_HEADINGS: Record<string, string> = {
-	"installed-bundle-not-sealed": "This app can't update itself",
-	"download-verification-failed": "The update couldn't be verified",
-	"artifact-metadata-missing": "The update couldn't be verified",
-	"insufficient-disk-space": "Not enough disk space to update",
+	get "installed-bundle-not-sealed"() {
+		return t(
+			"ui.common.updates.update_notification.this_app_can_t_update_itself",
+		);
+	},
+	get "download-verification-failed"() {
+		return t(
+			"ui.common.updates.update_notification.the_update_couldn_t_be_verified",
+		);
+	},
+	get "artifact-metadata-missing"() {
+		return t(
+			"ui.common.updates.update_notification.the_update_couldn_t_be_verified",
+		);
+	},
+	get "insufficient-disk-space"() {
+		return t(
+			"ui.common.updates.update_notification.not_enough_disk_space_to_update",
+		);
+	},
 	// The refusal for an artifact macOS would not launch (the 0.29.6 class: a
 	// restricted entitlement with no provisioning profile behind it). It is
 	// deliberately in the user's terms rather than the OS's — the detail line
@@ -408,7 +437,11 @@ const INSTALL_BLOCK_HEADINGS: Record<string, string> = {
 	// was never shown to refuse anything — carries its own `heading` from its
 	// producer, because "the update can't be launched" is the one thing that arm
 	// does not know (design round 1, D3).
-	"artifact-cannot-launch": "The update can't be launched",
+	get "artifact-cannot-launch"() {
+		return t(
+			"ui.common.updates.update_notification.the_update_can_t_be_launched",
+		);
+	},
 };
 
 /**
@@ -446,7 +479,7 @@ export const UpdateContainer = ({
 	tone = "notice",
 	role,
 	onClose,
-	closeLabel = "Close release details",
+	closeLabel = t("ui.common.updates.update_notification.close_release_details"),
 	children,
 	...props
 }: HTMLAttributes<HTMLDivElement> & {
@@ -647,7 +680,9 @@ export const InstallerOutput = ({ output }: { output: string }) => {
 	return (
 		<div className="mt-2">
 			<div className="flex items-center justify-between gap-2">
-				<span className="text-meta text-ink-dim">Installer output:</span>
+				<span className="text-meta text-ink-dim">
+					{t("ui.common.updates.update_notification.installer_output")}
+				</span>
 				<Button
 					variant="ghost"
 					size="sm"
@@ -659,7 +694,9 @@ export const InstallerOutput = ({ output }: { output: string }) => {
 					}}
 				>
 					{copied ? <Check /> : <Copy />}
-					{copied ? "Copied" : "Copy output"}
+					{copied
+						? t("ui.common.updates.update_notification.copied")
+						: t("ui.common.updates.update_notification.copy_output")}
 				</Button>
 			</div>
 			<pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-sm bg-sunken p-2 font-mono text-mono-sm text-ink-dim">
@@ -714,7 +751,9 @@ export const CommandBlock = ({ command }: { command: string }) => {
 				}}
 			>
 				{copied ? <Check /> : <Copy />}
-				{copied ? "Copied" : "Copy command"}
+				{copied
+					? t("ui.common.updates.update_notification.copied")
+					: t("ui.common.updates.update_notification.copy_command")}
 			</Button>
 		</div>
 	);
@@ -787,8 +826,9 @@ const ManualRemedyNote = ({
 	if (sourceBuild && !command) {
 		return (
 			<p className="mt-2 text-body text-ink">
-				This server follows this machine's checkout, so there is no command to
-				run here.
+				{t(
+					"ui.common.updates.update_notification.this_server_follows_this_machine_s_checkout_so_there_is_no_comman",
+				)}
 			</p>
 		);
 	}
@@ -806,10 +846,16 @@ const ManualRemedyNote = ({
 					 * `git_snapshot_notice()` prints "this runtime was built from git; lop update
 					 * will replace it with the PyPI wheel".
 					 */
-					"Run this in a terminal. This install was built from this machine's checkout, so `lop update` installs the published release over it - and if this machine has `lop-update`, the script that rebuilds this install from the checkout, run that afterwards to keep following it."
+					t(
+						"ui.common.updates.update_notification.run_this_in_a_terminal_this_install_was_built_from_this_machine_s",
+					)
 				: command
-					? "Run this in a terminal, then check for updates again to pick up the new server version."
-					: "Then check for updates again to pick up the new server version."}
+					? t(
+							"ui.common.updates.update_notification.run_this_in_a_terminal_then_check_for_updates_again_to_pick_up_th",
+						)
+					: t(
+							"ui.common.updates.update_notification.then_check_for_updates_again_to_pick_up_the_new_server_version",
+						)}
 		</p>
 	);
 };
@@ -907,11 +953,15 @@ const managedCostSentence = (info: {
 	remedy?: string;
 }): string => {
 	if (!serverRestartsWithInstall(info)) {
-		return "The app updates this install itself. The server you are using was started outside Local Operator, so it keeps running the old build until it restarts, and nothing in flight is dropped.";
+		return t(
+			"ui.common.updates.update_notification.the_app_updates_this_install_itself_the_server_you_are_using_was_",
+		);
 	}
 	return (
 		info.remedy ??
-		"The app updates this install and then restarts the server it started, so nothing in flight is cut off. Sessions that are still working move onto the new build when they next stop or go idle."
+		t(
+			"ui.common.updates.update_notification.the_app_updates_this_install_and_then_restarts_the_server_it_star",
+		)
 	);
 };
 
@@ -942,13 +992,12 @@ const completionSessionsLine = (
 	count: number | null | undefined,
 ): string | null => {
 	if (typeof count !== "number") {
-		return "Sessions that are still running the old build will move onto the new build when they next stop or go idle.";
+		return t(
+			"ui.common.updates.update_notification.sessions_that_are_still_running_the_old_build_will_move_onto_the_",
+		);
 	}
 	if (count === 0) return null;
-	if (count === 1) {
-		return "1 session is still running the old build; it will move onto the new build when it next stops or goes idle.";
-	}
-	return `${count} sessions are still running the old build; they will move onto the new build when they next stop or go idle.`;
+	return t("ui.common.updates.completion.sessions", { count });
 };
 
 const backendVersionSentence = ({
@@ -965,7 +1014,11 @@ const backendVersionSentence = ({
 	const install = readableVersion(installVersion);
 	const running = readableVersion(runningVersion);
 	if (install && running && install !== running) {
-		return `Server version ${latestVersion} is available. The install on this machine is at ${install}, and the server you are using is running ${running} until it restarts.`;
+		return t("ui.common.updates.update_notification.server_version", {
+			latestversion: String(latestVersion),
+			install: String(install),
+			running: String(running),
+		});
 	}
 	/*
 	 * With nothing to distinguish, the sentence names the reading the panel has
@@ -975,8 +1028,13 @@ const backendVersionSentence = ({
 	 */
 	const shown = running ?? install;
 	return shown
-		? `Server version ${latestVersion} is available. You are currently using version ${shown}.`
-		: `Server version ${latestVersion} is available.`;
+		? t("ui.common.updates.update_notification.server_version_v2", {
+				latestversion: String(latestVersion),
+				shown: String(shown),
+			})
+		: t("ui.common.updates.update_notification.server_version_v3", {
+				latestversion: String(latestVersion),
+			});
 };
 
 const ManualUpdateVersions = ({
@@ -1705,7 +1763,11 @@ export const UpdateNotification = ({
 			setError(null);
 			await window.api.updater.downloadUpdate();
 		} catch (err) {
-			setError(`Error downloading update: ${updateMessageOf(err)}`);
+			setError(
+				t("ui.common.updates.update_notification.error_downloading_update", {
+					detail: String(updateMessageOf(err)),
+				}),
+			);
 			setDownloading(false);
 			setSnackbarOpen(true);
 		}
@@ -1736,7 +1798,11 @@ export const UpdateNotification = ({
 			}
 		} catch (err) {
 			setInstalling(false);
-			setError(`Error starting the update: ${updateMessageOf(err)}`);
+			setError(
+				t("ui.common.updates.update_notification.error_starting_the_update", {
+					detail: String(updateMessageOf(err)),
+				}),
+			);
 			setSnackbarOpen(true);
 		}
 	}, []);
@@ -1754,7 +1820,12 @@ export const UpdateNotification = ({
 		try {
 			await window.api.updater.quitForUpdateInstall();
 		} catch (err) {
-			setError(`Error quitting for the update: ${updateMessageOf(err)}`);
+			setError(
+				t(
+					"ui.common.updates.update_notification.error_quitting_for_the_update",
+					{ detail: String(updateMessageOf(err)) },
+				),
+			);
 			setSnackbarOpen(true);
 		}
 	}, []);
@@ -1943,7 +2014,10 @@ export const UpdateNotification = ({
 					 * sentence - about the check - onto a sentence about the update
 					 * that was pressed.
 					 */
-					message: `The server update could not be started: ${updateMessageOf(err)}`,
+					message: t(
+						"ui.common.updates.update_notification.the_server_update_could_not_be_started",
+						{ detail: String(updateMessageOf(err)) },
+					),
 				});
 			}
 		} finally {
@@ -2710,8 +2784,12 @@ export const UpdateNotification = ({
 			<UpdateContainer tone="failed">
 				<UpdateHeading tone="failed">
 					{installFailed.cancelledByRelaunch
-						? "The update was cancelled"
-						: "The last update didn't finish"}
+						? t(
+								"ui.common.updates.update_notification.the_update_was_cancelled",
+							)
+						: t(
+								"ui.common.updates.update_notification.the_last_update_didn_t_finish",
+							)}
 				</UpdateHeading>
 				<p className="mb-2 text-body text-ink-muted">{installFailed.message}</p>
 				{/* The actionable sentence at the panel's reading weight: it was set one
@@ -2722,15 +2800,20 @@ export const UpdateNotification = ({
 					/* The count is the new information; the sentence that used to follow it
 					   repeated the remedy four lines below the remedy (review D13). */
 					<p className="mt-1 text-body-sm text-ink-muted">
-						Version {installFailed.targetVersion} has failed to install{" "}
-						{installFailed.attempts} times on this machine.
+						{t("ui.common.updates.update_notification.version")}
+						{installFailed.targetVersion}{" "}
+						{t("ui.common.updates.update_notification.has_failed_to_install")}{" "}
+						{installFailed.attempts}{" "}
+						{t("ui.common.updates.update_notification.times_on_this_machine")}
 					</p>
 				)}
 				{/* What survives the dismiss, and where to find it: the record is written
 				    to disk and rendered in Settings, but this panel never said so, so the
 				    only way to see the failure again was to already know (review U13). */}
 				<p className="mt-1 text-body-sm text-ink-muted">
-					This is also recorded in Settings, under Application updates.
+					{t(
+						"ui.common.updates.update_notification.this_is_also_recorded_in_settings_under_application_updates",
+					)}
 				</p>
 				<UpdateActions>
 					<Button
@@ -2738,7 +2821,7 @@ export const UpdateNotification = ({
 						size="sm"
 						onClick={() => setInstallFailed(null)}
 					>
-						Update later
+						{t("ui.common.updates.update_notification.update_later")}
 					</Button>
 					{/* One click at the retry the copy names, and it has to be a check the
 					    main process can tell apart from its own periodic one, or the
@@ -2749,14 +2832,16 @@ export const UpdateNotification = ({
 						onClick={() => void checkForUpdates({ manual: true })}
 						disabled={checking}
 					>
-						{checking ? "Checking..." : "Check for updates"}
+						{checking
+							? t("ui.common.updates.update_notification.checking")
+							: t("ui.common.updates.update_notification.check_for_updates")}
 					</Button>
 					<Button
 						variant="primary"
 						size="sm"
 						onClick={() => openRemedyUrl(installFailed.remedy.url)}
 					>
-						Open download page
+						{t("ui.common.updates.update_notification.open_download_page")}
 					</Button>
 				</UpdateActions>
 				{installFailed.detail && <PanelDetails detail={installFailed.detail} />}
@@ -2781,7 +2866,11 @@ export const UpdateNotification = ({
 	if (installInFlight) {
 		return withErrorToast(
 			<UpdateContainer role="alert">
-				<UpdateHeading>The update is still installing</UpdateHeading>
+				<UpdateHeading>
+					{t(
+						"ui.common.updates.update_notification.the_update_is_still_installing",
+					)}
+				</UpdateHeading>
 				<p className="mb-2 text-body text-ink-muted">
 					{installInFlight.message}
 				</p>
@@ -2796,14 +2885,18 @@ export const UpdateNotification = ({
 						size="sm"
 						onClick={() => setInstallInFlight(null)}
 					>
-						Keep using Local Operator (cancels the install)
+						{t(
+							"ui.common.updates.update_notification.keep_using_local_operator_cancels_the_install",
+						)}
 					</Button>
 					<Button
 						variant="primary"
 						size="sm"
 						onClick={() => void quitForInFlightInstall()}
 					>
-						Quit and let the update finish
+						{t(
+							"ui.common.updates.update_notification.quit_and_let_the_update_finish",
+						)}
 					</Button>
 				</UpdateActions>
 				{installInFlight.detail && (
@@ -2818,7 +2911,9 @@ export const UpdateNotification = ({
 		return withErrorToast(
 			<UpdateContainer>
 				<h2 className="mb-3 text-heading text-ink">
-					{updatingBackend ? "Updating server" : "Checking for updates"}
+					{updatingBackend
+						? t("ui.common.updates.update_notification.updating_server")
+						: t("ui.common.updates.update_notification.checking_for_updates")}
 				</h2>
 				{/* No cancel control, and the panel has to say so: the copy half of
 				    UX U2, whose other half - a real cancel - is deferred, because
@@ -2862,7 +2957,15 @@ export const UpdateNotification = ({
 									 * admission lives in the slow-wait line below, behind
 									 * the real threshold.
 									 */
-									`Rolling the server onto ${readableVersion(backendUpdateInfo?.latestVersion) ?? "the new build"}. Nothing in flight is cut off - the turns running on this machine keep running. The update can't be interrupted once it has started.`
+									t(
+										"ui.common.updates.update_notification.rolling_the_server_onto",
+										{
+											detail: String(
+												readableVersion(backendUpdateInfo?.latestVersion) ??
+													"the new build",
+											),
+										},
+									)
 							: backendUpdatePhase === "restarting"
 								? /*
 									 * THE SENTENCE COVERS THE WHOLE restarting PHASE, WHICH IS LONGER THAN
@@ -2875,7 +2978,9 @@ export const UpdateNotification = ({
 									 * its number; the repair says it is running, which is what the reader
 									 * watching a static panel needs to know.
 									 */
-									"The new build has landed. Nothing in flight was cut off - the turns running on this machine kept running - and the server is restarting onto the new build now, so it is offline while it comes back: usually a few seconds, up to half a minute. After that the app starts a runtime again for any session the restart left without one, which can take up to a minute."
+									t(
+										"ui.common.updates.update_notification.the_new_build_has_landed_nothing_in_flight_was_cut_off_the_turns_",
+									)
 								: backendUpdatePhase === "draining"
 									? /*
 										 * WHO DECIDES AND WHAT THEY CHOSE (design D4). The sentence used to read
@@ -2884,11 +2989,20 @@ export const UpdateNotification = ({
 										 * two siblings carry (design D3), so the one phase whose length the reader
 										 * cannot see was the only one that did not say whether it could be stopped.
 										 */
-										`Waiting for the turns running on this machine to finish. ${RESTART_DRAIN_BOUND} - and the update can't be interrupted while it waits.`
+										t(
+											"ui.common.updates.update_notification.waiting_for_the_turns_running_on_this_machine_to_finish",
+											{ restartdrainbound: String(RESTART_DRAIN_BOUND()) },
+										)
 									: serverRestartsWithInstall(backendUpdateInfo)
-										? "Please wait while the server is being updated. The server will temporarily go offline while it restarts to apply the update. The update can't be interrupted once it has started."
-										: "Please wait while the server is being updated. The update can't be interrupted once it has started."
-						: "Please wait while we check for available updates..."}
+										? t(
+												"ui.common.updates.update_notification.please_wait_while_the_server_is_being_updated_the_server_will_tem",
+											)
+										: t(
+												"ui.common.updates.update_notification.please_wait_while_the_server_is_being_updated_the_update_can_t_be",
+											)
+						: t(
+								"ui.common.updates.update_notification.please_wait_while_we_check_for_available_updates",
+							)}
 				</p>
 				{/*
 				 * THE STILL-WORKING LINE (UX U1). The ladder can run ~94 s and this frame
@@ -2898,8 +3012,9 @@ export const UpdateNotification = ({
 				 */}
 				{slowCheck && !updatingBackend && (
 					<p className="mt-1 text-body-sm text-ink-muted">
-						Still checking. A slow or stalled connection can hold this for about
-						a minute and a half - the app stops waiting on its own.
+						{t(
+							"ui.common.updates.update_notification.still_checking_a_slow_or_stalled_connection_can_hold_this_for_abo",
+						)}
 					</p>
 				)}
 				{/*
@@ -2917,8 +3032,9 @@ export const UpdateNotification = ({
 					backendUpdatePhase === "installing" &&
 					!rebuildInFlight && (
 						<p className="mt-1 text-body-sm text-ink-muted">
-							Still installing. A slow connection or a cold cache can hold this
-							longer - the app stops waiting on its own.
+							{t(
+								"ui.common.updates.update_notification.still_installing_a_slow_connection_or_a_cold_cache_can_hold_this_",
+							)}
 						</p>
 					)}
 				{/*
@@ -2954,7 +3070,9 @@ export const UpdateNotification = ({
 				<UpdateHeading tone="failed">
 					{installBlocked.heading ??
 						INSTALL_BLOCK_HEADINGS[installBlocked.code] ??
-						"The update wasn't installed"}
+						t(
+							"ui.common.updates.update_notification.the_update_wasn_t_installed",
+						)}
 				</UpdateHeading>
 				<p className="mb-2 text-body text-ink-muted">
 					{installBlocked.message}
@@ -2980,7 +3098,8 @@ export const UpdateNotification = ({
 							clearSurface(UpdateType.UI);
 						}}
 					>
-						{installBlocked.dismissLabel ?? "Update later"}
+						{installBlocked.dismissLabel ??
+							t("ui.common.updates.update_notification.update_later")}
 					</Button>
 					{installBlocked.remedy.url ? (
 						<Button
@@ -2988,7 +3107,7 @@ export const UpdateNotification = ({
 							size="sm"
 							onClick={() => openRemedyUrl(installBlocked.remedy.url)}
 						>
-							Open download page
+							{t("ui.common.updates.update_notification.open_download_page")}
 						</Button>
 					) : (
 						<Button
@@ -2997,7 +3116,9 @@ export const UpdateNotification = ({
 							onClick={() => void checkForUpdates({ manual: true })}
 							disabled={checking}
 						>
-							{checking ? "Checking..." : "Check for updates"}
+							{checking
+								? t("ui.common.updates.update_notification.checking")
+								: t("ui.common.updates.update_notification.check_for_updates")}
 						</Button>
 					)}
 				</UpdateActions>
@@ -3021,8 +3142,12 @@ export const UpdateNotification = ({
 				 */}
 				<UpdateHeading>
 					{manualUpdateInfo.appOwned
-						? "The app cannot update this server"
-						: "The server needs updating by hand"}
+						? t(
+								"ui.common.updates.update_notification.the_app_cannot_update_this_server",
+							)
+						: t(
+								"ui.common.updates.update_notification.the_server_needs_updating_by_hand",
+							)}
 				</UpdateHeading>
 				{/* Same emphasis as the other producer of this state
 				    (`backend-update-non-managed`, which used a warning hue): one sentence,
@@ -3069,7 +3194,7 @@ export const UpdateNotification = ({
 							clearSurface(UpdateType.BACKEND);
 						}}
 					>
-						Update later
+						{t("ui.common.updates.update_notification.update_later")}
 					</Button>
 					{/* This button's own copy says "check again to pick up the new server
 					    version", so it has to re-read the SERVER: it used to call the
@@ -3081,7 +3206,9 @@ export const UpdateNotification = ({
 						onClick={() => void checkForAllUpdates()}
 						disabled={checking}
 					>
-						{checking ? "Checking..." : "Check for updates"}
+						{checking
+							? t("ui.common.updates.update_notification.checking")
+							: t("ui.common.updates.update_notification.check_for_updates")}
 					</Button>
 				</UpdateActions>
 				{manualUpdateInfo.detail && (
@@ -3115,12 +3242,20 @@ export const UpdateNotification = ({
 		return withErrorToast(
 			<UpdateContainer
 				onClose={() => closeDetail(UpdateType.UI)}
-				closeLabel="Close app update details"
+				closeLabel={t(
+					"ui.common.updates.update_notification.close_app_update_details",
+				)}
 			>
-				<h2 className="mb-3 text-heading text-ink">Update available</h2>
+				<h2 className="mb-3 text-heading text-ink">
+					{t("ui.common.updates.update_notification.update_available")}
+				</h2>
 				<p className="mb-2 text-body text-ink-muted">
-					Version {updateInfo.version} is available. You are currently using
-					version {appVersion}.
+					{t("ui.common.updates.update_notification.version")}
+					{updateInfo.version}{" "}
+					{t(
+						"ui.common.updates.update_notification.is_available_you_are_currently_using_version",
+					)}
+					{appVersion}.
 				</p>
 				{updateInfo.releaseNotes && (
 					// A div rather than a paragraph: GitHub's release notes arrive as
@@ -3137,7 +3272,7 @@ export const UpdateNotification = ({
 					<div
 						className={cn("mt-2 text-body text-ink-muted", RELEASE_NOTES_PROSE)}
 					>
-						Release notes:{" "}
+						{t("ui.common.updates.update_notification.release_notes")}{" "}
 						{typeof updateInfo.releaseNotes === "string" ? (
 							<>
 								{parse(truncateText(updateInfo.releaseNotes, 400))}
@@ -3148,7 +3283,9 @@ export const UpdateNotification = ({
 										rel="noopener noreferrer"
 										className="ml-2"
 									>
-										View full release notes
+										{t(
+											"ui.common.updates.update_notification.view_full_release_notes",
+										)}
 									</a>
 								)}
 							</>
@@ -3158,7 +3295,9 @@ export const UpdateNotification = ({
 								target="_blank"
 								rel="noopener noreferrer"
 							>
-								See release notes on GitHub
+								{t(
+									"ui.common.updates.update_notification.see_release_notes_on_github",
+								)}
 							</a>
 						)}
 					</div>
@@ -3167,7 +3306,8 @@ export const UpdateNotification = ({
 				{downloading && downloadProgress && (
 					<ProgressContainer>
 						<p className="text-body-sm text-ink-muted">
-							Downloading: {Math.round(downloadProgress.percent)}%
+							{t("ui.common.updates.update_notification.downloading")}
+							{Math.round(downloadProgress.percent)}%
 						</p>
 						<Progress value={downloadProgress.percent} className="mt-2" />
 						<p
@@ -3182,9 +3322,13 @@ export const UpdateNotification = ({
 							 * `524,288 of 1,048,576` is scannable, and an exact count that the
 							 * eye cannot hold is not the offer this tooltip makes.
 							 */
-							title={`${downloadProgress.transferred.toLocaleString()} of ${downloadProgress.total.toLocaleString()} bytes`}
+							title={t("ui.common.updates.update_notification.detail_v2", {
+								detail: String(downloadProgress.transferred.toLocaleString()),
+								detail2: String(downloadProgress.total.toLocaleString()),
+							})}
 						>
-							{formatByteSize(downloadProgress.transferred)} of{" "}
+							{formatByteSize(downloadProgress.transferred)}{" "}
+							{t("ui.common.updates.update_notification.of")}{" "}
 							{formatByteSize(downloadProgress.total)}
 						</p>
 					</ProgressContainer>
@@ -3202,8 +3346,9 @@ export const UpdateNotification = ({
 				 */}
 				{slowDownload && (
 					<p className="mb-2 text-body-sm text-ink-muted">
-						Still downloading. A download that stops making progress is
-						cancelled after about 90 seconds.
+						{t(
+							"ui.common.updates.update_notification.still_downloading_a_download_that_stops_making_progress_is_cancel",
+						)}
 					</p>
 				)}
 
@@ -3220,7 +3365,7 @@ export const UpdateNotification = ({
 								onClick={handleDeferUpdate}
 								disabled={downloading}
 							>
-								Update later
+								{t("ui.common.updates.update_notification.update_later")}
 							</Button>
 							<Button
 								variant="primary"
@@ -3228,7 +3373,7 @@ export const UpdateNotification = ({
 								onClick={downloadUpdate}
 								disabled={downloading}
 							>
-								Download update
+								{t("ui.common.updates.update_notification.download_update")}
 							</Button>
 						</>
 					)}
@@ -3252,15 +3397,21 @@ export const UpdateNotification = ({
 	if (updateDownloaded && updateInfo) {
 		return withErrorToast(
 			<UpdateContainer>
-				<h2 className="mb-3 text-heading text-ink">Update ready to install</h2>
+				<h2 className="mb-3 text-heading text-ink">
+					{t("ui.common.updates.update_notification.update_ready_to_install")}
+				</h2>
 				{/* "has been downloaded", not "is available": this is the state
 					    AFTER the download, and reusing the available state's
 					    sentence told the user nothing had happened. The version
 					    they are on stays, because that is the comparison the
 					    heading does not make. */}
 				<p className="mb-2 text-body text-ink-muted">
-					Version {updateInfo.version} has been downloaded. You are currently
-					using version {appVersion}.
+					{t("ui.common.updates.update_notification.version")}
+					{updateInfo.version}{" "}
+					{t(
+						"ui.common.updates.update_notification.has_been_downloaded_you_are_currently_using_version",
+					)}
+					{appVersion}.
 				</p>
 				{/* `text-body`, not a step down: this sentence is the whole
 					    user-facing mitigation for the cancelled install, and it was the
@@ -3268,10 +3419,9 @@ export const UpdateNotification = ({
 					    carrying less consequence (review D2). Three sentences, not one
 					    run-on whose payload trails a spliced clause (review D5). */}
 				<p className="mt-2 text-body text-ink-muted">
-					Installing closes the app while the update is verified and put in
-					place — usually a few seconds, occasionally a few minutes. Don't
-					reopen it until it starts by itself. Opening it while the update is
-					installing cancels the install.
+					{t(
+						"ui.common.updates.update_notification.installing_closes_the_app_while_the_update_is_verified_and_put_in",
+					)}
 				</p>
 				{/* The one line that says what is happening, from the main process's own
 				    phases rather than from a timer guessing at them (UX U5). It is the ONLY
@@ -3294,7 +3444,7 @@ export const UpdateNotification = ({
 						onClick={handleDeferUpdate}
 						disabled={installing}
 					>
-						Update later
+						{t("ui.common.updates.update_notification.update_later")}
 					</Button>
 					{/* One click, then the line above says it heard: the pre-flight behind this
 					    button can take seconds over a 1 GiB bundle. The label does not change
@@ -3307,7 +3457,7 @@ export const UpdateNotification = ({
 						onClick={() => void installUpdate()}
 						disabled={installing}
 					>
-						Install now
+						{t("ui.common.updates.update_notification.install_now")}
 					</Button>
 				</UpdateActions>
 			</UpdateContainer>,
@@ -3318,7 +3468,9 @@ export const UpdateNotification = ({
 				onClose={closeSnackbar}
 				variant="success"
 			>
-				Update downloaded and ready to install
+				{t(
+					"ui.common.updates.update_notification.update_downloaded_and_ready_to_install",
+				)}
 			</FloatingAlert>,
 		);
 	}
@@ -3407,7 +3559,9 @@ export const UpdateNotification = ({
 					 * one voice per panel. The stories' own waits and the capturer's claims
 					 * name this literal, so they move together.
 					 */}
-					<UpdateHeading>The update didn't start</UpdateHeading>
+					<UpdateHeading>
+						{t("ui.common.updates.update_notification.the_update_didn_t_start")}
+					</UpdateHeading>
 					{/*
 					 * THE LEAD LINE IS THE ACTIONABLE FACT (design D5): how many sessions are
 					 * still working, and which. It used to sit in parentheses halfway down a
@@ -3431,7 +3585,9 @@ export const UpdateNotification = ({
 					{refusal.command && (
 						<div className="mt-2">
 							<p className="text-body-sm text-ink-muted">
-								To update now, run this yourself in a terminal:
+								{t(
+									"ui.common.updates.update_notification.to_update_now_run_this_yourself_in_a_terminal",
+								)}
 							</p>
 							<CommandBlock command={refusal.command} />
 						</div>
@@ -3447,7 +3603,7 @@ export const UpdateNotification = ({
 									);
 								}}
 							>
-								Reveal update log
+								{t("ui.common.updates.update_notification.reveal_update_log")}
 							</Button>
 						</div>
 					)}
@@ -3466,14 +3622,14 @@ export const UpdateNotification = ({
 							size="sm"
 							onClick={() => void updateBackend()}
 						>
-							Try again
+							{t("ui.common.actions.retry_again")}
 						</Button>
 						<Button
 							variant="primary"
 							size="sm"
 							onClick={handleDismissBackendUpdateFailure}
 						>
-							Update later
+							{t("ui.common.updates.update_notification.update_later")}
 						</Button>
 					</UpdateActions>
 				</UpdateContainer>,
@@ -3482,7 +3638,9 @@ export const UpdateNotification = ({
 		return withErrorToast(
 			<UpdateContainer tone="failed">
 				<UpdateHeading tone="failed">
-					The server update didn't finish
+					{t(
+						"ui.common.updates.update_notification.the_server_update_didn_t_finish",
+					)}
 				</UpdateHeading>
 				<p className="mb-2 text-body text-ink-muted">{failure.sentence}</p>
 				{/*
@@ -3510,7 +3668,7 @@ export const UpdateNotification = ({
 								);
 							}}
 						>
-							Reveal update log
+							{t("ui.common.updates.update_notification.reveal_update_log")}
 						</Button>
 					</div>
 				)}
@@ -3520,14 +3678,14 @@ export const UpdateNotification = ({
 						size="sm"
 						onClick={handleDismissBackendUpdateFailure}
 					>
-						Update later
+						{t("ui.common.updates.update_notification.update_later")}
 					</Button>
 					<Button
 						variant="primary"
 						size="sm"
 						onClick={() => void updateBackend()}
 					>
-						Try again
+						{t("ui.common.actions.retry_again")}
 					</Button>
 				</UpdateActions>
 			</UpdateContainer>,
@@ -3553,9 +3711,13 @@ export const UpdateNotification = ({
 		return withErrorToast(
 			<UpdateContainer
 				onClose={() => closeDetail(UpdateType.BACKEND)}
-				closeLabel="Close server update details"
+				closeLabel={t(
+					"ui.common.updates.update_notification.close_server_update_details",
+				)}
 			>
-				<h2 className="mb-3 text-heading text-ink">Server update available</h2>
+				<h2 className="mb-3 text-heading text-ink">
+					{t("ui.common.updates.update_notification.server_update_available")}
+				</h2>
 				{/*
 				 * BOTH READINGS IN THE SENTENCE, when there are two. `currentVersion` is
 				 * the install on disk - the thing the button moves - while the build
@@ -3638,14 +3800,18 @@ export const UpdateNotification = ({
 					 * request instead of being quietly half-fixed.
 					 */
 					<div className="mt-2 break-words text-body text-ink-muted">
-						Release notes: {offerNotes.summary}{" "}
+						{t("ui.common.updates.update_notification.release_notes_caption")}
+						{offerNotes.summary}{" "}
 						<a
 							href={offerNotes.url}
 							target="_blank"
 							rel="noopener noreferrer"
 							className="whitespace-nowrap"
 						>
-							View full release notes for {offerNotes.version}
+							{t(
+								"ui.common.updates.update_notification.view_full_release_notes_for",
+							)}
+							{offerNotes.version}
 						</a>
 					</div>
 				)}
@@ -3662,8 +3828,9 @@ export const UpdateNotification = ({
 				 */}
 				{!backendUpdateInfo.appOwned && (
 					<p className="mt-2 text-body-sm text-ink-muted">
-						Updating the server will improve AI functionality, improve security,
-						and fix bugs.
+						{t(
+							"ui.common.updates.update_notification.updating_the_server_will_improve_ai_functionality_improve_securit",
+						)}
 					</p>
 				)}
 
@@ -3688,7 +3855,7 @@ export const UpdateNotification = ({
 								onClick={handleDeferBackendUpdate}
 								disabled={checking}
 							>
-								Update later
+								{t("ui.common.updates.update_notification.update_later")}
 							</Button>
 							<Button
 								variant="primary"
@@ -3696,7 +3863,9 @@ export const UpdateNotification = ({
 								onClick={() => void updateBackend()}
 								disabled={checking}
 							>
-								{checking ? "Updating..." : "Update server"}
+								{checking
+									? t("ui.common.updates.update_notification.updating")
+									: t("ui.common.updates.update_notification.update_server")}
 							</Button>
 						</UpdateActions>
 						{/*
@@ -3718,7 +3887,9 @@ export const UpdateNotification = ({
 							    marking "this one needs you" was a colour (review D5). */}
 						<p className="mt-4 text-body text-ink">
 							{backendUpdateInfo.remedy ??
-								"The server is installed outside the app, so use the tool you installed it with - uv, pipx or pip:"}
+								t(
+									"ui.common.updates.update_notification.the_server_is_installed_outside_the_app_so_use_the_tool_you_insta",
+								)}
 						</p>
 						{backendUpdateInfo.updateCommand && (
 							<CommandBlock command={backendUpdateInfo.updateCommand} />
@@ -3751,7 +3922,9 @@ export const UpdateNotification = ({
 								 * be re-raised by every five-minute check - but the label no longer
 								 * promises a future the app cannot reach.
 								 */}
-								{backendUpdateInfo.appOwned ? "Understood" : "Update later"}
+								{backendUpdateInfo.appOwned
+									? t("ui.common.updates.update_notification.understood")
+									: t("ui.common.updates.update_notification.update_later")}
 							</Button>
 							{/*
 							 * AND ONE CHECK CONTROL, NOT TWO (review round 1, U5). Both this button
@@ -3770,7 +3943,11 @@ export const UpdateNotification = ({
 									onClick={() => void checkForAllUpdates()}
 									disabled={checking}
 								>
-									{checking ? "Checking..." : "Check for updates"}
+									{checking
+										? t("ui.common.updates.update_notification.checking")
+										: t(
+												"ui.common.updates.update_notification.check_for_updates",
+											)}
 								</Button>
 							)}
 						</UpdateActions>
@@ -3818,7 +3995,9 @@ export const UpdateNotification = ({
 				onClose={() => setBackendUpdateCompleted(false)}
 				variant="success"
 			>
-				Server update completed successfully
+				{t(
+					"ui.common.updates.update_notification.server_update_completed_successfully",
+				)}
 				{sessionsLine === null ? null : (
 					<p className="text-body-sm text-ink">{sessionsLine}</p>
 				)}
@@ -3874,18 +4053,76 @@ export const UpdateNotification = ({
 			<UpdateContainer>
 				<UpdateHeading>
 					{serverDidNotComeBack
-						? "The server did not come back after the restart"
-						: "The server is on an older build than the install"}
+						? t(
+								"ui.common.updates.update_notification.the_server_did_not_come_back_after_the_restart",
+							)
+						: t(
+								"ui.common.updates.update_notification.the_server_is_on_an_older_build_than_the_install",
+							)}
 				</UpdateHeading>
 				<p className="mb-2 text-body text-ink-muted">
 					{kind === "up-to-date"
 						? releaseRead
-							? `This machine's install is up to date${installVersion ? ` (${installVersion})` : ""}, and the server serving this app is still running ${runningVersion ?? "an older build"}.`
-							: `This machine's install is ${installVersion ?? "a newer build"}, and the server serving this app is still running ${runningVersion ?? "an older build"}.`
+							? t(
+									"ui.common.updates.update_notification.this_machine_s_install_is_up_to_date",
+									{
+										detail: String(
+											installVersion ? ` (${installVersion})` : "",
+										),
+										detail2: String(
+											runningVersion ??
+												t(
+													"ui.common.updates.update_notification.an_older_build",
+												),
+										),
+									},
+								)
+							: t(
+									"ui.common.updates.update_notification.this_machine_s_install_is",
+									{
+										detail: String(
+											installVersion ??
+												t(
+													"ui.common.updates.update_notification.a_newer_build",
+												),
+										),
+										detail2: String(
+											runningVersion ??
+												t(
+													"ui.common.updates.update_notification.an_older_build",
+												),
+										),
+									},
+								)
 						: kind === "restart-failed"
-							? `The install is now at ${installVersion ?? "the new version"}, and the server serving this app did not answer after it was restarted.`
+							? t(
+									"ui.common.updates.update_notification.the_install_is_now_at",
+									{
+										detail: String(
+											installVersion ??
+												t(
+													"ui.common.updates.update_notification.the_new_version",
+												),
+										),
+									},
+								)
 							: unattended
-								? `An update you started before quitting finished while Local Operator was closed, so the install is now at ${installVersion ?? "a newer version"}. Nothing restarted the server that was serving you${runningVersion ? `, which still reports ${runningVersion}` : ""}.`
+								? t(
+										"ui.common.updates.update_notification.an_update_you_started_before_quitting_finished_while_local",
+										{
+											detail: String(
+												installVersion ??
+													t(
+														"ui.common.updates.update_notification.a_newer_version",
+													),
+											),
+											detail2: String(
+												runningVersion
+													? `, which still reports ${runningVersion}`
+													: "",
+											),
+										},
+									)
 								: /*
 									 * THE RESTART THAT DID NOT TAKE IS NOT A DAEMON STARTED ELSEWHERE
 									 * (design D1). This clause used to be the `!unattended` fall-through, so on
@@ -3915,8 +4152,37 @@ export const UpdateNotification = ({
 										 * exactly the press that failed (a guard on `notRestarted` here would be
 										 * always-true, the unreachable shape this file removes).
 										 */
-										`The install is now at ${installVersion ?? "the new version"}, but the server serving this app is still running ${runningVersion ?? "the build it loaded"}. That restart did not take.`
-									: `The install is now at ${installVersion ?? "the new version"}, but the server serving this app was started outside Local Operator, so it was left running${runningVersion ? ` on ${runningVersion}` : ""}.`}
+										t(
+											"ui.common.updates.update_notification.the_install_is_now_at_v2",
+											{
+												detail: String(
+													installVersion ??
+														t(
+															"ui.common.updates.update_notification.the_new_version",
+														),
+												),
+												detail2: String(
+													runningVersion ??
+														t(
+															"ui.common.updates.update_notification.the_build_it_loaded",
+														),
+												),
+											},
+										)
+									: t(
+											"ui.common.updates.update_notification.the_install_is_now_at_v3",
+											{
+												detail: String(
+													installVersion ??
+														t(
+															"ui.common.updates.update_notification.the_new_version",
+														),
+												),
+												detail2: String(
+													runningVersion ? ` on ${runningVersion}` : "",
+												),
+											},
+										)}
 				</p>
 				<p className="mb-2 text-body text-ink-muted">
 					{/*
@@ -3947,7 +4213,14 @@ export const UpdateNotification = ({
 					 */}
 					{serverDidNotComeBack
 						? actionRestartsTheServer
-							? `This app started that server, so it can restart it. ${RESTART_COST_SENTENCE_SERVER_DOWN}`
+							? t(
+									"ui.common.updates.update_notification.this_app_started_that_server_so_it_can_restart_it",
+									{
+										restartcostsentenceserverdown: String(
+											RESTART_COST_SENTENCE_SERVER_DOWN(),
+										),
+									},
+								)
 							: /*
 								 * Reachable, and review round 2's ordering is why it is worth saying:
 								 * design D14 filed this string as copy no producer could paint, because the
@@ -3957,12 +4230,21 @@ export const UpdateNotification = ({
 								 * did not take the app is honest about not being able to bounce it, and
 								 * this is the sentence such a launch reads. Do not remove it as unused.
 								 */
-								"Nothing is serving this conversation until that server is running again."
+								t(
+									"ui.common.updates.update_notification.nothing_is_serving_this_conversation_until_that_server_is_running",
+								)
 						: actionRestartsTheServer
-							? `This app started that server, so it can restart it onto the new build now. ${RESTART_COST_SENTENCE}`
+							? t(
+									"ui.common.updates.update_notification.this_app_started_that_server_so_it_can_restart_it_onto_the",
+									{ restartcostsentence: String(RESTART_COST_SENTENCE()) },
+								)
 							: restartable
-								? "Restart Local Operator and the server comes back on the new build."
-								: "The server serving this app was started outside Local Operator, which does not restart a server it did not start: stop it and start Local Operator again, or restart whatever started it, and it comes back on the new build."}
+								? t(
+										"ui.common.updates.update_notification.restart_local_operator_and_the_server_comes_back_on_the_new_build",
+									)
+								: t(
+										"ui.common.updates.update_notification.the_server_serving_this_app_was_started_outside_local_operator_wh",
+									)}
 				</p>
 				{/*
 				 * DISMISS FIRST, COMMIT LAST (design D4), which is this component's own rule -
@@ -4001,7 +4283,7 @@ export const UpdateNotification = ({
 							setBackendSkewNotice(null);
 						}}
 					>
-						Understood
+						{t("ui.common.updates.update_notification.understood")}
 					</Button>
 					{actionRestartsTheServer && (
 						<Button
@@ -4012,7 +4294,7 @@ export const UpdateNotification = ({
 								void updateBackend(installVersion);
 							}}
 						>
-							Restart the server
+							{t("ui.common.updates.update_notification.restart_the_server")}
 						</Button>
 					)}
 				</UpdateActions>

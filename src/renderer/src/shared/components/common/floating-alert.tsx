@@ -1,4 +1,5 @@
 import { Alert, type AlertProps, Button } from "@shared/components/ui";
+import { t } from "@shared/i18n";
 import { X } from "lucide-react";
 import { type FC, type ReactNode, useEffect } from "react";
 
@@ -79,7 +80,7 @@ export const FloatingAlert: FC<FloatingAlertProps> = ({
 				variant="ghost"
 				size="icon-sm"
 				onClick={onClose}
-				aria-label="Dismiss"
+				aria-label={t("ui.common.connection.floating_alert.dismiss")}
 				className="absolute top-1.5 right-1.5"
 			>
 				<X />

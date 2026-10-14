@@ -1,4 +1,5 @@
 import { Button } from "@shared/components/ui";
+import { t } from "@shared/i18n";
 import { updateErrorCopy } from "@shared/utils/update-error-copy";
 import type { FC } from "react";
 import { FloatingAlert } from "./floating-alert";
@@ -87,7 +88,9 @@ export const UpdateErrorAlert: FC<UpdateErrorAlertProps> = ({
 					>
 						{/* The button is the owner "then try again" was missing, so its
 						    label is the copy's own verb rather than a second sentence. */}
-						{retrying ? "Checking..." : "Try again"}
+						{retrying
+							? t("ui.common.updates.update_error_alert.checking")
+							: t("ui.common.actions.retry_again")}
 					</Button>
 				) : null
 			}

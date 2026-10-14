@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * The update foot icon: the standing "a release is waiting" affordance.
  *
@@ -218,7 +219,8 @@ export const UpdateFootIconView: FC<{
 						 * ellipsised correctly - one rule for every line now.
 						 */
 						<span key={surface.type} className="truncate text-ink">
-							{surfaceSubject(surface)} available
+							{surfaceSubject(surface)}{" "}
+							{t("ui.common.updates.update_foot_icon.available")}
 						</span>
 					))}
 					{summarySurface ? (
@@ -227,7 +229,7 @@ export const UpdateFootIconView: FC<{
 						</span>
 					) : null}
 					<span className="whitespace-nowrap text-ink-muted">
-						Show the update notice.
+						{t("ui.common.updates.update_foot_icon.show_the_update_notice")}
 					</span>
 				</div>
 			}

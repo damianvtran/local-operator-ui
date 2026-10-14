@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * Backend compatibility banner.
  *
@@ -70,8 +71,9 @@ const REQUIRED_FEATURES = REQUIRED_BACKEND_FEATURES;
  * SAME string the container sets, rather than a second copy of it drifting in a
  * story file (`backend-compatibility-banner.stories.tsx`, `UpdateFailed`).
  */
-export const BACKEND_UPDATE_UNEXPLAINED =
-	"The backend update could not start. Retry, or update from Settings, under Application updates.";
+export const BACKEND_UPDATE_UNEXPLAINED = t(
+	"ui.common.connection.backend_compatibility_banner.the_backend_update_could_not_start_retry_or_update_from_settings_",
+);
 
 export type BackendCompatibilityBannerViewProps = {
 	message: string;
@@ -134,7 +136,13 @@ export const BackendCompatibilityBannerView = ({
 								onClick={onUpdate}
 								disabled={updating}
 							>
-								{updating ? "Updating" : "Update backend"}
+								{updating
+									? t(
+											"ui.common.connection.backend_compatibility_banner.updating",
+										)
+									: t(
+											"ui.common.connection.backend_compatibility_banner.update_backend",
+										)}
 							</Button>
 						)}
 						{offerRetry && (
@@ -143,7 +151,7 @@ export const BackendCompatibilityBannerView = ({
 								size="sm"
 								onClick={onRetry}
 							>
-								Retry
+								{t("ui.common.actions.retry")}
 							</Button>
 						)}
 					</span>
