@@ -526,15 +526,24 @@ export function journalLookupIds(state: TranscriptState): string[] {
 	 * nothing to admit and is not a lookup question.
 	 */
 	requested.push(...journalBodyOwedIds(state));
+	if (!state.journalPositions?.has(state.oldestId ?? ""))
+		requested.push(state.oldestId);
 	/*
-	 * AND A PROVEN ABSENCE IS NOT RE-ASKED. The union's whole point is to ask
-	 * about ids that could still resolve; an id a payload answer already settled
-	 * as missing (`journalSourceVoid`) has had its answer, and asking again - in
-	 * the lookup or through the body owed-set it would otherwise rejoin - is the
-	 * token retry loop the contract forbids ("proven-absent... never re-asked
-	 * without a new causal fact"). A new fact is what clears the void: a fresh
-	 * admitted body, or a rotation (which drops the whole void set). Rows the
-	 * void covers therefore simply drop out of this union.
+	 * AND A PROVEN ABSENCE IS NOT RE-ASKED (review round 1, M1). The union's
+	 * whole point is to ask about ids that could still resolve; an id a payload
+	 * answer already settled as missing (`journalSourceVoid`) has had its answer,
+	 * and asking again - in the lookup or through the body owed-set it would
+	 * otherwise rejoin - is the token retry loop the contract forbids
+	 * ("proven-absent... never re-asked without a new causal fact"). A new fact is
+	 * what clears the void: a fresh admitted body, or a rotation (which drops the
+	 * whole void set).
+	 *
+	 * THE FILTER RUNS **AFTER** THE OLDEST-ID PUSH, DELIBERATELY (this round's
+	 * M1): it used to run before it, so a proven-missing CURSOR id went straight
+	 * back into the union on every flight, kept the sweep on the lookup stage
+	 * (which then never reached the body stage), and starved the payload read that
+	 * rotation-stamped body debt needs. One filter, after every source of id, is
+	 * the invariant the comment states.
 	 */
 	if (state.journalSourceVoid?.size)
 		for (let index = requested.length - 1; index >= 0; index--) {
@@ -542,8 +551,6 @@ export function journalLookupIds(state: TranscriptState): string[] {
 			if (typeof value === "string" && state.journalSourceVoid.has(value))
 				requested.splice(index, 1);
 		}
-	if (!state.journalPositions?.has(state.oldestId ?? ""))
-		requested.push(state.oldestId);
 	return [
 		...new Set(
 			requested.filter(
@@ -586,16 +593,31 @@ export function journalBodyOwedIds(state: TranscriptState): string[] {
 	return ids;
 }
 
-/**
+/*
  * The union ids that still need source FACTS (a same-domain coordinate): the
  * metadata lookup's request set. Ids that already have a fact but still owe a
  * body are deliberately NOT here - their next read is the payload subset, not
  * another coordinate sweep ("lookup response bytes" are the cost this whole
  * lane exists to stop paying twice).
+ *
+ * IT ALSO EXCLUDES IDS THIS FLIGHT ALREADY ASKED (review round 1, M1): the
+	* repair loop seals each dispatched kind per flight, and a caller that ignores
+	* that seal (the hook's sweep asks this of the transcript alone) would keep
+ * choosing `lookup` for an id already asked and answered this flight - so the
+ * loop, seeing nothing NEW to ask under that kind, would end the flight and
+ * the body debt stamped by rotation would never reach the payload stage. With
+ * the seal honoured here, a sealed fact id drops out and the sweep falls
+ * through to `payload`. `attempted` is per-flight state the caller owns; an
+ * empty/absent set is the first iteration of a flight, where nothing is sealed.
  */
-export function journalFactsNeeded(state: TranscriptState): string[] {
+export function journalFactsNeeded(
+	state: TranscriptState,
+	attempted?: ReadonlySet<string>,
+): string[] {
 	const positions = state.journalPositions;
-	return journalLookupIds(state).filter((id) => !positions?.has(id));
+	return journalLookupIds(state).filter(
+		(id) => !positions?.has(id) && !attempted?.has(id),
+	);
 }
 
 export const currentOrderRevision = (state: TranscriptState): number =>

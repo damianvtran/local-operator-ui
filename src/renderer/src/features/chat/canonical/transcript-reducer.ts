@@ -3965,12 +3965,25 @@ export function applyPeerSourcePayload(
 	state: TranscriptState,
 	page: DesktopHistoryPage,
 	orderRead?: JournalOrderRead,
-): TranscriptState {
-	let next = receiveJournalOrder(state, page, [], false, orderRead, {
+	/**
+	 * The order revision at dispatch. A present/missing id whose body-owed stamp
+		* is NEWER than this was re-debted after the read left (a same-domain wake can
+	 * re-owe an id in place), and its answer describes a body state that is now
+	 * stale - so it neither admits the body nor settles absence (review round 1,
+	 * m1; contract: "Per-ID body-owed revisions fence body acceptance"). Absent
+		* keeps the historical unfenced shape.
+		*/
+		dispatchRevision?: number,
+		): TranscriptState {
+		let next = receiveJournalOrder(state, page, [], false, orderRead, {
 		peer: true,
-	});
-	next = finalizePeerLane(next, true);
-	const matching =
+		});
+		next = finalizePeerLane(next, true);
+		const owed = next.journalBodyOwed;
+		const acceptanceSuperseded = (id: string): boolean =>
+		dispatchRevision !== undefined &&
+		(owed?.get(id) ?? -Infinity) > dispatchRevision;
+		const matching =
 		page.journal_order_state === "ready" &&
 		typeof page.journal_generation === "string" &&
 		page.journal_generation === next.journalGeneration;
@@ -3984,6 +3997,7 @@ export function applyPeerSourcePayload(
 		const updated = new Map<string, TranscriptRecord>();
 		for (const entry of entries) {
 			if (typeof entry.id !== "string" || entry.id === "") continue;
+			if (acceptanceSuperseded(entry.id)) continue;
 			const toolKey = `tool:${String(entry.payload?.tool_call_id ?? "")}`;
 			const position = index.get(entry.id) ?? index.get(toolKey);
 			const current = position === undefined ? undefined : records[position];
@@ -4018,7 +4032,10 @@ export function applyPeerSourcePayload(
 		result = clearPeerAdmissions(result, admitted, false);
 		const missing = (page.source_missing_ids ?? []).filter(
 			(id): id is string =>
-				typeof id === "string" && id.length > 0 && id.length <= 128,
+				typeof id === "string" &&
+				id.length > 0 &&
+				id.length <= 128 &&
+				!acceptanceSuperseded(id),
 		);
 		if (missing.length > 0) {
 			result = clearPeerAdmissions(result, missing, false);
