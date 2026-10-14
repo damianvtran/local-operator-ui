@@ -75,6 +75,22 @@ export type DeviceMove =
 type ChatDeviceState = {
 	/** Keyed by the pane: the session id, or the draft key before one exists. */
 	moves: Record<string, DeviceMove>;
+	/**
+	 * A token per pane that ASKS the device picker to open, and nothing else.
+	 *
+	 * WHY THIS EXISTS: the header's overflow menu is the discoverable "Move to another
+	 * device" door, but the picker itself lives in `ChatHeaderDevice` two component
+	 * trees away - the menu is in `chat-header.tsx`, the picker in the separate
+	 * `ChatDeviceSlot` the page threads into the title block - and the header's props
+	 * are a fixed surface this slice must not widen (`deviceSlot` is a node composed
+	 * by the page, exactly so the header stays chrome-only). The two surfaces share no
+	 * prop path, so the ask travels the way this feature's other cross-surface fact
+	 * already does: through this store. It is a COUNTER rather than a boolean because
+	 * a second press must re-open a picker the user has since closed, and a boolean
+	 * that is already `true` carries no new event to react to.
+	 */
+	pickerRequests: Record<string, number>;
+	requestPicker: (key: string) => void;
 	beginMove: (
 		key: string,
 		move: { deviceId: string; name: string; from: string | null },
@@ -92,6 +108,14 @@ type ChatDeviceState = {
 
 export const useChatDeviceStore = create<ChatDeviceState>((set) => ({
 	moves: {},
+	pickerRequests: {},
+	requestPicker: (key) =>
+		set((state) => ({
+			pickerRequests: {
+				...state.pickerRequests,
+				[key]: (state.pickerRequests[key] ?? 0) + 1,
+			},
+		})),
 	beginMove: (key, move) =>
 		set((state) => ({
 			moves: { ...state.moves, [key]: { kind: "moving", ...move } },

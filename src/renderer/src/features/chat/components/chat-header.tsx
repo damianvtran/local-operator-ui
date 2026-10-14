@@ -1,3 +1,7 @@
+import {
+	desktopFeatureState,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 import { Spinner } from "@shared/components/common/spinner";
 import {
 	Badge,
@@ -28,6 +32,7 @@ import {
 	GitPullRequest,
 	Globe,
 	Info,
+	MonitorSmartphone,
 	MoreHorizontal,
 	Pencil,
 	Rows3,
@@ -43,6 +48,7 @@ import { archiveControlLabel } from "../chat-archived";
  * door per surface, one implementation of what is copied and what it says.
  */
 import { copySessionId } from "../copy-session-id";
+import { useChatDeviceStore } from "../device/chat-device-store";
 import { useSessionCommand } from "../pickers/use-picker-backend";
 import {
 	TRANSCRIPT_DISPLAY_MODE_OPTIONS,
@@ -317,6 +323,32 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	asksScope = "session",
 	asksOpen = false,
 }) => {
+	/*
+	 * THE MOVE ITEM'S OWN FACTS, read here for the same reason the chip reads them in
+	 * `ChatDeviceSlot`: the gate is not a preference of this menu, it is the backend's
+	 * own answer about whether a conversation can be moved at all. `peers` is what
+	 * makes any device surface exist (a control for a capability the backend cannot
+	 * serve advertises something that cannot work - `app.tsx`'s rule), and
+	 * `session_transfer` gates the move inside that. Read here rather than threaded
+	 * from the page, so the menu and the chip cannot drift about which gate is closed.
+	 */
+	const capabilities = useDesktopCapabilities();
+	const peersEnabled =
+		desktopFeatureState(capabilities.data, "peers") === "enabled";
+	const transferEnabled =
+		desktopFeatureState(capabilities.data, "session_transfer") === "enabled";
+	/*
+	 * THE REASON THE DOOR IS SHUT, in plain language, so the control explains its gate
+	 * instead of vanishing (the defect this slice answers: a user scanning header
+	 * actions found nothing and could not tell whether the feature existed). Absent
+	 * entirely when the door is open - `undefined` is "nothing to explain".
+	 */
+	const moveReason = !peersEnabled
+		? "this backend cannot move a conversation yet"
+		: !transferEnabled
+			? "this build cannot move a conversation yet"
+			: undefined;
+	const requestPicker = useChatDeviceStore((s) => s.requestPicker);
 	const setCanvasOpen = useUiPreferencesStore((s) => s.setCanvasOpen);
 	const isCanvasOpen = useUiPreferencesStore((s) => s.isCanvasOpen);
 	/*
@@ -1171,6 +1203,69 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 								>
 									<Copy aria-hidden="true" />
 									<span>Copy session ID</span>
+								</DropdownMenuItem>
+							)}
+							{/*
+							 * MOVE TO ANOTHER DEVICE, VISIBLE IN EVERY STATE the chip is not.
+							 *
+							 * WHY IT IS HERE AND NOT ONLY ON THE CHIP: the chip that carries the placement
+							 * fact is LAST in the title block and the first thing the block clips at narrow
+							 * and docked widths, and it is labelled as a FACT ("On this device"), never as
+							 * an action - so a user scanning the header for a way to move the conversation
+							 * finds neither the words nor, once the control is gated, any trace that the
+							 * operation exists (the chip collapses to `null` with no placeholder). This
+							 * item is that discoverable door: it names the operation in the menu the user
+							 * already opens for row actions, and it stays VISIBLE WHEN THE GATE IS SHUT,
+							 * disabled with the reason the picker itself would give - so the gate is
+							 * EXPLAINED rather than hidden.
+							 *
+							 * IT OPENS THE SAME PICKER, not a new path: the press only asks (`requestPicker`)
+							 * and `ChatHeaderDevice` - which owns the picker and the confirmation - reacts by
+							 * opening the DevicePickerModel it already builds. Nothing here selects a
+							 * destination or bypasses `MoveConfirmDialog`, so the destructive default (a
+							 * live move deletes the source copy unless Keep is chosen) is unchanged.
+							 *
+							 * NO SEPARATOR ABOVE IT: it belongs to the copy-id / display group (things the
+							 * reader does to THIS conversation), above the separator that parts them from
+							 * the archive/delete pair.
+							 */}
+							{sessionId && (
+								<DropdownMenuItem
+									data-session-move-action
+									title={moveReason}
+									data-move-reason={moveReason}
+									/*
+									 * `aria-disabled` RATHER THAN RADIX's `disabled`, and it is this repository's own
+									 * convention (the picker's rows say why three times): a genuinely disabled item is
+									 * filtered out of the focus candidates, so a keyboard reader could not land on the
+									 * row whose whole job is to be READ. The element stays focusable and the press is
+									 * ignored instead.
+									 *
+									 * THE REASON RIDES THE ROW, in the picker's own shape: the name stays legible on its
+									 * own line and the cause sits muted beneath it, because a reason relegated to a
+									 * `title` tooltip is one a reader must hunt for - and the whole defect this slice
+									 * fixes is a gate the user could not see. `text-warning` is the app's ink for a
+									 * statement about a state rather than an error.
+									 */
+									aria-disabled={moveReason ? true : undefined}
+									onSelect={() => {
+										if (moveReason) return;
+										requestPicker(sessionId);
+									}}
+									className={cn(
+										moveReason &&
+											"cursor-not-allowed data-[highlighted]:bg-transparent data-[highlighted]:text-ink-muted",
+									)}
+								>
+									<MonitorSmartphone aria-hidden="true" />
+									<span className="flex flex-col items-start gap-0.5">
+										<span>Move to another device…</span>
+										{moveReason ? (
+											<span className="text-meta text-warning">
+												{moveReason}
+											</span>
+										) : null}
+									</span>
 								</DropdownMenuItem>
 							)}
 							{/*
