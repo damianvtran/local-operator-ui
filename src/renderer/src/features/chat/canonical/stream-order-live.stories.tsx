@@ -286,3 +286,159 @@ export const Moment4TextC: Story = {
 export const LiveMarkdown: Story = {
 	render: () => <Frame transcript={turn(1, "That's `InfoList".length)} />,
 };
+
+/*
+ * REVIEW ROUND 1 FRAMES. The first fix ranked parallel calls by committed slot
+ * ahead of arrival, so the NEXT text painted between two parallel calls and hopped
+ * below them when the wake landed (R1-M1 / Q2). Same file on the previous head
+ * and this one: the before is that head, the after is this one.
+ */
+function parallelTurn(withText: boolean): TranscriptState {
+	let clock = 1_760_000_000_000;
+	let seq = 0;
+	let state = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		{
+			entries: [
+				{
+					id: "u1",
+					type: "message",
+					ts: 1_760_000_000,
+					payload: {
+						id: "u1",
+						role: "user",
+						content: [{ type: "text", text: "Read both files." }],
+						tool_calls: [],
+					},
+					journal_seq: 0,
+				},
+			],
+			has_more: false,
+			cursor_missing: false,
+			journal_generation: GENERATION,
+			journal_order_state: "ready",
+		},
+		{ authoritative: true },
+	);
+	const emit = (event: LiveEvent) => {
+		clock += 50;
+		seq += 1;
+		state = applyEvent(state, event, clock, { frame: { epoch: "e", seq } });
+	};
+	emit({ type: "message_start", message: text("m1", "") });
+	emit({
+		type: "message_update",
+		message: text("m1", ""),
+		delta: "Reading both files.",
+	});
+	emit({
+		type: "message_end",
+		message: text("m1", "Reading both files.", [call("c1"), call("c2")]),
+	});
+	for (const [id, command] of [
+		["c1", "cat alpha.txt"],
+		["c2", "cat beta.txt"],
+	]) {
+		emit({
+			type: "tool_execution_start",
+			tool_call_id: id,
+			tool_name: "bash",
+			args: { command },
+		});
+	}
+	// The batch ends out of slot order; the journal persists in slot order.
+	for (const id of ["c2", "c1"])
+		emit({
+			type: "tool_execution_end",
+			tool_call_id: id,
+			tool_name: "bash",
+			result: ok,
+			duration_s: 0.2,
+		});
+	if (withText) {
+		emit({ type: "message_start", message: text("m2", "") });
+		emit({
+			type: "message_update",
+			message: text("m2", ""),
+			delta: "Both files read; the answer follows.",
+		});
+	}
+	return state;
+}
+
+/** Two parallel calls, then text, no wake yet: the text stays BELOW both calls. */
+export const ParallelCallsThenText: Story = {
+	render: () => <Frame transcript={parallelTurn(true)} />,
+};
+
+/**
+ * A reply streamed up to `content`, as one assistant row on the same pane. The
+ * design review's probes (D1 numbered-list marker, D2 half-typed closing fence)
+ * as frames.
+ */
+function markdownTurn(content: string): TranscriptState {
+	let clock = 1_760_000_000_000;
+	let seq = 0;
+	let state = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		{
+			entries: [
+				{
+					id: "u1",
+					type: "message",
+					ts: 1_760_000_000,
+					payload: {
+						id: "u1",
+						role: "user",
+						content: [{ type: "text", text: "Show me." }],
+						tool_calls: [],
+					},
+					journal_seq: 0,
+				},
+			],
+			has_more: false,
+			cursor_missing: false,
+			journal_generation: GENERATION,
+			journal_order_state: "ready",
+		},
+		{ authoritative: true },
+	);
+	const emit = (event: LiveEvent) => {
+		clock += 50;
+		seq += 1;
+		state = applyEvent(state, event, clock, { frame: { epoch: "e", seq } });
+	};
+	emit({ type: "message_start", message: text("m1", "") });
+	emit({ type: "message_update", message: text("m1", ""), delta: content });
+	return state;
+}
+
+const LIST = "Plan:\n\n- first item\n- second item\n- third item\n\n";
+
+/** D1: the writer has typed the digit of the next list's marker. Nothing paints for it. */
+export const NumberedMarkerDigit: Story = {
+	render: () => <Frame transcript={markdownTurn(`${LIST}1`)} />,
+};
+
+/** D1: marker and dot typed; still nothing for it. */
+export const NumberedMarkerDot: Story = {
+	render: () => <Frame transcript={markdownTurn(`${LIST}1.`)} />,
+};
+
+/** D2: one backtick of the closing fence: the code block does not grow a line. */
+export const FenceHalfClosed: Story = {
+	render: () => (
+		<Frame
+			transcript={markdownTurn("Run it:\n\n```sh\nnpm install\nnpm test\n``")}
+		/>
+	),
+};
+
+/** D2 baseline: the same fence one line earlier (no closer typed). */
+export const FenceNoCloser: Story = {
+	render: () => (
+		<Frame
+			transcript={markdownTurn("Run it:\n\n```sh\nnpm install\nnpm test\n")}
+		/>
+	),
+};
