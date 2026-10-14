@@ -1165,6 +1165,13 @@ test("the keyboard contract: Tab enters the FOCUSED link's toolbar, and Escape h
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	try {
 		await frame.dispatch(shots, "pointerover", { clientX: 200, clientY: 372 });
+		assert.match(
+			frame.document
+				.querySelector("[data-lo-link-toolbar]")
+				?.getAttribute("aria-label") ?? "",
+			/opoint_adverse_media_query_failures/,
+			"pointer entry must not bypass the shipped hover dwell",
+		);
 		act(() => t.mock.timers.tick(200));
 		const pointed = frame.document.querySelector("[data-lo-link-toolbar]");
 		assert.match(

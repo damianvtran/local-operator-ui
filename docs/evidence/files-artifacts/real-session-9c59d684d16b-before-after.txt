@@ -1,0 +1,68 @@
+=== BEFORE: origin/main c7568c77f (files-artifacts-before worktree)
+{
+  "session": "9c59d684d16b",
+  "rows": 5635,
+  "records": 4919,
+  "generate_image_records": 74,
+  "distinct_generated_digests_in_transcript": 69,
+  "mentions_total": 458,
+  "mentions_by_source": {
+    "tool-arg": 265,
+    "prose": 193
+  },
+  "generated_digests_with_a_row": 0,
+  "dot_bin_path_tiles": 2,
+  "artifact_rows": 0,
+  "video_receipt_rows": 0,
+  "sample": []
+}
+=== AFTER: this branch
+{
+  "session": "9c59d684d16b",
+  "rows": 5635,
+  "records": 4919,
+  "generate_image_records": 74,
+  "distinct_generated_digests_in_transcript": 69,
+  "mentions_total": 527,
+  "mentions_by_source": {
+    "tool-arg": 263,
+    "prose": 193,
+    "artifact": 71
+  },
+  "generated_digests_with_a_row": 69,
+  "dot_bin_path_tiles": 0,
+  "artifact_rows": 71,
+  "video_receipt_rows": 0,
+  "sample": [
+    {
+      "path": "artifact:83c17a23f1c562f8114ea3bedb206db9",
+      "digest": "83c17a23f1c562f8114ea3bedb206db9",
+      "kind": "image",
+      "contentType": "image/jpeg",
+      "name": "fal-ai-flux-2-pro-01.jpg",
+      "sizeBytes": 305664,
+      "width": 576,
+      "height": 1024
+    },
+    {
+      "path": "artifact:52d07b9e0a1dca700fc8e1c8dac93d9e",
+      "digest": "52d07b9e0a1dca700fc8e1c8dac93d9e",
+      "kind": "image",
+      "contentType": "image/jpeg",
+      "name": "fal-ai-flux-2-pro-01.jpg",
+      "sizeBytes": 254549,
+      "width": 576,
+      "height": 1024
+    },
+    {
+      "path": "artifact:032732e11fa090eaed247a5eadb135c3",
+      "digest": "032732e11fa090eaed247a5eadb135c3",
+      "kind": "image",
+      "contentType": "image/jpeg",
+      "name": "fal-ai-flux-2-pro-01.jpg",
+      "sizeBytes": 298454,
+      "width": 576,
+      "height": 1024
+    }
+  ]
+}
