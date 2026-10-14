@@ -487,9 +487,8 @@ test("a completed run arrives collapsed: one bar, the work unmounted, the answer
 		"the call's own reported seconds - the foot's quantity, not a wall span",
 	);
 	assert.match(summary.textContent, ONE_ACTION_RE);
-	assert.equal(
-		rowBox(mounted, "tool:1"),
-		null,
+	assert.ok(
+		rowBox(mounted, "tool:1") === null,
 		"the hidden row is unmounted, not merely hidden",
 	);
 	assert.ok(rowBox(mounted, "user:1"), "the opening message stays put");
@@ -533,9 +532,8 @@ test("the press opens the run in place, and puts it back", async (t) => {
 		"and the foot stays suppressed while open: the bar is still the summary",
 	);
 	await click(barTrigger(mounted));
-	assert.equal(
-		rowBox(mounted, "tool:1"),
-		null,
+	assert.ok(
+		rowBox(mounted, "tool:1") === null,
 		"the second press puts it back",
 	);
 });
@@ -568,17 +566,15 @@ test("the expansion follows the conversation, survives a remount, and resets wit
 	remounted.container.remove();
 
 	const other = await mount(t, records, { frontend: { session_id: "chat-b" } });
-	assert.equal(
-		rowBox(other, "tool:1"),
-		null,
+	assert.ok(
+		rowBox(other, "tool:1") === null,
 		"another conversation arrives collapsed: the store is keyed by conversation",
 	);
 
 	__resetTurnCollapseOpen();
 	const fresh = await mount(t, records, { frontend: { session_id: "chat-a" } });
-	assert.equal(
-		rowBox(fresh, "tool:1"),
-		null,
+	assert.ok(
+		rowBox(fresh, "tool:1") === null,
 		"and a reload (a fresh store) returns to the shipped default",
 	);
 });
@@ -613,9 +609,8 @@ test("no failure tally renders: the bar stands in for the failing run, the row i
 		FAILED_I_RE,
 		"the tally is gone from the bar",
 	);
-	assert.equal(
-		summary.querySelector("[data-failed-clause]"),
-		null,
+	assert.ok(
+		summary.querySelector("[data-failed-clause]") === null,
 		"and with it the failure control",
 	);
 	await click(barTrigger(mounted));
@@ -647,11 +642,11 @@ test("a live run renders as today, and the finished run above it still condenses
 		bar(mounted).getAttribute("data-run-ids"),
 		"user:1 tool:1 answer:1",
 	);
-	assert.equal(
-		rowBox(mounted, "tool:2"),
-		[...mounted.container.querySelectorAll("[data-record-kind]")].find(
-			(node) => node.getAttribute("data-record-id") === "tool:2",
-		),
+	assert.ok(
+		rowBox(mounted, "tool:2") ===
+			[...mounted.container.querySelectorAll("[data-record-kind]")].find(
+				(node) => node.getAttribute("data-record-id") === "tool:2",
+			),
 		"the running turn keeps every row: nothing condenses while it is in flight",
 	);
 	assert.equal(
@@ -679,9 +674,8 @@ test("a run the window edge cut only at its opening row aligns and condenses on 
 		answerRecord("answer:1", { ts: TS + 70_000, settledAt: TS + 70_000 }),
 	];
 	const mounted = await mount(t, records);
-	assert.notEqual(
-		bar(mounted),
-		null,
+	assert.ok(
+		bar(mounted) !== null,
 		"the aligned window holds the opening row, so the run condenses",
 	);
 	assert.doesNotMatch(
@@ -1063,9 +1057,8 @@ test("a settle does not fold the run out from under the reader's focus", async (
 	await act(async () => {
 		trigger.focus();
 	});
-	assert.equal(
-		document.activeElement,
-		trigger,
+	assert.ok(
+		document.activeElement === trigger,
 		"the reader's focus is in the row",
 	);
 	const settled = [
@@ -1073,13 +1066,12 @@ test("a settle does not fold the run out from under the reader's focus", async (
 		answerRecord("answer:1", { ts: TS + 3_000, settledAt: TS + 3_000 }),
 	];
 	await mounted.render(settled, {});
-	assert.equal(
-		bar(mounted),
-		null,
+	assert.ok(
+		bar(mounted) === null,
 		"the settle does not fold the run out from under the focus",
 	);
 	assert.ok(rowBox(mounted, "tool:1"), "the focused row stays mounted");
-	assert.equal(document.activeElement, trigger, "and the focus is intact");
+	assert.ok(document.activeElement === trigger, "and the focus is intact");
 	await act(async () => {
 		trigger.blur();
 	});
@@ -1220,9 +1212,8 @@ test("pinned statements never hide: the notice stays mounted, after the bar", as
 	assert.ok(summary, "the run collapsed");
 	const notice = rowBox(mounted, "notice:1");
 	assert.ok(notice, "the pinned notice is mounted while collapsed");
-	assert.equal(
-		rowBox(mounted, "tool:1"),
-		null,
+	assert.ok(
+		rowBox(mounted, "tool:1") === null,
 		"the hidden tool row is not mounted while collapsed",
 	);
 	const order = (a, b) =>
@@ -1317,14 +1308,12 @@ test("in-turn receipts collapse with the work (operator feedback, 2026-09-29)", 
 		answerRecord("answer:1", { settledAt: TS + 70_000 }),
 	]);
 	assert.ok(bar(mounted), "the run collapsed");
-	assert.equal(
-		rowBox(mounted, "peer:1"),
-		null,
+	assert.ok(
+		rowBox(mounted, "peer:1") === null,
 		"the peer receipt hides while collapsed",
 	);
-	assert.equal(
-		rowBox(mounted, "wake:1"),
-		null,
+	assert.ok(
+		rowBox(mounted, "wake:1") === null,
 		"the wake receipt hides while collapsed",
 	);
 	await click(barTrigger(mounted));
@@ -1351,9 +1340,8 @@ test("a collapsed span that produced pictures keeps them under the bar", async (
 		answerRecord("answer:1", { settledAt: TS + 70_000 }),
 	]);
 	assert.ok(bar(mounted), "the run collapsed");
-	assert.equal(
-		rowBox(mounted, "tool:1"),
-		null,
+	assert.ok(
+		rowBox(mounted, "tool:1") === null,
 		"the row that would draw them is unmounted",
 	);
 	const strip = bar(mounted)?.querySelector("[data-fold-media]");
@@ -1382,9 +1370,8 @@ test("a collapsed span that produced pictures keeps them under the bar", async (
 	/* Pressing is what trades the strip for the rows that draw their own media. */
 	await click(barTrigger(mounted));
 	await flushFrames();
-	assert.equal(
-		bar(mounted)?.querySelector("[data-fold-media]"),
-		null,
+	assert.ok(
+		bar(mounted)?.querySelector("[data-fold-media]") === null,
 		"open, the strip goes",
 	);
 	assert.ok(rowBox(mounted, "tool:1"), "the press mounts the row again");
@@ -1404,9 +1391,8 @@ test("a span with no pictures is the bar it was: no strip, no clause", async (t)
 		answerRecord("answer:1", { settledAt: TS + 70_000 }),
 	]);
 	assert.ok(bar(mounted), "the run collapsed");
-	assert.equal(
-		bar(mounted)?.querySelector("[data-fold-media]"),
-		null,
+	assert.ok(
+		bar(mounted)?.querySelector("[data-fold-media]") === null,
 		"no pictures, no strip",
 	);
 	assert.doesNotMatch(
@@ -1512,18 +1498,16 @@ test("pressing the bar's count hands focus to the bar's trigger, not to <body> (
 	await act(async () => {
 		count.focus();
 	});
-	assert.equal(document.activeElement, count, "the reader is on the count");
+	assert.ok(document.activeElement === count, "the reader is on the count");
 	await click(count);
-	assert.equal(
-		bar(mounted)?.querySelector("[data-fold-media]"),
-		null,
+	assert.ok(
+		bar(mounted)?.querySelector("[data-fold-media]") === null,
 		"the press opened the block and the strip - with the control - unmounted",
 	);
 	const trigger = barTrigger(mounted);
 	assert.equal(trigger.getAttribute("aria-expanded"), "true");
-	assert.equal(
-		document.activeElement,
-		trigger,
+	assert.ok(
+		document.activeElement === trigger,
 		"focus continues from where the reader pressed: the bar's trigger, not <body>",
 	);
 });
@@ -1685,9 +1669,8 @@ test("a parked turn does not condense: the gate is half of the liveness", async 
 		question_total: 1,
 	};
 	const mounted = await mount(t, parked, { gate });
-	assert.equal(
-		bar(mounted),
-		null,
+	assert.ok(
+		bar(mounted) === null,
 		"nothing condenses while the turn waits on the gate",
 	);
 	await mounted.render(parked, { gate: null });
@@ -1830,9 +1813,8 @@ test("the trigger is focusable; the only press inside it toggles", async (t) => 
 	]);
 	const trigger = barTrigger(mounted);
 	trigger.focus();
-	assert.equal(
-		document.activeElement,
-		trigger,
+	assert.ok(
+		document.activeElement === trigger,
 		"the bar's trigger takes keyboard focus",
 	);
 	const controlsInside = [
@@ -2055,9 +2037,8 @@ test("a pinned row between two hidden spans stays BETWEEN their bars, before and
 		"opening a bar reorders nothing that stays visible",
 	);
 	assert.ok(rowBox(mounted, "tool:2"), "the second span's row is now mounted");
-	assert.equal(
-		rowBox(mounted, "tool:1"),
-		null,
+	assert.ok(
+		rowBox(mounted, "tool:1") === null,
 		"the first span is still condensed",
 	);
 	assert.equal(
@@ -2563,14 +2544,12 @@ test("PR-4: a wake re-opening a settled turn keeps its bar - the same element, s
 	];
 	for (const [i, records] of states.entries()) {
 		await mounted.render(records, { waiting: true });
-		assert.equal(
-			bar(mounted),
-			first,
+		assert.ok(
+			bar(mounted) === first,
 			`state ${i}: the bar is the same element`,
 		);
-		assert.equal(
-			rowBox(mounted, "tool:1"),
-			null,
+		assert.ok(
+			rowBox(mounted, "tool:1") === null,
 			`state ${i}: its work is still unmounted`,
 		);
 		assert.equal(
@@ -2606,7 +2585,7 @@ test("PR-4: the cycle settling adds ONE bar at the tail, announces once, and mov
 	];
 	await mounted.render(settled, { waiting: false });
 	assert.equal(barsOf(mounted).length, 2, "the settled cycle is now a bar");
-	assert.equal(barsOf(mounted)[0], first, "the first bar is the same element");
+	assert.ok(barsOf(mounted)[0] === first, "the first bar is the same element");
 	assert.equal(
 		barsOf(mounted)[1].getAttribute("data-record-id"),
 		"wake:1",
@@ -2648,7 +2627,7 @@ test("PR-4: a bar the reader opened stays that bar, and open, across the wake an
 	);
 	const bars = barsOf(mounted);
 	assert.equal(bars.length, 2);
-	assert.equal(bars[0], opened, "the settle keeps it too");
+	assert.ok(bars[0] === opened, "the settle keeps it too");
 	assert.equal(
 		bars[0].querySelector("button").getAttribute("aria-expanded"),
 		"true",
@@ -2746,9 +2725,8 @@ test("RECONCILE (a): the bar the reader pressed is the SAME element - not a remo
 	for (const [i, records] of wakeStates.entries()) {
 		await mounted.render(records, { frontend, waiting: i < 2 });
 		await flushFrames();
-		assert.equal(
-			pressedBar(mounted),
-			pressed,
+		assert.ok(
+			pressedBar(mounted) === pressed,
 			`state ${i}: the pressed bar is the element that was mounted (no remount)`,
 		);
 		assert.equal(
@@ -2790,18 +2768,16 @@ test("RECONCILE (a'): a later answer with no wake row between leaves the pressed
 		{ frontend },
 	);
 	await flushFrames();
-	assert.equal(
-		pressedBar(mounted),
-		pressed,
+	assert.ok(
+		pressedBar(mounted) === pressed,
 		"the pressed bar was not remounted",
 	);
 	assert.ok(
 		rowBox(mounted, "tool:1") && rowBox(mounted, "tool:2"),
 		"still open",
 	);
-	assert.equal(
-		rowBox(mounted, "tool:3"),
-		null,
+	assert.ok(
+		rowBox(mounted, "tool:3") === null,
 		"the later work is its own, condensed bar",
 	);
 	assert.equal(barsOf(mounted).length, 2);
@@ -2823,9 +2799,8 @@ test("RECONCILE (b)+(a): a head-cut bar the reader opened stays open and mounted
 	const headed = [userRecord("user:0", { ts: TS + 100 }), ...cut];
 	await mounted.render(headed, { frontend });
 	await flushFrames();
-	assert.equal(
-		pressedBar(mounted),
-		pressed,
+	assert.ok(
+		pressedBar(mounted) === pressed,
 		"the head landing did not remount it",
 	);
 	assert.ok(rowBox(mounted, "tool:0"), "and it is still open");
@@ -2838,7 +2813,7 @@ test("RECONCILE (b)+(a): a head-cut bar the reader opened stays open and mounted
 		{ frontend },
 	);
 	await flushFrames();
-	assert.equal(pressedBar(mounted), pressed, "nor did the later answer");
+	assert.ok(pressedBar(mounted) === pressed, "nor did the later answer");
 	assert.ok(
 		rowBox(mounted, "tool:0") && rowBox(mounted, "tool:1"),
 		"still open",
@@ -3048,9 +3023,8 @@ test("the quiet close: the bar stands in, the row never paints, and the copy is 
 		/Took/,
 		"no fabricated duration for a head-cut span",
 	);
-	assert.equal(
-		rowBox(mounted, "quiet:1"),
-		null,
+	assert.ok(
+		rowBox(mounted, "quiet:1") === null,
 		"the quiet row paints nothing (hidden at paint, not by the bar)",
 	);
 	assert.doesNotMatch(
@@ -3062,9 +3036,8 @@ test("the quiet close: the bar stands in, the row never paints, and the copy is 
 	await flushFrames();
 	assert.ok(rowBox(mounted, "peer:1"), "the press brings the receipt back");
 	assert.ok(rowBox(mounted, "tool:1"), "and the work tool");
-	assert.equal(
-		rowBox(mounted, "quiet:1"),
-		null,
+	assert.ok(
+		rowBox(mounted, "quiet:1") === null,
 		"the quiet row is STILL not painted when the bar is open",
 	);
 });
@@ -3094,18 +3067,16 @@ test("a run of receipts bars as ONE group line â€” family, count, receipt span â
 		/action|Took/,
 		"a group bar speaks in receipts, not in the action clauses",
 	);
-	assert.equal(
-		rowBox(mounted, "peer:0"),
-		null,
+	assert.ok(
+		rowBox(mounted, "peer:0") === null,
 		"collapsed: no receipt is mounted",
 	);
 	await click(barTrigger(mounted));
 	await flushFrames();
 	assert.ok(rowBox(mounted, "peer:0"), "the press mounts the first receipt");
 	assert.ok(rowBox(mounted, "peer:11"), "and the last");
-	assert.equal(
-		rowBox(mounted, "quiet:0"),
-		null,
+	assert.ok(
+		rowBox(mounted, "quiet:0") === null,
 		"the quiet rows still paint nothing inside the open bar",
 	);
 });
@@ -3168,9 +3139,8 @@ test("F3: the receipt that forms the group neither re-collapses the bar nor re-a
 	const announced = region();
 	await mounted.render([...settled, peerRecord("peer:2", { ts: TS + 4_000 })]);
 	await flushFrames();
-	assert.equal(
-		bar(mounted),
-		summary,
+	assert.ok(
+		bar(mounted) === summary,
 		"the very same bar element, not a remount",
 	);
 	assert.ok(
@@ -3303,12 +3273,85 @@ test("active summary keeps legacy unanchored clock at footer; known current phas
 	assert.doesNotMatch(bar(mounted).textContent, /Took/);
 });
 
-for (const frontend of [null, { session_id: "synthetic-main-transition" }])
-	test(`future empty assistant and first real token stay outside internal disclosure before/during/after (${frontend ? "main" : "embedded"})`, async (t) => {
+for (const frontend of [null, { session_id: "synthetic-main-transition" }]) {
+	test(`closed future-token disclosure keeps visible anchors and announces once (${frontend ? "main" : "embedded"})`, async (t) => {
 		__resetTurnCollapseOpen();
 		const rows = activeSourceRows();
 		const mounted = await mount(t, rows, { waiting: true, frontend });
-		const first = bar(mounted);
+		const output = mounted.container.querySelector(
+			"[data-condense-announcement]",
+		);
+		assert.ok(output !== null);
+		const utterances = [];
+		const observer = new window.MutationObserver(() => {
+			if (output.textContent) utterances.push(output.textContent);
+		});
+		observer.observe(output, {
+			childList: true,
+			characterData: true,
+			subtree: true,
+		});
+		t.after(() => observer.disconnect());
+		const updates = [
+			{ text: "", streaming: true },
+			{ text: "Actual material progress", streaming: true },
+			{ text: "Actual material answer", streaming: false, stopReason: "stop" },
+		];
+		for (const shape of updates) {
+			await mounted.render([...rows, answerRecord("future-answer", shape)], {
+				waiting: true,
+				frontend,
+			});
+			/* R3 restores default CLOSED keys to seg:<visible-final>. Unlike a
+			 * reader-open disclosure, this closed bar has no qg ownership to retain.
+			 * Pin visible-final exclusion and exact children, not its DOM node. */
+			const current = bar(mounted);
+			assert.ok(current !== null);
+			assert.equal(
+				current.querySelector("button").getAttribute("aria-expanded"),
+				"false",
+			);
+			assert.deepEqual(
+				(current.getAttribute("data-segment-ids") ?? "").split(" "),
+				["active-p", "active-t"],
+			);
+			assert.ok(
+				rowBox(mounted, "active-final") !== null,
+				"prior final remains visible",
+			);
+			if (shape.text)
+				assert.ok(
+					rowBox(mounted, "future-answer") !== null,
+					"real first token remains visible",
+				);
+			if (shape.streaming)
+				assert.equal(utterances.length, 0, "no announcement while thinking");
+		}
+		assert.equal(utterances.length, 1, "exactly one settlement sentence");
+		await mounted.render(
+			[...rows, answerRecord("future-answer", updates.at(-1))],
+			{ waiting: false, frontend },
+		);
+		assert.equal(
+			utterances.length,
+			1,
+			"same settled episode does not announce twice",
+		);
+	});
+
+	test(`OPEN future-token disclosure retains its element and focused child (${frontend ? "main" : "embedded"})`, async (t) => {
+		__resetTurnCollapseOpen();
+		const rows = activeSourceRows();
+		const mounted = await mount(t, rows, { waiting: true, frontend });
+		await click(barTrigger(mounted));
+		const opened = bar(mounted);
+		const child = rowBox(mounted, "active-t")?.querySelector("button");
+		assert.ok(
+			child != null,
+			"the real expanded child exposes a focusable control",
+		);
+		await act(async () => child.focus());
+		assert.ok(document.activeElement === child);
 		for (const shape of [
 			{ text: "", streaming: true },
 			{ text: "Actual material progress", streaming: true },
@@ -3318,14 +3361,20 @@ for (const frontend of [null, { session_id: "synthetic-main-transition" }])
 				waiting: true,
 				frontend,
 			});
-			assert.ok(bar(mounted) === first);
-			const hidden = [
-				...mounted.container.querySelectorAll("[data-turn-summary]"),
-			].flatMap((el) => (el.getAttribute("data-segment-ids") ?? "").split(" "));
-			assert.equal(hidden.includes("future-answer"), false);
-			assert.equal(hidden.includes("active-final"), false);
+			assert.ok(
+				bar(mounted) === opened,
+				"proved overlap retains the OPEN qg component",
+			);
+			assert.equal(barTrigger(mounted).getAttribute("aria-expanded"), "true");
+			assert.ok(
+				document.activeElement === child,
+				"focused child survives the visible boundary",
+			);
+			assert.ok(rowBox(mounted, "active-final") !== null);
+			if (shape.text) assert.ok(rowBox(mounted, "future-answer") !== null);
 		}
 	});
+}
 
 /* V2 rendered SOURCE controls; JSX/focus still requires actual later execution. */
 test("v2 expanded disclosure counts exactly its own receipt and spawn, never wire totals", async (t) => {
@@ -3568,4 +3617,80 @@ test("a settled head-cut bar keeps its key, open state and silence when the head
 		"the reader's open bar survives the head landing",
 	);
 	assert.equal(region(), "", "and nothing is announced");
+});
+
+test("R3: an announced closed appendable episode gains a visible anchor without re-announcing", async (t) => {
+	__resetTurnCollapseOpen();
+	const head = [
+		userRecord("ak-user"),
+		answerRecord("ak-final", { stopReason: "stop" }),
+	];
+	const live = [
+		...head,
+		peerRecord("ak-peer"),
+		toolRecord("ak-tool", { phase: "running" }),
+	];
+	const mounted = await mount(t, live, { waiting: true });
+	const region = () =>
+		mounted.container.querySelector("[data-condense-announcement]")
+			?.textContent ?? "";
+	assert.equal(region(), "", "live episode is not recorded as announced");
+	const settled = [
+		...head,
+		peerRecord("ak-peer"),
+		toolRecord("ak-tool", { phase: "done" }),
+	];
+	await mounted.render(settled, { waiting: false });
+	const first = region();
+	assert.ok(first.length > 0, "settlement announces once");
+	// Re-entering a live pass must not repeat the already-announced history.
+	await mounted.render(settled, { waiting: true });
+	assert.equal(region(), first);
+	await mounted.render(
+		[
+			...settled,
+			toolRecord("ak-tool2"),
+			answerRecord("ak-close", { stopReason: "stop" }),
+		],
+		{ waiting: false },
+	);
+	assert.equal(
+		region(),
+		first,
+		"already-announced closed episode gains its anchor silently",
+	);
+	assert.ok(rowBox(mounted, "ak-final") !== null, "first final stays outside");
+	assert.ok(
+		rowBox(mounted, "ak-close") !== null,
+		"new visible anchor stays outside",
+	);
+});
+
+test("R3: actionable lone peer before a genuine final is a visible negative control", async (t) => {
+	const mounted = await mount(
+		t,
+		[
+			peerRecord("negative-peer", {
+				body: "Please check the deployment status before proceeding.",
+			}),
+			answerRecord("negative-final", {
+				text: "The deployment is paused pending the requested check.",
+				streaming: true,
+				stopReason: null,
+			}),
+		],
+		{ waiting: true },
+	);
+	assert.ok(
+		rowBox(mounted, "negative-peer") !== null,
+		"actionable receipt stays inline",
+	);
+	assert.ok(
+		rowBox(mounted, "negative-final") !== null,
+		"genuine final stays visible",
+	);
+	assert.ok(
+		bar(mounted) === null,
+		"no preceding loaded answer or second receipt licenses an internal episode",
+	);
 });

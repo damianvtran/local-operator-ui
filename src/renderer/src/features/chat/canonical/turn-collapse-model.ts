@@ -575,6 +575,16 @@ function internalEpisodeOf(
 	 * reader) leaves it behind a bar until opened, and the bar's label cannot say
 	 * whether a failed `job_result` is inside.
 	 */
+	/*
+	 * R3-2 policy clarification: older rows prove a cut, not a preceding settled
+	 * answer. Only the unsettled edge gets this temporary presentation allowance.
+	 * A settled, answerless `[peer, tools]` fragment intentionally paints loose;
+	 * once its preceding answer actually loads, the loop below can establish the
+	 * continuation and fold it. That is a narrower policy than the original seed,
+	 * not evidence that an unseen answer exists. Do not seed settled spans merely
+	 * to retain their old fold: that also re-keys settled answer-bearing spans on
+	 * head landing (R2-2), closing open disclosures and re-announcing history.
+	 */
 	let settledBefore = !headLoaded && olderRowsExist && unsettled;
 	for (let i = 0; i < span.from; i += 1) {
 		const before = records[i];
@@ -2903,6 +2913,10 @@ function planRun(
 	 * segment was built with and the span this block patches cannot drift apart.
 	 */
 
+	// Ordinary presentation slots survive a focus hold: otherwise the reader's
+	// focus makes its bar temporarily loose and incorrectly grants the live
+	// episode a second slot. Record pre-focus eligibility, not every loose tail.
+	const ordinarySlots = new Set<number>();
 	const segments: SegmentPlan[] = partition.segments.map(
 		(span: SegmentSpan, i): SegmentPlan => {
 			const segRows = runRows.slice(span.from, span.to + 1);
@@ -2959,17 +2973,16 @@ function planRun(
 			 */
 			const appendable =
 				span.to === runRows.length - 1 && run.endIndex === rows.length - 1;
-			// A receipt episode retains its qg identity when a visible boundary closes
-			// it. Appendability alone must not drop the reader's expansion on close.
-			const key =
-				appendable || internal !== null
-					? `qg:${segRows[0].record.id}`
-					: `seg:${
-							afterAnswer
-								? segRows[0].record.id
-								: (runRows[span.to + 1] ?? segRows[segRows.length - 1]).record
-										.id
-						}`;
+			// Initially bounded spans keep the visible anchor contract. A live episode
+			// already opened by the reader keeps its old qg key through the transcript's
+			// bounded overlap transfer; don't rename every settled span to solve that.
+			const key = appendable
+				? `qg:${segRows[0].record.id}`
+				: `seg:${
+						afterAnswer
+							? segRows[0].record.id
+							: (runRows[span.to + 1] ?? segRows[segRows.length - 1]).record.id
+					}`;
 
 			const label =
 				labelOfSegment(records, partition.cycles, span, group) ??
@@ -2984,12 +2997,15 @@ function planRun(
 			 */
 			const groupKeepsItsBar =
 				internal !== null && group !== null && settledAt >= span.from;
-			const collapsedHere =
+			const foldEligible =
 				(collapsible || internal !== null) &&
 				(liveFrom < 0 ||
 					span.to < liveFrom ||
 					groupKeepsItsBar ||
-					internal !== null) &&
+					internal !== null);
+			if (internal === null && foldEligible) ordinarySlots.add(i);
+			const collapsedHere =
+				foldEligible &&
 				!(
 					focusHold !== null &&
 					!openRuns.has(key) &&
@@ -3051,14 +3067,15 @@ function planRun(
 	 * `tool:1` standing before the wake episode arrives.
 	 *
 	 * Settled spans, real receipt groups and `groupKeepsItsBar` are untouched by
-	 * construction: only a segment that is BOTH live and already collapsed is
-	 * suppressed, and only while a sibling collapsed segment exists in the SAME
-	 * run. At settlement `internal.live` reads false, the gate stops applying,
+	 * construction: only a segment that is BOTH unsettled and already collapsed is
+	 * suppressed, and only while a sibling ordinary fold slot exists in the SAME
+	 * run (including its focus-held/open state). At settlement `internal.unsettled` reads false, the gate stops applying,
 	 * and the second bar plus its one announcement appear as PR-4 #2 expects.
 	 */
 	for (let gateIndex = 0; gateIndex < segments.length; gateIndex += 1) {
 		const gateSegment = segments[gateIndex];
-		if (!gateSegment.collapsed || gateSegment.internal?.live !== true) continue;
+		if (!gateSegment.collapsed || gateSegment.internal?.unsettled !== true)
+			continue;
 		/*
 		 * THE READER'S OWN EXPANSION OUTRANKS THE BAR COUNT. Suppressing a live
 		 * episode makes it paint loose, which closes the disclosure that reader
@@ -3076,12 +3093,7 @@ function planRun(
 		 * (the media regression: `asset-j` stayed painted), so `internal == null`
 		 * is what distinguishes the bar that must stay the same element.
 		 */
-		if (
-			segments.some(
-				(other, i) =>
-					i !== gateIndex && other.collapsed && other.internal == null,
-			)
-		) {
+		if ([...ordinarySlots].some((i) => i !== gateIndex)) {
 			segments[gateIndex] = { ...gateSegment, collapsed: false };
 		}
 	}

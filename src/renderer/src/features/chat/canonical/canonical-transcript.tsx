@@ -55,6 +55,7 @@ import {
 	type InternalEpisodeIdentitySnapshot,
 	captureInternalEpisodeIdentity,
 	expandedRunsOf,
+	forgetTurnCollapseOpen,
 	retainInternalEpisodeKeys,
 	writeRunExpanded,
 } from "@shared/store/turn-collapse-open";
@@ -3091,6 +3092,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	const announcedPlan = useRef<{
 		keys: Set<string>;
 		rowIds: Set<string>;
+		viewEpoch: TranscriptState["viewEpoch"];
+		identity: InternalEpisodeIdentitySnapshot;
 	} | null>(null);
 	if (windowSession !== sessionId) {
 		setWindowSession(sessionId);
@@ -3239,9 +3242,24 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		expandedRunsOf(sessionId),
 	);
 	const [openRunsSession, setOpenRunsSession] = useState(sessionId);
+	const [openRunsEpoch, setOpenRunsEpoch] = useState(transcript.viewEpoch);
 	if (openRunsSession !== sessionId) {
 		setOpenRunsSession(sessionId);
+		setOpenRunsEpoch(transcript.viewEpoch);
 		setOpenRuns(expandedRunsOf(sessionId));
+	} else if (openRunsEpoch !== transcript.viewEpoch) {
+		// An explicit clear invalidates reader ownership as well as alias evidence.
+		// Stable seg anchors can recur after the clear; retaining their old open
+		// bit would silently resurrect an expansion. An unchanged epoch proves no
+		// source transition and never reaches this branch (R3 prepend regression).
+		setOpenRunsEpoch(transcript.viewEpoch);
+		if (
+			typeof transcript.viewEpoch === "number" &&
+			transcript.viewEpoch > (openRunsEpoch ?? 0)
+		) {
+			forgetTurnCollapseOpen(sessionId);
+			setOpenRuns(new Set());
+		}
 	}
 	/*
 	 * THE SETTLE LATCH, readable per conversation (`shared/store/turn-collapse-watched.ts`).
@@ -4813,7 +4831,56 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			segment.collapsed &&
 			!(collapseInputs.live && segment.internal?.unsettled === true);
 		const rowIds = planRowIds(collapse.runs);
-		const previous = announcedPlan.current;
+		const previous =
+			announcedPlan.current?.viewEpoch === transcript.viewEpoch
+				? announcedPlan.current
+				: null;
+		const segments = collapse.runs.flatMap((run) => run.segments);
+		const identities = segments.map((segment) => ({
+			key: segment.key,
+			segmentIds: segment.segmentIds,
+			eligible: segment.internal != null,
+		}));
+		/*
+		 * ANNOUNCEMENT OWNERSHIP IS NOT EXPANSION OWNERSHIP (R3). A CLOSED,
+		 * already-announced appendable qg episode gains a visible seg anchor when
+		 * an answer arrives. Expansion retains only OPEN keys, so it cannot certify
+		 * this history transition. Reuse its bounded overlap proof separately here:
+		 * <=4096 prior IDs / <=128 remembered qg identities, complete current overlap,
+		 * pinned-row exclusion and the same split/merge/reorder/head-loss/collision
+		 * refusals. Canonical records certify current uniqueness ONLY, not topology.
+		 * Alias the announcement bookkeeping, never the CLOSED rendered key. A live
+		 * unannounced episode has no known key and cannot consume its future sentence;
+		 * history already announced stays known even if the pane becomes live again.
+		 */
+		const retained =
+			previous === null
+				? identities
+				: retainInternalEpisodeKeys(previous.identity, identities, {
+						currentIdsUnique: true,
+						outsideCurrentIds: rowIds,
+					}).episodes;
+		const knownKeys = new Set(previous?.keys ?? []);
+		for (let i = 0; i < segments.length; i += 1) {
+			if (previous?.keys.has(retained[i].key)) knownKeys.add(segments[i].key);
+		}
+		const remember = () => {
+			for (const segment of collapsed.filter(announced))
+				knownKeys.add(segment.key);
+			return {
+				keys: knownKeys,
+				rowIds,
+				viewEpoch: transcript.viewEpoch,
+				// Retain the proved old qg identity in this metadata only. The rendered
+				// bounded span keeps its seg:<visible-anchor> key and its reader state.
+				identity: captureInternalEpisodeIdentity(
+					retained,
+					knownKeys,
+					null,
+					rowIds,
+				),
+			};
+		};
 		if (previous === null) {
 			/*
 			 * The first pass that has RUNS initialises without announcing: its
@@ -4822,31 +4889,20 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			 * initialisation for the first pass that paints rows.
 			 */
 			if (collapse.runs.length > 0) {
-				announcedPlan.current = {
-					keys: new Set(
-						collapsed.filter(announced).map((segment) => segment.key),
-					),
-					rowIds,
-				};
+				announcedPlan.current = remember();
 			}
 			return;
 		}
 		const appeared = collapsed.filter(
 			(segment) =>
 				announced(segment) &&
-				!previous.keys.has(segment.key) &&
+				!knownKeys.has(segment.key) &&
 				segment.segmentIds.some((id) => previous.rowIds.has(id)),
 		);
-		announcedPlan.current = {
-			keys: new Set([
-				...previous.keys,
-				...collapsed.filter(announced).map((segment) => segment.key),
-			]),
-			rowIds,
-		};
+		announcedPlan.current = remember();
 		if (appeared.length === 0) return;
 		setCondenseAnnouncement(appeared.map(condenseSentence).join(" "));
-	}, [collapse, collapseInputs]);
+	}, [collapse, collapseInputs, transcript.viewEpoch]);
 
 	/*
 	 * THE LIST, RE-EXPRESSED AS ENTRIES. Every group renders exactly as today,
