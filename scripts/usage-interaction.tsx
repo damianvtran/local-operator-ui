@@ -46,7 +46,10 @@ declare global {
 	}
 }
 
-const NOW = Date.now();
+const NOW = 1800000000000;
+Date.now = () => NOW;
+// Paired baseline rendering was captured with temporary git-object modules;
+// those modules are evidence-only and are intentionally not shipped.
 
 /** One provider with one measurable window — enough to see a table or its loss. */
 const makePayload = (source: string, usedFraction: number): UsagePayload => ({
@@ -111,6 +114,23 @@ const harness: Window["__USAGE_HARNESS__"] = {
 	closes: 0,
 };
 window.__USAGE_HARNESS__ = harness;
+// Evidence carrier only: URL states feed the real UsageView/bridge contract.
+const scenario = new URLSearchParams(window.location.search).get("scenario");
+if (scenario === "empty") harness.payload.reports = [];
+else if (["paid", "blocked", "unlimited", "family"].includes(scenario ?? "")) {
+	const report = harness.payload.reports[0];
+	report.identity = null;
+	const used = scenario === "family" ? 20 : 100;
+	report.limits[0].amount = { used, limit: 100, remaining: 100 - used, used_fraction: used / 100, unit: "percent" };
+	report.limits.push({ ...report.limits[0], id: "paid", label: "Extra credits", shared: false,
+		paid_fallback: true, available: scenario !== "blocked", unlimited: scenario === "unlimited",
+		window: "lifetime", resets_at: null, resets_at_ms: null,
+		amount: { used: null, limit: null, remaining: scenario === "unlimited" ? null : 123.5,
+			used_fraction: null, unit: "credits" } });
+	if (scenario === "family") report.limits.push({ ...report.limits[0], id: "opus", label: "Opus 7-day",
+		shared: false, tier: "opus", window: "7 day", amount: { used: 100, limit: 100, remaining: 0, used_fraction: 1, unit: "percent" } });
+}
+
 
 /*
  * The fake bridge. Shaped exactly like the preload API's `desktop.request`, so
@@ -147,6 +167,19 @@ window.__USAGE_HARNESS__ = harness;
  * collected between steps of a driven run, or a later step would measure a
  * cold start rather than the state the previous step left behind.
  */
+// Carrier buttons drive the original harness mode, not a production shortcut.
+const controls = document.createElement("nav");
+controls.style.cssText = "position:fixed;bottom:4px;left:4px;z-index:9999";
+for (const mode of ["answer", "fail", "release"] as const) {
+	const button = document.createElement("button");
+	button.textContent = `Carrier ${mode}`;
+	button.onclick = () => {
+		if (mode === "release") harness.release();
+		else { harness.mode = mode; void client.invalidateQueries(); }
+	};
+	controls.append(button);
+}
+document.body.append(controls);
 const client = new QueryClient({
 	defaultOptions: {
 		...defaultQueryOptions,
