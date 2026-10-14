@@ -13,6 +13,7 @@
  */
 
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
 	existsSync,
@@ -58,6 +59,7 @@ function receiptFor({
 		auditor: "i18n-auditor",
 		model: MODEL,
 		instance,
+		namespace: "demo.words",
 		status,
 		sha256: { fr: sha(FR), en: sha(EN) },
 		findings,
@@ -285,7 +287,7 @@ test("NEGATIVE: a result the receipt does not support is refused (result/status 
 					receipt: hidden,
 					result: "clean-with-findings",
 				}),
-			/supports changes_requested/,
+			/the receipt says passed but its findings include a blocker\/major/,
 		);
 		// Findings but labelled plain clean.
 		const minors = writeReceipt(
@@ -747,7 +749,7 @@ test("a multi-namespace receipt is scoped per namespace and a finding that names
 			findings: [{ severity: "MAJOR", key: "unattributable" }],
 		});
 		body.namespaces = {
-			"demo.words": { sha256: { fr: sha(FR), en: sha(EN) } },
+			"demo.words": { status: "passed", sha256: { fr: sha(FR), en: sha(EN) } },
 			"demo.other": {},
 		};
 		refusal(
@@ -946,7 +948,7 @@ test("NEGATIVE: a single namespace block cannot borrow global hashes or hash sub
 				"borrowed.json",
 				receiptFor({ extra: { namespaces: { "demo.words": block } } }),
 			);
-			refusal(() => run(root, { receipt }), /does not name/);
+			refusal(() => run(root, { receipt }), /no valid English source hash/);
 		});
 	}
 });
@@ -997,4 +999,285 @@ test("NEGATIVE: an instance collision in another namespace is refused without it
 			/different receipt/,
 		);
 	});
+});
+
+/* These child processes run the actual writer CLI and read-only gate API, not
+ * duplicated semantic checks. Receipt bytes are snapshotted before every probe;
+ * the gate must refuse forged claims and the writer must leave the tree intact.
+ */
+function writerCommand(root, overrides = {}) {
+	const options = {
+		repo: root,
+		locale: "fr",
+		file: FILE,
+		auditorInstance: "run-aaaaaaaa",
+		auditorModel: MODEL,
+		result: "clean",
+		receipt: join(root, "i18n/receipts/run-aaaaaaaa.json"),
+		translatorAgent: "i18n-translator",
+		translatorModel: "test/translator",
+		...overrides,
+	};
+	const flags = {
+		auditorInstance: "auditor-instance",
+		auditorModel: "auditor-model",
+		translatorAgent: "translator-agent",
+		translatorModel: "translator-model",
+	};
+	const argv = [new URL("./ledger-assemble.mjs", import.meta.url).pathname];
+	for (const [key, value] of Object.entries(options))
+		if (value !== undefined) argv.push(`--${flags[key] ?? key}`, value);
+	return spawnSync(process.execPath, argv, {
+		cwd: root,
+		encoding: "utf8",
+		env: { HOME: root, TMPDIR: root, PATH: process.env.PATH },
+		timeout: 5000,
+	});
+}
+function gateCommand(root) {
+	const code = `import {checkLedger} from ${JSON.stringify(new URL("./ledger-check.mjs", import.meta.url).href)}; const out=checkLedger({repo:process.argv[1]});console.log(JSON.stringify(out));process.exit(out.failures.length?1:0);`;
+	return spawnSync(
+		process.execPath,
+		["--input-type=module", "-e", code, root],
+		{
+			cwd: root,
+			encoding: "utf8",
+			env: { HOME: root, TMPDIR: root, PATH: process.env.PATH },
+			timeout: 5000,
+		},
+	);
+}
+
+const INTEGRITY_CASES = [
+	[
+		"row-only clean/zero forgery over a real MAJOR receipt",
+		(ctx) => {
+			ctx.body.status = "changes_requested";
+			ctx.body.findings = [{ severity: "MAJOR", key: "demo.words.plain" }];
+		},
+	],
+	[
+		"row model mismatch",
+		({ row }) => {
+			row.auditors[0].model = "forged/model";
+		},
+	],
+	[
+		"row instance mismatch",
+		({ row }) => {
+			row.auditors[0].instance = "forged-instance";
+		},
+	],
+	[
+		"row agent mismatch",
+		({ row }) => {
+			row.auditors[0].agent = "forged-agent";
+		},
+	],
+	[
+		"stale English receipt despite updating the row hash",
+		({ root, row }) => {
+			const bytes = JSON.stringify({
+				"demo.words.hello": "New English, {name}!",
+				"demo.words.plain": "plain",
+			});
+			writeFileSync(
+				join(root, "src/i18n/catalogues/en/demo.words.json"),
+				bytes,
+			);
+			row.source_sha256 = sha(bytes);
+		},
+	],
+	[
+		"stale target receipt despite updating the row hash",
+		({ root, row }) => {
+			const bytes = JSON.stringify({
+				"demo.words.hello": "Nouveau, {name} !",
+				"demo.words.plain": "simple",
+			});
+			writeFileSync(join(root, FILE), bytes);
+			row.target_sha256 = sha(bytes);
+		},
+	],
+	[
+		"wrong namespace",
+		({ body }) => {
+			body.namespace = "demo.other";
+		},
+	],
+	[
+		"missing namespace",
+		({ body }) => {
+			body.namespace = undefined;
+		},
+	],
+	[
+		"missing namespace block",
+		({ body }) => {
+			body.namespaces = {};
+		},
+	],
+	[
+		"multi-block global hash borrowing",
+		({ body }) => {
+			body.namespaces = {
+				"demo.words": { status: "passed", findings: [] },
+				"demo.other": { status: "passed", sha256: body.sha256, findings: [] },
+			};
+		},
+	],
+	[
+		"cross-borrowed source and target hash roles",
+		({ body }) => {
+			body.sha256 = { en: sha(FR), fr: sha(EN) };
+		},
+	],
+	[
+		"different receipt locale",
+		({ body }) => {
+			body.locale = "es";
+		},
+	],
+	[
+		"missing auditor agent",
+		({ body }) => {
+			body.auditor = undefined;
+		},
+	],
+	[
+		"empty auditor identity",
+		({ body }) => {
+			body.auditor = {};
+		},
+	],
+	[
+		"ambiguous auditor identity",
+		({ body }) => {
+			body.auditor = { agent: "i18n-auditor", model: "different/model" };
+		},
+	],
+	[
+		"ambiguous hash aliases",
+		({ body }) => {
+			body.fr_sha256 = sha("different");
+		},
+	],
+	[
+		"duplicate namespace JSON member",
+		(ctx) => {
+			ctx.body.namespaces = {
+				"demo.words": {
+					status: "passed",
+					sha256: ctx.body.sha256,
+					findings: [],
+				},
+			};
+			ctx.raw = JSON.stringify(ctx.body).replace(
+				'"namespaces":{',
+				'"namespaces":{"demo.words":{},',
+			);
+		},
+	],
+	[
+		"duplicate identity JSON member",
+		(ctx) => {
+			ctx.raw = JSON.stringify(ctx.body).replace(
+				'"instance":',
+				'"instance":"different-instance","instance":',
+			);
+		},
+	],
+	[
+		"duplicate hash JSON member",
+		(ctx) => {
+			ctx.raw = JSON.stringify(ctx.body).replace(
+				'"fr":',
+				'"fr":"' + sha("different") + '","fr":',
+			);
+		},
+	],
+];
+for (const [label, change] of INTEGRITY_CASES) {
+	test(`REAL gate + writer refuse: ${label} (immutable receipt)`, () => {
+		withTree((root) => {
+			run(root);
+			const ledger = ledgerOf(root),
+				row = ledger.entries[0],
+				body = receiptFor();
+			const ctx = { root, row, body };
+			change(ctx);
+			const bytes = ctx.raw ?? JSON.stringify(body);
+			const receipt = join(root, "i18n/receipts/run-aaaaaaaa.json");
+			writeFileSync(receipt, bytes);
+			row.auditors[0].receipt_sha256 = sha(bytes);
+			writeFileSync(join(root, "i18n/ledger.json"), JSON.stringify(ledger));
+			const before = readFileSync(join(root, "i18n/ledger.json"));
+			const gate = gateCommand(root),
+				writer = writerCommand(root);
+			assert.equal(gate.status, 1, `${label}: ${gate.stdout} ${gate.stderr}`);
+			assert.equal(
+				writer.status,
+				2,
+				`${label}: ${writer.stdout} ${writer.stderr}`,
+			);
+			assert.deepEqual(readFileSync(receipt), Buffer.from(bytes));
+			assert.deepEqual(readFileSync(join(root, "i18n/ledger.json")), before);
+			console.log(
+				`integrity: ${label}: gate=${gate.status} writer=${writer.status} receipt+ledger=unchanged`,
+			);
+		});
+	});
+}
+
+test("REAL writer refuses omitted translator model on a new row", () => {
+	withTree((root) => {
+		const receipt = writeReceipt(root, "new.json", receiptFor());
+		const out = writerCommand(root, { receipt, translatorModel: undefined });
+		assert.equal(out.status, 2, out.stderr);
+		assert.match(out.stderr, /translator-model/);
+		assert.equal(existsSync(join(root, "i18n/ledger.json")), false);
+	});
+});
+
+test("REAL writer + gate accept two distinct current full/delta provenance records", () => {
+	withTree((root) => {
+		for (const [instance, scope] of [
+			["full-aaaaaaaa", "full audit"],
+			["delta-bbbbbbbb", "delta audit against full-aaaaaaaa"],
+		]) {
+			const body = receiptFor({ instance, extra: { scope } });
+			const receipt = writeReceipt(root, `${instance}.json`, body);
+			const out = writerCommand(root, {
+				receipt,
+				auditorInstance: instance,
+				scope,
+			});
+			assert.equal(out.status, 0, out.stderr);
+		}
+		const out = gateCommand(root);
+		assert.equal(out.status, 0, out.stdout + out.stderr);
+		assert.deepEqual(
+			ledgerOf(root).entries[0].auditors.map((a) => a.scope),
+			["full audit", "delta audit against full-aaaaaaaa"],
+		);
+	});
+});
+
+test("REAL self-audit remains pending; omitted agent cannot manufacture independence", () => {
+	for (const missing of [false, true]) {
+		withTree((root) => {
+			const body = receiptFor({
+				extra: { auditor: missing ? undefined : { agent: "i18n-translator" } },
+			});
+			const receipt = writeReceipt(root, "identity.json", body);
+			const out = writerCommand(root, { receipt });
+			assert.equal(out.status, missing ? 2 : 0, out.stderr);
+			if (missing)
+				assert.equal(existsSync(join(root, "i18n/ledger.json")), false);
+			else {
+				assert.equal(ledgerOf(root).entries[0].status, "pending");
+				assert.equal(gateCommand(root).status, 1);
+			}
+		});
+	}
 });

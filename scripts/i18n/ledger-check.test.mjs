@@ -23,9 +23,43 @@ import { checkLedger } from "./ledger-check.mjs";
 
 const sha256 = (text) => createHash("sha256").update(text).digest("hex");
 
-/** Severity counts of a clean audit, and a stand-in receipt hash (the gate only checks it is a sha256). */
+/** Clean counts; fixture construction replaces the seed hash with actual receipt bytes. */
 const NO_FINDINGS = { blocker: 0, major: 0, minor: 0, nit: 0 };
 const RECEIPT_SHA = sha256("{}");
+
+/** Synthetic evidence is explicit, not an empty JSON file whose claims the
+ * gate trusts. Mutation tests change rows AFTER these bytes have been written.
+ */
+function writeFixtureReceipts(root, row) {
+	mkdirSync(join(root, "i18n/receipts"), { recursive: true });
+	for (const audit of row.auditors) {
+		const findings = Object.entries(audit.findings ?? NO_FINDINGS).flatMap(
+			([severity, count]) =>
+				Array.from({ length: count }, () => ({
+					severity,
+					key: "demo.words.hello",
+				})),
+		);
+		const bytes = JSON.stringify({
+			auditor: audit.agent,
+			instance: audit.instance,
+			model: audit.model,
+			namespace: "demo.words",
+			status:
+				audit.result === "changes_requested" ? "changes_requested" : "passed",
+			sha256: { en: row.source_sha256, fr: row.target_sha256 },
+			findings,
+		});
+		if (
+			audit.receipt?.startsWith("i18n/receipts/") &&
+			!audit.receipt.includes("..") &&
+			!audit.receipt.includes("\\")
+		) {
+			writeFileSync(join(root, audit.receipt), bytes);
+		}
+		audit.receipt_sha256 = sha256(bytes);
+	}
+}
 
 /** A minimal, COMPLETE and correctly-audited tree for one locale/namespace. */
 function buildTree({ mutate } = {}) {
@@ -85,9 +119,7 @@ function buildTree({ mutate } = {}) {
 			},
 		],
 	};
-	mkdirSync(join(root, "i18n", "receipts"), { recursive: true });
-	writeFileSync(join(root, "i18n/receipts/audit-run-aaaa.json"), "{}");
-	writeFileSync(join(root, "i18n/receipts/audit-run-bbbb.json"), "{}");
+	writeFixtureReceipts(root, ledger.entries[0]);
 	const writeLedger = (value) =>
 		writeFileSync(
 			join(root, "i18n", "ledger.json"),
@@ -284,11 +316,10 @@ test("NEGATIVE: an auditor who IS the translator fails (independence)", () => {
  * failure is attributable to exactly that rule.
  */
 const withAuditors = (auditors) => ({
-	mutate: ({ writeLedger, ledger }) => {
-		writeLedger({
-			...ledger,
-			entries: [{ ...ledger.entries[0], auditors }],
-		});
+	mutate: ({ root, writeLedger, ledger }) => {
+		ledger.entries[0].auditors = auditors;
+		writeFixtureReceipts(root, ledger.entries[0]);
+		writeLedger(ledger);
 	},
 });
 const audit = (overrides = {}) => ({
@@ -298,7 +329,7 @@ const audit = (overrides = {}) => ({
 	result: "clean",
 	instance: "audit-run-aaaa",
 	findings: NO_FINDINGS,
-	receipt: "i18n/receipts/audit-run-aaaa.json",
+	receipt: `i18n/receipts/${overrides.instance ?? "audit-run-aaaa"}.json`,
 	receipt_sha256: RECEIPT_SHA,
 	...overrides,
 });

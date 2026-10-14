@@ -44,7 +44,12 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { isRepoReceiptPath, validateAuditSet } from "./ledger-rules.mjs";
+import {
+	compareReceiptAudit,
+	deriveReceiptAudit,
+	isRepoReceiptPath,
+	validateAuditSet,
+} from "./ledger-rules.mjs";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -200,10 +205,31 @@ export function checkLedger({ repo = REPO } = {}) {
 				failures.push(
 					`${where}: auditor ${position + 1} names receipt ${auditor.receipt}, which is not in the repo`,
 				);
-			} else if (sha256File(receiptFile) !== auditor.receipt_sha256) {
-				failures.push(
-					`${where}: auditor ${position + 1}'s receipt ${auditor.receipt} no longer matches its recorded receipt_sha256`,
-				);
+			} else {
+				try {
+					const bytes = readFileSync(receiptFile);
+					if (sha256File(receiptFile) !== auditor.receipt_sha256) {
+						failures.push(
+							`${where}: auditor ${position + 1}'s receipt ${auditor.receipt} no longer matches its recorded receipt_sha256`,
+						);
+					}
+					// Byte integrity alone cannot bind ledger-supplied labels/counts.
+					// Derive the SAME namespace evidence as the writer, against actual
+					// catalogue bytes, so row-only edits cannot promote a failed audit.
+					const evidence = deriveReceiptAudit(bytes, {
+						locale,
+						namespace,
+						sourceHash,
+						targetHash,
+					});
+					failures.push(
+						...compareReceiptAudit(auditor, evidence).map(
+							(message) => `${where}: auditor ${position + 1}: ${message}`,
+						),
+					);
+				} catch (error) {
+					failures.push(`${where}: auditor ${position + 1}: ${error.message}`);
+				}
 			}
 		}
 	}
