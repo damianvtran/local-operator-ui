@@ -96,9 +96,11 @@ function compareCataloguePaths(left, right) {
 			const numberX = BigInt(x);
 			const numberY = BigInt(y);
 			if (numberX !== numberY) return numberX < numberY ? -1 : 1;
-		} else {
-			return x < y ? -1 : 1;
 		}
+		// Equal values with different zero padding are ordered at this run,
+		// before a later suffix: chat02b precedes chat2a in Biome. Non-digit
+		// differences use the same case-sensitive code-unit comparison.
+		return x < y ? -1 : 1;
 	}
 	if (a.length !== b.length) return a.length < b.length ? -1 : 1;
 	return left < right ? -1 : left > right ? 1 : 0;
