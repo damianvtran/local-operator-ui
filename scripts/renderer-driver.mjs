@@ -43079,20 +43079,28 @@ async function sceneHubLinks(cdp, app) {
 	 * the same frame) BEFORE expanding, and assert the unresolved affordance is
 	 * present on the roster in this state too.
 	 */
-	const collapsedMarks = await cdp.evaluate(`(() => {
-		const marks = Array.from(document.querySelectorAll('[data-hub-mark]')).map((m) =>
-			m.getAttribute('data-hub-mark'),
-		);
-		const unresolved = document.querySelector('[data-testid="hub-mark-unresolved"]');
-		return { marks, unresolved: unresolved !== null };
-	})()`);
-	note("collapsed state roster marks", JSON.stringify(collapsedMarks));
-	check(
-		"an unresolved-only item draws the source-not-confirmed roster affordance",
-		collapsedMarks.unresolved === true,
-		JSON.stringify(collapsedMarks),
-	);
 	await captureSettled(cdp, `hub-links-${size}-${theme}-collapsed`);
+	/*
+	 * The roster affordance is asserted only where the sidebar DOCKED: below the
+	 * 1024px threshold it is a sheet, so its marks are legitimately absent (the
+	 * same reason the later sidebar-mark block is gated). The collapsed FRAME is
+	 * still captured at every width - the panel state is what it is for.
+	 */
+	if (WINDOW_WIDTH >= 1024) {
+		const collapsedMarks = await cdp.evaluate(`(() => {
+			const marks = Array.from(document.querySelectorAll('[data-hub-mark]')).map((m) =>
+				m.getAttribute('data-hub-mark'),
+			);
+			const unresolved = document.querySelector('[data-testid="hub-mark-unresolved"]');
+			return { marks, unresolved: unresolved !== null };
+		})()`);
+		note("collapsed state roster marks", JSON.stringify(collapsedMarks));
+		check(
+			"an unresolved-only item draws the source-not-confirmed roster affordance",
+			collapsedMarks.unresolved === true,
+			JSON.stringify(collapsedMarks),
+		);
+	}
 	await verb(cdp, "press", '[data-agents-pane] button[aria-expanded="false"]');
 	const ready = await waitForCondition(
 		cdp,
@@ -43253,12 +43261,26 @@ async function sceneHubLinks(cdp, app) {
 			const btn = row && row.querySelector('button');
 			return btn ? { text: btn.textContent } : null;
 		})()`);
+		/*
+		 * UX U1' (design D13, QA Q2): the old affordance compounded the copy into
+		 * "\u2026 \u00b7 Private \u00b7 Private" AND named the ITEM as the destination.
+		 * This rejects BOTH: no "Private" at all (a signed-out viewer has no org
+		 * list) and no item name in the button.
+		 */
+		const affordanceText = affordance === null ? "" : affordance.text;
+		const unresolvedItem = await cdp.evaluate(`(() => {
+			const row = document.querySelector('[data-hub-source-unresolved]');
+			const heading = row && row.querySelector('h4, h3, h2');
+			return heading ? heading.textContent : null;
+		})()`);
 		check(
-			"a signed-out viewer gets a sign-in-to-publish affordance, not a Public-only chooser",
+			"the signed-out affordance names no item and never duplicates Private",
 			affordance !== null &&
-				/sign in/i.test(affordance.text) &&
-				!/Public/.test(affordance.text),
-			JSON.stringify(affordance),
+				/sign in/i.test(affordanceText) &&
+				!/Public/.test(affordanceText) &&
+				(affordanceText.match(/Private/g) ?? []).length === 0 &&
+				(unresolvedItem === null || !affordanceText.includes(unresolvedItem)),
+			JSON.stringify({ text: affordanceText, item: unresolvedItem }),
 		);
 		await captureSettled(cdp, `hub-links-${size}-${theme}-resolve-signed-out`);
 		return;
