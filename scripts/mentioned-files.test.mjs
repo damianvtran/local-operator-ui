@@ -75,7 +75,15 @@ const bundle = await build({
 			export { viewerFor, READ_ENCODING } from "./src/renderer/src/features/chat/utils/viewer-routing";
 			export { applyProbeResults } from "./src/renderer/src/features/chat/canonical/use-mentioned-files";
 			export { useCanvasStore } from "./src/renderer/src/shared/store/canvas-store";
-			export { canvasDocumentForPath } from "./src/renderer/src/features/chat/utils/canvas-document";
+			export { canvasDocumentForPath, canvasDocumentForArtifact } from "./src/renderer/src/features/chat/utils/canvas-document";
+			export { applyHistoryPage, EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
+			export {
+				artifactFileName,
+				artifactPath,
+				digestOfAttachmentBinPath,
+				isArtifactPath,
+			} from "./src/renderer/src/features/chat/utils/artifact-identity";
+			export { classifyImageSource, imageActions } from "./src/renderer/src/features/chat/utils/image-actions";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -114,6 +122,15 @@ const {
 	applyProbeResults,
 	useCanvasStore,
 	canvasDocumentForPath,
+	canvasDocumentForArtifact,
+	applyHistoryPage,
+	EMPTY_TRANSCRIPT,
+	artifactFileName,
+	artifactPath,
+	digestOfAttachmentBinPath,
+	isArtifactPath,
+	classifyImageSource,
+	imageActions,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -1690,4 +1707,304 @@ test("a fault answer leaves a tile unmarked; a plain miss is the only 'gone'", (
 		answer({ error: "probe timed out after 1750 ms" }),
 	]);
 	assert.equal(tile().availability, undefined);
+});
+
+/* ------------------------------------------------ generated artifacts (digest, no path) */
+
+/*
+ * The bug these cells pin: `generate_image` / `generate_video` register their
+ * output in the attachment store and the transcript carries only a DIGEST, so a
+ * scanner built on paths saw none of it. In the session the rows below were
+ * copied from (9c59d684d16b) 69 generated pictures produced zero mentions.
+ *
+ * THE FIXTURE IS REAL-SHAPED, NOT INVENTED. `files-artifact-rows.json` holds
+ * sanitised copies of the three `generate_image` result shapes in that session
+ * (a full block, a block without dimensions, a PNG), a `read` of an attachment
+ * `.bin`, and a pruned result. The video receipt is SYNTHETIC - no real
+ * `generate_video` row exists on the machine - and is built from the sentence
+ * `video/jobs.py` `finish_video_result` writes. The rows go through the SHIPPED
+ * reducer (`applyHistoryPage`), so the records the scanner sees are the records
+ * the app builds, not hand-made ones that could drift from them.
+ */
+const artifactFixture = JSON.parse(
+	readFileSync(
+		new URL("./fixtures/files-artifact-rows.json", import.meta.url),
+		"utf8",
+	),
+);
+const artifactRecords = (ids) =>
+	applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: artifactFixture.entries.filter(
+			(entry) => !ids || ids.includes(entry.id),
+		),
+		has_more: false,
+		cursor_missing: false,
+	}).records;
+const D = (n) =>
+	artifactFixture.entries.find((entry) => entry.id === `fixture-row-${n}`)
+		.payload.content[1].attachment;
+const artifacts = (records) =>
+	extractMentionedPaths(records).filter(
+		(mention) => mention.source === "artifact",
+	);
+
+test("A1. a generate_image result becomes an artifact row, carrying what the block stated", () => {
+	const [first] = artifacts(artifactRecords(["fixture-row-1"]));
+	assert.equal(first.path, `artifact:${D(1)}`);
+	assert.deepEqual(first.artifact, {
+		digest: D(1),
+		kind: "image",
+		contentType: "image/jpeg",
+		name: "fixture-model-01.jpg",
+		sizeBytes: 305664,
+		width: 576,
+		height: 1024,
+	});
+});
+
+test("A2. a block without dimensions still yields a row, with only the fields it has", () => {
+	const [only] = artifacts(artifactRecords(["fixture-row-2"]));
+	assert.equal(only.artifact.width, undefined);
+	assert.equal(only.artifact.height, undefined);
+	assert.equal(only.artifact.name, "fixture-model-02.jpg");
+	assert.equal(only.artifact.sizeBytes > 0, true);
+});
+
+test("A3. before/after: the real extractor on digest-only rows goes from no path mentions to one row per image", () => {
+	const records = artifactRecords([
+		"fixture-row-1",
+		"fixture-row-2",
+		"fixture-row-3",
+	]);
+	// The "before" is the old tiers alone: nothing here names a path.
+	const pathMentions = extractMentionedPaths(records).filter(
+		(mention) => mention.source !== "artifact",
+	);
+	assert.deepEqual(pathMentions, [], "the path tiers see none of it");
+	assert.equal(
+		artifacts(records).length,
+		3,
+		"the artifact tier sees all three",
+	);
+});
+
+test("A4. the same digest mentioned twice is ONE row (dedupe by digest)", () => {
+	const records = artifactRecords(["fixture-row-1", "fixture-row-1b"]);
+	assert.equal(artifacts(records).length, 1);
+});
+
+test("A5. a video receipt is text only, and every digest it lists becomes a video row", () => {
+	const mentions = artifacts(artifactRecords(["fixture-row-video"]));
+	assert.equal(mentions.length, 2);
+	assert.deepEqual(
+		mentions.map((mention) => mention.artifact.kind),
+		["video", "video"],
+	);
+	assert.deepEqual(
+		mentions.map((mention) => mention.artifact.digest),
+		[...new Set(mentions.map((mention) => mention.artifact.digest))],
+	);
+});
+
+test("A6. a read of an attachment .bin is the artifact it names, not a .bin tile", () => {
+	const records = artifactRecords(["fixture-row-bin-call", "fixture-row-bin"]);
+	const all = extractMentionedPaths(records);
+	assert.equal(
+		all.some((mention) => mention.path.endsWith(".bin")),
+		false,
+		"no .bin path reaches the panel",
+	);
+	const [mapped] = artifacts(records);
+	assert.equal(mapped.artifact.kind, "image");
+	assert.equal(mapped.artifact.contentType, "image/png");
+	// The same address arrives from the call's arguments AND the result's
+	// block; they are one row, whichever record the scan meets first.
+	assert.equal(artifacts(records).length, 1);
+});
+
+test("A7. NEGATIVE: a 32-hex run is not an artifact unless a generating tool says `digest`", () => {
+	const records = artifactRecords(["fixture-row-hash"]);
+	assert.deepEqual(extractMentionedPaths(records), []);
+	// And the allow-list is on the tool: the same sentence from `bash` is not
+	// read, while the same bytes from `generate_image` are.
+	const sentence = `attached to the session (digest ${D(1)})`;
+	const as = (toolName) => [{ ...tool("t", {}, sentence), toolName }];
+	assert.equal(artifacts(as("bash")).length, 0);
+	assert.equal(artifacts(as("generate_image")).length, 1);
+});
+
+test("A8. NEGATIVE: a legacy image block (a browser screenshot) is not generated media", () => {
+	assert.deepEqual(
+		extractMentionedPaths(artifactRecords(["fixture-row-shot"])),
+		[],
+	);
+});
+
+test("A9. KNOWN LIMIT, pinned: a pruned result keeps no digest in the transcript, so Stage A cannot see it", () => {
+	/*
+	 * The prune path blanks a tool result's content and keeps provider_payload,
+	 * and today's `details` does not carry the digest. Stage B adds
+	 * `details.artifacts` backend-side; until it ships this row is invisible and
+	 * the assertion says so rather than letting a later reader assume coverage.
+	 */
+	assert.deepEqual(
+		extractMentionedPaths(artifactRecords(["fixture-row-pruned"])),
+		[],
+	);
+});
+
+test("A10. an artifact mention is not a path: classifiers and the action set refuse path actions", () => {
+	assert.equal(isArtifactPath(artifactPath(D(1))), true);
+	assert.equal(classifyImageSource(artifactPath(D(1))), "artifact");
+	// A near-miss is NOT an artifact: wrong length, wrong alphabet.
+	assert.equal(isArtifactPath("artifact:abc"), false);
+	assert.equal(isArtifactPath(`artifact:${"G".repeat(32)}`), false);
+	assert.equal(digestOfAttachmentBinPath("/x/attachments/notahash.bin"), null);
+	assert.equal(digestOfAttachmentBinPath(`/x/attachments/${D(1)}.png`), null);
+	const ids = (mediaKind, canvas = true) =>
+		imageActions("artifact", {
+			canShowInCanvas: canvas,
+			source: "",
+			mediaKind,
+		}).map((action) => action.id);
+	assert.deepEqual(ids("image"), ["show-in-canvas", "save-as", "copy-image"]);
+	assert.deepEqual(ids("video"), ["show-in-canvas", "save-as"]);
+	assert.deepEqual(ids("image", false), ["save-as", "copy-image"]);
+	for (const forbidden of ["open-file", "open-folder", "copy-file-path"])
+		assert.equal(ids("image").includes(forbidden), false, forbidden);
+});
+
+test("A11. the artifact document and its row: identity, thumbnail rule, no directory line", () => {
+	const [mention] = artifacts(artifactRecords(["fixture-row-1"]));
+	const document = canvasDocumentForArtifact({
+		...mention.artifact,
+		sessionId: "sess-fixture",
+	});
+	assert.equal(document.id, `artifact:${D(1)}`);
+	assert.equal(document.path, document.id);
+	assert.equal(document.type, "image");
+	assert.equal(document.content, "", "a mention is a pointer, never a payload");
+	assert.equal(document.availability, undefined, "no probe can answer for it");
+	assert.equal(document.artifact.sessionId, "sess-fixture");
+	// Survives the persisted store's JSON round trip unchanged.
+	assert.deepEqual(JSON.parse(JSON.stringify(document)), document);
+
+	const [row] = buildFileRows([document]);
+	assert.equal(row.artifact.digest, D(1));
+	assert.equal(row.media, "image");
+	assert.equal(row.kind, "images");
+	assert.equal(row.name, "fixture-model-01.jpg");
+	assert.equal(row.parent, D(1).slice(0, 8));
+	assert.equal(row.showParent, false, "the tiebreak shows only on a clash");
+	assert.equal(row.missing, false);
+});
+
+test("A12. two artifacts with one name keep their own rows and gain the digest tiebreak", () => {
+	const make = (digest) =>
+		canvasDocumentForArtifact({
+			digest,
+			kind: "image",
+			sessionId: "s",
+			name: "model-01.jpg",
+		});
+	const a = "a".repeat(32);
+	const b = "b".repeat(32);
+	const rows = buildFileRows([make(a), make(b)]);
+	assert.equal(rows.length, 2);
+	assert.deepEqual(
+		rows.map((row) => row.showParent),
+		[true, true],
+	);
+	assert.deepEqual(
+		rows.map((row) => row.parent),
+		["aaaaaaaa", "bbbbbbbb"],
+	);
+	// Search finds an artifact by its name, its kind word and its digest head.
+	assert.equal(
+		filterAndSearchRows(rows, { query: "bbbbbbbb", kinds: [] }).length,
+		1,
+	);
+	assert.equal(
+		filterAndSearchRows(rows, { query: "image", kinds: [] }).length,
+		2,
+	);
+	assert.equal(filterAndSearchRows(rows, { query: "/", kinds: [] }).length, 0);
+});
+
+test("A13. an artifact VIDEO row wears the glyph, not a thumbnail; the filter groups it as Video", () => {
+	const [row] = buildFileRows([
+		canvasDocumentForArtifact({
+			digest: "c".repeat(32),
+			kind: "video",
+			sessionId: "s",
+		}),
+	]);
+	assert.equal(row.media, null);
+	assert.equal(row.kind, "video");
+	assert.equal(row.name.startsWith("Video "), true);
+});
+
+test("A14. an `artifact:` path with no artifact block is NOT given a thumbnail it cannot fetch", () => {
+	const orphan = { ...canvasDocumentForPath(`artifact:${"d".repeat(32)}`) };
+	const [row] = buildFileRows([orphan]);
+	assert.equal(row.artifact, null);
+});
+
+test("A15. the store dedupes an artifact by id and keeps it across a persisted round trip", () => {
+	useCanvasStore.setState({ conversations: {} });
+	const conversationId = "conv-artifacts";
+	const [mention] = artifacts(artifactRecords(["fixture-row-1"]));
+	const doc = () =>
+		canvasDocumentForArtifact({ ...mention.artifact, sessionId: "s" });
+	const store = useCanvasStore.getState();
+	store.addMentionedFilesBatch(conversationId, [doc()]);
+	store.addMentionedFilesBatch(conversationId, [doc()]);
+	const held =
+		useCanvasStore.getState().conversations[conversationId].mentionedFiles;
+	assert.equal(held.length, 1);
+	// A probe answer for some OTHER path must not touch it (applyProbeResults
+	// pairs by input), and must not stamp it missing.
+	applyProbeResults(conversationId, [
+		{
+			input: "/tmp/other.md",
+			resolved: "/tmp/other.md",
+			exists: false,
+			isFile: false,
+			sizeBytes: null,
+			mtimeMs: null,
+		},
+	]);
+	const after =
+		useCanvasStore.getState().conversations[conversationId].mentionedFiles[0];
+	assert.equal(after.availability, undefined);
+	assert.equal(after.artifact.digest, D(1));
+});
+
+test("A16. the Save as name is the producer's when it has an extension, else built from the type", () => {
+	const base = { digest: D(1), kind: "image" };
+	assert.equal(
+		artifactFileName({
+			...base,
+			name: "flux-01.jpg",
+			contentType: "image/jpeg",
+		}),
+		"flux-01.jpg",
+	);
+	assert.equal(
+		artifactFileName({ ...base, name: "Hero", contentType: "image/png" }),
+		`Hero-${D(1).slice(0, 8)}.png`,
+	);
+	assert.equal(
+		artifactFileName({
+			digest: D(1),
+			kind: "video",
+			contentType: "video/webm",
+		}),
+		`Video ${D(1).slice(0, 8)}-${D(1).slice(0, 8)}.webm`,
+	);
+	// A producer-supplied name can never propose a directory.
+	assert.equal(
+		artifactFileName({ ...base, name: "../../etc/x.png" }).includes("/"),
+		false,
+	);
 });

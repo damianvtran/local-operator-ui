@@ -1,4 +1,5 @@
 import { blobAt } from "@shared/lib/blob-url-cache";
+import { isArtifactPath } from "./artifact-identity";
 import { mimeTypeForPath } from "./file-kind";
 
 /**
@@ -30,6 +31,8 @@ import { mimeTypeForPath } from "./file-kind";
  *   |                | Copy file path, Copy image                                       |
  *   | data           | Show in canvas (when provided), Copy image                       |
  *   | blob           | Copy image                                                       |
+ *   | artifact       | Show in canvas (when provided), Save as..., Copy image (pictures |
+ *   |                | only)                                                            |
  *   | http(s)        | Copy image (only where the fetch can land), Copy image URL,      |
  *   |                | Open in browser                                                  |
  *   | other          | none — no trigger is rendered                                    |
@@ -48,9 +51,23 @@ import { mimeTypeForPath } from "./file-kind";
  * this app can act on, and the linkifier refuses relative tokens for the same
  * reason (no cwd to guess).
  */
-export type ImageSourceKind = "path" | "data" | "blob" | "http" | "other";
+export type ImageSourceKind =
+	| "path"
+	| "data"
+	| "blob"
+	| "http"
+	| "artifact"
+	| "other";
 
 export const classifyImageSource = (source: string): ImageSourceKind => {
+	/*
+	 * `artifact:<digest>` is a session artifact's identity (`artifact-identity.ts`):
+	 * generated media with bytes in the attachment store and no path anywhere. It
+	 * is checked FIRST and by its exact shape, so it can neither fall through to
+	 * `other` (and be mistaken for a relative path by `classifyAttachmentSource`)
+	 * nor be offered the file-shaped actions that need a disk path.
+	 */
+	if (isArtifactPath(source)) return "artifact";
 	if (source.startsWith("data:")) return "data";
 	if (source.startsWith("blob:")) return "blob";
 	if (source.startsWith("http://") || source.startsWith("https://")) {
@@ -82,6 +99,7 @@ export const classifyAttachmentSource = (source: string): ImageSourceKind => {
 export type ImageActionId =
 	| "open-file"
 	| "show-in-canvas"
+	| "save-as"
 	| "open-folder"
 	| "copy-file-path"
 	| "copy-image"
@@ -107,6 +125,12 @@ export type ImageActionsOptions = {
 	 * own CSP admits (`httpImageFetchable`).
 	 */
 	source: string;
+	/**
+	 * What the bytes are, for the `artifact` kind only: a video has a player and
+	 * a download but no clipboard form, so `Copy image` is withheld from it.
+	 * Absent means a picture, which is every other kind's only possibility.
+	 */
+	mediaKind?: "image" | "video";
 };
 
 const OPEN_FILE: ImageAction = { id: "open-file", label: "Open file" };
@@ -114,6 +138,7 @@ const SHOW_IN_CANVAS: ImageAction = {
 	id: "show-in-canvas",
 	label: "Show in canvas",
 };
+const SAVE_AS: ImageAction = { id: "save-as", label: "Save as\u2026" };
 const OPEN_FOLDER: ImageAction = { id: "open-folder", label: "Open folder" };
 const COPY_FILE_PATH: ImageAction = {
 	id: "copy-file-path",
@@ -139,10 +164,26 @@ const OPEN_IN_BROWSER: ImageAction = {
  */
 export function imageActions(
 	kind: ImageSourceKind,
-	{ canShowInCanvas, source }: ImageActionsOptions,
+	{ canShowInCanvas, source, mediaKind }: ImageActionsOptions,
 ): ImageAction[] {
 	const canvas = canShowInCanvas ? [SHOW_IN_CANVAS] : [];
 	switch (kind) {
+		case "artifact":
+			/*
+			 * An artifact is bytes in the attachment store with no path, so the
+			 * path-shaped entries (`Open file`, `Open folder`, `Copy file path`) are
+			 * absent BY CONSTRUCTION, not hidden: there is nothing for them to act on
+			 * until the file is materialised somewhere on disk. What the bytes DO
+			 * support is offered: the canvas (the document carries the digest, which
+			 * is the "attachment store's identity on the document" the `blob` case
+			 * below said a durable canvas needs), a download through the platform's
+			 * save dialog, and - for a picture - the clipboard.
+			 */
+			return [
+				...canvas,
+				SAVE_AS,
+				...(mediaKind === "video" ? [] : [COPY_IMAGE]),
+			];
 		case "path":
 			return [...canvas, OPEN_FILE, OPEN_FOLDER, COPY_FILE_PATH, COPY_IMAGE];
 		case "data":
@@ -294,7 +335,9 @@ export async function resolveCopyableImage(
 	src?: string,
 ): Promise<Blob> {
 	if (kind === "data") return blobFromDataUrl(file);
-	if (kind === "blob") {
+	// An artifact's painted source IS a `blob:` this module's cache built (the
+	// attachment resolver publishes it), so its bytes are found the same way.
+	if (kind === "blob" || kind === "artifact") {
 		const blob = blobAt(src ?? file);
 		if (blob === null) {
 			throw new Error("These image bytes are not available in this window");
@@ -430,4 +473,27 @@ function decodeImage(url: string): Promise<HTMLImageElement> {
 			reject(new Error("This image could not be decoded for the clipboard"));
 		image.src = url;
 	});
+}
+
+/**
+ * Hand bytes to the platform's save dialog.
+ *
+ * A `blob:` anchor with `download` is the one route the app's download guard
+ * admits (`downloadVerdict`: only the app's own `blob:` exports from a trusted
+ * document may write a file), and Electron answers it with the native save
+ * dialog, so the user picks the destination and the app never names a path. The
+ * mermaid diagram export is the other caller of the same mechanism. The object
+ * URL is revoked on the next task rather than synchronously: the download
+ * starts from the click, and revoking inside it can cancel the request in
+ * Chromium.
+ */
+export function downloadBlob(blob: Blob, fileName: string): void {
+	const url = URL.createObjectURL(blob);
+	const anchor = document.createElement("a");
+	anchor.href = url;
+	anchor.download = fileName;
+	document.body.appendChild(anchor);
+	anchor.click();
+	document.body.removeChild(anchor);
+	window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }

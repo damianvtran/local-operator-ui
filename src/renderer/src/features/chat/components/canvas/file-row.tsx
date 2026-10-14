@@ -1,8 +1,11 @@
+import { fetchAttachmentBlob } from "@features/chat/canonical/use-attachment-url";
+import { useAttachmentSource } from "@features/chat/canonical/use-attachment-url";
 import { rowCurrent } from "@features/chat/components/chat-sidebar";
 import type {
 	CanvasDocument,
 	CanvasDocumentType,
 } from "@features/chat/types/canvas";
+import { artifactFileName } from "@features/chat/utils/artifact-identity";
 import { stripFileUrl } from "@features/chat/utils/canvas-document";
 import { mimeTypeForPath } from "@features/chat/utils/file-kind";
 import { FileActionsMenu } from "@shared/components/common/file-actions-menu";
@@ -24,6 +27,7 @@ import {
 } from "lucide-react";
 import { type FC, memo, useState } from "react";
 import type { Ref } from "react";
+import { ImageActionsMenu } from "../image-actions-menu";
 import type { FileRow } from "./file-rows";
 
 /**
@@ -191,7 +195,62 @@ const RowThumbnail: FC<{ row: FileRow; className: string }> = ({
 	);
 };
 
+/**
+ * A generated picture's thumbnail: the attachment store's bytes, by digest.
+ *
+ * The same resolver the transcript's own pictures use (`useAttachmentSource`):
+ * refcounted blob URLs shared module-wide by digest, so a picture already on
+ * screen in the chat costs this row no second fetch and an unmounted row gives
+ * its reference back. NOT `useFileBlobUrl`: that reads a path over the file
+ * bridge, and an artifact has no path - handing it `artifact:<digest>` would
+ * answer `not-found` and paint a glyph for a picture that is fine.
+ *
+ * The decode latch mirrors the path reader's: a blob the element cannot paint
+ * (a truncated write, a format Chromium lacks) falls back to the type glyph
+ * rather than a broken-image icon.
+ */
+const ArtifactThumbnail: FC<{ row: FileRow; className: string }> = ({
+	row,
+	className,
+}) => {
+	const artifact = row.artifact;
+	const source = useAttachmentSource(
+		{
+			data: null,
+			attachment: artifact?.digest ?? null,
+			mimeType: artifact?.contentType ?? "image/png",
+		},
+		artifact ? { sessionId: artifact.sessionId, childId: null } : null,
+	);
+	const url = source.state === "ready" ? source.url : null;
+	const [undecodableUrl, setUndecodableUrl] = useState<string | null>(null);
+	if (url !== null && url !== undecodableUrl) {
+		return (
+			<img
+				src={url}
+				alt=""
+				decoding="async"
+				onError={() => setUndecodableUrl(url)}
+				className={className}
+			/>
+		);
+	}
+	if (source.state === "resolving") {
+		return <span className={cn("size-7 rounded-sm bg-sunken")} />;
+	}
+	return <TypeGlyph row={row} />;
+};
+
 const RowThumbnailReader: FC<{ row: FileRow; className: string }> = ({
+	row,
+	className,
+}) => {
+	if (row.artifact)
+		return <ArtifactThumbnail row={row} className={className} />;
+	return <PathThumbnailReader row={row} className={className} />;
+};
+
+const PathThumbnailReader: FC<{ row: FileRow; className: string }> = ({
 	row,
 	className,
 }) => {
@@ -252,11 +311,15 @@ const FileRowItemComponent = ({
 	 * tooltip resolves the collision rather than repeating the name (design round
 	 * 1, D1). A `data:` document has no path to show and keeps its name.
 	 */
-	const tooltip = document.path.startsWith("data:")
-		? document.title
-		: document.path;
+	const artifact = row.artifact;
+	const tooltip =
+		artifact || document.path.startsWith("data:")
+			? document.title
+			: document.path;
 	const isLocalFile =
-		!document.path.startsWith("data:") && !document.path.startsWith("http");
+		!artifact &&
+		!document.path.startsWith("data:") &&
+		!document.path.startsWith("http");
 
 	return (
 		/*
@@ -360,7 +423,7 @@ const FileRowItemComponent = ({
 					) : null}
 				</button>
 			</Tooltip>
-			{isLocalFile && (
+			{(isLocalFile || artifact) && (
 				<div
 					className={cn(
 						"absolute top-1/2 right-1 z-10 -translate-y-1/2",
@@ -375,12 +438,40 @@ const FileRowItemComponent = ({
 						"group-focus-within:pointer-events-auto group-focus-within:opacity-100",
 					)}
 				>
-					<FileActionsMenu
-						filePath={stripFileUrl(document.path)}
-						tooltip="File actions"
-						aria-label="File actions"
-						onShowInCanvas={() => onOpen(document)}
-					/>
+					{artifact ? (
+						/*
+						 * THE SHIPPED PICTURE MENU, not a fork of it (PRs #978/#990): the
+						 * `artifact` action set lives in `utils/image-actions.ts`, so this
+						 * row offers Show in canvas, Save as... and Copy image from the same
+						 * table the transcript's hover controls read. The path-shaped entries
+						 * (Open file / Open folder / Copy file path) are absent because an
+						 * artifact has no path until the backend can materialise one.
+						 * The trigger wears the same "File actions" name as a path row's so
+						 * the column of `...` reads as one control down the list.
+						 */
+						<ImageActionsMenu
+							file={document.path}
+							label={document.title}
+							mediaKind={artifact.kind}
+							saveName={artifactFileName(artifact)}
+							resolveBytes={() =>
+								fetchAttachmentBlob(
+									{ sessionId: artifact.sessionId, childId: null },
+									artifact.digest,
+								)
+							}
+							onShowInCanvas={() => onOpen(document)}
+							tooltip="File actions"
+							aria-label="File actions"
+						/>
+					) : (
+						<FileActionsMenu
+							filePath={stripFileUrl(document.path)}
+							tooltip="File actions"
+							aria-label="File actions"
+							onShowInCanvas={() => onOpen(document)}
+						/>
+					)}
 				</div>
 			)}
 		</li>

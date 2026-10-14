@@ -1219,6 +1219,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			conversationId,
 			records: canonical?.view.transcript.records ?? null,
 			cwd: canonical?.view.frontend?.cwd,
+			// Generated media is fetched by (session, digest); a draft has no session
+			// and so files no artifact tiles.
+			sessionId,
 			enabled: Boolean(canonical && agentId),
 			scan: scanRequest,
 		});
