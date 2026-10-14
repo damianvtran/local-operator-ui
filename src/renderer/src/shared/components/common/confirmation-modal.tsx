@@ -131,11 +131,12 @@ export const ConfirmationModal: FC<ConfirmationModalProps> = ({
 	 *
 	 * THAT HISTORY IS WHY THIS RULE IS UNCONDITIONAL NOW, and the archive
 	 * confirmation (2026-09-30) is the case that shows it: it is the first caller of
-	 * this component whose act is REVERSIBLE (`isDangerous={false}`, an `Archive`
-	 * button), and the trap is worse for it rather than milder - a stray Return that
-	 * archives a conversation the reader was reading is exactly the accident the act
-	 * just gained a question to prevent. So the rule is stated for the component, not
-	 * for the destructive majority it was measured on.
+	 * this component whose act is REVERSIBLE (an `Archive` button - the operator
+	 * later had it carry the danger role, 2026-10-13, which changes its ink and not
+	 * the point being made here), and the trap is worse for it rather than milder - a
+	 * stray Return that archives a conversation the reader was reading is exactly the
+	 * accident the act just gained a question to prevent. So the rule is stated for
+	 * the component, not for the destructive majority it was measured on.
 	 *
 	 * Enter now does what it does everywhere else - activates the focused
 	 * button. Cancel is focused, so Enter cancels; Tab then Enter confirms.
