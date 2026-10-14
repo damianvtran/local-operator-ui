@@ -63,6 +63,7 @@ const {
 	initialAlignWalkState,
 	collapsePlan,
 	collapsePlanOptionsKey,
+	olderRowsThanWindow,
 	isFailedCall,
 	paintedRows,
 	runsOf,
@@ -5167,5 +5168,29 @@ test("olderRowsExist is part of the plan's options key", () => {
 		collapsePlanOptionsKey({ live: true }),
 		collapsePlanOptionsKey({ live: true, olderRowsExist: false }),
 		"omitted equals false",
+	);
+});
+
+test("olderRowsThanWindow: either an unloaded page or a window-hidden head means older rows exist", () => {
+	/*
+	 * The caller's derivation of `olderRowsExist`, as a pure function so the
+	 * `hidden > 0` arm has coverage that completes in milliseconds. A mounted
+	 * fixture for it (62 records, enough to make the render window hide the head)
+	 * never finished in this lane's environments; see the helper's doc comment for
+	 * what IS and is NOT covered.
+	 */
+	assert.equal(olderRowsThanWindow(true, 0), true, "hasMore alone");
+	assert.equal(olderRowsThanWindow(true, 12), true, "hasMore wins over hidden");
+	assert.equal(olderRowsThanWindow(false, 0), false, "nothing older anywhere");
+	assert.equal(olderRowsThanWindow(false, 1), true, "hidden alone");
+	assert.equal(
+		olderRowsThanWindow(undefined, 0),
+		false,
+		"absent hasMore is false",
+	);
+	assert.equal(
+		olderRowsThanWindow(undefined, 3),
+		true,
+		"absent hasMore, hidden",
 	);
 });
