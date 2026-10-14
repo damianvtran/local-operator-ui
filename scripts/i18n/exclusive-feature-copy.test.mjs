@@ -25,6 +25,12 @@ const runtime = await import(
 test("English feature copy preserves singular, plural and unknown wire fallback", () => {
 	runtime.setLocale("en");
 	assert.equal(runtime.chipClause(1), "1 code request");
+	// The destination wiring pin follows the typed getter; its English value
+	// must still match the existing rail label, independently of source shape.
+	assert.equal(
+		runtime.t("ui.command_palette.use_palette_sources.mesh"),
+		"Mesh",
+	);
 	assert.equal(runtime.chipClause(3), "3 code requests");
 	assert.equal(runtime.chipClause(1000), "1000 code requests");
 	assert.equal(runtime.commentClause(1), "1 comment");

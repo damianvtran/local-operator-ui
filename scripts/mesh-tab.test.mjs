@@ -1730,7 +1730,7 @@ test("the palette's destinations are the rail's destinations (R1-3)", () => {
 	);
 	assert.match(
 		palette,
-		/id: "mesh",\s*\n\s*name: "Mesh",\s*\n\s*path: "\/mesh",/,
+		/id: "mesh",\s*get name\(\) \{\s*return t\("ui\.command_palette\.use_palette_sources\.mesh"\);\s*\},\s*path: "\/mesh",/,
 		"typing `mesh` finds the destination the rail draws",
 	);
 	/*
