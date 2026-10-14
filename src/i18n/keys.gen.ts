@@ -154,6 +154,7 @@ export type MessageParams = {
 	"ui.console.cleanup.result_none": undefined;
 	"ui.console.close.body": undefined;
 	"ui.console.close.busy": undefined;
+	"ui.console.close.cancel": undefined;
 	"ui.console.close.confirm": undefined;
 	"ui.console.close.kept": undefined;
 	"ui.console.close.title": undefined;
@@ -194,6 +195,8 @@ export type MessageParams = {
 	};
 	"ui.console.tab.close_label": { title: string; index: number; total: number };
 	"ui.console.tab.ended": undefined;
+	"ui.console.terminal.prompt_label": undefined;
+	"ui.console.terminal.too_much_output": undefined;
 	"ui.console.unavailable.disabled.detail": undefined;
 	"ui.console.unavailable.disabled.title": undefined;
 	"ui.console.unavailable.pty.detail": undefined;
