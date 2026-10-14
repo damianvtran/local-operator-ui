@@ -48,6 +48,31 @@ test("remaining sessions agree with singular and plural pronouns", () => {
 	);
 });
 
+for (const count of [0, 1, 2]) {
+	test(`counted attempt/session/unit nouns at ${count}`, () => {
+		assert.equal(
+			t("ui.common.updates.check_for_updates_button.detail", {
+				attempts: count,
+				attemptsText: String(count),
+			}),
+			` (${count} attempt${count === 1 ? "" : "s"})`,
+		);
+		assert.equal(
+			t("ui.common.updates.wait.seconds", { seconds: count }),
+			`Waiting ${count} second${count === 1 ? "" : "s"} so far`,
+		);
+		assert.equal(
+			t("ui.common.updates.completion.sessions", {
+				count,
+				countText: String(count),
+			}),
+			count === 1
+				? "1 session is still running the old build; it will move onto the new build when it next stops or goes idle."
+				: `${count} sessions are still running the old build; they will move onto the new build when they next stop or go idle.`,
+		);
+	});
+}
+
 test("provider-dependent offline copy keeps its existing two distinct clauses", () => {
 	const provider = t("ui.common.connection.provider.requires", {
 		provider: "Radient",

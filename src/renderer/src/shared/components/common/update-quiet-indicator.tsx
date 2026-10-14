@@ -1,4 +1,3 @@
-import { t } from "@shared/i18n";
 /**
  * The quiet update indicator: what an unsolicited release looks like now.
  *
@@ -65,6 +64,7 @@ import { t } from "@shared/i18n";
  * needed. Keep the copy short and the row leading-anchored.
  */
 
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { UpdateType } from "@shared/store/deferred-updates-store";
 import {
@@ -80,6 +80,7 @@ import {
 	useLayoutEffect,
 	useMemo,
 } from "react";
+import { t } from "../../../../../i18n/messages";
 
 /** One surface's waiting release, as the indicator draws it. */
 export type QuietIndicatorOffer = {
@@ -159,6 +160,7 @@ export const UpdateQuietIndicatorView: FC<{
 	/** The rig's hook for a frame; also lets a test scope its query. */
 	className?: string;
 }> = ({ offers, onOpen, onDismiss, className }) => {
+	useI18nLocale();
 	/*
 	 * The region is mounted whether or not there is anything in it (review R4), and
 	 * the band's own box only exists while there is: an empty `<output>` with no

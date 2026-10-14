@@ -2,7 +2,7 @@ import { useSuppressBrowserView } from "@shared/browser-view-policy";
 import { FloatingAlert } from "@shared/components/common/floating-alert";
 import { Button, Progress } from "@shared/components/ui";
 import { useElapsedSince } from "@shared/hooks/use-elapsed-since";
-import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { formatByteSize } from "@shared/lib/format-bytes";
 import { cn } from "@shared/lib/utils";
 import {
@@ -35,6 +35,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { t } from "../../../../../i18n/messages";
 import { PanelDetails } from "./panel-details";
 import { UpdateErrorAlert } from "./update-error-alert";
 import {
@@ -502,6 +503,7 @@ export const UpdateContainer = ({
 	 */
 	closeLabel?: string;
 }) => {
+	useI18nLocale();
 	const cardRef = useRef<HTMLDivElement | null>(null);
 	useEffect(() => {
 		if (!onClose) return;
@@ -676,6 +678,7 @@ export const UpdateHeading = ({
  * `pre-line` would keep the first of and drop the second.
  */
 export const InstallerOutput = ({ output }: { output: string }) => {
+	useI18nLocale();
 	const [copied, setCopied] = useState(false);
 	return (
 		<div className="mt-2">
@@ -734,6 +737,7 @@ export const splitInstallerOutput = (
  * out of a panel (review U7).
  */
 export const CommandBlock = ({ command }: { command: string }) => {
+	useI18nLocale();
 	const [copied, setCopied] = useState(false);
 	return (
 		<div className="mt-2 flex items-start gap-2">
@@ -822,6 +826,7 @@ const ManualRemedyNote = ({
 	 */
 	appOwned?: boolean;
 }) => {
+	useI18nLocale();
 	if (appOwned) return null;
 	if (sourceBuild && !command) {
 		return (
@@ -1118,6 +1123,7 @@ export const UpdateNotification = ({
 	autoCheck = true,
 	slowWaitHintMs,
 }: UpdateNotificationProps) => {
+	useI18nLocale();
 	// State for frontend update status
 	const [checking, setChecking] = useState(false);
 	const [updatingBackend, setUpdatingBackend] = useState(false);

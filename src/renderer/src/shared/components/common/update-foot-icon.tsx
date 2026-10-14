@@ -1,4 +1,3 @@
-import { t } from "@shared/i18n";
 /**
  * The update foot icon: the standing "a release is waiting" affordance.
  *
@@ -60,6 +59,7 @@ import { t } from "@shared/i18n";
  */
 
 import { Tooltip } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { UpdateType } from "@shared/store/deferred-updates-store";
 import {
@@ -70,6 +70,7 @@ import {
 } from "@shared/store/update-notice-store";
 import { CircleArrowDown, LoaderCircle } from "lucide-react";
 import { type FC, useCallback, useMemo } from "react";
+import { t } from "../../../../../i18n/messages";
 import { quietOfferSubject, quietSurfaceLabel } from "./update-quiet-indicator";
 
 /** One waiting surface as the icon draws it. */
@@ -146,6 +147,7 @@ export const UpdateFootIconView: FC<{
 	 */
 	onDismiss?: () => void;
 }> = ({ surfaces, inflight, onShow, onDismiss }) => {
+	useI18nLocale();
 	/*
 	 * HIDDEN IS RETURNING NOTHING - not a spaced-out empty box. The row's own
 	 * `gap-1` between the account row and the gear collapses to one gap, which is

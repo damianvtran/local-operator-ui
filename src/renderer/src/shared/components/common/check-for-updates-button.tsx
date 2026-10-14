@@ -2,7 +2,7 @@ import { FloatingAlert } from "@shared/components/common/floating-alert";
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui";
 import { useElapsedSince } from "@shared/hooks/use-elapsed-since";
-import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import {
 	UpdateType,
 	useDeferredUpdatesStore,
@@ -12,6 +12,7 @@ import { isDevelopmentMode } from "@shared/utils/env-utils";
 import { updateMessageOf } from "@shared/utils/update-error-copy";
 import { SLOW_WAIT_HINT_MS } from "@shared/utils/update-slow-wait";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { t } from "../../../../../i18n/messages";
 
 /**
  * Component that shows a button to manually check for updates.
@@ -48,6 +49,7 @@ export const CheckForUpdatesButton = ({
 	 */
 	slowWaitHintMs?: number;
 }) => {
+	useI18nLocale();
 	/** Where a user gets a copy that installs by hand. */
 	const DOWNLOAD_PAGE = "https://local-operator.com/download";
 	const [checking, setChecking] = useState(false);
@@ -517,7 +519,8 @@ export const CheckForUpdatesButton = ({
 						{t("ui.common.updates.check_for_updates_button.didn_t_finish")}
 						{lastAttempt.attempts > 1
 							? t("ui.common.updates.check_for_updates_button.detail", {
-									attempts: String(lastAttempt.attempts),
+									attempts: lastAttempt.attempts,
+									attemptsText: String(lastAttempt.attempts),
 								})
 							: ""}
 						.{/*

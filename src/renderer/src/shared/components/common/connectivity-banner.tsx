@@ -5,13 +5,14 @@ import {
 	Button,
 } from "@shared/components/ui";
 import { useConnectivityStatus } from "@shared/hooks/use-connectivity-status";
-import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import {
 	msUntilOfflineReportable,
 	noOfflineConfirmation,
 	observeConnectivityReading,
 } from "@shared/utils/offline-confirmation";
 import { useEffect, useRef, useState } from "react";
+import { t } from "../../../../../i18n/messages";
 import { serverBannerCopy } from "../../../../../shared/backend-status";
 
 /**
@@ -46,6 +47,7 @@ type ConnectivityBannerProps = {
 export const ConnectivityBanner = ({
 	autoCheck = true,
 }: ConnectivityBannerProps) => {
+	useI18nLocale();
 	// Get connectivity status
 	const {
 		hostingProvider,

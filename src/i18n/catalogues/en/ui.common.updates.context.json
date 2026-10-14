@@ -14,10 +14,12 @@
 	"ui.common.updates.check_for_updates_button.detail": {
 		"role": "status explanation",
 		"tone": "Factual explanation; preserve stated limits and ownership of the app versus server.",
-		"note": "Shown in check-for-updates-button.tsx inside p. Inline fragment: its leading/trailing space joins sibling version/count labels. It is not a standalone sentence; preserve the boundary spacing. Dynamic values are composed within this message so translators can place them; never translate a supplied version, error, command or provider identifier.",
+		"note": "Suffix on a failed update-check report. Current component shows it only after multiple attempts; singular is explicit for source/target grammar without changing reachable English. Leading space and parentheses join the preceding status.",
 		"placeholders": {
-			"attempts": "Existing display value from lastAttempt.attempts; retain verbatim, never use as a translation key."
-		}
+			"attempts": "Numeric update-check attempt cardinal.",
+			"attemptsText": "Existing decimal display without grouping."
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
 	},
 	"ui.common.updates.check_for_updates_button.detected": {
 		"role": "status explanation",
@@ -70,7 +72,8 @@
 		"placeholders": {
 			"count": "Measured sessions remaining on the old build; ICU plural cardinal.",
 			"countText": "Exact existing decimal session count, separate from ICU cardinal selection; do not add grouping punctuation to English."
-		}
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
 	},
 	"ui.common.updates.restart.outage_bound": {
 		"role": "status explanation",
@@ -745,7 +748,8 @@
 		"length": "Compact single status line; wrapping allowed.",
 		"placeholders": {
 			"minutes": "Elapsed whole minutes cardinal; pluralize minute/minutes."
-		}
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
 	},
 	"ui.common.updates.wait.minutes_seconds": {
 		"role": "status",
@@ -755,7 +759,8 @@
 		"placeholders": {
 			"minutes": "Elapsed whole minutes cardinal; pluralize minute/minutes.",
 			"seconds": "Elapsed seconds cardinal; pluralize second/seconds."
-		}
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
 	},
 	"ui.common.updates.wait.seconds": {
 		"role": "status",
@@ -764,6 +769,7 @@
 		"length": "Compact single status line; wrapping allowed.",
 		"placeholders": {
 			"seconds": "Elapsed seconds cardinal; pluralize second/seconds."
-		}
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
 	}
 }

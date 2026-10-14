@@ -1,7 +1,7 @@
 {
 	"ui.common.updates.check_for_updates_button.check_for_updates": "Check for updates",
 	"ui.common.updates.check_for_updates_button.checking": "Checking...",
-	"ui.common.updates.check_for_updates_button.detail": " ({attempts} attempts)",
+	"ui.common.updates.check_for_updates_button.detail": "{attempts, plural, one { ({attemptsText} attempt)} other { ({attemptsText} attempts)}}",
 	"ui.common.updates.check_for_updates_button.detected": "Detected",
 	"ui.common.updates.check_for_updates_button.didn_t_finish": " didn't finish",
 	"ui.common.updates.check_for_updates_button.download_a_fresh_copy": "Download a fresh copy",

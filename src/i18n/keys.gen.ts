@@ -188,7 +188,10 @@ export type MessageParams = {
 	"ui.common.forms.select.unlisted_value": undefined;
 	"ui.common.updates.check_for_updates_button.check_for_updates": undefined;
 	"ui.common.updates.check_for_updates_button.checking": undefined;
-	"ui.common.updates.check_for_updates_button.detail": { attempts: string };
+	"ui.common.updates.check_for_updates_button.detail": {
+		attempts: number;
+		attemptsText: string;
+	};
 	"ui.common.updates.check_for_updates_button.detected": undefined;
 	"ui.common.updates.check_for_updates_button.didn_t_finish": undefined;
 	"ui.common.updates.check_for_updates_button.download_a_fresh_copy": undefined;
