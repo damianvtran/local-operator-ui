@@ -169,7 +169,14 @@ export function useHubLinkActions(linkId: string) {
 
 /** The stated destination a source confirmation carries; never inferred. */
 export type HubSourceResolutionInput = {
-	kind: HubLinkKind;
+	/*
+	 * The frozen resolve arm takes core's `Kind = Literal["agent", "team"]`
+	 * (desktop_hub.py HubApply.kind): the source-confirmation act exists for a
+	 * LEGACY unknown-origin link, and skills are new capability-gated rows that
+	 * have no legacy identity-less predecessor. Typing this as the wider
+	 * `HubLinkKind` let a `"skill"` flow into `hub.apply`, which the wire refuses.
+	 */
+	kind: "agent" | "team";
 	localId: string;
 	name: string;
 	hubSource: string;

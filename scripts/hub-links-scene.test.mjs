@@ -25,6 +25,8 @@ const DRIVER = "scripts/renderer-driver.mjs";
 const STUB = "docs/evidence/hub-links/harness/stub-daemon.mjs";
 const TYPES = "src/renderer/src/shared/api/local-operator/hub-links.ts";
 const HOOKS = "src/renderer/src/shared/api/local-operator/hub-link-hooks.ts";
+const ACTIONS =
+	"src/renderer/src/shared/api/local-operator/hub-link-actions.ts";
 const PANEL = "src/renderer/src/features/agents/components/hub-links-panel.tsx";
 
 test("the hub-links scene is registered and backend-gated", () => {
@@ -86,6 +88,21 @@ test("the hub-links panel imports every hook it calls", () => {
 	assert.match(
 		panel,
 		/import \{\s*useHubLinks\s*\} from "@shared\/api\/local-operator\/hub-link-hooks";/,
+	);
+});
+
+test("the resolve arm is typed to the frozen agent|team Kind", () => {
+	const actions = readFileSync(ACTIONS, "utf8");
+	const code = actions
+		.replace(/\/\*[\s\S]*?\*\//g, "")
+		.replace(/\/\/.*$/gm, "");
+	// Core's HubApply.kind is Kind = Literal["agent", "team"]; typing the resolve
+	// input as the wider HubLinkKind let "skill" reach hub.apply, which the wire
+	// refuses (and which the renderer typecheck catches only because the contract
+	// op narrows it). Pin the narrowed input here.
+	assert.match(
+		code,
+		/export type HubSourceResolutionInput = \{[\s\S]*?kind: "agent" \| "team";/,
 	);
 });
 

@@ -45,7 +45,14 @@ export type HubLink = {
 	push: HubDirectionStatus;
 };
 export type HubUnresolvedLink = {
-	kind: HubLinkKind;
+	/*
+	 * `agent` | `team` ONLY, the kinds the frozen resolve arm accepts (core
+	 * `HubApply.kind`). An unresolved row is a LEGACY identity-less link whose
+	 * only honest next step is the source-confirmation act, and skills are a new
+	 * capability-gated kind with no legacy predecessor — so a skill can never be
+	 * an unresolved row, and the panel's resolve control is never wired to one.
+	 */
+	kind: "agent" | "team";
 	local_id: string;
 	name: string;
 	hub_id: string;
