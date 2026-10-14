@@ -18,6 +18,7 @@ import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useEffect, useId, useRef, useState } from "react";
 import { hubReasonText } from "../hub-link-copy";
+import { hubAutoPushGate } from "../hub-link-view";
 
 /** Resolve at invocation so a locale refresh does not freeze imported copy. */
 export function hubLinkSourceName(link: HubLink): string {
@@ -76,10 +77,9 @@ export function HubLinkPolicyControls({
 		setChangedSetting(setting);
 		write.mutate({ link, patch }, { onSuccess: closeConsent });
 	};
-	const unavailable =
-		!link.eligibility.can_auto_push ||
-		!link.remote_revision ||
-		(link.visibility === "org" && !link.tenant_name);
+	// Core's own rule, shared with the guard test: a public no-grant link is
+	// "requires consent", not "unavailable" (see hubAutoPushGate).
+	const { unavailable } = hubAutoPushGate(link);
 	const unavailableReason = link.eligibility.reason
 		? hubReasonText(link.eligibility.reason)
 		: t("ui.hub.subscriptions.unsupported");

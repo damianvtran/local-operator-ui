@@ -31,6 +31,7 @@ const {
 	profileEditorIdentity,
 	teamEditorIdentity,
 	hubLinkMark,
+	hubAutoPushGate,
 	hubPreviewMatches,
 	hubLinkView,
 	linksForLocalItem,
@@ -803,4 +804,63 @@ test("source-resolution baseline field tracks core's emitted key and literals", 
 	assert.match(code, /baseline_state: "adopt" \| "adopt-unknown";/);
 	assert.doesNotMatch(code, /"adopted"/);
 	assert.doesNotMatch(code, /baseline: "/);
+});
+
+test("a PUBLIC no-grant link requires consent, not unavailability; every other refusal stays", () => {
+	const wire = (over = {}, elig = {}) => ({
+		visibility: "public",
+		tenant_name: null,
+		remote_revision: "r1",
+		eligibility: {
+			can_auto_push: false,
+			reason: "unsafe-publication",
+			...elig,
+		},
+		...over,
+	});
+	// The E2E-caught case: public + unsafe-publication must let the consent dialog
+	// send its confirm_public_egress patch.
+	assert.deepEqual(hubAutoPushGate(wire()), {
+		unavailable: false,
+		requiresConsent: true,
+	});
+	// Every EARLIER core gate still refuses, public or not.
+	for (const reason of [
+		"unsupported-precondition",
+		"baseline-unknown",
+		"mixed-lineage",
+		null,
+		"something-new",
+	])
+		assert.equal(
+			hubAutoPushGate(wire({}, { reason })).unavailable,
+			true,
+			`public + ${reason} stays unavailable`,
+		);
+	// unsafe-publication cannot apply to an org link: stays refused.
+	assert.equal(
+		hubAutoPushGate(wire({ visibility: "org", tenant_name: "Minerva" }))
+			.unavailable,
+		true,
+	);
+	// No remote revision never enables, even with the carve-out.
+	assert.equal(
+		hubAutoPushGate(wire({ remote_revision: null })).unavailable,
+		true,
+	);
+	// An org link missing its verified tenant name never enables.
+	assert.equal(
+		hubAutoPushGate(
+			wire(
+				{ visibility: "org", tenant_name: null },
+				{ can_auto_push: true, reason: null },
+			),
+		).unavailable,
+		true,
+	);
+	// An already-eligible link is available and needs no carve-out.
+	assert.deepEqual(
+		hubAutoPushGate(wire({}, { can_auto_push: true, reason: null })),
+		{ unavailable: false, requiresConsent: false },
+	);
 });

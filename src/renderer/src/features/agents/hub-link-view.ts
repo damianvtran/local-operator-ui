@@ -120,3 +120,48 @@ export function hubLinkMark(link: HubLinkView): HubLinkMarkView {
 	}
 	return { kind: "healthy", direction: "pull", action: "policy" };
 }
+
+/**
+ * The structural slice of a wire `HubLink` the auto-push gate reads. Kept
+ * structural so this module stays free of the transport import (it is a
+ * presentation module) and so the gate is testable without React.
+ */
+export type HubAutoPushGateInput = {
+	visibility: "public" | "org";
+	tenant_name: string | null;
+	remote_revision: string | null;
+	eligibility: { can_auto_push: boolean; reason: string | null };
+};
+
+/**
+ * Whether the auto-push control may proceed, mirroring core's
+ * `policies.update_policy` rule EXACTLY rather than inventing a stricter one.
+ *
+ * WHY the carve-out: for a PUBLIC link that has no grant yet the service reports
+ * `can_auto_push=false` with reason `unsafe-publication`, because the grant does
+ * not exist until the user gives destination-specific consent. Core therefore lets
+ * exactly that case fall through to its consent branch (every EARLIER gate -
+ * unsupported-precondition, baseline-unknown, mixed-lineage - still refuses). If
+ * the desktop treated that reason as "unavailable" the consent dialog's Enable
+ * button could never send the `confirm_public_egress:true` patch that mints the
+ * first grant, and no public link could ever be enabled (caught by E2E).
+ *
+ * CONSTRAINTS: the carve-out is public-only (`unsafe-publication` on an org link
+ * cannot apply there and stays refused); every other reason stays refused; a link
+ * with no remote revision, or an org link whose verified tenant name is missing,
+ * never enables. The carve-out only lets the consent dialog OPEN - the write still
+ * requires the explicit consent press and carries `confirm_public_egress`.
+ */
+export function hubAutoPushGate(link: HubAutoPushGateInput): {
+	unavailable: boolean;
+	requiresConsent: boolean;
+} {
+	const consentMints =
+		link.visibility === "public" &&
+		link.eligibility.reason === "unsafe-publication";
+	const unavailable =
+		(!link.eligibility.can_auto_push && !consentMints) ||
+		!link.remote_revision ||
+		(link.visibility === "org" && !link.tenant_name);
+	return { unavailable, requiresConsent: consentMints && !unavailable };
+}
