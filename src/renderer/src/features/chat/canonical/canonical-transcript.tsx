@@ -52,7 +52,10 @@ import { useCompletionView } from "@shared/hooks/use-completion-view";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import {
+	type InternalEpisodeIdentitySnapshot,
+	captureInternalEpisodeIdentity,
 	expandedRunsOf,
+	retainInternalEpisodeKeys,
 	writeRunExpanded,
 } from "@shared/store/turn-collapse-open";
 import {
@@ -239,6 +242,7 @@ import {
 	collapsePlanInputKey,
 	collapseRowsKey,
 	initialAlignWalkState,
+	ownsMaterialArtifact,
 	paintedRows,
 	runIsCondensed,
 	snapWindowToRunBoundary,
@@ -3199,6 +3203,28 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		watchedRunId: null,
 		mounted: 0,
 	});
+	// One previous loaded plan, bounded across ALL episodes. This is identity
+	// evidence only; openRuns/the existing store remain the sole disclosure owner.
+	const internalEpisodeKeys = useRef<{
+		sessionId: string | null;
+		viewEpoch: number | undefined;
+		evidence: InternalEpisodeIdentitySnapshot;
+	}>({
+		sessionId,
+		viewEpoch: transcript.viewEpoch,
+		evidence: captureInternalEpisodeIdentity([], new Set()),
+	});
+	// A changed clear epoch invalidates evidence; an unchanged epoch proves
+	// NOTHING about hydration, adoption, row order or segmentation continuity.
+	if (
+		internalEpisodeKeys.current.sessionId !== sessionId ||
+		internalEpisodeKeys.current.viewEpoch !== transcript.viewEpoch
+	)
+		internalEpisodeKeys.current = {
+			sessionId,
+			viewEpoch: transcript.viewEpoch,
+			evidence: captureInternalEpisodeIdentity([], new Set()),
+		};
 	const [openRuns, setOpenRuns] = useState<ReadonlySet<string>>(() =>
 		expandedRunsOf(sessionId),
 	);
@@ -3538,7 +3564,9 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			endedAtOf: (row) =>
 				row.record.kind === "tool" ? row.record.endedAt : null,
 			isFoldable: (row) =>
-				row.record.kind === "tool" && !isQuietTurnCall(row.record),
+				row.record.kind === "tool" &&
+				!isQuietTurnCall(row.record) &&
+				!ownsMaterialArtifact(row.record),
 			isReceipt: (row) => isInternalReceipt(row.record),
 			receiptSummaryOf: (rows) =>
 				rows.length
@@ -4413,6 +4441,59 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		// the render mark beside them.
 		performance.mark("lop:transcript:plan:start");
 		const plan = collapsePlan(visible, collapseInputs);
+		const episodes = plan.runs.flatMap((run) => run.segments);
+		const identities = episodes.map((segment) => ({
+			...segment,
+			eligible: segment.internal != null,
+		}));
+		function* visibleIds() {
+			for (const row of visible) yield row.record.id;
+		}
+		// `rows` is a projection of the canonical reducer's ID-keyed records:
+		// applyHistoryPage merges byId; live upsert replaces an indexed existing ID.
+		// This supplies CURRENT uniqueness only. It does not certify loadOlder,
+		// hydration, prior membership, order or topology-preserving transitions.
+		const retained = retainInternalEpisodeKeys(
+			internalEpisodeKeys.current.evidence,
+			identities,
+			{ currentIdsUnique: true, outsideCurrentIds: visibleIds() },
+		).episodes;
+		for (let i = 0; i < episodes.length; i += 1) {
+			const segment = episodes[i];
+			const oldKey = retained[i].key;
+			if (oldKey === segment.key) continue;
+			segment.key = oldKey;
+			// The planner's internal episode is eligible; its only stand-down is
+			// focusHold. After a proved key transfer an explicitly OPEN bar still
+			// mounts that focused child, so do not replace its disclosure with loose
+			// rows solely because the earlier focus guard saw the pre-transfer key.
+			if (openRuns.has(oldKey)) segment.collapsed = true;
+		}
+		for (const run of plan.runs) {
+			run.collapses = run.segments.some((segment) => segment.collapsed);
+			run.hidden = run.segments
+				.filter((segment) => segment.collapsed)
+				.flatMap((segment) => segment.rows);
+			const firstBar = run.segments.find((segment) => segment.collapsed);
+			if (firstBar !== undefined) run.gap = firstBar.gap;
+		}
+		// Snapshot ALL prior owner relations when <=4096 IDs; only reader OPEN
+		// keys and one focused child are held. Capture overflow replaces the latest
+		// evidence with explicit incomplete state, never a stale smaller snapshot.
+		internalEpisodeKeys.current = {
+			sessionId,
+			viewEpoch: transcript.viewEpoch,
+			evidence: captureInternalEpisodeIdentity(
+				episodes.map((segment) => ({
+					key: segment.key,
+					segmentIds: segment.segmentIds,
+					eligible: segment.internal != null,
+				})),
+				openRuns,
+				focusedRecordId,
+				visibleIds(),
+			),
+		};
 		performance.mark("lop:transcript:plan:end");
 		performance.measure(
 			"lop:transcript:plan",
@@ -4420,7 +4501,22 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			"lop:transcript:plan:end",
 		);
 		return plan;
-	}, [collapseKey]);
+	}, [collapseKey, sessionId, transcript.viewEpoch]);
+	// A producer-anchored phase can move to the summary without resetting its
+	// clock. If old-core thinking has no anchor, leave the mounted footer clock
+	// intact: a new leaf must not call its own mount-time zero the phase's age.
+	const internalPhaseLine =
+		working !== null &&
+		(working.startedAt !== undefined || working.clock === false)
+			? working
+			: null;
+	const internalLiveLeaf =
+		internalPhaseLine !== null &&
+		collapse.runs.some((run) =>
+			run.segments.some(
+				(segment) => segment.collapsed && segment.internal?.live,
+			),
+		);
 	/*
 	 * THE SETTLE LATCH'S WRITE (operator report, 2026-10-16; the model's
 	 * `watchedRunId` option). While the pane reads live, the newest run on screen
@@ -5350,6 +5446,17 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				stampTs={entry.segment.stampTs}
 				label={entry.segment.label}
 				completed={entry.segment.completed}
+				episode={
+					entry.segment.internal == null
+						? null
+						: {
+								receipts: entry.segment.internal.receipts,
+								active: entry.segment.internal.live,
+								phaseLine: entry.segment.internal.live
+									? internalPhaseLine
+									: null,
+							}
+				}
 				open={openRuns.has(entry.segment.key)}
 				onOpenChange={(next) =>
 					openBar(entry.segment.key, entry.segment.firstId, next)
@@ -6120,7 +6227,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 										"min-h-[1lh] font-mono text-mono-sm",
 									)}
 								>
-									{working && (
+									{working && !internalLiveLeaf && (
 										<WorkingLine
 											activity={working.activity}
 											phase={working.phase}

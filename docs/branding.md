@@ -911,7 +911,7 @@ equally important**, and the interface must not present them as though they are.
   answers "what is it doing right now?" by naming the call in flight (`Running
   pnpm vitest run`) beside its counts and its wall-clock span. It condenses
   the same way — the reader's press is the only close; no state update closes
-  a fold — and nothing condenses while a call in it is still running, nor
+  a fold — and ordinary human work does not condense while a call in it is still running, nor
   while the turn waits on the reader's own gate (an approval or question parks
   the turn; a parked turn is unsettled, so nothing condenses). A finished turn
   also carries one turn-foot line (`Worked for 1m 12s · 8 actions`) — EXCEPT a
@@ -1034,6 +1034,21 @@ text in the transcript — code, stdout and diffs share the treatment — opens
   response to it.
 
 ---
+
+### Live internal receipt episodes
+
+A positively typed incoming peer, hub note, wake, monitor or background
+completion and its contiguous private actions may use the existing summary
+while live, including the first receipt. This does not lower the three-action
+fold threshold or reclassify unanswered human work merely because a peer arrives.
+Compact is presentation, not completion: no success check or finished `Took`
+clause while active. Reuse the actual working phase and its producer clock;
+never label time since a receipt as time spent thinking. With no phase anchor,
+leave the existing footer clock intact. User prose (including future/empty
+streaming rows), questions, errors and actual image/video/file owners remain
+outside. Final-owned files/frames do not close just because an ambient internal
+bar closes. Expansion belongs to the reader across append/settlement; paging
+identity transfer requires complete bounded canonical-ID overlap, never labels.
 
 ## 8. Voice
 
