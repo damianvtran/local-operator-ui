@@ -40,7 +40,9 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useEffect, useRef } from "react";
 import "../../../styles/index.css";
+import type { CanonicalFrontendState } from "../../../../../shared/desktop-session-contract";
 import { CanonicalTranscript } from "./canonical-transcript";
+import CLOSEOUT_GENERATED_DOCUMENT from "./supplement-closeout.generated.html?raw";
 import {
 	SUPPLEMENT_STORY_ERROR_DOCUMENT,
 	SUPPLEMENT_STORY_POPULATED_DOCUMENT,
@@ -104,6 +106,13 @@ function installSupplementMedia(): void {
 	 */
 	const errorDigest = digest("error-document");
 	desktop.media = (async (request: { op?: string; digest?: string }) => {
+		if (request?.digest === digest("closeout-generated-table")) {
+			return {
+				status: 200,
+				kind: "json",
+				body: { html: CLOSEOUT_GENERATED_DOCUMENT },
+			};
+		}
 		if (request?.digest === errorDigest) {
 			return {
 				status: 200,
@@ -248,11 +257,13 @@ const Frame = ({
 	height = 340,
 	width = "100%",
 	click,
+	cwd,
 }: {
 	records: TranscriptRecord[];
 	height?: number;
 	width?: string;
 	click?: string;
+	cwd?: string;
 }) => {
 	installSupplementMedia();
 	const containerRef = useRef<HTMLDivElement>(null);
@@ -266,7 +277,15 @@ const Frame = ({
 			{click !== undefined && <ClickOnMount selector={click} />}
 			<CanonicalTranscript
 				transcript={transcriptOf(records)}
-				frontend={null}
+				frontend={
+					cwd
+						? ({
+								session_id: SUPPLEMENT_STORY_SESSION,
+								cwd,
+								streaming: false,
+							} as CanonicalFrontendState)
+						: null
+				}
 				gate={null}
 				waiting={false}
 				starting={false}
@@ -716,6 +735,101 @@ export const FoldedCondensedComponents: StoryObj = {
 			]}
 		/>
 	),
+};
+
+/**
+ * Replay of the four-deliverable closeout shape. Paths stay portable in the
+ * record; only the mocked preload boundary knows this synthetic home. The
+ * graphic is the actual assembled table generated for an EXPLICIT table request
+ * in core PR #2418. Automatic classification was below its threshold, so this
+ * fixture proves renderer replay, not automatic graphic selection. Counts use
+ * distinct entity units, never a misleading common completion denominator.
+ */
+function CloseoutReplay() {
+	const api = window.api;
+	const previous = useRef({
+		probeFiles: api.probeFiles,
+		readFile: api.readFile,
+		openFile: api.openFile,
+		showItemInFolder: api.showItemInFolder,
+	});
+	useEffect(
+		() => () => {
+			Object.assign(api, previous.current);
+		},
+		[api],
+	);
+	api.probeFiles = async (paths, cwd) =>
+		paths.map((path) => ({
+			input: path,
+			resolved: path.startsWith("/")
+				? path
+				: path.startsWith("~/")
+					? `/synthetic-home/${path.slice(2)}`
+					: `${cwd?.startsWith("~") ? `/synthetic-home${cwd.slice(1)}` : cwd}/${path}`,
+			exists: true,
+			isFile: true,
+			isDirectory: false,
+			sizeBytes: 30,
+			mtimeMs: TS,
+			outsideWorkspace: false,
+		}));
+	api.readFile = async () => ({
+		success: true,
+		data: "# Synthetic closeout deliverable\n\nReplay fixture only.",
+	});
+	api.openFile = async (path) => ({ ok: true, resolved: path });
+	api.showItemInFolder = async (path) => ({ ok: true, resolved: path });
+	return (
+		<Frame
+			cwd="~/workspace/project"
+			height={820}
+			records={[
+				answer(
+					"m1",
+					"The closeout produced four deliverables. RUN-RECORD.md records the run; the files below retain their session-relative paths.",
+				),
+				supplement({
+					id: "s1",
+					files: [
+						file(
+							"workspace/acme-closeout/RUN-RECORD.md",
+							"RUN-RECORD.md",
+							4120,
+						),
+						file(
+							"workspace/acme-closeout/closed-records.csv",
+							"closed-records.csv",
+							913,
+							"csv",
+						),
+						file(
+							"workspace/acme-closeout/exceptions.csv",
+							"exceptions.csv",
+							812,
+							"csv",
+						),
+						file("workspace/acme-closeout/summary.md", "summary.md", 799),
+					],
+					components: [
+						{
+							...component(
+								"closeout-generated-table",
+								"Operational counts — distinct entity units",
+								380,
+							),
+							source:
+								"Actual explicit-request generated table from core PR #2418; not automatic classification",
+						},
+					],
+				}),
+			]}
+		/>
+	);
+}
+
+export const CloseoutFourDeliverables: StoryObj = {
+	render: () => <CloseoutReplay />,
 };
 
 /** Mixed: both clauses, the design's separator (`2 files · 1 graphic`). */
