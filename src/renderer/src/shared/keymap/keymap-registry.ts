@@ -164,6 +164,21 @@ export type ShortcutBindings = Partial<Record<ActionId, string | null>>;
  * (QA's three-path probe). Reserved with their jobs named; the palette's
  * `defaultPrevented` carve-out does not reach any of them.
  */
+/**
+ * These were assignable before browser focus routing existed. Keep a saved
+ * assignment dormant rather than erase it on the next unrelated preference
+ * write: an older build can still read the original map on downgrade (R15).
+ * This exception must never include pre-existing reserved/invalid chords.
+ */
+export const LEGACY_BROWSER_CHORDS: ReadonlySet<string> = new Set([
+	"primary+r",
+	"primary+shift+r",
+	"primary+t",
+	"primary+shift+t",
+	"primary+l",
+	...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit) => `primary+${digit}`),
+]);
+
 export const RESERVED_CHORDS: ReadonlyMap<string, string> = new Map([
 	// The main process's doors: the renderer never sees these presses, so a
 	// bound chord would be a key that does nothing and says nothing.
