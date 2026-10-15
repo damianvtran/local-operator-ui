@@ -55,7 +55,13 @@ type Scenario =
 	| "quote_changed"
 	| "failed-5xx"
 	| "intent-corrupt"
-	| "no-capability";
+	| "no-capability"
+	| "owner_missing"
+	| "failed"
+	// Transitions: the bridge answers late, so a capture can take the first frame
+	// and the settled one from the same story.
+	| "slow-plan"
+	| "slow-run";
 
 const ok = (result: unknown): DesktopResponse => ({
 	status: 200,
@@ -128,26 +134,26 @@ const VERIFIED = {
 	],
 };
 
+/** The activation-required plan, shared by every consent-shaped scenario. */
+const consentPlan = {
+	...base,
+	step: "quote",
+	blocked_on: "quote",
+	quote: quoteOf("0.05"),
+	remedy: {
+		kind: "accept_quote",
+		text: "Accept only if you agree:",
+		command:
+			"lop tunnel setup apply --credential-id 17 --accept-monthly-price 0.05",
+		url: null,
+	},
+};
+
 /** The plan each scenario answers, and what a press of the run does to it. */
 const plans = (scenario: Scenario): { plan: unknown; afterRun?: unknown } => {
 	switch (scenario) {
 		case "quote":
-			return {
-				plan: {
-					...base,
-					step: "quote",
-					blocked_on: "quote",
-					quote: quoteOf("0.05"),
-					remedy: {
-						kind: "accept_quote",
-						text: "Accept only if you agree:",
-						command:
-							"lop tunnel setup apply --credential-id 17 --accept-monthly-price 0.05",
-						url: null,
-					},
-				},
-				afterRun: VERIFIED,
-			};
+			return { plan: consentPlan, afterRun: VERIFIED };
 		case "ready":
 			return { plan: base, afterRun: VERIFIED };
 		case "connected":
@@ -214,6 +220,27 @@ const plans = (scenario: Scenario): { plan: unknown; afterRun?: unknown } => {
 					"Background setup is unavailable on this computer. No setup changes were made.",
 				),
 			};
+		case "owner_missing":
+			return {
+				plan: blocked(
+					"owner_missing",
+					"restore_owner",
+					"The account that set this up is no longer signed in on this computer. Sign in to that original account; setup never switches to another one.",
+				),
+			};
+		case "failed":
+			return {
+				plan: blocked(
+					"failed",
+					"check_status",
+					"Setup stopped part-way. Steps already completed have not been undone. Check the status, then try again.",
+					{ receipts: VERIFIED.receipts },
+				),
+			};
+		case "slow-plan":
+			return { plan: consentPlan };
+		case "slow-run":
+			return { plan: consentPlan, afterRun: VERIFIED };
 		case "balance":
 			return {
 				plan: blocked(
@@ -239,9 +266,15 @@ const plans = (scenario: Scenario): { plan: unknown; afterRun?: unknown } => {
 let bridge: ((request: BridgeRequest) => Promise<DesktopResponse>) | null =
 	null;
 
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 const installBridge = (scenario: Scenario) => {
 	const { plan, afterRun } = plans(scenario);
 	let current = plan;
+	// `slow-run`: the run takes long enough for the 3 s poll to land once, so the
+	// frames can be Applying with no lines, Applying with the backend's lines, and
+	// Connected, from ONE story.
+	let live = false;
 	bridge = async (request) => {
 		switch (request?.op) {
 			case "capabilities":
@@ -281,11 +314,30 @@ const installBridge = (scenario: Scenario) => {
 							"Applying - preparing and starting the background connector...",
 						],
 					});
+				if (live)
+					return ok({
+						...base,
+						source: "local",
+						in_progress: true,
+						active_credential_id: 17,
+						blocked_on: "in_progress",
+						ready: false,
+						progress: [
+							"Checking the selected account and required preparation before changes.",
+							"Applying - preparing and starting the background connector...",
+						],
+					});
 				return ok({ ...base, source: "local", ready: false });
 			case "tunnel.setup.plan":
 				if (scenario === "checking") return new Promise(() => undefined);
+				if (scenario === "slow-plan") await wait(2500);
 				return ok(current);
 			case "tunnel.setup.run":
+				if (scenario === "slow-run") {
+					live = true;
+					await wait(7000);
+					live = false;
+				}
 				if (afterRun) current = afterRun;
 				return ok(current);
 			case "radient.request":
@@ -409,6 +461,14 @@ export const PriceChanged: Story = story("quote_changed");
 export const GenericFailure: Story = story("failed-5xx");
 /** The saved-intent refusal: generic sentence, no internal file name. */
 export const SavedRequestInvalid: Story = story("intent-corrupt");
+/** Transition: the plan answers after 2.5 s (Checking, then the consent). */
+export const TransitionCheckingToConsent: Story = story("slow-plan");
+/** Transition: press Activate; Applying, then the first poll's lines, then Connected. */
+export const TransitionApplyingToConnected: Story = story("slow-run");
+/** The tunnel's original account is gone from this computer: no account switcher. */
+export const OriginalAccountMissing: Story = story("owner_missing");
+/** Setup stopped part-way: the backend's sentence and the receipts, no rollback claim. */
+export const PartialFailure: Story = story("failed");
 /** Backend without `tunnel_setup`: the frame is the ABSENCE of the block. */
 export const NoCapability: Story = story("no-capability", "account");
 /** Connected, in the Settings mount, to show the block inside its section. */
