@@ -409,29 +409,52 @@ const DEFAULT_SAVE_FAILURE = "The default was not saved";
  * is already as tall as either before the box is ticked and nothing moves.
  *
  * Generated content rather than hidden spans: the wording lives in data
- * attributes, so it is not in the label's text, its accessible name or a
- * query for the visible sentence - a hidden copy in the DOM would answer every
- * one of those as if it were on screen.
+ * attributes, so it is not in the label's text or a query for the visible
+ * sentence - a hidden copy in the DOM would answer every one of those as if it
+ * were on screen. It stays out of the ACCESSIBLE NAME only because the
+ * pseudo-elements are `visibility: hidden` (`before:invisible`/
+ * `after:invisible`): generated content counts toward an accessible name, so
+ * dropping `invisible` would read both reserved wordings into the checkbox's
+ * name (review round 3, n1).
+ *
+ * `capped` is for a label whose third wording carries a NAME of unbounded
+ * length - the model dialog's. Reserving the name in force did not hold: a
+ * ticked pick that saved a longer name grew the label by a line and moved the
+ * rows after all (design round 3 D3, review n2), and reserving the longest name
+ * the catalogue lists would hold every dialog five lines tall for a row few
+ * users pick. So a capped label is a FIXED height instead: at least three
+ * lines (the tallest of the default dialog's wordings), the two name-free
+ * wordings reserved, and the named wording cut at three lines with an
+ * ellipsis. The cut is visual only; the accessible name keeps the whole
+ * sentence.
  */
 const ReservedLabelText: FC<{
 	text: string;
-	/** Every wording the label can show; the two not on screen are reserved. */
+	/**
+	 * Every wording the label can show. Uncapped, the two not on screen are
+	 * reserved; capped, the first two are, and the third is the one cut.
+	 */
 	wordings: readonly [string, string, string];
-}> = ({ text, wordings }) => {
-	const [reserveA = "", reserveB = ""] = wordings.filter(
-		(wording) => wording !== text,
-	);
+	capped?: boolean;
+}> = ({ text, wordings, capped = false }) => {
+	const [reserveA = "", reserveB = ""] = capped
+		? wordings
+		: wordings.filter((wording) => wording !== text);
+	const cut = capped && text === wordings[2];
 	return (
 		<span
 			data-reserve-a={reserveA}
 			data-reserve-b={reserveB}
 			className={cn(
 				"grid",
+				capped && "min-h-[3lh]",
 				"before:invisible before:col-start-1 before:row-start-1 before:content-[attr(data-reserve-a)]",
 				"after:invisible after:col-start-1 after:row-start-1 after:content-[attr(data-reserve-b)]",
 			)}
 		>
-			<span className="col-start-1 row-start-1">{text}</span>
+			<span className={cn("col-start-1 row-start-1", cut && "line-clamp-3")}>
+				{text}
+			</span>
 		</span>
 	);
 };
@@ -1266,9 +1289,10 @@ export const ModelPicker: FC<PickerContext> = ({
 							throw error;
 						}
 					},
+					// Named as the label names it (QA round 3, Q4; UX U10).
 					(selector) => ({
 						tone: "success",
-						text: `Default for new sessions: ${selector}`,
+						text: `Default for new sessions: ${modelName(selector)}`,
 					}),
 					DEFAULT_SAVE_FAILURE,
 				);
@@ -1284,7 +1308,7 @@ export const ModelPicker: FC<PickerContext> = ({
 			defaultWrites.current = write.catch(() => undefined);
 			return write;
 		},
-		[persist.perform, note],
+		[persist.perform, note, modelName],
 	);
 
 	const onPick = useCallback(
@@ -1779,6 +1803,7 @@ export const ModelPicker: FC<PickerContext> = ({
 								 * a pick that may never happen (UX round 1, U5).
 								 */}
 								<ReservedLabelText
+									capped
 									wordings={persistWordings}
 									text={
 										!persistDefault

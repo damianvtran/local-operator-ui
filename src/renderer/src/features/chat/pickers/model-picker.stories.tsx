@@ -885,7 +885,8 @@ export const SetCurrentAsDefault: Story = {
 		);
 		await waitFor(() =>
 			expect(
-				screen.getByText(`Default for new sessions: ${CURRENT_SELECTOR}`),
+				// Named as the ticked label names it (QA round 3, Q4).
+				screen.getByText("Default for new sessions: Claude Opus 5"),
 			).toBeTruthy(),
 		);
 	},
@@ -894,37 +895,39 @@ export const SetCurrentAsDefault: Story = {
 /** Accepted session effort may be saved as the machine default by explicit opt-in. */
 export const EffortSetAsDefault: Story = {
 	render: () => (
-		<Frame
-			picker="effort"
-			commandResponse={ok({
-				result: {
-					kind: "notice",
-					text: "Effort set",
-					style: "info",
-					data: {},
-				},
-			})}
-			bridge={(request) => {
-				if (request.op === "commands.entities")
-					return Promise.resolve(
-						ok({
-							entities: [
-								{ value: "low", name: "low" },
-								{ value: "medium", name: "medium" },
-								{ value: "high", name: "high" },
-							],
-							current: "medium",
-						}),
-					);
-				if (request.op === "settings.edit")
-					return Promise.resolve(
-						ok({ key: request.key, value: request.value }),
-					);
-				if (request.op === "sessions.command")
-					return sleep(100).then(() => undefined);
-				return Promise.resolve(ok({}));
-			}}
-		/>
+		<HeldForPlay>
+			<Frame
+				picker="effort"
+				commandResponse={ok({
+					result: {
+						kind: "notice",
+						text: "Effort set",
+						style: "info",
+						data: {},
+					},
+				})}
+				bridge={(request) => {
+					if (request.op === "commands.entities")
+						return Promise.resolve(
+							ok({
+								entities: [
+									{ value: "low", name: "low" },
+									{ value: "medium", name: "medium" },
+									{ value: "high", name: "high" },
+								],
+								current: "medium",
+							}),
+						);
+					if (request.op === "settings.edit")
+						return Promise.resolve(
+							ok({ key: request.key, value: request.value }),
+						);
+					if (request.op === "sessions.command")
+						return sleep(100).then(() => undefined);
+					return Promise.resolve(ok({}));
+				}}
+			/>
+		</HeldForPlay>
 	),
 	play: async () => {
 		const page = window as unknown as {
@@ -963,6 +966,8 @@ export const EffortSetAsDefault: Story = {
 				),
 			).toBeTruthy(),
 		);
+		// The frame is the settled state: ticked, the saved label, one strip line.
+		delete document.documentElement.dataset.capturePending;
 	},
 };
 
@@ -975,31 +980,33 @@ export const EffortSetAsDefault: Story = {
  */
 export const EffortRefusedDoesNotSaveDefault: Story = {
 	render: () => (
-		<Frame
-			picker="effort"
-			commandResponse={ok({
-				result: {
-					kind: "notice",
-					text: "Refused",
-					style: "warning",
-					data: {},
-				},
-			})}
-			bridge={(request) => {
-				if (request.op === "commands.entities")
-					return Promise.resolve(
-						ok({
-							entities: [{ value: "low" }, { value: "high" }],
-							current: "low",
-						}),
-					);
-				if (request.op === "settings.edit")
-					return Promise.resolve(
-						ok({ key: request.key, value: request.value }),
-					);
-				return Promise.resolve(undefined);
-			}}
-		/>
+		<HeldForPlay>
+			<Frame
+				picker="effort"
+				commandResponse={ok({
+					result: {
+						kind: "notice",
+						text: "Refused",
+						style: "warning",
+						data: {},
+					},
+				})}
+				bridge={(request) => {
+					if (request.op === "commands.entities")
+						return Promise.resolve(
+							ok({
+								entities: [{ value: "low" }, { value: "high" }],
+								current: "low",
+							}),
+						);
+					if (request.op === "settings.edit")
+						return Promise.resolve(
+							ok({ key: request.key, value: request.value }),
+						);
+					return Promise.resolve(undefined);
+				}}
+			/>
+		</HeldForPlay>
 	),
 	play: async () => {
 		const page = window as unknown as {
@@ -1031,6 +1038,7 @@ export const EffortRefusedDoesNotSaveDefault: Story = {
 			{ key: "model_effort", value: "medium" },
 		]);
 		expect(screen.queryByText(EFFORT_DEFAULT_FAILED)).toBeNull();
+		delete document.documentElement.dataset.capturePending;
 	},
 };
 
@@ -1340,13 +1348,15 @@ export const RefetchFailedOverLiveRows: Story = {
  */
 export const PersistChecked: Story = {
 	render: () => (
-		<Frame
-			bridge={(request) =>
-				request.op === "settings.edit"
-					? Promise.resolve(ok({ key: request.key, value: request.value }))
-					: catalogueOnly(catalogue())(request)
-			}
-		/>
+		<HeldForPlay>
+			<Frame
+				bridge={(request) =>
+					request.op === "settings.edit"
+						? Promise.resolve(ok({ key: request.key, value: request.value }))
+						: catalogueOnly(catalogue())(request)
+				}
+			/>
+		</HeldForPlay>
 	),
 	play: async () => {
 		const page = window as unknown as {
@@ -1374,6 +1384,7 @@ export const PersistChecked: Story = {
 				.getByRole("checkbox", { name: MODEL_DEFAULT_LABEL })
 				.getAttribute("data-state"),
 		).toBe("checked");
+		delete document.documentElement.dataset.capturePending;
 	},
 };
 
