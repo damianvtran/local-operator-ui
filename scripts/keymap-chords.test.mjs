@@ -38,6 +38,7 @@ const bundle = await build({
 			} from "./src/renderer/src/shared/keymap/keymap-chord";
 			export {
 				KEYMAP_ACTIONS,
+				LEGACY_BROWSER_CHORDS,
 				RESERVED_CHORDS,
 			} from "./src/renderer/src/shared/keymap/keymap-registry";
 			export { chordFromEvent } from "./src/renderer/src/shared/keymap/chord-capture";
@@ -63,7 +64,7 @@ const {
 	chordTokens,
 	effectiveChord,
 	formatQuickSendDisplay,
-	KEYMAP_ACTIONS,
+	LEGACY_BROWSER_CHORDS,
 	normalizeChord,
 	RESERVED_CHORDS,
 	chordFromEvent,
@@ -373,5 +374,57 @@ test("sanitizeShortcutBindings: junk, unknown ids, reserved chords, duplicates",
 			"panel.browser": "primary+j",
 		}),
 		{ "panel.console": null, "panel.browser": "primary+j" },
+	);
+});
+
+// R15: persistence must keep downgrade data without arming browser-owned chords.
+test("all fourteen legacy browser mappings survive dormant, never dispatch, and remain refused", () => {
+	assert.equal(LEGACY_BROWSER_CHORDS.size, 14);
+	assert.deepEqual(
+		[...LEGACY_BROWSER_CHORDS],
+		[
+			"primary+r",
+			"primary+shift+r",
+			"primary+t",
+			"primary+shift+t",
+			"primary+l",
+			...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit) => `primary+${digit}`),
+		],
+	);
+	for (const chord of LEGACY_BROWSER_CHORDS) {
+		const bindings = sanitizeShortcutBindings({ "panel.console": chord });
+		assert.equal(bindings["panel.console"], chord);
+		assert.equal(effectiveChord("panel.console", bindings), "primary+j");
+		assert.equal(buildChordMap(bindings).has(chord), false);
+		assert.ok(captureRefusal(chord, "panel.console", bindings));
+		const unbound = sanitizeShortcutBindings({ "panel.run": chord });
+		assert.equal(unbound["panel.run"], chord);
+		assert.equal(effectiveChord("panel.run", unbound), null);
+		assert.equal(buildChordMap(unbound).has(chord), false);
+		assert.equal(
+			chordCaps(effectiveChord("panel.console", bindings), "mac"),
+			chordCaps("primary+j", "mac"),
+		);
+	}
+	assert.deepEqual(
+		sanitizeShortcutBindings({
+			"panel.console": "primary+t",
+			"panel.canvas": "primary+j",
+			"panel.run": "primary+shift+u",
+			"panel.ask": null,
+		}),
+		{
+			"panel.console": "primary+t",
+			"panel.run": "primary+shift+u",
+			"panel.ask": null,
+		},
+	);
+	assert.deepEqual(
+		sanitizeShortcutBindings({
+			"panel.console": "primary+p",
+			"panel.canvas": "garbage",
+			"panel.run": "alt+t",
+		}),
+		{},
 	);
 });
