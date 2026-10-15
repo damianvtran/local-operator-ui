@@ -18,7 +18,7 @@ async function moduleAt(file) {
 	);
 }
 const { browserChordIntent } = await moduleAt("src/shared/browser-chord.ts");
-const { createBrowserChordRouter } = await moduleAt(
+const { createBrowserChordRouter, runBrowserMenuAction } = await moduleAt(
 	"src/main/browser/browser-chord.ts",
 );
 const { chordTarget } = await moduleAt(
@@ -171,6 +171,33 @@ test("router menu fallback ownership and rapid genuine presses have no debounce"
 		false,
 	);
 });
+test("menu fallback respects actual popup/mini target even with stale main chrome focus", () => {
+	const calls = [];
+	const window = (name) => ({
+		webContents: {
+			reload: () => calls.push(`${name}:reload`),
+			reloadIgnoringCache: () => calls.push(`${name}:hard`),
+		},
+		close: () => calls.push(`${name}:close`),
+	});
+	const main = window("main");
+	const popup = window("popup");
+	const route = (intent) => {
+		calls.push(`browser:${intent}`);
+		return true;
+	};
+	for (const intent of ["reload", "hard-reload", "close-tab"])
+		runBrowserMenuAction(intent, popup, main, route);
+	assert.deepEqual(calls, ["popup:reload", "popup:hard", "popup:close"]);
+	runBrowserMenuAction("reload", main, main, route);
+	assert.equal(calls.at(-1), "browser:reload");
+	runBrowserMenuAction("close-tab", main, main, () => false);
+	assert.equal(calls.at(-1), "main:close");
+	const count = calls.length;
+	runBrowserMenuAction("reload", null, main, route);
+	assert.equal(calls.length, count);
+});
+
 test("ordinal/cycle use the grouped scoped strip order, never registry order", () => {
 	const tabs = [
 		{ tabId: 1, sessionId: "a" },

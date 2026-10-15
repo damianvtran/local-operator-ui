@@ -8,6 +8,27 @@ import {
 /** Dependency-injected because listener logic must be falsifiable without a
  * focused OS window. Emitting before-input-event tests this router, NOT physical
  * key delivery. The event source must already have passed the ownership check. */
+/** A menu's target is Electron's callback window, not the app's global main
+ * window. OAuth/mini windows must retain their own reload/close even if chrome
+ * has a stale focus report. No target means no action, as with Electron roles. */
+export function runBrowserMenuAction<
+	T extends {
+		webContents?: { reload(): void; reloadIgnoringCache(): void };
+		close(): void;
+	},
+>(
+	intent: "reload" | "hard-reload" | "close-tab",
+	target: T | null | undefined,
+	owner: T | null,
+	route: (intent: BrowserChord) => boolean,
+): void {
+	if (!target) return;
+	if (target === owner && route(intent)) return;
+	if (intent === "reload") target.webContents?.reload();
+	else if (intent === "hard-reload") target.webContents?.reloadIgnoringCache();
+	else target.close();
+}
+
 export function createBrowserChordRouter(options: {
 	platform: string;
 	ownsChrome: () => boolean;
