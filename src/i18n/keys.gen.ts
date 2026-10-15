@@ -79,6 +79,7 @@ export type MessageParams = {
 		waiting: string;
 		restored: string;
 	};
+	"ui.browser.chrome.approvals": undefined;
 	"ui.browser.chrome.duplicate": undefined;
 	"ui.browser.chrome.duplicate_refused": undefined;
 	"ui.browser.chrome.error_title": undefined;

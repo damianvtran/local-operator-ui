@@ -573,10 +573,15 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 				onNewTab={() => void chrome.newTab(hostSessionId)}
 				onReorder={(ids) => chrome.reorderTabs(ids)}
 				onTabAction={(id, action) => {
-					void chrome.actOnTab(id, action).then((accepted) => {
-						// A duplicate intentionally has no conversation association. Reveal it
-						// through the existing All-tabs affordance, not by copying agent scope.
-						if (accepted && action === "duplicate" && tabScope !== "all")
+					void chrome.actOnTab(id, action).then((outcome) => {
+						// A failed navigation still retains an active plain-user copy. Reveal
+						// an actual destination, never a refusal that created none; do not
+						// copy conversation association just to make the failure inspectable.
+						if (
+							outcome?.tabId != null &&
+							action === "duplicate" &&
+							tabScope !== "all"
+						)
 							onShowAllTabs?.();
 					});
 				}}

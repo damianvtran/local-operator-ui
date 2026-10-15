@@ -1,4 +1,11 @@
 {
+	"ui.browser.chrome.approvals": {
+		"role": "browser toolbar tooltip and accessible name",
+		"tone": "concise, neutral, sentence case",
+		"length": "Keep concise for a small toolbar tooltip.",
+		"placeholders": {},
+		"note": "Names the shield control opening agent approval requests and site-access policy. Does not promise that clicking grants access. Browser page chrome, not application settings."
+	},
 	"ui.browser.chrome.error_title": {
 		"role": "tab management action or feedback",
 		"tone": "concise, neutral, sentence case",

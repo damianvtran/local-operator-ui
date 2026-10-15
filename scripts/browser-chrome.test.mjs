@@ -3591,3 +3591,105 @@ test("rendered tabs preserve custom order, roving selection and complete keyed s
 		"only active strip loading animates; a failed/background tab cannot add motion",
 	);
 });
+
+const GROUP_RUN_IDS = /data-group-id="([^"]*)"/g;
+test("interleaved display order names each contiguous conversation run", () => {
+	const tabs = [1, 2, 3].map((tabId, index) => ({
+		tabId,
+		title: `Page ${tabId}`,
+		url: "https://run.test/",
+		sessionId: tabId === 2 ? "b" : "a",
+		displayOrder: index,
+		owner: "user",
+		active: tabId === 1,
+		restored: false,
+		handedOver: false,
+		failed: false,
+		loading: false,
+	}));
+	const html = render(
+		el(mod.BrowserTabStrip, {
+			tabs,
+			activeTabId: 1,
+			sessions: [
+				{ session_id: "a", title: "A" },
+				{ session_id: "b", title: "B" },
+			],
+			waiting: {},
+			onActivate: () => {},
+			onClose: async () => true,
+			onCloseTabs: async () => true,
+			onNewTab: () => {},
+			onHandOver: () => {},
+			onRevokeHandOver: () => {},
+		}),
+	);
+	assert.deepEqual(
+		[...html.matchAll(GROUP_RUN_IDS)].map((m) => m[1]),
+		["a", "b", "a"],
+		"A/B/A must not attribute the last A tab to B",
+	);
+});
+
+for (const outcome of [
+	{ status: "completed", action: "duplicate", tabId: 37 },
+	{
+		status: "failed",
+		action: "duplicate",
+		tabId: 38,
+		error: { code: "navigation_failed", message: "fixture navigation failed" },
+	},
+	{
+		status: "failed",
+		action: "duplicate",
+		tabId: null,
+		error: {
+			code: "unsupported_page",
+			message: "fixture refused before creation",
+		},
+	},
+])
+	test(`scoped duplicate preserves typed destination and reveals retained copy: ${outcome.status}/${outcome.tabId}`, async () => {
+		const previous = globalThis.window;
+		try {
+			globalThis.window = {
+				api: {
+					browser: { state: async () => null, actOnTab: async () => outcome },
+				},
+			};
+			const chrome = mod.renderBrowserChrome();
+			assert.deepEqual(
+				await chrome.actOnTab(1, "duplicate"),
+				outcome,
+				"failed navigation must not discard the retained destination ID",
+			);
+			// Exercise the shipped Surface callback with the real hook. This is not a
+			// mounted pane or native transport claim; native scoped recovery is separate.
+			const source = shippedSource(
+				"src/renderer/src/features/browser/components/browser-surface.tsx",
+			);
+			const marker = "onTabAction={(id, action) => {";
+			const start = source.indexOf(marker) + marker.length;
+			assert.ok(start >= marker.length);
+			const end = source.indexOf("\n\t\t\t\t}}", start);
+			assert.ok(end > start);
+			let reveals = 0;
+			const callback = new Function(
+				"chrome",
+				"tabScope",
+				"onShowAllTabs",
+				`return (id,action)=>{${source.slice(start, end)}}`,
+			)(chrome, "conversation", () => {
+				reveals++;
+			});
+			callback(1, "duplicate");
+			await new Promise((resolve) => setImmediate(resolve));
+			assert.equal(
+				reveals,
+				outcome.tabId === null ? 0 : 1,
+				"reveal a retained destination on success OR failure, never a refusal with no destination",
+			);
+		} finally {
+			globalThis.window = previous;
+		}
+	});
