@@ -452,10 +452,11 @@ test("a SECRET question is never seeded with its key name", () => {
 	// seed the masked field WITH — and seeding `[my-token]` would post the key
 	// name back as the new secret.
 	assert.deepEqual(draft, { q1: ["staging"] });
-	// Which is why the submit is gated on a retyped value, by the FIRST-answer
-	// completeness rule rather than a revision-specific one.
-	assert.equal(askAnswerMap(ask, draft, {}), null);
-	assert.deepEqual(askAnswerMap(ask, draft, { q2: "s3cret" }), {
+	// Which is why, over a recorded KEY, the submit is gated on a retyped value by the
+	// FIRST-answer completeness rule handed the recorded map - an empty field there
+	// would otherwise replace the stored key with `<not provided>`.
+	assert.equal(askAnswerMap(ask, draft, {}, ask.answers), null);
+	assert.deepEqual(askAnswerMap(ask, draft, { q2: "s3cret" }, ask.answers), {
 		q1: ["staging"],
 		q2: ["s3cret"],
 	});
