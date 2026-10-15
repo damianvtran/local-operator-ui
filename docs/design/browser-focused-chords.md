@@ -101,3 +101,13 @@ proof. Pixel evidence must distinguish app-chrome capture from embedded-page cap
   entry before awaiting, and navigates the tab it created.
 - **Chrome focus** also resets on a main-frame cross-document navigation and on
   renderer process loss.
+- **Reopen is a re-navigation, deliberately.** Cmd+Shift+T opens a fresh user
+  tab and loads the remembered URL; unlike Chrome it does not restore the tab's
+  position or its back/forward history. Remembering history would mean keeping
+  page state past the tab's death, which the user-only, URL-only, in-memory
+  stack exists to avoid.
+- **Silent no-ops are known and deferred (a2).** Cmd+Shift+T with an empty
+  stack, Cmd+5 with three tabs, and Cmd+T or Cmd+L while chat has focus do
+  nothing and say nothing; so does Cmd+L on a disabled address field. Menu
+  entries that enable and disable honestly, and ordinals in tab tooltips, are
+  the discoverability work this slice does not take on.
