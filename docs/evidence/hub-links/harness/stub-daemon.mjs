@@ -16,6 +16,13 @@
  * unknown-origin row the explicit source confirmation is for. Every op it has no
  * answer for is answered 503 and named on stderr, so a scene that needs one shows
  * up as a missing route rather than as a screen that quietly did not paint.
+*
+ * THE SKILLS LIBRARY (2026-10-15, `--scene hub-skills`): the `org_skills.list` /
+ * `org_skill.get` radient ops and the public `/v1/skills` routes this file now
+ * answers exist for that scene; its variant flags (`--skills-remote-empty`,
+ * `--skills-unsupported`, `--skills-latency-ms`, `--pull-outcome`,
+ * `--publish-outcome`) are read from this stub's argv, and each frame's README
+ * row names the variant that produced it.
  *
  * IT IS STATEFUL, deliberately (the policy PATCH and the resolve arm mutate
  * `links`), so give each launch its own process - `--records` is per process.
@@ -44,6 +51,15 @@ const PORT = Number(arg("port", "18234"));
  * `--signed-out` run photographs the sign-in-to-publish affordance instead.
  */
 const SIGNED_OUT = process.argv.includes("--signed-out");
+/** Signed in, but no org membership: no org chip, so the public scope is the only one. */
+const SKILLS_SCOPE_PUBLIC = process.argv.includes("--skills-scope-public");
+const SKILLS_REMOTE_EMPTY = process.argv.includes("--skills-remote-empty");
+const SKILLS_UNSUPPORTED = process.argv.includes("--skills-unsupported");
+const SKILLS_LATENCY_MS = Number(arg("skills-latency-ms", "0"));
+const PULL_LATENCY_MS = Number(arg("pull-latency-ms", "0"));
+const PULL_OUTCOME = arg("pull-outcome", "ok");
+const PUBLISH_OUTCOME = arg("publish-outcome", "complete");
+const skillsSleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const RECORDS = arg("records", null);
 const INSTANCE_ID = randomUUID();
 const startedAt = Date.now() / 1000;
@@ -231,9 +247,87 @@ const unresolved = [
 /** Whether the source confirmation has been accepted for the legacy row. */
 let legacyResolved = false;
 
+/** v1 vs unsupported: the library reads capability off the response contract. */
+const skillContract = () =>
+	SKILLS_UNSUPPORTED
+		? { revision_cas: 0, skills: 0 }
+		: { revision_cas: 1, skills: 1 };
+const ORG_SKILLS = [
+	{
+		id: "skill-minerva-deploy",
+		name: "minerva-deploy",
+		description: "Open and track a Minerva deploy request.",
+		document_version: 1,
+		visibility: "org",
+		tenant_id: TENANT_ID,
+		content_revision: 3,
+		revision: '"rev-org-3"',
+		sync_contract: { revision_cas: 1, skills: 1 },
+	},
+	{
+		id: "skill-invoice-check",
+		name: "invoice-check",
+		description: "Reconcile supplier invoices against the ledger.",
+		document_version: 1,
+		visibility: "org",
+		tenant_id: TENANT_ID,
+		content_revision: 1,
+		revision: '"rev-org-1"',
+		sync_contract: { revision_cas: 1, skills: 1 },
+	},
+];
+const PUBLIC_SKILLS = [
+	{
+		id: "skill-release-notes",
+		name: "release-notes",
+		description: "Draft release notes from a merged PR list.",
+		document_version: 1,
+		visibility: "public",
+		content_revision: 5,
+		revision: '"rev-pub-5"',
+		sync_contract: { revision_cas: 1, skills: 1 },
+	},
+	{
+		id: "skill-transcript-audit",
+		name: "transcript-audit",
+		description: "Audit a transcript for policy contradictions.",
+		document_version: 1,
+		visibility: "public",
+		content_revision: 2,
+		revision: '"rev-pub-2"',
+		sync_contract: { revision_cas: 1, skills: 1 },
+	},
+];
+const skillDetail = (row) => ({
+	...row,
+	files: [
+		{ path: "SKILL.md", content: `# ${row.name}\n\nStub skill body for the evidence run.\n` },
+		{ path: "scripts/run.sh", content: "#!/bin/sh\necho stub\n" },
+	],
+});
+const publicOk = (result) => ({ status: 200, body: { msg: "ok", result } });
+const skillLink = (plan) => ({
+	link_id: plan.linkId,
+	kind: "skill",
+	local_id: plan.alias,
+	name: plan.alias,
+	hub_id: plan.hubId,
+	hub_source: SOURCE,
+	visibility: plan.visibility,
+	tenant_id: plan.tenantId,
+	tenant_name: plan.visibility === "org" ? TENANT_NAME : null,
+	policy: { subscribe: plan.subscribe, auto_push: plan.autoPush, revision: "rev-policy-skill-1" },
+	eligibility: { can_auto_push: true, reason: null },
+	baseline_state: "pull",
+	remote_revision: "rev-remote-1",
+	auto_will_apply: true,
+	auto_will_push: false,
+	pull: direction({ state: "idle", last_success_at: "2026-10-14T22:00:00Z" }),
+	push: direction({ state: "idle", enabled: false }),
+});
 const ok = (result) => ({ status: 200, body: { result } });
 
-const route = (method, pathname, query, body) => {
+const route = async (method, pathname, query, body) => {
 	if (method === "GET" && pathname === "/health") {
 		return ok({
 			status: "ok",
@@ -378,6 +472,8 @@ const route = (method, pathname, query, body) => {
 					body: { detail: { code: "radient-not-authenticated" } },
 				};
 			}
+			if (SKILLS_SCOPE_PUBLIC)
+				return ok({ data: { msg: "ok", result: { memberships: [] } } });
 			return ok({
 				data: {
 					msg: "ok",
@@ -395,6 +491,39 @@ const route = (method, pathname, query, body) => {
 					},
 				},
 			});
+		}
+		if (operation === "org_skills.list") {
+			if (SIGNED_OUT)
+				return { status: 409, body: { detail: { code: "radient-not-authenticated" } } };
+			await skillsSleep(SKILLS_LATENCY_MS);
+			return ok({
+				data: {
+					msg: "ok",
+					result: {
+						skills: SKILLS_REMOTE_EMPTY ? [] : ORG_SKILLS,
+						sync_contract: skillContract(),
+					},
+				},
+			});
+		}
+		if (operation === "org_skill.get") {
+			if (SIGNED_OUT)
+				return { status: 409, body: { detail: { code: "radient-not-authenticated" } } };
+			await skillsSleep(SKILLS_LATENCY_MS);
+			const row = ORG_SKILLS.find((entry) => entry.id === body?.skill_id);
+			return row
+				? ok({ data: { msg: "ok", result: skillDetail(row) } })
+				: { status: 404, body: { detail: { code: "skill-not-found" } } };
+		}
+		if (operation === "org_teams.list") {
+			if (SIGNED_OUT)
+				return { status: 409, body: { detail: { code: "radient-not-authenticated" } } };
+			return ok({ data: { msg: "ok", result: { teams: [] } } });
+		}
+		if (operation === "org_agents.list") {
+			if (SIGNED_OUT)
+				return { status: 409, body: { detail: { code: "radient-not-authenticated" } } };
+			return ok({ data: { msg: "ok", result: { agents: [] } } });
 		}
 		return {
 			status: 503,
@@ -587,6 +716,170 @@ const route = (method, pathname, query, body) => {
 			});
 		}
 	}
+	if (method === "GET" && pathname === "/v1/desktop/skills") {
+		return ok({
+			data: {
+				skills: [
+					{ name: "release-notes", description: "Draft release notes from a merged PR list." },
+					{ name: "transcript-audit", description: "Audit a transcript for policy contradictions." },
+				],
+			},
+		});
+	}
+	/*
+	 * The PUBLIC hub routes this build dials (VITE_RADIENT_SERVER_BASE_URL at
+	 * build time; the README says a bare `pnpm build` tree must never drive the
+	 * scene). Their envelope is the hub's own bare `{msg, result}`, NOT the
+	 * daemon's `{result}` wrapper.
+	 */
+	if (method === "GET" && pathname === "/v1/agents") {
+		return publicOk({ page: 1, per_page: 12, total_pages: 1, total_records: 0, records: [] });
+	}
+	if (method === "GET" && pathname === "/v1/teams") {
+		return publicOk({ page: 1, per_page: 12, total_pages: 1, total_records: 0, records: [] });
+	}
+	if (method === "GET" && pathname === "/v1/skills") {
+		await skillsSleep(SKILLS_LATENCY_MS);
+		const records = SKILLS_REMOTE_EMPTY ? [] : PUBLIC_SKILLS;
+		return publicOk({
+			page: 1,
+			per_page: 20,
+			total_pages: 1,
+			total_records: records.length,
+			records,
+			sync_contract: skillContract(),
+		});
+	}
+	const publicSkillMatch = pathname.match(/^\/v1\/skills\/([^/]+)$/);
+	if (method === "GET" && publicSkillMatch) {
+		await skillsSleep(SKILLS_LATENCY_MS);
+		const row = PUBLIC_SKILLS.find((entry) => entry.id === decodeURIComponent(publicSkillMatch[1]));
+		return row ? publicOk(skillDetail(row)) : { status: 404, body: { msg: "not found" } };
+	}
+	if (method === "POST" && pathname === "/v1/desktop/hub/skills/pull") {
+		await skillsSleep(PULL_LATENCY_MS);
+		if (PULL_OUTCOME === "refuse") {
+			return {
+				status: 502,
+				body: { detail: "the stub refuses this pull (--pull-outcome=refuse)" },
+			};
+		}
+		const alias = body?.local_alias ?? "skill-copy";
+		const created = skillLink({
+			linkId: `link-skill-${alias}`,
+			alias,
+			hubId: body?.hub_id ?? "hub-skill-stub",
+			visibility: body?.visibility ?? "org",
+			tenantId: body?.tenant_id ?? null,
+			subscribe: body?.subscribe ?? true,
+			autoPush: body?.auto_push ?? false,
+		});
+		links.push(created);
+		return ok({
+			reports: [
+				{
+					kind: "skill",
+					link_id: created.link_id,
+					direction: "pull",
+					operation_id: "op-skill-pull-1",
+					remote_revision: "rev-remote-1",
+					model_used: null,
+					applied: true,
+					outcome: "applied",
+				},
+			],
+			link: created,
+			links: { links, unresolved },
+		});
+	}
+	if (method === "POST" && pathname === "/v1/desktop/hub/skills/publish") {
+		if (body?.dry_run === true) {
+			return ok({
+				preview: {
+					preview_receipt: "receipt-stub-1",
+					kind: "skill",
+					direction: "push",
+					publication: "create",
+					source_skill: body?.source_skill ?? "release-notes",
+					local_alias: body?.local_alias ?? "release-notes-copy",
+					hub_source: SOURCE,
+					visibility: body?.visibility ?? "org",
+					tenant_id: body?.tenant_id ?? null,
+					local_fingerprint: "fp-local-1",
+					draft_fingerprint: "fp-draft-1",
+					proposal_fingerprint: "fp-proposal-1",
+					expires_at: new Date(Date.now() + 600_000).toISOString(),
+					policy: {
+						subscribe: body?.subscribe === true,
+						auto_push: body?.auto_push === true,
+						confirm_public_egress: body?.confirm_public_egress === true,
+					},
+					proposal: {
+						kind: "skill",
+						fields: {
+							document_version: 1,
+							name: body?.local_alias ?? "release-notes-copy",
+							description: "Stub skill for the evidence run.",
+							files: [{ path: "SKILL.md", content: "# stub\n" }],
+						},
+					},
+					warnings: [],
+					can_confirm: true,
+					reason: null,
+				},
+				link: null,
+				local_link_receipt: null,
+				publication: null,
+			});
+		}
+		if (PUBLISH_OUTCOME === "pending") {
+			return ok({
+				preview: null,
+				link: null,
+				local_link_receipt: {
+					state: "pending-reconciliation",
+					operation_id: "op-publish-pending-1",
+					link_id: null,
+					safe_message: "local reconciliation pending (stub)",
+				},
+				publication: null,
+			});
+		}
+		const alias = body?.local_alias ?? "release-notes-copy";
+		const created = skillLink({
+			linkId: `link-skill-pub-${alias}`,
+			alias,
+			hubId: "hub-skill-pub-stub",
+			visibility: body?.visibility ?? "org",
+			tenantId: body?.tenant_id ?? null,
+			subscribe: body?.subscribe === true,
+			autoPush: body?.auto_push === true,
+		});
+		links.push(created);
+		return ok({
+			preview: null,
+			link: created,
+			local_link_receipt: {
+				state: "complete",
+				operation_id: "op-publish-1",
+				link_id: created.link_id,
+				safe_message: null,
+			},
+			publication: {
+				skill: { id: "skill-pub-1", name: alias },
+				accepted_document: {
+					document_version: 1,
+					name: alias,
+					description: "Stub skill for the evidence run.",
+					files: [{ path: "SKILL.md", content: "# stub\n" }],
+				},
+				revision: '"rev-pub-1"',
+				content_revision: 1,
+				operation_id: "op-publish-1",
+				sync_contract: { revision_cas: 1, skills: 1 },
+			},
+		});
+	}
 	return {
 		status: 503,
 		body: { detail: `the stub has no answer for ${method} ${pathname}` },
@@ -596,7 +889,7 @@ const route = (method, pathname, query, body) => {
 const server = createServer((request, response) => {
 	const chunks = [];
 	request.on("data", (chunk) => chunks.push(chunk));
-	request.on("end", () => {
+	request.on("end", async () => {
 		const url = new URL(request.url ?? "/", `http://127.0.0.1:${PORT}`);
 		let body = null;
 		if (chunks.length > 0) {
@@ -606,7 +899,7 @@ const server = createServer((request, response) => {
 				body = null;
 			}
 		}
-		const answer = route(
+		const answer = await route(
 			request.method ?? "GET",
 			url.pathname,
 			url.searchParams,
