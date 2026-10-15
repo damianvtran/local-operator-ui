@@ -249,6 +249,33 @@ test("with no browser surface mounted, nothing registers", async () => {
 	});
 });
 
+test("with no browser surface mounted, an open schedules no frame at all", async () => {
+	/*
+	 * Every shared `Tooltip` runs the reach hook, so off the browser route an open
+	 * must not poll for placement: the empty rect registry already answers. Measured
+	 * before the guard: four desktop suites that open a tooltip without a rAF shim
+	 * (ask-open-render, browser-chord-renderer, message-actions, stt-mic-gate-session)
+	 * failed with "requestAnimationFrame is not defined".
+	 */
+	await mount(async (api) => {
+		const scheduled = [];
+		globalThis.requestAnimationFrame = (callback) => {
+			scheduled.push(callback);
+			return scheduled.length;
+		};
+		await api.render(flyout());
+		act(() => api.$("#row").focus());
+		await frames(2);
+		assert.ok(api.$("[role=tooltip]"), "the tooltip is open");
+		assert.equal(
+			scheduled.filter((cb) => cb.name === "measure").length,
+			0,
+			"the reach hook scheduled no placement frame",
+		);
+		assert.deepEqual(suppressedOverlayIds(), []);
+	});
+});
+
 test("an unnamed tooltip registers as `tooltip`", async () => {
 	const release = registerBrowserViewRect(() => VIEW);
 	try {
