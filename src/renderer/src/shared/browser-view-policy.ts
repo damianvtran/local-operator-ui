@@ -259,6 +259,16 @@ export function useSuppressBrowserViewWhileReaching(
 			setAway(false);
 			return;
 		}
+		/*
+		 * NO VIEW, NOTHING TO MEASURE. Every shared `Tooltip` runs this hook, and on
+		 * every route but the browser's no surface has registered a rect, so the
+		 * answer is already "does not reach": without this, each open of each of the
+		 * app's tooltips would schedule up to PLACEMENT_FRAMES of polling to learn it.
+		 */
+		if (viewRectSources.size === 0) {
+			setReaching(false);
+			return;
+		}
 		let frame = 0;
 		let waited = 0;
 		const measure = (): void => {
