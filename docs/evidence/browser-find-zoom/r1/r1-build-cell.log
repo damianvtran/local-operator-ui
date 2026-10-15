@@ -1,0 +1,36 @@
+{"disk_free_gib": 24.7, "memory_free_percent": 60, "swap_usage": "vm.swapusage: total = 12288.00M  used = 10818.19M  free = 1469.81M  (encrypted)", "two_second_outflow_mib": {"Pageouts": 0.0, "Swapouts": 0.0}, "limits": {"disk_min_gib": 20, "memory_min_percent": 20, "two_second_outflow_max_mib": 128}}
+{
+  "source_sha": "41cec92350f5e70e5fd442271ef9b360612a82ee",
+  "source_tree": "a4c4c0d4ea47d2c14b9043fd3ce01feaa51a95fe",
+  "command": [
+    "/Users/damian/local-operator/.venv/bin/python",
+    "/Users/damian/local-operator/scripts/run_bounded.py",
+    "--timeout",
+    "300",
+    "--grace",
+    "5",
+    "--",
+    "/Users/damian/local-operator-ui/.worktrees/browser-find-zoom/node_modules/.bin/electron-vite",
+    "build"
+  ],
+  "build_mode": "build:npm equivalent; plain JS, no bytecode/Electron compiler launch",
+  "synthetic_oauth_credentials": true,
+  "backend_manager_disabled": true,
+  "renderer_api_root": "http://127.0.0.1:1",
+  "elapsed_seconds": 13.68,
+  "exit_code": 0,
+  "installed_lock_before": "fd0310b282d1a63560473655fccd3964102bef2015e43e4915502e0f0a4670ba",
+  "installed_lock_after": "fd0310b282d1a63560473655fccd3964102bef2015e43e4915502e0f0a4670ba"
+}
+artifact_file_count 170
+log /Users/damian/.local-operator/sessions/291e40a1ea40/scratchpad/r1-build.log
+file:///Users/damian/.local-operator/sessions/291e40a1ea40/scratchpad/r1-verify-binding.mjs:6
+for(const file of readdirSync(join(root,'out/renderer/assets')).filter(n=>n.endsWith('.js'))){const path=join(root,'out/renderer/assets',file),text=readFileSync(path,'utf8');if(!text.includes('Configuration validation failed:'))continue;const ast=ts.createSourceFile(path,text,ts.ScriptTarget.Latest,true,ts.ScriptKind.JS);const declarations=new Map(),functions=[];const scan=n=>{if(ts.isVariableDeclaration(n)&&ts.isIdentifier(n.name)&&n.initializer&&ts.isObjectLiteralExpression(n.initializer)&&n.initializer.getText(ast).includes('http://127.0.0.1:1'))declarations.set(n.name.text,n.initializer);if((ts.isStringLiteral(n)||ts.isTemplateHead(n)||ts.isNoSubstitutionTemplateLiteral(n))&&n.text.includes('Configuration validation failed:')){let f=n.parent;while(f&&!ts.isFunctionDeclaration(f)&&!ts.isFunctionExpression(f)&&!ts.isArrowFunction(f))f=f.parent;if(f&&!functions.includes(f))functions.push(f);}ts.forEachChild(n,scan)};scan(ast);
+                                                                                                                                                                                                                                                                                                     ^
+
+TypeError: Cannot read properties of undefined (reading 'Latest')
+    at file:///Users/damian/.local-operator/sessions/291e40a1ea40/scratchpad/r1-verify-binding.mjs:6:294
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+
+Node.js v26.5.0
+[run_bounded] bash rc=1 wall=32.8s

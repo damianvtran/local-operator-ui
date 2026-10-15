@@ -107,6 +107,13 @@ declare global {
 			 * drift from the one main actually sends.
 			 */
 			browser: {
+				pageControl: (
+					tabId: number,
+					action: "open" | "close" | "search" | "in" | "out" | "reset",
+					query: string,
+					forward: boolean,
+					next: boolean,
+				) => Promise<unknown>;
 				setChordFocus: (focused: boolean) => Promise<void>;
 				reopenTab: (sessionId?: string | null) => Promise<unknown>;
 				focusPage: () => Promise<void>;

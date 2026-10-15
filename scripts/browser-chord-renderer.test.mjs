@@ -105,7 +105,14 @@ async function rig({ tabIds = [1, 3], activeId = 1 } = {}) {
 			},
 		},
 	};
+	let find = null;
+	let returnRef;
 	const chrome = {
+		pageControl: async (tabId, action) => {
+			if (action === "open") find ??= { tabId, query: "hello" };
+			else if (action === "close") find = null;
+			redraw();
+		},
 		state: { activeTabId: active },
 		newTab: async (session) => {
 			events.push(["new", session]);
@@ -140,15 +147,16 @@ async function rig({ tabIds = [1, 3], activeId = 1 } = {}) {
 	function Harness() {
 		const [, render] = React.useState(0);
 		redraw = () => render((n) => n + 1);
-		chrome.state = { activeTabId: active };
+		chrome.state = { activeTabId: active, pageControls: { find } };
 		const address = useRef(null);
-		const { root: ref, closeTab } = useBrowserChords(
-			chrome,
-			tabs,
-			"a",
-			address,
-		);
+		const {
+			root: ref,
+			closeTab,
+			openFind,
+			findReturnToPage,
+		} = useBrowserChords(chrome, tabs, "a", address);
 		closeFromStrip = closeTab;
+		returnRef = findReturnToPage;
 		return React.createElement(
 			"div",
 			{ ref, tabIndex: -1, id: "surface" },
@@ -162,6 +170,24 @@ async function rig({ tabIds = [1, 3], activeId = 1 } = {}) {
 				{ id: "toolbar", type: "button" },
 				"Toolbar",
 			),
+			React.createElement(
+				"button",
+				{
+					id: "find-toolbar",
+					type: "button",
+					onClick: () => void openFind("chrome"),
+				},
+				"Find",
+			),
+			find &&
+				React.createElement(
+					"div",
+					{ "data-tour-tag": "browser-find-row" },
+					React.createElement("input", {
+						id: "find-editor",
+						defaultValue: "hello",
+					}),
+				),
 			// The strip's real shape: a row carrying `data-tab-id` around the
 			// `[role="tab"]` button, which is what the hook's handoff selector reads.
 			tabs.map((t) =>
@@ -205,6 +231,7 @@ async function rig({ tabIds = [1, 3], activeId = 1 } = {}) {
 	await act(async () => root.render(React.createElement(Harness)));
 	return {
 		dom,
+		returnToPage: () => returnRef.current,
 		events,
 		root,
 		flush,
@@ -646,6 +673,37 @@ test("strip close shares last-tab replacement and a refusal creates nothing", as
 			"refusal cannot create a replacement",
 		);
 	} finally {
+		r.finish();
+	}
+});
+
+test("page-open then chrome-repeat and toolbar repeat preserve first origin and select editor", async () => {
+	const r = await rig();
+	try {
+		await r.focus("address");
+		await act(async () => r.incoming({ intent: "find-page", origin: "page" }));
+		await r.flush(20);
+		assert.equal(r.returnToPage(), true);
+		await r.focus("find-editor");
+		await r.key("f");
+		assert.equal(
+			r.returnToPage(),
+			true,
+			"repeat in chrome retains original native-page return",
+		);
+		await r.focus("find-toolbar");
+		await act(async () => document.getElementById("find-toolbar").click());
+		await r.flush(20);
+		assert.equal(document.activeElement.id, "find-editor");
+		assert.equal(document.activeElement.selectionStart, 0);
+		assert.equal(document.activeElement.selectionEnd, 5);
+		assert.equal(
+			r.returnToPage(),
+			true,
+			"toolbar re-focus cannot replace opening ownership either",
+		);
+	} finally {
+		await act(async () => r.root.unmount());
 		r.finish();
 	}
 });

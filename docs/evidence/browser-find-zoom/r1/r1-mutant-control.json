@@ -1,0 +1,34 @@
+[
+  {
+    "variant": "old-inverted",
+    "options": {
+      "forward": true,
+      "findNext": false
+    },
+    "result": {
+      "tabId": 1,
+      "query": "hello",
+      "ordinal": 0,
+      "matches": 0,
+      "pending": true,
+      "unreported": false
+    },
+    "expectedRegression": true
+  },
+  {
+    "variant": "fixed",
+    "options": {
+      "forward": true,
+      "findNext": true
+    },
+    "result": {
+      "tabId": 1,
+      "query": "hello",
+      "ordinal": 1,
+      "matches": 3,
+      "pending": false,
+      "unreported": false
+    },
+    "expectedRegression": true
+  }
+]

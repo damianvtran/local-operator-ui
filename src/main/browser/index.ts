@@ -10,7 +10,10 @@ import {
 	shell,
 	webContents,
 } from "electron";
-import type { BrowserChord } from "../../shared/browser-chord";
+import {
+	type BrowserChord,
+	browserChordIntent,
+} from "../../shared/browser-chord";
 import { startConsoleHost } from "../console";
 import type { ConsoleCompletionNotifier } from "../console/completion";
 import { isConsoleDispatchMethod } from "../console/dispatch";
@@ -230,6 +233,26 @@ let activeHost: BrowserHostHandle | null = null;
 
 /** Explicit menu clicks use the same owner decision as keys. Outside the browser
  * the caller retains its original app-window action, never a global tab binding. */
+/** The pre-existing app zoom listener is registered before the browser hook.
+ * Route its browser-owned zoom keys here FIRST, including rejected repeats/IME,
+ * so they cannot change the app before our hook sees the same input. */
+export function routeBrowserZoomInput(
+	event: { preventDefault(): void },
+	input: import("../../shared/browser-chord").BrowserChordInput,
+): boolean {
+	const candidate = browserChordIntent(
+		{ ...input, isAutoRepeat: false, isComposing: false },
+		process.platform,
+	);
+	if (!candidate?.startsWith("zoom-") || !activeHost) return false;
+	return activeHost.chords.input(
+		event,
+		input,
+		"chrome",
+		activeHost.host.chordFocus,
+	);
+}
+
 export function routeBrowserMenu(intent: BrowserChord): boolean {
 	return activeHost?.chords.menu(intent) ?? false;
 }
@@ -845,6 +868,17 @@ async function initializeBrowserHost(
 			reload: (hard) => {
 				host.reloadActive(hard);
 			},
+			zoom: (command) => {
+				const tabId = registry.activeTab?.tabId;
+				if (tabId !== undefined)
+					void host
+						.controlPage(tabId, command)
+						.catch((error) =>
+							log(
+								`Page zoom refused: ${error instanceof Error ? error.message : "unavailable"}`,
+							),
+						);
+			},
 			history: (direction) => {
 				host.historyActive(direction);
 			},
@@ -858,6 +892,9 @@ async function initializeBrowserHost(
 				),
 		});
 		const onChromeInput = (event: Event, input: Electron.Input): void => {
+			// The app zoom listener may already have routed this through our menu
+			// door. Do not execute it twice; no timing/debounce heuristic is needed.
+			if (event.defaultPrevented) return;
 			const handled = chords.input(event, input, "chrome", host.chordFocus);
 			// Per-input suppression, NOT a 150ms command debounce. Key-up or any
 			// unrelated key restores menu shortcuts. Focus departure resets too.
@@ -1166,6 +1203,10 @@ async function initializeBrowserHost(
 					// No `preload`: a driven page has no bridge to anything.
 				},
 			});
+			// Native isolated zoom is per WebContents, not Chromium's origin-wide
+			// default. Cookies/policy still use the same persistent partition.
+			view.webContents.setZoomMode("isolated");
+			view.webContents.setZoomFactor(1);
 			window.contentView.addChildView(view);
 			// SIZED BEFORE THE FIRST HIDE, and the order is load-bearing: measured on
 			// Electron 44, a WebContentsView that is hidden first and sized afterwards

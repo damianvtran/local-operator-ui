@@ -9,6 +9,7 @@ import * as tabActions from "./actions/tabs";
 import * as uploadActions from "./actions/upload";
 import type { ConsentDecision } from "./approvals";
 import { BrowserHostError } from "./errors";
+import { PageControls, type PageZoomCommand } from "./page-controls";
 import { COMMAND_TIMEOUTS_S, type Method, PROTO_VERSION } from "./protocol";
 import type { ContentRect, TabRecord } from "./registry";
 import { redactToken, surfaceToken } from "./registry";
@@ -321,6 +322,7 @@ export interface BrowserHostOptions {
 
 export class BrowserHost implements BrowserActionContext {
 	readonly registry: BrowserActionContext["registry"];
+	readonly pageControls: PageControls;
 	readonly cdp: BrowserActionContext["cdp"];
 	readonly approvals: BrowserActionContext["approvals"];
 	readonly ownership: BrowserActionContext["ownership"];
@@ -348,6 +350,7 @@ export class BrowserHost implements BrowserActionContext {
 
 	constructor(options: BrowserHostOptions) {
 		this.registry = options.registry;
+		this.pageControls = new PageControls(() => this.onChanged());
 		this.cdp = options.cdp;
 		this.approvals = options.approvals;
 		this.ownership = options.ownership;
@@ -386,6 +389,13 @@ export class BrowserHost implements BrowserActionContext {
 		params: Record<string, unknown>,
 		requestId: string,
 	): Promise<Record<string, unknown>> {
+		// Human find highlights can appear in native screenshots. This executes
+		// under the existing tab lane AFTER ownership authorization; human find IPC
+		// takes the same lane, so it cannot re-highlight during an agent capture.
+		if (typeof params.tab === "string" && TAB_SCOPED.has(method)) {
+			const record = this.registry.requireSurface(params.tab);
+			this.pageControls.prepareAgent(record);
+		}
 		if (!DOCUMENT_SCOPED.has(method))
 			return this.perform(method, params, requestId);
 		const token = String(params.tab ?? "");
@@ -736,6 +746,7 @@ export class BrowserHost implements BrowserActionContext {
 				: null;
 		const navigation = active?.view.webContents.navigationHistory;
 		return {
+			pageControls: this.pageControls.state(active),
 			tabs: this.registry.snapshot().map((entry) => ({
 				tabId: entry.tabId,
 				title: this.titleForChrome(entry.title) || "New tab",
@@ -876,6 +887,33 @@ export class BrowserHost implements BrowserActionContext {
 	/** Main owns this short-lived UI focus fact; it conveys no page capability. */
 	chordFocus = false;
 	onChordFocusChanged?: (focused: boolean) => void;
+	/** An explicit tab id fences queued chrome intents: a switch between key
+	 * delivery and IPC must never search/zoom the newly active tab instead. */
+	async controlPage(
+		tabId: number,
+		action: "open" | "close" | "search" | PageZoomCommand,
+		query = "",
+		forward = true,
+		next = false,
+	): Promise<Record<string, unknown>> {
+		return this.registry.lane(tabId, async () => {
+			const active = this.registry.activeTab;
+			if (
+				!active ||
+				active.tabId !== tabId ||
+				!active.presented ||
+				active.view.webContents.isDestroyed()
+			)
+				throw new Error("The browser tab is no longer presented.");
+			if (action === "open") this.pageControls.open(active);
+			else if (action === "close") this.pageControls.clear();
+			else if (action === "search")
+				this.pageControls.search(active, query, forward, next);
+			else this.pageControls.zoom(active, action);
+			this.onChanged();
+			return this.chromeState();
+		});
+	}
 	setChordFocus(focused: boolean): void {
 		this.chordFocus = focused;
 		this.onChordFocusChanged?.(focused);
@@ -896,6 +934,7 @@ export class BrowserHost implements BrowserActionContext {
 		if (this.closedUserTabs.length > 10) this.closedUserTabs.shift();
 	}
 	clearChordState(): void {
+		this.pageControls.clear();
 		this.setChordFocus(false);
 		this.closedUserTabs = [];
 	}
@@ -1385,6 +1424,8 @@ export class BrowserHost implements BrowserActionContext {
 	 * sees the nonce: it travels to the session through `tabs`, which is what keeps
 	 * this the one authority transfer rather than an exposure (design 6.3, 11.7). */
 	handOver(tabId: number, sessionId: string): Record<string, unknown> {
+		const record = this.registry.get(tabId);
+		if (record) this.pageControls.prepareAgent(record);
 		// The hand-over re-mints the nonce, so the token the receipt is keyed on
 		// stops existing here; dropping it now keeps the map bounded by LIVE tabs
 		// rather than by every token a tab has ever had.

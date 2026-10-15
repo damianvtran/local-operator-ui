@@ -82,6 +82,7 @@ export interface RegisterBrowserIpcOptions {
 export const BROWSER_IPC_CHANNELS = [
 	"browser-state",
 	"browser-set-chord-focus",
+	"browser-page-control",
 	"browser-reopen-tab",
 	"browser-focus-page",
 	"browser-new-tab",
@@ -189,6 +190,38 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 		return host.navigateActive(url.trim());
 	});
 
+	ipcMain.handle(
+		"browser-page-control",
+		(
+			event,
+			tabId: unknown,
+			action: unknown,
+			query: unknown,
+			forward: unknown,
+			next: unknown,
+		) => {
+			const host = authorize(event);
+			if (
+				typeof action !== "string" ||
+				!["open", "close", "search", "in", "out", "reset"].includes(action)
+			)
+				throw new Error("Invalid page control action.");
+			if (
+				typeof query !== "string" ||
+				query.length > 4096 ||
+				typeof forward !== "boolean" ||
+				typeof next !== "boolean"
+			)
+				throw new Error("Invalid page search input.");
+			return host.controlPage(
+				numberOrThrow(tabId, "tabId"),
+				action as "open" | "close" | "search" | "in" | "out" | "reset",
+				query,
+				forward,
+				next,
+			);
+		},
+	);
 	ipcMain.handle("browser-set-chord-focus", (event, focused: unknown) => {
 		const host = authorize(event);
 		if (typeof focused !== "boolean")

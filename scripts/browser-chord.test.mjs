@@ -38,6 +38,11 @@ const input = (key, overrides = {}) => ({
 
 test("one platform-strict decision table covers every browser column and leaves chat to app", () => {
 	const rows = [
+		["f", {}, "find-page"],
+		["+", {}, "zoom-in"],
+		["=", {}, "zoom-in"],
+		["-", {}, "zoom-out"],
+		["0", {}, "zoom-reset"],
 		["r", {}, "reload"],
 		["R", { shift: true }, "hard-reload"],
 		["l", {}, "focus-address"],
@@ -113,7 +118,7 @@ test("negative controls preserve composition/editing, platform modifiers, and re
 		assert.equal(browserChordIntent(input("r", flags), "darwin"), null);
 	for (const platform of ["linux", "win32"])
 		assert.equal(browserChordIntent(input("r"), platform), null);
-	for (const key of ["f", "p", "+", "-", "0", "o", "a", "c", "v"])
+	for (const key of ["p", "o", "a", "c", "v"])
 		assert.equal(browserChordIntent(input(key), "darwin"), null);
 	assert.equal(
 		browserChordIntent(
@@ -269,4 +274,45 @@ test("owned menu aliases replace destructive roles; suppression is per input and
 			'"Input.dispatchKeyEvent"',
 		),
 	);
+});
+
+test("find/zoom share focus classifier with platform/Alt/IME/repeat negatives", () => {
+	for (const key of ["f", "+", "=", "-", "0"]) {
+		assert.ok(browserChordIntent(input(key), "darwin"));
+		for (const flags of [
+			{ alt: true },
+			{ isComposing: true },
+			{ isAutoRepeat: true },
+			{ control: true },
+			{ meta: false, control: true },
+		])
+			assert.equal(browserChordIntent(input(key, flags), "darwin"), null);
+		assert.ok(
+			browserChordIntent(input(key, { meta: false, control: true }), "win32"),
+		);
+	}
+});
+
+test("native zoom routing never takes the page caret through chrome", () => {
+	const zooms = [];
+	let focused = 0;
+	let sent = 0;
+	const router = createBrowserChordRouter({
+		platform: "darwin",
+		ownsChrome: () => false,
+		ownsPage: () => true,
+		reload: () => {},
+		history: () => {},
+		zoom: (command) => zooms.push(command),
+		send: () => sent++,
+		focusChrome: () => focused++,
+	});
+	let prevented = 0;
+	const event = { preventDefault: () => prevented++ };
+	router.input(event, input("+"), "page", true);
+	router.menu("zoom-reset");
+	assert.deepEqual(zooms, ["in", "reset"]);
+	assert.equal(focused, 0);
+	assert.equal(sent, 0);
+	assert.equal(prevented, 1);
 });
