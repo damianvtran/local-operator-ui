@@ -221,15 +221,18 @@ afterEach(async () => {
 	while (mounted.length) await mounted.pop()();
 });
 
-async function mount(features, scripts) {
+async function mount(features, scripts, sharedClient) {
 	sent = [];
 	script = { capabilities: caps(features), ...scripts };
-	const client = new QueryClient({
-		defaultOptions: {
-			queries: { retry: false, gcTime: 0 },
-			mutations: { gcTime: 0 },
-		},
-	});
+	// `sharedClient` lets a second mount reuse the first one's cache, which is what
+	// re-opening a pane in the real app does (one QueryClient per window). Without
+	// it a "re-open" test passes for ANY cache policy.
+	const client =
+		sharedClient ??
+		new QueryClient({
+			// No query `gcTime` override: the hook's own cache policy is the subject.
+			defaultOptions: { queries: { retry: false }, mutations: { gcTime: 0 } },
+		});
 	const container = document.createElement("div");
 	document.body.append(container);
 	const root = createRoot(container);
@@ -248,11 +251,12 @@ async function mount(features, scripts) {
 		if (down) return;
 		down = true;
 		await act(async () => root.unmount());
-		client.clear();
+		if (!sharedClient) client.clear();
 		container.remove();
 	};
 	mounted.push(teardown);
 	return {
+		client,
 		container,
 		text: () => container.textContent,
 		// BOOLEANS, never nodes, are what assertions see. `assert.equal(node, null)`
@@ -260,6 +264,8 @@ async function mount(features, scripts) {
 		// which walks the whole window/document graph and grew past 100 GB when a
 		// defect-injection run made one fail. A boolean fails with `false !== true`.
 		has: (selector) => container.querySelector(selector) !== null,
+		alertText: () =>
+			container.querySelector('[role="alert"]')?.textContent ?? null,
 		// A real node for the CLICK only; callers must not hand it to `assert`.
 		button: (label) =>
 			[...container.querySelectorAll("button")].find((b) =>
@@ -522,9 +528,8 @@ test("the backend reporting a live run renders Setting up with its progress, fro
 	assert.ok(
 		view.text().includes("Applying - preparing the background connector."),
 	);
-	assert.equal(
-		view.button("Set up phone access"),
-		undefined,
+	assert.ok(
+		!view.button("Set up phone access"),
 		"no second owner while one runs",
 	);
 	assert.equal(
@@ -550,7 +555,9 @@ test("a 409 setup_in_progress on run becomes Setting up, not a failure banner", 
 								ready: false,
 								in_progress: true,
 								blocked_on: "in_progress",
-								progress: ["Applying."],
+								// The backend's first line is the fixed "checking" text every
+								// request writes; a run appends its steps after it.
+								progress: ["Checking.", "Applying."],
 								active_credential_id: 17,
 							}),
 						);
@@ -569,11 +576,7 @@ test("a 409 setup_in_progress on run becomes Setting up, not a failure banner", 
 		},
 	);
 	await press(view.button("Set up phone access"));
-	assert.equal(
-		view.container.querySelector('[role="alert"]'),
-		null,
-		"no error banner",
-	);
+	assert.ok(!view.has('[role="alert"]'), "no error banner");
 	assert.ok(view.text().includes("Setting up"));
 	await view.unmount();
 });
@@ -603,12 +606,11 @@ test("5xx, non-JSON and the saved-intent refusal use the block's own sentence, n
 			{ tunnel_setup: 1 },
 			{ "tunnel.setup.read": reply, "tunnel.setup.plan": reply },
 		);
-		const alert = view.container.querySelector('[role="alert"]');
-		assert.ok(alert, `${name}: a failure state renders`);
+		// Text, not the node: a failing assert would deep-inspect a React element.
+		const alertText = view.alertText();
+		assert.ok(alertText !== null, `${name}: a failure state renders`);
 		assert.ok(
-			alert.textContent.includes(
-				"could not be checked, and nothing was changed",
-			),
+			alertText.includes("could not be checked, and nothing was changed"),
 			`${name}: the block's own check sentence`,
 		);
 		assert.ok(!view.text().includes("SECRET_TRACE"), `${name}: no raw text`);
@@ -671,6 +673,250 @@ test("a sign-in blocker offers NO second sign-in button in the provider panel mo
 		"the command is a report, not copy",
 	);
 	await view.unmount();
+});
+
+/** A real wait: the hook's poll cadence is a product constant, not a test knob. */
+const waitPoll = async () => {
+	await act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 3300));
+	});
+	await settle();
+};
+
+const running = (progress) =>
+	answer({
+		source: "local",
+		ready: false,
+		in_progress: true,
+		blocked_on: "in_progress",
+		progress,
+		active_credential_id: 17,
+	});
+
+test("M1: a run THIS window started shows the backend's progress while the run POST is still pending", async () => {
+	let release;
+	const gate = new Promise((resolve) => {
+		release = resolve;
+	});
+	let started = false;
+	let reads = 0;
+	const view = await mount(
+		{ tunnel_setup: 1 },
+		{
+			"tunnel.setup.read": () => {
+				reads += 1;
+				return ok(
+					started
+						? running([
+								"Checking the selected account before changes.",
+								"Applying - preparing the background connector.",
+							])
+						: answer({ source: "local", ready: false }),
+				);
+			},
+			"tunnel.setup.plan": ok(answer()),
+			"tunnel.setup.run": () => {
+				started = true;
+				return gate.then(() => {
+					started = false; // the backend no longer reports a live run
+					return ok(verified());
+				});
+			},
+		},
+	);
+	const before = reads;
+	await press(view.button("Set up phone access"));
+	try {
+		await waitPoll();
+		assert.ok(
+			reads > before,
+			"the local read is asked again while the run POST is pending",
+		);
+		assert.ok(
+			view.text().includes("Applying - preparing the background connector."),
+			"the backend's own progress line is shown for our own run",
+		);
+		assert.ok(view.text().includes("Setting up"));
+	} finally {
+		// A failing assertion must not leave the run pending: a pending mutation
+		// keeps the process alive until the runner's bound.
+		release();
+	}
+	await settle();
+	assert.ok(view.has("[data-phone-verified]"), "the run's own answer lands");
+});
+
+test("M1b: the poll seeing the run END before the run POST resolves does not re-plan over the run's own receipts", async () => {
+	let release;
+	const gate = new Promise((resolve) => {
+		release = resolve;
+	});
+	let phase = "idle";
+	let plans = 0;
+	const view = await mount(
+		{ tunnel_setup: 1 },
+		{
+			"tunnel.setup.read": () =>
+				ok(
+					phase === "live"
+						? running(["Checking.", "Applying - installing."])
+						: answer({ source: "local", ready: false }),
+				),
+			"tunnel.setup.plan": () => {
+				plans += 1;
+				return ok(plans === 1 ? answer() : answer({ receipts: [] }));
+			},
+			"tunnel.setup.run": () => {
+				phase = "live";
+				return gate.then(() =>
+					ok({
+						...verified(),
+						receipts: [{ step: "installation", ok: true, text: "OWN RECEIPT" }],
+					}),
+				);
+			},
+		},
+	);
+	await press(view.button("Set up phone access"));
+	await waitPoll(); // poll sees it live
+	phase = "idle"; // backend finishes; the POST answer has NOT reached us yet
+	await waitPoll(); // poll sees live -> idle while the run is still pending
+	release();
+	await settle();
+	await settle();
+	assert.equal(plans, 1, "no plan was sent over our own run");
+	assert.ok(
+		view.text().includes("OWN RECEIPT"),
+		"the run's receipts are what is shown",
+	);
+});
+
+test("m1: a plan refused with 409 while no run is live ends in Check again, never an empty Checking", async () => {
+	const view = await mount(
+		{ tunnel_setup: 1 },
+		{
+			"tunnel.setup.read": ok(answer({ source: "local", ready: false })),
+			"tunnel.setup.plan": {
+				status: 409,
+				body: {
+					detail: {
+						code: "setup_in_progress",
+						params: {},
+						text: "Phone access setup is already in progress. Check its status before retrying.",
+					},
+				},
+			},
+		},
+	);
+	await settle();
+	assert.ok(view.button("Check again"), "a control exists");
+	assert.ok(!view.text().includes("Checking"), "not stuck on Checking");
+});
+
+test("m2: re-opening the pane plans again, so a price from an earlier open is never shown", async () => {
+	// ONE client for both opens, created here so the first mount's teardown does not
+	// clear it: the cache surviving an unmount is exactly what is under test.
+	const windowClient = new QueryClient({
+		defaultOptions: { queries: { retry: false }, mutations: { gcTime: 0 } },
+	});
+	const first = await mount(
+		{ tunnel_setup: 1 },
+		{
+			"tunnel.setup.read": ok(answer({ source: "local", ready: false })),
+			"tunnel.setup.plan": ok(quoted("0.05")),
+		},
+		windowClient,
+	);
+	assert.ok(first.text().includes("USD 0.05"));
+	await first.unmount();
+	const second = await mount(
+		{ tunnel_setup: 1 },
+		{
+			"tunnel.setup.read": ok(answer({ source: "local", ready: false })),
+			"tunnel.setup.plan": ok(quoted("0.07")),
+		},
+		windowClient,
+	);
+	try {
+		assert.ok(
+			second.text().includes("USD 0.07"),
+			"the new open shows the new price",
+		);
+		assert.ok(!second.text().includes("USD 0.05"), "the old price is gone");
+	} finally {
+		await second.unmount();
+		windowClient.clear();
+	}
+});
+
+for (const [name, reply] of [
+	[
+		"transport failure",
+		{
+			status: 503,
+			body: {
+				detail: { code: "transport.failed", message: "raw transport text" },
+			},
+		},
+	],
+	[
+		"client deadline",
+		{
+			status: 504,
+			body: {
+				detail: { code: "deadline_exceeded", message: "raw deadline text" },
+			},
+		},
+	],
+]) {
+	test(`m3: a run that ends without the backend's answer (${name}) is unconfirmed: no failure, no second run, then re-planned`, async () => {
+		let ended = false;
+		let pressed = false;
+		let plans = 0;
+		const view = await mount(
+			{ tunnel_setup: 1 },
+			{
+				"tunnel.setup.read": () =>
+					ok(
+						ended || !pressed
+							? answer({ source: "local", ready: false })
+							: running(["Checking.", "Applying - installing."]),
+					),
+				"tunnel.setup.plan": () => {
+					plans += 1;
+					return ok(plans === 1 ? answer() : verified());
+				},
+				"tunnel.setup.run": () => {
+					pressed = true;
+					return reply;
+				},
+			},
+		);
+		await press(view.button("Set up phone access"));
+		assert.ok(!view.has('[role="alert"]'), "never a failure banner");
+		assert.ok(!view.text().includes("raw "), "no raw transport text");
+		assert.ok(view.text().includes("Setting up"));
+		ended = true;
+		await waitPoll();
+		const runs = setupOps().filter((r) => r.op === "tunnel.setup.run").length;
+		assert.equal(runs, 1, "exactly one run was ever sent");
+		assert.ok(
+			view.has("[data-phone-verified]"),
+			"the re-plan says it ended connected",
+		);
+	});
+}
+
+test("n2: another owner's mere plan (one fixed line, no run steps) is not labelled Setting up", async () => {
+	const view = await mount(
+		{ tunnel_setup: 1 },
+		{
+			"tunnel.setup.read": ok(running(["Checking the selected account."])),
+			"tunnel.setup.plan": ok(answer()),
+		},
+	);
+	assert.ok(!view.text().includes("Setting up"), "does not overclaim a setup");
+	assert.ok(view.text().includes("Checking"));
 });
 
 test("a settled block is quiet: no further requests, from any state, once answers are in", async () => {

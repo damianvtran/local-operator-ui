@@ -12,8 +12,10 @@
  *   "a setup is running": `in_progress` / `progress` / `active_credential_id`.
  *   It can never say `verified` or carry a quote, by the backend's contract.
  * - `tunnel.setup.plan` (POST, fresh, changes nothing) is the question "what is
- *   the state right now, and what does activation cost". It runs once on open
- *   and again on an explicit "Check again", never on a timer.
+ *   the state right now, and what does activation cost". It runs once on every
+ *   OPEN (the cache entry is dropped with its last observer, so a re-opened pane
+ *   never shows a price or a Connected from an earlier open) and again on an
+ *   explicit "Check again", never on a timer.
  * - `tunnel.setup.run` (POST) is the one write, and it is only reachable from a
  *   button the user pressed, with the owner and exact fresh price in hand.
  *
@@ -25,6 +27,20 @@
  * gap before the first read after a press lands; once the backend reports the
  * run, that is what the view follows. A 409 `setup_in_progress` (another window or
  * the terminal owns the run) is the same state, not an error.
+ *
+ * ## A run whose answer never arrives is UNCONFIRMED, not failed
+ *
+ * The run POST sends no bytes until the backend finishes, which can be minutes. The
+ * main-process fetch has only an overall abort timer, and undici's default
+ * response-header timeout (300 s, measured on Node 26 for the review of this
+ * change; NOT measured on Electron's bundled Node) can end the request before the
+ * client's own 930 s budget does. So a transport failure (`status: null`, 503
+ * `transport.failed`) or the client's own `deadline_exceeded` on the run says
+ * nothing about the install, which the backend keeps running and drains. The hook
+ * therefore treats it as "unconfirmed": it never reports failure, never sends a
+ * second run (the backend single-flights, and the press guard stays), and polls the
+ * local read until the backend says no run is live, then asks for a fresh plan,
+ * which is what tells the person whether it ended connected.
  *
  * ## Two mounts, one answer
  *
@@ -51,12 +67,14 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+	DESKTOP_DEADLINE_EXCEEDED_CODE,
+	DESKTOP_REFUSAL_CODE,
 	PHONE_SETUP_REFUSAL_CODES,
 	type PhoneSetupResult,
 	phoneSetupResultSchema,
 } from "../../../../shared/desktop-contract";
 
-/** How often the local read is repeated while a run is in progress. */
+/** How often the local read is repeated while a run is in progress or unconfirmed. */
 export const PHONE_SETUP_POLL_MS = 3000;
 
 export const phoneSetupKeys = {
@@ -80,7 +98,12 @@ export type PhoneSetupFailure =
 export type PhoneSetupView =
 	| { kind: "hidden" }
 	| { kind: "checking" }
-	| { kind: "applying"; progress: string[] }
+	/**
+	 * `setup` is true when THIS window pressed the run (or the backend has already
+	 * reported steps). The backend's `in_progress` is also true while another window
+	 * only PLANS, and calling that "Setting up" would overclaim.
+	 */
+	| { kind: "applying"; progress: string[]; setup: boolean }
 	| { kind: "result"; result: PhoneSetupResult }
 	| { kind: "failure"; failure: PhoneSetupFailure };
 
@@ -93,7 +116,7 @@ export type PhoneSetupView =
 export function classifyPhoneSetupError(
 	error: unknown,
 	during: "check" | "run",
-): PhoneSetupFailure | "in-progress" {
+): PhoneSetupFailure | "in-progress" | "unconfirmed" {
 	if (error instanceof DesktopControlError) {
 		const code = error.code;
 		if (code === "setup_in_progress") return "in-progress";
@@ -106,6 +129,17 @@ export function classifyPhoneSetupError(
 		) {
 			return { kind: "backend", message: error.message, code };
 		}
+		// The request ended without the backend's answer: the OUTCOME is unknown, and
+		// the backend may still be working (see the header). Only the run is affected;
+		// a read-only check that did not answer is simply a failed check.
+		if (
+			during === "run" &&
+			(error.status === null ||
+				code === DESKTOP_REFUSAL_CODE.transportFailed ||
+				code === DESKTOP_DEADLINE_EXCEEDED_CODE)
+		) {
+			return "unconfirmed";
+		}
 	}
 	return { kind: "generic", during };
 }
@@ -115,7 +149,14 @@ type DeriveInput = {
 	local: PhoneSetupResult | undefined;
 	fresh: PhoneSetupResult | undefined;
 	failure: PhoneSetupFailure | null;
+	/** This window's run is in flight or its outcome is still unconfirmed. */
 	runPending: boolean;
+	/**
+	 * The plan answered 409 (another owner held the slot), no read says a run is
+	 * live, and nothing else explains the empty view: without this the block would
+	 * sit on "Checking" with no control.
+	 */
+	freshErrored?: boolean;
 };
 
 /**
@@ -129,10 +170,20 @@ type DeriveInput = {
 export function derivePhoneSetupView(input: DeriveInput): PhoneSetupView {
 	if (!input.enabled) return { kind: "hidden" };
 	if (input.runPending || input.local?.in_progress) {
-		return { kind: "applying", progress: input.local?.progress ?? [] };
+		const progress = input.local?.progress ?? [];
+		// The first line is the fixed "checking" line a plan also writes; a run's
+		// later steps are what distinguish it from a mere check by another window.
+		return {
+			kind: "applying",
+			progress,
+			setup: input.runPending || progress.length > 1,
+		};
 	}
 	if (input.failure) return { kind: "failure", failure: input.failure };
 	if (input.fresh) return { kind: "result", result: input.fresh };
+	if (input.freshErrored) {
+		return { kind: "failure", failure: { kind: "generic", during: "check" } };
+	}
 	return { kind: "checking" };
 }
 
@@ -160,6 +211,60 @@ export function usePhoneSetup(): UsePhoneSetup {
 	const enabled = desktopFeatureEnabled(capabilities.data, "tunnel_setup");
 	const [selectedId, setSelectedId] = useState<number | null>(null);
 	const [failure, setFailure] = useState<PhoneSetupFailure | null>(null);
+	// A run whose answer never arrived (see the header). `since` is when we learned
+	// that, so only a local read taken AFTER it can say the run has ended.
+	const [unconfirmed, setUnconfirmed] = useState(false);
+	const unconfirmedSince = useRef(0);
+
+	const runBusy = useRef(false);
+	// Whether the local read has seen a live run, and whether the run that just
+	// ended was OURS (its answer, with receipts, is already in the cache; re-planning
+	// would replace it with a plan that has none).
+	const wasRunning = useRef(false);
+	const ownRunEnded = useRef(false);
+	// Declared before the local read because that read's poll cadence depends on
+	// whether THIS window's run is in flight: the backend's progress lines are only
+	// ever visible if we ask for them while the run is still pending.
+	const run = useMutation({
+		mutationFn: async (args: { credentialId: number; price?: string }) =>
+			parse(
+				await desktopResult<unknown>({
+					op: "tunnel.setup.run",
+					credentialId: args.credentialId,
+					acceptMonthlyPrice: args.price,
+				}),
+			),
+		onSuccess: (result) => {
+			// Only meaningful if the poll saw the run live: then the coming
+			// live -> idle transition is this run's own. If it never did, no
+			// transition is coming and the flag must not outlive this answer.
+			ownRunEnded.current = wasRunning.current;
+			setFailure(null);
+			queryClient.setQueryData(phoneSetupKeys.fresh(selectedId), result);
+		},
+		onError: (error) => {
+			const classified = classifyPhoneSetupError(error, "run");
+			if (classified === "unconfirmed") {
+				// Never a failure and never a second run: the backend may still be
+				// installing. The local read poll below decides when it is over.
+				unconfirmedSince.current = Date.now();
+				setUnconfirmed(true);
+			} else if (classified !== "in-progress") {
+				setFailure(classified);
+			}
+		},
+		onSettled: (_data, error) => {
+			// Stay busy while the outcome is unconfirmed, so a second press cannot
+			// start an owner beside one the backend may still be running.
+			runBusy.current =
+				error !== null &&
+				classifyPhoneSetupError(error, "run") === "unconfirmed";
+			void queryClient.invalidateQueries({
+				queryKey: phoneSetupKeys.local(selectedId),
+			});
+		},
+	});
+	const runActive = run.isPending || unconfirmed;
 
 	const local = useQuery({
 		queryKey: phoneSetupKeys.local(selectedId),
@@ -174,44 +279,20 @@ export function usePhoneSetup(): UsePhoneSetup {
 		retry: false,
 		staleTime: 0,
 		refetchOnWindowFocus: false,
-		// Poll only while the backend says a run is live; otherwise the read is
-		// one-shot, so a closed pane costs nothing.
+		// Poll while the backend says a run is live OR this window's run is pending
+		// or unconfirmed (the first read after a press still says "idle", so keying
+		// on the cached answer alone would never show progress for our own run);
+		// otherwise the read is one-shot, so a closed pane costs nothing.
 		refetchInterval: (query) =>
-			query.state.data?.in_progress ? PHONE_SETUP_POLL_MS : false,
-	});
-
-	const runBusy = useRef(false);
-	const run = useMutation({
-		mutationFn: async (args: { credentialId: number; price?: string }) =>
-			parse(
-				await desktopResult<unknown>({
-					op: "tunnel.setup.run",
-					credentialId: args.credentialId,
-					acceptMonthlyPrice: args.price,
-				}),
-			),
-		onSuccess: (result) => {
-			setFailure(null);
-			queryClient.setQueryData(phoneSetupKeys.fresh(selectedId), result);
-		},
-		onError: (error) => {
-			const classified = classifyPhoneSetupError(error, "run");
-			if (classified !== "in-progress") setFailure(classified);
-		},
-		onSettled: () => {
-			runBusy.current = false;
-			void queryClient.invalidateQueries({
-				queryKey: phoneSetupKeys.local(selectedId),
-			});
-		},
+			runActive || query.state.data?.in_progress ? PHONE_SETUP_POLL_MS : false,
 	});
 
 	const localData = local.data;
-	const inProgress = localData?.in_progress === true || run.isPending;
+	const inProgress = localData?.in_progress === true || runActive;
 
-	// The fresh, read-only plan: once on open (after the local read has settled and
-	// said no run is live), and on an explicit refetch. A key per selected account
-	// so choosing one asks about THAT account.
+	// The fresh, read-only plan: once on every open (after the local read has
+	// settled and said no run is live), and on an explicit refetch. A key per
+	// selected account so choosing one asks about THAT account.
 	const fresh = useQuery({
 		queryKey: phoneSetupKeys.fresh(selectedId),
 		queryFn: async () => {
@@ -235,39 +316,79 @@ export function usePhoneSetup(): UsePhoneSetup {
 		enabled: enabled && local.isSuccess && !inProgress,
 		retry: false,
 		staleTime: Number.POSITIVE_INFINITY,
-		gcTime: 5 * 60_000,
+		// Dropped with its LAST observer, and ALSO re-asked on every mount below:
+		// `gcTime: 0` alone removes the entry on a later macrotask, so a pane that
+		// re-opens immediately (a panel switch) would re-attach to the stale entry.
+		gcTime: 0,
 		refetchOnWindowFocus: false,
-		refetchOnMount: false,
+		refetchOnMount: "always",
 	});
+	// What is SHOWN must be a plan fetched since THIS open, or the answer to our
+	// own run: a price or a Connected from an earlier open is an observation nobody
+	// made now. The backend rechecks the quote on run regardless, so this protects
+	// the label, not the money. `dataUpdatedAt` is also set by our own run's
+	// `setQueryData`, so the run's receipts still count.
+	const openedAt = useRef(Date.now());
+	const freshData =
+		fresh.data && fresh.dataUpdatedAt >= openedAt.current
+			? fresh.data
+			: undefined;
 
 	// A run the BACKEND reported live that no longer is (another window finished
 	// it, or the terminal did): ask again, because the answer on screen predates
-	// it. Keyed on `in_progress` from the backend and NOT on this window's own
-	// pending press: our own run already returned its result (with receipts) into
-	// the cache, and re-planning here would replace that with a plan that has none.
+	// it. NOT for our own run: it already returned its result (with receipts) into
+	// the cache, and re-planning would replace that with a plan that has none. The
+	// poll that now runs during our own run makes this transition visible to us, so
+	// `ownRunEnded` is what tells the two apart.
 	const backendRunning = localData?.in_progress === true;
-	const wasRunning = useRef(false);
 	useEffect(() => {
 		if (wasRunning.current && !backendRunning) {
-			void fresh.refetch();
+			// `runBusy` covers the interleaving where the poll sees the run END before
+			// our own POST answer arrives (this window still owns it); `ownRunEnded`
+			// covers the answer having arrived first. An unconfirmed run keeps
+			// `runBusy` set and is reset by its own effect below.
+			if (ownRunEnded.current) ownRunEnded.current = false;
+			else if (!runBusy.current) void fresh.refetch();
 		}
 		wasRunning.current = backendRunning;
 	}, [backendRunning, fresh.refetch]);
+
+	// An unconfirmed run ends when a read taken after the failure says no run is
+	// live. The plan on screen predates the run, so it is RESET (not merely
+	// refetched, which would keep showing the old quote) and asked again: that
+	// answer is what says whether setup ended connected.
+	useEffect(() => {
+		if (
+			unconfirmed &&
+			localData &&
+			!localData.in_progress &&
+			local.dataUpdatedAt > unconfirmedSince.current
+		) {
+			setUnconfirmed(false);
+			runBusy.current = false;
+			void queryClient.resetQueries({
+				queryKey: phoneSetupKeys.fresh(selectedId),
+			});
+		}
+	}, [unconfirmed, localData, local.dataUpdatedAt, queryClient, selectedId]);
 
 	// Surface check failures (the local read's and the plan's) through one place.
 	useEffect(() => {
 		const error = local.error ?? fresh.error;
 		if (!error) return;
 		const classified = classifyPhoneSetupError(error, "check");
-		if (classified !== "in-progress") setFailure(classified);
+		if (classified !== "in-progress" && classified !== "unconfirmed") {
+			setFailure(classified);
+		}
 	}, [local.error, fresh.error]);
 
 	const view = derivePhoneSetupView({
 		enabled,
 		local: localData,
-		fresh: fresh.data,
+		fresh: freshData,
 		failure,
-		runPending: run.isPending,
+		runPending: runActive,
+		freshErrored: fresh.isError && !freshData,
 	});
 
 	const choose = useCallback((credentialId: number) => {
@@ -287,6 +408,7 @@ export function usePhoneSetup(): UsePhoneSetup {
 			// click must not even ask.
 			if (runBusy.current) return;
 			runBusy.current = true;
+			ownRunEnded.current = false;
 			setFailure(null);
 			run.mutate({ credentialId, price });
 		},
