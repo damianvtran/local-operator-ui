@@ -134,6 +134,8 @@ const modelRow = (provider: string, id: string, name: string) => ({
 });
 
 type BridgeOptions = {
+	/** Composed recovery fixture: setup refuses the same login the provider row refuses. */
+	phoneSetup?: boolean;
 	/**
 	 * Seed the models store, so the hosting and model pickers have a catalogue.
 	 * WITHOUT this the two selects render empty and a story can photograph a state
@@ -211,6 +213,7 @@ const TERMINAL_SCRIPTS = new Set<Script>([
 
 const installBridge = (options: BridgeOptions) => {
 	let polls = 0;
+	let starts = 0;
 	window.__openedAuth = [];
 	const script = options.script ?? "legacy-waiting";
 	const ok = (result: unknown): DesktopResponse => ({
@@ -219,6 +222,13 @@ const installBridge = (options: BridgeOptions) => {
 	});
 	const statusFor = (): DesktopResponse => {
 		polls += 1;
+		// Only the composed phone recovery fixture: first auth is already
+		// completed/refused; the explicit SECOND start stays waiting so browser
+		// evidence can verify the real re-auth flow, not merely a button label.
+		if (options.phoneSetup && starts > 1)
+			return ok(
+				snapshot(polls < 5 ? "waiting" : "succeeded", { auth_url: AUTH_URL }),
+			);
 		const waiting = snapshot("waiting", { auth_url: AUTH_URL });
 		switch (script) {
 			case "optional-paste":
@@ -331,6 +341,31 @@ const installBridge = (options: BridgeOptions) => {
 			value?: unknown;
 		}): Promise<DesktopResponse> => {
 			switch (request.op) {
+				case "tunnel.setup.read":
+				case "tunnel.setup.plan":
+					return ok({
+						step: "login",
+						blocked_on: "login",
+						configured: false,
+						ready: false,
+						verified: false,
+						url: null,
+						credential_id: 17,
+						identity_label: "d***@example.test",
+						credential_choices: [],
+						quote: null,
+						receipts: [],
+						remedy: {
+							kind: "sign_in",
+							text: "Sign in to Radient, then check again.",
+							command: null,
+							url: null,
+						},
+						source: request.op === "tunnel.setup.read" ? "local" : "fresh",
+						in_progress: false,
+						progress: [],
+						active_credential_id: null,
+					});
 				case "capabilities":
 					return ok({
 						desktop_contract: 1,
@@ -338,6 +373,7 @@ const installBridge = (options: BridgeOptions) => {
 						desktop_auth: "bearer",
 						features: {
 							auth: 1,
+							...(options.phoneSetup ? { tunnel_setup: 1 } : {}),
 							...(options.loginVerdict ? { tunnel: 1 } : {}),
 						},
 					});
@@ -404,6 +440,11 @@ const installBridge = (options: BridgeOptions) => {
 						},
 					});
 				case "auth.start":
+					starts += 1;
+					if (options.phoneSetup && starts > 1) {
+						polls = 0;
+						return ok(snapshot("waiting", { auth_url: AUTH_URL }));
+					}
 					/*
 					 * The TERMINAL states start already settled. They used to arrive on
 					 * a later poll, which made every capture of them a race with the
@@ -731,6 +772,7 @@ export const PanelIdle = panelStory(
  * photographed because it IS reachable here. QA owns repro A live.
  */
 const OPTS_REFUSED_VERDICT: BridgeOptions = {
+	phoneSetup: true,
 	providers: signedIn(["radient"]),
 	hosting: "radient",
 	model: "auto",

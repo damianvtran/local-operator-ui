@@ -58,6 +58,7 @@ type Scenario =
 	| "no-capability"
 	| "owner_missing"
 	| "failed"
+	| "billing-unconfirmed"
 	// Transitions: the bridge answers late, so a capture can take the first frame
 	// and the settled one from the same story.
 	| "slow-plan"
@@ -234,7 +235,32 @@ const plans = (scenario: Scenario): { plan: unknown; afterRun?: unknown } => {
 					"failed",
 					"check_status",
 					"Setup stopped part-way. Steps already completed have not been undone. Check the status, then try again.",
-					{ receipts: VERIFIED.receipts },
+					{
+						receipts: [
+							{
+								step: "billing",
+								ok: true,
+								text: "Billing activation completed at the accepted monthly price.",
+							},
+						],
+						billing_outcome: "activated",
+						reservation_outcome: "saved",
+						failure_stage: "installation",
+					},
+				),
+			};
+		case "billing-unconfirmed":
+			return {
+				plan: blocked(
+					"failed",
+					"check_status",
+					"Setup stopped part-way. Steps already completed have not been undone. Check the status, then try again.",
+					{
+						receipts: [],
+						billing_outcome: "unconfirmed",
+						reservation_outcome: "not_requested",
+						failure_stage: "billing",
+					},
 				),
 			};
 		case "slow-plan":
@@ -469,6 +495,8 @@ export const TransitionApplyingToConnected: Story = story("slow-run");
 export const OriginalAccountMissing: Story = story("owner_missing");
 /** Setup stopped part-way: the backend's sentence and the receipts, no rollback claim. */
 export const PartialFailure: Story = story("failed");
+/** An activation whose answer was lost; no success receipt or reservation is asserted. */
+export const BillingUnconfirmed: Story = story("billing-unconfirmed");
 /** Backend without `tunnel_setup`: the frame is the ABSENCE of the block. */
 export const NoCapability: Story = story("no-capability", "account");
 /** Connected, in the Settings mount, to show the block inside its section. */

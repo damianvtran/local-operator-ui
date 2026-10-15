@@ -103,7 +103,12 @@ export type PhoneSetupView =
 	 * reported steps). The backend's `in_progress` is also true while another window
 	 * only PLANS, and calling that "Setting up" would overclaim.
 	 */
-	| { kind: "applying"; progress: string[]; setup: boolean }
+	| {
+			kind: "applying";
+			progress: string[];
+			setup: boolean;
+			account?: PhoneSetupResult;
+	  }
 	| { kind: "result"; result: PhoneSetupResult }
 	| { kind: "failure"; failure: PhoneSetupFailure };
 
@@ -177,6 +182,13 @@ export function derivePhoneSetupView(input: DeriveInput): PhoneSetupView {
 			kind: "applying",
 			progress,
 			setup: input.runPending || progress.length > 1,
+			// Never show another window's cached choice as this run's owner.
+			account:
+				input.fresh &&
+				(input.runPending ||
+					input.local?.active_credential_id === input.fresh.credential_id)
+					? input.fresh
+					: undefined,
 		};
 	}
 	if (input.failure) return { kind: "failure", failure: input.failure };
@@ -226,6 +238,10 @@ export function usePhoneSetup(): UsePhoneSetup {
 	// whether THIS window's run is in flight: the backend's progress lines are only
 	// ever visible if we ask for them while the run is still pending.
 	const run = useMutation({
+		// Production mutations otherwise inherit retry:1. A lost billing/install
+		// answer is ambiguous, NOT permission to replay the write: reconcile GET
+		// state instead. runBusy guards gestures, not React Query's internal retries.
+		retry: false,
 		mutationFn: async (args: { credentialId: number; price?: string }) =>
 			parse(
 				await desktopResult<unknown>({
