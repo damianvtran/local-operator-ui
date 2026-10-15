@@ -67,6 +67,15 @@ export const ConsoleCloseDialog: FC<ConsoleCloseDialogProps> = ({
 }) => (
 	<ConfirmationModal
 		open={open}
+		/*
+		 * QA round 1, Q1: `ConfirmationModal` defaults its cancel button to the
+		 * literal "Cancel", which left an English button inside an otherwise French
+		 * dialog. Keyed in `ui.console` rather than a shared actions namespace
+		 * because the shared `ui.common.actions` catalogue (#1045) has not landed on
+		 * main; once it does, this converges onto that one key (a key rename is
+		 * delete+add, so the swap is one line and one catalogue entry).
+		 */
+		cancelText={t("ui.console.close.cancel")}
 		title={t(
 			kind === "dismiss"
 				? "ui.console.dismiss.title"
