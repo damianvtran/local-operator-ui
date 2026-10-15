@@ -321,7 +321,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 		const report = (): void => chrome.setContentRect(measure(element));
 		report();
 		// The SAME box, offered to the overlay policy: an overlay that is only
-		// sometimes over the page (the panel rail's tooltips) decides whether it needs
+		// sometimes over the page (every shared `Tooltip`) decides whether it needs
 		// the view hidden by overlapping THIS rect, not a copy of it that could drift.
 		const unregisterRect = registerBrowserViewRect(() => measure(element));
 		const observer = new ResizeObserver(report);
