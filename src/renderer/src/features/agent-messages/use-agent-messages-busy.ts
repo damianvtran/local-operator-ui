@@ -1,4 +1,7 @@
-import { useWebauthnRequests } from "@shared/browser-webauthn-queue";
+import {
+	useWebauthnEnding,
+	useWebauthnRequests,
+} from "@shared/browser-webauthn-queue";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 
@@ -20,9 +23,10 @@ import { useConversationInputStore } from "@shared/store/conversation-input-stor
  *   one code for that fact (the row spinner and the rail mark read the same);
  * - an archive confirmation is open (`archiveCandidate`, only while the
  *   archive capability mounts that dialog);
- * - a passkey chooser is open - the live queue length; the chooser's transient
- *   "ending" panel is component-local and deliberately not modelled here (it
- *   is dismissible and short-lived).
+ * - a passkey chooser is open - the queue's live requests, OR the
+ *   acknowledgement an unattended settlement leaves behind: it keeps the same
+ *   modal open until dismissed (round-2 R3 - there is no timed lifetime, so
+ *   the queue length alone would miss an open modal).
  */
 export function useAgentMessagesBusy(input: {
 	displayedSessionId: string | null | undefined;
@@ -47,5 +51,11 @@ export function useAgentMessagesBusy(input: {
 		);
 	});
 	const webauthnRequests = useWebauthnRequests();
-	return canonicalBusy || composerBusy || webauthnRequests.length > 0;
+	const webauthnEnding = useWebauthnEnding();
+	return (
+		canonicalBusy ||
+		composerBusy ||
+		webauthnRequests.length > 0 ||
+		webauthnEnding !== null
+	);
 }

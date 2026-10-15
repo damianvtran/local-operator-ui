@@ -469,6 +469,51 @@ test("a boundary that hits busy does not present; quiet alone is not a boundary;
 	assert.equal(model.getSnapshot().presentable, true);
 });
 
+test("busy DURING an in-flight check keeps it hidden until the next boundary - the completion cannot arm from the stale snapshot", async () => {
+	const gate = deferred();
+	let statusCalls = 0;
+	const { model } = rig({
+		status: async () => {
+			statusCalls += 1;
+			await gate.promise;
+			return status();
+		},
+	});
+	model.setAccount("account-a");
+	// 1. The boundary starts safe; the user becomes busy before the response.
+	const inFlight = model.check("window_focus");
+	model.setBlocked(true);
+	gate.resolve();
+	await inFlight;
+	// 2. The completion landed after busy intervened: no presentation, even
+	//    though the entry snapshot was safe.
+	assert.equal(model.getSnapshot().presentable, false);
+	// 3. Going quiet is not a boundary...
+	model.setBlocked(false);
+	assert.equal(model.getSnapshot().presentable, false);
+	// 4. ...the NEXT safe boundary re-decides (cache-served, no new port call).
+	await model.check("window_focus");
+	assert.equal(statusCalls, 1);
+	assert.equal(model.getSnapshot().presentable, true);
+});
+
+test("busy that clears BEFORE an in-flight response still denies that completion", async () => {
+	const gate = deferred();
+	const { model } = rig({
+		status: async () => {
+			await gate.promise;
+			return status();
+		},
+	});
+	model.setAccount("account-a");
+	const inFlight = model.check("window_focus");
+	model.setBlocked(true);
+	model.setBlocked(false);
+	gate.resolve();
+	await inFlight;
+	assert.equal(model.getSnapshot().presentable, false);
+});
+
 test("account switches reset the presentation latch; a non-onboarding state never presents", async () => {
 	// The backend's answer names the SIGNED-IN person; the identity rule reads
 	// `status.account_id` against the model's account, so the next answer must
