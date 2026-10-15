@@ -540,8 +540,17 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 		   with it. */
 		<div
 			ref={chordRoot}
+			// A programmatic rest-stop, not a control (UX U9): the keyboard close parks
+			// focus here so the chord keeps its owner when the closing tab button
+			// unmounts. `outline-none!` because Chromium counts a scripted `.focus()`
+			// after keyboard input as focus-visible, which drew the app's 2px ring
+			// around the whole pane with nothing actionable inside it. `!` because the
+			// ring is the unlayered `html :focus-visible` rule, which outranks utilities
+			// (docs/branding.md section 8); docs/branding.md / index.css allow
+			// `outline-none` exactly when "focus is moved there programmatically and a
+			// ring would be noise". Every focusable CHILD keeps its own ring.
 			tabIndex={-1}
-			className="flex h-full min-h-0 flex-col bg-elevated"
+			className="flex h-full min-h-0 flex-col bg-elevated outline-none!"
 			data-tour-tag={surfaceTag}
 		>
 			{/* THE STRIP CONSUMES THESE TWO HANDS, so they are passed through rather than

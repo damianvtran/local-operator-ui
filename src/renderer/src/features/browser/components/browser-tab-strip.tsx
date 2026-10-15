@@ -1737,7 +1737,14 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 								className="mx-1 h-4 w-px shrink-0 self-center bg-hairline"
 							/>
 						)}
-						<Tooltip content={`${newTabLabel} (${newChord.glyph})`}>
+						{/* `collisionPadding`: this is the window's rightmost control, and the panel
+						    ended 0.05px from the edge (design D-PR10), reading as clipped. Right
+						    only; the panel still opens ABOVE the control, over the strip, so it
+						    never reaches the content rect (D-PR9). */}
+						<Tooltip
+							content={`${newTabLabel} (${newChord.glyph})`}
+							collisionPadding={{ right: 8 }}
+						>
 							<Button
 								variant="outline"
 								size="icon-sm"

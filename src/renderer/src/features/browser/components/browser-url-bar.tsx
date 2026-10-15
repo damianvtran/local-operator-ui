@@ -172,9 +172,11 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	 * text with the tab it was typed for makes a tab change discard the draft by
 	 * construction: no effect, no reset call, and no state in which the field says
 	 * one tab while the host is on another. It also matches Chrome and Safari,
-	 * where an omnibox draft is per-tab and a switch drops it.
+	 * where an omnibox draft is per-tab. Precisely: a switch HIDES the draft, it
+	 * does not erase it, so returning to that tab while this field still has
+	 * focus shows the old text again (and blur commits it there, to the tab it
+	 * was typed for). It is only ever lost by an edit, Enter, Escape or blur.
 	 */
-	const [fieldFocused, setFieldFocused] = useState(false);
 	const [typed, setTyped] = useState<{
 		tabId: number | null;
 		text: string;
@@ -343,54 +345,50 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 				</Tooltip>
 			)}
 			<div className="relative min-w-0 grow">
-				{/* The shared Tooltip, not a native `title` (design D-PR2): a native one
-				    cannot be photographed by `capturePage`, so the chord copy would be
-				    unreviewable. SUPPRESSED while the field has focus because Radix opens
-				    on keyboard focus and Cmd+L focuses this field: without it every use
-				    of the chord would pop a panel over the thing being typed into. */}
-				<Tooltip
-					content={`Address (${address.glyph})`}
-					suppressed={fieldFocused}
-					// Below, not the default top: above the field is the tab strip, and the
-					// panel covered the active tab's title (measured in the round-1
-					// re-capture). Every other chord caption here sits over empty chrome.
-					side="bottom"
-				>
-					<Input
-						ref={inputRef}
-						aria-keyshortcuts={address.aria}
-						value={value}
-						disabled={disabled}
-						onChange={(event) => setDraft(event.target.value)}
-						onKeyDown={keyDown}
-						onFocus={() => {
-							setFieldFocused(true);
-							setDraft((current) => current ?? live);
-						}}
-						onBlur={() => {
-							setFieldFocused(false);
-							commit();
-						}}
-						spellCheck={false}
-						autoComplete="off"
-						aria-label="Address"
-						// Only while the tab has nothing to show: the moment it commits, the
-						// live value replaces this and the placeholder is gone.
-						placeholder={
-							loading && !live ? (pendingUrl ?? undefined) : undefined
-						}
-						data-tour-tag="browser-address"
-						// Offset 1, not the global 2 (design D-PR4): the toolbar's `py-1` + `gap-1`
-						// is exactly the global ring's offset + width, so Cmd+L (now the routine
-						// way to focus this field) drew the ring flush against the strip rule,
-						// the toolbar rule and the Approvals border. `!` because the global ring
-						// rule is unlayered and outranks a utility; `Input` `sm` does the same.
-						className={cn(
-							"pr-7 focus-visible:outline-offset-1!",
-							editing && "font-mono text-mono-sm",
-						)}
-					/>
-				</Tooltip>
+				{/* NO VISIBLE TOOLTIP ON THIS FIELD (design D-PR9, UX U10). The field sits
+				    directly above the content rect, and every placement of a DOM tooltip
+				    that clears the chrome band (below the field) lands INSIDE the rect
+				    the native page view covers: `shared/browser-view-policy.ts` states
+				    that a `WebContentsView` paints above all DOM, so with a page showing
+				    the panel would be invisible, and a headless `capturePage` frame
+				    (which excludes the view) cannot show that. The alternatives are worse:
+				    above the field it covers the active tab's title (measured in the round-1
+				    re-capture), and hiding the view on every hover flashes the page. The
+				    chord copy stays machine-readable through `aria-keyshortcuts`, the
+				    field is labelled "Address", and the Back, Reload and tab tooltips
+				    (all over empty chrome, above the content rect) still show their
+				    chords. `scripts/browser-chord-renderer.test.mjs` pins that no tooltip
+				    wraps this field. */}
+				<Input
+					ref={inputRef}
+					aria-keyshortcuts={address.aria}
+					value={value}
+					disabled={disabled}
+					onChange={(event) => setDraft(event.target.value)}
+					onKeyDown={keyDown}
+					onFocus={() => {
+						setDraft((current) => current ?? live);
+					}}
+					onBlur={() => {
+						commit();
+					}}
+					spellCheck={false}
+					autoComplete="off"
+					aria-label="Address"
+					// Only while the tab has nothing to show: the moment it commits, the
+					// live value replaces this and the placeholder is gone.
+					placeholder={loading && !live ? (pendingUrl ?? undefined) : undefined}
+					data-tour-tag="browser-address"
+					// Offset 1, not the global 2 (design D-PR4): the toolbar's `py-1` + `gap-1`
+					// is exactly the global ring's offset + width, so Cmd+L (now the routine
+					// way to focus this field) drew the ring flush against the strip rule,
+					// the toolbar rule and the Approvals border. `!` because the global ring
+					// rule is unlayered and outranks a utility; `Input` `sm` does the same.
+					className={cn(
+						"pr-7 focus-visible:outline-offset-1!",
+						editing && "font-mono text-mono-sm",
+					)}
+				/>
 				{loading && (
 					// The loading state, in the field rather than only on the reload
 					// button: a page that takes ten seconds says so where the eye

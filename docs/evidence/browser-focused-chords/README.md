@@ -1,5 +1,49 @@
 # Focus-scoped browser commands: rendered and execution evidence
 
+## Round 3 delta — current evidence (read first)
+
+D-PR9/U10: the address tooltip was removed, not relocated. Its old below-field
+panel intersected the native page rect; `capturePage` excludes the native view
+and could not show the occlusion. The two `tooltip-address-*` PNGs and the
+round-1 tooltip claims below are **historical, not current UI evidence**. The
+field retains its Address label and `aria-keyshortcuts`. Pointer-only unit test:
+Back opens a tooltip as a positive control, Address does not. New source: 7 PASS;
+old url-bar: 6 PASS, 1 FAIL (`no tooltip over the content rect`). Earlier harness
+attempts had missing jsdom globals; those are not product failures. The first
+negative control focused the field and passed vacuously (the old tooltip was
+suppressed on focus); replaced with pointer-only input.
+
+U9: keyboard close parks focus on the route root (`tabindex=-1`), which matches
+`:focus-visible`. Current computed `outline-style` is **none**; width remains
+2px. A tab-button child still computes **solid 2px**. The global rule was not
+changed; only the programmatic rest-stop carries `outline-none!` (same precedent
+as onboarding). `keyclose-root-after-*` shows this state, both themes.
+
+D-PR10: New tab right-edge padding 8; native readback panel right=1371.953125,
+window=1380, margin **8.046875 CSS px** (was 0.046875). New frames:
+`tooltip-new-tab-r3-*`. Reload's transient overlap with an inactive tab title is
+unchanged/deferred, not a page-view occlusion. Native readbacks for Reload, New
+tab, active close and inactive close all have `intersectsContentRect=false`, in
+both themes; Address has `panel=null`. The content rect is read from
+`browser-content`, the SAME box `registerBrowserViewRect` and main receive.
+
+Build: `e68286f674181eca50bf06fe2004a51fe51a2b91`, src tree
+`ad8138a566c3497a0eb6afeb26007fa5a7042693`, 17.07s, 170 artifacts,
+installed lock unchanged. `r3-artifact-identity.json` contains all hashes;
+`r3-execution-summary.json` has current delta rows. This commit is amended only
+with docs/evidence after that build: src stays byte-identical. Native run rc=0,
+one hidden instance, visible=false/focused=false, no HTTP resources, owned pid
+reaped. First delta run stopped on a scratch fixture's fixed tab-count assertion
+(initial blank + two loaded tabs already made three); corrected to relative
+counts, no product change or second compile. Physical OS delivery is still
+unverified. Only affected delta frames were re-captured; earlier state frames
+retain their named older build identity, not promoted to current pixels.
+
+Targeted neighbours: browser-chrome 73, strip-focus 7, lane-registration 1,
+classifier 7 PASS. Full suite is CI only. Implementation began on
+anthropic/claude-sonnet-5-5; provider quota forced openai/gpt-6.1-sol for final
+validation/evidence; no role/default model settings changed.
+
 ## Round 1 remediation status (READ FIRST)
 
 The round-1 remediation changes `src/`, so the frames and rows from the
