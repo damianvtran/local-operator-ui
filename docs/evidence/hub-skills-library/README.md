@@ -8,7 +8,7 @@ The original serial cell ran 2026-10-14 23:12–23:18 EDT; the explicitly author
 
 ## Source and asset identity
 
-Branch: `evidence/skills-library-capture`, frozen base `8057f32ff` (#1039). Product bytes (`src/`) are identical from selector commit `6c0e483de` through every later harness commit, proven by `git diff --quiet 6c0e483de HEAD -- src/`. The last completed normal build used inert `rig` values for `VITE_GOOGLE_CLIENT_ID`, `VITE_GOOGLE_CLIENT_SECRET`, `VITE_MICROSOFT_CLIENT_ID`, `VITE_MICROSOFT_TENANT_ID`; BOTH `VITE_LOCAL_OPERATOR_API_URL` and `VITE_RADIENT_SERVER_BASE_URL` were `http://127.0.0.1:8127`. There were no dependency installs. Both pnpm locks SHA256: `fd0310b282d1a63560473655fccd3964102bef2015e43e4915502e0f0a4670ba`; node_modules is the verified sibling link.
+Branch: `evidence/skills-library-capture`, frozen base `8057f32ff` (#1039). Captured product bytes (`src/`) are identical from selector commit `6c0e483de` through pre-convergence evidence head `43fc66a1b`, proven by `git diff --quiet 6c0e483de 43fc66a1b -- src/`. Fresh-main convergence later changes shared runtime dependencies; it is covered separately below, not falsely called source-byte-identical. The last completed normal build used inert `rig` values for `VITE_GOOGLE_CLIENT_ID`, `VITE_GOOGLE_CLIENT_SECRET`, `VITE_MICROSOFT_CLIENT_ID`, `VITE_MICROSOFT_TENANT_ID`; BOTH `VITE_LOCAL_OPERATOR_API_URL` and `VITE_RADIENT_SERVER_BASE_URL` were `http://127.0.0.1:8127`. There were no dependency installs. Both pnpm locks SHA256: `fd0310b282d1a63560473655fccd3964102bef2015e43e4915502e0f0a4670ba`; node_modules is the verified sibling link.
 
 The final cells **reused** built assets from equivalent product bytes, not gratuitous rebuilds. Stage 0 printed selector presence: `hub-skill-search` and `hub-skill-create` in `agent-hub-page-SBckT1a6.js`; `hub-policy-enable` in `org-access-iYNqMNNT.js`; one renderer chunk carried the stub URL. The CSP was narrowed in gitignored output only, to **`connect-src 'self' http://127.0.0.1:8127`** (no other connect origin).
 
@@ -97,6 +97,12 @@ LOCAL_OPERATOR_DESKTOP_TOKEN=rig node scripts/renderer-driver.mjs \
 ```
 
 Use `--skills-expect public` for D/F, light theme for G, requested720 for H (will label actual800), and `--skills-loading-pair` for the temporal pair. Flags are listed in the run table; default means no variant flag. Reap the exact stub PID, require empty8127 and no owned app descendants before the next boot. Stop on failed prerequisites or resource gate; no whole-matrix retry is needed for a single state failure.
+
+## Fresh-main convergence addendum (no new captures)
+
+Local merge `1912dc7fac252a30fb66d02f65fc9e6a436617ec` preserves all seven original evidence commits while incorporating main `51a2eccfb`. [The durable convergence receipt](receipts/convergence.md) records seven range-diff `=` entries, exact task patch bytes unchanged (+2674/-9), broad source dependency manifests, and the initial source-byte STOP followed by the parent's refined proof ruling.
+
+Fresh cheap proofs passed: full desktop-hooks emitted JS identity; all83 existing preference state/action keys and100 migration/projection cases unchanged;17 exact-source reconstructed Skill/Hub request shapes with parse/endpoint/read-only compatibility; pure new finder-layout import;143 painted-core source/CSS/theme/input paths unchanged; zero existing English message changes/collisions. These support retaining the67 historical frames under the refined compatibility rule; they are not a fresh-main native build/capture. Scripts/results/hashes are linked in the convergence receipt. Parent accepted the refined proofs and retained all67 frames with no reaching behavior change; a normal evidence-branch push is authorized. No PR or merge-to-main occurred.
 
 ## Per-frame inspection
 
