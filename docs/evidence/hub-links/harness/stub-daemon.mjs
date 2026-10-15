@@ -393,6 +393,12 @@ const route = async (method, pathname, query, body) => {
 				 * capability and the route below describe one another.
 				 */
 				hub_links: 1,
+				/*
+				 * The agent-hub page draws its scope chips (public | org) only on a daemon that
+				 * advertises `radient_org`; without it the row is replaced by a notice and the
+				 * hub-skills scene has no org scope to press.
+				 */
+				radient_org: 1,
 			},
 		});
 	}
