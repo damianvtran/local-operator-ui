@@ -82,6 +82,8 @@ ground where it does not.
 
 ## Internationalization: maintainer pointer
 
+Read `docs/I18N.md` for the contributor HOWTO and audit-evidence contract.
+
 - **Core:** `src/i18n/` owns the typed catalogue, ICU-message `t()` and locale-aware
   formatters; React bindings live in `src/renderer/src/shared/i18n/`. Use `t()` for
   interface copy, not text-as-key or a second translation mechanism. English is
@@ -104,10 +106,11 @@ ground where it does not.
   extra-on-bare-key or wrongly typed parameters at compile time.
 - **Add a locale:** mirror the namespace files under
   `src/i18n/catalogues/<locale>/`, preserving English keys and ICU arguments.
-  Today the generator bundles **only `en`**: a new directory is not discovered
-  at runtime. Wire its messages through `registerCatalogue()` and coordinate
-  backend locale eligibility/rollout; the picker must not advertise an
-  unavailable locale. Do not hand-edit generated types for translations.
+  The generator discovers every present locale directory and emits
+  `bundledCatalogues` (`en` aliases `bundledEnglish`). Regenerate before the
+  backend can select the tag and coordinate backend eligibility/rollout: a
+  directory alone is not audited activation. Do not hand-edit generated types
+  for translations.
 - **Commands/gate:** `pnpm check-i18n` runs generator freshness (`--check`) plus
   `scripts/i18n/check-strings.mjs`; `pnpm check-types` checks typed call sites.
   The scanner ratchets literal JSX text and copy attributes against
