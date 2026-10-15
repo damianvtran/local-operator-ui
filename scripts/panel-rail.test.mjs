@@ -528,8 +528,13 @@ test("pressing an item claims the slot: the others are cleared, and a second pre
 		);
 		assert.deepEqual(
 			api.pressed(),
-			["run"],
-			"and the borrowed slot is HANDED BACK: the drawer closed itself and the run panel it displaced returned (the store's borrow rule, unchanged by the move)",
+			[],
+			"and the slot is EMPTY (#1079): the lit item is the same door in both directions, as it is for its five siblings, so the press asks for an empty slot rather than handing the run panel it borrowed back. The borrow rule is unchanged for the closes the user did NOT press (the empty queue, Escape, the carried fleet drawer).",
+		);
+		assert.equal(
+			useUiPreferencesStore.getState().isRunPanelOpen,
+			false,
+			"the displaced run panel does not return",
 		);
 		/* Open in the OTHER scope: the press REPLACES the scope rather than closing. */
 		api.store({ isAskDrawerOpen: true, askDrawerScope: "fleet" });
@@ -550,6 +555,55 @@ test("pressing an item claims the slot: the others are cleared, and a second pre
 			["browser"],
 			"a swap clears the drawer's claim",
 		);
+	});
+});
+
+test("the lit asks press empties the slot in BOUND mode too, and the conversation keeps no pane (#1079)", async () => {
+	await mount(async (api) => {
+		reset(api);
+		/* Bound, with the browser in the slot and in the conversation's memory: the
+		   issue's own repro - the memory is the record of what the drawer borrowed. */
+		api.store({
+			rightSlotKey: "session-1",
+			rightSlotMemory: [["session-1", "browser"]],
+			isBrowserPaneOpen: true,
+		});
+		await api.render(rail());
+		assert.deepEqual(api.pressed(), ["browser"]);
+		await api.click(api.item("ask"));
+		assert.deepEqual(
+			api.pressed(),
+			["ask"],
+			"the drawer takes the slot from the browser",
+		);
+		/* The keyboard stands where the drawer's own return left it - `<body>`, the
+		   documented signature the rail's focus effect reads. */
+		assert.equal(api.document.activeElement, api.document.body);
+		await api.click(api.item("ask"));
+		assert.deepEqual(
+			api.pressed(),
+			[],
+			"pressing the lit item closes the panel instead of restoring the browser",
+		);
+		assert.equal(
+			api.document.activeElement,
+			api.document.body,
+			"and the close moves no focus: the rail's effect stands down for the asks item (#896/#820/#835), so nothing is yanked back to the pressed item",
+		);
+		const state = useUiPreferencesStore.getState();
+		assert.equal(
+			state.isBrowserPaneOpen,
+			false,
+			"the browser does not come back",
+		);
+		assert.deepEqual(
+			state.rightSlotMemory,
+			[],
+			"closed is the ABSENCE of an entry, so the conversation remembers no pane",
+		);
+		/* The switch away and back that reads the memory is the store suite's cell
+		   (`right-slot-memory.test.mjs`, where the follower is installed); here the
+		   entry's absence is the assertion the rail's own press can make. */
 	});
 });
 

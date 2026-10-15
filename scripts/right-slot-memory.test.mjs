@@ -42,7 +42,7 @@ const bundle = await build({
 			'export { useUiPreferencesStore, persistedUiPreferences, mergePersistedUiPreferences, migrateUiPreferences, resolveRightSlotWidth, resolveDrawnRightSlotPane, EMPTY_RIGHT_SLOT_ROUTE, EMPTY_RIGHT_SLOT_MEMORY, DEFAULT_RIGHT_SLOT_WIDTH } from "./src/renderer/src/shared/store/ui-preferences-store";',
 			'export { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";',
 			'export { installRightSlotMemoryFollower, rightSlotKeyForView, admittedFromFor } from "./src/renderer/src/shared/store/right-slot-follower";',
-			'export { RIGHT_SLOT_MEMORY_CAP, memoryPut, memoryCarry, memoryProject, memoryRemove, memorySanitize, memoryPruneKeys } from "./src/renderer/src/shared/store/right-slot-memory";',
+			'export { RIGHT_SLOT_MEMORY_CAP, memoryPut, memoryCarry, memoryProject, memoryRemove, memoryDismiss, memorySanitize, memoryPruneKeys } from "./src/renderer/src/shared/store/right-slot-memory";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 		loader: "ts",
@@ -82,6 +82,7 @@ const {
 	memoryCarry,
 	memoryProject,
 	memoryRemove,
+	memoryDismiss,
 	memorySanitize,
 	memoryPruneKeys,
 } = mod;
@@ -303,6 +304,82 @@ test("(D) the asks drawer borrows the slot over a remembered panel and never wri
 	prefs().setAskDrawerOpen(false, "session");
 	assert.equal(prefs().isCanvasOpen, true, "the close restores the canvas");
 	assert.deepEqual(prefs().rightSlotMemory, [["D-A", "canvas"]]);
+});
+
+/*
+ * (D2) THE PRESSED CLOSE (#1079). Same drawer, same slot, different request: the
+ * rail's lit item (and its chord) asks for an EMPTY slot, so the pane the drawer
+ * borrowed is not handed back and the conversation is left remembering nothing.
+ * The give-back stays the WITHDRAWING close's behaviour, which (D) and (K) pin.
+ */
+test("(D2) the pressed close empties the slot: the entry goes and the pane does not return", () => {
+	reset();
+	sessions().setActiveSession("D2-A");
+	prefs().setBrowserPaneOpen(true);
+	assert.deepEqual(prefs().rightSlotMemory, [["D2-A", "browser"]]);
+	prefs().setAskDrawerOpen(true, "session");
+	assert.equal(
+		prefs().isBrowserPaneOpen,
+		false,
+		"the drawer holds the one slot",
+	);
+	prefs().setAskDrawerOpen(false, "session", { dismissSlot: true });
+	assert.equal(prefs().isAskDrawerOpen, false);
+	assert.equal(
+		prefs().isBrowserPaneOpen,
+		false,
+		"the displaced browser does NOT come back - the press asked for an empty slot",
+	);
+	assert.deepEqual(
+		prefs().rightSlotMemory,
+		[],
+		"closed is the ABSENCE of an entry, so nothing is remembered for this conversation",
+	);
+	assert.equal(
+		resolveDrawnRightSlotPane(prefs()),
+		null,
+		"and the slot is drawn as empty",
+	);
+	/* The conversation's own memory decides on the way back: switch away and return. */
+	sessions().setActiveSession("D2-B");
+	sessions().setActiveSession("D2-A");
+	assert.equal(
+		prefs().isBrowserPaneOpen,
+		false,
+		"switching away and back shows no panel",
+	);
+	/* The ENTRY, not the pane, is what went: a later open still writes normally. */
+	prefs().setBrowserPaneOpen(true);
+	assert.deepEqual(prefs().rightSlotMemory, [["D2-A", "browser"]]);
+});
+
+/*
+ * (D3) UNBOUND, the same press drops the per-run borrow record rather than
+ * restoring it - the sibling of (K), where the withdrawing close gives the pane
+ * back.
+ */
+test("(D3) unbound, the pressed close drops askDrawerEvictedPane instead of restoring it", () => {
+	reset();
+	prefs().setCanvasOpen(true);
+	prefs().setAskDrawerOpen(true, "session");
+	assert.equal(
+		prefs().askDrawerEvictedPane,
+		"isCanvasOpen",
+		"unbound keeps the per-run borrow record",
+	);
+	prefs().setAskDrawerOpen(false, "session", { dismissSlot: true });
+	assert.equal(prefs().isAskDrawerOpen, false);
+	assert.equal(
+		prefs().askDrawerEvictedPane,
+		null,
+		"the record is dropped, not given back",
+	);
+	assert.equal(
+		prefs().isCanvasOpen,
+		false,
+		"and the canvas it displaced does not return",
+	);
+	assert.deepEqual(prefs().rightSlotMemory, [], "unbound writes no memory");
 });
 
 /*
@@ -746,6 +823,16 @@ test("(P) the memory algebra: carry moves, remove is pane-scoped, project is the
 		"a close only retracts its own pane",
 	);
 	assert.deepEqual(memoryRemove(base, "x", "run"), [["draft:y", "canvas"]]);
+	assert.deepEqual(
+		memoryDismiss(base, "x"),
+		[["draft:y", "canvas"]],
+		"a dismissal drops the entry whatever pane it names",
+	);
+	assert.equal(
+		memoryDismiss(base, "missing"),
+		base,
+		"nothing to drop is not a change: the same array back, so the store skips the write",
+	);
 	assert.deepEqual(memoryProject(base, "x", false), {
 		isCanvasOpen: false,
 		isRunPanelOpen: true,

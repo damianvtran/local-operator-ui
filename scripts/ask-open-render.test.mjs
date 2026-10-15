@@ -484,6 +484,55 @@ test("the drawer's own close over a queue that emptied is NOT a dismissal", asyn
 	assert.equal(view.flag(), true);
 });
 
+test("the withdraw-kind closes still GIVE THE DISPLACED PANE BACK: Escape and an emptied queue are not the rail's press (#1079)", async (t) => {
+	const view = await rig(t);
+	await act(async () => {
+		useUiPreferencesStore.getState().setCanvasOpen(true);
+	});
+	await view.show("c-a", withRows([ask("open")]));
+	const state = () => useUiPreferencesStore.getState();
+	assert.equal(state().isAskDrawerOpen, true);
+	assert.equal(
+		state().isCanvasOpen,
+		false,
+		"the drawer borrowed the canvas's slot",
+	);
+	assert.equal(state().askDrawerEvictedPane, "isCanvasOpen");
+	/*
+	 * ESCAPE is the drawer's own door, and "dismiss this overlay" is not "empty the
+	 * slot": the borrow is given back rather than retracted, which is the U6
+	 * behaviour #1079 deliberately leaves alone (only the rail item's press and its
+	 * chord pass `dismissSlot`).
+	 */
+	const surface = view.container.querySelector("[data-lo-ask-surfaces]");
+	await act(async () => {
+		surface.dispatchEvent(
+			new window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+		);
+	});
+	assert.equal(state().isAskDrawerOpen, false);
+	assert.equal(state().isCanvasOpen, true, "the canvas comes back");
+	assert.equal(state().askDrawerEvictedPane, null);
+	/*
+	 * The QUEUE EMPTYING under the open drawer (#864) closes through the same
+	 * withdrawal, and gives the same pane back - the second acceptance case.
+	 */
+	await view.show("c-b", withRows([ask("open")]));
+	assert.equal(
+		state().isAskDrawerOpen,
+		true,
+		"a fresh conversation opens again",
+	);
+	assert.equal(state().isCanvasOpen, false, "over the canvas again");
+	await view.show("c-b", liveEmpty());
+	assert.equal(state().isAskDrawerOpen, false, "the drawer closed itself");
+	assert.equal(
+		state().isCanvasOpen,
+		true,
+		"and the pane it displaced is handed back",
+	);
+});
+
 test("a settled-only queue keeps the drawer open (#864), and closing it records nothing", async (t) => {
 	const view = await rig(t);
 	const row = ask("open");
