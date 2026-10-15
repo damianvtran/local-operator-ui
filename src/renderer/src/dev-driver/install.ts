@@ -30,6 +30,7 @@
 
 import { publishStagedProjection } from "@features/browser/model/browser-projection-store";
 import { clampSidebarWidth } from "@features/chat/chat-sidebar-layout";
+import { finderThumbnailStats } from "@features/chat/components/canvas/finder-thumbnails";
 import { canvasDocumentForPath } from "@features/chat/utils/canvas-document";
 import { getFileTypeFromPath } from "@features/chat/utils/file-types";
 import { READ_ENCODING, viewerFor } from "@features/chat/utils/viewer-routing";
@@ -425,6 +426,8 @@ export function installDevDriver(): string[] {
 			userAgent: navigator.userAgent,
 		}),
 
+		/** Read-only resource counters for the Files render-window evidence. */
+		filesFacts: () => finderThumbnailStats(),
 		/** The state the verbs write into, so a scene can report what it changed. */
 		state: () => {
 			const preferences = useUiPreferencesStore.getState();

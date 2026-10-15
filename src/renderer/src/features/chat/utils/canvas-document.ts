@@ -115,7 +115,7 @@ export function canvasDocumentForArtifact(
 			artifact.name ?? fallbackArtifactName(artifact.kind, artifact.digest),
 		path,
 		content: "",
-		type: artifact.kind,
+		type: artifact.kind === "file" ? "other" : artifact.kind,
 		artifact,
 	};
 	if (artifact.sizeBytes !== undefined) document.sizeBytes = artifact.sizeBytes;

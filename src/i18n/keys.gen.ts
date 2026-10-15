@@ -23,6 +23,7 @@
 
 import enUiAgents from "./catalogues/en/ui.agents.json";
 import enUiBrowser from "./catalogues/en/ui.browser.json";
+import enUiCanvas from "./catalogues/en/ui.canvas.json";
 import enUiChat from "./catalogues/en/ui.chat.json";
 import enUiConsole from "./catalogues/en/ui.console.json";
 import enUiHub from "./catalogues/en/ui.hub.json";
@@ -41,6 +42,7 @@ import frUiSettings from "./catalogues/fr/ui.settings.json";
 export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgents,
 	...enUiBrowser,
+	...enUiCanvas,
 	...enUiChat,
 	...enUiConsole,
 	...enUiHub,
@@ -67,6 +69,63 @@ export const bundledCatalogues: Readonly<
 
 /** One entry per bundled message id, shaped by the message's own arguments. */
 export type MessageParams = {
+	"ui.canvas.files.archives": undefined;
+	"ui.canvas.files.asc": undefined;
+	"ui.canvas.files.audio": undefined;
+	"ui.canvas.files.building": undefined;
+	"ui.canvas.files.clear": undefined;
+	"ui.canvas.files.code": undefined;
+	"ui.canvas.files.continue": undefined;
+	"ui.canvas.files.count": { count: number };
+	"ui.canvas.files.created": undefined;
+	"ui.canvas.files.desc": undefined;
+	"ui.canvas.files.documents": undefined;
+	"ui.canvas.files.earlier": undefined;
+	"ui.canvas.files.empty": undefined;
+	"ui.canvas.files.emptyDetail": undefined;
+	"ui.canvas.files.error": undefined;
+	"ui.canvas.files.expand": undefined;
+	"ui.canvas.files.fileActions": undefined;
+	"ui.canvas.files.files": undefined;
+	"ui.canvas.files.filter": undefined;
+	"ui.canvas.files.folder": undefined;
+	"ui.canvas.files.gone": undefined;
+	"ui.canvas.files.group": undefined;
+	"ui.canvas.files.highlights": undefined;
+	"ui.canvas.files.imageActions": undefined;
+	"ui.canvas.files.images": undefined;
+	"ui.canvas.files.inSession": undefined;
+	"ui.canvas.files.kind": undefined;
+	"ui.canvas.files.loading": undefined;
+	"ui.canvas.files.missing": undefined;
+	"ui.canvas.files.modified": undefined;
+	"ui.canvas.files.name": undefined;
+	"ui.canvas.files.narrowCount": { shown: string; total: string };
+	"ui.canvas.files.noMatch": undefined;
+	"ui.canvas.files.order": undefined;
+	"ui.canvas.files.other": undefined;
+	"ui.canvas.files.pathCopyNote": undefined;
+	"ui.canvas.files.play": undefined;
+	"ui.canvas.files.prepareError": undefined;
+	"ui.canvas.files.presentations": undefined;
+	"ui.canvas.files.progress": { loaded: string; total: string };
+	"ui.canvas.files.readingStats": undefined;
+	"ui.canvas.files.recent": undefined;
+	"ui.canvas.files.region": undefined;
+	"ui.canvas.files.remote": undefined;
+	"ui.canvas.files.reset": undefined;
+	"ui.canvas.files.retry": undefined;
+	"ui.canvas.files.saveError": undefined;
+	"ui.canvas.files.search": undefined;
+	"ui.canvas.files.searchPlaceholder": undefined;
+	"ui.canvas.files.sessionOnly": undefined;
+	"ui.canvas.files.size": undefined;
+	"ui.canvas.files.sort": undefined;
+	"ui.canvas.files.spreadsheets": undefined;
+	"ui.canvas.files.tooLarge": undefined;
+	"ui.canvas.files.unreadable": undefined;
+	"ui.canvas.files.videos": undefined;
+	"ui.canvas.files.working": undefined;
 	"ui.chat.usage.blocked": undefined;
 	"ui.chat.usage.continue": undefined;
 	"ui.chat.usage.eligibility_unknown": undefined;
