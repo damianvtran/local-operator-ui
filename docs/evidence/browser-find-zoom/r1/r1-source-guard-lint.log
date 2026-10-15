@@ -1,0 +1,30 @@
+scripts/browser-find-row.test.mjs:40:20 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    38 │ 	const viewport = surface.indexOf('data-tour-tag="browser-content"');
+    39 │ 	assert.ok(toolbar >= 0 && find > toolbar && viewport > find, "both chrome regions precede the native viewport");
+  > 40 │ 	assert.match(row, /className="@container\/bfind flex shrink-0 flex-wrap/);
+       │ 	                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    41 │ 	assert.doesNotMatch(row + bar, /useSuppressBrowserViewWhileReaching/);
+    42 │ });
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/browser-find-row.test.mjs:41:33 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    39 │ 	assert.ok(toolbar >= 0 && find > toolbar && viewport > find, "both chrome regions precede the native viewport");
+    40 │ 	assert.match(row, /className="@container\/bfind flex shrink-0 flex-wrap/);
+  > 41 │ 	assert.doesNotMatch(row + bar, /useSuppressBrowserViewWhileReaching/);
+       │ 	                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    42 │ });
+    43 │ 
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+Checked 1 file in 17ms. Fixed 1 file.
+Found 2 warnings.

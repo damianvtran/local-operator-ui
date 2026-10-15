@@ -109,7 +109,9 @@ proven hidden-window limitation. The earlier inference is withdrawn; original
 partial receipts remain historical, not evidence of a runtime limitation.
 
 The corrected test models those native semantics independently of the option's
-name, and round1 native validation must record real first/next/previous/wrap events. Initial
+name. Round1 validation on code `41cec92350` records real request IDs1..5,
+matches3 and ordinals1→2→3→1→3 with native options true,false,false,false,false.
+Counts and navigation are verified; painted highlights and physical OS keys are not. Initial
 opening owns the return target for the session; repeated toolbar/chord focus
 preserves it. Escape works from every row control. The neutral fallback now says
 “No result reported. Press Enter to search again.” Navigation controls can retry
