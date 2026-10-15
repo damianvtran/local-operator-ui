@@ -37,6 +37,7 @@ import type {
 	ProviderMethod,
 } from "@shared/api/local-operator/desktop-api";
 import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
+import { CopyButton } from "@shared/components/common/copy-button";
 import { Spinner } from "@shared/components/common/spinner";
 import { getModelsForHostingProvider } from "@shared/components/hosting/hosting-model-manifest";
 import {
@@ -75,12 +76,9 @@ import {
 } from "@shared/hooks/use-radient-user-query";
 import { useUpdateConfig } from "@shared/hooks/use-update-config";
 import { useModelsStore } from "@shared/store/models-store";
-import { showErrorToast } from "@shared/utils/toast-manager";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-	Check,
 	CircleCheck,
-	Copy,
 	ExternalLink,
 	Eye,
 	EyeOff,
@@ -93,6 +91,7 @@ import type {
 	DefaultsApplied,
 	SaveKeyResult,
 } from "../../../../shared/desktop-contract";
+import { PhoneAccessBlock } from "./phone-access-block";
 import {
 	brandOf,
 	deviceCodeOf,
@@ -270,39 +269,6 @@ const SecretInput: FC<{
 				{visible ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
 			</Button>
 		</div>
-	);
-};
-
-/** A copy button that says "Copied" for two seconds, then goes back. */
-const CopyButton: FC<{
-	value: string;
-	label: string;
-	variant?: "ghost" | "secondary" | "primary";
-	onCopied?: () => void;
-}> = ({ value, label, variant = "ghost", onCopied }) => {
-	const [copied, setCopied] = useState(false);
-	useEffect(() => {
-		if (!copied) return undefined;
-		const timer = setTimeout(() => setCopied(false), 2000);
-		return () => clearTimeout(timer);
-	}, [copied]);
-	return (
-		<Button
-			variant={variant}
-			size="sm"
-			onClick={async () => {
-				try {
-					await navigator.clipboard.writeText(value);
-					setCopied(true);
-					onCopied?.();
-				} catch {
-					showErrorToast("Could not copy. Select and copy it manually.");
-				}
-			}}
-		>
-			{copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
-			{copied ? "Copied" : label}
-		</Button>
 	);
 };
 
@@ -1408,8 +1374,19 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 				verb="Signed in to"
 				defaults={operation.defaults_applied}
 				onChangeModel={onChangeModel}
-				actionLabel={doneLabel}
-				onAction={finish}
+				// A completed OAuth operation is not a working grant. The refused
+				// Radient row still needs the existing re-auth flow; Done alone
+				// stranded the phone block on "sign in, then check again".
+				actionLabel={
+					provider.id === "radient" && readiness?.group === "Needs sign-in"
+						? "Sign in again"
+						: doneLabel
+				}
+				onAction={
+					provider.id === "radient" && readiness?.group === "Needs sign-in"
+						? start
+						: finish
+				}
 				primaryAction={context === "dialog"}
 				/*
 				 * THE SURFACE'S VERDICT, and this is the branch U19 was about: a settled
@@ -1456,6 +1433,17 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 		<div className="flex flex-col gap-4">
 			{methodTabs}
 			{body}
+			{/*
+			 * PHONE ACCESS, for the one provider whose login owns the phone tunnel.
+			 * Rendered only with a stored Radient credential (the signed-out
+			 * onboarding mount of this panel has none), and only when the backend
+			 * advertises `tunnel_setup` - the block renders nothing and sends no
+			 * request otherwise. This panel already carries the sign-in action, so the
+			 * block is told not to offer a second one.
+			 */}
+			{provider.id === "radient" && provider.has_credential ? (
+				<PhoneAccessBlock offerSignIn={false} />
+			) : null}
 		</div>
 	);
 };

@@ -502,6 +502,10 @@ trackedTest(
 			() => mounted.find("[data-verdict]") !== null,
 			"the surface's verdict on the settled view",
 		);
+		assert.ok(
+			mounted.text().includes("Sign in again"),
+			"a settled refused Radient operation must remain recoverable",
+		);
 		const text = mounted.text();
 		assert.ok(
 			!text.includes("Signed in to Radient"),
