@@ -2,27 +2,64 @@
 
 ## Round 1 remediation status (READ FIRST)
 
-Everything below this section was captured at product source `4bb030c49` and
-describes THAT build. The round-1 remediation commit changes `src/` (renderer
-hook, address bar, tab strip, keymap registry, host/ipc/index, menu labels), so
-**no frame or native row below is evidence for the remediated head**. They are
-kept as the before-remediation record, not re-labelled. Re-capture is HELD, not
-skipped: the operator's disk alert forbids new compiles, so the remediated head
-has source plus targeted jsdom/node tests only (`browser-chord-renderer`,
-`browser-chord`, `browser-host`, `browser-startup`, `keymap-*`,
-`lane-registration`, both `tsc` projects) and **no native proof yet**. Still owed
-on the remediated head: keyboard Cmd+W from a focused tab button then a second
-chord, rapid double Cmd+W, last-tab, a populated-address Cmd+L selection row,
-hover frames (Reload, +, active close, address), an after-last-close frame, and
-the eight state frames. Do not read the tables below as covering those.
+The round-1 remediation changes `src/`, so the frames and rows from the
+original `4bb030c49` capture no longer describe the head. What replaces them:
 
-**Correction (design D-PR1, code R2).** The row `DOM address actual` in
-`execution-summary.json` is an EMPTY field (`start 0 / end 0 / value ""`), which
-cannot tell "selected" from "focused". The "selection 0..26" figure in the matrix
-below did not come from that row. Selection is currently proven by the jsdom
-hook test on a populated input (`selectionStart 0 / selectionEnd 24`) and by the
-independent QA report's native row (`0..26 of 26`); a committed implementer-side
-native row is still owed on the remediated head.
+- **Build:** product source `636479aa2`, `src` tree `263097ccfa12`, one leased
+  plain-JS compile (13.76 s, installed lock unchanged), explicit port-1 API root;
+  hashes in [artifact-identity.json](artifact-identity.json).
+- **Frames (30 PNGs, all re-captured on that build except the 8 `*-before-*`
+  baselines):** the 8 state `*-after-*` frames, 2 forced-focus frames (now offset
+  1px), 2 `lastclose-*` frames (D-PR6), and 10 hover frames covering Reload, New
+  tab, the active tab's close, an INACTIVE tab's close and the address field in
+  both themes (D-PR2). Hashes: [frame-hashes.json](frame-hashes.json); exact
+  pixel diffs against the baselines: [pixel-diff.json](pixel-diff.json).
+- **Native rows:** [r1-execution-summary.json](r1-execution-summary.json), one
+  hidden instance, `visible=false focused=false` throughout, API root `127.0.0.1:1`,
+  renderer HTTP resources empty, owned pid reaped. Labels as before: DOM
+  KeyboardEvents and the real application menu callback; the synthetic `focusin`
+  is the same documented hidden-rig substitute. NONE of this is physical key
+  delivery or OS focus.
+- `execution-summary.json` and `native-menu.json` are the ORIGINAL `4bb030c49`
+  rows, kept as the before-remediation record. Where this section and the tables
+  below disagree, this section wins.
+
+What the remediation run actually measured (all in `r1-execution-summary.json`):
+
+| Finding | Row | Result |
+|---|---|---|
+| U2 keyboard Cmd+W with focus ON a tab button | `U2 close dispatch`, `U2 after close` | tab button focused before; after the close focus is on the browser route root, chord-focus reports during the close `[true]` (no `false`) |
+| U2 second Cmd+W, the app-window case | `U2 second Cmd+W via REAL menu on main` | the real `app-close` menu item on the main window closed the next TAB (2 to 1), the main window stayed |
+| U2 rapid double Cmd+W | `rapid double close result` | two DIFFERENT tabs closed in one burst |
+| a1-7 last tab | `last tab closed by keyboard` | one fresh `about:blank` tab, new id, caret in the EMPTY address field |
+| a1-7 reopen after that | `Cmd+Shift+T after last close` | restores the closed URL |
+| U1 draft | `draft after Cmd+2`, `blur navigated?` | draft typed on tab 1 is gone after Cmd+2, field shows tab 2's URL, blur navigates nothing, fixture request delta 0 |
+| D-PR1 / R2 selection | `DOM address populated selection` | populated address: `start 0 / end 26 / len 26`, focused. This replaces the empty-field row |
+| D-PR3 close scope | `close buttons aria/tooltip scope` | `aria-keyshortcuts="Meta+W"` only on the active tab's close; the inactive one has none |
+| D-PR2 tooltips | `tooltip <name> <theme>` | rects and text per hover; every tooltip closed when the pointer left |
+| D-PR4 ring | `focus CSS <theme>` | `solid`, `2px`, offset `1px` (was `2px`) |
+
+Measured limits, not hidden:
+
+- **D-PR7 stays unexplained.** The ring's computed colour is `rgb(33, 30, 24)`
+  (light) and `rgb(241, 238, 230)` (dark), i.e. the ink tokens, while
+  `index.css` says `var(--color-accent)`. The source I read does not explain it;
+  contrast is unaffected. Recorded in the readback, not fixed here.
+- **The address tooltip moved below the field** after the first re-capture showed
+  the default top placement covering the active tab's title. The final frames are
+  the corrected placement; the intermediate run's frames were replaced.
+- **Frame differences vs the baselines are not 0.** The populated/loading
+  differences are the fixture port text and spinner phase plus the title text
+  (`New tab` + `QA 3` vs the baseline's), measured above; empty light/dark and
+  error light are 0 px, error dark is the same 4 fringe pixels as before.
+- Not covered: physical OS chords, Windows/Linux delivery, the main window's own
+  reload/close with no browser focus (rig-destructive), a second native pass for
+  the R3/R4/R7 main-process fixes (covered by the host and startup unit tests
+  only, see the PR thread).
+
+**Correction (design D-PR1, code R2), kept for the record.** The original
+`DOM address actual` row was an EMPTY field (`0/0/""`) and could not tell
+"selected" from "focused". It is superseded by the populated row above.
 
 ## Identity and limits
 

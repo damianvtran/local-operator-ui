@@ -80,3 +80,24 @@ or OS delivery. DOM KeyboardEvents prove the fallback door, not menu accelerator
 Literal focused-desktop Command+R/W/T/L and navigation remain **OS fidelity
 unverified** without an attended smoke; headless cannot truthfully provide that
 proof. Pixel evidence must distinguish app-chrome capture from embedded-page capture.
+
+## Round 1 remediation notes
+
+- **Focus ownership on a keyboard close.** Closing the active tab with focus on
+  its own button removes the focused node; Chromium then fires `focusout` with a
+  null `relatedTarget`, which used to report "focus left the browser" and let the
+  NEXT Cmd+W reach the application menu and close the window. The surface root
+  (`tabIndex={-1}`) now takes the caret before the close, and a focused node that
+  vanishes while the surface is still mounted re-parks the caret instead of
+  reporting a leave. Queued presses wait for the projection so a rapid second
+  Cmd+W cannot target the tab that is already gone.
+- **The address draft belongs to its tab** (Chrome and Safari behave the same).
+- **Reserved chords.** The fixed browser chords that Settings can capture (T, L,
+  R, Shift+T, Shift+R, 1 to 9) are in `RESERVED_CHORDS`; Ctrl+Tab and the
+  brackets need no row because the chord grammar cannot spell them.
+- **Menu label.** The Cmd+W item reads "Close Tab or Window": one accelerator,
+  two owners decided by focus that lives in a page view a menu label cannot see.
+- **Closed-tab stack** is purged by clear-everything and forget-site, takes its
+  entry before awaiting, and navigates the tab it created.
+- **Chrome focus** also resets on a main-frame cross-document navigation and on
+  renderer process loss.
