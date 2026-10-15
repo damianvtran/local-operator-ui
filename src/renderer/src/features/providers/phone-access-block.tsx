@@ -140,6 +140,42 @@ const Lines: FC<{ heading: string; lines: string[] }> = ({ heading, lines }) =>
 		</div>
 	);
 
+/** Canonical backend mobile.setup wording, selected only from declared outcome
+ * fields. Remedy/receipts stay verbatim; unknown values cannot confirm a charge.
+ */
+const outcomeLines = (result: PhoneSetupResult): string[] => {
+	const billing = {
+		not_activated: "ui.providers.phone.outcome.billing_not_activated",
+		already_active: "ui.providers.phone.outcome.billing_already_active",
+		activated: "ui.providers.phone.outcome.billing_activated_status",
+		unconfirmed: "ui.providers.phone.outcome.billing_unconfirmed",
+	} as const;
+	const reservation = {
+		saved: "ui.providers.phone.outcome.reservation_saved",
+		existing: "ui.providers.phone.outcome.reservation_existing",
+		unconfirmed: "ui.providers.phone.outcome.reservation_unconfirmed",
+	} as const;
+	const stages = {
+		billing: "ui.providers.phone.outcome.stage_billing",
+		reservation: "ui.providers.phone.outcome.stage_reservation",
+		configuration: "ui.providers.phone.outcome.stage_configuration",
+		installation: "ui.providers.phone.outcome.stage_installation",
+		verification: "ui.providers.phone.outcome.stage_verification",
+		prerequisites: "ui.providers.phone.outcome.stage_prerequisites",
+	} as const;
+	const lines: string[] = [];
+	const b = billing[result.billing_outcome as keyof typeof billing];
+	const r = reservation[result.reservation_outcome as keyof typeof reservation];
+	const stage = stages[result.failure_stage as keyof typeof stages];
+	if (b) lines.push(t(b));
+	if (r) lines.push(t(r));
+	if (stage)
+		lines.push(
+			t("ui.providers.phone.outcome.failure_stage", { stage: t(stage) }),
+		);
+	return lines;
+};
+
 const Failure: FC<{
 	failure: Extract<
 		ReturnType<typeof usePhoneSetup>["view"],
@@ -183,6 +219,9 @@ const Verified: FC<{ result: PhoneSetupResult }> = ({ result }) => (
 				/>
 			</div>
 		) : null}
+		<p className="break-words text-body-sm text-ink-muted">
+			{t("ui.providers.phone.use_address")}
+		</p>
 		<Lines
 			heading={t("ui.providers.phone.receipts_heading")}
 			lines={result.receipts.map((receipt) => receipt.text)}
@@ -329,6 +368,10 @@ const Blocked: FC<{
 				</p>
 			) : null}
 			<Lines
+				heading={t("ui.providers.phone.progress_heading")}
+				lines={outcomeLines(result)}
+			/>
+			<Lines
 				heading={t("ui.providers.phone.receipts_heading")}
 				lines={result.receipts.map((receipt) => receipt.text)}
 			/>
@@ -361,6 +404,7 @@ const PhoneAccessBody: FC<{ offerSignIn: boolean }> = ({ offerSignIn }) => {
 			{view.kind === "applying" ? (
 				<div className="flex flex-col gap-3" data-phone-state="applying">
 					<Heading status={view.setup ? "applying" : "checking"} />
+					{view.account ? <AccountLine result={view.account} /> : null}
 					<Lines
 						heading={t("ui.providers.phone.progress_heading")}
 						lines={view.progress}

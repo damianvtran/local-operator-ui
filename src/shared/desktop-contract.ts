@@ -4056,6 +4056,11 @@ export const phoneSetupResultSchema = z
 		in_progress: z.boolean().default(false),
 		progress: z.array(z.string()).default([]),
 		active_credential_id: z.number().int().positive().nullable().default(null),
+		// Backend facts, separate from receipts: an emitted receipt does not prove
+		// an ambiguous activation succeeded or was rolled back.
+		billing_outcome: z.string().optional(),
+		reservation_outcome: z.string().optional(),
+		failure_stage: z.string().optional(),
 	})
 	.passthrough();
 export type PhoneSetupResult = z.infer<typeof phoneSetupResultSchema>;

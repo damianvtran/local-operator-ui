@@ -1374,8 +1374,19 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 				verb="Signed in to"
 				defaults={operation.defaults_applied}
 				onChangeModel={onChangeModel}
-				actionLabel={doneLabel}
-				onAction={finish}
+				// A completed OAuth operation is not a working grant. The refused
+				// Radient row still needs the existing re-auth flow; Done alone
+				// stranded the phone block on "sign in, then check again".
+				actionLabel={
+					provider.id === "radient" && readiness?.group === "Needs sign-in"
+						? "Sign in again"
+						: doneLabel
+				}
+				onAction={
+					provider.id === "radient" && readiness?.group === "Needs sign-in"
+						? start
+						: finish
+				}
 				primaryAction={context === "dialog"}
 				/*
 				 * THE SURFACE'S VERDICT, and this is the branch U19 was about: a settled

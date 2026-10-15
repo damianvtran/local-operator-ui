@@ -84,6 +84,7 @@ const bundle = await build({
 			import { createElement } from "react";
 			export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 			export { PhoneAccessBlock } from "./src/renderer/src/features/providers/phone-access-block";
+ export { defaultQueryOptions } from "./src/renderer/src/shared/api/query-client";
 			export { desktopEndpoint, desktopRequestSchema, desktopRequestDeadlineMs, PHONE_SETUP_REFUSAL_CODES } from "./src/shared/desktop-contract";
 			export { classifyPhoneSetupError, derivePhoneSetupView } from "./src/renderer/src/shared/hooks/use-phone-setup";
 			export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";
@@ -129,6 +130,7 @@ const {
 	QueryClient,
 	QueryClientProvider,
 	PhoneAccessBlock,
+	defaultQueryOptions,
 	desktopEndpoint,
 	desktopRequestSchema,
 	desktopRequestDeadlineMs,
@@ -231,7 +233,10 @@ async function mount(features, scripts, sharedClient) {
 		sharedClient ??
 		new QueryClient({
 			// No query `gcTime` override: the hook's own cache policy is the subject.
-			defaultOptions: { queries: { retry: false }, mutations: { gcTime: 0 } },
+			defaultOptions: {
+				...defaultQueryOptions,
+				mutations: { ...defaultQueryOptions.mutations, gcTime: 0 },
+			},
 		});
 	const container = document.createElement("div");
 	document.body.append(container);
@@ -331,6 +336,13 @@ test("verified:true shows the exact URL with success styling and zero POST runs"
 		setupOps().filter((r) => r.op === "tunnel.setup.run").length,
 		0,
 		"a healthy first open must send no run",
+	);
+	assert.ok(
+		view
+			.text()
+			.includes(
+				"Open the URL above and sign in with the same Radient account.",
+			),
 	);
 	await view.unmount();
 });
@@ -726,6 +738,10 @@ test("M1: a run THIS window started shows the backend's progress while the run P
 	);
 	const before = reads;
 	await press(view.button("Set up phone access"));
+	assert.ok(
+		view.text().includes("a***@example.test"),
+		"own run keeps its masked account before the first poll",
+	);
 	try {
 		await waitPoll();
 		assert.ok(
@@ -817,7 +833,10 @@ test("m2: re-opening the pane plans again, so a price from an earlier open is ne
 	// ONE client for both opens, created here so the first mount's teardown does not
 	// clear it: the cache surviving an unmount is exactly what is under test.
 	const windowClient = new QueryClient({
-		defaultOptions: { queries: { retry: false }, mutations: { gcTime: 0 } },
+		defaultOptions: {
+			...defaultQueryOptions,
+			mutations: { ...defaultQueryOptions.mutations, gcTime: 0 },
+		},
 	});
 	const first = await mount(
 		{ tunnel_setup: 1 },
@@ -917,6 +936,111 @@ test("n2: another owner's mere plan (one fixed line, no run steps) is not labell
 	);
 	assert.ok(!view.text().includes("Setting up"), "does not overclaim a setup");
 	assert.ok(view.text().includes("Checking"));
+});
+
+// U2/Q1: import the REAL app policy, including mutations.retry=1. Only GC time is
+// shortened by mount() for teardown; never replace retry with a hand-written default.
+for (const scenario of ["409", "deadline", "transport"]) {
+	test(`production policy: ONE gesture ONE run after ${scenario}, both while writer active and after it finishes`, async () => {
+		assert.equal(
+			defaultQueryOptions.mutations.retry,
+			1,
+			"negative control requires the real app retry1 policy",
+		);
+		let phase = "idle";
+		let plans = 0;
+		const view = await mount(
+			{ tunnel_setup: 1 },
+			{
+				"tunnel.setup.read": () =>
+					ok(
+						phase === "active"
+							? running(["Checking.", "Applying - worker active."])
+							: answer({ source: "local", ready: false }),
+					),
+				"tunnel.setup.plan": () => ok(++plans === 1 ? answer() : verified()),
+				"tunnel.setup.run": () => {
+					phase = "active";
+					if (scenario === "transport") throw new Error("lost IPC response");
+					return {
+						status: scenario === "409" ? 409 : 504,
+						body: {
+							detail: {
+								code:
+									scenario === "409"
+										? "setup_in_progress"
+										: "deadline_exceeded",
+								message: "fixture loss",
+							},
+						},
+					};
+				},
+			},
+		);
+		await press(view.button("Set up phone access"));
+		await act(async () => {
+			await new Promise((r) => setTimeout(r, 1700));
+		});
+		await settle();
+		assert.equal(
+			setupOps().filter((r) => r.op === "tunnel.setup.run").length,
+			1,
+			"no automatic replay while writer active",
+		);
+		phase = "finished";
+		await waitPoll();
+		await settle();
+		assert.equal(
+			setupOps().filter((r) => r.op === "tunnel.setup.run").length,
+			1,
+			"no automatic replay after writer finishes",
+		);
+	});
+}
+
+test("declared partial outcomes retain canonical backend copy independently of receipts", async () => {
+	const view = await mount(
+		{ tunnel_setup: 1 },
+		{
+			"tunnel.setup.read": ok(answer({ source: "local", ready: false })),
+			"tunnel.setup.plan": ok(
+				answer({
+					step: "failed",
+					blocked_on: "failed",
+					ready: false,
+					billing_outcome: "unconfirmed",
+					reservation_outcome: "saved",
+					failure_stage: "installation",
+					remedy: {
+						kind: "check_status",
+						text: "BACKEND REMEDY VERBATIM",
+						command: null,
+						url: null,
+					},
+					receipts: [{ step: "billing", ok: true, text: "RECEIPT VERBATIM" }],
+				}),
+			),
+		},
+	);
+	assert.ok(
+		view
+			.text()
+			.includes(
+				"Billing: activation was requested but its outcome is unconfirmed.",
+			),
+	);
+	assert.ok(
+		view
+			.text()
+			.includes(
+				"Phone address: reservation saved on this computer; retry reuses it.",
+			),
+	);
+	assert.ok(
+		view.text().includes("Did not finish: background connector installation."),
+	);
+	assert.ok(view.text().includes("BACKEND REMEDY VERBATIM"));
+	assert.ok(view.text().includes("RECEIPT VERBATIM"));
 });
 
 test("a settled block is quiet: no further requests, from any state, once answers are in", async () => {
