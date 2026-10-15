@@ -52,6 +52,7 @@ import {
 	isDraftMemoryKey,
 	isMemoryPane,
 	memoryCarry,
+	memoryDismiss,
 	memoryPaneFlag,
 	memoryProject,
 	memoryPut,
@@ -66,6 +67,26 @@ import {
  * rows the other menu cannot offer.
  */
 export type ProfileRecencyKind = "agent" | "team";
+
+/**
+ * WHICH KIND OF CLOSE a `setAskDrawerOpen(false, ...)` is (#1079).
+ *
+ * There are two, and they differ in what the slot is owed afterwards. A close the
+ * DRAWER performs on itself - the queue emptied under it, Escape inside it, the
+ * carried fleet drawer being retired - is the drawer WITHDRAWING, so the pane it
+ * displaced is GIVEN BACK (UX round 1, U6). A close the USER pressed - the rail's
+ * lit asks item, or the `panel.ask` chord - means "empty this slot": the press is
+ * the same door in both directions (see `panel-rail.tsx`), so the displaced pane
+ * must not return and the conversation must remember no pane.
+ */
+export type AskDrawerCloseOptions = {
+	/**
+	 * The close is the user asking for the slot to be EMPTY, rather than the drawer
+	 * withdrawing: bound, the conversation's memory entry is CLEARED instead of
+	 * projected; unbound, the per-run borrow record is dropped instead of restored.
+	 */
+	dismissSlot?: boolean;
+};
 
 /**
  * Type definition for the UI preferences store state
@@ -479,6 +500,17 @@ type UiPreferencesState = {
 	 * In both modes an explicit choice made while the drawer is up (any of the four
 	 * claiming the slot) forfeits the borrow: the user replaced the pane on purpose,
 	 * and returning it later would be the surface resurrecting itself.
+	 *
+	 * AND SINCE #1079 THERE ARE TWO KINDS OF CLOSE, because "the drawer withdrew" and
+	 * "the user asked for an empty slot" are not the same request. The give-back
+	 * above is the WITHDRAWAL - the queue emptied, Escape inside the drawer, a
+	 * carried fleet drawer being retired - and those still hand the displaced pane
+	 * back. The rail's lit asks item (and its `panel.ask` chord, one path through
+	 * `togglePanelRailItem`) is the user pressing the SAME DOOR IN BOTH DIRECTIONS as
+	 * every sibling item does, so its close leaves the slot EMPTY: bound, the
+	 * conversation's memory entry goes (`memoryDismiss`) rather than being projected,
+	 * so switching away and back shows no panel; unbound, the per-run borrow record is
+	 * dropped rather than restored. The sign of it is `AskDrawerCloseOptions`.
 	 */
 	isAskDrawerOpen: boolean;
 
@@ -524,8 +556,9 @@ type UiPreferencesState = {
 	 * Opening it closes the other four occupants, by the same construction as
 	 * theirs: one slot, one pane, and the exclusion lives in `claimRightSlot` so no
 	 * call site has to remember it. Whatever pane it displaced is REMEMBERED rather
-	 * than merely cleared, so closing the drawer puts it back (see
-	 * `askDrawerEvictedPane`).
+	 * than merely cleared, so a close the drawer performs on itself puts it back
+	 * (see `askDrawerEvictedPane`) - while a close the USER pressed, through
+	 * `options.dismissSlot`, is "empty this slot" and deliberately does not (#1079).
 	 *
 	 * IT ALSO CLEARS ANY OPEN REQUEST IN FLIGHT (`askOpenIntent`, round-2 N1): a
 	 * request names an open that is about to happen, so any newer statement about
@@ -540,8 +573,15 @@ type UiPreferencesState = {
 	 *
 	 * @param open - Whether the asks drawer should be open
 	 * @param scope - Which queue the drawer shows
+	 * @param options - `dismissSlot` for a close the user asked for as "empty the
+	 * slot" rather than the drawer withdrawing; ignored on an open. See
+	 * `AskDrawerCloseOptions`.
 	 */
-	setAskDrawerOpen: (open: boolean, scope: AskScope) => void;
+	setAskDrawerOpen: (
+		open: boolean,
+		scope: AskScope,
+		options?: AskDrawerCloseOptions,
+	) => void;
 
 	/**
 	 * THE QUEUE the user has just asked to open from the header's `…` menu, and
@@ -1368,6 +1408,29 @@ const releasedMemory = (
 	return memory === state.rightSlotMemory ? {} : { rightSlotMemory: memory };
 };
 
+/**
+ * THE MEMORY SIDE OF A DISMISS: the bound conversation's entry goes, whatever it
+ * holds (#1079).
+ *
+ * `releasedMemory`'s guard is the pane the closing control belongs to, which is
+ * what an automatic close needs; here the guard would be wrong. The asks drawer
+ * does not know which pane it displaced - bound, the memory is the record, and the
+ * record can even name a pane the drawer never covered (the fleet drawer travels
+ * between conversations, so it can be closed over a conversation whose entry the
+ * user has never seen the pane for) - and it does not need to know: the press said
+ * "empty this slot", so the conversation is meant to come back with NO pane. That
+ * is why the pure helper is `memoryDismiss` rather than `memoryRemove` with a pane
+ * guessed at the call site.
+ */
+const dismissedMemory = (
+	state: Pick<UiPreferencesState, "rightSlotKey" | "rightSlotMemory">,
+): Partial<Pick<UiPreferencesState, "rightSlotMemory">> => {
+	const key = state.rightSlotKey;
+	if (typeof key !== "string") return {};
+	const memory = memoryDismiss(state.rightSlotMemory, key);
+	return memory === state.rightSlotMemory ? {} : { rightSlotMemory: memory };
+};
+
 export type RightSlotPane =
 	| "canvas"
 	| "run"
@@ -2099,7 +2162,11 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				}));
 			},
 
-			setAskDrawerOpen: (open: boolean, scope: AskScope) => {
+			setAskDrawerOpen: (
+				open: boolean,
+				scope: AskScope,
+				options?: AskDrawerCloseOptions,
+			) => {
 				set((state) => {
 					const bound = typeof state.rightSlotKey === "string";
 					if (open) {
@@ -2139,6 +2206,17 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 					} as const;
 					if (bound) {
 						/*
+						 * A PRESSED CLOSE EMPTIES THE SLOT (#1079) instead of projecting the
+						 * conversation's memory: the press means "close the panel", which is what it
+						 * means on every sibling item, so the entry is RETRACTED - a closed pane is
+						 * the ABSENCE of an entry (`right-slot-memory.ts`) - and the flags stay as
+						 * the open left them, all false. A close the user did NOT press keeps the
+						 * give-back below (UX round 1, U6).
+						 */
+						if (options?.dismissSlot) {
+							return { ...closed, ...dismissedMemory(state) };
+						}
+						/*
 						 * BOUND: the close restores the BOUND conversation's own memory, which is
 						 * the fix for a fleet drawer opened over A's canvas and closed over B —
 						 * the per-run record could only ever name A's pane.
@@ -2156,7 +2234,15 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 						/*
 						 * BOUND, NO CONVERSATION: nothing was displaced (the open wrote no
 						 * record) and there is no memory to restore, so the close only clears the
-						 * flag.
+						 * flag. A press lands here too: there is no entry to retract either.
+						 */
+						return closed;
+					}
+					if (options?.dismissSlot) {
+						/*
+						 * UNBOUND AND PRESSED (#1079): the per-run borrow record is dropped rather
+						 * than given back - `closed` already nulls it - and the global flags stay
+						 * as the open left them, all false, so the slot is empty.
 						 */
 						return closed;
 					}
