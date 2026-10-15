@@ -813,8 +813,8 @@ export const FullTextAtFloor: Story = {
  * and the status, stamp and attribution stay the FIRST answer's) — plus this
  * surface's own receipt, because the wire has no marker for an accepted change.
  *
- * The form itself is not a story: it is one press away (`Change answer`), and the
- * PR's frames show it clicked rather than a fixture that skips the press.
+ * The change form is reached by its own press rather than by a fixture that skips
+ * it: `SecretStoredKeyChange` (below) clicks `Change answer` in its `play` step.
  */
 function changeableAsk(): PendingAsk {
 	return ask({

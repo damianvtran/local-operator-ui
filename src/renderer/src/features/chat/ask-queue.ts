@@ -1572,10 +1572,11 @@ export const ASK_SECRET_SKIP_PLACEHOLDER =
 	"Leave empty to skip; what you type is never shown";
 /**
  * The change form's field over a stored key. It is the only explanation for a disabled
- * `Update answer` there, so it states the requirement rather than an option (D4).
+ * `Update answer` there, so it states the requirement rather than an option (D4), and
+ * it is short enough to fit the 400px drawer floor's 332px text box (D6).
  */
 export const ASK_SECRET_RETYPE_PLACEHOLDER =
-	"Required: type it again; what you type is never shown";
+	"Required: type it again; it is never shown";
 /** Main's copy, kept where an empty field could not be sent as a skip. */
 export const ASK_SECRET_PLAIN_PLACEHOLDER = "Your answer (never shown again)";
 

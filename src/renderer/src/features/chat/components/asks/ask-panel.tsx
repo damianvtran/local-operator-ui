@@ -80,7 +80,7 @@ import {
 	draftFor,
 } from "../../ask-queue";
 import { AskRecommendedBadge, recommendedIndex } from "../ask-recommended";
-import { AskAnswerField } from "./ask-answer-field";
+import { AskAnswerField, commitOnEnter } from "./ask-answer-field";
 
 /**
  * WHICH HALF OF THE LIST THE READER IS LOOKING AT (operator ask, 2026-10-05).
@@ -440,6 +440,12 @@ const AskQuestionField = ({
 					disabled={disabled}
 					value={secret}
 					onChange={(event) => onSecret(event.target.value)}
+					/*
+					 * Enter commits here as in every other answer field, through the row's
+					 * same gate: send when the ask is complete, else move to the next
+					 * unanswered question (QA round 2, Q-2; pre-existing).
+					 */
+					onKeyDown={commitOnEnter(() => onAdvance(question.id))}
 					placeholder={secretPlaceholder}
 					/*
 					 * A real name, because the placeholder is not one: it vanishes at the
