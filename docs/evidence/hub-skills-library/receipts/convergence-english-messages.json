@@ -1,0 +1,67 @@
+{
+  "existingEnglishNamespaceFiles": 14,
+  "changedFiles": [
+    "src/i18n/catalogues/en/ui.console.json"
+  ],
+  "changedExistingMessages": [],
+  "newCanvasKeys": 57,
+  "newCanvasCollisionsWithExistingMessages": [],
+  "namespacePins": {
+    "src/i18n/catalogues/en/ui.agents.json": {
+      "captureSha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "mergedSha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+    },
+    "src/i18n/catalogues/en/ui.browser.json": {
+      "captureSha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "mergedSha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+    },
+    "src/i18n/catalogues/en/ui.chat.json": {
+      "captureSha256": "0a74dcfa25886af753edb6cc158e3c99ec0b9861d618103c65c6b108b0098929",
+      "mergedSha256": "0a74dcfa25886af753edb6cc158e3c99ec0b9861d618103c65c6b108b0098929"
+    },
+    "src/i18n/catalogues/en/ui.console.json": {
+      "captureSha256": "5866f4328ab5031be5b35cd04d805f1d1ca163d2f6b1770cb497de37eae0fd09",
+      "mergedSha256": "4fe88a76de4992e0b890a15c6faafe594ac345e7f62a7deb849b486ec3c14c7e"
+    },
+    "src/i18n/catalogues/en/ui.hub.context.json": {
+      "captureSha256": "f46d4177047735332d0fcc9ea87d954c6b4368d6a57c7f7eb50a5048819ca554",
+      "mergedSha256": "f46d4177047735332d0fcc9ea87d954c6b4368d6a57c7f7eb50a5048819ca554"
+    },
+    "src/i18n/catalogues/en/ui.hub.json": {
+      "captureSha256": "3768a9d7ec95bc33a51e77ff651511080761082369f22bea74ca3dca6f18396a",
+      "mergedSha256": "3768a9d7ec95bc33a51e77ff651511080761082369f22bea74ca3dca6f18396a"
+    },
+    "src/i18n/catalogues/en/ui.mesh.json": {
+      "captureSha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "mergedSha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+    },
+    "src/i18n/catalogues/en/ui.onboarding.json": {
+      "captureSha256": "b086c241aa70e44cdaab8f02d20e5aaac33d4732df09204481afc4128c08a6ae",
+      "mergedSha256": "b086c241aa70e44cdaab8f02d20e5aaac33d4732df09204481afc4128c08a6ae"
+    },
+    "src/i18n/catalogues/en/ui.projects.json": {
+      "captureSha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "mergedSha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+    },
+    "src/i18n/catalogues/en/ui.providers.json": {
+      "captureSha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "mergedSha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+    },
+    "src/i18n/catalogues/en/ui.schedules.json": {
+      "captureSha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "mergedSha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+    },
+    "src/i18n/catalogues/en/ui.settings.context.json": {
+      "captureSha256": "b1f31ea57c6c5aeb9281923e4c4f3c414b3e4aca6ae5adc00370ab686160a655",
+      "mergedSha256": "b1f31ea57c6c5aeb9281923e4c4f3c414b3e4aca6ae5adc00370ab686160a655"
+    },
+    "src/i18n/catalogues/en/ui.settings.json": {
+      "captureSha256": "3395192289d49f4d4a4e64a072fbb394ca37e760f3d13fb2f2a295167ae4f571",
+      "mergedSha256": "3395192289d49f4d4a4e64a072fbb394ca37e760f3d13fb2f2a295167ae4f571"
+    },
+    "src/i18n/catalogues/en/ui.shell.json": {
+      "captureSha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "mergedSha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+    }
+  }
+}
