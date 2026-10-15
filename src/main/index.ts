@@ -591,7 +591,7 @@ function createApplicationMenu(): void {
 				},
 				{
 					id: "app-force-reload",
-					label: "Force reload",
+					label: "Force Reload",
 					accelerator: "CmdOrCtrl+Shift+R",
 					click: (_item, target) =>
 						runBrowserMenuAction(
@@ -644,7 +644,11 @@ function createApplicationMenu(): void {
 							 */
 							{
 								id: "app-close",
-								label: "Close window",
+								// One honest label for both owners: the SAME accelerator closes a
+								// browser TAB while the browser has focus and the WINDOW elsewhere,
+								// and a menu label cannot follow focus that lives in a page view
+								// (UX r1 U4). The roles it replaced were "Close Window"/"Close".
+								label: "Close Tab or Window",
 								accelerator: "CmdOrCtrl+W",
 								click: (_item, target) =>
 									runBrowserMenuAction(
@@ -660,7 +664,11 @@ function createApplicationMenu(): void {
 					: ([
 							{
 								id: "app-close",
-								label: "Close window",
+								// One honest label for both owners: the SAME accelerator closes a
+								// browser TAB while the browser has focus and the WINDOW elsewhere,
+								// and a menu label cannot follow focus that lives in a page view
+								// (UX r1 U4). The roles it replaced were "Close Window"/"Close".
+								label: "Close Tab or Window",
 								accelerator: "CmdOrCtrl+W",
 								click: (_item, target) =>
 									runBrowserMenuAction(

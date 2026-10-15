@@ -321,6 +321,35 @@ export function chordGlyph(chord: string, platform: MiniViewPlatform): string {
 }
 
 /**
+ * One chord id, both captions a control needs: the glyph a sighted user reads in
+ * the tooltip and the `aria-keyshortcuts` value a screen reader announces.
+ *
+ * WHY ONE FUNCTION (design review D-PR5). The browser chrome used to spell the
+ * glyph from `chordGlyph` and the ARIA value as a hand-typed `isMac ? "Meta+W" :
+ * "Control+W"` beside it, in four places; the two could drift and nothing would
+ * notice. Deriving both from the canonical chord string makes a rebind or a typo
+ * change both or neither. The ARIA grammar is the WAI-ARIA one (`Meta+Shift+T`),
+ * which is NOT the glyph grammar, so it is derived here rather than reused.
+ */
+export function chordCaption(
+	chord: string,
+	platform: MiniViewPlatform,
+): { glyph: string; aria: string } {
+	const tokens = chord.split("+");
+	const key = tokens[tokens.length - 1];
+	const modifiers = tokens.slice(0, -1).map((token) => {
+		if (token === "primary") return platform === "mac" ? "Meta" : "Control";
+		if (token === "shift") return "Shift";
+		if (token === "alt") return "Alt";
+		return token;
+	});
+	return {
+		glyph: chordGlyph(chord, platform),
+		aria: [...modifiers, key.length === 1 ? key.toUpperCase() : key].join("+"),
+	};
+}
+
+/**
  * The chord as the `KeyboardShortcut` component's `shortcut` prop: its caps
  * joined with "+", the `paletteDoorCaps` pattern (a mac sentence spelling
  * cannot be split back into caps without guessing).

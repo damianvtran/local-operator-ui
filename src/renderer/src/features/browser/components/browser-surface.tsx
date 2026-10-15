@@ -564,6 +564,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			/>
 			<BrowserUrlBar
 				inputRef={addressRef}
+				tabId={state?.activeTabId ?? null}
 				url={state?.url ?? ""}
 				pendingUrl={chrome.pendingUrl}
 				loading={Boolean(state?.loading)}

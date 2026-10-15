@@ -210,6 +210,27 @@ test("captureRefusal: the four sentences, in precedence order", () => {
 	assert.ok(reserved, "primary+k must be a reserved chord");
 	assert.equal(captureRefusal("cmd+k", "panel.console", {}), reserved);
 	assert.equal(captureRefusal("META+K", "panel.console", {}), reserved);
+	// Brief a1-8: a chord the browser surface swallows is refused at capture, so
+	// Settings never accepts a binding that would be silently dead in the browser.
+	for (const chord of [
+		"primary+t",
+		"primary+shift+t",
+		"primary+l",
+		"primary+r",
+		"primary+shift+r",
+		"primary+1",
+		"primary+5",
+		"primary+9",
+		"cmd+t",
+	]) {
+		const refusal = captureRefusal(chord, "panel.console", {});
+		assert.match(refusal ?? "", /^Reserved: .*browser.*\.$/, chord);
+	}
+	assert.match(
+		RESERVED_CHORDS.get("primary+w") ?? "",
+		/browser tab/,
+		"primary+w no longer claims it only closes the window",
+	);
 	// A chord another action answers is refused BY NAME, against the other
 	// action's EFFECTIVE chord — a default counts as taken.
 	assert.equal(

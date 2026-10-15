@@ -198,6 +198,34 @@ test("menu fallback respects actual popup/mini target even with stale main chrom
 	assert.equal(calls.length, count);
 });
 
+test("tab digits fall back to the physical key on layouts whose digit row types symbols (review R11)", () => {
+	// AZERTY: key is "&" with code Digit1; no shift is held, so ordinals work.
+	assert.equal(
+		browserChordIntent(input("&", { code: "Digit1" }), "darwin"),
+		"tab-1",
+	);
+	assert.equal(
+		browserChordIntent(input("\u00e0", { code: "Digit9" }), "darwin"),
+		"tab-9",
+	);
+	// The fallback is digits only, and never beats a held Alt or the wrong modifier.
+	assert.equal(
+		browserChordIntent(input("&", { code: "KeyA" }), "darwin"),
+		null,
+	);
+	assert.equal(
+		browserChordIntent(input("&", { code: "Digit1", alt: true }), "darwin"),
+		null,
+	);
+	assert.equal(
+		browserChordIntent(
+			input("&", { code: "Digit1", meta: false, control: true }),
+			"darwin",
+		),
+		null,
+	);
+});
+
 test("ordinal/cycle use the grouped scoped strip order, never registry order", () => {
 	const tabs = [
 		{ tabId: 1, sessionId: "a" },

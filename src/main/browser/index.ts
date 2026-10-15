@@ -873,6 +873,20 @@ async function initializeBrowserHost(
 		options.window.webContents.on("before-input-event", onChromeInput);
 		options.window.on("blur", resetChordFocus);
 		options.window.on("closed", resetChordFocus);
+		// A renderer that reloads (HMR, Cmd+R on a non-browser route) or crashes runs
+		// no unmount cleanup, so its `focusout`/`report(false)` never arrives and the
+		// flag would stay true while the window keeps focus: chat would then have
+		// Cmd+R/W/T/L claimed and sent to a renderer with no listener (review R7).
+		// Only a MAIN-FRAME, cross-document navigation counts; an in-page route
+		// change keeps the same renderer and its own focus reports.
+		const resetOnNavigation = (details: {
+			isMainFrame: boolean;
+			isSameDocument: boolean;
+		}): void => {
+			if (details.isMainFrame && !details.isSameDocument) resetChordFocus();
+		};
+		options.window.webContents.on("did-start-navigation", resetOnNavigation);
+		options.window.webContents.on("render-process-gone", resetChordFocus);
 		const detachChords = (): void => {
 			host.clearChordState();
 			options.window.webContents.removeListener(
@@ -881,6 +895,14 @@ async function initializeBrowserHost(
 			);
 			options.window.removeListener("blur", resetChordFocus);
 			options.window.removeListener("closed", resetChordFocus);
+			options.window.webContents.removeListener(
+				"did-start-navigation",
+				resetOnNavigation,
+			);
+			options.window.webContents.removeListener(
+				"render-process-gone",
+				resetChordFocus,
+			);
 		};
 		// An initialization failure after wiring must not leave an old input
 		// router beside the next attempt's router or keep menu suppression alive.

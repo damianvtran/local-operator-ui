@@ -77,8 +77,17 @@ function add(chord, owner) {
 	const key = canonical(chord);
 	owners.set(key, [...(owners.get(key) ?? []), owner]);
 }
-for (const [chord, reason] of RESERVED_CHORDS)
+// A reserved row whose sentence names the browser DOCUMENTS the browser chord
+// (brief a1-8) rather than being a second owner; it is checked below instead of
+// being counted as a collision with the chord it describes.
+const documentedByReserved = new Set();
+for (const [chord, reason] of RESERVED_CHORDS) {
+	if (/browser/.test(reason) && !/chats|window/.test(reason)) {
+		documentedByReserved.add(chord);
+		continue;
+	}
 	add(chord, `reserved: ${reason}`);
+}
 for (const action of KEYMAP_ACTIONS)
 	if (action.defaultChord) add(action.defaultChord, `default: ${action.id}`);
 for (const item of menus) {
@@ -126,6 +135,22 @@ for (const shift of [false, true]) {
 	);
 	assert(intent);
 	add(`control+${shift ? "shift+" : ""}tab`, `browser: ${intent}`);
+}
+// Every fixed browser chord that Settings could otherwise capture must be
+// reserved; the digits and letters are checked against the real registry.
+for (const [chord, entries] of owners) {
+	// Only a chord Settings can CAPTURE needs a row: punctuation (`[`, `]`) and
+	// `tab` are unrepresentable in the chord grammar, so a user can never bind them
+	// and a reserved row would document nothing.
+	const capturable = /^(primary\+)(shift\+)?[a-z0-9]$/.test(chord);
+	const browserOnly =
+		capturable &&
+		entries.every((entry) => entry.startsWith("browser:")) &&
+		!chord.startsWith("control+");
+	assert(
+		!browserOnly || documentedByReserved.has(chord),
+		`Browser chord ${chord} has no RESERVED_CHORDS row; Settings would accept a dead binding.`,
+	);
 }
 let unexpected = 0;
 for (const [chord, entries] of owners) {

@@ -13,6 +13,8 @@ import { browserBridge } from "../model/browser-projection-store";
 import { chordTarget } from "../model/tab-index-model";
 import type { BrowserChrome, BrowserTabView } from "./use-browser-chrome";
 
+const MAC_PLATFORM = /Mac|iPhone|iPad/;
+
 /** Main owns physical key/menu arbitration; this surface owns scope and DOM
  * focus. The DOM door also answers scripted KeyboardEvents (which never pass
  * Electron's hook). It claims the event before app navigation bubbles to window.
@@ -26,17 +28,50 @@ export function useBrowserChords(
 	const [root, setRoot] = useState<HTMLDivElement | null>(null);
 	const latest = useRef({ chrome, tabs, sessionId });
 	latest.current = { chrome, tabs, sessionId };
-	// The strip button and keyboard command share the SAME outcome, including
-	// last-visible-tab replacement and refusal. A second keyboard-only close
-	// path would make the empty-state contract depend on how the tab was closed.
-	const closeTab = useCallback(async (tabId: number): Promise<boolean> => {
-		const current = latest.current;
-		if (!current.tabs.some((tab) => tab.tabId === tabId)) return false;
-		const closed = await current.chrome.closeTab(tabId);
-		if (closed && current.tabs.length === 1)
-			await current.chrome.newTab(current.sessionId);
-		return closed;
-	}, []);
+	const rootRef = useRef<HTMLDivElement | null>(null);
+	rootRef.current = root;
+	/**
+	 * Close one tab; the strip button and the keyboard command share it, so the
+	 * last-visible-tab replacement and a refusal cannot depend on HOW a tab was
+	 * closed. Reports whether a replacement blank tab was opened so the keyboard
+	 * path can put the caret in its address bar (UX r1 U2, last-tab case).
+	 *
+	 * WHY FOCUS IS MOVED BEFORE THE CLOSE (UX r1 U2). A keyboard close with focus on
+	 * the closing tab's own button removes the focused element. Chromium then fires
+	 * `focusout` with a null `relatedTarget`, the surface reports "focus left the
+	 * browser", main stops claiming the chords, and the NEXT Cmd+W falls through to
+	 * the application menu and closes the whole app window. Handing the caret to the
+	 * surface root (a `tabIndex={-1}` holder that outlives every tab) BEFORE the node
+	 * goes means the focus move stays inside the surface, so no leave is ever
+	 * reported. Only a focus that is inside the closing tab's own row moves: a caret
+	 * in the address bar or on another control is not ours to take.
+	 */
+	const closeAndReplace = useCallback(
+		async (tabId: number): Promise<{ closed: boolean; replaced: boolean }> => {
+			const current = latest.current;
+			if (!current.tabs.some((tab) => tab.tabId === tabId))
+				return { closed: false, replaced: false };
+			const surface = rootRef.current;
+			const focused = document.activeElement;
+			if (
+				surface &&
+				focused instanceof Element &&
+				surface.contains(focused) &&
+				focused.closest(`[data-tab-id="${tabId}"]`)
+			)
+				surface.focus({ preventScroll: true });
+			const closed = await current.chrome.closeTab(tabId);
+			const replaced = closed && current.tabs.length === 1;
+			if (replaced) await current.chrome.newTab(current.sessionId);
+			return { closed, replaced };
+		},
+		[],
+	);
+	const closeTab = useCallback(
+		async (tabId: number): Promise<boolean> =>
+			(await closeAndReplace(tabId)).closed,
+		[closeAndReplace],
+	);
 	useEffect(() => {
 		if (!root) return;
 		const api = browserBridge();
@@ -52,6 +87,12 @@ export function useBrowserChords(
 		const focusAddress = () => {
 			address.current?.focus();
 			address.current?.select();
+		};
+		const projectionDropped = async (tabId: number): Promise<void> => {
+			for (let waited = 0; waited < 1000; waited += 5) {
+				if (!latest.current.tabs.some((tab) => tab.tabId === tabId)) return;
+				await new Promise((resolve) => setTimeout(resolve, 5));
+			}
 		};
 		const execute = async ({ intent, origin }: BrowserChordMessage) => {
 			if (!alive) return;
@@ -90,7 +131,13 @@ export function useBrowserChords(
 			if (intent === "close-tab") {
 				const id = c.state?.activeTabId;
 				if (id != null && current.tabs.some((tab) => tab.tabId === id)) {
-					await closeTab(id);
+					const { closed, replaced } = await closeAndReplace(id);
+					// Queued presses must not read the pre-close projection: a second
+					// Cmd+W would otherwise target the tab that is already gone. This
+					// waits for the projection (a bound, not a debounce: it ends the
+					// moment the tab leaves the list), so rapid presses stay ordered.
+					if (closed) await projectionDropped(id);
+					if (replaced) focusAddress();
 				}
 			} else {
 				const target = chordTarget(current.tabs, cursor, intent);
@@ -107,13 +154,16 @@ export function useBrowserChords(
 		};
 		const key = (event: KeyboardEvent) => {
 			if (event.defaultPrevented) return;
-			const platform = /Mac|iPhone|iPad/.test(navigator.platform)
+			const platform = MAC_PLATFORM.test(navigator.platform)
 				? "darwin"
 				: "linux";
 			const intent = browserChordIntent(
 				{
 					type: "keyDown",
 					key: event.key,
+					// Backs up the tab digits only, for layouts whose digit row types a
+					// symbol (AZERTY): the physical key is the ordinal there too.
+					code: event.code,
 					meta: event.metaKey,
 					control: event.ctrlKey,
 					alt: event.altKey,
@@ -131,10 +181,29 @@ export function useBrowserChords(
 		const focusIn = () => report(true);
 		const focusOut = (event: FocusEvent) => {
 			if (
-				!(event.relatedTarget instanceof Node) ||
-				!root.contains(event.relatedTarget)
+				event.relatedTarget instanceof Node &&
+				root.contains(event.relatedTarget)
 			)
-				report(false);
+				return;
+			const target = event.target;
+			// A focused node that is REMOVED (a tab closed by the agent, by the strip's
+			// own path, or by anything that does not go through `closeAndReplace`)
+			// fires `focusout` with a null `relatedTarget` too, and is not the user
+			// leaving. Decided one microtask later, when the removal has landed: a node
+			// that is gone while the surface is still mounted keeps the owner, and the
+			// caret is parked on the root so the next chord is still heard.
+			queueMicrotask(() => {
+				if (
+					target instanceof Node &&
+					!target.isConnected &&
+					root.isConnected &&
+					!root.contains(document.activeElement)
+				) {
+					root.focus({ preventScroll: true });
+					return;
+				}
+				if (!root.contains(document.activeElement)) report(false);
+			});
 		};
 		root.addEventListener("keydown", key);
 		root.addEventListener("focusin", focusIn);
@@ -149,6 +218,6 @@ export function useBrowserChords(
 			root.removeEventListener("focusin", focusIn);
 			root.removeEventListener("focusout", focusOut);
 		};
-	}, [root, address, closeTab]);
+	}, [root, address, closeAndReplace]);
 	return { root: setRoot, closeTab };
 }

@@ -1,5 +1,29 @@
 # Focus-scoped browser commands: rendered and execution evidence
 
+## Round 1 remediation status (READ FIRST)
+
+Everything below this section was captured at product source `4bb030c49` and
+describes THAT build. The round-1 remediation commit changes `src/` (renderer
+hook, address bar, tab strip, keymap registry, host/ipc/index, menu labels), so
+**no frame or native row below is evidence for the remediated head**. They are
+kept as the before-remediation record, not re-labelled. Re-capture is HELD, not
+skipped: the operator's disk alert forbids new compiles, so the remediated head
+has source plus targeted jsdom/node tests only (`browser-chord-renderer`,
+`browser-chord`, `browser-host`, `browser-startup`, `keymap-*`,
+`lane-registration`, both `tsc` projects) and **no native proof yet**. Still owed
+on the remediated head: keyboard Cmd+W from a focused tab button then a second
+chord, rapid double Cmd+W, last-tab, a populated-address Cmd+L selection row,
+hover frames (Reload, +, active close, address), an after-last-close frame, and
+the eight state frames. Do not read the tables below as covering those.
+
+**Correction (design D-PR1, code R2).** The row `DOM address actual` in
+`execution-summary.json` is an EMPTY field (`start 0 / end 0 / value ""`), which
+cannot tell "selected" from "focused". The "selection 0..26" figure in the matrix
+below did not come from that row. Selection is currently proven by the jsdom
+hook test on a populated input (`selectionStart 0 / selectionEnd 24`) and by the
+independent QA report's native row (`0..26 of 26`); a committed implementer-side
+native row is still owed on the remediated head.
+
 ## Identity and limits
 
 - Before frames: independent QA browser audit at `2efe5fe3971806a00469fcd1b52110186813b593`. The browser/main/preload/shared trees relevant here have **no diff** between that audit and feature base `8179f2956e5c991accb06a2fcc6f8e9d11b5739a`.
@@ -44,7 +68,7 @@ Initial native proof product source `956325320df0ab7c97cfcbc9ea75125ede3068e5`; 
 | Surface | Actual result |
 |---|---|
 | Full renderer config binding | Executed emitted schema + env + loader + API getter with real Zod: port1; removing explicit binding reproduces localhost:1111 negative control |
-| DOM new tab / address / bracket | Count +1; actual INPUT selection 0..26; page history returns `/one`, route remains `#/browser` |
+| DOM new tab / address / bracket | Count +1; address INPUT focus only (empty-field row, selection NOT evidenced here: see correction above); page history returns `/one`, route remains `#/browser` |
 | DOM reload | Fixture request counter +1 |
 | Real native-view listener reload | `preventDefault` 1, fixture request counter +1; synthetic listener emission, not OS delivery |
 | Native Alt / key-up / wrong-platform modifier | `preventDefault` 0, request delta 0 |
