@@ -82,5 +82,19 @@
 		"length": "Aim for 28 characters for menu labels; feedback may wrap. Never truncate page-title placeholders.",
 		"placeholders": {},
 		"note": "Slice-b browser page tabs, NOT application-level project/chat tabs. English fallback only until audited translations exist."
+	},
+	"ui.browser.chrome.tab_gone": {
+		"role": "human tab action error",
+		"tone": "plain sentence",
+		"length": "One short sentence; toast/error banner",
+		"placeholders": {}
+	},
+	"ui.browser.chrome.operation_failed": {
+		"role": "recoverable human tab action failure",
+		"tone": "plain explanation plus next action; never blame the user",
+		"length": "Two short sentences; toast/error banner",
+		"placeholders": {
+			"action": "duplicate/reload machine token; selects the corresponding sentence"
+		}
 	}
 }

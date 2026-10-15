@@ -18,6 +18,7 @@ import {
 	BACKEND_STATUS_EVENT,
 	type DaemonStatusSnapshot,
 } from "../shared/backend-status";
+import type { HumanTabActionOutcome } from "../shared/browser-tab-action";
 import {
 	type DesktopMediaRequest,
 	type DesktopRequest,
@@ -834,7 +835,7 @@ const api = {
 		actOnTab: (
 			tabId: number,
 			action: "duplicate" | "reload",
-		): Promise<unknown> =>
+		): Promise<HumanTabActionOutcome> =>
 			ipcRenderer.invoke("browser-tab-action", tabId, action),
 		newTab: (sessionId?: string | null): Promise<unknown> =>
 			ipcRenderer.invoke("browser-new-tab", sessionId ?? null),

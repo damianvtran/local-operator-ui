@@ -572,7 +572,14 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 				onCloseTabs={(intent) => chrome.closeTabs(intent)}
 				onNewTab={() => void chrome.newTab(hostSessionId)}
 				onReorder={(ids) => chrome.reorderTabs(ids)}
-				onTabAction={(id, action) => void chrome.actOnTab(id, action)}
+				onTabAction={(id, action) => {
+					void chrome.actOnTab(id, action).then((accepted) => {
+						// A duplicate intentionally has no conversation association. Reveal it
+						// through the existing All-tabs affordance, not by copying agent scope.
+						if (accepted && action === "duplicate" && tabScope !== "all")
+							onShowAllTabs?.();
+					});
+				}}
 				newTabLabel={newTabLabel}
 				onHandOver={(tab) => setHandOverTab(tab)}
 				onRevokeHandOver={(tabId) => void chrome.revokeHandOver(tabId)}

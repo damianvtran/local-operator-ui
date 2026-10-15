@@ -6,6 +6,7 @@ import type {
 	BackendUpdateErrorReport,
 } from "../main/update-service";
 import type { DaemonStatusSnapshot } from "../shared/backend-status";
+import type { HumanTabActionOutcome } from "../shared/browser-tab-action";
 import type {
 	DesktopAPI,
 	DirectoryListing,
@@ -129,7 +130,7 @@ declare global {
 				actOnTab: (
 					tabId: number,
 					action: "duplicate" | "reload",
-				) => Promise<unknown>;
+				) => Promise<HumanTabActionOutcome>;
 				newTab: (sessionId?: string | null) => Promise<unknown>;
 				closeTab: (tabId: number) => Promise<unknown>;
 				/** A bulk close. `{ mode: "ids", tabIds }`, or `{ mode: "conversation",

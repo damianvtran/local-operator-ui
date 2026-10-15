@@ -86,9 +86,11 @@ export type MessageParams = {
 	"ui.browser.chrome.invalid_order": undefined;
 	"ui.browser.chrome.move_left": undefined;
 	"ui.browser.chrome.move_right": undefined;
+	"ui.browser.chrome.operation_failed": { action: string };
 	"ui.browser.chrome.reload": undefined;
 	"ui.browser.chrome.scroll_left": undefined;
 	"ui.browser.chrome.scroll_right": undefined;
+	"ui.browser.chrome.tab_gone": undefined;
 	"ui.canvas.files.archives": undefined;
 	"ui.canvas.files.asc": undefined;
 	"ui.canvas.files.audio": undefined;
