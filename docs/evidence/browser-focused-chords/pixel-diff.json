@@ -18,26 +18,26 @@
   {
     "state": "populated",
     "theme": "localoperatorlight",
-    "changedPixels": 1380,
+    "changedPixels": 1252,
     "totalPixels": 4968000,
     "bbox": {
-      "minX": 953,
+      "minX": 937,
       "minY": 168,
       "maxX": 1068,
       "maxY": 192
     },
     "bins": {
-      "1000,100": 911,
-      "900,100": 469
+      "1000,100": 582,
+      "900,100": 670
     }
   },
   {
     "state": "populated",
     "theme": "localoperatordark",
-    "changedPixels": 1548,
+    "changedPixels": 1422,
     "totalPixels": 4968000,
     "bbox": {
-      "minX": 953,
+      "minX": 937,
       "minY": 97,
       "maxX": 1732,
       "maxY": 192
@@ -45,52 +45,52 @@
     "bins": {
       "1700,0": 25,
       "1700,100": 145,
-      "1000,100": 911,
-      "900,100": 467
+      "1000,100": 582,
+      "900,100": 670
     }
   },
   {
     "state": "loading",
     "theme": "localoperatorlight",
-    "changedPixels": 2181,
+    "changedPixels": 2298,
     "totalPixels": 4968000,
     "bbox": {
-      "minX": 953,
-      "minY": 92,
-      "maxX": 2507,
-      "maxY": 192
-    },
-    "bins": {
-      "1600,0": 108,
-      "1700,0": 25,
-      "1600,100": 258,
-      "1700,100": 124,
-      "2400,100": 180,
-      "2500,100": 55,
-      "1000,100": 962,
-      "900,100": 469
-    }
-  },
-  {
-    "state": "loading",
-    "theme": "localoperatordark",
-    "changedPixels": 2308,
-    "totalPixels": 4968000,
-    "bbox": {
-      "minX": 953,
+      "minX": 937,
       "minY": 91,
       "maxX": 2507,
       "maxY": 192
     },
     "bins": {
-      "1600,0": 105,
+      "1600,0": 103,
+      "1700,0": 25,
+      "1600,100": 286,
+      "1700,100": 124,
+      "2400,100": 186,
+      "2500,100": 63,
+      "1000,100": 841,
+      "900,100": 670
+    }
+  },
+  {
+    "state": "loading",
+    "theme": "localoperatordark",
+    "changedPixels": 2407,
+    "totalPixels": 4968000,
+    "bbox": {
+      "minX": 937,
+      "minY": 91,
+      "maxX": 2507,
+      "maxY": 192
+    },
+    "bins": {
+      "1600,0": 106,
       "1700,0": 28,
-      "1600,100": 303,
+      "1600,100": 310,
       "1700,100": 169,
-      "2400,100": 179,
-      "2500,100": 95,
-      "1000,100": 962,
-      "900,100": 467
+      "2400,100": 189,
+      "2500,100": 94,
+      "1000,100": 841,
+      "900,100": 670
     }
   },
   {
