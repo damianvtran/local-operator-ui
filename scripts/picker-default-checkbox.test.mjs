@@ -803,9 +803,10 @@ test("effort and model: a ticked save is stated once, by the label", async () =>
 		);
 	});
 	await settle();
+	// Named as the ticked label names it (QA round 3, Q4).
 	assert.match(
 		document.querySelector('[role="dialog"] output')?.textContent ?? "",
-		/Default for new sessions: anthropic\/claude-opus-5-5/,
+		/Default for new sessions: Claude Opus 5\.5/,
 	);
 	await button.unmount();
 });
@@ -831,9 +832,13 @@ test("effort and model: the label reserves every wording a tick can show", async
 			ModelPicker,
 			{},
 			"Also make this the default for new sessions",
+			/*
+			 * Capped (design round 3, D3): the two name-free wordings are reserved
+			 * whichever one is shown, and the named one is cut at a fixed height.
+			 */
 			[
+				"Also make this the default for new sessions",
 				"Picks here also set the default for new sessions",
-				"Default for new sessions: Claude Opus 5.5. Picks here update it too.",
 			],
 		],
 	]) {
@@ -856,4 +861,33 @@ test("effort and model: the label reserves every wording a tick can show", async
 		);
 		await run.unmount();
 	}
+});
+
+/*
+ * Design round 3, D3 / review n2. The model label's reserve was the name IN
+ * FORCE, so a ticked pick that saved a longer name grew it by a line. The
+ * model label is now a fixed height: the cell holds three lines whatever is
+ * shown, and only the named wording is cut, so a long name cannot grow it.
+ */
+test("model: the ticked label is a fixed height, its name cut rather than grown", async () => {
+	const run = await mount(ModelPicker);
+	const cell = () =>
+		document.querySelector(`label[for="${checkbox()?.id}"] [data-reserve-a]`);
+	const shown = () => cell()?.querySelector("span");
+	assert.match(cell()?.className ?? "", /min-h-\[3lh\]/);
+	assert.doesNotMatch(shown()?.className ?? "", /line-clamp/);
+	await tick();
+	assert.match(label(), /Default for new sessions: Claude Opus 5\.5\./);
+	assert.match(cell()?.className ?? "", /min-h-\[3lh\]/);
+	assert.match(
+		shown()?.className ?? "",
+		/line-clamp-3/,
+		"the named wording is the one cut",
+	);
+	assert.equal(
+		label(),
+		"Default for new sessions: Claude Opus 5.5. Picks here update it too.",
+		"the cut is visual: the label's text keeps the whole sentence",
+	);
+	await run.unmount();
 });
