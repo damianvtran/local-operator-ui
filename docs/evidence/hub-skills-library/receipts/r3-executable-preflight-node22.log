@@ -1,0 +1,3 @@
+BOUNDED START {"pid":34122,"seconds":10,"budgetMiB":6144,"nodeOptions":"--max-old-space-size=4096"}
+electron-vite/3.1.0 darwin-arm64 node-v22.13.1
+BOUNDED END {"pid":34122,"exit":0}

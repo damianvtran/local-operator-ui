@@ -1,0 +1,6 @@
+evidence-fold: the citation-ancestry guard stood down: this is a shallow clone, so no ancestor of HEAD is present to ask about. That is NOT a failure - the counts are still guarded here and on every clone - but nothing else asks it either: `actions/checkout` is one commit deep too, so the CITATION half is checked NOWHERE on this fleet today, and `git fetch --unshallow` is what answers it on a clone that has the history.
+evidence-fold: folded onto `origin/main` = `b179da8e21`, group 4 re-derived from the merged tree.
+evidence-fold: 1 field(s) differ from this branch's copy: unjudgedFrames
+evidence-fold: write a re-stamp commit carrying the values:
+  git commit -m "docs(evidence): re-derive the stamp pair over the folded tree"
+evidence-fold: and the tip was NOT amended - HEAD is already reachable from a remote-tracking ref, so an amend would rewrite published history and need a force-push, unpinning any review round that names that SHA. Run this before pushing; if it is already pushed, commit the values on top instead.

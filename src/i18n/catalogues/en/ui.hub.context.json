@@ -479,10 +479,25 @@
 		"tone": "plain, precise; safety statements must not weaken or promise success",
 		"note": "Feature-local hub source/policy controls, not settings navigation. Status from one direction and named service error. Unknown does not mean success or admit a retry; timestamps/attempts/receipt are actual service facts. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap."
 	},
+	"ui.hub.status.backend_checking": {
+		"role": "status",
+		"tone": "plain; a check in progress is not evidence of an old release",
+		"note": "Hub write controls await the initial or placeholder MAIN status. Do not tell a healthy backend to upgrade during an ordinary background poll. Browsing and Cancel remain available; this text also appears inside the consent dialog. Wrap naturally."
+	},
+	"ui.hub.status.backend_disconnected": {
+		"role": "status",
+		"tone": "actionable; reconnect rather than assert an outdated version",
+		"note": "The MAIN connection is missing, failed or not attached. {minimum} is the required published BACKEND release, not the desktop version. Also rendered inside consent so a disabled Enable has an explanation; Cancel/close remain usable."
+	},
+	"ui.hub.subscriptions.subscribe_description_blocked": {
+		"role": "description",
+		"tone": "plain; describe the direction without promising an unavailable manual action",
+		"note": "{source} is the verified destination label. Used while Hub writes are blocked; the adjacent keyed backend reason explains the restriction. Do not promise manual check/pull while those controls are disabled."
+	},
 	"ui.hub.status.core_update_required": {
 		"role": "status",
 		"tone": "plain, fail-closed; never call an unknown backend outdated",
-		"note": "One minimum-version message shared by Hub policy and sync writes. {minimum} is the literal first fixed published core version, not the active version. The current MAIN-admitted daemon may be older, disconnected, unknown or still being read. Browsing and Cancel/close remain available; this does not advertise a complete Skills adapter. No fixed width; sentence wraps."
+		"note": "Minimum-version message shared by Hub policy and sync writes. {minimum} is the first fixed published BACKEND version, not the active or desktop version. Use for an attached backend whose published-release compatibility cannot be verified; initial checks and disconnections have separate messages. Browsing and Cancel/close remain available; this does not advertise a complete Skills adapter. No fixed width; sentence wraps."
 	},
 	"ui.hub.status.unsupported": {
 		"role": "status",

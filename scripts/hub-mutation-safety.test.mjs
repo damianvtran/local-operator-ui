@@ -12,6 +12,19 @@ const { act } = React;
 const { createRoot } = require("react-dom/client");
 const { QueryClient, QueryClientProvider } = require("@tanstack/react-query");
 const { JSDOM } = require("jsdom");
+const UI_PRIMITIVES = /^@shared\/components\/ui\/(button|switch|dialog)$/;
+const ANY_UI_MODULE = /.*/;
+const COPY = {
+	checking: /Checking the Local Operator backend/,
+	disconnected: /Reconnect the Local Operator backend/,
+	unsupported: /Update the Local Operator backend/,
+	manual: /Manual (?:check|pull)/,
+	minimum: /backend.*0\.72\.1/,
+	upgrade: /Update the/,
+	off: /Incoming updates are off/,
+	available: /Manual check and pull remain available/,
+	alert: /role="alert"/,
+};
 const base = `${process.cwd()}/src/renderer/src/shared/api/local-operator`;
 const fixed = {
 	state: "attached",
@@ -49,7 +62,7 @@ Object.defineProperty(globalThis, "localStorage", {
 });
 const bundle = await build({
 	stdin: {
-		contents: `export {useHubLinkPolicy} from '${base}/hub-link-hooks.ts';export {useHubLinkActions,useHubSourceResolution} from '${base}/hub-link-actions.ts';export {useHubActions} from '${base}/hub-hooks.ts';export * from '${base}/hub-mutation-safety.ts';export {useHubActionStore} from '${base}/hub-action-store.ts';export {desktopEndpoint} from '${process.cwd()}/src/shared/desktop-contract.ts';`,
+		contents: `export {useHubLinkPolicy} from '${base}/hub-link-hooks.ts';export {useHubLinkActions,useHubSourceResolution} from '${base}/hub-link-actions.ts';export {useHubActions} from '${base}/hub-hooks.ts';export * from '${base}/hub-mutation-safety.ts';export {useHubActionStore} from '${base}/hub-action-store.ts';export {desktopEndpoint} from '${process.cwd()}/src/shared/desktop-contract.ts';export {HubLinkPolicyControls} from '${process.cwd()}/src/renderer/src/features/agents/components/hub-link-policy-controls.tsx';`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -57,11 +70,23 @@ const bundle = await build({
 	format: "cjs",
 	write: false,
 	packages: "external",
+	external: ["react", "react/jsx-runtime"],
+	jsx: "automatic",
 	alias: { "@shared": `${process.cwd()}/src/renderer/src/shared` },
 	plugins: [
 		{
 			name: "explicit-main-status-and-wire",
 			setup(b) {
+				// Inert primitive boundaries make the real component's dialog subtree
+				// inspectable by SSR. This is copy/placement proof, not portal/focus QA.
+				b.onResolve({ filter: UI_PRIMITIVES }, () => ({
+					path: "ui",
+					namespace: "guard-ui",
+				}));
+				b.onLoad({ filter: ANY_UI_MODULE, namespace: "guard-ui" }, () => ({
+					contents: `import {createElement as h} from 'react';const D=({children})=>h('div',null,children);export const Button=({children,disabled})=>h('button',{disabled},children);export const Switch=({disabled,checked})=>h('button',{role:'switch',disabled,'aria-checked':checked});export const Dialog=D,DialogDescription=D,DialogFooter=D,DialogHeader=D,DialogTitle=D;export const DialogContent=({children})=>h('section',{'data-unit-dialog':true},children);`,
+					loader: "js",
+				}));
 				b.onResolve(
 					{ filter: /^@shared\/hooks\/use-connectivity-status$/ },
 					() => ({ path: "health", namespace: "guard-fixture" }),
@@ -264,6 +289,119 @@ test("fresh invoke, newer push, and target identity fence stale positive results
 	);
 });
 
+test("backend copy distinguishes initial, disconnected and unsupported states inside consent", () => {
+	const { renderToStaticMarkup } = require("react-dom/server");
+	const savedHealth = state.health;
+	globalThis.window = { api: { backend: bridge() } };
+	const direction = {
+		state: "idle",
+		effective: false,
+		reason: null,
+		retryable: false,
+	};
+	const link = {
+		link_id: "unit-link",
+		kind: "agent",
+		visibility: "public",
+		tenant_name: null,
+		remote_revision: "rev-1",
+		policy: { subscribe: false, auto_push: false, revision: "policy-1" },
+		eligibility: { can_auto_push: true, reason: null },
+		pull: direction,
+		push: direction,
+	};
+	try {
+		for (const [label, health, expected] of [
+			["initial", { data: undefined, isFetching: true }, COPY.checking],
+			[
+				"placeholder",
+				{ data: { snapshot: fixed }, isPlaceholderData: true },
+				COPY.checking,
+			],
+			[
+				"disconnected",
+				{ data: { snapshot: { ...fixed, state: "detached" } } },
+				COPY.disconnected,
+			],
+			[
+				"error",
+				{ data: { snapshot: fixed }, isError: true },
+				COPY.disconnected,
+			],
+			[
+				"old",
+				{ data: { snapshot: { ...fixed, version: "0.71.5" } } },
+				COPY.unsupported,
+			],
+			[
+				"prerelease",
+				{ data: { snapshot: { ...fixed, version: "0.72.2-dev" } } },
+				COPY.unsupported,
+			],
+			[
+				"replacement",
+				{ data: { snapshot: { ...fixed, state: "replaced" } } },
+				COPY.disconnected,
+			],
+		]) {
+			state.health = {
+				isFetching: false,
+				isError: false,
+				isPlaceholderData: false,
+				...health,
+			};
+			const client = new QueryClient();
+			const html = renderToStaticMarkup(
+				React.createElement(
+					QueryClientProvider,
+					{ client },
+					React.createElement(api.HubLinkPolicyControls, { link }),
+				),
+			);
+			const dom = new JSDOM(html);
+			const dialog = dom.window.document.querySelector("[data-unit-dialog]");
+			assert.match(
+				dialog.querySelector('[role="alert"]').textContent,
+				expected,
+				label,
+			);
+			assert.equal(
+				[...dialog.querySelectorAll("button")].at(-1).disabled,
+				true,
+				label,
+			);
+			assert.doesNotMatch(html, COPY.manual, label);
+			if (label === "old" || label === "prerelease")
+				assert.match(dialog.textContent, COPY.minimum);
+			if (label === "initial")
+				assert.doesNotMatch(dialog.textContent, COPY.upgrade);
+			dom.window.close();
+			client.clear();
+		}
+		state.health = {
+			data: { snapshot: fixed },
+			isFetching: true,
+			isError: false,
+			isPlaceholderData: false,
+		};
+		const client = new QueryClient();
+		const html = renderToStaticMarkup(
+			React.createElement(
+				QueryClientProvider,
+				{ client },
+				React.createElement(api.HubLinkPolicyControls, { link }),
+			),
+		);
+		assert.match(html, COPY.off);
+		assert.match(html, COPY.available);
+		assert.doesNotMatch(html, COPY.alert);
+		client.clear();
+	} finally {
+		state.health = savedHealth;
+		globalThis.window = undefined;
+	}
+});
+
 test("mounted actual policy/link/source/legacy hooks fence every write arm and retain read eligibility", async () => {
 	const dom = new JSDOM('<div id="root"></div>', {
 		url: "http://fixture.invalid",
@@ -424,16 +562,19 @@ test("mounted actual policy/link/source/legacy hooks fence every write arm and r
 			positive,
 			"retained callbacks on actual old/unknown/detached/replaced MAIN send ZERO writes",
 		);
-		for (const key of ["isFetching", "isError", "isPlaceholderData"]) {
+		state.health = { ...state.health, isFetching: true };
+		await render();
+		assert.equal(
+			exposed.safety.canWrite,
+			true,
+			"verified ordinary refetch stays focusable",
+		);
+		assert.equal(exposed.safety.upgradeMessage, null);
+		state.health = { ...state.health, isFetching: false };
+		for (const key of ["isError", "isPlaceholderData"]) {
 			state.health = { ...state.health, [key]: true };
 			await render();
 			assert.equal(exposed.safety.canWrite, false, key);
-			if (key === "isFetching")
-				assert.equal(
-					exposed.safety.upgradeMessage,
-					null,
-					"healthy background polling must not flash an upgrade warning",
-				);
 			state.health = { ...state.health, [key]: false };
 		}
 		state.health = {
@@ -444,11 +585,11 @@ test("mounted actual policy/link/source/legacy hooks fence every write arm and r
 		assert.equal(exposed.safety.canWrite, false);
 		assert.match(
 			exposed.safety.upgradeMessage,
-			/Hub changes require core 0\.72\.1 or newer/,
+			/Update the Local Operator backend to a published release 0\.72\.1 or newer/,
 		);
 		assert.doesNotMatch(exposed.safety.upgradeMessage, /outdated|old version/i);
 		console.log(
-			`actual hooks: ${positive} fixed-version arms transmitted; ${retained.length * 4} stale old/unknown/disconnected/identity callbacks -> ZERO additional writes; normal poll only blocks Hub writes, no upgrade flash`,
+			`actual hooks: ${positive} fixed-version arms transmitted; ${retained.length * 4} stale old/unknown/disconnected/identity callbacks -> ZERO additional writes; verified normal poll keeps controls eligible; dispatch still verifies MAIN`,
 		);
 	} finally {
 		await act(async () => root.unmount());
