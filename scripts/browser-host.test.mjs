@@ -9121,7 +9121,7 @@ test("zoom reset precedes handover capability and agent screenshot/read keep 100
 	for (const method of ["read", "screenshot"]) {
 		await host.controlPage(user.tabId, "open");
 		await host.controlPage(user.tabId, "search", "hello");
-		const result = await host.dispatch(method, owner, "agent-" + method);
+		const result = await host.dispatch(method, owner, `agent-${method}`);
 		assert.equal(factor, 1);
 		assert.equal(host.chromeState().pageControls.find, null);
 		assert.equal(result.url, "https://approved.example/");
