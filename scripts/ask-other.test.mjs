@@ -505,8 +505,15 @@ test("askQuestionIsAnswered is the one rule the submit gate and Enter both read"
 		true,
 	);
 	const secret = question({ id: "key", options: undefined, secret: true });
-	assert.equal(askQuestionIsAnswered(secret, {}, {}), false);
+	// An empty secret is a SKIP on a first answer, so it is not "unanswered" and Enter
+	// does not stop on it; in the change form over a stored key it still needs a value.
+	assert.equal(askQuestionIsAnswered(secret, {}, {}), true);
 	assert.equal(askQuestionIsAnswered(secret, {}, { key: "x" }), true);
+	assert.equal(askQuestionIsAnswered(secret, {}, {}, { key: ["key"] }), false);
+	assert.equal(
+		askQuestionIsAnswered(secret, {}, { key: "x" }, { key: ["key"] }),
+		true,
+	);
 });
 
 test("the answer cap the field enforces is the wire's own", () => {
@@ -1604,4 +1611,132 @@ test("an answered card keeps a multi-line answer's lines and tags only what the 
 		false,
 		"a secret's recorded key name is not an 'Other' answer",
 	);
+});
+
+/* ------------------------------------------- an optional secret beside Other ---- */
+
+/*
+ * The masked field's two placeholders, stated as literals for the same reason as
+ * `OTHER_HINT`: a test reading the component's constant would pass for any copy.
+ */
+const SECRET_SKIP_PLACEHOLDER = "Leave empty to skip (never shown again)";
+const SECRET_RETYPE_PLACEHOLDER = "Type it again to update (never shown again)";
+const secretField = (view) => q(view, "input[data-ask-secret]");
+const typeSecret = async (el, text) => {
+	await act(async () => {
+		const setter = Object.getOwnPropertyDescriptor(
+			window.HTMLInputElement.prototype,
+			"value",
+		).set;
+		setter.call(el, text);
+		el.dispatchEvent(new window.Event("input", { bubbles: true }));
+	});
+};
+const keyQuestion = () => ({
+	id: "API_KEY",
+	question: "Paste the key here (otherwise skip).",
+	secret: true,
+});
+
+test("the operator's card: Other text and an EMPTY secret send, with the secret as a skip", async () => {
+	const view = await mountPanel({ asks: [ask([question(), keyQuestion()])] });
+	assert.equal(secretField(view).placeholder, SECRET_SKIP_PLACEHOLDER);
+	await press(other(view));
+	await type(field(view), "Look at alternatives");
+	assert.equal(
+		sendButton(view).disabled,
+		false,
+		"the empty secret does not block",
+	);
+	await press(sendButton(view));
+	assert.deepEqual(view.calls.answer, [
+		{
+			id: "a-7f3c",
+			answers: { target: ["Look at alternatives"], API_KEY: [] },
+		},
+	]);
+});
+
+test("Enter in the Other field sends past an empty optional secret rather than stopping on it", async () => {
+	const view = await mountPanel({ asks: [ask([question(), keyQuestion()])] });
+	await press(other(view));
+	await type(field(view), "prod");
+	await key(field(view), "Enter");
+	assert.deepEqual(view.calls.answer, [
+		{ id: "a-7f3c", answers: { target: ["prod"], API_KEY: [] } },
+	]);
+});
+
+test("a secret-only card with its field empty cannot be sent; a typed value can", async () => {
+	const view = await mountPanel({ asks: [ask([keyQuestion()])] });
+	assert.equal(
+		sendButton(view).disabled,
+		true,
+		"nothing real to send: Decline",
+	);
+	await typeSecret(secretField(view), "s3cret");
+	assert.equal(sendButton(view).disabled, false);
+});
+
+test("the change form over a STORED key needs the secret retyped, and says so", async () => {
+	const view = await mountPanel({
+		asks: [
+			answeredUndelivered([question(), keyQuestion()], {
+				target: ["staging"],
+				API_KEY: ["API_KEY"],
+			}),
+		],
+	});
+	await press(
+		qa(view, "button").find((b) => b.textContent.trim() === "Change answer"),
+	);
+	const update = () =>
+		qa(view, "button").find((b) => b.textContent.trim() === "Update answer");
+	assert.equal(secretField(view).placeholder, SECRET_RETYPE_PLACEHOLDER);
+	assert.equal(
+		update().disabled,
+		true,
+		"an empty field here would replace the stored key with <not provided>",
+	);
+	await typeSecret(secretField(view), "n3w");
+	assert.equal(update().disabled, false);
+	await press(update());
+	assert.deepEqual(view.calls.revise, [
+		{ id: "a-7f3c", answers: { target: ["staging"], API_KEY: ["n3w"] } },
+	]);
+});
+
+test("the change form over a SKIPPED secret lets it stay skipped", async () => {
+	for (const skipped of [[], ["<not provided>"]]) {
+		const view = await mountPanel({
+			asks: [
+				answeredUndelivered([question(), keyQuestion()], {
+					target: ["staging"],
+					API_KEY: skipped,
+				}),
+			],
+		});
+		await press(
+			qa(view, "button").find((b) => b.textContent.trim() === "Change answer"),
+		);
+		const update = () =>
+			qa(view, "button").find((b) => b.textContent.trim() === "Update answer");
+		assert.equal(secretField(view).placeholder, SECRET_SKIP_PLACEHOLDER);
+		await press(
+			qa(view, "button[data-ask-option]").find(
+				(b) => b.textContent.trim() === "production",
+			),
+		);
+		assert.equal(
+			update().disabled,
+			false,
+			`recorded ${JSON.stringify(skipped)}`,
+		);
+		await press(update());
+		assert.deepEqual(view.calls.revise, [
+			{ id: "a-7f3c", answers: { target: ["production"], API_KEY: [] } },
+		]);
+		await view.unmount();
+		mounted.splice(mounted.indexOf(view), 1);
+	}
 });
