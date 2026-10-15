@@ -8,6 +8,7 @@ import {
 	useNavigate,
 } from "react-router-dom";
 
+import { AgentMessagesOnboarding } from "@features/agent-messages/agent-messages-onboarding";
 import { useConsentAttentionLifetime } from "@features/browser/hooks/use-consent-attention-lifetime";
 // ChatPage is the boot route (/ redirects to /chat), so it stays statically
 // imported: lazy-loading it would put a Suspense fallback on first paint.
@@ -357,6 +358,26 @@ const App: FC = () => {
 			draft?.sessionId,
 			state.activeSessionId,
 		);
+	});
+	/*
+	 * The agent-messages on-ramp's §5.3 busy rule: a boundary check that lands
+	 * while the displayed conversation has a turn in flight — "busy" is the
+	 * app's own one code for a turn in flight, the same one the row spinner
+	 * and the rail mark read (`use-aida-working.ts`) — or while a composer
+	 * draft is staged must WAIT: the one-time dialog never interrupts a live
+	 * turn and never opens over a draft. This recomputes live, so the dialog
+	 * appears at the moment the app is quiet, without any timer.
+	 */
+	const agentMessagesBusy = useCanonicalSessionsStore((state) => {
+		const draftOpen = state.activeDraftKey !== null;
+		const turnInFlight = displayedSessionId
+			? state.sessions.some(
+					(row) =>
+						row.session_id === displayedSessionId &&
+						row.status?.code === "busy",
+				)
+			: false;
+		return draftOpen || turnInFlight;
 	});
 	/* The console pane's slot claim, for a banner click that names a surface (design
 	 * 12.3): the click lands the conversation AND the pane that shows it. */
@@ -755,6 +776,23 @@ const App: FC = () => {
 					<Suspense fallback={null}>
 						<BrowserWebauthnPrompt />
 					</Suspense>
+
+					{/* Existing prompts own priority; this on-ramp never stacks with
+					    onboarding, credits, palette or agent-creation consent, and it
+					    waits while the displayed conversation is streaming or a composer
+					    draft is staged (§5.3's busy rule). */}
+					<AgentMessagesOnboarding
+						blocked={
+							isOnboardingActive ||
+							isLowCreditsDialogOpen ||
+							isCommandPaletteOpen ||
+							isCreateAgentDialogOpen ||
+							agentMessagesBusy
+						}
+						sessionId={
+							pathname.startsWith("/chat") ? (displayedSessionId ?? null) : null
+						}
+					/>
 
 					<LowCreditsDialog
 						open={isLowCreditsDialogOpen}
