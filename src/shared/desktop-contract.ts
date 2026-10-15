@@ -2967,6 +2967,45 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			confirmed: z.literal(true),
 		})
 		.strict(),
+	/*
+	 * PHONE ACCESS SETUP (`features.tunnel_setup`, local-operator
+	 * `docs/DESKTOP_API.md` "Explicit phone setup"). Three ops over ONE route,
+	 * split by authority so a caller cannot mutate by accident:
+	 *
+	 * - `tunnel.setup.read`: GET, local metadata only. No upstream read, no token
+	 *   refresh, never `verified` and never a quote - the cheap poll that rebuilds
+	 *   the block after a window close or a lost response.
+	 * - `tunnel.setup.plan`: POST `{action:"plan"}`, a FRESH account/quote/
+	 *   preparation observation that changes nothing.
+	 * - `tunnel.setup.run`: POST `{action:"run"}`, the only op that can write. The
+	 *   backend REFUSES it without an explicit owner (422), so `credentialId` is
+	 *   required here rather than defaulted: an account is never picked for the
+	 *   user. `acceptMonthlyPrice` is a STRING, the exact fresh amount the user
+	 *   saw, because the backend compares it to a fresh quote and a number would
+	 *   round-trip through float formatting.
+	 *
+	 * ONLY the capability gates these. An older backend 404s the route, so the
+	 * renderer asks `features.tunnel_setup` first and sends nothing without it.
+	 */
+	z
+		.object({
+			op: z.literal("tunnel.setup.read"),
+			credentialId: z.number().int().positive().optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("tunnel.setup.plan"),
+			credentialId: z.number().int().positive().optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("tunnel.setup.run"),
+			credentialId: z.number().int().positive(),
+			acceptMonthlyPrice: z.string().min(1).max(64).optional(),
+		})
+		.strict(),
 	z.object({ op: z.literal("auth.start"), provider: id }).strict(),
 	z.object({ op: z.literal("auth.status"), id }).strict(),
 	z
@@ -3957,6 +3996,84 @@ export function desktopRefusalCodeForStatus(
 export type DesktopResponse = { status: number; body: unknown };
 
 /**
+ * The `result` of every phone-setup answer (`GET` and both `POST` actions),
+ * local-operator `docs/DESKTOP_API.md` "Explicit phone setup".
+ *
+ * `step`, `blocked_on` and `remedy.kind` are plain strings on purpose, not enums:
+ * the backend's vocabulary is additive, and a renderer that threw on a value it
+ * had not heard of would turn a new blocker into a blank panel. The block switches
+ * on the values it knows and falls to "show the backend's own remedy text and
+ * offer a fresh check" for the rest. Unknown FIELDS pass through for the same
+ * reason. What is strict is the shape a decision rests on: `verified` is a boolean
+ * and `url` a string or null, because success styling and the address are read
+ * from exactly those two.
+ *
+ * `quote.monthly_price_usd` is a STRING and stays one: it is echoed back as
+ * `accept_monthly_price`, which the backend compares to a fresh quote, so the
+ * amount must never pass through a float.
+ */
+export const phoneSetupResultSchema = z
+	.object({
+		step: z.string(),
+		blocked_on: z.string(),
+		configured: z.boolean(),
+		ready: z.boolean(),
+		verified: z.boolean(),
+		url: z.string().nullable(),
+		credential_id: z.number().int().positive().nullable(),
+		identity_label: z.string().nullable(),
+		credential_choices: z
+			.array(
+				z
+					.object({
+						id: z.number().int().positive(),
+						identity_label: z.string().nullable().optional(),
+					})
+					.passthrough(),
+			)
+			.default([]),
+		quote: z
+			.object({
+				monthly_price_usd: z.string().nullable(),
+				positive_balance: z.boolean(),
+				eligible: z.boolean(),
+				account_valid: z.boolean(),
+			})
+			.passthrough()
+			.nullable(),
+		receipts: z
+			.array(z.object({ step: z.string(), ok: z.boolean(), text: z.string() }))
+			.default([]),
+		remedy: z
+			.object({
+				kind: z.string(),
+				text: z.string(),
+				command: z.string().nullable().optional(),
+				url: z.string().nullable().optional(),
+			})
+			.nullable(),
+		source: z.string(),
+		in_progress: z.boolean().default(false),
+		progress: z.array(z.string()).default([]),
+		active_credential_id: z.number().int().positive().nullable().default(null),
+	})
+	.passthrough();
+export type PhoneSetupResult = z.infer<typeof phoneSetupResultSchema>;
+
+/**
+ * The refusal codes the setup route declares in `detail.code`, each carrying a
+ * backend sentence the block shows verbatim. Any other failure (a 5xx, a body that
+ * was not JSON, a transport error) gets the block's own generic sentence rather
+ * than whatever text arrived.
+ */
+export const PHONE_SETUP_REFUSAL_CODES: ReadonlySet<string> = new Set([
+	"setup_in_progress",
+	"setup_deadline",
+	"setup_unavailable",
+	"setup_intent_corrupt",
+]);
+
+/**
  * Whether the supervisor that actually fires wakes is working here.
  *
  * Rides every wake response because "will my scheduled task fire" cannot be
@@ -4822,6 +4939,20 @@ const APPROVAL_APPROVE_DEADLINE_MS = PRESENCE_GESTURE_DEADLINE_MS + 15_000;
  *   far shorter than the ceiling.
  */
 const HUB_ITEM_MERGE_S = 120;
+/*
+ * PHONE SETUP'S TWO BUDGETS, each strictly above the backend's own (local-operator
+ * `PLAN_DEADLINE_S` 120 s, `RUN_DEADLINE_S` 900 s). The backend answers 504
+ * `setup_deadline` only AFTER it has drained the work it owns, so an app that gave
+ * up first would report "stopped waiting" about an install that is still running
+ * and invite the second attempt the single-flight refusal exists to prevent. The
+ * margins (15 s, 30 s) are the same shape as `MOVE_CLIENT_MARGIN_S`: room for the
+ * backend's own sentence to arrive. These are CLIENT budgets, not a promise that a
+ * native install finishes inside them - the backend's drain may run longer, and
+ * the block then rebuilds its state from the local read instead of retrying.
+ */
+const PHONE_SETUP_PLAN_DEADLINE_MS = 135_000;
+const PHONE_SETUP_RUN_DEADLINE_MS = 930_000;
+
 const HUB_ITEM_WRITE_DEADLINE_MS =
 	(HUB_ITEM_MERGE_S + 30 + MOVE_CLIENT_MARGIN_S) * 1000;
 const HUB_CHECK_DEADLINE_MS = 60_000;
@@ -4874,6 +5005,8 @@ export function desktopRequestDeadlineMs(
 	// of the op alone: a caller holding only the op string (a story, a test) gets
 	// the same number the transport uses.
 	if (op === "approvals.approve") return APPROVAL_APPROVE_DEADLINE_MS;
+	if (op === "tunnel.setup.run") return PHONE_SETUP_RUN_DEADLINE_MS;
+	if (op === "tunnel.setup.plan") return PHONE_SETUP_PLAN_DEADLINE_MS;
 	const hub = hubWriteDeadlineMs(op);
 	if (hub !== null) return hub;
 	return LONG_READ_OPS.has(op)
@@ -5034,6 +5167,10 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"subagents.transcript",
 	"teams.get",
 	"teams.list",
+	// The two phone-setup observations change nothing on the server; `tunnel.setup.run`
+	// is deliberately absent so a run that ran out of time gets the cautious sentence.
+	"tunnel.setup.plan",
+	"tunnel.setup.read",
 	"usage.get",
 ]);
 
@@ -7354,6 +7491,37 @@ export function desktopEndpoint(request: DesktopRequest): {
 			return {
 				path: `/v1/auth/accounts/${request.accountId}`,
 				method: "DELETE",
+			};
+		case "tunnel.setup.read":
+			return {
+				path:
+					request.credentialId === undefined
+						? "/v1/desktop/tunnel/setup"
+						: `/v1/desktop/tunnel/setup?credential_id=${request.credentialId}`,
+				method: "GET",
+			};
+		case "tunnel.setup.plan":
+			return {
+				path: "/v1/desktop/tunnel/setup",
+				method: "POST",
+				body: {
+					action: "plan",
+					...(request.credentialId !== undefined
+						? { credential_id: request.credentialId }
+						: {}),
+				},
+			};
+		case "tunnel.setup.run":
+			return {
+				path: "/v1/desktop/tunnel/setup",
+				method: "POST",
+				body: {
+					action: "run",
+					credential_id: request.credentialId,
+					...(request.acceptMonthlyPrice !== undefined
+						? { accept_monthly_price: request.acceptMonthlyPrice }
+						: {}),
+				},
 			};
 		case "auth.start":
 			return {
