@@ -1,0 +1,27 @@
+RESOURCE {"at": "2026-10-15T05:16:53.281865-04:00", "phase": "lease granted before existing-fresh-build CSP constraint and allocated boots", "availableKiB": 25676068, "availableGiB": 24.48660659790039, "swapFreeMiB": 1477.81, "swapUsedDiagnosticMiB": 10810.19, "memoryFreePct": 54}
+COMPILED {"main": "9a0e2c5478d7c4b8188f0f9e27b5776453db3b6748d7a3ef735ee37132205046", "html": "ac4fba5a7a0a34e91258c0b2822587c2abe7ca586c2cdb8e32af9d049897a9fd"}
+RESOURCE {"at": "2026-10-15T05:16:53.450052-04:00", "phase": "before R3-fixed-focus-wide", "availableKiB": 25675816, "availableGiB": 24.486366271972656, "swapFreeMiB": 1477.81, "swapUsedDiagnosticMiB": 10810.19, "memoryFreePct": 54}
+START 2026-10-15T05:16:53.532288-04:00 37441 r3-fixed.log
+RESOURCE {"at": "2026-10-15T05:16:58.308852-04:00", "phase": "mid-cell", "availableKiB": 25677960, "availableGiB": 24.48841094970703, "swapFreeMiB": 1477.81, "swapUsedDiagnosticMiB": 10810.19, "memoryFreePct": 49}
+RESOURCE {"at": "2026-10-15T05:17:03.326159-04:00", "phase": "mid-cell", "availableKiB": 25668380, "availableGiB": 24.47927474975586, "swapFreeMiB": 1477.81, "swapUsedDiagnosticMiB": 10810.19, "memoryFreePct": 47}
+RESOURCE {"at": "2026-10-15T05:17:08.348625-04:00", "phase": "mid-cell", "availableKiB": 25665280, "availableGiB": 24.476318359375, "swapFreeMiB": 1477.81, "swapUsedDiagnosticMiB": 10810.19, "memoryFreePct": 46}
+RESOURCE {"at": "2026-10-15T05:17:13.376514-04:00", "phase": "mid-cell", "availableKiB": 25672404, "availableGiB": 24.483112335205078, "swapFreeMiB": 1477.81, "swapUsedDiagnosticMiB": 10810.19, "memoryFreePct": 48}
+RESOURCE {"at": "2026-10-15T05:17:18.401162-04:00", "phase": "mid-cell", "availableKiB": 25671544, "availableGiB": 24.48229217529297, "swapFreeMiB": 1477.81, "swapUsedDiagnosticMiB": 10810.19, "memoryFreePct": 48}
+RESOURCE {"at": "2026-10-15T05:17:23.427418-04:00", "phase": "mid-cell", "availableKiB": 25669868, "availableGiB": 24.480693817138672, "swapFreeMiB": 1477.81, "swapUsedDiagnosticMiB": 10810.19, "memoryFreePct": 49}
+RESOURCE {"at": "2026-10-15T05:17:28.450507-04:00", "phase": "mid-cell", "availableKiB": 25667952, "availableGiB": 24.478866577148438, "swapFreeMiB": 1477.81, "swapUsedDiagnosticMiB": 10810.19, "memoryFreePct": 45}
+RESOURCE {"at": "2026-10-15T05:17:33.470707-04:00", "phase": "mid-cell", "availableKiB": 25668244, "availableGiB": 24.479145050048828, "swapFreeMiB": 1477.81, "swapUsedDiagnosticMiB": 10810.19, "memoryFreePct": 45}
+RESOURCE {"at": "2026-10-15T05:17:38.497637-04:00", "phase": "mid-cell", "availableKiB": 25666688, "availableGiB": 24.4776611328125, "swapFreeMiB": 1477.81, "swapUsedDiagnosticMiB": 10810.19, "memoryFreePct": 46}
+RESOURCE {"at": "2026-10-15T05:17:43.518137-04:00", "phase": "mid-cell", "availableKiB": 25660876, "availableGiB": 24.472118377685547, "swapFreeMiB": 1477.81, "swapUsedDiagnosticMiB": 10810.19, "memoryFreePct": 51}
+RESOURCE {"at": "2026-10-15T05:17:48.540633-04:00", "phase": "mid-cell", "availableKiB": 25661516, "availableGiB": 24.472728729248047, "swapFreeMiB": 1477.81, "swapUsedDiagnosticMiB": 10810.19, "memoryFreePct": 53}
+RESOURCE {"at": "2026-10-15T05:17:53.566602-04:00", "phase": "mid-cell", "availableKiB": 25661472, "availableGiB": 24.472686767578125, "swapFreeMiB": 1477.81, "swapUsedDiagnosticMiB": 10810.19, "memoryFreePct": 54}
+END 37441 124 r3-fixed.log
+REAP 37441 124
+FINAL8127 1 
+Traceback (most recent call last):
+  File "/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/r3-boots-only.py", line 37, in <module>
+    run([N,str(S/'r3-probe.mjs'),'--mode',mode,'--version',version,'--out',str(out),'--window-size',size,'--theme',theme,'--window-mode=headless'],'r3-'+mode+'.log',60)
+    ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/r3-boots-only.py", line 24, in run
+    if rc or aborted.is_set():raise RuntimeError('bounded candidate stage failed: '+log)
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: bounded candidate stage failed: r3-fixed.log

@@ -308,9 +308,12 @@ export type MessageParams = {
 	"ui.hub.status.applying": undefined;
 	"ui.hub.status.attempts": { count: number };
 	"ui.hub.status.available": undefined;
+	"ui.hub.status.backend_checking": undefined;
+	"ui.hub.status.backend_disconnected": { minimum: string };
 	"ui.hub.status.baseline_unknown": undefined;
 	"ui.hub.status.checking": undefined;
 	"ui.hub.status.conflict": undefined;
+	"ui.hub.status.core_update_required": { minimum: string };
 	"ui.hub.status.failed": undefined;
 	"ui.hub.status.idle": undefined;
 	"ui.hub.status.last_checked": { time: string };
@@ -365,6 +368,7 @@ export type MessageParams = {
 	};
 	"ui.hub.subscriptions.subscribe": undefined;
 	"ui.hub.subscriptions.subscribe_description": { source: string };
+	"ui.hub.subscriptions.subscribe_description_blocked": { source: string };
 	"ui.hub.subscriptions.unsupported": undefined;
 	"ui.onboarding.connect.intro": undefined;
 	"ui.onboarding.default_model.block.loading_models": undefined;

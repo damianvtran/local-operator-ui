@@ -1,0 +1,16 @@
+$ node ./bin/ensure-electron.js
+$ electron-vite build
+failed to load config from /Users/damian/local-operator-ui/.worktrees/skills-library-evidence/electron.vite.config.js
+error during build:
+Error: VITE_GOOGLE_CLIENT_ID is not set
+    at replaceBackendConfigPlugin (/Users/damian/local-operator-ui/.worktrees/skills-library-evidence/electron.vite.config.js:4929:11)
+    at Object.<anonymous> (/Users/damian/local-operator-ui/.worktrees/skills-library-evidence/electron.vite.config.js:4994:7)
+    at Module._compile (node:internal/modules/cjs/loader:1934:14)
+    at _require.extensions.<computed> [as .js] (file:///Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/electron-vite@3.1.0_vite@6.2.6_@types+node@22.14.1_jiti@2.7.0_lightningcss@1.32.0_yaml@2.7.1_/node_modules/electron-vite/dist/chunks/lib-DyJQBCfr.mjs:1186:24)
+    at Module.load (node:internal/modules/cjs/loader:1656:32)
+    at Module._load (node:internal/modules/cjs/loader:1448:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1679:12)
+    at require (node:internal/modules/helpers:196:16)
+    at loadConfigFormBundledFile (file:///Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/electron-vite@3.1.0_vite@6.2.6_@types+node@22.14.1_jiti@2.7.0_lightningcss@1.32.0_yaml@2.7.1_/node_modules/electron-vite/dist/chunks/lib-DyJQBCfr.mjs:1193:21)
+[ELIFECYCLE] Command failed with exit code 1.

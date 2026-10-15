@@ -1,0 +1,4 @@
+  File "/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/hub-write-cell.py", line 23
+    k=int(subprocess.check_output(['df','-Pk','/System/Volumes/Data'],text=True).splitlines()[1].split()[3]);floor=15728640 if phase=='build'else18874368
+                                                                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: expected 'else' after 'if' expression

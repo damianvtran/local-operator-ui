@@ -1,5 +1,13 @@
 import { retryDesktopQuery } from "@shared/api/local-operator/backend-error";
-import { desktopResult } from "@shared/api/local-operator/desktop-api";
+import {
+	type DesktopCapabilities,
+	desktopResult,
+} from "@shared/api/local-operator/desktop-api";
+import {
+	desktopFeatureEnabled,
+	desktopKeys,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 import type { HubDirectionalReport } from "@shared/api/local-operator/hub-link-actions";
 import { hubLinksKey } from "@shared/api/local-operator/hub-link-hooks";
 import type { HubLink, HubLinks } from "@shared/api/local-operator/hub-links";
@@ -14,12 +22,33 @@ import {
 	listPublicSkills,
 } from "@shared/api/radient/skills-api";
 import { apiConfig } from "@shared/config";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+	type QueryClient,
+	useMutation,
+	useQuery,
+	useQueryClient,
+} from "@tanstack/react-query";
 import { retryPublicHubQuery } from "./use-public-teams-query";
 
 export type HubSkillScope =
 	| { visibility: "public"; tenantId: null; organization: null }
 	| { visibility: "org"; tenantId: string; organization: string | null };
+
+/** Recheck at dispatch, not only render time: a retained query/mutation callback
+ * can outlive the mount or capability snapshot that originally enabled it. */
+function requireSkillsAdapter(client: QueryClient) {
+	if (
+		client.getQueryState(desktopKeys.capabilities)?.status !== "success" ||
+		!desktopFeatureEnabled(
+			client.getQueryData<DesktopCapabilities>(desktopKeys.capabilities),
+			"hub_skills",
+		)
+	) {
+		throw new Error(
+			"This backend does not support the complete Hub Skills adapter.",
+		);
+	}
+}
 
 /** Scope and API origin are part of each key. A private refusal never goes public. */
 export function useRemoteSkills(
@@ -27,6 +56,8 @@ export function useRemoteSkills(
 	page: number,
 	enabled: boolean,
 ) {
+	const client = useQueryClient();
+	const capabilities = useDesktopCapabilities();
 	return useQuery({
 		queryKey: [
 			"hub-skills",
@@ -35,8 +66,12 @@ export function useRemoteSkills(
 			scope.tenantId,
 			page,
 		],
-		enabled,
+		enabled:
+			enabled &&
+			!capabilities.isError &&
+			desktopFeatureEnabled(capabilities.data, "hub_skills"),
 		queryFn: async () => {
+			requireSkillsAdapter(client);
 			if (scope.visibility === "org") {
 				const result = (await listOrgSkills(scope.tenantId)).result;
 				return {
@@ -65,6 +100,8 @@ export function useRemoteSkill(
 	remoteId: string | null,
 	enabled: boolean,
 ) {
+	const client = useQueryClient();
+	const capabilities = useDesktopCapabilities();
 	return useQuery({
 		queryKey: [
 			"hub-skill",
@@ -73,12 +110,19 @@ export function useRemoteSkill(
 			scope.tenantId,
 			remoteId,
 		],
-		enabled: enabled && remoteId !== null,
-		queryFn: async () =>
-			(scope.visibility === "org"
-				? await getOrgSkill(scope.tenantId, remoteId as string)
-				: await getPublicSkill(apiConfig.radientBaseUrl, remoteId as string)
-			).result,
+		enabled:
+			enabled &&
+			remoteId !== null &&
+			!capabilities.isError &&
+			desktopFeatureEnabled(capabilities.data, "hub_skills"),
+		queryFn: async () => {
+			requireSkillsAdapter(client);
+			return (
+				scope.visibility === "org"
+					? await getOrgSkill(scope.tenantId, remoteId as string)
+					: await getPublicSkill(apiConfig.radientBaseUrl, remoteId as string)
+			).result;
+		},
 		staleTime: 30_000,
 		retry: scope.visibility === "org" ? retryDesktopQuery : retryPublicHubQuery,
 		retryOnMount: false,
@@ -95,8 +139,9 @@ export function usePullHubSkill() {
 			subscribe: boolean;
 			autoPush: boolean;
 			consent: boolean;
-		}) =>
-			desktopResult<{
+		}) => {
+			requireSkillsAdapter(client);
+			return desktopResult<{
 				reports: HubDirectionalReport[];
 				link: HubLink;
 				links: HubLinks;
@@ -111,7 +156,8 @@ export function usePullHubSkill() {
 				subscribe: input.subscribe,
 				autoPush: input.autoPush,
 				confirmPublicEgress: input.consent,
-			}),
+			});
+		},
 		onSuccess: (result) => {
 			client.setQueryData(hubLinksKey, result.links);
 		},
@@ -128,8 +174,9 @@ export function useInitialSkillPublication() {
 			requestId: string;
 			draft: SkillPublicationDraft;
 			previewReceipt?: string;
-		}) =>
-			desktopResult<SkillPublicationResult>({
+		}) => {
+			requireSkillsAdapter(client);
+			return desktopResult<SkillPublicationResult>({
 				op: "hub.skillPublish",
 				requestId: input.requestId,
 				...input.draft,
@@ -137,7 +184,8 @@ export function useInitialSkillPublication() {
 				...(input.previewReceipt
 					? { previewReceipt: input.previewReceipt, confirmPublish: true }
 					: {}),
-			}),
+			});
+		},
 		onSuccess: (result) => {
 			// Publication and local link outcome are distinct. Do not seed optimistic
 			// preferences from remote success or a pending reconciliation receipt.

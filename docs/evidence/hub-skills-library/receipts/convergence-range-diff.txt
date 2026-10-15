@@ -1,0 +1,21 @@
+ -:  --------- >  1:  17e7ead4a fix(canvas): list generated images and videos in the Files view
+ -:  --------- >  2:  2a02dead8 fix(canvas): remediate generated artifact review findings
+ -:  --------- >  3:  7a8e27a26 feat(canvas): add authoritative Finder-style session files
+ -:  --------- >  4:  504338d2a docs(evidence): record Finder file states and bounded runtime
+ -:  --------- >  5:  b43ceeab6 fix(canvas): preserve indexed files and scoped Finder interactions
+ -:  --------- >  6:  59c65ada0 test(canvas): cover Finder row-state ground in census
+ -:  --------- >  7:  c1e322c07 test(canvas): register Finder index regression lanes
+ -:  --------- >  8:  3bdf4ded4 fix(i18n): preserve French console scope, controls and accessible labels
+ 1:  6c0e483de =  9:  6c0e483de test(hub): add the hub-skills evidence scene, stub routes and selectors
+ -:  --------- > 10:  5b8e95998 feat(i18n): ledger-assemble writer and shared audit rules (WIP, not pushed)
+ -:  --------- > 11:  a095f49fd fix(i18n): a multi-namespace receipt must name each namespace's hashes in its own block
+ -:  --------- > 12:  f98644dff fix(i18n): fail closed on malformed audit evidence and migrate settings receipts
+ -:  --------- > 13:  d76180f09 test(i18n): run ledger assembler regressions in desktop CI
+ -:  --------- > 14:  8e6402276 fix(i18n): bind ledger claims to authoritative immutable receipts
+ -:  --------- > 15:  11b53dd55 style(i18n): satisfy changed-script lint in ledger regressions
+ 2:  8e2bc04d4 = 16:  8e2bc04d4 test(hub): advertise radient_org in the stub so the scope chips draw
+ 3:  e2583f29a = 17:  e2583f29a test(hub): add a scoped runtime egress observer and controls to the hub-skills scene
+ 4:  205ddf461 = 18:  205ddf461 test(hub): scroll hub-skills controls into view; prove CSP refusal by violation event
+ 5:  c6f98e445 = 19:  c6f98e445 test(hub): assert fixture scope and exact catalogue states; capture tab transition pair
+ 6:  8959fc7fb = 20:  8959fc7fb test(hub): expose public preview payload before confirmation
+ 7:  43fc66a1b = 21:  43fc66a1b test(hub): record skills-library frames, scoped receipts and actual viewport provenance
