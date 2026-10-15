@@ -234,6 +234,8 @@ export type DesktopFeature =
 	 * sidebar would either log that forever or have to guess whether to stop.
 	 */
 	| "hub_updates"
+	/** Full linked inventory and revision-checked independent policy controls. */
+	| "hub_links"
 	| "profile_catalogue"
 	| "team_catalogue"
 	| "session_catalogue"

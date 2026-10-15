@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-language|settings-transcript-display|settings-gate|palette|palette-recents|hit-zones|route-tops|project-detail|project-open|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|output-artifact|image-copy|none>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-language|settings-transcript-display|settings-gate|palette|palette-recents|hit-zones|route-tops|project-detail|project-open|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|output-artifact|image-copy|hub-links|none>
  *                          which built-in scene to run (default: states)
  *   --drop-expect <accepted|discarded>  (with --scene composer-drop) which half of
  *                          the issue #789 pair this run records: the head tree,
@@ -43010,6 +43010,565 @@ async function sceneMiniView(app, cdp) {
 	}
 }
 
+/**
+ * THE HUB SURFACE: the inventory, the policy controls, the skill sibling and the
+ * explicit source confirmation on a legacy unknown-origin row.
+ *
+ * Needs `--backend` (an isolated daemon this run owns) and `--backend-records`,
+ * because every claim here is a real request against the frozen `hub_links:1`
+ * wire: the panel is gated on the `hub_links` capability a live backend
+ * advertises, and a backendless run would photograph the legacy pending panel
+ * instead. The daemon is `docs/evidence/hub-links/harness/stub-daemon.mjs` (the
+ * core route is still being extended to this shape; the README says per frame
+ * which half is the stand-in).
+ *
+ * The two claims a Storybook cell cannot make and this scene exists for:
+ * - a policy toggle is a REVISION-CHECKED service write (the row flips only
+ *   after the daemon's own answer, never optimistically), and
+ * - the unresolved row's source confirmation is an EXPLICIT act whose only
+ *   remaining step is the service's own resolution (the confirm control is
+ *   pressed with the approved source, and the row then reads resolved).
+ */
+async function sceneHubLinks(cdp, app) {
+	const facts = await factsOf(cdp);
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	await verb(cdp, "setTheme", THEME ?? "localOperatorDark");
+	const size = WINDOW_SIZE;
+	const theme = (THEME ?? "localOperatorDark")
+		.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)
+		.replace(/^-/, "");
+
+	/*
+	 * Reach the agents route and select the fixture row the daemon lists. The
+	 * panel is keyed to the record (`hubPane`), so the detail read and the
+	 * inventory read are both on screen once the row is named.
+	 */
+	await verb(cdp, "navigate", "/agents?name=reviewer");
+	/*
+	 * THE PANEL DEFAULTS COLLAPSED (item 4), so the scene OPENS it the way a reader
+	 * does: the pane's own disclosure trigger (`aria-expanded`) is a real press.
+	 * The healthy row must not auto-open, which is the whole point of item 4 — so
+	 * the collapsed state here is itself the acceptance signal before we expand.
+	 */
+	const collapsed = await waitForCondition(
+		cdp,
+		`(() => {
+			const pane = document.querySelector('[data-agents-pane]');
+			if (!pane) return null;
+			const trigger = pane.querySelector('button[aria-expanded]');
+			return trigger ? { expanded: trigger.getAttribute('aria-expanded') } : null;
+		})()`,
+		30_000,
+	);
+	check(
+		"a healthy link mounts the hub panel COLLAPSED (does not displace primary content)",
+		collapsed.ok && collapsed.last.expanded === "false",
+		`after ${collapsed.waitedMs ?? "?"}ms: ${JSON.stringify(collapsed.last)}`,
+	);
+	/*
+	 * THE COLLAPSED FRAME (design D15): the scene used to press the panel open
+	 * before photographing anything, so no frame existed at the state item 4 is
+	 * ABOUT - the reviewer measuring the healthy title's position had nothing to
+	 * measure. Photograph the collapsed panel (with the sidebar's roster marks in
+	 * the same frame) BEFORE expanding, and assert the unresolved affordance is
+	 * present on the roster in this state too.
+	 */
+	/*
+	 * D24: the collapsed summary must NOT state one row's policy for a group that
+	 * disagrees. The reviewer fixture is exactly that case - origin 1 Subscribe On,
+	 * origin 2 (Minerva · Private) Subscribe Off - so the pair must read "Mixed".
+	 */
+	const collapsedSummary = await cdp.evaluate(`(() => {
+		// The same trigger the collapsed check above found: the pane-scoped
+		// hub-panel disclosure. The hub-panel marker attribute is not forwarded by
+		// Disclosure, so the pane-scoped selector is the proof.
+		const pane = document.querySelector('[data-agents-pane]');
+		const trigger = pane && pane.querySelector('button[aria-expanded]');
+		return trigger ? trigger.textContent : null;
+	})()`);
+	check(
+		"a collapsed multi-origin summary states Mixed, never one row's policy for the group",
+		collapsedSummary !== null &&
+			/Mixed/.test(collapsedSummary) &&
+			!/Subscribe On/.test(collapsedSummary),
+		JSON.stringify({ summary: collapsedSummary }),
+	);
+	await captureSettled(cdp, `hub-links-${size}-${theme}-collapsed`);
+	/*
+	 * The roster affordance is asserted only where the sidebar DOCKED: below the
+	 * 1024px threshold it is a sheet, so its marks are legitimately absent (the
+	 * same reason the later sidebar-mark block is gated). The collapsed FRAME is
+	 * still captured at every width - the panel state is what it is for.
+	 */
+	if (WINDOW_WIDTH >= 1024) {
+		const collapsedMarks = await cdp.evaluate(`(() => {
+			const marks = Array.from(document.querySelectorAll('[data-hub-mark]')).map((m) =>
+				m.getAttribute('data-hub-mark'),
+			);
+			const unresolved = document.querySelector('[data-testid="hub-mark-unresolved"]');
+			return { marks, unresolved: unresolved !== null };
+		})()`);
+		note("collapsed state roster marks", JSON.stringify(collapsedMarks));
+		check(
+			"an unresolved-only item draws the source-not-confirmed roster affordance",
+			collapsedMarks.unresolved === true,
+			JSON.stringify(collapsedMarks),
+		);
+		/*
+		 * D25: the mark NAMES its row. Two unresolved items both truncate to
+		 * "legac…", so an unnamed mark cannot be attributed.
+		 */
+		const unresolvedNamed = await cdp.evaluate(`(() => {
+			const el = document.querySelector('[data-testid="hub-mark-unresolved"]');
+			return el ? el.getAttribute('aria-label') : null;
+		})()`);
+		check(
+			"the unresolved mark's label names its row",
+			unresolvedNamed !== null && /legacy-/i.test(unresolvedNamed),
+			JSON.stringify({ label: unresolvedNamed }),
+		);
+	}
+	await verb(cdp, "press", '[data-agents-pane] button[aria-expanded="false"]');
+	const ready = await waitForCondition(
+		cdp,
+		`(() => {
+			const pane = document.querySelector('[data-agents-pane]');
+			if (!pane) return null;
+			const rows = pane.querySelectorAll('[data-hub-link]');
+			return rows.length > 0 ? { rows: rows.length, unresolved: pane.querySelectorAll('[data-hub-source-unresolved]').length } : null;
+		})()`,
+		30_000,
+	);
+	check(
+		"the hub links inventory renders at least one linked row",
+		ready.ok,
+		`after ${ready.waitedMs ?? "?"}ms: ${JSON.stringify(ready.last)}`,
+	);
+
+	/*
+	 * THE INVENTORY, read from the DOM rather than trusted: every linked row is
+	 * present with its direction blocks, and the legacy unknown-origin row is a
+	 * separate DIAGNOSTIC (never a synthetic link with writable policy).
+	 */
+	const inventory = await cdp.evaluate(`(() => {
+		const pane = document.querySelector('[data-agents-pane]');
+		if (!pane) return null;
+		const linkRows = Array.from(pane.querySelectorAll('[data-hub-link]')).map((row) => ({
+			id: row.getAttribute('data-hub-link'),
+			directions: Array.from(row.querySelectorAll('[data-hub-direction]')).map((d) => d.getAttribute('data-hub-direction')),
+			policy: row.querySelectorAll('[data-hub-link-policy]').length,
+		}));
+		const unresolved = Array.from(pane.querySelectorAll('[data-hub-source-unresolved]')).map((row) => row.getAttribute('data-hub-source-unresolved'));
+		return { linkRows, unresolved };
+	})()`);
+	note("hub inventory", JSON.stringify(inventory));
+	check(
+		"each linked row draws both direction blocks and its policy controls",
+		inventory !== null &&
+			inventory.linkRows.length >= 1 &&
+			inventory.linkRows.every(
+				(row) =>
+					row.directions.includes("pull") &&
+					row.directions.includes("push") &&
+					row.policy === 1,
+			),
+		JSON.stringify(inventory?.linkRows),
+	);
+	check(
+		"the unresolved diagnostics are item-scoped: a healthy item's page shows none",
+		inventory !== null && inventory.unresolved.length === 0,
+		JSON.stringify(inventory?.unresolved),
+	);
+	await captureSettled(cdp, `hub-links-${size}-${theme}-inventory`);
+
+	/*
+	 * THE REVISION-CHECKED WRITE. The daemon answers the PATCH; the row flips only
+	 * after that answer (no optimistic ON), so the press is a real round trip.
+	 * The fixture's public agent row is subscribe=ON, auto_push=OFF, and the
+	 * toggle we press is the SUBSCRIBE switch to OFF - a state the daemon accepts
+	 * without the auto-push consent dialog, so the frame is of the plain write.
+	 */
+	const subscribeSwitch = await cdp.evaluate(`(() => {
+		const policy = document.querySelector('[data-hub-link-policy]');
+		if (!policy) return null;
+		const sw = policy.querySelector('button[role="switch"]');
+		return sw ? { state: sw.getAttribute('data-state') } : null;
+	})()`);
+	note("subscribe switch before", JSON.stringify(subscribeSwitch));
+	const pressed = await verb(
+		cdp,
+		"press",
+		'[data-hub-link-policy] button[role="switch"]',
+	);
+	check(
+		"the policy switch received the point (hit test)",
+		pressed.hitTest === true,
+		JSON.stringify({ hitTest: pressed.hitTest, hit: pressed.hit }),
+	);
+	const flipped = await waitForCondition(
+		cdp,
+		`(() => {
+			const policy = document.querySelector('[data-hub-link-policy]');
+			const sw = policy && policy.querySelector('button[role="switch"]');
+			return sw && sw.getAttribute('data-state') === 'unchecked' ? true : null;
+		})()`,
+		15_000,
+	);
+	check(
+		"the subscribe toggle flips only after the daemon's own answer (no optimistic ON)",
+		flipped.ok,
+		`after ${flipped.waitedMs ?? "?"}ms: ${JSON.stringify(flipped.last)}`,
+	);
+	await captureSettled(cdp, `hub-links-${size}-${theme}-policy-off`);
+
+	/*
+	 * THE LEGACY UNKNOWN-ORIGIN ROW, on ITS OWN item page. The panel narrows
+	 * `unresolved` to the current item by local id, so the diagnostic and its
+	 * confirm-source control render only where the unresolved item is selected.
+	 */
+	await verb(cdp, "navigate", "/agents?name=legacy-helper");
+	const unresolvedReady = await waitForCondition(
+		cdp,
+		`(() => {
+			const pane = document.querySelector('[data-agents-pane]');
+			return pane && pane.querySelector('[data-hub-source-unresolved]') ? true : null;
+		})()`,
+		30_000,
+	);
+	check(
+		"the unresolved legacy row renders its diagnostic on its own item page",
+		unresolvedReady.ok,
+		`after ${unresolvedReady.waitedMs ?? "?"}ms: ${JSON.stringify(unresolvedReady.last)}`,
+	);
+
+	/*
+	 * THE EXPLICIT SOURCE CONFIRMATION. The unresolved row's only honest origin is
+	 * an act that names BOTH the approved source and the scope; the confirm
+	 * control opens the destination chooser, and pressing it sends the real
+	 * `hub.apply` resolve arm. The refusal branch (a conflicting KNOWN scope) is
+	 * the daemon's own; here we drive the PUBLIC destination, which it accepts.
+	 */
+	const opened = await verb(
+		cdp,
+		"press",
+		"[data-hub-source-unresolved] button",
+	);
+	check(
+		"the source-confirmation control opens the destination chooser",
+		opened.hitTest === true,
+		JSON.stringify({ hitTest: opened.hitTest, hit: opened.hit }),
+	);
+	const chooser = await waitForCondition(
+		cdp,
+		`(() => {
+			const row = document.querySelector('[data-hub-source-unresolved]');
+			if (!row) return null;
+			const select = row.querySelector('select');
+			if (!select) return { signedOut: true };
+			return {
+				options: select.options.length,
+				value: select.value,
+				emptyOption: select.options[0] ? select.options[0].value : null,
+			};
+		})()`,
+		15_000,
+	);
+	/*
+	 * UX U1 (design D3): the chooser starts EMPTY - no Public destination is
+	 * pre-selected - so confirming is a deliberate act, not a press of the
+	 * default. The empty first option is the spent slot that keeps it so.
+	 *
+	 * A SIGNED-OUT run has no chooser at all: the destinations a viewer without an
+	 * account could reach are none, so the row shows the sign-in-to-publish
+	 * affordance instead. That is a different state, asserted on its own.
+	 */
+	if (chooser.ok && chooser.last.signedOut) {
+		const affordance = await cdp.evaluate(`(() => {
+			const row = document.querySelector('[data-hub-source-unresolved]');
+			const btn = row && row.querySelector('button');
+			return btn ? { text: btn.textContent } : null;
+		})()`);
+		/*
+		 * UX U1' (design D13, QA Q2): the old affordance compounded the copy into
+		 * "\u2026 \u00b7 Private \u00b7 Private" AND named the ITEM as the destination.
+		 * This rejects BOTH: no "Private" at all (a signed-out viewer has no org
+		 * list) and no item name in the button.
+		 */
+		const affordanceText = affordance === null ? "" : affordance.text;
+		const unresolvedItem = await cdp.evaluate(`(() => {
+			const row = document.querySelector('[data-hub-source-unresolved]');
+			const heading = row && row.querySelector('h4, h3, h2');
+			return heading ? heading.textContent : null;
+		})()`);
+		check(
+			"the signed-out affordance names no item and never duplicates Private",
+			affordance !== null &&
+				/sign in/i.test(affordanceText) &&
+				!/Public/.test(affordanceText) &&
+				(affordanceText.match(/Private/g) ?? []).length === 0 &&
+				(unresolvedItem === null || !affordanceText.includes(unresolvedItem)),
+			JSON.stringify({ text: affordanceText, item: unresolvedItem }),
+		);
+		/*
+		 * Fold (correctness): the "Choose a scope to continue" hint belongs to the
+		 * signed-in chooser; signed out the chooser is not on screen, so the hint
+		 * must be absent rather than contradicting the surface.
+		 */
+		const hintPresent = await cdp.evaluate(`(() => {
+			const row = document.querySelector('[data-hub-source-unresolved]');
+			if (!row) return null;
+			return /choose a scope/i.test(row.textContent || '');
+		})()`);
+		check(
+			"the signed-out surface shows no 'Choose a scope' hint (no chooser is on screen)",
+			hintPresent === false,
+			JSON.stringify({ hintPresent }),
+		);
+		await captureSettled(cdp, `hub-links-${size}-${theme}-resolve-signed-out`);
+		return;
+	}
+	check(
+		"the scope chooser starts EMPTY: no irreversible Public is pre-selected",
+		chooser.ok && chooser.last.value === "" && chooser.last.emptyOption === "",
+		JSON.stringify(chooser.last),
+	);
+	check(
+		"the chooser offers Public plus every verified organization",
+		chooser.ok && chooser.last.options >= 2,
+		JSON.stringify(chooser.last),
+	);
+	await captureSettled(cdp, `hub-links-${size}-${theme}-resolve-open`);
+	/*
+	 * The confirm button is DISABLED while nothing is chosen - the guard that
+	 * makes the empty default safe. Assert that before choosing.
+	 */
+	const confirmDisabled = await cdp.evaluate(`(() => {
+		const row = document.querySelector('[data-hub-source-unresolved]');
+		const confirm = row && row.querySelector('button:last-of-type');
+		return confirm ? confirm.disabled : null;
+	})()`);
+	check(
+		"the confirm control is DISABLED until a destination is chosen",
+		confirmDisabled === true,
+		`disabled=${confirmDisabled}`,
+	);
+	/*
+	 * A DELIBERATE choice: drive the select's own change with a real event, the way
+	 * a reader picks a destination, then confirm. Setting `value` alone on a React
+	 * select does not fire its handler, so the native setter is called and the
+	 * change is dispatched.
+	 */
+	await cdp.evaluate(`(() => {
+		const row = document.querySelector('[data-hub-source-unresolved]');
+		const select = row && row.querySelector('select');
+		if (!select) return;
+		const setter = Object.getOwnPropertyDescriptor(
+			window.HTMLSelectElement.prototype,
+			'value',
+		).set;
+		setter.call(select, 'public');
+		select.dispatchEvent(new Event('change', { bubbles: true }));
+	})()`);
+	const chosen = await waitForCondition(
+		cdp,
+		`(() => {
+			const row = document.querySelector('[data-hub-source-unresolved]');
+			const confirm = row && row.querySelector('button:last-of-type');
+			return confirm && !confirm.disabled ? true : null;
+		})()`,
+		10_000,
+	);
+	check(
+		"choosing a destination enables the confirm control",
+		chosen.ok,
+		`after ${chosen.waitedMs ?? "?"}ms: ${JSON.stringify(chosen.last)}`,
+	);
+	const confirmed = await verb(
+		cdp,
+		"press",
+		"[data-hub-source-unresolved] button:last-of-type",
+	);
+	check(
+		"the confirm-source act is a real press",
+		confirmed.hitTest === true,
+		JSON.stringify({ hitTest: confirmed.hitTest, hit: confirmed.hit }),
+	);
+	const resolvedRow = await waitForCondition(
+		cdp,
+		`(() => {
+			const pane = document.querySelector('[data-agents-pane]');
+			return pane && pane.querySelectorAll('[data-hub-source-unresolved]').length === 0 ? true : null;
+		})()`,
+		15_000,
+	);
+	check(
+		"the resolved row leaves the unresolved diagnostics after the service answers",
+		resolvedRow.ok,
+		`after ${resolvedRow.waitedMs ?? "?"}ms: ${JSON.stringify(resolvedRow.last)}`,
+	);
+	await captureSettled(cdp, `hub-links-${size}-${theme}-resolve-done`);
+
+	/*
+	 * THE SKILL SIBLING. The panel is the same component with a `skill` kind
+	 * filter; the daemon's inventory carries one skill link, so the skill surface
+	 * is exercised by the SAME inventory read rather than a second route.
+	 */
+	const kinds = await cdp.evaluate(`(() => {
+		const pane = document.querySelector('[data-agents-pane]');
+		if (!pane) return null;
+		return { rowIds: Array.from(pane.querySelectorAll('[data-hub-link]')).map((row) => row.getAttribute('data-hub-link')) };
+	})()`);
+	note(
+		"agent pane row ids (skill rows stay out of this kind filter)",
+		JSON.stringify(kinds),
+	);
+	check(
+		"the agent pane renders its own rows and no skill row leaks in",
+		kinds !== null &&
+			kinds.rowIds.length >= 1 &&
+			kinds.rowIds.every((id) => !String(id).includes("skill")),
+		JSON.stringify(kinds),
+	);
+
+	/*
+	 * THE ORG DESTINATION (design/UX): a named private org link renders its source
+	 * as "<organization> · Private", not a bare URL and not "Public". The stub's
+	 * `lopdev` TEAM row is `visibility: "org"`, tenant Minerva, so its detail page
+	 * is where that wording is photographed.
+	 */
+	await verb(cdp, "navigate", "/agents?kind=team&name=lopdev");
+	const orgRow = await waitForCondition(
+		cdp,
+		`(() => {
+			const pane = document.querySelector('[data-agents-pane]');
+			const row = pane && pane.querySelector('[data-hub-link]');
+			if (!row) return null;
+			const heading = row.querySelector('h3');
+			return heading ? { source: heading.textContent } : null;
+		})()`,
+		30_000,
+	);
+	check(
+		"an org-scoped link names its organization and privacy, not Public or a bare URL",
+		orgRow.ok &&
+			/·\s*Private/.test(orgRow.last.source) &&
+			/Minerva/.test(orgRow.last.source),
+		JSON.stringify(orgRow.last),
+	);
+	await captureSettled(cdp, `hub-links-${size}-${theme}-org-source`);
+
+	/*
+	 * THE SIDEBAR MARK (design §Sidebar line 48, CODE MAJOR-2). The chat sidebar
+	 * draws one mark per linked row and the AGGREGATE mark for a multi-origin item.
+	 * The stub gives `reviewer` two origins (aggregate) and `coder` one (quiet).
+	 *
+	 * BELOW THE DOCK THRESHOLD the sidebar is a SHEET, not a dock (`SIDEBAR_DOCK_MIN_PX`
+	 * = 1024, `chat-sidebar-layout.ts`), so it is closed by default and its rows -
+	 * and their marks - are legitimately not in the DOM. The marks are a docked-
+	 * sidebar surface, so a narrow run NOTES that and skips the block rather than
+	 * asserting a state the layout does not have; the narrow frames are of the PANEL.
+	 */
+	const WIDE_ENOUGH_TO_DOCK = WINDOW_WIDTH >= 1024;
+	if (!WIDE_ENOUGH_TO_DOCK) {
+		note(
+			"sidebar marks skipped: the sidebar is a sheet below the 1024px dock threshold",
+			`window width ${WINDOW_WIDTH}`,
+		);
+		return;
+	}
+	await verb(cdp, "navigate", "/chat");
+	const sidebar = await waitForCondition(
+		cdp,
+		`(() => {
+			const marks = document.querySelectorAll('[data-hub-mark]');
+			const aggregate = document.querySelector('[data-testid="hub-mark-aggregate"]');
+			return marks.length > 0
+				? {
+						marks: Array.from(marks).map((m) => m.getAttribute('data-hub-mark')),
+						aggregate: aggregate ? Number(aggregate.getAttribute('data-hub-mark-count')) : null,
+					}
+				: null;
+		})()`,
+		30_000,
+	);
+	check(
+		"the sidebar draws a hub mark per linked row",
+		sidebar.ok && sidebar.last.marks.length >= 1,
+		`after ${sidebar.waitedMs ?? "?"}ms: ${JSON.stringify(sidebar.last)}`,
+	);
+	check(
+		"a multi-origin item draws ONE aggregate mark carrying its origin count",
+		sidebar.ok &&
+			sidebar.last.aggregate !== null &&
+			sidebar.last.aggregate >= 2,
+		JSON.stringify(sidebar.last),
+	);
+	await captureSettled(cdp, `hub-links-${size}-${theme}-sidebar-marks`);
+
+	/*
+	 * THE AGGREGATE PRESS opens the Hub links DETAIL rather than a policy popover:
+	 * with several destinations there is no single policy to edit, so the press
+	 * routes to the detail page (MAJOR-2's own contract).
+	 */
+	const aggregatePress = await verb(
+		cdp,
+		"press",
+		'[data-testid="hub-mark-aggregate"]',
+	);
+	check(
+		"the aggregate mark is a real press",
+		aggregatePress.hitTest === true,
+		JSON.stringify({
+			hitTest: aggregatePress.hitTest,
+			hit: aggregatePress.hit,
+		}),
+	);
+	/*
+	 * The press routes to the item's DETAIL page (`/agents?kind=agent&name=reviewer`),
+	 * where the panel mounts COLLAPSED (item 4). Assert the route landed on the
+	 * reviewer detail, then expand the pane and assert BOTH of the row's origins
+	 * render - the aggregate opening detail is exactly what gives a multi-origin
+	 * item its per-origin controls.
+	 */
+	const detailOpened = await waitForCondition(
+		cdp,
+		`(() => {
+			const pane = document.querySelector('[data-agents-pane]');
+			if (!pane) return null;
+			const nameField = document.querySelector('[data-agents-pane] [data-entity-name]');
+			const heading = pane.querySelector('h2, h1');
+			return { name: nameField ? nameField.textContent : heading ? heading.textContent : null };
+		})()`,
+		20_000,
+	);
+	check(
+		"the aggregate press opens the multi-origin item's detail page",
+		detailOpened.ok,
+		`after ${detailOpened.waitedMs ?? "?"}ms: ${JSON.stringify(detailOpened.last)}`,
+	);
+	await verb(cdp, "press", '[data-agents-pane] button[aria-expanded="false"]');
+	const origins = await waitForCondition(
+		cdp,
+		`(() => {
+			const pane = document.querySelector('[data-agents-pane]');
+			const rows = pane ? pane.querySelectorAll('[data-hub-link]') : [];
+			return rows.length >= 2 ? { count: rows.length } : null;
+		})()`,
+		15_000,
+	);
+	check(
+		"the detail expands to show BOTH origins of the multi-origin item",
+		origins.ok && origins.last.count >= 2,
+		`after ${origins.waitedMs ?? "?"}ms: ${JSON.stringify(origins.last)}`,
+	);
+}
+
 async function main() {
 	/*
 	 * The frame timezone, pinned before the first boot: the committed frames
@@ -43321,6 +43880,16 @@ async function main() {
 			"--scene route-tops needs --backend: settings, agents, projects, hub and schedules are gated on the catalogue a live backend advertises, and the macOS lane assertion is read over every one of them",
 		);
 	}
+	if (SCENE === "hub-links" && BACKEND === null) {
+		throw new Error(
+			"--scene hub-links needs --backend: the inventory, the policy write and the source confirmation are all real requests against the frozen hub_links:1 wire, and a backendless run draws the legacy pending panel instead",
+		);
+	}
+	if (SCENE === "hub-links" && BACKEND_RECORDS === null) {
+		throw new Error(
+			"--scene hub-links needs --backend-records: the serve record is how the app admits the daemon this run owns, and without it the run photographs a disconnected app",
+		);
+	}
 	if (SCENE === "project-detail" && BACKEND === null) {
 		throw new Error(
 			"--scene project-detail needs --backend: the seeded row, quick-send's message and the picker's create are all real requests to the daemon this run owns, so a run with none would photograph three refusals",
@@ -43586,6 +44155,7 @@ async function main() {
 				await sceneCanvasFreshness(cdp, app);
 			else if (SCENE === "sidebar-lazy-chats") await sceneSidebarLazyChats(cdp);
 			else if (SCENE === "mini-view") await sceneMiniView(app, cdp);
+			else if (SCENE === "hub-links") await sceneHubLinks(cdp, app);
 			else if (SCENE !== "none") throw new Error(`unknown scene "${SCENE}"`);
 			for (const line of cdp.console.slice(-20)) say(`  [renderer] ${line}`);
 		} finally {
