@@ -71,12 +71,19 @@ export interface RegisterBrowserIpcOptions {
 	 * calls. It is authorized like every other channel and is a no-op when a host
 	 * is already running, so a stray click cannot start a second one. */
 	retry?: () => Promise<void>;
+	/** Move DOM focus into the presented page after a chord that came from the page.
+	 * Optional because only a launch mode that may focus a window supplies it; the
+	 * helper behind it refuses an unfocused or hidden window and never raises one. */
+	focusPage?: () => void;
 	log: (message: string) => void;
 }
 
 /** The channels this namespace owns, in one place so a test can enumerate them. */
 export const BROWSER_IPC_CHANNELS = [
 	"browser-state",
+	"browser-set-chord-focus",
+	"browser-reopen-tab",
+	"browser-focus-page",
 	"browser-new-tab",
 	"browser-close-tab",
 	"browser-close-tabs",
@@ -182,7 +189,25 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 		return host.navigateActive(url.trim());
 	});
 
-	ipcMain.handle("browser-reload", (event) => authorize(event).reloadActive());
+	ipcMain.handle("browser-set-chord-focus", (event, focused: unknown) => {
+		const host = authorize(event);
+		if (typeof focused !== "boolean")
+			throw new Error("Browser focus must be a boolean.");
+		host.setChordFocus(focused);
+	});
+	ipcMain.handle("browser-reopen-tab", (event, sessionId: unknown) =>
+		authorize(event).reopenClosed(optionalConversationOrThrow(sessionId)),
+	);
+	ipcMain.handle("browser-focus-page", (event) => {
+		authorize(event);
+		options.focusPage?.();
+	});
+	ipcMain.handle("browser-reload", (event, hard: unknown) => {
+		const host = authorize(event);
+		if (hard !== undefined && typeof hard !== "boolean")
+			throw new Error("Hard reload must be a boolean.");
+		return host.reloadActive(hard === true);
+	});
 
 	ipcMain.handle("browser-stop", (event) => authorize(event).stopActive());
 
@@ -313,11 +338,14 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 	});
 
 	ipcMain.handle("browser-clear-data", async (event, what: unknown) => {
-		authorize(event);
+		const host = authorize(event);
 		if (what !== "cookies" && what !== "cache" && what !== "everything") {
 			throw new Error("Unsupported clear-data request.");
 		}
 		await options.clearData(what);
+		// "Everything" erases what the user visited; a remembered closed tab is part
+		// of that history and must not survive it (review R3).
+		if (what === "everything") host.forgetClosedTabs();
 		options.log(`[browser] cleared browsing data: ${what}`);
 		return { cleared: what };
 	});

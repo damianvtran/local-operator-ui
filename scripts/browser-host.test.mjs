@@ -2328,6 +2328,21 @@ test("browser readiness reads stay authorized before initialization and across r
 		currentHost = makeHost().host;
 		availability = { ...availability, status: "ready", message: null };
 		assert.equal(read(event).availability.status, "ready");
+		const focus = ipcMain.handlers.get("browser-set-chord-focus");
+		const reopen = ipcMain.handlers.get("browser-reopen-tab");
+		const focusPage = ipcMain.handlers.get("browser-focus-page");
+		for (const handler of [focus, reopen, focusPage]) {
+			assert.throws(
+				() => handler({ sender: {}, senderFrame: frame }, false),
+				/cannot use/,
+			);
+		}
+		assert.throws(() => focus(event, "true"), /boolean/);
+		assert.throws(() => reopen(event, { sessionId: "other" }), /conversation/i);
+		focus(event, true);
+		assert.equal(currentHost.chordFocus, true);
+		focus(event, false);
+		assert.equal(currentHost.chordFocus, false);
 		assert.equal(
 			ipcMain.handlers.get("browser-state"),
 			read,
@@ -2815,6 +2830,132 @@ function makeHost(overrides = {}) {
 		downloads,
 	};
 }
+
+test("closed-tab stack is user-only, scoped, bounded and erased with host UI lifetime", async () => {
+	const { host, registry } = makeHost();
+	for (let i = 0; i < 12; i++) {
+		await host.newTab("conversation-a");
+		await host.navigateActive(`https://example.test/${i}`);
+		host.closeTab(registry.activeTab.tabId);
+	}
+	for (let i = 11; i >= 2; i--) {
+		await host.reopenClosed("conversation-b");
+		assert.equal(registry.count(), 0);
+		await host.reopenClosed("conversation-a");
+		assert.equal(
+			registry.activeTab.view.webContents.getURL(),
+			`https://example.test/${i}`,
+		);
+		assert.equal(registry.activeTab.nonce, null);
+		registry.destroy(registry.activeTab.tabId); // no second user close to remember
+	}
+	await host.reopenClosed(null);
+	assert.equal(registry.count(), 0, "oldest two entries were evicted");
+	const agent = registry.create({ owner: "agent", sessionId: "agent" });
+	await agent.view.webContents.loadURL("https://example.test/agent");
+	host.closeTab(agent.tabId);
+	await host.newTab();
+	await host.navigateActive("https://example.test/handed");
+	const user = registry.activeTab;
+	host.handOver(user.tabId, "session:a");
+	host.closeTab(user.tabId);
+	await host.reopenClosed(null);
+	assert.equal(
+		registry.count(),
+		0,
+		"agent and handed-over URLs never retained",
+	);
+	await host.newTab();
+	await host.navigateActive("https://example.test/forgotten");
+	host.closeTab(registry.activeTab.tabId);
+	host.setChordFocus(true);
+	host.clearChordState();
+	assert.equal(host.chordFocus, false);
+	await host.reopenClosed(null);
+	assert.equal(registry.count(), 0);
+});
+
+test("clear-data and forget-site erase the closed-tab stack (review R3)", async () => {
+	const { host, registry } = makeHost({ forgetSiteData: async () => {} });
+	const close = async (url) => {
+		await host.newTab();
+		await host.navigateActive(url);
+		host.closeTab(registry.activeTab.tabId);
+	};
+	await close("https://keep.example/one");
+	await close("https://gone.example/two");
+	await host.forgetSite("https://gone.example/");
+	await host.reopenClosed(null);
+	assert.equal(
+		registry.activeTab.view.webContents.getURL(),
+		"https://keep.example/one",
+		"only the forgotten origin was dropped, the other close survives",
+	);
+	registry.destroy(registry.activeTab.tabId);
+	await close("https://keep.example/three");
+	host.forgetClosedTabs();
+	const before = registry.count();
+	await host.reopenClosed(null);
+	assert.equal(
+		registry.count(),
+		before,
+		"everything-clear leaves nothing to reopen",
+	);
+});
+
+test("reopen takes its entry before awaiting and navigates the tab it created (review R4)", async () => {
+	const { host, registry } = makeHost();
+	for (const url of ["https://a.example/", "https://b.example/"]) {
+		await host.newTab();
+		await host.navigateActive(url);
+		host.closeTab(registry.activeTab.tabId);
+	}
+	// Two reopens racing each other must restore two DIFFERENT pages, not one twice.
+	await Promise.all([host.reopenClosed(null), host.reopenClosed(null)]);
+	const urls = [...registry.tabs.values()]
+		.map((record) => record.view.webContents.getURL())
+		.sort();
+	assert.deepEqual(urls, ["https://a.example/", "https://b.example/"]);
+	// A failing navigation consumes its entry, so a repeat does not add more blanks.
+	for (const record of [...registry.tabs.values()])
+		registry.destroy(record.tabId);
+	await host.newTab();
+	await host.navigateActive("https://c.example/");
+	host.closeTab(registry.activeTab.tabId);
+	const realCreate = registry.create.bind(registry);
+	registry.create = (options) => {
+		const record = realCreate(options);
+		const load = record.view.webContents.loadURL.bind(record.view.webContents);
+		record.view.webContents.loadURL = async (url) => {
+			if (url === "https://c.example/") throw new Error("ERR_FAILED");
+			return load(url);
+		};
+		return record;
+	};
+	await assert.rejects(host.reopenClosed(null), /ERR_FAILED/);
+	registry.create = realCreate;
+	const blanks = registry.count();
+	await host.reopenClosed(null);
+	assert.equal(
+		registry.count(),
+		blanks,
+		"failed entry was consumed; no extra blank tab",
+	);
+});
+
+test("a hard reload falls back to a plain reload when the engine lacks it (review R10)", () => {
+	const calls = [];
+	const { host, registry } = makeHost();
+	const record = registry.create({ owner: "user", sessionId: null });
+	record.view.webContents.reload = () => calls.push("reload");
+	record.view.webContents.reloadIgnoringCache = undefined;
+	host.reloadActive(true);
+	assert.deepEqual(calls, ["reload"]);
+	record.view.webContents.reloadIgnoringCache = () => calls.push("hard");
+	host.reloadActive(true);
+	host.reloadActive(false);
+	assert.deepEqual(calls, ["reload", "hard", "reload"]);
+});
 
 test("real dispatcher records allocation, fences peers, recovers and finishes exactly its tab", async () => {
 	const { host, registry } = makeHost();

@@ -1,0 +1,92 @@
+[
+  {
+    "name": "provenance",
+    "actual": {
+      "sourceHead": "4bb030c499c7d3e82069eff02a63fb4b6f012a20",
+      "platform": "darwin",
+      "delivery": "explicit callback on real main/mini windows; synthetic DOM focusin; not OS accelerator"
+    }
+  },
+  {
+    "name": "menu actual",
+    "actual": {
+      "menus": [
+        {
+          "role": "hide",
+          "accelerator": "Command+H"
+        },
+        {
+          "role": "hideothers",
+          "accelerator": "Command+Alt+H"
+        },
+        {
+          "role": "quit",
+          "accelerator": "CommandOrControl+Q"
+        },
+        {
+          "role": "quit",
+          "accelerator": "CommandOrControl+Q"
+        },
+        {
+          "role": "undo",
+          "accelerator": "CommandOrControl+Z"
+        },
+        {
+          "role": "redo",
+          "accelerator": "Shift+CommandOrControl+Z"
+        },
+        {
+          "role": "cut",
+          "accelerator": "CommandOrControl+X"
+        },
+        {
+          "role": "copy",
+          "accelerator": "CommandOrControl+C"
+        },
+        {
+          "role": "paste",
+          "accelerator": "CommandOrControl+V"
+        },
+        {
+          "role": "selectall",
+          "accelerator": "CommandOrControl+A"
+        },
+        {
+          "id": "app-reload",
+          "role": null,
+          "accelerator": "CmdOrCtrl+R"
+        },
+        {
+          "id": "app-force-reload",
+          "role": null,
+          "accelerator": "CmdOrCtrl+Shift+R"
+        },
+        {
+          "role": null,
+          "accelerator": "CmdOrCtrl+O"
+        },
+        {
+          "role": null,
+          "accelerator": "CmdOrCtrl+Plus"
+        },
+        {
+          "role": null,
+          "accelerator": "CmdOrCtrl+-"
+        },
+        {
+          "role": "togglefullscreen",
+          "accelerator": "Control+Command+F"
+        },
+        {
+          "role": "minimize",
+          "accelerator": "CommandOrControl+M"
+        },
+        {
+          "id": "app-close",
+          "role": null,
+          "accelerator": "CmdOrCtrl+W"
+        }
+      ]
+    }
+  }
+]

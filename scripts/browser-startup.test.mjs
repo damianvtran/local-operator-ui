@@ -149,13 +149,21 @@ function fixture(failConsole) {
 		},
 	});
 	const mainFrame = { url: "http://localhost:5173/index.html" };
-	const webContents = { id: 700, mainFrame, send() {} };
-	const window = {
+	const webContents = Object.assign(new EventEmitter(), {
+		id: 700,
+		mainFrame,
+		send() {},
+		isDestroyed: () => false,
+		setIgnoreMenuShortcuts(value) {
+			webContents.ignoringMenu = value;
+		},
+	});
+	const window = Object.assign(new EventEmitter(), {
 		isDestroyed: () => false,
 		webContents,
 		contentView: { addChildView() {}, removeChildView() {} },
 		getContentBounds: () => ({ x: 0, y: 0, width: 1000, height: 700 }),
-	};
+	});
 	const f = {
 		dir,
 		saved,
@@ -251,6 +259,65 @@ test("production shared browser serves seven restored user-owned tabs even when 
 		assert.equal(f.views.size, 0);
 		assert.equal(f.session.listenerCount("will-download"), 0);
 	}
+});
+
+test("chrome focus is reset by a renderer reload or crash, and the listeners detach on stop (review R7)", async () => {
+	const f = fixture(false);
+	const contents = f.window.webContents;
+	let handle;
+	try {
+		handle = await startBrowserHost(options(f));
+		const setFocus = f.handlers.get("browser-set-chord-focus");
+		const sender = { sender: contents, senderFrame: contents.mainFrame };
+		const reportFocus = (value) => setFocus(sender, value);
+		const ignoring = () => contents.ignoringMenu;
+		reportFocus(true);
+		// An in-page route change or a subframe load is NOT a renderer reload.
+		contents.emit("did-start-navigation", {
+			isMainFrame: true,
+			isSameDocument: true,
+		});
+		contents.emit("did-start-navigation", {
+			isMainFrame: false,
+			isSameDocument: false,
+		});
+		assert.equal(
+			handle.chords.menu("close-tab"),
+			true,
+			"focus survives non-reloads",
+		);
+		// A main-frame, cross-document navigation is a reload: no unmount cleanup runs.
+		contents.emit("did-start-navigation", {
+			isMainFrame: true,
+			isSameDocument: false,
+		});
+		assert.equal(
+			handle.chords.menu("close-tab"),
+			false,
+			"reload dropped the owner",
+		);
+		assert.equal(ignoring(), false);
+		reportFocus(true);
+		contents.emit("render-process-gone", {}, { reason: "crashed" });
+		assert.equal(
+			handle.chords.menu("close-tab"),
+			false,
+			"crash dropped the owner",
+		);
+		assert.equal(contents.listenerCount("did-start-navigation") >= 1, true);
+	} finally {
+		await stopBrowserHost();
+	}
+	assert.equal(
+		contents.listenerCount("did-start-navigation"),
+		0,
+		"stop detached",
+	);
+	assert.equal(
+		contents.listenerCount("render-process-gone"),
+		0,
+		"stop detached",
+	);
 });
 
 /** The ipcMain stub above now throws on a duplicate `handle`, exactly as

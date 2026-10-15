@@ -10,6 +10,7 @@ import {
 	shell,
 	webContents,
 } from "electron";
+import type { BrowserChord } from "../../shared/browser-chord";
 import { startConsoleHost } from "../console";
 import type { ConsoleCompletionNotifier } from "../console/completion";
 import { isConsoleDispatchMethod } from "../console/dispatch";
@@ -21,8 +22,13 @@ import {
 	attachWebauthnChooser,
 	installWebauthn,
 } from "../webauthn";
-import { type RaiseReport, presentPopupWindow } from "../window-raise";
+import {
+	type RaiseReport,
+	focusBrowserChordTarget,
+	presentPopupWindow,
+} from "../window-raise";
 import { ApprovalStore } from "./approvals";
+import { createBrowserChordRouter } from "./browser-chord";
 import { CdpPool } from "./cdp";
 import {
 	type ConsentAttentionPayload,
@@ -201,6 +207,7 @@ export interface StartBrowserHostOptions {
 }
 
 export interface BrowserHostHandle {
+	chords: ReturnType<typeof createBrowserChordRouter>;
 	host: BrowserHost;
 	port: number;
 	profileDir: string;
@@ -220,6 +227,12 @@ export interface BrowserHostHandle {
  * honest about the fact that this app runs one host.
  */
 let activeHost: BrowserHostHandle | null = null;
+
+/** Explicit menu clicks use the same owner decision as keys. Outside the browser
+ * the caller retains its original app-window action, never a global tab binding. */
+export function routeBrowserMenu(intent: BrowserChord): boolean {
+	return activeHost?.chords.menu(intent) ?? false;
+}
 
 /** The in-flight stop, so a second caller waits for the first instead of
  * returning while the first is still writing the session-cookie snapshot. */
@@ -342,6 +355,14 @@ export function startBrowserHost(
 		expectedUrl: options.expectedUrl,
 		host: () => bindings.host?.() ?? null,
 		webauthn: () => bindings.webauthn?.() ?? null,
+		focusPage: () => {
+			const record = bindings.host?.()?.registry.activeTab;
+			const target = record?.presented
+				? webContents.fromId(record.view.webContents.id)
+				: null;
+			if (target)
+				focusBrowserChordTarget(options.window, target, options.windowShow);
+		},
 		availability: () => availability,
 		clearData: async (what) => {
 			if (!bindings.clearData)
@@ -810,6 +831,83 @@ async function initializeBrowserHost(
 			forgetSiteData: (origin) => clearOriginData(browserSession, origin),
 		});
 
+		const chords = createBrowserChordRouter({
+			platform: process.platform,
+			ownsChrome: () => host.chordFocus,
+			ownsPage: () => {
+				const record = registry.activeTab;
+				return Boolean(
+					record?.presented &&
+						webContents.getFocusedWebContents()?.id ===
+							record.view.webContents.id,
+				);
+			},
+			reload: (hard) => {
+				host.reloadActive(hard);
+			},
+			history: (direction) => {
+				host.historyActive(direction);
+			},
+			send: (message) =>
+				options.window.webContents.send("browser-chord", message),
+			focusChrome: () =>
+				focusBrowserChordTarget(
+					options.window,
+					options.window.webContents,
+					options.windowShow,
+				),
+		});
+		const onChromeInput = (event: Event, input: Electron.Input): void => {
+			const handled = chords.input(event, input, "chrome", host.chordFocus);
+			// Per-input suppression, NOT a 150ms command debounce. Key-up or any
+			// unrelated key restores menu shortcuts. Focus departure resets too.
+			options.window.webContents.setIgnoreMenuShortcuts(handled);
+		};
+		const resetChordFocus = (): void => {
+			host.setChordFocus(false);
+		};
+		host.onChordFocusChanged = (focused) => {
+			if (!focused && !options.window.webContents.isDestroyed())
+				options.window.webContents.setIgnoreMenuShortcuts(false);
+		};
+		options.window.webContents.on("before-input-event", onChromeInput);
+		options.window.on("blur", resetChordFocus);
+		options.window.on("closed", resetChordFocus);
+		// A renderer that reloads (HMR, Cmd+R on a non-browser route) or crashes runs
+		// no unmount cleanup, so its `focusout`/`report(false)` never arrives and the
+		// flag would stay true while the window keeps focus: chat would then have
+		// Cmd+R/W/T/L claimed and sent to a renderer with no listener (review R7).
+		// Only a MAIN-FRAME, cross-document navigation counts; an in-page route
+		// change keeps the same renderer and its own focus reports.
+		const resetOnNavigation = (details: {
+			isMainFrame: boolean;
+			isSameDocument: boolean;
+		}): void => {
+			if (details.isMainFrame && !details.isSameDocument) resetChordFocus();
+		};
+		options.window.webContents.on("did-start-navigation", resetOnNavigation);
+		options.window.webContents.on("render-process-gone", resetChordFocus);
+		const detachChords = (): void => {
+			host.clearChordState();
+			options.window.webContents.removeListener(
+				"before-input-event",
+				onChromeInput,
+			);
+			options.window.removeListener("blur", resetChordFocus);
+			options.window.removeListener("closed", resetChordFocus);
+			options.window.webContents.removeListener(
+				"did-start-navigation",
+				resetOnNavigation,
+			);
+			options.window.webContents.removeListener(
+				"render-process-gone",
+				resetChordFocus,
+			);
+		};
+		// An initialization failure after wiring must not leave an old input
+		// router beside the next attempt's router or keep menu suppression alive.
+		rollback.add(detachChords);
+
 		// Restore BEFORE any interaction is possible, and after the session handlers
 		// exist (the user agent must already be set: Electron documents that
 		// `setUserAgent` does not affect existing WebContents, so a restore that beat
@@ -963,12 +1061,14 @@ async function initializeBrowserHost(
 		);
 
 		const handle: BrowserHostHandle = {
+			chords,
 			host,
 			port: server.port,
 			profileDir,
 			agentTabs: () => registry.agentTabCount(),
 			sessionCookies: () => restoreReport,
 			stop: async () => {
+				detachChords();
 				/*
 				 * The quit-time capture, taken BEFORE the views are destroyed
 				 * (`captureTabs` reads each view's live navigation history and a destroyed
@@ -1193,10 +1293,11 @@ async function initializeBrowserHost(
 			 * renderer.
 			 */
 			contents.on("before-input-event", (event, input) => {
-				const direction = paneNavigationDirection(input);
-				if (!direction) return;
-				event.preventDefault();
-				host.historyActive(direction);
+				const record = registry.get(tabId);
+				const owns =
+					record === registry.activeTab && record?.presented === true;
+				const handled = chords.input(event, input, "page", owns);
+				contents.setIgnoreMenuShortcuts(handled);
 			});
 
 			// THE CHROME'S OWN FEEDBACK, and the reason it is wired per view rather than

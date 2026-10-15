@@ -63,9 +63,11 @@ import { LogFileType, logger } from "./backend/logger";
 import {
 	browserHostEnabled,
 	browserHostStopPending,
+	routeBrowserMenu,
 	startBrowserHost,
 	stopBrowserHost,
 } from "./browser";
+import { runBrowserMenuAction } from "./browser/browser-chord";
 import {
 	CONSENT_ATTENTION_CHANNEL,
 	type ConsentAttentionPayload,
@@ -576,12 +578,28 @@ function createApplicationMenu(): void {
 			label: "View",
 			submenu: [
 				{
-					role: "reload",
+					id: "app-reload",
+					label: "Reload",
 					accelerator: "CmdOrCtrl+R",
+					click: (_item, target) =>
+						runBrowserMenuAction(
+							"reload",
+							target,
+							mainWindow,
+							routeBrowserMenu,
+						),
 				},
 				{
-					role: "forceReload",
+					id: "app-force-reload",
+					label: "Force Reload",
 					accelerator: "CmdOrCtrl+Shift+R",
+					click: (_item, target) =>
+						runBrowserMenuAction(
+							"hard-reload",
+							target,
+							mainWindow,
+							routeBrowserMenu,
+						),
 				},
 				{ type: "separator" as const },
 				{
@@ -624,11 +642,43 @@ function createApplicationMenu(): void {
 							 * `window-all-closed` path the red button takes, which is the one
 							 * this change made safe for an install in flight.
 							 */
-							{ role: "close" },
+							{
+								id: "app-close",
+								// One honest label for both owners: the SAME accelerator closes a
+								// browser TAB while the browser has focus and the WINDOW elsewhere,
+								// and a menu label cannot follow focus that lives in a page view
+								// (UX r1 U4). The roles it replaced were "Close Window"/"Close".
+								label: "Close Tab or Window",
+								accelerator: "CmdOrCtrl+W",
+								click: (_item, target) =>
+									runBrowserMenuAction(
+										"close-tab",
+										target,
+										mainWindow,
+										routeBrowserMenu,
+									),
+							},
 							{ type: "separator" as const },
 							{ role: "window" },
 						] as Electron.MenuItemConstructorOptions[])
-					: ([{ role: "close" }] as Electron.MenuItemConstructorOptions[])),
+					: ([
+							{
+								id: "app-close",
+								// One honest label for both owners: the SAME accelerator closes a
+								// browser TAB while the browser has focus and the WINDOW elsewhere,
+								// and a menu label cannot follow focus that lives in a page view
+								// (UX r1 U4). The roles it replaced were "Close Window"/"Close".
+								label: "Close Tab or Window",
+								accelerator: "CmdOrCtrl+W",
+								click: (_item, target) =>
+									runBrowserMenuAction(
+										"close-tab",
+										target,
+										mainWindow,
+										routeBrowserMenu,
+									),
+							},
+						] as Electron.MenuItemConstructorOptions[])),
 			],
 		},
 		{
