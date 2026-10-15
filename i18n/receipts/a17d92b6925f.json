@@ -1,0 +1,50 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "a17d92b6925f",
+  "locale": "fr",
+  "status": "passed",
+  "namespaces": {
+    "ui.console": {
+      "status": "passed",
+      "keys_audited": 57,
+      "sha256": {
+        "fr": "98f35292d1b0ae8225f9e56c938f6444591969392eb421a08ced861b786cedef",
+        "en": "4fe88a76de4992e0b890a15c6faafe594ac345e7f62a7deb849b486ec3c14c7e"
+      },
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.console.capacity.summary_compact",
+          "current": "{live, number}/{limit, number} · {archived, plural, one {# gardé} many {# de gardés} other {# gardés}}",
+          "problem": "The many branch formats 1 000 000 as « 1 000 000 de gardés ». Here gardés is a predicative/elliptical participle, not a noun complement of million; de is unnatural. Meaning remains understandable and this is an extreme-count branch, not a broken ICU/runtime plural.",
+          "suggest": "{live, number}/{limit, number} · {archived, plural, one {# gardé} many {# gardés} other {# gardés}}"
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.console.capacity.archived",
+          "current": " · {archived, plural, one {# gardé} many {# de gardés} other {# gardés}}",
+          "problem": "The many branch formats 1 000 000 as « 1 000 000 de gardés ». Here gardés is a predicative/elliptical participle, not a noun complement of million; de is unnatural. Meaning remains understandable and this is an extreme-count branch, not a broken ICU/runtime plural.",
+          "suggest": " · {archived, plural, one {# gardé} many {# gardés} other {# gardés}}"
+        }
+      ]
+    },
+    "ui.onboarding": {
+      "status": "passed",
+      "keys_audited": 47,
+      "sha256": {
+        "fr": "ac45bc9c21115e53b07e4d71c2adddb2789678d0417d75432c2cc8a31c758d17",
+        "en": "b086c241aa70e44cdaab8f02d20e5aaac33d4732df09204481afc4128c08a6ae"
+      },
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.onboarding.connect.intro",
+          "current": "Local Operator a besoin d’un compte IA pour fonctionner. Radient est le plus simple : une connexion dans le navigateur, rien à coller. Vous payez déjà pour ChatGPT ou Claude ? Connectez-vous avec ce compte. Les autres options sont regroupées plus bas.",
+          "problem": "The last sentence replaces the named More providers disclosure with a vague location (« plus bas »). Source inspection confirms the disclosure still begins with More providers (provider-catalog.ts); the French copy no longer tells users which control to open. The adjacent placement keeps this non-blocking.",
+          "suggest": "Local Operator a besoin d’un compte IA pour fonctionner. Radient est le plus simple : une connexion dans le navigateur, rien à coller. Vous payez déjà pour ChatGPT ou Claude ? Connectez-vous avec ce compte. Les autres options se trouvent dans « More providers »."
+        }
+      ]
+    }
+  }
+}
