@@ -213,5 +213,13 @@
 	"ui.mesh.mesh_graph.conversation_unit": "{count, plural, one {conversation} other {conversations}}",
 	"ui.mesh.mesh_approvals_tray.failed_count": "{count, plural, other {# failed}}",
 	"ui.mesh.mesh_list.sort_conversations": "Conversations",
-	"ui.mesh.mesh_list.conversation_count": "{count, plural, =0 {no conversations} one {# conversation} other {# conversations}}"
+	"ui.mesh.mesh_list.conversation_count": "{count, plural, =0 {no conversations} one {# conversation} other {# conversations}}",
+	"ui.mesh.approval.credential_title": "Credential access request",
+	"ui.mesh.approval.unknown_title": "Approval request",
+	"ui.mesh.approval.details_unavailable": "The full request details are unavailable in this app. Review the request from the command line on this machine.",
+	"ui.mesh.approval.cli_review": "Review this request from the command line on this machine. This app cannot approve it.",
+	"ui.mesh.approval.approved_pending_apply": "Approved; waiting to apply",
+	"ui.mesh.approval.approved_apply_hint": "Approval is recorded. Open Details for the server-provided apply step.",
+	"ui.mesh.approval.approved_details_missing": "Approval is recorded. The apply step is unavailable in this app.",
+	"ui.mesh.approval.request_window": "Request window: {remaining}"
 }
