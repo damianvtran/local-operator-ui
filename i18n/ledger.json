@@ -1624,8 +1624,25 @@
 				"date": "2026-10-14",
 				"note": "34 keys translated by LLM reasoning, no translation service. Programme glossary and French style guide from core i18n/; existing UI French terminology retained. Source PR #1057 at c0212c00b8fcb5f028f2ea09b227889fec2b3ad9. Independent audit pending; no rendered French frame."
 			},
-			"auditors": [],
-			"status": "translated"
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-14",
+					"result": "clean-with-findings",
+					"instance": "167e389423a9",
+					"note": "PR #1089 comments 6180988869 (full round 1) and 6181075670 (delta round 2 at 483205c9); T1/T3/T4 fixed, T2 nonblocking pending rendered-fit pass; 13 IDENTICAL_OK rows approved; rendered fit not signed off."
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-14",
+					"result": "clean-with-findings",
+					"instance": "d9c7f6717d13",
+					"note": "PR #1089 comments 6181141995 and 6181185569 cover all 465 keys at 483205c9; T2/S1/S2/S3 nonblocking pending rendered-fit pass (Partout and Enregistrer alternatives on record); all 13 IDENTICAL_OK rows approved; rendered fit not signed off."
+				}
+			],
+			"status": "audited"
 		},
 		{
 			"locale": "fr",
@@ -1638,8 +1655,25 @@
 				"date": "2026-10-14",
 				"note": "10 keys translated by LLM reasoning, no translation service. Programme glossary and French style guide from core i18n/; existing UI French terminology retained. Source PR #1057 at c0212c00b8fcb5f028f2ea09b227889fec2b3ad9. Independent audit pending; no rendered French frame."
 			},
-			"auditors": [],
-			"status": "translated"
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-14",
+					"result": "clean-with-findings",
+					"instance": "167e389423a9",
+					"note": "PR #1089 comments 6180988869 (full round 1) and 6181075670 (delta round 2 at 483205c9); T1/T3/T4 fixed, T2 nonblocking pending rendered-fit pass; 13 IDENTICAL_OK rows approved; rendered fit not signed off."
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-14",
+					"result": "clean-with-findings",
+					"instance": "d9c7f6717d13",
+					"note": "PR #1089 comments 6181141995 and 6181185569 cover all 465 keys at 483205c9; T2/S1/S2/S3 nonblocking pending rendered-fit pass (Partout and Enregistrer alternatives on record); all 13 IDENTICAL_OK rows approved; rendered fit not signed off."
+				}
+			],
+			"status": "audited"
 		},
 		{
 			"locale": "fr",
@@ -1652,8 +1686,25 @@
 				"date": "2026-10-14",
 				"note": "92 keys translated by LLM reasoning, no translation service. Programme glossary and French style guide from core i18n/; existing UI French terminology retained. Source PR #1057 at c0212c00b8fcb5f028f2ea09b227889fec2b3ad9. Independent audit pending; no rendered French frame."
 			},
-			"auditors": [],
-			"status": "translated"
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-14",
+					"result": "clean-with-findings",
+					"instance": "167e389423a9",
+					"note": "PR #1089 comments 6180988869 (full round 1) and 6181075670 (delta round 2 at 483205c9); T1/T3/T4 fixed, T2 nonblocking pending rendered-fit pass; 13 IDENTICAL_OK rows approved; rendered fit not signed off."
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-14",
+					"result": "clean-with-findings",
+					"instance": "d9c7f6717d13",
+					"note": "PR #1089 comments 6181141995 and 6181185569 cover all 465 keys at 483205c9; T2/S1/S2/S3 nonblocking pending rendered-fit pass (Partout and Enregistrer alternatives on record); all 13 IDENTICAL_OK rows approved; rendered fit not signed off."
+				}
+			],
+			"status": "audited"
 		},
 		{
 			"locale": "fr",
@@ -1666,8 +1717,25 @@
 				"date": "2026-10-14",
 				"note": "218 keys translated by LLM reasoning, no translation service. Programme glossary and French style guide from core i18n/; existing UI French terminology retained. Source PR #1057 at c0212c00b8fcb5f028f2ea09b227889fec2b3ad9. Independent audit pending; no rendered French frame."
 			},
-			"auditors": [],
-			"status": "translated"
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-14",
+					"result": "clean-with-findings",
+					"instance": "167e389423a9",
+					"note": "PR #1089 comments 6180988869 (full round 1) and 6181075670 (delta round 2 at 483205c9); T1/T3/T4 fixed, T2 nonblocking pending rendered-fit pass; 13 IDENTICAL_OK rows approved; rendered fit not signed off."
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-14",
+					"result": "clean-with-findings",
+					"instance": "d9c7f6717d13",
+					"note": "PR #1089 comments 6181141995 and 6181185569 cover all 465 keys at 483205c9; T2/S1/S2/S3 nonblocking pending rendered-fit pass (Partout and Enregistrer alternatives on record); all 13 IDENTICAL_OK rows approved; rendered fit not signed off."
+				}
+			],
+			"status": "audited"
 		},
 		{
 			"locale": "fr",
@@ -1680,8 +1748,25 @@
 				"date": "2026-10-14",
 				"note": "32 keys translated by LLM reasoning, no translation service. Programme glossary and French style guide from core i18n/; existing UI French terminology retained. Source PR #1057 at c0212c00b8fcb5f028f2ea09b227889fec2b3ad9. Independent audit pending; no rendered French frame."
 			},
-			"auditors": [],
-			"status": "translated"
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-14",
+					"result": "clean-with-findings",
+					"instance": "167e389423a9",
+					"note": "PR #1089 comments 6180988869 (full round 1) and 6181075670 (delta round 2 at 483205c9); T1/T3/T4 fixed, T2 nonblocking pending rendered-fit pass; 13 IDENTICAL_OK rows approved; rendered fit not signed off."
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-14",
+					"result": "clean-with-findings",
+					"instance": "d9c7f6717d13",
+					"note": "PR #1089 comments 6181141995 and 6181185569 cover all 465 keys at 483205c9; T2/S1/S2/S3 nonblocking pending rendered-fit pass (Partout and Enregistrer alternatives on record); all 13 IDENTICAL_OK rows approved; rendered fit not signed off."
+				}
+			],
+			"status": "audited"
 		},
 		{
 			"locale": "fr",
@@ -1694,8 +1779,25 @@
 				"date": "2026-10-14",
 				"note": "22 keys translated by LLM reasoning, no translation service. Programme glossary and French style guide from core i18n/; existing UI French terminology retained. Source PR #1057 at c0212c00b8fcb5f028f2ea09b227889fec2b3ad9. Independent audit pending; no rendered French frame."
 			},
-			"auditors": [],
-			"status": "translated"
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-14",
+					"result": "clean-with-findings",
+					"instance": "167e389423a9",
+					"note": "PR #1089 comments 6180988869 (full round 1) and 6181075670 (delta round 2 at 483205c9); T1/T3/T4 fixed, T2 nonblocking pending rendered-fit pass; 13 IDENTICAL_OK rows approved; rendered fit not signed off."
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-14",
+					"result": "clean-with-findings",
+					"instance": "d9c7f6717d13",
+					"note": "PR #1089 comments 6181141995 and 6181185569 cover all 465 keys at 483205c9; T2/S1/S2/S3 nonblocking pending rendered-fit pass (Partout and Enregistrer alternatives on record); all 13 IDENTICAL_OK rows approved; rendered fit not signed off."
+				}
+			],
+			"status": "audited"
 		},
 		{
 			"locale": "fr",
@@ -1708,8 +1810,25 @@
 				"date": "2026-10-14",
 				"note": "9 keys translated by LLM reasoning, no translation service. Programme glossary and French style guide from core i18n/; existing UI French terminology retained. Source PR #1057 at c0212c00b8fcb5f028f2ea09b227889fec2b3ad9. Independent audit pending; no rendered French frame."
 			},
-			"auditors": [],
-			"status": "translated"
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-14",
+					"result": "clean-with-findings",
+					"instance": "167e389423a9",
+					"note": "PR #1089 comments 6180988869 (full round 1) and 6181075670 (delta round 2 at 483205c9); T1/T3/T4 fixed, T2 nonblocking pending rendered-fit pass; 13 IDENTICAL_OK rows approved; rendered fit not signed off."
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-14",
+					"result": "clean-with-findings",
+					"instance": "d9c7f6717d13",
+					"note": "PR #1089 comments 6181141995 and 6181185569 cover all 465 keys at 483205c9; T2/S1/S2/S3 nonblocking pending rendered-fit pass (Partout and Enregistrer alternatives on record); all 13 IDENTICAL_OK rows approved; rendered fit not signed off."
+				}
+			],
+			"status": "audited"
 		},
 		{
 			"locale": "fr",
@@ -1722,8 +1841,25 @@
 				"date": "2026-10-14",
 				"note": "19 keys translated by LLM reasoning, no translation service. Programme glossary and French style guide from core i18n/; existing UI French terminology retained. Source PR #1057 at c0212c00b8fcb5f028f2ea09b227889fec2b3ad9. Independent audit pending; no rendered French frame."
 			},
-			"auditors": [],
-			"status": "translated"
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-14",
+					"result": "clean-with-findings",
+					"instance": "167e389423a9",
+					"note": "PR #1089 comments 6180988869 (full round 1) and 6181075670 (delta round 2 at 483205c9); T1/T3/T4 fixed, T2 nonblocking pending rendered-fit pass; 13 IDENTICAL_OK rows approved; rendered fit not signed off."
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-14",
+					"result": "clean-with-findings",
+					"instance": "d9c7f6717d13",
+					"note": "PR #1089 comments 6181141995 and 6181185569 cover all 465 keys at 483205c9; T2/S1/S2/S3 nonblocking pending rendered-fit pass (Partout and Enregistrer alternatives on record); all 13 IDENTICAL_OK rows approved; rendered fit not signed off."
+				}
+			],
+			"status": "audited"
 		},
 		{
 			"locale": "fr",
@@ -1736,8 +1872,25 @@
 				"date": "2026-10-14",
 				"note": "29 keys translated by LLM reasoning, no translation service. Programme glossary and French style guide from core i18n/; existing UI French terminology retained. Source PR #1057 at c0212c00b8fcb5f028f2ea09b227889fec2b3ad9. Independent audit pending; no rendered French frame."
 			},
-			"auditors": [],
-			"status": "translated"
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-14",
+					"result": "clean-with-findings",
+					"instance": "167e389423a9",
+					"note": "PR #1089 comments 6180988869 (full round 1) and 6181075670 (delta round 2 at 483205c9); T1/T3/T4 fixed, T2 nonblocking pending rendered-fit pass; 13 IDENTICAL_OK rows approved; rendered fit not signed off."
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-14",
+					"result": "clean-with-findings",
+					"instance": "d9c7f6717d13",
+					"note": "PR #1089 comments 6181141995 and 6181185569 cover all 465 keys at 483205c9; T2/S1/S2/S3 nonblocking pending rendered-fit pass (Partout and Enregistrer alternatives on record); all 13 IDENTICAL_OK rows approved; rendered fit not signed off."
+				}
+			],
+			"status": "audited"
 		}
 	]
 }
