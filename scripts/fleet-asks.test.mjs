@@ -682,8 +682,13 @@ test("the asks door left the sidebar for the conversation header, and then for t
 	);
 	assert.match(
 		railActions,
-		/setAskDrawerOpen\(\s*!\(state\.isAskDrawerOpen && state\.askDrawerScope === context\.askScope\),\s*context\.askScope,\s*\)/,
+		/const open = !\(\s*state\.isAskDrawerOpen && state\.askDrawerScope === context\.askScope,?\s*\);/,
 		"the shared toggle must be the header trigger's old door: a toggle in the ITEM's own scope (this scope open closes; the other scope's open is replaced).",
+	);
+	assert.match(
+		railActions,
+		/setAskDrawerOpen\(\s*open,\s*context\.askScope,\s*open \? undefined : \{ dismissSlot: true \},?\s*\);/,
+		"and its CLOSE is the kind the user pressed (#1079): `dismissSlot` empties the slot the drawer borrowed, so the lit item is the same door in both directions as its five siblings are - while the re-scope arm (an open) passes no option.",
 	);
 	assert.match(
 		rail,

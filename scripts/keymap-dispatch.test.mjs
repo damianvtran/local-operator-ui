@@ -390,3 +390,38 @@ test("the router is registered in the BUBBLE phase: a descendant's stopPropagati
 		assert.equal(useUiPreferencesStore.getState().isConsolePaneOpen, false);
 	});
 });
+
+/*
+ * THE CHORD IS THE SAME DOOR (#1079). `panel.ask` routes through the same
+ * `togglePanelRailItem` the rail's item presses, so the chord's CLOSE has to be the
+ * pressed kind too: an empty slot rather than the borrowed pane handed back. This
+ * cell drives the real router (the registration, its door gate and the action), not
+ * the store's writer directly.
+ */
+test("the panel.ask chord closes the slot the way the lit item does (#1079)", async () => {
+	await mount(async (api) => {
+		const child = api.$('[data-testid="child"]');
+		const state = () => useUiPreferencesStore.getState();
+		act(() => {
+			useUiPreferencesStore.setState({
+				shortcutBindings: { "panel.ask": "primary+u" },
+				isBrowserPaneOpen: true,
+			});
+		});
+		/* The press is the chord's own: meta on this host, which `primary` collapses. */
+		api.dispatch(child, { key: "u" });
+		assert.equal(state().isAskDrawerOpen, true, "the chord opens the drawer");
+		assert.equal(
+			state().isBrowserPaneOpen,
+			false,
+			"borrowing the slot from the browser",
+		);
+		api.dispatch(child, { key: "u" });
+		assert.equal(state().isAskDrawerOpen, false);
+		assert.equal(
+			state().isBrowserPaneOpen,
+			false,
+			"and its close asks for an empty slot rather than handing the browser back",
+		);
+	});
+});
