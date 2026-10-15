@@ -2602,6 +2602,7 @@ const DeferredTranscriptRows = ({ render }: { render: () => ReactNode }) => (
 
 const TranscriptRow = memo(function TranscriptRow({
 	row,
+	sessionCwd,
 	enter = false,
 	isSmallView,
 	scope,
@@ -2630,6 +2631,8 @@ const TranscriptRow = memo(function TranscriptRow({
 	onInterruptTurn,
 }: {
 	row: Row;
+	/** Primitive session context keeps memoized rows independent of frontend frames. */
+	sessionCwd?: string | null;
 	enter?: boolean;
 	isSmallView: boolean;
 	scope: AttachmentScope | null;
@@ -2775,6 +2778,7 @@ const TranscriptRow = memo(function TranscriptRow({
 				<SupplementRow
 					record={record}
 					sessionId={scope?.sessionId ?? null}
+					cwd={sessionCwd}
 					condensed={supplementCondensed}
 				/>
 			);
@@ -5052,6 +5056,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		if (group.kind === "run" && deferredFolds.has(group.id))
 			return group.rows.map((row, index) => (
 				<TranscriptRow
+					sessionCwd={frontend?.cwd}
 					key={row.record.id}
 					row={index === 0 ? atTraceTier(row) : row}
 					enter={arriving.has(row.record.id) && row.record.kind !== "assistant"}
@@ -5147,6 +5152,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					render={() =>
 						group.rows.map((row, index) => (
 							<TranscriptRow
+								sessionCwd={frontend?.cwd}
 								key={row.record.id}
 								row={index === 0 ? atTraceTier(row) : row}
 								enter={
@@ -5179,6 +5185,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			</TraceFold>
 		) : (
 			<TranscriptRow
+				sessionCwd={frontend?.cwd}
 				key={group.row.record.id}
 				row={group.row}
 				enter={
