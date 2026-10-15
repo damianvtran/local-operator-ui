@@ -5,6 +5,8 @@ import {
 	Tooltip,
 	countLabel,
 } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { chordCaption } from "@shared/keymap/keymap-chord";
 import { cn } from "@shared/lib/utils";
 import { navigationShortcutLabel } from "@shared/navigation-gesture";
@@ -183,6 +185,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	 * focus shows the old text again (and blur commits it there, to the tab it
 	 * was typed for). It is only ever lost by an edit, Enter, Escape or blur.
 	 */
+	useI18nLocale();
 	const [typed, setTyped] = useState<{
 		tabId: number | null;
 		text: string;
@@ -427,33 +430,38 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					)}
 				/>
 			</div>
-			{/* No tooltip here: the button already carries a visible label, and a tooltip
-			    repeating it is noise rather than help. The dock it opens explains what
-			    the count means. */}
+			{/* The quiet icon still needs a sighted name. End-aligned/top keeps
+                this shared tooltip in chrome, not under the native page view. */}
 			<div className="relative shrink-0">
-				<Button
-					ref={triggerRef}
-					variant={waitingCount > 0 ? "outline" : "ghost"}
-					size={waitingCount > 0 ? "sm" : "icon-sm"}
-					onClick={onOpenApprovals}
-					disabled={disabled}
-					// `pr-5` so the badge, which sits over the control's top-right corner, never
-					// covers the label (§5.1). `pr-4` cleared one digit by 16px and TWO by
-					// only ~6px, and two is the reachable maximum (the queue cap is 16), so
-					// the reserve is sized for the worst case rather than the common one
-					// (design round 3, D17: at two digits the badge's left arc came within 6px
-					// of the last glyph of `Approvals`).
-					className={waitingCount > 0 ? "pr-5" : undefined}
-					aria-label={
-						waitingCount > 0
-							? `Approvals, ${waitingCount} waiting`
-							: "Approvals"
-					}
-					data-tour-tag="browser-approvals"
+				<Tooltip
+					side="top"
+					align="end"
+					content={t("ui.browser.chrome.approvals")}
 				>
-					<ShieldCheck aria-hidden className="size-3.5" />
-					{waitingCount > 0 && "Approvals"}
-				</Button>
+					<Button
+						ref={triggerRef}
+						variant={waitingCount > 0 ? "outline" : "ghost"}
+						size={waitingCount > 0 ? "sm" : "icon-sm"}
+						onClick={onOpenApprovals}
+						disabled={disabled}
+						// `pr-5` so the badge, which sits over the control's top-right corner, never
+						// covers the label (§5.1). `pr-4` cleared one digit by 16px and TWO by
+						// only ~6px, and two is the reachable maximum (the queue cap is 16), so
+						// the reserve is sized for the worst case rather than the common one
+						// (design round 3, D17: at two digits the badge's left arc came within 6px
+						// of the last glyph of `Approvals`).
+						className={waitingCount > 0 ? "pr-5" : undefined}
+						aria-label={
+							waitingCount > 0
+								? `Approvals, ${waitingCount} waiting`
+								: t("ui.browser.chrome.approvals")
+						}
+						data-tour-tag="browser-approvals"
+					>
+						<ShieldCheck aria-hidden className="size-3.5" />
+						{waitingCount > 0 && "Approvals"}
+					</Button>
+				</Tooltip>
 				{waitingCount > 0 && (
 					// POSITION IS THE OPERATOR'S — "at the corner of the button" — but it no
 					// longer paints OUTSIDE the surface (design round 2, D3). It used to sit on

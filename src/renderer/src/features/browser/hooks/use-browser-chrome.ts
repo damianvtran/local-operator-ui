@@ -2,6 +2,7 @@ import { unwrapIpcErrorMessage } from "@shared/utils/ipc-error-message";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BrowserAvailability } from "../../../../../shared/browser-availability";
+import type { HumanTabActionOutcome } from "../../../../../shared/browser-tab-action";
 import {
 	browserBridge as bridge,
 	browserBridgeAvailable,
@@ -312,7 +313,10 @@ export interface BrowserChrome {
 	 * absent argument — an unattributed, user-owned tab.
 	 */
 	reorderTabs: (ids: number[]) => Promise<void>;
-	actOnTab: (tabId: number, action: "duplicate" | "reload") => Promise<boolean>;
+	actOnTab: (
+		tabId: number,
+		action: "duplicate" | "reload",
+	) => Promise<HumanTabActionOutcome | undefined>;
 	newTab: (sessionId?: string | null) => Promise<void>;
 	closeTab: (tabId: number) => Promise<boolean>;
 	/**
@@ -613,12 +617,18 @@ export function useBrowserChrome(): BrowserChrome {
 				runVoid(() =>
 					api?.reorderTabs(mergeChromeTabOrder(state?.tabs ?? [], ids)),
 				),
-			actOnTab: (tabId, action) =>
-				run(async () => {
-					const outcome = await api?.actOnTab(tabId, action);
+			actOnTab: async (tabId, action) => {
+				// A failed load can still create and activate a retained plain-user
+				// destination. Preserve that identity independently of error feedback,
+				// so a conversation pane can reveal it without copying attribution.
+				let outcome: HumanTabActionOutcome | undefined;
+				await run(async () => {
+					outcome = await api?.actOnTab(tabId, action);
 					if (outcome?.status === "failed")
 						throw new Error(outcome.error.message);
-				}),
+				});
+				return outcome;
+			},
 			newTab: (sessionId) => runVoid(() => api?.newTab(sessionId ?? null)),
 			closeTab: (tabId) => run(() => api?.closeTab(tabId)),
 			closeTabs: (intent) => run(() => api?.closeTabs(intent)),
