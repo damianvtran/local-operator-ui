@@ -4183,9 +4183,28 @@ test("the panel lists the addresses and labels the rotation stamp (D5, D4)", () 
 });
 
 // Source pins follow typed messages; their catalogue contract must still say the same English.
+// E-M1..3 preserve src/renderer/src/features/mesh/mesh-node.tsx at baseline
+// 65708b16a40141a40ddb3a4f12dc4943e2fa67e6, which used these exact fragments:
+// · {device.memberships.length} networks (behind the existing >1 guard)
+// title={`Showing ${sessions.shown.length} of ${sessionTotal} conversations`}
+// aria-label={`Show all ${sessionTotal} conversations`}
+// This extraction is not an editorial grammar fix. Identical English ICU arms
+// must not restrict another locale's proper singular/full CLDR categories.
 test("mesh extraction keeps pinned labels and source-language plural fallback", () => {
 	const en = JSON.parse(
 		readFileSync("src/i18n/catalogues/en/ui.mesh.json", "utf8"),
+	);
+	assert.equal(
+		en["ui.mesh.mesh_node.memberships"],
+		"· {count, plural, one {# networks} other {# networks}}",
+	);
+	assert.equal(
+		en["ui.mesh.mesh_node.shown_conversations"],
+		"Showing {shown, number} of {total, plural, one {# conversations} other {# conversations}}",
+	);
+	assert.equal(
+		en["ui.mesh.mesh_node.show_all_conversations"],
+		"Show all {count, plural, one {# conversations} other {# conversations}}",
 	);
 	assert.equal(
 		en["ui.mesh.mesh_actions.invite_to_a_network"],
@@ -4223,18 +4242,18 @@ test("mesh extraction keeps pinned labels and source-language plural fallback", 
 			);
 			assert.equal(
 				mesh.t("ui.mesh.mesh_node.show_all_conversations", { count }),
-				`Show all ${count} ${count === 1 ? "conversation" : "conversations"}`,
+				`Show all ${count} conversations`,
 			);
 			assert.equal(
 				mesh.t("ui.mesh.mesh_node.shown_conversations", {
 					shown: count,
 					total: count,
 				}),
-				`Showing ${count} of ${count} ${count === 1 ? "conversation" : "conversations"}`,
+				`Showing ${count} of ${count} conversations`,
 			);
 			assert.equal(
 				mesh.t("ui.mesh.mesh_node.memberships", { count }),
-				`· ${count} ${count === 1 ? "network" : "networks"}`,
+				`· ${count} networks`,
 			);
 			assert.equal(
 				mesh.t("ui.mesh.mesh_graph.device_count", { count }),
