@@ -69,6 +69,7 @@ test("real renderer hook owns scoped DOM commands, focus lifecycle and queued ra
 	];
 	let active = 1;
 	let redraw;
+	let closeFromStrip;
 	const api = {
 		setChordFocus: async (f) => events.push(["focus", f]),
 		focusPage: async () => events.push(["page"]),
@@ -106,7 +107,13 @@ test("real renderer hook owns scoped DOM commands, focus lifecycle and queued ra
 		redraw = () => render((n) => n + 1);
 		chrome.state = { activeTabId: active };
 		const address = useRef(null);
-		const ref = useBrowserChords(chrome, tabs, "a", address);
+		const { root: ref, closeTab } = useBrowserChords(
+			chrome,
+			tabs,
+			"a",
+			address,
+		);
+		closeFromStrip = closeTab;
 		return React.createElement(
 			"div",
 			{ ref, tabIndex: -1, id: "surface" },
@@ -192,6 +199,24 @@ test("real renderer hook owns scoped DOM commands, focus lifecycle and queued ra
 		await key("w");
 		assert.ok(events.some((e) => e[0] === "close" && e[1] === 1));
 		assert.deepEqual(events.filter((e) => e[0] === "new").at(-1), ["new", "a"]);
+		const newBefore = events.filter((e) => e[0] === "new").length;
+		await act(async () => {
+			await closeFromStrip(10);
+		});
+		assert.equal(
+			events.filter((e) => e[0] === "new").length,
+			newBefore + 1,
+			"strip shares last-tab replacement",
+		);
+		chrome.closeTab = async () => false;
+		await act(async () => {
+			assert.equal(await closeFromStrip(10), false);
+		});
+		assert.equal(
+			events.filter((e) => e[0] === "new").length,
+			newBefore + 1,
+			"refusal cannot create a replacement",
+		);
 		await act(async () => root.unmount());
 		assert.ok(events.some((e) => e[0] === "unsubscribe"));
 		assert.deepEqual(events.filter((e) => e[0] === "focus").at(-1), [

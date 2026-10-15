@@ -286,7 +286,12 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	const activeTab =
 		tabs.find((tab) => tab.tabId === state?.activeTabId) ?? null;
 	const addressRef = useRef<HTMLInputElement>(null);
-	const chordRoot = useBrowserChords(chrome, tabs, hostSessionId, addressRef);
+	const { root: chordRoot, closeTab } = useBrowserChords(
+		chrome,
+		tabs,
+		hostSessionId,
+		addressRef,
+	);
 
 	// THE ONE CLOCK (spec 3.3). The queue model owns the 1s interval and the
 	// ordinal, so the tray, the dock, the tab chips and the badge cannot disagree.
@@ -550,7 +555,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 				activeTabId={state?.activeTabId ?? null}
 				waiting={queue.waiting}
 				onActivate={(tabId) => void chrome.activateTab(tabId)}
-				onClose={(tabId) => chrome.closeTab(tabId)}
+				onClose={closeTab}
 				onCloseTabs={(intent) => chrome.closeTabs(intent)}
 				onNewTab={() => void chrome.newTab(hostSessionId)}
 				newTabLabel={newTabLabel}

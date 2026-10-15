@@ -1,4 +1,10 @@
-import { type RefObject, useEffect, useRef, useState } from "react";
+import {
+	type RefObject,
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import {
 	type BrowserChordMessage,
 	browserChordIntent,
@@ -20,6 +26,17 @@ export function useBrowserChords(
 	const [root, setRoot] = useState<HTMLDivElement | null>(null);
 	const latest = useRef({ chrome, tabs, sessionId });
 	latest.current = { chrome, tabs, sessionId };
+	// The strip button and keyboard command share the SAME outcome, including
+	// last-visible-tab replacement and refusal. A second keyboard-only close
+	// path would make the empty-state contract depend on how the tab was closed.
+	const closeTab = useCallback(async (tabId: number): Promise<boolean> => {
+		const current = latest.current;
+		if (!current.tabs.some((tab) => tab.tabId === tabId)) return false;
+		const closed = await current.chrome.closeTab(tabId);
+		if (closed && current.tabs.length === 1)
+			await current.chrome.newTab(current.sessionId);
+		return closed;
+	}, []);
 	useEffect(() => {
 		if (!root) return;
 		const api = browserBridge();
@@ -73,11 +90,7 @@ export function useBrowserChords(
 			if (intent === "close-tab") {
 				const id = c.state?.activeTabId;
 				if (id != null && current.tabs.some((tab) => tab.tabId === id)) {
-					const closed = await c.closeTab(id);
-					// Closing the last visible tab preserves the browser surface, with a
-					// fresh user blank in its own scope, never a window-close fallback.
-					if (closed && current.tabs.length === 1)
-						await c.newTab(current.sessionId);
+					await closeTab(id);
 				}
 			} else {
 				const target = chordTarget(current.tabs, cursor, intent);
@@ -136,6 +149,6 @@ export function useBrowserChords(
 			root.removeEventListener("focusin", focusIn);
 			root.removeEventListener("focusout", focusOut);
 		};
-	}, [root, address]);
-	return setRoot;
+	}, [root, address, closeTab]);
+	return { root: setRoot, closeTab };
 }
