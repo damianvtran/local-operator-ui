@@ -215,7 +215,7 @@ export function useSuppressBrowserView(on: boolean, name: string): void {
 const PLACEMENT_FRAMES = 8;
 
 /**
- * How long a reaching tooltip's registration outlives its panel, in milliseconds.
+ * The frames a reaching tooltip's registration outlives its panel.
  *
  * WHY ANY HOLD AT ALL (review round 1, R1). Moving the pointer from one flyout to the
  * next closes the tooltip being left BEFORE its replacement is on screen: Radix closes
@@ -229,16 +229,24 @@ const PLACEMENT_FRAMES = 8;
  * the Browser open is the flow #1078 is about (measured on the policy's own notify log:
  * `present -> absent -> present` across the handoff, with the panel rect stated).
  *
+ * FRAMES, NOT MILLISECONDS (review round 2, R7). What the hold has to cover is the
+ * replacement's PLACEMENT, and placement is counted in frames - so the hold is too. A
+ * timeout measured the wrong thing: a main thread that stalls over the hover that opened
+ * the replacement (a heavy sidebar re-render, or GC) stops drawing frames but not the
+ * clock, so the hold could expire with the replacement still unplaced and the page flash
+ * - the R1 symptom, arriving on the machine least able to afford it. A frame count slows
+ * down exactly when placement does, so the margin between the two is the same at every
+ * frame rate and under every stall.
+ *
  * THREE 60Hz FRAMES AND NO MORE: one for floating-ui to place the replacement, two of
  * slack for a frame dropped while the app is busy. It is a hold, not a second opinion -
  * the measurement already says this panel was over the view, and a replacement that
  * registers inside the window keeps the page hidden without this id, so nothing is
  * reported hidden that was not. WHAT IT COSTS WHEN NOTHING FOLLOWS: the page returns
  * three frames later than it otherwise would, below the point where a returning page
- * reads as lag. It must stay under 80ms: `panel-rail.test.mjs` reads the registry back
- * `frames(4)` after closing a rail tooltip.
+ * reads as lag.
  */
-export const RELEASE_HOLD_MS = 17 * 3;
+export const RELEASE_HOLD_FRAMES = 3;
 
 /**
  * Register while an overlay is open AND its painted box reaches the native view.
@@ -298,15 +306,33 @@ export function useSuppressBrowserViewWhileReaching(
 		if (!open) {
 			/*
 			 * CLOSED OVER THE VIEW IS NOT YET DONE OCCLUDING (review round 1, R1): the
-			 * registration is held for `RELEASE_HOLD_MS`, so a tooltip that closed because
-			 * its replacement opened does not un-hide the page in the gap before that
+			 * registration is held for `RELEASE_HOLD_FRAMES` frames, so a tooltip that closed
+			 * because its replacement opened does not un-hide the page in the gap before that
 			 * replacement is placed. Held ONLY when the measurement was a reach and the
 			 * pointer has not already gone (`away`) - a tooltip closed after an exit
 			 * through the window edge must not re-hide the page the pointer left.
 			 */
 			if (reached.current && !pointerLeft.current) {
-				const hold = setTimeout(() => setReaching(false), RELEASE_HOLD_MS);
-				return () => clearTimeout(hold);
+				/*
+				 * Counted with the same `frame`/cleanup shape as `measure` above, but these
+				 * frames are EXACT rather than a budget to give up inside: the release lands on
+				 * the frame `RELEASE_HOLD_FRAMES` names and no later, so the frame count is the
+				 * contract a reader - and the case that pins the hold - can count on. The two
+				 * exits `away` cannot cover are the effect's own cleanup: unmount, and a reopen,
+				 * where the replacement's measurement takes the registration over.
+				 */
+				let frame = 0;
+				let left = RELEASE_HOLD_FRAMES;
+				const release = (): void => {
+					left -= 1;
+					if (left > 0) {
+						frame = requestAnimationFrame(release);
+						return;
+					}
+					setReaching(false);
+				};
+				frame = requestAnimationFrame(release);
+				return () => cancelAnimationFrame(frame);
 			}
 			setReaching(false);
 			setAway(false);
@@ -382,9 +408,9 @@ export function useSuppressBrowserViewWhileReaching(
 
 	/*
 	 * NOT `open && ...`: the close branch above holds a measurement that was over the view
-	 * for `RELEASE_HOLD_MS` past the panel, so the page stays hidden across a handoff
-	 * (review round 1, R1). `reaching` is only ever true of a measured overlap, so nothing
-	 * the old `open` term excluded enters through this door.
+	 * for `RELEASE_HOLD_FRAMES` frames past the panel, so the page stays hidden across a
+	 * handoff (review round 1, R1). `reaching` is only ever true of a measured overlap,
+	 * so nothing the old `open` term excluded enters through this door.
 	 */
 	useSuppressBrowserView(reaching && !away, name);
 }

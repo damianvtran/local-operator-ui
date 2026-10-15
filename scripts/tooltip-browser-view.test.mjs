@@ -50,7 +50,7 @@ const bundle = await build({
 				registerBrowserViewRect,
 				subscribeBrowserView,
 				browserViewSuppressed,
-				RELEASE_HOLD_MS,
+				RELEASE_HOLD_FRAMES,
 			} from "./src/renderer/src/shared/browser-view-policy";
 			export { Tooltip, TooltipProvider } from "./src/renderer/src/shared/components/ui/tooltip";
 		`,
@@ -84,7 +84,7 @@ const {
 	registerBrowserViewRect,
 	subscribeBrowserView,
 	browserViewSuppressed,
-	RELEASE_HOLD_MS,
+	RELEASE_HOLD_FRAMES,
 	Tooltip,
 	TooltipProvider,
 } = await import(pathToFileURL(bundlePath).href);
@@ -109,8 +109,6 @@ const ABOVE_VIEW = { x: 400, y: 80, width: 120, height: 28 };
  * R4). Frames are COUNTED instead: `api.frames(n)` draws n of them through `act`.
  */
 const PLACEMENT_FRAMES = 8;
-/* One 60Hz frame: only the policy's own hold is waited for in real time. */
-const FRAME_MS = 17;
 
 /*
  * jsdom's selector engine RECURSES on the top-layer pseudo-classes, and that recursion
@@ -232,15 +230,11 @@ async function mount(run) {
 			}
 		},
 		/*
-		 * Wait out the policy's handoff hold, the one real timer this file cannot count
-		 * frames for: a closed-reaching tooltip keeps its registration `RELEASE_HOLD_MS`
-		 * past the panel (R1). `FRAME_MS` of slack, because a timer is not exact.
+		 * Wait out the policy's handoff hold, the one part of the hook counted in frames the
+		 * way placement is (review round 2, R7): the hold releases on the frame it names, so
+		 * the same number of drawn frames lapses it and no timer is waited on.
 		 */
-		hold: () =>
-			act(
-				async () =>
-					new Promise((done) => setTimeout(done, RELEASE_HOLD_MS + FRAME_MS)),
-			),
+		hold: () => api.frames(RELEASE_HOLD_FRAMES),
 	};
 	try {
 		await run(api);
@@ -344,7 +338,22 @@ test("moving the pointer from one flyout to the next never shows the page in bet
 				api.$("#row-a").blur();
 				api.$("#row-b").focus();
 			});
-			await api.frames();
+			/*
+			 * A FRAME AT A TIME, until B has registered - that span is what the hold is for.
+			 * The hold is counted in frames now (review round 2, R7), so drawing the placement
+			 * budget in one go, as this case used to, would draw PAST the hold and assert on
+			 * one that had already lapsed. Stopping the moment B is registered is what keeps
+			 * the assertion below inside the window; if the hold is gone, B is the only id and
+			 * the loop runs its budget out.
+			 */
+			let drew = 0;
+			while (
+				named("sidebar-row-flyout").length < 2 &&
+				drew < PLACEMENT_FRAMES + 4
+			) {
+				await api.frames(1);
+				drew += 1;
+			}
 			const onB = named("sidebar-row-flyout").filter((id) => id !== onA[0]);
 			unsubscribe();
 			assert.ok(
