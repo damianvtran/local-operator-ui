@@ -130,7 +130,7 @@ export class PageControls {
 		this.stopTimer();
 		const same = this.find.query === query;
 		// After stop/timeout there is no native search to advance. Enter retries
-		// the query from scratch rather than passing findNext to a dead request.
+		// the query from scratch rather than continuing a dead native session.
 		const continuing =
 			same && next && this.requestId !== null && !this.find.unreported;
 		this.requestId = null;
@@ -148,7 +148,10 @@ export class PageControls {
 		this.requestId =
 			active.view.webContents.findInPage?.(query, {
 				forward,
-				findNext: continuing,
+				// Electron's misleading name means NEW SESSION (44.3 native maps
+				// it to options->new_session), not "advance". Initial/changed/retry
+				// must be true; an existing query's next/previous must be false.
+				findNext: !continuing,
 			}) ?? null;
 		// Native search may never report (measured in hidden Electron). Bound the
 		// progress claim; silence is not "no matches". Fencing/stop-before-notify

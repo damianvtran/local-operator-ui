@@ -99,19 +99,25 @@ no focus guard override, exact-process-group reap. Results live in
 `docs/evidence/browser-find-zoom/`, not presumed here before execution.
 
 
-### Hidden native find fidelity (observed, not a pass)
+### Corrected native session contract (round1 remediation)
 
-Across three isolated runs, including a backgroundThrottling=false scheduling
-control, original native findInPage returned a request id but no found-in-page
-callback was observed. Native Chromium counts, active ordinal, highlighting and
-next/previous on a real page are therefore NOT verified natively in this rig.
-The required count-state design frames use explicitly listener-emitted results,
-not a claim that Chromium found matches. Stale native-event fencing and the real
-query call remain exercised. Pending search is bounded at5s: on silence it
-stops/invalidates that request and says “No result reported”, not “No matches”.
-Clear/hide/tab change cancels the deadline; late results are ignored.
+The initial implementation and its fake-native expectations inverted Electron's
+misleading `findNext` option. Independent QA proved on Electron44.3 that it maps
+to Chromium `new_session`: TRUE starts an initial/changed/retry query, FALSE
+advances an existing query. The missing callbacks were a PRODUCT BUG, not a
+proven hidden-window limitation. The earlier inference is withdrawn; original
+partial receipts remain historical, not evidence of a runtime limitation.
 
-Attended smoke still owed (not bypassed by showing a window): Cmd+F on a real
-page, type a query, verify count/highlights, Enter/Shift+Enter then Escape, plus
-the existing physical OS-focus chord line. Synthetic count frames and hidden
-DOM/native listener emission cannot answer those lines.
+The corrected test models those native semantics independently of the option's
+name, and round1 native validation must record real first/next/previous/wrap events. Initial
+opening owns the return target for the session; repeated toolbar/chord focus
+preserves it. Escape works from every row control. The neutral fallback now says
+“No result reported. Press Enter to search again.” Navigation controls can retry
+a timed-out request as a new native session. In narrow panes the controls stay
+together and recovery copy yields another row instead of displacing the editor.
+
+Independent QA's pre-remediation5307ms neutral-state observation/menu enumeration
+is adopted with provenance. Current-source results and rendered focus/reduced-
+motion/narrow/tooltip measurements live in `docs/evidence/browser-find-zoom/r1/`.
+Physical OS key delivery and painted native highlights remain separately scoped;
+count/ordinal validation must use real native events, not emitted substitutes.

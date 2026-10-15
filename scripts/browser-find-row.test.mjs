@@ -31,6 +31,8 @@ test("find row uses main counts, accessible status, next/previous/Escape and no 
 		"Element",
 		"HTMLElement",
 		"HTMLInputElement",
+		"MutationObserver",
+		"getComputedStyle",
 		"Event",
 		"CustomEvent",
 		"IS_REACT_ACT_ENVIRONMENT",
@@ -99,6 +101,21 @@ test("find row uses main counts, accessible status, next/previous/Escape and no 
 			field.dispatchEvent(
 				new dom.window.KeyboardEvent("keydown", {
 					key: "Escape",
+					isComposing: true,
+					bubbles: true,
+					cancelable: true,
+				}),
+			),
+		);
+		assert.equal(
+			calls.filter((call) => call[1] === "close").length,
+			0,
+			"IME Escape is not a close gesture",
+		);
+		await act(async () =>
+			field.dispatchEvent(
+				new dom.window.KeyboardEvent("keydown", {
+					key: "Escape",
 					bubbles: true,
 					cancelable: true,
 				}),
@@ -106,6 +123,26 @@ test("find row uses main counts, accessible status, next/previous/Escape and no 
 		);
 		assert.deepEqual(calls.at(-1), [1, "close"]);
 		assert.equal(document.activeElement.id, "before");
+		for (const label of ["Previous match", "Next match", "Close find"]) {
+			const button = document.querySelector(`[aria-label="${label}"]`);
+			const before = calls.filter((call) => call[1] === "close").length;
+			await act(async () => {
+				button.focus();
+				button.dispatchEvent(
+					new dom.window.KeyboardEvent("keydown", {
+						key: "Escape",
+						bubbles: true,
+						cancelable: true,
+					}),
+				);
+			});
+			assert.equal(
+				calls.filter((call) => call[1] === "close").length,
+				before + 1,
+				`Escape from ${label} closes`,
+			);
+			assert.equal(document.activeElement.id, "before");
+		}
 		// Main deliberately does not acknowledge these edits yet: the live field
 		// must not be restored to the old projection between rapid keystrokes.
 		const setter = Object.getOwnPropertyDescriptor(
@@ -143,7 +180,7 @@ test("find row uses main counts, accessible status, next/previous/Escape and no 
 		assert.equal(document.querySelector("output").textContent, "No matches");
 		assert.equal(
 			document.querySelector('[aria-label="Next match"]').disabled,
-			true,
+			false,
 		);
 		chrome.state.pageControls.find.pending = true;
 		await act(async () =>
@@ -161,7 +198,7 @@ test("find row uses main counts, accessible status, next/previous/Escape and no 
 		);
 		assert.equal(
 			document.querySelector("output").textContent,
-			"No result reported",
+			"No result reported. Press Enter to search again.",
 		);
 		let pageFocus = 0;
 		window.api = {

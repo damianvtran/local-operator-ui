@@ -73,6 +73,33 @@ export function useBrowserChords(
 			(await closeAndReplace(tabId)).closed,
 		[closeAndReplace],
 	);
+	const findSession = useRef<number | null>(null);
+	const findTabId = chrome.state?.pageControls?.find?.tabId ?? null;
+	useEffect(() => {
+		if (findTabId === null) findSession.current = null;
+	}, [findTabId]);
+	/** One door for toolbar and chords. Re-focus must not replace the ORIGINAL
+	 * native-page return ownership with the app document's stale activeElement.
+	 * Reserve synchronously too: a second press can precede IPC projection. */
+	const openFind = useCallback(async (origin: "page" | "chrome" = "chrome") => {
+		const c = latest.current.chrome;
+		const tabId = c.state?.activeTabId;
+		if (tabId == null) return;
+		if (
+			c.state?.pageControls?.find?.tabId !== tabId &&
+			findSession.current !== tabId
+		) {
+			findReturnToPage.current = origin === "page";
+			findSession.current = tabId;
+		}
+		await c.pageControl(tabId, "open");
+		if (latest.current.chrome.state?.activeTabId !== tabId) return;
+		const field = rootRef.current?.querySelector<HTMLInputElement>(
+			"[data-tour-tag=browser-find-row] input",
+		);
+		field?.focus({ preventScroll: true });
+		field?.select();
+	}, []);
 	useEffect(() => {
 		if (!root) return;
 		const api = browserBridge();
@@ -105,15 +132,7 @@ export function useBrowserChords(
 				projectedCursor = projected;
 			}
 			if (projected !== null && intent === "find-page") {
-				findReturnToPage.current = origin === "page";
-				await c.pageControl(projected, "open");
-				// Repeating Cmd+F while the row is already open must return its caret
-				// too; the mount effect alone would only handle the first opening.
-				const field = rootRef.current?.querySelector<HTMLInputElement>(
-					"[data-tour-tag=browser-find-row] input",
-				);
-				field?.focus({ preventScroll: true });
-				field?.select();
+				await openFind(origin);
 				return;
 			}
 			if (projected !== null && intent.startsWith("zoom-")) {
@@ -238,6 +257,6 @@ export function useBrowserChords(
 			root.removeEventListener("focusin", focusIn);
 			root.removeEventListener("focusout", focusOut);
 		};
-	}, [root, address, closeAndReplace]);
-	return { root: setRoot, closeTab, findReturnToPage };
+	}, [root, address, closeAndReplace, openFind]);
+	return { root: setRoot, closeTab, findReturnToPage, openFind };
 }

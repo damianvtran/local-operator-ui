@@ -76,7 +76,7 @@ test("find request/document/tab fences reject stale native counts; hide/close cl
 	c.search(a, "other", false, true);
 	assert.deepEqual(a.calls.at(-1), {
 		query: "other",
-		options: { forward: false, findNext: true },
+		options: { forward: false, findNext: false },
 	});
 	c.reconcile(b);
 	assert.equal(c.state(b).find, null);
@@ -157,11 +157,63 @@ test("silent native result has a bounded neutral outcome; stop/switch cancels it
 	c.search(a, "waiting", true, true);
 	assert.equal(
 		a.calls.at(-1).options.findNext,
-		false,
+		true,
 		"Enter after timeout retries an initial native search",
 	);
 	c.clear();
 	await new Promise((resolve) => setTimeout(resolve, 30));
 	assert.equal(changes, 1, "clear cancels deadline; no orphan publication");
 	assert.equal(c.state(a).find, null);
+});
+
+test("Electron44 new_session polarity: first/change/retry start, next/previous advance and wrap", () => {
+	const c = new PageControls(() => {});
+	const a = tab(1);
+	let session = false;
+	let ordinal = 0;
+	let id = 0;
+	a.view.webContents.findInPage = (_query, options) => {
+		// Mirrors Electron44.3 options->new_session, not the misleading option
+		// name. The old product's initial false produces NO callback here.
+		if (options.findNext) {
+			session = true;
+			ordinal = 1;
+		} else if (session)
+			ordinal = options.forward ? (ordinal % 3) + 1 : ((ordinal + 1) % 3) + 1;
+		const requestId = ++id;
+		queueMicrotask(() => {
+			if (session)
+				a.view.webContents.emit(
+					"found-in-page",
+					{},
+					{
+						requestId,
+						matches: 3,
+						activeMatchOrdinal: ordinal,
+						finalUpdate: true,
+					},
+				);
+		});
+		return requestId;
+	};
+	return (async () => {
+		for (const [forward, next, expected] of [
+			[true, false, 1],
+			[true, true, 2],
+			[true, true, 3],
+			[true, true, 1],
+			[false, true, 3],
+			[true, false, 1],
+		]) {
+			c.search(a, "hello", forward, next);
+			await Promise.resolve();
+			assert.equal(c.state(a).find.ordinal, expected);
+			assert.equal(
+				c.state(a).find.pending,
+				false,
+				"a real new-session request must deliver a result",
+			);
+		}
+		c.clear();
+	})();
 });
