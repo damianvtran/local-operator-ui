@@ -776,7 +776,14 @@ export type DesktopFeature =
 	 * strip and `/analytics` render exactly today's inference-only figures and
 	 * say nothing about channels — never a zero for spend they cannot see.
 	 */
-	| "cost_channels";
+	| "cost_channels"
+	/**
+	 * Phone access SETUP (`tunnel_setup`), its own key and not a bump of `tunnel`:
+	 * the health read keeps working on a backend that predates the explicit setup
+	 * route, so the block must be able to ask for this one alone. Absent means the
+	 * Phone access block is not rendered and no setup op is sent.
+	 */
+	| "tunnel_setup";
 
 /**
  * WHY a negotiated feature surface may not be offered.

@@ -1,1 +1,26 @@
-{}
+{
+	"ui.providers.phone.account": "Account: {identity}, credential {id}",
+	"ui.providers.phone.account_unlabeled": "Account: credential {id}",
+	"ui.providers.phone.action.activate": "Activate for USD {amount} a month",
+	"ui.providers.phone.action.cancel": "Cancel",
+	"ui.providers.phone.action.check_again": "Check again",
+	"ui.providers.phone.action.choose": "{identity}, credential {id}",
+	"ui.providers.phone.action.choose_unlabeled": "Credential {id}",
+	"ui.providers.phone.action.copy_address": "Copy address",
+	"ui.providers.phone.action.open": "Open address",
+	"ui.providers.phone.action.set_up": "Set up phone access",
+	"ui.providers.phone.action.sign_in": "Continue in browser",
+	"ui.providers.phone.address_label": "Phone address",
+	"ui.providers.phone.choose_heading": "Choose an account",
+	"ui.providers.phone.consent": "Activating sets up this Radient account’s tunnel subscription at USD {amount} a month, reserves your phone address and starts the background connector. It does not purchase credit, and your existing terms are unchanged.",
+	"ui.providers.phone.failure.check": "Phone access could not be checked, and nothing was changed.",
+	"ui.providers.phone.failure.run": "Phone access setup could not finish. Steps already completed are not undone. Check again before retrying.",
+	"ui.providers.phone.heading": "Phone access",
+	"ui.providers.phone.price": "USD {amount} per month",
+	"ui.providers.phone.progress_heading": "Setup progress",
+	"ui.providers.phone.receipts_heading": "Completed so far",
+	"ui.providers.phone.signing_in": "Finish signing in in your browser. This updates on its own when you are done.",
+	"ui.providers.phone.status.applying": "Setting up",
+	"ui.providers.phone.status.checking": "Checking",
+	"ui.providers.phone.status.connected": "Connected"
+}

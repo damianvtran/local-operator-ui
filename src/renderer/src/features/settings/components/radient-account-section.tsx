@@ -6,6 +6,7 @@
  * tour tag belong to the section wrapper the settings page renders around this.
  */
 
+import { PhoneAccessBlock } from "@features/providers/phone-access-block";
 import type { AccountVerification } from "@shared/api/radient";
 import { RadientAuthButtons } from "@shared/components/auth";
 import { Spinner } from "@shared/components/common/spinner";
@@ -145,6 +146,17 @@ export const RadientAccountSection: FC<RadientAccountSectionProps> = ({
 				{showVerifyCallout && verification ? (
 					<VerifyToClaimCallout verification={verification} />
 				) : null}
+
+				{/*
+				 * PHONE ACCESS, the same single block the Radient provider panel mounts.
+				 * Signed in here by construction, but this section has no sign-in control
+				 * while signed in, so it is the mount that offers the (existing) sign-in
+				 * when the backend says the tunnel's own login needs one. Hidden, with no
+				 * request sent, unless the backend advertises `tunnel_setup`.
+				 */}
+				<div className="mt-8">
+					<PhoneAccessBlock offerSignIn />
+				</div>
 
 				{/*
 				 * A section-tier gap replaces the rule that used to sit here: the
