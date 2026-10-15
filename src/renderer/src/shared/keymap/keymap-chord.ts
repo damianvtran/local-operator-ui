@@ -250,7 +250,7 @@ export function captureRefusal(
  * over one chord resolve to the first action in the registry, and dispatch
  * stays unambiguous. A stored `null` survives (it is the deliberate no-chord
  * state) and claims nothing, which is what frees a cleared action's default for
- * another row. The fourteen newly reserved browser chords are the exception:
+ * another row. The newly reserved browser chords are the exception:
  * retain their legacy assignments in this same map, dormant through
  * `effectiveChord`, so unrelated saves cannot destroy a user's downgrade data.
  * New capture still refuses them; explicit Reset/Clear/rebind supersedes them.

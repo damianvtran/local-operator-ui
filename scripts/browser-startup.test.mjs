@@ -30,6 +30,7 @@ export class WebContentsView {
   Object.assign(wc, { id: ++f().id, session: f().session,
    isDestroyed: () => !!wc.destroyed, isLoading: () => false, getURL: () => wc.url || 'about:blank', getTitle: () => '',
    getUserAgent: () => 'isolated-test', setUserAgent() {}, setAudioMuted() {}, setBackgroundThrottling() {},
+   setZoomMode() {}, setZoomFactor() {}, getZoomFactor: () => 1,
    setWindowOpenHandler() {}, loadURL: async url => { wc.url = url; },
    close: () => { if (!wc.destroyed) { wc.destroyed = true; wc.emit('destroyed'); f().views.delete(wc.id); } },
    debugger: { isAttached: () => false },

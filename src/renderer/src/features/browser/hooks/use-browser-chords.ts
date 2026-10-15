@@ -103,6 +103,24 @@ export function useBrowserChords(
 				cursor = projected;
 				projectedCursor = projected;
 			}
+			if (projected !== null && intent === "find-page") {
+				await c.pageControl(projected, "open");
+				// Repeating Cmd+F while the row is already open must return its caret
+				// too; the mount effect alone would only handle the first opening.
+				const field = rootRef.current?.querySelector<HTMLInputElement>(
+					"[data-tour-tag=browser-find-row] input",
+				);
+				field?.focus({ preventScroll: true });
+				field?.select();
+				return;
+			}
+			if (projected !== null && intent.startsWith("zoom-")) {
+				await c.pageControl(
+					projected,
+					intent === "zoom-in" ? "in" : intent === "zoom-out" ? "out" : "reset",
+				);
+				return;
+			}
 			if (intent === "focus-address") {
 				focusAddress();
 				return;

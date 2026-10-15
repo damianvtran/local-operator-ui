@@ -106,6 +106,17 @@ export interface ApprovalView {
 }
 
 export interface BrowserChromeState {
+	pageControls?: {
+		find: {
+			tabId: number;
+			query: string;
+			ordinal: number;
+			matches: number;
+		} | null;
+		zoom: number;
+		zoomAllowed: boolean;
+		notice: string | null;
+	};
 	availability?: BrowserAvailability;
 	tabs: BrowserTabView[];
 	activeTabId: number | null;
@@ -317,6 +328,13 @@ export interface BrowserChrome {
 	activateTab: (tabId: number) => Promise<void>;
 	navigate: (url: string) => Promise<void>;
 	reload: (hard?: boolean) => Promise<void>;
+	pageControl: (
+		tabId: number,
+		action: "open" | "close" | "search" | "in" | "out" | "reset",
+		query?: string,
+		forward?: boolean,
+		next?: boolean,
+	) => Promise<void>;
 	reopenTab: (sessionId?: string | null) => Promise<void>;
 	stop: () => Promise<void>;
 	/** Ask the host to start again after an exhausted startup (round 1, D1a).
@@ -594,6 +612,8 @@ export function useBrowserChrome(): BrowserChrome {
 				return runVoid(() => api?.navigate(url));
 			},
 			reload: (hard) => runVoid(() => api?.reload(hard)),
+			pageControl: (tabId, action, query = "", forward = true, next = false) =>
+				runVoid(() => api?.pageControl(tabId, action, query, forward, next)),
 			reopenTab: (sessionId) =>
 				runVoid(() => api?.reopenTab(sessionId ?? null)),
 			stop: () => runVoid(() => api?.stop()),
