@@ -318,16 +318,19 @@ export const Tooltip = ({
 
 	/*
 	 * EVERY TOOLTIP THAT REACHES THE NATIVE BROWSER VIEW HIDES IT FOR AS LONG AS IT
-	 * IS PAINTED THERE. A `WebContentsView` paints above all DOM, so a panel that
-	 * lands inside its rect is invisible: the sidebar's conversation flyout opens
+	 * IS PAINTED THERE - and for `RELEASE_HOLD_MS` past the close, so that a pointer
+	 * moving from one flyout to the next cannot flash the page in the gap before the
+	 * new panel is placed (review round 1, R1; the number and its why live with the
+	 * policy). A `WebContentsView` paints above all DOM, so a panel that lands inside
+	 * its rect is invisible: the sidebar's conversation flyout opens
 	 * `right`, into the content area, and with the Browser route open only the sliver
 	 * over the sidebar's own edge survived (operator report). That is the panel rail's
 	 * problem (#872) for a different side, and the cure is the same measured
 	 * registration, made here rather than per call site for the reason `BaseDialog`
 	 * registers every dialog: a tooltip added next year must not silently vanish over
 	 * the page. MEASURED, not blanket - `useSuppressBrowserViewWhileReaching` reads the
-	 * painted panel against the rect the browser surface reports to main - so the
-	 * hundreds of tooltips that never reach the view (the chrome band's, anything with
+	 * painted panel against the rect the browser surface reports to main - so the app's
+	 * ~190 tooltip call sites that never reach the view (the chrome band's, anything with
 	 * no browser surface mounted) register nothing and cannot flash the page; the ones
 	 * that do pay the flash the policy header records as unmeasured (probe P11).
 	 *
