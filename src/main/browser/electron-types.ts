@@ -91,6 +91,7 @@ export interface DriveableWebContents {
 	 * have to model history to exercise the registry. Callers guard for it. */
 	navigationHistory?: NavigationHistoryLike;
 	reload(): void;
+	reloadIgnoringCache?(): void;
 	stop(): void;
 	isLoading(): boolean;
 }
