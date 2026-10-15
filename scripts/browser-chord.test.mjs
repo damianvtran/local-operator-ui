@@ -1,11 +1,10 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { build } from "esbuild";
+import { build, transform } from "esbuild";
 
 const SHARED_MENU_OWNER = /ownsChrome,/;
-const GUARDED_CHROME_INPUT =
-	/chords\.input\(event, input, "chrome", ownsChrome\(\)\)/;
+const GUARDED_CHROME_INPUT = /chords\.chromeInput\(event, input\)/;
 const BLUR_RESETS_SUPPRESSION_ONLY =
 	/window\.on\("blur", resetMenuShortcutSuppression\)/;
 
@@ -30,6 +29,162 @@ const {
 	runBrowserMenuAction,
 } = await moduleAt("src/main/browser/browser-chord.ts");
 const { TabRegistry } = await moduleAt("src/main/browser/registry.ts");
+
+// Execute the actual production entries without booting index.ts/Electron.
+// Exact, uniquely delimited source keeps this coupled to the reached caller, not a lookalike that
+// merely reasserts the router predicate (the missing coverage behind review R1).
+async function productionChromeDoors(activeHost, ownsChrome, suppression) {
+	const source = readFileSync("src/main/browser/index.ts", "utf8");
+	const unique = (marker) => {
+		const at = source.indexOf(marker);
+		assert.ok(
+			at >= 0 && source.indexOf(marker, at + marker.length) < 0,
+			`unique production marker required: ${marker}`,
+		);
+		return at;
+	};
+	const early = source.slice(
+		unique("export function routeBrowserZoomInput("),
+		unique("export function routeBrowserMenu("),
+	);
+	const later = source.slice(
+		unique("const onChromeInput ="),
+		unique("const resetChordFocus ="),
+	);
+	const compiled = await transform(`${early}\nexport ${later}`, {
+		loader: "ts",
+		format: "cjs",
+		target: "node22",
+	});
+	const module = { exports: {} };
+	new Function(
+		"module",
+		"exports",
+		"activeHost",
+		"browserChordIntent",
+		"process",
+		"chords",
+		"ownsChrome",
+		"options",
+		compiled.code,
+	)(
+		module,
+		module.exports,
+		activeHost,
+		browserChordIntent,
+		{ platform: "darwin" },
+		activeHost?.chords,
+		ownsChrome,
+		{
+			window: {
+				webContents: {
+					setIgnoreMenuShortcuts: (value) => suppression.push(value),
+				},
+			},
+		},
+	);
+	return module.exports;
+}
+
+test("R1 actual earlier zoom door and later chrome handler share guarded ownership, not a retained raw flag", async (t) => {
+	for (const context of [
+		"foreground",
+		"inactive",
+		"hidden",
+		"chrome-hidden",
+		"modal",
+		"destroyed",
+		"foreign",
+		"no-host",
+	]) {
+		const facts = {
+			logicalFocus: true,
+			chromeVisible: !["chrome-hidden", "modal"].includes(context),
+		};
+		const native = {
+			isDestroyed: () => context === "destroyed",
+			isVisible: () => {
+				assert.notEqual(context, "destroyed");
+				return context !== "hidden";
+			},
+			isFocused: () => !["inactive", "foreign"].includes(context),
+		};
+		const ownsChrome = () =>
+			browserChromeOwnsChord({ ...facts, window: native });
+		const mutations = [];
+		const suppression = [];
+		const router = createBrowserChordRouter({
+			platform: "darwin",
+			ownsChrome,
+			ownsPage: () => false,
+			reload: () => mutations.push(["reload", 3]),
+			zoom: (command) => mutations.push(["zoom", 3, command]),
+			history: () => {},
+			send: (message) => mutations.push([message.intent, 3]),
+			focusChrome: () => {},
+		});
+		const host =
+			context === "no-host"
+				? null
+				: { chords: router, host: { chordFocus: true } };
+		const doors = await productionChromeDoors(host, ownsChrome, suppression);
+		const event = () => ({
+			defaultPrevented: false,
+			preventDefault() {
+				this.defaultPrevented = true;
+			},
+		});
+		const e = event();
+		const handled = doors.routeBrowserZoomInput(e, input("="));
+		const expected = context === "foreground";
+		t.diagnostic(
+			JSON.stringify({
+				tier: "actual-production-source/fake-window-facts",
+				context,
+				guardedOwner: ownsChrome(),
+				handled,
+				zoomCallbacks: [...mutations],
+			}),
+		);
+		assert.equal(
+			handled,
+			expected,
+			`${context}: earlier production door must not trust raw logical=true`,
+		);
+		assert.deepEqual(mutations, expected ? [["zoom", 3, "in"]] : [], context);
+		assert.equal(e.defaultPrevented, expected);
+		if (host) {
+			// This is the SAME event the second listener receives: no doubled zoom.
+			doors.onChromeInput(e, input("="));
+			assert.deepEqual(mutations, expected ? [["zoom", 3, "in"]] : [], context);
+		}
+		for (const flags of [{ isAutoRepeat: true }, { isComposing: true }]) {
+			mutations.length = 0;
+			assert.equal(
+				doors.routeBrowserZoomInput(event(), input("=", flags)),
+				expected,
+				`${context}: rejection consumption preserved`,
+			);
+			assert.deepEqual(mutations, []);
+		}
+		for (const key of ["r", "t"]) {
+			mutations.length = 0;
+			const ordinary = event();
+			assert.equal(
+				doors.routeBrowserZoomInput(ordinary, input(key)),
+				false,
+				"non-zoom is never consumed by early app-zoom entry",
+			);
+			assert.equal(ordinary.defaultPrevented, false);
+			if (host) doors.onChromeInput(ordinary, input(key));
+			assert.deepEqual(
+				mutations,
+				expected ? [[key === "r" ? "reload" : "new-tab", 3]] : [],
+				`${context}: R/T executed at most once by later door`,
+			);
+		}
+	}
+});
 
 test("RT-only visibility uses actual registry setters, not absence of an active page", () => {
 	const registry = new TabRegistry(() => {
@@ -186,6 +341,10 @@ test("logical BODY/header ownership is never native authorization without real f
 	const source = readFileSync("src/main/browser/index.ts", "utf8");
 	assert.match(source, SHARED_MENU_OWNER);
 	assert.match(source, GUARDED_CHROME_INPUT);
+	assert.ok(
+		source.includes("activeHost.chords.chromeInput(event, input)"),
+		"earlier zoom caller uses the same guarded entry",
+	);
 	assert.match(
 		source,
 		BLUR_RESETS_SUPPRESSION_ONLY,

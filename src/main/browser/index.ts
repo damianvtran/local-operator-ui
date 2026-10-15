@@ -248,12 +248,7 @@ export function routeBrowserZoomInput(
 		process.platform,
 	);
 	if (!candidate?.startsWith("zoom-") || !activeHost) return false;
-	return activeHost.chords.input(
-		event,
-		input,
-		"chrome",
-		activeHost.host.chordFocus,
-	);
+	return activeHost.chords.chromeInput(event, input);
 }
 
 export function routeBrowserMenu(intent: BrowserChord): boolean {
@@ -907,7 +902,7 @@ async function initializeBrowserHost(
 			// The app zoom listener may already have routed this through our menu
 			// door. Do not execute it twice; no timing/debounce heuristic is needed.
 			if (event.defaultPrevented) return;
-			const handled = chords.input(event, input, "chrome", ownsChrome());
+			const handled = chords.chromeInput(event, input);
 			// Per-input suppression, NOT a 150ms command debounce. Key-up or any
 			// unrelated key restores menu shortcuts. Focus departure resets too.
 			options.window.webContents.setIgnoreMenuShortcuts(handled);
