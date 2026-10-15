@@ -52,6 +52,7 @@ import {
 	Tooltip,
 } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { t } from "@shared/i18n";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import {
 	ClipboardCopy,
@@ -160,9 +161,7 @@ const SupplementFileLine = memo(function SupplementFileLine({
 			}
 			await action(file.resolved);
 		} catch {
-			showErrorToast(
-				"Couldn't resolve this file in the session working directory",
-			);
+			showErrorToast(t("ui.chat.highlights.file_resolution_failed"));
 		}
 	};
 	const press = () =>
