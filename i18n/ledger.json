@@ -20,10 +20,16 @@
 					"date": "2026-10-14",
 					"result": "clean-with-findings",
 					"instance": "1eb058b7891c",
-					"receipt": "~/.local-operator/sessions/1eb058b7891c/scratchpad/fr-audit-1018-B-receipt.json",
+					"receipt": "i18n/receipts/1eb058b7891c.json",
 					"receipt_sha256": "569acfea48e8edf6682a030d0e615691ed1aee526a421cab103904c358473070",
 					"scope": "full independent pass, every key, at the target_sha256 recorded here",
-					"note": "0 BLOCKER/MAJOR; MINOR/NIT recorded, not churned."
+					"note": "0 BLOCKER/MAJOR; MINOR/NIT recorded, not churned.",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 1
+					}
 				},
 				{
 					"agent": "i18n-auditor",
@@ -31,10 +37,16 @@
 					"date": "2026-10-14",
 					"result": "clean-with-findings",
 					"instance": "2557ef7bd15a",
-					"receipt": "~/.local-operator/sessions/2557ef7bd15a/scratchpad/fr-audit-1018-C-receipt.json",
+					"receipt": "i18n/receipts/2557ef7bd15a.json",
 					"receipt_sha256": "904c688714c3138a515c31033fb2f9c472fe70eb39a0b1c42280d71c6fb7b1ed",
 					"scope": "full independent pass, every key, at the target_sha256 recorded here",
-					"note": "0 BLOCKER/MAJOR on settings; MINOR/NIT recorded, not churned."
+					"note": "0 BLOCKER/MAJOR on settings; MINOR/NIT recorded, not churned.",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 3,
+						"nit": 2
+					}
 				}
 			],
 			"status": "audited",
@@ -43,8 +55,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.console",
-			"source_sha256": "5866f4328ab5031be5b35cd04d805f1d1ca163d2f6b1770cb497de37eae0fd09",
-			"target_sha256": "b91225996f0776e002f49f24aed35f02f31461ac88447f7db71acbff189303a2",
+			"source_sha256": "4fe88a76de4992e0b890a15c6faafe594ac345e7f62a7deb849b486ec3c14c7e",
+			"target_sha256": "98f35292d1b0ae8225f9e56c938f6444591969392eb421a08ced861b786cedef",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol (original 30 keys, 2026-10-13); anthropic/claude-sonnet-5-5 (24 keys added 2026-10-14)",
@@ -53,29 +65,75 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
+					"model": "openai/gpt-6.1-sol",
 					"date": "2026-10-14",
 					"result": "clean-with-findings",
-					"instance": "7b95cdaf3ac1",
-					"receipt": "~/.local-operator/sessions/7b95cdaf3ac1/scratchpad/fr-audit-1018-G-receipt.json",
-					"receipt_sha256": "b0dda9067248f43a76d4655eb240aa3906229453260354f04caebb7aa3bc702e",
-					"scope": "full independent pass, every key, at the target_sha256 recorded here",
-					"note": "0 BLOCKER/MAJOR; MINOR/NIT recorded, not churned. The receipt file names its own instance \"scratchpad\"; the unique id is the session 7b95cdaf3ac1 the auditor reported."
+					"instance": "bd764ab57482",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 3,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/bd764ab57482.json",
+					"receipt_sha256": "95118c3f3ec2a68e18b33589900f1ee237efcd228dc6c51a1ab80f1a119d4820"
 				},
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
+					"model": "openai/gpt-6.1-sol",
 					"date": "2026-10-14",
 					"result": "clean-with-findings",
-					"instance": "5091a70eeedc",
-					"receipt": "~/.local-operator/sessions/5091a70eeedc/scratchpad/fr-audit-1018-H-receipt.json",
-					"receipt_sha256": "9ea19d405a0d264dc81de7c158b2f7c6f200285e2849a17bf48d8595fa551d08",
-					"scope": "full independent pass, every key, at the target_sha256 recorded here",
-					"note": "0 BLOCKER/MAJOR; MINOR/NIT recorded, not churned."
+					"instance": "a17d92b6925f",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/a17d92b6925f.json",
+					"receipt_sha256": "0b78667ac490a1caeead1b797bfc805d5ac50945b1e1b915d7a0436e62a78a2f"
 				}
 			],
 			"status": "audited",
-			"remediation": "Earlier passes on older bytes (instances 340d8507700f passed, 1eab2890ffb8 and f8a1676020e1 changes_requested) raised MAJORs on number agreement (capacity.summary/summary_compact/archived) and fit; fixed by the owner and re-audited by the two passes above."
+			"remediation": "Earlier passes on older bytes (instances 340d8507700f passed, 1eab2890ffb8 and f8a1676020e1 changes_requested) raised MAJORs on number agreement (capacity.summary/summary_compact/archived) and fit; fixed by the owner and re-audited by the two passes above.",
+			"superseded": [
+				{
+					"source_sha256": "5866f4328ab5031be5b35cd04d805f1d1ca163d2f6b1770cb497de37eae0fd09",
+					"target_sha256": "b91225996f0776e002f49f24aed35f02f31461ac88447f7db71acbff189303a2",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-14",
+							"result": "clean-with-findings",
+							"instance": "7b95cdaf3ac1",
+							"receipt": "~/.local-operator/sessions/7b95cdaf3ac1/scratchpad/fr-audit-1018-G-receipt.json",
+							"receipt_sha256": "b0dda9067248f43a76d4655eb240aa3906229453260354f04caebb7aa3bc702e",
+							"scope": "full independent pass, every key, at the target_sha256 recorded here",
+							"note": "0 BLOCKER/MAJOR; MINOR/NIT recorded, not churned. The receipt file names its own instance \"scratchpad\"; the unique id is the session 7b95cdaf3ac1 the auditor reported."
+						},
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-14",
+							"result": "clean-with-findings",
+							"instance": "5091a70eeedc",
+							"receipt": "~/.local-operator/sessions/5091a70eeedc/scratchpad/fr-audit-1018-H-receipt.json",
+							"receipt_sha256": "9ea19d405a0d264dc81de7c158b2f7c6f200285e2849a17bf48d8595fa551d08",
+							"scope": "full independent pass, every key, at the target_sha256 recorded here",
+							"note": "0 BLOCKER/MAJOR; MINOR/NIT recorded, not churned."
+						}
+					],
+					"status": "audited",
+					"reason": "Replaced by two full independent self-contained strict-schema audits at current bytes; historical narrow/placeholder receipts are retained here, not used to certify current state."
+				},
+				{
+					"source_sha256": "5866f4328ab5031be5b35cd04d805f1d1ca163d2f6b1770cb497de37eae0fd09",
+					"target_sha256": "b91225996f0776e002f49f24aed35f02f31461ac88447f7db71acbff189303a2",
+					"auditors": [],
+					"status": "pending"
+				}
+			]
 		},
 		{
 			"locale": "fr",
@@ -91,40 +149,80 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
+					"model": "openai/gpt-6.1-sol",
 					"date": "2026-10-14",
 					"result": "clean-with-findings",
-					"instance": "32763f5fdd6a",
-					"receipt": "~/.local-operator/sessions/32763f5fdd6a/scratchpad/fr-audit-1018-I-receipt.json",
-					"receipt_sha256": "8a09f49d80db88542d088868a3fa959c83b414ce7bace06c8be92ec509c79cc2",
-					"scope": "full independent pass, every key, at the target_sha256 recorded here",
-					"note": "0 BLOCKER/MAJOR; MINOR/NIT recorded, not churned."
+					"instance": "bd764ab57482",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/bd764ab57482.json",
+					"receipt_sha256": "95118c3f3ec2a68e18b33589900f1ee237efcd228dc6c51a1ab80f1a119d4820"
 				},
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
+					"model": "openai/gpt-6.1-sol",
 					"date": "2026-10-14",
 					"result": "clean-with-findings",
-					"instance": "5129ab3aa331",
-					"receipt": "~/.local-operator/sessions/5129ab3aa331/scratchpad/fr-audit-1018-J-receipt.json",
-					"receipt_sha256": "8b7758f111dec698eabb121cb7dedef6ea48f3cc282a45319695a09ee1fc0b4f",
-					"scope": "full independent pass, every key, at the target_sha256 recorded here",
-					"note": "0 BLOCKER/MAJOR; MINOR/NIT recorded, not churned."
-				},
-				{
-					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-10-14",
-					"result": "clean",
-					"instance": "5a44927fd8ce",
-					"receipt": "~/.local-operator/sessions/5a44927fd8ce/scratchpad/fr-audit-1018-D-receipt.json",
-					"receipt_sha256": "1965f89261f8bf01b1573881c837cce9dbd065831545d0212b46ff0821aa88c7",
-					"scope": "narrow re-audit of the one key ui.onboarding.modal.error.aida_open_failed at the recorded target_sha256, plus a diff-vs-HEAD check that only 4 keys differ",
-					"note": "passed; NITs only."
+					"instance": "a17d92b6925f",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/a17d92b6925f.json",
+					"receipt_sha256": "0b78667ac490a1caeead1b797bfc805d5ac50945b1e1b915d7a0436e62a78a2f"
 				}
 			],
 			"status": "audited",
-			"remediation": "Earlier passes on older bytes (instances 1eb058b7891c passed and 2557ef7bd15a changes_requested) raised one MAJOR (ui.onboarding.modal.error.aida_open_failed: missing elision before a vowel-initial name); fixed by the owner, covered by the narrow re-audit (5a44927fd8ce) and by the two full passes at the recorded bytes (32763f5fdd6a, 5129ab3aa331)."
+			"remediation": "Earlier passes on older bytes (instances 1eb058b7891c passed and 2557ef7bd15a changes_requested) raised one MAJOR (ui.onboarding.modal.error.aida_open_failed: missing elision before a vowel-initial name); fixed by the owner, covered by the narrow re-audit (5a44927fd8ce) and by the two full passes at the recorded bytes (32763f5fdd6a, 5129ab3aa331).",
+			"superseded": [
+				{
+					"source_sha256": "b086c241aa70e44cdaab8f02d20e5aaac33d4732df09204481afc4128c08a6ae",
+					"target_sha256": "ac45bc9c21115e53b07e4d71c2adddb2789678d0417d75432c2cc8a31c758d17",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-14",
+							"result": "clean-with-findings",
+							"instance": "32763f5fdd6a",
+							"receipt": "~/.local-operator/sessions/32763f5fdd6a/scratchpad/fr-audit-1018-I-receipt.json",
+							"receipt_sha256": "8a09f49d80db88542d088868a3fa959c83b414ce7bace06c8be92ec509c79cc2",
+							"scope": "full independent pass, every key, at the target_sha256 recorded here",
+							"note": "0 BLOCKER/MAJOR; MINOR/NIT recorded, not churned."
+						},
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-14",
+							"result": "clean-with-findings",
+							"instance": "5129ab3aa331",
+							"receipt": "~/.local-operator/sessions/5129ab3aa331/scratchpad/fr-audit-1018-J-receipt.json",
+							"receipt_sha256": "8b7758f111dec698eabb121cb7dedef6ea48f3cc282a45319695a09ee1fc0b4f",
+							"scope": "full independent pass, every key, at the target_sha256 recorded here",
+							"note": "0 BLOCKER/MAJOR; MINOR/NIT recorded, not churned."
+						},
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-14",
+							"result": "clean",
+							"instance": "5a44927fd8ce",
+							"receipt": "~/.local-operator/sessions/5a44927fd8ce/scratchpad/fr-audit-1018-D-receipt.json",
+							"receipt_sha256": "1965f89261f8bf01b1573881c837cce9dbd065831545d0212b46ff0821aa88c7",
+							"scope": "narrow re-audit of the one key ui.onboarding.modal.error.aida_open_failed at the recorded target_sha256, plus a diff-vs-HEAD check that only 4 keys differ",
+							"note": "passed; NITs only."
+						}
+					],
+					"status": "audited",
+					"reason": "Replaced by two full independent self-contained strict-schema audits at current bytes; historical narrow/placeholder receipts are retained here, not used to certify current state."
+				}
+			]
 		}
 	]
 }

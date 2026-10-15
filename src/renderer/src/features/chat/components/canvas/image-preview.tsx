@@ -83,7 +83,9 @@ const ArtifactImagePreview: FC<{ document: CanvasDocument }> = ({
 			attachment: artifact?.digest ?? null,
 			mimeType: artifact?.contentType ?? "image/png",
 		},
-		artifact ? { sessionId: artifact.sessionId, childId: null } : null,
+		artifact
+			? { sessionId: artifact.sessionId, childId: artifact.childId ?? null }
+			: null,
 	);
 	const [undecodableUrl, setUndecodableUrl] = useState<string | null>(null);
 	const readyUrl = source.state === "ready" ? source.url : null;
@@ -103,7 +105,10 @@ const ArtifactImagePreview: FC<{ document: CanvasDocument }> = ({
 						saveName={artifactFileName(artifact)}
 						resolveBytes={() =>
 							fetchAttachmentBlob(
-								{ sessionId: artifact.sessionId, childId: null },
+								{
+									sessionId: artifact.sessionId,
+									childId: artifact.childId ?? null,
+								},
 								artifact.digest,
 							)
 						}

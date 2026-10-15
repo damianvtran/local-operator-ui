@@ -153,6 +153,7 @@ export function HubSkillPublication({
 			</label>
 			<select
 				id={`${id}-source`}
+				data-testid="hub-skill-publish-source"
 				value={sourceSkill}
 				disabled={action.isPending || !enabled}
 				className="rounded-md border border-control bg-surface px-3 py-2 text-body-sm text-ink"
@@ -179,6 +180,7 @@ export function HubSkillPublication({
 			</label>
 			<Input
 				id={`${id}-alias`}
+				data-testid="hub-skill-publish-alias"
 				value={alias}
 				disabled={action.isPending || !enabled}
 				onChange={(event) => {
@@ -262,12 +264,18 @@ export function HubSkillPublication({
 			 * contract; this status must never reuse "Publication succeeded". */}
 			{action.data?.publication === null &&
 				action.data.local_link_receipt?.state === "pending-reconciliation" && (
-					<output className="text-body-sm text-warning">
+					<output
+						className="text-body-sm text-warning"
+						data-testid="hub-skill-pending-reconcile"
+					>
 						{t("ui.hub.links.publication_pending")}
 					</output>
 				)}
 			{action.data?.publication && (
-				<output className="text-body-sm text-ink">
+				<output
+					className="text-body-sm text-ink"
+					data-testid="hub-skill-published"
+				>
 					{publicationPolicyAcknowledged(action.data)
 						? t("ui.hub.links.published", {
 								item: action.data.link?.name ?? alias,
@@ -281,12 +289,14 @@ export function HubSkillPublication({
 			<div className="flex flex-wrap gap-2">
 				<Button
 					variant="outline"
+					data-testid="hub-skill-publish-preview"
 					disabled={!enabled || action.isPending || !sourceSkill || !alias}
 					onClick={() => run(false)}
 				>
 					{t("ui.hub.subscriptions.preview_publish")}
 				</Button>
 				<Button
+					data-testid="hub-skill-publish-confirm"
 					disabled={!enabled || action.isPending || !current}
 					onClick={() => run(true)}
 				>

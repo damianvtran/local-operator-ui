@@ -19,6 +19,7 @@ import { BrowserUrlBar } from "./browser-url-bar";
  */
 
 const bar = (waitingCount: number, downloadsDir: string | null = null) => ({
+	tabId: 1,
 	url: "https://login.example.com/session",
 	pendingUrl: null,
 	loading: false,

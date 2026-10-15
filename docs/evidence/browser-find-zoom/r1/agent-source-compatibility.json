@@ -1,0 +1,81 @@
+{
+  "base": "5b3e3bf425ff6e6475b1e1c04ae4ac49fdc2ec18",
+  "head": "41cec92350f5e70e5fd442271ef9b360612a82ee",
+  "changedProductFiles": [
+    "src/main/browser/page-controls.ts",
+    "src/renderer/src/features/browser/components/browser-find-row.tsx",
+    "src/renderer/src/features/browser/components/browser-surface.tsx",
+    "src/renderer/src/features/browser/hooks/use-browser-chords.ts"
+  ],
+  "wholeFiles": [
+    {
+      "path": "src/main/browser/index.ts",
+      "byteIdentical": true,
+      "sha256": "11f0a525884633c9461e3739981d44873a058d146e061f878af3a066080bf371"
+    },
+    {
+      "path": "src/main/browser/host.ts",
+      "byteIdentical": true,
+      "sha256": "8e2e2ef076caa157116415db89d75837662ee15ed667cccb18a26119ccc28451"
+    },
+    {
+      "path": "src/main/browser/registry.ts",
+      "byteIdentical": true,
+      "sha256": "ddfa0d84d63b5a7369c2923c95c8dcc68998087789ed166fb0be3175d4298b34"
+    },
+    {
+      "path": "src/main/browser/ownership.ts",
+      "byteIdentical": true,
+      "sha256": "16b9627190c97a8101732bd85ae412251015faa9b37bfe37fb105028051f1e75"
+    },
+    {
+      "path": "src/main/browser/actions/page.ts",
+      "byteIdentical": true,
+      "sha256": "70528c50f77335bd5d705ebad94bf0e1dd0e53396112bc442f0e40d36123ea0b"
+    },
+    {
+      "path": "src/main/browser/actions/context.ts",
+      "byteIdentical": true,
+      "sha256": "d64633320ba46c53c6996a01898f6413bf3f42bbc2a45a026b19c1c0c988cb4c"
+    },
+    {
+      "path": "src/main/browser/cdp.ts",
+      "byteIdentical": true,
+      "sha256": "90fcad57d934d5f5b5c1eea685451f8ac2dd0aa62514c940bdde0a0182747754"
+    },
+    {
+      "path": "src/main/browser/rpc.ts",
+      "byteIdentical": true,
+      "sha256": "ec29e9ea6bf708d082105328ef870e66f2ac81d30eeaa9a6134711594978e34f"
+    },
+    {
+      "path": "src/main/browser/protocol.ts",
+      "byteIdentical": true,
+      "sha256": "96190ddaf4e93795cb5cff1f6579f5b8231e77ce994bf438864d837d301436fe"
+    },
+    {
+      "path": "src/main/browser/ipc.ts",
+      "byteIdentical": true,
+      "sha256": "9d7e39b155cfcfef9b24d1c355367f7087d104bf1975a1216a4a564e5ce6bda7"
+    },
+    {
+      "path": "src/main/window-raise.ts",
+      "byteIdentical": true,
+      "sha256": "3f33f679995de907ed73be3b686b9ddc23330ec4519bf6c650766714b6761c21"
+    }
+  ],
+  "pageControlsMethods": [
+    {
+      "method": "zoom",
+      "byteIdentical": true,
+      "sha256": "283f90d7eeac4df1d65774e1ab33539cde4cc471cf2c21f9565ceeed791a496e"
+    },
+    {
+      "method": "prepareAgent",
+      "byteIdentical": true,
+      "sha256": "2ea5539ec86f6419dd4692599ead3f20d9736c82c777e867e6a03d4c9ee58a32"
+    }
+  ],
+  "pageControlsOnlyFunctionalDelta": "findInPage findNext: continuing -> !continuing; remaining diff comments only",
+  "nativeAgentSample": "NOT rerun after fix; retain independent QA round1 old-head PASS with source compatibility, not new execution"
+}

@@ -145,7 +145,10 @@ import {
 } from "../move-session";
 import { openConversation } from "../open-conversation";
 import { PickerOutlet } from "../pickers/picker-registry";
-import { effortQueryModel } from "../session-status/session-model";
+import {
+	effortQueryModel,
+	modelAccessLocality,
+} from "../session-status/session-model";
 import type { Message } from "../types/message";
 import { encodeImageAttachments } from "../utils/attachment-encode";
 import {
@@ -4069,6 +4072,12 @@ function SessionPanel({
 	 * in the markup below stay inline, because a resolving preview rebuilds them
 	 * and that is not the streaming-answer state this boundary exists for.
 	 */
+	// The same authoritative row used by the device slot: a missing locality is
+	// NOT proof of local serving. The generic Connect dialog addresses only the
+	// attached backend, so native remote/unknown absence must not use it.
+	const servingLocality = useCanonicalSessionsStore((state) =>
+		modelAccessLocality(state.sessions, sessionId),
+	);
 	const liveSessionStatus = useMemo(
 		() =>
 			sessionId
@@ -4093,6 +4102,7 @@ function SessionPanel({
 						 * the transcript paints its Reconnecting line.
 						 */
 						frontend: canonical.frontend ?? canonical.heldFrontend,
+						servingLocality,
 						/*
 						 * Whether those readings are the HELD ones, which is a
 						 * different question from whether a frontend is present:
@@ -4151,6 +4161,7 @@ function SessionPanel({
 			sessionId,
 			canonical.frontend,
 			canonical.heldFrontend,
+			servingLocality,
 			readingsDroppedFor,
 			canonical.pendingModel,
 			stableDispatchFromControl,

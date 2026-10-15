@@ -1,0 +1,366 @@
+[
+  {
+    "name": "DOM new",
+    "actual": {
+      "prevented": true,
+      "target": "INPUT",
+      "route": "#/browser"
+    }
+  },
+  {
+    "name": "DOM reload",
+    "actual": {
+      "prevented": true,
+      "target": "INPUT",
+      "route": "#/browser"
+    }
+  },
+  {
+    "name": "DOM bracket",
+    "actual": {
+      "prevented": true,
+      "target": "INPUT",
+      "route": "#/browser"
+    }
+  },
+  {
+    "name": "DOM address actual",
+    "actual": {
+      "tag": "INPUT",
+      "start": 0,
+      "end": 0,
+      "value": "",
+      "outline": "none"
+    }
+  },
+  {
+    "name": "native listener reload",
+    "actual": {
+      "prevented": 1,
+      "contentsId": 5
+    }
+  },
+  {
+    "name": "native reload actual",
+    "actual": {
+      "requestDelta": 1
+    }
+  },
+  {
+    "name": "native negative alt",
+    "actual": {
+      "prevented": 0,
+      "contentsId": 5,
+      "requestDelta": 0
+    }
+  },
+  {
+    "name": "native negative repeat",
+    "actual": {
+      "prevented": 1,
+      "contentsId": 5,
+      "requestDelta": 0
+    }
+  },
+  {
+    "name": "native negative composition",
+    "actual": {
+      "prevented": 1,
+      "contentsId": 5,
+      "requestDelta": 0
+    }
+  },
+  {
+    "name": "native negative keyup",
+    "actual": {
+      "prevented": 0,
+      "contentsId": 5,
+      "requestDelta": 0
+    }
+  },
+  {
+    "name": "native negative wrong modifier",
+    "actual": {
+      "prevented": 0,
+      "contentsId": 5,
+      "requestDelta": 0
+    }
+  },
+  {
+    "name": "wrong sender real main handler",
+    "actual": {
+      "refused": true,
+      "message": "This window cannot use the browser controls."
+    }
+  },
+  {
+    "name": "invalid focus IPC",
+    "actual": {
+      "refused": true,
+      "message": "Error invoking remote method 'browser-set-chord-focus': Error: Browser focus must be a boolean."
+    }
+  },
+  {
+    "name": "chat DOM no interception",
+    "actual": {
+      "prevented": false,
+      "target": "BODY",
+      "route": "#/chat"
+    }
+  },
+  {
+    "name": "focus CSS localOperatorLight",
+    "actual": {
+      "outlineStyle": "solid",
+      "outlineWidth": "2px",
+      "outlineOffset": "2px",
+      "x": 364,
+      "y": 73,
+      "width": 898.28125,
+      "height": 32,
+      "forced": "CSS.forcePseudoState focus-visible; not OS focus"
+    }
+  },
+  {
+    "name": "focus CSS localOperatorDark",
+    "actual": {
+      "outlineStyle": "solid",
+      "outlineWidth": "2px",
+      "outlineOffset": "2px",
+      "x": 364,
+      "y": 73,
+      "width": 898.28125,
+      "height": 32,
+      "forced": "CSS.forcePseudoState focus-visible; not OS focus"
+    }
+  },
+  {
+    "name": "strip shared last-tab result",
+    "actual": {
+      "tabs": [
+        {
+          "tabId": 3,
+          "title": "New tab",
+          "url": "about:blank",
+          "owner": "user",
+          "sessionId": null,
+          "active": true,
+          "restored": false,
+          "handedOver": false,
+          "failed": false,
+          "loading": false
+        }
+      ],
+      "activeTabId": 3,
+      "transfers": {
+        "active": null,
+        "dir": null,
+        "notes": [],
+        "activeTabId": 3,
+        "recent": null
+      },
+      "url": "about:blank",
+      "title": "",
+      "loading": false,
+      "canGoBack": false,
+      "canGoForward": false,
+      "navFailure": null,
+      "pendingConsent": [],
+      "approvals": [],
+      "availability": {
+        "status": "ready",
+        "attempt": 1,
+        "maxAttempts": 3,
+        "message": null,
+        "canRetry": false
+      }
+    }
+  },
+  {
+    "name": "keyboard close dispatch",
+    "actual": {
+      "prevented": true,
+      "route": "#/browser"
+    }
+  },
+  {
+    "name": "keyboard shared last-tab result",
+    "actual": {
+      "tabs": [
+        {
+          "tabId": 4,
+          "title": "New tab",
+          "url": "about:blank",
+          "owner": "user",
+          "sessionId": null,
+          "active": true,
+          "restored": false,
+          "handedOver": false,
+          "failed": false,
+          "loading": false
+        }
+      ],
+      "activeTabId": 4,
+      "transfers": {
+        "active": null,
+        "dir": null,
+        "notes": [],
+        "activeTabId": 4,
+        "recent": null
+      },
+      "url": "about:blank",
+      "title": "",
+      "loading": false,
+      "canGoBack": false,
+      "canGoForward": false,
+      "navFailure": null,
+      "pendingConsent": [],
+      "approvals": [],
+      "availability": {
+        "status": "ready",
+        "attempt": 1,
+        "maxAttempts": 3,
+        "message": null,
+        "canRetry": false
+      }
+    }
+  },
+  {
+    "name": "reopen after shared close",
+    "actual": {
+      "tabs": [
+        {
+          "tabId": 4,
+          "title": "New tab",
+          "url": "about:blank",
+          "owner": "user",
+          "sessionId": null,
+          "active": false,
+          "restored": false,
+          "handedOver": false,
+          "failed": false,
+          "loading": false
+        },
+        {
+          "tabId": 5,
+          "title": "QA 5",
+          "url": "http://127.0.0.1:50391/keyboard-close",
+          "owner": "user",
+          "sessionId": null,
+          "active": true,
+          "restored": false,
+          "handedOver": false,
+          "failed": false,
+          "loading": false
+        }
+      ],
+      "activeTabId": 5,
+      "transfers": {
+        "active": null,
+        "dir": null,
+        "notes": [],
+        "activeTabId": 5,
+        "recent": null
+      },
+      "url": "http://127.0.0.1:50391/keyboard-close",
+      "title": "QA 5",
+      "loading": false,
+      "canGoBack": true,
+      "canGoForward": false,
+      "navFailure": null,
+      "pendingConsent": [],
+      "approvals": [],
+      "availability": {
+        "status": "ready",
+        "attempt": 1,
+        "maxAttempts": 3,
+        "message": null,
+        "canRetry": false
+      }
+    }
+  },
+  {
+    "name": "actual main browser target app-reload",
+    "actual": {
+      "id": "app-reload",
+      "target": "main",
+      "targetId": 2,
+      "navigations": 0,
+      "enabled": true,
+      "focusReports": [
+        {
+          "value": false,
+          "sender": 2
+        },
+        {
+          "value": true,
+          "sender": 2
+        }
+      ],
+      "requestDelta": 1
+    }
+  },
+  {
+    "name": "actual existing mini target app-reload",
+    "actual": {
+      "id": "app-reload",
+      "target": "mini",
+      "targetId": 1,
+      "navigations": 1,
+      "enabled": true,
+      "focusReports": [
+        {
+          "value": false,
+          "sender": 2
+        },
+        {
+          "value": true,
+          "sender": 2
+        }
+      ],
+      "requestDelta": 0
+    }
+  },
+  {
+    "name": "actual main browser target app-force-reload",
+    "actual": {
+      "id": "app-force-reload",
+      "target": "main",
+      "targetId": 2,
+      "navigations": 0,
+      "enabled": true,
+      "focusReports": [
+        {
+          "value": false,
+          "sender": 2
+        },
+        {
+          "value": true,
+          "sender": 2
+        }
+      ],
+      "requestDelta": 1
+    }
+  },
+  {
+    "name": "actual existing mini target app-force-reload",
+    "actual": {
+      "id": "app-force-reload",
+      "target": "mini",
+      "targetId": 1,
+      "navigations": 1,
+      "enabled": true,
+      "focusReports": [
+        {
+          "value": false,
+          "sender": 2
+        },
+        {
+          "value": true,
+          "sender": 2
+        }
+      ],
+      "requestDelta": 0
+    }
+  }
+]

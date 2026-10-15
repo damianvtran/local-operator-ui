@@ -1,0 +1,69 @@
+desktop tests: 1 file, concurrency 1 (explicit --test-concurrency=1 in argv; governor bypassed)
+desktop tests: memory bound 9.0 GB for the test process group (max(8192 MB floor, 25% of 36864 MB RAM), capped at 50%); sampled every 2s on max(footprint, rss)
+desktop tests: per-lane bound 25 min (default, above the 18.7-minute healthy CI suite that bounds every lane it runs — a stall in a lane first seen late can still outrun the job cap); sampled every 5s over the suite's process group
+no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+✔ the asks sample chord remains capturable, not reserved (1.282875ms)
+✔ the rail is ONE vertical toolbar with a name, in the fixed order (27.759375ms)
+✔ one tab stop: exactly one item is tabbable, and it follows focus (7677.675334ms)
+✔ ArrowUp/ArrowDown walk the items, Home/End take the ends, and the walk is bounded (51231.043875ms)
+✔ aria-pressed follows each of the six store flags, one at a time (7456.526542ms)
+✔ pressing an item claims the slot: the others are cleared, and a second press closes (7492.369958ms)
+✔ a claimed pane the route cannot draw lights NOTHING (the drawable-aware selector) (7922.072208ms)
+✔ a panel the route cannot draw is ABSENT, not disabled (7.747584ms)
+✔ the asks item follows the host's offer, and its labels carry the scope and the count (9.42725ms)
+✔ the asks item's tooltip verb follows its SCOPE while aria-pressed follows the slot (N1) (8675.1735ms)
+✔ the tooltips are the header's verbatim; the accessible names are stable nouns (U2) (11.211708ms)
+✔ the item caps are the BOUND chords: both registers, absent when unbound, and they follow the store (#928) (6.891167ms)
+✔ the browser badge: the count, capped at 9+ on the glyph, ringed in the rail's own ground (9.406333ms)
+✔ the ask badge (#896): the count, capped at 9+ on the glyph, styled like the browser's (8.931917ms)
+✔ while the Asks drawer holds the slot the ASK ITEM is lit, and a press on another item is a swap (6.197042ms)
+✔ focus returns to the item whose panel closed under the keyboard, and never otherwise (8624.655667ms)
+✔ a drawer opened from the CHIP returns focus to the chip with the rail mounted (F1/Q2) (18263.875917ms)
+✔ never on first mount: a rail that appears over an empty slot takes no focus (6.918667ms)
+✔ every legacy hook the tour, the proofs and the driver find the controls by is still there (8.473167ms)
+✔ the lit item is a ground, an ink and a bar - roles only - and idle hover is a colour step (5.581583ms)
+✔ the host is inert outside a shell and portals into the shell's element inside one (7.065834ms)
+✔ the header no longer renders the five triggers or their shed ladder (2.050084ms)
+✔ the rail is not a keyboard region, and binds no listener of its own (0.372542ms)
+✔ only the shell host sizes the rail, from the route's `mounted` fact (0.683625ms)
+✔ the host is 0 with no chat surface, 44 with one, and follows the fact both ways (7.312208ms)
+✔ the rail is drawn in the host while the chat surface is mounted, and the strip closes when it is not (6.111958ms)
+✔ the host stays 44 across React StrictMode's double-mounted effects (8.800708ms)
+✔ a rail tooltip that REACHES the view suppresses it for exactly as long as it is open (10749.28ms)
+✔ a rail tooltip that does NOT reach the view buys nothing: the page stays drawn (D11) (8439.223959ms)
+✔ with no browser surface mounted there is no view to occlude, so nothing registers (8744.293625ms)
+✔ the view's rect moving (a consent banner pushes the page down) changes the answer with no constant to update (8685.110667ms)
+✔ a tooltip left open by an exit through the window edge does not hold the page blank (R6/Q5) (8628.637125ms)
+✔ keyboard focus takes the SAME measured path as hover (D14) (8578.062542ms)
+✔ Tooltip's onOpenChange follows what is SHOWN, so suppressed cannot leave a caller stuck on (R12) (17145.376417ms)
+✔ the measured overlap is a positive area, so touching edges do not count (0.2665ms)
+✔ the ... menu's Open canvas row opens the CANVAS, not the slash-command chips (16654.759917ms)
+✔ the ... menu's asks row is the header's remaining door: gated, verb-labelled, wired to the prop (39295.934708ms)
+✔ the ... menu's asks row opens the drawer over an empty queue, and its doors behave (Q1) (50255.80275ms)
+✔ a restore that lands after the drawer's own settle still ends inside, and a later move to the trigger sticks (Q1/M1) (11947.080958ms)
+✔ the first item's top is padding, not a strut plus a gap (D3) (1.212875ms)
+✔ the lit bar is clear of the focus ring, flush with the rail's leading edge (D2) (0.297125ms)
+✔ the count badge is the small mark anchored to the corner (D4) (0.133208ms)
+✔ the title sheds before the switch's labels truncate, and the empty state's buttons wrap (D12/D13) (1.291958ms)
+[run_bounded] timeout after 600s — SIGTERM to process group 78877
+
+Interrupted while running:
+
+⚠ scripts/panel-rail.test.mjs (scripts/panel-rail.test.mjs:1:1)
+✖ scripts/panel-rail.test.mjs (599908.840542ms)
+ℹ tests 44
+ℹ suites 0
+ℹ pass 43
+ℹ fail 0
+ℹ cancelled 1
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 599909.227042
+
+✖ failing tests:
+
+test at scripts/panel-rail.test.mjs:1:1
+✖ scripts/panel-rail.test.mjs (599908.840542ms)
+  'Promise resolution is still pending but the event loop has already resolved'
+[run_bounded] that is the BOUND (600s) firing, not the gate failing — re-run it, or raise it (--timeout, or `make type-check BOUND_TIMEOUT=<seconds>`)
+[run_bounded] node rc=124 wall=600.3s

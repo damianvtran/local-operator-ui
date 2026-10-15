@@ -1,0 +1,287 @@
+docs/evidence/hub-links/harness/stub-daemon.mjs:610:38 lint/performance/useTopLevelRegex ━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    608 │ 		return ok({ teams: [{ name: "lopdev", description: "" }] });
+    609 │ 	}
+  > 610 │ 	const profileMatch = pathname.match(/^\/v1\/desktop\/profiles\/([^/]+)$/);
+        │ 	                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    611 │ 	if (method === "GET" && profileMatch) {
+    612 │ 		const name = decodeURIComponent(profileMatch[1]);
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+docs/evidence/hub-links/harness/stub-daemon.mjs:638:35 lint/performance/useTopLevelRegex ━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    636 │ 		});
+    637 │ 	}
+  > 638 │ 	const teamMatch = pathname.match(/^\/v1\/desktop\/teams\/([^/]+)$/);
+        │ 	                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    639 │ 	if (method === "GET" && teamMatch) {
+    640 │ 		const name = decodeURIComponent(teamMatch[1]);
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+docs/evidence/hub-links/harness/stub-daemon.mjs:654:37 lint/performance/useTopLevelRegex ━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    652 │ 	}
+    653 │ 	/* Policy PATCH: CAS on the captured policy revision, per the receipt. */
+  > 654 │ 	const policyMatch = pathname.match(/^\/v1\/desktop\/hub\/links\/([^/]+)$/);
+        │ 	                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    655 │ 	if (method === "PATCH" && policyMatch) {
+    656 │ 		const link = links.find((row) => row.link_id === policyMatch[1]);
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+docs/evidence/hub-links/harness/stub-daemon.mjs:825:42 lint/performance/useTopLevelRegex ━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    823 │ 		});
+    824 │ 	}
+  > 825 │ 	const publicSkillMatch = pathname.match(/^\/v1\/skills\/([^/]+)$/);
+        │ 	                                        ^^^^^^^^^^^^^^^^^^^^^^^^^
+    826 │ 	if (method === "GET" && publicSkillMatch) {
+    827 │ 		await skillsSleep(SKILLS_LATENCY_MS);
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/hub-mutation-safety.test.mjs:65:16 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    63 │ 			setup(b) {
+    64 │ 				b.onResolve(
+  > 65 │ 					{ filter: /^@shared\/hooks\/use-connectivity-status$/ },
+       │ 					          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    66 │ 					() => ({ path: "health", namespace: "guard-fixture" }),
+    67 │ 				);
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/hub-mutation-safety.test.mjs:68:27 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    66 │ 					() => ({ path: "health", namespace: "guard-fixture" }),
+    67 │ 				);
+  > 68 │ 				b.onResolve({ filter: /^\.\/desktop-api$/ }, (args) =>
+       │ 				                      ^^^^^^^^^^^^^^^^^^^
+    69 │ 					/hub-(?:link-hooks|link-actions|hooks)\.ts$/.test(args.importer)
+    70 │ 						? { path: "transport", namespace: "guard-fixture" }
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/hub-mutation-safety.test.mjs:69:6 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    67 │ 				);
+    68 │ 				b.onResolve({ filter: /^\.\/desktop-api$/ }, (args) =>
+  > 69 │ 					/hub-(?:link-hooks|link-actions|hooks)\.ts$/.test(args.importer)
+       │ 					^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    70 │ 						? { path: "transport", namespace: "guard-fixture" }
+    71 │ 						: undefined,
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/hub-mutation-safety.test.mjs:73:24 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    71 │ 						: undefined,
+    72 │ 				);
+  > 73 │ 				b.onLoad({ filter: /.*/, namespace: "guard-fixture" }, (args) => ({
+       │ 				                   ^^^^
+    74 │ 					contents:
+    75 │ 						args.path === "health"
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/hub-mutation-safety.test.mjs:408:4 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    406 │ 		assert.match(
+    407 │ 			exposed.safety.upgradeMessage,
+  > 408 │ 			/Hub changes require core 0\.72\.1 or newer/,
+        │ 			^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    409 │ 		);
+    410 │ 		assert.doesNotMatch(exposed.safety.upgradeMessage, /outdated|old version/i);
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/hub-mutation-safety.test.mjs:410:54 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    408 │ 			/Hub changes require core 0\.72\.1 or newer/,
+    409 │ 		);
+  > 410 │ 		assert.doesNotMatch(exposed.safety.upgradeMessage, /outdated|old version/i);
+        │ 		                                                   ^^^^^^^^^^^^^^^^^^^^^^^
+    411 │ 		console.log(
+    412 │ 			`actual hooks: ${positive} fixed-version arms transmitted; ${retained.length * 4} stale old/unknown/disconnected/identity callbacks -> ZERO additional writes; normal poll only blocks Hub writes, no upgrade flash`,
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/renderer-driver.mjs:1117:44 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    1115 │ 		const seen = thisRunsProcesses();
+    1116 │ 		const pids = seen.lines
+  > 1117 │ 			.map((line) => Number(line.trim().split(/\s+/)[0]))
+         │ 			                                        ^^^^^
+    1118 │ 			.filter((pid) => Number.isInteger(pid) && pid > 0);
+    1119 │ 		if (pids.length === 0) {
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/renderer-driver.mjs:1461:36 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    1459 │ 	const file = join(ROOT, "out/renderer/index.html");
+    1460 │ 	if (!existsSync(file)) return "no built renderer to widen";
+  > 1461 │ 	const origin = backendUrl.replace(/\/$/, "");
+         │ 	                                  ^^^^^
+    1462 │ 	const before = readFileSync(file, "utf8");
+    1463 │ 	/*
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/renderer-driver.mjs:1495:22 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    1493 │ 			continue;
+    1494 │ 		}
+  > 1495 │ 		if (match[2].split(/\s+/).includes(origin)) {
+         │ 		                   ^^^^^
+    1496 │ 			left.push(`${directive} already lists it`);
+    1497 │ 			continue;
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/renderer-driver.mjs:2094:16 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    2092 │ /** The palette a frame's NAME claims, or `null` for a name that claims none. */
+    2093 │ function claimedPalette(label) {
+  > 2094 │ 	const match = /-(dark|light)$/.exec(label);
+         │ 	              ^^^^^^^^^^^^^^^^
+    2095 │ 	return match === null ? null : match[1];
+    2096 │ }
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/renderer-driver.mjs:2117:28 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    2115 │ 		).exec(css);
+    2116 │ 		const hex =
+  > 2117 │ 			block === null ? null : /--lo-canvas:\s*(#[0-9a-f]{6})\b/i.exec(block[1]);
+         │ 			                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    2118 │ 		if (hex === null) return null;
+    2119 │ 		out[palette] = { hex: hex[1].toLowerCase(), luma: srgbLuma(hex[1]) };
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/renderer-driver.mjs:5020:24 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    5018 │ 					.readFileSync(STUB_LOG, "utf8")
+    5019 │ 					.split("\n")
+  > 5020 │ 					.filter((line) => /POST .*\/archive/.test(line)).length
+         │ 					                  ^^^^^^^^^^^^^^^^^^
+    5021 │ 			: null;
+    5022 │ 	};
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/renderer-driver.mjs:5066:8 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    5064 │ 		(confirmState.text ?? "").includes(
+    5065 │ 			"It leaves your lists. You can undo for 8 seconds; after that, search above your chats, turn on “Include archived”, then Unarchive it.",
+  > 5066 │ 		) && /danger/.test(confirmState.confirmClass ?? ""),
+         │ 		     ^^^^^^^^
+    5067 │ 		JSON.stringify(confirmState),
+    5068 │ 	);
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/renderer-driver.mjs:5125:4 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    5123 │ 		"a press on a NON-CHAT route asks THERE (Settings), naming the conversation with Cancel focused; cancelled, no request reached the daemon and nothing is waiting when the chat comes back",
+    5124 │ 		askedOnSettings === true &&
+  > 5125 │ 			/settings/.test(settingsState.route ?? "") &&
+         │ 			^^^^^^^^^^
+    5126 │ 			settingsState.text.includes("Archive “Migration checklist”?") &&
+    5127 │ 			settingsState.cancelFocused === true &&
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/renderer-driver.mjs:5451:5 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    5449 │ 			successorRegion?.id === handOffExpectation?.successorRow &&
+    5450 │ 			successorRegion?.id !== handOffExpectation?.pressedRow &&
+  > 5451 │ 			!/Release notes for 0\.29/.test(successor.target ?? ""),
+         │ 			 ^^^^^^^^^^^^^^^^^^^^^^^^^
+    5452 │ 		JSON.stringify({
+    5453 │ 			successor,
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/renderer-driver.mjs:7621:3 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    7619 │ 	check(
+    7620 │ 		"the offer is of an offer that was really there",
+  > 7621 │ 		/archived/.test(geometry["offer-toast-280"].offer.text ?? ""),
+         │ 		^^^^^^^^^^
+    7622 │ 		JSON.stringify(geometry["offer-toast-280"].offer),
+    7623 │ 	);
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+Skipped 11 suggested fixes.
+If you wish to apply the suggested (unsafe) fixes, use the command biome check --fix --unsafe
+
+The number of diagnostics exceeds the number allowed by Biome.
+Diagnostics not shown: 77.
+Checked 14 files in 473ms. Fixed 3 files.
+Found 30 warnings.

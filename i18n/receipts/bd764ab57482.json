@@ -1,0 +1,64 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "bd764ab57482",
+  "locale": "fr",
+  "status": "passed",
+  "namespaces": {
+    "ui.console": {
+      "status": "passed",
+      "keys_audited": 57,
+      "sha256": {
+        "fr": "98f35292d1b0ae8225f9e56c938f6444591969392eb421a08ced861b786cedef",
+        "en": "4fe88a76de4992e0b890a15c6faafe594ac345e7f62a7deb849b486ec3c14c7e"
+      },
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.console.capacity.summary_compact",
+          "current": "{live, number}/{limit, number} · {archived, plural, one {# gardé} many {# de gardés} other {# gardés}}",
+          "problem": "The many branch adds de before the elliptical participle gardés (e.g. 1 000 000 de gardés). The count is understandable, but this clipped label reads more naturally without de; de is appropriate before an explicit noun such as terminaux, not necessary in this bare retained-count fragment. This is rare-branch copy polish, not a scope or numeric-semantics error.",
+          "suggest": "{live, number}/{limit, number} · {archived, plural, one {# gardé} many {# gardés} other {# gardés}}"
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.console.capacity.archived",
+          "current": " · {archived, plural, one {# gardé} many {# de gardés} other {# gardés}}",
+          "problem": "The many branch adds de before the elliptical participle gardés (e.g. 1 000 000 de gardés). The count is understandable, but this clipped label reads more naturally without de; de is appropriate before an explicit noun such as terminaux, not necessary in this bare retained-count fragment. This is rare-branch copy polish, not a scope or numeric-semantics error.",
+          "suggest": " · {archived, plural, one {# gardé} many {# gardés} other {# gardés}}"
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.console.terminal.too_much_output",
+          "current": "Trop de sortie à annoncer, parcourez les lignes manuellement pour les lire",
+          "problem": "Trop de sortie à annoncer is a slightly literal rendering of the English mass-noun phrase. The screen-reader instruction is understandable and correct, but sortie trop volumineuse is more natural technical French.",
+          "suggest": "Sortie trop volumineuse pour être annoncée ; parcourez les lignes manuellement pour la lire"
+        }
+      ]
+    },
+    "ui.onboarding": {
+      "status": "passed",
+      "keys_audited": 47,
+      "sha256": {
+        "fr": "ac45bc9c21115e53b07e4d71c2adddb2789678d0417d75432c2cc8a31c758d17",
+        "en": "b086c241aa70e44cdaab8f02d20e5aaac33d4732df09204481afc4128c08a6ae"
+      },
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.onboarding.search.row.not_saved",
+          "current": "Non enregistré — {message}",
+          "problem": "This status appears on an API-key field; the feminine noun clé is explicit in the neighboring placeholder and save-failure copy. Feminine agreement makes that referent consistent. The current masculine generic status remains understandable.",
+          "suggest": "Non enregistrée — {message}"
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.onboarding.search.row.saved",
+          "current": "Enregistré",
+          "problem": "This status appears on an API-key field; the feminine noun clé is explicit in the neighboring placeholder and save-failure copy. Feminine agreement makes that referent consistent. The current masculine generic status remains understandable.",
+          "suggest": "Enregistrée"
+        }
+      ]
+    }
+  }
+}

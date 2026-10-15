@@ -1,0 +1,128 @@
+async function audit(){
+ for(const d of [HOME_DIR,CONFIG_DIR,USER_DATA,OUT_DIR,LOG_DIR,APP_CWD])mkdirSync(d,{recursive:true});
+ writeFileSync(join(APP_CWD,'.env'),'VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.1:1\nVITE_DISABLE_BACKEND_MANAGER=true\n');
+ let hits=0;fixture=createServer((req,res)=>{hits++;res.writeHead(200,{'Content-Type':'text/html'});res.end(`<html><title>Find fixture ${req.url}</title><body><h1>Find fixture</h1><p>${'hello '.repeat(80)}</p><button id="target" style="width:120px;height:40px">Target</button></body></html>`)});await new Promise(r=>fixture.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+fixture.address().port;
+ NODE_PORT=await freeDevtoolsPort();app=await launchApp();ownedPid=app.child.pid;await waitForState();await waitForRenderer();await until("driver",()=>re(`Boolean(window.__loDevDriver?.verbs().includes("hello"))`));
+ const hello=await re('window.__loDevDriver.call("hello")'),facts=await re('window.__loDevDriver.facts()');evidence('preflight',{hello,facts});if(hello.apiBaseUrl!=='http://127.0.0.1:1'||facts.visible||facts.focused)throw Error('SAFETY preflight');
+ const wire=await waitForState();
+ await re('window.__loDevDriver.call("navigate","/browser")');await until('address',()=>re('Boolean(document.querySelector("[data-tour-tag=browser-address]"))'));
+ await re(`window.api.browser.navigate('${base}/one')`);await until('loaded',async()=>!(await state()).loading);
+ const first=(await state()).activeTabId;
+ await re('window.api.browser.newTab(null)');await re(`window.api.browser.navigate('${base}/two')`);await until('two loaded',async()=>!(await state()).loading);
+ const second=(await state()).activeTabId;
+ await re(`window.api.browser.activateTab(${first})`);
+ const T=['localOperatorLight','localOperatorDark'];
+ async function typeFind(value){
+  await until('find editor present',()=>re('Boolean(document.querySelector("[data-tour-tag=browser-find-row] input"))'));
+  await re(`(()=>{const field=document.querySelector('[data-tour-tag=browser-find-row] input');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(field,${JSON.stringify(value)});field.dispatchEvent(new Event('input',{bubbles:true}));return field.value})()`);
+  await until('main query acknowledges editor',async()=>(await state()).pageControls.find.query===value);
+ }
+ async function frames(label){for(const t of T){await theme(t);await shot(label+'-'+t)}}
+ evidence('native find observer',await mainEval(`__a1.observeFind('${base}/one')`));
+ // SECURITY BOUNDARY FIRST: original user tab is zoomed, then capability transfers.
+ evidence('boundary start',{first,second,source:'c75cddf13dc3241d65e14f0ab3f60e1e1baf574a'});
+ await focusTab(first);for(let i=0;i<3;i++)await keyOn('[data-tab-id="'+first+'"] [role="tab"]','+');
+ await until('150 before capability transfer',async()=>(await state()).pageControls.zoom===1.5);
+ evidence('native150 before handover',{first:await mainEval(`__a1.pageFacts('${base}/one')`),sameOriginOther:await mainEval(`__a1.pageFacts('${base}/two')`)});
+ const requester='session:a2-native';await re(`window.api.browser.handOver(${first},'a2-native')`);
+ evidence('native handover resets zoom',{controls:(await state()).pageControls,pages:await mainEval(`__a1.pageFacts('${base}/one')`)});
+ if((await state()).pageControls.zoom!==1)throw Error('agent inherited zoom');
+ await focusTab(first);await keyOn('[data-tab-id="'+first+'"] [role="tab"]','+');
+ await until('handed-over chord notice',async()=>Boolean((await state()).pageControls.notice));
+ evidence('handed-over tab zoom CHORD refused honestly',{input:'DOM KeyboardEvent primary+plus scoped route, not OS key',controls:(await state()).pageControls,pages:await mainEval(`__a1.pageFacts('${base}/one')`)});
+ if((await state()).pageControls.zoom!==1)throw Error('handed tab zoom changed');
+ const tabs=await rpcOk(wire,'tabs',{requester});const list=Array.isArray(tabs)?tabs:tabs.tabs;const entry=list.find(t=>t.url===base+'/one');if(!entry?.tab)throw Error('no human-granted handle');const token=entry.tab;
+ await rpcOk(wire,'request_access',{url:base,requester});const pending=(await state()).pendingConsent;if(!pending.length)throw Error('no synthetic-origin pending approval');await re(`window.api.browser.respondToConsent('${pending[0].entryId}','site')`);
+ await rpcOk(wire,'open',{tab:token,requester});evidence('agent adopted zoom-normalized capability',{url:base+'/one',zoom:(await state()).pageControls.zoom});
+ const geometry=await rpcOk(wire,'styles',{tab:token,requester,selector:'#target'});evidence('agent CSS geometry after zoomed handover',geometry);
+ if(geometry.matches?.[0]?.rect?.width!==120||geometry.matches?.[0]?.rect?.height!==40)throw Error('agent CSS geometry changed');
+ const box=geometry.matches[0].rect;const hit=await rpcOk(wire,'hit_test',{tab:token,requester,x:box.x+box.width/2,y:box.y+box.height/2});evidence('agent hit-test CSS center',{elements:hit.elements?.map(e=>({id:e.id,rect:e.rect}))});if(hit.elements?.[0]?.id!=='target')throw Error('agent hit-test missed target');
+ for(const method of ['read','screenshot']){
+  await re(`window.api.browser.pageControl(${first},'open','',true,false)`);await typeFind('hello');
+  const before=(await state()).pageControls.find;const result=await rpcOk(wire,method,{tab:token,requester,...(method==='read'?{selector:'#target'}:{})});
+  const pages=await mainEval(`__a1.pageFacts('${base}/one')`);const findCleared=(await state()).pageControls.find===null;
+  evidence('agent '+method+' after zoom/handover',{url:result.url,keys:Object.keys(result),text:result.text,zoom:pages,queryWasPending:Boolean(before?.pending),findCleared,...(method==='screenshot'?{pngBytes:Buffer.from(result.data,'base64').length}:{})});
+  if(!findCleared||pages.some(p=>p.zoom!==1))throw Error('agent operation saw find/zoom state');
+  if(method==='screenshot'){const png=Buffer.from(result.data,'base64');if(png.length<100)throw Error('empty agent capture');writeFileSync(join(OUT_DIR,'agent-screenshot-after-handover.png'),png);}
+ }
+ await re(`window.api.browser.revokeHandOver(${first})`);
+ // An independently CREATED agent-owned tab is also100%, inactive on open,
+ // and its real scoped zoom chord must produce the same truthful notice.
+ const owned=await rpcOk(wire,'open',{url:base+'/agent-owned',requester});
+ if((await state()).activeTabId!==first)throw Error('agent open stole active tab');
+ const ownedMeta=(await state()).tabs.find(t=>t.url===base+'/agent-owned');if(ownedMeta?.owner!=='agent')throw Error('fixture is not agent-owned');
+ await re(`window.api.browser.activateTab(${ownedMeta.tabId})`);await focusTab(ownedMeta.tabId);await keyOn('[data-tab-id="'+ownedMeta.tabId+'"] [role="tab"]','+');
+ await until('agent-owned zoom notice',async()=>Boolean((await state()).pageControls.notice));
+ evidence('AGENT-OWNED tab zoom CHORD refuses at100',{input:'DOM KeyboardEvent primary+plus scoped route, not OS key',controls:(await state()).pageControls,pages:await mainEval(`__a1.pageFacts('${base}/agent-owned')`)});
+ if((await state()).pageControls.zoom!==1)throw Error('agent-owned factor changed');
+ await frames('agent-zoom-notice');
+ const ownedShot=await rpcOk(wire,'screenshot',{tab:owned.tab,requester});evidence('agent-owned screenshot stays100',{url:ownedShot.url,pngBytes:Buffer.from(ownedShot.data,'base64').length,pages:await mainEval(`__a1.pageFacts('${base}/agent-owned')`)});
+ await re(`window.api.browser.closeTab(${ownedMeta.tabId})`);await re(`window.api.browser.activateTab(${first})`);
+ evidence('SECURITY BOUNDARY COMPLETE',{handoverReset:true,read:true,styles:true,hitTest:true,screenshot:true,handedChordNotice:true,agentOwnedChordNotice:true});
+ await frames('find-closed-zoom100');
+ await focusTab(first);await keyOn('[data-tab-id="'+first+'"] [role="tab"]','f');
+ await until('find row',()=>re('Boolean(document.querySelector("[data-tour-tag=browser-find-row] input"))'));
+ evidence('find opened by browser chord',{state:(await state()).pageControls,focus:await re('document.activeElement.getAttribute("aria-label")')});
+ await frames('find-open');
+ await typeFind('hello');
+
+ await new Promise(r=>setTimeout(r,500));evidence('original native search call (counts NOT observed)',{controls:(await state()).pageControls,raw:await mainEval('globalThis.__a2FindEvents')});
+ await frames('find-pending');if(!(await state()).pageControls.find.pending)throw Error('pending frame exceeded native deadline');
+ evidence('synthetic found-in-page result - many',await mainEval(`__a1.emitFind('${base}/one',80,1)`));
+ await until('synthetic count rendered',async()=>(await state()).pageControls.find.matches===80);
+ await until('many text painted',()=>re(`document.querySelector('[data-tour-tag=browser-find-row] output')?.textContent.includes('80')`));await frames('find-many-synthetic');
+ await re(`(()=>{const i=document.querySelector('[data-tour-tag=browser-find-row] input');i.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}))})()`);
+ evidence('synthetic next result',await mainEval(`__a1.emitFind('${base}/one',80,2)`));
+ await new Promise(r=>setTimeout(r,250));
+ await re(`(()=>{const i=document.querySelector('[data-tour-tag=browser-find-row] input');i.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',shiftKey:true,bubbles:true,cancelable:true}))})()`);
+ await new Promise(r=>setTimeout(r,250));
+ evidence('synthetic previous result',await mainEval(`__a1.emitFind('${base}/one',80,1)`));
+ evidence('Enter and Shift+Enter native API requests, synthetic ordinal',(await state()).pageControls.find);
+ await typeFind('nomatch-xyz');
+ evidence('synthetic found-in-page result - no-match',await mainEval(`__a1.emitFind('${base}/one',0,0)`));
+ await until('no-match text painted',()=>re(`document.querySelector('[data-tour-tag=browser-find-row] output')?.textContent==='No matches'`));await frames('find-no-match-synthetic');
+ // Native view's page-local query highlights must not bleed into another tab.
+ await re(`window.api.browser.activateTab(${second})`);
+ evidence('tab switch clears find',(await state()).pageControls);if((await state()).pageControls.find!==null)throw Error('find leaked across tabs');
+ const stale=await re(`window.api.browser.pageControl(${first},'search','stale',true,false).then(()=>({accepted:true})).catch(e=>({accepted:false,message:e.message}))`);evidence('stale explicit tab IPC',stale);if(stale.accepted)throw Error('stale control accepted');
+ await re(`window.api.browser.activateTab(${first})`);
+ await focusTab(first);await keyOn('[data-tab-id="'+first+'"] [role="tab"]','+');await keyOn('[data-tab-id="'+first+'"] [role="tab"]','+');await keyOn('[data-tab-id="'+first+'"] [role="tab"]','+');
+ await until('zoom150',async()=> (await state()).pageControls.zoom===1.5);
+ evidence('per-tab isolated zoom150',{chrome:(await state()).pageControls,pages:await mainEval(`__a1.pageFacts('${base}/one')`),sameOriginOther:await mainEval(`__a1.pageFacts('${base}/two')`)});
+ await frames('zoom150');
+ const mainUrl=(await re('window.location.href'));
+ const emitted=await mainEval(`__a1.emit(${JSON.stringify(mainUrl)},{type:'keyDown',key:'-',meta:true,control:false,alt:false,shift:false,isAutoRepeat:false,isComposing:false})`);
+ await until('one native zoom-out step',async()=>(await state()).pageControls.zoom===1.25);evidence('real before-input listener emitted once',{emitted,zoom:(await state()).pageControls.zoom});
+ await re(`window.api.browser.pageControl(${first},'in','',true,false)`);await until('back150',async()=>(await state()).pageControls.zoom===1.5);
+
+ await re(`window.api.browser.activateTab(${second})`);if((await state()).pageControls.zoom!==1)throw Error('same-origin zoom leaked');
+ await re(`window.api.browser.activateTab(${first})`);if((await state()).pageControls.zoom!==1.5)throw Error('per-tab zoom lost');
+ await typeFind('silent-native');await until('bounded native silence',async()=>(await state()).pageControls.find.unreported===true);evidence('actual silent native search bounded',(await state()).pageControls.find);await until('neutral text painted',()=>re(`document.querySelector('[data-tour-tag=browser-find-row] output')?.textContent==='No result reported'`));await frames('find-no-result-reported');
+ // Escape clears native highlights and returns focus without any window activation.
+ await re(`(()=>{const i=document.querySelector('[data-tour-tag=browser-find-row] input');i.focus();i.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}))})()`);await until('escape closed',async()=>!(await state()).pageControls.find);
+ evidence('Escape close',{controls:(await state()).pageControls,where:await where()});
+ const malformed=await re(`window.api.browser.pageControl(${first},'search',{},true,false).then(()=>({accepted:true})).catch(e=>({accepted:false,message:e.message}))`);evidence('invalid primitive native IPC',malformed);if(malformed.accepted)throw Error('malformed input accepted');
+ const senderRefusal=await mainEval('__a1.pageControlSenderNegative()');evidence('native page sender negative',senderRefusal);if(!senderRefusal.refused)throw Error('page sender was not refused');
+ evidence('menu actual',{menus:await mainEval('__a1.menus()')});
+ // Real native menu target callbacks: browser 0 resets the page; app 0 resets only app zoom.
+ await focusTab(first);const pageReset=await mainEval("__a1.menu('app-actual-size','main')");await until('page menu reset',async()=>(await state()).pageControls.zoom===1);evidence('browser menu Actual Size zero',{pageReset,controls:(await state()).pageControls});
+ await re('window.api.browser.setChordFocus(false)');const appIn=await mainEval("__a1.menu('app-zoom-in','main')");const appFacts=await mainEval('__a1.facts()');evidence('app-focused native menu zoom',{appIn,appFacts,pageZoom:(await state()).pageControls.zoom});if((await state()).pageControls.zoom!==1)throw Error('app zoom changed page');
+ await mainEval("__a1.menu('app-actual-size','main')");const appReset=await mainEval('__a1.facts()');if(appReset.find(w=>w.url.includes('index.html')).zoom!==1)throw Error('app reset mismatch');
+ await focusTab(first);for(let i=0;i<3;i++)await re(`window.api.browser.pageControl(${first},'in','',true,false)`);await until('150 before handover',async()=>(await state()).pageControls.zoom===1.5);
+ // LAST/nonfatal: all security rows are already durable.
+ await re(`window.api.browser.pageControl(${first},'open','',true,false)`);await typeFind('hello');evidence('synthetic result for tooltip states',await mainEval(`__a1.emitFind('${base}/one',80,1)`));
+ for(const [selector,expected] of [['[data-tour-tag=browser-find]','Find in page'],['[data-tour-tag=browser-zoom]','Reset page zoom'],['[aria-label="Next match"]','Next match']]) {
+  try {
+   await re('document.activeElement.blur()');const target=await rendererTarget();
+   const pt=await re(`(()=>{const r=document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}})()`);
+   await cdpSequence(target,async send=>{await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:pt.x,y:pt.y})});
+   await until('expected tooltip',()=>re(`Boolean(document.querySelector('[data-lo-tooltip-panel]')?.textContent.includes(${JSON.stringify(expected)}))`));
+   const measured=await re(`(()=>{const p=document.querySelector('[data-lo-tooltip-panel]');const t=p.getBoundingClientRect(),c=document.querySelector('[data-tour-tag=browser-content]').getBoundingClientRect();return {tip:{text:p.textContent,x:t.x,y:t.y,right:t.right,bottom:t.bottom},content:{x:c.x,y:c.y,right:c.right,bottom:c.bottom},intersects:!(t.right<=c.x||t.x>=c.right||t.bottom<=c.y||t.y>=c.bottom)}})()`);
+   evidence('tooltip native-view matrix '+selector,{...measured,status:measured.intersects?'FAIL':'PASS'});
+   await cdpSequence(target,async send=>{await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:60,y:500});await send('Input.dispatchMouseEvent',{type:'mousePressed',x:60,y:500,button:'left',clickCount:1});await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:60,y:500,button:'left',clickCount:1})});
+   await re(`(()=>{const trigger=document.querySelector(${JSON.stringify(selector)});trigger?.dispatchEvent(new PointerEvent('pointerout',{bubbles:true,relatedTarget:document.elementFromPoint(60,500)||document.body}));trigger?.blur()})()`);
+   try {await until('tooltip dismissed',()=>re('!document.querySelector("[data-lo-tooltip-panel]")'))}catch(e){evidence('rig could not dismiss hover',{selector,error:e.message,status:'BLOCKED',fallback:'ordinary sidebar pointer-out + blank click; no titlebar'})}
+  }catch(e){evidence('tooltip traversal rig limitation',{selector,error:e.message,status:'BLOCKED'})}
+ }
+ const final=await re('window.__loDevDriver.facts()');const resources=await re('performance.getEntriesByType("resource").map(r=>r.name).filter(n=>n.startsWith("http"))');evidence('final isolation',{final,all:await mainEval('__a1.facts()'),resources});if(final.visible||final.focused||resources.some(url=>!url.startsWith('http://127.0.0.1:1/')))throw Error('isolation violation');
+}

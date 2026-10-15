@@ -52,6 +52,7 @@ import {
 	Tooltip,
 } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { t } from "@shared/i18n";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import {
 	ClipboardCopy,
@@ -128,12 +129,14 @@ function FileGlyph({ path }: { path: string }) {
  */
 const SupplementFileLine = memo(function SupplementFileLine({
 	actionPath,
+	cwd,
 	label,
 	suffix,
 	size,
 	pane,
 }: {
 	actionPath: string;
+	cwd?: string | null;
 	label: string;
 	suffix: string;
 	size: string;
@@ -141,11 +144,31 @@ const SupplementFileLine = memo(function SupplementFileLine({
 }) {
 	const canOpenInCanvas = opened(pane, actionPath);
 	const [copied, setCopied] = useState(false);
-	const press = async () => {
-		if (canOpenInCanvas && pane && (await pane.openInCanvas(actionPath)))
-			return;
-		await openLocalTarget(actionPath);
+	/*
+	 * Journal paths deliberately retain their portable spelling. Resolve only at
+	 * the action boundary, using the session's cwd (never Electron's launch cwd).
+	 * Every action consumes the same main-process identity seam, including the
+	 * disclosure tail; a failed probe must not fall back to an unrooted path.
+	 */
+	const withTarget = async (action: (path: string) => unknown) => {
+		try {
+			const [file] = await window.api.probeFiles(
+				[actionPath],
+				cwd ?? undefined,
+			);
+			if (!file?.resolved.startsWith("/")) {
+				throw new Error("File path has no session working directory");
+			}
+			await action(file.resolved);
+		} catch {
+			showErrorToast(t("ui.chat.highlights.file_resolution_failed"));
+		}
 	};
+	const press = () =>
+		withTarget(async (path) => {
+			if (canOpenInCanvas && pane && (await pane.openInCanvas(path))) return;
+			await openLocalTarget(path);
+		});
 	return (
 		<div className="group flex w-full items-center gap-2 text-meta">
 			<FileGlyph path={actionPath} />
@@ -169,7 +192,7 @@ const SupplementFileLine = memo(function SupplementFileLine({
 					<DropdownMenuTrigger asChild={true}>
 						<button
 							type="button"
-							className="shrink-0 text-ink-dim opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+							className="flex size-6 shrink-0 items-center justify-center text-ink-dim opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
 							aria-label={`Actions for ${label || "this file"}`}
 						>
 							<Ellipsis aria-hidden="true" className="size-3.5" />
@@ -180,7 +203,7 @@ const SupplementFileLine = memo(function SupplementFileLine({
 					{canOpenInCanvas && (
 						<DropdownMenuItem
 							onSelect={() => {
-								void pane?.openInCanvas(actionPath);
+								void withTarget((path) => pane?.openInCanvas(path));
 							}}
 						>
 							<LayoutGrid aria-hidden="true" />
@@ -189,7 +212,7 @@ const SupplementFileLine = memo(function SupplementFileLine({
 					)}
 					<DropdownMenuItem
 						onSelect={() => {
-							void openLocalTarget(actionPath);
+							void withTarget(openLocalTarget);
 						}}
 					>
 						<FileIcon aria-hidden="true" />
@@ -197,7 +220,7 @@ const SupplementFileLine = memo(function SupplementFileLine({
 					</DropdownMenuItem>
 					<DropdownMenuItem
 						onSelect={() => {
-							void revealLocalTarget(actionPath);
+							void withTarget(revealLocalTarget);
 						}}
 					>
 						<FolderOpen aria-hidden="true" />
@@ -300,6 +323,8 @@ export type SupplementRowProps = {
 	record: SupplementRecord;
 	/** The conversation's session, for the ops and the document route. */
 	sessionId: string | null;
+	/** Session path context, kept out of the portable journal record. */
+	cwd?: string | null;
 	/**
 	 * Whether the row's own turn currently renders condensed (one closed bar
 	 * over its run; `runIsCondensed`, computed by the transcript from its
@@ -311,6 +336,7 @@ export type SupplementRowProps = {
 export const SupplementRow = memo(function SupplementRow({
 	record,
 	sessionId,
+	cwd,
 	condensed = false,
 }: SupplementRowProps) {
 	const pane = useCanvasPane();
@@ -630,6 +656,7 @@ export const SupplementRow = memo(function SupplementRow({
 							<SupplementFileLine
 								key={file.path}
 								actionPath={file.path}
+								cwd={cwd}
 								label={name || path}
 								suffix={path}
 								size={size}
@@ -648,6 +675,7 @@ export const SupplementRow = memo(function SupplementRow({
 							<SupplementFileLine
 								key={`${file.path}:${file.name}`}
 								actionPath={file.path}
+								cwd={cwd}
 								label={name || path}
 								suffix={path}
 								size={size}
@@ -681,6 +709,7 @@ export const SupplementRow = memo(function SupplementRow({
 								<SupplementFileLine
 									key={item}
 									actionPath={item}
+									cwd={cwd}
 									label={item}
 									suffix=""
 									size=""

@@ -1,0 +1,135 @@
+{
+ "auditor": "i18n-auditor (fr, pass C)",
+ "model": "anthropic/claude-sonnet-5-5",
+ "instance": "2557ef7bd15a",
+ "locale": "fr",
+ "namespaces": {
+  "ui.settings": {
+   "status": "passed",
+   "fr_sha256": "b3861dc03be8ee05f5253dcf5929c96c1646781a41fc5e2a1acf7aca42a1ba2a",
+   "en_sha256": "3395192289d49f4d4a4e64a072fbb394ca37e760f3d13fb2f2a295167ae4f571",
+   "findings": [
+    {
+     "severity": "MINOR",
+     "key": "ui.settings.language.dialog.unavailable",
+     "current": "Le service connecté ne fournit pas les paramètres modifiés dans cette fenêtre.",
+     "problem": "'paramètres modifiés dans cette fenêtre' can parse as 'settings that were modified'; also 'paramètres' vs 'réglage' used elsewhere in same dialog.",
+     "suggested": "Le service connecté ne fournit pas les réglages que cette fenêtre permet de modifier."
+    },
+    {
+     "severity": "MINOR",
+     "key": "ui.settings.language.dialog.retrying / ui.settings.profile.retrying",
+     "current": "Nouvel essai",
+     "problem": "EN present-progressive; FR noun phrase reads as a label not an in-progress state (disabled button). Acceptable; no one-word fr equivalent.",
+     "suggested": "Nouvelle tentative…"
+    },
+    {
+     "severity": "MINOR",
+     "key": "ui.settings.language.general.description",
+     "current": "Choisissez la langue de l’application et du terminal. Enregistrement immédiat ; …",
+     "problem": "EN says the language is *shared* by app and terminal; 'shared' lost.",
+     "suggested": "Choisissez la langue partagée par l’application et le terminal. Enregistrement immédiat ; …"
+    },
+    {
+     "severity": "NIT",
+     "key": "ui.settings.section.interface_language.help",
+     "current": "auto suit la langue du système ou utilise l’anglais à défaut.",
+     "problem": "'ou … à défaut' reads as an alternative rather than a fallback; `auto` correctly untranslated.",
+     "suggested": "auto suit la langue du système, sinon l’anglais."
+    },
+    {
+     "severity": "NIT",
+     "key": "ui.settings.language.general.readback_error",
+     "current": "Rétablissez la connexion ou réessayez avant de le modifier.",
+     "problem": "EN 'before changing it again': 'again' dropped; 'le' has a feminine/neuter ambiguity (le réglage) but is correct.",
+     "suggested": "…avant de modifier de nouveau le réglage."
+    },
+    {
+     "severity": "INFO",
+     "key": "coder-authored keys (account_checking, account_read_failed_retry/refused, retry, retrying)",
+     "current": "–",
+     "problem": "Scrutinised: placeholders none; polarity correct (not-read → values are defaults, not account data); U+202F before ';' present; 'Réessayez' imperative fine; refused variant identical except closing clause; 'valeurs par défaut' accurate (store default 'User'/user@example.com). No defect.",
+     "suggested": "none"
+    }
+   ]
+  },
+  "ui.onboarding": {
+   "status": "changes_requested",
+   "fr_sha256": "a907d1385223e3e8849ace6ccbaee7535968a87600bc7dda5a3dd173e9450b67",
+   "en_sha256": "b086c241aa70e44cdaab8f02d20e5aaac33d4732df09204481afc4128c08a6ae",
+   "findings": [
+    {
+     "severity": "MAJOR",
+     "key": "ui.onboarding.modal.error.aida_open_failed",
+     "current": "La conversation de {name} n’a pas pu être ouverte. Vous êtes donc dans une nouvelle conversation.",
+     "problem": "{name} defaults to \"Aida\" (onboarding-modal.tsx:163) so the default render is \"La conversation de Aida\": missing mandatory elision before a vowel (should be d’Aida). Any vowel-initial custom name breaks the same way. Fixed text cannot elide dynamically.",
+     "suggested": "Restructure to avoid de+name: \"Impossible d’ouvrir la conversation avec {name} ; une nouvelle conversation a été ouverte à la place.\" (U+202F before ;)"
+    },
+    {
+     "severity": "MINOR",
+     "key": "ui.onboarding.search.row.get_your",
+     "current": "Obtenir {name}",
+     "problem": "{name} is the untranslated catalogue constant (e.g. \"Tavily API key\"), so the link renders \"Obtenir Tavily API key\" – mixed-language, and EN's 'your' is dropped. Not fixable in the fr string alone.",
+     "suggested": "Accept, or localise credential display names in the component (\"clé API Tavily\") then \"Obtenir votre {name}\" would need gender handling; keep as is if names stay English."
+    },
+    {
+     "severity": "MINOR",
+     "key": "ui.onboarding.search.mode.label",
+     "current": "Mode de recherche",
+     "problem": "EN 'Search setup'; 'Mode' shifts meaning slightly vs 'configuration' (the group choosing Free vs own keys).",
+     "suggested": "Configuration de la recherche"
+    },
+    {
+     "severity": "MINOR",
+     "key": "ui.onboarding.search.mode.keys_detail",
+     "current": "Utilisez vos propres clés pour vos fournisseurs de recherche.",
+     "problem": "EN: 'the search providers you use'; FR reads as if the user owns the providers.",
+     "suggested": "Utilisez vos propres clés pour les fournisseurs de recherche que vous utilisez."
+    },
+    {
+     "severity": "MINOR",
+     "key": "ui.onboarding.search.mode.free_detail",
+     "current": "…Aucune clé nécessaire ; l’accès est partagé, les recherches peuvent donc ralentir aux heures de pointe.",
+     "problem": "Comma + 'donc' splice after a semicolon sentence; 'rotating pool' becomes 'à tour de rôle'/'accès partagé' (acceptable).",
+     "suggested": "…Aucune clé nécessaire ; l’accès est partagé : les recherches peuvent donc ralentir aux heures de pointe."
+    },
+    {
+     "severity": "MINOR",
+     "key": "ui.onboarding.modal.action.skip_to_chat",
+     "current": "Passer à la conversation",
+     "problem": "24 chars vs 12 in EN in a ghost lg footer button beside Back/Primary; no maxCells hint exists for onboarding and I did not render it. Overflow risk unverified.",
+     "suggested": "Keep if the footer fits at the modal width (render unverified); otherwise \"Aller au chat\" is not glossary-aligned, so prefer shortening elsewhere."
+    },
+    {
+     "severity": "NIT",
+     "key": "ui.onboarding.default_model.connected_pick",
+     "current": "{brand} est connecté.",
+     "problem": "Gender agreement fixed to masculine for any brand (Radient, Claude, ChatGPT…); acceptable generic masculine.",
+     "suggested": "Optionally \"Connexion à {brand} établie.\""
+    },
+    {
+     "severity": "NIT",
+     "key": "ui.onboarding.extras.greeting_owed",
+     "current": "Elle vous accueillera, vous demandera …",
+     "problem": "EN 'say hello first' – 'd’abord' dropped; \"en quoi vous aider\" is elliptical but grammatical.",
+     "suggested": "Elle vous accueillera d’abord, vous demandera comment vous appeler et en quoi elle peut vous aider, puis vous fera une visite guidée."
+    },
+    {
+     "severity": "NIT",
+     "key": "ui.onboarding.connect.intro",
+     "current": "Les autres options sont regroupées plus bas.",
+     "problem": "Reword verified correct: the ProviderGrid disclosure (still English 'More providers') renders below the paragraph, so 'plus bas' is true and no longer quotes the English label. Slightly vague about what to click; accepted.",
+     "suggested": "(no change required)"
+    }
+   ]
+  }
+ },
+ "mechanical": {
+  "generate_check": "keys.gen.ts byte-identical, rc 0",
+  "parity_test": "7/7 pass",
+  "keys": "39/39 and 47/47, no add/drop",
+  "placeholders": "names+types identical (script); step_of number,number; steps_total one/many/other, no few; Intl.PluralRules fr: 0,1->one, 1e6/2e6->many, 1.5e6->other",
+  "typography": "every : ; ? ! preceded by U+202F (script); no ASCII apostrophes, no '...', no NBSP, no guillemets used"
+ },
+ "note": "onboarding: 1 MAJOR (aida_open_failed 'de Aida' elision). settings clean of BLOCKER/MAJOR."
+}

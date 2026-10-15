@@ -217,6 +217,33 @@ export function pooledTabs<T extends TabInput>(tabs: readonly T[]): T[] {
 	return groupTabsBySession(tabs).flatMap((group) => group.tabs);
 }
 
+/** The ordinal is the grouped STRIP order, not registry order. A pane's caller
+ * filters scope first; this function can never jump into a hidden conversation. */
+export function chordTarget<T extends TabInput>(
+	tabs: readonly T[],
+	activeId: number | null,
+	intent: import("../../../../../shared/browser-chord").BrowserChord,
+): number | null {
+	const ordered = pooledTabs(tabs);
+	if (!ordered.length) return null;
+	if (intent.startsWith("tab-")) {
+		const ordinal = Number(intent.slice(4));
+		return (
+			ordered[ordinal === 9 ? ordered.length - 1 : ordinal - 1]?.tabId ?? null
+		);
+	}
+	if (intent !== "next-tab" && intent !== "prev-tab") return null;
+	const current = ordered.findIndex((tab) => tab.tabId === activeId);
+	const index =
+		current < 0
+			? intent === "next-tab"
+				? 0
+				: ordered.length - 1
+			: (current + (intent === "next-tab" ? 1 : -1) + ordered.length) %
+				ordered.length;
+	return ordered[index].tabId;
+}
+
 /** The attributed tabs, by conversation. Unattributed tabs are in no entry:
  * they are not any conversation's, which is the same rule `tabsInScope` applies
  * and the reason this is not simply a `groupTabsBySession` keyed differently. */

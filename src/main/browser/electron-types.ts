@@ -90,7 +90,17 @@ export interface DriveableWebContents {
 	/** Present on a real `WebContents`; optional so a fake view in a test does not
 	 * have to model history to exercise the registry. Callers guard for it. */
 	navigationHistory?: NavigationHistoryLike;
+	/** Human page controls only; never exposed through the agent protocol. */
+	findInPage?(
+		text: string,
+		options: { forward: boolean; findNext: boolean },
+	): number;
+	stopFindInPage?(action: "clearSelection"): void;
+	setZoomMode?(mode: "isolated"): void;
+	setZoomFactor?(factor: number): void;
+	getZoomFactor?(): number;
 	reload(): void;
+	reloadIgnoringCache?(): void;
 	stop(): void;
 	isLoading(): boolean;
 }

@@ -1,0 +1,2730 @@
+desktop tests: 16 files, concurrency 1 (explicit LOCAL_OPERATOR_UI_TEST_CONCURRENCY; governor bypassed)
+desktop tests: memory bound 6.0 GB for the test process group (explicit LOCAL_OPERATOR_UI_TEST_MEMORY_BUDGET_MB); sampled every 2s on max(footprint, rss)
+desktop tests: per-lane bound 25 min (default, above the 18.7-minute healthy CI suite that bounds every lane it runs — a stall in a lane first seen late can still outrun the job cap); sampled every 5s over the suite's process group
+TAP version 13
+# no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+# Subtest: address draft belongs to its tab: a chord-driven tab change drops it and blur never navigates the new tab
+ok 1 - address draft belongs to its tab: a chord-driven tab change drops it and blur never navigates the new tab
+  ---
+  duration_ms: 291.569625
+  ...
+# Warning: An update to Tooltip inside a test was not wrapped in act(...).
+# When testing, code that causes React state updates should be wrapped into act(...):
+# act(() => {
+#   /* fire events that update state */
+# });
+# /* assert on the output */
+# This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+#     at Tooltip (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at TooltipProvider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+#     at TooltipProvider (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), TooltipProvider:896:3)
+#     at Tooltip (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), Tooltip:961:3)
+#     at div
+#     at BrowserUrlBar (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), <anonymous>:2194:3)
+# Warning: An update to Presence inside a test was not wrapped in act(...).
+# When testing, code that causes React state updates should be wrapped into act(...):
+# act(() => {
+#   /* fire events that update state */
+# });
+# /* assert on the output */
+# This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+#     at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at TooltipPortal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:268:11)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at Popper (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+#     at Tooltip (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at TooltipProvider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+#     at TooltipProvider (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), TooltipProvider:896:3)
+#     at Tooltip (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), Tooltip:961:3)
+#     at div
+#     at BrowserUrlBar (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), <anonymous>:2194:3)
+# Warning: An update to ForwardRef(Portal) inside a test was not wrapped in act(...).
+# When testing, code that causes React state updates should be wrapped into act(...):
+# act(() => {
+#   /* fire events that update state */
+# });
+# /* assert on the output */
+# This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+#     at Portal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-portal@1.1.17_@types+react-dom@18.3.5_@types+react@18.3.18__@types+reac_e1ab44dcd0dcfc8aedd59964c741ad4a/node_modules/@radix-ui/react-portal/dist/index.js:48:24)
+#     at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at TooltipPortal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:268:11)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at Popper (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+#     at Tooltip (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at TooltipProvider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+#     at TooltipProvider (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), TooltipProvider:896:3)
+#     at Tooltip (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), Tooltip:961:3)
+#     at div
+#     at BrowserUrlBar (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), <anonymous>:2194:3)
+# Warning: An update to ForwardRef(DismissableLayer) inside a test was not wrapped in act(...).
+# When testing, code that causes React state updates should be wrapped into act(...):
+# act(() => {
+#   /* fire events that update state */
+# });
+# /* assert on the output */
+# This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+#     at DismissableLayer (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-dismissable-layer@1.1.19_@types+react-dom@18.3.5_@types+react@18.3.18___e263e6a7af26df53477d756ce352ea78/node_modules/@radix-ui/react-dismissable-layer/dist/index.js:69:7)
+#     at TooltipContentImpl (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:347:7)
+#     at TooltipContentHoverable (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:282:57)
+#     at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+#     at TooltipContent (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:275:64)
+#     at eval (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), TooltipContent:913:56)
+#     at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+#     at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+#     at Portal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-portal@1.1.17_@types+react-dom@18.3.5_@types+react@18.3.18__@types+reac_e1ab44dcd0dcfc8aedd59964c741ad4a/node_modules/@radix-ui/react-portal/dist/index.js:48:24)
+#     at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at TooltipPortal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:268:11)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at Popper (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+#     at Tooltip (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at TooltipProvider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+#     at TooltipProvider (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), TooltipProvider:896:3)
+#     at Tooltip (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), Tooltip:961:3)
+#     at div
+#     at BrowserUrlBar (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), <anonymous>:2194:3)
+# Warning: An update to Presence inside a test was not wrapped in act(...).
+# When testing, code that causes React state updates should be wrapped into act(...):
+# act(() => {
+#   /* fire events that update state */
+# });
+# /* assert on the output */
+# This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+#     at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+#     at TooltipContent (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:275:64)
+#     at eval (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), TooltipContent:913:56)
+#     at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+#     at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+#     at Portal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-portal@1.1.17_@types+react-dom@18.3.5_@types+react@18.3.18__@types+reac_e1ab44dcd0dcfc8aedd59964c741ad4a/node_modules/@radix-ui/react-portal/dist/index.js:48:24)
+#     at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at TooltipPortal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:268:11)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at Popper (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+#     at Tooltip (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at TooltipProvider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+#     at TooltipProvider (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), TooltipProvider:896:3)
+#     at Tooltip (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), Tooltip:961:3)
+#     at div
+#     at BrowserUrlBar (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), <anonymous>:2194:3)
+# Warning: An update to Presence inside a test was not wrapped in act(...).
+# When testing, code that causes React state updates should be wrapped into act(...):
+# act(() => {
+#   /* fire events that update state */
+# });
+# /* assert on the output */
+# This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+#     at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at TooltipPortal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:268:11)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at Popper (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+#     at Tooltip (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at TooltipProvider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+#     at TooltipProvider (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), TooltipProvider:896:3)
+#     at Tooltip (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), Tooltip:961:3)
+#     at div
+#     at BrowserUrlBar (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), <anonymous>:2194:3)
+# Warning: An update to ForwardRef(PopperContent) inside a test was not wrapped in act(...).
+# When testing, code that causes React state updates should be wrapped into act(...):
+# act(() => {
+#   /* fire events that update state */
+# });
+# /* assert on the output */
+# This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+#     at PopperContent (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:128:7)
+#     at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+#     at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+#     at DismissableLayer (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-dismissable-layer@1.1.19_@types+react-dom@18.3.5_@types+react@18.3.18___e263e6a7af26df53477d756ce352ea78/node_modules/@radix-ui/react-dismissable-layer/dist/index.js:69:7)
+#     at TooltipContentImpl (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:347:7)
+#     at TooltipContentHoverable (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:282:57)
+#     at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+#     at TooltipContent (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:275:64)
+#     at eval (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), TooltipContent:913:56)
+#     at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+#     at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+#     at Portal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-portal@1.1.17_@types+react-dom@18.3.5_@types+react@18.3.18__@types+reac_e1ab44dcd0dcfc8aedd59964c741ad4a/node_modules/@radix-ui/react-portal/dist/index.js:48:24)
+#     at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at TooltipPortal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:268:11)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at Popper (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+#     at Tooltip (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at TooltipProvider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+#     at TooltipProvider (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), TooltipProvider:896:3)
+#     at Tooltip (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), Tooltip:961:3)
+#     at div
+#     at BrowserUrlBar (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), <anonymous>:2194:3)
+# Warning: An update to ForwardRef(PopperContent) inside a test was not wrapped in act(...).
+# When testing, code that causes React state updates should be wrapped into act(...):
+# act(() => {
+#   /* fire events that update state */
+# });
+# /* assert on the output */
+# This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+#     at PopperContent (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:128:7)
+#     at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+#     at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+#     at DismissableLayer (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-dismissable-layer@1.1.19_@types+react-dom@18.3.5_@types+react@18.3.18___e263e6a7af26df53477d756ce352ea78/node_modules/@radix-ui/react-dismissable-layer/dist/index.js:69:7)
+#     at TooltipContentImpl (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:347:7)
+#     at TooltipContentHoverable (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:282:57)
+#     at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+#     at TooltipContent (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:275:64)
+#     at eval (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), TooltipContent:913:56)
+#     at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+#     at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+#     at Portal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-portal@1.1.17_@types+react-dom@18.3.5_@types+react@18.3.18__@types+reac_e1ab44dcd0dcfc8aedd59964c741ad4a/node_modules/@radix-ui/react-portal/dist/index.js:48:24)
+#     at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at TooltipPortal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:268:11)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at Popper (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+#     at Tooltip (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at TooltipProvider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+#     at TooltipProvider (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), TooltipProvider:896:3)
+#     at Tooltip (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), Tooltip:961:3)
+#     at div
+#     at BrowserUrlBar (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), <anonymous>:2194:3)
+# Warning: An update to ForwardRef(PopperContent) inside a test was not wrapped in act(...).
+# When testing, code that causes React state updates should be wrapped into act(...):
+# act(() => {
+#   /* fire events that update state */
+# });
+# /* assert on the output */
+# This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+#     at PopperContent (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:128:7)
+#     at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+#     at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+#     at DismissableLayer (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-dismissable-layer@1.1.19_@types+react-dom@18.3.5_@types+react@18.3.18___e263e6a7af26df53477d756ce352ea78/node_modules/@radix-ui/react-dismissable-layer/dist/index.js:69:7)
+#     at TooltipContentImpl (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:347:7)
+#     at TooltipContentHoverable (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:282:57)
+#     at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+#     at TooltipContent (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:275:64)
+#     at eval (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), TooltipContent:913:56)
+#     at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+#     at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+#     at Portal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-portal@1.1.17_@types+react-dom@18.3.5_@types+react@18.3.18__@types+reac_e1ab44dcd0dcfc8aedd59964c741ad4a/node_modules/@radix-ui/react-portal/dist/index.js:48:24)
+#     at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at TooltipPortal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:268:11)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at Popper (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+#     at Tooltip (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at TooltipProvider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+#     at TooltipProvider (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), TooltipProvider:896:3)
+#     at Tooltip (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), Tooltip:961:3)
+#     at div
+#     at BrowserUrlBar (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), <anonymous>:2194:3)
+# Warning: An update to Popper inside a test was not wrapped in act(...).
+# When testing, code that causes React state updates should be wrapped into act(...):
+# act(() => {
+#   /* fire events that update state */
+# });
+# /* assert on the output */
+# This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+#     at Popper (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+#     at Tooltip (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at TooltipProvider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+#     at TooltipProvider (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), TooltipProvider:896:3)
+#     at Tooltip (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), Tooltip:961:3)
+#     at div
+#     at BrowserUrlBar (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), <anonymous>:2194:3)
+# Warning: An update to Presence inside a test was not wrapped in act(...).
+# When testing, code that causes React state updates should be wrapped into act(...):
+# act(() => {
+#   /* fire events that update state */
+# });
+# /* assert on the output */
+# This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+#     at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+#     at TooltipContent (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:275:64)
+#     at eval (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), TooltipContent:913:56)
+#     at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+#     at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+#     at Portal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-portal@1.1.17_@types+react-dom@18.3.5_@types+react@18.3.18__@types+reac_e1ab44dcd0dcfc8aedd59964c741ad4a/node_modules/@radix-ui/react-portal/dist/index.js:48:24)
+#     at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at TooltipPortal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:268:11)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at Popper (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+#     at Tooltip (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at TooltipProvider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+#     at TooltipProvider (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), TooltipProvider:896:3)
+#     at Tooltip (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), Tooltip:961:3)
+#     at div
+#     at BrowserUrlBar (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), <anonymous>:2194:3)
+# Warning: An update to ForwardRef(PopperContent) inside a test was not wrapped in act(...).
+# When testing, code that causes React state updates should be wrapped into act(...):
+# act(() => {
+#   /* fire events that update state */
+# });
+# /* assert on the output */
+# This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+#     at PopperContent (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:128:7)
+#     at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+#     at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+#     at DismissableLayer (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-dismissable-layer@1.1.19_@types+react-dom@18.3.5_@types+react@18.3.18___e263e6a7af26df53477d756ce352ea78/node_modules/@radix-ui/react-dismissable-layer/dist/index.js:69:7)
+#     at TooltipContentImpl (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:347:7)
+#     at TooltipContentHoverable (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:282:57)
+#     at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+#     at TooltipContent (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:275:64)
+#     at eval (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), TooltipContent:913:56)
+#     at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+#     at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+#     at Portal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-portal@1.1.17_@types+react-dom@18.3.5_@types+react@18.3.18__@types+reac_e1ab44dcd0dcfc8aedd59964c741ad4a/node_modules/@radix-ui/react-portal/dist/index.js:48:24)
+#     at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at TooltipPortal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:268:11)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at Popper (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+#     at Tooltip (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at TooltipProvider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+#     at TooltipProvider (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), TooltipProvider:896:3)
+#     at Tooltip (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), Tooltip:961:3)
+#     at div
+#     at BrowserUrlBar (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), <anonymous>:2194:3)
+# Warning: An update to ForwardRef(DismissableLayer) inside a test was not wrapped in act(...).
+# When testing, code that causes React state updates should be wrapped into act(...):
+# act(() => {
+#   /* fire events that update state */
+# });
+# /* assert on the output */
+# This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+#     at DismissableLayer (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-dismissable-layer@1.1.19_@types+react-dom@18.3.5_@types+react@18.3.18___e263e6a7af26df53477d756ce352ea78/node_modules/@radix-ui/react-dismissable-layer/dist/index.js:69:7)
+#     at TooltipContentImpl (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:347:7)
+#     at TooltipContentHoverable (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:282:57)
+#     at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+#     at TooltipContent (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:275:64)
+#     at eval (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), TooltipContent:913:56)
+#     at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+#     at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+#     at Portal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-portal@1.1.17_@types+react-dom@18.3.5_@types+react@18.3.18__@types+reac_e1ab44dcd0dcfc8aedd59964c741ad4a/node_modules/@radix-ui/react-portal/dist/index.js:48:24)
+#     at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at TooltipPortal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:268:11)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at Popper (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+#     at Tooltip (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at TooltipProvider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+#     at TooltipProvider (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), TooltipProvider:896:3)
+#     at Tooltip (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), Tooltip:961:3)
+#     at div
+#     at BrowserUrlBar (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), <anonymous>:2194:3)
+# Warning: An update to ForwardRef(PopperContent) inside a test was not wrapped in act(...).
+# When testing, code that causes React state updates should be wrapped into act(...):
+# act(() => {
+#   /* fire events that update state */
+# });
+# /* assert on the output */
+# This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+#     at PopperContent (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:128:7)
+#     at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+#     at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+#     at DismissableLayer (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-dismissable-layer@1.1.19_@types+react-dom@18.3.5_@types+react@18.3.18___e263e6a7af26df53477d756ce352ea78/node_modules/@radix-ui/react-dismissable-layer/dist/index.js:69:7)
+#     at TooltipContentImpl (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:347:7)
+#     at TooltipContentHoverable (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:282:57)
+#     at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+#     at TooltipContent (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:275:64)
+#     at eval (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), TooltipContent:913:56)
+#     at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+#     at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+#     at Portal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-portal@1.1.17_@types+react-dom@18.3.5_@types+react@18.3.18__@types+reac_e1ab44dcd0dcfc8aedd59964c741ad4a/node_modules/@radix-ui/react-portal/dist/index.js:48:24)
+#     at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at TooltipPortal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:268:11)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at Popper (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+#     at Tooltip (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+#     at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+#     at TooltipProvider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+#     at TooltipProvider (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), TooltipProvider:896:3)
+#     at Tooltip (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), Tooltip:961:3)
+#     at div
+#     at BrowserUrlBar (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:290:2), <anonymous>:2194:3)
+# Subtest: the address field renders no tooltip, while a chrome-band control still does (D-PR9)
+ok 2 - the address field renders no tooltip, while a chrome-band control still does (D-PR9)
+  ---
+  duration_ms: 7227.264041
+  ...
+# Subtest: real renderer hook owns scoped DOM commands, focus lifecycle and queued rapid input
+ok 3 - real renderer hook owns scoped DOM commands, focus lifecycle and queued rapid input
+  ---
+  duration_ms: 215.850833
+  ...
+# Subtest: keyboard close with focus ON the closing tab button keeps the browser as focus owner (UX U2)
+ok 4 - keyboard close with focus ON the closing tab button keeps the browser as focus owner (UX U2)
+  ---
+  duration_ms: 51.327542
+  ...
+# Subtest: rapid double Cmd+W closes two different tabs, never the same one twice (UX U8 stale projection)
+ok 5 - rapid double Cmd+W closes two different tabs, never the same one twice (UX U8 stale projection)
+  ---
+  duration_ms: 18.727
+  ...
+# Subtest: closing the last tab opens the fresh blank tab and puts the caret in the address bar
+ok 6 - closing the last tab opens the fresh blank tab and puts the caret in the address bar
+  ---
+  duration_ms: 88.558208
+  ...
+# Subtest: strip close shares last-tab replacement and a refusal creates nothing
+ok 7 - strip close shares last-tab replacement and a refusal creates nothing
+  ---
+  duration_ms: 5.966625
+  ...
+# Subtest: page-open then chrome-repeat and toolbar repeat preserve first origin and select editor
+ok 8 - page-open then chrome-repeat and toolbar repeat preserve first origin and select editor
+  ---
+  duration_ms: 68.62675
+  ...
+# no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+# Subtest: one platform-strict decision table covers every browser column and leaves chat to app
+ok 9 - one platform-strict decision table covers every browser column and leaves chat to app
+  ---
+  duration_ms: 1.463042
+  ...
+# Subtest: negative controls preserve composition/editing, platform modifiers, and reject action repeat
+ok 10 - negative controls preserve composition/editing, platform modifiers, and reject action repeat
+  ---
+  duration_ms: 0.141042
+  ...
+# Subtest: router menu fallback ownership and rapid genuine presses have no debounce
+ok 11 - router menu fallback ownership and rapid genuine presses have no debounce
+  ---
+  duration_ms: 0.743167
+  ...
+# Subtest: menu fallback respects actual popup/mini target even with stale main chrome focus
+ok 12 - menu fallback respects actual popup/mini target even with stale main chrome focus
+  ---
+  duration_ms: 0.151958
+  ...
+# Subtest: tab digits fall back to the physical key on layouts whose digit row types symbols (review R11)
+ok 13 - tab digits fall back to the physical key on layouts whose digit row types symbols (review R11)
+  ---
+  duration_ms: 0.145167
+  ...
+# Subtest: ordinal/cycle use the grouped scoped strip order, never registry order
+ok 14 - ordinal/cycle use the grouped scoped strip order, never registry order
+  ---
+  duration_ms: 0.216791
+  ...
+# Subtest: owned menu aliases replace destructive roles; suppression is per input and focus teardown is explicit
+ok 15 - owned menu aliases replace destructive roles; suppression is per input and focus teardown is explicit
+  ---
+  duration_ms: 3.312375
+  ...
+# Subtest: find/zoom share focus classifier with platform/Alt/IME/repeat negatives
+ok 16 - find/zoom share focus classifier with platform/Alt/IME/repeat negatives
+  ---
+  duration_ms: 0.142
+  ...
+# Subtest: native zoom routing never takes the page caret through chrome
+ok 17 - native zoom routing never takes the page caret through chrome
+  ---
+  duration_ms: 0.271875
+  ...
+# no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+# Subtest: the session file is written 0600 under a 0700 directory, as a staged rename
+ok 18 - the session file is written 0600 under a 0700 directory, as a staged rename
+  ---
+  duration_ms: 1.480875
+  ...
+# Subtest: a snapshot never carries a nonce or a hand-over, whatever the tab's owner was
+ok 19 - a snapshot never carries a nonce or a hand-over, whatever the tab's owner was
+  ---
+  duration_ms: 0.446125
+  ...
+# Subtest: a restored tab comes back user-owned, with a fresh id and no capability
+ok 20 - a restored tab comes back user-owned, with a fresh id and no capability
+  ---
+  duration_ms: 0.787625
+  ...
+# Subtest: an agent's stale handle fails against a restored tab, with the ordinary tab_closed
+ok 21 - an agent's stale handle fails against a restored tab, with the ordinary tab_closed
+  ---
+  duration_ms: 0.347458
+  ...
+# Subtest: a corrupt or future-versioned session file opens one blank tab, not a crash
+ok 22 - a corrupt or future-versioned session file opens one blank tab, not a crash
+  ---
+  duration_ms: 1.04975
+  ...
+# Subtest: the active index is re-derived after a refused entry shrinks the stack
+ok 23 - the active index is re-derived after a refused entry shrinks the stack
+  ---
+  duration_ms: 0.345542
+  ...
+# Subtest: a capture reads the LIVE history, and skips a view that is already gone
+ok 24 - a capture reads the LIVE history, and skips a view that is already gone
+  ---
+  duration_ms: 0.353125
+  ...
+# Subtest: a capture stamps the failed mark on the live row, and only on it
+ok 25 - a capture stamps the failed mark on the live row, and only on it
+  ---
+  duration_ms: 0.273708
+  ...
+# Subtest: a restored tab with no history yet is captured from the row it was restored from
+ok 26 - a restored tab with no history yet is captured from the row it was restored from
+  ---
+  duration_ms: 0.490333
+  ...
+# Subtest: the moment a restored tab has history of its own, the live stack replaces the recorded row
+ok 27 - the moment a restored tab has history of its own, the live stack replaces the recorded row
+  ---
+  duration_ms: 0.3435
+  ...
+# Subtest: a quit-time capture shorter than the record on disk is refused, not written (QA round 2, Q3)
+ok 28 - a quit-time capture shorter than the record on disk is refused, not written (QA round 2, Q3)
+  ---
+  duration_ms: 0.076042
+  ...
+# Subtest: a refused quit-time capture - shorter than the durable record - is not written by the flush that follows it (review round 3, B2's MAJOR)
+ok 29 - a refused quit-time capture - shorter than the durable record - is not written by the flush that follows it (review round 3, B2's MAJOR)
+  ---
+  duration_ms: 63.782125
+  ...
+# Subtest: a quit-time capture is compared restorable-row to restorable-row, so a flagged row cannot loosen the refusal (review round 1, m-2)
+ok 30 - a quit-time capture is compared restorable-row to restorable-row, so a flagged row cannot loosen the refusal (review round 1, m-2)
+  ---
+  duration_ms: 0.934417
+  ...
+# Subtest: the quit-time guard's parity extends to the agent skip, so an abandoned agent row cannot loosen the refusal (2026-09-29)
+ok 31 - the quit-time guard's parity extends to the agent skip, so an abandoned agent row cannot loosen the refusal (2026-09-29)
+  ---
+  duration_ms: 0.473667
+  ...
+# Subtest: an accepted quit-time capture still lands, and the later teardown capture cannot replace it
+ok 32 - an accepted quit-time capture still lands, and the later teardown capture cannot replace it
+  ---
+  duration_ms: 0.861042
+  ...
+# Subtest: a destroyed view is captured from its recorded row rather than dropped
+ok 33 - a destroyed view is captured from its recorded row rather than dropped
+  ---
+  duration_ms: 0.107917
+  ...
+# Subtest: a null content rect hides every view, so leaving the route cannot leave a page painted over chat
+ok 34 - a null content rect hides every view, so leaving the route cannot leave a page painted over chat
+  ---
+  duration_ms: 0.061625
+  ...
+# Subtest: 'allow for this session' grants the origin for this run and is not written to disk
+ok 35 - 'allow for this session' grants the origin for this run and is not written to disk
+  ---
+  duration_ms: 0.774792
+  ...
+# Subtest: a session grant appears in the approvals list with its own scope
+ok 36 - a session grant appears in the approvals list with its own scope
+  ---
+  duration_ms: 0.161959
+  ...
+# Subtest: a denial clears a session grant, and a per-origin revoke removes it
+ok 37 - a denial clears a session grant, and a per-origin revoke removes it
+  ---
+  duration_ms: 0.835875
+  ...
+# Subtest: a per-origin revoke takes the unspent once grant, its receipts and any in-flight admission (review round 2, B1)
+ok 38 - a per-origin revoke takes the unspent once grant, its receipts and any in-flight admission (review round 2, B1)
+  ---
+  duration_ms: 2.152542
+  ...
+# Subtest: a per-origin revoke leaves another origin's approvals and receipts alone
+ok 39 - a per-origin revoke leaves another origin's approvals and receipts alone
+  ---
+  duration_ms: 1.148917
+  ...
+# Subtest: 'revoke all' clears the durable set and the session set in one action
+ok 40 - 'revoke all' clears the durable set and the session set in one action
+  ---
+  duration_ms: 1.084084
+  ...
+# Subtest: revoking one origin takes the broad grant that admitted it, too
+ok 41 - revoking one origin takes the broad grant that admitted it, too
+  ---
+  duration_ms: 0.640584
+  ...
+# Subtest: the overlay policy is ref-counted, so an inner close cannot clear an outer overlay
+ok 42 - the overlay policy is ref-counted, so an inner close cannot clear an outer overlay
+  ---
+  duration_ms: 0.159541
+  ...
+# Subtest: a release is idempotent: a double-release cannot unbalance the count
+ok 43 - a release is idempotent: a double-release cannot unbalance the count
+  ---
+  duration_ms: 0.05225
+  ...
+# Subtest: a restore allocates a bounded number of tabs, and keeps the tab the user was on
+ok 44 - a restore allocates a bounded number of tabs, and keeps the tab the user was on
+  ---
+  duration_ms: 1.240084
+  ...
+# Subtest: a restored stack is bounded around the entry the tab was showing
+ok 45 - a restored stack is bounded around the entry the tab was showing
+  ---
+  duration_ms: 1.531375
+  ...
+# Subtest: an oversized page state is dropped whole, and its entry kept
+ok 46 - an oversized page state is dropped whole, and its entry kept
+  ---
+  duration_ms: 2.619458
+  ...
+# Subtest: a session file past the size budget is refused before it is parsed
+ok 47 - a session file past the size budget is refused before it is parsed
+  ---
+  duration_ms: 2.214333
+  ...
+# Subtest: an unusable entry is filtered before anything is allocated, and a long URL is one of those
+ok 48 - an unusable entry is filtered before anything is allocated, and a long URL is one of those
+  ---
+  duration_ms: 0.374958
+  ...
+# Subtest: the null rect is delivered on the spot, and it cancels a pending frame
+ok 49 - the null rect is delivered on the spot, and it cancels a pending frame
+  ---
+  duration_ms: 1.737708
+  ...
+# Subtest: the host handover ends with the incoming host's rectangle, not a stale null
+ok 50 - the host handover ends with the incoming host's rectangle, not a stale null
+  ---
+  duration_ms: 0.265875
+  ...
+# Subtest: an action's refusal is not erased by the state read that follows it (R6)
+ok 51 - an action's refusal is not erased by the state read that follows it (R6)
+  ---
+  duration_ms: 0.449708
+  ...
+# Subtest: one event is one state read, however many consumers are mounted
+ok 52 - one event is one state read, however many consumers are mounted
+  ---
+  duration_ms: 8.751
+  ...
+# Subtest: every in-order read publishes, so a transition detector cannot miss an intermediate state
+ok 53 - every in-order read publishes, so a transition detector cannot miss an intermediate state
+  ---
+  duration_ms: 4.461458
+  ...
+# Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+#     at BrowserSurface (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:52304:3)
+#     at BrowserPage
+# Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+#     at BrowserSurface (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:52304:3)
+#     at div
+#     at div
+#     at BrowserPane (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:52707:33)
+# Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+#     at BrowserSurface (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:52304:3)
+#     at div
+#     at div
+#     at BrowserPane (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:52707:33)
+# Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+#     at BrowserSurface (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:52304:3)
+#     at div
+#     at div
+#     at BrowserPane (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:52707:33)
+# Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+#     at BrowserSurface (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:52304:3)
+#     at BrowserPage
+# Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+#     at MemoryRouter (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:61448:5)
+#     at QueryClientProvider (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:55337:3)
+# Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+#     at ChatLayout (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:70998:21)
+#     at Router (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:61486:15)
+#     at MemoryRouter (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:61448:5)
+#     at QueryClientProvider (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:55337:3)
+# Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+#     at ChatLayout (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:70998:21)
+#     at Router (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:61486:15)
+#     at MemoryRouter (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:61448:5)
+#     at QueryClientProvider (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:55337:3)
+# Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+#     at SidebarNavigation (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:71976:20)
+#     at div
+#     at div
+#     at div
+#     at ChatLayout (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:70998:21)
+#     at Router (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:61486:15)
+#     at MemoryRouter (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:61448:5)
+#     at QueryClientProvider (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:55337:3)
+# Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+#     at ChatSidebar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:65282:3)
+#     at div
+#     at div
+#     at SidebarNavigation (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:71976:20)
+#     at div
+#     at div
+#     at div
+#     at ChatLayout (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:70998:21)
+#     at Router (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:61486:15)
+#     at MemoryRouter (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:61448:5)
+#     at QueryClientProvider (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:55337:3)
+# Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+#     at ChatSidebar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:65282:3)
+#     at div
+#     at div
+#     at SidebarNavigation (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:71976:20)
+#     at div
+#     at div
+#     at div
+#     at ChatLayout (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:70998:21)
+#     at Router (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:61486:15)
+#     at MemoryRouter (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:61448:5)
+#     at QueryClientProvider (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:55337:3)
+# Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+#     at ChatSidebar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:65282:3)
+#     at div
+#     at div
+#     at SidebarNavigation (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:71976:20)
+#     at div
+#     at div
+#     at div
+#     at ChatLayout (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:70998:21)
+#     at Router (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:61486:15)
+#     at MemoryRouter (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:61448:5)
+#     at QueryClientProvider (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:55337:3)
+# Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+#     at ChatSidebar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:65282:3)
+#     at div
+#     at div
+#     at SidebarNavigation (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:71976:20)
+#     at div
+#     at div
+#     at div
+#     at ChatLayout (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:70998:21)
+#     at Router (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:61486:15)
+#     at MemoryRouter (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:61448:5)
+#     at QueryClientProvider (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:55337:3)
+# Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+#     at ChatSidebar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:65282:3)
+#     at div
+#     at div
+#     at SidebarNavigation (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:71976:20)
+#     at div
+#     at div
+#     at div
+#     at ChatLayout (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:70998:21)
+#     at Router (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:61486:15)
+#     at MemoryRouter (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:61448:5)
+#     at QueryClientProvider (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:55337:3)
+# Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+#     at file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:71808:6
+#     at div
+#     at div
+#     at SidebarNavigation (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:71976:20)
+#     at div
+#     at div
+#     at div
+#     at ChatLayout (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:70998:21)
+#     at Router (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:61486:15)
+#     at MemoryRouter (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:61448:5)
+#     at QueryClientProvider (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:55337:3)
+# Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+#     at UpdateQuietIndicator (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:70869:20)
+#     at div
+#     at ChatLayout (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:70998:21)
+#     at Router (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:61486:15)
+#     at MemoryRouter (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:61448:5)
+#     at QueryClientProvider (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_browser-chrome.bundle.mjs:55337:3)
+# Subtest: a failed state read is the READ slot's, and dismissing it clears only that
+ok 54 - a failed state read is the READ slot's, and dismissing it clears only that
+  ---
+  duration_ms: 0.599875
+  ...
+# Subtest: the attention names one request, and a stale clear cannot drop a newer one
+ok 55 - the attention names one request, and a stale clear cannot drop a newer one
+  ---
+  duration_ms: 0.124875
+  ...
+# Subtest: the consent bar names the conversation that is asking (D2)
+ok 56 - the consent bar names the conversation that is asking (D2)
+  ---
+  duration_ms: 7.600667
+  ...
+# Subtest: the consent bar states each choice's own lifetime, and that the profile is shared (D3)
+ok 57 - the consent bar states each choice's own lifetime, and that the profile is shared (D3)
+  ---
+  duration_ms: 1.31175
+  ...
+# Subtest: liveness is derived from a clock: the count drops at the TTL with nothing firing in main
+ok 58 - liveness is derived from a clock: the count drops at the TTL with nothing firing in main
+  ---
+  duration_ms: 0.065292
+  ...
+# Subtest: the ordinal is a position in the live list, and answering one renumbers the rest
+ok 59 - the ordinal is a position in the live list, and answering one renumbers the rest
+  ---
+  duration_ms: 0.120375
+  ...
+# Subtest: the remaining time is stated in words, and stops counting below a minute
+ok 60 - the remaining time is stated in words, and stops counting below a minute
+  ---
+  duration_ms: 0.054292
+  ...
+# Subtest: a request that leaves the list is remembered as expired or withdrawn, and an answered one is not
+ok 61 - a request that leaves the list is remembered as expired or withdrawn, and an answered one is not
+  ---
+  duration_ms: 0.189541
+  ...
+# Subtest: a parked tab's Waiting chip carries the ordinal of the request its origin is on
+ok 62 - a parked tab's Waiting chip carries the ordinal of the request its origin is on
+  ---
+  duration_ms: 0.136125
+  ...
+# Subtest: a conversation's scope keeps a tab with no attribution out of its list
+ok 63 - a conversation's scope keeps a tab with no attribution out of its list
+  ---
+  duration_ms: 0.077542
+  ...
+# Subtest: the scope labels name what each grant is
+ok 64 - the scope labels name what each grant is
+  ---
+  duration_ms: 0.040834
+  ...
+# Subtest: a conversation's requests are the ones its agent asked for, and matching an origin is not asking
+ok 65 - a conversation's requests are the ones its agent asked for, and matching an origin is not asking
+  ---
+  duration_ms: 0.208875
+  ...
+# Subtest: a scope's KEY is its value, so a host cannot trip the surface's identity memos
+ok 66 - a scope's KEY is its value, so a host cannot trip the surface's identity memos
+  ---
+  duration_ms: 0.081166
+  ...
+# Subtest: the pane's tray sentence says which list its count is about
+ok 67 - the pane's tray sentence says which list its count is about
+  ---
+  duration_ms: 0.031208
+  ...
+# Subtest: the tab index groups a pool by conversation, unattributed last
+ok 68 - the tab index groups a pool by conversation, unattributed last
+  ---
+  duration_ms: 0.155292
+  ...
+# Subtest: a conversation's summary counts its tabs, and reuses its entry when nothing changed
+ok 69 - a conversation's summary counts its tabs, and reuses its entry when nothing changed
+  ---
+  duration_ms: 0.277791
+  ...
+# Subtest: the bulk closes resolve to the tabs the labels name
+ok 70 - the bulk closes resolve to the tabs the labels name
+  ---
+  duration_ms: 0.114542
+  ...
+# Subtest: `close failed tabs` closes exactly the tabs whose last navigation was refused
+ok 71 - `close failed tabs` closes exactly the tabs whose last navigation was refused
+  ---
+  duration_ms: 0.060625
+  ...
+# Subtest: the strip feeds `close others` the list it is showing, and nothing wider (the U7 ruling)
+ok 72 - the strip feeds `close others` the list it is showing, and nothing wider (the U7 ruling)
+  ---
+  duration_ms: 0.652625
+  ...
+# Subtest: a conversation is named by its title, or by its id when it has none
+ok 73 - a conversation is named by its title, or by its id when it has none
+  ---
+  duration_ms: 0.052083
+  ...
+# Subtest: both hosts render the page area under the same spinner, so one selector holds in both
+ok 74 - both hosts render the page area under the same spinner, so one selector holds in both
+  ---
+  duration_ms: 12.216625
+  ...
+# Subtest: the pane's scope switch is the pane's own, and the conversation side needs a session
+ok 75 - the pane's scope switch is the pane's own, and the conversation side needs a session
+  ---
+  duration_ms: 4.635125
+  ...
+# Subtest: the surface feeds the requests the requester's scope and the tabs the switch's
+ok 76 - the surface feeds the requests the requester's scope and the tabs the switch's
+  ---
+  duration_ms: 0.316625
+  ...
+# Subtest: the pane's request scope is the conversation, and never the switch
+ok 77 - the pane's request scope is the conversation, and never the switch
+  ---
+  duration_ms: 0.147125
+  ...
+# Subtest: the scope the user chose outlives the pane, because the pane does not
+ok 78 - the scope the user chose outlives the pane, because the pane does not
+  ---
+  duration_ms: 0.464459
+  ...
+# Subtest: the pinned strip control appears only when a tab is off screen, and counts them
+ok 79 - the pinned strip control appears only when a tab is off screen, and counts them
+  ---
+  duration_ms: 0.431625
+  ...
+# Subtest: the chip cap keeps the three states that carry information and counts the rest (R4, fix 1)
+ok 80 - the chip cap keeps the three states that carry information and counts the rest (R4, fix 1)
+  ---
+  duration_ms: 0.191792
+  ...
+# Subtest: every floor rung leaves the title the width the strip promises (R4, fix 1)
+ok 81 - every floor rung leaves the title the width the strip promises (R4, fix 1)
+  ---
+  duration_ms: 0.547
+  ...
+# Subtest: a failed navigation names the reason in the app's own chrome, and offers a retry
+ok 82 - a failed navigation names the reason in the app's own chrome, and offers a retry
+  ---
+  duration_ms: 0.25225
+  ...
+# Subtest: the browser pane is a third term of the right slot, exclusive with both siblings
+ok 83 - the browser pane is a third term of the right slot, exclusive with both siblings
+  ---
+  duration_ms: 0.299208
+  ...
+# Subtest: each host stamps its own dock tag, so a run can say which dock it drove
+ok 84 - each host stamps its own dock tag, so a run can say which dock it drove
+  ---
+  duration_ms: 0.29425
+  ...
+# Subtest: the app-wide count includes the requests no conversation owns, and drops the expired
+ok 85 - the app-wide count includes the requests no conversation owns, and drops the expired
+  ---
+  duration_ms: 0.069375
+  ...
+# Subtest: the rail's Browser item draws that count, with the number in its accessible name
+ok 86 - the rail's Browser item draws that count, with the number in its accessible name
+  ---
+  duration_ms: 14.491083
+  ...
+# Subtest: a banner click lands on the asking conversation, or on the browser route
+ok 87 - a banner click lands on the asking conversation, or on the browser route
+  ---
+  duration_ms: 0.089709
+  ...
+# Subtest: the shell forgets the attention, and only once the projection says the request is gone
+ok 88 - the shell forgets the attention, and only once the projection says the request is gone
+  ---
+  duration_ms: 0.079042
+  ...
+# Subtest: a click's report survives the memory being dropped, which is the case it exists for (Q-2, U9)
+ok 89 - a click's report survives the memory being dropped, which is the case it exists for (Q-2, U9)
+  ---
+  duration_ms: 0.434542
+  ...
+# Subtest: only the shell clears the attention, so a pane cannot lose a request it cannot show (U1)
+ok 90 - only the shell clears the attention, so a pane cannot lose a request it cannot show (U1)
+  ---
+  duration_ms: 1.0705
+  ...
+# no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+# Subtest: source guard: new find/zoom tooltips prefer chrome-side top, not native-page overlays
+ok 91 - source guard: new find/zoom tooltips prefer chrome-side top, not native-page overlays
+  ---
+  duration_ms: 0.776125
+  ...
+# Subtest: find row uses main counts, accessible status, next/previous/Escape and no overlay tooltip
+ok 92 - find row uses main counts, accessible status, next/previous/Escape and no overlay tooltip
+  ---
+  duration_ms: 187.367292
+  ...
+# no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+# Subtest: the state file is 0600 under 0700 and publishes the port and key
+ok 93 - the state file is 0600 under 0700 and publishes the port and key
+  ---
+  duration_ms: 5.437917
+  ...
+# Subtest: a record whose mode was widened is repaired on the next write
+ok 94 - a record whose mode was widened is repaired on the next write
+  ---
+  duration_ms: 0.970291
+  ...
+# Subtest: asking for the state path creates nothing
+ok 95 - asking for the state path creates nothing
+  ---
+  duration_ms: 0.890875
+  ...
+# Subtest: the listener answers only with the key, and never with CORS headers
+ok 96 - the listener answers only with the key, and never with CORS headers
+  ---
+  duration_ms: 26.853625
+  ...
+# Subtest: the listener binds loopback only, and nothing else on this machine can reach it
+ok 97 - the listener binds loopback only, and nothing else on this machine can reach it
+  ---
+  duration_ms: 1.05175
+  ...
+# Subtest: malformed envelopes are refused at the boundary, not half-interpreted
+ok 98 - malformed envelopes are refused at the boundary, not half-interpreted
+  ---
+  duration_ms: 7.461209
+  ...
+# Subtest: a dispatched failure comes back as the typed error arm, and an unknown code is downgraded
+ok 99 - a dispatched failure comes back as the typed error arm, and an unknown code is downgraded
+  ---
+  duration_ms: 1.058833
+  ...
+# Subtest: the structured reads are in the wire vocabulary with read's budget
+ok 100 - the structured reads are in the wire vocabulary with read's budget
+  ---
+  duration_ms: 0.224791
+  ...
+# Subtest: health identifies the process without the key, and only the process
+ok 101 - health identifies the process without the key, and only the process
+  ---
+  duration_ms: 1.373666
+  ...
+# Subtest: the key comparison is length-safe and exact
+ok 102 - the key comparison is length-safe and exact
+  ---
+  duration_ms: 0.189792
+  ...
+# Subtest: an agent tab never becomes the active tab, and a user tab does
+ok 103 - an agent tab never becomes the active tab, and a user tab does
+  ---
+  duration_ms: 0.401083
+  ...
+# Subtest: agent tabs are capped at eight and user tabs are not capped at all
+ok 104 - agent tabs are capped at eight and user tabs are not capped at all
+  ---
+  duration_ms: 0.474875
+  ...
+# Subtest: the handle is the capability: a wrong or stale nonce is refused
+ok 105 - the handle is the capability: a wrong or stale nonce is refused
+  ---
+  duration_ms: 0.323167
+  ...
+# Subtest: a user tab has no capability until it is handed over, and revoking removes it
+ok 106 - a user tab has no capability until it is handed over, and revoking removes it
+  ---
+  duration_ms: 0.152
+  ...
+# Subtest: a restored tab is the user's, with no capability, whatever it was before
+ok 107 - a restored tab is the user's, with no capability, whatever it was before
+  ---
+  duration_ms: 0.042041
+  ...
+# Subtest: a dead view fails closed and the record is dropped
+ok 108 - a dead view fails closed and the record is dropped
+  ---
+  duration_ms: 0.088834
+  ...
+# Subtest: destroying a tab releases its webContents exactly once, through the one removal path
+ok 109 - destroying a tab releases its webContents exactly once, through the one removal path
+  ---
+  duration_ms: 0.06875
+  ...
+# Subtest: two commands on one tab do not interleave: the second reads busy
+ok 110 - two commands on one tab do not interleave: the second reads busy
+  ---
+  duration_ms: 0.143167
+  ...
+# Subtest: a navigation epoch makes the refs taken before it unusable
+ok 111 - a navigation epoch makes the refs taken before it unusable
+  ---
+  duration_ms: 0.055083
+  ...
+# Subtest: redaction keeps a caller's own handle recognisable and nobody else's
+ok 112 - redaction keeps a caller's own handle recognisable and nobody else's
+  ---
+  duration_ms: 0.048042
+  ...
+# Subtest: the driver gives a brand-new view a document before it arms the debugger
+ok 113 - the driver gives a brand-new view a document before it arms the debugger
+  ---
+  duration_ms: 5.643375
+  ...
+# Subtest: nothing is reachable by default, and a decision is what opens it
+ok 114 - nothing is reachable by default, and a decision is what opens it
+  ---
+  duration_ms: 1.550875
+  ...
+# Subtest: a stored loopback "host" grant opens the gate, so the user is not asked twice
+ok 115 - a stored loopback "host" grant opens the gate, so the user is not asked twice
+  ---
+  duration_ms: 0.691167
+  ...
+# Subtest: a stored broad "domain" grant opens the whole registrable domain, and only it
+ok 116 - a stored broad "domain" grant opens the whole registrable domain, and only it
+  ---
+  duration_ms: 0.701084
+  ...
+# Subtest: a one-shot grant is spendable once, by the requester who earned it
+ok 117 - a one-shot grant is spendable once, by the requester who earned it
+  ---
+  duration_ms: 0.783458
+  ...
+# Subtest: a one-shot grant is not spendable by another session
+ok 118 - a one-shot grant is not spendable by another session
+  ---
+  duration_ms: 0.507208
+  ...
+# Subtest: a denial is durable and stops the re-prompt
+ok 119 - a denial is durable and stops the re-prompt
+  ---
+  duration_ms: 0.364667
+  ...
+# Subtest: a second session's request is queued behind the first, not displacing it
+ok 120 - a second session's request is queued behind the first, not displacing it
+  ---
+  duration_ms: 0.516208
+  ...
+# Subtest: at the cap the oldest request is displaced, and the newest requester is not refused
+ok 121 - at the cap the oldest request is displaced, and the newest requester is not refused
+  ---
+  duration_ms: 0.50925
+  ...
+# Subtest: a decision on a request that has expired is refused, and grants nothing
+ok 122 - a decision on a request that has expired is refused, and grants nothing
+  ---
+  duration_ms: 0.235375
+  ...
+# Subtest: a spent once-grant does not answer `allowed`: the request is raised again, and the band with it
+ok 123 - a spent once-grant does not answer `allowed`: the request is raised again, and the band with it
+  ---
+  duration_ms: 0.666791
+  ...
+# Subtest: a revoked site re-asks in the SAME conversation: the receipt does not outlive the grant
+ok 124 - a revoked site re-asks in the SAME conversation: the receipt does not outlive the grant
+  ---
+  duration_ms: 0.613
+  ...
+# Subtest: a deny reads `denied` on await_access, the way an allow reads `allowed`
+ok 125 - a deny reads `denied` on await_access, the way an allow reads `allowed`
+  ---
+  duration_ms: 0.679166
+  ...
+# Subtest: the positive direction still holds: a live grant short-circuits the band, an unspent once grant with it, and never another conversation
+ok 126 - the positive direction still holds: a live grant short-circuits the band, an unspent once grant with it, and never another conversation
+  ---
+  duration_ms: 0.645
+  ...
+# Subtest: two requests for different origins coexist, and the queue is answered oldest first
+ok 127 - two requests for different origins coexist, and the queue is answered oldest first
+  ---
+  duration_ms: 0.094291
+  ...
+# Subtest: one banner per count change, not one per pending request
+ok 128 - one banner per count change, not one per pending request
+  ---
+  duration_ms: 0.291334
+  ...
+# Subtest: the click on a banner names the OLDEST live request, and who asked for it
+ok 129 - the click on a banner names the OLDEST live request, and who asked for it
+  ---
+  duration_ms: 0.100083
+  ...
+# Subtest: a consent click names the request, then comes forward through the raise policy
+ok 130 - a consent click names the request, then comes forward through the raise policy
+  ---
+  duration_ms: 0.319917
+  ...
+# Subtest: a requester that names no conversation arrives as null, so the click falls back
+ok 131 - a requester that names no conversation arrives as null, so the click falls back
+  ---
+  duration_ms: 0.043875
+  ...
+# Subtest: a click whose window is gone lands through the app's recreate path instead of throwing (U2)
+ok 132 - a click whose window is gone lands through the app's recreate path instead of throwing (U2)
+  ---
+  duration_ms: 0.159291
+  ...
+# Subtest: an inactive plan orders the window forward without un-minimising it
+ok 133 - an inactive plan orders the window forward without un-minimising it
+  ---
+  duration_ms: 0.184667
+  ...
+# Subtest: the default banner is Electron's own, with the shape the copy expects
+ok 134 - the default banner is Electron's own, with the shape the copy expects
+  ---
+  duration_ms: 0.110667
+  ...
+# Subtest: no banner is raised when the launch plan would not have focused the window
+ok 135 - no banner is raised when the launch plan would not have focused the window
+  ---
+  duration_ms: 0.037083
+  ...
+# Subtest: cancelling removes only the caller's own entry
+ok 136 - cancelling removes only the caller's own entry
+  ---
+  duration_ms: 0.119625
+  ...
+# Subtest: an answered request that is no longer pending cannot be answered again
+ok 137 - an answered request that is no longer pending cannot be answered again
+  ---
+  duration_ms: 0.435792
+  ...
+# Subtest: revoking every approval leaves no grant and no pending entry
+ok 138 - revoking every approval leaves no grant and no pending entry
+  ---
+  duration_ms: 0.617625
+  ...
+# Subtest: a spent one-time grant goes back to the user instead of answering allowed
+ok 139 - a spent one-time grant goes back to the user instead of answering allowed
+  ---
+  duration_ms: 0.969209
+  ...
+# Subtest: a site the user forgot is asked about again in the conversation that earned the grant
+ok 140 - a site the user forgot is asked about again in the conversation that earned the grant
+  ---
+  duration_ms: 0.780875
+  ...
+# Subtest: an expired one-time grant raises the band rather than answering from its live receipt
+ok 141 - an expired one-time grant raises the band rather than answering from its live receipt
+  ---
+  duration_ms: 0.385167
+  ...
+# Subtest: a durable denial outlives its receipt, and await_access reads it as denied
+ok 142 - a durable denial outlives its receipt, and await_access reads it as denied
+  ---
+  duration_ms: 0.395375
+  ...
+# Subtest: a live grant still answers allowed, and still admits its navigation
+ok 143 - a live grant still answers allowed, and still admits its navigation
+  ---
+  duration_ms: 0.300542
+  ...
+# Subtest: an unspent one-time grant answers allowed, and the navigation then spends it
+ok 144 - an unspent one-time grant answers allowed, and the navigation then spends it
+  ---
+  duration_ms: 0.499459
+  ...
+# Subtest: a request the user has not decided still raises the band
+ok 145 - a request the user has not decided still raises the band
+  ---
+  duration_ms: 0.092
+  ...
+# Subtest: through the dispatcher: a spent one-time grant re-asks and raises the consent band
+ok 146 - through the dispatcher: a spent one-time grant re-asks and raises the consent band
+  ---
+  duration_ms: 307.105667
+  ...
+# Subtest: through the dispatcher: forgetting a site re-asks in the same conversation
+ok 147 - through the dispatcher: forgetting a site re-asks in the same conversation
+  ---
+  duration_ms: 1.810625
+  ...
+# Subtest: the projection names each tab's conversation — and never its capability
+ok 148 - the projection names each tab's conversation — and never its capability
+  ---
+  duration_ms: 1.025416
+  ...
+# Subtest: a tab the user opens in a conversation belongs to it, and still gives no agent a capability (R1)
+ok 149 - a tab the user opens in a conversation belongs to it, and still gives no agent a capability (R1)
+  ---
+  duration_ms: 0.841917
+  ...
+# Subtest: revoking a hand-over gives the tab back to its conversation, not to nobody (design §5.1 row 6; review round 1, Q2)
+ok 150 - revoking a hand-over gives the tab back to its conversation, not to nobody (design §5.1 row 6; review round 1, Q2)
+  ---
+  duration_ms: 0.811042
+  ...
+# Subtest: a batch close is ONE change, and releases every webContents exactly once (R5)
+ok 151 - a batch close is ONE change, and releases every webContents exactly once (R5)
+  ---
+  duration_ms: 0.264541
+  ...
+# Subtest: a conversation close is resolved at EXECUTION time; an ids close is not (R5)
+ok 152 - a conversation close is resolved at EXECUTION time; an ids close is not (R5)
+  ---
+  duration_ms: 0.128542
+  ...
+# Subtest: an ids intent naming a tab that is already gone closes the rest and does not throw (R5)
+ok 153 - an ids intent naming a tab that is already gone closes the rest and does not throw (R5)
+  ---
+  duration_ms: 0.163583
+  ...
+# Subtest: browser readiness reads stay authorized before initialization and across retries
+ok 154 - browser readiness reads stay authorized before initialization and across retries
+  ---
+  duration_ms: 0.76375
+  ...
+# Subtest: browser startup rolls back all partial owners before bounded retries
+ok 155 - browser startup rolls back all partial owners before bounded retries
+  ---
+  duration_ms: 0.276083
+  ...
+# Subtest: modern browser generation mismatches are rejected before command dispatch
+ok 156 - modern browser generation mismatches are rejected before command dispatch
+  ---
+  duration_ms: 3.6325
+  ...
+# Subtest: a conversation id is validated at the IPC boundary rather than trusted (R1)
+ok 157 - a conversation id is validated at the IPC boundary rather than trusted (R1)
+  ---
+  duration_ms: 0.504875
+  ...
+# Subtest: the broad-domain scope is unavailable — not silently wrong — without the suffix list
+ok 158 - the broad-domain scope is unavailable — not silently wrong — without the suffix list
+  ---
+  duration_ms: 0.126792
+  ...
+# Subtest: the ownership fence refuses a stale generation and replays a lost open
+ok 159 - the ownership fence refuses a stale generation and replays a lost open
+  ---
+  duration_ms: 0.402042
+  ...
+# Subtest: retain outlives a finish, and a terminal scope refuses everything but close and tabs
+ok 160 - retain outlives a finish, and a terminal scope refuses everything but close and tabs
+  ---
+  duration_ms: 0.390458
+  ...
+# Subtest: closed-tab stack is user-only, scoped, bounded and erased with host UI lifetime
+ok 161 - closed-tab stack is user-only, scoped, bounded and erased with host UI lifetime
+  ---
+  duration_ms: 0.686166
+  ...
+# Subtest: clear-data and forget-site erase the closed-tab stack (review R3)
+ok 162 - clear-data and forget-site erase the closed-tab stack (review R3)
+  ---
+  duration_ms: 0.553125
+  ...
+# Subtest: reopen takes its entry before awaiting and navigates the tab it created (review R4)
+ok 163 - reopen takes its entry before awaiting and navigates the tab it created (review R4)
+  ---
+  duration_ms: 0.239
+  ...
+# Subtest: a hard reload falls back to a plain reload when the engine lacks it (review R10)
+ok 164 - a hard reload falls back to a plain reload when the engine lacks it (review R10)
+  ---
+  duration_ms: 0.116625
+  ...
+# Subtest: real dispatcher records allocation, fences peers, recovers and finishes exactly its tab
+ok 165 - real dispatcher records allocation, fences peers, recovers and finishes exactly its tab
+  ---
+  duration_ms: 1.967791
+  ...
+# Subtest: current unapproved document refuses every driven read and input after autonomous navigation
+ok 166 - current unapproved document refuses every driven read and input after autonomous navigation
+  ---
+  duration_ms: 3.862
+  ...
+# Subtest: a document round trip cannot return the unapproved document's text
+ok 167 - a document round trip cannot return the unapproved document's text
+  ---
+  duration_ms: 1.0275
+  ...
+# Subtest: a click that follows an approved link reports the page it landed on
+ok 168 - a click that follows an approved link reports the page it landed on
+  ---
+  duration_ms: 1203.667334
+  ...
+# Subtest: a form submit on the approved origin reports the page it landed on
+ok 169 - a form submit on the approved origin reports the page it landed on
+  ---
+  duration_ms: 1203.39175
+  ...
+# Subtest: a click that would reach an unapproved origin fails the hop before it is fetched
+ok 170 - a click that would reach an unapproved origin fails the hop before it is fetched
+  ---
+  duration_ms: 1202.500375
+  ...
+# Subtest: a click whose document lands on an unapproved origin still fails the result check
+ok 171 - a click whose document lands on an unapproved origin still fails the result check
+  ---
+  duration_ms: 1203.769166
+  ...
+# Subtest: a document change under any non-navigating action discards its result
+ok 172 - a document change under any non-navigating action discards its result
+  ---
+  duration_ms: 155.441709
+  ...
+# Subtest: the gate disables the Page domain it enabled, and nothing else
+ok 173 - the gate disables the Page domain it enabled, and nothing else
+  ---
+  duration_ms: 3.941042
+  ...
+# Subtest: the per-hop gate is armed for the actions that can navigate, and only those
+ok 174 - the per-hop gate is armed for the actions that can navigate, and only those
+  ---
+  duration_ms: 1356.041458
+  ...
+# Subtest: native handover grants only its requester a fenced owner allocation
+ok 175 - native handover grants only its requester a fenced owner allocation
+  ---
+  duration_ms: 2.236167
+  ...
+# Subtest: re-adopting a handed-over tab after an in-page navigation still reads its document
+ok 176 - re-adopting a handed-over tab after an in-page navigation still reads its document
+  ---
+  duration_ms: 1.25175
+  ...
+# Subtest: a token that ends drops the document receipt it was granted
+ok 177 - a token that ends drops the document receipt it was granted
+  ---
+  duration_ms: 1.279792
+  ...
+# Subtest: allow once authorizes one requester document until the next navigation
+ok 178 - allow once authorizes one requester document until the next navigation
+  ---
+  duration_ms: 1.425917
+  ...
+# Subtest: both per-origin controls a user clicks retire an unspent once grant
+ok 179 - both per-origin controls a user clicks retire an unspent once grant
+  ---
+  duration_ms: 2.624834
+  ...
+# Subtest: an explicit deny stops a live receipt immediately
+ok 180 - an explicit deny stops a live receipt immediately
+  ---
+  duration_ms: 1.683541
+  ...
+# Subtest: shipped PSL covers public/private suffixes, wildcards, exceptions and loopback scopes
+ok 181 - shipped PSL covers public/private suffixes, wildcards, exceptions and loopback scopes
+  ---
+  duration_ms: 1.607542
+  ...
+# Subtest: background agent views keep bounded render area away from the browser route
+ok 182 - background agent views keep bounded render area away from the browser route
+  ---
+  duration_ms: 0.106292
+  ...
+# Subtest: a closed active user tab hands presentation to the last USER tab, or to nothing
+ok 183 - a closed active user tab hands presentation to the last USER tab, or to nothing
+  ---
+  duration_ms: 0.083292
+  ...
+# Subtest: an agent open on an unapproved origin is refused before the page is touched
+ok 184 - an agent open on an unapproved origin is refused before the page is touched
+  ---
+  duration_ms: 0.143458
+  ...
+# Subtest: request_access -> answer -> open end to end through the dispatcher
+ok 185 - request_access -> answer -> open end to end through the dispatcher
+  ---
+  duration_ms: 1.303875
+  ...
+# Subtest: read runs in an isolated world, and snapshot refs carry the tab's epoch
+ok 186 - read runs in an isolated world, and snapshot refs carry the tab's epoch
+  ---
+  duration_ms: 1.049
+  ...
+# Subtest: the structured reads run the vendored page functions in read's isolated world
+ok 187 - the structured reads run the vendored page functions in read's isolated world
+  ---
+  duration_ms: 1.929792
+  ...
+# Subtest: a ref from before a navigation is refused with element_not_found
+ok 188 - a ref from before a navigation is refused with element_not_found
+  ---
+  duration_ms: 0.796459
+  ...
+# Subtest: screenshot keeps the {data, url, title} shape Python validates
+ok 189 - screenshot keeps the {data, url, title} shape Python validates
+  ---
+  duration_ms: 0.554917
+  ...
+# Subtest: a background tab captures without a route, without activation, through the product's own path
+ok 190 - a background tab captures without a route, without activation, through the product's own path
+  ---
+  duration_ms: 0.735917
+  ...
+# Subtest: a driven view is sized before it is ever hidden
+ok 191 - a driven view is sized before it is ever hidden
+  ---
+  duration_ms: 0.640208
+  ...
+# Subtest: a background capture retries a stalled attempt, and does not retry a real failure
+ok 192 - a background capture retries a stalled attempt, and does not retry a real failure
+  ---
+  duration_ms: 0.800459
+  ...
+# Subtest: a corrupted zero-area view is refused rather than stalling
+ok 193 - a corrupted zero-area view is refused rather than stalling
+  ---
+  duration_ms: 1.145542
+  ...
+# Subtest: an open with no URL resumes the tab it is given and navigates nothing
+ok 194 - an open with no URL resumes the tab it is given and navigates nothing
+  ---
+  duration_ms: 0.926834
+  ...
+# Subtest: close without a handle refuses ambiguity instead of guessing
+ok 195 - close without a handle refuses ambiguity instead of guessing
+  ---
+  duration_ms: 0.836459
+  ...
+# Subtest: a user tab is not drivable until it is handed over, then it is
+ok 196 - a user tab is not drivable until it is handed over, then it is
+  ---
+  duration_ms: 0.950583
+  ...
+# Subtest: status publishes where the jar is and whether the broad scope exists
+ok 197 - status publishes where the jar is and whether the broad scope exists
+  ---
+  duration_ms: 0.231791
+  ...
+# Subtest: the URL bar's own navigation is refused for a non-http scheme
+ok 198 - the URL bar's own navigation is refused for a non-http scheme
+  ---
+  duration_ms: 0.177958
+  ...
+# Subtest: settle follows the REAL Electron event shapes: a sub-frame in-page navigation does not settle the wait
+ok 199 - settle follows the REAL Electron event shapes: a sub-frame in-page navigation does not settle the wait
+  ---
+  duration_ms: 22.57075
+  ...
+# Subtest: settle types a main-frame load failure, and ignores a sub-frame's or an aborted one
+ok 200 - settle types a main-frame load failure, and ignores a sub-frame's or an aborted one
+  ---
+  duration_ms: 22.639041
+  ...
+# Subtest: a hung page ends as the typed nav_timeout inside the published budget
+ok 201 - a hung page ends as the typed nav_timeout inside the published budget
+  ---
+  duration_ms: 120.7475
+  ...
+# (node:95328) ExperimentalWarning: The MockTimers API is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: re-attaching after a devtools detach delivers every event exactly once
+ok 202 - re-attaching after a devtools detach delivers every event exactly once
+  ---
+  duration_ms: 5.12725
+  ...
+# Subtest: a hand-over cannot push the agent-owned count past the cap
+ok 203 - a hand-over cannot push the agent-owned count past the cap
+  ---
+  duration_ms: 0.189125
+  ...
+# Subtest: the strip's projection survives an active tab whose view has died
+ok 204 - the strip's projection survives an active tab whose view has died
+  ---
+  duration_ms: 0.123541
+  ...
+# Subtest: owner_* without a proof is refused with the extension's own answer
+ok 205 - owner_* without a proof is refused with the extension's own answer
+  ---
+  duration_ms: 0.274167
+  ...
+# Subtest: a restore allocates the whole strip before it returns, and serves while a page hangs
+ok 206 - a restore allocates the whole strip before it returns, and serves while a page hangs
+  ---
+  duration_ms: 0.770083
+  ...
+# Subtest: an empty restore still comes back as the blank tab it always did
+ok 207 - an empty restore still comes back as the blank tab it always did
+  ---
+  duration_ms: 0.206208
+  ...
+# Subtest: the change capture a restore fires already carries every tab, before a page commits (review round 2, B2)
+ok 208 - the change capture a restore fires already carries every tab, before a page commits (review round 2, B2)
+  ---
+  duration_ms: 0.3995
+  ...
+# Subtest: a main-frame load refusal is published for its tab, and cleared by the next load
+ok 209 - a main-frame load refusal is published for its tab, and cleared by the next load
+  ---
+  duration_ms: 0.296166
+  ...
+# Subtest: a refused load is reported only when it is one a user can act on
+ok 210 - a refused load is reported only when it is one a user can act on
+  ---
+  duration_ms: 0.063459
+  ...
+# Subtest: a capture marks only the failed tabs, and a later success clears the mark
+ok 211 - a capture marks only the failed tabs, and a later success clears the mark
+  ---
+  duration_ms: 0.163792
+  ...
+# Subtest: the host publishes the failed ids the capture reads, and a close retires them
+ok 212 - the host publishes the failed ids the capture reads, and a close retires them
+  ---
+  duration_ms: 0.150083
+  ...
+# Subtest: readSession skips a flagged row, names the count in the log, and does not let it eat a cap slot
+ok 213 - readSession skips a flagged row, names the count in the log, and does not let it eat a cap slot
+  ---
+  duration_ms: 1.6075
+  ...
+# Subtest: readSession skips a non-active agent row, keeps the active one and the user's, and does not let it eat a cap slot
+ok 214 - readSession skips a non-active agent row, keeps the active one and the user's, and does not let it eat a cap slot
+  ---
+  duration_ms: 1.059292
+  ...
+# Subtest: a capture writes a handed-over tab as the user's, and an agent tab as the agent's
+ok 215 - a capture writes a handed-over tab as the user's, and an agent tab as the agent's
+  ---
+  duration_ms: 0.70675
+  ...
+# Subtest: a hydration that never commits a page is marked failed, and the next navigation retires it
+ok 216 - a hydration that never commits a page is marked failed, and the next navigation retires it
+  ---
+  duration_ms: 0.336209
+  ...
+# Subtest: a hydration that failed after a commit is not marked failed
+ok 217 - a hydration that failed after a commit is not marked failed
+  ---
+  duration_ms: 0.250166
+  ...
+# Subtest: a restore failure does not overwrite a refusal the view already reported
+ok 218 - a restore failure does not overwrite a refusal the view already reported
+  ---
+  duration_ms: 0.214125
+  ...
+# Subtest: the self-healing a restore-failure mark depends on is wired in browser/index.ts
+ok 219 - the self-healing a restore-failure mark depends on is wired in browser/index.ts
+  ---
+  duration_ms: 0.857625
+  ...
+# Subtest: a restore budget that expires still starts every queued tab's load
+ok 220 - a restore budget that expires still starts every queued tab's load
+  ---
+  duration_ms: 5.980458
+  ...
+# Subtest: the drain uses history.restore when the view has it, and still starts every queued tab
+ok 221 - the drain uses history.restore when the view has it, and still starts every queued tab
+  ---
+  duration_ms: 0.709334
+  ...
+# Subtest: a pending request names its requesting session, and never a non-session identity
+ok 222 - a pending request names its requesting session, and never a non-session identity
+  ---
+  duration_ms: 0.171375
+  ...
+# Subtest: the browser host is attached inside the window factory, so every creation path gets it
+ok 223 - the browser host is attached inside the window factory, so every creation path gets it
+  ---
+  duration_ms: 0.936917
+  ...
+# Subtest: a download on a tab with no arm is CANCELLED, which is the pre-feature rule
+ok 224 - a download on a tab with no arm is CANCELLED, which is the pre-feature rule
+  ---
+  duration_ms: 0.161459
+  ...
+# Subtest: an armed download is saved into the harness directory under its sanitised name
+ok 225 - an armed download is saved into the harness directory under its sanitised name
+  ---
+  duration_ms: 6.869917
+  ...
+# Subtest: a second download of the same name is uniquified rather than overwriting the first
+ok 226 - a second download of the same name is uniquified rather than overwriting the first
+  ---
+  duration_ms: 0.555625
+  ...
+# Subtest: a page-supplied path cannot become a directory: the name is truncated to a basename
+ok 227 - a page-supplied path cannot become a directory: the name is truncated to a basename
+  ---
+  duration_ms: 0.314583
+  ...
+# Subtest: an executable NAME is refused before anything lands, and the reason says why
+ok 228 - an executable NAME is refused before anything lands, and the reason says why
+  ---
+  duration_ms: 0.378542
+  ...
+# Subtest: a file over the per-file cap is refused pre-write, with its size
+ok 229 - a file over the per-file cap is refused pre-write, with its size
+  ---
+  duration_ms: 0.462375
+  ...
+# Subtest: an unknown size cannot cap pre-write, so the RUNTIME cap bounds it while it writes
+ok 230 - an unknown size cannot cap pre-write, so the RUNTIME cap bounds it while it writes
+  ---
+  duration_ms: 6.153417
+  ...
+# Subtest: a download with a KNOWN size still lands when it is under the cap
+ok 231 - a download with a KNOWN size still lands when it is under the cap
+  ---
+  duration_ms: 6.887667
+  ...
+# Subtest: a download still writing at the DEADLINE is cancelled, reported, and its partial discarded
+ok 232 - a download still writing at the DEADLINE is cancelled, reported, and its partial discarded
+  ---
+  duration_ms: 42.162416
+  ...
+# Subtest: a call that ends with a write in flight cancels it rather than letting it land
+ok 233 - a call that ends with a write in flight cancels it rather than letting it land
+  ---
+  duration_ms: 0.596042
+  ...
+# Subtest: two downloads of ONE name in one call get different paths (no silent overwrite)
+ok 234 - two downloads of ONE name in one call get different paths (no silent overwrite)
+  ---
+  duration_ms: 0.272417
+  ...
+# Subtest: the reservation is keyed by DIRECTORY, so a second armed CALL into it cannot reuse a name in flight (review round 2, R2-4)
+ok 235 - the reservation is keyed by DIRECTORY, so a second armed CALL into it cannot reuse a name in flight (review round 2, R2-4)
+  ---
+  duration_ms: 0.2465
+  ...
+# Subtest: a cancelled write gives its name back, so a later download takes the plain name (review round 2, R2-4)
+ok 236 - a cancelled write gives its name back, so a later download takes the plain name (review round 2, R2-4)
+  ---
+  duration_ms: 6.967208
+  ...
+# Subtest: the runtime cap fires from the host's own clock, with NO `updated` event at all (review round 2, Q4)
+ok 237 - the runtime cap fires from the host's own clock, with NO `updated` event at all (review round 2, Q4)
+  ---
+  duration_ms: 608.13
+  ...
+# Subtest: a cancel landing on an item Chromium already calls `completed` leaves the file (review round 2, R2-3)
+ok 238 - a cancel landing on an item Chromium already calls `completed` leaves the file (review round 2, R2-3)
+  ---
+  duration_ms: 0.877
+  ...
+# Subtest: a directory this host cannot create is a TYPED refusal naming the parameter (review round 2, R2-6)
+ok 239 - a directory this host cannot create is a TYPED refusal naming the parameter (review round 2, R2-6)
+  ---
+  duration_ms: 0.449917
+  ...
+# Subtest: a RELATIVE directory is refused rather than resolved against the app's cwd
+ok 240 - a RELATIVE directory is refused rather than resolved against the app's cwd
+  ---
+  duration_ms: 0.048333
+  ...
+# Subtest: an EXISTING directory is not re-moded by an arm
+ok 241 - an EXISTING directory is not re-moded by an arm
+  ---
+  duration_ms: 0.358625
+  ...
+# Subtest: the row keeps every decision and names the tab it belongs to
+ok 242 - the row keeps every decision and names the tab it belongs to
+  ---
+  duration_ms: 0.763125
+  ...
+# Subtest: an upload records its own note, naming how many files went where
+ok 243 - an upload records its own note, naming how many files went where
+  ---
+  duration_ms: 0.259125
+  ...
+# Subtest: an unwritable directory cancels the attempt instead of falling back to the user's Downloads
+ok 244 - an unwritable directory cancels the attempt instead of falling back to the user's Downloads
+  ---
+  duration_ms: 0.208
+  ...
+# Subtest: an interrupted write is reported as an answer, not counted as a file
+ok 245 - an interrupted write is reported as an answer, not counted as a file
+  ---
+  duration_ms: 7.143167
+  ...
+# Subtest: a call where the page starts nothing answers with the no-download copy, not a timeout error
+ok 246 - a call where the page starts nothing answers with the no-download copy, not a timeout error
+  ---
+  duration_ms: 0.441166
+  ...
+# Subtest: the arm is dropped with its call, so a later page download is refused again
+ok 247 - the arm is dropped with its call, so a later page download is refused again
+  ---
+  duration_ms: 0.316583
+  ...
+# Subtest: the armer creates the harness directory 0700
+ok 248 - the armer creates the harness directory 0700
+  ---
+  duration_ms: 0.720583
+  ...
+# Subtest: the vendored policy port reproduces the shared conformance fixture
+ok 249 - the vendored policy port reproduces the shared conformance fixture
+  ---
+  duration_ms: 0.391583
+  ...
+# Subtest: the sanitiser strips a path, controls, bidi overrides and reserved stems
+ok 250 - the sanitiser strips a path, controls, bidi overrides and reserved stems
+  ---
+  duration_ms: 0.340041
+  ...
+# Subtest: /health carries the capabilities this build serves
+ok 251 - /health carries the capabilities this build serves
+  ---
+  duration_ms: 1.572333
+  ...
+# Subtest: the state file carries the same list, from the same constant
+ok 252 - the state file carries the same list, from the same constant
+  ---
+  duration_ms: 1.310166
+  ...
+# Subtest: download refuses to arm without the harness's directory
+ok 253 - download refuses to arm without the harness's directory
+  ---
+  duration_ms: 1.393625
+  ...
+# Subtest: download with no page download answers with the no-download copy rather than an error
+ok 254 - download with no page download answers with the no-download copy rather than an error
+  ---
+  duration_ms: 51.685584
+  ...
+# Subtest: upload attaches absolute paths, reads the input back, and reports what the DOM holds
+ok 255 - upload attaches absolute paths, reads the input back, and reports what the DOM holds
+  ---
+  duration_ms: 1.921042
+  ...
+# Subtest: upload FAILS when the DOM does not hold what was attached, naming both sides
+ok 256 - upload FAILS when the DOM does not hold what was attached, naming both sides
+  ---
+  duration_ms: 2.137875
+  ...
+# Subtest: upload refuses a relative path, an empty list, and an over-count call before touching the page
+ok 257 - upload refuses a relative path, an empty list, and an over-count call before touching the page
+  ---
+  duration_ms: 1.446042
+  ...
+# Subtest: an upload whose form navigates is refused with the origin NAMED and the landing reverted (review round 2, R2-1)
+ok 258 - an upload whose form navigates is refused with the origin NAMED and the landing reverted (review round 2, R2-1)
+  ---
+  duration_ms: 1.553042
+  ...
+# Subtest: a read-back the page destroyed is reported as an UNVERIFIED attach, not an untyped CDP error (review round 2, R2-2)
+ok 259 - a read-back the page destroyed is reported as an UNVERIFIED attach, not an untyped CDP error (review round 2, R2-2)
+  ---
+  duration_ms: 1.071417
+  ...
+# Subtest: a decision records the tab's owner kind, so a closed tab can still be named (review round 2, U10)
+ok 260 - a decision records the tab's owner kind, so a closed tab can still be named (review round 2, U10)
+  ---
+  duration_ms: 1.025041
+  ...
+# Subtest: the durable folder control's summary names the newest save and how many this session (review round 2, U12)
+ok 261 - the durable folder control's summary names the newest save and how many this session (review round 2, U12)
+  ---
+  duration_ms: 0.700083
+  ...
+# Subtest: the download reveal opens the host's own directory and takes no path from the caller
+ok 262 - the download reveal opens the host's own directory and takes no path from the caller
+  ---
+  duration_ms: 0.347167
+  ...
+# Subtest: the popup policy allows about:blank and http(s), and refuses every other scheme
+ok 263 - the popup policy allows about:blank and http(s), and refuses every other scheme
+  ---
+  duration_ms: 0.254459
+  ...
+# Subtest: the popup cap bounds the view's LIVE children, driven from the constant
+ok 264 - the popup cap bounds the view's LIVE children, driven from the constant
+  ---
+  duration_ms: 0.071834
+  ...
+# Subtest: the §2.4 effective-show table: disposition picks presentation only under a normal launch
+ok 265 - the §2.4 effective-show table: disposition picks presentation only under a normal launch
+  ---
+  duration_ms: 0.072209
+  ...
+# Subtest: type aimed at an iframe fails instead of reporting its own expando as typed
+ok 266 - type aimed at an iframe fails instead of reporting its own expando as typed
+  ---
+  duration_ms: 1.8815
+  ...
+# Subtest: type still lands through the value setter on a real form field
+ok 267 - type still lands through the value setter on a real form field
+  ---
+  duration_ms: 103.198625
+  ...
+# Subtest: type refuses a setter write that does not stick instead of echoing it (\#871)
+ok 268 - type refuses a setter write that does not stick instead of echoing it (\#871)
+  ---
+  duration_ms: 103.174541
+  ...
+# Subtest: type lands a masking field and reports the field's own formatted value (\#871 round 1)
+ok 269 - type lands a masking field and reports the field's own formatted value (\#871 round 1)
+  ---
+  duration_ms: 105.000959
+  ...
+# Subtest: type lands an uppercasing field and reports the field's own value (\#871 round 1)
+ok 270 - type lands an uppercasing field and reports the field's own value (\#871 round 1)
+  ---
+  duration_ms: 103.539375
+  ...
+# Subtest: type lands a textarea that stores a CRLF as LF (\#871 round 1)
+ok 271 - type lands a textarea that stores a CRLF as LF (\#871 round 1)
+  ---
+  duration_ms: 103.95375
+  ...
+# Subtest: type still refuses a digits-only mask that dropped typed characters, quoting the read-back (\#871 round 1)
+ok 272 - type still refuses a digits-only mask that dropped typed characters, quoting the read-back (\#871 round 1)
+  ---
+  duration_ms: 102.389875
+  ...
+# Subtest: type compares punctuation-only text raw: held lands, not held is refused (\#871 round 1)
+ok 273 - type compares punctuation-only text raw: held lands, not held is refused (\#871 round 1)
+  ---
+  duration_ms: 202.218416
+  ...
+# Subtest: type waits out a revert that lands a few frames after the write (\#871 round 1)
+ok 274 - type waits out a revert that lands a few frames after the write (\#871 round 1)
+  ---
+  duration_ms: 103.236417
+  ...
+# Subtest: type quotes at most 80 characters of a refused field's read-back (\#871 round 1)
+ok 275 - type quotes at most 80 characters of a refused field's read-back (\#871 round 1)
+  ---
+  duration_ms: 101.821333
+  ...
+# Subtest: frames 4c: a masking field in the cross-site frame lands, and a dropping mask is refused (\#871 round 1)
+ok 276 - frames 4c: a masking field in the cross-site frame lands, and a dropping mask is refused (\#871 round 1)
+  ---
+  duration_ms: 216.599083
+  ...
+# Subtest: frames 1: a top selector match sends the exact pre-change commands, all two-argument
+ok 277 - frames 1: a top selector match sends the exact pre-change commands, all two-argument
+  ---
+  duration_ms: 0.307083
+  ...
+# Subtest: frames 2: `>>>` hops chain, cap their depth, and refuse a hop that is not an iframe
+ok 278 - frames 2: `>>>` hops chain, cap their depth, and refuse a hop that is not an iframe
+  ---
+  duration_ms: 0.593375
+  ...
+# Subtest: frames 3: a top miss with one frame hit carries the session; two hits refuse with candidates
+ok 279 - frames 3: a top miss with one frame hit carries the session; two hits refuse with candidates
+  ---
+  duration_ms: 0.739292
+  ...
+# Subtest: frames 4: type at an iframe element descends to one field, refuses zero (\#851) and several
+ok 280 - frames 4: type at an iframe element descends to one field, refuses zero (\#851) and several
+  ---
+  duration_ms: 2.699083
+  ...
+# Subtest: frames 4b: a frame field's setter write is verified in the frame's session (\#871)
+ok 281 - frames 4b: a frame field's setter write is verified in the frame's session (\#871)
+  ---
+  duration_ms: 204.27675
+  ...
+# Subtest: frames 5: detachedFromTarget drops the cached session; a stale one re-attaches exactly once
+ok 282 - frames 5: detachedFromTarget drops the cached session; a stale one re-attaches exactly once
+  ---
+  duration_ms: 2.671125
+  ...
+# Subtest: frames 6: a child session's events never reach gate or log subscribers
+ok 283 - frames 6: a child session's events never reach gate or log subscribers
+  ---
+  duration_ms: 0.319833
+  ...
+# Subtest: frames 7: a ref with frameId routes to its session; the epoch rule is unchanged
+ok 284 - frames 7: a ref with frameId routes to its session; the epoch rule is unchanged
+  ---
+  duration_ms: 1.981584
+  ...
+# Subtest: frames 7b: a page with no iframe snapshots with exactly the pre-change commands
+ok 285 - frames 7b: a page with no iframe snapshots with exactly the pre-change commands
+  ---
+  duration_ms: 0.219041
+  ...
+# Subtest: frames 8: upload refuses a node that resolved inside a frame
+ok 286 - frames 8: upload refuses a node that resolved inside a frame
+  ---
+  duration_ms: 1.587375
+  ...
+# Subtest: frames M1: a frame from an origin the user DENIED is refused on every path, and hidden from snapshot
+ok 287 - frames M1: a frame from an origin the user DENIED is refused on every path, and hidden from snapshot
+  ---
+  duration_ms: 3.146459
+  ...
+# Subtest: frames Q-3: nothing is queried or scrolled inside a denied frame, and a hit and a miss refuse identically
+ok 288 - frames Q-3: nothing is queried or scrolled inside a denied frame, and a hit and a miss refuse identically
+  ---
+  duration_ms: 0.806875
+  ...
+# Subtest: frames m1: `>>>` inside quotes or brackets is part of the selector, not a hop
+ok 289 - frames m1: `>>>` inside quotes or brackets is part of the selector, not a hop
+  ---
+  duration_ms: 0.095166
+  ...
+# Subtest: frames m2: a single hit under the frame cap is not acted on, and a conflict mid-walk is not skipped
+ok 290 - frames m2: a single hit under the frame cap is not acted on, and a conflict mid-walk is not skipped
+  ---
+  duration_ms: 1.40875
+  ...
+# Subtest: frames m3: concurrent attaches share one session, and a failed emulation releases it
+ok 291 - frames m3: concurrent attaches share one session, and a failed emulation releases it
+  ---
+  duration_ms: 0.198667
+  ...
+# Subtest: frames m4: DevTools taking the tab makes a frame-targeted type a debugger_conflict
+ok 292 - frames m4: DevTools taking the tab makes a frame-targeted type a debugger_conflict
+  ---
+  duration_ms: 0.919084
+  ...
+# Subtest: frames n1+n2: a frame ref scrolls its iframe into view; candidates are real selectors
+ok 293 - frames n1+n2: a frame ref scrolls its iframe into view; candidates are real selectors
+  ---
+  duration_ms: 0.32925
+  ...
+# Subtest: human page-control IPC validates owner/frame/URL and primitive inputs
+ok 294 - human page-control IPC validates owner/frame/URL and primitive inputs
+  ---
+  duration_ms: 0.473541
+  ...
+# Subtest: zoom reset precedes handover capability and agent screenshot/read keep 100% geometry without find highlights
+ok 295 - zoom reset precedes handover capability and agent screenshot/read keep 100% geometry without find highlights
+  ---
+  duration_ms: 1.346667
+  ...
+# no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+# Subtest: find request/document/tab fences reject stale native counts; hide/close clears selection
+ok 296 - find request/document/tab fences reject stale native counts; hide/close clears selection
+  ---
+  duration_ms: 1.193083
+  ...
+# Subtest: bounded native steps, independent tab factors, agent notice and pre-transfer reset
+ok 297 - bounded native steps, independent tab factors, agent notice and pre-transfer reset
+  ---
+  duration_ms: 0.288125
+  ...
+# Subtest: find on an agent tab is cleared before an agent read/screenshot; no page injection
+ok 298 - find on an agent tab is cleared before an agent read/screenshot; no page injection
+  ---
+  duration_ms: 0.090625
+  ...
+# Subtest: silent native result has a bounded neutral outcome; stop/switch cancels it
+ok 299 - silent native result has a bounded neutral outcome; stop/switch cancels it
+  ---
+  duration_ms: 63.403667
+  ...
+# Subtest: Electron44 new_session polarity: first/change/retry start, next/previous advance and wrap
+ok 300 - Electron44 new_session polarity: first/change/retry start, next/previous advance and wrap
+  ---
+  duration_ms: 0.529417
+  ...
+# no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+# Subtest: a partial run that adds a surface satisfies the guard
+ok 301 - a partial run that adds a surface satisfies the guard
+  ---
+  duration_ms: 2.38475
+  ...
+# Subtest: counts a fold hand-wrote as JSON strings still add, instead of concatenating
+ok 302 - counts a fold hand-wrote as JSON strings still add, instead of concatenating
+  ---
+  duration_ms: 0.857125
+  ...
+# Subtest: a partial run that only refreshes does not move the count
+ok 303 - a partial run that only refreshes does not move the count
+  ---
+  duration_ms: 0.886958
+  ...
+# Subtest: a stray undeclared directory still fails the guard
+ok 304 - a stray undeclared directory still fails the guard
+  ---
+  duration_ms: 1.081708
+  ...
+# Subtest: a stray beside a genuinely added surface is still caught
+ok 305 - a stray beside a genuinely added surface is still caught
+  ---
+  duration_ms: 1.647458
+  ...
+# Subtest: declared supplementary sets are excluded from the swept count
+ok 306 - declared supplementary sets are excluded from the swept count
+  ---
+  duration_ms: 2.04375
+  ...
+# Subtest: a manifest whose counts describe the tree under review passes
+ok 307 - a manifest whose counts describe the tree under review passes
+  ---
+  duration_ms: 0.885
+  ...
+# Subtest: a head that is merely RESOLVABLE is not good enough
+ok 308 - a head that is merely RESOLVABLE is not good enough
+  ---
+  duration_ms: 0.097375
+  ...
+# Subtest: a head that resolves to nothing at all fails
+ok 309 - a head that resolves to nothing at all fails
+  ---
+  duration_ms: 0.233167
+  ...
+# Subtest: a tree-stamp pair is IGNORED, stored in the file or absent (T2)
+ok 310 - a tree-stamp pair is IGNORED, stored in the file or absent (T2)
+  ---
+  duration_ms: 0.332708
+  ...
+# Subtest: a supplementary set's capturedAtHead is held to the same bar
+ok 311 - a supplementary set's capturedAtHead is held to the same bar
+  ---
+  duration_ms: 0.104625
+  ...
+# Subtest: a missing head is a failure, not a pass by omission
+ok 312 - a missing head is a failure, not a pass by omission
+  ---
+  duration_ms: 0.048583
+  ...
+# Subtest: partialCapture's own head citations are checked too
+ok 313 - partialCapture's own head citations are checked too
+  ---
+  duration_ms: 0.180958
+  ...
+# Subtest: a pass that added no frames does not claim to have added them
+ok 314 - a pass that added no frames does not claim to have added them
+  ---
+  duration_ms: 0.850375
+  ...
+# Subtest: a set whose story file moved outside its capturedAtHead reads as an advisory
+ok 315 - a set whose story file moved outside its capturedAtHead reads as an advisory
+  ---
+  duration_ms: 1.384208
+  ...
+# Subtest: an agreeing stamp is silent, and a harness name resolves beside its frames
+ok 316 - an agreeing stamp is silent, and a harness name resolves beside its frames
+  ---
+  duration_ms: 1.201917
+  ...
+# Subtest: a set that names no story file stays silent, and a glob is not a name
+ok 317 - a set that names no story file stays silent, and a glob is not a name
+  ---
+  duration_ms: 1.001209
+  ...
+# Subtest: a set naming a story file this tree cannot resolve reads as an advisory
+ok 318 - a set naming a story file this tree cannot resolve reads as an advisory
+  ---
+  duration_ms: 1.028709
+  ...
+# Subtest: a stamp this history cannot answer does not read as drift
+ok 319 - a stamp this history cannot answer does not read as drift
+  ---
+  duration_ms: 0.833083
+  ...
+# Subtest: an exact repository-relative mention resolves as written
+ok 320 - an exact repository-relative mention resolves as written
+  ---
+  duration_ms: 0.937834
+  ...
+# Subtest: a tally that accounts for the pass's own diff passes
+ok 321 - a tally that accounts for the pass's own diff passes
+  ---
+  duration_ms: 0.40325
+  ...
+# Subtest: a tally below the pass's own diff fails, and says by how much
+ok 322 - a tally below the pass's own diff fails, and says by how much
+  ---
+  duration_ms: 0.076541
+  ...
+# Subtest: a story list that lost a directory the pass rewrote fails
+ok 323 - a story list that lost a directory the pass rewrote fails
+  ---
+  duration_ms: 0.166625
+  ...
+# Subtest: a width-suffixed directory is the story it belongs to
+ok 324 - a width-suffixed directory is the story it belongs to
+  ---
+  duration_ms: 0.061042
+  ...
+# Subtest: frames inside a declared set are not demanded of the pass's tally
+ok 325 - frames inside a declared set are not demanded of the pass's tally
+  ---
+  duration_ms: 0.103709
+  ...
+# Subtest: a repository git cannot read is not a failure
+ok 326 - a repository git cannot read is not a failure
+  ---
+  duration_ms: 0.047208
+  ...
+# Subtest: a tally below the frames HEAD holds in the directories it names fails
+ok 327 - a tally below the frames HEAD holds in the directories it names fails
+  ---
+  duration_ms: 0.084334
+  ...
+# Subtest: an honest tally passes on HEAD's tree alone
+ok 328 - an honest tally passes on HEAD's tree alone
+  ---
+  duration_ms: 0.148667
+  ...
+# Subtest: frames HEAD holds outside the named directories are not this field's
+ok 329 - frames HEAD holds outside the named directories are not this field's
+  ---
+  duration_ms: 0.053416
+  ...
+# Subtest: frames inside a declared set are not demanded of the tally on HEAD's tree either
+ok 330 - frames inside a declared set are not demanded of the tally on HEAD's tree either
+  ---
+  duration_ms: 0.040417
+  ...
+# Subtest: an entry that only prefixes a directory does not name it
+ok 331 - an entry that only prefixes a directory does not name it
+  ---
+  duration_ms: 0.081458
+  ...
+# Subtest: the capturer's own dir override still names the directory it writes
+ok 332 - the capturer's own dir override still names the directory it writes
+  ---
+  duration_ms: 0.098917
+  ...
+# Subtest: a clone with history asks both questions, and a mutated tally answers both
+ok 333 - a clone with history asks both questions, and a mutated tally answers both
+  ---
+  duration_ms: 0.085292
+  ...
+# Subtest: the SHIPPED manifest's counts describe the tree it ships in
+ok 334 - the SHIPPED manifest's counts describe the tree it ships in
+  ---
+  duration_ms: 5572.852292
+  ...
+# Subtest: the SHIPPED manifest carries no tree stamp
+ok 335 - the SHIPPED manifest carries no tree stamp
+  ---
+  duration_ms: 7.693916
+  ...
+# Subtest: the SHIPPED manifest's countsMean leads carry no fold label
+ok 336 - the SHIPPED manifest's countsMean leads carry no fold label
+  ---
+  duration_ms: 7.644916
+  ...
+# Subtest: a spliced entry's duplicated keys are caught by the walker
+ok 337 - a spliced entry's duplicated keys are caught by the walker
+  ---
+  duration_ms: 0.185417
+  ...
+# Subtest: the SHIPPED manifest carries no duplicated key in any object
+ok 338 - the SHIPPED manifest carries no duplicated key in any object
+  ---
+  duration_ms: 27.589042
+  ...
+# Subtest: a note must not bind itself to a tree stamp
+ok 339 - a note must not bind itself to a tree stamp
+  ---
+  duration_ms: 15.099417
+  ...
+# Subtest: the `previousTopLevel` snapshots carry no stamp token
+ok 340 - the `previousTopLevel` snapshots carry no stamp token
+  ---
+  duration_ms: 14.261042
+  ...
+# Subtest: the SHIPPED manifest's head citations lie in the history it ships in
+ok 341 - the SHIPPED manifest's head citations lie in the history it ships in # SKIP a shallow clone has no ancestor of HEAD to check
+  ---
+  duration_ms: 0.046041
+  ...
+# Subtest: a truncated clone has no verdict on the citations it cannot resolve
+ok 342 - a truncated clone has no verdict on the citations it cannot resolve
+  ---
+  duration_ms: 0.1995
+  ...
+# Subtest: a countsMean paragraph leading with the walk's numbers passes
+ok 343 - a countsMean paragraph leading with the walk's numbers passes
+  ---
+  duration_ms: 3.543125
+  ...
+# Subtest: a paragraph left behind by a fold fails, and carries the sentence to paste
+ok 344 - a paragraph left behind by a fold fails, and carries the sentence to paste
+  ---
+  duration_ms: 3.661583
+  ...
+# Subtest: a paragraph with no reading in it fails rather than passing by omission
+ok 345 - a paragraph with no reading in it fails rather than passing by omission
+  ---
+  duration_ms: 3.372375
+  ...
+# Subtest: the older paragraphs under the leading one are not this tree's to answer for
+ok 346 - the older paragraphs under the leading one are not this tree's to answer for
+  ---
+  duration_ms: 2.397208
+  ...
+# Subtest: a stale surfaces paragraph fails on the literal the field names
+ok 347 - a stale surfaces paragraph fails on the literal the field names
+  ---
+  duration_ms: 3.223083
+  ...
+# Subtest: a manifest with no countsMean is not this guard's failure
+ok 348 - a manifest with no countsMean is not this guard's failure
+  ---
+  duration_ms: 2.262583
+  ...
+# Subtest: a countsMean cell that repeats a paragraph verbatim fails
+ok 349 - a countsMean cell that repeats a paragraph verbatim fails
+  ---
+  duration_ms: 0.243625
+  ...
+# Subtest: the SHIPPED manifest repeats no paragraph in any countsMean cell
+ok 350 - the SHIPPED manifest repeats no paragraph in any countsMean cell
+  ---
+  duration_ms: 7.845042
+  ...
+# Subtest: the manifest carries every top-level record this branch wrote
+ok 351 - the manifest carries every top-level record this branch wrote
+  ---
+  duration_ms: 8.952958
+  ...
+# Subtest: every declared evidence set holds exactly the palettes its record documents
+ok 352 - every declared evidence set holds exactly the palettes its record documents
+  ---
+  duration_ms: 5.664416
+  ...
+# Subtest: a frame the walk does not judge is accounted for, and moving one fails
+ok 353 - a frame the walk does not judge is accounted for, and moving one fails
+  ---
+  duration_ms: 3.604042
+  ...
+# no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+# Subtest: healthy linked agent/team/skill keeps a discoverable policy action
+ok 354 - healthy linked agent/team/skill keeps a discoverable policy action
+  ---
+  duration_ms: 1.029625
+  ...
+# Subtest: manual safe available applies when subscription is off
+ok 355 - manual safe available applies when subscription is off
+  ---
+  duration_ms: 0.074458
+  ...
+# Subtest: available without service safety admission opens review
+ok 356 - available without service safety admission opens review
+  ---
+  duration_ms: 0.124625
+  ...
+# Subtest: paused outgoing preference outranks incoming activity, without changing policy
+ok 357 - paused outgoing preference outranks incoming activity, without changing policy
+  ---
+  duration_ms: 0.064833
+  ...
+# Subtest: retry is directional and only offered when service admits it
+ok 358 - retry is directional and only offered when service admits it
+  ---
+  duration_ms: 0.063791
+  ...
+# Subtest: unknown future state cannot become healthy, apply, or automatic write
+ok 359 - unknown future state cannot become healthy, apply, or automatic write
+  ---
+  duration_ms: 0.049458
+  ...
+# Subtest: transient success retains policy entry and direction
+ok 360 - transient success retains policy entry and direction
+  ---
+  duration_ms: 0.080875
+  ...
+# Subtest: full inventory supports skills without altering legacy pending route
+ok 361 - full inventory supports skills without altering legacy pending route
+  ---
+  duration_ms: 1.1845
+  ...
+# Subtest: policy transports captured revision and only the changed independent flag
+ok 362 - policy transports captured revision and only the changed independent flag
+  ---
+  duration_ms: 0.559875
+  ...
+# Subtest: policy fails closed before transport for missing revision, coercion or grant-only write
+ok 363 - policy fails closed before transport for missing revision, coercion or grant-only write
+  ---
+  duration_ms: 0.8985
+  ...
+# Subtest: outbound consent never implicitly changes subscription
+ok 364 - outbound consent never implicitly changes subscription
+  ---
+  duration_ms: 0.175042
+  ...
+# Subtest: preview visible binding accepts same opaque identity but expires and changes fail closed
+ok 365 - preview visible binding accepts same opaque identity but expires and changes fail closed
+  ---
+  duration_ms: 0.176583
+  ...
+# Subtest: source adapter never guesses Public for unavailable organization
+ok 366 - source adapter never guesses Public for unavailable organization
+  ---
+  duration_ms: 0.124583
+  ...
+# Subtest: immutable local ID never falls back to an alias belonging to another copy
+ok 367 - immutable local ID never falls back to an alias belonging to another copy
+  ---
+  duration_ms: 0.073458
+  ...
+# Subtest: stable retry names direction and cannot also select another named copy
+ok 368 - stable retry names direction and cannot also select another named copy
+  ---
+  duration_ms: 0.218375
+  ...
+# Subtest: manual publish cannot confirm unseen proposal or treat dry-run as consent
+ok 369 - manual publish cannot confirm unseen proposal or treat dry-run as consent
+  ---
+  duration_ms: 0.32525
+  ...
+# Subtest: incoming viewed result requires receipt + explicit confirm and cannot share dry-run
+ok 370 - incoming viewed result requires receipt + explicit confirm and cannot share dry-run
+  ---
+  duration_ms: 0.180625
+  ...
+# Subtest: inbound old-server nullable revision remains bound to remote hash and source
+ok 371 - inbound old-server nullable revision remains bound to remote hash and source
+  ---
+  duration_ms: 0.050666
+  ...
+# Subtest: same immutable editor survives changed fetched bytes but another source does not
+ok 372 - same immutable editor survives changed fetched bytes but another source does not
+  ---
+  duration_ms: 0.089458
+  ...
+# Subtest: OFF outbound retry cannot infer future-write consent from an operation ID
+ok 373 - OFF outbound retry cannot infer future-write consent from an operation ID
+  ---
+  duration_ms: 0.041541
+  ...
+# Subtest: initial skill confirmation binds source alias scope flags expiry and full proposal
+ok 374 - initial skill confirmation binds source alias scope flags expiry and full proposal
+  ---
+  duration_ms: 0.146125
+  ...
+# Subtest: remote success and pending receipts do not acknowledge stored policies
+ok 375 - remote success and pending receipts do not acknowledge stored policies
+  ---
+  duration_ms: 0.064292
+  ...
+# Subtest: initial transports preserve exact echo arms and reject guessed scope or consent
+ok 376 - initial transports preserve exact echo arms and reject guessed scope or consent
+  ---
+  duration_ms: 0.367416
+  ...
+# Subtest: Skills draft mount and scope authority do not depend on inventory bytes
+ok 377 - Skills draft mount and scope authority do not depend on inventory bytes
+  ---
+  duration_ms: 2.231208
+  ...
+# Subtest: definition CAS echoes the opaque revision beside the fields, never inside them
+ok 378 - definition CAS echoes the opaque revision beside the fields, never inside them
+  ---
+  duration_ms: 0.13175
+  ...
+# Subtest: team definition CAS mirrors the profile arm
+ok 379 - team definition CAS mirrors the profile arm
+  ---
+  duration_ms: 0.074958
+  ...
+# Subtest: source resolution requires the full stated destination and refuses guessed scope
+ok 380 - source resolution requires the full stated destination and refuses guessed scope
+  ---
+  duration_ms: 0.170583
+  ...
+# Subtest: source-resolution baseline field tracks core's emitted key and literals
+ok 381 - source-resolution baseline field tracks core's emitted key and literals
+  ---
+  duration_ms: 0.178042
+  ...
+# Subtest: a PUBLIC no-grant link requires consent, not unavailability; every other refusal stays
+ok 382 - a PUBLIC no-grant link requires consent, not unavailability; every other refusal stays
+  ---
+  duration_ms: 0.193333
+  ...
+# Subtest: the auto-push line follows EFFECTIVE state: the carve-out never hides a pause
+ok 383 - the auto-push line follows EFFECTIVE state: the carve-out never hides a pause
+  ---
+  duration_ms: 0.15675
+  ...
+# Subtest: the adapter's canEnableAutoPush is the shared gate, so a public no-grant link can start consent
+ok 384 - the adapter's canEnableAutoPush is the shared gate, so a public no-grant link can start consent
+  ---
+  duration_ms: 0.057167
+  ...
+# no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+# direction negative control: {"bad":["not-a-wire-state"],"receiptMisclassified":false}
+# Subtest: the hub-links scene is registered and backend-gated
+ok 385 - the hub-links scene is registered and backend-gated
+  ---
+  duration_ms: 6.110291
+  ...
+# Subtest: the resolve-arm wire literals are the FROZEN ones, never the retired shorthand
+ok 386 - the resolve-arm wire literals are the FROZEN ones, never the retired shorthand
+  ---
+  duration_ms: 0.335792
+  ...
+# Subtest: the stub fixture answers the frozen inventory shape and its resolve arm
+ok 387 - the stub fixture answers the frozen inventory shape and its resolve arm
+  ---
+  duration_ms: 0.729792
+  ...
+# Subtest: the hub-links panel imports every hook it calls
+ok 388 - the hub-links panel imports every hook it calls
+  ---
+  duration_ms: 1.189417
+  ...
+# Subtest: the resolve arm is typed to the frozen agent|team Kind
+ok 389 - the resolve arm is typed to the frozen agent|team Kind
+  ---
+  duration_ms: 0.410458
+  ...
+# Subtest: the policy write consumes the PATCH's {link_id, policy} snapshot, never a full HubLink
+ok 390 - the policy write consumes the PATCH's {link_id, policy} snapshot, never a full HubLink
+  ---
+  duration_ms: 0.268083
+  ...
+# Subtest: the stub emits only real wire direction states
+ok 391 - the stub emits only real wire direction states
+  ---
+  duration_ms: 0.980625
+  ...
+# Subtest: baseline known-ness follows the provenance literal, not a "known" sentinel
+ok 392 - baseline known-ness follows the provenance literal, not a "known" sentinel
+  ---
+  duration_ms: 0.256041
+  ...
+# Subtest: the public-egress consent body states the reversibility limit, without em dashes
+ok 393 - the public-egress consent body states the reversibility limit, without em dashes
+  ---
+  duration_ms: 0.478458
+  ...
+# Subtest: the auto-push switch is described by its pause line only while that line renders
+ok 394 - the auto-push switch is described by its pause line only while that line renders
+  ---
+  duration_ms: 0.594458
+  ...
+# no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+# actual IPC label negative: 70 chars REFUSED; short labels accepted; actual policy endpoint PATCH /v1/desktop/hub/links/link-public-agent
+# geometry negative controls: zero-wrapper REFUSED, horizontal-overflow REFUSED, actual-size positive ACCEPTED
+# Subtest: capture labels obey the real IPC length guard and policy path follows the actual contract
+ok 395 - capture labels obey the real IPC length guard and policy path follows the actual contract
+  ---
+  duration_ms: 1.576334
+  ...
+# Subtest: painted geometry rejects both zero-wrapper and horizontal-overflow negative controls
+ok 396 - painted geometry rejects both zero-wrapper and horizontal-overflow negative controls
+  ---
+  duration_ms: 0.1205
+  ...
+# Subtest: strict published core minimum, identity, and uncertainty fail closed
+ok 397 - strict published core minimum, identity, and uncertainty fail closed
+  ---
+  duration_ms: 0.322584
+  ...
+# guard negatives: old/unknown/disconnected/replaced/late-positive blocked; accepted in-flight request not replayed
+# Subtest: fresh invoke, newer push, and target identity fence stale positive results
+ok 398 - fresh invoke, newer push, and target identity fence stale positive results
+  ---
+  duration_ms: 15.895792
+  ...
+# Subtest: backend copy distinguishes initial, disconnected and unsupported states inside consent
+ok 399 - backend copy distinguishes initial, disconnected and unsupported states inside consent
+  ---
+  duration_ms: 81.260708
+  ...
+# actual hooks: 13 fixed-version arms transmitted; 52 stale old/unknown/disconnected/identity callbacks -> ZERO additional writes; verified normal poll keeps controls eligible; dispatch still verifies MAIN
+# Subtest: mounted actual policy/link/source/legacy hooks fence every write arm and retain read eligibility
+ok 400 - mounted actual policy/link/source/legacy hooks fence every write arm and retain read eligibility
+  ---
+  duration_ms: 471.732375
+  ...
+# no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+# capability withdrawal: pending read settled, remote calls 5 -> 5, writes 2 -> 2
+# Subtest: real mounted Skills hooks gate absence, explicit enablement, and retained callbacks after cap loss
+ok 401 - real mounted Skills hooks gate absence, explicit enablement, and retained callbacks after cap loss
+  ---
+  duration_ms: 7395.70375
+  ...
+# Subtest: page gates its effective selection, entry and mount on complete adapter, not legacy link cap
+ok 402 - page gates its effective selection, entry and mount on complete adapter, not legacy link cap
+  ---
+  duration_ms: 0.750333
+  ...
+# Subtest: shared stub retains legacy links and refuses only unsafe public auto-push writes, not previews or read-only copies
+ok 403 - shared stub retains legacy links and refuses only unsafe public auto-push writes, not previews or read-only copies
+  ---
+  duration_ms: 175.923458
+  ...
+# no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+# Subtest: an available item is marked whether or not auto-update is on
+ok 404 - an available item is marked whether or not auto-update is on
+  ---
+  duration_ms: 0.921625
+  ...
+# Subtest: up-to-date, absent and no-credential items draw no mark
+ok 405 - up-to-date, absent and no-credential items draw no mark
+  ---
+  duration_ms: 0.0705
+  ...
+# Subtest: a refused merge goes to review; other failures go to retry
+ok 406 - a refused merge goes to review; other failures go to retry
+  ---
+  duration_ms: 0.077416
+  ...
+# Subtest: the accessible name states the action and names the item
+ok 407 - the accessible name states the action and names the item
+  ---
+  duration_ms: 0.068625
+  ...
+# Subtest: the detail separates 'updates automatically' from 'needs you'
+ok 408 - the detail separates 'updates automatically' from 'needs you'
+  ---
+  duration_ms: 0.172875
+  ...
+# Subtest: the copy table is B6.4 (with the provider-error line re-worded), and an unknown class is generic
+ok 409 - the copy table is B6.4 (with the provider-error line re-worded), and an unknown class is generic
+  ---
+  duration_ms: 0.107208
+  ...
+# Subtest: the sign-in line is drawn only for an item that needs the login
+ok 410 - the sign-in line is drawn only for an item that needs the login
+  ---
+  duration_ms: 0.136792
+  ...
+# Subtest: update-all counts only what a click would take, per kind
+ok 411 - update-all counts only what a click would take, per kind
+  ---
+  duration_ms: 0.071583
+  ...
+# Subtest: an item that needs a decision is a review mark, never an apply (UX U3)
+ok 412 - an item that needs a decision is a review mark, never an apply (UX U3)
+  ---
+  duration_ms: 0.300041
+  ...
+# Subtest: a failed mark whose class a retry cannot fix opens details instead
+ok 413 - a failed mark whose class a retry cannot fix opens details instead
+  ---
+  duration_ms: 0.364458
+  ...
+# Subtest: 'Updated just now' decays with the apply time (UX U4)
+ok 414 - 'Updated just now' decays with the apply time (UX U4)
+  ---
+  duration_ms: 0.147375
+  ...
+# Subtest: the roll-up counts every outcome and never says nothing over a failed run (R4)
+ok 415 - the roll-up counts every outcome and never says nothing over a failed run (R4)
+  ---
+  duration_ms: 0.174916
+  ...
+# Subtest: every non-success report has a sentence, and a plain success has none (U2)
+ok 416 - every non-success report has a sentence, and a plain success has none (U2)
+  ---
+  duration_ms: 0.124375
+  ...
+# Subtest: the five ops compose the backend's routes
+ok 417 - the five ops compose the backend's routes
+  ---
+  duration_ms: 0.69625
+  ...
+# Subtest: the schema is closed: stray fields, bad kinds and bad ids are refused
+ok 418 - the schema is closed: stray fields, bad kinds and bad ids are refused
+  ---
+  duration_ms: 1.540458
+  ...
+# Subtest: the unknown-baseline acknowledgement and the preview reach the wire (R3/R5)
+ok 419 - the unknown-baseline acknowledgement and the preview reach the wire (R3/R5)
+  ---
+  duration_ms: 0.044625
+  ...
+# Subtest: the hub's writes wait longer than the backend's 120 s merge (R2/U9)
+ok 420 - the hub's writes wait longer than the backend's 120 s merge (R2/U9)
+  ---
+  duration_ms: 0.141
+  ...
+# Subtest: the poll is 60 s, foreground-only, and gated on its own capability (R9)
+ok 421 - the poll is 60 s, foreground-only, and gated on its own capability (R9)
+  ---
+  duration_ms: 9.825916
+  ...
+# Subtest: without a hub item nothing renders, and the sidebar has ONE action store (R6/R9)
+ok 422 - without a hub item nothing renders, and the sidebar has ONE action store (R6/R9)
+  ---
+  duration_ms: 2.9425
+  ...
+# Subtest: same source editor stays mounted across definition refresh
+ok 423 - same source editor stays mounted across definition refresh
+  ---
+  duration_ms: 6.546208
+  ...
+# Subtest: every editor still reports scoped dirty state without replacing the draft
+ok 424 - every editor still reports scoped dirty state without replacing the draft
+  ---
+  duration_ms: 0.385958
+  ...
+# no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+# Subtest: normalizeChord: aliases, order, dedupe, validation
+ok 425 - normalizeChord: aliases, order, dedupe, validation
+  ---
+  duration_ms: 0.662875
+  ...
+# Subtest: chordFromEvent: the event shapes the recorder and dispatcher pass
+ok 426 - chordFromEvent: the event shapes the recorder and dispatcher pass
+  ---
+  duration_ms: 0.150417
+  ...
+# Subtest: display: glyph, caps and tokens match the mini view's own tables
+ok 427 - display: glyph, caps and tokens match the mini view's own tables
+  ---
+  duration_ms: 0.298042
+  ...
+# Subtest: captureRefusal: the four sentences, in precedence order
+ok 428 - captureRefusal: the four sentences, in precedence order
+  ---
+  duration_ms: 0.3805
+  ...
+# Subtest: effectiveChord and buildChordMap: override ?? default, first claim wins
+ok 429 - effectiveChord and buildChordMap: override ?? default, first claim wins
+  ---
+  duration_ms: 0.494333
+  ...
+# Subtest: sanitizeShortcutBindings: junk, unknown ids, reserved chords, duplicates
+ok 430 - sanitizeShortcutBindings: junk, unknown ids, reserved chords, duplicates
+  ---
+  duration_ms: 0.805875
+  ...
+# Subtest: all fifteen legacy browser mappings survive dormant, never dispatch, and remain refused
+ok 431 - all fifteen legacy browser mappings survive dormant, never dispatch, and remain refused
+  ---
+  duration_ms: 0.334542
+  ...
+# no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+# Subtest: the match matrix: defaults, overrides, exact modifier sets
+ok 432 - the match matrix: defaults, overrides, exact modifier sets
+  ---
+  duration_ms: 0.759167
+  ...
+# Subtest: the bails, in the RFC's order
+ok 433 - the bails, in the RFC's order
+  ---
+  duration_ms: 0.075667
+  ...
+# Subtest: an overlay owns its own keys (rule 4)
+ok 434 - an overlay owns its own keys (rule 4)
+  ---
+  duration_ms: 0.105917
+  ...
+# Subtest: a door-absent action is a no-op, in every door shape
+ok 435 - a door-absent action is a no-op, in every door shape
+  ---
+  duration_ms: 0.113334
+  ...
+# Subtest: the router is registered in the BUBBLE phase: a descendant's stopPropagation keeps it from firing
+ok 436 - the router is registered in the BUBBLE phase: a descendant's stopPropagation keeps it from firing
+  ---
+  duration_ms: 20.183792
+  ...
+# no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+# Subtest: the six ids are stable and unique, in registry order
+ok 437 - the six ids are stable and unique, in registry order
+  ---
+  duration_ms: 0.976167
+  ...
+# Subtest: every default parses, is unique, and is not reserved
+ok 438 - every default parses, is unique, and is not reserved
+  ---
+  duration_ms: 0.181333
+  ...
+# Subtest: the shipped defaults are the decided ones
+ok 439 - the shipped defaults are the decided ones
+  ---
+  duration_ms: 0.188333
+  ...
+# Subtest: every reserved entry is canonical, stated in the app's voice, and explained
+ok 440 - every reserved entry is canonical, stated in the app's voice, and explained
+  ---
+  duration_ms: 0.329833
+  ...
+# Subtest: the reserved inventory is exactly the decoded list
+ok 441 - the reserved inventory is exactly the decoded list
+  ---
+  duration_ms: 0.131833
+  ...
+# no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+# R15 actual store: 30 hydration/save/reload/downgrade cases + 3 explicit-edit roundtrips PASS; no live profile
+# Subtest: R15 actual store: all15 survive hydration, unrelated saves, repeat loads and downgrade; edits supersede
+ok 442 - R15 actual store: all15 survive hydration, unrelated saves, repeat loads and downgrade; edits supersede
+  ---
+  duration_ms: 4.26325
+  ...
+1..442
+# tests 442
+# suites 0
+# pass 441
+# fail 0
+# cancelled 0
+# skipped 1
+# todo 0
+# duration_ms 37738.296792

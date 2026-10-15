@@ -1,0 +1,74 @@
+GATE boot-only lease grant availableKiB=23204872 GiB=22.129890 swapMB=10645.5 memFreePct=41
+SKIPBUILD exact source/assets verified {"src/renderer/src/features/agent-hub/agent-hub-page.tsx": {"expected": "41899e9ec25984d84a9b42d9de04fb0fc042a911edbfa0af85df9f2634e4b813", "actual": "41899e9ec25984d84a9b42d9de04fb0fc042a911edbfa0af85df9f2634e4b813", "identical": true}, "src/renderer/src/features/agent-hub/hooks/use-hub-skills.ts": {"expected": "34a1b6bf2173e3e8a9a14666322c3dd93bc7000ca35372cfc23694070286843c", "actual": "34a1b6bf2173e3e8a9a14666322c3dd93bc7000ca35372cfc23694070286843c", "identical": true}, "src/renderer/src/shared/api/local-operator/desktop-hooks.ts": {"expected": "b68831aeff35aeb2dd61d0b8448b5eaff74759b3752eba77d514d0dc7ca51d48", "actual": "b68831aeff35aeb2dd61d0b8448b5eaff74759b3752eba77d514d0dc7ca51d48", "identical": true}, "scripts/renderer-driver.mjs": {"expected": "31610d3ee67a9e953b026714f46c133f17486d50e4450e1db6f81f68fc0b8a14", "actual": "31610d3ee67a9e953b026714f46c133f17486d50e4450e1db6f81f68fc0b8a14", "identical": true}, "docs/evidence/hub-links/harness/stub-daemon.mjs": {"expected": "2ec4a85a56df9c0adff6eb3f9c1aa7af10f1e638d3c2911b7b64e5fcbf645f4d", "actual": "2ec4a85a56df9c0adff6eb3f9c1aa7af10f1e638d3c2911b7b64e5fcbf645f4d", "identical": true}, "out/renderer/index.html": {"expected": "c930a863321a4ff1dd53d315f4ae69e815281c8c7eb889a9266519f3fc166bda", "actual": "c930a863321a4ff1dd53d315f4ae69e815281c8c7eb889a9266519f3fc166bda", "identical": true}, "out/main/index.js": {"expected": "9a0e2c5478d7c4b8188f0f9e27b5776453db3b6748d7a3ef735ee37132205046", "actual": "9a0e2c5478d7c4b8188f0f9e27b5776453db3b6748d7a3ef735ee37132205046", "identical": true}, "out/renderer/assets/agent-hub-page-DQIxKetH.js": {"expected": "d1ac59e9ff4a0729b2df5315cc352a901c25367e20010bfe8cad57afc5d056ee", "actual": "d1ac59e9ff4a0729b2df5315cc352a901c25367e20010bfe8cad57afc5d056ee", "identical": true}}
+GATE before core and origin availableKiB=23198532 GiB=22.123844 swapMB=10645.5 memFreePct=41
+WATCH 2026-10-15T01:35:21.528862-04:00 availableKiB 23191568 abortBelowKiB 18874368
+RELEASED CAP {"status": 200, "message": "Backend capabilities retrieved.", "result": {"desktop_contract": 1, "desktop_available": true, "desktop_auth": "bearer", "features": {"auth": 1, "settings": 1, "commands": 2, "catalogues": 1, "i18n": 1, "skill_catalogue": 1, "profile_catalogue": 1, "team_catalogue": 1, "hub_updates": 1, "hub_links": 1, "session_catalogue": 3, "session_catalogue_page": 1, "session_search": 1, "draft_preview": 1, "draft_selection": 1, "provider_catalogue": 1, "session_draft_warm": 1, "lifecycle": 1, "completion_ack": 1, "completion_ack_bulk": 1, "notification_contract": 1, "mcp": 1, "mcp_auth": 1, "mcp_catalog": 2, "radient": 1, "radient_org": 1, "team_bridge": 1, "session_variables": 1, "subagent_transcript": 1, "subagent_trajectory": 1, "session_move": 2, "frontend_replace": 1, "entry_ts": 1, "journal_order": 1, "peer_journal_source": 1, "open_frame": 1, "diagnostics": 1, "cost_channels": 1, "desktop_feed": 1, "desktop_presence": 1, "session_interrupt": 1, "agents_config": 1, "session_pins": 1, "session_archive": 1, "session_delete": 1, "tunnel": 1, "tunnel_setup": 1, "peers": 1, "session_transfer": 1, "aida": 1, "projects": 2, "approvals": 1, "projects_request_update": 1, "projects_force_done": 1, "input_mode": 1, "ask_attachments": 1, "stt": 1, "tts": 1, "supplements": 1, "code_requests": 1, "session_files": 1, "quota_notice": 1, "references": 1}, "language": "en"}}
+GATE before boot R-I-released-core-adapter-absent availableKiB=23205704 GiB=22.130684 swapMB=10645.5 memFreePct=41
+DRIVER 59906 R-I-released-core-adapter-absent
+WATCH 2026-10-15T01:35:24.686842-04:00 availableKiB 23205432 abortBelowKiB 18874368
+WATCH 2026-10-15T01:35:27.842748-04:00 availableKiB 23271456 abortBelowKiB 18874368
+WATCH 2026-10-15T01:35:30.962165-04:00 availableKiB 23269264 abortBelowKiB 18874368
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:18328)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[PASS] window mode is headless and the window is never shown or focused
+[PASS] Skills gate fetch observer validates its own positive control
+[PASS] released-core fallback retains selected Agents and hides Skills entry/actions
+[PASS] released-core fallback starts zero remote Skills list/detail queries
+[PASS] fallback panel geometry is observable without horizontal overflow
+[PASS] egress: zero CSP violations during the capture flow
+[PASS] egress: every renderer request went to the stub origin or an app-local scheme
+[PASS] egress: no renderer request names api.radienthq.com
+[PASS] egress: no non-loopback ESTABLISHED/SYN_SENT socket in the app's process tree (instantaneous probe, not a continuous audit)
+[PASS] no process from this run outlived its boot
+RESULT R-I-released-core-adapter-absent exit 0 PASS 16 FAIL 0
+REAP 59816 -15
+REAP 59813 -15
+GATE before positive fixture availableKiB=23272996 GiB=22.194859 swapMB=10637.5 memFreePct=42
+GATE before boot R-J-enabled-and-withdrawn availableKiB=23272936 GiB=22.194801 swapMB=10637.5 memFreePct=43
+DRIVER 60105 R-J-enabled-and-withdrawn
+WATCH 2026-10-15T01:35:34.020667-04:00 availableKiB 23272856 abortBelowKiB 18874368
+WATCH 2026-10-15T01:35:37.027383-04:00 availableKiB 23270352 abortBelowKiB 18874368
+WATCH 2026-10-15T01:35:40.085425-04:00 availableKiB 23269148 abortBelowKiB 18874368
+WATCH 2026-10-15T01:35:43.229189-04:00 availableKiB 23268108 abortBelowKiB 18874368
+WATCH 2026-10-15T01:35:46.305539-04:00 availableKiB 23266920 abortBelowKiB 18874368
+WATCH 2026-10-15T01:35:49.457411-04:00 availableKiB 23266980 abortBelowKiB 18874368
+WATCH 2026-10-15T01:35:52.613036-04:00 availableKiB 23264128 abortBelowKiB 18874368
+WATCH 2026-10-15T01:35:55.672853-04:00 availableKiB 23265028 abortBelowKiB 18874368
+WATCH 2026-10-15T01:35:58.801584-04:00 availableKiB 23264184 abortBelowKiB 18874368
+WATCH 2026-10-15T01:36:01.959882-04:00 availableKiB 23259132 abortBelowKiB 18874368
+WATCH 2026-10-15T01:36:05.118221-04:00 availableKiB 23256116 abortBelowKiB 18874368
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8127)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[PASS] window mode is headless and the window is never shown or focused
+[PASS] enabled Skills fetch observer validates its own positive control
+[PASS] the hub page exposes its scope chips
+[PASS] the org scope chip received the point (hit test)
+[PASS] the library settles into a state this run can photograph
+[PASS] the library names its source explicitly
+[PASS] explicit complete-adapter fixture actually fetches remote Skills
+[PASS] fixture withdraws only its future adapter capability
+[PASS] real capability watch withdraws an active Skills mount to safe Agents
+[PASS] capability loss starts no additional remote Skills reads
+[PASS] egress: zero CSP violations during the capture flow
+[PASS] egress: every renderer request went to the stub origin or an app-local scheme
+[PASS] egress: no renderer request names api.radienthq.com
+[PASS] egress: no non-loopback ESTABLISHED/SYN_SENT socket in the app's process tree (instantaneous probe, not a continuous audit)
+[PASS] no process from this run outlived its boot
+RESULT R-J-enabled-and-withdrawn exit 0 PASS 21 FAIL 0
+REAP 60099 -15
+GATE end availableKiB=23260856 GiB=22.183281 swapMB=10629.5 memFreePct=48
+CELL PASS
+REAP 60105 0
+REAP 60099 -15
+REAP 59906 0
+REAP 59816 -15
+REAP 59813 -15
+FINAL LISTENERS 

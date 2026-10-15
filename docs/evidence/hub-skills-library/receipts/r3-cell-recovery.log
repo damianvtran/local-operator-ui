@@ -1,0 +1,13 @@
+RESOURCE {"at": "2026-10-15T05:11:36.115194-04:00", "phase": "lease granted before ONE actual candidate build (setup recovery)", "availableKiB": 25843900, "availableGiB": 24.646663665771484, "swapFreeMiB": 1469.81, "swapUsedDiagnosticMiB": 10818.19, "memoryFreePct": 59}
+START 2026-10-15T05:11:36.118461-04:00 34138 r3-build-recovery.log
+RESOURCE {"at": "2026-10-15T05:11:41.132196-04:00", "phase": "mid-cell", "availableKiB": 25843516, "availableGiB": 24.646297454833984, "swapFreeMiB": 1469.81, "swapUsedDiagnosticMiB": 10818.19, "memoryFreePct": 59}
+RESOURCE {"at": "2026-10-15T05:11:46.153365-04:00", "phase": "mid-cell", "availableKiB": 25842640, "availableGiB": 24.645462036132812, "swapFreeMiB": 1469.81, "swapUsedDiagnosticMiB": 10818.19, "memoryFreePct": 54}
+RESOURCE {"at": "2026-10-15T05:11:51.179720-04:00", "phase": "mid-cell", "availableKiB": 25863876, "availableGiB": 24.665714263916016, "swapFreeMiB": 1469.81, "swapUsedDiagnosticMiB": 10818.19, "memoryFreePct": 56}
+END 34138 0 r3-build-recovery.log
+REAP 34138 0
+FINAL8127 1 
+Traceback (most recent call last):
+  File "/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/r3-cell.py", line 33, in <module>
+    html=W/'out/renderer/index.html';before=sha(html);text=html.read_text();text,n=re.subn(r'connect-src[^;]+;',"connect-src 'self' http://127.0.0.1:8127;",text);assert n==1
+                                                                                                                                                                         ^^^^
+AssertionError

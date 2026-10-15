@@ -202,6 +202,11 @@ export function HubUpdatePanel({
 					{hubMarkDetail(item, mark)}
 				</span>
 			</p>
+			{hub.upgradeMessage && (
+				<output className="block text-meta text-warning" data-hub-core-upgrade>
+					{hub.upgradeMessage}
+				</output>
+			)}
 			{decision && unknownBaseline && (
 				<p className="text-meta text-ink-muted">
 					Nothing records what you changed on this device. Either choice adds
@@ -221,8 +226,10 @@ export function HubUpdatePanel({
 					<Button
 						size="sm"
 						variant="outline"
-						aria-disabled={busy || undefined}
-						onClick={() => !busy && void hub.applyItem(kind, name)}
+						aria-disabled={busy || !hub.canWrite || undefined}
+						onClick={() =>
+							!busy && hub.canWrite && void hub.applyItem(kind, name)
+						}
 					>
 						{busy ? "Updating…" : "Update from the hub"}
 					</Button>
@@ -231,8 +238,10 @@ export function HubUpdatePanel({
 					<Button
 						size="sm"
 						variant="outline"
-						aria-disabled={busy || undefined}
-						onClick={() => !busy && void hub.retryItem(kind, name)}
+						aria-disabled={busy || !hub.canWrite || undefined}
+						onClick={() =>
+							!busy && hub.canWrite && void hub.retryItem(kind, name)
+						}
 					>
 						{busy ? "Retrying…" : "Retry"}
 					</Button>
@@ -242,17 +251,19 @@ export function HubUpdatePanel({
 						<Button
 							size="sm"
 							variant="outline"
-							aria-disabled={busy || undefined}
-							onClick={() => !busy && void previewNow()}
+							aria-disabled={busy || !hub.canWrite || undefined}
+							onClick={() => !busy && hub.canWrite && void previewNow()}
 						>
 							{busy && !preview ? "Loading…" : "Preview the differences"}
 						</Button>
 						<Button
 							size="sm"
 							variant="ghost"
-							aria-disabled={busy || undefined}
+							aria-disabled={busy || !hub.canWrite || undefined}
 							onClick={() =>
-								!busy && void hub.applyItem(kind, name, options("local"))
+								!busy &&
+								hub.canWrite &&
+								void hub.applyItem(kind, name, options("local"))
 							}
 						>
 							Keep mine where they differ
@@ -260,9 +271,11 @@ export function HubUpdatePanel({
 						<Button
 							size="sm"
 							variant="ghost"
-							aria-disabled={busy || undefined}
+							aria-disabled={busy || !hub.canWrite || undefined}
 							onClick={() =>
-								!busy && void hub.applyItem(kind, name, options("remote"))
+								!busy &&
+								hub.canWrite &&
+								void hub.applyItem(kind, name, options("remote"))
 							}
 						>
 							Use the hub's where they differ

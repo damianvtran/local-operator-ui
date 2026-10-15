@@ -1,0 +1,254 @@
+scripts/browser-page-controls.test.mjs:124:34 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    122 │ 	c.zoom(a, "in");
+    123 │ 	assert.equal(c.state(a).zoom, 1);
+  > 124 │ 	assert.match(c.state(a).notice, /Zoom is off for tabs an agent is driving/);
+        │ 	                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    125 │ 	assert.equal(c.state(b).notice, null);
+    126 │ 	assert.equal(PAGE_ZOOM_STEPS[0], 0.25);
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/browser-chord-renderer.test.mjs:21:27 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    19 │ 			name: "projection-accessor",
+    20 │ 			setup(b) {
+  > 21 │ 				b.onResolve({ filter: /browser-projection-store$/ }, () => ({
+       │ 				                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    22 │ 					path: "projection",
+    23 │ 					namespace: "test",
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/browser-chord-renderer.test.mjs:25:24 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    23 │ 					namespace: "test",
+    24 │ 				}));
+  > 25 │ 				b.onLoad({ filter: /.*/, namespace: "test" }, () => ({
+       │ 				                   ^^^^
+    26 │ 					contents:
+    27 │ 						"export function browserBridge(){return window.api.browser}",
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/panel-rail.test.mjs:866:4 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    864 │ 		assert.match(
+    865 │ 			api.item("canvas").getAttribute("aria-label"),
+  > 866 │ 			/^Canvas \(.+\), 3 files$/,
+        │ 			^^^^^^^^^^^^^^^^^^^^^^^^^^
+    867 │ 		);
+    868 │ 		api.store({ isBrowserPaneOpen: true });
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/panel-rail.test.mjs:887:4 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    885 │ 		assert.match(
+    886 │ 			api.item("canvas").getAttribute("aria-label"),
+  > 887 │ 			/^Canvas \(.+\), 3 files$/,
+        │ 			^^^^^^^^^^^^^^^^^^^^^^^^^^
+    888 │ 		);
+    889 │ 	});
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/panel-rail.test.mjs:968:4 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    966 │ 		assert.match(
+    967 │ 			api.item("browser").getAttribute("aria-label"),
+  > 968 │ 			/12 waiting/,
+        │ 			^^^^^^^^^^^^
+    969 │ 			"the name keeps the exact number",
+    970 │ 		);
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/panel-rail.test.mjs:995:4 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    993 │ 		assert.match(
+    994 │ 			api.item("ask").getAttribute("aria-label"),
+  > 995 │ 			/12 waiting or moved on/,
+        │ 			^^^^^^^^^^^^^^^^^^^^^^^^
+    996 │ 			"the name keeps the exact number",
+    997 │ 		);
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/panel-rail.test.mjs:1288:35 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    1286 │ 		assert.ok(idle.includes("hover:bg-row-hover"));
+    1287 │ 		assert.ok(!idle.includes("bg-row-selected"));
+  > 1288 │ 		assert.doesNotMatch(lit + idle, /#[0-9a-f]{3,8}\b/i, "no hex");
+         │ 		                                ^^^^^^^^^^^^^^^^^^^
+    1289 │ 		/* 32px targets: the `icon` size, centred in the 44px rail. */
+    1290 │ 		assert.ok(api.item("run").className.includes("size-8"));
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/panel-rail.test.mjs:1408:4 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    1406 │ 	const regions = read("src/renderer/src/features/chat/chat-regions.ts");
+    1407 │ 	assert.ok(
+  > 1408 │ 		!/panel-rail/.test(regions),
+         │ 		 ^^^^^^^^^^^^
+    1409 │ 		"the rail is reached through the header menu, not an F6 stop",
+    1410 │ 	);
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/panel-rail.test.mjs:1415:4 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    1413 │ 	);
+    1414 │ 	assert.ok(
+  > 1415 │ 		!/document\.addEventListener/.test(railSource),
+         │ 		 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    1416 │ 		"the rail binds no listener of its own: every assigned chord arrives through the one router (#928)",
+    1417 │ 	);
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/panel-rail.test.mjs:1424:23 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    1422 │ 		"src/renderer/src/shared/components/common/chat-layout.tsx",
+    1423 │ 	);
+  > 1424 │ 	assert.match(layout, /s\.rightSlotRoute\.mounted/);
+         │ 	                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    1425 │ 	assert.match(layout, /data-panel-rail-host=""/);
+    1426 │ 	/* A SIBLING after the measured column, not a child: the one fact that lets the
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/panel-rail.test.mjs:1425:23 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    1423 │ 	);
+    1424 │ 	assert.match(layout, /s\.rightSlotRoute\.mounted/);
+  > 1425 │ 	assert.match(layout, /data-panel-rail-host=""/);
+         │ 	                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+    1426 │ 	/* A SIBLING after the measured column, not a child: the one fact that lets the
+    1427 │ 	   resolver, the dock arithmetic and the chat floor stay untouched. */
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/panel-rail.test.mjs:1895:23 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    1893 │ 			api
+    1894 │ 				.$$('[role="menuitem"]')
+  > 1895 │ 				.filter((item) => /asks/i.test(item.textContent)).length,
+         │ 				                  ^^^^^^^
+    1896 │ 			0,
+    1897 │ 			"no asks row where no host offers a door",
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/panel-rail.test.mjs:2259:3 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    2257 │ 	assert.match(
+    2258 │ 		rail,
+  > 2259 │ 		/"pt-\[calc\(var\(--chrome-inset-end-h\)\+0\.25rem\)\]"/,
+         │ 		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    2260 │ 		"the container pads its top by the caption inset plus 4px",
+    2261 │ 	);
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/panel-rail.test.mjs:2264:3 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    2262 │ 	assert.doesNotMatch(
+    2263 │ 		rail,
+  > 2264 │ 		/className="h-\[max\(0\.25rem,var\(--chrome-inset-end-h\)\)\] w-full shrink-0"/,
+         │ 		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    2265 │ 		"the in-flow strut is gone: with the container's gap it put the item at 8px",
+    2266 │ 	);
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/panel-rail.test.mjs:2269:3 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    2267 │ 	assert.match(
+    2268 │ 		rail,
+  > 2269 │ 		/absolute inset-x-0 top-0 h-\[calc\(var\(--chrome-inset-end-h\)\+0\.25rem\)\]/,
+         │ 		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    2270 │ 		"the drag strip stays, out of the flex flow",
+    2271 │ 	);
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/panel-rail.test.mjs:2296:21 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    2294 │ 		"src/renderer/src/shared/components/navigation/panel-rail.tsx",
+    2295 │ 	);
+  > 2296 │ 	assert.match(rail, /absolute -top-0\.5 -right-0\.5 flex/);
+         │ 	                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    2297 │ 	assert.ok(
+    2298 │ 		rail.includes("text-meta-sm"),
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/panel-rail.test.mjs:2302:21 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    2300 │ 	);
+    2301 │ 	assert.ok(!rail.includes("text-[0.6875rem]"));
+  > 2302 │ 	assert.match(rail, /h-3\.5 min-w-3\.5/);
+         │ 	                   ^^^^^^^^^^^^^^^^^^^
+    2303 │ 	assert.ok(
+    2304 │ 		rail.includes("ring-2 ring-surface"),
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+Checked 8 files in 41ms. No fixes applied.
+Found 18 warnings.

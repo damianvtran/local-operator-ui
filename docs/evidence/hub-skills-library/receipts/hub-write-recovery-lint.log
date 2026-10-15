@@ -1,0 +1,100 @@
+scripts/hub-mutation-safety.test.mjs:66:16 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    64 │ 			setup(b) {
+    65 │ 				b.onResolve(
+  > 66 │ 					{ filter: /^@shared\/hooks\/use-connectivity-status$/ },
+       │ 					          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    67 │ 					() => ({ path: "health", namespace: "guard-fixture" }),
+    68 │ 				);
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/hub-mutation-safety.test.mjs:69:27 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    67 │ 					() => ({ path: "health", namespace: "guard-fixture" }),
+    68 │ 				);
+  > 69 │ 				b.onResolve({ filter: /^\.\/desktop-api$/ }, (args) =>
+       │ 				                      ^^^^^^^^^^^^^^^^^^^
+    70 │ 					/hub-(?:link-hooks|link-actions|hooks)\.ts$/.test(args.importer)
+    71 │ 						? { path: "transport", namespace: "guard-fixture" }
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/hub-mutation-safety.test.mjs:70:6 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    68 │ 				);
+    69 │ 				b.onResolve({ filter: /^\.\/desktop-api$/ }, (args) =>
+  > 70 │ 					/hub-(?:link-hooks|link-actions|hooks)\.ts$/.test(args.importer)
+       │ 					^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    71 │ 						? { path: "transport", namespace: "guard-fixture" }
+    72 │ 						: undefined,
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/hub-mutation-safety.test.mjs:74:24 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    72 │ 						: undefined,
+    73 │ 				);
+  > 74 │ 				b.onLoad({ filter: /.*/, namespace: "guard-fixture" }, (args) => ({
+       │ 				                   ^^^^
+    75 │ 					contents:
+    76 │ 						args.path === "health"
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/hub-mutation-safety.test.mjs:111:31 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    109 │ test("capture labels obey the real IPC length guard and policy path follows the actual contract", () => {
+    110 │ 	const source = readFileSync("src/main/dev-driver-ipc.ts", "utf8");
+  > 111 │ 	const literal = source.match(/^const FRAME_LABEL = \/(.*)\/;$/m);
+        │ 	                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    112 │ 	assert(literal, "read the actual capture validator, never invent a weaker guard");
+    113 │ 	const validator = new RegExp(literal[1]);
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/hub-mutation-safety.test.mjs:426:4 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    424 │ 		assert.match(
+    425 │ 			exposed.safety.upgradeMessage,
+  > 426 │ 			/Hub changes require core 0\.72\.1 or newer/,
+        │ 			^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    427 │ 		);
+    428 │ 		assert.doesNotMatch(exposed.safety.upgradeMessage, /outdated|old version/i);
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/hub-mutation-safety.test.mjs:428:54 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    426 │ 			/Hub changes require core 0\.72\.1 or newer/,
+    427 │ 		);
+  > 428 │ 		assert.doesNotMatch(exposed.safety.upgradeMessage, /outdated|old version/i);
+        │ 		                                                   ^^^^^^^^^^^^^^^^^^^^^^^
+    429 │ 		console.log(
+    430 │ 			`actual hooks: ${positive} fixed-version arms transmitted; ${retained.length * 4} stale old/unknown/disconnected/identity callbacks -> ZERO additional writes; normal poll only blocks Hub writes, no upgrade flash`,
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+Checked 1 file in 13ms. Fixed 1 file.
+Found 7 warnings.
