@@ -21,6 +21,7 @@
  * file itself to be part of the contract.
  */
 
+import enUiAgentMessages from "./catalogues/en/ui.agentMessages.json";
 import enUiAgents from "./catalogues/en/ui.agents.json";
 import enUiBrowser from "./catalogues/en/ui.browser.json";
 import enUiCanvas from "./catalogues/en/ui.canvas.json";
@@ -40,6 +41,7 @@ import frUiSettings from "./catalogues/fr/ui.settings.json";
 
 /** The bundled en catalogue: every `src/i18n/catalogues/en` message, flat. */
 export const bundledEnglish: Readonly<Record<string, string>> = {
+	...enUiAgentMessages,
 	...enUiAgents,
 	...enUiBrowser,
 	...enUiCanvas,
@@ -69,6 +71,21 @@ export const bundledCatalogues: Readonly<
 
 /** One entry per bundled message id, shaped by the message's own arguments. */
 export type MessageParams = {
+	"ui.agentMessages.dialog.account_guard_unavailable": undefined;
+	"ui.agentMessages.dialog.activities": undefined;
+	"ui.agentMessages.dialog.close": undefined;
+	"ui.agentMessages.dialog.consent_changed": undefined;
+	"ui.agentMessages.dialog.consent_unavailable": undefined;
+	"ui.agentMessages.dialog.enable": undefined;
+	"ui.agentMessages.dialog.enabling": undefined;
+	"ui.agentMessages.dialog.failure": undefined;
+	"ui.agentMessages.dialog.later": undefined;
+	"ui.agentMessages.dialog.lead": undefined;
+	"ui.agentMessages.dialog.local_failure": undefined;
+	"ui.agentMessages.dialog.not_now": undefined;
+	"ui.agentMessages.dialog.reach": undefined;
+	"ui.agentMessages.dialog.title": undefined;
+	"ui.agentMessages.dialog.validation_detail": { field: string; rule: string };
 	"ui.canvas.files.archives": undefined;
 	"ui.canvas.files.asc": undefined;
 	"ui.canvas.files.audio": undefined;

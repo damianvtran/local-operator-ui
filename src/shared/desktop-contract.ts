@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { agentMessagesBoundarySchema } from "./agent-messages-contract";
 // The feed's frame family lives beside the session stream's, so the two cannot
 // drift into disagreeing about the envelope they deliberately share.
 import type { DesktopFeedFrame } from "./desktop-session-contract";
@@ -2975,6 +2976,26 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	z.object({ op: z.literal("auth.cancel"), id }).strict(),
 	z.object({ op: z.literal("auth.key"), provider: id, value: secret }).strict(),
 	z.object({ op: z.literal("auth.logout"), provider: id }).strict(),
+	/*
+	 * Local bearer only: the harness owns Radient OAuth and organization policy.
+	 * The account guard is local-only and is stripped before the hub write.
+	 */
+	z
+		.object({
+			op: z.literal("agent_messages.status"),
+			boundary: agentMessagesBoundarySchema,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("agent_messages.enable"),
+			expected_account_id: id,
+			tenant_id: id,
+			state: z.literal("active"),
+			consent_version: z.string().min(1).max(128),
+			consented_via: z.literal("dialog"),
+		})
+		.strict(),
 	z.object({ op: z.literal("settings.list") }).strict(),
 	z
 		.object({
@@ -4978,6 +4999,7 @@ export const DESKTOP_FOREGROUND_REQUIRED_MESSAGE =
  */
 const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"capabilities",
+	"agent_messages.status",
 	"accounts.list",
 	"analytics.get",
 	"analytics.models",
@@ -7381,6 +7403,23 @@ export function desktopEndpoint(request: DesktopRequest): {
 			return {
 				path: `/v1/auth/providers/${request.provider}/credentials`,
 				method: "DELETE",
+			};
+		case "agent_messages.status":
+			return {
+				path: `/v1/desktop/team-bridge/status?boundary=${request.boundary}`,
+				method: "GET",
+			};
+		case "agent_messages.enable":
+			return {
+				path: "/v1/desktop/team-bridge/settings",
+				method: "PUT",
+				body: {
+					expected_account_id: request.expected_account_id,
+					tenant_id: request.tenant_id,
+					state: request.state,
+					consent_version: request.consent_version,
+					consented_via: request.consented_via,
+				},
 			};
 		case "settings.list":
 			return { path: "/v1/settings", method: "GET" };
