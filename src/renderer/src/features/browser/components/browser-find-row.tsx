@@ -62,7 +62,13 @@ export function BrowserFindRow({
 	return (
 		<div
 			data-tour-tag="browser-find-row"
-			className="flex shrink-0 items-center gap-2 border-control border-b bg-elevated px-2 py-1"
+			className="@container/bfind flex shrink-0 flex-wrap items-center gap-2 border-control border-b bg-elevated px-2 py-1"
+			onKeyDown={(event) => {
+				if (event.nativeEvent.isComposing || event.key !== "Escape") return;
+				event.preventDefault();
+				event.stopPropagation();
+				void close();
+			}}
 		>
 			<Input
 				ref={input}
@@ -75,17 +81,13 @@ export function BrowserFindRow({
 				key={find.tabId}
 				defaultValue={find.query}
 				maxLength={4096}
-				className="min-w-0 max-w-72 flex-1 focus-visible:outline-offset-1!"
+				className="min-w-32 max-w-72 flex-1 focus-visible:outline-offset-1!"
 				onChange={(event) =>
 					void chrome.pageControl(find.tabId, "search", event.target.value)
 				}
 				onKeyDown={(event) => {
 					if (event.nativeEvent.isComposing) return;
-					if (event.key === "Escape") {
-						event.preventDefault();
-						event.stopPropagation();
-						void close();
-					} else if (event.key === "Enter") {
+					if (event.key === "Enter") {
 						event.preventDefault();
 						void step(!event.shiftKey);
 					}
@@ -94,53 +96,57 @@ export function BrowserFindRow({
 			<output
 				aria-live="polite"
 				aria-atomic="true"
-				className="min-w-20 text-body-sm text-ink-muted"
+				className="order-1 min-w-0 max-w-full text-body-sm text-ink-muted @max-[480px]/bfind:order-2 @max-[480px]/bfind:basis-full"
 			>
 				{find.query
 					? find.pending
 						? "Searching…"
 						: find.unreported
-							? "No result reported"
+							? "No result reported. Press Enter to search again."
 							: find.matches
 								? `${find.ordinal} of ${find.matches}`
 								: "No matches"
 					: ""}
 			</output>
-			<Tooltip side="top" content={`Previous match (${previousChord.glyph})`}>
-				<Button
-					variant="ghost"
-					size="icon-sm"
-					aria-label="Previous match"
-					aria-keyshortcuts={previousChord.aria}
-					disabled={!find.matches}
-					onClick={() => void step(false)}
-				>
-					<ChevronUp aria-hidden className="size-4" />
-				</Button>
-			</Tooltip>
-			<Tooltip side="top" content={`Next match (${nextChord.glyph})`}>
-				<Button
-					variant="ghost"
-					size="icon-sm"
-					aria-label="Next match"
-					aria-keyshortcuts={nextChord.aria}
-					disabled={!find.matches}
-					onClick={() => void step(true)}
-				>
-					<ChevronDown aria-hidden className="size-4" />
-				</Button>
-			</Tooltip>
-			<Tooltip side="top" content={`Close find (${closeChord.glyph})`}>
-				<Button
-					variant="ghost"
-					size="icon-sm"
-					aria-label="Close find"
-					aria-keyshortcuts={closeChord.aria}
-					onClick={() => void close()}
-				>
-					<X aria-hidden className="size-4" />
-				</Button>
-			</Tooltip>
+			{/* Keep controls together; the longest recovery message yields a row in
+			    a narrow pane instead of stealing the editor/Close target's width. */}
+			<div className="order-2 flex shrink-0 items-center gap-2 @max-[480px]/bfind:order-1">
+				<Tooltip side="top" content={`Previous match (${previousChord.glyph})`}>
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						aria-label="Previous match"
+						aria-keyshortcuts={previousChord.aria}
+						disabled={!find.query || find.pending}
+						onClick={() => void step(false)}
+					>
+						<ChevronUp aria-hidden className="size-4" />
+					</Button>
+				</Tooltip>
+				<Tooltip side="top" content={`Next match (${nextChord.glyph})`}>
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						aria-label="Next match"
+						aria-keyshortcuts={nextChord.aria}
+						disabled={!find.query || find.pending}
+						onClick={() => void step(true)}
+					>
+						<ChevronDown aria-hidden className="size-4" />
+					</Button>
+				</Tooltip>
+				<Tooltip side="top" content={`Close find (${closeChord.glyph})`}>
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						aria-label="Close find"
+						aria-keyshortcuts={closeChord.aria}
+						onClick={() => void close()}
+					>
+						<X aria-hidden className="size-4" />
+					</Button>
+				</Tooltip>
+			</div>
 		</div>
 	);
 }

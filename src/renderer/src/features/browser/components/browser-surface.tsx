@@ -291,6 +291,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 		root: chordRoot,
 		closeTab,
 		findReturnToPage,
+		openFind,
 	} = useBrowserChords(chrome, tabs, hostSessionId, addressRef);
 
 	// THE ONE CLOCK (spec 3.3). The queue model owns the 1s interval and the
@@ -598,11 +599,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 				// anything arrived. The newest save and the session count ride the projection,
 				// so the control cannot describe a save the host does not have.
 				downloadsRecent={chrome.state?.transfers?.recent ?? null}
-				onFind={() => {
-					findReturnToPage.current = false;
-					if (state?.activeTabId != null)
-						void chrome.pageControl(state.activeTabId, "open");
-				}}
+				onFind={() => void openFind("chrome")}
 				pageZoom={state?.pageControls?.zoom ?? 1}
 				onResetZoom={() => {
 					if (state?.activeTabId != null)

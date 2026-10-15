@@ -151,6 +151,7 @@ async function mount(render) {
 		window,
 		document: window.document,
 		HTMLElement: window.HTMLElement,
+		HTMLInputElement: window.HTMLInputElement,
 		Element: window.Element,
 		Node: window.Node,
 		Event: window.Event,
