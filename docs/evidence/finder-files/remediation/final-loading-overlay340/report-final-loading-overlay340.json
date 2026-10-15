@@ -1,0 +1,695 @@
+{
+  "label": "final-loading-overlay340",
+  "session": "b1f1de000001",
+  "window": {
+    "width": 920,
+    "height": 800
+  },
+  "themes": {
+    "dark": {
+      "loadingFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/final-loading-overlay340/finder-final-loading-overlay340-loading-dark.png",
+      "frame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/final-loading-overlay340/files-final-loading-overlay340-dark.png",
+      "reading": {
+        "innerWidth": 920,
+        "innerHeight": 800,
+        "dock": {
+          "x": 536,
+          "y": 32,
+          "w": 340,
+          "h": 768
+        },
+        "dockMode": "overlay",
+        "scroller": {
+          "x": 536,
+          "y": 152,
+          "w": 340,
+          "h": 648
+        },
+        "rowCount": 18,
+        "rows": [
+          {
+            "text": "file-4804.png 0 KB",
+            "box": {
+              "x": 544,
+              "y": 184,
+              "w": 156,
+              "h": 139
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 640,
+              "naturalHeight": 480,
+              "srcScheme": "blob",
+              "box": {
+                "x": 548,
+                "y": 188,
+                "w": 148,
+                "h": 111
+              }
+            }
+          },
+          {
+            "text": "file-4808.png 0 KB",
+            "box": {
+              "x": 704,
+              "y": 184,
+              "w": 156,
+              "h": 139
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 640,
+              "naturalHeight": 480,
+              "srcScheme": "blob",
+              "box": {
+                "x": 708,
+                "y": 188,
+                "w": 148,
+                "h": 111
+              }
+            }
+          },
+          {
+            "text": "file-4812.png 0 KB",
+            "box": {
+              "x": 544,
+              "y": 327,
+              "w": 156,
+              "h": 139
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 640,
+              "naturalHeight": 480,
+              "srcScheme": "blob",
+              "box": {
+                "x": 548,
+                "y": 331,
+                "w": 148,
+                "h": 111
+              }
+            }
+          },
+          {
+            "text": "file-4816.png 0 KB",
+            "box": {
+              "x": 704,
+              "y": 327,
+              "w": 156,
+              "h": 139
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 640,
+              "naturalHeight": 480,
+              "srcScheme": "blob",
+              "box": {
+                "x": 708,
+                "y": 331,
+                "w": 148,
+                "h": 111
+              }
+            }
+          },
+          {
+            "text": "file-4820.png 0 KB",
+            "box": {
+              "x": 544,
+              "y": 470,
+              "w": 156,
+              "h": 139
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 640,
+              "naturalHeight": 480,
+              "srcScheme": "blob",
+              "box": {
+                "x": 548,
+                "y": 474,
+                "w": 148,
+                "h": 111
+              }
+            }
+          },
+          {
+            "text": "file-4824.png 0 KB",
+            "box": {
+              "x": 704,
+              "y": 470,
+              "w": 156,
+              "h": 139
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 640,
+              "naturalHeight": 480,
+              "srcScheme": "blob",
+              "box": {
+                "x": 708,
+                "y": 474,
+                "w": 148,
+                "h": 111
+              }
+            }
+          },
+          {
+            "text": "file-4828.png 0 KB",
+            "box": {
+              "x": 544,
+              "y": 613,
+              "w": 156,
+              "h": 139
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 640,
+              "naturalHeight": 480,
+              "srcScheme": "blob",
+              "box": {
+                "x": 548,
+                "y": 617,
+                "w": 148,
+                "h": 111
+              }
+            }
+          },
+          {
+            "text": "file-4832.png 0 KB",
+            "box": {
+              "x": 704,
+              "y": 613,
+              "w": 156,
+              "h": 139
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 640,
+              "naturalHeight": 480,
+              "srcScheme": "blob",
+              "box": {
+                "x": 708,
+                "y": 617,
+                "w": 148,
+                "h": 111
+              }
+            }
+          },
+          {
+            "text": "file-4836.png 0 KB",
+            "box": {
+              "x": 544,
+              "y": 756,
+              "w": 156,
+              "h": 139
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 640,
+              "naturalHeight": 480,
+              "srcScheme": "blob",
+              "box": {
+                "x": 548,
+                "y": 760,
+                "w": 148,
+                "h": 111
+              }
+            }
+          },
+          {
+            "text": "file-4840.png 0 KB",
+            "box": {
+              "x": 704,
+              "y": 756,
+              "w": 156,
+              "h": 139
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 640,
+              "naturalHeight": 480,
+              "srcScheme": "blob",
+              "box": {
+                "x": 708,
+                "y": 760,
+                "w": 148,
+                "h": 111
+              }
+            }
+          },
+          {
+            "text": "file-4844.png 0 KB",
+            "box": {
+              "x": 544,
+              "y": 899,
+              "w": 156,
+              "h": 139
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "file-4848.png 0 KB",
+            "box": {
+              "x": 704,
+              "y": 899,
+              "w": 156,
+              "h": 139
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "file-4852.png 0 KB",
+            "box": {
+              "x": 544,
+              "y": 1042,
+              "w": 156,
+              "h": 139
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "file-4856.png 0 KB",
+            "box": {
+              "x": 704,
+              "y": 1042,
+              "w": 156,
+              "h": 139
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "file-4860.png 0 KB",
+            "box": {
+              "x": 544,
+              "y": 1185,
+              "w": 156,
+              "h": 139
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "file-4864.png 0 KB",
+            "box": {
+              "x": 704,
+              "y": 1185,
+              "w": 156,
+              "h": 139
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "file-4868.png 0 KB",
+            "box": {
+              "x": 544,
+              "y": 1328,
+              "w": 156,
+              "h": 139
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "file-4872.png 0 KB",
+            "box": {
+              "x": 704,
+              "y": 1328,
+              "w": 156,
+              "h": 139
+            },
+            "insideDock": true,
+            "thumb": null
+          }
+        ],
+        "header": "↑ Filter 5,002 files · Loading session files… Open folder Images 51 file-4804.png 0 KB file-4808.png 0 KB file-4812.png 0 KB file-4816.png 0 KB file-4820.png 0 "
+      }
+    },
+    "light": {
+      "loadingFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/final-loading-overlay340/finder-final-loading-overlay340-loading-light.png",
+      "frame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/final-loading-overlay340/files-final-loading-overlay340-light.png",
+      "reading": {
+        "innerWidth": 920,
+        "innerHeight": 800,
+        "dock": {
+          "x": 536,
+          "y": 32,
+          "w": 340,
+          "h": 768
+        },
+        "dockMode": "overlay",
+        "scroller": {
+          "x": 536,
+          "y": 152,
+          "w": 340,
+          "h": 648
+        },
+        "rowCount": 18,
+        "rows": [
+          {
+            "text": "file-4404.png 0 KB",
+            "box": {
+              "x": 544,
+              "y": 184,
+              "w": 156,
+              "h": 139
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 640,
+              "naturalHeight": 480,
+              "srcScheme": "blob",
+              "box": {
+                "x": 548,
+                "y": 188,
+                "w": 148,
+                "h": 111
+              }
+            }
+          },
+          {
+            "text": "file-4408.png 0 KB",
+            "box": {
+              "x": 704,
+              "y": 184,
+              "w": 156,
+              "h": 139
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 640,
+              "naturalHeight": 480,
+              "srcScheme": "blob",
+              "box": {
+                "x": 708,
+                "y": 188,
+                "w": 148,
+                "h": 111
+              }
+            }
+          },
+          {
+            "text": "file-4412.png 0 KB",
+            "box": {
+              "x": 544,
+              "y": 327,
+              "w": 156,
+              "h": 139
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 640,
+              "naturalHeight": 480,
+              "srcScheme": "blob",
+              "box": {
+                "x": 548,
+                "y": 331,
+                "w": 148,
+                "h": 111
+              }
+            }
+          },
+          {
+            "text": "file-4416.png 0 KB",
+            "box": {
+              "x": 704,
+              "y": 327,
+              "w": 156,
+              "h": 139
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 640,
+              "naturalHeight": 480,
+              "srcScheme": "blob",
+              "box": {
+                "x": 708,
+                "y": 331,
+                "w": 148,
+                "h": 111
+              }
+            }
+          },
+          {
+            "text": "file-4420.png 0 KB",
+            "box": {
+              "x": 544,
+              "y": 470,
+              "w": 156,
+              "h": 139
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 640,
+              "naturalHeight": 480,
+              "srcScheme": "blob",
+              "box": {
+                "x": 548,
+                "y": 474,
+                "w": 148,
+                "h": 111
+              }
+            }
+          },
+          {
+            "text": "file-4424.png 0 KB",
+            "box": {
+              "x": 704,
+              "y": 470,
+              "w": 156,
+              "h": 139
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 640,
+              "naturalHeight": 480,
+              "srcScheme": "blob",
+              "box": {
+                "x": 708,
+                "y": 474,
+                "w": 148,
+                "h": 111
+              }
+            }
+          },
+          {
+            "text": "file-4428.png 0 KB",
+            "box": {
+              "x": 544,
+              "y": 613,
+              "w": 156,
+              "h": 139
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 640,
+              "naturalHeight": 480,
+              "srcScheme": "blob",
+              "box": {
+                "x": 548,
+                "y": 617,
+                "w": 148,
+                "h": 111
+              }
+            }
+          },
+          {
+            "text": "file-4432.png 0 KB",
+            "box": {
+              "x": 704,
+              "y": 613,
+              "w": 156,
+              "h": 139
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 640,
+              "naturalHeight": 480,
+              "srcScheme": "blob",
+              "box": {
+                "x": 708,
+                "y": 617,
+                "w": 148,
+                "h": 111
+              }
+            }
+          },
+          {
+            "text": "file-4436.png 0 KB",
+            "box": {
+              "x": 544,
+              "y": 756,
+              "w": 156,
+              "h": 139
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 640,
+              "naturalHeight": 480,
+              "srcScheme": "blob",
+              "box": {
+                "x": 548,
+                "y": 760,
+                "w": 148,
+                "h": 111
+              }
+            }
+          },
+          {
+            "text": "file-4440.png 0 KB",
+            "box": {
+              "x": 704,
+              "y": 756,
+              "w": 156,
+              "h": 139
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 640,
+              "naturalHeight": 480,
+              "srcScheme": "blob",
+              "box": {
+                "x": 708,
+                "y": 760,
+                "w": 148,
+                "h": 111
+              }
+            }
+          },
+          {
+            "text": "file-4444.png 0 KB",
+            "box": {
+              "x": 544,
+              "y": 899,
+              "w": 156,
+              "h": 139
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "file-4448.png 0 KB",
+            "box": {
+              "x": 704,
+              "y": 899,
+              "w": 156,
+              "h": 139
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "file-4452.png 0 KB",
+            "box": {
+              "x": 544,
+              "y": 1042,
+              "w": 156,
+              "h": 139
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "file-4456.png 0 KB",
+            "box": {
+              "x": 704,
+              "y": 1042,
+              "w": 156,
+              "h": 139
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "file-4460.png 0 KB",
+            "box": {
+              "x": 544,
+              "y": 1185,
+              "w": 156,
+              "h": 139
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "file-4464.png 0 KB",
+            "box": {
+              "x": 704,
+              "y": 1185,
+              "w": 156,
+              "h": 139
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "file-4468.png 0 KB",
+            "box": {
+              "x": 544,
+              "y": 1328,
+              "w": 156,
+              "h": 139
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "file-4472.png 0 KB",
+            "box": {
+              "x": 704,
+              "y": 1328,
+              "w": 156,
+              "h": 139
+            },
+            "insideDock": true,
+            "thumb": null
+          }
+        ],
+        "header": "↑ Filter 5,002 files · Loading session files… Open folder Images 151 file-4404.png 0 KB file-4408.png 0 KB file-4412.png 0 KB file-4416.png 0 KB file-4420.png 0"
+      }
+    }
+  },
+  "facts": {
+    "windowMode": "headless",
+    "appVersion": "0.34.42",
+    "platform": "darwin",
+    "title": "Local Operator",
+    "windowSize": {
+      "width": 920,
+      "height": 800
+    },
+    "contentBounds": {
+      "width": 920,
+      "height": 800
+    },
+    "visible": false,
+    "focused": false,
+    "minimized": false,
+    "frames": [],
+    "outDir": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/final-loading-overlay340"
+  }
+}

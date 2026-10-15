@@ -6,6 +6,7 @@ import {
 	DropdownMenuTrigger,
 	Tooltip,
 } from "@shared/components/ui";
+import { cn } from "@shared/lib/utils";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import {
 	ClipboardCopy,
@@ -17,7 +18,9 @@ import {
 	FolderOpen,
 	LayoutGrid,
 	Link,
+	Maximize2,
 } from "lucide-react";
+import { t } from "../../../../../i18n";
 import { AttachmentGoneError } from "../canonical/use-attachment-url";
 import {
 	type ImageAction,
@@ -58,6 +61,18 @@ import {
  * `supplement-row.tsx` ships for files.
  */
 export type ImageActionsMenuProps = {
+	onExpand?: () => void;
+	/** Controlled only by Finder's context/key menu; ordinary callers stay uncontrolled. */
+	open?: boolean;
+	onOpenChange?: (open: boolean) => void;
+	/** Finder's roving row is visible; its hover-only ellipsis is not a safe
+	 * focus landing. Other surfaces keep Radix's normal trigger restoration. */
+	onCloseAutoFocus?: (event: Event) => void;
+	triggerTabIndex?: number;
+	/** Resolves a real local path only when a path action is explicitly chosen. */
+	resolvePath?: () => Promise<string>;
+	missing?: boolean;
+
 	/**
 	 * The source string the picture came from: a path, `file://`, `data:`,
 	 * `blob:` or `http(s):`. Classified by `classifyAttachmentSource`, which is
@@ -106,6 +121,7 @@ export type ImageActionsMenuProps = {
 
 /** One icon per entry, keyed by the stable id the matrix returns. */
 const ACTION_ICONS: Record<ImageActionId, React.ReactNode> = {
+	"expand-image": <Maximize2 aria-hidden="true" />,
 	"open-file": <FileIcon aria-hidden="true" />,
 	"show-in-canvas": <LayoutGrid aria-hidden="true" />,
 	"save-as": <Download aria-hidden="true" />,
@@ -132,8 +148,15 @@ export const ImageActionsMenu = ({
 	file,
 	src,
 	label,
+	open,
+	onOpenChange,
+	onCloseAutoFocus,
+	triggerTabIndex,
+	resolvePath,
+	missing,
 	onShowInCanvas,
 	mediaKind,
+	onExpand,
 	saveName,
 	resolveBytes,
 	tooltip = "Image actions",
@@ -144,7 +167,13 @@ export const ImageActionsMenu = ({
 		canShowInCanvas: Boolean(onShowInCanvas),
 		source: src ?? file,
 		mediaKind,
-	}).filter((action) => action.id !== "save-as" || Boolean(saveName));
+		artifactPathActions: Boolean(resolvePath),
+		canExpand: Boolean(onExpand),
+	}).filter(
+		(action) =>
+			(action.id !== "save-as" || Boolean(saveName)) &&
+			(!missing || action.id === "copy-file-path"),
+	);
 	if (actions.length === 0) return null;
 
 	/**
@@ -218,12 +247,26 @@ export const ImageActionsMenu = ({
 		}
 	};
 
-	const perform = (action: ImageAction) => {
+	const perform = async (action: ImageAction) => {
 		// `barePath` once, here: the bridge and both OS doors speak bare paths,
 		// and a `file://` spelling is the same path (the rule `canvas-document.ts`
 		// strips by).
-		const path = barePath(file);
+		let path = barePath(file);
+		if (
+			resolvePath &&
+			["open-file", "open-folder", "copy-file-path"].includes(action.id)
+		) {
+			try {
+				path = await resolvePath();
+			} catch {
+				showErrorToast(t("ui.canvas.files.prepareError"));
+				return;
+			}
+		}
 		switch (action.id) {
+			case "expand-image":
+				onExpand?.();
+				return;
 			case "open-file":
 				void openLocalTarget(path);
 				return;
@@ -262,7 +305,7 @@ export const ImageActionsMenu = ({
 	const resolvedAriaLabel = ariaLabel ?? `Actions for ${label ?? "this image"}`;
 
 	return (
-		<DropdownMenu>
+		<DropdownMenu open={open} onOpenChange={onOpenChange}>
 			<Tooltip content={tooltip}>
 				<DropdownMenuTrigger asChild>
 					<Button
@@ -284,6 +327,7 @@ export const ImageActionsMenu = ({
 						 */
 						className="bg-accent-wash"
 						aria-label={resolvedAriaLabel}
+						tabIndex={triggerTabIndex}
 						// The trigger sits inside a clickable picture; without this the
 						// picture's own press (expansion) fires behind the menu.
 						onClick={(e) => e.stopPropagation()}
@@ -294,10 +338,19 @@ export const ImageActionsMenu = ({
 			</Tooltip>
 
 			<DropdownMenuContent
+				onCloseAutoFocus={onCloseAutoFocus}
 				align="end"
 				className="min-w-45"
 				onClick={(e) => e.stopPropagation()}
 			>
+				{resolvePath && (
+					<div
+						role="note"
+						className={cn("max-w-64 px-2 py-1 text-meta text-ink-muted")}
+					>
+						{t("ui.canvas.files.pathCopyNote")}
+					</div>
+				)}
 				{actions.map((action) => (
 					<DropdownMenuItem key={action.id} onSelect={() => perform(action)}>
 						{ACTION_ICONS[action.id]}
