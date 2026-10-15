@@ -16,7 +16,7 @@
  * unknown-origin row the explicit source confirmation is for. Every op it has no
  * answer for is answered 503 and named on stderr, so a scene that needs one shows
  * up as a missing route rather than as a screen that quietly did not paint.
-*
+ *
  * THE SKILLS LIBRARY (2026-10-15, `--scene hub-skills`): the `org_skills.list` /
  * `org_skill.get` radient ops and the public `/v1/skills` routes this file now
  * answers exist for that scene; its variant flags (`--skills-remote-empty`,
@@ -51,8 +51,14 @@ const PORT = Number(arg("port", "18234"));
  * `--signed-out` run photographs the sign-in-to-publish affordance instead.
  */
 const SIGNED_OUT = process.argv.includes("--signed-out");
+// Explicit fixture version is read by MAIN from /health, never inferred from a
+// capability or from the app build. The default remains an unknown dev stamp.
+const CORE_VERSION = arg("core-version", "0.0.0-stub");
 /** Signed in, but no org membership: no org chip, so the public scope is the only one. */
 const SKILLS_SCOPE_PUBLIC = process.argv.includes("--skills-scope-public");
+/** Positive-only future-adapter fixture. Released core does not advertise it. */
+const SKILLS_ADAPTER = process.argv.includes("--skills-adapter");
+let skillsAdapterAvailable = SKILLS_ADAPTER;
 const SKILLS_REMOTE_EMPTY = process.argv.includes("--skills-remote-empty");
 const SKILLS_UNSUPPORTED = process.argv.includes("--skills-unsupported");
 const SKILLS_LATENCY_MS = Number(arg("skills-latency-ms", "0"));
@@ -301,7 +307,10 @@ const PUBLIC_SKILLS = [
 const skillDetail = (row) => ({
 	...row,
 	files: [
-		{ path: "SKILL.md", content: `# ${row.name}\n\nStub skill body for the evidence run.\n` },
+		{
+			path: "SKILL.md",
+			content: `# ${row.name}\n\nStub skill body for the evidence run.\n`,
+		},
 		{ path: "scripts/run.sh", content: "#!/bin/sh\necho stub\n" },
 	],
 });
@@ -316,7 +325,11 @@ const skillLink = (plan) => ({
 	visibility: plan.visibility,
 	tenant_id: plan.tenantId,
 	tenant_name: plan.visibility === "org" ? TENANT_NAME : null,
-	policy: { subscribe: plan.subscribe, auto_push: plan.autoPush, revision: "rev-policy-skill-1" },
+	policy: {
+		subscribe: plan.subscribe,
+		auto_push: plan.autoPush,
+		revision: "rev-policy-skill-1",
+	},
 	eligibility: { can_auto_push: true, reason: null },
 	baseline_state: "pull",
 	remote_revision: "rev-remote-1",
@@ -328,6 +341,16 @@ const skillLink = (plan) => ({
 const ok = (result) => ({ status: 200, body: { result } });
 
 const route = async (method, pathname, query, body) => {
+	// Fixture-only lifecycle control: exercise the app's real capability watch,
+	// not an invented cache setter. Never present on a released-core backend.
+	if (
+		SKILLS_ADAPTER &&
+		method === "POST" &&
+		pathname === "/__fixture/skills/withdraw"
+	) {
+		skillsAdapterAvailable = false;
+		return ok({ hub_skills: 0 });
+	}
 	if (method === "GET" && pathname === "/health") {
 		return ok({
 			status: "ok",
@@ -342,7 +365,7 @@ const route = async (method, pathname, query, body) => {
 			 */
 			pid: process.pid,
 			instance_id: INSTANCE_ID,
-			version: "0.0.0-stub",
+			version: CORE_VERSION,
 			prefix: process.cwd(),
 			install_kind: "stub",
 		});
@@ -393,6 +416,8 @@ const route = async (method, pathname, query, body) => {
 				 * capability and the route below describe one another.
 				 */
 				hub_links: 1,
+				skill_catalogue: 1,
+				...(skillsAdapterAvailable ? { hub_skills: 1 } : {}),
 				/*
 				 * The agent-hub page draws its scope chips (public | org) only on a daemon that
 				 * advertises `radient_org`; without it the row is replaced by a notice and the
@@ -500,7 +525,10 @@ const route = async (method, pathname, query, body) => {
 		}
 		if (operation === "org_skills.list") {
 			if (SIGNED_OUT)
-				return { status: 409, body: { detail: { code: "radient-not-authenticated" } } };
+				return {
+					status: 409,
+					body: { detail: { code: "radient-not-authenticated" } },
+				};
 			await skillsSleep(SKILLS_LATENCY_MS);
 			return ok({
 				data: {
@@ -514,7 +542,10 @@ const route = async (method, pathname, query, body) => {
 		}
 		if (operation === "org_skill.get") {
 			if (SIGNED_OUT)
-				return { status: 409, body: { detail: { code: "radient-not-authenticated" } } };
+				return {
+					status: 409,
+					body: { detail: { code: "radient-not-authenticated" } },
+				};
 			await skillsSleep(SKILLS_LATENCY_MS);
 			const row = ORG_SKILLS.find((entry) => entry.id === body?.skill_id);
 			return row
@@ -523,13 +554,30 @@ const route = async (method, pathname, query, body) => {
 		}
 		if (operation === "org_teams.list") {
 			if (SIGNED_OUT)
-				return { status: 409, body: { detail: { code: "radient-not-authenticated" } } };
+				return {
+					status: 409,
+					body: { detail: { code: "radient-not-authenticated" } },
+				};
 			return ok({ data: { msg: "ok", result: { teams: [] } } });
 		}
 		if (operation === "org_agents.list") {
 			if (SIGNED_OUT)
-				return { status: 409, body: { detail: { code: "radient-not-authenticated" } } };
-			return ok({ data: { msg: "ok", result: { agents: [] } } });
+				return {
+					status: 409,
+					body: { detail: { code: "radient-not-authenticated" } },
+				};
+			return ok({
+				data: {
+					msg: "ok",
+					result: {
+						records: [],
+						total_records: 0,
+						page: 1,
+						per_page: 20,
+						total_pages: 1,
+					},
+				},
+			});
 		}
 		return {
 			status: 503,
@@ -726,8 +774,14 @@ const route = async (method, pathname, query, body) => {
 		return ok({
 			data: {
 				skills: [
-					{ name: "release-notes", description: "Draft release notes from a merged PR list." },
-					{ name: "transcript-audit", description: "Audit a transcript for policy contradictions." },
+					{
+						name: "release-notes",
+						description: "Draft release notes from a merged PR list.",
+					},
+					{
+						name: "transcript-audit",
+						description: "Audit a transcript for policy contradictions.",
+					},
 				],
 			},
 		});
@@ -739,10 +793,22 @@ const route = async (method, pathname, query, body) => {
 	 * daemon's `{result}` wrapper.
 	 */
 	if (method === "GET" && pathname === "/v1/agents") {
-		return publicOk({ page: 1, per_page: 12, total_pages: 1, total_records: 0, records: [] });
+		return publicOk({
+			page: 1,
+			per_page: 12,
+			total_pages: 1,
+			total_records: 0,
+			records: [],
+		});
 	}
 	if (method === "GET" && pathname === "/v1/teams") {
-		return publicOk({ page: 1, per_page: 12, total_pages: 1, total_records: 0, records: [] });
+		return publicOk({
+			page: 1,
+			per_page: 12,
+			total_pages: 1,
+			total_records: 0,
+			records: [],
+		});
 	}
 	if (method === "GET" && pathname === "/v1/skills") {
 		await skillsSleep(SKILLS_LATENCY_MS);
@@ -759,11 +825,31 @@ const route = async (method, pathname, query, body) => {
 	const publicSkillMatch = pathname.match(/^\/v1\/skills\/([^/]+)$/);
 	if (method === "GET" && publicSkillMatch) {
 		await skillsSleep(SKILLS_LATENCY_MS);
-		const row = PUBLIC_SKILLS.find((entry) => entry.id === decodeURIComponent(publicSkillMatch[1]));
-		return row ? publicOk(skillDetail(row)) : { status: 404, body: { msg: "not found" } };
+		const row = PUBLIC_SKILLS.find(
+			(entry) => entry.id === decodeURIComponent(publicSkillMatch[1]),
+		);
+		return row
+			? publicOk(skillDetail(row))
+			: { status: 404, body: { msg: "not found" } };
 	}
 	if (method === "POST" && pathname === "/v1/desktop/hub/skills/pull") {
 		await skillsSleep(PULL_LATENCY_MS);
+		// A public read/copy is not an opt-in to future automatic publication.
+		// Refuse only the actual unsafe policy enablement, before inventory writes.
+		if (
+			body?.visibility === "public" &&
+			body?.auto_push === true &&
+			body?.confirm_public_egress !== true
+		)
+			return {
+				status: 422,
+				body: {
+					detail: {
+						code: "unsafe-publication",
+						message: "explicit future public publication consent is required",
+					},
+				},
+			};
 		if (PULL_OUTCOME === "refuse") {
 			return {
 				status: 502,
@@ -838,6 +924,22 @@ const route = async (method, pathname, query, body) => {
 				publication: null,
 			});
 		}
+		// Preview above is side-effect-free and may explain an unconsented draft.
+		// Confirmation that enables future public auto-push must carry consent.
+		if (
+			body?.visibility === "public" &&
+			body?.auto_push === true &&
+			body?.confirm_public_egress !== true
+		)
+			return {
+				status: 422,
+				body: {
+					detail: {
+						code: "unsafe-publication",
+						message: "explicit future public publication consent is required",
+					},
+				},
+			};
 		if (PUBLISH_OUTCOME === "pending") {
 			return ok({
 				preview: null,
@@ -933,7 +1035,7 @@ server.listen(PORT, "127.0.0.1", () => {
 					host: "127.0.0.1",
 					port: PORT,
 					instance_id: INSTANCE_ID,
-					version: "0.0.0-stub",
+					version: CORE_VERSION,
 					source_ref: "hub-links-desktop",
 					prefix: process.cwd(),
 					install_kind: "stub",

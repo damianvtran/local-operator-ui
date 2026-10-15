@@ -4,6 +4,7 @@ import type {
 	HubLink,
 	HubLinkPolicyPatch,
 } from "@shared/api/local-operator/hub-links";
+import { HubMutationUpgradeRequired } from "@shared/api/local-operator/hub-mutation-safety";
 import { Button } from "@shared/components/ui/button";
 import {
 	Dialog,
@@ -96,6 +97,11 @@ export function HubLinkPolicyControls({
 			className="flex min-w-0 flex-col gap-3"
 			data-hub-link-policy={link.link_id}
 		>
+			{write.upgradeMessage && (
+				<output className="block text-meta text-warning" data-hub-core-upgrade>
+					{write.upgradeMessage}
+				</output>
+			)}
 			<div className="flex items-start justify-between gap-4">
 				<div className="min-w-0">
 					<label htmlFor={`${id}-subscribe`} className="text-body-sm text-ink">
@@ -108,7 +114,7 @@ export function HubLinkPolicyControls({
 				<Switch
 					id={`${id}-subscribe`}
 					checked={link.policy.subscribe}
-					disabled={write.isPending}
+					disabled={write.isPending || !write.canWrite}
 					aria-label={`${t("ui.hub.subscriptions.subscribe")}: ${source}`}
 					onCheckedChange={(value) => save({ subscribe: value }, "subscribe")}
 				/>
@@ -138,7 +144,11 @@ export function HubLinkPolicyControls({
 					// than none. The aria-label stays the name; this adds the reason.
 					aria-describedby={line !== "none" ? `${id}-push-line` : undefined}
 					checked={link.policy.auto_push}
-					disabled={write.isPending || (!link.policy.auto_push && unavailable)}
+					disabled={
+						write.isPending ||
+						!write.canWrite ||
+						(!link.policy.auto_push && unavailable)
+					}
 					aria-label={`${t("ui.hub.subscriptions.auto_push")}: ${source}`}
 					onCheckedChange={(value) => {
 						if (!value) save({ auto_push: false }, "auto_push");
@@ -169,10 +179,15 @@ export function HubLinkPolicyControls({
 			)}
 			{write.error && (
 				<p role="alert" className="text-meta text-danger">
-					{write.error instanceof DesktopControlError &&
-					write.error.code === "policy-revision-changed"
-						? t("ui.hub.subscriptions.policy_changed")
-						: t("ui.hub.subscriptions.save_failed", { setting: label, source })}
+					{write.error instanceof HubMutationUpgradeRequired
+						? write.error.message
+						: write.error instanceof DesktopControlError &&
+								write.error.code === "policy-revision-changed"
+							? t("ui.hub.subscriptions.policy_changed")
+							: t("ui.hub.subscriptions.save_failed", {
+									setting: label,
+									source,
+								})}
 				</p>
 			)}
 			<Dialog
@@ -227,6 +242,7 @@ export function HubLinkPolicyControls({
 						<Button
 							disabled={
 								write.isPending ||
+								!write.canWrite ||
 								unavailable ||
 								consent?.linkId !== link.link_id ||
 								consent?.revision !== link.policy.revision ||

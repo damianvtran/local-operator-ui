@@ -8,6 +8,11 @@ import {
 } from "./desktop-api";
 import { useHubActionStore } from "./hub-action-store";
 import {
+	HubMutationUpgradeRequired,
+	guardHubMutation,
+	useHubMutationSafety,
+} from "./hub-mutation-safety";
+import {
 	type HubItemKind,
 	type HubMergeReport,
 	type HubMutationResponse,
@@ -116,6 +121,7 @@ const STILL_WORKING =
 
 export function useHubActions() {
 	const queryClient = useQueryClient();
+	const safety = useHubMutationSafety();
 	const pending = useHubActionStore((state) => state.pending);
 	const notes = useHubActionStore((state) => state.notes);
 	const rollups = useHubActionStore((state) => state.rollups);
@@ -144,16 +150,19 @@ export function useHubActions() {
 	): Promise<HubMutationResponse | null> => {
 		store.getState().begin(key);
 		try {
-			const response = await run();
+			const response = await guardHubMutation(run, safety.snapshot);
 			settle(response);
 			return response;
 		} catch (error) {
 			if (isDeadlineExceeded(error))
 				void queryClient.invalidateQueries({ queryKey: hubUpdatesKey });
 			store.getState().setNote(key, {
-				message: isDeadlineExceeded(error)
-					? STILL_WORKING
-					: userFacingMessage(error, fallback),
+				message:
+					error instanceof HubMutationUpgradeRequired
+						? error.message
+						: isDeadlineExceeded(error)
+							? STILL_WORKING
+							: userFacingMessage(error, fallback),
 				tone: "error",
 			});
 			return null;
@@ -176,6 +185,7 @@ export function useHubActions() {
 	};
 
 	return {
+		...safety,
 		pending,
 		/** The sentence a press left beside its control, keyed like `pending`. */
 		notes,

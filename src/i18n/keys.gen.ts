@@ -310,6 +310,7 @@ export type MessageParams = {
 	"ui.hub.status.baseline_unknown": undefined;
 	"ui.hub.status.checking": undefined;
 	"ui.hub.status.conflict": undefined;
+	"ui.hub.status.core_update_required": { minimum: string };
 	"ui.hub.status.failed": undefined;
 	"ui.hub.status.idle": undefined;
 	"ui.hub.status.last_checked": { time: string };
