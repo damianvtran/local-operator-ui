@@ -10,6 +10,8 @@ export interface PageFindState {
 	query: string;
 	ordinal: number;
 	matches: number;
+	pending: boolean;
+	unreported: boolean;
 }
 
 /** Human-only native page controls. No protocol/action entry points: the owning
@@ -29,7 +31,15 @@ export class PageControls {
 	private listener: ((...args: never[]) => void) | null = null;
 	private notice: string | null = null;
 	private noticeTabId: number | null = null;
-	constructor(private changed: () => void) {}
+	private timer: ReturnType<typeof setTimeout> | null = null;
+	constructor(
+		private changed: () => void,
+		private resultTimeoutMs = 5000,
+	) {}
+	private stopTimer(): void {
+		if (this.timer) clearTimeout(this.timer);
+		this.timer = null;
+	}
 
 	reconcile(active: TabRecord | null): void {
 		if (
@@ -53,6 +63,7 @@ export class PageControls {
 		};
 	}
 	clear(): void {
+		this.stopTimer();
 		const old = this.record;
 		const listener = this.listener;
 		this.record = null;
@@ -71,13 +82,21 @@ export class PageControls {
 		this.clear();
 		this.record = active;
 		this.epoch = active.documentEpoch;
-		this.find = { tabId: active.tabId, query: "", ordinal: 0, matches: 0 };
+		this.find = {
+			tabId: active.tabId,
+			query: "",
+			ordinal: 0,
+			matches: 0,
+			pending: false,
+			unreported: false,
+		};
 		this.listener = ((
 			_event: unknown,
 			result: {
 				requestId: number;
 				activeMatchOrdinal: number;
 				matches: number;
+				finalUpdate?: boolean;
 			},
 		) => {
 			if (
@@ -88,10 +107,13 @@ export class PageControls {
 				!this.find
 			)
 				return;
+			if (result.finalUpdate !== false) this.stopTimer();
 			this.find = {
 				...this.find,
+				unreported: false,
 				ordinal: result.activeMatchOrdinal,
 				matches: result.matches,
+				pending: result.finalUpdate === false,
 			};
 			this.changed();
 		}) as (...args: never[]) => void;
@@ -105,11 +127,17 @@ export class PageControls {
 	): void {
 		this.open(active);
 		if (!this.find || this.record !== active) return;
+		this.stopTimer();
 		const same = this.find.query === query;
+		// After stop/timeout there is no native search to advance. Enter retries
+		// the query from scratch rather than passing findNext to a dead request.
+		const continuing = same && next && this.requestId !== null && !this.find.unreported;
 		this.requestId = null;
 		this.find = {
 			...this.find,
 			query,
+			pending: query.length > 0,
+			unreported: false,
 			...(same ? {} : { ordinal: 0, matches: 0 }),
 		};
 		if (!query) {
@@ -119,8 +147,39 @@ export class PageControls {
 		this.requestId =
 			active.view.webContents.findInPage?.(query, {
 				forward,
-				findNext: same && next,
+				findNext: continuing,
 			}) ?? null;
+		// Native search may never report (measured in hidden Electron). Bound the
+		// progress claim; silence is not "no matches". Fencing/stop-before-notify
+		// also makes a late result after timeout harmless. A new query retries.
+		const request = this.requestId;
+		this.timer = setTimeout(() => {
+			this.timer = null;
+			if (
+				this.record !== active ||
+				!active.presented ||
+				active.documentEpoch !== this.epoch ||
+				this.requestId !== request ||
+				!this.find
+			)
+				return;
+			this.requestId = null;
+			if (active.view.webContents.isDestroyed()) {
+				this.clear();
+				this.changed();
+				return;
+			}
+			active.view.webContents.stopFindInPage?.("clearSelection");
+			this.find = {
+				...this.find,
+				pending: false,
+				unreported: true,
+				ordinal: 0,
+				matches: 0,
+			};
+			this.changed();
+		}, this.resultTimeoutMs);
+		this.timer.unref?.();
 	}
 	zoom(active: TabRecord, command: PageZoomCommand): void {
 		if (active.owner !== "user" || active.handedTo) {

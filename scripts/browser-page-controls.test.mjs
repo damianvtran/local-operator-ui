@@ -48,6 +48,11 @@ test("find request/document/tab fences reject stale native counts; hide/close cl
 	const b = tab(2);
 	c.open(a);
 	c.search(a, "hello", true, false);
+	assert.equal(
+		c.state(a).find.pending,
+		true,
+		"no match is not known until native result",
+	);
 	a.view.webContents.emit(
 		"found-in-page",
 		{},
@@ -58,6 +63,8 @@ test("find request/document/tab fences reject stale native counts; hide/close cl
 		query: "hello",
 		ordinal: 1,
 		matches: 8,
+		pending: false,
+		unreported: false,
 	});
 	c.search(a, "other", true, false);
 	a.view.webContents.emit(
@@ -129,4 +136,28 @@ test("find on an agent tab is cleared before an agent read/screenshot; no page i
 	assert.equal(c.state(a).find, null);
 	assert.equal(a.calls.at(-2).stop, "clearSelection");
 	assert.equal(a.view.webContents.getZoomFactor(), 1);
+});
+
+test("silent native result has a bounded neutral outcome; stop/switch cancels it", async () => {
+	let changes = 0;
+	const c = new PageControls(() => changes++, 10);
+	const a = tab(1);
+	c.search(a, "waiting", true, false);
+	assert.equal(c.state(a).find.pending, true);
+	await new Promise((resolve) => setTimeout(resolve, 30));
+	assert.equal(c.state(a).find.pending, false);
+	assert.equal(c.state(a).find.unreported, true);
+	assert.equal(a.calls.at(-1).stop, "clearSelection");
+	a.view.webContents.emit(
+		"found-in-page",
+		{},
+		{ requestId: 1, activeMatchOrdinal: 1, matches: 99, finalUpdate: true },
+	);
+	assert.equal(c.state(a).find.matches, 0, "late timed-out result is fenced");
+	c.search(a, "waiting", true, true);
+	assert.equal(a.calls.at(-1).options.findNext, false, "Enter after timeout retries an initial native search");
+	c.clear();
+	await new Promise((resolve) => setTimeout(resolve, 30));
+	assert.equal(changes, 1, "clear cancels deadline; no orphan publication");
+	assert.equal(c.state(a).find, null);
 });

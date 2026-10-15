@@ -868,6 +868,17 @@ async function initializeBrowserHost(
 			reload: (hard) => {
 				host.reloadActive(hard);
 			},
+			zoom: (command) => {
+				const tabId = registry.activeTab?.tabId;
+				if (tabId !== undefined)
+					void host
+						.controlPage(tabId, command)
+						.catch((error) =>
+							log(
+								`Page zoom refused: ${error instanceof Error ? error.message : "unavailable"}`,
+							),
+						);
+			},
 			history: (direction) => {
 				host.historyActive(direction);
 			},

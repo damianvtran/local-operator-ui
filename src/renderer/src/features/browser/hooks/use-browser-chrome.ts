@@ -112,6 +112,8 @@ export interface BrowserChromeState {
 			query: string;
 			ordinal: number;
 			matches: number;
+			pending: boolean;
+			unreported: boolean;
 		} | null;
 		zoom: number;
 		zoomAllowed: boolean;

@@ -287,12 +287,11 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	const activeTab =
 		tabs.find((tab) => tab.tabId === state?.activeTabId) ?? null;
 	const addressRef = useRef<HTMLInputElement>(null);
-	const { root: chordRoot, closeTab } = useBrowserChords(
-		chrome,
-		tabs,
-		hostSessionId,
-		addressRef,
-	);
+	const {
+		root: chordRoot,
+		closeTab,
+		findReturnToPage,
+	} = useBrowserChords(chrome, tabs, hostSessionId, addressRef);
 
 	// THE ONE CLOCK (spec 3.3). The queue model owns the 1s interval and the
 	// ordinal, so the tray, the dock, the tab chips and the badge cannot disagree.
@@ -600,6 +599,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 				// so the control cannot describe a save the host does not have.
 				downloadsRecent={chrome.state?.transfers?.recent ?? null}
 				onFind={() => {
+					findReturnToPage.current = false;
 					if (state?.activeTabId != null)
 						void chrome.pageControl(state.activeTabId, "open");
 				}}
@@ -610,7 +610,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 				}}
 				onOpenDownloads={() => void chrome.revealDownloads()}
 			/>
-			<BrowserFindRow chrome={chrome} />
+			<BrowserFindRow chrome={chrome} returnToPage={findReturnToPage} />
 			{state?.pageControls?.notice && (
 				<output
 					aria-live="polite"

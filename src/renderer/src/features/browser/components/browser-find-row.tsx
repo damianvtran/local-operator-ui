@@ -1,7 +1,7 @@
 import { Button, Input, Tooltip } from "@shared/components/ui";
 import { chordCaption } from "@shared/keymap/keymap-chord";
 import { ChevronDown, ChevronUp, X } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { type RefObject, useEffect, useRef } from "react";
 import type { BrowserChrome } from "../hooks/use-browser-chrome";
 
 /** In flow ABOVE browser-content: native WebContentsView paints above all DOM,
@@ -9,7 +9,10 @@ import type { BrowserChrome } from "../hooks/use-browser-chrome";
  * Main owns query/count and fences the tab id. Unmount on switch never restores
  * old focus: only an explicit Escape/Close may return it to the original control.
  * There is no motion to override in reduced-motion mode. */
-export function BrowserFindRow({ chrome }: { chrome: BrowserChrome }) {
+export function BrowserFindRow({
+	chrome,
+	returnToPage,
+}: { chrome: BrowserChrome; returnToPage?: RefObject<boolean> }) {
 	const find = chrome.state?.pageControls?.find;
 	const tabId = find?.tabId;
 	const active = useRef(chrome.state?.activeTabId);
@@ -26,7 +29,12 @@ export function BrowserFindRow({ chrome }: { chrome: BrowserChrome }) {
 		if (tabId == null) return;
 		const target = document.activeElement;
 		previous.current =
-			target instanceof HTMLElement && target !== document.body ? target : null;
+			target instanceof HTMLElement &&
+			target.closest(
+				"[data-tour-tag=browser-route], [data-tour-tag=browser-pane]",
+			)
+				? target
+				: null;
 		// DOM focus only, never window show/raise/activation. The native key door
 		// already applied window-raise.ts's guarded focus when it came from a page.
 		input.current?.focus({ preventScroll: true });
@@ -36,12 +44,15 @@ export function BrowserFindRow({ chrome }: { chrome: BrowserChrome }) {
 	const close = async () => {
 		await chrome.pageControl(find.tabId, "close");
 		if (active.current !== find.tabId) return;
-		if (previous.current?.isConnected)
+		// A native-page Cmd+F must return to that page, not the app document's
+		// stale activeElement (which can still be an old composer/address input).
+		if (returnToPage?.current) await window.api?.browser.focusPage();
+		else if (previous.current?.isConnected)
 			previous.current.focus({ preventScroll: true });
 		else await window.api?.browser.focusPage();
 	};
 	const step = (forward: boolean) =>
-		chrome.pageControl(find.tabId, "search", find.query, forward, true);
+		chrome.pageControl(find.tabId, "search", input.current?.value ?? find.query, forward, true);
 	return (
 		<div
 			data-tour-tag="browser-find-row"
@@ -50,7 +61,13 @@ export function BrowserFindRow({ chrome }: { chrome: BrowserChrome }) {
 			<Input
 				ref={input}
 				aria-label="Find in page"
-				value={find.query}
+				placeholder="Find in page"
+				// A native editor draft, not a value bounced through asynchronous IPC:
+				// React's controlled-value restore could otherwise lose the next key
+				// before main acknowledges the previous one. Tab identity remounts it;
+				// closing removes it, so drafts cannot leak across tabs/reopens.
+				key={find.tabId}
+				defaultValue={find.query}
 				maxLength={4096}
 				className="min-w-0 max-w-72 flex-1 focus-visible:outline-offset-1!"
 				onChange={(event) =>
@@ -74,9 +91,13 @@ export function BrowserFindRow({ chrome }: { chrome: BrowserChrome }) {
 				className="min-w-20 text-body-sm text-ink-muted"
 			>
 				{find.query
-					? find.matches
-						? `${find.ordinal} of ${find.matches}`
-						: "No matches"
+					? find.pending
+						? "Searching…"
+						: find.unreported
+							? "No result reported"
+							: find.matches
+								? `${find.ordinal} of ${find.matches}`
+								: "No matches"
 					: ""}
 			</output>
 			<Tooltip side="top" content={`Previous match (${previousChord.glyph})`}>
