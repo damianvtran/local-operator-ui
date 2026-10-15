@@ -1308,15 +1308,12 @@ const AGENTS_PAGE =
 	"src/renderer/src/features/agents/components/agents-page.tsx";
 const CANVAS_SECTION =
 	"src/renderer/src/features/chat/components/canvas/index.tsx";
-/* The list's own plane, and the file the canvas entry's ground is read from: the
- * pane root in CANVAS_SECTION takes the lane's last stop (`elevated` since the
- * drawer's-rung pass; `pane-slot-ground.test.mjs` derives it from the gradient,
- * not from a literal), so the row plane is split off into this file rather than
- * the pane being re-grounded. */
-const CANVAS_FILE_VIEWER =
-	"src/renderer/src/features/chat/components/canvas/canvas-file-viewer.tsx";
 const FILE_ROW =
 	"src/renderer/src/features/chat/components/canvas/file-row.tsx";
+/* The Files-family plane moved with its scroller into Finder. The pane root in
+ * CANVAS_SECTION still stands at the lane's last stop, not the rows' surface. */
+const FINDER_FILES_VIEW =
+	"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx";
 const SCHEDULE_ROW =
 	"src/renderer/src/features/schedules/components/schedule-list-item.tsx";
 const BROWSER_TABS =
@@ -1452,30 +1449,41 @@ const ROW_STATE_GROUNDS = [
 		groundFile: AGENTS_PAGE,
 	},
 	{
-		/*
-		 * The canvas Files list. It is a `rowCurrent` call site like the other six,
-		 * and its rows' painted ancestor is the list's OWN plane - the scroller in
-		 * `canvas-file-viewer.tsx`, which wears `surface`. It is NOT the pane root:
-		 * the root stands at the lane's last stop - `elevated` since the drawer's-rung
-		 * pass, derived by `scripts/pane-slot-ground.test.mjs` from the lane's own
-		 * gradient rather than from a literal - so the two directions were answered by
-		 * SPLITTING the element rather than by relaxing either of them. It is here
-		 * because the completeness
-		 * assertion below is over the tree rather than over the list of surfaces the
-		 * direction happens to name, and a call site nobody enumerates is exactly how
-		 * the rail's ground went unmeasured.
-		 */
-		what: "the canvas Files list",
+		/* The retained FileRowItem module still names/paints rowCurrent, so the
+		 * tree census must not silently exempt it. It has no current runtime
+		 * importer: this entry preserves its row-style contract against the
+		 * Files family's actual plane, NOT a claim that Finder mounts this legacy
+		 * renderer. The live Finder row has its own independent entry below.
+		 * canvas-file-viewer now delegates to Finder and owns no scroller. */
+		what: "the retained legacy canvas row contract",
 		rowFile: FILE_ROW,
 		expression: () => expressionBefore(FILE_ROW, 'data-tour-tag="file-row"'),
 		stubs: { rowCurrent, current: true },
 		ground: () =>
 			merged(
-				CANVAS_FILE_VIEWER,
-				expressionBefore(CANVAS_FILE_VIEWER, 'data-tour-tag="files-scroller"'),
+				FINDER_FILES_VIEW,
+				expressionAfter(FINDER_FILES_VIEW, 'data-tour-tag="files-scroller"'),
 				{},
 			),
-		groundFile: CANVAS_FILE_VIEWER,
+		groundFile: FINDER_FILES_VIEW,
+	},
+	{
+		/* Finder has its own rowCurrent caller, separate from the fallback's
+		 * FILE_ROW. The tree-wide census must name both; adding this entry does
+		 * not exempt the new caller. Resolve its shipped row and scroller cn
+		 * expressions so moving Finder onto an elevation rung still fails. */
+		what: "the Finder Files list",
+		rowFile: FINDER_FILES_VIEW,
+		expression: () =>
+			expressionBefore(FINDER_FILES_VIEW, 'data-tour-tag="file-row"'),
+		stubs: { rowCurrent, current: true },
+		ground: () =>
+			merged(
+				FINDER_FILES_VIEW,
+				expressionAfter(FINDER_FILES_VIEW, 'data-tour-tag="files-scroller"'),
+				{},
+			),
+		groundFile: FINDER_FILES_VIEW,
 	},
 ];
 
