@@ -1,4 +1,8 @@
 import { t } from "../../i18n";
+import type {
+	HumanTabAction,
+	HumanTabActionOutcome,
+} from "../../shared/browser-tab-action";
 import type { BrowserActionContext, HostFacts } from "./actions/context";
 import { requesterOf } from "./actions/context";
 import * as downloadActions from "./actions/download";
@@ -879,29 +883,73 @@ export class BrowserHost implements BrowserActionContext {
 		return this.chromeState();
 	}
 
-	/** UI-only operations: explicit records, never an activate/await/reload race.
-	 * Duplicate creates a NEW user tab; it copies no agent handle or authority. */
+	/** Human duplicates copy URL ONLY. Session attribution is not a capability,
+	 * but copying it would still put an agent's duplicate inside its conversation.
+	 * User records have no nonce/handover; an explicit later handover is the only
+	 * way they can become agent-drivable. Failure retains that plain user tab. */
 	async actOnChromeTab(
 		tabId: number,
-		action: "duplicate" | "reload",
-	): Promise<Record<string, unknown>> {
+		action: HumanTabAction,
+	): Promise<HumanTabActionOutcome> {
 		const record = this.registry.get(tabId);
 		if (!record || record.view.webContents.isDestroyed())
-			return this.chromeState();
-		if (action === "reload") {
-			record.view.webContents.reload();
-			return this.chromeState();
+			return {
+				status: "failed",
+				action,
+				tabId: null,
+				error: { code: "tab_closed", message: t("ui.browser.chrome.tab_gone") },
+			};
+		let url = "";
+		let destinationId: number | null = action === "reload" ? tabId : null;
+		try {
+			url = record.view.webContents.getURL();
+			if (
+				action === "duplicate" &&
+				url !== "about:blank" &&
+				!DUPLICATABLE_WEB_URL.test(url)
+			)
+				return {
+					status: "failed",
+					action,
+					tabId: null,
+					error: {
+						code: "unsupported_page",
+						message: t("ui.browser.chrome.duplicate_refused"),
+					},
+				};
+
+			if (action === "reload") record.view.webContents.reload();
+			else {
+				// One initial load on the exact newly-created record, not a redundant
+				// blank load followed by a target load. Publish its identity before any
+				// await so a failed load can be reported without deleting/losing the tab.
+				const copy = await this.createUserTab(null, url, (created) => {
+					destinationId = created.tabId;
+				});
+				destinationId = copy.tabId;
+			}
+			this.onChanged();
+			return { status: "completed", action, tabId: destinationId as number };
+		} catch {
+			if (destinationId !== null && action === "duplicate")
+				this.recordLoadFailure(destinationId, {
+					code: -2,
+					description: "DUPLICATE_NAVIGATION_FAILED",
+					url,
+				});
+			// Operational failure is data, not an uncaught ipcMain handler rejection.
+			// The UI uses the established action-error/toast path; no URL/token detail
+			// is interpolated into this message or a new log channel.
+			return {
+				status: "failed",
+				action,
+				tabId: destinationId,
+				error: {
+					code: "navigation_failed",
+					message: t("ui.browser.chrome.operation_failed", { action }),
+				},
+			};
 		}
-		const url = record.view.webContents.getURL() || "about:blank";
-		if (url !== "about:blank" && !DUPLICATABLE_WEB_URL.test(url))
-			throw new Error(t("ui.browser.chrome.duplicate_refused"));
-		const sessionId =
-			this.registry.snapshot().find((entry) => entry.tabId === tabId)
-				?.sessionId ?? null;
-		const duplicate = await this.createUserTab(sessionId);
-		if (url !== "about:blank") await duplicate.view.webContents.loadURL(url);
-		this.onChanged();
-		return this.chromeState();
 	}
 
 	reorderChromeTabs(ids: number[]): Record<string, unknown> {
@@ -913,12 +961,17 @@ export class BrowserHost implements BrowserActionContext {
 
 	/** `newTab`'s body, returning the record so `reopenClosed` can navigate the tab
 	 * it created rather than whichever tab is active by the time the await ends. */
-	private async createUserTab(sessionId: string | null): Promise<TabRecord> {
+	private async createUserTab(
+		sessionId: string | null,
+		initialUrl = "about:blank",
+		onCreated?: (record: TabRecord) => void,
+	): Promise<TabRecord> {
 		const record = this.registry.create({
 			owner: "user",
 			sessionId,
 		});
-		await record.view.webContents.loadURL("about:blank");
+		onCreated?.(record);
+		await record.view.webContents.loadURL(initialUrl);
 		await this.cdp.attach(record.view.webContents);
 		this.onChanged();
 		return record;

@@ -9227,3 +9227,107 @@ test("tab management IPC rejects foreign sender/frame and malformed permutations
 		unregisterBrowserIpc();
 	}
 });
+
+for (const kind of ["agent", "handed-over"]) {
+	test(`duplicate boundary: ${kind} source yields an unattributed capability-free user tab`, async () => {
+		const { host, registry } = makeHost();
+		const source = registry.create({
+			owner: kind === "agent" ? "agent" : "user",
+			sessionId: "boundary-agent",
+		});
+		if (kind === "handed-over")
+			registry.handOver(source.tabId, "session:boundary-agent");
+		await source.view.webContents.loadURL("https://boundary.example/original");
+		assert.ok(source.nonce, "fixture must really carry an agent capability");
+		const before = new Set(registry.snapshot().map((r) => r.tabId));
+		await host.actOnChromeTab(source.tabId, "duplicate");
+		const copy = registry.snapshot().find((r) => !before.has(r.tabId));
+		assert.equal(copy.owner, "user");
+		assert.equal(
+			copy.sessionId,
+			null,
+			"copy ONLY the URL, never agent attribution",
+		);
+		assert.equal(
+			host.chromeState().tabs.find((t) => t.tabId === copy.tabId).handedOver,
+			false,
+		);
+		const record = registry.get(copy.tabId);
+		assert.equal(record.nonce, null);
+		assert.equal(record.handedTo, null);
+		assert.equal(record.homeSessionId, null);
+		assert.equal(registry.mayDrive(record, "boundary-agent"), false);
+		await assert.rejects(
+			() =>
+				host.dispatch(
+					"read",
+					{
+						tab: `ui:${copy.tabId}:${source.nonce}`,
+						requester: "session:boundary-agent",
+					},
+					"boundary-rebound-handle",
+				),
+			(error) => error.code === "tab_closed",
+		);
+		await assert.rejects(
+			() =>
+				host.dispatch(
+					"read",
+					{ tab: copy.tabId, requester: "session:boundary-agent" },
+					"boundary-numeric-id",
+				),
+			(error) => error.code === "tab_closed",
+		);
+	});
+}
+
+test("duplicate navigation failure resolves a typed outcome and retains its plain user tab", async () => {
+	const { host, registry } = makeHost();
+	const source = registry.create({
+		owner: "agent",
+		sessionId: "boundary-agent",
+	});
+	await source.view.webContents.loadURL("https://boundary.example/reject");
+	const create = registry.create.bind(registry);
+	let created;
+	registry.create = (options) => {
+		const record = create(options);
+		created = record;
+		record.view.webContents.loadURL = async () => {
+			throw Object.assign(new Error("fixture navigation aborted"), {
+				code: "ERR_FAILED",
+			});
+		};
+		return record;
+	};
+	const result = await host.actOnChromeTab(source.tabId, "duplicate");
+	assert.equal(result.status, "failed");
+	assert.equal(result.tabId, created.tabId);
+	assert.equal(result.error.code, "navigation_failed");
+	assert.equal(
+		registry.get(created.tabId),
+		created,
+		"failure must not silently destroy the new tab",
+	);
+	assert.equal(created.owner, "user");
+	assert.equal(created.sessionId, null);
+	assert.equal(created.nonce, null);
+	assert.equal(created.handedTo, null);
+	assert.equal(
+		host.chromeState().tabs.find((t) => t.tabId === created.tabId).failed,
+		true,
+	);
+});
+
+test("duplicate source disappearing during URL read resolves a typed failure", async () => {
+	const { host, registry } = makeHost();
+	const source = registry.create({ owner: "user" });
+	source.view.webContents.getURL = () => {
+		throw new Error("Object has been destroyed");
+	};
+	const result = await host.actOnChromeTab(source.tabId, "duplicate");
+	assert.equal(result.status, "failed");
+	assert.equal(result.tabId, null);
+	assert.equal(result.error.code, "navigation_failed");
+	assert.equal(registry.count(), 1);
+});

@@ -9,5 +9,7 @@
 	"ui.browser.chrome.accessible_tab": "{title}{loading, select, yes{, loading} other{}}{failed, select, yes{, failed to load} other{}}{owner, select, agent{, agent-owned} shared{, shared with an agent} other{}}{waiting, select, none{} other{, request {waiting} waiting}}{restored, select, yes{, restored} other{}}",
 	"ui.browser.chrome.invalid_order": "Invalid browser tab order.",
 	"ui.browser.chrome.duplicate_refused": "Only web pages can be duplicated.",
-	"ui.browser.chrome.invalid_action": "Invalid browser tab action."
+	"ui.browser.chrome.invalid_action": "Invalid browser tab action.",
+	"ui.browser.chrome.tab_gone": "That browser tab is no longer open.",
+	"ui.browser.chrome.operation_failed": "{action, select, duplicate{The tab could not be duplicated. You can retry from its menu.} other{The tab could not be reloaded. You can retry from its menu.}}"
 }
