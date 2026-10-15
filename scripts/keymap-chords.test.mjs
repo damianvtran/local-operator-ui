@@ -378,11 +378,12 @@ test("sanitizeShortcutBindings: junk, unknown ids, reserved chords, duplicates",
 });
 
 // R15: persistence must keep downgrade data without arming browser-owned chords.
-test("all fourteen legacy browser mappings survive dormant, never dispatch, and remain refused", () => {
-	assert.equal(LEGACY_BROWSER_CHORDS.size, 14);
+test("all fifteen legacy browser mappings survive dormant, never dispatch, and remain refused", () => {
+	assert.equal(LEGACY_BROWSER_CHORDS.size, 15);
 	assert.deepEqual(
 		[...LEGACY_BROWSER_CHORDS],
 		[
+			"primary+0",
 			"primary+r",
 			"primary+shift+r",
 			"primary+t",

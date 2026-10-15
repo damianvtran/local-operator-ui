@@ -380,6 +380,16 @@ const KEYCAP_DELTA_E = 2.0;
  * against the ground behind it.
  */
 const CONTROLS = [
+	// Find is a chrome-band row, never a DOM panel over WebContentsView. Its
+	// standard Input uses the existing input-control contract; this pins the
+	// row's elevated ground, control rule and politely announced count.
+	{
+		name: "browser find row",
+		on: ["elevated"],
+		fill: "elevated",
+		border: "borderControl",
+		ink: "inkMuted",
+	},
 	{
 		name: "primary button",
 		on: GROUNDS,

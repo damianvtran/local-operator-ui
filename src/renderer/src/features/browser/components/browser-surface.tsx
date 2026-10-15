@@ -38,6 +38,7 @@ import { BrowserApprovalsDock } from "./browser-approvals-dock";
 import { defaultApprovalHeaderLabel } from "./browser-approvals-tray";
 import { BrowserConsentBar } from "./browser-consent-bar";
 import { BrowserFileTransferRow } from "./browser-file-transfer-row";
+import { BrowserFindRow } from "./browser-find-row";
 import { BrowserHandOverDialog } from "./browser-hand-over-dialog";
 import { BrowserLoadFailure } from "./browser-load-failure";
 import { BrowserTabStrip } from "./browser-tab-strip";
@@ -598,8 +599,26 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 				// anything arrived. The newest save and the session count ride the projection,
 				// so the control cannot describe a save the host does not have.
 				downloadsRecent={chrome.state?.transfers?.recent ?? null}
+				onFind={() => {
+					if (state?.activeTabId != null)
+						void chrome.pageControl(state.activeTabId, "open");
+				}}
+				pageZoom={state?.pageControls?.zoom ?? 1}
+				onResetZoom={() => {
+					if (state?.activeTabId != null)
+						void chrome.pageControl(state.activeTabId, "reset");
+				}}
 				onOpenDownloads={() => void chrome.revealDownloads()}
 			/>
+			<BrowserFindRow chrome={chrome} />
+			{state?.pageControls?.notice && (
+				<output
+					aria-live="polite"
+					className="shrink-0 border-control border-b bg-elevated px-2 py-1 text-body-sm text-ink-muted"
+				>
+					{state.pageControls.notice}
+				</output>
+			)}
 			{/* The transfer row sits in the SAME strip as the consent band, and ABOVE
 			    the band deliberately: a refusal is the case a human has
 			    to see, and the band's own visibility is driven by a pending approval, which

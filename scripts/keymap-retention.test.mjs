@@ -76,7 +76,7 @@ function checkRetained(chord) {
 	assert.equal(bindings()["panel.run"], null);
 	assert.equal(saved().state.shortcutBindings["panel.console"], chord);
 }
-test("R15 actual store: all14 survive hydration, unrelated saves, repeat loads and downgrade; edits supersede", async () => {
+test("R15 actual store: all15 survive hydration, unrelated saves, repeat loads and downgrade; edits supersede", async () => {
 	for (const version of [UI_PREFERENCES_VERSION, 3]) {
 		for (const chord of LEGACY_BROWSER_CHORDS) {
 			await seed(chord, version);
@@ -126,6 +126,6 @@ test("R15 actual store: all14 survive hydration, unrelated saves, repeat loads a
 		);
 	}
 	console.log(
-		"R15 actual store: 28 hydration/save/reload/downgrade cases + 3 explicit-edit roundtrips PASS; no live profile",
+		"R15 actual store: 30 hydration/save/reload/downgrade cases + 3 explicit-edit roundtrips PASS; no live profile",
 	);
 });

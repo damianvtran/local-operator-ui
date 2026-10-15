@@ -64,6 +64,7 @@ import {
 	browserHostEnabled,
 	browserHostStopPending,
 	routeBrowserMenu,
+	routeBrowserZoomInput,
 	startBrowserHost,
 	stopBrowserHost,
 } from "./browser";
@@ -532,27 +533,6 @@ function createApplicationMenu(): void {
 	const isDev = Boolean(process.env.ELECTRON_RENDERER_URL);
 
 	// Define zoom functions
-	const zoomInHandler = () => {
-		if (mainWindow) {
-			const webContents = mainWindow.webContents;
-			const currentZoom = webContents.getZoomFactor();
-			webContents.setZoomFactor(currentZoom + 0.1);
-		}
-	};
-
-	const zoomOutHandler = () => {
-		if (mainWindow) {
-			const webContents = mainWindow.webContents;
-			const currentZoom = webContents.getZoomFactor();
-			webContents.setZoomFactor(currentZoom - 0.1);
-		}
-	};
-
-	const actualSizeHandler = () => {
-		if (mainWindow) {
-			mainWindow.webContents.setZoomFactor(1.0);
-		}
-	};
 
 	// Create menu template
 	const template: Electron.MenuItemConstructorOptions[] = [
@@ -603,19 +583,47 @@ function createApplicationMenu(): void {
 				},
 				{ type: "separator" as const },
 				{
+					id: "app-actual-size",
 					label: "Actual Size",
-					accelerator: "CmdOrCtrl+O",
-					click: actualSizeHandler,
+					accelerator: "CmdOrCtrl+0",
+					click: (
+						_item: Electron.MenuItem,
+						target: Electron.BaseWindow | undefined,
+					) => {
+						if (!(target instanceof BrowserWindow)) return;
+						if (target === mainWindow && routeBrowserMenu("zoom-reset")) return;
+						target.webContents.setZoomFactor(1);
+					},
 				},
 				{
+					id: "app-zoom-in",
 					label: "Zoom In",
 					accelerator: "CmdOrCtrl+Plus", // On macOS, this often requires Shift as well (Cmd+Shift+=)
-					click: zoomInHandler,
+					click: (
+						_item: Electron.MenuItem,
+						target: Electron.BaseWindow | undefined,
+					) => {
+						if (!(target instanceof BrowserWindow)) return;
+						if (target === mainWindow && routeBrowserMenu("zoom-in")) return;
+						target.webContents.setZoomFactor(
+							target.webContents.getZoomFactor() + 0.1,
+						);
+					},
 				},
 				{
+					id: "app-zoom-out",
 					label: "Zoom Out",
 					accelerator: "CmdOrCtrl+-",
-					click: zoomOutHandler,
+					click: (
+						_item: Electron.MenuItem,
+						target: Electron.BaseWindow | undefined,
+					) => {
+						if (!(target instanceof BrowserWindow)) return;
+						if (target === mainWindow && routeBrowserMenu("zoom-out")) return;
+						target.webContents.setZoomFactor(
+							target.webContents.getZoomFactor() - 0.1,
+						);
+					},
 				},
 				{ type: "separator" as const },
 				{ role: "togglefullscreen" },
@@ -3665,14 +3673,23 @@ app
 				mainWindow.webContents.on("before-input-event", (event, input) => {
 					const isCmdOrCtrl = input.control || input.meta; // Ctrl on Win/Linux, Cmd on macOS
 
-					if (isCmdOrCtrl) {
+					// Browser focus routes first, through the same classifier/menu door
+					// as the native page hook. Outside it app zoom keeps its meaning.
+					if (event.defaultPrevented) return;
+					if (routeBrowserZoomInput(event, input)) return;
+					if (
+						isCmdOrCtrl &&
+						input.type === "keyDown" &&
+						!input.alt &&
+						!input.isComposing
+					) {
 						if (input.key === "+" || input.key === "=") {
 							zoomInFromEvent();
 							event.preventDefault();
 						} else if (input.key === "-") {
 							zoomOutFromEvent();
 							event.preventDefault();
-						} else if (input.key === "O") {
+						} else if (input.key === "0") {
 							actualSizeFromEvent();
 							event.preventDefault();
 						}
