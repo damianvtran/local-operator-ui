@@ -86,6 +86,7 @@ export type MessageParams = {
 	"ui.agentMessages.dialog.reach": undefined;
 	"ui.agentMessages.dialog.title": undefined;
 	"ui.agentMessages.dialog.validation_detail": { field: string; rule: string };
+	"ui.agentMessages.dialog.validation_failure": undefined;
 	"ui.canvas.files.archives": undefined;
 	"ui.canvas.files.asc": undefined;
 	"ui.canvas.files.audio": undefined;

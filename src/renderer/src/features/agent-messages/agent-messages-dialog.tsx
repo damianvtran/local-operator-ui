@@ -109,12 +109,17 @@ export function AgentMessagesDialog({
 							<p>{t("ui.agentMessages.dialog.consent_changed")}</p>
 						)}
 						{field && rule && (
-							<p className={cn("text-meta text-ink-muted")}>
-								{t("ui.agentMessages.dialog.validation_detail", {
-									field,
-									rule,
-								})}
-							</p>
+							<>
+								<p>{t("ui.agentMessages.dialog.validation_failure")}</p>
+								{/* Raw identifiers are retained as SECONDARY diagnostics
+								    (design D1): never the only detail. */}
+								<p className={cn("text-meta text-ink-muted")}>
+									{t("ui.agentMessages.dialog.validation_detail", {
+										field,
+										rule,
+									})}
+								</p>
+							</>
 						)}
 					</div>
 				)}
