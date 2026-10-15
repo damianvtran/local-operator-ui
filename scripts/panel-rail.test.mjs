@@ -1961,9 +1961,11 @@ test("the ... menu's asks row is the header's remaining door: gated, verb-labell
  * `askOpenIntent` instead, and this drives the real header + drawer + store
  * together: the row OPENS over a live-but-empty queue and the keyboard lands in
  * the pane; the request is CONSUMED by the mount that answers it; while this
- * scope is open the row still CLOSES with no request written; a stranded close
- * returns the keyboard to the trigger; and a later NON-USER open over the empty
- * queue still auto-closes - the "consumed, not inheritable" half.
+ * scope is open the row still CLOSES with no request written, and it closes as
+ * the PRESSED KIND (#1079, UX round 1 U1/U2) - an empty slot, not the pane it
+ * borrowed handed back; a stranded close returns the keyboard to the trigger;
+ * and a later NON-USER open over the empty queue still auto-closes - the
+ * "consumed, not inheritable" half.
  *
  * The handler below is `chat-content.tsx`'s own expression (its source shape is
  * pinned in `fleet-asks.test.mjs`); this file pins what it DOES.
@@ -1993,7 +1995,14 @@ test("the ... menu's asks row opens the drawer over an empty queue, and its door
 						onToggleAsks: () => {
 							const state = useUiPreferencesStore.getState();
 							if (state.isAskDrawerOpen && state.askDrawerScope === "session") {
-								state.setAskDrawerOpen(false, "session");
+								/*
+								 * THE ROW'S CLOSE IS THE PRESSED KIND (#1079): its source shape is pinned in
+								 * `fleet-asks.test.mjs`, and what it DOES is asserted below - the slot is
+								 * left empty rather than handed back.
+								 */
+								state.setAskDrawerOpen(false, "session", {
+									dismissSlot: true,
+								});
 								return;
 							}
 							state.setAskDrawerOpen(true, "session");
@@ -2005,11 +2014,16 @@ test("the ... menu's asks row opens the drawer over an empty queue, and its door
 					? React.createElement(AskDrawer, {
 							frontend: emptyFrame,
 							scope: "session",
-							onClose: () => {
+							/*
+							 * The DRAWER decides which kind of close it is - the X asks for an empty
+							 * slot, its Escape and the emptied queue withdraw - and this forwards it to
+							 * the store, exactly as `chat-content.tsx`'s door does (#1079).
+							 */
+							onClose: (options) => {
 								closes += 1;
 								useUiPreferencesStore
 									.getState()
-									.setAskDrawerOpen(false, "session");
+									.setAskDrawerOpen(false, "session", options);
 							},
 						})
 					: null,
@@ -2101,7 +2115,30 @@ test("the ... menu's asks row opens the drawer over an empty queue, and its door
 			"a stranded close returns the keyboard to the trigger that was pressed",
 		);
 
-		/* (c) WHILE OPEN, THE ROW CLOSES - plain close, no request written. */
+		/*
+		 * (c) WHILE OPEN, THE ROW CLOSES - no request written, and the slot left EMPTY
+		 * (#1079, UX round 1 U1/U2): this row is a toggle the user pressed, so it means here
+		 * what it means on the rail item and on the drawer's X.
+		 *
+		 * THE SLOT IS SET UP BOUND AND EXPLICITLY, the panel-rail bound cell's own state
+		 * (Browser in the slot and in the conversation's memory), for two reasons: the borrow
+		 * is invisible in bound mode - the memory holds the answer, so nothing is written to
+		 * `askDrawerEvictedPane` - and a cell that let the store's leftover bind decide which
+		 * arm it walked would be measuring whatever the previous cell left behind. In bound
+		 * mode the give-back would PROJECT the memory entry and the press must RETRACT it, so
+		 * this is the arm where a missing `dismissSlot` is visible as a pane that returns.
+		 */
+		api.store({
+			rightSlotKey: "session-1",
+			rightSlotMemory: [["session-1", "browser"]],
+			isBrowserPaneOpen: true,
+		});
+		await act(async () => {});
+		assert.equal(
+			useUiPreferencesStore.getState().isBrowserPaneOpen,
+			true,
+			"the browser holds the slot before the row's open",
+		);
 		await openMenu();
 		await api.click(rowNamed("Open asks"));
 		await act(async () => {});
@@ -2109,6 +2146,11 @@ test("the ... menu's asks row opens the drawer over an empty queue, and its door
 			useUiPreferencesStore.getState().isAskDrawerOpen,
 			true,
 			"reopened",
+		);
+		assert.equal(
+			useUiPreferencesStore.getState().isBrowserPaneOpen,
+			false,
+			"over the browser's claim: the drawer took the slot from it",
 		);
 		await openMenu();
 		const closeRow = rowNamed("Close asks");
@@ -2127,6 +2169,16 @@ test("the ... menu's asks row opens the drawer over an empty queue, and its door
 			useUiPreferencesStore.getState().askOpenIntent,
 			null,
 			"the close arm writes no request",
+		);
+		assert.equal(
+			useUiPreferencesStore.getState().isBrowserPaneOpen,
+			false,
+			"and the browser does NOT come back: one label, one outcome - the close the user asked for empties the slot here exactly as it does on the rail item",
+		);
+		assert.deepEqual(
+			useUiPreferencesStore.getState().rightSlotMemory,
+			[],
+			"closed is the ABSENCE of an entry, so the conversation remembers no pane: the row's close RETRACTED it rather than projecting it",
 		);
 
 		/* (b) THE REQUEST IS NOT INHERITABLE: a non-user open over the empty queue still closes. */
@@ -2190,7 +2242,14 @@ test("a restore that lands after the drawer's own settle still ends inside, and 
 						onToggleAsks: () => {
 							const state = useUiPreferencesStore.getState();
 							if (state.isAskDrawerOpen && state.askDrawerScope === "session") {
-								state.setAskDrawerOpen(false, "session");
+								/*
+								 * THE ROW'S CLOSE IS THE PRESSED KIND (#1079): its source shape is pinned in
+								 * `fleet-asks.test.mjs`, and what it DOES is asserted below - the slot is
+								 * left empty rather than handed back.
+								 */
+								state.setAskDrawerOpen(false, "session", {
+									dismissSlot: true,
+								});
 								return;
 							}
 							state.setAskDrawerOpen(true, "session");
@@ -2202,10 +2261,11 @@ test("a restore that lands after the drawer's own settle still ends inside, and 
 					? React.createElement(AskDrawer, {
 							frontend: emptyFrame,
 							scope: "session",
-							onClose: () => {
+							/* The same forwarding door as the Q1 harness above (#1079). */
+							onClose: (options) => {
 								useUiPreferencesStore
 									.getState()
-									.setAskDrawerOpen(false, "session");
+									.setAskDrawerOpen(false, "session", options);
 							},
 						})
 					: null,
