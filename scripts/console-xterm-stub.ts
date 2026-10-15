@@ -67,6 +67,13 @@ class StubBuffer {
  * rather than for what it is, because the import site is what a reader greps for.
  */
 export class Terminal {
+	// Public localization API used before construction; no renderer is modeled here.
+	static strings = {
+		promptLabel: "Terminal input",
+		tooMuchOutput:
+			"Too much output to announce, navigate to rows manually to read",
+	};
+
 	cols = 80;
 	rows = 24;
 	options: Record<string, unknown> = {};

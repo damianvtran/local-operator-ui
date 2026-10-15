@@ -1,3 +1,4 @@
+import { subscribeLocale, t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import {
@@ -211,6 +212,22 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 	useLayoutEffect(() => {
 		const host = hostRef.current;
 		if (!host) return;
+		/*
+		 * THE TERMINAL'S OWN ACCESSIBLE NAME (design round 1, D8). xterm labels its
+		 * hidden input textarea ("Terminal input") and the screen-reader overflow
+		 * notice itself, in English, and that textarea is the first control a
+		 * screen-reader user lands on. `Terminal.strings` is a library-wide STATIC
+		 * the constructor reads when it builds the textarea, so it is assigned from
+		 * the catalogue immediately before each construction. The English values are
+		 * byte-identical to the library's own defaults (see the catalogue), so an
+		 * English user's accessibility tree does not change.
+		 *
+		 * xterm reads the prompt label only at open(), but reads the overflow string
+		 * when announcing output. Subscribe separately from terminal construction:
+		 * replacing a terminal on locale changes would discard its output/selection.
+		 */
+		Terminal.strings.promptLabel = t("ui.console.terminal.prompt_label");
+		Terminal.strings.tooMuchOutput = t("ui.console.terminal.too_much_output");
 		const term = new Terminal({
 			scrollback: 5000,
 			theme: readTerminalTheme(),
@@ -225,6 +242,12 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 		term.loadAddon(new Unicode11Addon());
 		term.unicode.activeVersion = "11";
 		term.open(host);
+		const offLocale = subscribeLocale(() => {
+			Terminal.strings.promptLabel = t("ui.console.terminal.prompt_label");
+			Terminal.strings.tooMuchOutput = t("ui.console.terminal.too_much_output");
+			// The public textarea handle avoids depending on xterm's private DOM tree.
+			term.textarea?.setAttribute("aria-label", Terminal.strings.promptLabel);
+		});
 
 		/*
 		 * COPY, ON TWO PATHS, and both are needed (UX round 2, U5).
@@ -298,6 +321,7 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 		heldTerminalRef.current = term;
 		setTerminal(term);
 		return () => {
+			offLocale();
 			host.removeEventListener("copy", onCopy);
 			heldTerminalRef.current = null;
 			setTerminal(null);

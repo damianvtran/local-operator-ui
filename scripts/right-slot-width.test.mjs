@@ -567,8 +567,8 @@ test("a blob already at the current version is passed through untouched", () => 
  * would leave a v0 blob's key behind), and it reaches the live store through a
  * real rehydrate rather than only through the pure function.
  */
-test("the persist version is 3, the step that drops chatMeasureWidth (#895)", () => {
-	assert.equal(UI_PREFERENCES_VERSION, 3);
+test("the persist version is 4, adding user Files preferences after the v3 pane-memory migration", () => {
+	assert.equal(UI_PREFERENCES_VERSION, 4);
 });
 
 test("a v1 blob loses only the retired chatMeasureWidth (#895)", () => {
@@ -577,12 +577,33 @@ test("a v1 blob loses only the retired chatMeasureWidth (#895)", () => {
 		1,
 	);
 	assert.equal("chatMeasureWidth" in migrated, false);
-	assert.deepEqual(migrated, { rightSlotWidth: 712, themeName: "dracula" });
+	assert.deepEqual(migrated, {
+		rightSlotWidth: 712,
+		themeName: "dracula",
+		finderFiles: {
+			sort: "recent",
+			order: "asc",
+			group: true,
+			workingOpen: false,
+			closedSections: [],
+			kinds: [],
+		},
+	});
 });
 
 test("a v1 blob is passed through untouched, apart from the v3 handover", () => {
 	const blob = { rightSlotWidth: 712, themeName: "dracula" };
-	assert.deepEqual(migrateUiPreferences(blob, 1), blob);
+	assert.deepEqual(migrateUiPreferences(blob, 1), {
+		...blob,
+		finderFiles: {
+			sort: "recent",
+			order: "asc",
+			group: true,
+			workingOpen: false,
+			closedSections: [],
+			kinds: [],
+		},
+	});
 	/*
 	 * AND A v1 BLOB THAT CARRIED A SLOT FLAG IS THE ORDINARY #894 UPGRADE: the step
 	 * above cannot tell, because this blob has no flag to hand over. Every blob in the
@@ -875,4 +896,36 @@ test("the panel rail's lit pane is the DRAWN pane, built from the same two input
 			);
 		}
 	}
+});
+
+// User-wide view choices survive a real persist/rehydrate; query is intentionally
+// not a preference, and hand-edited enum values are sanitised before any API call.
+test("v4 Files sort/disclosure/group/type filter are persisted with no search query", async () => {
+	useUiPreferencesStore.getState().setFinderFiles({
+		sort: "size",
+		order: "desc",
+		workingOpen: true,
+		closedSections: ["Highlights", "Images"],
+		kinds: ["images"],
+	});
+	const written = JSON.parse(memory.get("ui-preferences-storage"));
+	assert.equal(written.version, 4);
+	assert.deepEqual(written.state.finderFiles, {
+		sort: "size",
+		order: "desc",
+		group: true,
+		workingOpen: true,
+		closedSections: ["Highlights", "Images"],
+		kinds: ["images"],
+	});
+	assert.equal("query" in written.state.finderFiles, false);
+	await useUiPreferencesStore.persist.rehydrate();
+	assert.equal(useUiPreferencesStore.getState().finderFiles.sort, "size");
+	assert.deepEqual(
+		useUiPreferencesStore.getState().finderFiles.closedSections,
+		["Highlights", "Images"],
+	);
+	assert.deepEqual(useUiPreferencesStore.getState().finderFiles.kinds, [
+		"images",
+	]);
 });
