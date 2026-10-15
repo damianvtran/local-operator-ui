@@ -1,0 +1,187 @@
+{
+	"ui.providers.phone.account": {
+		"role": "account line",
+		"tone": "plain, exact",
+		"note": "{identity} is the backend-masked label; {id} is the credential number the setup is bound to."
+	},
+	"ui.providers.phone.account_unlabeled": {
+		"role": "account line when the backend sends no identity label",
+		"tone": "plain, exact",
+		"note": "Fallback only; the UI never builds its own mask. {id} is the credential number."
+	},
+	"ui.providers.phone.action.activate": {
+		"role": "primary button",
+		"tone": "imperative, carries the price",
+		"note": "{amount} is the exact fresh amount; pressing it accepts exactly that price."
+	},
+	"ui.providers.phone.action.cancel": {
+		"role": "ghost button",
+		"tone": "one word",
+		"note": "Cancels the in-flight browser sign-in through the existing sign-in hook."
+	},
+	"ui.providers.phone.action.check_again": {
+		"role": "secondary button",
+		"tone": "imperative",
+		"note": "Runs a fresh read-only check; never mutates."
+	},
+	"ui.providers.phone.action.choose": {
+		"role": "button per account",
+		"tone": "identity then number",
+		"note": "{identity} is backend-masked; never build a mask in the UI."
+	},
+	"ui.providers.phone.action.choose_unlabeled": {
+		"role": "button per account when no identity label exists",
+		"tone": "plain",
+		"note": "Fallback for a missing backend label."
+	},
+	"ui.providers.phone.action.copy_address": {
+		"role": "link button",
+		"tone": "imperative",
+		"note": "Copies the verified address through the shared copy button."
+	},
+	"ui.providers.phone.action.set_up": {
+		"role": "primary button",
+		"tone": "imperative",
+		"note": "Shown only when no activation is required; sends a run for the selected account."
+	},
+	"ui.providers.phone.action.sign_in": {
+		"role": "secondary button",
+		"tone": "matches the existing provider sign-in button",
+		"note": "Starts the existing browser sign-in; human provider consent happens in the browser."
+	},
+	"ui.providers.phone.address_label": {
+		"role": "label above the verified address",
+		"tone": "noun",
+		"note": "The exact URL the backend verified, never a guessed or cached one."
+	},
+	"ui.providers.phone.choose_heading": {
+		"role": "heading above account choices",
+		"tone": "imperative",
+		"note": "Several accounts exist; the app never picks one."
+	},
+	"ui.providers.phone.consent": {
+		"role": "consent sentence beside the activate button",
+		"tone": "plain, specific, no urgency",
+		"note": "UI-owned: the backend sends this sentence only in its terminal rendering. Wording mirrors local-operator mobile.setup.consent. Must keep: this account, the amount, no credit purchase. Makes NO claim about terms: only the backend speaks for those."
+	},
+	"ui.providers.phone.failure.check": {
+		"role": "generic fallback",
+		"tone": "calm, factual",
+		"note": "Used for a 5xx, a non-JSON body or an unreadable answer on a READ; safe to say nothing changed."
+	},
+	"ui.providers.phone.failure.run": {
+		"role": "generic fallback",
+		"tone": "calm, cautious",
+		"note": "Used when a run's outcome is unknown; never claims rollback or success."
+	},
+	"ui.providers.phone.heading": {
+		"role": "block heading",
+		"tone": "single noun phrase",
+		"note": "Names the Radient-hosted phone tunnel; sits above every state."
+	},
+	"ui.providers.phone.outcome.billing_activated_status": {
+		"role": "backend outcome presentation",
+		"tone": "plain, exact",
+		"note": "Exact canonical local-operator mobile.setup.billing_activated_status wording. Display only for matching backend outcome, never infer charge or rollback from receipts."
+	},
+	"ui.providers.phone.outcome.billing_already_active": {
+		"role": "backend outcome presentation",
+		"tone": "plain, exact",
+		"note": "Exact canonical local-operator mobile.setup.billing_already_active wording. Display only for matching backend outcome, never infer charge or rollback from receipts."
+	},
+	"ui.providers.phone.outcome.billing_not_activated": {
+		"role": "backend outcome presentation",
+		"tone": "plain, exact",
+		"note": "Exact canonical local-operator mobile.setup.billing_not_activated wording. Display only for matching backend outcome, never infer charge or rollback from receipts."
+	},
+	"ui.providers.phone.outcome.billing_unconfirmed": {
+		"role": "backend outcome presentation",
+		"tone": "plain, exact",
+		"note": "Exact canonical local-operator mobile.setup.billing_unconfirmed wording. Display only for matching backend outcome, never infer charge or rollback from receipts."
+	},
+	"ui.providers.phone.outcome.failure_stage": {
+		"role": "backend outcome presentation",
+		"tone": "plain, exact",
+		"note": "Exact canonical local-operator mobile.setup.failure_stage wording. Display only for matching backend outcome, never infer charge or rollback from receipts."
+	},
+	"ui.providers.phone.outcome.reservation_existing": {
+		"role": "backend outcome presentation",
+		"tone": "plain, exact",
+		"note": "Exact canonical local-operator mobile.setup.reservation_existing wording. Display only for matching backend outcome, never infer charge or rollback from receipts."
+	},
+	"ui.providers.phone.outcome.reservation_saved": {
+		"role": "backend outcome presentation",
+		"tone": "plain, exact",
+		"note": "Exact canonical local-operator mobile.setup.reservation_saved wording. Display only for matching backend outcome, never infer charge or rollback from receipts."
+	},
+	"ui.providers.phone.outcome.reservation_unconfirmed": {
+		"role": "backend outcome presentation",
+		"tone": "plain, exact",
+		"note": "Exact canonical local-operator mobile.setup.reservation_unconfirmed wording. Display only for matching backend outcome, never infer charge or rollback from receipts."
+	},
+	"ui.providers.phone.outcome.stage_billing": {
+		"role": "backend outcome presentation",
+		"tone": "plain, exact",
+		"note": "Exact canonical local-operator mobile.setup.stage_billing wording. Display only for matching backend outcome, never infer charge or rollback from receipts."
+	},
+	"ui.providers.phone.outcome.stage_configuration": {
+		"role": "backend outcome presentation",
+		"tone": "plain, exact",
+		"note": "Exact canonical local-operator mobile.setup.stage_configuration wording. Display only for matching backend outcome, never infer charge or rollback from receipts."
+	},
+	"ui.providers.phone.outcome.stage_installation": {
+		"role": "backend outcome presentation",
+		"tone": "plain, exact",
+		"note": "Exact canonical local-operator mobile.setup.stage_installation wording. Display only for matching backend outcome, never infer charge or rollback from receipts."
+	},
+	"ui.providers.phone.outcome.stage_prerequisites": {
+		"role": "backend outcome presentation",
+		"tone": "plain, exact",
+		"note": "Exact canonical local-operator mobile.setup.stage_prerequisites wording. Display only for matching backend outcome, never infer charge or rollback from receipts."
+	},
+	"ui.providers.phone.outcome.stage_reservation": {
+		"role": "backend outcome presentation",
+		"tone": "plain, exact",
+		"note": "Exact canonical local-operator mobile.setup.stage_reservation wording. Display only for matching backend outcome, never infer charge or rollback from receipts."
+	},
+	"ui.providers.phone.outcome.stage_verification": {
+		"role": "backend outcome presentation",
+		"tone": "plain, exact",
+		"note": "Exact canonical local-operator mobile.setup.stage_verification wording. Display only for matching backend outcome, never infer charge or rollback from receipts."
+	},
+	"ui.providers.phone.progress_heading": {
+		"role": "list heading",
+		"tone": "noun phrase",
+		"note": "Introduces backend-written progress lines."
+	},
+	"ui.providers.phone.receipts_heading": {
+		"role": "list heading",
+		"tone": "noun phrase",
+		"note": "Introduces backend-written receipts of steps that already happened."
+	},
+	"ui.providers.phone.signing_in": {
+		"role": "status while the existing browser sign-in runs",
+		"tone": "plain",
+		"note": "Human provider consent happens in the browser tab the existing sign-in opens; this block opens no tab of its own."
+	},
+	"ui.providers.phone.status.applying": {
+		"role": "status label beside a spinner",
+		"tone": "one word",
+		"note": "A setup run is live on the backend; nothing the user must do."
+	},
+	"ui.providers.phone.status.checking": {
+		"role": "status label beside a spinner",
+		"tone": "one word",
+		"note": "Read-only check in progress; nothing is being changed."
+	},
+	"ui.providers.phone.status.connected": {
+		"role": "success status",
+		"tone": "one word",
+		"note": "Shown ONLY when the backend reports verified true; never for waiting or cached state."
+	},
+	"ui.providers.phone.use_address": {
+		"role": "verified address instruction",
+		"tone": "plain, actionable",
+		"note": "Exact first sentence of backend mobile.setup.complete; omit CLI stop instruction because this UI has no stop authority."
+	}
+}
