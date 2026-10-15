@@ -45,7 +45,10 @@ repeat. Alt, wrong-platform modifiers and unrelated keys pass through.
 The explicit menu entries are intentional aliases of the same command ids, not
 independent global browser bindings. A menu click resolves actual focused native
 contents or the authorized chrome focus flag; outside the browser it retains the
-original app reload/force-reload/window-close action. Source tests reject the old
+original app reload/force-reload/window-close action. The actual menu callback
+window is checked FIRST: a popup/mini target must retain its own action even if
+main chrome has a stale focus flag; a missing target never redirects to main.
+Source tests reject the old
 unconditional reload/close menu roles. The native evidence enumerates the actual
 menu accelerators; aliases must be counted by owner, not as unexplained duplicates.
 

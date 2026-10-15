@@ -1,0 +1,74 @@
+{
+  "empty-after-localoperatordark.png": {
+    "sha256": "a779f8058f264c67d54cbea915cbb56524ffee34c899f34e61f4f82742dbc025",
+    "bytes": 67715
+  },
+  "empty-after-localoperatorlight.png": {
+    "sha256": "5436c61b852357f218b9214752d4f45665638040519c18cdf50ae378afac028a",
+    "bytes": 67515
+  },
+  "empty-before-localoperatordark.png": {
+    "sha256": "a779f8058f264c67d54cbea915cbb56524ffee34c899f34e61f4f82742dbc025",
+    "bytes": 67715
+  },
+  "empty-before-localoperatorlight.png": {
+    "sha256": "5436c61b852357f218b9214752d4f45665638040519c18cdf50ae378afac028a",
+    "bytes": 67515
+  },
+  "error-after-localoperatordark.png": {
+    "sha256": "518084db56befb8a7c903c6e5ca296c6a32a633cf6ae47025f752820a8b1f0ad",
+    "bytes": 131865
+  },
+  "error-after-localoperatorlight.png": {
+    "sha256": "8178e3d015e0888f7a7c662b843cacd62d6d974be29a1f9a84a02f5b7a7da0d4",
+    "bytes": 131955
+  },
+  "error-before-localoperatordark.png": {
+    "sha256": "c18a11b760a19174ba00c8b3373972d22ff611d6157cbcb122b3a89db243cd0a",
+    "bytes": 131852
+  },
+  "error-before-localoperatorlight.png": {
+    "sha256": "8178e3d015e0888f7a7c662b843cacd62d6d974be29a1f9a84a02f5b7a7da0d4",
+    "bytes": 131955
+  },
+  "focus-forced-after-localoperatordark.png": {
+    "sha256": "fa5be48ceac72f401800eb6956be2ff52d8ec4f377e23665f910cd9976f567f0",
+    "bytes": 78794
+  },
+  "focus-forced-after-localoperatorlight.png": {
+    "sha256": "40c83e71753840bbd6667cd5d1468af4823ae1ba6ec592eee636cf3aa9c4cf2c",
+    "bytes": 78240
+  },
+  "loading-after-localoperatordark.png": {
+    "sha256": "98e6c3e17c7b3fa085ecbfe5b75158d4d0f3bffa2c5fbeaab1c750c55b4054e6",
+    "bytes": 78569
+  },
+  "loading-after-localoperatorlight.png": {
+    "sha256": "9d5bf37098e121d0d7736ba5c4cc3efdeb385d3096ddf06967ef4e1282381b2a",
+    "bytes": 78138
+  },
+  "loading-before-localoperatordark.png": {
+    "sha256": "91d22732cf1425d52d85ab2eed786a3e320a4291e871dd9789e324402008e1c8",
+    "bytes": 79268
+  },
+  "loading-before-localoperatorlight.png": {
+    "sha256": "82c47913e319b2af1496e926081d5a77ccac90f8a10be0844382474e32492dd7",
+    "bytes": 78841
+  },
+  "populated-after-localoperatordark.png": {
+    "sha256": "ec9b97078f1b252bd03a8d06d97b6e5b926f6cb4b332a79daba0a63959e4be99",
+    "bytes": 77581
+  },
+  "populated-after-localoperatorlight.png": {
+    "sha256": "d75f90e6369846a72564b27a13f93f083dda470d1921d23acf4bb40ab2dc263d",
+    "bytes": 77024
+  },
+  "populated-before-localoperatordark.png": {
+    "sha256": "31c009a0e2aee41e7e6f4ce16cda82d01f7601afcfd9bc935e2291df27d511c0",
+    "bytes": 78077
+  },
+  "populated-before-localoperatorlight.png": {
+    "sha256": "14f1bc2fde5126b0995cf424765fa76021a0aac67c63c03bbcf4d663cd0ef093",
+    "bytes": 77135
+  }
+}
