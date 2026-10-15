@@ -115,10 +115,10 @@ export const PanelRailItem = forwardRef<HTMLButtonElement, PanelRailItemProps>(
 		 * well as on close (a tooltip left open by an exit through the window edge would
 		 * otherwise hold the page blank until the pointer returned).
 		 *
-		 * The shared `Tooltip` now makes that registration for EVERY tooltip (the
-		 * sidebar's conversation flyout had the same occlusion, opening `right`); this
-		 * item only names its registrations, so the paused page and the tests can still
-		 * tell a rail tooltip from the rest.
+		 * The shared `Tooltip` now makes that measured registration for every tooltip that
+		 * reaches the view (the sidebar's conversation flyout had the same occlusion,
+		 * opening `right`); this item only names its registrations, so the paused page and
+		 * the tests can still tell a rail tooltip from the rest.
 		 */
 		return (
 			/* Tooltips open TOWARD the pane (`left`): the rail is at the window's edge, so
