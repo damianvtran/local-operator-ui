@@ -2328,6 +2328,21 @@ test("browser readiness reads stay authorized before initialization and across r
 		currentHost = makeHost().host;
 		availability = { ...availability, status: "ready", message: null };
 		assert.equal(read(event).availability.status, "ready");
+		const focus = ipcMain.handlers.get("browser-set-chord-focus");
+		const reopen = ipcMain.handlers.get("browser-reopen-tab");
+		const focusPage = ipcMain.handlers.get("browser-focus-page");
+		for (const handler of [focus, reopen, focusPage]) {
+			assert.throws(
+				() => handler({ sender: {}, senderFrame: frame }, false),
+				/cannot use/,
+			);
+		}
+		assert.throws(() => focus(event, "true"), /boolean/);
+		assert.throws(() => reopen(event, { sessionId: "other" }), /conversation/i);
+		focus(event, true);
+		assert.equal(currentHost.chordFocus, true);
+		focus(event, false);
+		assert.equal(currentHost.chordFocus, false);
 		assert.equal(
 			ipcMain.handlers.get("browser-state"),
 			read,
@@ -2815,6 +2830,50 @@ function makeHost(overrides = {}) {
 		downloads,
 	};
 }
+
+test("closed-tab stack is user-only, scoped, bounded and erased with host UI lifetime", async () => {
+	const { host, registry } = makeHost();
+	for (let i = 0; i < 12; i++) {
+		await host.newTab("conversation-a");
+		await host.navigateActive(`https://example.test/${i}`);
+		host.closeTab(registry.activeTab.tabId);
+	}
+	for (let i = 11; i >= 2; i--) {
+		await host.reopenClosed("conversation-b");
+		assert.equal(registry.count(), 0);
+		await host.reopenClosed("conversation-a");
+		assert.equal(
+			registry.activeTab.view.webContents.getURL(),
+			`https://example.test/${i}`,
+		);
+		assert.equal(registry.activeTab.nonce, null);
+		registry.destroy(registry.activeTab.tabId); // no second user close to remember
+	}
+	await host.reopenClosed(null);
+	assert.equal(registry.count(), 0, "oldest two entries were evicted");
+	const agent = registry.create({ owner: "agent", sessionId: "agent" });
+	await agent.view.webContents.loadURL("https://example.test/agent");
+	host.closeTab(agent.tabId);
+	await host.newTab();
+	await host.navigateActive("https://example.test/handed");
+	const user = registry.activeTab;
+	host.handOver(user.tabId, "session:a");
+	host.closeTab(user.tabId);
+	await host.reopenClosed(null);
+	assert.equal(
+		registry.count(),
+		0,
+		"agent and handed-over URLs never retained",
+	);
+	await host.newTab();
+	await host.navigateActive("https://example.test/forgotten");
+	host.closeTab(registry.activeTab.tabId);
+	host.setChordFocus(true);
+	host.clearChordState();
+	assert.equal(host.chordFocus, false);
+	await host.reopenClosed(null);
+	assert.equal(registry.count(), 0);
+});
 
 test("real dispatcher records allocation, fences peers, recovers and finishes exactly its tab", async () => {
 	const { host, registry } = makeHost();

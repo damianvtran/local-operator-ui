@@ -149,13 +149,21 @@ function fixture(failConsole) {
 		},
 	});
 	const mainFrame = { url: "http://localhost:5173/index.html" };
-	const webContents = { id: 700, mainFrame, send() {} };
-	const window = {
+	const webContents = Object.assign(new EventEmitter(), {
+		id: 700,
+		mainFrame,
+		send() {},
+		isDestroyed: () => false,
+		setIgnoreMenuShortcuts(value) {
+			webContents.ignoringMenu = value;
+		},
+	});
+	const window = Object.assign(new EventEmitter(), {
 		isDestroyed: () => false,
 		webContents,
 		contentView: { addChildView() {}, removeChildView() {} },
 		getContentBounds: () => ({ x: 0, y: 0, width: 1000, height: 700 }),
-	};
+	});
 	const f = {
 		dir,
 		saved,

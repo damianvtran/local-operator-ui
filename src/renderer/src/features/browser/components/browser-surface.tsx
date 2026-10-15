@@ -18,6 +18,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { useBrowserChords } from "../hooks/use-browser-chords";
 import {
 	type BrowserTabView,
 	useBrowserChrome,
@@ -284,6 +285,8 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	);
 	const activeTab =
 		tabs.find((tab) => tab.tabId === state?.activeTabId) ?? null;
+	const addressRef = useRef<HTMLInputElement>(null);
+	const chordRoot = useBrowserChords(chrome, tabs, hostSessionId, addressRef);
 
 	// THE ONE CLOCK (spec 3.3). The queue model owns the 1s interval and the
 	// ordinal, so the tray, the dock, the tab chips and the badge cannot disagree.
@@ -531,6 +534,8 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 		   conversation's, and the strip/client area above and below are continuous
 		   with it. */
 		<div
+			ref={chordRoot}
+			tabIndex={-1}
 			className="flex h-full min-h-0 flex-col bg-elevated"
 			data-tour-tag={surfaceTag}
 		>
@@ -553,6 +558,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 				onRevokeHandOver={(tabId) => void chrome.revokeHandOver(tabId)}
 			/>
 			<BrowserUrlBar
+				inputRef={addressRef}
 				url={state?.url ?? ""}
 				pendingUrl={chrome.pendingUrl}
 				loading={Boolean(state?.loading)}

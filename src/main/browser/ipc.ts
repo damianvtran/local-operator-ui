@@ -71,12 +71,16 @@ export interface RegisterBrowserIpcOptions {
 	 * calls. It is authorized like every other channel and is a no-op when a host
 	 * is already running, so a stray click cannot start a second one. */
 	retry?: () => Promise<void>;
+	focusPage?: () => void;
 	log: (message: string) => void;
 }
 
 /** The channels this namespace owns, in one place so a test can enumerate them. */
 export const BROWSER_IPC_CHANNELS = [
 	"browser-state",
+	"browser-set-chord-focus",
+	"browser-reopen-tab",
+	"browser-focus-page",
 	"browser-new-tab",
 	"browser-close-tab",
 	"browser-close-tabs",
@@ -182,7 +186,25 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 		return host.navigateActive(url.trim());
 	});
 
-	ipcMain.handle("browser-reload", (event) => authorize(event).reloadActive());
+	ipcMain.handle("browser-set-chord-focus", (event, focused: unknown) => {
+		const host = authorize(event);
+		if (typeof focused !== "boolean")
+			throw new Error("Browser focus must be a boolean.");
+		host.setChordFocus(focused);
+	});
+	ipcMain.handle("browser-reopen-tab", (event, sessionId: unknown) =>
+		authorize(event).reopenClosed(optionalConversationOrThrow(sessionId)),
+	);
+	ipcMain.handle("browser-focus-page", (event) => {
+		authorize(event);
+		options.focusPage?.();
+	});
+	ipcMain.handle("browser-reload", (event, hard: unknown) => {
+		const host = authorize(event);
+		if (hard !== undefined && typeof hard !== "boolean")
+			throw new Error("Hard reload must be a boolean.");
+		return host.reloadActive(hard === true);
+	});
 
 	ipcMain.handle("browser-stop", (event) => authorize(event).stopActive());
 

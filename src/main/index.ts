@@ -63,6 +63,7 @@ import { LogFileType, logger } from "./backend/logger";
 import {
 	browserHostEnabled,
 	browserHostStopPending,
+	routeBrowserMenu,
 	startBrowserHost,
 	stopBrowserHost,
 } from "./browser";
@@ -576,12 +577,21 @@ function createApplicationMenu(): void {
 			label: "View",
 			submenu: [
 				{
-					role: "reload",
+					id: "app-reload",
+					label: "Reload",
 					accelerator: "CmdOrCtrl+R",
+					click: () => {
+						if (!routeBrowserMenu("reload")) mainWindow?.webContents.reload();
+					},
 				},
 				{
-					role: "forceReload",
+					id: "app-force-reload",
+					label: "Force reload",
 					accelerator: "CmdOrCtrl+Shift+R",
+					click: () => {
+						if (!routeBrowserMenu("hard-reload"))
+							mainWindow?.webContents.reloadIgnoringCache();
+					},
 				},
 				{ type: "separator" as const },
 				{
@@ -624,11 +634,27 @@ function createApplicationMenu(): void {
 							 * `window-all-closed` path the red button takes, which is the one
 							 * this change made safe for an install in flight.
 							 */
-							{ role: "close" },
+							{
+								id: "app-close",
+								label: "Close window",
+								accelerator: "CmdOrCtrl+W",
+								click: () => {
+									if (!routeBrowserMenu("close-tab")) mainWindow?.close();
+								},
+							},
 							{ type: "separator" as const },
 							{ role: "window" },
 						] as Electron.MenuItemConstructorOptions[])
-					: ([{ role: "close" }] as Electron.MenuItemConstructorOptions[])),
+					: ([
+							{
+								id: "app-close",
+								label: "Close window",
+								accelerator: "CmdOrCtrl+W",
+								click: () => {
+									if (!routeBrowserMenu("close-tab")) mainWindow?.close();
+								},
+							},
+						] as Electron.MenuItemConstructorOptions[])),
 			],
 		},
 		{
