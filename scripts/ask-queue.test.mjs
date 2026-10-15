@@ -622,6 +622,29 @@ test("an ask of only secrets, all left empty, is not sendable (Decline says that
 	});
 });
 
+test("the secret field offers a skip only where leaving it empty could still send", () => {
+	const key = { id: "K", question: "Paste the key.", secret: true };
+	const other = { id: "L", question: "Paste the other key.", secret: true };
+	const choice = { id: "env", question: "Which environment?" };
+	const placeholder = (questions, recorded) =>
+		queue.askSecretPlaceholder(ask({ questions }), key, recorded);
+	assert.equal(placeholder([choice, key]), queue.ASK_SECRET_SKIP_PLACEHOLDER);
+	// Another SECRET can carry the one real answer, so this one may be skipped.
+	assert.equal(placeholder([key, other]), queue.ASK_SECRET_SKIP_PLACEHOLDER);
+	// Alone, an empty field can never send: main's copy, and Decline is the way out.
+	assert.equal(placeholder([key]), queue.ASK_SECRET_PLAIN_PLACEHOLDER);
+	assert.equal(
+		placeholder([key], { K: ["<not provided>"] }),
+		queue.ASK_SECRET_PLAIN_PLACEHOLDER,
+		"the change form of a secret-only ask recorded as a skip",
+	);
+	// Over a stored key the requirement wins, whatever else is on the ask.
+	assert.equal(
+		placeholder([choice, key], { env: ["staging"], K: ["K"] }),
+		queue.ASK_SECRET_RETYPE_PLACEHOLDER,
+	);
+});
+
 test("the change form keeps a stored secret: retype it unless the recorded answer was a skip", () => {
 	const secret = ask({
 		ask_id: "a-rev",

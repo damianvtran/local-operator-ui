@@ -1561,20 +1561,65 @@ export const askSecretIsSkippable = (
 };
 
 /**
- * The masked field's placeholder, which is where its skip rule is said: the field is
+ * The masked field's placeholders, which is where its skip rule is said: the field is
  * the thing a reader is looking at when deciding whether they must fill it, and the
  * question's own prose is the model's and may not mention skipping at both doors.
- * `never shown again` stays in both, because that is still true of a typed value.
+ * `what you type is never shown` keeps the privacy promise on the VALUE: attached to
+ * "skip" as a parenthetical it read as "you will not be asked again" (design round 1,
+ * D3). `askSecretPlaceholder` picks one.
  */
 export const ASK_SECRET_SKIP_PLACEHOLDER =
-	"Leave empty to skip (never shown again)";
-/** The change form's field when the recorded cell holds a stored key. */
+	"Leave empty to skip; what you type is never shown";
+/**
+ * The change form's field over a stored key. It is the only explanation for a disabled
+ * `Update answer` there, so it states the requirement rather than an option (D4).
+ */
 export const ASK_SECRET_RETYPE_PLACEHOLDER =
-	"Type it again to update (never shown again)";
+	"Required: type it again; what you type is never shown";
+/** Main's copy, kept where an empty field could not be sent as a skip. */
+export const ASK_SECRET_PLAIN_PLACEHOLDER = "Your answer (never shown again)";
 
 /** Whether a typed secret value is there to send. */
 const secretTyped = (question: PendingAskQuestion, secrets: AskSecrets) =>
 	isAnswerText(secrets[question.id] ?? "");
+
+/**
+ * THE WHOLE-ASK "AT LEAST ONE REAL ANSWER" RULE, in one place: a non-secret question's
+ * answer is real, and a secret's is real only once a value is typed - a skipped secret
+ * says nothing. With `secrets` OMITTED it asks whether the question COULD carry a real
+ * answer, which is what the placeholder needs before anything is typed
+ * (`askSecretPlaceholder`); `askDraftIsComplete` passes the typed values.
+ */
+const carriesRealAnswer = (
+	question: PendingAskQuestion,
+	secrets?: AskSecrets,
+): boolean =>
+	!question.secret || secrets === undefined || secretTyped(question, secrets);
+
+/**
+ * The masked field's placeholder, from the SAME two rules the submit reads, so the copy
+ * cannot offer what the button refuses (design round 1, D1; review round 1, MINOR 1;
+ * QA round 1, Q-1).
+ *
+ *  - Not skippable (the change form over a stored key): the retype requirement.
+ *  - Skippable, and some OTHER question could carry a real answer: the skip copy.
+ *  - Skippable but nothing else could carry one (a secret-only, single-question ask,
+ *    first answer or change form): main's plain copy, because leaving this field
+ *    empty can never produce a send - `Decline` is the way out there.
+ */
+export const askSecretPlaceholder = (
+	ask: PendingAsk,
+	question: PendingAskQuestion,
+	recorded?: Record<string, string[]>,
+): string => {
+	if (!askSecretIsSkippable(question, recorded))
+		return ASK_SECRET_RETYPE_PLACEHOLDER;
+	return ask.questions.some(
+		(other) => other.id !== question.id && carriesRealAnswer(other),
+	)
+		? ASK_SECRET_SKIP_PLACEHOLDER
+		: ASK_SECRET_PLAIN_PLACEHOLDER;
+};
 
 /**
  * Whether ONE question needs nothing more from the user, between the draft, the
@@ -1602,8 +1647,9 @@ const secretTyped = (question: PendingAskQuestion, secrets: AskSecrets) =>
  * way the submit does.
  *
  * Because every submit path reads this rule - the button, Enter, the change form and
- * `askAnswerMap` - a blank can never reach the wire, and the card and its gate cannot
- * disagree about whether the question is done.
+ * `askAnswerMap` - a blank STRING can never reach the wire, and the card and its gate
+ * cannot disagree about whether the question is done. A skipped secret does reach it,
+ * on purpose, as an EMPTY LIST under its id (see `askAnswerMap`).
  */
 export const askQuestionIsAnswered = (
 	question: PendingAskQuestion,
@@ -1640,10 +1686,7 @@ export const askDraftIsComplete = (
 ): boolean =>
 	ask.questions.every((question) =>
 		askQuestionIsAnswered(question, draft, secrets, recorded),
-	) &&
-	ask.questions.some(
-		(question) => !question.secret || secretTyped(question, secrets),
-	);
+	) && ask.questions.some((question) => carriesRealAnswer(question, secrets));
 
 /**
  * The most characters one answer value may carry: the wire's own cap on a string in

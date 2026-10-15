@@ -66,15 +66,13 @@ import type {
 } from "../../ask-queue";
 import {
 	ASK_CHANGE_WINDOW_HINT,
-	ASK_SECRET_RETYPE_PLACEHOLDER,
-	ASK_SECRET_SKIP_PLACEHOLDER,
 	EMPTY_DRAFT,
 	askAnswerMap,
 	askCellWith,
 	askOtherSeed,
 	askQuestionIsAnswered,
 	askRevisionDraft,
-	askSecretIsSkippable,
+	askSecretPlaceholder,
 	askSettledAnswers,
 	askStatusText,
 	askStatusWord,
@@ -328,7 +326,7 @@ const AskQuestionField = ({
 	question,
 	selected,
 	secret,
-	secretSkippable,
+	secretPlaceholder,
 	disabled,
 	onCell,
 	onSecret,
@@ -339,8 +337,8 @@ const AskQuestionField = ({
 	/** This question's draft cell: the ticked labels and, last, the `Other` text. */
 	selected: string[];
 	secret: string;
-	/** Whether an empty masked field is a skip here; the row reads `askSecretIsSkippable`. */
-	secretSkippable: boolean;
+	/** The masked field's copy; the row reads `askSecretPlaceholder`, the submit's own rules. */
+	secretPlaceholder: string;
 	disabled: boolean;
 	/**
 	 * The question's NEW draft cell. One writer for every control on the question -
@@ -442,11 +440,7 @@ const AskQuestionField = ({
 					disabled={disabled}
 					value={secret}
 					onChange={(event) => onSecret(event.target.value)}
-					placeholder={
-						secretSkippable
-							? ASK_SECRET_SKIP_PLACEHOLDER
-							: ASK_SECRET_RETYPE_PLACEHOLDER
-					}
+					placeholder={secretPlaceholder}
 					/*
 					 * A real name, because the placeholder is not one: it vanishes at the
 					 * first character and the question <p> beside it is a sibling rather
@@ -454,7 +448,12 @@ const AskQuestionField = ({
 					 * round 1, D8).
 					 */
 					aria-label={`Your answer to: ${question.question}`}
-					className="w-full rounded-md border border-control bg-surface px-2 py-1.5 text-ink text-sm"
+					/*
+					 * The placeholder pair `ui/input.tsx` uses: the placeholder is where the skip
+					 * rule is stated, and the browser default measured 2.81:1 on Linen against
+					 * `ink-dim`'s 5.0:1 floor (design round 1, D2).
+					 */
+					className="w-full rounded-md border border-control bg-surface px-2 py-1.5 text-ink text-sm placeholder:text-ink-dim disabled:placeholder:text-ink-disabled"
 				/>
 			) : options.length > 0 ? (
 				<div className="flex flex-col" role={multi ? "group" : "radiogroup"}>
@@ -1090,7 +1089,11 @@ const AskRow = ({
 							question={question}
 							selected={draftFor(editDraft, question.id)}
 							secret={secrets[question.id] ?? ""}
-							secretSkippable={askSecretIsSkippable(question, editRecorded)}
+							secretPlaceholder={askSecretPlaceholder(
+								ask,
+								question,
+								editRecorded,
+							)}
 							disabled={fieldDisabled}
 							onCell={(cell) =>
 								writeDraft((current) => ({ ...current, [question.id]: cell }))
