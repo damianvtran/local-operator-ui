@@ -34,6 +34,7 @@ export function createBrowserChordRouter(options: {
 	ownsChrome: () => boolean;
 	ownsPage: () => boolean;
 	reload: (hard: boolean) => void;
+	zoom?: (command: "in" | "out" | "reset") => void;
 	history: (direction: "back" | "forward") => void;
 	send: (message: BrowserChordMessage) => void;
 	focusChrome: () => void;
@@ -42,7 +43,13 @@ export function createBrowserChordRouter(options: {
 		if (intent === "reload" || intent === "hard-reload")
 			options.reload(intent === "hard-reload");
 		else if (intent === "back" || intent === "forward") options.history(intent);
-		else {
+		else if (intent.startsWith("zoom-") && options.zoom) {
+			// Zoom does not need a DOM caret. Keep native page focus instead of
+			// taking it through chrome just to send a renderer intent back to main.
+			options.zoom(
+				intent === "zoom-in" ? "in" : intent === "zoom-out" ? "out" : "reset",
+			);
+		} else {
 			// Moving DOM focus never shows or activates a window. The helper refuses
 			// an unfocused/hidden launch; the renderer still receives the intent.
 			options.focusChrome();

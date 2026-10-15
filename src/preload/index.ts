@@ -793,6 +793,21 @@ const api = {
 	 * moves to a session (the hand-over) mints a nonce main never sends back here.
 	 */
 	browser: {
+		pageControl: (
+			tabId: number,
+			action: "open" | "close" | "search" | "in" | "out" | "reset",
+			query: string,
+			forward: boolean,
+			next: boolean,
+		): Promise<unknown> =>
+			ipcRenderer.invoke(
+				"browser-page-control",
+				tabId,
+				action,
+				query,
+				forward,
+				next,
+			),
 		setChordFocus: (focused: boolean): Promise<void> =>
 			ipcRenderer.invoke("browser-set-chord-focus", focused),
 		reopenTab: (sessionId?: string | null): Promise<unknown> =>

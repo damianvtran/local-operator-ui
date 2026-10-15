@@ -37,6 +37,10 @@ assert(
 	"No actual menu enumeration in receipt.",
 );
 const aliases = new Map([
+	["primary+f", "find: native page vs transcript, by focus"],
+	["primary+plus", "zoom in: browser view vs app window, by focus"],
+	["primary+-", "zoom out: browser view vs app window, by focus"],
+	["primary+0", "actual size: browser view vs app window, by focus"],
 	["primary+r", "reload: menu/main/DOM are focus-scoped doors"],
 	["primary+shift+r", "hard-reload: menu/main/DOM are focus-scoped doors"],
 	["primary+w", "close: browser tab vs existing app window, by focus"],
@@ -52,16 +56,11 @@ const aliases = new Map([
 	["primary+v", "existing native paste"],
 	["primary+a", "existing native select all"],
 	["primary+m", "existing native minimize"],
-	// Frozen a1 explicitly leaves the historical Actual Size/Cmd+O conflict
-	// unchanged for a2. It is recorded, NOT silently called a fixed collision.
-	[
-		"primary+o",
-		"PRE-EXISTING: app Actual Size vs canvas open; a2, not fixed by a1",
-	],
 ]);
 function canonical(value) {
 	const bits = value
 		.toLowerCase()
+		.replace(/\+\+$/, "+plus")
 		.split("+")
 		.map((bit) => {
 			if (["commandorcontrol", "cmdorctrl", "command", "meta"].includes(bit))
@@ -69,9 +68,17 @@ function canonical(value) {
 			if (bit === "ctrl") return "control";
 			return bit;
 		});
-	const key = bits.pop();
+	const last = bits.pop();
+	const key = last === "=" ? "plus" : last;
 	return [...bits.sort(), key].join("+");
 }
+assert.equal(
+	canonical(
+		menus.find((item) => item.id === "app-actual-size")?.accelerator ?? "",
+	),
+	"primary+0",
+	"Actual Size must be zero, not canvas file-open O",
+);
 const owners = new Map();
 function add(chord, owner) {
 	const key = canonical(chord);
@@ -98,6 +105,11 @@ for (const item of menus) {
 	add(item.accelerator, `menu: ${item.id || item.role || "existing app zoom"}`);
 }
 for (const key of [
+	"f",
+	"+",
+	"=",
+	"-",
+	"0",
 	"r",
 	"R",
 	"l",
@@ -169,5 +181,5 @@ for (const [chord, entries] of owners) {
 }
 assert.equal(unexpected, 0, "Unexpected shortcut collisions");
 console.log(
-	"PASS: actual native menu + reserved/default registry + per-view classifier; known aliases explicit; Actual Size conflict remains documented, not fixed",
+	"PASS: actual native menu + reserved/default registry + per-view classifier; known aliases explicit; Actual Size is 0 (zero); old O conflict removed",
 );
