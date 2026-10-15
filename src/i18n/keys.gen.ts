@@ -67,6 +67,9 @@ import enUiSettingsSpeech from "./catalogues/en/ui.settings.speech.json";
 import enUiSettingsUpdates from "./catalogues/en/ui.settings.updates.json";
 import enUiShell from "./catalogues/en/ui.shell.json";
 import enUiShellRail from "./catalogues/en/ui.shell.rail.json";
+import esUiConsole from "./catalogues/es/ui.console.json";
+import esUiOnboarding from "./catalogues/es/ui.onboarding.json";
+import esUiSettings from "./catalogues/es/ui.settings.json";
 import frUiConsole from "./catalogues/fr/ui.console.json";
 import frUiOnboarding from "./catalogues/fr/ui.onboarding.json";
 import frUiSettings from "./catalogues/fr/ui.settings.json";
@@ -126,6 +129,11 @@ export const bundledCatalogues: Readonly<
 	Record<string, Readonly<Record<string, string>>>
 > = {
 	en: bundledEnglish,
+	es: {
+		...esUiConsole,
+		...esUiOnboarding,
+		...esUiSettings,
+	},
 	fr: {
 		...frUiConsole,
 		...frUiOnboarding,
