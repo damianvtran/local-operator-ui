@@ -435,6 +435,45 @@ test("the repository's own workflows are compliant, and the scan really finds th
 	});
 });
 
+test("NPX sanity packs fork PRs with non-secret fixtures, never release credentials", () => {
+	// GitHub resolves secrets.* to empty strings for fork pull_request runs. The
+	// real workflow, not a compliant fixture workflow, must therefore carry usable
+	// build inputs without credentials. OAuth success is not this smoke's claim:
+	// it verifies packaging and launch, while publish keeps the real bindings.
+	const result = checkWorkflows();
+	const pack = result.checked.filter(
+		(entry) => entry.file === "ci.yml" && entry.job === "npx-sanity-check",
+	);
+	assert.equal(
+		pack.length,
+		1,
+		"the real NPX pack invocation must be inspected",
+	);
+	const fixtures = {
+		VITE_GOOGLE_CLIENT_ID: "ci-fixture.apps.googleusercontent.com",
+		VITE_GOOGLE_CLIENT_SECRET: "ci-fixture-unused",
+		VITE_MICROSOFT_CLIENT_ID: "00000000-0000-4000-8000-000000000001",
+		VITE_MICROSOFT_TENANT_ID: "00000000-0000-4000-8000-000000000002",
+	};
+	assert.deepEqual(Object.keys(fixtures).sort(), result.required.toSorted());
+	for (const [name, value] of Object.entries(fixtures)) {
+		assert.equal(pack[0].env[name], value, `${name} must work without secrets`);
+	}
+	const releases = result.checked.filter((entry) =>
+		["publish.yml", "signed-update-candidate.yml"].includes(entry.file),
+	);
+	assert.ok(releases.length > 0, "release build steps must remain inspected");
+	for (const entry of releases) {
+		for (const name of result.required) {
+			assert.equal(
+				entry.env[name],
+				`\${{ secrets.${result.canonical[name]} }}`,
+				`${entry.file}: ${entry.step} must retain its production binding`,
+			);
+		}
+	}
+});
+
 /*
  * MINOR-3 of the review round, closed rather than stated: the names come from
  * every plugin the config wires, so a second guard-bearing plugin is under the
