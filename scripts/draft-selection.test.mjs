@@ -1034,6 +1034,19 @@ const pickerDependencies = {
 			},
 		];
 	},
+	/*
+	 * The effort adapter keeps its default checkbox and in-flight flag in refs
+	 * (the pick's continuation must read the box as it is when the owner
+	 * answers). A ref is one more slot in the same per-instance hook index, so it
+	 * survives the explicit re-renders this harness performs, as React's does.
+	 */
+	useRef: (initial) => {
+		const instance = activePicker;
+		const index = instance.index++;
+		if (!(index in instance.states))
+			instance.states[index] = { current: initial };
+		return instance.states[index];
+	},
 	useQuery: (query) => {
 		activePicker.lastPreviewKey = query.queryKey;
 		return {
