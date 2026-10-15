@@ -1,0 +1,33 @@
+diff --git a/src/renderer/src/features/browser/components/browser-surface.tsx b/src/renderer/src/features/browser/components/browser-surface.tsx
+index 5e43e6198f..b3479bd73d 100644
+--- a/src/renderer/src/features/browser/components/browser-surface.tsx
++++ b/src/renderer/src/features/browser/components/browser-surface.tsx
+@@ -15,0 +16 @@ import {
++	useId,
+@@ -205,0 +207 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
++	const tabPanelId = useId();
+@@ -562,0 +565 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
++				tabPanelId={tabPanelId}
+@@ -570,0 +574,9 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
++				onReorder={(ids) => chrome.reorderTabs(ids)}
++				onTabAction={(id, action) => {
++					void chrome.actOnTab(id, action).then((accepted) => {
++						// A duplicate intentionally has no conversation association. Reveal it
++						// through the existing All-tabs affordance, not by copying agent scope.
++						if (accepted && action === "duplicate" && tabScope !== "all")
++							onShowAllTabs?.();
++					});
++				}}
+@@ -711,0 +724,12 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
++					id={tabPanelId}
++					role="tabpanel"
++					aria-labelledby={
++						tabs.some((tab) => tab.tabId === state?.activeTabId)
++							? `${tabPanelId}-tab-${state?.activeTabId}`
++							: undefined
++					}
++					aria-label={
++						tabs.some((tab) => tab.tabId === state?.activeTabId)
++							? undefined
++							: newTabLabel
++					}
