@@ -25,6 +25,11 @@ import {
 	useHubActions,
 	useHubUpdates,
 } from "@shared/api/local-operator/hub-hooks";
+import { useHubLinks } from "@shared/api/local-operator/hub-link-hooks";
+import {
+	linksForLocalItem,
+	unresolvedForLocalItem,
+} from "@shared/api/local-operator/hub-links";
 import {
 	type HubItemKind,
 	type HubMark,
@@ -263,6 +268,12 @@ import { ChatRemoteMark } from "./chat-remote-mark";
 import { ChatRowHoverIntent } from "./chat-row-hover-intent";
 import { ChatRowTitle } from "./chat-row-title";
 import { ChatSidebarViewMenu } from "./chat-sidebar-view-menu";
+import {
+	HubLinkAggregateMark,
+	HubLinkExpandedPolicy,
+	HubLinkSidebarMark,
+	HubUnresolvedMark,
+} from "./hub-link-sidebar-mark";
 import {
 	HubHeadingControls,
 	HubRowNote,
@@ -1328,6 +1339,8 @@ export function ChatSidebar({
 		ready && desktopFeatureEnabled(capabilities.data, "hub_updates"),
 	);
 	const hubItems = hubItemIndex(hubUpdates.data);
+	const fullHubLinks = desktopFeatureEnabled(capabilities.data, "hub_links");
+	const hubLinks = useHubLinks(ready && fullHubLinks);
 	const hub = useHubActions();
 	// Whether the backend tracks any hub-linked item at all: the check control is
 	// drawn only for a user the hub concerns, so everyone else pays nothing.
@@ -6451,6 +6464,32 @@ export function ChatSidebar({
 		const hubKey = hubItemKey(kind, name);
 		const hubItem = hubItems.get(hubKey);
 		const hubMark = hubMarkFor(hubItem);
+		const localId =
+			kind === "team"
+				? teams.data?.find((row) => row.name === name)?.id
+				: (profiles.data?.find((row) => row.name === name)?.agent_id ??
+					undefined);
+		const linkedOrigins = fullHubLinks
+			? linksForLocalItem(hubLinks.data, kind, localId, name)
+			: [];
+		// Even malformed multi-origin inventory cannot pick the first destination.
+		// The ordinary one-origin row has direct action; ambiguity opens detail.
+		const linkedOrigin =
+			linkedOrigins.length === 1 ? linkedOrigins[0] : undefined;
+		// CODE MAJOR-2: more than one origin drew NOTHING before. Now it draws one
+		// aggregate mark that opens the Hub links detail (design §Sidebar line 48),
+		// where the per-link policy controls live. A zero-origin row draws neither.
+		const aggregateOrigins = linkedOrigins.length > 1 ? linkedOrigins : null;
+		/*
+		 * CODE MAJOR-B: an item in `inventory.unresolved` but NOT in
+		 * `inventory.links` drew nothing, and the legacy HubUpdateMark is suppressed
+		 * once hub_links is advertised - so an item needing the source-confirmation
+		 * act had no indicator at all. The unresolved reader is the second half.
+		 */
+		const unresolvedOrigins =
+			fullHubLinks && linkedOrigins.length === 0
+				? unresolvedForLocalItem(hubLinks.data, kind, localId, name)
+				: [];
 		return (
 			<div key={key} data-entity>
 				<div
@@ -6658,7 +6697,35 @@ export function ChatSidebar({
 							</button>
 						</Tooltip>
 					)}
-					{hubMark && hubItem && (
+					{linkedOrigin && (
+						<HubLinkSidebarMark
+							link={linkedOrigin}
+							staged={staged}
+							onDetail={() => openHubDetail(kind, name)}
+						/>
+					)}
+					{aggregateOrigins && (
+						<HubLinkAggregateMark
+							links={aggregateOrigins}
+							staged={staged}
+							onDetail={() => openHubDetail(kind, name)}
+						/>
+					)}
+					{unresolvedOrigins.length > 0 && (
+						<HubUnresolvedMark
+							item={name}
+							staged={staged}
+							onResolve={() =>
+								navigate(
+									/* A fresh token per press: a repeat press on the SAME
+									 * already-open row must re-open/re-focus it, which a
+									 * constant `=1` cannot do (CODE MINOR-E). */
+									`/agents?kind=${kind}&name=${encodeURIComponent(name)}&resolve=${Date.now()}`,
+								)
+							}
+						/>
+					)}
+					{!fullHubLinks && hubMark && hubItem && (
 						<HubUpdateMark
 							item={hubItem}
 							mark={hubMark}
@@ -6687,6 +6754,9 @@ export function ChatSidebar({
 				{hub.notes[hubKey] && <HubRowNote note={hub.notes[hubKey]} />}
 				{open && (
 					<div>
+						{linkedOrigins.map((link) => (
+							<HubLinkExpandedPolicy key={link.link_id} link={link} />
+						))}
 						{/*
 						 * THE VIEWED CONVERSATION, FIRST WHEN THE BOUND WITHHELD IT, AND
 						 * LABELLED.
