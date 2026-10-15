@@ -1,4 +1,18 @@
-# Browser find / isolated page zoom — implementation evidence
+# Browser find / isolated page zoom — current evidence
+
+## Round 1 correction — native find now proven
+
+**Current result:** [round1 evidence](r1/README.md), code `41cec92350f5e70e5fd442271ef9b360612a82ee`, src tree `a4c4c0d4ea47d2c14b9043fd3ce01feaa51a95fe`.
+
+The original `findNext` polarity was a **product bug**, not a proven hidden-Electron limitation. On the corrected build, actual request IDs1..5 deliver matches3/ordinals **1→2→3→1→3**, with native options **true,false,false,false,false**. Changed query delivers real0 matches; timeout retry delivers real1/3. No synthetic count event is used for these results.
+
+Use the **[current real-count/no-match/fallback/narrow/focus gallery](r1/README.md#current-rendered-evidence)**, not the old synthetic count frames below. Current-source actionable fallback observed after5032ms under explicitly withheld original native notifications; no natural-silence claim. Independent QA's original5307ms observation is adopted separately with hashes/provenance.
+
+Current cell is **PARTIAL, not overall PASS**: it aborted at `timeout focus tooltip find`. All new tooltip native rectangles remain unmeasured; a passing source/layout guard checks inline chrome triggers/top placement only. The late agent sample was not re-run; [byte compatibility proof](r1/agent-source-compatibility.json) retains independent QA round1 agent/security PASS, not a new execution. Painted highlights and physical OS keys remain unverified. Exact process/output cleanup is in [the receipt](r1/cleanup.json).
+
+## Historical initial implementation evidence — superseded where corrected above
+
+Everything below records pre-remediation source `53f3f0471b74edd898af77094e98d484698047a0`. Its unverified-native assessment and hidden-window causal inference are superseded by the real proof above. Its synthetic frames remain labelled historical and are not current native evidence.
 
 **Scoped results, not an overall native PASS.** Independent code/QA/design/UX rounds are still required. All three final-source native cells aborted in the rig; completed rows survive in their JSON receipts. The third completed every agent-boundary row before its later visual-continuation abort.
 

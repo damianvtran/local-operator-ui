@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { test } from "node:test";
 import { build } from "esbuild";
@@ -17,6 +18,37 @@ const bundle = await build({
 	jsx: "automatic",
 	alias: { "@shared": `${process.cwd()}/src/renderer/src/shared` },
 });
+// Source/layout guard ONLY: jsdom cannot measure a WebContentsView or prove
+// Radix's final placement. Keep new triggers in the in-flow chrome band with
+// explicit top placement; native intersection evidence remains a separate gate.
+test("source guard: new find/zoom tooltips prefer chrome-side top, not native-page overlays", () => {
+	const base = "src/renderer/src/features/browser/components/";
+	const row = readFileSync(`${base}browser-find-row.tsx`, "utf8");
+	const bar = readFileSync(`${base}browser-url-bar.tsx`, "utf8");
+	const surface = readFileSync(`${base}browser-surface.tsx`, "utf8");
+	const tags = [...row.matchAll(/<Tooltip\b[^>]*>/g)].map((m) => m[0]);
+	assert.equal(tags.length, 3, "Previous, Next and Close all need this guard");
+	for (const tag of tags) assert.ok(tag.includes('side="top"'), tag);
+	for (const label of ["Find in page", "Reset page zoom"]) {
+		const tag = [...bar.matchAll(/<Tooltip\b[^>]*>/g)]
+			.map((m) => m[0])
+			.find((s) => s.includes(label));
+		assert.ok(
+			tag?.includes('side="top"'),
+			`${label} must prefer the chrome band`,
+		);
+	}
+	const toolbar = surface.indexOf("<BrowserUrlBar");
+	const find = surface.indexOf("<BrowserFindRow");
+	const viewport = surface.indexOf('data-tour-tag="browser-content"');
+	assert.ok(
+		toolbar >= 0 && find > toolbar && viewport > find,
+		"both chrome regions precede the native viewport",
+	);
+	assert.match(row, /className="@container\/bfind flex shrink-0 flex-wrap/);
+	assert.doesNotMatch(row + bar, /useSuppressBrowserViewWhileReaching/);
+});
+
 test("find row uses main counts, accessible status, next/previous/Escape and no overlay tooltip", async () => {
 	const dom = new JSDOM(
 		'<div data-tour-tag="browser-route"><button id="before">Before</button><div id="mount"></div></div>',
