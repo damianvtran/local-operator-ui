@@ -21,3 +21,9 @@ No global keymap/chord changes; no existing key removed. Existing labels were mo
 - `src/renderer/src/features/browser/components/browser-url-bar.tsx` — [patch](overlap-diffs/browser-url-bar.tsx.patch)
 - `src/renderer/src/features/browser/components/browser-surface.tsx` — [patch](overlap-diffs/browser-surface.tsx.patch)
 - `src/renderer/src/features/browser/hooks/use-browser-chrome.ts` — [patch](overlap-diffs/use-browser-chrome.ts.patch)
+
+## Round-1 accepted remediation — one additional EN key
+
+- `ui.browser.chrome.approvals`: `Approvals and site access`
+- Same key in context metadata: names the shield opening approvals/site policy; clicking does not itself grant access.
+- Used as shared top/end tooltip and quiet-state accessible name. Total chrome keys now14; no existing key removed. Four browser overlap paths remain the same; source remediation commit `c7d766d92d` is the exact delta from39fd08f1. Coordinator/1065-owner handoff is after merge; this PR does not merge itself.

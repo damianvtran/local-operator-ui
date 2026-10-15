@@ -1,0 +1,11 @@
+{
+  "artifact": "/Users/damian/local-operator-ui/.worktrees/browser-tab-strip/out/renderer/assets/conversation-input-sync-uwO7VK7R.js",
+  "sha256": "c5a9fb65f2b2e861432f3a1a6bc93e1763feefba787af7a27dc17c91b19122cd",
+  "method": "execute exact emitted schema + VITE-env object + loader + API fallback getter with installed Zod; no parser/esbuild/app launch",
+  "apiRoot": "http://127.0.0.1:1",
+  "disabledManager": "true",
+  "negativeRemovedBinding": "http://localhost:1111",
+  "nullDiscovery": "http://127.0.0.1:1",
+  "syntheticDiscoveryOverride": "http://127.0.0.1:2",
+  "result": "PASS"
+}
