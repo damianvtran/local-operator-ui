@@ -1523,7 +1523,108 @@ const isOtherPending = (value: string): boolean => value === "";
 const isAnswerText = (value: string): boolean => value.trim().length > 0;
 
 /**
- * Whether ONE question has an answer between the draft and the typed secrets.
+ * The cell the backend records for a secret the user did not hand over: the
+ * blocking and queued paths both write it (`ASK_SECRET_NOT_PROVIDED` in the backend's
+ * `tools/builtin.py`), and it is how an empty secret cell reads to the model. Mirrored
+ * here only so the change form can tell a recorded SKIP from a recorded key name.
+ */
+export const ASK_SECRET_NOT_PROVIDED = "<not provided>";
+
+/**
+ * Whether an EMPTY masked field may be sent as a skip for this secret question.
+ *
+ * `recorded` is the answer map already on the log, passed ONLY by the change form;
+ * the first answer omits it. The backend takes an empty secret cell as "the user did
+ * not provide it" and the TUI's secret field skips on Esc, so on a FIRST answer an
+ * empty field is a skip rather than a block: an ask whose prompt said "paste the key
+ * (otherwise skip)" could not be sent at all while this was required.
+ *
+ * THE CHANGE FORM IS DIFFERENT, because its masked field can never be seeded (the
+ * log holds only the key name, see `askRevisionDraft`). When the recorded cell holds
+ * a stored key, an empty field there is not the user skipping - it is the user
+ * editing another answer - and sending it as a skip would replace the stored key
+ * with `<not provided>`. So a revision may skip a secret only when what is recorded
+ * was itself a skip (an empty cell or `ASK_SECRET_NOT_PROVIDED`); otherwise the value
+ * has to be typed again, as it always had to.
+ */
+export const askSecretIsSkippable = (
+	question: PendingAskQuestion,
+	recorded?: Record<string, string[]>,
+): boolean => {
+	if (recorded === undefined) return true;
+	// A recorded map with NO cell for this question is not evidence of a skip, so it
+	// keeps the conservative reading: retype rather than risk replacing a stored key.
+	const stored = recorded[question.id];
+	if (!Array.isArray(stored)) return false;
+	const cell = stored.filter(isAnswerText);
+	return cell.length === 0 || cell[0] === ASK_SECRET_NOT_PROVIDED;
+};
+
+/**
+ * The masked field's placeholders, which is where its skip rule is said: the field is
+ * the thing a reader is looking at when deciding whether they must fill it, and the
+ * question's own prose is the model's and may not mention skipping at both doors.
+ * `what you type is never shown` keeps the privacy promise on the VALUE: attached to
+ * "skip" as a parenthetical it read as "you will not be asked again" (design round 1,
+ * D3). `askSecretPlaceholder` picks one.
+ */
+export const ASK_SECRET_SKIP_PLACEHOLDER =
+	"Leave empty to skip; what you type is never shown";
+/**
+ * The change form's field over a stored key. It is the only explanation for a disabled
+ * `Update answer` there, so it states the requirement rather than an option (D4), and
+ * it is short enough to fit the 400px drawer floor's 332px text box (D6).
+ */
+export const ASK_SECRET_RETYPE_PLACEHOLDER =
+	"Required: type it again; it is never shown";
+/** Main's copy, kept where an empty field could not be sent as a skip. */
+export const ASK_SECRET_PLAIN_PLACEHOLDER = "Your answer (never shown again)";
+
+/** Whether a typed secret value is there to send. */
+const secretTyped = (question: PendingAskQuestion, secrets: AskSecrets) =>
+	isAnswerText(secrets[question.id] ?? "");
+
+/**
+ * THE WHOLE-ASK "AT LEAST ONE REAL ANSWER" RULE, in one place: a non-secret question's
+ * answer is real, and a secret's is real only once a value is typed - a skipped secret
+ * says nothing. With `secrets` OMITTED it asks whether the question COULD carry a real
+ * answer, which is what the placeholder needs before anything is typed
+ * (`askSecretPlaceholder`); `askDraftIsComplete` passes the typed values.
+ */
+const carriesRealAnswer = (
+	question: PendingAskQuestion,
+	secrets?: AskSecrets,
+): boolean =>
+	!question.secret || secrets === undefined || secretTyped(question, secrets);
+
+/**
+ * The masked field's placeholder, from the SAME two rules the submit reads, so the copy
+ * cannot offer what the button refuses (design round 1, D1; review round 1, MINOR 1;
+ * QA round 1, Q-1).
+ *
+ *  - Not skippable (the change form over a stored key): the retype requirement.
+ *  - Skippable, and some OTHER question could carry a real answer: the skip copy.
+ *  - Skippable but nothing else could carry one (a secret-only, single-question ask,
+ *    first answer or change form): main's plain copy, because leaving this field
+ *    empty can never produce a send - `Decline` is the way out there.
+ */
+export const askSecretPlaceholder = (
+	ask: PendingAsk,
+	question: PendingAskQuestion,
+	recorded?: Record<string, string[]>,
+): string => {
+	if (!askSecretIsSkippable(question, recorded))
+		return ASK_SECRET_RETYPE_PLACEHOLDER;
+	return ask.questions.some(
+		(other) => other.id !== question.id && carriesRealAnswer(other),
+	)
+		? ASK_SECRET_SKIP_PLACEHOLDER
+		: ASK_SECRET_PLAIN_PLACEHOLDER;
+};
+
+/**
+ * Whether ONE question needs nothing more from the user, between the draft, the
+ * typed secrets and (in the change form) the recorded answers.
  *
  * The per-question half of `askDraftIsComplete`, exported so a surface that has to ask
  * "which question still needs me" (Enter in an answer field moves to the next
@@ -1541,16 +1642,26 @@ const isAnswerText = (value: string): boolean => value.trim().length > 0;
  * value and no pending entry; the user finishes it by typing, or unticks `Other` to
  * send the ticks alone.
  *
+ * A SECRET question is done when a value is typed, or when its field may be left empty
+ * as a skip (`askSecretIsSkippable`). A skippable empty secret is therefore not
+ * "unanswered": Enter's move to the next unanswered question passes over it, the same
+ * way the submit does.
+ *
  * Because every submit path reads this rule - the button, Enter, the change form and
- * `askAnswerMap` - a blank can never reach the wire, and the card and its gate cannot
- * disagree about whether the question is done.
+ * `askAnswerMap` - a blank STRING can never reach the wire, and the card and its gate
+ * cannot disagree about whether the question is done. A skipped secret does reach it,
+ * on purpose, as an EMPTY LIST under its id (see `askAnswerMap`).
  */
 export const askQuestionIsAnswered = (
 	question: PendingAskQuestion,
 	draft: AskDraft,
 	secrets: AskSecrets = {},
+	recorded?: Record<string, string[]>,
 ): boolean => {
-	if (question.secret) return (secrets[question.id] ?? "").trim().length > 0;
+	if (question.secret)
+		return (
+			secretTyped(question, secrets) || askSecretIsSkippable(question, recorded)
+		);
 	const cell = draftFor(draft, question.id);
 	return cell.some(isAnswerText) && !cell.some(isOtherPending);
 };
@@ -1563,15 +1674,20 @@ export const askQuestionIsAnswered = (
  * because the wire answers an ask ATOMICALLY (design §4) and a partial body is
  * refused by the queue: a Send that could only ever 409 is a control that lies
  * about what it can do.
+ *
+ * AT LEAST ONE REAL ANSWER, too. Skipped secrets do not count as one, so an ask made
+ * only of secrets with every field empty stays unsendable: sending it would say
+ * nothing at all, and `Decline` is the control for that.
  */
 export const askDraftIsComplete = (
 	ask: PendingAsk,
 	draft: AskDraft,
 	secrets: AskSecrets = {},
+	recorded?: Record<string, string[]>,
 ): boolean =>
 	ask.questions.every((question) =>
-		askQuestionIsAnswered(question, draft, secrets),
-	);
+		askQuestionIsAnswered(question, draft, secrets, recorded),
+	) && ask.questions.some((question) => carriesRealAnswer(question, secrets));
 
 /**
  * The most characters one answer value may carry: the wire's own cap on a string in
@@ -1727,17 +1843,26 @@ export const askCellWith = (
  * value in the session's memory-only credential store and puts `[<key>]` in the
  * row, in that order) - so the value is never persisted, replayed to a provider,
  * or rendered on any card, and this map is the last place it is plaintext.
+ *
+ * A SKIPPED secret travels as an EMPTY LIST under its id, never omitted and never
+ * a blank string: the backend refuses a map that is missing a question id, and an
+ * empty list is its spelling of "the user skipped this" (reported to the model as
+ * `<not provided>`). `recorded` is the change form's recorded map; see
+ * `askSecretIsSkippable`.
  */
 export const askAnswerMap = (
 	ask: PendingAsk,
 	draft: AskDraft,
 	secrets: AskSecrets = {},
+	recorded?: Record<string, string[]>,
 ): Record<string, string[]> | null => {
-	if (!askDraftIsComplete(ask, draft, secrets)) return null;
+	if (!askDraftIsComplete(ask, draft, secrets, recorded)) return null;
 	const answers: Record<string, string[]> = {};
 	for (const question of ask.questions) {
-		const values = question.secret
-			? [(secrets[question.id] ?? "").trim()]
+		answers[question.id] = question.secret
+			? secretTyped(question, secrets)
+				? [(secrets[question.id] ?? "").trim()]
+				: []
 			: /*
 				 * DEDUPLICATED, first occurrence kept: an `Other` text that equals a
 				 * ticked option's label is kept as a second cell entry (see
@@ -1749,9 +1874,8 @@ export const askAnswerMap = (
 				 * the rule that an empty string never reaches the wire.
 				 */
 				[...new Set(draftFor(draft, question.id).filter(isAnswerText))];
-		if (values.length > 0) answers[question.id] = values;
 	}
-	return Object.keys(answers).length > 0 ? answers : null;
+	return answers;
 };
 
 /**
@@ -1767,9 +1891,10 @@ export const askAnswerMap = (
  * recorded cell is the KEY NAME (`[<key>]`) by construction — the value never
  * leaves the session's memory store, so there is nothing to seed a masked field
  * WITH, and seeding the key name would post the literal `[<key>]` as the new
- * secret. The field is therefore empty and the submit is gated on a retyped value
- * by the SAME `askDraftIsComplete` rule the first answer uses (which is why no
- * revision-specific completeness rule exists here).
+ * secret. The field is therefore empty, and the SAME `askDraftIsComplete` rule the
+ * first answer uses gates the submit, handed the recorded map: a secret whose recorded
+ * cell is a stored key needs a retyped value, while one the user skipped the first
+ * time may stay skipped (`askSecretIsSkippable`).
  */
 export const askRevisionDraft = (ask: PendingAsk): AskDraft => {
 	const draft: AskDraft = {};

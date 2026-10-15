@@ -534,7 +534,7 @@ test("the whole-ask body is built only from a COMPLETE draft", () => {
 	assert.ok(Array.isArray(full.env));
 });
 
-test("a secret answer travels as the typed value and is required", () => {
+test("a secret answer travels as the typed value, and an empty field is a skip", () => {
 	const secret = ask({
 		ask_id: "a-sec",
 		questions: [
@@ -542,9 +542,19 @@ test("a secret answer travels as the typed value and is required", () => {
 			{ id: "env", question: "Which environment?" },
 		],
 	});
-	// The secret is not optional: a submit that omitted it would hand the model an
-	// ask answered without the one thing it asked for.
-	assert.equal(queue.askAnswerMap(secret, { env: ["staging"] }, {}), null);
+	// An EMPTY field is the user skipping the secret (the TUI's field skips on Esc):
+	// the id still rides the body, as the backend's own spelling of a skip - an EMPTY
+	// LIST - because a map missing a question id is refused whole, and a blank string
+	// would be a value. The backend reports it to the model as `<not provided>`.
+	assert.deepEqual(queue.askAnswerMap(secret, { env: ["staging"] }, {}), {
+		env: ["staging"],
+		DEPLOY_TOKEN: [],
+	});
+	assert.deepEqual(
+		queue.askAnswerMap(secret, { env: ["staging"] }, { DEPLOY_TOKEN: "   " }),
+		{ env: ["staging"], DEPLOY_TOKEN: [] },
+		"whitespace is not a value either",
+	);
 	const answers = queue.askAnswerMap(
 		secret,
 		{ env: ["staging"] },
@@ -556,6 +566,129 @@ test("a secret answer travels as the typed value and is required", () => {
 	// anything durable is written (`session.respond_ask`), and withholding it here
 	// would give the model an answer it could never act on.
 	assert.deepEqual(answers, { env: ["staging"], DEPLOY_TOKEN: ["hunter2"] });
+	// Skipping the secret does not make the OTHER questions optional.
+	assert.equal(queue.askAnswerMap(secret, {}, {}), null);
+});
+
+test("an Other answer beside an empty optional secret can be sent (the operator's ask)", () => {
+	// Regression: the reported card - a choice answered through Other plus a secret
+	// whose prompt says "otherwise skip" - kept Send disabled, because every secret
+	// was mandatory.
+	const voice = ask({
+		ask_id: "a-voice",
+		questions: [
+			{
+				id: "voice",
+				question: "How should the POC prove the voice path?",
+				options: [
+					{ label: "Skip voice for now" },
+					{ label: "I'll provide a DashScope key" },
+				],
+			},
+			{
+				id: "DASHSCOPE_API_KEY",
+				question: "Paste the key here (otherwise skip).",
+				secret: true,
+			},
+		],
+	});
+	assert.deepEqual(
+		queue.askAnswerMap(voice, { voice: ["Look at alternatives"] }, {}),
+		{ voice: ["Look at alternatives"], DASHSCOPE_API_KEY: [] },
+	);
+	assert.equal(
+		queue.askDraftIsComplete(voice, { voice: ["Look at alternatives"] }, {}),
+		true,
+	);
+	// The pending-empty-Other rule is unchanged by the skip: an Other that is open
+	// but blank still holds its question open.
+	assert.equal(queue.askAnswerMap(voice, { voice: [""] }, {}), null);
+});
+
+test("an ask of only secrets, all left empty, is not sendable (Decline says that)", () => {
+	const keys = ask({
+		ask_id: "a-keys",
+		questions: [
+			{ id: "A_KEY", question: "Paste A.", secret: true },
+			{ id: "B_KEY", question: "Paste B.", secret: true },
+		],
+	});
+	assert.equal(queue.askAnswerMap(keys, {}, {}), null);
+	assert.equal(queue.askDraftIsComplete(keys, {}, {}), false);
+	// One typed value is a real answer; the other secret is then a skip.
+	assert.deepEqual(queue.askAnswerMap(keys, {}, { B_KEY: "v" }), {
+		A_KEY: [],
+		B_KEY: ["v"],
+	});
+});
+
+test("the secret field offers a skip only where leaving it empty could still send", () => {
+	const key = { id: "K", question: "Paste the key.", secret: true };
+	const other = { id: "L", question: "Paste the other key.", secret: true };
+	const choice = { id: "env", question: "Which environment?" };
+	const placeholder = (questions, recorded) =>
+		queue.askSecretPlaceholder(ask({ questions }), key, recorded);
+	assert.equal(placeholder([choice, key]), queue.ASK_SECRET_SKIP_PLACEHOLDER);
+	// Another SECRET can carry the one real answer, so this one may be skipped.
+	assert.equal(placeholder([key, other]), queue.ASK_SECRET_SKIP_PLACEHOLDER);
+	// Alone, an empty field can never send: main's copy, and Decline is the way out.
+	assert.equal(placeholder([key]), queue.ASK_SECRET_PLAIN_PLACEHOLDER);
+	assert.equal(
+		placeholder([key], { K: ["<not provided>"] }),
+		queue.ASK_SECRET_PLAIN_PLACEHOLDER,
+		"the change form of a secret-only ask recorded as a skip",
+	);
+	// Over a stored key the requirement wins, whatever else is on the ask.
+	assert.equal(
+		placeholder([choice, key], { env: ["staging"], K: ["K"] }),
+		queue.ASK_SECRET_RETYPE_PLACEHOLDER,
+	);
+});
+
+test("the change form keeps a stored secret: retype it unless the recorded answer was a skip", () => {
+	const secret = ask({
+		ask_id: "a-rev",
+		questions: [
+			{ id: "env", question: "Which environment?" },
+			{ id: "DEPLOY_TOKEN", question: "Paste the token.", secret: true },
+		],
+	});
+	const draft = { env: ["production"] };
+	// RECORDED AS A STORED KEY: an empty field here is the user editing another answer,
+	// not skipping - sending `[]` would turn the stored key into `<not provided>` - so
+	// the value has to be typed again, as it always had to.
+	const stored = { env: ["staging"], DEPLOY_TOKEN: ["DEPLOY_TOKEN"] };
+	assert.equal(queue.askSecretIsSkippable(secret.questions[1], stored), false);
+	assert.equal(queue.askAnswerMap(secret, draft, {}, stored), null);
+	assert.equal(
+		queue.askQuestionIsAnswered(secret.questions[1], draft, {}, stored),
+		false,
+		"Enter's next-unanswered walk lands on it",
+	);
+	assert.deepEqual(
+		queue.askAnswerMap(secret, draft, { DEPLOY_TOKEN: "new" }, stored),
+		{
+			env: ["production"],
+			DEPLOY_TOKEN: ["new"],
+		},
+	);
+	// RECORDED AS A SKIP (an empty cell, or the backend's `<not provided>`): it may stay
+	// skipped, so changing the other answer needs nothing typed into the secret.
+	for (const skipped of [[], [queue.ASK_SECRET_NOT_PROVIDED]]) {
+		const recorded = { env: ["staging"], DEPLOY_TOKEN: skipped };
+		assert.equal(
+			queue.askSecretIsSkippable(secret.questions[1], recorded),
+			true,
+		);
+		assert.deepEqual(queue.askAnswerMap(secret, draft, {}, recorded), {
+			env: ["production"],
+			DEPLOY_TOKEN: [],
+		});
+	}
+	// A recorded map with NO cell for the question is not evidence of a skip.
+	assert.equal(queue.askSecretIsSkippable(secret.questions[1], {}), false);
+	// The first answer has nothing recorded to keep.
+	assert.equal(queue.askSecretIsSkippable(secret.questions[1]), true);
 });
 
 test("blank answers do not count as answers", () => {
