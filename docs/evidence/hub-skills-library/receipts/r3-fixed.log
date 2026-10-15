@@ -1,0 +1,42 @@
+BOUNDED START {"pid":37446,"seconds":60,"budgetMiB":6144,"nodeOptions":"--max-old-space-size=4096"}
+[PASS] stub reports the requested core version :: 0.72.1
+[app] {"pid":37455,"port":64075,"size":"1380x900"}
+FOOTPRINT {"MiB":510,"blind":false,"processes":8}
+FOOTPRINT {"MiB":1208,"blind":false,"processes":9}
+[PASS] linked profile is browsable (expander present)
+FOOTPRINT {"MiB":1456,"blind":false,"processes":9}
+FOOTPRINT {"MiB":1426,"blind":false,"processes":9}
+FOOTPRINT {"MiB":1096,"blind":false,"processes":9}
+FOOTPRINT {"MiB":1403,"blind":false,"processes":9}
+FOOTPRINT {"MiB":1050,"blind":false,"processes":9}
+FOOTPRINT {"MiB":1048,"blind":false,"processes":9}
+FOOTPRINT {"MiB":1056,"blind":false,"processes":9}
+FOOTPRINT {"MiB":1046,"blind":false,"processes":9}
+FOOTPRINT {"MiB":1058,"blind":false,"processes":9}
+FOOTPRINT {"MiB":1047,"blind":false,"processes":9}
+FOOTPRINT {"MiB":1385,"blind":false,"processes":9}
+FOOTPRINT {"MiB":1041,"blind":false,"processes":9}
+FOOTPRINT {"MiB":1308,"blind":false,"processes":9}
+FOOTPRINT {"MiB":970,"blind":false,"processes":9}
+[PASS] headless never shown/focused :: {"windowMode":"headless","appVersion":"0.34.44","platform":"darwin","title":"Local Operator","windowSize":{"width":1380,"height":900},"contentBounds":{"width":1380,"height":900},"visible":false,"focused":false,"minimized":false,"frames":[],"outDir":"/Users/damian/local-operator-ui/.worktrees/skills-library-evidence/docs/evidence/hub-skills-library/frames/R3-fixed-focus-wide"}
+FOOTPRINT {"MiB":1214,"blind":false,"processes":9}
+FOOTPRINT {"MiB":1206,"blind":false,"processes":9}
+FOOTPRINT {"MiB":991,"blind":false,"processes":9}
+FOOTPRINT {"MiB":989,"blind":false,"processes":9}
+FOOTPRINT {"MiB":973,"blind":false,"processes":9}
+[subscribe focus] {"samples":460,"firstLostAtMs":null,"disabled":false,"active":true}
+[PASS] subscribe focus held 11.5s across polls :: {"samples":460,"firstLostAtMs":null,"disabled":false,"active":true}
+[PASS] Subscribe Space reaches confirmed OFF
+[PASS] Auto-push opens consent
+FOOTPRINT {"MiB":1465,"blind":false,"processes":9}
+[PASS] Enable has keyboard focus :: {"tag":"BUTTON","role":null,"label":"Enable auto-push","disabled":false,"state":null}
+[PASS] actual primary located
+FOOTPRINT {"MiB":1254,"blind":false,"processes":9}
+FOOTPRINT {"MiB":1058,"blind":false,"processes":9}
+FOOTPRINT {"MiB":1025,"blind":false,"processes":9}
+FOOTPRINT {"MiB":1006,"blind":false,"processes":9}
+FOOTPRINT {"MiB":1008,"blind":false,"processes":9}
+[consent Enable focus] {"samples":460,"firstLostAtMs":null,"disabled":false,"active":true}
+[PASS] consent Enable focus held 11.5s across polls :: {"samples":460,"firstLostAtMs":null,"disabled":false,"active":true}
+BOUNDED END {"pid":37446,"exit":124}
+BOUNDED REAP 124 { signalled: 1, skipped: 0, errors: [] }

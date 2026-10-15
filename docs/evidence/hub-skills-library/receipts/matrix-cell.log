@@ -1,0 +1,108 @@
+######## STAGE 0 assets
+GATE[stage0] 23:12:26 dfFree=32GiB swapUsedMB=9989.12 memFreePct=52
+(a) src/ byte-identical to 6c0e483de: YES
+(b) hub-skill-search in agent-hub-page-SBckT1a6.js
+(b) hub-skill-create in agent-hub-page-SBckT1a6.js
+(b) hub-policy-enable in org-access-iYNqMNNT.js
+(c) chunks carrying 127.0.0.1:8127:        1
+BUILD REUSED: built from product bytes identical to 6c0e483de (no rebuild)
+CSP after: content="default-src 'self'; connect-src 'self' http://127.0.0.1:8127; script-src 'self' https://us-assets.i.posthog.com https://accounts.go
+HEAD 205ddf46114af99dbd4996dea6e7faa57adba24f dirty=0
+17d6cee6f1f24fe57120936e93051378c8a9bfd8fe81c76ca7d74f1d3b0e8057  out/renderer/index.html
+9a0e2c5478d7c4b8188f0f9e27b5776453db3b6748d7a3ef735ee37132205046  out/main/index.js
+c60ed72c1497a9c71636ea0c01bb7b0c47aede7da184f383a8e2950cca3f42b3  out/renderer/assets/agent-hub-page-SBckT1a6.js
+######## STAGE 1 controls
+GATE[stage1] 23:12:32 dfFree=32GiB swapUsedMB=9989.12 memFreePct=54
+-- NEG CONTROL 1 (no --backend)
+NC1 PASS: guard thrown
+[note] control (b) page fetch outcomes
+        {"http://127.0.0.1:8128/probe-wrong-origin":"rejected:Failed to fetch","https://egress-probe.invalid/probe":"rejected:Failed to fetch"}
+[note] control (b) securitypolicyviolation events
+        [{"blocked":"http://127.0.0.1:8128/probe-wrong-origin","directive":"connect-src","disposition":"enforce"},{"blocked":"https://egress-probe.invalid/probe","directive":"connect-src","disposition":"enforce"}]
+[note] control (b) CDP Network rows for the control segment (a CSP-refused fetch emits none)
+        []
+[PASS] control (b): the narrowed CSP (connect-src 'self' + stub) refused BOTH synthetic disallowed origins (violation event on connect-src, fetch rejected)
+[note] control (a) scripted observer run over a synthetic list
+        {"synthetic":["http://127.0.0.1:8127/v1/capabilities","file:///app/index.html","devtools://devtools/x","data:text/plain,x","blob:file:///1","http://127.0.0.1:8128/probe-wrong-origin"],"flagged":["http://127.0.0.1:8128/probe-wrong-origin"]}
+[PASS] control (a): the observer flags a wrong-loopback origin and passes the stub + app-local schemes
+[PASS] control (a): the observer flags a non-loopback origin too
+[note] control (b) app process tree sockets
+        pids 96967,97105,97111,97114,97119,97120,97127
+--
+[PASS] control (b): no socket to the disallowed origins appears in lsof (rejected before the network)
+  [renderer] Failed to fetch Radient credits: DesktopControlError: the stub has no answer for radient op credits
+/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/cell.sh: line 21: 96823 Terminated: 15          node docs/evidence/hub-links/harness/stub-daemon.mjs --port 8127 --records $S/rec-$shift_n "$@" > $S/stub-$shift_n.log 2>&1
+port 8127 free
+controls driver exit=0
+######## STAGE 2 R-A
+GATE[before A] 23:12:54 dfFree=32GiB swapUsedMB=9981.12 memFreePct=52
+== RUN A stub pid=97449 flags: --skills-latency-ms 1500 --pull-latency-ms 1200
+driver exit=0  PASS=30 FAIL=0
+/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/cell.sh: line 51: 97486 Terminated: 15          ( sleep 420; kill $DPID 2> /dev/null )
+/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/cell.sh: line 21: 97449 Terminated: 15          node docs/evidence/hub-links/harness/stub-daemon.mjs --port 8127 --records $S/rec-$shift_n "$@" > $S/stub-$shift_n.log 2>&1
+port 8127 free
+[PASS] the hub page exposes its scope chips
+[PASS] the org scope chip received the point (hit test)
+[PASS] the library settles into a state this run can photograph
+[PASS] the row's open press received the point (hit test)
+[PASS] the auto-push checkbox received the point
+[PASS] the pull control received the point
+[PASS] the preview control received the point
+[PASS] the confirm control received the point
+[note] egress: distinct renderer request origins
+[PASS] egress: every renderer request went to the stub origin or an app-local scheme
+[PASS] egress: no renderer request names api.radienthq.com
+[note] egress: app process tree sockets (one instant)
+[PASS] egress: no non-loopback ESTABLISHED/SYN_SENT socket in the app's process tree (instantaneous probe, not a continuous audit)
+######## STAGE 3
+GATE[before B] 23:13:13 dfFree=32GiB swapUsedMB=9981.12 memFreePct=49
+== RUN B stub pid=98037 flags: --skills-remote-empty
+driver exit=0  PASS=14 FAIL=0
+/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/cell.sh: line 51: 98064 Terminated: 15          ( sleep 420; kill $DPID 2> /dev/null )
+/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/cell.sh: line 21: 98037 Terminated: 15          node docs/evidence/hub-links/harness/stub-daemon.mjs --port 8127 --records $S/rec-$shift_n "$@" > $S/stub-$shift_n.log 2>&1
+port 8127 free
+GATE[before C] 23:13:34 dfFree=32GiB swapUsedMB=9981.12 memFreePct=57
+== RUN C stub pid=98701 flags: --skills-unsupported
+driver exit=0  PASS=14 FAIL=0
+/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/cell.sh: line 51: 98800 Terminated: 15          ( sleep 420; kill $DPID 2> /dev/null )
+/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/cell.sh: line 21: 98701 Terminated: 15          node docs/evidence/hub-links/harness/stub-daemon.mjs --port 8127 --records $S/rec-$shift_n "$@" > $S/stub-$shift_n.log 2>&1
+port 8127 free
+GATE[before D] 23:13:55 dfFree=32GiB swapUsedMB=9981.12 memFreePct=52
+== RUN D stub pid=99334 flags: --skills-scope-public --pull-outcome refuse
+driver exit=1  PASS=28 FAIL=1
+[FAIL] the hub page exposes its scope chips
+        after 30169ms: null
+/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/cell.sh: line 51: 99391 Terminated: 15          ( sleep 420; kill $DPID 2> /dev/null )
+/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/cell.sh: line 21: 99334 Terminated: 15          node docs/evidence/hub-links/harness/stub-daemon.mjs --port 8127 --records $S/rec-$shift_n "$@" > $S/stub-$shift_n.log 2>&1
+port 8127 free
+D rc=1
+GATE[before E] 23:14:47 dfFree=32GiB swapUsedMB=9973.12 memFreePct=47
+== RUN E stub pid=1212 flags: --publish-outcome pending
+driver exit=0  PASS=30 FAIL=0
+/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/cell.sh: line 51:  1292 Terminated: 15          ( sleep 420; kill $DPID 2> /dev/null )
+/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/cell.sh: line 21:  1212 Terminated: 15          node docs/evidence/hub-links/harness/stub-daemon.mjs --port 8127 --records $S/rec-$shift_n "$@" > $S/stub-$shift_n.log 2>&1
+port 8127 free
+GATE[before F] 23:15:24 dfFree=32GiB swapUsedMB=9973.12 memFreePct=56
+== RUN F stub pid=2532 flags: --signed-out
+driver exit=1  PASS=17 FAIL=1
+[FAIL] the hub page exposes its scope chips
+        after 30008ms: null
+/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/cell.sh: line 51:  2545 Terminated: 15          ( sleep 420; kill $DPID 2> /dev/null )
+/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/cell.sh: line 21:  2532 Terminated: 15          node docs/evidence/hub-links/harness/stub-daemon.mjs --port 8127 --records $S/rec-$shift_n "$@" > $S/stub-$shift_n.log 2>&1
+port 8127 free
+F rc=1
+GATE[before G] 23:16:19 dfFree=31GiB swapUsedMB=9973.12 memFreePct=49
+== RUN G stub pid=3818 flags: 
+driver exit=0  PASS=30 FAIL=0
+/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/cell.sh: line 51:  3848 Terminated: 15          ( sleep 420; kill $DPID 2> /dev/null )
+/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/cell.sh: line 21:  3818 Terminated: 15          node docs/evidence/hub-links/harness/stub-daemon.mjs --port 8127 --records $S/rec-$shift_n "$@" > $S/stub-$shift_n.log 2>&1
+port 8127 free
+GATE[before H] 23:17:19 dfFree=31GiB swapUsedMB=9949.12 memFreePct=45
+== RUN H stub pid=5300 flags: 
+driver exit=0  PASS=30 FAIL=0
+/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/cell.sh: line 51:  5341 Terminated: 15          ( sleep 420; kill $DPID 2> /dev/null )
+/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/cell.sh: line 21:  5300 Terminated: 15          node docs/evidence/hub-links/harness/stub-daemon.mjs --port 8127 --records $S/rec-$shift_n "$@" > $S/stub-$shift_n.log 2>&1
+port 8127 free
+GATE[end] 23:18:17 dfFree=32GiB swapUsedMB=10082.25 memFreePct=48
+vm.swapusage: total = 11264.00M  used = 10082.25M  free = 1181.75M  (encrypted)
+/dev/disk3s1s1   460Gi    13Gi    32Gi    29%    484k  338M    0%   /

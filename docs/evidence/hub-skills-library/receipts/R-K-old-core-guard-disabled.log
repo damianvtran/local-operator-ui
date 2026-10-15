@@ -1,0 +1,90 @@
+renderer-driver: frame timezone pinned to America/New_York (ambient TZ=America/Toronto)
+[build] current: assets 2026-10-15T06:07:58.565Z >= sources 2026-10-15T06:01:44.979Z
+[note] abandoned scratch trees
+        2 seen, 0 owned by a live pid (kept), 0 younger than 30m (kept), 2 removed: lo-renderer-driver-59906, lo-renderer-driver-60105
+[note] csp for this run's backend
+        out/renderer/index.html: http://127.0.0.1:8127 added to frame-src, media-src, img-src (build output only; src/ untouched)
+  serve records 1 linked from /Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/R-K-old-core-guard-disabled-records   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui/.worktrees/skills-library-evidence
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-26675
+  frames        /Users/damian/local-operator-ui/.worktrees/skills-library-evidence/docs/evidence/hub-skills-library/frames/R-K-old-core-guard-disabled
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-26675/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8127   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["filesFacts","hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","stageLiveConsents","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8127","backend":"http://127.0.0.1:8127"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8127)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] core guard capture remains headless
+[PASS] geometry zero-wrapper negative control is rejected
+[PASS] geometry horizontal-overflow negative control is rejected
+[PASS] linked profile remains browsable before opening controls
+[PASS] policy controls follow the actual MAIN-admitted version
+[note] guard MAIN status
+        {"state":"attached","reconnecting":false,"owned":false,"url":"http://127.0.0.1:8127","instanceId":"c667d1fe-983b-44a9-9451-e001adb751dc","pid":26669,"version":"0.71.5","prefix":"/Users/damian/local-operator-ui/.worktrees/skills-library-evidence","installKind":"stub","desktopAvailable":true,"pairing":{"available":true,"cause":null},"failures":0,"capabilityStatus":null,"unanswered":0,"lastTransportAt":1792044482523,"detail":"Connected to the daemon on http://127.0.0.1:8127 (pid 26669, v0.71.5).","updatedAt":1792044482523,"addressSubstitution":null}
+[PASS] MAIN reads the explicit fixture version and attached identity
+[note] guard control state
+        {"warning":"Hub changes require core 0.72.1 or newer. Browsing is still available.","switches":[{"disabled":true,"state":"checked"},{"disabled":true,"state":"unchecked"}],"buttons":[{"label":"Check now","disabled":true},{"label":"Preview incoming changes","disabled":true},{"label":"Preview publish","disabled":true}]}
+[PASS] warning states the minimum without guessing unknown means outdated
+[PASS] all direct link write buttons are blocked on the old core
+[PASS] old core keeps the confirmed policy unchanged
+[PASS] the measured actual scroll container is painted and has no horizontal overflow
+[PASS] the measured painted child and header have nonzero boxes
+[note] egress: capture securitypolicyviolation events
+        []
+[PASS] egress: zero CSP violations during the capture flow
+[note] egress: distinct renderer request origins
+        ["null"]
+[PASS] egress: every renderer request went to the stub origin or an app-local scheme
+        20 requests, origins ["null"]
+[PASS] egress: no renderer request names api.radienthq.com
+[note] egress: app process tree sockets (one instant)
+        pids 26682,26687,26690,26694,26696,26697,26700
+        COMMAND    PID   USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
+        Electron 26682 damian   17u  IPv4 0xc3c9119d8dcb6bb7      0t0  TCP 127.0.0.1:55546 (LISTEN)
+        Electron 26682 damian   23u  IPv4 0x76e5c89f867e3513      0t0  TCP 127.0.0.1:55544->127.0.0.1:55556 (ESTABLISHED)
+        Electron 26682 damian   37u  IPv4 0xbc586c95cc787bf4      0t0  TCP 127.0.0.1:55544 (LISTEN)
+        Electron 26682 damian   60u  IPv4 0xeb49545e20c53ed1      0t0  TCP 127.0.0.1:55544->127.0.0.1:55553 (ESTABLISHED)
+        Electron 26682 damian   61u  IPv4 0x2a1911e1f13857ee      0t0  TCP 127.0.0.1:55554->127.0.0.1:8127 (ESTABLISHED)
+        Electron 26682 damian   67u  IPv4 0x7a1f4675fd89b2c2      0t0  TCP 127.0.0.1:55557->127.0.0.1:8127 (ESTABLISHED)
+        Electron 26682 damian   80u  IPv4 0xb7aa3feefa8bfa52      0t0  TCP 127.0.0.1:55559->127.0.0.1:8127 (ESTABLISHED)
+        Electron 26682 damian   81u  IPv4 0x2731d2bb35e82d43      0t0  TCP 127.0.0.1:55558->127.0.0.1:8127 (ESTABLISHED)
+        Electron 26682 damian   92u  IPv4 0xb05d3417bc9ecd25      0t0  TCP 127.0.0.1:55560 (LISTEN)
+        Electron 26682 damian   96u  IPv4 0x6d753128241607d8      0t0  TCP 127.0.0.1:55561->127.0.0.1:8127 (ESTABLISHED)
+        Electron 26682 damian   97u  IPv4 0xed1703fcdead27bc      0t0  TCP 127.0.0.1:55562->127.0.0.1:8127 (ESTABLISHED)
+        Electron 26682 damian   98u  IPv4 0xfa7deed1cf6a82bd      0t0  TCP 127.0.0.1:55563->127.0.0.1:8127 (ESTABLISHED)
+        Electron 26682 damian   99u  IPv4 0x41e25ece1aa40d12      0t0  TCP 127.0.0.1:55564->127.0.0.1:8127 (ESTABLISHED)
+        Electron 26682 damian  100u  IPv4 0x2bdb92f4f43bc4de      0t0  TCP 127.0.0.1:55565->127.0.0.1:8127 (ESTABLISHED)
+        Electron 26682 damian  101u  IPv4 0x706ba944e95abe41      0t0  TCP 127.0.0.1:55566->127.0.0.1:8127 (ESTABLISHED)
+        Electron 26682 damian  102u  IPv4  0x9318e4ea177500a      0t0  TCP 127.0.0.1:55567->127.0.0.1:8127 (ESTABLISHED)
+[PASS] egress: no non-loopback ESTABLISHED/SYN_SENT socket in the app's process tree (instantaneous probe, not a continuous audit)
+  [renderer] Failed to fetch Radient credits: DesktopControlError: the stub has no answer for radient op credits
+    at ke (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/conversation-input-sync-CjtHk8OW.js:2:4715)
+    at async OUe (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/conversation-input-sync-CjtHk8OW.js:501:43509)
+    at async Pz (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/conversation-input-sync-CjtHk8OW.js:501:43592)
+    at async file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/index--gth-_2b.js:679:43095
+  [renderer] Failed to fetch Radient credits: DesktopControlError: the stub has no answer for radient op credits
+    at ke (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/conversation-input-sync-CjtHk8OW.js:2:4715)
+    at async OUe (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/conversation-input-sync-CjtHk8OW.js:501:43509)
+    at async Pz (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/conversation-input-sync-CjtHk8OW.js:501:43592)
+    at async file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/index--gth-_2b.js:679:43095
+[PASS] no process from this run outlived its boot
+
+frames: hub-core-guard-1380x900-local-operator-dark-old-core-disabled.png
+frames directory: /Users/damian/local-operator-ui/.worktrees/skills-library-evidence/docs/evidence/hub-skills-library/frames/R-K-old-core-guard-disabled
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-26675/app-scene.log
+scratch kept: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-26675 (the frames are also in --out)
+
+ALL CHECKS PASSED

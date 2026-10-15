@@ -1,0 +1,682 @@
+desktop tests: 9 files, concurrency 1 (explicit --test-concurrency=1 in argv; governor bypassed)
+desktop tests: memory bound 9.0 GB for the test process group (max(8192 MB floor, 25% of 36864 MB RAM), capped at 50%); sampled every 2s on max(footprint, rss)
+desktop tests: per-lane bound 25 min (default, above the 18.7-minute healthy CI suite that bounds every lane it runs — a stall in a lane first seen late can still outrun the job cap); sampled every 5s over the suite's process group
+TAP version 13
+# no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+# Subtest: every organization operation is named in both closed vocabularies
+ok 1 - every organization operation is named in both closed vocabularies
+  ---
+  duration_ms: 6.050167
+  ...
+# Subtest: the publish and team ops are in the desktop request union
+ok 2 - the publish and team ops are in the desktop request union
+  ---
+  duration_ms: 0.950709
+  ...
+# Subtest: an org target rides the publish query; no target sends no query
+ok 3 - an org target rides the publish query; no target sends no query
+  ---
+  duration_ms: 1.1595
+  ...
+# Subtest: the team pull names the document, and the tenant only when known
+ok 4 - the team pull names the document, and the tenant only when known
+  ---
+  duration_ms: 0.073792
+  ...
+# Subtest: the membership matrix matches the server's own rule
+ok 5 - the membership matrix matches the server's own rule
+  ---
+  duration_ms: 0.349208
+  ...
+# Subtest: a plan-active home tenant is offered, and a plan-less one is not
+ok 6 - a plan-active home tenant is offered, and a plan-less one is not
+  ---
+  duration_ms: 0.460375
+  ...
+# Subtest: the list hook reads the org route and keys it separately when given a tenant
+ok 7 - the list hook reads the org route and keys it separately when given a tenant
+  ---
+  duration_ms: 89.761459
+  ...
+# Subtest: the list hook is the public read when it is not given a tenant
+ok 8 - the list hook is the public read when it is not given a tenant
+  ---
+  duration_ms: 5.8535
+  ...
+# Subtest: the org list is not fetched on window focus, like the hub's
+ok 9 - the org list is not fetched on window focus, like the hub's
+  ---
+  duration_ms: 0.305083
+  ...
+# Subtest: the frozen org codes classify as a state, and nothing else does
+ok 10 - the frozen org codes classify as a state, and nothing else does
+  ---
+  duration_ms: 33.503167
+  ...
+# Subtest: every org refusal has a treatment, and only the plan one offers a retry
+ok 11 - every org refusal has a treatment, and only the plan one offers a retry
+  ---
+  duration_ms: 32.6005
+  ...
+# Subtest: the surfaces hide the public-only affordances for an org row
+ok 12 - the surfaces hide the public-only affordances for an org row
+  ---
+  duration_ms: 1.056917
+  ...
+# Subtest: the hub page scopes its read and renders the org states
+ok 13 - the hub page scopes its read and renders the org states
+  ---
+  duration_ms: 1.09725
+  ...
+# Subtest: the publish dialog offers the org target and disables a plan-blocked one
+ok 14 - the publish dialog offers the org target and disables a plan-blocked one
+  ---
+  duration_ms: 0.884084
+  ...
+# Subtest: the dialog's title and submit label describe the selected target
+ok 15 - the dialog's title and submit label describe the selected target
+  ---
+  duration_ms: 0.249083
+  ...
+# Subtest: the dialog says why there is no picker, and names the right remedy
+ok 16 - the dialog says why there is no picker, and names the right remedy
+  ---
+  duration_ms: 0.200875
+  ...
+# Subtest: a backend without the org capability is told to update, not to retry
+ok 17 - a backend without the org capability is told to update, not to retry
+  ---
+  duration_ms: 32.112042
+  ...
+# Subtest: the org capability key is a typed member of the feature union
+ok 18 - the org capability key is a typed member of the feature union
+  ---
+  duration_ms: 1.147458
+  ...
+# Subtest: a half-specified publication target is refused, not read as the public hub
+ok 19 - a half-specified publication target is refused, not read as the public hub
+  ---
+  duration_ms: 2.038875
+  ...
+# Subtest: a pulled team's report reads `invalid_name` as the boolean the wire sends
+ok 20 - a pulled team's report reads `invalid_name` as the boolean the wire sends
+  ---
+  duration_ms: 0.150041
+  ...
+# Subtest: held records never cross a scope flip
+ok 21 - held records never cross a scope flip
+  ---
+  duration_ms: 7.150542
+  ...
+# Subtest: both refusal sections agree on severity, and both retries are filled controls
+ok 22 - both refusal sections agree on severity, and both retries are filled controls
+  ---
+  duration_ms: 0.941584
+  ...
+# Subtest: the roster renders a coded pull refusal through the shared treatment
+ok 23 - the roster renders a coded pull refusal through the shared treatment
+  ---
+  duration_ms: 0.423833
+  ...
+# Subtest: the details page reads memberships only for an org row
+ok 24 - the details page reads memberships only for an org row
+  ---
+  duration_ms: 0.112208
+  ...
+# Subtest: the plan remedy names the Team plan and the console
+ok 25 - the plan remedy names the Team plan and the console
+  ---
+  duration_ms: 0.502041
+  ...
+# Subtest: the shipped pull hook toasts the real responses and crashes on neither
+ok 26 - the shipped pull hook toasts the real responses and crashes on neither
+  ---
+  duration_ms: 30.877125
+  ...
+# Subtest: the treatment speaks the puller's verbs when the roster asks
+ok 27 - the treatment speaks the puller's verbs when the roster asks
+  ---
+  duration_ms: 35.957417
+  ...
+# Subtest: the roster honours its actions, and renders no others
+ok 28 - the roster honours its actions, and renders no others
+  ---
+  duration_ms: 0.3625
+  ...
+# Subtest: a falsy-but-defined tenantId is refused at both boundaries
+ok 29 - a falsy-but-defined tenantId is refused at both boundaries
+  ---
+  duration_ms: 0.501625
+  ...
+# Subtest: the org capability notice is a warning, like its four siblings
+ok 30 - the org capability notice is a warning, like its four siblings
+  ---
+  duration_ms: 0.347042
+  ...
+# Subtest: each scope reads its own team list, and neither reads the other's
+ok 31 - each scope reads its own team list, and neither reads the other's
+  ---
+  duration_ms: 1.487792
+  ...
+# Subtest: the status sentence names the scope, and the pager keeps its labels
+ok 32 - the status sentence names the scope, and the pager keeps its labels
+  ---
+  duration_ms: 0.482834
+  ...
+# Subtest: the author line drops the email fallback
+ok 33 - the author line drops the email fallback
+  ---
+  duration_ms: 0.184333
+  ...
+# Subtest: no surface still says the public hub lists agents only
+ok 34 - no surface still says the public hub lists agents only
+  ---
+  duration_ms: 6.699709
+  ...
+# Subtest: the pager and the roster hand focus to a surviving control
+ok 35 - the pager and the roster hand focus to a surviving control
+  ---
+  duration_ms: 0.206834
+  ...
+# Subtest: every agent-hub-page state holds one frame per sweep theme
+ok 36 - every agent-hub-page state holds one frame per sweep theme
+  ---
+  duration_ms: 17.537959
+  ...
+# no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+# Subtest: the display-name rule is the runtime's, case by case
+ok 37 - the display-name rule is the runtime's, case by case
+  ---
+  duration_ms: 30.829917
+  ...
+# Subtest: listPublicTeams asks the hub's public route, anonymously, and paginates
+ok 38 - listPublicTeams asks the hub's public route, anonymously, and paginates
+  ---
+  duration_ms: 13.909542
+  ...
+# Subtest: getPublicTeam reads one document by id, and encodes it into the path
+ok 39 - getPublicTeam reads one document by id, and encodes it into the path
+  ---
+  duration_ms: 15.056375
+  ...
+# Subtest: a hub failure is reported as a hub failure, never as the local server
+ok 40 - a hub failure is reported as a hub failure, never as the local server
+  ---
+  duration_ms: 14.237041
+  ...
+# Subtest: a refusal and a transport failure raise typed errors, and are told apart
+ok 41 - a refusal and a transport failure raise typed errors, and are told apart
+  ---
+  duration_ms: 15.865333
+  ...
+# Subtest: the library paints the display names and the rows' own facts
+ok 42 - the library paints the display names and the rows' own facts
+  ---
+  duration_ms: 530.413833
+  ...
+# Subtest: the search narrows the rendered rows without a second request
+ok 43 - the search narrows the rendered rows without a second request
+  ---
+  duration_ms: 19.167917
+  ...
+# Subtest: opening a row is the ONE brief read the list form omits
+ok 44 - opening a row is the ONE brief read the list form omits
+  ---
+  duration_ms: 23.783125
+  ...
+# Subtest: clearing the search returns the caret to the box
+ok 45 - clearing the search returns the caret to the box
+  ---
+  duration_ms: 17.599625
+  ...
+# Pulling an organization team failed: DesktopControlError: Unauthorized
+#     at controlRefusal (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_public-teams-mount-13978.mjs:5548:10)
+#     at async Object.pullOrgTeamFromRadient (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_public-teams-mount-13978.mjs:5942:29) {
+#   status: 401,
+#   cause: undefined,
+#   code: undefined,
+#   retryAfterMs: undefined,
+#   detail: undefined
+# }
+# Subtest: a refused pull renders its sentence beside the control, not under the brief
+ok 46 - a refused pull renders its sentence beside the control, not under the brief
+  ---
+  duration_ms: 35.148666
+  ...
+# Subtest: the prose about a name paints the derived form too
+ok 47 - the prose about a name paints the derived form too
+  ---
+  duration_ms: 0.475208
+  ...
+# Subtest: the hook registers the key its own builder produces
+ok 48 - the hook registers the key its own builder produces
+  ---
+  duration_ms: 9.227709
+  ...
+# no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+# Subtest: the list hook registers the key its own builder produces, and invalidation reaches it
+ok 49 - the list hook registers the key its own builder produces, and invalidation reaches it
+  ---
+  duration_ms: 129.162333
+  ...
+# Subtest: the list key builder is faithful, and stable across calls
+ok 50 - the list key builder is faithful, and stable across calls
+  ---
+  duration_ms: 53.106584
+  ...
+# Subtest: the batched status key carries the ids and is patched in place
+ok 51 - the batched status key carries the ids and is patched in place
+  ---
+  duration_ms: 51.59625
+  ...
+# Subtest: the per-card fan-out's hooks are gone, and nothing references them
+ok 52 - the per-card fan-out's hooks are gone, and nothing references them
+  ---
+  duration_ms: 312.9005
+  ...
+# Subtest: the page reads the viewer's state once, and never on window focus
+ok 53 - the page reads the viewer's state once, and never on window focus
+  ---
+  duration_ms: 0.8005
+  ...
+# Subtest: the batched op is in both closed vocabularies the request passes through
+ok 54 - the batched op is in both closed vocabularies the request passes through
+  ---
+  duration_ms: 0.695958
+  ...
+# Subtest: the page issues one teams read per org scope and none without a tenant
+ok 55 - the page issues one teams read per org scope and none without a tenant
+  ---
+  duration_ms: 0.479
+  ...
+# no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+# Subtest: the shipped schema's enum variables are what the guard reads
+ok 56 - the shipped schema's enum variables are what the guard reads
+  ---
+  duration_ms: 0.790125
+  ...
+# Subtest: a value the schema cannot accept is refused, and named
+ok 57 - a value the schema cannot accept is refused, and named
+  ---
+  duration_ms: 0.287166
+  ...
+# Subtest: the derivation reads the file it is handed rather than the shipped one
+ok 58 - the derivation reads the file it is handed rather than the shipped one
+  ---
+  duration_ms: 1.465042
+  ...
+# no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+# Subtest: healthy linked agent/team/skill keeps a discoverable policy action
+ok 59 - healthy linked agent/team/skill keeps a discoverable policy action
+  ---
+  duration_ms: 0.864583
+  ...
+# Subtest: manual safe available applies when subscription is off
+ok 60 - manual safe available applies when subscription is off
+  ---
+  duration_ms: 0.074958
+  ...
+# Subtest: available without service safety admission opens review
+ok 61 - available without service safety admission opens review
+  ---
+  duration_ms: 0.122083
+  ...
+# Subtest: paused outgoing preference outranks incoming activity, without changing policy
+ok 62 - paused outgoing preference outranks incoming activity, without changing policy
+  ---
+  duration_ms: 0.063167
+  ...
+# Subtest: retry is directional and only offered when service admits it
+ok 63 - retry is directional and only offered when service admits it
+  ---
+  duration_ms: 0.0645
+  ...
+# Subtest: unknown future state cannot become healthy, apply, or automatic write
+ok 64 - unknown future state cannot become healthy, apply, or automatic write
+  ---
+  duration_ms: 0.04925
+  ...
+# Subtest: transient success retains policy entry and direction
+ok 65 - transient success retains policy entry and direction
+  ---
+  duration_ms: 0.086
+  ...
+# Subtest: full inventory supports skills without altering legacy pending route
+ok 66 - full inventory supports skills without altering legacy pending route
+  ---
+  duration_ms: 1.138041
+  ...
+# Subtest: policy transports captured revision and only the changed independent flag
+ok 67 - policy transports captured revision and only the changed independent flag
+  ---
+  duration_ms: 0.49975
+  ...
+# Subtest: policy fails closed before transport for missing revision, coercion or grant-only write
+ok 68 - policy fails closed before transport for missing revision, coercion or grant-only write
+  ---
+  duration_ms: 0.858667
+  ...
+# Subtest: outbound consent never implicitly changes subscription
+ok 69 - outbound consent never implicitly changes subscription
+  ---
+  duration_ms: 0.168708
+  ...
+# Subtest: preview visible binding accepts same opaque identity but expires and changes fail closed
+ok 70 - preview visible binding accepts same opaque identity but expires and changes fail closed
+  ---
+  duration_ms: 0.191625
+  ...
+# Subtest: source adapter never guesses Public for unavailable organization
+ok 71 - source adapter never guesses Public for unavailable organization
+  ---
+  duration_ms: 0.128708
+  ...
+# Subtest: immutable local ID never falls back to an alias belonging to another copy
+ok 72 - immutable local ID never falls back to an alias belonging to another copy
+  ---
+  duration_ms: 0.151875
+  ...
+# Subtest: stable retry names direction and cannot also select another named copy
+ok 73 - stable retry names direction and cannot also select another named copy
+  ---
+  duration_ms: 0.33375
+  ...
+# Subtest: manual publish cannot confirm unseen proposal or treat dry-run as consent
+ok 74 - manual publish cannot confirm unseen proposal or treat dry-run as consent
+  ---
+  duration_ms: 0.386084
+  ...
+# Subtest: incoming viewed result requires receipt + explicit confirm and cannot share dry-run
+ok 75 - incoming viewed result requires receipt + explicit confirm and cannot share dry-run
+  ---
+  duration_ms: 0.188875
+  ...
+# Subtest: inbound old-server nullable revision remains bound to remote hash and source
+ok 76 - inbound old-server nullable revision remains bound to remote hash and source
+  ---
+  duration_ms: 0.058958
+  ...
+# Subtest: same immutable editor survives changed fetched bytes but another source does not
+ok 77 - same immutable editor survives changed fetched bytes but another source does not
+  ---
+  duration_ms: 0.102208
+  ...
+# Subtest: OFF outbound retry cannot infer future-write consent from an operation ID
+ok 78 - OFF outbound retry cannot infer future-write consent from an operation ID
+  ---
+  duration_ms: 0.045541
+  ...
+# Subtest: initial skill confirmation binds source alias scope flags expiry and full proposal
+ok 79 - initial skill confirmation binds source alias scope flags expiry and full proposal
+  ---
+  duration_ms: 0.155667
+  ...
+# Subtest: remote success and pending receipts do not acknowledge stored policies
+ok 80 - remote success and pending receipts do not acknowledge stored policies
+  ---
+  duration_ms: 0.066334
+  ...
+# Subtest: initial transports preserve exact echo arms and reject guessed scope or consent
+ok 81 - initial transports preserve exact echo arms and reject guessed scope or consent
+  ---
+  duration_ms: 0.40075
+  ...
+# Subtest: Skills draft mount and scope authority do not depend on inventory bytes
+ok 82 - Skills draft mount and scope authority do not depend on inventory bytes
+  ---
+  duration_ms: 0.851458
+  ...
+# Subtest: definition CAS echoes the opaque revision beside the fields, never inside them
+ok 83 - definition CAS echoes the opaque revision beside the fields, never inside them
+  ---
+  duration_ms: 0.137042
+  ...
+# Subtest: team definition CAS mirrors the profile arm
+ok 84 - team definition CAS mirrors the profile arm
+  ---
+  duration_ms: 0.077167
+  ...
+# Subtest: source resolution requires the full stated destination and refuses guessed scope
+ok 85 - source resolution requires the full stated destination and refuses guessed scope
+  ---
+  duration_ms: 0.364917
+  ...
+# Subtest: source-resolution baseline field tracks core's emitted key and literals
+ok 86 - source-resolution baseline field tracks core's emitted key and literals
+  ---
+  duration_ms: 0.318834
+  ...
+# Subtest: a PUBLIC no-grant link requires consent, not unavailability; every other refusal stays
+ok 87 - a PUBLIC no-grant link requires consent, not unavailability; every other refusal stays
+  ---
+  duration_ms: 0.129333
+  ...
+# Subtest: the auto-push line follows EFFECTIVE state: the carve-out never hides a pause
+ok 88 - the auto-push line follows EFFECTIVE state: the carve-out never hides a pause
+  ---
+  duration_ms: 0.212375
+  ...
+# Subtest: the adapter's canEnableAutoPush is the shared gate, so a public no-grant link can start consent
+ok 89 - the adapter's canEnableAutoPush is the shared gate, so a public no-grant link can start consent
+  ---
+  duration_ms: 0.078125
+  ...
+# no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+# direction negative control: {"bad":["not-a-wire-state"],"receiptMisclassified":false}
+# Subtest: the hub-links scene is registered and backend-gated
+ok 90 - the hub-links scene is registered and backend-gated
+  ---
+  duration_ms: 7.169833
+  ...
+# Subtest: the resolve-arm wire literals are the FROZEN ones, never the retired shorthand
+ok 91 - the resolve-arm wire literals are the FROZEN ones, never the retired shorthand
+  ---
+  duration_ms: 0.35225
+  ...
+# Subtest: the stub fixture answers the frozen inventory shape and its resolve arm
+ok 92 - the stub fixture answers the frozen inventory shape and its resolve arm
+  ---
+  duration_ms: 2.301625
+  ...
+# Subtest: the hub-links panel imports every hook it calls
+ok 93 - the hub-links panel imports every hook it calls
+  ---
+  duration_ms: 0.262583
+  ...
+# Subtest: the resolve arm is typed to the frozen agent|team Kind
+ok 94 - the resolve arm is typed to the frozen agent|team Kind
+  ---
+  duration_ms: 0.197792
+  ...
+# Subtest: the policy write consumes the PATCH's {link_id, policy} snapshot, never a full HubLink
+ok 95 - the policy write consumes the PATCH's {link_id, policy} snapshot, never a full HubLink
+  ---
+  duration_ms: 0.213583
+  ...
+# Subtest: the stub emits only real wire direction states
+ok 96 - the stub emits only real wire direction states
+  ---
+  duration_ms: 0.85025
+  ...
+# Subtest: baseline known-ness follows the provenance literal, not a "known" sentinel
+ok 97 - baseline known-ness follows the provenance literal, not a "known" sentinel
+  ---
+  duration_ms: 0.118334
+  ...
+# Subtest: the public-egress consent body states the reversibility limit, without em dashes
+ok 98 - the public-egress consent body states the reversibility limit, without em dashes
+  ---
+  duration_ms: 0.457292
+  ...
+# Subtest: the auto-push switch is described by its pause line only while that line renders
+ok 99 - the auto-push switch is described by its pause line only while that line renders
+  ---
+  duration_ms: 0.399667
+  ...
+# no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+# actual IPC label negative: 70 chars REFUSED; short labels accepted; actual policy endpoint PATCH /v1/desktop/hub/links/link-public-agent
+# geometry negative controls: zero-wrapper REFUSED, horizontal-overflow REFUSED, actual-size positive ACCEPTED
+# Subtest: capture labels obey the real IPC length guard and policy path follows the actual contract
+ok 100 - capture labels obey the real IPC length guard and policy path follows the actual contract
+  ---
+  duration_ms: 1.664958
+  ...
+# Subtest: painted geometry rejects both zero-wrapper and horizontal-overflow negative controls
+ok 101 - painted geometry rejects both zero-wrapper and horizontal-overflow negative controls
+  ---
+  duration_ms: 0.121458
+  ...
+# Subtest: strict published core minimum, identity, and uncertainty fail closed
+ok 102 - strict published core minimum, identity, and uncertainty fail closed
+  ---
+  duration_ms: 0.287917
+  ...
+# guard negatives: old/unknown/disconnected/replaced/late-positive blocked; accepted in-flight request not replayed
+# Subtest: fresh invoke, newer push, and target identity fence stale positive results
+ok 103 - fresh invoke, newer push, and target identity fence stale positive results
+  ---
+  duration_ms: 18.548
+  ...
+# Subtest: backend copy distinguishes initial, disconnected and unsupported states inside consent
+ok 104 - backend copy distinguishes initial, disconnected and unsupported states inside consent
+  ---
+  duration_ms: 73.865792
+  ...
+# actual hooks: 13 fixed-version arms transmitted; 52 stale old/unknown/disconnected/identity callbacks -> ZERO additional writes; verified normal poll keeps controls eligible; dispatch still verifies MAIN
+# Subtest: mounted actual policy/link/source/legacy hooks fence every write arm and retain read eligibility
+ok 105 - mounted actual policy/link/source/legacy hooks fence every write arm and retain read eligibility
+  ---
+  duration_ms: 469.013708
+  ...
+# no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+# capability withdrawal: pending read settled, remote calls 5 -> 5, writes 2 -> 2
+# Subtest: real mounted Skills hooks gate absence, explicit enablement, and retained callbacks after cap loss
+ok 106 - real mounted Skills hooks gate absence, explicit enablement, and retained callbacks after cap loss
+  ---
+  duration_ms: 7394.724125
+  ...
+# Subtest: page gates its effective selection, entry and mount on complete adapter, not legacy link cap
+ok 107 - page gates its effective selection, entry and mount on complete adapter, not legacy link cap
+  ---
+  duration_ms: 0.489459
+  ...
+# Subtest: shared stub retains legacy links and refuses only unsafe public auto-push writes, not previews or read-only copies
+ok 108 - shared stub retains legacy links and refuses only unsafe public auto-push writes, not previews or read-only copies
+  ---
+  duration_ms: 398.198208
+  ...
+# no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+# Subtest: an available item is marked whether or not auto-update is on
+ok 109 - an available item is marked whether or not auto-update is on
+  ---
+  duration_ms: 0.935833
+  ...
+# Subtest: up-to-date, absent and no-credential items draw no mark
+ok 110 - up-to-date, absent and no-credential items draw no mark
+  ---
+  duration_ms: 0.084833
+  ...
+# Subtest: a refused merge goes to review; other failures go to retry
+ok 111 - a refused merge goes to review; other failures go to retry
+  ---
+  duration_ms: 0.085834
+  ...
+# Subtest: the accessible name states the action and names the item
+ok 112 - the accessible name states the action and names the item
+  ---
+  duration_ms: 0.074209
+  ...
+# Subtest: the detail separates 'updates automatically' from 'needs you'
+ok 113 - the detail separates 'updates automatically' from 'needs you'
+  ---
+  duration_ms: 0.23275
+  ...
+# Subtest: the copy table is B6.4 (with the provider-error line re-worded), and an unknown class is generic
+ok 114 - the copy table is B6.4 (with the provider-error line re-worded), and an unknown class is generic
+  ---
+  duration_ms: 0.128417
+  ...
+# Subtest: the sign-in line is drawn only for an item that needs the login
+ok 115 - the sign-in line is drawn only for an item that needs the login
+  ---
+  duration_ms: 0.158292
+  ...
+# Subtest: update-all counts only what a click would take, per kind
+ok 116 - update-all counts only what a click would take, per kind
+  ---
+  duration_ms: 0.084417
+  ...
+# Subtest: an item that needs a decision is a review mark, never an apply (UX U3)
+ok 117 - an item that needs a decision is a review mark, never an apply (UX U3)
+  ---
+  duration_ms: 0.334791
+  ...
+# Subtest: a failed mark whose class a retry cannot fix opens details instead
+ok 118 - a failed mark whose class a retry cannot fix opens details instead
+  ---
+  duration_ms: 0.3835
+  ...
+# Subtest: 'Updated just now' decays with the apply time (UX U4)
+ok 119 - 'Updated just now' decays with the apply time (UX U4)
+  ---
+  duration_ms: 0.15575
+  ...
+# Subtest: the roll-up counts every outcome and never says nothing over a failed run (R4)
+ok 120 - the roll-up counts every outcome and never says nothing over a failed run (R4)
+  ---
+  duration_ms: 0.183083
+  ...
+# Subtest: every non-success report has a sentence, and a plain success has none (U2)
+ok 121 - every non-success report has a sentence, and a plain success has none (U2)
+  ---
+  duration_ms: 0.145209
+  ...
+# Subtest: the five ops compose the backend's routes
+ok 122 - the five ops compose the backend's routes
+  ---
+  duration_ms: 0.740583
+  ...
+# Subtest: the schema is closed: stray fields, bad kinds and bad ids are refused
+ok 123 - the schema is closed: stray fields, bad kinds and bad ids are refused
+  ---
+  duration_ms: 2.080959
+  ...
+# Subtest: the unknown-baseline acknowledgement and the preview reach the wire (R3/R5)
+ok 124 - the unknown-baseline acknowledgement and the preview reach the wire (R3/R5)
+  ---
+  duration_ms: 0.064333
+  ...
+# Subtest: the hub's writes wait longer than the backend's 120 s merge (R2/U9)
+ok 125 - the hub's writes wait longer than the backend's 120 s merge (R2/U9)
+  ---
+  duration_ms: 0.197
+  ...
+# Subtest: the poll is 60 s, foreground-only, and gated on its own capability (R9)
+ok 126 - the poll is 60 s, foreground-only, and gated on its own capability (R9)
+  ---
+  duration_ms: 3.131125
+  ...
+# Subtest: without a hub item nothing renders, and the sidebar has ONE action store (R6/R9)
+ok 127 - without a hub item nothing renders, and the sidebar has ONE action store (R6/R9)
+  ---
+  duration_ms: 1.579666
+  ...
+# Subtest: same source editor stays mounted across definition refresh
+ok 128 - same source editor stays mounted across definition refresh
+  ---
+  duration_ms: 2.027333
+  ...
+# Subtest: every editor still reports scoped dirty state without replacing the draft
+ok 129 - every editor still reports scoped dirty state without replacing the draft
+  ---
+  duration_ms: 0.413083
+  ...
+1..129
+# tests 129
+# suites 0
+# pass 129
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 13334.54025

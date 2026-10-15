@@ -1,0 +1,46 @@
+BOUNDED START {"pid":43838,"seconds":60,"budgetMiB":6144,"nodeOptions":"--max-old-space-size=4096"}
+[PASS] stub reports the requested core version :: 0.72.1
+[app] {"pid":43842,"port":65418,"size":"800x900"}
+FOOTPRINT {"MiB":1458,"blind":false,"processes":9}
+FOOTPRINT {"MiB":1166,"blind":false,"processes":9}
+[PASS] linked profile is browsable (expander present)
+FOOTPRINT {"MiB":1229,"blind":false,"processes":9}
+FOOTPRINT {"MiB":1026,"blind":false,"processes":9}
+FOOTPRINT {"MiB":1008,"blind":false,"processes":9}
+FOOTPRINT {"MiB":1012,"blind":false,"processes":9}
+FOOTPRINT {"MiB":1012,"blind":false,"processes":9}
+FOOTPRINT {"MiB":1008,"blind":false,"processes":9}
+FOOTPRINT {"MiB":1011,"blind":false,"processes":9}
+FOOTPRINT {"MiB":1012,"blind":false,"processes":9}
+FOOTPRINT {"MiB":1010,"blind":false,"processes":9}
+FOOTPRINT {"MiB":1003,"blind":false,"processes":9}
+FOOTPRINT {"MiB":1005,"blind":false,"processes":9}
+FOOTPRINT {"MiB":1001,"blind":false,"processes":9}
+FOOTPRINT {"MiB":936,"blind":false,"processes":9}
+FOOTPRINT {"MiB":938,"blind":false,"processes":9}
+[PASS] headless never shown/focused :: {"windowMode":"headless","appVersion":"0.34.44","platform":"darwin","title":"Local Operator","windowSize":{"width":800,"height":900},"contentBounds":{"width":800,"height":900},"visible":false,"focused":false,"minimized":false,"frames":[],"outDir":"/Users/damian/local-operator-ui/.worktrees/skills-library-evidence/docs/evidence/hub-skills-library/frames/R3-fixed-short-narrow-light"}
+[PASS] Auto-push opens consent
+[PASS] Enable has keyboard focus :: {"tag":"BUTTON","role":null,"label":"Enable auto-push","disabled":false,"state":null}
+[PASS] actual primary located
+[PASS] Enter confirms auto-push after real answer
+[PASS] exact linkID PATCH returns200 once :: ["stub PATCH /v1/desktop/hub/links/link-public-agent -> 200"]
+FOOTPRINT {"MiB":1326,"blind":false,"processes":8}
+FOOTPRINT {"MiB":1133,"blind":false,"processes":8}
+[PASS] backend loss reason is INSIDE consent :: Reconnect the Local Operator backend to change Hub settings. Backend 0.72.1 or newer is required; browsing is still available.
+[PASS] Enable disabled but Cancel stays usable :: [{"text":"Cancel","disabled":false},{"text":"Enable auto-push","disabled":true}]
+[PASS] r3-disconnected-narrow-light draws the light palette its name claims
+        DOM localOperatorLight #f2ede3; mean luma 178.5 vs 237.3 own / 32.1 other
+[PASS] actual viewport matches planned size :: {"w":800,"h":900,"dpr":2}
+[PASS] actual nonzero painted row and no horizontal overflow :: {"viewport":{"w":800,"h":900,"dpr":2},"row":{"x":100,"y":130.6953125,"w":676,"h":367.578125,"cw":676,"ch":367,"sw":676},"scroller":{"x":56,"y":77,"w":744,"h":631.6015625,"cw":728,"ch":632,"sw":728},"dialog":{"x":144,"y":292.80078125,"w":512,"h":314.3984375,"cw":510,"ch":312,"sw":510}}
+[PASS] painted scroller positive accepted
+[PASS] zero-wrapper negative refused
+[PASS] horizontal-overflow negative refused
+FOOTPRINT {"MiB":1330,"blind":false,"processes":8}
+[PASS] CSP actual violation refuses undeclared loopback port :: [{"directive":"connect-src","uri":"http://127.0.0.1:8139/r3-csp-negative"}]
+[PASS] all observed renderer HTTP intents confined to stub plus denied control :: []
+[PASS] no live Radient request
+[request observation] [{"at":1792056318565,"url":"file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/browser-webauthn-prompt-Dea0HEAw.js","requestId":"43862.16"},{"at":1792056318566,"url":"file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/brand-mark-Bv0Hu-Cz.png","requestId":"43862.17"},{"at":1792056318626,"url":"file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/GeistMonoNerdFontMono-Regular-CWdDX7GJ.otf","requestId":"43862.14"},{"at":1792056318644,"url":"file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/index.html","requestId":"8647E7819F091F36A10BCDB6E1EE9769"},{"at":1792056318682,"url":"file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/index-DDzHtYVE.js","requestId":"43862.19"},{"at":1792056318682,"url":"file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/index-CZcfD1iz.js","requestId":"43862.20"},{"at":1792056318682,"url":"file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/messages-Cri5tDcQ.js","requestId":"43862.21"},{"at":1792056318682,"url":"file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/error-boundary-Dvcu2ooG.js","requestId":"43862.22"},{"at":1792056318682,"url":"file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/conversation-input-sync-Cf1vWoht.js","requestId":"43862.23"},{"at":1792056318682,"url":"file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/console-mirror-DmNVb7FD.js","requestId":"43862.24"},{"at":1792056318682,"url":"file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/index-B4im30ZU.css","requestId":"43862.25"},{"at":1792056318682,"url":"file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/conversation-input-sync-CAX4_ErH.css","requestId":"43862.26"},{"at":1792056318683,"url":"file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/console-mirror-DOrYoP_4.css","requestId":"43862.27"},{"at":1792056318683,"url":"file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/index-DHKnfVbX.css","requestId":"43862.28"},{"at":1792056318747,"url":"file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/browser-webauthn-prompt-Dea0HEAw.js","requestId":"43862.33"},{"at":1792056318747,"url":"file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/brand-mark-Bv0Hu-Cz.png","requestId":"43862.34"},{"at":1792056318774,"url":"file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/GeistMonoNerdFontMono-Regular-CWdDX7GJ.otf","requestId":"43862.31"},{"at":1792056321458,"url":"file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/agents-page-D2AYAbfM.js","requestId":"43862.35"},{"at":1792056321459,"url":"file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/use-memberships-query-qnF8_K83.js","requestId":"43862.36"},{"at":1792056321459,"url":"file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/org-access-CfvuRKKW.js","requestId":"43862.37"}]
+[actual fixture PATCHes] ["stub PATCH /v1/desktop/hub/links/link-public-agent -> 200","stub PATCH /v1/desktop/hub/links/link-public-agent -> 200"]
+
+[r3 candidate probe done] stopping 1 app(s) this run started
+BOUNDED END {"pid":43838,"exit":0}

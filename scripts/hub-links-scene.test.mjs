@@ -36,9 +36,9 @@ test("the hub-links scene is registered and backend-gated", () => {
 	assert.match(driver, /async function sceneHubLinks\(/);
 	assert.match(driver, /SCENE === "hub-links"\) await sceneHubLinks\(/);
 	// It is listed in the CLI's own scene list, so `--help` and the guard agree.
-	assert.match(
-		driver,
-		/--scene <[^>]*\|hub-links\|none>/,
+	const cliScenes = /--scene <([^>]+)>/.exec(driver)?.[1].split("|") ?? [];
+	assert.ok(
+		cliScenes.includes("hub-links"),
 		"the scene name is missing from the CLI scene list",
 	);
 	// Both backend guards, for the reason the other backend scenes carry them.
@@ -149,10 +149,44 @@ test("the stub emits only real wire direction states", () => {
 	for (const m of view.matchAll(/new Set\(\[([^\]]*)\]\)/g)) {
 		for (const lit of m[1].matchAll(/"([^"]+)"/g)) known.add(lit[1]);
 	}
-	// A bare `state:` only — `baseline_state` is a different field (the provenance
-	// literal), so the lookbehind excludes any prefixed `*_state`.
-	const emitted = [...stub.matchAll(/(?<![\w])state:\s*"([^"]+)"/g)].map(
-		(m) => m[1],
+	// Read only the direction() constructor default and direction({...}) calls.
+	// Publication local_link_receipt.state is a different wire domain, not a
+	// reason to widen the production direction allowlist or skip validation.
+	const directionStates = (source) => {
+		const base =
+			/const direction = [\s\S]*?=>\s*\(\{([\s\S]*?)\}\);/.exec(source)?.[1] ??
+			"";
+		const calls = [...source.matchAll(/\bdirection\(\{([\s\S]*?)\}\)/g)].map(
+			(m) => m[1],
+		);
+		return [
+			...[base, ...calls].join("\n").matchAll(/\bstate:\s*"([^"]+)"/g),
+		].map((m) => m[1]);
+	};
+	const emitted = directionStates(stub);
+	const badDirection = stub.replace(
+		'direction({ state: "idle"',
+		'direction({ state: "not-a-wire-state"',
+	);
+	assert.notEqual(
+		badDirection,
+		stub,
+		"negative control must alter an actual direction fixture",
+	);
+	console.log(
+		"direction negative control:",
+		JSON.stringify({
+			bad: directionStates(badDirection).filter((state) => !known.has(state)),
+			receiptMisclassified: emitted.includes("pending-reconciliation"),
+		}),
+	);
+	assert(
+		directionStates(badDirection).some((state) => !known.has(state)),
+		"NEGATIVE CONTROL: bad direction must be detected",
+	);
+	assert(
+		!emitted.includes("pending-reconciliation"),
+		"publication receipt is not a direction",
 	);
 	assert.ok(emitted.length > 0, "the stub emits no direction states to check");
 	for (const state of emitted) {

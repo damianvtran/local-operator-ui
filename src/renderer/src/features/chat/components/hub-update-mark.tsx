@@ -131,6 +131,7 @@ export function HubUpdateMark({
 	item,
 	mark,
 	busy,
+	blocked = false,
 	staged,
 	onPress,
 }: {
@@ -138,6 +139,8 @@ export function HubUpdateMark({
 	mark: HubMark;
 	/** A press for this item is in flight; the glyph becomes the spinner. */
 	busy: boolean;
+	/** Refuse writes without displaying a false in-flight spinner. */
+	blocked?: boolean;
 	/** The row carries the draft ground, which the control's hover step must not paint over. */
 	staged: boolean;
 	onPress: () => void;
@@ -148,7 +151,7 @@ export function HubUpdateMark({
 	const Glyph = GLYPH_BY_MARK[shown];
 	const detail = hubMarkDetail(item, shownMark);
 	const action = hubMarkAction(shownMark);
-	const inert = shown === "updating" || shown === "applied";
+	const inert = blocked || shown === "updating" || shown === "applied";
 	return (
 		// The sidebar's own tooltip, not a native `title`: it opens on keyboard
 		// focus (a `title` never does), so a keyboard reader gets the sentence and
@@ -224,6 +227,7 @@ export function HubHeadingControls({
 	kind,
 	available,
 	busy,
+	blocked = false,
 	onUpdateAll,
 	onCheck,
 	checking,
@@ -231,6 +235,7 @@ export function HubHeadingControls({
 	kind: HubItemKind;
 	available: number;
 	busy: boolean;
+	blocked?: boolean;
 	onUpdateAll: () => void;
 	/** Present on ONE heading: the check covers both kinds, so a second control would repeat it. */
 	onCheck?: () => void;
@@ -246,13 +251,13 @@ export function HubHeadingControls({
 					type="button"
 					data-testid={`hub-update-all-${kind}`}
 					aria-label={`Update all ${available} ${noun} updates from the hub`}
-					aria-disabled={busy || undefined}
+					aria-disabled={busy || blocked || undefined}
 					className={cn(
 						"h-6 shrink-0 rounded-md px-1.5 text-meta text-accent",
 						"hover:bg-row-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-1",
 					)}
 					onClick={() => {
-						if (!busy) onUpdateAll();
+						if (!busy && !blocked) onUpdateAll();
 					}}
 				>
 					{busy ? "Updating…" : `Update all (${available})`}
@@ -264,13 +269,13 @@ export function HubHeadingControls({
 						type="button"
 						data-testid="hub-check-now"
 						aria-label="Check the hub for updates now"
-						aria-disabled={checking || undefined}
+						aria-disabled={checking || blocked || undefined}
 						className={cn(
 							"flex size-6 shrink-0 items-center justify-center rounded-md text-ink-dim",
 							"hover:bg-row-hover hover:text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-1",
 						)}
 						onClick={() => {
-							if (!checking) onCheck();
+							if (!checking && !blocked) onCheck();
 						}}
 					>
 						<RefreshCw

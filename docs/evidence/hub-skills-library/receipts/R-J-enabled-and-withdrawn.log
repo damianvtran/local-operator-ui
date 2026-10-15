@@ -1,0 +1,78 @@
+renderer-driver: frame timezone pinned to America/New_York (ambient TZ=America/Toronto)
+[build] current: assets 2026-10-15T05:35:25.761Z >= sources 2026-10-15T05:05:37.341Z
+[note] abandoned scratch trees
+        1 seen, 0 owned by a live pid (kept), 1 younger than 30m (kept), 0 removed
+[note] csp for this run's backend
+        out/renderer/index.html: http://127.0.0.1:8127 added to frame-src, media-src, img-src (build output only; src/ untouched)
+  serve records 1 linked from /Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/capgate-positive-records   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui/.worktrees/skills-library-evidence
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-60105
+  frames        /Users/damian/local-operator-ui/.worktrees/skills-library-evidence/docs/evidence/hub-skills-library/frames/R-J-enabled-and-withdrawn
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-60105/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8127   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["filesFacts","hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","stageLiveConsents","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8127","backend":"http://127.0.0.1:8127"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8127)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] window mode is headless and the window is never shown or focused
+[PASS] enabled Skills fetch observer validates its own positive control
+[PASS] the hub page exposes its scope chips
+[PASS] the org scope chip received the point (hit test)
+[note] loading frame
+        captured in flight
+[PASS] the library settles into a state this run can photograph
+[PASS] the library names its source explicitly
+[note] library source line
+        "Minerva · Private"
+[PASS] explicit complete-adapter fixture actually fetches remote Skills
+[PASS] fixture withdraws only its future adapter capability
+[PASS] real capability watch withdraws an active Skills mount to safe Agents
+[PASS] capability loss starts no additional remote Skills reads
+[note] egress: capture securitypolicyviolation events
+        []
+[PASS] egress: zero CSP violations during the capture flow
+[note] egress: distinct renderer request origins
+        ["null"]
+[PASS] egress: every renderer request went to the stub origin or an app-local scheme
+        38 requests, origins ["null"]
+[PASS] egress: no renderer request names api.radienthq.com
+[note] egress: app process tree sockets (one instant)
+        pids 60108,60113,60114,60119,60124,60125,60132
+        COMMAND    PID   USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
+        Electron 60108 damian   17u  IPv4 0xe3f8295832f29fcb      0t0  TCP 127.0.0.1:63216 (LISTEN)
+        Electron 60108 damian   23u  IPv4 0xae5dfd01dd111247      0t0  TCP 127.0.0.1:63214->127.0.0.1:63222 (ESTABLISHED)
+        Electron 60108 damian   37u  IPv4 0x6bacdf389786f94e      0t0  TCP 127.0.0.1:63214 (LISTEN)
+        Electron 60108 damian   60u  IPv4 0x2776f603e9d1d64b      0t0  TCP 127.0.0.1:63312->127.0.0.1:8127 (ESTABLISHED)
+        Electron 60108 damian   92u  IPv4 0xcfd147ba6fb18b1b      0t0  TCP 127.0.0.1:63226 (LISTEN)
+[PASS] egress: no non-loopback ESTABLISHED/SYN_SENT socket in the app's process tree (instantaneous probe, not a continuous audit)
+  [renderer] Failed to fetch Radient credits: DesktopControlError: the stub has no answer for radient op credits
+    at ke (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/conversation-input-sync-Bj4LaK9y.js:2:4715)
+    at async OUe (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/conversation-input-sync-Bj4LaK9y.js:501:43509)
+    at async Pz (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/conversation-input-sync-Bj4LaK9y.js:501:43592)
+    at async file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/index-Bj0OVcMS.js:679:43095
+  [renderer] Failed to fetch Radient credits: DesktopControlError: the stub has no answer for radient op credits
+    at ke (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/conversation-input-sync-Bj4LaK9y.js:2:4715)
+    at async OUe (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/conversation-input-sync-Bj4LaK9y.js:501:43509)
+    at async Pz (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/conversation-input-sync-Bj4LaK9y.js:501:43592)
+    at async file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/index-Bj0OVcMS.js:679:43095
+[PASS] no process from this run outlived its boot
+
+frames: hub-skills-1380x900-local-operator-dark-adapter-withdrawn-agents.png, hub-skills-1380x900-local-operator-dark-loading.png, hub-skills-1380x900-local-operator-dark-populated.png
+frames directory: /Users/damian/local-operator-ui/.worktrees/skills-library-evidence/docs/evidence/hub-skills-library/frames/R-J-enabled-and-withdrawn
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-60105/app-scene.log
+scratch kept: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-60105 (the frames are also in --out)
+
+ALL CHECKS PASSED

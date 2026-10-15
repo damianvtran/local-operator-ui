@@ -1,0 +1,31 @@
+{
+  "checks": [
+    "complete inert env accepted by actual plugin and renderer schema",
+    "missing VITE_GOOGLE_CLIENT_ID REFUSED",
+    "missing VITE_GOOGLE_CLIENT_SECRET REFUSED",
+    "missing VITE_MICROSOFT_CLIENT_ID REFUSED",
+    "missing VITE_MICROSOFT_TENANT_ID REFUSED",
+    "invalid boolean enum 1 REFUSED",
+    "all seven actual frame labels <=64 accepted;70char negative REFUSED"
+  ],
+  "requiredOAuthKeys": [
+    "VITE_GOOGLE_CLIENT_ID",
+    "VITE_GOOGLE_CLIENT_SECRET",
+    "VITE_MICROSOFT_CLIENT_ID",
+    "VITE_MICROSOFT_TENANT_ID"
+  ],
+  "labels": [
+    "r3-fixed-switch-held",
+    "r3-fixed-dialog-held",
+    "r3-fixed-policy-confirmed",
+    "r3-fixed-disconnected-dialog",
+    "r3-old-wide",
+    "r3-prerelease-narrow-light",
+    "r3-disconnected-narrow-light"
+  ],
+  "sourceValidators": {
+    "scripts/vite-plugins/replace-backend-config.ts": "f8f1e889bf894ec500dc28a5c489ec40a3e33b22bdee2ba3be44a27463a4d28f",
+    "src/renderer/src/shared/config/env-schema.ts": "294be990abcab2763e7e9160d2171c1f408c68d7ce26bacc5306c1a437ab6318",
+    "src/main/dev-driver-ipc.ts": "436b11c3a177cd14b742e749a52fd6a3828c35e95dfe70b0616b8e116ace31a1"
+  }
+}

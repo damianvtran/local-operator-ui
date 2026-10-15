@@ -1,0 +1,54 @@
+{
+  "exactOwnPidsAbsent": [
+    37441,
+    37446,
+    37450,
+    37455,
+    43835,
+    43838,
+    43840,
+    43842,
+    47840,
+    47844,
+    47848,
+    47851,
+    48597,
+    48601,
+    48611,
+    48619
+  ],
+  "port8127NoListener": true,
+  "noNativeRemains": true,
+  "discoveryRecords": "moved to own session scratch, synthetic bearer/discovery state intentionally not committed",
+  "runs": [
+    {
+      "mode": "fixed",
+      "pass": 9,
+      "fail": 0,
+      "logEndFilesystemMtime": "2026-10-15T05:17:53.882451-04:00",
+      "scope": "partial focus valid evidence,124 bound"
+    },
+    {
+      "mode": "fixed-short",
+      "pass": 19,
+      "fail": 0,
+      "logEndFilesystemMtime": "2026-10-15T05:25:58.546107-04:00",
+      "scope": "complete native pass"
+    },
+    {
+      "mode": "old",
+      "pass": 14,
+      "fail": 0,
+      "logEndFilesystemMtime": "2026-10-15T05:26:35.558255-04:00",
+      "scope": "complete native pass"
+    },
+    {
+      "mode": "unknown",
+      "pass": 15,
+      "fail": 0,
+      "logEndFilesystemMtime": "2026-10-15T05:27:12.671582-04:00",
+      "scope": "complete native pass"
+    }
+  ],
+  "ownSessionElectronStubCommandScopeStrays": 0
+}

@@ -1,0 +1,6 @@
+stub daemon listening on 127.0.0.1:8127
+serve record written to /Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/rec0
+stub GET /health -> 200
+stub GET /v1/skills?page=1&per_page=20 -> 200
+stub POST /v1/desktop/radient -> 200
+stub POST /v1/desktop/radient -> 200

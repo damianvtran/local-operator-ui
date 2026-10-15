@@ -1,0 +1,2 @@
+BOUNDED START {"pid":32469,"seconds":300,"budgetMiB":6144,"nodeOptions":"--max-old-space-size=4096"}
+BOUNDED END {"pid":32469,"exit":0}
