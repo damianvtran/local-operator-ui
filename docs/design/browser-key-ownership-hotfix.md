@@ -124,14 +124,52 @@ RT-only claim. RT-only counts are recorded by the candidate's actual logs, with
 an added real-registry/setter test and BODY direct-neighbor command-family test.
 All source events/callbacks remain JSDOM/unit evidence, not OS input proof.
 On this RT-only base, the six StageA ownership tests failed before production
-extraction (source RED). Final source results are **15 renderer + 12 main/registry/
-registration = 27 PASS**, Node/App no-emit typechecks PASS, targeted lint rc0.
+extraction (source RED). Initial candidate43 source results were **15 renderer +
+12 main/registry/registration = 27 PASS**, Node/App no-emit typechecks PASS,
+targeted lint rc0. These are historical runs on43, not fresh remediation runs.
 Each serial command stayed within20s/512MiB; exact durations/commands are retained
 in the task scratch receipt. Existing localStorage/Radix test diagnostics and six
 pre-existing regex lint advisories are not claimed absent. The new neighbor test
 was corrected to existing page-control verbs `in/out/reset`; its bare find-row
 placeholder proves the `open` callback, not the real component's separate mount
 focus effect. No production behavior was changed to accommodate those fixtures.
+
+## Initial private review remediation — R1 and R2
+
+Independent source review found that the earlier app-zoom door still called the
+router with raw `host.chordFocus`, bypassing native eligibility before the later
+guarded chrome listener could run. The predicate-only matrix had not exercised
+that reached caller. The actual production function, extracted with unique
+source delimiters and transformed without booting Electron, reproduced retained
+logical=true / inactive-window **handled=true** against candidate43.
+
+Both actual main chrome callers now use `router.chromeInput(event, input)`.
+Authorization is derived internally from `options.ownsChrome()`, never supplied
+as a raw retained boolean. The original shared input/rejected-repeat/IME logic
+is factored unchanged; the native page caller still uses its existing
+active/presented ownership path. The early filter still excludes non-zoom keys,
+so R/T are not consumed twice. The menu uses the same native predicate as before.
+A source audit found no other production chrome caller of the raw input entry.
+
+The new regression executes the exact earlier function AND later chrome handler
+with the actual router and explicit fake-window facts. Foreground produces one
+selected-tab zoom callback; retained-true inactive/hidden/covered/modal/destroyed/
+foreign/no-host cases produce none. Repeats/IME preserve consumption without
+mutation; non-zoom R/T reach only the later handler. This is executed production
+SOURCE logic, not an OS input or real native page zoom claim. The test does not
+import/start the app, inject focus guards, or use new dependencies. The installed
+TypeScript7 package exposes version metadata rather than an AST API; an initial
+fixture setup error was retained separately, then replaced with the existing
+esbuild transformer and fail-closed unique source delimiters.
+
+R2 removes the stale claim that OS blur clears logical focus. That is the ONLY
+renderer edit: transformed renderer output is byte-identical to43. Shared page
+handler logic and menu-dispatch body are unchanged. The 15-test renderer pass and
+App typecheck on43 are retained by source compatibility, NOT rerun or relabelled
+as new results. Fresh remediation checks cover main/router/actual doors/lane
+registration and Node types only; no full suite or JSDOM reset. Designer/UX
+rendered/flow verdicts remain BLOCKED, not approved; source passes do not replace
+independent actual UI validation. Native-menu source remains a separate lane.
 
 ## Bounded postfix native QA plan — NOT executed
 

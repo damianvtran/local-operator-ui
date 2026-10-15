@@ -279,7 +279,7 @@ export function useBrowserChords(
 			if (!intent) return;
 			event.preventDefault();
 			event.stopPropagation();
-			// Main clears its report on restart/blur; a real accepted DOM press
+			// Main clears its report on restart/teardown; a real accepted DOM press
 			// reasserts the derived owner, never an OS/window focus override.
 			report(true, true);
 			enqueue({ intent, origin: "chrome" });
