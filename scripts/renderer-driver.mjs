@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-language|settings-transcript-display|settings-gate|palette|palette-recents|hit-zones|route-tops|project-detail|project-open|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|output-artifact|image-copy|hub-links|hub-skills|none>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-language|settings-transcript-display|settings-gate|palette|palette-recents|hit-zones|route-tops|project-detail|project-open|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|output-artifact|image-copy|hub-links|hub-skills|hub-skills-egress|none>
  *                          which built-in scene to run (default: states)
  *   --drop-expect <accepted|discarded>  (with --scene composer-drop) which half of
  *                          the issue #789 pair this run records: the head tree,
@@ -1569,6 +1569,10 @@ class CdpClient {
 		 * request is the honest instrument (`Network.enable` is asked for below).
 		 */
 		this.requests = [];
+		/* Network.loadingFailed rows (requestId, errorText, blockedReason): a
+		 * CSP-denied request is reported here, so the egress controls can tell
+		 * "blocked before the network" from "went out". */
+		this.failed = [];
 		socket.addEventListener("message", (event) => {
 			let message = null;
 			try {
@@ -1580,6 +1584,14 @@ class CdpClient {
 				this.requests.push({
 					at: Date.now(),
 					url: message.params?.request?.url ?? "",
+					requestId: message.params?.requestId ?? null,
+				});
+			}
+			if (message.method === "Network.loadingFailed") {
+				this.failed.push({
+					requestId: message.params?.requestId ?? null,
+					errorText: message.params?.errorText ?? "",
+					blockedReason: message.params?.blockedReason ?? null,
 				});
 			}
 			if (message.method === "Runtime.consoleAPICalled") {
@@ -43923,6 +43935,133 @@ async function sceneHubSkills(cdp, app) {
 	);
 }
 
+/**
+ * THE RUNTIME EGRESS OBSERVER for the hub-skills evidence (manager steer,
+ * 2026-10-15): the stub's request log proves only what reached the STUB, so
+ * "the library never contacted a production hub" needs an instrument of its own.
+ * Two halves, both scoped honestly:
+ * - RENDERER: every URL the page requested (`cdp.requests`, fed by
+ *   Network.requestWillBeSent) must be the stub origin or an app-local scheme.
+ *   The build's CSP is narrowed to `'self' <stub>` as well, so a production
+ *   fetch is refused before the network; this check is what would notice if the
+ *   CSP edit were wrong.
+ * - PROCESS TREE: `lsof` over the app and every descendant at ONE instant, no
+ *   non-loopback ESTABLISHED/SYN_SENT socket. That covers the main process /
+ *   network service only at that instant - it is a probe, not a continuous audit.
+ */
+const EGRESS_LOCAL_SCHEMES = new Set(["file:", "app:", "devtools:", "data:", "blob:", "about:"]);
+function egressViolations(urls, allowedOrigin) {
+	const bad = [];
+	for (const url of urls) {
+		let parsed = null;
+		try {
+			parsed = new URL(url);
+		} catch {
+			bad.push(url);
+			continue;
+		}
+		if (EGRESS_LOCAL_SCHEMES.has(parsed.protocol)) continue;
+		if (parsed.origin === allowedOrigin) continue;
+		bad.push(url);
+	}
+	return bad;
+}
+function processTreeSockets(rootPid) {
+	const ps = spawnSync("ps", ["-axo", "pid=,ppid="], { encoding: "utf8" });
+	const kids = new Map();
+	for (const line of ps.stdout.split("\n")) {
+		const [pid, ppid] = line.trim().split(/\s+/).map(Number);
+		if (!Number.isFinite(pid)) continue;
+		if (!kids.has(ppid)) kids.set(ppid, []);
+		kids.get(ppid).push(pid);
+	}
+	const tree = [rootPid];
+	for (let i = 0; i < tree.length; i += 1) tree.push(...(kids.get(tree[i]) ?? []));
+	const lsof = spawnSync("lsof", ["-a", "-p", tree.join(","), "-i", "-n", "-P"], { encoding: "utf8" });
+	const lines = lsof.stdout.split("\n").filter((l) => l.trim().length > 0);
+	const loopback = /->(127\.0\.0\.1|\[::1\]|localhost):/;
+	const outbound = lines.filter(
+		(l) => /\((ESTABLISHED|SYN_SENT)\)/.test(l) && !loopback.test(l),
+	);
+	return { tree, lines, outbound };
+}
+async function hubSkillsEgressAudit(cdp, app) {
+	const stub = new URL(BACKEND).origin;
+	const bad = egressViolations(cdp.requests.map((r) => r.url), stub);
+	const origins = [...new Set(cdp.requests.map((r) => { try { return new URL(r.url).origin; } catch { return r.url; } }))];
+	note("egress: distinct renderer request origins", JSON.stringify(origins));
+	check(
+		"egress: every renderer request went to the stub origin or an app-local scheme",
+		bad.length === 0,
+		`non-stub requests: ${JSON.stringify(bad.slice(0, 5))}`,
+		`${cdp.requests.length} requests, origins ${JSON.stringify(origins)}`,
+	);
+	check(
+		"egress: no renderer request names api.radienthq.com",
+		!cdp.requests.some((r) => r.url.includes("api.radienthq.com")),
+		"api.radienthq.com present in cdp.requests",
+	);
+	const sockets = processTreeSockets(app.pid);
+	note("egress: app process tree sockets (one instant)", `pids ${sockets.tree.join(",")}\n        ${sockets.lines.join("\n        ")}`);
+	check(
+		"egress: no non-loopback ESTABLISHED/SYN_SENT socket in the app's process tree (instantaneous probe, not a continuous audit)",
+		sockets.outbound.length === 0,
+		JSON.stringify(sockets.outbound),
+	);
+}
+
+/**
+ * NEGATIVE CONTROLS for the observer above, in their OWN boot (`--scene
+ * hub-skills-egress`) so the capture runs' zero-non-stub assertion is never
+ * polluted by a deliberately blocked attempt. Never touches a production origin:
+ * disallowed targets are a loopback port nothing listens on and a `.invalid` name.
+ */
+async function sceneHubSkillsEgressControls(cdp, app) {
+	const stub = new URL(BACKEND).origin;
+	await verb(cdp, "navigate", "/agent-hub");
+	await wait(3000);
+	const before = cdp.requests.length;
+	const failedBefore = cdp.failed.length;
+	const consoleBefore = cdp.console.length;
+	/* (a) the observer flags a wrong LOOPBACK origin, live and on a literal list. */
+	const wrongLoopback = "http://127.0.0.1:8128/probe-wrong-origin";
+	const wrongHost = "https://egress-probe.invalid/probe";
+	const probed = await cdp.evaluate(`(async () => {
+		const out = {};
+		for (const url of [${JSON.stringify(wrongLoopback)}, ${JSON.stringify(wrongHost)}]) {
+			out[url] = await fetch(url).then((r) => "resolved:" + r.status, (e) => "rejected:" + String(e && e.message));
+		}
+		return out;
+	})()`);
+	await wait(1000);
+	const slice = cdp.requests.slice(before);
+	const flagged = egressViolations(slice.map((r) => r.url), stub);
+	note("control (a) page fetch outcomes", JSON.stringify(probed));
+	note("control (a) requests recorded in the control segment", JSON.stringify(slice.map((r) => r.url)));
+	note("control (a) observer flagged", JSON.stringify(flagged));
+	const literal = egressViolations([`${stub}/v1/capabilities`, wrongLoopback, "file:///x"], stub);
+	check(
+		"control (a): the observer flags a synthetic wrong-loopback origin (and passes the stub + file:)",
+		flagged.includes(wrongLoopback) && literal.length === 1 && literal[0] === wrongLoopback,
+		`live=${JSON.stringify(flagged)} literal=${JSON.stringify(literal)}`,
+	);
+	/* (b) the narrowed CSP refuses the synthetic disallowed origins before any socket. */
+	const failed = cdp.failed.slice(failedBefore);
+	const byId = new Map(slice.map((r) => [r.requestId, r.url]));
+	const refused = failed.map((f) => ({ url: byId.get(f.requestId) ?? null, ...f }));
+	note("control (b) loadingFailed rows", JSON.stringify(refused));
+	note("control (b) renderer console", JSON.stringify(cdp.console.slice(consoleBefore)));
+	check(
+		"control (b): CSP (connect-src 'self' + stub) refused BOTH synthetic disallowed origins (blockedReason csp)",
+		[wrongLoopback, wrongHost].every((u) => refused.some((f) => f.url === u && (f.blockedReason === "csp" || /csp/i.test(f.errorText)))),
+		JSON.stringify(refused),
+	);
+	const sockets = processTreeSockets(app.pid);
+	const leaked = sockets.lines.filter((l) => /:8128|egress-probe/.test(l));
+	note("control (b) app process tree sockets", `pids ${sockets.tree.join(",")}\n        ${sockets.lines.join("\n        ")}`);
+	check("control (b): no socket to the disallowed origins appears in lsof (rejected before the network)", leaked.length === 0, JSON.stringify(leaked));
+}
+
 async function main() {
 	/*
 	 * The frame timezone, pinned before the first boot: the committed frames
@@ -44244,12 +44383,12 @@ async function main() {
 			"--scene hub-links needs --backend-records: the serve record is how the app admits the daemon this run owns, and without it the run photographs a disconnected app",
 		);
 	}
-	if (SCENE === "hub-skills" && BACKEND === null) {
+	if ((SCENE === "hub-skills" || SCENE === "hub-skills-egress") && BACKEND === null) {
 		throw new Error(
 			"--scene hub-skills needs --backend: the library's catalogue, detail, pull and publication are real requests (org reads through the daemon's radient proxy, public reads against the build's baked hub origin), and a backendless run draws refusal surfaces instead",
 		);
 	}
-	if (SCENE === "hub-skills" && BACKEND_RECORDS === null) {
+	if ((SCENE === "hub-skills" || SCENE === "hub-skills-egress") && BACKEND_RECORDS === null) {
 		throw new Error(
 			"--scene hub-skills needs --backend-records: the serve record is how the app admits the daemon this run owns, and without it the run photographs a disconnected app",
 		);
@@ -44520,7 +44659,11 @@ async function main() {
 			else if (SCENE === "sidebar-lazy-chats") await sceneSidebarLazyChats(cdp);
 			else if (SCENE === "mini-view") await sceneMiniView(app, cdp);
 			else if (SCENE === "hub-links") await sceneHubLinks(cdp, app);
-			else if (SCENE === "hub-skills") await sceneHubSkills(cdp, app);
+			else if (SCENE === "hub-skills") {
+				await sceneHubSkills(cdp, app);
+				await hubSkillsEgressAudit(cdp, app);
+			} else if (SCENE === "hub-skills-egress")
+				await sceneHubSkillsEgressControls(cdp, app);
 			else if (SCENE !== "none") throw new Error(`unknown scene "${SCENE}"`);
 			for (const line of cdp.console.slice(-20)) say(`  [renderer] ${line}`);
 		} finally {
