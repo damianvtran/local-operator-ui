@@ -398,6 +398,45 @@ function selectorOfResolution(
 const DEFAULT_SAVE_FAILURE = "The default was not saved";
 
 /**
+ * A default checkbox's label, at the height of its TALLEST wording.
+ *
+ * Ticking rewrites the label ("Also make this…" → "Picks here also set…" →
+ * "Default for new sessions: X. Picks here update it too."), and a label that
+ * grew a line pushed the rows down while the dialog, centred on the viewport,
+ * moved up to match: the click after a tick landed one row off (UX round 2,
+ * U9 - measured 44 px on the model dialog). The two wordings a tick can show
+ * are laid into the same grid cell as invisible generated content, so the cell
+ * is already as tall as either before the box is ticked and nothing moves.
+ *
+ * Generated content rather than hidden spans: the wording lives in data
+ * attributes, so it is not in the label's text, its accessible name or a
+ * query for the visible sentence - a hidden copy in the DOM would answer every
+ * one of those as if it were on screen.
+ */
+const ReservedLabelText: FC<{
+	text: string;
+	/** Every wording the label can show; the two not on screen are reserved. */
+	wordings: readonly [string, string, string];
+}> = ({ text, wordings }) => {
+	const [reserveA = "", reserveB = ""] = wordings.filter(
+		(wording) => wording !== text,
+	);
+	return (
+		<span
+			data-reserve-a={reserveA}
+			data-reserve-b={reserveB}
+			className={cn(
+				"grid",
+				"before:invisible before:col-start-1 before:row-start-1 before:content-[attr(data-reserve-a)]",
+				"after:invisible after:col-start-1 after:row-start-1 after:content-[attr(data-reserve-b)]",
+			)}
+		>
+			<span className="col-start-1 row-start-1">{text}</span>
+		</span>
+	);
+};
+
+/**
  * Resolve a DRAFT pane's pick through the backend, THEN record it. One
  * implementation for both readings the pane can pick.
  *
@@ -991,6 +1030,21 @@ export const ModelPicker: FC<PickerContext> = ({
 	const [savedModel, setSavedModel] = useState<string | null>(null);
 	const savedModelRef = useRef<string | null>(null);
 	const defaultWrites = useRef<Promise<void>>(Promise.resolve());
+	/*
+	 * A saved default, named the way its row is: `Claude Sonnet 5`, not
+	 * `anthropic/claude-sonnet-5`. The selector in a sentence wrapped at its
+	 * hyphens, mid-id, in the default 576 px dialog (UX round 2, U10). A model
+	 * the drawn catalogue does not list keeps its selector, which is still true.
+	 */
+	const modelName = useCallback(
+		(selector: string) => {
+			const row = (
+				catalogueDocument?.models as CatalogueRow[] | undefined
+			)?.find((candidate) => selectorOf(candidate) === selector);
+			return row?.label || selector;
+		},
+		[catalogueDocument],
+	);
 	const selected =
 		runningFrontend(canonical)?.effective_model ??
 		runningFrontend(canonical)?.selected_model;
@@ -1357,8 +1411,9 @@ export const ModelPicker: FC<PickerContext> = ({
 					const saved = savedModelRef.current;
 					persist.setResult({
 						tone: failure.tone,
+						// Named as the ticked label names it, so the two agree (UX U10).
 						text: saved
-							? `Model not changed. Default for new sessions stays ${saved}.`
+							? `Model not changed. Default for new sessions stays ${modelName(saved)}.`
 							: `${DEFAULT_SAVE_FAILURE}.`,
 					});
 				}
@@ -1388,6 +1443,7 @@ export const ModelPicker: FC<PickerContext> = ({
 			draftPick.selection,
 			saveModelDefault,
 			persist.setResult,
+			modelName,
 		],
 	);
 
@@ -1412,6 +1468,21 @@ export const ModelPicker: FC<PickerContext> = ({
 		provider: shownProvider,
 		model_id: shownRest.join("/"),
 	});
+	/*
+	 * The ticked label's wordings, all three, so the label is laid out at the
+	 * tallest from the first paint (UX round 2, U9). The saved wording names the
+	 * model a tick would save until one is saved.
+	 */
+	const persistWordings = [
+		"Also make this the default for new sessions",
+		"Picks here also set the default for new sessions",
+		`Default for new sessions: ${modelName(
+			savedModel ??
+				(modelInForce
+					? `${modelInForce.provider}/${modelInForce.model_id}`
+					: ""),
+		)}. Picks here update it too.`,
+	] as const;
 	const onPersistDefaultChange = (checked: boolean) => {
 		persistDefaultRef.current = checked;
 		setPersistDefault(checked);
@@ -1424,10 +1495,21 @@ export const ModelPicker: FC<PickerContext> = ({
 		if (modelInForce) void saveModelDefault(modelInForce);
 	};
 
-	const pickResult: PickerResult | null = persist.result
+	/*
+	 * A saved default is the TICKED LABEL's to state, and the strip printed the
+	 * same sentence under it (UX round 2, U11). It also grew the dialog by a line
+	 * on a tick, which moved the rows under the pointer (U9). The strip keeps
+	 * what the label cannot say: a failed save, a refusal, and the button's save
+	 * while the box is unticked.
+	 */
+	const persistLine =
+		persist.result?.tone === "success" && persistDefault
+			? null
+			: persist.result;
+	const pickResult: PickerResult | null = persistLine
 		? {
-				...persist.result,
-				text: [command.result?.text, persist.result.text]
+				...persistLine,
+				text: [command.result?.text, persistLine.text]
 					.filter(Boolean)
 					.join("\n"),
 			}
@@ -1644,18 +1726,7 @@ export const ModelPicker: FC<PickerContext> = ({
 						? "Switching the model"
 						: "Saving the default"
 			}
-			result={
-				draft
-					? draftPick.result
-					: persist.result
-						? {
-								...persist.result,
-								text: [command.result?.text, persist.result.text]
-									.filter(Boolean)
-									.join("\n"),
-							}
-						: pickResult
-			}
+			result={draft ? draftPick.result : pickResult}
 			toolbar={
 				/*
 				 * A draft's toolbar has no default checkbox, and that is the whole of
@@ -1707,11 +1778,16 @@ export const ModelPicker: FC<PickerContext> = ({
 								 * Ticked, the label states what is saved rather than promising
 								 * a pick that may never happen (UX round 1, U5).
 								 */}
-								{!persistDefault
-									? "Also make this the default for new sessions"
-									: savedModel
-										? `Default for new sessions: ${savedModel}. Picks here update it too.`
-										: "Picks here also set the default for new sessions"}
+								<ReservedLabelText
+									wordings={persistWordings}
+									text={
+										!persistDefault
+											? persistWordings[0]
+											: savedModel
+												? persistWordings[2]
+												: persistWordings[1]
+									}
+								/>
 							</PickerCheck>
 						)}
 						{scopeControl}
@@ -1983,6 +2059,22 @@ export const EffortPicker: FC<PickerContext> = ({
 	 * write for its own continuation. Unticking writes nothing: a saved default
 	 * stays saved.
 	 */
+	/*
+	 * The model dialog's two rules, for the same reasons: the label is laid out
+	 * at its tallest wording from the first paint (UX round 2, U9), and a saved
+	 * default is the ticked label's to state, not the strip's too (U11).
+	 */
+	const saveAsDefaultWordings = [
+		"Also make this the default effort for new sessions",
+		"Picks here also set the default effort for new sessions",
+		`Default effort for new sessions: ${effortDisplay(
+			savedRung ?? (typeof rungInForce === "string" ? rungInForce : ""),
+		)}. Picks here update it too.`,
+	] as const;
+	const defaultLine =
+		defaultSetting.result?.tone === "success" && saveAsDefault
+			? null
+			: defaultSetting.result;
 	const onSaveAsDefaultChange = (checked: boolean) => {
 		saveAsDefaultRef.current = checked;
 		setSaveAsDefault(checked);
@@ -2021,11 +2113,16 @@ export const EffortPicker: FC<PickerContext> = ({
 						 * tick-only save "This pick also sets..." named a pick that
 						 * never happened (UX round 1, U5).
 						 */}
-						{!saveAsDefault
-							? "Also make this the default effort for new sessions"
-							: savedRung
-								? `Default effort for new sessions: ${effortDisplay(savedRung)}. Picks here update it too.`
-								: "Picks here also set the default effort for new sessions"}
+						<ReservedLabelText
+							wordings={saveAsDefaultWordings}
+							text={
+								!saveAsDefault
+									? saveAsDefaultWordings[0]
+									: savedRung
+										? saveAsDefaultWordings[2]
+										: saveAsDefaultWordings[1]
+							}
+						/>
 					</PickerCheck>
 				) : undefined
 			}
@@ -2114,10 +2211,10 @@ export const EffortPicker: FC<PickerContext> = ({
 			result={
 				draft
 					? draftPick.result
-					: defaultSetting.result
+					: defaultLine
 						? {
-								...defaultSetting.result,
-								text: [command.result?.text, defaultSetting.result.text]
+								...defaultLine,
+								text: [command.result?.text, defaultLine.text]
 									.filter(Boolean)
 									.join("\n"),
 							}

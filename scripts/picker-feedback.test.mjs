@@ -1267,11 +1267,12 @@ test("the adapter wires the decisions the tests above pin", () => {
 	);
 
 	// D7: the checkbox's label states the consequence while it is ticked - and,
-	// once a save landed, the default it saved (PR #1108 UX round 1, U5).
+	// once a save landed, the default it saved, by the row's display name (PR
+	// #1108 UX round 1, U5; round 2, U10).
 	assert.match(picker, /Picks here also set the default for new sessions/);
 	assert.match(
 		picker,
-		/`Default for new sessions: \$\{savedModel\}\. Picks here update it too\.`/,
+		/`Default for new sessions: \$\{modelName\(\s*savedModel \?\?/,
 	);
 
 	/*

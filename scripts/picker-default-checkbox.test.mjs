@@ -488,9 +488,7 @@ test("model: tick then pick saves the picked model (the path that already worked
 		"hosting=anthropic",
 		"model_name=claude-sonnet-5-5",
 	]);
-	assert.ok(
-		dialogSays("Default for new sessions: anthropic/claude-sonnet-5-5"),
-	);
+	assert.ok(dialogSays("Default for new sessions: Claude Sonnet 5.5."));
 	await run.unmount();
 });
 
@@ -503,9 +501,7 @@ test("model: pick then tick saves the model just picked", async () => {
 		"hosting=anthropic",
 		"model_name=claude-sonnet-5-5",
 	]);
-	assert.ok(
-		dialogSays("Default for new sessions: anthropic/claude-sonnet-5-5"),
-	);
+	assert.ok(dialogSays("Default for new sessions: Claude Sonnet 5.5."));
 	await run.unmount();
 });
 
@@ -516,7 +512,7 @@ test("model: a tick with no pick in this open saves the session's current model"
 		"hosting=anthropic",
 		"model_name=claude-opus-5-5",
 	]);
-	assert.ok(dialogSays("Default for new sessions: anthropic/claude-opus-5-5"));
+	assert.ok(dialogSays("Default for new sessions: Claude Opus 5.5."));
 	await run.unmount();
 });
 
@@ -713,7 +709,7 @@ test("effort and model: the ticked label names the saved default after a tick-on
 	await tick();
 	assert.match(
 		label(),
-		/Default for new sessions: anthropic\/claude-opus-5-5\. Picks here update it too\./,
+		/Default for new sessions: Claude Opus 5\.5\. Picks here update it too\./,
 	);
 	await model.unmount();
 });
@@ -752,4 +748,112 @@ test("effort: after a pick, the ✓ marks the rung a tick saves", async () => {
 	await tick();
 	assert.deepEqual(writes(), ["model_effort=xhigh"]);
 	await run.unmount();
+});
+
+/* ------------------------------------------------ review round 2 remediation */
+
+/* n2. The model side of m1: the tick's save stands after a refused pick. */
+test("model: a refused pick after a tick's save says the default stays", async () => {
+	const run = await mount(ModelPicker);
+	await tick();
+	commandAnswer = refuseCommand;
+	await pick(SONNET_ROW);
+	assert.deepEqual(writes(), [
+		"hosting=anthropic",
+		"model_name=claude-opus-5-5",
+	]);
+	assert.ok(
+		dialogSays(
+			"Model not changed. Default for new sessions stays Claude Opus 5.5.",
+		),
+	);
+	assert.ok(!dialogSays("The default was not saved"));
+	await run.unmount();
+});
+
+/*
+ * UX round 2, U11. While the box is ticked the label states the saved default,
+ * so the strip does not repeat it; a save made with the box unticked (the
+ * button) still reports in the strip, because no label states it then.
+ */
+test("effort and model: a ticked save is stated once, by the label", async () => {
+	const effort = await mount(EffortPicker, { model: withRung("high") });
+	await tick();
+	assert.match(label(), /Default effort for new sessions: High\./);
+	assert.equal(
+		document.querySelector('[role="dialog"] output'),
+		null,
+		"no strip line repeats the label",
+	);
+	await effort.unmount();
+	const model = await mount(ModelPicker);
+	await tick();
+	assert.match(label(), /Default for new sessions: Claude Opus 5\.5\./);
+	assert.equal(document.querySelector('[role="dialog"] output'), null);
+	await model.unmount();
+	const button = await mount(ModelPicker);
+	const setCurrent = [
+		...document.querySelectorAll('[role="dialog"] button'),
+	].find(
+		(candidate) => candidate.textContent === "Set current model as default",
+	);
+	await act(async () => {
+		setCurrent.dispatchEvent(
+			new DOM.window.MouseEvent("click", { bubbles: true }),
+		);
+	});
+	await settle();
+	assert.match(
+		document.querySelector('[role="dialog"] output')?.textContent ?? "",
+		/Default for new sessions: anthropic\/claude-opus-5-5/,
+	);
+	await button.unmount();
+});
+
+/*
+ * UX round 2, U9. Ticking rewrote the label to a longer sentence and the rows
+ * moved under the pointer. The label cell reserves the wordings a tick can
+ * show, as generated content, from the first paint - and keeps them out of the
+ * label's text, so its accessible name is the one sentence on screen.
+ */
+test("effort and model: the label reserves every wording a tick can show", async () => {
+	for (const [Picker, options, visible, reserved] of [
+		[
+			EffortPicker,
+			{ model: withRung("high") },
+			"Also make this the default effort for new sessions",
+			[
+				"Picks here also set the default effort for new sessions",
+				"Default effort for new sessions: High. Picks here update it too.",
+			],
+		],
+		[
+			ModelPicker,
+			{},
+			"Also make this the default for new sessions",
+			[
+				"Picks here also set the default for new sessions",
+				"Default for new sessions: Claude Opus 5.5. Picks here update it too.",
+			],
+		],
+	]) {
+		const run = await mount(Picker, options);
+		const cell = document.querySelector(
+			`label[for="${checkbox()?.id}"] [data-reserve-a]`,
+		);
+		assert.ok(cell, "the label's text sits in a reserving cell");
+		assert.deepEqual(
+			[
+				cell.getAttribute("data-reserve-a"),
+				cell.getAttribute("data-reserve-b"),
+			],
+			reserved,
+		);
+		assert.equal(
+			label(),
+			visible,
+			"the reserve is not part of the label's text",
+		);
+		await run.unmount();
+	}
 });
