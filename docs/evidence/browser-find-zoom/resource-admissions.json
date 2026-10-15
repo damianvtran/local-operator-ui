@@ -1,0 +1,77 @@
+[
+  {
+    "cell": "a2-final-compile-cell.log",
+    "disk_free_gib": 24.26,
+    "memory_free_percent": 54,
+    "swap_usage": "vm.swapusage: total = 14336.00M  used = 13201.19M  free = 1134.81M  (encrypted)",
+    "two_second_outflow_mib": {
+      "Pageouts": 0.359375,
+      "Swapouts": 0.0
+    },
+    "limits": {
+      "disk_min_gib": 20,
+      "memory_min_percent": 20,
+      "two_second_outflow_max_mib": 128
+    }
+  },
+  {
+    "cell": "a2-final-native.log",
+    "disk_free_gib": 23.58,
+    "memory_free_percent": 52,
+    "swap_usage": "vm.swapusage: total = 14336.00M  used = 13193.19M  free = 1142.81M  (encrypted)",
+    "two_second_outflow_mib": {
+      "Pageouts": 0.0,
+      "Swapouts": 0.0
+    },
+    "limits": {
+      "disk_min_gib": 20,
+      "memory_min_percent": 20,
+      "two_second_outflow_max_mib": 128
+    }
+  },
+  {
+    "cell": "a2-final-native-retry.log",
+    "disk_free_gib": 23.5,
+    "memory_free_percent": 63,
+    "swap_usage": "vm.swapusage: total = 14336.00M  used = 13169.19M  free = 1166.81M  (encrypted)",
+    "two_second_outflow_mib": {
+      "Pageouts": 0.0,
+      "Swapouts": 0.0
+    },
+    "limits": {
+      "disk_min_gib": 20,
+      "memory_min_percent": 20,
+      "two_second_outflow_max_mib": 128
+    }
+  },
+  {
+    "cell": "a2-security-final.log",
+    "disk_free_gib": 23.31,
+    "memory_free_percent": 61,
+    "swap_usage": "vm.swapusage: total = 14336.00M  used = 13161.19M  free = 1174.81M  (encrypted)",
+    "two_second_outflow_mib": {
+      "Pageouts": 0.0,
+      "Swapouts": 0.0
+    },
+    "limits": {
+      "disk_min_gib": 20,
+      "memory_min_percent": 20,
+      "two_second_outflow_max_mib": 128
+    }
+  },
+  {
+    "cell": "a2-final-delta-neighbours.log",
+    "disk_free_gib": 23.81,
+    "memory_free_percent": 57,
+    "swap_usage": "vm.swapusage: total = 14336.00M  used = 13209.19M  free = 1126.81M  (encrypted)",
+    "two_second_outflow_mib": {
+      "Pageouts": 0.0,
+      "Swapouts": 0.0
+    },
+    "limits": {
+      "disk_min_gib": 20,
+      "memory_min_percent": 20,
+      "two_second_outflow_max_mib": 128
+    }
+  }
+]

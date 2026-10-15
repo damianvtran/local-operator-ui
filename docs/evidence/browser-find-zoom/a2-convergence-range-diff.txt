@@ -1,0 +1,2 @@
+1:  8f6cb4bf62 = 1:  5e770fe544 feat(browser): add focus-scoped native find and isolated page zoom
+2:  2df1a24ef1 = 2:  a04a6dc951 fix(browser): bound silent search and preserve page focus and editor drafts
