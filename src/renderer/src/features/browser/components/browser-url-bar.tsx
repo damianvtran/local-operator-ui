@@ -351,6 +351,10 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 				<Tooltip
 					content={`Address (${address.glyph})`}
 					suppressed={fieldFocused}
+					// Below, not the default top: above the field is the tab strip, and the
+					// panel covered the active tab's title (measured in the round-1
+					// re-capture). Every other chord caption here sits over empty chrome.
+					side="bottom"
 				>
 					<Input
 						ref={inputRef}
