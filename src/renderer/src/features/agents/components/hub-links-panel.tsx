@@ -16,6 +16,7 @@ import {
 	baselineIsKnown,
 	linksForLocalItem,
 } from "@shared/api/local-operator/hub-links";
+import { HubMutationUpgradeRequired } from "@shared/api/local-operator/hub-mutation-safety";
 import { Button } from "@shared/components/ui/button";
 import { Checkbox } from "@shared/components/ui/checkbox";
 import {
@@ -246,7 +247,7 @@ export function HubLinkGroup({ link }: { link: HubLink }) {
 									<Button
 										variant="outline"
 										size="sm"
-										disabled={busy}
+										disabled={busy || !actions.canWrite}
 										onClick={() =>
 											run({ action: "retry", linkId: link.link_id, direction })
 										}
@@ -262,7 +263,7 @@ export function HubLinkGroup({ link }: { link: HubLink }) {
 				<Button
 					variant="outline"
 					size="sm"
-					disabled={busy}
+					disabled={busy || !actions.canWrite}
 					onClick={() => run({ action: "check", linkId: link.link_id })}
 				>
 					{t("ui.hub.subscriptions.check")}
@@ -270,7 +271,7 @@ export function HubLinkGroup({ link }: { link: HubLink }) {
 				<Button
 					variant="outline"
 					size="sm"
-					disabled={busy}
+					disabled={busy || !actions.canWrite}
 					onClick={() =>
 						run({ action: "apply", linkId: link.link_id, preview: true })
 					}
@@ -282,6 +283,7 @@ export function HubLinkGroup({ link }: { link: HubLink }) {
 					size="sm"
 					disabled={
 						busy ||
+						!actions.canWrite ||
 						!link.remote_revision ||
 						!baselineIsKnown(link.baseline_state) ||
 						(link.visibility === "org" && !link.tenant_name)
@@ -298,16 +300,18 @@ export function HubLinkGroup({ link }: { link: HubLink }) {
 			)}
 			{actions.error && (
 				<p role="alert" className="text-body-sm text-danger">
-					{t("ui.hub.links.action_failed", {
-						direction: directionLabel(
-							actions.variables?.action === "preview" ||
-								actions.variables?.action === "confirm"
-								? "push"
-								: "pull",
-						),
-						item: link.name,
-						source,
-					})}
+					{actions.error instanceof HubMutationUpgradeRequired
+						? actions.error.message
+						: t("ui.hub.links.action_failed", {
+								direction: directionLabel(
+									actions.variables?.action === "preview" ||
+										actions.variables?.action === "confirm"
+										? "push"
+										: "pull",
+								),
+								item: link.name,
+								source,
+							})}
 				</p>
 			)}
 			{actions.data?.reports
@@ -399,11 +403,13 @@ export function HubLinkGroup({ link }: { link: HubLink }) {
 					)}
 					{actions.error && (
 						<p role="alert" className="text-body-sm text-danger">
-							{t("ui.hub.links.action_failed", {
-								direction: directionLabel(publishPreview ? "push" : "pull"),
-								item: link.name,
-								source,
-							})}
+							{actions.error instanceof HubMutationUpgradeRequired
+								? actions.error.message
+								: t("ui.hub.links.action_failed", {
+										direction: directionLabel(publishPreview ? "push" : "pull"),
+										item: link.name,
+										source,
+									})}
 						</p>
 					)}
 					<DialogFooter>
@@ -418,7 +424,9 @@ export function HubLinkGroup({ link }: { link: HubLink }) {
 						{publishPreview ? (
 							<Button
 								disabled={
-									actions.isPending || !hubPreviewMatches(publishPreview, link)
+									actions.isPending ||
+									!actions.canWrite ||
+									!hubPreviewMatches(publishPreview, link)
 								}
 								onClick={() =>
 									run({
@@ -438,6 +446,7 @@ export function HubLinkGroup({ link }: { link: HubLink }) {
 										variant="outline"
 										disabled={
 											actions.isPending ||
+											!actions.canWrite ||
 											(unknownBaseline && !acknowledgedBaseline)
 										}
 										onClick={() =>
@@ -461,6 +470,7 @@ export function HubLinkGroup({ link }: { link: HubLink }) {
 								<Button
 									disabled={
 										actions.isPending ||
+										!actions.canWrite ||
 										!incomingPreview ||
 										!hubPreviewMatches(incomingPreview, link) ||
 										incomingPreview.choices.acknowledge_unknown_baseline !==
@@ -561,6 +571,11 @@ export function HubUnresolvedSource({
 			className="flex min-w-0 flex-col gap-1 py-3"
 			data-hub-source-unresolved={row.local_id}
 		>
+			{resolution.upgradeMessage && (
+				<output className="block text-meta text-warning" data-hub-core-upgrade>
+					{resolution.upgradeMessage}
+				</output>
+			)}
 			<h4 className="break-words text-body-sm text-ink">{row.name}</h4>
 			{/*
 			 * Design D5-D12: name the STATE, not the bare hub id. The id is a
@@ -662,7 +677,7 @@ export function HubUnresolvedSource({
 							{t("ui.hub.subscriptions.cancel")}
 						</Button>
 						<Button
-							disabled={resolution.isPending || !chose}
+							disabled={resolution.isPending || !resolution.canWrite || !chose}
 							onClick={() =>
 								resolution.mutate({
 									kind: row.kind,
@@ -699,13 +714,15 @@ export function HubUnresolvedSource({
 							 * sentence; every other refusal shows the real service reason
 							 * via `hubReasonText` when one is carried, and only falls back
 							 * to the generic sentence when it is not. */}
-							{resolution.error instanceof DesktopControlError &&
-							resolution.error.code === "origin-conflict"
-								? t("ui.hub.links.resolve_conflict")
+							{resolution.error instanceof HubMutationUpgradeRequired
+								? resolution.error.message
 								: resolution.error instanceof DesktopControlError &&
-										resolution.error.code
-									? hubReasonText(resolution.error.code)
-									: t("ui.hub.links.resolve_failed_generic")}
+										resolution.error.code === "origin-conflict"
+									? t("ui.hub.links.resolve_conflict")
+									: resolution.error instanceof DesktopControlError &&
+											resolution.error.code
+										? hubReasonText(resolution.error.code)
+										: t("ui.hub.links.resolve_failed_generic")}
 						</p>
 					) : null}
 				</div>

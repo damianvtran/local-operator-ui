@@ -95,6 +95,7 @@
 	"ui.hub.status.last_checked": "Last checked: {time}",
 	"ui.hub.status.attempts": "{count, plural, one {# attempt} other {# attempts}}",
 	"ui.hub.status.receipt": "Operation receipt: {operation}",
+	"ui.hub.status.core_update_required": "Hub changes require core {minimum} or newer. Browsing is still available.",
 	"ui.hub.status.unsupported": "This destination has not verified revision-safe publication.",
 	"ui.hub.status.baseline_unknown": "The common baseline could not be verified. Review both versions first.",
 	"ui.hub.status.mixed_lineage": "This copy includes changes from another source. Automatic publication is paused.",

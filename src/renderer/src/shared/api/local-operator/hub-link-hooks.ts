@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { retryDesktopQuery } from "./backend-error";
 import { desktopResult } from "./desktop-api";
 import type { HubLink, HubLinkPolicyPatch, HubLinks } from "./hub-links";
+import { guardHubMutation, useHubMutationSafety } from "./hub-mutation-safety";
 
 export const hubLinksKey = ["desktop", "hub-links"] as const;
 
@@ -58,21 +59,28 @@ export type HubPolicyWriteResult = {
  */
 export function useHubLinkPolicy() {
 	const client = useQueryClient();
-	return useMutation({
+	const safety = useHubMutationSafety();
+	const mutation = useMutation({
 		mutationFn: ({ link, patch }: HubPolicyWrite) =>
-			desktopResult<HubPolicyWriteResult>({
-				op: "hub.policy",
-				requestId: crypto.randomUUID(),
-				linkId: link.link_id,
-				expectedPolicyRevision: link.policy.revision,
-				...(patch.subscribe !== undefined
-					? { subscribe: patch.subscribe }
-					: {}),
-				...(patch.auto_push !== undefined ? { autoPush: patch.auto_push } : {}),
-				...(patch.confirm_public_egress !== undefined
-					? { confirmPublicEgress: patch.confirm_public_egress }
-					: {}),
-			}),
+			guardHubMutation(
+				() =>
+					desktopResult<HubPolicyWriteResult>({
+						op: "hub.policy",
+						requestId: crypto.randomUUID(),
+						linkId: link.link_id,
+						expectedPolicyRevision: link.policy.revision,
+						...(patch.subscribe !== undefined
+							? { subscribe: patch.subscribe }
+							: {}),
+						...(patch.auto_push !== undefined
+							? { autoPush: patch.auto_push }
+							: {}),
+						...(patch.confirm_public_egress !== undefined
+							? { confirmPublicEgress: patch.confirm_public_egress }
+							: {}),
+					}),
+				safety.snapshot,
+			),
 		onSuccess: ({ link_id, policy }) => {
 			/*
 			 * PATCH the row's POLICY IN PLACE, never replace the row: only policy
@@ -97,4 +105,5 @@ export function useHubLinkPolicy() {
 			void client.invalidateQueries({ queryKey: ["desktop", "hub-updates"] });
 		},
 	});
+	return { ...mutation, ...safety };
 }

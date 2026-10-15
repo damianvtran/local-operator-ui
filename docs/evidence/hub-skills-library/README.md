@@ -2,11 +2,27 @@
 
 ## What this is (and is not)
 
-**The Electron app is real; the daemon is a stub; the public hub origin is also the same stub.** This is a headless native renderer capture of merged product source `8057f32ff` plus attribute-only selectors, not Storybook, not a live-daemon integration test, and not a production/public hub test. No product behavior fix was made. No push, PR, merge or release was performed.
+**The Electron app is real. The original67 captures and explicit-adapter/fixed-version fixtures use a stub daemon and stub public hub origin. R-I alone uses actual isolated released core0.71.5, without a real account, plus the stub public origin.** The original headless captures render merged product source `8057f32ff` plus attribute-only selectors, not Storybook or a production/public hub integration. The historical capture phase added selectors/harness only; the subsequent PR #1099 remediation adds the complete-adapter gate described below, not a core adapter or a Skills launch. Capture-phase no-release limits remain; PR/branch coordination is owned by the parent.
+
+### Current fail-closed scope (PR #1099 remediation)
+
+The initial library is now available only with the optional **`hub_skills:1` complete-adapter capability**. Released core0.71.5 advertises `hub_links:1`, `skill_catalogue:1` and `radient_org:1`, but not this adapter. Those existing capabilities and remote CAS do **not** make initial Skills pull/publication available. Entry/actions are hidden and an active Skills choice falls back to working Agents when support is lost; query and mutation dispatch also fail closed. No released-core install/publication launch is claimed and no core adapter is implemented here.
+
+[Unified capability-gate receipt](receipts/capability-gate.md) contains actual isolated0.71.5 capability/Hub HTTP responses, mounted-hook/consent/sibling regression results and review dispositions. Historical67 frames below remain **stub-backed future-adapter evidence captured before this named capability existed**, not proof that the released core supports their flows. Completed Skills-only native checks are R-I (actual isolated0.71.5,16 PASS/0 FAIL) and R-J (explicit future-adapter fixture,21 PASS/0 FAIL). [Per-frame observations and limitations](receipts/capability-native-observations.md) record all4 PNGs, measured1380×900/DPR2 viewport, the old0×0 display:contents geometry caveat and the historical fixture's undefined agent-count caption. The24GiB build phase and explicitly authorized20GiB-start/18GiB-abort continuation are separate, not a blanket waiver. No pending native check is called a pass.
+
+### Existing Hub writes — minimum core0.72.1
+
+The same remediation also fails closed on existing policy/sync writes unless the **MAIN-admitted, attached daemon** reports a strictly published core version>=0.72.1 with a valid identity. Unknown, disconnected, replaced, malformed and prerelease versions are not permission. The one message says “Hub changes require core0.72.1 or newer. Browsing is still available.”; it never guesses that unknown means outdated. Policy/check/pull/retry/push/apply-all/source confirmation are fenced again at invocation, including retained callbacks and a late positive status read after a newer push. Read-only browsing and Cancel/close remain available. This version rule is **not** a complete Skills-adapter capability and does not claim the underlying core fixes were tested by old Skills captures.
+
+The minimum-core guard changes linked panels/sidebar write affordances on old cores, so there is **no blanket source/pixel-retention claim** for those surfaces. Historical library body/detail/initial-publication evidence remains explicitly historical. A future rerun of those flows now needs both a fixed core version and the explicit complete-adapter fixture. The pre-version-guard R-J populated image matched original R-A decoded pixels exactly; that comparison is not retroactively attributed to later product changes. The new guard's own affected proof and actual core QA/release evidence are recorded separately.
+
+`controls/` is an empty, untracked output directory left by the separate controls boot; its actual evidence is `receipts/run-ctl.log`, not omitted screenshots. Shared hub-links stub additions/async handling were checked with current legacy inventory/PATCH/CAS route regressions, not a new sibling capture matrix. D39/U1/U2 are nonblocking deferred UX findings; see the unified receipt for reasons.
 
 The original serial cell ran 2026-10-14 23:12–23:18 EDT; the explicitly authorized scoped correction hold ran 23:23–23:26 EDT. All launches used `--window-mode=headless`; the driver checked invisible and unfocused. Source implementation began on Claude Sonnet 5.5; provider quota forced fallback to **openai/gpt-6.1-sol** for the scoped correction, inspection and final receipts.
 
-## Source and asset identity
+## Historical source and asset identity
+
+The source/assets in this section identify the original67-frame capture only. Later source/compiled identities and actual scopes are in the capability/minimum-core receipts; do not treat the old hashes as the guarded build.
 
 Branch: `evidence/skills-library-capture`, frozen base `8057f32ff` (#1039). Captured product bytes (`src/`) are identical from selector commit `6c0e483de` through pre-convergence evidence head `43fc66a1b`, proven by `git diff --quiet 6c0e483de 43fc66a1b -- src/`. Fresh-main convergence later changes shared runtime dependencies; it is covered separately below, not falsely called source-byte-identical. The last completed normal build used inert `rig` values for `VITE_GOOGLE_CLIENT_ID`, `VITE_GOOGLE_CLIENT_SECRET`, `VITE_MICROSOFT_CLIENT_ID`, `VITE_MICROSOFT_TENANT_ID`; BOTH `VITE_LOCAL_OPERATOR_API_URL` and `VITE_RADIENT_SERVER_BASE_URL` were `http://127.0.0.1:8127`. There were no dependency installs. Both pnpm locks SHA256: `fd0310b282d1a63560473655fccd3964102bef2015e43e4915502e0f0a4670ba`; node_modules is the verified sibling link.
 
@@ -87,7 +103,7 @@ Use this worktree's verified dependency link. Rebuild only if product bytes diff
 Under one bounded machine lease and the gates above, first run the no-backend guard, then a fresh stub and `--scene hub-skills-egress` controls boot. Stop on any control failure. Each subsequent row starts a fresh stub:
 
 ```sh
-node docs/evidence/hub-links/harness/stub-daemon.mjs --port 8127 --records "$SCRATCH/records" <variant-flags>
+node docs/evidence/hub-links/harness/stub-daemon.mjs --port 8127 --records "$SCRATCH/records" --skills-adapter --core-version 0.72.1 <variant-flags>
 # synthetic token only, never a real credential
 LOCAL_OPERATOR_DESKTOP_TOKEN=rig node scripts/renderer-driver.mjs \
   --scene hub-skills --skills-expect org \
@@ -96,7 +112,9 @@ LOCAL_OPERATOR_DESKTOP_TOKEN=rig node scripts/renderer-driver.mjs \
   --theme localOperatorDark --window-size 1380x900 --out <fresh-output>
 ```
 
-Use `--skills-expect public` for D/F, light theme for G, requested720 for H (will label actual800), and `--skills-loading-pair` for the temporal pair. Flags are listed in the run table; default means no variant flag. Reap the exact stub PID, require empty8127 and no owned app descendants before the next boot. Stop on failed prerequisites or resource gate; no whole-matrix retry is needed for a single state failure.
+The explicit `--skills-adapter` fixture flag advertises the future complete capability; without it the default stub intentionally resembles released-core capability absence. `--core-version 0.72.1` separately makes the fixture's MAIN-observed health version meet the existing-write safety minimum; neither flag proves real core behavior. These fixture flags do not activate or install a real adapter. Use `--skills-expect public` for D/F, light theme for G, requested720 for H (will label actual800), and `--skills-loading-pair` for the temporal pair. Flags are listed in the run table; default means no variant flag. Reap the exact stub PID, require empty8127 and no owned app descendants before the next boot. Stop on failed prerequisites or resource gate; no whole-matrix retry is needed for a single state failure.
+
+For the **new minimum-core guard only**, use `--scene hub-core-guard --hub-core-expect blocked` against a fresh `--core-version 0.71.5` fixture, then a separate `--hub-core-expect enabled` run against `--core-version 0.72.1`. Keep this fixture's `--skills-adapter` **absent**: the minimum version must not advertise an adapter. The enabled scene performs one real fixture policy PATCH, captures the confirmed OFF state, then browses the correctly paginated zero-agent org. All status versions come from the actual MAIN bridge. Use fresh records/output per boot, headless mode and both8127 build origins; retain the strict loopback connect-src. This is not a new full67-frame matrix, nor real-core F1/F2 proof. Runtime receipts: [minimum-core guard](receipts/minimum-core-guard.md), per-run logs/geometry and compiled identity beside it.
 
 ## Fresh-main convergence addendum (no new captures)
 

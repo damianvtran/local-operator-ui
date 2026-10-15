@@ -238,6 +238,7 @@ import sharp from "sharp";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
 import { EVIDENCE_TZ } from "./evidence-tz.mjs";
+import { isPaintedScrollBox } from "./hub-guard-geometry.mjs";
 import {
 	COPY_FIXTURE_SESSION,
 	COPY_JPEG_CALL,
@@ -43633,12 +43634,12 @@ async function sceneHubSkills(cdp, app) {
 	const theme = (THEME ?? "localOperatorDark")
 		.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)
 		.replace(/^-/, "");
-	const geometry = { requestedSize, viewport };
+	const geometry = {};
 	const tabGeometry = () =>
 		cdp.evaluate(`(() => {
-		const box = el => { if (!el) return null; const r = el.getBoundingClientRect(); return { x:r.x, y:r.y, w:r.width, h:r.height }; };
-		return { tabs: [...document.querySelectorAll('[role="tab"]')].map(el => ({ text:el.textContent, selected:el.getAttribute('aria-selected'), state:el.getAttribute('data-state'), rect:box(el), background:getComputedStyle(el).backgroundColor })), panel:box(document.querySelector('[data-hub-skills-library]')) };
-	})()`);
+			const box = el => { if (!el) return null; const r = el.getBoundingClientRect(); return { x:r.x, y:r.y, w:r.width, h:r.height }; };
+			return { tabs: [...document.querySelectorAll('[role="tab"]')].map(el => ({ text:el.textContent, selected:el.getAttribute('aria-selected'), state:el.getAttribute('data-state'), rect:box(el), background:getComputedStyle(el).backgroundColor })), panel:box(document.querySelector('[data-hub-skills-library]')) };
+		})()`);
 	const box = async (selector) =>
 		cdp.evaluate(`(() => {
 			const el = document.querySelector(${JSON.stringify(selector)});
@@ -43667,6 +43668,88 @@ async function sceneHubSkills(cdp, app) {
 			el.dispatchEvent(new Event(${JSON.stringify(eventName)}, { bubbles: true }));
 			return el.value;
 		})()`);
+
+	if (process.argv.includes("--skills-gate-withdraw")) {
+		const armed = await verb(cdp, "queryFetches", { arm: true });
+		check(
+			"enabled Skills fetch observer validates its own positive control",
+			armed.armed === true && armed.validated === true,
+			JSON.stringify(armed),
+		);
+	}
+	if (process.argv.includes("--skills-adapter-absent")) {
+		const armed = await verb(cdp, "queryFetches", { arm: true });
+		check(
+			"Skills gate fetch observer validates its own positive control",
+			armed.armed === true && armed.validated === true,
+			JSON.stringify(armed),
+		);
+		await verb(cdp, "navigate", "/agent-hub");
+		const fallback = await waitForCondition(
+			cdp,
+			`(() => {
+			const agents = document.querySelector('[data-testid="agent-hub-view-agents"]');
+			return agents && agents.getAttribute('aria-selected') === 'true' ? {
+				skillsEntry: !!document.querySelector('[data-testid="agent-hub-view-skills"]'),
+				library: !!document.querySelector('[data-hub-skills-library]'),
+				publication: !!document.querySelector('[data-hub-skill-publication]')
+			} : null;
+		})()`,
+			20_000,
+		);
+		check(
+			"released-core fallback retains selected Agents and hides Skills entry/actions",
+			fallback.ok &&
+				!fallback.last.skillsEntry &&
+				!fallback.last.library &&
+				!fallback.last.publication,
+			JSON.stringify(fallback.last),
+		);
+		await captureSettled(
+			cdp,
+			`hub-skills-${size}-${theme}-adapter-absent-agents`,
+		);
+		const listFetches = await verb(cdp, "queryFetches", {
+			key: '"hub-skills"',
+		});
+		const detailFetches = await verb(cdp, "queryFetches", {
+			key: '"hub-skill"',
+		});
+		note(
+			"Skills gate list/detail fetches",
+			JSON.stringify({ listFetches, detailFetches }),
+		);
+		check(
+			"released-core fallback starts zero remote Skills list/detail queries",
+			listFetches.total === 0 && detailFetches.total === 0,
+			JSON.stringify({ listFetches, detailFetches }),
+		);
+		geometry.fallback = await box("#agent-hub-view-panel");
+		check(
+			"fallback panel geometry is observable without horizontal overflow",
+			geometry.fallback !== null &&
+				geometry.fallback.sw <= geometry.fallback.cw,
+			JSON.stringify(geometry.fallback),
+		);
+		writeFileSync(
+			join(FRAMES, `hub-skills-geometry-${theme}.json`),
+			JSON.stringify(
+				{
+					size,
+					theme,
+					hasOrgChip: false,
+					requestedSize,
+					actualSizeProvenance:
+						"Measured renderer innerWidth/innerHeight/devicePixelRatio in this run; requested native size retained separately.",
+					viewport,
+					geometry,
+				},
+				null,
+				2,
+			),
+		);
+		return;
+	}
 
 	await verb(cdp, "navigate", "/agent-hub");
 	/* An explicit fixture expectation prevents a missing org control silently
@@ -43777,7 +43860,20 @@ async function sceneHubSkills(cdp, app) {
 		geometry.unavailable = await box("[data-hub-skills-library]");
 		writeFileSync(
 			join(FRAMES, `hub-skills-geometry-${theme}.json`),
-			JSON.stringify({ size, theme, hasOrgChip, geometry }, null, 2),
+			JSON.stringify(
+				{
+					size,
+					theme,
+					hasOrgChip,
+					requestedSize,
+					actualSizeProvenance:
+						"Measured renderer innerWidth/innerHeight/devicePixelRatio in this run; requested native size retained separately.",
+					viewport,
+					geometry,
+				},
+				null,
+				2,
+			),
 		);
 		say(
 			"  (unsupported-contract variant: only the unavailable frame is this run's)",
@@ -43817,7 +43913,20 @@ async function sceneHubSkills(cdp, app) {
 		geometry.empty = await box("[data-hub-skills-library]");
 		writeFileSync(
 			join(FRAMES, `hub-skills-geometry-${theme}.json`),
-			JSON.stringify({ size, theme, hasOrgChip, geometry }, null, 2),
+			JSON.stringify(
+				{
+					size,
+					theme,
+					hasOrgChip,
+					requestedSize,
+					actualSizeProvenance:
+						"Measured renderer innerWidth/innerHeight/devicePixelRatio in this run; requested native size retained separately.",
+					viewport,
+					geometry,
+				},
+				null,
+				2,
+			),
 		);
 		say(
 			"  (empty-catalogue variant: remote-empty + search-empty are this run's)",
@@ -43844,11 +43953,82 @@ async function sceneHubSkills(cdp, app) {
 	await captureSettled(cdp, `hub-skills-${size}-${theme}-populated`);
 	geometry.library = await box("[data-hub-skills-library]");
 	geometry.populatedTabs = await tabGeometry();
+	if (process.argv.includes("--skills-gate-withdraw")) {
+		const before = await verb(cdp, "queryFetches", { key: '"hub-skills"' });
+		check(
+			"explicit complete-adapter fixture actually fetches remote Skills",
+			before.total > 0 && settled.last.rows >= 2,
+			JSON.stringify(before),
+		);
+		const response = await fetch(`${BACKEND}/__fixture/skills/withdraw`, {
+			method: "POST",
+		});
+		check(
+			"fixture withdraws only its future adapter capability",
+			response.ok,
+			String(response.status),
+		);
+		const fallback = await waitForCondition(
+			cdp,
+			`(() => {
+			const agents = document.querySelector('[data-testid="agent-hub-view-agents"]');
+			return agents?.getAttribute('aria-selected') === 'true' && !document.querySelector('[data-testid="agent-hub-view-skills"]') && !document.querySelector('[data-hub-skills-library]') && !document.querySelector('[data-hub-skill-publication]');
+		})()`,
+			45_000,
+		);
+		check(
+			"real capability watch withdraws an active Skills mount to safe Agents",
+			fallback.ok,
+			`after ${fallback.waitedMs}ms`,
+		);
+		await captureSettled(
+			cdp,
+			`hub-skills-${size}-${theme}-adapter-withdrawn-agents`,
+		);
+		const after = await verb(cdp, "queryFetches", { key: '"hub-skills"' });
+		check(
+			"capability loss starts no additional remote Skills reads",
+			after.total === before.total,
+			JSON.stringify({ before, after }),
+		);
+		geometry.withdrawnTabs = await tabGeometry();
+		writeFileSync(
+			join(FRAMES, `hub-skills-geometry-${theme}.json`),
+			JSON.stringify(
+				{
+					size,
+					theme,
+					hasOrgChip,
+					requestedSize,
+					actualSizeProvenance:
+						"Measured renderer innerWidth/innerHeight/devicePixelRatio in this run; requested native size retained separately.",
+					viewport,
+					geometry,
+				},
+				null,
+				2,
+			),
+		);
+		return;
+	}
 	if (process.argv.includes("--skills-loading-pair")) {
 		check("loading pair includes the in-flight state", loading.ok);
 		writeFileSync(
 			join(FRAMES, `hub-skills-geometry-${theme}.json`),
-			JSON.stringify({ size, theme, hasOrgChip, geometry }, null, 2),
+			JSON.stringify(
+				{
+					size,
+					theme,
+					hasOrgChip,
+					requestedSize,
+					actualSizeProvenance:
+						"Measured renderer innerWidth/innerHeight/devicePixelRatio in this run; requested native size retained separately.",
+					viewport,
+					geometry,
+				},
+				null,
+				2,
+			),
 		);
 		return;
 	}
@@ -43924,7 +44104,20 @@ async function sceneHubSkills(cdp, app) {
 		await captureSettled(cdp, `hub-skills-${size}-${theme}-signed-out`);
 		writeFileSync(
 			join(FRAMES, `hub-skills-geometry-${theme}.json`),
-			JSON.stringify({ size, theme, hasOrgChip, geometry }, null, 2),
+			JSON.stringify(
+				{
+					size,
+					theme,
+					hasOrgChip,
+					requestedSize,
+					actualSizeProvenance:
+						"Measured renderer innerWidth/innerHeight/devicePixelRatio in this run; requested native size retained separately.",
+					viewport,
+					geometry,
+				},
+				null,
+				2,
+			),
 		);
 		return;
 	}
@@ -44133,7 +44326,20 @@ async function sceneHubSkills(cdp, app) {
 	/* The signed-out gate is a DIFFERENT library mount (public scope, no org chip). */
 	writeFileSync(
 		join(FRAMES, `hub-skills-geometry-${theme}.json`),
-		JSON.stringify({ size, theme, hasOrgChip, geometry }, null, 2),
+		JSON.stringify(
+			{
+				size,
+				theme,
+				hasOrgChip,
+				requestedSize,
+				actualSizeProvenance:
+					"Measured renderer innerWidth/innerHeight/devicePixelRatio in this run; requested native size retained separately.",
+				viewport,
+				geometry,
+			},
+			null,
+			2,
+		),
 	);
 }
 
@@ -44350,6 +44556,178 @@ async function sceneHubSkillsEgressControls(cdp, app) {
 		leaked.length === 0,
 		JSON.stringify(leaked),
 	);
+}
+
+/** A minimal OLD/fixture-fixed core write gate, not another Skills matrix.
+ * MAIN supplies the actual admitted daemon version; only the fixed-version
+ * fixture may exercise a policy write. Backend F1/F2 release QA is separate. */
+async function sceneHubCoreGuard(cdp, app) {
+	const facts = await factsOf(cdp);
+	check(
+		"core guard capture remains headless",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		JSON.stringify(facts),
+	);
+	const at = process.argv.indexOf("--hub-core-expect");
+	const enabled = at !== -1 && process.argv[at + 1] === "enabled";
+	check(
+		"geometry zero-wrapper negative control is rejected",
+		!isPaintedScrollBox({ w: 0, h: 0, cw: 0, ch: 0, sw: 0 }),
+	);
+	check(
+		"geometry horizontal-overflow negative control is rejected",
+		!isPaintedScrollBox({ w: 900, h: 700, cw: 900, ch: 700, sw: 901 }),
+	);
+	await verb(cdp, "setTheme", THEME ?? "localOperatorDark");
+	await verb(cdp, "navigate", "/agents?name=reviewer");
+	const collapsed = await waitForCondition(
+		cdp,
+		`!!document.querySelector('[data-agents-pane] button[aria-expanded="false"]')`,
+		30_000,
+	);
+	check(
+		"linked profile remains browsable before opening controls",
+		collapsed.ok,
+	);
+	await verb(cdp, "press", '[data-agents-pane] button[aria-expanded="false"]');
+	const row = '[data-hub-link="link-public-agent"]';
+	const ready = await waitForCondition(
+		cdp,
+		`(() => { const row=document.querySelector('${row}'); if(!row)return null;const sw=[...row.querySelectorAll('button[role="switch"]')];return sw.length===2 && sw.every(el=>el.disabled===${!enabled}) ? true : null; })()`,
+		30_000,
+	);
+	check(
+		"policy controls follow the actual MAIN-admitted version",
+		ready.ok,
+		JSON.stringify(ready.last),
+	);
+	const status = await cdp.evaluate("window.api.backend.getStatus()");
+	note("guard MAIN status", JSON.stringify(status));
+	check(
+		"MAIN reads the explicit fixture version and attached identity",
+		status.state === "attached" &&
+			!!status.instanceId &&
+			status.version === (enabled ? "0.72.1" : "0.71.5"),
+		JSON.stringify(status),
+	);
+	const initial = await cdp.evaluate(
+		`(() => {const row=document.querySelector('${row}');return {warning:row.querySelector('[data-hub-core-upgrade]')?.textContent??null,switches:[...row.querySelectorAll('button[role="switch"]')].map(el=>({disabled:el.disabled,state:el.getAttribute('data-state')})),buttons:[...row.querySelectorAll('button:not([role="switch"])')].map(el=>({label:el.textContent,disabled:el.disabled}))};})()`,
+	);
+	note("guard control state", JSON.stringify(initial));
+	check(
+		"warning states the minimum without guessing unknown means outdated",
+		enabled
+			? initial.warning === null
+			: /Hub changes require core 0.72.1 or newer/.test(initial.warning ?? ""),
+		JSON.stringify(initial),
+	);
+	check(
+		"all direct link write buttons are blocked on the old core",
+		enabled || initial.buttons.every((el) => el.disabled),
+		JSON.stringify(initial.buttons),
+	);
+	if (enabled) {
+		const pressed = await verb(cdp, "press", `${row} button[role="switch"]`);
+		check(
+			"fixed-version fixture policy press hits the actual switch",
+			pressed.hitTest === true,
+		);
+		const flipped = await waitForCondition(
+			cdp,
+			`document.querySelector('${row} button[role="switch"]')?.getAttribute('data-state') === 'unchecked'`,
+			15_000,
+		);
+		check(
+			"fixed-version fixture policy changes only after its HTTP answer",
+			flipped.ok,
+		);
+	} else {
+		await cdp.evaluate(
+			`(() => {const row=document.querySelector('${row}');for(const el of row.querySelectorAll('button'))el.click();return true;})()`,
+		);
+		await wait(300);
+		check(
+			"old core keeps the confirmed policy unchanged",
+			await cdp.evaluate(
+				`document.querySelector('${row} button[role="switch"]')?.getAttribute('data-state') === 'checked'`,
+			),
+		);
+	}
+	await cdp.evaluate(
+		`document.querySelector('${row}').scrollIntoView({block:'start'})`,
+	);
+	await wait(300);
+	const geometry = await cdp.evaluate(`(() => {
+		const row=document.querySelector('${row}');
+		const box=el=>{if(!el)return null;const r=el.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height,cw:el.clientWidth,ch:el.clientHeight,sw:el.scrollWidth,sh:el.scrollHeight};};
+		let scroll=row?.parentElement;while(scroll && !/(auto|scroll)/.test(getComputedStyle(scroll).overflowY))scroll=scroll.parentElement;
+		return {viewport:{width:innerWidth,height:innerHeight,devicePixelRatio},header:box(row?.querySelector('h3')),paintedChild:box(row),scrollContainer:box(scroll)};
+	})()`);
+	check(
+		"the measured actual scroll container is painted and has no horizontal overflow",
+		isPaintedScrollBox(geometry.scrollContainer),
+		JSON.stringify(geometry),
+	);
+	check(
+		"the measured painted child and header have nonzero boxes",
+		geometry.paintedChild?.w > 0 &&
+			geometry.paintedChild?.h > 0 &&
+			geometry.header?.w > 0 &&
+			geometry.header?.h > 0,
+		JSON.stringify(geometry),
+	);
+	writeFileSync(
+		join(FRAMES, "hub-core-guard-geometry.json"),
+		JSON.stringify(
+			{
+				requestedSize: WINDOW_SIZE,
+				enabledFixture: enabled,
+				mainStatus: status,
+				initialControlState: initial,
+				geometry,
+			},
+			null,
+			2,
+		),
+	);
+	await captureSettled(
+		cdp,
+		`hub-core-guard-${WINDOW_SIZE}-local-operator-dark-${enabled ? "fixture-policy-off" : "old-core-disabled"}`,
+	);
+	if (enabled) {
+		// The old J frame exposed a fixture pagination omission, not a product
+		// fallback defect. Retain it historically; prove corrected source data here.
+		await verb(cdp, "navigate", "/agent-hub");
+		const org = await waitForCondition(
+			cdp,
+			`!!document.querySelector('[data-testid="agent-hub-scope-org-org-minerva"]')`,
+			15_000,
+		);
+		check(
+			"Hub browsing remains available after a guarded policy write",
+			org.ok,
+		);
+		await verb(cdp, "press", '[data-testid="agent-hub-scope-org-org-minerva"]');
+		const count = await waitForCondition(
+			cdp,
+			`(() => {const text=document.body.textContent??'';return /0 agents shared with Minerva/.test(text) && !/undefined agents/.test(text);})()`,
+			15_000,
+		);
+		check("corrected paginated org fixture paints a real zero count", count.ok);
+		check(
+			"minimum core alone does not advertise a complete Skills adapter",
+			await cdp.evaluate(
+				`document.querySelector('[data-testid="agent-hub-view-skills"]') === null`,
+			),
+		);
+		await captureSettled(
+			cdp,
+			`hub-core-guard-${WINDOW_SIZE}-local-operator-dark-fixture-browse-zero`,
+		);
+	}
+	await hubSkillsEgressAudit(cdp, app);
 }
 
 async function main() {
@@ -44674,7 +45052,9 @@ async function main() {
 		);
 	}
 	if (
-		(SCENE === "hub-skills" || SCENE === "hub-skills-egress") &&
+		(SCENE === "hub-skills" ||
+			SCENE === "hub-skills-egress" ||
+			SCENE === "hub-core-guard") &&
 		BACKEND === null
 	) {
 		throw new Error(
@@ -44682,7 +45062,9 @@ async function main() {
 		);
 	}
 	if (
-		(SCENE === "hub-skills" || SCENE === "hub-skills-egress") &&
+		(SCENE === "hub-skills" ||
+			SCENE === "hub-skills-egress" ||
+			SCENE === "hub-core-guard") &&
 		BACKEND_RECORDS === null
 	) {
 		throw new Error(
@@ -44955,6 +45337,7 @@ async function main() {
 			else if (SCENE === "sidebar-lazy-chats") await sceneSidebarLazyChats(cdp);
 			else if (SCENE === "mini-view") await sceneMiniView(app, cdp);
 			else if (SCENE === "hub-links") await sceneHubLinks(cdp, app);
+			else if (SCENE === "hub-core-guard") await sceneHubCoreGuard(cdp, app);
 			else if (SCENE === "hub-skills") {
 				await sceneHubSkills(cdp, app);
 				await hubSkillsEgressAudit(cdp, app);

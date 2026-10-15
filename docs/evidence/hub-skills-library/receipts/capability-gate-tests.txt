@@ -1,0 +1,23 @@
+direction negative control: {"bad":["not-a-wire-state"],"receiptMisclassified":false}
+✔ the hub-links scene is registered and backend-gated (6.346542ms)
+✔ the resolve-arm wire literals are the FROZEN ones, never the retired shorthand (0.670083ms)
+✔ the stub fixture answers the frozen inventory shape and its resolve arm (0.887791ms)
+✔ the hub-links panel imports every hook it calls (0.553416ms)
+✔ the resolve arm is typed to the frozen agent|team Kind (0.45475ms)
+✔ the policy write consumes the PATCH's {link_id, policy} snapshot, never a full HubLink (0.393833ms)
+✔ the stub emits only real wire direction states (2.017041ms)
+✔ baseline known-ness follows the provenance literal, not a "known" sentinel (0.160125ms)
+✔ the public-egress consent body states the reversibility limit, without em dashes (0.463667ms)
+✔ the auto-push switch is described by its pause line only while that line renders (0.3945ms)
+capability withdrawal: pending read settled, remote calls 5 -> 5, writes 2 -> 2
+✔ real mounted Skills hooks gate absence, explicit enablement, and retained callbacks after cap loss (7510.71225ms)
+✔ page gates its effective selection, entry and mount on complete adapter, not legacy link cap (15.790792ms)
+✔ shared stub retains legacy links and refuses only unsafe public auto-push writes, not previews or read-only copies (200.637334ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8883.935208

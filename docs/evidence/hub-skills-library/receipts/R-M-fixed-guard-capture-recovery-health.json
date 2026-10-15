@@ -1,0 +1,10 @@
+{
+  "result": {
+    "status": "ok",
+    "pid": 64513,
+    "instance_id": "d04fddf2-563d-45b4-83e9-01a3b1d5ab7b",
+    "version": "0.72.1",
+    "prefix": "/Users/damian/local-operator-ui/.worktrees/skills-library-evidence",
+    "install_kind": "stub"
+  }
+}
