@@ -358,6 +358,128 @@ test("address draft belongs to its tab: a chord-driven tab change drops it and b
 	}
 });
 
+/*
+ * D-PR9 / U10: a DOM tooltip cannot paint above the native page view, and the
+ * address field sits directly over the content rect, so no visible tooltip may
+ * wrap it. jsdom has no layout, so the geometry half (panel rect vs the rect
+ * `registerBrowserViewRect` reports) is measured natively and recorded in the
+ * evidence; this is the half a unit test CAN pin: a control that does show a
+ * tooltip is rendered as the positive control (so an empty panel list cannot
+ * pass by the harness being unable to open one), and the address field must not.
+ */
+test("the address field renders no tooltip, while a chrome-band control still does (D-PR9)", async () => {
+	const dom = new JSDOM('<div id="mount"></div>', {
+		url: "http://127.0.0.1:1/#/browser",
+		pretendToBeVisual: true,
+	});
+	const previous = {};
+	for (const key of [
+		"window",
+		"document",
+		"navigator",
+		"Node",
+		"Element",
+		"HTMLElement",
+		"HTMLInputElement",
+		// Radix's tooltip dispatches a `CustomEvent` on open; without jsdom's own
+		// Event classes as globals it throws and the test would fail for the harness,
+		// not for the product.
+		"Event",
+		"CustomEvent",
+		"MouseEvent",
+		"FocusEvent",
+		"KeyboardEvent",
+		"getComputedStyle",
+		"ResizeObserver",
+		"IS_REACT_ACT_ENVIRONMENT",
+	]) {
+		previous[key] = Object.getOwnPropertyDescriptor(globalThis, key);
+		let value = dom.window[key];
+		if (key === "IS_REACT_ACT_ENVIRONMENT") value = true;
+		// jsdom's window methods need their own `this`; Radix's popper also measures
+		// with a ResizeObserver jsdom does not ship, and only needs it to exist.
+		else if (key === "getComputedStyle")
+			value = dom.window.getComputedStyle.bind(dom.window);
+		else if (key === "ResizeObserver")
+			value = class {
+				observe() {}
+				unobserve() {}
+				disconnect() {}
+			};
+		Object.defineProperty(globalThis, key, { configurable: true, value });
+	}
+	try {
+		const BrowserUrlBar = loadBar();
+		const { createRoot } = await import("react-dom/client");
+		const root = createRoot(document.getElementById("mount"));
+		await act(async () =>
+			root.render(
+				React.createElement(BrowserUrlBar, {
+					tabId: 1,
+					url: "https://a.example/one",
+					pendingUrl: null,
+					loading: false,
+					canGoBack: true,
+					canGoForward: false,
+					disabled: false,
+					onNavigate: () => {},
+					onBack: () => {},
+					onForward: () => {},
+					onReload: () => {},
+					onStop: () => {},
+					onOpenApprovals: () => {},
+					waitingCount: 0,
+					onOpenDownloads: () => {},
+				}),
+			),
+		);
+		const panels = () =>
+			[...document.querySelectorAll("[data-lo-tooltip-panel]")].map(
+				(panel) => panel.textContent,
+			);
+		// POINTER ONLY, on both controls. The address tooltip used to be suppressed
+		// while the field had focus (Radix opens on keyboard focus and Cmd+L focuses
+		// it), so a test that focused the field first could not see that tooltip
+		// at all: that version passed against the old source, a vacuous control.
+		const hover = async (element) => {
+			await act(async () => {
+				for (const type of ["pointerover", "pointermove", "mouseover"]) {
+					element.dispatchEvent(
+						new dom.window.MouseEvent(type, { bubbles: true }),
+					);
+				}
+			});
+			await new Promise((resolve) => setTimeout(resolve, 900));
+		};
+		const back = document.querySelector('[aria-label="Back"]');
+		assert.ok(back, "the Back control rendered");
+		await hover(back);
+		assert.ok(
+			panels().some((text) => text.startsWith("Back")),
+			`positive control: hovering Back opens its tooltip; panels=${JSON.stringify(panels())}`,
+		);
+		const field = document.querySelector('[data-tour-tag="browser-address"]');
+		assert.ok(
+			field.getAttribute("aria-keyshortcuts"),
+			"the chord stays machine-readable",
+		);
+		assert.equal(field.getAttribute("aria-label"), "Address");
+		await hover(field);
+		assert.deepEqual(
+			panels().filter((text) => text.startsWith("Address")),
+			[],
+			"no tooltip over the content rect",
+		);
+		await act(async () => root.unmount());
+	} finally {
+		for (const [key, descriptor] of Object.entries(previous)) {
+			if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+			else delete globalThis[key];
+		}
+		dom.window.close();
+	}
+});
+
 test("real renderer hook owns scoped DOM commands, focus lifecycle and queued rapid input", async () => {
 	const r = await rig();
 	const { events, key, flush } = r;
