@@ -9136,3 +9136,94 @@ test("zoom reset precedes handover capability and agent screenshot/read keep 100
 		true,
 	);
 });
+
+test("human display order never mutates registry/agent creation order", async () => {
+	const { host, registry } = makeHost();
+	for (let i = 0; i < 3; i++) await host.newTab("chrome-order");
+	const before = registry.snapshot().map((r) => r.tabId);
+	assert.ok(host.chromeState().tabs.every((t) => t.displayOrder === undefined));
+	const ids = [...before].reverse();
+	assert.deepEqual(
+		host.reorderChromeTabs(ids).tabs.map((r) => r.tabId),
+		ids,
+	);
+	assert.deepEqual(
+		registry.snapshot().map((r) => r.tabId),
+		before,
+	);
+	assert.throws(
+		() => host.reorderChromeTabs([ids[0], ids[0]]),
+		/Invalid browser tab order/,
+	);
+	assert.deepEqual(
+		host.chromeState().tabs.map((r) => r.tabId),
+		ids,
+	);
+});
+
+test("duplicate snapshots URL and creates a user record without copying authority", async () => {
+	const { host, registry } = makeHost();
+	const original = registry.create({
+		owner: "agent",
+		sessionId: "synthetic-owner",
+	});
+	await original.view.webContents.loadURL("https://example.test/original");
+	const before = registry.snapshot().map((t) => t.tabId);
+	await host.actOnChromeTab(original.tabId, "duplicate");
+	const copy = registry.snapshot().find((t) => !before.includes(t.tabId));
+	assert.equal(copy.owner, "user");
+	assert.equal(copy.url, "https://example.test/original");
+	assert.equal(registry.get(copy.tabId).handedTo, null);
+	assert.equal(registry.get(original.tabId), original);
+});
+
+test("tab management IPC rejects foreign sender/frame and malformed permutations", async () => {
+	const { host } = makeHost();
+	await host.newTab();
+	const frame = { url: "http://localhost:5173/index.html" },
+		webContents = { id: 1, mainFrame: frame };
+	const window = { isDestroyed: () => false, webContents };
+	ipcMain.reset();
+	registerBrowserIpc({
+		window: () => window,
+		expectedUrl: "http://localhost:5173",
+		host: () => host,
+		clearData: async () => {},
+		log: () => {},
+	});
+	const event = { sender: webContents, senderFrame: frame },
+		reorder = ipcMain.handlers.get("browser-reorder-tabs"),
+		action = ipcMain.handlers.get("browser-tab-action");
+	try {
+		assert.throws(
+			() => reorder({ sender: {}, senderFrame: frame }, []),
+			/cannot use/,
+		);
+		assert.throws(
+			() =>
+				action({ sender: webContents, senderFrame: { ...frame } }, 1, "reload"),
+			/cannot use/,
+		);
+		for (const invalid of [
+			null,
+			"1",
+			[Number.NaN],
+			["1"],
+			new Array(1),
+			Array(513).fill(1),
+		])
+			assert.throws(() => reorder(event, invalid), /Invalid browser tab order/);
+		assert.throws(
+			() => action(event, 1, "erase"),
+			/Invalid browser tab action/,
+		);
+		assert.throws(() => action(event, "1", "reload"), /tabId/);
+		const ids = host.chromeState().tabs.map((t) => t.tabId);
+		assert.deepEqual(
+			reorder(event, ids).tabs.map((t) => t.tabId),
+			ids,
+		);
+	} finally {
+		unregisterBrowserIpc();
+	}
+});

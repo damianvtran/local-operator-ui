@@ -1,0 +1,13 @@
+{
+	"ui.browser.chrome.error_title": "Page failed to load",
+	"ui.browser.chrome.move_left": "Move tab left",
+	"ui.browser.chrome.move_right": "Move tab right",
+	"ui.browser.chrome.duplicate": "Duplicate tab",
+	"ui.browser.chrome.reload": "Reload tab",
+	"ui.browser.chrome.scroll_left": "Scroll tabs left",
+	"ui.browser.chrome.scroll_right": "Scroll tabs right",
+	"ui.browser.chrome.accessible_tab": "{title}{loading, select, yes{, loading} other{}}{failed, select, yes{, failed to load} other{}}{owner, select, agent{, agent-owned} shared{, shared with an agent} other{}}{waiting, select, none{} other{, request {waiting} waiting}}{restored, select, yes{, restored} other{}}",
+	"ui.browser.chrome.invalid_order": "Invalid browser tab order.",
+	"ui.browser.chrome.duplicate_refused": "Only web pages can be duplicated.",
+	"ui.browser.chrome.invalid_action": "Invalid browser tab action."
+}
