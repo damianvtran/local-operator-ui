@@ -785,6 +785,150 @@
 					"status": "audited"
 				}
 			]
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.settings",
+			"source_sha256": "3395192289d49f4d4a4e64a072fbb394ca37e760f3d13fb2f2a295167ae4f571",
+			"target_sha256": "a01cd601cfad13857ecc5640530e88ff3ea8f4ac7b7ea30092624baffb21a2d1",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-15"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-15",
+					"result": "clean",
+					"instance": "64fb84ce19ac",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/64fb84ce19ac.json",
+					"receipt_sha256": "373fd5cdac2b0853b5a1a7836fca6cf90de74814c84025286d5a75e5b73fa299",
+					"scope": "Full cumulative 143-key copy audit including three #1073 delta keys",
+					"note": "Incremental i18n-translator/openai/gpt-6.1-sol retains original 140-key translation and two independent audit histories; cumulative receipts cover 143 final keys including three #1073 delta keys. Rendered QA/design remain separate."
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-15",
+					"result": "clean",
+					"instance": "60bececbfead",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/60bececbfead.json",
+					"receipt_sha256": "2b5b8630e5cdc90a1f09e878436a98ddb0d6a2fe1a1752673ca44cb02b43fc4a",
+					"scope": "Full cumulative 143-key copy audit including three #1073 delta keys",
+					"note": "Incremental i18n-translator/openai/gpt-6.1-sol retains original 140-key translation and two independent audit histories; cumulative receipts cover 143 final keys including three #1073 delta keys. Rendered QA/design remain separate."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.console",
+			"source_sha256": "4fe88a76de4992e0b890a15c6faafe594ac345e7f62a7deb849b486ec3c14c7e",
+			"target_sha256": "ef630d2de4edff6568d8c7dbcf39e9f1c50d0c631a02c7eca2b4ed216b4de197",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-15"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-15",
+					"result": "clean",
+					"instance": "64fb84ce19ac",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/64fb84ce19ac.json",
+					"receipt_sha256": "373fd5cdac2b0853b5a1a7836fca6cf90de74814c84025286d5a75e5b73fa299",
+					"scope": "Full cumulative 143-key copy audit including three #1073 delta keys",
+					"note": "Incremental i18n-translator/openai/gpt-6.1-sol retains original 140-key translation and two independent audit histories; cumulative receipts cover 143 final keys including three #1073 delta keys. Rendered QA/design remain separate."
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-15",
+					"result": "clean",
+					"instance": "60bececbfead",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/60bececbfead.json",
+					"receipt_sha256": "2b5b8630e5cdc90a1f09e878436a98ddb0d6a2fe1a1752673ca44cb02b43fc4a",
+					"scope": "Full cumulative 143-key copy audit including three #1073 delta keys",
+					"note": "Incremental i18n-translator/openai/gpt-6.1-sol retains original 140-key translation and two independent audit histories; cumulative receipts cover 143 final keys including three #1073 delta keys. Rendered QA/design remain separate."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.onboarding",
+			"source_sha256": "b086c241aa70e44cdaab8f02d20e5aaac33d4732df09204481afc4128c08a6ae",
+			"target_sha256": "aa7d1739f3a70b27794da489f232f01065c891b796cdc7f6826f2773db868d5b",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-15"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-15",
+					"result": "clean",
+					"instance": "64fb84ce19ac",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/64fb84ce19ac.json",
+					"receipt_sha256": "373fd5cdac2b0853b5a1a7836fca6cf90de74814c84025286d5a75e5b73fa299",
+					"scope": "Full cumulative 143-key copy audit including three #1073 delta keys",
+					"note": "Incremental i18n-translator/openai/gpt-6.1-sol retains original 140-key translation and two independent audit histories; cumulative receipts cover 143 final keys including three #1073 delta keys. Rendered QA/design remain separate."
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-15",
+					"result": "clean",
+					"instance": "60bececbfead",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/60bececbfead.json",
+					"receipt_sha256": "2b5b8630e5cdc90a1f09e878436a98ddb0d6a2fe1a1752673ca44cb02b43fc4a",
+					"scope": "Full cumulative 143-key copy audit including three #1073 delta keys",
+					"note": "Incremental i18n-translator/openai/gpt-6.1-sol retains original 140-key translation and two independent audit histories; cumulative receipts cover 143 final keys including three #1073 delta keys. Rendered QA/design remain separate."
+				}
+			],
+			"status": "audited"
 		}
 	]
 }
