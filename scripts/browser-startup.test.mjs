@@ -273,6 +273,11 @@ test("chrome focus is reset by a renderer reload or crash, and the listeners det
 		const reportFocus = (value) => setFocus(sender, value);
 		const ignoring = () => contents.ignoringMenu;
 		reportFocus(true);
+		assert.equal(
+			handle.host.chordFocus,
+			true,
+			"renderer reported logical ownership",
+		);
 		// An in-page route change or a subframe load is NOT a renderer reload.
 		contents.emit("did-start-navigation", {
 			isMainFrame: true,
@@ -282,10 +287,18 @@ test("chrome focus is reset by a renderer reload or crash, and the listeners det
 			isMainFrame: false,
 			isSameDocument: false,
 		});
+		// This startup fixture never presents browser chrome. Retaining the DOM's
+		// logical owner is necessary across in-page navigation, but it must NOT
+		// authorize a menu action without presentation and foreground window facts.
+		assert.equal(
+			handle.host.chordFocus,
+			true,
+			"logical focus survives non-reloads",
+		);
 		assert.equal(
 			handle.chords.menu("close-tab"),
-			true,
-			"focus survives non-reloads",
+			false,
+			"unpresented chrome cannot execute a menu despite logical ownership",
 		);
 		// A main-frame, cross-document navigation is a reload: no unmount cleanup runs.
 		contents.emit("did-start-navigation", {
@@ -293,17 +306,32 @@ test("chrome focus is reset by a renderer reload or crash, and the listeners det
 			isSameDocument: false,
 		});
 		assert.equal(
-			handle.chords.menu("close-tab"),
+			handle.host.chordFocus,
 			false,
-			"reload dropped the owner",
+			"reload dropped the logical owner",
 		);
-		assert.equal(ignoring(), false);
-		reportFocus(true);
-		contents.emit("render-process-gone", {}, { reason: "crashed" });
 		assert.equal(
 			handle.chords.menu("close-tab"),
 			false,
-			"crash dropped the owner",
+			"reload cannot authorize a menu",
+		);
+		assert.equal(ignoring(), false);
+		reportFocus(true);
+		assert.equal(
+			handle.host.chordFocus,
+			true,
+			"logical owner restored before crash",
+		);
+		contents.emit("render-process-gone", {}, { reason: "crashed" });
+		assert.equal(
+			handle.host.chordFocus,
+			false,
+			"crash dropped the logical owner",
+		);
+		assert.equal(
+			handle.chords.menu("close-tab"),
+			false,
+			"crash cannot authorize a menu",
 		);
 		assert.equal(contents.listenerCount("did-start-navigation") >= 1, true);
 	} finally {
