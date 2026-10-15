@@ -25,6 +25,10 @@ export type BrowserChord =
 export interface BrowserChordInput {
 	type: string;
 	key: string;
+	/** The physical key (`KeyboardEvent.code` / Electron `Input.code`). Used ONLY
+	 * as a fallback for the tab digits, whose `key` is a symbol on layouts that
+	 * need Shift for digits (AZERTY): the ordinal belongs to the physical key. */
+	code?: string;
 	meta: boolean;
 	control: boolean;
 	alt: boolean;
@@ -32,6 +36,8 @@ export interface BrowserChordInput {
 	isAutoRepeat?: boolean;
 	isComposing?: boolean;
 }
+const DIGIT_KEY = /^[1-9]$/;
+const DIGIT_CODE = /^Digit([1-9])$/;
 export function browserChordIntent(
 	input: BrowserChordInput,
 	platform: string,
@@ -60,7 +66,12 @@ export function browserChordIntent(
 			else if (key === "w") intent = "close-tab";
 			else if (key === "[") intent = "back";
 			else if (key === "]") intent = "forward";
-			else if (/^[1-9]$/.test(key)) intent = `tab-${key}` as BrowserChord;
+			else {
+				const digit = DIGIT_KEY.test(key)
+					? key
+					: DIGIT_CODE.exec(input.code ?? "")?.[1];
+				if (digit) intent = `tab-${digit}` as BrowserChord;
+			}
 		}
 	}
 	return input.isAutoRepeat && intent !== "next-tab" && intent !== "prev-tab"

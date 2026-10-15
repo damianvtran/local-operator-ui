@@ -5,7 +5,7 @@ import {
 	Tooltip,
 	countLabel,
 } from "@shared/components/ui";
-import { chordGlyph } from "@shared/keymap/keymap-chord";
+import { chordCaption } from "@shared/keymap/keymap-chord";
 import { cn } from "@shared/lib/utils";
 import { navigationShortcutLabel } from "@shared/navigation-gesture";
 import {
@@ -66,6 +66,8 @@ import { useState } from "react";
 export interface BrowserUrlBarProps {
 	/** Chrome focus only; never a window activation. */
 	inputRef?: Ref<HTMLInputElement>;
+	/** The active tab. A typed draft belongs to ONE tab: see `draft` below. */
+	tabId: number | null;
 	url: string;
 	/** Where the user asked to go, while the tab has not committed it. Shown as the
 	 * placeholder and never as the value: see the comment on `askedFor` below. */
@@ -143,6 +145,7 @@ export function displayUrl(url: string): string {
 
 export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	inputRef,
+	tabId,
 	url,
 	pendingUrl,
 	loading,
@@ -161,7 +164,28 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	downloadsRecent,
 	onOpenDownloads,
 }) => {
-	const [draft, setDraft] = useState<string | null>(null);
+	/**
+	 * THE DRAFT BELONGS TO ITS TAB (UX r1 U1). The keyboard can change the active
+	 * tab (Cmd+2, Ctrl+Tab, Cmd+W, Cmd+T, Cmd+Shift+T) while this field still has
+	 * focus, so a bare string would keep showing tab A's text over tab B and the
+	 * blur that follows would commit it INTO tab B, navigating it away. Pairing the
+	 * text with the tab it was typed for makes a tab change discard the draft by
+	 * construction: no effect, no reset call, and no state in which the field says
+	 * one tab while the host is on another. It also matches Chrome and Safari,
+	 * where an omnibox draft is per-tab and a switch drops it.
+	 */
+	const [fieldFocused, setFieldFocused] = useState(false);
+	const [typed, setTyped] = useState<{
+		tabId: number | null;
+		text: string;
+	} | null>(null);
+	const draft = typed && typed.tabId === tabId ? typed.text : null;
+	const setDraft = (
+		next: string | null | ((current: string | null) => string | null),
+	): void => {
+		const resolved = typeof next === "function" ? next(draft) : next;
+		setTyped(resolved === null ? null : { tabId, text: resolved });
+	};
 	/*
 	 * The chord captions (issue #675's round-1 review, U5): the product caps
 	 * every other chord on the control that owns it (`sidebarToggleCap`,
@@ -171,8 +195,9 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	 * `scripts/run-panel-navigation.test.mjs` selects them by exact string.
 	 */
 	const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
-	const reloadChord = chordGlyph("primary+r", isMac ? "mac" : "linux");
-	const addressChord = chordGlyph("primary+l", isMac ? "mac" : "linux");
+	// Glyph AND `aria-keyshortcuts` from the same chord id (design D-PR5).
+	const reload = chordCaption("primary+r", isMac ? "mac" : "linux");
+	const address = chordCaption("primary+l", isMac ? "mac" : "linux");
 	const backChord = navigationShortcutLabel("back", isMac);
 	const forwardChord = navigationShortcutLabel("forward", isMac);
 	/**
@@ -268,12 +293,12 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					</Button>
 				</Tooltip>
 			) : (
-				<Tooltip content={`Reload (${reloadChord})`}>
+				<Tooltip content={`Reload (${reload.glyph})`}>
 					<Button
 						variant="ghost"
 						size="icon-sm"
 						aria-label="Reload"
-						aria-keyshortcuts={isMac ? "Meta+R" : "Control+R"}
+						aria-keyshortcuts={reload.aria}
 						disabled={disabled}
 						onClick={onReload}
 						data-tour-tag="browser-reload"
@@ -318,25 +343,50 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 				</Tooltip>
 			)}
 			<div className="relative min-w-0 grow">
-				<Input
-					ref={inputRef}
-					aria-keyshortcuts={isMac ? "Meta+L" : "Control+L"}
-					title={`Address (${addressChord})`}
-					value={value}
-					disabled={disabled}
-					onChange={(event) => setDraft(event.target.value)}
-					onKeyDown={keyDown}
-					onFocus={() => setDraft((current) => current ?? live)}
-					onBlur={commit}
-					spellCheck={false}
-					autoComplete="off"
-					aria-label="Address"
-					// Only while the tab has nothing to show: the moment it commits, the
-					// live value replaces this and the placeholder is gone.
-					placeholder={loading && !live ? (pendingUrl ?? undefined) : undefined}
-					data-tour-tag="browser-address"
-					className={cn("pr-7", editing && "font-mono text-mono-sm")}
-				/>
+				{/* The shared Tooltip, not a native `title` (design D-PR2): a native one
+				    cannot be photographed by `capturePage`, so the chord copy would be
+				    unreviewable. SUPPRESSED while the field has focus because Radix opens
+				    on keyboard focus and Cmd+L focuses this field: without it every use
+				    of the chord would pop a panel over the thing being typed into. */}
+				<Tooltip
+					content={`Address (${address.glyph})`}
+					suppressed={fieldFocused}
+				>
+					<Input
+						ref={inputRef}
+						aria-keyshortcuts={address.aria}
+						value={value}
+						disabled={disabled}
+						onChange={(event) => setDraft(event.target.value)}
+						onKeyDown={keyDown}
+						onFocus={() => {
+							setFieldFocused(true);
+							setDraft((current) => current ?? live);
+						}}
+						onBlur={() => {
+							setFieldFocused(false);
+							commit();
+						}}
+						spellCheck={false}
+						autoComplete="off"
+						aria-label="Address"
+						// Only while the tab has nothing to show: the moment it commits, the
+						// live value replaces this and the placeholder is gone.
+						placeholder={
+							loading && !live ? (pendingUrl ?? undefined) : undefined
+						}
+						data-tour-tag="browser-address"
+						// Offset 1, not the global 2 (design D-PR4): the toolbar's `py-1` + `gap-1`
+						// is exactly the global ring's offset + width, so Cmd+L (now the routine
+						// way to focus this field) drew the ring flush against the strip rule,
+						// the toolbar rule and the Approvals border. `!` because the global ring
+						// rule is unlayered and outranks a utility; `Input` `sm` does the same.
+						className={cn(
+							"pr-7 focus-visible:outline-offset-1!",
+							editing && "font-mono text-mono-sm",
+						)}
+					/>
+				</Tooltip>
 				{loading && (
 					// The loading state, in the field rather than only on the reload
 					// button: a page that takes ten seconds says so where the eye

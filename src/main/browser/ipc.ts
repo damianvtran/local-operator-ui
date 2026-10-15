@@ -71,6 +71,9 @@ export interface RegisterBrowserIpcOptions {
 	 * calls. It is authorized like every other channel and is a no-op when a host
 	 * is already running, so a stray click cannot start a second one. */
 	retry?: () => Promise<void>;
+	/** Move DOM focus into the presented page after a chord that came from the page.
+	 * Optional because only a launch mode that may focus a window supplies it; the
+	 * helper behind it refuses an unfocused or hidden window and never raises one. */
 	focusPage?: () => void;
 	log: (message: string) => void;
 }
@@ -335,11 +338,14 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 	});
 
 	ipcMain.handle("browser-clear-data", async (event, what: unknown) => {
-		authorize(event);
+		const host = authorize(event);
 		if (what !== "cookies" && what !== "cache" && what !== "everything") {
 			throw new Error("Unsupported clear-data request.");
 		}
 		await options.clearData(what);
+		// "Everything" erases what the user visited; a remembered closed tab is part
+		// of that history and must not survive it (review R3).
+		if (what === "everything") host.forgetClosedTabs();
 		options.log(`[browser] cleared browsing data: ${what}`);
 		return { cleared: what };
 	});

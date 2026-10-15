@@ -856,14 +856,21 @@ export class BrowserHost implements BrowserActionContext {
 	 * one field.
 	 */
 	async newTab(sessionId?: string | null): Promise<Record<string, unknown>> {
+		await this.createUserTab(sessionId ?? null);
+		return this.chromeState();
+	}
+
+	/** `newTab`'s body, returning the record so `reopenClosed` can navigate the tab
+	 * it created rather than whichever tab is active by the time the await ends. */
+	private async createUserTab(sessionId: string | null): Promise<TabRecord> {
 		const record = this.registry.create({
 			owner: "user",
-			sessionId: sessionId ?? null,
+			sessionId,
 		});
 		await record.view.webContents.loadURL("about:blank");
 		await this.cdp.attach(record.view.webContents);
 		this.onChanged();
-		return this.chromeState();
+		return record;
 	}
 
 	/** Main owns this short-lived UI focus fact; it conveys no page capability. */
@@ -892,6 +899,25 @@ export class BrowserHost implements BrowserActionContext {
 		this.setChordFocus(false);
 		this.closedUserTabs = [];
 	}
+	/**
+	 * Forget remembered closes. Called when the user clears browsing data or forgets
+	 * a site, because a closed tab's URL can carry a one-time token or name a page
+	 * the user just asked this app to erase: Cmd+Shift+T must not resurrect it
+	 * (review R3). `origin` filters to one site; omitted forgets every entry. Clearing
+	 * only cookies or only the cache leaves the stack alone: neither erases what the
+	 * user visited, and a logged-out reopen simply lands on the site's own login.
+	 */
+	forgetClosedTabs(origin?: string): void {
+		this.closedUserTabs = origin
+			? this.closedUserTabs.filter((entry) => {
+					try {
+						return new URL(entry.url).origin !== origin;
+					} catch {
+						return false;
+					}
+				})
+			: [];
+	}
 	async reopenClosed(
 		sessionId: string | null,
 	): Promise<Record<string, unknown>> {
@@ -901,10 +927,18 @@ export class BrowserHost implements BrowserActionContext {
 			(entry) => sessionId === null || entry.sessionId === sessionId,
 		);
 		if (index < 0) return this.chromeState();
-		const entry = this.closedUserTabs[index];
-		await this.newTab(sessionId ?? entry.sessionId);
-		await this.navigateActive(entry.url);
-		this.closedUserTabs.splice(index, 1);
+		// TAKEN BEFORE ANY AWAIT (review R4). Two quick reopens, or a close landing
+		// during the awaits below, would otherwise splice by a stale index and drop
+		// the wrong entry or reopen the same one twice. Once taken, the entry is the
+		// caller's: a navigation that then fails leaves the tab on its failure page,
+		// exactly as a typed URL would, instead of a blank tab plus an entry that
+		// makes every further Cmd+Shift+T add another blank tab.
+		const [entry] = this.closedUserTabs.splice(index, 1);
+		const record = await this.createUserTab(sessionId ?? entry.sessionId);
+		// The record this call created, never `registry.activeTab`: a tab the user
+		// clicked during the await must not be the one navigated.
+		await record.view.webContents.loadURL(entry.url);
+		this.onChanged();
 		return this.chromeState();
 	}
 	closeTab(tabId: number): Record<string, unknown> {
@@ -1311,7 +1345,9 @@ export class BrowserHost implements BrowserActionContext {
 
 	reloadActive(hard = false): Record<string, unknown> {
 		const contents = this.registry.activeTab?.view.webContents;
-		if (hard) contents?.reloadIgnoringCache?.();
+		// Falls back to a plain reload rather than doing nothing: a hard reload that
+		// silently vanishes is worse than one that keeps the cache (review R10).
+		if (hard && contents?.reloadIgnoringCache) contents.reloadIgnoringCache();
 		else contents?.reload();
 		return this.chromeState();
 	}
@@ -1424,6 +1460,7 @@ export class BrowserHost implements BrowserActionContext {
 		const origin = safeHttpUrl(rawOrigin).origin;
 		const removed = this.approvals.revokeOrigin(origin);
 		await this.forgetSiteData(origin);
+		this.forgetClosedTabs(origin);
 		this.log(`[browser] forgot ${origin}: ${removed} approval(s) revoked`);
 		this.onChanged();
 		return { origin, removed, ...this.chromeState() };
