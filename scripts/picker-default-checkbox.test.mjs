@@ -205,6 +205,33 @@ const CATALOGUE = {
 let requests = [];
 /** Settles the next owner command; replaced per case to hold it in flight. */
 let commandGate = () => Promise.resolve();
+/** Settles the next settings write; replaced per case to hold or fail it. */
+let settingsGate = () => Promise.resolve();
+/** `config.yml` as the faked daemon holds it, updated when a write resolves. */
+let config = {};
+/**
+ * The rung the owner is on. The entity list's `current` answers with it, so a
+ * dialog that re-reads the list sees the switch - and one that reads a cached
+ * list does not, which is the stale read review round 1 (M1) filed.
+ */
+let ownerRung = "high";
+/**
+ * The owner's answer to a command, by default an accepted one. A case replaces
+ * it to refuse (a warning notice) or to fail the transport (a throw).
+ */
+const acceptCommand = (request) => ({
+	command: request.command,
+	result: {
+		kind: "notice",
+		style: "info",
+		text:
+			request.command === "effort"
+				? `effort: ${request.args}`
+				: `model: anthropic/claude-opus-5-5 → ${request.args} (this session)`,
+		data: {},
+	},
+});
+let commandAnswer = acceptCommand;
 
 globalThis.__desktopResult = async (request) => {
 	requests.push(request);
@@ -214,25 +241,21 @@ globalThis.__desktopResult = async (request) => {
 				entities: ["low", "medium", "high", "xhigh"].map((value) => ({
 					value,
 				})),
-				current: "high",
+				current: ownerRung,
 			};
 		case "models.catalogue":
 			return CATALOGUE;
-		case "sessions.command":
+		case "sessions.command": {
 			await commandGate();
-			return {
-				command: request.command,
-				result: {
-					kind: "notice",
-					style: "info",
-					text:
-						request.command === "effort"
-							? `effort: ${request.args}`
-							: `model: anthropic/claude-opus-5-5 → ${request.args} (this session)`,
-					data: {},
-				},
-			};
+			const receipt = commandAnswer(request);
+			if (request.command === "effort" && receipt.result.style === "info")
+				ownerRung = request.args;
+			return receipt;
+		}
 		case "settings.edit":
+			await settingsGate(request);
+			// The daemon's file, as it stands when each write LANDS.
+			config[request.key] = request.value;
 			return { key: request.key, value: request.value };
 		default:
 			return {};
@@ -250,26 +273,53 @@ const settle = () =>
 		for (let i = 0; i < 6; i += 1) await new Promise((r) => setTimeout(r, 5));
 	});
 
-const mount = async (Picker) => {
-	document.body.innerHTML = "";
-	requests = [];
-	commandGate = () => Promise.resolve();
-	const notes = [];
-	const container = document.createElement("div");
-	document.body.appendChild(container);
-	const root = createRoot(container);
+/** A promise a case releases by hand, to hold a request in flight. */
+const held = () => {
+	let release;
+	const gate = new Promise((resolve) => {
+		release = resolve;
+	});
+	return { gate: () => gate, release: () => release() };
+};
+
+const newClient = () =>
 	/*
 	 * `gcTime: Infinity` and the `clear()` on unmount: react-query's default
 	 * five-minute garbage-collection timer otherwise keeps this process alive for
 	 * five minutes after the last case has passed (measured: 302 s for nine
 	 * sub-second cases).
 	 */
-	const client = new QueryClient({
+	new QueryClient({
 		defaultOptions: {
 			queries: { retry: false, gcTime: Number.POSITIVE_INFINITY },
 		},
 	});
-	await act(async () => {
+
+/**
+ * `client`: pass one to share the query cache across mounts, the way the app
+ * shares one across dialog opens. `model`: the session frame's model, which is
+ * what the status chip reads.
+ */
+const mount = async (
+	Picker,
+	{ client: shared, model = SESSION_MODEL, reset = true } = {},
+) => {
+	const client = shared ?? newClient();
+	document.body.innerHTML = "";
+	if (reset) {
+		requests = [];
+		commandGate = () => Promise.resolve();
+		settingsGate = () => Promise.resolve();
+		commandAnswer = acceptCommand;
+		config = {};
+		ownerRung = "high";
+	}
+	const ownsClient = !shared;
+	const notes = [];
+	const container = document.createElement("div");
+	document.body.appendChild(container);
+	const root = createRoot(container);
+	const render = (frameModel) =>
 		root.render(
 			React.createElement(
 				QueryClientProvider,
@@ -286,7 +336,7 @@ const mount = async (Picker) => {
 					spec: {},
 					sessionId: "session-1",
 					canonical: {
-						frontend: { selected_model: SESSION_MODEL },
+						frontend: { selected_model: frameModel },
 						paintPendingModel: () => {},
 						clearPendingModel: () => {},
 					},
@@ -298,17 +348,23 @@ const mount = async (Picker) => {
 				}),
 			),
 		);
-	});
+	await act(async () => render(model));
 	await settle();
 	const unmount = async () => {
 		if (!mounted.has(unmount)) return;
 		mounted.delete(unmount);
 		await act(async () => root.unmount());
-		client.clear();
+		// A shared client outlives this dialog, as the app's does across opens.
+		if (ownsClient) client.clear();
 		container.remove();
 	};
 	mounted.add(unmount);
-	return { notes, unmount };
+	/** A new owner frame, as the session stream delivers one. */
+	const rerender = async (frameModel) => {
+		await act(async () => render(frameModel));
+		await settle();
+	};
+	return { notes, unmount, rerender };
 };
 
 /*
@@ -470,5 +526,230 @@ test("model: unticking writes nothing", async () => {
 	requests = [];
 	assert.equal(await tick(), "unchecked");
 	assert.deepEqual(writes(), []);
+	await run.unmount();
+});
+
+/* --------------------------------------------- review round 1 remediation */
+
+const withRung = (rung) => ({ ...SESSION_MODEL, reasoning_effort: rung });
+const refuseCommand = (request) => ({
+	command: request.command,
+	result:
+		request.command === "effort"
+			? {
+					kind: "notice",
+					style: "warning",
+					text: `claude-opus-5-5 does not accept '${request.args}'`,
+					data: {},
+				}
+			: {
+					kind: "error",
+					style: "error",
+					text: `${request.args} is not available`,
+					data: {},
+				},
+});
+const failTransport = () => {
+	throw new Error("the backend could not complete this request");
+};
+/** The rows marked as the one in force (the ✓). */
+const markedRows = () =>
+	[...document.querySelectorAll('[role="option"]')]
+		.filter((row) => row.querySelector("svg"))
+		.map((row) => row.textContent?.trim());
+const checkbox = () =>
+	document.querySelector('[role="dialog"] [role="checkbox"]');
+const label = () =>
+	document.querySelector(`label[for="${checkbox()?.id}"]`)?.textContent ?? "";
+
+/*
+ * M1 / U1 / Q1. The app shares ONE query client across dialog opens, and the
+ * entity list is cached for 15 s, so a dialog reopened right after a switch read
+ * the rung the session had LEFT. The chip reads the session frame; so must the
+ * tick.
+ */
+test("effort: a dialog reopened within the cache window saves the rung the chip shows", async () => {
+	const client = newClient();
+	const first = await mount(EffortPicker, { client, model: withRung("high") });
+	await pick(LOW_ROW);
+	assert.deepEqual(writes(), [], "an unticked pick writes no default");
+	await first.unmount();
+	// The owner's next frame names the rung it switched to: that is the chip.
+	const second = await mount(EffortPicker, {
+		client,
+		model: withRung("low"),
+		reset: false,
+	});
+	// The ✓ and the tick read one answer, so the row marked is the rung saved.
+	assert.deepEqual(markedRows(), ["Low"]);
+	requests = [];
+	await tick();
+	assert.deepEqual(writes(), ["model_effort=low"]);
+	assert.equal(config.model_effort, "low");
+	assert.ok(dialogSays("Default effort for new sessions: Low."));
+	await second.unmount();
+	client.clear();
+});
+
+/*
+ * U2. The pick's default is the last write config.yml sees. A pick made while
+ * the tick's save is still out is refused by the busy dialog (it does not run a
+ * switch behind a pending save), and the pick after it lands last.
+ */
+test("effort: a tick's save that resolves late cannot land after the pick's", async () => {
+	const run = await mount(EffortPicker, { model: withRung("high") });
+	const late = held();
+	settingsGate = late.gate;
+	await tick();
+	await pick(XHIGH_ROW);
+	assert.equal(
+		requests.filter((request) => request.op === "sessions.command").length,
+		0,
+		"no switch starts while the tick's save is pending",
+	);
+	settingsGate = () => Promise.resolve();
+	await act(async () => late.release());
+	await settle();
+	assert.equal(config.model_effort, "high");
+	await pick(XHIGH_ROW);
+	assert.deepEqual(writes(), ["model_effort=high", "model_effort=xhigh"]);
+	assert.equal(config.model_effort, "xhigh", "the pick's save lands last");
+	assert.ok(dialogSays("Default effort for new sessions: xHigh."));
+	assert.ok(!dialogSays("Default effort for new sessions: High."));
+	await run.unmount();
+});
+
+/* m1 / Q2. The tick DID save a default; the refusal must not deny it. */
+test("effort: a refused pick after a tick's save says the default stays", async () => {
+	const run = await mount(EffortPicker, { model: withRung("high") });
+	await tick();
+	commandAnswer = refuseCommand;
+	await pick(XHIGH_ROW);
+	assert.deepEqual(writes(), ["model_effort=high"]);
+	assert.ok(
+		dialogSays("Effort not changed. Default for new sessions stays High."),
+	);
+	assert.ok(!dialogSays("The effort default was not saved"));
+	await run.unmount();
+});
+
+/* m2. A tick during a switch that then fails is answered, in both pickers. */
+test("effort: a tick during a switch whose transport fails says the default was not saved", async () => {
+	const run = await mount(EffortPicker, { model: withRung("high") });
+	const owner = held();
+	commandGate = owner.gate;
+	commandAnswer = failTransport;
+	await pick(LOW_ROW);
+	await tick();
+	await act(async () => owner.release());
+	await settle();
+	assert.deepEqual(writes(), []);
+	assert.ok(dialogSays("The effort default was not saved."));
+	await run.unmount();
+});
+
+test("model: a tick during a switch the owner refuses says the default was not saved", async () => {
+	const run = await mount(ModelPicker);
+	const owner = held();
+	commandGate = owner.gate;
+	commandAnswer = refuseCommand;
+	await pick(SONNET_ROW);
+	await tick();
+	await act(async () => owner.release());
+	await settle();
+	assert.deepEqual(writes(), []);
+	assert.ok(dialogSays("The default was not saved."));
+	await run.unmount();
+});
+
+/* U3. A save is not a switch; a failed save unticks so re-ticking retries. */
+test("effort: a tick's save reads as saving, and a failed save unticks the box", async () => {
+	const run = await mount(EffortPicker, { model: withRung("high") });
+	const save = held();
+	settingsGate = save.gate;
+	await tick();
+	assert.ok(dialogSays("Saving the default…"));
+	assert.ok(!dialogSays("Switching the effort…"));
+	await act(async () => save.release());
+	await settle();
+	// Untick, then a tick whose save the daemon refuses.
+	await tick();
+	settingsGate = () => Promise.reject(new Error("settings refused"));
+	requests = [];
+	await tick();
+	assert.deepEqual(writes(), ["model_effort=high"], "the retry was sent");
+	assert.ok(dialogSays("The effort default was not saved"));
+	assert.equal(
+		checkbox()?.getAttribute("data-state"),
+		"unchecked",
+		"a failed save leaves the box unticked, so ticking again is the retry",
+	);
+	await run.unmount();
+});
+
+/* U4. An untick writes nothing, and the last save's line goes with it. */
+test("effort: an untick clears the success line and writes nothing", async () => {
+	const run = await mount(EffortPicker, { model: withRung("high") });
+	await tick();
+	assert.ok(dialogSays("Default effort for new sessions: High."));
+	requests = [];
+	assert.equal(await tick(), "unchecked");
+	assert.deepEqual(writes(), []);
+	assert.ok(!dialogSays("Default effort for new sessions: High."));
+	await run.unmount();
+});
+
+/* U5. Ticked, the label states what was saved - no pick is implied. */
+test("effort and model: the ticked label names the saved default after a tick-only save", async () => {
+	const effort = await mount(EffortPicker, { model: withRung("high") });
+	await tick();
+	assert.match(
+		label(),
+		/Default effort for new sessions: High\. Picks here update it too\./,
+	);
+	assert.doesNotMatch(label(), /This pick/);
+	await effort.unmount();
+	const model = await mount(ModelPicker);
+	await tick();
+	assert.match(
+		label(),
+		/Default for new sessions: anthropic\/claude-opus-5-5\. Picks here update it too\./,
+	);
+	await model.unmount();
+});
+
+/*
+ * Review n1 / UX U8. Right after a pick, the owner's frame still names the old
+ * model; the tick saved the picked one and the button saved the old one.
+ */
+test("model: 'Set current model as default' saves the same model the tick would", async () => {
+	const run = await mount(ModelPicker);
+	await pick(SONNET_ROW);
+	const button = [...document.querySelectorAll('[role="dialog"] button')].find(
+		(candidate) => candidate.textContent === "Set current model as default",
+	);
+	assert.ok(button, "the dialog offers the button");
+	await act(async () => {
+		button.dispatchEvent(new DOM.window.MouseEvent("click", { bubbles: true }));
+	});
+	await settle();
+	assert.deepEqual(writes(), [
+		"hosting=anthropic",
+		"model_name=claude-sonnet-5-5",
+	]);
+	await run.unmount();
+});
+
+/*
+ * The ✓ moves with an accepted pick before the owner's next frame arrives, so
+ * it marks the rung a tick would save (the remediation's first rig build: the session was on
+ * xHigh, the ✓ still sat on Medium).
+ */
+test("effort: after a pick, the ✓ marks the rung a tick saves", async () => {
+	const run = await mount(EffortPicker, { model: withRung("high") });
+	await pick(XHIGH_ROW);
+	assert.deepEqual(markedRows(), ["xHigh"]);
+	await tick();
+	assert.deepEqual(writes(), ["model_effort=xhigh"]);
 	await run.unmount();
 });

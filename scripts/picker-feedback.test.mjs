@@ -1266,8 +1266,13 @@ test("the adapter wires the decisions the tests above pin", () => {
 		"a settled label that names a fact rather than an action is what D13 filed",
 	);
 
-	// D7: the checkbox's label states the consequence while it is ticked.
-	assert.match(picker, /This pick also sets the default for new sessions/);
+	// D7: the checkbox's label states the consequence while it is ticked - and,
+	// once a save landed, the default it saved (PR #1108 UX round 1, U5).
+	assert.match(picker, /Picks here also set the default for new sessions/);
+	assert.match(
+		picker,
+		/`Default for new sessions: \$\{savedModel\}\. Picks here update it too\.`/,
+	);
 
 	/*
 	 * D14: the in-flight copy names the change. Asserted on the props the adapter
@@ -1278,13 +1283,18 @@ test("the adapter wires the decisions the tests above pin", () => {
 	 * yet — so the sentence may not promise a switch that has not happened. Both
 	 * halves are asserted, so neither can drift into the other's meaning.
 	 */
+	/*
+	 * A third, session-only state: a default save that is not a switch says so
+	 * rather than "Switching the model…" (PR #1108 UX round 1, U3). The switch
+	 * copy is still the one shown while the owner command is in flight.
+	 */
 	assert.match(
 		picker,
-		/busyText=\{draft \? "Resolving the model…" : "Switching the model…"\}/,
+		/busyText=\{\s*draft\s*\? "Resolving the model…"\s*: command\.busy\s*\? "Switching the model…"\s*: "Saving the default…"\s*\}/,
 	);
 	assert.match(
 		picker,
-		/busyLabel=\{draft \? "Resolving the model" : "Switching the model"\}/,
+		/busyLabel=\{\s*draft\s*\? "Resolving the model"\s*: command\.busy\s*\? "Switching the model"\s*: "Saving the default"\s*\}/,
 	);
 
 	/*
