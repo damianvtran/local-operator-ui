@@ -46,6 +46,17 @@ export type ReusableProfile = {
 	 * see `install-builtin-agents.tsx` for why that is the honest reading.
 	 */
 	already_installed?: boolean;
+	/**
+	 * The opaque definition revision this editable snapshot was read at.
+	 *
+	 * ADDITIVE (proposed additive wire, b-wire-receipt-definition-cas-and-adopt):
+	 * the editor echoes it as `expected_definition_revision` on save so a write
+	 * based on a stale snapshot is refused 409 rather than silently reverting a
+	 * concurrent edit. ABSENT (not null) where no editable local definition exists
+	 * (a pure builtin seed with no installed row). Never derived on the client —
+	 * the backend owns the digest; this app only reads it and sends it back.
+	 */
+	definition_revision?: string;
 };
 export type TeamMember = {
 	role: string;
@@ -84,6 +95,14 @@ export type ReusableTeam = {
 	members: TeamMember[];
 	instructions?: string;
 	project?: string;
+	/**
+	 * The opaque definition revision this editable team snapshot was read at.
+	 *
+	 * The team sibling of `ReusableProfile.definition_revision` (same additive
+	 * CAS contract): absent where no editable local definition exists, echoed as
+	 * `expected_definition_revision` on save. Backend-owned; never client-derived.
+	 */
+	definition_revision?: string;
 };
 export type ChatTarget = { kind: "agent" | "team"; name: string };
 

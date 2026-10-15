@@ -90,6 +90,17 @@ const requestId = z
 	.string()
 	.regex(/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/);
 /**
+ * An OPAQUE definition-revision token, echoed verbatim on a definition write.
+ *
+ * Mirrors the frozen "no client-side hash" rule (b-wire-receipt-definition-cas-
+ * and-adopt.md): the value is only ever read from a GET and sent back, never
+ * derived here, so the shape is a bounded opaque string rather than a pattern
+ * this layer would have to keep in step with the backend's digest. `.nullish()`
+ * so an explicit `null` is the documented legacy unconditional write, and the
+ * endpoint passes it through unchanged.
+ */
+const definitionRevision = z.string().min(1).max(512).nullish();
+/**
  * A mesh device or network id (`d_`/`n_` + hex today), on its way into a URL path.
  *
  * MIRRORS `MESH_ID_PATTERN` in `local_operator/server/models/desktop_mesh.py`, and
@@ -822,6 +833,15 @@ const publicationTools = z
  * body actually lives. A field this renderer does not send is a field whose
  * local value is the one the author wrote.
  */
+// Local policy/replay options are never part of the published manifest. Omitted
+// fields preserve legacy calls; explicit draft flags require durable request ID.
+const publicationPolicyFields = {
+	requestId: requestId.optional(),
+	subscribe: z.boolean().optional(),
+	autoPush: z.boolean().optional(),
+	confirmPublicEgress: z.boolean().optional(),
+};
+
 const publicationDocument = z
 	.object({
 		name: publicationName,
@@ -1037,6 +1057,23 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		.strict(),
 	z.object({ op: z.literal("profiles.list") }).strict(),
 	z.object({ op: z.literal("profiles.get"), name: profileName }).strict(),
+	/*
+	 * Definition CAS (proposed additive wire, b-wire-receipt-definition-cas-and-adopt).
+	 * `expectedDefinitionRevision` is an opaque echo of the `definition_revision` the
+	 * editor was opened with; absent/null is the LEGACY unconditional write and is
+	 * NOT a protected dirty-edit guarantee, so a caller that wants CAS protection
+	 * must send it. Strict like every field here: a typo must 400, not silently
+	 * become an unconditional write.
+	 */
+	z
+		.object({
+			op: z.literal("profiles.update"),
+			name: profileName,
+			requestId,
+			fields: profileFields,
+			expectedDefinitionRevision: definitionRevision.optional(),
+		})
+		.strict(),
 	z
 		.object({ op: z.literal("profiles.install"), name: profileName, requestId })
 		.strict(),
@@ -1049,14 +1086,6 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 				description: z.string().max(8000),
 				instructions: z.string().min(1).max(8000),
 			}),
-		})
-		.strict(),
-	z
-		.object({
-			op: z.literal("profiles.update"),
-			name: profileName,
-			requestId,
-			fields: profileFields,
 		})
 		.strict(),
 	/*
@@ -1076,10 +1105,64 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	z
 		.object({ op: z.literal("hub.updates") })
 		.strict(),
+	// Initial skill publication uses an actual discovered source and managed
+	// alias, never a synthetic link ID or a private-directory clone.
+	z
+		.object({
+			op: z.literal("hub.skillPull"),
+			requestId,
+			hubId: id,
+			hubSource: z.string().min(1).max(2048),
+			visibility: z.enum(["public", "org"]),
+			tenantId: id.nullable(),
+			localAlias: profileName,
+			subscribe: z.boolean().optional(),
+			autoPush: z.boolean().optional(),
+			confirmPublicEgress: z.boolean().optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("hub.skillPublish"),
+			requestId,
+			dryRun: z.boolean(),
+			sourceSkill: profileName,
+			localAlias: profileName,
+			visibility: z.enum(["public", "org"]),
+			tenantId: id.nullable(),
+			subscribe: z.boolean(),
+			autoPush: z.boolean(),
+			confirmPublicEgress: z.boolean(),
+			previewReceipt: z.string().min(1).max(4096).optional(),
+			confirmPublish: z.literal(true).optional(),
+		})
+		.strict(),
+	// Full inventory is additive: old callers still receive pending agents/teams
+	// only. Policy revision is required even for a single independent toggle so
+	// an intervening direct config edit cannot be silently overwritten.
+	z
+		.object({
+			op: z.literal("hub.links"),
+			kind: z.enum(["agent", "team", "skill"]).optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("hub.policy"),
+			requestId,
+			linkId: z.string().min(1).max(256),
+			expectedPolicyRevision: z.string().min(1).max(256),
+			subscribe: z.boolean().optional(),
+			autoPush: z.boolean().optional(),
+			confirmPublicEgress: z.boolean().optional(),
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("hub.check"),
 			requestId,
+			linkId: z.string().min(1).max(256).optional(),
+			direction: z.enum(["pull", "push"]).optional(),
 			kind: hubItemKind.optional(),
 			name: profileName.optional(),
 		})
@@ -1088,11 +1171,28 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		.object({
 			op: z.literal("hub.apply"),
 			requestId,
-			kind: hubItemKind,
-			name: profileName,
+			previewReceipt: z.string().min(1).max(4096).optional(),
+			confirmApply: z.literal(true).optional(),
+			linkId: z.string().min(1).max(256).optional(),
+			direction: z.literal("pull").optional(),
+			kind: hubItemKind.optional(),
+			name: profileName.optional(),
 			prefer: z.enum(["local", "remote"]).optional(),
 			acknowledgeUnknownBaseline: z.boolean().optional(),
 			dryRun: z.boolean().optional(),
+			/*
+			 * LEGACY UNKNOWN-ORIGIN SOURCE CONFIRMATION (proposed additive wire,
+			 * b-wire-receipt §Part 2). An EXPLICIT act that states a destination the
+			 * caller asserts: it materializes the real baseline identity and scope,
+			 * it never infers Public or the active organization. `resolve_source`
+			 * selects the branch; the source/scope triple is REQUIRED with it so a
+			 * half-stated destination cannot compose a guessed origin. The service
+			 * refuses a conflicting known scope with `origin-conflict`.
+			 */
+			resolveSource: z.literal(true).optional(),
+			hubSource: z.string().min(1).max(2048).optional(),
+			visibility: z.enum(["public", "org"]).optional(),
+			tenantId: z.string().min(1).max(128).nullable().optional(),
 		})
 		.strict(),
 	z
@@ -1106,25 +1206,44 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		.object({
 			op: z.literal("hub.retry"),
 			requestId,
-			kind: hubItemKind,
-			name: profileName,
+			linkId: z.string().min(1).max(256).optional(),
+			direction: z.enum(["pull", "push"]).optional(),
+			kind: hubItemKind.optional(),
+			name: profileName.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("hub.push"),
+			requestId,
+			linkId: z.string().min(1).max(256),
+			direction: z.literal("push"),
+			dryRun: z.boolean(),
+			previewReceipt: z.string().min(1).max(4096).optional(),
+			confirmPublish: z.literal(true).optional(),
 		})
 		.strict(),
 	z.object({ op: z.literal("teams.list") }).strict(),
 	z.object({ op: z.literal("teams.get"), name: profileName }).strict(),
-	z
-		.object({
-			op: z.literal("teams.create"),
-			requestId,
-			fields: teamFields.extend({ name: z.string().min(1).max(64) }),
-		})
-		.strict(),
+	/*
+	 * Team CAS is the same optional opaque echo as the profile arm: absent/null is
+	 * the legacy unconditional write, a supplied stale/malformed value is refused
+	 * 409 `local-concurrent-edit` before any write under the definition lock.
+	 */
 	z
 		.object({
 			op: z.literal("teams.update"),
 			name: profileName,
 			requestId,
 			fields: teamFields,
+			expectedDefinitionRevision: definitionRevision.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("teams.create"),
+			requestId,
+			fields: teamFields.extend({ name: z.string().min(1).max(64) }),
 		})
 		.strict(),
 	z
@@ -2032,6 +2151,7 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			op: z.literal("agent.publish"),
 			agentId: id,
 			document: publicationDocument.optional(),
+			...publicationPolicyFields,
 			/*
 			 * The publication TARGET (§4.4/§4.7). Both travel together or neither does,
 			 * and the rule is a `superRefine` on the whole UNION (below) rather than a
@@ -2065,8 +2185,19 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			// republish that did not name one would have to guess which public row to
 			// overwrite — and guessing here overwrites somebody's listing.
 			hubAgentId: id,
+			expectedRemoteRevision: z.string().min(1).max(512).optional(),
 			document: publicationDocument.optional(),
+			...publicationPolicyFields,
 			/** The publication target, on the same terms as `agent.publish` above. */
+			visibility: z.literal("org").optional(),
+			tenantId: id.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team.publish"),
+			teamId: id,
+			...publicationPolicyFields,
 			visibility: z.literal("org").optional(),
 			tenantId: id.optional(),
 		})
@@ -2773,6 +2904,8 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 						"org_agents.list",
 						"org_team.get",
 						"org_teams.list",
+						"org_skills.list",
+						"org_skill.get",
 						/*
 						 * The verification-email resend (core PR2,
 						 * `feat/quota-notice-resend`): it maps to the upstream's JWT-only
@@ -2790,6 +2923,7 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 					agent_id: id.optional(),
 					comment_id: id.optional(),
 					team_id: id.optional(),
+					skill_id: id.optional(),
 					query: z
 						.record(z.union([z.string().max(1024), z.number().int()]))
 						.optional(),
@@ -3253,6 +3387,136 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
  */
 export const desktopRequestSchema = desktopRequestUnion.superRefine(
 	(request, ctx) => {
+		if (request.op === "hub.skillPull" || request.op === "hub.skillPublish") {
+			if (
+				(request.visibility === "public" && request.tenantId !== null) ||
+				(request.visibility === "org" && !request.tenantId)
+			) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: "A skill destination requires explicit paired scope",
+					path: ["tenantId"],
+				});
+				return;
+			}
+			if (
+				request.op === "hub.skillPublish" &&
+				(request.dryRun
+					? request.previewReceipt !== undefined ||
+						request.confirmPublish !== undefined
+					: !request.previewReceipt || request.confirmPublish !== true)
+			) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message:
+						"An initial skill publication requires its reviewed draft receipt",
+					path: ["previewReceipt"],
+				});
+				return;
+			}
+		}
+		// Stable links and legacy name selectors are mutually exclusive. Never
+		// let one surface's active organization/name override a scoped origin.
+		if (
+			request.op === "hub.check" ||
+			request.op === "hub.apply" ||
+			request.op === "hub.retry"
+		) {
+			const hasLink = request.linkId !== undefined;
+			const hasLegacy =
+				request.kind !== undefined || request.name !== undefined;
+			if (
+				(hasLink && hasLegacy) ||
+				(request.op !== "hub.check" &&
+					!hasLink &&
+					(!request.kind || !request.name)) ||
+				(request.op === "hub.retry" && hasLink && !request.direction) ||
+				(request.direction === "push" && !hasLink)
+			) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message:
+						"A hub action requires one unambiguous selector and an explicit retry direction",
+					path: ["linkId"],
+				});
+				return;
+			}
+		}
+		if (
+			request.op === "hub.apply" &&
+			(request.previewReceipt !== undefined ||
+				request.confirmApply !== undefined) &&
+			(!request.linkId ||
+				request.dryRun ||
+				!request.previewReceipt ||
+				request.confirmApply !== true)
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message:
+					"A viewed incoming application requires its scoped preview receipt and confirmation",
+				path: ["previewReceipt"],
+			});
+			return;
+		}
+		/*
+		 * The resolve arm is a SOURCE CONFIRMATION, not an application: it must
+		 * carry the full stated destination and must NOT ride a preview/apply. A
+		 * half-stated destination is refused here rather than composed into a
+		 * guessed origin (the same fail-closed rule the publication target
+		 * follows), and the public/org pairing is required with `hubSource` present.
+		 */
+		if (request.op === "hub.apply" && request.resolveSource === true) {
+			const scopePaired =
+				(request.visibility === "public" && request.tenantId === null) ||
+				(request.visibility === "org" &&
+					typeof request.tenantId === "string" &&
+					request.tenantId.length > 0);
+			if (
+				!request.hubSource ||
+				!scopePaired ||
+				request.acknowledgeUnknownBaseline !== true ||
+				request.linkId !== undefined ||
+				request.previewReceipt !== undefined ||
+				request.confirmApply !== undefined ||
+				request.prefer !== undefined
+			) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message:
+						"Confirming a source requires its exact stated destination and the unknown-baseline acknowledgement, with no link, preview or preference",
+					path: ["hubSource"],
+				});
+				return;
+			}
+		}
+		if (
+			request.op === "hub.push" &&
+			(request.dryRun
+				? request.previewReceipt !== undefined ||
+					request.confirmPublish !== undefined
+				: !request.previewReceipt || request.confirmPublish !== true)
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message:
+					"A confirmed publication requires its reviewed preview receipt",
+				path: ["previewReceipt"],
+			});
+			return;
+		}
+		if (
+			request.op === "hub.policy" &&
+			request.subscribe === undefined &&
+			request.autoPush === undefined
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "A hub policy change must name subscribe or autoPush",
+				path: ["subscribe"],
+			});
+			return;
+		}
 		/*
 		 * AN ANSWER CARRIES ONE OF THREE SHAPES, and which one is decided by two
 		 * mutually exclusive selectors: `askId` (a queued ask) or `epoch`+`requestId`
@@ -3390,7 +3654,24 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 			}
 			return;
 		}
-		if (request.op !== "agent.publish" && request.op !== "agent.republish") {
+		if (
+			request.op !== "agent.publish" &&
+			request.op !== "agent.republish" &&
+			request.op !== "team.publish"
+		) {
+			return;
+		}
+		if (
+			(request.subscribe !== undefined ||
+				request.autoPush !== undefined ||
+				request.confirmPublicEgress !== undefined) &&
+			!request.requestId
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "Initial link policy needs a durable publication request ID",
+				path: ["requestId"],
+			});
 			return;
 		}
 		// The same presence test the composer's assert uses (S-2): one predicate for
@@ -4524,6 +4805,9 @@ const HUB_APPLY_ALL_DEADLINE_MS = 5 * HUB_ITEM_WRITE_DEADLINE_MS;
 const HUB_WRITE_OPS: ReadonlySet<string> = new Set([
 	"hub.apply",
 	"hub.retry",
+	"hub.push",
+	"hub.skillPublish",
+	"hub.skillPull",
 	"hub.check",
 	"hub.applyAll",
 ]);
@@ -4532,6 +4816,9 @@ function hubWriteDeadlineMs(op: string): number | null {
 	switch (op) {
 		case "hub.apply":
 		case "hub.retry":
+		case "hub.push":
+		case "hub.skillPublish":
+		case "hub.skillPull":
 			return HUB_ITEM_WRITE_DEADLINE_MS;
 		case "hub.check":
 			return HUB_CHECK_DEADLINE_MS;
@@ -4675,6 +4962,7 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"config.get",
 	"credentials.list",
 	"hub.updates",
+	"hub.links",
 	"info.get",
 	"instructions.get",
 	"legacy.agent.get",
@@ -5623,6 +5911,25 @@ function wakeTiming(request: {
 	};
 }
 
+/** Policy and replay flags stay local; an omitted legacy option remains omitted. */
+function publicationPolicyBody(request: {
+	requestId?: string;
+	subscribe?: boolean;
+	autoPush?: boolean;
+	confirmPublicEgress?: boolean;
+}): Record<string, unknown> {
+	return {
+		...(request.requestId ? { request_id: request.requestId } : {}),
+		...(request.subscribe !== undefined
+			? { subscribe: request.subscribe }
+			: {}),
+		...(request.autoPush !== undefined ? { auto_push: request.autoPush } : {}),
+		...(request.confirmPublicEgress !== undefined
+			? { confirm_public_egress: request.confirmPublicEgress }
+			: {}),
+	};
+}
+
 /**
  * Refuse a publication target that names only one of its two fields.
  *
@@ -5775,16 +6082,99 @@ export function desktopEndpoint(request: DesktopRequest): {
 			return {
 				path: `/v1/desktop/profiles/${encodeURIComponent(request.name)}`,
 				method: "PATCH",
-				body: { request_id: request.requestId, ...request.fields },
+				body: {
+					request_id: request.requestId,
+					...request.fields,
+					/*
+					 * The opaque echo travels ALONGSIDE the fields, never inside them: the
+					 * edit body is `exclude_unset`-merged on the backend, so a revision
+					 * nested in `fields` could be mistaken for an editable property. Sent
+					 * only when present, so absence stays the legacy unconditional write.
+					 */
+					...(request.expectedDefinitionRevision !== undefined &&
+					request.expectedDefinitionRevision !== null
+						? {
+								expected_definition_revision:
+									request.expectedDefinitionRevision,
+							}
+						: {}),
+				},
 			};
 		case "hub.updates":
 			return { path: "/v1/desktop/hub/updates", method: "GET" };
+		case "hub.skillPull":
+			return {
+				path: "/v1/desktop/hub/skills/pull",
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					hub_id: request.hubId,
+					hub_source: request.hubSource,
+					visibility: request.visibility,
+					tenant_id: request.tenantId,
+					local_alias: request.localAlias,
+					...(request.subscribe !== undefined
+						? { subscribe: request.subscribe }
+						: {}),
+					...(request.autoPush !== undefined
+						? { auto_push: request.autoPush }
+						: {}),
+					...(request.confirmPublicEgress !== undefined
+						? { confirm_public_egress: request.confirmPublicEgress }
+						: {}),
+				},
+			};
+		case "hub.skillPublish":
+			return {
+				path: "/v1/desktop/hub/skills/publish",
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					dry_run: request.dryRun,
+					source_skill: request.sourceSkill,
+					local_alias: request.localAlias,
+					visibility: request.visibility,
+					tenant_id: request.tenantId,
+					subscribe: request.subscribe,
+					auto_push: request.autoPush,
+					confirm_public_egress: request.confirmPublicEgress,
+					...(request.previewReceipt
+						? { preview_receipt: request.previewReceipt }
+						: {}),
+					...(request.confirmPublish ? { confirm_publish: true } : {}),
+				},
+			};
+		case "hub.links":
+			return {
+				path: `/v1/desktop/hub/links${request.kind ? `?kind=${request.kind}` : ""}`,
+				method: "GET",
+			};
+		case "hub.policy":
+			return {
+				path: `/v1/desktop/hub/links/${encodeURIComponent(request.linkId)}`,
+				method: "PATCH",
+				body: {
+					request_id: request.requestId,
+					expected_policy_revision: request.expectedPolicyRevision,
+					...(request.subscribe !== undefined
+						? { subscribe: request.subscribe }
+						: {}),
+					...(request.autoPush !== undefined
+						? { auto_push: request.autoPush }
+						: {}),
+					...(request.confirmPublicEgress !== undefined
+						? { confirm_public_egress: request.confirmPublicEgress }
+						: {}),
+				},
+			};
 		case "hub.check":
 			return {
 				path: "/v1/desktop/hub/updates/check",
 				method: "POST",
 				body: {
 					request_id: request.requestId,
+					...(request.linkId ? { link_id: request.linkId } : {}),
+					...(request.direction ? { direction: request.direction } : {}),
 					...(request.kind ? { kind: request.kind } : {}),
 					...(request.name ? { name: request.name } : {}),
 				},
@@ -5795,8 +6185,14 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "POST",
 				body: {
 					request_id: request.requestId,
-					kind: request.kind,
-					name: request.name,
+					...(request.previewReceipt
+						? { preview_receipt: request.previewReceipt }
+						: {}),
+					...(request.confirmApply ? { confirm_apply: true } : {}),
+					...(request.linkId ? { link_id: request.linkId } : {}),
+					...(request.direction ? { direction: request.direction } : {}),
+					...(request.kind ? { kind: request.kind } : {}),
+					...(request.name ? { name: request.name } : {}),
 					...(request.prefer ? { prefer: request.prefer } : {}),
 					...(request.acknowledgeUnknownBaseline !== undefined
 						? {
@@ -5805,6 +6201,21 @@ export function desktopEndpoint(request: DesktopRequest): {
 							}
 						: {}),
 					...(request.dryRun !== undefined ? { dry_run: request.dryRun } : {}),
+					/*
+					 * The source-confirmation branch travels on the SAME apply route with an
+					 * explicit flag, never a new endpoint. `resolve_source:true` plus the
+					 * stated scope triple is the whole act; the service materializes the
+					 * real identity/link and preserves any known scope (refusing a conflict
+					 * with `origin-conflict`), so nothing here infers Public or an org.
+					 */
+					...(request.resolveSource === true
+						? {
+								resolve_source: true,
+								hub_source: request.hubSource as string,
+								visibility: request.visibility as "public" | "org",
+								tenant_id: request.tenantId ?? null,
+							}
+						: {}),
 				},
 			};
 		case "hub.applyAll":
@@ -5822,8 +6233,25 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "POST",
 				body: {
 					request_id: request.requestId,
-					kind: request.kind,
-					name: request.name,
+					...(request.linkId ? { link_id: request.linkId } : {}),
+					...(request.direction ? { direction: request.direction } : {}),
+					...(request.kind ? { kind: request.kind } : {}),
+					...(request.name ? { name: request.name } : {}),
+				},
+			};
+		case "hub.push":
+			return {
+				path: "/v1/desktop/hub/updates/push",
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					link_id: request.linkId,
+					direction: request.direction,
+					dry_run: request.dryRun,
+					...(request.previewReceipt
+						? { preview_receipt: request.previewReceipt }
+						: {}),
+					...(request.confirmPublish ? { confirm_publish: true } : {}),
 				},
 			};
 		case "teams.list":
@@ -5843,7 +6271,18 @@ export function desktopEndpoint(request: DesktopRequest): {
 			return {
 				path: `/v1/desktop/teams/${encodeURIComponent(request.name)}`,
 				method: "PATCH",
-				body: { request_id: request.requestId, ...request.fields },
+				body: {
+					request_id: request.requestId,
+					...request.fields,
+					/* Opaque echo beside the fields; absent/null = legacy unconditional. */
+					...(request.expectedDefinitionRevision !== undefined &&
+					request.expectedDefinitionRevision !== null
+						? {
+								expected_definition_revision:
+									request.expectedDefinitionRevision,
+							}
+						: {}),
+				},
 			};
 		case "sessions.list": {
 			/*
@@ -6393,7 +6832,10 @@ export function desktopEndpoint(request: DesktopRequest): {
 				// there is no override, because the route's input model forbids extras
 				// and still wants a JSON OBJECT — an omitted body makes a legal call
 				// answer 422.
-				body: { document: request.document ?? {} },
+				body: {
+					document: request.document ?? {},
+					...publicationPolicyBody(request),
+				},
 			};
 		}
 		case "agent.republish": {
@@ -6419,7 +6861,24 @@ export function desktopEndpoint(request: DesktopRequest): {
 				body: {
 					hub_agent_id: request.hubAgentId,
 					document: request.document ?? {},
+					...publicationPolicyBody(request),
+					...(request.expectedRemoteRevision
+						? { expected_remote_revision: request.expectedRemoteRevision }
+						: {}),
 				},
+			};
+		}
+		case "team.publish": {
+			assertPairedPublicationTarget(request);
+			const query = new URLSearchParams();
+			if (request.visibility === "org" && request.tenantId) {
+				query.set("visibility", "org");
+				query.set("tenant_id", request.tenantId);
+			}
+			return {
+				path: `/v1/teams/${request.teamId}/publish${query.size ? `?${query}` : ""}`,
+				method: "POST",
+				body: publicationPolicyBody(request),
 			};
 		}
 		case "team.pull": {

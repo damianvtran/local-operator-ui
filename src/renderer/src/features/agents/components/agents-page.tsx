@@ -88,6 +88,10 @@ import {
 } from "../config-run/config-composer";
 import { targetKey, useConfigRunStore } from "../config-run/config-run-store";
 import { useConfigRun } from "../config-run/use-config-run";
+import {
+	profileEditorIdentity,
+	teamEditorIdentity,
+} from "../definition-editor-identity";
 import { CLASS_LABEL, classOf } from "../utils/agent-class";
 import { AgentCreate, AgentDetail } from "./agent-detail";
 import {
@@ -97,6 +101,7 @@ import {
 	SourceChip,
 	setPageDiscardBarOpen,
 } from "./detail-parts";
+import { HubLinksPanel } from "./hub-links-panel";
 import { HubUpdatePanel } from "./hub-update-panel";
 import { TeamDetail, memberCountLabel } from "./team-detail";
 
@@ -130,28 +135,6 @@ const SCOPE_LABEL: Record<Scope, string> = {
 	custom: "Custom",
 	installed: "Installed",
 	builtin: "Built-in",
-};
-
-/**
- * A key that changes when the FETCHED definition changes, and only then.
- *
- * The detail panes below seed their draft once, on mount, so a hub update that
- * rewrote a definition under an open editor left the OLD text on screen, and
- * Edit - Save wrote it back over the merge (agent review round 1, R1). Keying the
- * pane on the content re-seeds it, while an unrelated refetch (window focus)
- * returns identical content, the same key and no remount, so an edit in progress
- * survives it. The page-level consequence of that remount is stated where the
- * notice lives, inside the component.
- *
- * The digest is length + FNV-1a over the serialised record: cheap enough to run
- * on every render of a pane, and only ever compared, never parsed.
- */
-const contentKey = (value: unknown) => {
-	const text = JSON.stringify(value) ?? "";
-	let hash = 5381;
-	for (let index = 0; index < text.length; index += 1)
-		hash = ((hash * 33) ^ text.charCodeAt(index)) >>> 0;
-	return `${text.length}.${hash.toString(36)}`;
 };
 
 /**
@@ -381,78 +364,35 @@ export function AgentsPage() {
 	const editDirty = dirtyIdentity !== null && dirtyIdentity === paneIdentity;
 
 	/*
-	 * A HUB UPDATE THAT LANDS UNDER AN OPEN EDITOR (agent review round 2, R2-5; the
-	 * keying half is R1 above). A remount discards whatever the person had typed,
-	 * and the hub is the one thing that changes a definition with no action taken in
-	 * this pane, so the page SAYS so instead of replacing an in-flight edit
-	 * silently.
-	 *
-	 * `editDirty` is the right flag and needs no ref: it is the value from THIS
-	 * render, and the pane that withdraws its own report on unmount only moves it in
-	 * the next one, so the content change under a dirty editor is never missed and a
-	 * clean editor never raises the notice. The comparison is scoped by identity the
-	 * same way `editDirty` is - a change of record adopts it as seeded and clears the
-	 * notice rather than comparing across two definitions (agent review round 3, N1).
+	 * Definition refresh is NOT editor identity. AgentDetail and TeamDetail already
+	 * re-seed clean buffers while preserving dirty buffers; content-based parent
+	 * keys bypassed those guards and destroyed unsaved text and focus. Keep each
+	 * logical record mounted. Save concurrency belongs to the captured edit-base
+	 * precondition, not to a remount or a notice after the text was lost.
 	 */
-	const [lostEdits, setLostEdits] = useState(false);
-	const openIdentity = `${teamMode ? "team" : "agent"}:${selected ?? ""}`;
-	const openContent = teamMode
-		? teamDetail.data
-			? contentKey(teamDetail.data)
-			: null
-		: profileDetail.data
-			? contentKey(profileDetail.data)
-			: null;
-	const seededPane = useRef<{ identity: string; content: string | null }>({
-		identity: openIdentity,
-		content: openContent,
-	});
-	useEffect(() => {
-		if (seededPane.current.identity !== openIdentity) {
-			seededPane.current = { identity: openIdentity, content: openContent };
-			setLostEdits(false);
-			return;
-		}
-		if (openContent === null || seededPane.current.content === null) {
-			/*
-			 * NOTHING TO COMPARE AGAINST: the pane is unmounted, or its read has not
-			 * landed yet. Seed silently - announcing the first real content as a
-			 * change would put the notice over a pane that was merely empty a moment
-			 * ago (agent review round 4, R4-N2).
-			 */
-			seededPane.current = { identity: openIdentity, content: openContent };
-			return;
-		}
-		if (seededPane.current.content === openContent) return;
-		seededPane.current.content = openContent;
-		if (editDirty) setLostEdits(true);
-	}, [openIdentity, openContent, editDirty]);
-
-	/** The panel and the replaced-edit notice, above whichever pane is open. */
-	const hubPane = (kind: "agent" | "team", itemName: string) => (
+	/** Source/policy state is independent of the editor's unsaved draft. */
+	const hubPane = (
+		kind: "agent" | "team",
+		itemName: string,
+		localId?: string,
+	) => (
 		<>
-			{/* Renders nothing unless the hub lists THIS item as not up to date. */}
+			{/* Full inventory keeps healthy policy editing available; legacy servers
+			    retain the existing pending-only path without receiving skill rows. */}
+			<HubLinksPanel
+				kind={kind}
+				name={itemName}
+				localId={localId}
+				enabled={desktopFeatureEnabled(capabilities.data, "hub_links")}
+			/>
 			<HubUpdatePanel
 				kind={kind}
 				name={itemName}
-				enabled={desktopFeatureEnabled(capabilities.data, "hub_updates")}
+				enabled={
+					desktopFeatureEnabled(capabilities.data, "hub_updates") &&
+					!desktopFeatureEnabled(capabilities.data, "hub_links")
+				}
 			/>
-			{lostEdits && (
-				/*
-				 * `output` carries the `status` role, which is what this is.
-				 *
-				 * IT WEARS ITS NEIGHBOURS' MEASUREMENTS. The panel above it and the pane
-				 * below it all sit in the page's one measure wrapper now (they used to
-				 * be `max-w-3xl` each, which a notice outside that cap stretched past),
-				 * so it takes the wrapper's width and the panel's own `mb-8` - the
-				 * section tier - for the same reason (design review round 4, R4-M1).
-				 */
-				<output className="mb-8 block rounded-md border border-warning-border px-3 py-2 text-meta text-ink-muted">
-					The hub updated this definition while you were editing, and the form
-					below now shows the merged version. Edits you had not saved were
-					replaced.
-				</output>
-			)}
 		</>
 	);
 
@@ -1060,9 +1000,9 @@ export function AgentsPage() {
 									/>
 								) : teamMode && teamDetail.data ? (
 									<>
-										{hubPane("team", teamDetail.data.name)}
+										{hubPane("team", teamDetail.data.name, teamDetail.data.id)}
 										<TeamDetail
-											key={`team:${teamDetail.data.name}:${contentKey(teamDetail.data)}`}
+											key={teamEditorIdentity(teamDetail.data)}
 											team={teamDetail.data}
 											agents={profiles.data}
 											teams={teams.data}
@@ -1086,9 +1026,13 @@ export function AgentsPage() {
 									</>
 								) : !teamMode && profileDetail.data ? (
 									<>
-										{hubPane("agent", profileDetail.data.name)}
+										{hubPane(
+											"agent",
+											profileDetail.data.name,
+											profileDetail.data.agent_id ?? undefined,
+										)}
 										<AgentDetail
-											key={`agent:${profileDetail.data.name}:${profileDetail.data.source}:${contentKey(profileDetail.data)}`}
+											key={profileEditorIdentity(profileDetail.data)}
 											profile={profileDetail.data}
 											displayedName={printName(profileDetail.data.name)}
 											classNotice={

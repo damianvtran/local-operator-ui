@@ -447,12 +447,18 @@ export class PublicHubError extends Error {
 const TRAILING_SLASHES = /\/+$/;
 
 /** Join the hub origin with the route this module reads. */
-const publicTeamsUrl = (origin: string, teamId?: string): string => {
+export const publicHubCatalogueUrl = (
+	origin: string,
+	collection: "teams" | "skills",
+	remoteId?: string,
+): string => {
 	const base = origin.replace(TRAILING_SLASHES, "");
-	return teamId
-		? `${base}/v1/teams/${encodeURIComponent(teamId)}`
-		: `${base}/v1/teams`;
+	return remoteId
+		? `${base}/v1/${collection}/${encodeURIComponent(remoteId)}`
+		: `${base}/v1/${collection}`;
 };
+const publicTeamsUrl = (origin: string, teamId?: string): string =>
+	publicHubCatalogueUrl(origin, "teams", teamId);
 
 /**
  * One anonymous GET of the public hub, as its `{msg, result}` envelope.
@@ -462,7 +468,7 @@ const publicTeamsUrl = (origin: string, teamId?: string): string => {
  * `local_operator/clients/radient.py` pins the same two things for the same
  * reason (review round 1, S-1 there).
  */
-const readPublicHub = async <T>(
+export const readPublicHub = async <T>(
 	url: string,
 ): Promise<RadientApiResponse<T>> => {
 	let response: Response;

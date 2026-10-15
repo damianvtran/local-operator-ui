@@ -68,6 +68,8 @@ export type RadientOperation =
 	| "org_agents.list"
 	| "org_team.get"
 	| "org_teams.list"
+	| "org_skills.list"
+	| "org_skill.get"
 	/*
 	 * The verification-email resend the quota notice offers on an unverified
 	 * Radient account (core PR2). It maps to the upstream's JWT-only
@@ -92,6 +94,8 @@ export type RadientProxyArgs = {
 	 * document that was published.
 	 */
 	teamId?: string;
+	/** Published skill identity, never the local alias or a filesystem path. */
+	skillId?: string;
 	query?: Record<string, string | number>;
 	payload?: Record<string, unknown>;
 	/** Mutations need a stable request id, reused across retries. */
@@ -110,6 +114,7 @@ function control(args: RadientProxyArgs) {
 		...(args.agentId ? { agent_id: args.agentId } : {}),
 		...(args.commentId ? { comment_id: args.commentId } : {}),
 		...(args.teamId ? { team_id: args.teamId } : {}),
+		...(args.skillId ? { skill_id: args.skillId } : {}),
 		...(args.query ? { query: args.query } : {}),
 		...(args.payload ? { payload: args.payload } : {}),
 		...(args.requestId ? { request_id: args.requestId } : {}),
