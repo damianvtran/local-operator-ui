@@ -19,7 +19,7 @@ const bundle = await build({
 });
 test("find row uses main counts, accessible status, next/previous/Escape and no overlay tooltip", async () => {
 	const dom = new JSDOM(
-		'<button id="before">Before</button><div id="mount"></div>',
+		'<div data-tour-tag="browser-route"><button id="before">Before</button><div id="mount"></div></div>',
 		{ url: "http://127.0.0.1:1/#/browser", pretendToBeVisual: true },
 	);
 	const saved = new Map();
@@ -106,6 +106,13 @@ test("find row uses main counts, accessible status, next/previous/Escape and no 
 		);
 		assert.deepEqual(calls.at(-1), [1, "close"]);
 		assert.equal(document.activeElement.id, "before");
+		// Main deliberately does not acknowledge these edits yet: the live field
+		// must not be restored to the old projection between rapid keystrokes.
+		const setter = Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, "value").set;
+		for (const value of ["rapid-a", "rapid-ab"]) {
+			await act(async () => {setter.call(field, value); field.dispatchEvent(new dom.window.Event("input", {bubbles: true}));});
+		}
+		assert.equal(field.value, "rapid-ab", "unacknowledged IPC cannot erase a typed character");
 		chrome.state.pageControls.find = {
 			tabId: 1,
 			query: "missing",
@@ -119,6 +126,56 @@ test("find row uses main counts, accessible status, next/previous/Escape and no 
 		assert.equal(
 			document.querySelector('[aria-label="Next match"]').disabled,
 			true,
+		);
+		chrome.state.pageControls.find.pending = true;
+		await act(async () =>
+			root.render(React.createElement(mod.exports.BrowserFindRow, { chrome })),
+		);
+		assert.equal(
+			document.querySelector("output").textContent,
+			"Searching…",
+			"a silent native callback is not a no-match verdict",
+		);
+		chrome.state.pageControls.find.pending = false;
+		chrome.state.pageControls.find.unreported = true;
+		await act(async () =>
+			root.render(React.createElement(mod.exports.BrowserFindRow, { chrome })),
+		);
+		assert.equal(
+			document.querySelector("output").textContent,
+			"No result reported",
+		);
+		let pageFocus = 0;
+		window.api = {
+			browser: {
+				focusPage: async () => {
+					pageFocus++;
+				},
+			},
+		};
+		await act(async () =>
+			root.render(
+				React.createElement(mod.exports.BrowserFindRow, {
+					chrome,
+					returnToPage: { current: true },
+				}),
+			),
+		);
+		await act(async () =>
+			document
+				.querySelector('[aria-label="Find in page"]')
+				.dispatchEvent(
+					new dom.window.KeyboardEvent("keydown", {
+						key: "Escape",
+						bubbles: true,
+						cancelable: true,
+					}),
+				),
+		);
+		assert.equal(
+			pageFocus,
+			1,
+			"native-page find returns through guarded page-focus IPC, not stale chrome activeElement",
 		);
 		chrome.state.pageControls.find = null;
 		await act(async () =>

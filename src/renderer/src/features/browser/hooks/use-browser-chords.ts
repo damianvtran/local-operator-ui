@@ -26,6 +26,7 @@ export function useBrowserChords(
 	address: RefObject<HTMLInputElement>,
 ) {
 	const [root, setRoot] = useState<HTMLDivElement | null>(null);
+	const findReturnToPage = useRef(false);
 	const latest = useRef({ chrome, tabs, sessionId });
 	latest.current = { chrome, tabs, sessionId };
 	const rootRef = useRef<HTMLDivElement | null>(null);
@@ -104,6 +105,7 @@ export function useBrowserChords(
 				projectedCursor = projected;
 			}
 			if (projected !== null && intent === "find-page") {
+				findReturnToPage.current = origin === "page";
 				await c.pageControl(projected, "open");
 				// Repeating Cmd+F while the row is already open must return its caret
 				// too; the mount effect alone would only handle the first opening.
@@ -237,5 +239,5 @@ export function useBrowserChords(
 			root.removeEventListener("focusout", focusOut);
 		};
 	}, [root, address, closeAndReplace]);
-	return { root: setRoot, closeTab };
+	return { root: setRoot, closeTab, findReturnToPage };
 }

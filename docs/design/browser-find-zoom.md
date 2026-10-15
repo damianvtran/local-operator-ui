@@ -23,7 +23,7 @@ page/app zoom arbitration otherwise leaves two different reset promises. Menu
 callbacks use their actual window target; OAuth/mini targets do not route to the
 main window's browser. The app's older before-input listener routes browser zoom
 FIRST through the shared classifier, including rejected repeats/composition;
-the later hook sees defaultPrevented and cannot execute it twice. No debounce.
+the later hook sees defaultPrevented and cannot execute it twice. Native zoom executes in main without moving the page caret through chrome. No debounce.
 Alt/wrong-platform modifiers, composition and action-repeat negatives remain.
 
 ## Find lifetime and native-view geometry
@@ -35,7 +35,7 @@ controls; native evidence asserts panel/content disjointness. Query has an
 accessible name, count is a polite live output, and controls use outline focus
 and shared chord captions. There is no animation (reduced motion unchanged).
 
-Main owns query/result counts for one active PRESENTED document. Every queued
+Main owns native query/result counts for one active PRESENTED document. The input keeps its transient DOM editor value until tab-key remount/close, so asynchronous IPC acknowledgements cannot roll back rapid typing; Enter uses that current draft. Every queued
 IPC carries its explicit tab id; stale/hidden targets fail instead of acting on
 the new active tab. Native found-in-page events must match the exact record,
 document epoch and latest native request id. Switching, closing, hiding or
@@ -97,3 +97,21 @@ are NOT physical OS delivery; headless capturePage excludes native page pixels.
 Record page screenshot separately through the real agent protocol. No OS dialog,
 no focus guard override, exact-process-group reap. Results live in
 `docs/evidence/browser-find-zoom/`, not presumed here before execution.
+
+
+### Hidden native find fidelity (observed, not a pass)
+
+Across three isolated runs, including a backgroundThrottling=false scheduling
+control, original native findInPage returned a request id but no found-in-page
+callback was observed. Native Chromium counts, active ordinal, highlighting and
+next/previous on a real page are therefore NOT verified natively in this rig.
+The required count-state design frames use explicitly listener-emitted results,
+not a claim that Chromium found matches. Stale native-event fencing and the real
+query call remain exercised. Pending search is bounded at5s: on silence it
+stops/invalidates that request and says “No result reported”, not “No matches”.
+Clear/hide/tab change cancels the deadline; late results are ignored.
+
+Attended smoke still owed (not bypassed by showing a window): Cmd+F on a real
+page, type a query, verify count/highlights, Enter/Shift+Enter then Escape, plus
+the existing physical OS-focus chord line. Synthetic count frames and hidden
+DOM/native listener emission cannot answer those lines.

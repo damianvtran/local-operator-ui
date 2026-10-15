@@ -292,3 +292,27 @@ test("find/zoom share focus classifier with platform/Alt/IME/repeat negatives", 
 		);
 	}
 });
+
+test("native zoom routing never takes the page caret through chrome", () => {
+	const zooms = [];
+	let focused = 0;
+	let sent = 0;
+	const router = createBrowserChordRouter({
+		platform: "darwin",
+		ownsChrome: () => false,
+		ownsPage: () => true,
+		reload: () => {},
+		history: () => {},
+		zoom: (command) => zooms.push(command),
+		send: () => sent++,
+		focusChrome: () => focused++,
+	});
+	let prevented = 0;
+	const event = { preventDefault: () => prevented++ };
+	router.input(event, input("+"), "page", true);
+	router.menu("zoom-reset");
+	assert.deepEqual(zooms, ["in", "reset"]);
+	assert.equal(focused, 0);
+	assert.equal(sent, 0);
+	assert.equal(prevented, 1);
+});
