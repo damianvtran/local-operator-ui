@@ -71,13 +71,20 @@ export type ProfileRecencyKind = "agent" | "team";
 /**
  * WHICH KIND OF CLOSE a `setAskDrawerOpen(false, ...)` is (#1079).
  *
- * There are two, and they differ in what the slot is owed afterwards. A close the
- * DRAWER performs on itself - the queue emptied under it, Escape inside it, the
- * carried fleet drawer being retired - is the drawer WITHDRAWING, so the pane it
- * displaced is GIVEN BACK (UX round 1, U6). A close the USER pressed - the rail's
- * lit asks item, or the `panel.ask` chord - means "empty this slot": the press is
- * the same door in both directions (see `panel-rail.tsx`), so the displaced pane
- * must not return and the conversation must remember no pane.
+ * There are two, and they differ in what the slot is owed afterwards - in WHETHER
+ * THE USER ASKED FOR THE CLOSE, not in which control they aimed at. EVERY CLOSE THE
+ * USER ASKS FOR EMPTIES THE SLOT: the rail's lit asks item, its `panel.ask` chord,
+ * the header menu's `Close asks` row, the drawer's own X, and the composer chip that
+ * flips the same flag. The close is the same door in both directions (see
+ * `panel-rail.tsx`), so the displaced pane must not return and the conversation must
+ * remember no pane.
+ *
+ * EVERY OTHER CLOSE IS THE DRAWER WITHDRAWING, and keeps the give-back (UX round 1,
+ * U6): the queue emptying under the open drawer, and the carried fleet drawer being
+ * retired on a switch. ESCAPE INSIDE THE DRAWER IS A GIVE-BACK TOO, deliberately
+ * rather than by omission: it reads as dismissing an overlay rather than as a request
+ * for an empty slot, which is the one exception to the rule above (the U2 decision,
+ * UX round 1).
  */
 export type AskDrawerCloseOptions = {
 	/**
@@ -502,15 +509,17 @@ type UiPreferencesState = {
 	 * and returning it later would be the surface resurrecting itself.
 	 *
 	 * AND SINCE #1079 THERE ARE TWO KINDS OF CLOSE, because "the drawer withdrew" and
-	 * "the user asked for an empty slot" are not the same request. The give-back
-	 * above is the WITHDRAWAL - the queue emptied, Escape inside the drawer, a
-	 * carried fleet drawer being retired - and those still hand the displaced pane
-	 * back. The rail's lit asks item (and its `panel.ask` chord, one path through
-	 * `togglePanelRailItem`) is the user pressing the SAME DOOR IN BOTH DIRECTIONS as
-	 * every sibling item does, so its close leaves the slot EMPTY: bound, the
+	 * "the user asked for an empty slot" are not the same request. EVERY CLOSE THE USER
+	 * ASKS FOR EMPTIES THE SLOT - the rail's lit asks item (and its `panel.ask` chord,
+	 * one path through `togglePanelRailItem`), the header menu's `Close asks` row, the
+	 * drawer's X, the composer chip - because each of those doors is a TOGGLE the user
+	 * pressed, the same door in both directions as every sibling item is. Bound, the
 	 * conversation's memory entry goes (`memoryDismiss`) rather than being projected,
 	 * so switching away and back shows no panel; unbound, the per-run borrow record is
-	 * dropped rather than restored. The sign of it is `AskDrawerCloseOptions`.
+	 * dropped rather than restored. The give-back above is the WITHDRAWAL that nobody
+	 * asked for - the queue emptying, a carried fleet drawer retired - plus Escape
+	 * inside the drawer, which reads as dismissing an overlay (the U2 decision). The
+	 * sign of all of it is `AskDrawerCloseOptions`.
 	 */
 	isAskDrawerOpen: boolean;
 
@@ -556,8 +565,9 @@ type UiPreferencesState = {
 	 * Opening it closes the other four occupants, by the same construction as
 	 * theirs: one slot, one pane, and the exclusion lives in `claimRightSlot` so no
 	 * call site has to remember it. Whatever pane it displaced is REMEMBERED rather
-	 * than merely cleared, so a close the drawer performs on itself puts it back
-	 * (see `askDrawerEvictedPane`) - while a close the USER pressed, through
+	 * than merely cleared, so a close NOBODY ASKED FOR - the drawer withdrawing,
+	 * because its queue emptied or because a carried fleet drawer was retired - puts it
+	 * back (see `askDrawerEvictedPane`); while a close THE USER ASKED FOR, through
 	 * `options.dismissSlot`, is "empty this slot" and deliberately does not (#1079).
 	 *
 	 * IT ALSO CLEARS ANY OPEN REQUEST IN FLIGHT (`askOpenIntent`, round-2 N1): a
@@ -573,8 +583,8 @@ type UiPreferencesState = {
 	 *
 	 * @param open - Whether the asks drawer should be open
 	 * @param scope - Which queue the drawer shows
-	 * @param options - `dismissSlot` for a close the user asked for as "empty the
-	 * slot" rather than the drawer withdrawing; ignored on an open. See
+	 * @param options - `dismissSlot` for a close the USER ASKED FOR, read as "empty
+	 * the slot" rather than as the drawer withdrawing; ignored on an open. See
 	 * `AskDrawerCloseOptions`.
 	 */
 	setAskDrawerOpen: (
@@ -629,10 +639,11 @@ type UiPreferencesState = {
 	 * trigger as the close's return. See `askOpenIntent`.
 	 *
 	 * ONE CALLER: the menu row's OPEN press (`chat-content.tsx`). The row's close
-	 * arm is a plain `setAskDrawerOpen(false, scope)` with no request; the chip and
-	 * the rail item deliberately do not call it (their presses are read off
-	 * focus), and the open policy must not (its opens move no keyboard — the
-	 * lane's no-focus-steal promise).
+	 * arm sends no request - it sends `dismissSlot`, which is a statement about the
+	 * SLOT rather than about the open, and an open that is not the row's own has
+	 * nothing to consume; the chip and the rail item deliberately do not call it
+	 * (their presses are read off focus), and the open policy must not (its opens
+	 * move no keyboard - the lane's no-focus-steal promise).
 	 *
 	 * WRITTEN AFTER ITS OPEN, DELIBERATELY: `setAskDrawerOpen` supersedes any
 	 * request in flight, so a caller that requested first and opened second would
@@ -2206,12 +2217,12 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 					} as const;
 					if (bound) {
 						/*
-						 * A PRESSED CLOSE EMPTIES THE SLOT (#1079) instead of projecting the
-						 * conversation's memory: the press means "close the panel", which is what it
-						 * means on every sibling item, so the entry is RETRACTED - a closed pane is
+						 * A CLOSE THE USER ASKED FOR EMPTIES THE SLOT (#1079) instead of projecting
+						 * the conversation's memory: the press means "close the panel", which is what
+						 * it means on every sibling item, so the entry is RETRACTED - a closed pane is
 						 * the ABSENCE of an entry (`right-slot-memory.ts`) - and the flags stay as
-						 * the open left them, all false. A close the user did NOT press keeps the
-						 * give-back below (UX round 1, U6).
+						 * the open left them, all false. A close NOBODY ASKED FOR keeps the give-back
+						 * below (UX round 1, U6).
 						 */
 						if (options?.dismissSlot) {
 							return { ...closed, ...dismissedMemory(state) };
@@ -2234,17 +2245,29 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 						/*
 						 * BOUND, NO CONVERSATION: nothing was displaced (the open wrote no
 						 * record) and there is no memory to restore, so the close only clears the
-						 * flag. A press lands here too: there is no entry to retract either.
+						 * flag. A close the user asked for lands here too - there is no entry to
+						 * retract either - BUT IT MUST ALSO SPEND THE PENDING LEGACY SEED (#1079,
+						 * agent review round 1 R2): the seed is the migrated profile's "this
+						 * window was looking at that pane", and it plants itself on the first
+						 * conversation to bind. Left standing, the press that asked for an empty
+						 * slot is followed by a browser pane on the next conversation, which is the
+						 * request it just made, undone one hop later.
 						 */
-						return closed;
+						return options?.dismissSlot
+							? { ...closed, rightSlotLegacySeed: null }
+							: closed;
 					}
 					if (options?.dismissSlot) {
 						/*
-						 * UNBOUND AND PRESSED (#1079): the per-run borrow record is dropped rather
-						 * than given back - `closed` already nulls it - and the global flags stay
-						 * as the open left them, all false, so the slot is empty.
+						 * UNBOUND, AND THE USER ASKED FOR THE CLOSE (#1079): the per-run borrow
+						 * record is dropped rather than given back - `closed` already nulls it -
+						 * and the global flags stay as the open left them, all false, so the slot
+						 * is empty. A PENDING LEGACY SEED GOES WITH IT for the reason the
+						 * `rightSlotKey === null` arm above gives: this is the other shape of
+						 * "no conversation to hold it yet", and a seed left standing would plant
+						 * the pane this close was asked to empty.
 						 */
-						return closed;
+						return { ...closed, rightSlotLegacySeed: null };
 					}
 					return {
 						...closed,

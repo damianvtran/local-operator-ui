@@ -778,7 +778,14 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 											data-ask-mode={fleetDocked ? "docked" : "overlay"}
 										>
 											<FleetAskDrawer
-												onClose={() => setAskDrawerOpen(false, "fleet")}
+												/*
+												 * THE KIND OF CLOSE IS FORWARDED, NOT DECIDED HERE (#1079): the pane's X
+												 * asks for an empty slot and passes `dismissSlot`, while its own Escape
+												 * listener (and the queue emptying) withdraw and pass nothing.
+												 */
+												onClose={(options) =>
+													setAskDrawerOpen(false, "fleet", options)
+												}
 											/>
 										</PaneSlot>
 									</>
