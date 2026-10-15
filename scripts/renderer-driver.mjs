@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-language|settings-transcript-display|settings-gate|palette|palette-recents|hit-zones|route-tops|project-detail|project-open|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|output-artifact|image-copy|hub-links|none>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-language|settings-transcript-display|settings-gate|palette|palette-recents|hit-zones|route-tops|project-detail|project-open|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|output-artifact|image-copy|hub-links|hub-skills|none>
  *                          which built-in scene to run (default: states)
  *   --drop-expect <accepted|discarded>  (with --scene composer-drop) which half of
  *                          the issue #789 pair this run records: the head tree,
@@ -43569,6 +43569,360 @@ async function sceneHubLinks(cdp, app) {
 	);
 }
 
+/**
+ * THE SKILLS LIBRARY (`HubSkillsLibrary`), on the merged tree, against the stub.
+ *
+ * WHY: the library shipped in the hub_links PR with no frame ever taken of it -
+ * the design round's addendum (2026-10-15) blocked its sign-off on exactly this.
+ * The scene photographs the states the library owns and drives its flows as a
+ * reader does: search, row selection, the detail reader, the auto-push consent
+ * dialog, the pull (alias + pending + success or failure), and the publication
+ * panel's preview/confirm/pending-reconciliation.
+ *
+ * THE STATE MATRIX the stub's flags select (the scene BRANCHES on what it
+ * observes, so one scene serves every variant):
+ * - `--skills-latency-ms N` delays the catalogue reads -> the loading frame;
+ * - `--skills-remote-empty` -> `remote_empty` (and `search_empty` over zero rows);
+ * - `--skills-unsupported` -> the `ui.hub.skills.unavailable` line;
+ * - `--pull-outcome refuse` -> the `pull_failed` line;
+ * - `--publish-outcome pending` -> the pending-reconciliation line;
+ * - `--signed-out` -> the signed-out gate (no credential, disabled pull).
+ *
+ * SCOPE: both scopes are real here. The ORG scope answers through the daemon's
+ * radient proxy (`org_skills.list` / `org_skill.get`); the PUBLIC scope answers
+ * from the stub's `/v1/skills` routes because this build bakes the stub as
+ * `VITE_RADIENT_SERVER_BASE_URL` - so NO live hub is ever contacted (stated in
+ * the README; that is also why a bare `pnpm build` tree must never drive this
+ * scene).
+ */
+async function sceneHubSkills(cdp, app) {
+	const facts = await factsOf(cdp);
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	await verb(cdp, "setTheme", THEME ?? "localOperatorDark");
+	const size = WINDOW_SIZE;
+	const theme = (THEME ?? "localOperatorDark")
+		.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)
+		.replace(/^-/, "");
+	const geometry = {};
+	const box = async (selector) =>
+		cdp.evaluate(`(() => {
+			const el = document.querySelector(${JSON.stringify(selector)});
+			if (!el) return null;
+			const r = el.getBoundingClientRect();
+			return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height), sw: el.scrollWidth, cw: el.clientWidth };
+		})()`);
+	const setValue = (selector, value, eventName) =>
+		cdp.evaluate(`(() => {
+			const el = document.querySelector(${JSON.stringify(selector)});
+			if (!el) return null;
+			const desc = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el), "value");
+			desc.set.call(el, ${JSON.stringify(value)});
+			el.dispatchEvent(new Event(${JSON.stringify(eventName)}, { bubbles: true }));
+			return el.value;
+		})()`);
+
+	await verb(cdp, "navigate", "/agent-hub");
+	/*
+	 * The scope chip mounts with the page. ORG first when the run HAS an org
+	 * (signed in): the library reads org_skills.list through the daemon. A
+	 * signed-out run has only the public chip, so the press is skipped and the
+	 * public routes answer instead - the branch is the point, not a shortcut.
+	 */
+	const orgChip = await waitForCondition(
+		cdp,
+		`(() => {
+			const org = document.querySelector('[data-testid="agent-hub-scope-org-org-minerva"]');
+			const pub = document.querySelector('[data-testid="agent-hub-scope-public"]');
+			return pub ? { org: org !== null } : null;
+		})()`,
+		30_000,
+	);
+	check(
+		"the hub page exposes its scope chips",
+		orgChip.ok,
+		`after ${orgChip.waitedMs ?? "?"}ms: ${JSON.stringify(orgChip.last)}`,
+	);
+	const hasOrgChip = orgChip.last.org === true;
+	if (hasOrgChip) {
+		const pressed = await verb(
+			cdp,
+			"press",
+			'[data-testid="agent-hub-scope-org-org-minerva"]',
+		);
+		check(
+			"the org scope chip received the point (hit test)",
+			pressed.hitTest === true,
+			JSON.stringify({ hitTest: pressed.hitTest }),
+		);
+	}
+	await verb(cdp, "press", '[data-testid="agent-hub-view-skills"]');
+	/*
+	 * THE LOADING FRAME is taken IN FLIGHT: wait for the library's own loading
+	 * line (an `<output>` inside the section), capture immediately - NOT with
+	 * captureSettled, which exists to wait a screen OUT of exactly this state.
+	 * With the stub's `--skills-latency-ms` the window is wide.
+	 */
+	const loading = await waitForCondition(
+		cdp,
+		`(() => {
+			const lib = document.querySelector('[data-hub-skills-library]');
+			return lib && lib.querySelector('output') ? true : null;
+		})()`,
+		10_000,
+	);
+	if (loading.ok) await capture(cdp, `hub-skills-${size}-${theme}-loading`);
+	note("loading frame", loading.ok ? "captured in flight" : "no loading window");
+
+	/*
+	 * Settle: either the catalogue lands (rows or its empty/no-filter line), the
+	 * unsupported line, or the refusal alert. Whichever arrives is what this run
+	 * is about; the branches below are exclusive by construction.
+	 */
+	const settled = await waitForCondition(
+		cdp,
+		`(() => {
+			const lib = document.querySelector('[data-hub-skills-library]');
+			if (!lib) return null;
+			const unsupported = Array.from(lib.querySelectorAll('p')).some((p) => /unavailable|not available/i.test(p.textContent || ''));
+			const failed = lib.querySelector('[data-testid="hub-skill-pull-failed"]') !== null;
+			const rows = lib.querySelectorAll('[data-testid="hub-skill-open"]').length;
+			const empty = Array.from(lib.querySelectorAll('p')).some((p) => /no|empty/i.test(p.textContent || ''));
+			const loadingGone = lib.querySelector('output') === null;
+			if (unsupported) return { state: 'unsupported' };
+			if (rows > 0) return { state: 'rows', rows };
+			if (loadingGone) return { state: 'empty' };
+			return null;
+		})()`,
+		30_000,
+	);
+	check(
+		"the library settles into a state this run can photograph",
+		settled.ok,
+		`after ${settled.waitedMs ?? "?"}ms: ${JSON.stringify(settled.last)}`,
+	);
+	if (settled.last.state === 'unsupported') {
+		await captureSettled(cdp, `hub-skills-${size}-${theme}-unavailable`);
+		geometry.unavailable = await box('[data-hub-skills-library]');
+		say("  (unsupported-contract variant: only the unavailable frame is this run's)");
+		return;
+	}
+	if (settled.last.state === 'empty') {
+		await captureSettled(cdp, `hub-skills-${size}-${theme}-remote-empty`);
+		/* The search-miss text over zero rows: type, then read the OTHER sentence. */
+		await setValue('[data-testid="hub-skill-search"]', 'no-such-skill', 'input');
+		await waitForNoToasts(cdp, 5_000);
+		await captureSettled(cdp, `hub-skills-${size}-${theme}-search-empty`);
+		geometry.empty = await box('[data-hub-skills-library]');
+		say("  (empty-catalogue variant: remote-empty + search-empty are this run's)");
+		return;
+	}
+
+	/* POPULATED. The source line names where these rows come from. */
+	const source = await cdp.evaluate(
+		`(() => { const el = document.querySelector('[data-testid="hub-skill-source"]'); return el ? el.textContent : null; })()`,
+	);
+	check(
+		"the library names its source explicitly",
+		typeof source === "string" && source.trim().length > 0,
+		JSON.stringify({ source }),
+	);
+	note("library source line", JSON.stringify(source));
+	await captureSettled(cdp, `hub-skills-${size}-${theme}-populated`);
+	geometry.library = await box('[data-hub-skills-library]');
+
+	/* SEARCH over a populated catalogue: a miss is its own sentence. */
+	await setValue('[data-testid="hub-skill-search"]', 'zzz-no-such-skill', 'input');
+	const searched = await waitForCondition(
+		cdp,
+		`(() => {
+			const lib = document.querySelector('[data-hub-skills-library]');
+			return lib && lib.querySelectorAll('[data-testid="hub-skill-open"]').length === 0 ? true : null;
+		})()`,
+		10_000,
+	);
+	check("search narrows the rows to a miss", searched.ok, `after ${searched.waitedMs ?? "?"}ms`);
+	await captureSettled(cdp, `hub-skills-${size}-${theme}-search-empty`);
+	await setValue('[data-testid="hub-skill-search"]', '', 'input');
+	await waitForCondition(
+		cdp,
+		`(() => {
+			const lib = document.querySelector('[data-hub-skills-library]');
+			return lib && lib.querySelectorAll('[data-testid="hub-skill-open"]').length >= 2 ? true : null;
+		})()`,
+		10_000,
+	);
+
+	/* DETAIL: the row's own press opens the reader. */
+	const opened = await verb(cdp, "press", '[data-testid="hub-skill-open"]');
+	check("the row's open press received the point (hit test)", opened.hitTest === true, JSON.stringify({ hitTest: opened.hitTest }));
+	const detail = await waitForCondition(
+		cdp,
+		`(() => {
+			const d = document.querySelector('[data-hub-skill-detail]');
+			if (!d) return null;
+			const files = d.querySelectorAll('details').length;
+			const name = d.querySelector('h3');
+			return files > 0 && name ? { files, name: name.textContent } : null;
+		})()`,
+		20_000,
+	);
+	check(
+		"the detail reader shows the skill's files",
+		detail.ok,
+		`after ${detail.waitedMs ?? "?"}ms: ${JSON.stringify(detail.last)}`,
+	);
+	note("detail row", JSON.stringify(detail.last));
+	await captureSettled(cdp, `hub-skills-${size}-${theme}-detail`);
+	geometry.detail = await box('[data-hub-skill-detail]');
+	const gate = await cdp.evaluate(`(() => {
+		const d = document.querySelector('[data-hub-skill-detail]');
+		if (!d) return null;
+		const create = d.querySelector('[data-testid="hub-skill-create"]');
+		return { disabled: create ? create.disabled === true : null, noCredential: /credential|sign in/i.test(d.textContent || '') };
+	})()`);
+	if (gate && gate.disabled === true) {
+		check("gated pull: the create control is disabled and the detail names the missing credential", gate.noCredential === true, JSON.stringify(gate));
+		await captureSettled(cdp, `hub-skills-${size}-${theme}-signed-out`);
+		writeFileSync(join(FRAMES, `hub-skills-geometry-${theme}.json`), JSON.stringify({ size, theme, hasOrgChip, geometry }, null, 2));
+		return;
+	}
+
+	/* THE CONSENT DIALOG, mounted by the LIBRARY's own policy fields. */
+	const autoPushCheckbox = '[data-hub-skill-detail] [id$="-autoPush"]';
+	const checkboxState = await cdp.evaluate(
+		`(() => { const el = document.querySelector(${JSON.stringify(autoPushCheckbox)}); return el ? { state: el.getAttribute('data-state'), disabled: el.disabled === true } : null; })()`,
+	);
+	check(
+		"the detail's policy fields mount the auto-push checkbox",
+		checkboxState && checkboxState.disabled === false,
+		JSON.stringify(checkboxState),
+	);
+	const consentPressed = await verb(cdp, "press", autoPushCheckbox);
+	check("the auto-push checkbox received the point", consentPressed.hitTest === true, JSON.stringify({ hitTest: consentPressed.hitTest }));
+	const dialog = await waitForCondition(
+		cdp,
+		`(() => {
+			const d = document.querySelector('[role="dialog"]');
+			return d ? { text: d.textContent.slice(0, 240) } : null;
+		})()`,
+		10_000,
+	);
+	check(
+		"the consent dialog opens from the library's own fields",
+		dialog.ok,
+		`after ${dialog.waitedMs ?? "?"}ms: ${JSON.stringify(dialog.last)}`,
+	);
+	note("consent dialog text", JSON.stringify(dialog.last && dialog.last.text));
+	await captureSettled(cdp, `hub-skills-${size}-${theme}-consent`);
+	geometry.consent = await box('[role="dialog"]');
+	await verb(cdp, "press", '[data-testid="hub-policy-enable"]');
+	await waitForCondition(
+		cdp,
+		`(() => (!document.querySelector('[role="dialog"]') ? true : null))()`,
+		5_000,
+	);
+	const enabledState = await cdp.evaluate(
+		`(() => { const el = document.querySelector(${JSON.stringify(autoPushCheckbox)}); return el ? el.getAttribute('data-state') : null; })()`,
+	);
+	check(
+		"enabling records the consent on the draft (checkbox checked)",
+		enabledState === "checked",
+		JSON.stringify({ enabledState }),
+	);
+
+	/* THE PULL: alias is pre-filled; the press is the real hub.skillPull write. */
+	const createSelector = '[data-testid="hub-skill-create"]';
+	const prePull = await cdp.evaluate(
+		`(() => { const el = document.querySelector(${JSON.stringify(createSelector)}); return el ? { disabled: el.disabled === true } : null; })()`,
+	);
+	check("the pull control is enabled on a ready detail", prePull && prePull.disabled === false, JSON.stringify(prePull));
+	const pullPressed = await verb(cdp, "press", createSelector);
+	check("the pull control received the point", pullPressed.hitTest === true, JSON.stringify({ hitTest: pullPressed.hitTest }));
+	const pending = await waitForCondition(
+		cdp,
+		`(() => { const el = document.querySelector(${JSON.stringify(createSelector)}); return el && el.disabled === true ? true : null; })()`,
+		3_000,
+	);
+	if (pending.ok) {
+		await capture(cdp, `hub-skills-${size}-${theme}-pull-pending`);
+		note("pull pending frame", "captured while the write is in flight");
+	}
+	const pullEnd = await waitForCondition(
+		cdp,
+		`(() => {
+			const failed = document.querySelector('[data-testid="hub-skill-pull-failed"]');
+			if (failed) return { state: 'failed', text: failed.textContent };
+			const done = document.querySelector('[data-testid="hub-skill-installed"]');
+			if (done) return { state: 'installed', text: done.textContent };
+			return null;
+		})()`,
+		20_000,
+	);
+	check("the pull settles into success or its refusal", pullEnd.ok, `after ${pullEnd.waitedMs ?? "?"}ms: ${JSON.stringify(pullEnd.last)}`);
+	if (pullEnd.last.state === 'installed') {
+		await captureSettled(cdp, `hub-skills-${size}-${theme}-pull-success`);
+		note("installed line", JSON.stringify(pullEnd.last.text));
+	} else {
+		await captureSettled(cdp, `hub-skills-${size}-${theme}-pull-failed`);
+		note("pull refusal line", JSON.stringify(pullEnd.last.text));
+	}
+
+	/* THE PUBLICATION PANEL: preview, then confirm (or the pending receipt). */
+	const publication = await box('[data-hub-skill-publication]');
+	check("the publication panel is mounted under the library", publication !== null, JSON.stringify(publication));
+	await setValue('[data-testid="hub-skill-publish-source"]', 'release-notes', 'change');
+	await setValue('[data-testid="hub-skill-publish-alias"]', 'release-notes-copy', 'input');
+	const previewPressed = await verb(cdp, "press", '[data-testid="hub-skill-publish-preview"]');
+	check("the preview control received the point", previewPressed.hitTest === true, JSON.stringify({ hitTest: previewPressed.hitTest }));
+	const preview = await waitForCondition(
+		cdp,
+		`(() => {
+			const ta = document.querySelector('[data-hub-skill-publication] textarea');
+			return ta ? { bytes: ta.value.length } : null;
+		})()`,
+		20_000,
+	);
+	check(
+		"the preview renders the server-projected payload",
+		preview.ok && preview.last.bytes > 0,
+		`after ${preview.waitedMs ?? "?"}ms: ${JSON.stringify(preview.last)}`,
+	);
+	await captureSettled(cdp, `hub-skills-${size}-${theme}-publish-preview`);
+	const confirmPressed = await verb(cdp, "press", '[data-testid="hub-skill-publish-confirm"]');
+	check("the confirm control received the point", confirmPressed.hitTest === true, JSON.stringify({ hitTest: confirmPressed.hitTest }));
+	const publishEnd = await waitForCondition(
+		cdp,
+		`(() => {
+			const pendingOut = document.querySelector('[data-testid="hub-skill-pending-reconcile"]');
+			if (pendingOut) return { state: 'pending', text: pendingOut.textContent };
+			const published = document.querySelector('[data-testid="hub-skill-published"]');
+			if (published) return { state: 'published', text: published.textContent };
+			return null;
+		})()`,
+		20_000,
+	);
+	check("the publication settles into an outcome this run can photograph", publishEnd.ok, `after ${publishEnd.waitedMs ?? "?"}ms: ${JSON.stringify(publishEnd.last)}`);
+	if (publishEnd.last.state === 'pending') {
+		await captureSettled(cdp, `hub-skills-${size}-${theme}-publish-pending`);
+	} else {
+		await captureSettled(cdp, `hub-skills-${size}-${theme}-publish-complete`);
+	}
+	note("publication outcome", JSON.stringify(publishEnd.last.text));
+	geometry.publication = publication;
+
+	/* The signed-out gate is a DIFFERENT library mount (public scope, no org chip). */
+	writeFileSync(
+		join(FRAMES, `hub-skills-geometry-${theme}.json`),
+		JSON.stringify({ size, theme, hasOrgChip, geometry }, null, 2),
+	);
+}
+
 async function main() {
 	/*
 	 * The frame timezone, pinned before the first boot: the committed frames
@@ -43890,6 +44244,16 @@ async function main() {
 			"--scene hub-links needs --backend-records: the serve record is how the app admits the daemon this run owns, and without it the run photographs a disconnected app",
 		);
 	}
+	if (SCENE === "hub-skills" && BACKEND === null) {
+		throw new Error(
+			"--scene hub-skills needs --backend: the library's catalogue, detail, pull and publication are real requests (org reads through the daemon's radient proxy, public reads against the build's baked hub origin), and a backendless run draws refusal surfaces instead",
+		);
+	}
+	if (SCENE === "hub-skills" && BACKEND_RECORDS === null) {
+		throw new Error(
+			"--scene hub-skills needs --backend-records: the serve record is how the app admits the daemon this run owns, and without it the run photographs a disconnected app",
+		);
+	}
 	if (SCENE === "project-detail" && BACKEND === null) {
 		throw new Error(
 			"--scene project-detail needs --backend: the seeded row, quick-send's message and the picker's create are all real requests to the daemon this run owns, so a run with none would photograph three refusals",
@@ -44156,6 +44520,7 @@ async function main() {
 			else if (SCENE === "sidebar-lazy-chats") await sceneSidebarLazyChats(cdp);
 			else if (SCENE === "mini-view") await sceneMiniView(app, cdp);
 			else if (SCENE === "hub-links") await sceneHubLinks(cdp, app);
+			else if (SCENE === "hub-skills") await sceneHubSkills(cdp, app);
 			else if (SCENE !== "none") throw new Error(`unknown scene "${SCENE}"`);
 			for (const line of cdp.console.slice(-20)) say(`  [renderer] ${line}`);
 		} finally {
