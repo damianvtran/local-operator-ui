@@ -43608,6 +43608,12 @@ async function sceneHubLinks(cdp, app) {
  * scene).
  */
 async function sceneHubSkills(cdp, app) {
+	/* CSP refusal is renderer-local and may emit no CDP Network event. Record
+	 * violations as well so a denied attempted egress cannot pass invisibly. */
+	await cdp.evaluate(`(() => {
+		window.__hubSkillsCsp = [];
+		document.addEventListener('securitypolicyviolation', e => window.__hubSkillsCsp.push({ blocked: e.blockedURI, directive: e.effectiveDirective }));
+	})()`);
 	const facts = await factsOf(cdp);
 	check(
 		"window mode is headless and the window is never shown or focused",
@@ -43622,6 +43628,10 @@ async function sceneHubSkills(cdp, app) {
 		.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)
 		.replace(/^-/, "");
 	const geometry = {};
+	const tabGeometry = () => cdp.evaluate(`(() => {
+		const box = el => { if (!el) return null; const r = el.getBoundingClientRect(); return { x:r.x, y:r.y, w:r.width, h:r.height }; };
+		return { tabs: [...document.querySelectorAll('[role="tab"]')].map(el => ({ text:el.textContent, selected:el.getAttribute('aria-selected'), state:el.getAttribute('data-state'), rect:box(el), background:getComputedStyle(el).backgroundColor })), panel:box(document.querySelector('[data-hub-skills-library]')) };
+	})()`);
 	const box = async (selector) =>
 		cdp.evaluate(`(() => {
 			const el = document.querySelector(${JSON.stringify(selector)});
@@ -43652,26 +43662,30 @@ async function sceneHubSkills(cdp, app) {
 		})()`);
 
 	await verb(cdp, "navigate", "/agent-hub");
-	/*
-	 * The scope chip mounts with the page. ORG first when the run HAS an org
-	 * (signed in): the library reads org_skills.list through the daemon. A
-	 * signed-out run has only the public chip, so the press is skipped and the
-	 * public routes answer instead - the branch is the point, not a shortcut.
-	 */
+	/* An explicit fixture expectation prevents a missing org control silently
+	 * downgrading an org run to public. With no memberships the product omits
+	 * the entire scope group; public source text below independently proves scope. */
+	const expectedScope = argValue("--skills-expect", "org");
+	if (!["org", "public"].includes(expectedScope)) throw new Error("--skills-expect needs org|public");
 	const orgChip = await waitForCondition(
 		cdp,
 		`(() => {
 			const org = document.querySelector('[data-testid="agent-hub-scope-org-org-minerva"]');
 			const pub = document.querySelector('[data-testid="agent-hub-scope-public"]');
-			return pub ? { org: org !== null } : null;
+			const group = document.querySelector('[data-testid="agent-hub-scope"]');
+			const tabs = document.querySelector('[data-testid="agent-hub-view-skills"]');
+			return ${JSON.stringify(expectedScope)} === 'public'
+				? (tabs && !group && !org && !pub ? { org: false, groupAbsent: true } : null)
+				: (pub && org ? { org: true } : null);
 		})()`,
-		30_000,
+		expectedScope === "public" ? 3_000 : 30_000,
 	);
 	check(
-		"the hub page exposes its scope chips",
+		expectedScope === "public" ? "public fixture: the scope chip group is absent" : "the hub page exposes its scope chips",
 		orgChip.ok,
 		`after ${orgChip.waitedMs ?? "?"}ms: ${JSON.stringify(orgChip.last)}`,
 	);
+	if (!orgChip.ok) throw new Error(`scope prerequisite failed for explicit ${expectedScope} fixture`);
 	const hasOrgChip = orgChip.last?.org === true;
 	if (hasOrgChip) {
 		const pressed = await verb(
@@ -43700,7 +43714,15 @@ async function sceneHubSkills(cdp, app) {
 		})()`,
 		10_000,
 	);
-	if (loading.ok) await capture(cdp, `hub-skills-${size}-${theme}-loading`);
+	if (loading.ok) {
+		geometry.loadingInitial = await tabGeometry();
+		await capture(cdp, `hub-skills-${size}-${theme}-loading`);
+		if (process.argv.includes("--skills-loading-pair")) {
+			await wait(200);
+			geometry.loadingConsecutive = await tabGeometry();
+			await capture(cdp, `hub-skills-${size}-${theme}-loading-consecutive`);
+		}
+	}
 	note("loading frame", loading.ok ? "captured in flight" : "no loading window");
 
 	/*
@@ -43713,7 +43735,7 @@ async function sceneHubSkills(cdp, app) {
 		`(() => {
 			const lib = document.querySelector('[data-hub-skills-library]');
 			if (!lib) return null;
-			const unsupported = Array.from(lib.querySelectorAll('p')).some((p) => /unavailable|not available/i.test(p.textContent || ''));
+			const unsupported = Array.from(lib.querySelectorAll('p')).some((p) => p.textContent.trim() === 'This server does not support the hub skills catalogue.');
 			const failed = lib.querySelector('[data-testid="hub-skill-pull-failed"]') !== null;
 			const rows = lib.querySelectorAll('[data-testid="hub-skill-open"]').length;
 			const empty = Array.from(lib.querySelectorAll('p')).some((p) => /no|empty/i.test(p.textContent || ''));
@@ -43731,18 +43753,25 @@ async function sceneHubSkills(cdp, app) {
 		`after ${settled.waitedMs ?? "?"}ms: ${JSON.stringify(settled.last)}`,
 	);
 	if (settled.last.state === 'unsupported') {
+		check("unavailable frame: the unsupported catalogue sentence is present", true);
 		await captureSettled(cdp, `hub-skills-${size}-${theme}-unavailable`);
 		geometry.unavailable = await box('[data-hub-skills-library]');
+		writeFileSync(join(FRAMES, `hub-skills-geometry-${theme}.json`), JSON.stringify({ size, theme, hasOrgChip, geometry }, null, 2));
 		say("  (unsupported-contract variant: only the unavailable frame is this run's)");
 		return;
 	}
 	if (settled.last.state === 'empty') {
+		const emptyText = await cdp.evaluate(`document.querySelector('[data-hub-skills-library]').textContent`);
+		check("remote-empty frame: the remote-empty sentence is present", emptyText.includes('No skills have been published here yet.'), emptyText);
 		await captureSettled(cdp, `hub-skills-${size}-${theme}-remote-empty`);
 		/* The search-miss text over zero rows: type, then read the OTHER sentence. */
 		await setValue('[data-testid="hub-skill-search"]', 'no-such-skill', 'input');
-		await waitForNoToasts(cdp, 5_000);
+		await waitForCondition(cdp, `document.querySelector('[data-hub-skills-library]').textContent.includes('No skills match this search.')`, 3_000);
+		const searchText = await cdp.evaluate(`document.querySelector('[data-hub-skills-library]').textContent`);
+		check("search-empty frame over zero rows: its own sentence is present", searchText.includes('No skills match this search.'), searchText);
 		await captureSettled(cdp, `hub-skills-${size}-${theme}-search-empty`);
 		geometry.empty = await box('[data-hub-skills-library]');
+		writeFileSync(join(FRAMES, `hub-skills-geometry-${theme}.json`), JSON.stringify({ size, theme, hasOrgChip, geometry }, null, 2));
 		say("  (empty-catalogue variant: remote-empty + search-empty are this run's)");
 		return;
 	}
@@ -43756,9 +43785,16 @@ async function sceneHubSkills(cdp, app) {
 		typeof source === "string" && source.trim().length > 0,
 		JSON.stringify({ source }),
 	);
+	if (expectedScope === "public") check("public fixture: library source explicitly names Public", /public/i.test(source), JSON.stringify(source));
 	note("library source line", JSON.stringify(source));
 	await captureSettled(cdp, `hub-skills-${size}-${theme}-populated`);
 	geometry.library = await box('[data-hub-skills-library]');
+	geometry.populatedTabs = await tabGeometry();
+	if (process.argv.includes("--skills-loading-pair")) {
+		check("loading pair includes the in-flight state", loading.ok);
+		writeFileSync(join(FRAMES, `hub-skills-geometry-${theme}.json`), JSON.stringify({ size, theme, hasOrgChip, geometry }, null, 2));
+		return;
+	}
 
 	/* SEARCH over a populated catalogue: a miss is its own sentence. */
 	await setValue('[data-testid="hub-skill-search"]', 'zzz-no-such-skill', 'input');
@@ -43842,6 +43878,10 @@ async function sceneHubSkills(cdp, app) {
 		dialog.ok,
 		`after ${dialog.waitedMs ?? "?"}ms: ${JSON.stringify(dialog.last)}`,
 	);
+	if (expectedScope === "public") {
+		const text = await cdp.evaluate(`document.querySelector('[role="dialog"]').textContent`);
+		check("public consent names public publication", /public/i.test(text), text);
+	}
 	note("consent dialog text", JSON.stringify(dialog.last && dialog.last.text));
 	await captureSettled(cdp, `hub-skills-${size}-${theme}-consent`);
 	geometry.consent = await box('[role="dialog"]');
@@ -44001,6 +44041,9 @@ function processTreeSockets(rootPid) {
 	return { tree, lines, outbound };
 }
 async function hubSkillsEgressAudit(cdp, app) {
+	const violations = await cdp.evaluate(`window.__hubSkillsCsp ?? []`);
+	note("egress: capture securitypolicyviolation events", JSON.stringify(violations));
+	check("egress: zero CSP violations during the capture flow", violations.length === 0, JSON.stringify(violations));
 	const stub = new URL(BACKEND).origin;
 	const bad = egressViolations(cdp.requests.map((r) => r.url), stub);
 	const origins = [...new Set(cdp.requests.map((r) => { try { return new URL(r.url).origin; } catch { return r.url; } }))];
