@@ -43629,6 +43629,18 @@ async function sceneHubSkills(cdp, app) {
 			const r = el.getBoundingClientRect();
 			return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height), sw: el.scrollWidth, cw: el.clientWidth };
 		})()`);
+	/*
+	 * The library, its detail and the publication panel stack taller than the
+	 * viewport and scroll inside the app's own scroller, so a control below the fold
+	 * fails the hit test (the press would land on nothing) and the frame would not
+	 * show it. A reader scrolls it into view first; so does the scene.
+	 */
+	const reveal = async (selector) => {
+		await cdp.evaluate(
+			`(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (el) el.scrollIntoView({ block: "center" }); return Boolean(el); })()`,
+		);
+		await wait(250);
+	};
 	const setValue = (selector, value, eventName) =>
 		cdp.evaluate(`(() => {
 			const el = document.querySelector(${JSON.stringify(selector)});
@@ -43854,6 +43866,7 @@ async function sceneHubSkills(cdp, app) {
 		`(() => { const el = document.querySelector(${JSON.stringify(createSelector)}); return el ? { disabled: el.disabled === true } : null; })()`,
 	);
 	check("the pull control is enabled on a ready detail", prePull && prePull.disabled === false, JSON.stringify(prePull));
+	await reveal(createSelector);
 	const pullPressed = await verb(cdp, "press", createSelector);
 	check("the pull control received the point", pullPressed.hitTest === true, JSON.stringify({ hitTest: pullPressed.hitTest }));
 	const pending = await waitForCondition(
@@ -43890,6 +43903,7 @@ async function sceneHubSkills(cdp, app) {
 	check("the publication panel is mounted under the library", publication !== null, JSON.stringify(publication));
 	await setValue('[data-testid="hub-skill-publish-source"]', 'release-notes', 'change');
 	await setValue('[data-testid="hub-skill-publish-alias"]', 'release-notes-copy', 'input');
+	await reveal('[data-testid="hub-skill-publish-preview"]');
 	const previewPressed = await verb(cdp, "press", '[data-testid="hub-skill-publish-preview"]');
 	check("the preview control received the point", previewPressed.hitTest === true, JSON.stringify({ hitTest: previewPressed.hitTest }));
 	const preview = await waitForCondition(
@@ -43906,6 +43920,7 @@ async function sceneHubSkills(cdp, app) {
 		`after ${preview.waitedMs ?? "?"}ms: ${JSON.stringify(preview.last)}`,
 	);
 	await captureSettled(cdp, `hub-skills-${size}-${theme}-publish-preview`);
+	await reveal('[data-testid="hub-skill-publish-confirm"]');
 	const confirmPressed = await verb(cdp, "press", '[data-testid="hub-skill-publish-confirm"]');
 	check("the confirm control received the point", confirmPressed.hitTest === true, JSON.stringify({ hitTest: confirmPressed.hitTest }));
 	const publishEnd = await waitForCondition(
@@ -44021,41 +44036,63 @@ async function sceneHubSkillsEgressControls(cdp, app) {
 	await verb(cdp, "navigate", "/agent-hub");
 	await wait(3000);
 	const before = cdp.requests.length;
-	const failedBefore = cdp.failed.length;
-	const consoleBefore = cdp.console.length;
-	/* (a) the observer flags a wrong LOOPBACK origin, live and on a literal list. */
+	/*
+	 * (b) FIRST: the page asks for two synthetic disallowed origins under the
+	 * narrowed CSP. A CSP-refused fetch never reaches Network.requestWillBeSent (it
+	 * is stopped in the renderer's resource fetcher), so the page's own
+	 * `securitypolicyviolation` event is the instrument; the fetch itself rejects.
+	 */
 	const wrongLoopback = "http://127.0.0.1:8128/probe-wrong-origin";
 	const wrongHost = "https://egress-probe.invalid/probe";
 	const probed = await cdp.evaluate(`(async () => {
+		const violations = [];
+		document.addEventListener("securitypolicyviolation", (e) => violations.push({ blocked: e.blockedURI, directive: e.effectiveDirective, disposition: e.disposition }));
 		const out = {};
 		for (const url of [${JSON.stringify(wrongLoopback)}, ${JSON.stringify(wrongHost)}]) {
 			out[url] = await fetch(url).then((r) => "resolved:" + r.status, (e) => "rejected:" + String(e && e.message));
 		}
-		return out;
+		await new Promise((r) => setTimeout(r, 500));
+		return { out, violations };
 	})()`);
-	await wait(1000);
+	await wait(500);
 	const slice = cdp.requests.slice(before);
-	const flagged = egressViolations(slice.map((r) => r.url), stub);
-	note("control (a) page fetch outcomes", JSON.stringify(probed));
-	note("control (a) requests recorded in the control segment", JSON.stringify(slice.map((r) => r.url)));
-	note("control (a) observer flagged", JSON.stringify(flagged));
-	const literal = egressViolations([`${stub}/v1/capabilities`, wrongLoopback, "file:///x"], stub);
+	note("control (b) page fetch outcomes", JSON.stringify(probed.out));
+	note("control (b) securitypolicyviolation events", JSON.stringify(probed.violations));
+	note("control (b) CDP Network rows for the control segment (a CSP-refused fetch emits none)", JSON.stringify(slice.map((r) => r.url)));
 	check(
-		"control (a): the observer flags a synthetic wrong-loopback origin (and passes the stub + file:)",
-		flagged.includes(wrongLoopback) && literal.length === 1 && literal[0] === wrongLoopback,
-		`live=${JSON.stringify(flagged)} literal=${JSON.stringify(literal)}`,
+		"control (b): the narrowed CSP (connect-src 'self' + stub) refused BOTH synthetic disallowed origins (violation event on connect-src, fetch rejected)",
+		[wrongLoopback, wrongHost].every(
+			(u) =>
+				probed.out[u]?.startsWith("rejected:") &&
+				probed.violations.some((v) => v.blocked === u && v.directive === "connect-src" && v.disposition === "enforce"),
+		),
+		JSON.stringify(probed),
 	);
-	/* (b) the narrowed CSP refuses the synthetic disallowed origins before any socket. */
-	const failed = cdp.failed.slice(failedBefore);
-	const byId = new Map(slice.map((r) => [r.requestId, r.url]));
-	const refused = failed.map((f) => ({ url: byId.get(f.requestId) ?? null, ...f }));
-	note("control (b) loadingFailed rows", JSON.stringify(refused));
-	note("control (b) renderer console", JSON.stringify(cdp.console.slice(consoleBefore)));
+	/*
+	 * (a) the observer's FLAG path. A wrong-loopback request cannot be made to LEAVE
+	 * the page under this CSP (that is control (b)'s point), so the same
+	 * `egressViolations` function the capture runs use is exercised on a recorded
+	 * list that contains one: it must name exactly that URL and pass the stub,
+	 * file:, app:, devtools:, data: and blob: entries. This proves the assertion can
+	 * fail; it is labelled a scripted run, not a live one.
+	 */
+	const synthetic = [
+		`${stub}/v1/capabilities`,
+		"file:///app/index.html",
+		"devtools://devtools/x",
+		"data:text/plain,x",
+		"blob:file:///1",
+		wrongLoopback,
+	];
+	const flagged = egressViolations(synthetic, stub);
+	note("control (a) scripted observer run over a synthetic list", JSON.stringify({ synthetic, flagged }));
 	check(
-		"control (b): CSP (connect-src 'self' + stub) refused BOTH synthetic disallowed origins (blockedReason csp)",
-		[wrongLoopback, wrongHost].every((u) => refused.some((f) => f.url === u && (f.blockedReason === "csp" || /csp/i.test(f.errorText)))),
-		JSON.stringify(refused),
+		"control (a): the observer flags a wrong-loopback origin and passes the stub + app-local schemes",
+		flagged.length === 1 && flagged[0] === wrongLoopback,
+		JSON.stringify(flagged),
 	);
+	const hostFlagged = egressViolations(["https://egress-probe.invalid/probe", "https://api.radienthq.com/x"], stub);
+	check("control (a): the observer flags a non-loopback origin too", hostFlagged.length === 2, JSON.stringify(hostFlagged));
 	const sockets = processTreeSockets(app.pid);
 	const leaked = sockets.lines.filter((l) => /:8128|egress-probe/.test(l));
 	note("control (b) app process tree sockets", `pids ${sockets.tree.join(",")}\n        ${sockets.lines.join("\n        ")}`);
