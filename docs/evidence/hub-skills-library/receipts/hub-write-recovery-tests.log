@@ -1,0 +1,17 @@
+actual IPC label negative: 70 chars REFUSED; short labels accepted; actual policy endpoint PATCH /v1/desktop/hub/links/link-public-agent
+geometry negative controls: zero-wrapper REFUSED, horizontal-overflow REFUSED, actual-size positive ACCEPTED
+✔ capture labels obey the real IPC length guard and policy path follows the actual contract (1.565625ms)
+✔ painted geometry rejects both zero-wrapper and horizontal-overflow negative controls (0.121625ms)
+✔ strict published core minimum, identity, and uncertainty fail closed (0.245084ms)
+guard negatives: old/unknown/disconnected/replaced/late-positive blocked; accepted in-flight request not replayed
+✔ fresh invoke, newer push, and target identity fence stale positive results (17.21925ms)
+actual hooks: 13 fixed-version arms transmitted; 52 stale old/unknown/disconnected/identity callbacks -> ZERO additional writes; normal poll only blocks Hub writes, no upgrade flash
+✔ mounted actual policy/link/source/legacy hooks fence every write arm and retain read eligibility (477.55ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1169.138125

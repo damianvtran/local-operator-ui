@@ -5,6 +5,7 @@ import {
 	Tooltip,
 	countLabel,
 } from "@shared/components/ui";
+import { chordCaption } from "@shared/keymap/keymap-chord";
 import { cn } from "@shared/lib/utils";
 import { navigationShortcutLabel } from "@shared/navigation-gesture";
 import {
@@ -13,6 +14,7 @@ import {
 	FolderOpen,
 	Loader2,
 	RotateCw,
+	Search,
 	ShieldCheck,
 	X,
 } from "lucide-react";
@@ -63,6 +65,13 @@ import { useState } from "react";
  */
 
 export interface BrowserUrlBarProps {
+	/** Chrome focus only; never a window activation. */
+	inputRef?: Ref<HTMLInputElement>;
+	pageZoom?: number;
+	onFind?: () => void;
+	onResetZoom?: () => void;
+	/** The active tab. A typed draft belongs to ONE tab: see `draft` below. */
+	tabId: number | null;
 	url: string;
 	/** Where the user asked to go, while the tab has not committed it. Shown as the
 	 * placeholder and never as the value: see the comment on `askedFor` below. */
@@ -139,6 +148,8 @@ export function displayUrl(url: string): string {
 }
 
 export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
+	inputRef,
+	tabId,
 	url,
 	pendingUrl,
 	loading,
@@ -156,8 +167,34 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	downloadsDir,
 	downloadsRecent,
 	onOpenDownloads,
+	pageZoom = 1,
+	onFind,
+	onResetZoom,
 }) => {
-	const [draft, setDraft] = useState<string | null>(null);
+	/**
+	 * THE DRAFT BELONGS TO ITS TAB (UX r1 U1). The keyboard can change the active
+	 * tab (Cmd+2, Ctrl+Tab, Cmd+W, Cmd+T, Cmd+Shift+T) while this field still has
+	 * focus, so a bare string would keep showing tab A's text over tab B and the
+	 * blur that follows would commit it INTO tab B, navigating it away. Pairing the
+	 * text with the tab it was typed for makes a tab change discard the draft by
+	 * construction: no effect, no reset call, and no state in which the field says
+	 * one tab while the host is on another. It also matches Chrome and Safari,
+	 * where an omnibox draft is per-tab. Precisely: a switch HIDES the draft, it
+	 * does not erase it, so returning to that tab while this field still has
+	 * focus shows the old text again (and blur commits it there, to the tab it
+	 * was typed for). It is only ever lost by an edit, Enter, Escape or blur.
+	 */
+	const [typed, setTyped] = useState<{
+		tabId: number | null;
+		text: string;
+	} | null>(null);
+	const draft = typed && typed.tabId === tabId ? typed.text : null;
+	const setDraft = (
+		next: string | null | ((current: string | null) => string | null),
+	): void => {
+		const resolved = typeof next === "function" ? next(draft) : next;
+		setTyped(resolved === null ? null : { tabId, text: resolved });
+	};
 	/*
 	 * The chord captions (issue #675's round-1 review, U5): the product caps
 	 * every other chord on the control that owns it (`sidebarToggleCap`,
@@ -167,6 +204,11 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	 * `scripts/run-panel-navigation.test.mjs` selects them by exact string.
 	 */
 	const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+	// Glyph AND `aria-keyshortcuts` from the same chord id (design D-PR5).
+	const reload = chordCaption("primary+r", isMac ? "mac" : "linux");
+	const find = chordCaption("primary+f", isMac ? "mac" : "linux");
+	const resetZoom = chordCaption("primary+0", isMac ? "mac" : "linux");
+	const address = chordCaption("primary+l", isMac ? "mac" : "linux");
 	const backChord = navigationShortcutLabel("back", isMac);
 	const forwardChord = navigationShortcutLabel("forward", isMac);
 	/**
@@ -262,11 +304,12 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					</Button>
 				</Tooltip>
 			) : (
-				<Tooltip content="Reload">
+				<Tooltip content={`Reload (${reload.glyph})`}>
 					<Button
 						variant="ghost"
 						size="icon-sm"
 						aria-label="Reload"
+						aria-keyshortcuts={reload.aria}
 						disabled={disabled}
 						onClick={onReload}
 						data-tour-tag="browser-reload"
@@ -310,14 +353,63 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					</Button>
 				</Tooltip>
 			)}
+			{onFind && (
+				<Tooltip content={`Find in page (${find.glyph})`} side="top">
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						aria-label="Find in page"
+						aria-keyshortcuts={find.aria}
+						disabled={disabled}
+						onClick={onFind}
+						data-tour-tag="browser-find"
+					>
+						<Search aria-hidden className="size-4" />
+					</Button>
+				</Tooltip>
+			)}
+			{pageZoom !== 1 && (
+				<Tooltip content={`Reset page zoom (${resetZoom.glyph})`} side="top">
+					<Button
+						variant="ghost"
+						size="sm"
+						aria-label={`Page zoom ${Math.round(pageZoom * 100)}%, reset to 100%`}
+						aria-keyshortcuts={resetZoom.aria}
+						onClick={onResetZoom}
+						data-tour-tag="browser-zoom"
+					>
+						{Math.round(pageZoom * 100)}%
+					</Button>
+				</Tooltip>
+			)}
 			<div className="relative min-w-0 grow">
+				{/* NO VISIBLE TOOLTIP ON THIS FIELD (design D-PR9, UX U10). The field sits
+				    directly above the content rect, and every placement of a DOM tooltip
+				    that clears the chrome band (below the field) lands INSIDE the rect
+				    the native page view covers: `shared/browser-view-policy.ts` states
+				    that a `WebContentsView` paints above all DOM, so with a page showing
+				    the panel would be invisible, and a headless `capturePage` frame
+				    (which excludes the view) cannot show that. The alternatives are worse:
+				    above the field it covers the active tab's title (measured in the round-1
+				    re-capture), and hiding the view on every hover flashes the page. The
+				    chord copy stays machine-readable through `aria-keyshortcuts`, the
+				    field is labelled "Address", and the Back, Reload and tab tooltips
+				    (all over empty chrome, above the content rect) still show their
+				    chords. `scripts/browser-chord-renderer.test.mjs` pins that no tooltip
+				    wraps this field. */}
 				<Input
+					ref={inputRef}
+					aria-keyshortcuts={address.aria}
 					value={value}
 					disabled={disabled}
 					onChange={(event) => setDraft(event.target.value)}
 					onKeyDown={keyDown}
-					onFocus={() => setDraft((current) => current ?? live)}
-					onBlur={commit}
+					onFocus={() => {
+						setDraft((current) => current ?? live);
+					}}
+					onBlur={() => {
+						commit();
+					}}
 					spellCheck={false}
 					autoComplete="off"
 					aria-label="Address"
@@ -325,7 +417,15 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					// live value replaces this and the placeholder is gone.
 					placeholder={loading && !live ? (pendingUrl ?? undefined) : undefined}
 					data-tour-tag="browser-address"
-					className={cn("pr-7", editing && "font-mono text-mono-sm")}
+					// Offset 1, not the global 2 (design D-PR4): the toolbar's `py-1` + `gap-1`
+					// is exactly the global ring's offset + width, so Cmd+L (now the routine
+					// way to focus this field) drew the ring flush against the strip rule,
+					// the toolbar rule and the Approvals border. `!` because the global ring
+					// rule is unlayered and outranks a utility; `Input` `sm` does the same.
+					className={cn(
+						"pr-7 focus-visible:outline-offset-1!",
+						editing && "font-mono text-mono-sm",
+					)}
 				/>
 				{loading && (
 					// The loading state, in the field rather than only on the reload

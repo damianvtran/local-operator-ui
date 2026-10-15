@@ -1,0 +1,11 @@
+{
+  "artifact": "/Users/damian/local-operator-ui/.worktrees/browser-find-zoom/out/renderer/assets/conversation-input-sync-Ccxmnq8Y.js",
+  "sha256": "25209edbf4c3e826a813fc28e3424b26a5e1ca1df57a91659046fe2f64e7bb00",
+  "method": "execute exact emitted schema + VITE-env object + loader + API fallback getter with installed Zod; no parser/esbuild/app launch",
+  "apiRoot": "http://127.0.0.1:1",
+  "disabledManager": "true",
+  "negativeRemovedBinding": "http://localhost:1111",
+  "nullDiscovery": "http://127.0.0.1:1",
+  "syntheticDiscoveryOverride": "http://127.0.0.1:2",
+  "result": "PASS"
+}

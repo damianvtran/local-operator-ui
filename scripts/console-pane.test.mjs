@@ -959,7 +959,7 @@ test("the request is an event and not a preference: persisting it would run a sh
 	);
 });
 
-test("the compact/full summary breakpoints are complementary and sit at 460px", async () => {
+test("the compact/full summary breakpoints are complementary and sit at 510px", async () => {
 	/*
 	 * D18's GAP AND THE BREAKPOINT DISPUTE, settled by an executable compile rather
 	 * than an argument. The pane's header carries two spans: the compact spelling
@@ -972,9 +972,12 @@ test("the compact/full summary breakpoints are complementary and sit at 460px", 
 	 * render BOTH at 460, or `@min-[460px]` beside `@max-[459px]`, which would render
 	 * NEITHER) fails here rather than in a browser nobody re-measured.
 	 *
-	 * It also pins the breakpoint AT 460: the round-3 width sweep found the surface's
-	 * command name clipped to 0–6px between 420 and ~446 beside the full 228px
-	 * summary, so the compact spelling must take over by 460.
+	 * It also pins the breakpoint AT 510. History: the round-3 width sweep found the
+	 * surface's command name clipped to 0-6px between 420 and ~446 beside the full
+	 * 228px English summary, so the breakpoint was 460. The French build then added
+	 * the app-wide scope to the full line (273px) and measured `zsh` at 0-2px of 20
+	 * at 460 (rendered, real pane), so the full spelling now takes over at 510, where
+	 * the full line fits with the command intact in both English and French.
 	 */
 	const { compile } = await import("tailwindcss");
 	const TW = join(
@@ -1004,13 +1007,16 @@ test("the compact/full summary breakpoints are complementary and sit at 460px", 
 	);
 	/*
 	 * The tokens are read off the SOURCE, so this test judges the pair the pane
-	 * actually ships rather than a copy. `@min-[460px]/consolepane` hides the compact
-	 * span above 460; `@max-[460px]/consolepane` hides the full span below it.
+	 * actually ships rather than a copy. Match the summary spans by their message
+	 * keys: the independent title label still hides at 460, so a whole-file first
+	 * @max match would accidentally compare two different controls.
 	 */
 	const compactHiddenAt = paneSource.match(
-		/@min-\[(\d+)px\]\/consolepane:hidden/,
+		/<span className="@min-\[(\d+)px\]\/consolepane:hidden">\s*\{session\.snapshot\.capacity\.archived/,
 	);
-	const fullHiddenAt = paneSource.match(/@max-\[(\d+)px\]\/consolepane:hidden/);
+	const fullHiddenAt = paneSource.match(
+		/<span className="@max-\[(\d+)px\]\/consolepane:hidden">\s*\{t\(\s*"ui\.console\.capacity\.summary"/,
+	);
 	assert.ok(compactHiddenAt, "the compact span's @min token is gone");
 	assert.ok(fullHiddenAt, "the full span's @max token is gone");
 	assert.equal(
@@ -1020,8 +1026,8 @@ test("the compact/full summary breakpoints are complementary and sit at 460px", 
 	);
 	assert.equal(
 		Number(fullHiddenAt[1]),
-		460,
-		"the compact spelling must take over at 460px (D18: below ~446 the command name is clipped to nothing)",
+		510,
+		"the compact spelling must take over at 510px (the French full line is 273px; at 460 it clips the command name to nothing)",
 	);
 
 	const css = await compileCss([

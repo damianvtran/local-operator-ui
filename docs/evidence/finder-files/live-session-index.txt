@@ -1,0 +1,3 @@
+READ-ONLY real session 48968d63f896 through backend #2393 FileScan
+journal_rows 368 generated_digest_rows 1
+digest 8e8f5f4c23b0ea33a8e6952aec2c771e kind image origin generated tool generate_image width 512 height 512

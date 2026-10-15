@@ -1,0 +1,15 @@
+GATE lease grant/build availableKiB=25701984 GiB=24.511322 swapMB=9966.69 memFreePct=50
+SOURCE {"src/renderer/src/features/agent-hub/agent-hub-page.tsx": "41899e9ec25984d84a9b42d9de04fb0fc042a911edbfa0af85df9f2634e4b813", "src/renderer/src/features/agent-hub/hooks/use-hub-skills.ts": "34a1b6bf2173e3e8a9a14666322c3dd93bc7000ca35372cfc23694070286843c", "src/renderer/src/shared/api/local-operator/desktop-hooks.ts": "b68831aeff35aeb2dd61d0b8448b5eaff74759b3752eba77d514d0dc7ca51d48", "scripts/renderer-driver.mjs": "31610d3ee67a9e953b026714f46c133f17486d50e4450e1db6f81f68fc0b8a14", "docs/evidence/hub-links/harness/stub-daemon.mjs": "2ec4a85a56df9c0adff6eb3f9c1aa7af10f1e638d3c2911b7b64e5fcbf645f4d"}
+BUILD exit 0
+ASSETS {"out/renderer/index.html": "c930a863321a4ff1dd53d315f4ae69e815281c8c7eb889a9266519f3fc166bda", "out/main/index.js": "9a0e2c5478d7c4b8188f0f9e27b5776453db3b6748d7a3ef735ee37132205046", "out/renderer/assets/agent-hub-page-DQIxKetH.js": "d1ac59e9ff4a0729b2df5315cc352a901c25367e20010bfe8cad57afc5d056ee"}
+GATE before core and origin availableKiB=24615088 GiB=23.474777 swapMB=9958.69 memFreePct=45
+REAP 21397 0
+FINAL LISTENERS 
+Traceback (most recent call last):
+  File "/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/capgate-cell.py", line 58, in <module>
+    gate('before core and origin')
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/capgate-cell.py", line 11, in gate
+    if k<24*1048576 or m>=12500 or pct<35:raise RuntimeError('resource floor: stop before next stage')
+                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: resource floor: stop before next stage

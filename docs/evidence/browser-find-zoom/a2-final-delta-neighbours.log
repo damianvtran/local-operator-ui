@@ -1,0 +1,803 @@
+{"disk_free_gib": 23.81, "memory_free_percent": 57, "swap_usage": "vm.swapusage: total = 14336.00M  used = 13209.19M  free = 1126.81M  (encrypted)", "two_second_outflow_mib": {"Pageouts": 0.0, "Swapouts": 0.0}, "limits": {"disk_min_gib": 20, "memory_min_percent": 20, "two_second_outflow_max_mib": 128}}
+scripts/keymap-registry.test.mjs:74:30 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    72 │ 		assert.equal(action.scope, "app");
+    73 │ 		assert.equal(action.category, "Panels");
+  > 74 │ 		assert.match(action.label, /^Open [a-z]/, "labels are sentence-case verbs");
+       │ 		                           ^^^^^^^^^^^^^
+    75 │ 	}
+    76 │ });
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/keymap-registry.test.mjs:132:5 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    130 │ 			assert.match(
+    131 │ 				chord,
+  > 132 │ 				/^primary\+(?:[\[\]=\-]|plus)$/,
+        │ 				^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    133 │ 				`unrepresentable reserved entry "${chord}" is not the punctuation class`,
+    134 │ 			);
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/keymap-registry.test.mjs:144:4 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    142 │ 		assert.match(
+    143 │ 			sentence,
+  > 144 │ 			/^Reserved: .+\.$/,
+        │ 			^^^^^^^^^^^^^^^^^^
+    145 │ 			`"${chord}" must carry a full sentence naming the job`,
+    146 │ 		);
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/browser-startup.test.mjs:61:27 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    59 │ 			name: "startup-native-boundaries",
+    60 │ 			setup(b) {
+  > 61 │ 				b.onResolve({ filter: /^electron$/ }, () => ({
+       │ 				                      ^^^^^^^^^^^^
+    62 │ 					path: "electron",
+    63 │ 					namespace: "startup-test",
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/browser-startup.test.mjs:65:24 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    63 │ 					namespace: "startup-test",
+    64 │ 				}));
+  > 65 │ 				b.onLoad({ filter: /.*/, namespace: "startup-test" }, () => ({
+       │ 				                   ^^^^
+    66 │ 					contents: electron,
+    67 │ 					loader: "js",
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/browser-startup.test.mjs:69:24 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    67 │ 					loader: "js",
+    68 │ 				}));
+  > 69 │ 				b.onLoad({ filter: /main\/webauthn(?:\/index)?\.ts$/ }, () => ({
+       │ 				                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    70 │ 					contents: `
+    71 │ export async function installWebauthn() { globalThis.__browserStartupFixture.installs++; }
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/browser-startup.test.mjs:77:24 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    75 │ 					loader: "ts",
+    76 │ 				}));
+  > 77 │ 				b.onLoad({ filter: /main\/console\/index\.ts$/ }, () => ({
+       │ 				                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    78 │ 					contents: `
+    79 │ export async function startConsoleHost() {
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/browser-startup.test.mjs:89:16 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    87 │ 				}));
+    88 │ 				b.onLoad(
+  > 89 │ 					{ filter: /main\/browser\/session-cookies-electron\.ts$/ },
+       │ 					          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    90 │ 					() => ({
+    91 │ 						contents: `
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/browser-startup.test.mjs:101:24 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+     99 │ 					}),
+    100 │ 				);
+  > 101 │ 				b.onLoad({ filter: /main\/browser\/session-cookies\.ts$/ }, () => ({
+        │ 				                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    102 │ 					contents: `
+    103 │ export function sessionCookiePaths() { return {}; }
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/browser-startup.test.mjs:211:33 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    209 │ 	);
+    210 │ 	try {
+  > 211 │ 		await assert.rejects(pending, /injected console initialization exception/);
+        │ 		                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    212 │ 		assert.equal(f.consoleCalls, 3);
+    213 │ 		assert.equal(f.views.size, 0, f.logs.join("\n"));
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/browser-startup.test.mjs:333:3 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    331 │ 	await assert.rejects(
+    332 │ 		startBrowserHost(options(f)),
+  > 333 │ 		/injected console initialization exception/,
+        │ 		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    334 │ 	);
+    335 │ 	// The window is still open: the renderer must still be able to read the typed
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/browser-startup.test.mjs:345:3 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    343 │ 	await assert.rejects(
+    344 │ 		startBrowserHost(options(f)),
+  > 345 │ 		/injected console initialization exception/,
+        │ 		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    346 │ 		"the retry start must not throw a duplicate-handler error",
+    347 │ 	);
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/browser-startup.test.mjs:362:3 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    360 │ 	await assert.rejects(
+    361 │ 		startBrowserHost(options(f)),
+  > 362 │ 		/injected console initialization exception/,
+        │ 		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    363 │ 	);
+    364 │ 	const projection = f.handlers.get("browser-state")({
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/browser-startup.test.mjs:412:3 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    410 │ 				}),
+    411 │ 			),
+  > 412 │ 		/This window cannot use the browser controls/,
+        │ 		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    413 │ 		"a foreign sender must be refused by browser-retry",
+    414 │ 	);
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/browser-startup.test.mjs:423:3 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    421 │ 				}),
+    422 │ 			),
+  > 423 │ 		/This window cannot use the browser controls/,
+        │ 		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    424 │ 		"a foreign frame must be refused by browser-retry",
+    425 │ 	);
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/browser-chord.test.mjs:261:24 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    259 │ 	for (const id of ["app-reload", "app-force-reload", "app-close"])
+    260 │ 		assert.ok(app.includes(`id: "${id}"`));
+  > 261 │ 	assert.match(browser, /setIgnoreMenuShortcuts\(handled\)/);
+        │ 	                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    262 │ 	assert.match(browser, /host\.clearChordState\(\)/);
+    263 │ 	assert.match(
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/browser-chord.test.mjs:262:24 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    260 │ 		assert.ok(app.includes(`id: "${id}"`));
+    261 │ 	assert.match(browser, /setIgnoreMenuShortcuts\(handled\)/);
+  > 262 │ 	assert.match(browser, /host\.clearChordState\(\)/);
+        │ 	                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    263 │ 	assert.match(
+    264 │ 		browser,
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/browser-chord.test.mjs:265:3 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    263 │ 	assert.match(
+    264 │ 		browser,
+  > 265 │ 		/removeListener\(\s*"before-input-event",\s*onChromeInput,?\s*\)/,
+        │ 		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    266 │ 	);
+    267 │ 	const helper = readFileSync("src/main/window-raise.ts", "utf8");
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/browser-chord.test.mjs:270:3 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    268 │ 	assert.match(
+    269 │ 		helper,
+  > 270 │ 		/show !== "focus"\s*\|\|\s*window\.isDestroyed\(\)\s*\|\|\s*!window\.isFocused\(\)/,
+        │ 		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    271 │ 	);
+    272 │ 	assert.ok(
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+src/renderer/src/shared/keymap/keymap-chord.ts:97:33 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    95 │ /** Whether a token is a key (letter, digit, `space`, or a named key) rather than a modifier. */
+    96 │ export const isChordKeyToken = (token: string): boolean =>
+  > 97 │ 	NAMED_KEY_TOKENS.has(token) || /^[a-z0-9]$/.test(token);
+       │ 	                               ^^^^^^^^^^^^
+    98 │ 
+    99 │ /**
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+Skipped 1 suggested fixes.
+If you wish to apply the suggested (unsafe) fixes, use the command biome check --fix --unsafe
+
+The number of diagnostics exceeds the number allowed by Biome.
+Diagnostics not shown: 104.
+Checked 27 files in 165ms. Fixed 4 files.
+Found 44 warnings.
+desktop tests: 6 files, concurrency 1 (explicit --test-concurrency=1 in argv; governor bypassed)
+desktop tests: memory bound 9.0 GB for the test process group (max(8192 MB floor, 25% of 36864 MB RAM), capped at 50%); sampled every 2s on max(footprint, rss)
+desktop tests: per-lane bound 25 min (default, above the 18.7-minute healthy CI suite that bounds every lane it runs — a stall in a lane first seen late can still outrun the job cap); sampled every 5s over the suite's process group
+no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+✔ address draft belongs to its tab: a chord-driven tab change drops it and blur never navigates the new tab (236.907542ms)
+Warning: An update to Tooltip inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at Tooltip (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipProvider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+    at TooltipProvider (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), TooltipProvider:896:3)
+    at Tooltip (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), Tooltip:961:3)
+    at div
+    at BrowserUrlBar (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), <anonymous>:2194:3)
+Warning: An update to Presence inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at Presence (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipPortal (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:268:11)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Popper (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+    at Tooltip (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipProvider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+    at TooltipProvider (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), TooltipProvider:896:3)
+    at Tooltip (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), Tooltip:961:3)
+    at div
+    at BrowserUrlBar (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), <anonymous>:2194:3)
+Warning: An update to ForwardRef(Portal) inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at Portal (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-portal@1.1.17_@types+react-dom@18.3.5_@types+react@18.3.18__@types+reac_e1ab44dcd0dcfc8aedd59964c741ad4a/node_modules/@radix-ui/react-portal/dist/index.js:48:24)
+    at Presence (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipPortal (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:268:11)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Popper (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+    at Tooltip (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipProvider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+    at TooltipProvider (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), TooltipProvider:896:3)
+    at Tooltip (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), Tooltip:961:3)
+    at div
+    at BrowserUrlBar (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), <anonymous>:2194:3)
+Warning: An update to ForwardRef(DismissableLayer) inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at DismissableLayer (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-dismissable-layer@1.1.19_@types+react-dom@18.3.5_@types+react@18.3.18___e263e6a7af26df53477d756ce352ea78/node_modules/@radix-ui/react-dismissable-layer/dist/index.js:69:7)
+    at TooltipContentImpl (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:347:7)
+    at TooltipContentHoverable (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:282:57)
+    at Presence (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at TooltipContent (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:275:64)
+    at eval (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), TooltipContent:913:56)
+    at ~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+    at ~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+    at Portal (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-portal@1.1.17_@types+react-dom@18.3.5_@types+react@18.3.18__@types+reac_e1ab44dcd0dcfc8aedd59964c741ad4a/node_modules/@radix-ui/react-portal/dist/index.js:48:24)
+    at Presence (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipPortal (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:268:11)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Popper (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+    at Tooltip (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipProvider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+    at TooltipProvider (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), TooltipProvider:896:3)
+    at Tooltip (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), Tooltip:961:3)
+    at div
+    at BrowserUrlBar (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), <anonymous>:2194:3)
+Warning: An update to Presence inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at Presence (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at TooltipContent (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:275:64)
+    at eval (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), TooltipContent:913:56)
+    at ~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+    at ~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+    at Portal (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-portal@1.1.17_@types+react-dom@18.3.5_@types+react@18.3.18__@types+reac_e1ab44dcd0dcfc8aedd59964c741ad4a/node_modules/@radix-ui/react-portal/dist/index.js:48:24)
+    at Presence (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipPortal (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:268:11)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Popper (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+    at Tooltip (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipProvider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+    at TooltipProvider (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), TooltipProvider:896:3)
+    at Tooltip (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), Tooltip:961:3)
+    at div
+    at BrowserUrlBar (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), <anonymous>:2194:3)
+Warning: An update to Presence inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at Presence (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipPortal (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:268:11)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Popper (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+    at Tooltip (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipProvider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+    at TooltipProvider (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), TooltipProvider:896:3)
+    at Tooltip (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), Tooltip:961:3)
+    at div
+    at BrowserUrlBar (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), <anonymous>:2194:3)
+Warning: An update to ForwardRef(PopperContent) inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at PopperContent (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:128:7)
+    at ~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+    at ~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+    at DismissableLayer (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-dismissable-layer@1.1.19_@types+react-dom@18.3.5_@types+react@18.3.18___e263e6a7af26df53477d756ce352ea78/node_modules/@radix-ui/react-dismissable-layer/dist/index.js:69:7)
+    at TooltipContentImpl (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:347:7)
+    at TooltipContentHoverable (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:282:57)
+    at Presence (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at TooltipContent (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:275:64)
+    at eval (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), TooltipContent:913:56)
+    at ~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+    at ~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+    at Portal (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-portal@1.1.17_@types+react-dom@18.3.5_@types+react@18.3.18__@types+reac_e1ab44dcd0dcfc8aedd59964c741ad4a/node_modules/@radix-ui/react-portal/dist/index.js:48:24)
+    at Presence (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipPortal (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:268:11)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Popper (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+    at Tooltip (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipProvider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+    at TooltipProvider (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), TooltipProvider:896:3)
+    at Tooltip (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), Tooltip:961:3)
+    at div
+    at BrowserUrlBar (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), <anonymous>:2194:3)
+Warning: An update to ForwardRef(PopperContent) inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at PopperContent (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:128:7)
+    at ~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+    at ~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+    at DismissableLayer (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-dismissable-layer@1.1.19_@types+react-dom@18.3.5_@types+react@18.3.18___e263e6a7af26df53477d756ce352ea78/node_modules/@radix-ui/react-dismissable-layer/dist/index.js:69:7)
+    at TooltipContentImpl (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:347:7)
+    at TooltipContentHoverable (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:282:57)
+    at Presence (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at TooltipContent (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:275:64)
+    at eval (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), TooltipContent:913:56)
+    at ~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+    at ~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+    at Portal (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-portal@1.1.17_@types+react-dom@18.3.5_@types+react@18.3.18__@types+reac_e1ab44dcd0dcfc8aedd59964c741ad4a/node_modules/@radix-ui/react-portal/dist/index.js:48:24)
+    at Presence (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipPortal (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:268:11)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Popper (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+    at Tooltip (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipProvider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+    at TooltipProvider (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), TooltipProvider:896:3)
+    at Tooltip (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), Tooltip:961:3)
+    at div
+    at BrowserUrlBar (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), <anonymous>:2194:3)
+Warning: An update to ForwardRef(PopperContent) inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at PopperContent (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:128:7)
+    at ~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+    at ~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+    at DismissableLayer (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-dismissable-layer@1.1.19_@types+react-dom@18.3.5_@types+react@18.3.18___e263e6a7af26df53477d756ce352ea78/node_modules/@radix-ui/react-dismissable-layer/dist/index.js:69:7)
+    at TooltipContentImpl (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:347:7)
+    at TooltipContentHoverable (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:282:57)
+    at Presence (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at TooltipContent (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:275:64)
+    at eval (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), TooltipContent:913:56)
+    at ~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+    at ~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+    at Portal (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-portal@1.1.17_@types+react-dom@18.3.5_@types+react@18.3.18__@types+reac_e1ab44dcd0dcfc8aedd59964c741ad4a/node_modules/@radix-ui/react-portal/dist/index.js:48:24)
+    at Presence (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipPortal (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:268:11)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Popper (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+    at Tooltip (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipProvider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+    at TooltipProvider (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), TooltipProvider:896:3)
+    at Tooltip (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), Tooltip:961:3)
+    at div
+    at BrowserUrlBar (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), <anonymous>:2194:3)
+Warning: An update to Popper inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at Popper (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+    at Tooltip (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipProvider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+    at TooltipProvider (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), TooltipProvider:896:3)
+    at Tooltip (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), Tooltip:961:3)
+    at div
+    at BrowserUrlBar (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), <anonymous>:2194:3)
+Warning: An update to Presence inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at Presence (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at TooltipContent (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:275:64)
+    at eval (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), TooltipContent:913:56)
+    at ~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+    at ~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+    at Portal (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-portal@1.1.17_@types+react-dom@18.3.5_@types+react@18.3.18__@types+reac_e1ab44dcd0dcfc8aedd59964c741ad4a/node_modules/@radix-ui/react-portal/dist/index.js:48:24)
+    at Presence (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipPortal (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:268:11)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Popper (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+    at Tooltip (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipProvider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+    at TooltipProvider (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), TooltipProvider:896:3)
+    at Tooltip (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), Tooltip:961:3)
+    at div
+    at BrowserUrlBar (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), <anonymous>:2194:3)
+Warning: An update to ForwardRef(PopperContent) inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at PopperContent (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:128:7)
+    at ~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+    at ~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+    at DismissableLayer (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-dismissable-layer@1.1.19_@types+react-dom@18.3.5_@types+react@18.3.18___e263e6a7af26df53477d756ce352ea78/node_modules/@radix-ui/react-dismissable-layer/dist/index.js:69:7)
+    at TooltipContentImpl (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:347:7)
+    at TooltipContentHoverable (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:282:57)
+    at Presence (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at TooltipContent (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:275:64)
+    at eval (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), TooltipContent:913:56)
+    at ~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+    at ~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+    at Portal (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-portal@1.1.17_@types+react-dom@18.3.5_@types+react@18.3.18__@types+reac_e1ab44dcd0dcfc8aedd59964c741ad4a/node_modules/@radix-ui/react-portal/dist/index.js:48:24)
+    at Presence (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipPortal (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:268:11)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Popper (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+    at Tooltip (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipProvider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+    at TooltipProvider (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), TooltipProvider:896:3)
+    at Tooltip (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), Tooltip:961:3)
+    at div
+    at BrowserUrlBar (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), <anonymous>:2194:3)
+Warning: An update to ForwardRef(DismissableLayer) inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at DismissableLayer (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-dismissable-layer@1.1.19_@types+react-dom@18.3.5_@types+react@18.3.18___e263e6a7af26df53477d756ce352ea78/node_modules/@radix-ui/react-dismissable-layer/dist/index.js:69:7)
+    at TooltipContentImpl (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:347:7)
+    at TooltipContentHoverable (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:282:57)
+    at Presence (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at TooltipContent (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:275:64)
+    at eval (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), TooltipContent:913:56)
+    at ~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+    at ~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+    at Portal (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-portal@1.1.17_@types+react-dom@18.3.5_@types+react@18.3.18__@types+reac_e1ab44dcd0dcfc8aedd59964c741ad4a/node_modules/@radix-ui/react-portal/dist/index.js:48:24)
+    at Presence (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipPortal (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:268:11)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Popper (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+    at Tooltip (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipProvider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+    at TooltipProvider (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), TooltipProvider:896:3)
+    at Tooltip (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), Tooltip:961:3)
+    at div
+    at BrowserUrlBar (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), <anonymous>:2194:3)
+Warning: An update to ForwardRef(PopperContent) inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at PopperContent (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:128:7)
+    at ~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+    at ~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+    at DismissableLayer (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-dismissable-layer@1.1.19_@types+react-dom@18.3.5_@types+react@18.3.18___e263e6a7af26df53477d756ce352ea78/node_modules/@radix-ui/react-dismissable-layer/dist/index.js:69:7)
+    at TooltipContentImpl (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:347:7)
+    at TooltipContentHoverable (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:282:57)
+    at Presence (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at TooltipContent (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:275:64)
+    at eval (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), TooltipContent:913:56)
+    at ~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+    at ~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+    at Portal (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-portal@1.1.17_@types+react-dom@18.3.5_@types+react@18.3.18__@types+reac_e1ab44dcd0dcfc8aedd59964c741ad4a/node_modules/@radix-ui/react-portal/dist/index.js:48:24)
+    at Presence (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipPortal (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:268:11)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Popper (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+    at Tooltip (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+    at Provider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipProvider (~/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+    at TooltipProvider (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), TooltipProvider:896:3)
+    at Tooltip (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), Tooltip:961:3)
+    at div
+    at BrowserUrlBar (eval at loadBar (file://<worktree>/scripts/browser-chord-renderer.test.mjs:263:2), <anonymous>:2194:3)
+✔ the address field renders no tooltip, while a chrome-band control still does (D-PR9) (8945.165333ms)
+✔ real renderer hook owns scoped DOM commands, focus lifecycle and queued rapid input (228.127917ms)
+✔ keyboard close with focus ON the closing tab button keeps the browser as focus owner (UX U2) (70.013041ms)
+✔ rapid double Cmd+W closes two different tabs, never the same one twice (UX U8 stale projection) (19.62775ms)
+✔ closing the last tab opens the fresh blank tab and puts the caret in the address bar (90.025333ms)
+✔ strip close shares last-tab replacement and a refusal creates nothing (4.727583ms)
+no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+✔ one platform-strict decision table covers every browser column and leaves chat to app (0.896167ms)
+✔ negative controls preserve composition/editing, platform modifiers, and reject action repeat (0.113292ms)
+✔ router menu fallback ownership and rapid genuine presses have no debounce (0.447458ms)
+✔ menu fallback respects actual popup/mini target even with stale main chrome focus (0.123958ms)
+✔ tab digits fall back to the physical key on layouts whose digit row types symbols (review R11) (0.065709ms)
+✔ ordinal/cycle use the grouped scoped strip order, never registry order (0.15675ms)
+✔ owned menu aliases replace destructive roles; suppression is per input and focus teardown is explicit (2.863ms)
+✔ find/zoom share focus classifier with platform/Alt/IME/repeat negatives (0.087458ms)
+✔ native zoom routing never takes the page caret through chrome (0.105625ms)
+no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+✔ find row uses main counts, accessible status, next/previous/Escape and no overlay tooltip (176.70275ms)
+no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+✔ find request/document/tab fences reject stale native counts; hide/close clears selection (0.910042ms)
+✔ bounded native steps, independent tab factors, agent notice and pre-transfer reset (0.262042ms)
+✔ find on an agent tab is cleared before an agent read/screenshot; no page injection (0.07975ms)
+✔ silent native result has a bounded neutral outcome; stop/switch cancels it (64.209875ms)
+no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+✔ the chord is exactly Meta/Ctrl+F, and no neighbouring chord is claimed (0.504958ms)
+✔ an answer's state maps to the panel's ladder, and an unknown one reads as an error (0.076833ms)
+✔ the cursor wraps at both ends and goes nowhere on an empty list (0.073333ms)
+✔ the active hit is the cursor's row, or null outside the list (0.067959ms)
+✔ ranges split the snippet into marked and unmarked runs (0.44375ms)
+✔ a soft hit's empty ranges are one unmarked run, and malformed ranges cannot throw or paint backwards (0.089583ms)
+✔ counts pluralise and split by tier, the cut rides the same line, and only building earns a follow-up (0.146875ms)
+✔ the wire's roles and tiers read as the list's own words (0.044959ms)
+✔ the stale list and the far seek each say their own piece (0.112875ms)
+no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+✔ no input is the shipped behaviour: a focused 1380x900 window (1.456917ms)
+✔ headless creates the window and never shows it, unfocusable and unthrottled (0.0865ms)
+✔ inactive shows the window without activating the app (0.063958ms)
+✔ the mode is read case- and whitespace-insensitively (0.062375ms)
+✔ the argument wins over the environment, in both spellings (0.086333ms)
+✔ an appended flag overrides the value the command line already carried (0.119833ms)
+✔ a valueless flag never clears a value that was given (0.151083ms)
+✔ a request that must not be shown may not CREATE a window, so its conversation waits (0.093875ms)
+✔ a parked request is reported, and the operator's own request can show (0.106917ms)
+✔ every way a parked conversation can end is a line (0.131667ms)
+✔ a window created for a request is presented under THAT request's plan (2.122083ms)
+✔ an unrecognised mode falls back to normal and is reported (0.076834ms)
+✔ a mode argument with no value is missing, not the next flag (0.040209ms)
+✔ a launch that names a scratch profile and no mode is assumed headless (0.04475ms)
+✔ either agent switch is enough, and both spellings are read (0.045792ms)
+✔ a named mode wins over the agent switches, from either source (0.067125ms)
+✔ a mistyped mode beside an agent switch still reports rather than assumes (0.038292ms)
+✔ an empty or blank mode value names nothing, so a rig launch is still headless (0.05975ms)
+✔ an empty mode value with no rig switch is still the operator's window, and says why (0.033292ms)
+✔ the flag given an empty value is a caller asking to be told, not a default (0.028ms)
+✔ silence with no agent switch is still the operator's focused window (0.042667ms)
+✔ a launch with no terminal on either stream is a driven run, and resolves headless (0.043917ms)
+✔ a terminal on either stream is a person, and keeps the focused window (0.052791ms)
+✔ the packaged app is never assumed headless, however it was started (0.029417ms)
+✔ a caller that cannot say whether it is packaged stays on the historical normal (0.070625ms)
+✔ a named mode still wins on a launch with no terminal (0.065333ms)
+✔ an agent switch is the stronger reason and is what the line names (0.041625ms)
+✔ a mistyped or empty mode beside a terminal-less launch still reports rather than assumes (0.043667ms)
+✔ a person who detaches BOTH streams is hidden, deliberately and asserted (0.034208ms)
+✔ Windows keeps the historical normal: the shape signal was not measured there (0.04475ms)
+✔ the dev driver arms on the plan a driven launch resolves (0.093125ms)
+✔ the startup line says the mode was assumed, and why (0.074916ms)
+✔ the size comes from the environment, and the argument wins over it (0.053875ms)
+✔ a size below the verified floor is clamped, and the plan says so (0.040042ms)
+✔ a size above the ceiling is clamped to what Chromium will build (0.033417ms)
+✔ an unparsable size falls back to the default and is reported (0.069792ms)
+✔ the startup line cannot describe the wrong behaviour (0.095625ms)
+✔ the assumed line and the Dock clause are one sentence, on the platform that has a Dock (0.032583ms)
+✔ only a headless run with a launcher watches that launcher (0.101959ms)
+✔ the keep-alive opt-out is read tightly, and only for headless runs (0.083958ms)
+✔ the raise policy is the only thing that decides how a window comes forward (0.182167ms)
+✔ a raise names its trigger, the mode, the requester and what it did (0.136417ms)
+✔ a popup presents only under the mode gate, and the never plan hides one that came up visible (0.113916ms)
+✔ a second launch's intent travels on the request that lost the lock, and the fallback is focus (0.191625ms)
+✔ the requester's identity is read for the log and cannot become a decision (0.396167ms)
+✔ a second launch raises the window only as far as it asked (0.073917ms)
+✔ a headless-declared second launch still names the conversation (0.121375ms)
+✔ a second launch with no conversation raises by its own mode, and a parked one keeps it (0.160583ms)
+✔ a second launch arriving while the process is quitting is refused, and says so (0.149667ms)
+✔ the Dock click's refusal carries the name its window would present under (0.045584ms)
+✔ a cancelled quit lets go of the state, so the next request is answered normally (0.103625ms)
+✔ the quit state has one setter and one release, and the release is the installer's declined dialog (1.235458ms)
+✔ the quit deadline fires once, with its phase, and one release cancels it (908.533708ms)
+✔ the quit deadline is armed before the hold, moved by the quit's stages, and released only by the cancellation (3.093209ms)
+✔ a refused reopen is recorded — and ONE successor at the quit terminal completes it (#755) (1.240042ms)
+✔ the refusal's completion token is the recorder's own answer (#755) (0.798708ms)
+✔ #755's wiring: one relaunch call at the terminal, a record per request kind, one clear (25.031791ms)
+✔ a request that would create a window during the quit is refused whole, under its own trigger (3.430958ms)
+✔ no file but window-raise.ts raises or focuses a window (56.136417ms)
+✔ the mini view's window module raises nothing on its own (0.599125ms)
+✔ a non-headless launch asserts the Dock tile, and a headless one hides it (0.759584ms)
+✔ the popup windows' module raises nothing on its own (1.593667ms)
+✔ hotkeys are registered only by a normal launch (0.041542ms)
+✔ the mini view is created only for a normal launch or the headless dev-driver exerciser (0.453875ms)
+✔ no rig script asks the operating system for window focus (861.991083ms)
+ℹ tests 95
+ℹ suites 0
+ℹ pass 95
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 14108.197917
+[run_bounded] bash rc=0 wall=20.0s

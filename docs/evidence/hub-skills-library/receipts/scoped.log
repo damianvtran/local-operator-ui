@@ -1,0 +1,35 @@
+GATE[scoped-start] 23:23:39 dfFree=32GiB swapUsedMB=10002.25 memFreePct=47
+src/ identical to 6c0e483de; REUSING same built assets
+c6f98e445b8b5c175753cf6815e7f86abc6ffe24 test(hub): assert fixture scope and exact catalogue states; capture tab transition pair
+17d6cee6f1f24fe57120936e93051378c8a9bfd8fe81c76ca7d74f1d3b0e8057  out/renderer/index.html
+9a0e2c5478d7c4b8188f0f9e27b5776453db3b6748d7a3ef735ee37132205046  out/main/index.js
+c60ed72c1497a9c71636ea0c01bb7b0c47aede7da184f383a8e2950cca3f42b3  out/renderer/assets/agent-hub-page-SBckT1a6.js
+GATE[before C] 23:23:40 dfFree=32GiB swapUsedMB=10002.25 memFreePct=46
+== RUN C stub pid=43885 flags: --skills-unsupported
+driver exit=0  PASS=16 FAIL=0
+/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/scoped.sh: line 31: 43901 Terminated: 15          ( sleep 420; kill $DPID 2> /dev/null )
+/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/scoped.sh: line 21: 43885 Terminated: 15          node docs/evidence/hub-links/harness/stub-daemon.mjs --port 8127 --records $S/rec-$shift_n "$@" > $S/stub-$shift_n.log 2>&1
+port 8127 free
+GATE[before D] 23:24:22 dfFree=31GiB swapUsedMB=10002.25 memFreePct=50
+== RUN D stub pid=47768 flags: --skills-scope-public --pull-outcome refuse
+driver exit=0  PASS=33 FAIL=0
+/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/scoped.sh: line 31: 47825 Terminated: 15          ( sleep 420; kill $DPID 2> /dev/null )
+/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/scoped.sh: line 21: 47768 Terminated: 15          node docs/evidence/hub-links/harness/stub-daemon.mjs --port 8127 --records $S/rec-$shift_n "$@" > $S/stub-$shift_n.log 2>&1
+port 8127 free
+GATE[before F] 23:25:08 dfFree=31GiB swapUsedMB=9978.25 memFreePct=50
+== RUN F stub pid=48782 flags: --signed-out
+driver exit=0  PASS=20 FAIL=0
+/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/scoped.sh: line 31: 48793 Terminated: 15          ( sleep 420; kill $DPID 2> /dev/null )
+/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/scoped.sh: line 21: 48782 Terminated: 15          node docs/evidence/hub-links/harness/stub-daemon.mjs --port 8127 --records $S/rec-$shift_n "$@" > $S/stub-$shift_n.log 2>&1
+port 8127 free
+GATE[before AP] 23:25:39 dfFree=30GiB swapUsedMB=9978.25 memFreePct=44
+== RUN AP stub pid=49366 flags: --skills-latency-ms 1500
+driver exit=0  PASS=17 FAIL=0
+/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/scoped.sh: line 31: 49393 Terminated: 15          ( sleep 420; kill $DPID 2> /dev/null )
+/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/scoped.sh: line 21: 49366 Terminated: 15          node docs/evidence/hub-links/harness/stub-daemon.mjs --port 8127 --records $S/rec-$shift_n "$@" > $S/stub-$shift_n.log 2>&1
+port 8127 free
+GATE[scoped-end] 23:25:53 dfFree=30GiB swapUsedMB=9954.25 memFreePct=49
+/dev/disk3s1s1   460Gi    13Gi    31Gi    30%    484k  324M    0%   /
+vm.swapusage: total = 11264.00M  used = 9954.25M  free = 1309.75M  (encrypted)
+The system has 38654705664 (2359296 pages with a page size of 16384).
+System-wide memory free percentage: 49%

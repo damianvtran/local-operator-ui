@@ -97,6 +97,7 @@ export const classifyAttachmentSource = (source: string): ImageSourceKind => {
 
 /** One entry of the menu, by stable id (the component maps id -> icon). */
 export type ImageActionId =
+	| "expand-image"
 	| "open-file"
 	| "show-in-canvas"
 	| "save-as"
@@ -112,6 +113,9 @@ export type ImageAction = {
 };
 
 export type ImageActionsOptions = {
+	canExpand?: boolean;
+	/** Explicit materialising path resolver present on Finder, never inferred from a digest. */
+	artifactPathActions?: boolean;
 	/**
 	 * Whether a canvas is in reach for THIS picture — a pane (or an equivalent
 	 * handle) plus a conversation for the document to belong to. False where the
@@ -164,9 +168,20 @@ const OPEN_IN_BROWSER: ImageAction = {
  */
 export function imageActions(
 	kind: ImageSourceKind,
-	{ canShowInCanvas, source, mediaKind }: ImageActionsOptions,
+	{
+		canShowInCanvas,
+		source,
+		mediaKind,
+		artifactPathActions,
+		canExpand,
+	}: ImageActionsOptions,
 ): ImageAction[] {
-	const canvas = canShowInCanvas ? [SHOW_IN_CANVAS] : [];
+	const canvas: ImageAction[] = [
+		...(canShowInCanvas ? [SHOW_IN_CANVAS] : []),
+		...(canExpand
+			? [{ id: "expand-image" as const, label: "Expand image" }]
+			: []),
+	];
 	switch (kind) {
 		case "artifact":
 			/*
@@ -181,11 +196,20 @@ export function imageActions(
 			 */
 			return [
 				...canvas,
+				...(artifactPathActions
+					? [OPEN_FILE, OPEN_FOLDER, COPY_FILE_PATH]
+					: []),
 				SAVE_AS,
 				...(mediaKind === "video" ? [] : [COPY_IMAGE]),
 			];
 		case "path":
-			return [...canvas, OPEN_FILE, OPEN_FOLDER, COPY_FILE_PATH, COPY_IMAGE];
+			return [
+				...canvas,
+				OPEN_FILE,
+				OPEN_FOLDER,
+				COPY_FILE_PATH,
+				...(mediaKind === "video" ? [] : [COPY_IMAGE]),
+			];
 		case "data":
 			/*
 			 * A `data:` URI carries its bytes in the string, and the canvas already

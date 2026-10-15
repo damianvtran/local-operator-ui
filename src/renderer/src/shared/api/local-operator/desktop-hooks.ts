@@ -193,6 +193,7 @@ export function useDesktopCapabilities() {
 }
 
 export type DesktopFeature =
+	| "session_files"
 	| "auth"
 	| "settings"
 	| "commands"
@@ -235,6 +236,15 @@ export type DesktopFeature =
 	| "hub_updates"
 	/** Full linked inventory and revision-checked independent policy controls. */
 	| "hub_links"
+	/**
+	 * Complete initial Skills adapter v1: remote public/org reads (including
+	 * org_skills.list/org_skill.get proxy), local pull/install, and initial
+	 * publish preview/confirm with receipt reconciliation. Older daemons may
+	 * expose hub_links, skill_catalogue and radient_org without these routes.
+	 * Only a complete adapter may advertise this optional key; remote CAS is
+	 * not a substitute and its absence must not close the working Hub plane.
+	 */
+	| "hub_skills"
 	| "profile_catalogue"
 	| "team_catalogue"
 	| "session_catalogue"

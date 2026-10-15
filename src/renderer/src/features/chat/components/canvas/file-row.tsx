@@ -257,7 +257,9 @@ const ArtifactThumbnailAttempt: FC<{
 			attachment: artifact?.digest ?? null,
 			mimeType: artifact?.contentType ?? "image/png",
 		},
-		artifact ? { sessionId: artifact.sessionId, childId: null } : null,
+		artifact
+			? { sessionId: artifact.sessionId, childId: artifact.childId ?? null }
+			: null,
 	);
 	const missing = source.state === "missing";
 	useEffect(() => {
@@ -516,11 +518,14 @@ const FileRowItemComponent = ({
 						<ImageActionsMenu
 							file={document.path}
 							label={document.title}
-							mediaKind={artifact.kind}
+							mediaKind={artifact.kind === "image" ? "image" : "video"}
 							saveName={artifactFileName(artifact)}
 							resolveBytes={() =>
 								fetchAttachmentBlob(
-									{ sessionId: artifact.sessionId, childId: null },
+									{
+										sessionId: artifact.sessionId,
+										childId: artifact.childId ?? null,
+									},
 									artifact.digest,
 								)
 							}

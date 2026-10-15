@@ -14,8 +14,10 @@ import {
 } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import type { FC } from "react";
+import { formatNumber } from "../../../../../../i18n/format";
 import type { CanonicalGoalHistoryEntry } from "../../../../../../shared/desktop-session-contract";
 import type { MentionScanHandle } from "../../canonical/use-mentioned-files";
+import { useSessionFiles } from "../../canonical/use-session-files";
 import {
 	canvasShortcutAction,
 	pressLandsOnOverlay,
@@ -49,6 +51,8 @@ import { tabFollowingClose } from "./tab-selection";
 const EMPTY_GOAL_HISTORY: CanonicalGoalHistoryEntry[] = [];
 
 type CanvasProps = {
+	/** Unresolved source metadata is not permission to read cached remote paths. */
+	filesSourceReady?: boolean;
 	/**
 	 * ID of the active document
 	 */
@@ -120,6 +124,8 @@ type CanvasProps = {
 	 * of the grid, because the segment is visible while the grid is not.
 	 */
 	fileCount?: number;
+	/** Shared parent inventory also drives the rail while this pane is closed. */
+	fileIndex?: ReturnType<typeof useSessionFiles>;
 
 	/**
 	 * The completeness state of the Files panel's scan, plus its retry action.
@@ -290,7 +296,7 @@ const ViewSwitcher: FC<{
 	 * derivation rather than each deciding for itself (UX round 1, U4).
 	 */
 	views: typeof VIEWS;
-	fileCount: number;
+	fileCount: number | null;
 	/** The settled goals the Goals segment's name counts; see the count note below. */
 	goalCount: number;
 	/**
@@ -335,12 +341,15 @@ const ViewSwitcher: FC<{
 			 * for that segment: the documents count is the open tabs the strip below already
 			 * prints, so it has no cap to admit.
 			 */
-			const name = viewSegmentName(
-				label,
-				noun,
-				counted,
-				value === "goals" && goalTruncated,
-			);
+			const name =
+				counted === null
+					? label
+					: viewSegmentName(
+							label,
+							noun,
+							counted,
+							value === "goals" && goalTruncated,
+						);
 			return (
 				<Tooltip key={value} content={name}>
 					<button
@@ -359,6 +368,12 @@ const ViewSwitcher: FC<{
 						)}
 					>
 						<Icon aria-hidden="true" />
+						{value === "files" && (
+							<span className={cn("ml-1 text-meta")}>
+								{label}
+								{counted === null ? "" : ` ${formatNumber(counted)}`}
+							</span>
+						)}
 					</button>
 				</Tooltip>
 			);
@@ -393,16 +408,34 @@ const CanvasComponent: FC<CanvasProps> = ({
 	onCloseDocument,
 	conversationId,
 	sessionId,
+	filesSourceReady = true,
 	turnTerminal,
 	agentId,
 	currentWorkingDirectory,
 	fileCount = 0,
+	fileIndex: sharedFileIndex,
 	scan = null,
 	goalHistory = EMPTY_GOAL_HISTORY,
 	goalHistoryTruncated = false,
 	goalCapable = false,
 	goalPresent = false,
 }) => {
+	// Standalone stories retain their hook, but a chat-mounted pane consumes the
+	// parent's inventory rather than issuing a second pagination/backfill loop.
+	const standaloneFileIndex = useSessionFiles(
+		sessionId,
+		!sharedFileIndex,
+		turnTerminal,
+	);
+	const fileIndex = sharedFileIndex ?? standaloneFileIndex;
+	const displayedFileCount =
+		fileIndex.mode === "negotiating"
+			? null
+			: fileIndex.mode === "index"
+				? fileIndex.state === "ready" || fileIndex.total > 0
+					? fileIndex.total
+					: null
+				: fileCount;
 	const [isCreateFileDialogOpen, setCreateFileDialogOpen] = useState(false);
 	const [isCreatingFile, setIsCreatingFile] = useState(false);
 	const [modifierKey, setModifierKey] = useState("Ctrl");
@@ -571,7 +604,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 	 * `fileCount` is optional because the panel is also rendered without a store
 	 * (stories, a draft), where there is nothing to count.
 	 */
-	const fileCountValue = fileCount ?? 0;
+	const fileCountValue = displayedFileCount ?? 0;
 	const hasFiles = fileCountValue > 0;
 
 	const setCurrentView = useCallback(
@@ -786,7 +819,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 					 * drift apart.
 					 */
 					views={views}
-					fileCount={fileCount}
+					fileCount={displayedFileCount}
 					goalCount={goalHistory.length}
 					/*
 					 * The Goals segment's number is what the list CARRIES, so the segment is told
@@ -971,6 +1004,18 @@ const CanvasComponent: FC<CanvasProps> = ({
 				<CanvasFileViewer
 					key={conversationId}
 					conversationId={conversationId}
+					sessionId={sessionId}
+					cwd={filesSourceReady ? currentWorkingDirectory : undefined}
+					index={
+						fileIndex.mode === "fallback" && !filesSourceReady
+							? {
+									...fileIndex,
+									mode: "negotiating",
+									state: "loading",
+									localReadAllowed: false,
+								}
+							: fileIndex
+					}
 					onSwitchToDocumentView={handleSwitchToDocumentView}
 					scan={scan}
 				/>

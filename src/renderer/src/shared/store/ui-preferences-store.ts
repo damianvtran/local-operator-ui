@@ -19,6 +19,11 @@ import {
 	type SidebarView,
 } from "@features/chat/chat-sidebar-view";
 import {
+	DEFAULT_FINDER,
+	type FinderPreferences,
+	sanitizeFinderPreferences,
+} from "@features/chat/components/canvas/finder-layout";
+import {
 	DEFAULT_SIDEBAR_REGIONS,
 	type SidebarOrder,
 	type SidebarRegions,
@@ -66,6 +71,9 @@ export type ProfileRecencyKind = "agent" | "team";
  * Type definition for the UI preferences store state
  */
 type UiPreferencesState = {
+	/** User view choices, never session inventory or search query. */
+	finderFiles: FinderPreferences;
+	setFinderFiles: (patch: Partial<FinderPreferences>) => void;
 	/**
 	 * Whether the command palette is open
 	 */
@@ -1870,7 +1878,7 @@ const EMPTY_CONSOLE_UNSEEN: ConsoleUnseenMark[] = [];
  * whichever flag was true into `rightSlotLegacySeed` - the one-shot seed the
  * first bind plants - and deletes the four keys.
  */
-export const UI_PREFERENCES_VERSION = 3;
+export const UI_PREFERENCES_VERSION = 4;
 
 /**
  * The keys v2 removes from a stored blob. A list rather than a `delete
@@ -1883,6 +1891,14 @@ const RETIRED_IN_V2: readonly string[] = ["chatMeasureWidth"];
 export const useUiPreferencesStore = create<UiPreferencesState>()(
 	persist(
 		(set, get) => ({
+			finderFiles: DEFAULT_FINDER,
+			setFinderFiles: (patch) =>
+				set({
+					finderFiles: sanitizeFinderPreferences({
+						...get().finderFiles,
+						...patch,
+					}),
+				}),
 			isCommandPaletteOpen: false,
 			commandPaletteQuery: "",
 			isSidebarCollapsed: false,
@@ -2809,6 +2825,7 @@ export function mergePersistedUiPreferences(
 	return {
 		...current,
 		...rest,
+		finderFiles: sanitizeFinderPreferences(blob.finderFiles),
 		rightSlotKey: current.rightSlotKey,
 		rightSlotMemory: memorySanitize(blob.rightSlotMemory),
 		rightSlotLegacySeed: isMemoryPane(blob.rightSlotLegacySeed)
@@ -2819,8 +2836,11 @@ export function mergePersistedUiPreferences(
 		 * `localStorage` can be hand-edited, written by an older build, or left
 		 * half-written, and a chord stored there is loaded straight into the
 		 * dispatch map. `sanitizeShortcutBindings` drops non-strings, unknown ids,
-		 * unparseable/reserved chords and later duplicates — after `...rest`, so a
-		 * raw value can never ride in ahead of it.
+		 * unparseable/pre-existing reserved chords and later duplicates — after
+		 * `...rest`, so a raw value cannot bypass validation. Newly reserved browser
+		 * assignments remain in this map as dormant downgrade data (R15); all
+		 * runtime/display readers go through `effectiveChord`, never the raw string.
+		 * Keeping them here also keeps unrelated writes/migrations non-destructive.
 		 */
 		shortcutBindings: sanitizeShortcutBindings(blob.shortcutBindings),
 	};
@@ -2880,6 +2900,8 @@ export function migrateUiPreferences(
 		if (seed !== null) blob.rightSlotLegacySeed = seed;
 		for (const pane of MEMORY_PANES) delete blob[memoryPaneFlag(pane)];
 	}
+	if (version < 4)
+		blob.finderFiles = sanitizeFinderPreferences(blob.finderFiles);
 	return blob;
 }
 

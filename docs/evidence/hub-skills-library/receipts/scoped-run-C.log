@@ -1,0 +1,67 @@
+renderer-driver: frame timezone pinned to America/New_York (ambient TZ=America/Toronto)
+[build] current: assets 2026-10-15T03:12:28.917Z >= sources 2026-10-15T02:19:42.243Z
+[note] abandoned scratch trees
+        16 seen, 0 owned by a live pid (kept), 16 younger than 30m (kept), 0 removed
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8127 (frame-src already lists it, media-src already lists it, img-src already lists it)
+  serve records 1 linked from /Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/rec-C   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui/.worktrees/skills-library-evidence
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-43899
+  frames        /Users/damian/local-operator-ui/.worktrees/skills-library-evidence/docs/evidence/hub-skills-library/frames/R-C-corrected-unavailable
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-43899/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8127   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","stageLiveConsents","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8127","backend":"http://127.0.0.1:8127"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8127)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] window mode is headless and the window is never shown or focused
+[PASS] the hub page exposes its scope chips
+[PASS] the org scope chip received the point (hit test)
+[note] loading frame
+        no loading window
+[PASS] the library settles into a state this run can photograph
+[PASS] unavailable frame: the unsupported catalogue sentence is present
+  (unsupported-contract variant: only the unavailable frame is this run's)
+[note] egress: capture securitypolicyviolation events
+        []
+[PASS] egress: zero CSP violations during the capture flow
+[note] egress: distinct renderer request origins
+        ["null"]
+[PASS] egress: every renderer request went to the stub origin or an app-local scheme
+        38 requests, origins ["null"]
+[PASS] egress: no renderer request names api.radienthq.com
+[note] egress: app process tree sockets (one instant)
+        pids 44030,44263,44306,45039,45311,45312,45592
+        COMMAND    PID   USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
+        Electron 44030 damian   17u  IPv4 0x6fe869ffd613c9dc      0t0  TCP 127.0.0.1:49268 (LISTEN)
+        Electron 44030 damian   21u  IPv4 0x396509e27884b94e      0t0  TCP 127.0.0.1:49266->127.0.0.1:49352 (ESTABLISHED)
+        Electron 44030 damian   36u  IPv4 0xa973137a2e93e9c7      0t0  TCP 127.0.0.1:49266 (LISTEN)
+        Electron 44030 damian   60u  IPv4 0x17ba87932503d62c      0t0  TCP 127.0.0.1:49348->127.0.0.1:8127 (ESTABLISHED)
+        Electron 44030 damian   92u  IPv4 0x8cda583b876fdbf7      0t0  TCP 127.0.0.1:49369 (LISTEN)
+[PASS] egress: no non-loopback ESTABLISHED/SYN_SENT socket in the app's process tree (instantaneous probe, not a continuous audit)
+  [renderer] Failed to fetch Radient credits: DesktopControlError: the stub has no answer for radient op credits
+    at Pe (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/conversation-input-sync-FRm33Feo.js:2:129856)
+    at async XYe (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/conversation-input-sync-FRm33Feo.js:501:43550)
+    at async T9 (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/conversation-input-sync-FRm33Feo.js:501:43633)
+    at async file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/index-hvZcm4CH.js:684:43099
+[PASS] no process from this run outlived its boot
+
+frames: hub-skills-1380x900-local-operator-dark-unavailable.png
+frames directory: /Users/damian/local-operator-ui/.worktrees/skills-library-evidence/docs/evidence/hub-skills-library/frames/R-C-corrected-unavailable
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-43899/app-scene.log
+scratch kept: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-43899 (the frames are also in --out)
+
+ALL CHECKS PASSED
