@@ -31,7 +31,10 @@ import {
 	presentPopupWindow,
 } from "../window-raise";
 import { ApprovalStore } from "./approvals";
-import { createBrowserChordRouter } from "./browser-chord";
+import {
+	browserChromeOwnsChord,
+	createBrowserChordRouter,
+} from "./browser-chord";
 import { CdpPool } from "./cdp";
 import {
 	type ConsentAttentionPayload,
@@ -854,9 +857,18 @@ async function initializeBrowserHost(
 			forgetSiteData: (origin) => clearOriginData(browserSession, origin),
 		});
 
+		// Logical ownership includes the standalone BODY / pane header. Native
+		// commands still require the real foreground window and visible chrome;
+		// a renderer report is never a substitute for those main-owned facts.
+		const ownsChrome = () =>
+			browserChromeOwnsChord({
+				logicalFocus: host.chordFocus,
+				chromeVisible: registry.chromeVisible,
+				window: options.window,
+			});
 		const chords = createBrowserChordRouter({
 			platform: process.platform,
-			ownsChrome: () => host.chordFocus,
+			ownsChrome,
 			ownsPage: () => {
 				const record = registry.activeTab;
 				return Boolean(
@@ -895,7 +907,7 @@ async function initializeBrowserHost(
 			// The app zoom listener may already have routed this through our menu
 			// door. Do not execute it twice; no timing/debounce heuristic is needed.
 			if (event.defaultPrevented) return;
-			const handled = chords.input(event, input, "chrome", host.chordFocus);
+			const handled = chords.input(event, input, "chrome", ownsChrome());
 			// Per-input suppression, NOT a 150ms command debounce. Key-up or any
 			// unrelated key restores menu shortcuts. Focus departure resets too.
 			options.window.webContents.setIgnoreMenuShortcuts(handled);
@@ -903,12 +915,18 @@ async function initializeBrowserHost(
 		const resetChordFocus = (): void => {
 			host.setChordFocus(false);
 		};
-		host.onChordFocusChanged = (focused) => {
-			if (!focused && !options.window.webContents.isDestroyed())
+		const resetMenuShortcutSuppression = () => {
+			if (!options.window.webContents.isDestroyed())
 				options.window.webContents.setIgnoreMenuShortcuts(false);
 		};
+		host.onChordFocusChanged = (focused) => {
+			if (!focused) resetMenuShortcutSuppression();
+		};
 		options.window.webContents.on("before-input-event", onChromeInput);
-		options.window.on("blur", resetChordFocus);
+		// OS blur is not departure from the browser's DOM owner. Native guards
+		// above refuse inactive windows; retaining the logical owner removes the
+		// reactivation/menu race against an asynchronous renderer focus report.
+		options.window.on("blur", resetMenuShortcutSuppression);
 		options.window.on("closed", resetChordFocus);
 		// A renderer that reloads (HMR, Cmd+R on a non-browser route) or crashes runs
 		// no unmount cleanup, so its `focusout`/`report(false)` never arrives and the
@@ -930,7 +948,7 @@ async function initializeBrowserHost(
 				"before-input-event",
 				onChromeInput,
 			);
-			options.window.removeListener("blur", resetChordFocus);
+			options.window.removeListener("blur", resetMenuShortcutSuppression);
 			options.window.removeListener("closed", resetChordFocus);
 			options.window.webContents.removeListener(
 				"did-start-navigation",

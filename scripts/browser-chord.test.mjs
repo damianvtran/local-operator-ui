@@ -3,6 +3,12 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
+const SHARED_MENU_OWNER = /ownsChrome,/;
+const GUARDED_CHROME_INPUT =
+	/chords\.input\(event, input, "chrome", ownsChrome\(\)\)/;
+const BLUR_RESETS_SUPPRESSION_ONLY =
+	/window\.on\("blur", resetMenuShortcutSuppression\)/;
+
 // In-memory compilation exercises shipped TypeScript without writing generated
 // modules into a checkout or allocating another dependency tree.
 async function moduleAt(file) {
@@ -18,9 +24,41 @@ async function moduleAt(file) {
 	);
 }
 const { browserChordIntent } = await moduleAt("src/shared/browser-chord.ts");
-const { createBrowserChordRouter, runBrowserMenuAction } = await moduleAt(
-	"src/main/browser/browser-chord.ts",
-);
+const {
+	browserChromeOwnsChord,
+	createBrowserChordRouter,
+	runBrowserMenuAction,
+} = await moduleAt("src/main/browser/browser-chord.ts");
+const { TabRegistry } = await moduleAt("src/main/browser/registry.ts");
+
+test("RT-only visibility uses actual registry setters, not absence of an active page", () => {
+	const registry = new TabRegistry(() => {
+		throw new Error("No native view may be created by this source control");
+	});
+	assert.equal(registry.activeTab, null);
+	assert.equal(registry.chromeVisible, false);
+	registry.setContentRect({ x: 0, y: 0, width: 400, height: 300 });
+	assert.equal(
+		registry.chromeVisible,
+		true,
+		"blank browser chrome still owns New tab",
+	);
+	registry.setViewVisible(false);
+	assert.equal(
+		registry.chromeVisible,
+		false,
+		"blocking-overlay intent refuses native shortcuts",
+	);
+	registry.setViewVisible(true);
+	assert.equal(registry.chromeVisible, true);
+	registry.setContentRect(null);
+	assert.equal(
+		registry.chromeVisible,
+		false,
+		"unmounted chrome never owns a shortcut",
+	);
+});
+
 const { chordTarget } = await moduleAt(
 	"src/renderer/src/features/browser/model/tab-index-model.ts",
 );
@@ -34,6 +72,130 @@ const input = (key, overrides = {}) => ({
 	isAutoRepeat: false,
 	isComposing: false,
 	...overrides,
+});
+
+test("logical BODY/header ownership is never native authorization without real foreground chrome facts", () => {
+	for (let mask = 0; mask < 32; mask++) {
+		const facts = {
+			logicalFocus: Boolean(mask & 1),
+			chromeVisible: Boolean(mask & 2),
+			windowVisible: Boolean(mask & 4),
+			windowFocused: Boolean(mask & 8),
+			destroyed: Boolean(mask & 16),
+		};
+		const eligibility = () =>
+			browserChromeOwnsChord({
+				logicalFocus: facts.logicalFocus,
+				chromeVisible: facts.chromeVisible,
+				window: {
+					isDestroyed: () => facts.destroyed,
+					isVisible: () => {
+						assert.equal(
+							facts.destroyed,
+							false,
+							"never read native methods on a destroyed window",
+						);
+						return facts.windowVisible;
+					},
+					isFocused: () => facts.windowFocused,
+				},
+			});
+		const owned = eligibility();
+		assert.equal(owned, mask === 15, JSON.stringify(facts));
+		const effects = [];
+		let prevented = 0;
+		const router = createBrowserChordRouter({
+			platform: "darwin",
+			ownsChrome: eligibility,
+			ownsPage: () => false,
+			reload: (hard) => effects.push(["reload", hard]),
+			history: () => {},
+			send: (m) => effects.push([m.intent, m.origin]),
+			focusChrome: () => {},
+		});
+		const event = {
+			preventDefault() {
+				prevented++;
+			},
+		};
+		assert.equal(router.input(event, input("r"), "chrome", owned), owned);
+		assert.equal(router.input(event, input("t"), "chrome", owned), owned);
+		assert.equal(
+			router.input(event, input("t"), "chrome", owned),
+			owned,
+			"genuine rapid presses are distinct, no clock debounce",
+		);
+		assert.equal(
+			router.menu("reload"),
+			owned,
+			"app-menu alias reads the exact same owner",
+		);
+		assert.deepEqual(
+			effects,
+			owned
+				? [
+						["reload", false],
+						["new-tab", "chrome"],
+						["new-tab", "chrome"],
+						["reload", false],
+					]
+				: [],
+		);
+		assert.equal(prevented, owned ? 3 : 0);
+	}
+	const facts = {
+		logicalFocus: true,
+		chromeVisible: true,
+		visible: true,
+		focused: false,
+	};
+	const effects = [];
+	const route = createBrowserChordRouter({
+		platform: "darwin",
+		ownsChrome: () =>
+			browserChromeOwnsChord({
+				logicalFocus: facts.logicalFocus,
+				chromeVisible: facts.chromeVisible,
+				window: {
+					isDestroyed: () => false,
+					isVisible: () => facts.visible,
+					isFocused: () => facts.focused,
+				},
+			}),
+		ownsPage: () => false,
+		reload: () => effects.push("reload"),
+		history: () => {},
+		send: (m) => effects.push(m.intent),
+		focusChrome: () => {},
+	});
+	assert.equal(route.menu("reload"), false);
+	facts.focused = true;
+	assert.equal(route.menu("reload"), true);
+	assert.deepEqual(
+		effects,
+		["reload"],
+		"same logical browser context returns without another focus IPC",
+	);
+	facts.logicalFocus = false;
+	assert.equal(
+		route.menu("reload"),
+		false,
+		"chat/outside ownership clears the retained claim",
+	);
+	assert.deepEqual(effects, ["reload"]);
+	const source = readFileSync("src/main/browser/index.ts", "utf8");
+	assert.match(source, SHARED_MENU_OWNER);
+	assert.match(source, GUARDED_CHROME_INPUT);
+	assert.match(
+		source,
+		BLUR_RESETS_SUPPRESSION_ONLY,
+		"OS blur clears shortcut suppression, not logical DOM ownership",
+	);
+	for (const lifetime of ["render-process-gone", "closed"])
+		assert.ok(
+			source.includes(`"${lifetime}", resetChordFocus`),
+			"renderer/window destruction still forgets ownership",
+		);
 });
 
 test("one platform-strict decision table covers every browser column and leaves chat to app", () => {

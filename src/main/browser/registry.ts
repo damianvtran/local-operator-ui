@@ -366,6 +366,14 @@ export class TabRegistry {
 		return null;
 	}
 
+	/** Native shortcut eligibility needs the main-owned chrome visibility fact,
+	 * not an active page's presentation bit: blank browser chrome still owns
+	 * New tab, while a real blocking overlay must refuse it. Read-only and
+	 * main-internal; no layout behavior or agent projection changes. */
+	get chromeVisible(): boolean {
+		return this.visible && this.contentRect !== null;
+	}
+
 	get activeTab(): TabRecord | null {
 		return this.activeTabId === null
 			? null
