@@ -9,7 +9,10 @@ import {
 	refreshBrowserProjection,
 	useBrowserProjectionStore,
 } from "../model/browser-projection-store";
-import type { CloseTabsIntent } from "../model/tab-index-model";
+import {
+	type CloseTabsIntent,
+	mergeChromeTabOrder,
+} from "../model/tab-index-model";
 
 /**
  * The renderer's half of the browser feature: the projection main publishes and
@@ -30,6 +33,7 @@ import type { CloseTabsIntent } from "../model/tab-index-model";
 
 /** One tab, as the strip renders it. */
 export interface BrowserTabView {
+	displayOrder?: number;
 	tabId: number;
 	title: string;
 	url: string;
@@ -307,6 +311,8 @@ export interface BrowserChrome {
 	 * tabs that belong to no conversation. It means the same thing to main as an
 	 * absent argument — an unattributed, user-owned tab.
 	 */
+	reorderTabs: (ids: number[]) => Promise<void>;
+	actOnTab: (tabId: number, action: "duplicate" | "reload") => Promise<void>;
 	newTab: (sessionId?: string | null) => Promise<void>;
 	closeTab: (tabId: number) => Promise<boolean>;
 	/**
@@ -603,6 +609,11 @@ export function useBrowserChrome(): BrowserChrome {
 			dismissError,
 			available,
 			refresh,
+			reorderTabs: (ids) =>
+				runVoid(() =>
+					api?.reorderTabs(mergeChromeTabOrder(state?.tabs ?? [], ids)),
+				),
+			actOnTab: (tabId, action) => runVoid(() => api?.actOnTab(tabId, action)),
 			newTab: (sessionId) => runVoid(() => api?.newTab(sessionId ?? null)),
 			closeTab: (tabId) => run(() => api?.closeTab(tabId)),
 			closeTabs: (intent) => run(() => api?.closeTabs(intent)),

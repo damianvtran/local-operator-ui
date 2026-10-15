@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 import type { BrowserActionContext, HostFacts } from "./actions/context";
 import { requesterOf } from "./actions/context";
 import * as downloadActions from "./actions/download";
@@ -8,6 +9,7 @@ import * as pageActions from "./actions/page";
 import * as tabActions from "./actions/tabs";
 import * as uploadActions from "./actions/upload";
 import type { ConsentDecision } from "./approvals";
+import { ChromeTabOrder } from "./chrome-tab-order";
 import { BrowserHostError } from "./errors";
 import { PageControls, type PageZoomCommand } from "./page-controls";
 import { COMMAND_TIMEOUTS_S, type Method, PROTO_VERSION } from "./protocol";
@@ -16,6 +18,8 @@ import { redactToken, surfaceToken } from "./registry";
 import type { PersistedTab } from "./session-store";
 import { permittedScheme } from "./settle";
 import { safeHttpUrl } from "./vendor/driver/origin-policy";
+
+const DUPLICATABLE_WEB_URL = /^https?:\/\//i;
 
 /**
  * The command dispatcher, and the operations the app's own chrome uses.
@@ -321,6 +325,7 @@ export interface BrowserHostOptions {
 }
 
 export class BrowserHost implements BrowserActionContext {
+	private readonly chromeTabOrder = new ChromeTabOrder();
 	readonly registry: BrowserActionContext["registry"];
 	readonly pageControls: PageControls;
 	readonly cdp: BrowserActionContext["cdp"];
@@ -747,40 +752,43 @@ export class BrowserHost implements BrowserActionContext {
 		const navigation = active?.view.webContents.navigationHistory;
 		return {
 			pageControls: this.pageControls.state(active),
-			tabs: this.registry.snapshot().map((entry) => ({
-				tabId: entry.tabId,
-				title: this.titleForChrome(entry.title) || "New tab",
-				url: entry.url,
-				owner: entry.owner,
-				// WHICH CONVERSATION THIS TAB BELONGS TO, and the ONLY new field this
-				// change adds to the wire. `null` is a real and common value — a restored
-				// tab is nobody's (`registry.ts:231`), a user tab never handed over and
-				// opened from the route or a draft is nobody's — and it means "not any
-				// conversation's", which is why a conversation's scope shows it under no
-				// scope but `"all"` (spec 7.2).
-				//
-				// A TAB HANDED BACK KEEPS ITS CONVERSATION (review round 1, Q2):
-				// revocation restores `homeSessionId` rather than writing `null`, so the
-				// field is "which conversation this belongs to", not "which session is
-				// driving it" — the second question is `handedOver` and `owner`.
-				sessionId: entry.sessionId,
-				active: entry.active,
-				restored: entry.restored,
-				handedOver: entry.handedTo !== null,
-				// Per TAB, not only for the active one: a background tab whose load was
-				// refused has no other way to say so - its page area is blank and the
-				// band belongs to the active tab - so the strip carries the mark.
-				failed: this.loadFailures.has(entry.tabId),
-				// PER TAB, and it is the one projection field this feature adds. The strip
-				// could only ever see the ACTIVE tab's loading state before (`loading`
-				// below), so a background agent tab that is loading a page showed nothing
-				// at all - and since an agent tab is created non-active and only the active
-				// tab occupies the content rect (`registry.ts:492-503`), "nothing at all"
-				// was the whole of what the user saw of an agent's work. Read from the
-				// record rather than the snapshot: `snapshot()` is the diagnostic
-				// projection shared with `status`/`tabs`, and this field is chrome.
-				loading: this.tabLoading(entry.tabId),
-			})),
+			tabs: this.chromeTabOrder
+				.project(this.registry.snapshot())
+				.map((entry, displayOrder) => ({
+					...(this.chromeTabOrder.hasCustomOrder ? { displayOrder } : {}),
+					tabId: entry.tabId,
+					title: this.titleForChrome(entry.title) || "New tab",
+					url: entry.url,
+					owner: entry.owner,
+					// WHICH CONVERSATION THIS TAB BELONGS TO, and the ONLY new field this
+					// change adds to the wire. `null` is a real and common value — a restored
+					// tab is nobody's (`registry.ts:231`), a user tab never handed over and
+					// opened from the route or a draft is nobody's — and it means "not any
+					// conversation's", which is why a conversation's scope shows it under no
+					// scope but `"all"` (spec 7.2).
+					//
+					// A TAB HANDED BACK KEEPS ITS CONVERSATION (review round 1, Q2):
+					// revocation restores `homeSessionId` rather than writing `null`, so the
+					// field is "which conversation this belongs to", not "which session is
+					// driving it" — the second question is `handedOver` and `owner`.
+					sessionId: entry.sessionId,
+					active: entry.active,
+					restored: entry.restored,
+					handedOver: entry.handedTo !== null,
+					// Per TAB, not only for the active one: a background tab whose load was
+					// refused has no other way to say so - its page area is blank and the
+					// band belongs to the active tab - so the strip carries the mark.
+					failed: this.loadFailures.has(entry.tabId),
+					// PER TAB, and it is the one projection field this feature adds. The strip
+					// could only ever see the ACTIVE tab's loading state before (`loading`
+					// below), so a background agent tab that is loading a page showed nothing
+					// at all - and since an agent tab is created non-active and only the active
+					// tab occupies the content rect (`registry.ts:492-503`), "nothing at all"
+					// was the whole of what the user saw of an agent's work. Read from the
+					// record rather than the snapshot: `snapshot()` is the diagnostic
+					// projection shared with `status`/`tabs`, and this field is chrome.
+					loading: this.tabLoading(entry.tabId),
+				})),
 			activeTabId: activeRecord?.tabId ?? null,
 			// The download surface's facts (§16.4): what is in flight, where it went and
 			// what was refused, so the chrome row renders from the host's own state rather
@@ -868,6 +876,38 @@ export class BrowserHost implements BrowserActionContext {
 	 */
 	async newTab(sessionId?: string | null): Promise<Record<string, unknown>> {
 		await this.createUserTab(sessionId ?? null);
+		return this.chromeState();
+	}
+
+	/** UI-only operations: explicit records, never an activate/await/reload race.
+	 * Duplicate creates a NEW user tab; it copies no agent handle or authority. */
+	async actOnChromeTab(
+		tabId: number,
+		action: "duplicate" | "reload",
+	): Promise<Record<string, unknown>> {
+		const record = this.registry.get(tabId);
+		if (!record || record.view.webContents.isDestroyed())
+			return this.chromeState();
+		if (action === "reload") {
+			record.view.webContents.reload();
+			return this.chromeState();
+		}
+		const url = record.view.webContents.getURL() || "about:blank";
+		if (url !== "about:blank" && !DUPLICATABLE_WEB_URL.test(url))
+			throw new Error(t("ui.browser.chrome.duplicate_refused"));
+		const sessionId =
+			this.registry.snapshot().find((entry) => entry.tabId === tabId)
+				?.sessionId ?? null;
+		const duplicate = await this.createUserTab(sessionId);
+		if (url !== "about:blank") await duplicate.view.webContents.loadURL(url);
+		this.onChanged();
+		return this.chromeState();
+	}
+
+	reorderChromeTabs(ids: number[]): Record<string, unknown> {
+		if (!this.chromeTabOrder.reorder(this.registry.snapshot(), ids))
+			throw new Error(t("ui.browser.chrome.invalid_order"));
+		this.onChanged();
 		return this.chromeState();
 	}
 

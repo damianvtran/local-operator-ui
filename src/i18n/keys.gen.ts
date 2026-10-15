@@ -22,6 +22,7 @@
  */
 
 import enUiAgents from "./catalogues/en/ui.agents.json";
+import enUiBrowserChrome from "./catalogues/en/ui.browser.chrome.json";
 import enUiBrowser from "./catalogues/en/ui.browser.json";
 import enUiCanvas from "./catalogues/en/ui.canvas.json";
 import enUiChat from "./catalogues/en/ui.chat.json";
@@ -41,6 +42,7 @@ import frUiSettings from "./catalogues/fr/ui.settings.json";
 /** The bundled en catalogue: every `src/i18n/catalogues/en` message, flat. */
 export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgents,
+	...enUiBrowserChrome,
 	...enUiBrowser,
 	...enUiCanvas,
 	...enUiChat,
@@ -69,6 +71,24 @@ export const bundledCatalogues: Readonly<
 
 /** One entry per bundled message id, shaped by the message's own arguments. */
 export type MessageParams = {
+	"ui.browser.chrome.accessible_tab": {
+		title: string;
+		loading: string;
+		failed: string;
+		owner: string;
+		waiting: string;
+		restored: string;
+	};
+	"ui.browser.chrome.duplicate": undefined;
+	"ui.browser.chrome.duplicate_refused": undefined;
+	"ui.browser.chrome.error_title": undefined;
+	"ui.browser.chrome.invalid_action": undefined;
+	"ui.browser.chrome.invalid_order": undefined;
+	"ui.browser.chrome.move_left": undefined;
+	"ui.browser.chrome.move_right": undefined;
+	"ui.browser.chrome.reload": undefined;
+	"ui.browser.chrome.scroll_left": undefined;
+	"ui.browser.chrome.scroll_right": undefined;
 	"ui.canvas.files.archives": undefined;
 	"ui.canvas.files.asc": undefined;
 	"ui.canvas.files.audio": undefined;

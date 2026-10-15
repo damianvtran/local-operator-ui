@@ -12,7 +12,6 @@ import {
 	ArrowLeft,
 	ArrowRight,
 	FolderOpen,
-	Loader2,
 	RotateCw,
 	Search,
 	ShieldCheck,
@@ -427,15 +426,6 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 						editing && "font-mono text-mono-sm",
 					)}
 				/>
-				{loading && (
-					// The loading state, in the field rather than only on the reload
-					// button: a page that takes ten seconds says so where the eye
-					// already is.
-					<Loader2
-						aria-hidden
-						className="pointer-events-none absolute top-1/2 right-2 size-3.5 -translate-y-1/2 animate-spin text-ink-dim"
-					/>
-				)}
 			</div>
 			{/* No tooltip here: the button already carries a visible label, and a tooltip
 			    repeating it is noise rather than help. The dock it opens explains what
@@ -443,8 +433,8 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			<div className="relative shrink-0">
 				<Button
 					ref={triggerRef}
-					variant="outline"
-					size="sm"
+					variant={waitingCount > 0 ? "outline" : "ghost"}
+					size={waitingCount > 0 ? "sm" : "icon-sm"}
 					onClick={onOpenApprovals}
 					disabled={disabled}
 					// `pr-5` so the badge, which sits over the control's top-right corner, never
@@ -453,7 +443,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					// the reserve is sized for the worst case rather than the common one
 					// (design round 3, D17: at two digits the badge's left arc came within 6px
 					// of the last glyph of `Approvals`).
-					className="pr-5"
+					className={waitingCount > 0 ? "pr-5" : undefined}
 					aria-label={
 						waitingCount > 0
 							? `Approvals, ${waitingCount} waiting`
@@ -462,7 +452,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					data-tour-tag="browser-approvals"
 				>
 					<ShieldCheck aria-hidden className="size-3.5" />
-					Approvals
+					{waitingCount > 0 && "Approvals"}
 				</Button>
 				{waitingCount > 0 && (
 					// POSITION IS THE OPERATOR'S — "at the corner of the button" — but it no

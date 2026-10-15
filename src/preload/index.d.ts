@@ -125,6 +125,11 @@ declare global {
 				state: () => Promise<unknown>;
 				/** `sessionId` attributes the new tab to the conversation it was opened
 				 * from; `null` (and absent) mean it belongs to no conversation. */
+				reorderTabs: (ids: number[]) => Promise<unknown>;
+				actOnTab: (
+					tabId: number,
+					action: "duplicate" | "reload",
+				) => Promise<unknown>;
 				newTab: (sessionId?: string | null) => Promise<unknown>;
 				closeTab: (tabId: number) => Promise<unknown>;
 				/** A bulk close. `{ mode: "ids", tabIds }`, or `{ mode: "conversation",

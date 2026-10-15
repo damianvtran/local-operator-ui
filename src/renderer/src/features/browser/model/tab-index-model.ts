@@ -103,6 +103,8 @@ export function scopeFromKey(key: string): SurfaceScope {
 /** The tab fields every function here reads. See the module docstring on why
  * they are declared here and why each is optional. */
 export interface TabInput {
+	/** Human chrome ordering only; registry/agent creation order is unchanged. */
+	displayOrder?: number;
 	tabId: number;
 	/** The conversation a tab belongs to, or `null`/absent for none. */
 	sessionId?: string | null;
@@ -214,6 +216,12 @@ export function groupTabsBySession<T extends TabInput>(
  * (`closeToTheRightIntent`) and the user counts them by looking at the strip.
  */
 export function pooledTabs<T extends TabInput>(tabs: readonly T[]): T[] {
+	if (tabs.some((tab) => tab.displayOrder !== undefined))
+		return [...tabs].sort(
+			(a, b) =>
+				(a.displayOrder ?? Number.MAX_SAFE_INTEGER) -
+				(b.displayOrder ?? Number.MAX_SAFE_INTEGER),
+		);
 	return groupTabsBySession(tabs).flatMap((group) => group.tabs);
 }
 
@@ -508,4 +516,20 @@ export function sessionDisplayName(
 		(session) => session.session_id === sessionId,
 	)?.title;
 	return title?.trim() || sessionId;
+}
+
+/** Preserve the existing grouped default until a human orders tabs. A scoped
+ * strip supplies only its visible permutation; fill those slots in the FULL
+ * rendered order before main records the preference. Invalid/stale IDs are
+ * forwarded unchanged so main, not optimistic UI state, remains authoritative. */
+export function mergeChromeTabOrder(
+	tabs: readonly TabInput[],
+	ids: readonly number[],
+): number[] {
+	const order = pooledTabs(tabs).map((tab) => tab.tabId);
+	const selected = new Set(ids);
+	if (selected.size !== ids.length || ids.some((id) => !order.includes(id)))
+		return [...ids];
+	let cursor = 0;
+	return order.map((id) => (selected.has(id) ? ids[cursor++] : id));
 }

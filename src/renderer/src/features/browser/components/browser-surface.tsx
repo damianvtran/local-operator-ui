@@ -13,6 +13,7 @@ import type { FC } from "react";
 import {
 	useCallback,
 	useEffect,
+	useId,
 	useLayoutEffect,
 	useMemo,
 	useRef,
@@ -203,6 +204,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	approvalHeaderLabel = DEFAULT_APPROVAL_HEADER,
 	onShowAllTabs,
 }) => {
+	const tabPanelId = useId();
 	const chrome = useBrowserChrome();
 	/**
 	 * The conversation list, read ONCE here and handed to the strip, which needs it
@@ -560,6 +562,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			    the answer with nothing to read. Every other chrome call stays fired-and-
 			    forgotten, which is what `void` says. */}
 			<BrowserTabStrip
+				tabPanelId={tabPanelId}
 				tabs={tabs}
 				sessions={sessions}
 				activeTabId={state?.activeTabId ?? null}
@@ -568,6 +571,8 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 				onClose={closeTab}
 				onCloseTabs={(intent) => chrome.closeTabs(intent)}
 				onNewTab={() => void chrome.newTab(hostSessionId)}
+				onReorder={(ids) => chrome.reorderTabs(ids)}
+				onTabAction={(id, action) => void chrome.actOnTab(id, action)}
 				newTabLabel={newTabLabel}
 				onHandOver={(tab) => setHandOverTab(tab)}
 				onRevokeHandOver={(tabId) => void chrome.revokeHandOver(tabId)}
@@ -709,6 +714,18 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 					// (spec §4.4), which is PR 2's layout to choose.
 					className="relative min-h-0 min-w-0 grow bg-elevated"
 					data-tour-tag="browser-content"
+					id={tabPanelId}
+					role="tabpanel"
+					aria-labelledby={
+						tabs.some((tab) => tab.tabId === state?.activeTabId)
+							? `${tabPanelId}-tab-${state?.activeTabId}`
+							: undefined
+					}
+					aria-label={
+						tabs.some((tab) => tab.tabId === state?.activeTabId)
+							? undefined
+							: newTabLabel
+					}
 					/* The suppression reason on the element that is always here, so a run — or a
 					   support session — reads WHY the page is hidden rather than inferring it
 					   from whatever happens to be on screen. The paused note carries the same
