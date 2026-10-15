@@ -43626,13 +43626,16 @@ async function sceneHubSkills(cdp, app) {
 	/* Production clamps requested widths below 800; frame labels describe the
 	 * measured viewport, never an unreachable requested size. Keep both. */
 	const requestedSize = WINDOW_SIZE;
-	const viewport = await cdp.evaluate('({ width: innerWidth, height: innerHeight, devicePixelRatio })');
+	const viewport = await cdp.evaluate(
+		"({ width: innerWidth, height: innerHeight, devicePixelRatio })",
+	);
 	const size = `${viewport.width}x${viewport.height}`;
 	const theme = (THEME ?? "localOperatorDark")
 		.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)
 		.replace(/^-/, "");
 	const geometry = { requestedSize, viewport };
-	const tabGeometry = () => cdp.evaluate(`(() => {
+	const tabGeometry = () =>
+		cdp.evaluate(`(() => {
 		const box = el => { if (!el) return null; const r = el.getBoundingClientRect(); return { x:r.x, y:r.y, w:r.width, h:r.height }; };
 		return { tabs: [...document.querySelectorAll('[role="tab"]')].map(el => ({ text:el.textContent, selected:el.getAttribute('aria-selected'), state:el.getAttribute('data-state'), rect:box(el), background:getComputedStyle(el).backgroundColor })), panel:box(document.querySelector('[data-hub-skills-library]')) };
 	})()`);
@@ -43670,7 +43673,8 @@ async function sceneHubSkills(cdp, app) {
 	 * downgrading an org run to public. With no memberships the product omits
 	 * the entire scope group; public source text below independently proves scope. */
 	const expectedScope = argValue("--skills-expect", "org");
-	if (!["org", "public"].includes(expectedScope)) throw new Error("--skills-expect needs org|public");
+	if (!["org", "public"].includes(expectedScope))
+		throw new Error("--skills-expect needs org|public");
 	const orgChip = await waitForCondition(
 		cdp,
 		`(() => {
@@ -43685,11 +43689,16 @@ async function sceneHubSkills(cdp, app) {
 		expectedScope === "public" ? 3_000 : 30_000,
 	);
 	check(
-		expectedScope === "public" ? "public fixture: the scope chip group is absent" : "the hub page exposes its scope chips",
+		expectedScope === "public"
+			? "public fixture: the scope chip group is absent"
+			: "the hub page exposes its scope chips",
 		orgChip.ok,
 		`after ${orgChip.waitedMs ?? "?"}ms: ${JSON.stringify(orgChip.last)}`,
 	);
-	if (!orgChip.ok) throw new Error(`scope prerequisite failed for explicit ${expectedScope} fixture`);
+	if (!orgChip.ok)
+		throw new Error(
+			`scope prerequisite failed for explicit ${expectedScope} fixture`,
+		);
 	const hasOrgChip = orgChip.last?.org === true;
 	if (hasOrgChip) {
 		const pressed = await verb(
@@ -43727,7 +43736,10 @@ async function sceneHubSkills(cdp, app) {
 			await capture(cdp, `hub-skills-${size}-${theme}-loading-consecutive`);
 		}
 	}
-	note("loading frame", loading.ok ? "captured in flight" : "no loading window");
+	note(
+		"loading frame",
+		loading.ok ? "captured in flight" : "no loading window",
+	);
 
 	/*
 	 * Settle: either the catalogue lands (rows or its empty/no-filter line), the
@@ -43756,27 +43768,60 @@ async function sceneHubSkills(cdp, app) {
 		settled.ok,
 		`after ${settled.waitedMs ?? "?"}ms: ${JSON.stringify(settled.last)}`,
 	);
-	if (settled.last.state === 'unsupported') {
-		check("unavailable frame: the unsupported catalogue sentence is present", true);
+	if (settled.last.state === "unsupported") {
+		check(
+			"unavailable frame: the unsupported catalogue sentence is present",
+			true,
+		);
 		await captureSettled(cdp, `hub-skills-${size}-${theme}-unavailable`);
-		geometry.unavailable = await box('[data-hub-skills-library]');
-		writeFileSync(join(FRAMES, `hub-skills-geometry-${theme}.json`), JSON.stringify({ size, theme, hasOrgChip, geometry }, null, 2));
-		say("  (unsupported-contract variant: only the unavailable frame is this run's)");
+		geometry.unavailable = await box("[data-hub-skills-library]");
+		writeFileSync(
+			join(FRAMES, `hub-skills-geometry-${theme}.json`),
+			JSON.stringify({ size, theme, hasOrgChip, geometry }, null, 2),
+		);
+		say(
+			"  (unsupported-contract variant: only the unavailable frame is this run's)",
+		);
 		return;
 	}
-	if (settled.last.state === 'empty') {
-		const emptyText = await cdp.evaluate(`document.querySelector('[data-hub-skills-library]').textContent`);
-		check("remote-empty frame: the remote-empty sentence is present", emptyText.includes('No skills have been published here yet.'), emptyText);
+	if (settled.last.state === "empty") {
+		const emptyText = await cdp.evaluate(
+			`document.querySelector('[data-hub-skills-library]').textContent`,
+		);
+		check(
+			"remote-empty frame: the remote-empty sentence is present",
+			emptyText.includes("No skills have been published here yet."),
+			emptyText,
+		);
 		await captureSettled(cdp, `hub-skills-${size}-${theme}-remote-empty`);
 		/* The search-miss text over zero rows: type, then read the OTHER sentence. */
-		await setValue('[data-testid="hub-skill-search"]', 'no-such-skill', 'input');
-		await waitForCondition(cdp, `document.querySelector('[data-hub-skills-library]').textContent.includes('No skills match this search.')`, 3_000);
-		const searchText = await cdp.evaluate(`document.querySelector('[data-hub-skills-library]').textContent`);
-		check("search-empty frame over zero rows: its own sentence is present", searchText.includes('No skills match this search.'), searchText);
+		await setValue(
+			'[data-testid="hub-skill-search"]',
+			"no-such-skill",
+			"input",
+		);
+		await waitForCondition(
+			cdp,
+			`document.querySelector('[data-hub-skills-library]').textContent.includes('No skills match this search.')`,
+			3_000,
+		);
+		const searchText = await cdp.evaluate(
+			`document.querySelector('[data-hub-skills-library]').textContent`,
+		);
+		check(
+			"search-empty frame over zero rows: its own sentence is present",
+			searchText.includes("No skills match this search."),
+			searchText,
+		);
 		await captureSettled(cdp, `hub-skills-${size}-${theme}-search-empty`);
-		geometry.empty = await box('[data-hub-skills-library]');
-		writeFileSync(join(FRAMES, `hub-skills-geometry-${theme}.json`), JSON.stringify({ size, theme, hasOrgChip, geometry }, null, 2));
-		say("  (empty-catalogue variant: remote-empty + search-empty are this run's)");
+		geometry.empty = await box("[data-hub-skills-library]");
+		writeFileSync(
+			join(FRAMES, `hub-skills-geometry-${theme}.json`),
+			JSON.stringify({ size, theme, hasOrgChip, geometry }, null, 2),
+		);
+		say(
+			"  (empty-catalogue variant: remote-empty + search-empty are this run's)",
+		);
 		return;
 	}
 
@@ -43789,19 +43834,31 @@ async function sceneHubSkills(cdp, app) {
 		typeof source === "string" && source.trim().length > 0,
 		JSON.stringify({ source }),
 	);
-	if (expectedScope === "public") check("public fixture: library source explicitly names Public", /public/i.test(source), JSON.stringify(source));
+	if (expectedScope === "public")
+		check(
+			"public fixture: library source explicitly names Public",
+			/public/i.test(source),
+			JSON.stringify(source),
+		);
 	note("library source line", JSON.stringify(source));
 	await captureSettled(cdp, `hub-skills-${size}-${theme}-populated`);
-	geometry.library = await box('[data-hub-skills-library]');
+	geometry.library = await box("[data-hub-skills-library]");
 	geometry.populatedTabs = await tabGeometry();
 	if (process.argv.includes("--skills-loading-pair")) {
 		check("loading pair includes the in-flight state", loading.ok);
-		writeFileSync(join(FRAMES, `hub-skills-geometry-${theme}.json`), JSON.stringify({ size, theme, hasOrgChip, geometry }, null, 2));
+		writeFileSync(
+			join(FRAMES, `hub-skills-geometry-${theme}.json`),
+			JSON.stringify({ size, theme, hasOrgChip, geometry }, null, 2),
+		);
 		return;
 	}
 
 	/* SEARCH over a populated catalogue: a miss is its own sentence. */
-	await setValue('[data-testid="hub-skill-search"]', 'zzz-no-such-skill', 'input');
+	await setValue(
+		'[data-testid="hub-skill-search"]',
+		"zzz-no-such-skill",
+		"input",
+	);
 	const searched = await waitForCondition(
 		cdp,
 		`(() => {
@@ -43810,9 +43867,13 @@ async function sceneHubSkills(cdp, app) {
 		})()`,
 		10_000,
 	);
-	check("search narrows the rows to a miss", searched.ok, `after ${searched.waitedMs ?? "?"}ms`);
+	check(
+		"search narrows the rows to a miss",
+		searched.ok,
+		`after ${searched.waitedMs ?? "?"}ms`,
+	);
 	await captureSettled(cdp, `hub-skills-${size}-${theme}-search-empty`);
-	await setValue('[data-testid="hub-skill-search"]', '', 'input');
+	await setValue('[data-testid="hub-skill-search"]', "", "input");
 	await waitForCondition(
 		cdp,
 		`(() => {
@@ -43824,7 +43885,11 @@ async function sceneHubSkills(cdp, app) {
 
 	/* DETAIL: the row's own press opens the reader. */
 	const opened = await verb(cdp, "press", '[data-testid="hub-skill-open"]');
-	check("the row's open press received the point (hit test)", opened.hitTest === true, JSON.stringify({ hitTest: opened.hitTest }));
+	check(
+		"the row's open press received the point (hit test)",
+		opened.hitTest === true,
+		JSON.stringify({ hitTest: opened.hitTest }),
+	);
 	const detail = await waitForCondition(
 		cdp,
 		`(() => {
@@ -43843,7 +43908,7 @@ async function sceneHubSkills(cdp, app) {
 	);
 	note("detail row", JSON.stringify(detail.last));
 	await captureSettled(cdp, `hub-skills-${size}-${theme}-detail`);
-	geometry.detail = await box('[data-hub-skill-detail]');
+	geometry.detail = await box("[data-hub-skill-detail]");
 	const gate = await cdp.evaluate(`(() => {
 		const d = document.querySelector('[data-hub-skill-detail]');
 		if (!d) return null;
@@ -43851,9 +43916,16 @@ async function sceneHubSkills(cdp, app) {
 		return { disabled: create ? create.disabled === true : null, noCredential: /credential|sign in/i.test(d.textContent || '') };
 	})()`);
 	if (gate && gate.disabled === true) {
-		check("gated pull: the create control is disabled and the detail names the missing credential", gate.noCredential === true, JSON.stringify(gate));
+		check(
+			"gated pull: the create control is disabled and the detail names the missing credential",
+			gate.noCredential === true,
+			JSON.stringify(gate),
+		);
 		await captureSettled(cdp, `hub-skills-${size}-${theme}-signed-out`);
-		writeFileSync(join(FRAMES, `hub-skills-geometry-${theme}.json`), JSON.stringify({ size, theme, hasOrgChip, geometry }, null, 2));
+		writeFileSync(
+			join(FRAMES, `hub-skills-geometry-${theme}.json`),
+			JSON.stringify({ size, theme, hasOrgChip, geometry }, null, 2),
+		);
 		return;
 	}
 
@@ -43868,7 +43940,11 @@ async function sceneHubSkills(cdp, app) {
 		JSON.stringify(checkboxState),
 	);
 	const consentPressed = await verb(cdp, "press", autoPushCheckbox);
-	check("the auto-push checkbox received the point", consentPressed.hitTest === true, JSON.stringify({ hitTest: consentPressed.hitTest }));
+	check(
+		"the auto-push checkbox received the point",
+		consentPressed.hitTest === true,
+		JSON.stringify({ hitTest: consentPressed.hitTest }),
+	);
 	const dialog = await waitForCondition(
 		cdp,
 		`(() => {
@@ -43883,10 +43959,16 @@ async function sceneHubSkills(cdp, app) {
 		`after ${dialog.waitedMs ?? "?"}ms: ${JSON.stringify(dialog.last)}`,
 	);
 	if (expectedScope === "public") {
-		const text = await cdp.evaluate(`document.querySelector('[role="dialog"]').textContent`);
-		check("public consent names public publication", /public/i.test(text), text);
+		const text = await cdp.evaluate(
+			`document.querySelector('[role="dialog"]').textContent`,
+		);
+		check(
+			"public consent names public publication",
+			/public/i.test(text),
+			text,
+		);
 	}
-	note("consent dialog text", JSON.stringify(dialog.last && dialog.last.text));
+	note("consent dialog text", JSON.stringify(dialog.last?.text));
 	await captureSettled(cdp, `hub-skills-${size}-${theme}-consent`);
 	geometry.consent = await box('[role="dialog"]');
 	await verb(cdp, "press", '[data-testid="hub-policy-enable"]');
@@ -43909,10 +43991,18 @@ async function sceneHubSkills(cdp, app) {
 	const prePull = await cdp.evaluate(
 		`(() => { const el = document.querySelector(${JSON.stringify(createSelector)}); return el ? { disabled: el.disabled === true } : null; })()`,
 	);
-	check("the pull control is enabled on a ready detail", prePull && prePull.disabled === false, JSON.stringify(prePull));
+	check(
+		"the pull control is enabled on a ready detail",
+		prePull && prePull.disabled === false,
+		JSON.stringify(prePull),
+	);
 	await reveal(createSelector);
 	const pullPressed = await verb(cdp, "press", createSelector);
-	check("the pull control received the point", pullPressed.hitTest === true, JSON.stringify({ hitTest: pullPressed.hitTest }));
+	check(
+		"the pull control received the point",
+		pullPressed.hitTest === true,
+		JSON.stringify({ hitTest: pullPressed.hitTest }),
+	);
 	const pending = await waitForCondition(
 		cdp,
 		`(() => { const el = document.querySelector(${JSON.stringify(createSelector)}); return el && el.disabled === true ? true : null; })()`,
@@ -43933,8 +44023,12 @@ async function sceneHubSkills(cdp, app) {
 		})()`,
 		20_000,
 	);
-	check("the pull settles into success or its refusal", pullEnd.ok, `after ${pullEnd.waitedMs ?? "?"}ms: ${JSON.stringify(pullEnd.last)}`);
-	if (pullEnd.last.state === 'installed') {
+	check(
+		"the pull settles into success or its refusal",
+		pullEnd.ok,
+		`after ${pullEnd.waitedMs ?? "?"}ms: ${JSON.stringify(pullEnd.last)}`,
+	);
+	if (pullEnd.last.state === "installed") {
 		await captureSettled(cdp, `hub-skills-${size}-${theme}-pull-success`);
 		note("installed line", JSON.stringify(pullEnd.last.text));
 	} else {
@@ -43943,13 +44037,33 @@ async function sceneHubSkills(cdp, app) {
 	}
 
 	/* THE PUBLICATION PANEL: preview, then confirm (or the pending receipt). */
-	const publication = await box('[data-hub-skill-publication]');
-	check("the publication panel is mounted under the library", publication !== null, JSON.stringify(publication));
-	await setValue('[data-testid="hub-skill-publish-source"]', 'release-notes', 'change');
-	await setValue('[data-testid="hub-skill-publish-alias"]', 'release-notes-copy', 'input');
+	const publication = await box("[data-hub-skill-publication]");
+	check(
+		"the publication panel is mounted under the library",
+		publication !== null,
+		JSON.stringify(publication),
+	);
+	await setValue(
+		'[data-testid="hub-skill-publish-source"]',
+		"release-notes",
+		"change",
+	);
+	await setValue(
+		'[data-testid="hub-skill-publish-alias"]',
+		"release-notes-copy",
+		"input",
+	);
 	await reveal('[data-testid="hub-skill-publish-preview"]');
-	const previewPressed = await verb(cdp, "press", '[data-testid="hub-skill-publish-preview"]');
-	check("the preview control received the point", previewPressed.hitTest === true, JSON.stringify({ hitTest: previewPressed.hitTest }));
+	const previewPressed = await verb(
+		cdp,
+		"press",
+		'[data-testid="hub-skill-publish-preview"]',
+	);
+	check(
+		"the preview control received the point",
+		previewPressed.hitTest === true,
+		JSON.stringify({ hitTest: previewPressed.hitTest }),
+	);
 	const preview = await waitForCondition(
 		cdp,
 		`(() => {
@@ -43965,16 +44079,33 @@ async function sceneHubSkills(cdp, app) {
 	);
 	await captureSettled(cdp, `hub-skills-${size}-${theme}-publish-preview`);
 	if (expectedScope === "public") {
-		await reveal('[data-hub-skill-publication] textarea');
-		const payloadBox = await box('[data-hub-skill-publication] textarea');
-		const viewportHeight = await cdp.evaluate('window.innerHeight');
-		check("public preview payload textarea is visible before confirmation", payloadBox && payloadBox.y >= 0 && payloadBox.y + payloadBox.h <= viewportHeight, JSON.stringify({ payloadBox, viewportHeight }));
+		await reveal("[data-hub-skill-publication] textarea");
+		const payloadBox = await box("[data-hub-skill-publication] textarea");
+		const viewportHeight = await cdp.evaluate("window.innerHeight");
+		check(
+			"public preview payload textarea is visible before confirmation",
+			payloadBox &&
+				payloadBox.y >= 0 &&
+				payloadBox.y + payloadBox.h <= viewportHeight,
+			JSON.stringify({ payloadBox, viewportHeight }),
+		);
 		geometry.previewPayload = payloadBox;
-		await captureSettled(cdp, `hub-skills-${size}-${theme}-publish-preview-payload`);
+		await captureSettled(
+			cdp,
+			`hub-skills-${size}-${theme}-publish-preview-payload`,
+		);
 	}
 	await reveal('[data-testid="hub-skill-publish-confirm"]');
-	const confirmPressed = await verb(cdp, "press", '[data-testid="hub-skill-publish-confirm"]');
-	check("the confirm control received the point", confirmPressed.hitTest === true, JSON.stringify({ hitTest: confirmPressed.hitTest }));
+	const confirmPressed = await verb(
+		cdp,
+		"press",
+		'[data-testid="hub-skill-publish-confirm"]',
+	);
+	check(
+		"the confirm control received the point",
+		confirmPressed.hitTest === true,
+		JSON.stringify({ hitTest: confirmPressed.hitTest }),
+	);
 	const publishEnd = await waitForCondition(
 		cdp,
 		`(() => {
@@ -43986,8 +44117,12 @@ async function sceneHubSkills(cdp, app) {
 		})()`,
 		20_000,
 	);
-	check("the publication settles into an outcome this run can photograph", publishEnd.ok, `after ${publishEnd.waitedMs ?? "?"}ms: ${JSON.stringify(publishEnd.last)}`);
-	if (publishEnd.last.state === 'pending') {
+	check(
+		"the publication settles into an outcome this run can photograph",
+		publishEnd.ok,
+		`after ${publishEnd.waitedMs ?? "?"}ms: ${JSON.stringify(publishEnd.last)}`,
+	);
+	if (publishEnd.last.state === "pending") {
 		await captureSettled(cdp, `hub-skills-${size}-${theme}-publish-pending`);
 	} else {
 		await captureSettled(cdp, `hub-skills-${size}-${theme}-publish-complete`);
@@ -44016,7 +44151,14 @@ async function sceneHubSkills(cdp, app) {
  *   non-loopback ESTABLISHED/SYN_SENT socket. That covers the main process /
  *   network service only at that instant - it is a probe, not a continuous audit.
  */
-const EGRESS_LOCAL_SCHEMES = new Set(["file:", "app:", "devtools:", "data:", "blob:", "about:"]);
+const EGRESS_LOCAL_SCHEMES = new Set([
+	"file:",
+	"app:",
+	"devtools:",
+	"data:",
+	"blob:",
+	"about:",
+]);
 function egressViolations(urls, allowedOrigin) {
 	const bad = [];
 	for (const url of urls) {
@@ -44043,8 +44185,13 @@ function processTreeSockets(rootPid) {
 		kids.get(ppid).push(pid);
 	}
 	const tree = [rootPid];
-	for (let i = 0; i < tree.length; i += 1) tree.push(...(kids.get(tree[i]) ?? []));
-	const lsof = spawnSync("lsof", ["-a", "-p", tree.join(","), "-i", "-n", "-P"], { encoding: "utf8" });
+	for (let i = 0; i < tree.length; i += 1)
+		tree.push(...(kids.get(tree[i]) ?? []));
+	const lsof = spawnSync(
+		"lsof",
+		["-a", "-p", tree.join(","), "-i", "-n", "-P"],
+		{ encoding: "utf8" },
+	);
 	const lines = lsof.stdout.split("\n").filter((l) => l.trim().length > 0);
 	const loopback = /->(127\.0\.0\.1|\[::1\]|localhost):/;
 	const outbound = lines.filter(
@@ -44053,12 +44200,32 @@ function processTreeSockets(rootPid) {
 	return { tree, lines, outbound };
 }
 async function hubSkillsEgressAudit(cdp, app) {
-	const violations = await cdp.evaluate(`window.__hubSkillsCsp ?? []`);
-	note("egress: capture securitypolicyviolation events", JSON.stringify(violations));
-	check("egress: zero CSP violations during the capture flow", violations.length === 0, JSON.stringify(violations));
+	const violations = await cdp.evaluate("window.__hubSkillsCsp ?? []");
+	note(
+		"egress: capture securitypolicyviolation events",
+		JSON.stringify(violations),
+	);
+	check(
+		"egress: zero CSP violations during the capture flow",
+		violations.length === 0,
+		JSON.stringify(violations),
+	);
 	const stub = new URL(BACKEND).origin;
-	const bad = egressViolations(cdp.requests.map((r) => r.url), stub);
-	const origins = [...new Set(cdp.requests.map((r) => { try { return new URL(r.url).origin; } catch { return r.url; } }))];
+	const bad = egressViolations(
+		cdp.requests.map((r) => r.url),
+		stub,
+	);
+	const origins = [
+		...new Set(
+			cdp.requests.map((r) => {
+				try {
+					return new URL(r.url).origin;
+				} catch {
+					return r.url;
+				}
+			}),
+		),
+	];
 	note("egress: distinct renderer request origins", JSON.stringify(origins));
 	check(
 		"egress: every renderer request went to the stub origin or an app-local scheme",
@@ -44072,7 +44239,10 @@ async function hubSkillsEgressAudit(cdp, app) {
 		"api.radienthq.com present in cdp.requests",
 	);
 	const sockets = processTreeSockets(app.pid);
-	note("egress: app process tree sockets (one instant)", `pids ${sockets.tree.join(",")}\n        ${sockets.lines.join("\n        ")}`);
+	note(
+		"egress: app process tree sockets (one instant)",
+		`pids ${sockets.tree.join(",")}\n        ${sockets.lines.join("\n        ")}`,
+	);
 	check(
 		"egress: no non-loopback ESTABLISHED/SYN_SENT socket in the app's process tree (instantaneous probe, not a continuous audit)",
 		sockets.outbound.length === 0,
@@ -44112,14 +44282,25 @@ async function sceneHubSkillsEgressControls(cdp, app) {
 	await wait(500);
 	const slice = cdp.requests.slice(before);
 	note("control (b) page fetch outcomes", JSON.stringify(probed.out));
-	note("control (b) securitypolicyviolation events", JSON.stringify(probed.violations));
-	note("control (b) CDP Network rows for the control segment (a CSP-refused fetch emits none)", JSON.stringify(slice.map((r) => r.url)));
+	note(
+		"control (b) securitypolicyviolation events",
+		JSON.stringify(probed.violations),
+	);
+	note(
+		"control (b) CDP Network rows for the control segment (a CSP-refused fetch emits none)",
+		JSON.stringify(slice.map((r) => r.url)),
+	);
 	check(
 		"control (b): the narrowed CSP (connect-src 'self' + stub) refused BOTH synthetic disallowed origins (violation event on connect-src, fetch rejected)",
 		[wrongLoopback, wrongHost].every(
 			(u) =>
 				probed.out[u]?.startsWith("rejected:") &&
-				probed.violations.some((v) => v.blocked === u && v.directive === "connect-src" && v.disposition === "enforce"),
+				probed.violations.some(
+					(v) =>
+						v.blocked === u &&
+						v.directive === "connect-src" &&
+						v.disposition === "enforce",
+				),
 		),
 		JSON.stringify(probed),
 	);
@@ -44140,18 +44321,35 @@ async function sceneHubSkillsEgressControls(cdp, app) {
 		wrongLoopback,
 	];
 	const flagged = egressViolations(synthetic, stub);
-	note("control (a) scripted observer run over a synthetic list", JSON.stringify({ synthetic, flagged }));
+	note(
+		"control (a) scripted observer run over a synthetic list",
+		JSON.stringify({ synthetic, flagged }),
+	);
 	check(
 		"control (a): the observer flags a wrong-loopback origin and passes the stub + app-local schemes",
 		flagged.length === 1 && flagged[0] === wrongLoopback,
 		JSON.stringify(flagged),
 	);
-	const hostFlagged = egressViolations(["https://egress-probe.invalid/probe", "https://api.radienthq.com/x"], stub);
-	check("control (a): the observer flags a non-loopback origin too", hostFlagged.length === 2, JSON.stringify(hostFlagged));
+	const hostFlagged = egressViolations(
+		["https://egress-probe.invalid/probe", "https://api.radienthq.com/x"],
+		stub,
+	);
+	check(
+		"control (a): the observer flags a non-loopback origin too",
+		hostFlagged.length === 2,
+		JSON.stringify(hostFlagged),
+	);
 	const sockets = processTreeSockets(app.pid);
 	const leaked = sockets.lines.filter((l) => /:8128|egress-probe/.test(l));
-	note("control (b) app process tree sockets", `pids ${sockets.tree.join(",")}\n        ${sockets.lines.join("\n        ")}`);
-	check("control (b): no socket to the disallowed origins appears in lsof (rejected before the network)", leaked.length === 0, JSON.stringify(leaked));
+	note(
+		"control (b) app process tree sockets",
+		`pids ${sockets.tree.join(",")}\n        ${sockets.lines.join("\n        ")}`,
+	);
+	check(
+		"control (b): no socket to the disallowed origins appears in lsof (rejected before the network)",
+		leaked.length === 0,
+		JSON.stringify(leaked),
+	);
 }
 
 async function main() {
@@ -44475,12 +44673,18 @@ async function main() {
 			"--scene hub-links needs --backend-records: the serve record is how the app admits the daemon this run owns, and without it the run photographs a disconnected app",
 		);
 	}
-	if ((SCENE === "hub-skills" || SCENE === "hub-skills-egress") && BACKEND === null) {
+	if (
+		(SCENE === "hub-skills" || SCENE === "hub-skills-egress") &&
+		BACKEND === null
+	) {
 		throw new Error(
 			"--scene hub-skills needs --backend: the library's catalogue, detail, pull and publication are real requests (org reads through the daemon's radient proxy, public reads against the build's baked hub origin), and a backendless run draws refusal surfaces instead",
 		);
 	}
-	if ((SCENE === "hub-skills" || SCENE === "hub-skills-egress") && BACKEND_RECORDS === null) {
+	if (
+		(SCENE === "hub-skills" || SCENE === "hub-skills-egress") &&
+		BACKEND_RECORDS === null
+	) {
 		throw new Error(
 			"--scene hub-skills needs --backend-records: the serve record is how the app admits the daemon this run owns, and without it the run photographs a disconnected app",
 		);
