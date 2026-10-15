@@ -43960,6 +43960,14 @@ async function sceneHubSkills(cdp, app) {
 		`after ${preview.waitedMs ?? "?"}ms: ${JSON.stringify(preview.last)}`,
 	);
 	await captureSettled(cdp, `hub-skills-${size}-${theme}-publish-preview`);
+	if (expectedScope === "public") {
+		await reveal('[data-hub-skill-publication] textarea');
+		const payloadBox = await box('[data-hub-skill-publication] textarea');
+		const viewportHeight = await cdp.evaluate('window.innerHeight');
+		check("public preview payload textarea is visible before confirmation", payloadBox && payloadBox.y >= 0 && payloadBox.y + payloadBox.h <= viewportHeight, JSON.stringify({ payloadBox, viewportHeight }));
+		geometry.previewPayload = payloadBox;
+		await captureSettled(cdp, `hub-skills-${size}-${theme}-publish-preview-payload`);
+	}
 	await reveal('[data-testid="hub-skill-publish-confirm"]');
 	const confirmPressed = await verb(cdp, "press", '[data-testid="hub-skill-publish-confirm"]');
 	check("the confirm control received the point", confirmPressed.hitTest === true, JSON.stringify({ hitTest: confirmPressed.hitTest }));
