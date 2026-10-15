@@ -9,11 +9,65 @@ import {
 	type BrowserChordMessage,
 	browserChordIntent,
 } from "../../../../../shared/browser-chord";
+import {
+	browserViewSuppressed,
+	subscribeBrowserView,
+} from "../../../shared/browser-view-policy";
 import { browserBridge } from "../model/browser-projection-store";
 import { chordTarget } from "../model/tab-index-model";
 import type { BrowserChrome, BrowserTabView } from "./use-browser-chrome";
 
 const MAC_PLATFORM = /Mac|iPhone|iPad/;
+const STANDALONE_BROWSER_ROUTE = /^#\/browser(?:[/?]|$)/;
+
+// A document can mount more than one scoped browser. Resolve ONE owner before
+// consuming an event or a main-process broadcast; a global listener per surface
+// without this arbitration would create two tabs for one physical press.
+const chordRoots = new Set<HTMLDivElement>();
+const reportedFocus = new WeakMap<Document, boolean>();
+function availableRoots(document: Document): HTMLDivElement[] {
+	if (browserViewSuppressed()) return [];
+	return [...chordRoots].filter((root) => {
+		if (
+			root.ownerDocument !== document ||
+			!root.isConnected ||
+			root.closest('[hidden], [inert], [aria-hidden="true"]')
+		)
+			return false;
+		for (let node: HTMLElement | null = root; node; node = node.parentElement) {
+			const style = document.defaultView?.getComputedStyle(node);
+			if (
+				style?.display === "none" ||
+				style?.visibility === "hidden" ||
+				style?.visibility === "collapse"
+			)
+				return false;
+		}
+		return true;
+	});
+}
+function chordOwner(
+	document: Document,
+	target: Node | null = document.activeElement,
+): HTMLDivElement | null {
+	const roots = availableRoots(document);
+	const direct = roots.filter(
+		(root) =>
+			root.contains(target) ||
+			root.closest('[data-tour-tag="browser-pane"]')?.contains(target),
+	);
+	if (direct.length) return direct.length === 1 ? direct[0] : null;
+	// Stage A actual CDP reached BODY on #/browser with the correct key, but
+	// root-only listeners/focus reports dropped it. BODY is a browser rest-stop
+	// ONLY on the standalone route and ONLY for its sole visible surface. A
+	// chat BODY, sidebar control, dialog or ambiguous pair never inherits it.
+	return target === document.body &&
+		roots.length === 1 &&
+		roots[0].dataset.tourTag === "browser-route" &&
+		STANDALONE_BROWSER_ROUTE.test(document.defaultView?.location.hash ?? "")
+		? roots[0]
+		: null;
+}
 
 /** Main owns physical key/menu arbitration; this surface owns scope and DOM
  * focus. The DOM door also answers scripted KeyboardEvents (which never pass
@@ -104,12 +158,16 @@ export function useBrowserChords(
 		if (!root) return;
 		const api = browserBridge();
 		if (!api) return;
+		const document = root.ownerDocument;
+		chordRoots.add(root);
 		let alive = true;
 		let chain = Promise.resolve();
 		let cursor: number | null =
 			latest.current.chrome.state?.activeTabId ?? null;
 		let projectedCursor = cursor;
-		const report = (focused: boolean) => {
+		const report = (focused: boolean, force = false) => {
+			if (!force && reportedFocus.get(document) === focused) return;
+			reportedFocus.set(document, focused);
 			void api.setChordFocus(focused).catch(() => {});
 		};
 		const focusAddress = () => {
@@ -192,7 +250,13 @@ export function useBrowserChords(
 			chain = chain.then(() => execute(message)).catch(() => {});
 		};
 		const key = (event: KeyboardEvent) => {
-			if (event.defaultPrevented) return;
+			if (
+				event.defaultPrevented ||
+				!(event.target instanceof Node) ||
+				chordOwner(document) !== root ||
+				chordOwner(document, event.target) !== root
+			)
+				return;
 			const platform = MAC_PLATFORM.test(navigator.platform)
 				? "darwin"
 				: "linux";
@@ -215,47 +279,89 @@ export function useBrowserChords(
 			if (!intent) return;
 			event.preventDefault();
 			event.stopPropagation();
+			// Main clears its report on restart/blur; a real accepted DOM press
+			// reasserts the derived owner, never an OS/window focus override.
+			report(true, true);
 			enqueue({ intent, origin: "chrome" });
 		};
-		const focusIn = () => report(true);
+		const reconcile = (force = false) =>
+			report(chordOwner(document) !== null, force);
+		const focusIn = () => reconcile();
 		const focusOut = (event: FocusEvent) => {
-			if (
-				event.relatedTarget instanceof Node &&
-				root.contains(event.relatedTarget)
-			)
-				return;
 			const target = event.target;
-			// A focused node that is REMOVED (a tab closed by the agent, by the strip's
-			// own path, or by anything that does not go through `closeAndReplace`)
-			// fires `focusout` with a null `relatedTarget` too, and is not the user
-			// leaving. Decided one microtask later, when the removal has landed: a node
-			// that is gone while the surface is still mounted keeps the owner, and the
-			// caret is parked on the root so the next chord is still heard.
+			const wasOwned =
+				target instanceof Node && chordOwner(document, target) === root;
 			queueMicrotask(() => {
+				if (!alive) return;
+				// Keep the existing removed-tab caret guarantee, but never park focus
+				// for a CHAT node removed outside this browser's ownership boundary.
 				if (
+					wasOwned &&
 					target instanceof Node &&
 					!target.isConnected &&
-					root.isConnected &&
-					!root.contains(document.activeElement)
-				) {
+					availableRoots(document).includes(root) &&
+					document.activeElement === document.body &&
+					chordOwner(document) === null
+				)
 					root.focus({ preventScroll: true });
-					return;
-				}
-				if (!root.contains(document.activeElement)) report(false);
+				reconcile();
 			});
 		};
-		root.addEventListener("keydown", key);
-		root.addEventListener("focusin", focusIn);
-		root.addEventListener("focusout", focusOut);
-		report(root.contains(document.activeElement));
-		const unsubscribe = api.onChord(enqueue);
+		const refresh = () => reconcile();
+		const regainFocus = () => reconcile(true);
+		// Listen in bubble phase: a child/portal that already consumed the chord
+		// keeps it. One derived owner arbitrates all surfaces, including Pane's
+		// existing header ancestor, before an event can reach app/window handlers.
+		document.addEventListener("keydown", key);
+		document.addEventListener("focusin", focusIn);
+		document.addEventListener("focusout", focusOut);
+		window.addEventListener("hashchange", refresh);
+		window.addEventListener("resize", refresh);
+		window.addEventListener("focus", regainFocus);
+		const stopPolicy = subscribeBrowserView(refresh);
+		const observer = new MutationObserver(refresh);
+		for (let node: HTMLElement | null = root; node; node = node.parentElement)
+			observer.observe(node, {
+				attributes: true,
+				attributeFilter: ["hidden", "inert", "aria-hidden", "class", "style"],
+			});
+		reconcile();
+		const unsubscribe = api.onChord((message) => {
+			const owner = chordOwner(document);
+			const candidates = availableRoots(document);
+			// Main already authenticated a real presented page for page-origin
+			// output. Its native focus may leave no DOM owner; only the sole visible
+			// surface containing the active tab may receive that fallback. Never
+			// broadcast the same invocation into two scoped panes.
+			if (
+				message.origin === "page" &&
+				!latest.current.tabs.some(
+					(tab) => tab.tabId === latest.current.chrome.state?.activeTabId,
+				)
+			)
+				return;
+			if (
+				owner === root ||
+				(message.origin === "page" &&
+					owner === null &&
+					candidates.length === 1 &&
+					candidates[0] === root)
+			)
+				enqueue(message);
+		});
 		return () => {
 			alive = false;
-			report(false);
+			chordRoots.delete(root);
+			reconcile(); // removing hidden B must not clear the still-focused A
 			unsubscribe();
-			root.removeEventListener("keydown", key);
-			root.removeEventListener("focusin", focusIn);
-			root.removeEventListener("focusout", focusOut);
+			stopPolicy();
+			observer.disconnect();
+			document.removeEventListener("keydown", key);
+			document.removeEventListener("focusin", focusIn);
+			document.removeEventListener("focusout", focusOut);
+			window.removeEventListener("hashchange", refresh);
+			window.removeEventListener("resize", refresh);
+			window.removeEventListener("focus", regainFocus);
 		};
 	}, [root, address, closeAndReplace, openFind]);
 	return { root: setRoot, closeTab, findReturnToPage, openFind };

@@ -5,6 +5,29 @@ import {
 	browserChordIntent,
 } from "../../shared/browser-chord";
 
+/** Logical DOM ownership survives OS deactivation; it must never itself authorize
+ * an inactive/hidden window or a browser covered by a real overlay. Keeping these
+ * native facts separate avoids losing the owner before a menu accelerator can
+ * arrive on reactivation, while retaining the actual window-focus security floor.
+ * This is a predicate, not focus emulation: callers read real Electron facts. */
+export function browserChromeOwnsChord(facts: {
+	logicalFocus: boolean;
+	chromeVisible: boolean;
+	window: {
+		isDestroyed(): boolean;
+		isVisible(): boolean;
+		isFocused(): boolean;
+	};
+}): boolean {
+	return (
+		facts.logicalFocus &&
+		facts.chromeVisible &&
+		!facts.window.isDestroyed() &&
+		facts.window.isVisible() &&
+		facts.window.isFocused()
+	);
+}
+
 /** Dependency-injected because listener logic must be falsifiable without a
  * focused OS window. Emitting before-input-event tests this router, NOT physical
  * key delivery. The event source must already have passed the ownership check. */
