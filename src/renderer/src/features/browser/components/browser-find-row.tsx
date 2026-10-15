@@ -52,7 +52,13 @@ export function BrowserFindRow({
 		else await window.api?.browser.focusPage();
 	};
 	const step = (forward: boolean) =>
-		chrome.pageControl(find.tabId, "search", input.current?.value ?? find.query, forward, true);
+		chrome.pageControl(
+			find.tabId,
+			"search",
+			input.current?.value ?? find.query,
+			forward,
+			true,
+		);
 	return (
 		<div
 			data-tour-tag="browser-find-row"

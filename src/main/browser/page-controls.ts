@@ -131,7 +131,8 @@ export class PageControls {
 		const same = this.find.query === query;
 		// After stop/timeout there is no native search to advance. Enter retries
 		// the query from scratch rather than passing findNext to a dead request.
-		const continuing = same && next && this.requestId !== null && !this.find.unreported;
+		const continuing =
+			same && next && this.requestId !== null && !this.find.unreported;
 		this.requestId = null;
 		this.find = {
 			...this.find,

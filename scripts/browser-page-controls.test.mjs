@@ -155,7 +155,11 @@ test("silent native result has a bounded neutral outcome; stop/switch cancels it
 	);
 	assert.equal(c.state(a).find.matches, 0, "late timed-out result is fenced");
 	c.search(a, "waiting", true, true);
-	assert.equal(a.calls.at(-1).options.findNext, false, "Enter after timeout retries an initial native search");
+	assert.equal(
+		a.calls.at(-1).options.findNext,
+		false,
+		"Enter after timeout retries an initial native search",
+	);
 	c.clear();
 	await new Promise((resolve) => setTimeout(resolve, 30));
 	assert.equal(changes, 1, "clear cancels deadline; no orphan publication");
