@@ -62,6 +62,13 @@ const empty = (): AgentMessagesSnapshot => ({
 export class AgentMessagesModel {
 	private accountId: string | null = null;
 	private blocked = false;
+	/**
+	 * Round-2 R2: set when the app became busy WHILE a status check was in
+	 * flight. A check that started safe must not arm on its response when busy
+	 * intervened before the response landed - even if the app is quiet again by
+	 * then; only the NEXT natural boundary re-decides.
+	 */
+	private busySeenInFlight = false;
 	private generation = 0;
 	private snapshot = empty();
 	private listeners = new Set<() => void>();
@@ -95,6 +102,7 @@ export class AgentMessagesModel {
 		this.generation += 1;
 		this.accountId = accountId;
 		this.inFlight = null;
+		this.busySeenInFlight = false;
 		this.snapshot = empty();
 		for (const listener of this.listeners) listener();
 	}
@@ -106,6 +114,7 @@ export class AgentMessagesModel {
 	 * re-decides (see `armBoundary`).
 	 */
 	setBlocked(blocked: boolean) {
+		if (blocked && this.inFlight) this.busySeenInFlight = true;
 		this.blocked = blocked;
 	}
 
@@ -117,12 +126,19 @@ export class AgentMessagesModel {
 	 */
 	private armBoundary(
 		status: AgentMessagesStatus | null,
-		blockedAtBoundary: boolean,
+		blockedAtEntry: boolean,
 	) {
+		/*
+		 * Round-2 R2: a check that STARTED safe can see busy intervene before its
+		 * response - the user started a turn, typed, or opened a modal. The
+		 * completion must not arm from the stale entry snapshot: quiet by the
+		 * time it lands is not a boundary either; the NEXT check re-decides.
+		 */
+		const blocked = blockedAtEntry || this.busySeenInFlight;
 		this.publish({
 			presentable:
 				Boolean(agentMessagesOnboardingContext(status, this.accountId)) &&
-				!blockedAtBoundary,
+				!blocked,
 		});
 	}
 
@@ -135,9 +151,11 @@ export class AgentMessagesModel {
 		if (this.inFlight?.accountId === accountId) return this.inFlight.promise;
 		/*
 		 * §5.3: "if a boundary hits busy, it waits for the next one". The busy
-		 * fact is therefore snapshotted AT the boundary, and the presentation
-		 * decision it produces is scoped to this check (armBoundary below).
+		 * fact is snapshotted AT the boundary, and the presentation decision
+		 * this check produces also denies when busy INTERVENED while the check
+		 * was in flight (round-2 R2) - a fresh window opens with this check.
 		 */
+		this.busySeenInFlight = false;
 		const blockedAtBoundary = this.blocked;
 		const now = this.ports.now?.() ?? Date.now();
 		const cached = this.lastChecks.get(accountId);

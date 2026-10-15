@@ -97,12 +97,14 @@ async function mount(
 		blockedAtCheck = false,
 		pending = false,
 		consent = undefined,
+		skipInitialCheck = false,
+		statusImpl = null,
 	} = {},
 ) {
 	api.useAgentMessagesOnboardingStore.setState({ seen: {} });
 	const writes = [];
 	const model = new api.AgentMessagesModel({
-		status: async () => structuredClone(status),
+		status: statusImpl ?? (async () => structuredClone(status)),
 		enable: async (body) => {
 			writes.push(body);
 			return {
@@ -123,7 +125,7 @@ async function mount(
 	// R2/Q2: the busy fact is snapshotted AT the boundary check; a check that
 	// hit busy must not present when the app merely goes quiet afterwards.
 	model.setBlocked(blockedAtCheck);
-	await model.check("app_start");
+	if (!skipInitialCheck) await model.check("app_start");
 	window.__agentMessagesState = {
 		accountId,
 		model,
@@ -291,6 +293,51 @@ test("a check that hit busy stays hidden once the app goes quiet - no new bounda
 	await mount(t, { blocked: false, blockedAtCheck: true });
 	assert.equal(document.querySelectorAll('[role="dialog"]').length, 0);
 	assert.doesNotMatch(document.body.textContent, DIALOG_TITLE);
+});
+
+test("busy DURING an in-flight check stays hidden after quiet - only the next boundary presents", async (t) => {
+	let release;
+	const gate = new Promise((resolve) => {
+		release = resolve;
+	});
+	const mounted = await mount(t, {
+		skipInitialCheck: true,
+		statusImpl: async () => {
+			await gate;
+			return structuredClone(fixture);
+		},
+	});
+	const base = window.__agentMessagesState;
+	const refresh = async () => {
+		window.__agentMessagesState = {
+			...base,
+			snapshot: mounted.model.getSnapshot(),
+		};
+		await act(async () =>
+			mounted.root.render(
+				React.createElement(api.AgentMessagesOnboarding, {
+					blocked: false,
+					sessionId: null,
+				}),
+			),
+		);
+	};
+	await refresh();
+	assert.equal(document.querySelectorAll('[role="dialog"]').length, 0);
+	// The boundary starts safe; the user becomes busy in flight and is quiet
+	// again BEFORE the eligible response lands. The completion must not arm
+	// from the stale entry snapshot.
+	const inFlight = mounted.model.check("window_focus");
+	mounted.model.setBlocked(true);
+	mounted.model.setBlocked(false);
+	release();
+	await inFlight;
+	await refresh();
+	assert.equal(document.querySelectorAll('[role="dialog"]').length, 0);
+	// The NEXT safe boundary (served from the cache) presents.
+	await mounted.model.check("window_focus");
+	await refresh();
+	assert.equal(document.querySelectorAll('[role="dialog"]').length, 1);
 });
 
 test("explicit Enable click sends the captured account/org/served version; mounting alone sends nothing", async (t) => {

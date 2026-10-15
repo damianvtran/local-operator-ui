@@ -48,7 +48,7 @@ const require = createRequire(import.meta.url);
 const bundled = await build({
 	stdin: {
 		contents:
-			'export {useAgentMessagesBusy} from "./src/renderer/src/features/agent-messages/use-agent-messages-busy"; export {useCanonicalSessionsStore} from "./src/renderer/src/shared/store/canonical-sessions-store"; export {useConversationInputStore} from "./src/renderer/src/shared/store/conversation-input-store"; export {noteWebauthnRequest,clearWebauthnRequest} from "./src/renderer/src/shared/browser-webauthn-queue";',
+			'export {useAgentMessagesBusy} from "./src/renderer/src/features/agent-messages/use-agent-messages-busy"; export {useCanonicalSessionsStore} from "./src/renderer/src/shared/store/canonical-sessions-store"; export {useConversationInputStore} from "./src/renderer/src/shared/store/conversation-input-store"; export {noteWebauthnRequest,clearWebauthnRequest,noteWebauthnEnding,clearWebauthnEnding} from "./src/renderer/src/shared/browser-webauthn-queue";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -234,6 +234,21 @@ test("staged draft, busy displayed row, archive confirmation and passkey chooser
 	assert.equal(readBusy(), true);
 	await act(async () => {
 		api.clearWebauthnRequest("w1");
+	});
+	assert.equal(readBusy(), false);
+	// The acknowledgement an UNATTENDED settlement leaves behind keeps the SAME
+	// modal open until dismissed (round-2 R3: there is no timed lifetime), so
+	// the queue length alone would miss an open modal.
+	await act(async () => {
+		api.noteWebauthnEnding({
+			requestId: "w1",
+			title: "Passkey request ended",
+			body: "The request expired before it was answered.",
+		});
+	});
+	assert.equal(readBusy(), true);
+	await act(async () => {
+		api.clearWebauthnEnding();
 	});
 	assert.equal(readBusy(), false);
 });
