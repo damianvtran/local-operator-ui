@@ -43648,7 +43648,7 @@ async function sceneHubSkills(cdp, app) {
 		orgChip.ok,
 		`after ${orgChip.waitedMs ?? "?"}ms: ${JSON.stringify(orgChip.last)}`,
 	);
-	const hasOrgChip = orgChip.last.org === true;
+	const hasOrgChip = orgChip.last?.org === true;
 	if (hasOrgChip) {
 		const pressed = await verb(
 			cdp,
