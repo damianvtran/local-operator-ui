@@ -1,0 +1,4 @@
+BOUNDED START {"pid":30807,"seconds":10,"budgetMiB":6144,"nodeOptions":"--max-old-space-size=4096"}
+FOOTPRINT {"MiB":39,"blind":false,"processes":1}
+inert control actual heap options --max-old-space-size=4096
+BOUNDED END {"pid":30807,"exit":0}

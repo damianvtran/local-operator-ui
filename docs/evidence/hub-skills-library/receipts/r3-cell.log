@@ -1,0 +1,10 @@
+RESOURCE {"at": "2026-10-15T05:08:40.323723-04:00", "phase": "lease granted before ONE build", "availableKiB": 25939036, "availableGiB": 24.73739242553711, "swapFreeMiB": 1469.81, "swapUsedDiagnosticMiB": 10818.19, "memoryFreePct": 50}
+START 2026-10-15T05:08:40.326185-04:00 32467 r3-build.log
+END 32467 0 r3-build.log
+REAP 32467 0
+FINAL8127 1 
+Traceback (most recent call last):
+  File "/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/r3-cell.py", line 31, in <module>
+    html=W/'out/renderer/index.html';before=sha(html);text=html.read_text();text,n=re.subn(r'connect-src[^;]+;',"connect-src 'self' http://127.0.0.1:8127;",text);assert n==1
+                                                                                                                                                                         ^^^^
+AssertionError

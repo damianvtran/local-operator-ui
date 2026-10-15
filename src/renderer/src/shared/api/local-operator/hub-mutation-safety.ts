@@ -95,28 +95,38 @@ export async function guardHubMutation<T>(
 	}
 }
 
-/** Keep reads and global connectivity unchanged. Writes are temporarily disabled
- * while this existing health query is refreshing (including its normal poll),
- * not enabled from a stale/placeholder/error snapshot. Cancel/close stays usable.
- * Browser health fallback is deliberately insufficient: only MAIN knows which
- * identity its desktop transport currently targets. */
+/** A background poll must not disable (and blur) a keyboard-focused control.
+ * The existing query's verified CURRENT snapshot remains the render authority
+ * during an ordinary refetch; placeholder/error/negative answers never qualify.
+ * This is not dispatch permission: guardHubMutation still pulls MAIN afresh and
+ * rejects identity changes/newer negative pushes at every invocation. No local
+ * identity cache, focus restoration, or global polling policy is introduced. */
 export function useHubMutationSafety() {
 	const health = useServerHealth();
 	const snapshot = health.data?.snapshot;
 	const canWrite =
 		!!window.api?.backend &&
-		!health.isFetching &&
 		!health.isError &&
 		!health.isPlaceholderData &&
 		hubMutationSnapshotSafe(snapshot);
-	// A normal poll disables writes briefly, but must not flash an upgrade notice
-	// over an already verified version. Unknown/failed/old snapshots name the rule.
+	// Missing/placeholder data is a check in progress, not evidence of an old
+	// release. A failed connection needs reconnecting, not a desktop upgrade.
+	const disconnected =
+		!window.api?.backend ||
+		health.isError ||
+		(!!snapshot && snapshot.state !== "attached");
+	const checking = !disconnected && (!snapshot || health.isPlaceholderData);
 	return {
 		canWrite,
 		snapshot,
-		upgradeMessage:
-			hubMutationSnapshotSafe(snapshot) && !health.isError
-				? null
-				: hubMutationUpgradeMessage(),
+		upgradeMessage: canWrite
+			? null
+			: checking
+				? t("ui.hub.status.backend_checking")
+				: disconnected
+					? t("ui.hub.status.backend_disconnected", {
+							minimum: MIN_HUB_MUTATION_CORE,
+						})
+					: hubMutationUpgradeMessage(),
 	};
 }

@@ -108,7 +108,12 @@ export function HubLinkPolicyControls({
 						{t("ui.hub.subscriptions.subscribe")}
 					</label>
 					<p className="text-meta text-ink-muted">
-						{t("ui.hub.subscriptions.subscribe_description", { source })}
+						{t(
+							write.canWrite
+								? "ui.hub.subscriptions.subscribe_description"
+								: "ui.hub.subscriptions.subscribe_description_blocked",
+							{ source },
+						)}
 					</p>
 				</div>
 				<Switch
@@ -124,7 +129,7 @@ export function HubLinkPolicyControls({
 			 * off, so it belongs with the Subscribe row, not under Auto-push where it
 			 * read as an outbound statement. It is a concern of the INBOUND direction.
 			 */}
-			{!link.policy.subscribe && (
+			{!link.policy.subscribe && write.canWrite && (
 				<p className="text-meta text-ink-muted">
 					{t("ui.hub.subscriptions.manual_available")}
 				</p>
@@ -222,6 +227,17 @@ export function HubLinkPolicyControls({
 					<p className="text-body-sm text-ink-muted">
 						{t("ui.hub.subscriptions.enable_safety")}
 					</p>
+					{/* The row is behind an overlay: a blocked confirmation must
+					 * explain itself here, not only in the obscured policy panel. */}
+					{write.upgradeMessage && (
+						<p
+							role="alert"
+							className="text-body-sm text-warning"
+							data-hub-core-upgrade
+						>
+							{write.upgradeMessage}
+						</p>
+					)}
 					{write.error && (
 						<p role="alert" className="text-body-sm text-danger">
 							{t("ui.hub.subscriptions.save_failed", {
