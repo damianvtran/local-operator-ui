@@ -108,11 +108,29 @@ test("find row uses main counts, accessible status, next/previous/Escape and no 
 		assert.equal(document.activeElement.id, "before");
 		// Main deliberately does not acknowledge these edits yet: the live field
 		// must not be restored to the old projection between rapid keystrokes.
-		const setter = Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, "value").set;
+		const setter = Object.getOwnPropertyDescriptor(
+			dom.window.HTMLInputElement.prototype,
+			"value",
+		).set;
 		for (const value of ["rapid-a", "rapid-ab"]) {
-			await act(async () => {setter.call(field, value); field.dispatchEvent(new dom.window.Event("input", {bubbles: true}));});
+			await act(async () => {
+				setter.call(field, value);
+				field.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+			});
 		}
-		assert.equal(field.value, "rapid-ab", "unacknowledged IPC cannot erase a typed character");
+		assert.equal(
+			field.value,
+			"rapid-ab",
+			"unacknowledged IPC cannot erase a typed character",
+		);
+		assert.deepEqual(
+			calls.slice(-2),
+			[
+				[1, "search", "rapid-a"],
+				[1, "search", "rapid-ab"],
+			],
+			"the real editor event door must send both queries to main",
+		);
 		chrome.state.pageControls.find = {
 			tabId: 1,
 			query: "missing",
@@ -162,15 +180,13 @@ test("find row uses main counts, accessible status, next/previous/Escape and no 
 			),
 		);
 		await act(async () =>
-			document
-				.querySelector('[aria-label="Find in page"]')
-				.dispatchEvent(
-					new dom.window.KeyboardEvent("keydown", {
-						key: "Escape",
-						bubbles: true,
-						cancelable: true,
-					}),
-				),
+			document.querySelector('[aria-label="Find in page"]').dispatchEvent(
+				new dom.window.KeyboardEvent("keydown", {
+					key: "Escape",
+					bubbles: true,
+					cancelable: true,
+				}),
+			),
 		);
 		assert.equal(
 			pageFocus,
