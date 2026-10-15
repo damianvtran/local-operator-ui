@@ -114,17 +114,21 @@ export function togglePanelRailItem(
 			if (context.askScope === undefined) return false;
 			/*
 			 * WHICH KIND OF CLOSE THIS PRESS IS (#1079). The item is a toggle in its own
-			 * scope, so one of its two arms closes - and THIS close is the user asking
-			 * for an empty slot, not the drawer withdrawing on its own. The two are not
-			 * the same request, and the difference is the whole issue: the rail's item is
+			 * scope, so one of its two arms closes - and EVERY CLOSE THE USER ASKS FOR IS
+			 * "EMPTY THE SLOT", not a withdrawal, so this arm is one of five doors that
+			 * ask it (the header menu's `Close asks` row, the drawer's X, the composer
+			 * chip, and this item's own chord running the same code). The rule and the
+			 * give-back it withholds are in `AskDrawerCloseOptions`. The rail's item is
 			 * "the same door in both directions" (`panel-rail.tsx`), so its close must
 			 * leave the slot empty the way every sibling item's does rather than hand the
-			 * borrowed pane back. The withdraw-kind closes keep the give-back (UX round 1,
-			 * U6) and are the ones that pass no option: the empty queue's auto-close,
-			 * Escape inside the drawer, the carried fleet drawer being retired.
+			 * borrowed pane back - where the closes NOBODY ASKED FOR keep the give-back
+			 * (UX round 1, U6), and those are the ones that pass no option: the empty
+			 * queue's auto-close, the carried fleet drawer being retired, Escape inside
+			 * the drawer.
 			 *
 			 * THE RE-SCOPE ARM IS UNCHANGED: a press while the OTHER scope's drawer is up
-			 * opens this scope, so it passes no option either.
+			 * opens this scope (the user asked for a panel, not for an empty slot), so it
+			 * passes no option either.
 			 */
 			const open = !(
 				state.isAskDrawerOpen && state.askDrawerScope === context.askScope
