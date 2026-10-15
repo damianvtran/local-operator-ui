@@ -318,9 +318,9 @@ export const Tooltip = ({
 
 	/*
 	 * EVERY TOOLTIP THAT REACHES THE NATIVE BROWSER VIEW HIDES IT FOR AS LONG AS IT
-	 * IS PAINTED THERE - and for `RELEASE_HOLD_MS` past the close, so that a pointer
-	 * moving from one flyout to the next cannot flash the page in the gap before the
-	 * new panel is placed (review round 1, R1; the number and its why live with the
+	 * IS PAINTED THERE - and for `RELEASE_HOLD_FRAMES` frames past the close, so that a
+	 * pointer moving from one flyout to the next cannot flash the page in the gap before
+	 * the new panel is placed (review round 1, R1; the count and its why live with the
 	 * policy). A `WebContentsView` paints above all DOM, so a panel that lands inside
 	 * its rect is invisible: the sidebar's conversation flyout opens
 	 * `right`, into the content area, and with the Browser route open only the sliver
