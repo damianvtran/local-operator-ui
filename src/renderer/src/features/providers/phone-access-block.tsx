@@ -360,7 +360,7 @@ const PhoneAccessBody: FC<{ offerSignIn: boolean }> = ({ offerSignIn }) => {
 			) : null}
 			{view.kind === "applying" ? (
 				<div className="flex flex-col gap-3" data-phone-state="applying">
-					<Heading status="applying" />
+					<Heading status={view.setup ? "applying" : "checking"} />
 					<Lines
 						heading={t("ui.providers.phone.progress_heading")}
 						lines={view.progress}

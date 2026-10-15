@@ -4949,6 +4949,14 @@ const HUB_ITEM_MERGE_S = 120;
  * backend's own sentence to arrive. These are CLIENT budgets, not a promise that a
  * native install finishes inside them - the backend's drain may run longer, and
  * the block then rebuilds its state from the local read instead of retrying.
+ *
+ * THE RUN BUDGET MAY NOT BE REACHABLE. The run POST carries no bytes until the
+ * backend finishes, and the main-process fetch sets only an overall abort timer, so
+ * undici's default 300 s response-header timeout can end it first (measured on
+ * Node 26.5; NOT measured on Electron's bundled Node). That arrives as a transport
+ * failure, not as this deadline. `use-phone-setup.ts` therefore treats a run that
+ * ended without the backend's answer as UNCONFIRMED and polls the local read rather
+ * than reporting failure or sending a second run; this number is not relied on.
  */
 const PHONE_SETUP_PLAN_DEADLINE_MS = 135_000;
 const PHONE_SETUP_RUN_DEADLINE_MS = 930_000;

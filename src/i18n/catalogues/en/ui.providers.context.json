@@ -39,11 +39,6 @@
 		"tone": "imperative",
 		"note": "Copies the verified address through the shared copy button."
 	},
-	"ui.providers.phone.action.open": {
-		"role": "link button",
-		"tone": "imperative",
-		"note": "Opens the verified phone address."
-	},
 	"ui.providers.phone.action.set_up": {
 		"role": "primary button",
 		"tone": "imperative",
@@ -67,7 +62,7 @@
 	"ui.providers.phone.consent": {
 		"role": "consent sentence beside the activate button",
 		"tone": "plain, specific, no urgency",
-		"note": "UI-owned: the backend sends this sentence only in its terminal rendering. Wording mirrors local-operator mobile.setup.consent. Must keep: this account, the amount, no credit purchase."
+		"note": "UI-owned: the backend sends this sentence only in its terminal rendering. Wording mirrors local-operator mobile.setup.consent. Must keep: this account, the amount, no credit purchase. Makes NO claim about terms: only the backend speaks for those."
 	},
 	"ui.providers.phone.failure.check": {
 		"role": "generic fallback",
@@ -83,11 +78,6 @@
 		"role": "block heading",
 		"tone": "single noun phrase",
 		"note": "Names the Radient-hosted phone tunnel; sits above every state."
-	},
-	"ui.providers.phone.price": {
-		"role": "price line",
-		"tone": "plain, exact",
-		"note": "{amount} is the backend's fresh monthly amount, unformatted, so it equals what is sent back for acceptance."
 	},
 	"ui.providers.phone.progress_heading": {
 		"role": "list heading",

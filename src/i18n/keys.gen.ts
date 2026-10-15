@@ -425,7 +425,6 @@ export type MessageParams = {
 	"ui.providers.phone.action.choose": { identity: string; id: string };
 	"ui.providers.phone.action.choose_unlabeled": { id: string };
 	"ui.providers.phone.action.copy_address": undefined;
-	"ui.providers.phone.action.open": undefined;
 	"ui.providers.phone.action.set_up": undefined;
 	"ui.providers.phone.action.sign_in": undefined;
 	"ui.providers.phone.address_label": undefined;
@@ -434,7 +433,6 @@ export type MessageParams = {
 	"ui.providers.phone.failure.check": undefined;
 	"ui.providers.phone.failure.run": undefined;
 	"ui.providers.phone.heading": undefined;
-	"ui.providers.phone.price": { amount: string };
 	"ui.providers.phone.progress_heading": undefined;
 	"ui.providers.phone.receipts_heading": undefined;
 	"ui.providers.phone.signing_in": undefined;
