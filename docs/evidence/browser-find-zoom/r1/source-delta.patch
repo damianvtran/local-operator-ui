@@ -1,0 +1,248 @@
+diff --git a/src/main/browser/page-controls.ts b/src/main/browser/page-controls.ts
+index 1aa30dc1d5..4cd0d424c2 100644
+--- a/src/main/browser/page-controls.ts
++++ b/src/main/browser/page-controls.ts
+@@ -130,7 +130,7 @@ export class PageControls {
+ 		this.stopTimer();
+ 		const same = this.find.query === query;
+ 		// After stop/timeout there is no native search to advance. Enter retries
+-		// the query from scratch rather than passing findNext to a dead request.
++		// the query from scratch rather than continuing a dead native session.
+ 		const continuing =
+ 			same && next && this.requestId !== null && !this.find.unreported;
+ 		this.requestId = null;
+@@ -148,7 +148,10 @@ export class PageControls {
+ 		this.requestId =
+ 			active.view.webContents.findInPage?.(query, {
+ 				forward,
+-				findNext: continuing,
++				// Electron's misleading name means NEW SESSION (44.3 native maps
++				// it to options->new_session), not "advance". Initial/changed/retry
++				// must be true; an existing query's next/previous must be false.
++				findNext: !continuing,
+ 			}) ?? null;
+ 		// Native search may never report (measured in hidden Electron). Bound the
+ 		// progress claim; silence is not "no matches". Fencing/stop-before-notify
+diff --git a/src/renderer/src/features/browser/components/browser-find-row.tsx b/src/renderer/src/features/browser/components/browser-find-row.tsx
+index f3144fd498..be11a37d42 100644
+--- a/src/renderer/src/features/browser/components/browser-find-row.tsx
++++ b/src/renderer/src/features/browser/components/browser-find-row.tsx
+@@ -62,7 +62,13 @@ export function BrowserFindRow({
+ 	return (
+ 		<div
+ 			data-tour-tag="browser-find-row"
+-			className="flex shrink-0 items-center gap-2 border-control border-b bg-elevated px-2 py-1"
++			className="@container/bfind flex shrink-0 flex-wrap items-center gap-2 border-control border-b bg-elevated px-2 py-1"
++			onKeyDown={(event) => {
++				if (event.nativeEvent.isComposing || event.key !== "Escape") return;
++				event.preventDefault();
++				event.stopPropagation();
++				void close();
++			}}
+ 		>
+ 			<Input
+ 				ref={input}
+@@ -75,17 +81,13 @@ export function BrowserFindRow({
+ 				key={find.tabId}
+ 				defaultValue={find.query}
+ 				maxLength={4096}
+-				className="min-w-0 max-w-72 flex-1 focus-visible:outline-offset-1!"
++				className="min-w-32 max-w-72 flex-1 focus-visible:outline-offset-1!"
+ 				onChange={(event) =>
+ 					void chrome.pageControl(find.tabId, "search", event.target.value)
+ 				}
+ 				onKeyDown={(event) => {
+ 					if (event.nativeEvent.isComposing) return;
+-					if (event.key === "Escape") {
+-						event.preventDefault();
+-						event.stopPropagation();
+-						void close();
+-					} else if (event.key === "Enter") {
++					if (event.key === "Enter") {
+ 						event.preventDefault();
+ 						void step(!event.shiftKey);
+ 					}
+@@ -94,53 +96,57 @@ export function BrowserFindRow({
+ 			<output
+ 				aria-live="polite"
+ 				aria-atomic="true"
+-				className="min-w-20 text-body-sm text-ink-muted"
++				className="order-1 min-w-0 max-w-full text-body-sm text-ink-muted @max-[480px]/bfind:order-2 @max-[480px]/bfind:basis-full"
+ 			>
+ 				{find.query
+ 					? find.pending
+ 						? "Searching…"
+ 						: find.unreported
+-							? "No result reported"
++							? "No result reported. Press Enter to search again."
+ 							: find.matches
+ 								? `${find.ordinal} of ${find.matches}`
+ 								: "No matches"
+ 					: ""}
+ 			</output>
+-			<Tooltip side="top" content={`Previous match (${previousChord.glyph})`}>
+-				<Button
+-					variant="ghost"
+-					size="icon-sm"
+-					aria-label="Previous match"
+-					aria-keyshortcuts={previousChord.aria}
+-					disabled={!find.matches}
+-					onClick={() => void step(false)}
+-				>
+-					<ChevronUp aria-hidden className="size-4" />
+-				</Button>
+-			</Tooltip>
+-			<Tooltip side="top" content={`Next match (${nextChord.glyph})`}>
+-				<Button
+-					variant="ghost"
+-					size="icon-sm"
+-					aria-label="Next match"
+-					aria-keyshortcuts={nextChord.aria}
+-					disabled={!find.matches}
+-					onClick={() => void step(true)}
+-				>
+-					<ChevronDown aria-hidden className="size-4" />
+-				</Button>
+-			</Tooltip>
+-			<Tooltip side="top" content={`Close find (${closeChord.glyph})`}>
+-				<Button
+-					variant="ghost"
+-					size="icon-sm"
+-					aria-label="Close find"
+-					aria-keyshortcuts={closeChord.aria}
+-					onClick={() => void close()}
+-				>
+-					<X aria-hidden className="size-4" />
+-				</Button>
+-			</Tooltip>
++			{/* Keep controls together; the longest recovery message yields a row in
++			    a narrow pane instead of stealing the editor/Close target's width. */}
++			<div className="order-2 flex shrink-0 items-center gap-2 @max-[480px]/bfind:order-1">
++				<Tooltip side="top" content={`Previous match (${previousChord.glyph})`}>
++					<Button
++						variant="ghost"
++						size="icon-sm"
++						aria-label="Previous match"
++						aria-keyshortcuts={previousChord.aria}
++						disabled={!find.query || find.pending}
++						onClick={() => void step(false)}
++					>
++						<ChevronUp aria-hidden className="size-4" />
++					</Button>
++				</Tooltip>
++				<Tooltip side="top" content={`Next match (${nextChord.glyph})`}>
++					<Button
++						variant="ghost"
++						size="icon-sm"
++						aria-label="Next match"
++						aria-keyshortcuts={nextChord.aria}
++						disabled={!find.query || find.pending}
++						onClick={() => void step(true)}
++					>
++						<ChevronDown aria-hidden className="size-4" />
++					</Button>
++				</Tooltip>
++				<Tooltip side="top" content={`Close find (${closeChord.glyph})`}>
++					<Button
++						variant="ghost"
++						size="icon-sm"
++						aria-label="Close find"
++						aria-keyshortcuts={closeChord.aria}
++						onClick={() => void close()}
++					>
++						<X aria-hidden className="size-4" />
++					</Button>
++				</Tooltip>
++			</div>
+ 		</div>
+ 	);
+ }
+diff --git a/src/renderer/src/features/browser/components/browser-surface.tsx b/src/renderer/src/features/browser/components/browser-surface.tsx
+index 74d566a873..5e43e6198f 100644
+--- a/src/renderer/src/features/browser/components/browser-surface.tsx
++++ b/src/renderer/src/features/browser/components/browser-surface.tsx
+@@ -291,6 +291,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
+ 		root: chordRoot,
+ 		closeTab,
+ 		findReturnToPage,
++		openFind,
+ 	} = useBrowserChords(chrome, tabs, hostSessionId, addressRef);
+ 
+ 	// THE ONE CLOCK (spec 3.3). The queue model owns the 1s interval and the
+@@ -598,11 +599,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
+ 				// anything arrived. The newest save and the session count ride the projection,
+ 				// so the control cannot describe a save the host does not have.
+ 				downloadsRecent={chrome.state?.transfers?.recent ?? null}
+-				onFind={() => {
+-					findReturnToPage.current = false;
+-					if (state?.activeTabId != null)
+-						void chrome.pageControl(state.activeTabId, "open");
+-				}}
++				onFind={() => void openFind("chrome")}
+ 				pageZoom={state?.pageControls?.zoom ?? 1}
+ 				onResetZoom={() => {
+ 					if (state?.activeTabId != null)
+diff --git a/src/renderer/src/features/browser/hooks/use-browser-chords.ts b/src/renderer/src/features/browser/hooks/use-browser-chords.ts
+index 12f544f9c8..43da145ee8 100644
+--- a/src/renderer/src/features/browser/hooks/use-browser-chords.ts
++++ b/src/renderer/src/features/browser/hooks/use-browser-chords.ts
+@@ -73,6 +73,33 @@ export function useBrowserChords(
+ 			(await closeAndReplace(tabId)).closed,
+ 		[closeAndReplace],
+ 	);
++	const findSession = useRef<number | null>(null);
++	const findTabId = chrome.state?.pageControls?.find?.tabId ?? null;
++	useEffect(() => {
++		if (findTabId === null) findSession.current = null;
++	}, [findTabId]);
++	/** One door for toolbar and chords. Re-focus must not replace the ORIGINAL
++	 * native-page return ownership with the app document's stale activeElement.
++	 * Reserve synchronously too: a second press can precede IPC projection. */
++	const openFind = useCallback(async (origin: "page" | "chrome" = "chrome") => {
++		const c = latest.current.chrome;
++		const tabId = c.state?.activeTabId;
++		if (tabId == null) return;
++		if (
++			c.state?.pageControls?.find?.tabId !== tabId &&
++			findSession.current !== tabId
++		) {
++			findReturnToPage.current = origin === "page";
++			findSession.current = tabId;
++		}
++		await c.pageControl(tabId, "open");
++		if (latest.current.chrome.state?.activeTabId !== tabId) return;
++		const field = rootRef.current?.querySelector<HTMLInputElement>(
++			"[data-tour-tag=browser-find-row] input",
++		);
++		field?.focus({ preventScroll: true });
++		field?.select();
++	}, []);
+ 	useEffect(() => {
+ 		if (!root) return;
+ 		const api = browserBridge();
+@@ -105,15 +132,7 @@ export function useBrowserChords(
+ 				projectedCursor = projected;
+ 			}
+ 			if (projected !== null && intent === "find-page") {
+-				findReturnToPage.current = origin === "page";
+-				await c.pageControl(projected, "open");
+-				// Repeating Cmd+F while the row is already open must return its caret
+-				// too; the mount effect alone would only handle the first opening.
+-				const field = rootRef.current?.querySelector<HTMLInputElement>(
+-					"[data-tour-tag=browser-find-row] input",
+-				);
+-				field?.focus({ preventScroll: true });
+-				field?.select();
++				await openFind(origin);
+ 				return;
+ 			}
+ 			if (projected !== null && intent.startsWith("zoom-")) {
+@@ -238,6 +257,6 @@ export function useBrowserChords(
+ 			root.removeEventListener("focusin", focusIn);
+ 			root.removeEventListener("focusout", focusOut);
+ 		};
+-	}, [root, address, closeAndReplace]);
+-	return { root: setRoot, closeTab, findReturnToPage };
++	}, [root, address, closeAndReplace, openFind]);
++	return { root: setRoot, closeTab, findReturnToPage, openFind };
+ }

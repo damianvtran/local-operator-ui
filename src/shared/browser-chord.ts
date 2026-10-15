@@ -1,8 +1,11 @@
 /** Browser commands are UI intents, never agent capabilities. Both input doors
  * use this table so a DOM synthetic event cannot quietly acquire a different
- * meaning from the native view's key. Find/zoom stay with the existing app until
- * their separately reviewed browser slice; editing shortcuts are not intercepted. */
+ * meaning from the native view's key. Find/zoom use the same focus ownership; editing shortcuts are not intercepted. */
 export type BrowserChord =
+	| "find-page"
+	| "zoom-in"
+	| "zoom-out"
+	| "zoom-reset"
 	| "reload"
 	| "hard-reload"
 	| "back"
@@ -53,7 +56,10 @@ export function browserChordIntent(
 				? input.meta && !input.control
 				: input.control && !input.meta;
 		if (!primary) return null;
-		if (
+		if (key === "+" || key === "=") intent = "zoom-in";
+		else if (key === "-" && !input.shift) intent = "zoom-out";
+		else if (key === "0" && !input.shift) intent = "zoom-reset";
+		else if (
 			platform === "darwin" &&
 			input.shift &&
 			["[", "]", "{", "}"].includes(key)
@@ -62,7 +68,8 @@ export function browserChordIntent(
 		} else if (key === "r") intent = input.shift ? "hard-reload" : "reload";
 		else if (key === "t") intent = input.shift ? "reopen-tab" : "new-tab";
 		else if (!input.shift) {
-			if (key === "l") intent = "focus-address";
+			if (key === "f") intent = "find-page";
+			else if (key === "l") intent = "focus-address";
 			else if (key === "w") intent = "close-tab";
 			else if (key === "[") intent = "back";
 			else if (key === "]") intent = "forward";

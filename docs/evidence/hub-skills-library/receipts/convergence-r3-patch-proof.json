@@ -1,0 +1,1646 @@
+[
+  {
+    "path": "docs/evidence/hub-links/harness/stub-daemon.mjs",
+    "oldPatchSha256": "7af0e194a48952184baf42f1303406eb06960e9a8f9fb31e02185156ba6165c3",
+    "mergedPatchSha256": "7af0e194a48952184baf42f1303406eb06960e9a8f9fb31e02185156ba6165c3",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/README.md",
+    "oldPatchSha256": "fdbcd7f696fc44abd5cbb20de8caff724797cac3a09f5cb338c457045addf628",
+    "mergedPatchSha256": "fdbcd7f696fc44abd5cbb20de8caff724797cac3a09f5cb338c457045addf628",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-A-dark-default/hub-skills-1380x900-local-operator-dark-consent.png",
+    "oldPatchSha256": "bf2b675d6afc08045b8f62a62afc8960bf3d97172d6f778af425709250cc4494",
+    "mergedPatchSha256": "bf2b675d6afc08045b8f62a62afc8960bf3d97172d6f778af425709250cc4494",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-A-dark-default/hub-skills-1380x900-local-operator-dark-detail.png",
+    "oldPatchSha256": "eecf12addcbfbd2790b04fb66bdeee1e019793bcf747b23192ecbd3d98f6b653",
+    "mergedPatchSha256": "eecf12addcbfbd2790b04fb66bdeee1e019793bcf747b23192ecbd3d98f6b653",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-A-dark-default/hub-skills-1380x900-local-operator-dark-loading.png",
+    "oldPatchSha256": "d3404851c5548c37483b1727b8b16a087b22072f6f8289cf479e785e53cc7d54",
+    "mergedPatchSha256": "d3404851c5548c37483b1727b8b16a087b22072f6f8289cf479e785e53cc7d54",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-A-dark-default/hub-skills-1380x900-local-operator-dark-populated.png",
+    "oldPatchSha256": "5ba2583a1c85a10a394183702d90454608f3f3c3ff75a6022c5fabb9248ac6da",
+    "mergedPatchSha256": "5ba2583a1c85a10a394183702d90454608f3f3c3ff75a6022c5fabb9248ac6da",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-A-dark-default/hub-skills-1380x900-local-operator-dark-publish-complete.png",
+    "oldPatchSha256": "edffd893c0311e4be2d4e33de2cdff19c80a451d703958521e3731f523523d84",
+    "mergedPatchSha256": "edffd893c0311e4be2d4e33de2cdff19c80a451d703958521e3731f523523d84",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-A-dark-default/hub-skills-1380x900-local-operator-dark-publish-preview.png",
+    "oldPatchSha256": "40c031212dd5a08e3817bf259bfe98fefc98bd838df2979e2b53829f23381ffb",
+    "mergedPatchSha256": "40c031212dd5a08e3817bf259bfe98fefc98bd838df2979e2b53829f23381ffb",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-A-dark-default/hub-skills-1380x900-local-operator-dark-pull-pending.png",
+    "oldPatchSha256": "765810669f8d6d487eac44cd77c4aeabc92c262ea2840aa6530259c6c73fb2a3",
+    "mergedPatchSha256": "765810669f8d6d487eac44cd77c4aeabc92c262ea2840aa6530259c6c73fb2a3",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-A-dark-default/hub-skills-1380x900-local-operator-dark-pull-success.png",
+    "oldPatchSha256": "e3b002b448feb93c2fced026a81cfe063aee0d7ca04a7a7a2940b7cb4d9bac2c",
+    "mergedPatchSha256": "e3b002b448feb93c2fced026a81cfe063aee0d7ca04a7a7a2940b7cb4d9bac2c",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-A-dark-default/hub-skills-1380x900-local-operator-dark-search-empty.png",
+    "oldPatchSha256": "e8e41fd30acba56cf8d433c22d103af6b5424398e04bf53e28467367daa5e76e",
+    "mergedPatchSha256": "e8e41fd30acba56cf8d433c22d103af6b5424398e04bf53e28467367daa5e76e",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-A-dark-default/hub-skills-geometry-local-operator-dark.json",
+    "oldPatchSha256": "6a3e814c42da5a83f9e6354782fac9aebd906d0a4b020a6ade344eeb80c17fc7",
+    "mergedPatchSha256": "6a3e814c42da5a83f9e6354782fac9aebd906d0a4b020a6ade344eeb80c17fc7",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-A-loading-pair/hub-skills-1380x900-local-operator-dark-loading-consecutive.png",
+    "oldPatchSha256": "99e663f424652c1c095c1c65e88d1b3424b6bf1084550131a641ebb59ed627cc",
+    "mergedPatchSha256": "99e663f424652c1c095c1c65e88d1b3424b6bf1084550131a641ebb59ed627cc",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-A-loading-pair/hub-skills-1380x900-local-operator-dark-loading.png",
+    "oldPatchSha256": "bccfd3a66f5c913eb0d56bd0c6b488a751330674ad9f5ae60f48edf37a571db3",
+    "mergedPatchSha256": "bccfd3a66f5c913eb0d56bd0c6b488a751330674ad9f5ae60f48edf37a571db3",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-A-loading-pair/hub-skills-1380x900-local-operator-dark-populated.png",
+    "oldPatchSha256": "3d2a597f050960acaa447d02a15336832db3f1a21398530de93efa1c33eeddc8",
+    "mergedPatchSha256": "3d2a597f050960acaa447d02a15336832db3f1a21398530de93efa1c33eeddc8",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-A-loading-pair/hub-skills-geometry-local-operator-dark.json",
+    "oldPatchSha256": "c6b436c522d64a216f86997fc17f0be6915e4a16aa8020400a312af3561d0861",
+    "mergedPatchSha256": "c6b436c522d64a216f86997fc17f0be6915e4a16aa8020400a312af3561d0861",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-B-dark-remote-empty/hub-skills-1380x900-local-operator-dark-remote-empty.png",
+    "oldPatchSha256": "d3b0789981b0e1e395cbe46bd2c8c8942296e5353b37803ddd306d393f97ab92",
+    "mergedPatchSha256": "d3b0789981b0e1e395cbe46bd2c8c8942296e5353b37803ddd306d393f97ab92",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-B-dark-remote-empty/hub-skills-1380x900-local-operator-dark-search-empty.png",
+    "oldPatchSha256": "6c4fdfbda718136c9538ae41c69fa224e402f4bfadfe89501db2d51fb9d50c31",
+    "mergedPatchSha256": "6c4fdfbda718136c9538ae41c69fa224e402f4bfadfe89501db2d51fb9d50c31",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-C-corrected-unavailable/hub-skills-1380x900-local-operator-dark-unavailable.png",
+    "oldPatchSha256": "9e8d268e4f3cc6652e36a819afdbb637117c3cbf947e76ce7c75564ba87036f2",
+    "mergedPatchSha256": "9e8d268e4f3cc6652e36a819afdbb637117c3cbf947e76ce7c75564ba87036f2",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-C-corrected-unavailable/hub-skills-geometry-local-operator-dark.json",
+    "oldPatchSha256": "598f35c3ac08313c2c4b6c8bc14e6faa512af40426939c479c77b0abfa8ee337",
+    "mergedPatchSha256": "598f35c3ac08313c2c4b6c8bc14e6faa512af40426939c479c77b0abfa8ee337",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-C-dark-unsupported/hub-skills-1380x900-local-operator-dark-unavailable-with-filter.png",
+    "oldPatchSha256": "7fec74373898664e766f41619072821e5824d1a7d1fab799a8ea3edc4ea1c6e9",
+    "mergedPatchSha256": "7fec74373898664e766f41619072821e5824d1a7d1fab799a8ea3edc4ea1c6e9",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-C-dark-unsupported/hub-skills-1380x900-local-operator-dark-unavailable.png",
+    "oldPatchSha256": "3e8c02911008b8abd5c5403e7b593a93295dc218a46c290bd84d7a212a7ff444",
+    "mergedPatchSha256": "3e8c02911008b8abd5c5403e7b593a93295dc218a46c290bd84d7a212a7ff444",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-D-corrected-public-refuse/hub-skills-1380x900-local-operator-dark-consent.png",
+    "oldPatchSha256": "0ff94ec376e541f5e3803b2db0b61dd45edabe08028d6d6caaa68467c6c0b93f",
+    "mergedPatchSha256": "0ff94ec376e541f5e3803b2db0b61dd45edabe08028d6d6caaa68467c6c0b93f",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-D-corrected-public-refuse/hub-skills-1380x900-local-operator-dark-detail.png",
+    "oldPatchSha256": "5e6bf4949c1ddeb9449370aaa377a43c8e61cba2904fb136e7c3965377c771cb",
+    "mergedPatchSha256": "5e6bf4949c1ddeb9449370aaa377a43c8e61cba2904fb136e7c3965377c771cb",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-D-corrected-public-refuse/hub-skills-1380x900-local-operator-dark-loading.png",
+    "oldPatchSha256": "cd818f8e7258c3797a461e87c6a5018fb32ea330c18d2e2b41f369c18c4f480f",
+    "mergedPatchSha256": "cd818f8e7258c3797a461e87c6a5018fb32ea330c18d2e2b41f369c18c4f480f",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-D-corrected-public-refuse/hub-skills-1380x900-local-operator-dark-populated.png",
+    "oldPatchSha256": "8235512b5465a4f3135b1645b3c1e67140c4eab89c6fa438c87b09893798ff1a",
+    "mergedPatchSha256": "8235512b5465a4f3135b1645b3c1e67140c4eab89c6fa438c87b09893798ff1a",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-D-corrected-public-refuse/hub-skills-1380x900-local-operator-dark-publish-complete.png",
+    "oldPatchSha256": "4e9b8185f3a2e0b401ea41fba50eda0da8caf5b700bc5764a994c4882b9d0573",
+    "mergedPatchSha256": "4e9b8185f3a2e0b401ea41fba50eda0da8caf5b700bc5764a994c4882b9d0573",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-D-corrected-public-refuse/hub-skills-1380x900-local-operator-dark-publish-preview-payload.png",
+    "oldPatchSha256": "b9ceabfa4d9a5642b9670f9d3746bab46c18f865d77d33708318c7fb59af14a3",
+    "mergedPatchSha256": "b9ceabfa4d9a5642b9670f9d3746bab46c18f865d77d33708318c7fb59af14a3",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-D-corrected-public-refuse/hub-skills-1380x900-local-operator-dark-publish-preview.png",
+    "oldPatchSha256": "bf76a2f0268ab0fcf06e08c22f54627c3125874a1d970c2dca83f5d9f9c03380",
+    "mergedPatchSha256": "bf76a2f0268ab0fcf06e08c22f54627c3125874a1d970c2dca83f5d9f9c03380",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-D-corrected-public-refuse/hub-skills-1380x900-local-operator-dark-pull-failed.png",
+    "oldPatchSha256": "1971374a697fe842a7a05f26b101e121f18d8b482dfb001bf7494847f5de89d8",
+    "mergedPatchSha256": "1971374a697fe842a7a05f26b101e121f18d8b482dfb001bf7494847f5de89d8",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-D-corrected-public-refuse/hub-skills-1380x900-local-operator-dark-pull-pending.png",
+    "oldPatchSha256": "1273eade82f17797fa584eb4404f186a0747f116d3ad7605e35adb916dbed865",
+    "mergedPatchSha256": "1273eade82f17797fa584eb4404f186a0747f116d3ad7605e35adb916dbed865",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-D-corrected-public-refuse/hub-skills-1380x900-local-operator-dark-search-empty.png",
+    "oldPatchSha256": "82d9b1497c53846945cdda7fd612b1869b7e7c4bf1967d2128b64aefd883b501",
+    "mergedPatchSha256": "82d9b1497c53846945cdda7fd612b1869b7e7c4bf1967d2128b64aefd883b501",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-D-corrected-public-refuse/hub-skills-geometry-local-operator-dark.json",
+    "oldPatchSha256": "cf2aa6cc632bb509c8760ee96ea50f19243f2983e426784902a78e2a15a35815",
+    "mergedPatchSha256": "cf2aa6cc632bb509c8760ee96ea50f19243f2983e426784902a78e2a15a35815",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-D-dark-public-refuse/hub-skills-1380x900-local-operator-dark-consent.png",
+    "oldPatchSha256": "881feabcdcbfc05c86fdc3f356abd1cb7c6024af1f5668065b2f4a2ab70b9646",
+    "mergedPatchSha256": "881feabcdcbfc05c86fdc3f356abd1cb7c6024af1f5668065b2f4a2ab70b9646",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-D-dark-public-refuse/hub-skills-1380x900-local-operator-dark-detail.png",
+    "oldPatchSha256": "11e653593240814ebf800a21341a6acdb3893fc5b0eabd1d965c0076fe85078f",
+    "mergedPatchSha256": "11e653593240814ebf800a21341a6acdb3893fc5b0eabd1d965c0076fe85078f",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-D-dark-public-refuse/hub-skills-1380x900-local-operator-dark-loading.png",
+    "oldPatchSha256": "732e6bde0439b354d25524aa5afd447a5a901297fa9bfccc8dba2f397b178c3d",
+    "mergedPatchSha256": "732e6bde0439b354d25524aa5afd447a5a901297fa9bfccc8dba2f397b178c3d",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-D-dark-public-refuse/hub-skills-1380x900-local-operator-dark-populated.png",
+    "oldPatchSha256": "bd88291cd78f0feb6edcfcd7e1ffbb3ed065c311a2757569309caaeda1aa7194",
+    "mergedPatchSha256": "bd88291cd78f0feb6edcfcd7e1ffbb3ed065c311a2757569309caaeda1aa7194",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-D-dark-public-refuse/hub-skills-1380x900-local-operator-dark-publish-complete.png",
+    "oldPatchSha256": "4613f2cfb3a46ba7b843daa8da48aef5de4dcaa18be566936c5d1c71e25a2da1",
+    "mergedPatchSha256": "4613f2cfb3a46ba7b843daa8da48aef5de4dcaa18be566936c5d1c71e25a2da1",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-D-dark-public-refuse/hub-skills-1380x900-local-operator-dark-publish-preview.png",
+    "oldPatchSha256": "b928995fb653ab5571106eda6c701d43a5ca0a5ec46b0a0f0ebe9f3ea41ab146",
+    "mergedPatchSha256": "b928995fb653ab5571106eda6c701d43a5ca0a5ec46b0a0f0ebe9f3ea41ab146",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-D-dark-public-refuse/hub-skills-1380x900-local-operator-dark-pull-failed.png",
+    "oldPatchSha256": "baae77de83320f2a4b452912e38f36f8a94262ef6b59dce3814cbfb440e61704",
+    "mergedPatchSha256": "baae77de83320f2a4b452912e38f36f8a94262ef6b59dce3814cbfb440e61704",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-D-dark-public-refuse/hub-skills-1380x900-local-operator-dark-pull-pending.png",
+    "oldPatchSha256": "33e9c8c673ee714d7809829f49c12f5052349b4b88e07667abd828a85b274a36",
+    "mergedPatchSha256": "33e9c8c673ee714d7809829f49c12f5052349b4b88e07667abd828a85b274a36",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-D-dark-public-refuse/hub-skills-1380x900-local-operator-dark-search-empty.png",
+    "oldPatchSha256": "48fd3ed26501890b69a2e161876a4b6006ffa1686ca1c12c8cbb80342d1a3e2b",
+    "mergedPatchSha256": "48fd3ed26501890b69a2e161876a4b6006ffa1686ca1c12c8cbb80342d1a3e2b",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-D-dark-public-refuse/hub-skills-geometry-local-operator-dark.json",
+    "oldPatchSha256": "1b59a8153d2ad6fa6b0dfb6e64b3f279b648ee0c79a10dc68a39e7ccd6887dc9",
+    "mergedPatchSha256": "1b59a8153d2ad6fa6b0dfb6e64b3f279b648ee0c79a10dc68a39e7ccd6887dc9",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-E-dark-publish-pending/hub-skills-1380x900-local-operator-dark-consent.png",
+    "oldPatchSha256": "5cb5f7428767df2be15124b46b24184e1633fd7d163c37422eb40d73e9df1932",
+    "mergedPatchSha256": "5cb5f7428767df2be15124b46b24184e1633fd7d163c37422eb40d73e9df1932",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-E-dark-publish-pending/hub-skills-1380x900-local-operator-dark-detail.png",
+    "oldPatchSha256": "e47aa9eaf801cbf738f9e92b6ccfa94b49bf02f356cccb83b11ddf1acb32c5a0",
+    "mergedPatchSha256": "e47aa9eaf801cbf738f9e92b6ccfa94b49bf02f356cccb83b11ddf1acb32c5a0",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-E-dark-publish-pending/hub-skills-1380x900-local-operator-dark-populated.png",
+    "oldPatchSha256": "3c43ddf1cb73d94e4b665df804ceb382c124f6b0e404bfe86db1bde0fd3c43de",
+    "mergedPatchSha256": "3c43ddf1cb73d94e4b665df804ceb382c124f6b0e404bfe86db1bde0fd3c43de",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-E-dark-publish-pending/hub-skills-1380x900-local-operator-dark-publish-pending.png",
+    "oldPatchSha256": "54b292bb7a28af6a2599c32b5dc60b22ad3c9c308c6af3076d9feaf29a426c0e",
+    "mergedPatchSha256": "54b292bb7a28af6a2599c32b5dc60b22ad3c9c308c6af3076d9feaf29a426c0e",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-E-dark-publish-pending/hub-skills-1380x900-local-operator-dark-publish-preview.png",
+    "oldPatchSha256": "4268f706885e85256b70edb3df29013752e9d49856f98047eeb84e59178de068",
+    "mergedPatchSha256": "4268f706885e85256b70edb3df29013752e9d49856f98047eeb84e59178de068",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-E-dark-publish-pending/hub-skills-1380x900-local-operator-dark-pull-success.png",
+    "oldPatchSha256": "ae03f7782668e08e7f6286e1606c2866e3cda4542cb358a4a9cd2c2e802310a1",
+    "mergedPatchSha256": "ae03f7782668e08e7f6286e1606c2866e3cda4542cb358a4a9cd2c2e802310a1",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-E-dark-publish-pending/hub-skills-1380x900-local-operator-dark-search-empty.png",
+    "oldPatchSha256": "65c32f50e01460c4f9b2db8adc16e81df3b556e5140c43b09115757b66ba01c4",
+    "mergedPatchSha256": "65c32f50e01460c4f9b2db8adc16e81df3b556e5140c43b09115757b66ba01c4",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-E-dark-publish-pending/hub-skills-geometry-local-operator-dark.json",
+    "oldPatchSha256": "f742d6ac4dfd47925c0506178f5e3cbfb88b0ae18ab9faea3141a6f170f85d42",
+    "mergedPatchSha256": "f742d6ac4dfd47925c0506178f5e3cbfb88b0ae18ab9faea3141a6f170f85d42",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-F-corrected-signed-out/hub-skills-1380x900-local-operator-dark-detail.png",
+    "oldPatchSha256": "7ccadfa8d03ce47400711a67adb5bf941be76da0619bc77982b21089d9471706",
+    "mergedPatchSha256": "7ccadfa8d03ce47400711a67adb5bf941be76da0619bc77982b21089d9471706",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-F-corrected-signed-out/hub-skills-1380x900-local-operator-dark-populated.png",
+    "oldPatchSha256": "c4cd154e5a39d19e28e7f59631c87a1390a5123bdaac693067349591ba478c5b",
+    "mergedPatchSha256": "c4cd154e5a39d19e28e7f59631c87a1390a5123bdaac693067349591ba478c5b",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-F-corrected-signed-out/hub-skills-1380x900-local-operator-dark-search-empty.png",
+    "oldPatchSha256": "495648a877cada7b8f596db999ea48f18c827aeeaff8b6d06f9181a5afe7e65c",
+    "mergedPatchSha256": "495648a877cada7b8f596db999ea48f18c827aeeaff8b6d06f9181a5afe7e65c",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-F-corrected-signed-out/hub-skills-1380x900-local-operator-dark-signed-out.png",
+    "oldPatchSha256": "4819800ceff7a117d5bcdb0d303f9c4b4d9995ba59802dd6820983d659e9dcab",
+    "mergedPatchSha256": "4819800ceff7a117d5bcdb0d303f9c4b4d9995ba59802dd6820983d659e9dcab",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-F-corrected-signed-out/hub-skills-geometry-local-operator-dark.json",
+    "oldPatchSha256": "8abbbe8972dfbbf94f689c123a826f05f060b17cae1d8104cac8cdc134e7e791",
+    "mergedPatchSha256": "8abbbe8972dfbbf94f689c123a826f05f060b17cae1d8104cac8cdc134e7e791",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-F-dark-signed-out/hub-skills-1380x900-local-operator-dark-detail.png",
+    "oldPatchSha256": "d4a9584ba52600951107327d41e3abe1e8793b87cd5c5369d9eb84a4b1a02dd4",
+    "mergedPatchSha256": "d4a9584ba52600951107327d41e3abe1e8793b87cd5c5369d9eb84a4b1a02dd4",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-F-dark-signed-out/hub-skills-1380x900-local-operator-dark-loading.png",
+    "oldPatchSha256": "4b427a73f17e0de78fc94a6a8beb378942cbaa5f2d952fee2f49c31657f5b4aa",
+    "mergedPatchSha256": "4b427a73f17e0de78fc94a6a8beb378942cbaa5f2d952fee2f49c31657f5b4aa",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-F-dark-signed-out/hub-skills-1380x900-local-operator-dark-populated.png",
+    "oldPatchSha256": "952bc905f3ed8978b9f31b0115d9255632af2131237737200604c6c05cc5ae18",
+    "mergedPatchSha256": "952bc905f3ed8978b9f31b0115d9255632af2131237737200604c6c05cc5ae18",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-F-dark-signed-out/hub-skills-1380x900-local-operator-dark-search-empty.png",
+    "oldPatchSha256": "f555805455b586c3c4efea82584a07fbdff4516ef063e89368dd6869c98c5375",
+    "mergedPatchSha256": "f555805455b586c3c4efea82584a07fbdff4516ef063e89368dd6869c98c5375",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-F-dark-signed-out/hub-skills-1380x900-local-operator-dark-signed-out.png",
+    "oldPatchSha256": "096df09031bcd7f10c5556272913a3a174c64dcc8a0a486d6224a2d7d1717728",
+    "mergedPatchSha256": "096df09031bcd7f10c5556272913a3a174c64dcc8a0a486d6224a2d7d1717728",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-F-dark-signed-out/hub-skills-geometry-local-operator-dark.json",
+    "oldPatchSha256": "e4c35533fd10b1114c4349ec4eb9c0bfed7ace656083f6c1f5538c9bd4cd9cd7",
+    "mergedPatchSha256": "e4c35533fd10b1114c4349ec4eb9c0bfed7ace656083f6c1f5538c9bd4cd9cd7",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-G-light-default/hub-skills-1380x900-local-operator-light-consent.png",
+    "oldPatchSha256": "72ad3dd6c449781765c5707d62bb401b63e32f44857e86ad83b7f13b033a81c1",
+    "mergedPatchSha256": "72ad3dd6c449781765c5707d62bb401b63e32f44857e86ad83b7f13b033a81c1",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-G-light-default/hub-skills-1380x900-local-operator-light-detail.png",
+    "oldPatchSha256": "2bb28e675762dcf76f69f3e5ca4d7b512ec18c94669dd390096accfdcfa8c83b",
+    "mergedPatchSha256": "2bb28e675762dcf76f69f3e5ca4d7b512ec18c94669dd390096accfdcfa8c83b",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-G-light-default/hub-skills-1380x900-local-operator-light-populated.png",
+    "oldPatchSha256": "49c5fde19a5882de22e46f54ca6451e45d5326c4f9850aebf6404bf780f65f9d",
+    "mergedPatchSha256": "49c5fde19a5882de22e46f54ca6451e45d5326c4f9850aebf6404bf780f65f9d",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-G-light-default/hub-skills-1380x900-local-operator-light-publish-complete.png",
+    "oldPatchSha256": "e2d9fbb9b47832c80a01c27de8dbf3b529f06e665b1b04b1c536f69712cb2c65",
+    "mergedPatchSha256": "e2d9fbb9b47832c80a01c27de8dbf3b529f06e665b1b04b1c536f69712cb2c65",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-G-light-default/hub-skills-1380x900-local-operator-light-publish-preview.png",
+    "oldPatchSha256": "79013e59e6c2302a7ca08e9ccb5072d2fc6d05b888cf779eec21d6c8c08811ac",
+    "mergedPatchSha256": "79013e59e6c2302a7ca08e9ccb5072d2fc6d05b888cf779eec21d6c8c08811ac",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-G-light-default/hub-skills-1380x900-local-operator-light-pull-success.png",
+    "oldPatchSha256": "7c5b07d1dce46bcac6162d266518921614725c34f9d2d6dc074fa3ffecd04b7e",
+    "mergedPatchSha256": "7c5b07d1dce46bcac6162d266518921614725c34f9d2d6dc074fa3ffecd04b7e",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-G-light-default/hub-skills-1380x900-local-operator-light-search-empty.png",
+    "oldPatchSha256": "33fc82d15731280cc153db569cc6973d5c4b5f6ecf935ede24c4e20e57164b33",
+    "mergedPatchSha256": "33fc82d15731280cc153db569cc6973d5c4b5f6ecf935ede24c4e20e57164b33",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-G-light-default/hub-skills-geometry-local-operator-light.json",
+    "oldPatchSha256": "8a2023e0ff5f614f38c6b8d4c3636c6623a9a9900b545aa668592374c2b9ea42",
+    "mergedPatchSha256": "8a2023e0ff5f614f38c6b8d4c3636c6623a9a9900b545aa668592374c2b9ea42",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-H-dark-narrow/hub-skills-800x900-local-operator-dark-consent.png",
+    "oldPatchSha256": "997f4660593896860e8196d57aed4e5b8cae462dbb4f4ce04b2d32ab2cabe56f",
+    "mergedPatchSha256": "997f4660593896860e8196d57aed4e5b8cae462dbb4f4ce04b2d32ab2cabe56f",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-H-dark-narrow/hub-skills-800x900-local-operator-dark-detail.png",
+    "oldPatchSha256": "cd8ab3d39fe7f5f127cdfae1d9d1d513ce9f91bc51f1039a6f104682321a3403",
+    "mergedPatchSha256": "cd8ab3d39fe7f5f127cdfae1d9d1d513ce9f91bc51f1039a6f104682321a3403",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-H-dark-narrow/hub-skills-800x900-local-operator-dark-populated.png",
+    "oldPatchSha256": "bf20ae798791be791e8b33c42d415846e7b43c43e23b71b416dc433f6c920eaf",
+    "mergedPatchSha256": "bf20ae798791be791e8b33c42d415846e7b43c43e23b71b416dc433f6c920eaf",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-H-dark-narrow/hub-skills-800x900-local-operator-dark-publish-complete.png",
+    "oldPatchSha256": "1891875e24e43a183b5ae5d20001ff79e69596bbff5818e4510d70bad93347bb",
+    "mergedPatchSha256": "1891875e24e43a183b5ae5d20001ff79e69596bbff5818e4510d70bad93347bb",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-H-dark-narrow/hub-skills-800x900-local-operator-dark-publish-preview.png",
+    "oldPatchSha256": "64d6fc876f029811f4e17e9b976b33439f706107b60e70f64405878025c544f7",
+    "mergedPatchSha256": "64d6fc876f029811f4e17e9b976b33439f706107b60e70f64405878025c544f7",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-H-dark-narrow/hub-skills-800x900-local-operator-dark-pull-pending.png",
+    "oldPatchSha256": "ccdc2fe3ddf75019f43c5f778ecc2c2902adb9ac7321b4ba9e4bb061b616255d",
+    "mergedPatchSha256": "ccdc2fe3ddf75019f43c5f778ecc2c2902adb9ac7321b4ba9e4bb061b616255d",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-H-dark-narrow/hub-skills-800x900-local-operator-dark-pull-success.png",
+    "oldPatchSha256": "470578ce65e65ba5a95d57cf3d26338a30135c9e8aaaa45317df5c3d788ad5ff",
+    "mergedPatchSha256": "470578ce65e65ba5a95d57cf3d26338a30135c9e8aaaa45317df5c3d788ad5ff",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-H-dark-narrow/hub-skills-800x900-local-operator-dark-search-empty.png",
+    "oldPatchSha256": "386688c90bed2c0c3731e2eabe1457858bb22ab1cfd630b4f213b2e3a310b3c1",
+    "mergedPatchSha256": "386688c90bed2c0c3731e2eabe1457858bb22ab1cfd630b4f213b2e3a310b3c1",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-H-dark-narrow/hub-skills-geometry-local-operator-dark.json",
+    "oldPatchSha256": "40737894919335c99ac4f81830304f7ab0c9082d9abe33620093de0cee38d866",
+    "mergedPatchSha256": "40737894919335c99ac4f81830304f7ab0c9082d9abe33620093de0cee38d866",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-I-released-core-adapter-absent/hub-skills-1380x900-local-operator-dark-adapter-absent-agents.png",
+    "oldPatchSha256": "6cb8096c8815119ca34541db67af2ad1a467e922cac7c0e61dd595f2f5bb2bf6",
+    "mergedPatchSha256": "6cb8096c8815119ca34541db67af2ad1a467e922cac7c0e61dd595f2f5bb2bf6",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-I-released-core-adapter-absent/hub-skills-geometry-local-operator-dark.json",
+    "oldPatchSha256": "1f257ca08cffdba52d1cf7cd58d4d8a2af846bf3ebfec1634ceb11a34d9c3f0d",
+    "mergedPatchSha256": "1f257ca08cffdba52d1cf7cd58d4d8a2af846bf3ebfec1634ceb11a34d9c3f0d",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-J-enabled-and-withdrawn/hub-skills-1380x900-local-operator-dark-adapter-withdrawn-agents.png",
+    "oldPatchSha256": "62ae9ae4521758f85e7861379723ed9cd10d8ac8223a25767d3ce8420aef7fd0",
+    "mergedPatchSha256": "62ae9ae4521758f85e7861379723ed9cd10d8ac8223a25767d3ce8420aef7fd0",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-J-enabled-and-withdrawn/hub-skills-1380x900-local-operator-dark-loading.png",
+    "oldPatchSha256": "75e528ffdddbd3ccb13743b395fcc912da3907f312af8b0b974581114ef381d2",
+    "mergedPatchSha256": "75e528ffdddbd3ccb13743b395fcc912da3907f312af8b0b974581114ef381d2",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-J-enabled-and-withdrawn/hub-skills-1380x900-local-operator-dark-populated.png",
+    "oldPatchSha256": "53471d1b318a21d3c5df54f3fc7366727fa60a97c9ef07f1fe72c89317eff2e5",
+    "mergedPatchSha256": "53471d1b318a21d3c5df54f3fc7366727fa60a97c9ef07f1fe72c89317eff2e5",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-J-enabled-and-withdrawn/hub-skills-geometry-local-operator-dark.json",
+    "oldPatchSha256": "8510fc49ae9fd91231cda2db94535699f80c75c3aafda1b90d48ea4d8cc20166",
+    "mergedPatchSha256": "8510fc49ae9fd91231cda2db94535699f80c75c3aafda1b90d48ea4d8cc20166",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-K-old-core-guard-disabled/hub-core-guard-1380x900-local-operator-dark-old-core-disabled.png",
+    "oldPatchSha256": "e2deca5f9129623bbde31b4e42061dfcd7fb05448312b8cade34d6f5905a8fe0",
+    "mergedPatchSha256": "e2deca5f9129623bbde31b4e42061dfcd7fb05448312b8cade34d6f5905a8fe0",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-K-old-core-guard-disabled/hub-core-guard-geometry.json",
+    "oldPatchSha256": "564532aadbb779f0ca06c3d13e94fb4cc63ad1d3669d57c5c39b048e59744450",
+    "mergedPatchSha256": "564532aadbb779f0ca06c3d13e94fb4cc63ad1d3669d57c5c39b048e59744450",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-L-fixed-version-guard-fixture/hub-core-guard-geometry.json",
+    "oldPatchSha256": "f755e828ab632840f80f43d9a2fb4bfa0aedecdf6f3744b6e1c9e118b4068e32",
+    "mergedPatchSha256": "f755e828ab632840f80f43d9a2fb4bfa0aedecdf6f3744b6e1c9e118b4068e32",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-M-fixed-guard-capture-recovery/hub-core-guard-1380x900-local-operator-dark-fixture-browse-zero.png",
+    "oldPatchSha256": "6b38b8575d4b6051cf08c57d09907fc01c130fdd308b9dd2ca685f1926432483",
+    "mergedPatchSha256": "6b38b8575d4b6051cf08c57d09907fc01c130fdd308b9dd2ca685f1926432483",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-M-fixed-guard-capture-recovery/hub-core-guard-1380x900-local-operator-dark-fixture-policy-off.png",
+    "oldPatchSha256": "0152f7f7362ad4781969db58b09e84769a01569c50328e99ddda8ddd22ec929d",
+    "mergedPatchSha256": "0152f7f7362ad4781969db58b09e84769a01569c50328e99ddda8ddd22ec929d",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R-M-fixed-guard-capture-recovery/hub-core-guard-geometry.json",
+    "oldPatchSha256": "50260d6ee2d05c1e9e0408275b94cf91131a22cf999b377de94a62861e5b07b1",
+    "mergedPatchSha256": "50260d6ee2d05c1e9e0408275b94cf91131a22cf999b377de94a62861e5b07b1",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R3-fixed-focus-wide/r3-fixed-dialog-held.png",
+    "oldPatchSha256": "d914f1763411040ef9a17aa93bad6c32e9cf50a875f9b3ced60188da2e25c2a6",
+    "mergedPatchSha256": "d914f1763411040ef9a17aa93bad6c32e9cf50a875f9b3ced60188da2e25c2a6",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R3-fixed-focus-wide/r3-fixed-switch-held.png",
+    "oldPatchSha256": "31da4df9b3175bfa4d2de9b7955de691e0b680f0db004595985c7adb37830275",
+    "mergedPatchSha256": "31da4df9b3175bfa4d2de9b7955de691e0b680f0db004595985c7adb37830275",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R3-fixed-short-narrow-light/geometry.json",
+    "oldPatchSha256": "99c4492a5ccb6157080693b1f0ecc1d5f5b58f4924bcd7ad8b0affa530b7d78a",
+    "mergedPatchSha256": "99c4492a5ccb6157080693b1f0ecc1d5f5b58f4924bcd7ad8b0affa530b7d78a",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R3-fixed-short-narrow-light/probe-fixed-short-results.json",
+    "oldPatchSha256": "42e37074d844eb8048cdaa4a60f58d0e0a4068629c8e9f9fd064aa02cd1cf0b4",
+    "mergedPatchSha256": "42e37074d844eb8048cdaa4a60f58d0e0a4068629c8e9f9fd064aa02cd1cf0b4",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R3-fixed-short-narrow-light/r3-disconnected-narrow-light.png",
+    "oldPatchSha256": "d0f6da75db60e82f8c30f6851a8c01aaba3dbedb0647828dc8bfec97b44ee672",
+    "mergedPatchSha256": "d0f6da75db60e82f8c30f6851a8c01aaba3dbedb0647828dc8bfec97b44ee672",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R3-fixed-short-narrow-light/r3-fixed-policy-confirmed.png",
+    "oldPatchSha256": "19f224f021bfb5d12503c1a03bf8f5f9dd1f7c6fa45342fcfb9b04c1756755e3",
+    "mergedPatchSha256": "19f224f021bfb5d12503c1a03bf8f5f9dd1f7c6fa45342fcfb9b04c1756755e3",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R3-old-wide/geometry.json",
+    "oldPatchSha256": "4cd472730743665aae99a3e6e8ca1f23e57064ec38ace78d8e8a4bbaa4a02e24",
+    "mergedPatchSha256": "4cd472730743665aae99a3e6e8ca1f23e57064ec38ace78d8e8a4bbaa4a02e24",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R3-old-wide/probe-old-results.json",
+    "oldPatchSha256": "c760ee049dcf62aad7a4ea17fe88b2aa97997424c7067074825a2513b4960366",
+    "mergedPatchSha256": "c760ee049dcf62aad7a4ea17fe88b2aa97997424c7067074825a2513b4960366",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R3-old-wide/r3-old-wide.png",
+    "oldPatchSha256": "cfc77b54229ef9f89474ba05085b086443dc195ea451e8ae9a76d31361086562",
+    "mergedPatchSha256": "cfc77b54229ef9f89474ba05085b086443dc195ea451e8ae9a76d31361086562",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R3-prerelease-narrow-light/geometry.json",
+    "oldPatchSha256": "25462fc1c19c717d50793d35eed6a905687bd73ce6c8dce9785c20724ce2b5f5",
+    "mergedPatchSha256": "25462fc1c19c717d50793d35eed6a905687bd73ce6c8dce9785c20724ce2b5f5",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R3-prerelease-narrow-light/probe-unknown-results.json",
+    "oldPatchSha256": "38ac113771710cd78f5945c2c673bb438104a6da88e610d259a3c920d000ca42",
+    "mergedPatchSha256": "38ac113771710cd78f5945c2c673bb438104a6da88e610d259a3c920d000ca42",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/frames/R3-prerelease-narrow-light/r3-prerelease-narrow-light.png",
+    "oldPatchSha256": "891aa35e08d1c5d69ed5d12af60775311009b8156c7c0b8138d9f2052a9e6d5d",
+    "mergedPatchSha256": "891aa35e08d1c5d69ed5d12af60775311009b8156c7c0b8138d9f2052a9e6d5d",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/R-I-released-core-adapter-absent.log",
+    "oldPatchSha256": "6c583cc87f37db2368152698bb05a71b372776707d02fd95e91a1d16870b224d",
+    "mergedPatchSha256": "6c583cc87f37db2368152698bb05a71b372776707d02fd95e91a1d16870b224d",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/R-J-enabled-and-withdrawn.log",
+    "oldPatchSha256": "24d59f4b26d077082b4afe7a5aebb99381770ef30383ffd9302a009a42214383",
+    "mergedPatchSha256": "24d59f4b26d077082b4afe7a5aebb99381770ef30383ffd9302a009a42214383",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/R-K-old-core-guard-disabled-health.json",
+    "oldPatchSha256": "7dcae0b01ebe4f4c7cffe76a426db504fa04c50091c25e9b46794ff3269f515d",
+    "mergedPatchSha256": "7dcae0b01ebe4f4c7cffe76a426db504fa04c50091c25e9b46794ff3269f515d",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/R-K-old-core-guard-disabled-stub.log",
+    "oldPatchSha256": "f3abc8a390cb24f16526542bbff6ecd80b855a16e499b9275c699915ced7bbec",
+    "mergedPatchSha256": "f3abc8a390cb24f16526542bbff6ecd80b855a16e499b9275c699915ced7bbec",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/R-K-old-core-guard-disabled.log",
+    "oldPatchSha256": "b9656f7bc895fcf43339b567d2cc5649e7bf342cc641bc83a4cff731bb185128",
+    "mergedPatchSha256": "b9656f7bc895fcf43339b567d2cc5649e7bf342cc641bc83a4cff731bb185128",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/R-L-fixed-version-guard-fixture-health.json",
+    "oldPatchSha256": "04a6888bba55720aa779b82c033684433d7f984a25b276dad934b0ed3baf26f3",
+    "mergedPatchSha256": "04a6888bba55720aa779b82c033684433d7f984a25b276dad934b0ed3baf26f3",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/R-L-fixed-version-guard-fixture-stub.log",
+    "oldPatchSha256": "48ac7f1d02135c22c3017a38dd017da58dfc60f3d042766eaa830c620c43192e",
+    "mergedPatchSha256": "48ac7f1d02135c22c3017a38dd017da58dfc60f3d042766eaa830c620c43192e",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/R-L-fixed-version-guard-fixture.log",
+    "oldPatchSha256": "689a4bf19f539d4a65ef23e5a5f2fe5c4a4b1e8c705bd73ccb003ed1505ac634",
+    "mergedPatchSha256": "689a4bf19f539d4a65ef23e5a5f2fe5c4a4b1e8c705bd73ccb003ed1505ac634",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/R-M-fixed-guard-capture-recovery-health.json",
+    "oldPatchSha256": "e9b71b9a97f5bb21b0f7068fc05c4527d4d382713744edd25dc13e2eff0e91c2",
+    "mergedPatchSha256": "e9b71b9a97f5bb21b0f7068fc05c4527d4d382713744edd25dc13e2eff0e91c2",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/R-M-fixed-guard-capture-recovery-stub.log",
+    "oldPatchSha256": "687ef51094dfc3471ac5ef50d40d7d423a61694960b5ac69e1c9e168fb7aaba6",
+    "mergedPatchSha256": "687ef51094dfc3471ac5ef50d40d7d423a61694960b5ac69e1c9e168fb7aaba6",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/R-M-fixed-guard-capture-recovery.log",
+    "oldPatchSha256": "5e1ada0eab4b90fdbe2319dad7f5712e64c24c80c7532f8864852399cc37b154",
+    "mergedPatchSha256": "5e1ada0eab4b90fdbe2319dad7f5712e64c24c80c7532f8864852399cc37b154",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/capability-boot-cell.log",
+    "oldPatchSha256": "f16423cba7eb007c8e1e2b9131321bc73bd98a64760b04701845b33f65c02269",
+    "mergedPatchSha256": "f16423cba7eb007c8e1e2b9131321bc73bd98a64760b04701845b33f65c02269",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/capability-boot-reuse.json",
+    "oldPatchSha256": "55afeebc03d014bd278c67f5f385b0b000de296a933e76dca511fc45cef83981",
+    "mergedPatchSha256": "55afeebc03d014bd278c67f5f385b0b000de296a933e76dca511fc45cef83981",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/capability-cell.log",
+    "oldPatchSha256": "6aedf2bc990116664a5054e7e1d25df0fba0b3cffd52fc2224a0cf9d0c23c1ef",
+    "mergedPatchSha256": "6aedf2bc990116664a5054e7e1d25df0fba0b3cffd52fc2224a0cf9d0c23c1ef",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/capability-compiled-identity.json",
+    "oldPatchSha256": "61c316b52eb8649c8d9ff4dd0d642143ce4a8766f63961e220454d37121a215e",
+    "mergedPatchSha256": "61c316b52eb8649c8d9ff4dd0d642143ce4a8766f63961e220454d37121a215e",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/capability-consent-original-vectors.json",
+    "oldPatchSha256": "9434f278848f841d5e82a4f83139f850873d5db1258d0014a766d22f6a8f6aeb",
+    "mergedPatchSha256": "9434f278848f841d5e82a4f83139f850873d5db1258d0014a766d22f6a8f6aeb",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/capability-gate-tests.txt",
+    "oldPatchSha256": "77231dfcc8821862550f54f6cbdebcf0175bc4da843e5b203069f0920b7bd4ff",
+    "mergedPatchSha256": "77231dfcc8821862550f54f6cbdebcf0175bc4da843e5b203069f0920b7bd4ff",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/capability-gate.md",
+    "oldPatchSha256": "98e8c523cfe8b389778611da2d66e8e4a36cbfc28fd3fe407ed04dbd720133da",
+    "mergedPatchSha256": "98e8c523cfe8b389778611da2d66e8e4a36cbfc28fd3fe407ed04dbd720133da",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/capability-native-core.json",
+    "oldPatchSha256": "cfeb155f096f401333e43c8ac70c6915001ef1bec4619626dec32a378370e337",
+    "mergedPatchSha256": "cfeb155f096f401333e43c8ac70c6915001ef1bec4619626dec32a378370e337",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/capability-native-core.log",
+    "oldPatchSha256": "ee74bbebd1dd6bbad8d9a954e0933513ba41204f88c66aca0aa2b315e7aea253",
+    "mergedPatchSha256": "ee74bbebd1dd6bbad8d9a954e0933513ba41204f88c66aca0aa2b315e7aea253",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/capability-native-observations.md",
+    "oldPatchSha256": "cefb328ce7a08f19245989dbcac932d8a0c1b16a2c703d6d6d0bc82f2fc21e5a",
+    "mergedPatchSha256": "cefb328ce7a08f19245989dbcac932d8a0c1b16a2c703d6d6d0bc82f2fc21e5a",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/capability-native-results.json",
+    "oldPatchSha256": "fcac60b04525abd4ecc0ca5bbb4c69e04ff684037bcf2db8a37bc786db03c629",
+    "mergedPatchSha256": "fcac60b04525abd4ecc0ca5bbb4c69e04ff684037bcf2db8a37bc786db03c629",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/capability-origin.log",
+    "oldPatchSha256": "16c163ea398267f5c351e2dba4222d6c052c297d6f9ac110d166dec31366384b",
+    "mergedPatchSha256": "16c163ea398267f5c351e2dba4222d6c052c297d6f9ac110d166dec31366384b",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/capability-positive.log",
+    "oldPatchSha256": "79044b902597a272fd78a538dc56aebadb20c8b071e4c7320944f0ff993c199d",
+    "mergedPatchSha256": "79044b902597a272fd78a538dc56aebadb20c8b071e4c7320944f0ff993c199d",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/capability-released-core.json",
+    "oldPatchSha256": "366cb520cc94309ebdedda0f86c60d645cbc086dbaa5142cbad02e9fa1dcddac",
+    "mergedPatchSha256": "366cb520cc94309ebdedda0f86c60d645cbc086dbaa5142cbad02e9fa1dcddac",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/capability-released-links.json",
+    "oldPatchSha256": "bf7a8ef1b8d400e723b82e5702ba90c1ce6e5191fb963f36d653cadd70ed1a32",
+    "mergedPatchSha256": "bf7a8ef1b8d400e723b82e5702ba90c1ce6e5191fb963f36d653cadd70ed1a32",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/capability-resource-preflight.json",
+    "oldPatchSha256": "ebe90ee3efc38a9a019a10c4d19f83b0d402b5d780fcb8d92c00cdbc9b29f2c0",
+    "mergedPatchSha256": "ebe90ee3efc38a9a019a10c4d19f83b0d402b5d780fcb8d92c00cdbc9b29f2c0",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/capability-source-preflight.json",
+    "oldPatchSha256": "a0e313cbd253d4d75be744e1511af5d4f665c530372a452024f657f808a86b32",
+    "mergedPatchSha256": "a0e313cbd253d4d75be744e1511af5d4f665c530372a452024f657f808a86b32",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/capability-targeted-lint.log",
+    "oldPatchSha256": "ad3456f4865f3143b5658a97bd47c02a232715fa59f36667bfc8a0505360ad85",
+    "mergedPatchSha256": "ad3456f4865f3143b5658a97bd47c02a232715fa59f36667bfc8a0505360ad85",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/capability-targeted-lint.txt",
+    "oldPatchSha256": "e40affc398d021150d4dbcc98b3c3df4baa39d68795e4cd53a30b0a747c16f23",
+    "mergedPatchSha256": "e40affc398d021150d4dbcc98b3c3df4baa39d68795e4cd53a30b0a747c16f23",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/check-index.json",
+    "oldPatchSha256": "f6e2e684cbd7f3f231f95a46990dc0c4b12f83b743f539140024ed9cf819a03c",
+    "mergedPatchSha256": "f6e2e684cbd7f3f231f95a46990dc0c4b12f83b743f539140024ed9cf819a03c",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/convergence-compile.mjs",
+    "oldPatchSha256": "e5378dcfb0540af03d64dbb0a641cd3486660c316e6e69a09d3132906d350d28",
+    "mergedPatchSha256": "e5378dcfb0540af03d64dbb0a641cd3486660c316e6e69a09d3132906d350d28",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/convergence-dependency-pins.json",
+    "oldPatchSha256": "b3e4cec1d43df345acb0877cc1aa2b3ab9b28323663cba38d18c38493eb70861",
+    "mergedPatchSha256": "b3e4cec1d43df345acb0877cc1aa2b3ab9b28323663cba38d18c38493eb70861",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/convergence-emitted-hashes.json",
+    "oldPatchSha256": "2cfe995e04693bd3b30f0e4872f2a58ca9111e65795eb1b4a1bfbb1589c044d0",
+    "mergedPatchSha256": "2cfe995e04693bd3b30f0e4872f2a58ca9111e65795eb1b4a1bfbb1589c044d0",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/convergence-english-messages.json",
+    "oldPatchSha256": "310844f561e58a01f60f58ad8b245f09e5efc2f841137ce628598908993a51b2",
+    "mergedPatchSha256": "310844f561e58a01f60f58ad8b245f09e5efc2f841137ce628598908993a51b2",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/convergence-finder-layout.js.txt",
+    "oldPatchSha256": "c29708827bbaabdf2917ab0fbf48c54f3f8ed67b5fc5f28490ee06962e37c4b5",
+    "mergedPatchSha256": "c29708827bbaabdf2917ab0fbf48c54f3f8ed67b5fc5f28490ee06962e37c4b5",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/convergence-finder-purity.json",
+    "oldPatchSha256": "285d960493df4c808e0f5bbe631320ae18ed0a36dd14e75770c9331b5bc68109",
+    "mergedPatchSha256": "285d960493df4c808e0f5bbe631320ae18ed0a36dd14e75770c9331b5bc68109",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/convergence-incoming-files.txt",
+    "oldPatchSha256": "72cf44713d19b21162b4e19d49ee1f5a6fc6b24c6436ba19c57baca82b8dee9e",
+    "mergedPatchSha256": "72cf44713d19b21162b4e19d49ee1f5a6fc6b24c6436ba19c57baca82b8dee9e",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/convergence-painted-core.json",
+    "oldPatchSha256": "92d35300814a531c6dfcc1f51e47b86b83b475be0c1922f141a94297a37c8786",
+    "mergedPatchSha256": "92d35300814a531c6dfcc1f51e47b86b83b475be0c1922f141a94297a37c8786",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/convergence-proof.json",
+    "oldPatchSha256": "8312df7827b8177c16b2c95afda83baeea2d635f3292e2072a01e2dee0f77dd0",
+    "mergedPatchSha256": "8312df7827b8177c16b2c95afda83baeea2d635f3292e2072a01e2dee0f77dd0",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/convergence-r2-capture-facts.json",
+    "oldPatchSha256": "8640ee7dd69404fb439968decd5b44076cc73617d27a14cdaf020d8ac5a23390",
+    "mergedPatchSha256": "8640ee7dd69404fb439968decd5b44076cc73617d27a14cdaf020d8ac5a23390",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/convergence-r2-fold.log",
+    "oldPatchSha256": "4eb82a967ef30d2990f480e49f028f969d0f129ca2ea84ceffa8ff8b5b5496af",
+    "mergedPatchSha256": "4eb82a967ef30d2990f480e49f028f969d0f129ca2ea84ceffa8ff8b5b5496af",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/convergence-r2-literal-closure.json",
+    "oldPatchSha256": "c5e11e5fb4a0000d87afa71a4116c135a92a4725103ffd85558b1997775cc3a9",
+    "mergedPatchSha256": "c5e11e5fb4a0000d87afa71a4116c135a92a4725103ffd85558b1997775cc3a9",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/convergence-r2-package.json",
+    "oldPatchSha256": "dd34014e34d38ae0eaa595c61d622d7af43ce88dcc8ca6a57e671de1977dbed1",
+    "mergedPatchSha256": "dd34014e34d38ae0eaa595c61d622d7af43ce88dcc8ca6a57e671de1977dbed1",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/convergence-r2-painted.json",
+    "oldPatchSha256": "26c2f4a3fef46f0c12abc7ca5993325332adbe33b814df8020cfa82da2651f7f",
+    "mergedPatchSha256": "26c2f4a3fef46f0c12abc7ca5993325332adbe33b814df8020cfa82da2651f7f",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/convergence-r2-proof.log",
+    "oldPatchSha256": "7951adea99449893d98cf2b658c6539ab9548e22c3f16514ead7721fe51a7719",
+    "mergedPatchSha256": "7951adea99449893d98cf2b658c6539ab9548e22c3f16514ead7721fe51a7719",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/convergence-r2-proof.mjs",
+    "oldPatchSha256": "fb98cebc879e6fd4b064dc054f061048f1e1f77015a1d4d2f2d2dcfcf9f994cd",
+    "mergedPatchSha256": "fb98cebc879e6fd4b064dc054f061048f1e1f77015a1d4d2f2d2dcfcf9f994cd",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/convergence-r2-range-diff.txt",
+    "oldPatchSha256": "46c023bde4a86f7398f526c5b2c3cbd8da003d716244aa02a60e0ac71eb15a37",
+    "mergedPatchSha256": "46c023bde4a86f7398f526c5b2c3cbd8da003d716244aa02a60e0ac71eb15a37",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/convergence-r2-semantic.json",
+    "oldPatchSha256": "8bf8e42d56d33e3ba933296db731c9892dc0a986e25f948deb1b8bb2774ae6be",
+    "mergedPatchSha256": "8bf8e42d56d33e3ba933296db731c9892dc0a986e25f948deb1b8bb2774ae6be",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/convergence-r2-targeted.log",
+    "oldPatchSha256": "7224f568d947011d08c1aa12b517bb1e99d9253c0bd72f85edc605a72a97e0c7",
+    "mergedPatchSha256": "7224f568d947011d08c1aa12b517bb1e99d9253c0bd72f85edc605a72a97e0c7",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/convergence-r2-task-delta.json",
+    "oldPatchSha256": "556350fba096da8957163ac9a01eaf4eca0a33fec671b819b2f033ee5062af43",
+    "mergedPatchSha256": "556350fba096da8957163ac9a01eaf4eca0a33fec671b819b2f033ee5062af43",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/convergence-r2-upstream-control.log",
+    "oldPatchSha256": "018e0ab0ec1bd743a8f9ecd786c647690eb2070ddf4d875b58d0957afc37e43f",
+    "mergedPatchSha256": "018e0ab0ec1bd743a8f9ecd786c647690eb2070ddf4d875b58d0957afc37e43f",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/convergence-r2.md",
+    "oldPatchSha256": "132417dad57654a83d3fa5049b0affa04ec312447062548c49422db8d71d925b",
+    "mergedPatchSha256": "132417dad57654a83d3fa5049b0affa04ec312447062548c49422db8d71d925b",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/convergence-range-diff.txt",
+    "oldPatchSha256": "0137afe456390547e7dd46708fc9b01529c94ad30177aaf9cd46b674cddc91ae",
+    "mergedPatchSha256": "0137afe456390547e7dd46708fc9b01529c94ad30177aaf9cd46b674cddc91ae",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/convergence-runtime-closure.json",
+    "oldPatchSha256": "a26b8a75177bfce4aee2bddeed128dac0e092ba3d457edd02863054adc4ee1f4",
+    "mergedPatchSha256": "a26b8a75177bfce4aee2bddeed128dac0e092ba3d457edd02863054adc4ee1f4",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/convergence-runtime-results.json",
+    "oldPatchSha256": "700b0c09c3fde9ebcfe84becbaecffd733061a3cdab243f1ce5e5bba01a0932c",
+    "mergedPatchSha256": "700b0c09c3fde9ebcfe84becbaecffd733061a3cdab243f1ce5e5bba01a0932c",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/convergence-runtime.mjs",
+    "oldPatchSha256": "72897e2c9910f753b27dd510fde5a4ab6c85d4291b9810453883c8fc997adab7",
+    "mergedPatchSha256": "72897e2c9910f753b27dd510fde5a4ab6c85d4291b9810453883c8fc997adab7",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/convergence-src-capture.tsv",
+    "oldPatchSha256": "19b15d31280fe8cb747eb8ad4e3b383e9e197943aad9c1d843b05ead06c0c6a5",
+    "mergedPatchSha256": "19b15d31280fe8cb747eb8ad4e3b383e9e197943aad9c1d843b05ead06c0c6a5",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/convergence-src-merged.tsv",
+    "oldPatchSha256": "5d69e42d1997b0227e9223049b7047a1f36839e7820d2e1a2c552def36f0c467",
+    "mergedPatchSha256": "5d69e42d1997b0227e9223049b7047a1f36839e7820d2e1a2c552def36f0c467",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/convergence.md",
+    "oldPatchSha256": "837efc08817e19e58331246186e59bd5546469260b437e55e413d808e6335619",
+    "mergedPatchSha256": "837efc08817e19e58331246186e59bd5546469260b437e55e413d808e6335619",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/final-audit.txt",
+    "oldPatchSha256": "af332c48071817f8a0e350b05b37ca7ae9c814ae116132b0815713ffaa8d6d1c",
+    "mergedPatchSha256": "af332c48071817f8a0e350b05b37ca7ae9c814ae116132b0815713ffaa8d6d1c",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/geometry-index.json",
+    "oldPatchSha256": "2d37c1509810be3093fdb11d41f87951a15ea198a3b6e59cb3f60100096cda6a",
+    "mergedPatchSha256": "2d37c1509810be3093fdb11d41f87951a15ea198a3b6e59cb3f60100096cda6a",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/hub-write-all-targeted.log",
+    "oldPatchSha256": "ff81b8e08c613196f8d3d29f19564f7efbb09c7f7c7afcc27ada448ecb005aa3",
+    "mergedPatchSha256": "ff81b8e08c613196f8d3d29f19564f7efbb09c7f7c7afcc27ada448ecb005aa3",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/hub-write-build-setup-config.log",
+    "oldPatchSha256": "fae1227070a1dbcd43e3a9a5a8ebd03ad120e199b21279d32d2975c9d727173c",
+    "mergedPatchSha256": "fae1227070a1dbcd43e3a9a5a8ebd03ad120e199b21279d32d2975c9d727173c",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/hub-write-build-setup-google-secret.log",
+    "oldPatchSha256": "6f884371cbd63e39279f100e31c2576e0b4bfb7841bf9872c7f86d22b26fca2c",
+    "mergedPatchSha256": "6f884371cbd63e39279f100e31c2576e0b4bfb7841bf9872c7f86d22b26fca2c",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/hub-write-build.log",
+    "oldPatchSha256": "afb6035f4497fd2f4f186507dadb8cb42b6b4ee1d0b32d422760261a8a594b34",
+    "mergedPatchSha256": "afb6035f4497fd2f4f186507dadb8cb42b6b4ee1d0b32d422760261a8a594b34",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/hub-write-cell-setup-config.log",
+    "oldPatchSha256": "0ca414241ed7137c91b050539284fbee08df7a26f54d3ff4246444b924fac85b",
+    "mergedPatchSha256": "0ca414241ed7137c91b050539284fbee08df7a26f54d3ff4246444b924fac85b",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/hub-write-cell-setup-google-secret.log",
+    "oldPatchSha256": "70d906d2d7cf5050610c47184762e089f61c4f675506907fd6a16ffe0d007fa8",
+    "mergedPatchSha256": "70d906d2d7cf5050610c47184762e089f61c4f675506907fd6a16ffe0d007fa8",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/hub-write-cell-setup-syntax.log",
+    "oldPatchSha256": "83a459c5a0baad18a7342c7592992524ebfef63c91ef91cdf5f82c3fd47d2e64",
+    "mergedPatchSha256": "83a459c5a0baad18a7342c7592992524ebfef63c91ef91cdf5f82c3fd47d2e64",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/hub-write-cell.log",
+    "oldPatchSha256": "f73097020be3fb7a86141bd1d3f792aa719f36eeae4739bda8f051cef718e25f",
+    "mergedPatchSha256": "f73097020be3fb7a86141bd1d3f792aa719f36eeae4739bda8f051cef718e25f",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/hub-write-compiled-identity.json",
+    "oldPatchSha256": "9975ed4baaf71154e5b35ef173a88987e03e80d82ccccdcd425e0e492d40d744",
+    "mergedPatchSha256": "9975ed4baaf71154e5b35ef173a88987e03e80d82ccccdcd425e0e492d40d744",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/hub-write-direct-neighbors.log",
+    "oldPatchSha256": "b4cb0758af76cd4e4c54b3920706ac955dd3fb72ca2547b0716c398f7f0530d7",
+    "mergedPatchSha256": "b4cb0758af76cd4e4c54b3920706ac955dd3fb72ca2547b0716c398f7f0530d7",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/hub-write-final-targeted-lint.log",
+    "oldPatchSha256": "e2d6e977470395ec2271915fd6da8d91d20f26b63725ecd3e19451dcf509e623",
+    "mergedPatchSha256": "e2d6e977470395ec2271915fd6da8d91d20f26b63725ecd3e19451dcf509e623",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/hub-write-final-targeted.log",
+    "oldPatchSha256": "1881d91953731c562c246a64e5988f75a3bf5784359b7f3d9f5420d8f5ed24b6",
+    "mergedPatchSha256": "1881d91953731c562c246a64e5988f75a3bf5784359b7f3d9f5420d8f5ed24b6",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/hub-write-i18n-check.log",
+    "oldPatchSha256": "13fc48802efc53595a1c52cef045cacfa5b223ab35c0146331505345eed0b958",
+    "mergedPatchSha256": "13fc48802efc53595a1c52cef045cacfa5b223ab35c0146331505345eed0b958",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/hub-write-lint.log",
+    "oldPatchSha256": "0d9879a96dc0e7307cdd320abee85c98f20c2ccaf7edd16e62035acf8309ffda",
+    "mergedPatchSha256": "0d9879a96dc0e7307cdd320abee85c98f20c2ccaf7edd16e62035acf8309ffda",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/hub-write-recovery-admission-refused.json",
+    "oldPatchSha256": "19155b10b179c027a0027358e2e4eb3e320f3da20821d73071c0be22c409ce47",
+    "mergedPatchSha256": "19155b10b179c027a0027358e2e4eb3e320f3da20821d73071c0be22c409ce47",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/hub-write-recovery-cell.log",
+    "oldPatchSha256": "8bbb384b7390cad4ac21b4a727dfee463aad4ad9d42135a5fbb084805729909c",
+    "mergedPatchSha256": "8bbb384b7390cad4ac21b4a727dfee463aad4ad9d42135a5fbb084805729909c",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/hub-write-recovery-lint.log",
+    "oldPatchSha256": "34a6fa31ae67b8b1d1ea937d5fb984d49ea4fe2fb68d5f2e0987ff7241e82342",
+    "mergedPatchSha256": "34a6fa31ae67b8b1d1ea937d5fb984d49ea4fe2fb68d5f2e0987ff7241e82342",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/hub-write-recovery-native-results.json",
+    "oldPatchSha256": "8a28097f09b2026100e8431a6d05f3372d015331fced8a52e791a394cfa466b8",
+    "mergedPatchSha256": "8a28097f09b2026100e8431a6d05f3372d015331fced8a52e791a394cfa466b8",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/hub-write-recovery-preflight.json",
+    "oldPatchSha256": "04ded5c3ccf82e80bed20815a6150c96141147e1504a3a06cec336ba28b7fe6c",
+    "mergedPatchSha256": "04ded5c3ccf82e80bed20815a6150c96141147e1504a3a06cec336ba28b7fe6c",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/hub-write-recovery-resource-readings.json",
+    "oldPatchSha256": "2e18353db47878386ad40aa285ac1c7066c58743014bfbf3bae79dbcbbdfae32",
+    "mergedPatchSha256": "2e18353db47878386ad40aa285ac1c7066c58743014bfbf3bae79dbcbbdfae32",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/hub-write-recovery-tests.log",
+    "oldPatchSha256": "6284971cec0fe0f5215bfaafef6d9be6054bb4656aad891e618f534298c94f89",
+    "mergedPatchSha256": "6284971cec0fe0f5215bfaafef6d9be6054bb4656aad891e618f534298c94f89",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/hub-write-resource-readings.json",
+    "oldPatchSha256": "2234a67ecbeb6fbee76e48e7f9232907ff86b32ace0cc5f740cbe917c0cc48d0",
+    "mergedPatchSha256": "2234a67ecbeb6fbee76e48e7f9232907ff86b32ace0cc5f740cbe917c0cc48d0",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/manifest-final-stamp.json",
+    "oldPatchSha256": "05906c200f473dba24362a93a7ac4710d427af4f6b2b4a195ba0a4921c1ce827",
+    "mergedPatchSha256": "05906c200f473dba24362a93a7ac4710d427af4f6b2b4a195ba0a4921c1ce827",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/manifest-final-walk.json",
+    "oldPatchSha256": "94916caa596da5957492304bcff3fa8ac230c5c8aa05f9746a56d01dd01906d4",
+    "mergedPatchSha256": "94916caa596da5957492304bcff3fa8ac230c5c8aa05f9746a56d01dd01906d4",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/manifest-walk-before-positive-recovery.json",
+    "oldPatchSha256": "7c14f3efc6d4dc876e4db50dfa9a4ddaab35ec372ba6401263522d32c8204018",
+    "mergedPatchSha256": "7c14f3efc6d4dc876e4db50dfa9a4ddaab35ec372ba6401263522d32c8204018",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/matrix-cell.log",
+    "oldPatchSha256": "efd85ca0dba09c47a3d1d84f4823624eb450b5b237031ad3a60840dfda884a5f",
+    "mergedPatchSha256": "efd85ca0dba09c47a3d1d84f4823624eb450b5b237031ad3a60840dfda884a5f",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/minimum-core-guard.md",
+    "oldPatchSha256": "8202bbc46d046bbde7c0aaef0dee3fd98a821bc6d12ce2ac6adf639ff0104e60",
+    "mergedPatchSha256": "8202bbc46d046bbde7c0aaef0dee3fd98a821bc6d12ce2ac6adf639ff0104e60",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/original-run-A.log",
+    "oldPatchSha256": "43dd3c4a20eddf17081332ae26f01e91bb4f8cf8a66ba218b1bb13343346304e",
+    "mergedPatchSha256": "43dd3c4a20eddf17081332ae26f01e91bb4f8cf8a66ba218b1bb13343346304e",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/original-run-B.log",
+    "oldPatchSha256": "a0a6a1fefe1ecf6966097f97c8a4a19e160fe941163c6534dcafd686681b42c3",
+    "mergedPatchSha256": "a0a6a1fefe1ecf6966097f97c8a4a19e160fe941163c6534dcafd686681b42c3",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/original-run-D.log",
+    "oldPatchSha256": "40910e833d6a83e676f06cf0e9c3667382a8f68c0b6a451e807ee939bde67af8",
+    "mergedPatchSha256": "40910e833d6a83e676f06cf0e9c3667382a8f68c0b6a451e807ee939bde67af8",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/original-run-E.log",
+    "oldPatchSha256": "8c97a485f0a834ccacc734a4b3022e9de5fff4d53133ecf6f582b4fd5c159693",
+    "mergedPatchSha256": "8c97a485f0a834ccacc734a4b3022e9de5fff4d53133ecf6f582b4fd5c159693",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/original-run-F.log",
+    "oldPatchSha256": "7a6d30ce6d7195365fb83d8ffbd64f85082f9f65b29091b8f419c0fad201f334",
+    "mergedPatchSha256": "7a6d30ce6d7195365fb83d8ffbd64f85082f9f65b29091b8f419c0fad201f334",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/original-run-G.log",
+    "oldPatchSha256": "b086a9aa44a165c3c15fee235d8e7d60e3fbab73df82af2f3d0451a11c496f67",
+    "mergedPatchSha256": "b086a9aa44a165c3c15fee235d8e7d60e3fbab73df82af2f3d0451a11c496f67",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/original-run-H.log",
+    "oldPatchSha256": "562a42cceb041c7657e34356c552374c22abe26cf09a9b3337085b1d7e04c202",
+    "mergedPatchSha256": "562a42cceb041c7657e34356c552374c22abe26cf09a9b3337085b1d7e04c202",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/partial-original-run-C.log",
+    "oldPatchSha256": "74e36b263d142ef6d5bff695700792112dc0385c2095ec0487c4a9ff0651da4d",
+    "mergedPatchSha256": "74e36b263d142ef6d5bff695700792112dc0385c2095ec0487c4a9ff0651da4d",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/pr1099-actual-mergeability.json",
+    "oldPatchSha256": "858681848fc763611af23990b49d814588ac411e422494d1430919bd716226c3",
+    "mergedPatchSha256": "858681848fc763611af23990b49d814588ac411e422494d1430919bd716226c3",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-boots-cell.log",
+    "oldPatchSha256": "9a7f41e609d8c74c828d5d69d320cadf686099ffce4176ed12465329860840be",
+    "mergedPatchSha256": "9a7f41e609d8c74c828d5d69d320cadf686099ffce4176ed12465329860840be",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-boots-only.py",
+    "oldPatchSha256": "6671305b61973e7f0e8e8f5ec623af1bdd4e902a1860db2f1a079d6ddca03396",
+    "mergedPatchSha256": "6671305b61973e7f0e8e8f5ec623af1bdd4e902a1860db2f1a079d6ddca03396",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-bounded.mjs",
+    "oldPatchSha256": "00293bc80f77a85901d3fa1938e116e5b2dc32e69a7914d9b47c64d02411ff2c",
+    "mergedPatchSha256": "00293bc80f77a85901d3fa1938e116e5b2dc32e69a7914d9b47c64d02411ff2c",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-build-recovery.log",
+    "oldPatchSha256": "4cd49917daa68b1992726908de71ffbbd32901f87366420e08ee5ef6f41ad069",
+    "mergedPatchSha256": "4cd49917daa68b1992726908de71ffbbd32901f87366420e08ee5ef6f41ad069",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-build.log",
+    "oldPatchSha256": "69453de3415c7326499f2b073d561b2d399722971293280315b5db92c8904eb4",
+    "mergedPatchSha256": "69453de3415c7326499f2b073d561b2d399722971293280315b5db92c8904eb4",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-cell-original.base64",
+    "oldPatchSha256": "4dde22e9a4cc64e1ee3e7fb8783b15c8b8d847ce6b95184fcb3d41ed399dbe52",
+    "mergedPatchSha256": "4dde22e9a4cc64e1ee3e7fb8783b15c8b8d847ce6b95184fcb3d41ed399dbe52",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-cell-recovery.log",
+    "oldPatchSha256": "fe3d3f18f0949ee1207c6d3f1613bbb21c208154e96fb4ddf6f316b511dc027c",
+    "mergedPatchSha256": "fe3d3f18f0949ee1207c6d3f1613bbb21c208154e96fb4ddf6f316b511dc027c",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-cell.log",
+    "oldPatchSha256": "1a253d56147e9f750c565dba3103a218b61c459d29ef589eb1dded98ae5f4de2",
+    "mergedPatchSha256": "1a253d56147e9f750c565dba3103a218b61c459d29ef589eb1dded98ae5f4de2",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-cell.py",
+    "oldPatchSha256": "82041a1712fbc206750659ab661ec58fcc4e7c93f76a1a0fc09ca02b06eaddff",
+    "mergedPatchSha256": "82041a1712fbc206750659ab661ec58fcc4e7c93f76a1a0fc09ca02b06eaddff",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-compiled-identity.json",
+    "oldPatchSha256": "0dac81c8cc8507c4560e5d6c8c156e89bdd88f145b6ad81a11033f636c303b1f",
+    "mergedPatchSha256": "0dac81c8cc8507c4560e5d6c8c156e89bdd88f145b6ad81a11033f636c303b1f",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-csp-preflight.json",
+    "oldPatchSha256": "f208c8b6dff23d9e24baee652563f5118cca3b91b28d2d008bbb0a27f35d51ef",
+    "mergedPatchSha256": "f208c8b6dff23d9e24baee652563f5118cca3b91b28d2d008bbb0a27f35d51ef",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-csp-proof.json",
+    "oldPatchSha256": "fb0bfd7524507ee2c4cadc202a73bbb4d030742738328f20db03b4088d2e91c3",
+    "mergedPatchSha256": "fb0bfd7524507ee2c4cadc202a73bbb4d030742738328f20db03b4088d2e91c3",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-csp.py",
+    "oldPatchSha256": "b321cd47c5d6bc0f56c6bb31a2e2a4bb15d591b627fe2510ce9cc98c40aa2be6",
+    "mergedPatchSha256": "b321cd47c5d6bc0f56c6bb31a2e2a4bb15d591b627fe2510ce9cc98c40aa2be6",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-env-preflight.json",
+    "oldPatchSha256": "11eb048b84488571c912bf326ae3ed1a30df5f6a41cd8680d181a164514bf87e",
+    "mergedPatchSha256": "11eb048b84488571c912bf326ae3ed1a30df5f6a41cd8680d181a164514bf87e",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-env-preflight.log",
+    "oldPatchSha256": "68fceaa8741e0e7859fc2a9ed96aa7d504e1675684ac8d8cdd882a16d0801099",
+    "mergedPatchSha256": "68fceaa8741e0e7859fc2a9ed96aa7d504e1675684ac8d8cdd882a16d0801099",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-env-preflight.mjs",
+    "oldPatchSha256": "164935ad08896a24a600998b9d3ade514a7287a12534d056508191a51ba45113",
+    "mergedPatchSha256": "164935ad08896a24a600998b9d3ade514a7287a12534d056508191a51ba45113",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-executable-preflight-node22.log",
+    "oldPatchSha256": "cf38e95e8f23a19ff4125f4003fd6fcfbb416a8242271c7c0c832882163a077c",
+    "mergedPatchSha256": "cf38e95e8f23a19ff4125f4003fd6fcfbb416a8242271c7c0c832882163a077c",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-executable-preflight.log",
+    "oldPatchSha256": "196a2343e47cf83bf5fe2971e272f535fea78aa01e22b5a30ef0c9d500d6ea0a",
+    "mergedPatchSha256": "196a2343e47cf83bf5fe2971e272f535fea78aa01e22b5a30ef0c9d500d6ea0a",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-final-fold.log",
+    "oldPatchSha256": "837f633fbd65b19954901cd3be7a4974b8077c6f75704c0a8abaed491fa7e436",
+    "mergedPatchSha256": "837f633fbd65b19954901cd3be7a4974b8077c6f75704c0a8abaed491fa7e436",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-fixed-short.log",
+    "oldPatchSha256": "c863b5e4fc6feabd9f85abec91dc6f898bc3004cd05f9304f7139c90b4651694",
+    "mergedPatchSha256": "c863b5e4fc6feabd9f85abec91dc6f898bc3004cd05f9304f7139c90b4651694",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-fixed.log",
+    "oldPatchSha256": "031e2fb19de0992add495b824e539bc82f4470a91d8a9786e687dce8c8f5d3e1",
+    "mergedPatchSha256": "031e2fb19de0992add495b824e539bc82f4470a91d8a9786e687dce8c8f5d3e1",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-footprint-preflight.log",
+    "oldPatchSha256": "7c1c784f9bc0bb57af2879b861ca5e16620255cc3f173e2424e6f95e4e69fdab",
+    "mergedPatchSha256": "7c1c784f9bc0bb57af2879b861ca5e16620255cc3f173e2424e6f95e4e69fdab",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-fresh-build-held-identity.json",
+    "oldPatchSha256": "e739d8959e0eadce2ed85d26e3151d50c2aa5e35d40dad98b57cedd989f8a9fc",
+    "mergedPatchSha256": "e739d8959e0eadce2ed85d26e3151d50c2aa5e35d40dad98b57cedd989f8a9fc",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-initial-refused-resources.json",
+    "oldPatchSha256": "8564a0895b1fe34040ec46b32fe24cdafc13e4d8b50b5508dc6fba4aecf548f7",
+    "mergedPatchSha256": "8564a0895b1fe34040ec46b32fe24cdafc13e4d8b50b5508dc6fba4aecf548f7",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-lint-final.log",
+    "oldPatchSha256": "d81c6c7b3a474f877395ddcc8b44cc78f236206435fa9ae9f742259e32df899c",
+    "mergedPatchSha256": "d81c6c7b3a474f877395ddcc8b44cc78f236206435fa9ae9f742259e32df899c",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-native-results.json",
+    "oldPatchSha256": "83a3e9b51a3422913b475489f532c92bf99e12fc123038aee4e0bd91ec11a4c2",
+    "mergedPatchSha256": "83a3e9b51a3422913b475489f532c92bf99e12fc123038aee4e0bd91ec11a4c2",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-neighbors.log",
+    "oldPatchSha256": "09954f21c7ec9fe25d280e216ddc76d526dd62972d1877fb5f49ac70908753f9",
+    "mergedPatchSha256": "09954f21c7ec9fe25d280e216ddc76d526dd62972d1877fb5f49ac70908753f9",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-old.log",
+    "oldPatchSha256": "e60523052014517025fd2ddf7df86dd7db117dcc5e8a055cf6d26182ecfbf7d3",
+    "mergedPatchSha256": "e60523052014517025fd2ddf7df86dd7db117dcc5e8a055cf6d26182ecfbf7d3",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-own-frame-inventory.json",
+    "oldPatchSha256": "544b7f3efa3a3f80214d45cbc9202dcc82bbb4d61a73052b16d53a4903513b24",
+    "mergedPatchSha256": "544b7f3efa3a3f80214d45cbc9202dcc82bbb4d61a73052b16d53a4903513b24",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-partial-focus-result.json",
+    "oldPatchSha256": "db0cec480cf0acdb3b8706b0668fb22bd77ad092c7832d87c90c5a0d44950bca",
+    "mergedPatchSha256": "db0cec480cf0acdb3b8706b0668fb22bd77ad092c7832d87c90c5a0d44950bca",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-preflight.json",
+    "oldPatchSha256": "c5d4e9f86fa4f66a5eda8362a7ec3f26000ce7237c2c098020caadbbae17751d",
+    "mergedPatchSha256": "c5d4e9f86fa4f66a5eda8362a7ec3f26000ce7237c2c098020caadbbae17751d",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-probe-focus-attempt1.mjs",
+    "oldPatchSha256": "bd8946b0f49d6116ec9a92065df439d4e4410c21e0d0f079fc7c029aa6f0f5c9",
+    "mergedPatchSha256": "bd8946b0f49d6116ec9a92065df439d4e4410c21e0d0f079fc7c029aa6f0f5c9",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-probe.mjs",
+    "oldPatchSha256": "d4fd3ae646c0bf1807501faf786d320b92144d66d60e803f17bfd9d1a1120f9f",
+    "mergedPatchSha256": "d4fd3ae646c0bf1807501faf786d320b92144d66d60e803f17bfd9d1a1120f9f",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-remaining-cell.log",
+    "oldPatchSha256": "2764ef6dfa5cbc154ea3ebcd246a36cb6221729b85a23e4f05562340a8eb5d54",
+    "mergedPatchSha256": "2764ef6dfa5cbc154ea3ebcd246a36cb6221729b85a23e4f05562340a8eb5d54",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-remaining-resources.json",
+    "oldPatchSha256": "03b21f7c1b8102a4c5b53c71e7659f4b542b266a5890fa188b35894c9fc18ddc",
+    "mergedPatchSha256": "03b21f7c1b8102a4c5b53c71e7659f4b542b266a5890fa188b35894c9fc18ddc",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-remaining.py",
+    "oldPatchSha256": "684ca555989b9906e3e27b34fac324729415604f7f57b5076c5de8f85dd67a9f",
+    "mergedPatchSha256": "684ca555989b9906e3e27b34fac324729415604f7f57b5076c5de8f85dd67a9f",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-remediation.md",
+    "oldPatchSha256": "93d81bd934b036eefe68978ab55c2bdae89ad46ae8a3533a84416bfbe9b58f82",
+    "mergedPatchSha256": "93d81bd934b036eefe68978ab55c2bdae89ad46ae8a3533a84416bfbe9b58f82",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-resources.json",
+    "oldPatchSha256": "58a616e60b06a37fbb08acdb662d97c5c4311b195d77596064dc4c425603377d",
+    "mergedPatchSha256": "58a616e60b06a37fbb08acdb662d97c5c4311b195d77596064dc4c425603377d",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-rig-archive-format.json",
+    "oldPatchSha256": "f5d7c1514a17adaae1138459eb4d26df0ea77a210afe859ce50fcc6308c64d89",
+    "mergedPatchSha256": "f5d7c1514a17adaae1138459eb4d26df0ea77a210afe859ce50fcc6308c64d89",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-setup-refusal.json",
+    "oldPatchSha256": "9886c4e4b44ab32b42f5bc2479e41f6a6c2c8276426f1285e78ddf72a979da1c",
+    "mergedPatchSha256": "9886c4e4b44ab32b42f5bc2479e41f6a6c2c8276426f1285e78ddf72a979da1c",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-teardown.json",
+    "oldPatchSha256": "392a5c44a0d1035306884e2eba2f78ba744d060ef0b3fc11a288bd4133acf878",
+    "mergedPatchSha256": "392a5c44a0d1035306884e2eba2f78ba744d060ef0b3fc11a288bd4133acf878",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/r3-unknown.log",
+    "oldPatchSha256": "1b1de487497af3cad46c9fda643a51ff679ebd5bf338c5983ced5b6f8ffd6dbb",
+    "mergedPatchSha256": "1b1de487497af3cad46c9fda643a51ff679ebd5bf338c5983ced5b6f8ffd6dbb",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/run-ctl.log",
+    "oldPatchSha256": "9e2454b86547bfec98258327f1c96d3a93ec6741d48c1e24051d0a9c45c531d2",
+    "mergedPatchSha256": "9e2454b86547bfec98258327f1c96d3a93ec6741d48c1e24051d0a9c45c531d2",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/scoped-run-AP.log",
+    "oldPatchSha256": "35d2a33141b6de4fdf0cb0328c71c6791b0da77cf64d59847f15210865787ea5",
+    "mergedPatchSha256": "35d2a33141b6de4fdf0cb0328c71c6791b0da77cf64d59847f15210865787ea5",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/scoped-run-C.log",
+    "oldPatchSha256": "acc3c2e7fd7795691ec92394f3aec4a6a0c3067f9370a6bd96622a86762d6261",
+    "mergedPatchSha256": "acc3c2e7fd7795691ec92394f3aec4a6a0c3067f9370a6bd96622a86762d6261",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/scoped-run-D.log",
+    "oldPatchSha256": "af18612bf43494ed12af60b1b547844451d16f4b383aff910900084f45f371f4",
+    "mergedPatchSha256": "af18612bf43494ed12af60b1b547844451d16f4b383aff910900084f45f371f4",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/scoped-run-F.log",
+    "oldPatchSha256": "c15e9b176fcc706cf9a4dc880edc3523a3eda1b37f382b346a8f95dc19ef4d39",
+    "mergedPatchSha256": "c15e9b176fcc706cf9a4dc880edc3523a3eda1b37f382b346a8f95dc19ef4d39",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/scoped.log",
+    "oldPatchSha256": "a0e6d38af1942f126e8676f5b99acfdabb7b70258c9d9630886c99ee5f2cccac",
+    "mergedPatchSha256": "a0e6d38af1942f126e8676f5b99acfdabb7b70258c9d9630886c99ee5f2cccac",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "docs/evidence/hub-skills-library/receipts/stub-pre.log",
+    "oldPatchSha256": "147b50fe38f4fa36b0cc9e3a7812dc2b7315471f1c268f3836ce6d6609d759a9",
+    "mergedPatchSha256": "147b50fe38f4fa36b0cc9e3a7812dc2b7315471f1c268f3836ce6d6609d759a9",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "scripts/hub-guard-geometry.mjs",
+    "oldPatchSha256": "f38532358f18f847ddfa4d65f16bd83e097aae3483e925a35f0f4b79e9925f7d",
+    "mergedPatchSha256": "f38532358f18f847ddfa4d65f16bd83e097aae3483e925a35f0f4b79e9925f7d",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "scripts/hub-links-scene.test.mjs",
+    "oldPatchSha256": "d9e8629aa06f7f7af589a697d7a188de35b56adcec09ef1a4ffd1a1ed384505e",
+    "mergedPatchSha256": "d9e8629aa06f7f7af589a697d7a188de35b56adcec09ef1a4ffd1a1ed384505e",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "scripts/hub-mutation-safety.test.mjs",
+    "oldPatchSha256": "7c733605ce27be7fb2610d8827dab25ad8b9c76e637039706df1cd60ba64f111",
+    "mergedPatchSha256": "7c733605ce27be7fb2610d8827dab25ad8b9c76e637039706df1cd60ba64f111",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "scripts/hub-skills-capability.test.mjs",
+    "oldPatchSha256": "2578b5df0ea67ca51ae047bb04c92ebe7974799f8a672c6e31a5249466a0f4d0",
+    "mergedPatchSha256": "2578b5df0ea67ca51ae047bb04c92ebe7974799f8a672c6e31a5249466a0f4d0",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "scripts/renderer-driver.mjs",
+    "oldPatchSha256": "e5a8e8e5a25c929199342cbfbe62dca276bbfce97667b35dc939be4cfcfe1249",
+    "mergedPatchSha256": "e5a8e8e5a25c929199342cbfbe62dca276bbfce97667b35dc939be4cfcfe1249",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "src/i18n/catalogues/en/ui.hub.context.json",
+    "oldPatchSha256": "63b45c679b53390399474f24378fd2afa0e5b80870c0ff2c2c6ed9cfa4b52b0c",
+    "mergedPatchSha256": "63b45c679b53390399474f24378fd2afa0e5b80870c0ff2c2c6ed9cfa4b52b0c",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "src/i18n/catalogues/en/ui.hub.json",
+    "oldPatchSha256": "b280a3d076c774c3b461331e1a49d80d425ab8456ae72a529f4ebca335d17450",
+    "mergedPatchSha256": "b280a3d076c774c3b461331e1a49d80d425ab8456ae72a529f4ebca335d17450",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "src/i18n/keys.gen.ts",
+    "oldPatchSha256": "0c0ecb74b9c7e00010d13b25ef039ad596222b5fc7499cccb044db7be9a9d946",
+    "mergedPatchSha256": "0c0ecb74b9c7e00010d13b25ef039ad596222b5fc7499cccb044db7be9a9d946",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "src/renderer/src/features/agent-hub/agent-hub-page.tsx",
+    "oldPatchSha256": "e7f109b0200b11014cf7e44d4d2f50638a2310827ec15382c7c1408328593193",
+    "mergedPatchSha256": "e7f109b0200b11014cf7e44d4d2f50638a2310827ec15382c7c1408328593193",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "src/renderer/src/features/agent-hub/components/hub-skill-publication.tsx",
+    "oldPatchSha256": "64b3529641828bdf760dd90665af303865ad14ac0c052a9902eac504da886018",
+    "mergedPatchSha256": "64b3529641828bdf760dd90665af303865ad14ac0c052a9902eac504da886018",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "src/renderer/src/features/agent-hub/components/hub-skills-library.tsx",
+    "oldPatchSha256": "6e7530923ef5ea4af15b09ed8ebaf12e3dcd7c9997b54301b182b0afbac9d1cc",
+    "mergedPatchSha256": "6e7530923ef5ea4af15b09ed8ebaf12e3dcd7c9997b54301b182b0afbac9d1cc",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "src/renderer/src/features/agent-hub/hooks/use-hub-skills.ts",
+    "oldPatchSha256": "f9e68dc392b5dc3d1f2c84cd0ceb311671b19e0f80a67c39685a733c09cbe309",
+    "mergedPatchSha256": "f9e68dc392b5dc3d1f2c84cd0ceb311671b19e0f80a67c39685a733c09cbe309",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "src/renderer/src/features/agents/components/hub-initial-policy-fields.tsx",
+    "oldPatchSha256": "52ac665cf95de539871e8114db89df5ffc071c1328eb1128225c84df42e34a68",
+    "mergedPatchSha256": "52ac665cf95de539871e8114db89df5ffc071c1328eb1128225c84df42e34a68",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "src/renderer/src/features/agents/components/hub-link-policy-controls.tsx",
+    "oldPatchSha256": "82389690b9854d2eca62821e06f58cf6bffc2c2c3b500995bfb9c630f6df193d",
+    "mergedPatchSha256": "82389690b9854d2eca62821e06f58cf6bffc2c2c3b500995bfb9c630f6df193d",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "src/renderer/src/features/agents/components/hub-links-panel.tsx",
+    "oldPatchSha256": "a7f3ff03f060561596a76b8c3a6db08c09f92172a860d3b4bdcb4b74223fe039",
+    "mergedPatchSha256": "a7f3ff03f060561596a76b8c3a6db08c09f92172a860d3b4bdcb4b74223fe039",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "src/renderer/src/features/agents/components/hub-update-panel.tsx",
+    "oldPatchSha256": "d68c1ec21449f0879db8aeb1283021311995a8fa74534e6d2e81329230901dea",
+    "mergedPatchSha256": "d68c1ec21449f0879db8aeb1283021311995a8fa74534e6d2e81329230901dea",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "src/renderer/src/features/chat/components/chat-sidebar.tsx",
+    "oldPatchSha256": "ac037024a21ef93c147f02270b429b00236b3207634bd8435d614c664d3edb52",
+    "mergedPatchSha256": "ac037024a21ef93c147f02270b429b00236b3207634bd8435d614c664d3edb52",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "src/renderer/src/features/chat/components/hub-link-sidebar-mark.tsx",
+    "oldPatchSha256": "523da3a352906024d6ee21e504add201d68649c09e7b5a9a421af6a16e28e4e6",
+    "mergedPatchSha256": "523da3a352906024d6ee21e504add201d68649c09e7b5a9a421af6a16e28e4e6",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "src/renderer/src/features/chat/components/hub-update-mark.tsx",
+    "oldPatchSha256": "9016a05fe99fbf5cbf3a7d6efe25b7d948ec2cfa6af60aae58b50c42ea46abf9",
+    "mergedPatchSha256": "9016a05fe99fbf5cbf3a7d6efe25b7d948ec2cfa6af60aae58b50c42ea46abf9",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "src/renderer/src/shared/api/local-operator/desktop-hooks.ts",
+    "oldPatchSha256": "fba29be63b32c2bb407a5342c857ce22c0dd7cdf7b39e1b7ec2007198d362aa2",
+    "mergedPatchSha256": "fba29be63b32c2bb407a5342c857ce22c0dd7cdf7b39e1b7ec2007198d362aa2",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "src/renderer/src/shared/api/local-operator/hub-hooks.ts",
+    "oldPatchSha256": "dc9ba6ebbc3cf2b432937eaf79ed3cf3bcf7226afe8bfd69954bfe823751e403",
+    "mergedPatchSha256": "dc9ba6ebbc3cf2b432937eaf79ed3cf3bcf7226afe8bfd69954bfe823751e403",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "src/renderer/src/shared/api/local-operator/hub-link-actions.ts",
+    "oldPatchSha256": "eceed9adaf52f4f03756d0d40485bd1f0384a2dadda13f38e449391f2d7a9e3f",
+    "mergedPatchSha256": "eceed9adaf52f4f03756d0d40485bd1f0384a2dadda13f38e449391f2d7a9e3f",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "src/renderer/src/shared/api/local-operator/hub-link-hooks.ts",
+    "oldPatchSha256": "e198e653f48a713d70ec37918cbe39fcca6f303681e93ed2f533f5c0063ace89",
+    "mergedPatchSha256": "e198e653f48a713d70ec37918cbe39fcca6f303681e93ed2f533f5c0063ace89",
+    "identicalIncludingHunks": true
+  },
+  {
+    "path": "src/renderer/src/shared/api/local-operator/hub-mutation-safety.ts",
+    "oldPatchSha256": "61717ad9f96aa4a90ed6d3f30969752b537e1094100b85443d45294c792e39da",
+    "mergedPatchSha256": "61717ad9f96aa4a90ed6d3f30969752b537e1094100b85443d45294c792e39da",
+    "identicalIncludingHunks": true
+  }
+]

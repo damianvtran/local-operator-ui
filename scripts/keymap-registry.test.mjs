@@ -129,7 +129,7 @@ test("every reserved entry is canonical, stated in the app's voice, and explaine
 			 */
 			assert.match(
 				chord,
-				/^primary\+[\[\]]$/,
+				/^primary\+(?:[\[\]=\-]|plus)$/,
 				`unrepresentable reserved entry "${chord}" is not the punctuation class`,
 			);
 		} else {
@@ -164,6 +164,10 @@ test("the reserved inventory is exactly the decoded list", () => {
 	 * double-fire in the field.
 	 */
 	const expected = [
+		"primary+0",
+		"primary+plus",
+		"primary+=",
+		"primary+-",
 		"primary+alt+down",
 		"primary+alt+up",
 		// The browser surface's fixed chords (brief a1-8): reserved so Settings

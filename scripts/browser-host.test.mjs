@@ -9012,3 +9012,127 @@ test("frames n1+n2: a frame ref scrolls its iframe into view; candidates are rea
 		"form:nth-of-type(1) > input:nth-of-type(2)",
 	]);
 });
+
+test("human page-control IPC validates owner/frame/URL and primitive inputs", async () => {
+	const { host } = makeHost();
+	const frame = { url: "http://localhost:5173/index.html" };
+	const wc = { id: 1, mainFrame: frame };
+	const owner = { webContents: wc, isDestroyed: () => false };
+	ipcMain.reset();
+	registerBrowserIpc({
+		window: () => owner,
+		expectedUrl: "http://localhost:5173",
+		host: () => host,
+		clearData: async () => {},
+		log: () => {},
+	});
+	const call = ipcMain.handlers.get("browser-page-control");
+	const event = { sender: wc, senderFrame: frame };
+	for (const bad of [
+		{ sender: {}, senderFrame: frame },
+		{ sender: wc, senderFrame: { ...frame } },
+		{ sender: wc, senderFrame: { url: "https://hostile.example" } },
+	])
+		assert.throws(() => call(bad, 1, "open", "", true, false), /cannot use/);
+	for (const args of [
+		[1, "evil", "", true, false],
+		[1, "search", {}, true, false],
+		[1, "search", "x".repeat(4097), true, false],
+		[1, "search", "", "true", false],
+		[Number.NaN, "open", "", true, false],
+	])
+		assert.throws(() => call(event, ...args));
+	await host.newTab();
+	host.setContentRect({ x: 0, y: 0, width: 1000, height: 700 });
+	const id = host.registry.activeTab.tabId;
+	await call(event, id, "open", "", true, false);
+	assert.equal(host.chromeState().pageControls.find.tabId, id);
+	await host.newTab();
+	await assert.rejects(
+		() => call(event, id, "search", "stale", true, false),
+		/no longer presented/,
+	);
+	assert.equal(host.chromeState().pageControls.find, null);
+	unregisterBrowserIpc();
+});
+
+test("zoom reset precedes handover capability and agent screenshot/read keep 100% geometry without find highlights", async () => {
+	const { host, registry, cdp } = makeHost();
+	await host.newTab();
+	await host.navigateActive("https://approved.example/");
+	host.setContentRect({ x: 13, y: 29, width: 1024, height: 768 });
+	const user = registry.activeTab;
+	let factor = 1;
+	const order = [];
+	Object.assign(user.view.webContents, {
+		getZoomFactor: () => factor,
+		setZoomFactor: (value) => {
+			factor = value;
+			order.push(["zoom", value]);
+		},
+		findInPage: () => 1,
+		stopFindInPage: () => order.push(["clear-find"]),
+	});
+	for (let i = 0; i < 3; i++) await host.controlPage(user.tabId, "in");
+	assert.equal(factor, 1.5);
+	const handOver = registry.handOver.bind(registry);
+	registry.handOver = (...args) => {
+		assert.equal(factor, 1, "reset must happen BEFORE nonce mint");
+		order.push(["transfer"]);
+		return handOver(...args);
+	};
+	host.handOver(user.tabId, "alice");
+	const token = surfaceToken(user);
+	const owner = {
+		requester: "session:alice",
+		owner_proof: "a".repeat(40),
+		owner_generation: "g1",
+		allocation_id: "a2-geometry",
+		tab: token,
+	};
+	await host.dispatch(
+		"request_access",
+		{ requester: owner.requester, url: "https://approved.example/" },
+		"req",
+	);
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	await host.dispatch("open", owner, "adopt");
+	await host.controlPage(user.tabId, "in");
+	assert.equal(factor, 1);
+	assert.match(host.chromeState().pageControls.notice, /Zoom is off/);
+	const send = cdp.send.bind(cdp);
+	cdp.send = async (...args) => {
+		if (args[1] === "Page.captureScreenshot") {
+			assert.equal(factor, 1, "actual capture executes at native 100%");
+			assert.equal(
+				host.chromeState().pageControls.find,
+				null,
+				"native highlights cleared before capture",
+			);
+			assert.deepEqual(user.view.getBounds(), {
+				x: 13,
+				y: 29,
+				width: 1024,
+				height: 768,
+			});
+		}
+		return send(...args);
+	};
+	for (const method of ["read", "screenshot"]) {
+		await host.controlPage(user.tabId, "open");
+		await host.controlPage(user.tabId, "search", "hello");
+		const result = await host.dispatch(method, owner, `agent-${method}`);
+		assert.equal(factor, 1);
+		assert.equal(host.chromeState().pageControls.find, null);
+		assert.equal(result.url, "https://approved.example/");
+	}
+	const capture = cdp.calls.find(
+		(call) => call.method === "Page.captureScreenshot",
+	);
+	assert.ok(capture);
+	assert.equal(
+		order.findIndex((x) => x[0] === "zoom" && x[1] === 1) <
+			order.findIndex((x) => x[0] === "transfer"),
+		true,
+	);
+});

@@ -1,0 +1,50 @@
+desktop tests: 7 files, concurrency 1 (explicit --test-concurrency=1 in argv; governor bypassed)
+desktop tests: memory bound 9.0 GB for the test process group (max(8192 MB floor, 25% of 36864 MB RAM), capped at 50%); sampled every 2s on max(footprint, rss)
+desktop tests: per-lane bound 25 min (default, above the 18.7-minute healthy CI suite that bounds every lane it runs — a stall in a lane first seen late can still outrun the job cap); sampled every 5s over the suite's process group
+no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+✔ one platform-strict decision table covers every browser column and leaves chat to app (1.003083ms)
+✔ negative controls preserve composition/editing, platform modifiers, and reject action repeat (0.147583ms)
+✔ router menu fallback ownership and rapid genuine presses have no debounce (0.71375ms)
+✔ menu fallback respects actual popup/mini target even with stale main chrome focus (0.159334ms)
+✔ tab digits fall back to the physical key on layouts whose digit row types symbols (review R11) (0.077958ms)
+✔ ordinal/cycle use the grouped scoped strip order, never registry order (0.186125ms)
+✔ owned menu aliases replace destructive roles; suppression is per input and focus teardown is explicit (3.024167ms)
+✔ find/zoom share focus classifier with platform/Alt/IME/repeat negatives (0.113666ms)
+no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+✔ find request/document/tab fences reject stale native counts; hide/close clears selection (0.868584ms)
+✔ bounded native steps, independent tab factors, agent notice and pre-transfer reset (0.244834ms)
+✔ find on an agent tab is cleared before an agent read/screenshot; no page injection (0.06975ms)
+no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+✔ normalizeChord: aliases, order, dedupe, validation (0.581542ms)
+✔ chordFromEvent: the event shapes the recorder and dispatcher pass (0.158875ms)
+✔ display: glyph, caps and tokens match the mini view's own tables (0.219875ms)
+✔ captureRefusal: the four sentences, in precedence order (0.296625ms)
+✔ effectiveChord and buildChordMap: override ?? default, first claim wins (0.091042ms)
+✔ sanitizeShortcutBindings: junk, unknown ids, reserved chords, duplicates (0.478458ms)
+✔ all fifteen legacy browser mappings survive dormant, never dispatch, and remain refused (0.260041ms)
+no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+✔ the match matrix: defaults, overrides, exact modifier sets (0.978834ms)
+✔ the bails, in the RFC's order (0.069542ms)
+✔ an overlay owns its own keys (rule 4) (0.100375ms)
+✔ a door-absent action is a no-op, in every door shape (0.0785ms)
+✔ the router is registered in the BUBBLE phase: a descendant's stopPropagation keeps it from firing (19.326959ms)
+no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+✔ the six ids are stable and unique, in registry order (0.748125ms)
+✔ every default parses, is unique, and is not reserved (0.174791ms)
+✔ the shipped defaults are the decided ones (0.165541ms)
+✔ every reserved entry is canonical, stated in the app's voice, and explained (0.223166ms)
+✔ the reserved inventory is exactly the decoded list (0.085333ms)
+no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+R15 actual store: 30 hydration/save/reload/downgrade cases + 3 explicit-edit roundtrips PASS; no live profile
+✔ R15 actual store: all15 survive hydration, unrelated saves, repeat loads and downgrade; edits supersede (3.799125ms)
+no-hardlink-write: guarding 56 fs entry points — a write through a shared inode will be refused
+✔ every scripts/*.test.mjs lane is named by a package.json script or a workflow (7.236709ms)
+ℹ tests 30
+ℹ suites 0
+ℹ pass 30
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1373.532875
+[run_bounded] node rc=0 wall=1.8s
