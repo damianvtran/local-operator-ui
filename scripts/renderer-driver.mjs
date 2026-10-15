@@ -43623,11 +43623,15 @@ async function sceneHubSkills(cdp, app) {
 		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
 	);
 	await verb(cdp, "setTheme", THEME ?? "localOperatorDark");
-	const size = WINDOW_SIZE;
+	/* Production clamps requested widths below 800; frame labels describe the
+	 * measured viewport, never an unreachable requested size. Keep both. */
+	const requestedSize = WINDOW_SIZE;
+	const viewport = await cdp.evaluate('({ width: innerWidth, height: innerHeight, devicePixelRatio })');
+	const size = `${viewport.width}x${viewport.height}`;
 	const theme = (THEME ?? "localOperatorDark")
 		.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)
 		.replace(/^-/, "");
-	const geometry = {};
+	const geometry = { requestedSize, viewport };
 	const tabGeometry = () => cdp.evaluate(`(() => {
 		const box = el => { if (!el) return null; const r = el.getBoundingClientRect(); return { x:r.x, y:r.y, w:r.width, h:r.height }; };
 		return { tabs: [...document.querySelectorAll('[role="tab"]')].map(el => ({ text:el.textContent, selected:el.getAttribute('aria-selected'), state:el.getAttribute('data-state'), rect:box(el), background:getComputedStyle(el).backgroundColor })), panel:box(document.querySelector('[data-hub-skills-library]')) };

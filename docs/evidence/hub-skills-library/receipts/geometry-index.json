@@ -1,0 +1,598 @@
+{
+  "frames/R-E-dark-publish-pending/hub-skills-geometry-local-operator-dark.json": {
+    "size": "1380x900",
+    "theme": "local-operator-dark",
+    "hasOrgChip": true,
+    "geometry": {
+      "library": {
+        "x": 284,
+        "y": 225,
+        "w": 1064,
+        "h": 705,
+        "sw": 1064,
+        "cw": 1064
+      },
+      "detail": {
+        "x": 284,
+        "y": 503,
+        "w": 1064,
+        "h": 404,
+        "sw": 1064,
+        "cw": 1064
+      },
+      "consent": {
+        "x": 434,
+        "y": 330,
+        "w": 512,
+        "h": 240,
+        "sw": 510,
+        "cw": 510
+      },
+      "publication": {
+        "x": 284,
+        "y": 653,
+        "w": 1064,
+        "h": 405,
+        "sw": 1064,
+        "cw": 1064
+      }
+    }
+  },
+  "frames/R-H-dark-narrow/hub-skills-geometry-local-operator-dark.json": {
+    "size": "800x900",
+    "theme": "local-operator-dark",
+    "hasOrgChip": true,
+    "geometry": {
+      "library": {
+        "x": 80,
+        "y": 225,
+        "w": 688,
+        "h": 722,
+        "sw": 688,
+        "cw": 688
+      },
+      "detail": {
+        "x": 80,
+        "y": 503,
+        "w": 688,
+        "h": 404,
+        "sw": 688,
+        "cw": 688
+      },
+      "consent": {
+        "x": 144,
+        "y": 330,
+        "w": 512,
+        "h": 240,
+        "sw": 510,
+        "cw": 510
+      },
+      "publication": {
+        "x": 80,
+        "y": 653,
+        "w": 688,
+        "h": 422,
+        "sw": 688,
+        "cw": 688
+      }
+    },
+    "requestedSize": "720x900",
+    "actualSizeProvenance": "Derived from 1600x1800 PNG and production WINDOW_MIN_WIDTH=800 clamp; no live innerWidth/DPR was recorded in this run. DPR2 is inferred, not measured."
+  },
+  "frames/R-A-loading-pair/hub-skills-geometry-local-operator-dark.json": {
+    "size": "1380x900",
+    "theme": "local-operator-dark",
+    "hasOrgChip": true,
+    "geometry": {
+      "loadingInitial": {
+        "tabs": [
+          {
+            "text": "Agents",
+            "selected": "false",
+            "state": "inactive",
+            "rect": {
+              "x": 288,
+              "y": 151.2890625,
+              "w": 89.7890625,
+              "h": 24
+            },
+            "background": "rgb(43, 39, 33)"
+          },
+          {
+            "text": "Teams0",
+            "selected": "false",
+            "state": "inactive",
+            "rect": {
+              "x": 381.7890625,
+              "y": 151.2890625,
+              "w": 86.5625,
+              "h": 24
+            },
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "text": "Skills",
+            "selected": "true",
+            "state": "active",
+            "rect": {
+              "x": 472.3515625,
+              "y": 151.2890625,
+              "w": 56.625,
+              "h": 24
+            },
+            "background": "rgba(0, 0, 0, 0)"
+          }
+        ],
+        "panel": {
+          "x": 284,
+          "y": 224.6875,
+          "w": 1064,
+          "h": 687.1875
+        }
+      },
+      "loadingConsecutive": {
+        "tabs": [
+          {
+            "text": "Agents",
+            "selected": "false",
+            "state": "inactive",
+            "rect": {
+              "x": 288,
+              "y": 151.2890625,
+              "w": 89.7890625,
+              "h": 24
+            },
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "text": "Teams0",
+            "selected": "false",
+            "state": "inactive",
+            "rect": {
+              "x": 381.7890625,
+              "y": 151.2890625,
+              "w": 86.5625,
+              "h": 24
+            },
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "text": "Skills",
+            "selected": "true",
+            "state": "active",
+            "rect": {
+              "x": 472.3515625,
+              "y": 151.2890625,
+              "w": 56.625,
+              "h": 24
+            },
+            "background": "rgb(43, 39, 33)"
+          }
+        ],
+        "panel": {
+          "x": 284,
+          "y": 224.6875,
+          "w": 1064,
+          "h": 687.1875
+        }
+      },
+      "library": {
+        "x": 284,
+        "y": 225,
+        "w": 1064,
+        "h": 705,
+        "sw": 1064,
+        "cw": 1064
+      },
+      "populatedTabs": {
+        "tabs": [
+          {
+            "text": "Agents",
+            "selected": "false",
+            "state": "inactive",
+            "rect": {
+              "x": 288,
+              "y": 151.2890625,
+              "w": 89.7890625,
+              "h": 24
+            },
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "text": "Teams0",
+            "selected": "false",
+            "state": "inactive",
+            "rect": {
+              "x": 381.7890625,
+              "y": 151.2890625,
+              "w": 86.5625,
+              "h": 24
+            },
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "text": "Skills",
+            "selected": "true",
+            "state": "active",
+            "rect": {
+              "x": 472.3515625,
+              "y": 151.2890625,
+              "w": 56.625,
+              "h": 24
+            },
+            "background": "rgb(43, 39, 33)"
+          }
+        ],
+        "panel": {
+          "x": 284,
+          "y": 224.6875,
+          "w": 1064,
+          "h": 704.6875
+        }
+      }
+    }
+  },
+  "frames/R-A-dark-default/hub-skills-geometry-local-operator-dark.json": {
+    "size": "1380x900",
+    "theme": "local-operator-dark",
+    "hasOrgChip": true,
+    "geometry": {
+      "library": {
+        "x": 284,
+        "y": 225,
+        "w": 1064,
+        "h": 705,
+        "sw": 1064,
+        "cw": 1064
+      },
+      "detail": {
+        "x": 284,
+        "y": 503,
+        "w": 1064,
+        "h": 404,
+        "sw": 1064,
+        "cw": 1064
+      },
+      "consent": {
+        "x": 434,
+        "y": 330,
+        "w": 512,
+        "h": 240,
+        "sw": 510,
+        "cw": 510
+      },
+      "publication": {
+        "x": 284,
+        "y": 653,
+        "w": 1064,
+        "h": 405,
+        "sw": 1064,
+        "cw": 1064
+      }
+    }
+  },
+  "frames/R-F-dark-signed-out/hub-skills-geometry-local-operator-dark.json": {
+    "size": "1380x900",
+    "theme": "local-operator-dark",
+    "hasOrgChip": false,
+    "geometry": {
+      "library": {
+        "x": 284,
+        "y": 225,
+        "w": 1064,
+        "h": 734,
+        "sw": 1064,
+        "cw": 1064
+      },
+      "detail": {
+        "x": 284,
+        "y": 503,
+        "w": 1064,
+        "h": 433,
+        "sw": 1064,
+        "cw": 1064
+      }
+    }
+  },
+  "frames/R-F-corrected-signed-out/hub-skills-geometry-local-operator-dark.json": {
+    "size": "1380x900",
+    "theme": "local-operator-dark",
+    "hasOrgChip": false,
+    "geometry": {
+      "library": {
+        "x": 284,
+        "y": 225,
+        "w": 1064,
+        "h": 734,
+        "sw": 1064,
+        "cw": 1064
+      },
+      "populatedTabs": {
+        "tabs": [
+          {
+            "text": "Agents",
+            "selected": "false",
+            "state": "inactive",
+            "rect": {
+              "x": 288,
+              "y": 151.2890625,
+              "w": 67.4140625,
+              "h": 24
+            },
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "text": "Teams",
+            "selected": "false",
+            "state": "inactive",
+            "rect": {
+              "x": 359.4140625,
+              "y": 151.2890625,
+              "w": 64.1875,
+              "h": 24
+            },
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "text": "Skills",
+            "selected": "true",
+            "state": "active",
+            "rect": {
+              "x": 427.6015625,
+              "y": 151.2890625,
+              "w": 56.625,
+              "h": 24
+            },
+            "background": "rgb(43, 39, 33)"
+          }
+        ],
+        "panel": {
+          "x": 284,
+          "y": 224.6875,
+          "w": 1064,
+          "h": 734.0859375
+        }
+      },
+      "detail": {
+        "x": 284,
+        "y": 503,
+        "w": 1064,
+        "h": 433,
+        "sw": 1064,
+        "cw": 1064
+      }
+    }
+  },
+  "frames/R-D-dark-public-refuse/hub-skills-geometry-local-operator-dark.json": {
+    "size": "1380x900",
+    "theme": "local-operator-dark",
+    "hasOrgChip": false,
+    "geometry": {
+      "library": {
+        "x": 284,
+        "y": 225,
+        "w": 1064,
+        "h": 705,
+        "sw": 1064,
+        "cw": 1064
+      },
+      "detail": {
+        "x": 284,
+        "y": 503,
+        "w": 1064,
+        "h": 404,
+        "sw": 1064,
+        "cw": 1064
+      },
+      "consent": {
+        "x": 434,
+        "y": 320,
+        "w": 512,
+        "h": 259,
+        "sw": 510,
+        "cw": 510
+      },
+      "publication": {
+        "x": 284,
+        "y": 624,
+        "w": 1064,
+        "h": 405,
+        "sw": 1064,
+        "cw": 1064
+      }
+    }
+  },
+  "frames/R-C-corrected-unavailable/hub-skills-geometry-local-operator-dark.json": {
+    "size": "1380x900",
+    "theme": "local-operator-dark",
+    "hasOrgChip": true,
+    "geometry": {
+      "unavailable": {
+        "x": 284,
+        "y": 225,
+        "w": 1072,
+        "h": 627,
+        "sw": 1072,
+        "cw": 1072
+      }
+    }
+  },
+  "frames/R-G-light-default/hub-skills-geometry-local-operator-light.json": {
+    "size": "1380x900",
+    "theme": "local-operator-light",
+    "hasOrgChip": true,
+    "geometry": {
+      "library": {
+        "x": 284,
+        "y": 225,
+        "w": 1064,
+        "h": 705,
+        "sw": 1064,
+        "cw": 1064
+      },
+      "detail": {
+        "x": 284,
+        "y": 503,
+        "w": 1064,
+        "h": 404,
+        "sw": 1064,
+        "cw": 1064
+      },
+      "consent": {
+        "x": 434,
+        "y": 330,
+        "w": 512,
+        "h": 240,
+        "sw": 510,
+        "cw": 510
+      },
+      "publication": {
+        "x": 284,
+        "y": 653,
+        "w": 1064,
+        "h": 405,
+        "sw": 1064,
+        "cw": 1064
+      }
+    }
+  },
+  "frames/R-D-corrected-public-refuse/hub-skills-geometry-local-operator-dark.json": {
+    "size": "1380x900",
+    "theme": "local-operator-dark",
+    "hasOrgChip": false,
+    "geometry": {
+      "loadingInitial": {
+        "tabs": [
+          {
+            "text": "Agents",
+            "selected": "false",
+            "state": "inactive",
+            "rect": {
+              "x": 288,
+              "y": 151.2890625,
+              "w": 67.4140625,
+              "h": 24
+            },
+            "background": "rgba(43, 39, 33, 0.84)"
+          },
+          {
+            "text": "Teams",
+            "selected": "false",
+            "state": "inactive",
+            "rect": {
+              "x": 359.4140625,
+              "y": 151.2890625,
+              "w": 64.1875,
+              "h": 24
+            },
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "text": "Skills",
+            "selected": "true",
+            "state": "active",
+            "rect": {
+              "x": 427.6015625,
+              "y": 151.2890625,
+              "w": 56.625,
+              "h": 24
+            },
+            "background": "rgba(43, 39, 33, 0.16)"
+          }
+        ],
+        "panel": {
+          "x": 284,
+          "y": 224.6875,
+          "w": 1064,
+          "h": 687.1875
+        }
+      },
+      "library": {
+        "x": 284,
+        "y": 225,
+        "w": 1064,
+        "h": 705,
+        "sw": 1064,
+        "cw": 1064
+      },
+      "populatedTabs": {
+        "tabs": [
+          {
+            "text": "Agents",
+            "selected": "false",
+            "state": "inactive",
+            "rect": {
+              "x": 288,
+              "y": 151.2890625,
+              "w": 67.4140625,
+              "h": 24
+            },
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "text": "Teams",
+            "selected": "false",
+            "state": "inactive",
+            "rect": {
+              "x": 359.4140625,
+              "y": 151.2890625,
+              "w": 64.1875,
+              "h": 24
+            },
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          {
+            "text": "Skills",
+            "selected": "true",
+            "state": "active",
+            "rect": {
+              "x": 427.6015625,
+              "y": 151.2890625,
+              "w": 56.625,
+              "h": 24
+            },
+            "background": "rgb(43, 39, 33)"
+          }
+        ],
+        "panel": {
+          "x": 284,
+          "y": 224.6875,
+          "w": 1064,
+          "h": 704.6875
+        }
+      },
+      "detail": {
+        "x": 284,
+        "y": 503,
+        "w": 1064,
+        "h": 404,
+        "sw": 1064,
+        "cw": 1064
+      },
+      "consent": {
+        "x": 434,
+        "y": 320,
+        "w": 512,
+        "h": 259,
+        "sw": 510,
+        "cw": 510
+      },
+      "previewPayload": {
+        "x": 284,
+        "y": 601,
+        "w": 1064,
+        "h": 227,
+        "sw": 1062,
+        "cw": 1062
+      },
+      "publication": {
+        "x": 284,
+        "y": 624,
+        "w": 1064,
+        "h": 405,
+        "sw": 1064,
+        "cw": 1064
+      }
+    }
+  }
+}
