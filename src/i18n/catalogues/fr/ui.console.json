@@ -29,10 +29,10 @@
 	"ui.console.unavailable.pty.detail": "La prise en charge des terminaux n’a pas été chargée pour cette exécution. Une mise à jour de Local Operator la rétablit ; le journal de l’application indique la cause.",
 	"ui.console.unavailable.title": "La console est indisponible dans cette application",
 	"ui.console.unavailable.unknown.detail": "Cette fenêtre n’a pas pu accéder à la console et n’a pas indiqué pourquoi. Le journal de l’application précise la cause.",
-	"ui.console.capacity.summary": "{live, number} sur {limit, number} actifs",
-	"ui.console.capacity.summary_compact": "{live, number}/{limit, number} · {archived, plural, one {# conservé} many {# de conservés} other {# conservés}}",
+	"ui.console.capacity.summary": "{live, number} sur {limit, number} actifs dans l’app",
+	"ui.console.capacity.summary_compact": "{live, number}/{limit, number} · {archived, plural, one {# gardé} many {# de gardés} other {# gardés}}",
 	"ui.console.capacity.summary_compact_bare": "{live, number}/{limit, number}",
-	"ui.console.capacity.archived": " · {archived, plural, one {# conservé} many {# de conservés} other {# conservés}}",
+	"ui.console.capacity.archived": " · {archived, plural, one {# gardé} many {# de gardés} other {# gardés}}",
 	"ui.console.capacity.full": " · plein",
 	"ui.console.capacity.help": "Compteurs pour toute l’application, toutes conversations confondues. L’historique conservé n’occupe pas d’emplacement de processus.",
 	"ui.console.capacity.resources": "Stockage géré estimé : {memory, number} MiB. Journaux : {logs, number} MiB. Sortie en attente : {pending, number} MiB. Cellules de terminal : {cells, number}. Terminaux protégés : {protected, number}. La mémoire des processus enfants n’est pas incluse.",
@@ -52,5 +52,8 @@
 	"ui.console.tab.clear_label_retained": "Effacer {title}, onglet {index, number} sur {total, number} — supprime la sortie conservée",
 	"ui.console.secure_toggle.stop": "Arrêter la saisie sécurisée",
 	"ui.console.secure_toggle.start": "Saisie sécurisée",
-	"ui.console.secure_toggle.start_tooltip": "Saisie sécurisée : arrêter l’enregistrement de ce terminal"
+	"ui.console.secure_toggle.start_tooltip": "Saisie sécurisée : arrêter l’enregistrement de ce terminal",
+	"ui.console.close.cancel": "Annuler",
+	"ui.console.terminal.prompt_label": "Saisie du terminal",
+	"ui.console.terminal.too_much_output": "Trop de sortie à annoncer, parcourez les lignes manuellement pour les lire"
 }

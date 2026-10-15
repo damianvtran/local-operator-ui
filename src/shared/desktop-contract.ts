@@ -1571,6 +1571,31 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			peerJournalSource: z.boolean().optional(),
 		})
 		.strict(),
+	// The inventory belongs to the backend, not to a renderer filesystem walk.
+	// Keep the cursor opaque: its query/revision binding is the service's decision.
+	z
+		.object({
+			op: z.literal("sessions.files"),
+			sessionId,
+			scope: z.enum(["family", "self"]).optional(),
+			kind: z.string().max(256).optional(),
+			q: z.string().max(256).optional(),
+			sort: z
+				.enum(["recent", "name", "kind", "modified", "created", "size"])
+				.optional(),
+			order: z.enum(["asc", "desc"]).optional(),
+			limit: z.number().int().min(1).max(200).optional(),
+			cursor: z.string().max(8192).optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("sessions.files.materialise"),
+			sessionId,
+			fileId: z.string().regex(/^[a-f0-9]{16}$/),
+		})
+		.strict(),
+
 	z
 		.object({
 			op: z.literal("sessions.history"),
@@ -4999,6 +5024,7 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"sessions.find",
 	"sessions.get",
 	"sessions.history",
+	"sessions.files",
 	"sessions.list",
 	"sessions.preview",
 	"sessions.report",
@@ -6459,6 +6485,32 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "GET",
 			};
 		}
+		case "sessions.files": {
+			const query = new URLSearchParams({
+				limit: String(request.limit ?? 200),
+			});
+			for (const key of [
+				"scope",
+				"kind",
+				"q",
+				"sort",
+				"order",
+				"cursor",
+			] as const) {
+				const value = request[key];
+				if (value !== undefined) query.set(key, value);
+			}
+			return {
+				path: `/v1/desktop/sessions/${encodeURIComponent(request.sessionId)}/files?${query}`,
+				method: "GET",
+			};
+		}
+		case "sessions.files.materialise":
+			return {
+				path: `/v1/desktop/sessions/${encodeURIComponent(request.sessionId)}/files/${encodeURIComponent(request.fileId)}/materialise`,
+				method: "POST",
+			};
+
 		case "sessions.history": {
 			const query = new URLSearchParams({
 				limit: String(request.limit ?? 100),

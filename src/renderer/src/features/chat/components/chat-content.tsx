@@ -36,7 +36,10 @@ import type { SendOutcome } from "@shared/hooks/use-message-input";
  * eight classes and a copy is what drifts when one of them changes.
  */
 import { cn } from "@shared/lib/utils";
-import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import {
+	remoteOwnedId,
+	useCanonicalSessionsStore,
+} from "@shared/store/canonical-sessions-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import {
 	BROWSER_PANEL_MIN_PX,
@@ -82,6 +85,7 @@ import {
 	canonicalTranscriptTerminal,
 } from "../canonical/transcript-pane";
 import { useMentionedFiles } from "../canonical/use-mentioned-files";
+import { useSessionFiles } from "../canonical/use-session-files";
 import {
 	workingLineClaimed,
 	workingLineInputFor,
@@ -1215,6 +1219,17 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			[filesViewOpen, canonical],
 		);
 
+		// A capable backend owns membership: even an unsupported/error page is not
+		// permission for a local scanner to probe a remote path. Wait for negotiation.
+		const remoteFiles = useCanonicalSessionsStore((state) =>
+			sessionId
+				? remoteOwnedId(state.sessions, state.placementFacts, sessionId)
+				: false,
+		);
+		const allowLegacyFiles =
+			capabilities.data !== undefined &&
+			!desktopFeatureEnabled(capabilities.data, "session_files") &&
+			!remoteFiles;
 		const filesScan = useMentionedFiles({
 			conversationId,
 			records: canonical?.view.transcript.records ?? null,
@@ -1222,7 +1237,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			// Generated media is fetched by (session, digest); a draft has no session
 			// and so files no artifact tiles.
 			sessionId,
-			enabled: Boolean(canonical && agentId),
+			enabled: Boolean(
+				canonical?.view.frontend &&
+					!canonical.view.awaitingHydration &&
+					agentId &&
+					allowLegacyFiles,
+			),
 			scan: scanRequest,
 		});
 		const setOpenTabs = useCanvasStore((s) => s.setOpenTabs);
@@ -1262,8 +1282,13 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const files = (canvasState ?? defaultCanvasState).files;
 		// The one number the panel, the view switcher and the canvas button all
 		// state: how many files the agent has been seen to touch.
-		const mentionedFileCount = (canvasState ?? defaultCanvasState)
-			.mentionedFiles.length;
+		// One inventory owns both the rail and the open canvas. Reading a disabled
+		// legacy scanner here made the rail deny files the backend already listed.
+		const indexedFiles = useSessionFiles(sessionId, true, turnTerminal);
+		const mentionedFileCount =
+			indexedFiles.mode === "index"
+				? indexedFiles.total
+				: (canvasState ?? defaultCanvasState).mentionedFiles.length;
 
 		// The slot's ONE default while nothing has been dragged
 		// (`DEFAULT_RIGHT_SLOT_WIDTH`, #872 follow-up): the run panel opens at the
@@ -2865,9 +2890,14 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								conversationId={conversationId}
 								agentId={agentId}
 								sessionId={sessionId}
+								filesSourceReady={
+									Boolean(!sessionId || canonical?.view.frontend) &&
+									!canonical?.view.awaitingHydration
+								}
 								turnTerminal={turnTerminal}
 								currentWorkingDirectory={cwd}
 								fileCount={mentionedFileCount}
+								fileIndex={indexedFiles}
 								scan={filesScan}
 								/*
 								 * The pane's goals come off the SAME canonical frontend the composer
