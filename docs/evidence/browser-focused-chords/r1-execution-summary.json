@@ -1,0 +1,653 @@
+[
+  {
+    "name": "preflight",
+    "actual": {
+      "hello": {
+        "armed": true,
+        "outDir": "<scratch>/a1-r1-native/runtime/out",
+        "title": "Local Operator",
+        "route": "/chat",
+        "href": "file://~/local-operator-ui/.worktrees/browser-focused-chords/out/renderer/index.html#/chat",
+        "theme": "localOperatorDark",
+        "viewport": {
+          "width": 1380,
+          "height": 900,
+          "devicePixelRatio": 2
+        },
+        "visibilityState": "visible",
+        "hasFocus": false,
+        "apiBaseUrl": "http://127.0.0.1:1",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) LocalOperator/0.34.44 Chrome/152.0.7977.78 Electron/44.3.0 Safari/537.36"
+      },
+      "facts": {
+        "windowMode": "headless",
+        "appVersion": "0.34.44",
+        "platform": "darwin",
+        "title": "Local Operator",
+        "windowSize": {
+          "width": 1380,
+          "height": 900
+        },
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        },
+        "visible": false,
+        "focused": false,
+        "minimized": false,
+        "frames": [],
+        "outDir": "<scratch>/a1-r1-native/runtime/out"
+      }
+    }
+  },
+  {
+    "name": "focus CSS localOperatorLight",
+    "actual": {
+      "outlineStyle": "solid",
+      "outlineWidth": "2px",
+      "outlineOffset": "1px",
+      "outlineColor": "rgb(33, 30, 24)",
+      "x": 364,
+      "y": 73,
+      "width": 898.28125,
+      "height": 32,
+      "forced": "CSS.forcePseudoState focus-visible; not OS focus"
+    }
+  },
+  {
+    "name": "focus CSS localOperatorDark",
+    "actual": {
+      "outlineStyle": "solid",
+      "outlineWidth": "2px",
+      "outlineOffset": "1px",
+      "outlineColor": "rgb(241, 238, 230)",
+      "x": 364,
+      "y": 73,
+      "width": 898.28125,
+      "height": 32,
+      "forced": "CSS.forcePseudoState focus-visible; not OS focus"
+    }
+  },
+  {
+    "name": "tooltip reload localOperatorLight",
+    "actual": {
+      "text": "Reload (\u2318R)",
+      "x": 302,
+      "y": 41.5,
+      "width": 88.046875,
+      "height": 27.3984375,
+      "color": "rgb(33, 30, 24)",
+      "background": "rgb(254, 253, 250)",
+      "viewport": {
+        "w": 1380,
+        "h": 900
+      }
+    }
+  },
+  {
+    "name": "tooltip closes when the pointer leaves: reload localOperatorLight",
+    "actual": {
+      "closedOnLeave": true
+    }
+  },
+  {
+    "name": "tooltip new-tab localOperatorLight",
+    "actual": {
+      "text": "New tab (\u2318T)",
+      "x": 1284,
+      "y": 2.5,
+      "width": 95.953125,
+      "height": 27.3984375,
+      "color": "rgb(33, 30, 24)",
+      "background": "rgb(254, 253, 250)",
+      "viewport": {
+        "w": 1380,
+        "h": 900
+      }
+    }
+  },
+  {
+    "name": "tooltip closes when the pointer leaves: new-tab localOperatorLight",
+    "actual": {
+      "closedOnLeave": true
+    }
+  },
+  {
+    "name": "tooltip active-close localOperatorLight",
+    "actual": {
+      "text": "Close tab (\u2318W)",
+      "x": 1267.5,
+      "y": 5.5,
+      "width": 106.7578125,
+      "height": 27.3984375,
+      "color": "rgb(33, 30, 24)",
+      "background": "rgb(254, 253, 250)",
+      "viewport": {
+        "w": 1380,
+        "h": 900
+      }
+    }
+  },
+  {
+    "name": "tooltip closes when the pointer leaves: active-close localOperatorLight",
+    "actual": {
+      "closedOnLeave": true
+    }
+  },
+  {
+    "name": "tooltip inactive-close localOperatorLight",
+    "actual": {
+      "text": "Close tab",
+      "x": 752,
+      "y": 5,
+      "width": 71.578125,
+      "height": 27.3984375,
+      "color": "rgb(33, 30, 24)",
+      "background": "rgb(254, 253, 250)",
+      "viewport": {
+        "w": 1380,
+        "h": 900
+      }
+    }
+  },
+  {
+    "name": "tooltip closes when the pointer leaves: inactive-close localOperatorLight",
+    "actual": {
+      "closedOnLeave": true
+    }
+  },
+  {
+    "name": "tooltip address localOperatorLight",
+    "actual": {
+      "text": "Address (\u2318L)",
+      "x": 766,
+      "y": 111,
+      "width": 94.5546875,
+      "height": 27.3984375,
+      "color": "rgb(33, 30, 24)",
+      "background": "rgb(254, 253, 250)",
+      "viewport": {
+        "w": 1380,
+        "h": 900
+      }
+    }
+  },
+  {
+    "name": "tooltip closes when the pointer leaves: address localOperatorLight",
+    "actual": {
+      "closedOnLeave": true
+    }
+  },
+  {
+    "name": "tooltip reload localOperatorDark",
+    "actual": {
+      "text": "Reload (\u2318R)",
+      "x": 302,
+      "y": 41.5,
+      "width": 88.046875,
+      "height": 27.3984375,
+      "color": "rgb(241, 238, 230)",
+      "background": "rgb(50, 45, 34)",
+      "viewport": {
+        "w": 1380,
+        "h": 900
+      }
+    }
+  },
+  {
+    "name": "tooltip closes when the pointer leaves: reload localOperatorDark",
+    "actual": {
+      "closedOnLeave": true
+    }
+  },
+  {
+    "name": "tooltip new-tab localOperatorDark",
+    "actual": {
+      "text": "New tab (\u2318T)",
+      "x": 1284,
+      "y": 2.5,
+      "width": 95.953125,
+      "height": 27.3984375,
+      "color": "rgb(241, 238, 230)",
+      "background": "rgb(50, 45, 34)",
+      "viewport": {
+        "w": 1380,
+        "h": 900
+      }
+    }
+  },
+  {
+    "name": "tooltip closes when the pointer leaves: new-tab localOperatorDark",
+    "actual": {
+      "closedOnLeave": true
+    }
+  },
+  {
+    "name": "tooltip active-close localOperatorDark",
+    "actual": {
+      "text": "Close tab (\u2318W)",
+      "x": 1267.5,
+      "y": 5.5,
+      "width": 106.7578125,
+      "height": 27.3984375,
+      "color": "rgb(241, 238, 230)",
+      "background": "rgb(50, 45, 34)",
+      "viewport": {
+        "w": 1380,
+        "h": 900
+      }
+    }
+  },
+  {
+    "name": "tooltip closes when the pointer leaves: active-close localOperatorDark",
+    "actual": {
+      "closedOnLeave": true
+    }
+  },
+  {
+    "name": "tooltip inactive-close localOperatorDark",
+    "actual": {
+      "text": "Close tab",
+      "x": 752,
+      "y": 5,
+      "width": 71.578125,
+      "height": 27.3984375,
+      "color": "rgb(241, 238, 230)",
+      "background": "rgb(50, 45, 34)",
+      "viewport": {
+        "w": 1380,
+        "h": 900
+      }
+    }
+  },
+  {
+    "name": "tooltip closes when the pointer leaves: inactive-close localOperatorDark",
+    "actual": {
+      "closedOnLeave": true
+    }
+  },
+  {
+    "name": "tooltip address localOperatorDark",
+    "actual": {
+      "text": "Address (\u2318L)",
+      "x": 766,
+      "y": 111,
+      "width": 94.5546875,
+      "height": 27.3984375,
+      "color": "rgb(241, 238, 230)",
+      "background": "rgb(50, 45, 34)",
+      "viewport": {
+        "w": 1380,
+        "h": 900
+      }
+    }
+  },
+  {
+    "name": "tooltip closes when the pointer leaves: address localOperatorDark",
+    "actual": {
+      "closedOnLeave": true
+    }
+  },
+  {
+    "name": "close buttons aria/tooltip scope",
+    "actual": [
+      {
+        "label": "Close New tab",
+        "keys": null,
+        "tabId": 1,
+        "isActive": false
+      },
+      {
+        "label": "Close QA 3",
+        "keys": "Meta+W",
+        "tabId": 2,
+        "isActive": true
+      }
+    ]
+  },
+  {
+    "name": "Cmd+L prevented",
+    "actual": [
+      true
+    ]
+  },
+  {
+    "name": "DOM address populated selection",
+    "actual": {
+      "value": "http://127.0.0.1:63888/one",
+      "start": 0,
+      "end": 26,
+      "len": 26,
+      "focused": true
+    }
+  },
+  {
+    "name": "three tabs",
+    "actual": {
+      "ids": [
+        2,
+        3,
+        4
+      ],
+      "active": 4,
+      "url": "http://127.0.0.1:63888/three",
+      "count": 3
+    }
+  },
+  {
+    "name": "draft after Cmd+2 (U1)",
+    "actual": {
+      "draftBefore": {
+        "value": "http://draft.example/typed-on-first",
+        "start": 35,
+        "end": 35,
+        "len": 35,
+        "focused": true
+      },
+      "after": {
+        "value": "http://127.0.0.1:63888/two",
+        "start": 26,
+        "end": 26,
+        "len": 26,
+        "focused": true
+      },
+      "activeTabUrl": "http://127.0.0.1:63888/two"
+    }
+  },
+  {
+    "name": "blur navigated? (U1)",
+    "actual": {
+      "url": "http://127.0.0.1:63888/two",
+      "expected": "http://127.0.0.1:63888/two",
+      "requestDelta": 0
+    }
+  },
+  {
+    "name": "U2 close dispatch (focus on tab button)",
+    "actual": {
+      "before": {
+        "ids": [
+          2,
+          3,
+          4
+        ],
+        "active": 4,
+        "url": "http://127.0.0.1:63888/three",
+        "count": 3
+      },
+      "where": {
+        "tag": "BUTTON",
+        "tour": "browser-tab",
+        "role": "tab",
+        "inBrowserSurface": true,
+        "route": "#/browser"
+      },
+      "prevented": [
+        true
+      ]
+    }
+  },
+  {
+    "name": "U2 after close",
+    "actual": {
+      "state": {
+        "ids": [
+          2,
+          3
+        ],
+        "active": 3,
+        "url": "http://127.0.0.1:63888/two",
+        "count": 2
+      },
+      "where": {
+        "tag": "DIV",
+        "tour": "browser-route",
+        "role": null,
+        "inBrowserSurface": true,
+        "route": "#/browser"
+      },
+      "focusReportsDuringClose": [
+        true
+      ]
+    }
+  },
+  {
+    "name": "U2 second Cmd+W via REAL menu on main",
+    "actual": {
+      "menu": {
+        "id": "app-close",
+        "target": "main",
+        "targetId": 2,
+        "navigations": 0,
+        "enabled": true,
+        "focusReports": [
+          {
+            "value": false,
+            "sender": 2
+          },
+          {
+            "value": true,
+            "sender": 2
+          },
+          {
+            "value": true,
+            "sender": 2
+          },
+          {
+            "value": true,
+            "sender": 2
+          },
+          {
+            "value": false,
+            "sender": 2
+          },
+          {
+            "value": true,
+            "sender": 2
+          },
+          {
+            "value": true,
+            "sender": 2
+          },
+          {
+            "value": true,
+            "sender": 2
+          }
+        ]
+      },
+      "state": {
+        "ids": [
+          2
+        ],
+        "active": 2,
+        "url": "http://127.0.0.1:63888/one",
+        "count": 1
+      },
+      "windowsBefore": 2,
+      "windowsAfter": 2,
+      "mainStillThere": true
+    }
+  },
+  {
+    "name": "rapid double close dispatch",
+    "actual": {
+      "before": {
+        "ids": [
+          2,
+          5,
+          6
+        ],
+        "active": 6,
+        "url": "about:blank",
+        "count": 3
+      },
+      "prevented": [
+        true,
+        true
+      ]
+    }
+  },
+  {
+    "name": "rapid double close result (two DIFFERENT tabs closed)",
+    "actual": {
+      "before": {
+        "ids": [
+          2,
+          5,
+          6
+        ],
+        "active": 6,
+        "url": "about:blank",
+        "count": 3
+      },
+      "after": {
+        "ids": [
+          2
+        ],
+        "active": 2,
+        "url": "http://127.0.0.1:63888/one",
+        "count": 1
+      },
+      "closed": [
+        5,
+        6
+      ]
+    }
+  },
+  {
+    "name": "last tab closed by keyboard (a1-7)",
+    "actual": {
+      "before": {
+        "ids": [
+          2
+        ],
+        "active": 2,
+        "url": "http://127.0.0.1:63888/lastone",
+        "count": 1
+      },
+      "state": {
+        "ids": [
+          7
+        ],
+        "active": 7,
+        "url": "about:blank",
+        "count": 1
+      },
+      "addr": {
+        "value": "",
+        "start": 0,
+        "end": 0,
+        "len": 0,
+        "focused": true
+      },
+      "where": {
+        "tag": "INPUT",
+        "tour": "browser-address",
+        "role": null,
+        "inBrowserSurface": true,
+        "route": "#/browser"
+      }
+    }
+  },
+  {
+    "name": "window alive after last close",
+    "actual": [
+      {
+        "visible": false,
+        "focused": false,
+        "url": "file://~/local-operator-ui/.worktrees/browser-focused-chords/out/renderer/index.html#/browser"
+      },
+      {
+        "visible": false,
+        "focused": false,
+        "url": "file://~/local-operator-ui/.worktrees/browser-focused-chords/out/renderer/mini.html"
+      }
+    ]
+  },
+  {
+    "name": "Cmd+Shift+T after last close",
+    "actual": {
+      "prevented": [
+        true
+      ],
+      "state": {
+        "ids": [
+          7,
+          8
+        ],
+        "active": 8,
+        "url": "http://127.0.0.1:63888/lastone",
+        "count": 2
+      }
+    }
+  },
+  {
+    "name": "final isolation",
+    "actual": {
+      "final": {
+        "windowMode": "headless",
+        "appVersion": "0.34.44",
+        "platform": "darwin",
+        "title": "Local Operator",
+        "windowSize": {
+          "width": 1380,
+          "height": 900
+        },
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        },
+        "visible": false,
+        "focused": false,
+        "minimized": false,
+        "frames": [
+          "empty-after-localoperatorlight",
+          "empty-after-localoperatordark",
+          "populated-after-localoperatorlight",
+          "focus-forced-after-localoperatorlight",
+          "populated-after-localoperatordark",
+          "focus-forced-after-localoperatordark",
+          "loading-after-localoperatorlight",
+          "loading-after-localoperatordark",
+          "error-after-localoperatorlight",
+          "error-after-localoperatordark",
+          "tooltip-reload-localoperatorlight",
+          "tooltip-new-tab-localoperatorlight",
+          "tooltip-active-close-localoperatorlight",
+          "tooltip-inactive-close-localoperatorlight",
+          "tooltip-address-localoperatorlight",
+          "tooltip-reload-localoperatordark",
+          "tooltip-new-tab-localoperatordark",
+          "tooltip-active-close-localoperatordark",
+          "tooltip-inactive-close-localoperatordark",
+          "tooltip-address-localoperatordark",
+          "lastclose-after-localoperatorlight",
+          "lastclose-after-localoperatordark"
+        ],
+        "outDir": "<scratch>/a1-r1-native/runtime/out"
+      },
+      "all": [
+        {
+          "visible": false,
+          "focused": false,
+          "url": "file://~/local-operator-ui/.worktrees/browser-focused-chords/out/renderer/index.html#/browser"
+        },
+        {
+          "visible": false,
+          "focused": false,
+          "url": "file://~/local-operator-ui/.worktrees/browser-focused-chords/out/renderer/mini.html"
+        }
+      ],
+      "resources": []
+    }
+  },
+  {
+    "name": "teardown",
+    "actual": {
+      "ownedPid": 66548,
+      "alive": false,
+      "scratch": "<scratch>/a1-r1-native/runtime",
+      "out": "<scratch>/a1-r1-native/runtime/out"
+    }
+  }
+]
