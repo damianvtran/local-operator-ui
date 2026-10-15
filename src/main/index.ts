@@ -67,6 +67,7 @@ import {
 	startBrowserHost,
 	stopBrowserHost,
 } from "./browser";
+import { runBrowserMenuAction } from "./browser/browser-chord";
 import {
 	CONSENT_ATTENTION_CHANNEL,
 	type ConsentAttentionPayload,
@@ -580,18 +581,25 @@ function createApplicationMenu(): void {
 					id: "app-reload",
 					label: "Reload",
 					accelerator: "CmdOrCtrl+R",
-					click: () => {
-						if (!routeBrowserMenu("reload")) mainWindow?.webContents.reload();
-					},
+					click: (_item, target) =>
+						runBrowserMenuAction(
+							"reload",
+							target,
+							mainWindow,
+							routeBrowserMenu,
+						),
 				},
 				{
 					id: "app-force-reload",
 					label: "Force reload",
 					accelerator: "CmdOrCtrl+Shift+R",
-					click: () => {
-						if (!routeBrowserMenu("hard-reload"))
-							mainWindow?.webContents.reloadIgnoringCache();
-					},
+					click: (_item, target) =>
+						runBrowserMenuAction(
+							"hard-reload",
+							target,
+							mainWindow,
+							routeBrowserMenu,
+						),
 				},
 				{ type: "separator" as const },
 				{
@@ -638,9 +646,13 @@ function createApplicationMenu(): void {
 								id: "app-close",
 								label: "Close window",
 								accelerator: "CmdOrCtrl+W",
-								click: () => {
-									if (!routeBrowserMenu("close-tab")) mainWindow?.close();
-								},
+								click: (_item, target) =>
+									runBrowserMenuAction(
+										"close-tab",
+										target,
+										mainWindow,
+										routeBrowserMenu,
+									),
 							},
 							{ type: "separator" as const },
 							{ role: "window" },
@@ -650,9 +662,13 @@ function createApplicationMenu(): void {
 								id: "app-close",
 								label: "Close window",
 								accelerator: "CmdOrCtrl+W",
-								click: () => {
-									if (!routeBrowserMenu("close-tab")) mainWindow?.close();
-								},
+								click: (_item, target) =>
+									runBrowserMenuAction(
+										"close-tab",
+										target,
+										mainWindow,
+										routeBrowserMenu,
+									),
 							},
 						] as Electron.MenuItemConstructorOptions[])),
 			],
