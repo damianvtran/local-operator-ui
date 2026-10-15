@@ -52,7 +52,12 @@ export type PublicationDocumentOverride = {
  * be addressed with: the local registry keeps no link to the listing a row was
  * published as, so whatever remembers that link has to be this app.
  */
+import type { HubLink } from "./hub-links";
+import type { LocalLinkReceipt, PublicationPolicy } from "./hub-publication";
+
 export type PublishedListing = {
+	link?: HubLink | null;
+	local_link_receipt?: LocalLinkReceipt;
 	agent_id: string;
 	name: string;
 	version?: string;
@@ -526,12 +531,14 @@ export const AgentsApi = {
 		agentId: string,
 		document?: PublicationDocumentOverride,
 		target?: PublicationTarget,
+		policy?: PublicationPolicy,
 	): Promise<CRUDResponse<PublishedListing>> {
 		const response = await desktopControlResponse({
 			op: "agent.publish",
 			agentId,
 			document,
 			...targetFields(target),
+			...(policy ?? {}),
 		});
 
 		if (!response.ok) throw await publicationFailure(response);
@@ -555,6 +562,7 @@ export const AgentsApi = {
 		hubAgentId: string,
 		document?: PublicationDocumentOverride,
 		target?: PublicationTarget,
+		policy?: PublicationPolicy,
 	): Promise<CRUDResponse<PublishedListing>> {
 		const response = await desktopControlResponse({
 			op: "agent.republish",
@@ -562,6 +570,7 @@ export const AgentsApi = {
 			hubAgentId,
 			document,
 			...targetFields(target),
+			...(policy ?? {}),
 		});
 
 		if (!response.ok) throw await publicationFailure(response);

@@ -27,6 +27,8 @@ import {
 	AgentsApi,
 	type PublicationTarget,
 } from "@shared/api/local-operator/agents-api";
+import { hubLinksKey } from "@shared/api/local-operator/hub-link-hooks";
+import type { PublicationPolicy } from "@shared/api/local-operator/hub-publication";
 import { apiConfig } from "@shared/config";
 import { usePublishedListingsStore } from "@shared/store/published-listings-store";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -49,10 +51,9 @@ export type PublishAgentRequest = {
 	 * requires it on the update path precisely so a caller cannot overwrite a row
 	 * by guessing, so this hook never invents one.
 	 *
-	 * It is the PUBLIC listing this app remembers (`published-listings-store`), so
-	 * a publication into an organization never carries one: an org document has no
-	 * public name claim to preserve (§8.2), and sending this id to an org target
-	 * would address a row in the wrong namespace.
+	 * This is a confirmed destination-scoped origin ID, or public-only legacy
+	 * listing memory. An organization request must never carry a remembered
+	 * public ID. Scope changes create distinct copies instead of relinking.
 	 */
 	hubAgentId?: string | null;
 	/**
@@ -60,6 +61,8 @@ export type PublishAgentRequest = {
 	 * organization's private workspace.
 	 */
 	target?: PublicationTarget;
+	/** Captured local policy options; remote success is not local policy ACK. */
+	policy?: PublicationPolicy;
 };
 
 export const usePublishAgent = () => {
@@ -71,6 +74,7 @@ export const usePublishAgent = () => {
 			document,
 			hubAgentId,
 			target,
+			policy,
 		}: PublishAgentRequest) => {
 			if (!apiConfig.baseUrl) {
 				throw new Error("Local Operator API URL is not configured.");
@@ -82,17 +86,19 @@ export const usePublishAgent = () => {
 						hubAgentId,
 						document,
 						target,
+						policy,
 					)
 				: AgentsApi.publishAgentInstructionSet(
 						apiConfig.baseUrl,
 						agentId,
 						document,
 						target,
+						policy,
 					);
 		},
 		onSuccess: (response, variables) => {
 			const listing = response.result;
-			if (listing?.agent_id) {
+			if (listing?.agent_id && !variables.target) {
 				// The only place the local-row-to-listing link is ever established.
 				usePublishedListingsStore.getState().remember(variables.agentId, {
 					hubAgentId: listing.agent_id,
@@ -108,6 +114,8 @@ export const usePublishAgent = () => {
 			 * invalidation does not reach, and re-reading the public grid for it would be
 			 * a request that cannot show the change.
 			 */
+			if (listing?.local_link_receipt)
+				void queryClient.invalidateQueries({ queryKey: hubLinksKey });
 			if (variables.target) {
 				invalidateOrgAgentLists(queryClient, variables.target.tenantId);
 			} else {

@@ -1,5 +1,6 @@
 import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-error";
 import {
+	desktopFeatureEnabled,
 	desktopFeatureState,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
@@ -24,6 +25,8 @@ import {
 } from "@shared/components/ui";
 import { usePairingCause } from "@shared/hooks/use-pairing-cause";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Building2, Globe, Store } from "lucide-react";
 import type React from "react";
@@ -33,6 +36,7 @@ import { AgentCardContainer } from "./components/agent-card-container";
 import { AgentCategoriesSidebar } from "./components/agent-categories-sidebar";
 import { categoryEntry } from "./components/agent-tags-and-categories";
 import { HubPager } from "./components/hub-pager";
+import { HubSkillsLibrary } from "./components/hub-skills-library";
 import { OrgTeamsList } from "./components/org-teams-list";
 import { PublicTeamsLibrary } from "./components/public-teams-library";
 import {
@@ -126,7 +130,7 @@ const PUBLIC_SCOPE = "public";
  * is one view for BOTH places teams come from — the public catalogue and the
  * organization the scope selector names.
  */
-type HubView = "agents" | "teams";
+type HubView = "agents" | "teams" | "skills";
 
 /**
  * The tab and panel ids the Teams/Agents strip and its panel point at each other
@@ -138,6 +142,7 @@ type HubView = "agents" | "teams";
 const VIEW_TAB_IDS: Record<HubView, string> = {
 	agents: "agent-hub-view-agents",
 	teams: "agent-hub-view-teams",
+	skills: "agent-hub-view-skills",
 };
 const VIEW_PANEL_ID = "agent-hub-view-panel";
 
@@ -232,6 +237,7 @@ export const AgentHubPage: React.FC = () => {
 	 */
 	const [scope, setScope] = useState<string>(PUBLIC_SCOPE);
 	const [view, setView] = useState<HubView>("agents");
+	useI18nLocale();
 	/*
 	 * Categories seen on the hub, so the rail does not empty itself.
 	 *
@@ -302,8 +308,10 @@ export const AgentHubPage: React.FC = () => {
 		scope === PUBLIC_SCOPE ||
 		selectableOrgs.some((org) => org.tenant_id === scope);
 	useEffect(() => {
-		if (!scopeIsAvailable) setScope(PUBLIC_SCOPE);
-	}, [scopeIsAvailable]);
+		// A skill draft may contain private-source intent. Loss of access is
+		// never permission to change its destination to Public or erase typing.
+		if (!scopeIsAvailable && view !== "skills") setScope(PUBLIC_SCOPE);
+	}, [scopeIsAvailable, view]);
 
 	const activeOrg =
 		scope === PUBLIC_SCOPE
@@ -620,7 +628,9 @@ export const AgentHubPage: React.FC = () => {
 	const countPhrase = (count: number, noun: string) =>
 		`${count} ${noun}${count === 1 ? "" : "s"} ${scopePhrase}`;
 	let statusSentence: string;
-	if (view === "teams") {
+	if (view === "skills") {
+		statusSentence = "\u00a0"; // The sibling owns its source/count/loading line.
+	} else if (view === "teams") {
 		/*
 		 * The PUBLIC Teams view says nothing here: the catalogue's own line names
 		 * what it loaded and how much of it the search covers, and a second count
@@ -725,7 +735,15 @@ export const AgentHubPage: React.FC = () => {
 				>
 					<Tabs value={view} onValueChange={(next) => setView(next as HubView)}>
 						<TabsList aria-label="Browse the hub by type">
-							{(["agents", "teams"] as const).map((value) => (
+							{(
+								[
+									"agents",
+									"teams",
+									...(desktopFeatureEnabled(capabilities.data, "hub_links")
+										? ["skills" as const]
+										: []),
+								] as HubView[]
+							).map((value) => (
 								<TabsTrigger
 									key={value}
 									value={value}
@@ -734,13 +752,18 @@ export const AgentHubPage: React.FC = () => {
 									aria-controls={view === value ? VIEW_PANEL_ID : undefined}
 									data-testid={`agent-hub-view-${value}`}
 								>
-									{value === "agents" ? "Agents" : "Teams"}
-									{(value === "agents" ? agentsTabCount : teamsCount) !==
-										null && (
-										<span className="min-w-[2ch] font-normal text-ink-dim tabular-nums">
-											{value === "agents" ? agentsTabCount : teamsCount}
-										</span>
-									)}
+									{value === "agents"
+										? "Agents"
+										: value === "teams"
+											? "Teams"
+											: t("ui.hub.skills.title")}
+									{value !== "skills" &&
+										(value === "agents" ? agentsTabCount : teamsCount) !==
+											null && (
+											<span className="min-w-[2ch] font-normal text-ink-dim tabular-nums">
+												{value === "agents" ? agentsTabCount : teamsCount}
+											</span>
+										)}
 								</TabsTrigger>
 							))}
 						</TabsList>
@@ -1425,6 +1448,34 @@ export const AgentHubPage: React.FC = () => {
 							 * reads the hub's anonymous public listing, which the old explanatory
 							 * notice said did not exist (§11 O-7's premise).
 							 */}
+							{view === "skills" &&
+								(desktopFeatureEnabled(capabilities.data, "hub_links") ? (
+									<HubSkillsLibrary
+										key={`skills:${scope}`}
+										scope={
+											scope === PUBLIC_SCOPE
+												? {
+														visibility: "public",
+														tenantId: null,
+														organization: null,
+													}
+												: {
+														visibility: "org",
+														tenantId: scope,
+														organization: orgName,
+													}
+										}
+										signedIn={isAuthenticated}
+										accessible={
+											scopeIsAvailable &&
+											(scope === PUBLIC_SCOPE || orgSurfaceReady(orgState))
+										}
+									/>
+								) : (
+									<p className="text-body-sm text-warning">
+										{t("ui.hub.skills.unavailable")}
+									</p>
+								))}
 							{view === "teams" &&
 								(activeOrg ? (
 									<OrgTeamsList

@@ -545,70 +545,32 @@ test("without a hub item nothing renders, and the sidebar has ONE action store (
 	assert.match(hooks, /useHubActionStore/);
 });
 
-test("the detail panes re-seed when the fetched definition changes (R1)", () => {
+/*
+ * The historical content-key/remount guard silently destroyed unsaved buffers.
+ * Child editors already re-seed only when clean. Source pins cover the wiring;
+ * actual draft/caret preservation still requires independent native flow proof.
+ */
+test("same source editor stays mounted across definition refresh", () => {
 	const page = read(
 		"src/renderer/src/features/agents/components/agents-page.tsx",
 	);
-	/*
-	 * The panes are keyed by the record AND its fetched content.
-	 *
-	 * ASSERTED PER PANE, not by counting template keys on the page: R1 is a claim
-	 * about these two panes, and a count would red for a third template key that
-	 * had nothing to do with R1 (agent review round 4, R4-N1).
-	 */
-	const keys = page.match(/key=\{`(agent|team):[^`]*`\}/g) ?? [];
-	for (const [pane, prefix] of [
-		["profile", "key={`agent:"],
-		["team", "key={`team:"],
-	]) {
-		const key = keys.find((candidate) => candidate.startsWith(prefix));
-		assert.ok(key, `the ${pane} pane has no content-derived key`);
-		assert.match(
-			key,
-			/contentKey\(/,
-			`${pane} pane key is not content-derived: ${key}`,
-		);
+	assert.match(page, /key=\{profileEditorIdentity\(profileDetail\.data\)\}/);
+	assert.match(page, /key=\{teamEditorIdentity\(teamDetail\.data\)\}/);
+	assert.doesNotMatch(page, /contentKey\(|setLostEdits/);
+	for (const file of ["agent-detail.tsx", "team-detail.tsx"]) {
+		const editor = read(`src/renderer/src/features/agents/components/${file}`);
+		assert.match(editor, /if \(editing && dirty\) return;/);
 	}
 });
 
-/*
- * THE REPLACED-EDIT NOTICE, PINNED WHERE CI CAN REACH IT (agent review round 3,
- * N2). Its behaviour is asserted by the `update-under-an-open-editor` story, and
- * nothing runs Storybook stories in CI - `pnpm test:desktop` is the `node --test`
- * set, and the stories are a hand-run rig. So the same cheap source pins the R1
- * fix uses stand here: both editors must keep reporting their unsaved state up,
- * the notice must stay conditional on a DIRTY editor, and it must stay scoped to
- * the definition it describes (N1).
- */
-test("the replaced-edit notice keeps its wiring, its condition and its scope (R2-5, N1/N2)", () => {
+test("every editor still reports scoped dirty state without replacing the draft", () => {
 	const page = read(
 		"src/renderer/src/features/agents/components/agents-page.tsx",
 	);
-	/*
-	 * The dirty flag the notice reads must be fed by every pane (the panes report
-	 * through `reportDirty`, which the page scopes by pane identity), and the
-	 * notice itself must stay conditional on it - a merged definition under a CLEAN
-	 * pane is silence, not a notice.
-	 */
-	assert.equal(
-		(page.match(/onDirtyChange=\{reportDirty\}/g) ?? []).length,
-		4,
-		"every detail pane must report its unsaved state",
-	);
-	assert.match(page, /if \(editDirty\) setLostEdits\(true\);/);
-	// ...and a change of IDENTITY adopts the new record and clears the notice
-	// instead of comparing two definitions against each other (N1).
-	assert.match(page, /if \(seededPane\.current\.identity !== openIdentity\)/);
+	assert.equal((page.match(/onDirtyChange=\{reportDirty\}/g) ?? []).length, 4);
 	assert.match(
 		page,
-		/if \(seededPane\.current\.identity !== openIdentity\) \{[\s\S]{0,400}?setLostEdits\(false\);/,
+		/dirtyIdentity !== null && dirtyIdentity === paneIdentity/,
 	);
-	/*
-	 * ...and a pane with NO content yet seeds silently, so a definition that comes
-	 * back after a transient empty read is not announced as a hub update (R4-N2).
-	 */
-	assert.match(
-		page,
-		/if \(openContent === null \|\| seededPane\.current\.content === null\)/,
-	);
+	assert.doesNotMatch(page, /Edits you had not saved were[\s\S]{0,30}replaced/);
 });

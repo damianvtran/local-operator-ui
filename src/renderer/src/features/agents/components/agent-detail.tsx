@@ -564,6 +564,22 @@ export function AgentDetail({
 	const [conflict, setConflict] = useState(false);
 	const [confirmDiscard, setConfirmDiscard] = useState(false);
 	const headingRef = useRef<HTMLHeadingElement>(null);
+	/*
+	 * THE REVISION THE OPEN EDIT IS BASED ON, captured at edit-open and held
+	 * STABLE while the edit is dirty. It must NOT be re-read from a background
+	 * refetch: the whole point of a compare-and-swap is to send the version the
+	 * operator actually saw, so a refetch that arrived while they typed must not
+	 * quietly rebase the save (that would defeat the guard and write over the
+	 * concurrent change the 409 exists to catch). A deliberate reopen/reload -
+	 * `cancel`, or a successful save - establishes a NEW base by capturing the
+	 * fresh token; the conflict banner's "Reload the saved version" routes through
+	 * `cancel`, so it re-bases too. Absent field on an older backend stays
+	 * `undefined` = the legacy unconditional write (documented as NOT a protected
+	 * guarantee).
+	 */
+	const baseRevisionRef = useRef<string | undefined>(
+		profile.definition_revision,
+	);
 	const navigate = useNavigate();
 
 	const dirty = JSON.stringify(draft) !== JSON.stringify(base);
@@ -642,6 +658,8 @@ export function AgentDetail({
 		const next = draftOf(profile);
 		setBase(next);
 		setDraft(next);
+		// A reopen/reload establishes a NEW base revision from the fetched snapshot.
+		baseRevisionRef.current = profile.definition_revision;
 	};
 
 	/*
@@ -695,12 +713,16 @@ export function AgentDetail({
 				name: profile.name,
 				requestId: crypto.randomUUID(),
 				fields: changed,
+				expectedDefinitionRevision: baseRevisionRef.current,
 			});
 			setEditing(false);
 			setUnconfirmed(false);
 			const next = draftOf(result);
 			setBase(next);
 			setDraft(next);
+			// The successful write's own response carries the NEW revision; adopt it as
+			// the base so a second save in the same session is not a stale compare.
+			baseRevisionRef.current = result.definition_revision;
 			onSaved(result.name);
 			showSuccessToast(`Saved ${result.name}.`);
 			// Focus lands on the pane's heading rather than `body`: the pressed
@@ -741,6 +763,22 @@ export function AgentDetail({
 			 * ambiguity as a dropped connection, and the same answer.
 			 */
 			const status = (caught as { status?: unknown })?.status;
+			/*
+			 * A CONCURRENT-EDIT REFUSAL IS NOT A GENERIC 4xx: the write was REJECTED
+			 * because the definition moved since this edit was opened, so the derived
+			 * `unconfirmed`-not-definitive path below must be bypassed and the conflict
+			 * banner shown instead. The draft is kept (never cleared) and the base token
+			 * is deliberately NOT re-read here - the operator reconciles by reloading or
+			 * editing again, not by a silent rebase. Keyed on the backend's machine code
+			 * (`local-concurrent-edit`), not the status alone, following the same
+			 * refusal-code convention the transport already carries in `code`.
+			 */
+			const code = (caught as { code?: unknown })?.code;
+			if (code === "local-concurrent-edit") {
+				setConflict(true);
+				setPending(false);
+				return;
+			}
 			const definitive =
 				typeof status === "number" &&
 				status !== 408 &&
@@ -870,6 +908,9 @@ export function AgentDetail({
 										setEditing(true);
 										setError(null);
 										setErrorField(null);
+										// CAPTURE THE EDIT-OPEN BASE: the revision this edit is based on, held
+										// stable across background refetches (see `baseRevisionRef`).
+										baseRevisionRef.current = profile.definition_revision;
 									}}
 								>
 									Edit

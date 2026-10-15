@@ -47,7 +47,9 @@ export const HubPager: FC<{
 	page: number;
 	count: number;
 	onChange: (page: number) => void;
-}> = ({ page, count, onChange }) => {
+	/** Preserve existing agent label; sibling libraries name their own kind. */
+	ariaLabel?: string;
+}> = ({ page, count, onChange, ariaLabel = "Agent pages" }) => {
 	const previousRef = useRef<HTMLButtonElement>(null);
 	const nextRef = useRef<HTMLButtonElement>(null);
 	/** The sibling that should take focus once the pressed button has disabled. */
@@ -63,7 +65,7 @@ export const HubPager: FC<{
 	if (count <= 1) return null;
 	return (
 		<nav
-			aria-label="Agent pages"
+			aria-label={ariaLabel}
 			className="mt-6 flex min-h-13 items-center justify-between gap-3 border-t border-hairline"
 			data-testid="agent-hub-pager"
 		>
