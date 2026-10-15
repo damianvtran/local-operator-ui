@@ -239,8 +239,8 @@ export type TooltipProps = {
 	suppressed?: boolean;
 	/**
 	 * Told every time the panel opens or closes, for a caller whose own state must
-	 * follow it (the panel rail suppresses the native browser view for exactly the
-	 * span a tooltip is painted over it - #872, design D1).
+	 * follow it. (The browser-view suppression the panel rail first built on this,
+	 * #872, now lives inside this component and no longer needs it.)
 	 *
 	 * It reports whether the panel is actually SHOWN. On the uncontrolled path that
 	 * is Radix's own answer (hover, focus, Escape, leave). On the controlled path
