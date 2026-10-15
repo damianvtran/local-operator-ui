@@ -79,7 +79,7 @@ const bundle = await build({
 	conditions: ["import"],
 	stdin: {
 		contents:
-			'export { SupplementRow } from "./src/renderer/src/features/chat/canonical/supplement-row"; export { CanvasPaneProvider } from "./src/renderer/src/features/chat/utils/canvas-pane"; export { useCanvasStore } from "./src/renderer/src/shared/store/canvas-store";',
+			'export { SupplementRow } from "./src/renderer/src/features/chat/canonical/supplement-row"; export { CanvasPaneProvider } from "./src/renderer/src/features/chat/utils/canvas-pane"; export { useCanvasStore } from "./src/renderer/src/shared/store/canvas-store"; export { toast } from "sonner";',
 		resolveDir: root,
 	},
 	bundle: true,
@@ -141,9 +141,8 @@ after(() => {
 	rmSync(bundlePath);
 	rmSync(home, { recursive: true });
 });
-const { SupplementRow, CanvasPaneProvider, useCanvasStore } = await import(
-	bundlePath
-);
+const { SupplementRow, CanvasPaneProvider, useCanvasStore, toast } =
+	await import(bundlePath);
 const record = {
 	kind: "supplement",
 	ts: 1791000060,
@@ -173,6 +172,16 @@ const click = async (element, type = "click") => {
 		);
 		await new Promise((resolve) => setTimeout(resolve, 15));
 	});
+};
+
+const waitFor = async (predicate) => {
+	for (let attempt = 0; attempt < 100; attempt++) {
+		if (predicate()) return;
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 20));
+		});
+	}
+	assert.ok(predicate(), "action did not settle at its observable destination");
 };
 
 test("all three file actions resolve once against session cwd, never process cwd", async () => {
@@ -222,6 +231,7 @@ test("all three file actions resolve once against session cwd, never process cwd
 			"Open in default app",
 			"Reveal in Finder",
 		]) {
+			const start = events.length;
 			await click(
 				document.querySelector('[aria-label="Actions for RUN-RECORD.md"]'),
 				"pointerdown",
@@ -230,7 +240,55 @@ test("all three file actions resolve once against session cwd, never process cwd
 				(item) => item.textContent.includes(label),
 			);
 			await click(menu);
+			const expectedChannel =
+				label === "Open in canvas"
+					? "read-file"
+					: label === "Open in default app"
+						? "open-file"
+						: "show-item-in-folder";
+			await waitFor(() =>
+				events.slice(start).some(([name]) => name === expectedChannel),
+			);
+			const relativeProbes = events
+				.slice(start)
+				.filter(
+					([name, paths]) => name === "probe-files" && paths[0] === relative,
+				);
+			assert.equal(
+				relativeProbes.length,
+				1,
+				`${label}: exactly one session-relative resolution`,
+			);
+			assert.equal(
+				relativeProbes[0][2],
+				cwd,
+				`${label}: session cwd, not process cwd`,
+			);
+			assert.equal(relativeProbes[0][3], intended);
 		}
+		// The primary filename button is a separate dispatch branch from the menu.
+		const primaryStart = events.length;
+		await click(document.querySelector("[data-supplement-file]"));
+		await waitFor(() =>
+			events
+				.slice(primaryStart)
+				.some(
+					([name, paths]) => name === "probe-files" && paths[0] === relative,
+				),
+		);
+		const primaryProbes = events
+			.slice(primaryStart)
+			.filter(
+				([name, paths]) => name === "probe-files" && paths[0] === relative,
+			);
+		assert.equal(primaryProbes.length, 1);
+		assert.equal(primaryProbes[0][2], cwd);
+		assert.equal(primaryProbes[0][3], intended);
+		assert.equal(
+			events.slice(primaryStart).some(([name]) => name === "open-file"),
+			false,
+			"primary button selects canvas without OS fallback",
+		);
 		// Filesystem probes complete independently of React's event dispatch;
 		// await their observable destination rather than trusting a fixed sleep.
 		for (let attempt = 0; attempt < 100; attempt++) {
@@ -281,6 +339,49 @@ test("all three file actions resolve once against session cwd, never process cwd
 		);
 		assert.equal(events.length, 0);
 		console.log("NEGATIVE probe rejection: no file bridge calls");
+		// A fulfilled answer can still be unrooted; it is not a safe action identity.
+		let unresolvedProbes = 0;
+		window.api.probeFiles = async (paths, base) => {
+			assert.deepEqual(paths, [relative]);
+			assert.equal(base, cwd);
+			unresolvedProbes++;
+			return [
+				{
+					input: relative,
+					resolved: relative,
+					exists: false,
+					isFile: false,
+					sizeBytes: null,
+					mtimeMs: null,
+				},
+			];
+		};
+		await click(
+			document.querySelector('[aria-label="Actions for RUN-RECORD.md"]'),
+			"pointerdown",
+		);
+		await click(
+			[...document.querySelectorAll('[role="menuitem"]')].find((item) =>
+				item.textContent.includes("Open in default app"),
+			),
+		);
+		assert.equal(unresolvedProbes, 1);
+		assert.equal(events.length, 0);
+		const recoveryToast = toast
+			.getHistory()
+			.find(
+				(entry) =>
+					typeof entry.title === "string" &&
+					entry.title.includes("Use Copy file path"),
+			);
+		assert.ok(
+			recoveryToast,
+			"resolution refusal offers a location-check recovery, not blind retry",
+		);
+		console.log(
+			"NEGATIVE fulfilled unrooted response: one cwd-bound probe, no file action; recovery:",
+			recoveryToast.title,
+		);
 	} finally {
 		await act(async () => mounted.unmount());
 		host.remove();
