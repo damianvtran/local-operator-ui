@@ -9180,8 +9180,8 @@ test("duplicate snapshots URL and creates a user record without copying authorit
 test("tab management IPC rejects foreign sender/frame and malformed permutations", async () => {
 	const { host } = makeHost();
 	await host.newTab();
-	const frame = { url: "http://localhost:5173/index.html" },
-		webContents = { id: 1, mainFrame: frame };
+	const frame = { url: "http://localhost:5173/index.html" };
+	const webContents = { id: 1, mainFrame: frame };
 	const window = { isDestroyed: () => false, webContents };
 	ipcMain.reset();
 	registerBrowserIpc({
@@ -9191,9 +9191,9 @@ test("tab management IPC rejects foreign sender/frame and malformed permutations
 		clearData: async () => {},
 		log: () => {},
 	});
-	const event = { sender: webContents, senderFrame: frame },
-		reorder = ipcMain.handlers.get("browser-reorder-tabs"),
-		action = ipcMain.handlers.get("browser-tab-action");
+	const event = { sender: webContents, senderFrame: frame };
+	const reorder = ipcMain.handlers.get("browser-reorder-tabs");
+	const action = ipcMain.handlers.get("browser-tab-action");
 	try {
 		assert.throws(
 			() => reorder({ sender: {}, senderFrame: frame }, []),

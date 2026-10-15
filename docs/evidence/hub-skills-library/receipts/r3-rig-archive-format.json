@@ -1,0 +1,7 @@
+{
+  "r3-cell.py": "readability copy; one trailing space stripped from assertion line to satisfy repository whitespace gate",
+  "r3-cell-original.base64": "exact executed script bytes, decode for forensic reproduction",
+  "originalSha256": "026034081b23c902bc62a16379db67091c7dc14e490bdbb6bb3525791dccfacb",
+  "otherRigCopies": "verbatim",
+  "rawLogFiles": "verbatim, not normalized"
+}

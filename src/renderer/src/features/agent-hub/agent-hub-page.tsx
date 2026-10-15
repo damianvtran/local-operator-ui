@@ -236,7 +236,7 @@ export const AgentHubPage: React.FC = () => {
 	 * "which org" anywhere on this page is a second place for them to disagree.
 	 */
 	const [scope, setScope] = useState<string>(PUBLIC_SCOPE);
-	const [view, setView] = useState<HubView>("agents");
+	const [requestedView, setView] = useState<HubView>("agents");
 	useI18nLocale();
 	/*
 	 * Categories seen on the hub, so the rail does not empty itself.
@@ -267,6 +267,17 @@ export const AgentHubPage: React.FC = () => {
 	 * backend gets that table's sentence rather than a restatement of it.
 	 */
 	const capabilities = useDesktopCapabilities();
+	const skillsAvailable =
+		!capabilities.isError &&
+		desktopFeatureEnabled(capabilities.data, "hub_skills");
+	/* Derive the rendered view immediately: an effect alone leaves one render
+	 * of stale Skills actions after reconnect/capability withdrawal. Normalize
+	 * the stored choice too, so re-advertisement cannot resurrect an old draft. */
+	const view =
+		requestedView === "skills" && !skillsAvailable ? "agents" : requestedView;
+	useEffect(() => {
+		if (requestedView === "skills" && !skillsAvailable) setView("agents");
+	}, [requestedView, skillsAvailable]);
 	const pairingCause = usePairingCause();
 	const orgState = desktopFeatureState(capabilities.data, "radient_org");
 	const orgNotice = isAuthenticated
@@ -739,9 +750,7 @@ export const AgentHubPage: React.FC = () => {
 								[
 									"agents",
 									"teams",
-									...(desktopFeatureEnabled(capabilities.data, "hub_links")
-										? ["skills" as const]
-										: []),
+									...(skillsAvailable ? ["skills" as const] : []),
 								] as HubView[]
 							).map((value) => (
 								<TabsTrigger
@@ -1449,7 +1458,7 @@ export const AgentHubPage: React.FC = () => {
 							 * notice said did not exist (§11 O-7's premise).
 							 */}
 							{view === "skills" &&
-								(desktopFeatureEnabled(capabilities.data, "hub_links") ? (
+								(skillsAvailable ? (
 									<HubSkillsLibrary
 										key={`skills:${scope}`}
 										scope={

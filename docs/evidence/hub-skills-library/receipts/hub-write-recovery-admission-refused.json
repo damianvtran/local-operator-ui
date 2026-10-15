@@ -1,0 +1,17 @@
+{
+  "at": "2026-10-15T02:48:23.176647-04:00",
+  "job": "a53d74f325fa",
+  "leaseCheck": "FREE",
+  "availableKiB": 25633880,
+  "availableGiB": 24.446372985839844,
+  "swapUsedMB": 13249.19,
+  "maximumExclusiveSwapMB": 12500,
+  "memoryFreePct": 53,
+  "result": "REFUSED BEFORE LEASE: swap floor failed",
+  "leaseAcquired": false,
+  "helperStarted": false,
+  "nativeBoots": 0,
+  "rebuild": false,
+  "remainingAuthorizedPositiveBoot": 1,
+  "note": "Refused by a stale used-swap check before the latest policy reached this runtime; Aida's swap-FREE>=500MiB rule was already canonical. Raw reading, applied stale threshold and failed no-dispatch attempt are preserved, not retroactively called a pass. No helper/stub/Electron started or old logs overwritten. The later correctly admitted recovery is recorded separately."
+}

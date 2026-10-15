@@ -1,0 +1,72 @@
+INFO:     Started server process [59816]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+Starting server at http://127.0.0.1:18328
+INFO:     127.0.0.1:63106 - "GET /v1/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63155 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63159 - "GET /v1/desktop/sessions?limit=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63155 - "GET /v1/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63161 - "GET /v1/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63162 - "GET /v1/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63155 - "GET /v1/desktop/events HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63159 - "POST /v1/desktop/presence HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63161 - "GET /v1/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63159 - "GET /v1/settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63162 - "GET /v1/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63159 - "GET /v1/desktop/aida HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63161 - "POST /v1/desktop/radient HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:63172 - "GET /v1/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63162 - "GET /v1/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63174 - "GET /v1/desktop/asks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63161 - "GET /v1/credentials HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63159 - "GET /v1/desktop/sessions/c4bd539883bd HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63178 - "GET /v1/desktop/aida HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63172 - "GET /v1/desktop/teams HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63182 - "GET /v1/desktop/commands HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63161 - "GET /v1/desktop/networks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63179 - "GET /v1/desktop/peers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63174 - "GET /v1/desktop/hub/updates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63162 - "GET /v1/desktop/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63176 - "GET /v1/desktop/sessions?limit=50&include_archived=true&with_counts=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63180 - "GET /v1/settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63181 - "GET /v1/auth/providers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63184 - "GET /v1/auth/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63187 - "GET /v1/credentials HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63183 - "GET /v1/settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63175 - "GET /v1/desktop/hub/links HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63189 - "GET /v1/agents?page=1&per_page=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63186 - "GET /v1/desktop/quota-notice?refresh=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63177 - "POST /v1/desktop/radient HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:63185 - "POST /v1/desktop/sessions/preview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63159 - "GET /v1/desktop/sessions/c4bd539883bd/command-entities?command=effort HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63190 - "GET /v1/desktop/skills?cwd=%7E HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63161 - "GET /v1/capabilities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63159 - "GET /v1/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63172 - "GET /v1/desktop/asks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63173 - "POST /v1/desktop/radient HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63162 - "POST /v1/desktop/radient HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63177 - "GET /v1/desktop/aida HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63159 - "GET /v1/desktop/networks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63181 - "GET /v1/desktop/commands HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63178 - "GET /v1/desktop/peers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63172 - "GET /v1/desktop/teams HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63180 - "GET /v1/auth/providers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63182 - "GET /v1/settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63179 - "GET /v1/settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63183 - "GET /v1/auth/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63174 - "GET /v1/desktop/hub/links HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63173 - "GET /v1/desktop/hub/updates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63176 - "POST /v1/desktop/radient HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:63175 - "GET /v1/desktop/sessions?limit=50&include_archived=true&with_counts=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63184 - "POST /v1/desktop/sessions/preview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63186 - "GET /v1/credentials HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63162 - "GET /v1/desktop/quota-notice?refresh=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63161 - "GET /v1/desktop/profiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63177 - "GET /v1/agents?page=1&per_page=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63185 - "GET /v1/desktop/skills?cwd=%7E HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63159 - "POST /v1/desktop/radient HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:63159 - "POST /v1/desktop/radient HTTP/1.1" 409 Conflict
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [59816]

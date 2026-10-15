@@ -9,6 +9,7 @@ import type {
 	HubLinks,
 	HubSourceResolution,
 } from "./hub-links";
+import { guardHubMutation, useHubMutationSafety } from "./hub-mutation-safety";
 import type { HubMergeReport, HubUpdates } from "./hub-updates";
 
 /** Core-owned wrapper binds the exact reviewed server projection, not raw pins. */
@@ -87,6 +88,7 @@ export type HubLinkAction =
  */
 export function useHubLinkActions(linkId: string) {
 	const client = useQueryClient();
+	const safety = useHubMutationSafety();
 	const key = `link:${linkId}`;
 	const sharedPending = useHubActionStore((state) => state.pending.has(key));
 	const mutation = useMutation({
@@ -99,58 +101,59 @@ export function useHubLinkActions(linkId: string) {
 			store.begin(key);
 			return key;
 		},
-		mutationFn: (input: HubLinkAction) => {
-			const requestId = crypto.randomUUID();
-			switch (input.action) {
-				case "check":
-					return desktopResult<HubLinkActionResponse>({
-						op: "hub.check",
-						requestId,
-						linkId: input.linkId,
-					});
-				case "apply":
-					return desktopResult<HubLinkActionResponse>({
-						op: "hub.apply",
-						requestId,
-						linkId: input.linkId,
-						direction: "pull",
-						...(input.preview ? { dryRun: true } : {}),
-						...(input.prefer ? { prefer: input.prefer } : {}),
-						...(input.acknowledgeUnknownBaseline
-							? { acknowledgeUnknownBaseline: true }
-							: {}),
-						...(input.previewReceipt
-							? { previewReceipt: input.previewReceipt }
-							: {}),
-						...(input.confirmApply ? { confirmApply: true } : {}),
-					});
-				case "retry":
-					return desktopResult<HubLinkActionResponse>({
-						op: "hub.retry",
-						requestId,
-						linkId: input.linkId,
-						direction: input.direction,
-					});
-				case "preview":
-					return desktopResult<HubLinkActionResponse>({
-						op: "hub.push",
-						requestId,
-						linkId: input.linkId,
-						direction: "push",
-						dryRun: true,
-					});
-				case "confirm":
-					return desktopResult<HubLinkActionResponse>({
-						op: "hub.push",
-						requestId,
-						linkId: input.linkId,
-						direction: "push",
-						dryRun: false,
-						previewReceipt: input.previewReceipt,
-						confirmPublish: true,
-					});
-			}
-		},
+		mutationFn: (input: HubLinkAction) =>
+			guardHubMutation(async () => {
+				const requestId = crypto.randomUUID();
+				switch (input.action) {
+					case "check":
+						return desktopResult<HubLinkActionResponse>({
+							op: "hub.check",
+							requestId,
+							linkId: input.linkId,
+						});
+					case "apply":
+						return desktopResult<HubLinkActionResponse>({
+							op: "hub.apply",
+							requestId,
+							linkId: input.linkId,
+							direction: "pull",
+							...(input.preview ? { dryRun: true } : {}),
+							...(input.prefer ? { prefer: input.prefer } : {}),
+							...(input.acknowledgeUnknownBaseline
+								? { acknowledgeUnknownBaseline: true }
+								: {}),
+							...(input.previewReceipt
+								? { previewReceipt: input.previewReceipt }
+								: {}),
+							...(input.confirmApply ? { confirmApply: true } : {}),
+						});
+					case "retry":
+						return desktopResult<HubLinkActionResponse>({
+							op: "hub.retry",
+							requestId,
+							linkId: input.linkId,
+							direction: input.direction,
+						});
+					case "preview":
+						return desktopResult<HubLinkActionResponse>({
+							op: "hub.push",
+							requestId,
+							linkId: input.linkId,
+							direction: "push",
+							dryRun: true,
+						});
+					case "confirm":
+						return desktopResult<HubLinkActionResponse>({
+							op: "hub.push",
+							requestId,
+							linkId: input.linkId,
+							direction: "push",
+							dryRun: false,
+							previewReceipt: input.previewReceipt,
+							confirmPublish: true,
+						});
+				}
+			}, safety.snapshot),
 		onSuccess: (response) => {
 			client.setQueryData(hubLinksKey, response.links);
 			client.setQueryData(["desktop", "hub-updates"], response.status);
@@ -164,7 +167,11 @@ export function useHubLinkActions(linkId: string) {
 			void client.invalidateQueries({ queryKey: hubLinksKey });
 		},
 	});
-	return { ...mutation, isPending: mutation.isPending || sharedPending };
+	return {
+		...mutation,
+		...safety,
+		isPending: mutation.isPending || sharedPending,
+	};
 }
 
 /** The stated destination a source confirmation carries; never inferred. */
@@ -201,6 +208,7 @@ export type HubSourceResolutionInput = {
  */
 export function useHubSourceResolution() {
 	const client = useQueryClient();
+	const safety = useHubMutationSafety();
 	const mutation = useMutation({
 		onMutate: (input: HubSourceResolutionInput) => {
 			const key = `resolve:${input.kind}:${input.localId}`;
@@ -210,17 +218,21 @@ export function useHubSourceResolution() {
 			return key;
 		},
 		mutationFn: (input: HubSourceResolutionInput) =>
-			desktopResult<HubLinkActionResponse>({
-				op: "hub.apply",
-				requestId: crypto.randomUUID(),
-				kind: input.kind,
-				name: input.name,
-				resolveSource: true,
-				hubSource: input.hubSource,
-				visibility: input.visibility,
-				tenantId: input.tenantId,
-				acknowledgeUnknownBaseline: true,
-			}),
+			guardHubMutation(
+				() =>
+					desktopResult<HubLinkActionResponse>({
+						op: "hub.apply",
+						requestId: crypto.randomUUID(),
+						kind: input.kind,
+						name: input.name,
+						resolveSource: true,
+						hubSource: input.hubSource,
+						visibility: input.visibility,
+						tenantId: input.tenantId,
+						acknowledgeUnknownBaseline: true,
+					}),
+				safety.snapshot,
+			),
 		onSuccess: (response) => {
 			client.setQueryData(hubLinksKey, response.links);
 			client.setQueryData(["desktop", "hub-updates"], response.status);
@@ -230,5 +242,5 @@ export function useHubSourceResolution() {
 			void client.invalidateQueries({ queryKey: hubLinksKey });
 		},
 	});
-	return mutation;
+	return { ...mutation, ...safety };
 }
