@@ -83,6 +83,9 @@ import ruUiSettings from "./catalogues/ru/ui.settings.json";
 import viUiConsole from "./catalogues/vi/ui.console.json";
 import viUiOnboarding from "./catalogues/vi/ui.onboarding.json";
 import viUiSettings from "./catalogues/vi/ui.settings.json";
+import zhCNUiConsole from "./catalogues/zh-CN/ui.console.json";
+import zhCNUiOnboarding from "./catalogues/zh-CN/ui.onboarding.json";
+import zhCNUiSettings from "./catalogues/zh-CN/ui.settings.json";
 
 /** The bundled en catalogue: every `src/i18n/catalogues/en` message, flat. */
 export const bundledEnglish: Readonly<Record<string, string>> = {
@@ -164,6 +167,11 @@ export const bundledCatalogues: Readonly<
 		...viUiConsole,
 		...viUiOnboarding,
 		...viUiSettings,
+	},
+	"zh-CN": {
+		...zhCNUiConsole,
+		...zhCNUiOnboarding,
+		...zhCNUiSettings,
 	},
 };
 
