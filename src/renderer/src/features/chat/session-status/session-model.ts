@@ -34,6 +34,7 @@
  */
 
 import type {
+	CanonicalEffectiveAccessState,
 	CanonicalFrontendState,
 	CanonicalModel,
 	CanonicalModelAccess,
@@ -712,16 +713,19 @@ export function reconcileEffort(
 }
 
 /**
- * The session band's "Not signed in to <provider>" reading, or `null`.
+ * The selected provider's access reading, or `null` when no status is needed.
  *
  * ## What this reads, and the two silences
  *
  * The runtime publishes `model_access` beside `selected_model` (see
  * `CanonicalModelAccess`): a session's model is pinned in its journal and can
  * outlive the credential that once made it runnable, and this is the one
- * field that states the consequence. The reading exists ONLY for
- * `signed_out`:
+ * field that states the consequence. Core #2342 adds `effective_state`, so
+ * borrowed access, owner convergence and expiry are NOT local sign-out.
+ * Eligible permission stays unverified; only the serving runtime can publish
+ * effective borrowed access. Historical expiry is never bearer permission.
  *
+ * For an OLD host without that field:
  *   - `ok` is the healthy case and renders nothing;
  *   - an ABSENT field is a host that predates the contract, and silence there
  *     must not be read as "signed out" - the same rule the Radient verdict
@@ -746,13 +750,65 @@ export type ModelAccessReading = {
 	/** The provider's human name for the sentence; never empty. */
 	label: string;
 	state?: "signed_out" | "temporarily_unavailable";
+	/** Native access is the serving host's observation, never inferred from a holder row. */
+	effectiveState?: CanonicalEffectiveAccessState;
+	owner?: string;
+	observedAt?: number;
+	lastGrantAt?: number;
+	lastGrantExpiresAt?: number;
+	/** Only an explicitly local serving catalogue row can authorize the local Connect callback. */
+	connectHere?: boolean;
 };
 
 export function modelAccessReading(
 	frontend: CanonicalFrontendState | null | undefined,
+	servingLocality?: "local" | "remote",
 ): ModelAccessReading | null {
 	const access: CanonicalModelAccess | null | undefined =
 		frontend?.model_access;
+	if (access && typeof access.effective_state === "string") {
+		const provider = wireWords(access.provider);
+		if (!provider) return null;
+		const selectedProvider = wireWords(frontend?.selected_model?.provider);
+		if (selectedProvider && selectedProvider !== provider) return null;
+		const states: readonly CanonicalEffectiveAccessState[] = [
+			"local",
+			"pending",
+			"eligible_borrow_unverified",
+			"effective_borrow",
+			"expired",
+			"withdrawn",
+			"owner_unavailable",
+			"device_bound",
+			"absent",
+		];
+		// A future state cannot be promoted from the old coarse `ok` field.
+		// Keep it pending until the reader understands its access guarantee.
+		const effectiveState = states.includes(
+			access.effective_state as CanonicalEffectiveAccessState,
+		)
+			? (access.effective_state as CanonicalEffectiveAccessState)
+			: "pending";
+		if (effectiveState === "local") return null;
+		// This concerns the SELECTED provider even when a different fallback is
+		// serving. Never rewrite that selection or hide an owner's outage behind
+		// the fallback's local login. The old-host branch below is unchanged.
+		return {
+			...(effectiveState === "absent"
+				? { connectHere: servingLocality === "local" }
+				: {}),
+			provider,
+			label: wireWords(access.label) || provider,
+			effectiveState,
+			owner:
+				wireWords(access.owner_label) ||
+				wireWords(access.owner_device) ||
+				"the owner device",
+			observedAt: epochSeconds(access.observed_at),
+			lastGrantAt: epochSeconds(access.last_grant_at),
+			lastGrantExpiresAt: epochSeconds(access.last_grant_expires_at),
+		};
+	}
 	if (
 		!access ||
 		(access.state !== "signed_out" &&
@@ -773,6 +829,153 @@ export function modelAccessReading(
 	return access.state === "temporarily_unavailable"
 		? { provider, label, state: access.state }
 		: { provider, label };
+}
+
+/** Use only the matching catalogue's published locality, never peer/owner labels. */
+export function modelAccessLocality(
+	rows: readonly { session_id: string; locality?: unknown }[],
+	sessionId: string | undefined,
+): "local" | "remote" | undefined {
+	if (!sessionId) return undefined;
+	const locality = rows.find((row) => row.session_id === sessionId)?.locality;
+	return locality === "local" || locality === "remote" ? locality : undefined;
+}
+
+/** The composer decision, exercised with its real sessionStatus context contract. */
+export function composerModelAccessReading(
+	status:
+		| {
+				frontend: CanonicalFrontendState | null;
+				draft?: boolean;
+				servingLocality?: "local" | "remote";
+		  }
+		| undefined,
+): ModelAccessReading | null {
+	return status && status.draft !== true
+		? modelAccessReading(status.frontend, status.servingLocality)
+		: null;
+}
+
+function wireWords(value: unknown): string {
+	return typeof value === "string" ? value.trim() : "";
+}
+
+function epochSeconds(value: unknown): number | undefined {
+	return typeof value === "number" &&
+		Number.isFinite(value) &&
+		value >= 0 &&
+		value <= 8.64e12
+		? value
+		: undefined;
+}
+
+function accessTime(value: number): string {
+	return new Intl.DateTimeFormat(undefined, {
+		dateStyle: "medium",
+		timeStyle: "short",
+	}).format(new Date(value * 1000));
+}
+
+/**
+ * One sentence/action register for the actual band and contract tests. Owner
+ * resolution states never offer a second OAuth entrance: the runtime repairs
+ * them on the next request. Device-bound sign-in belongs on the serving device,
+ * which this generic Connect callback cannot target safely.
+ *
+ * `effective_borrow` proves resolved access, not a local login. This keyless
+ * contract does not publish credential kind, so neither an OAuth subscription
+ * nor an API key is inferred from the provider's display label.
+ */
+export function modelAccessPresentation(access: ModelAccessReading): {
+	title: string;
+	description: string;
+	history: string;
+	tone: "warning" | "neutral";
+	canConnect: boolean;
+	canSwitchModel: boolean;
+} {
+	const { label, effectiveState } = access;
+	const owner = access.owner || "the owner device";
+	const readings: Record<CanonicalEffectiveAccessState, [string, string]> = {
+		local: [
+			`${label} access available`,
+			"This session uses its own provider access.",
+		],
+		pending: [
+			`Checking ${label} access`,
+			"Access has not converged yet. The next request checks the owner automatically; no additional sign-in is needed here.",
+		],
+		eligible_borrow_unverified: [
+			`Checking access from ${owner}`,
+			`This session may borrow ${label} access, but it has not resolved it yet. The next request verifies ${owner} automatically.`,
+		],
+		effective_borrow: [
+			`${label} access from ${owner}`,
+			"The runtime resolved borrowed access for this session. Every new request checks the owner again.",
+		],
+		expired: [
+			`Fresh ${label} access needed`,
+			`The last borrowed grant expired, but borrowing permission is still present. The next request asks ${owner} for fresh access automatically.`,
+		],
+		withdrawn: [
+			`${label} access needs attention`,
+			"The owner cannot currently provide borrowed access, or borrowing permission is unavailable. Restore owner access or permission before retrying, or choose another model.",
+		],
+		owner_unavailable: [
+			`${owner} cannot provide access`,
+			`This session could not resolve ${label} access from ${owner}. Previous access cannot be reused. Retry after owner access is restored, or choose another model.`,
+		],
+		device_bound: [
+			`${label} needs a device sign-in`,
+			"This login cannot be borrowed. Sign in on the device running this session, or choose another model.",
+		],
+		absent: [
+			`No ${label} access`,
+			access.connectHere === true
+				? "The serving device has no effective provider access for this session. Connect an account or choose another model."
+				: "The device running this session has no effective provider access. Sign in or restore access on that device, or choose another model.",
+		],
+	};
+	const legacyUnavailable = access.state === "temporarily_unavailable";
+	const [title, description] = effectiveState
+		? readings[effectiveState]
+		: [
+				legacyUnavailable
+					? `${label} is temporarily unavailable`
+					: `Not signed in to ${label}`,
+				legacyUnavailable
+					? "Your saved sign-in is still present. Try again later or choose another model."
+					: `This session runs ${label} without a working sign-in, so it cannot answer until you connect it.`,
+			];
+	const context: string[] = [];
+	if (effectiveState && access.observedAt !== undefined) {
+		context.push(`Last checked: ${accessTime(access.observedAt)}.`);
+	}
+	if (effectiveState && access.lastGrantAt !== undefined) {
+		context.push(`Last resolved: ${accessTime(access.lastGrantAt)}.`);
+	}
+	if (effectiveState && access.lastGrantExpiresAt !== undefined) {
+		context.push(
+			`Recorded grant expiry: ${accessTime(access.lastGrantExpiresAt)}.`,
+		);
+	}
+	if (
+		effectiveState &&
+		(access.lastGrantAt !== undefined ||
+			access.lastGrantExpiresAt !== undefined)
+	) {
+		context.push("History only; not permission to reuse access.");
+	}
+	return {
+		title,
+		description,
+		history: context.join(" "),
+		tone: effectiveState === "effective_borrow" ? "neutral" : "warning",
+		canConnect: effectiveState
+			? effectiveState === "absent" && access.connectHere === true
+			: !legacyUnavailable,
+		canSwitchModel: effectiveState !== "effective_borrow",
+	};
 }
 
 /**
@@ -815,9 +1018,29 @@ export function radientCalloutOwnsTheSignIn(
  * refusals are not among them). Any other provider cannot collide with the
  * Radient connector, so this is the whole of the rule.
  */
+/** Borrowed/owner states are not the connector's local sign-in problem. */
+export function modelAccessOwnsRadientStatus(
+	access: ModelAccessReading | null,
+): boolean {
+	return (
+		access?.provider === "radient" &&
+		access.effectiveState !== undefined &&
+		(access.effectiveState !== "absent" || access.connectHere !== true)
+	);
+}
+
 export function bandYieldsToRadientIssue(
-	access: { provider: string },
+	access: {
+		provider: string;
+		effectiveState?: CanonicalEffectiveAccessState;
+		connectHere?: boolean;
+	},
 	radientCalloutOwnsTheSignIn: boolean,
 ): boolean {
-	return radientCalloutOwnsTheSignIn && access.provider === "radient";
+	return (
+		radientCalloutOwnsTheSignIn &&
+		access.provider === "radient" &&
+		(access.effectiveState === undefined ||
+			(access.effectiveState === "absent" && access.connectHere === true))
+	);
 }

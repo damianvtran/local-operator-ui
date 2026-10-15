@@ -91,7 +91,8 @@ import {
 } from "@features/chat/pickers/picker-registry";
 import {
 	bandYieldsToRadientIssue,
-	modelAccessReading,
+	composerModelAccessReading,
+	modelAccessOwnsRadientStatus,
 	radientCalloutOwnsTheSignIn,
 } from "@features/chat/session-status/session-model";
 import { SessionModelAccessBand } from "@features/chat/session-status/session-model-access";
@@ -1010,6 +1011,8 @@ export type MessageInputProps = {
 	 */
 	sessionStatus?: {
 		frontend: CanonicalFrontendState | null;
+		/** Trusted catalogue source, not credential-owner metadata or mesh membership. */
+		servingLocality?: "local" | "remote";
 		onCommand?: (invocation: SlashCommandInvocation) => void;
 		/** The rungs `/effort` accepts; see `SessionStatusStripProps`. */
 		effortEntities?: readonly unknown[];
@@ -7425,10 +7428,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * the dispatcher, Connect via the connect store), so this block cannot
 		 * become a second way to reach either.
 		 */
-		const modelAccess =
-			sessionStatus && sessionStatus.draft !== true
-				? modelAccessReading(sessionStatus.frontend)
-				: null;
+		const modelAccess = composerModelAccessReading(sessionStatus);
 		/*
 		 * ONE MISSING SIGN-IN, ONE BLOCK (agent review round 1, R1-6; narrowed by
 		 * design round 2, D7). A `radient/auto` session whose connector verdict says
@@ -7565,7 +7565,9 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * `inputContent` - the ring is why it is 8px and not the siblings'
 				 * compacted 4px (design round 1, D1).
 				 */}
-				{radientIssueBlock}
+				{/* An owner's borrowed access is not a second local Radient login.
+				 * Keep the runtime status visible without mounting another prompt. */}
+				{!modelAccessOwnsRadientStatus(modelAccess) && radientIssueBlock}
 				{/*
 				 * The session's own model-access band, beside the Radient issue for the same
 				 * reason: both are STANDING statements about the session's ability to run,
