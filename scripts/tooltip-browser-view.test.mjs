@@ -9,7 +9,8 @@
  * sliver over the sidebar's edge survived (operator report). The cure is the panel
  * rail's measured registration (#872), moved into the shared `Tooltip` so no call
  * site has to remember it. This pins that funnel: the predicate, the release paths,
- * and the `suppressed`/`disabled` props the flyout depends on.
+ * the handoff between two flyouts (review round 1, R1), and the `suppressed`/`disabled`
+ * props the flyout depends on.
  *
  * jsdom has no layout, so the panel's rect is STATED by each case - the instrument is
  * the policy's decision (does this box overlap the registered view rect), not a pixel.
@@ -44,7 +45,13 @@ const CACHE = join(ROOT, "node_modules", ".cache", "tooltip-browser-view");
 const bundle = await build({
 	stdin: {
 		contents: `
-			export { suppressedOverlayIds, registerBrowserViewRect } from "./src/renderer/src/shared/browser-view-policy";
+			export {
+				suppressedOverlayIds,
+				registerBrowserViewRect,
+				subscribeBrowserView,
+				browserViewSuppressed,
+				RELEASE_HOLD_MS,
+			} from "./src/renderer/src/shared/browser-view-policy";
 			export { Tooltip, TooltipProvider } from "./src/renderer/src/shared/components/ui/tooltip";
 		`,
 		resolveDir: ROOT,
@@ -75,6 +82,9 @@ writeFileSync(bundlePath, bundle.outputFiles[0].text);
 const {
 	suppressedOverlayIds,
 	registerBrowserViewRect,
+	subscribeBrowserView,
+	browserViewSuppressed,
+	RELEASE_HOLD_MS,
 	Tooltip,
 	TooltipProvider,
 } = await import(pathToFileURL(bundlePath).href);
@@ -90,12 +100,59 @@ const VIEW = { x: 300, y: 120, width: 980, height: 780 };
 const FLYOUT = { x: 290, y: 200, width: 256, height: 64 };
 const ABOVE_VIEW = { x: 400, y: 80, width: 120, height: 28 };
 
+/*
+ * A rAF THE TEST DRAWS, not jsdom's. `pretendToBeVisual`'s rAF is a 16ms timer, and a
+ * real-time wait inside an `act` scope costs seconds here: React keeps flushing while a
+ * self-rescheduling rAF loop (floating-ui's autoUpdate, live for as long as a panel is
+ * open) re-queues work, so one `frames()` wait measured 12,138ms on the
+ * "no browser surface mounted" case, whose own work is milliseconds (review round 1,
+ * R4). Frames are COUNTED instead: `api.frames(n)` draws n of them through `act`.
+ */
+const PLACEMENT_FRAMES = 8;
+/* One 60Hz frame: only the policy's own hold is waited for in real time. */
+const FRAME_MS = 17;
+
+/*
+ * jsdom's selector engine RECURSES on the top-layer pseudo-classes, and that recursion
+ * was this file's whole wall time: nwsapi's `isFullscreen`/`isModal`/`isOpen` fall back
+ * to the host `matches` (node_modules/nwsapi/src/nwsapi.js:707-747), which for jsdom is
+ * `Element.prototype.matches` -> nwsapi -> `isFullscreen` again, and every
+ * `getComputedStyle` on a mounted panel evaluates the UA stylesheet's `:fullscreen`
+ * rule. Measured: the first `act` flush after a panel opened cost 11,612ms of that
+ * recursion, while every other phase of the same case is milliseconds (review round 1,
+ * R4). Nothing in this tree is fullscreen, modal, open, closed, picture-in-picture or a
+ * popover - which is what jsdom answers anyway once the recursion unwinds - so the
+ * answer is stated directly. Anchored to the exact selector strings nwsapi hands to
+ * `matchesNative`, so a selector that merely CONTAINS one (say `:not(:fullscreen)`)
+ * still goes through the engine rather than being answered here.
+ */
+const TOP_LAYER =
+	/^:(fullscreen|modal|popover-open|open|closed|picture-in-picture)$/;
+
+/* The row flyout's own props, as `chat-sidebar.tsx` spells them (the sweep case). */
+const SIDE_RIGHT = /side="right"/;
+const OVERLAY_NAME = /overlayName="sidebar-row-flyout"/;
+
 async function mount(run) {
 	const dom = new JSDOM("<!doctype html><div id='root'></div>", {
 		url: "http://localhost/",
 		pretendToBeVisual: true,
 	});
 	const { window } = dom;
+	/* This method is where the recursion above is entered: answer those selectors here. */
+	const engineMatches = window.Element.prototype.matches;
+	window.Element.prototype.matches = function (selectors) {
+		if (TOP_LAYER.test(selectors)) return false;
+		return engineMatches.call(this, selectors);
+	};
+	/* Callbacks waiting for the next drawn frame, keyed by rAF id. */
+	const queued = new Map();
+	let nextFrameId = 0;
+	const drawFrame = () => {
+		const pending = [...queued.entries()];
+		queued.clear();
+		for (const [, callback] of pending) callback(performance.now());
+	};
 	const shims = {
 		window,
 		document: window.document,
@@ -105,8 +162,14 @@ async function mount(run) {
 		Event: window.Event,
 		// Radix dispatches its "another tooltip opened" signal as a BARE CustomEvent.
 		CustomEvent: window.CustomEvent,
-		requestAnimationFrame: window.requestAnimationFrame.bind(window),
-		cancelAnimationFrame: window.cancelAnimationFrame.bind(window),
+		requestAnimationFrame: (callback) => {
+			nextFrameId += 1;
+			queued.set(nextFrameId, callback);
+			return nextFrameId;
+		},
+		cancelAnimationFrame: (id) => {
+			queued.delete(id);
+		},
 		getComputedStyle: window.getComputedStyle.bind(window),
 		IS_REACT_ACT_ENVIRONMENT: true,
 		ResizeObserver: class {
@@ -155,6 +218,29 @@ async function mount(run) {
 		setPanelRect: (rect) => {
 			panelRect = rect;
 		},
+		/*
+		 * Draw `n` frames, each inside its own `act` so React flushes what that frame
+		 * triggered. The default covers the hook's placement budget (`PLACEMENT_FRAMES`)
+		 * plus slack, which is the most it can ask for before it gives up on an unplaced
+		 * popper; frames cost microseconds, so the count buys determinism.
+		 */
+		frames: async (n = PLACEMENT_FRAMES + 4) => {
+			for (let drawn = 0; drawn < n; drawn += 1) {
+				await act(async () => {
+					drawFrame();
+				});
+			}
+		},
+		/*
+		 * Wait out the policy's handoff hold, the one real timer this file cannot count
+		 * frames for: a closed-reaching tooltip keeps its registration `RELEASE_HOLD_MS`
+		 * past the panel (R1). `FRAME_MS` of slack, because a timer is not exact.
+		 */
+		hold: () =>
+			act(
+				async () =>
+					new Promise((done) => setTimeout(done, RELEASE_HOLD_MS + FRAME_MS)),
+			),
 	};
 	try {
 		await run(api);
@@ -169,29 +255,32 @@ async function mount(run) {
 	}
 }
 
-/* Long enough for the hook's placement frames (8) under jsdom's ~16ms rAF. */
-const frames = (n = 14) =>
-	act(async () => {
-		await new Promise((done) => setTimeout(done, n * 20));
-	});
+/** One conversation row's flyout, as `chat-sidebar.tsx` passes it. */
+const rowFlyout = (id, extra = {}) =>
+	React.createElement(
+		Tooltip,
+		{
+			key: id,
+			content: "Pinned conversation title",
+			side: "right",
+			align: "start",
+			disableHoverableContent: true,
+			overlayName: "sidebar-row-flyout",
+			...extra,
+		},
+		React.createElement("button", { id: `row${id}`, type: "button" }, "row"),
+	);
 
 /** The sidebar row flyout's props, as `chat-sidebar.tsx` passes them. */
 const flyout = (extra = {}) =>
+	React.createElement(TooltipProvider, null, rowFlyout("", extra));
+
+/** Adjacent rows of one conversation list, both flyouts live at once. */
+const flyouts = (...ids) =>
 	React.createElement(
 		TooltipProvider,
 		null,
-		React.createElement(
-			Tooltip,
-			{
-				content: "Pinned conversation title",
-				side: "right",
-				align: "start",
-				disableHoverableContent: true,
-				overlayName: "sidebar-row-flyout",
-				...extra,
-			},
-			React.createElement("button", { id: "row", type: "button" }, "row"),
-		),
+		ids.map((id) => rowFlyout(`-${id}`)),
 	);
 
 const named = (prefix) =>
@@ -206,7 +295,7 @@ test("the sidebar flyout that REACHES the view hides it for exactly as long as i
 			await api.render(flyout());
 			assert.deepEqual(suppressedOverlayIds(), [], "nothing at rest");
 			act(() => api.$("#row").focus());
-			await frames();
+			await api.frames();
 			assert.ok(api.$("[role=tooltip]"), "the flyout is open");
 			assert.equal(
 				named("sidebar-row-flyout").length,
@@ -214,13 +303,77 @@ test("the sidebar flyout that REACHES the view hides it for exactly as long as i
 				"an open flyout over the view registers once, under its own name",
 			);
 			act(() => api.$("#row").blur());
-			await frames(4);
-			assert.deepEqual(suppressedOverlayIds(), [], "closing releases it");
+			await api.hold();
+			assert.deepEqual(
+				suppressedOverlayIds(),
+				[],
+				"closing releases it, once the handoff hold has lapsed",
+			);
 		});
 	} finally {
 		release();
 	}
 	assert.deepEqual(suppressedOverlayIds(), [], "unmount leaves nothing");
+});
+
+test("moving the pointer from one flyout to the next never shows the page in between", async () => {
+	const release = registerBrowserViewRect(() => VIEW);
+	try {
+		await mount(async (api) => {
+			await api.render(flyouts("a", "b"));
+			act(() => api.$("#row-a").focus());
+			await api.frames();
+			const onA = named("sidebar-row-flyout");
+			assert.equal(onA.length, 1, "A is open over the view and registered");
+			/*
+			 * Every policy notify from here to B's registration, with the state each one
+			 * sends the native view: `shown` is what `setViewVisible(true)` answers to, so
+			 * one `shown` inside this window is the page flashing back for a frame while the
+			 * pointer crosses a row. Radix closes A the moment B opens and B registers only
+			 * once floating-ui has placed it, so without the hold (review round 1, R1) the
+			 * sequence reads registered -> EMPTY -> registered.
+			 */
+			const seen = [];
+			const unsubscribe = subscribeBrowserView(() =>
+				seen.push({
+					shown: !browserViewSuppressed(),
+					ids: suppressedOverlayIds(),
+				}),
+			);
+			act(() => {
+				api.$("#row-a").blur();
+				api.$("#row-b").focus();
+			});
+			await api.frames();
+			const onB = named("sidebar-row-flyout").filter((id) => id !== onA[0]);
+			unsubscribe();
+			assert.ok(
+				seen.length >= 1,
+				`the handoff did not move the registry: ${JSON.stringify(seen)}`,
+			);
+			assert.ok(
+				seen.every((step) => !step.shown && step.ids.length > 0),
+				`the page was shown between the two flyouts: ${JSON.stringify(seen)}`,
+			);
+			assert.equal(onB.length, 1, "B registered under its own name");
+			assert.ok(
+				named("sidebar-row-flyout").includes(onA[0]),
+				"A's registration is still held, which is what kept the page hidden",
+			);
+			/*
+			 * The hold lapses with B still registered: A's id goes, B's stays and the page
+			 * stays hidden, which is the half of R1 a held id must not get wrong.
+			 */
+			await api.hold();
+			assert.deepEqual(
+				named("sidebar-row-flyout"),
+				onB,
+				"A's hold ends without the page coming back",
+			);
+		});
+	} finally {
+		release();
+	}
 });
 
 test("a tooltip that does NOT reach the view leaves the page drawn (no flash)", async () => {
@@ -230,7 +383,7 @@ test("a tooltip that does NOT reach the view leaves the page drawn (no flash)", 
 			api.setPanelRect(ABOVE_VIEW);
 			await api.render(flyout());
 			act(() => api.$("#row").focus());
-			await frames();
+			await api.frames();
 			assert.ok(api.$("[role=tooltip]"), "the tooltip is open");
 			assert.deepEqual(suppressedOverlayIds(), [], "but the view is untouched");
 		});
@@ -239,17 +392,13 @@ test("a tooltip that does NOT reach the view leaves the page drawn (no flash)", 
 	}
 });
 
-test("with no browser surface mounted, nothing registers", async () => {
-	await mount(async (api) => {
-		await api.render(flyout());
-		act(() => api.$("#row").focus());
-		await frames();
-		assert.ok(api.$("[role=tooltip]"));
-		assert.deepEqual(suppressedOverlayIds(), []);
-	});
-});
-
-test("with no browser surface mounted, an open schedules no frame at all", async () => {
+/*
+ * The "no browser surface mounted, nothing registers" case lived here and was removed in
+ * review round 1 (R3): with no rect source `overlapsBrowserView` answers false whatever
+ * the guard does, so it passed with or without the code it was named for. The guard it
+ * meant to pin is the frame count below, which IS mutation-tested.
+ */
+test("with no browser surface mounted, an open schedules no frame and registers nothing", async () => {
 	/*
 	 * Every shared `Tooltip` runs the reach hook, so off the browser route an open
 	 * must not poll for placement: the empty rect registry already answers. Measured
@@ -265,14 +414,18 @@ test("with no browser surface mounted, an open schedules no frame at all", async
 		};
 		await api.render(flyout());
 		act(() => api.$("#row").focus());
-		await frames(2);
+		await api.frames(2);
 		assert.ok(api.$("[role=tooltip]"), "the tooltip is open");
 		assert.equal(
 			scheduled.filter((cb) => cb.name === "measure").length,
 			0,
 			"the reach hook scheduled no placement frame",
 		);
-		assert.deepEqual(suppressedOverlayIds(), []);
+		assert.deepEqual(
+			suppressedOverlayIds(),
+			[],
+			"and the empty rect registry already answered: nothing registered",
+		);
 	});
 });
 
@@ -288,7 +441,7 @@ test("an unnamed tooltip registers as `tooltip`", async () => {
 				),
 			);
 			act(() => api.$("#t").focus());
-			await frames();
+			await api.frames();
 			assert.equal(named("tooltip").length, 1);
 		});
 	} finally {
@@ -302,10 +455,10 @@ test("`suppressed` (the team mark owns the pointer) stands the registration down
 		await mount(async (api) => {
 			await api.render(flyout({ suppressed: false }));
 			act(() => api.$("#row").focus());
-			await frames();
+			await api.frames();
 			assert.equal(named("sidebar-row-flyout").length, 1, "open: registered");
 			await api.render(flyout({ suppressed: true }));
-			await frames(4);
+			await api.hold();
 			assert.equal(api.$("[role=tooltip]"), null, "the card stands down");
 			assert.deepEqual(
 				suppressedOverlayIds(),
@@ -313,7 +466,7 @@ test("`suppressed` (the team mark owns the pointer) stands the registration down
 				"and so does the page's pause",
 			);
 			await api.render(flyout({ suppressed: false }));
-			await frames();
+			await api.frames();
 			assert.equal(
 				named("sidebar-row-flyout").length,
 				1,
@@ -331,10 +484,10 @@ test("`disabled` (a drag is armed) releases, and the next open measures afresh",
 		await mount(async (api) => {
 			await api.render(flyout());
 			act(() => api.$("#row").focus());
-			await frames();
+			await api.frames();
 			assert.equal(named("sidebar-row-flyout").length, 1);
 			await api.render(flyout({ disabled: true }));
-			await frames(4);
+			await api.hold();
 			assert.equal(api.$("[role=tooltip]"), null, "rendered bare");
 			assert.deepEqual(suppressedOverlayIds(), [], "nothing held");
 			await api.render(flyout());
@@ -344,10 +497,10 @@ test("`disabled` (a drag is armed) releases, and the next open measures afresh",
 			 * even without the reset; this wait is what makes the case bite (measured:
 			 * with the reset removed and no wait, all eight cases still passed).
 			 */
-			await frames();
+			await api.frames();
 			/* The bare render remounted the button, so focus it again: a real open. */
 			act(() => api.$("#row").focus());
-			await frames();
+			await api.frames();
 			assert.equal(
 				named("sidebar-row-flyout").length,
 				1,
@@ -364,9 +517,9 @@ test("a caller's onOpenChange still hears every uncontrolled open and close", as
 	await mount(async (api) => {
 		await api.render(flyout({ onOpenChange: (open) => seen.push(open) }));
 		act(() => api.$("#row").focus());
-		await frames(2);
+		await api.frames(2);
 		act(() => api.$("#row").blur());
-		await frames(2);
+		await api.frames(2);
 	});
 	assert.deepEqual(seen, [true, false]);
 });
@@ -379,6 +532,6 @@ test("the sidebar's row flyout is the call site that names itself", () => {
 	const start = sidebar.indexOf("const withFlyout = ");
 	assert.ok(start > 0, "the flyout helper exists");
 	const helper = sidebar.slice(start, sidebar.indexOf("</Tooltip>", start));
-	assert.match(helper, /side="right"/);
-	assert.match(helper, /overlayName="sidebar-row-flyout"/);
+	assert.match(helper, SIDE_RIGHT);
+	assert.match(helper, OVERLAY_NAME);
 });
