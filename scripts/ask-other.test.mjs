@@ -1621,8 +1621,7 @@ test("an answered card keeps a multi-line answer's lines and tags only what the 
  */
 const SECRET_SKIP_PLACEHOLDER =
 	"Leave empty to skip; what you type is never shown";
-const SECRET_RETYPE_PLACEHOLDER =
-	"Required: type it again; what you type is never shown";
+const SECRET_RETYPE_PLACEHOLDER = "Required: type it again; it is never shown";
 /* Main's copy, kept where an empty field could never be sent as a skip. */
 const SECRET_PLAIN_PLACEHOLDER = "Your answer (never shown again)";
 const secretField = (view) => q(view, "input[data-ask-secret]");
@@ -1795,4 +1794,56 @@ test("Enter in the change form over a STORED key moves to the secret field and r
 		"Enter moves on to the secret that still needs a value",
 	);
 	assert.deepEqual(view.calls.revise, [], "nothing was revised");
+});
+
+/*
+ * ENTER IN THE MASKED FIELD (QA round 2, Q-2; pre-existing): it commits through the
+ * row's same gate as every other answer field, so a pasted key and Enter is enough,
+ * and it can never send what the button refuses.
+ */
+test("Enter in the masked field sends the operator's card once the key is typed", async () => {
+	const view = await mountPanel({ asks: [ask([question(), keyQuestion()])] });
+	await press(other(view));
+	await type(field(view), "Look at alternatives");
+	await typeSecret(secretField(view), "k3y");
+	await key(secretField(view), "Enter");
+	assert.deepEqual(view.calls.answer, [
+		{
+			id: "a-7f3c",
+			answers: { target: ["Look at alternatives"], API_KEY: ["k3y"] },
+		},
+	]);
+});
+
+test("Enter in an EMPTY secret-only field posts nothing", async () => {
+	const view = await mountPanel({ asks: [ask([keyQuestion()])] });
+	const event = await key(secretField(view), "Enter");
+	assert.deepEqual(view.calls.answer, [], "nothing past the gate");
+	// Handled rather than ignored, but committing nothing: the same as the Other field.
+	assert.equal(event.defaultPrevented, true);
+});
+
+test("Enter in the stored-key change form revises once the key is retyped", async () => {
+	const view = await mountPanel({
+		asks: [
+			answeredUndelivered([question(), keyQuestion()], {
+				target: ["staging"],
+				API_KEY: ["API_KEY"],
+			}),
+		],
+	});
+	await press(
+		qa(view, "button").find((b) => b.textContent.trim() === "Change answer"),
+	);
+	await key(secretField(view), "Enter");
+	assert.deepEqual(
+		view.calls.revise,
+		[],
+		"empty over a stored key: no revision",
+	);
+	await typeSecret(secretField(view), "n3w");
+	await key(secretField(view), "Enter");
+	assert.deepEqual(view.calls.revise, [
+		{ id: "a-7f3c", answers: { target: ["staging"], API_KEY: ["n3w"] } },
+	]);
 });
