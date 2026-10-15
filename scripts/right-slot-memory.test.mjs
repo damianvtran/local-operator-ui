@@ -383,6 +383,66 @@ test("(D3) unbound, the pressed close drops askDrawerEvictedPane instead of rest
 });
 
 /*
+ * (D4) THE PRESSED CLOSE SPENDS A PENDING LEGACY SEED (#1079, agent review round 1
+ * R2; taken rather than deferred, widened past the arm the finding named).
+ *
+ * The seed is the migrated profile's "this window was looking at that pane": it is
+ * HELD while there is no conversation to plant it on, and it plants itself on the
+ * first session to bind. A close the user asked for is a request that the slot be
+ * EMPTY, so a seed left standing answers the press with the very pane it emptied -
+ * one hop later, on a conversation the press never named. BOTH shapes of "no
+ * conversation to hold it yet" are walked here, because they are different arms in
+ * the store (`bindRightSlotKey(null)` writes `rightSlotKey: null`; a profile that has
+ * not bound at all still carries `undefined`), and the rule has to hold in both.
+ */
+test("(D4) the pressed close spends a pending legacy seed instead of planting it one hop later", () => {
+	/* The finding's own repro: a bind that named no conversation. */
+	reset({ rightSlotKey: null, rightSlotLegacySeed: "browser" });
+	prefs().setAskDrawerOpen(true, "fleet");
+	prefs().setAskDrawerOpen(false, "fleet", { dismissSlot: true });
+	assert.equal(
+		prefs().rightSlotLegacySeed,
+		null,
+		"the press spent the held seed: it was waiting for exactly this slot",
+	);
+	prefs().bindRightSlotKey("RV-A");
+	assert.equal(
+		prefs().isBrowserPaneOpen,
+		false,
+		"so the first conversation inherits no pane",
+	);
+	assert.deepEqual(prefs().rightSlotMemory, [], "and remembers nothing");
+
+	/* The other shape: never bound at all, so the key is still `undefined`. */
+	reset({ rightSlotLegacySeed: "browser" });
+	prefs().setAskDrawerOpen(true, "session");
+	prefs().setAskDrawerOpen(false, "session", { dismissSlot: true });
+	prefs().bindRightSlotKey("RV-B");
+	assert.equal(
+		prefs().isBrowserPaneOpen,
+		false,
+		"an unbound press spends it too, or the same pane arrives a hop later",
+	);
+	assert.deepEqual(prefs().rightSlotMemory, []);
+
+	/*
+	 * AND A CLOSE NOBODY ASKED FOR STILL PLANTS IT, which is `main`'s behaviour and
+	 * the reason the spend belongs to the dismiss arm rather than to every close: a
+	 * withdrawal hands the displaced pane back, and the seed is that same pane.
+	 */
+	reset({ rightSlotLegacySeed: "browser" });
+	prefs().setAskDrawerOpen(true, "session");
+	prefs().setAskDrawerOpen(false, "session");
+	prefs().bindRightSlotKey("RV-C");
+	assert.equal(
+		prefs().isBrowserPaneOpen,
+		true,
+		"a withdrawal leaves the seed to do its work",
+	);
+	assert.deepEqual(prefs().rightSlotMemory, [["RV-C", "browser"]]);
+});
+
+/*
  * (E) PERSISTENCE. The round trip in parts: the write filter, the migration chain,
  * the cap, and the sanitiser a hydrated blob must pass.
  */

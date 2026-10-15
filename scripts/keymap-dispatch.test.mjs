@@ -423,5 +423,39 @@ test("the panel.ask chord closes the slot the way the lit item does (#1079)", as
 			false,
 			"and its close asks for an empty slot rather than handing the browser back",
 		);
+		/*
+		 * AND THE SAME PRESS IN BOUND MODE (#1079, agent review round 1 R3). The chord is one
+		 * path through `togglePanelRailItem`, so a chord that passed a different context - or
+		 * stopped passing `dismissSlot` - would fail as the conversation's MEMORY entry
+		 * surviving the close, which the unbound leg above cannot see: with no `rightSlotKey`
+		 * there is no entry to retract and the reading would look right either way. This is the
+		 * panel-rail bound cell's setup (Browser open, in the slot and in the memory).
+		 */
+		act(() => {
+			useUiPreferencesStore.setState({
+				rightSlotKey: "session-1",
+				rightSlotMemory: [["session-1", "browser"]],
+				isBrowserPaneOpen: true,
+			});
+		});
+		api.dispatch(child, { key: "u" });
+		assert.equal(
+			state().isAskDrawerOpen,
+			true,
+			"the chord opens the drawer over the conversation's remembered browser",
+		);
+		assert.equal(state().isBrowserPaneOpen, false, "taking the slot from it");
+		api.dispatch(child, { key: "u" });
+		assert.equal(state().isAskDrawerOpen, false, "the second press closes");
+		assert.equal(
+			state().isBrowserPaneOpen,
+			false,
+			"and the browser still does not come back",
+		);
+		assert.deepEqual(
+			state().rightSlotMemory,
+			[],
+			"because the chord's close RETRACTS the entry (`memoryDismiss`) rather than projecting it: switching away and back shows no panel, which is #1079's request",
+		);
 	});
 });
