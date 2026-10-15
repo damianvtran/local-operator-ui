@@ -86,3 +86,7 @@ Final pre-push catch (before remote publication): the real scripts ratchet found
 ### Second main move during publication
 
 GitHub initially reported DIRTY although its baseRefOid still showed the old main. The actual main branch ref had advanced to `4ce79a235551c1f014e7d779697bfdfcd7a83685` (#1092 phone setup). [convergence2.json](convergence2.json) records the same-history package-list union and fresh generator identity: all 19 authored non-package/non-generated files match public head `5d25949acb` byte-for-byte; original three commits still have `=` range-diff rows. Aggregate src tree is now `2190337af08a535452e90345c7d515d7ab1fcfe6`. Upstream shared desktop-contract additions are phone-only request/result variants, not browser IPC. Browser files, preload, browser-specific contract and styles are unchanged. No further build/native; native captures keep their original source identity.
+
+## Round-1 batched remediation (latest)
+
+[Source-frozen round-1 addendum](round1/README.md): compact titles70px at144px floor, stable36px strip/native viewport, contiguous run headings and retained-failure reveal. One compile and explicitly authorized same-artifact continuation are disclosed;28 fresh captures plus derived crops. Source `c7d766d92d`; independent QA remains BLOCKED pending its own round2 matrix.
