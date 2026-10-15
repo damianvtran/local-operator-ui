@@ -18,6 +18,7 @@ import {
 	BACKEND_STATUS_EVENT,
 	type DaemonStatusSnapshot,
 } from "../shared/backend-status";
+import type { HumanTabActionOutcome } from "../shared/browser-tab-action";
 import {
 	type DesktopMediaRequest,
 	type DesktopRequest,
@@ -829,6 +830,13 @@ const api = {
 		/** `sessionId` attributes the tab to the conversation it was opened from
 		 * (design R1); `null` is a tab that belongs to no conversation, which is what
 		 * the route and a draft pane open. Main validates it rather than trusting it. */
+		reorderTabs: (ids: number[]): Promise<unknown> =>
+			ipcRenderer.invoke("browser-reorder-tabs", ids),
+		actOnTab: (
+			tabId: number,
+			action: "duplicate" | "reload",
+		): Promise<HumanTabActionOutcome> =>
+			ipcRenderer.invoke("browser-tab-action", tabId, action),
 		newTab: (sessionId?: string | null): Promise<unknown> =>
 			ipcRenderer.invoke("browser-new-tab", sessionId ?? null),
 		closeTab: (tabId: number): Promise<unknown> =>

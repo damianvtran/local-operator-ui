@@ -1,0 +1,26 @@
+diff --git a/src/renderer/src/features/browser/hooks/use-browser-chrome.ts b/src/renderer/src/features/browser/hooks/use-browser-chrome.ts
+index efac7b88ba..46b6135eeb 100644
+--- a/src/renderer/src/features/browser/hooks/use-browser-chrome.ts
++++ b/src/renderer/src/features/browser/hooks/use-browser-chrome.ts
+@@ -12 +12,4 @@ import {
+-import type { CloseTabsIntent } from "../model/tab-index-model";
++import {
++	type CloseTabsIntent,
++	mergeChromeTabOrder,
++} from "../model/tab-index-model";
+@@ -32,0 +36 @@ export interface BrowserTabView {
++	displayOrder?: number;
+@@ -309,0 +314,2 @@ export interface BrowserChrome {
++	reorderTabs: (ids: number[]) => Promise<void>;
++	actOnTab: (tabId: number, action: "duplicate" | "reload") => Promise<boolean>;
+@@ -605,0 +612,10 @@ export function useBrowserChrome(): BrowserChrome {
++			reorderTabs: (ids) =>
++				runVoid(() =>
++					api?.reorderTabs(mergeChromeTabOrder(state?.tabs ?? [], ids)),
++				),
++			actOnTab: (tabId, action) =>
++				run(async () => {
++					const outcome = await api?.actOnTab(tabId, action);
++					if (outcome?.status === "failed")
++						throw new Error(outcome.error.message);
++				}),

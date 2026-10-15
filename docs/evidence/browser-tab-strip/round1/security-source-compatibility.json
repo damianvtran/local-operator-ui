@@ -1,0 +1,14 @@
+{
+  "base": "39fd08f1edc2072ff55a361db5b7f3214f97e93f",
+  "sourceCommit": "c7d766d92dabf63b39ca1607a4ccba958fe161c5",
+  "srcTree": "4ce1f33a53a55b6d9a3202ae6d3be03681fd1158",
+  "byteIdentical": {
+    "src/main/browser/host.ts": "224d2a3c0e4a17874be555eb86479389060dfa51a5a0c8a9a7f5336580372fcb",
+    "src/main/browser/ipc.ts": "08f0e3765760afb9824c224203f0c8c80d4b7d646efcce4ab905e5f5a20f4469",
+    "src/main/browser/registry.ts": "ddfa0d84d63b5a7369c2923c95c8dcc68998087789ed166fb0be3175d4298b34",
+    "src/main/browser/chrome-tab-order.ts": "18420108a2ddd8a3c648664e0287254637f43e4fae0d0b29a96c214b1cb0f1a1",
+    "src/preload/index.ts": "c9b18d29dc3b299827a5811105674ccbf000db3160bedae540efd8dbe57ce456",
+    "src/preload/index.d.ts": "1552ed5c88aba26d42d4ca55d06c8a5ffe5db7b0a49985b3f6e660ba7162d6e9",
+    "src/shared/browser-tab-action.ts": "bfc0216f56fc9f14a1a57653d254688a85e1de64c20f5bccf722940ecbdf1146"
+  }
+}

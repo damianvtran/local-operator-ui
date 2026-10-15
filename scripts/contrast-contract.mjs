@@ -1198,6 +1198,13 @@ const CONTROLS = [
 		ink: "ink",
 	},
 	{
+		name: "browser dragged tab",
+		on: ["sunken"],
+		fill: "rowSelected",
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
 		/*
 		 * The numbered badge on the Approvals control (spec §5.1). `warningWash` is
 		 * already this feature's one meaning - "an agent is blocked on you".
