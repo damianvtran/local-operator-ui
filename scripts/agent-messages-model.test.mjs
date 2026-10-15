@@ -439,3 +439,56 @@ test("copy_scan bans bare human team/teammate; exception is ONLY byte-exact cano
 		0,
 	);
 });
+
+test("a boundary that hits busy does not present; quiet alone is not a boundary; the NEXT boundary re-decides, cache included", async () => {
+	const { model, calls, advance } = rig();
+	model.setAccount("account-a");
+	// 1. The first check lands while the app is busy: no presentation.
+	model.setBlocked(true);
+	await model.check("window_focus");
+	assert.equal(model.getSnapshot().presentable, false);
+	assert.equal(calls.status.length, 1);
+	// 2. Going quiet on its own is NOT one of §5.1's natural boundaries.
+	model.setBlocked(false);
+	assert.equal(model.getSnapshot().presentable, false);
+	// 3. The NEXT boundary re-decides - served from the five-minute cache.
+	await model.check("window_focus");
+	assert.equal(calls.status.length, 1);
+	assert.equal(model.getSnapshot().presentable, true);
+	// 4. A boundary that hits busy AFTER arming disarms again...
+	model.setBlocked(true);
+	advance(300001);
+	await model.check("window_focus");
+	assert.equal(calls.status.length, 2);
+	assert.equal(model.getSnapshot().presentable, false);
+	// 5. ...and the next safe one presents again on a fresh result.
+	model.setBlocked(false);
+	advance(300001);
+	await model.check("window_focus");
+	assert.equal(calls.status.length, 3);
+	assert.equal(model.getSnapshot().presentable, true);
+});
+
+test("account switches reset the presentation latch; a non-onboarding state never presents", async () => {
+	// The backend's answer names the SIGNED-IN person; the identity rule reads
+	// `status.account_id` against the model's account, so the next answer must
+	// name b for b's boundary to be able to present.
+	let person = "account-a";
+	const { model } = rig({
+		status: async () => status({ account_id: person }),
+	});
+	model.setAccount("account-a");
+	await model.check("app_start");
+	assert.equal(model.getSnapshot().presentable, true);
+	person = "account-b";
+	model.setAccount("account-b");
+	assert.equal(model.getSnapshot().presentable, false);
+	await model.check("app_start");
+	assert.equal(model.getSnapshot().presentable, true);
+	const claimed = rig({
+		status: async () => status({ surface_state: "C", state: "ready" }),
+	});
+	claimed.model.setAccount("account-a");
+	await claimed.model.check("app_start");
+	assert.equal(claimed.model.getSnapshot().presentable, false);
+});

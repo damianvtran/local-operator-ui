@@ -22,6 +22,12 @@ export type AgentMessagesSnapshot = {
 	pending: boolean;
 	confirmed: boolean;
 	refusal: AgentMessagesRefusal | null;
+	/**
+	 * The boundary-latched presentation decision (§5.3): true only when the
+	 * last COMPLETED check observed an onboarding-eligible state while the app
+	 * was not busy. Merely becoming quiet later never presents on its own.
+	 */
+	presentable: boolean;
 };
 export type AgentMessagesModelPorts = {
 	status: (
@@ -45,6 +51,7 @@ const empty = (): AgentMessagesSnapshot => ({
 	pending: false,
 	confirmed: false,
 	refusal: null,
+	presentable: false,
 });
 
 /**
@@ -54,6 +61,7 @@ const empty = (): AgentMessagesSnapshot => ({
  */
 export class AgentMessagesModel {
 	private accountId: string | null = null;
+	private blocked = false;
 	private generation = 0;
 	private snapshot = empty();
 	private listeners = new Set<() => void>();
@@ -91,6 +99,33 @@ export class AgentMessagesModel {
 		for (const listener of this.listeners) listener();
 	}
 
+	/**
+	 * The shell's live busy fact (§5.3), set from the on-ramp component's layout
+	 * effect. A boundary that hits busy does not present, and merely becoming
+	 * quiet later is not one of §5.1's natural boundaries - only the next check
+	 * re-decides (see `armBoundary`).
+	 */
+	setBlocked(blocked: boolean) {
+		this.blocked = blocked;
+	}
+
+	/**
+	 * Latch or clear the presentation decision from ONE completed check. Runs on
+	 * every completion - network and cache - so the NEXT safe natural boundary
+	 * re-decides even when its status was served from the five-minute cache
+	 * (the case the round-1 review asked to pin).
+	 */
+	private armBoundary(
+		status: AgentMessagesStatus | null,
+		blockedAtBoundary: boolean,
+	) {
+		this.publish({
+			presentable:
+				Boolean(agentMessagesOnboardingContext(status, this.accountId)) &&
+				!blockedAtBoundary,
+		});
+	}
+
 	check(
 		boundary: AgentMessagesBoundary,
 		refreshConsent = false,
@@ -98,6 +133,12 @@ export class AgentMessagesModel {
 		const accountId = this.accountId;
 		if (!accountId) return Promise.resolve();
 		if (this.inFlight?.accountId === accountId) return this.inFlight.promise;
+		/*
+		 * §5.3: "if a boundary hits busy, it waits for the next one". The busy
+		 * fact is therefore snapshotted AT the boundary, and the presentation
+		 * decision it produces is scoped to this check (armBoundary below).
+		 */
+		const blockedAtBoundary = this.blocked;
 		const now = this.ports.now?.() ?? Date.now();
 		const cached = this.lastChecks.get(accountId);
 		if (
@@ -106,6 +147,7 @@ export class AgentMessagesModel {
 			now - cached.at < AGENT_MESSAGES_STATUS_CACHE_MS
 		) {
 			this.publish({ status: cached.status });
+			this.armBoundary(cached.status, blockedAtBoundary);
 			return Promise.resolve();
 		}
 		const generation = this.generation;
@@ -134,6 +176,7 @@ export class AgentMessagesModel {
 					// Preserve a version-refusal explanation ONLY for the same scope.
 					...(refreshConsent && !scopeChanged ? {} : { refusal: null }),
 				});
+				this.armBoundary(status, blockedAtBoundary);
 			} catch (error) {
 				if (!this.isCurrent(accountId, generation)) return;
 				this.lastChecks.set(accountId, { at: now, status: null });
@@ -142,6 +185,7 @@ export class AgentMessagesModel {
 					checking: false,
 					refusal: this.ports.describe(error),
 				});
+				this.armBoundary(null, blockedAtBoundary);
 			} finally {
 				if (this.inFlight?.generation === generation) this.inFlight = null;
 			}

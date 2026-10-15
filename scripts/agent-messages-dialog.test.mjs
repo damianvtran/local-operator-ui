@@ -11,7 +11,9 @@ import React, { act } from "react";
 const HOOK_MODULE = /use-agent-messages$/;
 const ALL_MODULES = /.*/;
 const REACT_MODULE = /^(react|react-dom)(\/.*)?$/;
-const ACCOUNT_GUARD_SENTENCE = /cannot bind consent to your signed-in account/;
+const ACCOUNT_GUARD_SENTENCE =
+	/cannot safely enable agent messages for your account/;
+const DIALOG_TITLE = /Agent messages on Radient/;
 
 // DOM/event plumbing only. jsdom has NO layout; rendered geometry belongs to
 // the real-browser QA lease, never to this test's passing assertions.
@@ -92,6 +94,7 @@ async function mount(
 		status = fixture,
 		accountId = "account-a",
 		blocked = false,
+		blockedAtCheck = false,
 		pending = false,
 		consent = undefined,
 	} = {},
@@ -117,6 +120,9 @@ async function mount(
 		describe: () => ({ code: "refused", message: "Stable refusal sentence." }),
 	});
 	model.setAccount(accountId);
+	// R2/Q2: the busy fact is snapshotted AT the boundary check; a check that
+	// hit busy must not present when the app merely goes quiet afterwards.
+	model.setBlocked(blockedAtCheck);
 	await model.check("app_start");
 	window.__agentMessagesState = {
 		accountId,
@@ -279,6 +285,12 @@ test("missing guarded backend receipt renders consent but disables Enable", asyn
 	);
 	assert.equal(enable.disabled, true);
 	assert.match(document.body.textContent, ACCOUNT_GUARD_SENTENCE);
+});
+
+test("a check that hit busy stays hidden once the app goes quiet - no new boundary, no dialog", async (t) => {
+	await mount(t, { blocked: false, blockedAtCheck: true });
+	assert.equal(document.querySelectorAll('[role="dialog"]').length, 0);
+	assert.doesNotMatch(document.body.textContent, DIALOG_TITLE);
 });
 
 test("explicit Enable click sends the captured account/org/served version; mounting alone sends nothing", async (t) => {
