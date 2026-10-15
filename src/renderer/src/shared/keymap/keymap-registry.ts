@@ -171,6 +171,9 @@ export type ShortcutBindings = Partial<Record<ActionId, string | null>>;
  * This exception must never include pre-existing reserved/invalid chords.
  */
 export const LEGACY_BROWSER_CHORDS: ReadonlySet<string> = new Set([
+	// 0 was previously assignable. F was already reserved, and punctuation
+	// cannot parse as a saved binding, so none of those gets a retention exception.
+	"primary+0",
 	"primary+r",
 	"primary+shift+r",
 	"primary+t",
@@ -200,7 +203,10 @@ export const RESERVED_CHORDS: ReadonlyMap<string, string> = new Map([
 		"primary+]",
 		"Reserved: goes forward in the browser, or between chats outside it.",
 	],
-	["primary+f", "Reserved: searches the transcript."],
+	[
+		"primary+f",
+		"Reserved: finds in the browser page, or searches the transcript outside it.",
+	],
 	["primary+alt+up", "Reserved: walks up the chat regions."],
 	["primary+alt+down", "Reserved: walks down the chat regions."],
 	["primary+shift+a", "Reserved: archives the focused conversation."],
@@ -245,6 +251,12 @@ export const RESERVED_CHORDS: ReadonlyMap<string, string> = new Map([
 			? "Reserved: switches to the last browser tab."
 			: `Reserved: switches to browser tab ${digit}.`,
 	]),
+	["primary+0", "Reserved: resets browser page zoom, or app zoom outside it."],
+	// Punctuation cannot be assigned by the current grammar; rows document the
+	// fixed native keys without widening what Settings can capture/store.
+	["primary+plus", "Reserved: zooms the browser page or app in."],
+	["primary+=", "Reserved: zooms the browser page or app in."],
+	["primary+-", "Reserved: zooms the browser page or app out."],
 	// The application menu's own chords.
 	["primary+q", "Reserved: quits the app."],
 	["primary+w", "Reserved: closes the browser tab, or the window outside it."],

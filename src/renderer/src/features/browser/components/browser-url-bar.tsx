@@ -14,6 +14,7 @@ import {
 	FolderOpen,
 	Loader2,
 	RotateCw,
+	Search,
 	ShieldCheck,
 	X,
 } from "lucide-react";
@@ -66,6 +67,9 @@ import { useState } from "react";
 export interface BrowserUrlBarProps {
 	/** Chrome focus only; never a window activation. */
 	inputRef?: Ref<HTMLInputElement>;
+	pageZoom?: number;
+	onFind?: () => void;
+	onResetZoom?: () => void;
 	/** The active tab. A typed draft belongs to ONE tab: see `draft` below. */
 	tabId: number | null;
 	url: string;
@@ -163,6 +167,9 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	downloadsDir,
 	downloadsRecent,
 	onOpenDownloads,
+	pageZoom = 1,
+	onFind,
+	onResetZoom,
 }) => {
 	/**
 	 * THE DRAFT BELONGS TO ITS TAB (UX r1 U1). The keyboard can change the active
@@ -199,6 +206,8 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 	// Glyph AND `aria-keyshortcuts` from the same chord id (design D-PR5).
 	const reload = chordCaption("primary+r", isMac ? "mac" : "linux");
+	const find = chordCaption("primary+f", isMac ? "mac" : "linux");
+	const resetZoom = chordCaption("primary+0", isMac ? "mac" : "linux");
 	const address = chordCaption("primary+l", isMac ? "mac" : "linux");
 	const backChord = navigationShortcutLabel("back", isMac);
 	const forwardChord = navigationShortcutLabel("forward", isMac);
@@ -341,6 +350,35 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 						data-tour-tag="browser-downloads-folder"
 					>
 						<FolderOpen aria-hidden className="size-4" />
+					</Button>
+				</Tooltip>
+			)}
+			{onFind && (
+				<Tooltip content={`Find in page (${find.glyph})`} side="top">
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						aria-label="Find in page"
+						aria-keyshortcuts={find.aria}
+						disabled={disabled}
+						onClick={onFind}
+						data-tour-tag="browser-find"
+					>
+						<Search aria-hidden className="size-4" />
+					</Button>
+				</Tooltip>
+			)}
+			{pageZoom !== 1 && (
+				<Tooltip content={`Reset page zoom (${resetZoom.glyph})`} side="top">
+					<Button
+						variant="ghost"
+						size="sm"
+						aria-label={`Page zoom ${Math.round(pageZoom * 100)}%, reset to 100%`}
+						aria-keyshortcuts={resetZoom.aria}
+						onClick={onResetZoom}
+						data-tour-tag="browser-zoom"
+					>
+						{Math.round(pageZoom * 100)}%
 					</Button>
 				</Tooltip>
 			)}

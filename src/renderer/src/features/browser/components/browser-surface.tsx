@@ -38,6 +38,7 @@ import { BrowserApprovalsDock } from "./browser-approvals-dock";
 import { defaultApprovalHeaderLabel } from "./browser-approvals-tray";
 import { BrowserConsentBar } from "./browser-consent-bar";
 import { BrowserFileTransferRow } from "./browser-file-transfer-row";
+import { BrowserFindRow } from "./browser-find-row";
 import { BrowserHandOverDialog } from "./browser-hand-over-dialog";
 import { BrowserLoadFailure } from "./browser-load-failure";
 import { BrowserTabStrip } from "./browser-tab-strip";
@@ -286,12 +287,12 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	const activeTab =
 		tabs.find((tab) => tab.tabId === state?.activeTabId) ?? null;
 	const addressRef = useRef<HTMLInputElement>(null);
-	const { root: chordRoot, closeTab } = useBrowserChords(
-		chrome,
-		tabs,
-		hostSessionId,
-		addressRef,
-	);
+	const {
+		root: chordRoot,
+		closeTab,
+		findReturnToPage,
+		openFind,
+	} = useBrowserChords(chrome, tabs, hostSessionId, addressRef);
 
 	// THE ONE CLOCK (spec 3.3). The queue model owns the 1s interval and the
 	// ordinal, so the tray, the dock, the tab chips and the badge cannot disagree.
@@ -598,8 +599,23 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 				// anything arrived. The newest save and the session count ride the projection,
 				// so the control cannot describe a save the host does not have.
 				downloadsRecent={chrome.state?.transfers?.recent ?? null}
+				onFind={() => void openFind("chrome")}
+				pageZoom={state?.pageControls?.zoom ?? 1}
+				onResetZoom={() => {
+					if (state?.activeTabId != null)
+						void chrome.pageControl(state.activeTabId, "reset");
+				}}
 				onOpenDownloads={() => void chrome.revealDownloads()}
 			/>
+			<BrowserFindRow chrome={chrome} returnToPage={findReturnToPage} />
+			{state?.pageControls?.notice && (
+				<output
+					aria-live="polite"
+					className="shrink-0 border-control border-b bg-elevated px-2 py-1 text-body-sm text-ink-muted"
+				>
+					{state.pageControls.notice}
+				</output>
+			)}
 			{/* The transfer row sits in the SAME strip as the consent band, and ABOVE
 			    the band deliberately: a refusal is the case a human has
 			    to see, and the band's own visibility is driven by a pending approval, which
