@@ -193,6 +193,7 @@ export function useDesktopCapabilities() {
 }
 
 export type DesktopFeature =
+	| "session_files"
 	| "auth"
 	| "settings"
 	| "commands"
