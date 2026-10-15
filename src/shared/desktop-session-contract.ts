@@ -1052,15 +1052,36 @@ export type CanonicalEffectiveIdentity = {
  *
  * `label` is the provider's human name when the runtime has one, for the
  * band's sentence; `provider` is the id, which is what a Connect action needs.
- * A reader shows the state only when `state === "signed_out"` — `ok` is the
- * happy path and its absence means an older host that does not publish the
- * field at all, and neither may render as a nag (the same rule
- * `radient_login`'s `unknown` carries in `use-radient-session-issue`).
+ * New hosts publish the effective-access vocabulary and keyless owner/history
+ * beside the legacy state. Permission to borrow is weaker than actual access;
+ * history cannot authorize a cached bearer. Readers must not infer credential
+ * kind (subscription/API key) from a display label: that mode is not on this
+ * status contract. Missing `effective_state` keeps the old reader behavior;
+ * missing the whole field is silence, never a sign-in accusation.
  */
+export type CanonicalEffectiveAccessState =
+	| "local"
+	| "pending"
+	| "eligible_borrow_unverified"
+	| "effective_borrow"
+	| "expired"
+	| "withdrawn"
+	| "owner_unavailable"
+	| "device_bound"
+	| "absent";
+
 export type CanonicalModelAccess = {
 	state: "ok" | "signed_out" | "temporarily_unavailable";
 	provider: string;
 	label: string;
+	/** Core #2342: permission alone is not native provider access. Missing on old hosts. */
+	effective_state?: CanonicalEffectiveAccessState | (string & {}) | null;
+	owner_device?: string;
+	owner_label?: string;
+	/** Epoch seconds; last-grant bounds are HISTORY, never cached-bearer permission. */
+	observed_at?: number | null;
+	last_grant_at?: number | null;
+	last_grant_expires_at?: number | null;
 };
 
 /**

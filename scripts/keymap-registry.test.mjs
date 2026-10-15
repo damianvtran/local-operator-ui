@@ -166,6 +166,22 @@ test("the reserved inventory is exactly the decoded list", () => {
 	const expected = [
 		"primary+alt+down",
 		"primary+alt+up",
+		// The browser surface's fixed chords (brief a1-8): reserved so Settings
+		// refuses a binding the browser would swallow.
+		"primary+1",
+		"primary+2",
+		"primary+3",
+		"primary+4",
+		"primary+5",
+		"primary+6",
+		"primary+7",
+		"primary+8",
+		"primary+9",
+		"primary+l",
+		"primary+r",
+		"primary+shift+r",
+		"primary+shift+t",
+		"primary+t",
 		"primary+b",
 		"primary+c",
 		"primary+f",

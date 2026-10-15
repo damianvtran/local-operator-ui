@@ -1,0 +1,40 @@
+ 1:  17e7ead4a1 =  1:  17e7ead4a1 fix(canvas): list generated images and videos in the Files view
+ 2:  2a02dead8d =  2:  2a02dead8d fix(canvas): remediate generated artifact review findings
+ 3:  7a8e27a269 =  3:  7a8e27a269 feat(canvas): add authoritative Finder-style session files
+ 4:  504338d2af =  4:  504338d2af docs(evidence): record Finder file states and bounded runtime
+ 5:  b43ceeab65 =  5:  b43ceeab65 fix(canvas): preserve indexed files and scoped Finder interactions
+ -:  ---------- >  6:  956325320d fix(browser): scope browser shortcuts to focused surfaces
+ -:  ---------- >  7:  08cb44c458 fix(browser): share last-tab replacement across close controls
+ 6:  59c65ada0d =  8:  59c65ada0d test(canvas): cover Finder row-state ground in census
+ -:  ---------- >  9:  4bb030c499 fix(browser): preserve the menu callback target window
+ -:  ---------- > 10:  a6b11553ee docs(browser): record native command evidence and shortcut ownership
+ 7:  c1e322c07c = 11:  c1e322c07c test(canvas): register Finder index regression lanes
+ -:  ---------- > 12:  1731b01757 fix(browser): keep chord focus through keyboard close and address drafts per tab
+ -:  ---------- > 13:  636479aa24 fix(browser): place the address tooltip below the field
+ -:  ---------- > 14:  53a0640fd8 docs(browser): re-capture round-1 evidence on the remediated build
+ -:  ---------- > 15:  a25d5d3e55 docs(browser): state the reopen and silent no-op decisions the review asked about
+ 8:  3bdf4ded4f = 16:  3bdf4ded4f fix(i18n): preserve French console scope, controls and accessible labels
+ 9:  6c0e483de2 = 17:  6c0e483de2 test(hub): add the hub-skills evidence scene, stub routes and selectors
+10:  5b8e95998f = 18:  5b8e95998f feat(i18n): ledger-assemble writer and shared audit rules (WIP, not pushed)
+11:  a095f49fd0 = 19:  a095f49fd0 fix(i18n): a multi-namespace receipt must name each namespace's hashes in its own block
+12:  f98644dffb = 20:  f98644dffb fix(i18n): fail closed on malformed audit evidence and migrate settings receipts
+13:  d76180f096 = 21:  d76180f096 test(i18n): run ledger assembler regressions in desktop CI
+14:  8e6402276f = 22:  8e6402276f fix(i18n): bind ledger claims to authoritative immutable receipts
+15:  11b53dd55e = 23:  11b53dd55e style(i18n): satisfy changed-script lint in ledger regressions
+16:  8e2bc04d45 = 24:  8e2bc04d45 test(hub): advertise radient_org in the stub so the scope chips draw
+17:  e2583f29a3 = 25:  e2583f29a3 test(hub): add a scoped runtime egress observer and controls to the hub-skills scene
+18:  205ddf4611 = 26:  205ddf4611 test(hub): scroll hub-skills controls into view; prove CSP refusal by violation event
+19:  c6f98e445b = 27:  c6f98e445b test(hub): assert fixture scope and exact catalogue states; capture tab transition pair
+ -:  ---------- > 28:  b1b3d7e1ca fix(browser): drop the address tooltip that sat behind the native page view
+20:  8959fc7fbe = 29:  8959fc7fbe test(hub): expose public preview payload before confirmation
+21:  43fc66a1b9 = 30:  43fc66a1b9 test(hub): record skills-library frames, scoped receipts and actual viewport provenance
+ -:  ---------- > 31:  df6c44d346 fix(highlights): resolve file actions against session cwd
+ -:  ---------- > 32:  4b585b3339 fix(highlights): harden action regressions and explain recovery
+ -:  ---------- > 33:  289ef81a79 fix(browser): retain legacy custom shortcuts as dormant downgrade data
+22:  6dcbcddd39 = 34:  6dcbcddd39 docs(evidence): prove skills capture compatibility after fresh-main convergence
+23:  3b6e1a905c = 35:  3b6e1a905c style(driver): resolve pre-push lint findings on the evidence driver
+ -:  ---------- > 36:  28a3a192ed test(browser): keep panel rail sample bindings outside reserved chords
+ -:  ---------- > 37:  13cd2fd43e fix(ui): show effective borrowed provider access
+ -:  ---------- > 38:  78bea6fa09 fix(ui): gate native Connect on proven serving context
+ -:  ---------- > 39:  e77a86d88a test(ui): consolidate native access coverage into session status lane
+24:  f114b314c9 = 40:  f114b314c9 fix(hub): gate unsupported skills and require safe core writes

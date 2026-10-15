@@ -2836,8 +2836,11 @@ export function mergePersistedUiPreferences(
 		 * `localStorage` can be hand-edited, written by an older build, or left
 		 * half-written, and a chord stored there is loaded straight into the
 		 * dispatch map. `sanitizeShortcutBindings` drops non-strings, unknown ids,
-		 * unparseable/reserved chords and later duplicates — after `...rest`, so a
-		 * raw value can never ride in ahead of it.
+		 * unparseable/pre-existing reserved chords and later duplicates — after
+		 * `...rest`, so a raw value cannot bypass validation. Newly reserved browser
+		 * assignments remain in this map as dormant downgrade data (R15); all
+		 * runtime/display readers go through `effectiveChord`, never the raw string.
+		 * Keeping them here also keeps unrelated writes/migrations non-destructive.
 		 */
 		shortcutBindings: sanitizeShortcutBindings(blob.shortcutBindings),
 	};

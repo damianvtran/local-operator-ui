@@ -107,6 +107,14 @@ declare global {
 			 * drift from the one main actually sends.
 			 */
 			browser: {
+				setChordFocus: (focused: boolean) => Promise<void>;
+				reopenTab: (sessionId?: string | null) => Promise<unknown>;
+				focusPage: () => Promise<void>;
+				onChord: (
+					callback: (
+						message: import("../shared/browser-chord").BrowserChordMessage,
+					) => void,
+				) => () => void;
 				state: () => Promise<unknown>;
 				/** `sessionId` attributes the new tab to the conversation it was opened
 				 * from; `null` (and absent) mean it belongs to no conversation. */
@@ -117,7 +125,7 @@ declare global {
 				closeTabs: (intent: unknown) => Promise<unknown>;
 				activateTab: (tabId: number) => Promise<unknown>;
 				navigate: (url: string) => Promise<unknown>;
-				reload: () => Promise<unknown>;
+				reload: (hard?: boolean) => Promise<unknown>;
 				stop: () => Promise<unknown>;
 				/** The recovery click on the `unavailable` state (round 1, D1a): no argument,
 				 * because the host restarts the same window's browser. */
