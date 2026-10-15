@@ -1,0 +1,120 @@
+[
+  {
+    "state": "empty",
+    "theme": "localoperatorlight",
+    "changedPixels": 0,
+    "totalPixels": 4968000,
+    "bbox": null,
+    "bins": {}
+  },
+  {
+    "state": "empty",
+    "theme": "localoperatordark",
+    "changedPixels": 0,
+    "totalPixels": 4968000,
+    "bbox": null,
+    "bins": {}
+  },
+  {
+    "state": "populated",
+    "theme": "localoperatorlight",
+    "changedPixels": 1380,
+    "totalPixels": 4968000,
+    "bbox": {
+      "minX": 953,
+      "minY": 168,
+      "maxX": 1068,
+      "maxY": 192
+    },
+    "bins": {
+      "1000,100": 911,
+      "900,100": 469
+    }
+  },
+  {
+    "state": "populated",
+    "theme": "localoperatordark",
+    "changedPixels": 1548,
+    "totalPixels": 4968000,
+    "bbox": {
+      "minX": 953,
+      "minY": 97,
+      "maxX": 1732,
+      "maxY": 192
+    },
+    "bins": {
+      "1700,0": 25,
+      "1700,100": 145,
+      "1000,100": 911,
+      "900,100": 467
+    }
+  },
+  {
+    "state": "loading",
+    "theme": "localoperatorlight",
+    "changedPixels": 2181,
+    "totalPixels": 4968000,
+    "bbox": {
+      "minX": 953,
+      "minY": 92,
+      "maxX": 2507,
+      "maxY": 192
+    },
+    "bins": {
+      "1600,0": 108,
+      "1700,0": 25,
+      "1600,100": 258,
+      "1700,100": 124,
+      "2400,100": 180,
+      "2500,100": 55,
+      "1000,100": 962,
+      "900,100": 469
+    }
+  },
+  {
+    "state": "loading",
+    "theme": "localoperatordark",
+    "changedPixels": 2308,
+    "totalPixels": 4968000,
+    "bbox": {
+      "minX": 953,
+      "minY": 91,
+      "maxX": 2507,
+      "maxY": 192
+    },
+    "bins": {
+      "1600,0": 105,
+      "1700,0": 28,
+      "1600,100": 303,
+      "1700,100": 169,
+      "2400,100": 179,
+      "2500,100": 95,
+      "1000,100": 962,
+      "900,100": 467
+    }
+  },
+  {
+    "state": "error",
+    "theme": "localoperatorlight",
+    "changedPixels": 0,
+    "totalPixels": 4968000,
+    "bbox": null,
+    "bins": {}
+  },
+  {
+    "state": "error",
+    "theme": "localoperatordark",
+    "changedPixels": 4,
+    "totalPixels": 4968000,
+    "bbox": {
+      "minX": 41,
+      "minY": 113,
+      "maxX": 580,
+      "maxY": 371
+    },
+    "bins": {
+      "500,100": 1,
+      "0,300": 3
+    }
+  }
+]
