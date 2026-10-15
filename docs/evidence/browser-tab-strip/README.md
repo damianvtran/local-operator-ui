@@ -22,7 +22,7 @@ Implementer provenance: host initially reported `openai/gpt-6.1-sol`, then `anth
 | Old-source boundary tests (`8fe9b86350`) | 3 tests, **0 pass / 3 fail**: agent and handed-source copied `sessionId`; load rejection escaped | Expected FAIL reproduction |
 | Corrected host/SSR/order/close-focus/lane batch | **296 pass / 0 fail**, 12.11s test time | PASS |
 | Keymap chords/retention/registry/dispatch + window-mode + related source cases | **162 pass / 0 fail** | PASS |
-| Panel-rail neighbour, once under 600s bound | **43 pass / 0 fail**, actual 516.7s | PASS |
+| Panel-rail neighbour, once under 600s bound | **43 pass / 0 fail**, Node test time 516.20s | PASS |
 | Fail-closed `ci-scope.mjs --since <baseline>` | selected lint/types/unit/evidence/audit/package surfaces | Classified, not falsely green |
 | Whole desktop suite and 59-theme contrast row | reserved for terminal CI; not duplicated locally | CI pending |
 | First native cell | 64 recorded rows, 26 frames; **stopped at duplicate assertion**, node rc1 | PARTIAL, not complete |
@@ -74,3 +74,11 @@ Historical before is from the committed a2 r1 pass: `41cec92350` and baseline422
 Both owned native trees were reaped before return: first PID16811 and corrected PID45175, `alive:false`; all final windows invisible/unfocused. Generated out/ and run directories are removed after evidence preservation. `cleanup.json` is the observed end-state receipt; no success is inferred from a green suite or from writing this README.
 
 Historical-before caveat: its pre-existing page zoom is 150%; after normal frames are at 100%. The zoom indicator difference is fixture state, **not a removed zoom feature**. Tab/toolbar chrome sizing uses app zoom1 in both; page content is excluded from capturePage.
+
+## Narrow current-main convergence
+
+Before publication main moved to `aca844600f5b2be61f5068322da7c4a3639bec8d` (0.34.45). A local main merge retained all three authored commits unchanged (`range-diff` has three `=` rows); only the desktop-test script needed a union, and generated keys auto-merged byte-identically to the generator. [convergence.json](convergence.json) records byte identities, exact scope and the 1/1 lane check. Current aggregate src tree is `c8821df278da57347a2b96432b631b9b9cc07f52`. **This is not a relabel of native capture identity:** all browser/preload/shared-contract/styles bytes are unchanged, while unrelated upstream source is now included. No new native/build cell was run.
+
+Sender-negative fidelity: the two foreign-sender rows invoke the **registered native handlers** with a real guest WebContents/mainFrame; they are not IPC emitted by guest JS (pages deliberately have no preload). Malformed owner calls use the actual renderer preload/IPC path. Neither claim includes a forged OS event or focus guard.
+
+Final pre-push catch (before remote publication): the real scripts ratchet found two `useSingleVarDeclarator` errors in the added host IPC fixture, previously hidden by the truncated advisory list. Both declarations were split without changing initializers/order. The actual four-file scripts ratchet now passes; a fresh host run is **210 pass / 0 fail**, 9.534s test time, bounded cell12.2s. Product src tree is unchanged. No bypass, no native/build retry, no claim that the first lint attempt passed this ratchet. [Exact rerun](final-host-ratchet.log.json).

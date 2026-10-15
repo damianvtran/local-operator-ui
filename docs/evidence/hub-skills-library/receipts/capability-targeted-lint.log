@@ -1,0 +1,170 @@
+scripts/hub-skills-capability.test.mjs:69:16 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    67 │ 			setup(b) {
+    68 │ 				b.onResolve(
+  > 69 │ 					{ filter: /desktop-api\.ts$/, namespace: "instrument" },
+       │ 					          ^^^^^^^^^^^^^^^^^^
+    70 │ 					(args) => ({ path: args.path, namespace: "file" }),
+    71 │ 				);
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/hub-skills-capability.test.mjs:72:27 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    70 │ 					(args) => ({ path: args.path, namespace: "file" }),
+    71 │ 				);
+  > 72 │ 				b.onResolve({ filter: /(?:^|\/)desktop-api$/ }, () => ({
+       │ 				                      ^^^^^^^^^^^^^^^^^^^^^^
+    73 │ 					path: "desktop",
+    74 │ 					namespace: "instrument",
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/hub-skills-capability.test.mjs:76:27 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    74 │ 					namespace: "instrument",
+    75 │ 				}));
+  > 76 │ 				b.onResolve({ filter: /(?:^|\/)skills-api$/ }, () => ({
+       │ 				                      ^^^^^^^^^^^^^^^^^^^^^
+    77 │ 					path: "skills",
+    78 │ 					namespace: "instrument",
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/hub-skills-capability.test.mjs:80:27 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    78 │ 					namespace: "instrument",
+    79 │ 				}));
+  > 80 │ 				b.onResolve({ filter: /^@shared\/config$/ }, () => ({
+       │ 				                      ^^^^^^^^^^^^^^^^^^^
+    81 │ 					path: "config",
+    82 │ 					namespace: "instrument",
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/hub-skills-capability.test.mjs:84:24 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    82 │ 					namespace: "instrument",
+    83 │ 				}));
+  > 84 │ 				b.onLoad({ filter: /.*/, namespace: "instrument" }, (args) => ({
+       │ 				                   ^^^^
+    85 │ 					contents:
+    86 │ 						args.path === "desktop"
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/hub-skills-capability.test.mjs:197:5 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    195 │ 			await assert.rejects(
+    196 │ 				exposed.pull.mutateAsync(pull),
+  > 197 │ 				/complete Hub Skills adapter/,
+        │ 				^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    198 │ 			);
+    199 │ 			await assert.rejects(
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/hub-skills-capability.test.mjs:201:5 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    199 │ 			await assert.rejects(
+    200 │ 				exposed.publish.mutateAsync(publication),
+  > 201 │ 				/complete Hub Skills adapter/,
+        │ 				^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    202 │ 			);
+    203 │ 		}
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/hub-skills-capability.test.mjs:208:57 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    206 │ 			state.capabilities = unsupported;
+    207 │ 			await act(async () => { client.setQueryData(["desktop", "capabilities"], unsupported); await pause(); await exposed.pub.refetch(); });
+  > 208 │ 			await assert.rejects(exposed.pull.mutateAsync(pull), /complete Hub Skills adapter/);
+        │ 			                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    209 │ 			assert.equal(state.remote.length, 0, "unknown/zero capability starts no remote Skills calls");
+    210 │ 		}
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/hub-skills-capability.test.mjs:233:56 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    231 │ 		const failedRemoteCount = state.remote.length;
+    232 │ 		await act(async () => { client.getQueryCache().find({ queryKey: ["desktop", "capabilities"] }).setState({ status: "error", error: new Error("synthetic negotiation failure") }); await pause(); await exposed.pub.refetch(); });
+  > 233 │ 		await assert.rejects(exposed.pull.mutateAsync(pull), /complete Hub Skills adapter/);
+        │ 		                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    234 │ 		assert.equal(state.remote.length, failedRemoteCount, "failed negotiation cannot reuse stale positive capability data");
+    235 │ 		await act(async () => { client.setQueryData(["desktop", "capabilities"], enabled); await pause(); });
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/hub-skills-capability.test.mjs:272:4 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    270 │ 		await assert.rejects(
+    271 │ 			retained.pull.mutateAsync(pull),
+  > 272 │ 			/complete Hub Skills adapter/,
+        │ 			^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    273 │ 		);
+    274 │ 		await assert.rejects(
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/hub-skills-capability.test.mjs:276:4 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    274 │ 		await assert.rejects(
+    275 │ 			retained.publish.mutateAsync(publication),
+  > 276 │ 			/complete Hub Skills adapter/,
+        │ 			^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    277 │ 		);
+    278 │ 		console.log(
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+scripts/hub-skills-capability.test.mjs:304:3 lint/performance/useTopLevelRegex ━━━━━━━━━━━━━━━━━━━━━
+
+  ! This regex literal is not defined in the top level scope. This can lead to performance issues if this function is called frequently.
+  
+    302 │ 	assert.match(
+    303 │ 		page,
+  > 304 │ 		/desktopFeatureEnabled\(\s*capabilities\.data,\s*"hub_skills"/,
+        │ 		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    305 │ 	);
+    306 │ 	assert(page.includes('requestedView === "skills" && !skillsAvailable'));
+  
+  i Move the regex literal outside of this scope, and place it at the top level of this module, as a constant.
+  
+
+Checked 3 files in 19ms. Fixed 3 files.
+Found 12 warnings.

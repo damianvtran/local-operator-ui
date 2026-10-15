@@ -19,9 +19,17 @@
     "sha256": "56a20e9a38f2ccfb93e6f3a4e12ec6b369f65db0841a43a005c05dc134eb6573",
     "bytes": 590
   },
+  "convergence.json": {
+    "sha256": "88fba0673f9777b94e9018b15156bdf9e7a35390c9016174175b24e3ba5d86aa",
+    "bytes": 3532
+  },
   "attempt2-results.json": {
     "sha256": "85ff56172420d8c22bb6dfa03e808e33918a6e6d126016efa422066206ccfcdd",
     "bytes": 44657
+  },
+  "final-host-ratchet.log.json": {
+    "sha256": "d34643825e4eb623181551111f45493cff81d541675e5b069d793e9e7e78c8a5",
+    "bytes": 21873
   },
   "source-compatibility.json": {
     "sha256": "be0fcfbdc619f81b51b690e3f0996931994da530dba0e810ab2613ae22e78d22",
@@ -39,9 +47,13 @@
     "sha256": "56d1599af83c0908fb460128dd2790540aec58dcb2ff064e770082c8db95f1a4",
     "bytes": 1855
   },
+  "convergence-check.log.json": {
+    "sha256": "dd2377345a811406d014b9300225e3aa805c0e75635eb7cfc8f098313aa9a1aa",
+    "bytes": 1069
+  },
   "README.md": {
-    "sha256": "c936968e2265c86d548a1267d08026994ca24e686f6fe8750362b920c69b578d",
-    "bytes": 9951
+    "sha256": "ddadae3b9f348524e86d27a3a960b7080fa85616439c47d9e2cc207a72008b3b",
+    "bytes": 11563
   },
   "cleanup.json": {
     "sha256": "16176eaf613193ff1bca57f0d0e35f732944a75980457eea931d04bdef2aed3a",

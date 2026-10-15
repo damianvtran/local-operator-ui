@@ -6257,6 +6257,7 @@ export function ChatSidebar({
 			kind={kind}
 			available={hubAvailableCount(hubUpdates.data, kind)}
 			busy={hub.pending.has(`all:${kind}`)}
+			blocked={!hub.canWrite}
 			onUpdateAll={() => void updateAllHub(kind)}
 			onCheck={
 				kind === "agent" && hubTracked ? () => void hub.checkNow() : undefined
@@ -6286,7 +6287,10 @@ export function ChatSidebar({
 			rollup={hub.rollups[kind]}
 			note={
 				hub.notes[`all:${kind}`] ??
-				(kind === "agent" ? hub.notes.check : undefined)
+				(kind === "agent" ? hub.notes.check : undefined) ??
+				(kind === "agent" && hubTracked && hub.upgradeMessage
+					? { message: hub.upgradeMessage, tone: "info" }
+					: undefined)
 			}
 			onDismissRollup={() => hub.clearRollup(kind)}
 		/>
@@ -6730,6 +6734,11 @@ export function ChatSidebar({
 							item={hubItem}
 							mark={hubMark}
 							busy={hub.pending.has(hubKey)}
+							blocked={
+								!hub.canWrite &&
+								(hubMark.kind === "available" ||
+									(hubMark.kind === "failed" && hubMark.retryable))
+							}
 							staged={staged}
 							onPress={() => pressHubMark(kind, name, hubMark)}
 						/>

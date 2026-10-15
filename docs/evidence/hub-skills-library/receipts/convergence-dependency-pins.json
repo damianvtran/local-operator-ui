@@ -1,0 +1,42 @@
+{
+  "src/renderer/src/features/agent-hub/agent-hub-page.tsx": {
+    "43fc66a1b": "ef13990dd0320ffbdbc599ed1952f39fa0671dc1c24a0d68119a032931501b89",
+    "1912dc7fac252a30fb66d02f65fc9e6a436617ec": "ef13990dd0320ffbdbc599ed1952f39fa0671dc1c24a0d68119a032931501b89"
+  },
+  "src/renderer/src/features/agent-hub/components/hub-skills-library.tsx": {
+    "43fc66a1b": "2c3cbe8c5481410181c0b2d47ebda86ca6a1a81fb7a5dc1b200853e1e132f039",
+    "1912dc7fac252a30fb66d02f65fc9e6a436617ec": "2c3cbe8c5481410181c0b2d47ebda86ca6a1a81fb7a5dc1b200853e1e132f039"
+  },
+  "src/renderer/src/features/agent-hub/components/hub-skill-publication.tsx": {
+    "43fc66a1b": "0fe0007ba46c9d54c173aafdc7169c8953c3343536b1d31470df221d6bb2317f",
+    "1912dc7fac252a30fb66d02f65fc9e6a436617ec": "0fe0007ba46c9d54c173aafdc7169c8953c3343536b1d31470df221d6bb2317f"
+  },
+  "src/renderer/src/features/agents/components/hub-initial-policy-fields.tsx": {
+    "43fc66a1b": "c0675c317087926f75b03c05bbc4552992d1d51bed3a0aead4f7c751447b5d2a",
+    "1912dc7fac252a30fb66d02f65fc9e6a436617ec": "c0675c317087926f75b03c05bbc4552992d1d51bed3a0aead4f7c751447b5d2a"
+  },
+  "src/renderer/src/shared/api/local-operator/desktop-hooks.ts": {
+    "43fc66a1b": "37b1298c04a9a7559133c728be10075388db5ae073a7ddebd32b87363affae00",
+    "1912dc7fac252a30fb66d02f65fc9e6a436617ec": "3ace05e6e6613a61d79959edc917bf6c9cdbab16092eebdd21dccb566bd52869"
+  },
+  "src/shared/desktop-contract.ts": {
+    "43fc66a1b": "3d82ccf0704990db56e048e12227204b6f8b2d1f2bfdd5f3eb948c4116379c5b",
+    "1912dc7fac252a30fb66d02f65fc9e6a436617ec": "2f1c1fa19ff54ee4377c96c691d34c9e31571bb2587cfd9b503219bc736519d8"
+  },
+  "src/renderer/src/shared/store/ui-preferences-store.ts": {
+    "43fc66a1b": "5f7bd77b9437b82d17fa061e2cab86838db2c0509a482e78cddcb1beb51f85a7",
+    "1912dc7fac252a30fb66d02f65fc9e6a436617ec": "f34dfe9fc2a7c5ec4dbef13fb7fed791f1e3ae72aef35e5d585a2f9d64db6a39"
+  },
+  "src/i18n/keys.gen.ts": {
+    "43fc66a1b": "77140782076e24449b26076860043ddfcbd0a758128d4d11c7d05c542cdf80de",
+    "1912dc7fac252a30fb66d02f65fc9e6a436617ec": "075af37cbe1d0572b374cd04cbec662c3c77578fc47f0149c509ff181a14575c"
+  },
+  "src/i18n/catalogues/en/ui.hub.json": {
+    "43fc66a1b": "3768a9d7ec95bc33a51e77ff651511080761082369f22bea74ca3dca6f18396a",
+    "1912dc7fac252a30fb66d02f65fc9e6a436617ec": "3768a9d7ec95bc33a51e77ff651511080761082369f22bea74ca3dca6f18396a"
+  },
+  "pnpm-lock.yaml": {
+    "43fc66a1b": "fd0310b282d1a63560473655fccd3964102bef2015e43e4915502e0f0a4670ba",
+    "1912dc7fac252a30fb66d02f65fc9e6a436617ec": "fd0310b282d1a63560473655fccd3964102bef2015e43e4915502e0f0a4670ba"
+  }
+}

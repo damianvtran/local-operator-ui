@@ -1,0 +1,47 @@
+{
+  "oldBase": "422df121756df2f5e7348e4289a04256661edb9f",
+  "incomingMain": "aca844600f5b2be61f5068322da7c4a3639bec8d",
+  "oldAuthoredHead": "0e792f2df50ee876b6eb8bb40ccfd8c8ccbc0be9",
+  "productTree": "c8821df278da57347a2b96432b631b9b9cc07f52",
+  "rangeDiff": "1:  8fe9b86350 = 1:  8fe9b86350 feat(browser): polish page tabs and add scoped tab management\n2:  38bfd4a94b = 2:  38bfd4a94b fix(browser): isolate duplicate ownership and report settled failures\n3:  0e792f2df5 = 3:  0e792f2df5 docs(browser): record tab strip native proof and boundary remediation\n",
+  "originalCommitPatchesUnchanged": true,
+  "byteIdenticalAuthoredFiles": {
+    "docs/design/browser-tab-strip.md": "c00dede22580fa752f14266cd48ff74e8cc75169",
+    "scripts/browser-chrome.test.mjs": "f5a02abe470ca552092487fce2372ea1dacc5361",
+    "scripts/browser-tab-management.test.mjs": "b9abafc06f9aceac7408d911ca297004eaec2457",
+    "scripts/contrast-contract.mjs": "bff37df1ddf1b214b50f043b05d83cbc348f48f8",
+    "src/i18n/catalogues/en/ui.browser.chrome.context.json": "8179e2e875ebdad103baf41e8620c6bfb4cb0ab0",
+    "src/i18n/catalogues/en/ui.browser.chrome.json": "6a012833d9c6b5b1d4ce7ec17df1bd035caabfa6",
+    "src/main/browser/chrome-tab-order.ts": "5dff6ecca4d6016ed863e7431d90f60b6f4de783",
+    "src/main/browser/host.ts": "96a66c6659d9c0542570ee45a5e4da47fc8ba38d",
+    "src/main/browser/ipc.ts": "7249ba7ca601d6c2443448246973d1d31e12e570",
+    "src/preload/index.d.ts": "01bae871b7be3289919761ffdf051c2c16714c4e",
+    "src/preload/index.ts": "3fcd7d519c8e5fd4d9ec725dca6e284821f60232",
+    "src/renderer/src/features/browser/components/browser-surface.tsx": "b3479bd73d70e34e639d72e4302e62155de8e4d4",
+    "src/renderer/src/features/browser/components/browser-tab-strip.tsx": "d79a3bade892353707f647d4202a6523371e7fa3",
+    "src/renderer/src/features/browser/components/browser-url-bar.tsx": "a7a3f32d3cef2ae504d184f4698c27ce73d902b4",
+    "src/renderer/src/features/browser/hooks/use-browser-chrome.ts": "46b6135eeb117581c89ec80854d9e94dc21aea3c",
+    "src/renderer/src/features/browser/model/tab-index-model.ts": "1f5bff8e89d72db81987655052aa923a2f69e228",
+    "src/shared/browser-tab-action.ts": "99caaf14dd64ae33e7fe8e3f2352ea5474d17a53",
+    "tsconfig.node.json": "0187184d7d7ff04ac24e7386b8eaaa324d44d9ba"
+  },
+  "overlapResolution": {
+    "package.json": "preserve upstream object byte-for-byte except test:desktop adds ONLY scripts/browser-tab-management.test.mjs in existing browser group",
+    "src/i18n/keys.gen.ts": "auto-merged; byte-identical to fresh generator output"
+  },
+  "scopeCheck": {
+    "laneRegistration": "1 pass / 0 fail",
+    "keyGenerator": "byte-identical",
+    "prDiffWhitespaceCheck": "PASS",
+    "wallSeconds": 0.7
+  },
+  "nativeRecapture": "None after convergence. All browser, preload, shared contract and styles bytes unchanged; native captures retain their true earlier full-tree identities.",
+  "testOnlyRatchetFix": {
+    "file": "scripts/browser-host.test.mjs",
+    "oldBlob": "7ec31eaf5ea2b4589d6b07588a6d28d8d71f20c3",
+    "newBlob": "f8ac19c77a46332f0bc275f4994cef9374609089",
+    "delta": "Split two const multi-declarations in the IPC negative fixture; same variables, initializers and evaluation order. No product src change.",
+    "cause": "First pre-push scripts ratchet found two useSingleVarDeclarator errors hidden behind the ordinary truncated warnings list. No bypass.",
+    "rerun": "Actual scripts ratchet 4 files PASS; host tests 210 pass/0 fail, 9534.398625ms; bounded cell wall12.2s."
+  }
+}

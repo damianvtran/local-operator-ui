@@ -1,0 +1,83 @@
+renderer-driver: frame timezone pinned to America/New_York (ambient TZ=America/Toronto)
+[build] current: assets 2026-10-15T05:27:33.928Z >= sources 2026-10-15T05:05:37.341Z
+[note] abandoned scratch trees
+        20 seen, 0 owned by a live pid (kept), 0 younger than 30m (kept), 20 removed: lo-renderer-driver-1289, lo-renderer-driver-2544, lo-renderer-driver-3847, lo-renderer-driver-43899, lo-renderer-driver-47824, lo-renderer-driver-48792, lo-renderer-driver-49392, lo-renderer-driver-5340, lo-renderer-driver-83593, lo-renderer-driver-83727, lo-renderer-driver-84155, lo-renderer-driver-84513, lo-renderer-driver-84918, lo-renderer-driver-85491, lo-renderer-driver-96772, lo-renderer-driver-96905, lo-renderer-driver-97485, lo-renderer-driver-98063, lo-renderer-driver-98799, lo-renderer-driver-99390
+[note] csp for this run's backend
+        out/renderer/index.html: http://127.0.0.1:18328 added to frame-src, media-src, img-src (build output only; src/ untouched)
+  serve records 1 linked from /Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/capgate-native-core-home/.local-operator/run/serve   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui/.worktrees/skills-library-evidence
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-59906
+  frames        /Users/damian/local-operator-ui/.worktrees/skills-library-evidence/docs/evidence/hub-skills-library/frames/R-I-released-core-adapter-absent
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-59906/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:18328   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["filesFacts","hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","stageLiveConsents","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8127","backend":"http://127.0.0.1:18328"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:18328)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] window mode is headless and the window is never shown or focused
+[PASS] Skills gate fetch observer validates its own positive control
+[PASS] released-core fallback retains selected Agents and hides Skills entry/actions
+[note] Skills gate list/detail fetches
+        {"listFetches":{"armed":true,"total":0,"probeRecords":1,"callers":[]},"detailFetches":{"armed":true,"total":0,"probeRecords":1,"callers":[]}}
+[PASS] released-core fallback starts zero remote Skills list/detail queries
+[PASS] fallback panel geometry is observable without horizontal overflow
+[note] egress: capture securitypolicyviolation events
+        []
+[PASS] egress: zero CSP violations during the capture flow
+[note] egress: distinct renderer request origins
+        ["null"]
+[PASS] egress: every renderer request went to the stub origin or an app-local scheme
+        38 requests, origins ["null"]
+[PASS] egress: no renderer request names api.radienthq.com
+[note] egress: app process tree sockets (one instant)
+        pids 59948,59958,59959,59974,59977,59978,59986
+        COMMAND    PID   USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
+        Electron 59948 damian   17u  IPv4 0x9a96a2cf20ac1277      0t0  TCP 127.0.0.1:63131 (LISTEN)
+        Electron 59948 damian   21u  IPv4 0x4bac9a47daa59730      0t0  TCP 127.0.0.1:63129->127.0.0.1:63157 (ESTABLISHED)
+        Electron 59948 damian   36u  IPv4 0xc4a373d40358f4f2      0t0  TCP 127.0.0.1:63129 (LISTEN)
+        Electron 59948 damian   60u  IPv4 0x41a57afbe11c7008      0t0  TCP 127.0.0.1:63155->127.0.0.1:18328 (ESTABLISHED)
+        Electron 59948 damian   65u  IPv4 0x9125a0e99a193218      0t0  TCP 127.0.0.1:63159->127.0.0.1:18328 (ESTABLISHED)
+        Electron 59948 damian   76u  IPv4 0xed1703fcdead27bc      0t0  TCP 127.0.0.1:63161->127.0.0.1:18328 (ESTABLISHED)
+        Electron 59948 damian   78u  IPv4 0x417d6a4439d4dcf4      0t0  TCP 127.0.0.1:63162->127.0.0.1:18328 (ESTABLISHED)
+        Electron 59948 damian   91u  IPv4 0x8d02bb9b17fd80ec      0t0  TCP 127.0.0.1:63164 (LISTEN)
+        Electron 59948 damian   93u  IPv4 0xed80261f39fefe09      0t0  TCP 127.0.0.1:63167 (LISTEN)
+        Electron 59948 damian   97u  IPv4 0x48d40235d0956b1b      0t0  TCP 127.0.0.1:63175->127.0.0.1:18328 (ESTABLISHED)
+        Electron 59948 damian   98u  IPv4 0x81cbb0a98b64d087      0t0  TCP 127.0.0.1:63172->127.0.0.1:18328 (ESTABLISHED)
+        Electron 59948 damian   99u  IPv4 0x5ad0e4030e34e234      0t0  TCP 127.0.0.1:63173->127.0.0.1:18328 (ESTABLISHED)
+        Electron 59948 damian  100u  IPv4 0xff931fc1df91e326      0t0  TCP 127.0.0.1:63174->127.0.0.1:18328 (ESTABLISHED)
+        Electron 59948 damian  101u  IPv4 0x8e9075b95f5bd0b2      0t0  TCP 127.0.0.1:63176->127.0.0.1:18328 (ESTABLISHED)
+        Electron 59948 damian  102u  IPv4 0x7c5f47e8557e9543      0t0  TCP 127.0.0.1:63177->127.0.0.1:18328 (ESTABLISHED)
+        Electron 59948 damian  103u  IPv4 0x2495549458bdcaf6      0t0  TCP 127.0.0.1:63178->127.0.0.1:18328 (ESTABLISHED)
+        Electron 59948 damian  104u  IPv4 0x6f014708fd4d8407      0t0  TCP 127.0.0.1:63179->127.0.0.1:18328 (ESTABLISHED)
+        Electron 59948 damian  105u  IPv4 0xa44ca8737bb56a1a      0t0  TCP 127.0.0.1:63180->127.0.0.1:18328 (ESTABLISHED)
+        Electron 59948 damian  106u  IPv4 0x2076d45c51f9fa63      0t0  TCP 127.0.0.1:63181->127.0.0.1:18328 (ESTABLISHED)
+        Electron 59948 damian  107u  IPv4 0x5d6c6bc418340670      0t0  TCP 127.0.0.1:63182->127.0.0.1:18328 (ESTABLISHED)
+        Electron 59948 damian  108u  IPv4 0xe534ea1db0e89a34      0t0  TCP 127.0.0.1:63183->127.0.0.1:18328 (ESTABLISHED)
+        Electron 59948 damian  109u  IPv4 0xad9691e5c8d1047f      0t0  TCP 127.0.0.1:63184->127.0.0.1:18328 (ESTABLISHED)
+        Electron 59948 damian  110u  IPv4 0xd18ccebae580ef4b      0t0  TCP 127.0.0.1:63185->127.0.0.1:18328 (ESTABLISHED)
+        Electron 59948 damian  111u  IPv4 0xeeeb3b79f77a92fd      0t0  TCP 127.0.0.1:63186->127.0.0.1:18328 (ESTABLISHED)
+        Electron 59948 damian  112u  IPv4 0x240637a8f9094504      0t0  TCP 127.0.0.1:63187->127.0.0.1:18328 (ESTABLISHED)
+        Electron 59948 damian  113u  IPv4 0x65f7d4619ec44b38      0t0  TCP 127.0.0.1:63189->127.0.0.1:18328 (ESTABLISHED)
+        Electron 59948 damian  114u  IPv4 0x25d480843406aea6      0t0  TCP 127.0.0.1:63190->127.0.0.1:18328 (ESTABLISHED)
+[PASS] egress: no non-loopback ESTABLISHED/SYN_SENT socket in the app's process tree (instantaneous probe, not a continuous audit)
+[PASS] no process from this run outlived its boot
+
+frames: hub-skills-1380x900-local-operator-dark-adapter-absent-agents.png
+frames directory: /Users/damian/local-operator-ui/.worktrees/skills-library-evidence/docs/evidence/hub-skills-library/frames/R-I-released-core-adapter-absent
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-59906/app-scene.log
+scratch kept: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-59906 (the frames are also in --out)
+
+ALL CHECKS PASSED

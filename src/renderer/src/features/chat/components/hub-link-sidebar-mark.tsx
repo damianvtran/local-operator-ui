@@ -7,6 +7,7 @@ import { hubReasonText } from "@features/agents/hub-link-copy";
 import { hubLinkMark } from "@features/agents/hub-link-view";
 import { useHubLinkActions } from "@shared/api/local-operator/hub-link-actions";
 import type { HubLink } from "@shared/api/local-operator/hub-links";
+import { HubMutationUpgradeRequired } from "@shared/api/local-operator/hub-mutation-safety";
 import {
 	Popover,
 	PopoverAnchor,
@@ -115,6 +116,11 @@ export function HubLinkSidebarMark({
 						data-hub-mark={actions.isPending ? "busy" : mark.kind}
 						data-testid={`hub-mark-${link.kind}-${link.name}`}
 						aria-label={actionLabel}
+						aria-disabled={
+							(!actions.canWrite &&
+								(mark.action === "apply" || mark.action === "retry")) ||
+							undefined
+						}
 						aria-describedby={descriptionId}
 						aria-haspopup="dialog"
 						aria-expanded={open}
@@ -141,7 +147,12 @@ export function HubLinkSidebarMark({
 						}}
 						onClick={(event) => {
 							event.stopPropagation();
-							if (actions.isPending || mark.action === "policy") {
+							if (
+								actions.isPending ||
+								mark.action === "policy" ||
+								(!actions.canWrite &&
+									(mark.action === "apply" || mark.action === "retry"))
+							) {
 								setOpen(true);
 								return;
 							}
@@ -198,11 +209,13 @@ export function HubLinkSidebarMark({
 				/>
 				{actions.error && (
 					<p role="alert" className="mt-3 text-meta text-danger">
-						{t("ui.hub.links.action_failed", {
-							direction,
-							item: link.name,
-							source,
-						})}
+						{actions.error instanceof HubMutationUpgradeRequired
+							? actions.error.message
+							: t("ui.hub.links.action_failed", {
+									direction,
+									item: link.name,
+									source,
+								})}
 					</p>
 				)}
 			</PopoverContent>
