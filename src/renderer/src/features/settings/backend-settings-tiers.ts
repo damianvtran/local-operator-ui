@@ -84,7 +84,7 @@ export const KEY_TIER: Record<string, SettingTier> = {
 	"providers.openrouter.max_price": "advanced",
 	"providers.openrouter.preferred_min_throughput": "advanced",
 	"providers.openrouter.preferred_max_latency": "advanced",
-	// failover (10)
+	// failover (11)
 	"retry.enabled": "core",
 	"retry.maxRetries": "advanced",
 	"retry.baseDelayMs": "advanced",
@@ -92,6 +92,9 @@ export const KEY_TIER: Record<string, SettingTier> = {
 	"retry.connectivityBackoffCapMs": "advanced",
 	"retry.modelFallback": "advanced",
 	"retry.usageAwareFallback": "advanced",
+	// Routing preference needs its provider/tier/cache explanation; like the
+	// legacy switch it stays advanced, but search still reaches the enum.
+	"retry.accountSelectionPolicy": "advanced",
 	"retry.usageAwareAccountPick": "advanced",
 	"retry.usageReservePercent": "advanced",
 	"retry.fallbackChains": "advanced",
@@ -253,6 +256,154 @@ export const KEY_TIER: Record<string, SettingTier> = {
 	"speech.voice.language": "advanced",
 	"speech.voice.accent": "advanced",
 	"speech.voice.instructions": "advanced",
+
+	/* Authoritative snapshot convergence, not a product-tier promotion. Every
+	 * key below already rendered advanced through the prior key/section fallback
+	 * on this backend. Naming each preserves that behavior while restoring the
+	 * drift guard; no master switches silently appear on the Basic surface. */
+	// memory
+	"memory.enabled": "advanced",
+	"memory.capture": "advanced",
+	"memory.suggest": "advanced",
+	// network
+	"network.memory.enabled": "advanced",
+	"network.memory.scopes": "advanced",
+	"network.memory.exclude_devices": "advanced",
+	// openrouter
+	"providers.openrouter.retire_below_tps": "advanced",
+	// failover
+	"retry.pinnedFallback": "advanced",
+	// appearance
+	"display.narration": "advanced",
+	"display.reasoning": "advanced",
+	"display.rail": "advanced",
+	"display.composer.band": "advanced",
+	"display.composer.chevron": "advanced",
+	"display.composer.model": "advanced",
+	"display.composer.cwd": "advanced",
+	"display.composer.context": "advanced",
+	"display.composer.rate": "advanced",
+	"display.composer.cost": "advanced",
+	"display.composer.duration": "advanced",
+	"tui.sidebar_show_subagents": "advanced",
+	// keymap
+	"keymap.push_to_talk": "advanced",
+	// runtime
+	"runtime.keep_alive_seconds": "advanced",
+	"runtime.keep_alive_max": "advanced",
+	// subagents
+	"subagents.slim_child_knowledge": "advanced",
+	"subagents.max_team_depth": "advanced",
+	// classification
+	"classification.auto": "advanced",
+	"classification.vendor": "advanced",
+	"classification.model": "advanced",
+	"classification.timeoutMs": "advanced",
+	"classification.waitMs": "advanced",
+	"classification.maxStateChars": "advanced",
+	"classification.maxCandidates": "advanced",
+	"classification.maxRecommendations": "advanced",
+	// monitor
+	"monitor.defaultIntervalS": "advanced",
+	"monitor.maxMonitors": "advanced",
+	"monitor.runTimeoutMs": "advanced",
+	"monitor.snapshotMaxChars": "advanced",
+	"monitor.maxDeltaLines": "advanced",
+	"monitor.deltaMaxChars": "advanced",
+	"monitor.classifyMaxChars": "advanced",
+	"monitor.maxConsecutiveFailures": "advanced",
+	"monitor.maxDeliveriesPerHour": "advanced",
+	"monitor.normalizeTimestamps": "advanced",
+	// supplements
+	"supplements.enabled": "advanced",
+	"supplements.files": "advanced",
+	"supplements.graphics": "advanced",
+	"supplements.model": "advanced",
+	"supplements.maxTurns": "advanced",
+	"supplements.maxOutputTokens": "advanced",
+	"supplements.timeoutS": "advanced",
+	"supplements.maxCostUsd": "advanced",
+	"supplements.maxFeatured": "advanced",
+	"supplements.denyPrefixes": "advanced",
+	// web_search
+	"web_search.excluded_providers": "advanced",
+	// hooks
+	"hooks.native": "advanced",
+	"hooks.forward_claude": "advanced",
+	"hooks.forward_codex": "advanced",
+	// tools
+	"send.journal_unconfirmed": "advanced",
+	"tools.search_interception.enabled": "advanced",
+	"tools.search_interception.block": "advanced",
+	"tools.search_interception.rg_excludes": "advanced",
+	"tools.defer": "advanced",
+	// memory_guard
+	"bash.memory.enabled": "advanced",
+	"bash.memory.mode": "advanced",
+	"bash.memory.limit_mb": "advanced",
+	"bash.memory.soft_fraction": "advanced",
+	// query_budget
+	"bash.query_budget.enabled": "advanced",
+	"bash.query_budget.stop": "advanced",
+	"bash.query_budget.seconds": "advanced",
+	// shell_environment
+	"shell_environment.mode": "advanced",
+	"shell_environment.inherit": "advanced",
+	"shell_environment.exclude": "advanced",
+	// retired
+	"classification.notice": "advanced",
+	// console
+	"console.max_live": "advanced",
+	"console.max_owner": "advanced",
+	"console.user_reserved": "advanced",
+	// static
+	"static.roots": "advanced",
+	// network
+	"network.listen_address": "advanced",
+	"network.port": "advanced",
+	"network.advertise_hosts": "advanced",
+	"network.audit.max_bytes": "advanced",
+	"network.audit.generations": "advanced",
+	"network.audit.max_age_days": "advanced",
+	// mesh_updates
+	"network.rollout_on_update": "advanced",
+	// network
+	"network.max_handshakes": "advanced",
+	"network.sync.debounce_s": "advanced",
+	"network.sync.tick_s": "advanced",
+	"network.credentials.grant_ttl_s": "advanced",
+	"network.credentials.github.repositories": "advanced",
+	// hub
+	"hub.auto_update.agents": "advanced",
+	"hub.auto_update.teams": "advanced",
+	"hub.check_interval_min": "advanced",
+	// agents
+	"agents.auto_update.seeds": "advanced",
+	// aida
+	"aida.enabled": "advanced",
+	"aida.name": "advanced",
+	"aida.cadence.at": "advanced",
+	"aida.cadence.interval_hours": "advanced",
+	"aida.cadence.paused": "advanced",
+	"aida.cadence.max_extra_per_day": "advanced",
+	"aida.cadence.min_gap_minutes": "advanced",
+	"aida.onboarding.nudge_days": "advanced",
+	// projects
+	"projects.stale_after_hours": "advanced",
+	// wakes
+	"wakes.triggers.enabled": "advanced",
+	"wakes.triggers.max_per_day": "advanced",
+	"wakes.triggers.min_gap_minutes": "advanced",
+	"wakes.triggers.project_staleness.enabled": "advanced",
+	// proactive
+	"proactive.patience.default_ms": "advanced",
+	"proactive.patience.backoff": "advanced",
+	"proactive.patience.max_attempts": "advanced",
+	"proactive.patience.episode_ttl_ms": "advanced",
+	"proactive.patience.max_pending": "advanced",
+	// team_bridge
+	"team_bridge.enabled": "advanced",
+	"team_bridge.session": "advanced",
 	// asks (1)
 	/*
 	 * `advanced`: a retention dial for rows that can no longer be acted on (D6, D10).

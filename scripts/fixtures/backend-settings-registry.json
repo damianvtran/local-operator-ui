@@ -40,37 +40,55 @@
 			"name": "approvals",
 			"title": "Approvals",
 			"scope": "live",
-			"description": "Whether write and command tools prompt, in every running session."
+			"description": "Whether write and command tools prompt, in every running session. A config write tightens every running session at once; loosening one needs a write from that session's own process (/approvals auto in it, or a /settings page in that process)."
 		},
 		{
 			"name": "session",
 			"title": "Session storage",
-			"description": "Autosave. The cleanup policies have their own sections below.",
-			"scope": "new launch"
+			"scope": "new launch",
+			"description": "Autosave. The cleanup policies have their own sections below."
 		},
 		{
 			"name": "session_cleanup",
 			"title": "Your conversations",
-			"description": "Session cleanup for the conversations you started and the workstreams in your sidebar. Off by default; nothing here runs until you switch it on.",
-			"scope": "new launch"
+			"scope": "new launch",
+			"description": "Session cleanup for the conversations you started and the workstreams in your sidebar. Off by default; nothing here runs until you switch it on."
 		},
 		{
 			"name": "session_delegated",
 			"title": "Delegated work",
-			"description": "Delegated work: subagent and background-session transcripts and their scratch folders. On by default: they are removed after the age below. Your conversations, sidebar workstreams, anything running, waiting on a wake or monitor, linked to an open project, still in use by an active parent, or holding unpushed or uncommitted git work are kept.",
-			"scope": "new launch"
+			"scope": "new launch",
+			"description": "Delegated work: subagent and background-session transcripts and their scratch folders. On by default: they are removed after the age below. Your conversations, sidebar workstreams, anything running, waiting on a wake or monitor, linked to an open project, still in use by an active parent, or holding unpushed or uncommitted git work are kept."
 		},
 		{
 			"name": "subagents",
 			"title": "Subagents",
 			"scope": "live",
-			"description": "Concurrency cap, who picks a child's model, and the model each tier runs on."
+			"description": "Concurrency cap, child knowledge slimming, who picks a child's model, and the model each tier runs on."
+		},
+		{
+			"name": "classification",
+			"title": "Smart hints",
+			"scope": "new sessions",
+			"description": "Advisory skills, guides and MCP servers a decision model may suggest per message. Off keeps the prompt unchanged."
+		},
+		{
+			"name": "supplements",
+			"title": "Highlights",
+			"scope": "new sessions",
+			"description": "After an answer, point out the files it produced and, when you turn it on, draw a chart of numbers it showed. Off by environment: LOP_SUPPLEMENTS=0."
+		},
+		{
+			"name": "monitor",
+			"title": "Monitors",
+			"scope": "new sessions",
+			"description": "Delta-watching monitors: how often they check, how much they keep, and when they give up."
 		},
 		{
 			"name": "runtime",
 			"title": "Runtime",
 			"scope": "live",
-			"description": "How sessions behave when you leave them."
+			"description": "How sessions behave when you leave them. The warm-runtime knobs are read when a runtime next draws its window."
 		},
 		{
 			"name": "compaction",
@@ -109,10 +127,40 @@
 			"description": "How the built-in tools execute."
 		},
 		{
+			"name": "hooks",
+			"title": "Hooks",
+			"scope": "live",
+			"description": "Run native and forwarded Claude Code / Codex PostToolUse hooks."
+		},
+		{
+			"name": "memory_guard",
+			"title": "Command memory limit",
+			"scope": "live",
+			"description": "A per-command RAM ceiling, so one oversized command is killed instead of taking the whole device down."
+		},
+		{
+			"name": "query_budget",
+			"title": "Shell query budget",
+			"scope": "live",
+			"description": "Time budget for a shell query — a grep/find/du walk rather than a build or an install: an advisory at 10 s, and a stop at the budget so one search cannot spend minutes of a turn."
+		},
+		{
+			"name": "shell_environment",
+			"title": "Agent shell",
+			"scope": "new launch",
+			"description": "What a command the agent runs can see. Resolved once per session, so an edit here applies at the next launch and cannot weaken a session that is already running."
+		},
+		{
 			"name": "local_providers",
 			"title": "Local servers",
 			"scope": "new sessions",
 			"description": "Server endpoints and exact-model metadata. Use /login to connect; reselect with /model saved to apply model changes."
+		},
+		{
+			"name": "console",
+			"title": "Console capacity",
+			"scope": "live",
+			"description": "Live terminal admission. Completed history does not consume process slots. Changes affect future starts, never terminate running work."
 		},
 		{
 			"name": "desktop",
@@ -121,16 +169,82 @@
 			"description": "Where a notification click sends you when the desktop app is not running."
 		},
 		{
+			"name": "static",
+			"title": "File previews",
+			"scope": "live",
+			"description": "Extra directories the local server may serve image, audio, video and HTML previews from. The agent home, session folders, uploads and the working directories of your agents and running sessions are always included."
+		},
+		{
+			"name": "network",
+			"title": "Mesh network",
+			"scope": "new launch",
+			"description": "Where this device listens, what it tells peers to dial, and the bounds for `lop network`: audit retention, how many unauthenticated connections the relay will hold at once, session-copy cadence and how long a borrowed login lives. All take effect when the relay restarts."
+		},
+		{
+			"name": "mesh_updates",
+			"title": "Mesh updates",
+			"scope": "live",
+			"description": "The roll that follows a local update: after `lop update` moves this device to a newer build, every other active member is asked to move to the same build — one at a time, each waiting for that member to go idle, never forced. A member that has not granted this device `update` is skipped, by name, with the remedy. Takes effect at once: the next update uses the new setting, and a roll already running stops before its next member — an install already begun finishes."
+		},
+		{
+			"name": "aida",
+			"title": "Aida",
+			"scope": "live",
+			"description": "Your chief of staff: her display name, and the proactive cadence — when she checks in, how much she may escalate, and the pause switch. The name applies everywhere at once; edits are read at her next action, and /aida pause|resume act immediately."
+		},
+		{
+			"name": "hub",
+			"title": "Agent Hub",
+			"scope": "live",
+			"description": "Keep agents and teams you pulled from the Agent Hub current: whether updates are merged in automatically, how often the hub is checked, and which model resolves a conflict. Your edits and deletions are merged, never overwritten."
+		},
+		{
+			"name": "agents",
+			"title": "Agents",
+			"scope": "new launch",
+			"description": "Whether installed starter roles (reviewer, coder, aida, ...) update themselves to the packaged text at launch when you have not edited them. Off = updates are still reported; apply them with 'lop agents sync'."
+		},
+		{
+			"name": "projects",
+			"title": "Projects",
+			"scope": "live",
+			"description": "Project records: how long a tracked project may go without a progress line before it reads stale and is worth a check-in. Read at the next staleness computation."
+		},
+		{
+			"name": "wakes",
+			"title": "Wake triggers",
+			"scope": "live",
+			"description": "When a watched condition goes stale, the assistant is woken to check in rather than left to wait for the daily cadence: the master switch, the per-day budget and spacing, and which sources may fire. Read at the next evaluation pass."
+		},
+		{
+			"name": "proactive",
+			"title": "Proactive class",
+			"scope": "live",
+			"description": "Bounds for the proactive agent class: how long a hidden patience wait defaults to, how it backs off across re-attempts, and when a cycle must end. Read at the moment a wait is armed or fires."
+		},
+		{
 			"name": "speech",
 			"title": "Speech voicing",
 			"scope": "live",
 			"description": "How the assistant sounds when it speaks aloud. The descriptor is sent to the hub, which maps it onto whichever voice provider serves; fields a provider cannot express degrade with a note rather than failing. Read on the next spoken message."
 		},
 		{
+			"name": "team_bridge",
+			"title": "Agent messages",
+			"scope": "live",
+			"description": "Your agent can exchange messages with other members' agents in your organization. Off by default; you can pause or turn it off at any time."
+		},
+		{
 			"name": "retired",
 			"title": "Retired",
 			"scope": "new launch",
 			"description": "Keys that are read but no longer do anything."
+		},
+		{
+			"name": "memory",
+			"title": "Memory",
+			"scope": "live",
+			"description": "Bounded local recall and best-effort compaction capture; retrieved facts are untrusted."
 		},
 		{
 			"name": "asks",
@@ -140,6 +254,144 @@
 		}
 	],
 	"settings": [
+		{
+			"key": "memory.enabled",
+			"section": "memory",
+			"label": "Scoped memory",
+			"kind": "bool",
+			"help": "Enable the bounded SQLite memory bank. Turning this off does not erase retained facts.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "memory.capture",
+			"section": "memory",
+			"label": "Compaction capture",
+			"kind": "bool",
+			"help": "Capture safe locators after committed compactions; context-full also reuses its existing summary. Explicit stores remain the guaranteed route for goals and decisions.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": "memory.enabled",
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "memory.suggest",
+			"section": "memory",
+			"label": "Recall suggestions",
+			"kind": "bool",
+			"help": "Suggest up to three untrusted titles from the current user message, within a separate 180-token cap. No network or embedding request.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": "memory.enabled",
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "network.memory.enabled",
+			"section": "network",
+			"label": "Trusted-peer memory sync",
+			"kind": "bool",
+			"help": "Incrementally share selected scopes with existing paired receiver-admin peers supporting memory-sync-v1. This includes session memories without copying transcripts.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "network.memory.scopes",
+			"section": "network",
+			"label": "Memory scopes to sync",
+			"kind": "list",
+			"help": "Only these namespaces are shared. Session, team and agent owners remain exact registry/session IDs; all four scopes are supported.",
+			"value": ["global", "session", "team", "agent"],
+			"default": ["global", "session", "team", "agent"],
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": ["global", "session", "team", "agent"],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": "network.memory.enabled",
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "network.memory.exclude_devices",
+			"section": "network",
+			"label": "Excluded memory peers",
+			"kind": "list",
+			"help": "Device IDs excluded from memory replication. This does not change pairing, trust or enrollment grants.",
+			"value": [],
+			"default": [],
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": true,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": "network.memory.enabled",
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
 		{
 			"key": "hosting",
 			"section": "model",
@@ -154,7 +406,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": true,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "model_name",
@@ -170,7 +429,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": true,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "model_effort",
@@ -227,7 +493,14 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "providers.openai.use_max_context_window",
@@ -243,7 +516,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "providers.openai.api",
@@ -270,7 +550,14 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "providers.anthropic.cache_ttl_1h_min_context_tokens",
@@ -286,7 +573,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "providers.openrouter.provider_affinity",
@@ -302,7 +596,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "providers.openrouter.sort",
@@ -339,7 +640,14 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "providers.openrouter.order",
@@ -357,7 +665,12 @@
 			"empty_unsets": true,
 			"redacted": false,
 			"warning": "disables sticky routing — prompt cache goes cold",
-			"placeholder": "deepseek, groq, mistral, …"
+			"placeholder": "deepseek, groq, mistral, …",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "providers.openrouter.only",
@@ -374,7 +687,13 @@
 			"choices": [],
 			"empty_unsets": true,
 			"redacted": false,
-			"placeholder": "deepseek, groq, mistral, …"
+			"warning": "",
+			"placeholder": "deepseek, groq, mistral, …",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "providers.openrouter.ignore",
@@ -391,7 +710,13 @@
 			"choices": [],
 			"empty_unsets": true,
 			"redacted": false,
-			"placeholder": "deepseek, groq, mistral, …"
+			"warning": "",
+			"placeholder": "deepseek, groq, mistral, …",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "providers.openrouter.allow_fallbacks",
@@ -418,7 +743,14 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "providers.openrouter.require_parameters",
@@ -445,7 +777,14 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "providers.openrouter.data_collection",
@@ -477,7 +816,14 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "providers.openrouter.zdr",
@@ -504,7 +850,14 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "providers.openrouter.enforce_distillable_text",
@@ -531,7 +884,14 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "providers.openrouter.quantizations",
@@ -561,7 +921,13 @@
 			"choices": [],
 			"empty_unsets": true,
 			"redacted": false,
-			"placeholder": "int8, fp8, mxfp4, …"
+			"warning": "",
+			"placeholder": "int8, fp8, mxfp4, …",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "providers.openrouter.max_price",
@@ -578,7 +944,13 @@
 			"choices": [],
 			"empty_unsets": true,
 			"redacted": false,
-			"placeholder": "{\"prompt\": 1, \"completion\": 2}"
+			"warning": "",
+			"placeholder": "{\"prompt\": 1, \"completion\": 2}",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "providers.openrouter.preferred_min_throughput",
@@ -594,7 +966,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "providers.openrouter.preferred_max_latency",
@@ -610,7 +989,37 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "providers.openrouter.retire_below_tps",
+			"section": "openrouter",
+			"label": "retire slow host (tok/s)",
+			"kind": "float",
+			"help": "Experimental, off by default: evidence is from one model/run. A positive floor stops pinning a host after three long replies below this output-token/sec rate, excluding local consumer time. 0 clears speed exclusions on the next request; cache-miss exclusions remain. Moving hosts may start a cold prompt cache.",
+			"value": 0,
+			"default": 0,
+			"is_default": true,
+			"minimum": 0,
+			"maximum": 100000,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "retry.enabled",
@@ -637,7 +1046,14 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "retry.maxRetries",
@@ -653,7 +1069,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "retry.baseDelayMs",
@@ -669,7 +1092,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "retry.connectivityMaxRetries",
@@ -685,7 +1115,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "retry.connectivityBackoffCapMs",
@@ -701,7 +1138,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "retry.modelFallback",
@@ -728,7 +1172,14 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "retry.usageAwareFallback",
@@ -755,14 +1206,60 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "retry.accountSelectionPolicy",
+			"section": "failover",
+			"label": "account selection policy",
+			"kind": "enum",
+			"help": "Chooses eligible sibling accounts within the same provider and credential tier. A compatible, unexpired lease from a successful request takes priority for every policy; it does not guarantee a cache hit. Reset soonest prefers the nearest weekly refill, then the five-hour refill within one-minute ties. An explicit policy overrides the legacy usage-aware account pick setting.",
+			"value": "reset-soonest",
+			"default": "reset-soonest",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": "reset-soonest",
+					"label": "Reset soonest",
+					"description": "Prefer the nearest included-plan reset; spread ties and unknown reports deterministically. Default for new configurations."
+				},
+				{
+					"value": "headroom",
+					"label": "Most headroom",
+					"description": "Prefer cached remaining quota, spreading accounts within ten percentage points of the best."
+				},
+				{
+					"value": "fair",
+					"label": "Fair spread",
+					"description": "Use a stable session-based spread instead of ranking cached resets or remaining quota."
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "retry.usageAwareAccountPick",
 			"section": "failover",
-			"label": "Usage-aware account pick",
+			"label": "legacy usage-aware pick",
 			"kind": "bool",
-			"help": "Start new sessions on the same-provider account with the most quota left, read from the cached /usage report. Applies to sessions only.",
+			"help": "Compatibility setting, used only when account selection policy is absent: true selects Most headroom; false selects Fair spread. An explicit account selection policy takes precedence. Reset the account selection policy row to restore Reset soonest and clear legacy overrides.",
 			"value": true,
 			"default": true,
 			"is_default": true,
@@ -782,7 +1279,14 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "retry.usageReservePercent",
@@ -798,7 +1302,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "retry.fallbackChains",
@@ -814,7 +1325,48 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "retry.pinnedFallback",
+			"section": "failover",
+			"label": "Pinned child fallback",
+			"kind": "enum",
+			"help": "What a pinned child may fall back to: same-family hops only, or any vendor (announced).",
+			"value": "cross-family",
+			"default": "cross-family",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": "same-family",
+					"label": "same family only",
+					"description": "same vendor only"
+				},
+				{
+					"value": "cross-family",
+					"label": "allow cross-vendor",
+					"description": "any vendor"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "tui.theme",
@@ -1101,7 +1653,14 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "display.shimmer",
@@ -1128,7 +1687,116 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "display.narration",
+			"section": "appearance",
+			"label": "Mid-turn narration",
+			"kind": "bool",
+			"help": "Keep the agent's mid-turn narration in the transcript after its tool calls run.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "keep narration"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "hide narration once tools run"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "display.reasoning",
+			"section": "appearance",
+			"label": "Live model reasoning",
+			"kind": "bool",
+			"help": "Show the model's private thinking while it streams; it vanishes once the thinking ends.",
+			"value": false,
+			"default": false,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "show live reasoning"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "hide reasoning"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "display.rail",
+			"section": "appearance",
+			"label": "Assistant gutter rail",
+			"kind": "bool",
+			"help": "A rule marks the ANSWER: the message that ends the turn. Mid-turn narration takes no rail.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "rail the answer only"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "no rail"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "display.comfortable_rows",
@@ -1155,7 +1823,14 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "display.nerd_icons",
@@ -1187,7 +1862,14 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "display.heading_markers",
@@ -1214,7 +1896,14 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "display.terminal_title",
@@ -1241,7 +1930,14 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "display.images",
@@ -1268,7 +1964,14 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "display.notifications",
@@ -1295,7 +1998,14 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "display.notification_session_name",
@@ -1323,7 +2033,13 @@
 			],
 			"empty_unsets": false,
 			"redacted": false,
-			"gated_by": "display.notifications"
+			"warning": "",
+			"placeholder": "",
+			"gated_by": "display.notifications",
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "display.time_format",
@@ -1350,7 +2066,14 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "language",
@@ -1374,10 +2097,42 @@
 					"value": "en",
 					"label": "en",
 					"description": ""
+				},
+				{
+					"value": "fr",
+					"label": "fr",
+					"description": ""
+				},
+				{
+					"value": "es",
+					"label": "es",
+					"description": ""
+				},
+				{
+					"value": "ru",
+					"label": "ru",
+					"description": ""
+				},
+				{
+					"value": "vi",
+					"label": "vi",
+					"description": ""
+				},
+				{
+					"value": "hi",
+					"label": "hi",
+					"description": ""
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "display.dock",
@@ -1409,14 +2164,21 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "display.hide_cross_session",
 			"section": "appearance",
-			"label": "Cross-session traffic",
+			"label": "Hide cross-session traffic",
 			"kind": "bool",
-			"help": "Hide `lop send` traffic — peer sends and inbound peer messages — from transcripts.",
+			"help": "Hide lop send traffic and inbound peer messages from transcripts.",
 			"value": false,
 			"default": false,
 			"is_default": true,
@@ -1427,19 +2189,23 @@
 				{
 					"value": true,
 					"label": "on",
-					"description": "hide it in transcripts"
+					"description": "hide new; reopen to re-read"
 				},
 				{
 					"value": false,
 					"label": "off",
-					"description": "show it in transcripts"
+					"description": "show new; reopen to re-read"
 				}
 			],
 			"empty_unsets": false,
 			"redacted": false,
 			"warning": "",
 			"placeholder": "",
-			"gated_by": null
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "display.turn_answer_rail",
@@ -1469,7 +2235,283 @@
 			"redacted": false,
 			"warning": "",
 			"placeholder": "",
-			"gated_by": null
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "display.composer.band",
+			"section": "appearance",
+			"label": "Status band",
+			"kind": "bool",
+			"help": "Also the standing alerts. Model, dir, context, cost, rate, elapsed.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "show the band"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "hide it"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "display.composer.chevron",
+			"section": "appearance",
+			"label": "Prompt chevron",
+			"kind": "bool",
+			"help": "The prompt mark at the left edge of the input row.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "show the mark"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "hide it"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "display.composer.model",
+			"section": "appearance",
+			"label": "Band: model",
+			"kind": "bool",
+			"help": "The model-label segment in the status band.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "show the model"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "hide it"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "display.composer.cwd",
+			"section": "appearance",
+			"label": "Band: working dir",
+			"kind": "bool",
+			"help": "The working-directory segment in the status band.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "show the directory"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "hide it"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "display.composer.context",
+			"section": "appearance",
+			"label": "Band: context",
+			"kind": "bool",
+			"help": "The context-usage segment in the status band.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "show context usage"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "hide it"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "display.composer.rate",
+			"section": "appearance",
+			"label": "Band: decode rate",
+			"kind": "bool",
+			"help": "The tok/s segment — the last completed call's throughput.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "show the rate"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "hide it"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "display.composer.cost",
+			"section": "appearance",
+			"label": "Band: session cost",
+			"kind": "bool",
+			"help": "The session-cost segment in the status band.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "show the cost"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "hide it"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "display.composer.duration",
+			"section": "appearance",
+			"label": "Band: elapsed",
+			"kind": "bool",
+			"help": "The elapsed-time segment in the status band.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "show the elapsed time"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "hide it"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "tui.sidebar_visible",
@@ -1496,7 +2538,14 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "tui.sidebar_position",
@@ -1523,7 +2572,48 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "tui.sidebar_show_subagents",
+			"section": "appearance",
+			"label": "Sidebar subagent layer",
+			"kind": "bool",
+			"help": "List recent subagent runs below your own sessions. Ctrl+A toggles the layer while the sidebar has focus.",
+			"value": false,
+			"default": false,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "list recent subagent runs"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "show only your own sessions"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "keymap.new_session",
@@ -1539,7 +2629,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "app",
+			"unit": ""
 		},
 		{
 			"key": "keymap.resume",
@@ -1555,7 +2652,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "app",
+			"unit": ""
 		},
 		{
 			"key": "keymap.quick_send",
@@ -1575,14 +2679,40 @@
 			"warning": "",
 			"placeholder": "",
 			"gated_by": null,
-			"hotkey_scope": "desktop"
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "desktop",
+			"unit": ""
+		},
+		{
+			"key": "keymap.push_to_talk",
+			"section": "keymap",
+			"label": "Push to talk",
+			"kind": "hotkey",
+			"help": "Hold to dictate (desktop); release to stop.",
+			"value": "alt-right-hold",
+			"default": "alt-right-hold",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "desktop",
+			"unit": ""
 		},
 		{
 			"key": "tool_approval_mode",
 			"section": "approvals",
 			"label": "Tool approval mode",
 			"kind": "enum",
-			"help": "How every running session treats write and exec tools, from its next call.",
+			"help": "Loosening needs a write in this session — /approvals auto.",
 			"value": "ask",
 			"default": "ask",
 			"is_default": true,
@@ -1602,7 +2732,14 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "auto_save_conversation",
@@ -1629,7 +2766,14 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "runtime.background_on_resume",
@@ -1656,7 +2800,60 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "runtime.keep_alive_seconds",
+			"section": "runtime",
+			"label": "Keep closed conversations warm (s)",
+			"kind": "int",
+			"help": "Re-opening inside this window attaches to the live runtime. 0 keeps nothing warm.",
+			"value": 300,
+			"default": 300,
+			"is_default": true,
+			"minimum": 0,
+			"maximum": 3600,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "runtime.keep_alive_max",
+			"section": "runtime",
+			"label": "Max warm conversations",
+			"kind": "int",
+			"help": "Cap on warm runtimes in this install; the least recently closed exits first.",
+			"value": 4,
+			"default": 4,
+			"is_default": true,
+			"minimum": 1,
+			"maximum": 64,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "session.cleanup.enabled",
@@ -1683,7 +2880,14 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "session.cleanup.max_sessions",
@@ -1694,13 +2898,19 @@
 			"value": 0,
 			"default": 0,
 			"is_default": true,
-			"minimum": 0.0,
+			"minimum": 0,
 			"maximum": null,
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
 			"redacted": false,
-			"gated_by": "session.cleanup.enabled"
+			"warning": "",
+			"placeholder": "",
+			"gated_by": "session.cleanup.enabled",
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "session.cleanup.max_inactive_days",
@@ -1711,13 +2921,19 @@
 			"value": 0,
 			"default": 0,
 			"is_default": true,
-			"minimum": 0.0,
+			"minimum": 0,
 			"maximum": null,
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
 			"redacted": false,
-			"gated_by": "session.cleanup.enabled"
+			"warning": "",
+			"placeholder": "",
+			"gated_by": "session.cleanup.enabled",
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "session.cleanup.max_total_bytes",
@@ -1728,13 +2944,19 @@
 			"value": 0,
 			"default": 0,
 			"is_default": true,
-			"minimum": 0.0,
+			"minimum": 0,
 			"maximum": null,
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
 			"redacted": false,
-			"gated_by": "session.cleanup.enabled"
+			"warning": "",
+			"placeholder": "",
+			"gated_by": "session.cleanup.enabled",
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "session.cleanup.remove_empty",
@@ -1762,7 +2984,13 @@
 			],
 			"empty_unsets": false,
 			"redacted": false,
-			"gated_by": "session.cleanup.enabled"
+			"warning": "",
+			"placeholder": "",
+			"gated_by": "session.cleanup.enabled",
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "session.cleanup.delegated.enabled",
@@ -1789,7 +3017,14 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "session.cleanup.delegated.max_age_hours",
@@ -1800,13 +3035,18 @@
 			"value": 48,
 			"default": 48,
 			"is_default": true,
-			"minimum": 2.0,
-			"maximum": 720.0,
+			"minimum": 2,
+			"maximum": 720,
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
 			"redacted": false,
+			"warning": "",
+			"placeholder": "",
 			"gated_by": "session.cleanup.delegated.enabled",
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
 			"unit": "hours"
 		},
 		{
@@ -1823,7 +3063,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "subagents.max_running",
@@ -1839,7 +3086,71 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "subagents.slim_child_knowledge",
+			"section": "subagents",
+			"label": "Slim child knowledge",
+			"kind": "bool",
+			"help": "Keep skill/guide names; trim descriptions and parent extras.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "keep names, trim the rest"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "inherit the parent block as-is"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "subagents.max_team_depth",
+			"section": "subagents",
+			"label": "Max nested-team depth",
+			"kind": "int",
+			"help": "Deepest launch allowed in a tree that runs a team. 1 is the top's children.",
+			"value": 3,
+			"default": 3,
+			"is_default": true,
+			"minimum": 1,
+			"maximum": 8,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "subagents.model_choice",
@@ -1866,14 +3177,21 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "subagents.models.lo",
 			"section": "subagents",
 			"label": "Subagent model: lo",
 			"kind": "text",
-			"help": "Bills at that model's rates; empty inherits. See subagents.model_choice",
+			"help": "Bills at that model's rates; 'default': session; empty removes the tier",
 			"value": "",
 			"default": "",
 			"is_default": true,
@@ -1882,14 +3200,21 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": true,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "subagents.models.med",
 			"section": "subagents",
 			"label": "Subagent model: med",
 			"kind": "text",
-			"help": "Bills at that model's rates; empty inherits. See subagents.model_choice",
+			"help": "Bills at that model's rates; 'default': session; empty removes the tier",
 			"value": "",
 			"default": "",
 			"is_default": true,
@@ -1898,14 +3223,21 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": true,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "subagents.models.hi",
 			"section": "subagents",
 			"label": "Subagent model: hi",
 			"kind": "text",
-			"help": "Bills at that model's rates; empty inherits. See subagents.model_choice",
+			"help": "Bills at that model's rates; 'default': session; empty removes the tier",
 			"value": "",
 			"default": "",
 			"is_default": true,
@@ -1914,7 +3246,734 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": true,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "classification.auto",
+			"section": "classification",
+			"label": "Smart hints",
+			"kind": "bool",
+			"help": "On: a decision model may add advisory resources. Off: the prompt is unchanged.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "a decision model may add advisory resources"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "the prompt stays exactly as it is"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "classification.vendor",
+			"section": "classification",
+			"label": "↳ vendor",
+			"kind": "enum",
+			"help": "Needs recommendations on. Pin one leg; auto prefers Radient.",
+			"value": "auto",
+			"default": "auto",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": "auto",
+					"label": "auto",
+					"description": "first leg with a usable credential"
+				},
+				{
+					"value": "radient",
+					"label": "radient",
+					"description": "Radient's decision route"
+				},
+				{
+					"value": "typesafe",
+					"label": "typesafe",
+					"description": "TypeSafe's Jev endpoint"
+				},
+				{
+					"value": "openrouter",
+					"label": "openrouter",
+					"description": "OpenRouter's alpha decisions route"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": "classification.auto",
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "classification.model",
+			"section": "classification",
+			"label": "↳ model",
+			"kind": "text",
+			"help": "Needs recommendations on. Vendor model id; empty uses its default.",
+			"value": "",
+			"default": "",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": true,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": "classification.auto",
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "classification.timeoutMs",
+			"section": "classification",
+			"label": "↳ deadline (ms)",
+			"kind": "int",
+			"help": "Needs recommendations on. Per-call deadline; 0 uses 1500 ms.",
+			"value": 1500,
+			"default": 1500,
+			"is_default": true,
+			"minimum": 0,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": "classification.auto",
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "classification.waitMs",
+			"section": "classification",
+			"label": "↳ wait budget (ms)",
+			"kind": "int",
+			"help": "Needs recommendations on. How long a turn waits; 0 uses 50 ms.",
+			"value": 50,
+			"default": 50,
+			"is_default": true,
+			"minimum": 0,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": "classification.auto",
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "classification.maxStateChars",
+			"section": "classification",
+			"label": "↳ max state chars",
+			"kind": "int",
+			"help": "Needs recommendations on. State cap; 0 uses 6000 chars.",
+			"value": 6000,
+			"default": 6000,
+			"is_default": true,
+			"minimum": 0,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": "classification.auto",
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "classification.maxCandidates",
+			"section": "classification",
+			"label": "↳ max candidates",
+			"kind": "int",
+			"help": "Needs recommendations on. Candidates per kind; 0 uses 12.",
+			"value": 12,
+			"default": 12,
+			"is_default": true,
+			"minimum": 0,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": "classification.auto",
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "classification.maxRecommendations",
+			"section": "classification",
+			"label": "↳ max recommendations",
+			"kind": "int",
+			"help": "Needs recommendations on. Per-message resources; 0 uses 3.",
+			"value": 3,
+			"default": 3,
+			"is_default": true,
+			"minimum": 0,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": "classification.auto",
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "monitor.defaultIntervalS",
+			"section": "monitor",
+			"label": "Default interval (s)",
+			"kind": "int",
+			"help": "Checks every N seconds when 'every' is omitted; floor 30s.",
+			"value": 60,
+			"default": 60,
+			"is_default": true,
+			"minimum": 0,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "monitor.maxMonitors",
+			"section": "monitor",
+			"label": "Max per session",
+			"kind": "int",
+			"help": "Refuses arms past N; cancel one first.",
+			"value": 8,
+			"default": 8,
+			"is_default": true,
+			"minimum": 0,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "monitor.runTimeoutMs",
+			"section": "monitor",
+			"label": "Run timeout (ms)",
+			"kind": "int",
+			"help": "Per-check deadline; 0 uses 120000 ms.",
+			"value": 120000,
+			"default": 120000,
+			"is_default": true,
+			"minimum": 0,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "monitor.snapshotMaxChars",
+			"section": "monitor",
+			"label": "Snapshot cap (chars)",
+			"kind": "int",
+			"help": "Stored normalized output; bounds disk and diff input.",
+			"value": 32768,
+			"default": 32768,
+			"is_default": true,
+			"minimum": 0,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "monitor.maxDeltaLines",
+			"section": "monitor",
+			"label": "Max delta lines",
+			"kind": "int",
+			"help": "Changed lines summarised per delivery.",
+			"value": 12,
+			"default": 12,
+			"is_default": true,
+			"minimum": 0,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "monitor.deltaMaxChars",
+			"section": "monitor",
+			"label": "Delta budget (chars)",
+			"kind": "int",
+			"help": "Total delta text per delivery message.",
+			"value": 1200,
+			"default": 1200,
+			"is_default": true,
+			"minimum": 0,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "monitor.classifyMaxChars",
+			"section": "monitor",
+			"label": "Classifier state (chars)",
+			"kind": "int",
+			"help": "Bound on the changed lines the materiality check receives (the monitor's name and purpose ride along, clipped separately).",
+			"value": 1200,
+			"default": 1200,
+			"is_default": true,
+			"minimum": 0,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "monitor.maxConsecutiveFailures",
+			"section": "monitor",
+			"label": "Disable after failures",
+			"kind": "int",
+			"help": "Consecutive check failures before a monitor is disabled.",
+			"value": 5,
+			"default": 5,
+			"is_default": true,
+			"minimum": 0,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "monitor.maxDeliveriesPerHour",
+			"section": "monitor",
+			"label": "Deliveries per hour",
+			"kind": "int",
+			"help": "Per monitor; over the cap, changes are held and counted.",
+			"value": 12,
+			"default": 12,
+			"is_default": true,
+			"minimum": 0,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "monitor.normalizeTimestamps",
+			"section": "monitor",
+			"label": "Ignore timestamp churn",
+			"kind": "bool",
+			"help": "Treat timestamps as noise before diffing, so clock fields do not alarm.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "timestamps do not count as changes"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "timestamps diff like any text"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "supplements.enabled",
+			"section": "supplements",
+			"label": "Highlights",
+			"kind": "bool",
+			"help": "On: an answer can be followed by a line pointing at the files it made.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "files an answer produced are pointed out under it"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "nothing is added under an answer"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "supplements.files",
+			"section": "supplements",
+			"label": "↳ files",
+			"kind": "bool",
+			"help": "Needs Highlights on. Point out reports and exports an answer produced.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "deliverable files are listed"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "files are never listed"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": "supplements.enabled",
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "supplements.graphics",
+			"section": "supplements",
+			"label": "↳ graphics",
+			"kind": "bool",
+			"help": "Needs Highlights on. Draw a chart when an answer shows numbers. Spends model tokens.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "a chart may be generated (spends tokens)"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "no chart is ever generated"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": "supplements.enabled",
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "supplements.model",
+			"section": "supplements",
+			"label": "↳ graphics model",
+			"kind": "text",
+			"help": "Needs graphics on. auto picks a cheap fast model; session uses this session's.",
+			"value": "auto",
+			"default": "auto",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": "supplements.graphics",
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "supplements.maxTurns",
+			"section": "supplements",
+			"label": "↳ max turns",
+			"kind": "int",
+			"help": "Needs graphics on. Model turns per chart, including one repair.",
+			"value": 2,
+			"default": 2,
+			"is_default": true,
+			"minimum": 1,
+			"maximum": 4,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": "supplements.graphics",
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "supplements.maxOutputTokens",
+			"section": "supplements",
+			"label": "↳ max output tokens",
+			"kind": "int",
+			"help": "Needs graphics on. Output budget per generator turn.",
+			"value": 6000,
+			"default": 6000,
+			"is_default": true,
+			"minimum": 1,
+			"maximum": 1000000,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": "supplements.graphics",
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "supplements.timeoutS",
+			"section": "supplements",
+			"label": "↳ time limit (s)",
+			"kind": "int",
+			"help": "Needs Highlights on. Give up on a whole job after this long.",
+			"value": 90,
+			"default": 90,
+			"is_default": true,
+			"minimum": 1,
+			"maximum": 3600,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": "supplements.enabled",
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "supplements.maxCostUsd",
+			"section": "supplements",
+			"label": "↳ cost cap ($)",
+			"kind": "float",
+			"help": "Needs graphics on. Soft cap on one job's spend.",
+			"value": 1,
+			"default": 1,
+			"is_default": true,
+			"minimum": 0,
+			"maximum": 100,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": "supplements.graphics",
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "supplements.maxFeatured",
+			"section": "supplements",
+			"label": "↳ files shown",
+			"kind": "int",
+			"help": "Needs Highlights on. Files named before the rest fold into 'N more'.",
+			"value": 4,
+			"default": 4,
+			"is_default": true,
+			"minimum": 1,
+			"maximum": 12,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": "supplements.enabled",
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "supplements.denyPrefixes",
+			"section": "supplements",
+			"label": "↳ never list under",
+			"kind": "list",
+			"help": "Needs Highlights on. Comma-separated folders whose files are never listed or sent to a decision model; use it on a machine holding customer data.",
+			"value": [],
+			"default": [],
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": true,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "~/clients, ~/Documents/private",
+			"gated_by": "supplements.enabled",
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "fork.mode",
@@ -1941,7 +4000,14 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "fork.cmux_placement",
@@ -1968,7 +4034,14 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "compaction.enabled",
@@ -1995,7 +4068,14 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "compaction.strategy",
@@ -2032,7 +4112,14 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "compaction.threshold_percent",
@@ -2048,7 +4135,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "compaction.threshold_tokens",
@@ -2056,15 +4150,22 @@
 			"label": "Threshold (tokens)",
 			"kind": "int",
 			"help": "Absolute trigger. The smaller of this and the percentage wins.",
-			"value": 600000,
-			"default": 600000,
+			"value": 400000,
+			"default": 400000,
 			"is_default": true,
 			"minimum": 1,
 			"maximum": null,
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "compaction.keep_recent_tokens",
@@ -2080,7 +4181,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "compaction.auto_continue",
@@ -2107,7 +4215,14 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "compaction.mid_turn_enabled",
@@ -2134,7 +4249,14 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "compaction.wire_bytes_budget",
@@ -2150,7 +4272,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "compaction.wire_bytes_trigger",
@@ -2166,7 +4295,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "web_search.enabled",
@@ -2193,7 +4329,14 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "web_search.strategy",
@@ -2220,14 +4363,21 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "web_search.providers",
 			"section": "web_search",
 			"label": "Providers",
 			"kind": "list",
-			"help": "Comma-separated, in priority order.",
+			"help": "Comma-separated, in priority order; tried before the automatic free providers.",
 			"value": ["duckduckgo", "tavily"],
 			"default": ["duckduckgo", "tavily"],
 			"is_default": true,
@@ -2240,12 +4390,53 @@
 				"perplexity",
 				"brave",
 				"exa",
+				"parallel",
 				"serpapi",
 				"searxng"
 			],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "web_search.excluded_providers",
+			"section": "web_search",
+			"label": "Excluded providers",
+			"kind": "list",
+			"help": "Never used, even in the automatic chain. Comma-separated; empty = none excluded.",
+			"value": [],
+			"default": [],
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [
+				"duckduckgo",
+				"tavily",
+				"deepseek",
+				"perplexity",
+				"brave",
+				"exa",
+				"parallel",
+				"serpapi",
+				"searxng"
+			],
+			"choices": [],
+			"empty_unsets": true,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "web_search.timeout_seconds",
@@ -2261,7 +4452,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "web_search.searxng_endpoint",
@@ -2277,7 +4475,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "web_search.deepseek_evidence",
@@ -2293,7 +4498,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "web_search.read_enabled",
@@ -2309,7 +4521,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "web_fetch.enabled",
@@ -2336,7 +4555,14 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "web_fetch.timeout_seconds",
@@ -2352,7 +4578,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "web_fetch.max_bytes",
@@ -2368,7 +4601,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "web_fetch.max_redirects",
@@ -2384,7 +4624,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "web_fetch.cache_ttl_seconds",
@@ -2400,7 +4647,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "web_fetch.allow_private",
@@ -2427,7 +4681,14 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "web_fetch.render_backend",
@@ -2454,7 +4715,14 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "web_fetch.enrich",
@@ -2481,7 +4749,14 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "web_fetch.max_attempts",
@@ -2497,7 +4772,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "web_fetch.blocked_retry",
@@ -2524,7 +4806,83 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "hooks.native",
+			"section": "hooks",
+			"label": "Native hooks",
+			"kind": "bool",
+			"help": "Run hooks from hooks.json in the lop config dir after each tool call.",
+			"value": false,
+			"default": false,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "hooks.forward_claude",
+			"section": "hooks",
+			"label": "Forward Claude Code hooks",
+			"kind": "bool",
+			"help": "Run PostToolUse hooks from ~/.claude and plugins after each tool call.",
+			"value": false,
+			"default": false,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "hooks.forward_codex",
+			"section": "hooks",
+			"label": "Forward Codex hooks",
+			"kind": "bool",
+			"help": "Run PostToolUse hooks from ~/.codex/hooks.json after each tool call.",
+			"value": false,
+			"default": false,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "bash.shell",
@@ -2540,7 +4898,414 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": true,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "send.journal_unconfirmed",
+			"section": "tools",
+			"label": "Journal unacknowledged sends",
+			"kind": "bool",
+			"help": "Write a transcript notice when a `send` is not acknowledged. The tool result always reports it; this keeps a durable row too.",
+			"value": false,
+			"default": false,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "tools.search_interception.enabled",
+			"section": "tools",
+			"label": "Block unbounded searches",
+			"kind": "bool",
+			"help": "Refuse a shell `grep`/`rg`/`find` that recurses from a repository root or a vendor/build tree, and point the agent at the `grep` tool. A scoped or single-file search is never touched. Off disables the check.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "tools.search_interception.block",
+			"section": "tools",
+			"label": "...refuse rather than warn",
+			"kind": "bool",
+			"help": "On: the command is refused with a suggestion. Off: it runs anyway and the interception is logged, so an operator can watch before enforcing.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "tools.search_interception.rg_excludes",
+			"section": "tools",
+			"label": "...prune vendor trees for ripgrep",
+			"kind": "bool",
+			"help": "Give ripgrep a generated config that skips node_modules/.git/out etc., so an `rg` the guard does not block is still fast. Applies to ripgrep only.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "tools.defer",
+			"section": "tools",
+			"label": "Load rarely used tool schemas on demand",
+			"kind": "bool",
+			"help": "Keep rarely used tools' schemas out of every request until the agent reads tool://<name> or calls one. The tools stay callable either way. Off sends every schema on every request.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "bash.memory.enabled",
+			"section": "memory_guard",
+			"label": "Command memory limit",
+			"kind": "bool",
+			"help": "Give every bash command a RAM ceiling. A command whose process group crosses it is killed (its group only, never lop) so it cannot take the device down; the model is told to use less memory.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "cap command memory"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "no ceiling"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "bash.memory.mode",
+			"section": "memory_guard",
+			"label": "Ceiling source",
+			"kind": "enum",
+			"help": "'auto' derives the ceiling from the memory this device has free right now, so it tightens on its own when the machine is busy. 'manual' pins it to the number below.",
+			"value": "auto",
+			"default": "auto",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": "auto",
+					"label": "auto",
+					"description": "derive from available memory (default)"
+				},
+				{
+					"value": "manual",
+					"label": "manual",
+					"description": "use the limit_mb below"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "bash.memory.limit_mb",
+			"section": "memory_guard",
+			"label": "Manual ceiling (MB)",
+			"kind": "int",
+			"help": "The ceiling when 'manual' is selected above. 0 means use the auto ceiling instead, so leaving this at 0 never disables the guard.",
+			"value": 0,
+			"default": 0,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "bash.memory.soft_fraction",
+			"section": "memory_guard",
+			"label": "Advisory threshold",
+			"kind": "float",
+			"help": "Fraction of the ceiling at which one advisory line is emitted. It is only an advisory — userspace cannot slow an allocation — so it warns before the kill, it does not prevent it.",
+			"value": 0.8,
+			"default": 0.8,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "bash.query_budget.enabled",
+			"section": "query_budget",
+			"label": "Shell query budget",
+			"kind": "bool",
+			"help": "Time-box a shell `grep`/`find`/`du` walk that reads the filesystem rather than a scoped file: one advisory at 10 s, then a stop at the budget below. Builds, installs and test runs are never affected.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "time-box shell queries"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "no budget"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "bash.query_budget.stop",
+			"section": "query_budget",
+			"label": "...stop rather than warn",
+			"kind": "bool",
+			"help": "On: a query that crosses the budget is killed and told why. Off: it runs to completion and only the advisory is shown, so an operator can watch before enforcing.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "stop the query"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "advisory only"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "bash.query_budget.seconds",
+			"section": "query_budget",
+			"label": "Budget (seconds)",
+			"kind": "int",
+			"help": "Wall-clock budget for one shell query. The advisory fires at 10 s whatever this says; this is the stop. A per-command prefix of LOCAL_OPERATOR_ALLOW_SLOW_QUERY=1 skips the stop for a justified run.",
+			"value": 60,
+			"default": 60,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "shell_environment.mode",
+			"section": "shell_environment",
+			"label": "Agent shell environment",
+			"kind": "enum",
+			"help": "'inherit' lets a command the agent runs see your environment (gh, aws, npm keep their tokens). 'allowlist' passes only PATH/HOME/SHELL/TERM/USER/LOGNAME plus the two lists beside this, so the provider key this session launched with is not handed to a command the model writes. Read once per session: changing it takes effect at the next launch.",
+			"value": "inherit",
+			"default": "inherit",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": "inherit",
+					"label": "inherit",
+					"description": "your environment, as today (default)"
+				},
+				{
+					"value": "allowlist",
+					"label": "allowlist",
+					"description": "the safe set plus the lists below, nothing else"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "shell_environment.inherit",
+			"section": "shell_environment",
+			"label": "…kept in allowlist mode",
+			"kind": "list",
+			"help": "Empty = the safe set alone. Names the allowlist mode keeps ON TOP of the safe set — e.g. LOCAL_OPERATOR_CONFIG_DIR for a shell that must still resolve $(lop secret get NAME), or LANG. Inert in inherit mode.",
+			"value": [],
+			"default": [],
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": true,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "LOCAL_OPERATOR_CONFIG_DIR, LANG, …",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "shell_environment.exclude",
+			"section": "shell_environment",
+			"label": "…removed in both modes",
+			"kind": "list",
+			"help": "Empty = nothing removed. Names never handed to a command the agent runs, in either mode — including the session credential store's own injections, so this is how a variable is denied outright. Covers the bash and eval children only; MCP servers and the harness's own processes are not governed by it.",
+			"value": [],
+			"default": [],
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": true,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "OPENROUTER_API_KEY, …",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "providers.lmstudio.base_url",
@@ -2556,7 +5321,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "providers.lmstudio.models",
@@ -2572,7 +5344,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "providers.ollama.base_url",
@@ -2588,7 +5367,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "providers.ollama.models",
@@ -2604,7 +5390,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "providers.vllm.base_url",
@@ -2620,7 +5413,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "providers.vllm.models",
@@ -2636,7 +5436,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "providers.llamacpp.base_url",
@@ -2652,7 +5459,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "providers.llamacpp.models",
@@ -2668,7 +5482,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "providers.openai-compatible.base_url",
@@ -2684,7 +5505,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "providers.openai-compatible.models",
@@ -2700,7 +5528,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "conversation_length",
@@ -2716,7 +5551,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "detail_length",
@@ -2732,7 +5574,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "max_learnings_history",
@@ -2748,7 +5597,106 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "classification.notice",
+			"section": "retired",
+			"label": "Smart hints notice",
+			"kind": "readonly",
+			"help": "Deprecated. Smart hints is silent in the chat; the call is in the log.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "console.max_live",
+			"section": "console",
+			"label": "Live terminal ceiling",
+			"kind": "int",
+			"help": "32–256; default 128. Managed memory, terminal cells and available native resources can admit fewer terminals. This does not limit child-process memory.",
+			"value": 128,
+			"default": 128,
+			"is_default": true,
+			"minimum": 32,
+			"maximum": 256,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "console.max_owner",
+			"section": "console",
+			"label": "Agent terminals per conversation",
+			"kind": "int",
+			"help": "1–32; default 8. Each conversation shares the global live allowance; completed terminals do not count.",
+			"value": 8,
+			"default": 8,
+			"is_default": true,
+			"minimum": 1,
+			"maximum": 32,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "console.user_reserved",
+			"section": "console",
+			"label": "Slots reserved for user terminals",
+			"kind": "int",
+			"help": "4–32; default 16, capped at one quarter of the live ceiling. Agent starts cannot consume these slots. Existing work is never stopped.",
+			"value": 16,
+			"default": 16,
+			"is_default": true,
+			"minimum": 4,
+			"maximum": 32,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "desktop.launch_command",
@@ -2765,7 +5713,906 @@
 			"choices": [],
 			"empty_unsets": true,
 			"redacted": false,
-			"placeholder": "local-operator-ui --open-session {session}"
+			"warning": "",
+			"placeholder": "local-operator-ui --open-session {session}",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "static.roots",
+			"section": "static",
+			"label": "Extra preview roots",
+			"kind": "list",
+			"help": "Empty = only the built-in roots. Consulted only by the fallback posture (a connection that is not loopback): normal loopback previews can serve any readable file. Comma-separated absolute directories; dot-directories below a root are never served.",
+			"value": [],
+			"default": [],
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": true,
+			"redacted": false,
+			"warning": "only applies to the fallback (non-loopback) posture",
+			"placeholder": "~/Documents, /Volumes/data/reports",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "network.listen_address",
+			"section": "network",
+			"label": "Listen address",
+			"kind": "text",
+			"help": "127.0.0.1 = dial-only; 0.0.0.0 = all; or one address.",
+			"value": "0.0.0.0",
+			"default": "0.0.0.0",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "network.port",
+			"section": "network",
+			"label": "Mesh port",
+			"kind": "int",
+			"help": "The port peers dial; endpoints without one use it.",
+			"value": 4097,
+			"default": 4097,
+			"is_default": true,
+			"minimum": 1,
+			"maximum": 65535,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "network.advertise_hosts",
+			"section": "network",
+			"label": "Advertised endpoints",
+			"kind": "list",
+			"help": "Empty = detected. Others: host:port, e.g. 203.0.113.7:4097",
+			"value": [],
+			"default": [],
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": true,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "203.0.113.7:4097, tunnel.example.com:4100",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "network.audit.max_bytes",
+			"section": "network",
+			"label": "Audit size per generation",
+			"kind": "int",
+			"help": "Bytes per generation, after rotation. 8 MiB of gzipped JSONL is roughly 55k records; the five-generation ceiling is therefore ~40 MiB.",
+			"value": 8388608,
+			"default": 8388608,
+			"is_default": true,
+			"minimum": 65536,
+			"maximum": 1073741824,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "network.audit.generations",
+			"section": "network",
+			"label": "Audit generations kept",
+			"kind": "int",
+			"help": "Rotated files kept before the oldest is pruned and that pruning is recorded.",
+			"value": 5,
+			"default": 5,
+			"is_default": true,
+			"minimum": 1,
+			"maximum": 50,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "network.audit.max_age_days",
+			"section": "network",
+			"label": "Audit age cap (days)",
+			"kind": "float",
+			"help": "Age and size both rotate, because age binds on a quiet install and size on a busy one. Export with `lop network log --export` before pruning.",
+			"value": 90,
+			"default": 90,
+			"is_default": true,
+			"minimum": 1,
+			"maximum": 3650,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "network.rollout_on_update",
+			"section": "mesh_updates",
+			"label": "Roll the mesh after an update",
+			"kind": "enum",
+			"help": "After `lop update` installs a newer build here, ask this device's mesh members to move to it: one at a time, each waiting for idle, never forced. Off: only `lop network update` rolls. A member that has not granted this device `update` is skipped, with the remedy to grant it there.",
+			"value": "auto",
+			"default": "auto",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": "auto",
+					"label": "auto",
+					"description": "roll when an update moves to a newer build"
+				},
+				{
+					"value": "off",
+					"label": "off",
+					"description": "only `lop network update` rolls"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "network.max_handshakes",
+			"section": "network",
+			"label": "Concurrent handshakes",
+			"kind": "int",
+			"help": "Unauthenticated connections this relay will hold at once. A pairing holds one for the seconds until the code is typed; anything past the cap is dropped at accept, with no reply frame.",
+			"value": 8,
+			"default": 8,
+			"is_default": true,
+			"minimum": 1,
+			"maximum": 1024,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "network.sync.debounce_s",
+			"section": "network",
+			"label": "Sync quiet period (s)",
+			"kind": "float",
+			"help": "Seconds a session's transcript must stay unchanged before its owner tells devices holding a copy to pull. A session going idle pushes at once, so its final message is never held back by this.",
+			"value": 30,
+			"default": 30,
+			"is_default": true,
+			"minimum": 1,
+			"maximum": 3600,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "network.sync.tick_s",
+			"section": "network",
+			"label": "Sync check interval (s)",
+			"kind": "float",
+			"help": "How often the owner checks copied sessions for changes: one file stat each.",
+			"value": 15,
+			"default": 15,
+			"is_default": true,
+			"minimum": 1,
+			"maximum": 3600,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "network.credentials.grant_ttl_s",
+			"section": "network",
+			"label": "Borrowed login lifetime (s)",
+			"kind": "float",
+			"help": "The longest a device may use a login it borrowed from its owner before asking again, and so how long a revoked or offline owner's login keeps working elsewhere. Never longer than the token itself.",
+			"value": 900,
+			"default": 900,
+			"is_default": true,
+			"minimum": 60,
+			"maximum": 3600,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "network.credentials.github.repositories",
+			"section": "network",
+			"label": "GitHub repositories",
+			"kind": "list",
+			"help": "owner/repo entries a brokered GitHub token may touch (empty: none)",
+			"value": [],
+			"default": [],
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": true,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "damianvtran/scratch, damianvtran/sandbox",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "hub.auto_update.agents",
+			"section": "hub",
+			"label": "Auto-update agents",
+			"kind": "bool",
+			"help": "Merge hub updates into pulled agents automatically.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "merge hub updates automatically"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "only tell me; I apply them"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "hub.auto_update.teams",
+			"section": "hub",
+			"label": "Auto-update teams",
+			"kind": "bool",
+			"help": "Merge hub updates into pulled teams automatically.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "merge hub updates automatically"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "only tell me; I apply them"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "hub.check_interval_min",
+			"section": "hub",
+			"label": "Check interval (minutes)",
+			"kind": "int",
+			"help": "Minutes between hub update checks (both modes).",
+			"value": 60,
+			"default": 60,
+			"is_default": true,
+			"minimum": 5,
+			"maximum": 1440,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "agents.auto_update.seeds",
+			"section": "agents",
+			"label": "Auto-update built-in roles",
+			"kind": "bool",
+			"help": "At launch, update unedited built-ins; tool changes still ask.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "keep unedited built-ins current"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "only tell me; I apply them"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "aida.enabled",
+			"section": "aida",
+			"label": "Chief of staff enabled",
+			"kind": "bool",
+			"help": "Read at boot and by /aida; a disabled install never creates her session.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "enabled"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "disabled"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "aida.name",
+			"section": "aida",
+			"label": "Display name",
+			"kind": "text",
+			"help": "What she is called everywhere. Renaming her conversation or /aida rename <name> updates it.",
+			"value": "Aida",
+			"default": "Aida",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "Aida",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "aida.cadence.at",
+			"section": "aida",
+			"label": "Daily check-in time",
+			"kind": "text",
+			"help": "Local wall-clock HH:MM. An invalid value falls back to 08:30 at the next arm.",
+			"value": "08:30",
+			"default": "08:30",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "08:30",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "aida.cadence.interval_hours",
+			"section": "aida",
+			"label": "Check-in interval (hours)",
+			"kind": "int",
+			"help": "0 keeps the daily local check-in time. 1–168 uses elapsed hours; 4 checks in every four hours. Changes preserve an already-owed check-in.",
+			"value": 0,
+			"default": 0,
+			"is_default": true,
+			"minimum": 0,
+			"maximum": 168,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "aida.cadence.paused",
+			"section": "aida",
+			"label": "Cadence paused",
+			"kind": "bool",
+			"help": "Written by /aida pause|resume, which also hold her wakes; editing it here works the same way at her next tick.",
+			"value": false,
+			"default": false,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "paused"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "running"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "aida.cadence.max_extra_per_day",
+			"section": "aida",
+			"label": "Extra check-ins / day",
+			"kind": "int",
+			"help": "How many escalation check-ins she may arm per day. 0 disables escalation.",
+			"value": 2,
+			"default": 2,
+			"is_default": true,
+			"minimum": 0,
+			"maximum": 12,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "aida.cadence.min_gap_minutes",
+			"section": "aida",
+			"label": "Minimum gap (minutes)",
+			"kind": "int",
+			"help": "Minimum spacing between her wakes; closer requests are refused.",
+			"value": 90,
+			"default": 90,
+			"is_default": true,
+			"minimum": 0,
+			"maximum": 1440,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "aida.onboarding.nudge_days",
+			"section": "aida",
+			"label": "Integration nudge interval (days)",
+			"kind": "int",
+			"help": "How rarely she may nudge about setting up an integration. Read from the onboarding slice.",
+			"value": 14,
+			"default": 14,
+			"is_default": true,
+			"minimum": 1,
+			"maximum": 365,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "projects.stale_after_hours",
+			"section": "projects",
+			"label": "Stale after (hours)",
+			"kind": "int",
+			"help": "A project whose progress is older than this reads stale and is worth a check-in. 1–168 hours.",
+			"value": 4,
+			"default": 4,
+			"is_default": true,
+			"minimum": 1,
+			"maximum": 168,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "wakes.triggers.enabled",
+			"section": "wakes",
+			"label": "Enabled",
+			"kind": "bool",
+			"help": "Master switch for trigger wakes; off means no check-in is ever created.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "enabled"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "disabled"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "wakes.triggers.max_per_day",
+			"section": "wakes",
+			"label": "Max check-in wakes per day",
+			"kind": "int",
+			"help": "Per-target rolling 24 h budget for trigger wakes. 0 disables trigger wakes without touching the switch above.",
+			"value": 6,
+			"default": 6,
+			"is_default": true,
+			"minimum": 0,
+			"maximum": 48,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "wakes.triggers.min_gap_minutes",
+			"section": "wakes",
+			"label": "Minimum gap (minutes)",
+			"kind": "int",
+			"help": "Minimum spacing between trigger wakes to the same target.",
+			"value": 60,
+			"default": 60,
+			"is_default": true,
+			"minimum": 10,
+			"maximum": 1440,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "wakes.triggers.project_staleness.enabled",
+			"section": "wakes",
+			"label": "Project staleness trigger",
+			"kind": "bool",
+			"help": "Wake to check in on projects whose progress went stale. Settled (done/paused/archived) projects are never watched.",
+			"value": true,
+			"default": true,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": true,
+					"label": "on",
+					"description": "watching"
+				},
+				{
+					"value": false,
+					"label": "off",
+					"description": "off"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "proactive.patience.default_ms",
+			"section": "proactive",
+			"label": "Default patience wait (ms)",
+			"kind": "int",
+			"help": "How long a hidden wait defaults to when the agent does not size one (milliseconds; 300000 = 5 min). Clamped 60 s..24 h.",
+			"value": 300000,
+			"default": 300000,
+			"is_default": true,
+			"minimum": 60000,
+			"maximum": 86400000,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "proactive.patience.backoff",
+			"section": "proactive",
+			"label": "Patience backoff factor",
+			"kind": "int",
+			"help": "Each later wait in a cycle is at least this many times the first — the default 5/15/45-minute progression.",
+			"value": 3,
+			"default": 3,
+			"is_default": true,
+			"minimum": 1,
+			"maximum": 10,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "proactive.patience.max_attempts",
+			"section": "proactive",
+			"label": "Patience max attempts",
+			"kind": "int",
+			"help": "How many outbound waits one cycle may hold before it must end.",
+			"value": 3,
+			"default": 3,
+			"is_default": true,
+			"minimum": 1,
+			"maximum": 10,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "proactive.patience.episode_ttl_ms",
+			"section": "proactive",
+			"label": "Patience cycle TTL (ms)",
+			"kind": "int",
+			"help": "Hard stop for one cycle however the waits were sized (milliseconds; 7200000 = 2 h). A fire past it retires silently.",
+			"value": 7200000,
+			"default": 7200000,
+			"is_default": true,
+			"minimum": 60000,
+			"maximum": 86400000,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "proactive.patience.max_pending",
+			"section": "proactive",
+			"label": "Pending waits per session",
+			"kind": "int",
+			"help": "How many hidden waits may be pending at once for one session.",
+			"value": 4,
+			"default": 4,
+			"is_default": true,
+			"minimum": 0,
+			"maximum": 16,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "speech.voice.gender",
@@ -2797,7 +6644,14 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "speech.voice.tone",
@@ -2839,7 +6693,14 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "speech.voice.expressiveness",
@@ -2871,7 +6732,14 @@
 				}
 			],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "speech.voice.pace",
@@ -2887,7 +6755,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "speech.voice.language",
@@ -2903,7 +6778,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": true,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "speech.voice.accent",
@@ -2919,7 +6801,14 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": true,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "speech.voice.instructions",
@@ -2935,7 +6824,60 @@
 			"members": [],
 			"choices": [],
 			"empty_unsets": false,
-			"redacted": false
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "team_bridge.enabled",
+			"section": "team_bridge",
+			"label": "Enabled on this machine",
+			"kind": "bool",
+			"help": "Off by default. Also needs a Radient sign-in and an eligible organization.",
+			"value": false,
+			"default": false,
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
+			"key": "team_bridge.session",
+			"section": "team_bridge",
+			"label": "CoS session",
+			"kind": "text",
+			"help": "Session that may be woken for new messages; empty = badge only.",
+			"value": "",
+			"default": "",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": true,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		},
 		{
 			"key": "asks.lapsed_visible_for",
