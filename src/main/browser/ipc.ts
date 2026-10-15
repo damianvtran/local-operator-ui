@@ -1,4 +1,5 @@
 import { type BrowserWindow, type IpcMainInvokeEvent, ipcMain } from "electron";
+import { t } from "../../i18n";
 import { trustedDesktopFrame } from "../desktop-transport";
 import type { WebauthnChooser } from "../webauthn";
 import type { BrowserHost, CloseTabsIntent } from "./host";
@@ -86,6 +87,8 @@ export const BROWSER_IPC_CHANNELS = [
 	"browser-reopen-tab",
 	"browser-focus-page",
 	"browser-new-tab",
+	"browser-reorder-tabs",
+	"browser-tab-action",
 	"browser-close-tab",
 	"browser-close-tabs",
 	"browser-activate-tab",
@@ -167,6 +170,27 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 		return host.newTab(optionalConversationOrThrow(sessionId));
 	});
 
+	ipcMain.handle("browser-reorder-tabs", (event, ids: unknown) => {
+		const host = authorize(event);
+		if (
+			!Array.isArray(ids) ||
+			ids.length > 512 ||
+			Array.from(ids).some(
+				(id) => typeof id !== "number" || !Number.isSafeInteger(id) || id < 0,
+			)
+		)
+			throw new Error(t("ui.browser.chrome.invalid_order"));
+		return host.reorderChromeTabs(ids);
+	});
+	ipcMain.handle(
+		"browser-tab-action",
+		(event, tabId: unknown, action: unknown) => {
+			const host = authorize(event);
+			if (action !== "duplicate" && action !== "reload")
+				throw new Error(t("ui.browser.chrome.invalid_action"));
+			return host.actOnChromeTab(numberOrThrow(tabId, "tabId"), action);
+		},
+	);
 	ipcMain.handle("browser-close-tab", (event, tabId: unknown) => {
 		const host = authorize(event);
 		return host.closeTab(numberOrThrow(tabId, "tabId"));

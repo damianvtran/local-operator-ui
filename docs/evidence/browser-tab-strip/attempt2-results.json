@@ -1,0 +1,1673 @@
+[
+  {
+    "name": "PREFLIGHT",
+    "actual": {
+      "hello": {
+        "armed": true,
+        "outDir": "/Users/damian/.local-operator/sessions/291e40a1ea40/scratchpad/b2-native/runtime/out",
+        "title": "Local Operator",
+        "route": "/chat",
+        "href": "file:///Users/damian/local-operator-ui/.worktrees/browser-tab-strip/out/renderer/index.html#/chat",
+        "theme": "localOperatorDark",
+        "viewport": {
+          "width": 1380,
+          "height": 900,
+          "devicePixelRatio": 2
+        },
+        "visibilityState": "visible",
+        "hasFocus": false,
+        "apiBaseUrl": "http://127.0.0.1:1",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) LocalOperator/44.3.0 Chrome/152.0.7977.78 Electron/44.3.0 Safari/537.36"
+      },
+      "facts": {
+        "windowMode": "headless",
+        "appVersion": "44.3.0",
+        "platform": "darwin",
+        "title": "Local Operator",
+        "windowSize": {
+          "width": 1380,
+          "height": 900
+        },
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        },
+        "visible": false,
+        "focused": false,
+        "minimized": false,
+        "frames": [],
+        "outDir": "/Users/damian/.local-operator/sessions/291e40a1ea40/scratchpad/b2-native/runtime/out"
+      },
+      "native": {
+        "userData": "/Users/damian/.local-operator/sessions/291e40a1ea40/scratchpad/b2-native/runtime/userdata",
+        "appPath": "/Users/damian/.local-operator/sessions/291e40a1ea40/scratchpad/b2-native-carrier",
+        "focusedWindow": null,
+        "windows": [
+          {
+            "id": 2,
+            "visible": false,
+            "focused": false,
+            "bounds": {
+              "x": 174,
+              "y": 45,
+              "width": 1380,
+              "height": 900
+            },
+            "url": "file:///Users/damian/local-operator-ui/.worktrees/browser-tab-strip/out/renderer/index.html#/chat"
+          },
+          {
+            "id": 1,
+            "visible": false,
+            "focused": false,
+            "bounds": {
+              "x": 544,
+              "y": 443,
+              "width": 640,
+              "height": 168
+            },
+            "url": "file:///Users/damian/local-operator-ui/.worktrees/browser-tab-strip/out/renderer/mini.html"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "BOUNDARY agent-owned BEFORE raw",
+    "actual": {
+      "activeTabId": 1,
+      "tabs": [
+        {
+          "tabId": 1,
+          "owner": "user",
+          "sessionId": null,
+          "handedOver": false,
+          "url": "http://127.0.0.1:59915/handed-src",
+          "title": "Fixture /handed-src",
+          "failed": false,
+          "active": true
+        },
+        {
+          "tabId": 2,
+          "owner": "agent",
+          "sessionId": "proof",
+          "handedOver": false,
+          "url": "http://127.0.0.1:59915/agent-src",
+          "title": "Fixture /agent-src",
+          "failed": false,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "name": "BOUNDARY agent-owned SETTLED raw",
+    "actual": {
+      "sourceId": 2,
+      "action": "duplicate",
+      "startedAt": 1792068058336,
+      "status": "settled",
+      "before": {
+        "activeTabId": 1,
+        "tabs": [
+          {
+            "tabId": 1,
+            "owner": "user",
+            "sessionId": null,
+            "handedOver": false,
+            "url": "http://127.0.0.1:59915/handed-src",
+            "title": "Fixture /handed-src",
+            "failed": false,
+            "active": true
+          },
+          {
+            "tabId": 2,
+            "owner": "agent",
+            "sessionId": "proof",
+            "handedOver": false,
+            "url": "http://127.0.0.1:59915/agent-src",
+            "title": "Fixture /agent-src",
+            "failed": false,
+            "active": false
+          }
+        ]
+      },
+      "loadsBefore": 7,
+      "outcome": {
+        "status": "completed",
+        "action": "duplicate",
+        "tabId": 3
+      },
+      "after": {
+        "activeTabId": 3,
+        "tabs": [
+          {
+            "tabId": 1,
+            "owner": "user",
+            "sessionId": null,
+            "handedOver": false,
+            "url": "http://127.0.0.1:59915/handed-src",
+            "title": "Fixture /handed-src",
+            "failed": false,
+            "active": false
+          },
+          {
+            "tabId": 2,
+            "owner": "agent",
+            "sessionId": "proof",
+            "handedOver": false,
+            "url": "http://127.0.0.1:59915/agent-src",
+            "title": "Fixture /agent-src",
+            "failed": false,
+            "active": false
+          },
+          {
+            "tabId": 3,
+            "owner": "user",
+            "sessionId": null,
+            "handedOver": false,
+            "url": "http://127.0.0.1:59915/agent-src",
+            "title": "Fixture /agent-src",
+            "failed": false,
+            "active": true
+          }
+        ]
+      },
+      "loads": [
+        {
+          "contentsId": 6,
+          "url": "http://127.0.0.1:59915/agent-src",
+          "startedAt": 1792068058338,
+          "status": "completed",
+          "settledAt": 1792068058416
+        }
+      ],
+      "settledAt": 1792068058420
+    }
+  },
+  {
+    "name": "BOUNDARY agent-owned RAW duplicate",
+    "actual": {
+      "source": {
+        "tabId": 2,
+        "owner": "agent",
+        "sessionId": "proof",
+        "handedOver": false,
+        "url": "http://127.0.0.1:59915/agent-src",
+        "title": "Fixture /agent-src",
+        "failed": false,
+        "active": false
+      },
+      "copy": {
+        "tabId": 3,
+        "owner": "user",
+        "sessionId": null,
+        "handedOver": false,
+        "url": "http://127.0.0.1:59915/agent-src",
+        "title": "Fixture /agent-src",
+        "failed": false,
+        "active": true
+      },
+      "allTabs": [
+        {
+          "tabId": 1,
+          "owner": "user",
+          "sessionId": null,
+          "handedOver": false,
+          "url": "http://127.0.0.1:59915/handed-src",
+          "title": "Fixture /handed-src",
+          "failed": false,
+          "active": false
+        },
+        {
+          "tabId": 2,
+          "owner": "agent",
+          "sessionId": "proof",
+          "handedOver": false,
+          "url": "http://127.0.0.1:59915/agent-src",
+          "title": "Fixture /agent-src",
+          "failed": false,
+          "active": false
+        },
+        {
+          "tabId": 3,
+          "owner": "user",
+          "sessionId": null,
+          "handedOver": false,
+          "url": "http://127.0.0.1:59915/agent-src",
+          "title": "Fixture /agent-src",
+          "failed": false,
+          "active": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "BOUNDARY agent-owned agent refusals",
+    "actual": {
+      "tabId": 3,
+      "noncePublished": false,
+      "listingHandleEmpty": true,
+      "refusals": [
+        {
+          "inputKind": "numeric-id",
+          "status": 200,
+          "ok": false,
+          "code": "tab_closed"
+        },
+        {
+          "inputKind": "rebound-source-nonce",
+          "status": 200,
+          "ok": false,
+          "code": "tab_closed"
+        }
+      ]
+    }
+  },
+  {
+    "name": "BOUNDARY agent-owned one initial navigation",
+    "actual": {
+      "loads": [
+        {
+          "contentsId": 6,
+          "url": "http://127.0.0.1:59915/agent-src",
+          "startedAt": 1792068058338,
+          "status": "completed",
+          "settledAt": 1792068058416
+        }
+      ]
+    }
+  },
+  {
+    "name": "BOUNDARY handed-over BEFORE raw",
+    "actual": {
+      "activeTabId": 3,
+      "tabs": [
+        {
+          "tabId": 1,
+          "owner": "agent",
+          "sessionId": "proof",
+          "handedOver": true,
+          "url": "http://127.0.0.1:59915/handed-src",
+          "title": "Fixture /handed-src",
+          "failed": false,
+          "active": false
+        },
+        {
+          "tabId": 2,
+          "owner": "agent",
+          "sessionId": "proof",
+          "handedOver": false,
+          "url": "http://127.0.0.1:59915/agent-src",
+          "title": "Fixture /agent-src",
+          "failed": false,
+          "active": false
+        },
+        {
+          "tabId": 3,
+          "owner": "user",
+          "sessionId": null,
+          "handedOver": false,
+          "url": "http://127.0.0.1:59915/agent-src",
+          "title": "Fixture /agent-src",
+          "failed": false,
+          "active": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "BOUNDARY handed-over SETTLED raw",
+    "actual": {
+      "sourceId": 1,
+      "action": "duplicate",
+      "startedAt": 1792068058467,
+      "status": "settled",
+      "before": {
+        "activeTabId": 3,
+        "tabs": [
+          {
+            "tabId": 1,
+            "owner": "agent",
+            "sessionId": "proof",
+            "handedOver": true,
+            "url": "http://127.0.0.1:59915/handed-src",
+            "title": "Fixture /handed-src",
+            "failed": false,
+            "active": false
+          },
+          {
+            "tabId": 2,
+            "owner": "agent",
+            "sessionId": "proof",
+            "handedOver": false,
+            "url": "http://127.0.0.1:59915/agent-src",
+            "title": "Fixture /agent-src",
+            "failed": false,
+            "active": false
+          },
+          {
+            "tabId": 3,
+            "owner": "user",
+            "sessionId": null,
+            "handedOver": false,
+            "url": "http://127.0.0.1:59915/agent-src",
+            "title": "Fixture /agent-src",
+            "failed": false,
+            "active": true
+          }
+        ]
+      },
+      "loadsBefore": 8,
+      "outcome": {
+        "status": "completed",
+        "action": "duplicate",
+        "tabId": 4
+      },
+      "after": {
+        "activeTabId": 4,
+        "tabs": [
+          {
+            "tabId": 1,
+            "owner": "agent",
+            "sessionId": "proof",
+            "handedOver": true,
+            "url": "http://127.0.0.1:59915/handed-src",
+            "title": "Fixture /handed-src",
+            "failed": false,
+            "active": false
+          },
+          {
+            "tabId": 2,
+            "owner": "agent",
+            "sessionId": "proof",
+            "handedOver": false,
+            "url": "http://127.0.0.1:59915/agent-src",
+            "title": "Fixture /agent-src",
+            "failed": false,
+            "active": false
+          },
+          {
+            "tabId": 3,
+            "owner": "user",
+            "sessionId": null,
+            "handedOver": false,
+            "url": "http://127.0.0.1:59915/agent-src",
+            "title": "Fixture /agent-src",
+            "failed": false,
+            "active": false
+          },
+          {
+            "tabId": 4,
+            "owner": "user",
+            "sessionId": null,
+            "handedOver": false,
+            "url": "http://127.0.0.1:59915/handed-src",
+            "title": "Fixture /handed-src",
+            "failed": false,
+            "active": true
+          }
+        ]
+      },
+      "loads": [
+        {
+          "contentsId": 7,
+          "url": "http://127.0.0.1:59915/handed-src",
+          "startedAt": 1792068058469,
+          "status": "completed",
+          "settledAt": 1792068058542
+        }
+      ],
+      "settledAt": 1792068058545
+    }
+  },
+  {
+    "name": "BOUNDARY handed-over RAW duplicate",
+    "actual": {
+      "source": {
+        "tabId": 1,
+        "owner": "agent",
+        "sessionId": "proof",
+        "handedOver": true,
+        "url": "http://127.0.0.1:59915/handed-src",
+        "title": "Fixture /handed-src",
+        "failed": false,
+        "active": false
+      },
+      "copy": {
+        "tabId": 4,
+        "owner": "user",
+        "sessionId": null,
+        "handedOver": false,
+        "url": "http://127.0.0.1:59915/handed-src",
+        "title": "Fixture /handed-src",
+        "failed": false,
+        "active": true
+      },
+      "allTabs": [
+        {
+          "tabId": 1,
+          "owner": "agent",
+          "sessionId": "proof",
+          "handedOver": true,
+          "url": "http://127.0.0.1:59915/handed-src",
+          "title": "Fixture /handed-src",
+          "failed": false,
+          "active": false
+        },
+        {
+          "tabId": 2,
+          "owner": "agent",
+          "sessionId": "proof",
+          "handedOver": false,
+          "url": "http://127.0.0.1:59915/agent-src",
+          "title": "Fixture /agent-src",
+          "failed": false,
+          "active": false
+        },
+        {
+          "tabId": 3,
+          "owner": "user",
+          "sessionId": null,
+          "handedOver": false,
+          "url": "http://127.0.0.1:59915/agent-src",
+          "title": "Fixture /agent-src",
+          "failed": false,
+          "active": false
+        },
+        {
+          "tabId": 4,
+          "owner": "user",
+          "sessionId": null,
+          "handedOver": false,
+          "url": "http://127.0.0.1:59915/handed-src",
+          "title": "Fixture /handed-src",
+          "failed": false,
+          "active": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "BOUNDARY handed-over agent refusals",
+    "actual": {
+      "tabId": 4,
+      "noncePublished": false,
+      "listingHandleEmpty": true,
+      "refusals": [
+        {
+          "inputKind": "numeric-id",
+          "status": 200,
+          "ok": false,
+          "code": "tab_closed"
+        },
+        {
+          "inputKind": "rebound-source-nonce",
+          "status": 200,
+          "ok": false,
+          "code": "tab_closed"
+        }
+      ]
+    }
+  },
+  {
+    "name": "BOUNDARY handed-over one initial navigation",
+    "actual": {
+      "loads": [
+        {
+          "contentsId": 7,
+          "url": "http://127.0.0.1:59915/handed-src",
+          "startedAt": 1792068058469,
+          "status": "completed",
+          "settledAt": 1792068058542
+        }
+      ]
+    }
+  },
+  {
+    "name": "BOUNDARY COMPLETE",
+    "actual": {
+      "agentOwned": true,
+      "handedOver": true,
+      "unattributed": true,
+      "capabilityRefused": true,
+      "rawSnapshotsBeforeTeardown": true
+    }
+  },
+  {
+    "name": "TYPED FAILURE actual network BEFORE raw",
+    "actual": {
+      "activeTabId": 5,
+      "tabs": [
+        {
+          "tabId": 1,
+          "owner": "agent",
+          "sessionId": "proof",
+          "handedOver": true,
+          "url": "http://127.0.0.1:59915/handed-src",
+          "title": "Fixture /handed-src",
+          "failed": false,
+          "active": false
+        },
+        {
+          "tabId": 2,
+          "owner": "agent",
+          "sessionId": "proof",
+          "handedOver": false,
+          "url": "http://127.0.0.1:59915/agent-src",
+          "title": "Fixture /agent-src",
+          "failed": false,
+          "active": false
+        },
+        {
+          "tabId": 3,
+          "owner": "user",
+          "sessionId": null,
+          "handedOver": false,
+          "url": "http://127.0.0.1:59915/agent-src",
+          "title": "Fixture /agent-src",
+          "failed": false,
+          "active": false
+        },
+        {
+          "tabId": 4,
+          "owner": "user",
+          "sessionId": null,
+          "handedOver": false,
+          "url": "http://127.0.0.1:59915/handed-src",
+          "title": "Fixture /handed-src",
+          "failed": false,
+          "active": false
+        },
+        {
+          "tabId": 5,
+          "owner": "user",
+          "sessionId": null,
+          "handedOver": false,
+          "url": "http://127.0.0.1:59915/fault-src",
+          "title": "Fixture /fault-src",
+          "failed": false,
+          "active": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "TYPED FAILURE actual network SETTLED raw",
+    "actual": {
+      "sourceId": 5,
+      "action": "duplicate",
+      "startedAt": 1792068058692,
+      "status": "settled",
+      "before": {
+        "activeTabId": 5,
+        "tabs": [
+          {
+            "tabId": 1,
+            "owner": "agent",
+            "sessionId": "proof",
+            "handedOver": true,
+            "url": "http://127.0.0.1:59915/handed-src",
+            "title": "Fixture /handed-src",
+            "failed": false,
+            "active": false
+          },
+          {
+            "tabId": 2,
+            "owner": "agent",
+            "sessionId": "proof",
+            "handedOver": false,
+            "url": "http://127.0.0.1:59915/agent-src",
+            "title": "Fixture /agent-src",
+            "failed": false,
+            "active": false
+          },
+          {
+            "tabId": 3,
+            "owner": "user",
+            "sessionId": null,
+            "handedOver": false,
+            "url": "http://127.0.0.1:59915/agent-src",
+            "title": "Fixture /agent-src",
+            "failed": false,
+            "active": false
+          },
+          {
+            "tabId": 4,
+            "owner": "user",
+            "sessionId": null,
+            "handedOver": false,
+            "url": "http://127.0.0.1:59915/handed-src",
+            "title": "Fixture /handed-src",
+            "failed": false,
+            "active": false
+          },
+          {
+            "tabId": 5,
+            "owner": "user",
+            "sessionId": null,
+            "handedOver": false,
+            "url": "http://127.0.0.1:59915/fault-src",
+            "title": "Fixture /fault-src",
+            "failed": false,
+            "active": true
+          }
+        ]
+      },
+      "loadsBefore": 11,
+      "outcome": {
+        "status": "failed",
+        "action": "duplicate",
+        "tabId": 6,
+        "error": {
+          "code": "navigation_failed",
+          "message": "The tab could not be duplicated. You can retry from its menu."
+        }
+      },
+      "after": {
+        "activeTabId": 6,
+        "tabs": [
+          {
+            "tabId": 1,
+            "owner": "agent",
+            "sessionId": "proof",
+            "handedOver": true,
+            "url": "http://127.0.0.1:59915/handed-src",
+            "title": "Fixture /handed-src",
+            "failed": false,
+            "active": false
+          },
+          {
+            "tabId": 2,
+            "owner": "agent",
+            "sessionId": "proof",
+            "handedOver": false,
+            "url": "http://127.0.0.1:59915/agent-src",
+            "title": "Fixture /agent-src",
+            "failed": false,
+            "active": false
+          },
+          {
+            "tabId": 3,
+            "owner": "user",
+            "sessionId": null,
+            "handedOver": false,
+            "url": "http://127.0.0.1:59915/agent-src",
+            "title": "Fixture /agent-src",
+            "failed": false,
+            "active": false
+          },
+          {
+            "tabId": 4,
+            "owner": "user",
+            "sessionId": null,
+            "handedOver": false,
+            "url": "http://127.0.0.1:59915/handed-src",
+            "title": "Fixture /handed-src",
+            "failed": false,
+            "active": false
+          },
+          {
+            "tabId": 5,
+            "owner": "user",
+            "sessionId": null,
+            "handedOver": false,
+            "url": "http://127.0.0.1:59915/fault-src",
+            "title": "Fixture /fault-src",
+            "failed": false,
+            "active": false
+          },
+          {
+            "tabId": 6,
+            "owner": "user",
+            "sessionId": null,
+            "handedOver": false,
+            "url": "http://127.0.0.1:59915/fault-src",
+            "title": "127.0.0.1:59915/fault-src",
+            "failed": true,
+            "active": true
+          }
+        ]
+      },
+      "loads": [
+        {
+          "contentsId": 9,
+          "url": "http://127.0.0.1:59915/fault-src",
+          "startedAt": 1792068058694,
+          "status": "failed",
+          "code": "ERR_EMPTY_RESPONSE",
+          "settledAt": 1792068058763
+        }
+      ],
+      "settledAt": 1792068058765
+    }
+  },
+  {
+    "name": "TYPED FAILURE retained RAW",
+    "actual": {
+      "outcome": {
+        "status": "failed",
+        "action": "duplicate",
+        "tabId": 6,
+        "error": {
+          "code": "navigation_failed",
+          "message": "The tab could not be duplicated. You can retry from its menu."
+        }
+      },
+      "copy": {
+        "tabId": 6,
+        "owner": "user",
+        "sessionId": null,
+        "handedOver": false,
+        "url": "http://127.0.0.1:59915/fault-src",
+        "title": "127.0.0.1:59915/fault-src",
+        "failed": true,
+        "active": true
+      },
+      "requests": 3
+    }
+  },
+  {
+    "name": "frame typed-navigation-failure-localoperatorlight",
+    "actual": {
+      "label": "typed-navigation-failure-localoperatorlight",
+      "path": "captures/typed-navigation-failure-localoperatorlight.png",
+      "bytes": 155742,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "capturedAtPath": "/Users/damian/.local-operator/sessions/291e40a1ea40/scratchpad/b2-native/runtime/out/typed-navigation-failure-localoperatorlight.png"
+    }
+  },
+  {
+    "name": "frame typed-navigation-failure-localoperatordark",
+    "actual": {
+      "label": "typed-navigation-failure-localoperatordark",
+      "path": "captures/typed-navigation-failure-localoperatordark.png",
+      "bytes": 155316,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "capturedAtPath": "/Users/damian/.local-operator/sessions/291e40a1ea40/scratchpad/b2-native/runtime/out/typed-navigation-failure-localoperatordark.png"
+    }
+  },
+  {
+    "name": "BACKGROUND RELOAD BEFORE raw",
+    "actual": {
+      "activeTabId": 3,
+      "tabs": [
+        {
+          "tabId": 1,
+          "owner": "agent",
+          "sessionId": "proof",
+          "handedOver": true,
+          "url": "http://127.0.0.1:59915/handed-src",
+          "title": "Fixture /handed-src",
+          "failed": false,
+          "active": false
+        },
+        {
+          "tabId": 2,
+          "owner": "agent",
+          "sessionId": "proof",
+          "handedOver": false,
+          "url": "http://127.0.0.1:59915/agent-src",
+          "title": "Fixture /agent-src",
+          "failed": false,
+          "active": false
+        },
+        {
+          "tabId": 3,
+          "owner": "user",
+          "sessionId": null,
+          "handedOver": false,
+          "url": "http://127.0.0.1:59915/agent-src",
+          "title": "Fixture /agent-src",
+          "failed": false,
+          "active": true
+        },
+        {
+          "tabId": 4,
+          "owner": "user",
+          "sessionId": null,
+          "handedOver": false,
+          "url": "http://127.0.0.1:59915/handed-src",
+          "title": "Fixture /handed-src",
+          "failed": false,
+          "active": false
+        },
+        {
+          "tabId": 5,
+          "owner": "user",
+          "sessionId": null,
+          "handedOver": false,
+          "url": "http://127.0.0.1:59915/fault-src",
+          "title": "Fixture /fault-src",
+          "failed": false,
+          "active": false
+        },
+        {
+          "tabId": 6,
+          "owner": "user",
+          "sessionId": null,
+          "handedOver": false,
+          "url": "http://127.0.0.1:59915/fault-src",
+          "title": "127.0.0.1:59915/fault-src",
+          "failed": true,
+          "active": false
+        },
+        {
+          "tabId": 7,
+          "owner": "user",
+          "sessionId": null,
+          "handedOver": false,
+          "url": "http://127.0.0.1:59915/plain-src",
+          "title": "Fixture /plain-src",
+          "failed": false,
+          "active": false
+        }
+      ]
+    }
+  },
+  {
+    "name": "BACKGROUND RELOAD SETTLED raw",
+    "actual": {
+      "sourceId": 7,
+      "action": "reload",
+      "startedAt": 1792068059381,
+      "status": "settled",
+      "before": {
+        "activeTabId": 3,
+        "tabs": [
+          {
+            "tabId": 1,
+            "owner": "agent",
+            "sessionId": "proof",
+            "handedOver": true,
+            "url": "http://127.0.0.1:59915/handed-src",
+            "title": "Fixture /handed-src",
+            "failed": false,
+            "active": false
+          },
+          {
+            "tabId": 2,
+            "owner": "agent",
+            "sessionId": "proof",
+            "handedOver": false,
+            "url": "http://127.0.0.1:59915/agent-src",
+            "title": "Fixture /agent-src",
+            "failed": false,
+            "active": false
+          },
+          {
+            "tabId": 3,
+            "owner": "user",
+            "sessionId": null,
+            "handedOver": false,
+            "url": "http://127.0.0.1:59915/agent-src",
+            "title": "Fixture /agent-src",
+            "failed": false,
+            "active": true
+          },
+          {
+            "tabId": 4,
+            "owner": "user",
+            "sessionId": null,
+            "handedOver": false,
+            "url": "http://127.0.0.1:59915/handed-src",
+            "title": "Fixture /handed-src",
+            "failed": false,
+            "active": false
+          },
+          {
+            "tabId": 5,
+            "owner": "user",
+            "sessionId": null,
+            "handedOver": false,
+            "url": "http://127.0.0.1:59915/fault-src",
+            "title": "Fixture /fault-src",
+            "failed": false,
+            "active": false
+          },
+          {
+            "tabId": 6,
+            "owner": "user",
+            "sessionId": null,
+            "handedOver": false,
+            "url": "http://127.0.0.1:59915/fault-src",
+            "title": "127.0.0.1:59915/fault-src",
+            "failed": true,
+            "active": false
+          },
+          {
+            "tabId": 7,
+            "owner": "user",
+            "sessionId": null,
+            "handedOver": false,
+            "url": "http://127.0.0.1:59915/plain-src",
+            "title": "Fixture /plain-src",
+            "failed": false,
+            "active": false
+          }
+        ]
+      },
+      "loadsBefore": 14,
+      "outcome": {
+        "status": "completed",
+        "action": "reload",
+        "tabId": 7
+      },
+      "after": {
+        "activeTabId": 3,
+        "tabs": [
+          {
+            "tabId": 1,
+            "owner": "agent",
+            "sessionId": "proof",
+            "handedOver": true,
+            "url": "http://127.0.0.1:59915/handed-src",
+            "title": "Fixture /handed-src",
+            "failed": false,
+            "active": false
+          },
+          {
+            "tabId": 2,
+            "owner": "agent",
+            "sessionId": "proof",
+            "handedOver": false,
+            "url": "http://127.0.0.1:59915/agent-src",
+            "title": "Fixture /agent-src",
+            "failed": false,
+            "active": false
+          },
+          {
+            "tabId": 3,
+            "owner": "user",
+            "sessionId": null,
+            "handedOver": false,
+            "url": "http://127.0.0.1:59915/agent-src",
+            "title": "Fixture /agent-src",
+            "failed": false,
+            "active": true
+          },
+          {
+            "tabId": 4,
+            "owner": "user",
+            "sessionId": null,
+            "handedOver": false,
+            "url": "http://127.0.0.1:59915/handed-src",
+            "title": "Fixture /handed-src",
+            "failed": false,
+            "active": false
+          },
+          {
+            "tabId": 5,
+            "owner": "user",
+            "sessionId": null,
+            "handedOver": false,
+            "url": "http://127.0.0.1:59915/fault-src",
+            "title": "Fixture /fault-src",
+            "failed": false,
+            "active": false
+          },
+          {
+            "tabId": 6,
+            "owner": "user",
+            "sessionId": null,
+            "handedOver": false,
+            "url": "http://127.0.0.1:59915/fault-src",
+            "title": "127.0.0.1:59915/fault-src",
+            "failed": true,
+            "active": false
+          },
+          {
+            "tabId": 7,
+            "owner": "user",
+            "sessionId": null,
+            "handedOver": false,
+            "url": "http://127.0.0.1:59915/plain-src",
+            "title": "Fixture /plain-src",
+            "failed": false,
+            "active": false
+          }
+        ]
+      },
+      "loads": [],
+      "settledAt": 1792068059383
+    }
+  },
+  {
+    "name": "BACKGROUND RELOAD PASS",
+    "actual": {
+      "target": 7,
+      "activeBefore": 3,
+      "activeAfter": 3,
+      "requests": 2
+    }
+  },
+  {
+    "name": "NATIVE IPC/RPC negatives PASS",
+    "actual": {
+      "negatives": [
+        {
+          "channel": "browser-reorder-tabs",
+          "refused": true,
+          "message": "This window cannot use the browser controls."
+        },
+        {
+          "channel": "browser-tab-action",
+          "refused": true,
+          "message": "This window cannot use the browser controls."
+        }
+      ],
+      "malformed": [
+        {
+          "refused": true,
+          "message": "Error invoking remote method 'browser-reorder-tabs': Error: Invalid browser tab order."
+        },
+        {
+          "refused": true,
+          "message": "Error invoking remote method 'browser-reorder-tabs': Error: Invalid browser tab order."
+        },
+        {
+          "refused": true,
+          "message": "Error invoking remote method 'browser-tab-action': Error: Invalid browser tab action."
+        }
+      ],
+      "unkeyedStatus": 401
+    }
+  },
+  {
+    "name": "frame current-source-normal-localoperatorlight",
+    "actual": {
+      "label": "current-source-normal-localoperatorlight",
+      "path": "captures/current-source-normal-localoperatorlight.png",
+      "bytes": 94686,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "capturedAtPath": "/Users/damian/.local-operator/sessions/291e40a1ea40/scratchpad/b2-native/runtime/out/current-source-normal-localoperatorlight.png"
+    }
+  },
+  {
+    "name": "frame current-source-normal-localoperatordark",
+    "actual": {
+      "label": "current-source-normal-localoperatordark",
+      "path": "captures/current-source-normal-localoperatordark.png",
+      "bytes": 95015,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "capturedAtPath": "/Users/damian/.local-operator/sessions/291e40a1ea40/scratchpad/b2-native/runtime/out/current-source-normal-localoperatordark.png"
+    }
+  },
+  {
+    "name": "TOOLTIP PASS reload localOperatorLight",
+    "actual": {
+      "box": {
+        "text": "Reload (\u2318R)",
+        "x": 302,
+        "y": 49,
+        "width": 88.046875,
+        "height": 27.3984375
+      },
+      "bounds": {
+        "registered": {
+          "x": 260,
+          "y": 152,
+          "width": 1120,
+          "height": 748
+        },
+        "actual": {
+          "x": 260,
+          "y": 152,
+          "width": 1120,
+          "height": 748
+        },
+        "visible": true,
+        "contentsId": 16,
+        "appZoom": 1
+      },
+      "intersects": false,
+      "fidelity": "CDP pointer, NOT OS pointer"
+    }
+  },
+  {
+    "name": "frame tooltip-reload-localoperatorlight",
+    "actual": {
+      "label": "tooltip-reload-localoperatorlight",
+      "path": "captures/tooltip-reload-localoperatorlight.png",
+      "bytes": 91798,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "capturedAtPath": "/Users/damian/.local-operator/sessions/291e40a1ea40/scratchpad/b2-native/runtime/out/tooltip-reload-localoperatorlight.png"
+    }
+  },
+  {
+    "name": "TOOLTIP PASS reload localOperatorDark",
+    "actual": {
+      "box": {
+        "text": "Reload (\u2318R)",
+        "x": 302,
+        "y": 49,
+        "width": 88.046875,
+        "height": 27.3984375
+      },
+      "bounds": {
+        "registered": {
+          "x": 260,
+          "y": 152,
+          "width": 1120,
+          "height": 748
+        },
+        "actual": {
+          "x": 260,
+          "y": 152,
+          "width": 1120,
+          "height": 748
+        },
+        "visible": true,
+        "contentsId": 16,
+        "appZoom": 1
+      },
+      "intersects": false,
+      "fidelity": "CDP pointer, NOT OS pointer"
+    }
+  },
+  {
+    "name": "frame tooltip-reload-localoperatordark",
+    "actual": {
+      "label": "tooltip-reload-localoperatordark",
+      "path": "captures/tooltip-reload-localoperatordark.png",
+      "bytes": 91980,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "capturedAtPath": "/Users/damian/.local-operator/sessions/291e40a1ea40/scratchpad/b2-native/runtime/out/tooltip-reload-localoperatordark.png"
+    }
+  },
+  {
+    "name": "TOOLTIP PASS new-tab localOperatorLight",
+    "actual": {
+      "box": {
+        "text": "New tab (\u2318T)",
+        "x": 1276,
+        "y": 8.5,
+        "width": 95.953125,
+        "height": 27.3984375
+      },
+      "bounds": {
+        "registered": {
+          "x": 260,
+          "y": 152,
+          "width": 1120,
+          "height": 748
+        },
+        "actual": {
+          "x": 260,
+          "y": 152,
+          "width": 1120,
+          "height": 748
+        },
+        "visible": true,
+        "contentsId": 16,
+        "appZoom": 1
+      },
+      "intersects": false,
+      "fidelity": "CDP pointer, NOT OS pointer"
+    }
+  },
+  {
+    "name": "frame tooltip-new-tab-localoperatorlight",
+    "actual": {
+      "label": "tooltip-new-tab-localoperatorlight",
+      "path": "captures/tooltip-new-tab-localoperatorlight.png",
+      "bytes": 92848,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "capturedAtPath": "/Users/damian/.local-operator/sessions/291e40a1ea40/scratchpad/b2-native/runtime/out/tooltip-new-tab-localoperatorlight.png"
+    }
+  },
+  {
+    "name": "TOOLTIP PASS new-tab localOperatorDark",
+    "actual": {
+      "box": {
+        "text": "New tab (\u2318T)",
+        "x": 1276,
+        "y": 8.5,
+        "width": 95.953125,
+        "height": 27.3984375
+      },
+      "bounds": {
+        "registered": {
+          "x": 260,
+          "y": 152,
+          "width": 1120,
+          "height": 748
+        },
+        "actual": {
+          "x": 260,
+          "y": 152,
+          "width": 1120,
+          "height": 748
+        },
+        "visible": true,
+        "contentsId": 16,
+        "appZoom": 1
+      },
+      "intersects": false,
+      "fidelity": "CDP pointer, NOT OS pointer"
+    }
+  },
+  {
+    "name": "frame tooltip-new-tab-localoperatordark",
+    "actual": {
+      "label": "tooltip-new-tab-localoperatordark",
+      "path": "captures/tooltip-new-tab-localoperatordark.png",
+      "bytes": 92596,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "capturedAtPath": "/Users/damian/.local-operator/sessions/291e40a1ea40/scratchpad/b2-native/runtime/out/tooltip-new-tab-localoperatordark.png"
+    }
+  },
+  {
+    "name": "TOOLTIP PASS close localOperatorLight",
+    "actual": {
+      "box": {
+        "text": "Close tab (\u2318W)",
+        "x": 1203.5,
+        "y": 5.5,
+        "width": 106.7578125,
+        "height": 27.3984375
+      },
+      "bounds": {
+        "registered": {
+          "x": 260,
+          "y": 152,
+          "width": 1120,
+          "height": 748
+        },
+        "actual": {
+          "x": 260,
+          "y": 152,
+          "width": 1120,
+          "height": 748
+        },
+        "visible": true,
+        "contentsId": 16,
+        "appZoom": 1
+      },
+      "intersects": false,
+      "fidelity": "CDP pointer, NOT OS pointer"
+    }
+  },
+  {
+    "name": "frame tooltip-close-localoperatorlight",
+    "actual": {
+      "label": "tooltip-close-localoperatorlight",
+      "path": "captures/tooltip-close-localoperatorlight.png",
+      "bytes": 94222,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "capturedAtPath": "/Users/damian/.local-operator/sessions/291e40a1ea40/scratchpad/b2-native/runtime/out/tooltip-close-localoperatorlight.png"
+    }
+  },
+  {
+    "name": "TOOLTIP PASS close localOperatorDark",
+    "actual": {
+      "box": {
+        "text": "Close tab (\u2318W)",
+        "x": 1203.5,
+        "y": 5.5,
+        "width": 106.7578125,
+        "height": 27.3984375
+      },
+      "bounds": {
+        "registered": {
+          "x": 260,
+          "y": 152,
+          "width": 1120,
+          "height": 748
+        },
+        "actual": {
+          "x": 260,
+          "y": 152,
+          "width": 1120,
+          "height": 748
+        },
+        "visible": true,
+        "contentsId": 16,
+        "appZoom": 1
+      },
+      "intersects": false,
+      "fidelity": "CDP pointer, NOT OS pointer"
+    }
+  },
+  {
+    "name": "frame tooltip-close-localoperatordark",
+    "actual": {
+      "label": "tooltip-close-localoperatordark",
+      "path": "captures/tooltip-close-localoperatordark.png",
+      "bytes": 94004,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "capturedAtPath": "/Users/damian/.local-operator/sessions/291e40a1ea40/scratchpad/b2-native/runtime/out/tooltip-close-localoperatordark.png"
+    }
+  },
+  {
+    "name": "TOOLTIP PASS scroll-left localOperatorLight",
+    "actual": {
+      "box": {
+        "text": "Scroll tabs left",
+        "x": 232,
+        "y": 8.5,
+        "width": 99.890625,
+        "height": 27.3984375
+      },
+      "bounds": {
+        "registered": {
+          "x": 260,
+          "y": 152,
+          "width": 1120,
+          "height": 748
+        },
+        "actual": {
+          "x": 260,
+          "y": 152,
+          "width": 1120,
+          "height": 748
+        },
+        "visible": true,
+        "contentsId": 16,
+        "appZoom": 1
+      },
+      "intersects": false,
+      "fidelity": "CDP pointer, NOT OS pointer"
+    }
+  },
+  {
+    "name": "frame tooltip-scroll-left-localoperatorlight",
+    "actual": {
+      "label": "tooltip-scroll-left-localoperatorlight",
+      "path": "captures/tooltip-scroll-left-localoperatorlight.png",
+      "bytes": 92084,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "capturedAtPath": "/Users/damian/.local-operator/sessions/291e40a1ea40/scratchpad/b2-native/runtime/out/tooltip-scroll-left-localoperatorlight.png"
+    }
+  },
+  {
+    "name": "TOOLTIP PASS scroll-left localOperatorDark",
+    "actual": {
+      "box": {
+        "text": "Scroll tabs left",
+        "x": 232,
+        "y": 8.5,
+        "width": 99.890625,
+        "height": 27.3984375
+      },
+      "bounds": {
+        "registered": {
+          "x": 260,
+          "y": 152,
+          "width": 1120,
+          "height": 748
+        },
+        "actual": {
+          "x": 260,
+          "y": 152,
+          "width": 1120,
+          "height": 748
+        },
+        "visible": true,
+        "contentsId": 16,
+        "appZoom": 1
+      },
+      "intersects": false,
+      "fidelity": "CDP pointer, NOT OS pointer"
+    }
+  },
+  {
+    "name": "frame tooltip-scroll-left-localoperatordark",
+    "actual": {
+      "label": "tooltip-scroll-left-localoperatordark",
+      "path": "captures/tooltip-scroll-left-localoperatordark.png",
+      "bytes": 91342,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "capturedAtPath": "/Users/damian/.local-operator/sessions/291e40a1ea40/scratchpad/b2-native/runtime/out/tooltip-scroll-left-localoperatordark.png"
+    }
+  },
+  {
+    "name": "TOOLTIP PASS scroll-right localOperatorLight",
+    "actual": {
+      "box": {
+        "text": "Scroll tabs right",
+        "x": 1240,
+        "y": 8.5,
+        "width": 107.5703125,
+        "height": 27.3984375
+      },
+      "bounds": {
+        "registered": {
+          "x": 260,
+          "y": 152,
+          "width": 1120,
+          "height": 748
+        },
+        "actual": {
+          "x": 260,
+          "y": 152,
+          "width": 1120,
+          "height": 748
+        },
+        "visible": true,
+        "contentsId": 16,
+        "appZoom": 1
+      },
+      "intersects": false,
+      "fidelity": "CDP pointer, NOT OS pointer"
+    }
+  },
+  {
+    "name": "frame tooltip-scroll-right-localoperatorlight",
+    "actual": {
+      "label": "tooltip-scroll-right-localoperatorlight",
+      "path": "captures/tooltip-scroll-right-localoperatorlight.png",
+      "bytes": 93121,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "capturedAtPath": "/Users/damian/.local-operator/sessions/291e40a1ea40/scratchpad/b2-native/runtime/out/tooltip-scroll-right-localoperatorlight.png"
+    }
+  },
+  {
+    "name": "TOOLTIP PASS scroll-right localOperatorDark",
+    "actual": {
+      "box": {
+        "text": "Scroll tabs right",
+        "x": 1240,
+        "y": 8.5,
+        "width": 107.5703125,
+        "height": 27.3984375
+      },
+      "bounds": {
+        "registered": {
+          "x": 260,
+          "y": 152,
+          "width": 1120,
+          "height": 748
+        },
+        "actual": {
+          "x": 260,
+          "y": 152,
+          "width": 1120,
+          "height": 748
+        },
+        "visible": true,
+        "contentsId": 16,
+        "appZoom": 1
+      },
+      "intersects": false,
+      "fidelity": "CDP pointer, NOT OS pointer"
+    }
+  },
+  {
+    "name": "frame tooltip-scroll-right-localoperatordark",
+    "actual": {
+      "label": "tooltip-scroll-right-localoperatordark",
+      "path": "captures/tooltip-scroll-right-localoperatordark.png",
+      "bytes": 92881,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "capturedAtPath": "/Users/damian/.local-operator/sessions/291e40a1ea40/scratchpad/b2-native/runtime/out/tooltip-scroll-right-localoperatordark.png"
+    }
+  },
+  {
+    "name": "FINAL isolation",
+    "actual": {
+      "userData": "/Users/damian/.local-operator/sessions/291e40a1ea40/scratchpad/b2-native/runtime/userdata",
+      "appPath": "/Users/damian/.local-operator/sessions/291e40a1ea40/scratchpad/b2-native-carrier",
+      "focusedWindow": null,
+      "windows": [
+        {
+          "id": 2,
+          "visible": false,
+          "focused": false,
+          "bounds": {
+            "x": 174,
+            "y": 45,
+            "width": 1380,
+            "height": 900
+          },
+          "url": "file:///Users/damian/local-operator-ui/.worktrees/browser-tab-strip/out/renderer/index.html#/browser"
+        },
+        {
+          "id": 1,
+          "visible": false,
+          "focused": false,
+          "bounds": {
+            "x": 544,
+            "y": 443,
+            "width": 640,
+            "height": 168
+          },
+          "url": "file:///Users/damian/local-operator-ui/.worktrees/browser-tab-strip/out/renderer/mini.html"
+        }
+      ]
+    }
+  },
+  {
+    "name": "CORE COMPLETE",
+    "actual": {
+      "agentBoundary": true,
+      "typedFailure": true,
+      "backgroundReload": true,
+      "IPCNegatives": true,
+      "tooltips": "see individual PASS/BLOCKED rows",
+      "physicalKeys": "unverified",
+      "physicalDrag": "unverified",
+      "clipboard": "not run"
+    }
+  },
+  {
+    "name": "teardown",
+    "actual": {
+      "ownedPid": 45175,
+      "alive": false,
+      "scratch": "/Users/damian/.local-operator/sessions/291e40a1ea40/scratchpad/b2-native/runtime",
+      "out": "/Users/damian/.local-operator/sessions/291e40a1ea40/scratchpad/b2-native/runtime/out"
+    }
+  }
+]

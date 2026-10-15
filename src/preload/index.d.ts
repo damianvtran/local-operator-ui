@@ -6,6 +6,7 @@ import type {
 	BackendUpdateErrorReport,
 } from "../main/update-service";
 import type { DaemonStatusSnapshot } from "../shared/backend-status";
+import type { HumanTabActionOutcome } from "../shared/browser-tab-action";
 import type {
 	DesktopAPI,
 	DirectoryListing,
@@ -125,6 +126,11 @@ declare global {
 				state: () => Promise<unknown>;
 				/** `sessionId` attributes the new tab to the conversation it was opened
 				 * from; `null` (and absent) mean it belongs to no conversation. */
+				reorderTabs: (ids: number[]) => Promise<unknown>;
+				actOnTab: (
+					tabId: number,
+					action: "duplicate" | "reload",
+				) => Promise<HumanTabActionOutcome>;
 				newTab: (sessionId?: string | null) => Promise<unknown>;
 				closeTab: (tabId: number) => Promise<unknown>;
 				/** A bulk close. `{ mode: "ids", tabIds }`, or `{ mode: "conversation",
