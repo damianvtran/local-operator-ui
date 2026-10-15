@@ -316,7 +316,8 @@ export interface BrowserChrome {
 	closeTabs: (intent: CloseTabsIntent) => Promise<boolean>;
 	activateTab: (tabId: number) => Promise<void>;
 	navigate: (url: string) => Promise<void>;
-	reload: () => Promise<void>;
+	reload: (hard?: boolean) => Promise<void>;
+	reopenTab: (sessionId?: string | null) => Promise<void>;
 	stop: () => Promise<void>;
 	/** Ask the host to start again after an exhausted startup (round 1, D1a).
 	 * The recovery half of the `unavailable` state, which otherwise leaves the
@@ -592,7 +593,9 @@ export function useBrowserChrome(): BrowserChrome {
 				setPendingUrl(url);
 				return runVoid(() => api?.navigate(url));
 			},
-			reload: () => runVoid(() => api?.reload()),
+			reload: (hard) => runVoid(() => api?.reload(hard)),
+			reopenTab: (sessionId) =>
+				runVoid(() => api?.reopenTab(sessionId ?? null)),
 			stop: () => runVoid(() => api?.stop()),
 			retry: () => runVoid(() => api?.retry()),
 			history: (direction) => runVoid(() => api?.history(direction)),

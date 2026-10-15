@@ -793,6 +793,23 @@ const api = {
 	 * moves to a session (the hand-over) mints a nonce main never sends back here.
 	 */
 	browser: {
+		setChordFocus: (focused: boolean): Promise<void> =>
+			ipcRenderer.invoke("browser-set-chord-focus", focused),
+		reopenTab: (sessionId?: string | null): Promise<unknown> =>
+			ipcRenderer.invoke("browser-reopen-tab", sessionId ?? null),
+		focusPage: (): Promise<void> => ipcRenderer.invoke("browser-focus-page"),
+		onChord: (
+			callback: (
+				message: import("../shared/browser-chord").BrowserChordMessage,
+			) => void,
+		) => {
+			const listener = (
+				_event: unknown,
+				message: import("../shared/browser-chord").BrowserChordMessage,
+			) => callback(message);
+			ipcRenderer.on("browser-chord", listener);
+			return () => ipcRenderer.removeListener("browser-chord", listener);
+		},
 		state: (): Promise<unknown> => ipcRenderer.invoke("browser-state"),
 		/** `sessionId` attributes the tab to the conversation it was opened from
 		 * (design R1); `null` is a tab that belongs to no conversation, which is what
@@ -811,7 +828,8 @@ const api = {
 			ipcRenderer.invoke("browser-activate-tab", tabId),
 		navigate: (url: string): Promise<unknown> =>
 			ipcRenderer.invoke("browser-navigate", url),
-		reload: (): Promise<unknown> => ipcRenderer.invoke("browser-reload"),
+		reload: (hard = false): Promise<unknown> =>
+			ipcRenderer.invoke("browser-reload", hard),
 		stop: (): Promise<unknown> => ipcRenderer.invoke("browser-stop"),
 		history: (direction: "back" | "forward"): Promise<unknown> =>
 			ipcRenderer.invoke("browser-history", direction),

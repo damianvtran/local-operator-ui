@@ -8,6 +8,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@shared/components/ui/dropdown-menu";
+import { chordGlyph } from "@shared/keymap/keymap-chord";
 import { cn } from "@shared/lib/utils";
 import {
 	Bot,
@@ -409,6 +410,9 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	const [actionsTabId, setActionsTabId] = useState<number | null>(null);
 	/** Whether the pinned control's list of every tab is open, in the band. Local view
 	 * state for the same reason the menu's is: it is not a fact about a tab. */
+	const isMac = navigator.platform.toUpperCase().includes("MAC");
+	const newChord = chordGlyph("primary+t", isMac ? "mac" : "linux");
+	const closeChord = chordGlyph("primary+w", isMac ? "mac" : "linux");
 	const [overflowOpen, setOverflowOpen] = useState(false);
 	const scrollerRef = useRef<HTMLDivElement | null>(null);
 	/** The pinned control's own element, so dismissing the list hands focus back to the
@@ -1581,11 +1585,12 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 												</DropdownMenuContent>
 											)}
 										</DropdownMenu>
-										<Tooltip content="Close tab">
+										<Tooltip content={`Close tab (${closeChord})`}>
 											<Button
 												variant="ghost"
 												size="icon-sm"
 												aria-label={`Close ${tab.title}`}
+												aria-keyshortcuts={isMac ? "Meta+W" : "Control+W"}
 												onClick={() => onClose(tab.tabId)}
 												// Rendered for the active tab always and for an inactive one on
 												// hover OR focus-within (§6): a focusable but invisible control
@@ -1724,11 +1729,12 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 								className="mx-1 h-4 w-px shrink-0 self-center bg-hairline"
 							/>
 						)}
-						<Tooltip content={newTabLabel}>
+						<Tooltip content={`${newTabLabel} (${newChord})`}>
 							<Button
 								variant="outline"
 								size="icon-sm"
 								aria-label={newTabLabel}
+								aria-keyshortcuts={isMac ? "Meta+T" : "Control+T"}
 								onClick={onNewTab}
 								data-tour-tag="browser-new-tab"
 							>

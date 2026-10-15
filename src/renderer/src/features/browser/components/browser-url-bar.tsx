@@ -5,6 +5,7 @@ import {
 	Tooltip,
 	countLabel,
 } from "@shared/components/ui";
+import { chordGlyph } from "@shared/keymap/keymap-chord";
 import { cn } from "@shared/lib/utils";
 import { navigationShortcutLabel } from "@shared/navigation-gesture";
 import {
@@ -63,6 +64,8 @@ import { useState } from "react";
  */
 
 export interface BrowserUrlBarProps {
+	/** Chrome focus only; never a window activation. */
+	inputRef?: Ref<HTMLInputElement>;
 	url: string;
 	/** Where the user asked to go, while the tab has not committed it. Shown as the
 	 * placeholder and never as the value: see the comment on `askedFor` below. */
@@ -139,6 +142,7 @@ export function displayUrl(url: string): string {
 }
 
 export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
+	inputRef,
 	url,
 	pendingUrl,
 	loading,
@@ -167,6 +171,8 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	 * `scripts/run-panel-navigation.test.mjs` selects them by exact string.
 	 */
 	const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+	const reloadChord = chordGlyph("primary+r", isMac ? "mac" : "linux");
+	const addressChord = chordGlyph("primary+l", isMac ? "mac" : "linux");
 	const backChord = navigationShortcutLabel("back", isMac);
 	const forwardChord = navigationShortcutLabel("forward", isMac);
 	/**
@@ -262,11 +268,12 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					</Button>
 				</Tooltip>
 			) : (
-				<Tooltip content="Reload">
+				<Tooltip content={`Reload (${reloadChord})`}>
 					<Button
 						variant="ghost"
 						size="icon-sm"
 						aria-label="Reload"
+						aria-keyshortcuts={isMac ? "Meta+R" : "Control+R"}
 						disabled={disabled}
 						onClick={onReload}
 						data-tour-tag="browser-reload"
@@ -312,6 +319,9 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			)}
 			<div className="relative min-w-0 grow">
 				<Input
+					ref={inputRef}
+					aria-keyshortcuts={isMac ? "Meta+L" : "Control+L"}
+					title={`Address (${addressChord})`}
 					value={value}
 					disabled={disabled}
 					onChange={(event) => setDraft(event.target.value)}

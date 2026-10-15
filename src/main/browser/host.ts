@@ -866,7 +866,49 @@ export class BrowserHost implements BrowserActionContext {
 		return this.chromeState();
 	}
 
+	/** Main owns this short-lived UI focus fact; it conveys no page capability. */
+	chordFocus = false;
+	onChordFocusChanged?: (focused: boolean) => void;
+	setChordFocus(focused: boolean): void {
+		this.chordFocus = focused;
+		this.onChordFocusChanged?.(focused);
+	}
+	/** Only user URLs survive a close, never a capability, page state or nonce.
+	 * Conversation attribution is retained only to find the appropriate scope. */
+	private closedUserTabs: Array<{ url: string; sessionId: string | null }> = [];
+	private rememberClosed(tabId: number): void {
+		const record = this.registry.get(tabId);
+		if (!record || record.owner !== "user" || record.handedTo !== null) return;
+		const url = record.view.webContents.getURL();
+		try {
+			if (!permittedScheme(new URL(url))) return;
+		} catch {
+			return;
+		}
+		this.closedUserTabs.push({ url, sessionId: record.homeSessionId });
+		if (this.closedUserTabs.length > 10) this.closedUserTabs.shift();
+	}
+	clearChordState(): void {
+		this.setChordFocus(false);
+		this.closedUserTabs = [];
+	}
+	async reopenClosed(
+		sessionId: string | null,
+	): Promise<Record<string, unknown>> {
+		// An all-tabs surface may reopen the newest user close; a conversation
+		// cannot pull another conversation's URL into its scoped strip.
+		const index = this.closedUserTabs.findLastIndex(
+			(entry) => sessionId === null || entry.sessionId === sessionId,
+		);
+		if (index < 0) return this.chromeState();
+		const entry = this.closedUserTabs[index];
+		await this.newTab(sessionId ?? entry.sessionId);
+		await this.navigateActive(entry.url);
+		this.closedUserTabs.splice(index, 1);
+		return this.chromeState();
+	}
 	closeTab(tabId: number): Record<string, unknown> {
+		this.rememberClosed(tabId);
 		this.dropReceipt(tabId);
 		this.loadFailures.delete(tabId);
 		this.registry.destroy(tabId);
@@ -900,6 +942,7 @@ export class BrowserHost implements BrowserActionContext {
 						.filter((record) => record.sessionId === intent.sessionId)
 						.map((record) => record.tabId);
 		for (const tabId of tabIds) {
+			this.rememberClosed(tabId);
 			// Per tab, before the batch drops them: a pending receipt and a last load
 			// failure are keyed by tab id, and both are stale the moment the tab is gone.
 			this.dropReceipt(tabId);
@@ -1266,8 +1309,10 @@ export class BrowserHost implements BrowserActionContext {
 		return this.chromeState();
 	}
 
-	reloadActive(): Record<string, unknown> {
-		this.registry.activeTab?.view.webContents.reload();
+	reloadActive(hard = false): Record<string, unknown> {
+		const contents = this.registry.activeTab?.view.webContents;
+		if (hard) contents?.reloadIgnoringCache?.();
+		else contents?.reload();
 		return this.chromeState();
 	}
 
