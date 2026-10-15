@@ -46,6 +46,9 @@ import {
 	desktopFeatureState,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
+import { desktopFeatureEnabled } from "@shared/api/local-operator/desktop-hooks";
+import { useHubLinks } from "@shared/api/local-operator/hub-link-hooks";
+import { publicationPolicyAcknowledged } from "@shared/api/local-operator/hub-publication";
 import { useProfiles } from "@shared/api/local-operator/profile-hooks";
 import { isPublicationError } from "@shared/api/local-operator/publication-errors";
 import { RadientAuthButtons } from "@shared/components/auth/radient-auth-buttons";
@@ -69,6 +72,8 @@ import {
 } from "@shared/components/ui";
 import { useAgentSystemPrompt } from "@shared/hooks/use-agent-system-prompt";
 import { usePairingCause } from "@shared/hooks/use-pairing-cause";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	usePublishedListing,
@@ -97,6 +102,14 @@ import {
 	publicationIssues,
 	toolsFromAgentTags,
 } from "../utils/publication-validation";
+import {
+	HubInitialPolicyFields,
+	newHubPolicy,
+} from "./hub-initial-policy-fields";
+import {
+	HubLinkPolicyControls,
+	hubLinkSourceName,
+} from "./hub-link-policy-controls";
 
 /**
  * Props for the UploadAgentDialog component.
@@ -142,6 +155,8 @@ type PublishedOutcome = {
 	 * exactly the thing the intro paragraph takes care to state.
 	 */
 	orgName: string | null;
+	/** Remote publication and durable local identity/policy are separate receipts. */
+	localPolicies: "complete" | "pending" | null;
 };
 
 /** The picker's value for the public hub — the one value no tenant id can be. */
@@ -167,6 +182,13 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 	const resultRegion = useRef<HTMLDivElement>(null);
 	const navigate = useNavigate();
 	const publish = usePublishAgent();
+	useI18nLocale();
+	const [initialPolicy, setInitialPolicy] = useState(newHubPolicy);
+	const publicationRequest = useRef<{ tuple: string; id: string } | null>(null);
+	const nameSeed = useRef<{ open: boolean; id: string | null }>({
+		open: false,
+		id: null,
+	});
 	const listing = usePublishedListing(agent?.id ?? null);
 
 	/*
@@ -188,6 +210,8 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 	 * one condition, one statement.
 	 */
 	const capabilities = useDesktopCapabilities();
+	const linksEnabled = desktopFeatureEnabled(capabilities.data, "hub_links");
+	const links = useHubLinks(open && linksEnabled);
 	const pairingCause = usePairingCause();
 	const orgState = desktopFeatureState(capabilities.data, "radient_org");
 	const orgReady = orgSurfaceReady(orgState);
@@ -205,6 +229,30 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 	);
 	const [targetTenant, setTargetTenant] = useState<string>(PUBLIC_TARGET);
 	const targetIsOrg = targetTenant !== PUBLIC_TARGET;
+	const origins = (links.data?.links ?? []).filter(
+		(link) => link.kind === "agent" && link.local_id === agent?.id,
+	);
+	const targetLink = origins.find(
+		(link) =>
+			link.visibility === (targetIsOrg ? "org" : "public") &&
+			link.tenant_id === (targetIsOrg ? targetTenant : null),
+	);
+	const otherOrigin = origins.find(
+		(link) => link.link_id !== targetLink?.link_id,
+	);
+	const unresolvedOrigin = links.data?.unresolved.some(
+		(row) => row.kind === "agent" && row.local_id === agent?.id,
+	);
+	const targetOrganization = publishTargets.find(
+		(org) => org.tenant_id === targetTenant,
+	);
+	const policySource = !targetIsOrg
+		? t("ui.hub.links.source_public")
+		: targetOrganization?.tenant_name
+			? t("ui.hub.links.source_private", {
+					organization: targetOrganization.tenant_name,
+				})
+			: t("ui.hub.links.source_unavailable");
 	const targetDisplayName =
 		publishTargets.find((org) => org.tenant_id === targetTenant)?.tenant_name ||
 		"this organization";
@@ -226,8 +274,14 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 	 * that will be published now.
 	 */
 	useEffect(() => {
-		if (open) setName(agent?.name ?? "");
-	}, [open, agent?.name]);
+		// Definition polling is not a new dialog or permission to erase typing.
+		if (
+			open &&
+			(!nameSeed.current.open || nameSeed.current.id !== (agent?.id ?? null))
+		)
+			setName(agent?.name ?? "");
+		nameSeed.current = { open, id: agent?.id ?? null };
+	}, [open, agent?.id, agent?.name]);
 
 	useEffect(() => {
 		if (!open) {
@@ -242,6 +296,8 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 			 * the user did not choose this time.
 			 */
 			setTargetTenant(PUBLIC_TARGET);
+			setInitialPolicy(newHubPolicy());
+			publicationRequest.current = null;
 		}
 	}, [open]);
 
@@ -307,21 +363,23 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 	 * the store again here would undo the action that was just pressed.
 	 */
 	const submit = async (options?: { asNewListing?: boolean }) => {
-		if (!agent || submitting || issues.length > 0) return;
+		if (
+			!agent ||
+			submitting ||
+			issues.length > 0 ||
+			(targetIsOrg && !targetOrganization)
+		)
+			return;
 		setFailure(null);
 		/*
-		 * AN ORG TARGET NEVER REPUBLISHES, and that is why the remembered listing is
-		 * dropped here rather than passed through: the id in the store is a PUBLIC
-		 * listing's, so sending it to an organization's workspace would address a row
-		 * in the wrong namespace (§8.2 — org content has no public name claim to
-		 * update). The org namespace is keyed by the org, so a second publication of
-		 * the same agent into it is a new document rather than an update of the one
-		 * this app happens to remember.
+		 * A confirmed origin is scoped authority; public listing memory is not.
+		 * Reuse the exact existing org/public link, never a public ID in an org
+		 * request. Unlinked legacy public calls retain their remembered listing.
 		 */
-		const hubAgentId =
-			options?.asNewListing || targetIsOrg
-				? null
-				: (listing?.hubAgentId ?? null);
+		const hubAgentId = options?.asNewListing
+			? null
+			: (targetLink?.hub_id ??
+				(targetIsOrg ? null : (listing?.hubAgentId ?? null)));
 		/*
 		 * Captured BEFORE the request. The accepted-publication path writes the
 		 * store on the way back, so a receipt that read it afterwards would report
@@ -329,6 +387,8 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 		 * value's one reader exists to remove.
 		 */
 		const republishing = Boolean(hubAgentId);
+		if (linksEnabled && (!links.isSuccess || otherOrigin || unresolvedOrigin))
+			return;
 		try {
 			/*
 			 * Only the name is overridden. Everything else in the document is read
@@ -337,10 +397,34 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 			 * drift out of step with what the author wrote.
 			 */
 			const document: PublicationDocumentOverride = { name: name.trim() };
+			const tuple = JSON.stringify({
+				agent: agent.id,
+				document,
+				hubAgentId,
+				target: targetTenant,
+				policy: targetLink ? null : initialPolicy,
+			});
+			const operation =
+				publicationRequest.current?.tuple === tuple
+					? publicationRequest.current
+					: { tuple, id: crypto.randomUUID() };
+			publicationRequest.current = operation;
 			const response = await publish.mutateAsync({
 				agentId: agent.id,
 				document,
 				hubAgentId,
+				...(linksEnabled
+					? {
+							policy: targetLink
+								? {
+										requestId: operation.id,
+										...(targetLink.remote_revision && republishing
+											? { expectedRemoteRevision: targetLink.remote_revision }
+											: {}),
+									}
+								: { requestId: operation.id, ...initialPolicy },
+						}
+					: {}),
 				target: targetIsOrg
 					? { visibility: "org", tenantId: targetTenant }
 					: undefined,
@@ -351,6 +435,13 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 				hubAgentId: result?.agent_id ?? null,
 				republished: republishing,
 				orgName: targetIsOrg ? targetDisplayName : null,
+				localPolicies: result?.local_link_receipt
+					? publicationPolicyAcknowledged(result)
+						? "complete"
+						: "pending"
+					: linksEnabled
+						? "pending"
+						: null,
 			};
 			setPublished(outcome);
 			// Only when the hub returned a listing to point at: there is nothing to
@@ -604,7 +695,13 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 					data-testid="publish-submit"
 					onClick={() => void submit()}
 					disabled={
-						!agreedToTerms || issues.length > 0 || !name.trim() || submitting
+						(targetIsOrg && !targetOrganization) ||
+						!agreedToTerms ||
+						issues.length > 0 ||
+						!name.trim() ||
+						submitting ||
+						(linksEnabled &&
+							(!links.isSuccess || !!otherOrigin || !!unresolvedOrigin))
 					}
 				>
 					{/*
@@ -752,6 +849,49 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 					</div>
 				)}
 
+				{published?.localPolicies === "pending" && (
+					<p role="alert" className="text-body-sm text-warning">
+						{t("ui.hub.skills.policy_pending")}
+					</p>
+				)}
+				{!published && linksEnabled && (
+					<div className="flex flex-col gap-3">
+						{links.isLoading ? (
+							<p className="text-meta text-ink-muted">
+								{t("ui.hub.links.loading")}
+							</p>
+						) : links.error ? (
+							<p role="alert" className="text-body-sm text-warning">
+								{t("ui.hub.links.load_failed")}
+							</p>
+						) : otherOrigin ? (
+							<p className="text-body-sm text-warning">
+								{t("ui.hub.subscriptions.source_separation", {
+									currentSource: hubLinkSourceName(otherOrigin),
+									newSource: policySource,
+								})}
+							</p>
+						) : unresolvedOrigin ? (
+							<p className="text-body-sm text-warning">
+								{t("ui.hub.links.source_unavailable")}
+							</p>
+						) : targetLink ? (
+							<HubLinkPolicyControls link={targetLink} />
+						) : (
+							<HubInitialPolicyFields
+								value={initialPolicy}
+								onChange={setInitialPolicy}
+								source={policySource}
+								item={name || agentName}
+								visibility={targetIsOrg ? "org" : "public"}
+								organization={targetIsOrg ? targetDisplayName : null}
+								destinationKey={`${targetTenant}:${agent?.id ?? ""}`}
+								canEnableAutoPush={false}
+								disabled={submitting || !links.isSuccess}
+							/>
+						)}
+					</div>
+				)}
 				{!published && !treatment && (
 					<>
 						<p className="text-body text-ink">
@@ -795,7 +935,14 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 						{publishTargets.length > 0 || blockedTargets.length > 0 ? (
 							<div className="flex flex-col gap-1.5">
 								<Label htmlFor={`${termsCheckboxId}-target`}>Publish to</Label>
-								<Select value={targetTenant} onValueChange={setTargetTenant}>
+								<Select
+									value={targetTenant}
+									onValueChange={(value) => {
+										setTargetTenant(value);
+										setInitialPolicy(newHubPolicy());
+										publicationRequest.current = null;
+									}}
+								>
 									<SelectTrigger
 										id={`${termsCheckboxId}-target`}
 										className="w-full"

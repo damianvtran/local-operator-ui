@@ -1321,6 +1321,8 @@ const SCHEDULE_ROW =
 	"src/renderer/src/features/schedules/components/schedule-list-item.tsx";
 const BROWSER_TABS =
 	"src/renderer/src/features/browser/components/browser-tab-strip.tsx";
+const HUB_LINK_MARK =
+	"src/renderer/src/features/chat/components/hub-link-sidebar-mark.tsx";
 
 /*
  * The regex metacharacters an anchor may carry, and the literal spaces that stand
@@ -2131,6 +2133,12 @@ const PLATES_INSIDE_ROW_STATES = [
 		what: "the schedules list's switch",
 		file: SCHEDULE_ROW,
 		element: "Switch",
+		edge: true,
+	},
+	{
+		what: "the hub link mark's origin-count badge",
+		file: HUB_LINK_MARK,
+		element: "span",
 		edge: true,
 	},
 	{
