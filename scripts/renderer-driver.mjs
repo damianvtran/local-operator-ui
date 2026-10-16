@@ -269,6 +269,7 @@ import { withNotificationsOff } from "./notifications-off.mjs";
  * interpreter, so a new one has to say so there as well as here.
  */
 import { pythonChildEnv } from "./python-child-env.mjs";
+import { SEAL_AUDIT_PURPOSE } from "./skill-seal-fixture.mjs";
 import { withTelemetryOff } from "./telemetry-off.mjs";
 
 const ROOT = process.cwd();
@@ -10367,6 +10368,93 @@ async function sceneOutputArtifact(cdp) {
 	return frames;
 }
 
+/** The token the fixture seeds on its first invocation, and the long-body one. */
+const DEMO_TOKEN = "$seal-demo";
+const STEPS_TOKEN = "$seal-steps";
+/*
+ * The trigger's ACCESSIBLE NAME is what makes the long-body row findable without a
+ * coordinate read: the seal's `triggerLabel` opens with the token, and that name
+ * matches exactly one row.
+ */
+const STEPS_TRIGGER = `[role="log"] button[aria-label^="${STEPS_TOKEN} "]`;
+
+/**
+ * A trigger's centre in viewport coordinates, found by the TOKEN it shows.
+ *
+ * By token rather than by index, because the seal's own header is what a reader
+ * aims at and the transcript's rows are not all rendered at once: the lookup is
+ * on the LIVE DOM, after the row has been scrolled into view.
+ */
+async function triggerPointFor(cdp, token) {
+	const point = await cdp.evaluate(`(() => {
+		const log = document.querySelector('[role="log"]');
+		const trigger = [...(log?.querySelectorAll('button[aria-expanded]') ?? [])].find(
+			(el) => el.innerText.includes(${JSON.stringify(token)}),
+		);
+		if (!trigger) return null;
+		trigger.scrollIntoView({ block: "center" });
+		const r = trigger.getBoundingClientRect();
+		return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+	})()`);
+	// The scroll settles on the next frame, so the rect is read AFTER it.
+	await wait(200);
+	return point;
+}
+
+/** The same trigger's rect against the scroller's own viewport (for U2). */
+async function triggerBoxFor(cdp, token) {
+	return cdp.evaluate(`(() => {
+		const log = document.querySelector('[role="log"]');
+		const trigger = [...(log?.querySelectorAll('button[aria-expanded]') ?? [])].find(
+			(el) => el.innerText.includes(${JSON.stringify(token)}),
+		);
+		if (!trigger || !log) return null;
+		const r = trigger.getBoundingClientRect();
+		const view = log.getBoundingClientRect();
+		return {
+			top: Math.round(r.top),
+			bottom: Math.round(r.bottom),
+			viewTop: Math.round(view.top),
+			viewBottom: Math.round(view.bottom),
+		};
+	})()`);
+}
+
+/** The disclosed instructions block's own geometry, against § 7's cap. */
+async function readSealBody(cdp, token) {
+	return cdp.evaluate(`(() => {
+		const log = document.querySelector('[role="log"]');
+		const trigger = [...(log?.querySelectorAll('button[aria-expanded]') ?? [])].find(
+			(el) => el.innerText.includes(${JSON.stringify(token)}),
+		);
+		const body = trigger?.parentElement?.querySelector('[data-lo-skill-body]');
+		if (!body) return null;
+		return {
+			clientHeight: body.clientHeight,
+			scrollHeight: body.scrollHeight,
+			cap: Math.min(320, Math.round(window.innerHeight * 0.4)),
+		};
+	})()`);
+}
+
+/** The first trigger's own chevron, its ink and the outline a focus would draw. */
+async function readChevronInk(cdp) {
+	return cdp.evaluate(`(() => {
+		const trigger = document.querySelector('[role="log"] button[aria-expanded]');
+		const mark = trigger?.querySelector('svg')?.parentElement ?? null;
+		if (!trigger || !mark) return null;
+		const markStyle = getComputedStyle(mark);
+		const triggerStyle = getComputedStyle(trigger);
+		return {
+			ink: markStyle.color,
+			outlineStyle: triggerStyle.outlineStyle,
+			outlineWidth: triggerStyle.outlineWidth,
+			focusVisible: trigger.matches(':focus-visible'),
+			focused: document.activeElement === trigger,
+		};
+	})()`);
+}
+
 /*
  * THE `$skill` SEAL: how a persisted invocation reads on the user's own row.
  *
@@ -10415,6 +10503,7 @@ async function sceneSkillSeal(cdp) {
 	);
 	const frames = [];
 	const expectSeal = SEAL_EXPECT !== "payload";
+	const stepsTrigger = STEPS_TRIGGER;
 	const size = `${WINDOW_WIDTH}x${WINDOW_HEIGHT}`;
 	/*
 	 * The row's own readings, taken from the DOM the reader has. `transcript` is
@@ -10460,6 +10549,12 @@ async function sceneSkillSeal(cdp) {
 		);
 
 	for (const palette of SEAL_PALETTES) {
+		/*
+		 * The capture verb's labels are lowercase letters, digits, dash and
+		 * underscore only, so the palette's own camel case becomes a slug here
+		 * rather than in four file names.
+		 */
+		const paletteSlug = palette === "localOperatorDark" ? "dark" : "light";
 		await verb(cdp, "setTheme", palette);
 		await verb(cdp, "navigate", `/chat/${SESSION}`);
 		const painted = await waitForCondition(
@@ -10484,11 +10579,17 @@ async function sceneSkillSeal(cdp) {
 			 * sentence, the tag, the front matter and the body are all in the
 			 * transcript, and the row carries no disclosure at all.
 			 */
+			/*
+			 * The header sentence WITHOUT its backticks: the base tree paints the
+			 * payload through the markdown renderer, so the name arrives as a
+			 * `<code>` element and `innerText` never contains the literal
+			 * "\u0060seal-demo\u0060" the writer spelled (this check failed on the
+			 * first frame run for exactly that reason).
+			 */
 			check(
 				"the payload's own header sentence is painted (the defect)",
-				rows.transcript.includes(
-					"The user invoked the `seal-demo` skill directly",
-				),
+				rows.transcript.includes("The user invoked the") &&
+					rows.transcript.includes("skill directly"),
 				rows.transcript.slice(0, 240),
 			);
 			check(
@@ -10504,7 +10605,7 @@ async function sceneSkillSeal(cdp) {
 				JSON.stringify(rows.seals),
 			);
 			frames.push(
-				await captureSettled(cdp, `skill-seal-${size}-${palette}-payload`),
+				await captureSettled(cdp, `skill-seal-${size}-${paletteSlug}-payload`),
 			);
 			continue;
 		}
@@ -10541,8 +10642,8 @@ async function sceneSkillSeal(cdp) {
 			}),
 		);
 		check(
-			"both invocations carry a disclosure, closed by default",
-			rows.seals.length === 2 &&
+			"every invocation carries a disclosure, closed by default",
+			rows.seals.length === 3 &&
 				rows.seals.every((seal) => seal.expanded === "false"),
 			JSON.stringify(rows.seals.map((seal) => seal.expanded)),
 		);
@@ -10552,7 +10653,7 @@ async function sceneSkillSeal(cdp) {
 			rows.transcript.slice(-200),
 		);
 		frames.push(
-			await captureSettled(cdp, `skill-seal-${size}-${palette}-collapsed`),
+			await captureSettled(cdp, `skill-seal-${size}-${paletteSlug}-collapsed`),
 		);
 
 		/*
@@ -10595,7 +10696,7 @@ async function sceneSkillSeal(cdp) {
 			expandedRows.transcript.slice(-400),
 		);
 		frames.push(
-			await captureSettled(cdp, `skill-seal-${size}-${palette}-expanded`),
+			await captureSettled(cdp, `skill-seal-${size}-${paletteSlug}-expanded`),
 		);
 
 		await clickAt(cdp, sealTrigger);
@@ -10614,14 +10715,145 @@ async function sceneSkillSeal(cdp) {
 		const longPurpose = rows.seals[1]?.purpose ?? null;
 		check(
 			"a long purpose is one ellipsized line with the sentence in its title",
+			/*
+			 * The truncation claim is the SPAN's own overflow - `scrollWidth` against
+			 * `clientWidth`, read in `readRows` - and the title is compared against the
+			 * sentence the FIXTURE seeded. The first version of this check required
+			 * `title.length > text.length`, which can never hold when the title is the
+			 * whole sentence and the visible text is its prefix: the frames were right
+			 * and the assertion was wrong (design round 1's note on this PR's own
+			 * evidence run).
+			 */
 			Boolean(longPurpose) &&
 				longPurpose.clipped &&
-				typeof longPurpose.title === "string" &&
-				longPurpose.title.length > longPurpose.text.length,
-			JSON.stringify(longPurpose),
+				longPurpose.title === SEAL_AUDIT_PURPOSE,
+			JSON.stringify({ ...longPurpose, seeded: SEAL_AUDIT_PURPOSE }),
 		);
 		frames.push(
-			await captureSettled(cdp, `skill-seal-${size}-${palette}-long-purpose`),
+			await captureSettled(
+				cdp,
+				`skill-seal-${size}-${paletteSlug}-long-purpose`,
+			),
+		);
+
+		/*
+		 * THE 40-STEP BODY (design round 1, D1). The fixture's third invocation
+		 * carries a body at the length shipped skills run (17-156 lines), and the
+		 * readings are the cap and the scroll: `clientHeight` against § 7's
+		 * `min(320px, 40vh)` and `scrollHeight` against `clientHeight`, taken from
+		 * the block's own hook (`[data-lo-skill-body]`). The row's header is then
+		 * re-read, because "the block is capped" is only half the claim - the other
+		 * half is that opening it does not carry the row the reader pressed off the
+		 * top of the scroller (UX round 1, U2).
+		 */
+		/*
+		 * BY THE TRIGGER'S OWN NAME, not by a point measured first: the coordinate
+		 * read here was the row's centre BEFORE the transcript re-anchored, so the
+		 * press landed on whatever the move had left under it (measured: the
+		 * disclosure never opened, `open:false`). `clickAt` re-reads the rect at the
+		 * moment of the press, which is the shape the demo row's own press uses.
+		 */
+		await cdp.evaluate(
+			`(() => { const t = document.querySelector(${JSON.stringify(
+				stepsTrigger,
+			)}); if (t) t.scrollIntoView({ block: "center" }); return true; })()`,
+		);
+		await wait(300);
+		await clickAt(cdp, stepsTrigger);
+		const stepsOpened = await waitForCondition(
+			cdp,
+			"Boolean(document.querySelector('[data-lo-skill-body]'))",
+			10_000,
+		);
+		const stepsBody = await readSealBody(cdp, STEPS_TOKEN);
+		check(
+			"the 40-step instructions block is capped and scrolls inside itself",
+			stepsOpened.ok &&
+				stepsBody !== null &&
+				stepsBody.clientHeight <= stepsBody.cap + 1 &&
+				stepsBody.scrollHeight > stepsBody.clientHeight + 1,
+			JSON.stringify({ open: stepsOpened.ok, ...stepsBody }),
+			JSON.stringify({ open: stepsOpened.ok, ...stepsBody }),
+		);
+		const stepsTriggerBox = await triggerBoxFor(cdp, STEPS_TOKEN);
+		check(
+			"opening the long body keeps the row's own header inside the scroller",
+			stepsTriggerBox !== null &&
+				stepsTriggerBox.top >= stepsTriggerBox.viewTop - 2 &&
+				stepsTriggerBox.top <= stepsTriggerBox.viewBottom,
+			JSON.stringify(stepsTriggerBox),
+			JSON.stringify(stepsTriggerBox),
+		);
+		frames.push(
+			await captureSettled(cdp, `skill-seal-${size}-${paletteSlug}-long-body`),
+		);
+		await clickAt(cdp, stepsTrigger);
+
+		/*
+		 * HOVER (design round 1, D3). The trigger's hover was a colour step on the
+		 * BUTTON while the chevron pinned its own ink, so nothing inherited it. The
+		 * reading is the chevron's computed colour at rest against the same colour
+		 * under a real pointer move, and only then is the frame taken - a frame alone
+		 * would show a chevron without saying what it changed from.
+		 */
+		// The pointer is parked first: the previous press left it over the steps
+		// row, and a "resting" reading taken under a pointer is not a resting one.
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x: 4,
+			y: 4,
+			button: "none",
+		});
+		await wait(300);
+		const restingInk = await readChevronInk(cdp);
+		const hoverPoint = await triggerPointFor(cdp, DEMO_TOKEN);
+		if (hoverPoint) {
+			await cdp.send("Input.dispatchMouseEvent", {
+				type: "mouseMoved",
+				x: hoverPoint.x,
+				y: hoverPoint.y,
+				button: "none",
+			});
+			await wait(300);
+		}
+		const hoveredInk = await readChevronInk(cdp);
+		check(
+			"hovering the trigger steps the chevron's ink (design round 1, D3)",
+			restingInk !== null &&
+				hoveredInk !== null &&
+				restingInk.ink !== hoveredInk.ink,
+			JSON.stringify({ resting: restingInk?.ink, hovered: hoveredInk?.ink }),
+			JSON.stringify({ resting: restingInk?.ink, hovered: hoveredInk?.ink }),
+		);
+		frames.push(
+			await captureSettled(cdp, `skill-seal-${size}-${paletteSlug}-hover`),
+		);
+
+		/*
+		 * KEYBOARD FOCUS (design round 1, D3). The outline is the app's global
+		 * `:focus-visible` rule, so the frame is only honest if the focus arrived the
+		 * way a keyboard user's does: a real Tab, never `element.focus()`, which
+		 * Chrome does not treat as keyboard interaction.
+		 */
+		await cdp.evaluate(
+			"(() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur(); return true; })()",
+		);
+		let focusReading = null;
+		for (let press = 0; press < 60; press += 1) {
+			await pressChord(cdp, { key: "Tab", code: "Tab", virtualKeyCode: 9 });
+			focusReading = await readChevronInk(cdp);
+			if (focusReading?.focused === true) break;
+		}
+		check(
+			"a keyboard user reaches the trigger, and the app outlines it (design round 1, D3)",
+			focusReading?.focused === true &&
+				focusReading.focusVisible === true &&
+				focusReading.outlineStyle !== "none",
+			JSON.stringify(focusReading),
+			JSON.stringify(focusReading),
+		);
+		frames.push(
+			await captureSettled(cdp, `skill-seal-${size}-${paletteSlug}-focus`),
 		);
 	}
 

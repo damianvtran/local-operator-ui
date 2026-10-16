@@ -708,6 +708,7 @@ export type MessageParams = {
 	"ui.chat.composer_media.remove_attachment": undefined;
 	"ui.chat.highlights.file_resolution_failed": undefined;
 	"ui.chat.skill_invocation.instructions_label": undefined;
+	"ui.chat.skill_invocation.trigger_label": { token: string };
 	"ui.chat.usage.blocked": undefined;
 	"ui.chat.usage.continue": undefined;
 	"ui.chat.usage.eligibility_unknown": undefined;

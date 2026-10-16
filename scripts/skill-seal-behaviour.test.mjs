@@ -201,6 +201,36 @@ const SKILL_RECORD = {
 	},
 };
 
+/**
+ * A BARE invocation: the payload's request is empty and its SKILL.md carries no
+ * `description:`, so the row is the token alone (review round 1's D3' case).
+ *
+ * UX round 1's NIT 2 reported that such a row offers no Copy or Quote, on the
+ * reading that `isQuotable` saw an empty body. It sees the TYPED LINE here, not
+ * the payload, so the row has words to offer — pinned below rather than assumed.
+ */
+const BARE_PAYLOAD = [
+	"The user invoked the `seal-bare` skill directly. Follow it for this request. Its reference files, if any, are listed at the end of the body and are read with `skill://<name>/<path>`.",
+	'<skill name="seal-bare" invocation="$seal-bare">',
+	"---\nname: seal-bare\n---\n\n# Seal bare\n\nNo description above.\n</skill>",
+	"",
+].join("\n");
+
+const BARE_RECORD = {
+	kind: "user",
+	id: "u-bare",
+	ts: TS,
+	text: BARE_PAYLOAD,
+	images: [],
+	skill: {
+		name: "seal-bare",
+		token: "$seal-bare",
+		request: "",
+		purpose: null,
+		body: "# Seal bare\n\nNo description above.",
+	},
+};
+
 const transcriptOf = (records) => ({
 	records,
 	index: new Map(records.map((record, position) => [record.id, position])),
@@ -348,4 +378,28 @@ test("an ordinary message keeps its text and gains no seal", async (t) => {
 	]);
 	assert.equal(mounted.text().includes(PLAIN_TEXT), true);
 	assert.equal(mounted.seal(), null, "no disclosure on a plain message");
+});
+
+test("a bare invocation is the token alone, and still offers Copy", async (t) => {
+	// The clipboard spy is module state, so an earlier case's copy is still in it.
+	written.length = 0;
+	const mounted = await mount(t, [BARE_RECORD]);
+	const text = mounted.text();
+	assert.match(text, /\$seal-bare/);
+	assert.equal(
+		text.includes("No description above"),
+		false,
+		"the body is behind the disclosure, closed by default",
+	);
+	assert.equal(
+		text.includes("\u00b7"),
+		false,
+		"no orphan separator without a purpose",
+	);
+	const copy = mounted.container.querySelector(
+		'[data-lo-user-actions] button[aria-label="Copy"]',
+	);
+	assert.notEqual(copy, null, "a bare invocation still has words to copy");
+	await mounted.press(copy);
+	assert.deepEqual(written, ["$seal-bare"]);
 });

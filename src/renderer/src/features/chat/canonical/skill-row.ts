@@ -39,12 +39,13 @@
  * matching a second, guessable tag.
  */
 
+import type { Reply } from "@shared/store/conversation-input-store";
 import {
 	SKILL_TAG_RE,
 	unescapeSkillAttribute,
 } from "../components/skill-invocation";
 import { pyTrim, pyTrimStart } from "../components/slash-token";
-import { splitReplyPrefix } from "../utils/reply-utils";
+import { parseReplies, splitReplyPrefix } from "../utils/reply-utils";
 
 /**
  * The shape of one invocation, as the row that paints it needs it.
@@ -90,8 +91,14 @@ const INDENTED = /^\s/;
 /**
  * A YAML block scalar's indicator, with its optional chomping/indent modifier:
  * `>`, `>-`, `>+`, `|`, `|-`, `|2-` and the other spellings YAML allows.
+ *
+ * BOTH ORDERS of the modifier, and an optional comment after it (agent review
+ * round 2, MINOR-1; QA round 2, Q5): YAML reads `|2-` and `|-2` alike, and
+ * `>- # a note` is an indicator carrying a comment. The first spelling of this
+ * pattern allowed the chomp before the digit only, so `|2-` fell through to the
+ * plain branch and painted the indicator into the caption.
  */
-const BLOCK_INDICATOR = /^[>|][-+]?\d*$/;
+const BLOCK_INDICATOR = /^[>|](?:[-+]\d?|\d[-+]?)?(?:\s+#.*)?$/;
 
 /**
  * The LINE `render_invocation` writes in front of every payload
@@ -137,6 +144,47 @@ function frontMatterEnd(body: string): number | null {
  */
 function unquoteDouble(value: string): string {
 	return value.replace(/\\"/g, '"').replace(/\\\\/g, "\\");
+}
+
+/**
+ * The body of a QUOTED scalar at the start of `value`, or `null`.
+ *
+ * The closing quote is FOUND rather than tested for at the end, because YAML
+ * allows a comment after it: `description: "abc" # note` is the value `abc`
+ * (agent review round 2, MINOR-4), and an `endsWith` check declined it back to
+ * the skill's name. Everything after the closing quote must therefore be
+ * whitespace or a ` #…` comment; anything else (`"a" b`) is a scalar this line
+ * scan does not understand, and `null` sends the caller to the name. A `#`
+ * INSIDE the quotes stays content, which is why this finds the quote rather
+ * than splitting on the comment first.
+ */
+function quotedScalar(value: string, quote: string): string | null {
+	const body: string[] = [];
+	for (let at = 1; at < value.length; at += 1) {
+		const char = value[at];
+		if (quote === '"' && char === "\\" && at + 1 < value.length) {
+			body.push(char, value[at + 1]);
+			at += 1;
+			continue;
+		}
+		if (char !== quote) {
+			body.push(char);
+			continue;
+		}
+		// A single-quoted scalar escapes its quote by DOUBLING it.
+		if (quote === "'" && value[at + 1] === "'") {
+			body.push(char, char);
+			at += 1;
+			continue;
+		}
+		const rest = value.slice(at + 1).trim();
+		if (rest !== "" && !rest.startsWith("#")) return null;
+		const text = body.join("");
+		const scalar =
+			quote === "'" ? text.replace(/''/g, "'") : unquoteDouble(text);
+		return scalar === "" ? null : scalar;
+	}
+	return null;
 }
 
 /**
@@ -187,17 +235,8 @@ function purposeOf(frontMatter: string): string | null {
 		if (pieces.length === 0) return null;
 		const folded = pieces.join(" ");
 		if (isBlockIndicator) return folded.trim() === "" ? null : folded.trim();
-		if (folded.startsWith('"')) {
-			if (folded.length < 2 || !folded.endsWith('"')) return null;
-			return unquoteDouble(folded.slice(1, -1));
-		}
-		if (folded.startsWith("'")) {
-			// YAML escapes a quote in a single-quoted scalar by DOUBLING it, and has
-			// no backslash escapes there at all.
-			if (folded.length < 2 || !folded.endsWith("'")) return null;
-			const body = folded.slice(1, -1).replace(/''/g, "'");
-			return body === "" ? null : body;
-		}
+		if (folded.startsWith('"')) return quotedScalar(folded, '"');
+		if (folded.startsWith("'")) return quotedScalar(folded, "'");
 		/*
 		 * A PLAIN scalar's inline comment starts at whitespace + `#` (`description:
 		 * ship it # not this`). A `#` is CONTENT inside a block scalar or a quoted
@@ -271,18 +310,47 @@ export function skillRowOf(text: string): SkillInvocationRow | null {
 }
 
 /**
- * The text a `$skill` row hands back to the composer's Edit.
+ * What a `$skill` row hands back to the composer's Edit: the typed line for the
+ * box, and the quoted run for the composer's own chip path.
  *
- * `skillRowOf`'s own line when the row is an invocation, and the record's text
- * verbatim otherwise -- so a plain message is untouched, and a payload comes
- * back as the line the reader typed, with any quoted run still in front of it
- * (that is the string `buildSendPayload` joined, and the spelling the composer
- * cannot re-expand: a leading quote run means no first-token `$name`).
+ * TWO PIECES, NOT ONE STRING (UX round 1, U1). The box has to get the line the
+ * reader typed: a quote is staged in the composer as a CHIP, so a box holding
+ * `prefix + line` reads as prose with the markup showing, and sending from it
+ * carried `<reply-to>…</reply-to>` literally -- the skill was silently not
+ * applied and the model never received the instructions. `parseReplies` is the
+ * row's own splitter (it paints the same quote through `ReplyPreview`), so the
+ * chips the box gets are the ones the reader saw on the row, and
+ * `buildSendPayload` re-joins exactly what came back.
  *
- * ONE FUNCTION rather than the expression at the call site, so the half a test
- * can pin has a name -- and so the retry gate beside the call compares against
- * the same derivation it hands back (agent review round 1, MINOR-4).
+ * `null` for anything that is not an invocation: an ordinary message is
+ * untouched, and its own quoted run keeps the behaviour it had before this row
+ * existed (the same raw markup, which is a pre-existing shape of that path).
+ */
+export function editDraftOf(
+	text: string,
+): { replies: Reply[]; text: string } | null {
+	const row = skillRowOf(text);
+	if (row === null) return null;
+	/*
+	 * `row.text` is `prefix + gap + line`, so the box's half is the tail. Slicing
+	 * the ORIGINAL prefix rather than rebuilding the line from the parsed fields
+	 * is what keeps the reader's own spelling of the token (`$ResearCH`), which the
+	 * resolved `skill.token` no longer carries.
+	 */
+	const { prefix } = splitReplyPrefix(text);
+	return {
+		replies: parseReplies(text).replies,
+		text: row.text.slice(prefix.length).trimStart(),
+	};
+}
+
+/**
+ * The text a `$skill` row's Edit puts in the composer: the typed line alone.
+ *
+ * One derivation rather than the expression at the call site, so the retry gate
+ * beside the call compares against the same string it hands back (agent review
+ * round 1, MINOR-4) and the quote that goes with it is `editDraftOf`'s answer.
  */
 export function editTextOf(text: string): string {
-	return skillRowOf(text)?.text ?? text;
+	return editDraftOf(text)?.text ?? text;
 }
