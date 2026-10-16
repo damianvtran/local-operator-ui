@@ -12149,9 +12149,17 @@ export const STORIES = [
 	 * count clause — plus the same block at the shell's narrow width. Each
 	 * frame's turn really carries a closed bar (the stories drive the same plan
 	 * the app does).
+	 *
+	 * TWO STATES SIT TALLER (agent review round 1's R3, the designer's D1): at
+	 * 900x400, `folded-condensed-counts` ended at the fourth featured row with
+	 * its `N more files` disclosure below the crop and
+	 * `folded-condensed-preparing-files` lost the `Preparing highlights…  Adjust…  Cancel` line the
+	 * same way, so both are taken at 900x540 — the height that carries each
+	 * state's own line. The count-valued siblings stay at 400: their content
+	 * fits, and a re-take would move bytes no finding named.
 	 */
 	["chat-turn-supplements--folded-condensed-files", 900, 400],
-	["chat-turn-supplements--folded-condensed-counts", 900, 400],
+	["chat-turn-supplements--folded-condensed-counts", 900, 540],
 	["chat-turn-supplements--folded-condensed-components", 900, 400],
 	["chat-turn-supplements--folded-condensed-mixed", 900, 400],
 	[
@@ -12185,7 +12193,7 @@ export const STORIES = [
 			},
 		},
 	],
-	["chat-turn-supplements--folded-condensed-preparing-files", 900, 400],
+	["chat-turn-supplements--folded-condensed-preparing-files", 900, 540],
 	[
 		"chat-turn-supplements--images",
 		900,

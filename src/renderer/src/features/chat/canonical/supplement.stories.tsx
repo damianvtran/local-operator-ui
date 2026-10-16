@@ -876,11 +876,16 @@ export const FoldedCondensedFiles: StoryObj = {
 	),
 };
 
-/** Files only, > 2: the featured rows plus the `N more files` disclosure. */
+/**
+ * Files only, > 2: the featured rows plus the `N more files` disclosure.
+ *
+ * 540px, not 400 (agent review round 1's R3, the designer's D1): at the original
+ * height the disclosure the state is named for sat below the crop.
+ */
 export const FoldedCondensedCounts: StoryObj = {
 	render: () => (
 		<Frame
-			height={400}
+			height={540}
 			records={[
 				prompt("u0", "Refresh the weekly reports."),
 				turnCall("c1"),
@@ -1083,7 +1088,7 @@ export const FoldedCondensedImages: StoryObj = {
 export const FoldedCondensedPreparingFiles: StoryObj = {
 	render: () => (
 		<Frame
-			height={400}
+			height={540}
 			records={[
 				prompt("u0", "Refresh the weekly reports and chart them."),
 				turnCall("c1"),
