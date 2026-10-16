@@ -76,7 +76,17 @@ export type VoiceTurnsInput =
 	/** That send failed: nothing was admitted. */
 	| { kind: "disarmed" }
 	/** The session's `streaming` flag, as a frontend frame states it. */
-	| { kind: "streaming"; streaming: boolean }
+	/**
+	 * The session's `streaming` flag. `snapshot` marks one read off a SNAPSHOT:
+	 * the authoritative state after a (re)subscribe, which is how a turn that
+	 * ended while the stream was away is learned (review round 4, R4-M1, path H).
+	 */
+	| { kind: "streaming"; streaming: boolean; snapshot?: boolean }
+	/**
+	 * Continuity was lost: a resume answered with a gap or a new epoch, so the
+	 * frames between the last one folded and now are gone (R4-M1, paths E/F).
+	 */
+	| { kind: "reset" }
 	/** One canonical AgentEvent off the session stream (`frame.type === "event"`). */
 	| { kind: "event"; event: Record<string, unknown> }
 	/**
@@ -109,6 +119,15 @@ export function initialVoiceTurns(): VoiceTurnsState {
 		pendingApproval: null,
 		pendingCard: null,
 	};
+}
+
+/**
+ * Drop the in-flight take WITHOUT speaking, keeping what was already said. The
+ * one invariant every resume path is held to: a turn nobody spoke into is never
+ * spoken (review round 4, R4-M1).
+ */
+function disarm(state: VoiceTurnsState): VoiceTurnsState {
+	return { ...state, armed: 0, turnSeen: false, lastMessageId: null };
 }
 
 function remember(list: string[], id: string): string[] {
@@ -160,6 +179,16 @@ export function stepVoiceTurns(
 		};
 	}
 	if (input.kind === "streaming") {
+		/*
+		 * A TURN THAT ENDED UNSEEN IS NOT ANSWERED LATER (R4-M1). A snapshot saying
+		 * the session is idle while a take's turn was seen running means its
+		 * `agent_end` happened while the stream was away and was absorbed into the
+		 * snapshot. The take is disarmed silently: left armed, it would claim the
+		 * NEXT turn - typed, nobody spoke into it - and read that aloud. A take whose
+		 * turn has not been seen yet (`turnSeen` false) is a fresh one and is kept.
+		 */
+		if (input.snapshot && !input.streaming && state.armed > 0 && state.turnSeen)
+			return { state: { ...disarm(state), inFlight: false }, speak: [] };
 		return {
 			state: {
 				...state,
@@ -169,10 +198,16 @@ export function stepVoiceTurns(
 			speak: [],
 		};
 	}
+	if (input.kind === "reset") return { state: disarm(state), speak: [] };
 	if (input.kind === "stopped") {
+		/*
+		 * A stopped watcher (exhausted, gone, torn down) sees nothing until it is
+		 * retried, so a take armed now cannot be matched to its turn afterwards:
+		 * disarmed with everything else it can no longer vouch for (R4-M1, path I).
+		 */
 		return {
 			state: {
-				...state,
+				...disarm(state),
 				pendingApproval: null,
 				pendingCard: null,
 				inFlight: false,

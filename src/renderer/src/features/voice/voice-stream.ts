@@ -29,10 +29,19 @@
  *   arrived never sets the pending card and push-to-talk opens the microphone
  *   for words the route then refuses. It is always folded, as STATE only
  *   (`snapshot: true` on the inputs it produces): the gate it names is recorded
- *   but never announced. It advances the cursor like any receipt.
+ *   but never announced. It advances the cursor like any receipt. Its
+ *   `streaming` flag carries `snapshot: true` too, because an idle snapshot is
+ *   how a turn that ended while the stream was away is learned (R4-M1, path H).
+ * - CONTINUITY LOST IS SAID OUT LOUD (review round 4, R4-M1; QA Q6). A resume
+ *   answered with `open{gap:true}`, or on a new epoch (a cut longer than the
+ *   server's 20 s RECONNECT_DWELL_S, or a daemon restart), replays nothing: the
+ *   frames in between are gone. The watcher folds `reset`, which disarms any
+ *   take, so a later turn is never mistaken for its answer (paths E and F).
  *
- * The fold also dedupes by message id and gate id, so a frame that slipped past
- * the cursor rule still cannot be spoken twice.
+ * THE INVARIANT ALL OF THIS SERVES: a turn nobody spoke into is never spoken. A
+ * take whose answering turn ended while the stream was away is dropped silently,
+ * never carried into the next turn. The fold also dedupes by message id and gate
+ * id, so a frame that slipped past the cursor rule cannot be spoken twice.
  *
  * RETRY IS BOUNDED (review round 1, U5) AND AN UNASKED END IS A FAILURE (review
  * round 2, N1). Backoff follows the pane's own ladder (`streamRetryDelayMs`) for
@@ -44,10 +53,12 @@
  * ignored. A 404 is the session itself being gone (`unknown_session`), which no
  * retry can change, so it stops at once and reports `gone`.
  *
- * A STOPPED WATCHER STATES NOTHING (N1). Whenever it stops - exhausted, gone, or
- * torn down - it folds `stopped`, which clears the pending approval and the
- * streaming flag: a gate it can no longer see clear must not keep refusing
- * takes, and a turn it can no longer see end must not be counted as running.
+ * A STOPPED WATCHER STATES NOTHING (N1, R4-M1). Whenever it stops - exhausted,
+ * gone, or torn down - it folds `stopped`, which clears the pending card, the
+ * streaming flag AND any armed take: a card it can no longer see clear must not
+ * keep refusing takes, a turn it can no longer see end must not be counted as
+ * running, and a take it can no longer match to its turn must not answer a later
+ * one (path I).
  * `retry()` on the returned handle starts a fresh ladder after `exhausted`; the
  * controller calls it on window focus, on a feed reconnect, and from the
  * notice's Reconnect action. The first frame after such a retry reports
@@ -174,9 +185,24 @@ export function subscribeVoiceStream(
 						recovering = false;
 						onStatus("recovered");
 					}
-					// `open` is metadata stamped with the cutoff, ahead of the replay
-					// that follows it: it neither moves the cursor nor is folded (R3-M1).
-					if (frame.type === "open") return;
+					/*
+					 * `open` is metadata stamped with the cutoff, ahead of the replay that
+					 * follows it: it never moves the cursor (R3-M1). On a RESUME (a cursor
+					 * exists) it is also where the server says continuity was lost: `gap`,
+					 * or a new epoch after a long cut or a daemon restart. The frames in
+					 * between are gone, so the fold is told to disarm (R4-M1, paths E/F).
+					 */
+					if (frame.type === "open") {
+						const payload = frame.payload as { gap?: unknown } | undefined;
+						if (
+							cursor &&
+							(payload?.gap === true ||
+								(typeof frame.epoch === "string" &&
+									frame.epoch !== cursor.epoch))
+						)
+							onInput({ kind: "reset" });
+						return;
+					}
 					const snapshot = frame.type === "snapshot";
 					if (
 						typeof frame.epoch === "string" &&
@@ -191,6 +217,9 @@ export function subscribeVoiceStream(
 							frame.seq <= cursor.seq
 						)
 							return;
+						// A receipt on a new epoch without the open that should announce it.
+						if (cursor && cursor.epoch !== frame.epoch)
+							onInput({ kind: "reset" });
 						if (
 							!cursor ||
 							cursor.epoch !== frame.epoch ||
@@ -211,7 +240,7 @@ export function subscribeVoiceStream(
 					}
 					const streaming = streamingOfFrame(frame);
 					if (streaming !== undefined)
-						onInput({ kind: "streaming", streaming });
+						onInput({ kind: "streaming", streaming, snapshot });
 					const gate = gateOfFrame(frame);
 					if (gate !== undefined) onInput({ kind: "gate", gate, snapshot });
 					return;
