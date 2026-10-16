@@ -102,7 +102,13 @@ export type MeshApprovalRow = {
 	/** Verbatim from the store: `requested`/`approved`/`connecting`/`connected`/`denied`/`expired`/`failed`. */
 	state: string;
 	/** Which where-block this row carries — the record's own kind is the difference. */
-	kind: "device" | "machine";
+	kind: "device" | "machine" | "credential" | "unknown";
+	/** Authored by the backend from the signed request, never reconstructed here. */
+	summary?: string;
+	details?: string[];
+	/** A restriction only: true is NOT authority to sign a new request kind. */
+	canApproveHere?: boolean;
+	approveRemedy?: string;
 	where: MeshApprovalWhere;
 	what: MeshApprovalScopes;
 	requestedBy: { surface: string; sessionId: string; deviceId: string };
@@ -161,8 +167,15 @@ export function waitingApprovalCount(rows: readonly MeshApprovalRow[]): number {
 }
 
 /** `approve` is offered on `requested` alone: every other open state is past the decision. */
-export function canApproveApproval(state: string): boolean {
-	return state === "requested";
+export function canApproveApproval(row: MeshApprovalRow): boolean {
+	// Legacy device/machine cards retain their existing signing route. Neither
+	// an optimistic optional field nor an unknown/new intent enables that route.
+	// Inheritance and future typed approvals need their OWN supported consumer.
+	return (
+		row.state === "requested" &&
+		row.canApproveHere !== false &&
+		(row.kind === "device" || row.kind === "machine")
+	);
 }
 
 /**
@@ -255,13 +268,44 @@ export function approvalRows(value: unknown): MeshApprovalRow[] {
 		 * neither reads as `device` — the kind v1 mints — and renders its empty
 		 * where-fields as nothing rather than inventing one.
 		 */
+		// #2435 is a signed intent INSIDE device_onboard, not a new where-block.
+		// Presence is enough to close the generic signing path even if the intent
+		// is malformed; only the backend can interpret and disclose signed scope.
+		const credential =
+			isRecord(raw.what) &&
+			Object.prototype.hasOwnProperty.call(raw.what, "credential_inheritance");
+		const explicitKind = Object.prototype.hasOwnProperty.call(raw, "kind")
+			? text(raw.kind)
+			: undefined;
 		const kind: MeshApprovalRow["kind"] =
-			!isRecord(raw.device) && isRecord(raw.machine) ? "machine" : "device";
+			credential || explicitKind === "credential_inheritance"
+				? "credential"
+				: explicitKind !== undefined &&
+						!["device_onboard", "local_authority"].includes(explicitKind)
+					? "unknown"
+					: !isRecord(raw.device) && isRecord(raw.machine)
+						? "machine"
+						: "device";
 		const requestedBy = isRecord(raw.requested_by) ? raw.requested_by : {};
 		rows.push({
 			approvalId,
 			state,
 			kind,
+			summary: text(raw.summary) || undefined,
+			// Do not silently omit a malformed line from a security disclosure and
+			// make the remaining text look complete. React renders plain strings.
+			details:
+				Array.isArray(raw.details) &&
+				raw.details.every((line) => typeof line === "string")
+					? raw.details.slice()
+					: undefined,
+			canApproveHere: Object.prototype.hasOwnProperty.call(
+				raw,
+				"can_approve_here",
+			)
+				? raw.can_approve_here === true
+				: undefined,
+			approveRemedy: text(raw.approve_remedy) || undefined,
 			where: where(kind === "machine" ? raw.machine : raw.device),
 			what: scopes(raw.what),
 			requestedBy: {
@@ -316,6 +360,15 @@ export function approvalSummary(
 	row: MeshApprovalRow,
 	networkNames?: ReadonlyMap<string, string>,
 ): string {
+	if (
+		row.kind === "credential" ||
+		row.kind === "unknown" ||
+		row.canApproveHere === false
+	) {
+		if (row.summary) return row.summary;
+		if (row.kind === "credential" || row.kind === "unknown")
+			return approvalHead(row);
+	}
 	const head = approvalHead(row);
 	const clauses = approvalScopeEntries(row, networkNames).map(
 		(entry) => entry.clause,
@@ -338,6 +391,11 @@ export function approvalSummary(
  * Details disclosure on every row).
  */
 export function approvalHead(row: MeshApprovalRow): string {
+	if (row.kind === "credential")
+		return row.summary || t("ui.mesh.approval.credential_title");
+	if (row.kind === "unknown")
+		return row.summary || t("ui.mesh.approval.unknown_title");
+	if (row.canApproveHere === false && row.summary) return row.summary;
 	return row.kind === "machine"
 		? t("ui.mesh.mesh_approvals.set_up_operator_authority_on_this_machine")
 		: t("ui.mesh.mesh_approvals.onboard_subject", {
@@ -372,6 +430,7 @@ function joinClauses(clauses: readonly string[]): string {
  * returns `null` so the surface hides the line rather than drawing "via ".
  */
 export function approvalWhereLabel(row: MeshApprovalRow): string | null {
+	if (row.kind === "credential" || row.kind === "unknown") return null;
 	const { user, host, transport, name } = row.where;
 	const parts = [
 		host ? (user ? `${user}@${host}` : host) : "",
@@ -385,6 +444,7 @@ export function approvalWhereLabel(row: MeshApprovalRow): string | null {
 
 /** The host-key fingerprint, when the record carries one — its own line, monospace. */
 export function approvalHostKeyLabel(row: MeshApprovalRow): string | null {
+	if (row.kind === "credential" || row.kind === "unknown") return null;
 	return row.where.hostKeyFp || null;
 }
 
@@ -439,6 +499,9 @@ export function approvalScopeEntries(
 	row: MeshApprovalRow,
 	networkNames?: ReadonlyMap<string, string>,
 ): MeshApprovalScopeEntry[] {
+	// The inheritance anchor identifies the signer, not an onboarding grant.
+	// Never reinterpret opaque signed intent as generic install/anchor scopes.
+	if (row.kind === "credential" || row.kind === "unknown") return [];
 	const { connect, install, anchor, networkId, role, unattended, grants } =
 		row.what;
 	const entries: MeshApprovalScopeEntry[] = [];

@@ -76,7 +76,7 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { ShieldCheck } from "lucide-react";
 import type { FC } from "react";
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { t } from "../../../../i18n/messages";
 import {
 	type ApprovalDecision,
@@ -277,6 +277,57 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 	 * failed record cannot re-open a section the reader closed.
 	 */
 	const [recordsOpen, setRecordsOpen] = useState(false);
+	const trayRef = useRef<HTMLElement>(null);
+	const recordsRef = useRef<HTMLDivElement>(null);
+	const deniedFocus = useRef<{
+		id: string;
+		origin: Element | null;
+		sawPending: boolean;
+	} | null>(null);
+	const decide = (id: string, decision: ApprovalDecision) => {
+		if (
+			decision === "deny" &&
+			waiting.some((row) => row.approvalId === id && row.kind === "credential")
+		) {
+			deniedFocus.current = {
+				id,
+				origin: document.activeElement,
+				sawPending: false,
+			};
+		}
+		onDecide(id, decision);
+	};
+	useLayoutEffect(() => {
+		const handoff = deniedFocus.current;
+		if (!handoff) return;
+		if (pending?.approvalId === handoff.id) handoff.sawPending = true;
+		if (refusal?.approvalId === handoff.id) {
+			deniedFocus.current = null;
+			return;
+		}
+		const row = rows.find((entry) => entry.approvalId === handoff.id);
+		if (row?.state === "requested") {
+			if (!pending && handoff.sawPending) deniedFocus.current = null;
+			return;
+		}
+		if (row?.state === "denied" && pending) return;
+		deniedFocus.current = null;
+		// The successful Deny removes its focused control. Hand it to the next
+		// live request, or to CLOSED history, without opening records or taking
+		// focus back from a person who moved elsewhere while the RPC was pending.
+		if (
+			row?.state !== "denied" ||
+			(document.activeElement !== document.body &&
+				document.activeElement !== handoff.origin)
+		)
+			return;
+		const target = waiting.length
+			? trayRef.current?.querySelector<HTMLButtonElement>(
+					'[data-tour-tag="mesh-approval-controls"] button:not(:disabled)',
+				)
+			: recordsRef.current?.querySelector<HTMLButtonElement>("button");
+		target?.focus({ preventScroll: true });
+	}, [rows, pending, refusal, waiting.length]);
 	const recordsSignalled = records.some((row) => row.state === "failed");
 	/** How many settled records carry the state the store says not to miss. */
 	const failedCount = records.filter((row) => row.state === "failed").length;
@@ -316,6 +367,7 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 		 * them has stopped drawing.
 		 */
 		<section
+			ref={trayRef}
 			aria-label={t("ui.mesh.mesh_approvals_tray.approvals")}
 			data-tour-tag="mesh-approvals-tray"
 			className="flex flex-col gap-3"
@@ -352,7 +404,7 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 							pending={pending?.approvalId === row.approvalId ? pending : null}
 							busy={busy}
 							refusal={refusal?.approvalId === row.approvalId ? refusal : null}
-							onDecide={onDecide}
+							onDecide={decide}
 							nowSeconds={nowSeconds}
 							networkNames={networkNames}
 						/>
@@ -388,63 +440,67 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 			 * reader" mark and costs the summary nothing.
 			 */}
 			{records.length > 0 && (
-				<Disclosure
-					open={recordsOpen}
-					onOpenChange={setRecordsOpen}
-					chevronClassName="text-ink-dim"
-					/*
-					 * THE HAIRLINE CARRIES INTO THE SECTION WHEN A PROMPT SITS ABOVE IT
-					 * (design round 1, D1). The waiting list's `divide-y` stops at its last
-					 * card, so in the mixed state the toggle shared that card's own rhythm
-					 * (`Approve` -> `Details` ~26px, card -> toggle ~27px, same left edge and
-					 * chevron) and read as one more disclosure of the card rather than a
-					 * section of its own. The rule and the `pt-3` are what the lists already
-					 * use to separate unlike blocks; a settled-only panel has no card above
-					 * it and draws neither.
-					 */
-					className={cn(waiting.length > 0 && "border-hairline border-t pt-3")}
-					summary={
-						<span className="flex items-center gap-1.5 text-meta text-ink-muted">
-							{t("ui.mesh.mesh_approvals_tray.settled_approvals")}
-							<span className="text-ink-dim">({records.length})</span>
-							{recordsSignalled && (
-								<span
-									aria-hidden="true"
-									className="size-1.5 rounded-full bg-danger"
-								/>
-							)}
-							{failedCount > 0 && (
-								<span className="text-danger">
-									{t("ui.mesh.mesh_approvals_tray.failed_count", {
-										count: failedCount,
-									})}
-								</span>
-							)}
-						</span>
-					}
-				>
-					<ul
-						className="flex flex-col divide-y divide-hairline"
-						data-tour-tag="mesh-approvals-records"
+				<div ref={recordsRef}>
+					<Disclosure
+						open={recordsOpen}
+						onOpenChange={setRecordsOpen}
+						chevronClassName="text-ink-dim"
+						/*
+						 * THE HAIRLINE CARRIES INTO THE SECTION WHEN A PROMPT SITS ABOVE IT
+						 * (design round 1, D1). The waiting list's `divide-y` stops at its last
+						 * card, so in the mixed state the toggle shared that card's own rhythm
+						 * (`Approve` -> `Details` ~26px, card -> toggle ~27px, same left edge and
+						 * chevron) and read as one more disclosure of the card rather than a
+						 * section of its own. The rule and the `pt-3` are what the lists already
+						 * use to separate unlike blocks; a settled-only panel has no card above
+						 * it and draws neither.
+						 */
+						className={cn(
+							waiting.length > 0 && "border-hairline border-t pt-3",
+						)}
+						summary={
+							<span className="flex items-center gap-1.5 text-meta text-ink-muted">
+								{t("ui.mesh.mesh_approvals_tray.settled_approvals")}
+								<span className="text-ink-dim">({records.length})</span>
+								{recordsSignalled && (
+									<span
+										aria-hidden="true"
+										className="size-1.5 rounded-full bg-danger"
+									/>
+								)}
+								{failedCount > 0 && (
+									<span className="text-danger">
+										{t("ui.mesh.mesh_approvals_tray.failed_count", {
+											count: failedCount,
+										})}
+									</span>
+								)}
+							</span>
+						}
 					>
-						{records.map((row) => (
-							<MeshApprovalCard
-								key={row.approvalId}
-								row={row}
-								pending={
-									pending?.approvalId === row.approvalId ? pending : null
-								}
-								busy={busy}
-								refusal={
-									refusal?.approvalId === row.approvalId ? refusal : null
-								}
-								onDecide={onDecide}
-								nowSeconds={nowSeconds}
-								networkNames={networkNames}
-							/>
-						))}
-					</ul>
-				</Disclosure>
+						<ul
+							className="flex flex-col divide-y divide-hairline"
+							data-tour-tag="mesh-approvals-records"
+						>
+							{records.map((row) => (
+								<MeshApprovalCard
+									key={row.approvalId}
+									row={row}
+									pending={
+										pending?.approvalId === row.approvalId ? pending : null
+									}
+									busy={busy}
+									refusal={
+										refusal?.approvalId === row.approvalId ? refusal : null
+									}
+									onDecide={decide}
+									nowSeconds={nowSeconds}
+									networkNames={networkNames}
+								/>
+							))}
+						</ul>
+					</Disclosure>
+				</div>
 			)}
 		</section>
 	);
@@ -473,8 +529,12 @@ const MeshApprovalCard: FC<{
 	const hostKey = approvalHostKeyLabel(row);
 	const requester = approvalRequesterLabel(row);
 	const remaining = approvalRemainingLabel(row.expiresAt, nowSeconds);
-	const hints = stateHints(row.state);
-	const canApprove = canApproveApproval(row.state);
+	const opaque = row.kind === "credential" || row.kind === "unknown";
+	const restricted = opaque || row.canApproveHere === false;
+	// Generic signing/install hints are false for opaque typed intent. The
+	// server's full disclosure is the only description of what would be signed.
+	const hints = restricted ? [] : stateHints(row.state);
+	const canApprove = canApproveApproval(row);
 	const canDeny = canDenyApproval(row.state);
 	return (
 		<li
@@ -490,7 +550,9 @@ const MeshApprovalCard: FC<{
 				 * reader hears depends on which register the words are painted in.
 				 */}
 				<span className={cn("text-meta", stateInk(row.state))}>
-					{approvalStateLabel(row.state)}
+					{row.kind === "credential" && row.state === "approved"
+						? t("ui.mesh.approval.approved_pending_apply")
+						: approvalStateLabel(row.state)}
 				</span>
 				<div className="grow" />
 				{/*
@@ -502,7 +564,11 @@ const MeshApprovalCard: FC<{
 				 * `presented()` reads it), so the gate is the SURFACE's, by state.
 				 */}
 				{waiting && remaining && (
-					<span className="text-meta text-ink-dim">{remaining}</span>
+					<span className="text-meta text-ink-dim">
+						{row.kind === "credential"
+							? t("ui.mesh.approval.request_window", { remaining })
+							: remaining}
+					</span>
 				)}
 			</div>
 
@@ -517,7 +583,7 @@ const MeshApprovalCard: FC<{
 			 * repeating it per settled row is the wall the operator reported.
 			 */}
 			<p
-				className="text-body-sm text-ink"
+				className="text-body-sm text-ink [overflow-wrap:anywhere]"
 				data-tour-tag="mesh-approval-summary"
 			>
 				{waiting ? summary : head}
@@ -540,7 +606,7 @@ const MeshApprovalCard: FC<{
 			 * belongs to the runner side; this surface states the state and the one
 			 * write it owns.
 			 */}
-			{row.state === "failed" && (
+			{!restricted && row.state === "failed" && (
 				<p
 					className="text-meta text-ink-muted"
 					data-tour-tag="mesh-approval-stopped-note"
@@ -548,6 +614,28 @@ const MeshApprovalCard: FC<{
 					{t(
 						"ui.mesh.mesh_approvals_tray.the_runner_stopped_before_it_finished_it",
 					)}
+				</p>
+			)}
+
+			{/* Optional false is a generic restriction, not just an inheritance
+			    special case. Commands are authenticated backend TEXT, never actions.
+			    Only pending cards repeat the approval remedy: approved is not applied. */}
+			{waiting && restricted && (
+				<p
+					className="text-meta text-ink-muted whitespace-pre-wrap [overflow-wrap:anywhere]"
+					data-tour-tag="mesh-approval-cli-remedy"
+				>
+					{row.approveRemedy || t("ui.mesh.approval.cli_review")}
+				</p>
+			)}
+			{row.kind === "credential" && row.state === "approved" && (
+				<p
+					className="text-meta text-ink-muted"
+					data-tour-tag="mesh-approval-apply-hint"
+				>
+					{row.details?.length
+						? t("ui.mesh.approval.approved_apply_hint")
+						: t("ui.mesh.approval.approved_details_missing")}
 				</p>
 			)}
 
@@ -608,6 +696,23 @@ const MeshApprovalCard: FC<{
 					</span>
 				}
 			>
+				{opaque &&
+					(row.details?.length ? (
+						<ul
+							className="flex flex-col gap-1.5 text-meta text-ink-muted [overflow-wrap:anywhere]"
+							data-tour-tag="mesh-approval-server-details"
+						>
+							{row.details.map((line, index) => (
+								<li key={`${index}:${line}`} className="whitespace-pre-wrap">
+									{line}
+								</li>
+							))}
+						</ul>
+					) : (
+						<p className="text-meta text-ink-muted">
+							{t("ui.mesh.approval.details_unavailable")}
+						</p>
+					))}
 				{entries.length > 0 && (
 					<dl
 						className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-0.5 text-meta text-ink-dim"
