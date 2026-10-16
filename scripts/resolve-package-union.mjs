@@ -98,7 +98,15 @@ for (const key of keys) {
 	if (key === "scripts") continue;
 	const same = (a, b) =>
 		JSON.stringify(a?.[key] ?? null) === JSON.stringify(b?.[key] ?? null);
-	if (!same(baseObj, ours) && !same(baseObj, theirs) && !same(ours, theirs)) {
+	/*
+	 * Flag if ANY pair differs, not only when ALL THREE do. The original
+	 * `!same(base,ours) && !same(base,theirs) && !same(ours,theirs)` binds the
+	 * `!` to each call, so a change made by ONE side alone (base advances to
+	 * that side, so one pair is equal) slipped through - and the result then
+	 * reverted it, the exact silent package.json corruption this tool exists to
+	 * prevent. A key is safe only when all three sides agree.
+	 */
+	if (!(same(baseObj, ours) && same(baseObj, theirs) && same(ours, theirs))) {
 		differing.push(key);
 	}
 }
@@ -119,7 +127,8 @@ for (const key of scripts) {
 	const same = (a, b) =>
 		JSON.stringify(a?.scripts?.[key] ?? null) ===
 		JSON.stringify(b?.scripts?.[key] ?? null);
-	if (!same(baseObj, ours) && !same(baseObj, theirs) && !same(ours, theirs)) {
+	/* The same any-pair-differs rule as the top-level loop above. */
+	if (!(same(baseObj, ours) && same(baseObj, theirs) && same(ours, theirs))) {
 		differingScripts.push(key);
 	}
 }
@@ -163,7 +172,13 @@ if (CHECK) {
 }
 
 const current = readFileSync(PATH, "utf8");
-if (current !== serialised) writeFileSync(PATH, serialised);
-process.stdout.write(
-	`resolve-package-union: wrote ${PATH}; stage it and continue the rebase\n`,
-);
+if (current === serialised) {
+	process.stdout.write(
+		`resolve-package-union: ${PATH} already holds the resolved union; nothing written\n`,
+	);
+} else {
+	writeFileSync(PATH, serialised);
+	process.stdout.write(
+		`resolve-package-union: wrote ${PATH}; stage it and continue the rebase\n`,
+	);
+}

@@ -25,6 +25,8 @@ const RESOLVER = new URL("./resolve-package-union.mjs", import.meta.url)
 const MARKER = /<<<<<<< |>>>>>>> /;
 const TOOL_OUTPUT = /resolve-package-union/;
 const REFUSED = /refused/;
+const WHITESPACE = /\s+/;
+const NAMES_DESCRIPTION = /description/;
 
 function git(cwd, ...args) {
 	return execFileSync("git", args, { cwd, encoding: "utf8" });
@@ -89,7 +91,81 @@ test("resolves a test:desktop conflict as a union and writes parseable JSON", ()
 		const resolved = readFileSync(join(dir, "package.json"), "utf8");
 		assert.doesNotMatch(resolved, MARKER, "no markers survive");
 		const pkg = JSON.parse(resolved); // the parse the 2026-10-16 corruption lacked
-		const list = pkg.scripts["test:desktop"].split(/\s+/);
+		const list = pkg.scripts["test:desktop"].split(WHITESPACE);
+		for (const entry of ["a", "b", "c", "d"]) {
+			assert.ok(list.includes(entry), `union kept ${entry}`);
+		}
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("refuses a one-sided change to a non-union key (not only a three-way clash)", () => {
+	/*
+	 * F1 regression. The first guard only flagged a key when ALL THREE sides
+	 * differed (the `!` bound to each `same()` call); a change made by ONE side
+	 * alone left two pairs equal and slipped through, and the tool then reverted
+	 * it - the silent package.json corruption it exists to prevent. Here `ta`
+	 * changes `description` and `test:desktop`, while `tb` changes ONLY
+	 * `test:desktop`: `ours` (the applied side) differs from base by description,
+	 * but `theirs` matches base on it, so the old guard missed it.
+	 */
+	const dir = conflictedRepo(
+		(p) => {
+			p.description = "changed by ta";
+			p.scripts["test:desktop"] += " c";
+		},
+		(p) => {
+			p.scripts["test:desktop"] += " d";
+		},
+	);
+	try {
+		const before = readFileSync(join(dir, "package.json"), "utf8");
+		let code = 0;
+		let stderr = "";
+		try {
+			execFileSync("node", [RESOLVER], { cwd: dir, encoding: "utf8" });
+		} catch (error) {
+			code = error.status ?? 1;
+			stderr = String(error.stderr ?? "");
+		}
+		assert.notEqual(code, 0, "a one-sided non-union change must be refused");
+		assert.match(stderr, NAMES_DESCRIPTION, "the refused key is named");
+		assert.equal(
+			readFileSync(join(dir, "package.json"), "utf8"),
+			before,
+			"nothing was written",
+		);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("ignores a conflict marker already sitting in the working tree", () => {
+	/*
+	 * F3: the tool reads the merge STAGES, so a marker line already in the
+	 * working-tree file cannot pollute the result - the exact mechanism by which
+	 * the 2026-10-16 corruption recurred. Pin it: corrupt the working tree with
+	 * a bogus marker before running, and the union must still come out clean.
+	 */
+	const dir = conflictedRepo(
+		(p) => {
+			p.scripts["test:desktop"] += " c";
+		},
+		(p) => {
+			p.scripts["test:desktop"] += " d";
+		},
+	);
+	try {
+		const pkgPath = join(dir, "package.json");
+		writeFileSync(
+			pkgPath,
+			`<<<<<<< poisoned\n${readFileSync(pkgPath, "utf8")}`,
+		);
+		execFileSync("node", [RESOLVER], { cwd: dir, encoding: "utf8" });
+		const resolved = readFileSync(pkgPath, "utf8");
+		assert.doesNotMatch(resolved, MARKER, "the poisoned marker is gone");
+		const list = JSON.parse(resolved).scripts["test:desktop"].split(WHITESPACE);
 		for (const entry of ["a", "b", "c", "d"]) {
 			assert.ok(list.includes(entry), `union kept ${entry}`);
 		}
