@@ -121,6 +121,7 @@ import {
 	catalogueSelectorOf as selectorOf,
 } from "./model-catalogue-listing";
 import {
+	activeModelForDefault,
 	effortCommandSucceeded,
 	writeModelDefaultSettings,
 } from "./model-default-settings";
@@ -146,7 +147,6 @@ import {
 import {
 	errorText,
 	isNativeAction,
-	toResult,
 	useOperation,
 	useSessionCommand,
 } from "./use-picker-backend";
@@ -396,6 +396,68 @@ function selectorOfResolution(
  * 4) — two spellings of one fact would drift, so there is one constant.
  */
 const DEFAULT_SAVE_FAILURE = "The default was not saved";
+
+/**
+ * A default checkbox's label, at the height of its TALLEST wording.
+ *
+ * Ticking rewrites the label ("Also make this…" → "Picks here also set…" →
+ * "Default for new sessions: X. Picks here update it too."), and a label that
+ * grew a line pushed the rows down while the dialog, centred on the viewport,
+ * moved up to match: the click after a tick landed one row off (UX round 2,
+ * U9 - measured 44 px on the model dialog). The two wordings a tick can show
+ * are laid into the same grid cell as invisible generated content, so the cell
+ * is already as tall as either before the box is ticked and nothing moves.
+ *
+ * Generated content rather than hidden spans: the wording lives in data
+ * attributes, so it is not in the label's text or a query for the visible
+ * sentence - a hidden copy in the DOM would answer every one of those as if it
+ * were on screen. It stays out of the ACCESSIBLE NAME only because the
+ * pseudo-elements are `visibility: hidden` (`before:invisible`/
+ * `after:invisible`): generated content counts toward an accessible name, so
+ * dropping `invisible` would read both reserved wordings into the checkbox's
+ * name (review round 3, n1).
+ *
+ * `capped` is for a label whose third wording carries a NAME of unbounded
+ * length - the model dialog's. Reserving the name in force did not hold: a
+ * ticked pick that saved a longer name grew the label by a line and moved the
+ * rows after all (design round 3 D3, review n2), and reserving the longest name
+ * the catalogue lists would hold every dialog five lines tall for a row few
+ * users pick. So a capped label is a FIXED height instead: at least three
+ * lines (the tallest of the default dialog's wordings), the two name-free
+ * wordings reserved, and the named wording cut at three lines with an
+ * ellipsis. The cut is visual only; the accessible name keeps the whole
+ * sentence.
+ */
+const ReservedLabelText: FC<{
+	text: string;
+	/**
+	 * Every wording the label can show. Uncapped, the two not on screen are
+	 * reserved; capped, the first two are, and the third is the one cut.
+	 */
+	wordings: readonly [string, string, string];
+	capped?: boolean;
+}> = ({ text, wordings, capped = false }) => {
+	const [reserveA = "", reserveB = ""] = capped
+		? wordings
+		: wordings.filter((wording) => wording !== text);
+	const cut = capped && text === wordings[2];
+	return (
+		<span
+			data-reserve-a={reserveA}
+			data-reserve-b={reserveB}
+			className={cn(
+				"grid",
+				capped && "min-h-[3lh]",
+				"before:invisible before:col-start-1 before:row-start-1 before:content-[attr(data-reserve-a)]",
+				"after:invisible after:col-start-1 after:row-start-1 after:content-[attr(data-reserve-b)]",
+			)}
+		>
+			<span className={cn("col-start-1 row-start-1", cut && "line-clamp-3")}>
+				{text}
+			</span>
+		</span>
+	);
+};
 
 /**
  * Resolve a DRAFT pane's pick through the backend, THEN record it. One
@@ -973,6 +1035,39 @@ export const ModelPicker: FC<PickerContext> = ({
 	});
 	const persist = useOperation();
 	const [persistDefault, setPersistDefault] = useState(false);
+	/*
+	 * The checkbox's value as the pick's continuation reads it, and whether a
+	 * switch is still in flight. A ref rather than the state above because the
+	 * pick awaits the owner for 1.1-4.2 s: a tick made during that wait must reach
+	 * the continuation that is already running, and a closure holds the value it
+	 * was created with. `switching` tells the tick handler that the continuation
+	 * will do the write, so the default is saved once, for the model just picked.
+	 */
+	const persistDefaultRef = useRef(false);
+	const switching = useRef(false);
+	/*
+	 * The model this dialog last saved as the default (state for the label, a
+	 * ref for a pick's continuation), and the queue default writes run through.
+	 * The effort dialog keeps the same three; its comments carry the reasons.
+	 */
+	const [savedModel, setSavedModel] = useState<string | null>(null);
+	const savedModelRef = useRef<string | null>(null);
+	const defaultWrites = useRef<Promise<void>>(Promise.resolve());
+	/*
+	 * A saved default, named the way its row is: `Claude Sonnet 5`, not
+	 * `anthropic/claude-sonnet-5`. The selector in a sentence wrapped at its
+	 * hyphens, mid-id, in the default 576 px dialog (UX round 2, U10). A model
+	 * the drawn catalogue does not list keeps its selector, which is still true.
+	 */
+	const modelName = useCallback(
+		(selector: string) => {
+			const row = (
+				catalogueDocument?.models as CatalogueRow[] | undefined
+			)?.find((candidate) => selectorOf(candidate) === selector);
+			return row?.label || selector;
+		},
+		[catalogueDocument],
+	);
 	const selected =
 		runningFrontend(canonical)?.effective_model ??
 		runningFrontend(canonical)?.selected_model;
@@ -1155,6 +1250,67 @@ export const ModelPicker: FC<PickerContext> = ({
 	 */
 	const emptyOffersConnect = options.length === 0 && listing.notice === null;
 
+	/*
+	 * ONE write of the machine default, for every route that asks for it: a tick
+	 * after (or without) a pick, and a pick made with the box already ticked. The
+	 * strip line and the composer note are this function's, so the routes cannot
+	 * report the same write two ways.
+	 */
+	const saveModelDefault = useCallback(
+		(model: { provider: string; model_id: string }) => {
+			/*
+			 * Chained, as the effort dialog's are: the last write asked for is the
+			 * last write config.yml sees, whatever order the answers come back in
+			 * (UX round 1, U2).
+			 */
+			const write = defaultWrites.current.then(async () => {
+				const saved = await persist.perform(
+					async () => {
+						try {
+							await writeModelDefaultSettings(model, (key, settingValue) =>
+								desktopResult({
+									op: "settings.edit",
+									key,
+									value: settingValue,
+								}),
+							);
+							return `${model.provider}/${model.model_id}`;
+						} catch (error) {
+							/*
+							 * The default write is a DIFFERENT operation from the switch, and it
+							 * has its own result: on the one path where the switch succeeded
+							 * and the default failed, the failure lived only in the dialog's
+							 * strip, so closing the dialog — the only way out of it — dropped
+							 * it (reviewer round 1, minor 4). Written here, at the moment it is
+							 * known, in the same words the strip uses, and it does NOT claim the
+							 * model was unchanged when only the default was not saved.
+							 */
+							note(`${DEFAULT_SAVE_FAILURE}: ${errorText(error)}`, true);
+							throw error;
+						}
+					},
+					// Named as the label names it (QA round 3, Q4; UX U10).
+					(selector) => ({
+						tone: "success",
+						text: `Default for new sessions: ${modelName(selector)}`,
+					}),
+					DEFAULT_SAVE_FAILURE,
+				);
+				if (saved === null) {
+					// Untick so ticking again is the retry (UX round 1, U3).
+					persistDefaultRef.current = false;
+					setPersistDefault(false);
+					return;
+				}
+				savedModelRef.current = saved;
+				setSavedModel(saved);
+			});
+			defaultWrites.current = write.catch(() => undefined);
+			return write;
+		},
+		[persist.perform, note, modelName],
+	);
+
 	const onPick = useCallback(
 		async (value: string, option: PickerOption) => {
 			const [provider, ...rest] = value.split("/");
@@ -1247,7 +1403,14 @@ export const ModelPicker: FC<PickerContext> = ({
 				display_name: option.label,
 			};
 			canonical.paintPendingModel(model);
-			const { outcome, result: failure } = await command.run("model", value);
+			switching.current = true;
+			let run: Awaited<ReturnType<typeof command.run>>;
+			try {
+				run = await command.run("model", value);
+			} finally {
+				switching.current = false;
+			}
+			const { outcome, result: failure } = run;
 			if (!outcome || isNativeAction(outcome) || outcome.kind === "error") {
 				// The owner refused (or the call itself failed): the band goes back to
 				// the authoritative model rather than keeping a paint that never landed.
@@ -1264,54 +1427,34 @@ export const ModelPicker: FC<PickerContext> = ({
 				 * strip's own, from the same call's result, so the two never disagree.
 				 */
 				note(`The model was not changed. ${failure.text}`, true);
+				/*
+				 * A ticked box under a failed switch says what the default is now,
+				 * rather than nothing (review round 1, m2).
+				 */
+				if (persistDefaultRef.current) {
+					const saved = savedModelRef.current;
+					persist.setResult({
+						tone: failure.tone,
+						// Named as the ticked label names it, so the two agree (UX U10).
+						text: saved
+							? `Model not changed. Default for new sessions stays ${modelName(saved)}.`
+							: `${DEFAULT_SAVE_FAILURE}.`,
+					});
+				}
 				return;
 			}
 			// The switch landed: mark the picked row in force at once rather than
 			// waiting out the owner's next frame (QA Q2).
 			setPickedCurrent(value);
-			if (persistDefault) {
+			if (persistDefaultRef.current) {
 				// Explicit default scope: the session change above is the owner's;
 				// the default is the typed settings key, written only on request.
-				await persist.perform(
-					async () => {
-						try {
-							await writeModelDefaultSettings(
-								{ provider, model_id: modelId },
-								(key, settingValue) =>
-									desktopResult({
-										op: "settings.edit",
-										key,
-										value: settingValue,
-									}),
-							);
-							return value;
-						} catch (error) {
-							/*
-							 * The default write is a DIFFERENT operation from the switch, and it
-							 * has its own result: on the one path where the switch succeeded
-							 * and the default failed, the failure lived only in the dialog's
-							 * strip, so closing the dialog — the only way out of it — dropped
-							 * it (reviewer round 1, minor 4). Written here, at the moment it is
-							 * known, in the same words the strip uses, and it does NOT claim the
-							 * model was unchanged when only the default was not saved.
-							 */
-							note(`${DEFAULT_SAVE_FAILURE}: ${errorText(error)}`, true);
-							throw error;
-						}
-					},
-					(selector) => ({
-						tone: "success",
-						text: `Default for new sessions: ${selector}`,
-					}),
-					DEFAULT_SAVE_FAILURE,
-				);
+				await saveModelDefault({ provider, model_id: modelId });
 			}
 		},
 		[
 			canonical,
 			command,
-			persistDefault,
-			persist,
 			note,
 			rowAuth,
 			draft,
@@ -1322,13 +1465,75 @@ export const ModelPicker: FC<PickerContext> = ({
 			 * from a value that does not.
 			 */
 			draftPick.selection,
+			saveModelDefault,
+			persist.setResult,
+			modelName,
 		],
 	);
 
-	const pickResult: PickerResult | null = persist.result
+	/*
+	 * The tick is a request about the model IN FORCE, whenever it is made. It used
+	 * to be read only at the moment of a pick, so the order the operator actually
+	 * used - switch first, then tick - and a tick on a dialog opened only to make
+	 * the current model the default both wrote nothing, while the label said "This
+	 * pick also sets the default". A tick now saves the row marked current (the
+	 * receipt-confirmed pick, else the session's own model) unless a switch is in
+	 * flight, whose continuation reads the ref and saves the model it lands on.
+	 * Unticking writes nothing: a saved default stays saved, as it would from
+	 * Settings.
+	 */
+	/*
+	 * The model in force, as the row marked current names it. The tick AND "Set
+	 * current model as default" save this one value, so the two controls cannot
+	 * save different models right after a pick (review round 1, n1; UX U8).
+	 */
+	const [shownProvider, ...shownRest] = (shownSelector ?? "").split("/");
+	const modelInForce = activeModelForDefault({
+		provider: shownProvider,
+		model_id: shownRest.join("/"),
+	});
+	/*
+	 * The ticked label's wordings, all three, so the label is laid out at the
+	 * tallest from the first paint (UX round 2, U9). The saved wording names the
+	 * model a tick would save until one is saved.
+	 */
+	const persistWordings = [
+		"Also make this the default for new sessions",
+		"Picks here also set the default for new sessions",
+		`Default for new sessions: ${modelName(
+			savedModel ??
+				(modelInForce
+					? `${modelInForce.provider}/${modelInForce.model_id}`
+					: ""),
+		)}. Picks here update it too.`,
+	] as const;
+	const onPersistDefaultChange = (checked: boolean) => {
+		persistDefaultRef.current = checked;
+		setPersistDefault(checked);
+		if (!checked) {
+			// An untick writes nothing; the last save's line goes with it (UX U4).
+			persist.setResult(null);
+			return;
+		}
+		if (switching.current) return;
+		if (modelInForce) void saveModelDefault(modelInForce);
+	};
+
+	/*
+	 * A saved default is the TICKED LABEL's to state, and the strip printed the
+	 * same sentence under it (UX round 2, U11). It also grew the dialog by a line
+	 * on a tick, which moved the rows under the pointer (U9). The strip keeps
+	 * what the label cannot say: a failed save, a refusal, and the button's save
+	 * while the box is unticked.
+	 */
+	const persistLine =
+		persist.result?.tone === "success" && persistDefault
+			? null
+			: persist.result;
+	const pickResult: PickerResult | null = persistLine
 		? {
-				...persist.result,
-				text: [command.result?.text, persist.result.text]
+				...persistLine,
+				text: [command.result?.text, persistLine.text]
 					.filter(Boolean)
 					.join("\n"),
 			}
@@ -1527,20 +1732,25 @@ export const ModelPicker: FC<PickerContext> = ({
 			 * nothing is running yet: the sentence may not promise a switch that has
 			 * not happened.
 			 */
-			busyText={draft ? "Resolving the model…" : "Switching the model…"}
-			busyLabel={draft ? "Resolving the model" : "Switching the model"}
-			result={
+			/*
+			 * A default save is not a switch, so its wait says what it is doing
+			 * (UX round 1, U3).
+			 */
+			busyText={
 				draft
-					? draftPick.result
-					: persist.result
-						? {
-								...persist.result,
-								text: [command.result?.text, persist.result.text]
-									.filter(Boolean)
-									.join("\n"),
-							}
-						: pickResult
+					? "Resolving the model…"
+					: command.busy
+						? "Switching the model…"
+						: "Saving the default…"
 			}
+			busyLabel={
+				draft
+					? "Resolving the model"
+					: command.busy
+						? "Switching the model"
+						: "Saving the default"
+			}
+			result={draft ? draftPick.result : pickResult}
 			toolbar={
 				/*
 				 * A draft's toolbar has no default checkbox, and that is the whole of
@@ -1585,12 +1795,24 @@ export const ModelPicker: FC<PickerContext> = ({
 						{!draft && (
 							<PickerCheck
 								checked={persistDefault}
-								onCheckedChange={setPersistDefault}
+								onCheckedChange={onPersistDefaultChange}
 								tone="muted"
 							>
-								{persistDefault
-									? "This pick also sets the default for new sessions"
-									: "Also make it the default for new sessions"}
+								{/*
+								 * Ticked, the label states what is saved rather than promising
+								 * a pick that may never happen (UX round 1, U5).
+								 */}
+								<ReservedLabelText
+									capped
+									wordings={persistWordings}
+									text={
+										!persistDefault
+											? persistWordings[0]
+											: savedModel
+												? persistWordings[2]
+												: persistWordings[1]
+									}
+								/>
 							</PickerCheck>
 						)}
 						{scopeControl}
@@ -1601,24 +1823,9 @@ export const ModelPicker: FC<PickerContext> = ({
 								variant="ghost"
 								size="sm"
 								type="button"
-								disabled={!currentSelector || command.busy || persist.busy}
+								disabled={!modelInForce || command.busy || persist.busy}
 								onClick={() => {
-									if (!selected) return;
-									void persist.perform(
-										() =>
-											writeModelDefaultSettings(selected, (key, value) =>
-												desktopResult({
-													op: "settings.edit",
-													key,
-													value,
-												}),
-											),
-										() => ({
-											tone: "success",
-											text: `Default for new sessions: ${currentSelector}`,
-										}),
-										DEFAULT_SAVE_FAILURE,
-									);
+									if (modelInForce) void saveModelDefault(modelInForce);
 								}}
 							>
 								Set current model as default
@@ -1719,6 +1926,70 @@ export const EffortPicker: FC<PickerContext> = ({
 	const draftPick = useDraftPick(draft, note);
 	const defaultSetting = useOperation();
 	const [saveAsDefault, setSaveAsDefault] = useState(false);
+	/*
+	 * The same two refs the model dialog keeps, for the same reason: the pick's
+	 * continuation runs after the owner answers, so it must read the checkbox as it
+	 * is THEN, and a tick made while a switch is in flight leaves the write to that
+	 * continuation rather than saving the rung the switch is about to replace.
+	 */
+	const saveAsDefaultRef = useRef(false);
+	const switching = useRef(false);
+	/*
+	 * The rung the owner ACCEPTED in this dialog. The entity list's `current` is a
+	 * cached read (15 s stale time) that a pick does not refetch, so after a switch
+	 * it still names the rung the session just left - and that is the rung a tick
+	 * would otherwise save.
+	 */
+	const [acceptedRung, setAcceptedRung] = useState<string | null>(null);
+	/*
+	 * The rung this dialog last SAVED as the default, in state for the ticked
+	 * label and in a ref for a pick's continuation, which outlives the render it
+	 * was created in. It is what a refused pick reports as still saved: after a
+	 * tick saved High, "The effort default was not saved" was false - config.yml
+	 * held the High the tick had just written (review round 1, m1).
+	 */
+	const [savedRung, setSavedRung] = useState<string | null>(null);
+	const savedRungRef = useRef<string | null>(null);
+	/*
+	 * Default writes run one after another, in the order they were asked for, so
+	 * the last one asked for is the last one config.yml sees. The host already
+	 * refuses a pick while a save is pending (`busy`), which is what keeps a tick's
+	 * save and a pick's save from overlapping today; the chain keeps the order
+	 * true without relying on that gate (UX round 1, U2).
+	 */
+	const defaultWrites = useRef<Promise<void>>(Promise.resolve());
+	const saveEffortDefault = useCallback(
+		(value: string) => {
+			const write = defaultWrites.current.then(async () => {
+				const saved = await defaultSetting.perform(
+					() =>
+						desktopResult({
+							op: "settings.edit",
+							key: "model_effort",
+							value,
+						}),
+					() => ({
+						tone: "success",
+						text: `Default effort for new sessions: ${effortDisplay(value)}.`,
+					}),
+					"The effort default was not saved",
+				);
+				if (!saved) {
+					// Untick on failure so ticking again IS the retry; a box left ticked
+					// under "not saved" needed an untick first (UX round 1, U3).
+					saveAsDefaultRef.current = false;
+					setSaveAsDefault(false);
+					return;
+				}
+				savedRungRef.current = value;
+				setSavedRung(value);
+				await entities.refetch();
+			});
+			defaultWrites.current = write.catch(() => undefined);
+			return write;
+		},
+		[defaultSetting.perform, entities.refetch],
+	);
 	/* Same key as the model dialog's: the selection in force, not the snapshot the
 	   dialog opened on, so the rungs offered are the current model's (R2). */
 	const draftPreview = useQuery({
@@ -1735,9 +2006,34 @@ export const EffortPicker: FC<PickerContext> = ({
 	const rungs = draft
 		? effortLadder(draftModel)
 		: (entities.data?.entities ?? []).map((row) => row.value);
+	/*
+	 * A session's rung in force is read off the LIVE frame first - the field the
+	 * status chip prints - and the entity list only when the frame names none.
+	 * The list's `current` is a 15 s cached read that nothing refetches after a
+	 * switch, so a dialog reopened within that window named the rung the session
+	 * had just LEFT, and a tick saved it while the chip showed the new one
+	 * (review round 1 M1, UX U1, QA Q1).
+	 */
+	const liveRung =
+		typeof model?.reasoning_effort === "string" && model.reasoning_effort.trim()
+			? model.reasoning_effort.trim()
+			: null;
 	const currentRung = draft
 		? (draftModel?.reasoning_effort ?? null)
-		: (entities.data?.current ?? null);
+		: (liveRung ?? entities.data?.current ?? null);
+	/*
+	 * The accepted rung bridges the gap until the owner's frame names it, then
+	 * the frame is the authority again - the same hand-over the model dialog's
+	 * `pickedCurrent` makes.
+	 */
+	useEffect(() => {
+		if (acceptedRung && liveRung === acceptedRung) setAcceptedRung(null);
+	}, [acceptedRung, liveRung]);
+	/*
+	 * ONE answer to "which rung is in force", read by the ✓ and by the tick, so
+	 * the row marked current is the rung a tick saves.
+	 */
+	const rungInForce = acceptedRung ?? currentRung;
 
 	const options = useMemo<PickerOption[]>(
 		() =>
@@ -1747,9 +2043,9 @@ export const EffortPicker: FC<PickerContext> = ({
 				// is sent and what `currentRung === value` compares. Only the LABEL
 				// is the title-cased human form, matching the chip and the model name.
 				label: effortDisplay(value),
-				current: currentRung === value,
+				current: rungInForce === value,
 			})),
-		[rungs, currentRung],
+		[rungs, rungInForce],
 	);
 	const label = model
 		? `${model.provider}/${model.model_id}`
@@ -1778,6 +2074,46 @@ export const EffortPicker: FC<PickerContext> = ({
 	 */
 	const loading = draft ? draftPreview.isLoading : entities.isLoading;
 	const noOptions = options.length === 0 && !loading;
+	/*
+	 * The tick is a request about the rung IN FORCE, whenever it is made: the one
+	 * the owner accepted in this dialog, else the session's current rung. It used
+	 * to be read only at the moment of a pick, so changing the level first and then
+	 * ticking - the order the operator used - and ticking on a dialog opened only to
+	 * make the current level the default both wrote nothing, while the label said
+	 * "This pick also sets the default effort". A switch still in flight keeps the
+	 * write for its own continuation. Unticking writes nothing: a saved default
+	 * stays saved.
+	 */
+	/*
+	 * The model dialog's two rules, for the same reasons: the label is laid out
+	 * at its tallest wording from the first paint (UX round 2, U9), and a saved
+	 * default is the ticked label's to state, not the strip's too (U11).
+	 */
+	const saveAsDefaultWordings = [
+		"Also make this the default effort for new sessions",
+		"Picks here also set the default effort for new sessions",
+		`Default effort for new sessions: ${effortDisplay(
+			savedRung ?? (typeof rungInForce === "string" ? rungInForce : ""),
+		)}. Picks here update it too.`,
+	] as const;
+	const defaultLine =
+		defaultSetting.result?.tone === "success" && saveAsDefault
+			? null
+			: defaultSetting.result;
+	const onSaveAsDefaultChange = (checked: boolean) => {
+		saveAsDefaultRef.current = checked;
+		setSaveAsDefault(checked);
+		if (!checked) {
+			// An untick writes nothing, so the line about the last save goes with
+			// it rather than reading as the untick's own result (UX round 1, U4).
+			defaultSetting.setResult(null);
+			return;
+		}
+		if (switching.current) return;
+		// `current` comes off the entities wire untyped; only a rung name is saved.
+		if (typeof rungInForce === "string" && rungInForce)
+			void saveEffortDefault(rungInForce);
+	};
 	const loadError = draft
 		? draftPreview.isError
 			? errorText(draftPreview.error)
@@ -1794,12 +2130,24 @@ export const EffortPicker: FC<PickerContext> = ({
 				!draft ? (
 					<PickerCheck
 						checked={saveAsDefault}
-						onCheckedChange={setSaveAsDefault}
+						onCheckedChange={onSaveAsDefaultChange}
 						tone="muted"
 					>
-						{saveAsDefault
-							? "This pick also sets the default effort for new sessions"
-							: "Also make it the default effort for new sessions"}
+						{/*
+						 * Ticked, the label states what is saved, not a pick: after a
+						 * tick-only save "This pick also sets..." named a pick that
+						 * never happened (UX round 1, U5).
+						 */}
+						<ReservedLabelText
+							wordings={saveAsDefaultWordings}
+							text={
+								!saveAsDefault
+									? saveAsDefaultWordings[0]
+									: savedRung
+										? saveAsDefaultWordings[2]
+										: saveAsDefaultWordings[1]
+							}
+						/>
 					</PickerCheck>
 				) : undefined
 			}
@@ -1836,30 +2184,32 @@ export const EffortPicker: FC<PickerContext> = ({
 			}
 			onPick={(value) => {
 				if (!draft) {
-					void command.run("effort", value).then(async ({ outcome }) => {
-						if (saveAsDefault && effortCommandSucceeded(outcome)) {
-							const saved = await defaultSetting.perform(
-								() =>
-									desktopResult({
-										op: "settings.edit",
-										key: "model_effort",
-										value,
-									}),
-								() => ({
-									tone: "success",
-									text: `Default effort for new sessions: ${effortDisplay(value)}.`,
-								}),
-								"The effort default was not saved",
-							);
-							if (saved) await entities.refetch();
-						} else if (saveAsDefault && outcome?.kind === "notice") {
-							const refusal = toResult(outcome);
+					switching.current = true;
+					void command
+						.run("effort", value)
+						.then(async ({ outcome, result: refusal }) => {
+							switching.current = false;
+							const accepted = effortCommandSucceeded(outcome);
+							if (accepted) setAcceptedRung(value);
+							if (!saveAsDefaultRef.current) return;
+							if (accepted) {
+								await saveEffortDefault(value);
+								return;
+							}
+							/*
+							 * EVERY failed switch with the box ticked says what the default
+							 * is now. A transport failure used to say nothing (review round
+							 * 1, m2), and after a tick had saved one the refusal claimed no
+							 * default was saved (m1).
+							 */
+							const saved = savedRungRef.current;
 							defaultSetting.setResult({
 								tone: refusal.tone,
-								text: "The effort default was not saved.",
+								text: saved
+									? `Effort not changed. Default for new sessions stays ${effortDisplay(saved)}.`
+									: "The effort default was not saved.",
 							});
-						}
-					});
+						});
 					return;
 				}
 				/*
@@ -1886,10 +2236,10 @@ export const EffortPicker: FC<PickerContext> = ({
 			result={
 				draft
 					? draftPick.result
-					: defaultSetting.result
+					: defaultLine
 						? {
-								...defaultSetting.result,
-								text: [command.result?.text, defaultSetting.result.text]
+								...defaultLine,
+								text: [command.result?.text, defaultLine.text]
 									.filter(Boolean)
 									.join("\n"),
 							}
@@ -1903,8 +2253,24 @@ export const EffortPicker: FC<PickerContext> = ({
 			 * without saying what, for a wait the sibling adapter already names.
 			 * A session's effort pick is a command and keeps the default.
 			 */
-			busyText={draft ? "Resolving the effort…" : "Switching the effort…"}
-			busyLabel={draft ? "Resolving the effort" : "Switching the effort"}
+			/*
+			 * A tick's save is not a switch, so its wait says what it is doing
+			 * (UX round 1, U3).
+			 */
+			busyText={
+				draft
+					? "Resolving the effort…"
+					: command.busy
+						? "Switching the effort…"
+						: "Saving the default…"
+			}
+			busyLabel={
+				draft
+					? "Resolving the effort"
+					: command.busy
+						? "Switching the effort"
+						: "Saving the default"
+			}
 		/>
 	);
 };

@@ -32,8 +32,10 @@
  * fixture or a log. It still travels ON THE ANSWER BODY, because the backend is
  * what turns the value into a key name — it writes the value to the session's
  * memory-only store first and puts `[<key>]` in the durable row, in that order.
- * The field is still the only place the value may live on this side, and the
- * submit stays gated on it being non-empty.
+ * The field is still the only place the value may live on this side. Left EMPTY
+ * it is a skip (sent as `[]`, which the backend reports as `<not provided>`),
+ * except in the change form over a stored key, where it must be typed again
+ * (`askSecretIsSkippable`).
  *
  * ## What the states are allowed to say
  *
@@ -70,6 +72,7 @@ import {
 	askOtherSeed,
 	askQuestionIsAnswered,
 	askRevisionDraft,
+	askSecretPlaceholder,
 	askSettledAnswers,
 	askStatusText,
 	askStatusWord,
@@ -77,7 +80,7 @@ import {
 	draftFor,
 } from "../../ask-queue";
 import { AskRecommendedBadge, recommendedIndex } from "../ask-recommended";
-import { AskAnswerField } from "./ask-answer-field";
+import { AskAnswerField, commitOnEnter } from "./ask-answer-field";
 
 /**
  * WHICH HALF OF THE LIST THE READER IS LOOKING AT (operator ask, 2026-10-05).
@@ -323,6 +326,7 @@ const AskQuestionField = ({
 	question,
 	selected,
 	secret,
+	secretPlaceholder,
 	disabled,
 	onCell,
 	onSecret,
@@ -333,6 +337,8 @@ const AskQuestionField = ({
 	/** This question's draft cell: the ticked labels and, last, the `Other` text. */
 	selected: string[];
 	secret: string;
+	/** The masked field's copy; the row reads `askSecretPlaceholder`, the submit's own rules. */
+	secretPlaceholder: string;
 	disabled: boolean;
 	/**
 	 * The question's NEW draft cell. One writer for every control on the question -
@@ -434,7 +440,13 @@ const AskQuestionField = ({
 					disabled={disabled}
 					value={secret}
 					onChange={(event) => onSecret(event.target.value)}
-					placeholder="Your answer (never shown again)"
+					/*
+					 * Enter commits here as in every other answer field, through the row's
+					 * same gate: send when the ask is complete, else move to the next
+					 * unanswered question (QA round 2, Q-2; pre-existing).
+					 */
+					onKeyDown={commitOnEnter(() => onAdvance(question.id))}
+					placeholder={secretPlaceholder}
 					/*
 					 * A real name, because the placeholder is not one: it vanishes at the
 					 * first character and the question <p> beside it is a sibling rather
@@ -442,7 +454,12 @@ const AskQuestionField = ({
 					 * round 1, D8).
 					 */
 					aria-label={`Your answer to: ${question.question}`}
-					className="w-full rounded-md border border-control bg-surface px-2 py-1.5 text-ink text-sm"
+					/*
+					 * The placeholder pair `ui/input.tsx` uses: the placeholder is where the skip
+					 * rule is stated, and the browser default measured 2.81:1 on Linen against
+					 * `ink-dim`'s 5.0:1 floor (design round 1, D2).
+					 */
+					className="w-full rounded-md border border-control bg-surface px-2 py-1.5 text-ink text-sm placeholder:text-ink-dim disabled:placeholder:text-ink-disabled"
 				/>
 			) : options.length > 0 ? (
 				<div className="flex flex-col" role={multi ? "group" : "radiogroup"}>
@@ -796,13 +813,16 @@ const AskRow = ({
 	/*
 	 * The FORM'S OWN completeness, read through the SAME `askAnswerMap` the first-answer
 	 * door uses — no revision-specific rule exists, because the wire's body is the same
-	 * body. A secret question therefore needs a retyped value here too (see
-	 * `askRevisionDraft`), which is the honest consequence of the value never being
-	 * recoverable rather than a second gate.
+	 * body. The one difference is the RECORDED map it is handed: an empty secret field
+	 * over a stored key is not a skip here, so that secret needs a retyped value (see
+	 * `askSecretIsSkippable`), which is the honest consequence of the value never being
+	 * recoverable rather than a second gate. `{}` when the wire carried no map, which
+	 * reads conservatively as "retype".
 	 */
+	const recorded = useMemo(() => ask.answers ?? {}, [ask.answers]);
 	const changeReady = useMemo(
-		() => askAnswerMap(ask, changeDraft, secrets) !== null,
-		[ask, changeDraft, secrets],
+		() => askAnswerMap(ask, changeDraft, secrets, recorded) !== null,
+		[ask, changeDraft, secrets, recorded],
 	);
 	/*
 	 * FOCUS FOLLOWS THE PRESS INTO THE FORM (UX round 1, U2).
@@ -876,6 +896,8 @@ const AskRow = ({
 	 */
 	const changingNow = changing && changeOpen;
 	const editDraft = changingNow ? changeDraft : draft;
+	/** The recorded map only in the change form; the first answer has none to keep. */
+	const editRecorded = changingNow ? recorded : undefined;
 	const writeDraft = changingNow
 		? (updater: (current: AskDraft) => AskDraft) => setChangeDraft(updater)
 		: setDraft;
@@ -891,7 +913,7 @@ const AskRow = ({
 	};
 	const sendChange = () => {
 		if (onRevise === undefined) return;
-		const answers = askAnswerMap(ask, changeDraft, secrets);
+		const answers = askAnswerMap(ask, changeDraft, secrets, recorded);
 		if (answers !== null) onRevise(ask, answers);
 	};
 	/*
@@ -911,7 +933,14 @@ const AskRow = ({
 	const advanceFrom = (questionId: string) => {
 		const index = ask.questions.findIndex((entry) => entry.id === questionId);
 		if (index < 0 || fieldDisabled) return;
-		if (!askQuestionIsAnswered(ask.questions[index], editDraft, secrets))
+		if (
+			!askQuestionIsAnswered(
+				ask.questions[index],
+				editDraft,
+				secrets,
+				editRecorded,
+			)
+		)
 			return;
 		if (changingNow) {
 			if (changeReady && onRevise !== undefined) sendChange();
@@ -925,7 +954,8 @@ const AskRow = ({
 		const count = ask.questions.length;
 		for (let step = 1; step < count; step++) {
 			const candidate = ask.questions[(from + step) % count];
-			if (askQuestionIsAnswered(candidate, editDraft, secrets)) continue;
+			if (askQuestionIsAnswered(candidate, editDraft, secrets, editRecorded))
+				continue;
 			// Compared by attribute value, not interpolated into a selector: a question id
 			// is the model's string and may carry a quote.
 			const block = [
@@ -1065,6 +1095,11 @@ const AskRow = ({
 							question={question}
 							selected={draftFor(editDraft, question.id)}
 							secret={secrets[question.id] ?? ""}
+							secretPlaceholder={askSecretPlaceholder(
+								ask,
+								question,
+								editRecorded,
+							)}
 							disabled={fieldDisabled}
 							onCell={(cell) =>
 								writeDraft((current) => ({ ...current, [question.id]: cell }))
