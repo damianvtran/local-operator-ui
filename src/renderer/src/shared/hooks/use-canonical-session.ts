@@ -2657,8 +2657,11 @@ export function useCanonicalSessionStream(
 		 * that install replaced. The page is kept only when it names, as a
 		 * non-empty string, the generation the transcript now holds: generation
 		 * equality is what says the page's ordering is the installed one, and the
-		 * install at journal-order.ts is `orderRevision`'s only writer. A page with
-		 * no generation proves nothing, so it is dropped too.
+		 * install at journal-order.ts is `orderRevision`'s only incrementer. The one
+		 * other writer, `clearTranscript`, resets the revision and the generation
+		 * together, and a page then meets no current generation and is fenced - the
+		 * conservative direction. A page with no generation proves nothing, so it
+		 * is dropped too.
 		 *
 		 * The frame itself always applies. Skipping the whole snapshot is what left
 		 * the pane on "Loading conversation…" for good: the connection's first
@@ -3465,12 +3468,29 @@ export function useCanonicalSessionStream(
 					 */
 					releaseLabelPending();
 				}
+				if (generationRef.current !== generation || cleared()) return false;
 				if (
-					generationRef.current !== generation ||
-					cleared() ||
 					currentOrderRevision(viewRef.current.transcript) !== orderAtDispatch
-				)
+				) {
+					/*
+					 * A PAGE READ UNDER A REPLACED DOMAIN IS NEVER MERGED, BUT AN UNHYDRATED
+					 * PANE IS STILL OWED ONE. A generation install landed while this read
+					 * was out, so the page may be ordered by the domain that install
+					 * replaced. Once something else has hydrated the pane, dropping it costs
+					 * nothing. Before that - a fenced snapshot page, a `cursor_missing` one,
+					 * a cold open - this walk is the only thing that can hydrate the
+					 * conversation, and returning here left `awaitingHydration` true until a
+					 * remount (PR #1130 review round 1, M1). So the same read is asked
+					 * again under the new revision.
+					 *
+					 * BOUNDED BY THIS LOOP'S OWN `RECONCILE_WALK_MAX_REQUESTS`: the
+					 * re-dispatch is a `continue`, and `requests` was already charged for
+					 * the dropped read. A generation that keeps churning therefore costs at
+					 * most the walk's ordinary request budget, never an unbounded loop.
+					 */
+					if (!viewRef.current.hydrated) continue;
 					return false;
+				}
 				/*
 				 * A PAGE ARRIVED, so the refusal is over: the route that refused is answering
 				 * again, and the rows it was refusing for are owed to a read once more. This
@@ -4050,9 +4070,16 @@ export function useCanonicalSessionStream(
 						if (call && typeof call.id === "string") labelled.add(call.id);
 					}
 				}
+				// The live seed still paints when the page is fenced, but its ids are
+				// not connection proof then: a turn still being written has no durable
+				// row, so no `/history` page can overlap it, and a walk whose only
+				// painted ids are those never joins and spends its whole request budget
+				// (PR #1130 review round 1, m1: 6 reads instead of 1). With the page
+				// applied, its own rows carry the connection, as before.
 				for (const data of frame.payload.frontend.snapshot.live_events ?? []) {
 					const message = (data as { message?: { id?: unknown } }).message;
-					if (typeof message?.id === "string") paintedEntryIds.add(message.id);
+					if (!pageFenced && typeof message?.id === "string")
+						paintedEntryIds.add(message.id);
 				}
 				seedEvents.push(...(frame.payload.frontend.snapshot.live_events ?? []));
 			}
@@ -4516,7 +4543,18 @@ export function useCanonicalSessionStream(
 										sessionId,
 									),
 								},
-								history: snapshot.history,
+								/*
+								 * A FENCED PAGE IS NOT PUBLISHED. `view.history` is read only by
+								 * `openFrameFacts` (runs, `opening_user_id`, `head_cut`), and those
+								 * facts describe the page they came with: a page that was never
+								 * folded would key the collapse model to rows of a replaced domain
+								 * (PR #1130 review round 1, m2). The prior value stays instead. On
+								 * a first connection that is `null`, which `openFrameFacts` already
+								 * reads as "nothing to read": today's behaviour for any page
+								 * without facts. The walk does not publish its pages here either,
+								 * so `null` holds until the next usable snapshot.
+								 */
+								history: pageFenced ? next.history : snapshot.history,
 								cold: snapshot.cold,
 								ownerEpoch: snapshot.frontend.epoch,
 								failure: null,
