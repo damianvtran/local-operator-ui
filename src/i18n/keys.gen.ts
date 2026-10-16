@@ -163,6 +163,8 @@ export type MessageParams = {
 	"ui.chat.usage.unlimited": undefined;
 	"ui.common.actions.cancel": undefined;
 	"ui.common.actions.close": undefined;
+	"ui.common.actions.copied": undefined;
+	"ui.common.actions.copy_failed": undefined;
 	"ui.common.actions.retry": undefined;
 	"ui.common.actions.retry_again": undefined;
 	"ui.common.errors.error_boundary.error_details": undefined;
@@ -566,11 +568,9 @@ export type MessageParams = {
 	"ui.providers.provider_detail.connected_variant_163": { brand: string };
 	"ui.providers.provider_detail.continue": undefined;
 	"ui.providers.provider_detail.continue_in_browser": undefined;
-	"ui.providers.provider_detail.copied": undefined;
 	"ui.providers.provider_detail.copy_code": undefined;
 	"ui.providers.provider_detail.copy_code_and_open_page": undefined;
 	"ui.providers.provider_detail.copy_link": undefined;
-	"ui.providers.provider_detail.could_not_copy_select_and_copy_it": undefined;
 	"ui.providers.provider_detail.default_model": undefined;
 	"ui.providers.provider_detail.didn_t_confirm_the_sign_in": { brand: string };
 	"ui.providers.provider_detail.done": undefined;

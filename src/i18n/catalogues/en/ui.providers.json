@@ -90,8 +90,6 @@
 	"ui.providers.provider_detail.check_again": "Check again",
 	"ui.providers.provider_detail.hide_key": "Hide key",
 	"ui.providers.provider_detail.show_key": "Show key",
-	"ui.providers.provider_detail.could_not_copy_select_and_copy_it": "Could not copy. Select and copy it manually.",
-	"ui.providers.provider_detail.copied": "Copied",
 	"ui.providers.provider_detail.connected_variant_163": "{brand} connected",
 	"ui.providers.provider_detail.signed_in_to_variant_164": "Signed in to {brand}",
 	"ui.providers.provider_detail.is_no_longer_accepting_the_sign_in": "{brand} is no longer accepting the sign-in stored on this machine.",

@@ -454,16 +454,6 @@
 		"tone": "Short imperative",
 		"note": "Reveals the API-key input; do not imply copying or saving. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
 	},
-	"ui.providers.provider_detail.could_not_copy_select_and_copy_it": {
-		"role": "action button/menu label \u2014 provider sign-in and key panel",
-		"tone": "Plain factual status/explanation; preserve source confidence",
-		"note": "Provider sign-in and key panel: could not copy select and copy it. Keep this distinct from neighboring pending, failed and completed states. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
-	},
-	"ui.providers.provider_detail.copied": {
-		"role": "action button/menu label \u2014 provider sign-in and key panel",
-		"tone": "Plain factual status/explanation; preserve source confidence",
-		"note": "Provider sign-in and key panel: copied. Keep this distinct from neighboring pending, failed and completed states. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
-	},
 	"ui.providers.provider_detail.connected_variant_163": {
 		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
 		"tone": "Plain factual status/explanation; preserve source confidence",
