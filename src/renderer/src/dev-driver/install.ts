@@ -35,6 +35,7 @@ import { canvasDocumentForPath } from "@features/chat/utils/canvas-document";
 import { getFileTypeFromPath } from "@features/chat/utils/file-types";
 import { READ_ENCODING, viewerFor } from "@features/chat/utils/viewer-routing";
 import { sendVoiceTake } from "@features/voice/qwen-voice-controller";
+import { useVoiceStore, voicePhaseOf } from "@features/voice/voice-store";
 import { queryClient } from "@shared/api/query-client";
 import { apiConfig } from "@shared/config";
 import {
@@ -44,6 +45,7 @@ import {
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { Query } from "@tanstack/react-query";
+import type { QwenVoiceStatus } from "../../../shared/desktop-contract";
 
 /** One animation frame, so a capture sees the paint the action caused. */
 function nextFrame(): Promise<void> {
@@ -982,6 +984,84 @@ export function installDevDriver(): string[] {
 		 * the slot rather than picking one: a scene turns voice on first, through
 		 * the toggle, as a person would.
 		 */
+		/**
+		 * STAGE THE VOICE HEADER'S INPUTS for a frame, with no models loaded:
+		 * main's rig status, this window's exchange, and the card hint, written
+		 * into the renderer's voice store exactly as the controller writes them.
+		 * The slot is NOT staged - a scene turns voice on through the toggle and
+		 * the real route - so the header renders for a session that really holds
+		 * it. Evidence that uses this verb discloses the staged rig status.
+		 *
+		 * WHAT IT MAY NEVER BECOME: a way to answer a gate or to make the rig
+		 * speak. It writes display state only, in this window, and main's next
+		 * real `voice.qwen.status` replaces the staged rig.
+		 */
+		stageVoice: async (payload) => {
+			const request = (payload ?? {}) as {
+				rig?: unknown;
+				exchange?: unknown;
+				cardPending?: unknown;
+				subagentsRunning?: unknown;
+			};
+			const voice = useVoiceStore.getState();
+			const sessionId = voice.active?.session_id ?? null;
+			if (request.rig !== undefined) {
+				const rig = request.rig as QwenVoiceStatus | null;
+				if (
+					!rig ||
+					!["stopped", "starting", "ready", "error"].includes(rig.rig)
+				)
+					throw new Error(
+						`stageVoice rig must be a voice.qwen.status (got ${JSON.stringify(request.rig)})`,
+					);
+				voice.setRig(rig);
+			}
+			if (request.exchange !== undefined) {
+				const exchange = request.exchange;
+				if (exchange === null) voice.setExchange(null, null);
+				else if (exchange === "working")
+					voice.setExchange("working", sessionId);
+				else if (exchange === "not_sent")
+					voice.setExchange("error", sessionId, "not_sent");
+				else
+					throw new Error(
+						`stageVoice exchange must be working, not_sent or null (got ${JSON.stringify(exchange)})`,
+					);
+			}
+			if (request.cardPending !== undefined) {
+				if (!sessionId)
+					throw new Error("stageVoice cardPending needs the slot held");
+				voice.setCardPending(sessionId, request.cardPending === true);
+			}
+			/*
+			 * The slot row's running-subagent count, so a frame can show the voice
+			 * mark beside the subagent mark on one sidebar row (design round 1, D8).
+			 * The mock provider cannot run a subagent, so this is the one input
+			 * that is staged on the row itself; the next real list read replaces it.
+			 */
+			if (request.subagentsRunning !== undefined) {
+				const count = request.subagentsRunning;
+				if (!sessionId)
+					throw new Error("stageVoice subagentsRunning needs the slot held");
+				if (typeof count !== "number" || !Number.isInteger(count) || count < 0)
+					throw new Error(
+						`stageVoice subagentsRunning must be a non-negative integer (got ${JSON.stringify(count)})`,
+					);
+				const sessions = useCanonicalSessionsStore.getState();
+				const row = sessions.sessions.find(
+					(candidate) => candidate.session_id === sessionId,
+				);
+				if (!row)
+					throw new Error(`stageVoice: no sidebar row for ${sessionId}`);
+				sessions.upsertSession({ ...row, subagents_running: count });
+			}
+			await nextFrame();
+			return {
+				sessionId,
+				phase: voicePhaseOf(useVoiceStore.getState(), sessionId ?? undefined),
+			};
+		},
+
 		voiceTake: async (payload) => {
 			const text = requireString(
 				typeof payload === "string"

@@ -1473,9 +1473,11 @@ const qwenVoice: QwenVoice = new QwenVoice({
 			};
 		},
 		(message) => logger.info(message, LogFileType.BACKEND),
+		(detail) => qwenVoice.processExited("gateway", detail),
 	),
 	speech: new QwenSpeechProcess(qwenRigDir, qwenPorts, qwenStateDir, {
 		log: (message) => logger.info(message, LogFileType.BACKEND),
+		onUnexpectedExit: (detail) => qwenVoice.processExited("speech", detail),
 	}),
 	toRenderer: (channel, payload) => {
 		const window = mainWindow;
@@ -4810,6 +4812,16 @@ app.on("before-quit", async (event) => {
 
 // The exit event is synchronous: only the current captured handle is eligible.
 process.on("exit", () => {
+	/*
+	 * The voice rig too: an exit that never reached `will-quit` (app.exit, a
+	 * fatal path) must not leave the ~5 GB s2s group behind. `stopNow` is
+	 * synchronous and idempotent, so a quit that already ran it is unaffected.
+	 */
+	try {
+		qwenVoice.stopNow();
+	} catch (error) {
+		logger.error("Voice rig emergency stop failed", LogFileType.BACKEND, error);
+	}
 	try {
 		backendService.emergencyStopOwned();
 	} catch (error) {

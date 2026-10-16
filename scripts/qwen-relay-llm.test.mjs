@@ -7,6 +7,7 @@ import {
 	SayRegistry,
 	createRelayHandler,
 	decideRelay,
+	phraseForOutcome,
 	relayStream,
 	sayToken,
 	tokenOf,
@@ -99,7 +100,7 @@ const post = async (body) => {
 	return readStream(await response.text());
 };
 
-test("a user turn becomes one spawn_thinking call carrying the words byte for byte", async () => {
+test("a user turn becomes one spawn_thinking call carrying the words unchanged", async () => {
 	const words = "What's 2 plus 2? Answer in one sentence.  ünïcode — “quotes”";
 	const out = await post(userTurn(words));
 	assert.equal(out.text, "", "a take is never spoken back");
@@ -256,4 +257,30 @@ test("tokenOf accepts exactly one bare token", () => {
 	assert.equal(tokenOf(`Say: ${token}`), null);
 	assert.equal(tokenOf("hello there"), null);
 	assert.equal(tokenOf(undefined), null);
+});
+
+test("a take's admission maps to a Q7 phrase; an echo, cancel or close is SILENT", () => {
+	assert.equal(phraseForOutcome({ ok: true }), "sent");
+	assert.equal(
+		phraseForOutcome({ ok: false, code: "approval_pending" }),
+		"on_screen_first",
+	);
+	assert.equal(
+		phraseForOutcome({ ok: false, code: "voice_not_enabled" }),
+		"voice_off",
+	);
+	// The echo guard's drop is never answered: "That did not go through." heard
+	// back would be a take in its own right (QA round 1, Q4).
+	for (const code of ["echo", "cancelled", "closed"])
+		assert.equal(phraseForOutcome({ ok: false, code }), null, code);
+	for (const code of ["failed", "no_window", "empty_transcript", undefined])
+		assert.equal(phraseForOutcome({ ok: false, code }), "failed", String(code));
+	// Every phrase it names is in the closed set.
+	for (const outcome of [
+		{ ok: true },
+		{ code: "approval_pending" },
+		{ code: "voice_not_enabled" },
+		{ code: "x" },
+	])
+		assert.ok(phraseForOutcome(outcome) in PHRASES);
 });

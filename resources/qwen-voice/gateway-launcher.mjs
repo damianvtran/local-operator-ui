@@ -34,6 +34,7 @@ import {
 	SayRegistry,
 	createRelayHandler,
 	createVerbatimProvider,
+	phraseForOutcome,
 	tokenOf,
 } from "./relay-core.mjs";
 
@@ -99,6 +100,23 @@ async function main() {
 	]);
 	if (typeof createTaskAnnouncementRuntime !== "function") {
 		throw new Error("createTaskAnnouncementRuntime moved; pin or vendor it");
+	}
+	/*
+	 * The factory wrapper below reads `resultOptions.getFrontend` and
+	 * `resultOptions.onDelivered` off the options the Gateway passes it. Both are
+	 * internal shapes of 2.0.1 (realtime-task-presentation.mjs), so they are
+	 * asserted from that module's source at startup: a renamed field fails
+	 * closed here, instead of every reply going silent at runtime.
+	 */
+	const presentation = readFileSync(
+		join(pkgRoot, "server/src/voice/realtime-task-presentation.mjs"),
+		"utf8",
+	);
+	for (const field of ["resultOptions", "getFrontend", "onDelivered"]) {
+		if (!presentation.includes(field))
+			throw new Error(
+				`qwen-audio-agent no longer passes ${field} to the announcement factory; pin or vendor it`,
+			);
 	}
 
 	const registry = new SayRegistry();
@@ -169,13 +187,8 @@ async function main() {
 	const backend = new LopSlotBackend({
 		post,
 		onOutcome: (_taskId, outcome) => {
-			if (outcome?.ok) speak(PHRASES.sent, "phrase");
-			else if (outcome?.code === "approval_pending")
-				speak(PHRASES.on_screen_first, "phrase");
-			else if (outcome?.code === "voice_not_enabled")
-				speak(PHRASES.voice_off, "phrase");
-			else if (outcome?.code !== "cancelled" && outcome?.code !== "closed")
-				speak(PHRASES.failed, "phrase");
+			const phrase = phraseForOutcome(outcome);
+			if (phrase) speak(PHRASES[phrase], "phrase");
 		},
 	});
 

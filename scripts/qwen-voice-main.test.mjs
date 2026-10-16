@@ -1,6 +1,15 @@
 import assert from "node:assert/strict";
-import { rmSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { createServer } from "node:http";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { after, test } from "node:test";
 import { build } from "esbuild";
 
@@ -17,7 +26,7 @@ const bundle = await build({
 		contents: [
 			'export * from "./src/main/voice/qwen-voice";',
 			'export { gatewayEnv, QwenGatewayHost } from "./src/main/voice/qwen-gateway";',
-			'export { QwenSpeechProcess, resolveQwenPorts, s2sArgs, s2sEnv, DEFAULT_QWEN_PORTS } from "./src/main/voice/qwen-rig";',
+			'export { QwenSpeechProcess, resolveQwenPorts, s2sArgs, s2sEnv, DEFAULT_QWEN_PORTS, isOurS2s, S2S_RECORD_FILE } from "./src/main/voice/qwen-rig";',
 			'export { requestDesktopMedia } from "./src/main/desktop-media";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -113,9 +122,18 @@ function rig({ gatewayFails = false } = {}) {
 		opened,
 		timers,
 		calls,
+		gateway,
+		speech,
 		advance: (ms) => {
 			now += ms;
 		},
+		/** A WebUI page connecting, as the launcher reports it. */
+		attachClient: (clients = 1) =>
+			voice.onGatewayMessage({
+				type: "status",
+				event: "client_attached",
+				clients,
+			}),
 	};
 }
 
@@ -195,6 +213,140 @@ test("the slot going empty stops the rig after 10 minutes, not before; a re-enab
 	assert.equal(r.voice.getStatus().rig, "stopped");
 });
 
+test("IDLE STOP: a status poll every 60 s never re-arms the timer; the rig stops at 10 min (QA round 1, Q3)", async () => {
+	const r = rig();
+	r.voice.observeFrame(voiceFrame("aaaaaaaaaaaa"));
+	await settle();
+	await settle();
+	const poll = (active) =>
+		r.voice.noteDesktopAnswer(
+			{ op: "voice.status" },
+			{ status: 200, body: { result: { active } } },
+		);
+	r.voice.observeFrame(voiceFrame(null)); // voice off at t=0
+	const armed = r.timers.filter((x) => !x.cleared);
+	assert.equal(armed.length, 1, "one timer armed by the transition");
+	for (let minute = 1; minute <= 9; minute += 1) {
+		r.advance(60_000);
+		poll(null);
+	}
+	assert.equal(
+		r.timers.filter((x) => !x.cleared).length,
+		1,
+		"nine polls later, still the same single timer",
+	);
+	assert.equal(armed[0].cleared, false, "never cleared by a poll");
+	assert.equal(armed[0].ms, 10 * 60_000);
+	r.advance(60_000);
+	await armed[0].fn(); // the fake clock reaches 10 minutes
+	await settle();
+	assert.equal(r.voice.getStatus().rig, "stopped");
+	assert.equal(r.calls.speechStop, 1);
+});
+
+test("IDLE STOP: voice.qwen.start with an empty slot arms it; an already-armed timer is not re-armed", async () => {
+	const r = rig();
+	await r.voice.start("renderer");
+	const armed = r.timers.filter((x) => !x.cleared);
+	assert.equal(
+		armed.length,
+		1,
+		"a rig started with nothing on is still idle-stopped",
+	);
+	r.voice.noteDesktopAnswer(
+		{ op: "voice.status" },
+		{ status: 200, body: { result: { active: null } } },
+	);
+	assert.equal(r.timers.filter((x) => !x.cleared).length, 1);
+	assert.equal(armed[0].cleared, false);
+});
+
+test("STATUS: Listening needs a connected page; attach/detach move clients; speak with none is spoken:false", async () => {
+	const r = rig();
+	r.voice.observeFrame(voiceFrame("aaaaaaaaaaaa"));
+	await settle();
+	await settle();
+	assert.equal(r.voice.getStatus().clients, 0, "ready, nothing connected");
+	r.voice.noteDesktopAnswer(
+		...textAnswer("aaaaaaaaaaaa", "reply", "The answer is four."),
+	);
+	assert.deepEqual(
+		r.voice.speak({ text: "The answer is four.", kind: "reply" }),
+		{ spoken: false, reason: "no_client" },
+		"no page connected: nothing is heard, so nothing is claimed",
+	);
+	r.attachClient(1);
+	assert.equal(r.voice.getStatus().clients, 1);
+	assert.equal(
+		r.toRenderer.filter((x) => x.channel === "voice.qwen.status").at(-1).payload
+			.clients,
+		1,
+		"pushed to the renderer",
+	);
+	assert.deepEqual(
+		r.voice.speak({ text: "The answer is four.", kind: "reply" }),
+		{ spoken: true },
+	);
+	r.voice.onGatewayMessage({
+		type: "status",
+		event: "client_detached",
+		clients: 0,
+	});
+	assert.equal(r.voice.getStatus().clients, 0);
+});
+
+test("STATUS: a page that connected while the rig was starting counts once it is ready", async () => {
+	const r = rig();
+	const started = r.voice.start("renderer");
+	r.attachClient(1); // the old tab reconnects during the start
+	await started;
+	assert.equal(r.voice.getStatus().clients, 1);
+});
+
+test("STATUS: start() checks speech as well as the gateway; a dead s2s under a 'ready' rig restarts", async () => {
+	const r = rig();
+	await r.voice.start("renderer");
+	assert.equal(r.calls.speechStart, 1);
+	r.speech.running = false; // s2s died without the exit being reported
+	await r.voice.start("renderer");
+	assert.equal(
+		r.calls.speechStart,
+		2,
+		"not answered 'ready' from stale status",
+	);
+});
+
+test("STATUS: an unexpected process exit under a ready rig is error 'unexpected_exit'; Try again restarts", async () => {
+	for (const which of ["speech", "gateway"]) {
+		const r = rig();
+		await r.voice.start("renderer");
+		r.voice.processExited(which, "code 1, signal null");
+		const status = r.voice.getStatus();
+		assert.equal(status.rig, "error", which);
+		assert.equal(status.cause, "unexpected_exit");
+		assert.match(status.reason, /exited/);
+		assert.equal(status.webui_url, null);
+		// An exit during a start, or after a stop, is not reported again.
+		await r.voice.stop();
+		r.voice.processExited(which, "late");
+		assert.equal(r.voice.getStatus().rig, "stopped");
+		// "Try again" is voice.qwen.start.
+		const again = await r.voice.start("renderer");
+		assert.equal(again.rig, "ready");
+	}
+});
+
+test("OPEN VOICE PAGE: voice.qwen.start on a ready rig reopens the page; an enable does not", async () => {
+	const r = rig();
+	await r.voice.start("renderer");
+	assert.equal(r.opened.length, 1);
+	await r.voice.start("renderer");
+	assert.equal(r.opened.length, 2, "the renderer's call reopens it");
+	await r.voice.start("enable");
+	assert.equal(r.opened.length, 2, "an enable on a ready rig changes nothing");
+	assert.equal(r.calls.speechStart, 1, "nothing restarted");
+});
+
 test("stopNow (will-quit) stops both processes synchronously", () => {
 	const r = rig();
 	r.voice.stopNow();
@@ -217,6 +369,7 @@ test("SPEAK GUARD: a text main relayed as a 200 /voice/text is spoken once; an u
 	r.voice.observeFrame(voiceFrame("aaaaaaaaaaaa"));
 	await settle();
 	await settle();
+	r.attachClient();
 	r.voice.noteDesktopAnswer(
 		...textAnswer("aaaaaaaaaaaa", "reply", "The answer is four."),
 	);
@@ -450,6 +603,150 @@ test("s2s is stopped by its recorded PROCESS GROUP, SIGTERM then SIGKILL, idempo
 	);
 	// A start against a rig directory that is not there refuses by name.
 	await assert.rejects(proc.start(), /missing/);
+});
+
+/*
+ * THE APP'S OWN CRASH ORPHAN (QA round 1, Q5): s2s's pid/pgid is recorded in
+ * the profile at spawn; the next start reaps that group only when the pid is
+ * alive, leads the recorded group and runs THIS rig's s2s on the relay model.
+ * Anything else holding the port keeps the "already in use" error.
+ */
+function fakeRigDir() {
+	const root = mkdtempSync(join(tmpdir(), `qv-rig-${process.pid}-`));
+	for (const dir of [
+		join("s2s-venv", "bin"),
+		join("qwa", "node_modules", "qwen-audio-agent"),
+		"hf-cache",
+	])
+		mkdirSync(join(root, dir), { recursive: true });
+	writeFileSync(join(root, "s2s-venv", "bin", "speech-to-speech"), "");
+	writeFileSync(
+		join(root, "qwa", "node_modules", "qwen-audio-agent", "package.json"),
+		"{}",
+	);
+	return root;
+}
+
+function orphanCase({ command, pgid = 777 }) {
+	const rigDir = fakeRigDir();
+	const state = join(rigDir, "state");
+	mkdirSync(state);
+	writeFileSync(
+		join(state, m.S2S_RECORD_FILE),
+		JSON.stringify({ pid: 777, pgid: 777 }),
+	);
+	let portHeld = true;
+	const signals = [];
+	const spawned = [];
+	const proc = new m.QwenSpeechProcess(rigDir, m.DEFAULT_QWEN_PORTS, state, {
+		inspect: (pid) =>
+			pid === 777 && portHeld ? { pgid, command: command(rigDir) } : null,
+		kill: (pid, signal) => {
+			signals.push([pid, signal]);
+			if (signal === "SIGTERM" && pid === -777) portHeld = false;
+			if (signal === 0 && !portHeld) throw new Error("ESRCH");
+		},
+		probe: async () => portHeld,
+		sleep: async () => {},
+		spawnImpl: () => {
+			const child = {
+				pid: 9001,
+				exitCode: null,
+				once() {},
+			};
+			spawned.push(child);
+			portHeld = true; // the new s2s listens at once
+			return child;
+		},
+	});
+	return { proc, signals, spawned, rigDir, state };
+}
+
+test("ORPHAN: a recorded s2s of THIS rig left by a SIGKILLed app is reaped by group, then voice starts", async () => {
+	const c = orphanCase({
+		command: (rig) =>
+			`${rig}/s2s-venv/bin/python ${rig}/s2s-venv/bin/speech-to-speech serve --model_name lop-relay --port 8765`,
+	});
+	await c.proc.start();
+	assert.deepEqual(c.signals[0], [-777, "SIGTERM"], "the recorded group");
+	assert.equal(
+		c.signals.some(([pid]) => pid === 777),
+		false,
+		"never a bare pid",
+	);
+	assert.equal(c.spawned.length, 1, "then the new s2s starts");
+	assert.deepEqual(
+		JSON.parse(readFileSync(join(c.state, m.S2S_RECORD_FILE), "utf8")),
+		{ pid: 9001, pgid: 9001 },
+		"the new one is recorded",
+	);
+	await c.proc.stop();
+	assert.equal(existsSync(join(c.state, m.S2S_RECORD_FILE)), false);
+	rmSync(c.rigDir, { recursive: true, force: true });
+});
+
+test("ORPHAN: a port holder that is not ours is NEVER killed, and the clear error stays", async () => {
+	for (const [label, command, pgid] of [
+		[
+			"Ben's manual rig, another venv",
+			() =>
+				"/Users/ben/other/s2s-venv/bin/speech-to-speech serve --model_name lop-relay",
+			777,
+		],
+		[
+			"an s2s with the 4B, not the relay",
+			(rig) =>
+				`${rig}/s2s-venv/bin/speech-to-speech serve --model_name Qwen3-4B`,
+			777,
+		],
+		[
+			"pid reused by an unrelated process",
+			() => "/usr/bin/python3 -m http.server 8765",
+			777,
+		],
+		[
+			"our command but no longer the group leader",
+			(rig) =>
+				`${rig}/s2s-venv/bin/speech-to-speech serve --model_name lop-relay`,
+			1,
+		],
+	]) {
+		const c = orphanCase({ command, pgid });
+		await assert.rejects(c.proc.start(), /already in use/, label);
+		assert.deepEqual(c.signals, [], `${label}: nothing signalled`);
+		assert.equal(c.spawned.length, 0, label);
+		rmSync(c.rigDir, { recursive: true, force: true });
+	}
+});
+
+test("ORPHAN: an s2s that dies under us reports an unexpected exit once and clears its record", async () => {
+	const rigDir = fakeRigDir();
+	const state = join(rigDir, "state");
+	let exitListener = null;
+	let listening = false;
+	const exits = [];
+	const proc = new m.QwenSpeechProcess(rigDir, m.DEFAULT_QWEN_PORTS, state, {
+		probe: async () => listening,
+		sleep: async () => {
+			listening = true;
+		},
+		kill: () => {},
+		onUnexpectedExit: (detail) => exits.push(detail),
+		spawnImpl: () => ({
+			pid: 4321,
+			exitCode: null,
+			once: (_event, listener) => {
+				exitListener = listener;
+			},
+		}),
+	});
+	await proc.start();
+	assert.equal(existsSync(join(state, m.S2S_RECORD_FILE)), true);
+	exitListener(null, "SIGKILL");
+	assert.deepEqual(exits, ["code null, signal SIGKILL"]);
+	assert.equal(existsSync(join(state, m.S2S_RECORD_FILE)), false);
+	assert.equal(proc.running, false);
+	rmSync(rigDir, { recursive: true, force: true });
 });
 
 /* ------------------------------------------------------------------------ */

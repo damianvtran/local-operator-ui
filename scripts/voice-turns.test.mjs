@@ -950,7 +950,8 @@ const RECONNECT_ACTION =
 	/id: lostToastId,[\s\S]*?onClick: \(\) => handle\.retry\(\)/;
 const CARD_TOAST = /showCardToast\(/g;
 const SHARED_ID_TOAST =
-	/showWarningToast\(message, \{ id: voiceCardToastId\(sessionId\) \}\)/;
+	/showWarningToast\(message, \{\s*id: voiceCardToastId\(sessionId\),/;
+const TOAST_ONLY_ELSEWHERE = /if \(viewedSessionId\(\) === sessionId\) return;/;
 const RAW_CARD_TOAST =
 	/show(Info|Warning|Error)Toast\(\s*t\("ui\.chat\.voice\.(card_pending|approval_waiting)"\)/;
 const PENDING_REFUSAL_ROUTED =
@@ -965,6 +966,8 @@ test("D8: the gate announcement and every refused take share one per-session war
 	);
 	const helper = controller.slice(controller.indexOf("function showCardToast"));
 	assert.match(helper.slice(0, helper.indexOf("\n}")), SHARED_ID_TOAST);
+	// Round 1, U5/D7: only when Ben is NOT looking at the voice session.
+	assert.match(helper.slice(0, helper.indexOf("\n}")), TOAST_ONLY_ELSEWHERE);
 	// The announcement, the pre-check and the server's refusal all route through it.
 	// Its declaration plus three call sites.
 	assert.equal([...controller.matchAll(CARD_TOAST)].length, 4);
@@ -1477,7 +1480,7 @@ const READS_INPUT_MODE = /input_mode|inputMode/;
 const controllerBundle = await build({
 	stdin: {
 		contents:
-			'export { feedTurns, sendVoiceTake, takeIsEcho, isEcho, rememberSpoken } from "./src/renderer/src/features/voice/qwen-voice-controller"; export { useVoiceStore, voicePhaseOf } from "./src/renderer/src/features/voice/voice-store";',
+			'export { feedTurns, sendVoiceTake, takeIsEcho, isEcho, isQwenPhrase, rememberSpoken, viewedSessionId } from "./src/renderer/src/features/voice/qwen-voice-controller"; export { useVoiceStore, voicePhaseOf } from "./src/renderer/src/features/voice/voice-store";',
 		resolveDir: process.cwd(),
 		loader: "tsx",
 	},
@@ -1526,7 +1529,7 @@ const settle = (status = 200) =>
  * (there is no push-to-talk target any more), so the harness puts the slot on the
  * session first, as an enable would. The header's phase is DERIVED
  * (`voicePhaseOf`) from the slot, the rig and the exchange; the rig is `ready`
- * here, so a session owed nothing reads `listening`.
+ * with a page connected here, so a session owed nothing reads `listening`.
  */
 async function controller() {
 	const mod = await import(controllerPath.href);
@@ -1536,7 +1539,11 @@ async function controller() {
 			.setActive({ session_id: sessionId, enabled_at: 1 });
 		return mod.sendVoiceTake(text);
 	};
-	mod.useVoiceStore.getState().setRig({ rig: "ready", webui_url: null });
+	// Ready with a voice page connected: the state in which the header can
+	// truthfully say "Listening" (round 1, D2/U2).
+	mod.useVoiceStore
+		.getState()
+		.setRig({ rig: "ready", webui_url: null, clients: 1 });
 	const phase = () => {
 		const state = mod.useVoiceStore.getState();
 		return mod.voicePhaseOf(state, state.active?.session_id);
@@ -1829,32 +1836,157 @@ test("R6-m1: a take's expiry timer is cleared once the take is settled (no timer
 });
 
 /*
- * THE ECHO GUARD (design "Risks"): a take whose words are 80% or more an in-order
- * run of something this window had the rig say in the last 30 s is the
- * microphone hearing the reply, and must not steer the session. Order matters,
- * and a one- or two-word take is never judged an echo.
+ * THE ECHO GUARD (design "Risks", round 1 M1/M2/Q4). The invariant: the rig's
+ * own speech never becomes a take, and a real follow-up is never dropped. A
+ * take of 6+ words is an echo when ONE CONTIGUOUS run of 6+ words it shares
+ * with the spoken text covers 80% of it; a shorter take only when it equals a
+ * whole sentence of it. Every Q7 phrase is an echo at any time.
  */
-test("echo guard: a reply heard back is an echo; a real answer is not", async () => {
+const TRAILING_PERIOD = /\.$/;
+const STOPS_AND_COMMAS = /[.,]/g;
+const REVIEWER_REPLY =
+	"I looked at the repository and found that the test suite fails in three places. The first failure is in the parser, where the tokenizer does not handle empty input. The second is in the config loader, which reads the file twice and then ignores the second result. The third is a flaky timing test in the scheduler that depends on the wall clock. I fixed the parser and the loader, and I left the scheduler test alone because it needs a decision from you about whether to mock the clock or widen the tolerance. All other tests pass now, and the change is ready to commit when you are.";
+
+test("echo guard: the reviewer's real follow-ups are NOT echoes of a long reply", async () => {
 	const { isEcho } = await controller();
+	for (const take of [
+		// The five the old subsequence ratio dropped (review round 1, M1).
+		"can you mock the clock",
+		"fix the scheduler test now",
+		"and the loader is it fixed",
+		"what is the clock tolerance",
+		"and then the test is run",
+		// Short instructions that quote the reply's own words.
+		"mock the clock",
+		"widen the tolerance",
+		"leave the scheduler test alone",
+		"fix the parser and the loader",
+		// And the ones it already kept.
+		"yes go ahead and fix it",
+		"please run the tests again",
+		"what is the third one",
+		"commit it and push the change",
+		"go ahead",
+		"why did the loader read the file twice",
+		"tell me about the clock",
+	])
+		assert.equal(isEcho(take, REVIEWER_REPLY), false, take);
+});
+
+test("echo guard: the played-back reply IS an echo, whole or a sentence of it", async () => {
+	const { isEcho } = await controller();
+	// Parakeet's rendering of the reply heard back: case and punctuation differ.
+	assert.equal(
+		isEcho(
+			REVIEWER_REPLY.toLowerCase().replace(STOPS_AND_COMMAS, ""),
+			REVIEWER_REPLY,
+		),
+		true,
+	);
+	// One sentence of it heard back (the rest lost to barge-in or VAD).
+	assert.equal(
+		isEcho(
+			"the third is a flaky timing test in the scheduler that depends on the wall clock",
+			REVIEWER_REPLY,
+		),
+		true,
+	);
+	// A short reply heard back whole.
+	assert.equal(
+		isEcho("Hello from the mock provider.", "Hello from the mock provider!"),
+		true,
+	);
 	const reply =
 		"The workspace has three files: notes.md, plan.txt and a folder called src.";
 	assert.equal(
 		isEcho("the workspace has three files notes md plan txt", reply),
 		true,
 	);
-	assert.equal(isEcho("The workspace has three files.", reply), true);
 	assert.equal(
 		isEcho("delete the folder called src and the three files", reply),
 		false,
 		"the same words in another order are an instruction, not an echo",
 	);
+	// Under 6 words: only a whole sentence counts, never a fragment.
+	assert.equal(isEcho("The workspace has three files.", reply), false);
+	assert.equal(isEcho("yes", "Yes, I can do that."), false);
 	assert.equal(
-		isEcho("yes", "Yes, I can do that."),
-		false,
-		"too short to judge",
+		isEcho("stop now", "Stop now."),
+		true,
+		"a whole one-sentence reply",
 	);
-	assert.equal(isEcho("stop now", "Stop now."), false, "too short to judge");
+	assert.equal(isEcho("stop", "Stop now. I will wait."), false);
 	assert.equal(isEcho("what is in plan txt", reply), false);
+});
+
+test("echo guard: every Q7 phrase heard back is an echo, at any time and any length", async () => {
+	const { isQwenPhrase, takeIsEcho } = await controller();
+	const phrases = JSON.parse(
+		readFileSync(
+			new URL("../resources/qwen-voice/phrases.json", import.meta.url),
+			"utf8",
+		),
+	);
+	assert.deepEqual(Object.keys(phrases).sort(), [
+		"failed",
+		"on_screen_first",
+		"sent",
+		"switched",
+		"voice_off",
+	]);
+	for (const phrase of Object.values(phrases)) {
+		assert.equal(isQwenPhrase(phrase), true, phrase);
+		// As Parakeet writes it back: lower case, punctuation shifted.
+		const heard = phrase.toLowerCase().replace(TRAILING_PERIOD, "");
+		assert.equal(takeIsEcho(heard, Date.now() + 3_600_000), true, heard);
+	}
+	// QA round 1 heard "Voice is off" back as "Voices off" once; that is not a
+	// phrase, and only exact phrases are dropped without a recent-speech match.
+	assert.equal(isQwenPhrase("Sent the report to Dana."), false);
+	assert.equal(isQwenPhrase("switched it off"), false);
+});
+
+test("echo guard runs BEFORE the card check: the rig's own 'Answer it on screen first.' heard back at a card is a silent echo, not a 409", async () => {
+	const { feedTurns, sendVoiceUtterance, useVoiceStore } = await controller();
+	useVoiceStore
+		.getState()
+		.setActive({ session_id: "s-card-echo", enabled_at: 1 });
+	feedTurns("s-card-echo", {
+		kind: "gate",
+		gate: { request_id: "g-echo", kind: "approval" },
+	});
+	globalThis.__voiceUpload = null;
+	// Three rounds, as QA's loop did: each must be dropped as an echo.
+	for (let round = 0; round < 3; round += 1) {
+		const heard = await sendVoiceUtterance("s-card-echo", {
+			text: "answer it on screen first",
+		});
+		assert.equal(heard.code, "echo", `round ${round}: not approval_pending`);
+	}
+	assert.equal(globalThis.__voiceUpload, null, "nothing was sent");
+	// A real take at the card is still refused by the card, as before (V13).
+	const real = await sendVoiceUtterance("s-card-echo", {
+		text: "yes go ahead",
+	});
+	assert.equal(real.code, "approval_pending");
+	feedTurns("s-card-echo", { kind: "gate", gate: null });
+});
+
+test("echo guard: the rig's 'Voice is off' heard back with the slot empty is an echo, not a voice_not_enabled refusal", async () => {
+	const { sendVoiceTake, useVoiceStore } = await controller();
+	useVoiceStore.getState().setActive(null);
+	const heard = await sendVoiceTake("voice is off for this conversation");
+	assert.equal(heard.code, "echo");
+	const real = await sendVoiceTake("turn voice on please");
+	assert.equal(real.code, "voice_not_enabled");
+});
+
+test("viewedSessionId reads the HashRouter's chat route", async () => {
+	const { viewedSessionId } = await controller();
+	assert.equal(viewedSessionId("#/chat/abc123def456"), "abc123def456");
+	assert.equal(viewedSessionId("#/chat/abc123def456?x=1"), "abc123def456");
+	assert.equal(viewedSessionId("#/chat"), null);
+	assert.equal(viewedSessionId("#/settings"), null);
 });
 
 test("echo guard: a take matching recent speech is dropped unsent", async () => {
