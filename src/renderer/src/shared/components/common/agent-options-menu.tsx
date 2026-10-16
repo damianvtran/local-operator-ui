@@ -6,6 +6,7 @@ import {
 	DropdownMenuTrigger,
 } from "@shared/components/ui";
 import { useDeleteAgent } from "@shared/hooks/use-agent-mutations";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import {
 	CloudUpload,
@@ -18,6 +19,7 @@ import {
 } from "lucide-react";
 import type { CSSProperties, FC } from "react";
 import { useRef, useState } from "react";
+import { t } from "../../../../../i18n/messages";
 import { ConfirmationModal } from "./confirmation-modal";
 
 type AgentOptionsMenuProps = {
@@ -87,6 +89,8 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
 	onClearConversation,
 	onUploadAgentToHub,
 }) => {
+	// Language refresh must preserve entered fields and any open confirmation.
+	useI18nLocale();
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
 	const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 	const [isClearModalOpen, setIsClearModalOpen] = useState(false);
@@ -132,7 +136,7 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						aria-label="agent options"
+						aria-label={t("ui.agents.dialogs.menu.accessible")}
 						data-tour-tag="agent-options-button"
 						onClick={(e) => {
 							// The trigger sits inside a clickable agent row; without this
@@ -179,7 +183,7 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
 					{isAgentsPage && onChatWithAgent && (
 						<DropdownMenuItem onSelect={onChatWithAgent}>
 							<MessageSquare aria-hidden="true" />
-							<span>Chat with agent</span>
+							<span>{t("ui.agents.dialogs.menu.chat")}</span>
 						</DropdownMenuItem>
 					)}
 
@@ -190,14 +194,14 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
 							onSelect={onViewAgentSettings}
 						>
 							<Settings aria-hidden="true" />
-							<span>View agent settings</span>
+							<span>{t("ui.agents.dialogs.menu.settings")}</span>
 						</DropdownMenuItem>
 					)}
 
 					{onExportAgent && (
 						<DropdownMenuItem onSelect={onExportAgent}>
 							<FileOutput aria-hidden="true" />
-							<span>Export agent</span>
+							<span>{t("ui.agents.dialogs.menu.export")}</span>
 						</DropdownMenuItem>
 					)}
 
@@ -207,7 +211,7 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
 							onSelect={onUploadAgentToHub}
 						>
 							<CloudUpload aria-hidden="true" />
-							<span>Upload to hub</span>
+							<span>{t("ui.agents.dialogs.menu.upload")}</span>
 						</DropdownMenuItem>
 					)}
 
@@ -220,7 +224,7 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
 							}}
 						>
 							<Eraser aria-hidden="true" />
-							<span>Clear conversation</span>
+							<span>{t("ui.agents.dialogs.menu.clear")}</span>
 						</DropdownMenuItem>
 					)}
 
@@ -232,27 +236,26 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
 						}}
 					>
 						<Trash2 aria-hidden="true" />
-						<span>Delete agent</span>
+						<span>{t("ui.agents.dialogs.menu.delete")}</span>
 					</DropdownMenuItem>
 				</DropdownMenuContent>
 			</DropdownMenu>
 
 			<ConfirmationModal
 				open={isDeleteModalOpen}
-				title="Delete agent"
+				title={t("ui.agents.dialogs.delete.title")}
 				message={
 					<>
 						<p className="text-body text-ink">
-							Are you sure you want to delete the agent "{agentName}"?
+							{t("ui.agents.dialogs.delete.question", { name: agentName })}
 						</p>
 						<p className="mt-2 text-body-sm text-ink-muted">
-							This action cannot be undone. All conversations with this agent
-							will be permanently deleted.
+							{t("ui.agents.dialogs.delete.warning")}
 						</p>
 					</>
 				}
-				confirmText="Delete"
-				cancelText="Cancel"
+				confirmText={t("ui.agents.dialogs.delete.confirm")}
+				cancelText={t("ui.agents.dialogs.delete.cancel")}
 				isDangerous
 				onConfirm={handleConfirmDelete}
 				onCancel={() => setIsDeleteModalOpen(false)}
@@ -260,10 +263,10 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
 
 			<ConfirmationModal
 				open={isClearModalOpen}
-				title="Clear this conversation?"
-				message="Every message in it is deleted from this computer, and there is no undo. The agent itself is not affected."
-				confirmText="Clear"
-				cancelText="Cancel"
+				title={t("ui.agents.dialogs.clear.title")}
+				message={t("ui.agents.dialogs.clear.warning")}
+				confirmText={t("ui.agents.dialogs.clear.confirm")}
+				cancelText={t("ui.agents.dialogs.clear.cancel")}
 				isDangerous
 				onConfirm={() => {
 					onClearConversation?.();
