@@ -135,10 +135,14 @@ export interface BrowserUrlBarProps {
 function downloadsLabel(
 	recent: { name: string; count: number } | null,
 ): string {
-	if (!recent) return "Open downloads folder";
+	if (!recent)
+		return t("ui.browser.browser_file_transfer_row.open_downloads_folder");
 	return recent.count > 1
-		? `Open downloads folder — ${recent.name} was the newest saved there (${recent.count} this session)`
-		: `Open downloads folder — ${recent.name} was saved there`;
+		? t("ui.browser.browser_url_bar.newest_download", {
+				name: recent.name,
+				count: recent.count,
+			})
+		: t("ui.browser.browser_url_bar.latest_download", { name: recent.name });
 }
 
 /** `about:blank` is what a new tab starts on and is what a browser shows as an
@@ -263,11 +267,15 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			className="flex items-center gap-1 border-control border-b bg-elevated px-2 py-1"
 			data-tour-tag="browser-url-bar"
 		>
-			<Tooltip content={`Back (${backChord})`}>
+			<Tooltip
+				content={t("ui.browser.browser_url_bar.back_shortcut", {
+					shortcut: backChord,
+				})}
+			>
 				<Button
 					variant="ghost"
 					size="icon-sm"
-					aria-label="Back"
+					aria-label={t("ui.browser.browser_url_bar.back")}
 					aria-keyshortcuts={backChord}
 					disabled={disabled || !canGoBack}
 					onClick={onBack}
@@ -276,11 +284,15 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					<ArrowLeft aria-hidden className="size-4" />
 				</Button>
 			</Tooltip>
-			<Tooltip content={`Forward (${forwardChord})`}>
+			<Tooltip
+				content={t("ui.browser.browser_url_bar.forward_shortcut", {
+					shortcut: forwardChord,
+				})}
+			>
 				<Button
 					variant="ghost"
 					size="icon-sm"
-					aria-label="Forward"
+					aria-label={t("ui.browser.browser_url_bar.forward")}
 					aria-keyshortcuts={forwardChord}
 					disabled={disabled || !canGoForward}
 					onClick={onForward}
@@ -293,11 +305,11 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			    shows stop while loading and reload otherwise, and two buttons where
 			    only one is ever enabled is a control that lies about its own state. */}
 			{loading ? (
-				<Tooltip content="Stop loading">
+				<Tooltip content={t("ui.browser.browser_url_bar.stop_loading")}>
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						aria-label="Stop loading"
+						aria-label={t("ui.browser.browser_url_bar.stop_loading")}
 						disabled={disabled}
 						onClick={onStop}
 						data-tour-tag="browser-stop"
@@ -310,7 +322,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						aria-label="Reload"
+						aria-label={t("ui.browser.browser_url_bar.reload")}
 						aria-keyshortcuts={reload.aria}
 						disabled={disabled}
 						onClick={onReload}
@@ -347,7 +359,9 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						aria-label="Open downloads folder"
+						aria-label={t(
+							"ui.browser.browser_file_transfer_row.open_downloads_folder",
+						)}
 						onClick={onOpenDownloads}
 						data-tour-tag="browser-downloads-folder"
 					>
@@ -356,11 +370,16 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 				</Tooltip>
 			)}
 			{onFind && (
-				<Tooltip content={`Find in page (${find.glyph})`} side="top">
+				<Tooltip
+					content={t("ui.browser.browser_url_bar.find_in_page_shortcut", {
+						shortcut: find.glyph,
+					})}
+					side="top"
+				>
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						aria-label="Find in page"
+						aria-label={t("ui.browser.browser_url_bar.find_in_page")}
 						aria-keyshortcuts={find.aria}
 						disabled={disabled}
 						onClick={onFind}
@@ -371,11 +390,18 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 				</Tooltip>
 			)}
 			{pageZoom !== 1 && (
-				<Tooltip content={`Reset page zoom (${resetZoom.glyph})`} side="top">
+				<Tooltip
+					content={t("ui.browser.browser_url_bar.reset_page_zoom_shortcut", {
+						shortcut: resetZoom.glyph,
+					})}
+					side="top"
+				>
 					<Button
 						variant="ghost"
 						size="sm"
-						aria-label={`Page zoom ${Math.round(pageZoom * 100)}%, reset to 100%`}
+						aria-label={t("ui.browser.browser_url_bar.page_zoom_reset", {
+							zoom: Math.round(pageZoom * 100),
+						})}
 						aria-keyshortcuts={resetZoom.aria}
 						onClick={onResetZoom}
 						data-tour-tag="browser-zoom"
@@ -414,7 +440,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					}}
 					spellCheck={false}
 					autoComplete="off"
-					aria-label="Address"
+					aria-label={t("ui.browser.browser_url_bar.address")}
 					// Only while the tab has nothing to show: the moment it commits, the
 					// live value replaces this and the placeholder is gone.
 					placeholder={loading && !live ? (pendingUrl ?? undefined) : undefined}
@@ -453,13 +479,16 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 						className={waitingCount > 0 ? "pr-5" : undefined}
 						aria-label={
 							waitingCount > 0
-								? `Approvals, ${waitingCount} waiting`
+								? t("ui.browser.browser_url_bar.approvals_waiting", {
+										count: waitingCount,
+									})
 								: t("ui.browser.chrome.approvals")
 						}
 						data-tour-tag="browser-approvals"
 					>
 						<ShieldCheck aria-hidden className="size-3.5" />
-						{waitingCount > 0 && "Approvals"}
+						{waitingCount > 0 &&
+							t("ui.browser.browser_approvals_dock.approvals")}
 					</Button>
 				</Tooltip>
 				{waitingCount > 0 && (

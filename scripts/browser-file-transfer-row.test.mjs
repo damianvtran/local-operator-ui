@@ -91,6 +91,7 @@ export function mount(container, props) {
  * to take again. See the D10 case below for why that matters.
  */
 export * as stories from "./src/renderer/src/features/browser/components/browser-file-transfer-row.stories";
+export { t as tr, setLocale, registerCatalogue, clearRegisteredCatalogues } from "./src/i18n";
 `;
 
 const bundle = await build({
@@ -116,7 +117,15 @@ const bundlePath = new URL(
 	import.meta.url,
 );
 await writeFile(bundlePath, bundle.outputFiles[0].text);
-const { mount, stories } = await import(bundlePath.href);
+const {
+	mount,
+	stories,
+	tr,
+	setLocale,
+	registerCatalogue,
+	clearRegisteredCatalogues,
+} = await import(bundlePath.href);
+setLocale("en");
 await unlink(bundlePath);
 
 const DIR =
@@ -613,4 +622,173 @@ test("EVERY committed story specimen paints, which is the defect D10 was (review
 		null,
 		"the Nothing specimen renders nothing by design",
 	);
+});
+
+// Exercise the subscription on an already-mounted shipped row, not a new render fixture.
+test("a mounted transfer row refreshes language and absent messages keep English plurals", async (t) => {
+	const saved = await open(t, { transfers: activity([note()]) });
+	try {
+		assert.ok(saved.spoken().includes("was saved to"));
+		registerCatalogue("fr", {
+			"ui.browser.browser_file_transfer_row.was_saved_to": "Fixture saved to",
+		});
+		await act(() => setLocale("fr"));
+		assert.ok(saved.spoken().includes("Fixture saved to"), saved.spoken());
+		for (const count of [0, 1, 21]) {
+			assert.equal(
+				tr("ui.browser.browser_tab_strip.close_other_tabs", { count }),
+				`Close ${count} other ${count === 1 ? "tab" : "tabs"}`,
+			);
+			assert.equal(
+				tr("ui.browser.browser_approvals_tray.header_waiting", { count }),
+				`${count} ${count === 1 ? "approval" : "approvals"} waiting`,
+			);
+			assert.equal(
+				tr("ui.browser.browser_tab_strip.close_conversation_tabs", { count }),
+				`Close all ${count} tabs in this conversation`,
+			);
+			assert.equal(
+				tr("ui.browser.browser_file_transfer_row.byte_count", { count }),
+				`${count} bytes`,
+			);
+			assert.equal(
+				tr("ui.browser.browser_file_transfer_row.call_limit", { count }),
+				`was not saved: this call has already saved its limit of ${count} files.`,
+			);
+		}
+		/* THE FOUR-DIGIT COUNT IS THE DISCRIMINATOR (QA round 1). A bare `#` selector
+		 * is byte-faithful below 1000 and groups from 1000 up, so the [0, 1, 21] table
+		 * above passed while `1000` rendered `1,000`. These four keys carry
+		 * `{count, number, ::group-off}` (byte_count, call_limit, passkey_anonymous_many,
+		 * close_conversation_tabs); pin each at a grouped count, and the two byte/limit
+		 * ones at 1023, the highest count the pre-extraction literal emitted raw. */
+		for (const count of [1000, 1023]) {
+			assert.equal(
+				tr("ui.browser.browser_file_transfer_row.byte_count", { count }),
+				`${count} bytes`,
+				`byte_count groups at ${count}`,
+			);
+			assert.equal(
+				tr("ui.browser.browser_file_transfer_row.call_limit", { count }),
+				`was not saved: this call has already saved its limit of ${count} files.`,
+				`call_limit groups at ${count}`,
+			);
+		}
+		for (const count of [1000]) {
+			assert.equal(
+				tr("ui.browser.browser_tab_strip.close_conversation_tabs", { count }),
+				`Close all ${count} tabs in this conversation`,
+				`close_conversation_tabs groups at ${count}`,
+			);
+			assert.equal(
+				tr("ui.browser.webauthn_chooser.passkey_anonymous_many", {
+					site: "example.test",
+					count,
+				}),
+				`example.test asked for a passkey. Your Mac holds ${count} passkeys for this site and did not give their names, so the one you pick is the account you sign in as. If it is the wrong one, sign out and ask the site again.`,
+				`passkey_anonymous_many groups at ${count}`,
+			);
+		}
+		/* THE SIBLINGS OF THE SAME CLASS (QA round 1 follow-up). Sixteen more keys
+		 * the same extraction added still replaced a base literal that interpolated the
+		 * RAW number — so a bare `#` selector rendered `1,000` where the base rendered
+		 * `1000` — and the loops above only pinned four of them. The [0, 1, 21] table
+		 * cannot see it (below 1000 `#` and `::group-off` agree); each of these carries
+		 * `{count, number, ::group-off}` at every count it interpolates, so pin each at
+		 * 1000, where the two forms differ by one comma. A bare `#` restored to any of
+		 * these arms fails here by name. */
+		const GROUPED_AT_A_THOUSAND = [
+			[
+				"ui.browser.browser_approvals_dock.waiting_count",
+				{},
+				(rendered) => `${rendered} waiting`,
+			],
+			[
+				"ui.browser.browser_approvals_dock.approved_count",
+				{},
+				(rendered) => `${rendered} sites approved`,
+			],
+			[
+				"ui.browser.browser_approvals_tray.header_waiting",
+				{},
+				(rendered) => `${rendered} approvals waiting`,
+			],
+			[
+				"ui.browser.browser_approvals_tray.header_conversation",
+				{},
+				(rendered) => `${rendered} approvals for this conversation`,
+			],
+			[
+				"ui.browser.browser_file_transfer_row.age_minutes",
+				{},
+				(rendered) => `${rendered} min ago`,
+			],
+			[
+				"ui.browser.browser_file_transfer_row.age_hours",
+				{},
+				(rendered) => `${rendered} h ago`,
+			],
+			[
+				"ui.browser.browser_tab_strip.all_tabs_unshown",
+				{},
+				(rendered) => `All tabs \u2014 ${rendered} not shown`,
+			],
+			[
+				"ui.browser.browser_tab_strip.all_tabs_unshown_accessible",
+				{},
+				(rendered) => `All tabs, ${rendered} not shown`,
+			],
+			[
+				"ui.browser.browser_url_bar.newest_download",
+				{ name: "receipt-1.pdf" },
+				(rendered) =>
+					`Open downloads folder \u2014 receipt-1.pdf was the newest saved there (${rendered} this session)`,
+			],
+			[
+				"ui.browser.browser_url_bar.approvals_waiting",
+				{},
+				(rendered) => `Approvals, ${rendered} waiting`,
+			],
+			[
+				"ui.browser.approval_queue_model.expires_minutes",
+				{},
+				(rendered) => `expires in ${rendered} minutes`,
+			],
+			[
+				"ui.browser.webauthn_chooser.passkeys_waiting",
+				{},
+				(rendered) => `${rendered} more passkey requests are waiting.`,
+			],
+			[
+				"ui.browser.browser_tab_strip.close_other_tabs",
+				{},
+				(rendered) => `Close ${rendered} other tabs`,
+			],
+			[
+				"ui.browser.browser_tab_strip.close_right_tabs",
+				{},
+				(rendered) => `Close ${rendered} tabs to the right`,
+			],
+			[
+				"ui.browser.browser_tab_strip.close_failed_tabs",
+				{},
+				(rendered) => `Close ${rendered} failed tabs`,
+			],
+			[
+				"ui.browser.browser_file_transfer_row.upload_more",
+				{},
+				(rendered) => `+ ${rendered} more`,
+			],
+		];
+		for (const [key, extra, expected] of GROUPED_AT_A_THOUSAND) {
+			assert.equal(
+				tr(key, { count: 1000, ...extra }),
+				expected("1000"),
+				`${key} must render the raw count at 1000, not the digit-grouped one`,
+			);
+		}
+	} finally {
+		clearRegisteredCatalogues();
+		await act(() => setLocale("en"));
+	}
 });

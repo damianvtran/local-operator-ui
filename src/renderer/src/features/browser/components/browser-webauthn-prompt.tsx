@@ -5,6 +5,8 @@ import {
 	useWebauthnRequests,
 	webauthnRequestsSnapshot,
 } from "@shared/browser-webauthn-queue";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { type FC, useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -51,6 +53,7 @@ import { BrowserWebauthnDialog } from "./browser-webauthn-dialog";
  * dismissal to settle.
  */
 export const BrowserWebauthnPrompt: FC = () => {
+	useI18nLocale();
 	const requests = useWebauthnRequests();
 	const [answering, setAnswering] = useState(false);
 	const [ending, setEnding] = useState<WebauthnEnding | null>(null);
@@ -206,9 +209,9 @@ export const BrowserWebauthnPrompt: FC = () => {
 					);
 				} catch (error) {
 					showErrorToast(
-						`The passkey request could not be answered: ${
-							error instanceof Error ? error.message : String(error)
-						}`,
+						t("ui.browser.browser_webauthn_prompt.answer_failed", {
+							error: error instanceof Error ? error.message : String(error),
+						}),
 					);
 				} finally {
 					setAnswering(false);
