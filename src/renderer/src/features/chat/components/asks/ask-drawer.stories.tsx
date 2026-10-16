@@ -48,6 +48,7 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
+import { screen, userEvent } from "@storybook/test";
 import type {
 	CanonicalFrontendState,
 	PendingAsk,
@@ -812,8 +813,8 @@ export const FullTextAtFloor: Story = {
  * and the status, stamp and attribution stay the FIRST answer's) — plus this
  * surface's own receipt, because the wire has no marker for an accepted change.
  *
- * The form itself is not a story: it is one press away (`Change answer`), and the
- * PR's frames show it clicked rather than a fixture that skips the press.
+ * The change form is reached by its own press rather than by a fixture that skips
+ * it: `SecretStoredKeyChange` (below) clicks `Change answer` in its `play` step.
  */
 function changeableAsk(): PendingAsk {
 	return ask({
@@ -970,5 +971,90 @@ export const RevisedAfterChange: Story = {
 		outcomes: {
 			"a-change": { sending: false, refused: null, changed: true },
 		},
+	},
+};
+
+/**
+ * A choice beside an OPTIONAL secret (PR #1109, design round 1, D5): the operator's
+ * card, where the secret's prompt says "otherwise skip". The masked field states the
+ * skip because another question can carry the one real answer the submit needs;
+ * `SecretQuestion` above is the contrast, a secret alone, where it does not.
+ */
+function skippableSecretAsk(): PendingAsk {
+	return ask({
+		ask_id: "a-sec-skip",
+		questions: [
+			{
+				id: "voice",
+				question: "How should the proof of concept test the voice path?",
+				recommended: 0,
+				options: [
+					{
+						label: "Skip voice for now",
+						description: "A scripted client, no audio",
+					},
+					{
+						label: "I'll provide a DashScope key",
+						description: "A real voice test",
+					},
+				],
+				multi: false,
+			},
+			{
+				id: "DASHSCOPE_API_KEY",
+				question:
+					"If you chose to provide a key, paste the DashScope API key here (otherwise skip).",
+				options: [],
+				secret: true,
+			},
+		],
+	});
+}
+
+export const SecretSkippable: Story = {
+	args: {
+		frontend: frontend([skippableSecretAsk()]),
+		scope: "session",
+		onClose: noop,
+		nowMs: NOW,
+		onAnswer: noop,
+		onDecline: noop,
+	},
+};
+
+/**
+ * The same ask answered WITH a key, still undelivered, and the change form open. The
+ * log holds only the key name, so the masked field cannot be seeded and an empty one
+ * would replace the stored key: the field says the value is required, and that is the
+ * only explanation the card gives for a disabled `Update answer` (D4). The press is the
+ * story's own, so the form is what the frame shows rather than the closed card.
+ */
+export const SecretStoredKeyChange: Story = {
+	args: {
+		frontend: frontend([
+			ask({
+				...skippableSecretAsk(),
+				status: "answered",
+				delivered: false,
+				answered_at: TS + 4 * MINUTE,
+				answered_by: { surface: "desktop" },
+				answers: {
+					voice: ["I'll provide a DashScope key"],
+					DASHSCOPE_API_KEY: ["DASHSCOPE_API_KEY"],
+				},
+			}),
+		]),
+		scope: "session",
+		onClose: noop,
+		nowMs: NOW,
+		onAnswer: noop,
+		onDecline: noop,
+		onRevise: noop,
+	},
+	play: async () => {
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Change answer" }),
+		);
+		await screen.findByRole("button", { name: "Update answer" });
 	},
 };

@@ -735,7 +735,7 @@ test("each picker routes a draft's pick through one resolver, and never through 
 	// The machine's default is not this control's to change, so a draft has no
 	// checkbox to change it with.
 	assert.match(picker, /\{!draft && \(/);
-	assert.match(picker, /This pick also sets the default for new sessions/);
+	assert.match(picker, /Picks here also set the default for new sessions/);
 });
 
 /* ---- 3b. a model pick may not silently discard the chosen effort rung ------ */
@@ -1033,6 +1033,25 @@ const pickerDependencies = {
 					typeof value === "function" ? value(instance.states[index]) : value;
 			},
 		];
+	},
+	/*
+	 * The effort adapter keeps its default checkbox and in-flight flag in refs
+	 * (the pick's continuation must read the box as it is when the owner
+	 * answers). A ref is one more slot in the same per-instance hook index, so it
+	 * survives the explicit re-renders this harness performs, as React's does.
+	 */
+	/*
+	 * The effort adapter's one effect hands its accepted rung back to the live
+	 * frame once the frame names it - a SESSION concern. A draft never accepts a
+	 * rung through the owner, so running no effects loses nothing here.
+	 */
+	useEffect: () => {},
+	useRef: (initial) => {
+		const instance = activePicker;
+		const index = instance.index++;
+		if (!(index in instance.states))
+			instance.states[index] = { current: initial };
+		return instance.states[index];
 	},
 	useQuery: (query) => {
 		activePicker.lastPreviewKey = query.queryKey;
