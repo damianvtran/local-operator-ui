@@ -27,6 +27,8 @@ import {
 	LoaderCircle,
 	MessagesSquare,
 	Plus,
+	Volume2,
+	VolumeX,
 	X,
 } from "lucide-react";
 import type { FC } from "react";
@@ -168,7 +170,10 @@ export interface BrowserTabStripProps {
 	onCloseTabs: (intent: CloseTabsIntent) => Promise<boolean> | undefined;
 	onNewTab: () => void;
 	onReorder?: (ids: number[]) => Promise<void>;
-	onTabAction?: (tabId: number, action: "duplicate" | "reload") => void;
+	onTabAction?: (
+		tabId: number,
+		action: "duplicate" | "reload" | "mute" | "unmute",
+	) => void;
 	/** What the `+` calls itself. The host's own sentence, because only the host
 	 * knows whether a tab opened here is attributed to a conversation (design R1):
 	 * a `+` labelled `New tab` in both hosts would leave the difference to be
@@ -206,7 +211,19 @@ type CloseFocusPending = {
  * chip plus a separate page mark used to erase the title at the 144px floor.
  * Distinct ownership glyphs are not colour-only; the tab's complete accessible
  * name and menu retain every state when the single compact badge has to choose.
- * No favicon bytes are published by main, so this never fetches a remote icon. */
+ * No favicon bytes are published by main, so this never fetches a remote icon.
+ *
+ * FAVICON: DEFERRED (LOH-13 slice C). Electron's `page-favicon-updated`
+ * delivers favicon URLs, but rendering one here would be a RENDERER fetch
+ * of a page-chosen URL — the frozen design brief rules that out ("never a
+ * renderer fetch"; a favicon is "main-owned, consent/origin-gated,
+ * degrading to the state glyph"). An honest favicon therefore needs a
+ * main-side fetch/cache that publishes bytes or a data URL through this
+ * projection, behind the same origin/consent floor as the embedded
+ * browser — a broader change than this slice, and the brief's own open
+ * question. Until that lands the state glyph below is the tab's icon,
+ * which has the virtue of never claiming a site identity the app has not
+ * actually verified. */
 // The `animate` prop this slot used to take is gone with the pulse it drove:
 // loading now spins for every tab (below), so there is no per-call-site
 // motion left to switch.
@@ -1194,6 +1211,39 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 											"bg-elevated text-ink",
 									)}
 								>
+									{(tab.audible || tab.muted) && onTabAction && (
+										// The mute control (LOH-13 slice C, brief 2.5): a SIBLING
+										// of the label button, never inside it (button-in-button
+										// is invalid markup, the rule the close control already
+										// follows). Shown only while the tab is producing sound
+										// or is muted — a silent tab has nothing to silence.
+										// The 24px target carries a 14px glyph at `ink-dim`,
+										// the brief's register for this mark; no waveform
+										// animation, because animation is reserved for
+										// entrances. It does not activate the tab: silencing a
+										// background tab must not steal the page being read.
+										<button
+											type="button"
+											className="flex size-6 shrink-0 items-center justify-center self-center rounded-sm text-ink-dim hover:bg-row-hover hover:text-ink"
+											aria-label={
+												tab.muted
+													? t("ui.browser.browser_tab_strip.unmute_tab")
+													: t("ui.browser.browser_tab_strip.mute_tab")
+											}
+											aria-pressed={tab.muted}
+											tabIndex={active ? 0 : -1}
+											data-tour-tag="browser-tab-mute"
+											onClick={() =>
+												onTabAction(tab.tabId, tab.muted ? "unmute" : "mute")
+											}
+										>
+											{tab.muted ? (
+												<VolumeX aria-hidden className="size-3.5" />
+											) : (
+												<Volume2 aria-hidden className="size-3.5" />
+											)}
+										</button>
+									)}
 									<button
 										type="button"
 										role="tab"

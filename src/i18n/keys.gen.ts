@@ -491,11 +491,13 @@ export type MessageParams = {
 	"ui.browser.browser_tab_strip.copy_url": undefined;
 	"ui.browser.browser_tab_strip.hide_all_tabs": undefined;
 	"ui.browser.browser_tab_strip.let_an_agent_use": undefined;
+	"ui.browser.browser_tab_strip.mute_tab": undefined;
 	"ui.browser.browser_tab_strip.new_tab": undefined;
 	"ui.browser.browser_tab_strip.no_conversation": undefined;
 	"ui.browser.browser_tab_strip.stop_letting_the_agent_use": undefined;
 	"ui.browser.browser_tab_strip.tab_actions": { title: string };
 	"ui.browser.browser_tab_strip.this_tab": undefined;
+	"ui.browser.browser_tab_strip.unmute_tab": undefined;
 	"ui.browser.browser_tab_strip.watch": undefined;
 	"ui.browser.browser_url_bar.address": undefined;
 	"ui.browser.browser_url_bar.approvals_waiting": { count: number };
@@ -510,6 +512,7 @@ export type MessageParams = {
 	"ui.browser.browser_url_bar.latest_download": { name: string };
 	"ui.browser.browser_url_bar.newest_download": { name: string; count: number };
 	"ui.browser.browser_url_bar.page_zoom_reset": { zoom: number };
+	"ui.browser.browser_url_bar.print_page": undefined;
 	"ui.browser.browser_url_bar.reload": undefined;
 	"ui.browser.browser_url_bar.reset_page_zoom_shortcut": { shortcut: string };
 	"ui.browser.browser_url_bar.site_file": undefined;

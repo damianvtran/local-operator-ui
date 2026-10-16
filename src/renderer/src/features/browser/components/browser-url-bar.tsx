@@ -20,6 +20,7 @@ import {
 	Home,
 	Lock,
 	LockOpen,
+	Printer,
 	RotateCw,
 	Search,
 	ShieldCheck,
@@ -94,6 +95,14 @@ export interface BrowserUrlBarProps {
 	 */
 	loadFailure?: LoadFailureView | null;
 	onResetZoom?: () => void;
+	/** Print the active page (LOH-13 slice C). A toolbar button beside Find
+	 * rather than a new menu: the url bar is where this app's other
+	 * page-scoped human controls (find, zoom reset) already live, and the
+	 * frozen brief invents no print menu. Optional like `onFind` so a host
+	 * without the intent renders no control rather than a dead one. The
+	 * action itself is main's `webContents.print` with the OS dialog as the
+	 * consent (`page-controls.ts`). */
+	onPrint?: () => void;
 	/** The active tab. A typed draft belongs to ONE tab: see `draft` below. */
 	tabId: number | null;
 	url: string;
@@ -197,6 +206,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	onOpenDownloads,
 	pageZoom = 1,
 	onFind,
+	onPrint,
 	onHome,
 	loadFailure = null,
 	onResetZoom,
@@ -474,6 +484,23 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 						data-tour-tag="browser-find"
 					>
 						<Search aria-hidden className="size-4" />
+					</Button>
+				</Tooltip>
+			)}
+			{onPrint && (
+				<Tooltip
+					content={t("ui.browser.browser_url_bar.print_page")}
+					side="top"
+				>
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						aria-label={t("ui.browser.browser_url_bar.print_page")}
+						disabled={disabled}
+						onClick={onPrint}
+						data-tour-tag="browser-print"
+					>
+						<Printer aria-hidden className="size-4" />
 					</Button>
 				</Tooltip>
 			)}

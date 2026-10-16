@@ -99,6 +99,22 @@ export interface DriveableWebContents {
 	setZoomMode?(mode: "isolated"): void;
 	setZoomFactor?(factor: number): void;
 	getZoomFactor?(): number;
+	/** Per-tab audio (LOH-13 slice C). Optional for the same reason as the
+	 * zoom members: a fake view in a test need not model sound. Real
+	 * Electron signatures: `isCurrentlyAudible(): boolean`,
+	 * `isAudioMuted(): boolean`, `setAudioMuted(muted: boolean): void`, plus
+	 * the `audio-state-changed` event carrying `{ audible: boolean }`. */
+	isCurrentlyAudible?(): boolean;
+	isAudioMuted?(): boolean;
+	setAudioMuted?(muted: boolean): void;
+	/** Human print (LOH-13 slice C). Electron's
+	 * `print(options?: WebContentsPrintOptions, callback?: (success,
+	 * failureReason) => void)`. `silent` must stay false on the human path:
+	 * the person printing expects the OS print dialog. */
+	print?(
+		options: { silent?: boolean; printBackground?: boolean },
+		callback?: (success: boolean, failureReason: string) => void,
+	): void;
 	reload(): void;
 	reloadIgnoringCache?(): void;
 	stop(): void;

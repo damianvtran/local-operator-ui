@@ -110,7 +110,7 @@ declare global {
 			browser: {
 				pageControl: (
 					tabId: number,
-					action: "open" | "close" | "search" | "in" | "out" | "reset",
+					action: "open" | "close" | "search" | "print" | "in" | "out" | "reset",
 					query: string,
 					forward: boolean,
 					next: boolean,
@@ -129,7 +129,7 @@ declare global {
 				reorderTabs: (ids: number[]) => Promise<unknown>;
 				actOnTab: (
 					tabId: number,
-					action: "duplicate" | "reload",
+					action: "duplicate" | "reload" | "mute" | "unmute",
 				) => Promise<HumanTabActionOutcome>;
 				newTab: (sessionId?: string | null) => Promise<unknown>;
 				closeTab: (tabId: number) => Promise<unknown>;
