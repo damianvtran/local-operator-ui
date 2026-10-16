@@ -110,7 +110,7 @@ import {
 	askRefusalSentence,
 	effectiveGate,
 } from "../ask-queue";
-import { editTextOf } from "../canonical/skill-row";
+import { editDraftOf } from "../canonical/skill-row";
 import { canonicalTranscriptTerminal } from "../canonical/transcript-pane";
 import { useOpenPrefetch } from "../canonical/use-open-prefetch";
 import {
@@ -3833,11 +3833,17 @@ function SessionPanel({
 	 * whole expansion: handing that back would put a wall of SKILL.md in the box to
 	 * edit - and it would not re-expand either, since the recognition rule reads the
 	 * FIRST token of what is submitted and the payload begins with the header
-	 * sentence (`skill-invocation.ts`). `skillRowOf` reads the line back off the
-	 * payload this app itself sent, with any staged quote markup kept so a re-send
-	 * assembles the same string; every other message comes back verbatim.
+	 * sentence (`skill-invocation.ts`).
+	 *
+	 * THE QUOTE IS A CHIP, NOT MARKUP IN THE BOX (UX round 1, U1). A quoted
+	 * invocation used to come home as `<reply-to>…</reply-to>` plus the line: the
+	 * composer stages a quote as a chip, so that markup was submitted literally,
+	 * the first token was no longer `$name`, and the skill was silently not
+	 * applied. `editDraftOf` is the one derivation, and the retry gate below
+	 * compares against the same string it hands back.
 	 */
-	const editText = deliveryTurn ? editTextOf(deliveryTurn.text) : null;
+	const editDraft = deliveryTurn ? editDraftOf(deliveryTurn.text) : null;
+	const editText = deliveryTurn ? (editDraft?.text ?? deliveryTurn.text) : null;
 	const undeliveredTurn = deliveryTurn
 		? {
 				recordId: deliveryTurn.recordId,
@@ -3860,12 +3866,14 @@ function SessionPanel({
 					/*
 					 * The payload comes home, merged under the user's typing and refused while
 					 * an attempt is in flight (`returnPayload`), so pressing Edit twice cannot
-					 * double the message.
+					 * double the message. The quoted run rides the composer's own chip path
+					 * (`editDraftOf`), so a re-send re-assembles the quote AND re-expands the
+					 * `$name` the box now holds.
 					 */
 					useConversationInputStore.getState().returnPayload(identity, {
 						text: editText ?? deliveryTurn.text,
 						attachments: [...deliveryTurn.attachments],
-						replies: [],
+						replies: editDraft?.replies ?? [],
 					});
 					/*
 					 * AND A PROVABLY-NOT-DELIVERED ROW RETIRES WITH THE PAYLOAD. The user

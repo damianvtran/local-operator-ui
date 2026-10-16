@@ -1575,11 +1575,15 @@ function replaceLocalRecordText(
 	 * (`replacePendingSendText`, `canonical-sessions-store.ts`), and a `skill` left
 	 * over from the pre-substitution string would keep painting the placeholder
 	 * request in the row's header until the owner's durable row replaced it
-	 * (agent review round 1, MINOR-2). `skillOf` is the reducer's own derivation,
-	 * and the spread is `absent-not-undefined` for the reason its callers give.
+	 * (agent review round 1, MINOR-2). The other direction is the stale seal (agent
+	 * review round 2, MINOR-2; QA round 2, Q6): a replacement that is no longer a
+	 * payload has to LOSE the key, or the row keeps a seal no string on it
+	 * describes. `skillOf` is the reducer's own derivation, and the key is
+	 * absent-not-undefined for the reason its callers give.
 	 */
+	const { skill: _staleSeal, ...rest } = record;
 	const skill = skillOf(text);
-	records[at] = { ...record, text, ...(skill ? { skill } : {}) };
+	records[at] = skill ? { ...rest, text, skill } : { ...rest, text };
 	return { ...state, records };
 }
 

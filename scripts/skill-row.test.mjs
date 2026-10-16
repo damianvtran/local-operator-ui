@@ -25,7 +25,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents: `
-			export { editTextOf, skillOf, skillRowOf } from "./src/renderer/src/features/chat/canonical/skill-row";
+			export { editDraftOf, editTextOf, skillOf, skillRowOf } from "./src/renderer/src/features/chat/canonical/skill-row";
 			export { escapeSkillAttribute, renderSkillInvocation, typedLineOf, unescapeSkillAttribute } from "./src/renderer/src/features/chat/components/skill-invocation";
 		`,
 		resolveDir: process.cwd(),
@@ -38,6 +38,7 @@ const bundle = await build({
 const bundlePath = new URL(`./_skill-row-${process.pid}.mjs`, import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 const {
+	editDraftOf,
 	editTextOf,
 	skillOf,
 	skillRowOf,
@@ -472,28 +473,96 @@ test("a YAML scalar's own punctuation is not painted", () => {
 	assert.equal(purposeOf('description: "Review a diff"\n'), "Review a diff");
 });
 
-test("editTextOf hands the composer the line, and leaves every other message alone", () => {
+test("the YAML shapes round 2 found: modifier order, comments, CRLF, last key", () => {
+	const withFile = (skillFile) =>
+		[
+			HEADER,
+			'<skill name="seal-demo" invocation="$seal-demo">',
+			`${skillFile}\n</skill>`,
+		].join("\n");
+	const purposeOfFile = (skillFile) =>
+		skillRowOf(withFile(skillFile)).skill.purpose;
+
 	/*
-	 * The Edit half of the change (agent review round 1, MINOR-4). `chat-page.tsx`
-	 * calls exactly this function for the undelivered row's Edit and compares the
-	 * composer's text against it for `retryDisabled`, so the three shapes below are
-	 * the three the call site can meet.
+	 * A block scalar's indent digit may PRECEDE the chomping sign (agent review
+	 * round 2, MINOR-1; QA round 2, Q5): YAML reads `|2-` as a block scalar, and
+	 * the first spelling of the pattern let it fall through to the plain branch,
+	 * which painted the indicator into the caption.
+	 */
+	assert.equal(
+		purposeOfFile("---\nname: seal-demo\ndescription: |2-\n  a b\n---\n"),
+		"a b",
+	);
+	assert.equal(
+		purposeOfFile("---\nname: seal-demo\ndescription: |-2\n  a b\n---\n"),
+		"a b",
+	);
+	// An indicator may carry a comment, and the value is still the block below it.
+	assert.equal(
+		purposeOfFile(
+			"---\nname: seal-demo\ndescription: >- # a note\n  one two\n---\n",
+		),
+		"one two",
+	);
+	// A comment may follow a QUOTED value too (agent review round 2, MINOR-4):
+	// the closing quote is found rather than tested for at the end.
+	assert.equal(
+		purposeOfFile('---\nname: seal-demo\ndescription: "abc" # note\n---\n'),
+		"abc",
+	);
+	assert.equal(
+		purposeOfFile("---\nname: seal-demo\ndescription: 'abc' # note\n---\n"),
+		"abc",
+	);
+	// CRLF line endings, through the whole front matter (agent review round 2,
+	// MINOR-3).
+	assert.equal(
+		purposeOfFile(
+			"---\r\nname: seal-demo\r\ndescription: >-\r\n  one\r\n  two\r\n---\r\n",
+		),
+		"one two",
+	);
+	// A `description:` as the LAST key, with no newline after it.
+	assert.equal(
+		purposeOfFile("---\nname: seal-demo\ndescription: Last one\n---"),
+		"Last one",
+	);
+});
+
+test("Edit hands the composer the typed line and the quote as a chip", () => {
+	/*
+	 * The Edit half of the change (agent review round 1, MINOR-4; UX round 1,
+	 * U1). `chat-page.tsx` calls `editDraftOf` for the undelivered row's Edit and
+	 * compares the composer's text against `editTextOf` for `retryDisabled`, so the
+	 * shapes below are the ones the call site can meet.
 	 */
 	assert.equal(editTextOf(PAYLOAD), "$seal-demo review the diff");
-	// A quoted skill send keeps its markup: that IS the string the composer joined,
-	// and the spelling it cannot re-expand (a leading quote run means no
-	// first-token `$seal-demo`).
+	/*
+	 * U1: a QUOTED skill send comes home as TWO pieces. The box gets the line --
+	 * markup in the box was submitted literally, so the first token stopped being
+	 * `$name` and the skill was silently not applied, with the instructions never
+	 * reaching the model -- and the quote rides the composer's own chip path, which
+	 * re-assembles the same payload on send.
+	 */
 	const reply = "<reply-to>the answer above</reply-to>";
+	const draft = editDraftOf(`${reply}\n${PAYLOAD}`);
+	assert.equal(draft.text, "$seal-demo review the diff");
+	assert.equal(draft.replies.length, 1);
+	assert.equal(draft.replies[0].text, "the answer above");
 	assert.equal(
 		editTextOf(`${reply}\n${PAYLOAD}`),
-		`${reply}\n$seal-demo review the diff`,
+		"$seal-demo review the diff",
 	);
-	// Everything else comes back verbatim -- an ordinary message, and prose that
-	// merely quotes a tag (which `skillRowOf` declines).
+	// Everything else comes back verbatim -- an ordinary message, prose that
+	// merely quotes a tag (which `skillRowOf` declines), and a plain quoted
+	// message, which keeps the markup-in-the-box shape it had before this row
+	// existed.
+	assert.equal(editDraftOf("plain words"), null);
 	assert.equal(editTextOf("plain words"), "plain words");
 	const prose =
 		'the format is <skill name="x" invocation="$seal-demo do it"> body </skill> then the request';
 	assert.equal(editTextOf(prose), prose);
+	assert.equal(editTextOf(`${reply}\nplain words`), `${reply}\nplain words`);
 });
 
 test("escape and unescape are inverses, and unescape undoes the entities once", () => {

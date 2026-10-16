@@ -47,12 +47,43 @@ export const SEAL_DEMO_SKILL =
 /** `seal-audit`'s SKILL.md: a description long enough to clip on the row. */
 export const SEAL_AUDIT_SKILL =
 	"---\nname: seal-audit\ndescription: Audit this branch for the riskiest change, name the one file a reviewer should read first, and say what would have to be true for that file to be safe\n---\n\n# Seal audit\n\nName the riskiest file, then say what would make it safe.\n";
-/** The rendered payload of `[redacted] review the diff`, as the composer builds it. */
+/** The rendered payload of `$seal-demo review the diff`, as the composer builds it. */
 export const SEAL_DEMO_PAYLOAD =
 	'The user invoked the `seal-demo` skill directly. Follow it for this request. Its reference files, if any, are listed at the end of the body and are read with `skill://<name>/<path>`.\n<skill name="seal-demo" invocation="$seal-demo review the diff">\n---\nname: seal-demo\ndescription: >-\n  Review a diff for the seal demo\n  and say what breaks\n---\n\n# Seal demo\n\nAnswer with one line.\n\n</skill>\nreview the diff';
-/** The rendered payload of `[redacted] audit this branch`. */
+/** The rendered payload of `$seal-audit audit this branch`. */
 export const SEAL_AUDIT_PAYLOAD =
 	'The user invoked the `seal-audit` skill directly. Follow it for this request. Its reference files, if any, are listed at the end of the body and are read with `skill://<name>/<path>`.\n<skill name="seal-audit" invocation="$seal-audit audit this branch">\n---\nname: seal-audit\ndescription: Audit this branch for the riskiest change, name the one file a reviewer should read first, and say what would have to be true for that file to be safe\n---\n\n# Seal audit\n\nName the riskiest file, then say what would make it safe.\n\n</skill>\naudit this branch';
+
+/**
+ * `seal-audit`'s description as ONE line, exported so the scene asserts the
+ * clipped row's `title` against the sentence the FIXTURE seeded.
+ *
+ * The first version of that check compared `title.length > text.length`, which
+ * can never hold when the title is the whole sentence and the visible text is
+ * its prefix - it reported a product defect where there was none (design round
+ * 1's note on this PR's own evidence run).
+ */
+export const SEAL_AUDIT_PURPOSE =
+	"Audit this branch for the riskiest change, name the one file a reviewer should read first, and say what would have to be true for that file to be safe";
+
+/**
+ * `seal-steps`'s SKILL.md: a body at the length shipped skills actually run
+ * (17-156 lines, measured over the skill library).
+ *
+ * WHY THE FIXTURE CARRIES ONE (design round 1, D1). The first version of this
+ * fixture seeded a one-line body, and that is exactly the case that HID the
+ * defect: an uncapped block only grows tall once the body is long enough to
+ * matter, and then it pushes its own row - and the reader's request under it -
+ * out of the scroller. The frames that prove the cap have to seed the shape
+ * that needs it.
+ */
+export const SEAL_STEPS_SKILL = `---\nname: seal-steps\ndescription: Walk the forty steps this skill performs, in order\n---\n\n# Seal steps\n\n${Array.from(
+	{ length: 40 },
+	(_, index) =>
+		`Step ${index + 1}: read the file, then write one line about it.`,
+).join("\n")}\n`;
+/** The rendered payload of a 40-step invocation. */
+export const SEAL_STEPS_PAYLOAD = `The user invoked the \`seal-steps\` skill directly. Follow it for this request. Its reference files, if any, are listed at the end of the body and are read with \`skill://<name>/<path>\`.\n<skill name="seal-steps" invocation="$seal-steps walk the steps">\n${SEAL_STEPS_SKILL}\n</skill>\nwalk the steps`;
 
 const BASE_TS = 1781500000; // epoch seconds; ~2026-06-15, increasing across the log
 
@@ -70,7 +101,7 @@ const assistant = (id, ts, text) => ({
 	payload: { kind: "message", role: "assistant", content: [{ text }] },
 });
 
-/** The two invocations, each answered, so the pane is an ordinary conversation. */
+/** The three invocations, each answered, so the pane is an ordinary conversation. */
 export function journalRows() {
 	const rows = [];
 	let ts = BASE_TS;
@@ -86,6 +117,10 @@ export function journalRows() {
 	rows.push(
 		assistant("e-seal-a2", ts, "The riskiest file is the one that moves."),
 	);
+	ts += 20;
+	rows.push(user("e-seal-u3", ts, SEAL_STEPS_PAYLOAD));
+	ts += 15;
+	rows.push(assistant("e-seal-a3", ts, "Forty steps, no detours."));
 	return rows;
 }
 
