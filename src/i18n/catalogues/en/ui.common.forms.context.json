@@ -1,4 +1,187 @@
 {
+	"ui.common.forms.autocomplete_field.cancel_editing": {
+		"role": "button accessible name",
+		"tone": "Direct revert action, not cancellation of a running backend operation.",
+		"note": "Revert this field draft and leave editing without saving; Escape performs the same action.",
+		"length": "One control row; avoid adding a sentence.",
+		"placeholders": {
+			"label": "Caller-supplied field name; already localized in its owning feature."
+		}
+	},
+	"ui.common.forms.autocomplete_field.enter_value": {
+		"role": "input placeholder",
+		"tone": "Short imperative, retain three-dot ellipsis.",
+		"note": "Generic hint for an empty editable text field; callers may supply a more specific placeholder.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.forms.autocomplete_field.save": {
+		"role": "button accessible name",
+		"tone": "Direct commit action.",
+		"note": "Accept this field draft; Enter is the equivalent keyboard action on a single-line field.",
+		"length": "One control row; avoid adding a sentence.",
+		"placeholders": {
+			"label": "Caller-supplied field name; already localized in its owning feature."
+		}
+	},
+	"ui.common.forms.autocomplete_field.save_changes": {
+		"role": "tooltip",
+		"tone": "Direct commit action.",
+		"note": "Accept this field draft; Enter is the equivalent keyboard action on a single-line field.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.forms.autocomplete_field.saving": {
+		"role": "button accessible name",
+		"tone": "In-progress verb.",
+		"note": "Write for this field is pending; do not present it as saved.",
+		"length": "One control row; avoid adding a sentence.",
+		"placeholders": {
+			"label": "Caller-supplied field name; already localized in its owning feature."
+		}
+	},
+	"ui.common.forms.compact_pagination.next_page": {
+		"role": "button accessible name",
+		"tone": "Directional navigation action.",
+		"note": "Move to the next page; disabled on the last.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.forms.compact_pagination.previous_page": {
+		"role": "button accessible name",
+		"tone": "Directional navigation action.",
+		"note": "Move to the previous page; disabled on the first.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.forms.editable_field.cancel_escape": {
+		"role": "tooltip",
+		"tone": "Direct revert action, not cancellation of a running backend operation.",
+		"note": "Revert this field draft and leave editing without saving; Escape performs the same action.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.forms.editable_field.clear": {
+		"role": "tooltip",
+		"tone": "Direct removal action.",
+		"note": "Remove the field value via its explicit clear action; it is separate from entering edit mode.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.forms.editable_field.clear_field": {
+		"role": "tooltip",
+		"tone": "Direct removal action.",
+		"note": "Remove the field value via its explicit clear action; it is separate from entering edit mode.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.forms.editable_field.clear_v2": {
+		"role": "button accessible name",
+		"tone": "Direct removal action.",
+		"note": "Remove the field value via its explicit clear action; it is separate from entering edit mode.",
+		"length": "One control row; avoid adding a sentence.",
+		"placeholders": {
+			"label": "Caller-supplied field name; already localized in its owning feature."
+		}
+	},
+	"ui.common.forms.editable_field.clearing": {
+		"role": "tooltip",
+		"tone": "Direct removal action.",
+		"note": "Remove the field value via its explicit clear action; it is separate from entering edit mode.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.forms.editable_field.current_value": {
+		"role": "accessible description",
+		"tone": "Current state followed by a possible action.",
+		"note": "Describes the field display value followed by the optional click-to-edit hint; not the editable input label.",
+		"length": "One control row; avoid adding a sentence.",
+		"placeholders": {
+			"detail": "Visible field value, or its caller-supplied placeholder if empty.",
+			"detail2": "Empty when read-only; otherwise already-localized click-to-edit suffix with leading space."
+		}
+	},
+	"ui.common.forms.editable_field.edit": {
+		"role": "tooltip",
+		"tone": "Direct edit action.",
+		"note": "Open the field editor; the displayed value is not modified until accepted.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.forms.editable_field.edit_v2": {
+		"role": "button accessible name",
+		"tone": "Direct edit action.",
+		"note": "Open the field editor; the displayed value is not modified until accepted.",
+		"length": "One control row; avoid adding a sentence.",
+		"placeholders": {
+			"label": "Caller-supplied field name; already localized in its owning feature."
+		}
+	},
+	"ui.common.forms.editable_field.save_changes_enter": {
+		"role": "tooltip",
+		"tone": "Direct commit action.",
+		"note": "Accept this field draft; Enter is the equivalent keyboard action on a single-line field.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.forms.editable_field.saving": {
+		"role": "status",
+		"tone": "In-progress verb.",
+		"note": "Write for this field is pending; do not present it as saved.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.forms.field.click_to_edit": {
+		"role": "accessible hint fragment",
+		"tone": "Brief action hint.",
+		"note": "Appended to the read-only display control current-value sentence only while editing is permitted; leading space is deliberate.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.forms.pagination.position": {
+		"role": "status label",
+		"tone": "Compact ordinal position, not a result count.",
+		"note": "Page position between previous/next icon buttons; hidden when there is only one page.",
+		"length": "One control row; avoid adding a sentence.",
+		"placeholders": {
+			"page": "Current 1-based page index rendered as decimal text.",
+			"count": "Total pages rendered as decimal text."
+		}
+	},
+	"ui.common.forms.panel_details.copied": {
+		"role": "status",
+		"tone": "Brief settled acknowledgement.",
+		"note": "Clipboard copy of the panel diagnostic details completed.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.forms.panel_details.copy_details": {
+		"role": "button tooltip",
+		"tone": "Direct clipboard action.",
+		"note": "Copies the panel details to the clipboard; it does not send them to support.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.forms.panel_details.details": {
+		"role": "heading",
+		"tone": "Technical noun with introducing colon.",
+		"note": "Names the diagnostic detail block in the shared panel; trailing colon introduces its contents.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.forms.searchable_select.clear_the": {
+		"role": "button accessible name",
+		"tone": "Direct field-specific clear action.",
+		"note": "Named selection-clear affordance; existing field-name lowercasing is preserved and onClear is still caller-owned.",
+		"placeholders": {
+			"detail": "The existing field name after its original lowercasing operation; do not treat as an identifier or translation key."
+		}
+	},
+	"ui.common.forms.searchable_select.clear_value": {
+		"role": "button accessible name",
+		"tone": "Direct value-removal action.",
+		"note": "Fallback clear affordance when this shared select has no field name; clears the selection and closes the menu, not the whole form.",
+		"length": "Two words."
+	},
+	"ui.common.forms.searchable_select.no_matches": {
+		"role": "empty-state",
+		"tone": "Short search-result fact.",
+		"note": "Shared searchable-select filtered options list has no matches; not a backend failure or missing-model catalogue claim.",
+		"length": "Two-word empty-state row."
+	},
+	"ui.common.forms.searchable_select.use": {
+		"role": "composed status or accessible copy",
+		"tone": "Preserve the existing factual wording.",
+		"note": "src/renderer/src/shared/components/ui/searchable-select.tsx; composition of Use \"{text}\"",
+		"placeholders": {
+			"text": "Existing display value from text; retain verbatim, never use as a translation key."
+		}
+	},
 	"ui.common.forms.select.unlisted_value": {
 		"role": "input status hint",
 		"tone": "Factual reassurance.",

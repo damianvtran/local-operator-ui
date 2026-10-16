@@ -14,8 +14,10 @@
  */
 
 import { Button } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { FC } from "react";
+import { t } from "../../../../../i18n/messages";
 
 /**
  * Props for the CompactPagination component
@@ -39,6 +41,7 @@ export const CompactPagination: FC<CompactPaginationProps> = ({
 	count,
 	onChange,
 }) => {
+	useI18nLocale();
 	const handlePrevious = () => {
 		if (page > 1) {
 			onChange(page - 1);
@@ -63,13 +66,16 @@ export const CompactPagination: FC<CompactPaginationProps> = ({
 				size="icon-sm"
 				onClick={handlePrevious}
 				disabled={page <= 1}
-				aria-label="Previous page"
+				aria-label={t("ui.common.forms.compact_pagination.previous_page")}
 			>
 				<ChevronLeft />
 			</Button>
 
 			<span className="select-none text-meta text-ink-dim">
-				Page {page} of {count}
+				{t("ui.common.forms.pagination.position", {
+					page: String(page),
+					count: String(count),
+				})}
 			</span>
 
 			<Button
@@ -77,7 +83,7 @@ export const CompactPagination: FC<CompactPaginationProps> = ({
 				size="icon-sm"
 				onClick={handleNext}
 				disabled={page >= count}
-				aria-label="Next page"
+				aria-label={t("ui.common.forms.compact_pagination.next_page")}
 			>
 				<ChevronRight />
 			</Button>
