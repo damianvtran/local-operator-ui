@@ -376,7 +376,6 @@ const ChatColumn = ({
 					agentName="Core"
 					description="Invoices workspace · on this machine"
 					onOpenOptions={() => undefined}
-					runDetails={details}
 				/>
 				<TranscriptGround />
 			</div>
@@ -452,7 +451,6 @@ const SwapGround = ({
 					agentName="Core"
 					description="Invoices workspace · on this machine"
 					onOpenOptions={() => undefined}
-					runDetails={details}
 				/>
 				<TranscriptGround />
 			</div>
@@ -744,7 +742,6 @@ const DotAckGround = ({ stop }: { stop: "acknowledged" | "rearmed" }) => {
 					agentName="Core"
 					description="Invoices workspace · on this machine"
 					onOpenOptions={() => undefined}
-					runDetails={details}
 				/>
 				<TranscriptGround />
 			</div>
@@ -929,7 +926,6 @@ const InteractiveGround = () => {
 					agentName="Core"
 					description="Invoices workspace · on this machine"
 					onOpenOptions={() => undefined}
-					runDetails={details}
 				/>
 				<TranscriptGround />
 			</div>
@@ -992,7 +988,6 @@ const LatePageGround = () => {
 					agentName="Core"
 					description="Invoices workspace · on this machine"
 					onOpenOptions={() => undefined}
-					runDetails={details}
 				/>
 				{/* The one thing the story adds: somewhere else to be typing. */}
 				<button
@@ -1136,7 +1131,6 @@ const PaneFlowGround = ({
 					agentName="Core"
 					description="Invoices workspace · on this machine"
 					onOpenOptions={() => undefined}
-					runDetails={details}
 				/>
 				<TranscriptGround />
 			</div>

@@ -1,8 +1,8 @@
 /**
  * The header trigger for the run panel (`docs/run-sidebar.md` § 3.3, § 3.4).
  *
- * **An always-on toggle.** It renders whenever the session has a model at all
- * (`details !== null`) and it no longer knows anything about the canvas, because
+ * **An always-on toggle.** It renders on every chat route, whether or not the
+ * session has a model yet (`details` may be null), and it no longer knows anything about the canvas, because
  * the two panes are mutually exclusive by CONSTRUCTION in the store now: opening
  * either clears the other. The old rule (`hasRunDetails && !isCanvasOpen`) was a
  * work gate and a canvas gate on a control that opened a transient popover; with
@@ -10,10 +10,10 @@
  * pane, and it has to stay reachable while the pane is open, which is what makes
  * this a toggle rather than a one-way door.
  *
- * What still gates it is a DATA fact, not a work fact: with no canonical session
- * there is no `frontend` to derive from, so there is no session identity and no
- * `jobs`/`todos` stream to show. `chat-page.tsx` passes `null` on that path and
- * a legacy chat grows no button — exactly as it did before.
+ * Nothing gates it now (the always-visible rail, D1). With no canonical frame
+ * there is no `frontend` to derive from — a draft, or a conversation whose frame
+ * is not read yet — so `chat-page.tsx` passes `null` and the button carries the
+ * bare label with no marks; the pane it opens says why it is empty.
  *
  * **Icon: `Info`, not `Activity`.** The old glyph was a heartbeat, and a
  * heartbeat says *liveness* — the one thing this pane is not: it holds a
@@ -256,12 +256,11 @@ export const RunDetailsTrigger = ({
 		details !== null && !listOnScreen && details.openChildren > 0;
 
 	/*
-	 * `details === null` is the legacy path: no canonical session, so no session
-	 * identity and no roster to show. The button is absent there rather than
-	 * disabled — a disabled control for a surface the session cannot have is
-	 * chrome that explains nothing.
+	 * `details === null` (a draft, or a conversation whose frame is not read yet)
+	 * still renders the door (the always-visible rail, D1): the label is the bare
+	 * "Open run details", no mark can light, and the pane it opens says why it is
+	 * empty. Every read above already answers null.
 	 */
-	if (!details) return null;
 
 	return (
 		<PanelRailItem

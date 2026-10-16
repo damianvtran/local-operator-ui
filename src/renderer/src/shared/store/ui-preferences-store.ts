@@ -96,6 +96,18 @@ export type AskDrawerCloseOptions = {
 };
 
 /**
+ * Which door filed an asks-drawer open request (see `askOpenIntent`): the `…`
+ * menu's row, or a bound `panel.ask` chord. Both mark the drawer's mount as the
+ * user's own; only the menu's arms the claim that answers the menu's focus
+ * restore.
+ */
+export type AskOpenVia = "menu" | "chord";
+
+/** An asks-drawer open request: the queue it is for, and the door that filed it. */
+export type AskOpenIntent = { scope: AskScope; via: AskOpenVia };
+
+/**
+
  * Type definition for the UI preferences store state
  */
 type UiPreferencesState = {
@@ -333,10 +345,11 @@ type UiPreferencesState = {
 	 * durable flags survive a relaunch as the bound conversation's memory (see
 	 * `rightSlotMemory`), and the asks flag is a launch's own event (see
 	 * `isAskDrawerOpen`), so a true flag is not a promise
-	 * that a pane is mounted: the run panel only mounts with `runDetails` (a draft
-	 * has none), the session-scoped asks drawer only mounts with a conversation to
-	 * show, and a route that mounts no chat surface at all (settings, agents)
-	 * draws none of the five. The slot's readers used to trust the bare flag and
+	 * that a pane is mounted: the session-scoped asks drawer only mounts with a
+	 * conversation to show, and a route that mounts no chat surface at all
+	 * (settings, agents) draws none of the five. Every other pane draws on any
+	 * chat route - one that cannot act yet (run details on a draft, code review
+	 * without the capability) draws a notice that says why. The slot's readers used to trust the bare flag and
 	 * so answered a width and a reservation for panes nothing could mount - the
 	 * empty band and the reserved column #868 reports.
 	 *
@@ -629,8 +642,15 @@ type UiPreferencesState = {
 	 * clears it on ANY open or close write besides (round-2 N1), so a request
 	 * that was never answered cannot be inherited by a later mount - not by the
 	 * same scope's next mount, and not by a mount of the other queue either.
+	 *
+	 * IT NAMES ITS DOOR TOO (`via`, round-1 Q1 of the always-visible rail): a
+	 * bound chord is the second door that leaves no focus on anything the drawer
+	 * recognises, so it files a request as well. Only the MENU's request arms the
+	 * claim that answers Radix's restore to the `…` trigger: a chord has no menu
+	 * in flight, and arming that claim for it would bounce the user's own next
+	 * click on the trigger back into the drawer.
 	 */
-	askOpenIntent: AskScope | null;
+	askOpenIntent: AskOpenIntent | null;
 
 	/**
 	 * Ask the drawer, on its next mount, to take a user's open of the asks
@@ -638,19 +658,23 @@ type UiPreferencesState = {
 	 * empty auto-close), land the keyboard in the list, and remember the menu's
 	 * trigger as the close's return. See `askOpenIntent`.
 	 *
-	 * ONE CALLER: the menu row's OPEN press (`chat-content.tsx`). The row's close
-	 * arm sends no request - it sends `dismissSlot`, which is a statement about the
-	 * SLOT rather than about the open, and an open that is not the row's own has
-	 * nothing to consume; the chip and the rail item deliberately do not call it
-	 * (their presses are read off focus), and the open policy must not (its opens
-	 * move no keyboard - the lane's no-focus-steal promise).
+	 * TWO CALLERS, both OPEN presses that leave no door under focus: the menu
+	 * row (`chat-content.tsx`, `via: "menu"`) and a bound `panel.ask` chord
+	 * (`panel-rail-actions.ts`, `via: "chord"`). Each CLOSE arm writes no request
+	 * - a request is a statement about the OPEN, and an open that is not this
+	 * caller's own has nothing to consume - and each asks for the kind of close
+	 * the user pressed instead (`dismissSlot`, #1079); the chip and the rail item
+	 * deliberately do not call it (their presses are read off focus), and the
+	 * open policy must not (its opens move no keyboard - the lane's
+	 * no-focus-steal promise).
+
 	 *
 	 * WRITTEN AFTER ITS OPEN, DELIBERATELY: `setAskDrawerOpen` supersedes any
 	 * request in flight, so a caller that requested first and opened second would
 	 * clear its own request - the row's order (open, then request) is what makes
 	 * the pair one act.
 	 */
-	requestAskOpen: (scope: AskScope) => void;
+	requestAskOpen: (scope: AskScope, via?: AskOpenVia) => void;
 
 	/** The drawer has answered the request FOR THIS SCOPE, and only that one —
 	 * the guard `clearConsoleOpenIntent` keeps one pane over: an unconditional
@@ -1277,26 +1301,16 @@ const rightSlotPaneDrawable = (
 			(state.rightSlotRoute.mounted && state.rightSlotRoute.session)
 		);
 	}
-	if (!state.rightSlotRoute.mounted) return false;
 	/*
-	 * The code review pane's mount needs a CONVERSATION and the capability (the
-	 * same two terms `chat-content` mounts the pane behind): its subject is one
-	 * session's ledger, and against an older backend the routes it reads do not
-	 * exist. Both are route facts rather than second derivations here, so the
-	 * pane's mount and the slot's answer cannot drift - a flag restored on a
-	 * draft or on a downgraded backend releases the slot instead of claiming it
-	 * (agent review F6: a remembered pane reserved an empty 640px column with
-	 * no rail door, because the door is gated on the same capability).
+	 * EVERY DURABLE PANE DRAWS ON A CHAT ROUTE (the always-visible rail, D2). A
+	 * pane that cannot act there - run details before a frame or on a draft, code
+	 * review on a draft or without `features.code_requests` - mounts a notice that
+	 * says why (`SlotPaneNotice` in `chat-content`), so the slot is never an empty
+	 * reserved column: the F6 case (a remembered pane with no door to close it)
+	 * cannot occur, because the rail's six doors and the notice's close are always
+	 * there.
 	 */
-	if (pane === "code") {
-		return state.rightSlotRoute.session && state.rightSlotRoute.codeReview;
-	}
-	/*
-	 * The run panel's mount gate is `runDetails`; the canvas, browser and console
-	 * mount whenever their flags are set on a chat route, so `mounted` is the
-	 * whole of their condition.
-	 */
-	return pane !== "run" || state.rightSlotRoute.runDetails;
+	return state.rightSlotRoute.mounted;
 };
 
 /**
@@ -1453,36 +1467,19 @@ export type RightSlotPane =
 /**
  * WHAT THE CURRENT ROUTE CAN RENDER, in the slot's own terms (#868).
  *
- * Three facts a claim cannot answer, each mirrored from ONE mount gate in
+ * Two facts a claim cannot answer, each mirrored from ONE mount gate in
  * `chat-content` (see `rightSlotRoute` for why the split is exactly these):
  *
  * - `mounted` - the chat surface that hosts the slot is on screen at all; false
- *   on settings/agents routes, where none of the five panes can draw.
- * - `runDetails` - the route has run details, the run panel's own mount gate; a
- *   draft (or a conversation whose canonical frame has not arrived) has none.
+ *   on settings/agents routes, where none of the five panes can draw. On a
+ *   mounted route every durable pane draws (a pane that cannot act draws a
+ *   notice saying why), and every rail door is present.
  * - `session` - the route shows a conversation, the session-scoped asks
  *   drawer's home; the fleet scope's home is the shell and needs no fact.
  */
 export type RightSlotRouteFacts = {
 	mounted: boolean;
-	runDetails: boolean;
 	session: boolean;
-	/**
-	 * The route's backend serves `features.code_requests` (agent review F6). The
-	 * code pane's mount condition reads this fact, and so does the slot's
-	 * drawability: a remembered pane on a backend that lost the capability must
-	 * not reserve an empty column with no door to close it (`rightSlotPaneDrawable`).
-	 */
-	codeReview: boolean;
-	/**
-	 * Whether this route's host OFFERS the asks door (issue #928): the item's own
-	 * `askOffered` rule (`published` in a conversation, `answered` at the top
-	 * level), published from the same value the rail reads so the rail item and
-	 * the chord cannot disagree about whether a door exists. The fleet scope's
-	 * home is the shell, so this is about the DOOR, not drawability —
-	 * `rightSlotPaneDrawable` keeps its own, wider ask rule.
-	 */
-	asksOffered: boolean;
 };
 
 /**
@@ -1491,10 +1488,7 @@ export type RightSlotRouteFacts = {
  */
 export const EMPTY_RIGHT_SLOT_ROUTE: RightSlotRouteFacts = Object.freeze({
 	mounted: false,
-	runDetails: false,
 	session: false,
-	codeReview: false,
-	asksOffered: false,
 });
 
 /**
@@ -1566,9 +1560,9 @@ export const EMPTY_RIGHT_SLOT_MEMORY: RightSlotMemory = Object.freeze([]);
  *
  * AND A CLAIMED PANE IS NOT YET A DRAWN ONE (#868): the flags persist across
  * routes by design, so before answering a width this reads the route's own facts
- * (`rightSlotPaneDrawable` over `rightSlotRoute`) - a run panel on a draft and a
- * session-scoped drawer on a route with no conversation are claims with nothing
- * to mount, and they answer 0.
+ * (`rightSlotPaneDrawable` over `rightSlotRoute`) - a pane on a route with no
+ * chat surface and a session-scoped drawer on a route with no conversation are
+ * claims with nothing to mount, and they answer 0.
  */
 export function resolveRightSlotWidth(
 	rowWidth: number,
@@ -2278,8 +2272,8 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				});
 			},
 
-			requestAskOpen: (scope: AskScope) => {
-				set({ askOpenIntent: scope });
+			requestAskOpen: (scope: AskScope, via: AskOpenVia = "menu") => {
+				set({ askOpenIntent: { scope, via } });
 			},
 
 			clearAskOpenIntent: (scope: AskScope) => {
@@ -2288,7 +2282,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				// clear the other queue's request), and a no-op clear writes no new
 				// state object - the unmount cleanup calls this on every close.
 				set((state) =>
-					state.askOpenIntent === scope ? { askOpenIntent: null } : {},
+					state.askOpenIntent?.scope === scope ? { askOpenIntent: null } : {},
 				);
 			},
 
@@ -2417,23 +2411,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				const current = get().rightSlotRoute;
 				if (
 					current.mounted === route.mounted &&
-					current.runDetails === route.runDetails &&
-					current.session === route.session &&
-					/*
-					 * THE CAPABILITY IS A FACT OF THE ROUTE (agent review round 2, M1):
-					 * `codeReviewEnabled` starts false while `capabilities.data` is
-					 * pending, so without this term the later `true` was dropped as a
-					 * duplicate and the slot resolver never learned the pane may draw
-					 * (the rail item stayed unlit on exactly F6's cold-relaunch case).
-					 */
-					current.codeReview === route.codeReview &&
-					/*
-					 * THE ASKS OFFER IS A ROUTE FACT TOO (issue #928): the dispatcher's door
-					 * table gates the ask chord on it, and it changes when the host's
-					 * capability or the view's published state does — ignoring it would
-					 * keep the chord dead until some other fact moved.
-					 */
-					current.asksOffered === route.asksOffered
+					current.session === route.session
 				) {
 					return;
 				}

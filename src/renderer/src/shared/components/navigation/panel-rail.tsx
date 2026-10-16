@@ -41,9 +41,12 @@ import {
 } from "./panel-rail-model";
 
 export type PanelRailProps = {
-	/** The conversation, or null on a draft. The console needs one (absent without). */
+	/** The conversation, or null on a draft (the console's open request needs one). */
 	sessionId: string | null;
-	/** The session's run view model; the Run details item is absent without one. */
+	/**
+	 * The session's run view model, or null before the frame is read or on a draft.
+	 * The Run details item is present either way; null only bares its label.
+	 */
 	runDetails: RunDetails | null;
 	/** The MCP rows the run panel renders: the trigger's second acknowledgement ledger. */
 	mcpServers: readonly McpServerRow[];
@@ -53,12 +56,6 @@ export type PanelRailProps = {
 	readerChildId: string | null;
 	/** Approvals THIS conversation's agent waits on (the browser item's badge). */
 	browserAttentionCount: number;
-	/**
-	 * Whether a host offers the asks door (the header trigger's old "offered" rule,
-	 * moved here with the control in #896): the item is PRESENT iff this is true,
-	 * absent-not-disabled otherwise, exactly as the four siblings follow the route.
-	 */
-	askOffered: boolean;
 	/**
 	 * The outstanding asks the item's scope carries - what the BADGE counts.
 	 *
@@ -79,14 +76,6 @@ export type PanelRailProps = {
 	consoleUnseenPulsing: boolean;
 	/** Files the conversation has been seen to mention (the canvas item's dot). */
 	fileCount: number;
-	/**
-	 * Whether the CODE REVIEW door is offered at all: `features.code_requests`
-	 * is set AND the route has a session (§M.1). The empty state is inside the
-	 * pane - the door is always present where the pane can exist, because a door
-	 * that vanishes cannot show the empty state, and the item appears once per
-	 * session rather than per row.
-	 */
-	codeOffered: boolean;
 	/** Rows in the ledger's Opened group (the name and tooltip clauses, §8). */
 	codeOpened: number;
 	/** Rows in the ledger's Mentioned group. */
@@ -130,12 +119,16 @@ const ROW_KEYS = new Set(["ArrowUp", "ArrowDown", "Home", "End"]);
  * borrowed pane back (#1079, the one sibling item that used to swap instead of
  * close).
  *
- * A PANEL THE ROUTE CANNOT DRAW IS ABSENT, NOT DISABLED (the house rule the console
- * door already followed: "a control that cannot act is not shown"): Run details
- * without run details, Console without a conversation, the asks item when no host
- * offers a door (`askOffered`, the header trigger's old rule). Browser and Canvas
- * open on a draft today, so they are always present. The order is fixed, so the
- * only movement is those appearing.
+ * ALL SIX DOORS ARE ALWAYS PRESENT, AND A PANE THAT CANNOT ACT SAYS WHY (the
+ * always-visible rail, D1; it retires #872/#896/#927's "absent, not disabled"). A
+ * door that came and went with the conversation's state flickered on every
+ * conversation switch and every reconnect gap, and a user could not learn where
+ * anything was. So the rail never changes shape: Run details on a draft or before
+ * the frame is read, Console on a draft, Code review on a draft or a backend
+ * without `features.code_requests`, and an asks queue the runtime does not serve
+ * each open their pane, and the pane says why it has nothing to show. Not
+ * disabled either: a disabled glyph cannot say why it is disabled. Only the lit
+ * state and the marks vary.
  *
  * ONE TAB STOP. It is a vertical `toolbar`: the roving item carries `tabIndex=0`,
  * ArrowUp/ArrowDown walk the items, Home/End take the ends, and focus entering the
@@ -159,13 +152,11 @@ export const PanelRail: FC<PanelRailProps> = ({
 	listOnScreen,
 	readerChildId,
 	browserAttentionCount,
-	askOffered,
 	askCount,
 	askScope,
 	consoleUnseenCount,
 	consoleUnseenPulsing,
 	fileCount,
-	codeOffered,
 	codeOpened,
 	codeMentioned,
 	codeAttention,
@@ -211,7 +202,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 	}, []);
 	/* The roving item is the last one focused while it exists, else the first in the
 	   rail's fixed order - so the rail always has exactly one tab stop, including
-	   after the item that held it went absent (a draft arriving). */
+	   while the items are still registering on mount. */
 	const roving =
 		rovingId !== null && present.has(rovingId)
 			? rovingId
@@ -389,78 +380,75 @@ export const PanelRail: FC<PanelRailProps> = ({
 					data-titlebar-drag=""
 					className="absolute inset-x-0 top-0 h-[calc(var(--chrome-inset-end-h)+0.25rem)]"
 				/>
-				{runDetails !== null && (
-					<RunDetailsTrigger
-						details={runDetails}
-						mcpServers={mcpServers}
-						listOnScreen={listOnScreen}
-						readerChildId={readerChildId}
-					/>
-				)}
-				{askOffered && (
-					<PanelRailItem
-						id="ask"
-						label={ask.tooltip}
-						ariaLabel={ask.aria}
-						/*
-						 * THE STATE THE HEADER COULD NOT SHOW (#896): while the drawer holds
-						 * the slot the answer is `"ask"` (`resolveDrawnRightSlotPane`), and this
-						 * is the item that says so. Before the move the asks door sat in the
-						 * header and the rail lit nothing for this state - the defect the issue
-						 * names.
-						 */
-						pressed={drawn === "ask"}
-						/*
-						 * THE HEADER'S OLD DOOR, verbatim: toggle in THIS item's scope - a press
-						 * while this scope is open closes, a press while the OTHER scope is open
-						 * replaces the scope (open=true for this one), and the store's
-						 * `claimRightSlot` does the swap clearing. The sequence lives in the
-						 * shared toggle since #928, because the chord performs the same press
-						 * and two spellings of it would drift.
-						 *
-						 * AND THE CLOSE IS THE SAME DOOR IN BOTH DIRECTIONS (#1079): this item is
-						 * one of six siblings, five of which close the slot on a press while lit,
-						 * so its close asks for an EMPTY SLOT rather than letting the drawer
-						 * withdraw and hand the borrowed pane back - the shared toggle passes
-						 * `dismissSlot`, and the withdraw-kind closes do not.
-						 */
-						onClick={() => togglePanelRailItem("ask", actionContext)}
-						/* The drawer's focus-return anchor and Escape door (#820/#835): the tag
+				<RunDetailsTrigger
+					details={runDetails}
+					mcpServers={mcpServers}
+					listOnScreen={listOnScreen}
+					readerChildId={readerChildId}
+				/>
+				<PanelRailItem
+					id="ask"
+					label={ask.tooltip}
+					ariaLabel={ask.aria}
+					/*
+					 * THE STATE THE HEADER COULD NOT SHOW (#896): while the drawer holds
+					 * the slot the answer is `"ask"` (`resolveDrawnRightSlotPane`), and this
+					 * is the item that says so. Before the move the asks door sat in the
+					 * header and the rail lit nothing for this state - the defect the issue
+					 * names.
+					 */
+					pressed={drawn === "ask"}
+					/*
+					 * THE HEADER'S OLD DOOR, verbatim: toggle in THIS item's scope - a press
+					 * while this scope is open closes, a press while the OTHER scope is open
+					 * replaces the scope (open=true for this one), and the store's
+					 * `claimRightSlot` does the swap clearing. The sequence lives in the
+					 * shared toggle since #928, because the chord performs the same press
+					 * and two spellings of it would drift.
+					 *
+					 * AND THE CLOSE IS THE SAME DOOR IN BOTH DIRECTIONS (#1079): this item is
+					 * one of six siblings, five of which close the slot on a press while lit,
+					 * so its close asks for an EMPTY SLOT rather than letting the drawer
+					 * withdraw and hand the borrowed pane back - the shared toggle passes
+					 * `dismissSlot`, and the withdraw-kind closes do not.
+					 */
+					onClick={() => togglePanelRailItem("ask", actionContext)}
+					/* The drawer's focus-return anchor and Escape door (#820/#835): the tag
+
 						   moved with the control, value unchanged - four harnesses, the tour and
 						   the driver attach to it. */
-						data-tour-tag="ask-pane-trigger"
-						/* WHICH QUEUE THIS DOOR OPENS, on the element, so the scope-legibility
+					data-tour-tag="ask-pane-trigger"
+					/* WHICH QUEUE THIS DOOR OPENS, on the element, so the scope-legibility
 						   claim (UX round 1, U3) is assertable rather than read off pixels: a rig
 						   compares this attribute AND the glyph between the two scopes. */
-						data-ask-scope={askScope}
-					>
-						<AsksScopeIcon scope={askScope} aria-hidden={true} />
-						{askCount > 0 && (
-							/*
-							 * THE COUNT IN THE RAIL'S OWN REGISTER (#896, the issue's "styled like
-							 * the Browser and Console counts already on the rail"). The browser
-							 * item's block above states the geometry (design round 1, D4) and why
-							 * the ring names `surface`; this mark is that block's numbers with the
-							 * ask lane's count, capped at the glyph exactly as the browser's is.
-							 * The header trigger wore the quieter `attentionQuiet`; on the rail
-							 * the sibling count wears `attention`, and the issue asks this mark to
-							 * match it - if the design round prefers the quiet register, this
-							 * block is where the change lands.
-							 */
-							<span className="pointer-events-none absolute -top-0.5 -right-0.5 flex">
-								<Badge
-									variant="attention"
-									shape="pill"
-									size="count"
-									className="h-3.5 min-w-3.5 px-0.75 text-meta-sm leading-none ring-2 ring-surface"
-									data-tour-tag="ask-pane-badge"
-								>
-									{countLabel(askCount, 9)}
-								</Badge>
-							</span>
-						)}
-					</PanelRailItem>
-				)}
+					data-ask-scope={askScope}
+				>
+					<AsksScopeIcon scope={askScope} aria-hidden={true} />
+					{askCount > 0 && (
+						/*
+						 * THE COUNT IN THE RAIL'S OWN REGISTER (#896, the issue's "styled like
+						 * the Browser and Console counts already on the rail"). The browser
+						 * item's block above states the geometry (design round 1, D4) and why
+						 * the ring names `surface`; this mark is that block's numbers with the
+						 * ask lane's count, capped at the glyph exactly as the browser's is.
+						 * The header trigger wore the quieter `attentionQuiet`; on the rail
+						 * the sibling count wears `attention`, and the issue asks this mark to
+						 * match it - if the design round prefers the quiet register, this
+						 * block is where the change lands.
+						 */
+						<span className="pointer-events-none absolute -top-0.5 -right-0.5 flex">
+							<Badge
+								variant="attention"
+								shape="pill"
+								size="count"
+								className="h-3.5 min-w-3.5 px-0.75 text-meta-sm leading-none ring-2 ring-surface"
+								data-tour-tag="ask-pane-badge"
+							>
+								{countLabel(askCount, 9)}
+							</Badge>
+						</span>
+					)}
+				</PanelRailItem>
 				<PanelRailItem
 					id="browser"
 					label={browser.tooltip}
@@ -501,30 +489,28 @@ export const PanelRail: FC<PanelRailProps> = ({
 						</span>
 					)}
 				</PanelRailItem>
-				{sessionId !== null && (
-					<PanelRailItem
-						id="console"
-						label={terminal.tooltip}
-						ariaLabel={terminal.aria}
-						pressed={drawn === "console"}
-						onClick={() => togglePanelRailItem("console", actionContext)}
-						data-tour-tag="console-pane-trigger"
-					>
-						<SquareTerminal aria-hidden={true} />
-						{consoleUnseenCount > 0 && (
-							<span
-								aria-hidden="true"
-								className={cn(
-									"absolute top-1 right-1 size-1.5 rounded-full",
-									consoleUnseenPulsing
-										? "bg-accent animate-pulse-visible"
-										: "bg-ink-muted",
-								)}
-								data-tour-tag="console-pane-blip"
-							/>
-						)}
-					</PanelRailItem>
-				)}
+				<PanelRailItem
+					id="console"
+					label={terminal.tooltip}
+					ariaLabel={terminal.aria}
+					pressed={drawn === "console"}
+					onClick={() => togglePanelRailItem("console", actionContext)}
+					data-tour-tag="console-pane-trigger"
+				>
+					<SquareTerminal aria-hidden={true} />
+					{consoleUnseenCount > 0 && (
+						<span
+							aria-hidden="true"
+							className={cn(
+								"absolute top-1 right-1 size-1.5 rounded-full",
+								consoleUnseenPulsing
+									? "bg-accent animate-pulse-visible"
+									: "bg-ink-muted",
+							)}
+							data-tour-tag="console-pane-blip"
+						/>
+					)}
+				</PanelRailItem>
 				<PanelRailItem
 					id="canvas"
 					label={canvas.tooltip}
@@ -542,11 +528,10 @@ export const PanelRail: FC<PanelRailProps> = ({
 					)}
 				</PanelRailItem>
 				{/*
-				 * THE CODE REVIEW DOOR, APPENDED LAST (§M.1). Last is the whole design of
-				 * its arrival: the items above keep their positions when this one appears,
-				 * which is the rail's one fixed-order promise, and the door is offered
-				 * wherever the pane can exist - `features.code_requests` set and a session
-				 * on the route - so the pane's EMPTY state has a door to be seen through.
+				 * THE CODE REVIEW DOOR, LAST (§M.1). It is present on every chat route (D3):
+				 * on a draft or a backend without `features.code_requests` its pane opens
+				 * to a notice saying why, and the pane's own query never mounts there, so
+				 * the door costs no request against a backend that cannot answer it.
 				 *
 				 * The dot is the attention mark (§G.2): a REAL open row (relation
 				 * `opened`) with findings open or CI failing. It borrows the console's
@@ -557,25 +542,23 @@ export const PanelRail: FC<PanelRailProps> = ({
 				 * browser/ask badges count work WAITING on the user, and findings-open is
 				 * in flight, not blocking).
 				 */}
-				{codeOffered && (
-					<PanelRailItem
-						id="code"
-						label={code.tooltip}
-						ariaLabel={code.aria}
-						pressed={drawn === "code"}
-						onClick={() => togglePanelRailItem("code", actionContext)}
-						data-tour-tag="code-pane-trigger"
-					>
-						<GitPullRequest aria-hidden={true} />
-						{codeAttention !== null && (
-							<span
-								aria-hidden="true"
-								data-code-review-attention=""
-								className="absolute top-1 right-1 size-1.5 rounded-full bg-ink-muted"
-							/>
-						)}
-					</PanelRailItem>
-				)}
+				<PanelRailItem
+					id="code"
+					label={code.tooltip}
+					ariaLabel={code.aria}
+					pressed={drawn === "code"}
+					onClick={() => togglePanelRailItem("code", actionContext)}
+					data-tour-tag="code-pane-trigger"
+				>
+					<GitPullRequest aria-hidden={true} />
+					{codeAttention !== null && (
+						<span
+							aria-hidden="true"
+							data-code-review-attention=""
+							className="absolute top-1 right-1 size-1.5 rounded-full bg-ink-muted"
+						/>
+					)}
+				</PanelRailItem>
 			</div>
 		</PanelRailRovingContext.Provider>
 	);

@@ -1,3 +1,4 @@
+import { usePaneNoticeEscape } from "@shared/components/common/slot-pane-notice";
 import { Button, Tooltip } from "@shared/components/ui";
 import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
@@ -95,6 +96,15 @@ export interface ConsolePaneProps {
 }
 
 export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
+	/*
+	 * THE DRAFT STATE CLOSES ON ESCAPE, like its siblings (UX round 1, U2): the Run
+	 * details and Code review notices a draft's doors open close on an unclaimed
+	 * Escape, and this state reads as one of them. Armed ONLY on a draft: a live
+	 * console is a terminal, and Escape is a key the program in it owns (an
+	 * editor's mode switch, a TUI's back) - closing the pane on it would take that
+	 * key from every program run here.
+	 */
+	usePaneNoticeEscape(onClose, sessionId === null);
 	/** The slot's lens. See the header comment for why this is not `useState`. */
 	const stored = useUiPreferencesStore((state) => state.consoleActiveSurface);
 	const setStored = useUiPreferencesStore(

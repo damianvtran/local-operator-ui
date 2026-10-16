@@ -61,22 +61,17 @@ import {
 	ChatHeaderIdentity,
 	type HeaderIdentityData,
 } from "./chat-header-identity";
-import type { RunDetails } from "./run-details";
 
 /**
  * ChatHeaderProps
  * @property agentName - The name of the agent to display.
  * @property description - The description of the agent.
  * @property onOpenOptions - Optional callback for opening options/canvas.
- * @property runDetails - The session's derived subagent and to-do view model, or
- * `null`/absent when the session has none.
  *
- * `runDetails` is passed by `chat-page.tsx`, which owns the canonical stream and
- * derives the model per wire frame (`run-details.md` § 8); stories pass a fixture
- * instead. It stays OPTIONAL because its absence is a real state: `ChatContent`
- * also renders this header for a session with no canonical stream, where there
- * is nothing to derive from and the menu's Run details entry must not appear. The
- * run trigger itself lives on the panel rail (#872), which is handed the same model.
+ * The header takes no run model: the menu's Run details row used to be gated on
+ * one, and since the always-visible rail (D1) it is offered like the other panel
+ * rows, because the pane opens to a notice when there is no model. The run
+ * trigger itself lives on the panel rail (#872).
  */
 type ChatHeaderProps = {
 	agentName?: string;
@@ -160,7 +155,6 @@ type ChatHeaderProps = {
 	 */
 	sessionId?: string;
 	onOpenOptions?: () => void;
-	runDetails?: RunDetails | null;
 	/**
 	 * Whether THIS header is the element the OS's caption buttons sit over, and so
 	 * must reserve their width at its trailing end.
@@ -310,7 +304,6 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	renameSessionId,
 	sessionId,
 	onOpenOptions,
-	runDetails = null,
 	reserveTrailingChrome = false,
 	onToggleBrowser,
 	archived = false,
@@ -427,6 +420,8 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	const isBrowserPaneOpen = useUiPreferencesStore((s) => s.isBrowserPaneOpen);
 	// The console's own field, read for the same reason and from the same place.
 	const isConsolePaneOpen = useUiPreferencesStore((s) => s.isConsolePaneOpen);
+	// The run panel's own field, for the menu row's verb, read for the same reason.
+	const isRunPanelOpen = useUiPreferencesStore((s) => s.isRunPanelOpen);
 
 	/*
 	 * THE CANVAS CHORD LEFT THIS FILE (issue #928). It used to be bound here, on
@@ -1157,7 +1152,6 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 				 */}
 				{(archiveEnabled ||
 					deleteEnabled ||
-					runDetails ||
 					onToggleAsks ||
 					onToggleBrowser ||
 					onOpenConsole ||
@@ -1473,16 +1467,30 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 							 * ACTION in the pane's own direction: a toggle that said only
 							 * "Browser" would make a screen reader ask what pressing it does.
 							 */}
-							{(runDetails ||
-								onToggleAsks ||
+							{(onToggleAsks ||
 								onToggleBrowser ||
 								onOpenConsole ||
 								onOpenCodeReview ||
 								onOpenOptions) && <DropdownMenuSeparator />}
-							{runDetails && (
-								<DropdownMenuItem onSelect={() => setRunPanelOpen(true)}>
+							{(onToggleAsks ||
+								onToggleBrowser ||
+								onOpenConsole ||
+								onOpenCodeReview ||
+								onOpenOptions) && (
+								/*
+								 * THE RUN DETAILS ROW, ON EVERY ROUTE THAT CARRIES THE PANEL ROWS (the
+								 * always-visible rail, D1): the rail's door is present with or without a
+								 * model, and the pane opens to a notice when there is none, so the row
+								 * that mirrors the door follows the same rule. A toggle labelled by the
+								 * flag, like its siblings, rather than the open-only row it was.
+								 */
+								<DropdownMenuItem
+									onSelect={() => setRunPanelOpen(!isRunPanelOpen)}
+								>
 									<Info aria-hidden="true" />
-									<span>Run details</span>
+									<span>
+										{isRunPanelOpen ? "Close run details" : "Open run details"}
+									</span>
 								</DropdownMenuItem>
 							)}
 							{onToggleAsks && (
