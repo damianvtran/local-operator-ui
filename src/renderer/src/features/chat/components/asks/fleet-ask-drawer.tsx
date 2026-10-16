@@ -70,6 +70,7 @@
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import type { AskDrawerCloseOptions } from "@shared/store/ui-preferences-store";
 import { showSuccessToast } from "@shared/utils/toast-manager";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -96,7 +97,17 @@ const EMPTY_ASK_DRAFTS: Record<string, AskDraft> = {};
 /** One ask's in-flight/refused/last-change record, as the drawer and the panel read it. */
 type AskOutcomes = Record<string, AskOutcome | undefined>;
 
-export const FleetAskDrawer = ({ onClose }: { onClose: () => void }) => {
+export const FleetAskDrawer = ({
+	onClose,
+}: {
+	/*
+	 * THE SAME TWO-KIND SEAM AS THE DRAWER'S (#1079), forwarded untouched: the X inside
+	 * the drawer asks for an empty slot and passes `dismissSlot`, while this pane's own
+	 * Escape listener below asks for nothing and withdraws. See
+	 * `AskDrawerCloseOptions`.
+	 */
+	onClose: (options?: AskDrawerCloseOptions) => void;
+}) => {
 	const { rows, frontend } = useFleetAsks();
 	const { client } = useOptionalQueryClient();
 	const lock = useRef(createSendLock()).current;
@@ -172,6 +183,10 @@ export const FleetAskDrawer = ({ onClose }: { onClose: () => void }) => {
 			if (event.defaultPrevented === true) return;
 			if (pressLandsOnOverlay(event.target)) return;
 			event.preventDefault();
+			/*
+			 * NO OPTIONS: an Escape is the withdrawal, not a request for an empty slot
+			 * (#1079) - the pane's X is the door that asks for one.
+			 */
 			onClose();
 		};
 		window.addEventListener("keydown", onKeyDown);
