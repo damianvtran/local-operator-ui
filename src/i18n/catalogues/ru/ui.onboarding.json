@@ -44,6 +44,6 @@
 	"ui.onboarding.search.row.save_failed": "Не удалось сохранить ключ.",
 	"ui.onboarding.search.row.saved": "Сохранено",
 	"ui.onboarding.search.row.saving": "Сохранение: {name}",
-	"ui.onboarding.modal.step_of": "Шаг {current, number} из {total, number}",
-	"ui.onboarding.modal.steps_total": "{total, plural, one {# шаг} few {# шага} many {# шагов} other {# шага}}"
+	"ui.onboarding.modal.step_of": "Шаг {current, number, ::group-off} из {total, number, ::group-off}",
+	"ui.onboarding.modal.steps_total": "{total, plural, one {{total, number, ::group-off} шаг} few {{total, number, ::group-off} шага} many {{total, number, ::group-off} шагов} other {{total, number, ::group-off} шага}}"
 }
