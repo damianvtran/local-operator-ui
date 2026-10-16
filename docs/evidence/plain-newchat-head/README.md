@@ -4,86 +4,103 @@ The evidence for the fix to the operator's report: *conversations started with a
 plain New chat do not appear in the sidebar and cannot be found by search.* The
 second symptom is refuted as stated (search finds the conversation by its title
 words, its first message and later prose — the checks below); the first is real
-and this set is its reproduction and its cure.
+and this set is its reproduction and its cure, with a **scrolled before/after
+pair** that shows the delta where the reader actually looks.
 
 ## What the defect was, in one paragraph
 
-The catalogue's default order fills the head page with its status bands, and on
-a store whose cold population is a wake band — the operator's carries ~44
-scheduled rows — those rows lead the page. The sidebar fetches **one page** (50
-rows, `catalogue_page`/`session_catalogue_page`), so a plain conversation, once
-its completion was read and its runtime drained, sat at **rank 61 of 62** and
-was never fetched: not drawn, not scrolled to, while search (which reads the
-whole store) still found it. The fix reads the head page in the sidebar's own
-order (`sort=activity`, advertised as `session_catalogue_sort`): rows that need
-the reader first, then everything else newest-activity-first — the same clock
-the panel's sections and its own "show the latest 10" pagination already use.
+The catalogue's rank order leads with its status bands — unseen, busy, and a
+wake band of scheduled rows — so on a store with enough of those (the
+operator's carries ~44 wake-bearing rows), a plain conversation the reader just
+used, once its completion is read and its runtime drains, lands *below the
+sidebar's fetched page*: the panel reads one 50-row page in the rank order and
+the row sits at rank 61+. It looks intermittent because the row is near the top
+while its turn runs (busy/unseen bands), then leaves the visible page. The fix
+reads that head page in the **activity order** (`sort=activity`) — recency —
+which is the order the sidebar's own sectioning presents (Today/Yesterday/…).
 
-## The rig (both halves, same harness)
+## Which frame is which claim
 
-An isolated daemon and store, the built app driven by the repo's own dev-driver
-(`node scripts/renderer-driver.mjs --scene plain-newchat-lifecycle`, headless
-window mode, scratch `HOME`, no window ever shown), against a **loaded store**:
-60 fabricated wake-bearing conversations plus the rig's own rows (62 total), so
-a rank-ordered page cannot carry a fresh non-wake conversation. A body-logging
-tap in front of the daemon is the address the app dials (the daemon's serve
-record is mirrored to name it), so the exact request bodies land in
-`after/wire.log`.
+The claim split the design round asked for (D1): each caption says what the
+**pixels** show, and what the **log beside it** proves. Both halves are one
+scene (`plain-newchat-lifecycle`) on one loaded store model — 60 fabricated
+wake-bearing rows, 62 rows total — run twice: `before/` against the branch
+base, `after/` against the fix head.
 
-Both halves ran the same scene on the same store model; the before half ran the
-pre-change build (16:39 local), the after half the fixed build (17:30 local).
-
-## The frames
-
-Within each half the scene's two captures (`drained` at phase 6's steady state
-and `open-by-route` at phase 6's invariant-1 step) are **byte-identical** — the
-sidebar state they photograph is the same at both moments — so the set ships
-one frame per half, and the claims both reads carry are in the logs beside it.
-
-| Frame | What it shows | The claim it is evidence for |
+| Frame | What the pixels show | What the log proves |
 | --- | --- | --- |
-| `before/drained/localOperatorDark.webp` | The drained steady state on the pre-change build: the sidebar's rows are the pinned Aida row and the scheduled band — the conversation the run just used (open in the pane at the right) is absent (`rowRendered: false`). | The report, reproduced: `rank 61` of 62 with `limit 50`. |
-| `after/drained/localOperatorDark.webp` | The same state on the fixed build: the sidebar lists `Complete Hello from the mock provider now` directly under the pinned row — the conversation that was in the reader's hands a moment ago. | The fix, in pixels; `catalogueActivityHead: true` and `sessionCount: 50` in the same note say the read was the head page in the activity order (a legacy whole-catalogue read would also carry the row — and would be no fix). |
+| `before/drained` | The sidebar at rest: the pinned `Aida` row at the foot of the list region. The list continues below the fold; **no conversation from this run is anywhere in the column.** | `rowRendered:false`; the catalogue ranks the row **61 of 62** in the rank order; the checks name the two failures (membership, order). |
+| `after/drained` | The same state on the fixed build: `Aida` pinned, and the list below. The conversation **is in the list now**, as the first `TODAY` row, but at `scrollTop 0` it sits *just past the scroller's edge* — this frame alone proves membership in the DOM, **not** visibility. | `rowRendered:true`; `catalogueActivityHead:true`, `cataloguePageable:true`, `sessionCount:50`, `cataloguePinnedCount:1`. |
+| `before/scrolled` | The chats list scrolled to the reader's own neighbourhood (`TODAY`, the first row ~30% down the window): `Aida`, the `TODAY` header, and the **scheduled band only** — the conversation the reader used a minute ago is *absent*. | `scrolledRead.isSubject:false` (the row is not in the DOM at all, so the step falls back to the first `TODAY` row); `scrollTop 340 / maxScroll 386`, window `clientHeight 460`. |
+| `after/scrolled` | The same window position: `Aida`, `TODAY`, and **`Hello from the mock pr…` as the first `TODAY` row, highlighted** as the open conversation. | `scrolledRead.isSubject:true`; the row's own DOM text: `Complete` · `Hello from the mock provider` · `1m, last active 1 minute ago`; row box `521.8–553.8` inside window `384–844`; `scrollTop 340` of `386` max. |
 
-The `##` readings those captions quote, verbatim:
+Both scrolled frames are the **same scroll geometry** (`scrollTop 340`,
+`clientHeight 460`, `scrollHeight 846`) because the scene scrolls by a measured
+step — subject row to ~30% of the window — and the before half lands on the
+first `TODAY` row by the same step. The pair therefore shows one window, with
+and without the conversation in it.
 
-- Before, phase 6 steady state (`before/run.log`): `[FAIL] the conversation is
-  rendered in the sidebar at the drained steady state` / `[FAIL] the
-  conversation being viewed is on screen even when the page no longer carries
-  it (invariant 1)`, with the phase's own catalogue read: `{"total":62,"rank":61,
-  "row":{"id":"5cf0b415bd88", ..., "status":"complete","unseen":false,"live":""}}`.
-- After, phase 6 steady state (`after/run.log`): `rowRendered: true`,
-  `catalogueActivityHead: true`, `cataloguePageable: true`, `sessionCount: 50`,
-  and the same row at `"rank":61` in the rank order — the page that carries it
-  is the activity page, not the rank page. `ALL CHECKS PASSED`.
+**One honest caveat, the design round's own:** where the fold falls is
+store-shaped — this rig's region layout puts the list's head just under the
+fold at `scrollTop 0`, and a different store or window size moves it. The
+scrolled pair is robust to that: it names its scroll geometry, and the claim it
+carries (the row is the first `TODAY` member, directly under the pinned row in
+list order) is read from the log beside it.
 
-## Search (the second symptom)
+## What each run's log carries (the numbers, exactly)
 
-Both halves pass every search check: the title words (`provider`), the first
-message's words (`tessellate`), the later prose (`pomegranate`) and a
-run-unique token that lives in the second turn (`mv…`) all find the
-conversation — API and rendered. The digest limits (first 4,000 chars of
-prose, tool results excluded) are deliberate and unchanged; name or early
-content matching MUST be findable, and it is.
+- **Before**: `[FAIL] the conversation is rendered in the sidebar at the drained
+  steady state` · `[FAIL] the catalogue is read in the sidebar's own order` ·
+  `[FAIL] the store holds the head page` · `[FAIL] …(invariant 1)` — 4 of 20
+  checks fail; `rowRendered:false`; steady `sessionCount:51` (50 page rows + 1
+  pinned extra appended off-page — the base build has no capability, so the
+  guard also fails there for the pinned-extra reason **this round's Q1 finding
+  fixed**: the fixed guard subtracts pinned extras and stays exact).
+- **After**: `ALL CHECKS PASSED` (20/20) — including `the scrolled frame is
+  taken with the list's subject (or first TODAY) row inside the window` and the
+  two failures that are the defect, now passing.
+- **Search (both halves pass)**: `tessellate` and `pomegranate` each return the
+  conversation (`apiFound && renderedFound`; the words live in the first message
+  and in later prose respectively).
 
 ## The wire (`after/wire.log`)
 
-- The create, verbatim: `{"cwd":"~","draft_id":"517ac25d8c29","request_id":"74fdc874-cb00-46bd-9eb7-07bd3bb67e3c"}`
-  — four fields, **no `purpose`**, so the origin-hiding hypothesis is refuted
-  on the wire for the current UI (the server stamps the hidden origin only for
-  configuration runs that send one).
-- The sidebar's own refresh reads, verbatim:
-  `GET /v1/desktop/sessions?limit=50&include_archived=true&with_counts=true&sort=activity`
-  — 35 of the run's catalogue reads carry `sort=activity`; the page size is the
-  50-row head.
+Every desktop request the run made, from the rig's own body-logging tap (the
+tap is the only door: the serve record points at it). The two requests that
+start a plain chat, verbatim:
 
-## What this set does not prove
+- `POST /v1/desktop/sessions/draft` — `{"request_id": "a1663c79-…", "cwd": "~"}`
+  → `{"result": {"draft_id": "69a1cf602544", …}}`
+- `POST /v1/desktop/sessions` — `{"request_id": "23fbcbca-…", "cwd": "~",
+  "draft_id": "69a1cf602544"}` → `{"result": {"session_id": "69a1cf602544",
+  "binding": {"agent": null, "team": null}, "admitted": true, …}}`
 
-- It is the app's own frames and wire against an **isolated** daemon, not the
-  operator's live store; the store model mirrors the operator's population
-  shape (a 60-row wake band), not its contents.
-- The before half's log predates the activity-head check names (it was captured
-  against `catalog.py`'s rank order only); its two FAILs and its `rank 61`
-  reading are the reproduction, and the after half carries the path checks.
-- Search behaviour is asserted at the scene level here; the digest bounds'
-  own suites are unchanged.
+**Three fields, no `purpose`** — the origin-hiding hypothesis is refuted on the
+wire for the current UI (the server stamps `agent-config` only for
+configuration runs, which send one).
+
+Of the 65 catalogue reads in the run, **31 carry `sort=activity`** — all of the
+sidebar pane's head-page reads, verbatim
+`GET /v1/desktop/sessions?limit=50&include_archived=true&with_counts=true&sort=activity`.
+The reads *without* `sort` are the two surfaces this change deliberately does
+not touch: the main process's `limit=1` adoption probe (fires before the
+capability answer) and the strip keeper's periodic `limit=500` catalogue poll
+(both byte-identical to the base build's).
+
+## Reproduce it
+
+The scene is this repository's own dev-driver at the plain-newchat-lifecycle
+scene; the rig (isolated HOME, isolated daemon, tap) and its loaded-store
+fabricator live in the round's session scratchpad, and the commands are the
+scene's own:
+
+```bash
+# after: the fix head + a fresh loaded rig
+rig-up.sh --loaded && run-scene.sh          # ALL CHECKS PASSED, frames land in $FRAMES
+# before: the branch base, same scene, same store model
+LO_RIG_UI_WT=<base worktree> LO_RIG_FRAMES=<out> run-scene.sh   # 4 CHECK(S) FAILED (the repro)
+```
+
+Both runs drive the built app in `headless` window mode; no window is shown,
+focused or photographed from the OS — every frame is the app's own
+`capturePage()`, and each run reaps its processes (the scene asserts it).
