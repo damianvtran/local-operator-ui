@@ -240,6 +240,25 @@ export const THREAD_FIND_MAX_LIMIT = 200;
  * state differently, which is the drift this file exists to prevent.
  */
 export const DESKTOP_SYSTEM_PROMPT_MAX_CHARS = 1_000_000;
+/**
+ * A reasoning effort a team member's slot may be pinned to.
+ *
+ * The backend's own `TIER_EFFORTS` (`model/effort.py`): `auto` plus the ladder.
+ * `auto` and "no override at all" are DIFFERENT states and both exist here -
+ * `auto` overrides to the model's own default, which is how a team takes tier
+ * `hi` without the tier map's `xhigh`.
+ */
+const memberEffort = z.enum([
+	"auto",
+	"none",
+	"minimal",
+	"low",
+	"medium",
+	"high",
+	"xhigh",
+	"max",
+]);
+
 const profileName = z
 	.string()
 	.min(1)
@@ -314,6 +333,22 @@ const teamFields = z
 						role: profileName,
 						count: z.number().int().min(1).max(16),
 						kind: z.enum(["agent", "team"]),
+						/*
+						 * THE SLOT'S MODEL OVERRIDES (team member tiers, P3). `null` and
+						 * absent mean the same thing on this wire - no override, fall
+						 * through to the next layer - and the pair is spelled with the SAME
+						 * words the backend's `TeamMember` accepts (`CANONICAL_EFFORT_TIERS`
+						 * and `TIER_EFFORTS`), so a value this client can send cannot be one
+						 * the server refuses. `null` is accepted rather than omitted alone
+						 * because a cleared field is what a form has in hand.
+						 *
+						 * Enumerated rather than free text for the reason the tier list is:
+						 * this client is not the only writer (the team tool, a hand-edited
+						 * `team.yml`), and a membership gate here is what keeps a typo out of
+						 * a roster that would otherwise be silently written and ignored.
+						 */
+						tier: z.enum(["lo", "med", "hi"]).nullable().optional(),
+						effort: memberEffort.nullable().optional(),
 					})
 					.strict(),
 			)
@@ -1225,6 +1260,21 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		.strict(),
 	z.object({ op: z.literal("teams.list") }).strict(),
 	z.object({ op: z.literal("teams.get"), name: profileName }).strict(),
+	/*
+	 * THE RESOLVED READING of every slot's model and reasoning effort, with the
+	 * layer each came from - the team editor's answer to "why is this member on
+	 * that model". A READ: it resolves the same precedence a launch does without
+	 * launching anything and writes nothing.
+	 *
+	 * ADDITIVE, and its absence is a capability signal rather than an error: a
+	 * backend older than the route answers 404, which is how the editor learns to
+	 * hide its override controls (the same status `backendErrorKind` classifies as
+	 * `outdated`). Such a server also ignores the member keys above, which is why
+	 * the hidden editor is the honest reading rather than a lost edit.
+	 */
+	z
+		.object({ op: z.literal("teams.effective"), name: profileName })
+		.strict(),
 	/*
 	 * Team CAS is the same optional opaque echo as the profile arm: absent/null is
 	 * the legacy unconditional write, a supplied stale/malformed value is refused
@@ -5178,6 +5228,7 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"sessions.variables.list",
 	"skills.list",
 	"subagents.transcript",
+	"teams.effective",
 	"teams.get",
 	"teams.list",
 	// The two phone-setup observations change nothing on the server; `tunnel.setup.run`
@@ -6435,6 +6486,11 @@ export function desktopEndpoint(request: DesktopRequest): {
 		case "teams.get":
 			return {
 				path: `/v1/desktop/teams/${encodeURIComponent(request.name)}`,
+				method: "GET",
+			};
+		case "teams.effective":
+			return {
+				path: `/v1/desktop/teams/${encodeURIComponent(request.name)}/effective`,
 				method: "GET",
 			};
 		case "teams.create":
