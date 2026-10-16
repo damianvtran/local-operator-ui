@@ -69,6 +69,20 @@ export type AsideAttachment = {
 	turns: AsideTurn[];
 	/** A refusal the panel states on itself, in the TUI card's own habit. */
 	notice: string | null;
+	/**
+	 * The owner accepted the adopt but QUEUED it: the session was mid-turn, so the
+	 * exchange joins the conversation at the turn's next safe point rather than now
+	 * (`status: "queued"` on the adopt answer). The panel stays up, read-only,
+	 * until the rows are seen in the transcript or the turn ends.
+	 *
+	 * `messageIds` are the exchange's own message ids, which the owner writes as
+	 * the transcript rows' ids - the landing test. Empty when they could not be
+	 * read, in which case only the turn's end can retire the panel.
+	 *
+	 * Optional rather than `null`-valued so every attachment written before this
+	 * state existed (and every fixture) still reads as "not queued".
+	 */
+	queued?: { messageIds: readonly string[] };
 };
 
 export type AsideStore = {
@@ -104,6 +118,8 @@ export type AsideStore = {
 	failAside: (asideId: string, error: string) => void;
 	/** The panel's own refusal sentence, or null to clear it. */
 	setAsideNotice: (sessionId: string, notice: string | null) => void;
+	/** The adopt was queued by the owner; see `AsideAttachment.queued`. */
+	queueAdoption: (sessionId: string, messageIds: readonly string[]) => void;
 	/** Close the panel and drop everything about this session's aside. */
 	detachAside: (sessionId: string) => void;
 };
@@ -305,6 +321,22 @@ export const useAsideStore = create<AsideStore>((set) => ({
 			if (!attachment) return state;
 			return {
 				attached: { ...state.attached, [sessionId]: { ...attachment, notice } },
+			};
+		}),
+
+	queueAdoption: (sessionId, messageIds) =>
+		set((state) => {
+			const attachment = state.attached[sessionId];
+			if (!attachment) return state;
+			return {
+				attached: {
+					...state.attached,
+					[sessionId]: {
+						...attachment,
+						notice: null,
+						queued: { messageIds: [...messageIds] },
+					},
+				},
 			};
 		}),
 

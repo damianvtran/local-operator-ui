@@ -38,6 +38,12 @@ import {
 	useAsideStore,
 } from "@shared/store/aside-store";
 import { v4 as uuidv4 } from "uuid";
+import {
+	ASIDE_ADOPT_REFUSED_CODE,
+	type AsideAdoptRefusedReason,
+	type AsideAdoptResult,
+	asideAdoptRefusedReason,
+} from "../../../../shared/desktop-contract";
 
 /** The aside POST's own answer, spelled once so the shape is not re-derived. */
 type AsideAnswer = {
@@ -309,10 +315,22 @@ function asideOffPanelCause(error: unknown): string {
 export const ASIDE_ASK_BUSY =
 	"The aside is still answering. Press Enter again once the answer is in.";
 
+/**
+ * The sentence an ask is refused with while the exchange is QUEUED to join the
+ * conversation.
+ *
+ * The owner has marked the entry adopted and refuses a continuation of it, so a
+ * follow-up typed here could only fail after leaving the box. The panel is
+ * read-only until the pair lands, and this is the composer's half of that.
+ */
+export const ASIDE_ASK_QUEUED =
+	"This aside is queued to join the conversation. Ask again once it has been added.";
+
 export function asideAskBlockedReason(
 	state: Parameters<typeof lastAsideStream>[0],
 	sessionId: string,
 ): string | null {
+	if (state.attached[sessionId]?.queued) return ASIDE_ASK_QUEUED;
 	return lastAsideStream(state, sessionId)?.streaming ? ASIDE_ASK_BUSY : null;
 }
 
@@ -629,8 +647,9 @@ export async function adoptAside(sessionId: string): Promise<void> {
 	const store = useAsideStore.getState();
 	const asideId = previousAsideId(store, sessionId);
 	if (!asideId) return;
+	let result: AsideAdoptResult | undefined;
 	try {
-		await desktopResult({
+		result = await desktopResult<AsideAdoptResult>({
 			op: "sessions.adopt",
 			sessionId,
 			requestId: uuidv4(),
@@ -638,11 +657,25 @@ export async function adoptAside(sessionId: string): Promise<void> {
 			confirmed: true,
 		});
 	} catch (error) {
-		store.setAsideNotice(
-			sessionId,
-			userFacingMessage(error, "The aside was not added to the conversation."),
-		);
+		store.setAsideNotice(sessionId, asideAdoptFailure(error));
 		throw error;
+	}
+	/*
+	 * QUEUED: the owner accepted the adopt but the session is mid-turn, so the
+	 * pair joins at the turn's next safe point (backend D1/D4). Nothing is in the
+	 * transcript yet, so there is nothing to re-read and the panel must not
+	 * vanish as if it had landed: it stays up, read-only, and `settleQueuedAdoption`
+	 * retires it when the rows are seen or the turn ends.
+	 */
+	if (asideAdoptStatus(result) === "queued") {
+		useAsideStore.getState().queueAdoption(sessionId, []);
+		void queuedAdoptionIds(sessionId, asideId).then((ids) => {
+			const attachment = useAsideStore.getState().attached[sessionId];
+			if (ids.length > 0 && attachment?.queued) {
+				useAsideStore.getState().queueAdoption(sessionId, ids);
+			}
+		});
+		return;
 	}
 	/*
 	 * Asked AFTER the POST, because the rows are durable only once it has answered
@@ -652,6 +685,159 @@ export async function adoptAside(sessionId: string): Promise<void> {
 	 */
 	resyncCanonicalSession(sessionId);
 	useAsideStore.getState().detachAside(sessionId);
+}
+
+/**
+ * What the adopt answer says happened. Absent (an owner older than the queue,
+ * or a stub answering nothing) reads as `"adopted"`: those owners always wrote
+ * synchronously or refused, so a 2xx from them means the rows are durable.
+ */
+export function asideAdoptStatus(
+	result: AsideAdoptResult | undefined,
+): "adopted" | "queued" {
+	return result?.data?.status === "queued" ? "queued" : "adopted";
+}
+
+/** The line a queued adopt leaves on the panel until the pair lands. */
+export const ASIDE_ADOPT_QUEUED =
+	"Queued — this aside joins the conversation when the current turn finishes.";
+
+/**
+ * The panel's sentence for the owner's typed refusal (`aside_adopt_refused`).
+ *
+ * Composed from the closed `reason`, never echoed from the owner's prose, so the
+ * sentence is this app's and stays stable if the owner rewords. Both say what
+ * did NOT happen (nothing joined the conversation) before why, because the user
+ * pressed a control that cannot be undone and the first thing they need is
+ * whether it took.
+ */
+export const ASIDE_ADOPT_REFUSED_SENTENCES: Record<
+	AsideAdoptRefusedReason,
+	string
+> = {
+	session_closed:
+		"The aside was not added: this conversation has closed, so there is nothing to add it to.",
+	open_tool_batch:
+		"The aside was not added: the conversation is in the middle of a tool step. Try again when the turn finishes.",
+};
+
+/** The sentence a failed adopt leaves on the panel. */
+export function asideAdoptFailure(error: unknown): string {
+	if (
+		error instanceof DesktopControlError &&
+		error.code === ASIDE_ADOPT_REFUSED_CODE
+	) {
+		const reason = asideAdoptRefusedReason(error.detail);
+		if (reason) return ASIDE_ADOPT_REFUSED_SENTENCES[reason];
+	}
+	return userFacingMessage(
+		error,
+		"The aside was not added to the conversation.",
+	);
+}
+
+/**
+ * The queued exchange's message ids, which the owner writes as the transcript
+ * rows' own ids (the route hands `entry.turns` to the owner as `Message` dumps,
+ * and the transcript keys each row by `message.id`), so seeing them in the
+ * canonical transcript is seeing the pair land.
+ *
+ * Read once, best-effort: an empty answer only means the panel waits for the
+ * turn's end instead, which is the fallback the queued state already has.
+ */
+async function queuedAdoptionIds(
+	sessionId: string,
+	asideId: string,
+): Promise<string[]> {
+	try {
+		const answer = await desktopResult<{
+			data?: { turns?: { id?: unknown }[] };
+		}>({ op: "sessions.aside.get", sessionId, asideId });
+		return (answer?.data?.turns ?? [])
+			.map((turn) => turn?.id)
+			.filter((id): id is string => typeof id === "string" && id !== "");
+	} catch {
+		return [];
+	}
+}
+
+/** How long after the turn ends the queued panel waits before its one retry. */
+export const ASIDE_QUEUED_RETRY_MS = 1_500;
+
+/**
+ * What a queued panel does with the transcript and the turn's state it was
+ * just handed.
+ *
+ * - `"landed"`: every one of the pair's rows is in the transcript - detach.
+ * - `"resync"`: the turn has ended but the rows are not painted. The owner
+ *   emits `agent_end` BEFORE it flushes the queue, so the turn's end can beat
+ *   the history delta; re-read the session, and once more after
+ *   `ASIDE_QUEUED_RETRY_MS`, then detach either way (the rows are durable by
+ *   then, and a panel that waited forever would be the worse failure).
+ * - `"wait"`: the turn is still running.
+ */
+export function queuedAdoptionStep(input: {
+	messageIds: readonly string[];
+	hasRecord: (id: string) => boolean;
+	turnAlive: boolean;
+}): "landed" | "resync" | "wait" {
+	if (
+		input.messageIds.length > 0 &&
+		input.messageIds.every((id) => input.hasRecord(id))
+	) {
+		return "landed";
+	}
+	return input.turnAlive ? "wait" : "resync";
+}
+
+/**
+ * The one armed fallback per session, so the re-read is asked for ONCE.
+ *
+ * Module state rather than an effect's cleanup: the re-read itself moves the
+ * transcript, which re-runs the caller's effect, and a cleanup that cleared the
+ * timer there would re-arm a second re-read on every page the first one painted.
+ * Not cleared on unmount either - detaching the session's entry in the store is
+ * right whether or not a pane is still showing it.
+ */
+const queuedFallbacks = new Map<string, ReturnType<typeof setTimeout>>();
+
+/**
+ * Retire a queued panel once its pair has landed, or once the turn has ended.
+ *
+ * Called by the composer whenever the canonical transcript or the turn's state
+ * moves; safe to call any number of times.
+ */
+export function settleQueuedAdoption(
+	sessionId: string,
+	hasRecord: (id: string) => boolean,
+	turnAlive: boolean,
+): void {
+	const queued = useAsideStore.getState().attached[sessionId]?.queued;
+	if (!queued) return;
+	const step = queuedAdoptionStep({
+		messageIds: queued.messageIds,
+		hasRecord,
+		turnAlive,
+	});
+	if (step === "wait") return;
+	if (step === "landed") {
+		const armed = queuedFallbacks.get(sessionId);
+		if (armed !== undefined) clearTimeout(armed);
+		queuedFallbacks.delete(sessionId);
+		useAsideStore.getState().detachAside(sessionId);
+		return;
+	}
+	if (queuedFallbacks.has(sessionId)) return;
+	resyncCanonicalSession(sessionId);
+	queuedFallbacks.set(
+		sessionId,
+		setTimeout(() => {
+			queuedFallbacks.delete(sessionId);
+			if (!useAsideStore.getState().attached[sessionId]?.queued) return;
+			resyncCanonicalSession(sessionId);
+			useAsideStore.getState().detachAside(sessionId);
+		}, ASIDE_QUEUED_RETRY_MS),
+	);
 }
 
 /**
@@ -810,20 +996,27 @@ export function asideAdoptChordStep(
 }
 
 /**
- * Whether the adopt control is live — the TUI's `_aside_can_fork`, in two terms.
+ * Whether the adopt control is live.
  *
- * The exchange must be SETTLED (the model's answer is in hand, so the turns the
- * backend would splice are a complete pair) and the session must not be
- * mid-turn: while a turn runs, the runtime owns the message list and pairs each
- * tool call with its result, so splicing a user message into a live batch
- * produces a request no provider accepts. Both are the TUI's own reasons,
- * restated here because this is the second host for the gate.
+ * The exchange must be SETTLED: the model's answer is in hand, so the turns the
+ * backend would add are a complete pair. That term holds against every backend.
+ *
+ * WHETHER THE SESSION MAY BE MID-TURN DEPENDS ON THE BACKEND (`queueSupported`,
+ * the `aside_adopt_queue` capability). An owner that advertises it QUEUES an
+ * adopt that arrives during a turn and applies it at the turn's next safe point,
+ * after the open tool batch has closed, so a press mid-turn is safe and the
+ * control stays live. An owner that does not advertise it still writes the pair
+ * immediately, and while a turn runs the runtime owns the message list and pairs
+ * each tool call with its result - splicing a user message into that live batch
+ * produces a request no provider accepts. So against an older owner the control
+ * keeps the old rule (the TUI's `_aside_can_fork`): idle sessions only.
  */
 export function asideAdoptReady(
 	stream: AsideStream | undefined,
 	sessionStreaming: boolean,
+	queueSupported = false,
 ): boolean {
-	return Boolean(stream?.settled) && !sessionStreaming;
+	return Boolean(stream?.settled) && (queueSupported || !sessionStreaming);
 }
 
 /**
@@ -859,10 +1052,15 @@ export function asideAdoptReady(
  * user can wait out or interrupt) never appeared at all. "A moment" is also the
  * one promise here that an unbounded wait falsifies. When both hold, the session's
  * own work is the fact the user can act on, and it is TRUE whenever it is printed.
+ *
+ * WITH `queueSupported` THE CONVERSATION'S TERM IS GONE, because it is no longer
+ * a reason: the owner queues a mid-turn adopt (see `asideAdoptReady`). The other
+ * three sentences are unchanged.
  */
 export function asideAdoptBlockedReason(
 	stream: AsideStream | undefined,
 	sessionStreaming: boolean,
+	queueSupported = false,
 ): string | null {
 	if (!stream) {
 		return "Nothing to add yet.";
@@ -870,7 +1068,7 @@ export function asideAdoptBlockedReason(
 	if (stream.error !== null) {
 		return "Nothing to add.";
 	}
-	if (sessionStreaming) {
+	if (sessionStreaming && !queueSupported) {
 		return "This conversation is working. Adding the aside while it runs would splice a message into a live turn.";
 	}
 	if (stream.streaming) {

@@ -218,8 +218,20 @@ The allowlist additionally provides:
   the panel subscribes before its own request resolves. The POST's returned
   `text` settles the exchange and is authoritative — a dropped or duplicated
   delta costs nothing. `sessions.adopt` is the panel's "Add to conversation"
-  control, live only when the exchange is settled and the session is not
-  mid-turn.
+  control, live only when the exchange is settled. Whether it is also live
+  mid-turn depends on the backend: one that advertises
+  `features.aside_adopt_queue` queues an adopt pressed during a turn and answers
+  `status: "queued"`; the owner adds the pair at the turn's next safe point,
+  after the open tool batch has closed, and emits a `history_delta` carrying it.
+  The panel then stays up, read-only, with "Queued — this aside joins the
+  conversation when the current turn finishes.", and detaches when the pair's
+  rows are in the transcript, or when the turn ends (one re-read, one retry,
+  then detach). A backend without the key keeps the old rule (idle sessions
+  only), because it writes the pair immediately and a write into a live tool
+  batch is a request no provider accepts. An answer with no `status` reads as
+  `"adopted"`. An adopt that cannot be deferred is refused with
+  `409 {"detail": {"code": "aside_adopt_refused", "reason": "session_closed" |
+  "open_tool_batch"}}`, which the panel states in its own sentence.
 - `mcp.list/control`: effective source ownership, array-valued command args, only
   secret references in env/headers, connect/disconnect/reload, OAuth probe,
   login/logout/reauth and operation status/cancel. Canonical grants remain owner-side.
