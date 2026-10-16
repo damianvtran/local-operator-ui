@@ -94,7 +94,7 @@ export const BrowserLoadFailure: FC<BrowserLoadFailureProps> = ({
 	useI18nLocale();
 	return (
 		<div
-			className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center"
+			className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center"
 			data-tour-tag="browser-load-failure"
 		>
 			<AlertTriangle aria-hidden className="size-6 text-warning" />
@@ -115,11 +115,13 @@ export const BrowserLoadFailure: FC<BrowserLoadFailureProps> = ({
 			{/* The raw refusal, in machine voice and on its own line: it is what a bug
 			    report needs, and it is the one part of this panel that is not a
 			    paraphrase. */}
-			<p
-				className="max-w-lg truncate font-mono text-mono-sm text-ink-dim"
-				title={failure.url}
-			>
-				{failure.description} {failure.url}
+			{/* Only the machine's own code, never the address again: the bar above
+			    still holds the attempted address as the one editable copy (the
+			    header comment's rule), and repeating it here — even as plain
+			    text, and even hidden in a tooltip — made a second place that
+			    looked like where the address lives (brief section 2.4). */}
+			<p className="max-w-lg truncate font-mono text-mono-sm text-ink-dim">
+				{failure.description}
 			</p>
 			<Button
 				variant="primary"

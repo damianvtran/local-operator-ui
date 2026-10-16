@@ -44,6 +44,7 @@ import { BrowserFileTransferRow } from "./browser-file-transfer-row";
 import { BrowserFindRow } from "./browser-find-row";
 import { BrowserHandOverDialog } from "./browser-hand-over-dialog";
 import { BrowserLoadFailure } from "./browser-load-failure";
+import { BrowserNewTab, isStartPageUrl } from "./browser-new-tab";
 import { BrowserTabStrip } from "./browser-tab-strip";
 import { BrowserUrlBar } from "./browser-url-bar";
 
@@ -476,8 +477,22 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	// promise that stays true here, since closing the dialog reveals the failure
 	// panel. Letting the panel win instead left "close it to bring the page back"
 	// unreachable in exactly the state it was written for.
+	//
+	// `SELF_SUPPRESSION_IDS` is every registration THIS component makes. It is a
+	// list rather than one prefix because the start page (LOH-13 slice B) is a
+	// second one: its registration is in `suppressedBy` for exactly as long as the
+	// failure's is, so a filter that only knew the failure's prefix would read the
+	// start page's own registration as an overlay and hide the start page - which
+	// is what shipped in this slice's first cut, caught by reading the interstitial
+	// frame rather than the markup.
+	const SELF_SUPPRESSION_IDS = [
+		"browser-load-failure:",
+		// The start page's own registration (see the block below): listed here so it
+		// is not read as an overlay that hides the page it registers for.
+		"browser-start-page:",
+	];
 	const overlaySuppressing = suppressionIds.some(
-		(id) => id && !id.startsWith("browser-load-failure:"),
+		(id) => id && !SELF_SUPPRESSION_IDS.some((prefix) => id.startsWith(prefix)),
 	);
 	const showingFailure =
 		navFailure !== null &&
@@ -488,6 +503,27 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	// while an overlay is up the view is hidden anyway, and releasing the
 	// registration behind a dialog would restore a blank Chromium surface over it.
 	useSuppressBrowserView(navFailure !== null, "browser-load-failure");
+
+	// THE START PAGE (LOH-13 slice B). A fresh or Home-returned tab sits on
+	// `about:blank`, whose native surface is a bare blank rectangle with no
+	// way to tell it from a loaded empty page. While the ACTIVE tab is on that
+	// start state the renderer paints its own start surface instead, so the
+	// view is suppressed by the same lever as the failure panel — registered
+	// whenever the state holds, shown only when no overlay owns the moment
+	// (an open dialog's paused note keeps precedence, exactly as it does over
+	// the failure panel). A pending or in-flight navigation hides the page at
+	// once: the user has already chosen a destination, and leaving the start
+	// surface up would read as the navigation being ignored. No URL is loaded
+	// and no origin is created — this is DOM under a hidden view, and the
+	// tab's own `about:blank` is untouched.
+	const onStartPage =
+		activeTab !== null &&
+		isStartPageUrl(activeTab.url) &&
+		!activeTab.loading &&
+		!chrome.pendingUrl;
+	const showingNewTab =
+		onStartPage && navFailure === null && !overlaySuppressing;
+	useSuppressBrowserView(onStartPage, "browser-start-page");
 
 	// A reachable IPC bridge is not a ready browser. In particular, startup's
 	// empty projection must not offer New tab or claim the saved tabs are gone.
@@ -874,6 +910,9 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 								)}
 							</p>
 						</output>
+					)}
+					{showingNewTab && (
+						<BrowserNewTab onNavigate={(url) => void chrome.navigate(url)} />
 					)}
 					{showingFailure && navFailure && (
 						<BrowserLoadFailure
