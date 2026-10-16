@@ -1,3 +1,9 @@
+import { useI18nLocale } from "@shared/i18n/use-locale";
+
+// Copy-bearing projections are intentionally recomputed after the locale hook
+// repaints; caching formatted strings would retain the prior language. Network
+// and structural-data caches remain in place.
+import { t } from "../../../../../i18n/messages";
 /**
  * Model Select Component
  *
@@ -91,10 +97,10 @@ const getProviderFromId = (id: string): string => {
  */
 const getGroupForModel = (modelId: string, hostingId: string): string => {
 	if (hostingId === "radient" && modelId === "auto") {
-		return "Auto (recommended)";
+		return t("ui.common.models.model_select.auto_recommended");
 	}
 	if (modelId === "") {
-		return "General";
+		return t("ui.common.models.model_select.general");
 	}
 
 	const providerId = getProviderFromId(modelId);
@@ -110,7 +116,7 @@ const getGroupForModel = (modelId: string, hostingId: string): string => {
 		// The manifest does not know this provider, but the id still names one.
 		return providerId;
 	}
-	return "Other models";
+	return t("ui.common.models.model_select.other_models");
 };
 
 /**
@@ -139,14 +145,23 @@ const ModelDescription: FC<{ markdown: string }> = ({ markdown }) => (
 	</div>
 );
 
-const RecommendedStar: FC = () => (
-	<Tooltip content="Recommended based on community usage and feedback">
-		<span className="flex items-center text-warning">
-			<Star size={12} aria-hidden="true" />
-			<span className="sr-only">Recommended</span>
-		</span>
-	</Tooltip>
-);
+const RecommendedStar: FC = () => {
+	useI18nLocale();
+	return (
+		<Tooltip
+			content={t(
+				"ui.common.models.model_select.recommended_based_on_community_usage_and_feedback",
+			)}
+		>
+			<span className="flex items-center text-warning">
+				<Star size={12} aria-hidden="true" />
+				<span className="sr-only">
+					{t("ui.common.models.model_select.recommended")}
+				</span>
+			</span>
+		</Tooltip>
+	);
+};
 
 /**
  * Model Select Component
@@ -162,6 +177,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 	allowCustom = true,
 	allowDefault = true,
 }) => {
+	useI18nLocale();
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	/*
@@ -245,7 +261,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 	}, [hostingId, refreshModels, isModelsLoading]);
 
 	// Convert models to autocomplete options, ensuring uniqueness by ID and specific ordering
-	const modelOptions: ModelOption[] = useMemo(() => {
+	const modelOptions: ModelOption[] = (() => {
 		const finalOptions: ModelOption[] = [];
 		const addedIds = new Set<string>();
 
@@ -276,8 +292,8 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 		if (allowDefault && !addedIds.has("")) {
 			finalOptions.push({
 				id: "",
-				name: "Default",
-				description: "Clear model selection",
+				name: t("ui.common.models.default"),
+				description: t("ui.common.models.model_select.clear_model_selection"),
 				group: getGroupForModel("", hostingId),
 				model: undefined,
 			});
@@ -297,19 +313,19 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 			finalOptions.push({
 				id: value,
 				name: value,
-				description: "Custom model",
+				description: t("ui.common.models.model_select.custom_model"),
 				group: getGroupForModel(value, hostingId),
 				model: undefined,
 			});
 		}
 
 		return finalOptions;
-	}, [availableModels, value, hostingId, allowDefault]);
+	})();
 
 	// Helper text to show when no models are available
-	const helperText = useMemo(() => {
+	const helperText = (() => {
 		if (!hostingId && !allowDefault) {
-			return "Select a hosting provider first.";
+			return t("ui.common.models.model_select.select_a_hosting_provider_first");
 		}
 		if (
 			hostingId &&
@@ -317,7 +333,9 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 			!allowDefault &&
 			!modelOptions.some((opt) => opt.id === value && value !== "")
 		) {
-			return "No models available for selected provider.";
+			return t(
+				"ui.common.models.model_select.no_models_available_for_selected_provider",
+			);
 		}
 		/* Same guard as the branch above: a saved model with a failed fetch is
 		   an ordinary state - the config still names it and the select still
@@ -331,14 +349,16 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 		) {
 			const provider = getHostingProviderById(hostingId);
 			return provider
-				? `No models for ${provider.name}`
-				: "No models available";
+				? t("ui.common.models.model_select.no_models_for", {
+						name: String(provider.name),
+					})
+				: t("ui.common.models.model_select.no_models_available");
 		}
 		return undefined;
-	}, [availableModels.length, hostingId, allowDefault, modelOptions, value]);
+	})();
 
 	// Find the current selected option
-	const selectedOption = useMemo(() => {
+	const selectedOption = (() => {
 		if (
 			(!value || value.trim() === "") &&
 			!allowDefault &&
@@ -374,10 +394,10 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 		return {
 			id: value,
 			name: value,
-			description: "Custom model",
+			description: t("ui.common.models.model_select.custom_model"),
 			model: undefined,
 		};
-	}, [value, modelOptions, hostingId, allowDefault, availableModels.length]);
+	})();
 
 	const save = async (modelId: string) => {
 		try {
@@ -401,10 +421,12 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 
 	return (
 		<SearchableSelect
-			label="Model"
+			label={t("ui.common.models.model_select.model")}
 			icon={<Cpu size={16} aria-hidden="true" />}
-			labelTooltip="Select the AI model that you want to use.  Each model has different capabilities and costs.  Recommended: Automatic"
-			placeholder="Select a model..."
+			labelTooltip={t(
+				"ui.common.models.model_select.select_the_ai_model_that_you_want_to_use_each_model_has_different",
+			)}
+			placeholder={t("ui.common.models.model_select.select_a_model")}
 			options={modelOptions}
 			selected={selectedOption}
 			onSelect={(option) => {
@@ -419,7 +441,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 			}
 			helperText={helperText}
 			busy={isSaving || isSubmitting || isModelsLoading}
-			busyLabel="Loading models"
+			busyLabel={t("ui.common.models.model_select.loading_models")}
 			disabled={isDisabled}
 		/>
 	);

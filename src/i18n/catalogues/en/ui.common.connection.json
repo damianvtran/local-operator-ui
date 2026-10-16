@@ -1,0 +1,12 @@
+{
+	"ui.common.connection.backend_compatibility_banner.the_backend_update_could_not_start_retry_or_update_from_settings_": "The backend update could not start. Retry, or update from Settings, under Application updates.",
+	"ui.common.connection.backend_compatibility_banner.update_backend": "Update backend",
+	"ui.common.connection.backend_compatibility_banner.updating": "Updating",
+	"ui.common.connection.connectivity_banner.a_connectivity_issue_has_been_detected": "A connectivity issue has been detected.",
+	"ui.common.connection.connectivity_banner.dismiss": "dismiss",
+	"ui.common.connection.connectivity_banner.dismiss_inline": "Dismiss",
+	"ui.common.connection.connectivity_banner.this_app_s_updates_require": "This app's updates require",
+	"ui.common.connection.connectivity_banner.you_are_offline": "You are offline. {detail} an internet connection.",
+	"ui.common.connection.floating_alert.dismiss": "Dismiss",
+	"ui.common.connection.provider.requires": "Your configured hosting provider ({provider}) requires"
+}

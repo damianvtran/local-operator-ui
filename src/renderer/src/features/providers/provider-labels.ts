@@ -15,19 +15,21 @@ import {
 	TUNNEL_LOGIN_PROVIDER,
 } from "@shared/hooks/use-radient-session-issue";
 import type { RadientAccountRead } from "@shared/hooks/use-radient-user-query";
+import { t } from "@shared/i18n";
 
 export function providerMethodLabel(
 	methods: ProviderMethod[],
 	local: boolean,
 ): string {
-	if (local) return "Local";
+	if (local) return t("ui.providers.provider_labels.local");
 	const kinds = new Set(methods.map((method) => method.kind));
 	const canSignIn = kinds.has("browser") || kinds.has("device");
 	const canKey = kinds.has("api_key");
-	if (canSignIn && canKey) return "Sign in or API key";
-	if (canSignIn) return "Sign in";
-	if (canKey) return "API key";
-	return "Unavailable";
+	if (canSignIn && canKey)
+		return t("ui.providers.provider_labels.sign_in_or_api_key");
+	if (canSignIn) return t("ui.providers.provider_catalog.sign_in");
+	if (canKey) return t("ui.providers.provider_catalog.api_key");
+	return t("ui.providers.provider_labels.unavailable");
 }
 
 /**
@@ -51,15 +53,15 @@ export function primaryMethod(
  * the badge itself cannot wrap. Names the sign-in rather than the account or the
  * machine, and stops short of the remedy the sign-in control beside it offers.
  */
-const REFUSED_DETAIL =
-	"Radient no longer accepts the sign-in stored on this machine";
+const refusedDetail = () =>
+	t("ui.providers.provider_labels.radient_no_longer_accepts_the_sign_in");
 
 /**
  * The unverified badge's long form, for the arm where the app cannot confirm a
  * credential the census counts.
  */
-const UNVERIFIED_DETAIL =
-	"This app could not confirm the sign-in stored on this machine";
+const unverifiedDetail = () =>
+	t("ui.providers.provider_labels.this_app_could_not_confirm_the_sign");
 
 /**
  * The two fields of the app's own account read this module needs, spelled as the
@@ -357,8 +359,10 @@ export function providerReadiness(
 	// is checkable; "Connected" was not.
 	if (provider.local || provider.credential_optional) {
 		return {
-			label: "No key needed",
-			detail: "No key needed - needs a running server",
+			label: t("ui.providers.provider_labels.no_key_needed"),
+			detail: t(
+				"ui.providers.provider_labels.no_key_needed_needs_a_running_server",
+			),
 			tone: "neutral",
 			group: "Needs a running server",
 		};
@@ -393,14 +397,14 @@ export function providerReadiness(
 		 */
 		if (provider.has_credential || provider.configured) {
 			return {
-				label: "Needs re-authentication",
-				detail: REFUSED_DETAIL,
+				label: t("ui.providers.provider_labels.needs_re_authentication"),
+				detail: refusedDetail(),
 				tone: "attention",
 				group: "Needs sign-in",
 			};
 		}
 		return {
-			label: "Needs re-authentication",
+			label: t("ui.providers.provider_labels.needs_re_authentication"),
 			tone: "attention",
 			group: "Needs sign-in",
 		};
@@ -420,18 +424,30 @@ export function providerReadiness(
 	if (signIn === "unverified") {
 		if (provider.has_credential || provider.configured) {
 			return {
-				label: "Needs sign-in",
-				detail: UNVERIFIED_DETAIL,
+				label: t("ui.providers.provider_labels.needs_sign_in"),
+				detail: unverifiedDetail(),
 				tone: "neutral",
 				group: "Needs sign-in",
 			};
 		}
-		return { label: "Needs sign-in", tone: "neutral", group: "Needs sign-in" };
+		return {
+			label: t("ui.providers.provider_labels.needs_sign_in"),
+			tone: "neutral",
+			group: "Needs sign-in",
+		};
 	}
 	if (provider.has_credential || provider.configured) {
-		return { label: "Signed in", tone: "success", group: "Ready to use" };
+		return {
+			label: t("ui.providers.provider_catalog.signed_in"),
+			tone: "success",
+			group: "Ready to use",
+		};
 	}
-	return { label: "Needs sign-in", tone: "neutral", group: "Needs sign-in" };
+	return {
+		label: t("ui.providers.provider_labels.needs_sign_in"),
+		tone: "neutral",
+		group: "Needs sign-in",
+	};
 }
 
 /**
@@ -576,5 +592,8 @@ export function hostingCensusFailureHelperText(error: unknown): string {
  * at "scope" rather than at "diagnosis" is what stops that.
  */
 export function providerLoadErrorMessage(error: unknown): string {
-	return backendLoadErrorMessage("Providers could not be loaded.", error);
+	return backendLoadErrorMessage(
+		t("ui.providers.provider_labels.providers_could_not_be_loaded"),
+		error,
+	);
 }

@@ -1,3 +1,9 @@
+import { useI18nLocale } from "@shared/i18n/use-locale";
+
+// Copy-bearing projections are intentionally recomputed after the locale hook
+// repaints; caching formatted strings would retain the prior language. Network
+// and structural-data caches remain in place.
+import { t } from "../../../../../i18n/messages";
 /**
  * Hosting Select Component
  *
@@ -97,10 +103,13 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 	onSave,
 	isSaving = false,
 	filterByCredentials = true,
-	emptyHelperText = "No hosting providers available. Sign in to a provider, or add a provider's API key in Settings, under Providers.",
+	emptyHelperText = t(
+		"ui.common.models.hosting_select.no_hosting_providers_available_sign_in_to_a_provider_or_add_a_pro",
+	),
 	allowCustom = true,
 	allowDefault = true,
 }) => {
+	useI18nLocale();
 	const capabilities = useDesktopCapabilities();
 	const censusEnabled = desktopFeatureEnabled(capabilities.data, "auth");
 	const census = useDesktopProviders(censusEnabled);
@@ -167,13 +176,15 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 	]);
 
 	// Convert hosting providers to autocomplete options
-	const hostingOptions: HostingOption[] = useMemo(() => {
+	const hostingOptions: HostingOption[] = (() => {
 		const options: HostingOption[] = [];
 		if (allowDefault) {
 			options.push({
 				id: "",
-				name: "Default",
-				description: "Clear hosting provider selection",
+				name: t("ui.common.models.default"),
+				description: t(
+					"ui.common.models.hosting_select.clear_hosting_provider_selection",
+				),
 				provider: undefined,
 			});
 		}
@@ -204,7 +215,9 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 					name: customProvider.name,
 					description: censusFailed
 						? customProvider.description
-						: `${customProvider.description} (Requires additional credentials)`,
+						: t("ui.common.models.hosting_select.detail", {
+								description: String(customProvider.description),
+							}),
 					provider: customProvider,
 				});
 			} else if (allowCustom) {
@@ -212,11 +225,15 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 				options.push({
 					id: value,
 					name: value,
-					description: "Custom hosting provider",
+					description: t(
+						"ui.common.models.hosting_select.custom_hosting_provider",
+					),
 					provider: {
 						id: value,
 						name: value,
-						description: "Custom hosting provider",
+						description: t(
+							"ui.common.models.hosting_select.custom_hosting_provider",
+						),
 						url: "",
 						requiredCredentials: [],
 						supportedModels: [],
@@ -226,13 +243,7 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 		}
 
 		return options;
-	}, [
-		availableHostingProviders,
-		value,
-		allowCustom,
-		allowDefault,
-		censusFailed,
-	]);
+	})();
 
 	/*
 	 * "No hosting providers available" under a select that is displaying
@@ -242,7 +253,7 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 	 * came from somewhere and the reader can see it, so the line would be
 	 * telling them their own setting does not exist.
 	 */
-	const helperText = useMemo(() => {
+	const helperText = (() => {
 		/*
 		 * A failed census empties the list for a reason that has nothing to do
 		 * with the user's credentials, so it gets the reason rather than the
@@ -265,17 +276,10 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 			return emptyHelperText;
 		}
 		return undefined;
-	}, [
-		availableHostingProviders.length,
-		filterByCredentials,
-		emptyHelperText,
-		value,
-		censusFailed,
-		census.error,
-	]);
+	})();
 
 	// Find the current selected option
-	const selectedOption = useMemo(() => {
+	const selectedOption = (() => {
 		// If value is empty and default is not allowed, or if there are no options at all
 		// when default is not allowed, treat as no selection.
 		if (
@@ -296,11 +300,13 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 			hostingOptions.find((option) => option.id === value) || {
 				id: value,
 				name: value,
-				description: "Custom hosting provider",
+				description: t(
+					"ui.common.models.hosting_select.custom_hosting_provider",
+				),
 				provider: undefined,
 			}
 		);
-	}, [value, hostingOptions, allowDefault, availableHostingProviders.length]);
+	})();
 
 	// Persist a hosting id and pull the model list that belongs to it. The
 	// refresh is best-effort: a stale model list is recoverable, a lost hosting
@@ -344,10 +350,14 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 
 	return (
 		<SearchableSelect
-			label="Hosting provider"
+			label={t("ui.common.models.hosting_select.hosting_provider")}
 			icon={<Server size={16} aria-hidden="true" />}
-			labelTooltip="Select the AI provider that you want to use.  Each provider has different models available.  Recommended: Radient"
-			placeholder="Select a hosting provider..."
+			labelTooltip={t(
+				"ui.common.models.hosting_select.select_the_ai_provider_that_you_want_to_use_each_provider_has_dif",
+			)}
+			placeholder={t(
+				"ui.common.models.hosting_select.select_a_hosting_provider",
+			)}
 			options={hostingOptions}
 			selected={selectedOption}
 			onSelect={(option) => {
@@ -362,7 +372,7 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 			}
 			helperText={helperText}
 			busy={isSaving || isSubmitting}
-			busyLabel="Saving hosting provider"
+			busyLabel={t("ui.common.models.hosting_select.saving_hosting_provider")}
 			disabled={isDisabled}
 		/>
 	);

@@ -1704,7 +1704,7 @@ test("the Mesh rail row is gated on MEMBERSHIP, and the route on the capability"
 	);
 	assert.match(
 		nav,
-		/\.\.\.\(meshMembership === "member"\s*\?\s*\[\s*\{\s*icon: Network,\s*label: "Mesh",\s*path: "\/mesh",/,
+		/\.\.\.\(meshMembership === "member"\s*\?\s*\[\s*\{\s*icon: Network,\s*label: t\("ui\.shell\.sidebar_navigation\.mesh"\),\s*path: "\/mesh",/,
 		"a row appears only for a device KNOWN to be in a mesh - not for an unknown or empty answer",
 	);
 	assert.doesNotMatch(
@@ -1730,7 +1730,7 @@ test("the palette's destinations are the rail's destinations (R1-3)", () => {
 	);
 	assert.match(
 		palette,
-		/id: "mesh",\s*\n\s*name: "Mesh",\s*\n\s*path: "\/mesh",/,
+		/id: "mesh",\s*get name\(\) \{\s*return t\("ui\.command_palette\.use_palette_sources\.mesh"\);\s*\},\s*path: "\/mesh",/,
 		"typing `mesh` finds the destination the rail draws",
 	);
 	/*
@@ -2166,7 +2166,7 @@ test("the Mesh rail badge rides an approvals read that dials nothing, and only w
 	assert.match(nav, /attentionTag: "nav-mesh-badge",/);
 	assert.match(
 		nav,
-		/attentionName: \(count: number\) => `Mesh, \$\{count\} waiting`,/,
+		/attentionName: \(count: number\) =>\s*t\("ui\.shell\.sidebar_navigation\.mesh_waiting",\s*\{\s*count,\s*countText: String\(count\),?\s*\}\),/,
 	);
 });
 
