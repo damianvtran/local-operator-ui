@@ -290,8 +290,39 @@ export interface BrowserChrome {
 	 * run measured as a loading frame with an empty placeholder. Cleared as soon as
 	 * the tab has a real URL, which is what makes it a statement about a PENDING
 	 * navigation rather than a copy of the bar.
+	 *
+	 * IT IS ALSO THE START PAGE'S OWN LIFETIME (LOH-13 B). The surface hides the
+	 * native view while the active tab is on its start state, and a PENDING note for
+	 * THIS tab is what says "the user has chosen a destination, so do not paint the
+	 * start page over it" — which is what stops the start page lingering across the
+	 * window between an accepted submit and main's own `loading` push (F4, round 3).
+	 *
+	 * IT IS KEYED TO THE TAB THAT MADE THE ATTEMPT (F3, round 3 re-adding what round
+	 * 2 got right for `pendingUrl` then lost in `refusedUrl`). A bare string leaked
+	 * across tabs: refuse an address on one tab, open a fresh one, and the new tab's
+	 * field was seeded with the other tab's address. So the note carries its `tabId`,
+	 * and every reader compares it to the ACTIVE tab — a fresh tab reads null and
+	 * starts empty, while the tab that made the attempt still restores its own.
 	 */
 	pendingUrl: string | null;
+	/**
+	 * The address of the last `navigate` that was REFUSED, or null.
+	 *
+	 * WHY A SECOND FIELD RATHER THAN THE NOTE'S OWN VALUE. A refused navigate — an
+	 * IPC rejection of a blank url, or main's `nav_failed` for an unparseable or
+	 * non-http(s) address — must both (a) stop suppressing the native view, so the
+	 * start page comes back with a surface to retry from, and (b) hand the user's
+	 * typed address BACK, because the start field's draft is mount-local and dies on
+	 * submit. `pendingUrl` is cleared for (a) — its whole meaning is "a page is on its
+	 * way", which is false the moment the invoke is refused — so the value has to
+	 * survive somewhere for (b), and this is that somewhere.
+	 *
+	 * Non-null therefore means "a navigation was attempted for THIS tab and nothing
+	 * started loading", and the string is what was attempted. It is cleared by the
+	 * next accepted navigate and by the next landed read, and it is keyed to the tab
+	 * that made the attempt for the same reason `pendingUrl` is (F3, round 3).
+	 */
+	refusedUrl: string | null;
 	/** An action refusal or a failed state read, whichever is newest. Shown in the
 	 * band, not as a toast per keystroke. */
 	error: string | null;
@@ -459,7 +490,39 @@ export function useBrowserChrome(): BrowserChrome {
 	} = useBrowserProjection();
 	/** An ACTION was refused: `nav_failed`, `tab_limit`, `origin_not_allowed`... */
 	const [actionError, setActionError] = useState<string | null>(null);
-	const [pendingUrl, setPendingUrl] = useState<string | null>(null);
+	/**
+	 * The pending-navigation note, KEYED TO THE TAB THAT MADE THE ATTEMPT (F3, round
+	 * 3). A bare string leaked across tabs — refuse an address on one tab, open a
+	 * fresh one, and the new tab's field offered the other tab's address — which is
+	 * the same cross-tab class round 1 removed from the view gate. The key is the
+	 * `tabId` at the moment the intent was sent; the exposed `pendingUrl` compares it
+	 * to the ACTIVE tab, so a fresh tab reads null while the tab that made the
+	 * attempt keeps its own note.
+	 */
+	const [pending, setPending] = useState<{
+		tabId: number | null;
+		url: string;
+	} | null>(null);
+	/** See `BrowserChrome.refusedUrl`: the attempt whose invoke was refused, held so
+	 * the start page can restore the address the user typed (F1, round 2). Keyed to
+	 * its tab for the same reason `pending` is (F3, round 3). */
+	const [refused, setRefused] = useState<{
+		tabId: number | null;
+		url: string;
+	} | null>(null);
+	/**
+	 * THE TWO NOTES AS THE ACTIVE TAB SEES THEM. This is where the per-tab keying
+	 * becomes an ANSWER rather than an internal detail: a note whose `tabId` is not
+	 * the active tab is invisible here, so the surface's gate and the start page's
+	 * restored address are both about the tab on screen. Switching tabs therefore
+	 * shows each tab's own truth with no clearing bookkeeping, and a fresh tab reads
+	 * null on both — which is what makes it start empty.
+	 */
+	const activeTabId = state?.activeTabId ?? null;
+	const pendingUrl =
+		pending && pending.tabId === activeTabId ? pending.url : null;
+	const refusedUrl =
+		refused && refused.tabId === activeTabId ? refused.url : null;
 	const available = browserBridgeAvailable();
 
 	/**
@@ -488,7 +551,38 @@ export function useBrowserChrome(): BrowserChrome {
 	 */
 	const refresh = useCallback(async (): Promise<void> => {
 		const next = await readState();
-		if (next?.url && next.url !== "about:blank") setPendingUrl(null);
+		if (!next) return;
+		// WHICH TAB THE READ IS ABOUT, so a landing on tab B does not discard tab A's
+		// note (F3, round 3): the clears below are keyed to the tab the read describes,
+		// not applied wholesale.
+		const readTabId = next.activeTabId ?? null;
+		/*
+		 * A LANDED PAGE ENDS THE NOTE FOR THE TAB IT LANDED IN. This is the first of
+		 * the two ways a note ends; it is keyed because a wholesale clear would take a
+		 * refused address off a tab that is not the one that just loaded.
+		 *
+		 * WHY THE START-STATE READ DOES *NOT* RELEASE THE NOTE, which is the round-3
+		 * correction (F4) and the reason the round-2 version of this function is gone.
+		 * Round 2 released the note whenever a read showed the start state with nothing
+		 * in flight, to stop it outliving a refused attempt. But an ACCEPTED navigate
+		 * looks identical on the next read — main has not pushed `did-start-loading`
+		 * yet, so the projection still says `about:blank` and `loading:false` — so that
+		 * release cleared the note a millisecond after a legitimate submit and the
+		 * start page lingered over the navigation the user had just launched (F4).
+		 *
+		 * The refusal case it existed for is now handled where it is actually KNOWN —
+		 * in `navigate` below, on the invoke's own rejection — and an attempt the user
+		 * abandons is handled by the explicit controls (`home`, `stop`). Those are
+		 * facts, not inferences from a read that cannot yet tell the two apart.
+		 */
+		if (next.url && next.url !== "about:blank") {
+			setPending((current) =>
+				current && current.tabId === readTabId ? null : current,
+			);
+			setRefused((current) =>
+				current && current.tabId === readTabId ? null : current,
+			);
+		}
 	}, [readState]);
 
 	/**
@@ -638,22 +732,71 @@ export function useBrowserChrome(): BrowserChrome {
 			closeTabs: (intent) => run(() => api?.closeTabs(intent)),
 			activateTab: (tabId) => runVoid(() => api?.activateTab(tabId)),
 			navigate: (url) => {
-				// Recorded before the intent is sent: the reply may take a while (the tab
-				// has to load), and the point of the note is to cover exactly that window.
-				setPendingUrl(url);
-				return runVoid(() => api?.navigate(url));
+				// Recorded before the intent is sent, KEYED TO THE ACTIVE TAB (F3): the reply
+				// may take a while (the tab has to load), the point of the note is to cover
+				// exactly that window, and the tab it is about is the one that is active now.
+				const tabId = state?.activeTabId ?? null;
+				setPending({ tabId, url });
+				setRefused(null);
+				// A REFUSED ATTEMPT ENDS THE NOTE AND REMEMBERS THE ADDRESS (F1, round 2).
+				// `run` answers whether main accepted the invoke, so a refusal is known
+				// HERE rather than inferred later from a note that never cleared — which
+				// is what stranded the start page behind a blank view. Clearing the note
+				// puts the start page (and its retry) back; keeping the address lets the
+				// start field restore what was typed, because its draft is mount-local
+				// and dies with the submit that carried it here.
+				//
+				// AN ACCEPTED ATTEMPT LEAVES THE NOTE IN PLACE, and that is F4's fix: the
+				// note is the gate term that keeps the start page from lingering over the
+				// navigation the user just launched, for the window before main's own
+				// `loading` push arrives. It is safe to gate on again only because it is now
+				// released on a refusal (here) and on a read showing the start state idle
+				// (`refresh`), which is what F1 was missing.
+				return run(async () => {
+					await api?.navigate(url);
+				}).then((accepted) => {
+					if (!accepted) {
+						setPending(null);
+						setRefused({ tabId, url });
+					}
+				});
 			},
-			home: () => runVoid(() => api?.home()),
+			home: () => {
+				// AN EXPLICIT CONTROL ENDS THE NOTE FOR THIS TAB (F1's other half, kept
+				// without the round-2 release that broke F4). `home` means "return to the
+				// start state", so a pending note — whose meaning is "a page is on its
+				// way" — is false the moment the user asks for the start state back. Same
+				// for `stop`, which is the control whose whole meaning is "abandon this
+				// attempt". Together they are the release path for an attempt main accepted
+				// and never started loading, which is the one case the refusal clear cannot
+				// see.
+				const tabId = state?.activeTabId ?? null;
+				setPending((current) =>
+					current && current.tabId === tabId ? null : current,
+				);
+				setRefused((current) =>
+					current && current.tabId === tabId ? null : current,
+				);
+				return runVoid(() => api?.home());
+			},
 			reload: (hard) => runVoid(() => api?.reload(hard)),
 			pageControl: (tabId, action, query = "", forward = true, next = false) =>
 				runVoid(() => api?.pageControl(tabId, action, query, forward, next)),
 			reopenTab: (sessionId) =>
 				runVoid(() => api?.reopenTab(sessionId ?? null)),
-			stop: () => runVoid(() => api?.stop()),
+			stop: () => {
+				// See `home`: the explicit abandon control releases this tab's note.
+				const tabId = state?.activeTabId ?? null;
+				setPending((current) =>
+					current && current.tabId === tabId ? null : current,
+				);
+				return runVoid(() => api?.stop());
+			},
 			retry: () => runVoid(() => api?.retry()),
 			history: (direction) => runVoid(() => api?.history(direction)),
 			setContentRect,
 			setViewVisible,
+			refusedUrl,
 			respondToConsent: (entryId, decision) =>
 				runVoid(() => api?.respondToConsent(entryId, decision)),
 			handOver: (tabId, sessionId) =>
@@ -683,6 +826,7 @@ export function useBrowserChrome(): BrowserChrome {
 		[
 			state,
 			pendingUrl,
+			refusedUrl,
 			error,
 			dismissError,
 			available,
