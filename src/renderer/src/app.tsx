@@ -47,6 +47,7 @@ import { useI18nLocaleSync } from "@shared/i18n/locale-sync";
 import { useKeymapShortcuts } from "@shared/keymap/use-keymap-shortcuts";
 import { t } from "../../i18n/messages";
 
+import { QwenVoiceController } from "@features/voice/qwen-voice-controller";
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog";
 import { LowCreditsDialog } from "@shared/components/common/low-credits-dialog";
@@ -562,6 +563,12 @@ const App: FC = () => {
 
 	return (
 		<OnboardingProvider>
+			{/*
+			 * SESSION VOICE'S CONTROLLER, at the root rather than in the chat page, so
+			 * an exchange survives navigation: words sent from one route are answered
+			 * aloud on any other. It renders nothing (`features/voice`).
+			 */}
+			<QwenVoiceController />
 			{/*
 			 * `relative` is load-bearing, not decoration.
 			 *

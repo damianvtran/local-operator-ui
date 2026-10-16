@@ -1,0 +1,22 @@
+{
+	"ui.chat.voice.toggle_on": "Turn on voice for this conversation",
+	"ui.chat.voice.toggle_off": "Turn off voice for this conversation",
+	"ui.chat.voice.toggle_switch": "Move voice to this conversation from {title}",
+	"ui.chat.voice.marker": "Voice on",
+	"ui.chat.voice.phase_starting": "Starting voice",
+	"ui.chat.voice.phase_listening": "Listening",
+	"ui.chat.voice.phase_working": "Working",
+	"ui.chat.voice.phase_error": "Voice error",
+	"ui.chat.voice.start_rig": "Start voice",
+	"ui.chat.voice.switched_from": "Voice moved here from “{title}”.",
+	"ui.chat.voice.untitled": "another conversation",
+	"ui.chat.voice.enable_failed": "Voice could not be turned on. {reason}",
+	"ui.chat.voice.disable_failed": "Voice could not be turned off. {reason}",
+	"ui.chat.voice.utterance_failed": "Your words were not sent. {reason}",
+	"ui.chat.voice.not_enabled": "Voice is no longer on for this conversation.",
+	"ui.chat.voice.empty_transcript": "Didn't catch that. Say it again.",
+	"ui.chat.voice.approval_waiting": "Approve or deny it on screen. Voice can't answer approvals.",
+	"ui.chat.voice.card_pending": "Answer the question or approval on screen first.",
+	"ui.chat.voice.stream_lost": "Voice lost this conversation's updates. Answers will not be spoken until it reconnects.",
+	"ui.chat.voice.stream_reconnect": "Reconnect"
+}

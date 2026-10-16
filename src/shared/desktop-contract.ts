@@ -86,9 +86,15 @@ const mcpCatalogCwd = z.string().min(1).max(4096).regex(mcpCatalogCwdPattern);
  * at every hop instead of being assumed from the id's presence.
  */
 export const SUBSCRIPTION_ID_PATTERN = /^[a-f0-9]{32}$/;
-const requestId = z
-	.string()
-	.regex(/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/);
+/**
+ * The backend's `RequestID` (`desktop_sessions.py`): a dashed lowercase UUID, the
+ * shape `crypto.randomUUID()` returns. Exported so the media relay validates the
+ * voice utterance's id against the SAME pattern rather than a second spelling of
+ * it - a dashless id passes a looser local check and is refused 422 by the route.
+ */
+export const REQUEST_ID_PATTERN =
+	/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
+const requestId = z.string().regex(REQUEST_ID_PATTERN);
 /**
  * An OPAQUE definition-revision token, echoed verbatim on a definition write.
  *
@@ -3379,6 +3385,51 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	/*
+	 * SESSION VOICE'S SLOT AND TEXT (the frozen contract in the backend's
+	 * `desktop_voice.py`): one read and one control on `/v1/desktop/voice`,
+	 * mirroring Aida's pair above and gated the same way, on its OWN key
+	 * (`features.voice`), plus `/voice/text`.
+	 *
+	 * The control names its session even for `disable`: a disable from a session
+	 * that does not hold the slot is a no-op that answers the current slot
+	 * unchanged, so a stale window cannot turn off a slot another window moved.
+	 *
+	 * `voice.text` names a SOURCE REFERENCE and never text: the server resolves the
+	 * words from its own journal or pending card, so no renderer bug can make the
+	 * rig say words the agent never wrote. The utterance is NOT here: the route
+	 * takes a form, so it rides `desktop-media.ts`'s relay.
+	 */
+	z
+		.object({ op: z.literal("voice.status") })
+		.strict(),
+	z
+		.object({
+			op: z.literal("voice.control"),
+			action: z.enum(["enable", "disable"]),
+			sessionId,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("voice.text"),
+			sessionId,
+			source: z.discriminatedUnion("kind", [
+				z
+					.object({
+						kind: z.literal("message"),
+						messageId: z.string().min(1).max(128),
+					})
+					.strict(),
+				z
+					.object({
+						kind: z.literal("gate"),
+						requestId: z.string().min(1).max(128),
+					})
+					.strict(),
+			]),
+		})
+		.strict(),
+	/*
 	 * THE CODE REQUEST LEDGER (the per-session PR/MR list, and its refresh).
 	 *
 	 * BOTH ROUTES SIT UNDER THE SESSION because the LEDGER is the session's: the
@@ -5185,6 +5236,8 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"tunnel.setup.plan",
 	"tunnel.setup.read",
 	"usage.get",
+	// The voice slot's read: which session holds it.
+	"voice.status",
 ]);
 
 /**
@@ -5522,7 +5575,50 @@ export type DesktopMediaRequest =
 			op: "sessions.supplementDocument";
 			sessionId: string;
 			digest: string;
+	  }
+	/*
+	 * SESSION VOICE'S TEXT DOOR (the frozen contract): the rig's transcript, as
+	 * TEXT. There is no file part and no audio path of any kind - the Qwen rig
+	 * hears, and this app never uploads a recording for the server to transcribe.
+	 * A form rather than JSON only because the route is form-encoded.
+	 */
+	| {
+			op: "voice.utterance";
+			sessionId: string;
+			requestId: string;
+			text: string;
+			textOrigin?: "qwen_s2s";
 	  };
+
+/**
+ * The refusal codes the voice routes declare (the frozen contract). Carried to
+ * the renderer as `voiceCode` - only for `voice.*` ops, and only these words -
+ * because the controller ACTS on them: `voice_not_enabled` means the slot moved
+ * away under this window and the exchange must stop, which a sentence cannot
+ * tell it. Every other declared code is still dropped, as before.
+ */
+export const VOICE_REFUSAL_CODES = [
+	"voice_not_enabled",
+	"voice_store_busy",
+	"unknown_session",
+	"unknown_source",
+	"invalid_voice_request",
+	// The take held no words: nothing was admitted.
+	"empty_transcript",
+	// A card is pending on the session (backend V13): words are refused, not
+	// admitted as a steer, so they cannot cancel the card. Answered on screen.
+	"approval_pending",
+] as const;
+export type VoiceRefusalCode = (typeof VOICE_REFUSAL_CODES)[number];
+
+export function isVoiceRefusalCode(
+	code: string | undefined,
+): code is VoiceRefusalCode {
+	return (
+		code !== undefined &&
+		(VOICE_REFUSAL_CODES as readonly string[]).includes(code)
+	);
+}
 
 export type DesktopMediaResponse =
 	| { status: number; kind: "bytes"; mimeType: string; data: Uint8Array }
@@ -5541,7 +5637,46 @@ export type DesktopMediaResponse =
 			 * exactly as the JSON transport's refusals are (design § 3.5, § 5.1).
 			 */
 			code?: DesktopRefusalCode;
+			/** A voice route's declared refusal (see `VOICE_REFUSAL_CODES`). */
+			voiceCode?: VoiceRefusalCode;
 	  };
+
+/**
+ * THE MAIN <-> RENDERER VOICE CONTRACT (the backend's docs/design/qwen-voice.md,
+ * "Frozen contract delta"), plus `start`, which the manager approved for the
+ * relaunch case: an app restarted while the slot is still held does NOT start
+ * the rig by itself (it loads gigabytes of models), and the indicator offers
+ * "Start voice", which calls this.
+ *
+ * - event `voice.qwen.take {taskId, text}`: the rig heard a take (`onTake`).
+ * - invoke `voice.qwen.result {taskId, ok | code}`: the take's admission.
+ * - invoke `voice.qwen.speak {text, kind}`: speak a reply or gate text. Main
+ *   honours it ONLY for a text it relayed itself as a 200 `/voice/text` answer in
+ *   the last 10 minutes; anything else answers `{spoken: false}`.
+ * - status `voice.qwen.status {rig, webui_url}` (`onStatus`, `getStatus`).
+ * - invoke `voice.qwen.start`: start the rig for the slot already held.
+ */
+export type QwenRigState = "stopped" | "starting" | "ready" | "error";
+export type QwenVoiceStatus = {
+	rig: QwenRigState;
+	webui_url: string | null;
+	reason?: string | null;
+};
+export type QwenVoiceTake = { taskId: string; text: string };
+export type QwenVoiceResult =
+	| { taskId: string; ok: true }
+	| { taskId: string; ok: false; code: string };
+export type QwenVoiceBridge = {
+	onTake: (listener: (take: QwenVoiceTake) => void) => () => void;
+	result: (result: QwenVoiceResult) => Promise<boolean>;
+	speak: (input: {
+		text: string;
+		kind: "reply" | "gate";
+	}) => Promise<{ spoken: boolean; reason?: string }>;
+	start: () => Promise<QwenVoiceStatus>;
+	getStatus: () => Promise<QwenVoiceStatus>;
+	onStatus: (listener: (status: QwenVoiceStatus) => void) => () => void;
+};
 
 export type DesktopAPI = {
 	request: (request: DesktopRequest) => Promise<DesktopResponse>;
@@ -5638,6 +5773,12 @@ export type DesktopAPI = {
 		subscribe: (onFrame: (frame: DesktopFeedFrame) => void) => () => void;
 		watchState: (onState: (state: DesktopFeedState) => void) => () => void;
 	};
+	/**
+	 * THE QWEN VOICE RIG, owned by main (`src/main/voice/qwen-voice.ts`). Absent in
+	 * browser development, where there is no rig: the toggle still drives the slot
+	 * and nothing is heard. See `QwenVoiceBridge` for the verbs.
+	 */
+	qwenVoice?: QwenVoiceBridge;
 	/**
 	 * The conversation main was launched to display, or null.
 	 *
@@ -7705,6 +7846,27 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "GET",
 			};
 		}
+		case "voice.status":
+			return { path: "/v1/desktop/voice", method: "GET" };
+		case "voice.control":
+			return {
+				path: "/v1/desktop/voice",
+				method: "POST",
+				// The route's own field names (`op`, `session_id`), as `aida.control` does.
+				body: { op: request.action, session_id: request.sessionId },
+			};
+		case "voice.text":
+			return {
+				path: "/v1/desktop/voice/text",
+				method: "POST",
+				body: {
+					session_id: request.sessionId,
+					source:
+						request.source.kind === "message"
+							? { kind: "message", message_id: request.source.messageId }
+							: { kind: "gate", request_id: request.source.requestId },
+				},
+			};
 		case "aida.status":
 			return { path: "/v1/desktop/aida", method: "GET" };
 		case "aida.control":

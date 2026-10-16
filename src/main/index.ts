@@ -14,6 +14,7 @@ import {
 	nativeImage,
 	session,
 	shell,
+	utilityProcess,
 	webContents,
 } from "electron";
 import { PostHog } from "posthog-node";
@@ -79,6 +80,7 @@ import {
 	guardForegroundReceipts,
 	isAdmittedSender,
 	registerDesktopIPC,
+	registerQwenVoiceIPC,
 } from "./desktop-ipc";
 import { DesktopNotifier } from "./desktop-notifier";
 import {
@@ -128,6 +130,13 @@ import { titlebarOptions } from "./titlebar-options";
 import { UpdateService, holdLaunchForLiveInstall } from "./update-service";
 import { ViewerEndpoint } from "./viewer-endpoint";
 import { ViewerRecordPublisher } from "./viewer-record";
+import { QwenGatewayHost, launcherPathFor } from "./voice/qwen-gateway";
+import {
+	DEFAULT_QWEN_RIG_DIR,
+	QwenSpeechProcess,
+	resolveQwenPorts,
+} from "./voice/qwen-rig";
+import { QwenVoice } from "./voice/qwen-voice";
 import { attachWindowChrome, resolveLaunchWindowChrome } from "./window-chrome";
 import { openVettedExternal, popupVerdict } from "./window-guards";
 import {
@@ -1429,6 +1438,66 @@ const telemetryWebPreferences = {
 // Define mainWindow at a higher scope to be accessible in event handlers
 let mainWindow: BrowserWindow | null = null;
 
+/*
+ * THE QWEN VOICE RIG (`./voice/qwen-voice.ts`): main owns both processes and
+ * the speak guard. Module scope so `will-quit` can stop it by its recorded PIDs.
+ * Built lazily from `app` paths, which exist from module load.
+ */
+const qwenPorts = resolveQwenPorts(process.env.LOP_QWEN_PORTS, app.isPackaged);
+const qwenRigDir = process.env.LOP_QWEN_RIG_DIR || DEFAULT_QWEN_RIG_DIR;
+const qwenStateDir = join(app.getPath("userData"), "qwen-voice");
+const qwenVoice: QwenVoice = new QwenVoice({
+	gateway: new QwenGatewayHost(
+		launcherPathFor(app.getAppPath(), process.resourcesPath, app.isPackaged),
+		qwenRigDir,
+		qwenPorts,
+		join(qwenStateDir, "gateway"),
+		(message) => qwenVoice.onGatewayMessage(message),
+		(modulePath, args, options) => {
+			const child = utilityProcess.fork(modulePath, args, {
+				...options,
+				serviceName: "Local Operator voice",
+			});
+			return {
+				get pid() {
+					return child.pid;
+				},
+				postMessage: (message) => child.postMessage(message),
+				onMessage: (listener) => {
+					child.on("message", listener);
+				},
+				onExit: (listener) => {
+					child.on("exit", listener);
+				},
+				kill: () => child.kill(),
+			};
+		},
+		(message) => logger.info(message, LogFileType.BACKEND),
+	),
+	speech: new QwenSpeechProcess(qwenRigDir, qwenPorts, qwenStateDir, {
+		log: (message) => logger.info(message, LogFileType.BACKEND),
+	}),
+	toRenderer: (channel, payload) => {
+		const window = mainWindow;
+		if (!window || window.isDestroyed()) return false;
+		window.webContents.send(channel, payload);
+		return true;
+	},
+	/*
+	 * The WebUI is where Ben talks in slice 2 (design Q9). Opened with `shell`
+	 * directly, not `openExternalVetted`: that door refuses loopback hosts on
+	 * purpose (it is the renderer's), and this URL is built by main from its own
+	 * port, never from renderer input. An agent-driven run opens nothing: it
+	 * must never take the operator's browser focus.
+	 */
+	openWebUi: (url) => {
+		if (windowLaunch.mode !== "normal" || process.env.LOP_QWEN_NO_WEBUI === "1")
+			return;
+		void shell.openExternal(url);
+	},
+	log: (message) => logger.info(message, LogFileType.BACKEND),
+});
+
 /**
  * The one-shot mount permits for supplement frames (turn-supplements memo §4.1,
  * lane U-b). Module scope because its two halves live in two places that must
@@ -2273,7 +2342,16 @@ app
 		// the renderer IPC entry would leave that path ungated.
 		const sendDesktop = guardForegroundReceipts(
 			() => mainWindow,
-			(input) => backendService.requestDesktop(input),
+			(input) =>
+				backendService.requestDesktop(input).then((response) => {
+					/*
+					 * The voice slot's reads and the `/voice/text` answers, seen by MAIN:
+					 * the only way a reply or gate text becomes speakable is that it came
+					 * back from the daemon through here (the speak guard).
+					 */
+					qwenVoice.noteDesktopAnswer(input, response);
+					return response;
+				}),
 		);
 		const desktopNotifier = new DesktopNotifier(
 			() => mainWindow,
@@ -2387,6 +2465,11 @@ app
 		 */
 		backendService.observeDesktopFeed(
 			(frame: DesktopFeedFrame) => {
+				/*
+				 * Main's OWN read of the voice slot, before the window's: the rig
+				 * starts on an enable even with no window open to see the frame.
+				 */
+				qwenVoice.observeFrame(frame);
 				if (frame.type === "notification") {
 					desktopNotifier.observe(frame.session_id, frame);
 					return;
@@ -2770,6 +2853,12 @@ app
 			 */
 			supplementMounts,
 		);
+		registerQwenVoiceIPC(() => mainWindow, rendererUrl, {
+			result: (input) => qwenVoice.result(input),
+			speak: (input) => qwenVoice.speak(input),
+			start: (reason) => qwenVoice.start(reason),
+			getStatus: () => qwenVoice.getStatus(),
+		});
 
 		/*
 		 * The renderer dev driver's channels, present ONLY in an armed launch.
@@ -4435,6 +4524,13 @@ app.on("will-quit", (event) => {
 	 */
 	viewerEndpoint?.close();
 	viewerRecord?.stop();
+	/*
+	 * The voice rig goes with the app: its Gateway and the s2s process group,
+	 * by the PIDs recorded at start, synchronously - `will-quit` cannot await,
+	 * and a model process left behind holds gigabytes. Idempotent, like the two
+	 * lines above, because this handler is re-entered.
+	 */
+	qwenVoice.stopNow();
 	/*
 	 * #755: a refusal recorded BEFORE this pass — during the session-cookie hold
 	 * or the window close — is completed here; the three sites below catch the

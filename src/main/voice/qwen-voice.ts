@@ -1,0 +1,342 @@
+/**
+ * QWEN VOICE IN MAIN (design: the backend's docs/design/qwen-voice.md, Q4, Q5,
+ * Q9): the one owner of the rig's two processes, the relay between the Gateway
+ * and the renderer, and the guard on what the rig may say.
+ *
+ * Electron-free on purpose: every Electron facility (the utility-process fork,
+ * opening the WebUI, the window) is injected from `index.ts`, so the rules here
+ * are tested as plain code (`scripts/qwen-voice-main.test.mjs`).
+ *
+ * THE RULES
+ *
+ * - START: on a feed `voice` frame naming a session (the backend publishes the
+ *   frame only on a CHANGE, so every non-null frame is an enable or a switch), or
+ *   on the renderer's `voice.qwen.start` (the "Start voice" action shown while the
+ *   slot is held and the rig is stopped, e.g. after an app relaunch). Never at
+ *   app launch on its own: that loads gigabytes of models nobody asked for.
+ * - STOP: 10 minutes after the slot goes empty, and at quit. Start and stop are
+ *   idempotent.
+ * - THE SLOT MOVING silences the old session: `cancel_all` to the Gateway, and
+ *   every reply/gate text relayed for it is forgotten, so it can no longer be
+ *   spoken.
+ * - THE SPEAK GUARD: `voice.qwen.speak {text, kind}` is honoured only for a text
+ *   main itself relayed as a 200 `/v1/desktop/voice/text` answer (`voice.text`
+ *   op) in the last 10 minutes, with the same kind (message -> reply, gate ->
+ *   gate). A renderer bug or a compromised renderer cannot make the rig say words
+ *   the agent never wrote. Q7 phrases never cross from the renderer at all: the
+ *   launcher owns them.
+ * - THE BEARER STAYS HERE. The Gateway gets an allowlisted environment
+ *   (`qwen-gateway.ts`) and talks to the daemon only through the renderer's own
+ *   desktop transport, which this file never sees a credential of.
+ */
+
+import type { GatewayDownMessage, GatewayUpMessage } from "./qwen-gateway";
+
+export type QwenRigState = "stopped" | "starting" | "ready" | "error";
+
+/** `voice.qwen.status`, the frozen main <-> renderer status shape. */
+export type QwenVoiceStatus = {
+	rig: QwenRigState;
+	webui_url: string | null;
+	/** Why the rig is in `error`, as one sentence; null otherwise. */
+	reason?: string | null;
+};
+
+export const QWEN_IDLE_STOP_MS = 10 * 60_000;
+export const QWEN_SPEAK_GUARD_MS = 10 * 60_000;
+const RELAYED_LIMIT = 64;
+/** A refusal code main forwards to the launcher: a word, never free text. */
+const OUTCOME_CODE = /^[a-z_]{1,64}$/;
+
+/** The IPC channel names, exactly the contract's verbs. */
+export const QWEN_CHANNEL = {
+	take: "voice.qwen.take",
+	result: "voice.qwen.result",
+	speak: "voice.qwen.speak",
+	start: "voice.qwen.start",
+	status: "voice.qwen.status",
+	statusGet: "voice.qwen.status.get",
+} as const;
+
+export interface QwenGatewayPort {
+	start(): Promise<string>;
+	stop(): void;
+	send(message: GatewayDownMessage): boolean;
+	readonly running: boolean;
+}
+
+export interface QwenSpeechPort {
+	start(): Promise<void>;
+	stop(): Promise<void>;
+	killNow(): void;
+	readonly running: boolean;
+}
+
+export type QwenVoiceDeps = {
+	gateway: QwenGatewayPort;
+	speech: QwenSpeechPort;
+	/** Push to the renderer; false when there is no window to receive it. */
+	toRenderer: (channel: string, payload: unknown) => boolean;
+	/** Open the WebUI. Main-built URL only; skipped in agent-driven runs. */
+	openWebUi: (url: string) => void;
+	log?: (message: string) => void;
+	now?: () => number;
+	setTimer?: (fn: () => void, ms: number) => unknown;
+	clearTimer?: (handle: unknown) => void;
+};
+
+type Relayed = { text: string; kind: "reply" | "gate"; at: number };
+
+/** The slot's session id from a `{active}` payload, or null. */
+function slotOf(payload: unknown): string | null {
+	const active = (
+		payload as { active?: { session_id?: unknown } | null } | null
+	)?.active;
+	return typeof active?.session_id === "string" ? active.session_id : null;
+}
+
+export class QwenVoice {
+	private status: QwenVoiceStatus = { rig: "stopped", webui_url: null };
+	private slot: string | null = null;
+	private relayed: Relayed[] = [];
+	private idleTimer: unknown = null;
+	private starting: Promise<QwenVoiceStatus> | null = null;
+	private readonly log: (message: string) => void;
+	private readonly now: () => number;
+	private readonly setTimer: (fn: () => void, ms: number) => unknown;
+	private readonly clearTimer: (handle: unknown) => void;
+
+	constructor(private readonly deps: QwenVoiceDeps) {
+		this.log = deps.log ?? (() => {});
+		this.now = deps.now ?? Date.now;
+		this.setTimer =
+			deps.setTimer ??
+			((fn, ms) => {
+				const handle = setTimeout(fn, ms);
+				handle.unref?.();
+				return handle;
+			});
+		this.clearTimer =
+			deps.clearTimer ??
+			((handle) => clearTimeout(handle as ReturnType<typeof setTimeout>));
+	}
+
+	getStatus(): QwenVoiceStatus {
+		return { ...this.status };
+	}
+
+	private setStatus(next: QwenVoiceStatus): void {
+		this.status = next;
+		this.deps.toRenderer(QWEN_CHANNEL.status, this.getStatus());
+	}
+
+	/** One frame off the machine feed (main's own subscription). */
+	observeFrame(frame: { type?: string; payload?: unknown }): void {
+		if (frame?.type !== "voice") return;
+		this.applySlot(slotOf(frame.payload), { start: true });
+	}
+
+	/**
+	 * Move main's copy of the slot. `start` is true only for a feed frame (an
+	 * enable or a switch happened); a slot LEARNED from a status read or a control
+	 * answer moves the copy and the idle timer but starts nothing, so an app
+	 * relaunched with voice still on does not load the models by itself.
+	 */
+	private applySlot(next: string | null, { start }: { start: boolean }): void {
+		const previous = this.slot;
+		this.slot = next;
+		if (previous !== next) {
+			// Whatever was relayed for the old holder may never be spoken now.
+			this.relayed = [];
+			this.deps.gateway.send({ type: "cancel_all" });
+			this.deps.gateway.send({
+				type: "slot",
+				active: next ? { session_id: next } : null,
+			});
+		}
+		if (next === null) {
+			this.armIdleStop();
+			return;
+		}
+		this.disarmIdleStop();
+		if (start) void this.start("enable");
+	}
+
+	/**
+	 * Start the rig (Gateway, then s2s: s2s warms up against the Gateway's relay
+	 * LLM). Idempotent; concurrent calls share one start.
+	 */
+	start(reason: "enable" | "renderer"): Promise<QwenVoiceStatus> {
+		if (this.status.rig === "ready" && this.deps.gateway.running)
+			return Promise.resolve(this.getStatus());
+		if (this.starting) return this.starting;
+		this.disarmIdleStop();
+		this.setStatus({ rig: "starting", webui_url: null });
+		this.starting = (async () => {
+			try {
+				const webuiUrl = await this.deps.gateway.start();
+				await this.deps.speech.start();
+				this.setStatus({ rig: "ready", webui_url: webuiUrl });
+				this.log(`qwen-voice: rig ready (${reason}); WebUI ${webuiUrl}`);
+				this.deps.gateway.send({
+					type: "slot",
+					active: this.slot ? { session_id: this.slot } : null,
+				});
+				this.deps.openWebUi(webuiUrl);
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				this.log(`qwen-voice: rig failed to start: ${message}`);
+				await this.stopProcesses();
+				this.setStatus({ rig: "error", webui_url: null, reason: message });
+			}
+			return this.getStatus();
+		})().finally(() => {
+			this.starting = null;
+		});
+		return this.starting;
+	}
+
+	/** Stop both processes. Idempotent. */
+	async stop(): Promise<void> {
+		this.disarmIdleStop();
+		await this.stopProcesses();
+		if (this.status.rig !== "stopped")
+			this.setStatus({ rig: "stopped", webui_url: null });
+	}
+
+	private async stopProcesses(): Promise<void> {
+		this.deps.gateway.stop();
+		await this.deps.speech.stop();
+	}
+
+	/** `will-quit`: nothing may be awaited, and no model process may outlive us. */
+	stopNow(): void {
+		this.disarmIdleStop();
+		this.deps.gateway.stop();
+		this.deps.speech.killNow();
+	}
+
+	private armIdleStop(): void {
+		this.disarmIdleStop();
+		if (this.status.rig === "stopped") return;
+		this.idleTimer = this.setTimer(() => {
+			this.idleTimer = null;
+			if (this.slot === null) {
+				this.log("qwen-voice: slot empty for 10 minutes; stopping the rig");
+				void this.stop();
+			}
+		}, QWEN_IDLE_STOP_MS);
+	}
+
+	private disarmIdleStop(): void {
+		if (this.idleTimer !== null) this.clearTimer(this.idleTimer);
+		this.idleTimer = null;
+	}
+
+	/** One message up from the Gateway launcher. */
+	onGatewayMessage(message: GatewayUpMessage): void {
+		if (message?.type === "take") {
+			const delivered = this.deps.toRenderer(QWEN_CHANNEL.take, {
+				taskId: message.taskId,
+				text: message.text,
+			});
+			// The binding lives in the renderer (V14); with no window, nobody can
+			// admit the take, and the launcher says so with its `failed` phrase.
+			if (!delivered)
+				this.deps.gateway.send({
+					type: "outcome",
+					taskId: message.taskId,
+					ok: false,
+					code: "no_window",
+				});
+			return;
+		}
+		if (message?.type === "status") {
+			this.log(`qwen-voice: gateway ${String(message.event)}`);
+		}
+	}
+
+	/** `voice.qwen.result {taskId, ok | code}` from the renderer. */
+	result(input: unknown): boolean {
+		const value = input as { taskId?: unknown; ok?: unknown; code?: unknown };
+		if (typeof value?.taskId !== "string" || value.taskId.length > 128)
+			return false;
+		if (value.ok === true)
+			return this.deps.gateway.send({
+				type: "outcome",
+				taskId: value.taskId,
+				ok: true,
+			});
+		const code =
+			typeof value.code === "string" && OUTCOME_CODE.test(value.code)
+				? value.code
+				: "failed";
+		return this.deps.gateway.send({
+			type: "outcome",
+			taskId: value.taskId,
+			ok: false,
+			code,
+		});
+	}
+
+	/**
+	 * Every desktop-request answer passes here (wired in `index.ts`); a 200
+	 * `voice.text` answer is the only thing that makes a text speakable.
+	 */
+	noteDesktopAnswer(
+		input: unknown,
+		response: { status: number; body: unknown },
+	): void {
+		const request = input as {
+			op?: unknown;
+			action?: unknown;
+			sessionId?: unknown;
+			source?: { kind?: unknown };
+		};
+		if (request?.op === "voice.status" || request?.op === "voice.control") {
+			if (response.status < 200 || response.status >= 300) return;
+			const result = (response.body as { result?: unknown } | null)?.result;
+			// An enable's answer also arrives as a feed frame, which is what starts
+			// the rig; this read only keeps the copy current between frames.
+			this.applySlot(slotOf(result), { start: false });
+			return;
+		}
+		if (request?.op !== "voice.text") return;
+		if (response.status < 200 || response.status >= 300) return;
+		if (request.sessionId !== this.slot) return;
+		const text = (response.body as { result?: { text?: unknown } } | null)
+			?.result?.text;
+		if (typeof text !== "string" || !text.trim()) return;
+		const kind = request.source?.kind === "gate" ? "gate" : "reply";
+		this.relayed.push({ text, kind, at: this.now() });
+		if (this.relayed.length > RELAYED_LIMIT)
+			this.relayed.splice(0, this.relayed.length - RELAYED_LIMIT);
+	}
+
+	/**
+	 * `voice.qwen.speak {text, kind}` from the renderer. Honoured only for a text
+	 * main relayed itself, within the window, with the same kind; consumed once.
+	 */
+	speak(input: unknown): { spoken: boolean; reason?: string } {
+		const value = input as { text?: unknown; kind?: unknown };
+		if (value?.kind !== "reply" && value?.kind !== "gate")
+			return { spoken: false, reason: "invalid_kind" };
+		if (typeof value.text !== "string")
+			return { spoken: false, reason: "invalid_text" };
+		const cutoff = this.now() - QWEN_SPEAK_GUARD_MS;
+		this.relayed = this.relayed.filter((entry) => entry.at >= cutoff);
+		const index = this.relayed.findIndex(
+			(entry) => entry.text === value.text && entry.kind === value.kind,
+		);
+		if (index < 0) return { spoken: false, reason: "not_relayed" };
+		if (this.status.rig !== "ready")
+			return { spoken: false, reason: "rig_not_ready" };
+		const [entry] = this.relayed.splice(index, 1);
+		const sent = this.deps.gateway.send({
+			type: "speak",
+			text: entry.text,
+			kind: entry.kind,
+		});
+		return sent ? { spoken: true } : { spoken: false, reason: "rig_not_ready" };
+	}
+}

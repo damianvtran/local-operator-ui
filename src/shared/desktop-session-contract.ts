@@ -2059,6 +2059,21 @@ export type DesktopFeedFrame =
 			 */
 			payload: { changed_keys: string[]; language: string };
 	  }
+	/**
+	 * The machine-wide voice slot moved (`docs/design/session-voice.md`, V3): a LEVEL
+	 * like `catalogue`, published on every slot change, carrying the whole new value
+	 * rather than a revision because the value is tiny and every window needs it to
+	 * draw the toggle and the sidebar marker. No `session_id`: the slot is not one
+	 * conversation's fact, it is which conversation holds it.
+	 */
+	| {
+			epoch: string;
+			seq: number;
+			type: "voice";
+			payload: {
+				active: { session_id: string; enabled_at: number } | null;
+			};
+	  }
 	| { epoch: string; seq: number; type: "heartbeat"; payload: { ts: number } }
 	| {
 			epoch: string;

@@ -722,6 +722,14 @@ export type DesktopFeature =
 	 * exactly as it did before.
 	 */
 	| "aida"
+	/*
+	 * PER-SESSION VOICE (`features.voice`; `docs/design/session-voice.md`): the slot
+	 * read/control, the utterance upload, the speech download and the feed's
+	 * `voice` frame. ITS OWN KEY: absent means no toggle, no sidebar marker, no
+	 * voice push-to-talk handler and no call to any `/v1/desktop/voice` route -
+	 * the app is exactly the pre-voice one.
+	 */
+	| "voice"
 	/**
 	 * THE VOICING SURFACE (`features.tts`): `GET /v1/tts/paths`, the synthesis
 	 * availability report a speak control asks before it offers itself.

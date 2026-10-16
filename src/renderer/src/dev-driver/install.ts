@@ -34,6 +34,7 @@ import { finderThumbnailStats } from "@features/chat/components/canvas/finder-th
 import { canvasDocumentForPath } from "@features/chat/utils/canvas-document";
 import { getFileTypeFromPath } from "@features/chat/utils/file-types";
 import { READ_ENCODING, viewerFor } from "@features/chat/utils/viewer-routing";
+import { sendVoiceTake } from "@features/voice/qwen-voice-controller";
 import { queryClient } from "@shared/api/query-client";
 import { apiConfig } from "@shared/config";
 import {
@@ -964,6 +965,33 @@ export function installDevDriver(): string[] {
 			});
 			await nextFrame();
 			return { count };
+		},
+
+		/**
+		 * One spoken take, as TEXT - what the Qwen rig hands over after Parakeet,
+		 * for a run with no microphone. It goes through `sendVoiceTake`, the SAME
+		 * path a rig take takes (echo guard, `/voice/utterance`, the V14 binding),
+		 * so the turn it starts is answered by the real speak trigger.
+		 *
+		 * IT NEVER ANSWERS A GATE, and cannot: the only request it makes is
+		 * `voice.utterance`, whose route admits words as a prompt or a steer and
+		 * refuses them at a pending card (409 `approval_pending`, V13). The card
+		 * stays on screen for the operator.
+		 *
+		 * Answers `{ok: false, code: "voice_not_enabled"}` when no session holds
+		 * the slot rather than picking one: a scene turns voice on first, through
+		 * the toggle, as a person would.
+		 */
+		voiceTake: async (payload) => {
+			const text = requireString(
+				typeof payload === "string"
+					? payload
+					: (payload as { text?: unknown } | null)?.text,
+				"voiceTake text",
+			);
+			const outcome = await sendVoiceTake(text);
+			await nextFrame();
+			return outcome;
 		},
 	});
 }

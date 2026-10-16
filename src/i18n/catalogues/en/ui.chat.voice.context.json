@@ -1,0 +1,102 @@
+{
+	"ui.chat.voice.toggle_on": {
+		"role": "icon button label and tooltip in the conversation header",
+		"tone": "imperative, sentence case",
+		"note": "Turns hands-free voice on for this one conversation."
+	},
+	"ui.chat.voice.toggle_off": {
+		"role": "icon button label and tooltip in the conversation header",
+		"tone": "imperative, sentence case",
+		"note": "Shown while this conversation holds voice."
+	},
+	"ui.chat.voice.toggle_switch": {
+		"role": "icon button label and tooltip in the conversation header",
+		"tone": "imperative, sentence case",
+		"note": "{title} is the title of the conversation that holds voice now and will lose it."
+	},
+	"ui.chat.voice.marker": {
+		"role": "screen-reader text after a sidebar row's title",
+		"tone": "short noun phrase",
+		"note": "Announced for the one row whose conversation holds voice."
+	},
+	"ui.chat.voice.phase_starting": {
+		"role": "status word beside the voice button",
+		"tone": "short status, sentence case",
+		"note": "The local speech models are loading (about 25 s)."
+	},
+	"ui.chat.voice.phase_listening": {
+		"role": "status word beside the voice button",
+		"tone": "short status, sentence case",
+		"note": "Voice is on and the microphone is live."
+	},
+	"ui.chat.voice.phase_working": {
+		"role": "status word beside the voice button",
+		"tone": "short status, sentence case",
+		"note": "Spoken words were sent and the conversation is answering."
+	},
+	"ui.chat.voice.phase_error": {
+		"role": "status word beside the voice button",
+		"tone": "short status, sentence case",
+		"note": "The voice rig or the last step failed; the tooltip carries the reason."
+	},
+	"ui.chat.voice.start_rig": {
+		"role": "small button beside the voice button",
+		"tone": "imperative, sentence case",
+		"note": "Shown after an app restart while voice is still on: starts the speech models."
+	},
+	"ui.chat.voice.switched_from": {
+		"role": "info toast",
+		"tone": "one sentence",
+		"note": "{title} is the conversation that lost voice to this one."
+	},
+	"ui.chat.voice.untitled": {
+		"role": "fills {title} when a conversation has no title",
+		"tone": "lowercase noun phrase, used mid-sentence",
+		"note": "Keep it lowercase: it is inserted inside another sentence."
+	},
+	"ui.chat.voice.enable_failed": {
+		"role": "error toast",
+		"tone": "one sentence, then the reason",
+		"note": "{reason} is a server sentence, shown verbatim."
+	},
+	"ui.chat.voice.disable_failed": {
+		"role": "error toast",
+		"tone": "one sentence, then the reason",
+		"note": "{reason} is a server sentence, shown verbatim."
+	},
+	"ui.chat.voice.utterance_failed": {
+		"role": "error toast",
+		"tone": "one sentence, then the reason",
+		"note": "Spoken words did not reach the conversation. {reason} is a server or app sentence."
+	},
+	"ui.chat.voice.not_enabled": {
+		"role": "error toast",
+		"tone": "one sentence",
+		"note": "Voice moved to another conversation or was turned off while words were in flight."
+	},
+	"ui.chat.voice.empty_transcript": {
+		"role": "info toast",
+		"tone": "short, friendly",
+		"note": "The speech recognizer heard no words."
+	},
+	"ui.chat.voice.approval_waiting": {
+		"role": "warning toast",
+		"tone": "two short sentences",
+		"note": "An approval card appeared; voice announces it but only the on-screen card can answer it."
+	},
+	"ui.chat.voice.card_pending": {
+		"role": "warning toast and status line",
+		"tone": "one sentence",
+		"note": "Words spoken while a card is pending are refused; the card must be answered on screen."
+	},
+	"ui.chat.voice.stream_lost": {
+		"role": "persistent warning toast",
+		"tone": "two sentences",
+		"note": "The app stopped receiving this conversation's updates, so replies cannot be spoken."
+	},
+	"ui.chat.voice.stream_reconnect": {
+		"role": "toast action button",
+		"tone": "single verb",
+		"note": "Retries the conversation's update stream."
+	}
+}
