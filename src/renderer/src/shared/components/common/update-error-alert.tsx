@@ -1,9 +1,3 @@
-import { Button } from "@shared/components/ui";
-import { updateErrorCopy } from "@shared/utils/update-error-copy";
-import type { FC } from "react";
-import { FloatingAlert } from "./floating-alert";
-import { PanelDetails } from "./panel-details";
-
 /**
  * The bottom-right alert an update-path failure paints, with the sentence a
  * person reads, the machine's own words under it, and the retry the sentence
@@ -39,6 +33,15 @@ import { PanelDetails } from "./panel-details";
  * download or install failure is not answered by another check, and those
  * surfaces keep their own control.
  */
+
+import { Button } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
+import { updateErrorCopy } from "@shared/utils/update-error-copy";
+import type { FC } from "react";
+import { t } from "../../../../../i18n/messages";
+import { FloatingAlert } from "./floating-alert";
+import { PanelDetails } from "./panel-details";
+
 export interface UpdateErrorAlertProps {
 	open: boolean;
 	/** The message the app's update path produced, raw. */
@@ -60,6 +63,7 @@ export const UpdateErrorAlert: FC<UpdateErrorAlertProps> = ({
 	onRetry,
 	retrying = false,
 }) => {
+	useI18nLocale();
 	const { sentence, detail, action } = updateErrorCopy(message);
 	return (
 		<FloatingAlert
@@ -87,7 +91,9 @@ export const UpdateErrorAlert: FC<UpdateErrorAlertProps> = ({
 					>
 						{/* The button is the owner "then try again" was missing, so its
 						    label is the copy's own verb rather than a second sentence. */}
-						{retrying ? "Checking..." : "Try again"}
+						{retrying
+							? t("ui.common.updates.update_error_alert.checking")
+							: t("ui.common.actions.retry_again")}
 					</Button>
 				) : null
 			}

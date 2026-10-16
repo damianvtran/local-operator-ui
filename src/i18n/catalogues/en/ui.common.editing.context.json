@@ -1,0 +1,20 @@
+{
+	"ui.common.editing.conflict": {
+		"role": "conflict explanation",
+		"tone": "Neutral concurrency fact, not blame.",
+		"note": "This field changed in the persisted record while the operator had a dirty draft; asks for a choice without overwriting either value.",
+		"length": "One short feedback line."
+	},
+	"ui.common.editing.keep_mine": {
+		"role": "button",
+		"tone": "First-person ownership choice.",
+		"note": "Resolve conflict using the operator current draft; retry the write against the refreshed record.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.editing.use_theirs": {
+		"role": "button",
+		"tone": "Contrast with Keep mine; other writer ownership choice.",
+		"note": "Resolve conflict by accepting the fresh persisted value and discarding the local field draft.",
+		"length": "One control row; avoid adding a sentence."
+	}
+}

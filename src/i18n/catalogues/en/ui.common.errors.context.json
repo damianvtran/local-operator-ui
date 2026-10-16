@@ -1,0 +1,22 @@
+{
+	"ui.common.errors.error_boundary.error_details": {
+		"role": "heading",
+		"tone": "Technical noun phrase.",
+		"note": "Development-only error message section; precedes verbatim exception output."
+	},
+	"ui.common.errors.error_boundary.something_went_wrong": {
+		"role": "error heading",
+		"tone": "Calm, non-blaming failure statement.",
+		"note": "Fallback shown after an uncaught subtree exception; deliberately avoids guessing the cause."
+	},
+	"ui.common.errors.error_boundary.stack_trace": {
+		"role": "heading",
+		"tone": "Developer diagnostic term.",
+		"note": "Development-only stack output; the trace below is machine text and stays untranslated."
+	},
+	"ui.common.errors.error_boundary.the_application_encountered_an_error_try_again_or_contact_support": {
+		"role": "error explanation",
+		"tone": "Reassuring, actionable two-sentence copy.",
+		"note": "Fallback after a component crash; retry is offered first, support only if the failure persists."
+	}
+}

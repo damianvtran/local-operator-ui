@@ -57,6 +57,7 @@ import { isTerminalAuthState } from "@shared/api/local-operator/auth-operation";
 import type { PollAuthOperationOptions } from "@shared/api/local-operator/auth-operation";
 import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
 import type { AuthOperation } from "@shared/api/local-operator/desktop-api";
+import { t } from "@shared/i18n";
 import { deviceCodeOf } from "./provider-catalog";
 
 /** Where the flow is, as the panel renders it. */
@@ -371,14 +372,20 @@ export function createSignInFlow(deps: SignInDeps): SignInFlow {
 						if (token !== generation) return;
 						emit({
 							phase: "settled",
-							error: messageOf(retryError, "Sign-in could not start."),
+							error: messageOf(
+								retryError,
+								t("ui.providers.sign_in_flow.sign_in_could_not_start"),
+							),
 						});
 						return;
 					}
 				}
 				emit({
 					phase: "settled",
-					error: messageOf(error, "Sign-in could not start."),
+					error: messageOf(
+						error,
+						t("ui.providers.sign_in_flow.sign_in_could_not_start"),
+					),
 				});
 			}
 		},

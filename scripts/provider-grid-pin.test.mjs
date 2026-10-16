@@ -44,7 +44,8 @@ const bundle = await build({
 			export { OnboardingStep } from "./src/renderer/src/shared/store/onboarding-store";
 			export { recommendedProvider, showsRecommendedCue, visibleProviders };
 			export { moreProvidersSummary } from "./src/renderer/src/features/providers/provider-catalog";
-			export { PROVIDER_DIALOG_GROUP_ORDER } from "./src/renderer/src/features/providers/provider-catalog";
+			export { PROVIDER_DIALOG_GROUP_ORDER, methodName, GROUP_HEADINGS } from "./src/renderer/src/features/providers/provider-catalog";
+			export { t, setLocale, registerCatalogue, clearRegisteredCatalogues } from "./src/i18n";
 
 			export const renderProviderGrid = (client) =>
 				renderToStaticMarkup(
@@ -150,7 +151,14 @@ const {
 	STEP_PANEL_WIDTH,
 	ONBOARDING_PANEL_WIDTHS,
 	OnboardingStep,
+	t,
+	setLocale,
+	registerCatalogue,
+	clearRegisteredCatalogues,
+	methodName,
+	GROUP_HEADINGS,
 } = await import(bundlePath.href);
+setLocale("en");
 await unlink(bundlePath);
 
 /**
@@ -501,7 +509,7 @@ test("an open Connected row can be closed where it stands: the item toggles, and
 	);
 	assert.match(
 		grid,
-		/open\s*\n?\s*\?\s*"Close"/,
+		/open\s*\n?\s*\?\s*t\("ui\.providers\.provider_grid\.close"\)/,
 		'and say "Close" while the panel is open, as every add row does',
 	);
 	assert.match(
@@ -606,8 +614,8 @@ test("an open panel is visible on the control that opened it, and focus has some
 	 * asked for a frame of that state; the swept story `panel-refused-verdict` is it.
 	 */
 	const trigger = grid.slice(
-		grid.indexOf("aria-label={`Manage ${brandOf(provider)}`}") - 900,
-		grid.indexOf("aria-label={`Manage ${brandOf(provider)}`}"),
+		grid.indexOf('"ui.providers.provider_grid.manage"') - 900,
+		grid.indexOf('"ui.providers.provider_grid.manage"'),
 	);
 	assert.match(
 		trigger,
@@ -688,12 +696,12 @@ test("the settled view's verdict reaches the API-key route too, and its sentence
 	);
 	assert.match(
 		detail,
-		/verdict\.tone === "attention"[\s\S]{0,220}?no longer accepting the sign-in stored on this machine/,
+		/verdict\.tone === "attention"[\s\S]{0,220}?ui\.providers\.provider_detail\.is_no_longer_accepting_the_sign_in/,
 		"the refusal register says the provider stopped accepting it",
 	);
 	assert.match(
 		detail,
-		/This app could not confirm the sign-in stored on this machine for \$\{brand\}/,
+		/ui\.providers\.provider_detail\.this_app_could_not_confirm_the_sign/,
 		"and the neutral register says the app could not confirm it",
 	);
 });
@@ -772,4 +780,69 @@ test("the 'More providers' summary names the hidden rows and counts the rest exa
 		!html.includes(`>${summary}<`),
 		"the page's order must not be the one the dialog promises",
 	);
+});
+
+// The shape pins above now follow typed keys; this pins the unchanged English promise too.
+test("provider extraction preserves the pinned control and verdict copy", () => {
+	const en = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.providers.json", "utf8"),
+	);
+	assert.equal(en["ui.providers.provider_grid.close"], "Close");
+	assert.equal(en["ui.providers.provider_grid.manage"], "Manage {brand}");
+	assert.equal(
+		en["ui.providers.provider_detail.is_no_longer_accepting_the_sign_in"],
+		"{brand} is no longer accepting the sign-in stored on this machine.",
+	);
+	assert.equal(
+		en["ui.providers.provider_detail.this_app_could_not_confirm_the_sign"],
+		"This app could not confirm the sign-in stored on this machine for {brand}.",
+	);
+});
+
+test("connected provider menu keeps the localized trigger name and a decorative icon", () => {
+	const html = render(
+		census().map((provider) => ({
+			...provider,
+			has_credential: true,
+			configured: true,
+		})),
+	);
+	assert.match(html, /aria-label="Manage Radient"/);
+	assert.match(html, /class="[^"]*lucide-ellipsis[^"]*" aria-hidden="true"/);
+	assert.doesNotMatch(html, /aria-hidden="Manage /);
+});
+
+// Runtime proof, not source-only: static provider rows must not freeze the startup locale.
+test("provider labels refresh and missing namespaces keep English counts", () => {
+	try {
+		setLocale("en");
+		assert.equal(
+			methodName({ method_id: "anthropic", kind: "browser" }),
+			"Claude subscription",
+		);
+		registerCatalogue("fr", {
+			"ui.providers.provider_catalog.claude_subscription":
+				"Fixture subscription",
+			"ui.providers.provider_catalog.use_a_subscription": "Fixture group",
+		});
+		setLocale("fr");
+		assert.equal(
+			methodName({ method_id: "anthropic", kind: "browser" }),
+			"Fixture subscription",
+		);
+		assert.equal(GROUP_HEADINGS.subscription, "Fixture group");
+		for (const minutes of [0, 1, 21]) {
+			assert.equal(
+				t("ui.providers.provider_detail.code_expiry", { minutes }),
+				`Code expires in ${minutes} min`,
+			);
+			assert.equal(
+				t("ui.providers.provider_detail.link_expiry", { minutes }),
+				`Link expires in ${minutes} min`,
+			);
+		}
+	} finally {
+		clearRegisteredCatalogues();
+		setLocale("en");
+	}
 });

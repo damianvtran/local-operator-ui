@@ -1,0 +1,535 @@
+{
+	"ui.code_review.activity.close": {
+		"role": "action-result clause",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "Past-tense action performed by this session: close. Rendered within you {acts}; machine action discriminator remains unchanged.",
+		"length": "One compact row tail; omit the clause rather than restating zero."
+	},
+	"ui.code_review.activity.comment": {
+		"role": "action-result clause",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "Past-tense action performed by this session: comment. Rendered within you {acts}; machine action discriminator remains unchanged.",
+		"length": "One compact row tail; omit the clause rather than restating zero."
+	},
+	"ui.code_review.activity.edit": {
+		"role": "action-result clause",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "Past-tense action performed by this session: edit. Rendered within you {acts}; machine action discriminator remains unchanged.",
+		"length": "One compact row tail; omit the clause rather than restating zero."
+	},
+	"ui.code_review.activity.merge": {
+		"role": "action-result clause",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "Past-tense action performed by this session: merge. Rendered within you {acts}; machine action discriminator remains unchanged.",
+		"length": "One compact row tail; omit the clause rather than restating zero."
+	},
+	"ui.code_review.activity.push": {
+		"role": "action-result clause",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "Past-tense action performed by this session: push. Rendered within you {acts}; machine action discriminator remains unchanged.",
+		"length": "One compact row tail; omit the clause rather than restating zero."
+	},
+	"ui.code_review.activity.ready": {
+		"role": "action-result clause",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "Past-tense action performed by this session: ready. Rendered within you {acts}; machine action discriminator remains unchanged.",
+		"length": "One compact row tail; omit the clause rather than restating zero."
+	},
+	"ui.code_review.activity.review": {
+		"role": "action-result clause",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "Past-tense action performed by this session: review. Rendered within you {acts}; machine action discriminator remains unchanged.",
+		"length": "One compact row tail; omit the clause rather than restating zero."
+	},
+	"ui.code_review.activity.you": {
+		"role": "provenance status",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "Session actions performed on this request; relation/provenance remains a separate tag.",
+		"length": "One compact row tail; omit the clause rather than restating zero.",
+		"placeholders": {
+			"acts": "Localized known action words or unknown wire actions, joined by comma-space."
+		}
+	},
+	"ui.code_review.age.days": {
+		"role": "relative-time status",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "Whole days since the last update; does not introduce a date-format change. The abbreviated English unit is invariant; full target-locale units may require additional CLDR categories.",
+		"length": "One compact row tail; omit the clause rather than restating zero.",
+		"placeholders": {
+			"amount": "Whole days cardinal age.",
+			"amountText": "Existing whole-number decimal display, without grouping."
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+	},
+	"ui.code_review.age.hours": {
+		"role": "relative-time status",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "Whole hours since last update, under one day; abbreviation is existing English copy. The abbreviated English unit is invariant; full target-locale units may require additional CLDR categories.",
+		"length": "One compact row tail; omit the clause rather than restating zero.",
+		"placeholders": {
+			"amount": "Whole hours cardinal age.",
+			"amountText": "Existing whole-number decimal display, without grouping."
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+	},
+	"ui.code_review.age.just_now": {
+		"role": "relative-time status",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "Updated less than a minute ago, including a future timestamp from clock skew; does not mean a write just happened.",
+		"length": "One compact row tail; omit the clause rather than restating zero."
+	},
+	"ui.code_review.age.minutes": {
+		"role": "relative-time status",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "Whole minutes since the last forge state update; retain abbreviated minute register. The abbreviated English unit is invariant; full target-locale units may require additional CLDR categories.",
+		"length": "One compact row tail; omit the clause rather than restating zero.",
+		"placeholders": {
+			"amount": "Whole minutes cardinal age.",
+			"amountText": "Existing whole-number decimal display, without grouping."
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+	},
+	"ui.code_review.attention.checks": {
+		"role": "attention status",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "Forge checks have failed; do not label them agent-review findings.",
+		"length": "One compact row tail; omit the clause rather than restating zero."
+	},
+	"ui.code_review.attention.findings": {
+		"role": "attention status",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "Agent-review findings remain unresolved; independent of CI status.",
+		"length": "One compact row tail; omit the clause rather than restating zero."
+	},
+	"ui.code_review.chip.count": {
+		"role": "status",
+		"tone": "Count plus lowercase scope noun.",
+		"note": "Composer code-review chip count: code requests opened or mentioned by this conversation; neither is an agent-review finding count.",
+		"length": "One row; avoid adding an explanatory sentence.",
+		"placeholders": {
+			"count": "Cardinal count of code requests; plural selection when ICU plural is present.",
+			"countText": "Existing decimal request count, without new grouping punctuation."
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+	},
+	"ui.code_review.chip.mentioned": {
+		"role": "status",
+		"tone": "Count plus lowercase scope noun.",
+		"note": "Composer code-review chip mentioned: code requests opened or mentioned by this conversation; neither is an agent-review finding count. English status wording is count-invariant; cardinal branches allow native grammatical agreement without changing the English clause.",
+		"length": "One row; avoid adding an explanatory sentence.",
+		"placeholders": {
+			"count": "Numeric cardinal count for plural selection.",
+			"countText": "Existing decimal count spelling, with no added English grouping punctuation."
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+	},
+	"ui.code_review.chip.opened": {
+		"role": "status",
+		"tone": "Count plus lowercase scope noun.",
+		"note": "Composer code-review chip opened: code requests opened or mentioned by this conversation; neither is an agent-review finding count. English status wording is count-invariant; cardinal branches allow native grammatical agreement without changing the English clause.",
+		"length": "One row; avoid adding an explanatory sentence.",
+		"placeholders": {
+			"count": "Numeric cardinal count for plural selection.",
+			"countText": "Existing decimal count spelling, with no added English grouping punctuation."
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+	},
+	"ui.code_review.ci.failing": {
+		"role": "status",
+		"tone": "Compact machine-work status without claiming agent approval.",
+		"note": "Forge CI failing: missing counters are not zero; only report counts the server supplied. English status wording is count-invariant; cardinal branches allow native grammatical agreement without changing the English clause.",
+		"length": "One row; avoid adding an explanatory sentence.",
+		"placeholders": {
+			"count": "Numeric cardinal count for plural selection.",
+			"countText": "Existing decimal count spelling, with no added English grouping punctuation."
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+	},
+	"ui.code_review.ci.passed": {
+		"role": "status",
+		"tone": "Compact machine-work status without claiming agent approval.",
+		"note": "Forge CI passed: missing counters are not zero; only report counts the server supplied.",
+		"length": "One row; avoid adding an explanatory sentence.",
+		"placeholders": {
+			"passed": "Number of passing forge checks already rendered as decimal text.",
+			"total": "Total matching items or total installer steps, as named by this message."
+		}
+	},
+	"ui.code_review.code_review_model.ci_failing": {
+		"role": "status",
+		"tone": "Compact machine-work status without claiming agent approval.",
+		"note": "Forge CI ci failing: missing counters are not zero; only report counts the server supplied.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.code_review_model.ci_passed": {
+		"role": "status",
+		"tone": "Compact machine-work status without claiming agent approval.",
+		"note": "Forge CI ci passed: missing counters are not zero; only report counts the server supplied.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.code_review_model.ci_pending": {
+		"role": "status",
+		"tone": "Compact machine-work status without claiming agent approval.",
+		"note": "Forge CI ci pending: missing counters are not zero; only report counts the server supplied.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.code_review_model.ci_running": {
+		"role": "status",
+		"tone": "Compact machine-work status without claiming agent approval.",
+		"note": "Forge CI ci running: missing counters are not zero; only report counts the server supplied.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.code_review_model.closed": {
+		"role": "status badge",
+		"tone": "Single lifecycle word.",
+		"note": "Forge request lifecycle closed; not the agent-review or CI verdict.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.code_review_model.code": {
+		"role": "label",
+		"tone": "Short scope label; retain acronyms where used.",
+		"note": "Code-review code label: names the review surface, lane or link-only state, not an editable request title.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.code_review_model.code_review_is_showing": {
+		"role": "label",
+		"tone": "Short scope label; retain acronyms where used.",
+		"note": "Code-review code review is showing label: names the review surface, lane or link-only state, not an editable request title.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.code_review_model.cooling_this_host_is_rate_limited_nothing_was_fetched_yet": {
+		"role": "error/status",
+		"tone": "Calm factual caveat, never claim current state from stale data.",
+		"note": "Code-review cooling this host is rate limited nothing was fetched yet: preserve the distinction between a failed refresh, stale cached state and a host rate limit.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.code_review_model.couldn_t_fetch_this_pass_will_retry": {
+		"role": "label",
+		"tone": "Short scope label; retain acronyms where used.",
+		"note": "Code-review couldn t fetch this pass will retry label: names the review surface, lane or link-only state, not an editable request title.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.code_review_model.design": {
+		"role": "label",
+		"tone": "Short scope label; retain acronyms where used.",
+		"note": "Code-review design label: names the review surface, lane or link-only state, not an editable request title.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.code_review_model.draft": {
+		"role": "status badge",
+		"tone": "Single lifecycle word.",
+		"note": "Forge request lifecycle draft; not the agent-review or CI verdict.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.code_review_model.link_only": {
+		"role": "label",
+		"tone": "Short scope label; retain acronyms where used.",
+		"note": "Code-review link only label: names the review surface, lane or link-only state, not an editable request title.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.code_review_model.merged": {
+		"role": "status badge",
+		"tone": "Single lifecycle word.",
+		"note": "Forge request lifecycle merged; not the agent-review or CI verdict.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.code_review_model.no_agent_review_yet": {
+		"role": "label",
+		"tone": "Short scope label; retain acronyms where used.",
+		"note": "Code-review no agent review yet label: names the review surface, lane or link-only state, not an editable request title.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.code_review_model.no_checks_yet": {
+		"role": "status",
+		"tone": "Compact machine-work status without claiming agent approval.",
+		"note": "Forge CI no checks yet: missing counters are not zero; only report counts the server supplied.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.code_review_model.open": {
+		"role": "status badge",
+		"tone": "Single lifecycle word.",
+		"note": "Forge request lifecycle open; not the agent-review or CI verdict.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.code_review_model.open_code_review": {
+		"role": "label",
+		"tone": "Short scope label; retain acronyms where used.",
+		"note": "Code-review open code review label: names the review surface, lane or link-only state, not an editable request title.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.code_review_model.stale_last_known_state_not_current": {
+		"role": "error/status",
+		"tone": "Calm factual caveat, never claim current state from stale data.",
+		"note": "Code-review stale last known state not current: preserve the distinction between a failed refresh, stale cached state and a host rate limit.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.code_review_model.unknown": {
+		"role": "status badge",
+		"tone": "Single lifecycle word.",
+		"note": "Forge request lifecycle unknown; not the agent-review or CI verdict.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.code_review_pane.checked_just_now": {
+		"role": "label",
+		"tone": "Short scope label; retain acronyms where used.",
+		"note": "Code-review checked just now label: names the review surface, lane or link-only state, not an editable request title.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.code_review_pane.close_code_review": {
+		"role": "label",
+		"tone": "Short scope label; retain acronyms where used.",
+		"note": "Code-review close code review label: names the review surface, lane or link-only state, not an editable request title.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.code_review_pane.code_review": {
+		"role": "label",
+		"tone": "Short scope label; retain acronyms where used.",
+		"note": "Code-review code review label: names the review surface, lane or link-only state, not an editable request title.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.code_review_pane.code_reviews_could_not_be_read": {
+		"role": "error/status",
+		"tone": "Calm factual caveat, never claim current state from stale data.",
+		"note": "Code-review code reviews could not be read: preserve the distinction between a failed refresh, stale cached state and a host rate limit.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.code_review_pane.loading_code_reviews": {
+		"role": "loading status",
+		"tone": "In-progress fact with ellipsis where present.",
+		"note": "Code-review loading code reviews: distinguishes session scanning from fetching current forge state.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.code_review_pane.mentioned": {
+		"role": "label",
+		"tone": "Short scope label; retain acronyms where used.",
+		"note": "Code-review mentioned label: names the review surface, lane or link-only state, not an editable request title.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.code_review_pane.no_code_reviews_yet": {
+		"role": "empty-state",
+		"tone": "Plain absence, not an error.",
+		"note": "No tracked pull/merge requests for this conversation; explains that opened and mentioned requests appear here.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.code_review_pane.nothing_was_lost_the_session_s_record_is_unchanged": {
+		"role": "error/status",
+		"tone": "Calm factual caveat, never claim current state from stale data.",
+		"note": "Code-review nothing was lost the session s record is unchanged: preserve the distinction between a failed refresh, stale cached state and a host rate limit.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.code_review_pane.opened": {
+		"role": "label",
+		"tone": "Short scope label; retain acronyms where used.",
+		"note": "Code-review opened label: names the review surface, lane or link-only state, not an editable request title.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.code_review_pane.pull_requests_and_merge_requests_this_session_opens_or_mentions_w": {
+		"role": "empty-state",
+		"tone": "Plain absence, not an error.",
+		"note": "No tracked pull/merge requests for this conversation; explains that opened and mentioned requests appear here.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.code_review_pane.refresh_code_reviews": {
+		"role": "button accessible name",
+		"tone": "Action while idle; ongoing fact while refreshing; failure names the failed read.",
+		"note": "Code-review refresh refresh code reviews: refreshes tracked forge state, not the conversation record.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.code_review_pane.refreshing_code_reviews": {
+		"role": "button accessible name",
+		"tone": "Action while idle; ongoing fact while refreshing; failure names the failed read.",
+		"note": "Code-review refresh refreshing code reviews: refreshes tracked forge state, not the conversation record.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.code_review_pane.scanning_this_session": {
+		"role": "loading status",
+		"tone": "In-progress fact with ellipsis where present.",
+		"note": "Code-review scanning this session: distinguishes session scanning from fetching current forge state.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.code_review_row.fetching_current_state": {
+		"role": "loading status",
+		"tone": "In-progress fact with ellipsis where present.",
+		"note": "Code-review fetching current state: distinguishes session scanning from fetching current forge state.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.code_review_row.possibly_opened_by_this_session_the_evidence_did_not_prove_it_was": {
+		"role": "tooltip",
+		"tone": "Explicit uncertainty, not an accusation.",
+		"note": "Provenance is uncertain: the session may have opened this request, but its evidence did not prove that.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.comments.count": {
+		"role": "status count",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "Number of forge discussion comments, not agent-review findings. Null/zero counts are omitted before formatting.",
+		"length": "One compact row tail; omit the clause rather than restating zero.",
+		"placeholders": {
+			"count": "Cardinal comment count for plural agreement.",
+			"countText": "Existing decimal count display without added grouping."
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+	},
+	"ui.code_review.host.cooling": {
+		"role": "error/status",
+		"tone": "Calm factual caveat, never claim current state from stale data.",
+		"note": "Code-review cooling: preserve the distinction between a failed refresh, stale cached state and a host rate limit.",
+		"length": "One row; avoid adding an explanatory sentence.",
+		"placeholders": {
+			"host": "Forge display name, e.g. GitHub; never a translatable host ID.",
+			"time": "Existing local 24-hour clock text, verbatim."
+		}
+	},
+	"ui.code_review.lane.awaiting_rereview": {
+		"role": "status",
+		"tone": "Compact review-state clause.",
+		"note": "Agent-review lane awaiting rereview: separate the review round/freshness fact from CI and forge state.",
+		"length": "One row; avoid adding an explanatory sentence.",
+		"placeholders": {
+			"state": "Already localized review-state clause, or an unknown server-owned state retained verbatim."
+		}
+	},
+	"ui.code_review.lane.round": {
+		"role": "status",
+		"tone": "Compact review-state clause.",
+		"note": "Agent-review lane round: separate the review round/freshness fact from CI and forge state.",
+		"length": "One row; avoid adding an explanatory sentence.",
+		"placeholders": {
+			"round": "Review-round number already rendered as decimal text.",
+			"state": "Already localized review-state clause, or an unknown server-owned state retained verbatim."
+		}
+	},
+	"ui.code_review.lane.stale": {
+		"role": "status",
+		"tone": "Compact review-state clause.",
+		"note": "Agent-review lane stale: separate the review round/freshness fact from CI and forge state.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.lane.stale_head": {
+		"role": "status",
+		"tone": "Compact review-state clause.",
+		"note": "Agent-review lane stale head: separate the review round/freshness fact from CI and forge state.",
+		"length": "One row; avoid adding an explanatory sentence.",
+		"placeholders": {
+			"reviewed": "Abbreviated reviewed commit SHA, verbatim.",
+			"head": "Abbreviated current commit SHA, verbatim."
+		}
+	},
+	"ui.code_review.lane.stale_reviewed": {
+		"role": "status",
+		"tone": "Compact review-state clause.",
+		"note": "Agent-review lane stale reviewed: separate the review round/freshness fact from CI and forge state.",
+		"length": "One row; avoid adding an explanatory sentence.",
+		"placeholders": {
+			"reviewed": "Abbreviated reviewed commit SHA, verbatim."
+		}
+	},
+	"ui.code_review.lane.state.clean": {
+		"role": "status",
+		"tone": "Lowercase review-state clause.",
+		"note": "Review round has no blocking findings.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.lane.state.findings_open": {
+		"role": "status",
+		"tone": "Lowercase review-state clause.",
+		"note": "Reviewer reported unresolved findings; this does not describe CI.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.lane.state.remediation_posted": {
+		"role": "status",
+		"tone": "Lowercase review-state clause.",
+		"note": "Implementer posted a response; a reviewer still needs to re-review.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.lane.state.terminal": {
+		"role": "status",
+		"tone": "Lowercase review-state clause.",
+		"note": "Review round has reached its recorded terminal state.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.lane.state.unstated": {
+		"role": "status",
+		"tone": "Lowercase review-state clause.",
+		"note": "A review exists but its verdict was not stated.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.relation.inherited": {
+		"role": "provenance status",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "Row inherited from another conversation; frozen wire shape has no parent identity, so do not invent one.",
+		"length": "One compact row tail; omit the clause rather than restating zero."
+	},
+	"ui.code_review.relation.subagent": {
+		"role": "provenance status",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "A subagent propagation event with no usable role/path; no identity is invented.",
+		"length": "One compact row tail; omit the clause rather than restating zero."
+	},
+	"ui.code_review.relation.subagent_fallback": {
+		"role": "provenance status",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "Older event only supplied a flat role or label; display it rather than claiming a full chain.",
+		"length": "One compact row tail; omit the clause rather than restating zero.",
+		"placeholders": {
+			"name": "Flat subagent role or label, verbatim."
+		}
+	},
+	"ui.code_review.relation.subagent_path": {
+		"role": "provenance status",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "Names the propagation chain of subagents; path names and separator are caller-owned.",
+		"length": "One compact row tail; omit the clause rather than restating zero.",
+		"placeholders": {
+			"path": "Ordered user/agent role names joined by the existing arrow separator, verbatim."
+		}
+	},
+	"ui.code_review.relation.unknown": {
+		"role": "provenance status",
+		"tone": "Short lowercase provenance/status clause; preserve the existing register.",
+		"note": "Provenance evidence was insufficient to prove this conversation opened the request; retain the uncertainty.",
+		"length": "One compact row tail; omit the clause rather than restating zero."
+	},
+	"ui.code_review.row.fetching": {
+		"role": "loading status",
+		"tone": "In-progress fact with ellipsis where present.",
+		"note": "Code-review fetching: distinguishes session scanning from fetching current forge state.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.row.opens_browser": {
+		"role": "accessible link suffix",
+		"tone": "Lowercase action explanation.",
+		"note": "Appended to a request row accessible name; clicking opens the system browser.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.code_review.row.refresh_error": {
+		"role": "error",
+		"tone": "Action while idle; ongoing fact while refreshing; failure names the failed read.",
+		"note": "Code-review refresh refresh error: refreshes tracked forge state, not the conversation record.",
+		"length": "One row; avoid adding an explanatory sentence.",
+		"placeholders": {
+			"error": "Server-provided failure detail; do not use it as a translation key."
+		}
+	},
+	"ui.code_review.row.stale_error": {
+		"role": "error/status",
+		"tone": "Calm factual caveat, never claim current state from stale data.",
+		"note": "Code-review stale error: preserve the distinction between a failed refresh, stale cached state and a host rate limit.",
+		"length": "One row; avoid adding an explanatory sentence.",
+		"placeholders": {
+			"error": "Server-provided failure detail; do not use it as a translation key."
+		}
+	},
+	"ui.code_review.tool.more": {
+		"role": "disclosure label",
+		"tone": "Count followed by its provenance.",
+		"note": "Additional code-request links found in tool output; a plus sign means the count was capped. English status wording is count-invariant; cardinal branches allow native grammatical agreement without changing the English clause.",
+		"length": "One row; avoid adding an explanatory sentence.",
+		"placeholders": {
+			"count": "Numeric cardinal count for plural selection.",
+			"capped": "Literal plus sign when the tool-output count is capped, otherwise empty.",
+			"countText": "Existing decimal count spelling, with no added English grouping punctuation."
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+	}
+}
