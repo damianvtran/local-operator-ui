@@ -39,6 +39,7 @@
  */
 
 import { Spinner } from "@shared/components/common/spinner";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { ChevronDown, X } from "lucide-react";
 import type { KeyboardEvent, ReactNode } from "react";
@@ -51,6 +52,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { t } from "../../../../../i18n/messages";
 /*
  * Imported from their own modules rather than from this directory's barrel.
  * `index.ts` re-exports this file, so going through it would make the two
@@ -415,6 +417,7 @@ export const SearchableSelect = forwardRef<
 	},
 	ref,
 ) {
+	useI18nLocale();
 	const baseId = useId();
 	const inputId = `${baseId}-input`;
 	const listId = `${baseId}-listbox`;
@@ -936,7 +939,7 @@ export const SearchableSelect = forwardRef<
 										</span>
 									</div>
 									<div className="text-meta text-ink-muted">
-										Not in any listing; saved as typed.
+										{t("ui.common.forms.select.unlisted_value")}
 									</div>
 								</li>
 							),
