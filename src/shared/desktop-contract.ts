@@ -3943,6 +3943,9 @@ export const ASIDE_ADOPT_REFUSED_CODE = "aside_adopt_refused";
 export const ASIDE_ADOPT_REFUSED_REASONS = [
 	"session_closed",
 	"open_tool_batch",
+	// An owner older than the queue refused a mid-turn adopt; the route maps its
+	// legacy refusal to this reason (backend D9).
+	"turn_running",
 ] as const;
 
 export type AsideAdoptRefusedReason =

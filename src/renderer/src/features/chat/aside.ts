@@ -668,11 +668,17 @@ export async function adoptAside(sessionId: string): Promise<void> {
 	 * retires it when the rows are seen or the turn ends.
 	 */
 	if (asideAdoptStatus(result) === "queued") {
-		useAsideStore.getState().queueAdoption(sessionId, []);
+		useAsideStore.getState().queueAdoption(sessionId, asideId, []);
+		/*
+		 * Only the ids are read from this answer. Its `adoptable` flag is NOT a
+		 * reason to re-enable anything: the owner releases the adopted latch once the
+		 * pair is queued (it skips a pair already queued or saved, by message id), so
+		 * the flag reads true for exactly the state this panel holds read-only.
+		 */
 		void queuedAdoptionIds(sessionId, asideId).then((ids) => {
-			const attachment = useAsideStore.getState().attached[sessionId];
-			if (ids.length > 0 && attachment?.queued) {
-				useAsideStore.getState().queueAdoption(sessionId, ids);
+			const queued = useAsideStore.getState().attached[sessionId]?.queued;
+			if (ids.length > 0 && queued?.asideId === asideId) {
+				useAsideStore.getState().queueAdoption(sessionId, asideId, ids);
 			}
 		});
 		return;
@@ -717,8 +723,20 @@ export const ASIDE_ADOPT_REFUSED_SENTENCES: Record<
 > = {
 	session_closed:
 		"The aside was not added: this conversation has closed, so there is nothing to add it to.",
+	/*
+	 * The tail is a tool call with no result, and no turn is running (D10): what
+	 * clears it is the next prompt's turn, so the sentence names that and never
+	 * tells the user to wait for a turn that is not happening.
+	 */
 	open_tool_batch:
-		"The aside was not added: the conversation is in the middle of a tool step. Try again when the turn finishes.",
+		"The conversation stopped in the middle of a tool call, so the aside was not added. Send a message to continue the conversation, then add the aside.",
+	/*
+	 * An owner older than the queue refused a mid-turn adopt (D9). Transient: it
+	 * lasts only while that owner is alive, and the reply finishing is what makes
+	 * the same press work.
+	 */
+	turn_running:
+		"This conversation is busy, and the version it's running can't queue an aside. Add it when the reply finishes.",
 };
 
 /** The sentence a failed adopt leaves on the panel. */
@@ -761,8 +779,24 @@ async function queuedAdoptionIds(
 	}
 }
 
-/** How long after the turn ends the queued panel waits before its one retry. */
+/**
+ * How long a queued panel waits, after the turn ends, for each step of its
+ * fallback: first for the owner's history delta to land the pair, then for one
+ * re-read of the session to show it.
+ */
 export const ASIDE_QUEUED_RETRY_MS = 1_500;
+
+/** The panel's sentence when a queued pair did not reach the transcript. */
+export const ASIDE_ADOPT_NOT_LANDED =
+	"The aside was not added to the conversation. Add it again to try once more.";
+
+/**
+ * The same outcome when the pair's ids could not be read, so absence cannot be
+ * proven. It says what is known and offers the press, which is safe either way:
+ * the owner skips a pair it already saved, by message id.
+ */
+export const ASIDE_ADOPT_UNCONFIRMED =
+	"The aside could not be confirmed in the conversation. If it is not there, add it again.";
 
 /**
  * What a queued panel does with the transcript and the turn's state it was
@@ -771,9 +805,10 @@ export const ASIDE_QUEUED_RETRY_MS = 1_500;
  * - `"landed"`: every one of the pair's rows is in the transcript - detach.
  * - `"resync"`: the turn has ended but the rows are not painted. The owner
  *   emits `agent_end` BEFORE it flushes the queue, so the turn's end can beat
- *   the history delta; re-read the session, and once more after
- *   `ASIDE_QUEUED_RETRY_MS`, then detach either way (the rows are durable by
- *   then, and a panel that waited forever would be the worse failure).
+ *   the history delta - but the pair can also NEVER land: the owner can be
+ *   stopped with a tool call still open, or the adopt can be queued after the
+ *   last flush. So the fallback waits for the delta, re-reads once, and then
+ *   says the aside was not added rather than claiming it was.
  * - `"wait"`: the turn is still running.
  */
 export function queuedAdoptionStep(input: {
@@ -791,21 +826,37 @@ export function queuedAdoptionStep(input: {
 }
 
 /**
- * The one armed fallback per session, so the re-read is asked for ONCE.
+ * The armed fallback per QUEUED ADOPT, keyed by its aside id, so a fallback
+ * armed for one adopt can never retire a later one on the same session.
  *
  * Module state rather than an effect's cleanup: the re-read itself moves the
  * transcript, which re-runs the caller's effect, and a cleanup that cleared the
  * timer there would re-arm a second re-read on every page the first one painted.
- * Not cleared on unmount either - detaching the session's entry in the store is
- * right whether or not a pane is still showing it.
  */
 const queuedFallbacks = new Map<string, ReturnType<typeof setTimeout>>();
 
+function clearQueuedFallback(asideId: string): void {
+	const armed = queuedFallbacks.get(asideId);
+	if (armed !== undefined) clearTimeout(armed);
+	queuedFallbacks.delete(asideId);
+}
+
 /**
- * Retire a queued panel once its pair has landed, or once the turn has ended.
+ * Retire a queued panel once its pair has landed, or state that it did not.
  *
- * Called by the composer whenever the canonical transcript or the turn's state
- * moves; safe to call any number of times.
+ * Called whenever the canonical transcript or the turn's state moves; safe to
+ * call any number of times. The landing check runs on every call, so a pair the
+ * delta (or the re-read) paints at any point detaches the panel.
+ *
+ * WHY THE FIRST STEP IS A WAIT AND NOT A RE-READ. A re-read closes and reopens
+ * the session's stream (`resync`), and the turn's end is exactly when the owner
+ * sends what this panel is waiting for: the history delta that lands the pair,
+ * or - when the owner is being stopped with a tool call open - the error notice
+ * saying the pair will never land. Neither is durable, so a re-read fired at the
+ * turn's end drops whichever arrives while the stream is down (measured: the
+ * stranded-adopt notice was never painted, and the panel detached 1.7s after the
+ * stop). Waiting first keeps the stream open for both, and the ordinary landing
+ * then needs no re-read at all.
  */
 export function settleQueuedAdoption(
 	sessionId: string,
@@ -814,28 +865,51 @@ export function settleQueuedAdoption(
 ): void {
 	const queued = useAsideStore.getState().attached[sessionId]?.queued;
 	if (!queued) return;
+	const { asideId } = queued;
 	const step = queuedAdoptionStep({
 		messageIds: queued.messageIds,
 		hasRecord,
 		turnAlive,
 	});
-	if (step === "wait") return;
 	if (step === "landed") {
-		const armed = queuedFallbacks.get(sessionId);
-		if (armed !== undefined) clearTimeout(armed);
-		queuedFallbacks.delete(sessionId);
+		clearQueuedFallback(asideId);
 		useAsideStore.getState().detachAside(sessionId);
 		return;
 	}
-	if (queuedFallbacks.has(sessionId)) return;
-	resyncCanonicalSession(sessionId);
+	if (step === "wait") {
+		// A turn running again re-arms at ITS end: the pair lands at that
+		// boundary at the latest, so nothing here may judge it meanwhile.
+		clearQueuedFallback(asideId);
+		return;
+	}
+	if (queuedFallbacks.has(asideId)) return;
+	const stillQueued = () =>
+		useAsideStore.getState().attached[sessionId]?.queued?.asideId === asideId;
 	queuedFallbacks.set(
-		sessionId,
+		asideId,
 		setTimeout(() => {
-			queuedFallbacks.delete(sessionId);
-			if (!useAsideStore.getState().attached[sessionId]?.queued) return;
+			if (!stillQueued()) {
+				queuedFallbacks.delete(asideId);
+				return;
+			}
 			resyncCanonicalSession(sessionId);
-			useAsideStore.getState().detachAside(sessionId);
+			queuedFallbacks.set(
+				asideId,
+				setTimeout(() => {
+					queuedFallbacks.delete(asideId);
+					if (!stillQueued()) return;
+					const known =
+						useAsideStore.getState().attached[sessionId]?.queued?.messageIds
+							.length ?? 0;
+					useAsideStore
+						.getState()
+						.unqueueAdoption(
+							sessionId,
+							asideId,
+							known > 0 ? ASIDE_ADOPT_NOT_LANDED : ASIDE_ADOPT_UNCONFIRMED,
+						);
+				}, ASIDE_QUEUED_RETRY_MS),
+			);
 		}, ASIDE_QUEUED_RETRY_MS),
 	);
 }

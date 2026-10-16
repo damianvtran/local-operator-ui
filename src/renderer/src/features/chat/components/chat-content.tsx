@@ -923,8 +923,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		);
 		/*
 		 * A QUEUED ADOPT IS RETIRED BY WHAT THIS TRANSCRIPT SHOWS: the pair's rows
-		 * arriving (the owner's history delta folds them by id), or the turn ending,
-		 * which re-reads the session once and detaches (`settleQueuedAdoption`). Here
+		 * arriving (the owner's history delta folds them by id) detaches it; a turn
+		 * that ends without them starts the wait-then-re-read fallback, which says
+		 * the aside was not added if they never come (`settleQueuedAdoption`). Here
 		 * rather than in the composer because this component already re-renders on
 		 * every transcript change and the memoised composer must not. Subscribed to
 		 * a number (-1 when nothing is queued, else how many of the pair's ids are
