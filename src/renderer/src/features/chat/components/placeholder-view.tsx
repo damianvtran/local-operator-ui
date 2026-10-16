@@ -33,6 +33,7 @@ export const PlaceholderView: FC<PlaceholderViewProps> = ({
 }) => {
 	return (
 		<div
+			data-glass-region="canvas"
 			className={cn(
 				"flex h-full grow flex-col items-center justify-center bg-canvas p-6",
 			)}

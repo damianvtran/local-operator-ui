@@ -49,6 +49,7 @@ export const ErrorView: FC<ErrorViewProps> = ({
 			: "The local server returned an error. The agent's history is safe — try again in a moment.";
 	return (
 		<div
+			data-glass-region="canvas"
 			className={cn(
 				"flex h-full grow items-center justify-center bg-canvas p-6",
 			)}

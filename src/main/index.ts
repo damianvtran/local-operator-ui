@@ -50,6 +50,10 @@ import {
 	windowChromeArgumentFor,
 } from "../shared/window-chrome";
 import {
+	glassWindowOptions,
+	windowGlassArgument,
+} from "../shared/window-glass";
+import {
 	BackendInstaller,
 	BackendServiceManager,
 	INTERPRETER_RESOLUTION_WORST_MS,
@@ -129,6 +133,11 @@ import { UpdateService, holdLaunchForLiveInstall } from "./update-service";
 import { ViewerEndpoint } from "./viewer-endpoint";
 import { ViewerRecordPublisher } from "./viewer-record";
 import { attachWindowChrome, resolveLaunchWindowChrome } from "./window-chrome";
+import {
+	type ResolvedLaunchGlass,
+	attachWindowGlass,
+	resolveLaunchWindowGlass,
+} from "./window-glass";
 import { openVettedExternal, popupVerdict } from "./window-guards";
 import {
 	guardDownloads,
@@ -887,6 +896,19 @@ function createWindow(
 	}
 
 	/*
+	 * THE WINDOW GLASS, resolved here for the reason the chrome is: its
+	 * construction half (a transparent first-paint ground and a vibrancy or
+	 * background material) has to be in the constructor options, before any
+	 * renderer exists. OPT-IN AND DEFAULT OFF: with no persisted setting, a
+	 * platform that cannot do it, or the OS's Reduce transparency on, this resolves
+	 * to a state whose `glassWindowOptions` is `{}`, and the window below is the
+	 * one this app always built. See `src/shared/window-glass.ts`.
+	 */
+	const glass = resolveLaunchWindowGlass({
+		userDataDir: app.getPath("userData"),
+	});
+
+	/*
 	 * Resolved once, before any window exists, so an agent-driven run can say
 	 * how it wants the window to behave: `headless` (created, never shown) and
 	 * `inactive` (shown without activating the app) are how a QA rig or a
@@ -915,6 +937,13 @@ function createWindow(
 		 * window, and a hard-coded palette value that a test keeps honest.
 		 */
 		backgroundColor: chrome.colors.ground,
+		/*
+		 * Glass, AFTER the ground on purpose: when active it overrides
+		 * `backgroundColor` with the transparent ground and adds the material; when
+		 * not, it is `{}` and the line above stands byte for byte
+		 * (`scripts/window-glass.test.mjs` pins that).
+		 */
+		...glassWindowOptions(glass.settings, glass.capability),
 		width: windowLaunch.width,
 		height: windowLaunch.height,
 		// The layout is verified down to 800x600 and not below: the app rail,
@@ -985,7 +1014,12 @@ function createWindow(
 			 * silent. `rendererArgumentFlags` below concatenates them, and is `{}` when
 			 * neither applies, so "adds no option at all" stays literally true.
 			 */
-			...rendererArgumentFlags(initialSession, openCatalogue, chrome.mode),
+			...rendererArgumentFlags(
+				initialSession,
+				openCatalogue,
+				chrome.mode,
+				glass,
+			),
 		},
 	});
 
@@ -1003,8 +1037,10 @@ function createWindow(
 	 * screen. `scripts/window-mode.test.mjs` scans for that family and names this
 	 * module among the ones that must not contain one.
 	 */
+	let glassController: ReturnType<typeof attachWindowGlass> | null = null;
 	const chromeController = attachWindowChrome({
 		window: mainWindow,
+		isGlassActive: () => glassController?.isActive() ?? false,
 		mode: chrome.mode,
 		colors: chrome.colors,
 		userDataDir: app.getPath("userData"),
@@ -1012,6 +1048,14 @@ function createWindow(
 		log: (line) => logger.info(line, LogFileType.BACKEND),
 	});
 	mainWindow.on("closed", () => chromeController.dispose());
+	glassController = attachWindowGlass({
+		window: mainWindow,
+		initial: glass,
+		userDataDir: app.getPath("userData"),
+		restoreGround: () => chromeController.sync(),
+		log: (line) => logger.info(line, LogFileType.BACKEND),
+	});
+	mainWindow.on("closed", () => glassController?.dispose());
 	/*
 	 * THE MINI VIEW MUST NOT DEFEAT THE WINDOWS/LINUX QUIT CONTRACT (quick-send
 	 * design §C.5's platform note, read against this app's existing behaviour).
@@ -1538,6 +1582,7 @@ function rendererArgumentFlags(
 	initialSession: string | null,
 	openCatalogue: boolean,
 	chromeMode: WindowChromeMode,
+	glass: ResolvedLaunchGlass,
 ): { additionalArguments?: string[] } {
 	const flags = [
 		/*
@@ -1548,6 +1593,9 @@ function rendererArgumentFlags(
 		 * `readWindowChromeArgument` for why the guess fails towards `native`.
 		 */
 		windowChromeArgumentFor(process.platform, chromeMode),
+		/* The glass fact, ALWAYS written (`off` included) for the chrome entry's
+		 * reason: the first paint's ground depends on it. */
+		windowGlassArgument(glass.state, glass.scheme),
 		...(launchArgumentFlags(initialSession, openCatalogue)
 			.additionalArguments ?? []),
 		...(devDriverWebPreferences.additionalArguments ?? []),

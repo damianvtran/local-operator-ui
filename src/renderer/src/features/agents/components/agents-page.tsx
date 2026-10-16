@@ -593,7 +593,10 @@ export function AgentsPage() {
 		: profileDetail.isLoading;
 
 	return (
-		<div className="flex h-full min-h-0 bg-canvas text-ink">
+		<div
+			data-glass-region="canvas"
+			className="flex h-full min-h-0 bg-canvas text-ink"
+		>
 			{/*
 			 * The leading column keeps the shell's own ground rule (`chat-layout`).
 			 *
@@ -611,6 +614,7 @@ export function AgentsPage() {
 				// guard reads that literal (`data-open` is true only while a definition
 				// is open, which is exactly when the roster steps aside for the detail).
 				data-open={selected ? "true" : undefined}
+				data-glass-region="page-sidebar"
 				className="flex w-72 shrink-0 flex-col gap-3 bg-surface p-4 max-[999px]:data-[open=true]:hidden"
 			>
 				{/* The page's ONLY h1 (design D9): a definition's name is an h2. */}

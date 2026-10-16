@@ -8101,6 +8101,14 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						</span>
 					)}
 					<div
+						/*
+						 * GLASS: the composer is a TEXT-BEARING surface, so it joins the `pane`
+						 * region (the `elevated` role at its derived alpha floor, near-opaque on
+						 * dark palettes) rather than staying an opaque slab in a see-through
+						 * column or going as clear as the chat. Marker only: with the window
+						 * glass off, or `pane` not covered, nothing selects it.
+						 */
+						data-glass-region="pane"
 						className={cn(
 							COMPOSER_BOX,
 							/*
