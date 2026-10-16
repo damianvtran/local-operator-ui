@@ -867,6 +867,326 @@ test("focus inside a card that lapses stays on that card, never on BODY (UX U1)"
 	);
 });
 
+/*
+ * THE HELD SLOT KEEPS THE CARD'S HEIGHT (agent review round 2 on #1116, M1 = QA Q-3).
+ * Collapsing the held card to its 32px header still slid everything below it up by the
+ * card's height less the header's, and when the lapsing card had one more option row than
+ * the next one that shift put the next card's live Decline exactly under the old Decline
+ * point (QA: `onDecline("a-2")` fired). The slot now reserves the card's last measured
+ * height until the next mount, header at the top, so nothing below it moves.
+ *
+ * jsdom has no layout, so the card's height is STUBBED per option count and the
+ * assertion is on the reservation itself: a slot whose min-height equals the card it
+ * replaced cannot move anything below it. The real-layout half (the next card's buttons
+ * at the same point, and nothing actionable under the old Decline) is the Chrome rig's
+ * measurement in the PR thread.
+ */
+const optionAsk = (id, count, at) => ({
+	...radioAsk,
+	ask_id: id,
+	created_at: at,
+	questions: [
+		{
+			id: "target",
+			question: `Question ${id}?`,
+			options: Array.from({ length: count }, (_, i) => ({
+				label: `${id}-opt-${i + 1}`,
+			})),
+		},
+	],
+});
+const cardHeight = (options) => 120 + 46 * options;
+const stubCardLayout = (t) => {
+	const proto = window.HTMLElement.prototype;
+	const original = proto.getBoundingClientRect;
+	proto.getBoundingClientRect = function () {
+		const id = this.getAttribute?.("data-lo-ask-row");
+		if (id !== null && id !== undefined) {
+			const options = this.querySelectorAll("[data-ask-option]").length;
+			const height = cardHeight(options);
+			return {
+				x: 0,
+				y: 0,
+				top: 0,
+				left: 0,
+				width: 536,
+				height,
+				right: 536,
+				bottom: height,
+			};
+		}
+		return original.call(this);
+	};
+	t.after(() => {
+		proto.getBoundingClientRect = original;
+	});
+};
+
+test("a held slot reserves the lapsed card's last height, so nothing below it moves (M1 = Q-3)", async (t) => {
+	stubCardLayout(t);
+	for (const [above, below] of [
+		[3, 2],
+		[4, 3],
+		[3, 3],
+	]) {
+		const a1 = optionAsk("a-1", above, TS);
+		const a2 = optionAsk("a-2", below, TS + 10);
+		const view = await mountFor(
+			t,
+			h(AskDrawer, { frontend: frontend([a1, a2]), scope: "session" }),
+		);
+		await view.rerender(
+			h(AskDrawer, {
+				frontend: frontend([{ ...a1, status: "timed_out" }, a2]),
+				scope: "session",
+			}),
+		);
+		const slot = view.container.querySelector('[data-lo-ask-held="a-1"]');
+		if (!slot) throw new Error(`${above}-over-${below}: no held slot`);
+		assert.equal(
+			slot.style.minHeight,
+			`${cardHeight(above)}px`,
+			`${above}-over-${below}: the slot reserves the card's own height`,
+		);
+		assert.match(
+			slot.firstElementChild
+				?.querySelector("button[aria-expanded]")
+				?.getAttribute("aria-label") ?? "",
+			/^Timed out - Question a-1\?/,
+			`${above}-over-${below}: the collapsed header sits at the top of the slot`,
+		);
+		assert.equal(
+			slot.nextElementSibling?.getAttribute("data-lo-ask-row"),
+			"a-2",
+			`${above}-over-${below}: the next card follows the reserved slot directly`,
+		);
+	}
+});
+
+test("a filter press releases every hold, and a lapse under Pending leaves only an aria-hidden spacer (m1 = U4)", async (t) => {
+	stubCardLayout(t);
+	const a1 = optionAsk("a-1", 3, TS);
+	const a2 = optionAsk("a-2", 2, TS + 10);
+	const props = { scope: "session" };
+	const chip = (view, name) => {
+		const found = [
+			...view.container.querySelectorAll("[data-lo-ask-filter] button"),
+		].find((b) => (b.textContent ?? "").startsWith(name));
+		if (!found) throw new Error(`no ${name} chip`);
+		return found;
+	};
+	const press = async (view, name) => {
+		const target = chip(view, name);
+		await act(async () => {
+			target.click();
+		});
+	};
+	const view = await mountFor(
+		t,
+		h(AskDrawer, { frontend: frontend([a1, a2]), ...props }),
+	);
+	await press(view, "Pending");
+	await view.rerender(
+		h(AskDrawer, {
+			frontend: frontend([{ ...a1, status: "timed_out" }, a2]),
+			...props,
+		}),
+	);
+	assert.equal(
+		view.container.querySelector("[data-lo-ask-held]") === null,
+		true,
+		"no held ROW is drawn under Pending: it is not a pending ask",
+	);
+	const spacer = view.container.querySelector('[data-lo-ask-spacer="a-1"]');
+	if (!spacer) throw new Error("no spacer holds the lapsed card's slot");
+	assert.equal(spacer.getAttribute("aria-hidden"), "true");
+	assert.equal(spacer.textContent, "", "the spacer says and offers nothing");
+	assert.equal(spacer.style.minHeight, `${cardHeight(3)}px`);
+	assert.equal(
+		spacer.nextElementSibling?.getAttribute("data-lo-ask-row"),
+		"a-2",
+		"the still-pending card keeps its place under the spacer",
+	);
+	assert.equal(
+		view.container.querySelector("[data-lo-ask-empty]") === null,
+		true,
+		"Pending is not empty, so no sentence is inserted above a-2",
+	);
+	assert.equal(chip(view, "Pending").textContent, "Pending · 1");
+	/* The last pending ask lapses too: Pending is truly 0, so the sentence is owed. */
+	await view.rerender(
+		h(AskDrawer, {
+			frontend: frontend([
+				{ ...a1, status: "timed_out" },
+				{ ...a2, status: "timed_out" },
+			]),
+			...props,
+		}),
+	);
+	assert.equal(
+		view.container.querySelector("[data-lo-ask-empty]")?.textContent,
+		"No asks are pending. They have all settled — see Settled.",
+	);
+	/* A deliberate press is the reader's own act: it releases every hold. */
+	await press(view, "Settled");
+	await press(view, "Pending");
+	assert.equal(
+		view.container.querySelectorAll("[data-lo-ask-spacer], [data-lo-ask-held]")
+			.length,
+		0,
+		"after a filter press nothing is held",
+	);
+	assert.equal(
+		view.container.querySelector("[data-lo-ask-empty]")?.textContent,
+		"No asks are pending. They have all settled — see Settled.",
+	);
+	await press(view, "All");
+	assert.equal(
+		view.container.querySelectorAll("[data-lo-ask-settled] [data-lo-ask-row]")
+			.length +
+			view.container.querySelectorAll(
+				"[data-lo-ask-settled] button[aria-expanded]",
+			).length,
+		2,
+		"under All both asks are filed under Settled, where the counts already put them",
+	);
+	/* Pressing the filter that is already selected releases too. */
+	const again = await mountFor(
+		t,
+		h(AskDrawer, { frontend: frontend([a1, a2]), ...props }),
+	);
+	await again.rerender(
+		h(AskDrawer, {
+			frontend: frontend([{ ...a1, status: "timed_out" }, a2]),
+			...props,
+		}),
+	);
+	assert.ok(again.container.querySelector('[data-lo-ask-held="a-1"]') !== null);
+	await press(again, "All");
+	assert.equal(
+		again.container.querySelector("[data-lo-ask-held]") === null,
+		true,
+		"a press on the selected chip is still the reader's act",
+	);
+});
+
+test("focus in a card that lapses under Pending lands on the Pending chip, never on BODY", async (t) => {
+	const a1 = optionAsk("a-1", 3, TS);
+	const a2 = optionAsk("a-2", 2, TS + 10);
+	const props = { scope: "session" };
+	const view = await mountFor(
+		t,
+		h(AskDrawer, { frontend: frontend([a1, a2]), ...props }),
+	);
+	const pending = [
+		...view.container.querySelectorAll("[data-lo-ask-filter] button"),
+	].find((b) => (b.textContent ?? "").startsWith("Pending"));
+	await act(async () => {
+		pending.click();
+	});
+	const option = view.container.querySelector(
+		'[data-lo-ask-row="a-1"] [data-ask-option="a-1-opt-2"]',
+	);
+	option.focus();
+	assert.ok(document.activeElement === option, "the option holds focus");
+	await view.rerender(
+		h(AskDrawer, {
+			frontend: frontend([{ ...a1, status: "timed_out" }, a2]),
+			...props,
+		}),
+	);
+	const active = document.activeElement;
+	assert.ok(active !== document.body, "focus must not fall to BODY");
+	assert.equal(
+		active?.textContent,
+		"Pending · 1",
+		`focus lands on the filter the reader chose, got ${active?.outerHTML?.slice(0, 80)}`,
+	);
+});
+
+test("an answer in progress on a card that lapses is announced as not sent (UX U5)", async (t) => {
+	const a1 = optionAsk("a-1", 3, TS);
+	const a2 = optionAsk("a-2", 2, TS + 10);
+	const props = { scope: "session", onDraftChange: () => undefined };
+	const note = (view) =>
+		view.container.querySelector("[data-lo-ask-lapse-note]");
+	const drafted = await mountFor(
+		t,
+		h(AskDrawer, {
+			frontend: frontend([a1, a2]),
+			drafts: { "a-1": { target: ["use blu"] } },
+			...props,
+		}),
+	);
+	assert.equal(note(drafted)?.textContent, "", "the region is mounted empty");
+	await drafted.rerender(
+		h(AskDrawer, {
+			frontend: frontend([{ ...a1, status: "timed_out" }, a2]),
+			drafts: { "a-1": { target: ["use blu"] } },
+			...props,
+		}),
+	);
+	assert.equal(
+		note(drafted)?.textContent,
+		"That question timed out; your answer was not sent.",
+	);
+	const blank = await mountFor(
+		t,
+		h(AskDrawer, { frontend: frontend([a1, a2]), ...props }),
+	);
+	await blank.rerender(
+		h(AskDrawer, {
+			frontend: frontend([{ ...a1, status: "timed_out" }, a2]),
+			...props,
+		}),
+	);
+	assert.equal(
+		note(blank)?.textContent,
+		"",
+		"a card with nothing typed or picked loses nothing, so nothing is said",
+	);
+});
+
+test("the session drawer is remounted per conversation, so a hold never crosses one (UX U6)", async () => {
+	/*
+	 * The hold lives for the panel's mount. The session drawer is mounted inside
+	 * `ChatContent`, which renders only inside `SessionPanel`, and the page keys that by
+	 * the conversation's identity - so a switch is an unmount and a mount, and A -> B -> A
+	 * files a lapsed A ask under Settled. `ChatPage` cannot be mounted in a node test, so
+	 * the chain is pinned by source.
+	 */
+	const { readFileSync } = await import("node:fs");
+	const page = readFileSync(
+		"src/renderer/src/features/chat/components/chat-page.tsx",
+		"utf8",
+	);
+	const panelStart = page.indexOf("function SessionPanel(");
+	const pageStart = page.indexOf("export function ChatPage(");
+	const content = page.indexOf("<ChatContent", panelStart);
+	assert.ok(
+		panelStart !== -1 && content > panelStart && content < pageStart,
+		"ChatContent renders inside SessionPanel",
+	);
+	assert.match(
+		page.slice(pageStart),
+		/<SessionPanel\s+key=\{identity\}/,
+		"SessionPanel is keyed by the conversation's identity",
+	);
+	assert.match(
+		page.slice(pageStart),
+		/const identity = panelIdentityFor\(draftKey, id\);/,
+		"and that identity is the conversation (session id, else draft key)",
+	);
+	const chat = readFileSync(
+		"src/renderer/src/features/chat/components/chat-content.tsx",
+		"utf8",
+	);
+	assert.ok(
+		chat.includes("<AskDrawer"),
+		"ChatContent mounts the session drawer",
+	);
+});
+
 test("an answer that is not one of the labels is DRAWN as Other (design D2)", async (t) => {
 	/*
 	 * A draft value no option row could have written. The card's own `Other` field writes
