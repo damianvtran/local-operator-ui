@@ -27,8 +27,10 @@ import enUiBrowser from "./catalogues/en/ui.browser.json";
 import enUiCanvas from "./catalogues/en/ui.canvas.json";
 import enUiChat from "./catalogues/en/ui.chat.json";
 import enUiCommonActions from "./catalogues/en/ui.common.actions.json";
+import enUiCommonConnection from "./catalogues/en/ui.common.connection.json";
 import enUiCommonErrors from "./catalogues/en/ui.common.errors.json";
 import enUiCommonForms from "./catalogues/en/ui.common.forms.json";
+import enUiCommonUpdates from "./catalogues/en/ui.common.updates.json";
 import enUiConsole from "./catalogues/en/ui.console.json";
 import enUiHub from "./catalogues/en/ui.hub.json";
 import enUiMesh from "./catalogues/en/ui.mesh.json";
@@ -50,8 +52,10 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiCanvas,
 	...enUiChat,
 	...enUiCommonActions,
+	...enUiCommonConnection,
 	...enUiCommonErrors,
 	...enUiCommonForms,
+	...enUiCommonUpdates,
 	...enUiConsole,
 	...enUiHub,
 	...enUiMesh,
@@ -165,11 +169,209 @@ export type MessageParams = {
 	"ui.common.actions.close": undefined;
 	"ui.common.actions.retry": undefined;
 	"ui.common.actions.retry_again": undefined;
+	"ui.common.connection.backend_compatibility_banner.the_backend_update_could_not_start_retry_or_update_from_settings_": undefined;
+	"ui.common.connection.backend_compatibility_banner.update_backend": undefined;
+	"ui.common.connection.backend_compatibility_banner.updating": undefined;
+	"ui.common.connection.connectivity_banner.a_connectivity_issue_has_been_detected": undefined;
+	"ui.common.connection.connectivity_banner.dismiss": undefined;
+	"ui.common.connection.connectivity_banner.dismiss_inline": undefined;
+	"ui.common.connection.connectivity_banner.this_app_s_updates_require": undefined;
+	"ui.common.connection.connectivity_banner.you_are_offline": {
+		detail: string;
+	};
+	"ui.common.connection.floating_alert.dismiss": undefined;
+	"ui.common.connection.provider.requires": { provider: string };
 	"ui.common.errors.error_boundary.error_details": undefined;
 	"ui.common.errors.error_boundary.something_went_wrong": undefined;
 	"ui.common.errors.error_boundary.stack_trace": undefined;
 	"ui.common.errors.error_boundary.the_application_encountered_an_error_try_again_or_contact_support": undefined;
 	"ui.common.forms.select.unlisted_value": undefined;
+	"ui.common.updates.check_for_updates_button.check_for_updates": undefined;
+	"ui.common.updates.check_for_updates_button.checking": undefined;
+	"ui.common.updates.check_for_updates_button.detail": {
+		attempts: number;
+		attemptsText: string;
+	};
+	"ui.common.updates.check_for_updates_button.detected": undefined;
+	"ui.common.updates.check_for_updates_button.didn_t_finish": undefined;
+	"ui.common.updates.check_for_updates_button.download_a_fresh_copy": undefined;
+	"ui.common.updates.check_for_updates_button.still_checking_a_slow_or_stalled_connection_can_hold_this_for_abo": undefined;
+	"ui.common.updates.check_for_updates_button.the_last_update_to_version": undefined;
+	"ui.common.updates.check_for_updates_button.the_server_is_installed_outside_the_app_so_use_the_tool_you_insta": undefined;
+	"ui.common.updates.check_for_updates_button.updates_are_not_checked_in_development_mode_this_feature_is_only_": undefined;
+	"ui.common.updates.check_for_updates_button.version": { liveversion: string };
+	"ui.common.updates.completion.sessions": { count: number; countText: string };
+	"ui.common.updates.restart.outage_bound": undefined;
+	"ui.common.updates.server.on_version": { version: string };
+	"ui.common.updates.update_error_alert.checking": undefined;
+	"ui.common.updates.update_foot_icon.available": undefined;
+	"ui.common.updates.update_foot_icon.show_the_update_notice": undefined;
+	"ui.common.updates.update_notification.a_newer_build": undefined;
+	"ui.common.updates.update_notification.a_newer_version": undefined;
+	"ui.common.updates.update_notification.an_older_build": undefined;
+	"ui.common.updates.update_notification.an_update_you_started_before_quitting_finished_while_local": {
+		detail: string;
+		detail2: string;
+	};
+	"ui.common.updates.update_notification.check_for_updates": undefined;
+	"ui.common.updates.update_notification.checking": undefined;
+	"ui.common.updates.update_notification.checking_for_updates": undefined;
+	"ui.common.updates.update_notification.close_app_update_details": undefined;
+	"ui.common.updates.update_notification.close_release_details": undefined;
+	"ui.common.updates.update_notification.close_server_update_details": undefined;
+	"ui.common.updates.update_notification.copied": undefined;
+	"ui.common.updates.update_notification.copy_command": undefined;
+	"ui.common.updates.update_notification.copy_output": undefined;
+	"ui.common.updates.update_notification.detail_v2": {
+		detail: string;
+		detail2: string;
+	};
+	"ui.common.updates.update_notification.download_update": undefined;
+	"ui.common.updates.update_notification.downloading": undefined;
+	"ui.common.updates.update_notification.error_downloading_update": {
+		detail: string;
+	};
+	"ui.common.updates.update_notification.error_quitting_for_the_update": {
+		detail: string;
+	};
+	"ui.common.updates.update_notification.error_starting_the_update": {
+		detail: string;
+	};
+	"ui.common.updates.update_notification.has_been_downloaded_you_are_currently_using_version": undefined;
+	"ui.common.updates.update_notification.has_failed_to_install": undefined;
+	"ui.common.updates.update_notification.install_now": undefined;
+	"ui.common.updates.update_notification.installer_output": undefined;
+	"ui.common.updates.update_notification.installing_closes_the_app_while_the_update_is_verified_and_put_in": undefined;
+	"ui.common.updates.update_notification.is_available_you_are_currently_using_version": undefined;
+	"ui.common.updates.update_notification.keep_using_local_operator_cancels_the_install": undefined;
+	"ui.common.updates.update_notification.not_enough_disk_space_to_update": undefined;
+	"ui.common.updates.update_notification.nothing_is_serving_this_conversation_until_that_server_is_running": undefined;
+	"ui.common.updates.update_notification.of": undefined;
+	"ui.common.updates.update_notification.open_download_page": undefined;
+	"ui.common.updates.update_notification.please_wait_while_the_server_is_being_updated_the_server_will_tem": undefined;
+	"ui.common.updates.update_notification.please_wait_while_the_server_is_being_updated_the_update_can_t_be": undefined;
+	"ui.common.updates.update_notification.please_wait_while_we_check_for_available_updates": undefined;
+	"ui.common.updates.update_notification.quit_and_let_the_update_finish": undefined;
+	"ui.common.updates.update_notification.release_notes": undefined;
+	"ui.common.updates.update_notification.release_notes_caption": undefined;
+	"ui.common.updates.update_notification.restart_local_operator_and_the_server_comes_back_on_the_new_build": undefined;
+	"ui.common.updates.update_notification.restart_the_server": undefined;
+	"ui.common.updates.update_notification.restarting_puts_the_server_offline_while_it_comes_back": {
+		restartoutagebound: string;
+	};
+	"ui.common.updates.update_notification.reveal_update_log": undefined;
+	"ui.common.updates.update_notification.rolling_the_server_onto": {
+		detail: string;
+	};
+	"ui.common.updates.update_notification.run_this_in_a_terminal_then_check_for_updates_again_to_pick_up_th": undefined;
+	"ui.common.updates.update_notification.run_this_in_a_terminal_this_install_was_built_from_this_machine_s": undefined;
+	"ui.common.updates.update_notification.see_release_notes_on_github": undefined;
+	"ui.common.updates.update_notification.server_update_available": undefined;
+	"ui.common.updates.update_notification.server_update_completed_successfully": undefined;
+	"ui.common.updates.update_notification.server_version": {
+		latestversion: string;
+		install: string;
+		running: string;
+	};
+	"ui.common.updates.update_notification.server_version_v2": {
+		latestversion: string;
+		shown: string;
+	};
+	"ui.common.updates.update_notification.server_version_v3": {
+		latestversion: string;
+	};
+	"ui.common.updates.update_notification.sessions_that_are_still_running_the_old_build_will_move_onto_the_": undefined;
+	"ui.common.updates.update_notification.still_checking_a_slow_or_stalled_connection_can_hold_this_for_abo": undefined;
+	"ui.common.updates.update_notification.still_downloading_a_download_that_stops_making_progress_is_cancel": undefined;
+	"ui.common.updates.update_notification.still_installing_a_slow_connection_or_a_cold_cache_can_hold_this_": undefined;
+	"ui.common.updates.update_notification.the_app_cannot_update_this_server": undefined;
+	"ui.common.updates.update_notification.the_app_updates_this_install_and_then_restarts_the_server_it_star": undefined;
+	"ui.common.updates.update_notification.the_app_updates_this_install_itself_the_server_you_are_using_was_": undefined;
+	"ui.common.updates.update_notification.the_app_waits_up_to_ten_minutes_for_them_then_stops_rather_than_c": undefined;
+	"ui.common.updates.update_notification.the_build_it_loaded": undefined;
+	"ui.common.updates.update_notification.the_install_is_now_at": {
+		detail: string;
+	};
+	"ui.common.updates.update_notification.the_install_is_now_at_v2": {
+		detail: string;
+		detail2: string;
+	};
+	"ui.common.updates.update_notification.the_install_is_now_at_v3": {
+		detail: string;
+		detail2: string;
+	};
+	"ui.common.updates.update_notification.the_last_update_didn_t_finish": undefined;
+	"ui.common.updates.update_notification.the_new_build_has_landed_nothing_in_flight_was_cut_off_the_turns_": undefined;
+	"ui.common.updates.update_notification.the_new_version": undefined;
+	"ui.common.updates.update_notification.the_server_did_not_come_back_after_the_restart": undefined;
+	"ui.common.updates.update_notification.the_server_is_already_offline_so_the_only_cost_left_is_the": {
+		restartoutagebound: string;
+	};
+	"ui.common.updates.update_notification.the_server_is_installed_outside_the_app_so_use_the_tool_you_insta": undefined;
+	"ui.common.updates.update_notification.the_server_is_on_an_older_build_than_the_install": undefined;
+	"ui.common.updates.update_notification.the_server_needs_updating_by_hand": undefined;
+	"ui.common.updates.update_notification.the_server_serving_this_app_was_started_outside_local_operator_wh": undefined;
+	"ui.common.updates.update_notification.the_server_update_could_not_be_started": {
+		detail: string;
+	};
+	"ui.common.updates.update_notification.the_server_update_did_not_complete": undefined;
+	"ui.common.updates.update_notification.the_server_update_didn_t_finish": undefined;
+	"ui.common.updates.update_notification.the_server_update_to": {
+		targetversion: string;
+	};
+	"ui.common.updates.update_notification.the_update_can_t_be_launched": undefined;
+	"ui.common.updates.update_notification.the_update_couldn_t_be_verified": undefined;
+	"ui.common.updates.update_notification.the_update_didn_t_start": undefined;
+	"ui.common.updates.update_notification.the_update_is_still_installing": undefined;
+	"ui.common.updates.update_notification.the_update_was_cancelled": undefined;
+	"ui.common.updates.update_notification.the_update_wasn_t_installed": undefined;
+	"ui.common.updates.update_notification.then_check_for_updates_again_to_pick_up_the_new_server_version": undefined;
+	"ui.common.updates.update_notification.this_app_can_t_update_itself": undefined;
+	"ui.common.updates.update_notification.this_app_started_that_server_so_it_can_restart_it": {
+		restartcostsentenceserverdown: string;
+	};
+	"ui.common.updates.update_notification.this_app_started_that_server_so_it_can_restart_it_onto_the": {
+		restartcostsentence: string;
+	};
+	"ui.common.updates.update_notification.this_is_also_recorded_in_settings_under_application_updates": undefined;
+	"ui.common.updates.update_notification.this_machine_s_install_is": {
+		detail: string;
+		detail2: string;
+	};
+	"ui.common.updates.update_notification.this_machine_s_install_is_up_to_date": {
+		detail: string;
+		detail2: string;
+	};
+	"ui.common.updates.update_notification.this_server_follows_this_machine_s_checkout_so_there_is_no_comman": undefined;
+	"ui.common.updates.update_notification.times_on_this_machine": undefined;
+	"ui.common.updates.update_notification.to_update_now_run_this_yourself_in_a_terminal": undefined;
+	"ui.common.updates.update_notification.understood": undefined;
+	"ui.common.updates.update_notification.update_available": undefined;
+	"ui.common.updates.update_notification.update_downloaded_and_ready_to_install": undefined;
+	"ui.common.updates.update_notification.update_later": undefined;
+	"ui.common.updates.update_notification.update_ready_to_install": undefined;
+	"ui.common.updates.update_notification.update_server": undefined;
+	"ui.common.updates.update_notification.updating": undefined;
+	"ui.common.updates.update_notification.updating_server": undefined;
+	"ui.common.updates.update_notification.updating_the_server_will_improve_ai_functionality_improve_securit": undefined;
+	"ui.common.updates.update_notification.version": undefined;
+	"ui.common.updates.update_notification.view_full_release_notes": undefined;
+	"ui.common.updates.update_notification.view_full_release_notes_for": undefined;
+	"ui.common.updates.update_notification.waiting_for_the_turns_running_on_this_machine_to_finish": {
+		restartdrainbound: string;
+	};
+	"ui.common.updates.update_notification.which_still_reports": {
+		runningversion: string;
+	};
+	"ui.common.updates.update_quiet_indicator.application_update": undefined;
+	"ui.common.updates.update_quiet_indicator.dismiss_update_notice": undefined;
+	"ui.common.updates.update_quiet_indicator.server_update": undefined;
+	"ui.common.updates.wait.minutes": { minutes: number };
+	"ui.common.updates.wait.minutes_seconds": {
+		minutes: number;
+		seconds: number;
+	};
+	"ui.common.updates.wait.seconds": { seconds: number };
 	"ui.console.capacity.archived": { archived: number };
 	"ui.console.capacity.full": undefined;
 	"ui.console.capacity.help": undefined;
