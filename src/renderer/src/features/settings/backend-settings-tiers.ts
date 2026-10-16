@@ -253,6 +253,14 @@ export const KEY_TIER: Record<string, SettingTier> = {
 	"speech.voice.language": "advanced",
 	"speech.voice.accent": "advanced",
 	"speech.voice.instructions": "advanced",
+	// asks (1)
+	/*
+	 * `advanced`: a retention dial for rows that can no longer be acted on (D6, D10).
+	 * "Show timed-out asks for" names the dimension; what each choice hides, and that
+	 * it is display only, is in the row's help and choice descriptions - the rubric's
+	 * "needs its help text" case. The asks section is `live` scope, so nothing relaunches.
+	 */
+	"asks.lapsed_visible_for": "advanced",
 };
 
 /**

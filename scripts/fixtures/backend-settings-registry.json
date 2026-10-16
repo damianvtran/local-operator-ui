@@ -131,6 +131,12 @@
 			"title": "Retired",
 			"scope": "new launch",
 			"description": "Keys that are read but no longer do anything."
+		},
+		{
+			"name": "asks",
+			"title": "Asks",
+			"scope": "live",
+			"description": "Questions an agent queues for you. A change applies at once in the terminal, the desktop app and on your phone."
 		}
 	],
 	"settings": [
@@ -2930,6 +2936,50 @@
 			"choices": [],
 			"empty_unsets": false,
 			"redacted": false
+		},
+		{
+			"key": "asks.lapsed_visible_for",
+			"section": "asks",
+			"label": "Show timed-out asks for",
+			"kind": "enum",
+			"help": "How long an unanswered ask stays shown past its deadline.",
+			"value": "7d",
+			"default": "7d",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": "at_expiry",
+					"label": "gone at expiry",
+					"description": "hidden as soon as it times out"
+				},
+				{
+					"value": "1h",
+					"label": "1 hour",
+					"description": "hidden 1 hour after its deadline"
+				},
+				{
+					"value": "24h",
+					"label": "24 hours",
+					"description": "hidden 24 hours after its deadline"
+				},
+				{
+					"value": "7d",
+					"label": "7 days",
+					"description": "hidden 7 days after its deadline (default)"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
 		}
 	]
 }

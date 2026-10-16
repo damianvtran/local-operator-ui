@@ -60,10 +60,10 @@ export type PanelRailProps = {
 	 * The outstanding asks the item's scope carries - what the BADGE counts.
 	 *
 	 * THE OUTSTANDING SET, decided rather than inherited (design round 1, D3, moved
-	 * here with the mark in #896): open + moved-on rows are still the user's to act
-	 * on, so the mark is an attention mark; a settled ask offers nothing and its
-	 * number belongs to the drawer's filter, not a door. The number is the drawer's
-	 * own view (`askQueueView.open` / `fleetAsks.outstanding`), not a second tally.
+	 * here with the mark in #896): the ANSWERABLE rows are the user's to act on, so
+	 * the mark is an attention mark; a settled or lapsed ask offers nothing (D10) and
+	 * its number belongs to the drawer's filter, not a door. The number is the drawer's
+	 * own view (`askAttentionCount` / `fleetAsks.outstanding`), not a second tally.
 	 */
 	askCount: number;
 	/**

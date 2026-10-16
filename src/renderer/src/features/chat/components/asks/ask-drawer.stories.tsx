@@ -26,14 +26,12 @@
  * - **The accent is spent exactly once per surface.** Inside the drawer it is the
  *   status glyph and the primary control, and nowhere else — § 2's budget is
  *   about three accent spends a screen.
- * - **QUEUED and TIMED-OUT do not look alike.** The copy contract's sentences
- *   are the difference, and the timeout keeps its answer controls live: a
- *   timed-out ask is still answerable (that is the `late` path), so it must not
- *   be drawn as a closed state. THAT IS WHY IT IS NOT IN THE SETTLED SECTION: the
- *   section is history, and a row whose answer still reaches the agent is not
- *   history - not even a one-line one. The section's own rows keep their
- *   distinction on the status WORD instead (`Answered` beside `Answered late`),
- *   which is the only half of the sentence a one-line row can hold.
+ * - **QUEUED and TIMED-OUT do not look alike.** A queued ask is a card with live
+ *   controls; a timed-out ask is LAPSED - read-only on every surface (D10) - so it
+ *   sits in the settled section, collapsed behind a neutral `Timed out` badge
+ *   exactly as a declined ask does (D11), and opens only on the reader's press.
+ *   The section's rows keep their distinction on the status WORD (`Answered`
+ *   beside `Answered late`), the only half of the sentence a one-line row holds.
  * - **Pending first, always complete; settled collapsed** (the note's §4.5/D3):
  *   history must not drive the drawer's length.
  * - **Disabled changes colour, never opacity.** An incomplete draft's Submit is
@@ -223,8 +221,8 @@ export const ExpandedSingle: Story = {
 };
 
 /**
- * The queue at its honest worst: an open ask, a timed-out one that is still
- * answerable, and a late answer already delivered by another surface.
+ * The queue at its honest worst: an open ask, a timed-out one (collapsed behind its
+ * `Timed out` badge, read-only), and a late answer already delivered by another surface.
  */
 export const ExpandedSeveral: Story = {
 	args: {
@@ -514,12 +512,9 @@ export const ManyOverflow: Story = {
  * section header whose body is one line per settled ask.
  *
  * THE PAIR THAT HAD TO BE TOLD APART IS THE PAIR THE SECTION HOLDS (agent review
- * round 1, M1 = UX U1 = design D1). A `timed_out` ask cannot be in here at all - the
- * backend's outstanding set folds it in, so it stays a pending card with its answer
- * controls (see `timedOutAsk`) - and this note used to claim this frame photographed
- * that pair, which the frame itself contradicts. What the section DOES hold is the
- * shipped look-alike pair: `Answered` and `Answered late`, which differ only in the
- * word a one-line row can carry, and that is the pair this frame now photographs.
+ * round 1, M1 = UX U1 = design D1): `Answered` and `Answered late`, which differ only
+ * in the word a one-line row can carry. Since D11 the section also holds the
+ * `timed_out` ask (see `timedOutAsk`), collapsed behind `Timed out` beside `Declined`.
  */
 export const SettledSection: Story = {
 	args: {
@@ -539,12 +534,9 @@ export const SettledSection: Story = {
 };
 
 /**
- * A `timed_out` ask: STILL ANSWERABLE through the `late` path, so it is a PENDING
- * card rather than a settled row.
- *
- * The name is the claim (agent review round 1, M1): this fixture used to be called
- * `optionallySettled`, which described a state the backend does not produce - the
- * outstanding set folds `timed_out` in, so `presentAsk` marks the row `open`.
+ * A `timed_out` ask: LAPSED, so it is a collapsed settled row behind a `Timed out`
+ * badge rather than a pending card (D10, D11). The backend's outstanding set still
+ * folds it in (`presentAsk` marks it `open`), which is why the bar counts it.
  */
 function timedOutAsk(id: string): PendingAsk {
 	return ask({
