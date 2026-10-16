@@ -453,6 +453,30 @@ test("the close door fires ONCE per emptying", async () => {
 	assert.deepEqual(calls, [true], "the transition fires once, not per render");
 });
 
+/*
+ * A RECONNECT GAP IS NOT AN EMPTYING (agent review m3 of the always-visible rail). A
+ * gap nulls the session frame for ~1.5-4 s; the drawer used to read that as "the rows
+ * went away" and close while the user was answering. The frame that comes back
+ * decides: rows keep the drawer, an empty queue is a real emptying and closes it.
+ */
+test("a reconnect gap under a populated drawer closes nothing; the frame after it decides", async (t) => {
+	const calls = [];
+	const props = { scope: "session", onClose: () => calls.push(true) };
+	const view = await mountFor(
+		t,
+		h(AskDrawer, { frontend: frontend([openAsk]), ...props }),
+	);
+	await view.rerender(h(AskDrawer, { frontend: null, ...props }));
+	assert.deepEqual(calls, [], "the gap's unread frame closed the drawer");
+	await view.rerender(
+		h(AskDrawer, { frontend: frontend([openAsk]), ...props }),
+	);
+	assert.deepEqual(calls, [], "the same rows back after the gap: still open");
+	await view.rerender(h(AskDrawer, { frontend: null, ...props }));
+	await view.rerender(h(AskDrawer, { frontend: frontend([]), ...props }));
+	assert.deepEqual(calls, [true], "the ask settled during the gap: one close");
+});
+
 /* ---------------------------------------------------------- the authority ---- */
 
 test("only the app's writer bumps the revision the composer mirrors on", () => {

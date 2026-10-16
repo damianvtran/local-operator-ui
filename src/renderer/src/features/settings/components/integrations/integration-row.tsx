@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * One integration, as one line a person can act on.
  *
@@ -37,10 +39,10 @@ import type { FC, KeyboardEvent, Ref } from "react";
 import type { McpCatalogOperation } from "../../../../../../shared/desktop-control-contract";
 import {
 	type IntegrationRow as IntegrationRowData,
-	NOT_CONNECTED_EXPLANATION,
+	NOT_CONNECTED_EXPLANATION_KEY,
 	type OverflowItem,
 	type PrimaryAction,
-	READY_EXPLANATION,
+	READY_EXPLANATION_KEY,
 	type RowMemories,
 	type StatusTone,
 	integrationMeta,
@@ -82,10 +84,15 @@ const STATUS_INK: Record<StatusTone, string> = {
 };
 
 /** The tooltip a status carries, when it needs one at all. */
-const STATUS_EXPLANATION: Record<string, string> = {
-	Ready: READY_EXPLANATION,
-	"Not connected": NOT_CONNECTED_EXPLANATION,
-};
+// Resolve both the status and its explanation in the same locale at render
+// time. The English compatibility constants remain exported for older callers.
+function statusExplanation(label: string): string | undefined {
+	if (label === t("ui.settings.integrations.integration_model.ready"))
+		return t(READY_EXPLANATION_KEY);
+	if (label === t("ui.settings.integrations.integration_model.not_connected"))
+		return t(NOT_CONNECTED_EXPLANATION_KEY);
+	return undefined;
+}
 
 /** A question the row asks inline before a destructive or account change. */
 export type RowConfirm = { kind: "remove" | "sign_out" } | null;
@@ -134,6 +141,7 @@ export const IntegrationRow: FC<IntegrationRowProps> = ({
 	onConfirm,
 	onCancelConfirm,
 }) => {
+	useI18nLocale();
 	const status = integrationStatus(row, operations, memories, now);
 	/*
 	 * On a deep-linked row, "Couldn't start" drops to `ink`: `danger` as text
@@ -217,8 +225,8 @@ export const IntegrationRow: FC<IntegrationRowProps> = ({
 						))}
 					</span>
 				</div>
-				{STATUS_EXPLANATION[status.label] ? (
-					<Tooltip content={STATUS_EXPLANATION[status.label]}>
+				{statusExplanation(status.label) ? (
+					<Tooltip content={statusExplanation(status.label)}>
 						<span className={cn("shrink-0 text-body-sm", statusInk)}>
 							{status.label}
 						</span>
@@ -260,7 +268,10 @@ export const IntegrationRow: FC<IntegrationRowProps> = ({
 							ref={overflowRef}
 							variant="ghost"
 							size="icon-sm"
-							aria-label={`More actions for ${row.name}`}
+							aria-label={t(
+								"ui.settings.integrations.integration_row.more_actions_for_name",
+								{ name: String(row.name) },
+							)}
 							disabled={pending}
 						>
 							<MoreHorizontal aria-hidden="true" />
@@ -305,17 +316,28 @@ export const IntegrationRow: FC<IntegrationRowProps> = ({
 				<div className="flex flex-wrap items-center gap-2 pl-7">
 					<span className="text-body-sm text-ink">
 						{confirm.kind === "remove"
-							? `Remove ${row.name}?`
-							: `Sign out of ${row.name}?`}
+							? t("ui.settings.integrations.integration_row.remove_name", {
+									name: String(row.name),
+								})
+							: t("ui.settings.integrations.integration_row.sign_out_of_name", {
+									name: String(row.name),
+								})}
 					</span>
 					{/* What the press actually does (U6): "Remove" alone does not say
 					    that every chat loses the server. */}
 					<span className="text-body-sm text-ink-muted">
 						{confirm.kind === "remove"
-							? `Agents in every chat lose access to ${row.name}.`
+							? t(
+									"ui.settings.integrations.integration_row.agents_in_every_chat_lose_access_to_name",
+									{ name: String(row.name) },
+								)
 							: row.auth.kind === "oauth"
-								? "The saved sign-in is removed too."
-								: "Its saved credential is removed too."}
+								? t(
+										"ui.settings.integrations.integration_row.the_saved_sign_in_is_removed_too",
+									)
+								: t(
+										"ui.settings.integrations.integration_row.its_saved_credential_is_removed_too",
+									)}
 					</span>
 					<Button
 						variant="danger"
@@ -323,10 +345,12 @@ export const IntegrationRow: FC<IntegrationRowProps> = ({
 						onClick={onConfirm}
 						data-integration-confirm={confirm.kind}
 					>
-						{confirm.kind === "remove" ? "Remove" : "Sign out"}
+						{confirm.kind === "remove"
+							? t("ui.settings.integrations.integration_row.remove")
+							: t("ui.settings.integrations.integration_row.sign_out")}
 					</Button>
 					<Button variant="ghost" size="sm" onClick={onCancelConfirm}>
-						Keep
+						{t("ui.settings.integrations.integration_row.keep")}
 					</Button>
 				</div>
 			) : null}
@@ -338,28 +362,31 @@ const OverflowEntry: FC<{
 	item: OverflowItem;
 	separated: boolean;
 	onSelect: () => void;
-}> = ({ item, separated, onSelect }) => (
-	<>
-		{separated ? <DropdownMenuSeparator /> : null}
-		{item.kind === "remove_elsewhere" ? (
-			<DropdownMenuItem disabled className="flex-col items-start gap-0.5">
-				<span>{item.label}</span>
-				{/*
-				 * The hint is EXPLANATORY COPY, not a disabled control, so it does
-				 * not inherit `ink-disabled` - which is exempt from a contrast
-				 * floor because it marks a control as off, and measured 1.99:1 on
-				 * the menu's ground (D2). `ink-dim` measures 5.25:1 there.
-				 */}
-				<span className="text-meta text-ink-dim">{item.hint}</span>
-			</DropdownMenuItem>
-		) : (
-			<DropdownMenuItem
-				destructive={item.kind === "remove"}
-				onSelect={onSelect}
-				data-integration-menu={item.kind}
-			>
-				{item.label}
-			</DropdownMenuItem>
-		)}
-	</>
-);
+}> = ({ item, separated, onSelect }) => {
+	useI18nLocale();
+	return (
+		<>
+			{separated ? <DropdownMenuSeparator /> : null}
+			{item.kind === "remove_elsewhere" ? (
+				<DropdownMenuItem disabled className="flex-col items-start gap-0.5">
+					<span>{item.label}</span>
+					{/*
+					 * The hint is EXPLANATORY COPY, not a disabled control, so it does
+					 * not inherit `ink-disabled` - which is exempt from a contrast
+					 * floor because it marks a control as off, and measured 1.99:1 on
+					 * the menu's ground (D2). `ink-dim` measures 5.25:1 there.
+					 */}
+					<span className="text-meta text-ink-dim">{item.hint}</span>
+				</DropdownMenuItem>
+			) : (
+				<DropdownMenuItem
+					destructive={item.kind === "remove"}
+					onSelect={onSelect}
+					data-integration-menu={item.kind}
+				>
+					{item.label}
+				</DropdownMenuItem>
+			)}
+		</>
+	);
+};

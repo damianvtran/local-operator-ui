@@ -54,6 +54,7 @@
  *    carried by more than one device contributes to **no group at all**.
  */
 
+import { t } from "../../../../i18n/messages";
 import type { MeshDevice } from "./mesh-graph";
 import type { SlotMap } from "./mesh-positions";
 
@@ -235,7 +236,10 @@ export function prefixGroups(
 			prefix: scope,
 			tier: "declared",
 			deviceIds: sortIds(ids),
-			words: "declared",
+			// The grouping is memoized independently of language; resolve its caption at read time.
+			get words() {
+				return t("ui.mesh.mesh_scope.declared");
+			},
 		});
 	}
 	for (const [prefix, ids] of byPrefix) {
@@ -244,7 +248,10 @@ export function prefixGroups(
 				prefix,
 				tier: "shared",
 				deviceIds: sortIds(ids),
-				words: "shared with this device",
+				// The grouping is memoized independently of language; resolve its caption at read time.
+				get words() {
+					return t("ui.mesh.mesh_scope.shared_with_this_device");
+				},
 			});
 		// TWO devices, because one device's prefix is not a grouping: this tier is
 		// arithmetic on two published values, and one value is not a comparison.
@@ -253,7 +260,10 @@ export function prefixGroups(
 				prefix,
 				tier: "probable",
 				deviceIds: sortIds(ids),
-				words: "same prefix",
+				// The grouping is memoized independently of language; resolve its caption at read time.
+				get words() {
+					return t("ui.mesh.mesh_scope.same_prefix");
+				},
 			});
 	}
 	return groups.sort(

@@ -1,0 +1,1077 @@
+{
+	"ui.browser.browser_approvals_dock.approvals": {
+		"role": "accessible control/region name \u2014 app-wide site approvals dock",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "App-wide site approvals dock: names/explains approvals. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_approvals_dock.waiting_count": {
+		"role": "status or explanatory text \u2014 app-wide site approvals dock",
+		"tone": "Factual and restrained",
+		"note": "Dock summary of live waiting requests; distinct from the adjacent approved-site count. count formatting uses ICU number ::group-off on the arm that interpolates the count, because the pre-extraction literal interpolated the raw number and bare # would group it (1000 rendered as 1,000). Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+	},
+	"ui.browser.browser_approvals_dock.approved_count": {
+		"role": "status or explanatory text \u2014 app-wide site approvals dock",
+		"tone": "Factual and restrained",
+		"note": "Dock summary of granted sites. Only shown when the granted list is nonempty; count is approved origins/scopes, not requests. count formatting uses ICU number ::group-off on both arms, because the pre-extraction literal interpolated the raw number and bare # would group it (1000 rendered as 1,000). Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+	},
+	"ui.browser.browser_approvals_dock.close_approvals": {
+		"role": "accessible control/region name \u2014 app-wide site approvals dock",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "App-wide site approvals dock: names/explains close approvals. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_approvals_dock.approvals_are_kept_per_origin_and_are": {
+		"role": "status or explanatory text \u2014 app-wide site approvals dock",
+		"tone": "Factual and restrained",
+		"note": "Explains app-wide origin approval storage separately from cookies, persistent sign-ins and ten-minute pending requests. Preserve every scope/lifetime distinction; revocation is not logout, clearing cookies does not restore a denied request. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_approvals_dock.agents_can_drive_tabs_in_this_app": {
+		"role": "status or explanatory text \u2014 app-wide site approvals dock",
+		"tone": "Factual and restrained",
+		"note": "App-wide site approvals dock: names/explains agents can drive tabs in this app. This is consent/scope copy; preserve whether access is for one request, a conversation or the site, and whether the control grants or revokes it. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_approvals_dock.waiting_requests": {
+		"role": "accessible control/region name \u2014 app-wide site approvals dock",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "App-wide site approvals dock: names/explains waiting requests. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_approvals_dock.waiting": {
+		"role": "dialog/section heading \u2014 app-wide site approvals dock",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "App-wide site approvals dock: names/explains waiting. Length: keep the dialog/section heading compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_approvals_dock.nothing_is_waiting_an_agent_that_needs": {
+		"role": "status or explanatory text \u2014 app-wide site approvals dock",
+		"tone": "Factual and restrained",
+		"note": "App-wide site approvals dock: names/explains nothing is waiting an agent that needs. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_approvals_dock.expired_the_agent_has_to_ask_again": {
+		"role": "status or explanatory text \u2014 app-wide site approvals dock",
+		"tone": "Factual and restrained",
+		"note": "App-wide site approvals dock: names/explains expired the agent has to ask again. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_approvals_dock.withdrawn_by_the_agent": {
+		"role": "status or explanatory text \u2014 app-wide site approvals dock",
+		"tone": "Factual and restrained",
+		"note": "App-wide site approvals dock: names/explains withdrawn by the agent. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_approvals_dock.approved_sites": {
+		"role": "accessible control/region name \u2014 app-wide site approvals dock",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "App-wide site approvals dock: names/explains approved sites. This is consent/scope copy; preserve whether access is for one request, a conversation or the site, and whether the control grants or revokes it. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_approvals_dock.approved": {
+		"role": "dialog/section heading \u2014 app-wide site approvals dock",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "App-wide site approvals dock: names/explains approved. This is consent/scope copy; preserve whether access is for one request, a conversation or the site, and whether the control grants or revokes it. Length: keep the dialog/section heading compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_approvals_dock.no_site_is_approved_yet_the_agent": {
+		"role": "status or explanatory text \u2014 app-wide site approvals dock",
+		"tone": "Factual and restrained",
+		"note": "App-wide site approvals dock: names/explains no site is approved yet the agent. This is consent/scope copy; preserve whether access is for one request, a conversation or the site, and whether the control grants or revokes it. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_approvals_dock.revoke": {
+		"role": "button/menu choice \u2014 app-wide site approvals dock",
+		"tone": "Short imperative",
+		"note": "Revokes this approval or denial record; for a denial it allows future requests again, not immediate site access. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_approvals_dock.revoke_all_site_approvals": {
+		"role": "button/menu choice \u2014 app-wide site approvals dock",
+		"tone": "Short imperative",
+		"note": "Revokes granted site approvals, not cookies or sign-ins. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_approvals_dock.denied_sites": {
+		"role": "accessible control/region name \u2014 app-wide site approvals dock",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "App-wide site approvals dock: names/explains denied sites. This is consent/scope copy; preserve whether access is for one request, a conversation or the site, and whether the control grants or revokes it. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_approvals_dock.denied": {
+		"role": "dialog/section heading \u2014 app-wide site approvals dock",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "App-wide site approvals dock: names/explains denied. This is consent/scope copy; preserve whether access is for one request, a conversation or the site, and whether the control grants or revokes it. Length: keep the dialog/section heading compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_approvals_dock.the_agent_stops_asking_about_these_revoking": {
+		"role": "status or explanatory text \u2014 app-wide site approvals dock",
+		"tone": "Factual and restrained",
+		"note": "App-wide site approvals dock: names/explains the agent stops asking about these revoking. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_approvals_dock.current_site": {
+		"role": "accessible control/region name \u2014 app-wide site approvals dock",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "App-wide site approvals dock: names/explains current site. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_approvals_dock.this_site": {
+		"role": "dialog/section heading \u2014 app-wide site approvals dock",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "App-wide site approvals dock: names/explains this site. Length: keep the dialog/section heading compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_approvals_dock.the_page_the_active_tab_is_on": {
+		"role": "status or explanatory text \u2014 app-wide site approvals dock",
+		"tone": "Factual and restrained",
+		"note": "App-wide site approvals dock: names/explains the page the active tab is on. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_approvals_dock.forget_this_site": {
+		"role": "button/menu choice \u2014 app-wide site approvals dock",
+		"tone": "Short imperative",
+		"note": "Revokes approval and clears this app\u2019s stored data for the active site. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_approvals_dock.revokes_any_approval_for_it_and_clears": {
+		"role": "status or explanatory text \u2014 app-wide site approvals dock",
+		"tone": "Factual and restrained",
+		"note": "Forget-site explanation: revoke approval and clear this app\u2019s stored site data, not the operator\u2019s separate real browser profile. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_approvals_dock.browsing_data": {
+		"role": "accessible control/region name \u2014 app-wide site approvals dock",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "App-wide site approvals dock: names/explains browsing data. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_approvals_dock.these_clear_what_this_app_s_browser": {
+		"role": "status or explanatory text \u2014 app-wide site approvals dock",
+		"tone": "Factual and restrained",
+		"note": "App-wide site approvals dock: names/explains these clear what this app s browser. Describes transfer state or action, not file contents; do not imply completion while a transfer is pending. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_approvals_dock.clear_cookies_and_site_data": {
+		"role": "button/menu choice \u2014 app-wide site approvals dock",
+		"tone": "Short imperative",
+		"note": "Clears this embedded browser\u2019s cookie/site-data store, signing its accounts out; approval records remain. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_approvals_dock.clear_cache": {
+		"role": "button/menu choice \u2014 app-wide site approvals dock",
+		"tone": "Short imperative",
+		"note": "Clears embedded browser cache, not approvals or saved sign-ins. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_approvals_dock.clear_everything": {
+		"role": "button/menu choice \u2014 app-wide site approvals dock",
+		"tone": "Short imperative",
+		"note": "Clears this embedded browser profile\u2019s browsing data, not the site-approval list or the operator\u2019s real browser. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_approvals_dock.clearing_cookies_signs_this_app_out_of": {
+		"role": "status or explanatory text \u2014 app-wide site approvals dock",
+		"tone": "Factual and restrained",
+		"note": "Clear-cookie explanation: signs the embedded app browser out while retaining agent site approvals. Do not promise a new consent prompt for already-approved sites. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_approvals_tray.header_waiting": {
+		"role": "status or explanatory text \u2014 pending/resolved approvals tray",
+		"tone": "Factual and restrained",
+		"note": "Default all-conversations approval header. count is every currently live request, not granted sites or settled notices. count formatting uses ICU number ::group-off on both arms, because the pre-extraction literal interpolated the raw number and bare # would group it (1000 rendered as 1,000). Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility."
+	},
+	"ui.browser.browser_approvals_tray.header_conversation": {
+		"role": "status or explanatory text \u2014 pending/resolved approvals tray",
+		"tone": "Factual and restrained",
+		"note": "Pane approval header. count is this conversation\u2019s pending requests even when the strip displays All tabs; preserve the explicit conversation scope. count formatting uses ICU number ::group-off on both arms, because the pre-extraction literal interpolated the raw number and bare # would group it (1000 rendered as 1,000). Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility."
+	},
+	"ui.browser.browser_approvals_tray.request_from": {
+		"role": "accessible control/region name \u2014 pending/resolved approvals tray",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "List-row accessible name: ordinal is the request\u2019s displayed sequence, requester is the session/agent label, authority is the site origin/domain. Preserve all three to distinguish requests. numeric formatting uses ICU number ::group-off on the numeric placeholder, because the pre-extraction literal interpolated the raw number and a bare number selector would group it (1000 rendered as 1,000). Placeholders: ordinal = runtime value, preserve verbatim; requester = already composed requester provenance; authority = runtime value, preserve verbatim. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_approvals_tray.open_approvals": {
+		"role": "button/menu choice \u2014 pending/resolved approvals tray",
+		"tone": "Short imperative",
+		"note": "Pending/resolved approvals tray: names/explains open approvals. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_consent_bar.site_approval_request": {
+		"role": "accessible control/region name \u2014 site-approval request band",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Site-approval request band: names/explains site approval request. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_consent_request.an_agent": {
+		"role": "status or explanatory text \u2014 site access consent decision",
+		"tone": "Factual and restrained",
+		"note": "Site access consent decision: names/explains an agent. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_consent_request.untitled_chat": {
+		"role": "status or explanatory text \u2014 site access consent decision",
+		"tone": "Factual and restrained",
+		"note": "Site access consent decision: names/explains untitled chat. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_consent_request.another_session": {
+		"role": "status or explanatory text \u2014 site access consent decision",
+		"tone": "Factual and restrained",
+		"note": "Site access consent decision: names/explains another session. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_consent_request.agent_in": {
+		"role": "status or explanatory text \u2014 site access consent decision",
+		"tone": "Factual and restrained",
+		"note": "Requester description for a named local conversation. name is a user-authored title and is wrapped in literal single quotes. ICU doubled apostrophes produce those literal quotes; never translate the title. Placeholders: name = runtime value, preserve verbatim. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_consent_request.the_agent_in_untitled_chat": {
+		"role": "status or explanatory text \u2014 site access consent decision",
+		"tone": "Factual and restrained",
+		"note": "Site access consent decision: names/explains the agent in untitled chat. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_consent_request.an_agent_from_another_session": {
+		"role": "status or explanatory text \u2014 site access consent decision",
+		"tone": "Factual and restrained",
+		"note": "Site access consent decision: names/explains an agent from another session. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_consent_request.recording_your_choice": {
+		"role": "status or explanatory text \u2014 site access consent decision",
+		"tone": "Factual and restrained",
+		"note": "Site access consent decision: names/explains recording your choice. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_consent_request.wants_to_open": {
+		"role": "status or explanatory text \u2014 site access consent decision",
+		"tone": "Factual and restrained",
+		"note": "Site access consent decision: names/explains wants to open. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_consent_request.this_browser_keeps_sign_ins_across_conversations": {
+		"role": "status or explanatory text \u2014 site access consent decision",
+		"tone": "Factual and restrained",
+		"note": "Consent disclosure before granting site access: this app\u2019s persistent signed-in accounts may be usable by the approved agent. Human navigation remains available even when agent access is denied. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_consent_request.allow_once": {
+		"role": "button/menu choice \u2014 site access consent decision",
+		"tone": "Short imperative",
+		"note": "Grants one navigation for the requesting conversation, for up to ten minutes. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_consent_request.allow_until_the_app_quits": {
+		"role": "button/menu choice \u2014 site access consent decision",
+		"tone": "Short imperative",
+		"note": "Grants this site for this app run and every conversation, not just the requesting one. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_consent_request.always_allow_this_site": {
+		"role": "button/menu choice \u2014 site access consent decision",
+		"tone": "Short imperative",
+		"note": "Grants persistent site access across conversations until revoked. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_consent_request.allow_all_of": {
+		"role": "button/menu choice \u2014 site access consent decision",
+		"tone": "Short imperative",
+		"note": "Site access consent decision: names/explains allow all of. This is consent/scope copy; preserve whether access is for one request, a conversation or the site, and whether the control grants or revokes it. Inline fragment: preserve boundary spaces; its adjacent name/value stays in the existing markup. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_consent_request.don_t_allow": {
+		"role": "button/menu choice \u2014 site access consent decision",
+		"tone": "Short imperative",
+		"note": "Stores a denial and stops future requests for the site until that denial is revoked. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_consent_request.one_navigation_for_that_conversation_up_to": {
+		"role": "status or explanatory text \u2014 site access consent decision",
+		"tone": "Factual and restrained",
+		"note": "Gloss for Allow once: one navigation, the requesting conversation only, and up to ten minutes. Never broaden this to every conversation or unlimited time. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_consent_request.this_site_for_this_run_only_and": {
+		"role": "status or explanatory text \u2014 site access consent decision",
+		"tone": "Factual and restrained",
+		"note": "Gloss for run-only approval: the specific site, until app quit, shared by every conversation. The permission is broader than a single requesting session. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_consent_request.kept_until_you_revoke_it_and_shared": {
+		"role": "status or explanatory text \u2014 site access consent decision",
+		"tone": "Factual and restrained",
+		"note": "Gloss for persistent site approval: survives app restarts until revoked and applies to all conversations. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_consent_request.every_site_under": {
+		"role": "status or explanatory text \u2014 site access consent decision",
+		"tone": "Factual and restrained",
+		"note": "Site access consent decision: names/explains every site under. Inline fragment: preserve boundary spaces; its adjacent name/value stays in the existing markup. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_consent_request.kept_until_you_revoke_it_shared_with": {
+		"role": "status or explanatory text \u2014 site access consent decision",
+		"tone": "Factual and restrained",
+		"note": "Site access consent decision: names/explains kept until you revoke it shared with. Continuation fragment: its initial punctuation joins the preceding sentence/value. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_consent_request.the_agent_stops_asking_about_this_site": {
+		"role": "status or explanatory text \u2014 site access consent decision",
+		"tone": "Factual and restrained",
+		"note": "Gloss for denial: prevents further agent requests for the site until the reader revokes the denial in Approvals; it is not merely cancelling this request. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_file_transfer_row.file_transfer": {
+		"role": "accessible control/region name \u2014 file upload/download status row",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "File upload/download status row: names/explains file transfer. Describes transfer state or action, not file contents; do not imply completion while a transfer is pending. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_file_transfer_row.downloading": {
+		"role": "status or explanatory text \u2014 file upload/download status row",
+		"tone": "Factual and restrained",
+		"note": "File upload/download status row: names/explains downloading. Describes transfer state or action, not file contents; do not imply completion while a transfer is pending. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_file_transfer_row.download_refused": {
+		"role": "status or explanatory text \u2014 file upload/download status row",
+		"tone": "Factual and restrained",
+		"note": "File upload/download status row: names/explains download refused. Describes transfer state or action, not file contents; do not imply completion while a transfer is pending. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_file_transfer_row.was_saved_to": {
+		"role": "status or explanatory text \u2014 file upload/download status row",
+		"tone": "Factual and restrained",
+		"note": "Verb fragment between the saved filename and destination-directory span. The path remains user/machine data; do not translate or remove it. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_file_transfer_row.open_downloads_folder": {
+		"role": "accessible control/region name \u2014 file upload/download status row",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "File upload/download status row: names/explains open downloads folder. Describes transfer state or action, not file contents; do not imply completion while a transfer is pending. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_file_transfer_row.open_folder": {
+		"role": "button/menu choice \u2014 file upload/download status row",
+		"tone": "Short imperative",
+		"note": "Reveals the embedded browser download directory, not the file\u2019s URL. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_file_transfer_row.dismiss_upload_notice": {
+		"role": "accessible control/region name \u2014 file upload/download status row",
+		"tone": "Short imperative",
+		"note": "Hides this decided upload notice without reversing the attachment. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_file_transfer_row.dismiss_download_notice": {
+		"role": "accessible control/region name \u2014 file upload/download status row",
+		"tone": "Short imperative",
+		"note": "Hides this decided download notice without deleting the saved file. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_file_transfer_row.on_another_tab": {
+		"role": "status or explanatory text \u2014 file upload/download status row",
+		"tone": "Factual and restrained",
+		"note": "File upload/download status row: names/explains on another tab. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_file_transfer_row.received_so_far": {
+		"role": "status or explanatory text \u2014 file upload/download status row",
+		"tone": "Factual and restrained",
+		"note": "Unknown-total, non-announced progress span. received is the existing binary formatted byte count; do not invent a total or percentage. Placeholders: received = runtime value, preserve verbatim. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_file_transfer_row.download_progress": {
+		"role": "status or explanatory text \u2014 file upload/download status row",
+		"tone": "Factual and restrained",
+		"note": "Non-announced progress span. received/total are binary formatted byte strings; percent is the existing rounded numeric percentage. Parentheses, comma and trailing ellipsis remain. numeric formatting uses ICU number ::group-off on the numeric placeholder, because the pre-extraction literal interpolated the raw number and a bare number selector would group it (1000 rendered as 1,000). Placeholders: percent = runtime value, preserve verbatim; received = runtime value, preserve verbatim; total = known total; missing census must not be coerced to zero. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_file_transfer_row.is_an_executable_script_type": {
+		"role": "status or explanatory text \u2014 file upload/download status row",
+		"tone": "Factual and restrained",
+		"note": "File upload/download status row: names/explains is an executable script type. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_file_transfer_row.file_limit": {
+		"role": "status or explanatory text \u2014 file upload/download status row",
+		"tone": "Factual and restrained",
+		"note": "Download-refusal fragment after a separately rendered filename. limit is the existing binary byte-format helper\u2019s output, not a number to reformat; per-file differs from per-call count. Placeholders: limit = runtime value, preserve verbatim. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_file_transfer_row.call_limit": {
+		"role": "status or explanatory text \u2014 file upload/download status row",
+		"tone": "Factual and restrained",
+		"note": "Download-refusal fragment after filename: count is the host\u2019s per-call saved-file limit. English uses files at every count, byte-faithful to the pre-extraction form that never singularized. count formatting uses ICU number ::group-off on both arms, because the pre-extraction literal interpolated the raw number and bare # would group it (1000 rendered as 1,000). Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility."
+	},
+	"ui.browser.browser_file_transfer_row.could_not_be_saved_the_download_folder": {
+		"role": "status or explanatory text \u2014 file upload/download status row",
+		"tone": "Factual and restrained",
+		"note": "File upload/download status row: names/explains could not be saved the download folder. Describes transfer state or action, not file contents; do not imply completion while a transfer is pending. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_file_transfer_row.deadline": {
+		"role": "status or explanatory text \u2014 file upload/download status row",
+		"tone": "Factual and restrained",
+		"note": "Download-refusal fragment: limit is the host\u2019s deadline in seconds. Keep the s suffix and the cancellation claim; the file-saved/discarded result is separate. numeric formatting uses ICU number ::group-off on the numeric placeholder, because the pre-extraction literal interpolated the raw number and a bare number selector would group it (1000 rendered as 1,000). Placeholders: limit = runtime value, preserve verbatim. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_file_transfer_row.overrun": {
+		"role": "status or explanatory text \u2014 file upload/download status row",
+		"tone": "Factual and restrained",
+		"note": "Download-refusal fragment: binary byte limit was crossed while writing, rather than rejected from size metadata. The separate result explains the partial file was discarded. Placeholders: limit = runtime value, preserve verbatim. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_file_transfer_row.did_not_finish": {
+		"role": "status or explanatory text \u2014 file upload/download status row",
+		"tone": "Factual and restrained",
+		"note": "File upload/download status row: names/explains did not finish. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_file_transfer_row.was_refused": {
+		"role": "status or explanatory text \u2014 file upload/download status row",
+		"tone": "Factual and restrained",
+		"note": "File upload/download status row: names/explains was refused. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_file_transfer_row.the_partial_file_was_discarded": {
+		"role": "status or explanatory text \u2014 file upload/download status row",
+		"tone": "Factual and restrained",
+		"note": "File upload/download status row: names/explains the partial file was discarded. Describes transfer state or action, not file contents; do not imply completion while a transfer is pending. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_file_transfer_row.nothing_was_saved": {
+		"role": "status or explanatory text \u2014 file upload/download status row",
+		"tone": "Factual and restrained",
+		"note": "File upload/download status row: names/explains nothing was saved. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_file_transfer_row.just_now": {
+		"role": "status or explanatory text \u2014 file upload/download status row",
+		"tone": "Factual and restrained",
+		"note": "File upload/download status row: names/explains just now. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_file_transfer_row.age_minutes": {
+		"role": "status or explanatory text \u2014 file upload/download status row",
+		"tone": "Factual and restrained",
+		"note": "Visible but aria-hidden staleness cue. count is rounded age in minutes; compact min ago is deliberately retained instead of a full relative-time phrase. count formatting uses ICU number ::group-off on the arm that interpolates the count, because the pre-extraction literal interpolated the raw number and bare # would group it (1000 rendered as 1,000). Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+	},
+	"ui.browser.browser_file_transfer_row.age_hours": {
+		"role": "status or explanatory text \u2014 file upload/download status row",
+		"tone": "Factual and restrained",
+		"note": "Visible but aria-hidden staleness cue. count is rounded age in hours; compact h ago is deliberately retained. count formatting uses ICU number ::group-off on the arm that interpolates the count, because the pre-extraction literal interpolated the raw number and bare # would group it (1000 rendered as 1,000). Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+	},
+	"ui.browser.browser_file_transfer_row.byte_count": {
+		"role": "status or explanatory text \u2014 file upload/download status row",
+		"tone": "Factual and restrained",
+		"note": "File upload/download status row: names/explains byte count. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility. English uses bytes at every count, byte-faithful to the pre-extraction form that never singularized; count formatting uses ICU number ::group-off on both arms, because the pre-extraction literal interpolated the raw number and bare # would group it (1000 rendered as 1,000); MiB/KiB remain technical binary unit tokens."
+	},
+	"ui.browser.browser_hand_over_dialog.let_an_agent_use_this_tab": {
+		"role": "hover tooltip \u2014 manual-tab agent handover dialog",
+		"tone": "Factual and restrained",
+		"note": "Manual-tab agent handover dialog: names/explains let an agent use this tab. Length: keep the hover tooltip compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_hand_over_dialog.cancel": {
+		"role": "actions prop \u2014 manual-tab agent handover dialog",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Manual-tab agent handover dialog: names/explains cancel. Length: keep the actions prop compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_hand_over_dialog.hand_over": {
+		"role": "actions prop \u2014 manual-tab agent handover dialog",
+		"tone": "Short imperative",
+		"note": "Allows the selected agent session to use this human-owned tab; does not grant site access. Length: keep the actions prop compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_hand_over_dialog.the_agent_can_use_this_tab_and": {
+		"role": "status or explanatory text \u2014 manual-tab agent handover dialog",
+		"tone": "Factual and restrained",
+		"note": "The two independent gates: tab handover authorizes agent use of this tab, but approved-site access is still required. Never claim handover approves the current origin. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_hand_over_dialog.session": {
+		"role": "input label \u2014 manual-tab agent handover dialog",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Manual-tab agent handover dialog: names/explains session. Length: keep the input label compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_hand_over_dialog.choose_a_session": {
+		"role": "input hint \u2014 manual-tab agent handover dialog",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Manual-tab agent handover dialog: names/explains choose a session. Length: keep the input hint compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_hand_over_dialog.no_session_is_available_yet_start_one": {
+		"role": "status or explanatory text \u2014 manual-tab agent handover dialog",
+		"tone": "Factual and restrained",
+		"note": "Manual-tab agent handover dialog: names/explains no session is available yet start one. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_load_failure.that_address_does_not_resolve_check_the": {
+		"role": "status or explanatory text \u2014 failed-navigation panel",
+		"tone": "Factual and restrained",
+		"note": "Failed-navigation panel: names/explains that address does not resolve check the. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_load_failure.the_site_refused_the_connection_it_may": {
+		"role": "status or explanatory text \u2014 failed-navigation panel",
+		"tone": "Factual and restrained",
+		"note": "Failed-navigation panel: names/explains the site refused the connection it may. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_load_failure.the_site_did_not_answer_in_time": {
+		"role": "status or explanatory text \u2014 failed-navigation panel",
+		"tone": "Factual and restrained",
+		"note": "Failed-navigation panel: names/explains the site did not answer in time. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_load_failure.the_site_closed_the_connection_without_sending": {
+		"role": "status or explanatory text \u2014 failed-navigation panel",
+		"tone": "Factual and restrained",
+		"note": "Failed-navigation panel: names/explains the site closed the connection without sending. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_load_failure.the_connection_was_reset_before_the_page": {
+		"role": "status or explanatory text \u2014 failed-navigation panel",
+		"tone": "Factual and restrained",
+		"note": "Failed-navigation panel: names/explains the connection was reset before the page. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_load_failure.this_machine_is_not_connected_to_the": {
+		"role": "status or explanatory text \u2014 failed-navigation panel",
+		"tone": "Factual and restrained",
+		"note": "Failed-navigation panel: names/explains this machine is not connected to the. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_load_failure.that_address_is_not_reachable_from_this": {
+		"role": "status or explanatory text \u2014 failed-navigation panel",
+		"tone": "Factual and restrained",
+		"note": "Failed-navigation panel: names/explains that address is not reachable from this. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_load_failure.the_site_s_certificate_has_expired_or": {
+		"role": "status or explanatory text \u2014 failed-navigation panel",
+		"tone": "Factual and restrained",
+		"note": "Failed-navigation panel: names/explains the site s certificate has expired or. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_load_failure.the_site_s_certificate_is_not_from": {
+		"role": "status or explanatory text \u2014 failed-navigation panel",
+		"tone": "Factual and restrained",
+		"note": "Failed-navigation panel: names/explains the site s certificate is not from. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_load_failure.the_secure_connection_could_not_be_established": {
+		"role": "status or explanatory text \u2014 failed-navigation panel",
+		"tone": "Factual and restrained",
+		"note": "Failed-navigation panel: names/explains the secure connection could not be established. Keep the failure separate from the next action and do not invent a cause beyond what was observed. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_load_failure.the_page_could_not_be_loaded": {
+		"role": "status or explanatory text \u2014 failed-navigation panel",
+		"tone": "Factual and restrained",
+		"note": "Failed-navigation panel: names/explains the page could not be loaded. Keep the failure separate from the next action and do not invent a cause beyond what was observed. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_load_failure.couldn_t_load_this_page": {
+		"role": "status or explanatory text \u2014 failed-navigation panel",
+		"tone": "Factual and restrained",
+		"note": "Failed-navigation panel: names/explains couldn t load this page. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_load_failure.try_again_or_correct_the_address_in": {
+		"role": "status or explanatory text \u2014 failed-navigation panel",
+		"tone": "Factual and restrained",
+		"note": "Recovery description for failed navigation. The address stays editable; a still-failed tab is not restored after app quit. Preserve that next-launch rule. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_load_failure.try_again": {
+		"role": "button/menu choice \u2014 failed-navigation panel",
+		"tone": "Short imperative",
+		"note": "Failed-navigation panel: names/explains try again. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_pane.browser": {
+		"role": "status or explanatory text \u2014 conversation browser pane",
+		"tone": "Factual and restrained",
+		"note": "Conversation browser pane: names/explains browser. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_pane.which_tabs_to_show": {
+		"role": "accessible control/region name \u2014 conversation browser pane",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Conversation browser pane: names/explains which tabs to show. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_pane.this_conversation": {
+		"role": "status or explanatory text \u2014 conversation browser pane",
+		"tone": "Factual and restrained",
+		"note": "Conversation browser pane: names/explains this conversation. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_pane.all_tabs": {
+		"role": "status or explanatory text \u2014 conversation browser pane",
+		"tone": "Factual and restrained",
+		"note": "Conversation browser pane: names/explains all tabs. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_pane.close_browser": {
+		"role": "content prop \u2014 conversation browser pane",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Conversation browser pane: names/explains close browser. Length: keep the content prop compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_surface.new_tab_in_this_conversation": {
+		"role": "status or explanatory text \u2014 browser surface/startup and empty states",
+		"tone": "Factual and restrained",
+		"note": "Browser surface/startup and empty states: names/explains new tab in this conversation. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_surface.new_tab": {
+		"role": "status or explanatory text \u2014 browser surface/startup and empty states",
+		"tone": "Factual and restrained",
+		"note": "Browser surface/startup and empty states: names/explains new tab. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_surface.browser_unavailable": {
+		"role": "status or explanatory text \u2014 browser surface/startup and empty states",
+		"tone": "Factual and restrained",
+		"note": "Browser surface/startup and empty states: names/explains browser unavailable. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_surface.try_again": {
+		"role": "button/menu choice \u2014 browser surface/startup and empty states",
+		"tone": "Short imperative",
+		"note": "Browser surface/startup and empty states: names/explains try again. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_surface.startup_retry": {
+		"role": "status or explanatory text \u2014 browser surface/startup and empty states",
+		"tone": "Factual and restrained",
+		"note": "Browser surface/startup and empty states: names/explains startup retry. Keep the failure separate from the next action and do not invent a cause beyond what was observed. numeric formatting uses ICU number ::group-off on the numeric placeholder, because the pre-extraction literal interpolated the raw number and a bare number selector would group it (1000 rendered as 1,000). Placeholders: attempt = runtime value, preserve verbatim; maximum = runtime value, preserve verbatim. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_surface.starting_browser": {
+		"role": "status or explanatory text \u2014 browser surface/startup and empty states",
+		"tone": "Factual and restrained",
+		"note": "Browser surface/startup and empty states: names/explains starting browser. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_surface.the_browser_is_only_available_in_the": {
+		"role": "status or explanatory text \u2014 browser surface/startup and empty states",
+		"tone": "Factual and restrained",
+		"note": "Browser surface/startup and empty states: names/explains the browser is only available in the. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_surface.on_the_agent_s_tab": {
+		"role": "tabLabel prop \u2014 browser surface/startup and empty states",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Browser surface/startup and empty states: names/explains on the agent s tab. Length: keep the tabLabel prop compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_surface.on_another_tab": {
+		"role": "tabLabel prop \u2014 browser surface/startup and empty states",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Browser surface/startup and empty states: names/explains on another tab. Length: keep the tabLabel prop compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_surface.dismiss": {
+		"role": "accessible control/region name \u2014 browser surface/startup and empty states",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Browser surface/startup and empty states: names/explains dismiss. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_surface.loading_browser": {
+		"role": "label prop \u2014 browser surface/startup and empty states",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Browser surface/startup and empty states: names/explains loading browser. Length: keep the label prop compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_surface.no_tabs_are_open": {
+		"role": "status or explanatory text \u2014 browser surface/startup and empty states",
+		"tone": "Factual and restrained",
+		"note": "Browser surface/startup and empty states: names/explains no tabs are open. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_surface.no_browser_tabs_in_this_conversation_yet": {
+		"role": "status or explanatory text \u2014 browser surface/startup and empty states",
+		"tone": "Factual and restrained",
+		"note": "Browser surface/startup and empty states: names/explains no browser tabs in this conversation yet. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_surface.show_all_tabs": {
+		"role": "button/menu choice \u2014 browser surface/startup and empty states",
+		"tone": "Short imperative",
+		"note": "Changes pane presentation scope; it does not broaden request or site approval scope. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_surface.no_tab_is_selected_pick_a_tab": {
+		"role": "status or explanatory text \u2014 browser surface/startup and empty states",
+		"tone": "Factual and restrained",
+		"note": "Browser surface/startup and empty states: names/explains no tab is selected pick a tab. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_surface.this_page": {
+		"role": "status or explanatory text \u2014 browser surface/startup and empty states",
+		"tone": "Factual and restrained",
+		"note": "Browser surface/startup and empty states: names/explains this page. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_surface.paused_while_a_dialog_menu_or_panel": {
+		"role": "status or explanatory text \u2014 browser surface/startup and empty states",
+		"tone": "Factual and restrained",
+		"note": "Browser surface/startup and empty states: names/explains paused while a dialog menu or panel. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_tab_strip.this_tab": {
+		"role": "status or explanatory text \u2014 tab chip/action/overflow strip",
+		"tone": "Factual and restrained",
+		"note": "Tab chip/action/overflow strip: names/explains this tab. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_tab_strip.no_conversation": {
+		"role": "status or explanatory text \u2014 tab chip/action/overflow strip",
+		"tone": "Factual and restrained",
+		"note": "Tab chip/action/overflow strip: names/explains no conversation. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_tab_strip.new_tab": {
+		"role": "status or explanatory text \u2014 tab chip/action/overflow strip",
+		"tone": "Factual and restrained",
+		"note": "Tab chip/action/overflow strip: names/explains new tab. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_tab_strip.browser_tabs": {
+		"role": "accessible control/region name \u2014 tab chip/action/overflow strip",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Tab chip/action/overflow strip: names/explains browser tabs. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_tab_strip.tab_actions": {
+		"role": "accessible control/region name \u2014 tab chip/action/overflow strip",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Tab chip/action/overflow strip: names/explains tab actions. Placeholders: title = runtime value, preserve verbatim. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_tab_strip.actions_for": {
+		"role": "status or explanatory text \u2014 tab chip/action/overflow strip",
+		"tone": "Factual and restrained",
+		"note": "Tab chip/action/overflow strip: names/explains actions for. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_tab_strip.watch": {
+		"role": "button/menu choice \u2014 tab chip/action/overflow strip",
+		"tone": "Short imperative",
+		"note": "Tab chip/action/overflow strip: names/explains watch. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_tab_strip.let_an_agent_use": {
+		"role": "button/menu choice \u2014 tab chip/action/overflow strip",
+		"tone": "Short imperative",
+		"note": "Tab chip/action/overflow strip: names/explains let an agent use. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_tab_strip.stop_letting_the_agent_use": {
+		"role": "button/menu choice \u2014 tab chip/action/overflow strip",
+		"tone": "Short imperative",
+		"note": "Tab chip/action/overflow strip: names/explains stop letting the agent use. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_tab_strip.close": {
+		"role": "button/menu choice \u2014 tab chip/action/overflow strip",
+		"tone": "Short imperative",
+		"note": "Tab chip/action/overflow strip: names/explains close. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_tab_strip.copy_url": {
+		"role": "button/menu choice \u2014 tab chip/action/overflow strip",
+		"tone": "Short imperative",
+		"note": "Copies the tab\u2019s HTTP URL; changes neither selection nor ownership. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_tab_strip.close_tab": {
+		"role": "content prop \u2014 tab chip/action/overflow strip",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Tab chip/action/overflow strip: names/explains close tab. Length: keep the content prop compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_tab_strip.close_tab_shortcut": {
+		"role": "content prop \u2014 browser tab strip",
+		"tone": "concise, neutral, sentence case",
+		"note": "Close control's tooltip on the ACTIVE tab, naming the chord. shortcut is runtime technical data and stays unchanged."
+	},
+	"ui.browser.browser_tab_strip.close_named_tab": {
+		"role": "accessible control/region name \u2014 tab chip/action/overflow strip",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Tab chip/action/overflow strip: names/explains close named tab. Placeholders: title = runtime value, preserve verbatim. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_tab_strip.all_tabs_unshown": {
+		"role": "content prop \u2014 tab chip/action/overflow strip",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Tooltip for the compact off-screen tab control. count counts tabs outside the visible strip; the em dash belongs to the tooltip, not the accessible comma variant. count formatting uses ICU number ::group-off on the arm that interpolates the count, because the pre-extraction literal interpolated the raw number and bare # would group it (1000 rendered as 1,000). Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+	},
+	"ui.browser.browser_tab_strip.all_tabs_unshown_accessible": {
+		"role": "accessible control/region name \u2014 tab chip/action/overflow strip",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Accessible name and overflow section heading for off-screen tabs. count counts hidden strip tabs, not closed tabs; the comma suits speech and is distinct from the tooltip\u2019s em dash. count formatting uses ICU number ::group-off on the arm that interpolates the count, because the pre-extraction literal interpolated the raw number and bare # would group it (1000 rendered as 1,000). Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+	},
+	"ui.browser.browser_tab_strip.hide_all_tabs": {
+		"role": "accessible control/region name \u2014 tab chip/action/overflow strip",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Tab chip/action/overflow strip: names/explains hide all tabs. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_url_bar.newest_download": {
+		"role": "status or explanatory text \u2014 address and navigation bar",
+		"tone": "Factual and restrained",
+		"note": "Downloads-folder tooltip for multiple saved files in this session. name is the newest filename, count is the saved-file count; both are read from projection data. count formatting uses ICU number ::group-off on the arm that interpolates the count, because the pre-extraction literal interpolated the raw number and bare # would group it (1000 rendered as 1,000). Placeholders: name = runtime value, preserve verbatim; count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+	},
+	"ui.browser.browser_url_bar.latest_download": {
+		"role": "status or explanatory text \u2014 address and navigation bar",
+		"tone": "Factual and restrained",
+		"note": "Downloads-folder tooltip for one saved file. name is the saved filename; no plural-session count is shown. Placeholders: name = runtime value, preserve verbatim. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_url_bar.back_shortcut": {
+		"role": "content prop \u2014 address and navigation bar",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Navigation tooltip. shortcut is the existing platform-specific key chord, such as a Mac symbol sequence; it is technical data and stays unchanged. Placeholders: shortcut = runtime value, preserve verbatim. Length: keep the content prop compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_url_bar.back": {
+		"role": "accessible control/region name \u2014 address and navigation bar",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Address and navigation bar: names/explains back. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_url_bar.forward_shortcut": {
+		"role": "content prop \u2014 address and navigation bar",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Forward-navigation tooltip with the existing platform-specific shortcut chord, not a word to translate. Placeholders: shortcut = runtime value, preserve verbatim. Length: keep the content prop compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_url_bar.forward": {
+		"role": "accessible control/region name \u2014 address and navigation bar",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Address and navigation bar: names/explains forward. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_url_bar.stop_loading": {
+		"role": "content prop \u2014 address and navigation bar",
+		"tone": "Short imperative",
+		"note": "Stops in-flight navigation, not agent ownership or site consent. Length: keep the content prop compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_url_bar.reload": {
+		"role": "content prop \u2014 address and navigation bar",
+		"tone": "Short imperative",
+		"note": "Reloads the selected tab\u2019s current URL. Length: keep the content prop compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_url_bar.address": {
+		"role": "accessible control/region name \u2014 address and navigation bar",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Address and navigation bar: names/explains address. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_url_bar.approvals_waiting": {
+		"role": "accessible control/region name \u2014 address and navigation bar",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Address and navigation bar: names/explains approvals waiting. count formatting uses ICU number ::group-off on the arm that interpolates the count, because the pre-extraction literal interpolated the raw number and bare # would group it (1000 rendered as 1,000). Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+	},
+	"ui.browser.browser_url_bar.home_destination": {
+		"role": "hover tooltip \u2014 address and navigation bar",
+		"tone": "Factual and restrained",
+		"note": "Home tooltip naming the destination: the start page, which is blank. Length: keep compact."
+	},
+	"ui.browser.browser_url_bar.site_unverified": {
+		"role": "hover tooltip \u2014 address and navigation bar site-info indicator",
+		"tone": "Factual and restrained",
+		"note": "Site-info tooltip for an https page whose load failed before identity could be verified. Placeholders: origin = the page origin, preserve verbatim. Length: keep compact."
+	},
+	"ui.browser.browser_url_bar.site_unverified_certificate": {
+		"role": "hover tooltip \u2014 address and navigation bar site-info indicator",
+		"tone": "Factual and restrained",
+		"note": "Site-info tooltip for an https page whose certificate could not be verified. Placeholders: origin = the page origin, preserve verbatim. Length: keep compact."
+	},
+	"ui.browser.page_context_menu.cut": {
+		"role": "menu item \u2014 page context menu",
+		"tone": "Factual and restrained",
+		"note": "Standard edit action for the field under the pointer. Length: keep compact."
+	},
+	"ui.browser.page_context_menu.copy": {
+		"role": "menu item \u2014 page context menu",
+		"tone": "Factual and restrained",
+		"note": "Standard edit action for the field under the pointer. Length: keep compact."
+	},
+	"ui.browser.page_context_menu.paste": {
+		"role": "menu item \u2014 page context menu",
+		"tone": "Factual and restrained",
+		"note": "Standard edit action for the field under the pointer. Length: keep compact."
+	},
+	"ui.browser.page_context_menu.select_all": {
+		"role": "menu item \u2014 page context menu",
+		"tone": "Factual and restrained",
+		"note": "Standard edit action for the field under the pointer. Length: keep compact."
+	},
+	"ui.browser.page_context_menu.copy_page_address": {
+		"role": "menu item \u2014 page context menu",
+		"tone": "Factual and restrained",
+		"note": "Copies the current page address to the clipboard. Length: keep compact."
+	},
+	"ui.browser.browser_url_bar.home": {
+		"role": "accessible control/region name \u2014 address and navigation bar",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Home button: returns the active tab to the browser start state. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_url_bar.site_secure": {
+		"role": "hover tooltip \u2014 address and navigation bar site-info indicator",
+		"tone": "Factual and restrained",
+		"note": "Site-info tooltip for an https page. Placeholders: origin = the page origin (scheme and host), preserve verbatim. Length: keep the hover tooltip compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_url_bar.site_not_secure": {
+		"role": "hover tooltip \u2014 address and navigation bar site-info indicator",
+		"tone": "Factual and restrained",
+		"note": "Site-info tooltip for an http page; states the connection is not secure. Placeholders: origin = the page origin, preserve verbatim. Length: keep the hover tooltip compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_url_bar.site_internal": {
+		"role": "hover tooltip \u2014 address and navigation bar site-info indicator",
+		"tone": "Factual and restrained",
+		"note": "Site-info tooltip for an internal or start page with no remote origin. Length: keep the hover tooltip compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_url_bar.site_file": {
+		"role": "hover tooltip \u2014 address and navigation bar site-info indicator",
+		"tone": "Factual and restrained",
+		"note": "Site-info tooltip for a local file origin. Length: keep the hover tooltip compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.page_context_menu.copy_link_address": {
+		"role": "menu item \u2014 page context menu",
+		"tone": "Short imperative",
+		"note": "Copies the link under the pointer to the clipboard. Length: keep the menu item compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.page_context_menu.open_link_in_new_tab": {
+		"role": "menu item \u2014 page context menu",
+		"tone": "Short imperative",
+		"note": "Opens the link under the pointer in a new tab. Length: keep the menu item compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_webauthn_dialog.choose_a_passkey": {
+		"role": "hover tooltip \u2014 passkey chooser",
+		"tone": "Factual and restrained",
+		"note": "Passkey chooser: names/explains choose a passkey. Length: keep the hover tooltip compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_webauthn_dialog.your_mac_will_ask_for_touch_id": {
+		"role": "actions prop \u2014 passkey chooser",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Only passkeys stored on this Mac are offered; Touch ID follows the choice. External manager credentials are not shown. Keep Mac and Touch ID as product names, and do not imply the app can retrieve credentials from another manager. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_webauthn_dialog.answering": {
+		"role": "actions prop \u2014 passkey chooser",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Passkey chooser: names/explains answering. Length: keep the actions prop compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_webauthn_dialog.close": {
+		"role": "actions prop \u2014 passkey chooser",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Passkey chooser: names/explains close. Length: keep the actions prop compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_webauthn_dialog.cancel": {
+		"role": "actions prop \u2014 passkey chooser",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Passkey chooser: names/explains cancel. Length: keep the actions prop compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_webauthn_prompt.answer_failed": {
+		"role": "status or explanatory text \u2014 passkey answer error toast",
+		"tone": "Factual and restrained",
+		"note": "Passkey answer error toast: names/explains answer failed. Keep the failure separate from the next action and do not invent a cause beyond what was observed. Placeholders: error = runtime value, preserve verbatim. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.use_browser_chrome.downloads_folder_failed": {
+		"role": "status or explanatory text \u2014 browser file-manager action error",
+		"tone": "Factual and restrained",
+		"note": "Browser file-manager action error: names/explains downloads folder failed. Describes transfer state or action, not file contents; do not imply completion while a transfer is pending. Placeholders: message = runtime value, preserve verbatim. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.use_consent_attention_lifetime.that_request_is_no_longer_waiting": {
+		"role": "status or explanatory text \u2014 expired request attention notice",
+		"tone": "Factual and restrained",
+		"note": "Expired request attention notice: names/explains that request is no longer waiting. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.approval_queue_model.expires_in_under_a_minute": {
+		"role": "status or explanatory text \u2014 approval queue count/scope/expiry",
+		"tone": "Factual and restrained",
+		"note": "Approval queue count/scope/expiry: names/explains expires in under a minute. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.approval_queue_model.expires_minutes": {
+		"role": "status or explanatory text \u2014 approval queue count/scope/expiry",
+		"tone": "Factual and restrained",
+		"note": "Approval queue count/scope/expiry: names/explains expires minutes. count formatting uses ICU number ::group-off on both arms, because the pre-extraction literal interpolated the raw number and bare # would group it (1000 rendered as 1,000). Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+	},
+	"ui.browser.approval_queue_model.this_site": {
+		"role": "status or explanatory text \u2014 approval queue count/scope/expiry",
+		"tone": "Factual and restrained",
+		"note": "Approval queue count/scope/expiry: names/explains this site. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.approval_queue_model.whole_domain": {
+		"role": "status or explanatory text \u2014 approval queue count/scope/expiry",
+		"tone": "Factual and restrained",
+		"note": "Approval queue count/scope/expiry: names/explains whole domain. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.approval_queue_model.this_host": {
+		"role": "status or explanatory text \u2014 approval queue count/scope/expiry",
+		"tone": "Factual and restrained",
+		"note": "Approval queue count/scope/expiry: names/explains this host. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.approval_queue_model.denied": {
+		"role": "status or explanatory text \u2014 approval queue count/scope/expiry",
+		"tone": "Factual and restrained",
+		"note": "Approval queue count/scope/expiry: names/explains denied. This is consent/scope copy; preserve whether access is for one request, a conversation or the site, and whether the control grants or revokes it. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.approval_queue_model.this_session_only": {
+		"role": "status or explanatory text \u2014 approval queue count/scope/expiry",
+		"tone": "Factual and restrained",
+		"note": "Approval queue count/scope/expiry: names/explains this session only. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.webauthn_chooser.passkey_fallback": {
+		"role": "status or explanatory text \u2014 passkey choice and cancellation model",
+		"tone": "Factual and restrained",
+		"note": "Passkey choice and cancellation model: names/explains passkey fallback. numeric formatting uses ICU number ::group-off on the numeric placeholder, because the pre-extraction literal interpolated the raw number and a bare number selector would group it (1000 rendered as 1,000). Placeholders: number = runtime value, preserve verbatim. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.webauthn_chooser.the_site_stored_no_name_for_this": {
+		"role": "status or explanatory text \u2014 passkey choice and cancellation model",
+		"tone": "Factual and restrained",
+		"note": "Second line under a fallback numbered passkey row: the site supplied no account name. Keep this short and factual; the longer wrong-account recovery belongs in the dialog lead. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.webauthn_chooser.a_site": {
+		"role": "status or explanatory text \u2014 passkey choice and cancellation model",
+		"tone": "Factual and restrained",
+		"note": "Passkey choice and cancellation model: names/explains a site. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.webauthn_chooser.passkey_single": {
+		"role": "status or explanatory text \u2014 passkey choice and cancellation model",
+		"tone": "Factual and restrained",
+		"note": "Exactly one offered credential: ask the reader to pick it, without claiming there are multiple account choices. site is the relying-party display/domain. Placeholders: site = runtime value, preserve verbatim. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.webauthn_chooser.passkey_anonymous_many": {
+		"role": "status or explanatory text \u2014 passkey choice and cancellation model",
+		"tone": "Factual and restrained",
+		"note": "The OS supplied multiple credentials but no account names. Choosing determines the signed-in account; wrong-account recovery is to sign out and ask the site again. Mac is a product/platform name. count counts offered passkeys, not queued requests. count formatting uses ICU number ::group-off on both arms, because the pre-extraction literal interpolated the raw number and bare # would group it (1000 rendered as 1,000). Placeholders: site = runtime value, preserve verbatim; count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility."
+	},
+	"ui.browser.webauthn_chooser.passkey_named_many": {
+		"role": "status or explanatory text \u2014 passkey choice and cancellation model",
+		"tone": "Factual and restrained",
+		"note": "Multiple named credentials match the requesting site; the reader must choose the account. Do not reuse the nameless warning for this distinguishable-account state. Placeholders: site = runtime value, preserve verbatim. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.webauthn_chooser.requesting_page": {
+		"role": "status or explanatory text \u2014 passkey choice and cancellation model",
+		"tone": "Factual and restrained",
+		"note": "Passkey choice and cancellation model: names/explains requesting page. Placeholders: title = runtime value, preserve verbatim. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.webauthn_chooser.passkeys_waiting": {
+		"role": "status or explanatory text \u2014 passkey choice and cancellation model",
+		"tone": "Factual and restrained",
+		"note": "Additional queued passkey requests behind the currently shown one. count excludes the current request; the singular English starts One, while plural uses digits. count formatting uses ICU number ::group-off on the arm that interpolates the count, because the pre-extraction literal interpolated the raw number and bare # would group it (1000 rendered as 1,000). Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+	},
+	"ui.browser.webauthn_chooser.this_passkey_request_expired": {
+		"role": "status or explanatory text \u2014 passkey choice and cancellation model",
+		"tone": "Factual and restrained",
+		"note": "Passkey choice and cancellation model: names/explains this passkey request expired. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.webauthn_chooser.nobody_chose_a_passkey_within_a_minute": {
+		"role": "status or explanatory text \u2014 passkey choice and cancellation model",
+		"tone": "Factual and restrained",
+		"note": "Passkey choice and cancellation model: names/explains nobody chose a passkey within a minute. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.webauthn_chooser.this_passkey_request_was_cancelled": {
+		"role": "status or explanatory text \u2014 passkey choice and cancellation model",
+		"tone": "Factual and restrained",
+		"note": "Passkey choice and cancellation model: names/explains this passkey request was cancelled. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.webauthn_chooser.the_browser_tab_that_asked_went_away": {
+		"role": "status or explanatory text \u2014 passkey choice and cancellation model",
+		"tone": "Factual and restrained",
+		"note": "Passkey choice and cancellation model: names/explains the browser tab that asked went away. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.webauthn_chooser.that_passkey_was_not_offered": {
+		"role": "status or explanatory text \u2014 passkey choice and cancellation model",
+		"tone": "Factual and restrained",
+		"note": "Passkey choice and cancellation model: names/explains that passkey was not offered. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.webauthn_chooser.the_choice_did_not_name_a_passkey": {
+		"role": "status or explanatory text \u2014 passkey choice and cancellation model",
+		"tone": "Factual and restrained",
+		"note": "Passkey choice and cancellation model: names/explains the choice did not name a passkey. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.browser.browser_tab_strip.close_other_tabs": {
+		"role": "button/menu choice \u2014 tab chip/action/overflow strip",
+		"tone": "Short imperative",
+		"note": "Destructive batch-close menu item. count is the number of other tabs in the computed intent; the current tab is retained. Preserve number and singular/plural tab wording. count formatting uses ICU number ::group-off on both arms, because the pre-extraction literal interpolated the raw number and bare # would group it (1000 rendered as 1,000). Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+	},
+	"ui.browser.browser_tab_strip.close_right_tabs": {
+		"role": "button/menu choice \u2014 tab chip/action/overflow strip",
+		"tone": "Short imperative",
+		"note": "Destructive batch-close menu item. count counts tabs to the right in rendered grouped order, not creation order. The current tab and left neighbors remain. count formatting uses ICU number ::group-off on both arms, because the pre-extraction literal interpolated the raw number and bare # would group it (1000 rendered as 1,000). Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility."
+	},
+	"ui.browser.browser_tab_strip.close_failed_tabs": {
+		"role": "button/menu choice \u2014 tab chip/action/overflow strip",
+		"tone": "Short imperative",
+		"note": "Destructive batch-close menu item. count counts only failed-navigation tabs in the intent. Do not imply closing healthy tabs. count formatting uses ICU number ::group-off on both arms, because the pre-extraction literal interpolated the raw number and bare # would group it (1000 rendered as 1,000). Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+	},
+	"ui.browser.browser_tab_strip.close_conversation_tabs": {
+		"role": "button/menu choice \u2014 tab chip/action/overflow strip",
+		"tone": "Short imperative",
+		"note": "Destructive batch-close menu item. count counts this conversation\u2019s tabs; other conversations survive. The menu offers this only with at least two matching tabs. count formatting uses ICU number ::group-off on both arms, because the pre-extraction literal interpolated the raw number and bare # would group it (1000 rendered as 1,000). Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility."
+	},
+	"ui.browser.browser_file_transfer_row.attached_verb": {
+		"role": "status or explanatory text \u2014 file upload/download status row",
+		"tone": "Factual and restrained",
+		"note": "Verb fragment between a monospace uploaded filename and destination-site span. count selects was/were but is shown in the separate +N more span; do not insert another number here. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+	},
+	"ui.browser.browser_file_transfer_row.upload_more": {
+		"role": "remaining-file count beside upload filename",
+		"tone": "compact count",
+		"note": "count is total uploaded files minus the first named file. Keep the leading +; this line names what left the machine instead of replacing the first filename with a bare file count. count formatting uses ICU number ::group-off on the arm that interpolates the count, because the pre-extraction literal interpolated the raw number and bare # would group it (1000 rendered as 1,000). Length: compact single-line suffix. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+	},
+	"ui.browser.browser_find_row.close_find": {
+		"role": "accessible control/region name \u2014 in-page find row",
+		"tone": "concise, neutral, sentence case",
+		"note": "In-page find row: closes the row and returns focus to the page. Length: compact control name."
+	},
+	"ui.browser.browser_find_row.close_find_shortcut": {
+		"role": "content prop \u2014 in-page find row",
+		"tone": "concise, neutral, sentence case",
+		"note": "Tooltip naming the close-find chord. shortcut is runtime technical data and stays unchanged."
+	},
+	"ui.browser.browser_find_row.find_in_page": {
+		"role": "accessible control/region name \u2014 in-page find row",
+		"tone": "concise, neutral, sentence case",
+		"note": "In-page find row: names the field. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_find_row.match_position": {
+		"role": "status or explanatory text \u2014 in-page find row",
+		"tone": "factual and restrained",
+		"note": "Live-region match position. ordinal and matches are numbers; numeric formatting uses ICU number ::group-off on both numeric placeholders, because the pre-extraction literal interpolated the raw number and a bare number selector would group it (1000 rendered as 1,000). ICU controls formatting."
+	},
+	"ui.browser.browser_find_row.next_match": {
+		"role": "accessible control/region name \u2014 in-page find row",
+		"tone": "concise, neutral, sentence case",
+		"note": "In-page find row: steps to the next match. Length: compact control name."
+	},
+	"ui.browser.browser_find_row.next_match_shortcut": {
+		"role": "content prop \u2014 in-page find row",
+		"tone": "concise, neutral, sentence case",
+		"note": "Tooltip naming the next-match chord. shortcut is runtime technical data and stays unchanged."
+	},
+	"ui.browser.browser_find_row.no_matches": {
+		"role": "status or explanatory text \u2014 in-page find row",
+		"tone": "factual and restrained",
+		"note": "A completed search with no matches. Length: short status phrase."
+	},
+	"ui.browser.browser_find_row.no_result_reported_press_enter_to_search_again": {
+		"role": "status or explanatory text \u2014 in-page find row",
+		"tone": "plain sentence giving the next action",
+		"note": "Recovery copy for a search main did not report on. Length: one short sentence."
+	},
+	"ui.browser.browser_find_row.previous_match": {
+		"role": "accessible control/region name \u2014 in-page find row",
+		"tone": "concise, neutral, sentence case",
+		"note": "In-page find row: steps to the previous match. Length: compact control name."
+	},
+	"ui.browser.browser_find_row.previous_match_shortcut": {
+		"role": "content prop \u2014 in-page find row",
+		"tone": "concise, neutral, sentence case",
+		"note": "Tooltip naming the previous-match chord. shortcut is runtime technical data and stays unchanged."
+	},
+	"ui.browser.browser_find_row.searching": {
+		"role": "status or explanatory text \u2014 in-page find row",
+		"tone": "factual and restrained",
+		"note": "Transient state while the page search is in flight. Length: short status phrase."
+	},
+	"ui.browser.browser_url_bar.find_in_page": {
+		"role": "accessible control/region name \u2014 address and navigation bar",
+		"tone": "concise, neutral, sentence case",
+		"note": "URL bar: opens the in-page find row. Length: compact control name."
+	},
+	"ui.browser.browser_url_bar.find_in_page_shortcut": {
+		"role": "content prop \u2014 address and navigation bar",
+		"tone": "concise, neutral, sentence case",
+		"note": "Tooltip naming the find chord. shortcut is runtime technical data and stays unchanged."
+	},
+	"ui.browser.browser_url_bar.page_zoom_reset": {
+		"role": "accessible control/region name \u2014 address and navigation bar",
+		"tone": "concise, neutral, sentence case",
+		"note": "Zoom control's accessible name: the current percent and the reset target. zoom is a number; numeric formatting uses ICU number ::group-off on the numeric placeholder, because the pre-extraction literal interpolated the raw number and a bare number selector would group it (1000 rendered as 1,000). ICU controls formatting."
+	},
+	"ui.browser.browser_url_bar.reset_page_zoom_shortcut": {
+		"role": "content prop \u2014 address and navigation bar",
+		"tone": "concise, neutral, sentence case",
+		"note": "Tooltip naming the reset-zoom chord. shortcut is runtime technical data and stays unchanged."
+	}
+}

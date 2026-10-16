@@ -1,4 +1,6 @@
 import { Button } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { AlertTriangle } from "lucide-react";
 import type { FC } from "react";
 import type { LoadFailureView } from "../hooks/use-browser-chrome";
@@ -29,33 +31,55 @@ import type { LoadFailureView } from "../hooks/use-browser-chrome";
  * be a second place to edit the same value. The panel says where it is instead.
  */
 
-const SENTENCE: Record<string, string> = {
-	ERR_NAME_NOT_RESOLVED: "That address does not resolve. Check the spelling.",
-	ERR_CONNECTION_REFUSED:
-		"The site refused the connection. It may be down, or refusing this app.",
-	ERR_CONNECTION_TIMED_OUT: "The site did not answer in time.",
+// The net-error code is stable; the explanation follows the current language.
+const failureSentences = (): Record<string, string> => ({
+	ERR_NAME_NOT_RESOLVED: t(
+		"ui.browser.browser_load_failure.that_address_does_not_resolve_check_the",
+	),
+	ERR_CONNECTION_REFUSED: t(
+		"ui.browser.browser_load_failure.the_site_refused_the_connection_it_may",
+	),
+	ERR_CONNECTION_TIMED_OUT: t(
+		"ui.browser.browser_load_failure.the_site_did_not_answer_in_time",
+	),
 	// THE RESTORE BOUNDARY'S OWN MARK (round-1 U3/D2): `host.ts` records this
 	// description when a hydration the app started at relaunch never committed a
 	// page and its bounded wait expired. That IS the quiet timeout, so it shares
 	// the sentence above rather than falling to the generic one; a refusal the
 	// network could name keeps its own code (the restore fallback never overwrites
 	// one), and the parenthetical stays in the machine line for a bug report.
-	"ERR_FAILED (restore)": "The site did not answer in time.",
-	ERR_EMPTY_RESPONSE:
-		"The site closed the connection without sending a response.",
-	ERR_CONNECTION_RESET: "The connection was reset before the page arrived.",
-	ERR_INTERNET_DISCONNECTED: "This machine is not connected to the network.",
-	ERR_ADDRESS_UNREACHABLE: "That address is not reachable from this machine.",
-	ERR_CERT_DATE_INVALID:
-		"The site's certificate has expired or is not yet valid.",
-	ERR_CERT_AUTHORITY_INVALID:
-		"The site's certificate is not from an authority this app trusts.",
-	ERR_SSL_PROTOCOL_ERROR: "The secure connection could not be established.",
-};
+	"ERR_FAILED (restore)": t(
+		"ui.browser.browser_load_failure.the_site_did_not_answer_in_time",
+	),
+	ERR_EMPTY_RESPONSE: t(
+		"ui.browser.browser_load_failure.the_site_closed_the_connection_without_sending",
+	),
+	ERR_CONNECTION_RESET: t(
+		"ui.browser.browser_load_failure.the_connection_was_reset_before_the_page",
+	),
+	ERR_INTERNET_DISCONNECTED: t(
+		"ui.browser.browser_load_failure.this_machine_is_not_connected_to_the",
+	),
+	ERR_ADDRESS_UNREACHABLE: t(
+		"ui.browser.browser_load_failure.that_address_is_not_reachable_from_this",
+	),
+	ERR_CERT_DATE_INVALID: t(
+		"ui.browser.browser_load_failure.the_site_s_certificate_has_expired_or",
+	),
+	ERR_CERT_AUTHORITY_INVALID: t(
+		"ui.browser.browser_load_failure.the_site_s_certificate_is_not_from",
+	),
+	ERR_SSL_PROTOCOL_ERROR: t(
+		"ui.browser.browser_load_failure.the_secure_connection_could_not_be_established",
+	),
+});
 
 /** The sentence for one refusal, or the one that is true of all of them. */
 export function loadFailureSentence(description: string): string {
-	return SENTENCE[description] ?? "The page could not be loaded.";
+	return (
+		failureSentences()[description] ??
+		t("ui.browser.browser_load_failure.the_page_could_not_be_loaded")
+	);
 }
 
 export interface BrowserLoadFailureProps {
@@ -67,22 +91,26 @@ export const BrowserLoadFailure: FC<BrowserLoadFailureProps> = ({
 	failure,
 	onRetry,
 }) => {
+	useI18nLocale();
 	return (
 		<div
 			className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center"
 			data-tour-tag="browser-load-failure"
 		>
 			<AlertTriangle aria-hidden className="size-6 text-warning" />
-			<p className="text-title text-ink">Couldn't load this page</p>
+			<p className="text-title text-ink">
+				{t("ui.browser.browser_load_failure.couldn_t_load_this_page")}
+			</p>
 			{/* THE SKIP IS THE PRODUCT'S RULE, SO THE PRODUCT SAYS IT (UX round 1, U2):
 			    a tab that is still failed at quit is not restored next launch, and until
 			    this line the only record of that rule was a `[browser]` log line. It sits
 			    on the panel that owns the moment the user meets the failure, phrased as
 			    the state it describes. */}
 			<p className="max-w-lg text-body-sm text-ink-muted">
-				{loadFailureSentence(failure.description)} Try again, or correct the
-				address in the bar above — it is still yours to edit. A tab still
-				showing this when the app quits is not restored next time.
+				{loadFailureSentence(failure.description)}{" "}
+				{t(
+					"ui.browser.browser_load_failure.try_again_or_correct_the_address_in",
+				)}
 			</p>
 			{/* The raw refusal, in machine voice and on its own line: it is what a bug
 			    report needs, and it is the one part of this panel that is not a
@@ -99,7 +127,7 @@ export const BrowserLoadFailure: FC<BrowserLoadFailureProps> = ({
 				onClick={onRetry}
 				data-tour-tag="browser-load-failure-retry"
 			>
-				Try again
+				{t("ui.browser.browser_load_failure.try_again")}
 			</Button>
 		</div>
 	);

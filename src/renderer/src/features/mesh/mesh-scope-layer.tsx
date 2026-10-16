@@ -34,6 +34,7 @@
  * available to them is the inference: that is stated here rather than papered over.
  */
 
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import type { FC } from "react";
 import {
@@ -81,110 +82,117 @@ const memberBoxes = (group: PrefixGroup, geometry: MeshGeometry) =>
 export const MeshScopeLayer: FC<MeshScopeLayerProps> = ({
 	stacks,
 	geometry,
-}) => (
-	<div aria-hidden="true" className="pointer-events-none absolute top-0 left-0">
-		{stacks.map((stack) => {
-			const levels = stack.groups.length;
-			/*
-			 * The frames' bottom edges are solved INNERMOST-FIRST: each outer level
-			 * extends `SCOPE_LEVEL_INSET` past the one inside it unless its own members
-			 * reach further down - a ring around the ring, the same rule the top edge
-			 * follows by pitch. Solved here rather than in `mesh-scope.ts` because it is
-			 * a drawing question: the geometry the layout prices is per-ROW.
-			 */
-			const bottoms = new Array<number>(levels).fill(0);
-			let inner: number | null = null;
-			for (let level = levels - 1; level >= 0; level -= 1) {
-				const boxes = memberBoxes(stack.groups[level], geometry);
-				const own =
-					(boxes.length === 0
-						? 0
-						: Math.max(...boxes.map((box) => box.y + box.height))) +
-					SCOPE_ENCLOSURE_PAD;
-				inner = inner === null ? own : Math.max(own, inner + SCOPE_LEVEL_INSET);
-				bottoms[level] = inner;
-			}
-			const opener = geometry.devices.get(stack.deviceId);
-			return stack.groups.map((group, level) => {
-				const boxes = memberBoxes(group, geometry);
-				// A group whose boxes have all gone cannot happen through `meshGraph` (a group is
-				// built from devices, and every device has a box) - and it is checked anyway,
-				// because a frame computed from nothing is a boundary drawn around no device.
-				if (boxes.length === 0) return null;
-				const outward = levels - 1 - level;
-				const left = Math.min(...boxes.map((box) => box.x));
-				const right = Math.max(...boxes.map((box) => box.x));
+}) => {
+	useI18nLocale();
+	return (
+		<div
+			aria-hidden="true"
+			className="pointer-events-none absolute top-0 left-0"
+		>
+			{stacks.map((stack) => {
+				const levels = stack.groups.length;
 				/*
-				 * The top edge hangs off the OPENER's box - the row the stack's groups share -
-				 * not off each group's own topmost member: that member IS the opener here (the
-				 * stack is keyed on it), and anchoring every level to the one row is what keeps
-				 * the staircase on one axis.
+				 * The frames' bottom edges are solved INNERMOST-FIRST: each outer level
+				 * extends `SCOPE_LEVEL_INSET` past the one inside it unless its own members
+				 * reach further down - a ring around the ring, the same rule the top edge
+				 * follows by pitch. Solved here rather than in `mesh-scope.ts` because it is
+				 * a drawing question: the geometry the layout prices is per-ROW.
 				 */
-				const anchor = opener?.y ?? Math.min(...boxes.map((box) => box.y));
-				const top = anchor - SCOPE_ENCLOSURE_PAD - SCOPE_LEVEL_STEP * outward;
-				const declared = group.tier === "declared";
-				const label = prefixWords(group);
-				return (
-					<div
-						key={`${group.tier}:${group.prefix}`}
-						data-mesh-scope={`${group.tier}:${group.prefix}`}
-						data-mesh-scope-level={level}
-						className={cn(
-							"absolute rounded-lg",
-							/*
-							 * SOLID VS DASHED IS THE GRAMMAR (design round § 6): a dashed boundary is
-							 * arithmetic on two published values, a solid one rests on an interface this
-							 * process runs on (or on the operator's own declaration). The two must not be
-							 * told apart by hue alone - the dash is the non-colour channel, and it is the
-							 * same one a revoked membership already uses on the edge layer.
-							 */
-							group.tier === "probable"
-								? "border border-dashed border-hairline-strong"
-								: "border border-control",
-						)}
-						style={{
-							left: left - SCOPE_ENCLOSURE_PAD - SCOPE_LEVEL_INSET * outward,
-							top,
-							width:
-								right +
-								NODE_WIDTH -
-								left +
-								(SCOPE_ENCLOSURE_PAD + SCOPE_LEVEL_INSET * outward) * 2,
-							height: bottoms[level] - top,
-						}}
-					>
-						{/*
-						 * THE LABEL SITS ABOVE ITS ENCLOSURE, in a band the LAYOUT reserves for it
-						 * (design review round 1, D2; UX U3; round 2's NEST + STAGGER). The comment
-						 * here used to claim "the frame's top edge is the one place in this layout
-						 * with room to spare", and the frames refused it: the band is
-						 * `SCOPE_LABEL_BAND` + the pad, while the clear space above a row measured
-						 * `ROW_GAP - SCOPE_ENCLOSURE_PAD` = 6 px, so 13.4 px of the label rendered
-						 * behind the node above - which paints over this layer (DOM order scope ->
-						 * edges -> nodes), and the layer is `aria-hidden`, so the label is the only
-						 * place the tier's words reach anyone. The room comes from
-						 * `mesh-positions.ts`: a row that opens a stack clears `scopeOpenGap(levels)`
-						 * above itself, and the column's first such row clears
-						 * `scopeTopClearance(levels)` at the world's top edge. Round 2 re-measured
-						 * this against the STACK: the anchors stay `bottom-full left-1 mb-0.5`, and
-						 * the frames' own 26 px / 4 px offsets do the staggering.
-						 */}
-						<span
-							data-mesh-scope-label=""
+				const bottoms = new Array<number>(levels).fill(0);
+				let inner: number | null = null;
+				for (let level = levels - 1; level >= 0; level -= 1) {
+					const boxes = memberBoxes(stack.groups[level], geometry);
+					const own =
+						(boxes.length === 0
+							? 0
+							: Math.max(...boxes.map((box) => box.y + box.height))) +
+						SCOPE_ENCLOSURE_PAD;
+					inner =
+						inner === null ? own : Math.max(own, inner + SCOPE_LEVEL_INSET);
+					bottoms[level] = inner;
+				}
+				const opener = geometry.devices.get(stack.deviceId);
+				return stack.groups.map((group, level) => {
+					const boxes = memberBoxes(group, geometry);
+					// A group whose boxes have all gone cannot happen through `meshGraph` (a group is
+					// built from devices, and every device has a box) - and it is checked anyway,
+					// because a frame computed from nothing is a boundary drawn around no device.
+					if (boxes.length === 0) return null;
+					const outward = levels - 1 - level;
+					const left = Math.min(...boxes.map((box) => box.x));
+					const right = Math.max(...boxes.map((box) => box.x));
+					/*
+					 * The top edge hangs off the OPENER's box - the row the stack's groups share -
+					 * not off each group's own topmost member: that member IS the opener here (the
+					 * stack is keyed on it), and anchoring every level to the one row is what keeps
+					 * the staircase on one axis.
+					 */
+					const anchor = opener?.y ?? Math.min(...boxes.map((box) => box.y));
+					const top = anchor - SCOPE_ENCLOSURE_PAD - SCOPE_LEVEL_STEP * outward;
+					const declared = group.tier === "declared";
+					const label = prefixWords(group);
+					return (
+						<div
+							key={`${group.tier}:${group.prefix}`}
+							data-mesh-scope={`${group.tier}:${group.prefix}`}
+							data-mesh-scope-level={level}
 							className={cn(
-								"absolute bottom-full left-1 mb-0.5 whitespace-nowrap text-meta",
-								group.tier === "probable" ? "text-ink-dim" : "text-ink-muted",
-								// The declared tier's word is set apart from the inferred ones: an authored
-								// boundary and a computed one are different claims, and the label is where a
-								// reader meets that difference first.
-								declared && "font-medium",
+								"absolute rounded-lg",
+								/*
+								 * SOLID VS DASHED IS THE GRAMMAR (design round § 6): a dashed boundary is
+								 * arithmetic on two published values, a solid one rests on an interface this
+								 * process runs on (or on the operator's own declaration). The two must not be
+								 * told apart by hue alone - the dash is the non-colour channel, and it is the
+								 * same one a revoked membership already uses on the edge layer.
+								 */
+								group.tier === "probable"
+									? "border border-dashed border-hairline-strong"
+									: "border border-control",
 							)}
+							style={{
+								left: left - SCOPE_ENCLOSURE_PAD - SCOPE_LEVEL_INSET * outward,
+								top,
+								width:
+									right +
+									NODE_WIDTH -
+									left +
+									(SCOPE_ENCLOSURE_PAD + SCOPE_LEVEL_INSET * outward) * 2,
+								height: bottoms[level] - top,
+							}}
 						>
-							{label}
-						</span>
-					</div>
-				);
-			});
-		})}
-	</div>
-);
+							{/*
+							 * THE LABEL SITS ABOVE ITS ENCLOSURE, in a band the LAYOUT reserves for it
+							 * (design review round 1, D2; UX U3; round 2's NEST + STAGGER). The comment
+							 * here used to claim "the frame's top edge is the one place in this layout
+							 * with room to spare", and the frames refused it: the band is
+							 * `SCOPE_LABEL_BAND` + the pad, while the clear space above a row measured
+							 * `ROW_GAP - SCOPE_ENCLOSURE_PAD` = 6 px, so 13.4 px of the label rendered
+							 * behind the node above - which paints over this layer (DOM order scope ->
+							 * edges -> nodes), and the layer is `aria-hidden`, so the label is the only
+							 * place the tier's words reach anyone. The room comes from
+							 * `mesh-positions.ts`: a row that opens a stack clears `scopeOpenGap(levels)`
+							 * above itself, and the column's first such row clears
+							 * `scopeTopClearance(levels)` at the world's top edge. Round 2 re-measured
+							 * this against the STACK: the anchors stay `bottom-full left-1 mb-0.5`, and
+							 * the frames' own 26 px / 4 px offsets do the staggering.
+							 */}
+							<span
+								data-mesh-scope-label=""
+								className={cn(
+									"absolute bottom-full left-1 mb-0.5 whitespace-nowrap text-meta",
+									group.tier === "probable" ? "text-ink-dim" : "text-ink-muted",
+									// The declared tier's word is set apart from the inferred ones: an authored
+									// boundary and a computed one are different claims, and the label is where a
+									// reader meets that difference first.
+									declared && "font-medium",
+								)}
+							>
+								{label}
+							</span>
+						</div>
+					);
+				});
+			})}
+		</div>
+	);
+};

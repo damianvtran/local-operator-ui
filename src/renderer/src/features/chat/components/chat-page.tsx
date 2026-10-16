@@ -932,23 +932,32 @@ function SessionPanel({
 	 * is drawn instead - in the panel, at 1Hz, and only while a child is actually
 	 * in flight (`run-details-clock.ts`).
 	 *
-	 * With no canonical frontend there is no model, which is what leaves the
-	 * legacy path - `ChatContent`'s header without a canonical session - with no
-	 * trigger at all rather than one that opens an empty panel.
+	 * With no canonical frontend there is no model, and the run pane says so
+	 * rather than drawing a roster from nothing: the rail's Run details door is
+	 * present on every chat route (the always-visible rail, D1), and the pane it
+	 * opens shows a notice - "needs a conversation" on a draft, "reading" while
+	 * the frame is on its way.
 	 *
-	 * A DRAFT PANE GETS THAT SAME ANSWER (design review round 1, D2). The draft's
-	 * own subscription makes a canonical frontend exist while the pane has no
-	 * conversation, and the header grew the Run-details control over a run that
-	 * cannot exist yet - a panel that could only open on nothing. A draft has no
-	 * run to report, so the model stays null until the session exists; the trigger
-	 * then arrives with the conversation, which is exactly when main draws it.
+	 * A DRAFT PANE STAYS NULL (design review round 1, D2). The draft's own
+	 * subscription makes a canonical frontend exist while the pane has no
+	 * conversation, and a model derived from it would describe a run that cannot
+	 * exist yet. A draft has no run to report, so the model stays null until the
+	 * session exists; what changed is the door, which no longer waits for it.
+	 *
+	 * READ THROUGH THE HOLD - `frontend ?? heldFrontend` - the turn-is-alive
+	 * reading's own fallback above, for the same reason: every reconnect gap nulls
+	 * `frontend` for ~1.5-4 s on a busy session, and an open pane would otherwise
+	 * flip to its "reading" notice and back on each one. The hold is dropped by
+	 * every terminal state and by a real session change, so it cannot keep a stale
+	 * roster on screen past the stream it describes.
 	 */
+	const runFrontend = canonical.frontend ?? canonical.heldFrontend;
 	const runDetails = useMemo(
 		() =>
-			sessionId && canonical.frontend
+			sessionId && runFrontend
 				? deriveRunDetails({
-						jobs: canonical.frontend.jobs,
-						todos: canonical.frontend.todos,
+						jobs: runFrontend.jobs,
+						todos: runFrontend.todos,
 						/*
 						 * The armed wake schedules ride the same derivation, which is what puts the
 						 * composer's wake chip, the pane's Wakes section and the section's tally on
@@ -956,7 +965,7 @@ function SessionPanel({
 						 * renders those same rows, so a second read of the wire here would be a
 						 * second source of truth for a count the user can see twice on one screen.
 						 */
-						wakes: canonical.frontend.wakes,
+						wakes: runFrontend.wakes,
 						/*
 						 * The armed monitors ride the same derivation, which is what puts the
 						 * composer's monitor chip, the pane's Monitors section and the section's
@@ -964,10 +973,10 @@ function SessionPanel({
 						 * over: a second read of the wire here would be a second source of truth
 						 * for a count the user can see twice on one screen.
 						 */
-						monitors: canonical.frontend.monitors,
+						monitors: runFrontend.monitors,
 					})
 				: null,
-		[sessionId, canonical.frontend],
+		[sessionId, runFrontend],
 	);
 	/*
 	 * The run panel's MCP half, read here for the reason the model is derived here:

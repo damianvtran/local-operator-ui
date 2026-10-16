@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The plain-language explainer under the "Delegated work" group's title.
  *
@@ -23,31 +25,47 @@ import type { FC } from "react";
 const Line: FC<{ term: string; children: React.ReactNode }> = ({
 	term,
 	children,
-}) => (
-	<p className="text-meta text-ink-dim">
-		<span className="font-medium text-ink-muted">{term}</span> {children}
-	</p>
-);
+}) => {
+	useI18nLocale();
+	return (
+		<p className="text-meta text-ink-dim">
+			<span className="font-medium text-ink-muted">{term}</span> {children}
+		</p>
+	);
+};
 
-export const DelegatedRetentionCopy: FC = () => (
-	<div
-		data-delegated-retention-copy=""
-		className="flex flex-col gap-1 px-1 pb-2"
-	>
-		<Line term="Removed:">
-			sessions started by subagents, agent shells and background runs such as{" "}
-			<code className="font-mono">lop exec</code>. Never your own conversations
-			or the workstreams in your sidebar.
-		</Line>
-		<Line term="Kept:">
-			anything running or waiting, anything whose parent conversation was active
-			recently, anything linked to an open project, and folders with unsaved git
-			work.
-		</Line>
-		<Line term="When:">
-			after the time below with no activity. Checked when the app starts, a
-			limited batch at a time, so a large backlog can take several launches to
-			clear.
-		</Line>
-	</div>
-);
+export const DelegatedRetentionCopy: FC = () => {
+	useI18nLocale();
+	return (
+		<div
+			data-delegated-retention-copy=""
+			className="flex flex-col gap-1 px-1 pb-2"
+		>
+			<Line
+				term={t("ui.settings.configuration.delegated_retention_copy.removed")}
+			>
+				{t(
+					"ui.settings.configuration.delegated_retention_copy.sessions_started_by_subagents_agent_shells_and_background_runs_su",
+				)}{" "}
+				<code className="font-mono">
+					{
+						"lop exec" /* Machine command example; preserve exact shell syntax. */
+					}
+				</code>
+				{t(
+					"ui.settings.configuration.delegated_retention_copy.never_your_own_conversations_or_the_workstreams_in_your_sidebar",
+				)}
+			</Line>
+			<Line term={t("ui.settings.configuration.delegated_retention_copy.kept")}>
+				{t(
+					"ui.settings.configuration.delegated_retention_copy.anything_running_or_waiting_anything_whose_parent_conversation_wa",
+				)}
+			</Line>
+			<Line term={t("ui.settings.configuration.delegated_retention_copy.when")}>
+				{t(
+					"ui.settings.configuration.delegated_retention_copy.after_the_time_below_with_no_activity_checked_when_the_app_starts",
+				)}
+			</Line>
+		</div>
+	);
+};

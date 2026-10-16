@@ -2,6 +2,11 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { build } from "esbuild";
 
+// The desktop suite enumerates this runtime entrypoint rather than discovering
+// tests under features/. Carry the settings slice's English/fallback contracts
+// here without changing package scripts or installing another test harness.
+import "../../src/renderer/src/features/settings/settings-i18n.test.mjs";
+
 /*
  * The catalogue runtime and the locale store, executed in Node.
  *

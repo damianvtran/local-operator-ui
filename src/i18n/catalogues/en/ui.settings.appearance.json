@@ -1,0 +1,12 @@
+{
+	"ui.settings.appearance.settings_page.appearance": "Appearance",
+	"ui.settings.appearance.settings_page.customize_the_look_and_feel_of_local_operator": "Customize the look and feel of Local Operator",
+	"ui.settings.appearance.settings_page.show_agent_reasoning": "Show agent reasoning",
+	"ui.settings.appearance.settings_page.adds_the_agent_s_reasoning_and_thinking_rows_to_conversations_the": "Adds the agent's Reasoning and Thinking rows to conversations. They stay closed until you open one. Reasoning only: narration the agent writes as prose mid-turn is transcript content, not reasoning — never removed by either display mode (by turn folds it behind the turn's bars, by response keeps it on screen).",
+	"ui.settings.appearance.theme_selector.dark": "Dark",
+	"ui.settings.appearance.theme_selector.light": "Light",
+	"ui.settings.appearance.transcript_display_mode_setting.transcript_display": "Transcript display",
+	"ui.settings.appearance.transcript_display_mode_setting.by_turn_condenses_each_turn_to_its_answer_by_response_keeps_every": "By turn condenses each turn to its answer. By response keeps every settled response on screen, with the turn's final answer still marked.",
+	"ui.settings.appearance.transcript_display_mode_setting.by_turn": "By turn",
+	"ui.settings.appearance.transcript_display_mode_setting.by_response": "By response"
+}
