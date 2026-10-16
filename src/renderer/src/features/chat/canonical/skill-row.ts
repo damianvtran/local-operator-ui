@@ -88,6 +88,15 @@ export function skillOf(text: string): SkillRow | undefined {
 const INDENTED = /^\s/;
 
 /**
+ * A YAML block scalar's indicator, with its optional chomping/indent modifier:
+ * `>`, `>-`, `>+`, `|`, `|-`, `|2-` and the other spellings YAML allows.
+ */
+const BLOCK_INDICATOR = /^[>|][-+]?\d*$/;
+
+/** A scalar that opens with a quote, i.e. one YAML's escaping applies to. */
+const QUOTED = /^["']/;
+
+/**
  * The front matter block's end within `body`, or `null` when there is none.
  *
  * The same arithmetic `skillBodyHasContent` uses on the same shape: a leading
@@ -111,38 +120,56 @@ function frontMatterEnd(body: string): number | null {
 /**
  * The front matter's `description:` as ONE line, or `null`.
  *
- * WHY A LINE READ AND NOT A YAML PARSE. The payload's body is the raw file, and
- * the value the row wants is a caption for a 24px header line: a description
- * that runs to several lines or several sentences is not shortened here, it is
- * declined, and the row falls back to the name alone. That is the honest
- * outcome — the alternative is a header that is either half a sentence or a
- * paragraph — and it is also the cheap one, on a function that runs for every
- * user row of every session.
+ * WHY IT FOLDS RATHER THAN DECLINES. A skill's description is prose an author
+ * wrapped for a 100-column file, and the shape that wrapping takes in the
+ * wild is a block scalar -- `description: >-` (folded) or `|` (literal) -- so
+ * "multi-line means no purpose" would fall back to the name alone for the
+ * common case, which is exactly the case this caption exists for. The three
+ * shapes YAML allows here are therefore all READ, and all flattened to one
+ * line: the inline value, the indented continuation lines under it, and the
+ * block indicators (`>`, `|-`, `>+`, … and their bare forms). Pieces are joined
+ * with single spaces, which is YAML's own folding for `>`/plain scalars, and is
+ * the right flattening for `|` too -- a caption is one line, and the reader who
+ * wants the author's line breaks has the body one press away.
  *
- * A QUOTED VALUE LOSES ITS QUOTES, because they are YAML's punctuation rather
- * than the sentence: `description: "Ship the thing"` means the sentence, and the
- * reader should not be shown the escape. A quote that is never closed on that
- * line is a multi-line scalar, so it takes the same null as the block forms.
+ * `null` is left for a `description` that is absent, carries no content, or is
+ * unparseable (a quoted scalar whose closing quote never arrives), because the
+ * row's fallback is the skill's name and a name is better than half a sentence.
+ *
+ * CHEAP ON PURPOSE: this runs for every user row of every session, so it is a
+ * line scan and a join, not a YAML parse. A quoted value loses its quotes when
+ * they close on the folded result -- YAML's punctuation, not the sentence.
  */
 function purposeOf(frontMatter: string): string | null {
 	const lines = frontMatter.split("\n");
 	for (const [index, line] of lines.entries()) {
 		if (!line.startsWith("description:")) continue;
-		const value = line.slice("description:".length).trim();
-		if (value === "" || value.startsWith(">") || value.startsWith("|"))
-			return null;
-		// An indented line under it is a continuation whatever the value looks
-		// like, so the block forms that do not open with `>`/`|` are caught here.
-		const next = lines[index + 1];
-		if (next !== undefined && next.trim() !== "" && INDENTED.test(next))
-			return null;
-		if (value.startsWith('"') || value.startsWith("'")) {
-			const quote = value[0];
-			return value.length > 1 && value.endsWith(quote)
-				? value.slice(1, -1)
-				: null;
+		const inline = line.slice("description:".length).trim();
+		// A block indicator is punctuation for the body BELOW it; anything else
+		// inline is the first piece of the value.
+		const isBlockIndicator = inline !== "" && BLOCK_INDICATOR.test(inline);
+		const pieces: string[] = [];
+		if (inline !== "" && !isBlockIndicator) pieces.push(inline);
+		/*
+		 * The continuation, to the first line that is not indented. A blank line
+		 * inside the block is a paragraph break in YAML, and skipping it is what
+		 * makes `>-` and `|` produce one line here; an indented line after it
+		 * still belongs to the value.
+		 */
+		for (let cursor = index + 1; cursor < lines.length; cursor += 1) {
+			const next = lines[cursor];
+			if (next.trim() === "") continue;
+			if (!INDENTED.test(next)) break;
+			pieces.push(next.trim());
 		}
-		return value;
+		if (pieces.length === 0) return null;
+		let folded = pieces.join(" ");
+		if (QUOTED.test(folded)) {
+			const quote = folded[0];
+			if (folded.length < 2 || !folded.endsWith(quote)) return null;
+			folded = folded.slice(1, -1);
+		}
+		return folded === "" ? null : folded;
 	}
 	return null;
 }

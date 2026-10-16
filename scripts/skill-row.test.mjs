@@ -115,7 +115,7 @@ test("a quoted send keeps its reply markup in the row's own text", () => {
 	assert.equal(skillRowOf(reply), null);
 });
 
-test("a missing or multi-line description gives the row no purpose", () => {
+test("a description is folded to one line, whatever shape the author wrote", () => {
 	const withDescription = (frontMatter) =>
 		[
 			HEADER,
@@ -123,34 +123,50 @@ test("a missing or multi-line description gives the row no purpose", () => {
 			`---\nname: seal-demo\n${frontMatter}---\n\n# Seal demo\n</skill>`,
 		].join("\n");
 
-	// No `description:` key at all.
-	assert.equal(skillRowOf(withDescription("")).skill.purpose, null);
-	// A folded block scalar, which is how the shipped skills write a long one
-	// (`description: >-` over two indented lines): the header is ONE line, so a
-	// sentence split across lines is declined rather than half-rendered.
+	// A FOLDED block scalar, which is how the shipped skills write a long one:
+	// the indented continuation lines join with single spaces, YAML's own
+	// folding. This is the shape that must NOT cost the row its purpose.
 	assert.equal(
 		skillRowOf(
 			withDescription(
 				"description: >-\n  Review a diff for the seal\n  demo\n",
 			),
 		).skill.purpose,
-		null,
+		"Review a diff for the seal demo",
 	);
-	// An indented continuation under a plain scalar is multi-line too.
+	// The bare form, and a blank line inside the block (a paragraph break in
+	// YAML): both fold to the same one line.
 	assert.equal(
 		skillRowOf(
-			withDescription("description: Review a diff\n  for the seal demo\n"),
+			withDescription(
+				"description: >\n  Review a diff\n\n  for the seal demo\n",
+			),
 		).skill.purpose,
-		null,
+		"Review a diff for the seal demo",
+	);
+	// A LITERAL block is flattened too: a caption is one line, and the author's
+	// own line breaks are in the body one press away.
+	assert.equal(
+		skillRowOf(
+			withDescription(
+				"description: |-\n  Review a diff\n  for the seal demo\n",
+			),
+		).skill.purpose,
+		"Review a diff for the seal demo",
 	);
 	assert.equal(
 		skillRowOf(withDescription("description: |\n  Review a diff\n")).skill
 			.purpose,
-		null,
+		"Review a diff",
 	);
-	// A single line is the case the header exists for, quotes are YAML's own
-	// punctuation rather than part of the sentence, and an unclosed quote is a
-	// multi-line scalar wearing a quote.
+	// A plain scalar carried on by an indented line is the same value.
+	assert.equal(
+		skillRowOf(
+			withDescription("description: Review a diff\n  for the seal demo\n"),
+		).skill.purpose,
+		"Review a diff for the seal demo",
+	);
+	// One line, plain or quoted either way; the quotes are YAML's punctuation.
 	assert.equal(
 		skillRowOf(withDescription("description: Review a diff\n")).skill.purpose,
 		"Review a diff",
@@ -163,9 +179,38 @@ test("a missing or multi-line description gives the row no purpose", () => {
 		skillRowOf(withDescription("description: 'Review a diff'\n")).skill.purpose,
 		"Review a diff",
 	);
+	// A quoted scalar whose closing quote arrives on the NEXT line is one value,
+	// and the quotes come off the folded result.
+	assert.equal(
+		skillRowOf(
+			withDescription('description: "Review a diff\n  for the seal demo"\n'),
+		).skill.purpose,
+		"Review a diff for the seal demo",
+	);
+	// A quote that never closes is unparseable: the row falls back to the name
+	// rather than showing half a sentence.
 	assert.equal(
 		skillRowOf(withDescription('description: "Review a diff\n')).skill.purpose,
 		null,
+	);
+	// Absent and present-but-empty are the same answer, and the next key's lines
+	// are never folded into the value.
+	assert.equal(skillRowOf(withDescription("")).skill.purpose, null);
+	assert.equal(
+		skillRowOf(withDescription("description:\n")).skill.purpose,
+		null,
+	);
+	assert.equal(
+		skillRowOf(
+			withDescription("description: >-\n  Review a diff\nname: seal-demo\n"),
+		).skill.purpose,
+		"Review a diff",
+	);
+	assert.equal(
+		skillRowOf(
+			withDescription("name: other\ndescription: >-\n  Review a diff\n"),
+		).skill.purpose,
+		"Review a diff",
 	);
 });
 
