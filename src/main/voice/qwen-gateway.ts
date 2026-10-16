@@ -16,7 +16,7 @@
 
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import type { QwenPorts } from "./qwen-rig";
+import { type QwenPorts, rigMissing } from "./qwen-rig";
 
 /** Messages up from the launcher. */
 export type GatewayUpMessage =
@@ -117,6 +117,17 @@ export class QwenGatewayHost {
 	}
 
 	private startOnce(): Promise<string> {
+		/*
+		 * The rig check runs BEFORE the launcher, which imports the Gateway from
+		 * the rig: with the rig absent the first failure was the launcher's raw
+		 * ENOENT for qwa/.../package.json (QA round 3, Q12). This is the sentence
+		 * the header shows and the guide's section 6 promises.
+		 */
+		const missing = rigMissing(this.rigDir);
+		if (missing)
+			return Promise.reject(
+				new Error(`Voice rig not found at ${this.rigDir} (missing ${missing})`),
+			);
 		mkdirSync(this.stateDir, { recursive: true, mode: 0o700 });
 		const child = this.fork(this.launcherPath, [], {
 			env: gatewayEnv(this.rigDir, this.ports, this.stateDir, process.env),

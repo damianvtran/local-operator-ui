@@ -18,6 +18,7 @@ const GATEWAY_DIED_LOADING = /Gateway stopped while the models loaded/;
 const NAMES_3101 = /3101/;
 const RIG_NOT_FOUND =
 	/^Error: Voice rig not found at \/nonexistent-rig \(missing /;
+const RAW_ENOENT = /ENOENT/;
 const PORT_8765_IN_USE = /^Error: Port 8765 is in use;/;
 const FORM_URLENCODED = /application\/x-www-form-urlencoded/;
 
@@ -634,6 +635,40 @@ test("s2s is stopped by its recorded PROCESS GROUP, SIGTERM then SIGKILL, idempo
 		RIG_NOT_FOUND,
 		"the header shows this sentence verbatim (D10)",
 	);
+});
+
+test("Q12: with the rig absent the Gateway is never forked, and the start names the rig, not an ENOENT", async () => {
+	let forks = 0;
+	const fork = () => {
+		forks += 1;
+		throw new Error(
+			"ENOENT: no such file or directory, open '.../qwa/node_modules/qwen-audio-agent/package.json'",
+		);
+	};
+	const ports = { gateway: 3191, s2s: 8795, relay: 8796 };
+	const state = mkdtempSync(join(tmpdir(), `qv-gw-${process.pid}-`));
+	const absent = new m.QwenGatewayHost(
+		"/launcher.mjs",
+		"/nonexistent-rig",
+		ports,
+		state,
+		() => {},
+		fork,
+	);
+	await assert.rejects(absent.start(), RIG_NOT_FOUND);
+	assert.equal(forks, 0, "nothing forked");
+	// A complete rig gets as far as the fork.
+	const present = new m.QwenGatewayHost(
+		"/launcher.mjs",
+		fakeRigDir(),
+		ports,
+		state,
+		() => {},
+		fork,
+	);
+	// The fake fork throws synchronously; only reaching it matters here.
+	await assert.rejects(async () => present.start(), RAW_ENOENT);
+	assert.equal(forks, 1);
 });
 
 /*

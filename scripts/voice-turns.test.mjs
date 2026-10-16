@@ -1484,7 +1484,7 @@ const READS_INPUT_MODE = /input_mode|inputMode/;
 const controllerBundle = await build({
 	stdin: {
 		contents:
-			'export { feedTurns, sendVoiceTake, takeIsEcho, isEcho, isQwenPhrase, rememberSpoken, speechMs, viewedSessionId } from "./src/renderer/src/features/voice/qwen-voice-controller"; export { useVoiceStore, voicePhaseOf } from "./src/renderer/src/features/voice/voice-store";',
+			'export { feedTurns, sendVoiceTake, takeIsEcho, isEcho, isQwenPhrase, isQwenPhraseHeard, markPhraseSpoken, PHRASE_ECHO_WINDOW_MS, rememberSpoken, speechMs, viewedSessionId } from "./src/renderer/src/features/voice/qwen-voice-controller"; export { useVoiceStore, voicePhaseOf } from "./src/renderer/src/features/voice/voice-store";',
 		resolveDir: process.cwd(),
 		loader: "tsx",
 	},
@@ -1915,16 +1915,73 @@ const REAL_SHORT_TAKES = [
 	"voice off please",
 	"what did you send",
 	"is it off",
+	// Review round 3, M1: one-word commands within two edits of "sent" or
+	// "switched", kept whenever the rig has not just spoken a phrase.
+	"send",
+	"set",
+	"see",
+	"seen",
+	"sit",
+	"sell",
+	"sin",
+	"sing",
+	"sort",
+	"shut",
+	"sync",
+	"sec",
+	"sun",
+	"scene",
+	"sense",
+	"spent",
+	// "sent?" is not here: it normalises to the phrase "Sent." itself, and the
+	// exact phrase match holds at all times (brief, round 3).
+	"switch",
+	"switches",
 ];
 
-test("Q10: the rig's phrases as Parakeet MISHEARS them are dropped; real short takes are not", async () => {
-	const { isQwenPhrase, takeIsEcho } = await controller();
+test("Q10/M1: a misheard phrase is dropped only within 10 s of the rig speaking one; outside it, it is the user", async () => {
+	const {
+		isQwenPhraseHeard,
+		takeIsEcho,
+		markPhraseSpoken,
+		PHRASE_ECHO_WINDOW_MS,
+	} = await controller();
+	assert.equal(PHRASE_ECHO_WINDOW_MS, 10_000);
+	const spokeAt = Date.now() + 20_000_000;
+	markPhraseSpoken(spokeAt);
 	for (const [heard, phrase] of HEARD_BACK) {
-		assert.equal(isQwenPhrase(heard), true, `${heard} (${phrase})`);
-		assert.equal(takeIsEcho(heard, Date.now() + 3_600_000), true, heard);
+		assert.equal(isQwenPhraseHeard(heard), true, `${heard} (${phrase})`);
+		assert.equal(takeIsEcho(heard, spokeAt + 1_500), true, `inside: ${heard}`);
+		assert.equal(takeIsEcho(heard, spokeAt + 9_900), true, `inside: ${heard}`);
 	}
-	for (const take of REAL_SHORT_TAKES)
-		assert.equal(isQwenPhrase(take), false, take);
+	// The same mishearings, and the M1 words, outside the window: relayed.
+	const outside = spokeAt + PHRASE_ECHO_WINDOW_MS + 1_000;
+	for (const take of ["Scent", "Sand", "Voices off for this conversation."])
+		assert.equal(takeIsEcho(take, outside), false, `outside: ${take}`);
+	for (const take of ["sync", "sort", "switch", "see", "set", "send", "spent"])
+		assert.equal(takeIsEcho(take, outside), false, `outside: ${take}`);
+	// The exact phrase stays an echo at any time.
+	assert.equal(takeIsEcho("sent", outside), true);
+	assert.equal(takeIsEcho("Switched.", outside), true);
+	// Every kept take is relayed outside the window; inside it, only the
+	// one-word near-phrases are held back, and none of the brief's examples.
+	const nearPhrase = new Set(
+		REAL_SHORT_TAKES.filter((take) => isQwenPhraseHeard(take)),
+	);
+	for (const take of REAL_SHORT_TAKES) {
+		assert.equal(takeIsEcho(take, outside), false, `outside: ${take}`);
+		if (!nearPhrase.has(take))
+			assert.equal(takeIsEcho(take, spokeAt + 1_000), false, `inside: ${take}`);
+	}
+	for (const take of [
+		"send it",
+		"stop",
+		"yes",
+		"scan the repo",
+		"test",
+		"next",
+	])
+		assert.equal(nearPhrase.has(take), false, take);
 	for (const take of [
 		"can you mock the clock",
 		"fix the scheduler test now",
@@ -1945,19 +2002,34 @@ test("Q10: the rig's phrases as Parakeet MISHEARS them are dropped; real short t
 		"what is the status of it",
 		"is that the same as the other",
 	])
-		assert.equal(isQwenPhrase(take), false, `reviewer follow-up: ${take}`);
+		assert.equal(isQwenPhraseHeard(take), false, `reviewer follow-up: ${take}`);
 });
 
-test("Q10: a short reply or gate sentence misheard is still its echo; a long sentence's fragment is not", async () => {
+test("m1: a short take must EQUAL a reply sentence; near matches are the user answering it", async () => {
+	const { isEcho } = await controller();
+	assert.equal(
+		isEcho("should I fix the parser", "Should I fix the loader?"),
+		false,
+	);
+	assert.equal(isEcho("fix", "Fixed."), false);
+	assert.equal(isEcho("push", "Pushed."), false);
+	assert.equal(isEcho("fix it", "Fixed it. Anything else?"), false);
+	assert.equal(
+		isEcho("Hello from a mock provider", "Hello from the mock provider!"),
+		false,
+	);
+	assert.equal(
+		isEcho("should I fix the loader", "Should I fix the loader?"),
+		true,
+	);
+	assert.equal(isEcho("pushed", "Pushed. The branch is up."), true);
+});
+
+test("a short reply or gate sentence heard back is its echo; a long sentence's fragment is not", async () => {
 	const { isEcho } = await controller();
 	assert.equal(
 		isEcho("Hello from the mock provider.", "Hello from the mock provider!"),
 		true,
-	);
-	assert.equal(
-		isEcho("Hello from a mock provider", "Hello from the mock provider!"),
-		true,
-		"one word misheard",
 	);
 	assert.equal(
 		isEcho("approval needed bash", "Approval needed: bash. run: sleep 1"),
@@ -2049,8 +2121,7 @@ test("echo guard: every Q7 phrase heard back is an echo, at any time and any len
 		const heard = phrase.toLowerCase().replace(TRAILING_PERIOD, "");
 		assert.equal(takeIsEcho(heard, Date.now() + 3_600_000), true, heard);
 	}
-	// QA round 1 heard "Voice is off" back as "Voices off" once; that is not a
-	// phrase, and only exact phrases are dropped without a recent-speech match.
+	// Not phrases: a sentence that starts like one, and a phrase word in a command.
 	assert.equal(isQwenPhrase("Sent the report to Dana."), false);
 	assert.equal(isQwenPhrase("switched it off"), false);
 });
