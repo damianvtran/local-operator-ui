@@ -95,6 +95,12 @@ const INVOCATION_RE = /^\$([A-Za-z0-9][A-Za-z0-9._-]*)/;
  * it. Both attributes are recorded rather than re-derived, for the reason
  * `render_invocation` keeps the typed line in the payload at all: the payload IS
  * the record, and a second store can disagree with it.
+ *
+ * AND IT IS ONLY THE PATTERN. A match here says a tag exists, not that the
+ * message is a payload: prose can carry a whole tag (`skill-row.ts`'s reader is
+ * therefore stricter, and requires the writer's own header line in front of it —
+ * QA round 1, Q1). This constant stays the harness's pattern so the two sides
+ * cannot drift on what a tag LOOKS like.
  */
 export const SKILL_TAG_RE = /<skill name="([^"]*)" invocation="([^"]*)">/;
 
@@ -232,7 +238,10 @@ export function renderSkillInvocation(
  *
  * The read side of the `invocation` attribute, and the whole reason it exists:
  * the payload is what gets PERSISTED, so a resumed session replays this string
- * as the user's row. Recovering the line here is what lets the row show what the
+ * as the user's row. STRICTLY the harness's read — it searches the tag anywhere,
+ * because its caller only ever reads strings the writer produced — while
+ * `skill-row.ts`'s `skillRowOf` additionally requires the header line, which is
+ * what tells a payload apart from prose quoting one. Recovering the line here is what lets the row show what the
  * user typed instead of the SKILL.md body they never wrote — and the same
  * string is what any caption or title drawn from that row should read.
  *

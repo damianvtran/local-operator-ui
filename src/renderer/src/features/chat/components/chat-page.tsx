@@ -110,7 +110,7 @@ import {
 	askRefusalSentence,
 	effectiveGate,
 } from "../ask-queue";
-import { skillRowOf } from "../canonical/skill-row";
+import { editTextOf } from "../canonical/skill-row";
 import { canonicalTranscriptTerminal } from "../canonical/transcript-pane";
 import { useOpenPrefetch } from "../canonical/use-open-prefetch";
 import {
@@ -3837,9 +3837,7 @@ function SessionPanel({
 	 * payload this app itself sent, with any staged quote markup kept so a re-send
 	 * assembles the same string; every other message comes back verbatim.
 	 */
-	const editText = deliveryTurn
-		? (skillRowOf(deliveryTurn.text)?.text ?? deliveryTurn.text)
-		: null;
+	const editText = deliveryTurn ? editTextOf(deliveryTurn.text) : null;
 	const undeliveredTurn = deliveryTurn
 		? {
 				recordId: deliveryTurn.recordId,

@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-language|settings-transcript-display|settings-gate|palette|palette-recents|hit-zones|route-tops|project-detail|project-open|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|output-artifact|image-copy|hub-links|hub-skills|hub-skills-egress|none>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-language|settings-transcript-display|settings-gate|palette|palette-recents|hit-zones|route-tops|project-detail|project-open|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|output-artifact|image-copy|hub-links|hub-skills|hub-skills-egress|none|skill-seal>
  *                          which built-in scene to run (default: states)
  *   --drop-expect <accepted|discarded>  (with --scene composer-drop) which half of
  *                          the issue #789 pair this run records: the head tree,
@@ -139,6 +139,12 @@
  *                          the dispatcher's own sentence for each and no
  *                          picker - the base tree's half of the pair (issue
  *                          #625)
+ *   --seal-expect <seal|payload>  (with --scene skill-seal) which half of the
+ *                          `$skill` pair this run is in: `seal` (the default)
+ *                          asserts the typed line, the folded purpose and the
+ *                          instructions behind a closed disclosure; `payload`
+ *                          asserts the wall of skill body the base tree paints,
+ *                          so one scene's bytes run on both trees.
  *   --recents-expect <after|before>  (with --scene palette-recents) which half
  *                          of the pair this run records: `after` (the default)
  *                          asserts the Recents section under Unread and the walk
@@ -577,6 +583,23 @@ const BIN_EXPECT = argValue("--bin-expect", "prompt");
  * same reason `--authoring-expect` and `--bin-expect` are.
  */
 const SLASH_EXPECT = argValue("--slash-expect", "open");
+/**
+ * Which half of the `$skill` before/after pair this run is in, for
+ * `--scene skill-seal`.
+ *
+ * A FLAG AND NOT TWO SCENES, for the reason `--slash-expect` is one: the base
+ * tree's half has to run the SAME bytes as the head's, so the scene's readings
+ * and captures are one function that asserts whichever claim the tree it is
+ * running on makes.
+ */
+const SEAL_EXPECT = argValue("--seal-expect", "seal");
+/**
+ * The two palettes the scene shoots, per state: the app's own pair, so the
+ * before/after pair is comparable across themes rather than across a user's
+ * choice. Named here because the scene is about the ROW and not about the
+ * sweep's theme matrix.
+ */
+const SEAL_PALETTES = ["localOperatorDark", "localOperatorLight"];
 /**
  * WHICH CLAIM A `--scene project-open` RUN IS IN (operator report, 2026-10-08).
  *
@@ -10341,6 +10364,267 @@ async function sceneOutputArtifact(cdp) {
 		JSON.stringify(replayed.filter((i) => i.naturalWidth === 640)),
 	);
 	frames.push(await captureSettled(cdp, `artifact-after-reload${RUN_LABEL}`));
+	return frames;
+}
+
+/*
+ * THE `$skill` SEAL: how a persisted invocation reads on the user's own row.
+ *
+ * The payload the harness stores for a `$name` send IS the model's whole
+ * instruction -- the header sentence, the `<skill>` tag, the SKILL.md body
+ * verbatim and the request -- so a row that paints it verbatim shows a wall of
+ * skill body as though the reader had typed it (the harness repo's
+ * `docs/design/history-fold-convergence.md` row D8). This scene reads both
+ * shapes with the SAME bytes: `--seal-expect seal` (the head) asserts the typed
+ * line, the skill's own purpose and the instructions behind a CLOSED
+ * disclosure; `--seal-expect payload` (the base) asserts the wall, that the
+ * front matter is on screen and that no disclosure exists on those rows. One
+ * scene, two trees, so the pair is a before/after rather than two rigs.
+ *
+ * WHAT IT NEEDS, and why the LANE seeds rather than the scene. `--backend` (a
+ * transcript needs the app attached to a daemon) and `--session`, whose history
+ * must already hold two rendered payloads:
+ *
+ *   - `seal-demo`, whose `description:` is a FOLDED block scalar (`>-` over two
+ *     indented lines). That is the shape shipped skills actually use, and the
+ *     row must fold it onto ONE line -- the case that made a single-line-only
+ *     read wrong (this PR's D3').
+ *   - `seal-audit`, whose description is long enough to clip, so the frame and
+ *     the reading carry the truncation case: the purpose span's own
+ *     `scrollWidth > clientWidth`, with the whole sentence in its `title`.
+ *
+ * The seed posts those payloads as the content of two user messages, which is
+ * exactly what the composer persists (`/v1/desktop/sessions/<id>/messages`); the
+ * seed script and its exact command live in `docs/evidence/skill-seal/README.md`.
+ *
+ * WHAT IT CANNOT SAY. It does not exercise the composer's expansion (that is
+ * `scripts/skill-invocation.test.mjs` and the write-half's own suite): what it
+ * photographs is the READ half, which is where the defect was. And a frame
+ * captures the state it captured -- both halves are read back from
+ * `aria-expanded` and the DOM before each capture.
+ */
+async function sceneSkillSeal(cdp) {
+	const facts = await factsOf(cdp);
+	note("facts (from main)", JSON.stringify(facts, null, 2));
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	const frames = [];
+	const expectSeal = SEAL_EXPECT !== "payload";
+	const size = `${WINDOW_WIDTH}x${WINDOW_HEIGHT}`;
+	/*
+	 * The row's own readings, taken from the DOM the reader has. `transcript` is
+	 * what the assertions are about (the payload's parts must not be in it on the
+	 * head tree, and must be on the base); `seals` is every disclosure trigger on
+	 * the transcript, with the purpose span it carries -- the span's own
+	 * `scrollWidth` against `clientWidth` IS the truncation claim, and its
+	 * `title` is the sentence the ellipsis hides.
+	 */
+	const readRows = () =>
+		cdp.evaluate(`(() => {
+			const log = document.querySelector('[role="log"]');
+			if (!log) return null;
+			const seals = [...log.querySelectorAll('button[aria-expanded]')].map(
+				(trigger) => {
+					const purpose = trigger.querySelector('span[title]');
+					return {
+						text: trigger.innerText,
+						expanded: trigger.getAttribute('aria-expanded'),
+						purpose: purpose
+							? {
+									text: purpose.textContent,
+									title: purpose.getAttribute('title'),
+									clipped: purpose.scrollWidth > purpose.clientWidth + 1,
+								}
+							: null,
+					};
+				},
+			);
+			return { transcript: log.innerText, seals };
+		})()`);
+	const sealTrigger = '[role="log"] button[aria-expanded]';
+	const waitForLabel = (present) =>
+		waitForCondition(
+			cdp,
+			`(() => {
+				const log = document.querySelector('[role="log"]');
+				return Boolean(log) && log.innerText.includes(${JSON.stringify(
+					"Skill instructions sent with this message",
+				)}) === ${present};
+			})()`,
+			15_000,
+		);
+
+	for (const palette of SEAL_PALETTES) {
+		await verb(cdp, "setTheme", palette);
+		await verb(cdp, "navigate", `/chat/${SESSION}`);
+		const painted = await waitForCondition(
+			cdp,
+			`(() => {
+				const log = document.querySelector('[role="log"]');
+				return Boolean(log && log.innerText.includes(${JSON.stringify("$seal-demo")}));
+			})()`,
+			45_000,
+		);
+		check(
+			`the seeded invocation is on screen (${palette})`,
+			painted.ok,
+			`after ${painted.waitedMs ?? "?"}ms: ${JSON.stringify(painted.last)}`,
+		);
+		const rows = (await readRows()) ?? { transcript: "", seals: [] };
+		note(`rows (${palette})`, JSON.stringify(rows, null, 2));
+
+		if (!expectSeal) {
+			/*
+			 * THE BASE TREE. The wall, asserted rather than described: the header
+			 * sentence, the tag, the front matter and the body are all in the
+			 * transcript, and the row carries no disclosure at all.
+			 */
+			check(
+				"the payload's own header sentence is painted (the defect)",
+				rows.transcript.includes(
+					"The user invoked the `seal-demo` skill directly",
+				),
+				rows.transcript.slice(0, 240),
+			);
+			check(
+				"the `<skill>` tag and its front matter are on screen (the defect)",
+				rows.transcript.includes('<skill name="seal-demo"') &&
+					rows.transcript.includes("description:") &&
+					rows.transcript.includes("Answer with one line"),
+				rows.transcript.slice(0, 320),
+			);
+			check(
+				"no disclosure is rendered on an invocation row on this tree",
+				rows.seals.length === 0,
+				JSON.stringify(rows.seals),
+			);
+			frames.push(
+				await captureSettled(cdp, `skill-seal-${size}-${palette}-payload`),
+			);
+			continue;
+		}
+
+		check(
+			"the typed line is the row, in the composer's own token",
+			rows.transcript.includes("$seal-demo") &&
+				rows.transcript.includes("review the diff"),
+			JSON.stringify({
+				token: rows.transcript.includes("$seal-demo"),
+				request: rows.transcript.includes("review the diff"),
+			}),
+		);
+		check(
+			"a FOLDED description reaches the row as one line",
+			rows.transcript.includes(
+				"Review a diff for the seal demo and say what breaks",
+			),
+			JSON.stringify(rows.seals.map((seal) => seal.purpose?.text ?? null)),
+		);
+		check(
+			"the payload's parts are NOT in the document",
+			!rows.transcript.includes("The user invoked") &&
+				!rows.transcript.includes("<skill name=") &&
+				!rows.transcript.includes("</skill>") &&
+				!rows.transcript.includes("description:") &&
+				!rows.transcript.includes("Answer with one line"),
+			JSON.stringify({
+				header: rows.transcript.includes("The user invoked"),
+				tag: rows.transcript.includes("<skill name="),
+				close: rows.transcript.includes("</skill>"),
+				frontMatter: rows.transcript.includes("description:"),
+				body: rows.transcript.includes("Answer with one line"),
+			}),
+		);
+		check(
+			"both invocations carry a disclosure, closed by default",
+			rows.seals.length === 2 &&
+				rows.seals.every((seal) => seal.expanded === "false"),
+			JSON.stringify(rows.seals.map((seal) => seal.expanded)),
+		);
+		check(
+			"the instructions are not in the document while collapsed",
+			!rows.transcript.includes("Skill instructions sent with this message"),
+			rows.transcript.slice(-200),
+		);
+		frames.push(
+			await captureSettled(cdp, `skill-seal-${size}-${palette}-collapsed`),
+		);
+
+		/*
+		 * THE PRESS, as the reader makes it: the trigger scrolled into view, then
+		 * the harness's real pointer sequence on it. Both the state and the DOM
+		 * are read back before the second capture.
+		 */
+		await cdp.evaluate(
+			`(() => { const t = document.querySelector(${JSON.stringify(
+				sealTrigger,
+			)}); if (t) t.scrollIntoView({ block: "center" }); return true; })()`,
+		);
+		await wait(300);
+		await clickAt(cdp, sealTrigger);
+		const opened = await waitForLabel(true);
+		check(
+			"the press discloses the instructions sent with the message",
+			opened.ok,
+			`last reading: ${JSON.stringify(opened.last)}`,
+		);
+		const expandedRows = (await readRows()) ?? { transcript: "", seals: [] };
+		check(
+			"the expanded block is labelled and the trigger reports itself open",
+			expandedRows.transcript.includes(
+				"Skill instructions sent with this message",
+			) &&
+				expandedRows.transcript.includes("Seal demo") &&
+				expandedRows.seals[0]?.expanded === "true",
+			JSON.stringify({
+				label: expandedRows.transcript.includes(
+					"Skill instructions sent with this message",
+				),
+				body: expandedRows.transcript.includes("Seal demo"),
+				expanded: expandedRows.seals[0]?.expanded ?? null,
+			}),
+		);
+		check(
+			"the front matter is still stripped from the expanded body",
+			!expandedRows.transcript.includes("description:"),
+			expandedRows.transcript.slice(-400),
+		);
+		frames.push(
+			await captureSettled(cdp, `skill-seal-${size}-${palette}-expanded`),
+		);
+
+		await clickAt(cdp, sealTrigger);
+		const closed = await waitForLabel(false);
+		check(
+			"a second press puts it back",
+			closed.ok &&
+				((await readRows()) ?? { seals: [] }).seals[0]?.expanded === "false",
+			`last reading: ${JSON.stringify(closed.last)}`,
+		);
+		/*
+		 * THE TRUNCATION CASE, read rather than eyeballed: the second invocation's
+		 * description is longer than the row, so the span clips and the whole
+		 * sentence is one hover away in its `title`.
+		 */
+		const longPurpose = rows.seals[1]?.purpose ?? null;
+		check(
+			"a long purpose is one ellipsized line with the sentence in its title",
+			Boolean(longPurpose) &&
+				longPurpose.clipped &&
+				typeof longPurpose.title === "string" &&
+				longPurpose.title.length > longPurpose.text.length,
+			JSON.stringify(longPurpose),
+		);
+		frames.push(
+			await captureSettled(cdp, `skill-seal-${size}-${palette}-long-purpose`),
+		);
+	}
+
 	return frames;
 }
 
@@ -45722,6 +46006,16 @@ async function main() {
 			"--scene output-artifact needs --session <id>: it photographs the seeded session, and a default would photograph whatever chat happens to open",
 		);
 	}
+	if (SCENE === "skill-seal" && BACKEND === null) {
+		throw new Error(
+			"--scene skill-seal needs --backend: the invocation it photographs is a PERSISTED payload read back from a daemon's history route, and with no backend the chat route draws its refusal surface instead",
+		);
+	}
+	if (SCENE === "skill-seal" && SESSION === null) {
+		throw new Error(
+			"--scene skill-seal needs --session <id>: the seeded session whose history holds the two rendered payloads is the subject, and a default would photograph whatever chat happens to open",
+		);
+	}
 	if (SCENE === "conversation-start-away-failure" && BACKEND === null) {
 		console.error(
 			"the conversation-start-away-failure scene needs --backend <url>: it drives a real refusal through the tap",
@@ -46126,6 +46420,7 @@ async function main() {
 			else if (SCENE === "transcript-rail") await sceneTranscriptRail(cdp);
 			else if (SCENE === "imagegen-card") await sceneImageGenCard(cdp);
 			else if (SCENE === "image-copy") await sceneImageCopy(app, cdp);
+			else if (SCENE === "skill-seal") await sceneSkillSeal(cdp);
 			else if (SCENE === "canvas-freshness")
 				await sceneCanvasFreshness(cdp, app);
 			else if (SCENE === "sidebar-lazy-chats") await sceneSidebarLazyChats(cdp);

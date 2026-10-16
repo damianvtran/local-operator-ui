@@ -172,7 +172,7 @@ import { QuoteToolkit } from "./quote-toolkit";
 import { RadientCreditsGuidance } from "./radient-credits-guidance";
 import { ensureReachable, jumpToEntry } from "./reveal-record";
 import { SETTLE_MS } from "./scroll-paging";
-import { skillRowOf } from "./skill-row";
+import { editTextOf, skillRowOf } from "./skill-row";
 import { SupplementRow } from "./supplement-row";
 import { THREAD_SEARCH_JUMP_MISS_COPY } from "./thread-search-model";
 import { ThreadSearchOverlay } from "./thread-search-overlay";
@@ -2591,6 +2591,20 @@ const WakeRow = memo(function WakeRow({
 // Rich markdown bodies own disclosure/editor state not yet migrated to the
 // transcript registry. The opt-in virtualizer must not reset that state.
 const STATEFUL_TRANSCRIPT_MARKUP = /```|!\[|<|\$\$/;
+/**
+ * The text a row PAINTS, for the two places that only care what the reader will
+ * read: the cold-height estimate and the stateful-markup check below.
+ *
+ * A `$skill` row's record carries the whole payload, so both of those would
+ * otherwise judge a SKILL.md instead of the one line on screen -- the estimate
+ * would reserve for kilobytes of prose the row does not draw, and the markup
+ * check would call every invocation "unsafe" on the `<` in its own tag. The
+ * body is not lost by reading the line here: it goes through the same markdown
+ * and safety path when the reader opens the disclosure (agent review round 1,
+ * MINOR-3).
+ */
+const paintedTextOf = (record: { kind?: string; text: string }): string =>
+	record.kind === "user" ? editTextOf(record.text) : record.text;
 const estimateBuckets = new WeakMap<object, { text: string; bucket: number }>();
 function estimateBucket(record: object, text: string): number {
 	const cached = estimateBuckets.get(record);
@@ -5068,7 +5082,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					: entryRows.some(({ record }) => {
 							if (record.kind !== "user" && record.kind !== "assistant")
 								return true;
-							return STATEFUL_TRANSCRIPT_MARKUP.test(record.text);
+							return STATEFUL_TRANSCRIPT_MARKUP.test(paintedTextOf(record));
 						})));
 		const type =
 			entry.kind === "bar"
@@ -5082,7 +5096,9 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				: group?.kind === "run" && !deferred
 					? group.summary.units.join(", ")
 					: entryRows
-							.map(({ record }) => ("text" in record ? record.text : ""))
+							.map(({ record }) =>
+								"text" in record ? paintedTextOf(record) : "",
+							)
 							.join("\n");
 		const bucket = domWindowRequested ? estimateBucket(first.record, text) : 0;
 		const userExpanded =
