@@ -487,6 +487,20 @@ export function installDevDriver(): string[] {
 				),
 				sessionCount: sessions.sessions.length,
 				/*
+				 * THE ORDER AND SIZE THE CATALOGUE IS READ IN, reported rather than
+				 * inferred (the plain-newchat scene's own rule): a scene that photographs a
+				 * fresh conversation inside the sidebar after its runtime drained has to be
+				 * able to say WHICH page the store holds and WHICH order produced it -
+				 * "62 rows rendered" and "the head page carried the row" are different
+				 * claims, and only the second one is about the activity head. Both are the
+				 * store's own published flags: `cataloguePageable` sizes an unnamed read
+				 * (`cataloguePageDefault`) and `catalogueActivityHead` decides whether the
+				 * reads ask for `sort=activity`, so a scene can PROVE the fixed path was
+				 * live rather than infer it from a row that happens to render.
+				 */
+				cataloguePageable: sessions.cataloguePageable,
+				catalogueActivityHead: sessions.catalogueActivityHead,
+				/*
 				 * THE PAGED CATALOGUE'S OWN FACTS, reported rather than inferred.
 				 *
 				 * A scene that photographs a group's page has to be able to say WHAT the
