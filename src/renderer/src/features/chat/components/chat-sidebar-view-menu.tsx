@@ -66,7 +66,6 @@
 
 import type { SidebarBasis } from "@features/chat/chat-list-sections";
 import {
-	SIDEBAR_SECTION_LABEL,
 	type SidebarGroupBy,
 	type SidebarOrderBy,
 	type SidebarSectionKey,
@@ -79,6 +78,8 @@ import {
 	toggleSection,
 } from "@features/chat/chat-sidebar-view";
 import { Button } from "@shared/components/ui";
+import { type WithoutParams, t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	Activity,
@@ -94,6 +95,19 @@ import {
 	Users,
 } from "lucide-react";
 import type { ReactNode } from "react";
+
+// Stable model IDs stay separate from copy: store order/hidden state must not
+// become translated strings. Resolve these keys only while rendering the menu.
+const SECTION_MESSAGE_KEYS = {
+	pinned: "ui.chat.sidebar_view.section.pinned",
+	running: "ui.chat.sidebar_view.section.running",
+	today: "ui.chat.sidebar_view.section.today",
+	week: "ui.chat.sidebar_view.section.week",
+	older: "ui.chat.sidebar_view.section.older",
+	agents: "ui.chat.sidebar_view.section.agents",
+	teams: "ui.chat.sidebar_view.section.teams",
+} as const satisfies Record<SidebarSectionKey, WithoutParams>;
+const sectionLabel = (key: SidebarSectionKey) => t(SECTION_MESSAGE_KEYS[key]);
 
 /** A row's trailing count, when the caller has one. `undefined` draws nothing. */
 export type ViewMenuCounts = Partial<Record<SidebarSectionKey, number>>;
@@ -163,6 +177,8 @@ const choice = (
 );
 
 export function ChatSidebarViewMenu({ view, counts, onView }: Props) {
+	// Refresh all option/section labels when the backend-owned locale changes.
+	useI18nLocale();
 	/*
 	 * WHETHER A SECTION WOULD DRAW, for `canMoveSection` (round 1's m1/U1): a
 	 * chat section with no loaded rows draws no label in the column
@@ -179,17 +195,17 @@ export function ChatSidebarViewMenu({ view, counts, onView }: Props) {
 	const groupBy: { key: SidebarGroupBy; label: string; icon: ReactNode }[] = [
 		{
 			key: "section",
-			label: "Time section",
+			label: t("ui.chat.sidebar_view.time_section"),
 			icon: <Layers aria-hidden="true" className="size-3.5" />,
 		},
 		{
 			key: "agent",
-			label: "Agent and team",
+			label: t("ui.chat.sidebar_view.agent_team"),
 			icon: <Bot aria-hidden="true" className="size-3.5" />,
 		},
 		{
 			key: "flat",
-			label: "In one list",
+			label: t("ui.chat.sidebar_view.one_list"),
 			icon: <List aria-hidden="true" className="size-3.5" />,
 		},
 	];
@@ -197,12 +213,12 @@ export function ChatSidebarViewMenu({ view, counts, onView }: Props) {
 		{
 			key: "active",
 			// The operator's words for the two, verbatim: "last active" and "creation date".
-			label: "Last active",
+			label: t("ui.chat.sidebar_view.last_active"),
 			icon: <History aria-hidden="true" className="size-3.5" />,
 		},
 		{
 			key: "created",
-			label: "Created",
+			label: t("ui.chat.sidebar_view.created"),
 			/*
 			 * A plain calendar, not `CalendarPlus` (design round 1, D3): the plus
 			 * reads "add to calendar", an action - the row is a fact about the record's
@@ -215,12 +231,12 @@ export function ChatSidebarViewMenu({ view, counts, onView }: Props) {
 		{
 			key: "active-first",
 			// The operator's own word for this: "sorting active to the top".
-			label: "Active first",
+			label: t("ui.chat.sidebar_view.active_first"),
 			icon: <Activity aria-hidden="true" className="size-3.5" />,
 		},
 		{
 			key: "recent",
-			label: "Most recent",
+			label: t("ui.chat.sidebar_view.most_recent"),
 			icon: <ChevronDown aria-hidden="true" className="size-3.5" />,
 		},
 	];
@@ -235,7 +251,7 @@ export function ChatSidebarViewMenu({ view, counts, onView }: Props) {
 		 * width: the panel sets it, this fills it, and the two cannot diverge again.
 		 */
 		<div data-sidebar-view-menu className="w-full">
-			{group("Group by")}
+			{group(t("ui.chat.sidebar_view.group_by"))}
 			{/*
 			 * A `fieldset`, not a `div role="group"`: it IS the semantic element for a
 			 * labelled group of controls, so the grouping survives without an ARIA role
@@ -247,7 +263,9 @@ export function ChatSidebarViewMenu({ view, counts, onView }: Props) {
 			 * a fieldset's accessible name is the legend.
 			 */}
 			<fieldset className="min-w-0 space-y-0.5 border-0 p-0">
-				<legend className="sr-only">Group by</legend>
+				<legend className="sr-only">
+					{t("ui.chat.sidebar_view.group_by")}
+				</legend>
 				{groupBy.map((option) =>
 					choice(
 						option.key,
@@ -265,10 +283,12 @@ export function ChatSidebarViewMenu({ view, counts, onView }: Props) {
 			 * writes the whole next view and keeps the panel open, exactly like the
 			 * groups above and below (`switches`/`reorder` parity, design direction).
 			 */}
-			{group("Time basis")}
+			{group(t("ui.chat.sidebar_view.time_basis"))}
 			{/* The same fieldset + sr-only legend shape as the groups either side. */}
 			<fieldset className="min-w-0 space-y-0.5 border-0 p-0">
-				<legend className="sr-only">Time basis</legend>
+				<legend className="sr-only">
+					{t("ui.chat.sidebar_view.time_basis")}
+				</legend>
 				{basis.map((option) =>
 					choice(
 						option.key,
@@ -291,12 +311,14 @@ export function ChatSidebarViewMenu({ view, counts, onView }: Props) {
 			 * labels and its structure are untouched.
 			 */}
 			<p className="px-1 pt-0.5 pb-1 text-meta text-ink-dim">
-				Dates and ordering follow the selected clock.
+				{t("ui.chat.sidebar_view.clock_hint")}
 			</p>
-			{group("Order by")}
+			{group(t("ui.chat.sidebar_view.order_by"))}
 			{/* The same group, for the same reason - see the comment above. */}
 			<fieldset className="min-w-0 space-y-0.5 border-0 p-0">
-				<legend className="sr-only">Order by</legend>
+				<legend className="sr-only">
+					{t("ui.chat.sidebar_view.order_by")}
+				</legend>
 				{orderBy.map((option) =>
 					choice(
 						option.key,
@@ -320,7 +342,7 @@ export function ChatSidebarViewMenu({ view, counts, onView }: Props) {
 			 * switch took off the column has no chevron left to disagree with.
 			 * `ENTITY_SECTIONS` carries the correction and the report it came from.
 			 */}
-			{group("Sections")}
+			{group(t("ui.chat.sidebar_view.sections"))}
 			<div className="space-y-0.5">
 				{view.order.map((key) => {
 					const on = isSectionShown(view, key);
@@ -364,7 +386,7 @@ export function ChatSidebarViewMenu({ view, counts, onView }: Props) {
 									)}
 								</span>
 								<span className="min-w-0 flex-1 truncate">
-									{SIDEBAR_SECTION_LABEL[key]}
+									{sectionLabel(key)}
 								</span>
 								{/*
 								 * The section's row count, when the caller has one: a
@@ -405,7 +427,9 @@ export function ChatSidebarViewMenu({ view, counts, onView }: Props) {
 										variant="ghost"
 										size="icon-sm"
 										data-sidebar-view-move={`${key}:up`}
-										aria-label={`Move ${SIDEBAR_SECTION_LABEL[key]} up`}
+										aria-label={t("ui.chat.sidebar_view.move_up", {
+											section: sectionLabel(key),
+										})}
 										disabled={!canMoveSection(view, key, -1, draws)}
 										className="size-6"
 										onClick={() => onView(moveSection(view, key, -1))}
@@ -416,7 +440,9 @@ export function ChatSidebarViewMenu({ view, counts, onView }: Props) {
 										variant="ghost"
 										size="icon-sm"
 										data-sidebar-view-move={`${key}:down`}
-										aria-label={`Move ${SIDEBAR_SECTION_LABEL[key]} down`}
+										aria-label={t("ui.chat.sidebar_view.move_down", {
+											section: sectionLabel(key),
+										})}
 										disabled={!canMoveSection(view, key, 1, draws)}
 										className="size-6"
 										onClick={() => onView(moveSection(view, key, 1))}
@@ -438,9 +464,7 @@ export function ChatSidebarViewMenu({ view, counts, onView }: Props) {
 			 */}
 			{view.hidden.length > 0 && (
 				<p className="mt-2 px-1 text-meta text-ink-dim">
-					{view.hidden.length === 1
-						? "1 section hidden"
-						: `${view.hidden.length} sections hidden`}
+					{t("ui.chat.sidebar_view.hidden", { count: view.hidden.length })}
 				</p>
 			)}
 		</div>
