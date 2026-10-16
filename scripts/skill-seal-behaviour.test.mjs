@@ -15,8 +15,8 @@ import { createElement as h } from "react";
  *   1. that the bubble shows the typed line and the skill's own purpose rather
  *      than the payload it was sent from — the header sentence, the `<skill>`
  *      tag and the whole SKILL.md body must not be in the document at all
- *      (`docs/design/history-fold-convergence.md` row D8, the defect the row
- *      exists to remove);
+ *      (the harness repo's `docs/design/history-fold-convergence.md` row D8, the
+ *      defect the row exists to remove);
  *   2. that the instructions are one press away, and that the press puts them
  *      back — the collapsed body is UNMOUNTED, not merely hidden
  *      (`Disclosure` renders `isOpen && children`), which is what keeps a long

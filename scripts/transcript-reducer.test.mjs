@@ -8347,8 +8347,8 @@ test("a `$skill` payload is stamped the same way by the page and by the frame", 
 	 * The two arms are different code over different payload shapes, which is why
 	 * the harness suppression beside them is spelled twice as well. A row that
 	 * painted the seal live and the payload wall after a reload is the defect
-	 * `docs/design/history-fold-convergence.md` row D8 records, and it is exactly
-	 * the shape a one-sided derivation produces.
+	 * the harness repo's `docs/design/history-fold-convergence.md` row D8 records,
+	 * and it is exactly the shape a one-sided derivation produces.
 	 */
 	const durable = applyHistoryPage(EMPTY_TRANSCRIPT, {
 		entries: [

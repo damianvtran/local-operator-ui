@@ -1030,7 +1030,8 @@ const UserRow = memo(function UserRow({
 							 * THE `$skill` SEAL. Without it this bubble IS the payload: the
 							 * header sentence, the `<skill>` tag, the whole SKILL.md body and
 							 * the request, painted at reading weight as though the reader had
-							 * typed them (`docs/design/history-fold-convergence.md` row D8).
+							 * typed them -- the defect the harness repo's
+							 * `docs/design/history-fold-convergence.md` row D8 records.
 							 * The typed line is the row; the instructions the model received
 							 * are one press away.
 							 *
