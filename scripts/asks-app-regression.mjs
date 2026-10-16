@@ -222,7 +222,333 @@ async function waitForDevtoolsPort(handle, api, timeoutMs = 60_000) {
 	}
 }
 
-async function runCase(kind, root, output, records) {
+/* ------------------------------------------------------------------ *
+ * THE CASE TABLE
+ * ------------------------------------------------------------------ */
+/**
+ * Every assembled-app frame case this producer can run, keyed by the name
+ * `--case` takes.
+ *
+ * WHY A TABLE RATHER THAN ANOTHER SCENE SCRIPT. The UI programme's design and UX
+ * rounds are gated on frames of the REAL assembled app, and the asks scenario
+ * proved the shape of that evidence: a candidate leg plus a control leg built
+ * from a real historical revision, real pointer presses, state read back through
+ * the dev driver, and PNGs a reviewer can look at. What differs from one UI head
+ * to the next is only WHICH steps are driven, WHICH states must hold and WHICH
+ * frames are worth capturing, so those are what a case declares and the runner
+ * (launch, attach, control derivation, reaping, manifest) is shared rather than
+ * copied per head.
+ *
+ * `purpose` is prose for the reviewer, not executed. `frames` IS a contract: the
+ * runner asserts every promised label was captured, so a case that stops halfway
+ * fails rather than publishing an artifact thinner than it claims. A case that
+ * cannot run refuses loudly - `--case`/`--leg` outside this table, or missing
+ * environment names, exit 1 before any artifact root exists or any Electron
+ * binary is resolved.
+ */
+export const CASES = {
+	asks: {
+		purpose:
+			"The asks rail's open/close policy, driven through every door the user has (rail item, drawer X, Escape, header menu, composer chip) with the browser pane underneath it. The first case, and the one the 1107 rounds were reviewed against.",
+		route: "/chat",
+		/*
+		 * PER LEG, NOT ONE LIST, because the legs are not the same drive: the
+		 * candidate runs the closers the change is about (the drawer's X, Escape,
+		 * the header menu, the composer chip, the emptied queue, the connection
+		 * error) while the control - a real historical revision that predates them -
+		 * stops after the shared steps. One list would promise the control leg frames
+		 * it cannot take, which is a red run for a correct case.
+		 */
+		frames: {
+			control: [
+				"session-loading",
+				"before-browser",
+				"populated-asks",
+				"rail-close",
+				"session-a-b-a",
+			],
+			candidate: [
+				"session-loading",
+				"before-browser",
+				"populated-asks",
+				"rail-close",
+				"session-a-b-a",
+				"header-menu",
+				"x-close",
+				"escape-give-back",
+				"menu-close",
+				"chip-close",
+				"empty-session-queue",
+				"connection-error",
+			],
+		},
+		coverage:
+			"real assembled app renderer/handlers/store; not native WCV compositor pixels or macOS z-order",
+		/*
+		 * THE LEGACY OUTPUT LAYOUT IS KEPT FOR THIS CASE ON PURPOSE: its frames sit
+		 * at `<output>/control` and `<output>/candidate`, which is where the QA howto
+		 * for the asks work points and where the review threads' artifact paths
+		 * resolve. Moving every case to one `<case>/<leg>` scheme is mechanical and
+		 * has its own blast radius (artifacts, docs, recorded howtos), so this slice
+		 * deliberately does not do it.
+		 */
+		legacyOutputLayout: true,
+		drive: async (ctx) => {
+			const {
+				kind,
+				cdp,
+				wait,
+				press,
+				pressEscape,
+				waitFor,
+				facts,
+				frame,
+				fixtureMode,
+				session,
+			} = ctx;
+			/*
+			 * OPEN THE BROWSER DOOR, AND WAIT FOR THE PANE RATHER THAN SAMPLING IT ONCE.
+			 *
+			 * The press is a real pointer press on the real rail item, and the store's
+			 * `browser` arm sets `isBrowserPaneOpen` in one step with no gate
+			 * (`panel-rail-actions.ts`), so the flag does follow the press - what is NOT
+			 * synchronous is React's commit of it. Reading `facts()` once, immediately after
+			 * the pointer events, samples the store at whatever moment the round trip lands
+			 * on, and under load that moment can still be the pre-commit one: measured on run
+			 * 38929174267, candidate leg, `Expected values to be strictly equal: false !== true`
+			 * at the assertion below, with the pane not yet committed.
+			 *
+			 * WHY A BOUNDED POLL AND NOT A LONGER PAUSE. What is being waited FOR is a state
+			 * change, so the same expression that reads it is the one that has to retry - the
+			 * shape this file already uses for every other readiness wait (`wait`, and the
+			 * two port/bridge polls above). The timeout keeps the failure mode honest: a door
+			 * that never opens still fails, and the message carries the whole state plus what
+			 * the press reported, so a genuine regression cannot be mistaken for slowness.
+			 *
+			 * THE PRESS'S OWN ANSWER IS KEPT. `press` returns nothing today, so the state is
+			 * read back instead; if the item were absent or refused the flag would never
+			 * settle and the refusal below names it with the state in hand.
+			 */
+			async function browser() {
+				if ((await facts()).dom.ask) await pressEscape();
+				if (!(await facts()).state.browserPaneOpen)
+					await press('[data-panel-rail-item="browser"]');
+				const opened = await waitFor(
+					async () => (await facts()).state.browserPaneOpen === true,
+					15_000,
+				);
+				assert.equal(
+					opened.state.browserPaneOpen,
+					true,
+					`the browser door did not open its pane within 15s: browserPaneOpen=${opened.state.browserPaneOpen} state=${JSON.stringify(opened.state)}`,
+				);
+			}
+			async function asks() {
+				await press('[data-panel-rail-item="ask"]');
+				await wait('!!document.querySelector("[data-ask-drawer]")');
+			}
+			async function closed(label, expected) {
+				await wait('!document.querySelector("[data-ask-drawer]")');
+				const x = await frame(label);
+				assert.equal(
+					x.state.browserPaneOpen,
+					expected,
+					`${kind} ${label} wrong restore policy`,
+				);
+				assert.equal(x.dom.focusedConnected, true);
+				return x;
+			}
+			/*
+			 * The conversation is opened by PRESSING THE ROW, not by a disclosure press
+			 * first. `[data-tour-tag="chat-all-chats"]` was pressed here unguarded and
+			 * that selector has NO home in `src/` at either this head or the pinned
+			 * control one (the shared driver's own comment at its `--backend` scene says
+			 * so, and `git grep` over `src` in both trees finds nothing), so the press
+			 * waited fifteen seconds for an element the app never draws and the whole
+			 * case died with `Unsettled real UI: Boolean(document.querySelector(
+			 * "[data-tour-tag=\"chat-all-chats\"]"))` - measured on run 38846903646.
+			 *
+			 * `session()` below is the shape the driver's own scenes use instead: wait
+			 * for the seeded row, mark it, press that. The rail this scene is about is
+			 * on every route and needs no conversation at all.
+			 */
+			await session(0);
+			await frame("session-loading");
+			await fixtureMode("populated");
+			await wait(
+				'Boolean(document.querySelector("[data-panel-rail-item=ask]"))',
+			);
+			if ((await facts()).dom.ask) await pressEscape();
+			await browser();
+			await frame("before-browser");
+			await asks();
+			await frame("populated-asks");
+			await press('[data-panel-rail-item="ask"]');
+			await closed("rail-close", expectedRailClose(kind));
+			await session(1);
+			await session(0);
+			assert.equal(
+				(await facts()).state.browserPaneOpen,
+				expectedRailClose(kind),
+			);
+			await frame("session-a-b-a");
+			if (kind === "candidate") {
+				await browser();
+				await asks();
+				await press('[data-tour-tag="close-asks-button"]');
+				await closed("x-close", false);
+				await browser();
+				await asks();
+				await pressEscape();
+				await closed("escape-give-back", true);
+				await asks();
+				await cdp.evaluate(
+					`(()=>{const h=document.querySelector('[data-tour-tag="chat-header"]');const e=[...h.querySelectorAll('button')].find(e=>e.getAttribute('aria-haspopup')==='menu');if(!e)throw Error('real header menu unavailable');e.setAttribute('data-ci-menu','')})()`,
+				);
+				await press("[data-ci-menu]");
+				await cdp.evaluate(
+					`(()=>{const e=[...document.querySelectorAll('[role="menuitem"]')].find(e=>e.textContent.trim()==='Close asks');if(!e)throw Error('real Close asks menu item absent');e.setAttribute('data-ci-close-asks','')})()`,
+				);
+				await frame("header-menu");
+				await press("[data-ci-close-asks]");
+				await closed("menu-close", false);
+				await browser();
+				await asks();
+				await press('[data-status-asks][aria-expanded="true"]');
+				await closed("chip-close", false);
+				await session(1);
+				await frame("empty-session-queue");
+				await session(0);
+				await fixtureMode("error");
+				await wait(
+					"/reconnect|connection|retry|unavailable|could not/i.test(document.body.innerText)",
+				);
+				await frame("connection-error");
+			}
+		},
+	},
+	palette: {
+		purpose:
+			"The command palette: an INTERACTIVE surface with a real state, opened from its own sidebar row and closed with Escape, with commandPaletteOpen read from the store at each end so the pair shows one state reached and one left.",
+		route: "/chat",
+		frames: {
+			control: ["palette-open", "palette-closed"],
+			candidate: ["palette-open", "palette-closed"],
+		},
+		coverage:
+			"real assembled app renderer/handlers/store; not native WCV compositor pixels or macOS z-order",
+		drive: async (ctx) => {
+			const {
+				wait,
+				press,
+				pressEscape,
+				waitFor,
+				facts,
+				frame,
+				fixtureMode,
+				session,
+			} = ctx;
+			await fixtureMode("populated");
+			await session(0);
+			/*
+			 * THE SIDEBAR ROW IS THE DOOR THE SHARED DRIVER'S OWN PALETTE SCENES USE
+			 * (`renderer-driver.mjs` presses `[data-command-palette-trigger]` and then
+			 * asserts the dialog and the focused field), so this case drives the same
+			 * control rather than inventing a second way in.
+			 */
+			await press("[data-command-palette-trigger]");
+			const opened = await waitFor(
+				async () => (await facts()).state.commandPaletteOpen === true,
+				15_000,
+			);
+			assert.equal(
+				opened.state.commandPaletteOpen,
+				true,
+				`the command palette never opened: commandPaletteOpen=${opened.state.commandPaletteOpen} state=${JSON.stringify(opened.state)}`,
+			);
+			await wait(
+				'Boolean(document.querySelector("[data-tour-tag=command-palette-dialog]"))',
+			);
+			await frame("palette-open");
+			/*
+			 * ESCAPE IS THE PALETTE'S OWN CLOSE PATH (the dialog's `onOpenChange`
+			 * writes `closeCommandPalette`), so the pair is a real open and a real
+			 * close rather than a state poked from the driver.
+			 */
+			await pressEscape();
+			const shut = await waitFor(
+				async () => (await facts()).state.commandPaletteOpen === false,
+				15_000,
+			);
+			assert.equal(
+				shut.state.commandPaletteOpen,
+				false,
+				`the command palette never closed on Escape: commandPaletteOpen=${shut.state.commandPaletteOpen} state=${JSON.stringify(shut.state)}`,
+			);
+			await frame("palette-closed");
+		},
+	},
+	"header-menu": {
+		purpose:
+			"The chat header's real menu: a COPY-ONLY surface, whose rows are extracted English copy. An i18n branch shows 'unchanged English, still renders' by capturing this surface at both legs; the case asserts the rows render with copy rather than a screenshot of an empty popup.",
+		route: "/chat",
+		frames: {
+			control: ["header-menu", "header-menu-closed"],
+			candidate: ["header-menu", "header-menu-closed"],
+		},
+		coverage:
+			"real assembled app renderer/handlers/store; not native WCV compositor pixels or macOS z-order",
+		drive: async (ctx) => {
+			const { cdp, wait, press, pressEscape, frame, fixtureMode, session } =
+				ctx;
+			await fixtureMode("populated");
+			await session(0);
+			/*
+			 * THE MENU BUTTON IS FOUND THE WAY THE ASKS CASE FINDS IT - the header's
+			 * own `aria-haspopup` control, marked so the press can address it - which
+			 * keeps one way of reaching this control in the file.
+			 */
+			await cdp.evaluate(
+				`(()=>{const h=document.querySelector('[data-tour-tag="chat-header"]');const e=[...h.querySelectorAll('button')].find(e=>e.getAttribute('aria-haspopup')==='menu');if(!e)throw Error('real header menu unavailable');e.setAttribute('data-ci-menu','')})()`,
+			);
+			await press("[data-ci-menu]");
+			await wait(`document.querySelectorAll('[role="menuitem"]').length > 0`);
+			const labels = await cdp.evaluate(
+				`[...document.querySelectorAll('[role="menuitem"]')].map(e=>e.textContent.trim())`,
+			);
+			assert(labels.length > 0, "the header menu rendered no rows");
+			assert(
+				labels.every((label) => label.length > 0),
+				`a header menu row rendered empty copy: ${JSON.stringify(labels)}`,
+			);
+			/*
+			 * THE ASKS ROW IS THE ONE ROW THIS CASE CAN NAME WITHOUT PINNING A
+			 * DIRECTION: it reads "Open asks" or "Close asks" depending on whether the
+			 * drawer is up, and the case does not open it. So what is asserted is that
+			 * the row is there and that every row carries copy.
+			 */
+			assert(
+				labels.some((label) => /asks/i.test(label)),
+				`the header menu lost its asks row: ${JSON.stringify(labels)}`,
+			);
+			await frame("header-menu");
+			await pressEscape();
+			await wait(`document.querySelectorAll('[role="menuitem"]').length === 0`);
+			await frame("header-menu-closed");
+		},
+	},
+};
+
+/**
+ * Run one case's one leg, in its own process.
+ *
+ * The runner owns what every case needs and no case should re-implement: the
+ * working directory the app launches from, the driver import (so a control leg
+ * imports the HISTORICAL tree's driver), the launch and CDP attach, the
+ * onboarding-script reload, the readiness waits, the frame/measurement store, and
+ * a finally that reaps exactly the app this run started.
+ */
+async function runCase(scenarioName, kind, root, output, records) {
 	process.chdir(root);
 	process.argv.push(
 		"--backend",
@@ -235,6 +561,12 @@ async function runCase(kind, root, output, records) {
 	const { rendererDriverApi: api } = await import(
 		pathToFileURL(join(root, "scripts/renderer-driver.mjs"))
 	);
+	/*
+	 * THE CASE IS RESOLVED BEFORE ANYTHING IS LAUNCHED, so a name outside the table
+	 * cannot get as far as an artifact root, a fixture or an Electron binary.
+	 */
+	const scenario = CASES[scenarioName];
+	assert(scenario, `unknown case ${scenarioName}`);
 	let cdp;
 	let rc = 1;
 	const frames = [];
@@ -247,7 +579,7 @@ async function runCase(kind, root, output, records) {
 	const save = () =>
 		writeFileSync(
 			join(output, "measurements.json"),
-			JSON.stringify({ kind, frames, failures }, null, 2),
+			JSON.stringify({ case: scenarioName, kind, frames, failures }, null, 2),
 		);
 	async function wait(expression) {
 		for (let i = 0; i < 150; i++) {
@@ -362,57 +694,25 @@ async function runCase(kind, root, output, records) {
 		}
 	}
 	/*
-	 * OPEN THE BROWSER DOOR, AND WAIT FOR THE PANE RATHER THAN SAMPLING IT ONCE.
-	 *
-	 * The press is a real pointer press on the real rail item, and the store's
-	 * `browser` arm sets `isBrowserPaneOpen` in one step with no gate
-	 * (`panel-rail-actions.ts`), so the flag does follow the press - what is NOT
-	 * synchronous is React's commit of it. Reading `facts()` once, immediately after
-	 * the pointer events, samples the store at whatever moment the round trip lands
-	 * on, and under load that moment can still be the pre-commit one: measured on run
-	 * 38929174267, candidate leg, `Expected values to be strictly equal: false !== true`
-	 * at the assertion below, with the pane not yet committed.
-	 *
-	 * WHY A BOUNDED POLL AND NOT A LONGER PAUSE. What is being waited FOR is a state
-	 * change, so the same expression that reads it is the one that has to retry - the
-	 * shape this file already uses for every other readiness wait (`wait`, and the
-	 * two port/bridge polls above). The timeout keeps the failure mode honest: a door
-	 * that never opens still fails, and the message carries the whole state plus what
-	 * the press reported, so a genuine regression cannot be mistaken for slowness.
-	 *
-	 * THE PRESS'S OWN ANSWER IS KEPT. `press` returns nothing today, so the state is
-	 * read back instead; if the item were absent or refused the flag would never
-	 * settle and the refusal below names it with the state in hand.
+	 * WHAT A CASE DRIVES WITH: the generic helpers only. The asks-only doors
+	 * (`browser`, `asks`, `closed`) live inside the asks case, because putting a
+	 * case-specific door on a shared context is how a framework starts growing.
 	 */
-	async function browser() {
-		if ((await facts()).dom.ask) await pressEscape();
-		if (!(await facts()).state.browserPaneOpen)
-			await press('[data-panel-rail-item="browser"]');
-		const opened = await waitFor(
-			async () => (await facts()).state.browserPaneOpen === true,
-			15_000,
-		);
-		assert.equal(
-			opened.state.browserPaneOpen,
-			true,
-			`the browser door did not open its pane within 15s: browserPaneOpen=${opened.state.browserPaneOpen} state=${JSON.stringify(opened.state)}`,
-		);
-	}
-	async function asks() {
-		await press('[data-panel-rail-item="ask"]');
-		await wait('!!document.querySelector("[data-ask-drawer]")');
-	}
-	async function closed(label, expected) {
-		await wait('!document.querySelector("[data-ask-drawer]")');
-		const x = await frame(label);
-		assert.equal(
-			x.state.browserPaneOpen,
-			expected,
-			`${kind} ${label} wrong restore policy`,
-		);
-		assert.equal(x.dom.focusedConnected, true);
-		return x;
-	}
+	const ctx = {
+		kind,
+		api,
+		get cdp() {
+			return cdp;
+		},
+		wait,
+		press,
+		waitFor,
+		pressEscape,
+		facts,
+		frame,
+		fixtureMode,
+		session,
+	};
 	try {
 		api.prepareDriverContext({ apiUrl: "http://127.0.0.1:8080" });
 		const app = await api.launchApp({
@@ -464,77 +764,28 @@ async function runCase(kind, root, output, records) {
 		const windowFacts = await cdp.evaluate("window.__loDevDriver.facts()");
 		assert.equal(windowFacts.visible, false);
 		assert.equal(windowFacts.focused, false);
-		await api.verb(cdp, "navigate", "/chat");
+		await api.verb(cdp, "navigate", scenario.route);
+		await scenario.drive(ctx);
 		/*
-		 * The conversation is opened by PRESSING THE ROW, not by a disclosure press
-		 * first. `[data-tour-tag="chat-all-chats"]` was pressed here unguarded and
-		 * that selector has NO home in `src/` at either this head or the pinned
-		 * control one (the shared driver's own comment at its `--backend` scene says
-		 * so, and `git grep` over `src` in both trees finds nothing), so the press
-		 * waited fifteen seconds for an element the app never draws and the whole
-		 * case died with `Unsettled real UI: Boolean(document.querySelector(
-		 * "[data-tour-tag=\"chat-all-chats\"]"))` - measured on run 38846903646.
-		 *
-		 * `session()` below is the shape the driver's own scenes use instead: wait
-		 * for the seeded row, mark it, press that. The rail this scene is about is
-		 * on every route and needs no conversation at all.
+		 * THE PROMISED FRAMES ARE A CONTRACT, not a wish: a case that stops early or
+		 * loses a capture fails here rather than publishing an artifact thinner than
+		 * it declares. The acceptance row is pushed after this check, so it cannot
+		 * stand in for a missing frame.
 		 */
-		await session(0);
-		await frame("session-loading");
-		await fixtureMode("populated");
-		await wait('Boolean(document.querySelector("[data-panel-rail-item=ask]"))');
-		if ((await facts()).dom.ask) await pressEscape();
-		await browser();
-		await frame("before-browser");
-		await asks();
-		await frame("populated-asks");
-		await press('[data-panel-rail-item="ask"]');
-		await closed("rail-close", expectedRailClose(kind));
-		await session(1);
-		await session(0);
-		assert.equal(
-			(await facts()).state.browserPaneOpen,
-			expectedRailClose(kind),
+		const promised = scenario.frames[kind];
+		assert(
+			Array.isArray(promised) && promised.length > 0,
+			`${scenarioName}: no frames promised for the ${kind} leg`,
 		);
-		await frame("session-a-b-a");
-		if (kind === "candidate") {
-			await browser();
-			await asks();
-			await press('[data-tour-tag="close-asks-button"]');
-			await closed("x-close", false);
-			await browser();
-			await asks();
-			await pressEscape();
-			await closed("escape-give-back", true);
-			await asks();
-			await cdp.evaluate(
-				`(()=>{const h=document.querySelector('[data-tour-tag="chat-header"]');const e=[...h.querySelectorAll('button')].find(e=>e.getAttribute('aria-haspopup')==='menu');if(!e)throw Error('real header menu unavailable');e.setAttribute('data-ci-menu','')})()`,
+		for (const label of promised)
+			assert(
+				frames.some((entry) => entry.label === label),
+				`${scenarioName} ${kind}: promised frame ${JSON.stringify(label)} was not captured (have ${JSON.stringify(frames.map((entry) => entry.label))})`,
 			);
-			await press("[data-ci-menu]");
-			await cdp.evaluate(
-				`(()=>{const e=[...document.querySelectorAll('[role="menuitem"]')].find(e=>e.textContent.trim()==='Close asks');if(!e)throw Error('real Close asks menu item absent');e.setAttribute('data-ci-close-asks','')})()`,
-			);
-			await frame("header-menu");
-			await press("[data-ci-close-asks]");
-			await closed("menu-close", false);
-			await browser();
-			await asks();
-			await press('[data-status-asks][aria-expanded="true"]');
-			await closed("chip-close", false);
-			await session(1);
-			await frame("empty-session-queue");
-			await session(0);
-			await fixtureMode("error");
-			await wait(
-				"/reconnect|connection|retry|unavailable|could not/i.test(document.body.innerText)",
-			);
-			await frame("connection-error");
-		}
 		frames.push({
 			label: "acceptance",
 			verdict: "PASS",
-			coverage:
-				"real assembled app renderer/handlers/store; not native WCV compositor pixels or macOS z-order",
+			coverage: scenario.coverage,
 		});
 		save();
 		rc = 0;
@@ -545,24 +796,32 @@ async function runCase(kind, root, output, records) {
 		cdp?.close();
 		await api.reapLiveBoots({
 			code: rc,
-			why: "CI asks real-app case complete",
+			why: `CI ${scenarioName} ${kind} case complete`,
 		});
 	}
 }
+
 async function main() {
 	if (process.argv.includes("--case")) {
 		const i = process.argv.indexOf("--case");
-		const kind = process.argv[i + 1];
+		const scenario = process.argv[i + 1];
+		const j = process.argv.indexOf("--leg");
+		const kind = j >= 0 ? process.argv[j + 1] : undefined;
 		const needed = ["ASKS_APP_ROOT", "ASKS_OUTPUT", "ASKS_RECORDS"];
 		const missing = needed.filter((name) => !process.env[name]);
-		if (!["control", "candidate"].includes(kind) || missing.length > 0) {
+		if (
+			!Object.hasOwn(CASES, scenario) ||
+			!["control", "candidate"].includes(kind) ||
+			missing.length > 0
+		) {
 			console.error(
-				`asks-app-regression: --case needs control|candidate and ${needed.join(", ")} (missing ${missing.join(", ") || "none"})`,
+				`asks-app-regression: --case needs <scenario> from ${Object.keys(CASES).join("|")} --leg control|candidate and ${needed.join(", ")} (missing ${missing.join(", ") || "none"})`,
 			);
 			process.exitCode = 1;
 			return;
 		}
 		return runCase(
+			scenario,
 			kind,
 			process.env.ASKS_APP_ROOT,
 			process.env.ASKS_OUTPUT,
@@ -603,6 +862,7 @@ async function main() {
 			]),
 		),
 		control: ASKS_CONTROL,
+		cases: Object.keys(CASES),
 		captures: [],
 		physical1106:
 			"NOT COVERED: capturePage excludes sibling native WebContentsView/compositor",
@@ -619,42 +879,58 @@ async function main() {
 			path: "control-source.tar",
 			sha256: sha(readFileSync(controlArchive)),
 		};
-		for (const kind of ["control", "candidate"]) {
-			fixture.setMode("loading");
-			const root =
-				kind === "control" ? join(scratch, "control-app") : process.cwd();
-			const dir = join(output, kind);
-			mkdirSync(dir);
-			await execute(
-				process.execPath,
-				[fileURLToPath(import.meta.url), "--case", kind],
-				{
-					cwd: root,
-					env: {
-						...process.env,
-						LOCAL_OPERATOR_DESKTOP_TOKEN: token,
-						LOCAL_OPERATOR_CONFIG_DIR: scratch,
-						LOCAL_OPERATOR_NO_NOTIFICATIONS: "1",
-						LOCAL_OPERATOR_UI_TELEMETRY: "off",
-						ASKS_APP_ROOT: root,
-						ASKS_OUTPUT: dir,
-						ASKS_RECORDS: fixture.records,
+		for (const [scenarioName, scenario] of Object.entries(CASES)) {
+			for (const kind of ["control", "candidate"]) {
+				fixture.setMode("loading");
+				const root =
+					kind === "control" ? join(scratch, "control-app") : process.cwd();
+				/*
+				 * THE ASKS CASE KEEPS `<output>/control|candidate` (see its
+				 * `legacyOutputLayout` note); every other case gets its own directory,
+				 * so two cases cannot overwrite each other's measurements.
+				 */
+				const dir = scenario.legacyOutputLayout
+					? join(output, kind)
+					: join(output, scenarioName, kind);
+				mkdirSync(dir, { recursive: true });
+				await execute(
+					process.execPath,
+					[
+						fileURLToPath(import.meta.url),
+						"--case",
+						scenarioName,
+						"--leg",
+						kind,
+					],
+					{
+						cwd: root,
+						env: {
+							...process.env,
+							LOCAL_OPERATOR_DESKTOP_TOKEN: token,
+							LOCAL_OPERATOR_CONFIG_DIR: scratch,
+							LOCAL_OPERATOR_NO_NOTIFICATIONS: "1",
+							LOCAL_OPERATOR_UI_TELEMETRY: "off",
+							ASKS_APP_ROOT: root,
+							ASKS_OUTPUT: dir,
+							ASKS_RECORDS: fixture.records,
+						},
+						timeout: 150000,
+						maxBuffer: 4 * 1024 * 1024,
 					},
-					timeout: 150000,
-					maxBuffer: 4 * 1024 * 1024,
-				},
-			);
-			const measured = JSON.parse(
-				readFileSync(join(dir, "measurements.json"), "utf8"),
-			);
-			assert(measured.frames.some((x) => x.verdict === "PASS"));
-			manifest.captures.push({
-				kind,
-				files: files(dir).map((p) => ({
-					path: p.slice(output.length + 1),
-					sha256: sha(readFileSync(p)),
-				})),
-			});
+				);
+				const measured = JSON.parse(
+					readFileSync(join(dir, "measurements.json"), "utf8"),
+				);
+				assert(measured.frames.some((x) => x.verdict === "PASS"));
+				manifest.captures.push({
+					case: scenarioName,
+					kind,
+					files: files(dir).map((p) => ({
+						path: p.slice(output.length + 1),
+						sha256: sha(readFileSync(p)),
+					})),
+				});
+			}
 		}
 	} catch (error) {
 		primaryError = error;

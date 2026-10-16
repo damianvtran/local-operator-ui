@@ -2,7 +2,7 @@
  * this suite never launches Electron or claims rendered evidence. */
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -21,10 +21,142 @@ import {
 import {
 	ASKS_CONTROL,
 	ASKS_CONTROL_PINNED,
+	CASES,
 	expectedRailClose,
 	resolveAsksControl,
 } from "./asks-app-regression.mjs";
 import { categoryOf, flagsFor } from "./ci-scope.mjs";
+
+/*
+ * THE TABLE IS A CONTRACT, so it is held to one here rather than trusted. A case
+ * that declares no drive, no route, no readable purpose or no frames is a case
+ * whose artifact a reviewer cannot read; a case that promises `acceptance` is
+ * claiming a row the RUNNER pushes, which would make the runner's own verification
+ * of "every promised frame was captured" circular.
+ */
+test("every case declares what it drives and the frames it promises", () => {
+	const cases = Object.entries(CASES);
+	assert(
+		cases.length >= 3,
+		`the table carries the asks case plus new ones, got ${cases.length}`,
+	);
+	for (const [name, scenario] of cases) {
+		assert.equal(
+			typeof scenario.drive,
+			"function",
+			`${name} declares no drive`,
+		);
+		assert.match(scenario.route, /^\//, `${name} declares no route`);
+		assert(
+			typeof scenario.purpose === "string" && scenario.purpose.length > 60,
+			`${name} declares no purpose a reviewer could read`,
+		);
+		/*
+		 * THE PROMISE IS PER LEG, and the control leg's list is a SUBSET of the
+		 * candidate's: a control is a real historical revision, so a case whose
+		 * candidate-only steps photograph closers that revision predates would be
+		 * promising the control frames it cannot take - a red run for a correct case.
+		 */
+		for (const leg of ["control", "candidate"]) {
+			const promised = scenario.frames[leg];
+			assert(
+				Array.isArray(promised) && promised.length > 0,
+				`${name} promises no frames for the ${leg} leg`,
+			);
+			for (const label of promised)
+				assert.equal(
+					typeof label,
+					"string",
+					`${name} promises a non-string frame`,
+				);
+			assert(
+				!promised.includes("acceptance"),
+				`${name} must not promise the acceptance row: the runner pushes it, so promising it would make the runner's own check circular`,
+			);
+		}
+		for (const label of scenario.frames.control)
+			assert(
+				scenario.frames.candidate.includes(label),
+				`${name} promises the control leg a frame (${label}) the candidate does not take, so the two legs are not the same drive`,
+			);
+		/*
+		 * AND EVERY LABEL THE DRIVE ACTUALLY CAPTURES IS PROMISED. A frame taken under
+		 * a label nobody promised means the promise list has drifted from the drive -
+		 * the failure mode the runner's own check cannot see, because it only asks
+		 * whether the promised labels appeared.
+		 */
+		const drive = scenario.drive.toString();
+		const taken = [
+			...drive.matchAll(/frame\("([^"]+)"\)|closed\("([^"]+)"/g),
+		].map((match) => match[1] ?? match[2]);
+		for (const label of taken)
+			assert(
+				scenario.frames.candidate.includes(label),
+				`${name} captures ${JSON.stringify(label)} without promising it`,
+			);
+	}
+	/*
+	 * The asks case's frames stay where the QA howto and the review threads point
+	 * (`<output>/control|candidate`); every other case gets its own directory. Pinned
+	 * here because moving it silently would break paths outside this repository.
+	 */
+	assert.equal(
+		CASES.asks.legacyOutputLayout,
+		true,
+		"the asks case must keep <output>/control|candidate, where its recorded howto points",
+	);
+	assert.equal(
+		CASES.palette.legacyOutputLayout,
+		undefined,
+		"a new case must not claim the asks case's output layout",
+	);
+});
+
+/*
+ * THE REFUSAL IS DRIVEN, NOT READ. A case name outside the table must exit 1 with
+ * the refusal on stderr and leave no artifact root behind - that is the property
+ * "a case that cannot run refuses loudly, never silently skips" rests on, and it is
+ * cheap to execute because it happens before any fixture, artifact root or Electron
+ * binary is resolved.
+ */
+test("a case name outside the table refuses before any artifact root exists", () => {
+	const root = mkdtempSync(join(tmpdir(), "asks-case-refusal-"));
+	const out = join(root, "out");
+	const result = spawnSync(
+		process.execPath,
+		[
+			fileURLToPath(new URL("./asks-app-regression.mjs", import.meta.url)),
+			"--case",
+			"no-such-case",
+			"--leg",
+			"candidate",
+		],
+		{
+			encoding: "utf8",
+			env: {
+				...process.env,
+				ASKS_APP_ROOT: root,
+				ASKS_OUTPUT: out,
+				ASKS_RECORDS: join(root, "records"),
+			},
+			timeout: 30_000,
+		},
+	);
+	assert.equal(
+		result.status,
+		1,
+		`expected a refusal, got status ${result.status}`,
+	);
+	assert.match(
+		result.stderr,
+		/asks-app-regression: --case needs <scenario> from .+ --leg control\|candidate/,
+	);
+	assert(
+		!existsSync(out),
+		"the refusal must come before the artifact root exists, not after it",
+	);
+	rmSync(root, { recursive: true, force: true });
+});
 
 test("the historical source control expects restoration; candidate must empty", () => {
 	assert.equal(expectedRailClose("control"), true);
@@ -408,24 +540,35 @@ test("existing job performs real native capture and always uploads measurements"
 		"the target must be the built renderer path the other callers use",
 	);
 	/*
-	 * The control tree is PINNED, so whether its revision is in this clone is a
-	 * property of the clone and not of the change: `pnpm test:desktop` runs under
-	 * `actions/checkout`'s default depth-1, where 2461cfa3 is a commit this clone
-	 * has never seen. Read it when it is here (a developer's tree), say so plainly
-	 * when it is not, and never turn a shallow clone into a red test.
+	 * THE QUESTION IS ASKED OF THE PIN, NOT OF THE DERIVED CONTROL, and the
+	 * difference is not cosmetic. The control became DERIVED (`resolveAsksControl`:
+	 * the merge-base of `origin/main` and `HEAD`, the pin only when that cannot be
+	 * resolved), so in a full clone the tree a leg boots is usually a RECENT one -
+	 * at main it is main itself - and main's driver DOES export the wait. Asserting
+	 * the absence on the derived control therefore asked about a revision the
+	 * fallback does not serve. The pin is the tree the fallback exists for: it is
+	 * what a shallow or detached clone degrades to, and it genuinely lacks the
+	 * export, so the assertion still proves the fallback is exercised rather than
+	 * dead code.
+	 *
+	 * Whether that revision is IN this clone is a property of the clone and not of
+	 * the change: `pnpm test:desktop` runs under `actions/checkout`'s default
+	 * depth-1, where 2461cfa3 is a commit this clone has never seen. Read it when it
+	 * is here (a developer's tree), say so plainly when it is not, and never turn a
+	 * shallow clone into a red test.
 	 *
 	 * maxBuffer, because the shared driver is a 45k-line file and the default
 	 * 1 MiB ceiling turns reading it into an ENOBUFS that reads like a git fault.
 	 */
 	const present = spawnSync(
 		"git",
-		["cat-file", "-e", `${ASKS_CONTROL}^{commit}`],
+		["cat-file", "-e", `${ASKS_CONTROL_PINNED}^{commit}`],
 		{ cwd: REPO },
 	).status;
 	if (present === 0) {
 		const historical = execFileSync(
 			"git",
-			["show", `${ASKS_CONTROL}:scripts/renderer-driver.mjs`],
+			["show", `${ASKS_CONTROL_PINNED}:scripts/renderer-driver.mjs`],
 			{ encoding: "utf8", cwd: REPO, maxBuffer: 32 * 1024 * 1024 },
 		);
 		assert(
