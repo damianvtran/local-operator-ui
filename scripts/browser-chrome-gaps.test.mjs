@@ -51,9 +51,18 @@ function fakeWebContents() {
 	});
 	return {
 		wc,
+		// THE REAL ELECTRON 44.3.0 SHAPE: `audio-state-changed` delivers ONE
+		// argument, and the params live ON THE EVENT it carries
+		// (`listener: (event: Event<WebContentsAudioStateChangedEventParams>)`,
+		// `{audible: boolean}`). Emitting the two-argument shape here is what
+		// let the earlier source bug (reading the second argument) pass this
+		// test: with `{}` first and the params second, the buggy read saw
+		// `params?.audible` and the corrected read saw nothing — the test now
+		// discriminates by emitting exactly what Electron emits, so it FAILS on
+		// the two-argument read and passes on the one-argument read.
 		setAudible: (value) => {
 			audible = value;
-			wc.emit("audio-state-changed", {}, { audible: value });
+			wc.emit("audio-state-changed", { audible: value });
 		},
 		printCall: () => printCall,
 	};
@@ -200,6 +209,29 @@ test("human downloads: a user-owned tab downloads into the person's folder with 
 	good.finish("completed");
 	await new Promise((resolve) => setTimeout(resolve, 20));
 	assert.equal(armer.downloadDir(), humanDir);
+
+	// A SECOND GUARD, made to bite on the human path (review minor 1): the
+	// pre-write PER-FILE SIZE CAP. `getTotalBytes()` above the cap must cancel
+	// WITHOUT calling `setSavePath`, so the over-cap file never touches disk —
+	// the same pre-write guarantee the armed path gives, now exercised here
+	// rather than only inspected. Driven through the fake's declared total,
+	// which is the cheapest guard to reach.
+	const overCap = new FakeDownloadItem({
+		filename: "huge.bin",
+		total: 268435456 + 1,
+	});
+	const bigDecision = armer.decide(overCap, 101);
+	assert.equal(
+		bigDecision.cancel,
+		true,
+		"the per-file cap bites on the human path",
+	);
+	assert.ok(bigDecision.reason.includes("per-file download limit"));
+	assert.equal(
+		overCap.savePath,
+		"",
+		"an over-cap human download never reaches disk",
+	);
 
 	const exe = new FakeDownloadItem({ filename: "evil.exe" });
 	const refused = armer.decide(exe, 101);
