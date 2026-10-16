@@ -170,7 +170,8 @@ test("the outstanding set is counted per conversation, and a quiet row is absent
 	assert.equal(bySession.has("s-three"), false);
 	assert.equal(bySession.size, 2);
 	assert.equal(fleetAsksBySession([]).size, 0);
-	/* A conversation whose only ask has lapsed gets NO mark (D11: it pulls no attention). */
+	/* A conversation whose only ask has lapsed gets NO mark (D11: it pulls no
+	 * attention). */
 	assert.equal(
 		fleetAsksBySession([
 			row({ ask_id: "a-6", session_id: "s-lapsed", status: "timed_out" }),

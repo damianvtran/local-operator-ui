@@ -1142,7 +1142,8 @@ test("the reason a verdict names is the first thing that kept the drawer shut", 
 	assert.equal(reason({ resolved: false }), "unresolved");
 	assert.equal(reason({ pendingRows: 0, outstanding: 0 }), "nothing-pending");
 	assert.equal(reason({ pendingRows: 0, outstanding: 3 }), "tally-only");
-	/* A tally made only of the lapsed rows the frame names has nothing to wait for (D12). */
+	/* A tally made only of the lapsed rows the frame names has nothing to wait
+	 * for (D12). */
 	assert.equal(
 		reason({ pendingRows: 0, lapsedRows: 2, outstanding: 2 }),
 		"nothing-pending",

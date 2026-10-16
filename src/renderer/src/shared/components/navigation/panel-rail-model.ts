@@ -131,8 +131,8 @@ export function canvasRailLabels(
  * The asks item's tooltip and accessible name (#896).
  *
  * THE TOOLTIP IS THE DOOR'S OWN SENTENCE, not a recomposition: `askRailToggleLabel`
- * (ask-queue.ts) is the ONE derivation of `Open asks — This conversation, 3 waiting
- * or moved on` — the string the header trigger printed before the control moved to
+ * (ask-queue.ts) is the ONE derivation of `Open asks — This conversation, 3 waiting`
+ * — the string the header trigger printed before the control moved to
  * the rail — so the item cannot grow a second grammar for the same fact. The
  * sentence takes the bound cap itself (#928, review round 1's F2 = design D3), for
  * the same reason: the rail's tooltip must print the chord its dispatcher answers
@@ -140,7 +140,7 @@ export function canvasRailLabels(
  * `Ask` from being the single item whose promise is invisible on the control.
  *
  * THE NAME IS THE STABLE NOUN, THE SCOPE AND THE COUNT — the family's U2 contract
- * (`Asks, This conversation, 3 waiting or moved on`): no verb, because `aria-pressed`
+ * (`Asks, This conversation, 3 waiting`): no verb, because `aria-pressed`
  * carries open/closed, and the subject's words come from `askScopeSubject`, the same
  * function the tooltip and the drawer's bar read, so the glyph, the words and both
  * spoken registers cannot name the two queues differently. The cap rides the noun
@@ -157,7 +157,7 @@ export function askRailLabels(
 		tooltip: askRailToggleLabel({ open, scope, count, cap }),
 		aria:
 			count > 0
-				? `Asks${chord}, ${askScopeSubject(scope)}, ${count} waiting or moved on`
+				? `Asks${chord}, ${askScopeSubject(scope)}, ${count} waiting`
 				: `Asks${chord}, ${askScopeSubject(scope)}`,
 	};
 }

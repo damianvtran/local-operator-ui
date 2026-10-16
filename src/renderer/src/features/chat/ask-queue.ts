@@ -278,10 +278,6 @@ export const askChipCountClause = (view: AskQueueView): string => {
 		return view.waiting === 1
 			? "1 question waiting"
 			: `${view.waiting} questions waiting`;
-	if (view.movedOn > 0)
-		return view.movedOn === 1
-			? "1 question moved on"
-			: `${view.movedOn} questions moved on`;
 	/*
 	 * ANSWERS STILL TO DELIVER COME BEFORE `All asks settled` (design §10, #1936).
 	 *
@@ -314,6 +310,16 @@ export const askChipCountClause = (view: AskQueueView): string => {
 		return view.delivering === 1
 			? "1 answer not yet delivered — you can still change it"
 			: `${view.delivering} answers not yet delivered — you can still change them`;
+	/*
+	 * TIMED OUT, in the badge's own word (design round 1 on #1116, D2): the quiet
+	 * register, and AFTER the delivering clause because nothing on a timed-out ask can
+	 * be acted on (D10) - the same "actionable first" order as above. "Moved on" was a
+	 * third name for the state the row's badge calls `Timed out`.
+	 */
+	if (view.movedOn > 0)
+		return view.movedOn === 1
+			? "1 question timed out"
+			: `${view.movedOn} questions timed out`;
 	return "All asks settled";
 };
 
@@ -392,19 +398,12 @@ export const ASK_DRAWER_UNAVAILABLE_LINE =
 /**
  * The DRAWER's count clause: what the surface shows, not only what the agent waits on.
  *
- * WHY THE DRAWER DIFFERS FROM THE CHIP (UX round 1, U5). `askChipCountClause`
- * counts the WAITING rows, which is the right register for a chip: it is a
- * standing tally in a row of tallies, and a moved-on row is not something the chip
- * asks you to look at. As the DRAWER's own title it under-described its own
- * contents - the drawer draws EVERY outstanding ask, including a moved-on one
- * (since D11 a collapsed `Timed out` row in the settled half, read-only), so
- * `1 question waiting` sat over a list holding two outstanding asks.
- *
- * So a mixed queue spells BOTH halves here, with the drawer's own words, and every
- * other state falls through to the chip's clause unchanged (`All asks settled`, the
- * outstanding tally on a truncated frame, `N questions moved on`). The two surfaces
- * cannot disagree about a single-state queue, which is the shared-clause rule the
- * functions below still keep.
+ * WHERE THE DRAWER DIFFERS FROM THE CHIP. It used to spell a mixed queue as
+ * `1 waiting, 1 moved on` (UX round 1, U5), when a timed-out ask was a pending card.
+ * Since D11 that ask is a collapsed settled row, and the title counts only what the
+ * Pending half holds (design round 1 on #1116, D2): a timed-out-only drawer reads
+ * `All asks settled`, where the chip still names the `N questions timed out` it opens
+ * onto. Every other state falls through to the chip's clause unchanged.
  *
  * AND ALL THREE UNRESOLVED STATES ARE TOLD APART HERE (remediation round 1: D1, D5,
  * R1). `unread` is the frame nobody has read; `published: false` on a RESOLVED frame
@@ -417,8 +416,13 @@ export const askDrawerCountClause = (view: AskQueueView): string => {
 	/* No clause at all while unresolved: the body names that fact once (D5). */
 	if (view.unread) return "";
 	if (!view.published) return ASK_DRAWER_UNAVAILABLE_CLAUSE;
-	if (askSplitIsKnowable(view) && view.waiting > 0 && view.movedOn > 0) {
-		return `${view.waiting} waiting, ${view.movedOn} moved on`;
+	/*
+	 * A timed-out ask is a settled ROW in this drawer (D11), and settled rows are not in
+	 * the title (design round 1 on #1116, D2), so a queue with nothing waiting or being
+	 * delivered is a settled drawer, as the TUI's is.
+	 */
+	if (askSplitIsKnowable(view) && view.waiting === 0 && view.delivering === 0) {
+		return "All asks settled";
 	}
 	return askChipCountClause(view);
 };
@@ -469,11 +473,12 @@ export const askScopeLine = (scope: AskScope, view: AskQueueView): string => {
  * one closes the pane). The subject is what keeps the two controls from ever being one
  * string, and the scope glyph carries the same distinction visually.
  *
- * "WAITING OR MOVED ON" RATHER THAN "WAITING" (agent review round 1, M1 = UX round 1,
- * U1). The number this sentence qualifies is the OUTSTANDING set, which folds a moved-on
- * ask in, so `waiting` - reserved for the subset that excludes it - would be the wrong
- * word for it. See the rail item's `askCount` (`panel-rail.tsx`) for the decision to
- * count outstanding.
+ * "WAITING" (agent review round 1 on #1116, MAJOR-1). The number this sentence
+ * qualifies is the badge's ANSWERABLE count (`askAttentionCount`,
+ * `fleetAsksOutstanding`), which no longer folds a timed-out ask in, so the subset's
+ * own word is the right one again. (It read `waiting or moved on` while the count was
+ * the outstanding set.) A truncated frame's badge falls back to the tally; see
+ * `askAttentionCount`.
  */
 export const askRailToggleLabel = (args: {
 	open: boolean;
@@ -494,7 +499,7 @@ export const askRailToggleLabel = (args: {
 		args.cap === null || args.cap === undefined ? "" : ` (${args.cap})`;
 	const subject = askScopeSubject(args.scope);
 	return args.count > 0
-		? `${verb} asks${chord} \u2014 ${subject}, ${args.count} waiting or moved on`
+		? `${verb} asks${chord} \u2014 ${subject}, ${args.count} waiting`
 		: `${verb} asks${chord} \u2014 ${subject}`;
 };
 
@@ -617,13 +622,13 @@ export const askChipDeadlineShort = (
  *
  * The visible chip carries the short waiting clause (a chip is a register, not a
  * paragraph), but the announced name is the one place with room for the split a
- * mixed queue needs - and a screen-reader user is told about the moved-on rows
+ * mixed queue needs - and a screen-reader user is told about the timed-out rows
  * that the chip's short form elides, rather than about a state the screen is not
  * in.
  */
 const askChipFullClause = (view: AskQueueView, nowMs: number): string => {
 	if (askSplitIsKnowable(view) && view.waiting > 0 && view.movedOn > 0) {
-		return `${askChipClause(view, nowMs)} · ${view.movedOn} moved on`;
+		return `${askChipClause(view, nowMs)} · ${view.movedOn} timed out`;
 	}
 	return askChipClause(view, nowMs);
 };
@@ -1402,8 +1407,15 @@ export const askStatusWord = (status: AskStatus | "unknown"): string => {
  *
  * PENDING is `canAnswer || delivering`: an ask the user can answer, or an answer the
  * agent has not been handed yet, which is still the user's to change (design §10).
- * Everything else is SETTLED, and that now includes a LAPSED ask (D11): it is read-only,
+ * Everything else is SETTLED, and that includes a LAPSED ask (D11): it is read-only,
  * so it renders exactly as a declined one does - collapsed, opened only by the reader.
+ *
+ * `held` is the one exception: the ids this MOUNT has already shown as answerable. A
+ * held ask that lapses stays in the pending half, in its own slot, until the next
+ * mount (UX round 1 on #1116, U1). Filing it under Settled on the frame that lapsed it
+ * slid the next card up into its place, which put that card's one-click, irreversible
+ * Decline exactly under the reader's pointer. Only a LAPSED row is held: a row that
+ * settles another way has nothing left to read in place and moves as it always did.
  *
  * NEWEST FIRST within the settled half, the history's own order, sorted here rather
  * than by reversing `rows`: the queue sorts every outstanding row (lapsed ones too)
@@ -1414,8 +1426,10 @@ export const askStatusWord = (status: AskStatus | "unknown"): string => {
  */
 export const askPanelHalves = (
 	rows: readonly AskPresentation[],
+	held: ReadonlySet<string> = new Set(),
 ): { pending: AskPresentation[]; settled: AskPresentation[] } => {
-	const isPending = (row: AskPresentation) => row.canAnswer || row.delivering;
+	const isPending = (row: AskPresentation) =>
+		row.canAnswer || row.delivering || (row.lapsed && held.has(row.ask.ask_id));
 	return {
 		pending: rows.filter(isPending),
 		settled: rows
