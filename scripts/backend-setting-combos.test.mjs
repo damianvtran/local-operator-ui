@@ -29,6 +29,9 @@ const bundle = await build({
 	bundle: true,
 	format: "esm",
 	platform: "node",
+	// The shipped map now resolves labels through the renderer's i18n binding;
+	// use the same alias as the application rather than stubbing translation.
+	alias: { "@shared": "./src/renderer/src/shared" },
 	write: false,
 });
 const { COMBO_PLACEHOLDER, SETTING_COMBOS, settingComboSource } = await import(

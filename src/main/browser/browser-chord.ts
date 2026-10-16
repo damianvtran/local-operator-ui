@@ -5,6 +5,29 @@ import {
 	browserChordIntent,
 } from "../../shared/browser-chord";
 
+/** Logical DOM ownership survives OS deactivation; it must never itself authorize
+ * an inactive/hidden window or a browser covered by a real overlay. Keeping these
+ * native facts separate avoids losing the owner before a menu accelerator can
+ * arrive on reactivation, while retaining the actual window-focus security floor.
+ * This is a predicate, not focus emulation: callers read real Electron facts. */
+export function browserChromeOwnsChord(facts: {
+	logicalFocus: boolean;
+	chromeVisible: boolean;
+	window: {
+		isDestroyed(): boolean;
+		isVisible(): boolean;
+		isFocused(): boolean;
+	};
+}): boolean {
+	return (
+		facts.logicalFocus &&
+		facts.chromeVisible &&
+		!facts.window.isDestroyed() &&
+		facts.window.isVisible() &&
+		facts.window.isFocused()
+	);
+}
+
 /** Dependency-injected because listener logic must be falsifiable without a
  * focused OS window. Emitting before-input-event tests this router, NOT physical
  * key delivery. The event source must already have passed the ownership check. */
@@ -56,38 +79,49 @@ export function createBrowserChordRouter(options: {
 			options.send({ intent, origin });
 		}
 	}
+	function routeInput(
+		event: { preventDefault(): void },
+		input: BrowserChordInput,
+		origin: "page" | "chrome",
+		owns: boolean,
+	): boolean {
+		const intent = owns ? browserChordIntent(input, options.platform) : null;
+		if (!intent) {
+			// Rejected action-repeat/composition must not fall through into the
+			// SAME menu accelerator. Consume only a recognized browser chord's
+			// rejected key-down, without executing it; ordinary text still passes.
+			const rejected =
+				owns &&
+				input.type === "keyDown" &&
+				(input.isAutoRepeat || input.isComposing) &&
+				browserChordIntent(
+					{ ...input, isAutoRepeat: false, isComposing: false },
+					options.platform,
+				);
+			if (rejected) {
+				event.preventDefault();
+				return true;
+			}
+			return false;
+		}
+		// Electron documents this also suppresses menu accelerators. Wiring adds
+		// per-input ignoreMenuShortcuts as a defensive second suppression, never
+		// a timestamp: rapid genuine presses must each execute exactly once.
+		event.preventDefault();
+		dispatch(intent, origin);
+		return true;
+	}
 	return {
-		input(
+		input: routeInput,
+		// Both main chrome doors must derive authorization HERE. An earlier app
+		// zoom listener used the retained raw logical flag, bypassing native
+		// visibility/focus checks before the later guarded listener ran (R1).
+		// Keep rejected-repeat/IME consumption unchanged in the shared handler.
+		chromeInput(
 			event: { preventDefault(): void },
 			input: BrowserChordInput,
-			origin: "page" | "chrome",
-			owns: boolean,
 		): boolean {
-			const intent = owns ? browserChordIntent(input, options.platform) : null;
-			if (!intent) {
-				// Rejected action-repeat/composition must not fall through into the
-				// SAME menu accelerator. Consume only a recognized browser chord's
-				// rejected key-down, without executing it; ordinary text still passes.
-				const rejected =
-					owns &&
-					input.type === "keyDown" &&
-					(input.isAutoRepeat || input.isComposing) &&
-					browserChordIntent(
-						{ ...input, isAutoRepeat: false, isComposing: false },
-						options.platform,
-					);
-				if (rejected) {
-					event.preventDefault();
-					return true;
-				}
-				return false;
-			}
-			// Electron documents this also suppresses menu accelerators. Wiring adds
-			// per-input ignoreMenuShortcuts as a defensive second suppression, never
-			// a timestamp: rapid genuine presses must each execute exactly once.
-			event.preventDefault();
-			dispatch(intent, origin);
-			return true;
+			return routeInput(event, input, "chrome", options.ownsChrome());
 		},
 		menu(intent: BrowserChord): boolean {
 			const page = options.ownsPage();

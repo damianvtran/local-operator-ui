@@ -270,7 +270,7 @@ const TabMark: FC<{
  * (design round 2, D4 — "Watch 'Reports'", not "Watch this tab"). */
 const tabLabel = (title: string): string => {
 	const trimmed = title.trim();
-	if (!trimmed) return "this tab";
+	if (!trimmed) return t("ui.browser.browser_tab_strip.this_tab");
 	return trimmed.length <= 24
 		? trimmed
 		: `${trimmed.slice(0, 23).trimEnd()}\u2026`;
@@ -352,7 +352,7 @@ function groupLabelName(
 	sessions: ReadonlyArray<{ session_id: string; title?: string | null }>,
 ): string {
 	return group.sessionId === null
-		? "No conversation"
+		? t("ui.browser.browser_tab_strip.no_conversation")
 		: sessionDisplayName(group.sessionId, sessions);
 }
 
@@ -381,7 +381,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	sessions = [],
 	activeTabId,
 	waiting,
-	newTabLabel = "New tab",
+	newTabLabel = t("ui.browser.browser_tab_strip.new_tab"),
 	onActivate,
 	onClose,
 	onCloseTabs,
@@ -890,7 +890,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 			// (design 11.2). It is also the rule the active tab's notch interrupts.
 			className="flex flex-col border-control border-b bg-sunken"
 			role="tablist"
-			aria-label="Browser tabs"
+			aria-label={t("ui.browser.browser_tab_strip.browser_tabs")}
 			data-tour-tag="browser-tab-strip"
 		>
 			{/* `pt-1` and no bottom padding: the tabs sit flush on the strip's own
@@ -1261,7 +1261,10 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 												<Button
 													variant="ghost"
 													size="icon-sm"
-													aria-label={`Tab actions for ${tab.title}`}
+													aria-label={t(
+														"ui.browser.browser_tab_strip.tab_actions",
+														{ title: tab.title },
+													)}
 													className="order-first shrink-0 p-0 focus-visible:-outline-offset-2!"
 													tabIndex={active ? 0 : -1}
 													data-tour-tag="browser-tab-menu"
@@ -1327,7 +1330,8 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 													data-tour-tag="browser-tab-actions"
 												>
 													<DropdownMenuLabel className="truncate">
-														Actions for "{tabLabel(tab.title)}"
+														{t("ui.browser.browser_tab_strip.actions_for")}
+														{tabLabel(tab.title)}"
 													</DropdownMenuLabel>
 													{!tab.active && (
 														/* §8.3's "one click to watch": activation is the
@@ -1339,7 +1343,8 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 															onSelect={() => onActivate(tab.tabId)}
 															data-tour-tag="browser-tab-watch"
 														>
-															Watch "{tabLabel(tab.title)}"
+															{t("ui.browser.browser_tab_strip.watch")}
+															{tabLabel(tab.title)}"
 														</DropdownMenuItem>
 													)}
 													{/*
@@ -1352,7 +1357,10 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 															onSelect={() => onHandOver(tab)}
 															data-tour-tag="browser-tab-hand-over"
 														>
-															Let an agent use "{tabLabel(tab.title)}"…
+															{t(
+																"ui.browser.browser_tab_strip.let_an_agent_use",
+															)}
+															{tabLabel(tab.title)}"…
 														</DropdownMenuItem>
 													)}
 													{(tab.handedOver || tab.owner === "agent") && (
@@ -1360,7 +1368,10 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 															onSelect={() => onRevokeHandOver(tab.tabId)}
 															data-tour-tag="browser-tab-revoke-hand-over"
 														>
-															Stop letting the agent use "{tabLabel(tab.title)}"
+															{t(
+																"ui.browser.browser_tab_strip.stop_letting_the_agent_use",
+															)}
+															{tabLabel(tab.title)}"
 														</DropdownMenuItem>
 													)}
 													{/*
@@ -1439,7 +1450,8 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 														onSelect={() => runClose(tab.tabId)}
 														data-tour-tag="browser-tab-actions-close"
 													>
-														Close "{tabLabel(tab.title)}"
+														{t("ui.browser.browser_tab_strip.close")}
+														{tabLabel(tab.title)}"
 													</DropdownMenuItem>
 													{/*
 													 * THE BULK ACTIONS (design R5), AND THE COUNTS IN THEIR
@@ -1460,10 +1472,10 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 															onSelect={() => runBatchClose(closeOthers)}
 															data-tour-tag="browser-tab-close-others"
 														>
-															Close {closeOthers.tabIds.length} other
-															{closeOthers.tabIds.length === 1
-																? " tab"
-																: " tabs"}
+															{t(
+																"ui.browser.browser_tab_strip.close_other_tabs",
+																{ count: closeOthers.tabIds.length },
+															)}
 														</DropdownMenuItem>
 													)}
 													{closeRight !== null && (
@@ -1477,9 +1489,10 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 															onSelect={() => runBatchClose(closeRight)}
 															data-tour-tag="browser-tab-close-right"
 														>
-															Close {closeRight.tabIds.length} tab
-															{closeRight.tabIds.length === 1 ? "" : "s"} to the
-															right
+															{t(
+																"ui.browser.browser_tab_strip.close_right_tabs",
+																{ count: closeRight.tabIds.length },
+															)}
 														</DropdownMenuItem>
 													)}
 													{closeFailed !== null && (
@@ -1494,10 +1507,10 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 															onSelect={() => runBatchClose(closeFailed)}
 															data-tour-tag="browser-tab-close-failed"
 														>
-															Close {closeFailed.tabIds.length} failed
-															{closeFailed.tabIds.length === 1
-																? " tab"
-																: " tabs"}
+															{t(
+																"ui.browser.browser_tab_strip.close_failed_tabs",
+																{ count: closeFailed.tabIds.length },
+															)}
 														</DropdownMenuItem>
 													)}
 													{tab.sessionId !== null &&
@@ -1518,8 +1531,12 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 																}
 																data-tour-tag="browser-tab-close-conversation"
 															>
-																Close all {conversationTabCount(tab.sessionId)}{" "}
-																tabs in this conversation
+																{t(
+																	"ui.browser.browser_tab_strip.close_conversation_tabs",
+																	{
+																		count: conversationTabCount(tab.sessionId),
+																	},
+																)}
 															</DropdownMenuItem>
 														)}
 													{/*
@@ -1545,7 +1562,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 															}}
 															data-tour-tag="browser-tab-copy-url"
 														>
-															Copy URL
+															{t("ui.browser.browser_tab_strip.copy_url")}
 														</DropdownMenuItem>
 													)}
 												</DropdownMenuContent>
@@ -1557,13 +1574,23 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 										   shortcut that closes a different tab. */}
 										<Tooltip
 											content={
-												active ? `Close tab (${closeChord.glyph})` : "Close tab"
+												active
+													? t(
+															"ui.browser.browser_tab_strip.close_tab_shortcut",
+															{
+																shortcut: closeChord.glyph,
+															},
+														)
+													: t("ui.browser.browser_tab_strip.close_tab")
 											}
 										>
 											<Button
 												variant="ghost"
 												size="icon-sm"
-												aria-label={`Close ${tab.title}`}
+												aria-label={t(
+													"ui.browser.browser_tab_strip.close_named_tab",
+													{ title: tab.title },
+												)}
 												aria-keyshortcuts={active ? closeChord.aria : undefined}
 												onClick={() => runClose(tab.tabId)}
 												// Rendered for the active tab always and for an inactive one on
@@ -1662,21 +1689,18 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 					 * visible trace, which is what `more tabs` invited beside three readable titles.
 					 */
 					<Tooltip
-						content={
-							tabsOffScreen === 1
-								? "All tabs — 1 not shown"
-								: `All tabs — ${tabsOffScreen} not shown`
-						}
+						content={t("ui.browser.browser_tab_strip.all_tabs_unshown", {
+							count: tabsOffScreen,
+						})}
 					>
 						<Button
 							ref={overflowTriggerRef}
 							variant="ghost"
 							size="icon-sm"
-							aria-label={
-								tabsOffScreen === 1
-									? "All tabs, 1 not shown"
-									: `All tabs, ${tabsOffScreen} not shown`
-							}
+							aria-label={t(
+								"ui.browser.browser_tab_strip.all_tabs_unshown_accessible",
+								{ count: tabsOffScreen },
+							)}
 							aria-expanded={overflowOpen}
 							onClick={() => setOverflowOpen((open) => !open)}
 							data-tour-tag="browser-tab-overflow"
@@ -1771,9 +1795,9 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 					    by being the last thing the band renders. */}
 					<div className="flex h-7 items-center px-2">
 						<span className="text-meta text-ink-dim">
-							{tabsOffScreen === 1
-								? "All tabs, 1 not shown"
-								: `All tabs, ${tabsOffScreen} not shown`}
+							{t("ui.browser.browser_tab_strip.all_tabs_unshown_accessible", {
+								count: tabsOffScreen,
+							})}
 						</span>
 					</div>
 					<div ref={overflowScrollerRef} className="max-h-36 overflow-y-auto">
@@ -1828,7 +1852,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						aria-label="Hide all tabs"
+						aria-label={t("ui.browser.browser_tab_strip.hide_all_tabs")}
 						onClick={closeOverflow}
 						className="absolute top-1 right-2"
 						data-tour-tag="browser-tab-overflow-dismiss"

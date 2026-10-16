@@ -1,7 +1,9 @@
 import { rowCurrent } from "@features/chat/components/chat-sidebar";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { CircleEllipsis, Layers } from "lucide-react";
 import type { FC } from "react";
+import { t } from "../../../../../i18n/messages";
 import { CATEGORY_ICON_MAP, categoryEntry } from "./agent-tags-and-categories";
 
 type AgentCategoriesSidebarProps = {
@@ -92,6 +94,8 @@ export const AgentCategoriesSidebar: FC<AgentCategoriesSidebarProps> = ({
 	onSelectCategory,
 	categories,
 }) => {
+	// Subscribe without resetting the selected backend category filter.
+	useI18nLocale();
 	/*
 	 * The selected category is kept on the rail even when the filtered result
 	 * no longer carries it, because the one thing a user needs after selecting
@@ -114,7 +118,7 @@ export const AgentCategoriesSidebar: FC<AgentCategoriesSidebarProps> = ({
 			   measurement that moved it. */
 		<div className="flex h-full flex-col overflow-y-auto">
 			<h2 className="mb-2 px-3 font-medium text-ink-dim text-meta">
-				Categories
+				{t("ui.hub.taxonomy.heading")}
 			</h2>
 			<div className="flex flex-col gap-0.5">
 				<CategoryItem
@@ -125,7 +129,7 @@ export const AgentCategoriesSidebar: FC<AgentCategoriesSidebarProps> = ({
 					<span className="flex size-4 shrink-0 items-center justify-center">
 						<Layers size={16} aria-hidden="true" />
 					</span>
-					All categories
+					{t("ui.hub.taxonomy.all")}
 				</CategoryItem>
 				{offered.map((cat) => {
 					const entry = categoryEntry(cat);

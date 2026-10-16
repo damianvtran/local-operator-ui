@@ -1,0 +1,119 @@
+{
+	"ui.installer.expectation": {
+		"role": "status hint",
+		"tone": "Calm approximate timing.",
+		"note": "Sets the typical first-install expectation, not a guarantee or deadline.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.installer.installer_panel.cancel_setup": {
+		"role": "label",
+		"tone": "Factual first-run setup wording.",
+		"note": "Installer cancel setup copy; describes first-run setup rather than the agent onboarding wizard.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.installer.installer_panel.getting_started": {
+		"role": "loading status",
+		"tone": "Brief in-progress statement.",
+		"note": "Initial preparation before any phase is reported; do not imply a particular phase ran.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.installer.installer_panel.local_operator": {
+		"role": "heading",
+		"tone": "Product name.",
+		"note": "Installer product wordmark; Local Operator is a brand and stays verbatim.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.installer.installer_panel.quit": {
+		"role": "button",
+		"tone": "Direct application-exit verb.",
+		"note": "Exits the whole installer application, not merely a dialog.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.installer.installer_panel.setup_complete": {
+		"role": "completion status",
+		"tone": "Brief settled success statement.",
+		"note": "Installation finished and the startup verification passed; retain the period.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.installer.installer_panel.setup_keeps_everything_it_installs_in_its_own_folder_nothing_of_y": {
+		"role": "label",
+		"tone": "Factual first-run setup wording.",
+		"note": "Installer setup keeps everything it installs in its own folder nothing of y copy; describes first-run setup rather than the agent onboarding wizard.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.installer.installer_panel.you_can_minimize_this_window_and_keep_working_closing_it_stops_se": {
+		"role": "label",
+		"tone": "Factual first-run setup wording.",
+		"note": "Installer you can minimize this window and keep working closing it stops se copy; describes first-run setup rather than the agent onboarding wizard.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.installer.phase.detail.components": {
+		"role": "status explanation",
+		"tone": "Single factual sentence with Local Operator as the subject.",
+		"note": "Explains the active components phase beneath its rail row, and is announced with the separate stage name.",
+		"length": "One detail line; may wrap without truncation."
+	},
+	"ui.installer.phase.detail.environment": {
+		"role": "status explanation",
+		"tone": "Single factual sentence with Local Operator as the subject.",
+		"note": "Explains the active environment phase beneath its rail row, and is announced with the separate stage name.",
+		"length": "One detail line; may wrap without truncation."
+	},
+	"ui.installer.phase.detail.python": {
+		"role": "status explanation",
+		"tone": "Single factual sentence with Local Operator as the subject.",
+		"note": "Explains the active python phase beneath its rail row, and is announced with the separate stage name.",
+		"length": "One detail line; may wrap without truncation."
+	},
+	"ui.installer.phase.detail.verify": {
+		"role": "status explanation",
+		"tone": "Single factual sentence with Local Operator as the subject.",
+		"note": "Explains the active verify phase beneath its rail row, and is announced with the separate stage name.",
+		"length": "One detail line; may wrap without truncation."
+	},
+	"ui.installer.phase.label.components": {
+		"role": "step label",
+		"tone": "Everyday description of the work, not dependency-management jargon.",
+		"note": "Names the components phase in the four-step installer rail; the phase discriminator stays untranslated.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.installer.phase.label.environment": {
+		"role": "step label",
+		"tone": "Everyday description of the work, not dependency-management jargon.",
+		"note": "Names the environment phase in the four-step installer rail; the phase discriminator stays untranslated.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.installer.phase.label.python": {
+		"role": "step label",
+		"tone": "Everyday description of the work, not dependency-management jargon.",
+		"note": "Names the python phase in the four-step installer rail; the phase discriminator stays untranslated.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.installer.phase.label.verify": {
+		"role": "step label",
+		"tone": "Everyday description of the work, not dependency-management jargon.",
+		"note": "Names the verify phase in the four-step installer rail; the phase discriminator stays untranslated.",
+		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.installer.status.elapsed": {
+		"role": "status",
+		"tone": "Compact timing line.",
+		"note": "Composes an already-formatted step counter, ticking m:ss elapsed clock and local ETA; dots separate three facts.",
+		"length": "One row; avoid adding an explanatory sentence.",
+		"placeholders": {
+			"step": "Already formatted step counter in timing composition, or decimal current step in step counter.",
+			"elapsed": "Existing m:ss elapsed clock string.",
+			"eta": "Existing locally derived ETA clause; not a backend translation key."
+		}
+	},
+	"ui.installer.status.step": {
+		"role": "status",
+		"tone": "Compact progress fact.",
+		"note": "Four-stage position counter, shown alone before timing metadata arrives.",
+		"length": "One row; avoid adding an explanatory sentence.",
+		"placeholders": {
+			"step": "Already formatted step counter in timing composition, or decimal current step in step counter.",
+			"total": "Total matching items or total installer steps, as named by this message."
+		}
+	}
+}

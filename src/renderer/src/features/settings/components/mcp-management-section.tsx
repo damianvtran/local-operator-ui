@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * Settings > Integrations: the MCP servers agents can use, and what each one
  * needs from the user right now.
@@ -138,9 +140,10 @@ type Dialog =
 /** From this many rows up the list gets a search box. */
 const SEARCH_THRESHOLD = 6;
 
-const SECTION_TITLE = "Integrations";
+const SECTION_TITLE =
+	"ui.settings.integrations.mcp_management_section.copy_section_title";
 const SECTION_DESCRIPTION =
-	"Let agents use your tools and accounts, like Notion, Linear or GitHub.";
+	"ui.settings.integrations.mcp_management_section.copy_section_description";
 
 /** The phase a control is worded as when it fails. */
 const PHASE: Record<string, McpFailurePhase> = {
@@ -199,6 +202,7 @@ export const McpManagementSection: FC<{
 	 */
 	highlightServer?: string;
 }> = ({ sessionId, sectionRef, highlightServer }) => {
+	useI18nLocale();
 	const integrations = useIntegrations({ sessionId });
 	const { document, control, readDocument } = integrations;
 	const navigate = useNavigate();
@@ -368,10 +372,9 @@ export const McpManagementSection: FC<{
 				: servers,
 		[servers, search],
 	);
-	const groups = useMemo(
-		() => groupIntegrations(visible, operations, integrations.memories),
-		[visible, operations, integrations.memories],
-	);
+	// Not memoized: group titles come from t(), so a memo keyed on data alone would
+	// keep the previous language after a live switch. IDs and ordering stay stable.
+	const groups = groupIntegrations(visible, operations, integrations.memories);
 
 	/* The row the sign-in dialog belongs to, or none while it is closed. */
 	const signInRow =
@@ -650,7 +653,11 @@ export const McpManagementSection: FC<{
 				void navigator.clipboard
 					.writeText(row.setup_prompt ?? "")
 					.then(() =>
-						showInfoToast("Setup steps copied. Paste them into a chat."),
+						showInfoToast(
+							t(
+								"ui.settings.integrations.mcp_management_section.setup_steps_copied_paste_them_into_a_chat",
+							),
+						),
 					)
 					.catch(() => undefined);
 				return;
@@ -706,7 +713,11 @@ export const McpManagementSection: FC<{
 				 * own move instead, which is where the caret can actually act.
 				 */
 				if (failed || operationId !== null) return;
-				showInfoToast(`Removed ${row.name}.`);
+				showInfoToast(
+					t("ui.settings.integrations.mcp_management_section.removed_name", {
+						name: String(row.name),
+					}),
+				);
 				if (index >= 0) setFocusAfterRemove({ index });
 			});
 			return;
@@ -749,9 +760,9 @@ export const McpManagementSection: FC<{
 	const header = (
 		<div className="flex items-start justify-between gap-4">
 			<div className="min-w-0">
-				<h2 className="text-heading text-ink">{SECTION_TITLE}</h2>
+				<h2 className="text-heading text-ink">{t(SECTION_TITLE)}</h2>
 				<p className="mt-1 max-w-2xl text-body-sm text-ink-muted">
-					{SECTION_DESCRIPTION}
+					{t(SECTION_DESCRIPTION)}
 				</p>
 			</div>
 			{integrations.enabled && servers.length > 0 && !showAdd ? (
@@ -763,7 +774,7 @@ export const McpManagementSection: FC<{
 					data-tour-tag="mcp-add-server"
 				>
 					<Plus aria-hidden="true" />
-					Add integration
+					{t("ui.settings.integrations.mcp_management_section.add_integration")}
 				</Button>
 			) : null}
 		</div>
@@ -772,13 +783,14 @@ export const McpManagementSection: FC<{
 	if (!integrations.enabled && !integrations.isLoading) {
 		return (
 			<SettingsSection
-				title={SECTION_TITLE}
+				title={t(SECTION_TITLE)}
 				titleComponent={header}
 				sectionRef={sectionRef}
 			>
 				<Alert variant="warning">
-					Integrations need a newer Local Operator backend. Update it and
-					restart the app to manage them here.
+					{t(
+						"ui.settings.integrations.mcp_management_section.integrations_need_a_newer_local_operator_backend_update_it_and_re",
+					)}
 				</Alert>
 			</SettingsSection>
 		);
@@ -1141,17 +1153,21 @@ export const McpManagementSection: FC<{
 
 	return (
 		<SettingsSection
-			title={SECTION_TITLE}
+			title={t(SECTION_TITLE)}
 			titleComponent={header}
 			sectionRef={sectionRef}
 		>
 			<div className="flex flex-col gap-4">
 				{integrations.route === "session" && integrations.borrowed ? (
 					<p className="text-body-sm text-ink-muted">
-						Showing the integrations for{" "}
-						{integrations.borrowed.title?.trim() ||
-							integrations.borrowed.session_id.slice(0, 6)}
-						, your most recent chat.
+						{t(
+							"ui.settings.integrations.mcp_management_section.borrowed_chat_notice",
+							{
+								chat:
+									integrations.borrowed.title?.trim() ||
+									integrations.borrowed.session_id.slice(0, 6),
+							},
+						)}
 					</p>
 				) : null}
 				{integrations.noConversation ? (
@@ -1159,23 +1175,34 @@ export const McpManagementSection: FC<{
 						{/* "The backend" is jargon for this audience, and the page
 						    told them to do something it gave no control for (D5). */}
 						<p className="text-body-sm text-ink-muted">
-							Integrations can be managed here once a chat has started.
+							{t(
+								"ui.settings.integrations.mcp_management_section.integrations_can_be_managed_here_once_a_chat_has_started",
+							)}
 						</p>
 						<Button
 							variant="primary"
 							size="sm"
 							onClick={() => navigate("/chat")}
 						>
-							Start a chat
+							{t(
+								"ui.settings.integrations.mcp_management_section.start_a_chat",
+							)}
 						</Button>
 						<p className="text-ink-dim text-meta">
-							Updating Local Operator removes this step.
+							{t(
+								"ui.settings.integrations.mcp_management_section.updating_local_operator_removes_this_step",
+							)}
 						</p>
 					</div>
 				) : null}
 				{integrations.isLoading ? (
 					<div className="flex h-24 items-center justify-center">
-						<Spinner size="lg" label="Loading integrations" />
+						<Spinner
+							size="lg"
+							label={t(
+								"ui.settings.integrations.mcp_management_section.loading_integrations",
+							)}
+						/>
 					</div>
 				) : null}
 				{/*
@@ -1188,21 +1215,26 @@ export const McpManagementSection: FC<{
 				{integrations.folderUnavailable ? (
 					<Alert variant="warning">
 						<span>
-							This chat's folder no longer exists, so only global integrations
-							are shown.
+							{t(
+								"ui.settings.integrations.mcp_management_section.this_chat_s_folder_no_longer_exists_so_only_global_integrations_a",
+							)}
 						</span>
 					</Alert>
 				) : null}
 				{integrations.isError ? (
 					<Alert variant="warning">
 						<div className="flex items-center justify-between gap-3">
-							<span>Integrations couldn't be loaded.</span>
+							<span>
+								{t(
+									"ui.settings.integrations.mcp_management_section.integrations_couldn_t_be_loaded",
+								)}
+							</span>
 							<Button
 								variant="secondary"
 								size="sm"
 								onClick={integrations.refetch}
 							>
-								Retry
+								{t("ui.settings.integrations.mcp_management_section.retry")}
 							</Button>
 						</div>
 					</Alert>
@@ -1223,7 +1255,7 @@ export const McpManagementSection: FC<{
 								size="sm"
 								onClick={() => dismissFailure(name)}
 							>
-								Dismiss
+								{t("ui.settings.integrations.mcp_management_section.dismiss")}
 							</Button>
 						</div>
 					</Alert>
@@ -1251,20 +1283,34 @@ export const McpManagementSection: FC<{
 								event.preventDefault();
 								setFilter("");
 							}}
-							placeholder={`Search ${integrationCountLabel(servers.length)}`}
-							aria-label="Search integrations"
+							placeholder={t(
+								"ui.settings.integrations.mcp_management_section.search_integrations_placeholder",
+								{ integrations: integrationCountLabel(servers.length) },
+							)}
+							aria-label={t(
+								"ui.settings.integrations.mcp_management_section.search_integrations",
+							)}
 							className="pl-9"
 						/>
 					</div>
 				) : null}
 				{target?.kind === "miss" && servers.length > 0 ? (
 					<p className="text-body-sm text-ink-muted">
-						{`No integration matches "${target.asked}".`}
+						{t(
+							"ui.settings.integrations.mcp_management_section.no_match_for_name",
+							{ asked: String(target.asked) },
+						)}
 					</p>
 				) : null}
 				{target?.kind === "matched" && target.unresolved ? (
 					<p className="text-body-sm text-ink-muted">
-						{`Showing "${target.name}" — "${target.unresolved}" is not one of your integrations.`}
+						{t(
+							"ui.settings.integrations.mcp_management_section.showing_fallback_for_unknown",
+							{
+								shown: String(target.name),
+								asked: String(target.unresolved),
+							},
+						)}
 					</p>
 				) : null}
 				{document && servers.length === 0 && !integrations.isLoading ? (
@@ -1274,11 +1320,15 @@ export const McpManagementSection: FC<{
 						<div className="flex flex-col items-start gap-3 rounded-lg bg-surface p-6">
 							<Plug aria-hidden="true" className="size-5 text-ink-muted" />
 							<div className="flex flex-col gap-1">
-								<h3 className="text-heading text-ink">No integrations yet</h3>
+								<h3 className="text-heading text-ink">
+									{t(
+										"ui.settings.integrations.mcp_management_section.no_integrations_yet",
+									)}
+								</h3>
 								<p className="max-w-xl text-body-sm text-ink-muted">
-									Integrations let agents read and act in your other tools, like
-									Notion or Linear. Add one with a command that runs on this
-									computer, or a server's URL.
+									{t(
+										"ui.settings.integrations.mcp_management_section.integrations_let_agents_read_and_act_in_your_other_tools_like_not",
+									)}
 								</p>
 							</div>
 							<Button
@@ -1288,7 +1338,9 @@ export const McpManagementSection: FC<{
 								data-tour-tag="mcp-add-server"
 							>
 								<Plus aria-hidden="true" />
-								Add integration
+								{t(
+									"ui.settings.integrations.mcp_management_section.add_integration",
+								)}
 							</Button>
 						</div>
 					)
@@ -1296,7 +1348,9 @@ export const McpManagementSection: FC<{
 				{servers.length > 0 && visible.length === 0 ? (
 					<div className="flex flex-col items-start gap-2">
 						<p className="text-body-sm text-ink-muted">
-							No integrations match this search.
+							{t(
+								"ui.settings.integrations.mcp_management_section.no_integrations_match_this_search",
+							)}
 						</p>
 						<Button
 							variant="secondary"
@@ -1315,7 +1369,9 @@ export const McpManagementSection: FC<{
 								}, 0);
 							}}
 						>
-							Clear search
+							{t(
+								"ui.settings.integrations.mcp_management_section.clear_search",
+							)}
 						</Button>
 					</div>
 				) : null}

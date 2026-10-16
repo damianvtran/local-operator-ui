@@ -1,0 +1,61 @@
+{
+	"ui.common.connection.backend_compatibility_banner.the_backend_update_could_not_start_retry_or_update_from_settings_": {
+		"role": "status explanation",
+		"tone": "Plain failure fact followed by a repair path; do not blame the operator.",
+		"note": "Shown in backend-compatibility-banner.tsx."
+	},
+	"ui.common.connection.backend_compatibility_banner.update_backend": {
+		"role": "button",
+		"tone": "Direct action; retain the distinction between checking, downloading, installing and restarting.",
+		"note": "Shown in backend-compatibility-banner.tsx inside Button. Control invokes {onUpdate}.",
+		"length": "Keep within a short action button; aim for the English word count."
+	},
+	"ui.common.connection.backend_compatibility_banner.updating": {
+		"role": "status",
+		"tone": "Matter-of-fact progress, not a completion claim.",
+		"note": "Shown in backend-compatibility-banner.tsx inside Button. Control invokes {onUpdate}.",
+		"length": "Compact single status line; wrapping allowed."
+	},
+	"ui.common.connection.connectivity_banner.a_connectivity_issue_has_been_detected": {
+		"role": "error or status explanation",
+		"tone": "Factual explanation; preserve stated limits and ownership of the app versus server.",
+		"note": "Shown in connectivity-banner.tsx inside AlertDescription."
+	},
+	"ui.common.connection.connectivity_banner.dismiss": {
+		"role": "button accessible name",
+		"tone": "Actionable accessible name; keep the named surface explicit.",
+		"note": "Shown in connectivity-banner.tsx inside Button as aria-label. Control invokes {handleDismiss}."
+	},
+	"ui.common.connection.connectivity_banner.dismiss_inline": {
+		"role": "button",
+		"tone": "Direct action; retain the distinction between checking, downloading, installing and restarting.",
+		"note": "Shown in connectivity-banner.tsx inside Button. Control invokes {handleDismiss}.",
+		"length": "Keep within a short action button; aim for the English word count."
+	},
+	"ui.common.connection.connectivity_banner.this_app_s_updates_require": {
+		"role": "error or status explanation",
+		"tone": "Factual explanation; preserve stated limits and ownership of the app versus server.",
+		"note": "Shown in connectivity-banner.tsx inside AlertDescription."
+	},
+	"ui.common.connection.connectivity_banner.you_are_offline": {
+		"role": "error or status explanation",
+		"tone": "Factual explanation; preserve stated limits and ownership of the app versus server.",
+		"note": "Shown in connectivity-banner.tsx inside AlertDescription. Dynamic values are composed within this message so translators can place them; never translate a supplied version, error, command or provider identifier.",
+		"placeholders": {
+			"detail": "Existing display value from hostingProvider ? `Your configured hosting provider (${hostingProvider}) requires` : t(\"ui.common.connection.connectivity_banner.this_app_s_updates_require\"); retain verbatim, never use as a translation key."
+		}
+	},
+	"ui.common.connection.floating_alert.dismiss": {
+		"role": "button accessible name",
+		"tone": "Actionable accessible name; keep the named surface explicit.",
+		"note": "Shown in floating-alert.tsx inside Button as aria-label. Control invokes {onClose}."
+	},
+	"ui.common.connection.provider.requires": {
+		"role": "error or status explanation",
+		"tone": "Factual explanation; preserve stated limits and ownership of the app versus server.",
+		"note": "Shown in connectivity-banner.tsx inside AlertDescription. Dynamic values are composed within this message so translators can place them; never translate a supplied version, error, command or provider identifier.",
+		"placeholders": {
+			"provider": "Configured hosting-provider name from user settings, verbatim."
+		}
+	}
+}

@@ -1,3 +1,4 @@
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import type { FC } from "react";
 import { Suspense, lazy, useEffect } from "react";
 import {
@@ -44,6 +45,7 @@ import {
 import { useSuppressBrowserView } from "@shared/browser-view-policy";
 import { useI18nLocaleSync } from "@shared/i18n/locale-sync";
 import { useKeymapShortcuts } from "@shared/keymap/use-keymap-shortcuts";
+import { t } from "../../i18n/messages";
 
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog";
@@ -130,6 +132,7 @@ const BrowserWebauthnPrompt = lazy(() =>
  * Handles routing and layout for the entire application
  */
 const App: FC = () => {
+	useI18nLocale();
 	/*
 	 * The window chrome's live half: which sides the OS put its controls on, and the
 	 * full-screen fact. Mounted once, here, because it writes attributes on the
@@ -807,7 +810,7 @@ const App: FC = () => {
 								<Suspense
 									fallback={
 										<div className="flex grow items-center justify-center">
-											<Spinner size="lg" label="Loading page" />
+											<Spinner size="lg" label={t("ui.common.loading.page")} />
 										</div>
 									}
 								>

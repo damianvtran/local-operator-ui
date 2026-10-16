@@ -13,7 +13,12 @@ import { navigationShortcutLabel } from "@shared/navigation-gesture";
 import {
 	ArrowLeft,
 	ArrowRight,
+	File,
 	FolderOpen,
+	Globe,
+	Home,
+	Lock,
+	LockOpen,
 	RotateCw,
 	Search,
 	ShieldCheck,
@@ -21,6 +26,8 @@ import {
 } from "lucide-react";
 import type { FC, KeyboardEvent, Ref } from "react";
 import { useState } from "react";
+import type { LoadFailureView } from "../hooks/use-browser-chrome";
+import { isSecurityLoadFailure, siteInfoForUrl } from "../model/site-info";
 
 /**
  * The URL bar and the navigation controls. Design: docs/design/ui-browser-tab.md
@@ -70,6 +77,21 @@ export interface BrowserUrlBarProps {
 	inputRef?: Ref<HTMLInputElement>;
 	pageZoom?: number;
 	onFind?: () => void;
+	/**
+	 * Home (LOH-13): return the active tab to the browser's start state.
+	 * Optional like `onFind` so a host without the intent (a story, a test
+	 * harness) renders no control rather than a dead one; the real surface
+	 * always passes it. It carries no URL — main owns the start state.
+	 */
+	onHome?: () => void;
+	/**
+	 * The active tab's recorded load failure, when its last navigation failed
+	 * (U1). The site-info register reads it for exactly one purpose: an https
+	 * page whose own load failed - above all on a certificate error - must not
+	 * keep the closed lock. Optional so a host without the projection (a
+	 * story, a harness) renders the scheme register as before.
+	 */
+	loadFailure?: LoadFailureView | null;
 	onResetZoom?: () => void;
 	/** The active tab. A typed draft belongs to ONE tab: see `draft` below. */
 	tabId: number | null;
@@ -135,10 +157,14 @@ export interface BrowserUrlBarProps {
 function downloadsLabel(
 	recent: { name: string; count: number } | null,
 ): string {
-	if (!recent) return "Open downloads folder";
+	if (!recent)
+		return t("ui.browser.browser_file_transfer_row.open_downloads_folder");
 	return recent.count > 1
-		? `Open downloads folder — ${recent.name} was the newest saved there (${recent.count} this session)`
-		: `Open downloads folder — ${recent.name} was saved there`;
+		? t("ui.browser.browser_url_bar.newest_download", {
+				name: recent.name,
+				count: recent.count,
+			})
+		: t("ui.browser.browser_url_bar.latest_download", { name: recent.name });
 }
 
 /** `about:blank` is what a new tab starts on and is what a browser shows as an
@@ -170,6 +196,8 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	onOpenDownloads,
 	pageZoom = 1,
 	onFind,
+	onHome,
+	loadFailure = null,
 	onResetZoom,
 }) => {
 	/**
@@ -225,6 +253,50 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	 * A placeholder is not a value: it says "this is what you asked for, and the tab
 	 * is not there yet", which is the honest form of the same information.
 	 */
+	// SITE-INFO (LOH-13, gap 1): classified from the tab's LIVE url — the same
+	// value the field displays — and never from a requested URL, so a redirect
+	// re-reads here the moment the projection does. Read-only: it is not a
+	// button and nothing in the consent gate reads it.
+	const siteInfo = siteInfoForUrl(url, loadFailure);
+	// The unverified wording splits on WHY (see isSecurityLoadFailure): a
+	// certificate failure is an identity claim that failed, any other recorded
+	// failure is a load that never completed - both revoke "secure", and the
+	// tooltip must not dress the second up as the first.
+	const siteInfoLabel =
+		siteInfo.kind === "secure"
+			? t("ui.browser.browser_url_bar.site_secure", {
+					origin: siteInfo.origin,
+				})
+			: siteInfo.kind === "not-secure"
+				? t("ui.browser.browser_url_bar.site_not_secure", {
+						origin: siteInfo.origin,
+					})
+				: siteInfo.kind === "unverified"
+					? loadFailure && isSecurityLoadFailure(loadFailure)
+						? t("ui.browser.browser_url_bar.site_unverified_certificate", {
+								origin: siteInfo.origin,
+							})
+						: t("ui.browser.browser_url_bar.site_unverified", {
+								origin: siteInfo.origin,
+							})
+					: siteInfo.kind === "file"
+						? t("ui.browser.browser_url_bar.site_file")
+						: t("ui.browser.browser_url_bar.site_internal");
+	const SiteInfoIcon =
+		siteInfo.kind === "secure"
+			? Lock
+			: siteInfo.kind === "not-secure" || siteInfo.kind === "unverified"
+				? LockOpen
+				: siteInfo.kind === "file"
+					? File
+					: Globe;
+	// Warning emphasis is a colour STEP, not a second colour (D1, brief
+	// section 2.3): the two kinds that must read as a warning sit at text-ink
+	// (12.8:1 dark / 15.23:1 light on surface) while the resting kinds stay
+	// at text-ink-muted, so emphasis comes from the step rather than a hue
+	// this register does not otherwise use.
+	const siteInfoWarns =
+		siteInfo.kind === "not-secure" || siteInfo.kind === "unverified";
 	const live = displayUrl(url);
 	// `draft === null` means "not editing". Kept as null rather than as a boolean
 	// plus a string so there is no state where the flag says editing and the value
@@ -263,11 +335,15 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			className="flex items-center gap-1 border-control border-b bg-elevated px-2 py-1"
 			data-tour-tag="browser-url-bar"
 		>
-			<Tooltip content={`Back (${backChord})`}>
+			<Tooltip
+				content={t("ui.browser.browser_url_bar.back_shortcut", {
+					shortcut: backChord,
+				})}
+			>
 				<Button
 					variant="ghost"
 					size="icon-sm"
-					aria-label="Back"
+					aria-label={t("ui.browser.browser_url_bar.back")}
 					aria-keyshortcuts={backChord}
 					disabled={disabled || !canGoBack}
 					onClick={onBack}
@@ -276,11 +352,15 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					<ArrowLeft aria-hidden className="size-4" />
 				</Button>
 			</Tooltip>
-			<Tooltip content={`Forward (${forwardChord})`}>
+			<Tooltip
+				content={t("ui.browser.browser_url_bar.forward_shortcut", {
+					shortcut: forwardChord,
+				})}
+			>
 				<Button
 					variant="ghost"
 					size="icon-sm"
-					aria-label="Forward"
+					aria-label={t("ui.browser.browser_url_bar.forward")}
 					aria-keyshortcuts={forwardChord}
 					disabled={disabled || !canGoForward}
 					onClick={onForward}
@@ -293,11 +373,11 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			    shows stop while loading and reload otherwise, and two buttons where
 			    only one is ever enabled is a control that lies about its own state. */}
 			{loading ? (
-				<Tooltip content="Stop loading">
+				<Tooltip content={t("ui.browser.browser_url_bar.stop_loading")}>
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						aria-label="Stop loading"
+						aria-label={t("ui.browser.browser_url_bar.stop_loading")}
 						disabled={disabled}
 						onClick={onStop}
 						data-tour-tag="browser-stop"
@@ -310,13 +390,32 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						aria-label="Reload"
+						aria-label={t("ui.browser.browser_url_bar.reload")}
 						aria-keyshortcuts={reload.aria}
 						disabled={disabled}
 						onClick={onReload}
 						data-tour-tag="browser-reload"
 					>
 						<RotateCw aria-hidden className="size-4" />
+					</Button>
+				</Tooltip>
+			)}
+			{onHome && (
+				<Tooltip
+					content={t("ui.browser.browser_url_bar.home_destination")}
+					side="top"
+				>
+					<Button
+						type="button"
+						size="icon-sm"
+						variant="ghost"
+						className="text-ink-muted hover:bg-control-hover hover:text-ink"
+						aria-label={t("ui.browser.browser_url_bar.home")}
+						disabled={disabled}
+						onClick={onHome}
+						data-tour-tag="browser-home"
+					>
+						<Home aria-hidden className="size-4" />
 					</Button>
 				</Tooltip>
 			)}
@@ -347,7 +446,9 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						aria-label="Open downloads folder"
+						aria-label={t(
+							"ui.browser.browser_file_transfer_row.open_downloads_folder",
+						)}
 						onClick={onOpenDownloads}
 						data-tour-tag="browser-downloads-folder"
 					>
@@ -356,11 +457,16 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 				</Tooltip>
 			)}
 			{onFind && (
-				<Tooltip content={`Find in page (${find.glyph})`} side="top">
+				<Tooltip
+					content={t("ui.browser.browser_url_bar.find_in_page_shortcut", {
+						shortcut: find.glyph,
+					})}
+					side="top"
+				>
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						aria-label="Find in page"
+						aria-label={t("ui.browser.browser_url_bar.find_in_page")}
 						aria-keyshortcuts={find.aria}
 						disabled={disabled}
 						onClick={onFind}
@@ -371,11 +477,18 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 				</Tooltip>
 			)}
 			{pageZoom !== 1 && (
-				<Tooltip content={`Reset page zoom (${resetZoom.glyph})`} side="top">
+				<Tooltip
+					content={t("ui.browser.browser_url_bar.reset_page_zoom_shortcut", {
+						shortcut: resetZoom.glyph,
+					})}
+					side="top"
+				>
 					<Button
 						variant="ghost"
 						size="sm"
-						aria-label={`Page zoom ${Math.round(pageZoom * 100)}%, reset to 100%`}
+						aria-label={t("ui.browser.browser_url_bar.page_zoom_reset", {
+							zoom: Math.round(pageZoom * 100),
+						})}
 						aria-keyshortcuts={resetZoom.aria}
 						onClick={onResetZoom}
 						data-tour-tag="browser-zoom"
@@ -385,6 +498,35 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 				</Tooltip>
 			)}
 			<div className="relative min-w-0 grow">
+				{/* SITE-INFO, INSIDE THE FIELD'S LEFT EDGE (the frozen design brief
+				    places the security/origin register there, not as a toolbar
+				    button): a read-only mark, so it is a labelled span the tooltip
+				    can hang from - never a button, because pressing it does nothing
+				    and a control that does nothing misleads. Its tooltip opens
+				    above the field like Back/Reload's, over empty chrome, so the
+				    native page view cannot cover it. The field's own left padding
+				    makes room for it. */}
+				<Tooltip content={siteInfoLabel} side="top">
+					{/* Keyboard-reachable WITHOUT becoming a control (m1/U2): tabIndex
+					    makes the mark a Tab stop so its tooltip - the origin in words -
+					    is reachable without a pointer (Radix opens on focus), while
+					    role/absence of any handler keep it read-only: it takes focus
+					    only to be read, and pressing keys on it does nothing. */}
+					<span
+						role="img"
+						// biome-ignore lint/a11y/noNoninteractiveTabindex: focus is taken only to be READ (the tooltip is the origin in words); the mark has no action, and a button that does nothing would mislead.
+						tabIndex={0}
+						aria-label={siteInfoLabel}
+						data-site-info={siteInfo.kind}
+						className={cn(
+							"absolute top-1/2 left-2 z-10 flex -translate-y-1/2 items-center",
+							siteInfoWarns ? "text-ink" : "text-ink-muted",
+						)}
+					>
+						<SiteInfoIcon aria-hidden className="size-3.5" />
+					</span>
+				</Tooltip>
+
 				{/* NO VISIBLE TOOLTIP ON THIS FIELD (design D-PR9, UX U10). The field sits
 				    directly above the content rect, and every placement of a DOM tooltip
 				    that clears the chrome band (below the field) lands INSIDE the rect
@@ -414,7 +556,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					}}
 					spellCheck={false}
 					autoComplete="off"
-					aria-label="Address"
+					aria-label={t("ui.browser.browser_url_bar.address")}
 					// Only while the tab has nothing to show: the moment it commits, the
 					// live value replaces this and the placeholder is gone.
 					placeholder={loading && !live ? (pendingUrl ?? undefined) : undefined}
@@ -425,7 +567,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					// the toolbar rule and the Approvals border. `!` because the global ring
 					// rule is unlayered and outranks a utility; `Input` `sm` does the same.
 					className={cn(
-						"pr-7 focus-visible:outline-offset-1!",
+						"pr-7 pl-8 focus-visible:outline-offset-1!",
 						editing && "font-mono text-mono-sm",
 					)}
 				/>
@@ -453,13 +595,16 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 						className={waitingCount > 0 ? "pr-5" : undefined}
 						aria-label={
 							waitingCount > 0
-								? `Approvals, ${waitingCount} waiting`
+								? t("ui.browser.browser_url_bar.approvals_waiting", {
+										count: waitingCount,
+									})
 								: t("ui.browser.chrome.approvals")
 						}
 						data-tour-tag="browser-approvals"
 					>
 						<ShieldCheck aria-hidden className="size-3.5" />
-						{waitingCount > 0 && "Approvals"}
+						{waitingCount > 0 &&
+							t("ui.browser.browser_approvals_dock.approvals")}
 					</Button>
 				</Tooltip>
 				{waitingCount > 0 && (

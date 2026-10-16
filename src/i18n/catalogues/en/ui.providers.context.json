@@ -183,5 +183,765 @@
 		"role": "verified address instruction",
 		"tone": "plain, actionable",
 		"note": "Exact first sentence of backend mobile.setup.complete; omit CLI stop instruction because this UI has no stop authority."
+	},
+	"ui.providers.connect_provider_card.connect_a_model_provider_to_start": {
+		"role": "section/dialog heading \u2014 empty-chat provider invitation",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Empty-chat provider invitation: connect a model provider to start. Names this section/state without an action verb; no extra promise about a working connection. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.connect_provider_card.sign_in_with_claude_chatgpt_or_radient": {
+		"role": "inline status or explanatory paragraph \u2014 empty-chat provider invitation",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Empty-chat provider invitation: sign in with claude chatgpt or radient. Keep this distinct from neighboring pending, failed and completed states. Length: paragraph can wrap within the existing provider panel."
+	},
+	"ui.providers.connect_provider_card.connect_a_provider": {
+		"role": "action button/menu label \u2014 empty-chat provider invitation",
+		"tone": "Short imperative",
+		"note": "Opens the provider connection dialog. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.connect_provider_card.use_a_model_on_this_computer": {
+		"role": "action button/menu label \u2014 empty-chat provider invitation",
+		"tone": "Short imperative",
+		"note": "Opens connection choices scoped to local model servers. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.connect_provider_card.no_model_provider_connected": {
+		"role": "inline status or explanatory paragraph \u2014 empty-chat provider invitation",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Empty-chat provider invitation: no model provider connected. Keep this distinct from neighboring pending, failed and completed states. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.connect_provider_card.connect": {
+		"role": "action button/menu label \u2014 empty-chat provider invitation",
+		"tone": "Short imperative",
+		"note": "Opens the same connection dialog from the composer status line. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.connect_provider_dialog.connect_a_model_provider": {
+		"role": "section/dialog heading \u2014 connect-provider dialog",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Connect-provider dialog: connect a model provider. Names this section/state without an action verb; no extra promise about a working connection. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.connect_provider_dialog.your_agents_need_a_model_to_think": {
+		"role": "inline status or explanatory paragraph \u2014 connect-provider dialog",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Connect-provider dialog: your agents need a model to think. Names the account/plan used by this method; vendor/product names Claude, ChatGPT, Radient, Moonshot, SuperGrok and Token Plan stay untranslated. Length: paragraph can wrap within the existing provider panel."
+	},
+	"ui.providers.provider_catalog.local_models": {
+		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Collective lower-case name for all hidden local-provider rows in the More providers summary; never enumerate vendor names here. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_catalog.more_providers": {
+		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Collapsed disclosure label when no hidden provider names can be listed. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_catalog.more_providers_and": {
+		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Disclosure names the first hidden vendors, then counts other cloud providers; count excludes local rows, which contribute the separate local models phrase. Length: paragraph can wrap within the existing provider panel. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+	},
+	"ui.providers.provider_catalog.more_providers_variant_41": {
+		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Disclosure names exactly one hidden provider/group; provider is an untranslated vendor name or already-localized local models phrase. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_catalog.more_providers_and_variant_42": {
+		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Disclosure names a list of hidden vendors plus the final vendor/group; providers is comma-joined names and last is the final name/local-model phrase. Length: paragraph can wrap within the existing provider panel."
+	},
+	"ui.providers.provider_catalog.claude_subscription": {
+		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider method/group presentation: claude subscription. Names the account/plan used by this method; vendor/product names Claude, ChatGPT, Radient, Moonshot, SuperGrok and Token Plan stay untranslated. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_catalog.chatgpt_subscription": {
+		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider method/group presentation: chatgpt subscription. Names the account/plan used by this method; vendor/product names Claude, ChatGPT, Radient, Moonshot, SuperGrok and Token Plan stay untranslated. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_catalog.chatgpt_with_a_code": {
+		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider method/group presentation: chatgpt with a code. Keep this distinct from neighboring pending, failed and completed states. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_catalog.browser_sign_in": {
+		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider method/group presentation: browser sign in. Keep this distinct from neighboring pending, failed and completed states. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_catalog.moonshot_account": {
+		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider method/group presentation: moonshot account. Names the account/plan used by this method; vendor/product names Claude, ChatGPT, Radient, Moonshot, SuperGrok and Token Plan stay untranslated. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_catalog.supergrok_account": {
+		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider method/group presentation: supergrok account. Names the account/plan used by this method; vendor/product names Claude, ChatGPT, Radient, Moonshot, SuperGrok and Token Plan stay untranslated. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_catalog.token_plan_account": {
+		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider method/group presentation: token plan account. Names the account/plan used by this method; vendor/product names Claude, ChatGPT, Radient, Moonshot, SuperGrok and Token Plan stay untranslated. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_catalog.api_key": {
+		"role": "input field label \u2014 provider method/group presentation",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider method/group presentation: api key. Keep this distinct from neighboring pending, failed and completed states. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_catalog.sign_in_with_a_code": {
+		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider method/group presentation: sign in with a code. Keep this distinct from neighboring pending, failed and completed states. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_catalog.sign_in": {
+		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider method/group presentation: sign in. Keep this distinct from neighboring pending, failed and completed states. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_catalog.use_your_claude_pro_or_max_plan": {
+		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider method/group presentation: use your claude pro or max plan. Names the account/plan used by this method; vendor/product names Claude, ChatGPT, Radient, Moonshot, SuperGrok and Token Plan stay untranslated. Length: paragraph can wrap within the existing provider panel."
+	},
+	"ui.providers.provider_catalog.use_your_chatgpt_plus_or_pro_plan": {
+		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider method/group presentation: use your chatgpt plus or pro plan. Names the account/plan used by this method; vendor/product names Claude, ChatGPT, Radient, Moonshot, SuperGrok and Token Plan stay untranslated. Length: paragraph can wrap within the existing provider panel."
+	},
+	"ui.providers.provider_catalog.use_your_chatgpt_plan_signing_in_with": {
+		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider method/group presentation: use your chatgpt plan signing in with. Names the account/plan used by this method; vendor/product names Claude, ChatGPT, Radient, Moonshot, SuperGrok and Token Plan stay untranslated. Length: paragraph can wrap within the existing provider panel."
+	},
+	"ui.providers.provider_catalog.one_browser_sign_in_nothing_to_paste": {
+		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider method/group presentation: one browser sign in nothing to paste. Keep this distinct from neighboring pending, failed and completed states. Length: paragraph can wrap within the existing provider panel."
+	},
+	"ui.providers.provider_catalog.sign_in_to_your_account_with_a": {
+		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider method/group presentation: sign in to your account with a. Names the account/plan used by this method; vendor/product names Claude, ChatGPT, Radient, Moonshot, SuperGrok and Token Plan stay untranslated. Placeholders: brand. Vendor/product names and URL hostnames remain untranslated. Length: paragraph can wrap within the existing provider panel."
+	},
+	"ui.providers.provider_catalog.sign_in_with_your_account": {
+		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider method/group presentation: sign in with your account. Names the account/plan used by this method; vendor/product names Claude, ChatGPT, Radient, Moonshot, SuperGrok and Token Plan stay untranslated. Placeholders: brand. Vendor/product names and URL hostnames remain untranslated. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_catalog.use_a_subscription": {
+		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider method/group presentation: use a subscription. Names the account/plan used by this method; vendor/product names Claude, ChatGPT, Radient, Moonshot, SuperGrok and Token Plan stay untranslated. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_catalog.use_an_api_key": {
+		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider method/group presentation: use an api key. Keep this distinct from neighboring pending, failed and completed states. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_catalog.run_models_on_this_computer": {
+		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider method/group presentation: run models on this computer. Keep this distinct from neighboring pending, failed and completed states. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_catalog.set_up": {
+		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",
+		"tone": "Short imperative",
+		"note": "Opens setup for a local model server. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_catalog.add_key": {
+		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",
+		"tone": "Short imperative",
+		"note": "Opens the API-key entry method. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_catalog.needs_running": {
+		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider method/group presentation: needs running. Keep this distinct from neighboring pending, failed and completed states. Placeholders: brand. Vendor/product names and URL hostnames remain untranslated. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_catalog.paste_an_api_key": {
+		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider method/group presentation: paste an api key. Keep this distinct from neighboring pending, failed and completed states. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_catalog.sign_in_with_your_account_variant_93": {
+		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider method/group presentation: sign in with your account variant 93. Names the account/plan used by this method; vendor/product names Claude, ChatGPT, Radient, Moonshot, SuperGrok and Token Plan stay untranslated. Placeholders: account. Vendor/product names and URL hostnames remain untranslated. Length: paragraph can wrap within the existing provider panel."
+	},
+	"ui.providers.provider_catalog.signed_in": {
+		"role": "readiness label \u2014 provider method/group presentation",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider method/group presentation: signed in. Names this section/state without an action verb; no extra promise about a working connection. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_catalog.on_this_computer": {
+		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider method/group presentation: on this computer. Keep this distinct from neighboring pending, failed and completed states. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_catalog.api_key_saved": {
+		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider method/group presentation: api key saved. Keep this distinct from neighboring pending, failed and completed states. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_catalog.this_sign_in_is_no_longer_available": {
+		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider method/group presentation: this sign in is no longer available. Explains why this attempt ended; do not imply that the saved account itself was deleted. Length: paragraph can wrap within the existing provider panel."
+	},
+	"ui.providers.provider_catalog.the_sign_in_link_expired": {
+		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider method/group presentation: the sign in link expired. Explains why this attempt ended; do not imply that the saved account itself was deleted. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_catalog.a_newer_sign_in_replaced_this_one": {
+		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider method/group presentation: a newer sign in replaced this one. Explains why this attempt ended; do not imply that the saved account itself was deleted. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_catalog.you_cancelled_sign_in": {
+		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider method/group presentation: you cancelled sign in. Explains why this attempt ended; do not imply that the saved account itself was deleted. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_catalog.didn_t_confirm_the_sign_in": {
+		"role": "shared method label or provider-row explanation \u2014 provider method/group presentation",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider method/group presentation: didn t confirm the sign in. Distinguish a provider refusal from the app being unable to verify; never turn an unconfirmed credential into an authenticated claim. Placeholders: brand. Vendor/product names and URL hostnames remain untranslated. Length: paragraph can wrap within the existing provider panel."
+	},
+	"ui.providers.provider_detail.the_connection_could_not_be_tested": {
+		"role": "readiness tooltip explanation \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider sign-in and key panel: the connection could not be tested. Keep this distinct from neighboring pending, failed and completed states. Length: paragraph can wrap within the existing provider panel."
+	},
+	"ui.providers.provider_detail.checking_whether": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Prefix before the unstyled vendor name; paired with is_running to say the local reachability probe is in progress. Preserve the trailing space. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.is_running": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Suffix after a vendor name; also follows checking_whether during the probe, otherwise reports a successful reachability probe. The caller retains the separating space. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.isn_t_answering": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Suffix after a vendor name when the reachability probe fails; the optional at fragment and monospaced server URL follow. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.at": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Separates a failed reachability statement from its monospaced server URL. Preserve both surrounding spaces. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.checking": {
+		"role": "action button/menu label \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider sign-in and key panel: checking. Keep this distinct from neighboring pending, failed and completed states. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.check_again": {
+		"role": "action button/menu label \u2014 provider sign-in and key panel",
+		"tone": "Short imperative",
+		"note": "Repeats the local-server reachability probe. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.hide_key": {
+		"role": "accessible control name \u2014 provider sign-in and key panel",
+		"tone": "Short imperative",
+		"note": "Masks the API-key input. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.show_key": {
+		"role": "accessible control name \u2014 provider sign-in and key panel",
+		"tone": "Short imperative",
+		"note": "Reveals the API-key input; do not imply copying or saving. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.connected_variant_163": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider sign-in and key panel: connected variant 163. Keep this distinct from neighboring pending, failed and completed states. Placeholders: brand. Vendor/product names and URL hostnames remain untranslated. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.signed_in_to_variant_164": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider sign-in and key panel: signed in to variant 164. Keep this distinct from neighboring pending, failed and completed states. Placeholders: brand. Vendor/product names and URL hostnames remain untranslated. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.is_no_longer_accepting_the_sign_in": {
+		"role": "warning or error explanation \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider sign-in and key panel: is no longer accepting the sign in. Distinguish a provider refusal from the app being unable to verify; never turn an unconfirmed credential into an authenticated claim. Placeholders: brand. Vendor/product names and URL hostnames remain untranslated. Length: paragraph can wrap within the existing provider panel."
+	},
+	"ui.providers.provider_detail.this_app_could_not_confirm_the_sign": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider sign-in and key panel: this app could not confirm the sign. Distinguish a provider refusal from the app being unable to verify; never turn an unconfirmed credential into an authenticated claim. Placeholders: brand. Vendor/product names and URL hostnames remain untranslated. Length: paragraph can wrap within the existing provider panel."
+	},
+	"ui.providers.provider_detail.the_sign_in_itself_finished_what_follows": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider sign-in and key panel: the sign in itself finished what follows. Keep this distinct from neighboring pending, failed and completed states. Length: paragraph can wrap within the existing provider panel."
+	},
+	"ui.providers.provider_detail.default_model": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Label preceding the backend-reported default model; preserve the colon. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.change": {
+		"role": "action button/menu label \u2014 provider sign-in and key panel",
+		"tone": "Short imperative",
+		"note": "Opens model selection after a sign-in/default receipt. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.your_default_model_is_unchanged": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider sign-in and key panel: your default model is unchanged. Keep this distinct from neighboring pending, failed and completed states. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.saved_but_not_checked_yet": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Prefix before the saved model/default detail when key verification was not available. Preserve colon and trailing space; do not claim successful validation. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.the_code_was_not_accepted": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider sign-in and key panel: the code was not accepted. Distinguish a provider refusal from the app being unable to verify; never turn an unconfirmed credential into an authenticated claim. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.the_key_could_not_be_saved": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider sign-in and key panel: the key could not be saved. Keep this distinct from neighboring pending, failed and completed states. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.continue": {
+		"role": "action button/menu label \u2014 provider sign-in and key panel",
+		"tone": "Short imperative",
+		"note": "Finishes this provider step and returns to the caller. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.done": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Short imperative",
+		"note": "Dismisses the provider panel after connection. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.runs_on_this_computer_and_needs_no": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Leading local-server setup prose before an inline vendor name. Preserve trailing space; server must already be running for the later check. Length: paragraph can wrap within the existing provider panel."
+	},
+	"ui.providers.provider_detail.then_check_the_connection": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Continuation immediately after the inline vendor name in the local-server setup paragraph. Preserve the initial comma. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.this_provider_has_no_supported_sign_in": {
+		"role": "warning or error explanation \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider sign-in and key panel: this provider has no supported sign in. Keep this distinct from neighboring pending, failed and completed states. Length: paragraph can wrap within the existing provider panel."
+	},
+	"ui.providers.provider_detail.how_to_connect": {
+		"role": "accessible control name \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider sign-in and key panel: how to connect. Keep this distinct from neighboring pending, failed and completed states. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.this_local_operator_does_not_check_keys": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider sign-in and key panel: this local operator does not check keys. States key-storage/verification/billing facts separately from subscription access; preserve the distinction. Length: paragraph can wrap within the existing provider panel."
+	},
+	"ui.providers.provider_detail.key_saved": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider sign-in and key panel: key saved. Keep this distinct from neighboring pending, failed and completed states. Placeholders: brand. Vendor/product names and URL hostnames remain untranslated. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.api_key_variant_215": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider sign-in and key panel: api key variant 215. Keep this distinct from neighboring pending, failed and completed states. Placeholders: brand. Vendor/product names and URL hostnames remain untranslated. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.a_key_is_saved_paste_a_new": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider sign-in and key panel: a key is saved paste a new. States key-storage/verification/billing facts separately from subscription access; preserve the distinction. Placeholders: brand. Vendor/product names and URL hostnames remain untranslated. Length: paragraph can wrap within the existing provider panel."
+	},
+	"ui.providers.provider_detail.stored_encrypted_on_this_computer_billed_per": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider sign-in and key panel: stored encrypted on this computer billed per. Names the account/plan used by this method; vendor/product names Claude, ChatGPT, Radient, Moonshot, SuperGrok and Token Plan stay untranslated. Placeholders: brand. Vendor/product names and URL hostnames remain untranslated. Length: paragraph can wrap within the existing provider panel."
+	},
+	"ui.providers.provider_detail.checking_key": {
+		"role": "action button/menu label \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider sign-in and key panel: checking key. States key-storage/verification/billing facts separately from subscription access; preserve the distinction. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.save_key": {
+		"role": "action button/menu label \u2014 provider sign-in and key panel",
+		"tone": "Short imperative",
+		"note": "Stores the entered API key; verification may follow. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.you_ll_get_a_code_to_enter": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider sign-in and key panel: you ll get a code to enter. Keep this distinct from neighboring pending, failed and completed states. Length: paragraph can wrap within the existing provider panel."
+	},
+	"ui.providers.provider_detail.it_opens_in_your_browser": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider sign-in and key panel: it opens in your browser. Keep this distinct from neighboring pending, failed and completed states. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.get_a_sign_in_code": {
+		"role": "action button/menu label \u2014 provider sign-in and key panel",
+		"tone": "Short imperative",
+		"note": "Starts the device-code sign-in method. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.continue_in_browser": {
+		"role": "action button/menu label \u2014 provider sign-in and key panel",
+		"tone": "Short imperative",
+		"note": "Starts browser sign-in. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.getting_a_code": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider sign-in and key panel: getting a code. Keep this distinct from neighboring pending, failed and completed states. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.opening_your_browser": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider sign-in and key panel: opening your browser. Keep this distinct from neighboring pending, failed and completed states. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.cancel": {
+		"role": "action button/menu label \u2014 provider sign-in and key panel",
+		"tone": "Short imperative",
+		"note": "Cancels the in-progress sign-in rather than merely closing the panel. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.enter_this_code": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Device-approval instruction prefix before the destination clause. Preserve trailing space; the code itself stays in its separate code box. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.at_variant_248": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Device-approval destination clause; host is the untranslated URL hostname. Follows Enter this code and precedes the approval/update sentence. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.on_the_sign_in_page": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Device-approval destination clause when no hostname is known. Same position as at {host}, not a button label. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.this_page_updates_on_its_own_once": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Continuation after the device-approval destination clause. Preserve the initial period and space; approval occurs on the vendor page. Length: paragraph can wrap within the existing provider panel."
+	},
+	"ui.providers.provider_detail.copy_code_and_open_page": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Short imperative",
+		"note": "Copies the device code and explicitly opens its approval page. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.copy_code": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Short imperative",
+		"note": "Copies only the device code. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.open_browser_again": {
+		"role": "action button/menu label \u2014 provider sign-in and key panel",
+		"tone": "Short imperative",
+		"note": "Reopens an approval page already opened once. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.open_sign_in_page": {
+		"role": "action button/menu label \u2014 provider sign-in and key panel",
+		"tone": "Short imperative",
+		"note": "Explicitly opens the approval page. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.code_from": {
+		"role": "input field label \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider sign-in and key panel: code from. Keep this distinct from neighboring pending, failed and completed states. Placeholders: host. Vendor/product names and URL hostnames remain untranslated. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.code_from_the_sign_in_page": {
+		"role": "input field label \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider sign-in and key panel: code from the sign in page. Keep this distinct from neighboring pending, failed and completed states. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.sign_in_code": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider sign-in and key panel: sign in code. Keep this distinct from neighboring pending, failed and completed states. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.paste_the_code": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Prefix before an inline approval-page host/name in the paste-required instruction. Preserve trailing space. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.the_provider": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Fallback noun phrase in Paste the code \u2026 shows after you approve when no URL hostname is known. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.shows_after_you_approve": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Suffix after an inline hostname/provider phrase in the paste-code instruction. Caller supplies separating whitespace. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.copy_link": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Short imperative",
+		"note": "Copies the approval URL, not the code. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.finish_signing_in_with_your_browser": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider sign-in and key panel: finish signing in with your browser. Keep this distinct from neighboring pending, failed and completed states. Length: paragraph can wrap within the existing provider panel."
+	},
+	"ui.providers.provider_detail.we_opened_approve_access_there_and_this": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider sign-in and key panel: we opened approve access there and this. Keep this distinct from neighboring pending, failed and completed states. Placeholders: host. Vendor/product names and URL hostnames remain untranslated. Length: paragraph can wrap within the existing provider panel."
+	},
+	"ui.providers.provider_detail.your_browser_didn_t_open_open_the": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider sign-in and key panel: your browser didn t open open the. Keep this distinct from neighboring pending, failed and completed states. Length: paragraph can wrap within the existing provider panel."
+	},
+	"ui.providers.provider_detail.opening_approve_access_there_and_this_page": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider sign-in and key panel: opening approve access there and this page. Keep this distinct from neighboring pending, failed and completed states. Placeholders: host. Vendor/product names and URL hostnames remain untranslated. Length: paragraph can wrap within the existing provider panel."
+	},
+	"ui.providers.provider_detail.browser_showed_a_code_paste_it_here": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider sign-in and key panel: browser showed a code paste it here. Keep this distinct from neighboring pending, failed and completed states. Length: paragraph can wrap within the existing provider panel."
+	},
+	"ui.providers.provider_detail.didn_t_confirm_the_sign_in": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider sign-in and key panel: didn t confirm the sign in. Distinguish a provider refusal from the app being unable to verify; never turn an unconfirmed credential into an authenticated claim. Placeholders: brand. Vendor/product names and URL hostnames remain untranslated. Length: paragraph can wrap within the existing provider panel."
+	},
+	"ui.providers.provider_detail.sign_in_didn_t_finish": {
+		"role": "warning or error explanation \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider sign-in and key panel: sign in didn t finish. Keep this distinct from neighboring pending, failed and completed states. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.try_again": {
+		"role": "action button/menu label \u2014 provider sign-in and key panel",
+		"tone": "Short imperative",
+		"note": "Starts a new sign-in after the previous attempt ended. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.use_an_api_key_instead": {
+		"role": "action button/menu label \u2014 provider sign-in and key panel",
+		"tone": "Short imperative",
+		"note": "Switches from interactive sign-in to the API-key method. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_grid.the_default_was_not_changed": {
+		"role": "inline status or explanatory paragraph \u2014 provider list",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider list: the default was not changed. Keep this distinct from neighboring pending, failed and completed states. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_grid.sign_out_did_not_complete": {
+		"role": "inline status or explanatory paragraph \u2014 provider list",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider list: sign out did not complete. Keep this distinct from neighboring pending, failed and completed states. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_grid.loading_providers": {
+		"role": "inline status or explanatory paragraph \u2014 provider list",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider list: loading providers. Keep this distinct from neighboring pending, failed and completed states. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_grid.retrying": {
+		"role": "action button/menu label \u2014 provider list",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider list: retrying. Keep this distinct from neighboring pending, failed and completed states. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_grid.retry": {
+		"role": "action button/menu label \u2014 provider list",
+		"tone": "Short imperative",
+		"note": "Retries the failed provider census read. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_grid.recommended": {
+		"role": "inline status or explanatory paragraph \u2014 provider list",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider list: recommended. Keep this distinct from neighboring pending, failed and completed states. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_grid.suggests": {
+		"role": "inline status or explanatory paragraph \u2014 provider list",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Inline separator and verb before the suggested model name on a recommended provider row. Preserve the middle dot and trailing space. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_grid.close": {
+		"role": "accessible control name \u2014 provider list",
+		"tone": "Short imperative",
+		"note": "Collapses the current provider row panel, not the whole app. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_grid.default": {
+		"role": "inline status or explanatory paragraph \u2014 provider list",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider list: default. Keep this distinct from neighboring pending, failed and completed states. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_grid.sign_out_of": {
+		"role": "inline status or explanatory paragraph \u2014 provider list",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Confirmation prefix before the vendor name. Preserve trailing space; the destructive action is a separate button. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_grid.sign_out": {
+		"role": "action button/menu label \u2014 provider list",
+		"tone": "Short imperative",
+		"note": "Confirms removing this provider credential. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_grid.keep": {
+		"role": "action button/menu label \u2014 provider list",
+		"tone": "Short imperative",
+		"note": "Cancels the pending sign-out and keeps the credential. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_grid.manage": {
+		"role": "action button/menu label \u2014 provider list",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Accessible name for the provider overflow menu; brand is an untranslated vendor name. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_grid.make_default": {
+		"role": "action button/menu label \u2014 provider list",
+		"tone": "Short imperative",
+		"note": "Applies this provider\u2019s suggested model as the default. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_grid.change_model": {
+		"role": "action button/menu label \u2014 provider list",
+		"tone": "Short imperative",
+		"note": "Opens the model picker; the ellipsis means another choice follows. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_grid.replace_key": {
+		"role": "action button/menu label \u2014 provider list",
+		"tone": "Short imperative",
+		"note": "Opens the API-key replacement panel; does not replace immediately. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_grid.sign_in_again": {
+		"role": "action button/menu label \u2014 provider list",
+		"tone": "Short imperative",
+		"note": "Opens re-authentication controls for the stored sign-in. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_grid.check_connection": {
+		"role": "action button/menu label \u2014 provider list",
+		"tone": "Short imperative",
+		"note": "Opens the local-server connection probe. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_grid.sign_out_variant_351": {
+		"role": "action button/menu label \u2014 provider list",
+		"tone": "Short imperative",
+		"note": "Opens a confirmation before removing the credential. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_grid.search_providers": {
+		"role": "accessible control name \u2014 provider list",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider list: search providers. Keep this distinct from neighboring pending, failed and completed states. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_grid.no_providers_match_this_search": {
+		"role": "inline status or explanatory paragraph \u2014 provider list",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider list: no providers match this search. Describes the provider filter result, not the state of the underlying connection. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_grid.the_matching_providers_are_in_the_suggested": {
+		"role": "inline status or explanatory paragraph \u2014 provider list",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider list: the matching providers are in the suggested. Describes the provider filter result, not the state of the underlying connection. Length: paragraph can wrap within the existing provider panel."
+	},
+	"ui.providers.provider_grid.the_matching_providers_are_in_the_connected": {
+		"role": "inline status or explanatory paragraph \u2014 provider list",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider list: the matching providers are in the connected. Describes the provider filter result, not the state of the underlying connection. Length: paragraph can wrap within the existing provider panel."
+	},
+	"ui.providers.provider_grid.clear_search": {
+		"role": "action button/menu label \u2014 provider list",
+		"tone": "Short imperative",
+		"note": "Clears only the provider filter query. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_grid.connected": {
+		"role": "section/dialog heading \u2014 provider list",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider list: connected. Names this section/state without an action verb; no extra promise about a working connection. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_grid.suggested_providers": {
+		"role": "inline status or explanatory paragraph \u2014 provider list",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider list: suggested providers. Keep this distinct from neighboring pending, failed and completed states. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_grid.add_a_provider": {
+		"role": "section/dialog heading \u2014 provider list",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Provider list: add a provider. Names this section/state without an action verb; no extra promise about a working connection. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_grid.connect_a_provider": {
+		"role": "section/dialog heading \u2014 provider list",
+		"tone": "Short imperative",
+		"note": "Opens the provider connection dialog. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_labels.local": {
+		"role": "credential/readiness label or explanatory tooltip \u2014 credential readiness verdict",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Credential readiness verdict: local. Keep this distinct from neighboring pending, failed and completed states. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_labels.sign_in_or_api_key": {
+		"role": "credential/readiness label or explanatory tooltip \u2014 credential readiness verdict",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Credential readiness verdict: sign in or api key. Keep this distinct from neighboring pending, failed and completed states. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_labels.unavailable": {
+		"role": "credential/readiness label or explanatory tooltip \u2014 credential readiness verdict",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Credential readiness verdict: unavailable. Keep this distinct from neighboring pending, failed and completed states. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_labels.radient_no_longer_accepts_the_sign_in": {
+		"role": "credential/readiness label or explanatory tooltip \u2014 credential readiness verdict",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Credential readiness verdict: radient no longer accepts the sign in. Distinguish a provider refusal from the app being unable to verify; never turn an unconfirmed credential into an authenticated claim. Length: paragraph can wrap within the existing provider panel."
+	},
+	"ui.providers.provider_labels.this_app_could_not_confirm_the_sign": {
+		"role": "credential/readiness label or explanatory tooltip \u2014 credential readiness verdict",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Credential readiness verdict: this app could not confirm the sign. Distinguish a provider refusal from the app being unable to verify; never turn an unconfirmed credential into an authenticated claim. Length: paragraph can wrap within the existing provider panel."
+	},
+	"ui.providers.provider_labels.no_key_needed": {
+		"role": "readiness label \u2014 credential readiness verdict",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Credential readiness verdict: no key needed. Names this section/state without an action verb; no extra promise about a working connection. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_labels.no_key_needed_needs_a_running_server": {
+		"role": "readiness tooltip explanation \u2014 credential readiness verdict",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Credential readiness verdict: no key needed needs a running server. Keep this distinct from neighboring pending, failed and completed states. Length: paragraph can wrap within the existing provider panel."
+	},
+	"ui.providers.provider_labels.needs_re_authentication": {
+		"role": "readiness label \u2014 credential readiness verdict",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Credential readiness verdict: needs re authentication. Names this section/state without an action verb; no extra promise about a working connection. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_labels.needs_sign_in": {
+		"role": "readiness label \u2014 credential readiness verdict",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Credential readiness verdict: needs sign in. Names this section/state without an action verb; no extra promise about a working connection. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_labels.providers_could_not_be_loaded": {
+		"role": "credential/readiness label or explanatory tooltip \u2014 credential readiness verdict",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Credential readiness verdict: providers could not be loaded. Keep this distinct from neighboring pending, failed and completed states. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.sign_in_flow.sign_in_could_not_start": {
+		"role": "inline status or explanatory paragraph \u2014 sign-in lifecycle failure",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Sign-in lifecycle failure: sign in could not start. Keep this distinct from neighboring pending, failed and completed states. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.the_sign_in_page": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Lower-case destination fallback inside the opening/opened status sentences, used only when no hostname is known. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_grid.row_action": {
+		"role": "accessible control name \u2014 provider list",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Accessible name for the provider row toggle. action is already-translated Close or Set up/Add key/Sign in; brand is the untranslated vendor name. Preserve the colon separator. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+	},
+	"ui.providers.provider_detail.code_expiry": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Whole device-code expiry caption. minutes is the existing rounded-up deadline in minutes; preserve English min at every count; use ICU forms for translated grammar. Length: paragraph can wrap within the existing provider panel. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+	},
+	"ui.providers.provider_detail.link_expiry": {
+		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
+		"tone": "Plain factual status/explanation; preserve source confidence",
+		"note": "Whole browser-link expiry caption with the same rounded-up minutes calculation; must not imply that a key expires. Length: paragraph can wrap within the existing provider panel. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
 	}
 }

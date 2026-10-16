@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 import { unwrapIpcErrorMessage } from "@shared/utils/ipc-error-message";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -339,6 +340,9 @@ export interface BrowserChrome {
 	closeTabs: (intent: CloseTabsIntent) => Promise<boolean>;
 	activateTab: (tabId: number) => Promise<void>;
 	navigate: (url: string) => Promise<void>;
+	/** Home: return the active tab to the browser's start state. No URL
+	 * travels with it — main owns what the start state is (LOH-13). */
+	home: () => Promise<void>;
 	reload: (hard?: boolean) => Promise<void>;
 	pageControl: (
 		tabId: number,
@@ -639,6 +643,7 @@ export function useBrowserChrome(): BrowserChrome {
 				setPendingUrl(url);
 				return runVoid(() => api?.navigate(url));
 			},
+			home: () => runVoid(() => api?.home()),
 			reload: (hard) => runVoid(() => api?.reload(hard)),
 			pageControl: (tabId, action, query = "", forward = true, next = false) =>
 				runVoid(() => api?.pageControl(tabId, action, query, forward, next)),
@@ -667,7 +672,11 @@ export function useBrowserChrome(): BrowserChrome {
 					const message = (answer as { message?: unknown } | undefined)
 						?.message;
 					if (typeof message === "string" && message) {
-						showErrorToast(`Could not open the downloads folder. ${message}`);
+						showErrorToast(
+							t("ui.browser.use_browser_chrome.downloads_folder_failed", {
+								message,
+							}),
+						);
 					}
 				}),
 		}),

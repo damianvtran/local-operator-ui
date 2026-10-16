@@ -274,6 +274,9 @@ export const desktopResult = request => globalThis.__ack(request);`,
 	 * here. `desktopFeatureEnabled` is re-exported from the shipped module rather
 	 * than re-implemented, so the gate under test is the app's own.
 	 */
+	// The view menu imports the renderer i18n barrel, whose language-write seam
+	// uses real query keys. Re-export those keys too: keep this partial hook
+	// fixture compatible without inventing fake keys or suppressing link errors.
 	"@shared/api/local-operator/desktop-hooks": `export {desktopFeatureEnabled, desktopFeatureState, desktopKeys} from ${JSON.stringify(
 		`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-hooks.ts`,
 	)}

@@ -11,8 +11,10 @@ import type {
 import { EditableField } from "@shared/components/common/editable-field";
 import { Button, Tooltip } from "@shared/components/ui";
 import type { useUpdateAgent } from "@shared/hooks/use-update-agent";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { Info, Shield } from "lucide-react";
 import type { FC } from "react";
+import { t } from "../../../../../i18n/messages";
 
 type SecuritySettingsProps = {
 	/**
@@ -59,6 +61,8 @@ export const SecuritySettings: FC<SecuritySettingsProps> = ({
 	refetchAgent,
 	initialSelectedAgentId,
 }) => {
+	// Subscribe without remounting: language changes must not discard unsaved fields.
+	useI18nLocale();
 	return (
 		/*
 		 * No top margin here: the settings shell owns the gap between panes, so a
@@ -68,18 +72,22 @@ export const SecuritySettings: FC<SecuritySettingsProps> = ({
 		<div data-tour-tag="agent-settings-security">
 			<h2 className="flex items-center gap-2 text-heading text-ink">
 				<Shield size={16} className="shrink-0 text-ink-dim" />
-				Security instructions
+				{t("ui.agents.settings.security.security_instructions")}
 				{/*
 				 * A real button rather than a bare icon: the tooltip is keyboard
 				 * reachable only if its trigger can take focus.
 				 */}
 				<Tooltip
-					content={`Security instructions that guide the agent's behavior and limitations. This is the "system prompt" for the security agent.`}
+					content={t(
+						"ui.agents.settings.security.security_instructions_that_guide_the_agent_s",
+					)}
 				>
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						aria-label="About security instructions"
+						aria-label={t(
+							"ui.agents.settings.security.about_security_instructions",
+						)}
 					>
 						<Info />
 					</Button>
@@ -87,19 +95,16 @@ export const SecuritySettings: FC<SecuritySettingsProps> = ({
 			</h2>
 
 			<p className="mt-1 max-w-2xl text-body-sm text-ink-muted">
-				This prompt is directed to the AI security reviewer. It helps the
-				reviewer decide whether to block or allow actions based on safety. Write
-				as if talking to another agent that is watching this agent (eg. "Allow
-				all git operations", "Don't let the agent access drive files in the
-				restricted folder"). Update this to allow the agent to perform actions
-				if you are getting frequent security blocks.
+				{t("ui.agents.settings.security.this_prompt_is_directed_to_the_ai")}
 			</p>
 
 			<div className="mt-4">
 				<EditableField
 					value={selectedAgent.security_prompt || ""}
 					label=""
-					placeholder="Enter instructions for the security agent..."
+					placeholder={t(
+						"ui.agents.settings.security.enter_instructions_for_the_security_agent",
+					)}
 					multiline
 					rows={6}
 					isSaving={savingField === "security_prompt"}

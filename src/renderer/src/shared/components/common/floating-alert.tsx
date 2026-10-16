@@ -1,7 +1,3 @@
-import { Alert, type AlertProps, Button } from "@shared/components/ui";
-import { X } from "lucide-react";
-import { type FC, type ReactNode, useEffect } from "react";
-
 /**
  * A semantic message that leaves the flow: fixed to the bottom-right corner,
  * optionally dismissing itself after a delay.
@@ -21,6 +17,13 @@ import { type FC, type ReactNode, useEffect } from "react";
  * This is not the top-of-window connectivity banner; that one is full-bleed,
  * square-cornered and persists on its own condition rather than a timer.
  */
+
+import { Alert, type AlertProps, Button } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
+import { X } from "lucide-react";
+import { type FC, type ReactNode, useEffect } from "react";
+import { t } from "../../../../../i18n/messages";
+
 export type FloatingAlertProps = {
 	open: boolean;
 	/** Fired by the dismiss button and by `autoHideDuration` elapsing. */
@@ -49,6 +52,7 @@ export const FloatingAlert: FC<FloatingAlertProps> = ({
 	action,
 	children,
 }) => {
+	useI18nLocale();
 	useEffect(() => {
 		if (!open || autoHideDuration === undefined) return;
 		const timer = window.setTimeout(onClose, autoHideDuration);
@@ -79,7 +83,7 @@ export const FloatingAlert: FC<FloatingAlertProps> = ({
 				variant="ghost"
 				size="icon-sm"
 				onClick={onClose}
-				aria-label="Dismiss"
+				aria-label={t("ui.common.connection.floating_alert.dismiss")}
 				className="absolute top-1.5 right-1.5"
 			>
 				<X />

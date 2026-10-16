@@ -674,17 +674,31 @@ test("the slow-load explanation is inside a live region", async () => {
 		"the waiting stack is not a live region, so the 4s explanation is announced to nobody",
 	);
 	assert.ok(
-		/label=\{isSlowLoad \? undefined :/.test(region),
+		/label=\{\s*isSlowLoad\s*\?\s*undefined\s*:/.test(region),
 		"the Spinner keeps its label beside its own caption, announcing the same fact twice",
 	);
 	// D11: the copy must describe the user's situation, not the app's control
 	// flow. "This will stop and offer a retry" made the machinery the subject.
+	// Copy moved to the catalogue; retain both the call-site binding and the
+	// English wording guard rather than mistaking an instructional comment for UI.
+	const key =
+		"ui.settings.navigation.settings_page.the_local_operator_server_is_taking_longer_than_usual_to_answer_i";
 	assert.ok(
-		region.includes("taking longer than usual to answer"),
+		region.includes(key),
+		"the waiting region lost its translated copy",
+	);
+	const messages = JSON.parse(
+		await readFile(
+			"src/i18n/catalogues/en/ui.settings.navigation.json",
+			"utf8",
+		),
+	);
+	assert.ok(
+		messages[key].includes("taking longer than usual to answer"),
 		"the slow-load copy is not the agreed sentence",
 	);
 	assert.ok(
-		!region.includes("This will stop and offer a retry"),
+		!messages[key].includes("This will stop and offer a retry"),
 		"the slow-load copy still narrates the app's plan rather than the user's situation",
 	);
 });

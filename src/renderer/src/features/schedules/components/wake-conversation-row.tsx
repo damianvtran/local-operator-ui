@@ -49,6 +49,8 @@ import {
 } from "@features/chat/components/run-details/wake-controls-model";
 import { Button, Tooltip } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { ArrowUpRight, SquarePen, X } from "lucide-react";
 import type { FC } from "react";
@@ -107,60 +109,67 @@ const WakeLineItem: FC<{
 	managedName: string | null;
 	onCancel: () => void;
 	onEdit: () => void;
-}> = ({ wake, managedName, onCancel, onEdit }) => (
-	<WakeRowView
-		row={wake}
-		trailingClause={wake.ranLabel || undefined}
-		/*
-		 * The managed line wears the SAME pair as the pane's (design round 1's D2
-		 * and the section's one-object-one-reading rule): the short state word in
-		 * the control column, where the line's missing `Cancel` would have been,
-		 * and the sentence — with the lever that works — as the line's note, so
-		 * the page and the pane cannot come to explain the same row two ways.
-		 */
-		note={
-			managedName === null ? undefined : <WakeManagedNote name={managedName} />
-		}
-		action={
-			<>
-				{managedName !== null && <WakeManagedState name={managedName} />}
-				<Tooltip content="Edit wake">
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						aria-label="Edit wake"
-						onClick={onEdit}
-						className={cn(
-							...ACTION_REVEAL,
-							"group-hover/wake:pointer-events-auto group-hover/wake:opacity-100",
-							"group-focus-within/wake:pointer-events-auto group-focus-within/wake:opacity-100",
-						)}
-					>
-						<SquarePen />
-					</Button>
-				</Tooltip>
-				{managedName === null && (
-					<Tooltip content="Cancel wake">
+}> = ({ wake, managedName, onCancel, onEdit }) => {
+	useI18nLocale();
+	return (
+		<WakeRowView
+			row={wake}
+			trailingClause={wake.ranLabel || undefined}
+			/*
+			 * The managed line wears the SAME pair as the pane's (design round 1's D2
+			 * and the section's one-object-one-reading rule): the short state word in
+			 * the control column, where the line's missing `Cancel` would have been,
+			 * and the sentence — with the lever that works — as the line's note, so
+			 * the page and the pane cannot come to explain the same row two ways.
+			 */
+			note={
+				managedName === null ? undefined : (
+					<WakeManagedNote name={managedName} />
+				)
+			}
+			action={
+				<>
+					{managedName !== null && <WakeManagedState name={managedName} />}
+					<Tooltip content={t("ui.schedules.wake_conversation_row.edit_wake")}>
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							aria-label="Cancel wake"
-							onClick={onCancel}
+							aria-label={t("ui.schedules.wake_conversation_row.edit_wake")}
+							onClick={onEdit}
 							className={cn(
 								...ACTION_REVEAL,
 								"group-hover/wake:pointer-events-auto group-hover/wake:opacity-100",
 								"group-focus-within/wake:pointer-events-auto group-focus-within/wake:opacity-100",
-								"hover:bg-danger-wash hover:text-danger",
 							)}
 						>
-							<X />
+							<SquarePen />
 						</Button>
 					</Tooltip>
-				)}
-			</>
-		}
-	/>
-);
+					{managedName === null && (
+						<Tooltip
+							content={t("ui.schedules.wake_conversation_row.cancel_wake")}
+						>
+							<Button
+								variant="ghost"
+								size="icon-sm"
+								aria-label={t("ui.schedules.wake_conversation_row.cancel_wake")}
+								onClick={onCancel}
+								className={cn(
+									...ACTION_REVEAL,
+									"group-hover/wake:pointer-events-auto group-hover/wake:opacity-100",
+									"group-focus-within/wake:pointer-events-auto group-focus-within/wake:opacity-100",
+									"hover:bg-danger-wash hover:text-danger",
+								)}
+							>
+								<X />
+							</Button>
+						</Tooltip>
+					)}
+				</>
+			}
+		/>
+	);
+};
 
 export const WakeConversationRow: FC<WakeConversationRowProps> = ({
 	row,
@@ -169,6 +178,7 @@ export const WakeConversationRow: FC<WakeConversationRowProps> = ({
 	onEdit,
 	identity,
 }) => {
+	useI18nLocale();
 	const [expanded, setExpanded] = useState(false);
 	const hidden = row.wakes.slice(row.visibleWakes.length);
 	/*
@@ -232,7 +242,9 @@ export const WakeConversationRow: FC<WakeConversationRowProps> = ({
 						   by default, which is this primitive's own rule. */
 						<Disclosure
 							summary={
-								expanded ? "Show fewer" : hiddenWakesLabel(hidden.length)
+								expanded
+									? t("ui.schedules.wake_conversation_row.show_fewer")
+									: hiddenWakesLabel(hidden.length)
 							}
 							onOpenChange={setExpanded}
 							className={cn("pl-4")}
@@ -256,11 +268,15 @@ export const WakeConversationRow: FC<WakeConversationRowProps> = ({
 				<div
 					className={cn("flex shrink-0 items-center gap-0.5", ...ACTION_REVEAL)}
 				>
-					<Tooltip content="Open conversation">
+					<Tooltip
+						content={t("ui.schedules.wake_conversation_row.open_conversation")}
+					>
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							aria-label="Open conversation"
+							aria-label={t(
+								"ui.schedules.wake_conversation_row.open_conversation",
+							)}
 							onClick={() => onOpen(row.sessionId)}
 						>
 							<ArrowUpRight />

@@ -28,6 +28,11 @@
  * over an array; what it never costs is a round trip.
  */
 
+import { useI18nLocale } from "@shared/i18n/use-locale";
+
+// Copy-bearing projections are intentionally recomputed after the locale hook
+// repaints; caching formatted strings would retain the prior language. Network
+// and structural-data caches remain in place.
 import {
 	SESSION_RANK_LABEL,
 	matchesLabel,
@@ -52,7 +57,6 @@ import { teamDisplayName } from "@shared/api/local-operator/team-display";
 import { useAgents } from "@shared/hooks/use-agents";
 import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
-import { t } from "@shared/i18n";
 import {
 	LEGACY_CATALOGUE_PAGE,
 	panelSessionIdOfView,
@@ -65,6 +69,7 @@ import {
 } from "@shared/store/ui-preferences-store";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef } from "react";
+import { t } from "../../../../i18n/messages";
 import type { SessionSearchHit } from "../../../../shared/desktop-session-contract";
 import {
 	type PaletteCatalogueState,
@@ -97,49 +102,63 @@ const BACKEND_SETTINGS_KEY = ["desktop", "settings"] as const;
 const PAGES = [
 	{
 		id: "chat",
-		name: "Chat",
+		get name() {
+			return t("ui.command_palette.use_palette_sources.chat");
+		},
 		path: "/chat",
 		icon: "chat" as const,
 		keywords: ["conversations", "messages", "history", "sessions"],
 	},
 	{
 		id: "agents",
-		name: "My agents",
+		get name() {
+			return t("ui.command_palette.use_palette_sources.my_agents");
+		},
 		path: "/agents",
 		icon: "agents" as const,
 		keywords: ["bots", "assistants", "roster", "agent list"],
 	},
 	{
 		id: "projects",
-		name: "Projects",
+		get name() {
+			return t("ui.command_palette.use_palette_sources.projects");
+		},
 		path: "/projects",
 		icon: "projects" as const,
 		keywords: ["workstreams", "milestones", "tracking", "planning"],
 	},
 	{
 		id: "agent-hub",
-		name: "Agent hub",
+		get name() {
+			return t("ui.command_palette.use_palette_sources.agent_hub");
+		},
 		path: "/agent-hub",
 		icon: "hub" as const,
 		keywords: ["store", "marketplace", "catalog", "discover", "browse agents"],
 	},
 	{
 		id: "schedules",
-		name: "Schedules",
+		get name() {
+			return t("ui.command_palette.use_palette_sources.schedules");
+		},
 		path: "/schedules",
 		icon: "schedules" as const,
 		keywords: ["cron", "recurring", "automation", "jobs", "timer", "daily"],
 	},
 	{
 		id: "browser",
-		name: "Browser",
+		get name() {
+			return t("ui.command_palette.use_palette_sources.browser");
+		},
 		path: "/browser",
 		icon: "browser" as const,
 		keywords: ["web", "sites", "url", "internet"],
 	},
 	{
 		id: "settings",
-		name: "Settings",
+		get name() {
+			return t("ui.command_palette.use_palette_sources.settings");
+		},
 		path: "/settings",
 		icon: "settings" as const,
 		keywords: ["preferences", "config", "options", "configuration"],
@@ -157,7 +176,9 @@ const PAGES = [
  */
 const MESH_PAGE = {
 	id: "mesh",
-	name: "Mesh",
+	get name() {
+		return t("ui.command_palette.use_palette_sources.mesh");
+	},
 	path: "/mesh",
 	icon: "network" as const,
 	keywords: ["networks", "peers", "devices", "relay", "mesh"],
@@ -235,6 +256,7 @@ export function usePaletteItems({
 	hasConversation,
 	isCanvasOpen,
 }: PaletteSourceInput): PaletteSources {
+	useI18nLocale();
 	const { scope, terms } = parsePaletteQuery(query);
 	const wantsChats = scope === null || scope === "chat";
 	const wantsAgents = scope === null || scope === "agent";
@@ -506,7 +528,7 @@ export function usePaletteItems({
 	 * memo would not rebuild when the fact settles.
 	 */
 	const archiveFacts = useCanonicalSessionsStore((state) => state.archiveFacts);
-	const chatItems = useMemo(() => {
+	const chatItems = (() => {
 		if (!wantsChats) return [];
 		const { rows } = searchChats(sessions, terms, hits, {}, archiveView);
 		const byId = new Map((hits ?? []).map((hit) => [hit.id, hit]));
@@ -530,7 +552,9 @@ export function usePaletteItems({
 			const marked = Boolean(hit?.body_match) && !labelMatch;
 			return {
 				...item,
-				hint: marked ? "In conversation" : item.hint,
+				hint: marked
+					? t("ui.command_palette.use_palette_sources.in_conversation")
+					: item.hint,
 				/*
 				 * The backend's tier, which is what makes the store's answer ORDER
 				 * the list: a conversation the store knows by content outranks one
@@ -588,18 +612,7 @@ export function usePaletteItems({
 				archived: recents.archived,
 			} satisfies PaletteItem;
 		});
-	}, [
-		sessions,
-		terms,
-		hits,
-		wantsChats,
-		archiveView,
-		teamLabels,
-		conversationRecents,
-		displayedSessionId,
-		archiveEnabled,
-		archiveFacts,
-	]);
+	})();
 
 	/* -------------------------------- agents -------------------------------- */
 
@@ -625,7 +638,7 @@ export function usePaletteItems({
 			: undefined,
 	);
 
-	const agentItems = useMemo(() => {
+	const agentItems = (() => {
 		if (!wantsAgents) return [];
 		const seen = new Set<string>();
 		const agents: { id: string; name: string; tags?: string[] }[] = [];
@@ -670,7 +683,7 @@ export function usePaletteItems({
 					 * heading is off-screen the moment the list scrolls. "Agent chat" vs
 					 * "Team chat" is the one word that tells the pair apart.
 					 */
-					hint: "Agent chat",
+					hint: t("ui.command_palette.use_palette_sources.agent_chat"),
 					/*
 					 * The glyph is the ENTITY, matching the team row beside it and the sidebar
 					 * these rows stage a draft from (design round 1, D4). The pair under `@` is
@@ -695,7 +708,7 @@ export function usePaletteItems({
 				kind: "agent",
 				group: "agents",
 				name: agent.name,
-				hint: "Agent settings",
+				hint: t("ui.command_palette.use_palette_sources.agent_settings"),
 				icon: "settings",
 				keywords: agent.tags,
 				target: { type: "path", path: `/agents/${agent.id}` },
@@ -704,17 +717,11 @@ export function usePaletteItems({
 		// Definition order is the backend's own (newest first), which is the order
 		// a browse list wants and a stable tie-break a search can rely on.
 		return items.map((item, index) => ({ ...item, order: index }));
-	}, [
-		canStageDraft,
-		roster.data,
-		nameFiltered.data,
-		terms.length,
-		wantsAgents,
-	]);
+	})();
 
 	/* -------------------------------- teams -------------------------------- */
 
-	const teamItems = useMemo(() => {
+	const teamItems = (() => {
 		if (!wantsTeams) return [];
 		/*
 		 * One row per team (issue #849), from the SAME `useTeams` call the chat rows'
@@ -734,7 +741,7 @@ export function usePaletteItems({
 			kind: "team" as const,
 			group: "teams" as const,
 			name: teamDisplayName(team),
-			hint: "Team chat",
+			hint: t("ui.command_palette.use_palette_sources.team_chat"),
 			icon: "team" as const,
 			keywords: [team.name, ...(team.aliases ?? [])],
 			target: {
@@ -745,7 +752,7 @@ export function usePaletteItems({
 			featured: terms.length === 0,
 			order: index,
 		}));
-	}, [canStageDraft, teamNames.data, terms.length, wantsTeams]);
+	})();
 
 	/* ------------------------------- settings ------------------------------- */
 
@@ -756,7 +763,7 @@ export function usePaletteItems({
 		staleTime: 10_000,
 	});
 
-	const settingItems = useMemo(() => {
+	const settingItems = (() => {
 		if (!wantsSettings) return [];
 		return [
 			...buildSettingsSectionItems(DEFAULT_SETTINGS_SECTIONS),
@@ -772,7 +779,7 @@ export function usePaletteItems({
 				(registry.data?.settings ?? []).map(presentSetting),
 			),
 		];
-	}, [registry.data, wantsSettings]);
+	})();
 
 	/* ------------------------------ panels ------------------------------ */
 
@@ -843,14 +850,16 @@ export function usePaletteItems({
 	 */
 	const sessionPanelsAvailable = Boolean(activeSessionId);
 
-	const panelItems = useMemo(() => {
+	const panelItems = (() => {
 		if (!canStageDraft || desktopPlaneRefused) return [];
 		return buildPanelItems([
 			{
 				id: "info",
 				destination: "info",
-				name: "Info",
-				hint: "App, backend and environment",
+				name: t("ui.command_palette.use_palette_sources.info"),
+				hint: t(
+					"ui.command_palette.use_palette_sources.app_backend_and_environment",
+				),
 				icon: "info",
 				keywords: [
 					"about",
@@ -864,8 +873,10 @@ export function usePaletteItems({
 			{
 				id: "usage",
 				destination: "usage",
-				name: "Provider usage",
-				hint: "Credits, limits and spend",
+				name: t("ui.command_palette.use_palette_sources.provider_usage"),
+				hint: t(
+					"ui.command_palette.use_palette_sources.credits_limits_and_spend",
+				),
 				icon: "usage",
 				keywords: [
 					"usage",
@@ -883,8 +894,10 @@ export function usePaletteItems({
 						{
 							id: "session",
 							destination: "session.diagnostics",
-							name: "Session",
-							hint: "Diagnostics for this conversation",
+							name: t("ui.command_palette.use_palette_sources.session"),
+							hint: t(
+								"ui.command_palette.use_palette_sources.diagnostics_for_this_conversation",
+							),
 							icon: "session" as const,
 							keywords: [
 								"diagnostics",
@@ -903,8 +916,8 @@ export function usePaletteItems({
 			{
 				id: "analytics",
 				destination: "analytics",
-				name: "Analytics",
-				hint: "Usage over time",
+				name: t("ui.command_palette.use_palette_sources.analytics"),
+				hint: t("ui.command_palette.use_palette_sources.usage_over_time"),
 				icon: "analytics" as const,
 				keywords: [
 					"usage",
@@ -917,45 +930,26 @@ export function usePaletteItems({
 				],
 			},
 		]);
-	}, [
-		canStageDraft,
-		desktopPlaneRefused,
-		paneCanPresent,
-		sessionPanelsAvailable,
-	]);
+	})();
 
 	/* ------------------------ destinations and actions ---------------------- */
 
-	const items = useMemo(
-		() => [
-			...buildNavigationItems(pages),
-			...buildActionItems(
-				buildPaletteActions({
-					isOnChatPage,
-					hasConversation,
-					isCanvasOpen,
-					canStageDraft,
-				}),
-			),
-			...panelItems,
-			...settingItems,
-			...agentItems,
-			...teamItems,
-			...chatItems,
-		],
-		[
-			isOnChatPage,
-			hasConversation,
-			isCanvasOpen,
-			canStageDraft,
-			pages,
-			panelItems,
-			settingItems,
-			agentItems,
-			teamItems,
-			chatItems,
-		],
-	);
+	const items = (() => [
+		...buildNavigationItems(pages),
+		...buildActionItems(
+			buildPaletteActions({
+				isOnChatPage,
+				hasConversation,
+				isCanvasOpen,
+				canStageDraft,
+			}),
+		),
+		...panelItems,
+		...settingItems,
+		...agentItems,
+		...teamItems,
+		...chatItems,
+	])();
 
 	return {
 		items,
@@ -1019,10 +1013,10 @@ function buildPaletteActions({
 			? [
 					{
 						id: "new-chat",
-						name: "New chat",
+						name: t("ui.command_palette.use_palette_sources.new_chat"),
 						icon: "new-chat" as const,
 						keywords: ["start chat", "compose", "draft", "new conversation"],
-						verb: "Start",
+						verb: t("ui.command_palette.use_palette_sources.start"),
 						command: "new-chat" as const,
 						featured: true,
 					},
@@ -1038,7 +1032,9 @@ function buildPaletteActions({
 		 */
 		{
 			id: "connect-provider",
-			name: "Connect a model provider",
+			name: t(
+				"ui.command_palette.use_palette_sources.connect_a_model_provider",
+			),
 			icon: "providers" as const,
 			keywords: [
 				"sign in",
@@ -1050,7 +1046,7 @@ function buildPaletteActions({
 				"radient",
 				"model",
 			],
-			verb: "Connect",
+			verb: t("ui.command_palette.use_palette_sources.connect"),
 			command: "connect-provider" as const,
 			featured: true,
 		},
@@ -1073,15 +1069,15 @@ function buildPaletteActions({
 				"translation",
 				"i18n",
 			],
-			verb: "Change",
+			verb: t("ui.command_palette.use_palette_sources.change"),
 			command: "change-interface-language" as const,
 		},
 		{
 			id: "create-agent",
-			name: "Create agent",
+			name: t("ui.command_palette.use_palette_sources.create_agent"),
 			icon: "plus" as const,
 			keywords: ["new agent", "add agent", "make agent"],
-			verb: "Create",
+			verb: t("ui.command_palette.use_palette_sources.create"),
 			command: "create-agent" as const,
 			featured: true,
 		},
@@ -1089,12 +1085,16 @@ function buildPaletteActions({
 			? [
 					{
 						id: "toggle-canvas",
-						name: isCanvasOpen ? "Close canvas" : "Open canvas",
+						name: isCanvasOpen
+							? t("ui.command_palette.use_palette_sources.close_canvas")
+							: t("ui.command_palette.use_palette_sources.open_canvas"),
 						icon: isCanvasOpen
 							? ("canvas-close" as const)
 							: ("canvas-open" as const),
 						keywords: ["files", "workspace", "panel", "editor", "artifacts"],
-						verb: isCanvasOpen ? "Close" : "Open",
+						verb: isCanvasOpen
+							? t("ui.command_palette.use_palette_sources.close")
+							: t("ui.command_palette.use_palette_sources.open"),
 						command: "toggle-canvas" as const,
 						featured: true,
 					},
@@ -1104,7 +1104,9 @@ function buildPaletteActions({
 			? [
 					{
 						id: "clear-conversation",
-						name: "Clear conversation",
+						name: t(
+							"ui.command_palette.use_palette_sources.clear_conversation",
+						),
 						icon: "trash" as const,
 						keywords: [
 							"delete chat",
@@ -1113,7 +1115,7 @@ function buildPaletteActions({
 							"erase",
 							"clear history",
 						],
-						verb: "Clear",
+						verb: t("ui.command_palette.use_palette_sources.clear"),
 						command: "clear-conversation" as const,
 						destructive: true,
 						featured: true,

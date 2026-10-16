@@ -57,6 +57,7 @@ const bundle = await build({
 			export * from "./src/renderer/src/features/mesh/mesh-drop";
 			export * from "./src/renderer/src/features/mesh/mesh-drag";
 			export * from "./src/renderer/src/features/mesh/mesh-approvals";
+ export { t, setLocale, registerCatalogue, clearRegisteredCatalogues } from "./src/i18n";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -101,6 +102,8 @@ const contractBundle = await build({
 	conditions: ["import"],
 	write: false,
 });
+
+mesh.setLocale("en");
 
 const contractRuntime = await import(
 	`data:text/javascript;base64,${Buffer.from(contractBundle.outputFiles[0].text).toString("base64")}`
@@ -1347,6 +1350,144 @@ test("an approval read is normalised, never cast: unusable rows drop, every fiel
 	assert.deepEqual(approvalRows(null), []);
 });
 
+test("credential intent consumes authored disclosure, never generic onboarding authority", () => {
+	const raw = approvalCapture({
+		what: {
+			credential_inheritance: { opaque: "signed server-owned scope" },
+			anchor: { key_id: "op_fixture" },
+		},
+		summary: "Let a worker borrow account test-account until revoked.",
+		details: [
+			"Permission: until revoked",
+			"Request window is not permission expiry",
+			"Then run: server-authored apply command",
+		],
+		can_approve_here: false,
+		approve_remedy: "Use the server-authored approval command on this machine.",
+	});
+	const [row] = mesh.approvalRows([raw]);
+	assert.equal(row.kind, "credential");
+	assert.equal(mesh.approvalSummary(row), raw.summary);
+	assert.equal(mesh.approvalHead(row), raw.summary);
+	assert.deepEqual(row.details, raw.details);
+	assert.notEqual(
+		row.details,
+		raw.details,
+		"the boundary snapshots the disclosure array",
+	);
+	assert.equal(row.approveRemedy, raw.approve_remedy);
+	assert.deepEqual(
+		mesh.approvalScopeEntries(row),
+		[],
+		"signer anchor is not an onboarding grant",
+	);
+	assert.equal(mesh.approvalWhereLabel(row), null);
+	assert.equal(mesh.approvalHostKeyLabel(row), null);
+	assert.equal(mesh.canApproveApproval(row), false);
+	assert.equal(mesh.canDenyApproval(row.state), true);
+	assert.equal(
+		mesh.canApproveApproval({ ...row, canApproveHere: true }),
+		false,
+		"true is not a new signing capability",
+	);
+});
+
+test("malformed credential extras stay opaque and cannot regain Approve", () => {
+	for (const intent of [null, [], false, "opaque", {}]) {
+		for (const flag of [undefined, null, false, true, "false", 1, [], {}]) {
+			const [row] = mesh.approvalRows([
+				approvalCapture({
+					what: { credential_inheritance: intent },
+					summary: { html: "not text" },
+					details: ["one line", { omitted: "not a complete disclosure" }],
+					can_approve_here: flag,
+					approve_remedy: ["not a command string"],
+				}),
+			]);
+			assert.equal(row.kind, "credential");
+			assert.equal(mesh.canApproveApproval(row), false);
+			assert.equal(row.summary, undefined);
+			assert.equal(
+				row.details,
+				undefined,
+				"do not silently remove a security disclosure line",
+			);
+			assert.equal(row.approveRemedy, undefined);
+			assert.equal(mesh.approvalHead(row), "Credential access request");
+		}
+	}
+	const [plain] = mesh.approvalRows([
+		approvalCapture({
+			what: { credential_inheritance: {} },
+			summary: "<img src=x onerror=alert(1)>",
+			details: ["<script>not executable</script>"],
+		}),
+	]);
+	assert.equal(
+		plain.summary,
+		"<img src=x onerror=alert(1)>",
+		"backend text is not HTML to interpret",
+	);
+	assert.deepEqual(plain.details, ["<script>not executable</script>"]);
+});
+
+test("optional restrictions are generic and unknown explicit kinds cannot sign", () => {
+	const [legacy] = mesh.approvalRows([approvalCapture()]);
+	assert.equal(mesh.canApproveApproval(legacy), true);
+	for (const kind of [undefined, "device_onboard", "local_authority"]) {
+		const raw = approvalCapture({
+			can_approve_here: false,
+			approve_remedy: "Use the supported typed workflow.",
+		});
+		if (kind !== undefined) raw.kind = kind;
+		const [row] = mesh.approvalRows([raw]);
+		assert.equal(mesh.canApproveApproval(row), false);
+		assert.equal(row.approveRemedy, raw.approve_remedy);
+		assert.equal(mesh.canDenyApproval(row.state), true);
+	}
+	for (const kind of ["future_network_intent", "", null, [], {}]) {
+		const [row] = mesh.approvalRows([
+			approvalCapture({
+				kind,
+				can_approve_here: true,
+				summary: "Backend-only intent",
+			}),
+		]);
+		assert.equal(row.kind, "unknown");
+		assert.equal(mesh.canApproveApproval(row), false);
+		assert.deepEqual(mesh.approvalScopeEntries(row), []);
+	}
+	for (const flag of [null, "false", 0, [], {}]) {
+		const [row] = mesh.approvalRows([
+			approvalCapture({ can_approve_here: flag }),
+		]);
+		assert.equal(mesh.canApproveApproval(row), false);
+	}
+});
+
+test("credential states preserve requested-only counts and ordinary Deny transitions", () => {
+	const states = ["requested", "approved", "connected", "denied", "expired"];
+	const rows = mesh.approvalRows(
+		states.map((state, index) =>
+			approvalCapture({
+				approval_id: `ap_credential${index}`,
+				state,
+				what: { credential_inheritance: {} },
+				can_approve_here: false,
+			}),
+		),
+	);
+	assert.equal(mesh.waitingApprovalCount(rows), 1);
+	assert.deepEqual(
+		rows.map((row) => mesh.isWaitingApproval(row.state)),
+		[true, false, false, false, false],
+	);
+	assert.deepEqual(
+		rows.map((row) => mesh.canDenyApproval(row.state)),
+		[true, true, false, false, false],
+	);
+});
+
 test("the wait count names `requested` alone; the store's open set is unchanged", () => {
 	const {
 		approvalRows,
@@ -1414,7 +1555,7 @@ test("the wait count names `requested` alone; the store's open set is unchanged"
 test("the decision buttons follow the store's own transition matrix", () => {
 	const { canApproveApproval, canDenyApproval } = mesh;
 	assert.equal(
-		canApproveApproval("requested"),
+		canApproveApproval(mesh.approvalRows([approvalCapture()])[0]),
 		true,
 		"approve is the answer to `requested` alone",
 	);
@@ -1426,7 +1567,11 @@ test("the decision buttons follow the store's own transition matrix", () => {
 		"denied",
 		"expired",
 	]) {
-		assert.equal(canApproveApproval(state), false, state);
+		assert.equal(
+			canApproveApproval(mesh.approvalRows([approvalCapture({ state })])[0]),
+			false,
+			state,
+		);
 	}
 	for (const state of ["requested", "approved", "connecting", "failed"]) {
 		assert.equal(canDenyApproval(state), true, state);
@@ -1704,7 +1849,7 @@ test("the Mesh rail row is gated on MEMBERSHIP, and the route on the capability"
 	);
 	assert.match(
 		nav,
-		/\.\.\.\(meshMembership === "member"\s*\?\s*\[\s*\{\s*icon: Network,\s*label: "Mesh",\s*path: "\/mesh",/,
+		/\.\.\.\(meshMembership === "member"\s*\?\s*\[\s*\{\s*icon: Network,\s*label: t\("ui\.shell\.sidebar_navigation\.mesh"\),\s*path: "\/mesh",/,
 		"a row appears only for a device KNOWN to be in a mesh - not for an unknown or empty answer",
 	);
 	assert.doesNotMatch(
@@ -1730,7 +1875,7 @@ test("the palette's destinations are the rail's destinations (R1-3)", () => {
 	);
 	assert.match(
 		palette,
-		/id: "mesh",\s*\n\s*name: "Mesh",\s*\n\s*path: "\/mesh",/,
+		/id: "mesh",\s*get name\(\) \{\s*return t\("ui\.command_palette\.use_palette_sources\.mesh"\);\s*\},\s*path: "\/mesh",/,
 		"typing `mesh` finds the destination the rail draws",
 	);
 	/*
@@ -2166,7 +2311,7 @@ test("the Mesh rail badge rides an approvals read that dials nothing, and only w
 	assert.match(nav, /attentionTag: "nav-mesh-badge",/);
 	assert.match(
 		nav,
-		/attentionName: \(count: number\) => `Mesh, \$\{count\} waiting`,/,
+		/attentionName: \(count: number\) =>\s*t\("ui\.shell\.sidebar_navigation\.mesh_waiting",\s*\{\s*count,\s*countText: String\(count\),?\s*\}\),/,
 	);
 });
 
@@ -2268,7 +2413,7 @@ test("a refused decision renders its sentence, and the tray splits waiting from 
 	);
 	assert.match(
 		tray,
-		/\{waiting\.length === 1 \? "1 waiting" : `\$\{waiting\.length\} waiting`\}/,
+		/t\("ui\.mesh\.mesh_approvals_tray\.waiting_count",\s*\{\s*count: waiting\.length,?\s*\}\)/,
 		"the header counts the waiting set - the same number the rail badge wears",
 	);
 	/*
@@ -2330,7 +2475,7 @@ test("a refused decision renders its sentence, and the tray splits waiting from 
 	);
 	assert.match(
 		tray,
-		/<span className="text-danger">\{failedCount\} failed<\/span>/,
+		/<span className="text-danger">\s*\{t\("ui\.mesh\.mesh_approvals_tray\.failed_count",\s*\{\s*count: failedCount,?\s*\}\)\}/,
 		"and it is stated in words beside the dot, in the row state's own ink",
 	);
 	/*
@@ -2342,12 +2487,12 @@ test("a refused decision renders its sentence, and the tray splits waiting from 
 	 */
 	assert.match(
 		tray,
-		/className=\{cn\(waiting\.length > 0 && "border-hairline border-t pt-3"\)\}/,
+		/className=\{cn\(\s*waiting\.length > 0 && "border-hairline border-t pt-3",?\s*\)\}/,
 		"the settled section draws its hairline only when a waiting card is above it",
 	);
 	assert.match(
 		tray,
-		/\t+\t+\t+\t\tSettled approvals\n/,
+		/t\("ui\.mesh\.mesh_approvals_tray\.settled_approvals"\)/,
 		"the section is named for what it holds — 'Records' nested in the prompts' panel was the operator's complaint",
 	);
 	assert.match(
@@ -2457,8 +2602,14 @@ test("a refused decision renders its sentence, and the tray splits waiting from 
 	 * contradiction the operator reported was exactly `Approved` beside `Deny`.
 	 */
 	assert.match(tray, /const waiting = isWaitingApproval\(row\.state\);/);
-	assert.match(tray, /\{waiting \? "Deny" : recordActionLabel\(row\.state\)\}/);
-	assert.match(tray, /return state === "failed" \? "Abandon" : "Stop";/);
+	assert.match(
+		tray,
+		/\{waiting\s*\? t\("ui\.mesh\.mesh_approvals_tray\.deny"\)\s*: recordActionLabel\(row\.state\)\}/,
+	);
+	assert.match(
+		tray,
+		/return state === "failed"\s*\? t\("ui\.mesh\.mesh_approvals_tray\.abandon"\)\s*: t\("ui\.mesh\.mesh_approvals_tray\.stop"\);/,
+	);
 	/*
 	 * AND THE PAGE ACTUALLY PASSES IT (agent review round 4, R4-4): the tray pin
 	 * above proves the clause CAN name the network, while dropping the prop at the
@@ -3467,7 +3618,7 @@ test("the one gesture the protocol refuses is not a drag, and every drag has a m
 	);
 	// The affordance that DOES admit a device, where a reader meets it.
 	const card = source("src/renderer/src/features/mesh/mesh-card.tsx");
-	assert.match(card, /Invite to a network/);
+	assert.match(card, /ui\.mesh\.mesh_actions\.invite_to_a_network/);
 	// And every drag outcome is reachable from a menu (the plan's accessibility rule).
 	assert.match(card, /export const SessionMoveMenu/);
 	assert.match(
@@ -3500,7 +3651,7 @@ test("a refusal is rendered from the receipt rather than paraphrased", () => {
 		/\{refusal\?\.code\}/,
 		"with its code beside it, so a support conversation and a log agree",
 	);
-	assert.match(actions, /Wait for the turn to finish/);
+	assert.match(actions, /ui\.mesh\.mesh_actions\.wait_for_the_turn_to_finish/);
 	/*
 	 * THE UNDO'S LABEL IS THE PLAN'S OWN VERB (agent review round 1, F3 / UX U4): the button
 	 * said "Erase the copy" while the request it sent was a recall that leaves this device
@@ -3622,7 +3773,7 @@ test("the cap's two chips stay legible, and the title's head survives the trunca
 	);
 	assert.match(
 		node,
-		/aria-label=\{`Show all \$\{sessionTotal\} conversations`\}/,
+		/aria-label=\{t\("ui\.mesh\.mesh_node\.show_all_conversations",\s*\{\s*count: sessionTotal,?\s*\}\)\}/,
 		"the affordance moves to the accessible name, which costs no width",
 	);
 	/*
@@ -4146,7 +4297,7 @@ test("the panel lists the addresses and labels the rotation stamp (D5, D4)", () 
 	 */
 	assert.match(
 		panel,
-		/Network addresses[\s\S]*?font-mono text-body-sm text-ink[\s\S]*?advertised/,
+		/ui\.mesh\.mesh_card\.network_addresses[\s\S]*?font-mono text-body-sm text-ink[\s\S]*?ui\.mesh\.mesh_card\.advertised/,
 		"each published address is its own row, in the machine's own voice, and the side that published it is named",
 	);
 	assert.doesNotMatch(
@@ -4163,7 +4314,7 @@ test("the panel lists the addresses and labels the rotation stamp (D5, D4)", () 
 	 */
 	assert.match(
 		panel,
-		/Last status frame[\s\S]*?device\.lastSeenAt === null[\s\S]*?"never"[\s\S]*?agoSentence\(/,
+		/ui\.mesh\.mesh_card\.last_status_frame[\s\S]*?device\.lastSeenAt === null[\s\S]*?ui\.mesh\.mesh_card\.never[\s\S]*?agoSentence\(/,
 		"the section names the stamp and prints `never` for a null rather than 1970",
 	);
 	assert.doesNotMatch(
@@ -4171,4 +4322,88 @@ test("the panel lists the addresses and labels the rotation stamp (D5, D4)", () 
 		/seen \$\{|\bseen just now\b/,
 		"and no surface says `seen …` any more: one stamp, one noun",
 	);
+});
+
+// Source pins follow typed messages; their catalogue contract must still say the same English.
+// E-M1..3 preserve src/renderer/src/features/mesh/mesh-node.tsx at baseline
+// 65708b16a40141a40ddb3a4f12dc4943e2fa67e6, which used these exact fragments:
+// · {device.memberships.length} networks (behind the existing >1 guard)
+// title={`Showing ${sessions.shown.length} of ${sessionTotal} conversations`}
+// aria-label={`Show all ${sessionTotal} conversations`}
+// This extraction is not an editorial grammar fix. Identical English ICU arms
+// must not restrict another locale's proper singular/full CLDR categories.
+test("mesh extraction keeps pinned labels and source-language plural fallback", () => {
+	const en = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.mesh.json", "utf8"),
+	);
+	assert.equal(
+		en["ui.mesh.mesh_node.memberships"],
+		"· {count, plural, one {# networks} other {# networks}}",
+	);
+	assert.equal(
+		en["ui.mesh.mesh_node.shown_conversations"],
+		"Showing {shown, number} of {total, plural, one {# conversations} other {# conversations}}",
+	);
+	assert.equal(
+		en["ui.mesh.mesh_node.show_all_conversations"],
+		"Show all {count, plural, one {# conversations} other {# conversations}}",
+	);
+	assert.equal(
+		en["ui.mesh.mesh_actions.invite_to_a_network"],
+		"Invite to a network…",
+	);
+	assert.equal(
+		en["ui.mesh.mesh_actions.wait_for_the_turn_to_finish"],
+		"Wait for the turn to finish",
+	);
+	assert.equal(en["ui.mesh.mesh_card.network_addresses"], "Network addresses");
+	assert.equal(en["ui.mesh.mesh_card.advertised"], "advertised");
+	assert.equal(en["ui.mesh.mesh_card.last_status_frame"], "Last status frame");
+	assert.equal(en["ui.mesh.mesh_card.never"], "never");
+	assert.equal(en["ui.mesh.mesh_approvals_tray.deny"], "Deny");
+	assert.equal(en["ui.mesh.mesh_approvals_tray.abandon"], "Abandon");
+	assert.equal(en["ui.mesh.mesh_approvals_tray.stop"], "Stop");
+	assert.equal(
+		en["ui.mesh.mesh_approvals_tray.settled_approvals"],
+		"Settled approvals",
+	);
+	try {
+		mesh.registerCatalogue("fr", {
+			"ui.mesh.mesh_reach.no_answer": "Fixture no answer",
+		});
+		mesh.setLocale("fr");
+		assert.equal(mesh.reachWords("unanswered"), "Fixture no answer");
+		for (const count of [0, 1, 21]) {
+			assert.equal(
+				mesh.t("ui.mesh.mesh_graph.network_count", { count }),
+				`${count} ${count === 1 ? "network" : "networks"}`,
+			);
+			assert.equal(
+				mesh.t("ui.mesh.mesh_approvals_tray.waiting_count", { count }),
+				`${count} waiting`,
+			);
+			assert.equal(
+				mesh.t("ui.mesh.mesh_node.show_all_conversations", { count }),
+				`Show all ${count} conversations`,
+			);
+			assert.equal(
+				mesh.t("ui.mesh.mesh_node.shown_conversations", {
+					shown: count,
+					total: count,
+				}),
+				`Showing ${count} of ${count} conversations`,
+			);
+			assert.equal(
+				mesh.t("ui.mesh.mesh_node.memberships", { count }),
+				`· ${count} networks`,
+			);
+			assert.equal(
+				mesh.t("ui.mesh.mesh_graph.device_count", { count }),
+				`${count} ${count === 1 ? "device" : "devices"}`,
+			);
+		}
+	} finally {
+		mesh.clearRegisteredCatalogues();
+		mesh.setLocale("en");
+	}
 });

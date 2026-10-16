@@ -53,6 +53,7 @@ import {
 	desktopResult,
 } from "@shared/api/local-operator/desktop-api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { t } from "../../../../i18n/messages";
 import { meshKeys } from "./mesh-store";
 import { deviceLabel, flag, strings, text, time } from "./mesh-types";
 
@@ -101,7 +102,13 @@ export type MeshApprovalRow = {
 	/** Verbatim from the store: `requested`/`approved`/`connecting`/`connected`/`denied`/`expired`/`failed`. */
 	state: string;
 	/** Which where-block this row carries — the record's own kind is the difference. */
-	kind: "device" | "machine";
+	kind: "device" | "machine" | "credential" | "unknown";
+	/** Authored by the backend from the signed request, never reconstructed here. */
+	summary?: string;
+	details?: string[];
+	/** A restriction only: true is NOT authority to sign a new request kind. */
+	canApproveHere?: boolean;
+	approveRemedy?: string;
 	where: MeshApprovalWhere;
 	what: MeshApprovalScopes;
 	requestedBy: { surface: string; sessionId: string; deviceId: string };
@@ -160,8 +167,15 @@ export function waitingApprovalCount(rows: readonly MeshApprovalRow[]): number {
 }
 
 /** `approve` is offered on `requested` alone: every other open state is past the decision. */
-export function canApproveApproval(state: string): boolean {
-	return state === "requested";
+export function canApproveApproval(row: MeshApprovalRow): boolean {
+	// Legacy device/machine cards retain their existing signing route. Neither
+	// an optimistic optional field nor an unknown/new intent enables that route.
+	// Inheritance and future typed approvals need their OWN supported consumer.
+	return (
+		row.state === "requested" &&
+		row.canApproveHere !== false &&
+		(row.kind === "device" || row.kind === "machine")
+	);
 }
 
 /**
@@ -178,19 +192,19 @@ export function canDenyApproval(state: string): boolean {
 export function approvalStateLabel(state: string): string {
 	switch (state) {
 		case "requested":
-			return "Waiting for you";
+			return t("ui.mesh.mesh_approvals.waiting_for_you");
 		case "approved":
-			return "Approved";
+			return t("ui.mesh.mesh_approvals.approved");
 		case "connecting":
-			return "Connecting…";
+			return t("ui.mesh.mesh_approvals.connecting");
 		case "connected":
-			return "Connected";
+			return t("ui.mesh.mesh_approvals.connected");
 		case "denied":
-			return "Denied";
+			return t("ui.mesh.mesh_approvals.denied");
 		case "expired":
-			return "Expired";
+			return t("ui.mesh.mesh_approvals.expired");
 		case "failed":
-			return "Failed";
+			return t("ui.mesh.mesh_approvals.failed");
 		default:
 			return state;
 	}
@@ -254,13 +268,44 @@ export function approvalRows(value: unknown): MeshApprovalRow[] {
 		 * neither reads as `device` — the kind v1 mints — and renders its empty
 		 * where-fields as nothing rather than inventing one.
 		 */
+		// #2435 is a signed intent INSIDE device_onboard, not a new where-block.
+		// Presence is enough to close the generic signing path even if the intent
+		// is malformed; only the backend can interpret and disclose signed scope.
+		const credential =
+			isRecord(raw.what) &&
+			Object.prototype.hasOwnProperty.call(raw.what, "credential_inheritance");
+		const explicitKind = Object.prototype.hasOwnProperty.call(raw, "kind")
+			? text(raw.kind)
+			: undefined;
 		const kind: MeshApprovalRow["kind"] =
-			!isRecord(raw.device) && isRecord(raw.machine) ? "machine" : "device";
+			credential || explicitKind === "credential_inheritance"
+				? "credential"
+				: explicitKind !== undefined &&
+						!["device_onboard", "local_authority"].includes(explicitKind)
+					? "unknown"
+					: !isRecord(raw.device) && isRecord(raw.machine)
+						? "machine"
+						: "device";
 		const requestedBy = isRecord(raw.requested_by) ? raw.requested_by : {};
 		rows.push({
 			approvalId,
 			state,
 			kind,
+			summary: text(raw.summary) || undefined,
+			// Do not silently omit a malformed line from a security disclosure and
+			// make the remaining text look complete. React renders plain strings.
+			details:
+				Array.isArray(raw.details) &&
+				raw.details.every((line) => typeof line === "string")
+					? raw.details.slice()
+					: undefined,
+			canApproveHere: Object.prototype.hasOwnProperty.call(
+				raw,
+				"can_approve_here",
+			)
+				? raw.can_approve_here === true
+				: undefined,
+			approveRemedy: text(raw.approve_remedy) || undefined,
 			where: where(kind === "machine" ? raw.machine : raw.device),
 			what: scopes(raw.what),
 			requestedBy: {
@@ -283,7 +328,7 @@ export function approvalRows(value: unknown): MeshApprovalRow[] {
  * reader's own machine by definition.
  */
 export function approvalSubject(row: MeshApprovalRow): string {
-	if (row.kind === "machine") return "this machine";
+	if (row.kind === "machine") return t("ui.mesh.mesh_approvals.this_machine");
 	return deviceLabel({ device_id: row.where.deviceId, name: row.where.name });
 }
 
@@ -315,12 +360,25 @@ export function approvalSummary(
 	row: MeshApprovalRow,
 	networkNames?: ReadonlyMap<string, string>,
 ): string {
+	if (
+		row.kind === "credential" ||
+		row.kind === "unknown" ||
+		row.canApproveHere === false
+	) {
+		if (row.summary) return row.summary;
+		if (row.kind === "credential" || row.kind === "unknown")
+			return approvalHead(row);
+	}
 	const head = approvalHead(row);
 	const clauses = approvalScopeEntries(row, networkNames).map(
 		(entry) => entry.clause,
 	);
-	if (!clauses.length) return `${head}.`;
-	return `${head}: ${joinClauses(clauses)}.`;
+	if (!clauses.length)
+		return t("ui.mesh.mesh_approvals.approval_title", { head });
+	return t("ui.mesh.mesh_approvals.approval_title_with_clauses", {
+		head,
+		clauses: joinClauses(clauses),
+	});
 }
 
 /**
@@ -333,9 +391,16 @@ export function approvalSummary(
  * Details disclosure on every row).
  */
 export function approvalHead(row: MeshApprovalRow): string {
+	if (row.kind === "credential")
+		return row.summary || t("ui.mesh.approval.credential_title");
+	if (row.kind === "unknown")
+		return row.summary || t("ui.mesh.approval.unknown_title");
+	if (row.canApproveHere === false && row.summary) return row.summary;
 	return row.kind === "machine"
-		? "Set up operator authority on this machine"
-		: `Onboard ${approvalSubject(row)}`;
+		? t("ui.mesh.mesh_approvals.set_up_operator_authority_on_this_machine")
+		: t("ui.mesh.mesh_approvals.onboard_subject", {
+				subject: approvalSubject(row),
+			});
 }
 
 /**
@@ -352,7 +417,10 @@ export function approvalHead(row: MeshApprovalRow): string {
  */
 function joinClauses(clauses: readonly string[]): string {
 	if (clauses.length === 1) return clauses[0];
-	return `${clauses.slice(0, -1).join(", ")}; ${clauses[clauses.length - 1]}`;
+	return t("ui.mesh.mesh_approvals.join_clauses", {
+		clauses: clauses.slice(0, -1).join(", "),
+		last: clauses[clauses.length - 1],
+	});
 }
 
 /**
@@ -362,10 +430,11 @@ function joinClauses(clauses: readonly string[]): string {
  * returns `null` so the surface hides the line rather than drawing "via ".
  */
 export function approvalWhereLabel(row: MeshApprovalRow): string | null {
+	if (row.kind === "credential" || row.kind === "unknown") return null;
 	const { user, host, transport, name } = row.where;
 	const parts = [
 		host ? (user ? `${user}@${host}` : host) : "",
-		transport ? `via ${transport}` : "",
+		transport ? t("ui.mesh.mesh_approvals.via_transport", { transport }) : "",
 		// The CLI's own `(name)` clause, minus the case where the name IS the host: two
 		// identical words read as a stutter, not as information.
 		name && name !== host ? `(${name})` : "",
@@ -375,6 +444,7 @@ export function approvalWhereLabel(row: MeshApprovalRow): string | null {
 
 /** The host-key fingerprint, when the record carries one — its own line, monospace. */
 export function approvalHostKeyLabel(row: MeshApprovalRow): string | null {
+	if (row.kind === "credential" || row.kind === "unknown") return null;
 	return row.where.hostKeyFp || null;
 }
 
@@ -387,9 +457,15 @@ export function approvalRequesterLabel(row: MeshApprovalRow): string | null {
 	const { surface, sessionId } = row.requestedBy;
 	const parts = [
 		surface || "",
-		sessionId ? `session ${sessionId.slice(-6)}` : "",
+		sessionId
+			? t("ui.mesh.mesh_approvals.session_suffix", {
+					suffix: sessionId.slice(-6),
+				})
+			: "",
 	].filter(Boolean);
-	return parts.length ? `asked by ${parts.join(" · ")}` : null;
+	return parts.length
+		? t("ui.mesh.mesh_approvals.asked_by", { requester: parts.join(" · ") })
+		: null;
 }
 
 /**
@@ -423,6 +499,9 @@ export function approvalScopeEntries(
 	row: MeshApprovalRow,
 	networkNames?: ReadonlyMap<string, string>,
 ): MeshApprovalScopeEntry[] {
+	// The inheritance anchor identifies the signer, not an onboarding grant.
+	// Never reinterpret opaque signed intent as generic install/anchor scopes.
+	if (row.kind === "credential" || row.kind === "unknown") return [];
 	const { connect, install, anchor, networkId, role, unattended, grants } =
 		row.what;
 	const entries: MeshApprovalScopeEntry[] = [];
@@ -430,27 +509,33 @@ export function approvalScopeEntries(
 		entries.push({
 			term: "connect",
 			clause: row.where.transport
-				? `connect over ${row.where.transport}`
-				: "connect to it",
+				? t("ui.mesh.mesh_approvals.connect_over", {
+						transport: row.where.transport,
+					})
+				: t("ui.mesh.mesh_approvals.connect_to_it"),
 			consequence: row.where.transport
-				? `this machine may connect to it over ${row.where.transport}`
-				: "this machine may connect to it",
+				? t("ui.mesh.mesh_approvals.may_connect_over", {
+						transport: row.where.transport,
+					})
+				: t("ui.mesh.mesh_approvals.this_machine_may_connect_to_it"),
 		});
 	if (install)
 		entries.push({
 			term: "install",
 			clause:
 				row.kind === "machine"
-					? "install Local Operator"
-					: "install Local Operator there",
+					? t("ui.mesh.mesh_approvals.install_local_operator")
+					: t("ui.mesh.mesh_approvals.install_local_operator_there"),
 			consequence:
 				row.kind === "machine"
-					? "Local Operator is installed on this machine"
-					: "Local Operator is installed on it",
+					? t(
+							"ui.mesh.mesh_approvals.local_operator_is_installed_on_this_machine",
+						)
+					: t("ui.mesh.mesh_approvals.local_operator_is_installed_on_it"),
 		});
 	if (anchor)
 		entries.push({
-			term: "install operator anchor",
+			term: t("ui.mesh.mesh_approvals.install_operator_anchor"),
 			/*
 			 * THE DIRECTION MATTERS, AND THIS SAID IT BACKWARDS ONCE (agent review round 4,
 			 * R4-1). A remote anchor is PUBLIC data — the core's own copy for a verify-only
@@ -459,9 +544,12 @@ export function approvalScopeEntries(
 			 * it never signs. A gloss saying the remote is "trusted to sign as you" states
 			 * the inverse of the authority at the exact moment the reader consents to it.
 			 */
-			clause: "check approvals signed on your machines",
-			consequence:
-				"that device can check approvals signed on your machines; nothing there can sign",
+			clause: t(
+				"ui.mesh.mesh_approvals.check_approvals_signed_on_your_machines",
+			),
+			consequence: t(
+				"ui.mesh.mesh_approvals.that_device_can_check_approvals_signed_on",
+			),
 		});
 	if (networkId) {
 		/*
@@ -476,16 +564,22 @@ export function approvalScopeEntries(
 		 * id is better than a blank.
 		 */
 		const named = networkNames?.get(networkId);
-		const label = `join ${named || networkId} as ${role || "?"}`;
+		const label = t("ui.mesh.mesh_approvals.join_network", {
+			network: named || networkId,
+			role: role || "?",
+		});
 		entries.push({
 			term: label,
 			clause: label,
-			consequence: `it joins ${named || networkId} as ${role || "?"}`,
+			consequence: t("ui.mesh.mesh_approvals.joins_network", {
+				network: named || networkId,
+				role: role || "?",
+			}),
 		});
 	}
 	if (unattended)
 		entries.push({
-			term: "trust unattended sessions",
+			term: t("ui.mesh.mesh_approvals.trust_unattended_sessions"),
 			/*
 			 * THE CONSEQUENCE AND THE RIGHT PARTY (UX round 2, U8; agent review round 4,
 			 * R4-2). `onboard.py::step_grants` is explicit - "what the node lets THIS
@@ -494,20 +588,28 @@ export function approvalScopeEntries(
 			 * `CAPABILITY_WORDS["unattended"]` reads "start sessions here without
 			 * approval prompts". The prompt that stops being asked is the node's own.
 			 */
-			clause: "run sessions there without an approval prompt",
-			consequence:
-				"sessions you start on that device run without an approval prompt there",
+			clause: t(
+				"ui.mesh.mesh_approvals.run_sessions_there_without_an_approval_prompt",
+			),
+			consequence: t(
+				"ui.mesh.mesh_approvals.sessions_you_start_on_that_device_run",
+			),
 		});
 	/* The clause and the consequence must name the capability the same way as
 		   the term, or one card states one capability under two names (R5-1's
 		   `grant unattended`). */
 	for (const grant of distinctGrants(grants, unattended)) {
-		const phrase = GRANT_PHRASES[grant];
+		const phrase = grantPhrases()[grant];
 		entries.push({
-			term: phrase?.term ?? `grant ${grant}`,
-			clause: GRANT_CLAUSES[grant] ?? `use the ${grant} capability`,
+			term:
+				phrase?.term ?? t("ui.mesh.mesh_approvals.grant_capability", { grant }),
+			clause:
+				grantClauses()[grant] ??
+				t("ui.mesh.mesh_approvals.use_capability", { grant }),
 			/* The capability is held by YOUR device, about the node (R4-2). */
-			consequence: phrase?.gloss ?? `you may ${grant} on that device`,
+			consequence:
+				phrase?.gloss ??
+				t("ui.mesh.mesh_approvals.may_use_capability", { grant }),
 		});
 	}
 	return entries;
@@ -551,11 +653,11 @@ function distinctGrants(
  * Mapping the token keeps one correct sentence for one capability instead of
  * dropping it or mis-writing it.
  */
-const GRANT_PHRASES: Record<string, { term: string; gloss: string }> = {
+// These grant descriptions are read after a locale switch without a new approval read.
+const grantPhrases = (): Record<string, { term: string; gloss: string }> => ({
 	unattended: {
-		term: "trust unattended sessions",
-		gloss:
-			"sessions you start on that device run without an approval prompt there",
+		term: t("ui.mesh.mesh_approvals.trust_unattended_sessions"),
+		gloss: t("ui.mesh.mesh_approvals.sessions_you_start_on_that_device_run"),
 	},
 	/*
 	 * THE OTHER NON-VERB IN THE CORE'S GRANTABLE SET (agent review round 6,
@@ -567,7 +669,7 @@ const GRANT_PHRASES: Record<string, { term: string; gloss: string }> = {
 	 * token inside a sentence is how a consent card stops being readable.
 	 */
 	broker_credential: {
-		term: "borrow logins there",
+		term: t("ui.mesh.mesh_approvals.borrow_logins_there"),
 		/*
 		 * NO "ON THAT DEVICE" IN THE GLOSS (agent review round 7, R7-1). The
 		 * capability is checked in a PEER frame's chokepoint (`types.OP_CAPABILITY`
@@ -578,9 +680,9 @@ const GRANT_PHRASES: Record<string, { term: string; gloss: string }> = {
 		 * reader's OWN - saying "your sessions on that device" described a local use
 		 * that needs no capability at all.
 		 */
-		gloss: "your sessions may use the logins stored on that device",
+		gloss: t("ui.mesh.mesh_approvals.your_sessions_may_use_the_logins_stored"),
 	},
-};
+});
 
 /**
  * The summary clause for a capability token, so the sentence stays a sentence.
@@ -593,19 +695,21 @@ const GRANT_PHRASES: Record<string, { term: string; gloss: string }> = {
  * A token the core grows later falls back to the honest generic rather than
  * rendering a raw identifier inside a sentence.
  */
-const GRANT_CLAUSES: Record<string, string> = {
-	list: "see its sessions",
-	view: "watch a session there",
-	prompt: "send prompts to a session there",
-	steer: "steer a running turn there",
-	stop: "stop a session there",
-	slash: "run slash commands there",
-	delete: "archive or delete a session there",
-	move: "move sessions to or from there",
-	broker_credential: "borrow the logins stored there",
-	approve: "answer approval prompts there",
-	unattended: "run sessions there without an approval prompt",
-};
+const grantClauses = (): Record<string, string> => ({
+	list: t("ui.mesh.mesh_approvals.see_its_sessions"),
+	view: t("ui.mesh.mesh_approvals.watch_a_session_there"),
+	prompt: t("ui.mesh.mesh_approvals.send_prompts_to_a_session_there"),
+	steer: t("ui.mesh.mesh_approvals.steer_a_running_turn_there"),
+	stop: t("ui.mesh.mesh_approvals.stop_a_session_there"),
+	slash: t("ui.mesh.mesh_approvals.run_slash_commands_there"),
+	delete: t("ui.mesh.mesh_approvals.archive_or_delete_a_session_there"),
+	move: t("ui.mesh.mesh_approvals.move_sessions_to_or_from_there"),
+	broker_credential: t("ui.mesh.mesh_approvals.borrow_the_logins_stored_there"),
+	approve: t("ui.mesh.mesh_approvals.answer_approval_prompts_there"),
+	unattended: t(
+		"ui.mesh.mesh_approvals.run_sessions_there_without_an_approval_prompt",
+	),
+});
 
 /**
  * "expires in 42 minutes" — the record's ONE window (§2.1: 60 minutes by
@@ -621,14 +725,13 @@ export function approvalRemainingLabel(
 	if (expiresAtSeconds === null || expiresAtSeconds <= 0) return null;
 	const leftSeconds = expiresAtSeconds - nowSeconds;
 	if (leftSeconds <= 0) return null;
-	if (leftSeconds < 60) return "expires in under a minute";
+	if (leftSeconds < 60)
+		return t("ui.mesh.mesh_approvals.expires_in_under_a_minute");
 	const minutes = Math.ceil(leftSeconds / 60);
 	if (minutes < 90)
-		return minutes === 1
-			? "expires in 1 minute"
-			: `expires in ${minutes} minutes`;
+		return t("ui.mesh.mesh_approvals.expires_minutes", { count: minutes });
 	const hours = Math.ceil(minutes / 60);
-	return hours === 1 ? "expires in 1 hour" : `expires in ${hours} hours`;
+	return t("ui.mesh.mesh_approvals.expires_hours", { count: hours });
 }
 
 /* ---------------------------------------------------------------- hooks */
@@ -702,7 +805,7 @@ export function useMeshApprovalDecision() {
 export function approvalErrorMessage(error: unknown): string {
 	const authored = (error as Partial<DesktopControlError> | null)?.message;
 	if (typeof authored === "string" && authored.trim()) return authored.trim();
-	return "The approvals could not be read.";
+	return t("ui.mesh.mesh_approvals.the_approvals_could_not_be_read");
 }
 
 /**
@@ -731,6 +834,8 @@ export function approvalRefusal(error: unknown): {
 	const held = error as { code?: unknown; message?: unknown } | null;
 	return {
 		code: text(held?.code) || "approval_refused",
-		sentence: text(held?.message) || "The decision could not be answered.",
+		sentence:
+			text(held?.message) ||
+			t("ui.mesh.mesh_approvals.decision_could_not_be_answered"),
 	};
 }
