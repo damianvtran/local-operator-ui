@@ -1052,7 +1052,7 @@
 		"placeholders": {
 			"count": "Actual runtime binding in scheduled-task-model: count: input.existingWakeCount"
 		},
-		"note": "English source: This conversation already has {count, plural, one {{count, number, ::group-off} wake} other {{count, number, ::group-off} wakes}}, the most it can hold. Cancel one to add another.. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. ICU plural chooses the noun form; count formatting uses ICU number ::group-off to preserve ungrouped English digits.  Real ICU one/other arms select the counted noun. Russian translators need few/many arms; Arabic translators need zero/two and locale-appropriate few/many. English 0/1/2 selects other/one/other.",
+		"note": "English source: This conversation already has {count, plural, one {{count, number, ::group-off} wakes} other {{count, number, ::group-off} wakes}}, the most it can hold. Cancel one to add another.. Preserve the bindings below exactly; dynamic session IDs, agent IDs, prompt heads and server refusal reasons are not translated. ICU plural chooses the noun form; count formatting uses ICU number ::group-off to preserve ungrouped English digits.  Real ICU one/other arms select the counted noun. Russian translators need few/many arms; Arabic translators need zero/two and locale-appropriate few/many. English 0/1/2 selects other/one/other.",
 		"plural": "ru: add few/many; ar: add zero/two; preserve the count parameter and its existing ICU numeric style."
 	},
 	"ui.schedules.wake_conversation_row.cancel_wake": {
