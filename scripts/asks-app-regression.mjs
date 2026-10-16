@@ -269,6 +269,21 @@ async function runCase(kind, root, output, records) {
 				...point,
 			});
 	}
+	/**
+	 * Poll `probe` until it answers true, and hand back the LAST state read.
+	 *
+	 * It does not raise: the caller's own assertion is the gate, so the requirement
+	 * has exactly one failure path and that path can carry the diagnostics. On a
+	 * timeout it simply returns what it last saw, which the caller reports.
+	 */
+	async function waitFor(probe, timeoutMs) {
+		const started = Date.now();
+		for (;;) {
+			if (await probe()) return await facts();
+			if (Date.now() - started > timeoutMs) return await facts();
+			await pause(250);
+		}
+	}
 	async function pressEscape() {
 		for (const type of ["keyDown", "keyUp"])
 			await cdp.send("Input.dispatchKeyEvent", {
@@ -346,11 +361,42 @@ async function runCase(kind, root, output, records) {
 			await pause(250);
 		}
 	}
+	/*
+	 * OPEN THE BROWSER DOOR, AND WAIT FOR THE PANE RATHER THAN SAMPLING IT ONCE.
+	 *
+	 * The press is a real pointer press on the real rail item, and the store's
+	 * `browser` arm sets `isBrowserPaneOpen` in one step with no gate
+	 * (`panel-rail-actions.ts`), so the flag does follow the press - what is NOT
+	 * synchronous is React's commit of it. Reading `facts()` once, immediately after
+	 * the pointer events, samples the store at whatever moment the round trip lands
+	 * on, and under load that moment can still be the pre-commit one: measured on run
+	 * 38929174267, candidate leg, `Expected values to be strictly equal: false !== true`
+	 * at the assertion below, with the pane not yet committed.
+	 *
+	 * WHY A BOUNDED POLL AND NOT A LONGER PAUSE. What is being waited FOR is a state
+	 * change, so the same expression that reads it is the one that has to retry - the
+	 * shape this file already uses for every other readiness wait (`wait`, and the
+	 * two port/bridge polls above). The timeout keeps the failure mode honest: a door
+	 * that never opens still fails, and the message carries the whole state plus what
+	 * the press reported, so a genuine regression cannot be mistaken for slowness.
+	 *
+	 * THE PRESS'S OWN ANSWER IS KEPT. `press` returns nothing today, so the state is
+	 * read back instead; if the item were absent or refused the flag would never
+	 * settle and the refusal below names it with the state in hand.
+	 */
 	async function browser() {
 		if ((await facts()).dom.ask) await pressEscape();
 		if (!(await facts()).state.browserPaneOpen)
 			await press('[data-panel-rail-item="browser"]');
-		assert.equal((await facts()).state.browserPaneOpen, true);
+		const opened = await waitFor(
+			async () => (await facts()).state.browserPaneOpen === true,
+			15_000,
+		);
+		assert.equal(
+			opened.state.browserPaneOpen,
+			true,
+			`the browser door did not open its pane within 15s: browserPaneOpen=${opened.state.browserPaneOpen} state=${JSON.stringify(opened.state)}`,
+		);
 	}
 	async function asks() {
 		await press('[data-panel-rail-item="ask"]');
