@@ -39,6 +39,7 @@
  */
 
 import { Spinner } from "@shared/components/common/spinner";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { ChevronDown, X } from "lucide-react";
 import type { KeyboardEvent, ReactNode } from "react";
@@ -51,6 +52,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { t } from "../../../../../i18n/messages";
 /*
  * Imported from their own modules rather than from this directory's barrel.
  * `index.ts` re-exports this file, so going through it would make the two
@@ -273,7 +275,8 @@ export type ComboboxRow = { kind: "group"; label: string } | ComboboxOptionRow;
  * Every field that commits free text needs the row to be legible, and a caller
  * with no opinion should not have to write this to get its free text back.
  */
-export const defaultCustomRowLabel = (text: string): string => `Use "${text}"`;
+export const defaultCustomRowLabel = (text: string): string =>
+	t("ui.common.forms.searchable_select.use", { text: String(text) });
 
 export function buildComboboxRows(
 	options: SearchableOption[],
@@ -409,12 +412,13 @@ export const SearchableSelect = forwardRef<
 		ariaLabel,
 		ariaDescribedBy,
 		showLabel = true,
-		emptyText = "No matches",
+		emptyText = t("ui.common.forms.searchable_select.no_matches"),
 		listNotice,
 		customRowLabel,
 	},
 	ref,
 ) {
+	useI18nLocale();
 	const baseId = useId();
 	const inputId = `${baseId}-input`;
 	const listId = `${baseId}-listbox`;
@@ -723,7 +727,11 @@ export const SearchableSelect = forwardRef<
 										 * `onClear`, which is the settings rows and their sentence-case
 										 * labels, so lowering the first word is safe here.
 										 */
-										name ? `Clear the ${name.toLowerCase()}` : "Clear value"
+										name
+											? t("ui.common.forms.searchable_select.clear_the", {
+													detail: String(name.toLowerCase()),
+												})
+											: t("ui.common.forms.searchable_select.clear_value")
 									}
 									onMouseDown={(event) => event.preventDefault()}
 									onClick={() => {
@@ -936,7 +944,7 @@ export const SearchableSelect = forwardRef<
 										</span>
 									</div>
 									<div className="text-meta text-ink-muted">
-										Not in any listing; saved as typed.
+										{t("ui.common.forms.select.unlisted_value")}
 									</div>
 								</li>
 							),

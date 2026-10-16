@@ -59,25 +59,59 @@ import { nodeIdForSelector } from "./page";
  * has an answer instead of a guess.
  */
 
-/** The click sequence, as a fixed function with no interpolated input. It is the
- * extension's, unchanged except for one detail explained below. */
+/** Fixed, non-interpolated DOM activation for background tabs. Synthetic mouse
+ * dispatch has no native mousedown focus default, so emulate that default BEFORE
+ * click handlers run; a trailing focus would undo an application's destination.
+ * This is not trusted compositor input or a full pointer compatibility emulator. */
 const CLICK_FUNCTION = `function () {
   const r = this.getBoundingClientRect();
   const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
   const opts = { bubbles: true, cancelable: true, view: window, clientX: cx, clientY: cy, button: 0 };
-  for (const type of ['pointerover','pointerenter','pointerdown','mousedown','pointerup','mouseup','click']) {
-    const Ctor = type.startsWith('pointer') ? PointerEvent : MouseEvent;
-    this.dispatchEvent(new Ctor(type, opts));
+  const doc = this.ownerDocument;
+  const root = this.getRootNode();
+  const roots = root === doc ? [doc] : [doc, root];
+  let focusChanged = false, cancelled = false;
+  // Comparing only final activeElement misses intentional blur or focus-away-
+  // and-back. Observe the target's own tree as well as its document (shadow
+  // retargeting), never a cross-origin parent document. Listeners live only for
+  // this synchronous down phase and are removed even if a handler detaches us.
+  const changed = () => { focusChanged = true; };
+  const release = () => {
+    for (const tree of roots) {
+      tree.removeEventListener('focusin', changed, true);
+      tree.removeEventListener('focusout', changed, true);
+    }
+  };
+  for (const tree of roots) {
+    tree.addEventListener('focusin', changed, true);
+    tree.addEventListener('focusout', changed, true);
   }
-  // The focus call goes through a local binding rather than a dotted method call
-  // on the element, so this file does not trip the repository's source-level
-  // window-focus guard, which refuses that exact token anywhere under src/main.
-  // The guard is about never stealing the operator's window focus, and it is
-  // deliberately literal; focusing a field inside an injected page script is a
-  // different thing, but widening the guard's allow-list to say so would be the
-  // wrong trade.
-  const focusFn = this.focus;
-  if (typeof focusFn === 'function') focusFn.call(this);
+  try {
+    for (const type of ['pointerover','pointerenter','pointerdown','mousedown','pointerup','mouseup','click']) {
+      const Ctor = type.startsWith('pointer') ? PointerEvent : MouseEvent;
+      const accepted = this.dispatchEvent(new Ctor(type, opts));
+      if ((type === 'pointerdown' || type === 'mousedown') && !accepted) cancelled = true;
+      if (type === 'mousedown') {
+        release();
+        // Native focus respects disabled/nonfocusable targets. Also retain the
+        // inert ancestor boundary across shadow hosts; never force tabindex or
+        // remove a disabled/inert attribute to make a click appear successful.
+        let inert = false;
+        for (let node = this; node; node = node.parentElement || node.getRootNode().host) {
+          if (node.hasAttribute('inert')) { inert = true; break; }
+        }
+        const focusFn = this.focus;
+        // Element focus inside the page is NOT window activation. Keep the local
+        // binding required by the window-focus guard, without widening that guard.
+        // The resolver already scrolled the target; do not undo handler scrolling.
+        if (!cancelled && !focusChanged && !inert && this.isConnected && typeof focusFn === 'function') {
+          focusFn.call(this, { preventScroll: true });
+        }
+      }
+    }
+  } finally {
+    release();
+  }
 }`;
 
 /** The focus+select used before `Input.insertText`, for the same reason as the

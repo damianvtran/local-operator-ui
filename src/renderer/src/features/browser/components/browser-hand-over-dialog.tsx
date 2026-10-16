@@ -8,6 +8,8 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import {
 	LEGACY_CATALOGUE_PAGE,
 	useCanonicalSessionsStore,
@@ -55,6 +57,7 @@ export const BrowserHandOverDialog: FC<BrowserHandOverDialogProps> = ({
 	onClose,
 	onConfirm,
 }) => {
+	useI18nLocale();
 	const sessions = useCanonicalSessionsStore((state) => state.sessions);
 	const fetchSessions = useCanonicalSessionsStore(
 		(state) => state.fetchSessions,
@@ -84,12 +87,12 @@ export const BrowserHandOverDialog: FC<BrowserHandOverDialogProps> = ({
 		<BaseDialog
 			open={open}
 			onClose={onClose}
-			title="Let an agent use this tab"
+			title={t("ui.browser.browser_hand_over_dialog.let_an_agent_use_this_tab")}
 			dataTourTag="browser-hand-over-dialog"
 			actions={
 				<>
 					<Button variant="ghost" size="sm" onClick={onClose}>
-						Cancel
+						{t("ui.browser.browser_hand_over_dialog.cancel")}
 					</Button>
 					<Button
 						variant="primary"
@@ -100,16 +103,16 @@ export const BrowserHandOverDialog: FC<BrowserHandOverDialogProps> = ({
 						}}
 						data-tour-tag="browser-hand-over-confirm"
 					>
-						Hand over
+						{t("ui.browser.browser_hand_over_dialog.hand_over")}
 					</Button>
 				</>
 			}
 		>
 			<div className="flex flex-col gap-3">
 				<p className="text-body text-ink-muted">
-					The agent can use this tab — and only reach sites you have approved.
-					Both gates apply, so handing this tab over does not approve the site
-					it is showing.
+					{t(
+						"ui.browser.browser_hand_over_dialog.the_agent_can_use_this_tab_and",
+					)}
 				</p>
 				{tab && (
 					<p className="truncate font-mono text-mono-sm text-ink-dim">
@@ -117,13 +120,19 @@ export const BrowserHandOverDialog: FC<BrowserHandOverDialogProps> = ({
 					</p>
 				)}
 				<div className="flex flex-col gap-1.5">
-					<Label htmlFor="browser-hand-over-session">Session</Label>
+					<Label htmlFor="browser-hand-over-session">
+						{t("ui.browser.browser_hand_over_dialog.session")}
+					</Label>
 					<Select value={sessionId} onValueChange={setSessionId}>
 						<SelectTrigger
 							id="browser-hand-over-session"
 							data-tour-tag="browser-hand-over-session"
 						>
-							<SelectValue placeholder="Choose a session" />
+							<SelectValue
+								placeholder={t(
+									"ui.browser.browser_hand_over_dialog.choose_a_session",
+								)}
+							/>
 						</SelectTrigger>
 						<SelectContent>
 							{sessions.map((session) => (
@@ -135,8 +144,9 @@ export const BrowserHandOverDialog: FC<BrowserHandOverDialogProps> = ({
 					</Select>
 					{sessions.length === 0 && (
 						<p className="text-meta text-ink-dim">
-							No session is available yet. Start one in chat, then hand the tab
-							over.
+							{t(
+								"ui.browser.browser_hand_over_dialog.no_session_is_available_yet_start_one",
+							)}
 						</p>
 					)}
 				</div>

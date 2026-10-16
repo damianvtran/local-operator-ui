@@ -59,6 +59,7 @@
  */
 
 import { Tooltip } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { UpdateType } from "@shared/store/deferred-updates-store";
 import {
@@ -69,6 +70,7 @@ import {
 } from "@shared/store/update-notice-store";
 import { CircleArrowDown, LoaderCircle } from "lucide-react";
 import { type FC, useCallback, useMemo } from "react";
+import { t } from "../../../../../i18n/messages";
 import { quietOfferSubject, quietSurfaceLabel } from "./update-quiet-indicator";
 
 /** One waiting surface as the icon draws it. */
@@ -145,6 +147,7 @@ export const UpdateFootIconView: FC<{
 	 */
 	onDismiss?: () => void;
 }> = ({ surfaces, inflight, onShow, onDismiss }) => {
+	useI18nLocale();
 	/*
 	 * HIDDEN IS RETURNING NOTHING - not a spaced-out empty box. The row's own
 	 * `gap-1` between the account row and the gear collapses to one gap, which is
@@ -218,7 +221,8 @@ export const UpdateFootIconView: FC<{
 						 * ellipsised correctly - one rule for every line now.
 						 */
 						<span key={surface.type} className="truncate text-ink">
-							{surfaceSubject(surface)} available
+							{surfaceSubject(surface)}{" "}
+							{t("ui.common.updates.update_foot_icon.available")}
 						</span>
 					))}
 					{summarySurface ? (
@@ -227,7 +231,7 @@ export const UpdateFootIconView: FC<{
 						</span>
 					) : null}
 					<span className="whitespace-nowrap text-ink-muted">
-						Show the update notice.
+						{t("ui.common.updates.update_foot_icon.show_the_update_notice")}
 					</span>
 				</div>
 			}

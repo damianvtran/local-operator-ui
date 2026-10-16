@@ -12,10 +12,12 @@ import { EditableField } from "@shared/components/common/editable-field";
 import { SliderSetting } from "@shared/components/common/slider-setting";
 import { Button, Tooltip } from "@shared/components/ui";
 import type { useUpdateAgent } from "@shared/hooks/use-update-agent";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { ChevronDown, ChevronRight, Info, Settings } from "lucide-react";
 import type { FC, ReactNode } from "react";
 import { useEffect, useId, useState } from "react";
+import { t } from "../../../../../i18n/messages";
 
 type ChatSettingsProps = {
 	/**
@@ -91,20 +93,34 @@ const UnsetSetting: FC<UnsetSettingProps> = ({
 	description,
 	defaultLabel,
 	onSet,
-}) => (
-	<div className="flex items-start justify-between gap-4">
-		<div className="min-w-0">
-			<div className="flex items-baseline gap-2">
-				<span className="text-body-sm text-ink">{label}</span>
-				<span className="text-meta text-ink-dim">Not set yet</span>
+}) => {
+	// This row also renders in isolation; observe locale changes independently
+	// rather than relying on its parent to refresh the default-value button.
+	useI18nLocale();
+	return (
+		<div className="flex items-start justify-between gap-4">
+			<div className="min-w-0">
+				<div className="flex items-baseline gap-2">
+					<span className="text-body-sm text-ink">{label}</span>
+					<span className="text-meta text-ink-dim">
+						{t("ui.agents.settings.chat.not_set_yet")}
+					</span>
+				</div>
+				<p className="mt-1 text-meta text-ink-dim">{description}</p>
 			</div>
-			<p className="mt-1 text-meta text-ink-dim">{description}</p>
+			<Button
+				variant="secondary"
+				size="sm"
+				className="shrink-0"
+				onClick={onSet}
+			>
+				{t("ui.agents.settings.chat.set_to_default", {
+					value: String(defaultLabel),
+				})}
+			</Button>
 		</div>
-		<Button variant="secondary" size="sm" className="shrink-0" onClick={onSet}>
-			Set to default ({defaultLabel})
-		</Button>
-	</div>
-);
+	);
+};
 
 /**
  * A named run of related parameters.
@@ -136,6 +152,8 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 	refetchAgent,
 	initialSelectedAgentId,
 }) => {
+	// Subscribe without remounting: language changes must not discard unsaved fields.
+	useI18nLocale();
 	// Create a local copy of the agent data that we can update immediately
 	const [localAgent, setLocalAgent] = useState<AgentDetails>(selectedAgent);
 
@@ -175,7 +193,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 						aria-hidden="true"
 						className="shrink-0 text-ink-dim transition-colors duration-fast ease-out-quart group-hover:text-ink"
 					/>
-					Advanced chat settings
+					{t("ui.agents.settings.chat.advanced_chat_settings")}
 				</button>
 				{/*
 				 * A real button rather than a bare icon: the tooltip is keyboard
@@ -183,11 +201,17 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 				 * disclosure rather than inside it, because a button nested in a
 				 * button is not markup a browser can resolve.
 				 */}
-				<Tooltip content="Advanced settings to change how the agent generates responses">
+				<Tooltip
+					content={t(
+						"ui.agents.settings.chat.advanced_settings_to_change_how_the_agent",
+					)}
+				>
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						aria-label="About advanced chat settings"
+						aria-label={t(
+							"ui.agents.settings.chat.about_advanced_chat_settings",
+						)}
 					>
 						<Info />
 					</Button>
@@ -202,16 +226,17 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 			{isExpanded && (
 				<div id={contentId} className="mt-3">
 					<p className="max-w-2xl text-body-sm text-ink-muted">
-						Set custom values for any of these options. Anything left unset uses
-						a default optimized from user testing.
+						{t("ui.agents.settings.chat.set_custom_values_for_any_of_these")}
 					</p>
 
 					<div className="mt-6 flex flex-col gap-8">
-						<SettingGroup title="Sampling">
+						<SettingGroup title={t("ui.agents.settings.chat.sampling")}>
 							{localAgent.temperature === null ? (
 								<UnsetSetting
-									label="Temperature"
-									description="Controls randomness in responses (0.0-1.0). Higher values make output more random."
+									label={t("ui.agents.settings.chat.temperature")}
+									description={t(
+										"ui.agents.settings.chat.controls_randomness_in_responses_0_0_1",
+									)}
 									defaultLabel={DEFAULTS.temperature}
 									onSet={async () => {
 										setSavingField("temperature");
@@ -247,8 +272,10 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 							) : (
 								<SliderSetting
 									value={localAgent.temperature ?? DEFAULTS.temperature}
-									label="Temperature"
-									description="Controls randomness in responses (0.0-1.0). Higher values make output more random."
+									label={t("ui.agents.settings.chat.temperature")}
+									description={t(
+										"ui.agents.settings.chat.controls_randomness_in_responses_0_0_1",
+									)}
 									min={0}
 									max={1}
 									step={0.01}
@@ -278,8 +305,10 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 
 							{localAgent.top_p === null ? (
 								<UnsetSetting
-									label="Top P"
-									description="Controls cumulative probability of tokens to sample from (0.0-1.0)."
+									label={t("ui.agents.settings.chat.top_p")}
+									description={t(
+										"ui.agents.settings.chat.controls_cumulative_probability_of_tokens_to_sample",
+									)}
 									defaultLabel={DEFAULTS.top_p}
 									onSet={async () => {
 										setSavingField("top_p");
@@ -313,8 +342,10 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 							) : (
 								<SliderSetting
 									value={localAgent.top_p ?? DEFAULTS.top_p}
-									label="Top P"
-									description="Controls cumulative probability of tokens to sample from (0.0-1.0)."
+									label={t("ui.agents.settings.chat.top_p")}
+									description={t(
+										"ui.agents.settings.chat.controls_cumulative_probability_of_tokens_to_sample",
+									)}
 									min={0}
 									max={1}
 									step={0.01}
@@ -344,8 +375,10 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 
 							{localAgent.top_k === null ? (
 								<UnsetSetting
-									label="Top K"
-									description="Limits tokens to sample from at each step."
+									label={t("ui.agents.settings.chat.top_k")}
+									description={t(
+										"ui.agents.settings.chat.limits_tokens_to_sample_from_at_each",
+									)}
 									defaultLabel={DEFAULTS.top_k}
 									onSet={async () => {
 										setSavingField("top_k");
@@ -379,8 +412,10 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 							) : (
 								<SliderSetting
 									value={localAgent.top_k ?? DEFAULTS.top_k}
-									label="Top K"
-									description="Limits tokens to sample from at each step."
+									label={t("ui.agents.settings.chat.top_k")}
+									description={t(
+										"ui.agents.settings.chat.limits_tokens_to_sample_from_at_each",
+									)}
 									min={1}
 									max={100}
 									step={1}
@@ -410,8 +445,10 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 
 							{localAgent.seed === null ? (
 								<UnsetSetting
-									label="Seed"
-									description="Random number seed for deterministic generation."
+									label={t("ui.agents.settings.chat.seed")}
+									description={t(
+										"ui.agents.settings.chat.random_number_seed_for_deterministic_generation",
+									)}
 									defaultLabel={DEFAULTS.seed}
 									onSet={async () => {
 										setSavingField("seed");
@@ -445,8 +482,10 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 							) : (
 								<EditableField
 									value={localAgent.seed?.toString() || ""}
-									label="Seed"
-									placeholder="Random number seed for deterministic generation"
+									label={t("ui.agents.settings.chat.seed")}
+									placeholder={t(
+										"ui.agents.settings.chat.random_number_seed_for_deterministic_generation_detail",
+									)}
 									icon={<Settings size={16} />}
 									isSaving={savingField === "seed"}
 									onSave={async (value) => {
@@ -458,7 +497,9 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 
 											// Validate that the seed is a valid number if provided
 											if (value.trim() && Number.isNaN(seedValue as number)) {
-												showErrorToast("Seed must be a valid number");
+												showErrorToast(
+													t("ui.agents.settings.chat.error.invalid_seed"),
+												);
 												return;
 											}
 
@@ -483,11 +524,13 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 							)}
 						</SettingGroup>
 
-						<SettingGroup title="Repetition">
+						<SettingGroup title={t("ui.agents.settings.chat.repetition")}>
 							{localAgent.frequency_penalty === null ? (
 								<UnsetSetting
-									label="Frequency penalty"
-									description="Reduces repetition by lowering likelihood of repeated tokens (-2.0 to 2.0)."
+									label={t("ui.agents.settings.chat.frequency_penalty")}
+									description={t(
+										"ui.agents.settings.chat.reduces_repetition_by_lowering_likelihood_of_repeated",
+									)}
 									defaultLabel={DEFAULTS.frequency_penalty}
 									onSet={async () => {
 										setSavingField("frequency_penalty");
@@ -525,8 +568,10 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 									value={
 										localAgent.frequency_penalty ?? DEFAULTS.frequency_penalty
 									}
-									label="Frequency penalty"
-									description="Reduces repetition by lowering likelihood of repeated tokens (-2.0 to 2.0)."
+									label={t("ui.agents.settings.chat.frequency_penalty")}
+									description={t(
+										"ui.agents.settings.chat.reduces_repetition_by_lowering_likelihood_of_repeated",
+									)}
 									min={-2}
 									max={2}
 									step={0.01}
@@ -556,8 +601,10 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 
 							{localAgent.presence_penalty === null ? (
 								<UnsetSetting
-									label="Presence penalty"
-									description="Increases diversity by lowering likelihood of prompt tokens (-2.0 to 2.0)."
+									label={t("ui.agents.settings.chat.presence_penalty")}
+									description={t(
+										"ui.agents.settings.chat.increases_diversity_by_lowering_likelihood_of_prompt",
+									)}
 									defaultLabel={DEFAULTS.presence_penalty}
 									onSet={async () => {
 										setSavingField("presence_penalty");
@@ -595,8 +642,10 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 									value={
 										localAgent.presence_penalty ?? DEFAULTS.presence_penalty
 									}
-									label="Presence penalty"
-									description="Increases diversity by lowering likelihood of prompt tokens (-2.0 to 2.0)."
+									label={t("ui.agents.settings.chat.presence_penalty")}
+									description={t(
+										"ui.agents.settings.chat.increases_diversity_by_lowering_likelihood_of_prompt",
+									)}
 									min={-2}
 									max={2}
 									step={0.01}
@@ -625,11 +674,15 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 							)}
 						</SettingGroup>
 
-						<SettingGroup title="Length and stopping">
+						<SettingGroup
+							title={t("ui.agents.settings.chat.length_and_stopping")}
+						>
 							{localAgent.max_tokens === null ? (
 								<UnsetSetting
-									label="Max tokens"
-									description="Maximum tokens to generate in response."
+									label={t("ui.agents.settings.chat.max_tokens")}
+									description={t(
+										"ui.agents.settings.chat.maximum_tokens_to_generate_in_response",
+									)}
 									defaultLabel={DEFAULTS.max_tokens}
 									onSet={async () => {
 										setSavingField("max_tokens");
@@ -665,8 +718,10 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 							) : (
 								<SliderSetting
 									value={localAgent.max_tokens ?? DEFAULTS.max_tokens}
-									label="Max tokens"
-									description="Maximum tokens to generate in response."
+									label={t("ui.agents.settings.chat.max_tokens")}
+									description={t(
+										"ui.agents.settings.chat.maximum_tokens_to_generate_in_response",
+									)}
 									min={1}
 									max={8192}
 									step={1}
@@ -696,9 +751,11 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 
 							{localAgent.stop === null ? (
 								<UnsetSetting
-									label="Stop sequences"
-									description="Sequences that will cause the model to stop generating text."
-									defaultLabel="empty"
+									label={t("ui.agents.settings.chat.stop_sequences")}
+									description={t(
+										"ui.agents.settings.chat.sequences_that_will_cause_the_model_to",
+									)}
+									defaultLabel={t("ui.agents.settings.chat.empty")}
 									onSet={async () => {
 										setSavingField("stop");
 										try {
@@ -731,8 +788,10 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 							) : (
 								<EditableField
 									value={localAgent.stop?.join("\n") || ""}
-									label="Stop sequences"
-									placeholder="Enter stop sequences (one per line)..."
+									label={t("ui.agents.settings.chat.stop_sequences")}
+									placeholder={t(
+										"ui.agents.settings.chat.enter_stop_sequences_one_per_line",
+									)}
 									icon={<Settings size={16} />}
 									multiline
 									rows={3}

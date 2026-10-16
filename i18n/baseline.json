@@ -5,7 +5,10 @@
 		"scripts/i18n/",
 		"src/i18n/",
 		"src/renderer/src/features/console/",
-		"src/renderer/src/features/onboarding/"
+		"src/renderer/src/features/onboarding/",
+		"src/renderer/src/features/providers/",
+		"src/renderer/src/features/chat/components/chat-sidebar-view-menu.tsx",
+		"src/renderer/src/features/browser/"
 	],
 	"files": {
 		"src/renderer/src/features/agent-hub/agent-details-page.tsx": 16,

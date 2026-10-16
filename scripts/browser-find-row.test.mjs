@@ -18,6 +18,26 @@ const bundle = await build({
 	jsx: "automatic",
 	alias: { "@shared": `${process.cwd()}/src/renderer/src/shared` },
 });
+// HOW THE CHROME-BAND GUARD FINDS ITS TOOLTIPS (i18n extraction, 2026-10).
+//
+// The guard greps `browser-url-bar.tsx` for the tooltip tag whose content is the
+// find/zoom chord hint, to assert it prefers the chrome band. Before the
+// extraction that tag carried the English literal (`Find in page (${glyph})`), so
+// the guard matched on `Find in page` / `Reset page zoom`; the extraction moved
+// those strings into catalogue keys, the source now carries
+// `t("ui.browser.browser_url_bar.find_in_page_shortcut", …)`, and the literal
+// grep matches no tag at all — failing on a tag that is still correctly placed.
+// The guard's SUBJECT is unchanged (a tooltip tag exists and prefers the chrome
+// band); only the thing it is found BY moves with the copy, so it is keyed on the
+// id that now holds that copy rather than on the English text.
+// `<Tooltip\b[^>]*>` spans the tag's attributes including newlines, and no `>`
+// appears inside a `t(…)` call, so a multi-line tag is matched whole.
+function chromeBandTooltipTag(source, keyId) {
+	return [...source.matchAll(/<Tooltip\b[^>]*>/g)]
+		.map((m) => m[0])
+		.find((tag) => tag.includes(keyId));
+}
+
 // Source/layout guard ONLY: jsdom cannot measure a WebContentsView or prove
 // Radix's final placement. Keep new triggers in the in-flow chrome band with
 // explicit top placement; native intersection evidence remains a separate gate.
@@ -29,12 +49,14 @@ test("source guard: new find/zoom tooltips prefer chrome-side top, not native-pa
 	const tags = [...row.matchAll(/<Tooltip\b[^>]*>/g)].map((m) => m[0]);
 	assert.equal(tags.length, 3, "Previous, Next and Close all need this guard");
 	for (const tag of tags) assert.ok(tag.includes('side="top"'), tag);
-	for (const label of ["Find in page", "Reset page zoom"]) {
-		const tag = [...bar.matchAll(/<Tooltip\b[^>]*>/g)]
-			.map((m) => m[0])
-			.find((s) => s.includes(label));
+	for (const [label, keyId] of [
+		["Find in page", "ui.browser.browser_url_bar.find_in_page_shortcut"],
+		["Reset page zoom", "ui.browser.browser_url_bar.reset_page_zoom_shortcut"],
+	]) {
+		const tag = chromeBandTooltipTag(bar, keyId);
+		assert.ok(tag, `${label} needs a tooltip wired to ${keyId}`);
 		assert.ok(
-			tag?.includes('side="top"'),
+			tag.includes('side="top"'),
 			`${label} must prefer the chrome band`,
 		);
 	}
@@ -47,6 +69,46 @@ test("source guard: new find/zoom tooltips prefer chrome-side top, not native-pa
 	);
 	assert.match(row, /className="@container\/bfind flex shrink-0 flex-wrap/);
 	assert.doesNotMatch(row + bar, /useSuppressBrowserViewWhileReaching/);
+});
+
+/*
+ * NEGATIVE CONTROL for the source guard above. A guard whose subject cannot fail
+ * is not a guard: this takes the SAME shipped source, strips `side="top"` from
+ * the find/zoom tooltip tags, and requires the guard's own predicate
+ * (`chromeBandTooltipTag(...).includes('side="top"')`) to become false. So the
+ * assertion measures the chrome-band preference rather than the mere existence
+ * of a tag, and the repoint from the English literal to the key id is proved to
+ * still discriminate on the attribute it exists to protect.
+ */
+test("negative control: the chrome-band guard fails when side=top is removed", () => {
+	const bar = readFileSync(
+		"src/renderer/src/features/browser/components/browser-url-bar.tsx",
+		"utf8",
+	);
+	for (const keyId of [
+		"ui.browser.browser_url_bar.find_in_page_shortcut",
+		"ui.browser.browser_url_bar.reset_page_zoom_shortcut",
+	]) {
+		const shipped = chromeBandTooltipTag(bar, keyId);
+		assert.ok(shipped, `the tag wired to ${keyId} is present on the head`);
+		assert.ok(
+			shipped.includes('side="top"'),
+			`the head's ${keyId} tag prefers the chrome band`,
+		);
+		// The tag is multi-line, so `side="top"` sits on its own line; removing the
+		// attribute token by string, not a regex literal, keeps the control free of a
+		// function-scope regex.
+		const strippedTag = shipped.replace('side="top"', "");
+		assert.notEqual(strippedTag, shipped, "the control must alter the tag");
+		const strippedSource = bar.replace(shipped, strippedTag);
+		assert.notEqual(strippedSource, bar, "the control must alter the source");
+		const stripped = chromeBandTooltipTag(strippedSource, keyId);
+		assert.ok(stripped, "the tag is still found; only the attribute is gone");
+		assert.ok(
+			!stripped.includes('side="top"'),
+			`removing side=top must make the guard fail for ${keyId}`,
+		);
+	}
 });
 
 test("find row uses main counts, accessible status, next/previous/Escape and no overlay tooltip", async () => {
@@ -105,6 +167,48 @@ test("find row uses main counts, accessible status, next/previous/Escape and no 
 		assert.equal(document.activeElement, field);
 		assert.equal(field.value, "hello");
 		assert.equal(document.querySelector("output").textContent, "2 of 10");
+		/* THE REACHABLE NON-PLURAL NUMERIC ARM (grouping sweep). The live-region
+		 * match position is the one place the count genuinely crosses 1000 —
+		 * Electron reports a document-wide match count — and it is NOT a plural
+		 * arm, so the `::group-off` sweep over the plural arms did not reach it.
+		 * The pre-extraction literal interpolated the RAW number (`${ordinal} of
+		 * ${matches}`), so the English must read `1 of 1000`, never `1 of 1,000`.
+		 * Both placeholders are pinned at four digits through the shipped
+		 * component, not a hand-built string. */
+		chrome.state.pageControls.find = {
+			tabId: 1,
+			query: "hello",
+			ordinal: 1,
+			matches: 1000,
+		};
+		await act(async () =>
+			root.render(React.createElement(mod.exports.BrowserFindRow, { chrome })),
+		);
+		assert.equal(
+			document.querySelector("output").textContent,
+			"1 of 1000",
+			"a four-digit match count renders raw, not digit-grouped as 1,000",
+		);
+		chrome.state.pageControls.find = {
+			tabId: 1,
+			query: "hello",
+			ordinal: 1000,
+			matches: 1000,
+		};
+		await act(async () =>
+			root.render(React.createElement(mod.exports.BrowserFindRow, { chrome })),
+		);
+		assert.equal(
+			document.querySelector("output").textContent,
+			"1000 of 1000",
+			"the ordinal does not group either, at the same four-digit count",
+		);
+		chrome.state.pageControls.find = {
+			tabId: 1,
+			query: "hello",
+			ordinal: 2,
+			matches: 10,
+		};
 		assert.equal(
 			document.querySelector("output").getAttribute("aria-live"),
 			"polite",
@@ -278,4 +382,39 @@ test("find row uses main counts, accessible status, next/previous/Escape and no 
 		}
 		dom.window.close();
 	}
+});
+
+/*
+ * NEGATIVE CONTROL for the four-digit pin above. A pin that cannot fail is not a
+ * pin: this renders the SAME key's PRE-FIX ICU source — the shipped message with
+ * its `, ::group-off` token removed, which is exactly what shipped before the
+ * grouping sweep — and requires it to GROUP at 1000. So the two assertions above
+ * measure the `::group-off` fix rather than a number that happens to be four
+ * digits. It formats the catalogue's own bytes (not a hand-typed string), so it
+ * tracks the shipped message: change the arm and the control changes with it.
+ */
+test("negative control: the pre-fix find-row arm groups at four digits", async () => {
+	const { IntlMessageFormat } = await import("intl-messageformat");
+	const english = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.browser.json", "utf8"),
+	);
+	const shipped = english["ui.browser.browser_find_row.match_position"];
+	assert.ok(
+		shipped.includes(", ::group-off"),
+		`the shipped arm carries the grouping opt-out: ${shipped}`,
+	);
+	const prefixSource = shipped.replaceAll(", ::group-off", "");
+	assert.notEqual(prefixSource, shipped, "the pre-fix source must differ");
+	const format = (source, ordinal, matches) =>
+		new IntlMessageFormat(source, "en").format({ ordinal, matches });
+	assert.equal(
+		format(prefixSource, 1, 1000),
+		"1 of 1,000",
+		"the pre-fix arm groups at four digits — the defect this pin exists to catch",
+	);
+	assert.equal(
+		format(shipped, 1, 1000),
+		"1 of 1000",
+		"the shipped arm does not group",
+	);
 });

@@ -10,11 +10,13 @@ import {
 } from "@shared/components/ui";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { isRadientAccountFailure } from "@shared/hooks/use-radient-user-query";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { LogOut, RotateCw, Settings, Shield, User } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import React, { type FC } from "react";
 import { useNavigate } from "react-router-dom";
+import { t } from "../../../../../i18n/messages";
 
 /**
  * Props for the UserProfileSidebar component
@@ -54,6 +56,7 @@ type UserProfileSidebarProps = {
  */
 export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 	({ expanded, useAuth = false }) => {
+		useI18nLocale();
 		const navigate = useNavigate();
 
 		const { user, isAuthenticated, accountRead, signOut } = useRadientAuth();
@@ -72,11 +75,14 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 		 */
 		const accountStateLabel =
 			accountRead === "checking"
-				? "Checking account…"
+				? t("ui.shell.user_profile_sidebar.checking_account")
 				: isRadientAccountFailure(accountRead)
-					? "Account unavailable"
+					? t("ui.shell.user_profile_sidebar.account_unavailable")
 					: null;
-		const userName = user?.name ?? accountStateLabel ?? "User";
+		const userName =
+			user?.name ??
+			accountStateLabel ??
+			t("ui.shell.user_profile_sidebar.user");
 		/*
 		 * A failed read is the one account state with somewhere to GO, and the row
 		 * is the only place this sidebar can offer it: the foot has no room for a
@@ -92,11 +98,15 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 		 */
 		const reconnect = isRadientAccountFailure(accountRead);
 		const userEmail = user?.email ?? "";
-		const secondLine = reconnect ? "Reconnect Radient" : userEmail;
+		const secondLine = reconnect
+			? t("ui.shell.user_profile_sidebar.reconnect_radient")
+			: userEmail;
 		const settingsTarget = reconnect
 			? "/settings?section=providers&provider=radient"
 			: "/settings";
-		const collapsedLabel = reconnect ? "Reconnect Radient" : "Account settings";
+		const collapsedLabel = reconnect
+			? t("ui.shell.user_profile_sidebar.reconnect_radient")
+			: t("ui.shell.user_profile_sidebar.account_settings");
 
 		const handleSignOut = useCallback(async () => {
 			if (isAuthenticated) {
@@ -255,16 +265,16 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 					{reconnect ? (
 						<DropdownMenuItem onSelect={() => navigate(settingsTarget)}>
 							<RotateCw size={16} aria-hidden="true" />
-							Reconnect Radient
+							{t("ui.shell.user_profile_sidebar.reconnect_radient")}
 						</DropdownMenuItem>
 					) : null}
 					<DropdownMenuItem onSelect={() => navigate("/settings")}>
 						<Settings size={16} aria-hidden="true" />
-						Settings
+						{t("ui.shell.user_profile_sidebar.settings")}
 					</DropdownMenuItem>
 					<DropdownMenuItem>
 						<Shield size={16} aria-hidden="true" />
-						Privacy and security
+						{t("ui.shell.user_profile_sidebar.privacy_and_security")}
 					</DropdownMenuItem>
 					<DropdownMenuSeparator />
 					<DropdownMenuItem
@@ -272,7 +282,7 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 						className="text-danger focus:bg-danger-wash focus:text-danger"
 					>
 						<LogOut size={16} aria-hidden="true" />
-						Sign out
+						{t("ui.shell.user_profile_sidebar.sign_out")}
 					</DropdownMenuItem>
 				</DropdownMenuContent>
 			</DropdownMenu>

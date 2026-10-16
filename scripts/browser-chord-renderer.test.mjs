@@ -6,9 +6,11 @@ import { JSDOM } from "jsdom";
 import React, { act, useRef } from "react";
 
 const bundle = await build({
-	entryPoints: [
-		"src/renderer/src/features/browser/hooks/use-browser-chords.ts",
-	],
+	stdin: {
+		contents:
+			'export {useBrowserChords} from "./src/renderer/src/features/browser/hooks/use-browser-chords"; export {suppressBrowserView} from "./src/renderer/src/shared/browser-view-policy";',
+		resolveDir: process.cwd(),
+	},
 	bundle: true,
 	write: false,
 	platform: "node",
@@ -36,7 +38,7 @@ new Function("require", "module", "exports", bundle.outputFiles[0].text)(
 	module,
 	module.exports,
 );
-const { useBrowserChords } = module.exports;
+const { useBrowserChords, suppressBrowserView } = module.exports;
 
 /**
  * One mounted harness per scenario: the REAL hook against a surface whose tab
@@ -49,9 +51,14 @@ const { useBrowserChords } = module.exports;
  * harness browser), so `removeTabNode` replays that event: the unit under test
  * is how the hook reacts to it, not whether jsdom emulates it.
  */
-async function rig({ tabIds = [1, 3], activeId = 1 } = {}) {
+async function rig({
+	tabIds = [1, 3],
+	activeId = 1,
+	pane = false,
+	sessionId = "a",
+} = {}) {
 	const dom = new JSDOM(
-		'<div id="mount"></div><button id="chat">Chat</button>',
+		'<div id="mount"></div><button id="chat">Chat</button><input id="chat-editor" aria-label="Chat editor">',
 		{ url: "http://127.0.0.1:1/#/browser", pretendToBeVisual: true },
 	);
 	const previous = {};
@@ -75,7 +82,7 @@ async function rig({ tabIds = [1, 3], activeId = 1 } = {}) {
 		value: "MacIntel",
 	});
 	const events = [];
-	let incoming;
+	const incoming = new Set();
 	let nextId = 10;
 	let tabs = tabIds.map((tabId) => ({ tabId, sessionId: "a" }));
 	let active = activeId;
@@ -100,8 +107,11 @@ async function rig({ tabIds = [1, 3], activeId = 1 } = {}) {
 			setChordFocus: async (f) => events.push(["focus", f]),
 			focusPage: async () => events.push(["page"]),
 			onChord: (fn) => {
-				incoming = fn;
-				return () => events.push(["unsubscribe"]);
+				incoming.add(fn);
+				return () => {
+					incoming.delete(fn);
+					events.push(["unsubscribe"]);
+				};
 			},
 		},
 	};
@@ -109,6 +119,7 @@ async function rig({ tabIds = [1, 3], activeId = 1 } = {}) {
 	let returnRef;
 	const chrome = {
 		pageControl: async (tabId, action) => {
+			events.push(["page-control", tabId, action]);
 			if (action === "open") find ??= { tabId, query: "hello" };
 			else if (action === "close") find = null;
 			redraw();
@@ -141,7 +152,7 @@ async function rig({ tabIds = [1, 3], activeId = 1 } = {}) {
 			redraw();
 		},
 		reopenTab: async (s) => events.push(["reopen", s]),
-		reload: async (hard) => events.push(["reload", hard]),
+		reload: async (hard) => events.push(["reload", hard, active]),
 		history: async (d) => events.push(["history", d]),
 	};
 	function Harness() {
@@ -154,12 +165,17 @@ async function rig({ tabIds = [1, 3], activeId = 1 } = {}) {
 			closeTab,
 			openFind,
 			findReturnToPage,
-		} = useBrowserChords(chrome, tabs, "a", address);
+		} = useBrowserChords(chrome, tabs, sessionId, address);
 		closeFromStrip = closeTab;
 		returnRef = findReturnToPage;
-		return React.createElement(
+		const surface = React.createElement(
 			"div",
-			{ ref, tabIndex: -1, id: "surface" },
+			{
+				ref,
+				tabIndex: -1,
+				id: "surface",
+				"data-tour-tag": pane ? "browser-pane-surface" : "browser-route",
+			},
 			React.createElement("input", {
 				ref: address,
 				defaultValue: "https://example.test/one",
@@ -202,6 +218,18 @@ async function rig({ tabIds = [1, 3], activeId = 1 } = {}) {
 				),
 			),
 		);
+		return pane
+			? React.createElement(
+					"section",
+					{ "data-tour-tag": "browser-pane" },
+					React.createElement(
+						"button",
+						{ id: "pane-header", type: "button" },
+						"Browser scope",
+					),
+					surface,
+				)
+			: surface;
 	}
 	// ReactDOM probes input support at module load; load it AFTER jsdom exists,
 	// otherwise its legacy IE input polyfill is a dead measurement instrument.
@@ -241,7 +269,24 @@ async function rig({ tabIds = [1, 3], activeId = 1 } = {}) {
 			tabs = next;
 			active = nextActive;
 		},
-		incoming: (m) => incoming(m),
+		incoming: (m) => {
+			for (const fn of incoming) fn(m);
+		},
+		mountPeer: async ({ hidden = false } = {}) => {
+			const node = document.createElement("div");
+			node.hidden = hidden;
+			document.body.append(node);
+			const peer = createRoot(node);
+			await act(async () => peer.render(React.createElement(Harness)));
+			return Object.assign(
+				async () => {
+					await act(async () => peer.unmount());
+					node.remove();
+					await act(async () => root.render(React.createElement(Harness)));
+				},
+				{ node },
+			);
+		},
 		redraw: () => redraw(),
 		closeFromStrip: (id) => closeFromStrip(id),
 		chrome,
@@ -504,6 +549,405 @@ test("the address field renders no tooltip, while a chrome-band control still do
 			else delete globalThis[key];
 		}
 		dom.window.close();
+	}
+});
+
+test("StageA BODY route owns selected reload and distinct rapid new tabs, not a DOM rest-stop accident", async () => {
+	const r = await rig({ sessionId: null });
+	try {
+		assert.equal(document.activeElement, document.body);
+		assert.deepEqual(
+			r.events.filter((e) => e[0] === "focus").at(-1),
+			["focus", true],
+			"main/menu receives the logical BODY owner before a physical key",
+		);
+		await r.key("r");
+		assert.deepEqual(
+			r.events.filter((e) => e[0] === "reload"),
+			[["reload", false, 1]],
+		);
+		await act(async () => r.chrome.activateTab(3));
+		await r.focus("toolbar");
+		await act(async () => document.activeElement.blur());
+		await r.key("r");
+		assert.deepEqual(r.events.filter((e) => e[0] === "reload").at(-1), [
+			"reload",
+			false,
+			3,
+		]);
+		const before = r.tabs().length;
+		await act(async () => {
+			for (let i = 0; i < 2; i++)
+				document.body.dispatchEvent(
+					new r.dom.window.KeyboardEvent("keydown", {
+						key: "t",
+						metaKey: true,
+						bubbles: true,
+						cancelable: true,
+					}),
+				);
+		});
+		await r.flush(25);
+		assert.equal(r.tabs().length, before + 2);
+		assert.equal(new Set(r.tabs().map((t) => t.tabId)).size, before + 2);
+		assert.deepEqual(
+			r.events.filter((e) => e[0] === "new"),
+			[
+				["new", null],
+				["new", null],
+			],
+		);
+		assert.equal(document.activeElement.id, "address");
+	} finally {
+		await act(async () => r.root.unmount());
+		r.finish();
+	}
+});
+
+test("StageA real pane ancestor header owns R/T; chat, modal, wrong modifiers, IME and repeats do not", async () => {
+	const r = await rig({ pane: true });
+	let release;
+	try {
+		r.dom.window.location.hash = "#/chat";
+		await r.focus("pane-header");
+		await r.key("r");
+		await r.key("t");
+		assert.deepEqual(
+			r.events.filter((e) => e[0] === "reload"),
+			[["reload", false, 1]],
+		);
+		assert.deepEqual(
+			r.events.filter((e) => e[0] === "new"),
+			[["new", "a"]],
+		);
+		await r.focus("chat");
+		const count = r.events.filter((e) =>
+			["reload", "new"].includes(e[0]),
+		).length;
+		await r.key("r");
+		await r.key("t");
+		assert.equal(
+			r.events.filter((e) => ["reload", "new"].includes(e[0])).length,
+			count,
+		);
+		assert.deepEqual(r.events.filter((e) => e[0] === "focus").at(-1), [
+			"focus",
+			false,
+		]);
+		await r.focus("pane-header");
+		await act(async () => {
+			release = suppressBrowserView("StageA-modal");
+		});
+		await r.key("r");
+		await r.key("t");
+		assert.equal(
+			r.events.filter((e) => ["reload", "new"].includes(e[0])).length,
+			count,
+		);
+		assert.deepEqual(r.events.filter((e) => e[0] === "focus").at(-1), [
+			"focus",
+			false,
+		]);
+		await act(async () => {
+			release();
+			release = null;
+		});
+		for (const [key, flags] of [
+			["r", { ctrlKey: true, metaKey: false }],
+			["t", { altKey: true }],
+			["r", { isComposing: true }],
+			["t", { repeat: true }],
+		])
+			await r.key(key, flags);
+		assert.equal(
+			r.events.filter((e) => ["reload", "new"].includes(e[0])).length,
+			count,
+		);
+		await act(async () => document.activeElement.blur());
+		await r.key("t");
+		assert.equal(
+			r.events.filter((e) => ["reload", "new"].includes(e[0])).length,
+			count,
+			"chat BODY never inherits pane ownership",
+		);
+	} finally {
+		release?.();
+		await act(async () => r.root.unmount());
+		r.finish();
+	}
+});
+
+test("StageA hidden, non-browser BODY and ambiguous multiple surfaces never claim fallback/messages", async () => {
+	const r = await rig();
+	let removePeer;
+	try {
+		const surface = document.getElementById("surface");
+		surface.hidden = true;
+		await r.key("r");
+		await r.key("t");
+		assert.equal(
+			r.events.filter((e) => ["reload", "new"].includes(e[0])).length,
+			0,
+		);
+		surface.hidden = false;
+		surface.setAttribute("inert", "");
+		await r.key("r");
+		await r.key("t");
+		assert.equal(
+			r.events.filter((e) => ["reload", "new"].includes(e[0])).length,
+			0,
+			"inert chrome cannot claim BODY",
+		);
+		surface.removeAttribute("inert");
+		await r.focus("chat-editor");
+		await r.key("r");
+		await r.key("t");
+		await act(async () =>
+			document.body.dispatchEvent(
+				new r.dom.window.KeyboardEvent("keydown", {
+					key: "t",
+					metaKey: true,
+					bubbles: true,
+					cancelable: true,
+				}),
+			),
+		);
+		assert.equal(
+			r.events.filter((e) => ["reload", "new"].includes(e[0])).length,
+			0,
+			"outside editable remains the owner even if a BODY event is synthesized",
+		);
+		await act(async () => document.activeElement.blur());
+		r.dom.window.location.hash = "#/chat";
+		await r.key("r");
+		await r.key("t");
+		assert.equal(
+			r.events.filter((e) => ["reload", "new"].includes(e[0])).length,
+			0,
+		);
+		r.dom.window.location.hash = "#/browser";
+		removePeer = await r.mountPeer();
+		await r.key("r");
+		await r.key("t");
+		await act(async () => r.incoming({ intent: "new-tab", origin: "chrome" }));
+		await r.flush();
+		assert.equal(
+			r.events.filter((e) => ["reload", "new"].includes(e[0])).length,
+			0,
+			"no global broadcast into multiple scoped surfaces",
+		);
+	} finally {
+		await removePeer?.();
+		await act(async () => r.root.unmount());
+		r.finish();
+	}
+});
+
+test("StageA focused A survives hidden B mount/update/unmount and one incoming invocation dispatches once", async () => {
+	const r = await rig({ pane: true });
+	let removePeer;
+	try {
+		r.dom.window.location.hash = "#/chat";
+		await r.focus("pane-header");
+		const start = r.events.length;
+		removePeer = await r.mountPeer({ hidden: true });
+		await act(async () => {
+			removePeer.node.hidden = false;
+		});
+		await act(async () => {
+			removePeer.node.style.display = "none";
+		});
+		await act(async () => r.incoming({ intent: "new-tab", origin: "chrome" }));
+		await r.flush(25);
+		assert.equal(
+			r.events.filter((e) => e[0] === "new").length,
+			1,
+			"main output is scoped, never broadcast into B",
+		);
+		await removePeer();
+		removePeer = null;
+		await r.flush();
+		assert.equal(
+			r.events.slice(start).some((e) => e[0] === "focus" && e[1] === false),
+			false,
+			"B cannot overwrite A's one main-process boolean",
+		);
+		assert.equal(document.activeElement.id, "address");
+		await r.key("r");
+		assert.equal(r.events.filter((e) => e[0] === "reload").length, 1);
+	} finally {
+		await removePeer?.();
+		await act(async () => r.root.unmount());
+		r.finish();
+	}
+});
+
+test("StageA loading and failed selected tabs keep BODY reload targeted and new tabs in the existing scope", async () => {
+	const r = await rig({ sessionId: null });
+	try {
+		for (const [loading, failed] of [
+			[true, false],
+			[false, true],
+		]) {
+			await act(async () => {
+				r.setTabs(
+					[
+						{ tabId: 1, sessionId: null },
+						{ tabId: 3, sessionId: null, loading, failed },
+					],
+					3,
+				);
+				r.redraw();
+			});
+			await r.focus("toolbar");
+			await act(async () => document.activeElement.blur());
+			await r.key("r");
+			assert.deepEqual(r.events.filter((e) => e[0] === "reload").at(-1), [
+				"reload",
+				false,
+				3,
+			]);
+		}
+		await r.key("t");
+		assert.deepEqual(
+			r.events.filter((e) => e[0] === "new"),
+			[["new", null]],
+		);
+		assert.equal(r.tabs().length, 3);
+		assert.equal(document.activeElement.id, "address");
+	} finally {
+		await act(async () => r.root.unmount());
+		r.finish();
+	}
+});
+
+test("StageA renderer window blur does not clear a retained pane DOM owner; real outside input does", async () => {
+	const r = await rig({ pane: true });
+	try {
+		r.dom.window.location.hash = "#/chat";
+		await r.focus("pane-header");
+		const start = r.events.length;
+		await act(async () => {
+			r.dom.window.dispatchEvent(new r.dom.window.Event("blur"));
+			document.activeElement.dispatchEvent(
+				new r.dom.window.FocusEvent("focusout", {
+					bubbles: true,
+					relatedTarget: null,
+				}),
+			);
+		});
+		await r.flush();
+		assert.equal(
+			r.events.slice(start).some((e) => e[0] === "focus" && e[1] === false),
+			false,
+			"null relatedTarget does not prove DOM departure",
+		);
+		await act(async () =>
+			r.dom.window.dispatchEvent(new r.dom.window.Event("focus")),
+		);
+		assert.deepEqual(r.events.filter((e) => e[0] === "focus").at(-1), [
+			"focus",
+			true,
+		]);
+		await r.focus("chat");
+		assert.deepEqual(r.events.filter((e) => e[0] === "focus").at(-1), [
+			"focus",
+			false,
+		]);
+		await r.key("r");
+		await r.key("t");
+		assert.equal(
+			r.events.filter((e) => ["reload", "new"].includes(e[0])).length,
+			0,
+		);
+	} finally {
+		await act(async () => r.root.unmount());
+		r.finish();
+	}
+});
+
+test("RT-only BODY direct neighbors retain existing address/find/close/reopen/zoom/digit/cycle/history meanings", async () => {
+	const r = await rig({ tabIds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] });
+	const body = () => act(async () => document.activeElement.blur());
+	try {
+		for (const digit of [1, 2, 3, 4, 5, 6, 7, 8, 9]) {
+			await body();
+			await r.key(String(digit));
+			assert.deepEqual(r.events.filter((e) => e[0] === "activate").at(-1), [
+				"activate",
+				digit === 9 ? 10 : digit,
+			]);
+		}
+		await body();
+		await r.key("Tab", { metaKey: false, ctrlKey: true });
+		assert.deepEqual(r.events.filter((e) => e[0] === "activate").at(-1), [
+			"activate",
+			1,
+		]);
+		await body();
+		await r.key("Tab", { metaKey: false, ctrlKey: true, shiftKey: true });
+		assert.deepEqual(r.events.filter((e) => e[0] === "activate").at(-1), [
+			"activate",
+			10,
+		]);
+		for (const [key, direction] of [
+			["[", "back"],
+			["]", "forward"],
+		]) {
+			await body();
+			await r.key(key);
+			assert.deepEqual(r.events.filter((e) => e[0] === "history").at(-1), [
+				"history",
+				direction,
+			]);
+		}
+		for (const [key, action] of [
+			["=", "in"],
+			["-", "out"],
+			["0", "reset"],
+		]) {
+			await body();
+			await r.key(key);
+			assert.deepEqual(r.events.filter((e) => e[0] === "page-control").at(-1), [
+				"page-control",
+				10,
+				action,
+			]);
+		}
+		await body();
+		await r.key("f");
+		assert.deepEqual(r.events.filter((e) => e[0] === "page-control").at(-1), [
+			"page-control",
+			10,
+			"open",
+		]);
+		// This bare placeholder tests routing, not BrowserFindRow's own mount
+		// autofocus effect (browser-find-row.tsx). Native QA checks real focus.
+		assert.ok(document.getElementById("find-editor"));
+		await body();
+		await r.key("l");
+		assert.equal(document.activeElement.id, "address");
+		assert.equal(document.activeElement.selectionStart, 0);
+		assert.equal(
+			document.activeElement.selectionEnd,
+			document.activeElement.value.length,
+		);
+		await body();
+		await r.key("T", { shiftKey: true });
+		assert.deepEqual(r.events.filter((e) => e[0] === "reopen").at(-1), [
+			"reopen",
+			"a",
+		]);
+		await body();
+		await r.key("w");
+		assert.deepEqual(r.events.filter((e) => e[0] === "close").at(-1), [
+			"close",
+			10,
+		]);
+		assert.equal(r.tabs().length, 9);
+	} finally {
+		await act(async () => r.root.unmount());
+		r.finish();
 	}
 });
 
