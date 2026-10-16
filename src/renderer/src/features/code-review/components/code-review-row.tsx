@@ -1,7 +1,9 @@
 import { Badge } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { ArrowUpRight, GitPullRequest } from "lucide-react";
 import type { FC } from "react";
+import { t } from "../../../../../i18n/messages";
 import { openUrlTarget } from "../../chat/utils/link-open";
 import {
 	type CodeRequestRow as CodeRequestRowData,
@@ -70,6 +72,7 @@ export const CodeReviewRow: FC<CodeReviewRowProps> = ({
 	nowMs,
 	pendingRevealMs,
 }) => {
+	useI18nLocale();
 	const pill = statePill(row);
 	const relation = [relationTag(row), actedTag(row)]
 		.filter((tag): tag is string => tag !== null)
@@ -180,7 +183,9 @@ export const CodeReviewRow: FC<CodeReviewRowProps> = ({
 									)}
 									title={
 										row.relation === "unknown"
-											? "Possibly opened by this session; the evidence did not prove it was."
+											? t(
+													"ui.code_review.code_review_row.possibly_opened_by_this_session_the_evidence_did_not_prove_it_was",
+												)
 											: undefined
 									}
 								>
@@ -250,9 +255,9 @@ export const CodeReviewRow: FC<CodeReviewRowProps> = ({
 						<span
 							data-row-loading=""
 							className={cn("truncate text-meta text-ink-dim")}
-							title="Fetching current state…"
+							title={t("ui.code_review.code_review_row.fetching_current_state")}
 						>
-							Fetching current state…
+							{t("ui.code_review.code_review_row.fetching_current_state")}
 						</span>
 					) : (
 						notice && (
