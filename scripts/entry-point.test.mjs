@@ -225,13 +225,14 @@ function cases(root) {
 		},
 		{
 			/*
-			 * The CI asks producer, driven on its PERMISSION DOOR rather than its happy
-			 * path: `--case` without the three environment names its parent supplies
-			 * refuses on stderr and exits 1 BEFORE any artifact root is created, any
-			 * fixture starts or any Electron binary is resolved - so this case costs a
+			 * The CI assembled-app frame producer, driven on its PERMISSION DOOR rather
+			 * than its happy path: `--case` naming a scenario and `--leg` a side, and with
+			 * neither a scenario in its table nor the three environment names its parent
+			 * supplies, refuses on stderr and exits 1 BEFORE any artifact root is created,
+			 * any fixture starts or any Electron binary is resolved - so this case costs a
 			 * process spawn and touches nothing native. Its real work needs macOS
-			 * Electron, a compiled app and a fixture daemon, which is why the scene
-			 * itself is exercised only inside `ci.yml`'s macOS NPX leg and never here.
+			 * Electron, a compiled app and a fixture daemon, which is why the cases
+			 * themselves are exercised only inside `ci.yml`'s macOS NPX leg and never here.
 			 */
 			script: "asks-app-regression.mjs",
 			args: ["--case", ""],
@@ -240,7 +241,7 @@ function cases(root) {
 			status: 1,
 			stdout: /^$/,
 			stderr:
-				/asks-app-regression: --case needs control\|candidate and ASKS_APP_ROOT, ASKS_OUTPUT, ASKS_RECORDS/,
+				/asks-app-regression: --case needs <scenario> from .+ --leg control\|candidate and ASKS_APP_ROOT, ASKS_OUTPUT, ASKS_RECORDS/,
 		},
 		{
 			// The group, asked for WITHOUT the profile that authorizes it: the door stays
