@@ -1405,15 +1405,37 @@ export const AskPanel = ({
 	 * render, because the hold has to apply on the very frame that lapses the ask; the
 	 * adds are idempotent, so a StrictMode double render changes nothing.
 	 *
-	 * The COUNTS stay the truth (`pending`/`settled` above): a held row is settled, so the
-	 * filter, the bar and the empty sentences never count it as pending. Only the LAYOUT of
-	 * the `All` and `Pending` views keeps it in place; the `Settled` view lists it with
-	 * the rest of the history, where the reader went looking for it.
+	 * THE SLOT KEEPS THE CARD'S HEIGHT (agent review round 2 on #1116, M1 = QA Q-3).
+	 * Collapsing to the 32px header alone still slid the next card up by the difference,
+	 * and when the lapsed card had one more option row than the next one, that put the
+	 * next card's live Decline exactly under the old Decline point. So the slot reserves
+	 * the card's LAST MEASURED height (`cardHeights`, read after every commit while the
+	 * card is answerable), header at the top and quiet space below: nothing under it moves.
+	 *
+	 * The COUNTS stay the truth (`pending`/`settled` above): a held ask is settled, so the
+	 * filter, the bar and the empty sentences never count it as pending (m1). What the
+	 * views draw for it: under `All`, the collapsed header in its reserved slot; under
+	 * `Pending`, an `aria-hidden` spacer of the same height and nothing else, because a
+	 * settled row has no place in that view but the card below it still must not move
+	 * (U4); under `Settled`, the row with the rest of the history.
+	 *
+	 * A FILTER PRESS RELEASES EVERY HOLD (U4): the press is the reader's own act, so nothing
+	 * is being moved out from under them, and the hold has no reason left. `releaseHolds`
+	 * forgets every ask that is not answerable now; the counter re-renders even when the
+	 * pressed chip was already selected, which `setFilter` alone would skip.
 	 */
 	const answerableSeen = useRef<Set<string>>(new Set());
 	for (const row of view.rows) {
 		if (row.canAnswer) answerableSeen.current.add(row.ask.ask_id);
 	}
+	const cardHeights = useRef<Map<string, number>>(new Map());
+	const [, setReleases] = useState(0);
+	const releaseHolds = () => {
+		answerableSeen.current = new Set(
+			view.rows.filter((row) => row.canAnswer).map((row) => row.ask.ask_id),
+		);
+		setReleases((count) => count + 1);
+	};
 	const shown = askPanelHalves(view.rows, answerableSeen.current);
 	const heldIds = new Set(
 		shown.pending.filter((row) => row.lapsed).map((row) => row.ask.ask_id),
@@ -1442,22 +1464,63 @@ export const AskPanel = ({
 		focusedRow?.getAttribute("data-lo-ask-held") ??
 		focusedRow?.getAttribute("data-lo-ask-row") ??
 		null;
+	/*
+	 * WHAT A LAPSE DROPPED IS SAID ONCE (UX round 2 on #1116, U5). Text typed or an
+	 * option picked in a card that lapses cannot be sent, and the collapse removed it
+	 * without a word. The panel's own polite region states it, only when the card held
+	 * something: an untouched card lost nothing. `prevDrafts` is the draft as it stood on
+	 * the frame before, in case the owner of the drafts clears it on the same frame.
+	 */
+	const [lapseNote, setLapseNote] = useState("");
+	const prevDrafts = useRef(drafts);
 	useLayoutEffect(() => {
-		const id = focusedAsk;
-		const justHeld =
-			id !== null && heldIds.has(id) && !prevHeld.current.has(id);
+		const newlyHeld = [...heldIds].filter((id) => !prevHeld.current.has(id));
+		const held = prevHeld.current;
 		prevHeld.current = heldIds;
-		if (!justHeld) return;
+		/* Last measured height of every card still answerable, for the held slot (M1). */
+		for (const row of view.rows) {
+			if (!row.canAnswer) continue;
+			const card = [
+				...(panelRef.current?.querySelectorAll<HTMLElement>(
+					"[data-lo-ask-row]",
+				) ?? []),
+			].find((el) => el.getAttribute("data-lo-ask-row") === row.ask.ask_id);
+			const height = card?.getBoundingClientRect().height ?? 0;
+			if (height > 0) cardHeights.current.set(row.ask.ask_id, height);
+		}
+		const dropped = newlyHeld.some((id) =>
+			Object.values(prevDrafts.current[id] ?? drafts[id] ?? {}).some(
+				(values) => values.length > 0,
+			),
+		);
+		prevDrafts.current = drafts;
+		if (dropped)
+			setLapseNote("That question timed out; your answer was not sent.");
+		const id = focusedAsk;
+		if (id === null || !heldIds.has(id) || held.has(id)) return;
 		const now = document.activeElement;
 		if (now !== null && now !== document.body && now.isConnected) return;
+		/*
+		 * Under `Pending` the held ask is only a spacer with nothing to focus, so the
+		 * keyboard lands on the filter the reader chose - inside the panel, and never on
+		 * the next card's controls.
+		 */
+		if (filter === "outstanding") {
+			panelRef.current
+				?.querySelector<HTMLElement>(
+					'[data-lo-ask-filter] button[aria-pressed="true"]',
+				)
+				?.focus();
+			return;
+		}
 		/* Matched by attribute VALUE rather than a composed selector: an ask id is the
 		 * backend's string and needs no escaping this way. */
-		const held = [
+		const slot = [
 			...(panelRef.current?.querySelectorAll<HTMLElement>(
 				"[data-lo-ask-held]",
 			) ?? []),
 		].find((row) => row.getAttribute("data-lo-ask-held") === id);
-		held?.querySelector<HTMLElement>("button[aria-expanded]")?.focus();
+		slot?.querySelector<HTMLElement>("button[aria-expanded]")?.focus();
 	});
 
 	/*
@@ -1601,7 +1664,10 @@ export const AskPanel = ({
 					key={value}
 					type="button"
 					aria-pressed={filter === value}
-					onClick={() => setFilter(value)}
+					onClick={() => {
+						releaseHolds();
+						setFilter(value);
+					}}
 					className={cn(
 						"rounded-md px-2 py-0.5 text-meta transition-colors duration-fast ease-out-quart",
 						filter === value
@@ -1648,7 +1714,12 @@ export const AskPanel = ({
 			? view.open > 0
 				? "The details for these asks could not be loaded."
 				: "No asks outstanding. The agent is not waiting on anything."
-			: filter === "outstanding" && shown.pending.length === 0
+			: /*
+				 * The TRUE pending count, not the drawn one (m1): a held ask is settled, so
+				 * `Pending · 0` owes its sentence even while a spacer still holds a slot. It
+				 * is drawn only when nothing is pending, so it cannot push a live card down.
+				 */
+				filter === "outstanding" && pending.length === 0
 				? "No asks are pending. They have all settled — see Settled."
 				: filter === "settled" && settled.length === 0
 					? "No asks have settled yet. They are all still pending."
@@ -1661,6 +1732,15 @@ export const AskPanel = ({
 			className={cn("flex w-full flex-col gap-2", className)}
 		>
 			{view.rows.length > 0 ? filterControl : null}
+			{/*
+			 * A bare polite live region rather than an `<output>` (U5): the panel's
+			 * `<output>`s are its per-card refusal lines, and the rigs and tests that read
+			 * "the panel's output" mean those. Mounted empty, so the first sentence written
+			 * into it is announced.
+			 */}
+			<div data-lo-ask-lapse-note="" aria-live="polite" className="sr-only">
+				{lapseNote}
+			</div>
 			{/*
 			 * THE EMPTY LINE SITS UNDER THE CONTROL IT ANSWERS (design round 1, D1 = UX
 			 * round 1, U2): the sentence is about the SLICE the chips selected, so it reads
@@ -1684,18 +1764,25 @@ export const AskPanel = ({
 				</p>
 			)}
 			{showPending
-				? shown.pending.map((presentation) =>
-						heldIds.has(presentation.ask.ask_id) ? (
+				? shown.pending.map((presentation) => {
+						const id = presentation.ask.ask_id;
+						if (!heldIds.has(id)) return askRow(presentation);
+						const height = cardHeights.current.get(id);
+						const reserve =
+							height === undefined ? undefined : { minHeight: `${height}px` };
+						return filter === "outstanding" ? (
 							<div
-								key={presentation.ask.ask_id}
-								data-lo-ask-held={presentation.ask.ask_id}
-							>
+								key={id}
+								data-lo-ask-spacer={id}
+								aria-hidden="true"
+								style={reserve}
+							/>
+						) : (
+							<div key={id} data-lo-ask-held={id} style={reserve}>
 								{collapsedRow(presentation)}
 							</div>
-						) : (
-							askRow(presentation)
-						),
-					)
+						);
+					})
 				: null}
 			{showSettledRows && (showPending ? shown.settled : settled).length > 0 ? (
 				/*
