@@ -152,6 +152,48 @@ test("existing job performs real native capture and always uploads measurements"
 	 * does not depend on which driver tree was imported, because the control leg
 	 * loads a pinned historical facade that does not export one.
 	 */
+	/*
+	 * The ordering that cost CI seven minutes: the traffic assertions sat AHEAD of
+	 * `fixture.close()`, so the first one that threw left the fixture's HTTP
+	 * listener open and the step ran on with nothing to do until GitHub killed it.
+	 * The close must come first, and the assertions must not run at all over a run
+	 * that already failed.
+	 */
+	const closeAt = source.indexOf(
+		"await fixture.close();\n\t\tif (primaryError === null)",
+	);
+	assert(
+		closeAt > 0,
+		"the fixture must be closed before the traffic assertions",
+	);
+	const trafficCallAt = source.indexOf(
+		"assertTrafficAllowed(fixture.requests)",
+	);
+	assert(
+		trafficCallAt > closeAt,
+		"the traffic assertions must follow the close, or a failure leaks the listener",
+	);
+	assert(
+		source.includes("primaryError = error") &&
+			source.includes("primaryError === null"),
+		"traffic assertions must be skipped over a run that already failed",
+	);
+	// The Radient proxy is a POST this scene reaches; the fixture models its read
+	// operations and the guard admits the route while the turn/answer pattern stays shut.
+	assert(
+		source.includes("/v1/desktop/radient"),
+		"the traffic guard must admit the modelled radient read door",
+	);
+	const fixtureSource = readFileSync(
+		new URL("./asks-app-fixture.mjs", import.meta.url),
+		"utf8",
+	);
+	assert(
+		fixtureSource.includes("READ_RADIENT_OPERATIONS") &&
+			fixtureSource.includes("Fixture models no radient operation"),
+		"the fixture must model the radient reads and refuse the rest by name",
+	);
+
 	const waitAt = source.indexOf("await waitForDevtoolsPort(app, api)");
 	const attachAt = source.indexOf(
 		'api.CdpClient.attach(app.port, "out/renderer/index.html")',

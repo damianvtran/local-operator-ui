@@ -127,6 +127,31 @@ export async function startAsksAppFixture({ root, port = 8080, token }) {
 		cwd: "/synthetic/ci",
 		status: { code: "idle", label: "Idle" },
 	}));
+	/*
+	 * The Radient operations this scene's own reads reach, and the synthetic answer
+	 * each gets. Their shapes are the wire envelopes the renderer's Radient clients
+	 * unwrap - `{msg, result}` inside the desktop result - so the app parses them
+	 * exactly as it would parse the real control plane's.
+	 *
+	 * The set is deliberately this narrow: the fixture models the reads the asks
+	 * scene performs (the model picker's quota notice) and refuses every other
+	 * operation by name, so a new caller is visible as a named refusal rather than
+	 * as an accidental pass. No operation here writes anything upstream.
+	 */
+	const READ_RADIENT_OPERATIONS = new Set(["quota.notice"]);
+	const radientReadResult = (operation) => {
+		if (operation === "quota.notice")
+			return {
+				provider: "radient",
+				state: "ok",
+				credit_balance: 2500,
+				credit_limit: 5000,
+				reset_at: 1_800_000_000,
+				signup_resent_at: null,
+			};
+		throw new Error(`no synthetic radient answer for ${operation}`);
+	};
+
 	const envelope = (result) => ({
 		status: 200,
 		message: "Synthetic desktop result.",
@@ -191,6 +216,37 @@ export async function startAsksAppFixture({ root, port = 8080, token }) {
 					watch_ttl_seconds: 60,
 				}),
 			);
+		/*
+		 * The Radient proxy the renderer actually calls (`POST /v1/desktop/radient`,
+		 * the control plane's narrow door to account/credits/usage/agents). It is a
+		 * READ door for the operations this scene reaches - the quota notice's
+		 * `quota.notice` and the credit census - so it is answered with a synthetic
+		 * envelope rather than refused, which is what the 405 below would have done.
+		 * Still no provider write: only the read operations are modelled, and any
+		 * other operation is refused with the fixture's own words so a new caller
+		 * shows up as a named refusal rather than as a silent success.
+		 */
+		if (req.method === "POST" && path === "/v1/desktop/radient") {
+			const chunks = [];
+			for await (const chunk of req) chunks.push(chunk);
+			const operation = JSON.parse(Buffer.concat(chunks).toString() || "{}")
+				?.control?.operation;
+			if (READ_RADIENT_OPERATIONS.has(operation))
+				return json(
+					envelope({
+						data: {
+							msg: "Synthetic radient read.",
+							result: radientReadResult(operation),
+						},
+					}),
+				);
+			return json(
+				{
+					detail: `Fixture models no radient operation ${String(operation)}; turns, answers and provider writes stay forbidden`,
+				},
+				405,
+			);
+		}
 		if (req.method !== "GET")
 			return json(
 				{ detail: "Fixture forbids turns, answers and provider writes" },

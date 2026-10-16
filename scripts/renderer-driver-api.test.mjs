@@ -73,7 +73,12 @@ const FACADE_KEYS = [
 	// `fetch` into a bare `TypeError: fetch failed`. This wait is the step every
 	// in-repo caller already took before its own attach, so it is part of the
 	// caller contract rather than an internal detail.
+	// Exported together, for the same caller: a scene must wait for the endpoint,
+	// then for the page to paint, then for the bridge to register its verbs -
+	// before it sends one. Listed in the sort order the assertion reads them in.
+	"waitForBridge",
 	"waitForDevtools",
+	"waitForPage",
 ];
 
 /** The two pre-spawn refusals a synthetic tree can reach (`assertBuildIsCurrent`). */
