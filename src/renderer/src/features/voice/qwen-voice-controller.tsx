@@ -141,6 +141,8 @@ export function echoWords(text: string): string[] {
 		.filter(Boolean);
 }
 
+const echoKey = (text: string): string => echoWords(text).join(" ");
+
 /* -------- the fuzzy match for SHORT takes (QA round 2, Q10) ---------------- */
 
 /** Edit distance allowed for a one-word phrase ("Sent." heard as "Scent"). */
@@ -208,19 +210,57 @@ export function isHeardAs(take: string[], target: string[]): boolean {
 
 /**
  * THE RIG'S OWN PHRASES (Q7), the closed set the launcher speaks from the same
- * file. The renderer never learns WHEN the launcher said one, so a take that is
- * a phrase - exactly, or as Parakeet mishears it - is an echo at any time: a
+ * file. A take that IS a phrase (after normalisation) is an echo at any time: a
  * person does not say "Answer it on screen first." to their own agent, and
- * relaying it is what made the rig answer itself in a loop (QA round 1, Q4;
- * round 2, Q10: "Scent", "Voices off for this conversation.").
+ * relaying it is what made the rig answer itself in a loop (QA round 1, Q4).
  */
 const PHRASE_WORDS: ReadonlyArray<string[]> = Object.values(
 	QWEN_PHRASES as Record<string, string>,
 ).map(echoWords);
+const PHRASE_KEYS: ReadonlySet<string> = new Set(
+	PHRASE_WORDS.map((words) => words.join(" ")),
+);
 
 export function isQwenPhrase(take: string): boolean {
+	const key = echoKey(take);
+	return key.length > 0 && PHRASE_KEYS.has(key);
+}
+
+/**
+ * A take that is a phrase as Parakeet MISHEARS it ("Scent", "Voices off for
+ * this conversation.", QA round 2, Q10). Only trusted right after the rig
+ * spoke a phrase (`PHRASE_ECHO_WINDOW_MS`): at any other time "sync", "set" or
+ * "switch" is the user, and dropping it silently and repeatedly reads as voice
+ * being broken (review round 3, M1).
+ */
+export function isQwenPhraseHeard(take: string): boolean {
 	const words = echoWords(take);
 	return PHRASE_WORDS.some((phrase) => isHeardAs(words, phrase));
+}
+
+/**
+ * How long after the launcher speaks a phrase its mishearing can come back:
+ * a phrase is at most 6 words (~2.5 s of speech), then Parakeet's end of turn.
+ */
+export const PHRASE_ECHO_WINDOW_MS = 10_000;
+
+/*
+ * When the launcher last spoke a phrase, as far as this window can tell: it
+ * speaks one for every take outcome except an echo (relay-core
+ * `phraseForOutcome`), and "Switched." on a slot change between two sessions.
+ */
+let phraseSpokenAt: number | null = null;
+
+export function markPhraseSpoken(now = Date.now()): void {
+	phraseSpokenAt = now;
+}
+
+function phraseJustSpoken(now: number): boolean {
+	return (
+		phraseSpokenAt !== null &&
+		now >= phraseSpokenAt &&
+		now - phraseSpokenAt <= PHRASE_ECHO_WINDOW_MS
+	);
 }
 
 /** The longest run of consecutive words `a` and `b` share. */
@@ -248,23 +288,27 @@ function longestSharedRun(a: string[], b: string[]): number {
  *   covers at least 80% of the take. Contiguous, not a subsequence: the earlier
  *   in-order-subsequence ratio dropped real follow-ups such as "can you mock the
  *   clock" after a reply that happened to contain "mock the clock".
- * - A shorter take is an echo only when it is the whole spoken text, or one of
- *   its sentences under 6 words, as Parakeet hears it (`isHeardAs`). Too few
- *   words to tell otherwise, and dropping a real "stop" is worse than relaying
- *   a stray fragment.
+ * - A shorter take is an echo only when it equals the whole spoken text, or one
+ *   of its sentences under 6 words. Too few words to tell otherwise, and
+ *   dropping a real "stop" is worse than relaying a stray fragment.
  */
 export function isEcho(take: string, spoken: string): boolean {
 	const a = echoWords(take);
 	const b = echoWords(spoken);
 	if (a.length === 0 || b.length === 0) return false;
 	if (a.length < ECHO_MIN_RUN) {
-		if (isHeardAs(a, b)) return true;
-		// Against each SHORT sentence of the spoken text, mishearings included;
-		// a longer sentence needs the contiguous-run rule below, not a fragment.
+		/*
+		 * EXACT, not fuzzy (review round 3, m1): a reply sentence is open text,
+		 * so a near match is as likely the user answering it - "should I fix the
+		 * parser" after "Should I fix the loader?", "fix" after "Fixed." - as
+		 * its echo. Only the whole text, or one whole short sentence of it.
+		 */
+		const key = a.join(" ");
+		if (key === b.join(" ")) return true;
 		return spoken
 			.split(SENTENCE_END)
 			.map(echoWords)
-			.some((part) => part.length < ECHO_MIN_RUN && isHeardAs(a, part));
+			.some((part) => part.length < ECHO_MIN_RUN && part.join(" ") === key);
 	}
 	const run = longestSharedRun(a, b);
 	return run >= ECHO_MIN_RUN && run / a.length >= ECHO_COVERAGE;
@@ -279,12 +323,14 @@ export function rememberSpoken(text: string, now = Date.now()): void {
 }
 
 /**
- * The echo guard's verdict for one take: a Q7 phrase at any time, or a reply or
+ * The echo guard's verdict for one take: a Q7 phrase at any time; a misheard
+ * phrase within `PHRASE_ECHO_WINDOW_MS` of the rig speaking one; or a reply or
  * gate text this window had the rig say, within its estimated playback plus
  * 30 s (review round 2, minor 2: a long reply still plays after 30 s).
  */
 export function takeIsEcho(text: string, now = Date.now()): boolean {
 	if (isQwenPhrase(text)) return true;
+	if (phraseJustSpoken(now) && isQwenPhraseHeard(text)) return true;
 	return recentlySpoken.some(
 		(entry) =>
 			now - entry.at <= ECHO_WINDOW_MS + speechMs(entry.text) &&
@@ -417,6 +463,8 @@ export async function sendVoiceTake(text: string): Promise<VoiceTakeOutcome> {
 /** One rig take: the take path, then its admission back to the launcher. */
 async function onRigTake(take: { taskId: string; text: string }) {
 	const outcome = await sendVoiceTake(take.text);
+	// Every outcome but an echo makes the launcher say a phrase.
+	if (outcome.ok || outcome.code !== "echo") markPhraseSpoken();
 	await bridge()?.result(
 		outcome.ok
 			? { taskId: take.taskId, ok: true }
@@ -631,6 +679,15 @@ export const QwenVoiceController: FC = () => {
 			offTake();
 		};
 	}, []);
+
+	// The launcher says "Switched." when the slot moves between two sessions.
+	const lastSlot = useRef<string | null>(null);
+	useEffect(() => {
+		const next = activeSessionId ?? null;
+		if (lastSlot.current !== null && next !== null && next !== lastSlot.current)
+			markPhraseSpoken();
+		lastSlot.current = next;
+	}, [activeSessionId]);
 
 	// 3. The speak trigger, on the slot holder's own stream.
 	const watcher = useRef<VoiceStreamHandle | null>(null);
