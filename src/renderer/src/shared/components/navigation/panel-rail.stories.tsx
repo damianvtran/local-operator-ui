@@ -8,7 +8,7 @@ import { type FC, useEffect, useLayoutEffect } from "react";
 import { PanelRailFrame } from "./panel-rail-frame";
 
 /**
- * The panel rail (#872, #896) as a surface of its own: the five right-slot doors in
+ * The panel rail (#872, #896) as a surface of its own: the six right-slot doors in
  * the 44px column the shell hosts at the window's right edge.
  *
  * WHY A BARE FRAME AS WELL AS THE SHELL ARMS. `shell.stories.tsx` photographs the
@@ -17,15 +17,10 @@ import { PanelRailFrame } from "./panel-rail-frame";
  * the marks: the run trigger's two dot inks, the browser badge at one and at the cap,
  * the console blip in both of its inks, the canvas files dot, the asks item offered
  * quiet / with a count / in the fleet scope / lit while its drawer holds the slot
- * (#896), each item lit, and the draft route where Run details and Console
- * (which need a conversation) are absent. The
- * left half of every frame is the
- * slot's own rung (`elevated`), so the rail's leading edge and the lit item's
- * bar are judged against the ground they really meet.
- *
- * THE ASKS ITEM IS OPT-IN in these frames (#896): whether a host offers the door is
- * the app's fact, and a bare frame must not pretend one was offered, so a story that
- * means to photograph it passes `askOffered` - see `PanelRailFrame`'s note.
+ * (#896), each item lit, and the draft route, where all six doors are present too
+ * (the always-visible rail, D1). The left half of every frame is the slot's own
+ * rung (`elevated`), so the rail's leading edge and the lit item's bar are judged
+ * against the ground they really meet.
  *
  * THE STORE IS SET, NOT ASSUMED, for the reason every pane story sets its flags:
  * the preferences persist into the profile's localStorage, so a story that did not
@@ -56,28 +51,19 @@ const Rail: FC<{
 	details?: ReturnType<typeof deriveRunDetails> | null;
 	sessionId?: string | null;
 	browserAttentionCount?: number;
-	/** Offer the asks item (#896); the other four follow the route, this one a host. */
-	askOffered?: boolean;
 	askCount?: number;
 	askScope?: "session" | "fleet";
 	consoleUnseenCount?: number;
 	consoleUnseenPulsing?: boolean;
 	fileCount?: number;
-	/*
-	 * THE CODE REVIEW DOOR'S OWN FOUR (/PR2): whether it is offered at all and
-	 * the two counts its name carries. `offered` is `chat-content`'s answer
-	 * (`features.code_requests` AND a session): false here is the pre-feature
-	 * rail, which is the state a fresh backend shows.
-	 */
-	codeOffered?: boolean;
+	/* The code review door's counts and its attention cause (/PR2). */
 	codeOpened?: number;
 	codeMentioned?: number;
 	codeAttention?: string | null;
 	/*
-	 * The frame's height, defaulting to the four-door 184 the other frames hold.
-	 * The five-door rail needs its own: 5 x 32px items + 4 x 4px gaps + the
-	 * container's own padding past 184, and a clipped fifth item would be a frame
-	 * of a layout the app does not have.
+	 * The frame's height, defaulting to 220: the six-door rail is 6 x 32px items +
+	 * 5 x 4px gaps + the container's 4px top padding (216), and a clipped sixth item
+	 * would be a frame of a layout the app does not have.
 	 */
 	height?: number;
 	/*
@@ -92,17 +78,15 @@ const Rail: FC<{
 	details = deriveRunDetails(fixtures.idle()),
 	sessionId = "session-rail-story",
 	browserAttentionCount = 0,
-	askOffered = false,
 	askCount = 0,
 	askScope = "session",
 	consoleUnseenCount = 0,
 	consoleUnseenPulsing = false,
 	fileCount = 0,
-	codeOffered = false,
 	codeOpened = 0,
 	codeMentioned = 0,
 	codeAttention = null,
-	height = 184,
+	height = 220,
 	frameWidth = 132,
 }) => {
 	useLayoutEffect(() => {
@@ -150,13 +134,11 @@ const Rail: FC<{
 				sessionId={sessionId}
 				runDetails={details}
 				browserAttentionCount={browserAttentionCount}
-				askOffered={askOffered}
 				askCount={askCount}
 				askScope={askScope}
 				consoleUnseenCount={consoleUnseenCount}
 				consoleUnseenPulsing={consoleUnseenPulsing}
 				fileCount={fileCount}
-				codeOffered={codeOffered}
 				codeOpened={codeOpened}
 				codeMentioned={codeMentioned}
 				codeAttention={codeAttention}
@@ -165,9 +147,7 @@ const Rail: FC<{
 	);
 };
 
-/** Nothing to report, nothing open: the four route-gated doors at rest (the asks
- * item is opt-in in these frames and this one does not offer it; the stories
- * below do). */
+/** Nothing to report, nothing open: the six doors at rest. */
 export const Idle: Story = { render: () => <Rail /> };
 
 /** A child failed and nobody has looked: the run trigger's `danger` dot. */
@@ -222,11 +202,12 @@ export const CanvasOpen: Story = {
 };
 
 /**
- * A draft: no run details and no conversation, so Run details and Console are
- * ABSENT (not disabled) and Browser and Canvas, which open on a draft, remain.
+ * A draft: no run details and no conversation, and still all six doors (the
+ * always-visible rail, D1) - the ask door in its fleet scope, and Run details,
+ * Console and Code review opening panes that say they need a conversation.
  */
 export const DraftRoute: Story = {
-	render: () => <Rail details={null} sessionId={null} />,
+	render: () => <Rail details={null} sessionId={null} askScope="fleet" />,
 };
 
 /**
@@ -260,49 +241,26 @@ export const ConsoleOpenBlip: Story = {
 };
 
 /*
- * THE CODE REVIEW DOOR (built spec §8, manager decision §M.1): appended LAST so
- * its arrival moves nothing above it, offered wherever the pane can exist (the
- * capability is set and the route has a session), with the attention dot on a
- * real open row with checks failing or findings open.
- *
- * The frame is 220 rather than the four-door 184: the five doors this story
- * offers plus the gaps and the container's own padding exceed 184, and a frame
- * that clipped the fifth item would be a photograph of a layout the app does
- * not have - the same class of defect the installer's 900x700 frame recorded in
- * the capture set's own notes. (The asks item above is also offered in the app
- * once #896 and this fold are both in main; these frames keep askOffered false
- * so the code door is photographed on the same five-door rail it grew on.)
+ * THE CODE REVIEW DOOR (built spec §8, manager decision §M.1): LAST, so nothing
+ * above it moves, with the attention dot on a real open row with checks failing
+ * or findings open.
  */
-/** Offered, quiet: counts in the name, no dot. */
+/** Quiet: counts in the name, no dot. */
 export const CodeItem: Story = {
-	render: () => (
-		<Rail codeOffered={true} codeOpened={2} codeMentioned={1} height={220} />
-	),
+	render: () => <Rail codeOpened={2} codeMentioned={1} />,
 };
 
-/** Offered with the attention dot: an open row's checks are failing (U6's cause). */
+/** With the attention dot: an open row's checks are failing (U6's cause). */
 export const CodeAttention: Story = {
 	render: () => (
-		<Rail
-			codeOffered={true}
-			codeOpened={2}
-			codeMentioned={1}
-			codeAttention={"checks failing"}
-			height={220}
-		/>
+		<Rail codeOpened={2} codeMentioned={1} codeAttention={"checks failing"} />
 	),
 };
 
 /** The door lit: the code review pane is the drawn occupant. */
 export const CodeOpen: Story = {
 	render: () => (
-		<Rail
-			open="isCodeReviewPaneOpen"
-			codeOffered={true}
-			codeOpened={2}
-			codeMentioned={1}
-			height={220}
-		/>
+		<Rail open="isCodeReviewPaneOpen" codeOpened={2} codeMentioned={1} />
 	),
 };
 
@@ -319,19 +277,19 @@ export const CodeOpen: Story = {
 /** The door offered at ZERO asks: the state the operator asked to keep visible -
  * the entry point is a door to the surface, not a badge, and no number draws. */
 export const AsksQuiet: Story = {
-	render: () => <Rail askOffered={true} />,
+	render: () => <Rail />,
 };
 
 /** The count, in a CONVERSATION context: the badge draws 3 and the name keeps the
  * exact number (the glyph's cap is `9+`; the sentence is uncapped). */
 export const AsksWaiting: Story = {
-	render: () => <Rail askOffered={true} askCount={3} />,
+	render: () => <Rail askCount={3} />,
 };
 
 /** AND AT THE TOP LEVEL: the same control carrying the whole fleet's count, the
  * scope glyph saying so where the header's trigger said it (`MessagesSquare`). */
 export const AsksFleet: Story = {
-	render: () => <Rail askOffered={true} askCount={11} askScope="fleet" />,
+	render: () => <Rail askCount={11} askScope="fleet" />,
 };
 
 /**
@@ -340,7 +298,7 @@ export const AsksFleet: Story = {
  * up, and the count stays drawn while open, as it did in the header.
  */
 export const AsksOpen: Story = {
-	render: () => <Rail open="isAskDrawerOpen" askOffered={true} askCount={3} />,
+	render: () => <Rail open="isAskDrawerOpen" askCount={3} />,
 };
 
 /**

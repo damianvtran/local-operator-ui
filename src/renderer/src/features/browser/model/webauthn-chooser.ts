@@ -22,6 +22,8 @@
  * exactly the state where the user has nothing to choose by.
  */
 
+import { t } from "@shared/i18n";
+
 /** One offered credential, as the dialog renders it. */
 export interface WebauthnAccountChoice {
 	/** URL-safe base64, matched against `PublicKeyCredential.id`. Echoed back to
@@ -85,7 +87,9 @@ export function accountChoiceLabel(
 	if (displayName) return displayName;
 	const name = account?.name?.trim() ?? "";
 	if (name) return name;
-	return `Passkey ${index + 1}`;
+	return t("ui.browser.webauthn_chooser.passkey_fallback", {
+		number: index + 1,
+	});
 }
 
 /**
@@ -116,8 +120,9 @@ export function accountChoiceVoice(
  * about half of itself, with the actionable half ("…the wrong one, sign out and
  * ask the site again.") reachable only by hovering. The clause lives in the lead
  * now, once, where prose wraps. */
-export const UNNAMED_ACCOUNT_DETAIL =
-	"The site stored no name for this passkey.";
+// A chooser can stay open while language changes; do not capture its startup copy.
+export const unnamedAccountDetail = () =>
+	t("ui.browser.webauthn_chooser.the_site_stored_no_name_for_this");
 
 /**
  * The second line for an account, or null when there is nothing to add.
@@ -137,7 +142,7 @@ export function accountChoiceDetail(
 	if (detail) return detail;
 	const anonymous =
 		!(account?.displayName?.trim() ?? "") && !(account?.name?.trim() ?? "");
-	return anonymous ? UNNAMED_ACCOUNT_DETAIL : null;
+	return anonymous ? unnamedAccountDetail() : null;
 }
 
 /** Whether every offered account arrived without a name of any kind. */
@@ -152,18 +157,22 @@ export function accountsAreNameless(
 
 /** The chooser's lead sentence, derived from the request it is answering. */
 export function chooserLead(request: WebauthnChoiceRequest): string {
-	const site = request.relyingPartyId || "A site";
+	const site =
+		request.relyingPartyId || t("ui.browser.webauthn_chooser.a_site");
 	const count = request.accounts.length;
 	if (count === 1) {
-		return `${site} asked for a passkey. Pick it to sign in.`;
+		return t("ui.browser.webauthn_chooser.passkey_single", { site });
 	}
 	if (accountsAreNameless(request.accounts)) {
 		// The recovery clause is HERE rather than in the rows (design round 3, D11):
 		// the rows are machine-voice lines that truncate, and this sentence is prose
 		// that wraps — and it is the same sentence for every row, so once is enough.
-		return `${site} asked for a passkey. Your Mac holds ${count} passkeys for this site and did not give their names, so the one you pick is the account you sign in as. If it is the wrong one, sign out and ask the site again.`;
+		return t("ui.browser.webauthn_chooser.passkey_anonymous_many", {
+			site,
+			count,
+		});
 	}
-	return `${site} asked for a passkey. More than one of your passkeys matches, so pick the one to use.`;
+	return t("ui.browser.webauthn_chooser.passkey_named_many", { site });
 }
 
 /** The page the request came from, when main could resolve it.
@@ -172,7 +181,9 @@ export function chooserLead(request: WebauthnChoiceRequest): string {
  * decision is ABOUT is the one thing the user cannot see (UX round 1, U3). */
 export function chooserPageNote(request: WebauthnChoiceRequest): string | null {
 	return request.pageTitle
-		? `The page asking is \u201c${request.pageTitle}\u201d.`
+		? t("ui.browser.webauthn_chooser.requesting_page", {
+				title: request.pageTitle,
+			})
 		: null;
 }
 
@@ -183,9 +194,7 @@ export function chooserPageNote(request: WebauthnChoiceRequest): string | null {
  * both asking would make "2 more sites" false. The count is real either way. */
 export function chooserQueueNote(waiting: number): string | null {
 	if (waiting <= 0) return null;
-	return waiting === 1
-		? "One more passkey request is waiting."
-		: `${waiting} more passkey requests are waiting.`;
+	return t("ui.browser.webauthn_chooser.passkeys_waiting", { count: waiting });
 }
 
 /** The sentence a request that ended without the user leaves behind.
@@ -201,18 +210,26 @@ export function settledChooserCopy(
 	switch (outcome) {
 		case "expired":
 			return {
-				title: "This passkey request expired",
-				body: "Nobody chose a passkey within a minute, so the site's request was cancelled. Ask the site for a passkey again.",
+				title: t("ui.browser.webauthn_chooser.this_passkey_request_expired"),
+				body: t(
+					"ui.browser.webauthn_chooser.nobody_chose_a_passkey_within_a_minute",
+				),
 			};
 		case "host-stopped":
 			return {
-				title: "This passkey request was cancelled",
-				body: "The browser tab that asked went away before a passkey was chosen, so the request was cancelled.",
+				title: t(
+					"ui.browser.webauthn_chooser.this_passkey_request_was_cancelled",
+				),
+				body: t(
+					"ui.browser.webauthn_chooser.the_browser_tab_that_asked_went_away",
+				),
 			};
 		case "credential-not-offered":
 			return {
-				title: "That passkey was not offered",
-				body: "The choice did not name a passkey this site offered, so the request was cancelled. Try again from the site.",
+				title: t("ui.browser.webauthn_chooser.that_passkey_was_not_offered"),
+				body: t(
+					"ui.browser.webauthn_chooser.the_choice_did_not_name_a_passkey",
+				),
 			};
 		default:
 			return null;

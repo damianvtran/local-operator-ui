@@ -1,3 +1,4 @@
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The palette's language dialog: the U1 row's editor, at palette reach.
  *
@@ -134,6 +135,7 @@ export async function saveImmediateLanguageValue(options: {
 export const GeneralLanguageSetting: FC<{ focus?: boolean }> = ({
 	focus = false,
 }) => {
+	useI18nLocale();
 	const queryClient = useQueryClient();
 	const capabilities = useDesktopCapabilities();
 	const enabled = desktopFeatureEnabled(capabilities.data, "settings");
@@ -323,6 +325,7 @@ export const GeneralLanguageSetting: FC<{ focus?: boolean }> = ({
 };
 
 export const LanguageDialog: FC = () => {
+	useI18nLocale();
 	const open = useLanguageDialogStore((state) => state.open);
 	const closeLanguage = useLanguageDialogStore((state) => state.closeLanguage);
 	const queryClient = useQueryClient();
@@ -412,7 +415,9 @@ export const LanguageDialog: FC = () => {
 			setError(
 				cause instanceof Error
 					? cause.message
-					: "The language could not be saved.",
+					: t(
+							"ui.settings.configuration.language_dialog.the_language_could_not_be_saved",
+						),
 			);
 		} finally {
 			setSaving(false);
@@ -444,7 +449,9 @@ export const LanguageDialog: FC = () => {
 	const pendingCapabilities = !answered && !loadError;
 	const { sentence: pairingSentence, remedy } = pairingCardCopy(
 		pairingCause ?? null,
-		"Your settings could not be loaded.",
+		t(
+			"ui.settings.configuration.language_dialog.your_settings_could_not_be_loaded",
+		),
 		loadError,
 	);
 	const retrying = capabilities.isFetching || settingsQuery.isFetching;

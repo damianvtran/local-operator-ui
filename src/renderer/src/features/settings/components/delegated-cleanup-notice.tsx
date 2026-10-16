@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The one-time "delegated sessions were cleaned up" notice.
  *
@@ -60,6 +62,7 @@ export type DelegatedCleanupNoticeViewProps = {
 export const DelegatedCleanupNoticeView: FC<
 	DelegatedCleanupNoticeViewProps
 > = ({ notice, onOpenSettings, onDismiss }) => {
+	useI18nLocale();
 	const lines = notice.message
 		.split("\n")
 		.map((line) => line.trim())
@@ -106,13 +109,17 @@ export const DelegatedCleanupNoticeView: FC<
 					</div>
 					<span className="flex shrink-0 items-center gap-1">
 						<Button variant="ghost" size="sm" onClick={onOpenSettings}>
-							Open settings
+							{t(
+								"ui.settings.configuration.delegated_cleanup_notice.open_settings",
+							)}
 						</Button>
 						<Button
 							variant="ghost"
 							size="icon-sm"
 							onClick={onDismiss}
-							aria-label="Dismiss this notice"
+							aria-label={t(
+								"ui.settings.configuration.delegated_cleanup_notice.dismiss_this_notice",
+							)}
 						>
 							<X aria-hidden="true" />
 						</Button>
@@ -125,6 +132,7 @@ export const DelegatedCleanupNoticeView: FC<
 
 /** Mounted in the conversation pane beside the other notice bands. */
 export const DelegatedCleanupNoticeBand: FC = () => {
+	useI18nLocale();
 	const notice = useDelegatedCleanupNoticeStore((state) => state.notice);
 	const navigate = useNavigate();
 	if (!notice) return null;

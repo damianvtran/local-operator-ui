@@ -43,11 +43,13 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import { PageHeader } from "@shared/components/common/page-header";
 import { Alert, Button, Skeleton } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { Network } from "lucide-react";
 import { type FC, useCallback, useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
+import { t } from "../../../../i18n/messages";
 import {
 	InviteDialog,
 	MoveConfirmDialog,
@@ -101,8 +103,12 @@ const PRESENTATIONS = ["canvas", "list"] as const;
 type Presentation = (typeof PRESENTATIONS)[number];
 
 const PRESENTATION_LABEL: Record<Presentation, string> = {
-	canvas: "Canvas",
-	list: "List",
+	get canvas() {
+		return t("ui.mesh.mesh_page.canvas");
+	},
+	get list() {
+		return t("ui.mesh.mesh_page.list");
+	},
 };
 
 /** What a drop or a menu choice resolved to, held while the dialog asks. */
@@ -279,6 +285,7 @@ export const MeshSurface: FC<{
 	removeRefusal,
 	removed,
 }) => {
+	useI18nLocale();
 	const [presentation, setPresentation] = useState<Presentation>("canvas");
 	const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
 
@@ -395,9 +402,9 @@ export const MeshSurface: FC<{
 		 */
 		<div className="flex h-full min-h-0 flex-col gap-6 overflow-y-auto p-6">
 			<PageHeader
-				title="Mesh"
+				title={t("ui.mesh.mesh_page.mesh")}
 				icon={Network}
-				subtitle="Devices this app is paired with, and the networks that hold them."
+				subtitle={t("ui.mesh.mesh_page.devices_this_app_is_paired_with_and")}
 			>
 				<div className="flex items-center gap-4">
 					{/*
@@ -413,7 +420,9 @@ export const MeshSurface: FC<{
 					 * to say "this region is not saying anything right now".
 					 */}
 					{checking && (
-						<output className="text-meta text-ink-dim">checking…</output>
+						<output className="text-meta text-ink-dim">
+							{t("ui.mesh.mesh_page.checking")}
+						</output>
 					)}
 					{/*
 					 * THE PRESENTATION CHOICE IS SHOWN ONLY WHEN THERE IS SOMETHING TO
@@ -435,7 +444,9 @@ export const MeshSurface: FC<{
 					 */}
 					{(state.kind === "ready" || state.kind === "loading") && (
 						<fieldset className="m-0 w-fit border-0 p-0">
-							<legend className="sr-only">Presentation</legend>
+							<legend className="sr-only">
+								{t("ui.mesh.mesh_page.presentation")}
+							</legend>
 							<div className="flex gap-0.5 rounded-md bg-sunken p-0.5">
 								{PRESENTATIONS.map((option) => (
 									<button
@@ -519,7 +530,7 @@ export const MeshSurface: FC<{
 						onClick={onRetry}
 						className="w-fit"
 					>
-						Ask again
+						{t("ui.mesh.mesh_approvals_tray.ask_again")}
 					</Button>
 				</Alert>
 			)}
@@ -536,18 +547,20 @@ export const MeshSurface: FC<{
 				 */
 				<div className="flex min-h-0 flex-1 items-center justify-center rounded-lg border border-hairline bg-surface p-6">
 					<div className="flex flex-col items-start gap-3">
-						<h2 className="text-heading text-ink">No network on this device</h2>
+						<h2 className="text-heading text-ink">
+							{t("ui.mesh.mesh_page.no_network_on_this_device")}
+						</h2>
 						<p className="max-w-140 text-body-sm text-ink-muted">
-							This device is not in any network, so there is no mesh to draw.
-							Create one on this machine:
+							{t("ui.mesh.mesh_page.this_device_is_not_in_any_network")}
 						</p>
 						{/* Machine voice, so monospace (`branding.md` § 8): the reader types
 						    this, it is not prose. */}
 						<code className="rounded-sm bg-sunken px-2 py-1 font-mono text-meta text-ink">
+							{/* i18n: ignore CLI syntax; owner mesh, retain until command is removed. */}
 							lop network init &lt;name&gt;
 						</code>
 						<p className="text-meta text-ink-dim">
-							A network appears here once this device has joined one.
+							{t("ui.mesh.mesh_page.a_network_appears_here_once_this_device")}
 						</p>
 					</div>
 				</div>
@@ -762,6 +775,7 @@ const emptyPlan: MovePlan = {
  * the backend no longer advertises.
  */
 export const MeshPage: FC = () => {
+	useI18nLocale();
 	const capabilities = useDesktopCapabilities();
 	const enabled = desktopFeatureState(capabilities.data, "peers") === "enabled";
 	const canMove =
@@ -914,17 +928,28 @@ export const MeshPage: FC = () => {
 						settlePlacement(plan.sessionId, receipt);
 						const destination =
 							receipt.locality === "local"
-								? "this device"
+								? t("ui.mesh.mesh_drop.this_device")
 								: (graph?.devices.find(
 										(device) => device.id === receipt.owner_device,
 									)?.label ?? receipt.owner_device);
 						setMoveReport({
 							kind: "moved",
-							verb: receipt.mode === "keep" ? "Copied" : "Moved",
+							verb:
+								receipt.mode === "keep"
+									? t("ui.mesh.mesh_page.copied")
+									: t("ui.mesh.mesh_page.moved"),
 							detail:
 								receipt.mode === "keep"
-									? `${destination} holds a copy as ${receipt.new_session_id.slice(-6)}; the original is still here.`
-									: `${destination} holds it now${receipt.source_retired ? "; the copy here is gone" : ""}.`,
+									? t("ui.mesh.mesh_page.copy_receipt", {
+											destination,
+											suffix: receipt.new_session_id.slice(-6),
+										})
+									: t("ui.mesh.mesh_page.move_receipt", {
+											destination,
+											retirement: receipt.source_retired
+												? t("ui.mesh.mesh_page.the_copy_here_is_gone")
+												: "",
+										}),
 							undo:
 								receipt.mode === "keep"
 									? {
@@ -943,9 +968,14 @@ export const MeshPage: FC = () => {
 											 * the plan and the loss is named, which is what makes the recall
 											 * confirm like every other destructive move.
 											 */
-											verb: `Bring the copy back from ${destination}`,
+											verb: t("ui.mesh.mesh_page.bring_copy_back", {
+												device: destination,
+											}),
 											waitS: 0,
-											lost: lossSentence(destination, "this device"),
+											lost: lossSentence(
+												destination,
+												t("ui.mesh.mesh_drop.this_device"),
+											),
 										}
 									: null,
 						});
@@ -962,8 +992,9 @@ export const MeshPage: FC = () => {
 						kind: "refused",
 						refusal: {
 							code: "move_failed",
-							sentence:
-								"The move could not be sent. Nothing here changed; the list has been read again.",
+							sentence: t(
+								"ui.mesh.mesh_page.the_move_could_not_be_sent_nothing",
+							),
 							status: null,
 							unconfirmed: false,
 						},
@@ -1032,7 +1063,7 @@ export const MeshPage: FC = () => {
 			}
 			selfLabel={
 				graph?.devices.find((device) => device.state === "self")?.label ??
-				"this device"
+				t("ui.mesh.mesh_drop.this_device")
 			}
 			canMove={canMove}
 			pendingMove={pendingMove}

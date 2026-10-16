@@ -1,0 +1,62 @@
+{
+	"ui.settings.appearance.settings_page.appearance": {
+		"role": "Settings section heading (h2)",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Section or list heading; one line, sentence case. English is 10 characters.",
+		"note": "Heading of the Appearance section: theme choice, light/dark and transcript options. Same word as the sidebar entry; keep them identical."
+	},
+	"ui.settings.appearance.settings_page.customize_the_look_and_feel_of_local_operator": {
+		"role": "Description under the Appearance heading",
+		"tone": "Plain, friendly second person; explains rather than commands.",
+		"length": "Wrapping paragraph in the settings content column (about 60-70 characters per line); no length cap, keep every fact. English is 45 characters.",
+		"note": "One sentence under the section heading. \"Local Operator\" is the product name; do not translate it."
+	},
+	"ui.settings.appearance.settings_page.show_agent_reasoning": {
+		"role": "Toggle label",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Field or row label above/beside a control; one line. English is 20 characters.",
+		"note": "Label of an on/off switch. \"Reasoning\" is the model-thinking feature, not an argument or a justification."
+	},
+	"ui.settings.appearance.settings_page.adds_the_agent_s_reasoning_and_thinking_rows_to_conversations_the": {
+		"role": "Toggle help paragraph under the switch",
+		"tone": "Helpful explanatory prose in second person.",
+		"length": "Wrapping paragraph in the settings content column (about 60-70 characters per line); no length cap, keep every fact. English is 311 characters.",
+		"note": "Explains what the switch reveals. \"Reasoning\" and \"Thinking\" are the capitalised names of two kinds of transcript row and should match the row titles shown in chat. \"by turn\" and \"by response\" refer to the two Transcript display tabs and must match those tab labels."
+	},
+	"ui.settings.appearance.theme_selector.dark": {
+		"role": "Theme group heading above the dark themes",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Section or list heading; one line, sentence case. English is 4 characters.",
+		"note": "Groups the dark-mode colour themes. Refers to the theme colour mode, not to mood."
+	},
+	"ui.settings.appearance.theme_selector.light": {
+		"role": "Theme group heading above the light themes",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Section or list heading; one line, sentence case. English is 5 characters.",
+		"note": "Groups the light-mode colour themes. Refers to the theme colour mode, not to weight."
+	},
+	"ui.settings.appearance.transcript_display_mode_setting.transcript_display": {
+		"role": "Row label for the transcript display control",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Field or row label above/beside a control; one line. English is 18 characters.",
+		"note": "Names the segmented control that chooses how finished chat turns are drawn. \"Transcript\" is the conversation log."
+	},
+	"ui.settings.appearance.transcript_display_mode_setting.by_turn_condenses_each_turn_to_its_answer_by_response_keeps_every": {
+		"role": "Help paragraph under the transcript display tabs",
+		"tone": "Helpful explanatory prose in second person.",
+		"length": "Wrapping paragraph in the settings content column (about 60-70 characters per line); no length cap, keep every fact. English is 137 characters.",
+		"note": "Explains both tabs in one paragraph: \"By turn\" condenses each turn to its final answer, \"By response\" keeps every settled response visible. The two quoted names must match the two tab labels exactly."
+	},
+	"ui.settings.appearance.transcript_display_mode_setting.by_turn": {
+		"role": "Tab label (left of two)",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Segmented-tab label; the tab strip shares one row with its siblings. English is 7 characters; stay within ~1.5x.",
+		"note": "First option: group the transcript by conversational turn (one user message plus the agent work answering it). Pairs with \"By response\"."
+	},
+	"ui.settings.appearance.transcript_display_mode_setting.by_response": {
+		"role": "Tab label (right of two)",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Segmented-tab label; the tab strip shares one row with its siblings. English is 11 characters; stay within ~1.5x.",
+		"note": "Second option: show each agent response separately instead of folding a turn into its answer. Pairs with \"By turn\"."
+	}
+}

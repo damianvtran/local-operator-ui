@@ -29,14 +29,26 @@ import type { McpRemedyControls } from "@features/chat/components/run-details/us
 import type { MonitorControls } from "@features/chat/components/run-details/use-monitor-controls";
 import type { WakeControls } from "@features/chat/components/run-details/use-wake-controls";
 import type { AidaWakeIdentity } from "@features/chat/components/run-details/wake-controls-model";
+import {
+	CODE_NOTICE_BELOW_VERSION,
+	CODE_NOTICE_CHECKING,
+	CODE_NOTICE_DRAFT,
+	RUN_NOTICE_DRAFT,
+	RUN_NOTICE_READING,
+	type SlotNotice,
+	codeReviewPaneNotice,
+	runPaneNotice,
+} from "@features/chat/right-slot-notices";
 import type { CanvasDocument } from "@features/chat/types/canvas";
 import { ConsolePane } from "@features/console/components/console-pane";
 import { PROVIDER_ROWS } from "@features/settings/components/setting-combobox.fixtures";
 import { SettingsPage } from "@features/settings/components/settings-page";
+import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
 import type { ReusableProfile } from "@shared/api/local-operator/profile-hooks";
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { PaneSlot } from "@shared/components/common/pane-slot";
 import { ResizableDivider } from "@shared/components/common/resizable-divider";
+import { SlotPaneNotice } from "@shared/components/common/slot-pane-notice";
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
 import { apiConfig } from "@shared/config/api-config";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
@@ -867,8 +879,6 @@ const ConversationStandIn = ({
 		browserAttentionCount?: number;
 		consoleUnseenCount?: number;
 		fileCount?: number;
-		/** Offer the asks item on the rail (#896); see `ShellStoryRail`. */
-		askOffered?: boolean;
 		askCount?: number;
 	};
 	/** The asks this shell simulates: above 0 the header's `...` menu gains its
@@ -922,7 +932,6 @@ const ConversationStandIn = ({
 				onToggleBrowser={() => undefined}
 				onOpenConsole={details ? () => undefined : undefined}
 				onToggleAsks={asksCount > 0 ? () => undefined : undefined}
-				runDetails={details}
 				{...legacyHeaderProps}
 			/>
 			{body ? (
@@ -981,10 +990,7 @@ const useMacChrome = (enabled = true) => {
  */
 const EMPTY_ROUTE = {
 	mounted: false,
-	runDetails: false,
 	session: false,
-	codeReview: false,
-	asksOffered: false,
 } as const;
 
 /*
@@ -998,10 +1004,7 @@ const EMPTY_ROUTE = {
  */
 const DRAWABLE_ROUTE = {
 	mounted: true,
-	runDetails: true,
 	session: true,
-	codeReview: true,
-	asksOffered: true,
 } as const;
 
 /**
@@ -1101,13 +1104,11 @@ const ChatShellFrame: FC<{
 		browserAttentionCount?: number;
 		consoleUnseenCount?: number;
 		fileCount?: number;
-		/** Offer the asks item on the rail (#896); see `ShellStoryRail`. */
-		askOffered?: boolean;
 		askCount?: number;
 	};
 	/** The asks this shell simulates: above 0 the header's `...` menu gains its
-	 * asks row and, unless `railProps` says otherwise, the rail offers the item
-	 * with this count (#896). */
+	 * asks row and, unless `railProps` says otherwise, the rail's item carries
+	 * this count (#896). */
 	asksCount?: number;
 	/** Render the Windows caption-button layout instead of macOS's (simulated). */
 	windows?: boolean;
@@ -1177,10 +1178,9 @@ const ChatShellFrame: FC<{
 							details={details}
 							railProps={{
 								...railProps,
-								/* The simulated asks offered on the rail (#896): `asksCount` is the
+								/* The simulated asks count on the rail (#896): `asksCount` is the
 								   coarse knob, and an arm with a drawer holding the slot says so
 								   precisely through `railProps`. */
-								askOffered: railProps.askOffered ?? asksCount > 0,
 								askCount: railProps.askCount ?? asksCount,
 							}}
 						/>
@@ -2008,10 +2008,10 @@ export const ChatDockAsksCoveringBrowser: Story = {
 		return (
 			<ChatShellFrame
 				details={deriveRunDetails(runFixtures.settled())}
-				/* The door the drawer is holding the slot for (#896): offered with the
-				   count the fixture's `asks_open` states, so the lit item's badge agrees
-				   with the drawer's own tally. */
-				railProps={{ askOffered: true, askCount: 2 }}
+				/* The door the drawer is holding the slot for (#896), with the count the
+				   fixture's `asks_open` states, so the lit item's badge agrees with the
+				   drawer's own tally. */
+				railProps={{ askCount: 2 }}
 				pane={(slotWidth) => (
 					<PaneSlot width={slotWidth} tourTag="ask-drawer-slot">
 						<AskDrawer
@@ -2039,10 +2039,13 @@ export const ChatDockAsksCoveringBrowser: Story = {
  * The pane flags persist across routes on purpose, so the state these two arms
  * photograph is the operator's own captured sequence: the asks drawer closes
  * and hands the run panel's flag back (or the drawer's own flag stays up), then
- * the user is on a draft - a route with no run details and no conversation, so
- * neither pane can mount. The slot's readers must answer from what the route
- * can DRAW: no elevated band over the empty column, no reserved corner, and the
- * lane's stop on the conversation's own right edge.
+ * the user is on a draft. The session drawer still cannot mount there (no
+ * conversation), so its arm releases the slot: no elevated band over the empty
+ * column, no reserved corner, and the lane's stop on the conversation's own
+ * right edge. The RUN arm changed with the always-visible rail (D2): the run
+ * pane now draws on a draft - its "needs a conversation" notice - so the slot
+ * holds it, the lane stops on the notice's leading edge, and the rail's Run
+ * details door is lit.
  *
  * The before half of each pair is the same story under `origin/main`'s store
  * module, which reads the bare flag - see
@@ -2056,19 +2059,16 @@ export const ChatDockRunPanelOnDraft: Story = {
 		const { rightSlotWidth = 0 } = args as { rightSlotWidth?: number };
 		useLayoutEffect(() => {
 			/*
-			 * The run panel's flag, still up, on a route that cannot draw it - the
-			 * drawer's close handed it back. No pane mounts (the draft's own
-			 * `runDetails` is null in the app), which is the point.
+			 * The run panel's flag, still up, on a draft - the drawer's close handed
+			 * it back. The draft's own `runDetails` is null in the app, so the slot
+			 * mounts the run pane's notice, as `chat-content` does.
 			 */
 			useUiPreferencesStore.setState({
 				isRunPanelOpen: true,
 				rightSlotWidth,
 				rightSlotRoute: {
 					mounted: true,
-					runDetails: false,
 					session: false,
-					codeReview: false,
-					asksOffered: false,
 				},
 			});
 			return () => {
@@ -2079,8 +2079,23 @@ export const ChatDockRunPanelOnDraft: Story = {
 			};
 		}, [rightSlotWidth]);
 
-		// A draft has no run details, so the header draws no trigger (D2).
-		return <ChatShellFrame details={null} />;
+		return (
+			<ChatShellFrame
+				details={null}
+				pane={(slotWidth) => (
+					<PaneSlot width={slotWidth} tourTag="run-panel-dock">
+						<SlotPaneNotice
+							label="Run details"
+							closeLabel="Close run details"
+							onClose={() => undefined}
+							labelInk="dim"
+							labelInset
+							{...RUN_NOTICE_DRAFT}
+						/>
+					</PaneSlot>
+				)}
+			/>
+		);
 	},
 };
 
@@ -2096,10 +2111,7 @@ export const ChatDockAsksOnDraft: Story = {
 				rightSlotWidth,
 				rightSlotRoute: {
 					mounted: true,
-					runDetails: false,
 					session: false,
-					codeReview: false,
-					asksOffered: false,
 				},
 			});
 			return () => {
@@ -2112,4 +2124,200 @@ export const ChatDockAsksOnDraft: Story = {
 
 		return <ChatShellFrame details={null} />;
 	},
+};
+
+/*
+ * THE ALWAYS-VISIBLE RAIL ON A DRAFT (D1/D3): the six doors with nothing open,
+ * and each pane a draft door opens that cannot act there - the code review pane's
+ * draft notice, and the same pane on a backend that predates
+ * `features.code_requests`. The console's draft state is the console pane's own
+ * (`console-open` photographs the pane on a conversation).
+ */
+export const ChatDraftRail: Story = {
+	render: () => {
+		useLayoutEffect(() => {
+			useUiPreferencesStore.setState({
+				rightSlotRoute: { mounted: true, session: false },
+			});
+			return () => {
+				useUiPreferencesStore.setState({ rightSlotRoute: EMPTY_ROUTE });
+			};
+		}, []);
+		return <ChatShellFrame details={null} />;
+	},
+};
+
+const NoticeArm: FC<{
+	flag: "isCodeReviewPaneOpen" | "isRunPanelOpen";
+	session: boolean;
+	label: string;
+	closeLabel: string;
+	tourTag: string;
+	notice: SlotNotice;
+}> = ({ flag, session, label, closeLabel, tourTag, notice }) => {
+	useLayoutEffect(() => {
+		useUiPreferencesStore.setState({
+			[flag]: true,
+			rightSlotWidth: 0,
+			rightSlotRoute: { mounted: true, session },
+		});
+		return () => {
+			useUiPreferencesStore.setState({
+				[flag]: false,
+				rightSlotRoute: EMPTY_ROUTE,
+			});
+		};
+	}, [flag, session]);
+	return (
+		<ChatShellFrame
+			details={session ? deriveRunDetails(runFixtures.settled()) : null}
+			pane={(slotWidth) => (
+				<PaneSlot width={slotWidth} tourTag={tourTag}>
+					<SlotPaneNotice
+						label={label}
+						closeLabel={closeLabel}
+						onClose={() => undefined}
+						/* The label of the pane each notice stands in for, as `chat-content` passes it (D4). */
+						labelInk={flag === "isRunPanelOpen" ? "dim" : "muted"}
+						labelInset={flag === "isRunPanelOpen"}
+						{...notice}
+					/>
+				</PaneSlot>
+			)}
+		/>
+	);
+};
+
+/** Code review opened from the rail on a draft: no ledger yet. */
+export const ChatDockCodeOnDraft: Story = {
+	render: () => (
+		<NoticeArm
+			flag="isCodeReviewPaneOpen"
+			session={false}
+			label="Code review"
+			closeLabel="Close code review"
+			tourTag="code-review-pane-slot"
+			notice={CODE_NOTICE_DRAFT}
+		/>
+	),
+};
+
+/** Code review on a conversation whose backend predates `features.code_requests` (D3). */
+export const ChatDockCodeBelowVersion: Story = {
+	render: () => (
+		<NoticeArm
+			flag="isCodeReviewPaneOpen"
+			session={true}
+			label="Code review"
+			closeLabel="Close code review"
+			tourTag="code-review-pane-slot"
+			notice={CODE_NOTICE_BELOW_VERSION}
+		/>
+	),
+};
+
+/** Run details on a conversation whose frame has not been read yet. */
+export const ChatDockRunReading: Story = {
+	render: () => (
+		<NoticeArm
+			flag="isRunPanelOpen"
+			session={true}
+			label="Run details"
+			closeLabel="Close run details"
+			tourTag="run-panel-dock"
+			notice={RUN_NOTICE_READING}
+		/>
+	),
+};
+
+/*
+ * THE CODE REVIEW STATES THE DESIGN ROUND RENDERED BY HAND (design round 1, D5),
+ * each built by `codeReviewPaneNotice` itself rather than a hand-written notice, so
+ * the frame is the copy and the tone the app would draw: the capability read in
+ * flight, an unpaired server, and the two load errors the shared table words
+ * differently (not answering, and older than this app expects).
+ */
+const codeArm = (notice: SlotNotice) => (
+	<NoticeArm
+		flag="isCodeReviewPaneOpen"
+		session={true}
+		label="Code review"
+		closeLabel="Close code review"
+		tourTag="code-review-pane-slot"
+		notice={notice}
+	/>
+);
+const codeSlotNotice = (
+	input: Omit<Parameters<typeof codeReviewPaneNotice>[0], "sessionId">,
+): SlotNotice => {
+	const slot = codeReviewPaneNotice({ sessionId: "4b7f2c9a1e05", ...input });
+	if (slot.notice === null) throw new Error("this state draws the real pane");
+	return slot.notice;
+};
+
+/** Code review while the capability read is still in flight. */
+export const ChatDockCodeChecking: Story = {
+	render: () => codeArm(CODE_NOTICE_CHECKING),
+};
+
+/** Code review against a server that refused this app's credential. */
+export const ChatDockCodeUnpaired: Story = {
+	render: () =>
+		codeArm(
+			codeSlotNotice({
+				state: "unpaired",
+				cause: "credential-refused",
+				loadError: null,
+			}),
+		),
+};
+
+/** Code review when the capability read failed: the server is not answering. */
+export const ChatDockCodeUnreachable: Story = {
+	render: () =>
+		codeArm(
+			codeSlotNotice({
+				state: "unknown",
+				cause: null,
+				loadError: new DesktopControlError(null, "no answer"),
+			}),
+		),
+};
+
+/** Code review when the capability read 404'd: the server predates this app. */
+export const ChatDockCodeOutdated: Story = {
+	render: () =>
+		codeArm(
+			codeSlotNotice({
+				state: "unknown",
+				cause: null,
+				loadError: new DesktopControlError(404, "not found"),
+			}),
+		),
+};
+
+/*
+ * Run details on a conversation whose stream gave up (design round 1, D1): a
+ * resolved line, never "Reading…", with the transcript's own failure sentence as
+ * its detail.
+ */
+export const ChatDockRunUnreadable: Story = {
+	render: () => (
+		<NoticeArm
+			flag="isRunPanelOpen"
+			session={true}
+			label="Run details"
+			closeLabel="Close run details"
+			tourTag="run-panel-dock"
+			notice={runPaneNotice({
+				sessionId: "4b7f2c9a1e05",
+				status: "unavailable",
+				missing: false,
+				failure: {
+					statement:
+						"Lost the connection to this conversation — reconnect to keep reading.",
+				},
+			})}
+		/>
+	),
 };

@@ -1,4 +1,6 @@
 import { Button } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { ChevronDown, ChevronUp } from "lucide-react";
@@ -67,8 +69,12 @@ export interface BrowserApprovalsTrayProps {
  * is nothing left to decide — and no durable record, because an expired request
  * is neither a grant nor a denial (§3.4). */
 const RESOLVED_COPY: Record<ResolvedRow["kind"], string> = {
-	expired: "Expired — the agent has to ask again",
-	withdrawn: "Withdrawn by the agent",
+	expired: t(
+		"ui.browser.browser_approvals_dock.expired_the_agent_has_to_ask_again",
+	),
+	get withdrawn() {
+		return t("ui.browser.browser_approvals_dock.withdrawn_by_the_agent");
+	},
 };
 
 /** The header's wording for the ALL-TABS scope, which is the route's own: the
@@ -76,7 +82,7 @@ const RESOLVED_COPY: Record<ResolvedRow["kind"], string> = {
  * to differ from, and so the copy is asserted by a test rather than only by a
  * frame (spec §5.2's "one number in three places" is a copy contract too). */
 export const defaultApprovalHeaderLabel = (count: number): string =>
-	count === 1 ? "1 approval waiting" : `${count} approvals waiting`;
+	t("ui.browser.browser_approvals_tray.header_waiting", { count });
 
 /**
  * The header's wording for a CONVERSATION's scope, which the pane passes when it
@@ -94,9 +100,7 @@ export const defaultApprovalHeaderLabel = (count: number): string =>
  * to tell that the route's copy is deliberately the shorter one.
  */
 export const paneApprovalHeaderLabel = (count: number): string =>
-	count === 1
-		? "1 approval for this conversation"
-		: `${count} approvals for this conversation`;
+	t("ui.browser.browser_approvals_tray.header_conversation", { count });
 
 export const BrowserApprovalsTray: FC<BrowserApprovalsTrayProps> = ({
 	rows,
@@ -109,6 +113,7 @@ export const BrowserApprovalsTray: FC<BrowserApprovalsTrayProps> = ({
 	onToggleDock,
 	headerLabel,
 }) => {
+	useI18nLocale();
 	const selected =
 		rows.find((row) => row.request.entryId === selectedEntryId) ?? rows[0];
 	/** The session list, so a chip can name the asking conversation and not just the
@@ -138,7 +143,7 @@ export const BrowserApprovalsTray: FC<BrowserApprovalsTrayProps> = ({
 					</p>
 					<ol
 						className="flex items-center gap-1"
-						aria-label="Waiting requests"
+						aria-label={t("ui.browser.browser_approvals_dock.waiting_requests")}
 						data-tour-tag="browser-approvals-tray-chips"
 					>
 						{rows.map((row) => {
@@ -153,7 +158,17 @@ export const BrowserApprovalsTray: FC<BrowserApprovalsTrayProps> = ({
 										type="button"
 										onClick={() => onSelect(row.request.entryId)}
 										aria-current={current ? "true" : undefined}
-										aria-label={`Request ${row.ordinal} from ${requesterLabel(row.request.requesterSessionId, sessions)}: ${row.request.authority}`}
+										aria-label={t(
+											"ui.browser.browser_approvals_tray.request_from",
+											{
+												ordinal: row.ordinal,
+												requester: requesterLabel(
+													row.request.requesterSessionId,
+													sessions,
+												),
+												authority: row.request.authority,
+											},
+										)}
 										data-tour-tag="browser-approvals-tray-chip"
 										className={cn(
 											"flex h-5 min-w-5 items-center justify-center rounded-full border border-control px-1 text-meta tabular-nums",
@@ -176,7 +191,9 @@ export const BrowserApprovalsTray: FC<BrowserApprovalsTrayProps> = ({
 						aria-expanded={dockOpen}
 						data-tour-tag="browser-approvals-toggle"
 					>
-						{dockOpen ? "Close approvals" : "Open approvals"}
+						{dockOpen
+							? t("ui.browser.browser_approvals_dock.close_approvals")
+							: t("ui.browser.browser_approvals_tray.open_approvals")}
 						{dockOpen ? (
 							<ChevronUp aria-hidden className="size-3.5" />
 						) : (

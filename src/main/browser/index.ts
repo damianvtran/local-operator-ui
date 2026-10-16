@@ -4,9 +4,11 @@ import {
 	type BrowserWindow,
 	type DidCreateWindowDetails,
 	type Event,
+	Menu,
 	WebContentsView,
 	type WebFrameMain,
 	app,
+	clipboard,
 	shell,
 	webContents,
 } from "electron";
@@ -58,6 +60,7 @@ import {
 import { startLogCapture, stopLogCapture } from "./log-capture";
 import { paneNavigationDirection } from "./navigation-chord";
 import { OwnershipLedger } from "./ownership";
+import { buildPageContextMenuItems } from "./page-context-menu";
 import { decidePopup, effectivePresentation } from "./popups";
 import {
 	BROWSER_PARTITION,
@@ -1327,6 +1330,53 @@ async function initializeBrowserHost(
 			};
 			contents.on("will-navigate", onWillNavigate);
 			contents.on("will-redirect", onWillNavigate);
+
+			// THE PAGE CONTEXT MENU (LOH-13 slice A, gap 3). A driven page is a
+			// native view above all renderer DOM, so this `context-menu` event
+			// is the only place a right-click over the page exists. The item
+			// RULE lives in `page-context-menu.ts` (pure, tested); this block
+			// only turns it into a native menu for THIS view - back/forward
+			// walk this contents' own history, not the active tab's, so a
+			// menu can never steer a tab it was not opened on. Read/navigation
+			// only: no downloads, no devtools, no consent actions.
+			contents.on("context-menu", (_event, params) => {
+				const navigation = contents.navigationHistory;
+				const items = buildPageContextMenuItems({
+					linkUrl: params.linkURL ?? "",
+					pageUrl: contents.getURL(),
+					canGoBack: navigation ? navigation.canGoBack() : false,
+					canGoForward: navigation ? navigation.canGoForward() : false,
+					isEditable: params.isEditable,
+					editFlags: params.editFlags,
+				});
+				const menu = Menu.buildFromTemplate(
+					items.map((item) => {
+						if (item.id === "separator") return { type: "separator" as const };
+						return {
+							label: item.label,
+							enabled: item.enabled,
+							click: () => {
+								if (item.id === "back") navigation?.goBack();
+								else if (item.id === "forward") navigation?.goForward();
+								else if (item.id === "reload") contents.reload();
+								else if (item.id === "copy-link")
+									clipboard.writeText(params.linkURL ?? "");
+								else if (item.id === "copy-page")
+									clipboard.writeText(contents.getURL());
+								else if (item.id === "cut") contents.cut();
+								else if (item.id === "copy") contents.copy();
+								else if (item.id === "paste") contents.paste();
+								else if (item.id === "select-all") contents.selectAll();
+								else if (item.id === "open-link")
+									void host
+										.openLinkInNewTab(params.linkURL ?? "")
+										.catch(() => {});
+							},
+						};
+					}),
+				);
+				menu.popup({ window: options.window });
+			});
 
 			/*
 			 * THE NAVIGATION CHORDS (issue #675), answered for the PANE's own history

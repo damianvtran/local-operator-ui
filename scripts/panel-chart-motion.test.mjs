@@ -79,15 +79,31 @@ const { withoutMotion } = await bundleInto(
 const frameSource = readFileSync(join(ROOT, FRAME), "utf8");
 
 const SETTINGS = "src/renderer/src/features/settings/components";
-const { SettingsUsageChart } = await bundleInto(
+const { inspectSettingsUsageChart } = await bundleInto(
 	"settings-usage-chart",
-	`export { SettingsUsageChart } from "./${SETTINGS}/settings-usage-chart";`,
+	`
+		import { createElement } from "react";
+		import { renderToStaticMarkup } from "react-dom/server";
+		import { SettingsUsageChart } from "./${SETTINGS}/settings-usage-chart";
+		// The production component subscribes to locale updates. Enter through a
+		// real React render so its hooks have a dispatcher, then inspect its element
+		// without mounting Recharts or replacing the locale hook with a stub.
+		export function inspectSettingsUsageChart(props) {
+			let chart;
+			function Probe() {
+				chart = SettingsUsageChart(props);
+				return null;
+			}
+			renderToStaticMarkup(createElement(Probe));
+			return chart;
+		}
+	`,
 );
 
 test("settings story and page share the production chart, including ticks and tooltip", () => {
 	for (const metric of ["tokens", "credits"]) {
 		const data = [{ bucket: "Sep 14", value: 1_800_000 }];
-		const chart = SettingsUsageChart({ metric, data });
+		const chart = inspectSettingsUsageChart({ metric, data });
 		assert.equal(chart.props.heightClassName, "h-62");
 		assert.equal(chart.props.yAxisWidth, 48);
 		assert.equal(chart.props.unit, metric);

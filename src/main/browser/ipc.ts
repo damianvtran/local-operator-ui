@@ -93,6 +93,7 @@ export const BROWSER_IPC_CHANNELS = [
 	"browser-close-tabs",
 	"browser-activate-tab",
 	"browser-navigate",
+	"browser-home",
 	"browser-reload",
 	"browser-stop",
 	"browser-history",
@@ -259,6 +260,13 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 		authorize(event);
 		options.focusPage?.();
 	});
+	// Home (LOH-13): the user's own press, no argument — main decides the
+	// start state, so a renderer cannot aim this channel at an origin.
+	ipcMain.handle("browser-home", async (event) => {
+		const host = authorize(event);
+		return host.goHomeActive();
+	});
+
 	ipcMain.handle("browser-reload", (event, hard: unknown) => {
 		const host = authorize(event);
 		if (hard !== undefined && typeof hard !== "boolean")

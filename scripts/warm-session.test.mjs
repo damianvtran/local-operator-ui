@@ -355,10 +355,14 @@ test("the warm is wired to the composer inside the subscribed panel, not above i
 		"the open-frame negotiation must be the capability's own answer, not a constant",
 	);
 	// And the Run-details model stays null for a draft (design review round 1,
-	// D2): a draft has no run, so the header must not grow the ⓘ control while
-	// the user is merely typing.
+	// D2): a draft has no run, so the pane must not draw a roster while the user
+	// is merely typing. The frame is read through the hold (the always-visible
+	// rail): `runFrontend` is `frontend ?? heldFrontend`.
 	assert.ok(
-		panel.includes("sessionId && canonical.frontend"),
+		panel.includes("sessionId && runFrontend") &&
+			panel.includes(
+				"const runFrontend = canonical.frontend ?? canonical.heldFrontend;",
+			),
 		"run details must be gated on the pane having a session",
 	);
 	assert.ok(

@@ -11,6 +11,7 @@ import { useConsoleBlipPulse } from "@features/console/hooks/use-console-attenti
 import { useProviderStatus } from "@features/providers/use-provider-status";
 import {
 	desktopFeatureEnabled,
+	desktopFeatureState,
 	desktopKeys,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
@@ -18,6 +19,7 @@ import type { AgentDetails } from "@shared/api/local-operator/types";
 import { BackendCompatibilityBanner } from "@shared/components/common/backend-compatibility-banner";
 import { PaneSlot } from "@shared/components/common/pane-slot";
 import { ResizableDivider } from "@shared/components/common/resizable-divider";
+import { SlotPaneNotice } from "@shared/components/common/slot-pane-notice";
 import {
 	type ComposerSendError,
 	MessageInput,
@@ -29,6 +31,7 @@ import { TabPanel } from "@shared/components/ui";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
 import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
 import type { SendOutcome } from "@shared/hooks/use-message-input";
+import { usePairingCause } from "@shared/hooks/use-pairing-cause";
 /*
  * The mode-dependent classes on the canvas's wrapper below are the first
  * conditional class list in this file: every other one is a literal. `cn` rather
@@ -108,6 +111,7 @@ import type {
 	DraftResolution,
 } from "../draft-selection";
 import { useFleetAsks } from "../fleet-asks";
+import { codeReviewPaneNotice, runPaneNotice } from "../right-slot-notices";
 import type { Message } from "../types/message";
 import { useAskOpenPolicy } from "../use-ask-open-policy";
 import { AskDrawer } from "./asks/ask-drawer";
@@ -534,11 +538,11 @@ type ChatContentProps = {
 	};
 	/**
 	 * The session's derived subagent and to-do view model (`run-details.md` § 8),
-	 * derived by the page that owns the canonical stream and handed down here so
-	 * the header can place the trigger. OPTIONAL, and its absence is the whole
-	 * gate for every path that has no canonical session: `ChatHeader` renders with
-	 * no `runDetails` below, `RunDetailsTrigger` returns null for a null model, and
-	 * so the legacy transcript grows no button and no reserved space.
+	 * derived by the page that owns the canonical stream and handed down here for
+	 * the run pane, the panel rail and the composer's status row. `null` on a
+	 * draft and while the conversation's frame has not been read; it gates no
+	 * door (the always-visible rail, D1) - the run pane opens either way, and with
+	 * no model it draws a notice saying why (`runPaneNotice`).
 	 */
 	runDetails?: RunDetails | null;
 	/**
@@ -913,18 +917,31 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		/*
 		 * THE CODE REVIEW SURFACE'S CAPABILITY (`features.code_requests`, the
 		 * design record §D.6's own key). Read here because this component is where
-		 * the session's identity lives and the three readers - the rail item's offer,
-		 * the pane's mount and the composer chip's own gate - must not disagree about
-		 * whether this backend serves the ledger at all. Absent ⇒ neither door nor
-		 * pane is mounted (never mounted-and-disabled), which is the pre-feature
-		 * surface exactly; the chip's query is disabled at the hook for the same
-		 * answer (a read fired before the capability arrives would 404 against an
-		 * older backend, the fail-closed rule the whole desktop plane follows).
+		 * the session's identity lives and the pane's mount must agree with the
+		 * ledger's own query gate (`useCodeRequests` reads the same capability).
+		 * Absent ⇒ the pane's slot shows a notice in place of `CodeReviewPane` (the
+		 * rail's door is always present, D3), so the pane's polling query is never
+		 * mounted: a read fired before the capability arrives would 404 against an
+		 * older backend, the fail-closed rule the whole desktop plane follows. The
+		 * STATE, not the boolean, because the notice words a pairing cause
+		 * differently from a version gap.
 		 */
-		const codeReviewEnabled = desktopFeatureEnabled(
+		const codeReviewState = desktopFeatureState(
 			capabilities.data,
 			"code_requests",
 		);
+		/*
+		 * THE PANE'S NOTICE when `CodeReviewPane` may not mount (D3), from the same
+		 * state. The pairing cause and the read's error are only read to WORD it;
+		 * neither gates anything here.
+		 */
+		const pairingCause = usePairingCause();
+		const codeSlot = codeReviewPaneNotice({
+			sessionId,
+			state: codeReviewState,
+			cause: pairingCause ?? null,
+			loadError: capabilities.data ? null : capabilities.error,
+		});
 		const archived = useCanonicalSessionsStore((state) =>
 			sessionId
 				? (state.archiveFacts[sessionId]?.archived ??
@@ -1459,9 +1476,6 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const fleetAsks = useFleetAsks();
 		const headerAsksSession = Boolean(sessionId);
 		const headerAsksScope: AskScope = headerAsksSession ? "session" : "fleet";
-		const headerAsksOffered = headerAsksSession
-			? sessionAsksView.published
-			: fleetAsks.answered;
 		/*
 		 * Both scopes count ANSWERABLE asks, so a lapsed one pulls no attention (D10, D11):
 		 * the session read falls back to the tally only when its list is incomplete.
@@ -1478,14 +1492,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * from what THIS route can actually draw rather than from a flag that
 		 * outlived its route.
 		 *
-		 * `mounted` is this effect's own act of being here; `runDetails` and
-		 * `session` are read from the same values the panes' own mount conditions
-		 * read (the run panel's `runDetails` term, the session drawer's
-		 * `Boolean(sessionId)` term), so the facts and the mounts cannot drift.
-		 * `asksOffered` joins them with the SAME value the rail item's `askOffered`
-		 * prop reads (issue #928): the chord's door and the item's presence are one
-		 * answer, so a press can never meet a door that does not exist or miss one
-		 * that does.
+		 * `mounted` is this effect's own act of being here; `session` is read from
+		 * the same value the session drawer's own mount condition reads
+		 * (`Boolean(sessionId)`), so the fact and the mount cannot drift. Every other
+		 * pane mounts on any chat route - a pane that cannot act there mounts a
+		 * notice instead (the always-visible rail, D2) - so `mounted` is the whole of
+		 * their condition, and of every rail door's (`panelRailDoorPresent`).
 		 *
 		 * IT IS A LAYOUT EFFECT because the readers are in OTHER components (the
 		 * chrome lane belongs to the SHELL, above this one): a passive effect would
@@ -1493,46 +1505,17 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * is about - before correcting it, and a layout effect's synchronous
 		 * re-render lands before the frame.
 		 *
-		 * IT SITS BELOW THE ASKS DERIVATIONS rather than beside the flags it also
-		 * reads (issue #928): `asksOffered` is `headerAsksOffered`, and a second
-		 * spelling of that expression above this point is exactly the drift the
-		 * asks block exists to prevent. The layout effect's ordering relative to its
-		 * neighbours is not load-bearing - every reader is in another component, and
-		 * a child's layout effects run before the parent's either way.
+		 * The layout effect's ordering relative to its neighbours is not
+		 * load-bearing - every reader is in another component, and a child's layout
+		 * effects run before the parent's either way.
 		 */
 		const setRightSlotRoute = useUiPreferencesStore((s) => s.setRightSlotRoute);
-		/*
-		 * THE BOOLEANS, NOT THE OBJECT, ARE THE EFFECT'S KEYS (agent review round 1,
-		 * R1): `runDetails` is a `useMemo` over the canonical frame and takes a new
-		 * identity on every `frontend.update`, so keying on it re-published
-		 * identical facts on every frame of a live run. The facts are two booleans,
-		 * and a boolean only changes when the answer does.
-		 */
-		const hasRunDetails = Boolean(runDetails);
+		/* A boolean, not the id, is the effect's key: it only changes when the
+		   answer does. */
 		const hasSession = Boolean(sessionId);
 		useLayoutEffect(() => {
-			setRightSlotRoute({
-				mounted: true,
-				runDetails: hasRunDetails,
-				session: hasSession,
-				/*
-				 * THE CAPABILITY IS A ROUTE FACT (agent review F6): the code pane's mount
-				 * reads `codeReviewEnabled`, so the slot's drawability must read the same
-				 * answer - a remembered pane on a backend that lost the feature otherwise
-				 * reserves an empty column whose rail door is absent too.
-				 */
-				codeReview: codeReviewEnabled,
-				/* THE ASKS DOOR'S OFFER, from the block above (issue #928): the door the
-				   ask chord gates on. */
-				asksOffered: headerAsksOffered,
-			});
-		}, [
-			setRightSlotRoute,
-			hasRunDetails,
-			hasSession,
-			codeReviewEnabled,
-			headerAsksOffered,
-		]);
+			setRightSlotRoute({ mounted: true, session: hasSession });
+		}, [setRightSlotRoute, hasSession]);
 		/*
 		 * The unmount reset: a route with no chat surface draws none of the five.
 		 *
@@ -2105,7 +2088,6 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							 */
 							sessionId={sessionId}
 							onOpenOptions={onOpenOptions}
-							runDetails={runDetails}
 							/*
 							 * EXACTLY ONE OWNER, DERIVED FROM THE STORE RATHER THAN MEASURED (chat
 							 * redesign §J4). The right slot is exclusive - `claimRightSlot` clears the
@@ -2129,9 +2111,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							/*
 							 * THE ASKS DOOR, AS THE HEADER CARRIES IT NOW (#896): the trigger became
 							 * the rail's item (rendered below), and this prop feeds the menu's asks
-							 * row - absent where the scope's backend offers no asks (the same
-							 * `headerAsksOffered` gate the rail's `askOffered` uses), and otherwise a
-							 * toggle onto the drawer in the scope this conversation resolves to (see
+							 * row - always present, as the rail's item is (the always-visible rail,
+							 * D1: a scope whose backend offers no asks opens a drawer that says so),
+							 * a toggle onto the drawer in the scope this conversation resolves to (see
 							 * the block above). The press TOGGLES rather than only opening, so the
 							 * row is the same door in both directions - the browser row's own idiom
 							 * beside it - and its OPEN arm also writes the lane's open request
@@ -2139,29 +2121,25 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							 * request is what tells the drawer the open was the user's own (see the
 							 * handler below).
 							 */
-							onToggleAsks={
-								headerAsksOffered
-									? () => {
-											/*
-											 * THE MENU ROW IS A TOGGLE IN THIS CONVERSATION'S SCOPE, and its
-											 * OPEN is where the request is written (round-1 Q1). The row cannot
-											 * signal its press through focus — Radix hands the keyboard back
-											 * to this menu's own trigger when it closes — so `askOpenIntent`
-											 * is what tells the drawer it was pressed, exactly as a door's
-											 * focus does for the chip and the rail item (`ask-drawer.tsx`'s
-											 * entry move). Written after the open, in the console trigger's
-											 * own order one control over: the claim is what shows the pane;
-											 * the request is what marks the open as the user's.
-											 */
-											if (headerAsksOpen) {
-												setAskDrawerOpen(false, headerAsksScope);
-												return;
-											}
-											setAskDrawerOpen(true, headerAsksScope);
-											requestAskOpen(headerAsksScope);
-										}
-									: undefined
-							}
+							onToggleAsks={() => {
+								/*
+								 * THE MENU ROW IS A TOGGLE IN THIS CONVERSATION'S SCOPE, and its
+								 * OPEN is where the request is written (round-1 Q1). The row cannot
+								 * signal its press through focus — Radix hands the keyboard back
+								 * to this menu's own trigger when it closes — so `askOpenIntent`
+								 * is what tells the drawer it was pressed, exactly as a door's
+								 * focus does for the chip and the rail item (`ask-drawer.tsx`'s
+								 * entry move). Written after the open, in the console trigger's
+								 * own order one control over: the claim is what shows the pane;
+								 * the request is what marks the open as the user's.
+								 */
+								if (headerAsksOpen) {
+									setAskDrawerOpen(false, headerAsksScope);
+									return;
+								}
+								setAskDrawerOpen(true, headerAsksScope);
+								requestAskOpen(headerAsksScope);
+							}}
 							asksScope={headerAsksScope}
 							asksOpen={headerAsksOpen}
 							archiveEnabled={archiveEnabled}
@@ -2200,33 +2178,30 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 											requestConsoleOpen(sessionId);
 										}
 									: /*
-										 * OMITTED ON A DRAFT, as the archive and delete controls beside it are
-										 * (`sessionId ? … : undefined`), and by the same house rule: the pane's
-										 * only answer to a draft is "A console needs a conversation", so the
-										 * trigger would be an offer the app cannot honour — a control that
-										 * cannot act is not shown (design round 1, U3). The pane itself still
-										 * opens on a draft from the restored preference, and its close control
-										 * is there for that case.
+										 * ON A DRAFT THE ROW TOGGLES THE PANE AND FILES NO REQUEST (the
+										 * always-visible rail, D1, which retires design round 1's U3 rule for
+										 * the panel rows): the pane's draft state says "A console needs a
+										 * conversation", which is the answer to the press, and the request is
+										 * what spawns a console - there is no working directory to spawn one
+										 * in. The rail's console arm does the same (`togglePanelRailItem`).
 										 */
-										undefined
+										() => setConsolePaneOpen(!isConsolePaneOpen)
 							}
 							onOpenCodeReview={
-								codeReviewEnabled && hasSession
-									? /*
-										 * THE CODE REVIEW ENTRY (agent review round 1, N1): the `...` menu is
-										 * the keyboard door every other pane has ("so nothing is unreachable
-										 * at 800"), and its absence here left the pane rail-only. The write
-										 * toggles, and the header's own label reads the same store field, so
-										 * the two cannot disagree - `getState` rather than a rendered value
-										 * because the press must see the CURRENT pane, exactly as the canvas
-										 * row's own write does. Gated on the capability and a conversation,
-										 * the same pair the pane's mount is gated on (F6).
-										 */
-										() =>
-											setCodeReviewPaneOpen(
-												!useUiPreferencesStore.getState().isCodeReviewPaneOpen,
-											)
-									: undefined
+								/*
+								 * THE CODE REVIEW ENTRY (agent review round 1, N1): the `...` menu is
+								 * the keyboard door every other pane has ("so nothing is unreachable
+								 * at 800"), and its absence here left the pane rail-only. The write
+								 * toggles, and the header's own label reads the same store field, so
+								 * the two cannot disagree - `getState` rather than a rendered value
+								 * because the press must see the CURRENT pane, exactly as the canvas
+								 * row's own write does. Always offered, as the rail's door is (D3): on a
+								 * draft or a backend without the capability the pane opens to a notice.
+								 */
+								() =>
+									setCodeReviewPaneOpen(
+										!useUiPreferencesStore.getState().isCodeReviewPaneOpen,
+									)
 							}
 						/>
 						{/*
@@ -3041,7 +3016,17 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				 * asked for persistence, and a pane that disappears below a breakpoint is
 				 * the defect this replaces in a new costume.
 				 */}
-				{isRunPanelOpen && runDetails && (
+				{/*
+				 * THE PANE OPENS WITH OR WITHOUT A MODEL (the always-visible rail, D1):
+				 * the rail's Run details door is present on every chat route, so the slot
+				 * answers its press with the real panel when there is a model and with a
+				 * notice saying why there is none otherwise (`runPaneNotice`). The ref
+				 * stays on the slot, so the width measurement reads the same box either
+				 * way. The trigger's focus-return guard needs no marker on the notice: its
+				 * close control unmounts with it, and focus on `<body>` is the signature
+				 * the guard already answers.
+				 */}
+				{isRunPanelOpen && (
 					<>
 						<ResizableDivider
 							sidebarWidth={runDivider.value}
@@ -3057,46 +3042,70 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							width={effectiveRunPanelWidth}
 							tourTag="run-panel-dock"
 						>
-							<RunPanel
-								details={runDetails}
-								mcpServers={mcpServers}
-								mcpGrantRunning={mcpGrantRunning}
-								mcpRemedy={mcpRemedy}
-								monitorControls={monitorControls}
-								wakeControls={wakeControls}
-								jobControls={jobControls}
-								wakeAida={wakeAida}
-								sessionId={canonical?.view.frontend?.session_id ?? null}
-								pulses={pulses ?? EMPTY_PULSES}
-								childrenOpenable={childrenOpenable}
-								/*
-								 * The session's own transport truth, and the SAME predicate the
-								 * transcript above hands its own slot (`status !== "live"`). The
-								 * child reader's page is a read-only GET with no stream of its
-								 * own, so its older-history row can only know this by being told,
-								 * and one transport must not be read two ways in one window
-								 * (design round 1, D2). A window with no canonical session has
-								 * no stream to be down — no child reader can be open in it —
-								 * and reads as live.
-								 */
-								olderTransportDown={
-									(canonical?.view.status ?? "live") !== "live"
-								}
-								/*
-								 * The pane's own width, in pixels: the box it is actually drawn in
-								 * (`renderedRunPanelWidth`, measured on the wrapper above), not the
-								 * preference the wrapper asks for. The two differ whenever the row
-								 * cannot host the preference — a narrow window, or a wide rail — and
-								 * only the measured one is a width this pane has. The pane owns its
-								 * width; the sections whose tallies are budgeted against it (`§ 8`)
-								 * receive it rather than measuring themselves, so a section can
-								 * never disagree with the pane it is drawn in at the window floor.
-								 */
-								paneWidth={renderedRunPanelWidth}
-								readerChildId={readerChildId}
-								onReaderChildChange={setReaderChildId}
-								onClose={() => setRunPanelOpen(false)}
-							/>
+							{runDetails ? (
+								<RunPanel
+									details={runDetails}
+									mcpServers={mcpServers}
+									mcpGrantRunning={mcpGrantRunning}
+									mcpRemedy={mcpRemedy}
+									monitorControls={monitorControls}
+									wakeControls={wakeControls}
+									jobControls={jobControls}
+									wakeAida={wakeAida}
+									/*
+									 * THE COMPONENT'S OWN `sessionId`, not the frame's (agent review m2):
+									 * the pane is held through a reconnect gap (`runDetails` reads the
+									 * hold), but `view.frontend` is null for the gap, and `RunPanel`
+									 * resets its open child reader whenever this prop changes - so the
+									 * frame's id sent the reader back to the roster on every gap while
+									 * the pane around it looked stable.
+									 */
+									sessionId={sessionId ?? null}
+									pulses={pulses ?? EMPTY_PULSES}
+									childrenOpenable={childrenOpenable}
+									/*
+									 * The session's own transport truth, and the SAME predicate the
+									 * transcript above hands its own slot (`status !== "live"`). The
+									 * child reader's page is a read-only GET with no stream of its
+									 * own, so its older-history row can only know this by being told,
+									 * and one transport must not be read two ways in one window
+									 * (design round 1, D2). A window with no canonical session has
+									 * no stream to be down — no child reader can be open in it —
+									 * and reads as live.
+									 */
+									olderTransportDown={
+										(canonical?.view.status ?? "live") !== "live"
+									}
+									/*
+									 * The pane's own width, in pixels: the box it is actually drawn in
+									 * (`renderedRunPanelWidth`, measured on the wrapper above), not the
+									 * preference the wrapper asks for. The two differ whenever the row
+									 * cannot host the preference — a narrow window, or a wide rail — and
+									 * only the measured one is a width this pane has. The pane owns its
+									 * width; the sections whose tallies are budgeted against it (`§ 8`)
+									 * receive it rather than measuring themselves, so a section can
+									 * never disagree with the pane it is drawn in at the window floor.
+									 */
+									paneWidth={renderedRunPanelWidth}
+									readerChildId={readerChildId}
+									onReaderChildChange={setReaderChildId}
+									onClose={() => setRunPanelOpen(false)}
+								/>
+							) : (
+								<SlotPaneNotice
+									label="Run details"
+									closeLabel="Close run details"
+									onClose={() => setRunPanelOpen(false)}
+									labelInk="dim"
+									labelInset
+									{...runPaneNotice({
+										sessionId,
+										status: canonical.view.status,
+										missing: canonical.view.missing,
+										failure: canonical.view.failure,
+									})}
+								/>
+							)}
 						</PaneSlot>
 					</>
 				)}
@@ -3188,35 +3197,40 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 					</>
 				)}
 				{/*
-				 * THE CODE REVIEW PANE. Mounted only where it has a SUBJECT - a
-				 * conversation - and only where the backend serves its feature
-				 * (`codeReviewEnabled`): on a draft there is no ledger to draw, and against
-				 * an older backend the routes this pane reads do not exist. The store's own
-				 * drawable check (`rightSlotPaneDrawable`) releases the slot on a draft for
-				 * the same reason, so the claimed flag and the drawn pane agree; a flag
-				 * restored on a backend that lost the feature is the one documented edge
-				 * (`isCodeReviewPaneOpen`'s note), and it clears on the next claim of any
-				 * other pane.
+				 * THE CODE REVIEW PANE. `CodeReviewPane` - and the ledger's query with it -
+				 * mounts only where it has a SUBJECT (a conversation) and the backend
+				 * serves its feature (`codeSlot.notice` is null): on a draft there is no ledger,
+				 * and against an older backend the routes it reads do not exist. Anywhere
+				 * else the slot still opens, because the rail's door is always present
+				 * (D3), and it shows a notice naming which of those is missing
+				 * (`codeReviewPaneNotice`).
 				 */}
-				{isCodeReviewPaneOpen &&
-					codeReviewEnabled &&
-					sessionId !== undefined && (
-						<>
-							<ResizableDivider
-								sidebarWidth={codeDivider.value}
-								onSidebarWidthChange={handleCodePanelWidthChange}
-								minWidth={codeDivider.minWidth}
-								maxWidth={codeDivider.maxWidth}
-								side="left"
-								onDoubleClick={handleCodePanelWidthReset}
-								label="Resize code review. Double-click resets the shared pane width."
-							/>
-							<PaneSlot
-								width={effectiveCodePanelWidth}
-								tourTag="code-review-pane-slot"
-							>
+				{isCodeReviewPaneOpen && (
+					<>
+						<ResizableDivider
+							sidebarWidth={codeDivider.value}
+							onSidebarWidthChange={handleCodePanelWidthChange}
+							minWidth={codeDivider.minWidth}
+							maxWidth={codeDivider.maxWidth}
+							side="left"
+							onDoubleClick={handleCodePanelWidthReset}
+							label="Resize code review. Double-click resets the shared pane width."
+						/>
+						<PaneSlot
+							width={effectiveCodePanelWidth}
+							tourTag="code-review-pane-slot"
+						>
+							{codeSlot.notice !== null ? (
+								<SlotPaneNotice
+									label="Code review"
+									closeLabel="Close code review"
+									onClose={() => setCodeReviewPaneOpen(false)}
+									labelInk="muted"
+									{...codeSlot.notice}
+								/>
+							) : (
 								<CodeReviewPane
-									sessionId={sessionId}
+									sessionId={codeSlot.sessionId}
 									/*
 									 * THE POLL GATE'S "live", the Stop control's own reading (`turnAlive`, the
 									 * frontend's `streaming` flag through the held frame): a turn is RUNNING.
@@ -3227,15 +3241,15 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 									sessionLive={canonical?.turnAlive === true}
 									onClose={() => setCodeReviewPaneOpen(false)}
 								/>
-							</PaneSlot>
-						</>
-					)}
+							)}
+						</PaneSlot>
+					</>
+				)}
 				{/*
 				 * THE PANEL RAIL (#872, #896, #927), rendered here and drawn at the window's edge.
 				 * This component owns every input the six items need (the conversation,
 				 * run view model and its acknowledgement context, the approvals count, the
-				 * asks door's offered rule, count and scope, the console's unseen marks, the
-				 * file count), and the shell owns the element
+				 * asks door's count and scope, the console's unseen marks, the file count), and the shell owns the element
 				 * that sits beside the measured column; the portal joins the two without
 				 * either importing the other's tree. It renders NOTHING when no shell host
 				 * is provided, so a story that mounts this component alone is unchanged.
@@ -3252,17 +3266,15 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						listOnScreen={listOnScreen}
 						readerChildId={readerChildId}
 						browserAttentionCount={browserAttentionCount}
-						/* THE ASKS INPUTS (#896): the door's offered rule, count and scope, from
-						   the same `headerAsks*` derivations the header's menu entry reads - one
+						/* THE ASKS INPUTS (#896): the count and scope, from the same
+						   `headerAsks*` derivations the header's menu entry reads - one
 						   expression per fact, so the rail item and the menu row cannot disagree
 						   about which queue a press opens or how many are outstanding. */
-						askOffered={headerAsksOffered}
 						askCount={headerAsksCount}
 						askScope={headerAsksScope}
 						consoleUnseenCount={consoleUnseenMarks.length}
 						consoleUnseenPulsing={consoleUnseenPulsing}
 						fileCount={mentionedFileCount}
-						codeOffered={codeReviewEnabled && hasSession}
 						codeOpened={codeGroups.opened.length}
 						codeMentioned={codeGroups.mentioned.length}
 						codeAttention={codeAttentionCause}

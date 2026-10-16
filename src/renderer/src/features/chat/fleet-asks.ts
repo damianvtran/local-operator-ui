@@ -19,12 +19,13 @@
  * `ask-queue.ts`'s first rule is that a backend which does not publish `asks`
  * must not grow an affordance that can never be satisfied. The aggregate route
  * is newer than the per-session field, so on a backend that predates it the read
- * FAILS (404) and this module answers `frontend: null` - the same value the
- * session lane uses for "this backend does not do queued asks" - which is what
- * keeps the top-level row and the drawer off rather than drawing a control whose
- * every press would 404. `answered` is the separate fact a caller needs when it
- * wants to know whether the route exists at all (an empty list is a legitimate
- * answer and renders an empty surface).
+ * FAILS (404). The asks door is drawn on every chat route regardless (the
+ * always-visible rail, D4), so a failure with no answer in hand is handed to the
+ * drawer as a RESOLVED frame that publishes nothing
+ * ({@link FLEET_ASKS_UNAVAILABLE_FRONTEND}) - which the drawer words as "this
+ * runtime doesn't support queued asks" - rather than as `null`, which it reads as
+ * a read still in flight. An empty list is a legitimate answer and renders an
+ * empty surface; the badge counts zero for both.
  *
  * ## Identity comes from the wire, never from display text
  *
@@ -183,10 +184,42 @@ export function fleetAsksBySession(
  * leaning on the fallback).
  */
 export type FleetAskFrontend = {
-	asks: PendingAsk[];
-	asks_open: number;
+	asks: PendingAsk[] | null;
+	asks_open: number | null;
 	asks_truncated: false;
 };
+
+/**
+ * THE FLEET READ FAILED, AS A RESOLVED FRAME (the always-visible rail, D4).
+ *
+ * The drawer reads `frontend: null` as UNREAD ("Reading the asks…"), a progress
+ * claim that resolves when the read answers. A failed `asks.list` - a backend
+ * that predates the route, a refused credential - may never answer, and now that
+ * the rail's asks door is present on every chat route the drawer can be opened
+ * over exactly that state. So a failure with no answer in hand is handed over as
+ * `{asks: null, asks_open: null}`: resolved, publishing nothing, which the drawer
+ * already words as "This runtime doesn't support queued asks." Frozen and shared,
+ * because it is one value read on every render of every caller.
+ */
+export const FLEET_ASKS_UNAVAILABLE_FRONTEND: FleetAskFrontend = Object.freeze({
+	asks: null,
+	asks_open: null,
+	asks_truncated: false,
+});
+
+/**
+ * The drawer's frame for one state of the fleet read: the rows once it answers,
+ * {@link FLEET_ASKS_UNAVAILABLE_FRONTEND} once it failed with no answer in hand,
+ * and `null` (unread) while it is in flight. One function, so the hook and a test
+ * read the same three-way answer.
+ */
+export function fleetAskFrontendFor(
+	rows: readonly PendingAsk[] | null,
+	failed: boolean,
+): FleetAskFrontend | null {
+	if (rows !== null) return fleetAskFrontend(rows);
+	return failed ? FLEET_ASKS_UNAVAILABLE_FRONTEND : null;
+}
 
 export function fleetAskFrontend(
 	rows: readonly PendingAsk[],
@@ -352,9 +385,11 @@ export type FleetAsks = {
 	rows: PendingAsk[] | null;
 	/** The outstanding count for the badge, 0 whenever `rows` is null. */
 	outstanding: number;
-	/** Whether the route has answered at all: the capability-by-answer gate. */
-	answered: boolean;
-	/** The drawer's own prop, `null` until the read answers. */
+	/**
+	 * The drawer's own prop: `null` while the read is in flight, the rows once it
+	 * answers, and {@link FLEET_ASKS_UNAVAILABLE_FRONTEND} when it failed with no
+	 * answer in hand.
+	 */
 	frontend: FleetAskFrontend | null;
 	/** One row, by id, with its own conversation - the answer path's lookup. */
 	rowFor: (askId: string) => PendingAsk | null;
@@ -392,8 +427,7 @@ export function useFleetAsks(): FleetAsks {
 	return {
 		rows,
 		outstanding: rows === null ? 0 : fleetAsksOutstanding(rows),
-		answered: query.data !== undefined,
-		frontend: rows === null ? null : fleetAskFrontend(rows),
+		frontend: fleetAskFrontendFor(rows, query.isError),
 		rowFor: (askId) =>
 			rows === null ? null : (rows.find((row) => row.ask_id === askId) ?? null),
 	};
