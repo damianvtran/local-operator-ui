@@ -3246,20 +3246,14 @@ const CodeChipHost: FC<{ children: ReactNode }> = ({ children }) => {
 		useUiPreferencesStore.setState({
 			rightSlotRoute: {
 				mounted: true,
-				runDetails: false,
 				session: true,
-				codeReview: true,
-				asksOffered: true,
 			},
 		});
 		return () =>
 			useUiPreferencesStore.setState({
 				rightSlotRoute: {
 					mounted: false,
-					runDetails: false,
 					session: false,
-					codeReview: false,
-					asksOffered: false,
 				},
 			});
 	}, []);
@@ -3321,10 +3315,7 @@ const CodeChipShowingHost: FC<{ children: ReactNode }> = ({ children }) => {
 		useUiPreferencesStore.setState({
 			rightSlotRoute: {
 				mounted: true,
-				runDetails: false,
 				session: true,
-				codeReview: true,
-				asksOffered: true,
 			},
 			isCodeReviewPaneOpen: true,
 		});
@@ -3332,10 +3323,7 @@ const CodeChipShowingHost: FC<{ children: ReactNode }> = ({ children }) => {
 			useUiPreferencesStore.setState({
 				rightSlotRoute: {
 					mounted: false,
-					runDetails: false,
 					session: false,
-					codeReview: false,
-					asksOffered: false,
 				},
 				isCodeReviewPaneOpen: false,
 			});

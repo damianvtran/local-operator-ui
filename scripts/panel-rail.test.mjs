@@ -62,6 +62,8 @@ const bundle = await build({
 			export { captureRefusal } from "./src/renderer/src/shared/keymap/keymap-chord";
 			export { useUiPreferencesStore, resolveDrawnRightSlotPane } from "./src/renderer/src/shared/store/ui-preferences-store";
 			export { deriveRunDetails } from "./${RUN}/run-detail-model";
+			export { SlotPaneNotice } from "./src/renderer/src/shared/components/common/slot-pane-notice";
+			export { runPaneNotice, codeReviewPaneNotice, RUN_NOTICE_DRAFT, RUN_NOTICE_READING, CODE_NOTICE_DRAFT, CODE_NOTICE_BELOW_VERSION, CODE_NOTICE_CHECKING } from "./src/renderer/src/features/chat/right-slot-notices";
 			export * as fixtures from "./${RUN}/run-details.fixtures";
 		`,
 		resolveDir: ROOT,
@@ -123,6 +125,14 @@ const {
 	resolveDrawnRightSlotPane,
 	deriveRunDetails,
 	fixtures,
+	SlotPaneNotice,
+	runPaneNotice,
+	codeReviewPaneNotice,
+	RUN_NOTICE_DRAFT,
+	RUN_NOTICE_READING,
+	CODE_NOTICE_DRAFT,
+	CODE_NOTICE_BELOW_VERSION,
+	CODE_NOTICE_CHECKING,
 } = await import(pathToFileURL(bundlePath).href);
 
 const read = (path) => readFileSync(join(ROOT, path), "utf8");
@@ -292,26 +302,8 @@ async function mount(render) {
 	}
 }
 
-const DRAWABLE = {
-	mounted: true,
-	runDetails: true,
-	session: true,
-	/*
-	 * The capability is a route fact since remediation round 1 (F6): the code
-	 * item's `aria-pressed` reads `resolveDrawnRightSlotPane`, whose `code`
-	 * branch requires it, so a narrative route without it would light nothing.
-	 */
-	codeReview: true,
-	/* The asks door is a route fact since #928 (the chord's door gate). */
-	asksOffered: true,
-};
-const DRAFT = {
-	mounted: true,
-	runDetails: false,
-	session: false,
-	codeReview: false,
-	asksOffered: false,
-};
+const DRAWABLE = { mounted: true, session: true };
+const DRAFT = { mounted: true, session: false };
 const NO_PANES = {
 	isRunPanelOpen: false,
 	isCanvasOpen: false,
@@ -325,15 +317,9 @@ const NO_PANES = {
 const details = () => deriveRunDetails(fixtures.settled());
 
 /*
- * The rail as the chat surface mounts it (#896): the asks item is OFFERED by
- * default, because that is the app's normal state where a host publishes a queue -
- * the cells that need it absent (proving offered-gating) pass `askOffered: false`,
- * and the cells that need a count pass it. A draft was never reachable with an
- * unoffered item before this, so offering it here is what keeps the fifth item
- * under test in the same mounts as its four siblings.
- *
- * The code door's own harness contract (#927) keeps the `sessionId` override the
- * draft cells use, and derives the offer from the session as `chat-content` does.
+ * The rail as the chat surface mounts it. All six doors are present on every chat
+ * route (the always-visible rail, D1), so the harness carries no offer flags; the
+ * draft cells pass `sessionId: null` and `runDetails: null`.
  */
 const rail = (overrides = {}) => {
 	const { sessionId = "session-1", ...rest } = overrides;
@@ -344,19 +330,11 @@ const rail = (overrides = {}) => {
 		listOnScreen: false,
 		readerChildId: null,
 		browserAttentionCount: 0,
-		askOffered: true,
 		askCount: 0,
 		askScope: "session",
 		consoleUnseenCount: 0,
 		consoleUnseenPulsing: false,
 		fileCount: 0,
-		/*
-		 * The code review door's offer mirrors `chat-content`'s own derivation
-		 * (§M.1): the capability AND a session on the route - so the draft arms
-		 * below, which pass `sessionId: null`, get the pre-feature rail without
-		 * having to restate it.
-		 */
-		codeOffered: sessionId !== null,
 		codeOpened: 0,
 		codeMentioned: 0,
 		codeAttention: null,
@@ -564,7 +542,7 @@ test("a claimed pane the route cannot draw lights NOTHING (the drawable-aware se
 			"isAskDrawerOpen",
 			"isCodeReviewPaneOpen",
 		]) {
-			reset(api, { mounted: false, runDetails: false, session: false });
+			reset(api, { mounted: false, session: false });
 			api.store({ [flag]: true });
 			assert.equal(
 				resolveDrawnRightSlotPane(useUiPreferencesStore.getState()),
@@ -573,80 +551,208 @@ test("a claimed pane the route cannot draw lights NOTHING (the drawable-aware se
 			await api.render(rail());
 			assert.deepEqual(api.pressed(), [], `${flag} on an undrawable route`);
 		}
-		/* The run panel claimed on a draft: no run details, so it cannot be drawn. */
+		/*
+		 * ON A MOUNTED DRAFT EVERY DURABLE PANE DRAWS (D2): a pane that cannot act
+		 * there draws its notice, so its claim lights its door. The session-scope
+		 * asks drawer is the one exception: its home is a conversation.
+		 */
+		for (const [flag, id] of [
+			["isRunPanelOpen", "run"],
+			["isBrowserPaneOpen", "browser"],
+			["isConsolePaneOpen", "console"],
+			["isCanvasOpen", "canvas"],
+			["isCodeReviewPaneOpen", "code"],
+		]) {
+			reset(api, DRAFT);
+			api.store({ [flag]: true });
+			await api.render(rail({ runDetails: null, sessionId: null }));
+			assert.deepEqual(api.pressed(), [id], `${flag} on a mounted draft`);
+		}
 		reset(api, DRAFT);
-		api.store({ isRunPanelOpen: true });
+		api.store({ isAskDrawerOpen: true, askDrawerScope: "session" });
 		await api.render(rail({ runDetails: null, sessionId: null }));
 		assert.deepEqual(
 			api.pressed(),
 			[],
-			"run claimed on a draft lights nothing",
+			"the session-scope drawer on a draft has no home, so it lights nothing",
 		);
-		/* And the same claim on a route that CAN draw it does light it. */
-		reset(api);
-		api.store({ isRunPanelOpen: true });
-		await api.render(rail());
-		assert.deepEqual(api.pressed(), ["run"]);
 	});
 });
 
-test("a panel the route cannot draw is ABSENT, not disabled", async () => {
+test("every door is present on a draft, and none is disabled (D1)", async () => {
 	await mount(async (api) => {
 		reset(api, DRAFT);
-		await api.render(rail({ runDetails: null, sessionId: null }));
+		await api.render(
+			rail({ runDetails: null, sessionId: null, askScope: "fleet" }),
+		);
 		assert.deepEqual(
 			api.ids(),
-			["ask", "browser", "canvas"],
-			"Run details and Console are absent on {mounted, !runDetails, !session}; the asks item is present because THIS host offers it - its rule is the host's, not the route's (see its own cell below)",
+			[...PANEL_RAIL_ORDER],
+			"all six doors on {mounted, !session} with no run model",
 		);
 		for (const item of api.items()) {
 			assert.equal(item.disabled, false);
 			assert.equal(item.hasAttribute("aria-disabled"), false);
 		}
-		assert.equal(api.$("[data-run-panel-trigger]"), null);
-		assert.equal(api.$("[data-tour-tag=console-pane-trigger]"), null);
-		/* A conversation with a session but no run view model: Console without Run
-		   (and the code review door, which needs only the session - §M.1). */
-		reset(api, { mounted: true, runDetails: false, session: true });
+		/* The run trigger with no model: present, the bare label, no mark. */
+		const run = api.$("[data-run-panel-trigger]");
+		assert.ok(run, "the run trigger renders with a null model");
+		assert.equal(run.getAttribute("aria-label"), "Run details");
+		assert.ok(api.$("[data-tour-tag=console-pane-trigger]"));
+		assert.ok(api.$("[data-tour-tag=code-pane-trigger]"));
+		/* A conversation whose frame has not been read: the same six. */
+		reset(api);
 		await api.render(rail({ runDetails: null }));
-		assert.deepEqual(api.ids(), [
-			"ask",
-			"browser",
-			"console",
-			"canvas",
-			"code",
-		]);
+		assert.deepEqual(api.ids(), [...PANEL_RAIL_ORDER]);
+	});
+});
+
+test("a door pressed on a draft opens its pane, and the console files no open request (D1)", async () => {
+	await mount(async (api) => {
+		reset(api, DRAFT);
+		api.store({ consoleOpenIntent: null });
+		await api.render(
+			rail({ runDetails: null, sessionId: null, askScope: "fleet" }),
+		);
+		await api.click(api.item("console"));
+		const state = useUiPreferencesStore.getState();
+		assert.equal(state.isConsolePaneOpen, true, "the pane opens on a draft");
+		assert.equal(
+			state.consoleOpenIntent,
+			null,
+			"no conversation, so no console is requested",
+		);
+		assert.deepEqual(api.pressed(), ["console"]);
+		for (const [id, flag] of [
+			["run", "isRunPanelOpen"],
+			["code", "isCodeReviewPaneOpen"],
+		]) {
+			await api.click(api.item(id));
+			assert.equal(
+				useUiPreferencesStore.getState()[flag],
+				true,
+				`${id} opens on a draft`,
+			);
+			assert.deepEqual(api.pressed(), [id]);
+		}
 	});
 });
 
 /*
- * THE ASKS ITEM'S OWN RULE (#896): PRESENT iff a host offers a door - the header
- * trigger's old "offered" gate (`published`/`answered`, resolved by `chat-content`)
- * - and its two labels carry the scope and the count. Asserted on BOTH scopes,
+ * THE NOTICE PANES (D1/D3): what a door pressed where its pane cannot act opens.
+ * The choice is a pure function of the route's facts; the pane is one component.
+ */
+test("each pane that cannot act picks the notice for its reason (D1/D3)", () => {
+	assert.equal(runPaneNotice(undefined), RUN_NOTICE_DRAFT, "run on a draft");
+	assert.equal(runPaneNotice(null), RUN_NOTICE_DRAFT);
+	assert.equal(
+		runPaneNotice("s-1"),
+		RUN_NOTICE_READING,
+		"run on a conversation whose frame is not read yet",
+	);
+	const code = (over) =>
+		codeReviewPaneNotice({
+			sessionId: "s-1",
+			state: "enabled",
+			cause: null,
+			loadError: null,
+			...over,
+		});
+	assert.equal(code({}), null, "enabled with a conversation: the real pane");
+	assert.equal(code({ sessionId: undefined }), CODE_NOTICE_DRAFT);
+	assert.equal(
+		code({ sessionId: undefined, state: "below-version" }),
+		CODE_NOTICE_DRAFT,
+		"a draft says draft whatever the backend serves",
+	);
+	assert.equal(code({ state: "below-version" }), CODE_NOTICE_BELOW_VERSION);
+	assert.equal(code({ state: "unknown" }), CODE_NOTICE_CHECKING);
+	const unreadable = code({ state: "unknown", loadError: new Error("boom") });
+	assert.equal(unreadable.kind, "code-unreadable");
+	assert.ok(unreadable.title.startsWith("Code review could not be loaded."));
+	const unpaired = code({ state: "unpaired", cause: "credential-refused" });
+	assert.equal(unpaired.kind, "code-unpaired");
+	assert.match(unpaired.title, /refused/);
+	/* The copy states the reason; none of it claims a failure for a draft. */
+	for (const notice of [
+		RUN_NOTICE_DRAFT,
+		RUN_NOTICE_READING,
+		CODE_NOTICE_DRAFT,
+		CODE_NOTICE_BELOW_VERSION,
+	]) {
+		assert.ok(notice.title.length > 0 && !/error|failed/i.test(notice.title));
+	}
+});
+
+test("the notice pane names itself, closes from its bar and on Escape, and leaves the composer's Escape alone", async () => {
+	await mount(async (api) => {
+		let closes = 0;
+		const notice = (key) =>
+			React.createElement(
+				TooltipProvider,
+				null,
+				React.createElement(
+					React.Fragment,
+					null,
+					React.createElement("textarea", { "aria-label": "Message" }),
+					React.createElement(SlotPaneNotice, {
+						key,
+						label: "Run details",
+						closeLabel: "Close run details",
+						onClose: () => {
+							closes += 1;
+						},
+						...RUN_NOTICE_DRAFT,
+					}),
+				),
+			);
+		await api.render(notice("a"));
+		const pane = api.$("[data-slot-pane-notice]");
+		assert.ok(pane, "the notice pane renders");
+		assert.equal(pane.getAttribute("data-slot-pane-notice"), "run-draft");
+		assert.equal(pane.getAttribute("aria-label"), "Run details");
+		assert.ok(pane.textContent.includes(RUN_NOTICE_DRAFT.title));
+		assert.ok(pane.textContent.includes(RUN_NOTICE_DRAFT.detail));
+		await api.click(api.$('[aria-label="Close run details"]'));
+		assert.equal(closes, 1, "the bar's close control closes");
+		await api.key(api.document.body, "Escape");
+		assert.equal(closes, 2, "an unclaimed Escape closes the pane");
+		await api.key(api.$('textarea[aria-label="Message"]'), "Escape");
+		assert.equal(closes, 2, "the composer's Escape is not the notice's");
+	});
+});
+
+test("chat-content mounts the notice in the same slot the real run and code panes use", () => {
+	const content = read(
+		"src/renderer/src/features/chat/components/chat-content.tsx",
+	);
+	assert.ok(
+		/\{isRunPanelOpen && \([\s\S]{0,4000}?\{runDetails \? \([\s\S]{0,4000}?<RunPanel[\s\S]{0,4000}?\) : \([\s\S]{0,400}?<SlotPaneNotice[\s\S]{0,400}?runPaneNotice\(sessionId\)/.test(
+			content,
+		),
+		"the run slot no longer falls back to the notice when there is no model",
+	);
+	assert.ok(
+		/\{isCodeReviewPaneOpen && \([\s\S]{0,2000}?codeNotice !== null \|\| !sessionId \?[\s\S]{0,400}?<SlotPaneNotice[\s\S]{0,800}?<CodeReviewPane/.test(
+			content,
+		),
+		"the code slot no longer gates `CodeReviewPane` (and its query) behind the notice",
+	);
+});
+
+/*
+ * THE ASKS ITEM (#896): always present now (D1 retired the host's "offered" gate;
+ * a host with no queue opens a drawer that says so), and its two labels carry the
+ * scope and the count. Asserted on BOTH scopes,
  * because the scope is the one fact that makes two renders of one control describe
  * two different queues (UX round 1, U3), and on the tag, because the drawer's
  * focus-return anchor and Escape door attach to it (#820/#835's contract, moved with
  * the control).
  */
-test("the asks item follows the host's offer, and its labels carry the scope and the count", async () => {
+test("the asks item is always present, and its labels carry the scope and the count", async () => {
 	await mount(async (api) => {
 		reset(api);
-		await api.render(rail({ askOffered: false }));
-		assert.equal(
-			api.item("ask"),
-			null,
-			"absent, not disabled, where no host offers a door",
-		);
-		assert.deepEqual(api.ids(), [
-			"run",
-			"browser",
-			"console",
-			"canvas",
-			"code",
-		]);
-		await api.render(
-			rail({ askOffered: true, askCount: 3, askScope: "session" }),
-		);
+		await api.render(rail({ askCount: 3, askScope: "session" }));
 		const offered = api.item("ask");
 		assert.ok(offered, "offered: the item is present");
 		assert.equal(offered.getAttribute("data-tour-tag"), "ask-pane-trigger");
@@ -665,9 +771,7 @@ test("the asks item follows the host's offer, and its labels carry the scope and
 			"false",
 			"open/closed is `aria-pressed`'s to say, once",
 		);
-		await api.render(
-			rail({ askOffered: true, askCount: 11, askScope: "fleet" }),
-		);
+		await api.render(rail({ askCount: 11, askScope: "fleet" }));
 		assert.equal(
 			api.item("ask").getAttribute("aria-label"),
 			"Asks, All conversations, 11 waiting or moved on",
@@ -675,9 +779,7 @@ test("the asks item follows the host's offer, and its labels carry the scope and
 		assert.equal(api.item("ask").getAttribute("data-ask-scope"), "fleet");
 		/* Zero still names its subject (U3): the scope word is what says WHICH queue
 		   the quiet door opens. */
-		await api.render(
-			rail({ askOffered: true, askCount: 0, askScope: "fleet" }),
-		);
+		await api.render(rail({ askCount: 0, askScope: "fleet" }));
 		assert.equal(
 			api.item("ask").getAttribute("aria-label"),
 			"Asks, All conversations",
@@ -699,9 +801,7 @@ test("the asks item follows the host's offer, and its labels carry the scope and
 test("the asks item's tooltip verb follows its SCOPE while aria-pressed follows the slot (N1)", async () => {
 	await mount(async (api) => {
 		reset(api);
-		await api.render(
-			rail({ askOffered: true, askCount: 2, askScope: "session" }),
-		);
+		await api.render(rail({ askCount: 2, askScope: "session" }));
 		const tooltip = () => api.$('[role="tooltip"]')?.textContent ?? null;
 		act(() => api.item("ask").focus());
 		await frames(30);
@@ -1115,12 +1215,12 @@ const F1_ASK = {
 const F1_FRAME = { asks: [F1_ASK], asks_open: 1, asks_truncated: null };
 
 /** The drawer as `chat-content` gates it: mounted off the store flag, closed by its own door. */
-const RailDrawerHarness = ({ railMounted, askOffered = true }) => {
+const RailDrawerHarness = ({ railMounted }) => {
 	const open = useUiPreferencesStore((s) => s.isAskDrawerOpen);
 	return React.createElement(
 		React.Fragment,
 		null,
-		railMounted ? rail({ askOffered }) : null,
+		railMounted ? rail() : null,
 		open
 			? React.createElement(AskDrawer, {
 					frontend: F1_FRAME,
@@ -1133,15 +1233,13 @@ const RailDrawerHarness = ({ railMounted, askOffered = true }) => {
 };
 
 /** One cell: press a door, open, Escape on the landing, read where focus landed. */
-async function f1Cell(api, { railMounted, askOffered = true, door }) {
+async function f1Cell(api, { railMounted, door }) {
 	reset(api);
 	const chip = api.document.createElement("button");
 	chip.setAttribute("data-lo-ask-item-toggle", "");
 	chip.setAttribute("data-test-chip", "");
 	api.document.body.append(chip);
-	await api.render(
-		React.createElement(RailDrawerHarness, { railMounted, askOffered }),
-	);
+	await api.render(React.createElement(RailDrawerHarness, { railMounted }));
 	const doorEl = door === "chip" ? chip : api.item("ask");
 	assert.ok(doorEl, "the door this cell presses is present");
 	act(() => doorEl.focus());
@@ -1199,16 +1297,8 @@ test("a drawer opened from the CHIP returns focus to the chip with the rail moun
 			"the rail-item door returns to the rail item",
 		);
 
-		const unoffered = await f1Cell(api, {
-			railMounted: true,
-			askOffered: false,
-			door: "chip",
-		});
-		assert.equal(
-			unoffered.afterClose,
-			unoffered.chip,
-			"without the ask item the chip return was never in question (pins the item as the cause)",
-		);
+		/* The railless baseline above is the control that pins the ask item as the
+		   cause: an "unoffered" rail no longer exists (D1), so it is the only one. */
 	});
 });
 
@@ -1387,7 +1477,9 @@ test("the header no longer renders the five triggers or their shed ladder", () =
 		header.includes('{asksOpen ? "Close asks" : "Open asks"}'),
 		"the asks row must be the same toggle sentence as the browser row's",
 	);
-	const runAt = header.indexOf("<span>Run details</span>");
+	const runAt = header.indexOf(
+		'{isRunPanelOpen ? "Close run details" : "Open run details"}',
+	);
 	const asksAt = header.indexOf('{asksOpen ? "Close asks" : "Open asks"}');
 	const browserAt = header.indexOf(
 		'{isBrowserPaneOpen ? "Close browser" : "Open browser"}',
@@ -1446,7 +1538,7 @@ test("only the shell host sizes the rail, from the route's `mounted` fact", () =
  */
 async function withShell(run, wrap = (node) => node) {
 	await mount(async (api) => {
-		reset(api, { mounted: false, runDetails: false, session: false });
+		reset(api, { mounted: false, session: false });
 		const shell = (content) =>
 			wrap(
 				React.createElement(ChatLayout, {
@@ -1466,7 +1558,7 @@ test("the host is 0 with no chat surface, 44 with one, and follows the fact both
 		api.store({ rightSlotRoute: DRAWABLE });
 		assert.equal(hostWidth(api), "44px", "a chat surface is mounted: 44");
 		api.store({
-			rightSlotRoute: { mounted: false, runDetails: false, session: false },
+			rightSlotRoute: { mounted: false, session: false },
 		});
 		assert.equal(
 			hostWidth(api),
@@ -1490,7 +1582,7 @@ test("the rail is drawn in the host while the chat surface is mounted, and the s
 		assert.equal(hostWidth(api), "44px");
 		await api.render(shell(React.createElement("main", null, "agents")));
 		api.store({
-			rightSlotRoute: { mounted: false, runDetails: false, session: false },
+			rightSlotRoute: { mounted: false, session: false },
 		});
 		assert.equal(
 			api.$("[data-panel-rail]"),
@@ -1886,7 +1978,9 @@ test("the ... menu's asks row is the header's remaining door: gated, verb-labell
 			rowNamed("Close asks"),
 			"the label states the action the press will take, as the browser row's does",
 		);
-		/* Not offered: no asks row at all - absent, never disabled. */
+		/* A header whose host passes no toggle draws no asks row - the header still
+		   renders what its host offers; `chat-content` now always offers it (D1,
+		   pinned below). */
 		await api.render(header("none", {}));
 		await openMenu();
 		assert.equal(
@@ -1894,9 +1988,89 @@ test("the ... menu's asks row is the header's remaining door: gated, verb-labell
 				.$$('[role="menuitem"]')
 				.filter((item) => /asks/i.test(item.textContent)).length,
 			0,
-			"no asks row where no host offers a door",
+			"no asks row where the host passes no toggle",
 		);
 	});
+});
+
+test("on a draft the ... menu carries all six panel rows, in rail order (D1)", async () => {
+	await mount(async (api) => {
+		reset(api, DRAFT);
+		/* `chat-content`'s draft props: no session, no run model, every panel door. */
+		await api.render(
+			React.createElement(
+				TooltipProvider,
+				null,
+				React.createElement(ChatHeader, {
+					agentName: "Core",
+					runDetails: null,
+					onOpenOptions: () => {},
+					onToggleBrowser: () => {},
+					onToggleAsks: () => {},
+					onOpenConsole: () => {},
+					onOpenCodeReview: () => {},
+					asksScope: "fleet",
+				}),
+			),
+		);
+		const trigger = api.$('[aria-label="Conversation actions"]');
+		act(() => {
+			trigger.dispatchEvent(
+				new api.window.KeyboardEvent("keydown", {
+					key: "Enter",
+					bubbles: true,
+					cancelable: true,
+				}),
+			);
+		});
+		await act(async () => {});
+		const rows = api
+			.$$('[role="menuitem"]')
+			.map((item) => item.textContent.trim());
+		assert.deepEqual(
+			rows.filter((text) =>
+				/^(Open|Close) (run details|asks|browser|console|canvas|code review)$/.test(
+					text,
+				),
+			),
+			[
+				"Open run details",
+				"Open asks",
+				"Open browser",
+				"Open console",
+				"Open canvas",
+				"Open code review",
+			],
+		);
+		/* The run row toggles the flag the pane reads, with no model at all. */
+		await api.click(
+			api
+				.$$('[role="menuitem"]')
+				.find((item) => item.textContent.trim() === "Open run details"),
+		);
+		assert.equal(useUiPreferencesStore.getState().isRunPanelOpen, true);
+	});
+	/*
+	 * And the host passes every one of those doors unconditionally: no
+	 * `sessionId ? … : undefined` or capability gate in front of the asks, console
+	 * or code review props (the draft arms are the notice panes').
+	 */
+	const content = read(
+		"src/renderer/src/features/chat/components/chat-content.tsx",
+	);
+	assert.ok(/onToggleAsks=\{\(\) => \{/.test(content), "onToggleAsks is gated");
+	assert.ok(
+		/onOpenConsole=\{\s*sessionId\s*\?[\s\S]{0,2400}?:[\s\S]{0,800}?\(\) => setConsolePaneOpen\(!isConsolePaneOpen\)/.test(
+			content,
+		),
+		"onOpenConsole has no draft arm",
+	);
+	assert.ok(
+		/onOpenCodeReview=\{[\s\S]{0,900}?\(\) =>\s*setCodeReviewPaneOpen\(/.test(
+			content,
+		) && !/onOpenCodeReview=\{\s*codeReviewEnabled/.test(content),
+		"onOpenCodeReview is gated",
+	);
 });
 
 /*

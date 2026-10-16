@@ -6196,29 +6196,30 @@ export const STORIES = [
 	 * THE PANEL RAIL'S OWN STATES (#872), one frame per state, both themes: the
 	 * run trigger's two dot inks, the browser badge at one and at the cap, the
 	 * console blip in both inks, the files dot, each item lit, and the draft route
-	 * where Run details and Console are absent. The frames are small on purpose (the
-	 * rail is 44px wide); the shell arms above carry the geometry.
+	 * where all six doors are present too (the always-visible rail, D1). The frames
+	 * are small on purpose (the rail is 44px wide) and 220 tall, the six-door
+	 * rail's height; the shell arms above carry the geometry.
 	 */
-	["navigation-panel-rail--idle", 132, 184],
-	["navigation-panel-rail--run-attention", 132, 184],
-	["navigation-panel-rail--run-activity", 132, 184],
-	["navigation-panel-rail--browser-one", 132, 184],
-	["navigation-panel-rail--browser-at-cap", 132, 184],
-	["navigation-panel-rail--console-blip", 132, 184],
-	["navigation-panel-rail--console-blip-resting", 132, 184],
-	["navigation-panel-rail--canvas-files", 132, 184],
-	["navigation-panel-rail--run-open", 132, 184],
-	["navigation-panel-rail--browser-open", 132, 184],
-	["navigation-panel-rail--console-open", 132, 184],
-	["navigation-panel-rail--canvas-open", 132, 184],
-	["navigation-panel-rail--draft-route", 132, 184],
+	["navigation-panel-rail--idle", 132, 220],
+	["navigation-panel-rail--run-attention", 132, 220],
+	["navigation-panel-rail--run-activity", 132, 220],
+	["navigation-panel-rail--browser-one", 132, 220],
+	["navigation-panel-rail--browser-at-cap", 132, 220],
+	["navigation-panel-rail--console-blip", 132, 220],
+	["navigation-panel-rail--console-blip-resting", 132, 220],
+	["navigation-panel-rail--canvas-files", 132, 220],
+	["navigation-panel-rail--run-open", 132, 220],
+	["navigation-panel-rail--browser-open", 132, 220],
+	["navigation-panel-rail--console-open", 132, 220],
+	["navigation-panel-rail--canvas-open", 132, 220],
+	["navigation-panel-rail--draft-route", 132, 220],
 	/* ROUND 1, design D2/D4 and the three frames design listed as missing: the
 	   focused LIT item (ring and bar together), the capped badge on the LIT item,
 	   and the console blip with its own pane open. The non-brand-palette proof (sage
 	   and iceberg) is these same stories captured with `--themes`. */
-	["navigation-panel-rail--browser-open-focused", 132, 184],
-	["navigation-panel-rail--browser-open-at-cap", 132, 184],
-	["navigation-panel-rail--console-open-blip", 132, 184],
+	["navigation-panel-rail--browser-open-focused", 132, 220],
+	["navigation-panel-rail--browser-open-at-cap", 132, 220],
+	["navigation-panel-rail--console-open-blip", 132, 220],
 	/*
 	 * THE BOUND CHORD IN THE TOOLTIP (#928), the pair: the console ships
 	 * `primary+j` and its tooltip prints it in both registers, while an action
@@ -6236,7 +6237,7 @@ export const STORIES = [
 	[
 		"navigation-panel-rail--console-chord-tooltip",
 		360,
-		184,
+		220,
 		{
 			hover: '[data-panel-rail-item="console"]',
 			hoverSettleMs: 500,
@@ -6259,7 +6260,7 @@ export const STORIES = [
 	[
 		"navigation-panel-rail--browser-no-chord",
 		360,
-		184,
+		220,
 		{
 			hover: '[data-panel-rail-item="browser"]',
 			hoverSettleMs: 500,
@@ -6660,6 +6661,92 @@ export const STORIES = [
 		},
 	],
 	/*
+	 * THE ALWAYS-VISIBLE RAIL (D1/D3): all six doors on a draft with nothing open,
+	 * and each notice a door opens where its pane cannot act - code review on a
+	 * draft and on a backend without `features.code_requests`, and run details on
+	 * a conversation whose frame has not been read. Each row asserts the six doors,
+	 * the one lit door and the notice's own state attribute at shutter time.
+	 */
+	[
+		"shell-app-shell--chat-draft-rail",
+		1280,
+		900,
+		{
+			expect: {
+				pollMs: 3000,
+				expression: `(() => {
+					const ids = [...document.querySelectorAll("[data-panel-rail-item]")].map((el) => el.getAttribute("data-panel-rail-item"));
+					if (ids.join(",") !== "run,ask,browser,console,canvas,code") return "the rail shows [" + ids.join(",") + "], expected all six doors";
+					const pressed = [...document.querySelectorAll("[data-panel-rail] [aria-pressed=true]")].map((el) => el.getAttribute("data-panel-rail-item"));
+					if (pressed.join(",") !== "") return "the rail lights [" + pressed.join(",") + "], expected []";
+					
+					return true;
+				})()`,
+				message: "the always-visible rail: six doors, nothing lit (D1/D3)",
+			},
+		},
+	],
+	[
+		"shell-app-shell--chat-dock-code-on-draft",
+		1280,
+		900,
+		{
+			expect: {
+				pollMs: 3000,
+				expression: `(() => {
+					const ids = [...document.querySelectorAll("[data-panel-rail-item]")].map((el) => el.getAttribute("data-panel-rail-item"));
+					if (ids.join(",") !== "run,ask,browser,console,canvas,code") return "the rail shows [" + ids.join(",") + "], expected all six doors";
+					const pressed = [...document.querySelectorAll("[data-panel-rail] [aria-pressed=true]")].map((el) => el.getAttribute("data-panel-rail-item"));
+					if (pressed.join(",") !== "code") return "the rail lights [" + pressed.join(",") + "], expected [code]";
+					if (!document.querySelector('[data-slot-pane-notice="code-draft"]')) return "the code-draft notice is not drawn";
+					return true;
+				})()`,
+				message:
+					"the always-visible rail: six doors, the code-draft notice drawn and its door lit (D1/D3)",
+			},
+		},
+	],
+	[
+		"shell-app-shell--chat-dock-code-below-version",
+		1280,
+		900,
+		{
+			expect: {
+				pollMs: 3000,
+				expression: `(() => {
+					const ids = [...document.querySelectorAll("[data-panel-rail-item]")].map((el) => el.getAttribute("data-panel-rail-item"));
+					if (ids.join(",") !== "run,ask,browser,console,canvas,code") return "the rail shows [" + ids.join(",") + "], expected all six doors";
+					const pressed = [...document.querySelectorAll("[data-panel-rail] [aria-pressed=true]")].map((el) => el.getAttribute("data-panel-rail-item"));
+					if (pressed.join(",") !== "code") return "the rail lights [" + pressed.join(",") + "], expected [code]";
+					if (!document.querySelector('[data-slot-pane-notice="code-below-version"]')) return "the code-below-version notice is not drawn";
+					return true;
+				})()`,
+				message:
+					"the always-visible rail: six doors, the code-below-version notice drawn and its door lit (D1/D3)",
+			},
+		},
+	],
+	[
+		"shell-app-shell--chat-dock-run-reading",
+		1280,
+		900,
+		{
+			expect: {
+				pollMs: 3000,
+				expression: `(() => {
+					const ids = [...document.querySelectorAll("[data-panel-rail-item]")].map((el) => el.getAttribute("data-panel-rail-item"));
+					if (ids.join(",") !== "run,ask,browser,console,canvas,code") return "the rail shows [" + ids.join(",") + "], expected all six doors";
+					const pressed = [...document.querySelectorAll("[data-panel-rail] [aria-pressed=true]")].map((el) => el.getAttribute("data-panel-rail-item"));
+					if (pressed.join(",") !== "run") return "the rail lights [" + pressed.join(",") + "], expected [run]";
+					if (!document.querySelector('[data-slot-pane-notice="run-reading"]')) return "the run-reading notice is not drawn";
+					return true;
+				})()`,
+				message:
+					"the always-visible rail: six doors, the run-reading notice drawn and its door lit (D1/D3)",
+			},
+		},
+	],
+	/*
 	 * #868: THE SLOT RELEASED WHERE THE ROUTE CANNOT DRAW ITS PANE.
 	 *
 	 * One row per flag that outlives its route - the run panel's, handed back by
@@ -6676,6 +6763,14 @@ export const STORIES = [
 	 * `chat-content` modules); it is NOT a row here, because a sweep of this tree
 	 * can never take it.
 	 */
+	/*
+	 * THE RUN ARM CHANGED WITH THE ALWAYS-VISIBLE RAIL (D2): on a draft the run
+	 * pane now DRAWS - its "needs a conversation" notice - so the claim is the
+	 * opposite of #868's release for this one flag: the notice is mounted in the
+	 * slot, the lane stops on its leading edge, the pane ends on the rail, and the
+	 * rail lights Run details and nothing else, with all six doors present. The
+	 * asks arm below still releases: the session drawer has no home on a draft.
+	 */
 	[
 		"shell-app-shell--chat-dock-run-panel-on-draft",
 		1280,
@@ -6686,20 +6781,24 @@ export const STORIES = [
 				pollMs: 3000,
 				expression: `(() => {
 					const lane = document.querySelector("[data-titlebar-lane]");
-					const column = document.querySelector('[data-tour-tag="chat-column"]');
-					const row = document.querySelector('[data-tour-tag="pane-row"]');
-					const pane = document.querySelector('[data-tour-tag="canvas-dock"], [data-tour-tag="ask-drawer-slot"]');
-					if (!lane || !column || !row) return "the frame is missing the lane, the column or the row";
-					if (pane) return "a pane is mounted on a route that cannot draw one";
+					const host = document.querySelector("[data-panel-rail-host]");
+					const pane = document.querySelector('[data-tour-tag="run-panel-dock"]');
+					if (!lane || !host) return "the frame is missing the lane or the rail host";
+					if (!pane) return "the run pane's slot is not mounted on the draft";
+					const notice = pane.querySelector('[data-slot-pane-notice="run-draft"]');
+					if (!notice) return "the slot does not carry the run pane's draft notice";
+					const paneBox = pane.getBoundingClientRect();
 					const edge = Number(lane.getAttribute("data-slot-edge"));
-					const columnRight = column.getBoundingClientRect().right;
-					const rowRight = row.getBoundingClientRect().right;
-					if (Math.abs(columnRight - rowRight) > 1) return "the column stops at " + columnRight + ", the row ends at " + rowRight + " - the slot kept its width";
-					if (Math.abs(edge - columnRight) > 1) return "the lane's stop is at " + edge + ", the column's edge is " + columnRight + " - the slot kept a band";
+					if (Math.abs(edge - paneBox.left) > 1) return "data-slot-edge is " + edge + " but the notice starts at " + paneBox.left;
+					if (Math.abs(paneBox.right - host.getBoundingClientRect().left) > 1) return "the notice does not end where the rail begins";
+					const ids = [...document.querySelectorAll("[data-panel-rail-item]")].map((el) => el.getAttribute("data-panel-rail-item"));
+					if (ids.join(",") !== "run,ask,browser,console,canvas,code") return "the rail shows [" + ids.join(",") + "], expected all six doors";
+					const pressed = [...document.querySelectorAll("[data-panel-rail] [aria-pressed=true]")].map((el) => el.getAttribute("data-panel-rail-item"));
+					if (pressed.join(",") !== "run") return "the rail lights [" + pressed.join(",") + "], expected [run]";
 					return true;
 				})()`,
 				message:
-					"on a draft with the run panel's flag up, the slot must release: the column must reach the row's edge and the lane's stop must sit on the column (#868)",
+					"on a draft with the run panel's flag up, the slot must draw the run notice beside a six-door rail with only run details lit (D1/D2)",
 			},
 		},
 	],
