@@ -1072,21 +1072,68 @@ test("a filter press releases every hold, and a lapse under Pending leaves only 
 	);
 });
 
-test("focus in a card that lapses under Pending lands on the inert filter group, so a key cannot release the hold (UX U7)", async (t) => {
-	/*
-	 * The spacer under `Pending` has nothing to focus. Focus used to land on the SELECTED
-	 * `Pending` chip, so the reader's next Space or Enter pressed it, the press released
-	 * every hold (U4), and the next card slid up under the pointer (UX round 3, U7). It
-	 * now lands on the filter GROUP itself: named, `tabIndex=-1`, not a control, so a
-	 * keystroke there activates nothing.
-	 */
+/*
+ * AFTER A LAPSE UNDER `Pending`, NO REFLEX KEY REACHES A RELEASE (UX round 4, U10/U11 =
+ * QA round 5, Q-5). Landing on the selected chip let Space/Enter press it (U7); landing
+ * on the filter group let Tab+Space press `All` (Q-5). Focus now lands on a hidden,
+ * named, `tabIndex=-1` element AFTER the chips and BEFORE the first card, so the next
+ * Tab goes forward into a-2 - never onto a chip - and only Shift+Tab reaches the chips.
+ *
+ * jsdom has no Tab traversal and no key-to-click activation, so the rig models the
+ * browser's: Tab focuses the next tabbable element in document order (the drawer's own
+ * tabbable selector), and Space/Enter on a button click it unless the keydown was
+ * cancelled. Layout is the stub's; scrolling is pinned by the focus call's options.
+ */
+const TABBABLE =
+	'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])';
+const realKey = async (key) => {
+	await act(async () => {
+		const target = document.activeElement ?? document.body;
+		if (key === "Tab") {
+			const all = [...document.querySelectorAll(TABBABLE)];
+			const next = all.find(
+				(el) =>
+					target.compareDocumentPosition(el) &
+					window.Node.DOCUMENT_POSITION_FOLLOWING,
+			);
+			next?.focus();
+			return;
+		}
+		const down = new window.KeyboardEvent("keydown", {
+			key,
+			bubbles: true,
+			cancelable: true,
+		});
+		target.dispatchEvent(down);
+		target.dispatchEvent(
+			new window.KeyboardEvent("keyup", {
+				key,
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+		if (
+			!down.defaultPrevented &&
+			(key === " " || key === "Enter") &&
+			target.tagName === "BUTTON"
+		)
+			target.click();
+	});
+};
+const lapseUnderPending = async (t, focusIn = "a-1") => {
 	stubCardLayout(t);
+	const calls = [];
 	const a1 = optionAsk("a-1", 3, TS);
 	const a2 = optionAsk("a-2", 3, TS + 10);
-	const props = { scope: "session" };
+	const a3 = optionAsk("a-3", 2, TS + 20);
+	const props = {
+		scope: "session",
+		onAnswer: (id) => calls.push(`answer:${id}`),
+		onDecline: (id) => calls.push(`decline:${id}`),
+	};
 	const view = await mountFor(
 		t,
-		h(AskDrawer, { frontend: frontend([a1, a2]), ...props }),
+		h(AskDrawer, { frontend: frontend([a1, a2, a3]), ...props }),
 	);
 	const pending = [
 		...view.container.querySelectorAll("[data-lo-ask-filter] button"),
@@ -1094,80 +1141,215 @@ test("focus in a card that lapses under Pending lands on the inert filter group,
 	await act(async () => {
 		pending.click();
 	});
-	const option = view.container.querySelector(
-		'[data-lo-ask-row="a-1"] [data-ask-option="a-1-opt-2"]',
-	);
-	option.focus();
-	assert.ok(document.activeElement === option, "the option holds focus");
+	view.container
+		.querySelector(`[data-lo-ask-row="${focusIn}"] [data-ask-option]`)
+		.focus();
 	await view.rerender(
 		h(AskDrawer, {
-			frontend: frontend([{ ...a1, status: "timed_out" }, a2]),
+			frontend: frontend([{ ...a1, status: "timed_out" }, a2, a3]),
 			...props,
 		}),
 	);
-	const active = document.activeElement;
-	assert.ok(active !== document.body, "focus must not fall to BODY");
+	return { view, calls };
+};
+
+test("a lapse under Pending lands on a named landing after the chips, before the first card (U10 = Q-5, U11)", async (t) => {
+	const focusCalls = [];
+	const original = window.HTMLElement.prototype.focus;
+	window.HTMLElement.prototype.focus = function (options) {
+		focusCalls.push({ el: this, options });
+		return original.call(this, options);
+	};
+	t.after(() => {
+		window.HTMLElement.prototype.focus = original;
+	});
+	const { view } = await lapseUnderPending(t);
+	const landing = document.activeElement;
 	assert.equal(
-		active?.hasAttribute("data-lo-ask-filter"),
+		landing?.hasAttribute("data-lo-ask-lapse-landing"),
 		true,
-		`focus lands on the filter group, got ${active?.outerHTML?.slice(0, 80)}`,
+		`focus lands on the lapse landing, got ${landing?.outerHTML?.slice(0, 80)}`,
 	);
 	assert.equal(
-		active?.getAttribute("aria-label"),
-		"Filter asks",
-		"it is named",
+		landing.textContent,
+		"Question timed out",
+		"it says why focus moved",
+	);
+	assert.equal(landing.getAttribute("tabindex"), "-1");
+	const chips = view.container.querySelector("[data-lo-ask-filter]");
+	const firstCard = view.container.querySelector("[data-lo-ask-row]");
+	assert.ok(
+		chips.compareDocumentPosition(landing) &
+			window.Node.DOCUMENT_POSITION_FOLLOWING,
+		"after the chips",
+	);
+	assert.ok(
+		landing.compareDocumentPosition(firstCard) &
+			window.Node.DOCUMENT_POSITION_FOLLOWING,
+		"before the first card",
 	);
 	assert.equal(
-		active?.getAttribute("tabindex"),
-		"-1",
-		"and reachable only by script",
+		chips.hasAttribute("tabindex"),
+		false,
+		"the filter group is no longer a focus target",
 	);
+	const call = focusCalls.find((c) => c.el === landing);
 	assert.equal(
-		active?.closest("button, a, input, select, textarea"),
-		null,
-		"it is not a control a keystroke could activate",
+		call?.options?.preventScroll,
+		true,
+		"the landing never scrolls the list (U10)",
 	);
-	/* The keys U7 measured: Space and Enter, as a real keyboard delivers them. */
-	const prevented = {};
-	for (const key of [" ", "Enter"]) {
-		await act(async () => {
-			for (const type of ["keydown", "keypress", "keyup"]) {
-				const event = new window.KeyboardEvent(type, {
-					key,
-					bubbles: true,
-					cancelable: true,
-				});
-				active.dispatchEvent(event);
-				if (type === "keydown") prevented[key] = event.defaultPrevented;
-			}
-		});
+});
+
+test("a lapse under All lands on the held header without scrolling (U10)", async (t) => {
+	stubCardLayout(t);
+	const focusCalls = [];
+	const original = window.HTMLElement.prototype.focus;
+	window.HTMLElement.prototype.focus = function (options) {
+		focusCalls.push({ el: this, options });
+		return original.call(this, options);
+	};
+	t.after(() => {
+		window.HTMLElement.prototype.focus = original;
+	});
+	const a1 = optionAsk("a-1", 3, TS);
+	const a2 = optionAsk("a-2", 3, TS + 10);
+	const view = await mountFor(
+		t,
+		h(AskDrawer, { frontend: frontend([a1, a2]), scope: "session" }),
+	);
+	view.container
+		.querySelector('[data-lo-ask-row="a-1"] [data-ask-option]')
+		.focus();
+	await view.rerender(
+		h(AskDrawer, {
+			frontend: frontend([{ ...a1, status: "timed_out" }, a2]),
+			scope: "session",
+		}),
+	);
+	const header = view.container.querySelector(
+		'[data-lo-ask-held="a-1"] button[aria-expanded]',
+	);
+	assert.ok(document.activeElement === header, "focus is on the held header");
+	assert.equal(
+		focusCalls.find((c) => c.el === header)?.options?.preventScroll,
+		true,
+		"and the move does not scroll the list",
+	);
+});
+
+test("after a lapse under Pending, reflex keys answer and decline nothing and move nothing (Q-5)", async (t) => {
+	for (const keys of [
+		[" "],
+		["Enter"],
+		["Tab", " "],
+		["Tab", "Enter"],
+		["Tab", "Tab", " "],
+		["u", "s", " ", "e", "a", "s", "t"],
+	]) {
+		const { view, calls } = await lapseUnderPending(t);
+		const before = view.container.querySelector('[data-lo-ask-spacer="a-1"]');
+		assert.equal(before === null, false, `${keys}: the spacer is there`);
+		for (const key of keys) await realKey(key);
+		const spacer = view.container.querySelector('[data-lo-ask-spacer="a-1"]');
+		assert.equal(
+			spacer === null,
+			false,
+			`${JSON.stringify(keys)}: the hold stays`,
+		);
+		assert.equal(
+			spacer.nextElementSibling?.getAttribute("data-lo-ask-row"),
+			"a-2",
+			`${JSON.stringify(keys)}: a-2 keeps its place under the spacer`,
+		);
+		assert.deepEqual(
+			calls,
+			[],
+			`${JSON.stringify(keys)}: nothing answered or declined`,
+		);
+		assert.equal(
+			view.container
+				.querySelector("[data-lo-ask-filter]")
+				?.getAttribute("data-lo-ask-filter"),
+			"outstanding",
+			`${JSON.stringify(keys)}: the filter did not change`,
+		);
+		if (keys[0] === "Tab")
+			assert.ok(
+				view.container
+					.querySelector('[data-lo-ask-row="a-2"]')
+					.contains(document.activeElement),
+				`${JSON.stringify(keys)}: Tab goes forward into a-2, not onto a chip`,
+			);
 	}
-	/*
-	 * Space on a focused non-control scrolls its container by a page, which in Chrome
-	 * slid a-2 up 142px with the hold intact (round 4's own measurement). jsdom has no
-	 * scrolling, so the pin is that the landing cancels Space's default action.
-	 */
-	assert.equal(prevented[" "], true, "Space on the landing does not scroll");
-	const spacer = view.container.querySelector('[data-lo-ask-spacer="a-1"]');
-	assert.equal(spacer === null, false, "the hold survives Space and Enter");
-	assert.equal(spacer?.style.minHeight, `${cardHeight(3)}px`);
+});
+
+test("Space is cancelled on the landing only: a chip still takes it (review m1)", async (t) => {
+	const { view } = await lapseUnderPending(t);
+	const landing = document.activeElement;
+	const onLanding = new window.KeyboardEvent("keydown", {
+		key: " ",
+		bubbles: true,
+		cancelable: true,
+	});
+	landing.dispatchEvent(onLanding);
 	assert.equal(
-		spacer?.nextElementSibling?.getAttribute("data-lo-ask-row"),
-		"a-2",
-		"a-2 keeps its place under the spacer",
+		onLanding.defaultPrevented,
+		true,
+		"Space on the landing does not scroll",
 	);
-	/* U4 still holds: a deliberate press on the selected chip releases. */
 	const chip = [
 		...view.container.querySelectorAll("[data-lo-ask-filter] button"),
-	].find((b) => (b.textContent ?? "").startsWith("Pending"));
+	].find((b) => (b.textContent ?? "").startsWith("All"));
+	const onChip = new window.KeyboardEvent("keydown", {
+		key: " ",
+		bubbles: true,
+		cancelable: true,
+	});
+	chip.dispatchEvent(onChip);
+	assert.equal(
+		onChip.defaultPrevented,
+		false,
+		"Space on a chip keeps its default",
+	);
+	/* And a deliberate press on a chip still releases (U4). */
 	await act(async () => {
 		chip.click();
 	});
 	assert.equal(
 		view.container.querySelector("[data-lo-ask-spacer]") === null,
 		true,
-		"a real press on the chip still releases",
+		"a chip press releases the hold",
 	);
+});
+
+test("two lapses under Pending are counted on the landing (U11)", async (t) => {
+	stubCardLayout(t);
+	const asks = ["a-1", "a-2", "a-3"].map((id, i) => optionAsk(id, 2, TS + i));
+	const view = await mountFor(
+		t,
+		h(AskDrawer, { frontend: frontend(asks), scope: "session" }),
+	);
+	const pending = [
+		...view.container.querySelectorAll("[data-lo-ask-filter] button"),
+	].find((b) => (b.textContent ?? "").startsWith("Pending"));
+	await act(async () => {
+		pending.click();
+	});
+	view.container
+		.querySelector('[data-lo-ask-row="a-1"] [data-ask-option]')
+		.focus();
+	await view.rerender(
+		h(AskDrawer, {
+			frontend: frontend(
+				asks.map((ask) =>
+					ask.ask_id === "a-3" ? ask : { ...ask, status: "timed_out" },
+				),
+			),
+			scope: "session",
+		}),
+	);
+	assert.equal(document.activeElement?.textContent, "2 questions timed out");
 });
 
 test("the reserved slot is drawn as the card's empty footprint (design D1 = UX U8)", async (t) => {
@@ -1204,6 +1386,13 @@ test("the reserved slot is drawn as the card's empty footprint (design D1 = UX U
 			assert.ok(
 				slot.classList.contains(name),
 				`${filter}: the slot wears ${name}`,
+			);
+		if (filter === "All")
+			assert.ok(
+				slot
+					.querySelector("button[aria-expanded]")
+					?.classList.contains("rounded-t-[9px]"),
+				"the held header's hover and ring follow the frame's inner radius (design D6)",
 			);
 		assert.ok(
 			![...slot.classList].some((name) => name.startsWith("bg-")),
