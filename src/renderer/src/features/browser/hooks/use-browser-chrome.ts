@@ -1,7 +1,9 @@
+import { t } from "@shared/i18n";
 import { unwrapIpcErrorMessage } from "@shared/utils/ipc-error-message";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BrowserAvailability } from "../../../../../shared/browser-availability";
+import type { HumanTabActionOutcome } from "../../../../../shared/browser-tab-action";
 import {
 	browserBridge as bridge,
 	browserBridgeAvailable,
@@ -9,7 +11,10 @@ import {
 	refreshBrowserProjection,
 	useBrowserProjectionStore,
 } from "../model/browser-projection-store";
-import type { CloseTabsIntent } from "../model/tab-index-model";
+import {
+	type CloseTabsIntent,
+	mergeChromeTabOrder,
+} from "../model/tab-index-model";
 
 /**
  * The renderer's half of the browser feature: the projection main publishes and
@@ -30,6 +35,7 @@ import type { CloseTabsIntent } from "../model/tab-index-model";
 
 /** One tab, as the strip renders it. */
 export interface BrowserTabView {
+	displayOrder?: number;
 	tabId: number;
 	title: string;
 	url: string;
@@ -106,6 +112,19 @@ export interface ApprovalView {
 }
 
 export interface BrowserChromeState {
+	pageControls?: {
+		find: {
+			tabId: number;
+			query: string;
+			ordinal: number;
+			matches: number;
+			pending: boolean;
+			unreported: boolean;
+		} | null;
+		zoom: number;
+		zoomAllowed: boolean;
+		notice: string | null;
+	};
 	availability?: BrowserAvailability;
 	tabs: BrowserTabView[];
 	activeTabId: number | null;
@@ -294,6 +313,11 @@ export interface BrowserChrome {
 	 * tabs that belong to no conversation. It means the same thing to main as an
 	 * absent argument — an unattributed, user-owned tab.
 	 */
+	reorderTabs: (ids: number[]) => Promise<void>;
+	actOnTab: (
+		tabId: number,
+		action: "duplicate" | "reload",
+	) => Promise<HumanTabActionOutcome | undefined>;
 	newTab: (sessionId?: string | null) => Promise<void>;
 	closeTab: (tabId: number) => Promise<boolean>;
 	/**
@@ -316,7 +340,18 @@ export interface BrowserChrome {
 	closeTabs: (intent: CloseTabsIntent) => Promise<boolean>;
 	activateTab: (tabId: number) => Promise<void>;
 	navigate: (url: string) => Promise<void>;
-	reload: () => Promise<void>;
+	/** Home: return the active tab to the browser's start state. No URL
+	 * travels with it — main owns what the start state is (LOH-13). */
+	home: () => Promise<void>;
+	reload: (hard?: boolean) => Promise<void>;
+	pageControl: (
+		tabId: number,
+		action: "open" | "close" | "search" | "in" | "out" | "reset",
+		query?: string,
+		forward?: boolean,
+		next?: boolean,
+	) => Promise<void>;
+	reopenTab: (sessionId?: string | null) => Promise<void>;
 	stop: () => Promise<void>;
 	/** Ask the host to start again after an exhausted startup (round 1, D1a).
 	 * The recovery half of the `unavailable` state, which otherwise leaves the
@@ -582,6 +617,22 @@ export function useBrowserChrome(): BrowserChrome {
 			dismissError,
 			available,
 			refresh,
+			reorderTabs: (ids) =>
+				runVoid(() =>
+					api?.reorderTabs(mergeChromeTabOrder(state?.tabs ?? [], ids)),
+				),
+			actOnTab: async (tabId, action) => {
+				// A failed load can still create and activate a retained plain-user
+				// destination. Preserve that identity independently of error feedback,
+				// so a conversation pane can reveal it without copying attribution.
+				let outcome: HumanTabActionOutcome | undefined;
+				await run(async () => {
+					outcome = await api?.actOnTab(tabId, action);
+					if (outcome?.status === "failed")
+						throw new Error(outcome.error.message);
+				});
+				return outcome;
+			},
 			newTab: (sessionId) => runVoid(() => api?.newTab(sessionId ?? null)),
 			closeTab: (tabId) => run(() => api?.closeTab(tabId)),
 			closeTabs: (intent) => run(() => api?.closeTabs(intent)),
@@ -592,7 +643,12 @@ export function useBrowserChrome(): BrowserChrome {
 				setPendingUrl(url);
 				return runVoid(() => api?.navigate(url));
 			},
-			reload: () => runVoid(() => api?.reload()),
+			home: () => runVoid(() => api?.home()),
+			reload: (hard) => runVoid(() => api?.reload(hard)),
+			pageControl: (tabId, action, query = "", forward = true, next = false) =>
+				runVoid(() => api?.pageControl(tabId, action, query, forward, next)),
+			reopenTab: (sessionId) =>
+				runVoid(() => api?.reopenTab(sessionId ?? null)),
 			stop: () => runVoid(() => api?.stop()),
 			retry: () => runVoid(() => api?.retry()),
 			history: (direction) => runVoid(() => api?.history(direction)),
@@ -616,7 +672,11 @@ export function useBrowserChrome(): BrowserChrome {
 					const message = (answer as { message?: unknown } | undefined)
 						?.message;
 					if (typeof message === "string" && message) {
-						showErrorToast(`Could not open the downloads folder. ${message}`);
+						showErrorToast(
+							t("ui.browser.use_browser_chrome.downloads_folder_failed", {
+								message,
+							}),
+						);
 					}
 				}),
 		}),

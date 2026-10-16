@@ -1,4 +1,6 @@
 import { Button } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { AlertTriangle, Download, Upload, X } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
@@ -108,6 +110,7 @@ export const BrowserFileTransferRow: FC<BrowserFileTransferRowProps> = ({
 	onReveal,
 	tabLabel,
 }) => {
+	useI18nLocale();
 	// The newest decision is what the row speaks about when nothing is in flight.
 	const latest = transfers?.notes[0] ?? null;
 	const [dismissed, setDismissed] = useState<number | null>(null);
@@ -161,7 +164,7 @@ export const BrowserFileTransferRow: FC<BrowserFileTransferRowProps> = ({
 	return (
 		<output
 			aria-live="polite"
-			aria-label="File transfer"
+			aria-label={t("ui.browser.browser_file_transfer_row.file_transfer")}
 			data-tour-tag="browser-file-transfer-row"
 			className={
 				refusing
@@ -205,7 +208,9 @@ export const BrowserFileTransferRow: FC<BrowserFileTransferRowProps> = ({
 					className="flex min-w-0 grow items-baseline gap-1 text-body-sm text-ink-muted @max-[64rem]/browserrow:flex-wrap"
 					title={transfers.dir ?? undefined}
 				>
-					<span className="shrink-0">Downloading</span>
+					<span className="shrink-0">
+						{t("ui.browser.browser_file_transfer_row.downloading")}
+					</span>
 					<span className="min-w-0 truncate font-mono text-mono-sm">
 						{active.name}
 					</span>
@@ -280,7 +285,9 @@ export const BrowserFileTransferRow: FC<BrowserFileTransferRowProps> = ({
 				// the clause, and the whole clause rides the span's own `title`, because a
 				// rule clipped by such a width is otherwise unrecoverable.
 				<p className="flex min-w-0 grow items-baseline gap-1 text-body-sm text-ink @max-[64rem]/browserrow:flex-wrap">
-					<span className="shrink-0">Download refused —</span>
+					<span className="shrink-0">
+						{t("ui.browser.browser_file_transfer_row.download_refused")}
+					</span>
 					<span className="max-w-[min(32ch,45%)] min-w-[min(6ch,20%)] shrink truncate font-mono text-mono-sm">
 						{name}
 					</span>
@@ -344,15 +351,17 @@ export const BrowserFileTransferRow: FC<BrowserFileTransferRowProps> = ({
 						// per-file LIST with per-file actions, which this is not) while saying what
 						// actually went.
 						<span className="shrink-0 text-ink-dim">
-							+ {latest.count - 1} more
+							{t("ui.browser.browser_file_transfer_row.upload_more", {
+								count: latest.count - 1,
+							})}
 						</span>
 					)}
 					<span className="shrink-0">
 						{sending
-							? (latest?.count ?? 1) > 1
-								? "were attached to"
-								: "was attached to"
-							: "was saved to"}
+							? t("ui.browser.browser_file_transfer_row.attached_verb", {
+									count: latest?.count ?? 1,
+								})
+							: t("ui.browser.browser_file_transfer_row.was_saved_to")}
 					</span>
 					{/* WHERE IT WENT, WHICH THE ROW NEVER SAID (review round 1, D4 and U2).
 					    Rendered from the host's own path, mono, and truncated FROM THE LEFT so
@@ -400,10 +409,12 @@ export const BrowserFileTransferRow: FC<BrowserFileTransferRowProps> = ({
 				<Button
 					variant="outline"
 					size="sm"
-					aria-label="Open downloads folder"
+					aria-label={t(
+						"ui.browser.browser_file_transfer_row.open_downloads_folder",
+					)}
 					onClick={onReveal}
 				>
-					Open folder
+					{t("ui.browser.browser_file_transfer_row.open_folder")}
 				</Button>
 			)}
 			{!active && latest && (
@@ -411,7 +422,11 @@ export const BrowserFileTransferRow: FC<BrowserFileTransferRowProps> = ({
 					variant="ghost"
 					size="icon-sm"
 					aria-label={
-						sending ? "Dismiss upload notice" : "Dismiss download notice"
+						sending
+							? t("ui.browser.browser_file_transfer_row.dismiss_upload_notice")
+							: t(
+									"ui.browser.browser_file_transfer_row.dismiss_download_notice",
+								)
 					}
 					onClick={() => setDismissed(latest.at)}
 				>
@@ -434,7 +449,9 @@ function awayLabel(
 ): string {
 	if (tabId === undefined || transfers.activeTabId === null) return "";
 	if (transfers.activeTabId === tabId) return "";
-	return tabLabel ? tabLabel(tabId, ownerKind) : "on another tab";
+	return tabLabel
+		? tabLabel(tabId, ownerKind)
+		: t("ui.browser.browser_file_transfer_row.on_another_tab");
 }
 
 /** What a transfer in flight says about itself.
@@ -444,9 +461,16 @@ function awayLabel(
  * runtime cap exists for), and inventing a denominator would be a progress bar that
  * lies. */
 function progressCopy(active: ActiveTransferView): string {
-	if (active.total <= 0) return `(${formatBytes(active.received)} so far)…`;
+	if (active.total <= 0)
+		return t("ui.browser.browser_file_transfer_row.received_so_far", {
+			received: formatBytes(active.received),
+		});
 	const percent = Math.floor((active.received / active.total) * 100);
-	return `(${percent}%, ${formatBytes(active.received)} of ${formatBytes(active.total)})…`;
+	return t("ui.browser.browser_file_transfer_row.download_progress", {
+		percent,
+		received: formatBytes(active.received),
+		total: formatBytes(active.total),
+	});
 }
 
 /** The rule clause of a refusal: the part that may elide when the row is narrow.
@@ -458,25 +482,37 @@ function progressCopy(active: ActiveTransferView): string {
 function ruleCopy(refusal: TransferRefusalView | null): string {
 	switch (refusal?.rule) {
 		case "executable":
-			return "is an executable/script type.";
+			return t(
+				"ui.browser.browser_file_transfer_row.is_an_executable_script_type",
+			);
 		case "limit":
-			return `is over the ${formatBytes(refusal.limit)} per-file download limit.`;
+			return t("ui.browser.browser_file_transfer_row.file_limit", {
+				limit: formatBytes(refusal.limit),
+			});
 		case "count":
-			return `was not saved: this call has already saved its limit of ${refusal.limit} files.`;
+			return t("ui.browser.browser_file_transfer_row.call_limit", {
+				count: refusal.limit,
+			});
 		case "write":
-			return "could not be saved: the download folder could not be written to.";
+			return t(
+				"ui.browser.browser_file_transfer_row.could_not_be_saved_the_download_folder",
+			);
 		case "deadline":
-			return `did not finish within ${refusal.limit}s and was cancelled.`;
+			return t("ui.browser.browser_file_transfer_row.deadline", {
+				limit: refusal.limit,
+			});
 		case "overrun":
 			// The runtime cap (review round 2, R2-5): its own rule rather than `limit`,
 			// because the file DID exist for a moment — the clause says when the limit
 			// was passed, and `outcomeCopy` then says the partial was discarded rather
 			// than that nothing was saved.
-			return `went over the ${formatBytes(refusal.limit)} per-file download limit while it was being written.`;
+			return t("ui.browser.browser_file_transfer_row.overrun", {
+				limit: formatBytes(refusal.limit),
+			});
 		case "interrupted":
-			return "did not finish.";
+			return t("ui.browser.browser_file_transfer_row.did_not_finish");
 		default:
-			return "was refused.";
+			return t("ui.browser.browser_file_transfer_row.was_refused");
 	}
 }
 
@@ -497,20 +533,25 @@ function outcomeCopy(
 		// "nothing was saved" is the wrong half of the truth for it (R2-5).
 		refusal?.rule === "overrun"
 	) {
-		return "The partial file was discarded.";
+		return t(
+			"ui.browser.browser_file_transfer_row.the_partial_file_was_discarded",
+		);
 	}
-	return "Nothing was saved.";
+	return t("ui.browser.browser_file_transfer_row.nothing_was_saved");
 }
 
 /** An age a person reads, so a line that is still on screen says how stale it is
  * (review round 1, U7). */
 function ageCopy(now: number, at: number): string {
 	const seconds = Math.max(0, Math.round((now - at) / 1000));
-	if (seconds < 30) return "just now";
+	if (seconds < 30) return t("ui.browser.browser_file_transfer_row.just_now");
 	const minutes = Math.round(seconds / 60);
-	if (minutes < 60) return `${minutes} min ago`;
+	if (minutes < 60)
+		return t("ui.browser.browser_file_transfer_row.age_minutes", {
+			count: minutes,
+		});
 	const hours = Math.round(minutes / 60);
-	return `${hours} h ago`;
+	return t("ui.browser.browser_file_transfer_row.age_hours", { count: hours });
 }
 
 /** A byte count in the unit the caps are stated in (`MiB`), one decimal below ten
@@ -521,5 +562,5 @@ function formatBytes(bytes: number): string {
 	if (bytes >= 10 * MiB) return `${Math.round(bytes / MiB)} MiB`;
 	if (bytes >= MiB) return `${(bytes / MiB).toFixed(1)} MiB`;
 	if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KiB`;
-	return `${bytes} bytes`;
+	return t("ui.browser.browser_file_transfer_row.byte_count", { count: bytes });
 }

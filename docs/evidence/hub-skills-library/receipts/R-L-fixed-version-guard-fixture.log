@@ -1,0 +1,96 @@
+renderer-driver: frame timezone pinned to America/New_York (ambient TZ=America/Toronto)
+[build] current: assets 2026-10-15T06:07:59.358Z >= sources 2026-10-15T06:01:44.979Z
+[note] abandoned scratch trees
+        1 seen, 0 owned by a live pid (kept), 1 younger than 30m (kept), 0 removed
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8127 (frame-src already lists it, media-src already lists it, img-src already lists it)
+  serve records 1 linked from /Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/R-L-fixed-version-guard-fixture-records   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui/.worktrees/skills-library-evidence
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-26807
+  frames        /Users/damian/local-operator-ui/.worktrees/skills-library-evidence/docs/evidence/hub-skills-library/frames/R-L-fixed-version-guard-fixture
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-26807/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8127   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["filesFacts","hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","stageLiveConsents","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8127","backend":"http://127.0.0.1:8127"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8127)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] core guard capture remains headless
+[PASS] geometry zero-wrapper negative control is rejected
+[PASS] geometry horizontal-overflow negative control is rejected
+[PASS] linked profile remains browsable before opening controls
+[PASS] policy controls follow the actual MAIN-admitted version
+[note] guard MAIN status
+        {"state":"attached","reconnecting":false,"owned":false,"url":"http://127.0.0.1:8127","instanceId":"1adecc0b-748e-4abb-9475-edf366406865","pid":26802,"version":"0.72.1","prefix":"/Users/damian/local-operator-ui/.worktrees/skills-library-evidence","installKind":"stub","desktopAvailable":true,"pairing":{"available":true,"cause":null},"failures":0,"capabilityStatus":null,"unanswered":0,"lastTransportAt":1792044486888,"detail":"Connected to the daemon on http://127.0.0.1:8127 (pid 26802, v0.72.1).","updatedAt":1792044486888,"addressSubstitution":null}
+[PASS] MAIN reads the explicit fixture version and attached identity
+[note] guard control state
+        {"warning":null,"switches":[{"disabled":false,"state":"checked"},{"disabled":false,"state":"unchecked"}],"buttons":[{"label":"Check now","disabled":false},{"label":"Preview incoming changes","disabled":false},{"label":"Preview publish","disabled":false}]}
+[PASS] warning states the minimum without guessing unknown means outdated
+[PASS] all direct link write buttons are blocked on the old core
+[PASS] fixed-version fixture policy press hits the actual switch
+[PASS] fixed-version fixture policy changes only after its HTTP answer
+[PASS] the measured actual scroll container is painted and has no horizontal overflow
+[PASS] the measured painted child and header have nonzero boxes
+
+[FAIL] the run threw: Error: Error: Error invoking remote method 'dev-driver-capture': Error: Invalid frame label: lowercase letters, digits, dash and underscore only.
+    at CdpClient.evaluate (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/renderer-driver.mjs:1742:10)
+    at async capture (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/renderer-driver.mjs:2217:16)
+    at async captureSettled (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/renderer-driver.mjs:2464:11)
+    at async sceneHubCoreGuard (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/renderer-driver.mjs:44695:2)
+    at async main (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/renderer-driver.mjs:45340:41)
+
+---- app log (tail) ----
+02:08:04.796 › Discovered a daemon; the backend manager is configured not to spawn or kill one.
+02:08:04.835 › Update service initialized. Dev mode: true, NPX install: false
+02:08:04.836 › Unpackaged instance: no packaged install state to leave alone.
+02:08:04.836 › Periodic update checks scheduled (every 5 minutes)
+02:08:04.836 › macOS auto-update requires app signing
+02:08:04.836 › [webauthn] Touch ID passkeys are off: unpackaged — an unpackaged run has no signature to carry the entitlement, so there is no group to configure
+02:08:04.844 › [browser] denied a media permission request from (unknown origin)
+02:08:04.845 › [browser] denied a media permission request from (unknown origin)
+02:08:04.845 › [browser] denied a web-app-installation permission request from (unknown origin)
+02:08:04.845 › [browser] denied a geolocation permission request from (unknown origin)
+02:08:04.934 › [browser] denied a media permission request from (unknown origin)
+02:08:04.935 › [browser] denied a media permission request from (unknown origin)
+02:08:04.935 › [browser] denied a web-app-installation permission request from (unknown origin)
+02:08:04.935 › [browser] denied a geolocation permission request from (unknown origin)
+02:08:04.942 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)
+02:08:04.946 › [browser] host on 127.0.0.1:55588 (proto 1), profile /private/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-26807/userdata-scene/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))
+02:08:05.014 › [browser] tab 1 navigated to about:blank
+Error occurred in handler for 'mini-view:registration-get': Error: This window cannot read the hotkey registration.
+    at /Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/main/index.jsc:1:2017976
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+02:08:05.093 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
+02:08:05.094 › Checking for UI updates...
+02:08:05.094 › Skip checkForUpdates because application is not packed and dev update config is not forced
+(node:26823) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 backend-status-changed listeners added to [IpcRenderer]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(Use `Electron Helper (Renderer) --trace-warnings ...` to show where the warning was created)
+(electron) 'console-message' arguments are deprecated and will be removed. Please use Event<WebContentsConsoleMessageEventParams> object instead.
+02:08:05.198 › [renderer] Failed to fetch Radient credits: DesktopControlError: the stub has no answer for radient op credits
+02:08:05.349 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
+02:08:05.350 › Checking for UI updates...
+02:08:05.350 › Skip checkForUpdates because application is not packed and dev update config is not forced
+(node:26823) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 backend-status-changed listeners added to [IpcRenderer]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(Use `Electron Helper (Renderer) --trace-warnings ...` to show where the warning was created)
+02:08:05.404 › [renderer] Failed to fetch Radient credits: DesktopControlError: the stub has no answer for radient op credits
+[window-mode] state: visible=false focused=false focusable=false size=1380x900 content=1380x900
+Error occurred in handler for 'dev-driver-capture': Error: Invalid frame label: lowercase letters, digits, dash and underscore only.
+    at /Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/main/index.jsc:1:1611923
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+
+
+[the run threw] stopping 1 app(s) this run started

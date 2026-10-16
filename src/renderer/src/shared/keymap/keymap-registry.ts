@@ -164,6 +164,24 @@ export type ShortcutBindings = Partial<Record<ActionId, string | null>>;
  * (QA's three-path probe). Reserved with their jobs named; the palette's
  * `defaultPrevented` carve-out does not reach any of them.
  */
+/**
+ * These were assignable before browser focus routing existed. Keep a saved
+ * assignment dormant rather than erase it on the next unrelated preference
+ * write: an older build can still read the original map on downgrade (R15).
+ * This exception must never include pre-existing reserved/invalid chords.
+ */
+export const LEGACY_BROWSER_CHORDS: ReadonlySet<string> = new Set([
+	// 0 was previously assignable. F was already reserved, and punctuation
+	// cannot parse as a saved binding, so none of those gets a retention exception.
+	"primary+0",
+	"primary+r",
+	"primary+shift+r",
+	"primary+t",
+	"primary+shift+t",
+	"primary+l",
+	...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit) => `primary+${digit}`),
+]);
+
 export const RESERVED_CHORDS: ReadonlyMap<string, string> = new Map([
 	// The main process's doors: the renderer never sees these presses, so a
 	// bound chord would be a key that does nothing and says nothing.
@@ -175,9 +193,20 @@ export const RESERVED_CHORDS: ReadonlyMap<string, string> = new Map([
 	["primary+k", "Reserved: opens the command palette on chats."],
 	["primary+n", "Reserved: starts a new chat."],
 	["primary+b", "Reserved: toggles the sidebar."],
-	["primary+[", "Reserved: moves back between chats."],
-	["primary+]", "Reserved: moves forward between chats."],
-	["primary+f", "Reserved: searches the transcript."],
+	// Focus-dependent: inside the browser surface these are page back/forward
+	// (`shared/browser-chord.ts`); everywhere else they move between chats.
+	[
+		"primary+[",
+		"Reserved: goes back in the browser, or between chats outside it.",
+	],
+	[
+		"primary+]",
+		"Reserved: goes forward in the browser, or between chats outside it.",
+	],
+	[
+		"primary+f",
+		"Reserved: finds in the browser page, or searches the transcript outside it.",
+	],
 	["primary+alt+up", "Reserved: walks up the chat regions."],
 	["primary+alt+down", "Reserved: walks down the chat regions."],
 	["primary+shift+a", "Reserved: archives the focused conversation."],
@@ -200,8 +229,36 @@ export const RESERVED_CHORDS: ReadonlyMap<string, string> = new Map([
 	["primary+z", "Reserved: undo."],
 	["primary+shift+z", "Reserved: redo."],
 	["primary+y", "Reserved: redo on Windows and Linux."],
+	// The browser surface's fixed chords (`shared/browser-chord.ts`, brief a1-8).
+	// Inside the browser the main-process hook and the DOM door claim these before
+	// any app binding can run, so an assignable one would be silently dead there.
+	// Reserved rather than "app bindings win in the browser" because the browser
+	// must keep Chrome muscle memory, and a refusal at capture time is the only
+	// moment the user can be told. Ctrl+Tab needs no row: `tab` is an end-edit key
+	// the grammar refuses, so it cannot be captured at all. Digits are listed per key: the grammar has no
+	// range, and `normalizeChord` is the single spelling Settings matches on.
+	["primary+r", "Reserved: reloads the browser page."],
+	[
+		"primary+shift+r",
+		"Reserved: reloads the browser page, ignoring the cache.",
+	],
+	["primary+t", "Reserved: opens a new browser tab."],
+	["primary+shift+t", "Reserved: reopens the last closed browser tab."],
+	["primary+l", "Reserved: focuses the browser address bar."],
+	...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit): [string, string] => [
+		`primary+${digit}`,
+		digit === 9
+			? "Reserved: switches to the last browser tab."
+			: `Reserved: switches to browser tab ${digit}.`,
+	]),
+	["primary+0", "Reserved: resets browser page zoom, or app zoom outside it."],
+	// Punctuation cannot be assigned by the current grammar; rows document the
+	// fixed native keys without widening what Settings can capture/store.
+	["primary+plus", "Reserved: zooms the browser page or app in."],
+	["primary+=", "Reserved: zooms the browser page or app in."],
+	["primary+-", "Reserved: zooms the browser page or app out."],
 	// The application menu's own chords.
 	["primary+q", "Reserved: quits the app."],
-	["primary+w", "Reserved: closes the window."],
+	["primary+w", "Reserved: closes the browser tab, or the window outside it."],
 	["primary+m", "Reserved: minimises the window."],
 ]);

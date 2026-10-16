@@ -1,0 +1,20 @@
+
+Interrupted while running:
+
+⚠ scripts/supplement-file-actions.test.mjs (scripts/supplement-file-actions.test.mjs:1:1)
+CONTROL process cwd=/ without session: {"resolved":"workspace/report/RUN-RECORD.md","exists":false}
+✖ scripts/supplement-file-actions.test.mjs (29908.120541ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 0
+ℹ cancelled 1
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 29916.731583
+
+✖ failing tests:
+
+test at scripts/supplement-file-actions.test.mjs:1:1
+✖ scripts/supplement-file-actions.test.mjs (29908.120541ms)
+  'Promise resolution is still pending but the event loop has already resolved'

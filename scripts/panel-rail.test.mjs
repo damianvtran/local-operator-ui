@@ -59,6 +59,7 @@ const bundle = await build({
 			export { InPanelRailHost, PanelRailHostContext } from "./${NAV}/panel-rail-host";
 			export { askRailLabels, browserRailLabels, canvasRailLabels, codeRailLabels, consoleRailLabels, PANEL_RAIL_ORDER } from "./${NAV}/panel-rail-model";
 			export { askRailToggleLabel, askScopeSubject, ASK_RAIL_ITEM_SELECTOR } from "./src/renderer/src/features/chat/ask-queue";
+			export { captureRefusal } from "./src/renderer/src/shared/keymap/keymap-chord";
 			export { useUiPreferencesStore, resolveDrawnRightSlotPane } from "./src/renderer/src/shared/store/ui-preferences-store";
 			export { deriveRunDetails } from "./${RUN}/run-detail-model";
 			export * as fixtures from "./${RUN}/run-details.fixtures";
@@ -98,6 +99,7 @@ mkdirSync(CACHE, { recursive: true });
 const bundlePath = join(CACHE, "rail.mjs");
 writeFileSync(bundlePath, bundle.outputFiles[0].text);
 const {
+	captureRefusal,
 	PanelRail,
 	suppressedOverlayIds,
 	registerBrowserViewRect,
@@ -125,6 +127,17 @@ const {
 
 const read = (path) => readFileSync(join(ROOT, path), "utf8");
 
+// An arbitrary ACTIVE binding, not a browser-owned gesture. A future reserved
+// set expansion must fail at this guard instead of as a misleading tooltip diff.
+const ASK_SAMPLE_CHORD = "primary+shift+u";
+test("the asks sample chord remains capturable, not reserved", () => {
+	assert.equal(
+		captureRefusal(ASK_SAMPLE_CHORD, "panel.ask", {}),
+		null,
+		`rail fixture ${ASK_SAMPLE_CHORD} must stay an assignable sample chord`,
+	);
+});
+
 /* ------------------------------------------------------------------ harness */
 
 async function mount(render) {
@@ -138,6 +151,7 @@ async function mount(render) {
 		window,
 		document: window.document,
 		HTMLElement: window.HTMLElement,
+		HTMLInputElement: window.HTMLInputElement,
 		Element: window.Element,
 		Node: window.Node,
 		Event: window.Event,
@@ -735,11 +749,11 @@ test("the asks item's tooltip verb follows its SCOPE while aria-pressed follows 
 		 * F2 = design D3): the same promise the dispatcher answers, printed in the
 		 * register this host spells (linux), and gone again when the row is reset.
 		 */
-		api.store({ shortcutBindings: { "panel.ask": "primary+l" } });
+		api.store({ shortcutBindings: { "panel.ask": ASK_SAMPLE_CHORD } });
 		await frames(2);
 		assert.equal(
 			tooltip(),
-			"Open asks (Ctrl+L) — This conversation, 2 waiting or moved on",
+			"Open asks (Ctrl+Shift+U) — This conversation, 2 waiting or moved on",
 		);
 		api.store({ shortcutBindings: {} });
 		act(() => api.item("ask").blur());
@@ -913,7 +927,7 @@ test("the item caps are the BOUND chords: both registers, absent when unbound, a
 			shortcutBindings: {
 				"panel.console": "primary+u",
 				"panel.browser": "primary+i",
-				"panel.ask": "primary+l",
+				"panel.ask": ASK_SAMPLE_CHORD,
 			},
 		});
 		assert.equal(
@@ -926,7 +940,7 @@ test("the item caps are the BOUND chords: both registers, absent when unbound, a
 		);
 		assert.equal(
 			api.item("ask").getAttribute("aria-label"),
-			"Asks (Ctrl+L), This conversation",
+			"Asks (Ctrl+Shift+U), This conversation",
 			"the asks item's cap prints too (F2 = D3): it used to be the one item whose promise was invisible on the control",
 		);
 	});

@@ -58,6 +58,8 @@ import { useRadientLoginVerdict } from "@shared/hooks/use-radient-session-issue"
  * docblock. Importing the leaf keeps this feature out of that graph.
  */
 import { useRadientUserQuery } from "@shared/hooks/use-radient-user-query";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { useQueryClient } from "@tanstack/react-query";
 import { MoreHorizontal, Search, X } from "lucide-react";
@@ -115,7 +117,8 @@ import { CONFIG_QUERY_KEY, useDefaultModel } from "./use-provider-status";
  * on: that row offers the browser sign-in AND a key, so the sentence claims the
  * sign-in path rather than that no key exists anywhere.
  */
-const RECOMMENDED_REASON = "One browser sign-in. Nothing to paste.";
+const recommendedReason = () =>
+	t("ui.providers.provider_catalog.one_browser_sign_in_nothing_to_paste");
 
 /**
  * The recommended row, when the recommendation still applies. Null when the
@@ -241,14 +244,17 @@ const Monogram: FC<{ provider: DesktopProvider }> = ({ provider }) => (
 const RowList: FC<{ children: ReactNode; label?: string }> = ({
 	children,
 	label,
-}) => (
-	<ul
-		aria-label={label}
-		className="flex flex-col divide-y divide-hairline overflow-hidden rounded-[14px] bg-surface"
-	>
-		{children}
-	</ul>
-);
+}) => {
+	useI18nLocale();
+	return (
+		<ul
+			aria-label={label}
+			className="flex flex-col divide-y divide-hairline overflow-hidden rounded-[14px] bg-surface"
+		>
+			{children}
+		</ul>
+	);
+};
 
 type ProviderGridProps = {
 	/** Called once any provider reports a stored credential. */
@@ -283,6 +289,7 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 	onDone,
 	onChangeModel,
 }) => {
+	useI18nLocale();
 	const providers = useDesktopProviders(true);
 	const { hosting, model } = useDefaultModel();
 	const queryClient = useQueryClient();
@@ -453,7 +460,9 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 			refresh();
 		} catch (error) {
 			showErrorToast(
-				error instanceof Error ? error.message : "The default was not changed.",
+				error instanceof Error
+					? error.message
+					: t("ui.providers.provider_grid.the_default_was_not_changed"),
 			);
 		}
 	};
@@ -473,7 +482,9 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 			onConnected?.();
 		} catch (error) {
 			showErrorToast(
-				error instanceof Error ? error.message : "Sign-out did not complete.",
+				error instanceof Error
+					? error.message
+					: t("ui.providers.provider_grid.sign_out_did_not_complete"),
 			);
 		} finally {
 			/*
@@ -492,7 +503,10 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 	if (providers.isLoading) {
 		return (
 			<div className="flex h-40 items-center justify-center">
-				<Spinner size="lg" label="Loading providers" />
+				<Spinner
+					size="lg"
+					label={t("ui.providers.provider_grid.loading_providers")}
+				/>
 			</div>
 		);
 	}
@@ -517,7 +531,9 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 						onClick={() => void providers.refetch()}
 						disabled={providers.isFetching}
 					>
-						{providers.isFetching ? "Retrying" : "Retry"}
+						{providers.isFetching
+							? t("ui.providers.provider_grid.retrying")
+							: t("ui.providers.provider_grid.retry")}
 					</Button>
 				</div>
 			</Alert>
@@ -578,15 +594,19 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 										·
 									</span>
 									<span className="shrink-0 font-medium text-ink text-meta">
-										Recommended
+										{t("ui.providers.provider_grid.recommended")}
 									</span>
 								</>
 							) : null}
 						</span>
 						<span className="text-ink-muted text-meta">
-							{isRecommended ? RECOMMENDED_REASON : addRowMeta(provider)}
+							{isRecommended ? recommendedReason() : addRowMeta(provider)}
 							{suggestion ? (
-								<span className="text-ink-dim"> · Suggests {suggestion}</span>
+								<span className="text-ink-dim">
+									{" "}
+									{t("ui.providers.provider_grid.suggests")}
+									{suggestion}
+								</span>
 							) : null}
 						</span>
 					</div>
@@ -619,10 +639,17 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 						}
 						size="sm"
 						aria-expanded={open}
-						aria-label={`${open ? "Close" : rowActionLabel(provider)}: ${brandOf(provider)}`}
+						aria-label={t("ui.providers.provider_grid.row_action", {
+							action: open
+								? t("ui.providers.provider_grid.close")
+								: rowActionLabel(provider),
+							brand: brandOf(provider),
+						})}
 						onClick={() => toggle(provider.id)}
 					>
-						{open ? "Close" : rowActionLabel(provider)}
+						{open
+							? t("ui.providers.provider_grid.close")
+							: rowActionLabel(provider)}
 					</Button>
 				</div>
 				{panelFor(provider)}
@@ -722,19 +749,22 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 					 * overflow (design round 1 D3, UX N5).
 					 */}
 					{isDefault ? (
-						<span className="text-ink-muted text-meta">Default</span>
+						<span className="text-ink-muted text-meta">
+							{t("ui.providers.provider_grid.default")}
+						</span>
 					) : null}
 					{confirmSignOut === provider.id ? (
 						<div className="flex items-center gap-2">
 							<span className="text-body-sm text-ink">
-								Sign out of {brandOf(provider)}?
+								{t("ui.providers.provider_grid.sign_out_of")}
+								{brandOf(provider)}?
 							</span>
 							<Button
 								variant="danger"
 								size="sm"
 								onClick={() => void signOut(provider)}
 							>
-								Sign out
+								{t("ui.providers.provider_grid.sign_out")}
 							</Button>
 							<Button
 								variant="ghost"
@@ -744,7 +774,7 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 									setFocusRow(provider.id);
 								}}
 							>
-								Keep
+								{t("ui.providers.provider_grid.keep")}
 							</Button>
 						</div>
 					) : (
@@ -775,7 +805,9 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 									 */
 									className={open ? "bg-control text-on-accent" : undefined}
 									aria-expanded={open}
-									aria-label={`Manage ${brandOf(provider)}`}
+									aria-label={t("ui.providers.provider_grid.manage", {
+										brand: brandOf(provider),
+									})}
 								>
 									<MoreHorizontal aria-hidden="true" />
 								</Button>
@@ -793,7 +825,7 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 							>
 								{!isDefault ? (
 									<DropdownMenuItem onSelect={() => void makeDefault(provider)}>
-										Make default
+										{t("ui.providers.provider_grid.make_default")}
 									</DropdownMenuItem>
 								) : null}
 								{isDefault && onChangeModel ? (
@@ -813,7 +845,7 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 										onClick={() => openModelSettings()}
 										onSelect={() => openModelSettings()}
 									>
-										Change model…
+										{t("ui.providers.provider_grid.change_model")}
 									</DropdownMenuItem>
 								) : null}
 								{/*
@@ -829,12 +861,12 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 									data-panel-toggle={provider.id}
 								>
 									{open
-										? "Close"
+										? t("ui.providers.provider_grid.close")
 										: !provider.local
 											? providerGroup(provider) === "key"
-												? "Replace key…"
-												: "Sign in again…"
-											: "Check connection"}
+												? t("ui.providers.provider_grid.replace_key")
+												: t("ui.providers.provider_grid.sign_in_again")
+											: t("ui.providers.provider_grid.check_connection")}
 								</DropdownMenuItem>
 								{!provider.local && provider.stored_credentials > 0 ? (
 									<>
@@ -843,7 +875,7 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 											destructive
 											onSelect={() => setConfirmSignOut(provider.id)}
 										>
-											Sign out…
+											{t("ui.providers.provider_grid.sign_out_variant_351")}
 										</DropdownMenuItem>
 									</>
 								) : null}
@@ -879,8 +911,8 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 				ref={searchRef}
 				value={query}
 				onChange={(event) => setQuery(event.target.value)}
-				placeholder="Search providers"
-				aria-label="Search providers"
+				placeholder={t("ui.providers.provider_grid.search_providers")}
+				aria-label={t("ui.providers.provider_grid.search_providers")}
 				className="pl-9"
 			/>
 		</div>
@@ -897,9 +929,12 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 	 * is the shape the hidden-trigger rule below exists to avoid (code round 1,
 	 * P2 / QA-1).
 	 */
-	const NO_MATCH_SENTENCE = "No providers match this search.";
-	const MATCHES_ABOVE_SENTENCE =
-		"The matching providers are in the suggested rows above.";
+	const NO_MATCH_SENTENCE = t(
+		"ui.providers.provider_grid.no_providers_match_this_search",
+	);
+	const MATCHES_ABOVE_SENTENCE = t(
+		"ui.providers.provider_grid.the_matching_providers_are_in_the_suggested",
+	);
 	/*
 	 * The same claim for the case where the SUGGESTED block is not the one holding
 	 * the match (review round 3, R3-1). Which sentence is true is a question about
@@ -912,8 +947,9 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 	 * photographs -- so the connected shape gets its own rather than a rewording of
 	 * both.
 	 */
-	const MATCHES_CONNECTED_ABOVE_SENTENCE =
-		"The matching providers are in the connected rows above.";
+	const MATCHES_CONNECTED_ABOVE_SENTENCE = t(
+		"ui.providers.provider_grid.the_matching_providers_are_in_the_connected",
+	);
 
 	/*
 	 * The grouped blocks for ONE bucket set, so the two surfaces can hand this
@@ -942,7 +978,7 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 					}}
 				>
 					<X aria-hidden="true" />
-					Clear search
+					{t("ui.providers.provider_grid.clear_search")}
 				</Button>
 			</div>
 		) : (
@@ -1060,10 +1096,14 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 				data-provider-grid=""
 			>
 				{connected.length > 0 ? (
-					<RowList label="Connected">{connected.map(connectedRow)}</RowList>
+					<RowList label={t("ui.providers.provider_grid.connected")}>
+						{connected.map(connectedRow)}
+					</RowList>
 				) : null}
 				{featured.length > 0 ? (
-					<RowList label="Suggested providers">{featured.map(addRow)}</RowList>
+					<RowList label={t("ui.providers.provider_grid.suggested_providers")}>
+						{featured.map(addRow)}
+					</RowList>
 				) : null}
 				{searching || restCount > 0 ? (
 					<Disclosure
@@ -1099,7 +1139,7 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 					aria-labelledby="providers-connected"
 				>
 					<h3 id="providers-connected" className="text-heading text-ink">
-						Connected
+						{t("ui.providers.provider_grid.connected")}
 					</h3>
 					<RowList>{connected.map(connectedRow)}</RowList>
 				</section>
@@ -1107,7 +1147,9 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 			<section className="flex flex-col gap-3" aria-labelledby="providers-add">
 				<div className="flex flex-wrap items-center justify-between gap-3">
 					<h3 id="providers-add" className="text-heading text-ink">
-						{connected.length > 0 ? "Add a provider" : "Connect a provider"}
+						{connected.length > 0
+							? t("ui.providers.provider_grid.add_a_provider")
+							: t("ui.providers.provider_grid.connect_a_provider")}
 					</h3>
 					{searchField}
 				</div>

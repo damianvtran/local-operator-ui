@@ -2157,13 +2157,6 @@ const PLATES_INSIDE_ROW_STATES = [
 		fact: "object-cover",
 	},
 	{
-		what: "the browser tab strip's chrome cluster",
-		file: BROWSER_TABS,
-		element: "div",
-		edge: false,
-		fact: "absolute",
-	},
-	{
 		what: "the browser tab strip's notch",
 		file: BROWSER_TABS,
 		element: "span",
@@ -2173,6 +2166,32 @@ const PLATES_INSIDE_ROW_STATES = [
 ];
 
 test("every object a row state can paint over keeps an edge, or records why it need not", async () => {
+	/*
+	 * The former tab-actions overlay painted elevated/surface over the row and
+	 * belonged in the plate inventory. Its replacement is layout-only: contents
+	 * generates no principal box and carries no ground. Pin the precise wrapper,
+	 * not an exemption for a live surface: adding a ground/overlay class or style
+	 * must fail here until its new paint is accounted for in the inventory.
+	 */
+	const browserTabs = read(BROWSER_TABS);
+	const actionsAt = browserTabs.indexOf("open={actionsTabId === tab.tabId}");
+	assert.notEqual(
+		actionsAt,
+		-1,
+		"the actual tab-actions menu anchor must exist",
+	);
+	const clusterAt = browserTabs.lastIndexOf("<div", actionsAt);
+	assert.notEqual(clusterAt, -1, "the actual tab-actions wrapper must exist");
+	const cluster = browserTabs.slice(
+		clusterAt,
+		browserTabs.indexOf(">", clusterAt) + 1,
+	);
+	assert.equal(
+		cluster,
+		'<div className="contents">',
+		"the tab-actions cluster must remain boxless and ground/overlay-free; restore its painted-plate inventory entry if it starts painting again",
+	);
+
 	/*
 	 * The map first, because everything below is measured through it: the two
 	 * primitives have to carry the ground they are read for, or this test is

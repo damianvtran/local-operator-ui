@@ -88,7 +88,12 @@ export function HubSkillsLibrary({
 		<section className="flex min-w-0 flex-col gap-5" data-hub-skills-library>
 			<header className="flex flex-wrap items-center justify-between gap-3">
 				<h2 className="text-heading text-ink">{t("ui.hub.skills.title")}</h2>
-				<span className="text-meta text-ink-muted">{source}</span>
+				<span
+					className="text-meta text-ink-muted"
+					data-testid="hub-skill-source"
+				>
+					{source}
+				</span>
 			</header>
 			{scope.visibility === "org" && !signedIn ? (
 				<p role="alert" className="text-body-sm text-warning">
@@ -101,6 +106,7 @@ export function HubSkillsLibrary({
 					</label>
 					<Input
 						id={`${id}-search`}
+						data-testid="hub-skill-search"
 						value={filter}
 						placeholder={t("ui.hub.skills.search")}
 						onChange={(event) => setFilter(event.target.value)}
@@ -159,6 +165,7 @@ export function HubSkillsLibrary({
 										<Button
 											variant="outline"
 											aria-pressed={selected === row.id}
+											data-testid="hub-skill-open"
 											disabled={pull.isPending}
 											onClick={() => {
 												setSelected(row.id);
@@ -226,6 +233,7 @@ export function HubSkillsLibrary({
 							</label>
 							<Input
 								id={`${id}-alias`}
+								data-testid="hub-skill-alias"
 								value={alias}
 								disabled={pull.isPending}
 								onChange={(event) => {
@@ -252,6 +260,7 @@ export function HubSkillsLibrary({
 								disabled={pull.isPending}
 							/>
 							<Button
+								data-testid="hub-skill-create"
 								disabled={!signedIn || !ready || !alias || pull.isPending}
 								onClick={install}
 							>
@@ -269,7 +278,11 @@ export function HubSkillsLibrary({
 							!pull.data.reports?.some(
 								(report) => report.applied || report.outcome === "unchanged",
 							))) && (
-						<p role="alert" className="text-body-sm text-danger">
+						<p
+							role="alert"
+							className="text-body-sm text-danger"
+							data-testid="hub-skill-pull-failed"
+						>
 							{t("ui.hub.skills.pull_failed")}
 						</p>
 					)}
@@ -280,7 +293,10 @@ export function HubSkillsLibrary({
 								report.direction === "pull" &&
 								report.applied,
 						) && (
-							<output className="text-body-sm text-ink">
+							<output
+								className="text-body-sm text-ink"
+								data-testid="hub-skill-installed"
+							>
 								{t("ui.hub.skills.installed_alias", {
 									item: pull.data.link.name,
 									source: hubLinkSourceName(pull.data.link),

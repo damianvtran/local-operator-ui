@@ -39,6 +39,24 @@
 
 import { readOpenSessionArgv } from "../shared/open-session";
 import type { WindowShow } from "./window-mode";
+
+/** Reassign keyboard focus INSIDE an already-focused normal window only.
+ * These helpers never present/activate: an inactive or headless proof may
+ * exercise the command but must not turn its synthetic event into a raise. */
+export function focusBrowserChordTarget(
+	window: { isDestroyed(): boolean; isFocused(): boolean },
+	target: { isDestroyed(): boolean; focus(): void },
+	show: WindowShow,
+): void {
+	if (
+		show !== "focus" ||
+		window.isDestroyed() ||
+		!window.isFocused() ||
+		target.isDestroyed()
+	)
+		return;
+	target.focus();
+}
 import { readWindowIntent, resolveSecondLaunchShow } from "./window-mode";
 
 /** The slice of `BrowserWindow` that raising a window touches. */

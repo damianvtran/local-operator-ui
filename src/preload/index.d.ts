@@ -6,6 +6,7 @@ import type {
 	BackendUpdateErrorReport,
 } from "../main/update-service";
 import type { DaemonStatusSnapshot } from "../shared/backend-status";
+import type { HumanTabActionOutcome } from "../shared/browser-tab-action";
 import type {
 	DesktopAPI,
 	DirectoryListing,
@@ -107,9 +108,29 @@ declare global {
 			 * drift from the one main actually sends.
 			 */
 			browser: {
+				pageControl: (
+					tabId: number,
+					action: "open" | "close" | "search" | "in" | "out" | "reset",
+					query: string,
+					forward: boolean,
+					next: boolean,
+				) => Promise<unknown>;
+				setChordFocus: (focused: boolean) => Promise<void>;
+				reopenTab: (sessionId?: string | null) => Promise<unknown>;
+				focusPage: () => Promise<void>;
+				onChord: (
+					callback: (
+						message: import("../shared/browser-chord").BrowserChordMessage,
+					) => void,
+				) => () => void;
 				state: () => Promise<unknown>;
 				/** `sessionId` attributes the new tab to the conversation it was opened
 				 * from; `null` (and absent) mean it belongs to no conversation. */
+				reorderTabs: (ids: number[]) => Promise<unknown>;
+				actOnTab: (
+					tabId: number,
+					action: "duplicate" | "reload",
+				) => Promise<HumanTabActionOutcome>;
 				newTab: (sessionId?: string | null) => Promise<unknown>;
 				closeTab: (tabId: number) => Promise<unknown>;
 				/** A bulk close. `{ mode: "ids", tabIds }`, or `{ mode: "conversation",
@@ -117,7 +138,9 @@ declare global {
 				closeTabs: (intent: unknown) => Promise<unknown>;
 				activateTab: (tabId: number) => Promise<unknown>;
 				navigate: (url: string) => Promise<unknown>;
-				reload: () => Promise<unknown>;
+				/** Home: no argument, because main owns the start state. */
+				home: () => Promise<unknown>;
+				reload: (hard?: boolean) => Promise<unknown>;
 				stop: () => Promise<unknown>;
 				/** The recovery click on the `unavailable` state (round 1, D1a): no argument,
 				 * because the host restarts the same window's browser. */

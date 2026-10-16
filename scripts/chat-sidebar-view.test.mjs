@@ -1497,9 +1497,19 @@ test("the component draws the band's controls and the popover's four groups", ()
 	]) {
 		assert.ok(source.includes(hook), `${hook} is not drawn`);
 	}
-	for (const label of ["Group by", "Time basis", "Order by", "Sections"]) {
+	const copy = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.chat.sidebar_view.json", "utf8"),
+	);
+	for (const [key, label] of [
+		["group_by", "Group by"],
+		["time_basis", "Time basis"],
+		["order_by", "Order by"],
+		["sections", "Sections"],
+	]) {
+		const messageKey = `ui.chat.sidebar_view.${key}`;
+		assert.equal(copy[messageKey], label);
 		assert.ok(
-			menu.includes(`"${label}"`) || menu.includes(`>${label}<`),
+			menu.includes(`group(t("${messageKey}")`),
 			`the view popover draws no ${label} group`,
 		);
 	}

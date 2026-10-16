@@ -1,0 +1,3 @@
+stub daemon listening on 127.0.0.1:8127
+serve record written to /Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/capgate-origin-records
+stub GET /health -> 200

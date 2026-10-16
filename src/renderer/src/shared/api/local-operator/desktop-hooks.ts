@@ -238,6 +238,15 @@ export type DesktopFeature =
 	| "hub_updates"
 	/** Full linked inventory and revision-checked independent policy controls. */
 	| "hub_links"
+	/**
+	 * Complete initial Skills adapter v1: remote public/org reads (including
+	 * org_skills.list/org_skill.get proxy), local pull/install, and initial
+	 * publish preview/confirm with receipt reconciliation. Older daemons may
+	 * expose hub_links, skill_catalogue and radient_org without these routes.
+	 * Only a complete adapter may advertise this optional key; remote CAS is
+	 * not a substitute and its absence must not close the working Hub plane.
+	 */
+	| "hub_skills"
 	| "profile_catalogue"
 	| "team_catalogue"
 	| "session_catalogue"
@@ -769,7 +778,14 @@ export type DesktopFeature =
 	 * strip and `/analytics` render exactly today's inference-only figures and
 	 * say nothing about channels — never a zero for spend they cannot see.
 	 */
-	| "cost_channels";
+	| "cost_channels"
+	/**
+	 * Phone access SETUP (`tunnel_setup`), its own key and not a bump of `tunnel`:
+	 * the health read keeps working on a backend that predates the explicit setup
+	 * route, so the block must be able to ask for this one alone. Absent means the
+	 * Phone access block is not rendered and no setup op is sent.
+	 */
+	| "tunnel_setup";
 
 /**
  * WHY a negotiated feature surface may not be offered.

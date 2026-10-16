@@ -1,0 +1,215 @@
+{
+	"ui.hub.comments.delete.confirm": {
+		"role": "Native browser confirmation question before comment deletion",
+		"tone": "Explicit deletion question",
+		"length_hint": "One short native-dialog sentence",
+		"note": "The existing window.confirm flow and cancellation behavior remain unchanged; deletion happens only after confirmation."
+	},
+	"ui.hub.comments.heading": {
+		"role": "Agent comments-section heading",
+		"tone": "Short section noun",
+		"length_hint": "Single-line heading above form/list",
+		"note": "Names comments on a public agent listing, not generated agent output."
+	},
+	"ui.hub.comments.form.label": {
+		"role": "New-comment textarea label",
+		"tone": "Invitation to contribute",
+		"length_hint": "Short label beside comment icon",
+		"note": "Only rendered for signed-in users; existing comments remain readable without this form."
+	},
+	"ui.hub.comments.form.placeholder": {
+		"role": "New-comment textarea placeholder",
+		"tone": "Brief writing invitation",
+		"length_hint": "Short hint in three-row textarea",
+		"note": "Entered comment text is author data and must not be translated."
+	},
+	"ui.hub.comments.form.posting": {
+		"role": "Accessible spinner label while posting",
+		"tone": "Quiet progress phrase",
+		"length_hint": "Screen-reader spinner label, no visible width budget",
+		"note": "Submit request is pending; not a success receipt."
+	},
+	"ui.hub.comments.form.submit": {
+		"role": "Button submitting new comment",
+		"tone": "Explicit posting action",
+		"length_hint": "Small form button",
+		"note": "Disabled for an empty trimmed draft and while posting."
+	},
+	"ui.hub.comments.form.sign_in": {
+		"role": "Signed-out comment-writing guidance",
+		"tone": "Explain prerequisite without claiming list failure",
+		"length_hint": "One short sentence above readable comment list",
+		"note": "Readers must sign in to write comments; this does not mean reading requires sign-in."
+	},
+	"ui.hub.comments.empty": {
+		"role": "Empty comments-list row",
+		"tone": "Neutral result with invitation",
+		"length_hint": "One short wrapped line",
+		"note": "There are no existing comments; distinguishes an empty successful load from a load failure."
+	},
+	"ui.hub.comments.edit.label": {
+		"role": "Edit-comment textarea accessible label and edit-button tooltip/name",
+		"tone": "Name the edit operation",
+		"length_hint": "Screen-reader label and short icon tooltip",
+		"note": "Used on author-only edit controls and the edit field; does not itself save a change."
+	},
+	"ui.hub.comments.edit.cancel": {
+		"role": "Cancel-inline-edit button",
+		"tone": "Single safe-dismissal verb",
+		"length_hint": "Small secondary button",
+		"note": "Discards the local edit draft and leaves the posted comment unchanged."
+	},
+	"ui.hub.comments.edit.saving": {
+		"role": "Accessible spinner label while saving edited comment",
+		"tone": "Quiet progress phrase",
+		"length_hint": "Screen-reader-only spinner label",
+		"note": "An update request is pending, not a new comment publication."
+	},
+	"ui.hub.comments.edit.save": {
+		"role": "Button saving inline comment edit",
+		"tone": "Single explicit save verb",
+		"length_hint": "Small primary button",
+		"note": "Saves the edited author text, then leaves edit mode after successful response."
+	},
+	"ui.hub.comments.author.unknown": {
+		"role": "Missing-comment-author display name",
+		"tone": "Neutral anonymous attribution",
+		"length_hint": "Compact author line beside avatar",
+		"note": "Fallback when account metadata lacks a display name; real author names remain unchanged."
+	},
+	"ui.hub.comments.delete.label": {
+		"role": "Delete-comment icon tooltip and accessible name",
+		"tone": "Direct destructive-operation name",
+		"length_hint": "Short tooltip and screen-reader button label",
+		"note": "Opens the existing native confirmation before deleting an author-owned comment."
+	},
+	"ui.hub.comments.load_error": {
+		"role": "Comments-list load failure alert",
+		"tone": "Clear load failure followed by its reason",
+		"length_hint": "Wrapped alert above list",
+		"note": "The reason comes from the failed query. Preserve arbitrary server text rather than inventing a localized cause.",
+		"placeholders": {
+			"reason": "Error.message from the query/mutation, including the locally translated authentication refusal when applicable. Preserve arbitrary backend text unchanged."
+		}
+	},
+	"ui.hub.comments.mutation.unauthorized": {
+		"role": "Local authentication refusal thrown by comment mutations",
+		"tone": "Concise prerequisite constraint",
+		"length_hint": "One short error sentence, also nested in failure toast",
+		"note": "Only the locally generated refusal is translated; no wire code or server message matching changes."
+	},
+	"ui.hub.comments.mutation.posted": {
+		"role": "Success toast after comment creation",
+		"tone": "Brief completed-action receipt",
+		"length_hint": "One short toast line",
+		"note": "Shown after create succeeds and comments-list invalidation runs."
+	},
+	"ui.hub.comments.mutation.updated": {
+		"role": "Success toast after comment edit",
+		"tone": "Brief completed-action receipt",
+		"length_hint": "One short toast line",
+		"note": "Shown after update succeeds and the specific agent comments list is invalidated."
+	},
+	"ui.hub.comments.mutation.deleted": {
+		"role": "Success toast after comment deletion",
+		"tone": "Brief completed-action receipt",
+		"length_hint": "One short toast line",
+		"note": "Shown only after delete succeeds; not when the confirmation was canceled."
+	},
+	"ui.hub.comments.mutation.post_failed": {
+		"role": "Error toast after failed comment creation",
+		"tone": "Clear action failure followed by cause",
+		"length_hint": "Short toast prefix plus wrapped dynamic reason",
+		"note": "Creation failed; the draft is not claimed posted.",
+		"placeholders": {
+			"reason": "Error.message from the query/mutation, including the locally translated authentication refusal when applicable. Preserve arbitrary backend text unchanged."
+		}
+	},
+	"ui.hub.comments.mutation.update_failed": {
+		"role": "Error toast after failed comment update",
+		"tone": "Clear save failure followed by cause",
+		"length_hint": "Short toast prefix plus wrapped dynamic reason",
+		"note": "The edit request failed; does not imply a new comment was created.",
+		"placeholders": {
+			"reason": "Error.message from the query/mutation, including the locally translated authentication refusal when applicable. Preserve arbitrary backend text unchanged."
+		}
+	},
+	"ui.hub.comments.mutation.delete_failed": {
+		"role": "Error toast after failed comment deletion",
+		"tone": "Clear delete failure followed by cause",
+		"length_hint": "Short toast prefix plus wrapped dynamic reason",
+		"note": "Deletion failed; does not claim the comment was removed.",
+		"placeholders": {
+			"reason": "Error.message from the query/mutation, including the locally translated authentication refusal when applicable. Preserve arbitrary backend text unchanged."
+		}
+	},
+	"ui.hub.comments.age.seconds": {
+		"role": "Comment age rounded to seconds",
+		"tone": "Compact relative-age metadata",
+		"length_hint": "One metadata line beneath author name",
+		"note": "Date-fns strict rounding chooses the integer second count. Message owns both unit inflection and ago. Preserve old always-ago behavior even if the comment timestamp is in the future.",
+		"plural_guidance": "Use the target locale’s CLDR categories: ru/pl few/many and ar zero/two/few/many as needed. Each branch owns the complete relative-age phrase, so word order need not mirror English.",
+		"placeholders": {
+			"count": "Nonnegative integer from date-fns strict unit rounding; print ungrouped using plain {count} rather than # or {count, number} to retain original English digits."
+		}
+	},
+	"ui.hub.comments.age.minutes": {
+		"role": "Comment age rounded to minutes",
+		"tone": "Compact relative-age metadata",
+		"length_hint": "One metadata line beneath author name",
+		"note": "Date-fns strict rounding chooses the integer minute count. Message owns both unit inflection and ago. Preserve old always-ago behavior even if the comment timestamp is in the future.",
+		"plural_guidance": "Use the target locale’s CLDR categories: ru/pl few/many and ar zero/two/few/many as needed. Each branch owns the complete relative-age phrase, so word order need not mirror English.",
+		"placeholders": {
+			"count": "Nonnegative integer from date-fns strict unit rounding; print ungrouped using plain {count} rather than # or {count, number} to retain original English digits."
+		}
+	},
+	"ui.hub.comments.age.hours": {
+		"role": "Comment age rounded to hours",
+		"tone": "Compact relative-age metadata",
+		"length_hint": "One metadata line beneath author name",
+		"note": "Date-fns strict rounding chooses the integer hour count. Message owns both unit inflection and ago. Preserve old always-ago behavior even if the comment timestamp is in the future.",
+		"plural_guidance": "Use the target locale’s CLDR categories: ru/pl few/many and ar zero/two/few/many as needed. Each branch owns the complete relative-age phrase, so word order need not mirror English.",
+		"placeholders": {
+			"count": "Nonnegative integer from date-fns strict unit rounding; print ungrouped using plain {count} rather than # or {count, number} to retain original English digits."
+		}
+	},
+	"ui.hub.comments.age.days": {
+		"role": "Comment age rounded to days",
+		"tone": "Compact relative-age metadata",
+		"length_hint": "One metadata line beneath author name",
+		"note": "Date-fns strict rounding chooses the integer day count. Message owns both unit inflection and ago. Preserve old always-ago behavior even if the comment timestamp is in the future.",
+		"plural_guidance": "Use the target locale’s CLDR categories: ru/pl few/many and ar zero/two/few/many as needed. Each branch owns the complete relative-age phrase, so word order need not mirror English.",
+		"placeholders": {
+			"count": "Nonnegative integer from date-fns strict unit rounding; print ungrouped using plain {count} rather than # or {count, number} to retain original English digits."
+		}
+	},
+	"ui.hub.comments.age.months": {
+		"role": "Comment age rounded to months",
+		"tone": "Compact relative-age metadata",
+		"length_hint": "One metadata line beneath author name",
+		"note": "Date-fns strict rounding chooses the integer month count. Message owns both unit inflection and ago. Preserve old always-ago behavior even if the comment timestamp is in the future.",
+		"plural_guidance": "Use the target locale’s CLDR categories: ru/pl few/many and ar zero/two/few/many as needed. Each branch owns the complete relative-age phrase, so word order need not mirror English.",
+		"placeholders": {
+			"count": "Nonnegative integer from date-fns strict unit rounding; print ungrouped using plain {count} rather than # or {count, number} to retain original English digits."
+		}
+	},
+	"ui.hub.comments.age.years": {
+		"role": "Comment age rounded to years",
+		"tone": "Compact relative-age metadata",
+		"length_hint": "One metadata line beneath author name",
+		"note": "Date-fns strict rounding chooses the integer year count. Message owns both unit inflection and ago. Preserve old always-ago behavior even if the comment timestamp is in the future.",
+		"plural_guidance": "Use the target locale’s CLDR categories: ru/pl few/many and ar zero/two/few/many as needed. Each branch owns the complete relative-age phrase, so word order need not mirror English.",
+		"placeholders": {
+			"count": "Nonnegative integer from date-fns strict unit rounding; print ungrouped using plain {count} rather than # or {count, number} to retain original English digits."
+		}
+	},
+	"ui.hub.comments.age.fallback": {
+		"role": "Fallback comment age if date-fns adds an unknown strict token",
+		"tone": "Compact past-age expression",
+		"length_hint": "One metadata line beneath author name",
+		"note": "Currently unreachable for the six strict distance tokens. Keeps previous English duration as safe fallback for a future library token.",
+		"placeholders": {
+			"duration": "English duration from date-fns enUS formatter for an unknown future token; no suffix yet."
+		}
+	}
+}

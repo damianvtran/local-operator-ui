@@ -2974,20 +2974,33 @@ test("the pinned strip control appears only when a tab is off screen, and counts
 	// carries the tab chips' own grammar, and the new-tab control is bounded by its edge.
 	assert.ok(
 		strip.includes(
-			'"rounded-sm border border-control px-1 text-meta text-ink-dim tabular-nums"',
+			'"min-w-6 rounded-sm border border-control px-1 text-center text-meta text-ink-dim tabular-nums"',
 		),
 		"the count is drawn in the chip grammar",
 	);
 	assert.ok(
-		strip.includes('variant="outline"') &&
+		strip.includes('variant="ghost"') &&
 			strip.includes(
-				'className="mx-1 h-4 w-px shrink-0 self-center bg-hairline"',
+				'className="ml-2 shrink-0 self-center focus-visible:-outline-offset-2!"',
 			),
-		"the new-tab control is a bounded control, and the strip's own rule separates it from the count when both are on screen",
+		"the new-tab control shares toolbar ghost grammar and keeps an eight-pixel gap",
 	);
 	assert.ok(
-		strip.includes("`All tabs, ${tabsOffScreen} not shown`"),
+		/aria-label=\{t\(\s*"ui\.browser\.browser_tab_strip\.all_tabs_unshown_accessible",\s*\{\s*count: tabsOffScreen,?\s*\},?\s*\)\}/.test(
+			strip,
+		),
 		"and it is in the accessible name, not only in the tooltip, in the words D10 revised: the count is measured from the rows' boxes, so a row clipped at its right edge is counted, and `not shown` is true of it where `more tabs` was not",
+	);
+	const english = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.browser.json", "utf8"),
+	);
+	// SOURCE PIN, not the count discriminator: this asserts the catalogue's bytes. The
+	// four-digit discrimination for this key (a bare `#` renders `1,000`) is the
+	// GROUPS_AT_A_THOUSAND table in `browser-file-transfer-row.test.mjs`, which drives
+	// the shipped `translate()` at 1000 where `#` and `::group-off` differ.
+	assert.equal(
+		english["ui.browser.browser_tab_strip.all_tabs_unshown_accessible"],
+		"All tabs, {count, plural, other {{count, number, ::group-off} not shown}}",
 	);
 	assert.ok(
 		strip.includes('querySelectorAll("[data-tab-id]")'),
@@ -2997,286 +3010,42 @@ test("the pinned strip control appears only when a tab is off screen, and counts
 
 // ---- a failed navigation says so (design round 1, D1) ----------------------
 
-test("the chip cap keeps the three states that carry information and counts the rest (R4, fix 1)", () => {
-	// THE CAP IS `stateChips`, so the test drives the shipped rule rather than
-	// restating it. The combinations are the ones the file's own enumeration calls
-	// REACHABLE from the registry: `handOver` sets `owner` and `handedTo` together,
-	// so `Shared` is implied by `Agent`; `restored` is set at creation and never
-	// cleared; and `failed` and a waiting `Request n` stack on either.
-	const view = (overrides) => ({
+test("compact tabs keep the highest-priority state and conserve the rest", () => {
+	const tab = {
 		tabId: 1,
-		owner: "user",
-		handedOver: false,
-		restored: false,
-		failed: false,
-		...overrides,
-	});
-	const agent = { owner: "agent" };
-	const cases = [
-		{
-			name: "one state",
-			tab: view({ failed: true }),
-			waiting: undefined,
-			shown: ["failed"],
-			collapsed: [],
-		},
-		{
-			name: "the implied pair {Agent, Shared}",
-			tab: view({ owner: "agent", handedOver: true }),
-			waiting: undefined,
-			shown: ["agent", "shared"],
-			collapsed: [],
-		},
-		{
-			name: "{Agent, Failed, Request n} — three, so nothing is hidden",
-			tab: view({ ...agent, failed: true }),
-			waiting: 1,
-			shown: ["request", "agent", "failed"],
-			collapsed: [],
-		},
-		{
-			name: "{Agent, Shared, Restored, Failed} — four, so the lowest-value state yields",
-			tab: view({ ...agent, handedOver: true, restored: true, failed: true }),
-			waiting: undefined,
-			shown: ["agent", "failed", "shared"],
-			collapsed: ["restored"],
-		},
-		{
-			name: "the five-state row — an ask, ownership and the failure survive; Shared and Restored do not",
-			tab: view({ ...agent, handedOver: true, restored: true, failed: true }),
-			waiting: 2,
-			shown: ["request", "agent", "failed"],
-			collapsed: ["shared", "restored"],
-		},
-		{
-			name: "{Restored, Failed, Request n} — Restored survives when it is not the fifth state",
-			tab: view({ restored: true, failed: true }),
-			waiting: 3,
-			shown: ["request", "failed", "restored"],
-			collapsed: [],
-		},
-	];
-	for (const entry of cases) {
-		const { shown, collapsed } = stateChips(entry.tab, entry.waiting);
-		assert.deepEqual(
-			[...shown].sort(),
-			[...entry.shown].sort(),
-			`${entry.name}: which chips are drawn`,
-		);
-		assert.deepEqual(
-			collapsed,
-			entry.collapsed,
-			`${entry.name}: which are collapsed, in priority order`,
-		);
-		assert.ok(
-			shown.size + collapsed.length <= 5,
-			`${entry.name}: the states are conserved, never relabelled`,
-		);
-		assert.ok(
-			shown.size <= 3,
-			`${entry.name}: never more than three chips inline`,
-		);
-	}
-	// THE PRIORITY IS THE SURVIVAL ORDER, asserted from the other side: with all five
-	// present, dropping exactly one sub-state at a time, `request` outlives `agent`
-	// outlives `failed` outlives `shared` outlives `restored`.
-	const all = view({
-		...agent,
+		owner: "agent",
 		handedOver: true,
 		restored: true,
 		failed: true,
-	});
-	assert.deepEqual([...stateChips(all, 1).shown].sort(), [
-		"agent",
-		"failed",
-		"request",
-	]);
-	assert.deepEqual(stateChips(all, 1).collapsed, ["shared", "restored"]);
-	assert.deepEqual([...stateChips(all, undefined).shown].sort(), [
+	};
+	assert.deepEqual([...stateChips(tab, 1).shown], ["request"]);
+	assert.deepEqual(stateChips(tab, 1).collapsed, [
 		"agent",
 		"failed",
 		"shared",
+		"restored",
 	]);
+	assert.deepEqual([...stateChips(tab, undefined).shown], ["agent"]);
+	assert.deepEqual(stateChips(tab, undefined).collapsed, [
+		"failed",
+		"shared",
+		"restored",
+	]);
+	assert.deepEqual(
+		[
+			...stateChips(
+				{ ...tab, owner: "user", handedOver: false, restored: false },
+				undefined,
+			).shown,
+		],
+		["failed"],
+	);
 });
 
-test("every floor rung leaves the title the width the strip promises (R4, fix 1)", () => {
-	// THE INVARIANT IS A PURE FUNCTION (design R4), and it is read off the SHIPPED
-	// rung rather than restated here: `tabFloor` returns the classes, this maps each
-	// tier's token to the pixel width the spacing scale gives it, and the assertion is
-	// the title that is left. A rung edited without redoing the arithmetic fails here
-	// rather than in a frame somebody has to notice.
-	const SPACING_PX = {
-		"min-w-30": 120,
-		"min-w-31": 124,
-		"min-w-33": 132,
-		"min-w-36": 144,
-		"min-w-44": 176,
-		"min-w-48": 192,
-		"min-w-50": 200,
-		"min-w-56": 224,
-		"min-w-60": 240,
-		"min-w-62": 248,
-		"min-w-65": 260,
-		"min-w-72": 288,
-		"min-w-74": 296,
-		"min-w-77": 308,
-		"min-w-80": 320,
-		"min-w-84": 336,
-		"min-w-91": 364,
-		"min-w-96": 384,
-		"min-w-101": 404,
-		"min-w-[26rem]": 416,
-	};
-	/** The three rungs a single `tabFloor` string carries, by tier. */
-	const rungs = (floor) => {
-		const out = {};
-		for (const token of floor.split(" ")) {
-			if (token.startsWith("@max-2xl:"))
-				out.narrow = SPACING_PX[token.slice("@max-2xl:".length)];
-			else if (token.startsWith("@2xl:@max-6xl:"))
-				out.middle = SPACING_PX[token.slice("@2xl:@max-6xl:".length)];
-			else out.base = SPACING_PX[token];
-		}
-		assert.ok(
-			typeof out.base === "number",
-			`the rung names a base spacing step this test knows: ${floor}`,
-		);
-		// A TIER WITH NO TOKEN OF ITS OWN INHERITS THE WIDER ONE, which is how the
-		// cascade works and why `min-w-96 @max-2xl:min-w-84` is a floor at BOTH the base
-		// and the middle tier.
-		out.middle ??= out.base;
-		out.narrow ??= out.middle;
-		return out;
-	};
-	// MEASURED PILL WIDTHS, the same table the component's comment carries.
-	//
-	// AND THE ASSUMPTION THE LADDER BELOW RESTS ON, stated here because it is invisible
-	// from this file (review round 1, A9): the widest TWO-pill set is `{Request, Agent}`
-	// (105px), not the wider `{Request, Failed}` (110px), only because `waitingOrdinals`
-	// gates the wait marker on `owner === "agent"` — a tab the user opened is never
-	// parked, which the case "a parked tab's Waiting chip carries the ordinal of the
-	// request its origin is on" pins above ("only on the agent's own tabs"). So a
-	// `Request` pill always sits on an agent tab. If a user tab could ever be parked, the
-	// middle tier's exactly-85px rung (`min-w-60`: 240 − 32 − 110 − 18 = 80) would be
-	// under the promise this file makes, and both this table and the rung would have to
-	// change.
-	const PILL = {
-		request: 62,
-		agent: 43,
-		failed: 48,
-		shared: 43,
-		restored: 48,
-		collapsed: 36,
-	};
-	/** The widest set of pills at each reachable count, in the cap's priority order:
-	 * the cap spends `request`, then `agent`, then `failed`, and the collapse is ONE
-	 * pill whatever it hides. */
-	const widestPills = [
-		0,
-		PILL.request,
-		PILL.request + PILL.agent,
-		PILL.request + PILL.agent + PILL.failed,
-		PILL.request + PILL.agent + PILL.failed + PILL.collapsed,
-	];
-	/** A row's title at a tier: the floor, less the row's 32px of padding, the pills, the
-	 * 6px gaps (`pills + 1` of them), and - at the base and middle tiers only - the
-	 * active row's 68px in-flow cluster. THE CLUSTER IS `absolute` BELOW `@max-2xl`
-	 * (design round 1, fix 3: it is what lets the narrow rungs be pixels rather than
-	 * declarations), so the narrow tier's promise is the same subtraction without it -
-	 * which is the arithmetic D1's ruling is written from. */
-	const title = (floorPx, pills, active, narrow = false) =>
-		floorPx -
-		32 -
-		widestPills[pills] -
-		6 * (pills + 1) -
-		(active && !narrow ? 68 : 0);
-
-	const rows = [];
-	for (const active of [false, true]) {
-		for (let pills = 0; pills <= 4; pills += 1) {
-			const { base, middle, narrow } = rungs(tabFloor(active, pills));
-			rows.push({ active, pills, base, middle, narrow });
-			for (const [tier, floorPx, isNarrow] of [
-				["base", base, false],
-				["middle", middle, false],
-				["narrow", narrow, true],
-			]) {
-				assert.ok(
-					title(floorPx, pills, active, isNarrow) >= 85,
-					`${active ? "active" : "inactive"} ${pills}-pill row at the ${tier} tier (${floorPx}px): title ${title(floorPx, pills, active, isNarrow)}px, and the file promises 85`,
-				);
-			}
-		}
-	}
-	// The two rows that used to yield, quantified: the cap gives them a wider title
-	// than the five-pill ladder did, at the same floor.
-	const PRE_CAP = { 4: 196, 5: 244 };
-	assert.equal(
-		PILL.request + PILL.agent + PILL.failed + PILL.shared,
-		PRE_CAP[4],
-	);
-	assert.equal(
-		PILL.request + PILL.agent + PILL.failed + PILL.shared + PILL.restored,
-		PRE_CAP[5],
-	);
-	for (const present of [4, 5]) {
-		const capped = rows.find((row) => row.pills === 4 && row.active === false);
-		assert.ok(
-			title(capped.base, 4, false) >
-				capped.base - 32 - PRE_CAP[present] - 6 * 5,
-			`a ${present}-state inactive row keeps a wider title than the five-pill ladder left it`,
-		);
-	}
-
-	// THE NARROW TIER IS HELD TO THE SAME PROMISE, AT EVERY REACHABLE COUNT (design
-	// review round 2, D1). What this replaced was a weaker obligation - "the rung a row
-	// gets is never larger than the one it had before the cap" - which is a comparison
-	// rather than a floor: a row could satisfy it at any width and still clip its title.
-	// D1's frame was exactly that (a 640px pane, the title reduced to one glyph), so the
-	// assertion is now the same one the other two tiers take, and the counts it walks are
-	// the reachable ones: 0-4 pills, the cap being what makes 4 the ceiling (three states
-	// plus one collapse chip).
-	//
-	// THE NARROW RUNGS ARE THE RULING'S NUMBERS, restated here so an edit to the ladder
-	// that keeps this test green has to be an edit to both: inactive 124/192/240/296/336
-	// and active 192/260/308/364/404 for 0-4 pills.
-	for (const [active, expected] of [
-		[false, [124, 192, 240, 296, 336]],
-		[true, [192, 260, 308, 364, 404]],
-	]) {
-		assert.deepEqual(
-			expected.map((_, pills) => rungs(tabFloor(active, pills)).narrow),
-			expected,
-			`the ${active ? "active" : "inactive"} narrow rungs are the ladder D1's ruling settled: ${expected.join("/")}px`,
-		);
-	}
-	// The two rows the raised ladder is priced by, in the pane's own 640px: the common
-	// chip-less ACTIVE row (120 -> 192px) and the worst capped row (248 -> 404px). The
-	// numbers are asserted rather than described, because the ruling's cost argument is
-	// these two differences and nothing else.
-	assert.equal(rungs(tabFloor(true, 0)).narrow, 192);
-	assert.equal(rungs(tabFloor(false, 4)).narrow, 336);
-	assert.equal(rungs(tabFloor(true, 4)).narrow, 404);
-	// THE ARBITRARY LENGTH IS SINGULAR, which is the design's own simplification: one
-	// step past the spacing scale survives (`min-w-[26rem]`) instead of two, and no rung
-	// at any count uses anything else outside the scale.
-	const arbitrary = new Set();
-	for (const active of [false, true]) {
-		for (let pills = 0; pills <= 4; pills += 1) {
-			for (const token of tabFloor(active, pills).split(" ")) {
-				// The class without its container variant: `@2xl:@max-6xl:min-w-80` is
-				// `min-w-80` at the middle tier.
-				const step = token.slice(token.lastIndexOf(":") + 1);
-				// A spacing step is `min-w-<n>`; anything else is a length somebody chose.
-				if (!/^min-w-\d+$/.test(step)) arbitrary.add(step);
-			}
-		}
-	}
-	assert.deepEqual(
-		[...arbitrary],
-		["min-w-[26rem]"],
-		"exactly one step past the spacing scale is left in the ladder",
-	);
+test("all chip counts share a 144px floor under the 240px visual cap", () => {
+	for (const active of [false, true])
+		for (let pills = 0; pills <= 4; pills++)
+			assert.equal(tabFloor(active, pills), "min-w-36");
 });
 
 test("a failed navigation names the reason in the app's own chrome, and offers a retry", () => {
@@ -3746,3 +3515,194 @@ test("only the shell clears the attention, so a pane cannot lose a request it ca
 		"and the rule is mounted once, by the shell that is on every route",
 	);
 });
+
+test("rendered tabs preserve custom order, roving selection and complete keyed state names", () => {
+	const tabs = [
+		{
+			tabId: 1,
+			title: "One",
+			url: "https://one.test/",
+			sessionId: "a",
+			displayOrder: 2,
+			owner: "user",
+			active: false,
+			restored: false,
+			handedOver: false,
+			failed: false,
+			loading: false,
+		},
+		{
+			tabId: 2,
+			title: "Two",
+			url: "https://two.test/",
+			sessionId: "b",
+			displayOrder: 0,
+			owner: "agent",
+			active: true,
+			restored: false,
+			handedOver: false,
+			failed: false,
+			loading: true,
+		},
+		{
+			tabId: 3,
+			title: "https://three.test/private/path",
+			url: "https://three.test/private/path",
+			sessionId: "a",
+			displayOrder: 1,
+			owner: "agent",
+			active: false,
+			restored: true,
+			handedOver: true,
+			failed: true,
+			loading: true,
+		},
+	];
+	const html = render(
+		el(mod.BrowserTabStrip, {
+			tabs,
+			activeTabId: 2,
+			waiting: { 3: 4 },
+			tabPanelId: "fixture-panel",
+			onActivate: () => {},
+			onClose: async () => false,
+			onCloseTabs: async () => false,
+			onNewTab: () => {},
+			onHandOver: () => {},
+			onRevokeHandOver: () => {},
+		}),
+	);
+	assert.ok(html.indexOf('data-tab-id="2"') < html.indexOf('data-tab-id="3"'));
+	assert.ok(
+		html.indexOf('data-tab-id="3"') < html.indexOf('data-tab-id="1"'),
+		"group summaries must never reorder custom rows",
+	);
+	const rows = html.match(/<button[^>]*role="tab"[^>]*>/g);
+	assert.equal(rows.length, 3);
+	assert.equal(rows.filter((row) => row.includes('tabindex="0"')).length, 1);
+	assert.ok(
+		rows
+			.find((row) => row.includes('id="fixture-panel-tab-2"'))
+			.includes('aria-selected="true"'),
+	);
+	assert.ok(rows.every((row) => row.includes('aria-controls="fixture-panel"')));
+	assert.ok(
+		rows
+			.find((row) => row.includes('id="fixture-panel-tab-2"'))
+			.includes("Two, loading, agent-owned"),
+	);
+	const failed = rows.find((row) => row.includes('id="fixture-panel-tab-3"'));
+	assert.ok(
+		failed.includes(
+			"three.test, failed to load, shared with an agent, request 4 waiting, restored",
+		),
+	);
+	assert.ok(!failed.includes("private/path") && !failed.includes(", loading"));
+	assert.equal(
+		(html.match(/animate-pulse/g) || []).length,
+		1,
+		"only active strip loading animates; a failed/background tab cannot add motion",
+	);
+});
+
+const GROUP_RUN_IDS = /data-group-id="([^"]*)"/g;
+test("interleaved display order names each contiguous conversation run", () => {
+	const tabs = [1, 2, 3].map((tabId, index) => ({
+		tabId,
+		title: `Page ${tabId}`,
+		url: "https://run.test/",
+		sessionId: tabId === 2 ? "b" : "a",
+		displayOrder: index,
+		owner: "user",
+		active: tabId === 1,
+		restored: false,
+		handedOver: false,
+		failed: false,
+		loading: false,
+	}));
+	const html = render(
+		el(mod.BrowserTabStrip, {
+			tabs,
+			activeTabId: 1,
+			sessions: [
+				{ session_id: "a", title: "A" },
+				{ session_id: "b", title: "B" },
+			],
+			waiting: {},
+			onActivate: () => {},
+			onClose: async () => true,
+			onCloseTabs: async () => true,
+			onNewTab: () => {},
+			onHandOver: () => {},
+			onRevokeHandOver: () => {},
+		}),
+	);
+	assert.deepEqual(
+		[...html.matchAll(GROUP_RUN_IDS)].map((m) => m[1]),
+		["a", "b", "a"],
+		"A/B/A must not attribute the last A tab to B",
+	);
+});
+
+for (const outcome of [
+	{ status: "completed", action: "duplicate", tabId: 37 },
+	{
+		status: "failed",
+		action: "duplicate",
+		tabId: 38,
+		error: { code: "navigation_failed", message: "fixture navigation failed" },
+	},
+	{
+		status: "failed",
+		action: "duplicate",
+		tabId: null,
+		error: {
+			code: "unsupported_page",
+			message: "fixture refused before creation",
+		},
+	},
+])
+	test(`scoped duplicate preserves typed destination and reveals retained copy: ${outcome.status}/${outcome.tabId}`, async () => {
+		const previous = globalThis.window;
+		try {
+			globalThis.window = {
+				api: {
+					browser: { state: async () => null, actOnTab: async () => outcome },
+				},
+			};
+			const chrome = mod.renderBrowserChrome();
+			assert.deepEqual(
+				await chrome.actOnTab(1, "duplicate"),
+				outcome,
+				"failed navigation must not discard the retained destination ID",
+			);
+			// Exercise the shipped Surface callback with the real hook. This is not a
+			// mounted pane or native transport claim; native scoped recovery is separate.
+			const source = shippedSource(
+				"src/renderer/src/features/browser/components/browser-surface.tsx",
+			);
+			const marker = "onTabAction={(id, action) => {";
+			const start = source.indexOf(marker) + marker.length;
+			assert.ok(start >= marker.length);
+			const end = source.indexOf("\n\t\t\t\t}}", start);
+			assert.ok(end > start);
+			let reveals = 0;
+			const callback = new Function(
+				"chrome",
+				"tabScope",
+				"onShowAllTabs",
+				`return (id,action)=>{${source.slice(start, end)}}`,
+			)(chrome, "conversation", () => {
+				reveals++;
+			});
+			callback(1, "duplicate");
+			await new Promise((resolve) => setImmediate(resolve));
+			assert.equal(
+				reveals,
+				outcome.tabId === null ? 0 : 1,
+				"reveal a retained destination on success OR failure, never a refusal with no destination",
+			);
+		} finally {
+			globalThis.window = previous;
+		}
+	});

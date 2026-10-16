@@ -1,0 +1,10 @@
+{
+  "status": 200,
+  "message": "Desktop session result.",
+  "result": {
+    "generated_at": "2026-10-15T04:55:59Z",
+    "capability": "hub_links:1",
+    "links": [],
+    "unresolved": []
+  }
+}

@@ -1,6 +1,7 @@
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import type { ReusableProfile } from "@shared/api/local-operator/profile-hooks";
 import { Button, Progress } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { Check, Layers } from "lucide-react";
@@ -12,6 +13,9 @@ import {
 	useRef,
 	useState,
 } from "react";
+// Keep formatting on the framework-free leaf; the renderer barrel also loads
+// language-write query hooks that this component does not need.
+import { t } from "../../../../../i18n/messages";
 import {
 	type InstallSummary,
 	installBuiltins,
@@ -74,6 +78,8 @@ export const InstallBuiltinAgents: FC<InstallBuiltinAgentsProps> = ({
 	className,
 	onBusyChange,
 }) => {
+	// Locale refresh must preserve the in-flight batch and its focus handoff.
+	useI18nLocale();
 	const queryClient = useQueryClient();
 	const [running, setRunning] = useState(false);
 	const [done, setDone] = useState(0);
@@ -213,7 +219,7 @@ export const InstallBuiltinAgents: FC<InstallBuiltinAgentsProps> = ({
 						className="w-full"
 						onClick={() => void run()}
 					>
-						Install all built-in agents
+						{t("ui.agents.starters.action.all_builtins")}
 					</Button>
 				) : (
 					<button
@@ -229,10 +235,12 @@ export const InstallBuiltinAgents: FC<InstallBuiltinAgentsProps> = ({
 					>
 						<Layers className="size-4 shrink-0" aria-hidden="true" />
 						<span className="min-w-0 flex-1">
-							{total} built-in {total === 1 ? "agent" : "agents"} available
+							{t("ui.agents.starters.available", { count: total })}
 						</span>
 						<span className="shrink-0 font-medium text-accent">
-							Install all {total}
+							{t("ui.agents.starters.action.all_count", {
+								count: total,
+							})}
 						</span>
 					</button>
 				))}
@@ -268,7 +276,10 @@ export const InstallBuiltinAgents: FC<InstallBuiltinAgentsProps> = ({
 						<Progress
 							value={step}
 							max={total}
-							aria-label={`Installing built-in agents, ${step} of ${total}`}
+							aria-label={t("ui.agents.starters.progress.accessible", {
+								step: String(step),
+								total: String(total),
+							})}
 							/*
 							 * The track carries the STRUCTURAL role rather than the sunken step the
 							 * primitive defaults to. `sunken` on `surface` measures 1.11-1.26:1
@@ -304,8 +315,15 @@ export const InstallBuiltinAgents: FC<InstallBuiltinAgentsProps> = ({
 						 */}
 						<p className="text-meta text-ink-muted">
 							{current
-								? `Installing ${step} of ${total} — ${current}…`
-								: `Installing ${done} of ${total}…`}
+								? t("ui.agents.starters.progress.named", {
+										step: String(step),
+										total: String(total),
+										name: current,
+									})
+								: t("ui.agents.starters.progress.count", {
+										done: String(done),
+										total: String(total),
+									})}
 						</p>
 					</div>
 				)}
@@ -362,7 +380,7 @@ export const InstallBuiltinAgents: FC<InstallBuiltinAgentsProps> = ({
 								setSummary(null);
 							}}
 						>
-							Done
+							{t("ui.agents.starters.action.done")}
 						</Button>
 					</div>
 				)}

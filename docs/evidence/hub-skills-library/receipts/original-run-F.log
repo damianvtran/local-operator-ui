@@ -1,0 +1,111 @@
+renderer-driver: frame timezone pinned to America/New_York (ambient TZ=America/Toronto)
+[build] current: assets 2026-10-15T03:12:28.917Z >= sources 2026-10-15T02:19:42.243Z
+[note] abandoned scratch trees
+        13 seen, 0 owned by a live pid (kept), 13 younger than 30m (kept), 0 removed
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8127 (frame-src already lists it, media-src already lists it, img-src already lists it)
+  serve records 1 linked from /Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/rec-F   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui/.worktrees/skills-library-evidence
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-2544
+  frames        /Users/damian/local-operator-ui/.worktrees/skills-library-evidence/docs/evidence/hub-skills-library/frames/R-F-dark-signed-out
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-2544/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8127   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","stageLiveConsents","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8127","backend":"http://127.0.0.1:8127"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8127)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] window mode is headless and the window is never shown or focused
+[FAIL] the hub page exposes its scope chips
+        after 30008ms: null
+[note] loading frame
+        captured in flight
+[PASS] the library settles into a state this run can photograph
+[PASS] the library names its source explicitly
+[note] library source line
+        "Public"
+[PASS] search narrows the rows to a miss
+[PASS] the row's open press received the point (hit test)
+[PASS] the detail reader shows the skill's files
+[note] detail row
+        {"files":2,"name":"release-notes"}
+[PASS] gated pull: the create control is disabled and the detail names the missing credential
+[note] egress: distinct renderer request origins
+        ["null","http://127.0.0.1:8127"]
+[PASS] egress: every renderer request went to the stub origin or an app-local scheme
+        40 requests, origins ["null","http://127.0.0.1:8127"]
+[PASS] egress: no renderer request names api.radienthq.com
+[note] egress: app process tree sockets (one instant)
+        pids 2586,2649,2650,2705,2721,2723,2752
+        COMMAND    PID   USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
+        Electron  2586 damian   17u  IPv4 0xdb0ceef8942f538b      0t0  TCP 127.0.0.1:59335 (LISTEN)
+        Electron  2586 damian   23u  IPv4 0x49bd670f68bf92e3      0t0  TCP 127.0.0.1:59333->127.0.0.1:59366 (ESTABLISHED)
+        Electron  2586 damian   36u  IPv4 0xded1c7d3ff4fe9e8      0t0  TCP 127.0.0.1:59757->127.0.0.1:8127 (ESTABLISHED)
+        Electron  2586 damian   39u  IPv4 0xc9292c652b998f91      0t0  TCP 127.0.0.1:59333 (LISTEN)
+        Electron  2586 damian   61u  IPv4 0x602d07ab460811dd      0t0  TCP 127.0.0.1:59758->127.0.0.1:8127 (ESTABLISHED)
+        Electron  2586 damian   66u  IPv4 0x240a514243248340      0t0  TCP 127.0.0.1:59759->127.0.0.1:8127 (ESTABLISHED)
+        Electron  2586 damian   96u  IPv4 0x2ef8189203ca15c3      0t0  TCP 127.0.0.1:59373 (LISTEN)
+        Electron  2650 damian   28u  IPv4 0xdaed14d984ad5a26      0t0  TCP 127.0.0.1:59692->127.0.0.1:8127 (ESTABLISHED)
+[PASS] egress: no non-loopback ESTABLISHED/SYN_SENT socket in the app's process tree (instantaneous probe, not a continuous audit)
+
+---- app log (tail) ----
+23:15:33.895 › Claimed the desktop plane on http://127.0.0.1:8127.
+23:15:33.899 › Attached to daemon http://127.0.0.1:8127 (pid 2532, v0.0.0-stub, stub, record /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-2544/config/run/serve/2532.json)
+23:15:33.900 › Discovered a daemon; the backend manager is configured not to spawn or kill one.
+23:15:34.337 › Update service initialized. Dev mode: true, NPX install: false
+23:15:34.344 › Unpackaged instance: no packaged install state to leave alone.
+23:15:34.348 › Periodic update checks scheduled (every 5 minutes)
+23:15:34.354 › macOS auto-update requires app signing
+23:15:34.355 › [webauthn] Touch ID passkeys are off: unpackaged — an unpackaged run has no signature to carry the entitlement, so there is no group to configure
+23:15:34.373 › [browser] denied a media permission request from (unknown origin)
+23:15:34.383 › [browser] denied a media permission request from (unknown origin)
+23:15:34.384 › [browser] denied a web-app-installation permission request from (unknown origin)
+23:15:34.390 › [browser] denied a geolocation permission request from (unknown origin)
+23:15:35.132 › [browser] denied a media permission request from (unknown origin)
+23:15:35.133 › [browser] denied a media permission request from (unknown origin)
+23:15:35.133 › [browser] denied a web-app-installation permission request from (unknown origin)
+23:15:35.133 › [browser] denied a geolocation permission request from (unknown origin)
+23:15:35.175 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)
+23:15:35.188 › [browser] host on 127.0.0.1:59373 (proto 1), profile /private/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-2544/userdata-scene/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))
+Error occurred in handler for 'mini-view:registration-get': Error: This window cannot read the hotkey registration.
+    at /Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/main/index.jsc:1:2016606
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+23:15:35.677 › [browser] tab 1 navigated to about:blank
+23:15:35.707 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
+23:15:35.709 › Checking for UI updates...
+23:15:35.709 › Skip checkForUpdates because application is not packed and dev update config is not forced
+(node:2721) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 backend-status-changed listeners added to [IpcRenderer]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(Use `Electron Helper (Renderer) --trace-warnings ...` to show where the warning was created)
+[window-mode] state: visible=false focused=false focusable=false size=1380x900 content=1380x900
+23:15:37.362 › Checking for updates... (silent mode: true)
+23:15:37.363 › Skip checkForUpdates because application is not packed and dev update config is not forced
+23:15:37.363 › Checking for backend updates... (silent mode: true)
+23:15:37.363 › Skip backend update check in dev mode unless forced
+23:15:38.356 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
+23:15:38.477 › Checking for UI updates...
+23:15:38.477 › Skip checkForUpdates because application is not packed and dev update config is not forced
+(node:2721) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 backend-status-changed listeners added to [IpcRenderer]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(Use `Electron Helper (Renderer) --trace-warnings ...` to show where the warning was created)
+23:15:49.350 › The pre-split environment at /Users/damian/Library/Application Support/Local Operator/local-operator-venv is built on the interpreter inside /Applications/Local Operator.app; it is left exactly as it is, and this instance does not use it.
+
+[PASS] no process from this run outlived its boot
+
+frames: hub-skills-1380x900-local-operator-dark-detail.png, hub-skills-1380x900-local-operator-dark-loading.png, hub-skills-1380x900-local-operator-dark-populated.png, hub-skills-1380x900-local-operator-dark-search-empty.png, hub-skills-1380x900-local-operator-dark-signed-out.png
+frames directory: /Users/damian/local-operator-ui/.worktrees/skills-library-evidence/docs/evidence/hub-skills-library/frames/R-F-dark-signed-out
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-2544/app-scene.log
+scratch kept: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-2544 (the frames are also in --out)
+
+1 CHECK(S) FAILED

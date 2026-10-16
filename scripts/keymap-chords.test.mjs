@@ -38,6 +38,7 @@ const bundle = await build({
 			} from "./src/renderer/src/shared/keymap/keymap-chord";
 			export {
 				KEYMAP_ACTIONS,
+				LEGACY_BROWSER_CHORDS,
 				RESERVED_CHORDS,
 			} from "./src/renderer/src/shared/keymap/keymap-registry";
 			export { chordFromEvent } from "./src/renderer/src/shared/keymap/chord-capture";
@@ -63,7 +64,7 @@ const {
 	chordTokens,
 	effectiveChord,
 	formatQuickSendDisplay,
-	KEYMAP_ACTIONS,
+	LEGACY_BROWSER_CHORDS,
 	normalizeChord,
 	RESERVED_CHORDS,
 	chordFromEvent,
@@ -210,6 +211,27 @@ test("captureRefusal: the four sentences, in precedence order", () => {
 	assert.ok(reserved, "primary+k must be a reserved chord");
 	assert.equal(captureRefusal("cmd+k", "panel.console", {}), reserved);
 	assert.equal(captureRefusal("META+K", "panel.console", {}), reserved);
+	// Brief a1-8: a chord the browser surface swallows is refused at capture, so
+	// Settings never accepts a binding that would be silently dead in the browser.
+	for (const chord of [
+		"primary+t",
+		"primary+shift+t",
+		"primary+l",
+		"primary+r",
+		"primary+shift+r",
+		"primary+1",
+		"primary+5",
+		"primary+9",
+		"cmd+t",
+	]) {
+		const refusal = captureRefusal(chord, "panel.console", {});
+		assert.match(refusal ?? "", /^Reserved: .*browser.*\.$/, chord);
+	}
+	assert.match(
+		RESERVED_CHORDS.get("primary+w") ?? "",
+		/browser tab/,
+		"primary+w no longer claims it only closes the window",
+	);
 	// A chord another action answers is refused BY NAME, against the other
 	// action's EFFECTIVE chord — a default counts as taken.
 	assert.equal(
@@ -352,5 +374,58 @@ test("sanitizeShortcutBindings: junk, unknown ids, reserved chords, duplicates",
 			"panel.browser": "primary+j",
 		}),
 		{ "panel.console": null, "panel.browser": "primary+j" },
+	);
+});
+
+// R15: persistence must keep downgrade data without arming browser-owned chords.
+test("all fifteen legacy browser mappings survive dormant, never dispatch, and remain refused", () => {
+	assert.equal(LEGACY_BROWSER_CHORDS.size, 15);
+	assert.deepEqual(
+		[...LEGACY_BROWSER_CHORDS],
+		[
+			"primary+0",
+			"primary+r",
+			"primary+shift+r",
+			"primary+t",
+			"primary+shift+t",
+			"primary+l",
+			...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit) => `primary+${digit}`),
+		],
+	);
+	for (const chord of LEGACY_BROWSER_CHORDS) {
+		const bindings = sanitizeShortcutBindings({ "panel.console": chord });
+		assert.equal(bindings["panel.console"], chord);
+		assert.equal(effectiveChord("panel.console", bindings), "primary+j");
+		assert.equal(buildChordMap(bindings).has(chord), false);
+		assert.ok(captureRefusal(chord, "panel.console", bindings));
+		const unbound = sanitizeShortcutBindings({ "panel.run": chord });
+		assert.equal(unbound["panel.run"], chord);
+		assert.equal(effectiveChord("panel.run", unbound), null);
+		assert.equal(buildChordMap(unbound).has(chord), false);
+		assert.equal(
+			chordCaps(effectiveChord("panel.console", bindings), "mac"),
+			chordCaps("primary+j", "mac"),
+		);
+	}
+	assert.deepEqual(
+		sanitizeShortcutBindings({
+			"panel.console": "primary+t",
+			"panel.canvas": "primary+j",
+			"panel.run": "primary+shift+u",
+			"panel.ask": null,
+		}),
+		{
+			"panel.console": "primary+t",
+			"panel.run": "primary+shift+u",
+			"panel.ask": null,
+		},
+	);
+	assert.deepEqual(
+		sanitizeShortcutBindings({
+			"panel.console": "primary+p",
+			"panel.canvas": "garbage",
+			"panel.run": "alt+t",
+		}),
+		{},
 	);
 });

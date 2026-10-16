@@ -1,0 +1,30 @@
+direction negative control: {"bad":["not-a-wire-state"],"receiptMisclassified":false}
+✔ the hub-links scene is registered and backend-gated (3.005584ms)
+✔ the resolve-arm wire literals are the FROZEN ones, never the retired shorthand (0.381542ms)
+✔ the stub fixture answers the frozen inventory shape and its resolve arm (0.154ms)
+✔ the hub-links panel imports every hook it calls (0.185ms)
+✔ the resolve arm is typed to the frozen agent|team Kind (0.165041ms)
+✔ the policy write consumes the PATCH's {link_id, policy} snapshot, never a full HubLink (0.107ms)
+✔ the stub emits only real wire direction states (1.759792ms)
+✔ baseline known-ness follows the provenance literal, not a "known" sentinel (0.142917ms)
+✔ the public-egress consent body states the reversibility limit, without em dashes (0.449625ms)
+✔ the auto-push switch is described by its pause line only while that line renders (0.165ms)
+geometry negative controls: zero-wrapper REFUSED, horizontal-overflow REFUSED, actual-size positive ACCEPTED
+✔ painted geometry rejects both zero-wrapper and horizontal-overflow negative controls (0.4755ms)
+✔ strict published core minimum, identity, and uncertainty fail closed (0.257541ms)
+guard negatives: old/unknown/disconnected/replaced/late-positive blocked; accepted in-flight request not replayed
+✔ fresh invoke, newer push, and target identity fence stale positive results (18.636834ms)
+actual hooks: 13 fixed-version arms transmitted; 52 stale old/unknown/disconnected/identity callbacks -> ZERO additional writes; normal poll only blocks Hub writes, no upgrade flash
+✔ mounted actual policy/link/source/legacy hooks fence every write arm and retain read eligibility (479.628333ms)
+capability withdrawal: pending read settled, remote calls 5 -> 5, writes 2 -> 2
+✔ real mounted Skills hooks gate absence, explicit enablement, and retained callbacks after cap loss (7386.890958ms)
+✔ page gates its effective selection, entry and mount on complete adapter, not legacy link cap (1.589541ms)
+✔ shared stub retains legacy links and refuses only unsafe public auto-push writes, not previews or read-only copies (155.48775ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8130.8865

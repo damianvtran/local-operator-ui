@@ -1,0 +1,113 @@
+{
+	"ui.agents.refusals.name_taken": {
+		"role": "Agent-name collision refusal",
+		"tone": "Explain remedy without backend operation jargon",
+		"length_hint": "Two compact sentences in a field error",
+		"note": "Names the existing local agent using curly quotes; suggests another name or opening the existing agent.",
+		"placeholders": {
+			"name": "Registry name captured from the known English refusal; interpolate unchanged between the message’s curly quotes."
+		}
+	},
+	"ui.agents.refusals.name_grammar": {
+		"role": "Agent-name grammar refusal",
+		"tone": "Concise input constraint",
+		"length_hint": "One short name-field error sentence",
+		"note": "Spaces and slashes are invalid in stored profile names; regex detection remains English and unchanged."
+	},
+	"ui.agents.refusals.effort_unavailable": {
+		"role": "Unknown effort-tier refusal",
+		"tone": "Actionable configuration guidance",
+		"length_hint": "Two compact field-error sentences",
+		"note": "The supplied tier is unconfigured; inherit is a technical choice label and Settings is the configuration page.",
+		"placeholders": {
+			"tier": "Unconfigured effort-tier identifier captured from the backend refusal; do not translate the identifier."
+		}
+	},
+	"ui.agents.refusals.team_name_bound": {
+		"role": "Team-name length refusal",
+		"tone": "State the exact constraint",
+		"length_hint": "One short name-field sentence",
+		"note": "Preserve the inclusive 1-64 character range; this is not the agent-name rule."
+	},
+	"ui.agents.refusals.missing_manager": {
+		"role": "Unknown team-manager refusal",
+		"tone": "Factual identity failure",
+		"length_hint": "One compact manager-field sentence",
+		"note": "Manager identity matches neither an agent nor a team in the local registry.",
+		"placeholders": {
+			"name": "Registry name captured from the known English refusal; interpolate unchanged between the message’s curly quotes."
+		}
+	},
+	"ui.agents.refusals.missing_member": {
+		"role": "Unknown team-member refusal",
+		"tone": "Factual identity failure",
+		"length_hint": "One compact member-list error sentence",
+		"note": "A member identity matches neither an agent nor a team in the local registry.",
+		"placeholders": {
+			"name": "Registry name captured from the known English refusal; interpolate unchanged between the message’s curly quotes."
+		}
+	},
+	"ui.agents.refusals.team_nesting": {
+		"role": "Team nesting/cycle refusal",
+		"tone": "Explain structural failure and remedy",
+		"length_hint": "Two short member-list error sentences",
+		"note": "The team would exceed allowed nesting or contain itself. Direct the reader to check members without inventing a particular culprit."
+	},
+	"ui.agents.refusals.class.label.proactive": {
+		"role": "Proactive action-class label",
+		"tone": "Single technical class adjective",
+		"length_hint": "Compact toggle/metadata label, about 9 characters",
+		"note": "This is the display label only; the wire value proactive stays unchanged."
+	},
+	"ui.agents.refusals.class.label.reactive": {
+		"role": "Reactive action-class label",
+		"tone": "Single technical class adjective",
+		"length_hint": "Compact toggle/metadata label, about 8 characters",
+		"note": "This is the display label only; the wire value reactive stays unchanged."
+	},
+	"ui.agents.refusals.class.meaning.proactive": {
+		"role": "Explanation of current proactive behavior",
+		"tone": "Concrete disclosure of autonomous activity",
+		"length_hint": "Long paragraph beside the class control; wraps",
+		"note": "Must retain bounded nudging with growing gaps and independent scheduled wakes; it does not promise unlimited retries."
+	},
+	"ui.agents.refusals.class.meaning.reactive": {
+		"role": "Explanation of current reactive behavior",
+		"tone": "Precisely describe disabled mechanisms",
+		"length_hint": "Two short sentences beside class control; wraps",
+		"note": "No nudges and no independent schedule wakes; do not overstate this as never writing first in any circumstance."
+	},
+	"ui.agents.refusals.class.effect.proactive": {
+		"role": "Disclosure before switching proactive off",
+		"tone": "Explicit consequences with reassurance",
+		"length_hint": "Two sentences beside the toggle; wraps",
+		"note": "Stops nudges and scheduled wakes, but still replies in ordinary chat. Key names current class, not target class."
+	},
+	"ui.agents.refusals.class.effect.reactive": {
+		"role": "Disclosure before switching reactive on",
+		"tone": "Explicit opt-in costs with reassurance",
+		"length_hint": "Long paragraph beside the toggle; wraps",
+		"note": "Enables bounded nudges and independent scheduled wakes while ordinary replies remain available. Key names current class, not target class."
+	},
+	"ui.agents.refusals.class.install_disclosure": {
+		"role": "Install-first disclosure on built-in class toggle",
+		"tone": "Explain prerequisite side effect before action",
+		"length_hint": "Long paragraph near the built-in toggle; wraps",
+		"note": "Switching an uninstalled packaged agent first installs an editable local copy with the same identity/instructions, then writes the class."
+	},
+	"ui.agents.refusals.class.error.no_reason": {
+		"role": "Fallback class-switch refusal when backend supplied no reason",
+		"tone": "Actionable failure without echoing the heading",
+		"length_hint": "Two short sentences in the control alert",
+		"note": "Used only for absent/unreadable exception messages; recommends retrying the switch."
+	},
+	"ui.agents.refusals.class.error.install_landed": {
+		"role": "Class-switch refusal after successful install prerequisite",
+		"tone": "Separate observed install fact from uncertain class-write result",
+		"length_hint": "Error reason plus one short result sentence; wraps",
+		"note": "Only claims the install succeeded and the agent is editable. Does not claim class stayed unchanged: a failed response may follow a committed write.",
+		"placeholders": {
+			"reason": "Already adapted/localized backend refusal sentence, or the no-reason fallback; interpolate once without replacing or translating arbitrary backend data."
+		}
+	}
+}
