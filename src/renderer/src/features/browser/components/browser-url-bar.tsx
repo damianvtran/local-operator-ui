@@ -1,3 +1,4 @@
+import { Spinner } from "@shared/components/common/spinner";
 import {
 	Badge,
 	Button,
@@ -571,6 +572,21 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 						editing && "font-mono text-mono-sm",
 					)}
 				/>
+				{/* THE IN-FIELD LOADING SPINNER (brief 2.4: "in-field spinner + the
+				    omnibox placeholder showing the destination"). The field's `pr-7`
+				    already reserved this slot and nothing occupied it, so the whole
+				    loading signal lived in the strip - which a user looking at the
+				    field they just typed into does not see. It is a read-only mark,
+				    not a control: `pointer-events-none` and `aria-hidden`, because
+				    the strip's own per-tab spinner and the stop button's
+				    "Stop loading" label are what carry the state for a screen
+				    reader. Hidden while the field is being edited so it never sits
+				    over the caret. */}
+				{loading && !editing && (
+					<span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2">
+						<Spinner size="xs" />
+					</span>
+				)}
 			</div>
 			{/* The quiet icon still needs a sighted name. End-aligned/top keeps
                 this shared tooltip in chrome, not under the native page view. */}
