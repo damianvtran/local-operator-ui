@@ -1072,9 +1072,17 @@ test("a filter press releases every hold, and a lapse under Pending leaves only 
 	);
 });
 
-test("focus in a card that lapses under Pending lands on the Pending chip, never on BODY", async (t) => {
+test("focus in a card that lapses under Pending lands on the inert filter group, so a key cannot release the hold (UX U7)", async (t) => {
+	/*
+	 * The spacer under `Pending` has nothing to focus. Focus used to land on the SELECTED
+	 * `Pending` chip, so the reader's next Space or Enter pressed it, the press released
+	 * every hold (U4), and the next card slid up under the pointer (UX round 3, U7). It
+	 * now lands on the filter GROUP itself: named, `tabIndex=-1`, not a control, so a
+	 * keystroke there activates nothing.
+	 */
+	stubCardLayout(t);
 	const a1 = optionAsk("a-1", 3, TS);
-	const a2 = optionAsk("a-2", 2, TS + 10);
+	const a2 = optionAsk("a-2", 3, TS + 10);
 	const props = { scope: "session" };
 	const view = await mountFor(
 		t,
@@ -1100,9 +1108,134 @@ test("focus in a card that lapses under Pending lands on the Pending chip, never
 	const active = document.activeElement;
 	assert.ok(active !== document.body, "focus must not fall to BODY");
 	assert.equal(
-		active?.textContent,
-		"Pending · 1",
-		`focus lands on the filter the reader chose, got ${active?.outerHTML?.slice(0, 80)}`,
+		active?.hasAttribute("data-lo-ask-filter"),
+		true,
+		`focus lands on the filter group, got ${active?.outerHTML?.slice(0, 80)}`,
+	);
+	assert.equal(
+		active?.getAttribute("aria-label"),
+		"Filter asks",
+		"it is named",
+	);
+	assert.equal(
+		active?.getAttribute("tabindex"),
+		"-1",
+		"and reachable only by script",
+	);
+	assert.equal(
+		active?.closest("button, a, input, select, textarea"),
+		null,
+		"it is not a control a keystroke could activate",
+	);
+	/* The keys U7 measured: Space and Enter, as a real keyboard delivers them. */
+	const prevented = {};
+	for (const key of [" ", "Enter"]) {
+		await act(async () => {
+			for (const type of ["keydown", "keypress", "keyup"]) {
+				const event = new window.KeyboardEvent(type, {
+					key,
+					bubbles: true,
+					cancelable: true,
+				});
+				active.dispatchEvent(event);
+				if (type === "keydown") prevented[key] = event.defaultPrevented;
+			}
+		});
+	}
+	/*
+	 * Space on a focused non-control scrolls its container by a page, which in Chrome
+	 * slid a-2 up 142px with the hold intact (round 4's own measurement). jsdom has no
+	 * scrolling, so the pin is that the landing cancels Space's default action.
+	 */
+	assert.equal(prevented[" "], true, "Space on the landing does not scroll");
+	const spacer = view.container.querySelector('[data-lo-ask-spacer="a-1"]');
+	assert.equal(spacer === null, false, "the hold survives Space and Enter");
+	assert.equal(spacer?.style.minHeight, `${cardHeight(3)}px`);
+	assert.equal(
+		spacer?.nextElementSibling?.getAttribute("data-lo-ask-row"),
+		"a-2",
+		"a-2 keeps its place under the spacer",
+	);
+	/* U4 still holds: a deliberate press on the selected chip releases. */
+	const chip = [
+		...view.container.querySelectorAll("[data-lo-ask-filter] button"),
+	].find((b) => (b.textContent ?? "").startsWith("Pending"));
+	await act(async () => {
+		chip.click();
+	});
+	assert.equal(
+		view.container.querySelector("[data-lo-ask-spacer]") === null,
+		true,
+		"a real press on the chip still releases",
+	);
+});
+
+test("the reserved slot is drawn as the card's empty footprint (design D1 = UX U8)", async (t) => {
+	stubCardLayout(t);
+	const a1 = optionAsk("a-1", 3, TS);
+	const a2 = optionAsk("a-2", 2, TS + 10);
+	const props = { scope: "session" };
+	for (const filter of ["All", "Pending"]) {
+		const view = await mountFor(
+			t,
+			h(AskDrawer, { frontend: frontend([a1, a2]), ...props }),
+		);
+		const chip = [
+			...view.container.querySelectorAll("[data-lo-ask-filter] button"),
+		].find((b) => (b.textContent ?? "").startsWith(filter));
+		await act(async () => {
+			chip.click();
+		});
+		const card = view.container.querySelector('[data-lo-ask-row="a-1"]');
+		const frame = ["rounded-md", "border", "border-hairline"];
+		for (const name of frame)
+			assert.ok(card.classList.contains(name), `the card wears ${name}`);
+		await view.rerender(
+			h(AskDrawer, {
+				frontend: frontend([{ ...a1, status: "timed_out" }, a2]),
+				...props,
+			}),
+		);
+		const slot = view.container.querySelector(
+			'[data-lo-ask-held="a-1"], [data-lo-ask-spacer="a-1"]',
+		);
+		if (!slot) throw new Error(`${filter}: no reserved slot`);
+		for (const name of frame)
+			assert.ok(
+				slot.classList.contains(name),
+				`${filter}: the slot wears ${name}`,
+			);
+		assert.ok(
+			![...slot.classList].some((name) => name.startsWith("bg-")),
+			`${filter}: and no fill`,
+		);
+	}
+});
+
+test("two answers lost in one lapse are counted, not called one (UX U9)", async (t) => {
+	const asks = ["a-1", "a-2", "a-3"].map((id, i) => optionAsk(id, 2, TS + i));
+	const drafts = {
+		"a-1": { target: ["a-1-opt-1"] },
+		"a-2": { target: ["a-2-opt-2"] },
+	};
+	const props = { scope: "session", onDraftChange: () => undefined, drafts };
+	const view = await mountFor(
+		t,
+		h(AskDrawer, { frontend: frontend(asks), ...props }),
+	);
+	await view.rerender(
+		h(AskDrawer, {
+			frontend: frontend(
+				asks.map((ask) =>
+					ask.ask_id === "a-3" ? ask : { ...ask, status: "timed_out" },
+				),
+			),
+			...props,
+		}),
+	);
+	assert.equal(
+		view.container.querySelector("[data-lo-ask-lapse-note]")?.textContent,
+		"2 questions timed out; your answers were not sent.",
 	);
 });
 
