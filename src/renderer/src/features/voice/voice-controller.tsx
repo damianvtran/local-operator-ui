@@ -51,6 +51,7 @@ import { applyVoiceActive, useVoiceStatus } from "./use-voice-status";
 import { useVoiceStore } from "./voice-store";
 import { type VoiceStreamHandle, subscribeVoiceStream } from "./voice-stream";
 import {
+	VOICE_TAKE_ROW_TTL_MS,
 	type VoiceSpeakSource,
 	type VoiceTurnsInput,
 	type VoiceTurnsState,
@@ -113,22 +114,37 @@ export async function sendVoiceUtterance(
 	 */
 	const requestId = newVoiceRequestId();
 	feedTurns(sessionId, { kind: "armed", requestId });
-	const result =
-		"text" in take
-			? await desktopMedia(
-					{ op: "voice.utterance", sessionId, requestId, text: take.text },
-					null,
-				)
-			: await desktopMedia(
-					{
-						op: "voice.utterance",
-						sessionId,
-						requestId,
-						fileName: "utterance.webm",
-						mimeType: take.audio.type || "audio/webm",
-					},
-					new Uint8Array(await take.audio.arrayBuffer()),
-				);
+	scheduleTakeExpiry(sessionId, requestId);
+	let result: DesktopMediaResponse;
+	try {
+		result =
+			"text" in take
+				? await desktopMedia(
+						{ op: "voice.utterance", sessionId, requestId, text: take.text },
+						null,
+					)
+				: await desktopMedia(
+						{
+							op: "voice.utterance",
+							sessionId,
+							requestId,
+							fileName: "utterance.webm",
+							mimeType: take.audio.type || "audio/webm",
+						},
+						new Uint8Array(await take.audio.arrayBuffer()),
+					);
+	} catch (error) {
+		/*
+		 * A THROWN SEND IS A FAILED SEND (review round 6, R6-m2): the bridge or the
+		 * blob read can reject instead of answering. Left uncaught, the take stayed
+		 * outstanding and the header stayed on "Sending" for good.
+		 */
+		feedTurns(sessionId, { kind: "disarmed", requestId });
+		const reason = error instanceof Error ? error.message : String(error);
+		useVoiceStore.getState().setPhase("error", sessionId);
+		showErrorToast(t("ui.chat.voice.utterance_failed", { reason }));
+		return { ok: false, status: 0, detail: reason };
+	}
 	if (result.kind === "json" && result.status >= 200 && result.status < 300) {
 		/*
 		 * `working` only while this session still owes an answer (review round 5,
@@ -187,6 +203,7 @@ let speakSink: ((source: VoiceSpeakSource) => void) | null = null;
 export function feedTurns(sessionId: string, input: VoiceTurnsInput): void {
 	const before = turnsBySession.get(sessionId) ?? initialVoiceTurns();
 	const step = stepVoiceTurns(before, input);
+	clearTakeExpiry(before, step.state);
 	/*
 	 * A TAKE CONSUMED IN SILENCE ENDS THE EXCHANGE (R4-M1). When a step leaves
 	 * this session owing nothing without asking to speak - a resume that dropped
@@ -216,10 +233,54 @@ export function feedTurns(sessionId: string, input: VoiceTurnsInput): void {
 	for (const source of step.speak) speakSink?.(source);
 }
 
+/**
+ * Drop a take whose user row never arrived (review round 6, R6-m1), after
+ * `VOICE_TAKE_ROW_TTL_MS`. A take the server is still holding as a queued steer
+ * survives the check, so it is checked again one TTL later rather than dropped.
+ */
+const takeExpiry = new Map<string, ReturnType<typeof setTimeout>>();
+
+function scheduleTakeExpiry(sessionId: string, requestId: string): void {
+	const timer = setTimeout(() => {
+		takeExpiry.delete(requestId);
+		feedTurns(sessionId, { kind: "expired", requestId });
+		if (turnsBySession.get(sessionId)?.takes.includes(requestId))
+			scheduleTakeExpiry(sessionId, requestId);
+	}, VOICE_TAKE_ROW_TTL_MS);
+	// Bookkeeping, not work: it must never keep a process alive (node hosts).
+	(timer as { unref?: () => void }).unref?.();
+	takeExpiry.set(requestId, timer);
+}
+
+/** A take that left the outstanding list (bound, failed, reset) needs no timer. */
+function clearTakeExpiry(before: VoiceTurnsState, after: VoiceTurnsState) {
+	for (const id of before.takes) {
+		if (after.takes.includes(id)) continue;
+		const timer = takeExpiry.get(id);
+		if (timer === undefined) continue;
+		clearTimeout(timer);
+		takeExpiry.delete(id);
+	}
+}
+
+/**
+ * Where the header rests once something it showed is over (review round 6, I9):
+ * `working` while the session still owes this window an answer - a take out or
+ * its turn running, including after an approval was answered on screen - and
+ * idle otherwise.
+ */
+export function settleVoicePhase(sessionId: string): void {
+	const voice = useVoiceStore.getState();
+	if (takeOutstanding(turnsBySession.get(sessionId) ?? initialVoiceTurns()))
+		voice.setPhase("working", sessionId);
+	else voice.setPhase("idle", null);
+}
+
 /** The slot left this session: forget its takes, keep what it has said. */
 function resetTurnFlight(sessionId: string): void {
 	const state = turnsBySession.get(sessionId);
 	if (!state) return;
+	clearTakeExpiry(state, initialVoiceTurns());
 	turnsBySession.set(sessionId, {
 		...initialVoiceTurns(),
 		spoken: state.spoken,
@@ -282,7 +343,7 @@ async function speakSource(
 	);
 	if (result.kind !== "bytes") {
 		const voice = useVoiceStore.getState();
-		if (voice.phaseSessionId === sessionId) voice.setPhase("idle", null);
+		if (voice.phaseSessionId === sessionId) settleVoicePhase(sessionId);
 		// The slot moved mid-answer: silence is the right answer, not an error.
 		if (result.kind === "error" && result.voiceCode === "voice_not_enabled")
 			return;
@@ -337,8 +398,12 @@ export const VoiceController: FC = () => {
 				const was = ours(previous.playingKey) || ours(previous.loadingKey);
 				const is = ours(speech.playingKey) || ours(speech.loadingKey);
 				// Only an EDGE ends it: an unrelated store write while our fetch is
-				// still out (neither key set yet) is not the audio finishing.
-				if (was && !is) voice.setPhase("idle", null);
+				// still out (neither key set yet) is not the audio finishing. An
+				// announced approval ends mid-turn: the turn still owes its answer.
+				if (was && !is) {
+					if (voice.phaseSessionId) settleVoicePhase(voice.phaseSessionId);
+					else voice.setPhase("idle", null);
+				}
 			}),
 		[],
 	);

@@ -54,6 +54,23 @@ export type VoiceTurnsState = {
 	 * is answered. Two takes bound into one turn are one answer.
 	 */
 	answering: boolean;
+	/**
+	 * The `generation` of the turn being answered, or null while it is not known
+	 * yet (review round 6, R6-M1). A take bound while no turn runs (the prompt
+	 * path, the end-of-turn flush) learns it at the turn's start; one bound into
+	 * a running turn takes that turn's. A snapshot naming any other generation,
+	 * or arriving while this is still unknown, unbinds: the bound turn's end may
+	 * be among the frames the snapshot absorbed, and silence is the safe side.
+	 */
+	boundGeneration: number | null;
+	/** The session's latest `generation`, as any frame stated it, or null. */
+	generation: number | null;
+	/**
+	 * Takes the server holds in its steering queue right now (`queued_steering`),
+	 * by request id. A held take is exempt from expiry: its row lands at the next
+	 * tool boundary, however long the running step takes (R6-m1).
+	 */
+	held: string[];
 	/** A turn is running on the session (between `agent_start` and `agent_end`). */
 	inFlight: boolean;
 	/** The last assistant message of the turn in flight that carried text. */
@@ -83,14 +100,30 @@ export type VoiceTurnsState = {
 export type VoiceTurnsInput =
 	/** This renderer is sending an utterance, keyed by its own `request_id`. */
 	| { kind: "armed"; requestId: string }
-	/** That send failed: nothing was admitted under that id. */
+	/**
+	 * Nothing was admitted under that id: the send failed, or the stream said
+	 * `admission.failed` for it (R6-m1).
+	 */
 	| { kind: "disarmed"; requestId: string }
+	/**
+	 * The take's row did not arrive within `VOICE_TAKE_ROW_TTL_MS` (R6-m1). Drops
+	 * it unless the server is still holding it as a queued steer.
+	 */
+	| { kind: "expired"; requestId: string }
+	/** The session's steering queue, by request id, as a frontend frame states it. */
+	| { kind: "queued"; requestIds: string[] }
 	/**
 	 * The session's `streaming` flag. `snapshot` marks one read off a SNAPSHOT:
 	 * the authoritative state after a (re)subscribe, which is how a turn that
 	 * ended while the stream was away is learned (review round 4, R4-M1, path H).
 	 */
-	| { kind: "streaming"; streaming: boolean; snapshot?: boolean }
+	| {
+			kind: "streaming";
+			streaming: boolean;
+			snapshot?: boolean;
+			/** The frame's `generation`, when it states one. */
+			generation?: number;
+	  }
 	/**
 	 * The ids of the history entries a SNAPSHOT carries. A take whose own message
 	 * is already among them landed in the window the snapshot absorbed (frames
@@ -128,6 +161,9 @@ export function initialVoiceTurns(): VoiceTurnsState {
 	return {
 		takes: [],
 		answering: false,
+		boundGeneration: null,
+		generation: null,
+		held: [],
 		inFlight: false,
 		lastMessageId: null,
 		spoken: [],
@@ -140,6 +176,22 @@ export function initialVoiceTurns(): VoiceTurnsState {
 /** How many unbound takes are kept; a take that never binds is dropped oldest-first. */
 export const VOICE_TAKES_LIMIT = 8;
 
+/**
+ * How long a take may wait for its user row before it is dropped (R6-m1).
+ *
+ * 150 s = the longest a send can stay out, plus room for the row. The relay
+ * aborts an utterance upload at 120 s (`desktop-media.ts`,
+ * `AbortSignal.timeout(120000)`), which matches the server's whole STT budget
+ * (`STT_OVERALL_TIMEOUT_S = 120.0`, `stt/cascade.py`); a prompt's row is minted
+ * at admission, inside that window. The extra 30 s covers a steer that drains
+ * at the next tool boundary. A steer the server is still HOLDING (it is listed
+ * in `queued_steering`) is never expired, so a long tool step cannot drop it.
+ * A take that outlives this is answered by nothing - silence, the safe side -
+ * and stops counting as outstanding, so it cannot make this window announce a
+ * typed turn's approval (probe N5b) or hold the header on "Working".
+ */
+export const VOICE_TAKE_ROW_TTL_MS = 150_000;
+
 /** Whether this window still owes the session an answer (a take out or bound). */
 export function takeOutstanding(state: VoiceTurnsState): boolean {
 	return state.takes.length > 0 || state.answering;
@@ -147,8 +199,16 @@ export function takeOutstanding(state: VoiceTurnsState): boolean {
 
 /** Stop answering the bound turn, without speaking. */
 function unbind(state: VoiceTurnsState): VoiceTurnsState {
-	return { ...state, answering: false, lastMessageId: null };
+	return {
+		...state,
+		answering: false,
+		boundGeneration: null,
+		lastMessageId: null,
+	};
 }
+
+const finiteGeneration = (value: unknown): number | null =>
+	typeof value === "number" && Number.isFinite(value) ? value : null;
 
 function remember(list: string[], id: string): string[] {
 	const next = [...list, id];
@@ -201,6 +261,20 @@ export function stepVoiceTurns(
 			speak: [],
 		};
 	}
+	if (input.kind === "expired") {
+		if (!state.takes.includes(input.requestId)) return { state, speak: [] };
+		if (state.held.includes(input.requestId)) return { state, speak: [] };
+		return {
+			state: {
+				...state,
+				takes: state.takes.filter((id) => id !== input.requestId),
+			},
+			speak: [],
+		};
+	}
+	if (input.kind === "queued") {
+		return { state: { ...state, held: input.requestIds }, speak: [] };
+	}
 	if (input.kind === "disarmed") {
 		return {
 			state: {
@@ -233,9 +307,40 @@ export function stepVoiceTurns(
 		 * session flips to streaming (measured: user message_start @4, streaming
 		 * true @6), so an idle update can precede the very turn it binds.
 		 */
-		const next = { ...state, inFlight: input.streaming };
-		if (input.snapshot && !input.streaming && state.answering)
-			return { state: unbind(next), speak: [] };
+		const generation = finiteGeneration(input.generation);
+		const next = {
+			...state,
+			inFlight: input.streaming,
+			generation: generation ?? state.generation,
+		};
+		if (input.snapshot && state.answering) {
+			if (!input.streaming) return { state: unbind(next), speak: [] };
+			/*
+			 * A RUNNING SNAPSHOT IS THE BOUND TURN ONLY IF IT SAYS SO (R6-M1). The
+			 * bound turn's `agent_end` and the NEXT turn's `agent_start` can both
+			 * fall into the absorbed window, leaving a snapshot that says
+			 * `streaming: true` about a different turn (measured: bound generation
+			 * 1, snapshot generation 2, the typed steer's turn). Only the same
+			 * generation keeps the binding (K2); a different one, or one this window
+			 * cannot compare, unbinds silently.
+			 */
+			if (
+				state.boundGeneration === null ||
+				generation === null ||
+				generation !== state.boundGeneration
+			)
+				return { state: unbind(next), speak: [] };
+			return { state: next, speak: [] };
+		}
+		// A live frame saying a turn started resolves a binding still waiting for it.
+		if (
+			!input.snapshot &&
+			input.streaming &&
+			state.answering &&
+			state.boundGeneration === null &&
+			generation !== null
+		)
+			return { state: { ...next, boundGeneration: generation }, speak: [] };
 		return { state: next, speak: [] };
 	}
 	/*
@@ -287,11 +392,14 @@ export function stepVoiceTurns(
 		// A snapshot's gate was parked before this watcher saw it: never spoken.
 		if (input.snapshot) return { state: seen, speak: [] };
 		/*
-		 * ONLY THE WINDOW THAT SENT WORDS ANNOUNCES (U2). Every window holding the
-		 * slot watches the same stream, and an approval reached by typing - or by
-		 * another window's take - is not this window's to say aloud.
+		 * ONLY THE TURN THAT CARRIES THIS WINDOW'S WORDS ANNOUNCES (U2, and by
+		 * identity since review round 6, R6-m1). Every window holding the slot
+		 * watches the same stream, and an approval reached by typing - or by
+		 * another window's take - is not this window's to say aloud. A take still
+		 * waiting for its row is not enough: the gate on screen then belongs to
+		 * whatever turn is running, typed or not (probe N5b).
 		 */
-		if (!takeOutstanding(state)) return { state: seen, speak: [] };
+		if (!state.answering) return { state: seen, speak: [] };
 		return { state: seen, speak: [{ kind: "gate", requestId }] };
 	}
 	const event = input.event;
@@ -302,8 +410,19 @@ export function stepVoiceTurns(
 		 * does NOT bind and does not unbind: on the prompt path the take's own
 		 * message arrives before this event, and it is that message that binds.
 		 */
+		const generation = finiteGeneration(event.generation) ?? state.generation;
 		return {
-			state: { ...state, inFlight: true, lastMessageId: null },
+			state: {
+				...state,
+				inFlight: true,
+				generation,
+				lastMessageId: null,
+				// The bound take's turn starts here when it was bound while idle.
+				boundGeneration:
+					state.answering && state.boundGeneration === null
+						? generation
+						: state.boundGeneration,
+			},
 			speak: [],
 		};
 	}
@@ -326,6 +445,12 @@ export function stepVoiceTurns(
 				...state,
 				takes: state.takes.filter((take) => take !== id),
 				answering: true,
+				// Into a running turn: that turn's. While idle: learned at its start.
+				boundGeneration: state.answering
+					? state.boundGeneration
+					: state.inFlight
+						? state.generation
+						: null,
 				lastMessageId: null,
 			},
 			speak: [],
@@ -343,11 +468,21 @@ export function stepVoiceTurns(
 		return { state: { ...state, lastMessageId: id }, speak: [] };
 	}
 	if (type === "agent_end") {
+		const endedGeneration = finiteGeneration(event.generation);
 		const ended: VoiceTurnsState = {
 			...unbind(state),
 			inFlight: false,
+			generation: endedGeneration ?? state.generation,
 		};
-		if (!state.answering) {
+		/*
+		 * The end of a turn other than the bound one answers nothing: it can only
+		 * arrive here when frames between were lost, so silence (R6-M1).
+		 */
+		const otherTurn =
+			endedGeneration !== null &&
+			state.boundGeneration !== null &&
+			endedGeneration !== state.boundGeneration;
+		if (!state.answering || otherTurn) {
 			// Not a turn that carried this window's words (typed, a wake, or one
 			// that ended before a take's message arrived): nothing to say.
 			return { state: ended, speak: [] };
@@ -449,6 +584,59 @@ export function historyIdsOfFrame(
 	const ids: string[] = [];
 	for (const entry of entries) {
 		const id = (entry as { id?: unknown } | null)?.id;
+		if (typeof id === "string" && id !== "") ids.push(id);
+	}
+	return ids;
+}
+
+/**
+ * The session's `generation` a frame states, or `undefined`: on a turn's own
+ * `agent_start`/`agent_end` event, on a frontend update's changes, or on a
+ * snapshot or replace's frontend snapshot.
+ */
+export function generationOfFrame(
+	frame: { type?: unknown; payload?: unknown } | null | undefined,
+): number | undefined {
+	if (!frame || typeof frame.payload !== "object" || frame.payload === null)
+		return undefined;
+	const payload = frame.payload as Record<string, unknown>;
+	const holder =
+		frame.type === "snapshot" || frame.type === "frontend.replace"
+			? (payload.frontend as { snapshot?: unknown } | undefined)?.snapshot
+			: frame.type === "frontend.update"
+				? payload.changes
+				: frame.type === "event"
+					? payload
+					: undefined;
+	if (!holder || typeof holder !== "object") return undefined;
+	const value = (holder as { generation?: unknown }).generation;
+	return typeof value === "number" && Number.isFinite(value)
+		? value
+		: undefined;
+}
+
+/**
+ * The request ids in the session's steering queue a frontend frame states, or
+ * `undefined` when it says nothing about the queue.
+ */
+export function queuedSteeringOfFrame(
+	frame: { type?: unknown; payload?: unknown } | null | undefined,
+): string[] | undefined {
+	if (!frame || typeof frame.payload !== "object" || frame.payload === null)
+		return undefined;
+	const payload = frame.payload as Record<string, unknown>;
+	const holder =
+		frame.type === "snapshot" || frame.type === "frontend.replace"
+			? (payload.frontend as { snapshot?: unknown } | undefined)?.snapshot
+			: frame.type === "frontend.update"
+				? payload.changes
+				: undefined;
+	if (!holder || typeof holder !== "object") return undefined;
+	const queue = (holder as { queued_steering?: unknown }).queued_steering;
+	if (!Array.isArray(queue)) return undefined;
+	const ids: string[] = [];
+	for (const row of queue) {
+		const id = (row as { id?: unknown } | null)?.id;
 		if (typeof id === "string" && id !== "") ids.push(id);
 	}
 	return ids;
