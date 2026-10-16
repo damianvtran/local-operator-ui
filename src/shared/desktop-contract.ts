@@ -3952,6 +3952,65 @@ export const RUNTIME_BUSY_CODE = "runtime_busy";
 export const RUNTIME_RETIRING_CODE = "runtime_retiring";
 
 /**
+ * The adopt route's answer: `POST .../asides/{id}/adopt` -> `result.data`.
+ *
+ * `status` says WHEN the exchange joins the conversation. `"adopted"` is now: the
+ * rows are durable before the answer settles. `"queued"` is later: the session
+ * was mid-turn, and the owner holds the pair until the turn's next safe point,
+ * where it lands after the closed tool batch rather than inside it (backend
+ * decision rows D1/D4 on the queued-adopt change). ABSENT reads as `"adopted"`,
+ * because every owner older than the queue answered `status: "adopted"` or
+ * nothing at all and always wrote synchronously.
+ *
+ * Passthrough and a plain-string fallback on purpose: the vocabulary is the
+ * backend's to extend, and a renderer that threw on an unheard-of status would
+ * report a refusal for an adopt the owner accepted.
+ */
+export const asideAdoptResultSchema = z
+	.object({
+		data: z
+			.object({
+				aside_id: z.string().optional(),
+				status: z.union([z.enum(["adopted", "queued"]), z.string()]).optional(),
+			})
+			.passthrough(),
+	})
+	.passthrough();
+
+export type AsideAdoptResult = z.infer<typeof asideAdoptResultSchema>;
+
+/**
+ * The owner's TYPED refusal of an adopt: `409 {"detail": {"code":
+ * "aside_adopt_refused", "reason": ..., "message": ...}}`.
+ *
+ * An adopt that cannot be deferred fails loudly with this code instead of landing
+ * in a live tool batch (backend D3). `reason` is one of a closed set; the
+ * renderer composes its own sentence from it rather than echoing the owner's
+ * prose, and an unknown reason falls back to the owner's message.
+ */
+export const ASIDE_ADOPT_REFUSED_CODE = "aside_adopt_refused";
+
+export const ASIDE_ADOPT_REFUSED_REASONS = [
+	"session_closed",
+	"open_tool_batch",
+	// An owner older than the queue refused a mid-turn adopt; the route maps its
+	// legacy refusal to this reason (backend D9).
+	"turn_running",
+] as const;
+
+export type AsideAdoptRefusedReason =
+	(typeof ASIDE_ADOPT_REFUSED_REASONS)[number];
+
+/** The refusal's `reason`, when the body carries one this build knows. */
+export function asideAdoptRefusedReason(
+	detail: unknown,
+): AsideAdoptRefusedReason | undefined {
+	if (typeof detail !== "object" || detail === null) return undefined;
+	const reason = (detail as { reason?: unknown }).reason;
+	return ASIDE_ADOPT_REFUSED_REASONS.find((known) => known === reason);
+}
+
+/**
  * The sentences a refusal composes into, one per code.
  *
  * NO sentence here names an update, and none tells the user to change what the

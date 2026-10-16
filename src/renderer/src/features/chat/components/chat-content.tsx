@@ -39,6 +39,7 @@ import { usePairingCause } from "@shared/hooks/use-pairing-cause";
  * eight classes and a copy is what drifts when one of them changes.
  */
 import { cn } from "@shared/lib/utils";
+import { useAsideStore } from "@shared/store/aside-store";
 import {
 	remoteOwnedId,
 	useCanonicalSessionsStore,
@@ -74,6 +75,7 @@ import {
 	goalPresent,
 } from "../../../../../shared/desktop-session-contract";
 import { DelegatedCleanupNoticeBand } from "../../settings/components/delegated-cleanup-notice";
+import { settleQueuedAdoption } from "../aside";
 import { gateIsSecret } from "../ask-answer";
 import type { AskDraft, AskOutcome, AskScope } from "../ask-queue";
 import {
@@ -920,6 +922,41 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			capabilities.data,
 			"session_delete",
 		);
+		/*
+		 * WHETHER THE OWNER QUEUES AN ADOPT PRESSED MID-TURN (`aside_adopt_queue`,
+		 * backend D4/D5). Read here, beside `turnAlive`, because this component hands
+		 * the composer both halves of the adopt gate; without the key the panel keeps
+		 * its idle-only rule exactly.
+		 */
+		const asideAdoptQueue = desktopFeatureEnabled(
+			capabilities.data,
+			"aside_adopt_queue",
+		);
+		/*
+		 * A QUEUED ADOPT IS RETIRED BY WHAT THIS TRANSCRIPT SHOWS: the pair's rows
+		 * arriving (the owner's history delta folds them by id) detaches it; a turn
+		 * that ends without them starts the wait-then-re-read fallback, which says
+		 * the aside was not added if they never come (`settleQueuedAdoption`). Here
+		 * rather than in the composer because this component already re-renders on
+		 * every transcript change and the memoised composer must not. Subscribed to
+		 * a number (-1 when nothing is queued, else how many of the pair's ids are
+		 * known), so a session with no queued adopt pays one primitive, and the ids
+		 * arriving after the queued answer re-run the check.
+		 */
+		const asideQueued = useAsideStore((state) =>
+			sessionId
+				? (state.attached[sessionId]?.queued?.messageIds.length ?? -1)
+				: -1,
+		);
+		const transcriptIndex = canonical.view.transcript.index;
+		useEffect(() => {
+			if (asideQueued < 0 || !sessionId) return;
+			settleQueuedAdoption(
+				sessionId,
+				(id) => transcriptIndex.has(id),
+				canonical.turnAlive,
+			);
+		}, [asideQueued, sessionId, transcriptIndex, canonical.turnAlive]);
 		/*
 		 * THE CODE REVIEW SURFACE'S CAPABILITY (`features.code_requests`, the
 		 * design record §D.6's own key). Read here because this component is where
@@ -2787,6 +2824,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 */
 								asideSessionId={sessionId}
 								asideStreaming={canonical.turnAlive}
+								asideAdoptQueue={asideAdoptQueue}
 								/*
 								 * The capability itself, not just its busy half: the composer
 								 * holds the control's SLOT while a turn runs and for a grace

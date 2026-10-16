@@ -8268,3 +8268,51 @@ test("a `no_reply` call folds as an ordinary tool row, live and replayed", () =>
 	assert.equal(durableRow.toolName, "no_reply");
 	assert.equal(durableRow.phase, "done");
 });
+
+/*
+ * THE REDUCER'S HALF OF THE STRANDED-ADOPT NOTICE (aside queue, QA round 1, Q1).
+ * The owner says a queued aside never landed with one live `notice{kind:"error"}`
+ * at dispose. This pins only the REDUCER: once folded, the row is an error notice,
+ * and an authoritative page of the same conversation keeps it. It does NOT mean
+ * the app paints that notice - measured in QA round 2 (Q2-2), its text never
+ * reaches the DOM after a stop; the durable `session_incident` row is what the
+ * user sees. Which step past the reducer drops it is not isolated (deferred).
+ */
+test("an error notice folds into an error row and survives an authoritative page", () => {
+	const user = {
+		role: "user",
+		id: "u1",
+		content: [{ type: "text", text: "UIMAIN" }],
+	};
+	const page = {
+		entries: [
+			{
+				id: "u1",
+				ts: 1,
+				type: "message",
+				payload: { kind: "message", ...user },
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	};
+	let state = applyHistoryPage(EMPTY_TRANSCRIPT, page, { authoritative: true });
+	state = applyEvent(
+		state,
+		{
+			type: "notice",
+			kind: "error",
+			text: "an aside you added to the conversation could not be saved: the conversation closed in the middle of a tool call",
+		},
+		5,
+	);
+	const notice = state.records.find((record) => record.kind === "notice");
+	assert.equal(notice?.level, "error");
+	const reread = applyHistoryPage(state, page, { authoritative: true });
+	assert.equal(
+		reread.records.some(
+			(record) => record.kind === "notice" && record.level === "error",
+		),
+		true,
+	);
+});
