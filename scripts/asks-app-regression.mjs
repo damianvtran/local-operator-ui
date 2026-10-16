@@ -99,6 +99,40 @@ async function prepareControl(root, output) {
 		),
 	};
 }
+/**
+ * Wait for the app's own debugging port to ANSWER, whatever driver tree this run
+ * imported.
+ *
+ * The candidate tree exports `waitForDevtools` on `rendererDriverApi` and is
+ * preferred when present, so the shared implementation stays the one caller
+ * contract. The control leg imports a pinned historical driver whose facade does
+ * not carry it; there the equivalent bounded poll is repeated, because the
+ * requirement is about the PORT being ready and not about which revision of the
+ * driver is on disk.
+ */
+async function waitForDevtoolsPort(handle, api, timeoutMs = 60_000) {
+	if (typeof api?.waitForDevtools === "function") {
+		await api.waitForDevtools(handle, timeoutMs);
+		return;
+	}
+	const started = Date.now();
+	for (;;) {
+		try {
+			const response = await fetch(
+				`http://127.0.0.1:${handle.port}/json/version`,
+			);
+			if (response.ok) return;
+		} catch {
+			/* not listening yet */
+		}
+		if (Date.now() - started > timeoutMs)
+			throw new Error(
+				`the app's debugging port ${handle.port} never answered in ${timeoutMs}ms`,
+			);
+		await new Promise((resumed) => setTimeout(resumed, 250));
+	}
+}
+
 async function runCase(kind, root, output, records) {
 	process.chdir(root);
 	process.argv.push(
@@ -237,7 +271,27 @@ async function runCase(kind, root, output, records) {
 			join(output, "owned-app.json"),
 			JSON.stringify({ pid: app.pid, inspector: app.inspectPort }),
 		);
-		cdp = await api.CdpClient.attach(app.port, "index.html");
+		/*
+		 * The debugging endpoint answers `/json/version` before the app has a
+		 * window, and `CdpClient.attach` then waits for the page TARGET - so the
+		 * endpoint wait comes first, as it does at every other caller in the shared
+		 * driver. Attaching straight after `launchApp` is the defect CI caught: the
+		 * port was not listening yet, `fetch` REJECTED, and the rejection escaped
+		 * the attach loop as a bare `TypeError: fetch failed`.
+		 *
+		 * WHY THIS IS NOT JUST `api.waitForDevtools`. This case runs against TWO
+		 * driver trees: the candidate one from the checkout, and - in the control
+		 * leg - the PINNED HISTORICAL tree unpacked from `control-source.tar`,
+		 * which is imported from `root/scripts/renderer-driver.mjs` below. That
+		 * historical facade exports six keys and no wait (2461cfa3), so calling
+		 * the newer surface directly would make the control leg throw for a reason
+		 * unrelated to the app. The wait is therefore resolved through the api when
+		 * the tree offers it and otherwise repeated here, and what the control leg
+		 * needs - a port that is listening before anybody attaches - holds either
+		 * way. Same bounded poll, same 60s ceiling, same message.
+		 */
+		await waitForDevtoolsPort(app, api);
+		cdp = await api.CdpClient.attach(app.port, "out/renderer/index.html");
 		await cdp.send("Page.addScriptToEvaluateOnNewDocument", {
 			source:
 				'localStorage.setItem("onboarding-storage",JSON.stringify({state:{isModalComplete:true,isTourComplete:true,currentStep:"create_agent"},version:0}));',
