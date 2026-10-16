@@ -12,7 +12,7 @@
 	"ui.shell.rail.ask.aria_count": {
 		"role": "button accessible name",
 		"tone": "Compact panel action or status; preserve the destination and pending-work distinction.",
-		"note": "Ask count includes pending or recently settled requests, so preserve waiting or moved on, not waiting alone.",
+		"note": "Ask count is the answerable asks only: a timed-out ask is read-only and is not counted, so the count is waiting alone.",
 		"length": "One tooltip or accessible name; exact counts are never badge-capped.",
 		"placeholders": {
 			"chord": "Empty when unbound, otherwise the already-formatted platform keyboard chord including leading space and parentheses.",

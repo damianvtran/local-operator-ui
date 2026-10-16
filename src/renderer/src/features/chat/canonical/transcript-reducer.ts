@@ -635,11 +635,11 @@ type TranscriptPayloadRecord =
 			/**
 			 * A queued ask's TIMEOUT notice (`ask_timeout`, design §2.5/§4).
 			 *
-			 * It says the agent MOVED ON and that the ask is still answerable, because
-			 * both halves are true and each is useless without the other: "timed out"
-			 * alone reads as finished, and "you can still answer" alone hides that the
-			 * agent stopped waiting. The row is the user's one record of that moment,
-			 * which is why it is a receipt of its own rather than a notice line.
+			 * It says the deadline passed AND what the agent did about it - it went ahead
+			 * without the answer - because "timed out" alone does not say whether anything
+			 * is still waiting on the reader (`askTimeoutSummary`). The row is the user's
+			 * one record of that moment, which is why it is a receipt of its own rather
+			 * than a notice line.
 			 */
 			kind: "ask_timeout";
 			id: string;

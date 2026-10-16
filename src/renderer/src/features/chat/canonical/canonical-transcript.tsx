@@ -2334,7 +2334,7 @@ const PeerRow = memo(function PeerRow({
  * The timeout row has NO expansion. It states a fact in one sentence and the
  * expansion would repeat it — the rule `PeerRow` states and `WakeRow` applies
  * (an expansion that delivers nothing is worse than no expansion), with the
- * timeout's extra half (the ask is still answerable) already in the words.
+ * timeout's extra half (the agent went ahead without the answer) already in the words.
  *
  * ## INK, and one honest gap
  *
