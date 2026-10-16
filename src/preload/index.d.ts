@@ -138,6 +138,8 @@ declare global {
 				closeTabs: (intent: unknown) => Promise<unknown>;
 				activateTab: (tabId: number) => Promise<unknown>;
 				navigate: (url: string) => Promise<unknown>;
+				/** Home: no argument, because main owns the start state. */
+				home: () => Promise<unknown>;
 				reload: (hard?: boolean) => Promise<unknown>;
 				stop: () => Promise<unknown>;
 				/** The recovery click on the `unavailable` state (round 1, D1a): no argument,

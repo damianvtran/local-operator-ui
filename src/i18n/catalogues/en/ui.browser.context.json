@@ -749,6 +749,81 @@
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
 		"note": "Address and navigation bar: names/explains approvals waiting. count formatting uses ICU number ::group-off on the arm that interpolates the count, because the pre-extraction literal interpolated the raw number and bare # would group it (1000 rendered as 1,000). Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
 	},
+	"ui.browser.browser_url_bar.home_destination": {
+		"role": "hover tooltip \u2014 address and navigation bar",
+		"tone": "Factual and restrained",
+		"note": "Home tooltip naming the destination: the start page, which is blank. Length: keep compact."
+	},
+	"ui.browser.browser_url_bar.site_unverified": {
+		"role": "hover tooltip \u2014 address and navigation bar site-info indicator",
+		"tone": "Factual and restrained",
+		"note": "Site-info tooltip for an https page whose load failed before identity could be verified. Placeholders: origin = the page origin, preserve verbatim. Length: keep compact."
+	},
+	"ui.browser.browser_url_bar.site_unverified_certificate": {
+		"role": "hover tooltip \u2014 address and navigation bar site-info indicator",
+		"tone": "Factual and restrained",
+		"note": "Site-info tooltip for an https page whose certificate could not be verified. Placeholders: origin = the page origin, preserve verbatim. Length: keep compact."
+	},
+	"ui.browser.page_context_menu.cut": {
+		"role": "menu item \u2014 page context menu",
+		"tone": "Factual and restrained",
+		"note": "Standard edit action for the field under the pointer. Length: keep compact."
+	},
+	"ui.browser.page_context_menu.copy": {
+		"role": "menu item \u2014 page context menu",
+		"tone": "Factual and restrained",
+		"note": "Standard edit action for the field under the pointer. Length: keep compact."
+	},
+	"ui.browser.page_context_menu.paste": {
+		"role": "menu item \u2014 page context menu",
+		"tone": "Factual and restrained",
+		"note": "Standard edit action for the field under the pointer. Length: keep compact."
+	},
+	"ui.browser.page_context_menu.select_all": {
+		"role": "menu item \u2014 page context menu",
+		"tone": "Factual and restrained",
+		"note": "Standard edit action for the field under the pointer. Length: keep compact."
+	},
+	"ui.browser.page_context_menu.copy_page_address": {
+		"role": "menu item \u2014 page context menu",
+		"tone": "Factual and restrained",
+		"note": "Copies the current page address to the clipboard. Length: keep compact."
+	},
+	"ui.browser.browser_url_bar.home": {
+		"role": "accessible control/region name \u2014 address and navigation bar",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Home button: returns the active tab to the browser start state. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_url_bar.site_secure": {
+		"role": "hover tooltip \u2014 address and navigation bar site-info indicator",
+		"tone": "Factual and restrained",
+		"note": "Site-info tooltip for an https page. Placeholders: origin = the page origin (scheme and host), preserve verbatim. Length: keep the hover tooltip compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_url_bar.site_not_secure": {
+		"role": "hover tooltip \u2014 address and navigation bar site-info indicator",
+		"tone": "Factual and restrained",
+		"note": "Site-info tooltip for an http page; states the connection is not secure. Placeholders: origin = the page origin, preserve verbatim. Length: keep the hover tooltip compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_url_bar.site_internal": {
+		"role": "hover tooltip \u2014 address and navigation bar site-info indicator",
+		"tone": "Factual and restrained",
+		"note": "Site-info tooltip for an internal or start page with no remote origin. Length: keep the hover tooltip compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_url_bar.site_file": {
+		"role": "hover tooltip \u2014 address and navigation bar site-info indicator",
+		"tone": "Factual and restrained",
+		"note": "Site-info tooltip for a local file origin. Length: keep the hover tooltip compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.page_context_menu.copy_link_address": {
+		"role": "menu item \u2014 page context menu",
+		"tone": "Short imperative",
+		"note": "Copies the link under the pointer to the clipboard. Length: keep the menu item compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.page_context_menu.open_link_in_new_tab": {
+		"role": "menu item \u2014 page context menu",
+		"tone": "Short imperative",
+		"note": "Opens the link under the pointer in a new tab. Length: keep the menu item compact, around the English footprint; no hard cell cap is defined."
+	},
 	"ui.browser.browser_webauthn_dialog.choose_a_passkey": {
 		"role": "hover tooltip \u2014 passkey chooser",
 		"tone": "Factual and restrained",

@@ -1,0 +1,131 @@
+{
+	"ui.hub.taxonomy.category.investment": {
+		"role": "Known investment category label in hub rail and agent pills",
+		"tone": "Sentence-case topic noun; not an action or a status.",
+		"note": "Financial investing and portfolio work; distinct from Accounting. Backend snake_case identifiers and author tags stay unchanged. This label is read through a locale-aware getter; unknown categories fall back to their original humanized identifier.",
+		"length_hint": "Compact rail row and small display pill; about 10 English characters."
+	},
+	"ui.hub.taxonomy.category.accounting": {
+		"role": "Known accounting category label in hub rail and agent pills",
+		"tone": "Sentence-case topic noun; not an action or a status.",
+		"note": "Bookkeeping and financial records; distinct from Investment. Backend snake_case identifiers and author tags stay unchanged. This label is read through a locale-aware getter; unknown categories fall back to their original humanized identifier.",
+		"length_hint": "Compact rail row and small display pill; about 10 English characters."
+	},
+	"ui.hub.taxonomy.category.healthcare": {
+		"role": "Known healthcare category label in hub rail and agent pills",
+		"tone": "Sentence-case topic noun; not an action or a status.",
+		"note": "Health and medical-work assistance. Backend snake_case identifiers and author tags stay unchanged. This label is read through a locale-aware getter; unknown categories fall back to their original humanized identifier.",
+		"length_hint": "Compact rail row and small display pill; about 10 English characters."
+	},
+	"ui.hub.taxonomy.category.legal": {
+		"role": "Known legal category label in hub rail and agent pills",
+		"tone": "Sentence-case topic noun; not an action or a status.",
+		"note": "Law and legal-work assistance, not the security-policy category. Backend snake_case identifiers and author tags stay unchanged. This label is read through a locale-aware getter; unknown categories fall back to their original humanized identifier.",
+		"length_hint": "Compact rail row and small display pill; about 5 English characters."
+	},
+	"ui.hub.taxonomy.category.software": {
+		"role": "Known software category label in hub rail and agent pills",
+		"tone": "Sentence-case topic noun; not an action or a status.",
+		"note": "Software engineering and programming work. Backend snake_case identifiers and author tags stay unchanged. This label is read through a locale-aware getter; unknown categories fall back to their original humanized identifier.",
+		"length_hint": "Compact rail row and small display pill; about 8 English characters."
+	},
+	"ui.hub.taxonomy.category.security": {
+		"role": "Known security category label in hub rail and agent pills",
+		"tone": "Sentence-case topic noun; not an action or a status.",
+		"note": "Security-related work and defensive analysis, not an organization access badge. Backend snake_case identifiers and author tags stay unchanged. This label is read through a locale-aware getter; unknown categories fall back to their original humanized identifier.",
+		"length_hint": "Compact rail row and small display pill; about 8 English characters."
+	},
+	"ui.hub.taxonomy.category.role_play": {
+		"role": "Known role play category label in hub rail and agent pills",
+		"tone": "Sentence-case topic noun; not an action or a status.",
+		"note": "Role-playing uses, not a reusable-profile kind or backend role field. Backend snake_case identifiers and author tags stay unchanged. This label is read through a locale-aware getter; unknown categories fall back to their original humanized identifier.",
+		"length_hint": "Compact rail row and small display pill; about 9 English characters."
+	},
+	"ui.hub.taxonomy.category.personal_assistance": {
+		"role": "Known personal assistance category label in hub rail and agent pills",
+		"tone": "Sentence-case topic noun; not an action or a status.",
+		"note": "Personal day-to-day assistance, rather than staff management. Backend snake_case identifiers and author tags stay unchanged. This label is read through a locale-aware getter; unknown categories fall back to their original humanized identifier.",
+		"length_hint": "Compact rail row and small display pill; about 19 English characters."
+	},
+	"ui.hub.taxonomy.category.education": {
+		"role": "Known education category label in hub rail and agent pills",
+		"tone": "Sentence-case topic noun; not an action or a status.",
+		"note": "Teaching and learning assistance. Backend snake_case identifiers and author tags stay unchanged. This label is read through a locale-aware getter; unknown categories fall back to their original humanized identifier.",
+		"length_hint": "Compact rail row and small display pill; about 9 English characters."
+	},
+	"ui.hub.taxonomy.category.marketing": {
+		"role": "Known marketing category label in hub rail and agent pills",
+		"tone": "Sentence-case topic noun; not an action or a status.",
+		"note": "Marketing work, distinct from Sales. Backend snake_case identifiers and author tags stay unchanged. This label is read through a locale-aware getter; unknown categories fall back to their original humanized identifier.",
+		"length_hint": "Compact rail row and small display pill; about 9 English characters."
+	},
+	"ui.hub.taxonomy.category.sales": {
+		"role": "Known sales category label in hub rail and agent pills",
+		"tone": "Sentence-case topic noun; not an action or a status.",
+		"note": "Sales and selling assistance, distinct from Marketing. Backend snake_case identifiers and author tags stay unchanged. This label is read through a locale-aware getter; unknown categories fall back to their original humanized identifier.",
+		"length_hint": "Compact rail row and small display pill; about 5 English characters."
+	},
+	"ui.hub.taxonomy.category.research": {
+		"role": "Known research category label in hub rail and agent pills",
+		"tone": "Sentence-case topic noun; not an action or a status.",
+		"note": "Research and investigation work, not an agent-generated research result. Backend snake_case identifiers and author tags stay unchanged. This label is read through a locale-aware getter; unknown categories fall back to their original humanized identifier.",
+		"length_hint": "Compact rail row and small display pill; about 8 English characters."
+	},
+	"ui.hub.taxonomy.category.analysis": {
+		"role": "Known analysis category label in hub rail and agent pills",
+		"tone": "Sentence-case topic noun; not an action or a status.",
+		"note": "Analytical work; a broad topic category, not a live processing status. Backend snake_case identifiers and author tags stay unchanged. This label is read through a locale-aware getter; unknown categories fall back to their original humanized identifier.",
+		"length_hint": "Compact rail row and small display pill; about 8 English characters."
+	},
+	"ui.hub.taxonomy.category.management": {
+		"role": "Known management category label in hub rail and agent pills",
+		"tone": "Sentence-case topic noun; not an action or a status.",
+		"note": "Management and coordination work, not an organization membership role. Backend snake_case identifiers and author tags stay unchanged. This label is read through a locale-aware getter; unknown categories fall back to their original humanized identifier.",
+		"length_hint": "Compact rail row and small display pill; about 10 English characters."
+	},
+	"ui.hub.taxonomy.category.social_media": {
+		"role": "Known social media category label in hub rail and agent pills",
+		"tone": "Sentence-case topic noun; not an action or a status.",
+		"note": "Social media work; two words and sentence case. Backend snake_case identifiers and author tags stay unchanged. This label is read through a locale-aware getter; unknown categories fall back to their original humanized identifier.",
+		"length_hint": "Compact rail row and small display pill; about 12 English characters."
+	},
+	"ui.hub.taxonomy.category.other": {
+		"role": "Known other category label in hub rail and agent pills",
+		"tone": "Sentence-case topic noun; not an action or a status.",
+		"note": "Catch-all known category for topics not covered by the named taxonomy. Backend snake_case identifiers and author tags stay unchanged. This label is read through a locale-aware getter; unknown categories fall back to their original humanized identifier.",
+		"length_hint": "Compact rail row and small display pill; about 5 English characters."
+	},
+	"ui.hub.taxonomy.heading": {
+		"role": "Category filter-rail heading",
+		"tone": "Brief section name.",
+		"note": "Names the list of topic filters; it is not itself selectable.",
+		"length_hint": "Single-line small rail heading, about 10 English characters."
+	},
+	"ui.hub.taxonomy.all": {
+		"role": "Category filter-reset row label",
+		"tone": "Short all-inclusive filter choice.",
+		"note": "Selecting this row writes null as the category filter and clears a specific category selection.",
+		"length_hint": "Single-line rail button beside a layers icon, about 14 English characters."
+	},
+	"ui.hub.taxonomy.origin.named": {
+		"role": "Organization-origin badge native title with organization name",
+		"tone": "Explicit scope distinction, not an endorsement.",
+		"note": "Explains an organization-private agent origin on hover. The visible badge uses the organization name separately; do not imply it is publicly shared.",
+		"placeholders": {
+			"name": "Organization display name supplied by membership data, unchanged; not a translated product label."
+		},
+		"length_hint": "Native browser title text; no fixed visible width."
+	},
+	"ui.hub.taxonomy.origin.unnamed": {
+		"role": "Organization-origin badge native title when name is unavailable",
+		"tone": "Explain private scope despite incomplete membership data.",
+		"note": "The record is still organization-private even if membership lookup cannot supply a display name; the badge must not disappear.",
+		"length_hint": "Native browser title text; no fixed visible width."
+	},
+	"ui.hub.taxonomy.origin.organization": {
+		"role": "Fallback visible organization-origin badge label",
+		"tone": "Single scope noun, not a workspace-selection action.",
+		"note": "Used only when no organization name exists. Named organizations render their supplied name unchanged instead of this fallback.",
+		"length_hint": "Small inline badge beside a users icon; about 12 English characters."
+	}
+}
