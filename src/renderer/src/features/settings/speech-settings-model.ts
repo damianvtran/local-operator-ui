@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * The Speech settings group's decisions, kept out of the render.
  *
@@ -158,13 +159,17 @@ export function parseVoicePathResolution(
  * resolver wrote for them.
  */
 const PATH_NAMES: Record<VoicePath, string> = {
-	provider_tts_radient: "Radient Pass",
+	get provider_tts_radient() {
+		return t("ui.settings.speech.speech_settings_model.radient_pass");
+	},
 	provider_tts_elevenlabs: "ElevenLabs",
 	provider_tts_openai: "OpenAI",
 	// `none` never appears in `rungs` (the daemon excludes it) and appears in
 	// `path` only when nothing is available, where the resolution's own reason is
 	// what the group renders. Named anyway so the map is total.
-	none: "No provider",
+	get none() {
+		return t("ui.settings.speech.speech_settings_model.no_provider");
+	},
 };
 
 export function speechPathName(path: VoicePath): string {

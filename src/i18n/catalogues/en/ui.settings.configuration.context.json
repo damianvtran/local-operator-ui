@@ -1,0 +1,633 @@
+{
+	"ui.settings.configuration.backend_setting_row.read_only": {
+		"role": "Small badge in a setting row's title line",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 9 characters.",
+		"note": "Marks a setting the user cannot edit here, because the server owns it. Not the same as disabled."
+	},
+	"ui.settings.configuration.backend_setting_row.use_default": {
+		"role": "Ghost button on a changed setting row",
+		"tone": "Plain imperative; no exclamation, no please.",
+		"length": "Button label; one line, never wraps. English is 11 characters; keep it a short verb phrase of similar width.",
+		"note": "Puts the registry default value back for this one setting. Has an undo-arrow icon. Its accessible name is \"Use default for {label}\". Distinct from Discard, which only drops unsaved edits."
+	},
+	"ui.settings.configuration.backend_setting_row.set_in_the_credential_manager_this_value_carries_inline_credentia": {
+		"role": "Replaces the value of a setting that holds a secret",
+		"tone": "Calm, factual sentence; no blame, no alarm.",
+		"length": "Inline message that wraps in an alert or helper line. English is 89 characters.",
+		"note": "The value is withheld on purpose: it contains inline credentials or query parameters. Tells the user to manage it in the credential manager instead."
+	},
+	"ui.settings.configuration.backend_setting_row.retry": {
+		"role": "Button inside an inline save-failure alert on a setting row",
+		"tone": "Plain imperative; no exclamation, no please.",
+		"length": "Button label; one line, never wraps. English is 5 characters; keep it a short verb phrase of similar width.",
+		"note": "Re-submits the user's retained draft; it does not re-read the field."
+	},
+	"ui.settings.configuration.backend_setting_row.saving": {
+		"role": "Same row Save button while the write is in flight",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Button label; one line, never wraps. English is 6 characters; keep it a short verb phrase of similar width.",
+		"note": "Replaces \"Save\" for a moment. English has no ellipsis."
+	},
+	"ui.settings.configuration.backend_setting_row.save": {
+		"role": "Primary button on an edited setting row",
+		"tone": "Plain imperative; no exclamation, no please.",
+		"length": "Button label; one line, never wraps. English is 4 characters; keep it a short verb phrase of similar width.",
+		"note": "Writes this one setting to the configuration file."
+	},
+	"ui.settings.configuration.backend_setting_row.not_set": {
+		"role": "Read-only value shown when a setting has no value",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 7 characters.",
+		"note": "Shown in place of an empty read-only value."
+	},
+	"ui.settings.configuration.backend_setting_row.use_default_for_label": {
+		"role": "Accessible name of the row's Use default button",
+		"tone": "Calm, factual sentence; no blame, no alarm.",
+		"length": "Screen-reader-only accessible name (not painted); length is free but keep it a natural spoken phrase. English is 23 characters.",
+		"note": "Eight identical visible buttons exist, so each is named after its row.",
+		"placeholders": {
+			"label": "The localized label of the setting this button belongs to, for example \"Default model\"."
+		}
+	},
+	"ui.settings.configuration.backend_settings_drafts.enter_a_whole_number": {
+		"role": "Inline validation message under a number field",
+		"tone": "Neutral warning; says what happened and the next step, never blames the user.",
+		"length": "Inline message that wraps in an alert or helper line. English is 21 characters.",
+		"note": "Shown when the typed text is not an integer."
+	},
+	"ui.settings.configuration.backend_settings_drafts.enter_a_finite_number": {
+		"role": "Inline validation message under a number field",
+		"tone": "Neutral warning; says what happened and the next step, never blames the user.",
+		"length": "Inline message that wraps in an alert or helper line. English is 22 characters.",
+		"note": "Shown when the typed number is infinite or not a number."
+	},
+	"ui.settings.configuration.backend_settings_drafts.nothing_has_been_edited_yet": {
+		"role": "Message when Save is pressed with no change",
+		"tone": "Calm, factual sentence; no blame, no alarm.",
+		"length": "Inline message that wraps in an alert or helper line. English is 28 characters.",
+		"note": "Informational; not an error in the user's input."
+	},
+	"ui.settings.configuration.backend_settings_section.searchable_settings_need_a_newer_local_operator_server_update_the": {
+		"role": "Warning alert replacing the settings list",
+		"tone": "Neutral warning; says what happened and the next step, never blames the user.",
+		"length": "Inline message that wraps in an alert or helper line. English is 124 characters.",
+		"note": "The connected server is too old for the searchable settings registry. Tells the user to update and restart it. \"Local Operator\" is the product name."
+	},
+	"ui.settings.configuration.backend_settings_section.loading_settings": {
+		"role": "Accessible name of the loading spinner",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Screen-reader-only accessible name (not painted); length is free but keep it a natural spoken phrase. English is 16 characters.",
+		"note": "Spoken while the settings registry loads."
+	},
+	"ui.settings.configuration.backend_settings_section.no_settings_match_this_search_clear_the_search_field_to_see_every": {
+		"role": "Empty-state line when a search finds nothing",
+		"tone": "Plain, friendly second person; explains rather than commands.",
+		"length": "Inline message that wraps in an alert or helper line. English is 81 characters.",
+		"note": "Followed by nothing else; it names the remedy itself."
+	},
+	"ui.settings.configuration.backend_settings_section.takes_effect_immediately": {
+		"role": "Scope tag on a setting row",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 24 characters.",
+		"note": "Says when a changed value applies: at once. Sits beside sentence-case siblings \"Takes effect the next time the app starts\" and \"...for new conversations\"."
+	},
+	"ui.settings.configuration.backend_settings_section.takes_effect_the_next_time_the_app_starts": {
+		"role": "Scope tag on a setting row",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 41 characters.",
+		"note": "Applies only after the next app launch."
+	},
+	"ui.settings.configuration.backend_settings_section.takes_effect_for_new_conversations": {
+		"role": "Scope tag on a setting row",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 34 characters.",
+		"note": "Applies to conversations started after the change; open conversations keep the old value."
+	},
+	"ui.settings.configuration.backend_settings_section.the_setting_could_not_be_saved": {
+		"role": "Inline failure message on a row",
+		"tone": "Neutral warning; says what happened and the next step, never blames the user.",
+		"length": "Inline message that wraps in an alert or helper line. English is 31 characters.",
+		"note": "Fallback when the failure has no message of its own."
+	},
+	"ui.settings.configuration.backend_settings_section.the_setting_could_not_be_reset": {
+		"role": "Inline failure message on a row",
+		"tone": "Neutral warning; says what happened and the next step, never blames the user.",
+		"length": "Inline message that wraps in an alert or helper line. English is 31 characters.",
+		"note": "Fallback when restoring the default failed and the error carried no message."
+	},
+	"ui.settings.configuration.backend_settings_section.your_settings_could_not_be_loaded": {
+		"role": "Warning alert text when the registry read fails",
+		"tone": "Neutral warning; says what happened and the next step, never blames the user.",
+		"length": "Inline message that wraps in an alert or helper line. English is 34 characters.",
+		"note": "A general sentence; the next step, if any, is a separate Retry button."
+	},
+	"ui.settings.configuration.backend_settings_section.retry": {
+		"role": "Button in the load-failure alert",
+		"tone": "Plain imperative; no exclamation, no please.",
+		"length": "Button label; one line, never wraps. English is 5 characters; keep it a short verb phrase of similar width.",
+		"note": "Re-reads the settings registry."
+	},
+	"ui.settings.configuration.backend_settings_section.advanced_settings_are_hidden_here": {
+		"role": "Empty-state line in a section whose rows are all advanced",
+		"tone": "Calm, factual sentence; no blame, no alarm.",
+		"length": "Inline message that wraps in an alert or helper line. English is 34 characters.",
+		"note": "Explains why a section shows nothing; the Show advanced button follows."
+	},
+	"ui.settings.configuration.backend_settings_section.nothing_in_this_section_matches": {
+		"role": "Empty-state line in a section under a search filter",
+		"tone": "Calm, factual sentence; no blame, no alarm.",
+		"length": "Inline message that wraps in an alert or helper line. English is 32 characters.",
+		"note": "No row of this section matches the current search."
+	},
+	"ui.settings.configuration.delegated_cleanup_notice.open_settings": {
+		"role": "Button in a one-time notice strip",
+		"tone": "Plain imperative; no exclamation, no please.",
+		"length": "Button label; one line, never wraps. English is 13 characters; keep it a short verb phrase of similar width.",
+		"note": "Opens the Settings page at the delegated-work cleanup setting."
+	},
+	"ui.settings.configuration.delegated_cleanup_notice.dismiss_this_notice": {
+		"role": "Accessible name of the notice's close (X) button",
+		"tone": "Plain imperative; no exclamation, no please.",
+		"length": "Screen-reader-only accessible name (not painted); length is free but keep it a natural spoken phrase. English is 19 characters.",
+		"note": "Icon-only close button on the cleanup notice banner; this is its accessible name. Hides the notice permanently, not just for this visit."
+	},
+	"ui.settings.configuration.delegated_retention_copy.sessions_started_by_subagents_agent_shells_and_background_runs_su": {
+		"role": "First half of the \"Removed:\" explainer line",
+		"tone": "Helpful explanatory prose in second person.",
+		"length": "Part of a longer visible sentence, not standalone. English is 71 characters.",
+		"note": "A sentence split around a literal code sample: this part ends with \"such as\", then comes the monospace command \"lop exec\", then the next message. Translate so the code sample fits grammatically between the two halves; do not translate the command."
+	},
+	"ui.settings.configuration.delegated_retention_copy.never_your_own_conversations_or_the_workstreams_in_your_sidebar": {
+		"role": "Second half of the \"Removed:\" explainer line",
+		"tone": "Helpful explanatory prose in second person.",
+		"length": "Part of a longer visible sentence, not standalone. English is 66 characters.",
+		"note": "Starts with a full stop that ends the sentence after the command sample; keep the leading \". \" exactly. \"Workstreams\" are the projects listed in the sidebar."
+	},
+	"ui.settings.configuration.delegated_retention_copy.anything_running_or_waiting_anything_whose_parent_conversation_wa": {
+		"role": "Text after the \"Kept:\" term",
+		"tone": "Helpful explanatory prose in second person.",
+		"length": "Wrapping paragraph in the settings content column (about 60-70 characters per line); no length cap, keep every fact. English is 155 characters.",
+		"note": "Lower-case sentence continuing the bold \"Kept:\" term; it lists what cleanup spares. Keep it a list starting lower case."
+	},
+	"ui.settings.configuration.delegated_retention_copy.after_the_time_below_with_no_activity_checked_when_the_app_starts": {
+		"role": "Text after the \"When:\" term",
+		"tone": "Helpful explanatory prose in second person.",
+		"length": "Wrapping paragraph in the settings content column (about 60-70 characters per line); no length cap, keep every fact. English is 149 characters.",
+		"note": "Lower-case sentence continuing the bold \"When:\" term; says cleanup runs at app start in limited batches. \"The time below\" is the retention control just underneath."
+	},
+	"ui.settings.configuration.language_dialog.the_language_could_not_be_saved": {
+		"role": "Inline failure message in the language dialog",
+		"tone": "Neutral warning; says what happened and the next step, never blames the user.",
+		"length": "Inline message that wraps in an alert or helper line. English is 32 characters.",
+		"note": "Shown when writing the interface language failed."
+	},
+	"ui.settings.configuration.language_dialog.your_settings_could_not_be_loaded": {
+		"role": "Warning in the language dialog when the registry read fails",
+		"tone": "Neutral warning; says what happened and the next step, never blames the user.",
+		"length": "Inline message that wraps in an alert or helper line. English is 34 characters.",
+		"note": "Same wording as the Settings page alert but a separate surface."
+	},
+	"ui.settings.configuration.retention_duration.enter_a_whole_number_of_hours_or_days": {
+		"role": "Inline validation message under the exact-time field",
+		"tone": "Neutral warning; says what happened and the next step, never blames the user.",
+		"length": "Inline message that wraps in an alert or helper line. English is 38 characters.",
+		"note": "Shown when the typed text is not a whole number."
+	},
+	"ui.settings.configuration.retention_duration.month_count": {
+		"role": "Duration value inside other messages",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Part of a longer visible sentence, not standalone. English is 47 characters.",
+		"note": "A complete localized duration such as \"1 month\". Used as {duration} in other messages. Plural: English has one/other only. ru needs few/many; ar needs zero/two/few/many; supply every arm your language requires and keep # where the number belongs.",
+		"placeholders": {
+			"count": "Whole number of months, used only to choose the plural form and shown as #."
+		}
+	},
+	"ui.settings.configuration.retention_duration.day_count": {
+		"role": "Duration value inside other messages",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Part of a longer visible sentence, not standalone. English is 43 characters.",
+		"note": "Such as \"3 days\". Used for whole-day values of 3 or more. Plural: English has one/other only. ru needs few/many; ar needs zero/two/few/many; supply every arm your language requires and keep # where the number belongs.",
+		"placeholders": {
+			"count": "Whole number of days, used only to choose the plural form and shown as #."
+		}
+	},
+	"ui.settings.configuration.retention_duration.hour_count": {
+		"role": "Duration value inside other messages",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Part of a longer visible sentence, not standalone. English is 45 characters.",
+		"note": "Such as \"48 hours\". Used for values under 3 days and for values not a whole number of days. Plural: English has one/other only. ru needs few/many; ar needs zero/two/few/many; supply every arm your language requires and keep # where the number belongs.",
+		"placeholders": {
+			"count": "Whole number of hours, used only to choose the plural form and shown as #."
+		}
+	},
+	"ui.settings.configuration.retention_duration.maximum_days": {
+		"role": "Upper bound of an allowed range",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Part of a longer visible sentence, not standalone. English is 55 characters.",
+		"note": "Reads \"1 month (30 days)\". The bracketed days restate the month in days. Plural: English has one/other only. ru needs few/many; ar needs zero/two/few/many; supply every arm your language requires and keep # where the number belongs.",
+		"placeholders": {
+			"days": "Whole number of days; plural arms apply.",
+			"duration": "Localized duration already containing its unit, for example \"1 month\"."
+		}
+	},
+	"ui.settings.configuration.retention_duration.range": {
+		"role": "Allowed range inside a validation sentence",
+		"tone": "Calm, factual sentence; no blame, no alarm.",
+		"length": "Part of a longer visible sentence, not standalone. English is 31 characters.",
+		"note": "Reads \"between 2 hours and 1 month (30 days)\". Inserted at the end of \"Choose a time {range}.\"",
+		"placeholders": {
+			"maximum": "Localized upper bound, which may already contain a bracketed day count.",
+			"minimum": "Localized lower bound including unit."
+		}
+	},
+	"ui.settings.configuration.retention_duration.too_long": {
+		"role": "Inline validation message under the exact-time field",
+		"tone": "Neutral warning; says what happened and the next step, never blames the user.",
+		"length": "Inline message that wraps in an alert or helper line. English is 46 characters.",
+		"note": "Says the entered time is above the maximum and states the allowed range.",
+		"placeholders": {
+			"duration": "Localized duration the user typed, for example \"90 days\".",
+			"range": "Localized allowed-range phrase, for example \"between 2 hours and 1 month (30 days)\"."
+		}
+	},
+	"ui.settings.configuration.retention_duration.too_short": {
+		"role": "Inline validation message under the exact-time field",
+		"tone": "Neutral warning; says what happened and the next step, never blames the user.",
+		"length": "Inline message that wraps in an alert or helper line. English is 47 characters.",
+		"note": "Says the entered time is below the minimum and states the allowed range.",
+		"placeholders": {
+			"duration": "Localized duration the user typed, for example \"1 hour\".",
+			"range": "Localized allowed-range phrase, for example \"between 2 hours and 1 month (30 days)\"."
+		}
+	},
+	"ui.settings.configuration.retention_duration_control.exact_time": {
+		"role": "Label beside the exact-entry number field",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Field or row label above/beside a control; one line. English is 10 characters.",
+		"note": "Introduces a number field and a unit dropdown."
+	},
+	"ui.settings.configuration.retention_duration_control.hours": {
+		"role": "Unit option in the exact-entry dropdown",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Option in a dropdown list; one line. English is 5 characters.",
+		"note": "Plural unit word standing alone, lower case. The dropdown value is the machine token \"hours\"."
+	},
+	"ui.settings.configuration.retention_duration_control.days": {
+		"role": "Unit option in the exact-entry dropdown",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Option in a dropdown list; one line. English is 4 characters.",
+		"note": "Plural unit word standing alone, lower case. The dropdown value is the machine token \"days\"."
+	},
+	"ui.settings.configuration.retention_duration_control.label_common_choices": {
+		"role": "Accessible name of the preset-stops tab list",
+		"tone": "Calm, factual sentence; no blame, no alarm.",
+		"length": "Screen-reader-only accessible name (not painted); length is free but keep it a natural spoken phrase. English is 23 characters.",
+		"note": "Names the row of quick choices such as 2h, 6h, 48h.",
+		"placeholders": {
+			"label": "Localized label of the setting, for example \"Remove after\"."
+		}
+	},
+	"ui.settings.configuration.retention_duration_control.label_unit": {
+		"role": "Accessible name of the unit dropdown",
+		"tone": "Calm, factual sentence; no blame, no alarm.",
+		"length": "Screen-reader-only accessible name (not painted); length is free but keep it a natural spoken phrase. English is 13 characters.",
+		"note": "Names the hours/days dropdown.",
+		"placeholders": {
+			"label": "Localized label of the setting, for example \"Remove after\"."
+		}
+	},
+	"ui.settings.configuration.setting_combobox.could_not_list_models": {
+		"role": "Danger helper text under the model field",
+		"tone": "Neutral warning; says what happened and the next step, never blames the user.",
+		"length": "Inline message that wraps in an alert or helper line. English is 22 characters.",
+		"note": "The model list query failed; ends with a full stop. Followed by the error remedy from the backend when present."
+	},
+	"ui.settings.configuration.setting_combobox.could_not_list_providers": {
+		"role": "Empty-list text in the provider dropdown",
+		"tone": "Neutral warning; says what happened and the next step, never blames the user.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 24 characters.",
+		"note": "The provider list query failed. No full stop in English."
+	},
+	"ui.settings.configuration.setting_combobox.no_providers": {
+		"role": "Empty-list text in the provider dropdown",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 12 characters.",
+		"note": "The registry returned zero providers."
+	},
+	"ui.settings.configuration.setting_combobox.provider_list_unavailable": {
+		"role": "Empty-list text in the provider dropdown",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 25 characters.",
+		"note": "The connected server does not offer a provider list."
+	},
+	"ui.settings.configuration.setting_combobox.could_not_list_models_2": {
+		"role": "Empty-list text in the model dropdown",
+		"tone": "Neutral warning; says what happened and the next step, never blames the user.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 21 characters.",
+		"note": "Same meaning as the helper text but shorter, no full stop, used inside the dropdown."
+	},
+	"ui.settings.configuration.setting_combobox.nothing_matches_that_model": {
+		"role": "Empty-list text in the model dropdown after typing",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 26 characters.",
+		"note": "The typed text matches no model."
+	},
+	"ui.settings.configuration.setting_combobox.model_list_unavailable": {
+		"role": "Empty-list text in the model dropdown",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 22 characters.",
+		"note": "The server cannot list models."
+	},
+	"ui.settings.configuration.setting_combobox.loading_providers": {
+		"role": "Busy label of the provider dropdown",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Screen-reader-only accessible name (not painted); length is free but keep it a natural spoken phrase. English is 17 characters.",
+		"note": "Spoken and shown as the busy label of the provider dropdown while the provider registry loads."
+	},
+	"ui.settings.configuration.setting_combobox.loading_models": {
+		"role": "Busy label of the model dropdown",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Screen-reader-only accessible name (not painted); length is free but keep it a natural spoken phrase. English is 14 characters.",
+		"note": "Spoken and shown as the busy label of the model dropdown while the model catalogue loads."
+	},
+	"ui.settings.configuration.setting_combobox.use_text": {
+		"role": "Custom-value row at the end of a dropdown",
+		"tone": "Plain imperative; no exclamation, no please.",
+		"length": "Option in a dropdown list; one line. English is 12 characters.",
+		"note": "Lets the user keep what they typed even though it is not a listed item.",
+		"placeholders": {
+			"text": "The exact text the user typed. Insert verbatim between the quotation marks; use your language's quotation marks."
+		}
+	},
+	"ui.settings.configuration.setting_control.press_the_keys_you_want_esc_cancels": {
+		"role": "Text shown inside a hotkey field while recording",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 37 characters.",
+		"note": "Same instruction as in the keyboard-shortcuts section. \"Esc\" is the Escape key."
+	},
+	"ui.settings.configuration.setting_control.one_hop_per_line_as_provider_model_effort_an_empty_chain_moves_to": {
+		"role": "Help text under the fallback-chain editor",
+		"tone": "Helpful explanatory prose in second person.",
+		"length": "Wrapping paragraph in the settings content column (about 60-70 characters per line); no length cap, keep every fact. English is 88 characters.",
+		"note": "A \"hop\" is one provider/model step in a fallback chain. Keep \"provider/model\" and \"(effort)\" as written: they show the line format the user must type."
+	},
+	"ui.settings.configuration.setting_control.label_press_the_key_you_want": {
+		"role": "Accessible name of a hotkey capture field",
+		"tone": "Calm, factual sentence; no blame, no alarm.",
+		"length": "Screen-reader-only accessible name (not painted); length is free but keep it a natural spoken phrase. English is 31 characters.",
+		"note": "Spoken as the setting label, a colon, then the instruction.",
+		"placeholders": {
+			"label": "Localized label of the hotkey setting."
+		}
+	},
+	"ui.settings.configuration.settings_filter_bar.search_settings_by_name_description_or_key": {
+		"role": "Placeholder in the settings search box",
+		"tone": "Plain imperative; no exclamation, no please.",
+		"length": "Placeholder inside an empty input; clipped at the input width (~24-40 characters). English is 43 characters.",
+		"note": "Tells what the search matches. \"Key\" is the technical setting name such as session.cleanup.max_sessions."
+	},
+	"ui.settings.configuration.settings_filter_bar.search_settings": {
+		"role": "Accessible name of the search box",
+		"tone": "Plain imperative; no exclamation, no please.",
+		"length": "Screen-reader-only accessible name (not painted); length is free but keep it a natural spoken phrase. English is 15 characters.",
+		"note": "The visible hint is the placeholder; this is the short spoken name."
+	},
+	"ui.settings.configuration.settings_filter_bar.clear_search": {
+		"role": "Accessible name of the X button inside the search box",
+		"tone": "Plain imperative; no exclamation, no please.",
+		"length": "Screen-reader-only accessible name (not painted); length is free but keep it a natural spoken phrase. English is 12 characters.",
+		"note": "Empties the query only."
+	},
+	"ui.settings.configuration.settings_filter_bar.settings_filters": {
+		"role": "Screen-reader legend of the filter button group",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Screen-reader-only accessible name (not painted); length is free but keep it a natural spoken phrase. English is 16 characters.",
+		"note": "Visually hidden group name for Modified / Show advanced."
+	},
+	"ui.settings.configuration.settings_filter_bar.modified": {
+		"role": "Toggle chip",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Button label; one line, never wraps. English is 8 characters; keep it a short verb phrase of similar width.",
+		"note": "Filters the list to settings that differ from their default. A state adjective, not an action."
+	},
+	"ui.settings.configuration.settings_filter_bar.show_advanced": {
+		"role": "Toggle chip",
+		"tone": "Plain imperative; no exclamation, no please.",
+		"length": "Button label; one line, never wraps. English is 13 characters; keep it a short verb phrase of similar width.",
+		"note": "Includes advanced settings in the list."
+	},
+	"ui.settings.configuration.settings_filter_bar.discard_all": {
+		"role": "Button, visible only when there are unsaved edits",
+		"tone": "Plain imperative; no exclamation, no please.",
+		"length": "Button label; one line, never wraps. English is 11 characters; keep it a short verb phrase of similar width.",
+		"note": "Throws away every unsaved edit. Distinct from \"Use default\"."
+	},
+	"ui.settings.configuration.settings_filter_bar.expand_all": {
+		"role": "Toolbar button",
+		"tone": "Plain imperative; no exclamation, no please.",
+		"length": "Button label; one line, never wraps. English is 10 characters; keep it a short verb phrase of similar width.",
+		"note": "Opens every settings group."
+	},
+	"ui.settings.configuration.settings_filter_bar.collapse_all": {
+		"role": "Toolbar button",
+		"tone": "Plain imperative; no exclamation, no please.",
+		"length": "Button label; one line, never wraps. English is 12 characters; keep it a short verb phrase of similar width.",
+		"note": "Closes every settings group."
+	},
+	"ui.settings.configuration.settings_filter_bar.saving": {
+		"role": "The Save all button while writes run",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Button label; one line, never wraps. English is 6 characters; keep it a short verb phrase of similar width.",
+		"note": "Replaces \"Save all\"."
+	},
+	"ui.settings.configuration.settings_filter_bar.save_all": {
+		"role": "Primary toolbar button, visible only with unsaved edits",
+		"tone": "Plain imperative; no exclamation, no please.",
+		"length": "Button label; one line, never wraps. English is 8 characters; keep it a short verb phrase of similar width.",
+		"note": "Writes every edited setting."
+	},
+	"ui.settings.configuration.settings_filter_bar.unsaved_count": {
+		"role": "Counter beside Discard all / Save all",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 65 characters.",
+		"note": "Counts edited-but-unsaved settings, for example \"3 unsaved changes\". Plural: English has one/other only. ru needs few/many; ar needs zero/two/few/many; supply every arm your language requires and keep # where the number belongs.",
+		"placeholders": {
+			"count": "Number of unsaved changes."
+		}
+	},
+	"ui.settings.configuration.settings_filter_bar.search_count": {
+		"role": "Result line under the search box",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 116 characters.",
+		"note": "Two counts in one sentence: results and sections, for example \"12 results in 3 sections\". Each count has its own plural. Plural: English has one/other only. ru needs few/many; ar needs zero/two/few/many; supply every arm your language requires and keep # where the number belongs.",
+		"placeholders": {
+			"matchCount": "Number of matching settings; plural applies.",
+			"sectionCount": "Number of sections containing them; plural applies."
+		}
+	},
+	"ui.settings.configuration.settings_filter_bar.modified_count": {
+		"role": "Result line when the Modified chip is on",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 69 characters.",
+		"note": "For example \"4 modified settings\". Plural: English has one/other only. ru needs few/many; ar needs zero/two/few/many; supply every arm your language requires and keep # where the number belongs.",
+		"placeholders": {
+			"count": "Number of settings that differ from their default."
+		}
+	},
+	"ui.settings.configuration.settings_group_header.changed_from_the_default": {
+		"role": "Accessible name of the small dot beside a changed group",
+		"tone": "Calm, factual sentence; no blame, no alarm.",
+		"length": "Screen-reader-only accessible name (not painted); length is free but keep it a natural spoken phrase. English is 24 characters.",
+		"note": "The dot is colour only visually; this is its spoken meaning."
+	},
+	"ui.settings.configuration.settings_group_header.setting_count": {
+		"role": "Count beside a group title",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 51 characters.",
+		"note": "For example \"8 settings\". Plural: English has one/other only. ru needs few/many; ar needs zero/two/few/many; supply every arm your language requires and keep # where the number belongs.",
+		"placeholders": {
+			"count": "Number of settings in the group."
+		}
+	},
+	"ui.settings.configuration.settings_page.configuration_information": {
+		"role": "Settings section heading (h2)",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Section or list heading; one line, sentence case. English is 25 characters.",
+		"note": "Heading of a read-only block: version, created, last modified, description."
+	},
+	"ui.settings.configuration.settings_page.system_information_about_the_current_configuration": {
+		"role": "Description under the section heading",
+		"tone": "Helpful explanatory prose in second person.",
+		"length": "Wrapping paragraph in the settings content column (about 60-70 characters per line); no length cap, keep every fact. English is 51 characters.",
+		"note": "Says the block shows facts about the configuration file, not controls."
+	},
+	"ui.settings.configuration.settings_page.version": {
+		"role": "Info-grid label",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Field or row label above/beside a control; one line. English is 7 characters.",
+		"note": "The configuration file's version, not the app version."
+	},
+	"ui.settings.configuration.settings_page.created": {
+		"role": "Info-grid label",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Field or row label above/beside a control; one line. English is 7 characters.",
+		"note": "When the configuration was first created."
+	},
+	"ui.settings.configuration.settings_page.last_modified": {
+		"role": "Info-grid label",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Field or row label above/beside a control; one line. English is 13 characters.",
+		"note": "When the configuration last changed. The value is a formatted date and time."
+	},
+	"ui.settings.configuration.settings_page.description": {
+		"role": "Info-grid label",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Field or row label above/beside a control; one line. English is 11 characters.",
+		"note": "Free-text description of the configuration."
+	},
+	"ui.settings.configuration.settings_page.no_description_available": {
+		"role": "Value when the configuration has no description",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 24 characters.",
+		"note": "Shown in place of an empty description."
+	},
+	"ui.settings.configuration.backend_settings_section.retrying": {
+		"role": "The Retry button while the re-read runs",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Button label; one line, never wraps. English is 8 characters; keep it a short verb phrase of similar width.",
+		"note": "Replaces \"Retry\" during the refetch; the button is disabled."
+	},
+	"ui.settings.configuration.delegated_retention_copy.removed": {
+		"role": "Bold run-in term of the first explainer line",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Field or row label above/beside a control; one line. English is 8 characters.",
+		"note": "Followed by a space and the next message as one sentence. \"Removed:\" introduces what automatic cleanup deletes. Keep the trailing colon."
+	},
+	"ui.settings.configuration.delegated_retention_copy.kept": {
+		"role": "Bold run-in term of the second explainer line",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Field or row label above/beside a control; one line. English is 5 characters.",
+		"note": "Introduces what cleanup never deletes. Keep the trailing colon."
+	},
+	"ui.settings.configuration.delegated_retention_copy.when": {
+		"role": "Bold run-in term of the third explainer line",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Field or row label above/beside a control; one line. English is 5 characters.",
+		"note": "Introduces when cleanup runs. Keep the trailing colon."
+	},
+	"ui.settings.configuration.backend_setting_row.gate_note": {
+		"role": "Dim note under a setting that depends on a switch",
+		"tone": "Calm, factual sentence; no blame, no alarm.",
+		"length": "Inline message that wraps in an alert or helper line. English is 55 characters.",
+		"note": "Names the controlling switch and says nothing is saved while it is off. English: \"Needs {gate} on.\"",
+		"placeholders": {
+			"gate": "The localized label of the controlling switch, for example \"automatic removal\". It sits mid-sentence, so keep case and gender agreement flexible."
+		}
+	},
+	"ui.settings.configuration.backend_settings_section.show_advanced_count": {
+		"role": "Button in an empty section that reveals held-back rows",
+		"tone": "Plain imperative; no exclamation, no please.",
+		"length": "Button label; one line, never wraps. English is 62 characters; keep it a short verb phrase of similar width.",
+		"note": "\"Show 14 advanced\" reveals 14 advanced settings. \"advanced\" stands for \"advanced settings\"; the noun is elided to keep the button short, so agree it with the number in your language. Plural arms are identical in English because the elided noun does not change. Plural: English has one/other only. ru needs few/many; ar needs zero/two/few/many; supply every arm your language requires and keep # where the number belongs.",
+		"placeholders": {
+			"count": "Number of advanced settings currently hidden; \"advanced\" elides \"settings\", so agree it with this number."
+		}
+	},
+	"ui.settings.configuration.settings_group_header.advanced_count": {
+		"role": "Count beside a group title when advanced rows are held back",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 52 characters.",
+		"note": "For example \"14 advanced\". The noun \"settings\" is elided; agree it with the number. Plural: English has one/other only. ru needs few/many; ar needs zero/two/few/many; supply every arm your language requires and keep # where the number belongs.",
+		"placeholders": {
+			"count": "Number of advanced settings held back."
+		}
+	},
+	"ui.settings.configuration.retention_duration_control.idle_window_status": {
+		"role": "Status line under the retention control",
+		"tone": "Calm, factual sentence; no blame, no alarm.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 73 characters.",
+		"note": "Restates the entered window: \"48 hours with no activity (default)\". The default marker is appended only when it applies.",
+		"placeholders": {
+			"duration": "Localized duration, for example \"48 hours\".",
+			"isDefault": "Select token \"yes\" or \"no\". yes appends \" (default)\". Never translate the tokens."
+		}
+	},
+	"ui.settings.configuration.retention_duration_control.use_duration": {
+		"role": "Button offered next to a validation error",
+		"tone": "Plain imperative; no exclamation, no please.",
+		"length": "Button label; one line, never wraps. English is 14 characters; keep it a short verb phrase of similar width.",
+		"note": "Applies the nearest allowed value, for example \"Use 1 month\".",
+		"placeholders": {
+			"duration": "Localized duration of the suggested value, for example \"1 month\"."
+		}
+	},
+	"ui.settings.configuration.retention_duration_control.duration_default": {
+		"role": "Tooltip on the preset stop that is the default",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Hover/focus tooltip; wraps at about 30 characters per line. English is 20 characters.",
+		"note": "Says which stop is the default, for example \"48 hours (default)\".",
+		"placeholders": {
+			"duration": "Localized duration, for example \"48 hours\"."
+		}
+	},
+	"ui.settings.configuration.settings_filter_bar.advanced_shown": {
+		"role": "Result line when Show advanced is on",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 129 characters.",
+		"note": "Says how many advanced settings are now included and where to open them. Plural: English has one/other only. ru needs few/many; ar needs zero/two/few/many; supply every arm your language requires and keep # where the number belongs.",
+		"placeholders": {
+			"count": "Number of advanced settings."
+		}
+	},
+	"ui.settings.configuration.settings_filter_bar.core_and_advanced": {
+		"role": "Default result line",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 127 characters.",
+		"note": "For example \"40 core settings, 14 advanced\". \"Advanced\" elides \"advanced settings\". Plural: English has one/other only. ru needs few/many; ar needs zero/two/few/many; supply every arm your language requires and keep # where the number belongs.",
+		"placeholders": {
+			"advancedCount": "Number of advanced settings held back; the elided noun agrees with this number.",
+			"coreCount": "Number of everyday settings."
+		}
+	}
+}

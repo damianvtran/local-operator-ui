@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * Settings > Integrations, as pure decisions: what a row SAYS, which ONE action
  * it leads with, what goes in its overflow, which group it sits in, and when the
@@ -77,11 +78,13 @@ export type IntegrationDocument = Omit<McpCatalog, "servers"> & {
 
 /** "1 tool", "12 tools" - the walk's "1 tools available" (N1) was this. */
 export const toolCountLabel = (count: number): string =>
-	`${count} ${count === 1 ? "tool" : "tools"}`;
+	t("ui.settings.integrations.integration_model.tool_count", { count: count });
 
 /** "1 integration", "3 integrations", for group headings and the search box. */
 export const integrationCountLabel = (count: number): string =>
-	`${count} ${count === 1 ? "integration" : "integrations"}`;
+	t("ui.settings.integrations.integration_model.integration_count", {
+		count: count,
+	});
 
 /**
  * The statuses this page knows how to word, as a RUNTIME value.
@@ -421,12 +424,21 @@ export const offersKey = (row: Pick<IntegrationRow, "actions">): boolean =>
  */
 export function relativeTime(now: number, then: number): string {
 	const seconds = Math.max(0, Math.round((now - then) / 1000));
-	if (seconds < 60) return "just now";
+	if (seconds < 60)
+		return t("ui.settings.integrations.integration_model.just_now");
 	const minutes = Math.round(seconds / 60);
-	if (minutes < 60) return `${minutes} min ago`;
+	if (minutes < 60)
+		return t("ui.settings.integrations.integration_model.minutes_min_ago", {
+			minutes,
+		});
 	const hours = Math.round(minutes / 60);
-	if (hours < 24) return `${hours} h ago`;
-	return `${Math.round(hours / 24)} d ago`;
+	if (hours < 24)
+		return t("ui.settings.integrations.integration_model.hours_h_ago", {
+			hours,
+		});
+	return t("ui.settings.integrations.integration_model.days_ago", {
+		days: Math.round(hours / 24),
+	});
 }
 
 /**
@@ -502,9 +514,19 @@ export function integrationStatus(
 	 */
 	if (running) {
 		if (running.action === "login" || running.action === "reauth")
-			return { label: "Signing in…", tone: "info", detail: null, busy: true };
+			return {
+				label: t("ui.settings.integrations.integration_model.signing_in"),
+				tone: "info",
+				detail: null,
+				busy: true,
+			};
 		if (running.action === "logout")
-			return { label: "Signing out…", tone: "info", detail: null, busy: true };
+			return {
+				label: t("ui.settings.integrations.integration_model.signing_out"),
+				tone: "info",
+				detail: null,
+				busy: true,
+			};
 	}
 	/*
 	 * A status this build cannot word is stated as such: rendering it as "Ready"
@@ -514,7 +536,7 @@ export function integrationStatus(
 	 */
 	if (!isKnownIntegrationStatus(row.status))
 		return {
-			label: "Status unavailable",
+			label: t("ui.settings.integrations.integration_model.status_unavailable"),
 			tone: "neutral",
 			detail: null,
 			busy: false,
@@ -574,7 +596,7 @@ export function integrationStatus(
 	 */
 	if (memory.disconnectedAt !== null)
 		return {
-			label: "Not connected",
+			label: t("ui.settings.integrations.integration_model.not_connected"),
 			tone: "neutral",
 			detail: null,
 			busy: false,
@@ -585,14 +607,24 @@ export function integrationStatus(
 			return {
 				label:
 					typeof row.tool_count === "number"
-						? `Connected · ${toolCountLabel(row.tool_count)}`
-						: "Connected",
+						? t(
+								"ui.settings.integrations.integration_model.connected_with_tools",
+								{
+									tools: String(toolCountLabel(row.tool_count)),
+								},
+							)
+						: t("ui.settings.integrations.integration_model.connected"),
 				tone: "success",
 				detail: null,
 				busy: false,
 			};
 		case "connecting":
-			return { label: "Connecting…", tone: "info", detail: null, busy: true };
+			return {
+				label: t("ui.settings.integrations.integration_model.connecting"),
+				tone: "info",
+				detail: null,
+				busy: true,
+			};
 		case "needs_sign_in":
 			return {
 				/*
@@ -604,8 +636,8 @@ export function integrationStatus(
 				 */
 				label:
 					row.auth.kind === "api_key" || needsKeyFor(row, operations, memory)
-						? "Needs a key"
-						: "Needs sign-in",
+						? t("ui.settings.integrations.integration_model.needs_a_key")
+						: t("ui.settings.integrations.integration_model.needs_sign_in"),
 				tone: "warning",
 				// Only the backend's own reason, and only when it says something
 				// the row's own action does not (see `publicRowReason`).
@@ -614,13 +646,15 @@ export function integrationStatus(
 			};
 		case "error":
 			return {
-				label: "Couldn't start",
+				label: t("ui.settings.integrations.integration_model.couldn_t_start"),
 				tone: "danger",
 				// The reason is the whole point of the state (N4, U5): a failure with no
 				// cause is a dead end. When the backend sent none, or sent only a
 				// terminal command, say so rather than leaving the line out and implying
 				// there was nothing to say.
-				detail: publicRowReason(row.status_reason) ?? "No reason was given.",
+				detail:
+					publicRowReason(row.status_reason) ??
+					t("ui.settings.integrations.integration_model.no_reason_was_given"),
 				busy: false,
 			};
 		default:
@@ -632,7 +666,7 @@ export function integrationStatus(
 			 */
 			if (signedOut)
 				return {
-					label: "Signed out",
+					label: t("ui.settings.integrations.integration_model.signed_out"),
 					tone: "warning",
 					detail: null,
 					busy: false,
@@ -645,7 +679,9 @@ export function integrationStatus(
 			 */
 			if (failedSignOut)
 				return {
-					label: "Sign-out didn't finish",
+					label: t(
+						"ui.settings.integrations.integration_model.sign_out_didn_t_finish",
+					),
 					tone: "warning",
 					/*
 					 * PLAIN WORDS, NOT THE BACKEND'S DEVELOPER TEXT (U16). The raw reason
@@ -662,7 +698,9 @@ export function integrationStatus(
 					 * is what tells a failed sign-out apart from a completed one,
 					 * and why the row warns rather than claims success.
 					 */
-					detail: "The sign-in is still saved.",
+					detail: t(
+						"ui.settings.integrations.integration_model.the_sign_in_is_still_saved",
+					),
 					busy: false,
 				};
 			/*
@@ -678,14 +716,16 @@ export function integrationStatus(
 			 */
 			if (needsKeyFor(row, operations, memory))
 				return {
-					label: "Needs a key",
+					label: t("ui.settings.integrations.integration_model.needs_a_key"),
 					tone: "warning",
 					detail: null,
 					busy: false,
 				};
 			if (lastSignInFailed)
 				return {
-					label: "Sign-in didn't finish",
+					label: t(
+						"ui.settings.integrations.integration_model.sign_in_didn_t_finish",
+					),
 					tone: "warning",
 					detail: null,
 					busy: false,
@@ -702,8 +742,8 @@ export function integrationStatus(
 				return {
 					label:
 						row.auth.kind === "api_key" || needsKeyFor(row, operations, memory)
-							? "Needs a key"
-							: "Needs sign-in",
+							? t("ui.settings.integrations.integration_model.needs_a_key")
+							: t("ui.settings.integrations.integration_model.needs_sign_in"),
 					tone: "warning",
 					detail: publicRowReason(row.status_reason),
 					busy: false,
@@ -744,8 +784,17 @@ export function integrationStatus(
 				return {
 					label:
 						workedAt !== null
-							? `Worked ${relativeTime(now, workedAt)} · ${toolCountLabel(row.tool_count as number)}`
-							: `Worked earlier · ${toolCountLabel(row.tool_count as number)}`,
+							? t(
+									"ui.settings.integrations.integration_model.worked_when_with_tools",
+									{
+										when: String(relativeTime(now, workedAt)),
+										tools: String(toolCountLabel(row.tool_count as number)),
+									},
+								)
+							: t(
+									"ui.settings.integrations.integration_model.worked_earlier_with_tools",
+									{ tools: String(toolCountLabel(row.tool_count as number)) },
+								),
 					tone: "success",
 					detail: null,
 					busy: false,
@@ -759,7 +808,7 @@ export function integrationStatus(
 			 */
 			if (row.status_basis === "live")
 				return {
-					label: "Not connected",
+					label: t("ui.settings.integrations.integration_model.not_connected"),
 					tone: "neutral",
 					detail: null,
 					busy: false,
@@ -767,7 +816,12 @@ export function integrationStatus(
 			// No detail line: "Ready" on every idle row followed by the same sentence
 			// would be the loudest thing on a page of healthy servers. The sentence
 			// is the status's tooltip instead (`READY_EXPLANATION`).
-			return { label: "Ready", tone: "neutral", detail: null, busy: false };
+			return {
+				label: t("ui.settings.integrations.integration_model.ready"),
+				tone: "neutral",
+				detail: null,
+				busy: false,
+			};
 	}
 }
 
@@ -780,7 +834,9 @@ export function integrationStatus(
  * draw (U15, n-3).
  */
 export const replaceControlLabel = (count: number): string =>
-	count === 1 ? "Replace the saved key" : "Replace saved keys";
+	t("ui.settings.integrations.integration_model.replace_keys", {
+		count: count,
+	});
 
 /**
  * The server's own failure sentence, minus any advice this row cannot take.
@@ -811,6 +867,8 @@ export function publicSignInReason(
 /** What "Ready" means, for the status's tooltip. */
 export const READY_EXPLANATION =
 	"Nothing is wrong. It starts when a chat uses it.";
+export const READY_EXPLANATION_KEY =
+	"ui.settings.integrations.integration_model.copy_ready_explanation";
 
 /** What "Not connected" means, for a row a live chat is not using. */
 /**
@@ -828,9 +886,13 @@ export const READY_EXPLANATION =
  * there is one, to say itself.
  */
 export const NOT_CONNECTED_EXPLANATION = "Not running in this chat.";
+export const NOT_CONNECTED_EXPLANATION_KEY =
+	"ui.settings.integrations.integration_model.copy_not_connected_explanation";
 
 export const transportLabel = (row: Pick<IntegrationRow, "transport">) =>
-	row.transport === "local_command" ? "Local command" : "Remote URL";
+	row.transport === "local_command"
+		? t("ui.settings.integrations.integration_model.local_command")
+		: t("ui.settings.integrations.integration_model.remote_url");
 
 /**
  * The tool that owns a foreign row's config, or null for this app's own.
@@ -845,13 +907,13 @@ export function foreignOrigin(row: IntegrationRow): string | null {
 		case "project-mcp-json":
 			return null;
 		case "claude-code":
-			return "Claude Code";
+			return t("ui.settings.integrations.integration_model.claude_code");
 		case "cursor":
 			return "Cursor";
 		case "vscode":
-			return "VS Code";
+			return t("ui.settings.integrations.integration_model.vs_code");
 		case "codex":
-			return "Codex CLI";
+			return t("ui.settings.integrations.integration_model.codex_cli");
 		default:
 			return foreignMcpConfigOrigin(row.source.path);
 	}
@@ -860,7 +922,7 @@ export function foreignOrigin(row: IntegrationRow): string | null {
 /**
  * The row's de-emphasised meta: how it runs, where it applies, where it came
  * from. Scope is only worth a word when there IS a separate project file -
- * with the desktop's default cwd of `~` there is not, and "Global" beside every
+ * with the desktop's default cwd of `~` there is not, and t("ui.settings.integrations.integration_model.global") beside every
  * row would be a distinction with nothing on the other side of it.
  */
 export function integrationMeta(
@@ -876,12 +938,30 @@ export function integrationMeta(
 		row.tool_count_basis === "last_seen" &&
 		typeof row.tool_count === "number"
 	)
-		parts.push(`${toolCountLabel(row.tool_count)} when last checked`);
+		parts.push(
+			t("ui.settings.integrations.integration_model.tools_when_last_checked", {
+				tools: String(toolCountLabel(row.tool_count)),
+			}),
+		);
 	if (projectScopeAvailable)
-		parts.push(row.scope === "project" ? "This project" : "Global");
+		parts.push(
+			row.scope === "project"
+				? t("ui.settings.integrations.integration_model.this_project")
+				: t("ui.settings.integrations.integration_model.global"),
+		);
 	const origin = foreignOrigin(row);
-	if (origin) parts.push(`Imported from ${origin}`);
-	else if (!row.source.editable) parts.push("Imported from a project file");
+	if (origin)
+		parts.push(
+			t("ui.settings.integrations.integration_model.imported_from_origin", {
+				origin: String(origin),
+			}),
+		);
+	else if (!row.source.editable)
+		parts.push(
+			t(
+				"ui.settings.integrations.integration_model.imported_from_a_project_file",
+			),
+		);
 	return parts;
 }
 
@@ -957,7 +1037,10 @@ export function primaryAction(
 		 * beside it.
 		 */
 		if (running.action === "login" || running.action === "reauth")
-			return { kind: "sign_in", label: "Continue sign-in" };
+			return {
+				kind: "sign_in",
+				label: t("ui.settings.integrations.integration_model.continue_sign_in"),
+			};
 		return null;
 	}
 	const has = (action: IntegrationAction) => row.actions.includes(action);
@@ -966,7 +1049,12 @@ export function primaryAction(
 	// An unreadable status still gets the one control that can answer it: ask
 	// the backend again. The audit's own table gives this row "Check again".
 	if (!isKnownIntegrationStatus(row.status))
-		return has("test") ? { kind: "test", label: "Check again" } : null;
+		return has("test")
+			? {
+					kind: "test",
+					label: t("ui.settings.integrations.integration_model.check_again"),
+				}
+			: null;
 	const lastOperation = rememberedDecisiveFor(row.name, operations, memory);
 	const signInFailed =
 		lastOperation?.status === "failed" && isSignInAction(lastOperation);
@@ -994,20 +1082,53 @@ export function primaryAction(
 			 * server wants a key by watching a Test fail. So this line is not a claim
 			 * that the key is always available; it is the page using what it knows.
 			 */
-			if (maybeNeedsKey) return { kind: "set_key", label: "Add key" };
-			if (has("sign_in")) return { kind: "sign_in", label: "Sign in" };
-			if (key) return { kind: "set_key", label: "Add key" };
-			if (has("reauth")) return { kind: "reauth", label: "Sign in again" };
-			return { kind: "fix", label: "Fix" };
+			if (maybeNeedsKey)
+				return {
+					kind: "set_key",
+					label: t("ui.settings.integrations.integration_model.add_key"),
+				};
+			if (has("sign_in"))
+				return {
+					kind: "sign_in",
+					label: t("ui.settings.integrations.integration_model.sign_in"),
+				};
+			if (key)
+				return {
+					kind: "set_key",
+					label: t("ui.settings.integrations.integration_model.add_key"),
+				};
+			if (has("reauth"))
+				return {
+					kind: "reauth",
+					label: t("ui.settings.integrations.integration_model.sign_in_again"),
+				};
+			return {
+				kind: "fix",
+				label: t("ui.settings.integrations.integration_model.fix"),
+			};
 		case "error":
-			if (has("connect")) return { kind: "connect", label: "Reconnect" };
-			if (has("test")) return { kind: "test", label: "Retry" };
-			return { kind: "fix", label: "Fix" };
+			if (has("connect"))
+				return {
+					kind: "connect",
+					label: t("ui.settings.integrations.integration_model.reconnect"),
+				};
+			if (has("test"))
+				return {
+					kind: "test",
+					label: t("ui.settings.integrations.integration_model.retry"),
+				};
+			return {
+				kind: "fix",
+				label: t("ui.settings.integrations.integration_model.fix"),
+			};
 		default: {
 			// Signed out: the user just removed the credential, so signing in
 			// again is the next step, not an idle "Ready" (U2).
 			if (isSignedOut(lastOperation) && has("sign_in"))
-				return { kind: "sign_in", label: "Sign in" };
+				return {
+					kind: "sign_in",
+					label: t("ui.settings.integrations.integration_model.sign_in"),
+				};
 			/*
 			 * A sign-out that FAILED leaves the credential exactly where it was and
 			 * asks the user to try again (R2-2, m-2): the row's own words already
@@ -1017,7 +1138,10 @@ export function primaryAction(
 			 * (`integrationGroupOf`).
 			 */
 			if (isFailedSignOut(lastOperation) && has("sign_out"))
-				return { kind: "sign_out", label: "Sign out again" };
+				return {
+					kind: "sign_out",
+					label: t("ui.settings.integrations.integration_model.sign_out_again"),
+				};
 			/*
 			 * A Disconnect leads back the way the user came (Q2): the status reads
 			 * "Not connected", so the row must offer the control that connects it -
@@ -1025,14 +1149,25 @@ export function primaryAction(
 			 * Not-connected row with no action at all.
 			 */
 			if (memory.disconnectedAt !== null && has("connect"))
-				return { kind: "connect", label: "Connect" };
+				return {
+					kind: "connect",
+					label: t("ui.settings.integrations.integration_model.connect"),
+				};
 			/*
 			 * A sign-in the user CANCELLED changes nothing, so the row keeps the
 			 * route the read that asked for a sign-in offered (U14).
 			 */
 			if (memory.needsSignIn) {
-				if (maybeNeedsKey && key) return { kind: "set_key", label: "Add key" };
-				if (has("sign_in")) return { kind: "sign_in", label: "Sign in" };
+				if (maybeNeedsKey && key)
+					return {
+						kind: "set_key",
+						label: t("ui.settings.integrations.integration_model.add_key"),
+					};
+				if (has("sign_in"))
+					return {
+						kind: "sign_in",
+						label: t("ui.settings.integrations.integration_model.sign_in"),
+					};
 				// No sign-in in `actions` any more: fall through, so the row leads
 				// with a control the backend still offers rather than one it
 				// withdrew.
@@ -1044,9 +1179,16 @@ export function primaryAction(
 			 * Connect that is actually its next step. The key stays reachable in
 			 * the overflow (U11's other half is about `needs_sign_in`).
 			 */
-			if (maybeNeedsKey && key) return { kind: "set_key", label: "Add key" };
+			if (maybeNeedsKey && key)
+				return {
+					kind: "set_key",
+					label: t("ui.settings.integrations.integration_model.add_key"),
+				};
 			if (signInFailed && has("sign_in"))
-				return { kind: "sign_in", label: "Try again" };
+				return {
+					kind: "sign_in",
+					label: t("ui.settings.integrations.integration_model.try_again"),
+				};
 			/*
 			 * A row that HAS been checked leads with nothing (D1): its Test is in
 			 * the overflow, exactly where a connected row's Test already is, so a
@@ -1075,7 +1217,7 @@ export function primaryAction(
 			if (has("connect"))
 				return {
 					kind: "connect",
-					label: "Connect",
+					label: t("ui.settings.integrations.integration_model.connect"),
 					...(memory.connectedAt === null && row.status_basis !== "live"
 						? { variant: "ghost" as const }
 						: {}),
@@ -1090,7 +1232,11 @@ export function primaryAction(
 				row.tool_count === null &&
 				row.tool_count_basis === null
 			)
-				return { kind: "test", label: "Test", variant: "ghost" };
+				return {
+					kind: "test",
+					label: t("ui.settings.integrations.integration_model.test"),
+					variant: "ghost",
+				};
 			return null;
 		}
 	}
@@ -1217,11 +1363,21 @@ export function overflowItems(
 	const has = (action: IntegrationAction) => row.actions.includes(action);
 	const items: OverflowItem[] = [];
 	const running = runningOperationFor(row.name, operations);
-	if (running) items.push({ kind: "cancel", label: "Cancel" });
+	if (running)
+		items.push({
+			kind: "cancel",
+			label: t("ui.settings.integrations.integration_model.cancel"),
+		});
 	if (!running && has("test") && primary !== "test")
-		items.push({ kind: "test", label: "Test connection" });
+		items.push({
+			kind: "test",
+			label: t("ui.settings.integrations.integration_model.test_connection"),
+		});
 	if (has("connect") && primary !== "connect" && status !== "connected")
-		items.push({ kind: "connect", label: "Reconnect" });
+		items.push({
+			kind: "connect",
+			label: t("ui.settings.integrations.integration_model.reconnect"),
+		});
 	/*
 	 * A plain Sign in belongs in the menu as well as on the button: a row can
 	 * offer it without leading with it (an imported remote row the app has never
@@ -1234,34 +1390,75 @@ export function overflowItems(
 		primary !== "sign_in" &&
 		status !== "connected"
 	)
-		items.push({ kind: "sign_in", label: "Sign in" });
-	if (has("reload")) items.push({ kind: "reload", label: "Reload" });
+		items.push({
+			kind: "sign_in",
+			label: t("ui.settings.integrations.integration_model.sign_in"),
+		});
+	if (has("reload"))
+		items.push({
+			kind: "reload",
+			label: t("ui.settings.integrations.integration_model.reload"),
+		});
 	if (!running && has("reauth") && primary !== "reauth")
-		items.push({ kind: "reauth", label: "Sign in again" });
+		items.push({
+			kind: "reauth",
+			label: t("ui.settings.integrations.integration_model.sign_in_again"),
+		});
 	if (offersKey(row) && primary !== "set_key")
 		items.push({
 			kind: "set_key",
 			// "Add key" when there is no key yet, "Update key" when the config
 			// declares one: the same control, named for what pressing it does.
-			label: row.auth.secret_refs.length > 0 ? "Update key" : "Add key",
+			label:
+				row.auth.secret_refs.length > 0
+					? t("ui.settings.integrations.integration_model.update_key")
+					: t("ui.settings.integrations.integration_model.add_key"),
 		});
-	if (has("sign_out")) items.push({ kind: "sign_out", label: "Sign out" });
+	if (has("sign_out"))
+		items.push({
+			kind: "sign_out",
+			label: t("ui.settings.integrations.integration_model.sign_out"),
+		});
 	if (has("disconnect") && status === "connected")
-		items.push({ kind: "disconnect", label: "Disconnect" });
+		items.push({
+			kind: "disconnect",
+			label: t("ui.settings.integrations.integration_model.disconnect"),
+		});
 	if (has("copy_setup") && row.setup_prompt)
-		items.push({ kind: "copy_setup", label: "Copy setup prompt" });
+		items.push({
+			kind: "copy_setup",
+			label: t("ui.settings.integrations.integration_model.copy_setup_prompt"),
+		});
 	if (primary !== "fix")
-		items.push({ kind: "open_config", label: "Open config file" });
+		items.push({
+			kind: "open_config",
+			label: t("ui.settings.integrations.integration_model.open_config_file"),
+		});
 	if (has("remove"))
-		items.push({ kind: "remove", label: "Remove", destructive: true });
+		items.push({
+			kind: "remove",
+			label: t("ui.settings.integrations.integration_model.remove"),
+			destructive: true,
+		});
 	else if (!row.source.editable) {
 		const origin = foreignOrigin(row);
 		items.push({
 			kind: "remove_elsewhere",
-			label: origin ? `Remove in ${origin}` : "Remove in its own file",
+			label: origin
+				? t("ui.settings.integrations.integration_model.remove_in_origin", {
+						origin: String(origin),
+					})
+				: t(
+						"ui.settings.integrations.integration_model.remove_in_its_own_file",
+					),
 			hint: origin
-				? `Defined in ${origin}'s config. Remove it there.`
-				: "Defined in a file this app doesn't write. Remove it there.",
+				? t(
+						"ui.settings.integrations.integration_model.defined_in_origin_s_config_remove_it_there",
+						{ origin: String(origin) },
+					)
+				: t(
+						"ui.settings.integrations.integration_model.defined_in_a_file_this_app_doesn_t_write_remove_it_there",
+					),
 		});
 	}
 	return items;
@@ -1278,15 +1475,21 @@ export type IntegrationGroup = {
 };
 
 const GROUP_TITLES: Record<IntegrationGroupId, string> = {
-	attention: "Needs attention",
-	connected: "Connected",
+	get attention() {
+		return t("ui.settings.integrations.integration_model.needs_attention");
+	},
+	get connected() {
+		return t("ui.settings.integrations.integration_model.connected");
+	},
 	/*
 	 * "Available", not "Ready": the group holds every row that is fine and not
 	 * doing anything right now, and a live runtime's row reads "Not connected"
 	 * inside it (F3) - a heading of "Ready" over a row saying "Not connected" is
 	 * two words disagreeing on screen.
 	 */
-	ready: "Available",
+	get ready() {
+		return t("ui.settings.integrations.integration_model.available");
+	},
 };
 
 /**
@@ -1777,11 +1980,17 @@ export function integrationNameProblem(
 	existing: readonly string[],
 ): string | null {
 	const trimmed = name.trim();
-	if (!trimmed) return "Give it a name.";
+	if (!trimmed)
+		return t("ui.settings.integrations.integration_model.give_it_a_name");
 	if (!INTEGRATION_NAME_PATTERN.test(trimmed))
-		return "Use letters, numbers, dots, dashes, underscores or colons, with no spaces.";
+		return t(
+			"ui.settings.integrations.integration_model.use_letters_numbers_dots_dashes_underscores_or_colons_with_no_spa",
+		);
 	if (existing.includes(trimmed))
-		return `An integration named ${trimmed} already exists.`;
+		return t(
+			"ui.settings.integrations.integration_model.an_integration_named_trimmed_already_exists",
+			{ trimmed: String(trimmed) },
+		);
 	return null;
 }
 
@@ -1796,22 +2005,38 @@ export function integrationNameProblem(
  */
 export function integrationUrlProblem(raw: string): string | null {
 	const value = raw.trim();
-	if (!value) return "Enter the server's URL.";
+	if (!value)
+		return t(
+			"ui.settings.integrations.integration_model.enter_the_server_s_url",
+		);
 	let parsed: URL;
 	try {
 		parsed = new URL(value);
 	} catch {
-		return "Enter a full URL, like https://mcp.example.com/mcp.";
+		return t(
+			"ui.settings.integrations.integration_model.enter_a_full_url_like_https_mcp_example_com_mcp",
+		);
 	}
 	if (parsed.protocol !== "https:" && parsed.protocol !== "http:")
-		return "The URL must start with https:// or http://.";
-	if (!parsed.hostname) return "The URL needs a host name.";
+		return t(
+			"ui.settings.integrations.integration_model.the_url_must_start_with_https_or_http",
+		);
+	if (!parsed.hostname)
+		return t(
+			"ui.settings.integrations.integration_model.the_url_needs_a_host_name",
+		);
 	if (parsed.username || parsed.password)
-		return "Remove the username or password from the URL. Keys are added after it's saved.";
+		return t(
+			"ui.settings.integrations.integration_model.remove_the_username_or_password_from_the_url_keys_are_added_after",
+		);
 	if (parsed.search || parsed.hash)
-		return "Remove the ? or # part of the URL. Keys are added after it's saved.";
+		return t(
+			"ui.settings.integrations.integration_model.remove_the_or_part_of_the_url_keys_are_added_after_it_s_saved",
+		);
 	if (SCHEME_IN_PATH.test(value.slice(parsed.protocol.length + 2)))
-		return "This looks like two URLs pasted together. Enter just one.";
+		return t(
+			"ui.settings.integrations.integration_model.this_looks_like_two_urls_pasted_together_enter_just_one",
+		);
 	return null;
 }
 
@@ -1841,7 +2066,7 @@ export const parseIntegrationArgs = (raw: string): string[] =>
  *
  * `project_scope_available` is inferred: true only when some row really is
  * project-owned. The old route cannot say whether a separate project file
- * exists, and assuming one would print "Global" on every row of the common
+ * exists, and assuming one would print t("ui.settings.integrations.integration_model.global") on every row of the common
  * cwd = `~` case, where there is nothing on the other side of the distinction.
  * The scope collision this route hides (U8) is fixed on the catalog route.
  */
@@ -1940,24 +2165,61 @@ const sourceKindFor = (
  * which is why the backend sends a category rather than the exception.
  */
 export const CATALOG_REFUSAL_COPY: Record<string, string> = {
-	invalid_config:
-		"That configuration isn't valid. Check the command or the URL, then try again.",
-	operation_unavailable:
-		"That sign-in or test isn't running any more. Try again.",
-	exists: "An integration with this name already exists. Choose another name.",
-	not_owned:
-		"It's defined in another tool's config, so it can't be changed here. Edit it in that file.",
-	project_scope_unavailable:
-		"There's no separate project config here, so it can only be added globally.",
-	unknown_server: "It no longer exists. The list has been refreshed.",
-	oauth_unsupported: "It doesn't use browser sign-in.",
-	grant_running:
-		"A sign-in or test is already running. Wait for it to finish, or cancel it.",
-	too_many_operations:
-		"Too many sign-ins and tests are waiting. Try again in a moment.",
-	write_failed:
-		"The config file couldn't be written. Check that it isn't read-only.",
-	mcp_starting: "Integrations are still starting. Try again in a moment.",
+	get invalid_config() {
+		return t(
+			"ui.settings.integrations.integration_model.that_configuration_isn_t_valid_check_the_command_or_the_url_then_",
+		);
+	},
+	get operation_unavailable() {
+		return t(
+			"ui.settings.integrations.integration_model.that_sign_in_or_test_isn_t_running_any_more_try_again",
+		);
+	},
+	get exists() {
+		return t(
+			"ui.settings.integrations.integration_model.an_integration_with_this_name_already_exists_choose_another_name",
+		);
+	},
+	get not_owned() {
+		return t(
+			"ui.settings.integrations.integration_model.it_s_defined_in_another_tool_s_config_so_it_can_t_be_changed_here",
+		);
+	},
+	get project_scope_unavailable() {
+		return t(
+			"ui.settings.integrations.integration_model.there_s_no_separate_project_config_here_so_it_can_only_be_added_g",
+		);
+	},
+	get unknown_server() {
+		return t(
+			"ui.settings.integrations.integration_model.it_no_longer_exists_the_list_has_been_refreshed",
+		);
+	},
+	get oauth_unsupported() {
+		return t(
+			"ui.settings.integrations.integration_model.it_doesn_t_use_browser_sign_in",
+		);
+	},
+	get grant_running() {
+		return t(
+			"ui.settings.integrations.integration_model.a_sign_in_or_test_is_already_running_wait_for_it_to_finish_or_can",
+		);
+	},
+	get too_many_operations() {
+		return t(
+			"ui.settings.integrations.integration_model.too_many_sign_ins_and_tests_are_waiting_try_again_in_a_moment",
+		);
+	},
+	get write_failed() {
+		return t(
+			"ui.settings.integrations.integration_model.the_config_file_couldn_t_be_written_check_that_it_isn_t_read_only",
+		);
+	},
+	get mcp_starting() {
+		return t(
+			"ui.settings.integrations.integration_model.integrations_are_still_starting_try_again_in_a_moment",
+		);
+	},
 	/*
 	 * The backend's own catch-all (`REFUSAL_MESSAGES` in `mcp/desktop.py`), and
 	 * this file's fallback for a code it does not know: the code set is the
@@ -1966,7 +2228,11 @@ export const CATALOG_REFUSAL_COPY: Record<string, string> = {
 	 * is named explicitly because it is the code the session route has always
 	 * answered with.
 	 */
-	mcp_control_refused: "The server refused it, so nothing was changed.",
+	get mcp_control_refused() {
+		return t(
+			"ui.settings.integrations.integration_model.the_server_refused_it_so_nothing_was_changed",
+		);
+	},
 };
 
 /**
@@ -1980,6 +2246,8 @@ export const CATALOG_REFUSAL_COPY: Record<string, string> = {
  */
 export const CATALOG_REFUSAL_FALLBACK =
 	"The server refused it, so nothing was changed. Try again.";
+const CATALOG_REFUSAL_FALLBACK_KEY =
+	"ui.settings.integrations.integration_model.copy_catalog_refusal_fallback";
 
 /**
  * The sentence a failed control shows.
@@ -2008,7 +2276,7 @@ export function integrationFailureMessage(
 			typeof cause.code === "string" &&
 			Object.prototype.hasOwnProperty.call(CATALOG_REFUSAL_COPY, cause.code)
 				? CATALOG_REFUSAL_COPY[cause.code]
-				: CATALOG_REFUSAL_FALLBACK;
+				: t(CATALOG_REFUSAL_FALLBACK_KEY);
 		return `${MCP_FAILURE_LEAD[phase]}. ${copy}`;
 	}
 	return mcpFailure(phase, cause, grantRunning).message;

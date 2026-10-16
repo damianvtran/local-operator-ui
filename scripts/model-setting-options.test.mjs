@@ -204,6 +204,25 @@ test("the stored value is the provider id and the shown value is its name", () =
 
 /* ------------------------------------------------------------ model rows */
 
+test("provider detail treats an omitted aggregation flag like false, not like true", () => {
+	for (const [aggregated, expected] of [
+		[undefined, "Openai, no credential"],
+		[false, "Openai, no credential"],
+		[true, "Openai, aggregated, no credential"],
+	]) {
+		const model = Object.fromEntries(
+			Object.entries(row({ aggregated })).filter(
+				([, value]) => value !== undefined,
+			),
+		);
+		const options = modelOptions(
+			{ ...CATALOGUE, models: [model] },
+			{ kind: "model", hosting: "openai", current: "" },
+		);
+		assert.equal(options[0]?.description, expected);
+	}
+});
+
 test("model_name stores the BARE model id and shows the selector", () => {
 	const options = modelOptions(CATALOGUE, {
 		kind: "model",

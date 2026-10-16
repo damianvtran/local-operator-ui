@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * Adding an integration: a name, how it runs, and where it applies.
  *
@@ -85,6 +87,8 @@ export type AddIntegrationFormProps = {
  */
 export const ADD_INTEGRATION_PICKUP_NOTE =
 	"New chats can use it right away. Open chats pick it up when you start a new chat or reload integrations there.";
+const ADD_INTEGRATION_PICKUP_NOTE_KEY =
+	"ui.settings.integrations.add_integration_form.copy_add_integration_pickup_note";
 
 /**
  * One line on which transport to pick, because the pair does not explain itself
@@ -93,6 +97,8 @@ export const ADD_INTEGRATION_PICKUP_NOTE =
  */
 export const TRANSPORT_HINT =
 	"Most services give you a URL. Use Local command when their setup says npx or uvx.";
+const TRANSPORT_HINT_KEY =
+	"ui.settings.integrations.add_integration_form.copy_transport_hint";
 
 export const AddIntegrationForm: FC<AddIntegrationFormProps> = ({
 	existingNames,
@@ -102,6 +108,7 @@ export const AddIntegrationForm: FC<AddIntegrationFormProps> = ({
 	onCancel,
 	initial,
 }) => {
+	useI18nLocale();
 	const [name, setName] = useState(initial?.name ?? "");
 	const [mode, setMode] = useState<"command" | "url">(
 		initial?.mode ?? "command",
@@ -131,7 +138,11 @@ export const AddIntegrationForm: FC<AddIntegrationFormProps> = ({
 
 	const nameProblem = integrationNameProblem(name, existingNames);
 	const commandProblem =
-		mode === "command" && !command.trim() ? "Enter the command to run." : null;
+		mode === "command" && !command.trim()
+			? t(
+					"ui.settings.integrations.add_integration_form.enter_the_command_to_run",
+				)
+			: null;
 	const urlProblem = mode === "url" ? integrationUrlProblem(url) : null;
 	const show = (field: string) => submitted || touched[field];
 
@@ -188,7 +199,9 @@ export const AddIntegrationForm: FC<AddIntegrationFormProps> = ({
 	return (
 		<form
 			noValidate
-			aria-label="Add integration"
+			aria-label={t(
+				"ui.settings.integrations.add_integration_form.add_integration",
+			)}
 			className="flex flex-col gap-4 rounded-lg bg-surface p-4"
 			onSubmit={(event) => void submit(event)}
 			/*
@@ -203,12 +216,16 @@ export const AddIntegrationForm: FC<AddIntegrationFormProps> = ({
 			}}
 		>
 			<div className="flex flex-col gap-1.5">
-				<Label htmlFor="integration-add-name">Name</Label>
+				<Label htmlFor="integration-add-name">
+					{t("ui.settings.integrations.add_integration_form.name")}
+				</Label>
 				<Input
 					ref={nameRef}
 					id="integration-add-name"
 					value={name}
-					placeholder="e.g. notion"
+					placeholder={t(
+						"ui.settings.integrations.add_integration_form.e_g_notion",
+					)}
 					autoComplete="off"
 					aria-invalid={Boolean(nameProblem && show("name"))}
 					aria-describedby={
@@ -244,25 +261,29 @@ export const AddIntegrationForm: FC<AddIntegrationFormProps> = ({
 					id="integration-add-transport-label"
 					className="font-medium text-body-sm text-ink"
 				>
-					How it runs
+					{t("ui.settings.integrations.add_integration_form.how_it_runs")}
 				</span>
 				<TabsList aria-labelledby="integration-add-transport-label">
 					<TabsTrigger value="command" data-integration-transport="command">
-						Local command
+						{t("ui.settings.integrations.add_integration_form.local_command")}
 					</TabsTrigger>
 					<TabsTrigger value="url" data-integration-transport="url">
-						Remote URL
+						{t("ui.settings.integrations.add_integration_form.remote_url")}
 					</TabsTrigger>
 				</TabsList>
-				<p className="text-ink-dim text-meta">{TRANSPORT_HINT}</p>
+				<p className="text-ink-dim text-meta">{t(TRANSPORT_HINT_KEY)}</p>
 				<TabsContent value="command" className="mt-0 flex flex-col gap-4">
 					<div className="flex flex-col gap-1.5">
-						<Label htmlFor="integration-add-command">Command</Label>
+						<Label htmlFor="integration-add-command">
+							{t("ui.settings.integrations.add_integration_form.command")}
+						</Label>
 						<Input
 							ref={commandRef}
 							id="integration-add-command"
 							value={command}
-							placeholder="e.g. npx"
+							placeholder={t(
+								"ui.settings.integrations.add_integration_form.e_g_npx",
+							)}
 							autoComplete="off"
 							className="font-mono"
 							aria-invalid={Boolean(commandProblem && show("command"))}
@@ -282,8 +303,12 @@ export const AddIntegrationForm: FC<AddIntegrationFormProps> = ({
 					</div>
 					<div className="flex flex-col gap-1.5">
 						<Label htmlFor="integration-add-args">
-							Arguments{" "}
-							<span className="font-normal text-ink-dim">(one per line)</span>
+							{t("ui.settings.integrations.add_integration_form.arguments")}{" "}
+							<span className="font-normal text-ink-dim">
+								{t(
+									"ui.settings.integrations.add_integration_form.one_per_line",
+								)}
+							</span>
 						</Label>
 						<Textarea
 							id="integration-add-args"
@@ -296,13 +321,17 @@ export const AddIntegrationForm: FC<AddIntegrationFormProps> = ({
 				</TabsContent>
 				<TabsContent value="url" className="mt-0 flex flex-col gap-4">
 					<div className="flex flex-col gap-1.5">
-						<Label htmlFor="integration-add-url">URL</Label>
+						<Label htmlFor="integration-add-url">
+							{t("ui.settings.integrations.add_integration_form.url")}
+						</Label>
 						<Input
 							ref={urlRef}
 							id="integration-add-url"
 							type="url"
 							value={url}
-							placeholder="https://mcp.example.com/mcp"
+							placeholder={t(
+								"ui.settings.integrations.add_integration_form.https_mcp_example_com_mcp",
+							)}
 							autoComplete="off"
 							className="font-mono"
 							aria-invalid={Boolean(urlProblem && show("url"))}
@@ -319,8 +348,9 @@ export const AddIntegrationForm: FC<AddIntegrationFormProps> = ({
 								id="integration-add-url-help"
 								className="text-ink-dim text-meta"
 							>
-								If it needs a sign-in or a key, you'll be asked after it's
-								added.
+								{t(
+									"ui.settings.integrations.add_integration_form.if_it_needs_a_sign_in_or_a_key_you_ll_be_asked_after_it_s_added",
+								)}
 							</p>
 						)}
 					</div>
@@ -338,21 +368,26 @@ export const AddIntegrationForm: FC<AddIntegrationFormProps> = ({
 						id="integration-add-scope-label"
 						className="font-medium text-body-sm text-ink"
 					>
-						Available in
+						{t("ui.settings.integrations.add_integration_form.available_in")}
 					</span>
 					<TabsList aria-labelledby="integration-add-scope-label">
 						<TabsTrigger value="global" data-integration-scope="global">
-							All chats
+							{t("ui.settings.integrations.add_integration_form.all_chats")}
 						</TabsTrigger>
 						<TabsTrigger value="project" data-integration-scope="project">
-							This project
+							{t("ui.settings.integrations.add_integration_form.this_project")}
 						</TabsTrigger>
 					</TabsList>
 					{projectLabel ? (
 						<p className="text-ink-dim text-meta">
 							{scope === "project"
-								? `Only chats working in ${projectLabel}.`
-								: "Every chat, in any folder."}
+								? t(
+										"ui.settings.integrations.add_integration_form.only_chats_working_in_projectlabel",
+										{ projectLabel: String(projectLabel) },
+									)
+								: t(
+										"ui.settings.integrations.add_integration_form.every_chat_in_any_folder",
+									)}
 						</p>
 					) : null}
 				</Tabs>
@@ -364,7 +399,7 @@ export const AddIntegrationForm: FC<AddIntegrationFormProps> = ({
 			) : null}
 			<div className="flex flex-wrap items-center justify-between gap-3">
 				<p className={cn("text-body-sm text-ink-dim")}>
-					{ADD_INTEGRATION_PICKUP_NOTE}
+					{t(ADD_INTEGRATION_PICKUP_NOTE_KEY)}
 				</p>
 				<div className="flex gap-2">
 					<Button
@@ -374,7 +409,7 @@ export const AddIntegrationForm: FC<AddIntegrationFormProps> = ({
 						onMouseDown={keepGeometryStable}
 						onClick={onCancel}
 					>
-						Cancel
+						{t("ui.settings.integrations.add_integration_form.cancel")}
 					</Button>
 					<Button
 						type="submit"
@@ -384,7 +419,7 @@ export const AddIntegrationForm: FC<AddIntegrationFormProps> = ({
 						onMouseDown={keepGeometryStable}
 					>
 						{saving ? <Spinner size="xs" /> : null}
-						Add integration
+						{t("ui.settings.integrations.add_integration_form.add_integration")}
 					</Button>
 				</div>
 			</div>
