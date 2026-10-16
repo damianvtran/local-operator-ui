@@ -20,6 +20,7 @@ import { join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { ASK_SESSION_IDS, startAsksAppFixture } from "./asks-app-fixture.mjs";
+import { isEntryPoint } from "./entry-point.mjs";
 const execute = promisify(execFile);
 export const ASKS_CONTROL = "2461cfa3f3beaa1124727a9de93dfe01c4381b0d";
 const sha = (value) => createHash("sha256").update(value).digest("hex");
@@ -321,8 +322,18 @@ async function runCase(kind, root, output, records) {
 async function main() {
 	if (process.argv.includes("--case")) {
 		const i = process.argv.indexOf("--case");
+		const kind = process.argv[i + 1];
+		const needed = ["ASKS_APP_ROOT", "ASKS_OUTPUT", "ASKS_RECORDS"];
+		const missing = needed.filter((name) => !process.env[name]);
+		if (!["control", "candidate"].includes(kind) || missing.length > 0) {
+			console.error(
+				`asks-app-regression: --case needs control|candidate and ${needed.join(", ")} (missing ${missing.join(", ") || "none"})`,
+			);
+			process.exitCode = 1;
+			return;
+		}
 		return runCase(
-			process.argv[i + 1],
+			kind,
 			process.env.ASKS_APP_ROOT,
 			process.env.ASKS_OUTPUT,
 			process.env.ASKS_RECORDS,
@@ -372,6 +383,11 @@ async function main() {
 			join(scratch, "control-app"),
 			output,
 		);
+		const controlArchive = join(output, "control-source.tar");
+		manifest.controlSourceArchive = {
+			path: "control-source.tar",
+			sha256: sha(readFileSync(controlArchive)),
+		};
 		for (const kind of ["control", "candidate"]) {
 			fixture.setMode("loading");
 			const root =
@@ -411,6 +427,27 @@ async function main() {
 		}
 	} finally {
 		manifest.requests = fixture.requests;
+		const forbidden =
+			/\/(send|answer|answers|interrupt|steer|messages|turns)(\/|$|\?)/;
+		for (const request of fixture.requests) {
+			assert(
+				!forbidden.test(request.path),
+				`fixture traffic reached a forbidden write: ${request.method} ${request.path}`,
+			);
+			const allowedPost = ["/watch", "/__fixture/state"].some((suffix) =>
+				request.path.endsWith(suffix),
+			);
+			assert(
+				request.method === "GET" || allowedPost,
+				`fixture traffic used an unmodelled method: ${request.method} ${request.path}`,
+			);
+			const openRead =
+				request.path === "/health" || request.path === "/v1/capabilities";
+			assert(
+				request.authenticated || openRead,
+				`fixture traffic was unauthenticated outside the open reads: ${request.path}`,
+			);
+		}
 		writeFileSync(
 			join(output, "manifest.json"),
 			JSON.stringify(manifest, null, 2),
@@ -418,7 +455,7 @@ async function main() {
 		await fixture.close();
 	}
 }
-if (resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url))
+if (isEntryPoint(import.meta.url))
 	main().catch((error) => {
 		console.error(error);
 		process.exitCode = 1;
