@@ -1,5 +1,7 @@
 import { BaseDialog } from "@shared/components/common/base-dialog";
 import { Button } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { type FC, useId } from "react";
 import {
@@ -72,6 +74,7 @@ export const BrowserWebauthnDialog: FC<BrowserWebauthnDialogProps> = ({
 	onDismissEnding,
 	onCloseAutoFocus,
 }) => {
+	useI18nLocale();
 	// The lead sentence is the dialog's description rather than decoration: it
 	// carries what asked and what follows, and without it a screen reader
 	// announces "Choose a passkey, dialog" and none of that (design round 1, D10).
@@ -98,7 +101,11 @@ export const BrowserWebauthnDialog: FC<BrowserWebauthnDialogProps> = ({
 		<BaseDialog
 			open={open}
 			onClose={onClose}
-			title={panel.kind === "ending" ? panel.title : "Choose a passkey"}
+			title={
+				panel.kind === "ending"
+					? panel.title
+					: t("ui.browser.browser_webauthn_dialog.choose_a_passkey")
+			}
 			dataTourTag="browser-webauthn-dialog"
 			// A stable width rather than shrink-to-fit, so the same dialog is the same
 			// size for every site (design round 1, D7): `w-auto` followed the content
@@ -121,17 +128,21 @@ export const BrowserWebauthnDialog: FC<BrowserWebauthnDialogProps> = ({
 				<div className="flex w-full flex-col gap-3">
 					{panel.kind === "request" && (
 						<p className="text-meta text-ink-dim">
-							Your Mac will ask for Touch ID after you choose. This app can only
-							use passkeys stored on this Mac — a passkey kept in another
-							manager will not appear here.
+							{t(
+								"ui.browser.browser_webauthn_dialog.your_mac_will_ask_for_touch_id",
+							)}
 						</p>
 					)}
 					<div className="flex items-center justify-end gap-3">
 						{panel.kind === "request" && answering && (
-							<p className="text-meta text-ink-muted">Answering…</p>
+							<p className="text-meta text-ink-muted">
+								{t("ui.browser.browser_webauthn_dialog.answering")}
+							</p>
 						)}
 						<Button variant="ghost" size="sm" onClick={onClose}>
-							{panel.kind === "ending" ? "Close" : "Cancel"}
+							{panel.kind === "ending"
+								? t("ui.browser.browser_webauthn_dialog.close")
+								: t("ui.browser.browser_webauthn_dialog.cancel")}
 						</Button>
 					</div>
 				</div>
