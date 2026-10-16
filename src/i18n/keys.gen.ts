@@ -21,6 +21,7 @@
  * file itself to be part of the contract.
  */
 
+import enUiAgentsDialogs from "./catalogues/en/ui.agents.dialogs.json";
 import enUiAgents from "./catalogues/en/ui.agents.json";
 import enUiAgentsNavigation from "./catalogues/en/ui.agents.navigation.json";
 import enUiAgentsRefusals from "./catalogues/en/ui.agents.refusals.json";
@@ -70,6 +71,7 @@ import frUiSettings from "./catalogues/fr/ui.settings.json";
 
 /** The bundled en catalogue: every `src/i18n/catalogues/en` message, flat. */
 export const bundledEnglish: Readonly<Record<string, string>> = {
+	...enUiAgentsDialogs,
 	...enUiAgents,
 	...enUiAgentsNavigation,
 	...enUiAgentsRefusals,
@@ -129,6 +131,39 @@ export const bundledCatalogues: Readonly<
 
 /** One entry per bundled message id, shaped by the message's own arguments. */
 export type MessageParams = {
+	"ui.agents.dialogs.clear.cancel": undefined;
+	"ui.agents.dialogs.clear.confirm": undefined;
+	"ui.agents.dialogs.clear.title": undefined;
+	"ui.agents.dialogs.clear.warning": undefined;
+	"ui.agents.dialogs.create.cancel": undefined;
+	"ui.agents.dialogs.create.description_hint": undefined;
+	"ui.agents.dialogs.create.description_label": undefined;
+	"ui.agents.dialogs.create.hub_link": undefined;
+	"ui.agents.dialogs.create.intro": undefined;
+	"ui.agents.dialogs.create.name_hint": undefined;
+	"ui.agents.dialogs.create.name_label": undefined;
+	"ui.agents.dialogs.create.submit": undefined;
+	"ui.agents.dialogs.create.title": undefined;
+	"ui.agents.dialogs.delete.cancel": undefined;
+	"ui.agents.dialogs.delete.confirm": undefined;
+	"ui.agents.dialogs.delete.question": { name: string };
+	"ui.agents.dialogs.delete.title": undefined;
+	"ui.agents.dialogs.delete.warning": undefined;
+	"ui.agents.dialogs.import.cancel": undefined;
+	"ui.agents.dialogs.import.choose_file": undefined;
+	"ui.agents.dialogs.import.drop_file": undefined;
+	"ui.agents.dialogs.import.intro": undefined;
+	"ui.agents.dialogs.import.invalid_zip": undefined;
+	"ui.agents.dialogs.import.replace_file": undefined;
+	"ui.agents.dialogs.import.submit": undefined;
+	"ui.agents.dialogs.import.title": undefined;
+	"ui.agents.dialogs.menu.accessible": undefined;
+	"ui.agents.dialogs.menu.chat": undefined;
+	"ui.agents.dialogs.menu.clear": undefined;
+	"ui.agents.dialogs.menu.delete": undefined;
+	"ui.agents.dialogs.menu.export": undefined;
+	"ui.agents.dialogs.menu.settings": undefined;
+	"ui.agents.dialogs.menu.upload": undefined;
 	"ui.agents.navigation.legacy.chat": undefined;
 	"ui.agents.navigation.legacy.chat_named": { name: string };
 	"ui.agents.navigation.legacy.export": undefined;
