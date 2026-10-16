@@ -247,10 +247,16 @@ test("the probe has three states, and only a positive success opens the editor",
 		MOD.overrideEditorState({ isSuccess: true, isError: false, error: null }),
 		"available",
 	);
+	/*
+	 * THE TABLE HOLDS ONE ENTRY PER STATE IT CAN TELL APART (code review round 2,
+	 * minor 2). "In flight" and "no team to probe with" are the SAME object literal as
+	 * far as this function can see - it reads three fields and neither case sets any of
+	 * them - so the loop asserts that state once. The difference between them is a name
+	 * to probe with, which is the component's business and is covered below by the
+	 * in-flight case and the empty-catalogue create case.
+	 */
 	for (const probe of [
-		/* in flight */
-		{ isSuccess: false, isError: false, error: null },
-		/* no team to probe at all, which is a create form on an empty machine */
+		/* nothing has answered yet, so nothing is claimed */
 		{ isSuccess: false, isError: false, error: null },
 		/* the route is not there: an older server, which also ignores the member keys */
 		{
@@ -563,7 +569,8 @@ const READINGS = {
 	auto: () =>
 		effective({
 			reviewer: {
-				effort: { value: "high", requested: "auto", source: "team" },
+				/* `medium` is what the contract probe measured for this model (minor 3). */
+				effort: { value: "medium", requested: "auto", source: "team" },
 			},
 		}),
 	/* A request the model's ladder clamps: asked for max, runs at high. */
@@ -600,13 +607,21 @@ const READINGS = {
 const installBridge = (outcome = "ok") => {
 	const calls = [];
 	const writes = [];
+	/*
+	 * `slow-second` ANSWERS THE FIRST PROBE AND NEVER ANSWERS AGAIN - the state U6 is
+	 * about: a save lands, the re-read is in flight, and the table still holds the
+	 * values from before it.
+	 */
+	let probes = 0;
 	const handler = async (request) => {
 		calls.push(request.op);
 		switch (request.op) {
 			case "teams.get":
 				return { status: 200, body: { result: { ...crew() } } };
 			case "teams.effective":
-				if (outcome === "pending") return new Promise(() => {});
+				probes += 1;
+				if (outcome === "pending" || (outcome === "slow-second" && probes > 1))
+					return new Promise(() => {});
 				if (typeof outcome === "number")
 					return { status: outcome, body: { detail: "no such route" } };
 				return {
@@ -814,12 +829,23 @@ test("a save that writes the roster echoes every slot's override, including the 
 
 test("a cleared override reaches the wire as null, and both controls stay mounted", async () => {
 	/*
-	 * WHAT THIS PROVES, AND WHAT IT CANNOT (code review round 1, minor 1). Radix's
-	 * select menu does not open under jsdom - no layout engine and a pointer-driven
-	 * item - so the CLEAR is driven through the module's own mapping instead of
-	 * through the menu. That pins the shape the form holds after a clear: a `null` on
-	 * the wire, not the word `inherit` and not a dropped key. The menu's own wiring is
-	 * what the rendered frames carry.
+	 * WHAT THIS PROVES, AND WHAT IT CANNOT - MEASURED, NOT ASSUMED (code review
+	 * rounds 1 and 2, minor 1). The CLEAR here is driven through the module's own
+	 * mapping, which pins the shape the form holds: a `null` on the wire, not the word
+	 * `inherit` and not a dropped key.
+	 *
+	 * THE CONTROL ITSELF WAS THEN DRIVEN TWO MORE WAYS THIS ROUND, and neither reaches
+	 * Radix's menu under this harness:
+	 * - there is no hidden native `<select>` to poke: Radix mounts that bubble input
+	 *   only when the root gets a `name` or `form` prop (`isFormControl`), and this
+	 *   control has neither;
+	 * - `Enter` at the trigger opens nothing, and a hand-made `pointerdown` at the
+	 *   trigger followed by `pointerup`/`click` on the item selects nothing either -
+	 *   the list never mounts, because the menu needs a layout engine.
+	 * The wiring's evidence is therefore the RENDERED frames, where a real Chromium
+	 * opens the list and takes an item: `team-overrides-menu-open.png` (the list open
+	 * over the reviewer's effort select) and `team-overrides-menu-cleared.png` (the
+	 * same control after choosing `Inherit (agent's effort)`, the form dirty).
 	 */
 	await withEditor("ok", async ({ container }) => {
 		await openEditor({ container });
@@ -831,7 +857,7 @@ test("a cleared override reaches the wire as null, and both controls stay mounte
 		assert.equal(cleared.effort, null);
 		assert.match(JSON.stringify(cleared), /"tier":null.*"effort":null/);
 		assert.ok(
-			container.querySelector('[aria-label="Model tier for coder"]'),
+			container.querySelector('[aria-label="Effort tier for coder"]'),
 			"the tier select is not mounted on a backend that has the route",
 		);
 		assert.ok(
@@ -873,8 +899,8 @@ test("the reading is a table of values over their layers, not a run-on line", as
 		);
 		assert.deepEqual(
 			coder[2].parts,
-			["the model's default"],
-			"an unnamed effort is its layer, not a layer under itself",
+			["model default"],
+			"an unnamed effort is its layer, not a layer under itself, and it reads as one of a pair with `auto` (design round 2, N2)",
 		);
 	});
 });
@@ -892,10 +918,11 @@ test("auto reads as the model's own default, never as the level it resolved to",
 			"the reading table never rendered",
 		);
 		const reviewer = readingCells(container, "reviewer");
-		assert.deepEqual(reviewer[2].parts, [
-			"model default (auto)",
-			"from this team",
-		]);
+		assert.deepEqual(
+			reviewer[2].parts,
+			["auto", "the model's default"],
+			"the request, then where the level comes from - not the level, which is what two members' rows used to share (design round 1, D0; round 2, N2)",
+		);
 	});
 });
 
@@ -926,7 +953,11 @@ test("an unavailable member is printed with the backend's reason, names no model
 			'[data-testid="team-effective-unavailable"]',
 		);
 		assert.ok(reason, "the reason was not printed");
-		assert.match(reason.textContent ?? "", /tier 'hi' is not configured/);
+		assert.match(
+			reason.textContent ?? "",
+			/^reviewer cannot start: tier 'hi' is not configured/,
+			"the sentence names its member: it sits in a row of its own, and naming is how a reader knows whose it is (design round 2, D11)",
+		);
 		assert.match(
 			container.textContent ?? "",
 			/Add the tier in Settings\./,
@@ -948,9 +979,182 @@ test("an unavailable member is printed with the backend's reason, names no model
 		assert.match(
 			container.querySelector('[data-testid="team-member-unavailable"]')
 				.textContent ?? "",
-			/Saved setting/,
+			/Saved setting — reviewer cannot start/,
+		);
+		assert.match(
+			container.textContent ?? "",
+			/Add the tier in Settings\./,
+			"the FORM names the place to go as well as the read view (UX round 1, U4)",
 		);
 	});
+});
+
+test("the reading's headers sit on their columns rather than inset from them", async () => {
+	/*
+	 * D12. The body cells of the first and last columns are `px-0`, so a header with the
+	 * primitive's default inset stands 8 px to the right of the values it heads. A
+	 * rendered frame is the only instrument that can MEASURE the alignment; this pins
+	 * the invariant the alignment is computed from, so a later change to one side and
+	 * not the other is caught here rather than in a re-shoot.
+	 */
+	await withEditor("ok", async ({ container }) => {
+		assert.ok(
+			await settle(() => Boolean(readingHeaders(container)?.length)),
+			"the reading table never rendered",
+		);
+		const table = container.querySelector('[aria-label="Model and effort"]');
+		const padding = (cell) =>
+			(cell.className.match(/\bpx-\S+/g) ?? []).sort().join(" ");
+		const heads = [...table.querySelectorAll("thead th")];
+		const cells = [...table.querySelectorAll("tbody tr:first-child td")];
+		assert.equal(heads.length, 3);
+		for (const [index, head] of heads.entries()) {
+			assert.equal(
+				padding(head),
+				padding(cells[index]),
+				`the ${head.textContent?.trim()} header is inset differently from the cells it heads (D12)`,
+			);
+		}
+	});
+});
+
+test("a role or a selector that clips keeps its full text readable", async () => {
+	/*
+	 * D13. The columns are fixed so the table holds at 480, which means a long role and
+	 * a routed selector truncate; the tooltip is what makes a clipped fact a shown fact.
+	 */
+	await withEditor("ok", async ({ container }) => {
+		assert.ok(
+			await settle(() => Boolean(readingHeaders(container)?.length)),
+			"the reading table never rendered",
+		);
+		const titles = [
+			...container.querySelectorAll('[aria-label="Model and effort"] [title]'),
+		].map((el) => el.getAttribute("title"));
+		assert.ok(
+			titles.includes("reviewer"),
+			"the member's own name is not readable when the column clips it",
+		);
+		assert.ok(
+			titles.includes("anthropic/claude-opus-5-5"),
+			"the selector is not readable when the column clips it",
+		);
+	});
+});
+
+test("the scope and the precedence are stated where the choice is made, and in the read view", async () => {
+	/*
+	 * U1. The operator's own question was whether an override here reaches the agent or
+	 * another team; nothing on the form said it did not.
+	 */
+	await withEditor("ok", async ({ container }) => {
+		await openEditor({ container });
+		const hint = container.querySelector('[data-testid="team-override-scope"]');
+		assert.ok(hint, "the form does not say what an override here applies to");
+		assert.match(
+			hint.textContent ?? "",
+			/applies to this team only, and takes priority over the agent's own tier and effort/,
+			"both halves are needed: this team only, and it beats the agent's own setting",
+		);
+		await act(async () => buttonNamed(container, "Cancel")?.click());
+		assert.ok(
+			await settle(() => Boolean(readingHeaders(container)?.length)),
+			"the reading table never rendered",
+		);
+		assert.match(
+			container.textContent ?? "",
+			/applies to this team only/,
+			"the read view carries the same sentence, from the same message",
+		);
+	});
+});
+
+test("the Saved caption names the layer as well as the value", async () => {
+	/* U3: the form is where the operator decides whether to CLEAR the override. */
+	await withEditor("ok", async ({ container }) => {
+		await openEditor({ container });
+		assert.ok(
+			await settle(() => (container.textContent ?? "").includes("Saved")),
+			"the form never printed a saved caption",
+		);
+		const text = container.textContent ?? "";
+		assert.match(
+			text,
+			/Model: anthropic\/claude-opus-5-5 \(from this team\)/,
+			"the saved model's layer belongs beside it, and it is the TIER's layer: that is what says the value is this team's own override rather than the agent's pin",
+		);
+		assert.match(
+			text,
+			/Effort: xhigh \(from this team\)/,
+			"and so does the saved effort's",
+		);
+	});
+});
+
+test("a failed probe says what it costs and offers a retry, in the form and the read view", async () => {
+	/* U5, and Q2's behaviour half. */
+	await withEditor(500, async ({ container, calls }) => {
+		assert.ok(
+			await settle(() =>
+				(container.textContent ?? "").includes("so overrides cannot be edited"),
+			),
+			"the failure must say what the operator is missing, not only that it failed",
+		);
+		const before = calls.filter((op) => op === "teams.effective").length;
+		await act(async () => buttonNamed(container, "Try again")?.click());
+		assert.ok(
+			await settle(
+				() => calls.filter((op) => op === "teams.effective").length > before,
+			),
+			"the retry did not re-run the probe the controls are gated on",
+		);
+		await act(async () => buttonNamed(container, "Edit")?.click());
+		assert.match(
+			container.textContent ?? "",
+			/so overrides cannot be edited/,
+			"the form says it too, where the operator came to set an override",
+		);
+	});
+});
+
+test("the reading is marked while the post-save re-read is in flight", async () => {
+	/* U6: a pre-save table under a `Saved` toast is the confusion this exists to end. */
+	await withEditor("slow-second", async ({ container }) => {
+		await openEditor({ container });
+		await act(async () => save(container)?.click());
+		assert.ok(
+			await settle(() =>
+				Boolean(
+					container.querySelector('[data-testid="team-effective-refreshing"]'),
+				),
+			),
+			"the table was left showing pre-save values with nothing to say it was moving",
+		);
+	});
+});
+
+test("a create form on a machine with no teams says why the overrides are not there", async () => {
+	/* Q3: correct behaviour that otherwise looks like a missing feature. */
+	await withEditor(
+		"ok",
+		async ({ container }) => {
+			assert.ok(
+				await settle(() =>
+					Boolean(
+						container.querySelector('[data-testid="team-override-no-probe"]'),
+					),
+				),
+				"nothing explains a create form with no override controls",
+			);
+			await act(async () => buttonNamed(container, "Add member")?.click());
+			assert.equal(
+				container.querySelector('[aria-label^="Effort tier for"]'),
+				null,
+				"and the controls still wait for a save, because there is still nothing to probe",
+			);
+		},
+		{ create: true, teams: [] },
+	);
 });
 
 test("a backend without the route shows no override controls and no reading", async () => {
@@ -960,7 +1164,7 @@ test("a backend without the route shows no override controls and no reading", as
 			"the probe was never taken",
 		);
 		assert.equal(
-			container.querySelector('[aria-label="Model tier for coder"]'),
+			container.querySelector('[aria-label="Effort tier for coder"]'),
 			null,
 			"a server without the route must not offer an override it would discard",
 		);
@@ -990,7 +1194,7 @@ test("a probe that failed for another reason hides the controls and says the rea
 			"a failing probe must not be silent",
 		);
 		assert.equal(
-			container.querySelector('[aria-label="Model tier for coder"]'),
+			container.querySelector('[aria-label="Effort tier for coder"]'),
 			null,
 		);
 	});
@@ -1003,7 +1207,7 @@ test("an in-flight probe offers nothing and says nothing", async () => {
 			"the probe was never taken",
 		);
 		assert.equal(
-			container.querySelector('[aria-label="Model tier for coder"]'),
+			container.querySelector('[aria-label="Effort tier for coder"]'),
 			null,
 			"a pending read is not a supported backend (M1)",
 		);
@@ -1029,7 +1233,7 @@ test("a create form probes with a team the catalogue has, and offers the control
 			await act(async () => buttonNamed(container, "Add member")?.click());
 			assert.ok(
 				await settle(() =>
-					Boolean(container.querySelector('[aria-label^="Model tier for"]')),
+					Boolean(container.querySelector('[aria-label^="Effort tier for"]')),
 				),
 				"the create form did not offer the overrides after a positive probe",
 			);
@@ -1054,7 +1258,7 @@ test("a create form with no team to probe offers nothing", async () => {
 			);
 			await act(async () => buttonNamed(container, "Add member")?.click());
 			assert.equal(
-				container.querySelector('[aria-label^="Model tier for"]'),
+				container.querySelector('[aria-label^="Effort tier for"]'),
 				null,
 				"with no team to ask about, the capability is unknown (M1)",
 			);

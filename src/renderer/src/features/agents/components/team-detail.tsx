@@ -240,8 +240,19 @@ function effortFacts(reading: TeamEffectiveMember): {
 } {
 	const { requested, value, source } = reading.effort;
 	const layer = t(effortSourceKey(source));
-	if (requested === "auto")
-		return { value: t("ui.agents.models.reading.effort_auto"), layer };
+	if (requested === "auto") {
+		/*
+		 * THE REQUEST, AND WHERE THE LEVEL COMES FROM. `auto` is not a level, so the
+		 * value keeps the operator's own word and the layer says the level is the
+		 * model's own default - which is a different level from the tier map's for most
+		 * models, and printing the resolved level alone is what made two members with
+		 * different stored overrides read identically (design round 1, D0).
+		 */
+		return {
+			value: t("ui.agents.models.reading.effort_auto"),
+			layer: t("ui.agents.models.source.model_default"),
+		};
+	}
 	if (value && requested && value !== requested) {
 		return {
 			value: t("ui.agents.models.reading.effort_clamped", {
@@ -262,15 +273,65 @@ function effortFacts(reading: TeamEffectiveMember): {
 	};
 }
 
-/** A reading's value over its layer - what both cells of the table print. */
+/**
+ * WHICH LAYER SET THIS MEMBER'S MODEL, as one word, for the form's caption.
+ *
+ * THE TIER'S LAYER IS THE ONE THAT ANSWERS THE FORM'S QUESTION (UX round 1, U3):
+ * `from this team` is what tells the operator the value beside it is their own
+ * override rather than the agent's pin, and clearing it is the act the caption sits
+ * under. The read TABLE prints the whole tier clause instead (`tier hi (from this
+ * team)`), which has a column to do it in. With no tier the value is already the
+ * session phrase, so no word belongs beside it.
+ */
+function modelLayer(reading: TeamEffectiveMember): string | null {
+	return reading.tier.value ? t(tierSourceKey(reading.tier.source)) : null;
+}
+
+/**
+ * One member's saved cell in the edit form, with the layer when there is one.
+ *
+ * The form is where the operator decides whether to CLEAR an override, which is
+ * exactly when the layer matters most: `Saved · Model: … (from this team)` says the
+ * value is this team's own act, and the read view prints the same word (UX round 1,
+ * U3). The value-only message is used when no layer word belongs beside the value -
+ * a session model, or an effort nothing set.
+ */
+function captionCell(
+	facts: { value: string; layer: string | null },
+	valueKey:
+		| "ui.agents.models.reading.model_cell"
+		| "ui.agents.models.reading.effort_cell",
+	layerKey:
+		| "ui.agents.models.reading.model_cell_layer"
+		| "ui.agents.models.reading.effort_cell_layer",
+): string {
+	return facts.layer
+		? t(layerKey, { value: facts.value, layer: facts.layer })
+		: t(valueKey, { value: facts.value });
+}
+
+/**
+ * A reading's value over its layer - what both cells of the table print.
+ *
+ * BOTH LINES CARRY THEIR FULL TEXT AS A TOOLTIP (design round 2, D13): the columns
+ * are fixed so the table holds at the pane's narrowest measure, which means a long
+ * role (`content-designer`) and a long selector (`openrouter/anthropic/…`) truncate,
+ * and a truncated fact with no way to read it is a fact the pane does not show.
+ */
 function readingCell(facts: { value: string; layer: string | null }) {
 	return (
 		<>
-			<span className="block truncate text-body-sm text-ink">
+			<span
+				className="block truncate text-body-sm text-ink"
+				title={facts.value}
+			>
 				{facts.value}
 			</span>
 			{facts.layer ? (
-				<span className="block truncate text-meta text-ink-dim">
+				<span
+					className="block truncate text-meta text-ink-dim"
+					title={facts.layer}
+				>
 					{facts.layer}
 				</span>
 			) : null}
@@ -869,6 +930,53 @@ export function TeamDetail({
 							description="Who the manager can delegate to, how many of each, and the model each runs on."
 						>
 							{/*
+							 * THE SCOPE AND THE PRECEDENCE, at the point of choice (UX round 1,
+							 * U1). The operator's own question was whether an override here reaches
+							 * the agent or another team; nothing on this form said it did not, and
+							 * the only clue was the parenthetical on a SAVED reading. The same
+							 * sentence is under the reading heading, so the two panes cannot drift.
+							 */}
+							<p
+								data-testid="team-override-scope"
+								className="text-meta text-ink-muted"
+							>
+								{t("ui.agents.models.override.scope_hint")}
+							</p>
+							{/*
+							 * AND WHY THERE ARE NO CONTROLS YET WHEN THERE IS NOTHING TO PROBE
+							 * WITH (QA round 1, Q3): a machine with no teams cannot say whether
+							 * this backend has the route, so the create form offers nothing - which
+							 * is correct and otherwise looks like a missing feature.
+							 */}
+							{creating && !probeName ? (
+								<p
+									data-testid="team-override-no-probe"
+									className="text-meta text-ink-muted"
+								>
+									{t("ui.agents.models.reading.no_probe_hint")}
+								</p>
+							) : null}
+							{/*
+							 * THE FAILED PROBE, SAID IN THE FORM AS WELL AS THE READ VIEW, WITH A
+							 * WAY OUT (UX round 1, U5; QA round 1, Q2): the operator who pressed
+							 * Edit to set an override found no controls and no word about why.
+							 * `refetch` re-runs the same probe the controls are gated on.
+							 */}
+							{overrideState === "unavailable" ? (
+								<div className="flex flex-wrap items-baseline gap-2">
+									<p className="text-meta text-danger">
+										{t("ui.agents.models.reading.read_failed")}
+									</p>
+									<Button
+										variant="ghost"
+										size="sm"
+										onClick={() => void effective.refetch()}
+									>
+										{t("ui.agents.models.reading.try_again")}
+									</Button>
+								</div>
+							) : null}
+							{/*
 							 * 16 PX BETWEEN MEMBERS, 4 PX INSIDE ONE (design round 1, D2). The
 							 * override pair used to sit 8 px under its member row and 8 px above the
 							 * next member, so the pair belonged to neither and the first label the eye
@@ -1050,7 +1158,7 @@ export function TeamDetail({
 															</SelectTrigger>
 															<SelectContent>
 																<SelectItem value={INHERIT}>
-																	{t("ui.agents.models.override.inherit")}
+																	{t("ui.agents.models.override.inherit_tier")}
 																</SelectItem>
 																{MEMBER_TIERS.map((value) => (
 																	<SelectItem key={value} value={value}>
@@ -1084,7 +1192,9 @@ export function TeamDetail({
 															</SelectTrigger>
 															<SelectContent>
 																<SelectItem value={INHERIT}>
-																	{t("ui.agents.models.override.inherit")}
+																	{t(
+																		"ui.agents.models.override.inherit_effort",
+																	)}
 																</SelectItem>
 																{MEMBER_EFFORTS.map((value) => (
 																	/*
@@ -1119,14 +1229,21 @@ export function TeamDetail({
 														{t("ui.agents.models.reading.saved_label")}
 													</span>
 													<span className="text-ink-muted">
-														{t("ui.agents.models.reading.model_cell", {
-															value: modelFacts(savedReading).value,
-														})}
+														{captionCell(
+															{
+																value: modelFacts(savedReading).value,
+																layer: modelLayer(savedReading),
+															},
+															"ui.agents.models.reading.model_cell",
+															"ui.agents.models.reading.model_cell_layer",
+														)}
 													</span>
 													<span className="text-ink-muted">
-														{t("ui.agents.models.reading.effort_cell", {
-															value: effortFacts(savedReading).value,
-														})}
+														{captionCell(
+															effortFacts(savedReading),
+															"ui.agents.models.reading.effort_cell",
+															"ui.agents.models.reading.effort_cell_layer",
+														)}
 													</span>
 												</div>
 											) : null}
@@ -1140,14 +1257,26 @@ export function TeamDetail({
 												 * does not change it, and without the word it read as though it
 												 * were about the choice in hand.
 												 */
-												<p
-													data-testid="team-member-unavailable"
-													className="col-span-full text-meta text-danger"
-												>
-													{t("ui.agents.models.reading.unavailable_editor", {
-														reason: savedReading.reason,
-													})}
-												</p>
+												<div className="col-span-full">
+													<p
+														data-testid="team-member-unavailable"
+														className="text-meta text-danger"
+													>
+														{t("ui.agents.models.reading.unavailable_editor", {
+															member:
+																savedReading.role || `Member ${index + 1}`,
+															reason: savedReading.reason,
+														})}
+													</p>
+													{/*
+													 * AND WHERE TO FIX IT, the same line the read view prints
+													 * (UX round 1, U4): the backend's sentence names a config
+													 * path, and the form is where the operator came to act.
+													 */}
+													<p className="text-meta text-ink-muted">
+														{t("ui.agents.models.reading.unavailable_hint")}
+													</p>
+												</div>
 											) : null}
 										</div>
 									);
@@ -1386,9 +1515,23 @@ export function TeamDetail({
 							 * beside a table made it read as a footnote.
 							 */}
 							{overrideState === "unavailable" ? (
-								<p className="text-meta text-danger">
-									{t("ui.agents.models.reading.read_failed")}
-								</p>
+								<div className="flex flex-wrap items-baseline gap-2">
+									{/*
+									 * AND A WAY OUT (UX round 1, U5): the probe decides both the
+									 * reading and whether the override controls are offered, so a
+									 * failing read is worth one press to re-take.
+									 */}
+									<p className="text-meta text-danger">
+										{t("ui.agents.models.reading.read_failed")}
+									</p>
+									<Button
+										variant="ghost"
+										size="sm"
+										onClick={() => void effective.refetch()}
+									>
+										{t("ui.agents.models.reading.try_again")}
+									</Button>
+								</div>
 							) : null}
 						</Section>
 						{/*
@@ -1415,8 +1558,34 @@ export function TeamDetail({
 								title={t("ui.agents.models.reading.title")}
 								description={t("ui.agents.models.reading.description")}
 							>
+								{/*
+								 * THE SAME SCOPE AND PRECEDENCE SENTENCE AS THE FORM'S, from the same
+								 * key (UX round 1, U1): the read view is where the operator asks what
+								 * a member runs on, and the answer is only actionable if it says what
+								 * the override layers under it do not do.
+								 */}
+								<p className="text-meta text-ink-muted">
+									{t("ui.agents.models.override.scope_hint")}
+								</p>
+								{/*
+								 * WHILE THE POST-SAVE RE-READ IS IN FLIGHT, THE TABLE IS MARKED, NOT
+								 * STALE AND SILENT (UX round 1, U6): the saved toast lands before the
+								 * new reading does, and a table of pre-save values under a `Saved`
+								 * toast is the "didn't save" confusion this section exists to end.
+								 */}
+								{effective.isFetching ? (
+									<p
+										data-testid="team-effective-refreshing"
+										className="text-meta text-ink-dim"
+									>
+										{t("ui.agents.models.reading.refreshing")}
+									</p>
+								) : null}
 								<Table
-									className="table-fixed"
+									className={cn(
+										"table-fixed",
+										effective.isFetching && "opacity-60",
+									)}
 									aria-label={t("ui.agents.models.reading.title")}
 								>
 									<colgroup>
@@ -1429,15 +1598,22 @@ export function TeamDetail({
 										 */}
 										<col className="w-32" />
 									</colgroup>
+									{/*
+									 * THE HEADERS SHARE THEIR CELLS' OWN PADDING (design round 2,
+									 * D12): the body cells of the first and last columns are `px-0`, so
+									 * a default header inset put `Member` and `Effort` 8 px in from the
+									 * values they head, and a column header that does not sit over its
+									 * column is the arrow the reading exists to draw.
+									 */}
 									<TableHeader>
 										<TableRow>
-											<TableHead>
+											<TableHead className="px-0">
 												{t("ui.agents.models.reading.member_col")}
 											</TableHead>
-											<TableHead>
+											<TableHead className="px-2">
 												{t("ui.agents.models.reading.model_col")}
 											</TableHead>
-											<TableHead>
+											<TableHead className="px-0">
 												{t("ui.agents.models.reading.effort_col")}
 											</TableHead>
 										</TableRow>
@@ -1460,7 +1636,11 @@ export function TeamDetail({
 													}
 												>
 													<TableCell className="px-0 py-2">
-														<span className="block truncate text-body-sm text-ink">
+														{/* D13: the full role is readable even when it clips. */}
+														<span
+															className="block truncate text-body-sm text-ink"
+															title={memberReading.role}
+														>
 															{memberReading.role}
 														</span>
 													</TableCell>
@@ -1472,13 +1652,21 @@ export function TeamDetail({
 													</TableCell>
 												</TableRow>
 												{memberReading.available ? null : (
-													<TableRow className="border-0 last:border-0">
+													/*
+													 * THE REASON ROW CARRIES THE RULE UNDER IT (design round 2,
+													 * D11). Round 1 removed the line between a member and its own
+													 * reason but left none after it either, so the sentence floated
+													 * equidistant between two members: now the reason row keeps its
+													 * bottom border and repeats the member's name.
+													 */
+													<TableRow className="last:border-0">
 														<TableCell colSpan={3} className="px-0 pb-2">
 															<span
 																data-testid="team-effective-unavailable"
 																className="block text-meta text-danger"
 															>
 																{t("ui.agents.models.reading.unavailable", {
+																	member: memberReading.role,
 																	reason: memberReading.reason,
 																})}
 															</span>

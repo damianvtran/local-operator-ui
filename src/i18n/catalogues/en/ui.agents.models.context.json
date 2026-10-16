@@ -53,9 +53,9 @@
 	},
 	"ui.agents.models.reading.effort_auto": {
 		"role": "The reasoning effort of a member whose request was auto",
-		"tone": "Lowercase phrase with the operator's own word in parentheses",
-		"length_hint": "Three words",
-		"note": "auto means the model's own default, NOT the tier map's level, and the two differ for most models. Printing the resolved level alone would read as though the operator had set that level by hand, which is exactly the confusion this phrase prevents. The literal word auto is the wire's word and stays untranslated."
+		"tone": "The wire's own word, lowercase, standing where a level would stand",
+		"length_hint": "One word",
+		"note": "This is the operator's request printed back at them, so it is the value the LEVEL slot carries and the layer line underneath says where the level comes from. Printing the resolved level instead is what made two members with different stored overrides read identically (design round 1, D0). The word is the wire's own vocabulary and stays untranslated, exactly as auto does in the select."
 	},
 	"ui.agents.models.reading.effort_clamped": {
 		"role": "The requested effort as clamped by the model's ladder",
@@ -68,27 +68,29 @@
 		}
 	},
 	"ui.agents.models.reading.effort_default": {
-		"role": "The reasoning effort when nothing was requested",
-		"tone": "Lowercase possessive phrase",
-		"length_hint": "Three words",
-		"note": "The weakest layer: no effort was asked for anywhere, so the chosen model's built-in default applies. Used as the effort cell's value when the backend could not name a level."
+		"role": "The reasoning effort when nothing asked for one",
+		"tone": "Lowercase phrase, the same words the auto case uses",
+		"length_hint": "Two words",
+		"note": "The sibling of the auto cell: nothing was requested, so the chosen model's own default applies. It reads as one of a pair with `model default (auto)` rather than as a shorter spelling of it (design round 2, N2), and its layer line is left empty because the phrase IS the layer."
 	},
 	"ui.agents.models.reading.unavailable": {
-		"role": "Warning that a member could not start as configured",
-		"tone": "Warning, stating the consequence then the backend's own reason",
-		"length_hint": "One sentence",
-		"note": "Sits inside the member's own row in the reading table, so it cannot be attributed to the member below it. The reason text is the backend's own sentence and is not translated.",
+		"role": "The reason a member cannot start, in the reading table",
+		"tone": "Statement naming the member and repeating the backend's sentence",
+		"length_hint": "One or two lines",
+		"note": "The member is named because the sentence sits in a row of its own and the reader must not have to guess which member it belongs to (design round 2, D11). The reason after the colon is the backend's own text and is not translated.",
 		"placeholders": {
-			"reason": "Backend sentence naming what is wrong with the tier; interpolate unchanged."
+			"member": "Member role name as stored in the team; do not translate the identifier.",
+			"reason": "The backend's refusal sentence, already in the operator's language where the backend has it; interpolate as-is."
 		}
 	},
 	"ui.agents.models.reading.unavailable_editor": {
-		"role": "The same warning inside the edit form, where the controls are the draft",
-		"tone": "Warning that names the reading it describes as the SAVED one",
-		"length_hint": "One sentence",
-		"note": "The form's selects may hold unsaved changes, so this warning must not read as a statement about what is on screen. It describes the saved definition, and says so.",
+		"role": "The same refusal, inside the edit form",
+		"tone": "Statement naming the member, prefixed with the fact that it describes the SAVED setting",
+		"length_hint": "One or two lines",
+		"note": "The prefix is load-bearing: the warning describes what is on the server, not the select the operator just moved, so it must not read as a verdict on the choice in hand (design round 2, D11 and UX round 1, U4).",
 		"placeholders": {
-			"reason": "Backend sentence naming what is wrong with the tier; interpolate unchanged."
+			"member": "Member role name as stored in the team; do not translate the identifier.",
+			"reason": "The backend's refusal sentence; interpolate as-is."
 		}
 	},
 	"ui.agents.models.reading.unavailable_hint": {
@@ -98,10 +100,10 @@
 		"note": "The backend's reason names the config key (subagents.models); this names where a person changes it, which is what the operator needs. Same remedy the agent refusals use for an unconfigured tier."
 	},
 	"ui.agents.models.reading.read_failed": {
-		"role": "Notice that the effective reading could not be fetched",
-		"tone": "Neutral statement of a failed read",
-		"length_hint": "One short sentence",
-		"note": "Used when the probe failed for a reason other than the route's absence, which is also why the override controls are hidden. A backend that predates the route says nothing instead."
+		"role": "One line where the reading should be, and where the override controls would be",
+		"tone": "Plain statement of what could not be read and what that costs",
+		"length_hint": "One sentence",
+		"note": "It says WHY the controls are missing, because the operator who opened the form to set an override otherwise finds nothing and no explanation (UX round 1, U5). The retry beside it is a separate string."
 	},
 	"ui.agents.models.reading.saved_label": {
 		"role": "Label on the saved-reading caption in the edit form",
@@ -164,19 +166,19 @@
 		"note": "The weakest layer: no effort was requested, so the chosen model's built-in default applies. Also the layer behind an auto request, which is why it is the phrase the auto cell pairs with."
 	},
 	"ui.agents.models.override.tier_label": {
-		"role": "Accessible name of one member's model-tier select",
+		"role": "Accessible name of one member's tier select",
 		"tone": "Label naming the control and the member it belongs to",
 		"length_hint": "Four words",
-		"note": "The visible label sits above the control and names the field; this string is the accessible name, and it must identify the member because every row carries one of these controls.",
+		"note": "The same term as the visible label above it, plus the member, because every row carries one of these controls.",
 		"placeholders": {
 			"member": "Member role name as stored in the team; do not translate the identifier."
 		}
 	},
 	"ui.agents.models.override.tier_field": {
-		"role": "Visible label above one member's model-tier select",
+		"role": "Visible label above one member's tier select",
 		"tone": "Short noun phrase in the app's sentence case",
 		"length_hint": "Two words",
-		"note": "Names the field itself, where the accessible name above also names the member. A bare tier word beside a bare effort word is not self-describing, which is why the field is labelled on screen."
+		"note": "One name for this vocabulary across the app: the profile editor has said `Effort tier` for the same lo/med/hi word, and the two panes must not call one thing by two names (UX round 1, U2). The backend's own constant for these three words is CANONICAL_EFFORT_TIERS. The neighbouring control is `Reasoning effort`, which is a different vocabulary."
 	},
 	"ui.agents.models.override.effort_label": {
 		"role": "Accessible name of one member's reasoning-effort select",
@@ -192,12 +194,6 @@
 		"tone": "Short noun phrase in the app's sentence case",
 		"length_hint": "Two words",
 		"note": "The companion of the model-tier field label. A reasoning effort is a different vocabulary from a model tier and the two must not be read as one control."
-	},
-	"ui.agents.models.override.inherit": {
-		"role": "Select option meaning no override on this layer",
-		"tone": "Single word, capitalised option label",
-		"length_hint": "One word",
-		"note": "Chosen when the operator wants the layer below to decide; it is the option a member with no override shows, and the word the agent tool uses for clearing a pin."
 	},
 	"ui.agents.models.override.auto": {
 		"role": "Select option meaning the model's own default effort",
@@ -215,5 +211,61 @@
 			"count": "Number of teams that use this agent; nonnegative integer. Numeric plural selector.",
 			"teams": "Comma-separated team names, already joined; do not translate the names."
 		}
+	},
+	"ui.agents.models.reading.try_again": {
+		"role": "Button that re-runs the failed read",
+		"tone": "Two imperative words, sentence case",
+		"length_hint": "Two words",
+		"note": "The action is re-running the probe, which is what decides both the reading and whether the override controls are offered."
+	},
+	"ui.agents.models.reading.refreshing": {
+		"role": "One line under the reading while a re-read is in flight",
+		"tone": "Neutral progress word with an ellipsis",
+		"length_hint": "One word",
+		"note": "The table is dimmed at the same time. After a save the table still holds the previous resolution until the re-read lands, and a stale model next to a `Saved` toast is the confusion this table exists to end (UX round 1, U6)."
+	},
+	"ui.agents.models.reading.no_probe_hint": {
+		"role": "Note in a new team's form when there is nothing to check the backend with",
+		"tone": "Short instruction, sentence case",
+		"length_hint": "One sentence",
+		"note": "On a machine with no teams at all there is no team to ask the backend about, so the override controls cannot be shown safely until the team exists (QA round 1, Q3). Shown only in that case, never when the catalogue has a team to ask."
+	},
+	"ui.agents.models.reading.model_cell_layer": {
+		"role": "One member's saved model cell in the edit form, with its layer",
+		"tone": "Label, value, and the layer in parentheses",
+		"length_hint": "One short line",
+		"note": "The form's `Saved` caption is where the operator decides whether to clear an override, so it carries the same layer word the read view prints (UX round 1, U3). The value-only variant is used when no layer word belongs beside the value.",
+		"placeholders": {
+			"value": "Model identifier or the phrase for the session's model; do not translate an identifier.",
+			"layer": "One of the layer phrases, already translated; interpolate as-is."
+		}
+	},
+	"ui.agents.models.reading.effort_cell_layer": {
+		"role": "One member's saved reasoning-effort cell in the edit form, with its layer",
+		"tone": "Label, value, and the layer in parentheses",
+		"length_hint": "One short line",
+		"note": "The effort half of the same caption, same reasoning as the model half.",
+		"placeholders": {
+			"value": "A ladder word or a phrase such as `model default (auto)`; ladder words are the backend's vocabulary and stay untranslated.",
+			"layer": "One of the layer phrases, already translated; interpolate as-is."
+		}
+	},
+	"ui.agents.models.override.scope_hint": {
+		"role": "One sentence under the Members heading and under the reading heading",
+		"tone": "Neutral statement of scope and precedence",
+		"length_hint": "One sentence",
+		"note": "The operator's own question was whether an override here reaches the agent or other teams; at the point of choice nothing said it did not (UX round 1, U1). It states both halves - this team only, and it wins over the agent's own tier and effort - and the same string is used in both panes so the two cannot drift."
+	},
+	"ui.agents.models.override.inherit_tier": {
+		"role": "Tier-select option meaning no override on this layer",
+		"tone": "Capitalised option label naming what it falls back to",
+		"length_hint": "Three words",
+		"note": "A bare `Inherit` never said what it falls back to (UX round 1, U2). What it falls back to is the agent's own tier, and then the tier map; the parenthetical names the first and nearest of those. Chosen when the operator wants a lower layer to decide, and it is the option a member with no override shows."
+	},
+	"ui.agents.models.override.inherit_effort": {
+		"role": "Effort-select option meaning no override on this layer",
+		"tone": "Capitalised option label naming what it falls back to",
+		"length_hint": "Three words",
+		"note": "The effort half of the same idea, and it must differ from the tier option in the same row: this one falls back to the agent's own effort, then the tier map's effort for the resolved tier, then the model's default. The word `Inherit` is the agent tool's own word for clearing a pin."
 	}
 }

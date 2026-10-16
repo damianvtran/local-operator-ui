@@ -237,7 +237,10 @@ export function overrideEditorState(probe: {
  * `isSuccess` on the query, because a failure is not the only state before the
  * answer: an in-flight probe and a create form with no team to probe have no
  * error and no capability, and "no error" must never read as "supported"
- * (see `overrideEditorState`).
+ * (see `overrideEditorState`). So a 500 does NOT leave the controls up either:
+ * it hides them AND says so, with a retry beside the sentence, because a form
+ * that quietly lost a row is worse than one that explains itself (QA round 1,
+ * Q2 - this comment used to claim the opposite).
  */
 export function overrideEditorVisible(failure: unknown): boolean {
 	return backendErrorKind(failure) !== "outdated";
