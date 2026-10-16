@@ -18,10 +18,12 @@
  */
 
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
-import type {
-	ReusableProfile,
-	ReusableTeam,
-	TeamMember,
+import {
+	type ReusableProfile,
+	type ReusableTeam,
+	type TeamEffectiveMember,
+	type TeamMember,
+	useTeamEffective,
 } from "@shared/api/local-operator/profile-hooks";
 import { teamDisplayName } from "@shared/api/local-operator/team-display";
 import {
@@ -55,10 +57,23 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
+import { useQueryClient } from "@tanstack/react-query";
 import { Minus, Plus } from "lucide-react";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { type FieldTarget, refusalCopy } from "../utils/backend-copy";
+import {
+	INHERIT,
+	MEMBER_EFFORTS,
+	MEMBER_TIERS,
+	effectiveFor,
+	effortSourceKey,
+	modelSourceKey,
+	overrideChoice,
+	overrideEditorVisible,
+	tierSourceKey,
+	withOverride,
+} from "../utils/member-overrides";
 import {
 	EditFooter,
 	FieldLabel,
@@ -182,6 +197,41 @@ export function memberCountLabel(
 }
 
 /**
+ * One member's EFFECTIVE reading as the line the pane prints: each value followed
+ * by the layer that set it.
+ *
+ * PUNCTUATION, NOT SENTENCE-BUILDING. Every value and every layer word is a
+ * message of its own, so a translator can reorder them; what this function owns
+ * is the separator and the parentheses that make the three clauses read as one
+ * line. A value the backend did not resolve drops its clause rather than
+ * printing an empty one, and an effort it could not name at all prints its layer
+ * alone - "the model's default" is a complete answer to "which layer".
+ */
+function readingLine(reading: TeamEffectiveMember): string {
+	const parts = [
+		`${reading.model.value ?? t("ui.agents.models.reading.session_model")} (${t(
+			modelSourceKey(reading.model.source),
+		)})`,
+	];
+	if (reading.tier.value) {
+		parts.push(
+			`${t("ui.agents.models.reading.tier", {
+				tier: reading.tier.value,
+			})} (${t(tierSourceKey(reading.tier.source))})`,
+		);
+	}
+	const effort = reading.effort.value ?? reading.effort.requested;
+	parts.push(
+		effort
+			? `${t("ui.agents.models.reading.effort", { effort })} (${t(
+					effortSourceKey(reading.effort.source),
+				)})`
+			: t(effortSourceKey(reading.effort.source)),
+	);
+	return parts.join(" · ");
+}
+
+/**
  * The column widths the manager row and the members table SHARE (design spec s4).
  *
  * The two are separate tables in separate sections, and what makes the manager's
@@ -281,6 +331,19 @@ export function TeamDetail({
 	const navigate = useNavigate();
 	// Subscribes this pane to locale; the conflict copy re-translates on switch.
 	useI18nLocale();
+	const queryClient = useQueryClient();
+	/*
+	 * THE RESOLVED READING, and the capability probe it doubles as.
+	 *
+	 * One request answers both questions this editor has to ask about model
+	 * overrides: what each slot resolves to, and whether the running backend has
+	 * the route at all. Nothing about overrides is rendered from the team record
+	 * alone, so a server that predates the feature keeps the editor it always had
+	 * rather than gaining controls whose value it would discard in silence
+	 * (`overrideEditorVisible` states the 404 rule).
+	 */
+	const effective = useTeamEffective(team?.name ?? null, Boolean(team));
+	const overridesAvailable = overrideEditorVisible(effective.error);
 
 	const dirty = creating
 		? Boolean(name.trim() || draft.description || draft.members.length)
@@ -423,6 +486,23 @@ export function TeamDetail({
 			setEditing(false);
 			onSaved(result.name);
 			/*
+			 * THE READING IS RE-DERIVED FROM THE BACKEND, never patched locally.
+			 *
+			 * A saved override changes what the next launch resolves, and only the
+			 * backend knows the answer: the tier map may still have no entry for the
+			 * tier just named, and `available`/`reason` are the two fields that say so.
+			 * Keeping the pre-save reading on screen would show the operator the model
+			 * they were on before the change they just made - the "didn't save"
+			 * confusion this section exists to end.
+			 */
+			void effective.refetch();
+			/*
+			 * AND THE AUTHORING CACHE, one layer out: the roster this pane is drawn
+			 * from has just changed on disk, and every other surface reading it (the
+			 * teams list, a second window) is keyed by prefix on this one.
+			 */
+			void queryClient.invalidateQueries({ queryKey: ["desktop", "team"] });
+			/*
 			 * "CREATED" FOR A CREATE, "SAVED" FOR AN EDIT (review round 1, UX nit):
 			 * the agent form already said Created, so the same act had two names.
 			 */
@@ -461,6 +541,27 @@ export function TeamDetail({
 			...current,
 			members: current.members.map((row, position) =>
 				position === index ? { ...row, ...patch } : row,
+			),
+		}));
+
+	/**
+	 * One slot's model override, from a select's own choice.
+	 *
+	 * THROUGH `withOverride` RATHER THAN A SPREAD, because "inherit" is not a
+	 * value the wire has: it writes `null`, which the backend accepts as the same
+	 * thing an omitted key means. A spread of the raw choice would send the word
+	 * `inherit` and be refused, and dropping the key instead would leave a cleared
+	 * override indistinguishable from one never mentioned - on a roster that
+	 * `members` replaces wholesale.
+	 */
+	const updateMemberOverride = (
+		index: number,
+		patch: { tier?: string; effort?: string },
+	) =>
+		setDraft((current) => ({
+			...current,
+			members: current.members.map((row, position) =>
+				position === index ? withOverride(row, patch) : row,
 			),
 		}));
 
@@ -688,11 +789,19 @@ export function TeamDetail({
 						</Section>
 						<Section
 							title="Members"
-							description="Who the manager can delegate to, and how many of each."
+							description="Who the manager can delegate to, how many of each, and the model each runs on."
 						>
 							<div className="space-y-2">
 								{draft.members.map((member, index) => {
 									const missing = !memberResolution(member, agents, teams);
+									/*
+									 * THE SAVED READING FOR THIS SLOT, never the draft's. It is what the next
+									 * launch resolves right now and it moves only by a save, so a select
+									 * beside it may legitimately disagree with it - which is exactly what an
+									 * unsaved change is. `null` means the route did not name this slot, and
+									 * that renders as no reading rather than as an error.
+									 */
+									const reading = effectiveFor(effective.data, member);
 									return (
 										<div
 											key={member.key}
@@ -810,6 +919,111 @@ export function TeamDetail({
 												>
 													Not found: {member.role}
 												</Badge>
+											) : null}
+											{/*
+											 * THE OVERRIDE CONTROLS, as a row INSIDE this member's grid
+											 * (`col-span-full`) rather than as more tracks in it: the name flexes and
+											 * the last column ends on the pane's right edge (D12 above), and two
+											 * selects beside a stepper and a Remove would leave the name column
+											 * unusably narrow at the pane's own measure.
+											 *
+											 * RENDERED ONLY WHEN THE BACKEND HAS THE ROUTE. An older server ignores
+											 * these keys on a write (`TeamMember` keeps pydantic's default
+											 * `extra="ignore"`), so an editor there would be a control whose value is
+											 * discarded in silence.
+											 */}
+											{overridesAvailable ? (
+												/*
+												 * TWO LABELLED FIELDS, not two bare selects: a tier word and an effort word
+												 * sit side by side here and neither says which is which, so the field is named
+												 * on screen and the accessible name names the member as well.
+												 */
+												<div className="col-span-full grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-end gap-2">
+													<div className="flex min-w-0 flex-col gap-1">
+														<span className="text-meta text-ink-dim">
+															{t("ui.agents.models.override.tier_field")}
+														</span>
+														<Select
+															value={overrideChoice(member.tier)}
+															onValueChange={(value) =>
+																updateMemberOverride(index, { tier: value })
+															}
+														>
+															<SelectTrigger
+																aria-label={t(
+																	"ui.agents.models.override.tier_label",
+																	{
+																		member:
+																			member.role || `Member ${index + 1}`,
+																	},
+																)}
+																className="w-full"
+															>
+																<SelectValue />
+															</SelectTrigger>
+															<SelectContent>
+																<SelectItem value={INHERIT}>
+																	{t("ui.agents.models.override.inherit")}
+																</SelectItem>
+																{MEMBER_TIERS.map((value) => (
+																	<SelectItem key={value} value={value}>
+																		{value}
+																	</SelectItem>
+																))}
+															</SelectContent>
+														</Select>
+													</div>
+													<div className="flex min-w-0 flex-col gap-1">
+														<span className="text-meta text-ink-dim">
+															{t("ui.agents.models.override.effort_field")}
+														</span>
+														<Select
+															value={overrideChoice(member.effort)}
+															onValueChange={(value) =>
+																updateMemberOverride(index, { effort: value })
+															}
+														>
+															<SelectTrigger
+																aria-label={t(
+																	"ui.agents.models.override.effort_label",
+																	{
+																		member:
+																			member.role || `Member ${index + 1}`,
+																	},
+																)}
+																className="w-full"
+															>
+																<SelectValue />
+															</SelectTrigger>
+															<SelectContent>
+																<SelectItem value={INHERIT}>
+																	{t("ui.agents.models.override.inherit")}
+																</SelectItem>
+																{MEMBER_EFFORTS.map((value) => (
+																	<SelectItem key={value} value={value}>
+																		{value}
+																	</SelectItem>
+																))}
+															</SelectContent>
+														</Select>
+													</div>
+												</div>
+											) : null}
+											{reading && !reading.available ? (
+												/*
+												 * THE WRITE-TIME WARNING the design note asks for: the operator
+												 * sees a tier that is not configured BEFORE a launch fails on it,
+												 * rather than as a `SubagentModelUnavailable` at the launch. The
+												 * reason is the backend's own sentence.
+												 */
+												<p
+													data-testid="team-member-unavailable"
+													className="col-span-full text-meta text-danger"
+												>
+													{t("ui.agents.models.reading.unavailable", {
+														reason: reading.reason,
+													})}
+												</p>
 											) : null}
 										</div>
 									);
@@ -1036,7 +1250,68 @@ export function TeamDetail({
 									))}
 								</TableBody>
 							</Table>
+							{/*
+							 * WHY THERE IS NO READING: the route failed for a reason that is not its
+							 * absence (a backend that predates it shows nothing here at all, and no
+							 * override controls either). Stated rather than left blank, because a
+							 * surface that silently shows nothing where a reading belongs is
+							 * indistinguishable from one whose reading came back empty.
+							 */}
+							{effective.error && overridesAvailable ? (
+								<p className="text-meta text-ink-muted">
+									{t("ui.agents.models.reading.read_failed")}
+								</p>
+							) : null}
 						</Section>
+						{/*
+						 * THE EFFECTIVE READING, the design note's "single most important UX
+						 * piece" (§4): without it, which layer decided a member's model is
+						 * guesswork, and a save that fell through a layer looks exactly like one
+						 * that wrote nothing.
+						 *
+						 * IT PRINTS THE BACKEND'S OWN ROWS rather than re-joining the reading to
+						 * `team.members`: these are the slots a launch resolves, and a row the team
+						 * record does not carry (one added since the read) would otherwise be
+						 * dropped from the very list that exists to explain a launch.
+						 */}
+						{overridesAvailable && effective.data?.members.length ? (
+							<Section
+								title={t("ui.agents.models.reading.title")}
+								description={t("ui.agents.models.reading.description")}
+							>
+								<ul className="space-y-1">
+									{effective.data.members.map((reading) => (
+										<li
+											key={`${reading.kind}:${reading.role}`}
+											className="flex min-w-0 flex-wrap items-baseline gap-2"
+										>
+											<span className="min-w-0 truncate text-body-sm text-ink">
+												{reading.role}
+											</span>
+											<span className="text-meta text-ink-muted">
+												{readingLine(reading)}
+											</span>
+											{/*
+											 * THE UNAVAILABLE STATE, at the resolution rather than only in the
+											 * form: a member that cannot start as configured is the one reading
+											 * the operator must not have to open an editor to see. `w-full` puts
+											 * the reason on its own line under the reading it contradicts.
+											 */}
+											{!reading.available ? (
+												<span
+													data-testid="team-effective-unavailable"
+													className="w-full text-meta text-danger"
+												>
+													{t("ui.agents.models.reading.unavailable", {
+														reason: reading.reason,
+													})}
+												</span>
+											) : null}
+										</li>
+									))}
+								</ul>
+							</Section>
+						) : null}
 						<Section title="What it is for">
 							<ReadBlock
 								text={team?.description ?? ""}

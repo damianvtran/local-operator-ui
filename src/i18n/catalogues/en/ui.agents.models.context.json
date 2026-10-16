@@ -1,0 +1,136 @@
+{
+	"ui.agents.models.reading.title": {
+		"role": "Section heading in a team's detail pane",
+		"tone": "Plain noun phrase naming two technical readings",
+		"length_hint": "Three words",
+		"note": "Names the block that answers which model and reasoning effort each team member will run on, and which layer chose them."
+	},
+	"ui.agents.models.reading.description": {
+		"role": "One-line explanation under the same heading",
+		"tone": "Neutral statement of what the rows below show",
+		"length_hint": "One short sentence",
+		"note": "The rows list an effective model and effort per member plus the layer each came from (the team, the agent's own pin, the tier map, or the session)."
+	},
+	"ui.agents.models.reading.session_model": {
+		"role": "Reading for a member that inherits the launching session's model",
+		"tone": "Lowercase phrase that completes 'model: ...'",
+		"length_hint": "Four to six words",
+		"note": "The backend answers a null model with its source set to the session; this phrase is what stands in for the missing model id. Sentence case is deliberately avoided because it is read inside a line, not alone."
+	},
+	"ui.agents.models.reading.tier": {
+		"role": "The model tier a reading resolved to",
+		"tone": "Compact label plus value",
+		"length_hint": "Two words plus the tier",
+		"note": "A model tier is a routing word (lo, med, hi), not a reasoning effort and not a model name.",
+		"placeholders": {
+			"tier": "Tier identifier from the backend (lo, med or hi); do not translate the identifier."
+		}
+	},
+	"ui.agents.models.reading.effort": {
+		"role": "The reasoning effort a reading resolved to",
+		"tone": "Compact label plus value",
+		"length_hint": "Two words plus the effort",
+		"note": "A reasoning effort is one of the ladder words the backend accepts (auto, none, minimal, low, medium, high, xhigh, max).",
+		"placeholders": {
+			"effort": "Reasoning-effort identifier from the backend; do not translate the identifier."
+		}
+	},
+	"ui.agents.models.reading.unavailable": {
+		"role": "Warning that a member could not start as configured",
+		"tone": "Warning, stating the consequence then the backend's own reason",
+		"length_hint": "One sentence",
+		"note": "Shown beside the member whose tier is unconfigured or malformed. The reason text is the backend's own sentence and is not translated.",
+		"placeholders": {
+			"reason": "Backend sentence naming what is wrong with the tier; interpolate unchanged."
+		}
+	},
+	"ui.agents.models.reading.read_failed": {
+		"role": "Notice that the effective reading could not be fetched",
+		"tone": "Neutral, no remedy",
+		"length_hint": "One short sentence",
+		"note": "Used when the route failed for a reason other than its absence; a backend that predates the route shows nothing at all instead."
+	},
+	"ui.agents.models.source.team": {
+		"role": "Layer label: the team set this value",
+		"tone": "Lowercase phrase read inside a line, after the value it explains",
+		"length_hint": "Three words",
+		"note": "The team here means this team's own member override, which is the strongest layer a roster entry owns."
+	},
+	"ui.agents.models.source.row": {
+		"role": "Layer label: the agent or team row set this value",
+		"tone": "Lowercase phrase read inside a line",
+		"length_hint": "Three words",
+		"note": "The row is the agent's own registry entry and its effort tag, which applies to the member wherever it is used."
+	},
+	"ui.agents.models.source.none": {
+		"role": "Layer label: nothing set the tier",
+		"tone": "Lowercase phrase read inside a line",
+		"length_hint": "Two words",
+		"note": "Means no tier is in play at all, so the model comes from the session."
+	},
+	"ui.agents.models.source.tier": {
+		"role": "Layer label: the tier map set this value",
+		"tone": "Lowercase noun phrase read inside a line",
+		"length_hint": "Three words",
+		"note": "The tier map is the tier-to-model-and-effort table configured in Settings; the phrase names that table, not a translation of the word tier."
+	},
+	"ui.agents.models.source.session": {
+		"role": "Layer label: the launching session set this value",
+		"tone": "Lowercase noun phrase read inside a line",
+		"length_hint": "Two words",
+		"note": "Used when the model comes from the session that launches the member rather than from any configured layer."
+	},
+	"ui.agents.models.source.model_default": {
+		"role": "Layer label: the model's own default set this value",
+		"tone": "Lowercase possessive phrase read inside a line",
+		"length_hint": "Three words",
+		"note": "The weakest layer: no effort was requested, so the chosen model's built-in default applies."
+	},
+	"ui.agents.models.override.tier_label": {
+		"role": "Accessible name of one member's model-tier select",
+		"tone": "Label naming the control and the member it belongs to",
+		"length_hint": "Four words",
+		"note": "The select's visible label sits above it and names the field; this string is the accessible name, and it has to identify the member because every row carries one of these controls.",
+		"placeholders": {
+			"member": "Member role name as stored in the team; do not translate the identifier."
+		}
+	},
+	"ui.agents.models.override.tier_field": {
+		"role": "Visible label above one member's model-tier select",
+		"tone": "Short noun phrase in the app's sentence case",
+		"length_hint": "Two words",
+		"note": "Names the field itself, where the accessible name above also names the member. The two values side by side (a tier word and an effort word) are not self-describing, which is why the field is labelled on screen rather than by its aria-label alone."
+	},
+	"ui.agents.models.override.effort_label": {
+		"role": "Accessible name of one member's reasoning-effort select",
+		"tone": "Label naming the control and the member it belongs to",
+		"length_hint": "Four to five words",
+		"note": "Same shape as the tier select's accessible name, for the second control in the same row.",
+		"placeholders": {
+			"member": "Member role name as stored in the team; do not translate the identifier."
+		}
+	},
+	"ui.agents.models.override.effort_field": {
+		"role": "Visible label above one member's reasoning-effort select",
+		"tone": "Short noun phrase in the app's sentence case",
+		"length_hint": "Two words",
+		"note": "The companion of the model-tier field label; a reasoning effort is a different vocabulary from a model tier and the two must not be read as one control."
+	},
+	"ui.agents.models.override.inherit": {
+		"role": "Select option meaning no override on this layer",
+		"tone": "Single word, capitalised option label",
+		"length_hint": "One word",
+		"note": "Chosen when the operator wants the layer below to decide; it is the option a member with no override shows. The word is the one the agent tool uses for clearing a pin."
+	},
+	"ui.agents.models.pin_reach": {
+		"role": "Note beside an agent's own effort pin, listing the teams that use it",
+		"tone": "Neutral statement of reach",
+		"length_hint": "One short line",
+		"note": "Answers what an agent-level pin affects, since the pin is machine-wide and the teams are where it is felt. Shown only when at least one team uses the agent.",
+		"plural_guidance": "Use CLDR branches needed by the target language. Keep the count as a plain argument where it appears, not as a formatted number.",
+		"placeholders": {
+			"count": "Number of teams that use this agent; nonnegative integer. Numeric plural selector.",
+			"teams": "Comma-separated team names, already joined; do not translate the names."
+		}
+	}
+}

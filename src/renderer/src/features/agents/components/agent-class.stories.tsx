@@ -120,6 +120,59 @@ export const envelope = (result: unknown): DesktopResponse => ({
 	body: { result },
 });
 
+/**
+ * The tier map this rig's backend is configured with, and the resolution it
+ * answers `teams.effective` from.
+ *
+ * WHY THE RIG CARRIES A RESOLUTION AT ALL. The team editor reads that route, so a
+ * bridge that did not answer it would throw - the frame would be a picture of an
+ * empty shell rather than of the editor. The rule below is the backend's own in
+ * miniature (the slot's tier decides the model, the slot's effort beats the
+ * tier's), because a story that answered a resolution the product cannot produce
+ * would photograph a state nobody can reach.
+ *
+ * `med` IS DELIBERATELY ABSENT. A tier the map does not configure is the
+ * unavailable state the editor has to render with the backend's reason, and the
+ * only way to photograph it is to have one; `agents-teams.stories.tsx` gives that
+ * tier to one member of the overrides team and says so there.
+ */
+const STORY_TIER_MAP: Record<string, { model: string; effort: string }> = {
+	lo: { model: "openai/gpt-6-mini", effort: "low" },
+	hi: { model: "anthropic/claude-opus-5-5", effort: "xhigh" },
+};
+
+/** One member's reading, resolved the way the backend resolves one. */
+const effectiveMember = (member: ReusableTeam["members"][number]) => {
+	const tier = member.tier ?? null;
+	const mapped = tier ? STORY_TIER_MAP[tier] : undefined;
+	const effort = member.effort ?? null;
+	return {
+		role: member.role,
+		kind: member.kind,
+		tier: { value: tier, source: tier ? "team" : "none" },
+		model: mapped
+			? { value: mapped.model, source: "tier" }
+			: { value: null, source: "session" },
+		/* `auto` asks for the model's own default rather than the tier map's. */
+		effort: effort
+			? {
+					value: effort === "auto" ? (mapped?.effort ?? null) : effort,
+					requested: effort,
+					source: "team",
+				}
+			: {
+					value: mapped?.effort ?? null,
+					requested: mapped?.effort ?? null,
+					source: mapped ? "tier" : "model_default",
+				},
+		available: tier ? Boolean(mapped) : true,
+		reason:
+			tier && !mapped
+				? `tier '${tier}' is not configured: no models are configured under subagents.models`
+				: "",
+	};
+};
+
 /** A refusal in the transport's own envelope, so the page renders real copy. */
 export const refusal = (status: number, detail: string): DesktopResponse => ({
 	status,
@@ -227,6 +280,20 @@ export const installBridge = (
 				const hit = teams.find((row) => row.name === request.name);
 				if (!hit) return refusal(404, `No team named ${request.name}.`);
 				return envelope(hit);
+			}
+			/*
+			 * THE EFFECTIVE READING (team member model overrides), which the team
+			 * editor's override controls and reading section are both derived from.
+			 * Answered from the same catalogue the two reads above use, through
+			 * `effectiveMember` - one fact read three ways, as the product reads it.
+			 */
+			case "teams.effective": {
+				const hit = teams.find((row) => row.name === request.name);
+				if (!hit) return refusal(404, `No team named ${request.name}.`);
+				return envelope({
+					team: hit.name,
+					members: hit.members.map(effectiveMember),
+				});
 			}
 			case "settings.list":
 				return envelope({ settings: [] });

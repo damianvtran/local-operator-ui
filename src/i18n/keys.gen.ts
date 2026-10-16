@@ -23,6 +23,7 @@
 
 import enUiAgentsDialogs from "./catalogues/en/ui.agents.dialogs.json";
 import enUiAgents from "./catalogues/en/ui.agents.json";
+import enUiAgentsModels from "./catalogues/en/ui.agents.models.json";
 import enUiAgentsNavigation from "./catalogues/en/ui.agents.navigation.json";
 import enUiAgentsRefusals from "./catalogues/en/ui.agents.refusals.json";
 import enUiAgentsSettings from "./catalogues/en/ui.agents.settings.json";
@@ -74,6 +75,7 @@ import frUiSettings from "./catalogues/fr/ui.settings.json";
 export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgentsDialogs,
 	...enUiAgents,
+	...enUiAgentsModels,
 	...enUiAgentsNavigation,
 	...enUiAgentsRefusals,
 	...enUiAgentsSettings,
@@ -166,6 +168,25 @@ export type MessageParams = {
 	"ui.agents.dialogs.menu.export": undefined;
 	"ui.agents.dialogs.menu.settings": undefined;
 	"ui.agents.dialogs.menu.upload": undefined;
+	"ui.agents.models.override.effort_field": undefined;
+	"ui.agents.models.override.effort_label": { member: string };
+	"ui.agents.models.override.inherit": undefined;
+	"ui.agents.models.override.tier_field": undefined;
+	"ui.agents.models.override.tier_label": { member: string };
+	"ui.agents.models.pin_reach": { count: number; teams: string };
+	"ui.agents.models.reading.description": undefined;
+	"ui.agents.models.reading.effort": { effort: string };
+	"ui.agents.models.reading.read_failed": undefined;
+	"ui.agents.models.reading.session_model": undefined;
+	"ui.agents.models.reading.tier": { tier: string };
+	"ui.agents.models.reading.title": undefined;
+	"ui.agents.models.reading.unavailable": { reason: string };
+	"ui.agents.models.source.model_default": undefined;
+	"ui.agents.models.source.none": undefined;
+	"ui.agents.models.source.row": undefined;
+	"ui.agents.models.source.session": undefined;
+	"ui.agents.models.source.team": undefined;
+	"ui.agents.models.source.tier": undefined;
 	"ui.agents.navigation.legacy.chat": undefined;
 	"ui.agents.navigation.legacy.chat_named": { name: string };
 	"ui.agents.navigation.legacy.export": undefined;
