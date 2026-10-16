@@ -1306,6 +1306,14 @@ const AskRow = ({
 };
 
 /**
+ * THE RESERVED SLOT IS DRAWN AS THE CARD'S EMPTY FOOTPRINT (design round 3 on #1116, D1
+ * = UX U8). Plain space under a collapsed header read as a broken layout; the card's own
+ * rounded hairline, with no fill, reads as "this card folded" and keeps the geometry M1
+ * reserved. Same radius and border role as the card (`AskRow`), so the two edges align.
+ */
+const HELD_SLOT_FRAME = "rounded-md border border-hairline";
+
+/**
  * How long the lapse sentence stays in its live region before it is cleared: long
  * enough to be read out behind whatever the screen reader is already saying, short
  * enough that a reader browsing the panel later does not meet a stale sentence.
@@ -1522,16 +1530,20 @@ export const AskPanel = ({
 				cards.get(row.ask.ask_id)?.getBoundingClientRect().height ?? 0;
 			if (height > 0) cardHeights.current.set(row.ask.ask_id, height);
 		}
-		const dropped = newlyHeld.some((id) =>
+		const dropped = newlyHeld.filter((id) =>
 			Object.values(prevDrafts.current[id] ?? drafts[id] ?? {}).some((values) =>
 				values.some((value) => value.trim() !== ""),
 			),
-		);
+		).length;
 		prevDrafts.current = drafts;
-		if (dropped)
+		/* Counted, so two answers lost in one lapse are not called one (UX U9). */
+		if (dropped > 0)
 			setLapseNote((note) => ({
 				seq: note.seq + 1,
-				text: "That question timed out; your answer was not sent.",
+				text:
+					dropped === 1
+						? "That question timed out; your answer was not sent."
+						: `${dropped} questions timed out; your answers were not sent.`,
 			}));
 		const id = focusedAsk;
 		if (id === null || !heldIds.has(id) || held.has(id)) return;
@@ -1539,14 +1551,15 @@ export const AskPanel = ({
 		if (now !== null && now !== document.body && now.isConnected) return;
 		/*
 		 * Under `Pending` the held ask is only a spacer with nothing to focus, so the
-		 * keyboard lands on the filter the reader chose - inside the panel, and never on
-		 * the next card's controls.
+		 * keyboard lands on the filter GROUP: named, `tabIndex=-1`, and not a control.
+		 * It used to land on the selected chip, so the reader's next Space or Enter
+		 * pressed it, the press released every hold, and the next card slid up under the
+		 * pointer (UX round 3 on #1116, U7). A press the reader makes on purpose still
+		 * releases (U4); a keystroke they were already making no longer does.
 		 */
 		if (filter === "outstanding") {
 			panelRef.current
-				?.querySelector<HTMLElement>(
-					'[data-lo-ask-filter] button[aria-pressed="true"]',
-				)
+				?.querySelector<HTMLElement>("[data-lo-ask-filter]")
 				?.focus();
 			return;
 		}
@@ -1681,6 +1694,19 @@ export const AskPanel = ({
 		<fieldset
 			data-lo-ask-filter={filter}
 			aria-label="Filter asks"
+			/* The inert landing for a lapse under `Pending` (U7): reachable by script only. */
+			tabIndex={-1}
+			/*
+			 * AND INERT TO SPACE TOO. Space on a focused element that is not a control
+			 * scrolls its container by a page (measured in Chrome: a-2 rose 142px with the
+			 * hold intact), which slides the next card under the pointer just as the
+			 * release did. Only when the group ITSELF holds focus: a Space meant for a chip
+			 * inside it bubbles here with the chip as its target and is left alone.
+			 */
+			onKeyDown={(event) => {
+				if (event.target === event.currentTarget && event.key === " ")
+					event.preventDefault();
+			}}
 			className="m-0 flex items-center gap-1 border-0 p-0 px-1"
 		>
 			{(
@@ -1814,10 +1840,16 @@ export const AskPanel = ({
 								key={id}
 								data-lo-ask-spacer={id}
 								aria-hidden="true"
+								className={HELD_SLOT_FRAME}
 								style={reserve}
 							/>
 						) : (
-							<div key={id} data-lo-ask-held={id} style={reserve}>
+							<div
+								key={id}
+								data-lo-ask-held={id}
+								className={HELD_SLOT_FRAME}
+								style={reserve}
+							>
 								{collapsedRow(presentation)}
 							</div>
 						);
