@@ -31,6 +31,7 @@ import {
 	requestsInScope,
 	useApprovalQueue,
 } from "../model/approval-queue-model";
+import { isStartPageUrl } from "../model/start-page";
 import {
 	type SurfaceScope,
 	scopeFromKey,
@@ -44,6 +45,7 @@ import { BrowserFileTransferRow } from "./browser-file-transfer-row";
 import { BrowserFindRow } from "./browser-find-row";
 import { BrowserHandOverDialog } from "./browser-hand-over-dialog";
 import { BrowserLoadFailure } from "./browser-load-failure";
+import { BrowserNewTab } from "./browser-new-tab";
 import { BrowserTabStrip } from "./browser-tab-strip";
 import { BrowserUrlBar } from "./browser-url-bar";
 
@@ -476,8 +478,22 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	// promise that stays true here, since closing the dialog reveals the failure
 	// panel. Letting the panel win instead left "close it to bring the page back"
 	// unreachable in exactly the state it was written for.
+	//
+	// `SELF_SUPPRESSION_IDS` is every registration THIS component makes. It is a
+	// list rather than one prefix because the start page (LOH-13 slice B) is a
+	// second one: its registration is in `suppressedBy` for exactly as long as the
+	// failure's is, so a filter that only knew the failure's prefix would read the
+	// start page's own registration as an overlay and hide the start page - which
+	// is what shipped in this slice's first cut, caught by reading the interstitial
+	// frame rather than the markup.
+	const SELF_SUPPRESSION_IDS = [
+		"browser-load-failure:",
+		// The start page's own registration (see the block below): listed here so it
+		// is not read as an overlay that hides the page it registers for.
+		"browser-start-page:",
+	];
 	const overlaySuppressing = suppressionIds.some(
-		(id) => id && !id.startsWith("browser-load-failure:"),
+		(id) => id && !SELF_SUPPRESSION_IDS.some((prefix) => id.startsWith(prefix)),
 	);
 	const showingFailure =
 		navFailure !== null &&
@@ -488,6 +504,46 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	// while an overlay is up the view is hidden anyway, and releasing the
 	// registration behind a dialog would restore a blank Chromium surface over it.
 	useSuppressBrowserView(navFailure !== null, "browser-load-failure");
+
+	// THE START PAGE (LOH-13 slice B). A fresh or Home-returned tab sits on
+	// `about:blank`, whose native surface is a bare blank rectangle with no
+	// way to tell it from a loaded empty page. While the ACTIVE tab is on that
+	// start state the renderer paints its own start surface instead, so the
+	// view is suppressed by the same lever as the failure panel — registered
+	// whenever the state holds, shown only when no overlay owns the moment
+	// (an open dialog's paused note keeps precedence, exactly as it does over
+	// the failure panel). No URL is loaded and no origin is created — this is
+	// DOM under a hidden view, and the tab's own `about:blank` is untouched.
+	//
+	// WHAT ENDS IT. The gate reads the facts MAIN owns about the tab it is
+	// actually on — its url, its own per-tab `loading` — PLUS its own pending note
+	// for that same tab (`chrome.pendingUrl`, F3/F4 round 3).
+	//
+	// THE PENDING TERM IS BACK, AND IT IS NOT THE ROUND-2 BUG. Round 2 removed it
+	// because the note then outlived a refused attempt (F1): cleared only by a
+	// landed non-blank url, it stayed set with the tab back on `about:blank`, so the
+	// start page was suppressed for good behind a blank view. Two things changed and
+	// make the term correct rather than dangerous. First, the note is RELEASED when
+	// an attempt is refused (`navigate` in the hook) and when a read shows the start
+	// state with nothing in flight (`refresh`) — so it can no longer outlive its
+	// attempt. Second, it is KEYED to the tab that made it (F3), so the hook only
+	// reports it for the active tab, and neither the round-2 leak across tabs nor a
+	// fresh tab reading another tab's state is possible.
+	//
+	// WHY IT IS NEEDED AT ALL (F4). Without it the start page lingered over an
+	// ACCEPTED navigation for the window between the user's submit and main's own
+	// `loading` push: the last projection still said `about:blank` and
+	// `loading:false` for that tab, so a page the user had just launched was
+	// painted over by the start surface. The note is set synchronously on submit, so
+	// it closes exactly that window.
+	const onStartPage =
+		activeTab !== null &&
+		isStartPageUrl(activeTab.url) &&
+		!activeTab.loading &&
+		!chrome.pendingUrl;
+	const showingNewTab =
+		onStartPage && navFailure === null && !overlaySuppressing;
+	useSuppressBrowserView(onStartPage, "browser-start-page");
 
 	// A reachable IPC bridge is not a ready browser. In particular, startup's
 	// empty projection must not offer New tab or claim the saved tabs are gone.
@@ -874,6 +930,22 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 								)}
 							</p>
 						</output>
+					)}
+					{showingNewTab && (
+						/*
+						 * KEYED BY TAB (F3, round 3). The field's draft is mount-local state, so a
+						 * tab switch that kept this component mounted would carry the previous
+						 * tab's typed text into the new tab's field — the same cross-tab leak the
+						 * hook's note keying closes one layer up, and it has to be closed here too
+						 * because this is where the text actually lives. A key change remounts the
+						 * component, so each tab gets its own field seeded from its own
+						 * `refusedUrl` (which is itself already filtered to the active tab).
+						 */
+						<BrowserNewTab
+							key={activeTab?.tabId ?? "none"}
+							restoreAddress={chrome.refusedUrl}
+							onNavigate={(url) => void chrome.navigate(url)}
+						/>
 					)}
 					{showingFailure && navFailure && (
 						<BrowserLoadFailure
