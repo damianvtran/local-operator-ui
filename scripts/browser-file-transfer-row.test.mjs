@@ -656,6 +656,39 @@ test("a mounted transfer row refreshes language and absent messages keep English
 				`was not saved: this call has already saved its limit of ${count} files.`,
 			);
 		}
+		/* THE FOUR-DIGIT COUNT IS THE DISCRIMINATOR (QA round 1). A bare `#` selector
+		 * is byte-faithful below 1000 and groups from 1000 up, so the [0, 1, 21] table
+		 * above passed while `1000` rendered `1,000`. These four keys carry
+		 * `{count, number, ::group-off}` (byte_count, call_limit, passkey_anonymous_many,
+		 * close_conversation_tabs); pin each at a grouped count, and the two byte/limit
+		 * ones at 1023, the highest count the pre-extraction literal emitted raw. */
+		for (const count of [1000, 1023]) {
+			assert.equal(
+				tr("ui.browser.browser_file_transfer_row.byte_count", { count }),
+				`${count} bytes`,
+				`byte_count groups at ${count}`,
+			);
+			assert.equal(
+				tr("ui.browser.browser_file_transfer_row.call_limit", { count }),
+				`was not saved: this call has already saved its limit of ${count} files.`,
+				`call_limit groups at ${count}`,
+			);
+		}
+		for (const count of [1000]) {
+			assert.equal(
+				tr("ui.browser.browser_tab_strip.close_conversation_tabs", { count }),
+				`Close all ${count} tabs in this conversation`,
+				`close_conversation_tabs groups at ${count}`,
+			);
+			assert.equal(
+				tr("ui.browser.webauthn_chooser.passkey_anonymous_many", {
+					site: "example.test",
+					count,
+				}),
+				`example.test asked for a passkey. Your Mac holds ${count} passkeys for this site and did not give their names, so the one you pick is the account you sign in as. If it is the wrong one, sign out and ask the site again.`,
+				`passkey_anonymous_many groups at ${count}`,
+			);
+		}
 	} finally {
 		clearRegisteredCatalogues();
 		await act(() => setLocale("en"));
