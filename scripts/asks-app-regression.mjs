@@ -73,6 +73,78 @@ const sha = (value) => createHash("sha256").update(value).digest("hex");
 const git = (...args) => execFileSync("git", args, { encoding: "utf8" }).trim();
 export const ASKS_CONTROL = resolveAsksControl();
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/*
+ * A PRESS LANDS ONLY WHERE THE TARGET CAN RECEIVE IT (#1131's red leg).
+ *
+ * `press` used to wait for the target to EXIST, take its centre and dispatch one
+ * mouse sequence - no hit test, no retry. That is enough while the tree is quiet and
+ * silently wrong while it is not: the header-menu case switches session (the header is
+ * re-keyed and re-rendered) and marks and presses almost immediately, so a press that
+ * lands in that window is swallowed by an element about to be replaced, and the wait
+ * for the menu that follows times out with nothing but the expression to go on.
+ * Measured on run 38966398557: `header-menu/candidate` captured ZERO frames with
+ * `Unsettled real UI: document.querySelectorAll('[role="menuitem"]').length > 0`,
+ * while the same case's control leg - second, on a warm app - passed on identical
+ * content.
+ *
+ * SO THE GATE IS ACTIONABILITY, NOT A RETRY OF THE PRESS: the point must hit-test to
+ * the target itself or something it contains, and the target must be the same element
+ * across two consecutive reads, before the ONE press is dispatched. The stability half
+ * is what covers the session switch, and the claim that carries it is a JS property on
+ * the node: invisible to the app and to CSS, and lost with the node it was set on,
+ * which is exactly the identity question being asked.
+ *
+ * A press that is never deliverable FAILS NAMING THE OCCLUDER - the point, the element
+ * that owns it and whether the target was still being replaced - so the next reader
+ * knows it was occlusion rather than re-deriving it. Deliberately NOT a retry loop on
+ * the press itself: a press delivered twice is a different bug from a press never
+ * delivered, and the gate plus the stability read covers the way this one was
+ * swallowed.
+ */
+let pressClaim = 0;
+
+export function describePressRead(read) {
+	if (!read) return "no read was taken";
+	if (!read.present) return "the target left the document";
+	if (!read.painted) return "the target has an empty box";
+	const owner =
+		read.at === "nothing"
+			? "hit-tests to nothing (off-screen, or owned by a layer that paints nothing)"
+			: `is covered by ${read.at}`;
+	const settling = read.stable
+		? ""
+		: ", and the target is still being replaced (unstable across two reads)";
+	return `the point (${read.x},${read.y}) ${owner}${settling}`;
+}
+
+export async function pressWhenActionable({
+	selector,
+	probe,
+	dispatch,
+	reads = 25,
+	intervalMs = 60,
+}) {
+	let last = null;
+	for (let taken = 1; taken <= reads; taken++) {
+		last = await probe();
+		if (last.present && last.painted && last.hit && last.stable) {
+			await dispatch({ x: last.x, y: last.y });
+			return { reads: taken, at: last };
+		}
+		if (taken < reads) await pause(intervalMs);
+	}
+	throw Error(
+		`pointer target never became actionable after ${reads} bounded reads: ${selector} - ${describePressRead(last)}`,
+	);
+}
+
+/*
+ * WHAT A MENU TIMEOUT SHOULD SAY (same run): with a press that can be swallowed, "the
+ * menu did not open" is ambiguous between a press that never landed and a menu that
+ * never rendered, so the timeout reports where the trigger is and what owns that point.
+ */
+const MENU_TRIGGER_SEEN = `(()=>{const el=document.querySelector('[data-ci-menu]');if(!el)return 'the menu trigger is not in the document';const r=el.getBoundingClientRect();const x=Math.round(r.x+r.width/2);const y=Math.round(r.y+r.height/2);const at=document.elementFromPoint(x,y);const owner=at===el||el.contains(at)?'the trigger itself':(at?at.tagName.toLowerCase()+String(at.getAttribute('role')?'[role="'+at.getAttribute('role')+'"]':''):'nothing');return 'no menu items appeared; the trigger at ('+x+','+y+') hit-tests to '+owner})()`;
 /*
  * WHAT THE RAIL'S CLOSE MEANS (#1079), AND WHY A CONTROL NO LONGER OWES THE
  * OPPOSITE OF IT (remediation round 1, stream A).
@@ -573,7 +645,7 @@ export const CASES = {
 	},
 	"header-menu": {
 		purpose:
-			"The chat header's real menu: a COPY-ONLY surface, whose rows are extracted English copy. An i18n branch shows 'unchanged English, still renders' by capturing this surface at both legs; the case asserts the rows render with copy rather than a screenshot of an empty popup.",
+			"The chat header's real menu: a COPY-ONLY surface. Its rows are still LITERAL English on this head - the chat-header extraction belongs to #1070's held scope - so this case does not claim extracted copy: it asserts that every row renders with copy at all (rather than a screenshot of an empty popup) and that the asks row is present, which is the 'the surface still renders' half of the i18n evidence pair.",
 		route: "/chat",
 		frames: {
 			control: ["header-menu", "header-menu-closed"],
@@ -595,7 +667,10 @@ export const CASES = {
 				`(()=>{const h=document.querySelector('[data-tour-tag="chat-header"]');const e=[...h.querySelectorAll('button')].find(e=>e.getAttribute('aria-haspopup')==='menu');if(!e)throw Error('real header menu unavailable');e.setAttribute('data-ci-menu','')})()`,
 			);
 			await press("[data-ci-menu]");
-			await wait(`document.querySelectorAll('[role="menuitem"]').length > 0`);
+			await wait(
+				`document.querySelectorAll('[role="menuitem"]').length > 0`,
+				MENU_TRIGGER_SEEN,
+			);
 			const labels = await cdp.evaluate(
 				`[...document.querySelectorAll('[role="menuitem"]')].map(e=>e.textContent.trim())`,
 			);
@@ -664,25 +739,53 @@ async function runCase(scenarioName, kind, root, output, records) {
 			join(output, "measurements.json"),
 			JSON.stringify({ case: scenarioName, kind, frames, failures }, null, 2),
 		);
-	async function wait(expression) {
+	/**
+	 * Wait for a condition, and ON TIMEOUT SAY WHAT WAS SEEN (#1131). The bare expression
+	 * is not enough to tell a press that never landed from a menu that never rendered, so
+	 * a caller can pass a second expression read only on the failure path; a diagnostic
+	 * that itself fails is reported as such rather than replacing the timeout.
+	 */
+	async function wait(expression, diagnose) {
 		for (let i = 0; i < 150; i++) {
 			if (await cdp.evaluate(expression)) return;
 			await pause(100);
 		}
-		throw Error(`Unsettled real UI: ${expression}`);
+		let seen = "";
+		if (diagnose) {
+			try {
+				seen = ` - ${await cdp.evaluate(diagnose)}`;
+			} catch (error) {
+				seen = ` - the diagnostic read itself failed: ${error.message}`;
+			}
+		}
+		throw Error(`Unsettled real UI: ${expression}${seen}`);
 	}
 	async function press(selector) {
-		await wait(`Boolean(document.querySelector(${JSON.stringify(selector)}))`);
-		const point = await cdp.evaluate(
-			`(()=>{const e=document.querySelector(${JSON.stringify(selector)});const r=e.getBoundingClientRect();if(r.width<=0||r.height<=0)throw Error('unpainted pointer target');return{x:r.x+r.width/2,y:r.y+r.height/2}})()`,
-		);
-		for (const type of ["mouseMoved", "mousePressed", "mouseReleased"])
-			await cdp.send("Input.dispatchMouseEvent", {
-				type,
-				button: type === "mouseMoved" ? "none" : "left",
-				clickCount: 1,
-				...point,
-			});
+		const target = JSON.stringify(selector);
+		await wait(`Boolean(document.querySelector(${target}))`);
+		const claim = JSON.stringify(`press-${++pressClaim}`);
+		await pressWhenActionable({
+			selector,
+			/*
+			 * The reading is taken IN THE PAGE, because the box, the hit test and the
+			 * identity claim all live there. `stable` compares the claim this press set on
+			 * the previous read: one press = one unique claim, so the first read is always
+			 * unstable and the press waits for a read that sees its own claim still there.
+			 */
+			probe: async () =>
+				cdp.evaluate(
+					`(()=>{const el=document.querySelector(${target});if(!el)return{present:false};const r=el.getBoundingClientRect();const label=(n)=>n?[n.tagName.toLowerCase(),n.getAttribute("data-tour-tag")?'[data-tour-tag="'+n.getAttribute("data-tour-tag")+'"]':"",n.getAttribute("role")?'[role="'+n.getAttribute("role")+'"]':"",n.getAttribute("aria-label")?'[aria-label="'+n.getAttribute("aria-label")+'"]':""].join(""):"nothing";if(r.width<=0||r.height<=0)return{present:true,painted:false,at:label(el)};const x=r.x+r.width/2,y=r.y+r.height/2,at=document.elementFromPoint(x,y);const stable=el.__lopPressClaim===${claim};el.__lopPressClaim=${claim};return{present:true,painted:true,hit:at===el||el.contains(at),at:label(at),stable,x:Math.round(x),y:Math.round(y)}})()`,
+				),
+			dispatch: async (point) => {
+				for (const type of ["mouseMoved", "mousePressed", "mouseReleased"])
+					await cdp.send("Input.dispatchMouseEvent", {
+						type,
+						button: type === "mouseMoved" ? "none" : "left",
+						clickCount: 1,
+						...point,
+					});
+			},
+		});
 	}
 	/**
 	 * Poll `probe` until it answers true, and hand back the LAST state read.
