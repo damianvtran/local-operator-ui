@@ -233,6 +233,18 @@ const StripFeedKeeper: FC = () => {
 	const setCataloguePageable = useCanonicalSessionsStore(
 		(store) => store.setCataloguePageable,
 	);
+	/*
+	 * The activity-head flag, published HERE as well as in `chat-sidebar.tsx`
+	 * (this strip is another surface that resolves the same capability answer and
+	 * refreshes the same catalogue): the flag is one store value, and either
+	 * publisher writing it is idempotent. Without it a window opened straight
+	 * onto a STUFF route would take the legacy rank read until a `/chat` visit -
+	 * the same route-dependence `cataloguePageDefault` documents for the page
+	 * size.
+	 */
+	const setCatalogueActivityHead = useCanonicalSessionsStore(
+		(store) => store.setCatalogueActivityHead,
+	);
 	const fetchSessions = useCanonicalSessionsStore(
 		(store) => store.fetchSessions,
 	);
@@ -240,9 +252,16 @@ const StripFeedKeeper: FC = () => {
 		capabilities.data,
 		"session_catalogue_page",
 	);
+	const activityHead = desktopFeatureEnabled(
+		capabilities.data,
+		"session_catalogue_sort",
+	);
 	useEffect(() => {
 		setCataloguePageable(pageable);
 	}, [pageable, setCataloguePageable]);
+	useEffect(() => {
+		setCatalogueActivityHead(activityHead);
+	}, [activityHead, setCatalogueActivityHead]);
 	/*
 	 * The gate, spelled as the list spells it: the desktop plane available AND
 	 * the backend advertising `session_catalogue` v2. Below it no read is sent -
