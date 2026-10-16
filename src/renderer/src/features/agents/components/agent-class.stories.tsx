@@ -138,7 +138,12 @@ export const envelope = (result: unknown): DesktopResponse => ({
  */
 const STORY_TIER_MAP: Record<string, { model: string; effort: string }> = {
 	lo: { model: "openai/gpt-6-mini", effort: "low" },
-	hi: { model: "anthropic/claude-opus-5-5", effort: "xhigh" },
+	/*
+	 * A REAL, LONG SELECTOR: `openrouter/anthropic/…` is what a routed provider
+	 * looks like, and it is what makes the Model column clip at 480 px - the case
+	 * design round 2 (D13) asked to see rather than infer.
+	 */
+	hi: { model: "openrouter/anthropic/claude-opus-5-5", effort: "xhigh" },
 };
 
 /**
@@ -149,10 +154,16 @@ const STORY_TIER_MAP: Record<string, { model: string; effort: string }> = {
  * the level the tier map would have chosen, and a fixture that made the two equal
  * would photograph the one case where a wrong display looks right (design round 1,
  * D0: two members with different stored overrides read identically). `opus`
- * therefore defaults to `high` while the tier map asks for `xhigh` at tier `hi`.
+ * therefore defaults to `medium` while the tier map asks for `xhigh` at tier `hi`.
  */
 const STORY_MODEL_DEFAULTS: Record<string, string> = {
-	"anthropic/claude-opus-5-5": "high",
+	/*
+	 * MEASURED, NOT GUESSED: `medium` is what this model answers for `auto` — the
+	 * contract probe ran the backend's own resolver on the branch head and got
+	 * `value: medium, requested: auto` (see `contract-states.json`). Round 1's fixture
+	 * said `high`, which no backend ever said.
+	 */
+	"openrouter/anthropic/claude-opus-5-5": "medium",
 	"openai/gpt-6-mini": "minimal",
 };
 

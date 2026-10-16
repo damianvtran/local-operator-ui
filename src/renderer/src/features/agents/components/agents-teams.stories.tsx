@@ -1012,8 +1012,13 @@ OVERRIDES_TEAM.members = [
 	 * THE UNCONFIGURED TIER IS THIRD OF FOUR, on purpose (design round 1, D6): the
 	 * first frame set put it last, which hid the one thing the reason row can get
 	 * wrong - whose member it belongs to.
+	 *
+	 * AND IT IS THE LONGEST REAL ROLE ON THE MACHINE (design round 2, D13): the
+	 * Member column is fixed at 96 px, so `content-designer` is the name that clips
+	 * at 480 and proves the tooltip is doing something on a name the fixture really
+	 * has (it is a member of the Content team in the same world).
 	 */
-	{ role: "trend-scout", count: 1, kind: "agent", tier: "med" },
+	{ role: "content-designer", count: 1, kind: "agent", tier: "med" },
 	{ role: "reviewer", count: 1, kind: "agent", tier: "hi", effort: "auto" },
 ];
 const OVERRIDES_EXTRA = [OVERRIDES_TEAM];
