@@ -22,7 +22,6 @@
 		"src/renderer/src/features/agents/components/agents-sidebar.tsx": 3,
 		"src/renderer/src/features/agents/components/detail-parts.tsx": 4,
 		"src/renderer/src/features/agents/components/hub-update-panel.tsx": 9,
-		"src/renderer/src/features/agents/components/install-builtin-agents.tsx": 5,
 		"src/renderer/src/features/agents/components/legacy-agents-page.tsx": 7,
 		"src/renderer/src/features/agents/components/team-detail.tsx": 35,
 		"src/renderer/src/features/agents/components/upload-agent-dialog.tsx": 25,

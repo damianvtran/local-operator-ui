@@ -23,6 +23,7 @@
 
 import enUiAgents from "./catalogues/en/ui.agents.json";
 import enUiAgentsSettings from "./catalogues/en/ui.agents.settings.json";
+import enUiAgentsStarters from "./catalogues/en/ui.agents.starters.json";
 import enUiBrowserChrome from "./catalogues/en/ui.browser.chrome.json";
 import enUiBrowser from "./catalogues/en/ui.browser.json";
 import enUiCanvas from "./catalogues/en/ui.canvas.json";
@@ -59,6 +60,7 @@ import frUiSettings from "./catalogues/fr/ui.settings.json";
 export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgents,
 	...enUiAgentsSettings,
+	...enUiAgentsStarters,
 	...enUiBrowserChrome,
 	...enUiBrowser,
 	...enUiCanvas,
@@ -161,6 +163,26 @@ export type MessageParams = {
 	"ui.agents.settings.system_prompt.enter_instructions_for_the_agent": undefined;
 	"ui.agents.settings.system_prompt.loading_system_prompt": undefined;
 	"ui.agents.settings.system_prompt.system_instructions_that_define_the_agent_s": undefined;
+	"ui.agents.starters.action.all_builtins": undefined;
+	"ui.agents.starters.action.all_count": { count: number };
+	"ui.agents.starters.action.done": undefined;
+	"ui.agents.starters.available": { count: number };
+	"ui.agents.starters.progress.accessible": { step: string; total: string };
+	"ui.agents.starters.progress.count": { done: string; total: string };
+	"ui.agents.starters.progress.named": {
+		step: string;
+		total: string;
+		name: string;
+	};
+	"ui.agents.starters.server_unanswered": undefined;
+	"ui.agents.starters.summary.already_present": { count: number };
+	"ui.agents.starters.summary.collisions": { count: number; names: string };
+	"ui.agents.starters.summary.empty": undefined;
+	"ui.agents.starters.summary.failed": { count: number };
+	"ui.agents.starters.summary.installed": { count: number };
+	"ui.agents.starters.summary.sentence": { parts: string };
+	"ui.agents.starters.summary.separator": undefined;
+	"ui.agents.starters.summary.skipped": { count: number };
 	"ui.browser.chrome.accessible_tab": {
 		title: string;
 		loading: string;
