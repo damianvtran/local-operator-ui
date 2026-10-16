@@ -22,6 +22,7 @@
  */
 
 import enUiAgents from "./catalogues/en/ui.agents.json";
+import enUiAgentsRefusals from "./catalogues/en/ui.agents.refusals.json";
 import enUiAgentsSettings from "./catalogues/en/ui.agents.settings.json";
 import enUiAgentsStarters from "./catalogues/en/ui.agents.starters.json";
 import enUiBrowserChrome from "./catalogues/en/ui.browser.chrome.json";
@@ -59,6 +60,7 @@ import frUiSettings from "./catalogues/fr/ui.settings.json";
 /** The bundled en catalogue: every `src/i18n/catalogues/en` message, flat. */
 export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgents,
+	...enUiAgentsRefusals,
 	...enUiAgentsSettings,
 	...enUiAgentsStarters,
 	...enUiBrowserChrome,
@@ -105,6 +107,22 @@ export const bundledCatalogues: Readonly<
 
 /** One entry per bundled message id, shaped by the message's own arguments. */
 export type MessageParams = {
+	"ui.agents.refusals.class.effect.proactive": undefined;
+	"ui.agents.refusals.class.effect.reactive": undefined;
+	"ui.agents.refusals.class.error.install_landed": { reason: string };
+	"ui.agents.refusals.class.error.no_reason": undefined;
+	"ui.agents.refusals.class.install_disclosure": undefined;
+	"ui.agents.refusals.class.label.proactive": undefined;
+	"ui.agents.refusals.class.label.reactive": undefined;
+	"ui.agents.refusals.class.meaning.proactive": undefined;
+	"ui.agents.refusals.class.meaning.reactive": undefined;
+	"ui.agents.refusals.effort_unavailable": { tier: string };
+	"ui.agents.refusals.missing_manager": { name: string };
+	"ui.agents.refusals.missing_member": { name: string };
+	"ui.agents.refusals.name_grammar": undefined;
+	"ui.agents.refusals.name_taken": { name: string };
+	"ui.agents.refusals.team_name_bound": undefined;
+	"ui.agents.refusals.team_nesting": undefined;
 	"ui.agents.settings.agent.no_agent_selected": undefined;
 	"ui.agents.settings.agent.select_an_agent_from_the_list_on": undefined;
 	"ui.agents.settings.chat.about_advanced_chat_settings": undefined;
