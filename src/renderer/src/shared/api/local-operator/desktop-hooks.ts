@@ -528,6 +528,19 @@ export type DesktopFeature =
 	 */
 	| "references"
 	/**
+	 * `aside_adopt_queue`: an aside's "Add to conversation" pressed while the
+	 * session is mid-turn is QUEUED by the owner and lands at the turn's next safe
+	 * point, after the closed tool batch, instead of being refused. The adopt route
+	 * then answers `status: "queued"` (`asideAdoptResultSchema`).
+	 *
+	 * The panel's control and its chord are enabled mid-turn ONLY when this is
+	 * advertised. An older owner refuses an adopt while a turn runs (a plain
+	 * runtime error that surfaced as a 503), so against it the control keeps its
+	 * idle-only gate and its sentence. Fails closed for the same reason as every
+	 * key here: an unknown backend gets today's behaviour, never the new promise.
+	 */
+	| "aside_adopt_queue"
+	/**
 	 * This machine's remote-access state and the verdict on the Radient login
 	 * that owns it: `GET /v1/desktop/tunnel`, plus `radient_login` and
 	 * `tunnel_remedy` on `GET /v1/auth/status`.

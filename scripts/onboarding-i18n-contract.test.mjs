@@ -169,12 +169,12 @@ const CONTRACT = [
 	],
 	[
 		"ui.onboarding.modal.step_of",
-		"Step {current, number} of {total, number}",
+		"Step {current, number, ::group-off} of {total, number, ::group-off}",
 		"onboarding-modal.tsx",
 	],
 	[
 		"ui.onboarding.modal.steps_total",
-		"{total, plural, one {# step} other {# steps}}",
+		"{total, plural, one {{total, number, ::group-off} step} other {{total, number, ::group-off} steps}}",
 		"onboarding-modal.tsx",
 	],
 	[

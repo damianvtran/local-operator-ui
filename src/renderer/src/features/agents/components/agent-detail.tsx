@@ -53,6 +53,7 @@ import {
 } from "@shared/components/ui/select";
 import { Switch } from "@shared/components/ui/switch";
 import { Textarea } from "@shared/components/ui/textarea";
+import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
@@ -1135,6 +1136,26 @@ export function AgentDetail({
 							<p className="text-body-sm text-ink-muted">
 								Effort tier: {profile.effort ?? "inherit"}
 							</p>
+							{/*
+							 * THE PIN'S REACH, at the pin (design note §4). An agent-level effort
+							 * tier is machine-wide: it decides the model of every team slot that
+							 * names this agent, and nothing of it is visible on this pane, where
+							 * the whole change is one word. The teams are already in hand for the
+							 * "Used by" section below (`usedBy`), so this costs no request.
+							 *
+							 * ONLY WHEN THERE IS A PIN (design round 1, D9). With no tier of its
+							 * own, the line read as a remark about the word `inherit` - "inherit
+							 * is used by content" - and an inherit reaches nothing. The sentence
+							 * names its subject, and the subject has to exist.
+							 */}
+							{profile.effort && usedBy.length ? (
+								<p className="text-body-sm text-ink-muted">
+									{t("ui.agents.models.pin_reach", {
+										count: usedBy.length,
+										teams: usedBy.map((team) => team.name).join(", "),
+									})}
+								</p>
+							) : null}
 						</Section>
 						{/*
 						 * The class sits with the other BEHAVIOUR facts — what this agent does

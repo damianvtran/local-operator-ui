@@ -246,6 +246,25 @@ export const THREAD_FIND_MAX_LIMIT = 200;
  * state differently, which is the drift this file exists to prevent.
  */
 export const DESKTOP_SYSTEM_PROMPT_MAX_CHARS = 1_000_000;
+/**
+ * A reasoning effort a team member's slot may be pinned to.
+ *
+ * The backend's own `TIER_EFFORTS` (`model/effort.py`): `auto` plus the ladder.
+ * `auto` and "no override at all" are DIFFERENT states and both exist here -
+ * `auto` overrides to the model's own default, which is how a team takes tier
+ * `hi` without the tier map's `xhigh`.
+ */
+const memberEffort = z.enum([
+	"auto",
+	"none",
+	"minimal",
+	"low",
+	"medium",
+	"high",
+	"xhigh",
+	"max",
+]);
+
 const profileName = z
 	.string()
 	.min(1)
@@ -320,6 +339,22 @@ const teamFields = z
 						role: profileName,
 						count: z.number().int().min(1).max(16),
 						kind: z.enum(["agent", "team"]),
+						/*
+						 * THE SLOT'S MODEL OVERRIDES (team member tiers, P3). `null` and
+						 * absent mean the same thing on this wire - no override, fall
+						 * through to the next layer - and the pair is spelled with the SAME
+						 * words the backend's `TeamMember` accepts (`CANONICAL_EFFORT_TIERS`
+						 * and `TIER_EFFORTS`), so a value this client can send cannot be one
+						 * the server refuses. `null` is accepted rather than omitted alone
+						 * because a cleared field is what a form has in hand.
+						 *
+						 * Enumerated rather than free text for the reason the tier list is:
+						 * this client is not the only writer (the team tool, a hand-edited
+						 * `team.yml`), and a membership gate here is what keeps a typo out of
+						 * a roster that would otherwise be silently written and ignored.
+						 */
+						tier: z.enum(["lo", "med", "hi"]).nullable().optional(),
+						effort: memberEffort.nullable().optional(),
 					})
 					.strict(),
 			)
@@ -1231,6 +1266,21 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		.strict(),
 	z.object({ op: z.literal("teams.list") }).strict(),
 	z.object({ op: z.literal("teams.get"), name: profileName }).strict(),
+	/*
+	 * THE RESOLVED READING of every slot's model and reasoning effort, with the
+	 * layer each came from - the team editor's answer to "why is this member on
+	 * that model". A READ: it resolves the same precedence a launch does without
+	 * launching anything and writes nothing.
+	 *
+	 * ADDITIVE, and its absence is a capability signal rather than an error: a
+	 * backend older than the route answers 404, which is how the editor learns to
+	 * hide its override controls (the same status `backendErrorKind` classifies as
+	 * `outdated`). Such a server also ignores the member keys above, which is why
+	 * the hidden editor is the honest reading rather than a lost edit.
+	 */
+	z
+		.object({ op: z.literal("teams.effective"), name: profileName })
+		.strict(),
 	/*
 	 * Team CAS is the same optional opaque echo as the profile arm: absent/null is
 	 * the legacy unconditional write, a supplied stale/malformed value is refused
@@ -3953,6 +4003,65 @@ export const RUNTIME_BUSY_CODE = "runtime_busy";
 export const RUNTIME_RETIRING_CODE = "runtime_retiring";
 
 /**
+ * The adopt route's answer: `POST .../asides/{id}/adopt` -> `result.data`.
+ *
+ * `status` says WHEN the exchange joins the conversation. `"adopted"` is now: the
+ * rows are durable before the answer settles. `"queued"` is later: the session
+ * was mid-turn, and the owner holds the pair until the turn's next safe point,
+ * where it lands after the closed tool batch rather than inside it (backend
+ * decision rows D1/D4 on the queued-adopt change). ABSENT reads as `"adopted"`,
+ * because every owner older than the queue answered `status: "adopted"` or
+ * nothing at all and always wrote synchronously.
+ *
+ * Passthrough and a plain-string fallback on purpose: the vocabulary is the
+ * backend's to extend, and a renderer that threw on an unheard-of status would
+ * report a refusal for an adopt the owner accepted.
+ */
+export const asideAdoptResultSchema = z
+	.object({
+		data: z
+			.object({
+				aside_id: z.string().optional(),
+				status: z.union([z.enum(["adopted", "queued"]), z.string()]).optional(),
+			})
+			.passthrough(),
+	})
+	.passthrough();
+
+export type AsideAdoptResult = z.infer<typeof asideAdoptResultSchema>;
+
+/**
+ * The owner's TYPED refusal of an adopt: `409 {"detail": {"code":
+ * "aside_adopt_refused", "reason": ..., "message": ...}}`.
+ *
+ * An adopt that cannot be deferred fails loudly with this code instead of landing
+ * in a live tool batch (backend D3). `reason` is one of a closed set; the
+ * renderer composes its own sentence from it rather than echoing the owner's
+ * prose, and an unknown reason falls back to the owner's message.
+ */
+export const ASIDE_ADOPT_REFUSED_CODE = "aside_adopt_refused";
+
+export const ASIDE_ADOPT_REFUSED_REASONS = [
+	"session_closed",
+	"open_tool_batch",
+	// An owner older than the queue refused a mid-turn adopt; the route maps its
+	// legacy refusal to this reason (backend D9).
+	"turn_running",
+] as const;
+
+export type AsideAdoptRefusedReason =
+	(typeof ASIDE_ADOPT_REFUSED_REASONS)[number];
+
+/** The refusal's `reason`, when the body carries one this build knows. */
+export function asideAdoptRefusedReason(
+	detail: unknown,
+): AsideAdoptRefusedReason | undefined {
+	if (typeof detail !== "object" || detail === null) return undefined;
+	const reason = (detail as { reason?: unknown }).reason;
+	return ASIDE_ADOPT_REFUSED_REASONS.find((known) => known === reason);
+}
+
+/**
  * The sentences a refusal composes into, one per code.
  *
  * NO sentence here names an update, and none tells the user to change what the
@@ -5229,6 +5338,7 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"sessions.variables.list",
 	"skills.list",
 	"subagents.transcript",
+	"teams.effective",
 	"teams.get",
 	"teams.list",
 	// The two phone-setup observations change nothing on the server; `tunnel.setup.run`
@@ -6586,6 +6696,11 @@ export function desktopEndpoint(request: DesktopRequest): {
 		case "teams.get":
 			return {
 				path: `/v1/desktop/teams/${encodeURIComponent(request.name)}`,
+				method: "GET",
+			};
+		case "teams.effective":
+			return {
+				path: `/v1/desktop/teams/${encodeURIComponent(request.name)}/effective`,
 				method: "GET",
 			};
 		case "teams.create":

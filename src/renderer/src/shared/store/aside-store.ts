@@ -69,6 +69,21 @@ export type AsideAttachment = {
 	turns: AsideTurn[];
 	/** A refusal the panel states on itself, in the TUI card's own habit. */
 	notice: string | null;
+	/**
+	 * The owner accepted the adopt but QUEUED it: the session was mid-turn, so the
+	 * exchange joins the conversation at the turn's next safe point rather than now
+	 * (`status: "queued"` on the adopt answer). The panel stays up, read-only,
+	 * until the rows are seen in the transcript or the turn ends.
+	 *
+	 * `asideId` is the entry the owner queued, so a fallback armed for one queued
+	 * adopt can never retire a later one on the same session. `messageIds` are the
+	 * exchange's own message ids, which the owner writes as the transcript rows'
+	 * ids - the landing test. Empty until they are read (or when they could not be).
+	 *
+	 * Optional rather than `null`-valued so every attachment written before this
+	 * state existed (and every fixture) still reads as "not queued".
+	 */
+	queued?: { asideId: string; messageIds: readonly string[] };
 };
 
 export type AsideStore = {
@@ -104,6 +119,18 @@ export type AsideStore = {
 	failAside: (asideId: string, error: string) => void;
 	/** The panel's own refusal sentence, or null to clear it. */
 	setAsideNotice: (sessionId: string, notice: string | null) => void;
+	/** The adopt was queued by the owner; see `AsideAttachment.queued`. */
+	queueAdoption: (
+		sessionId: string,
+		asideId: string,
+		messageIds: readonly string[],
+	) => void;
+	/**
+	 * A queued adopt did not land (or could not be confirmed): leave the queued
+	 * state, so the control is live again, and say so on the panel. A no-op unless
+	 * the attachment is still queued for `asideId`.
+	 */
+	unqueueAdoption: (sessionId: string, asideId: string, notice: string) => void;
 	/** Close the panel and drop everything about this session's aside. */
 	detachAside: (sessionId: string) => void;
 };
@@ -305,6 +332,32 @@ export const useAsideStore = create<AsideStore>((set) => ({
 			if (!attachment) return state;
 			return {
 				attached: { ...state.attached, [sessionId]: { ...attachment, notice } },
+			};
+		}),
+
+	queueAdoption: (sessionId, asideId, messageIds) =>
+		set((state) => {
+			const attachment = state.attached[sessionId];
+			if (!attachment) return state;
+			return {
+				attached: {
+					...state.attached,
+					[sessionId]: {
+						...attachment,
+						notice: null,
+						queued: { asideId, messageIds: [...messageIds] },
+					},
+				},
+			};
+		}),
+
+	unqueueAdoption: (sessionId, asideId, notice) =>
+		set((state) => {
+			const attachment = state.attached[sessionId];
+			if (attachment?.queued?.asideId !== asideId) return state;
+			const { queued: _released, ...rest } = attachment;
+			return {
+				attached: { ...state.attached, [sessionId]: { ...rest, notice } },
 			};
 		}),
 

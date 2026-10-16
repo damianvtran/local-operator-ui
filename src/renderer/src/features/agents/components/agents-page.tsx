@@ -557,8 +557,15 @@ export function AgentsPage() {
 	const refreshAll = () => {
 		void profiles.refetch();
 		void teams.refetch();
-		void profileDetail.refetch();
-		void teamDetail.refetch();
+		/*
+		 * THE OPEN DETAIL ONLY, AND ONLY WHEN IT HAS A NAME (QA round 1, Q1). `refetch`
+		 * ignores `enabled`, so on a TEAM pane this sent `profiles.get` with `name: ""`
+		 * and the backend answered 422 - a request nobody asked for, from a pane that is
+		 * not about a profile. The two list queries above have no name to get wrong.
+		 */
+		if (!selected) return;
+		if (teamMode) void teamDetail.refetch();
+		else void profileDetail.refetch();
 	};
 
 	if (agentId)
