@@ -141,35 +141,75 @@ const STORY_TIER_MAP: Record<string, { model: string; effort: string }> = {
 	hi: { model: "anthropic/claude-opus-5-5", effort: "xhigh" },
 };
 
-/** One member's reading, resolved the way the backend resolves one. */
+/**
+ * What each model does when nothing is asked of it - the level an `auto` request
+ * resolves to, and the level a model sits on by default.
+ *
+ * DELIBERATELY NOT THE TIER MAP'S LEVELS. `auto` means the MODEL's own default, not
+ * the level the tier map would have chosen, and a fixture that made the two equal
+ * would photograph the one case where a wrong display looks right (design round 1,
+ * D0: two members with different stored overrides read identically). `opus`
+ * therefore defaults to `high` while the tier map asks for `xhigh` at tier `hi`.
+ */
+const STORY_MODEL_DEFAULTS: Record<string, string> = {
+	"anthropic/claude-opus-5-5": "high",
+	"openai/gpt-6-mini": "minimal",
+};
+
+const storyModelDefault = (model: string): string | null =>
+	STORY_MODEL_DEFAULTS[model] ?? null;
+
+/**
+ * One member's reading, resolved the way the backend resolves one.
+ *
+ * THE RULES, from `_effective_member` at the backend branch head `edd506911`, and
+ * every one of them is visible in a frame:
+ *
+ * - a tier this rig's map configures reports the model with `source: "tier"`;
+ * - its effort is the member's request when there is one, and `auto` resolves to the
+ *   MODEL's own default (`STORY_MODEL_DEFAULTS`), never to the tier map's level;
+ * - a tier the map does NOT configure is unavailable, keeps `source: "tier"` (a tier
+ *   the operator wrote chose that slot even though nothing is configured at it) and
+ *   reports a null model, so the pane must not print a model clause for it;
+ * - a slot with no tier at all reports `source: "session"` and a null model.
+ */
 const effectiveMember = (member: ReusableTeam["members"][number]) => {
 	const tier = member.tier ?? null;
 	const mapped = tier ? STORY_TIER_MAP[tier] : undefined;
-	const effort = member.effort ?? null;
-	return {
+	const requested = member.effort ?? null;
+	const base = {
 		role: member.role,
 		kind: member.kind,
 		tier: { value: tier, source: tier ? "team" : "none" },
-		model: mapped
-			? { value: mapped.model, source: "tier" }
-			: { value: null, source: "session" },
-		/* `auto` asks for the model's own default rather than the tier map's. */
-		effort: effort
-			? {
-					value: effort === "auto" ? (mapped?.effort ?? null) : effort,
-					requested: effort,
-					source: "team",
-				}
-			: {
-					value: mapped?.effort ?? null,
-					requested: mapped?.effort ?? null,
-					source: mapped ? "tier" : "model_default",
-				},
-		available: tier ? Boolean(mapped) : true,
-		reason:
-			tier && !mapped
+	};
+	if (!mapped) {
+		return {
+			...base,
+			model: { value: null, source: tier ? "tier" : "session" },
+			effort: {
+				value: requested,
+				requested,
+				source: requested ? "team" : "model_default",
+			},
+			available: !tier,
+			reason: tier
 				? `tier '${tier}' is not configured: no models are configured under subagents.models`
 				: "",
+		};
+	}
+	return {
+		...base,
+		model: { value: mapped.model, source: "tier" },
+		effort: {
+			value:
+				requested === "auto"
+					? storyModelDefault(mapped.model)
+					: (requested ?? mapped.effort),
+			requested: requested ?? mapped.effort,
+			source: requested ? "team" : "tier",
+		},
+		available: true,
+		reason: "",
 	};
 };
 
@@ -210,6 +250,12 @@ type BridgeOptions = {
 	 */
 	teams?: ReusableTeam[];
 	/**
+	 * Refuse `teams.effective` with this status, for the state where the probe
+	 * cannot be taken at all (design round 1, D10's `read_failed` copy). Omitted,
+	 * the route answers.
+	 */
+	effectiveFails?: number;
+	/**
 	 * Replace the capability answer. The class stories leave the composer's two
 	 * gates (`agents_config`, `session_interrupt`) off, so their docked composer
 	 * renders its disabled sentence; the Teams stories turn them on because the
@@ -234,6 +280,7 @@ export const installBridge = (
 		aidaName = "Aida",
 		teams = [],
 		capabilities = CAPABILITIES,
+		effectiveFails,
 	}: BridgeOptions = {},
 ) => {
 	const handler = async (request: DesktopRequest): Promise<DesktopResponse> => {
@@ -288,6 +335,8 @@ export const installBridge = (
 			 * `effectiveMember` - one fact read three ways, as the product reads it.
 			 */
 			case "teams.effective": {
+				if (effectiveFails !== undefined)
+					return refusal(effectiveFails, "The server could not answer.");
 				const hit = teams.find((row) => row.name === request.name);
 				if (!hit) return refusal(404, `No team named ${request.name}.`);
 				return envelope({

@@ -168,6 +168,7 @@ export type MessageParams = {
 	"ui.agents.dialogs.menu.export": undefined;
 	"ui.agents.dialogs.menu.settings": undefined;
 	"ui.agents.dialogs.menu.upload": undefined;
+	"ui.agents.models.override.auto": undefined;
 	"ui.agents.models.override.effort_field": undefined;
 	"ui.agents.models.override.effort_label": { member: string };
 	"ui.agents.models.override.inherit": undefined;
@@ -175,12 +176,26 @@ export type MessageParams = {
 	"ui.agents.models.override.tier_label": { member: string };
 	"ui.agents.models.pin_reach": { count: number; teams: string };
 	"ui.agents.models.reading.description": undefined;
-	"ui.agents.models.reading.effort": { effort: string };
+	"ui.agents.models.reading.effort_auto": undefined;
+	"ui.agents.models.reading.effort_cell": { value: string };
+	"ui.agents.models.reading.effort_clamped": {
+		requested: string;
+		value: string;
+	};
+	"ui.agents.models.reading.effort_col": undefined;
+	"ui.agents.models.reading.effort_default": undefined;
+	"ui.agents.models.reading.member_col": undefined;
+	"ui.agents.models.reading.model_cell": { value: string };
+	"ui.agents.models.reading.model_col": undefined;
+	"ui.agents.models.reading.not_resolved": undefined;
 	"ui.agents.models.reading.read_failed": undefined;
+	"ui.agents.models.reading.saved_label": undefined;
 	"ui.agents.models.reading.session_model": undefined;
-	"ui.agents.models.reading.tier": { tier: string };
+	"ui.agents.models.reading.tier_layer": { tier: string; source: string };
 	"ui.agents.models.reading.title": undefined;
 	"ui.agents.models.reading.unavailable": { reason: string };
+	"ui.agents.models.reading.unavailable_editor": { reason: string };
+	"ui.agents.models.reading.unavailable_hint": undefined;
 	"ui.agents.models.source.model_default": undefined;
 	"ui.agents.models.source.none": undefined;
 	"ui.agents.models.source.row": undefined;
