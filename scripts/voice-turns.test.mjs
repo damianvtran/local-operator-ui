@@ -36,6 +36,16 @@ const {
 );
 
 const event = (payload) => ({ kind: "event", event: payload });
+/*
+ * A take is keyed by its request_id, and bound by the user message_start the
+ * server mints with message.id == that request_id (design V14).
+ */
+const arm = (id = "take-1") => ({ kind: "armed", requestId: id });
+const spoke = (id = "take-1") =>
+	event({
+		type: "message_start",
+		message: { id, role: "user", content: [{ type: "text", text: "Hi." }] },
+	});
 const start = event({ type: "agent_start" });
 const end = event({ type: "agent_end" });
 const said = (id, text = "Here is the answer.") =>
@@ -68,7 +78,8 @@ function run(inputs, from = initialVoiceTurns()) {
 
 test("a turn this window sent words to speaks its LAST text message, once", () => {
 	const { spoken } = run([
-		{ kind: "armed" },
+		arm(),
+		spoke(),
 		start,
 		said("m1", "Let me check."),
 		toolOnly("m2"),
@@ -80,7 +91,8 @@ test("a turn this window sent words to speaks its LAST text message, once", () =
 
 test("a tool-call-only final message does not displace the last text one", () => {
 	const { spoken } = run([
-		{ kind: "armed" },
+		arm(),
+		spoke(),
 		start,
 		said("m1"),
 		toolOnly("m2"),
@@ -96,66 +108,116 @@ test("a turn nobody spoke into (typed, or a wake) is not spoken", () => {
 
 test("a fast turn that ends before the upload answers is still spoken (armed at send)", () => {
 	// The mock provider can finish the turn before the route's 200 arrives here.
-	const { spoken } = run([{ kind: "armed" }, start, said("m1"), end]);
+	const { spoken } = run([arm(), spoke(), start, said("m1"), end]);
 	assert.deepEqual(spoken, [{ kind: "message", messageId: "m1" }]);
 });
 
-test("words sent into a running turn (a steer) are answered by that turn", () => {
+test("words sent into a running turn (a steer) are answered by that turn, from its own message on", () => {
 	const { spoken } = run([
 		{ kind: "streaming", streaming: true },
-		{ kind: "armed" },
+		start,
+		arm(),
+		said("m0", "Working on the earlier request."),
+		// The steer drains at the next tool boundary: its own message lands here.
+		event({ type: "steering_delivered" }),
+		spoke(),
 		said("m1", "Adjusting as you asked."),
 		end,
 	]);
 	assert.deepEqual(spoken, [{ kind: "message", messageId: "m1" }]);
 });
 
+test("R5-M1: a turn already running when the take went out does not bind it", () => {
+	// Typed turn running, take armed, typed turn ends WITHOUT the take's message.
+	const { spoken, state } = run([
+		start,
+		arm(),
+		said("m-typed", "Typed reply."),
+		end,
+	]);
+	assert.deepEqual(spoken, [], "the running turn never carried the words");
+	assert.deepEqual(state.takes, ["take-1"], "the take still waits for its own");
+	const answered = run([spoke(), start, said("m-take"), end], state);
+	assert.deepEqual(answered.spoken, [{ kind: "message", messageId: "m-take" }]);
+});
+
+test("R5-M1: several takes each bind only to their own message", () => {
+	const { spoken, state } = run([
+		arm("take-a"),
+		arm("take-b"),
+		// take-b is admitted first (its upload's STT was faster).
+		spoke("take-b"),
+		start,
+		said("m-b"),
+		end,
+	]);
+	assert.deepEqual(spoken, [{ kind: "message", messageId: "m-b" }]);
+	assert.deepEqual(state.takes, ["take-a"], "take-a is still its own");
+	// A typed turn in between is not take-a's.
+	const typed = run([start, said("m-typed"), end], state);
+	assert.deepEqual(typed.spoken, []);
+	const a = run([spoke("take-a"), start, said("m-a"), end], typed.state);
+	assert.deepEqual(a.spoken, [{ kind: "message", messageId: "m-a" }]);
+	// A user message that is not one of this window's takes binds nothing.
+	const other = run([spoke("someone-else"), start, said("m-x"), end], a.state);
+	assert.deepEqual(other.spoken, []);
+});
+
 test("a replayed end of a turn that finished BEFORE the send is not the answer", () => {
 	// Previous turn completed, then words sent; a stale agent_end must not speak m0.
 	const { state } = run([start, said("m0"), end]);
-	const after = run([{ kind: "armed" }, said("m0"), end], state);
+	const after = run([arm(), said("m0"), end], state);
 	assert.deepEqual(after.spoken, []);
-	assert.equal(after.state.armed, 1, "still waiting for its own turn");
-	const answered = run([start, said("m1"), end], after.state);
+	assert.deepEqual(after.state.takes, ["take-1"], "still waiting for its own");
+	const answered = run([spoke(), start, said("m1"), end], after.state);
 	assert.deepEqual(answered.spoken, [{ kind: "message", messageId: "m1" }]);
 });
 
 test("reconnect replay: the same message_end/agent_end twice speaks once", () => {
-	const first = run([{ kind: "armed" }, start, said("m1"), end]);
+	const first = run([arm(), spoke(), start, said("m1"), end]);
 	assert.equal(first.spoken.length, 1);
-	// The stream reconnects from an older cursor and re-sends the turn's tail,
+	// The stream reconnects from an older cursor and re-sends the whole turn,
 	// and the operator has already sent the next utterance.
-	const replay = run([{ kind: "armed" }, start, said("m1"), end], first.state);
+	const replay = run(
+		[arm("take-2"), spoke(), start, said("m1"), end],
+		first.state,
+	);
 	assert.deepEqual(replay.spoken, [], "m1 was already spoken");
+	assert.deepEqual(replay.state.takes, ["take-2"], "and take-2 is not bound");
 });
 
 test("a failed send disarms: the next unrelated turn is not spoken", () => {
-	const { spoken } = run([
-		{ kind: "armed" },
-		{ kind: "disarmed" },
+	const { spoken, state } = run([
+		arm(),
+		{ kind: "disarmed", requestId: "take-1" },
 		start,
 		said("m1"),
 		end,
 	]);
 	assert.deepEqual(spoken, []);
+	assert.deepEqual(state.takes, []);
 });
 
 test("two takes in one turn are one answer", () => {
 	const { spoken, state } = run([
-		{ kind: "armed" },
+		arm("take-a"),
+		spoke("take-a"),
 		start,
-		{ kind: "armed" },
+		arm("take-b"),
+		spoke("take-b"),
 		said("m1"),
 		end,
 	]);
 	assert.deepEqual(spoken, [{ kind: "message", messageId: "m1" }]);
-	assert.equal(state.armed, 0);
+	assert.deepEqual(state.takes, []);
+	assert.equal(state.answering, false);
 });
 
 test("an approval is announced once per gate; an ask and a cleared gate are not", () => {
 	const approval = { request_id: "g1", kind: "approval" };
 	const { spoken } = run([
-		{ kind: "armed" },
+		arm(),
+		spoke(),
 		start,
 		{ kind: "gate", gate: approval },
 		{ kind: "gate", gate: approval },
@@ -176,10 +238,7 @@ test("U2: only a window with an armed take announces; others record the gate sil
 	assert.deepEqual(other.spoken, []);
 	assert.equal(other.state.pendingApproval, "g1");
 	// A take armed AFTER the gate was already on screen does not announce it.
-	const late = run(
-		[{ kind: "armed" }, { kind: "gate", gate: approval }],
-		other.state,
-	);
+	const late = run([arm(), { kind: "gate", gate: approval }], other.state);
 	assert.deepEqual(late.spoken, []);
 });
 
@@ -215,10 +274,8 @@ test("R3-m2: ANY parked card - an approval or a blocking ask - is a pending card
 		"but is not announced as an approval",
 	);
 	assert.deepEqual(
-		run([
-			{ kind: "armed" },
-			{ kind: "gate", gate: { request_id: "a1", kind: "ask" } },
-		]).spoken,
+		run([arm(), { kind: "gate", gate: { request_id: "a1", kind: "ask" } }])
+			.spoken,
 		[],
 	);
 	const approval = run([
@@ -251,13 +308,15 @@ test("U3: an interrupted turn is not spoken, and the take is consumed", () => {
 		{ type: "agent_end", cut_off_cause: "restart" },
 	]) {
 		const { spoken, state } = run([
-			{ kind: "armed" },
+			arm(),
+			spoke(),
 			start,
 			said("m1", "Partial answer"),
 			event(ending),
 		]);
 		assert.deepEqual(spoken, [], JSON.stringify(ending));
-		assert.equal(state.armed, 0, "the take does not carry to the next turn");
+		assert.equal(state.answering, false, "the binding is consumed");
+		assert.deepEqual(state.takes, [], "nothing carries to the next turn");
 		// The next typed turn is still silent.
 		assert.deepEqual(run([start, said("m2"), end], state).spoken, []);
 	}
@@ -271,7 +330,7 @@ test("U3: an interrupted turn is not spoken, and the take is consumed", () => {
 			content: [{ type: "text", text: "Half a sen" }],
 		},
 	});
-	assert.deepEqual(run([{ kind: "armed" }, start, cut, end]).spoken, []);
+	assert.deepEqual(run([arm(), spoke(), start, cut, end]).spoken, []);
 });
 
 const KEEPS_DEDUPE = /spoken: state\.spoken,\s*announced: state\.announced/;
@@ -279,11 +338,7 @@ const DROPS_TURNS = /turns = null/;
 
 test("U4: the dedupe sets survive the slot leaving and returning (A -> B -> A)", () => {
 	const approval = { request_id: "g1", kind: "approval" };
-	const first = run([
-		{ kind: "armed" },
-		start,
-		{ kind: "gate", gate: approval },
-	]);
+	const first = run([arm(), spoke(), start, { kind: "gate", gate: approval }]);
 	assert.deepEqual(first.spoken, [{ kind: "gate", requestId: "g1" }]);
 	// The controller's resetTurnFlight: in-flight state dropped, dedupe kept.
 	const back = {
@@ -292,10 +347,7 @@ test("U4: the dedupe sets survive the slot leaving and returning (A -> B -> A)",
 		announced: first.state.announced,
 	};
 	// Returning to A re-reads the snapshot, which still names the pending gate.
-	const again = run(
-		[{ kind: "armed" }, { kind: "gate", gate: approval }],
-		back,
-	);
+	const again = run([arm("take-2"), { kind: "gate", gate: approval }], back);
 	assert.deepEqual(again.spoken, [], "the same gate is not announced twice");
 	const controller = readFileSync(
 		"src/renderer/src/features/voice/voice-controller.tsx",
@@ -312,7 +364,10 @@ test("U4: the dedupe sets survive the slot leaving and returning (A -> B -> A)",
 test("the dedupe sets are bounded", () => {
 	let state = initialVoiceTurns();
 	for (let i = 0; i < VOICE_DEDUPE_LIMIT + 10; i += 1) {
-		state = run([{ kind: "armed" }, start, said(`m${i}`), end], state).state;
+		state = run(
+			[arm(`t${i}`), spoke(`t${i}`), start, said(`m${i}`), end],
+			state,
+		).state;
 	}
 	assert.equal(state.spoken.length, VOICE_DEDUPE_LIMIT);
 	assert.equal(state.spoken[0], "m10");
@@ -715,7 +770,7 @@ test("Q4: a snapshot sharing the open's seq is folded as state - gate pending, t
 	assert.deepEqual(spoken, [], "a snapshot is never spoken");
 	// Even with a take armed, a snapshot's gate is state, not news.
 	const armed = stepVoiceTurns(
-		stepVoiceTurns(initialVoiceTurns(), { kind: "armed" }).state,
+		stepVoiceTurns(initialVoiceTurns(), arm()).state,
 		rig.inputs.find((i) => i.kind === "gate"),
 	);
 	assert.deepEqual(armed.speak, []);
@@ -745,7 +800,14 @@ const evt = (seq, payload) => ({
 test("R3-M1: a resume replays the spoken turn's answer once; a later typed turn is not spoken", async () => {
 	const rig = await streamRig((n) =>
 		n === 1
-			? [evt(7, { type: "agent_start" }), { kind: "error", status: 503 }]
+			? [
+					evt(6, {
+						type: "message_start",
+						message: { id: "take-1", role: "user", content: "Hi." },
+					}),
+					evt(7, { type: "agent_start" }),
+					{ kind: "error", status: 503 },
+				]
 			: [
 					{
 						kind: "data",
@@ -785,7 +847,7 @@ test("R3-M1: a resume replays the spoken turn's answer once; a later typed turn 
 				],
 	);
 	// The take was armed before the turn started (the controller arms at send).
-	let state = stepVoiceTurns(initialVoiceTurns(), { kind: "armed" }).state;
+	let state = stepVoiceTurns(initialVoiceTurns(), arm()).state;
 	await rig.drain();
 	assert.deepEqual(
 		rig.opened[1],
@@ -805,8 +867,8 @@ test("R3-M1: a resume replays the spoken turn's answer once; a later typed turn 
 	);
 	assert.equal(
 		rig.inputs.filter((i) => i.kind === "event").length,
-		6,
-		"agent_start@7, the 2 replayed, the 3 live",
+		7,
+		"message_start@6, agent_start@7, the 2 replayed, the 3 live",
 	);
 	rig.dispose();
 });
@@ -918,20 +980,27 @@ test("D8: the gate announcement and every refused take share one per-session war
 });
 
 /*
- * R4-M1 / Q6: THE INVARIANT ACROSS EVERY RESUME PATH - a turn nobody spoke into
- * is never spoken, and a take whose turn ended while the stream was away is
- * dropped silently rather than carried into the next turn.
+ * R5-M1 / V14: A TAKE IS BOUND TO THE TURN WHOSE STREAM CARRIES ITS OWN USER
+ * MESSAGE, AND TIMING NEVER BINDS. The server mints a take's user message with
+ * `message.id == the utterance's request_id` on the prompt path, on a steer
+ * drained at a tool boundary, and on a steer drained by the end-of-turn flush,
+ * live and on replay (measured against lo-voice b2533239d). So a turn nobody
+ * spoke into is never spoken, whatever the stream did around it.
  *
  * A hand-driven transport: each test pushes real-shaped frames onto the CURRENT
  * connection, arms the take at the moment the controller would (`feedTurns`
- * folds `armed` into the same state the stream feeds), and fires the retry
- * timer itself. State is folded live, in arrival order, exactly as the
- * controller folds it.
+ * folds `armed` with the take's request_id into the same state the stream
+ * feeds), and fires the retry timer itself. State is folded live, in arrival
+ * order, exactly as the controller folds it. The letters are the review's case
+ * names (round 4: E/F/H/I; round 5: J, K2, L, Q, R, S).
  */
 async function liveRig() {
-	const { subscribeVoiceStream } = await import(streamPath.href);
+	const { subscribeVoiceStream, VOICE_STREAM_MAX_ATTEMPTS } = await import(
+		streamPath.href
+	);
 	const connections = [];
 	const timers = [];
+	const statuses = [];
 	let state = initialVoiceTurns();
 	const spoken = [];
 	const fold = (input) => {
@@ -939,18 +1008,23 @@ async function liveRig() {
 		state = step.state;
 		spoken.push(...step.speak);
 	};
-	const handle = subscribeVoiceStream("a1a1a1a1a1a1", fold, () => undefined, {
-		subscribe: (args, onEvent) => {
-			connections.push({ args, onEvent });
-			return () => undefined;
+	const handle = subscribeVoiceStream(
+		"a1a1a1a1a1a1",
+		fold,
+		(status) => statuses.push(status),
+		{
+			subscribe: (args, onEvent) => {
+				connections.push({ args, onEvent });
+				return () => undefined;
+			},
+			delayMs: () => 0,
+			schedule: (run) => {
+				timers.push(run);
+				return timers.length;
+			},
+			cancel: () => undefined,
 		},
-		delayMs: () => 0,
-		schedule: (run) => {
-			timers.push(run);
-			return timers.length;
-		},
-		cancel: () => undefined,
-	});
+	);
 	const at = (epoch, seq, type, payload) => ({
 		kind: "data",
 		data: JSON.stringify({
@@ -961,212 +1035,516 @@ async function liveRig() {
 			payload,
 		}),
 	});
+	const push = (...events) => {
+		for (const event of events) connections.at(-1).onEvent(event);
+	};
 	return {
 		connections,
 		get state() {
 			return state;
 		},
 		spoken,
+		statuses,
 		handle,
-		arm: () => fold({ kind: "armed" }),
-		push: (...events) => {
-			for (const event of events) connections.at(-1).onEvent(event);
-		},
+		/** Arm a take as the controller does at send start, keyed by its id. */
+		arm: (requestId = "take-1") => fold({ kind: "armed", requestId }),
+		push,
 		/** Fire every pending retry timer (each opens one connection). */
 		tick: () => {
 			while (timers.length) timers.shift()();
+		},
+		/** Fail every connection until the watcher stops as exhausted. */
+		exhaust: () => {
+			for (let i = 0; i < VOICE_STREAM_MAX_ATTEMPTS; i += 1) {
+				push(DROP);
+				while (timers.length) timers.shift()();
+			}
 		},
 		open: (epoch, seq, payload = { gap: false }) =>
 			at(epoch, seq, "open", {
 				subscription_id: "0123456789abcdef0123456789abcdef",
 				...payload,
 			}),
-		snapshot: (epoch, seq, streaming) =>
+		snapshot: (epoch, seq, streaming, historyIds = []) =>
 			at(epoch, seq, "snapshot", {
 				frontend: { snapshot: { pending_gate: null, streaming } },
-				history: {},
+				history: {
+					entries: historyIds.map((id) => ({ id, type: "message" })),
+				},
 				cold: false,
 			}),
+		update: (epoch, seq, streaming) =>
+			at(epoch, seq, "frontend.update", { changes: { streaming } }),
 		event: (epoch, seq, payload) => at(epoch, seq, "event", payload),
+		/** The take's own user message, as the server mints it (id == request_id). */
+		userMessage: (epoch, seq, id = "take-1") =>
+			at(epoch, seq, "event", {
+				type: "message_start",
+				message: {
+					id,
+					role: "user",
+					content: [{ type: "text", text: "Spoken words." }],
+					input_mode: null,
+				},
+			}),
+		said: (epoch, seq, id) =>
+			at(epoch, seq, "event", {
+				type: "message_end",
+				message: {
+					id,
+					role: "assistant",
+					content: [{ type: "text", text: `Answer ${id}.` }],
+				},
+			}),
 	};
 }
 
+const DROP = { kind: "error", status: 503 };
 const TYPED_ANSWER = "m-typed";
+const spokeOnly = (id) => [{ kind: "message", messageId: id }];
 /** A whole typed turn (nobody spoke into it) on `epoch` from `seq`. */
-const typedTurn = (rig, epoch, seq) => [
+const typedTurn = (rig, epoch, seq, id = TYPED_ANSWER) => [
 	rig.event(epoch, seq, { type: "agent_start" }),
-	rig.event(epoch, seq + 1, {
-		type: "message_end",
-		message: {
-			id: TYPED_ANSWER,
-			role: "assistant",
-			content: [{ type: "text", text: "Typed reply." }],
-		},
-	}),
+	rig.said(epoch, seq + 1, id),
 	rig.event(epoch, seq + 2, { type: "agent_end" }),
 ];
-const DROP = { kind: "error", status: 503 };
+/** A spoken turn: the take's message, then its answer, then the end. */
+const spokenTurn = (rig, epoch, seq, answer, take = "take-1") => [
+	rig.userMessage(epoch, seq, take),
+	rig.event(epoch, seq + 1, { type: "agent_start" }),
+	rig.said(epoch, seq + 2, answer),
+	rig.event(epoch, seq + 3, { type: "agent_end" }),
+];
+const quiet = (rig) => {
+	rig.push(rig.open("ep-1", 5, { gap: true }), rig.snapshot("ep-1", 5, false));
+};
 
-test("R4-M1 path E: resume with open{gap:true}, empty replay, snapshot streaming:false - the take is dropped, the typed turn is silent", async () => {
+test("R4-M1 path E: resume with open{gap:true}, empty replay, idle snapshot - the take is dropped, the typed turn is silent", async () => {
 	const rig = await liveRig();
-	rig.push(rig.open("ep-1", 1, { gap: true }), rig.snapshot("ep-1", 1, false));
+	quiet(rig);
 	rig.arm();
-	rig.push(rig.event("ep-1", 2, { type: "agent_start" }), DROP);
+	rig.push(
+		rig.userMessage("ep-1", 6),
+		rig.event("ep-1", 7, { type: "agent_start" }),
+		DROP,
+	);
 	rig.tick();
 	assert.deepEqual(rig.connections[1].args, {
 		sessionId: "a1a1a1a1a1a1",
 		epoch: "ep-1",
-		afterSeq: 2,
+		afterSeq: 7,
 	});
-	rig.push(rig.open("ep-1", 5, { gap: true }), rig.snapshot("ep-1", 5, false));
-	assert.equal(rig.state.armed, 0, "disarmed on the gap");
-	rig.push(...typedTurn(rig, "ep-1", 6));
+	rig.push(
+		rig.open("ep-1", 400, { gap: true }),
+		rig.snapshot("ep-1", 400, false),
+	);
+	assert.equal(rig.state.answering, false, "unbound on the gap");
+	assert.deepEqual(rig.state.takes, []);
+	rig.push(...typedTurn(rig, "ep-1", 401));
 	assert.deepEqual(rig.spoken, []);
 	rig.handle.dispose();
 });
 
-test("R4-M1 path F (QA Q6): an epoch change - long cut or daemon restart - drops the take even while the next turn is running", async () => {
+test("R4-M1 path F (QA Q6): an epoch change drops the take even while the next turn is running", async () => {
 	const rig = await liveRig();
-	rig.push(rig.open("ep-1", 1, { gap: true }), rig.snapshot("ep-1", 1, false));
+	quiet(rig);
 	rig.arm();
-	rig.push(rig.event("ep-1", 2, { type: "agent_start" }), DROP);
-	rig.tick();
-	// New epoch, no gap flag, and a typed turn already RUNNING at the snapshot:
-	// only the epoch says continuity was lost.
-	rig.push(rig.open("ep-2", 1, {}), rig.snapshot("ep-2", 1, true));
-	assert.equal(rig.state.armed, 0, "disarmed on the new epoch");
 	rig.push(
-		rig.event("ep-2", 2, {
-			type: "message_end",
-			message: {
-				id: TYPED_ANSWER,
-				role: "assistant",
-				content: [{ type: "text", text: "Typed reply." }],
-			},
-		}),
+		rig.userMessage("ep-1", 6),
+		rig.event("ep-1", 7, { type: "agent_start" }),
+		DROP,
+	);
+	rig.tick();
+	// New epoch, no gap flag, a typed turn RUNNING at the snapshot.
+	rig.push(rig.open("ep-2", 1, {}), rig.snapshot("ep-2", 1, true));
+	assert.equal(rig.state.answering, false, "unbound on the new epoch");
+	rig.push(
+		rig.said("ep-2", 2, TYPED_ANSWER),
 		rig.event("ep-2", 3, { type: "agent_end" }),
 	);
 	assert.deepEqual(rig.spoken, []);
 	rig.handle.dispose();
 });
 
-test("R4-M1 path H: gap-free resume whose agent_end was absorbed into the snapshot (streaming:false) - dropped silently", async () => {
-	const rig = await liveRig();
-	rig.push(rig.open("ep-1", 6, { gap: true }), rig.snapshot("ep-1", 6, false));
-	rig.arm();
-	rig.push(rig.event("ep-1", 7, { type: "agent_start" }), DROP);
-	rig.tick();
-	// No gap, same epoch, nothing replayed: the end exists only as snapshot state.
-	rig.push(
-		rig.open("ep-1", 10, { gap: false }),
-		rig.snapshot("ep-1", 10, false),
-	);
-	assert.equal(rig.state.armed, 0, "disarmed by the idle snapshot");
-	rig.push(...typedTurn(rig, "ep-1", 11));
-	assert.deepEqual(rig.spoken, []);
-	rig.handle.dispose();
-});
-
-test("R4-M1 path I: exhausted, then retry() - the take does not survive the stop", async () => {
-	const rig = await liveRig();
-	rig.push(rig.open("ep-1", 1, { gap: true }), rig.snapshot("ep-1", 1, false));
-	rig.arm();
-	rig.push(rig.event("ep-1", 2, { type: "agent_start" }), DROP);
-	for (let i = 0; i < 10; i += 1) {
-		rig.tick();
-		if (rig.connections.length > i + 1) rig.push(DROP);
-	}
-	assert.equal(rig.state.armed, 0, "disarmed when the watcher stopped");
-	rig.handle.retry();
-	// Same epoch, no gap, and the typed turn already running: nothing but the
-	// stop could have dropped the take.
-	rig.push(rig.open("ep-1", 5, { gap: false }), rig.snapshot("ep-1", 5, true));
-	rig.push(
-		rig.event("ep-1", 6, {
-			type: "message_end",
-			message: {
-				id: TYPED_ANSWER,
-				role: "assistant",
-				content: [{ type: "text", text: "Typed reply." }],
-			},
-		}),
-		rig.event("ep-1", 7, { type: "agent_end" }),
-	);
-	assert.deepEqual(rig.spoken, []);
-	rig.handle.dispose();
-});
-
-test("R4-M1 QA repro: take sent while the watcher is down, its turn finishes unseen, then recovery - silent", async () => {
+test("R4-M1 QA repro: take sent while the watcher is down, its turn ends unseen, new-epoch recovery - silent", async () => {
 	const rig = await liveRig();
 	rig.push(
 		rig.open("ep-1", 1, { gap: true }),
 		rig.snapshot("ep-1", 1, false),
 		DROP,
 	);
-	// The watcher is down (a retry is pending); the take goes out now.
 	rig.arm();
 	rig.tick();
-	// QA rows a-d: the cut outlived the dwell, the turn ran and ended, and the
-	// resume came back on a new epoch with gap=True and nothing replayed.
+	rig.push(rig.open("ep-2", 1, { gap: true }), rig.snapshot("ep-2", 1, false));
+	assert.deepEqual(rig.state.takes, [], "the take's message is among the lost");
+	rig.push(...typedTurn(rig, "ep-2", 2));
+	assert.deepEqual(rig.spoken, []);
+	rig.handle.dispose();
+});
+
+test("R4-M1 path H: gap-free resume whose agent_end was absorbed into the snapshot - unbound silently", async () => {
+	const rig = await liveRig();
+	quiet(rig);
+	rig.arm();
+	rig.push(
+		rig.userMessage("ep-1", 6),
+		rig.event("ep-1", 7, { type: "agent_start" }),
+		DROP,
+	);
+	rig.tick();
+	// No gap, same epoch: the end exists only as snapshot state.
+	rig.push(
+		rig.open("ep-1", 10, { gap: false }),
+		rig.snapshot("ep-1", 10, false),
+	);
+	assert.equal(rig.state.answering, false, "unbound by the idle snapshot");
+	rig.push(...typedTurn(rig, "ep-1", 11));
+	assert.deepEqual(rig.spoken, []);
+	rig.handle.dispose();
+});
+
+test("R4-M1 path I: exhausted, then retry() on a new epoch - the take does not answer the typed turn", async () => {
+	const rig = await liveRig();
+	quiet(rig);
+	rig.arm();
+	rig.push(
+		rig.userMessage("ep-1", 6),
+		rig.event("ep-1", 7, { type: "agent_start" }),
+	);
+	rig.exhaust();
+	assert.deepEqual(rig.statuses, ["exhausted"]);
+	rig.handle.retry();
+	rig.push(rig.open("ep-2", 2, { gap: true }), rig.snapshot("ep-2", 2, false));
+	rig.push(...typedTurn(rig, "ep-2", 3));
+	assert.deepEqual(rig.spoken, []);
+	rig.handle.dispose();
+});
+
+test("R5-M1 J: the take's whole turn (message, start, end) absorbed into a gap-free snapshot - silent, and the typed turn too", async () => {
+	const rig = await liveRig();
+	quiet(rig);
+	rig.arm();
+	rig.push(DROP);
+	rig.tick();
+	// Cutoff 5, everything 6..9 absorbed: the take's message is in the history.
+	rig.push(
+		rig.open("ep-1", 5, { gap: false }),
+		rig.snapshot("ep-1", 9, false, ["take-1"]),
+	);
+	assert.deepEqual(rig.state.takes, [], "an absorbed take is settled");
+	rig.push(...typedTurn(rig, "ep-1", 10));
+	assert.deepEqual(rig.spoken, []);
+	rig.handle.dispose();
+});
+
+test("R5-M2 K2: exhausted mid-turn, retry while the turn is still running (gap:false) - the answer is spoken", async () => {
+	const rig = await liveRig();
+	quiet(rig);
+	rig.arm();
+	rig.push(
+		rig.userMessage("ep-1", 6),
+		rig.event("ep-1", 7, { type: "agent_start" }),
+	);
+	rig.exhaust();
+	rig.handle.retry();
+	rig.push(
+		rig.open("ep-1", 7, { gap: false }),
+		rig.update("ep-1", 7, true),
+		rig.snapshot("ep-1", 7, true, ["take-1"]),
+		rig.said("ep-1", 8, "STILL-RUNNING"),
+		rig.event("ep-1", 9, { type: "agent_end" }),
+	);
+	assert.deepEqual(rig.spoken, spokeOnly("STILL-RUNNING"));
+	rig.push(...typedTurn(rig, "ep-1", 10));
+	assert.deepEqual(
+		rig.spoken,
+		spokeOnly("STILL-RUNNING"),
+		"the typed turn is not",
+	);
+	rig.handle.dispose();
+});
+
+test("R5-M1 K: exhausted mid-turn, gap-free replay carries the answer - spoken once", async () => {
+	const rig = await liveRig();
+	quiet(rig);
+	rig.arm();
+	rig.push(
+		rig.userMessage("ep-1", 6),
+		rig.event("ep-1", 7, { type: "agent_start" }),
+	);
+	rig.exhaust();
+	rig.handle.retry();
+	rig.push(
+		rig.open("ep-1", 10, { gap: false }),
+		rig.said("ep-1", 8, "ANS"),
+		rig.event("ep-1", 9, { type: "agent_end" }),
+		rig.update("ep-1", 10, false),
+		rig.snapshot("ep-1", 10, false, ["take-1"]),
+	);
+	rig.push(...typedTurn(rig, "ep-1", 11));
+	assert.deepEqual(rig.spoken, spokeOnly("ANS"));
+	rig.handle.dispose();
+});
+
+test("R5-M1 L: words steered into a typed turn while the stream is exhausted - the steer's answer or nothing, never the typed reply", async () => {
+	const rig = await liveRig();
+	quiet(rig);
+	rig.push(
+		rig.event("ep-1", 6, { type: "agent_start" }),
+		rig.update("ep-1", 7, true),
+	);
+	rig.exhaust();
+	rig.arm();
+	rig.handle.retry();
+	// Inside the dwell: the replay carries the drained steer and its answer.
+	rig.push(
+		rig.open("ep-1", 11, { gap: false }),
+		rig.event("ep-1", 8, { type: "steering_delivered" }),
+		rig.userMessage("ep-1", 9),
+		rig.said("ep-1", 10, "STEERED"),
+		rig.event("ep-1", 11, { type: "agent_end" }),
+		rig.snapshot("ep-1", 11, false, ["take-1"]),
+	);
+	rig.push(...typedTurn(rig, "ep-1", 12));
+	assert.deepEqual(rig.spoken, spokeOnly("STEERED"));
+	rig.handle.dispose();
+});
+
+test("R5-M1 L2: the same steer, resumed after the dwell (gap:true) - silent", async () => {
+	const rig = await liveRig();
+	quiet(rig);
+	rig.push(
+		rig.event("ep-1", 6, { type: "agent_start" }),
+		rig.update("ep-1", 7, true),
+	);
+	rig.exhaust();
+	rig.arm();
+	rig.handle.retry();
 	rig.push(rig.open("ep-2", 1, { gap: true }), rig.snapshot("ep-2", 1, false));
 	rig.push(...typedTurn(rig, "ep-2", 2));
 	assert.deepEqual(rig.spoken, []);
 	rig.handle.dispose();
 });
 
-test("R4-M1 keeps what must keep working: a fresh take is answered, and a gap-free replay speaks its answer once", async () => {
+test("R5-M1 Q: a typed turn replayed after a take sent while exhausted is not its answer; the take's own turn is", async () => {
 	const rig = await liveRig();
-	rig.push(rig.open("ep-1", 1, { gap: true }), rig.snapshot("ep-1", 1, false));
-	// A fresh take whose turn has not started: an idle state frame keeps it.
+	quiet(rig);
+	rig.exhaust();
 	rig.arm();
-	rig.push(rig.snapshot("ep-1", 1, false));
+	rig.handle.retry();
 	rig.push(
-		rig.event("ep-1", 2, { type: "agent_start" }),
-		rig.event("ep-1", 3, {
-			type: "message_end",
-			message: {
-				id: "m-fresh",
-				role: "assistant",
-				content: [{ type: "text", text: "Fresh answer." }],
-			},
-		}),
-		rig.event("ep-1", 4, { type: "agent_end" }),
+		rig.open("ep-1", 9, { gap: false }),
+		...typedTurn(rig, "ep-1", 6, "TYPED-A"),
+		rig.update("ep-1", 9, false),
+		rig.snapshot("ep-1", 9, false),
 	);
-	assert.deepEqual(rig.spoken, [{ kind: "message", messageId: "m-fresh" }]);
-	// The R3-M1 shape: a drop inside the dwell, answer replayed before the snapshot.
+	assert.deepEqual(rig.spoken, [], "TYPED-A never carried the take");
+	rig.push(...spokenTurn(rig, "ep-1", 10, "TAKE"));
+	assert.deepEqual(rig.spoken, spokeOnly("TAKE"));
+	rig.handle.dispose();
+});
+
+test("R5-M1 R: the same with a transient drop (no exhaustion) - never TYPED-A", async () => {
+	const rig = await liveRig();
+	rig.push(
+		rig.open("ep-1", 5, { gap: true }),
+		rig.snapshot("ep-1", 5, false),
+		DROP,
+	);
 	rig.arm();
-	rig.push(rig.event("ep-1", 5, { type: "agent_start" }), DROP);
 	rig.tick();
 	rig.push(
-		rig.open("ep-1", 8, { gap: false }),
-		rig.event("ep-1", 6, {
-			type: "message_end",
-			message: {
-				id: "m-replayed",
-				role: "assistant",
-				content: [{ type: "text", text: "Replayed answer." }],
-			},
-		}),
-		rig.event("ep-1", 7, { type: "agent_end" }),
-		rig.snapshot("ep-1", 8, false),
+		rig.open("ep-1", 9, { gap: false }),
+		...typedTurn(rig, "ep-1", 6, "TYPED-A"),
+		rig.update("ep-1", 9, false),
+		rig.snapshot("ep-1", 9, false),
 	);
-	rig.push(...typedTurn(rig, "ep-1", 9));
+	rig.push(...spokenTurn(rig, "ep-1", 10, "TAKE"));
+	assert.deepEqual(rig.spoken, spokeOnly("TAKE"));
+	rig.handle.dispose();
+});
+
+test("R5-M1 S: live, a typed turn ends while the take uploads, the take becomes its own prompt - only the take's turn speaks", async () => {
+	const rig = await liveRig();
+	quiet(rig);
+	rig.push(
+		rig.event("ep-1", 6, { type: "agent_start" }),
+		rig.update("ep-1", 7, true),
+	);
+	rig.arm();
+	rig.push(
+		rig.said("ep-1", 8, "TYPED-RUNNING"),
+		rig.event("ep-1", 9, { type: "agent_end" }),
+		rig.update("ep-1", 10, false),
+	);
+	assert.deepEqual(rig.spoken, [], "the running turn never carried the take");
+	rig.push(...spokenTurn(rig, "ep-1", 11, "TAKE"));
+	assert.deepEqual(rig.spoken, spokeOnly("TAKE"));
+	rig.handle.dispose();
+});
+
+test("R5-M1 keeps what must keep working: a fresh take across an idle snapshot, and the R3-M1 gap-free replay, each speak once", async () => {
+	const rig = await liveRig();
+	quiet(rig);
+	// M: a slow model start - an idle update and an idle snapshot before the turn.
+	rig.arm("take-a");
+	rig.push(rig.update("ep-1", 6, false), DROP);
+	rig.tick();
+	rig.push(rig.open("ep-1", 6, { gap: false }), rig.snapshot("ep-1", 6, false));
+	rig.push(...spokenTurn(rig, "ep-1", 7, "m-fresh", "take-a"));
+	assert.deepEqual(rig.spoken, spokeOnly("m-fresh"));
+	// R3-M1: a drop inside the dwell, the answer replayed before the snapshot.
+	rig.arm("take-b");
+	rig.push(
+		rig.userMessage("ep-1", 11, "take-b"),
+		rig.event("ep-1", 12, { type: "agent_start" }),
+		DROP,
+	);
+	rig.tick();
+	rig.push(
+		rig.open("ep-1", 15, { gap: false }),
+		rig.said("ep-1", 13, "m-replayed"),
+		rig.event("ep-1", 14, { type: "agent_end" }),
+		rig.snapshot("ep-1", 15, false, ["take-b"]),
+	);
+	rig.push(...typedTurn(rig, "ep-1", 16));
 	assert.deepEqual(rig.spoken, [
-		{ kind: "message", messageId: "m-fresh" },
-		{ kind: "message", messageId: "m-replayed" },
+		...spokeOnly("m-fresh"),
+		...spokeOnly("m-replayed"),
 	]);
 	rig.handle.dispose();
 });
 
-const IDLES_ON_SILENT_CONSUME =
-	/before\.armed > 0 && step\.state\.armed === 0 && step\.speak\.length === 0[\s\S]{0,200}voice\.phase === "working"\)\s*voice\.setPhase\("idle", null\)/;
+/*
+ * R5-m1 / R5-m2: THE HEADER'S PHASE, DRIVEN THROUGH THE SHIPPED CONTROLLER (its
+ * `feedTurns` and `sendVoiceUtterance`, with the voice store) rather than read
+ * off its source. The upload is held open by a stubbed `desktopMedia` so a fold
+ * can land while it is out, which is the window R5-m1 is about.
+ */
+const CONTROLLER_STUBS = {
+	"@shared/api/local-operator/desktop-api":
+		"export const desktopMedia=(req)=>new Promise((resolve)=>{globalThis.__voiceUpload={req,resolve};}); export const mediaError=()=>({message:''}); export const desktopResult=async()=>({}); export const subscribeDesktopStream=()=>()=>{};",
+	"@shared/hooks/use-desktop-feed": "export const useDesktopFeed=()=>({});",
+	"@shared/hooks/use-speech-to-text-manager":
+		"export const SpeechToTextPriority={}; export const useSpeechToTextManager=()=>({});",
+	"@shared/i18n": "export const t=(k)=>k;",
+	"@shared/store/canonical-sessions-store":
+		"export const panelSessionIdOfView=()=>null; export const useCanonicalSessionsStore=()=>null;",
+	"@shared/store/speech-store":
+		"export const useSpeechStore={getState:()=>({playingKey:null,stopSpeech(){}}),subscribe:()=>()=>{}};",
+	"@shared/utils/toast-manager":
+		"export const dismissToast=()=>{}; export const showErrorToast=()=>{}; export const showInfoToast=()=>{}; export const showWarningToast=()=>{};",
+	"@shared/api/local-operator/desktop-hooks":
+		"export const desktopFeatureEnabled=()=>true; export const useDesktopCapabilities=()=>({});",
+	"@shared/api/query-client": "export const queryClient={};",
+	"@shared/hooks/use-canonical-session":
+		"export const streamRetryDelayMs=()=>1;",
+};
+const SHARED_ALIAS = /^@shared\//;
+const ANY_PATH = /.*/;
+const DASHED_UUID_HEAD = /^[0-9a-f]{8}-[0-9a-f]{4}-/;
+const READS_INPUT_MODE = /input_mode|inputMode/;
+const controllerBundle = await build({
+	stdin: {
+		contents:
+			'export { feedTurns, sendVoiceUtterance } from "./src/renderer/src/features/voice/voice-controller"; export { useVoiceStore } from "./src/renderer/src/features/voice/voice-store";',
+		resolveDir: process.cwd(),
+		loader: "tsx",
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	jsx: "automatic",
+	write: false,
+	packages: "external",
+	plugins: [
+		{
+			name: "stub-shared",
+			setup(b) {
+				b.onResolve({ filter: SHARED_ALIAS }, (a) => ({
+					path: a.path,
+					namespace: "stub",
+				}));
+				b.onLoad({ filter: ANY_PATH, namespace: "stub" }, (a) => {
+					if (!(a.path in CONTROLLER_STUBS))
+						throw new Error(`no stub for ${a.path}`);
+					return { contents: CONTROLLER_STUBS[a.path], loader: "js" };
+				});
+			},
+		},
+	],
+});
+const controllerPath = new URL(
+	`./_voice-controller-${process.pid}.mjs`,
+	import.meta.url,
+);
+writeFileSync(controllerPath, controllerBundle.outputFiles[0].text);
+after(() => rmSync(controllerPath, { force: true }));
 
-test("R4-M1: a take dropped in silence returns the header from Working to rest", () => {
-	const controller = stripComments(
-		readFileSync(
-			"src/renderer/src/features/voice/voice-controller.tsx",
-			"utf8",
-		),
+const userStart = (id) => ({
+	kind: "event",
+	event: {
+		type: "message_start",
+		message: { id, role: "user", content: [{ type: "text", text: "Hi." }] },
+	},
+});
+const settle = (status = 200) =>
+	globalThis.__voiceUpload.resolve({ kind: "json", status, body: {} });
+
+test("R5-m1/R5-m2: the 2xx sets `working` only while an answer is owed, and a silent drop returns the header to rest", async () => {
+	const { feedTurns, sendVoiceUtterance, useVoiceStore } = await import(
+		controllerPath.href
 	);
-	assert.match(controller, IDLES_ON_SILENT_CONSUME);
+	const phase = () => useVoiceStore.getState().phase;
+	// T1: a resume drops the take while the upload is still out -> rest.
+	const t1 = sendVoiceUtterance("s1", { text: "hi" });
+	assert.equal(phase(), "sending");
+	feedTurns("s1", { kind: "reset" });
+	settle();
+	await t1;
+	assert.equal(phase(), "idle", "nothing armed is left to move it later");
+	// T2: control - the take is still out at the 2xx -> working, then a reset
+	// (the take's message lost) returns the header to rest.
+	const t2 = sendVoiceUtterance("s2", { text: "hi" });
+	settle();
+	await t2;
+	assert.equal(phase(), "working");
+	assert.equal(useVoiceStore.getState().phaseSessionId, "s2");
+	feedTurns("s2", { kind: "reset" });
+	assert.equal(phase(), "idle", "a take dropped in silence ends the exchange");
+	// T3: a fast turn bound and ended while the upload was out -> rest, spoken.
+	const t3 = sendVoiceUtterance("s3", { text: "hi" });
+	const requestId = globalThis.__voiceUpload.req.requestId;
+	assert.match(requestId, DASHED_UUID_HEAD);
+	feedTurns("s3", userStart(requestId));
+	feedTurns("s3", { kind: "event", event: { type: "agent_start" } });
+	feedTurns("s3", {
+		kind: "event",
+		event: { type: "agent_end", aborted: true },
+	});
+	settle();
+	await t3;
+	assert.equal(phase(), "idle", "the take was already answered");
+	// T4: a bound turn the snapshot shows ended -> rest.
+	const t4 = sendVoiceUtterance("s4", { text: "hi" });
+	const id4 = globalThis.__voiceUpload.req.requestId;
+	settle();
+	await t4;
+	feedTurns("s4", userStart(id4));
+	assert.equal(phase(), "working");
+	feedTurns("s4", { kind: "streaming", streaming: false, snapshot: true });
+	assert.equal(phase(), "idle");
+});
+
+test("V14: the binding never reads input_mode", () => {
+	for (const file of [
+		"voice-turns.ts",
+		"voice-stream.ts",
+		"voice-controller.tsx",
+	]) {
+		const source = stripComments(
+			readFileSync(`src/renderer/src/features/voice/${file}`, "utf8"),
+		);
+		assert.doesNotMatch(source, READS_INPUT_MODE, file);
+	}
 });
