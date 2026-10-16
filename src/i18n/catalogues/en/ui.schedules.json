@@ -156,7 +156,7 @@
 	"ui.schedules.schedules_page.wake_cancelled": "Wake cancelled",
 	"ui.schedules.schedules_page.wakes_fire_whether_or_not_this_window_is_open": "Wakes fire whether or not this window is open. ",
 	"ui.schedules.schedules_page.work_your_conversations_do_on_a_schedule_repeating_or_once": "Work your conversations do on a schedule, repeating or once.",
-	"ui.schedules.validation.prompt_length": "This prompt is {length, plural, one {{length, number, ::group-off} characters} other {{length, number, ::group-off} characters}}, and a wake holds at most {max, number, ::group-off}. Shorten it to save.",
+	"ui.schedules.validation.prompt_length": "This prompt is {length, plural, one {{length, number} characters} other {{length, number} characters}}, and a wake holds at most {max, number}. Shorten it to save.",
 	"ui.schedules.validation.run_budget": "This wake has already run {alreadyRun, plural, one {{alreadyRun, number, ::group-off} time} other {{alreadyRun, number, ::group-off} times}}, so the run budget has to be at least {budget, number, ::group-off}.",
 	"ui.schedules.validation.wake_ceiling": "This conversation already has {count, plural, one {{count, number, ::group-off} wakes} other {{count, number, ::group-off} wakes}}, the most it can hold. Cancel one to add another.",
 	"ui.schedules.wake_conversation_row.cancel_wake": "Cancel wake",
