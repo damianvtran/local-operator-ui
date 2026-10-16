@@ -275,7 +275,8 @@ export type ComboboxRow = { kind: "group"; label: string } | ComboboxOptionRow;
  * Every field that commits free text needs the row to be legible, and a caller
  * with no opinion should not have to write this to get its free text back.
  */
-export const defaultCustomRowLabel = (text: string): string => `Use "${text}"`;
+export const defaultCustomRowLabel = (text: string): string =>
+	t("ui.common.forms.searchable_select.use", { text: String(text) });
 
 export function buildComboboxRows(
 	options: SearchableOption[],
@@ -411,7 +412,7 @@ export const SearchableSelect = forwardRef<
 		ariaLabel,
 		ariaDescribedBy,
 		showLabel = true,
-		emptyText = "No matches",
+		emptyText = t("ui.common.forms.searchable_select.no_matches"),
 		listNotice,
 		customRowLabel,
 	},
@@ -726,7 +727,11 @@ export const SearchableSelect = forwardRef<
 										 * `onClear`, which is the settings rows and their sentence-case
 										 * labels, so lowering the first word is safe here.
 										 */
-										name ? `Clear the ${name.toLowerCase()}` : "Clear value"
+										name
+											? t("ui.common.forms.searchable_select.clear_the", {
+													detail: String(name.toLowerCase()),
+												})
+											: t("ui.common.forms.searchable_select.clear_value")
 									}
 									onMouseDown={(event) => event.preventDefault()}
 									onClick={() => {

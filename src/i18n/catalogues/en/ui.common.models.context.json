@@ -1,0 +1,152 @@
+{
+	"ui.common.models.default": {
+		"role": "label",
+		"tone": "Short inherited-setting label.",
+		"note": "Inherit the global configured provider/model rather than selecting a concrete model or provider.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.models.hosting_select.clear_hosting_provider_selection": {
+		"role": "option description",
+		"tone": "Short action description.",
+		"note": "Default/inherit option description: clear the explicit hosting provider override.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.models.hosting_select.custom_hosting_provider": {
+		"role": "option description",
+		"tone": "Neutral category noun; not an invalid-value error.",
+		"note": "Unlisted provider identifier typed by the operator; the identifier itself remains verbatim.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.models.hosting_select.detail": {
+		"role": "button",
+		"tone": "Factual credential prerequisite.",
+		"note": "Appends a credential-requirement warning to an existing provider description only after a successful census; withheld when the census failed.",
+		"length": "One control row; avoid adding a sentence.",
+		"placeholders": {
+			"description": "Provider metadata description; supplied verbatim and not used as a translation key."
+		}
+	},
+	"ui.common.models.hosting_select.hosting_provider": {
+		"role": "label",
+		"tone": "Two-word field noun.",
+		"note": "Shared provider selector field label in onboarding, agent settings and application settings; names where the model is hosted.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.models.hosting_select.no_hosting_providers_available_sign_in_to_a_provider_or_add_a_pro": {
+		"role": "button",
+		"tone": "State the prerequisite and where to repair it.",
+		"note": "No provider has usable credentials; directs to provider sign-in/API-key controls in Settings, not session-only credentials.",
+		"length": "Helper paragraph under provider selector; wrapping allowed."
+	},
+	"ui.common.models.hosting_select.saving_hosting_provider": {
+		"role": "button accessible name",
+		"tone": "In-progress saving action.",
+		"note": "Provider selection write is pending; busy indicator accessible name.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.models.hosting_select.select_a_hosting_provider": {
+		"role": "input placeholder",
+		"tone": "Short selection imperative.",
+		"note": "Empty shared provider selector prompt; retain the three-dot ellipsis.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.models.hosting_select.select_the_ai_provider_that_you_want_to_use_each_provider_has_dif": {
+		"role": "button tooltip",
+		"tone": "Plain explanatory sentences; recommendation is guidance, not a requirement.",
+		"note": "Explains the provider/model-list relationship and Radient recommendation; product/service names remain verbatim.",
+		"length": "Tooltip paragraph; preserve both sentences and the recommendation."
+	},
+	"ui.common.models.model_select.auto_recommended": {
+		"role": "status label",
+		"tone": "Short choice label with parenthetical recommendation.",
+		"note": "Radient Automatic route chooses the appropriate model per step; recommended marker is guidance.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.models.model_select.clear_model_selection": {
+		"role": "option description",
+		"tone": "Short action description.",
+		"note": "Default/inherit option description: clear the explicit model override.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.models.model_select.custom_model": {
+		"role": "option description",
+		"tone": "Neutral category noun; not an invalid-value error.",
+		"note": "Unlisted model identifier typed by the operator; the identifier itself remains verbatim.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.models.model_select.general": {
+		"role": "button",
+		"tone": "Short grouping noun.",
+		"note": "Models without a provider-specific group name.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.models.model_select.loading_models": {
+		"role": "button accessible name",
+		"tone": "In-progress loading action.",
+		"note": "Model-list request is pending; busy indicator accessible name.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.models.model_select.model": {
+		"role": "label",
+		"tone": "One-word field noun.",
+		"note": "Shared model selector field label; names the chosen AI model, not the hosting provider.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.models.model_select.no_models_available": {
+		"role": "button",
+		"tone": "Plain unavailable-list fact.",
+		"note": "The selected provider model list is empty; this is not a sign-in error or a loading state.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.models.model_select.no_models_available_for_selected_provider": {
+		"role": "button",
+		"tone": "Plain unavailable-list fact.",
+		"note": "The selected provider model list is empty; this is not a sign-in error or a loading state.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.models.model_select.no_models_for": {
+		"role": "empty-state group label",
+		"tone": "Short no-results fact.",
+		"note": "Selected provider has no known model rows; do not translate the provider display name.",
+		"length": "One control row; avoid adding a sentence.",
+		"placeholders": {
+			"name": "Selected hosting-provider display name, verbatim."
+		}
+	},
+	"ui.common.models.model_select.other_models": {
+		"role": "button",
+		"tone": "Short grouping noun.",
+		"note": "Models that are not in the suggested/recommended group.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.models.model_select.recommended": {
+		"role": "button",
+		"tone": "Short recommendation category.",
+		"note": "Groups suggested models above the other available models; not the current selection.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.models.model_select.recommended_based_on_community_usage_and_feedback": {
+		"role": "tooltip",
+		"tone": "Factual basis for the recommendation.",
+		"note": "Explains the recommended-model star; not a claim that this model is the operator default.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.models.model_select.select_a_hosting_provider_first": {
+		"role": "empty-state hint",
+		"tone": "Actionable prerequisite.",
+		"note": "Model selector cannot offer models until a hosting provider is selected.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.models.model_select.select_a_model": {
+		"role": "input placeholder",
+		"tone": "Short selection imperative.",
+		"note": "Empty shared model selector prompt; retain the three-dot ellipsis.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.models.model_select.select_the_ai_model_that_you_want_to_use_each_model_has_different": {
+		"role": "button tooltip",
+		"tone": "Plain explanatory sentences; recommendation is guidance, not a requirement.",
+		"note": "Explains the model capability/cost differences and Automatic recommendation; product/service names remain verbatim.",
+		"length": "Tooltip paragraph; preserve both sentences and the recommendation."
+	}
+}
