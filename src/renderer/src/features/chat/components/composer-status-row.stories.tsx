@@ -2447,7 +2447,7 @@ const ASK_ANSWERED = askOf({
 });
 
 /**
- * The deadline passed and the agent moved on; a late answer still reaches it.
+ * The deadline passed and the agent went ahead without the answer (lapsed, D10).
  *
  * Its window is the factory's hour measured from an hour BEFORE the pinned clock, so
  * the ask is twelve minutes past its deadline and internally consistent (see
@@ -2872,12 +2872,12 @@ export const AskExpandedSettled: Story = {
 	),
 };
 
-/** Expanded over a moved-on ask: still answerable, and it says so. */
+/** Expanded over a moved-on ask: collapsed behind its `Timed out` badge, read-only (D11). */
 export const AskExpandedMovedOn: Story = {
 	render: () => (
 		<AskBand
 			width={569}
-			label="Moved on and expanded: `Timed out - the agent moved on`, and the answer controls stay live"
+			label="Moved on and expanded: the item stays, and the panel files the ask under a collapsed `Timed out` badge"
 			asks={[ASK_MOVED_ON]}
 			defaultOpen
 		/>

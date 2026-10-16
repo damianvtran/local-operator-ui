@@ -247,7 +247,11 @@ test("D12 - a tally ABOVE the lapsed rows it names still waits for its rows", ()
 	const { view } = pane();
 	const verdict = view.observe(frame(prefixOf([ask("timed_out")], 3))).verdict;
 	assert.deepEqual(
-		{ action: verdict.action, reason: verdict.reason, settled: verdict.settled },
+		{
+			action: verdict.action,
+			reason: verdict.reason,
+			settled: verdict.settled,
+		},
 		{ action: "leave", reason: "tally-only", settled: false },
 	);
 });
@@ -266,7 +270,10 @@ test("D12 - closing the drawer over a lapsed-only queue is not a dismissal", () 
 	const rows = [ask("timed_out")];
 	/* The user opened it by hand (the chip), then closed it. */
 	view.observe(frame(withRows(rows), opened));
-	assert.equal(view.observe(frame(withRows(rows))).closeWatch, "nothing-to-show");
+	assert.equal(
+		view.observe(frame(withRows(rows))).closeWatch,
+		"nothing-to-show",
+	);
 	assert.equal(dismissals.size, 0);
 });
 
@@ -1166,7 +1173,12 @@ test("the reason a verdict names is the first thing that kept the drawer shut", 
 test("the facts are read off the shipped view: published, rows, and the wire's tally", () => {
 	const facts = (frontend, startedAtMs = T0) =>
 		askOpenFacts(askQueueView(frontend), startedAtMs);
-	const none = { pendingRows: 0, arrivedRows: 0, lapsedRows: 0, outstanding: 0 };
+	const none = {
+		pendingRows: 0,
+		arrivedRows: 0,
+		lapsedRows: 0,
+		outstanding: 0,
+	};
 	const nothingNamed = { outstandingIds: [], listComplete: false };
 	assert.deepEqual(facts(null), { resolved: false, ...none, ...nothingNamed });
 	assert.deepEqual(facts(unsupported()), {

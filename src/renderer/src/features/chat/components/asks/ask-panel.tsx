@@ -70,6 +70,7 @@ import {
 	askAnswerMap,
 	askCellWith,
 	askOtherSeed,
+	askPanelHalves,
 	askQuestionIsAnswered,
 	askRevisionDraft,
 	askSecretPlaceholder,
@@ -105,8 +106,9 @@ type AskFilter = "all" | "outstanding" | "settled";
  * The status chip's variant, one mapping for the whole surface.
  *
  * `success` for a delivered answer (the agent was told), `warning` for a late one
- * (recorded, the model has not seen it), `neutral` for a decline and for anything
- * the wire did not name - so the chip's ink is a reading of the status rather than
+ * (recorded, the model has not seen it), `neutral` for a decline, for a lapsed
+ * (`timed_out`) ask - styled like the decline it now sits beside (D11) - and for
+ * anything the wire did not name - so the chip's ink is a reading of the status rather than
  * decoration, and the word inside it stays the contract's own (`askStatusWord`).
  * Every state is drawn from `Badge`'s `wash` family, whose semantic inks the
  * contrast gate already covers; no state inherits its meaning from the hue alone,
@@ -141,8 +143,8 @@ export type AskPanelProps = {
 	 * maps to the runtime's `ask_dismiss`, so a Dismiss button here would be a
 	 * control that can never work - the dead-affordance defect this codebase
 	 * refuses elsewhere (`ask-options.tsx`'s own note on the inert `<ul>`). A
-	 * timed-out ask therefore stays visible and answerable (the `late` path), and
-	 * dismissal lands when the route does.
+	 * timed-out ask is read-only and collapsed into the settled half instead (D10,
+	 * D11), and dismissal lands when the route does.
 	 */
 	/** An answer is in flight from any surface: every control is disabled. */
 	answering?: boolean;
@@ -744,7 +746,7 @@ const AskRow = ({
 	 * time" readings are one colour rather than two.
 	 *
 	 * WAITING, NOT OPEN, AND THE SAME PREDICATE THE ITEM USES. `open` folds
-	 * `timed_out` in deliberately (a late answer still reaches the agent), which is
+	 * `timed_out` in (the backend's outstanding set), which is
 	 * why scoping this to it made the panel ink and announce `Urgent.` for an ask the
 	 * agent had already walked past - directly contradicting the item below it, which
 	 * withholds exactly that (UX round 3's U2; the same defect as round 2's U7). One
@@ -1346,10 +1348,11 @@ export const AskPanel = ({
 	 * dropped rather than moved: with a status CHIP on every row, a legend above them
 	 * is a second spelling of what the rows already say.
 	 *
-	 * The predicate is `open`, the backend's outstanding set - which deliberately
-	 * folds `timed_out` in, because a late answer still reaches the agent - so
-	 * "pending" here means "a control on this row can still do something", which is
-	 * the same fact the chip's counts state at the other end of the lane.
+	 * "Pending" means "a control on this row can still do something": `canAnswer`, not
+	 * the backend's outstanding set. A LAPSED (`timed_out`) ask is outstanding to the
+	 * backend but read-only on every surface (D10), so it collapses into the settled
+	 * half behind a `Timed out` badge, exactly as a declined ask does (D11) - seeing it
+	 * is the reader's own press on its row.
 	 */
 	/*
 	 * AN ANSWER THE AGENT HAS NOT BEEN HANDED IS STILL THE USER'S (design §10, #1936),
@@ -1360,15 +1363,8 @@ export const AskPanel = ({
 	 * ask takes the opposite branch and is history, because the model has been told
 	 * and the row pins what it was told.
 	 */
-	const pending = view.rows.filter((row) => row.open || row.delivering);
-	/*
-	 * NEWEST FIRST within the settled half, which is the note's own order and the
-	 * reverse of `view.rows`: the queue sorts oldest-first so its head is stable, and
-	 * a HISTORY is read the other way round.
-	 */
-	const settled = view.rows
-		.filter((row) => !row.open && !row.delivering)
-		.reverse();
+	/* NEWEST FIRST within the settled half: a HISTORY is read newest-first. */
+	const { pending, settled } = askPanelHalves(view.rows);
 
 	/*
 	 * THE FILTER IS A CONTROL, NOT A SUBTITLE (operator ask, 2026-10-05).
@@ -1568,8 +1564,8 @@ export const AskPanel = ({
 						/*
 						 * The one line, and the two things it has to keep apart (D9): the
 						 * status WORD (`askStatusWord`, the copy contract's own leading clause)
-						 * and the question. `Timed out` and `Answered` are what tells the reader
-						 * which of two look-alike rows is still answerable, so the word is
+						 * and the question. `Timed out`, `Declined` and `Answered` are what tells the
+						 * reader what became of two look-alike rows, so the word is
 						 * DRAWN - now as a chip rather than as a leading word in the same ink as
 						 * the question (operator ask, 2026-10-05) - and it travels in the
 						 * accessible name as well.
