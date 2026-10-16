@@ -18,14 +18,97 @@ import {
 	sessionSnapshot,
 	startAsksAppFixture,
 } from "./asks-app-fixture.mjs";
-import { ASKS_CONTROL, expectedRailClose } from "./asks-app-regression.mjs";
+import {
+	ASKS_CONTROL,
+	ASKS_CONTROL_PINNED,
+	expectedRailClose,
+	resolveAsksControl,
+} from "./asks-app-regression.mjs";
 import { categoryOf, flagsFor } from "./ci-scope.mjs";
 
 test("the historical source control expects restoration; candidate must empty", () => {
 	assert.equal(expectedRailClose("control"), true);
 	assert.equal(expectedRailClose("candidate"), false);
 	assert.throws(() => expectedRailClose("invented"));
-	assert.equal(ASKS_CONTROL, "2461cfa3f3beaa1124727a9de93dfe01c4381b0d");
+	// The PINNED historical revision is the provenance record; it is no longer
+	// what boots (see the rule below), so this asserts the record held rather
+	// than that the run uses it.
+	assert.equal(ASKS_CONTROL_PINNED, "2461cfa3f3beaa1124727a9de93dfe01c4381b0d");
+});
+
+test("the control revision is DERIVED, and satisfies the reuse assertion by construction", () => {
+	/*
+	 * The rule that keeps the producer alive as `main` moves: the control is the
+	 * base the candidate was built from, not a pinned historical commit. A pin
+	 * cannot satisfy `prepareControl`'s byte-identity requirement once main has
+	 * moved past it, which is exactly how run 38916579072 died
+	 * (`control reuse mismatch src/main`).
+	 *
+	 * Driven against the real repository, not described: whatever
+	 * `resolveAsksControl()` returns must be a revision whose four reused parts
+	 * are byte-identical to this HEAD's. That is the same assertion the producer
+	 * makes at boot, so this test fails for the same reason the producer would.
+	 */
+	// ASKS_CONTROL, not the resolver: the boot uses the CONSTANT, so asserting on
+	// the function would let a caller swap in the pin and keep this green - which
+	// is exactly the defect the test exists to catch (mutation-checked by pointing
+	// ASKS_CONTROL at ASKS_CONTROL_PINNED, which fails it).
+	assert.equal(
+		ASKS_CONTROL,
+		resolveAsksControl(),
+		"the booted control must be the derived one, not a constant that bypasses the derivation",
+	);
+	const base = ASKS_CONTROL;
+	assert.match(
+		base,
+		/^[0-9a-f]{40}$/,
+		`the control must resolve to a full commit sha, got ${JSON.stringify(base)}`,
+	);
+	for (const part of [
+		"src/main",
+		"src/preload",
+		"electron.vite.config.js",
+		"pnpm-lock.yaml",
+	]) {
+		const atControl = execFileSync("git", ["rev-parse", `${base}:${part}`], {
+			encoding: "utf8",
+			cwd: REPO,
+		}).trim();
+		const atHead = execFileSync("git", ["rev-parse", `HEAD:${part}`], {
+			encoding: "utf8",
+			cwd: REPO,
+		}).trim();
+		assert.equal(
+			atControl,
+			atHead,
+			`the derived control ${base} disagrees with HEAD on ${part}; the producer would refuse to boot the control leg`,
+		);
+	}
+	/*
+	 * And the derivation is not accidental: the branch must not touch the reused
+	 * parts, or "the merge-base is byte-identical" would be a coincidence rather
+	 * than a property. This is the claim the derivation rests on.
+	 */
+	const touched = execFileSync(
+		"git",
+		[
+			"diff",
+			"--name-only",
+			base,
+			"HEAD",
+			"--",
+			"src/main",
+			"src/preload",
+			"electron.vite.config.js",
+			"pnpm-lock.yaml",
+		],
+		{ encoding: "utf8", cwd: REPO },
+	).trim();
+	assert.equal(
+		touched,
+		"",
+		`this branch changes the control leg's reused parts, so a merge-base control cannot be byte-identical: ${touched}`,
+	);
 });
 test("synthetic canonical snapshot is open, bounded and session-scoped", () => {
 	const ask = askFixture(1000000000000);

@@ -22,9 +22,56 @@ import { promisify } from "node:util";
 import { ASK_SESSION_IDS, startAsksAppFixture } from "./asks-app-fixture.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
 const execute = promisify(execFile);
-export const ASKS_CONTROL = "2461cfa3f3beaa1124727a9de93dfe01c4381b0d";
+/**
+ * The pristine revision the control leg renders: the BASE THE CANDIDATE WAS BUILT
+ * FROM, resolved per run rather than fixed at one commit.
+ *
+ * WHY IT IS DERIVED. The control exists so its frames differ from the candidate's
+ * for one reason only - the change under test - which requires the two legs to
+ * share main, preload, the vite config and the lockfile BYTE FOR BYTE. A pinned
+ * historical commit stops being able to satisfy that the moment `main` moves: the
+ * pinned tree's `src/main` is then older than the merged head's, `prepareControl`'s
+ * identity assertion fails, and the producer dies before it renders anything.
+ * Measured on run 38916579072: `control reuse mismatch src/main`, actual
+ * `adc7fdcc6` against the pinned `2461cfa3f3`.
+ *
+ * WHY THE MERGE-BASE IS THE RIGHT DERIVATION. In CI this job checks out GitHub's
+ * RECOMPUTED `refs/pull/N/merge`, whose first parent is `main` as of that run, and
+ * `git merge-base origin/main HEAD` resolves to that same commit here. The candidate
+ * is a descendant of it, this branch touches none of the four reused parts (proved
+ * by `git diff --name-only <base> HEAD` in the property test), and the assertion
+ * below therefore still holds - it is not weakened, it is kept and made the thing
+ * that verifies the derivation.
+ *
+ * WHAT IS LOST, STATED PLAINLY. A pinned commit let the control be any historical
+ * revision at all, including one whose renderer predates this line of work. The
+ * merge-base gives up that freedom: the control is instead "main as merged into this
+ * PR", which is exactly the baseline the change must be judged against, and the one
+ * a reviewer can reproduce with one git command. `ASKS_CONTROL_PINNED` keeps the
+ * historical revision that the branch's own first scenes were captured against, for
+ * the provenance record rather than for the boot.
+ */
+export const ASKS_CONTROL_PINNED = "2461cfa3f3beaa1124727a9de93dfe01c4381b0d";
+
+/**
+ * The control revision this run will boot: `ASKS_CONTROL_OVERRIDE` when CI passes
+ * one, else the merge-base of `origin/main` and `HEAD`, else - when neither can be
+ * resolved, as in a clone with no `origin/main` - the pinned revision, so a shallow
+ * or detached tree degrades to the old behaviour instead of failing.
+ */
+export function resolveAsksControl() {
+	const override = process.env.ASKS_CONTROL_OVERRIDE;
+	if (override) return override;
+	try {
+		return git("merge-base", "origin/main", "HEAD");
+	} catch {
+		return ASKS_CONTROL_PINNED;
+	}
+}
+
 const sha = (value) => createHash("sha256").update(value).digest("hex");
 const git = (...args) => execFileSync("git", args, { encoding: "utf8" }).trim();
+export const ASKS_CONTROL = resolveAsksControl();
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 export function expectedRailClose(kind) {
 	assert(["control", "candidate"].includes(kind));
