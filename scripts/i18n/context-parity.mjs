@@ -18,10 +18,15 @@
  * 215 context entries), found only when a human noticed.
  *
  * WHAT IT ASSERTS, per source-locale catalogue `en/<ns>.json`:
- *  1. a sibling `en/<ns>.context.json` exists;
+ *  1. a sibling `en/<ns>.context.json` exists — REQUIRED only when the catalogue
+ *     has keys. An empty placeholder catalogue (ui.agents, ui.projects,
+ *     ui.schedules today) carries nothing to translate, so it needs no sidecar
+ *     and is not a gap; requiring one would be ceremony over an empty file;
  *  2. every key in the catalogue has an entry in the sidecar;
  *  3. no sidecar entry names a key the catalogue lacks (a rename that left the
- *     old id behind reads as context for a string nothing renders).
+ *     old id behind reads as context for a string nothing renders);
+ *  4. no ALLOWANCE key names a key the catalogue lacks — a phantom that
+ *     pre-allows a future key (see below).
  * It does NOT judge the QUALITY of a context note — "is this boilerplate" is not
  * a machine question — but COVERAGE is.
  *
@@ -31,6 +36,15 @@
  * `i18n/baseline.json`: `--update` removes keys that are now covered and REFUSES
  * to add any, so the number can only fall and every coverage PR must tick it
  * down. A key not listed and not covered is a hard failure.
+ *
+ * AN ALLOWANCE KEY THAT NAMES NO CATALOGUE KEY IS A PHANTOM, and a failure. It
+ * allows nothing today — so it looks harmless — but it PRE-ALLOWS a future key of
+ * that name, which is the one way the allowance could grow instead of shrink.
+ * `checkAllowance` therefore compares every allowance key against the catalogue's
+ * key set (the first version compared it only against the sidecar, so a namespace
+ * with no sidecar crashed instead of reporting the phantom). `--update` will not
+ * remove a phantom: removing it is a human decision, because only a human knows
+ * whether the name was a typo or a key that has not landed yet.
  *
  *   node scripts/i18n/context-parity.mjs            # check (exit 1 on a new gap)
  *   node scripts/i18n/context-parity.mjs --update   # remove now-covered keys (never add)
@@ -75,13 +89,17 @@ export function namespaceGap(ns, cataloguesDir = CATALOGUES) {
 	} catch {
 		hasSidecar = false;
 	}
+	const contextKeys = new Set(Object.keys(context));
+	const catalogueKeys = new Set(Object.keys(catalogue));
 	const uncovered = Object.keys(catalogue)
-		.filter((key) => !(key in context))
+		.filter((key) => !contextKeys.has(key))
 		.sort();
 	const orphaned = Object.keys(context)
-		.filter((key) => !(key in catalogue))
+		.filter((key) => !catalogueKeys.has(key))
 		.sort();
-	return { uncovered, orphaned, hasSidecar };
+	// The sidecar's own keys travel with the gap so callers never re-read the
+	// file: re-reading it was how a namespace with NO sidecar crashed the guard.
+	return { uncovered, orphaned, hasSidecar, contextKeys, catalogueKeys };
 }
 
 function loadAllowance(path = ALLOWANCE) {
@@ -103,36 +121,51 @@ export function checkAllowance({
 	const newGaps = []; // uncovered, not allowed
 	const missingSidecar = []; // no context file at all, not allowed
 	const orphans = []; // context for a key the catalogue lacks
-	const covered = {}; // ns -> allowed keys that are now covered (updatable away)
+	const phantoms = []; // ALLOWANCE key that names no catalogue key
+	const stale = {}; // ns -> allowed keys now covered in the sidecar (--update drops them)
 
-	for (const ns of catalogueNamespaces(cataloguesDir)) {
+	const namespaces = catalogueNamespaces(cataloguesDir);
+	// Every allowance namespace must have a catalogue: an entry for a namespace
+	// with no catalogue is a phantom of its own kind.
+	const absentNamespaces = Object.keys(allowed).filter(
+		(ns) => !namespaces.includes(ns),
+	);
+
+	for (const ns of namespaces) {
 		const gap = namespaceGap(ns, cataloguesDir);
 		const allow = new Set(allowed[ns]?.keys ?? []);
-		if (!gap.hasSidecar && gap.uncovered.length > 0 && !allowed[ns]) {
-			missingSidecar.push(`${ns} (${gap.uncovered.length} key(s), no sidecar)`);
+		if (!gap.hasSidecar && gap.catalogueKeys.size > 0 && !allowed[ns]) {
+			missingSidecar.push(
+				`${ns} (${gap.catalogueKeys.size} key(s), no sidecar)`,
+			);
 		}
 		for (const key of gap.uncovered) {
 			if (!allow.has(key)) newGaps.push(key);
 		}
 		if (gap.orphaned.length > 0)
 			orphans.push(`${ns}: ${gap.orphaned.join(", ")}`);
-		// "Covered" means the key is now IN the sidecar, not merely absent from the
-		// gap: an allowance key that names no catalogue key at all is an ORPHAN,
-		// reported above, and must not be silently swept as if it were covered.
-		const nowCovered = [...allow].filter(
-			(key) =>
-				!gap.uncovered.includes(key) &&
-				key in
-					readJson(join(cataloguesDir, SOURCE_LOCALE, `${ns}.context.json`)),
-		);
-		if (nowCovered.length > 0) covered[ns] = nowCovered.sort();
+		// An allowance key that names no catalogue key is a PHANTOM: it allows
+		// nothing today and silently PRE-ALLOWS a future key of that name, which is
+		// how an allowance could be grown rather than shrunk. It is a failure, not a
+		// silent no-op. (This is the hole the first version had: a phantom was only
+		// ever checked against the sidecar, so a namespace with no sidecar crashed
+		// instead of reporting it.)
+		for (const key of allow) {
+			if (!gap.catalogueKeys.has(key)) phantoms.push(`${ns}: ${key}`);
+		}
+		// STALE means now covered: the key is in the sidecar, so the allowance entry
+		// has done its job and must be dropped. It is reported (never silent) and
+		// --update removes it; it does not fail the check, matching the string-ceiling
+		// baseline's "lower it, do not block on it".
+		const nowCovered = [...allow]
+			.filter((key) => gap.contextKeys.has(key))
+			.sort();
+		if (nowCovered.length > 0) stale[ns] = nowCovered;
 	}
-	// An allowance entry for a namespace with no catalogue at all is stale too.
-	for (const ns of Object.keys(allowed)) {
-		if (!catalogueNamespaces(cataloguesDir).includes(ns))
-			covered[ns] = allowed[ns].keys;
+	for (const ns of absentNamespaces) {
+		for (const key of allowed[ns].keys) phantoms.push(`${ns}: ${key}`);
 	}
-	return { newGaps, missingSidecar, orphans, covered, allowance };
+	return { newGaps, missingSidecar, orphans, phantoms, stale, allowance };
 }
 
 /** Remove now-covered keys from the allowance. Refuses to write when that is a no-op. */
@@ -140,12 +173,12 @@ export function applyUpdate({
 	cataloguesDir = CATALOGUES,
 	allowancePath = ALLOWANCE,
 } = {}) {
-	const { covered, allowance } = checkAllowance({
+	const { stale, allowance } = checkAllowance({
 		cataloguesDir,
 		allowancePath,
 	});
 	let removed = 0;
-	for (const [ns, keys] of Object.entries(covered)) {
+	for (const [ns, keys] of Object.entries(stale)) {
 		if (allowance.namespaces[ns]) {
 			const keep = allowance.namespaces[ns].keys.filter(
 				(k) => !keys.includes(k),
@@ -195,22 +228,35 @@ export function main(argv, options = {}) {
 	}
 	if (mode === "update") return applyUpdate(options);
 
-	const { newGaps, missingSidecar, orphans, allowance } =
+	const { newGaps, missingSidecar, orphans, phantoms, stale, allowance } =
 		checkAllowance(options);
 	const allowed = Object.values(allowance.namespaces ?? {}).reduce(
 		(sum, entry) => sum + entry.keys.length,
+		0,
+	);
+	const staleCount = Object.values(stale).reduce(
+		(sum, keys) => sum + keys.length,
 		0,
 	);
 
 	if (
 		newGaps.length === 0 &&
 		missingSidecar.length === 0 &&
-		orphans.length === 0
+		orphans.length === 0 &&
+		phantoms.length === 0
 	) {
 		process.stdout.write(
 			`context-parity: ok — every English key is covered, apart from ${allowed} allowed gap(s) in ` +
 				`${Object.keys(allowance.namespaces ?? {}).length} namespace(s) (shrink-only; see i18n/context-allowance.json).\n`,
 		);
+		if (staleCount > 0) {
+			process.stdout.write(
+				`context-parity: note — ${staleCount} allowance key(s) are now covered; run \`--update\` to drop them:\n` +
+					`${Object.entries(stale)
+						.map(([ns, keys]) => `  ${ns}: ${keys.join(", ")}`)
+						.join("\n")}\n`,
+			);
+		}
 		return 0;
 	}
 	for (const line of missingSidecar) {
@@ -227,6 +273,12 @@ export function main(argv, options = {}) {
 	for (const line of orphans) {
 		process.stderr.write(
 			`context-parity: context names no catalogue key — ${line}\n`,
+		);
+	}
+	if (phantoms.length > 0) {
+		process.stderr.write(
+			`context-parity: ${phantoms.length} allowance key(s) name no catalogue key — a phantom allows nothing and PRE-ALLOWS a future key of that name. Remove it (\`--update\` will not):\n` +
+				`${phantoms.map((line) => `  ${line}`).join("\n")}\n`,
 		);
 	}
 	return 1;
