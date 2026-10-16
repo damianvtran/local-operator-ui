@@ -354,6 +354,33 @@ test("existing job performs real native capture and always uploads measurements"
 	}
 
 	/*
+	 * THE BROWSER DOOR IS WAITED FOR, NOT SAMPLED ONCE. Run 38929174267 failed with
+	 * `Expected values to be strictly equal: false !== true` on the wing's
+	 * `browser()`: the press is synchronous to the store but React's commit of it is
+	 * not, so a single immediate read can land on the pre-commit moment - and under
+	 * load it did. The wait is bounded and the assertion remains the one gate, so a
+	 * door that never opens still fails.
+	 */
+	const browserFn = source.slice(
+		source.indexOf("async function browser()"),
+		source.indexOf("async function asks()"),
+	);
+	assert(
+		browserFn.includes("await waitFor("),
+		"browser() must WAIT for the pane rather than read it once after the press",
+	);
+	assert(
+		/press\('\[data-panel-rail-item="browser"\]'\)\s*;?\s*\n\s*const opened = await waitFor\(/.test(
+			browserFn,
+		),
+		"the wait must follow the press, so the pane is waited FOR rather than assumed",
+	);
+	assert(
+		browserFn.includes("assert.equal("),
+		"the assertion stays the single gate, so a door that never opens still fails",
+	);
+
+	/*
 	 * NO PAGE-SIDE `window.__loDevDriver.call(...)` WAIT. The verb's return is not a
 	 * page promise, so awaiting `.then` inside an expression throws
 	 * `TypeError: window.__loDevDriver.call(...).then is not a function` and takes
