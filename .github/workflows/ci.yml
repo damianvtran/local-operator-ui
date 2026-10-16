@@ -842,10 +842,13 @@ jobs:
         # publish.yml and signed-update-candidate.yml retain the real bindings;
         # this job never publishes its fixture-configured package.
         env:
+          VITE_LOCAL_OPERATOR_API_URL: 'http://127.0.0.1:8080'
+          VITE_DISABLE_BACKEND_MANAGER: 'true'
           VITE_GOOGLE_CLIENT_ID: ci-fixture.apps.googleusercontent.com
           VITE_GOOGLE_CLIENT_SECRET: "ci-fixture-unused"
           VITE_MICROSOFT_CLIENT_ID: 00000000-0000-4000-8000-000000000001
           VITE_MICROSOFT_TENANT_ID: 00000000-0000-4000-8000-000000000002
+
         # npm pack triggers the prepack script, which builds the npm-channel
         # bundle (plain JS, no V8 bytecode). Do not add a separate pnpm build
         # here: it would emit bytecode that prepack then overwrites, which is
@@ -884,4 +887,84 @@ jobs:
         run: |
           TARBALL=$(ls local-operator-ui-*.tgz)
           node scripts/npx-smoke-test.mjs "$TARBALL"
+
+      # This is the real production app already compiled by npm pack, not a
+      # Storybook surrogate. macOS already owns Electron launch in this job;
+      # Linux's documented sandbox limitation is not waived for screenshots.
+      # 15 minutes, up from 8, because the case table ships three cases and each
+      # case boots the app TWICE (control + candidate): six boots and ONE control
+      # renderer build (the candidate renderer arrives prebuilt from the job's
+      # "Build and pack" step), plus the capture sequences. The run that proved
+      # the producer works end to end spent its first 60 s on the control boot's
+      # build and its last minute on the candidate's, and an 8-minute ceiling left
+      # no room for the frames. Bounded deliberately: a timeout must stay a FAIL,
+      # so this is a ceiling that fits the work rather than a wait, and the script's
+      # own per-boot timeouts (150 s each) are what stop a hung app.
+      - name: Exercise assembled asks and capture regression frames
+        id: asks_regression
+        # The producer this step runs is now a CASE TABLE (scripts/asks-app-regression.mjs):
+        # the asks scenario is its first entry and two further cases ride the same
+        # step, each with its own candidate and derived-control leg. The file name and
+        # the artifact names below keep their historical spelling on purpose - QA
+        # howtos and review threads resolve against those paths. Adding a case is a
+        # table entry, not a workflow change.
+        if: runner.os == 'macOS' && github.event_name == 'pull_request'
+        timeout-minutes: 15
+        env:
+          VITE_LOCAL_OPERATOR_API_URL: 'http://127.0.0.1:8080'
+          VITE_DISABLE_BACKEND_MANAGER: 'true'
+          LOCAL_OPERATOR_UI_NO_BYTECODE: 'true'
+          LOCAL_OPERATOR_NO_NOTIFICATIONS: '1'
+          LOCAL_OPERATOR_UI_TELEMETRY: 'off'
+          VITE_GOOGLE_CLIENT_ID: ci-fixture.apps.googleusercontent.com
+          VITE_GOOGLE_CLIENT_SECRET: 'ci-fixture-unused'
+          VITE_MICROSOFT_CLIENT_ID: '00000000-0000-4000-8000-000000000001'
+          VITE_MICROSOFT_TENANT_ID: '00000000-0000-4000-8000-000000000002'
+          QA_REQUESTED_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # THE CONTROL IS THE BASE THIS CANDIDATE WAS BUILT FROM, resolved here
+          # rather than pinned to a historical commit. A pinned revision stops
+          # being able to satisfy the control leg's byte-identity requirement as
+          # soon as `main` moves - its `src/main` is then older than the merged
+          # head's - and the producer dies with `control reuse mismatch src/main`
+          # before it renders anything (measured on run 38916579072). This
+          # checkout is GitHub's MERGE ref, so `HEAD^1` is main as of THIS run,
+          # which is the baseline the change must be judged against.
+          #
+          # The depth-2 fetch brings that parent and its tree in; a depth-1
+          # checkout carries neither. `origin/main` is not consulted: on a fork
+          # PR the remote's `main` is the FORK's, which is why the parent of the
+          # merge ref is the honest source here.
+          git fetch --no-tags --depth=2 origin "$(git rev-parse HEAD)" || true
+          CONTROL="$(git rev-parse HEAD^1 2>/dev/null)" || true
+          if [ -z "$CONTROL" ]; then
+            echo '::error::the asks regression control could not be derived: this checkout has no parent commit, so the base this candidate was built from is unknown. Refusing rather than booting an arbitrary control.'
+            exit 1
+          fi
+          git cat-file -e "$CONTROL^{commit}" || git fetch --no-tags --depth=1 origin "$CONTROL"
+          echo "asks regression control (merge base of this PR): $CONTROL"
+          ASKS_CONTROL_OVERRIDE="$CONTROL" node scripts/asks-app-regression.mjs
+
+      # A run that completed must have produced frames, or this step fails red.
+      # The step above being SKIPPED (an earlier gate went red) is not a missing
+      # artifact, and reporting it as one buries the real failure under a second,
+      # misleading one - which is what the outcome guard and the sibling below
+      # separate. Partial evidence from a failed run is still uploaded, quietly.
+      - name: Upload assembled asks frames and measurements
+        if: ${{ always() && steps.asks_regression.conclusion == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: asks-app-regression-${{ github.event.pull_request.number }}-${{ github.run_id }}
+          path: artifacts/asks-app/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload partial asks frames from a failed run
+        if: ${{ always() && steps.asks_regression.conclusion == 'failure' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: asks-app-regression-partial-${{ github.event.pull_request.number }}-${{ github.run_id }}
+          path: artifacts/asks-app/
+          if-no-files-found: ignore
+          retention-days: 7
 

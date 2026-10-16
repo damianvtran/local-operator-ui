@@ -142,11 +142,24 @@ const USAGE = [
  * 77 MB, over the old ceiling. Measured with `biome check --reporter=json` on
  * each; the growth is the file's, not this gate's, and the ceiling has to clear
  * the biggest report the tree can hand it rather than the last one that fit.
+ *
+ * 768 MB, not 256, for the same reason one round further out, and measured rather
+ * than guessed: `renderer-driver.mjs` is ~1.9 MB of source carrying 67 diagnostics,
+ * and because biome's JSON report embeds each diagnostic's own copy of the file it
+ * was found in, ONE change to it answers a **181 MB** report - larger than the
+ * whole thirteen-file list this gate was working with (117 MB) and, added to it,
+ * 299 MB of output. Every bump that ceiling has taken has been made by the largest
+ * changed file rather than by the change, and the 45k-line shared driver is the
+ * new largest: `biome check --reporter=json` on it alone measured 181,792,661 bytes
+ * at this revision against 181,700,354 before it, so the report is the file's
+ * rather than this change's. A ceiling that a single ordinary edit to an existing
+ * tracked file can cross is not a verdict, it is an outage - it reads as "could not
+ * run biome" and names no offender.
  */
 function run(command, args, options = {}) {
 	return spawnSync(command, args, {
 		encoding: "utf8",
-		maxBuffer: 256 * 1024 * 1024,
+		maxBuffer: 768 * 1024 * 1024,
 		...options,
 	});
 }

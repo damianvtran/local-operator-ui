@@ -64,7 +64,9 @@ export type PanelRailActionContext = {
  * acted. The sequences are the ones the rail's items shipped with (each item's
  * own comment argued its half); the ask arm keeps the item's scope rule — a
  * press while THIS scope is open closes, a press while another scope is open
- * re-scopes — and the console arm keeps the two-step open the pane keys on.
+ * re-scopes — and the console arm keeps the two-step open the pane keys on. The
+ * ask arm's close is the PRESSED kind, so it empties the slot rather than giving
+ * it back (#1079).
  */
 export function togglePanelRailItem(
 	id: PanelRailItemId,
@@ -108,10 +110,32 @@ export function togglePanelRailItem(
 		}
 		case "ask": {
 			if (context.askScope === undefined) return false;
+			/*
+			 * WHICH KIND OF CLOSE THIS PRESS IS (#1079). The item is a toggle in its own
+			 * scope, so one of its two arms closes - and EVERY CLOSE THE USER ASKS FOR IS
+			 * "EMPTY THE SLOT", not a withdrawal, so this arm is one of five doors that
+			 * ask it (the header menu's `Close asks` row, the drawer's X, the composer
+			 * chip, and this item's own chord running the same code). The rule and the
+			 * give-back it withholds are in `AskDrawerCloseOptions`. The rail's item is
+			 * "the same door in both directions" (`panel-rail.tsx`), so its close must
+			 * leave the slot empty the way every sibling item's does rather than hand the
+			 * borrowed pane back - where the closes NOBODY ASKED FOR keep the give-back
+			 * (UX round 1, U6), and those are the ones that pass no option: the empty
+			 * queue's auto-close, the carried fleet drawer being retired, Escape inside
+			 * the drawer.
+			 *
+			 * THE RE-SCOPE ARM IS UNCHANGED: a press while the OTHER scope's drawer is up
+			 * opens this scope (the user asked for a panel, not for an empty slot), so it
+			 * passes no option either.
+			 */
 			const open = !(
 				state.isAskDrawerOpen && state.askDrawerScope === context.askScope
 			);
-			state.setAskDrawerOpen(open, context.askScope);
+			state.setAskDrawerOpen(
+				open,
+				context.askScope,
+				open ? undefined : { dismissSlot: true },
+			);
 			/*
 			 * A CHORD'S OPEN FILES A REQUEST (round-1 Q1/m1 of the always-visible rail).
 			 * The rail item's press is read off focus - the drawer finds the item focused
