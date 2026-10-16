@@ -8,25 +8,27 @@ user's own bubble; the harness's own record calls a full-payload bubble a defect
 where the TUI and the phone read the typed line back via `_typed_line_of`), and
 the desktop's write half shipped without its reader (`adf86a39c`, PR #690).
 
-These eight frames are the SAME seeded conversation, read by two trees:
+These fourteen frames are the SAME seeded conversation, read by two trees: the
+base at `origin/main` `af6de1dd9` and the branch `feat/skill-invocation-seal`.
 
 | File | Tree | State |
 | --- | --- | --- |
-| `skill-seal-1380x900-dark-payload.png` | `origin/main` `0e846d2e6` | the defect: the whole payload as the user's bubble |
-| `skill-seal-1380x900-light-payload.png` | `origin/main` `0e846d2e6` | the same, light |
-| `skill-seal-1380x900-dark-collapsed.png` | `feat/skill-invocation-seal` | the seal, closed |
-| `skill-seal-1380x900-dark-expanded.png` | the branch | the press: instructions on the recessed ground |
-| `skill-seal-1380x900-light-collapsed.png` | the branch | the seal, light |
-| `skill-seal-1380x900-light-expanded.png` | the branch | the press, light |
-| `skill-seal-1380x900-dark-long-purpose.png` | the branch | the second invocation, whose purpose is longer than the row |
-| `skill-seal-1380x900-light-long-purpose.png` | the branch | the same, light |
+| `skill-seal-1380x900-dark-payload.png` | base | the defect: the whole payload as the user's bubble |
+| `skill-seal-1380x900-light-payload.png` | base | the same, light |
+| `skill-seal-1380x900-dark-collapsed.png` | branch | the seal, closed: token, `·`, the folded purpose, the request |
+| `skill-seal-1380x900-dark-expanded.png` | branch | the press: instructions on the recessed ground |
+| `skill-seal-1380x900-dark-long-purpose.png` | branch | the second invocation, whose purpose is longer than the row |
+| `skill-seal-1380x900-dark-long-body.png` | branch | the third invocation, a 40-step body: capped, scrolling inside itself |
+| `skill-seal-1380x900-dark-hover.png` | branch | the pointer on the trigger: the chevron steps ink |
+| `skill-seal-1380x900-dark-focus.png` | branch | a real Tab on the trigger: the global 2px outline |
+| `skill-seal-1380x900-light-{collapsed,expanded,long-purpose,long-body,hover,focus}.png` | branch | the same six, light |
 
 ## How they were shot
 
 An isolated daemon on a rig-owned port (NOT the operator's 1111, and not 8080 —
 `--scene session-archive` measured that the port is not the discriminator: the
 app's transport is main's, so any free port is reachable), a seeded journal whose
-two user rows are the rendered payloads, and the built app headless over CDP:
+three user rows are rendered payloads, and the built app headless over CDP:
 
 ```sh
 RIG="$LOCAL_OPERATOR_SCRATCHPAD/rig"
@@ -43,50 +45,29 @@ LOCAL_OPERATOR_DESKTOP_TOKEN="$(cat "$RIG/token")" node scripts/renderer-driver.
 ```
 
 The seeded skills are a FOLDED `description: >-` (`seal-demo`, the shape shipped
-skills actually use) and a long plain one (`seal-audit`). The fixture's two
-payload strings are asserted byte for byte against the app's own
-`renderSkillInvocation` by `scripts/skill-row.test.mjs`, so a drifted writer fails
-that suite rather than being photographed.
+skills actually use), a long plain one whose caption the row has to ellipsize
+(`seal-audit`), and a 40-step body (`seal-steps`) at the length the shipped skill
+library actually runs (17-156 lines — the one-line body this fixture seeded first
+is the shape that HID the uncapped block). The fixture's payload strings are
+asserted byte for byte against the app's own `renderSkillInvocation` by
+`scripts/skill-row.test.mjs`, so a drifted writer fails that suite rather than
+being photographed.
 
 ## What the run reported
 
-Head run (`--seal-expect seal`): 29 of 31 checks PASS, including "the typed line
-is the row, in the composer's own token", "a FOLDED description reaches the row as
-one line", "the payload's parts are NOT in the document", "both invocations carry a
-disclosure, closed by default", "the press discloses the instructions sent with the
-message" and "the front matter is still stripped from the expanded body".
+Head run (`--seal-expect seal`): **38 of 38 checks PASS**, in both themes. The
+readings a reader cannot see in a still, as the run printed them:
 
-Base run (`--seal-expect payload`): the tag, the front matter, the body and "no
-disclosure on those rows" all PASS.
+| Check | Observed (dark) |
+| --- | --- |
+| the 40-step block is capped and scrolls inside itself | `clientHeight 320` against a cap of `min(320px, 40vh)` = 320, `scrollHeight 509` |
+| opening the long body keeps the row's own header inside the scroller | trigger `top 173`, scroller viewport `72…766` |
+| hovering the trigger steps the chevron's ink | resting `rgb(166, 160, 145)` → hovered `rgb(194, 188, 175)` |
+| a keyboard user reaches the trigger, and the app outlines it | `outline solid 2px`, `:focus-visible` true, focused true |
 
-**Two checks FAIL in these runs, and both are the SCENE's assertions rather than
-the product** — disclosed here rather than left for a reader to find:
+Base run (`--seal-expect payload`): **16 of 16 checks PASS** — the header
+sentence, the tag, the front matter, the body and "no disclosure is rendered on
+an invocation row on this tree".
 
-- *head*, `a long purpose is one ellipsized line with the sentence in its title`:
-  the reading printed beside it is
-  `{"clipped":true,"title":"Audit this branch for the riskiest change, …"}` — the
-  claim holds (the span clips and the whole sentence is the `title`), and the
-  clause that fails is the assertion's own `title.length > text.length`, where
-  `textContent` is the full string even when CSS truncates it.
-- *base*, `the payload's own header sentence is painted (the defect)`: the
-  assertion looks for the writer's sentence with its backticks, and markdown
-  renders `` `seal-demo` `` as a code span, so the painted text has none. The
-  defect is still proven by the same run's tag/front-matter/body checks and by the
-  frame.
-
-Both are one-line fixes to `scripts/renderer-driver.mjs`'s scene assertions,
-queued for the next commit rather than made inside a running review round.
-
-## Also visible in the frames
-
-The chat header shows `The user invoked the \`seal-demo\` skill directly. Follow
-it for…` — the SESSION TITLE is derived from the stored payload by the harness
-(`local_operator/session/naming.py`), which is the sibling half of this change and
-not this PR's: `damianvtran/local-operator#2526`. These frames are its evidence too.
-
-## What a frame cannot say
-
-Nothing here is a layout measurement of its own: the clamp, the ellipsis and the
-spacing are shown, not measured. The transitions (the body UNMOUNTED while
-collapsed, the press, Copy yielding the typed line) are asserted in
-`scripts/skill-seal-behaviour.test.mjs`, which mounts the shipped row in jsdom.
+Both runs also assert that no process from the run outlived its boot, and the
+daemon was reaped by the pid in `$RIG/daemon.pid` after each shot.
