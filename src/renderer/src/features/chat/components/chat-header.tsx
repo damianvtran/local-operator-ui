@@ -61,23 +61,17 @@ import {
 	ChatHeaderIdentity,
 	type HeaderIdentityData,
 } from "./chat-header-identity";
-import type { RunDetails } from "./run-details";
 
 /**
  * ChatHeaderProps
  * @property agentName - The name of the agent to display.
  * @property description - The description of the agent.
  * @property onOpenOptions - Optional callback for opening options/canvas.
- * @property runDetails - The session's derived subagent and to-do view model, or
- * `null`/absent when the session has none.
  *
- * `runDetails` is passed by `chat-page.tsx`, which owns the canonical stream and
- * derives the model per wire frame (`run-details.md` § 8); stories pass a fixture
- * instead. The header no longer READS it: the menu's Run details row used to be
- * gated on it, and since the always-visible rail (D1) the row follows the panel
- * rows instead, because the pane opens to a notice when there is no model. The
- * prop is still accepted from its callers; the run trigger itself lives on the
- * panel rail (#872), which is handed the same model.
+ * The header takes no run model: the menu's Run details row used to be gated on
+ * one, and since the always-visible rail (D1) it is offered like the other panel
+ * rows, because the pane opens to a notice when there is no model. The run
+ * trigger itself lives on the panel rail (#872).
  */
 type ChatHeaderProps = {
 	agentName?: string;
@@ -161,7 +155,6 @@ type ChatHeaderProps = {
 	 */
 	sessionId?: string;
 	onOpenOptions?: () => void;
-	runDetails?: RunDetails | null;
 	/**
 	 * Whether THIS header is the element the OS's caption buttons sit over, and so
 	 * must reserve their width at its trailing end.

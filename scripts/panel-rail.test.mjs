@@ -63,7 +63,12 @@ const bundle = await build({
 			export { useUiPreferencesStore, resolveDrawnRightSlotPane } from "./src/renderer/src/shared/store/ui-preferences-store";
 			export { deriveRunDetails } from "./${RUN}/run-detail-model";
 			export { SlotPaneNotice } from "./src/renderer/src/shared/components/common/slot-pane-notice";
-			export { runPaneNotice, codeReviewPaneNotice, RUN_NOTICE_DRAFT, RUN_NOTICE_READING, CODE_NOTICE_DRAFT, CODE_NOTICE_BELOW_VERSION, CODE_NOTICE_CHECKING } from "./src/renderer/src/features/chat/right-slot-notices";
+			export { useKeymapShortcuts } from "./src/renderer/src/shared/keymap/use-keymap-shortcuts";
+			export { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
+			export { FLEET_ASKS_UNAVAILABLE_FRONTEND } from "./src/renderer/src/features/chat/fleet-asks";
+			export { runPaneNotice, codeReviewPaneNotice, RUN_NOTICE_DRAFT, RUN_NOTICE_READING, RUN_NOTICE_UNREADABLE, RUN_NOTICE_MISSING, CODE_NOTICE_DRAFT, CODE_NOTICE_BELOW_VERSION, CODE_NOTICE_CHECKING, CODE_NOTICE_LOAD_LEAD, SLOT_NOTICE_PROGRESS_DELAY_MS } from "./src/renderer/src/features/chat/right-slot-notices";
+			export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";
+			export { BACKEND_PAIRING_SENTENCE } from "./src/renderer/src/shared/api/local-operator/backend-error";
 			export * as fixtures from "./${RUN}/run-details.fixtures";
 		`,
 		resolveDir: ROOT,
@@ -126,13 +131,22 @@ const {
 	deriveRunDetails,
 	fixtures,
 	SlotPaneNotice,
+	useKeymapShortcuts,
+	useCanonicalSessionsStore,
+	FLEET_ASKS_UNAVAILABLE_FRONTEND,
 	runPaneNotice,
 	codeReviewPaneNotice,
 	RUN_NOTICE_DRAFT,
 	RUN_NOTICE_READING,
+	RUN_NOTICE_UNREADABLE,
+	RUN_NOTICE_MISSING,
 	CODE_NOTICE_DRAFT,
 	CODE_NOTICE_BELOW_VERSION,
 	CODE_NOTICE_CHECKING,
+	CODE_NOTICE_LOAD_LEAD,
+	SLOT_NOTICE_PROGRESS_DELAY_MS,
+	DesktopControlError,
+	BACKEND_PAIRING_SENTENCE,
 } = await import(pathToFileURL(bundlePath).href);
 
 const read = (path) => readFileSync(join(ROOT, path), "utf8");
@@ -643,13 +657,52 @@ test("a door pressed on a draft opens its pane, and the console files no open re
  * The choice is a pure function of the route's facts; the pane is one component.
  */
 test("each pane that cannot act picks the notice for its reason (D1/D3)", () => {
-	assert.equal(runPaneNotice(undefined), RUN_NOTICE_DRAFT, "run on a draft");
-	assert.equal(runPaneNotice(null), RUN_NOTICE_DRAFT);
+	const run = (over) =>
+		runPaneNotice({
+			sessionId: "s-1",
+			status: "connecting",
+			missing: false,
+			failure: null,
+			...over,
+		});
 	assert.equal(
-		runPaneNotice("s-1"),
-		RUN_NOTICE_READING,
-		"run on a conversation whose frame is not read yet",
+		run({ sessionId: undefined }),
+		RUN_NOTICE_DRAFT,
+		"run on a draft",
 	);
+	assert.equal(
+		run({ sessionId: null, status: "unavailable" }),
+		RUN_NOTICE_DRAFT,
+	);
+	for (const status of ["connecting", "reconnecting", "live"]) {
+		assert.equal(
+			run({ status }),
+			RUN_NOTICE_READING,
+			`a read that can still answer (${status}) is a progress line`,
+		);
+	}
+	/*
+	 * THE READ THAT ENDED (design D1 = UX U5): a stream that gave up is a resolved
+	 * line, never "Reading…" - with the transcript's own sentence as its detail when
+	 * there is one, and the 404 named as what it is.
+	 */
+	assert.equal(run({ status: "unavailable" }), RUN_NOTICE_UNREADABLE);
+	const failed = run({
+		status: "unavailable",
+		failure: { statement: "Lost the connection to this conversation." },
+	});
+	assert.equal(failed.kind, "run-unreadable");
+	assert.equal(failed.tone, "unavailable");
+	assert.equal(failed.title, RUN_NOTICE_UNREADABLE.title);
+	assert.equal(failed.detail, "Lost the connection to this conversation.");
+	assert.equal(
+		run({ status: "unavailable", missing: true }),
+		RUN_NOTICE_MISSING,
+	);
+	assert.ok(
+		!/Reading/.test(RUN_NOTICE_MISSING.title + RUN_NOTICE_UNREADABLE.title),
+	);
+
 	const code = (over) =>
 		codeReviewPaneNotice({
 			sessionId: "s-1",
@@ -658,30 +711,149 @@ test("each pane that cannot act picks the notice for its reason (D1/D3)", () => 
 			loadError: null,
 			...over,
 		});
-	assert.equal(code({}), null, "enabled with a conversation: the real pane");
-	assert.equal(code({ sessionId: undefined }), CODE_NOTICE_DRAFT);
+	assert.deepEqual(
+		code({}),
+		{ notice: null, sessionId: "s-1" },
+		"enabled with a conversation: the real pane, for that conversation",
+	);
+	assert.equal(code({ sessionId: undefined }).notice, CODE_NOTICE_DRAFT);
 	assert.equal(
-		code({ sessionId: undefined, state: "below-version" }),
+		code({ sessionId: undefined, state: "below-version" }).notice,
 		CODE_NOTICE_DRAFT,
 		"a draft says draft whatever the backend serves",
 	);
-	assert.equal(code({ state: "below-version" }), CODE_NOTICE_BELOW_VERSION);
-	assert.equal(code({ state: "unknown" }), CODE_NOTICE_CHECKING);
-	const unreadable = code({ state: "unknown", loadError: new Error("boom") });
-	assert.equal(unreadable.kind, "code-unreadable");
-	assert.ok(unreadable.title.startsWith("Code review could not be loaded."));
-	const unpaired = code({ state: "unpaired", cause: "credential-refused" });
+	assert.equal(
+		code({ state: "below-version" }).notice,
+		CODE_NOTICE_BELOW_VERSION,
+	);
+	assert.equal(code({ state: "unknown" }).notice, CODE_NOTICE_CHECKING);
+	/*
+	 * THE TWO FAILURES LEAD WITH THIS PANE'S LEAD and carry the shared sentence as the
+	 * detail, verbatim (design D3), in the `unavailable` tone.
+	 */
+	const outdated = code({
+		state: "unknown",
+		loadError: new DesktopControlError(404, "not found"),
+	}).notice;
+	assert.equal(outdated.kind, "code-unreadable");
+	assert.equal(outdated.tone, "unavailable");
+	assert.equal(outdated.title, CODE_NOTICE_LOAD_LEAD);
+	assert.equal(
+		outdated.detail,
+		"The Local Operator server is older than this app expects. Update the server and try again.",
+	);
+	const unreachable = code({
+		state: "unknown",
+		loadError: new DesktopControlError(null, "no answer"),
+	}).notice;
+	assert.equal(unreachable.title, CODE_NOTICE_LOAD_LEAD);
+	assert.equal(
+		unreachable.detail,
+		"The Local Operator server is not answering.",
+	);
+	const unpaired = code({
+		state: "unpaired",
+		cause: "credential-refused",
+	}).notice;
 	assert.equal(unpaired.kind, "code-unpaired");
-	assert.match(unpaired.title, /refused/);
-	/* The copy states the reason; none of it claims a failure for a draft. */
-	for (const notice of [
+	assert.equal(unpaired.tone, "unavailable");
+	assert.equal(unpaired.title, CODE_NOTICE_LOAD_LEAD);
+	assert.equal(unpaired.detail, BACKEND_PAIRING_SENTENCE["credential-refused"]);
+
+	const every = [
 		RUN_NOTICE_DRAFT,
 		RUN_NOTICE_READING,
+		RUN_NOTICE_UNREADABLE,
+		RUN_NOTICE_MISSING,
 		CODE_NOTICE_DRAFT,
 		CODE_NOTICE_BELOW_VERSION,
-	]) {
-		assert.ok(notice.title.length > 0 && !/error|failed/i.test(notice.title));
+		CODE_NOTICE_CHECKING,
+		outdated,
+		unpaired,
+	];
+	for (const notice of every) {
+		/* One title rule (design D2): a sentence ends in a full stop, progress in an ellipsis. */
+		assert.match(
+			notice.title,
+			notice.tone === "loading" ? /…$/ : /\.$/,
+			`${notice.kind}: "${notice.title}"`,
+		);
+		/* One noun for the process (design D2, `backend-error.ts`'s copy table). */
+		assert.ok(
+			!/backend/i.test(`${notice.title} ${notice.detail ?? ""}`),
+			`${notice.kind} says "backend"`,
+		);
 	}
+	/* The draft notices name the next step (UX U3). */
+	for (const notice of [RUN_NOTICE_DRAFT, CODE_NOTICE_DRAFT]) {
+		assert.match(notice.detail, /^Send a message to start this conversation/);
+		assert.equal(notice.tone, "empty");
+	}
+});
+
+test("a progress notice waits before it is drawn; an answer shows at once (UX U1)", async () => {
+	await mount(async (api) => {
+		const notice = (props) =>
+			React.createElement(
+				TooltipProvider,
+				null,
+				React.createElement(SlotPaneNotice, {
+					label: "Run details",
+					closeLabel: "Close run details",
+					onClose: () => {},
+					labelInk: "dim",
+					labelInset: true,
+					...props,
+				}),
+			);
+		await api.render(notice(RUN_NOTICE_READING));
+		assert.ok(
+			api.$('[data-slot-pane-notice="run-reading"]'),
+			"the bar is there at once",
+		);
+		assert.equal(
+			api.$("[data-slot-pane-notice-body]"),
+			null,
+			"a fast read lands in an empty slot: no sentence to blink",
+		);
+		await act(async () => {
+			await new Promise((r) =>
+				setTimeout(r, SLOT_NOTICE_PROGRESS_DELAY_MS + 50),
+			);
+		});
+		assert.ok(
+			api
+				.$("[data-slot-pane-notice-body]")
+				?.textContent.includes(RUN_NOTICE_READING.title),
+			"a slow read gets its sentence",
+		);
+		/* A resolved notice is an answer, and is drawn on its first frame. */
+		await api.render(notice(RUN_NOTICE_UNREADABLE));
+		assert.ok(
+			api
+				.$("[data-slot-pane-notice-body]")
+				?.textContent.includes(RUN_NOTICE_UNREADABLE.title),
+		);
+		/* The label copies the pane it stands in for (design D4). */
+		const label = api.$("[data-slot-pane-notice] span");
+		assert.ok(
+			label.className.includes("text-ink-dim") &&
+				label.className.includes("px-1"),
+		);
+		await api.render(
+			notice({
+				...CODE_NOTICE_DRAFT,
+				label: "Code review",
+				labelInk: "muted",
+				labelInset: false,
+			}),
+		);
+		const codeLabel = api.$("[data-slot-pane-notice] span");
+		assert.ok(
+			codeLabel.className.includes("text-ink-muted") &&
+				!codeLabel.className.includes("px-1"),
+		);
+	});
 });
 
 test("the notice pane names itself, closes from its bar and on Escape, and leaves the composer's Escape alone", async () => {
@@ -702,6 +874,8 @@ test("the notice pane names itself, closes from its bar and on Escape, and leave
 						onClose: () => {
 							closes += 1;
 						},
+						labelInk: "dim",
+						labelInset: true,
 						...RUN_NOTICE_DRAFT,
 					}),
 				),
@@ -727,13 +901,13 @@ test("chat-content mounts the notice in the same slot the real run and code pane
 		"src/renderer/src/features/chat/components/chat-content.tsx",
 	);
 	assert.ok(
-		/\{isRunPanelOpen && \([\s\S]{0,4000}?\{runDetails \? \([\s\S]{0,4000}?<RunPanel[\s\S]{0,4000}?\) : \([\s\S]{0,400}?<SlotPaneNotice[\s\S]{0,400}?runPaneNotice\(sessionId\)/.test(
+		/\{isRunPanelOpen && \([\s\S]{0,4000}?\{runDetails \? \([\s\S]{0,4000}?<RunPanel[\s\S]{0,4000}?\) : \([\s\S]{0,400}?<SlotPaneNotice[\s\S]{0,400}?runPaneNotice\(\{\s*sessionId,\s*status: canonical\.view\.status,/.test(
 			content,
 		),
 		"the run slot no longer falls back to the notice when there is no model",
 	);
 	assert.ok(
-		/\{isCodeReviewPaneOpen && \([\s\S]{0,2000}?codeNotice !== null \|\| !sessionId \?[\s\S]{0,400}?<SlotPaneNotice[\s\S]{0,800}?<CodeReviewPane/.test(
+		/\{isCodeReviewPaneOpen && \([\s\S]{0,2000}?codeSlot\.notice !== null \?[\s\S]{0,400}?<SlotPaneNotice[\s\S]{0,800}?<CodeReviewPane\s+sessionId=\{codeSlot\.sessionId\}/.test(
 			content,
 		),
 		"the code slot no longer gates `CodeReviewPane` (and its query) behind the notice",
@@ -1884,7 +2058,6 @@ test("the ... menu's Open canvas row opens the CANVAS, not the slash-command chi
 					},
 					onToggleBrowser: () => {},
 					onOpenConsole: () => {},
-					runDetails: details(),
 				}),
 			),
 		);
@@ -1935,7 +2108,6 @@ test("the ... menu's asks row is the header's remaining door: gated, verb-labell
 					key,
 					agentName: "Core",
 					onOpenOptions: () => {},
-					runDetails: details(),
 					...asks,
 				}),
 			);
@@ -2003,7 +2175,6 @@ test("on a draft the ... menu carries all six panel rows, in rail order (D1)", a
 				null,
 				React.createElement(ChatHeader, {
 					agentName: "Core",
-					runDetails: null,
 					onOpenOptions: () => {},
 					onToggleBrowser: () => {},
 					onToggleAsks: () => {},
@@ -2107,7 +2278,6 @@ test("the ... menu's asks row opens the drawer over an empty queue, and its door
 					React.createElement(ChatHeader, {
 						agentName: "Core",
 						onOpenOptions: () => {},
-						runDetails: details(),
 						asksScope: "session",
 						asksOpen,
 						onToggleAsks: () => {
@@ -2269,6 +2439,113 @@ test("the ... menu's asks row opens the drawer over an empty queue, and its door
 });
 
 /*
+ * THE ASKS CHORD OPENS A DRAWER THAT STAYS (QA round 1 Q1 = agent review m1 of the
+ * always-visible rail). A chord leaves focus where it was, so the drawer cannot read
+ * the press off a focused door; before the fix it took the mount for a carried flag
+ * and auto-closed it over an empty or unsupported queue - the chord did nothing.
+ * Driven end to end: the real dispatcher, the real store and the real drawer, over
+ * the three frames a chord can meet - the fleet's empty answer and its failed read
+ * (D4's resolved, unpublished frame) on a draft, and an empty session queue on a
+ * conversation.
+ */
+test("the asks chord opens a drawer that survives an empty or unsupported queue (Q1/m1)", async () => {
+	for (const [label, scope, frame] of [
+		[
+			"fleet, empty",
+			"fleet",
+			{ asks: [], asks_open: 0, asks_truncated: false },
+		],
+		["fleet, read failed (D4)", "fleet", FLEET_ASKS_UNAVAILABLE_FRONTEND],
+		[
+			"session, empty",
+			"session",
+			{ asks: [], asks_open: 0, asks_truncated: null },
+		],
+	]) {
+		await mount(async (api) => {
+			reset(api, scope === "fleet" ? DRAFT : DRAWABLE);
+			api.store({ shortcutBindings: { "panel.ask": "primary+g" } });
+			act(() => {
+				useCanonicalSessionsStore.setState({
+					activeDraftKey: null,
+					activeSessionId: scope === "fleet" ? null : "session-1",
+				});
+			});
+			let closes = 0;
+			const Harness = () => {
+				useKeymapShortcuts();
+				const open = useUiPreferencesStore((s) => s.isAskDrawerOpen);
+				const drawn = useUiPreferencesStore((s) => s.askDrawerScope);
+				return open
+					? React.createElement(AskDrawer, {
+							frontend: frame,
+							scope: drawn,
+							onClose: () => {
+								closes += 1;
+								useUiPreferencesStore.getState().setAskDrawerOpen(false, drawn);
+							},
+						})
+					: null;
+			};
+			await api.render(React.createElement(Harness));
+			/* ⌘G with focus on <body>: what a chord press leaves behind. */
+			const chord = async () => {
+				act(() => {
+					api.document.body.dispatchEvent(
+						new api.window.KeyboardEvent("keydown", {
+							key: "g",
+							metaKey: true,
+							bubbles: true,
+							cancelable: true,
+						}),
+					);
+				});
+				await act(async () => {});
+			};
+			await chord();
+			await act(async () => {});
+			const state = useUiPreferencesStore.getState();
+			assert.equal(
+				state.isAskDrawerOpen,
+				true,
+				`${label}: the chord opened the drawer and it stayed`,
+			);
+			assert.equal(
+				state.askDrawerScope,
+				scope,
+				`${label}: in the route's scope`,
+			);
+			assert.equal(
+				closes,
+				0,
+				`${label}: the auto-close did not take the chord's open`,
+			);
+			assert.ok(
+				api.$("[data-lo-ask-surfaces]"),
+				`${label}: the drawer is drawn`,
+			);
+			assert.equal(
+				state.askOpenIntent,
+				null,
+				`${label}: the request was consumed by the mount`,
+			);
+			/* The same chord closes it again: a toggle, as the door is. */
+			await chord();
+			assert.equal(
+				useUiPreferencesStore.getState().isAskDrawerOpen,
+				false,
+				`${label}: the chord closes it`,
+			);
+			assert.equal(
+				useUiPreferencesStore.getState().askOpenIntent,
+				null,
+				`${label}: the close files no request`,
+			);
+		});
+	}
+});
+
+/*
  * THE CLAIM ANSWERS A RESTORE THAT LANDS AFTER IT WOULD HAVE SETTLED (round-2
  * M1), and once settled it is the user's, not the drawer's (round-2 N2).
  *
@@ -2304,7 +2581,6 @@ test("a restore that lands after the drawer's own settle still ends inside, and 
 					React.createElement(ChatHeader, {
 						agentName: "Core",
 						onOpenOptions: () => {},
-						runDetails: details(),
 						asksScope: "session",
 						asksOpen,
 						onToggleAsks: () => {

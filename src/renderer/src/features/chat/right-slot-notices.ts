@@ -20,57 +20,136 @@ import {
 	backendPairingSentence,
 } from "@shared/api/local-operator/backend-error";
 import type { DesktopFeatureState } from "@shared/api/local-operator/desktop-hooks";
+import type { CanonicalSessionStatus } from "@shared/hooks/use-canonical-session";
 import type { DaemonPairingCause } from "../../../../shared/backend-status";
+
+/**
+ * How a notice reads, which is `PanelNotice`'s own vocabulary (design round 1,
+ * D3): `empty` is a quiet fact - nothing to show here yet, nothing lost;
+ * `loading` is a wait that will end; `unavailable` is a read that failed, drawn
+ * at full ink because it is the thing on screen the user has to act on.
+ */
+export type SlotNoticeTone = "empty" | "loading" | "unavailable";
 
 export type SlotNotice = {
 	/** Which state this is, on the element as `data-slot-pane-notice`. */
 	kind: string;
+	tone: SlotNoticeTone;
+	/**
+	 * A sentence, ending in a full stop (design round 1, D2: one rule for every
+	 * notice title). A progress title ends in an ellipsis instead.
+	 */
 	title: string;
 	detail?: string;
 };
 
+/*
+ * THE NEXT STEP IS NAMED (UX round 1, U3): a draft notice says why the pane is
+ * empty AND how to get past it, and the way past it is the same for every pane -
+ * the first message is what turns a draft into a conversation. One clause, so
+ * the three draft notices (and the console's own, `ui.console.json`) say it the
+ * same way.
+ */
+const START_CLAUSE = "Send a message to start this conversation";
+
 export const RUN_NOTICE_DRAFT: SlotNotice = Object.freeze({
 	kind: "run-draft",
-	title: "Run details need a conversation",
-	detail:
-		"Subagents, the plan and scheduled work appear here once this conversation starts.",
+	tone: "empty",
+	title: "Run details need a conversation.",
+	detail: `${START_CLAUSE}; its subagents, plan and scheduled work appear here.`,
 });
 
 export const RUN_NOTICE_READING: SlotNotice = Object.freeze({
 	kind: "run-reading",
+	tone: "loading",
 	title: "Reading this conversation's run…",
+});
+
+/*
+ * THE READ THAT ENDED (design round 1, D1 = UX round 1, U5). The progress line
+ * above is only honest while a read can still answer; once the conversation's
+ * stream has given up (`status: "unavailable"` - the snapshot deadline, a spent
+ * retry budget, unreadable history, or the 404 that says this host does not
+ * have the conversation) the pane says so, and the transcript beside it carries
+ * the failure and its Reconnect. Detail is the transcript's own statement when
+ * there is one, so the two halves of the window describe one failure in one
+ * set of words.
+ */
+export const RUN_NOTICE_UNREADABLE: SlotNotice = Object.freeze({
+	kind: "run-unreadable",
+	tone: "unavailable",
+	title: "Run details could not be read for this conversation.",
+	detail: "The conversation beside this pane says why and how to reconnect.",
+});
+
+export const RUN_NOTICE_MISSING: SlotNotice = Object.freeze({
+	kind: "run-unreadable",
+	tone: "unavailable",
+	title: "Run details could not be read for this conversation.",
+	detail: "This conversation is no longer on this machine.",
 });
 
 /**
  * The run pane's notice, for a slot with no run model to draw.
  *
- * `sessionId` decides which of the two absences this is: a draft has no run to
- * report until it starts, while a conversation whose frame has not been read yet
- * WILL have one - the second is a progress line, the first is not.
+ * Three absences, three facts: a draft has no run to report until it starts; a
+ * conversation whose stream is still connecting or reconnecting WILL have one
+ * (a progress line); and a conversation whose stream gave up will not, until
+ * the user reconnects (a resolved line, never a progress claim that cannot
+ * complete). `failure` is the canonical view's own sentence, when it has one.
  */
-export function runPaneNotice(
-	sessionId: string | null | undefined,
-): SlotNotice {
-	return sessionId ? RUN_NOTICE_READING : RUN_NOTICE_DRAFT;
+export function runPaneNotice(input: {
+	sessionId: string | null | undefined;
+	status: CanonicalSessionStatus;
+	missing: boolean;
+	failure: { statement: string } | null;
+}): SlotNotice {
+	if (!input.sessionId) return RUN_NOTICE_DRAFT;
+	if (input.status !== "unavailable") return RUN_NOTICE_READING;
+	if (input.missing) return RUN_NOTICE_MISSING;
+	return input.failure
+		? { ...RUN_NOTICE_UNREADABLE, detail: input.failure.statement }
+		: RUN_NOTICE_UNREADABLE;
 }
+
+/**
+ * How long a PROGRESS notice waits before it is drawn (UX round 1, U1).
+ *
+ * A conversation switch with Run details open reads the new frame in 50-90 ms
+ * (measured, 3 of 3 switches), and drawing "Reading…" for that long is a
+ * sentence the eye catches but cannot read - a blink on every switch. Below this
+ * bound the slot shows its empty ground and the real pane lands in it; above it
+ * the read is a real wait and the line says so. 200 ms is under the ~250 ms at
+ * which a silent pane starts to read as stuck, and well over the measured read,
+ * so a slow read still gets its sentence and a fast one never flashes. Only
+ * `loading` notices wait: a resolved notice is an answer and shows at once.
+ */
+export const SLOT_NOTICE_PROGRESS_DELAY_MS = 200;
 
 export const CODE_NOTICE_DRAFT: SlotNotice = Object.freeze({
 	kind: "code-draft",
-	title: "Code review needs a conversation",
-	detail:
-		"Pull requests and merge requests this conversation opens or mentions will appear here.",
+	tone: "empty",
+	title: "Code review needs a conversation.",
+	detail: `${START_CLAUSE}; the pull requests and merge requests it opens or mentions appear here.`,
 });
 
+/*
+ * THE NOUN IS "the Local Operator server" (design round 1, D2), the shared copy
+ * table's choice (`backend-error.ts`, "One process, one name"): the 404 path
+ * drawn in this same pane says "server", so the capability line must too.
+ */
 export const CODE_NOTICE_BELOW_VERSION: SlotNotice = Object.freeze({
 	kind: "code-below-version",
-	title: "This backend doesn't serve code review.",
+	tone: "empty",
+	title: "The Local Operator server doesn't serve code review yet.",
 	detail:
-		"Update the backend to see the pull requests and merge requests this conversation opens.",
+		"Update the server to see the pull requests and merge requests this conversation opens.",
 });
 
 export const CODE_NOTICE_CHECKING: SlotNotice = Object.freeze({
 	kind: "code-checking",
-	title: "Checking whether this backend serves code review…",
+	tone: "loading",
+	title: "Checking whether the server serves code review…",
 });
 
 /** The lead `backendLoadErrorMessage` composes a failed capabilities read with. */
@@ -102,29 +181,57 @@ export function codeReviewPaneNotice(input: {
 	cause: DaemonPairingCause | null;
 	/** The capabilities read's error, when it failed with no answer in hand. */
 	loadError: unknown;
+}): CodeReviewSlot {
+	if (!input.sessionId) return { notice: CODE_NOTICE_DRAFT };
+	const notice = codeCapabilityNotice(input);
+	return notice === null
+		? { notice: null, sessionId: input.sessionId }
+		: { notice };
+}
+
+/**
+ * What the code review slot draws: the pane, for the conversation it reads, or a
+ * notice. One value rather than a nullable notice beside a separately-checked id
+ * (agent review n2): the pane needs a conversation, and only this function knows
+ * that "no notice" implies one, so it hands the id over with the verdict.
+ */
+export type CodeReviewSlot =
+	| { notice: null; sessionId: string }
+	| { notice: SlotNotice };
+
+function codeCapabilityNotice(input: {
+	state: DesktopFeatureState;
+	cause: DaemonPairingCause | null;
+	loadError: unknown;
 }): SlotNotice | null {
-	if (!input.sessionId) return CODE_NOTICE_DRAFT;
 	switch (input.state) {
 		case "enabled":
 			return null;
 		case "below-version":
 			return CODE_NOTICE_BELOW_VERSION;
+		/*
+		 * THE TWO FAILURES LEAD WITH WHAT THIS PANE CANNOT DO (design round 1, D3):
+		 * the title is this pane's own lead, and the shared sentence - the pairing
+		 * table's, or the load error's diagnosis and remedy - is the detail, kept
+		 * verbatim so the pane cannot describe one daemon differently from the band
+		 * above it. `unavailable` tone: a failed read, not a quiet empty state.
+		 */
 		case "unpaired":
 			return {
 				kind: "code-unpaired",
-				title:
-					backendPairingSentence("unpaired", input.cause) ??
-					CODE_NOTICE_LOAD_LEAD,
+				tone: "unavailable",
+				title: CODE_NOTICE_LOAD_LEAD,
+				detail: backendPairingSentence("unpaired", input.cause) ?? undefined,
 			};
-		case "unknown":
-			return input.loadError
-				? {
-						kind: "code-unreadable",
-						title: backendLoadErrorMessage(
-							CODE_NOTICE_LOAD_LEAD,
-							input.loadError,
-						),
-					}
-				: CODE_NOTICE_CHECKING;
+		case "unknown": {
+			if (!input.loadError) return CODE_NOTICE_CHECKING;
+			const rest = backendLoadErrorMessage("", input.loadError).trim();
+			return {
+				kind: "code-unreadable",
+				tone: "unavailable",
+				title: CODE_NOTICE_LOAD_LEAD,
+				...(rest ? { detail: rest } : {}),
+			};
+		}
 	}
 }

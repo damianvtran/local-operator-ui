@@ -1,10 +1,14 @@
 import { COMPOSER_TEXTAREA_SELECTOR } from "@features/chat/composer-field";
 import { ownsEscapeOutsideComposer } from "@features/chat/hooks/use-interrupt-on-escape";
 import { PanelNotice } from "@features/chat/pickers/panels/panel-states";
+import {
+	SLOT_NOTICE_PROGRESS_DELAY_MS,
+	type SlotNoticeTone,
+} from "@features/chat/right-slot-notices";
 import { Button, Tooltip } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import { PanelRightClose } from "lucide-react";
-import { type FC, useEffect } from "react";
+import { type FC, useEffect, useState } from "react";
 
 export type SlotPaneNoticeProps = {
 	/** The pane's name, as its own bar prints it ("Run details", "Code review"). */
@@ -14,6 +18,16 @@ export type SlotPaneNoticeProps = {
 	onClose: () => void;
 	/** One sentence: what this pane cannot show, and why. */
 	title: string;
+	/** How the body reads (`PanelNotice`'s kind); see `SlotNoticeTone`. */
+	tone: SlotNoticeTone;
+	/**
+	 * The label's look, copied from the pane this notice stands in for (design
+	 * round 1, D4), so the real pane replacing it neither brightens nor moves the
+	 * title: Code review's bar label is `ink-muted`, Run details' roster label is
+	 * `ink-dim` with the crumb's `px-1`.
+	 */
+	labelInk: "muted" | "dim";
+	labelInset?: boolean;
 	/** One optional clause: what will appear here, or what would change it. */
 	detail?: string;
 	/**
@@ -24,6 +38,35 @@ export type SlotPaneNoticeProps = {
 	/** The close control's `data-tour-tag`, the hook the app's probes read. */
 	closeTourTag?: string;
 };
+
+/**
+ * Close a pane's notice on an UNCLAIMED Escape (see `SlotPaneNotice`'s note for the
+ * carve-outs). Exported so the console pane's own draft state - the notice's sibling,
+ * opened by a door beside these - closes on the same key by the same rule (UX round
+ * 1, U2). `enabled` lets a pane call it unconditionally and arm it only while the
+ * notice is what it draws.
+ */
+export function usePaneNoticeEscape(onClose: () => void, enabled = true): void {
+	useEffect(() => {
+		if (!enabled) return;
+		const onKeyDown = (event: KeyboardEvent) => {
+			if (event.key !== "Escape") return;
+			if (event.defaultPrevented) return;
+			if (event.isComposing) return;
+			if (ownsEscapeOutsideComposer(event.target)) return;
+			const target = event.target;
+			if (
+				target instanceof Element &&
+				target.closest(COMPOSER_TEXTAREA_SELECTOR) !== null
+			)
+				return;
+			event.stopPropagation();
+			onClose();
+		};
+		document.addEventListener("keydown", onKeyDown);
+		return () => document.removeEventListener("keydown", onKeyDown);
+	}, [onClose, enabled]);
+}
 
 /**
  * A right-slot pane that has nothing to show yet, and says why.
@@ -41,11 +84,15 @@ export type SlotPaneNoticeProps = {
  * reservation is the same `--chrome-inset-end-pane` padding every pane toolbar uses
  * (the console's note states why padding and not a spacer).
  *
- * THE BODY IS A `PanelNotice` of kind `empty`: a quiet fact, not a failure - none of
- * these states lost the user anything, and `PanelNotice`'s own contract is that an
- * unread or absent value is `ink-muted`/`ink-dim`, never a warning.
+ * THE BODY IS A `PanelNotice` IN THE NOTICE'S OWN TONE (design round 1, D3): `empty`
+ * for a draft or an older server - a quiet fact, nothing lost; `loading` for a read
+ * on its way; `unavailable` for a read that failed, at full ink, because that is the
+ * line the user has to act on. A progress body waits
+ * `SLOT_NOTICE_PROGRESS_DELAY_MS` before it is drawn (UX round 1, U1), so a fast
+ * read lands in an empty slot instead of blinking a sentence; the bar - which the
+ * real pane draws identically - is there from the first frame.
  *
- * ESCAPE CLOSES IT, the rule the run and code review panes both keep (an UNCLAIMED
+ * ESCAPE CLOSES IT (`usePaneNoticeEscape`), the rule the run and code review panes both keep (an UNCLAIMED
  * Escape is the open pane's): the doors that open this are those panes' doors, and a
  * door whose pane closed on Escape yesterday must not open one that ignores it
  * today. The carve-outs are the code review pane's: an IME mid-composition, a field
@@ -60,26 +107,27 @@ export const SlotPaneNotice: FC<SlotPaneNoticeProps> = ({
 	title,
 	detail,
 	kind,
+	tone,
+	labelInk,
+	labelInset = false,
 	closeTourTag,
 }) => {
+	usePaneNoticeEscape(onClose);
+	/*
+	 * Which progress notice has waited out its delay. Keyed by `kind` rather than a
+	 * boolean, so a second progress state never inherits the first one's elapsed
+	 * wait and shows without its own.
+	 */
+	const [elapsedFor, setElapsedFor] = useState<string | null>(null);
 	useEffect(() => {
-		const onKeyDown = (event: KeyboardEvent) => {
-			if (event.key !== "Escape") return;
-			if (event.defaultPrevented) return;
-			if (event.isComposing) return;
-			if (ownsEscapeOutsideComposer(event.target)) return;
-			const target = event.target;
-			if (
-				target instanceof Element &&
-				target.closest(COMPOSER_TEXTAREA_SELECTOR) !== null
-			)
-				return;
-			event.stopPropagation();
-			onClose();
-		};
-		document.addEventListener("keydown", onKeyDown);
-		return () => document.removeEventListener("keydown", onKeyDown);
-	}, [onClose]);
+		if (tone !== "loading") return;
+		const timer = setTimeout(
+			() => setElapsedFor(kind),
+			SLOT_NOTICE_PROGRESS_DELAY_MS,
+		);
+		return () => clearTimeout(timer);
+	}, [tone, kind]);
+	const bodyShown = tone !== "loading" || elapsedFor === kind;
 
 	return (
 		<section
@@ -93,7 +141,13 @@ export const SlotPaneNotice: FC<SlotPaneNoticeProps> = ({
 					"[padding-inline-end:max(0.5rem,var(--chrome-inset-end-pane,var(--chrome-inset-end)))]",
 				)}
 			>
-				<span className={cn("min-w-0 truncate text-meta text-ink-dim")}>
+				<span
+					className={cn(
+						"min-w-0 truncate text-meta",
+						labelInk === "muted" ? "text-ink-muted" : "text-ink-dim",
+						labelInset && "px-1",
+					)}
+				>
 					{label}
 				</span>
 				<Tooltip content={closeLabel}>
@@ -108,9 +162,11 @@ export const SlotPaneNotice: FC<SlotPaneNoticeProps> = ({
 					</Button>
 				</Tooltip>
 			</div>
-			<div className={cn("px-3 py-3")}>
-				<PanelNotice kind="empty" text={title} detail={detail} />
-			</div>
+			{bodyShown ? (
+				<div className={cn("px-3 py-3")} data-slot-pane-notice-body="">
+					<PanelNotice kind={tone} text={title} detail={detail} />
+				</div>
+			) : null}
 		</section>
 	);
 };

@@ -253,7 +253,9 @@ export const CodeReviewPaneBody: FC<CodeReviewPaneBodyProps> = ({
 							</div>
 						))}
 						<output className={cn("text-meta text-ink-dim")}>
-							{scanning ? "Scanning this session…" : "Loading code reviews…"}
+							{scanning
+								? "Scanning this conversation…"
+								: "Loading code reviews…"}
 						</output>
 					</div>
 				)}
@@ -262,7 +264,7 @@ export const CodeReviewPaneBody: FC<CodeReviewPaneBodyProps> = ({
 						<PanelNotice
 							kind="unavailable"
 							text="Code reviews could not be read."
-							detail="Nothing was lost — the session's record is unchanged."
+							detail="Nothing was lost — the conversation's record is unchanged."
 						/>
 						<Button
 							variant="outline"
@@ -280,7 +282,7 @@ export const CodeReviewPaneBody: FC<CodeReviewPaneBodyProps> = ({
 							<PanelNotice
 								kind="empty"
 								text="No code reviews yet."
-								detail="Pull requests and merge requests this session opens or mentions will appear here."
+								detail="Pull requests and merge requests this conversation opens or mentions will appear here."
 							/>
 						</div>
 					) : (

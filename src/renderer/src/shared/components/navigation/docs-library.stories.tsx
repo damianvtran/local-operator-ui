@@ -640,14 +640,12 @@ const ConversationColumn: FC<{
 	records: TranscriptRecord[];
 	containerRef: RefObject<HTMLDivElement>;
 }> = ({ records, containerRef }) => {
-	const details = deriveRunDetails(runFixtures.bothInFlight());
 	return (
 		<div className="flex h-full min-h-0 w-0 min-w-[480px] flex-1 flex-col overflow-hidden">
 			<ChatHeader
 				agentName="Core"
 				description="Invoices workspace · on this machine"
 				onOpenOptions={() => undefined}
-				runDetails={details}
 			/>
 			<div className="flex min-h-0 grow flex-col px-6 pt-4">
 				<CanonicalTranscript

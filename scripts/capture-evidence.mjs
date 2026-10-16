@@ -507,6 +507,34 @@ export const MODEL_SECTION =
  *                   of a pair - and it is the seeded store rather than a story
  *                   arg because the store is what the shipped component reads.
  */
+/*
+ * ONE CLAIM FOR THE ALWAYS-VISIBLE RAIL'S NOTICE ROWS (the options half only: each
+ * row stays a literal `[story, w, h, options]` array, which is the shape
+ * `check-evidence.mjs`'s `declaredStoryRows` counts). It asserts all six doors, the
+ * one lit door, and the notice of `kind` drawn WITH ITS BODY - a progress notice waits
+ * `SLOT_NOTICE_PROGRESS_DELAY_MS` before its sentence is drawn (UX round 1, U1), so
+ * the bar alone is not the claimed state and the poll holds the shutter for the
+ * sentence, with `title` checked against the copy the frame carries.
+ */
+const railNoticeExpect = (lit, kind, title) => ({
+	expect: {
+		pollMs: 3000,
+		expression: `(() => {
+				const ids = [...document.querySelectorAll("[data-panel-rail-item]")].map((el) => el.getAttribute("data-panel-rail-item"));
+				if (ids.join(",") !== "run,ask,browser,console,canvas,code") return "the rail shows [" + ids.join(",") + "], expected all six doors";
+				const pressed = [...document.querySelectorAll("[data-panel-rail] [aria-pressed=true]")].map((el) => el.getAttribute("data-panel-rail-item"));
+				if (pressed.join(",") !== ${JSON.stringify(lit)}) return "the rail lights [" + pressed.join(",") + "], expected [${lit}]";
+				const pane = document.querySelector('[data-slot-pane-notice=${JSON.stringify(kind)}]');
+				if (!pane) return "the ${kind} notice is not drawn";
+				const body = pane.querySelector("[data-slot-pane-notice-body]");
+				if (!body) return "the ${kind} notice's body is not drawn yet";
+				if (!body.textContent.includes(${JSON.stringify(title)})) return "the ${kind} notice reads " + JSON.stringify(body.textContent);
+				return true;
+			})()`,
+		message: `the always-visible rail: six doors, the ${kind} notice drawn with its body and its door lit (D1/D3)`,
+	},
+});
+
 export const STORIES = [
 	/*
 	 * These three DECLARE their content height rather than the 900 the harness
@@ -6663,9 +6691,11 @@ export const STORIES = [
 	/*
 	 * THE ALWAYS-VISIBLE RAIL (D1/D3): all six doors on a draft with nothing open,
 	 * and each notice a door opens where its pane cannot act - code review on a
-	 * draft and on a backend without `features.code_requests`, and run details on
-	 * a conversation whose frame has not been read. Each row asserts the six doors,
-	 * the one lit door and the notice's own state attribute at shutter time.
+	 * draft, on a server without `features.code_requests`, while the capability is
+	 * read, unpaired and on its two load errors; and run details while its frame is
+	 * read and once that read has failed (design round 1, D1/D5). Each row asserts
+	 * the six doors, the one lit door, the notice's own state attribute and its
+	 * drawn sentence at shutter time (`railNoticeExpect`).
 	 */
 	[
 		"shell-app-shell--chat-draft-rail",
@@ -6690,61 +6720,73 @@ export const STORIES = [
 		"shell-app-shell--chat-dock-code-on-draft",
 		1280,
 		900,
-		{
-			expect: {
-				pollMs: 3000,
-				expression: `(() => {
-					const ids = [...document.querySelectorAll("[data-panel-rail-item]")].map((el) => el.getAttribute("data-panel-rail-item"));
-					if (ids.join(",") !== "run,ask,browser,console,canvas,code") return "the rail shows [" + ids.join(",") + "], expected all six doors";
-					const pressed = [...document.querySelectorAll("[data-panel-rail] [aria-pressed=true]")].map((el) => el.getAttribute("data-panel-rail-item"));
-					if (pressed.join(",") !== "code") return "the rail lights [" + pressed.join(",") + "], expected [code]";
-					if (!document.querySelector('[data-slot-pane-notice="code-draft"]')) return "the code-draft notice is not drawn";
-					return true;
-				})()`,
-				message:
-					"the always-visible rail: six doors, the code-draft notice drawn and its door lit (D1/D3)",
-			},
-		},
+		railNoticeExpect("code", "code-draft", "Code review needs a conversation."),
 	],
 	[
 		"shell-app-shell--chat-dock-code-below-version",
 		1280,
 		900,
-		{
-			expect: {
-				pollMs: 3000,
-				expression: `(() => {
-					const ids = [...document.querySelectorAll("[data-panel-rail-item]")].map((el) => el.getAttribute("data-panel-rail-item"));
-					if (ids.join(",") !== "run,ask,browser,console,canvas,code") return "the rail shows [" + ids.join(",") + "], expected all six doors";
-					const pressed = [...document.querySelectorAll("[data-panel-rail] [aria-pressed=true]")].map((el) => el.getAttribute("data-panel-rail-item"));
-					if (pressed.join(",") !== "code") return "the rail lights [" + pressed.join(",") + "], expected [code]";
-					if (!document.querySelector('[data-slot-pane-notice="code-below-version"]')) return "the code-below-version notice is not drawn";
-					return true;
-				})()`,
-				message:
-					"the always-visible rail: six doors, the code-below-version notice drawn and its door lit (D1/D3)",
-			},
-		},
+		railNoticeExpect(
+			"code",
+			"code-below-version",
+			"The Local Operator server doesn't serve code review yet.",
+		),
 	],
 	[
 		"shell-app-shell--chat-dock-run-reading",
 		1280,
 		900,
-		{
-			expect: {
-				pollMs: 3000,
-				expression: `(() => {
-					const ids = [...document.querySelectorAll("[data-panel-rail-item]")].map((el) => el.getAttribute("data-panel-rail-item"));
-					if (ids.join(",") !== "run,ask,browser,console,canvas,code") return "the rail shows [" + ids.join(",") + "], expected all six doors";
-					const pressed = [...document.querySelectorAll("[data-panel-rail] [aria-pressed=true]")].map((el) => el.getAttribute("data-panel-rail-item"));
-					if (pressed.join(",") !== "run") return "the rail lights [" + pressed.join(",") + "], expected [run]";
-					if (!document.querySelector('[data-slot-pane-notice="run-reading"]')) return "the run-reading notice is not drawn";
-					return true;
-				})()`,
-				message:
-					"the always-visible rail: six doors, the run-reading notice drawn and its door lit (D1/D3)",
-			},
-		},
+		railNoticeExpect("run", "run-reading", "Reading this conversation's run…"),
+	],
+	[
+		"shell-app-shell--chat-dock-run-unreadable",
+		1280,
+		900,
+		railNoticeExpect(
+			"run",
+			"run-unreadable",
+			"Run details could not be read for this conversation.",
+		),
+	],
+	[
+		"shell-app-shell--chat-dock-code-checking",
+		1280,
+		900,
+		railNoticeExpect(
+			"code",
+			"code-checking",
+			"Checking whether the server serves code review…",
+		),
+	],
+	[
+		"shell-app-shell--chat-dock-code-unpaired",
+		1280,
+		900,
+		railNoticeExpect(
+			"code",
+			"code-unpaired",
+			"credential for the running Local Operator server was refused",
+		),
+	],
+	[
+		"shell-app-shell--chat-dock-code-unreachable",
+		1280,
+		900,
+		railNoticeExpect(
+			"code",
+			"code-unreadable",
+			"The Local Operator server is not answering.",
+		),
+	],
+	[
+		"shell-app-shell--chat-dock-code-outdated",
+		1280,
+		900,
+		railNoticeExpect(
+			"code",
+			"code-unreadable",
+			"Update the server and try again.",
+		),
 	],
 	/*
 	 * #868: THE SLOT RELEASED WHERE THE ROUTE CANNOT DRAW ITS PANE.
