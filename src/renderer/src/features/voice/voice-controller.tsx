@@ -56,6 +56,7 @@ import {
 	type VoiceTurnsState,
 	initialVoiceTurns,
 	stepVoiceTurns,
+	takeOutstanding,
 } from "./voice-turns";
 
 /** A take shorter than this is a tap, not speech; it is discarded unsent. */
@@ -105,8 +106,13 @@ export async function sendVoiceUtterance(
 ): Promise<{ ok: boolean; status: number; detail?: string }> {
 	const store = useVoiceStore.getState();
 	store.setPhase("sending", sessionId);
-	feedTurns(sessionId, { kind: "armed" });
+	/*
+	 * The id is minted BEFORE arming, because it is the binding: the server mints
+	 * the take's user message with `message.id == request_id`, and only the turn
+	 * whose stream carries that message answers this take (design V14).
+	 */
 	const requestId = newVoiceRequestId();
+	feedTurns(sessionId, { kind: "armed", requestId });
 	const result =
 		"text" in take
 			? await desktopMedia(
@@ -125,14 +131,22 @@ export async function sendVoiceUtterance(
 				);
 	if (result.kind === "json" && result.status >= 200 && result.status < 300) {
 		/*
-		 * The phase moves to `working` unless the turn already ended and the answer
-		 * is already being spoken (a fast turn beats this response home).
+		 * `working` only while this session still owes an answer (review round 5,
+		 * R5-m1). A fast turn can beat this response home and already be spoken,
+		 * and a resume can have dropped the take while the upload was out; either
+		 * way nothing will move the header off `working` later, so it rests.
 		 */
-		if (useVoiceStore.getState().phase === "sending")
-			useVoiceStore.getState().setPhase("working", sessionId);
+		if (useVoiceStore.getState().phase === "sending") {
+			const owed = takeOutstanding(
+				turnsBySession.get(sessionId) ?? initialVoiceTurns(),
+			);
+			useVoiceStore
+				.getState()
+				.setPhase(owed ? "working" : "idle", owed ? sessionId : null);
+		}
 		return { ok: true, status: result.status };
 	}
-	feedTurns(sessionId, { kind: "disarmed" });
+	feedTurns(sessionId, { kind: "disarmed", requestId });
 	const sentence = utteranceFailure(result);
 	if (result.kind === "error" && result.voiceCode === "approval_pending") {
 		// The card is on screen and blocking; the take changed nothing (V7, V13).
@@ -174,13 +188,17 @@ export function feedTurns(sessionId: string, input: VoiceTurnsInput): void {
 	const before = turnsBySession.get(sessionId) ?? initialVoiceTurns();
 	const step = stepVoiceTurns(before, input);
 	/*
-	 * A TAKE CONSUMED IN SILENCE ENDS THE EXCHANGE (R4-M1). When a step drops the
-	 * armed take without asking to speak - a turn that ended unseen across a
-	 * resume, an interrupted turn, a turn with nothing to say - nothing else will
-	 * move the header off "Working", so it returns to rest here. `sending` is
-	 * left alone: the upload's own answer settles that phase.
+	 * A TAKE CONSUMED IN SILENCE ENDS THE EXCHANGE (R4-M1). When a step leaves
+	 * this session owing nothing without asking to speak - a resume that dropped
+	 * the take, an interrupted turn, a turn with nothing to say - nothing else
+	 * will move the header off "Working", so it returns to rest here. `sending` is
+	 * left alone: the upload's own answer settles that phase (R5-m1).
 	 */
-	if (before.armed > 0 && step.state.armed === 0 && step.speak.length === 0) {
+	if (
+		takeOutstanding(before) &&
+		!takeOutstanding(step.state) &&
+		step.speak.length === 0
+	) {
 		const voice = useVoiceStore.getState();
 		if (voice.phaseSessionId === sessionId && voice.phase === "working")
 			voice.setPhase("idle", null);

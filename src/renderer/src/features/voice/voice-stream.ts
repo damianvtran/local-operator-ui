@@ -35,13 +35,19 @@
  * - CONTINUITY LOST IS SAID OUT LOUD (review round 4, R4-M1; QA Q6). A resume
  *   answered with `open{gap:true}`, or on a new epoch (a cut longer than the
  *   server's 20 s RECONNECT_DWELL_S, or a daemon restart), replays nothing: the
- *   frames in between are gone. The watcher folds `reset`, which disarms any
- *   take, so a later turn is never mistaken for its answer (paths E and F).
+ *   frames in between are gone. The watcher folds `reset`, which unbinds the
+ *   turn being answered and drops every take still waiting for its message:
+ *   either could be among the lost frames (paths E and F).
  *
- * THE INVARIANT ALL OF THIS SERVES: a turn nobody spoke into is never spoken. A
- * take whose answering turn ended while the stream was away is dropped silently,
- * never carried into the next turn. The fold also dedupes by message id and gate
- * id, so a frame that slipped past the cursor rule cannot be spoken twice.
+ * THE INVARIANT ALL OF THIS SERVES: a take is bound to the turn whose stream
+ * carries its own user `message_start` (`message.id` == the take's request_id;
+ * design V14), and timing never binds, so a turn nobody spoke into is never
+ * spoken. What this watcher adds is honesty about continuity: a resume that
+ * cannot vouch for the frames in between (a gap, a new epoch) folds `reset`; a
+ * snapshot's history settles a take whose message the snapshot absorbed; an idle
+ * snapshot ends a bound turn whose `agent_end` it absorbed. The fold also dedupes
+ * by message id and gate id, so a frame that slipped past the cursor rule cannot
+ * be spoken twice.
  *
  * RETRY IS BOUNDED (review round 1, U5) AND AN UNASKED END IS A FAILURE (review
  * round 2, N1). Backoff follows the pane's own ladder (`streamRetryDelayMs`) for
@@ -53,12 +59,13 @@
  * ignored. A 404 is the session itself being gone (`unknown_session`), which no
  * retry can change, so it stops at once and reports `gone`.
  *
- * A STOPPED WATCHER STATES NOTHING (N1, R4-M1). Whenever it stops - exhausted,
- * gone, or torn down - it folds `stopped`, which clears the pending card, the
- * streaming flag AND any armed take: a card it can no longer see clear must not
- * keep refusing takes, a turn it can no longer see end must not be counted as
- * running, and a take it can no longer match to its turn must not answer a later
- * one (path I).
+ * A STOPPED WATCHER STATES NOTHING IT CANNOT SEE (N1). Whenever it stops -
+ * exhausted, gone, or torn down - it folds `stopped`, which clears the pending
+ * card and the streaming flag: a card it can no longer see clear must not keep
+ * refusing takes, and a turn it can no longer see end must not be counted as
+ * running. Takes are KEPT (review round 5, R5-M2): a retry that resumes without
+ * a gap replays the take's own message and its turn's end, and that answer is
+ * owed (K2); a resume that cannot vouch for the frames between folds `reset`.
  * `retry()` on the returned handle starts a fresh ladder after `exhausted`; the
  * controller calls it on window focus, on a feed reconnect, and from the
  * notice's Reconnect action. The first frame after such a retry reports
@@ -71,6 +78,7 @@ import { streamRetryDelayMs } from "@shared/hooks/use-canonical-session";
 import {
 	type VoiceTurnsInput,
 	gateOfFrame,
+	historyIdsOfFrame,
 	streamingOfFrame,
 } from "./voice-turns";
 
@@ -190,7 +198,7 @@ export function subscribeVoiceStream(
 					 * follows it: it never moves the cursor (R3-M1). On a RESUME (a cursor
 					 * exists) it is also where the server says continuity was lost: `gap`,
 					 * or a new epoch after a long cut or a daemon restart. The frames in
-					 * between are gone, so the fold is told to disarm (R4-M1, paths E/F).
+					 * between are gone, so the fold is told to reset (R4-M1, paths E/F).
 					 */
 					if (frame.type === "open") {
 						const payload = frame.payload as { gap?: unknown } | undefined;
@@ -217,7 +225,15 @@ export function subscribeVoiceStream(
 							frame.seq <= cursor.seq
 						)
 							return;
-						// A receipt on a new epoch without the open that should announce it.
+						/*
+						 * A receipt on a new epoch without the open that should announce it.
+						 * After an `open` that already announced the new epoch this fires a
+						 * SECOND reset for the same break (review round 5, R5-n1), because
+						 * `open` leaves the cursor on the old epoch. That is deliberate and
+						 * harmless: `reset` is idempotent, and nothing is armed between the
+						 * two in the same synchronous dispatch. Moving the cursor on `open`
+						 * to suppress it is exactly what R3-M1 forbids.
+						 */
 						if (cursor && cursor.epoch !== frame.epoch)
 							onInput({ kind: "reset" });
 						if (
@@ -238,6 +254,10 @@ export function subscribeVoiceStream(
 						});
 						return;
 					}
+					// History before streaming: an absorbed take is settled before an
+					// idle snapshot is read against what is still bound.
+					const entryIds = historyIdsOfFrame(frame);
+					if (entryIds !== undefined) onInput({ kind: "history", entryIds });
 					const streaming = streamingOfFrame(frame);
 					if (streaming !== undefined)
 						onInput({ kind: "streaming", streaming, snapshot });
