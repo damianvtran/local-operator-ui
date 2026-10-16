@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
 
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 
 import { acquireAudioMeterStream } from "./audio-meter-stream";
 import {
@@ -83,6 +85,8 @@ const PULSE_KEYFRAMES = `
 export const AudioRecordingIndicator = ({
 	isRecording,
 }: AudioRecordingIndicatorProps): JSX.Element | null => {
+	// Subscribe at render time so changing language does not restart the audio effect.
+	useI18nLocale();
 	const canvasRef = useRef<HTMLCanvasElement | null>(null);
 	const animationFrameRef = useRef<number>();
 	const analyserRef = useRef<AnalyserNode | null>(null);
@@ -325,17 +329,17 @@ export const AudioRecordingIndicator = ({
 					<span className="block size-2 rounded-full bg-accent" />
 				</span>
 				<span className="shrink-0 font-medium text-body-sm text-accent">
-					Recording
+					{t("ui.chat.composer_media.recording")}
 				</span>
 				<span className="ml-auto flex min-w-0 items-center gap-1.5 text-body-sm text-ink-dim">
 					<span className="flex items-center gap-1">
 						<KeyboardShortcut shortcut="Enter" />
-						confirms
+						{t("ui.chat.composer_media.confirms")}
 					</span>
 					<span aria-hidden="true">·</span>
 					<span className="flex items-center gap-1">
 						<KeyboardShortcut shortcut="Esc" />
-						cancels
+						{t("ui.chat.composer_media.cancels")}
 					</span>
 				</span>
 			</div>
