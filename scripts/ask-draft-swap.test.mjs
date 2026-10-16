@@ -1323,6 +1323,156 @@ test("Space is cancelled on the landing only: a chip still takes it (review m1)"
 	);
 });
 
+/*
+ * A SECOND LAPSE UNDER `Pending` LANDS TOO, AND A SPENT REQUEST NEVER FIRES LATER (agent
+ * review round 6, M1 = QA round 6, Q-6). The second lapse set the SAME landing text, so
+ * React bailed out of the update, nothing committed, focus stayed on BODY - and the
+ * focus request stayed armed, so a later unrelated render (a clock tick, a new ask) took
+ * the keyboard to the landing from wherever the reader had gone, even a textarea outside
+ * the panel.
+ */
+const pendingDrawer = async (t, asks, extra = {}) => {
+	stubCardLayout(t);
+	const props = { scope: "session", ...extra };
+	const view = await mountFor(
+		t,
+		h(AskDrawer, { frontend: frontend(asks), ...props }),
+	);
+	const pending = [
+		...view.container.querySelectorAll("[data-lo-ask-filter] button"),
+	].find((b) => (b.textContent ?? "").startsWith("Pending"));
+	await act(async () => {
+		pending.click();
+	});
+	const render = (rows, more = {}) =>
+		view.rerender(
+			h(AskDrawer, { frontend: frontend(rows), ...props, ...more }),
+		);
+	return { view, render };
+};
+const isLanding = (el) =>
+	el?.hasAttribute?.("data-lo-ask-lapse-landing") === true;
+
+test("a second lapse under Pending lands on the landing again (M1 = Q-6)", async (t) => {
+	const a1 = optionAsk("a-1", 3, TS);
+	const a2 = optionAsk("a-2", 3, TS + 10);
+	const a3 = optionAsk("a-3", 3, TS + 20);
+	const { view, render } = await pendingDrawer(t, [a1, a2, a3]);
+	view.container
+		.querySelector('[data-lo-ask-row="a-1"] [data-ask-option]')
+		.focus();
+	await render([{ ...a1, status: "timed_out" }, a2, a3]);
+	assert.ok(isLanding(document.activeElement), "the first lapse lands");
+	/* Tab forward into a-2, as the landing invites. */
+	await realKey("Tab");
+	assert.ok(
+		view.container
+			.querySelector('[data-lo-ask-row="a-2"]')
+			.contains(document.activeElement),
+		"Tab reached a-2",
+	);
+	await render([
+		{ ...a1, status: "timed_out" },
+		{ ...a2, status: "timed_out" },
+		a3,
+	]);
+	assert.ok(
+		isLanding(document.activeElement),
+		`the second lapse lands too, got ${document.activeElement?.outerHTML?.slice(0, 80)}`,
+	);
+});
+
+test("a spent landing request never takes focus on a later render (M1)", async (t) => {
+	const a1 = optionAsk("a-1", 3, TS);
+	const a2 = optionAsk("a-2", 3, TS + 10);
+	const a3 = optionAsk("a-3", 3, TS + 20);
+	const { view, render } = await pendingDrawer(t, [a1, a2, a3]);
+	view.container
+		.querySelector('[data-lo-ask-row="a-1"] [data-ask-option]')
+		.focus();
+	await render([{ ...a1, status: "timed_out" }, a2, a3]);
+	await realKey("Tab");
+	await render([
+		{ ...a1, status: "timed_out" },
+		{ ...a2, status: "timed_out" },
+		a3,
+	]);
+	/* The reader moves on, into a-3; then a clock tick and a new ask arrive. */
+	const a3Option = view.container.querySelector(
+		'[data-lo-ask-row="a-3"] [data-ask-option]',
+	);
+	a3Option.focus();
+	const lapsed = [
+		{ ...a1, status: "timed_out" },
+		{ ...a2, status: "timed_out" },
+		a3,
+	];
+	await render(lapsed, { nowMs: TS + 60_000 });
+	assert.ok(
+		document.activeElement === a3Option,
+		"a clock tick does not move focus",
+	);
+	await render([...lapsed, optionAsk("a-4", 2, TS + 30)], {
+		nowMs: TS + 61_000,
+	});
+	assert.ok(
+		document.activeElement === a3Option,
+		"a new ask does not move focus",
+	);
+});
+
+test("focus in a textarea outside the panel is never taken by a landing (M1)", async (t) => {
+	const composer = document.createElement("textarea");
+	document.body.appendChild(composer);
+	t.after(() => composer.remove());
+	const a1 = optionAsk("a-1", 3, TS);
+	const a2 = optionAsk("a-2", 3, TS + 10);
+	const { view, render } = await pendingDrawer(t, [a1, a2]);
+	view.container
+		.querySelector('[data-lo-ask-row="a-1"] [data-ask-option]')
+		.focus();
+	await render([{ ...a1, status: "timed_out" }, a2]);
+	assert.ok(isLanding(document.activeElement), "the lapse lands");
+	await realKey("Tab");
+	await render([
+		{ ...a1, status: "timed_out" },
+		{ ...a2, status: "timed_out" },
+	]);
+	composer.focus();
+	await render([
+		{ ...a1, status: "timed_out" },
+		{ ...a2, status: "timed_out" },
+		optionAsk("a-3", 2, TS + 20),
+	]);
+	assert.ok(document.activeElement === composer, "the composer keeps focus");
+	/* And a lapse while the composer holds focus does not take it either. */
+	await render([
+		{ ...a1, status: "timed_out" },
+		{ ...a2, status: "timed_out" },
+		{ ...optionAsk("a-3", 2, TS + 20), status: "timed_out" },
+	]);
+	assert.ok(document.activeElement === composer, "nor does a lapse elsewhere");
+});
+
+test("the landing's sentence leaves reading order once focus leaves it (review m1 = UX U14)", async (t) => {
+	const a1 = optionAsk("a-1", 3, TS);
+	const a2 = optionAsk("a-2", 3, TS + 10);
+	const { view, render } = await pendingDrawer(t, [a1, a2]);
+	view.container
+		.querySelector('[data-lo-ask-row="a-1"] [data-ask-option]')
+		.focus();
+	await render([{ ...a1, status: "timed_out" }, a2]);
+	const landing = view.container.querySelector("[data-lo-ask-lapse-landing]");
+	assert.equal(landing?.textContent, "Question timed out");
+	await realKey("Tab");
+	assert.equal(
+		view.container.querySelector("[data-lo-ask-lapse-landing]")?.textContent ??
+			"",
+		"",
+		"no stale sentence stays between the chips and the first card",
+	);
+});
+
 test("two lapses under Pending are counted on the landing (U11)", async (t) => {
 	stubCardLayout(t);
 	const asks = ["a-1", "a-2", "a-3"].map((id, i) => optionAsk(id, 2, TS + i));
