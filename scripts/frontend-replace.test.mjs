@@ -95,7 +95,7 @@ export default { useState, useEffect, useLayoutEffect, useInsertionEffect, useRe
 const bundle = await build({
 	stdin: {
 		contents: `
-			export { useCanonicalSessionStream, paintPendingSend } from "./src/renderer/src/shared/hooks/use-canonical-session";
+			export { useCanonicalSessionStream, paintPendingSend, RECONCILE_WALK_MAX_REQUESTS } from "./src/renderer/src/shared/hooks/use-canonical-session";
 			export { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
 			export { acceptFrontendReplace } from "./src/shared/desktop-session-contract";
 			export { writePaint, __resetPaintCache } from "./src/renderer/src/shared/store/paint-cache";
@@ -144,6 +144,7 @@ const bundle = await build({
 const {
 	useCanonicalSessionStream,
 	paintPendingSend,
+	RECONCILE_WALK_MAX_REQUESTS,
 	useCanonicalSessionsStore,
 	acceptFrontendReplace,
 	writePaint,
@@ -1147,14 +1148,13 @@ async function fencedMount({ snapshotHistory, frames, history, drafts }) {
 	});
 	const runtime = makeRuntime();
 	let handle;
+	// The session the pane shows; `switchTo` moves it the way a sidebar click
+	// (another id) or an unmount (`undefined`) does.
+	let shown = FENCE_SESSION;
 	runtime.render = () => {
-		handle = useCanonicalSessionStream(
-			FENCE_SESSION,
-			true,
-			true,
-			FENCE_SESSION,
-			{ journalOrder: true },
-		);
+		handle = useCanonicalSessionStream(shown, true, true, shown, {
+			journalOrder: true,
+		});
 		return handle;
 	};
 	runtime.rerender();
@@ -1180,6 +1180,10 @@ async function fencedMount({ snapshotHistory, frames, history, drafts }) {
 	return {
 		get: () => handle,
 		historyReads: () => historyReadCount() - readsBefore,
+		switchTo: (sessionId) => {
+			shown = sessionId;
+			runtime.rerender();
+		},
 	};
 }
 
@@ -1509,3 +1513,112 @@ test("a walk whose read is overtaken by another generation install re-asks under
 		"early (newer)",
 	);
 });
+
+/*
+ * THE RE-ASK'S THREE GUARDS (PR #1130 review round 2, m1). A walk whose read
+ * is overtaken by a generation install re-asks under the new revision only
+ * while the pane is unhydrated, only inside the walk's own request budget,
+ * and only after the generation/clear check has had its say. Each test below
+ * is the one a refactor that loses one of those would fail.
+ */
+const fenceReady = (seq, generation) =>
+	fenceFrame({
+		epoch: BRIDGE_EPOCH,
+		seq,
+		type: "event",
+		payload: {
+			type: "journal_order_ready",
+			journal_generation: generation,
+			rows: [{ id: ROW_EARLY, journal_seq: 0 }],
+		},
+	});
+/** Lands an install while a walk read is out: the wake, then its repair read. */
+async function installGeneration(seq, generation) {
+	globalThis.__replaceSnapshot = async () =>
+		fenceSnapshot(9, fencePage(FENCE_SERVER_ROWS, generation));
+	deliver(fenceReady(seq, generation));
+	await pump();
+}
+const walkReadsFor = (sessionId) =>
+	requests.filter(
+		(r) =>
+			r.op === "sessions.history" &&
+			r.sessionId === sessionId &&
+			r.sourceRead === undefined,
+	).length;
+
+test("an overtaken walk read on an already-hydrated pane is not asked again", async () => {
+	// A usable same-generation page hydrates the pane, but its newest row is one
+	// the pane never held, so the batch still owes a walk.
+	const gate = gatedHistory();
+	const h = await fencedMount({
+		snapshotHistory: fencePage(
+			[...FENCE_SERVER_ROWS, fenceRow("row-unheld-newest", "newest", 3)],
+			"G-new",
+		),
+		history: gate.handler,
+	});
+	assert.equal(h.get().hydrated, true, "the applied page hydrated the pane");
+	assert.equal(gate.reads.length, 1, "the walk is out");
+	await installGeneration(3, "G-newer");
+	assert.equal(h.get().transcript.journalGeneration, "G-newer");
+	gate.reads[0].resolve(fencePage(FENCE_SERVER_ROWS, "G-new"));
+	await pump();
+	assert.equal(
+		gate.reads.length,
+		1,
+		"a hydrated pane owes nothing more, so the dropped page is not re-asked",
+	);
+	assert.equal(h.get().hydrated, true);
+});
+
+test("generation churn inside one walk is bounded by the walk's request budget", async () => {
+	const gate = gatedHistory();
+	const h = await fencedMount({
+		snapshotHistory: FENCE_HELD_TAIL_PAGE(),
+		history: gate.handler,
+	});
+	assert.equal(gate.reads.length, 1, "the fenced page's walk is out");
+	// Ten installs, each landing while the walk's latest read is out; each read
+	// then answers under the domain it was dispatched for, and is dropped.
+	for (let install = 1; install <= 10; install++) {
+		await installGeneration(2 + install, `G-churn-${install}`);
+		const open = gate.reads.at(-1);
+		if (open.answered) break;
+		open.answered = true;
+		open.resolve(fencePage(FENCE_SERVER_ROWS, `G-churn-${install - 1}`));
+		await pump();
+	}
+	assert.equal(
+		gate.reads.length,
+		RECONCILE_WALK_MAX_REQUESTS,
+		"each re-ask is charged to the walk's own budget, so churn stops there",
+	);
+	assert.equal(h.get().historyReadPending, false, "and the walk has ended");
+	assert.equal(h.get().status, "live");
+});
+
+for (const [mode, nextSession] of [
+	["a switch to another conversation", OTHER_SESSION],
+	["an unmount", undefined],
+]) {
+	test(`no stale /history read after ${mode} while an overtaken walk read is out`, async () => {
+		const gate = gatedHistory();
+		const h = await fencedMount({
+			snapshotHistory: FENCE_HELD_TAIL_PAGE(),
+			history: gate.handler,
+		});
+		assert.equal(walkReadsFor(FENCE_SESSION), 1, "the walk is out");
+		await installGeneration(3, "G-switched");
+		h.switchTo(nextSession);
+		await pump();
+		const before = walkReadsFor(FENCE_SESSION);
+		gate.reads[0].resolve(fencePage(FENCE_SERVER_ROWS, "G-new"));
+		await pump();
+		assert.equal(
+			walkReadsFor(FENCE_SESSION),
+			before,
+			"the pane this walk was for is gone, so its read is not asked again",
+		);
+	});
+}
