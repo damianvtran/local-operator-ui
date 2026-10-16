@@ -896,6 +896,47 @@ against a future MUI version rather than remembered.
 
 ---
 
+### Window glass (optional translucency, default off)
+
+Settings > Appearance can make the window translucent: the OS draws the blur
+(macOS vibrancy, Windows 11 `backgroundMaterial`) and the app paints its grounds
+at an alpha over it. Off, nothing below applies and the shipped look is byte for
+byte unchanged. The decision lives in `src/shared/window-glass.ts`; the floors in
+`src/shared/window-glass-floors.json`, derived by `scripts/derive-glass-floors.mjs`
+and asserted on all 59 palettes by `scripts/contrast-contract.mjs` ("window glass"
+and "glass row / text field / focus ring" rows). Never hand-lower a floor: re-derive.
+
+**One alpha-owning layer per region.** `data-glass-region` marks the OUTERMOST
+ground of a column (`sidebar`, `chrome`, `canvas`, `pane`); a marked region nested
+inside one of the same kind is cleared, so the alpha is painted once. Grounds of the
+same role stacked each carrying alpha COMPOUND (0.82 over 0.82 is 0.97), which is the
+seam between a sidebar's nav block and its list pane. `scripts/window-glass-cdp.test.mjs`
+reads the built app back at a grid of points per region and fails on any divergence.
+Do not give a new ground inside a region its own `bg-surface` expecting it to stay
+solid: it will be cleared or it will show as a slab; add the region marker instead.
+
+**Per element, on glass:**
+
+| Element | On glass | Why |
+|---|---|---|
+| Column grounds (sidebar, rail, chrome, canvas) | role at its derived alpha | AA ink over the worst backdrop, floors per material and scheme |
+| Text-bearing panes (composer, ask drawer, run panel) | `pane` region: `elevated` at its floor, near-opaque on dark palettes | text must stay legible over any desktop |
+| Row hover / selected (nav, list rows, rail, tabs) | palette `ink` at 0.05 / 0.08 over the glass | an opaque pill is a hole; a faint tint vanishes over a bright desktop. An ink overlay is a step relative to whatever the ground is |
+| Text fields, outlined controls | ink overlay at 0.05; `border-control` mixed toward `ink` by `controlMix` | the BORDER carries the 3:1 edge, the fill only lifts it |
+| Focus | `outline`, never a fill; `accent` held 3:1 against the glass ground | unchanged from section 6 |
+| Pressed (`active:bg-sunken`) | stays opaque `sunken` | a sub-200 ms state of the control, not a surface |
+| Primary buttons, avatars, brand mark, banners | unchanged, opaque | small deliberate marks, not grounds |
+
+**The one relaxation:** `inkDim` (captions, placeholders) is held to 3.5:1, not 4.5:1,
+on a hovered or selected row and on a field's fill over glass; `ink` and `inkMuted`
+keep AA. No ink overlay can keep `inkDim` at 4.5:1 (the flat system already ships it
+at 5.0 on `rowSelected`), and holding it would force every dark ground to alpha 1.0,
+which switches glass off.
+
+**Limits:** a state's visibility is held at a fixed overlay alpha and a minimum
+step (ΔE00 1.5 hover, 2.5 selected) on every palette; the floors assume the measured
+worst backdrops of each material over a flat desktop, not an arbitrary wallpaper.
+
 ## 7. Showing agent work: the trace hierarchy
 
 This is the part of the app most likely to drift back toward a developer tool,

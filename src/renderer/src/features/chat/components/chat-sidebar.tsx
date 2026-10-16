@@ -9392,6 +9392,7 @@ export function ChatSidebar({
 			 * at EVERY width: the shed, and the container declaration it measured against, went
 			 * with it. This panel does not change what it draws by width.
 			 */
+			data-glass-region="sidebar"
 			className="relative flex h-full min-h-0 flex-col bg-surface p-2 text-ink"
 			onKeyDown={keyDown}
 		>

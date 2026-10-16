@@ -55,6 +55,7 @@ export const PanelRailFrame: FC<Partial<PanelRailProps>> = ({
 	return (
 		<div
 			data-panel-rail-host=""
+			data-glass-region="sidebar"
 			className="h-full shrink-0 bg-surface"
 			style={{ width: PANEL_RAIL_WIDTH_PX }}
 		>
