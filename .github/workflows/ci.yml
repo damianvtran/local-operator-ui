@@ -835,11 +835,17 @@ jobs:
           version: '10.29.2'
 
       - name: Build and pack
+        # Fork pull_request jobs cannot read repository secrets. This disposable
+        # tarball proves packaging and launch, not OAuth authentication, so use
+        # explicit non-secret fixtures on every CI run rather than giving untrusted
+        # code credentials or weakening the build's required-variable guards.
+        # publish.yml and signed-update-candidate.yml retain the real bindings;
+        # this job never publishes its fixture-configured package.
         env:
-          VITE_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
-          VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-          VITE_MICROSOFT_CLIENT_ID: ${{ secrets.MICROSOFT_CLIENT_ID }}
-          VITE_MICROSOFT_TENANT_ID: ${{ secrets.MICROSOFT_TENANT_ID }}
+          VITE_GOOGLE_CLIENT_ID: ci-fixture.apps.googleusercontent.com
+          VITE_GOOGLE_CLIENT_SECRET: "ci-fixture-unused"
+          VITE_MICROSOFT_CLIENT_ID: 00000000-0000-4000-8000-000000000001
+          VITE_MICROSOFT_TENANT_ID: 00000000-0000-4000-8000-000000000002
         # npm pack triggers the prepack script, which builds the npm-channel
         # bundle (plain JS, no V8 bytecode). Do not add a separate pnpm build
         # here: it would emit bytecode that prepack then overwrites, which is
