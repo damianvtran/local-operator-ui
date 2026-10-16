@@ -1449,6 +1449,7 @@ export const AskPanel = ({
 		answerableSeen.current = new Set(
 			view.rows.filter((row) => row.canAnswer).map((row) => row.ask.ask_id),
 		);
+		setLandingText("");
 		setReleases((count) => count + 1);
 	};
 	const shown = askPanelHalves(view.rows, answerableSeen.current);
@@ -1500,6 +1501,19 @@ export const AskPanel = ({
 		text: "",
 	});
 	const prevDrafts = useRef(drafts);
+	/*
+	 * THE LANDING FOR A LAPSE UNDER `Pending` (UX round 4 on #1116, U10/U11 = QA round 5,
+	 * Q-5). The held ask is only a spacer there, with nothing to focus. Landing on the
+	 * selected chip let Space/Enter press it (U7); landing on the filter group let
+	 * Tab+Space press `All` (Q-5) - either press releases every hold and slides the next
+	 * card under the pointer. So focus lands on a hidden element placed AFTER the chips
+	 * and BEFORE the first card: its text says why focus moved, Tab from it goes forward
+	 * into the next card (as under `All`), and only a deliberate Shift+Tab reaches the
+	 * chips. Its text is set first and focused on the commit that renders it.
+	 */
+	const [landingText, setLandingText] = useState("");
+	const landingRef = useRef<HTMLDivElement | null>(null);
+	const focusLanding = useRef(false);
 	useEffect(() => {
 		if (lapseNote.text === "") return;
 		const clear = setTimeout(
@@ -1509,6 +1523,14 @@ export const AskPanel = ({
 		return () => clearTimeout(clear);
 	}, [lapseNote]);
 	useLayoutEffect(() => {
+		/*
+		 * `preventScroll` on BOTH landings (U10): a target above the fold scrolled the
+		 * list back to it, which moved the next card under the pointer by another route.
+		 */
+		if (focusLanding.current && landingRef.current !== null) {
+			focusLanding.current = false;
+			landingRef.current.focus({ preventScroll: true });
+		}
 		const newlyHeld = [...heldIds].filter((id) => !prevHeld.current.has(id));
 		const held = prevHeld.current;
 		prevHeld.current = heldIds;
@@ -1549,18 +1571,14 @@ export const AskPanel = ({
 		if (id === null || !heldIds.has(id) || held.has(id)) return;
 		const now = document.activeElement;
 		if (now !== null && now !== document.body && now.isConnected) return;
-		/*
-		 * Under `Pending` the held ask is only a spacer with nothing to focus, so the
-		 * keyboard lands on the filter GROUP: named, `tabIndex=-1`, and not a control.
-		 * It used to land on the selected chip, so the reader's next Space or Enter
-		 * pressed it, the press released every hold, and the next card slid up under the
-		 * pointer (UX round 3 on #1116, U7). A press the reader makes on purpose still
-		 * releases (U4); a keystroke they were already making no longer does.
-		 */
+		/* Under `Pending`: the landing above (U10/U11, Q-5), counted per commit. */
 		if (filter === "outstanding") {
-			panelRef.current
-				?.querySelector<HTMLElement>("[data-lo-ask-filter]")
-				?.focus();
+			setLandingText(
+				newlyHeld.length === 1
+					? "Question timed out"
+					: `${newlyHeld.length} questions timed out`,
+			);
+			focusLanding.current = true;
 			return;
 		}
 		/* Matched by attribute VALUE rather than a composed selector: an ask id is the
@@ -1570,7 +1588,9 @@ export const AskPanel = ({
 				"[data-lo-ask-held]",
 			) ?? []),
 		].find((row) => row.getAttribute("data-lo-ask-held") === id);
-		slot?.querySelector<HTMLElement>("button[aria-expanded]")?.focus();
+		slot
+			?.querySelector<HTMLElement>("button[aria-expanded]")
+			?.focus({ preventScroll: true });
 	});
 
 	/*
@@ -1600,7 +1620,14 @@ export const AskPanel = ({
 	 * on #1116, U1): a card that lapses under the reader collapses IN ITS OWN SLOT into
 	 * exactly the row it will be under Settled on the next mount, so the two cannot drift.
 	 */
-	const collapsedRow = (presentation: (typeof view.rows)[number]) => {
+	const collapsedRow = (
+		presentation: (typeof view.rows)[number],
+		/*
+		 * A HELD row sits inside the reserved slot's rounded frame, so its trigger's
+		 * hover fill and ring take the frame's inner radius (design round 4, D6).
+		 */
+		held = false,
+	) => {
 		/*
 		 * The one line, and the two things it has to keep apart (D9): the
 		 * status WORD (`askStatusWord`, the copy contract's own leading clause)
@@ -1628,7 +1655,10 @@ export const AskPanel = ({
 		return (
 			<Disclosure
 				key={presentation.ask.ask_id}
-				triggerClassName="text-ink hover:bg-row-hover hover:text-ink"
+				triggerClassName={cn(
+					"text-ink hover:bg-row-hover hover:text-ink",
+					held && "rounded-t-[9px]",
+				)}
 				chevronClassName="text-ink-dim"
 				rowClassName="min-h-7 py-1"
 				triggerLabel={`${word} - ${question}`}
@@ -1694,19 +1724,6 @@ export const AskPanel = ({
 		<fieldset
 			data-lo-ask-filter={filter}
 			aria-label="Filter asks"
-			/* The inert landing for a lapse under `Pending` (U7): reachable by script only. */
-			tabIndex={-1}
-			/*
-			 * AND INERT TO SPACE TOO. Space on a focused element that is not a control
-			 * scrolls its container by a page (measured in Chrome: a-2 rose 142px with the
-			 * hold intact), which slides the next card under the pointer just as the
-			 * release did. Only when the group ITSELF holds focus: a Space meant for a chip
-			 * inside it bubbles here with the chip as its target and is left alone.
-			 */
-			onKeyDown={(event) => {
-				if (event.target === event.currentTarget && event.key === " ")
-					event.preventDefault();
-			}}
 			className="m-0 flex items-center gap-1 border-0 p-0 px-1"
 		>
 			{(
@@ -1828,6 +1845,25 @@ export const AskPanel = ({
 					{emptySlice}
 				</p>
 			)}
+			{filter === "outstanding" && landingText !== "" ? (
+				<div
+					ref={landingRef}
+					data-lo-ask-lapse-landing=""
+					tabIndex={-1}
+					className="sr-only"
+					/*
+					 * Space on a focused non-control scrolls its container by a page, which
+					 * slid the next card under the pointer (U7, measured). Only when the
+					 * landing itself is the target; nothing else handles keys here.
+					 */
+					onKeyDown={(event) => {
+						if (event.target === event.currentTarget && event.key === " ")
+							event.preventDefault();
+					}}
+				>
+					{landingText}
+				</div>
+			) : null}
 			{showPending
 				? shown.pending.map((presentation) => {
 						const id = presentation.ask.ask_id;
@@ -1850,7 +1886,7 @@ export const AskPanel = ({
 								className={HELD_SLOT_FRAME}
 								style={reserve}
 							>
-								{collapsedRow(presentation)}
+								{collapsedRow(presentation, true)}
 							</div>
 						);
 					})
@@ -1878,7 +1914,9 @@ export const AskPanel = ({
 					{showPending && shown.pending.length > 0 ? (
 						<p className="px-3 pt-1 text-ink-dim text-meta">Settled</p>
 					) : null}
-					{(showPending ? shown.settled : settled).map(collapsedRow)}
+					{(showPending ? shown.settled : settled).map((presentation) =>
+						collapsedRow(presentation),
+					)}
 				</div>
 			) : null}
 		</div>
