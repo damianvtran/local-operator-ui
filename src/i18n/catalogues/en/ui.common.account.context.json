@@ -1,0 +1,110 @@
+{
+	"ui.common.account.low_credits_dialog.could_not_load_bonus_credit_information": {
+		"role": "error",
+		"tone": "Short factual read failure.",
+		"note": "Bonus-price metadata could not be read; do not imply a payment failed or quote an invented amount.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.account.low_credits_dialog.detail": {
+		"role": "button or offer status",
+		"tone": "Direct account/billing wording.",
+		"note": "Radient billing detail in the low-credit offer; does not change provider/model settings.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.account.low_credits_dialog.get_more_credits": {
+		"role": "button or offer status",
+		"tone": "Direct account/billing wording.",
+		"note": "Radient billing get more credits in the low-credit offer; does not change provider/model settings.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.account.low_credits_dialog.in_bonus_credits_with_your_first_purchase": {
+		"role": "sentence-suffix fragment",
+		"tone": "Plain bonus-offer condition.",
+		"note": "Follows the formatted bonus currency amount after Plus, get; completes the first-purchase offer without changing the amount.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.account.low_credits_dialog.it_s_pay_as_you_go_with_no_commitments_load_up_what_you_need_star": {
+		"role": "offer explanation",
+		"tone": "Plain payment model explanation.",
+		"note": "Describes pay-as-you-go billing without commitments; does not promise an unlimited subscription.",
+		"length": "Paragraph, wrapping allowed."
+	},
+	"ui.common.account.low_credits_dialog.maybe_later": {
+		"role": "button or offer status",
+		"tone": "Direct account/billing wording.",
+		"note": "Radient billing maybe later in the low-credit offer; does not change provider/model settings.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.account.low_credits_dialog.plus_get": {
+		"role": "sentence-prefix fragment",
+		"tone": "Brief promotional connective; not a complete sentence.",
+		"note": "Introduces the separately emphasized, currency-formatted first-purchase bonus amount; followed by the bonus-credit suffix.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.account.low_credits_dialog.radient_automatic_is_often_cheaper_than_bringing_your_own_key_its": {
+		"role": "offer explanation",
+		"tone": "Informative product benefit, retain often qualifier.",
+		"note": "Explains model-routing cost rationale for Radient Automatic versus bring-your-own-key; brand names stay verbatim.",
+		"length": "Paragraph, no hard width limit."
+	},
+	"ui.common.account.low_credits_dialog.radient_icon": {
+		"role": "image alternative text",
+		"tone": "Short image identity.",
+		"note": "Radient brand icon beside the account/billing title; keep brand name verbatim.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.account.low_credits_dialog.radient_pass": {
+		"role": "emphasized product name",
+		"tone": "Product brand.",
+		"note": "Billing product brand emphasized inside the surrounding unlock sentence; do not translate the product name.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.account.low_credits_dialog.running_low_on_radient_credits": {
+		"role": "dialog heading",
+		"tone": "Non-alarming question.",
+		"note": "Offer shown when Radient account credit balance is low; question does not claim credits have run out.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.account.low_credits_dialog.unlock_the_full_power_of_local_operator_with": {
+		"role": "sentence-prefix fragment",
+		"tone": "Promotional invitation, preserve brand emphasis.",
+		"note": "Introduces separately emphasized Radient Pass product name; the trailing period is outside the emphasized span.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.account.low_credits_dialog.you_can_also_reach_the_radient_console_from_settings_at_any_time": {
+		"role": "footer hint",
+		"tone": "Quiet alternative access path.",
+		"note": "Radient Console remains available through Settings when this billing offer is dismissed.",
+		"length": "One footer line; wrapping allowed."
+	},
+	"ui.common.account.radient_auth_buttons.connect_your_radient_account_to_use_radient_services": {
+		"role": "status hint",
+		"tone": "Short account connection explanation.",
+		"note": "Explains why connecting a Radient account is offered; covers Radient services, not all AI providers.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.account.radient_auth_buttons.loading_sign_in_options": {
+		"role": "status",
+		"tone": "Short pending-read status.",
+		"note": "Provider-registry sign-in options have not answered yet; no sign-in route is offered prematurely.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.account.radient_auth_buttons.radient_is_not_available_from_this_backend_s_provider_registry": {
+		"role": "empty-state",
+		"tone": "Plain capability absence.",
+		"note": "Provider registry does not advertise Radient; do not offer a nonexistent sign-in route.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.account.radient_auth_buttons.sign_in_to_radient": {
+		"role": "button",
+		"tone": "Direct connection action with service brand.",
+		"note": "Starts the available Radient sign-in flow from the shared authentication controls.",
+		"length": "One control row; avoid adding a sentence."
+	},
+	"ui.common.account.radient_auth_buttons.signing_in_needs_a_newer_local_operator_backend_update_the_backen": {
+		"role": "error",
+		"tone": "Explain the compatibility prerequisite and repair.",
+		"note": "Backend lacks the sign-in capability; update and restart are required before this control can be used.",
+		"length": "One compatibility explanation; wrapping allowed."
+	}
+}

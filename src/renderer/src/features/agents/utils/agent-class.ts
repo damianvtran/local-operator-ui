@@ -40,6 +40,7 @@
  */
 
 import type { ReusableProfile } from "@shared/api/local-operator/profile-hooks";
+import { subscribeLocale, t } from "../../../../../i18n";
 import { refusalCopy } from "./backend-copy";
 
 /** The two classes, spelled as the wire spells them. */
@@ -61,8 +62,12 @@ export function classOf(profile: { action_class?: unknown }): ActionClass {
 
 /** The class as a reader meets it, in the app's sentence case. */
 export const CLASS_LABEL: Record<ActionClass, string> = {
-	proactive: "Proactive",
-	reactive: "Reactive",
+	get proactive() {
+		return t("ui.agents.refusals.class.label.proactive");
+	},
+	get reactive() {
+		return t("ui.agents.refusals.class.label.reactive");
+	},
 };
 
 /**
@@ -84,10 +89,12 @@ export const CLASS_LABEL: Record<ActionClass, string> = {
  * is worse than a narrower true one).
  */
 export const CLASS_MEANING: Record<ActionClass, string> = {
-	proactive:
-		"It may message you on its own: after sending you something it waits a few minutes for a reply, nudges again with growing gaps for a fixed number of tries, then waits for you — and it may also wake on its own schedule.",
-	reactive:
-		"It replies when you write to it. It does not nudge you, and it does not wake on its own schedule.",
+	get proactive() {
+		return t("ui.agents.refusals.class.meaning.proactive");
+	},
+	get reactive() {
+		return t("ui.agents.refusals.class.meaning.reactive");
+	},
 };
 
 /**
@@ -106,10 +113,12 @@ export const CLASS_MEANING: Record<ActionClass, string> = {
  * is the question a control named for messaging has to pre-empt.
  */
 export const CLASS_SWITCH_EFFECT: Record<ActionClass, string> = {
-	proactive:
-		"Turning this off stops the nudging and the scheduled wakes. It still replies when you write to it.",
-	reactive:
-		"Turning this on lets it write first: it will wait a few minutes for your reply, nudge you again up to a fixed number of tries, and it may wake on its own schedule. It still replies when you write to it.",
+	get proactive() {
+		return t("ui.agents.refusals.class.effect.proactive");
+	},
+	get reactive() {
+		return t("ui.agents.refusals.class.effect.reactive");
+	},
 };
 
 /**
@@ -123,8 +132,14 @@ export const CLASS_SWITCH_EFFECT: Record<ActionClass, string> = {
  * name, because the seat is renameable and this module has no business knowing
  * what she is currently called (design round 2, D9).
  */
-export const BUILTIN_SWITCH_DISCLOSURE =
-	"This one ships with the app and has no copy of its own yet, so switching installs it first — the same agent and the same instructions, now editable — and then sets its class.";
+// Keep the existing string export for callers while refreshing its live binding.
+// Record-valued copy above uses getters; a standalone string has no getter seam.
+export let BUILTIN_SWITCH_DISCLOSURE = t(
+	"ui.agents.refusals.class.install_disclosure",
+);
+subscribeLocale(() => {
+	BUILTIN_SWITCH_DISCLOSURE = t("ui.agents.refusals.class.install_disclosure");
+});
 
 /** The class a switch is moving TO, from the one a profile is in. */
 export function oppositeClass(current: ActionClass): ActionClass {
@@ -258,10 +273,12 @@ export function classSwitchFailure(
 	const raw =
 		cause instanceof Error && cause.message
 			? cause.message
-			: "The backend sent no reason for it. Try the switch again.";
+			: t("ui.agents.refusals.class.error.no_reason");
 	const sentence = refusalCopy(raw).message;
 	if (completed.some((step) => step.op === "profiles.install")) {
-		return `${sentence} The install did land, so the agent is editable now.`;
+		return t("ui.agents.refusals.class.error.install_landed", {
+			reason: sentence,
+		});
 	}
 	return sentence;
 }

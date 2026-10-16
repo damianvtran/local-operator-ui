@@ -75,6 +75,8 @@ import {
 	useRadientUserQuery,
 } from "@shared/hooks/use-radient-user-query";
 import { useUpdateConfig } from "@shared/hooks/use-update-config";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useModelsStore } from "@shared/store/models-store";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -126,6 +128,7 @@ import {
 const LocalProviderReachability: FC<{ provider: DesktopProvider }> = ({
 	provider,
 }) => {
+	useI18nLocale();
 	const [testing, setTesting] = useState(false);
 	const [result, setResult] = useState<{
 		reachable: boolean;
@@ -147,7 +150,9 @@ const LocalProviderReachability: FC<{ provider: DesktopProvider }> = ({
 				detail:
 					error instanceof Error
 						? error.message
-						: "The connection could not be tested.",
+						: t(
+								"ui.providers.provider_detail.the_connection_could_not_be_tested",
+							),
 			});
 		} finally {
 			setTesting(false);
@@ -167,16 +172,19 @@ const LocalProviderReachability: FC<{ provider: DesktopProvider }> = ({
 			{result === null ? (
 				<p className="flex items-center gap-2 text-body-sm text-ink-muted">
 					<Spinner size="sm" />
-					Checking whether {brand} is running
+					{t("ui.providers.provider_detail.checking_whether")}
+					{brand} {t("ui.providers.provider_detail.is_running")}
 				</p>
 			) : result.reachable ? (
-				<p className="text-body-sm text-success">{brand} is running</p>
+				<p className="text-body-sm text-success">
+					{brand} {t("ui.providers.provider_detail.is_running")}
+				</p>
 			) : (
 				<p className="text-body-sm text-ink-muted">
-					{brand} isn't answering
+					{brand} {t("ui.providers.provider_detail.isn_t_answering")}
 					{provider.base_url ? (
 						<>
-							{" at "}
+							{t("ui.providers.provider_detail.at")}
 							<span className="font-mono">{provider.base_url}</span>
 						</>
 					) : null}
@@ -196,7 +204,9 @@ const LocalProviderReachability: FC<{ provider: DesktopProvider }> = ({
 				onClick={() => void test()}
 				disabled={testing}
 			>
-				{testing ? "Checking" : "Check again"}
+				{testing
+					? t("ui.providers.provider_detail.checking")
+					: t("ui.providers.provider_detail.check_again")}
 			</Button>
 		</div>
 	);
@@ -243,6 +253,7 @@ const SecretInput: FC<{
 	invalid?: boolean;
 	describedBy?: string;
 }> = ({ id, value, onChange, label, invalid, describedBy }) => {
+	useI18nLocale();
 	const [visible, setVisible] = useState(false);
 	return (
 		<div className="relative">
@@ -264,7 +275,11 @@ const SecretInput: FC<{
 				size="icon-sm"
 				className="absolute top-1/2 right-1 -translate-y-1/2"
 				onClick={() => setVisible((current) => !current)}
-				aria-label={visible ? "Hide key" : "Show key"}
+				aria-label={
+					visible
+						? t("ui.providers.provider_detail.hide_key")
+						: t("ui.providers.provider_detail.show_key")
+				}
 			>
 				{visible ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
 			</Button>
@@ -334,6 +349,7 @@ const SignedIn: FC<{
 	tone = "success",
 	verdict,
 }) => {
+	useI18nLocale();
 	/*
 	 * A verdict this panel cannot repeat as a success. `Needs sign-in` is both the
 	 * refusal and the not-confirmed arm (`unknown` with a credential): in the first the
@@ -389,8 +405,12 @@ const SignedIn: FC<{
 						? verdict.label
 						: (headline ??
 							(verb === "Connected"
-								? `${brand} connected`
-								: `Signed in to ${brand}`))}
+								? t("ui.providers.provider_detail.connected_variant_163", {
+										brand,
+									})
+								: t("ui.providers.provider_detail.signed_in_to_variant_164", {
+										brand,
+									})))}
 				</output>
 			</div>
 			{contested && verdict ? (
@@ -417,10 +437,18 @@ const SignedIn: FC<{
 					{verdictStop(
 						verdict.detail ??
 							(verdict.tone === "attention"
-								? `${brand} is no longer accepting the sign-in stored on this machine.`
-								: `This app could not confirm the sign-in stored on this machine for ${brand}.`),
+								? t(
+										"ui.providers.provider_detail.is_no_longer_accepting_the_sign_in",
+										{ brand },
+									)
+								: t(
+										"ui.providers.provider_detail.this_app_could_not_confirm_the_sign",
+										{ brand },
+									)),
 					)}{" "}
-					The sign-in itself finished; what follows is what it set.
+					{t(
+						"ui.providers.provider_detail.the_sign_in_itself_finished_what_follows",
+					)}
 				</p>
 			) : null}
 			{defaults?.receipt || defaults?.model_name ? (
@@ -440,7 +468,7 @@ const SignedIn: FC<{
 					 */}
 					{!defaults.receipt && defaults.model_name ? (
 						<>
-							Default model:{" "}
+							{t("ui.providers.provider_detail.default_model")}{" "}
 							<span className="text-ink">{defaults.model_name}</span>.
 						</>
 					) : null}
@@ -448,7 +476,7 @@ const SignedIn: FC<{
 						<>
 							{" "}
 							<Button variant="link" size="sm" onClick={onChangeModel}>
-								Change
+								{t("ui.providers.provider_detail.change")}
 							</Button>
 						</>
 					) : null}
@@ -462,7 +490,7 @@ const SignedIn: FC<{
 			 */}
 			{defaults && !defaults.hosting && defaults.receipt ? (
 				<p className="text-body-sm text-ink-muted">
-					Your default model is unchanged.
+					{t("ui.providers.provider_detail.your_default_model_is_unchanged")}
 				</p>
 			) : null}
 			{unverified ? (
@@ -473,7 +501,8 @@ const SignedIn: FC<{
 							: "text-ink-dim text-meta"
 					}
 				>
-					Saved, but not checked yet: {unverified}
+					{t("ui.providers.provider_detail.saved_but_not_checked_yet")}
+					{unverified}
 				</p>
 			) : null}
 			<div>
@@ -498,6 +527,7 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 	context = "settings",
 	readiness: readinessProp,
 }) => {
+	useI18nLocale();
 	const queryClient = useQueryClient();
 	/*
 	 * The verdict on this machine's Radient sign-in. This panel rendered its
@@ -880,7 +910,9 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 			setPromptValue("");
 		} catch (error) {
 			setPromptError(
-				error instanceof Error ? error.message : "The code was not accepted.",
+				error instanceof Error
+					? error.message
+					: t("ui.providers.provider_detail.the_code_was_not_accepted"),
 			);
 		}
 	}, [flow.operation, promptValue]);
@@ -913,7 +945,7 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 				error:
 					error instanceof DesktopControlError || error instanceof Error
 						? error.message
-						: "The key could not be saved.",
+						: t("ui.providers.provider_detail.the_key_could_not_be_saved"),
 			});
 		} finally {
 			setKeySaving(false);
@@ -927,7 +959,10 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 		provider.suggested_model?.id,
 	]);
 
-	const doneLabel = context === "dialog" ? "Continue" : "Done";
+	const doneLabel =
+		context === "dialog"
+			? t("ui.providers.provider_detail.continue")
+			: t("ui.providers.provider_detail.done");
 	const finish = () => {
 		clearKeyOutcome(provider.id);
 		setKeySaved(null);
@@ -939,8 +974,9 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 		return (
 			<div className="flex flex-col gap-3">
 				<p className="text-body-sm text-ink-muted">
-					Runs on this computer and needs no account or key. Start {brand}, then
-					check the connection.
+					{t("ui.providers.provider_detail.runs_on_this_computer_and_needs_no")}
+					{brand}
+					{t("ui.providers.provider_detail.then_check_the_connection")}
 				</p>
 				<LocalProviderReachability provider={provider} />
 			</div>
@@ -950,7 +986,9 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 	if (!method) {
 		return (
 			<Alert variant="warning">
-				This provider has no supported sign-in method on this server.
+				{t(
+					"ui.providers.provider_detail.this_provider_has_no_supported_sign_in",
+				)}
 			</Alert>
 		);
 	}
@@ -970,7 +1008,7 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 	const methodTabs =
 		provider.auth_methods.length > 1 && flow.phase !== "settled" ? (
 			<Tabs value={method.method_id} onValueChange={chooseMethod}>
-				<TabsList aria-label="How to connect">
+				<TabsList aria-label={t("ui.providers.provider_detail.how_to_connect")}>
 					{provider.auth_methods.map((candidate) => (
 						<TabsTrigger key={candidate.method_id} value={candidate.method_id}>
 							{methodName(candidate)}
@@ -1001,11 +1039,15 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 							keySaved.valid === true
 								? null
 								: (keySaved.reason ??
-									"this Local Operator does not check keys, so it will be tested on your first message.")
+									t(
+										"ui.providers.provider_detail.this_local_operator_does_not_check_keys",
+									))
 						}
 						tone={keySaved.valid === true ? "success" : "unchecked"}
 						headline={
-							keySaved.valid === true ? undefined : `${brand} key saved`
+							keySaved.valid === true
+								? undefined
+								: t("ui.providers.provider_detail.key_saved", { brand })
 						}
 						onChangeModel={onChangeModel}
 						actionLabel={doneLabel}
@@ -1027,7 +1069,9 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 			<div className="flex flex-col gap-4">
 				{methodTabs}
 				<div className="flex flex-col gap-2" data-sign-in-state="api-key">
-					<Label htmlFor={`key-${provider.id}`}>API key</Label>
+					<Label htmlFor={`key-${provider.id}`}>
+						{t("ui.providers.provider_catalog.api_key")}
+					</Label>
 					<SecretInput
 						id={`key-${provider.id}`}
 						value={keyValue}
@@ -1035,7 +1079,9 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 							setKeyValue(next);
 							rememberKey({ error: null });
 						}}
-						label={`${brand} API key`}
+						label={t("ui.providers.provider_detail.api_key_variant_215", {
+							brand,
+						})}
 						invalid={keyError !== null}
 						describedBy={keyHelpId}
 					/>
@@ -1048,8 +1094,13 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 					>
 						{keyError ??
 							(provider.has_credential
-								? `A key is saved. Paste a new one to replace it. Stored encrypted on this computer. Billed per use by ${brand}, separately from any plan.`
-								: `Stored encrypted on this computer. Billed per use by ${brand}, separately from any plan.`)}
+								? t("ui.providers.provider_detail.a_key_is_saved_paste_a_new", {
+										brand,
+									})
+								: t(
+										"ui.providers.provider_detail.stored_encrypted_on_this_computer_billed_per",
+										{ brand },
+									))}
 					</p>
 					<div>
 						<Button
@@ -1059,7 +1110,9 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 							onClick={() => void saveKey()}
 						>
 							{keySaving ? <Spinner size="sm" /> : null}
-							{keySaving ? "Checking key" : "Save key"}
+							{keySaving
+								? t("ui.providers.provider_detail.checking_key")
+								: t("ui.providers.provider_detail.save_key")}
 						</Button>
 					</div>
 				</div>
@@ -1111,21 +1164,24 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 						<AlertTitle>{readiness.label}</AlertTitle>
 						<AlertDescription>
 							{readiness.detail ??
-								`${brand} is no longer accepting the sign-in stored on this machine.`}
+								t(
+									"ui.providers.provider_detail.is_no_longer_accepting_the_sign_in",
+									{ brand },
+								)}
 						</AlertDescription>
 					</Alert>
 				) : null}
 				<p className="text-body-sm text-ink-muted">
 					{methodBlurb(method, provider)}{" "}
 					{method.kind === "device"
-						? "You'll get a code to enter on the provider's page."
-						: "It opens in your browser."}
+						? t("ui.providers.provider_detail.you_ll_get_a_code_to_enter")
+						: t("ui.providers.provider_detail.it_opens_in_your_browser")}
 				</p>
 				<div className="flex items-center gap-2">
 					<Button variant="primary" size="sm" onClick={start}>
 						{method.kind === "device"
-							? "Get a sign-in code"
-							: "Continue in browser"}
+							? t("ui.providers.provider_detail.get_a_sign_in_code")
+							: t("ui.providers.provider_detail.continue_in_browser")}
 						{method.kind === "device" ? null : (
 							<ExternalLink aria-hidden="true" />
 						)}
@@ -1151,14 +1207,16 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 			<div className="flex items-center gap-3" data-sign-in-state="starting">
 				<Spinner size="sm" />
 				<output className="text-body-sm text-ink-muted">
-					{method.kind === "device" ? "Getting a code" : "Opening your browser"}
+					{method.kind === "device"
+						? t("ui.providers.provider_detail.getting_a_code")
+						: t("ui.providers.provider_detail.opening_your_browser")}
 				</output>
 				<Button
 					variant="ghost"
 					size="sm"
 					onClick={() => void flowHandle.cancel()}
 				>
-					Cancel
+					{t("ui.providers.provider_detail.cancel")}
 				</Button>
 			</div>
 		);
@@ -1175,8 +1233,15 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 				<p className="whitespace-pre-line text-body-sm text-ink-muted">
 					{operation.instructions?.trim() || (
 						<>
-							Enter this code {host ? `at ${host}` : "on the sign-in page"}.
-							This page updates on its own once you approve.
+							{t("ui.providers.provider_detail.enter_this_code")}
+							{host
+								? t("ui.providers.provider_detail.at_variant_248", {
+										host,
+									})
+								: t("ui.providers.provider_detail.on_the_sign_in_page")}
+							{t(
+								"ui.providers.provider_detail.this_page_updates_on_its_own_once",
+							)}
 						</>
 					)}
 				</p>
@@ -1188,7 +1253,11 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 				<div className="flex flex-wrap items-center gap-2">
 					<CopyButton
 						value={deviceCode}
-						label={page ? "Copy code and open page" : "Copy code"}
+						label={
+							page
+								? t("ui.providers.provider_detail.copy_code_and_open_page")
+								: t("ui.providers.provider_detail.copy_code")
+						}
 						variant="primary"
 						onCopied={() => {
 							if (page) void flowHandle.reopen();
@@ -1208,7 +1277,9 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 							onClick={() => void flowHandle.reopen()}
 						>
 							<ExternalLink aria-hidden="true" />
-							{flow.opened ? "Open browser again" : "Open sign-in page"}
+							{flow.opened
+								? t("ui.providers.provider_detail.open_browser_again")
+								: t("ui.providers.provider_detail.open_sign_in_page")}
 						</Button>
 					) : null}
 					<Button
@@ -1216,12 +1287,12 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 						size="sm"
 						onClick={() => void flowHandle.cancel()}
 					>
-						Cancel
+						{t("ui.providers.provider_detail.cancel")}
 					</Button>
 				</div>
 				{minutes ? (
 					<p className="text-ink-dim text-meta">
-						Code expires in {minutes} min
+						{t("ui.providers.provider_detail.code_expiry", { minutes })}
 					</p>
 				) : null}
 			</div>
@@ -1237,7 +1308,9 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 			operation.input_required ? (
 				<div className="flex flex-col gap-2">
 					<Label htmlFor={`prompt-${operation.id}`}>
-						{host ? `Code from ${host}` : "Code from the sign-in page"}
+						{host
+							? t("ui.providers.provider_detail.code_from", { host })
+							: t("ui.providers.provider_detail.code_from_the_sign_in_page")}
 					</Label>
 					<div className="flex items-start gap-2">
 						<div className="flex-1">
@@ -1248,7 +1321,7 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 									setPromptValue(next);
 									setPromptError(null);
 								}}
-								label="Sign-in code"
+								label={t("ui.providers.provider_detail.sign_in_code")}
 								invalid={promptError !== null}
 							/>
 						</div>
@@ -1258,7 +1331,7 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 							disabled={!promptValue}
 							onClick={() => void submitPrompt()}
 						>
-							Continue
+							{t("ui.providers.provider_detail.continue")}
 						</Button>
 					</div>
 					{promptError ? (
@@ -1277,7 +1350,9 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 					data-sign-in-state="paste-required"
 				>
 					<p className="text-body text-ink">
-						Paste the code {host ?? "the provider"} shows after you approve
+						{t("ui.providers.provider_detail.paste_the_code")}
+						{host ?? t("ui.providers.provider_detail.the_provider")}{" "}
+						{t("ui.providers.provider_detail.shows_after_you_approve")}
 					</p>
 					<div className="w-full">{pasteField(true)}</div>
 					<div className="flex flex-wrap items-center gap-2">
@@ -1287,17 +1362,22 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 							onClick={() => void flowHandle.reopen()}
 						>
 							<ExternalLink aria-hidden="true" />
-							{flow.opened ? "Open browser again" : "Open sign-in page"}
+							{flow.opened
+								? t("ui.providers.provider_detail.open_browser_again")
+								: t("ui.providers.provider_detail.open_sign_in_page")}
 						</Button>
 						{operation.auth_url ? (
-							<CopyButton value={operation.auth_url} label="Copy link" />
+							<CopyButton
+								value={operation.auth_url}
+								label={t("ui.providers.provider_detail.copy_link")}
+							/>
 						) : null}
 						<Button
 							variant="ghost"
 							size="sm"
 							onClick={() => void flowHandle.cancel()}
 						>
-							Cancel
+							{t("ui.providers.provider_detail.cancel")}
 						</Button>
 					</div>
 				</div>
@@ -1311,15 +1391,33 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 					<div className="flex items-center gap-2">
 						<Spinner size="sm" />
 						<output className="text-body text-ink">
-							Finish signing in with your browser
+							{t(
+								"ui.providers.provider_detail.finish_signing_in_with_your_browser",
+							)}
 						</output>
 					</div>
 					<p className="text-body-sm text-ink-muted">
 						{flow.opened
-							? `We opened ${host ?? "the sign-in page"}. Approve access there and this page updates on its own.`
+							? t(
+									"ui.providers.provider_detail.we_opened_approve_access_there_and_this",
+									{
+										host:
+											host ??
+											t("ui.providers.provider_detail.the_sign_in_page"),
+									},
+								)
 							: flow.openFailed
-								? "Your browser didn't open. Open the sign-in page yourself, or copy the link."
-								: `Opening ${host ?? "the sign-in page"}. Approve access there and this page updates on its own.`}
+								? t(
+										"ui.providers.provider_detail.your_browser_didn_t_open_open_the",
+									)
+								: t(
+										"ui.providers.provider_detail.opening_approve_access_there_and_this_page",
+										{
+											host:
+												host ??
+												t("ui.providers.provider_detail.the_sign_in_page"),
+										},
+									)}
 					</p>
 					<div className="flex flex-wrap items-center gap-2">
 						{/* "Open again" only once something opened: a Reopen for a page
@@ -1330,22 +1428,27 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 							onClick={() => void flowHandle.reopen()}
 						>
 							<ExternalLink aria-hidden="true" />
-							{flow.opened ? "Open browser again" : "Open sign-in page"}
+							{flow.opened
+								? t("ui.providers.provider_detail.open_browser_again")
+								: t("ui.providers.provider_detail.open_sign_in_page")}
 						</Button>
 						{operation.auth_url ? (
-							<CopyButton value={operation.auth_url} label="Copy link" />
+							<CopyButton
+								value={operation.auth_url}
+								label={t("ui.providers.provider_detail.copy_link")}
+							/>
 						) : null}
 						<Button
 							variant="ghost"
 							size="sm"
 							onClick={() => void flowHandle.cancel()}
 						>
-							Cancel
+							{t("ui.providers.provider_detail.cancel")}
 						</Button>
 					</div>
 					{minutes ? (
 						<p className="text-ink-dim text-meta">
-							Link expires in {minutes} min
+							{t("ui.providers.provider_detail.link_expiry", { minutes })}
 						</p>
 					) : null}
 					{/*
@@ -1358,7 +1461,9 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 					 */}
 					{operation.input_required ? (
 						<Disclosure
-							summary="Browser showed a code? Paste it here"
+							summary={t(
+								"ui.providers.provider_detail.browser_showed_a_code_paste_it_here",
+							)}
 							className="w-full"
 						>
 							<div className="pt-2">{pasteField(false)}</div>
@@ -1401,19 +1506,24 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 		// Failed, expired, cancelled by another window, or a refused start.
 		const message = operation
 			? unfinishedMessage(operation, brand)
-			: (flow.error ?? `${brand} didn't confirm the sign-in.`);
+			: (flow.error ??
+				t("ui.providers.provider_detail.didn_t_confirm_the_sign_in", {
+					brand,
+				}));
 		body = (
 			<div className="flex flex-col gap-3" data-sign-in-state="unfinished">
 				<Alert
 					variant={operation?.state === "cancelled" ? "neutral" : "warning"}
 				>
-					<AlertTitle>Sign-in didn't finish</AlertTitle>
+					<AlertTitle>
+						{t("ui.providers.provider_detail.sign_in_didn_t_finish")}
+					</AlertTitle>
 					<AlertDescription>{message}</AlertDescription>
 				</Alert>
 				<div className="flex flex-wrap items-center gap-2">
 					<Button variant="secondary" size="sm" onClick={start}>
 						<RotateCcw aria-hidden="true" />
-						Try again
+						{t("ui.providers.provider_detail.try_again")}
 					</Button>
 					{apiKeyMethod ? (
 						<Button
@@ -1421,7 +1531,7 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 							size="sm"
 							onClick={() => chooseMethod(apiKeyMethod.method_id)}
 						>
-							Use an API key instead
+							{t("ui.providers.provider_detail.use_an_api_key_instead")}
 						</Button>
 					) : null}
 				</div>

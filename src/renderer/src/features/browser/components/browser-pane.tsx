@@ -5,6 +5,8 @@ import {
 	TabsTrigger,
 	Tooltip,
 } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	type BrowserPaneScope,
@@ -85,6 +87,7 @@ export interface BrowserPaneProps {
 }
 
 export const BrowserPane: FC<BrowserPaneProps> = ({ sessionId, onClose }) => {
+	useI18nLocale();
 	/** Which list the user asked for. See the header comment for why this is a
 	 * choice rather than the scope itself, and why it outlives this component. */
 	const choice = useUiPreferencesStore((s) => s.browserPaneScope);
@@ -195,7 +198,7 @@ export const BrowserPane: FC<BrowserPaneProps> = ({ sessionId, onClose }) => {
 							"shrink-0 text-meta text-ink-dim @max-[330px]/bpane:hidden",
 						)}
 					>
-						Browser
+						{t("ui.browser.browser_pane.browser")}
 					</span>
 					{/* THE RING IS THE WRAPPER'S, NOT THE LIST'S, AND THAT IS THE FIX RATHER
 					    THAN A PREFERENCE (design round 2; QA round 2 found the inline
@@ -232,7 +235,7 @@ export const BrowserPane: FC<BrowserPaneProps> = ({ sessionId, onClose }) => {
 							onValueChange={(value) => setChoice(value as PaneScopeChoice)}
 						>
 							<TabsList
-								aria-label="Which tabs to show"
+								aria-label={t("ui.browser.browser_pane.which_tabs_to_show")}
 								/* `min-w-0 max-w-full` lets the track give way below 300px (D5). */
 								className="max-w-full min-w-0"
 								/* THE TRACK NEEDS A DRAWN EDGE HERE, and only here (design round 1,
@@ -259,7 +262,9 @@ export const BrowserPane: FC<BrowserPaneProps> = ({ sessionId, onClose }) => {
 									data-tour-tag="browser-pane-scope-conversation"
 									className="min-w-0 @max-[330px]/bpane:px-2"
 								>
-									<span className="truncate">This conversation</span>
+									<span className="truncate">
+										{t("ui.browser.browser_pane.this_conversation")}
+									</span>
 								</TabsTrigger>
 								<TabsTrigger
 									value="all"
@@ -267,7 +272,9 @@ export const BrowserPane: FC<BrowserPaneProps> = ({ sessionId, onClose }) => {
 									data-tour-tag="browser-pane-scope-all"
 									className="min-w-0 @max-[330px]/bpane:px-2"
 								>
-									<span className="truncate">All tabs</span>
+									<span className="truncate">
+										{t("ui.browser.browser_pane.all_tabs")}
+									</span>
 								</TabsTrigger>
 							</TabsList>
 						</Tabs>
@@ -281,11 +288,11 @@ export const BrowserPane: FC<BrowserPaneProps> = ({ sessionId, onClose }) => {
 				    "close tab". The tooltip is not decoration: it is the affordance's label,
 				    and an icon-only control whose neighbours all carry one is the control
 				    that gets mistaken for the tab's. */}
-				<Tooltip content="Close browser">
+				<Tooltip content={t("ui.browser.browser_pane.close_browser")}>
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						aria-label="Close browser"
+						aria-label={t("ui.browser.browser_pane.close_browser")}
 						onClick={onClose}
 						data-tour-tag="browser-pane-close"
 					>

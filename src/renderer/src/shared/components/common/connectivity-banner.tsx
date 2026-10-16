@@ -5,12 +5,14 @@ import {
 	Button,
 } from "@shared/components/ui";
 import { useConnectivityStatus } from "@shared/hooks/use-connectivity-status";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import {
 	msUntilOfflineReportable,
 	noOfflineConfirmation,
 	observeConnectivityReading,
 } from "@shared/utils/offline-confirmation";
 import { useEffect, useRef, useState } from "react";
+import { t } from "../../../../../i18n/messages";
 import { serverBannerCopy } from "../../../../../shared/backend-status";
 
 /**
@@ -45,6 +47,7 @@ type ConnectivityBannerProps = {
 export const ConnectivityBanner = ({
 	autoCheck = true,
 }: ConnectivityBannerProps) => {
+	useI18nLocale();
 	// Get connectivity status
 	const {
 		hostingProvider,
@@ -370,9 +373,24 @@ export const ConnectivityBanner = ({
 									 * sentence is about the machine's connection either way, so
 									 * the clause is simply absent when it has nothing to name.
 									 */
-									`You are offline. ${hostingProvider ? `Your configured hosting provider (${hostingProvider}) requires` : "This app's updates require"} an internet connection.`
+									t(
+										"ui.common.connection.connectivity_banner.you_are_offline",
+										{
+											detail: String(
+												hostingProvider
+													? t("ui.common.connection.provider.requires", {
+															provider: hostingProvider,
+														})
+													: t(
+															"ui.common.connection.connectivity_banner.this_app_s_updates_require",
+														),
+											),
+										},
+									)
 								: (serverIssue?.title ??
-									"A connectivity issue has been detected.")}
+									t(
+										"ui.common.connection.connectivity_banner.a_connectivity_issue_has_been_detected",
+									))}
 						</AlertDescription>
 						{/*
 						 * Main's own sentence about what it observed, as a second line. The
@@ -395,17 +413,19 @@ export const ConnectivityBanner = ({
 						 */}
 						{serverIssue?.retry !== false && (
 							<Button variant="ghost" size="sm" onClick={handleRetry}>
-								Retry
+								{t("ui.common.actions.retry")}
 							</Button>
 						)}
 						{isInternetIssue && (
 							<Button
 								variant="ghost"
 								size="sm"
-								aria-label="dismiss"
+								aria-label={t(
+									"ui.common.connection.connectivity_banner.dismiss",
+								)}
 								onClick={handleDismiss}
 							>
-								Dismiss
+								{t("ui.common.connection.connectivity_banner.dismiss_inline")}
 							</Button>
 						)}
 						{/*
@@ -419,10 +439,12 @@ export const ConnectivityBanner = ({
 							<Button
 								variant="ghost"
 								size="sm"
-								aria-label="dismiss"
+								aria-label={t(
+									"ui.common.connection.connectivity_banner.dismiss",
+								)}
 								onClick={handleAddressNoticeDismiss}
 							>
-								Dismiss
+								{t("ui.common.connection.connectivity_banner.dismiss_inline")}
 							</Button>
 						)}
 					</div>

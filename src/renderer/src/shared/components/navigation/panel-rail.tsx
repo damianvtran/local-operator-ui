@@ -6,6 +6,7 @@ import type {
 } from "@features/chat/components/run-details/run-detail-model";
 import { RunDetailsTrigger } from "@features/chat/components/run-details/run-details-trigger";
 import { Badge, countLabel } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { displayChord } from "@shared/keymap/keymap-chord";
 import type { ActionId } from "@shared/keymap/keymap-registry";
 import { cn } from "@shared/lib/utils";
@@ -23,6 +24,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { t } from "../../../../../i18n/messages";
 import { rendererPlatform } from "../../../mini-view/renderer-platform";
 import {
 	type PanelRailActionContext,
@@ -156,6 +158,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 	codeMentioned,
 	codeAttention,
 }) => {
+	useI18nLocale();
 	const drawn = useUiPreferencesStore(resolveDrawnRightSlotPane);
 	/*
 	 * THE ASKS FLAGS ARE READ HERE because the item's lit state and tooltip verb
@@ -323,7 +326,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 				ref={rootRef}
 				role="toolbar"
 				aria-orientation="vertical"
-				aria-label="Panels"
+				aria-label={t("ui.shell.panel_rail.panels")}
 				data-panel-rail=""
 				onKeyDown={onKeyDown}
 				onFocus={onFocus}

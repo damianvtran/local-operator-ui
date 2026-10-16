@@ -732,9 +732,7 @@ test("the row's own fields carry the count, its handle and its words", () => {
 	assert.match(nav, /attention: aidaMissed,/);
 	assert.match(nav, /attentionTag: "nav-aida-badge",/);
 	assert.ok(
-		nav.includes(
-			'`${aidaName}, ${count} missed message${count === 1 ? "" : "s"}`',
-		),
+		nav.includes('t("ui.shell.sidebar_navigation.aida_missed",'),
 		"the name's sentence is hers, built on the payload's display name, with the plural handled",
 	);
 	/*
@@ -743,7 +741,7 @@ test("the row's own fields carry the count, its handle and its words", () => {
 	 * asserts rendered. A shared field pair cannot come from one literal.
 	 */
 	assert.match(nav, /attentionTag: "nav-browser-badge",/);
-	assert.ok(nav.includes("`Browser, ${count} waiting`"));
+	assert.ok(nav.includes('t("ui.shell.sidebar_navigation.browser_waiting",'));
 });
 
 test("the primitive takes the ROW's tag, and the name reads the ROW's words", () => {
@@ -875,11 +873,12 @@ test("the working mark wears the sidebar row's own glyph and ink", () => {
 	assert.match(nav, /\[ready, refreshCatalogue, feed\.catalogueRevision\]/);
 	assert.match(nav, /const aidaName = aida\.data\?\.name \?\? "Aida";/);
 	assert.match(nav, /label: aidaName,/);
-	assert.match(nav, /workingName: `\$\{aidaName\}, working`,/);
+	assert.match(
+		nav,
+		/workingName: t\("ui\.shell\.sidebar_navigation\.aida_working",\s*\{\s*name: aidaName,?\s*\}\),/,
+	);
 	assert.ok(
-		nav.includes(
-			'`${aidaName}, ${count} missed message${count === 1 ? "" : "s"}`',
-		),
+		nav.includes('t("ui.shell.sidebar_navigation.aida_missed",'),
 		"both sentences are hers, built from the payload's name with the shipped fallback",
 	);
 	assert.match(

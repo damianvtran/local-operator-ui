@@ -1,3 +1,11 @@
+import { Spinner } from "@shared/components/common/spinner";
+import {
+	Button,
+	Label,
+	Popover,
+	PopoverAnchor,
+	PopoverContent,
+} from "@shared/components/ui";
 /**
  * Text input with a suggestion list, and an explicit save step.
  *
@@ -9,14 +17,7 @@
  * `aria-activedescendant` instead of moving DOM focus, which would take focus
  * out of the input the user is still typing in.
  */
-import { Spinner } from "@shared/components/common/spinner";
-import {
-	Button,
-	Label,
-	Popover,
-	PopoverAnchor,
-	PopoverContent,
-} from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Check, X } from "lucide-react";
 import {
@@ -28,6 +29,7 @@ import {
 	useState,
 } from "react";
 import type { ChangeEvent, KeyboardEvent, ReactNode } from "react";
+import { t } from "../../../../../i18n/messages";
 
 /**
  * Option type for autocomplete suggestions
@@ -119,7 +121,7 @@ export const AutocompleteField = ({
 	label,
 	options,
 	onSave,
-	placeholder = "Enter value...",
+	placeholder = t("ui.common.forms.autocomplete_field.enter_value"),
 	icon,
 	isSaving = false,
 	helperText,
@@ -127,6 +129,7 @@ export const AutocompleteField = ({
 	filterOptions,
 	allowFreeText = true,
 }: AutocompleteFieldProps) => {
+	useI18nLocale();
 	const [inputValue, setInputValue] = useState(value);
 	const [editValue, setEditValue] = useState(value);
 	const [originalValue, setOriginalValue] = useState(value);
@@ -358,7 +361,12 @@ export const AutocompleteField = ({
 
 						<div className="absolute top-1/2 right-1.5 z-10 flex -translate-y-1/2 items-center gap-1">
 							{isSaving ? (
-								<Spinner size="sm" label={`Saving ${label}`} />
+								<Spinner
+									size="sm"
+									label={t("ui.common.forms.autocomplete_field.saving", {
+										label: String(label),
+									})}
+								/>
 							) : (
 								showActions && (
 									<>
@@ -366,8 +374,12 @@ export const AutocompleteField = ({
 											variant="ghost"
 											size="icon-sm"
 											onClick={handleSave}
-											title="Save changes"
-											aria-label={`Save ${label}`}
+											title={t(
+												"ui.common.forms.autocomplete_field.save_changes",
+											)}
+											aria-label={t("ui.common.forms.autocomplete_field.save", {
+												label: String(label),
+											})}
 											className="text-success hover:bg-success-wash hover:text-success"
 										>
 											<Check />
@@ -376,8 +388,11 @@ export const AutocompleteField = ({
 											variant="ghost"
 											size="icon-sm"
 											onClick={handleCancel}
-											title="Cancel"
-											aria-label={`Cancel editing ${label}`}
+											title={t("ui.common.actions.cancel")}
+											aria-label={t(
+												"ui.common.forms.autocomplete_field.cancel_editing",
+												{ label: String(label) },
+											)}
 											className="text-danger hover:bg-danger-wash hover:text-danger"
 										>
 											<X />

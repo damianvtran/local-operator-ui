@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 import { unwrapIpcErrorMessage } from "@shared/utils/ipc-error-message";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -667,7 +668,11 @@ export function useBrowserChrome(): BrowserChrome {
 					const message = (answer as { message?: unknown } | undefined)
 						?.message;
 					if (typeof message === "string" && message) {
-						showErrorToast(`Could not open the downloads folder. ${message}`);
+						showErrorToast(
+							t("ui.browser.use_browser_chrome.downloads_folder_failed", {
+								message,
+							}),
+						);
 					}
 				}),
 		}),

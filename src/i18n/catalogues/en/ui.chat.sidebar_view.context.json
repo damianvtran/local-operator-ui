@@ -1,0 +1,130 @@
+{
+	"ui.chat.sidebar_view.group_by": {
+		"role": "popover group heading and/or screen-reader legend",
+		"tone": "short noun phrase, sentence case source",
+		"maxCells": 20,
+		"note": "Visual heading uses CSS uppercase; preserve source sentence case. maxCells is advisory, not measured fit."
+	},
+	"ui.chat.sidebar_view.time_basis": {
+		"role": "popover group heading and/or screen-reader legend",
+		"tone": "short noun phrase, sentence case source",
+		"maxCells": 20,
+		"note": "Visual heading uses CSS uppercase; preserve source sentence case. maxCells is advisory, not measured fit."
+	},
+	"ui.chat.sidebar_view.order_by": {
+		"role": "popover group heading and/or screen-reader legend",
+		"tone": "short noun phrase, sentence case source",
+		"maxCells": 20,
+		"note": "Visual heading uses CSS uppercase; preserve source sentence case. maxCells is advisory, not measured fit."
+	},
+	"ui.chat.sidebar_view.sections": {
+		"role": "popover group heading and/or screen-reader legend",
+		"tone": "short noun phrase, sentence case source",
+		"maxCells": 20,
+		"note": "Visual heading uses CSS uppercase; preserve source sentence case. maxCells is advisory, not measured fit."
+	},
+	"ui.chat.sidebar_view.time_section": {
+		"role": "single-choice view option label",
+		"tone": "short factual choice",
+		"maxCells": 24,
+		"note": "Radio-style choice; changes grouping, date basis or ordering, not a conversation action. maxCells is advisory, not measured fit."
+	},
+	"ui.chat.sidebar_view.agent_team": {
+		"role": "single-choice view option label",
+		"tone": "short factual choice",
+		"maxCells": 24,
+		"note": "Radio-style choice; changes grouping, date basis or ordering, not a conversation action. maxCells is advisory, not measured fit."
+	},
+	"ui.chat.sidebar_view.one_list": {
+		"role": "single-choice view option label",
+		"tone": "short factual choice",
+		"maxCells": 24,
+		"note": "Radio-style choice; changes grouping, date basis or ordering, not a conversation action. maxCells is advisory, not measured fit."
+	},
+	"ui.chat.sidebar_view.last_active": {
+		"role": "single-choice view option label",
+		"tone": "short factual choice",
+		"maxCells": 24,
+		"note": "Radio-style choice; changes grouping, date basis or ordering, not a conversation action. maxCells is advisory, not measured fit."
+	},
+	"ui.chat.sidebar_view.created": {
+		"role": "single-choice view option label",
+		"tone": "short factual choice",
+		"maxCells": 24,
+		"note": "Radio-style choice; changes grouping, date basis or ordering, not a conversation action. maxCells is advisory, not measured fit."
+	},
+	"ui.chat.sidebar_view.active_first": {
+		"role": "single-choice view option label",
+		"tone": "short factual choice",
+		"maxCells": 24,
+		"note": "Radio-style choice; changes grouping, date basis or ordering, not a conversation action. maxCells is advisory, not measured fit."
+	},
+	"ui.chat.sidebar_view.most_recent": {
+		"role": "single-choice view option label",
+		"tone": "short factual choice",
+		"maxCells": 24,
+		"note": "Radio-style choice; changes grouping, date basis or ordering, not a conversation action. maxCells is advisory, not measured fit."
+	},
+	"ui.chat.sidebar_view.clock_hint": {
+		"role": "time-basis helper sentence",
+		"tone": "brief factual explanation",
+		"note": "Explains both date labels and list ordering follow the selected clock."
+	},
+	"ui.chat.sidebar_view.move_up": {
+		"role": "section reorder button accessible name",
+		"tone": "brief imperative sentence",
+		"note": "{section} is the localized section label, not a machine ID. Keep the placeholder; word order may change."
+	},
+	"ui.chat.sidebar_view.move_down": {
+		"role": "section reorder button accessible name",
+		"tone": "brief imperative sentence",
+		"note": "{section} is the localized section label, not a machine ID. Keep the placeholder; word order may change."
+	},
+	"ui.chat.sidebar_view.hidden": {
+		"role": "popover hidden-section status",
+		"tone": "brief factual count",
+		"note": "count is a number of hidden sections. English0/2 use sections,1 uses section. Translators must supply locale plural categories as needed, including Russian few/many and Arabic zero/two; preserve count and do not hardcode English plural logic."
+	},
+	"ui.chat.sidebar_view.section.pinned": {
+		"role": "section visibility switch label",
+		"tone": "short section/category noun",
+		"maxCells": 20,
+		"note": "Same section name is interpolated into reorder accessible names. Stable section IDs never change with locale. maxCells is advisory, not measured fit."
+	},
+	"ui.chat.sidebar_view.section.running": {
+		"role": "section visibility switch label",
+		"tone": "short section/category noun",
+		"maxCells": 20,
+		"note": "Same section name is interpolated into reorder accessible names. Stable section IDs never change with locale. maxCells is advisory, not measured fit."
+	},
+	"ui.chat.sidebar_view.section.today": {
+		"role": "section visibility switch label",
+		"tone": "short section/category noun",
+		"maxCells": 20,
+		"note": "Same section name is interpolated into reorder accessible names. Stable section IDs never change with locale. maxCells is advisory, not measured fit."
+	},
+	"ui.chat.sidebar_view.section.week": {
+		"role": "section visibility switch label",
+		"tone": "short section/category noun",
+		"maxCells": 20,
+		"note": "Same section name is interpolated into reorder accessible names. Stable section IDs never change with locale. maxCells is advisory, not measured fit."
+	},
+	"ui.chat.sidebar_view.section.older": {
+		"role": "section visibility switch label",
+		"tone": "short section/category noun",
+		"maxCells": 20,
+		"note": "Same section name is interpolated into reorder accessible names. Stable section IDs never change with locale. maxCells is advisory, not measured fit."
+	},
+	"ui.chat.sidebar_view.section.agents": {
+		"role": "section visibility switch label",
+		"tone": "short section/category noun",
+		"maxCells": 20,
+		"note": "Same section name is interpolated into reorder accessible names. Stable section IDs never change with locale. maxCells is advisory, not measured fit."
+	},
+	"ui.chat.sidebar_view.section.teams": {
+		"role": "section visibility switch label",
+		"tone": "short section/category noun",
+		"maxCells": 20,
+		"note": "Same section name is interpolated into reorder accessible names. Stable section IDs never change with locale. maxCells is advisory, not measured fit."
+	}
+}

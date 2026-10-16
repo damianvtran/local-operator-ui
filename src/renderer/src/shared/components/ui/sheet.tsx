@@ -1,4 +1,5 @@
 import { useSuppressBrowserView } from "@shared/browser-view-policy";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { type VariantProps, cva } from "class-variance-authority";
 import { X } from "lucide-react";
@@ -9,6 +10,7 @@ import {
 	type HTMLAttributes,
 	forwardRef,
 } from "react";
+import { t } from "../../../../../i18n/messages";
 import { Button } from "./button";
 
 /**
@@ -104,37 +106,40 @@ export const SheetContent = forwardRef<
 	(
 		{ className, children, side = "right", showClose = true, ...props },
 		ref,
-	) => (
-		<SheetPortal>
-			<SheetOverlay />
-			<SheetPrimitive.Content
-				ref={ref}
-				/*
-				 * Not a drag surface; see the marker's note in `dialog.tsx` and the rule it
-				 * is read by in `styles/index.css`. The sheet covers the lane's own strip on
-				 * its side of the window, and the controls above that strip - its close, the
-				 * brand row - reach the pointer only while the rect subtracts.
-				 */
-				data-titlebar-no-drag=""
-				className={cn(sheetVariants({ side }), className)}
-				{...props}
-			>
-				{children}
-				{showClose ? (
-					<SheetPrimitive.Close asChild>
-						<Button
-							variant="ghost"
-							size="icon-sm"
-							className="absolute top-4 right-4"
-							aria-label="Close"
-						>
-							<X aria-hidden="true" />
-						</Button>
-					</SheetPrimitive.Close>
-				) : null}
-			</SheetPrimitive.Content>
-		</SheetPortal>
-	),
+	) => {
+		useI18nLocale();
+		return (
+			<SheetPortal>
+				<SheetOverlay />
+				<SheetPrimitive.Content
+					ref={ref}
+					/*
+					 * Not a drag surface; see the marker's note in `dialog.tsx` and the rule it
+					 * is read by in `styles/index.css`. The sheet covers the lane's own strip on
+					 * its side of the window, and the controls above that strip - its close, the
+					 * brand row - reach the pointer only while the rect subtracts.
+					 */
+					data-titlebar-no-drag=""
+					className={cn(sheetVariants({ side }), className)}
+					{...props}
+				>
+					{children}
+					{showClose ? (
+						<SheetPrimitive.Close asChild>
+							<Button
+								variant="ghost"
+								size="icon-sm"
+								className="absolute top-4 right-4"
+								aria-label={t("ui.common.actions.close")}
+							>
+								<X aria-hidden="true" />
+							</Button>
+						</SheetPrimitive.Close>
+					) : null}
+				</SheetPrimitive.Content>
+			</SheetPortal>
+		);
+	},
 );
 SheetContent.displayName = "SheetContent";
 
