@@ -135,6 +135,9 @@ export type QwenRigDeps = {
 /** The file in the profile's qwen-voice state dir that records our s2s. */
 export const S2S_RECORD_FILE = "s2s.json";
 
+/** `ps -o pgid=,command=` output: the group id, then the whole command line. */
+const PS_PGID_COMMAND = /^(\d+)\s+(.*)$/s;
+
 const defaultInspect = (pid: number): ProcessFacts | null => {
 	try {
 		const out = execFileSync(
@@ -145,7 +148,7 @@ const defaultInspect = (pid: number): ProcessFacts | null => {
 				timeout: 5_000,
 			},
 		).trim();
-		const match = /^(\d+)\s+(.*)$/s.exec(out);
+		const match = PS_PGID_COMMAND.exec(out);
 		return match ? { pgid: Number(match[1]), command: match[2] } : null;
 	} catch {
 		// `ps -p` exits 1 for a pid that does not exist.
@@ -237,12 +240,16 @@ export class QwenSpeechProcess {
 
 	private async startOnce(): Promise<void> {
 		const missing = rigMissing(this.rigDir);
-		if (missing) throw new Error(`the Qwen rig is missing ${missing}`);
+		// The reason is shown verbatim in the header (design round 2, D10).
+		if (missing)
+			throw new Error(
+				`Voice rig not found at ${this.rigDir} (missing ${missing})`,
+			);
 		await this.reapOwnOrphan();
 		if (await this.probe(this.ports.s2s)) {
 			// Someone else's s2s (Ben's manual rig): never adopt or kill it.
 			throw new Error(
-				`port ${this.ports.s2s} is already in use; stop the other voice rig first`,
+				`Port ${this.ports.s2s} is in use; stop the other voice rig first`,
 			);
 		}
 		mkdirSync(this.logDir, { recursive: true });
@@ -275,14 +282,12 @@ export class QwenSpeechProcess {
 		const deadline = Date.now() + READY_TIMEOUT_MS;
 		while (Date.now() < deadline) {
 			if (child.exitCode !== null || this.child !== child)
-				throw new Error(
-					"speech-to-speech exited during start; see qwen-s2s.log",
-				);
+				throw new Error("Speech process exited during start; see qwen-s2s.log");
 			if (await this.probe(this.ports.s2s)) return;
 			await this.sleep(1000);
 		}
 		await this.stop();
-		throw new Error("speech-to-speech did not start listening in 8 minutes");
+		throw new Error("Speech process did not start listening in 8 minutes");
 	}
 
 	/** Stop by the recorded process group. Idempotent. */

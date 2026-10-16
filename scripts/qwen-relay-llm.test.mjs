@@ -13,6 +13,10 @@ import {
 	tokenOf,
 } from "../resources/qwen-voice/relay-core.mjs";
 
+const NAMES_Q7 = /Q7/;
+const NAMES_EMPTY = /empty/;
+const NAMES_KIND = /kind/;
+
 /*
  * THE RELAY LLM (the backend's docs/design/qwen-voice.md, Q2/Q3): the
  * deterministic endpoint s2s calls on :8766 in place of the Qwen3-4B. Driven over
@@ -233,9 +237,9 @@ test("INVARIANT: every non-empty relay output is a registered reply, gate text o
 
 test("the registry refuses a phrase outside Q7, empty text and unknown kinds", () => {
 	const r = new SayRegistry();
-	assert.throws(() => r.register("Something else.", "phrase"), /Q7/);
-	assert.throws(() => r.register("  ", "reply"), /empty/);
-	assert.throws(() => r.register("x", "speech"), /kind/);
+	assert.throws(() => r.register("Something else.", "phrase"), NAMES_Q7);
+	assert.throws(() => r.register("  ", "reply"), NAMES_EMPTY);
+	assert.throws(() => r.register("x", "speech"), NAMES_KIND);
 });
 
 test("tokens lapse after the TTL and the registry is bounded", () => {

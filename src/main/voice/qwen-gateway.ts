@@ -130,7 +130,7 @@ export class QwenGatewayHost {
 				if (settled) return;
 				settled = true;
 				this.stop();
-				reject(new Error("the voice Gateway did not start within 60 s"));
+				reject(new Error("The voice Gateway did not start within 60 s"));
 			}, READY_TIMEOUT_MS);
 			child.onMessage((raw) => {
 				const message = raw as GatewayUpMessage;
@@ -162,7 +162,7 @@ export class QwenGatewayHost {
 				if (!settled) {
 					settled = true;
 					clearTimeout(timer);
-					reject(new Error(`the voice Gateway exited (${String(code)})`));
+					reject(new Error(`The voice Gateway exited (${String(code)})`));
 				}
 			});
 		});

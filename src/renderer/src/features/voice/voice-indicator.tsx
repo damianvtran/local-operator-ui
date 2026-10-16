@@ -70,13 +70,25 @@ const PhaseAction: FC<{
 	</Button>
 );
 
-/** The one-sentence reason an error shows as visible text. */
+/**
+ * The reason an error shows as visible text. A RIG error wins (U9) and shows
+ * main's own sentence for a start failure - "Port 8765 is in use; ...",
+ * "Voice rig not found at ..." - because the cause is what Ben can act on
+ * (design round 2, D10; UX U8); the generic line is only the fallback for a
+ * status that carries none.
+ */
 function errorReason(
 	rig: QwenVoiceStatus | undefined,
 	exchange: VoiceExchangeError | undefined,
 ): string {
+	if (rig?.rig === "error") {
+		if (rig.cause === "unexpected_exit") return t("ui.chat.voice.error_exited");
+		const reason = rig.reason?.trim();
+		return reason
+			? reason.charAt(0).toUpperCase() + reason.slice(1)
+			: t("ui.chat.voice.error_start_failed");
+	}
 	if (exchange === "not_sent") return t("ui.chat.voice.error_not_sent");
-	if (rig?.cause === "unexpected_exit") return t("ui.chat.voice.error_exited");
 	return t("ui.chat.voice.error_start_failed");
 }
 
@@ -152,6 +164,18 @@ export const VoicePhase: FC<{ sessionId: string | undefined }> = ({
 	 * anyone who does not hover. A rig error offers "Try again", which restarts
 	 * the rig; an exchange error (one take not sent) clears on the next take, so
 	 * it names what happened and offers nothing to restart.
+	 *
+	 * THE REASON YIELDS FIRST (design round 2, D9). A cause such as "Voice rig
+	 * not found at /Users/..." is long, and the header's title block is
+	 * `flex-1 basis-0`, so it only ever gets what the trailing cluster leaves:
+	 * an uncapped reason (and, measured, even one capped at 40% of the row)
+	 * took the title to 0px at an 800px window. So the reason's width is what
+	 * the header row (`chathdr`'s container width) has left after 41rem: the
+	 * room the title, the agent/team/device chips and the trailing controls
+	 * need. Below 3rem of it (a header row under 44rem, an ~800px window) the
+	 * reason is hidden rather than drawn as a one-letter stub - measured "V."
+	 * at 800px - and "Voice error" plus "Try again" stand alone with the full
+	 * text in the tooltip. On a wide window the reason shows, truncating.
 	 */
 	if (phase === "error") {
 		return (
@@ -163,10 +187,13 @@ export const VoicePhase: FC<{ sessionId: string | undefined }> = ({
 				<span className="shrink-0 whitespace-nowrap text-danger">
 					{t("ui.chat.voice.phase_error")}
 				</span>
-				<span data-voice-reason="" className="min-w-0 truncate text-ink-muted">
+				<span
+					data-voice-reason=""
+					className="min-w-0 max-w-[max(0px,calc(100cqw-41rem))] truncate text-ink-muted @max-[44rem]/chathdr:hidden"
+				>
 					{errorReason(rig, exchangeReason)}
 				</span>
-				{exchangeReason ? null : (
+				{rig?.rig !== "error" && exchangeReason ? null : (
 					<PhaseAction
 						phase="retry"
 						label={t("ui.chat.voice.try_again")}
