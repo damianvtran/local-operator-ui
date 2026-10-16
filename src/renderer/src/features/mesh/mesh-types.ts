@@ -44,6 +44,7 @@
  */
 
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
+import { t } from "../../../../i18n/messages";
 
 /* ------------------------------------------------------------- coercions */
 
@@ -614,7 +615,9 @@ export function deviceLabel(device: {
 }): string {
 	const name = text(device.name);
 	if (name) return name;
-	return `device …${text(device.device_id).slice(-6)}`;
+	return t("ui.mesh.mesh_types.device_suffix", {
+		suffix: text(device.device_id).slice(-6),
+	});
 }
 
 /** A network's display label: its name, else the id's tail. */
@@ -624,5 +627,7 @@ export function networkLabel(network: {
 }): string {
 	const name = text(network.name);
 	if (name) return name;
-	return `network …${text(network.network_id).slice(-6)}`;
+	return t("ui.mesh.mesh_types.network_suffix", {
+		suffix: text(network.network_id).slice(-6),
+	});
 }

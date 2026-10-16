@@ -51,6 +51,7 @@
  * nobody wrote down than a new spelling of "we never asked".
  */
 
+import { t } from "../../../../i18n/messages";
 import type { MeshDevice } from "./mesh-graph";
 import type { MeshSessionRow } from "./mesh-types";
 import { sessionIsBusy } from "./mesh-types";
@@ -149,21 +150,22 @@ export function deviceReach(
  * the node's accessible name and the panel's header line say it - and a second spelling
  * of it in either file would be two descriptions of one fact.
  */
-export const SUSPECT_WORDS = "identity suspect";
+// Resolve at the read site: graph objects outlive a locale switch.
+export const suspectWords = () => t("ui.mesh.mesh_graph.identity_suspect");
 
 /** The node's own word for each reach state, and nothing else. */
 export function reachWords(reach: DeviceReach): string {
 	switch (reach) {
 		case "self":
-			return "this device";
+			return t("ui.mesh.mesh_drop.this_device");
 		case "reached":
-			return "reached";
+			return t("ui.mesh.mesh_reach.reached");
 		case "unanswered":
-			return "no answer";
+			return t("ui.mesh.mesh_reach.no_answer");
 		case "not-attempted":
-			return "not asked";
+			return t("ui.mesh.mesh_reach.not_asked");
 		default:
-			return "unknown";
+			return t("ui.mesh.mesh_reach.unknown");
 	}
 }
 

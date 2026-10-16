@@ -43,9 +43,13 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { ArrowRight, Check, Copy, Loader2 } from "lucide-react";
 import { type FC, useEffect, useId, useState } from "react";
+// Chat device controls reuse these dialogs. Keep translation independent of
+// language-writing capabilities; the locale subscription is the separate hook leaf.
+import { t } from "../../../../i18n/messages";
 import type { MovePlan } from "./mesh-drop";
 import { planConfirm } from "./mesh-drop";
 import { INVITE_ROLES, type InviteRole } from "./mesh-store";
@@ -70,6 +74,7 @@ export const MoveConfirmDialog: FC<{
 	onCancel: () => void;
 	onChoose: (plan: MovePlan) => void;
 }> = ({ open, plan, alternatives, risky, busy, onCancel, onChoose }) => {
+	useI18nLocale();
 	const confirm = planConfirm(plan, risky);
 	const [chosen, setChosen] = useState<MovePlan>(plan);
 	// The chosen plan is re-seeded when the dialog opens for a DIFFERENT drop: a
@@ -89,8 +94,14 @@ export const MoveConfirmDialog: FC<{
 					<DialogTitle>{effective.verb}</DialogTitle>
 					<DialogDescription>
 						{isCopy
-							? `A copy is made on the destination with a new id, and ${effective.to === "local" ? "the other device keeps" : "this device keeps"} its own. The copy can be erased again from the session list.`
-							: (confirm?.body ?? "This moves the conversation.")}
+							? t("ui.mesh.mesh_actions.copy_notice", {
+									keeper:
+										effective.to === "local"
+											? t("ui.mesh.mesh_actions.the_other_device_keeps")
+											: t("ui.mesh.mesh_actions.this_device_keeps"),
+								})
+							: (confirm?.body ??
+								t("ui.mesh.mesh_actions.this_moves_the_conversation"))}
 					</DialogDescription>
 				</DialogHeader>
 				{alternatives.length > 0 && (
@@ -101,7 +112,9 @@ export const MoveConfirmDialog: FC<{
 					 * the reader pick the one it cannot tell apart from the safe one.
 					 */
 					<fieldset className="m-0 flex flex-col gap-2 border-0 p-0">
-						<legend className="sr-only">Which operation</legend>
+						<legend className="sr-only">
+							{t("ui.mesh.mesh_actions.which_operation")}
+						</legend>
 						{[plan, ...alternatives].map((option) => (
 							<label
 								key={option.keep ? "copy" : "move"}
@@ -135,8 +148,10 @@ export const MoveConfirmDialog: FC<{
 									 */}
 									<span className="mt-0.5 block text-meta text-ink-dim">
 										{option.keep
-											? "the original stays where it is"
-											: "the copy here is deleted once it arrives"}
+											? t("ui.mesh.mesh_actions.the_original_stays_where_it_is")
+											: t(
+													"ui.mesh.mesh_actions.the_copy_here_is_deleted_once_it",
+												)}
 									</span>
 								</span>
 							</label>
@@ -146,13 +161,15 @@ export const MoveConfirmDialog: FC<{
 				{risky && (
 					<Alert variant="warning" className="text-meta">
 						{effective.keep
-							? "It is open on the other end, and the copy does not interrupt it."
-							: "It is open elsewhere right now: whatever that runtime is holding is not carried across."}
+							? t("ui.mesh.mesh_actions.it_is_open_on_the_other_end")
+							: t(
+									"ui.mesh.mesh_actions.it_is_open_elsewhere_right_now_whatever",
+								)}
 					</Alert>
 				)}
 				<DialogFooter>
 					<Button variant="ghost" onClick={onCancel} disabled={busy}>
-						Cancel
+						{t("ui.mesh.mesh_actions.cancel")}
 					</Button>
 					<Button
 						onClick={() => onChoose(effective)}
@@ -215,6 +232,7 @@ export const InviteDialog: FC<{
 	refusal,
 	deviceId,
 }) => {
+	useI18nLocale();
 	const [role, setRole] = useState<InviteRole>("drive");
 	const [chosenNetwork, setChosenNetwork] = useState<string | null>(null);
 	const chosen =
@@ -227,32 +245,37 @@ export const InviteDialog: FC<{
 		<Dialog open={open} onOpenChange={(next) => !next && onClose()}>
 			<DialogContent className="max-w-md">
 				<DialogHeader>
-					<DialogTitle>Invite to a network…</DialogTitle>
+					<DialogTitle>
+						{t("ui.mesh.mesh_actions.invite_to_a_network")}
+					</DialogTitle>
 					<DialogDescription>
 						{/*
 						 * THE PROTOCOL'S OWN LIMIT, stated where a user would otherwise expect
 						 * "add": admission is two-sided (the joining device proves the SAS), so
 						 * there is no act that makes a device a member from here.
 						 */}
-						Admission is two-sided, so this mints a single-use token instead of
-						adding anything: {deviceLabel ?? "the device"} proves the short
-						authentication string when it redeems the token, and only then does
-						it appear as a member.
+						{t("ui.mesh.mesh_actions.admission_is_two_sided_so_this_mints")}
+						{deviceLabel ?? t("ui.mesh.mesh_actions.the_device")}{" "}
+						{t(
+							"ui.mesh.mesh_actions.proves_the_short_authentication_string_when_it",
+						)}
 					</DialogDescription>
 				</DialogHeader>
 				{receipt ? (
 					<div className="flex flex-col gap-2 rounded-md border border-control bg-sunken px-3 py-2">
 						<span className="text-body-sm text-ink">
-							Invited — the device appears once it redeems this.
+							{t(
+								"ui.mesh.mesh_actions.invited_the_device_appears_once_it_redeems",
+							)}
 						</span>
 						<span className="text-meta text-ink-dim">
-							The token was written here, and this app never reads it:
+							{t("ui.mesh.mesh_actions.the_token_was_written_here_and_this")}
 						</span>
 						<code className="break-words font-mono text-meta text-ink">
 							{receipt.token_path ? (
 								<BreakablePath path={receipt.token_path} />
 							) : (
-								"(the route did not name a path)"
+								t("ui.mesh.mesh_actions.the_route_did_not_name_a_path")
 							)}
 						</code>
 					</div>
@@ -266,7 +289,9 @@ export const InviteDialog: FC<{
 						 */}
 						{options.length > 1 && (
 							<>
-								<Label htmlFor={networkFieldId}>Network to invite it to</Label>
+								<Label htmlFor={networkFieldId}>
+									{t("ui.mesh.mesh_actions.network_to_invite_it_to")}
+								</Label>
 								<Select
 									value={chosen ?? undefined}
 									onValueChange={(next) => setChosenNetwork(next)}
@@ -286,10 +311,13 @@ export const InviteDialog: FC<{
 						)}
 						{options.length === 1 && (
 							<span className="text-meta text-ink-dim">
-								Inviting to {options[0]?.label}
+								{t("ui.mesh.mesh_actions.inviting_to")}
+								{options[0]?.label}
 							</span>
 						)}
-						<Label htmlFor={roleId}>Role the device will have</Label>
+						<Label htmlFor={roleId}>
+							{t("ui.mesh.mesh_actions.role_the_device_will_have")}
+						</Label>
 						<Select
 							value={role}
 							onValueChange={(next) => setRole(next as InviteRole)}
@@ -306,8 +334,7 @@ export const InviteDialog: FC<{
 							</SelectContent>
 						</Select>
 						<span className="text-meta text-ink-dim">
-							read sees sessions, drive may ask this device for one, admin may
-							also change the membership.
+							{t("ui.mesh.mesh_actions.read_sees_sessions_drive_may_ask_this")}
 						</span>
 					</div>
 				)}
@@ -318,7 +345,9 @@ export const InviteDialog: FC<{
 				)}
 				<DialogFooter>
 					<Button variant="ghost" onClick={onClose}>
-						{receipt ? "Close" : "Cancel"}
+						{receipt
+							? t("ui.mesh.mesh_actions.close")
+							: t("ui.mesh.mesh_actions.cancel")}
 					</Button>
 					{!receipt && (
 						<Button
@@ -333,7 +362,7 @@ export const InviteDialog: FC<{
 									className="mr-2 size-3.5 animate-spin"
 								/>
 							)}
-							Mint the token
+							{t("ui.mesh.mesh_actions.mint_the_token")}
 						</Button>
 					)}
 				</DialogFooter>
@@ -371,6 +400,7 @@ export const RemoveMemberDialog: FC<{
 	refusal,
 	removed,
 }) => {
+	useI18nLocale();
 	const [typed, setTyped] = useState("");
 	const fieldId = useId();
 	useEffect(() => {
@@ -381,22 +411,26 @@ export const RemoveMemberDialog: FC<{
 			<DialogContent className="max-w-md">
 				<DialogHeader>
 					<DialogTitle>
-						Remove {deviceLabel} from {networkLabel}?
+						{t("ui.mesh.mesh_actions.remove")}
+						{deviceLabel} {t("ui.mesh.mesh_actions.from")}
+						{networkLabel}?
 					</DialogTitle>
 					<DialogDescription>
-						Every device in the network is rekeyed and {deviceLabel} is locked
-						out on its next handshake. A removed device id is never admitted
-						again.
+						{t("ui.mesh.mesh_actions.every_device_in_the_network_is_rekeyed")}
+						{deviceLabel}{" "}
+						{t("ui.mesh.mesh_actions.is_locked_out_on_its_next_handshake")}
 					</DialogDescription>
 				</DialogHeader>
 				{removed ? (
 					<p className="text-body-sm text-ink">
-						Removed. The membership epoch is now {removed.epoch}.
+						{t("ui.mesh.mesh_actions.removed_the_membership_epoch_is_now")}
+						{removed.epoch}.
 					</p>
 				) : (
 					<div className="flex flex-col gap-1">
 						<Label htmlFor={fieldId}>
-							Type the network's name to confirm: {networkLabel}
+							{t("ui.mesh.mesh_actions.type_the_network_s_name_to_confirm")}
+							{networkLabel}
 						</Label>
 						<Input
 							id={fieldId}
@@ -414,7 +448,9 @@ export const RemoveMemberDialog: FC<{
 				)}
 				<DialogFooter>
 					<Button variant="ghost" onClick={onClose}>
-						{removed ? "Close" : "Cancel"}
+						{removed
+							? t("ui.mesh.mesh_actions.close")
+							: t("ui.mesh.mesh_actions.cancel")}
 					</Button>
 					{!removed && (
 						<Button
@@ -428,7 +464,7 @@ export const RemoveMemberDialog: FC<{
 									className="mr-2 size-3.5 animate-spin"
 								/>
 							)}
-							Remove the device
+							{t("ui.mesh.mesh_actions.remove_the_device")}
 						</Button>
 					)}
 				</DialogFooter>
@@ -519,6 +555,7 @@ export const MoveNotice: FC<{
 	onDismiss,
 	pending,
 }) => {
+	useI18nLocale();
 	if (!receipt && !refusal) return null;
 	return (
 		/*
@@ -553,7 +590,7 @@ export const MoveNotice: FC<{
 					onClick={onWait}
 					disabled={pending}
 				>
-					Wait for the turn to finish
+					{t("ui.mesh.mesh_actions.wait_for_the_turn_to_finish")}
 				</Button>
 			)}
 			{(refusal?.unconfirmed || refusal?.code === "unreachable") && (
@@ -563,7 +600,7 @@ export const MoveNotice: FC<{
 					onClick={onRecheck}
 					disabled={pending}
 				>
-					Check again
+					{t("ui.mesh.mesh_actions.check_again")}
 				</Button>
 			)}
 			{receipt?.undo && (
@@ -586,7 +623,7 @@ export const MoveNotice: FC<{
 			)}
 			{onDismiss ? (
 				<Button size="sm" variant="ghost" onClick={onDismiss}>
-					Dismiss
+					{t("ui.mesh.mesh_actions.dismiss")}
 				</Button>
 			) : null}
 		</output>
