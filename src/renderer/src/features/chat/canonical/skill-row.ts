@@ -93,8 +93,19 @@ const INDENTED = /^\s/;
  */
 const BLOCK_INDICATOR = /^[>|][-+]?\d*$/;
 
-/** A scalar that opens with a quote, i.e. one YAML's escaping applies to. */
-const QUOTED = /^["']/;
+/**
+ * The LINE `render_invocation` writes in front of every payload
+ * (`invoke.py:193`), with the resolved skill name captured: the sentence opens
+ * `The user invoked the \`<name>\` skill directly.` and the rest of the line is
+ * the writer's own prose, so the tail is read as "to the end of the line" rather
+ * than spelled out here -- a wording change in the harness must not stop the
+ * desktop reading payloads the harness wrote.
+ *
+ * `_INVOCATION_TAG_RE` alone would be parity with the harness and WRONG here:
+ * see `skillRowOf` for what requiring this sentence buys.
+ */
+const PAYLOAD_HEADER_RE =
+	/^The user invoked the `([^`\n]+)` skill directly\.[^\n]*\n/;
 
 /**
  * The front matter block's end within `body`, or `null` when there is none.
@@ -115,6 +126,17 @@ function frontMatterEnd(body: string): number | null {
 	// Past the closing line's own `---`: the offset is relative to the trimmed
 	// view, so the leading whitespace it dropped is added back.
 	return body.length - text.length + 3 + end + 4;
+}
+
+/**
+ * A DOUBLE-quoted YAML scalar's body, unescaped for the escapes a caption
+ * plausibly carries: `\"` and `\\`. The rest of YAML's escape set (`\n`, `	`,
+ * `\uXXXX`) is left as written rather than half-interpreted here -- a description
+ * that needs one of those needs a YAML parser, and this reader's contract is a
+ * line scan (see `purposeOf`).
+ */
+function unquoteDouble(value: string): string {
+	return value.replace(/\\"/g, '"').replace(/\\\\/g, "\\");
 }
 
 /**
@@ -163,13 +185,28 @@ function purposeOf(frontMatter: string): string | null {
 			pieces.push(next.trim());
 		}
 		if (pieces.length === 0) return null;
-		let folded = pieces.join(" ");
-		if (QUOTED.test(folded)) {
-			const quote = folded[0];
-			if (folded.length < 2 || !folded.endsWith(quote)) return null;
-			folded = folded.slice(1, -1);
+		const folded = pieces.join(" ");
+		if (isBlockIndicator) return folded.trim() === "" ? null : folded.trim();
+		if (folded.startsWith('"')) {
+			if (folded.length < 2 || !folded.endsWith('"')) return null;
+			return unquoteDouble(folded.slice(1, -1));
 		}
-		return folded === "" ? null : folded;
+		if (folded.startsWith("'")) {
+			// YAML escapes a quote in a single-quoted scalar by DOUBLING it, and has
+			// no backslash escapes there at all.
+			if (folded.length < 2 || !folded.endsWith("'")) return null;
+			const body = folded.slice(1, -1).replace(/''/g, "'");
+			return body === "" ? null : body;
+		}
+		/*
+		 * A PLAIN scalar's inline comment starts at whitespace + `#` (`description:
+		 * ship it # not this`). A `#` is CONTENT inside a block scalar or a quoted
+		 * value, which is why this branch -- and not the whole function -- strips
+		 * one.
+		 */
+		const comment = folded.indexOf(" #");
+		const plain = (comment === -1 ? folded : folded.slice(0, comment)).trim();
+		return plain === "" ? null : plain;
 	}
 	return null;
 }
@@ -179,42 +216,73 @@ function purposeOf(frontMatter: string): string | null {
  * that is not one of these payloads.
  *
  * `null` is the answer for every ordinary message, so a caller falls through to
- * painting the text verbatim. That is the whole gate: the recogniser is the
- * payload's own tag, matched the way the harness matches it, so a message that
- * merely QUOTES the tag in prose is not one of these unless it carries the whole
- * tag — see `SKILL_TAG_RE` for why that match is a search rather than an anchor.
+ * painting the text verbatim. The gate is the payload's OWN SHAPE and not merely
+ * its tag: the header sentence the writer always emits (`invoke.py:193`), then
+ * the tag directly after it, then the tag's name equal to the header's. Anything
+ * else -- prose that quotes a whole tag, a `<reply-to>` run quoting a message
+ * that discusses the wire format, a tag with no close -- is an ordinary message.
+ *
+ * WHY STRICTER THAN THE HARNESS. `typed_line_of` searches for the tag anywhere,
+ * and that is right for its caller, which only ever reads strings the writer
+ * produced. This function's caller is every user row of every session, and three
+ * rows in this machine's own store are agent briefings that describe this format
+ * and therefore carry a whole tag: sealing one would paint `$name` and a slice
+ * of the tail while hiding the briefing itself (QA round 1, Q1 -- 18-20k
+ * characters per row, unreachable behind the disclosure rather than merely
+ * misplaced). The harness half is deferred on #2526.
  */
 export function skillRowOf(text: string): SkillInvocationRow | null {
-	const tag = SKILL_TAG_RE.exec(text);
-	if (tag === null) return null;
+	/*
+	 * The whitespace between the last quoted block and the payload, and the
+	 * payload itself. The gap is kept (it is `buildSendPayload`'s own join, so
+	 * `text` below is the string that composer would assemble), and the header
+	 * match runs on the trimmed view because the writer's own join puts a newline
+	 * between a quoted run and the payload.
+	 */
+	const { prefix, rest } = splitReplyPrefix(text);
+	const gap = rest.slice(0, rest.length - pyTrimStart(rest).length);
+	const payload = pyTrimStart(rest);
+	const header = PAYLOAD_HEADER_RE.exec(payload);
+	if (header === null) return null;
+	const tag = SKILL_TAG_RE.exec(payload.slice(header[0].length));
+	if (tag === null || tag.index !== 0 || tag[1] !== header[1]) return null;
 	// A tag with no close is not a payload this read can describe: `text` would
 	// have to invent the body. The harness writes both tags or neither.
-	const bodyStart = tag.index + tag[0].length;
-	const close = text.indexOf("</skill>", bodyStart);
+	const bodyStart = header[0].length + tag[0].length;
+	const close = payload.indexOf("</skill>", bodyStart);
 	if (close === -1) return null;
 
-	const rawBody = text.slice(bodyStart, close);
+	const rawBody = payload.slice(bodyStart, close);
 	const end = frontMatterEnd(rawBody);
 	const purpose = end === null ? null : purposeOf(rawBody.slice(0, end));
 	const name = tag[1];
 	const typed = unescapeSkillAttribute(tag[2]);
-	/*
-	 * The quote markup a staged reply put in front of the payload, and the
-	 * whitespace that follows the last block — `buildSendPayload`'s own join.
-	 * Both are kept, so `text` is the string that composer would assemble for
-	 * this line rather than a re-spelling of it.
-	 */
-	const { prefix, rest } = splitReplyPrefix(text);
-	const gap = rest.slice(0, rest.length - pyTrimStart(rest).length);
 
 	return {
 		text: prefix + gap + typed,
 		skill: {
 			name,
 			token: `$${name}`,
-			request: pyTrim(text.slice(close + "</skill>".length)),
+			request: pyTrim(payload.slice(close + "</skill>".length)),
 			purpose,
 			body: end === null ? pyTrim(rawBody) : pyTrim(rawBody.slice(end)),
 		},
 	};
+}
+
+/**
+ * The text a `$skill` row hands back to the composer's Edit.
+ *
+ * `skillRowOf`'s own line when the row is an invocation, and the record's text
+ * verbatim otherwise -- so a plain message is untouched, and a payload comes
+ * back as the line the reader typed, with any quoted run still in front of it
+ * (that is the string `buildSendPayload` joined, and the spelling the composer
+ * cannot re-expand: a leading quote run means no first-token `$name`).
+ *
+ * ONE FUNCTION rather than the expression at the call site, so the half a test
+ * can pin has a name -- and so the retry gate beside the call compares against
+ * the same derivation it hands back (agent review round 1, MINOR-4).
+ */
+export function editTextOf(text: string): string {
+	return skillRowOf(text)?.text ?? text;
 }

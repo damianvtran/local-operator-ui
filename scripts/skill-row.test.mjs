@@ -25,7 +25,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents: `
-			export { skillRowOf, skillOf } from "./src/renderer/src/features/chat/canonical/skill-row";
+			export { editTextOf, skillOf, skillRowOf } from "./src/renderer/src/features/chat/canonical/skill-row";
 			export { escapeSkillAttribute, renderSkillInvocation, typedLineOf, unescapeSkillAttribute } from "./src/renderer/src/features/chat/components/skill-invocation";
 		`,
 		resolveDir: process.cwd(),
@@ -38,8 +38,9 @@ const bundle = await build({
 const bundlePath = new URL(`./_skill-row-${process.pid}.mjs`, import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 const {
-	skillRowOf,
+	editTextOf,
 	skillOf,
+	skillRowOf,
 	escapeSkillAttribute,
 	renderSkillInvocation,
 	typedLineOf,
@@ -320,6 +321,179 @@ test("what the write half renders is what this read half reads", () => {
 		// The function the payload's own reader uses, over the same string.
 		assert.equal(typedLineOf(payload), vector.typed);
 	}
+});
+
+test("what the scene's fixture stores is what the writer produces", async () => {
+	/*
+	 * The `skill-seal` scene photographs a seeded journal, and the fixture that
+	 * writes it pins the payloads as literals (a fixture recomputed at read time
+	 * would pin nothing). This is the other half of that claim: the app's own
+	 * writer, over the same two SKILL.md files, produces exactly those bytes -- so
+	 * a drifted writer fails HERE rather than photographing a format that no
+	 * longer ships, which is the failure mode `imagegen-card-fixture.mjs` records
+	 * for its own journal rows.
+	 */
+	const fixture = await import("./skill-seal-fixture.mjs");
+	const vectors = [
+		{
+			name: "seal-demo",
+			skill: fixture.SEAL_DEMO_SKILL,
+			payload: fixture.SEAL_DEMO_PAYLOAD,
+			request: "review the diff",
+			token: "$seal-demo",
+		},
+		{
+			name: "seal-audit",
+			skill: fixture.SEAL_AUDIT_SKILL,
+			payload: fixture.SEAL_AUDIT_PAYLOAD,
+			request: "audit this branch",
+			token: "$seal-audit",
+		},
+	];
+	for (const vector of vectors) {
+		const typed = `${vector.token} ${vector.request}`;
+		assert.equal(
+			renderSkillInvocation(
+				{
+					name: vector.name,
+					request: vector.request,
+					token: vector.token,
+					typed,
+				},
+				vector.skill,
+			),
+			vector.payload,
+			vector.name,
+		);
+		// And the row the scene reads off it: the typed line, and the request.
+		const row = skillRowOf(vector.payload);
+		assert.equal(row.text, typed, vector.name);
+		assert.equal(row.skill.request, vector.request, vector.name);
+	}
+	// The fixture's first description is a FOLDED block scalar, so this is D3' in
+	// one assertion: it reaches the row as ONE line rather than as nothing.
+	assert.equal(
+		skillRowOf(fixture.SEAL_DEMO_PAYLOAD).skill.purpose,
+		"Review a diff for the seal demo and say what breaks",
+	);
+	// And the second is long enough to clip on a row, so the truncation frame is a
+	// real case rather than a hoped-for one.
+	assert.equal(
+		skillRowOf(fixture.SEAL_AUDIT_PAYLOAD).skill.purpose.length > 120,
+		true,
+	);
+});
+
+test("a message that QUOTES a whole tag is not an invocation", () => {
+	/*
+	 * THE GATE IS THE PAYLOAD'S OWN SHAPE, not its tag: a message can carry a
+	 * whole `<skill name=... invocation=...>` run without being one of these, and
+	 * three rows in this machine's own store do -- agent briefings that describe
+	 * this wire format (QA round 1, Q1: 18-20k characters each). Sealing one would
+	 * paint `$seal-demo` and a slice of the tail and hide the briefing itself, which on
+	 * this surface is unrecoverable: a sealed row draws the typed line, the
+	 * request and the body, and nothing else.
+	 */
+	const prose =
+		'Heads up: the format is <skill name="x" invocation="$seal-demo do it"> body </skill> then the request. Thoughts?';
+	assert.equal(skillRowOf(prose), null);
+	// The same prose inside a quoted run, which is how a reply to such a message
+	// arrives: the markup is stripped and what follows is still prose.
+	assert.equal(
+		skillRowOf(`<reply-to>${prose}</reply-to>\nwhy does it do that?`),
+		null,
+	);
+	// A stack of quoted runs over prose is the same answer.
+	assert.equal(
+		skillRowOf(
+			`<reply-to>a</reply-to>\n<reply-to>${prose}</reply-to>\nand then?`,
+		),
+		null,
+	);
+	// The header sentence alone is prose, and a header whose name is not the
+	// tag's is a message ABOUT a payload rather than one.
+	assert.equal(
+		skillRowOf("The user invoked the `x` skill directly. Follow it."),
+		null,
+	);
+	assert.equal(
+		skillRowOf(
+			[
+				"The user invoked the `x` skill directly. Follow it.",
+				'<skill name="y" invocation="$seal-demo go">',
+				"body\n</skill>",
+			].join("\n"),
+		),
+		null,
+	);
+	// A tag BEFORE the header sentence is not the payload's shape either.
+	assert.equal(
+		skillRowOf(
+			[
+				'<skill name="x" invocation="$seal-demo go">',
+				"body\n</skill>",
+				"The user invoked the `x` skill directly. Follow it.",
+			].join("\n"),
+		),
+		null,
+	);
+});
+
+test("a YAML scalar's own punctuation is not painted", () => {
+	const withDescription = (frontMatter) =>
+		[
+			HEADER,
+			'<skill name="seal-demo" invocation="$seal-demo">',
+			`---\nname: seal-demo\n${frontMatter}---\n\n# Seal demo\n</skill>`,
+		].join("\n");
+	const purposeOf = (frontMatter) =>
+		skillRowOf(withDescription(frontMatter)).skill.purpose;
+
+	// Single-quoted: YAML escapes a quote by DOUBLING it, and has no backslashes.
+	assert.equal(purposeOf("description: 'it''s fine'\n"), "it's fine");
+	// Double-quoted: `\"` and `\\` are the two escapes a caption plausibly
+	// carries, and they come off.
+	assert.equal(purposeOf('description: "say \\"hi\\" now"\n'), 'say "hi" now');
+	assert.equal(purposeOf('description: "a \\\\ b"\n'), "a \\ b");
+	// A plain scalar's inline comment is not part of the value...
+	assert.equal(
+		purposeOf("description: Does a thing # not this\n"),
+		"Does a thing",
+	);
+	// ...while inside a block scalar a `#` is content, and a `#` with no space in
+	// front of it is not a comment anywhere.
+	assert.equal(
+		purposeOf("description: >-\n  Does a thing\n  # not this\n"),
+		"Does a thing # not this",
+	);
+	assert.equal(purposeOf("description: issue#42\n"), "issue#42");
+	// The two shapes that were already right stay right.
+	assert.equal(purposeOf("description: Review a diff\n"), "Review a diff");
+	assert.equal(purposeOf('description: "Review a diff"\n'), "Review a diff");
+});
+
+test("editTextOf hands the composer the line, and leaves every other message alone", () => {
+	/*
+	 * The Edit half of the change (agent review round 1, MINOR-4). `chat-page.tsx`
+	 * calls exactly this function for the undelivered row's Edit and compares the
+	 * composer's text against it for `retryDisabled`, so the three shapes below are
+	 * the three the call site can meet.
+	 */
+	assert.equal(editTextOf(PAYLOAD), "$seal-demo review the diff");
+	// A quoted skill send keeps its markup: that IS the string the composer joined,
+	// and the spelling it cannot re-expand (a leading quote run means no
+	// first-token `$seal-demo`).
+	const reply = "<reply-to>the answer above</reply-to>";
+	assert.equal(
+		editTextOf(`${reply}\n${PAYLOAD}`),
+		`${reply}\n$seal-demo review the diff`,
+	);
+	// Everything else comes back verbatim -- an ordinary message, and prose that
+	// merely quotes a tag (which `skillRowOf` declines).
+	assert.equal(editTextOf("plain words"), "plain words");
+	const prose =
+		'the format is <skill name="x" invocation="$seal-demo do it"> body </skill> then the request';
+	assert.equal(editTextOf(prose), prose);
 });
 
 test("escape and unescape are inverses, and unescape undoes the entities once", () => {

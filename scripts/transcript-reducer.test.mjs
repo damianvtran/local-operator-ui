@@ -5422,7 +5422,16 @@ test("a tail read never answers the paging question, and never repaints a cleare
 	);
 
 	// And the bracket QA ran: `/clear`, a new message, then the pass.
-	const afterNewMessage = appendPendingUser(afterTail, "and now compact again");
+	// The id and the media array were missing here, so the record this appended
+	// carried `undefined` for both -- invisible while the assertion below only
+	// counts kinds, and a `TypeError` the moment anything read the text (found by
+	// this PR's stricter reader, agent review round 1 remediation).
+	const afterNewMessage = appendPendingUser(
+		afterTail,
+		"req-compact-again",
+		"and now compact again",
+		[],
+	);
 	assert.deepEqual(rows(afterNewMessage), ["compaction", "user"]);
 	const afterSecondPass = applyHistoryPage(afterNewMessage, twoPasses, {
 		keepPaging: true,

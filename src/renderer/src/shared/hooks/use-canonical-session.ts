@@ -47,6 +47,7 @@ import {
 	entryRecordKey,
 	openFrameCoversHeld,
 } from "@features/chat/canonical/open-frame";
+import { skillOf } from "@features/chat/canonical/skill-row";
 import {
 	EMPTY_TRANSCRIPT,
 	RECONCILE_TAIL_ENTRIES,
@@ -1568,7 +1569,17 @@ function replaceLocalRecordText(
 	)
 		return state;
 	const records = state.records.slice();
-	records[at] = { ...record, text };
+	/*
+	 * THE SEAL IS DERIVED FROM THE TEXT, so a replacement has to re-derive it:
+	 * the credential seam rewrites a pending send's text after the row is painted
+	 * (`replacePendingSendText`, `canonical-sessions-store.ts`), and a `skill` left
+	 * over from the pre-substitution string would keep painting the placeholder
+	 * request in the row's header until the owner's durable row replaced it
+	 * (agent review round 1, MINOR-2). `skillOf` is the reducer's own derivation,
+	 * and the spread is `absent-not-undefined` for the reason its callers give.
+	 */
+	const skill = skillOf(text);
+	records[at] = { ...record, text, ...(skill ? { skill } : {}) };
 	return { ...state, records };
 }
 
