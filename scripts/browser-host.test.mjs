@@ -3130,6 +3130,338 @@ function installClickFixture(cdp, onNavigate) {
 	};
 }
 
+const CLICK_DOM_DISPATCH_FAILURE = /injected DOM dispatch failure/;
+
+/** Run the actual host-supplied click declaration in its target's DOM realm.
+ * JSDOM supplies focus/event logic, NOT Chromium scroll/default-action parity.
+ * Its missing PointerEvent uses a MouseEvent adapter, explicitly not OS input. */
+async function clickDomFixture(
+	t,
+	markup = '<button id="target">Go</button><input id="destination">',
+) {
+	const { JSDOM } = await import("jsdom");
+	const dom = new JSDOM(markup, {
+		url: "https://approved.example/",
+		runScripts: "outside-only",
+	});
+	t.after(() => dom.window.close());
+	dom.window.PointerEvent ??= dom.window.MouseEvent;
+	const fixture = makeHost();
+	const { owner, tab } = await openApprovedTab(fixture.host);
+	const declarations = [];
+	let target = dom.window.document.querySelector("#target");
+	const send = fixture.cdp.send;
+	fixture.cdp.send = async (contents, method, params) => {
+		if (method === "DOM.getDocument") return { root: { nodeId: 1 } };
+		if (method === "DOM.querySelector") return { nodeId: 2 };
+		if (method === "DOM.resolveNode")
+			return { object: { objectId: "click-dom" } };
+		if (method === "Runtime.callFunctionOn") {
+			declarations.push(params.functionDeclaration);
+			const realm = target.ownerDocument.defaultView;
+			realm.PointerEvent ??= realm.MouseEvent;
+			const fn = realm.eval(`(${params.functionDeclaration})`);
+			return { result: { value: fn.call(target) } };
+		}
+		return send(contents, method, params);
+	};
+	return {
+		...fixture,
+		window: dom.window,
+		record: fixture.registry.requireSurface(tab),
+		declarations,
+		setTarget(node) {
+			target = node;
+		},
+		click: () =>
+			fixture.host.dispatch(
+				"click",
+				{ ...owner, tab, selector: "#target" },
+				"click-dom",
+			),
+	};
+}
+
+test("click DOM focus: synchronous handler destination survives the actual host literal", async (t) => {
+	const f = await clickDomFixture(t);
+	const { document } = f.window;
+	const target = document.querySelector("#target");
+	const destination = document.querySelector("#destination");
+	let clicks = 0;
+	target.addEventListener("click", () => {
+		clicks++;
+		destination.focus();
+	});
+	await f.click();
+	assert.equal(
+		f.declarations.length,
+		1,
+		"one actual host declaration, not a replay",
+	);
+	assert.equal(clicks, 1);
+	assert.equal(
+		document.activeElement,
+		destination,
+		"the host must not undo synchronous handler focus",
+	);
+});
+
+test("click DOM cleanup: failed dispatch releases transient focus observers", async (t) => {
+	const f = await clickDomFixture(t);
+	const doc = f.window.document;
+	const target = doc.querySelector("#target");
+	const listeners = new Set();
+	const add = doc.addEventListener.bind(doc);
+	const remove = doc.removeEventListener.bind(doc);
+	doc.addEventListener = (name, listener, options) => {
+		if (name === "focusin" || name === "focusout")
+			listeners.add(`${name}:${listener}`);
+		add(name, listener, options);
+	};
+	doc.removeEventListener = (name, listener, options) => {
+		listeners.delete(`${name}:${listener}`);
+		remove(name, listener, options);
+	};
+	const dispatch = target.dispatchEvent.bind(target);
+	target.dispatchEvent = (event) => {
+		if (event.type === "pointerdown")
+			throw new Error("injected DOM dispatch failure");
+		return dispatch(event);
+	};
+	await assert.rejects(() => f.click(), CLICK_DOM_DISPATCH_FAILURE);
+	assert.equal(
+		listeners.size,
+		0,
+		"an exceptional down phase cannot leak observers",
+	);
+});
+
+for (const tag of ["input", "button", "anchor", "editable", "submit"]) {
+	test(`click DOM defaults: ${tag} focuses before click exactly once`, async (t) => {
+		const markup = {
+			input: '<input id="target">',
+			button: '<button id="target">Go</button>',
+			anchor:
+				'<a id="target" href="#destination">Go</a><div id="destination"></div>',
+			editable:
+				'<div id="target" contenteditable="true" tabindex="0">Edit</div>',
+			submit: '<form><button id="target">Submit</button></form>',
+		}[tag];
+		const f = await clickDomFixture(t, markup);
+		const target = f.window.document.querySelector("#target");
+		const events = [];
+		let submits = 0;
+		f.window.document
+			.querySelector("form")
+			?.addEventListener("submit", (event) => {
+				submits++;
+				event.preventDefault();
+			});
+		for (const name of [
+			"pointerover",
+			"pointerenter",
+			"pointerdown",
+			"mousedown",
+			"pointerup",
+			"mouseup",
+			"click",
+		])
+			target.addEventListener(name, () => events.push(name));
+		let focusCalls = 0;
+		const focus = target.focus;
+		target.focus = function (options) {
+			focusCalls++;
+			assert.equal(options?.preventScroll, true);
+			focus.call(this, options);
+		};
+		target.addEventListener("click", () =>
+			assert.equal(
+				f.window.document.activeElement,
+				target,
+				"down default precedes click",
+			),
+		);
+		await f.click();
+		assert.deepEqual(events, [
+			"pointerover",
+			"pointerenter",
+			"pointerdown",
+			"mousedown",
+			"pointerup",
+			"mouseup",
+			"click",
+		]);
+		assert.equal(focusCalls, 1);
+		assert.equal(submits, tag === "submit" ? 1 : 0);
+		if (tag === "anchor")
+			assert.equal(
+				f.window.location.hash,
+				"#destination",
+				"JSDOM fragment activation, not native navigation proof",
+			);
+	});
+}
+
+for (const phase of ["pointerdown", "mousedown"]) {
+	test(`click DOM cancellation: ${phase} prevents fallback focus but not event delivery`, async (t) => {
+		const f = await clickDomFixture(t);
+		const target = f.window.document.querySelector("#target");
+		const destination = f.window.document.querySelector("#destination");
+		destination.focus();
+		let clicks = 0;
+		let focusCalls = 0;
+		target.focus = () => focusCalls++;
+		target.addEventListener(phase, (event) => event.preventDefault());
+		target.addEventListener("click", () => clicks++);
+		await f.click();
+		assert.equal(focusCalls, 0);
+		assert.equal(clicks, 1);
+		assert.equal(f.window.document.activeElement, destination);
+	});
+}
+
+for (const mode of ["other", "blur", "away-back"]) {
+	test(`click DOM handler: down ${mode} retains application focus intent`, async (t) => {
+		const f = await clickDomFixture(
+			t,
+			'<input id="initial"><button id="target">Go</button><input id="destination">',
+		);
+		const doc = f.window.document;
+		const initial = doc.querySelector("#initial");
+		const target = doc.querySelector("#target");
+		const destination = doc.querySelector("#destination");
+		initial.focus();
+		let fallback = 0;
+		target.focus = () => fallback++;
+		target.addEventListener("mousedown", () => {
+			if (mode === "blur") initial.blur();
+			else {
+				destination.focus();
+				if (mode === "away-back") initial.focus();
+			}
+		});
+		await f.click();
+		assert.equal(fallback, 0);
+		assert.equal(
+			doc.activeElement,
+			mode === "other" ? destination : mode === "blur" ? doc.body : initial,
+		);
+	});
+}
+
+test("click DOM effects: async handler navigation reports one destination", async (t) => {
+	const f = await clickDomFixture(t);
+	const record = f.record;
+	// The DOM handler really schedules the transition; only the Electron page
+	// model is fake, so this checks host reporting, not native link navigation.
+	f.window.document.querySelector("#target").addEventListener("click", () => {
+		f.window.setTimeout(() => {
+			record.view.webContents.url = "https://approved.example/after";
+			f.registry.bumpEpoch(record.tabId);
+		}, 0);
+	});
+	const result = await f.click();
+	assert.equal(result.navigated, true);
+	assert.equal(result.url, "https://approved.example/after");
+	assert.equal(f.declarations.length, 1);
+});
+
+for (const mode of ["microtask", "task", "scroll-only", "cancel-click"]) {
+	test(`click DOM effects: ${mode} is not overwritten or replayed`, async (t) => {
+		const f = await clickDomFixture(t);
+		const doc = f.window.document;
+		const target = doc.querySelector("#target");
+		const destination = doc.querySelector("#destination");
+		let clicks = 0;
+		let sourceScroll = 0;
+		const focus = target.focus;
+		target.focus = function (options) {
+			if (!options?.preventScroll) sourceScroll = 0;
+			focus.call(this, options);
+		};
+		target.addEventListener("click", (event) => {
+			clicks++;
+			sourceScroll = 200;
+			if (mode === "microtask")
+				Promise.resolve().then(() => destination.focus());
+			if (mode === "task") f.window.setTimeout(() => destination.focus(), 0);
+			if (mode === "cancel-click") event.preventDefault();
+		});
+		await f.click();
+		assert.equal(clicks, 1);
+		assert.equal(f.declarations.length, 1);
+		assert.equal(
+			sourceScroll,
+			200,
+			"source scroll surrogate, not measured page geometry",
+		);
+		assert.equal(
+			doc.activeElement,
+			["microtask", "task"].includes(mode) ? destination : target,
+		);
+	});
+}
+
+for (const mode of ["detached", "disabled", "inert", "nonfocusable"]) {
+	test(`click DOM boundary: ${mode} never forces target focus`, async (t) => {
+		const markup =
+			mode === "disabled"
+				? '<button id="target" disabled>Go</button>'
+				: mode === "inert"
+					? '<section inert><button id="target">Go</button></section>'
+					: mode === "nonfocusable"
+						? '<div id="target">Go</div>'
+						: undefined;
+		const f = await clickDomFixture(t, markup);
+		const target = f.window.document.querySelector("#target");
+		if (mode === "detached")
+			target.addEventListener("mousedown", () => target.remove());
+		let clicks = 0;
+		target.addEventListener("click", () => clicks++);
+		await f.click();
+		assert.notEqual(f.window.document.activeElement, target);
+		assert.equal(
+			clicks,
+			1,
+			"unchanged DOM-dispatch sequence; not physical disabled activation parity",
+		);
+	});
+}
+
+for (const kind of ["iframe", "shadow"]) {
+	test(`click DOM realm: resolved ${kind} node honors its own handler destination`, async (t) => {
+		const f = await clickDomFixture(
+			t,
+			'<input id="outside"><div id="host"></div><iframe></iframe>',
+		);
+		const outer = f.window.document;
+		const outside = outer.querySelector("#outside");
+		outside.focus();
+		const root =
+			kind === "shadow"
+				? outer.querySelector("#host").attachShadow({ mode: "closed" })
+				: outer.querySelector("iframe").contentDocument.body;
+		root.innerHTML = '<button id="target">Go</button><input id="destination">';
+		const target = root.querySelector("#target");
+		const destination = root.querySelector("#destination");
+		f.setTarget(target);
+		target.addEventListener("click", (event) => {
+			assert.equal(event.view, target.ownerDocument.defaultView);
+			destination.focus();
+		});
+		await f.click();
+		assert.equal(
+			kind === "shadow"
+				? root.activeElement
+				: target.ownerDocument.activeElement,
+			destination,
+		);
+		assert.equal(f.declarations.length, 1);
+		// This executes an already-resolved node in its own realm; the existing
+		// frame-routing/denial tests separately prove permitted session selection.
+	});
+}
+
 test("a click that follows an approved link reports the page it landed on", async () => {
 	// QA round 2, Q2. `click` and `type` are document-scoped AND the actions that
 	// navigate, so a link-following click bumps the very `documentEpoch` the guard
