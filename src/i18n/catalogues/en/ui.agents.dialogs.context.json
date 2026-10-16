@@ -1,0 +1,203 @@
+{
+	"ui.agents.dialogs.create.title": {
+		"role": "New-agent dialog heading",
+		"tone": "Brief setup title",
+		"length_hint": "Short title beside an agent icon",
+		"note": "Creates a blank local agent, unlike importing a saved archive."
+	},
+	"ui.agents.dialogs.create.cancel": {
+		"role": "Cancel button in new-agent dialog",
+		"tone": "Single dismissal verb",
+		"length_hint": "Small secondary footer button",
+		"note": "Closes without creating the agent; this dialog retains its current entered fields until a successful creation."
+	},
+	"ui.agents.dialogs.create.submit": {
+		"role": "Submit button creating a local agent",
+		"tone": "Clear creation action",
+		"length_hint": "Small primary footer button with optional spinner",
+		"note": "Disabled while saving or when the trimmed name is empty. Sends the entered name/description unchanged."
+	},
+	"ui.agents.dialogs.create.intro": {
+		"role": "Introduction above agent creation form",
+		"tone": "Plain instruction addressed to the creator",
+		"length_hint": "One paragraph within a small dialog",
+		"note": "The name is required; description is optional. Do not imply a description is required."
+	},
+	"ui.agents.dialogs.create.hub_link": {
+		"role": "Link button from creation dialog to Agent hub",
+		"tone": "Explain alternative discovery action",
+		"length_hint": "One link-style row with external-link icon",
+		"note": "Closes the dialog and navigates to the hub to fetch ready-made agents, rather than submitting creation."
+	},
+	"ui.agents.dialogs.create.name_label": {
+		"role": "Required agent-name input label",
+		"tone": "Short field noun",
+		"length_hint": "Single-line label above input",
+		"note": "Names the local agent identity field, not the operator or model."
+	},
+	"ui.agents.dialogs.create.name_hint": {
+		"role": "Agent-name input placeholder",
+		"tone": "Brief input prompt",
+		"length_hint": "Single-line input hint, about 26 English characters",
+		"note": "The name field receives initial focus; real names entered by the user are not translated."
+	},
+	"ui.agents.dialogs.create.description_label": {
+		"role": "Optional agent-description textarea label",
+		"tone": "State optionality explicitly",
+		"length_hint": "Single-line label above two-row textarea",
+		"note": "Parenthesized optional marker is part of this label, not a separate placeholder."
+	},
+	"ui.agents.dialogs.create.description_hint": {
+		"role": "Agent-description textarea placeholder",
+		"tone": "Explain the expected content",
+		"length_hint": "Short hint in two-row textarea",
+		"note": "Descriptions are authored text about what the agent does; entered content remains unchanged."
+	},
+	"ui.agents.dialogs.menu.accessible": {
+		"role": "Accessible name of agent-options icon button",
+		"tone": "Short menu-purpose label",
+		"length_hint": "Screen-reader label only",
+		"note": "Lowercase English is preserved. Opens the menu without selecting the underlying agent row."
+	},
+	"ui.agents.dialogs.menu.chat": {
+		"role": "Options-menu item starting chat with this agent",
+		"tone": "Action and recipient type",
+		"length_hint": "Compact menu row beside chat icon",
+		"note": "Offered on the agents page; uses the existing chat callback."
+	},
+	"ui.agents.dialogs.menu.settings": {
+		"role": "Options-menu navigation item for agent settings",
+		"tone": "Clear configuration-navigation action",
+		"length_hint": "Compact menu row beside settings icon",
+		"note": "Shown outside the agents page, where settings are not already open."
+	},
+	"ui.agents.dialogs.menu.export": {
+		"role": "Options-menu item exporting agent archive",
+		"tone": "Single source-specific action",
+		"length_hint": "Compact menu row beside file-output icon",
+		"note": "Downloads a ZIP archive for the chosen agent; it does not publish or delete it."
+	},
+	"ui.agents.dialogs.menu.upload": {
+		"role": "Options-menu item opening hub publication",
+		"tone": "Brief publication action",
+		"length_hint": "Compact menu row beside upload icon",
+		"note": "Opens the hub upload dialog when that callback exists; not a local archive import."
+	},
+	"ui.agents.dialogs.menu.clear": {
+		"role": "Warning options-menu item opening conversation-clear confirmation",
+		"tone": "Direct action, no euphemism",
+		"length_hint": "Compact warning-colored menu row",
+		"note": "Only opens the confirmation. The conversation is deleted only after explicit confirmation."
+	},
+	"ui.agents.dialogs.menu.delete": {
+		"role": "Destructive options-menu item opening agent-delete confirmation",
+		"tone": "Direct deletion action",
+		"length_hint": "Compact danger menu row",
+		"note": "Only opens the confirmation. Agent deletion also removes all of its conversations."
+	},
+	"ui.agents.dialogs.delete.title": {
+		"role": "Agent-delete confirmation dialog heading",
+		"tone": "Explicit destructive-action name",
+		"length_hint": "Short modal heading",
+		"note": "Names agent deletion, distinct from clearing one conversation."
+	},
+	"ui.agents.dialogs.delete.warning": {
+		"role": "Permanent agent-deletion consequences paragraph",
+		"tone": "Unambiguous irreversible-loss warning",
+		"length_hint": "Two sentences below the confirmation question; wraps",
+		"note": "All conversations with the agent are permanently deleted. Both irreversibility and scope must remain explicit."
+	},
+	"ui.agents.dialogs.delete.confirm": {
+		"role": "Danger confirmation button deleting agent",
+		"tone": "Single explicit destructive verb",
+		"length_hint": "Small modal primary danger button",
+		"note": "Runs deletion only after the person confirms. Never translate as a vague acceptance label."
+	},
+	"ui.agents.dialogs.delete.cancel": {
+		"role": "Agent-delete confirmation cancel button",
+		"tone": "Single non-destructive dismissal verb",
+		"length_hint": "Small secondary modal button",
+		"note": "Closes the confirmation and leaves the agent/conversations intact."
+	},
+	"ui.agents.dialogs.clear.title": {
+		"role": "Conversation-clear confirmation heading",
+		"tone": "Question naming the destructive action",
+		"length_hint": "Short modal heading with question mark",
+		"note": "Clears the current conversation, not the agent definition."
+	},
+	"ui.agents.dialogs.clear.warning": {
+		"role": "Conversation-clear consequences paragraph",
+		"tone": "Precise irreversible-loss warning",
+		"length_hint": "Two sentences in modal body; wraps",
+		"note": "Deletes every message from this computer with no undo, but leaves the agent itself unaffected."
+	},
+	"ui.agents.dialogs.clear.confirm": {
+		"role": "Danger confirmation button clearing conversation",
+		"tone": "Single explicit clearing verb",
+		"length_hint": "Small danger confirmation button",
+		"note": "Confirms the existing clear-conversation callback; does not delete the agent."
+	},
+	"ui.agents.dialogs.clear.cancel": {
+		"role": "Conversation-clear confirmation cancel button",
+		"tone": "Single safe-dismissal verb",
+		"length_hint": "Small secondary modal button",
+		"note": "Closes without deleting any conversation messages."
+	},
+	"ui.agents.dialogs.import.title": {
+		"role": "Agent-import dialog heading",
+		"tone": "Brief archive-import title",
+		"length_hint": "Short title beside file-import icon",
+		"note": "Opens an archive picker to create/import an agent from a saved export."
+	},
+	"ui.agents.dialogs.import.cancel": {
+		"role": "Agent-import dialog cancel button",
+		"tone": "Single dismissal verb",
+		"length_hint": "Small secondary footer button",
+		"note": "Closes and resets the selected file and validation error without importing."
+	},
+	"ui.agents.dialogs.import.submit": {
+		"role": "Button importing selected archive",
+		"tone": "Clear import action",
+		"length_hint": "Small primary footer button with optional spinner",
+		"note": "Disabled until a file is selected and while the import request runs."
+	},
+	"ui.agents.dialogs.import.intro": {
+		"role": "Instructions above archive dropzone",
+		"tone": "Explain accepted archive and required file",
+		"length_hint": "Two sentences within a small dialog; wraps",
+		"note": "ZIP and agent.yml are literal format/file identifiers and must stay unchanged. The archive is an export from Local Operator."
+	},
+	"ui.agents.dialogs.import.replace_file": {
+		"role": "Dropzone hint after a file is selected",
+		"tone": "Explain replacement action",
+		"length_hint": "Short secondary line below unchanged filename",
+		"note": "Click chooses another archive; dropping a new file replaces the selection, not an already installed agent."
+	},
+	"ui.agents.dialogs.import.drop_file": {
+		"role": "Primary empty-dropzone instruction",
+		"tone": "Direct drag-and-drop instruction",
+		"length_hint": "One centered line beside upload icon",
+		"note": "ZIP names the archive format; selecting a file does not import until submit."
+	},
+	"ui.agents.dialogs.import.choose_file": {
+		"role": "Secondary empty-dropzone instruction",
+		"tone": "Lowercase alternative matching preceding instruction",
+		"length_hint": "One centered secondary line",
+		"note": "Clicking opens the system file chooser as an alternative to drag and drop."
+	},
+	"ui.agents.dialogs.delete.question": {
+		"role": "Confirmation question naming agent to delete",
+		"tone": "Direct confirmation question",
+		"length_hint": "One body paragraph; may wrap for a long name",
+		"note": "The name is surrounded by literal straight double quotes. Do not soften or omit the deletion verb.",
+		"placeholders": {
+			"name": "Unchanged display name of the agent being deleted, interpolated between literal straight double quotes; never translate the actual name."
+		}
+	},
+	"ui.agents.dialogs.import.invalid_zip": {
+		"role": "Inline file-extension validation alert",
+		"tone": "Concise format constraint",
+		"length_hint": "One short alert below the dropzone",
+		"note": "Shown when the chosen filename does not end in .zip (case-insensitive). The stored state is the key so an active error refreshes when locale changes."
+	}
+}
