@@ -850,6 +850,29 @@ const spend = (
  * the demand is a request waiting for the reader to come back, and the row must
  * say so rather than claim a load.
  */
+/**
+ * Whether the slot may CLAIM a load right now: the one question the DOM half's
+ * paint needs, answered by the policy that is about to act.
+ *
+ * Exported for the same reason `spendWindows` is, and replacing the inline
+ * `armed && inZone` that used to live in `use-scroll-paging`'s paint: a second
+ * copy of this test is how the slot came to claim a load the policy had already
+ * decided against. The third term is the one that copy could not know about.
+ *
+ * `pressDemand` is a demand armed by a CLAMPED PRESS at an edge that cannot move
+ * (see `pressDemand`). The door that answers it is the reader's STOP --
+ * `SETTLE_MS` of input quiet -- so while the press is still arriving there is
+ * nothing on its way, and painting "Loading earlier messages" would be the false
+ * promise this file's rule 3 wait exists to avoid: the reader is told a load is
+ * happening exactly while the policy is holding one back. The paint flips the
+ * instant the stop is decided, because the armed demand already schedules the
+ * pump's re-decide at `SETTLE_MS` (`use-scroll-paging`'s settle timer).
+ *
+ * Every other armed demand keeps the old claim: one that arrived by travelling
+ * into the zone is spent at its own settle, which is the same instant, so the
+ * claim is true when it is painted.
+ */
+
 export const slotClaimsLoad = (
 	state: PagingState,
 	geo: PagingGeometry,
@@ -881,7 +904,14 @@ export const slotClaimsLoad = (
 	 * mirrors `decide`'s `mayTakeTheStop` terms rather than approximating them.
 	 */
 	if (geo.distanceFromTopPx <= HARD_TOP_PX) {
-		if (!state.pressDemand) return false;
+		// `clampLatched` is the door's own named discriminator (agent review round
+		// 2, R2-1). It is inert today -- no reachable state has an armed
+		// `pressDemand` with the latch clear, because the arm sets it -- but the
+		// door REQUIRES it and the paint must mirror the door, so leaving it out
+		// would be a fail-open copy of a fail-closed test: the moment a future arm
+		// raises a `pressDemand` without latching, the row would claim a load the
+		// policy refuses, which is exactly D1's class.
+		if (!state.pressDemand || !state.clampLatched) return false;
 		if (state.actTravelled || state.actAsks >= MAX_ACT_ASKS) return false;
 		return now - state.lastInputAt >= SETTLE_MS;
 	}
@@ -908,35 +938,13 @@ export const slotClaimsLoad = (
  * the demand is a request waiting for the reader to come back, and the row must
  * say so rather than claim a load.
  */
+
 export function spendWindows(
 	geo: PagingGeometry,
 	zonePx = prefetchZonePx(geo.clientHeight),
 ): { inZone: boolean } {
 	return { inZone: geo.distanceFromTopPx <= zonePx };
 }
-
-/**
- * Whether the slot may CLAIM a load right now: the one question the DOM half's
- * paint needs, answered by the policy that is about to act.
- *
- * Exported for the same reason `spendWindows` is, and replacing the inline
- * `armed && inZone` that used to live in `use-scroll-paging`'s paint: a second
- * copy of this test is how the slot came to claim a load the policy had already
- * decided against. The third term is the one that copy could not know about.
- *
- * `pressDemand` is a demand armed by a CLAMPED PRESS at an edge that cannot move
- * (see `pressDemand`). The door that answers it is the reader's STOP --
- * `SETTLE_MS` of input quiet -- so while the press is still arriving there is
- * nothing on its way, and painting "Loading earlier messages" would be the false
- * promise this file's rule 3 wait exists to avoid: the reader is told a load is
- * happening exactly while the policy is holding one back. The paint flips the
- * instant the stop is decided, because the armed demand already schedules the
- * pump's re-decide at `SETTLE_MS` (`use-scroll-paging`'s settle timer).
- *
- * Every other armed demand keeps the old claim: one that arrived by travelling
- * into the zone is spent at its own settle, which is the same instant, so the
- * claim is true when it is painted.
- */
 
 /**
  * Decide whether to spend a demand now, and on what.
