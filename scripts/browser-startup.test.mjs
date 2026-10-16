@@ -16,6 +16,11 @@ const f = () => globalThis.__browserStartupFixture;
 export const app = { getVersion: () => 'isolated-test' };
 export class BrowserWindow { constructor() { throw new Error('A test must never create a desktop window'); } }
 export const shell = { openPath: async () => '' };
+// The page context menu's two Electron members (LOH-13), modelled only so
+// the shipped import in main/browser/index.ts resolves: startup never
+// opens the menu, so building one is a no-op here rather than a fake menu.
+export const Menu = { buildFromTemplate: () => ({ popup: () => {} }) };
+export const clipboard = { writeText: () => {} };
 export const webContents = { getAllWebContents: () => [] };
 export class Notification { static isSupported() { return false; } }
 export const safeStorage = { isEncryptionAvailable: () => false };

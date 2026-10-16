@@ -1475,6 +1475,53 @@ export class BrowserHost implements BrowserActionContext {
 		return this.chromeState();
 	}
 
+	/**
+	 * Home (LOH-13 slice A): return the ACTIVE tab to the browser's start
+	 * state. The start state is `about:blank` — what `createUserTab` opens a
+	 * new tab on and what the URL bar renders as an empty bar — so Home is a
+	 * load of that one allowed `about:` URL, not a navigation to an origin.
+	 * It deliberately bypasses `navigateActive`'s http(s)-only rule: that rule
+	 * guards typed/agent-reachable origins, and `about:blank` reaches no
+	 * origin at all (the same exception `refusesNavigation` makes in
+	 * `index.ts`). No consent is involved, for the same reason a typed URL
+	 * needs none: this is the user's own press.
+	 */
+	async goHomeActive(): Promise<Record<string, unknown>> {
+		const record = this.registry.activeTab;
+		if (!record)
+			throw new BrowserHostError("tab_closed", "no browser tab is open");
+		await record.view.webContents.loadURL("about:blank");
+		this.onChanged();
+		return this.chromeState();
+	}
+
+	/**
+	 * Open a link the user right-clicked in a NEW user tab (LOH-13 slice A,
+	 * page context menu). Human-only by construction: it is reached from the
+	 * native context menu in `index.ts`, never from IPC or the agent RPC, and
+	 * the tab it creates is a plain user tab (no nonce, no handover), so an
+	 * agent still cannot drive it without an explicit hand-over. The scheme
+	 * rule is the typed-navigation rule (`permittedScheme`): only http(s)
+	 * links open, so a `file:`/`javascript:` link cannot ride this path onto
+	 * the local filesystem.
+	 */
+	async openLinkInNewTab(rawUrl: string): Promise<Record<string, unknown>> {
+		let url: URL;
+		try {
+			url = new URL(rawUrl);
+		} catch {
+			throw new BrowserHostError("nav_failed", "that is not a URL");
+		}
+		if (!permittedScheme(url)) {
+			throw new BrowserHostError(
+				"nav_failed",
+				"only http:// and https:// can be opened",
+			);
+		}
+		await this.createUserTab(null, url.href);
+		return this.chromeState();
+	}
+
 	reloadActive(hard = false): Record<string, unknown> {
 		const contents = this.registry.activeTab?.view.webContents;
 		// Falls back to a plain reload rather than doing nothing: a hard reload that
