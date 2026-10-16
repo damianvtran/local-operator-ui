@@ -155,8 +155,8 @@ export type MessageParams = {
 	"ui.chat.usage.eligibility_unknown": undefined;
 	"ui.chat.usage.family_caps": undefined;
 	"ui.chat.usage.unlimited": undefined;
-	"ui.chat.voice.approval_pending": undefined;
 	"ui.chat.voice.approval_waiting": undefined;
+	"ui.chat.voice.card_pending": undefined;
 	"ui.chat.voice.disable_failed": { reason: string };
 	"ui.chat.voice.empty_take": undefined;
 	"ui.chat.voice.empty_transcript": undefined;

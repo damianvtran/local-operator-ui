@@ -200,6 +200,50 @@ test("the pending approval follows the gate frames (for the approval_pending pre
 	);
 });
 
+const CARD_PRECHECK = /if \(voiceCardPending\(sessionId\)\) \{/;
+
+test("R3-m2: ANY parked card - an approval or a blocking ask - is a pending card (the V13 pre-check)", () => {
+	const ask = run([{ kind: "gate", gate: { request_id: "a1", kind: "ask" } }]);
+	assert.equal(
+		ask.state.pendingCard,
+		"a1",
+		"a blocking ask blocks words, as V13 does",
+	);
+	assert.equal(
+		ask.state.pendingApproval,
+		null,
+		"but is not announced as an approval",
+	);
+	assert.deepEqual(
+		run([
+			{ kind: "armed" },
+			{ kind: "gate", gate: { request_id: "a1", kind: "ask" } },
+		]).spoken,
+		[],
+	);
+	const approval = run([
+		{ kind: "gate", gate: { request_id: "g1", kind: "approval" } },
+	]);
+	assert.equal(approval.state.pendingCard, "g1");
+	assert.equal(
+		run([{ kind: "gate", gate: null }], ask.state).state.pendingCard,
+		null,
+	);
+	assert.equal(
+		run([{ kind: "stopped" }], approval.state).state.pendingCard,
+		null,
+	);
+	const controller = readFileSync(
+		"src/renderer/src/features/voice/voice-controller.tsx",
+		"utf8",
+	);
+	assert.match(
+		controller,
+		CARD_PRECHECK,
+		"push-to-talk reads the card, not only approvals",
+	);
+});
+
 test("U3: an interrupted turn is not spoken, and the take is consumed", () => {
 	for (const ending of [
 		{ type: "agent_end", aborted: true },
@@ -606,6 +650,7 @@ test("N1: every stop folds `stopped`, which clears the pending approval and the 
 		for (const input of rig.inputs) state = stepVoiceTurns(state, input).state;
 		assert.equal(rig.inputs.at(-1).kind, "stopped", label);
 		assert.equal(state.pendingApproval, null, `${label}: no stale gate`);
+		assert.equal(state.pendingCard, null, `${label}: no stale card`);
 		assert.equal(state.inFlight, false, `${label}: no stale turn`);
 		rig.dispose();
 	}
@@ -674,30 +719,177 @@ test("Q4: a snapshot sharing the open's seq is folded as state - gate pending, t
 		rig.inputs.find((i) => i.kind === "gate"),
 	);
 	assert.deepEqual(armed.speak, []);
-	// And a genuine replay (non-snapshot at or behind the cursor) is still dropped.
 	rig.dispose();
-	const replay = await streamRig(() => [
-		{ kind: "data", data: OPEN_292 },
-		{
-			kind: "data",
-			data: JSON.stringify({
-				epoch: "ep-7",
-				seq: 292,
-				type: "event",
-				payload: { type: "agent_end" },
-			}),
-		},
-	]);
-	await replay.drain();
-	assert.equal(replay.inputs.filter((i) => i.kind === "event").length, 0);
-	replay.dispose();
 });
 
+/*
+ * R3-M1: THE SERVER'S REAL RESUME ORDER (`desktop_sessions.py`'s stream
+ * generator): `open` stamped with the cutoff, THEN the replayed frames
+ * (after_seq < seq <= cutoff), THEN `snapshot@cutoff`. A cursor that moved on
+ * `open` dropped the whole replay: the spoken turn's answer was lost, the take
+ * stayed armed, and the next - typed - turn was read aloud instead.
+ */
+const frame = (seq, type, payload) =>
+	JSON.stringify({
+		session_id: "a1a1a1a1a1a1",
+		epoch: "ep-9",
+		seq,
+		type,
+		payload,
+	});
+const evt = (seq, payload) => ({
+	kind: "data",
+	data: frame(seq, "event", payload),
+});
+
+test("R3-M1: a resume replays the spoken turn's answer once; a later typed turn is not spoken", async () => {
+	const rig = await streamRig((n) =>
+		n === 1
+			? [evt(7, { type: "agent_start" }), { kind: "error", status: 503 }]
+			: [
+					{
+						kind: "data",
+						data: frame(10, "open", {
+							subscription_id: "0123456789abcdef0123456789abcdef",
+							gap: false,
+						}),
+					},
+					evt(8, {
+						type: "message_end",
+						message: {
+							id: "m-answer",
+							role: "assistant",
+							content: [{ type: "text", text: "Your calendar is clear." }],
+						},
+					}),
+					evt(9, { type: "agent_end" }),
+					{
+						kind: "data",
+						data: frame(10, "snapshot", {
+							frontend: { snapshot: { pending_gate: null, streaming: false } },
+							history: {},
+							cold: false,
+						}),
+					},
+					// Live, after the resume: a TYPED turn.
+					evt(11, { type: "agent_start" }),
+					evt(12, {
+						type: "message_end",
+						message: {
+							id: "m-typed",
+							role: "assistant",
+							content: [{ type: "text", text: "Typed reply." }],
+						},
+					}),
+					evt(13, { type: "agent_end" }),
+				],
+	);
+	// The take was armed before the turn started (the controller arms at send).
+	let state = stepVoiceTurns(initialVoiceTurns(), { kind: "armed" }).state;
+	await rig.drain();
+	assert.deepEqual(
+		rig.opened[1],
+		{ sessionId: "a1a1a1a1a1a1", epoch: "ep-9", afterSeq: 7 },
+		"resumed from the last folded frame",
+	);
+	const spoken = [];
+	for (const input of rig.inputs) {
+		const step = stepVoiceTurns(state, input);
+		state = step.state;
+		spoken.push(...step.speak);
+	}
+	assert.deepEqual(
+		spoken,
+		[{ kind: "message", messageId: "m-answer" }],
+		"the answer, once; never the typed reply",
+	);
+	assert.equal(
+		rig.inputs.filter((i) => i.kind === "event").length,
+		6,
+		"agent_start@7, the 2 replayed, the 3 live",
+	);
+	rig.dispose();
+});
+
+test("R3-M1: a true duplicate (at or below the client's own after_seq) is still dropped", async () => {
+	const rig = await streamRig((n) =>
+		n === 1
+			? [evt(7, { type: "agent_start" }), { kind: "error", status: 503 }]
+			: [
+					{
+						kind: "data",
+						data: frame(10, "open", {
+							subscription_id: "0123456789abcdef0123456789abcdef",
+							gap: false,
+						}),
+					},
+					// A server that re-sends what the client already holds.
+					evt(6, { type: "agent_end" }),
+					evt(7, { type: "agent_start" }),
+					evt(8, { type: "agent_end" }),
+				],
+	);
+	await rig.drain();
+	const events = rig.inputs
+		.filter((i) => i.kind === "event")
+		.map((i) => i.event.type);
+	assert.deepEqual(
+		events,
+		["agent_start", "agent_end"],
+		"6 and 7 dropped, 8 folded",
+	);
+	rig.dispose();
+});
+
+test("R3-m1: the first frame after a retry reports recovered, once", async () => {
+	const live = frame(20, "event", { type: "agent_start" });
+	let healthy = false;
+	const rig = await streamRig(() =>
+		healthy
+			? [
+					{ kind: "data", data: live },
+					{ kind: "data", data: live },
+				]
+			: { kind: "error", status: 503 },
+	);
+	await rig.drain();
+	assert.deepEqual(rig.stops, ["exhausted"]);
+	healthy = true;
+	rig.retry();
+	await rig.drain();
+	assert.deepEqual(
+		rig.stops,
+		["exhausted", "recovered"],
+		"one recovered, on the first frame",
+	);
+	rig.dispose();
+	// A first connection that was never exhausted reports nothing.
+	const fresh = await streamRig(() => ({ kind: "data", data: live }));
+	await fresh.drain();
+	assert.deepEqual(fresh.stops, []);
+	fresh.dispose();
+});
+
+test("R3-m1: the controller dismisses the lost notice on recovered", () => {
+	const controller = stripComments(
+		readFileSync(
+			"src/renderer/src/features/voice/voice-controller.tsx",
+			"utf8",
+		),
+	);
+	assert.match(controller, DISMISS_ON_RECOVERED);
+	assert.match(controller, RECONNECT_ACTION);
+});
+
+const DISMISS_ON_RECOVERED =
+	/status === "recovered"\) \{\s*dismissToast\(lostToastId\);/;
+const RECONNECT_ACTION =
+	/id: lostToastId,[\s\S]*?onClick: \(\) => handle\.retry\(\)/;
 const APPROVAL_TOAST = /showApprovalToast\(/g;
 const SHARED_ID_TOAST =
 	/showWarningToast\(message, \{ id: voiceApprovalToastId\(sessionId\) \}\)/;
 const RAW_APPROVAL_TOAST =
-	/show(Info|Warning|Error)Toast\(\s*t\("ui\.chat\.voice\.approval_(pending|waiting)"\)/;
+	/show(Info|Warning|Error)Toast\(\s*t\("ui\.chat\.voice\.(card_pending|approval_waiting)"\)/;
 const PENDING_REFUSAL_ROUTED =
 	/voiceCode === "approval_pending"\) \{[^}]*showApprovalToast\(sessionId, sentence\)/;
 

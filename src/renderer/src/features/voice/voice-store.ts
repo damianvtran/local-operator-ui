@@ -35,11 +35,12 @@ type VoiceStoreState = {
 	/** The session that just LOST the slot to a switch, for its notice. */
 	replaced: string | null;
 	/**
-	 * Sessions whose stream says an approval is pending, mirrored from the turn
-	 * fold so the header can say so (design round 2, D7). The fold stays the
-	 * authority push-to-talk reads; this is its render-time copy.
+	 * Sessions whose stream says a card is pending - an approval or a blocking
+	 * ask - mirrored from the turn fold so the header can say so (design round 2,
+	 * D7; review round 3, R3-m2). The fold stays the authority push-to-talk
+	 * reads; this is its render-time copy.
 	 */
-	approvalPending: Record<string, true>;
+	cardPending: Record<string, true>;
 };
 
 type VoiceStoreActions = {
@@ -47,7 +48,7 @@ type VoiceStoreActions = {
 	setPhase: (phase: VoicePhase, sessionId: string | null) => void;
 	setPending: (pending: boolean) => void;
 	setReplaced: (sessionId: string | null) => void;
-	setApprovalPending: (sessionId: string, pending: boolean) => void;
+	setCardPending: (sessionId: string, pending: boolean) => void;
 };
 
 export const useVoiceStore = create<VoiceStoreState & VoiceStoreActions>(
@@ -57,7 +58,7 @@ export const useVoiceStore = create<VoiceStoreState & VoiceStoreActions>(
 		phaseSessionId: null,
 		pending: false,
 		replaced: null,
-		approvalPending: {},
+		cardPending: {},
 		setActive: (active) => {
 			const { phaseSessionId } = get();
 			/*
@@ -74,13 +75,13 @@ export const useVoiceStore = create<VoiceStoreState & VoiceStoreActions>(
 			set({ phase, phaseSessionId: phase === "idle" ? null : sessionId }),
 		setPending: (pending) => set({ pending }),
 		setReplaced: (replaced) => set({ replaced }),
-		setApprovalPending: (sessionId, pending) => {
-			const current = get().approvalPending;
+		setCardPending: (sessionId, pending) => {
+			const current = get().cardPending;
 			if (Boolean(current[sessionId]) === pending) return;
 			const next = { ...current };
 			if (pending) next[sessionId] = true;
 			else delete next[sessionId];
-			set({ approvalPending: next });
+			set({ cardPending: next });
 		},
 	}),
 );
