@@ -2648,6 +2648,42 @@ export function useCanonicalSessionStream(
 		if (!sessionId || !enabled) return;
 		const generation = ++generationRef.current;
 		const orderFrameRevisions = new WeakMap<object, JournalOrderRead>();
+		/*
+		 * WHETHER A SNAPSHOT'S HISTORY PAGE IS FENCED OUT - THE PAGE, NEVER THE
+		 * FRAME. A snapshot is tagged with the order revision current when it was
+		 * parsed; if a generation install moved the revision before the frame is
+		 * applied (the mount-time order repair's `sessions.get` landing first is
+		 * the measured case), its page may have been projected under the domain
+		 * that install replaced. The page is kept only when it names, as a
+		 * non-empty string, the generation the transcript now holds: generation
+		 * equality is what says the page's ordering is the installed one, and the
+		 * install at journal-order.ts is `orderRevision`'s only writer. A page with
+		 * no generation proves nothing, so it is dropped too.
+		 *
+		 * The frame itself always applies. Skipping the whole snapshot is what left
+		 * the pane on "Loading conversation…" for good: the connection's first
+		 * snapshot is the only frame that publishes `frontend`, the snapshot
+		 * deadline was already cleared when the frame arrived, and nothing retried.
+		 * A dropped page is owed to the `/history` reconcile walk instead (see
+		 * `fencedPage` in the flush).
+		 */
+		const snapshotPageFenced = (
+			frame: Extract<DesktopSessionFrame, { type: "snapshot" }>,
+			transcript: TranscriptState,
+		) => {
+			const dispatched = orderFrameRevisions.get(frame);
+			if (
+				dispatched === undefined ||
+				currentOrderRevision(transcript) === dispatched.revision
+			)
+				return false;
+			const generation = frame.payload.history.journal_generation;
+			return !(
+				typeof generation === "string" &&
+				generation.length > 0 &&
+				generation === transcript.journalGeneration
+			);
+		};
 		let dispose: (() => void) | null = null;
 		/*
 		 * True while WE are the reason the stream is being torn down.
@@ -3916,6 +3952,12 @@ export function useCanonicalSessionStream(
 			};
 			const paintedAnchor = (anchor: string | null | undefined) =>
 				anchor != null && paintedIds.current.has(anchor);
+			// Set by the commit below when a snapshot's page was fenced out
+			// (`snapshotPageFenced`). `needsReconcile` was decided as though every
+			// page applied, and `pageIsPaintedTail` stands the walk down over a page
+			// that never reached the pane - so a dropped page owes the walk itself,
+			// which is then the only thing that can hydrate the conversation.
+			let fencedPage = false;
 			const needsReconcile = frames.some((frame) =>
 				frame.type === "attention"
 					? !paintedAnchor(frame.payload.anchor_id)
@@ -3985,12 +4027,23 @@ export function useCanonicalSessionStream(
 			const paintedEntryIds = new Set<string>();
 			for (const frame of frames) {
 				if (frame.type !== "snapshot") continue;
+				// A page the commit will fence out (`snapshotPageFenced`) puts none of
+				// its rows on screen, so it is neither connection proof for the walk nor
+				// a source of journal instants. Judged on the pre-commit view: the
+				// updater re-decides per frame, and a miss here only costs a read. Its
+				// call labels still count - an entry id is stable across generations,
+				// and the walk this page forces reads them anyway.
+				const pageFenced = snapshotPageFenced(
+					frame,
+					viewRef.current.transcript,
+				);
 				// The page's own rows, for `pageBornIds`' journal-clock rule (round 2, M1):
 				// this batch path and the event handler below are the two ways a frame's
 				// page reaches the pane.
-				markPageBorn(pageBornIds.current, frame.payload.history.entries);
+				if (!pageFenced)
+					markPageBorn(pageBornIds.current, frame.payload.history.entries);
 				for (const entry of frame.payload.history.entries) {
-					paintedEntryIds.add(entryRecordKey(entry));
+					if (!pageFenced) paintedEntryIds.add(entryRecordKey(entry));
 					const calls = entry.payload?.tool_calls;
 					if (!Array.isArray(calls)) continue;
 					for (const call of calls as Record<string, unknown>[]) {
@@ -4219,6 +4272,8 @@ export function useCanonicalSessionStream(
 				// below the loop), because the frames of one reconnect are not obliged
 				// to arrive in one flush.
 				let snapshotted = next.frontend !== null;
+				// Reset per run: the updater is pure in shape and may run twice.
+				fencedPage = false;
 				let replayTranscript: TranscriptState | null = null;
 				const now = Date.now();
 				for (const frame of frames) {
@@ -4350,17 +4405,21 @@ export function useCanonicalSessionStream(
 						}
 						if (frame.type === "snapshot") {
 							const dispatched = orderFrameRevisions.get(frame);
-							if (
-								dispatched !== undefined &&
-								currentOrderRevision(next.transcript) !== dispatched.revision
-							)
-								continue;
+							// Per frame, against the transcript as this batch has left it, so
+							// several snapshots in one flush are each judged on their own.
+							const pageFenced = snapshotPageFenced(frame, next.transcript);
+							if (pageFenced) fencedPage = true;
 							const snapshot = frame.payload;
+							// A fenced page is unusable exactly where a `cursor_missing` one
+							// is: not folded, not complete for the held-send test, and not
+							// proof of hydration. Everything else in this arm still applies.
+							const pageUsable =
+								!snapshot.history.cursor_missing && !pageFenced;
 							// Order matters and is the contract: replayed events, then
 							// the durable page (authoritative for every id it names),
 							// then the live seed for the turn still in flight.
 							let transcript = replayTranscript ?? next.transcript;
-							if (!snapshot.history.cursor_missing) {
+							if (pageUsable) {
 								// The open page's fold, measured on its own (remote-lag close-out
 								// instrumentation): the snapshot's page is the one reducer call that
 								// runs on the open path's critical task, and the 400-row page is
@@ -4405,7 +4464,7 @@ export function useCanonicalSessionStream(
 									.resolveHeldFromServer(
 										sessionId,
 										snapshot.history.entries,
-										!snapshot.history.cursor_missing,
+										pageUsable,
 									);
 							}
 							// A cold session (no live owner) snapshots with no history
@@ -4482,8 +4541,7 @@ export function useCanonicalSessionStream(
 								// that answer.
 								hydrated:
 									next.hydrated ||
-									(!snapshot.history.cursor_missing &&
-										snapshot.history.entries.length > 0),
+									(pageUsable && snapshot.history.entries.length > 0),
 								transcript,
 							};
 							snapshotted = true;
@@ -4799,15 +4857,16 @@ export function useCanonicalSessionStream(
 			 * happening anyway. That is the coalescing: N settles in one flush are one
 			 * walk, and a settle whose call a page already names costs nothing further.
 			 */
+			const reconcileOwed = needsReconcile || fencedPage;
 			const settleOnly =
 				settleAsk.length > 0 &&
 				seedMissing.length === 0 &&
 				retryLabels.length === 0 &&
-				!needsReconcile &&
+				!reconcileOwed &&
 				/* The warm's own read is not "happening anyway": it is not the
 				 * settle's debt, so a settle-only batch does not pay for it. */
 				!warmedUnproven;
-			if (needsReconcile || missingLabels.length > 0 || warmedUnproven) {
+			if (reconcileOwed || missingLabels.length > 0 || warmedUnproven) {
 				const targets = new Set(missingLabels);
 				const order = labelGapRef.current.order;
 				void reconcileTail(
