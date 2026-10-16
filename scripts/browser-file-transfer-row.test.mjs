@@ -645,15 +645,15 @@ test("a mounted transfer row refreshes language and absent messages keep English
 			);
 			assert.equal(
 				tr("ui.browser.browser_tab_strip.close_conversation_tabs", { count }),
-				`Close all ${count} ${count === 1 ? "tab" : "tabs"} in this conversation`,
+				`Close all ${count} tabs in this conversation`,
 			);
 			assert.equal(
 				tr("ui.browser.browser_file_transfer_row.byte_count", { count }),
-				`${count} ${count === 1 ? "byte" : "bytes"}`,
+				`${count} bytes`,
 			);
 			assert.equal(
 				tr("ui.browser.browser_file_transfer_row.call_limit", { count }),
-				`was not saved: this call has already saved its limit of ${count} ${count === 1 ? "file" : "files"}.`,
+				`was not saved: this call has already saved its limit of ${count} files.`,
 			);
 		}
 	} finally {

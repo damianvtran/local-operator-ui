@@ -342,7 +342,7 @@
 	"ui.browser.browser_file_transfer_row.call_limit": {
 		"role": "status or explanatory text \u2014 file upload/download status row",
 		"tone": "Factual and restrained",
-		"note": "Download-refusal fragment after filename: count is the host\u2019s per-call saved-file limit. English uses file at one and files otherwise; this convergence corrects the singular grammar. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility."
+		"note": "Download-refusal fragment after filename: count is the host\u2019s per-call saved-file limit. English uses files at every count, byte-faithful to the pre-extraction form that never singularized. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility."
 	},
 	"ui.browser.browser_file_transfer_row.could_not_be_saved_the_download_folder": {
 		"role": "status or explanatory text \u2014 file upload/download status row",
@@ -397,7 +397,7 @@
 	"ui.browser.browser_file_transfer_row.byte_count": {
 		"role": "status or explanatory text \u2014 file upload/download status row",
 		"tone": "Factual and restrained",
-		"note": "File upload/download status row: names/explains byte count. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility. English uses byte for one; MiB/KiB remain technical binary unit tokens."
+		"note": "File upload/download status row: names/explains byte count. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility. English uses bytes at every count, byte-faithful to the pre-extraction form that never singularized; MiB/KiB remain technical binary unit tokens."
 	},
 	"ui.browser.browser_hand_over_dialog.let_an_agent_use_this_tab": {
 		"role": "hover tooltip \u2014 manual-tab agent handover dialog",
