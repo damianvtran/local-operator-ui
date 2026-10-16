@@ -579,6 +579,75 @@ test("collapsed: the badge is drawn in the strip too, and the name still carries
 	}
 });
 
+/*
+ * WHERE THE COUNT SITS, per width (#1083). JSDOM lays nothing out, so the
+ * placement is read from the structure that decides it: collapsed, the mark is
+ * an ABSOLUTE child of a `relative` anchor that holds the glyph, so the glyph is
+ * the button's only in-flow content and `justify-center` centres it in the
+ * strip; expanded, the mark stays in flow at the row's trailing edge. The live
+ * geometry (glyph centred on x=28 in the 56px strip, the mark on its corner) is
+ * the `approval-badges` driver scene's reading, not this file's.
+ */
+const classesOf = (element) =>
+	(element?.getAttribute("class") ?? "").split(/\s+/).filter(Boolean);
+
+const badgePlacement = (markup) => {
+	const doc = new JSDOM(markup).window.document;
+	const button = doc.querySelector('[data-tour-tag="nav-item-aida"]');
+	const badge = button?.querySelector('[data-tour-tag="nav-aida-badge"]');
+	const slot = badge?.parentElement ?? null;
+	return { button, slot, anchor: slot?.parentElement ?? null };
+};
+
+test("collapsed: the count is a corner mark on the icon, not a pill beside it (#1083)", async () => {
+	const { markup, teardown } = await mountRail({
+		collapsed: true,
+		row: herRow(unseen()),
+	});
+	try {
+		const { button, slot, anchor } = badgePlacement(markup);
+		assert.ok(slot, "the strip draws her badge");
+		assert.ok(
+			classesOf(slot).includes("absolute"),
+			`the mark is pinned out of flow, not laid out beside the glyph (slot classes: ${classesOf(slot).join(" ")})`,
+		);
+		assert.notEqual(
+			anchor,
+			button,
+			"the mark is not a flex sibling of the icon in the button's own row",
+		);
+		assert.ok(
+			classesOf(anchor).includes("relative") && anchor?.querySelector("svg"),
+			"its anchor is the glyph's own `relative` box",
+		);
+		assert.equal(
+			button.children.length,
+			1,
+			"the glyph's anchor is the button's only in-flow child, so the strip centres the icon",
+		);
+	} finally {
+		await teardown();
+	}
+});
+
+test("expanded: the count keeps its in-flow trailing slot (the #1083 fix is the strip's alone)", async () => {
+	const { markup, teardown } = await mountRail({
+		collapsed: false,
+		row: herRow(unseen()),
+	});
+	try {
+		const { button, slot } = badgePlacement(markup);
+		assert.equal(slot?.parentElement, button, "a direct child of the row");
+		assert.ok(
+			classesOf(slot).includes("ml-auto"),
+			"pushed to the trailing edge",
+		);
+		assert.ok(!classesOf(slot).includes("absolute"), "and in flow");
+	} finally {
+		await teardown();
+	}
+});
+
 test("collapsed and clear: the strip row keeps its plain name", async () => {
 	const { markup, teardown } = await mountRail({
 		collapsed: true,
