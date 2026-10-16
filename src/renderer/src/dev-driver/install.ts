@@ -34,6 +34,8 @@ import { finderThumbnailStats } from "@features/chat/components/canvas/finder-th
 import { canvasDocumentForPath } from "@features/chat/utils/canvas-document";
 import { getFileTypeFromPath } from "@features/chat/utils/file-types";
 import { READ_ENCODING, viewerFor } from "@features/chat/utils/viewer-routing";
+import { sendVoiceUtterance } from "@features/voice/voice-controller";
+import { useVoiceStore } from "@features/voice/voice-store";
 import { queryClient } from "@shared/api/query-client";
 import { apiConfig } from "@shared/config";
 import {
@@ -964,6 +966,42 @@ export function installDevDriver(): string[] {
 			});
 			await nextFrame();
 			return { count };
+		},
+
+		/**
+		 * Speak words to the session that holds the voice slot, as TEXT - the
+		 * key-free door the utterance route keeps for exactly this
+		 * (`docs/design/session-voice.md`, V10): a driver run has no microphone and
+		 * no held key, so this is the push-to-talk release with the transcript
+		 * already in hand. It goes through `sendVoiceUtterance`, the SAME path a
+		 * real hold takes, so the turn it starts is spoken back by the real speak
+		 * trigger.
+		 *
+		 * IT NEVER ANSWERS A GATE, and cannot: the only request it makes is
+		 * `voice.utterance`, whose route admits words as a prompt or a steer and has
+		 * no path to `answer_gate` (V7). While an approval is pending the words
+		 * arrive as a steer and the approval stays on screen for the operator - the
+		 * line this module's header draws for every verb in this table.
+		 *
+		 * Refuses when no session holds the slot rather than picking one: a scene
+		 * that wants voice turns it on first, through the toggle, as a person would.
+		 */
+		voiceUtterance: async (payload) => {
+			const text = requireString(
+				typeof payload === "string"
+					? payload
+					: (payload as { text?: unknown } | null)?.text,
+				"voiceUtterance text",
+			);
+			const sessionId = useVoiceStore.getState().active?.session_id;
+			if (!sessionId) {
+				throw new Error(
+					"voiceUtterance: no session holds the voice slot; turn voice on first",
+				);
+			}
+			const result = await sendVoiceUtterance(sessionId, { text });
+			await nextFrame();
+			return { sessionId, ...result };
 		},
 	});
 }

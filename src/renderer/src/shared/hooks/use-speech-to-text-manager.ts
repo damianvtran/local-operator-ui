@@ -11,6 +11,14 @@ import { useCallback, useEffect, useRef } from "react";
 export enum SpeechToTextPriority {
 	MESSAGE_INPUT = 1,
 	INLINE_EDIT = 2,
+	/**
+	 * SESSION VOICE (`docs/design/session-voice.md`, V12): while the conversation
+	 * on screen holds the voice slot, the push-to-talk hold is a spoken prompt to
+	 * that session rather than dictation into its composer. Highest, because the
+	 * operator turned voice on for exactly this; its `isActive` is false on every
+	 * other conversation, so dictation there is unchanged.
+	 */
+	VOICE = 3,
 }
 
 /**

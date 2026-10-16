@@ -17,8 +17,10 @@ import {
 	DESKTOP_MACHINE_DETAIL,
 	DESKTOP_REFUSAL_CODE,
 	type DesktopRefusalCode,
+	type VoiceRefusalCode,
 	desktopRefusalCodeForStatus,
 	isDesktopRefusalCode,
+	isVoiceRefusalCode,
 } from "../shared/desktop-contract";
 
 const id = z
@@ -109,6 +111,43 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 			digest: z.string().regex(/^[a-f0-9]{32}$/),
 		})
 		.strict(),
+	// SESSION VOICE'S UPLOAD (`docs/design/session-voice.md`, the frozen contract):
+	// one push-to-talk take, or - the key-free door V10 names - its text instead.
+	// Multipart like `transcription.create`, but the fields are NAMED here rather
+	// than a free record: the route takes exactly `session_id`, `request_id` and one
+	// of `file`/`text`, and a free record would let renderer code add a field the
+	// route might one day read as authority. `text` and the bytes are mutually
+	// exclusive, enforced in `requestDesktopMediaOutcome` (the bytes are not part of
+	// this schema). The route admits the result as an ordinary prompt/steer and has
+	// no path to a gate answer (V7); nothing on this side can ask it for one.
+	z
+		.object({
+			op: z.literal("voice.utterance"),
+			sessionId: z.string().regex(/^[a-f0-9]{12}$/),
+			requestId: id,
+			fileName: z.string().min(1).max(255).optional(),
+			mimeType: z
+				.string()
+				.regex(/^audio\/(wav|x-wav|webm|ogg|mp4)(;.*)?$/)
+				.max(128)
+				.optional(),
+			text: z.string().min(1).max(16_000).optional(),
+		})
+		.strict(),
+	// SESSION VOICE'S DOWNLOAD: the server resolves and synthesises the words from a
+	// SOURCE REFERENCE and never from text (V8), so the schema has no text field to
+	// carry - a renderer bug cannot make the app speak words the agent never wrote.
+	z
+		.object({
+			op: z.literal("voice.speech"),
+			sessionId: z.string().regex(/^[a-f0-9]{12}$/),
+			source: z.discriminatedUnion("kind", [
+				z.object({ kind: z.literal("message"), messageId: id }).strict(),
+				z.object({ kind: z.literal("gate"), requestId: id }).strict(),
+				z.object({ kind: z.literal("ask"), askId: id }).strict(),
+			]),
+		})
+		.strict(),
 ]);
 
 export type DesktopMediaRequest = z.infer<typeof mediaRequestSchema>;
@@ -129,6 +168,8 @@ export type DesktopMediaResponse =
 			 * rendered as this app's own sentence (design § 3.5, § 5.1).
 			 */
 			code?: DesktopRefusalCode;
+			/** A voice route's declared refusal (see `VOICE_REFUSAL_CODES`). */
+			voiceCode?: VoiceRefusalCode;
 	  };
 
 function endpoint(request: DesktopMediaRequest): {
@@ -161,7 +202,31 @@ function endpoint(request: DesktopMediaRequest): {
 				path: `/v1/desktop/sessions/${request.sessionId}/supplements/${request.digest}/document`,
 				method: "GET",
 			};
+		case "voice.utterance":
+			return { path: "/v1/desktop/voice/utterance", method: "POST" };
+		case "voice.speech":
+			return { path: "/v1/desktop/voice/speech", method: "POST" };
 	}
+}
+
+/**
+ * The speech route's body, in the route's own field names. A function rather than
+ * inline because the renderer's camelCase reference and the wire's snake_case one
+ * are two spellings of one fact, and only this mapping may translate between them.
+ */
+function voiceSpeechBody(
+	request: Extract<DesktopMediaRequest, { op: "voice.speech" }>,
+): Record<string, unknown> {
+	const { source } = request;
+	return {
+		session_id: request.sessionId,
+		source:
+			source.kind === "message"
+				? { kind: "message", message_id: source.messageId }
+				: source.kind === "gate"
+					? { kind: "gate", request_id: source.requestId }
+					: { kind: "ask", ask_id: source.askId },
+	};
 }
 
 /**
@@ -238,6 +303,40 @@ export async function requestDesktopMediaOutcome(
 	} else if (request.op === "speech.create" || request.op === "speech.agent") {
 		body = JSON.stringify(request.request);
 		contentType = "application/json";
+	} else if (request.op === "voice.speech") {
+		body = JSON.stringify(voiceSpeechBody(request));
+		contentType = "application/json";
+	} else if (request.op === "voice.utterance") {
+		/*
+		 * EXACTLY ONE OF AUDIO OR TEXT. Both would leave the route to pick, and
+		 * neither is a take with nothing in it; refused here, never sent, so the
+		 * route's own 422 is never the first place the mistake is noticed.
+		 */
+		const hasBytes = bytes !== null && bytes.byteLength > 0;
+		const hasText = request.text !== undefined;
+		if (hasBytes === hasText || (hasBytes && !request.mimeType)) {
+			return {
+				response: {
+					status: 422,
+					kind: "error",
+					detail: "A voice utterance carries either audio or text.",
+				},
+				answered: false,
+			};
+		}
+		const form = new FormData();
+		form.append("session_id", request.sessionId);
+		form.append("request_id", request.requestId);
+		if (hasBytes && bytes) {
+			form.append(
+				"file",
+				new Blob([bytes], { type: request.mimeType }),
+				request.fileName ?? "utterance",
+			);
+		} else if (request.text !== undefined) {
+			form.append("text", request.text);
+		}
+		body = form;
 	} else {
 		if (!bytes) {
 			return {
@@ -333,6 +432,10 @@ export async function requestDesktopMediaOutcome(
 						declaredCode !== undefined && isDesktopRefusalCode(declaredCode)
 							? declaredCode
 							: desktopRefusalCodeForStatus(target.path, response.status),
+					...(request.op.startsWith("voice.") &&
+					isVoiceRefusalCode(declaredCode)
+						? { voiceCode: declaredCode }
+						: {}),
 				},
 				answered: true,
 			};
