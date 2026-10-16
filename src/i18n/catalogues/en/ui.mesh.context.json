@@ -1073,5 +1073,45 @@
 		"role": "status or explanatory text — mesh device table",
 		"tone": "Factual and restrained",
 		"note": "Mesh device table: names/explains conversation count. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale’s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility."
+	},
+	"ui.mesh.approval.credential_title": {
+		"role": "heading — mesh approval card, credential request with no server-provided summary",
+		"tone": "Plain and factual; a neutral label, not a warning",
+		"note": "The card's heading when the server sent a CREDENTIAL access request but no summary line, so this stands as the title. It names the CATEGORY of request, not the specific credential, and it is not a grant: the card's own approve/deny controls are what ask for the decision. Length: heading in the card header, keep it to a couple of words, around the English footprint; it sits beside the card's state line, so an over-long title pushes that line. Do not expand it into a sentence and do not name a credential the server did not name."
+	},
+	"ui.mesh.approval.unknown_title": {
+		"role": "heading — mesh approval card, request whose kind the app does not recognise",
+		"tone": "Plain and factual; neutral fallback, not an error or a warning",
+		"note": "The card's heading when the server sends an approval request of a kind this app version does not understand and gave no summary, so this stands as the title. It is a FALLBACK, not a failure: the request is still real and still decidable elsewhere, so keep it neutral rather than alarming. Length: heading in the card header, a couple of words, around the English footprint; it sits beside the card's state line. Do not turn it into an error message."
+	},
+	"ui.mesh.approval.details_unavailable": {
+		"role": "status text — mesh approval card details section, no detail lines to show",
+		"tone": "Factual and restrained; a plain statement of absence",
+		"note": "Stands inside the card's details section when the request carried no detail lines to list, so the section says so rather than rendering empty. It is not an error and not a permission statement - it is the absence of a description. Unlike the find-a-command-line remedy on the card itself, this one is only about the MISSING DESCRIPTION; it must not promise the request can or cannot be approved. Length: one short line where a list would have been; the surrounding section is `text-meta`."
+	},
+	"ui.mesh.approval.cli_review": {
+		"role": "instruction — mesh approval card, restricted request that must be reviewed at the command line",
+		"tone": "Plain and factual; an instruction, not a refusal and not an apology",
+		"note": "Shown on a still-pending request the app cannot decide here (an opaque credential/unknown kind, or `canApproveHere` false) and for which the server sent no `approve_remedy` text, so this is the generic remedy. It must stay TRUE: the app genuinely cannot approve it, and the command line on THIS machine genuinely can. Keep `command line` and `on this machine` uncompromised - a translation that drops either sends the reader to a surface that cannot help. Length: an explanatory line under the card, may wrap onto two lines; `text-meta` and muted, so keep it near the English length where the language allows."
+	},
+	"ui.mesh.approval.approved_pending_apply": {
+		"role": "status label — mesh approval card, credential request approved but not yet applied",
+		"tone": "Factual and restrained; a state statement, not a progress indicator",
+		"note": "Replaces the card's normal state line for exactly one case: a credential request whose state is `approved` in the store, where approval is recorded but the apply step has not happened yet. There is no count and no time in it. THIS IS A LIE IF ENLARGED: it must not promise that access now works - approval and apply are two steps and only the second grants use. Length: one short state line in the card header, around the English footprint; it stands where the card's ordinary state word stands, so it may be slightly longer than a single word but must not wrap into a second line."
+	},
+	"ui.mesh.approval.approved_apply_hint": {
+		"role": "instruction — mesh approval card, approved credential request with server-provided details",
+		"tone": "Plain and factual; points onward without promising the outcome",
+		"note": "Shown after a credential request is approved, when the server DID send detail lines, so the apply step exists to open. It points the reader at Details rather than telling them access is live: approval is recorded, apply is separate. Keep the reference to Details (the card's own disclosure control) - a translation that renames it sends the reader to a control that does not exist under that name. No placeholders. Length: an explanatory line under the card, may wrap; keep the two short sentences."
+	},
+	"ui.mesh.approval.approved_details_missing": {
+		"role": "status text — mesh approval card, approved credential request whose details did not arrive",
+		"tone": "Factual and restrained; states the gap without blaming the reader or the server",
+		"note": "The sibling of `approved_apply_hint` for the case where approval is recorded but the server sent NO detail lines, so there is nothing to open. It must not imply the reader can do the apply step here - unlike its sibling it should NOT send them to Details for content that is absent. No placeholders. Length: an explanatory line under the card, may wrap; keep it to the same footprint as `approved_apply_hint` so the two variants do not shift the card's height."
+	},
+	"ui.mesh.approval.request_window": {
+		"role": "status text — mesh approval card, credential request's remaining decision window",
+		"tone": "Factual and restrained; quiet, secondary to the card's state",
+		"note": "The countdown beside a still-decidable credential request. Placeholder: `remaining` is an ALREADY-LOCALIZED duration string built by the shared duration formatter (`formatDuration`/`formatRelativeTime`), never a raw number - do not reformat it, pluralize it, add units to it, or wrap it in `{remaining, number}`. Length: a compact line in the card header, around the English footprint; it is `text-meta` and dim, so length costs contrast rather than space, but keep it short. Keep the trailing colon of the English label; the duration reads after it."
 	}
 }
