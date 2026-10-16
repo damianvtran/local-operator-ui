@@ -23,11 +23,159 @@ import {
 	ASKS_CONTROL_PINNED,
 	ASKS_RAIL_CLOSE_POST_STATE,
 	CASES,
+	describePressRead,
+	pressWhenActionable,
 	railCloseAssertion,
 	railCloseReading,
 	resolveAsksControl,
 } from "./asks-app-regression.mjs";
 import { categoryOf, flagsFor } from "./ci-scope.mjs";
+
+/*
+ * THE PRESS GATE (#1131's red leg, hardened here). `press` must not dispatch input at a
+ * point where the target cannot receive it, and it must not wait forever for a target
+ * that is being replaced. These drive the exported gate directly with scripted readings
+ * - the same technique as the stub-context guard below, one level down - so the failure
+ * mode that cost a macOS run (a swallowed press, then a bare timeout) fails here at
+ * unit cost.
+ */
+test("the press gate waits for actionability, presses once, and names what blocked it", async () => {
+	/*
+	 * NEVER HIT-TESTABLE: the gate must stop at its read bound rather than pressing, and
+	 * the failure must NAME the occluder - the reader of a red CI log should not have to
+	 * guess which element owned the point.
+	 */
+	let occludedReads = 0;
+	await assert.rejects(
+		() =>
+			pressWhenActionable({
+				selector: "[data-ci-menu]",
+				probe: async () => {
+					occludedReads++;
+					return {
+						present: true,
+						painted: true,
+						hit: false,
+						at: '[role="menu"]',
+						stable: true,
+						x: 10,
+						y: 20,
+					};
+				},
+				dispatch: () => assert.fail("an occluded target must never be pressed"),
+				reads: 3,
+				intervalMs: 1,
+			}),
+		(error) => {
+			assert.match(
+				error.message,
+				/never became actionable after 3 bounded reads/,
+			);
+			assert.match(error.message, /\[data-ci-menu\]/);
+			assert.match(error.message, /\(10,20\) is covered by \[role="menu"\]/);
+			return true;
+		},
+	);
+	assert.equal(
+		occludedReads,
+		3,
+		"the gate reads a bounded number of times and stops",
+	);
+
+	/*
+	 * THE POINT THAT IS NOT THE TARGET (a portal painted over it, or a point that is
+	 * nobody's): named as such rather than as a generic timeout.
+	 */
+	assert.match(
+		describePressRead({
+			present: true,
+			painted: true,
+			hit: false,
+			at: "nothing",
+			stable: true,
+			x: 1,
+			y: 2,
+		}),
+		/hit-tests to nothing/,
+	);
+	assert.match(
+		describePressRead({ present: true, painted: false, at: "div" }),
+		/empty box/,
+	);
+	assert.match(describePressRead({ present: false }), /left the document/);
+
+	/*
+	 * ACTIONABLE ON THE THIRD READ: exactly one dispatch, at the point the gate
+	 * validated - not at a point read earlier, and not twice.
+	 */
+	let reads = 0;
+	const dispatched = [];
+	const verdict = await pressWhenActionable({
+		selector: "[data-ci-menu]",
+		probe: async () => {
+			reads++;
+			return reads < 3
+				? {
+						present: true,
+						painted: true,
+						hit: false,
+						at: "div",
+						stable: true,
+						x: 1,
+						y: 1,
+					}
+				: {
+						present: true,
+						painted: true,
+						hit: true,
+						at: "button",
+						stable: true,
+						x: 42,
+						y: 24,
+					};
+		},
+		dispatch: async (point) => dispatched.push(point),
+		reads: 5,
+		intervalMs: 1,
+	});
+	assert.equal(
+		verdict.reads,
+		3,
+		"the gate must report how many reads it needed",
+	);
+	assert.deepEqual(
+		dispatched,
+		[{ x: 42, y: 24 }],
+		"the press must be dispatched exactly once, at the validated point",
+	);
+
+	/*
+	 * HIT-TESTABLE BUT STILL BEING REPLACED: not pressed. This is the session-switch
+	 * window the header-menu case died in - the element answers the hit test and is gone
+	 * a commit later, which is how a press gets swallowed.
+	 */
+	const settling = [];
+	await assert.rejects(
+		() =>
+			pressWhenActionable({
+				selector: "[data-ci-menu]",
+				probe: async () => ({
+					present: true,
+					painted: true,
+					hit: true,
+					at: "button",
+					stable: false,
+					x: 5,
+					y: 5,
+				}),
+				dispatch: async (point) => settling.push(point),
+				reads: 2,
+				intervalMs: 1,
+			}),
+		/unstable across two reads/,
+	);
+	assert.deepEqual(settling, [], "a target being replaced must not be pressed");
+});
 
 /*
  * THE DRIVE'S OWN SCOPE, GUARDED LOCALLY (round 2, Q-4). A case's `drive(ctx)` may

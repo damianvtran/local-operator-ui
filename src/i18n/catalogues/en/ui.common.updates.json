@@ -123,7 +123,7 @@
 	"ui.common.updates.update_quiet_indicator.application_update": "Application update",
 	"ui.common.updates.update_quiet_indicator.dismiss_update_notice": "Dismiss update notice",
 	"ui.common.updates.update_quiet_indicator.server_update": "Server update",
-	"ui.common.updates.wait.minutes": "Waiting {minutes, plural, one {# minute} other {# minutes}} so far",
-	"ui.common.updates.wait.minutes_seconds": "Waiting {minutes, plural, one {# minute} other {# minutes}} {seconds, plural, one {# second} other {# seconds}} so far",
-	"ui.common.updates.wait.seconds": "Waiting {seconds, plural, one {# second} other {# seconds}} so far"
+	"ui.common.updates.wait.minutes": "Waiting {minutes, plural, one {{minutes, number, ::group-off} minute} other {{minutes, number, ::group-off} minutes}} so far",
+	"ui.common.updates.wait.minutes_seconds": "Waiting {minutes, plural, one {{minutes, number, ::group-off} minute} other {{minutes, number, ::group-off} minutes}} {seconds, plural, one {{seconds, number, ::group-off} second} other {{seconds, number, ::group-off} seconds}} so far",
+	"ui.common.updates.wait.seconds": "Waiting {seconds, plural, one {{seconds, number, ::group-off} second} other {{seconds, number, ::group-off} seconds}} so far"
 }

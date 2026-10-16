@@ -14,6 +14,7 @@ import {
 	useState,
 } from "react";
 import {
+	ASIDE_ADOPT_QUEUED,
 	adoptAside,
 	asideAdoptBlockedReason,
 	asideAdoptCap,
@@ -71,6 +72,13 @@ export type AsidePanelProps = {
 	 * and a second reading of it is a second thing that can be wrong.
 	 */
 	sessionStreaming: boolean;
+	/**
+	 * Whether the owner queues an adopt pressed mid-turn (`features.aside_adopt_queue`).
+	 * With it the control stays live while the conversation works; without it the
+	 * idle-only gate and its sentence are exactly what they were. Passed in for the
+	 * reason `sessionStreaming` is: the page that reads capabilities owns the answer.
+	 */
+	adoptQueueSupported?: boolean;
 	isSmallView?: boolean;
 	/**
 	 * Put the caret back in the composer, after this panel took it away.
@@ -369,6 +377,7 @@ const AsideAnswer: FC<{
 export const AsidePanel: FC<AsidePanelProps> = ({
 	sessionId,
 	sessionStreaming,
+	adoptQueueSupported = false,
 	isSmallView = false,
 	onReturnFocus,
 }) => {
@@ -594,8 +603,18 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 
 	const lastTurn = attachment.turns.at(-1);
 	const stream = lastTurn ? streams[lastTurn.asideId] : undefined;
-	const ready = asideAdoptReady(stream, sessionStreaming);
-	const blocked = asideAdoptBlockedReason(stream, sessionStreaming);
+	/*
+	 * A QUEUED ADOPT MAKES THE PANEL READ-ONLY until the pair lands: the owner has
+	 * already taken the exchange, so a second press could only be refused, and the
+	 * line that explains the dimmed control is the queue's own sentence - the one
+	 * fact the user needs is that the press took and when it will show.
+	 */
+	const queued = attachment.queued !== undefined;
+	const ready =
+		!queued && asideAdoptReady(stream, sessionStreaming, adoptQueueSupported);
+	const blocked = queued
+		? ASIDE_ADOPT_QUEUED
+		: asideAdoptBlockedReason(stream, sessionStreaming, adoptQueueSupported);
 	/*
 	 * WHAT A SCREEN READER IS TOLD, AND WHY IT IS A PHASE SENTENCE RATHER THAN
 	 * THE ANSWER (review round 1, F4).
@@ -624,7 +643,12 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 	 * nothing yet to wait for — whereas the states below are the ones a reader
 	 * cannot see arrive.
 	 */
-	const announcement = asideAnnouncement(stream);
+	/*
+	 * The queued phase is announced as its own sentence: it is a transition the user
+	 * started but cannot see complete, which is exactly the class of state this
+	 * region exists for, and the answer's own sentence was already heard at settle.
+	 */
+	const announcement = queued ? ASIDE_ADOPT_QUEUED : asideAnnouncement(stream);
 	// `navigator.platform`, derived at the call site exactly as `chat-sidebar.tsx`
 	// and `chat-header.tsx` do it: the cap is a promise about a key, and an
 	// awaited platform would flash the wrong one.

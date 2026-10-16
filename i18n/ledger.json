@@ -55,8 +55,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.console",
-			"source_sha256": "4fe88a76de4992e0b890a15c6faafe594ac345e7f62a7deb849b486ec3c14c7e",
-			"target_sha256": "98f35292d1b0ae8225f9e56c938f6444591969392eb421a08ced861b786cedef",
+			"source_sha256": "65a71fecf4d10d1d2e2c1de1489101a752115cccaceee6d59bb98910273d4de0",
+			"target_sha256": "d227eb655a71e71b48263accbd27778e935c81824e898103d7f76efcfa746b71",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol (original 30 keys, 2026-10-13); anthropic/claude-sonnet-5-5 (24 keys added 2026-10-14)",
@@ -66,32 +66,36 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-14",
-					"result": "clean-with-findings",
-					"instance": "bd764ab57482",
+					"date": "2026-10-16",
+					"result": "clean",
+					"instance": "d55e130f9692",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 3,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/bd764ab57482.json",
-					"receipt_sha256": "95118c3f3ec2a68e18b33589900f1ee237efcd228dc6c51a1ab80f1a119d4820"
+					"receipt": "i18n/receipts/d55e130f9692.json",
+					"receipt_sha256": "bce6b64198539d93eaf393aea4c1c23134b95796b12bc5d9bd8c9f4e497cf358",
+					"scope": "fr ui.console vs en source at a6eb53a2e3 - token-only ::group-off count carriage closing the #1131 fidelity fix",
+					"note": "Eleven keys carry the token; renders raw at 1000; no French words changed."
 				},
 				{
 					"agent": "i18n-auditor",
 					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-14",
-					"result": "clean-with-findings",
-					"instance": "a17d92b6925f",
+					"date": "2026-10-16",
+					"result": "clean",
+					"instance": "f913c83f4149",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 2,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/a17d92b6925f.json",
-					"receipt_sha256": "0b78667ac490a1caeead1b797bfc805d5ac50945b1e1b915d7a0436e62a78a2f"
+					"receipt": "i18n/receipts/f913c83f4149.json",
+					"receipt_sha256": "172ab736cd7eb6e372f770331eb0c139172ad73637d57f8e0fde490efc13e12b",
+					"scope": "fr ui.console vs en source at a6eb53a2e3 - token-only ::group-off count carriage closing the #1131 fidelity fix",
+					"note": "Independent second run; token mirror verified end-to-end."
 				}
 			],
 			"status": "audited",
@@ -132,14 +136,51 @@
 					"target_sha256": "b91225996f0776e002f49f24aed35f02f31461ac88447f7db71acbff189303a2",
 					"auditors": [],
 					"status": "pending"
+				},
+				{
+					"source_sha256": "4fe88a76de4992e0b890a15c6faafe594ac345e7f62a7deb849b486ec3c14c7e",
+					"target_sha256": "98f35292d1b0ae8225f9e56c938f6444591969392eb421a08ced861b786cedef",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-14",
+							"result": "clean-with-findings",
+							"instance": "bd764ab57482",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 3,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/bd764ab57482.json",
+							"receipt_sha256": "95118c3f3ec2a68e18b33589900f1ee237efcd228dc6c51a1ab80f1a119d4820"
+						},
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-14",
+							"result": "clean-with-findings",
+							"instance": "a17d92b6925f",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/a17d92b6925f.json",
+							"receipt_sha256": "0b78667ac490a1caeead1b797bfc805d5ac50945b1e1b915d7a0436e62a78a2f"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "fr",
 			"namespace": "ui.onboarding",
-			"source_sha256": "b086c241aa70e44cdaab8f02d20e5aaac33d4732df09204481afc4128c08a6ae",
-			"target_sha256": "ac45bc9c21115e53b07e4d71c2adddb2789678d0417d75432c2cc8a31c758d17",
+			"source_sha256": "a04d3feacdef1168af407cb82b94173cb95d37092e8722d46df2cae4e4fc9e53",
+			"target_sha256": "cef4a1c2e8e83682311e939f075b1228751576fcb960c6486b780fc1c2675375",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol (original 45 keys, 2026-10-13); anthropic/claude-sonnet-5-5 (modal.step_of, modal.steps_total, connect.intro reword, 2026-10-14)",
@@ -150,32 +191,36 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-14",
-					"result": "clean-with-findings",
-					"instance": "bd764ab57482",
+					"date": "2026-10-16",
+					"result": "clean",
+					"instance": "d55e130f9692",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 2,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/bd764ab57482.json",
-					"receipt_sha256": "95118c3f3ec2a68e18b33589900f1ee237efcd228dc6c51a1ab80f1a119d4820"
+					"receipt": "i18n/receipts/d55e130f9692.json",
+					"receipt_sha256": "bce6b64198539d93eaf393aea4c1c23134b95796b12bc5d9bd8c9f4e497cf358",
+					"scope": "fr ui.onboarding vs en source at a6eb53a2e3 - token-only ::group-off count carriage closing the #1131 fidelity fix",
+					"note": "step_of and steps_total carry the token; renders raw at 1000; no French words changed."
 				},
 				{
 					"agent": "i18n-auditor",
 					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-14",
-					"result": "clean-with-findings",
-					"instance": "a17d92b6925f",
+					"date": "2026-10-16",
+					"result": "clean",
+					"instance": "f913c83f4149",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/a17d92b6925f.json",
-					"receipt_sha256": "0b78667ac490a1caeead1b797bfc805d5ac50945b1e1b915d7a0436e62a78a2f"
+					"receipt": "i18n/receipts/f913c83f4149.json",
+					"receipt_sha256": "172ab736cd7eb6e372f770331eb0c139172ad73637d57f8e0fde490efc13e12b",
+					"scope": "fr ui.onboarding vs en source at a6eb53a2e3 - token-only ::group-off count carriage closing the #1131 fidelity fix",
+					"note": "Independent second run; token mirror verified end-to-end."
 				}
 			],
 			"status": "audited",
@@ -221,6 +266,43 @@
 					],
 					"status": "audited",
 					"reason": "Replaced by two full independent self-contained strict-schema audits at current bytes; historical narrow/placeholder receipts are retained here, not used to certify current state."
+				},
+				{
+					"source_sha256": "b086c241aa70e44cdaab8f02d20e5aaac33d4732df09204481afc4128c08a6ae",
+					"target_sha256": "ac45bc9c21115e53b07e4d71c2adddb2789678d0417d75432c2cc8a31c758d17",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-14",
+							"result": "clean-with-findings",
+							"instance": "bd764ab57482",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/bd764ab57482.json",
+							"receipt_sha256": "95118c3f3ec2a68e18b33589900f1ee237efcd228dc6c51a1ab80f1a119d4820"
+						},
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-14",
+							"result": "clean-with-findings",
+							"instance": "a17d92b6925f",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/a17d92b6925f.json",
+							"receipt_sha256": "0b78667ac490a1caeead1b797bfc805d5ac50945b1e1b915d7a0436e62a78a2f"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		}

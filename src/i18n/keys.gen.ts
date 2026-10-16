@@ -23,6 +23,7 @@
 
 import enUiAgentsDialogs from "./catalogues/en/ui.agents.dialogs.json";
 import enUiAgents from "./catalogues/en/ui.agents.json";
+import enUiAgentsModels from "./catalogues/en/ui.agents.models.json";
 import enUiAgentsNavigation from "./catalogues/en/ui.agents.navigation.json";
 import enUiAgentsRefusals from "./catalogues/en/ui.agents.refusals.json";
 import enUiAgentsSettings from "./catalogues/en/ui.agents.settings.json";
@@ -75,6 +76,7 @@ import frUiSettings from "./catalogues/fr/ui.settings.json";
 export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgentsDialogs,
 	...enUiAgents,
+	...enUiAgentsModels,
 	...enUiAgentsNavigation,
 	...enUiAgentsRefusals,
 	...enUiAgentsSettings,
@@ -168,6 +170,53 @@ export type MessageParams = {
 	"ui.agents.dialogs.menu.export": undefined;
 	"ui.agents.dialogs.menu.settings": undefined;
 	"ui.agents.dialogs.menu.upload": undefined;
+	"ui.agents.models.override.auto": undefined;
+	"ui.agents.models.override.effort_field": undefined;
+	"ui.agents.models.override.effort_label": { member: string };
+	"ui.agents.models.override.inherit_effort": undefined;
+	"ui.agents.models.override.inherit_tier": undefined;
+	"ui.agents.models.override.scope_hint": undefined;
+	"ui.agents.models.override.tier_field": undefined;
+	"ui.agents.models.override.tier_label": { member: string };
+	"ui.agents.models.pin_reach": { count: number; teams: string };
+	"ui.agents.models.reading.description": undefined;
+	"ui.agents.models.reading.effort_auto": undefined;
+	"ui.agents.models.reading.effort_cell": { value: string };
+	"ui.agents.models.reading.effort_cell_layer": {
+		value: string;
+		layer: string;
+	};
+	"ui.agents.models.reading.effort_clamped": {
+		requested: string;
+		value: string;
+	};
+	"ui.agents.models.reading.effort_col": undefined;
+	"ui.agents.models.reading.effort_default": undefined;
+	"ui.agents.models.reading.member_col": undefined;
+	"ui.agents.models.reading.model_cell": { value: string };
+	"ui.agents.models.reading.model_cell_layer": { value: string; layer: string };
+	"ui.agents.models.reading.model_col": undefined;
+	"ui.agents.models.reading.no_probe_hint": undefined;
+	"ui.agents.models.reading.not_resolved": undefined;
+	"ui.agents.models.reading.read_failed": undefined;
+	"ui.agents.models.reading.refreshing": undefined;
+	"ui.agents.models.reading.saved_label": undefined;
+	"ui.agents.models.reading.session_model": undefined;
+	"ui.agents.models.reading.tier_layer": { tier: string; source: string };
+	"ui.agents.models.reading.title": undefined;
+	"ui.agents.models.reading.try_again": undefined;
+	"ui.agents.models.reading.unavailable": { member: string; reason: string };
+	"ui.agents.models.reading.unavailable_editor": {
+		member: string;
+		reason: string;
+	};
+	"ui.agents.models.reading.unavailable_hint": undefined;
+	"ui.agents.models.source.model_default": undefined;
+	"ui.agents.models.source.none": undefined;
+	"ui.agents.models.source.row": undefined;
+	"ui.agents.models.source.session": undefined;
+	"ui.agents.models.source.team": undefined;
+	"ui.agents.models.source.tier": undefined;
 	"ui.agents.navigation.legacy.chat": undefined;
 	"ui.agents.navigation.legacy.chat_named": { name: string };
 	"ui.agents.navigation.legacy.export": undefined;

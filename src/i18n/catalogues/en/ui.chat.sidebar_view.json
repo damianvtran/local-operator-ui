@@ -13,7 +13,7 @@
 	"ui.chat.sidebar_view.clock_hint": "Dates and ordering follow the selected clock.",
 	"ui.chat.sidebar_view.move_up": "Move {section} up",
 	"ui.chat.sidebar_view.move_down": "Move {section} down",
-	"ui.chat.sidebar_view.hidden": "{count, plural, one {# section hidden} other {# sections hidden}}",
+	"ui.chat.sidebar_view.hidden": "{count, plural, one {{count, number, ::group-off} section hidden} other {{count, number, ::group-off} sections hidden}}",
 	"ui.chat.sidebar_view.section.pinned": "Pinned",
 	"ui.chat.sidebar_view.section.running": "Running",
 	"ui.chat.sidebar_view.section.today": "Today",

@@ -48,7 +48,7 @@ test("remaining sessions agree with singular and plural pronouns", () => {
 	);
 });
 
-for (const count of [0, 1, 2]) {
+for (const count of [0, 1, 2, 1000]) {
 	test(`counted attempt/session/unit nouns at ${count}`, () => {
 		assert.equal(
 			t("ui.common.updates.check_for_updates_button.detail", {
@@ -60,6 +60,17 @@ for (const count of [0, 1, 2]) {
 		assert.equal(
 			t("ui.common.updates.wait.seconds", { seconds: count }),
 			`Waiting ${count} second${count === 1 ? "" : "s"} so far`,
+		);
+		assert.equal(
+			t("ui.common.updates.wait.minutes", { minutes: count }),
+			`Waiting ${count} minute${count === 1 ? "" : "s"} so far`,
+		);
+		assert.equal(
+			t("ui.common.updates.wait.minutes_seconds", {
+				minutes: count,
+				seconds: count,
+			}),
+			`Waiting ${count} minute${count === 1 ? "" : "s"} ${count} second${count === 1 ? "" : "s"} so far`,
 		);
 		assert.equal(
 			t("ui.common.updates.completion.sessions", {

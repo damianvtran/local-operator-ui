@@ -58,10 +58,10 @@ const catalogue = Object.assign(
 
 // Test each quantity, rather than only the English singular, because French's
 // category for zero would produce a false singular if fallback used target rules.
-test("settings helper quantities preserve English for 0, 1 and 2, including fallback", () => {
+test("settings helper quantities preserve English for 0, 1, 2 and 1000, including fallback", () => {
 	for (const locale of ["en", "fr"]) {
 		runtime.setLocale(locale);
-		for (const count of [0, 1, 2]) {
+		for (const count of [0, 1, 2, 1000]) {
 			assert.equal(
 				runtime.toolCountLabel(count),
 				`${count} ${count === 1 ? "tool" : "tools"}`,
@@ -135,6 +135,13 @@ test("whole messages keep interpolation and markup-adjacent spaces intact", () =
 			sectionCount: 1,
 		}),
 		"2 results in 1 section",
+	);
+	assert.equal(
+		runtime.t("ui.settings.configuration.settings_filter_bar.search_count", {
+			matchCount: 1000,
+			sectionCount: 1000,
+		}),
+		"1000 results in 1000 sections",
 	);
 	assert.equal(
 		runtime.t(

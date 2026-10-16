@@ -710,6 +710,14 @@ export type MessageInputProps = {
 	 * it here is a second thing that can disagree with the Stop control beside it.
 	 */
 	asideStreaming?: boolean;
+	/**
+	 * Whether the owner queues an adopt pressed mid-turn
+	 * (`features.aside_adopt_queue`). With it, `asideStreaming` no longer gates the
+	 * adopt control or its chord - the owner holds the pair until the turn's next
+	 * safe point - and the R6-5 withdrawal below does not apply. Without it, both
+	 * behave exactly as before. Passed in for the reason `asideStreaming` is.
+	 */
+	asideAdoptQueue?: boolean;
 	conversationId?: string;
 	messages: Message[];
 	currentJobId?: string | null;
@@ -1706,6 +1714,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			secretAnswer = false,
 			asideSessionId,
 			asideStreaming = false,
+			asideAdoptQueue = false,
 			conversationId,
 			messages,
 			currentJobId,
@@ -1799,7 +1808,8 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		const adoptArmedTurn = useRef<AsideAdoptArm | null>(null);
 		/*
 		 * THE CONFIRM IS WITHDRAWN WHEN A CONVERSATION TURN STARTS (agent review round
-		 * 6, R6-5). Adopt needs an idle session (`asideAdoptReady`), so once a turn
+		 * 6, R6-5). Against an owner without the adopt queue, adopt needs an idle
+		 * session (`asideAdoptReady`), so once a turn
 		 * runs the second press falls through - yet the notice went on saying "Press
 		 * ⌘+F again…" beside the panel's own line saying the conversation is working.
 		 * Both the arm and the notice go, so the next press after the turn asks again
@@ -1810,13 +1820,19 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * retire.
 		 */
 		useEffect(() => {
+			/*
+			 * WITH THE QUEUE THE CONFIRM STAYS TRUE: a turn starting no longer makes the
+			 * second press fall through (the owner queues it), so withdrawing the confirm
+			 * would retract a sentence that is still accurate.
+			 */
+			if (asideAdoptQueue) return;
 			if (!asideStreaming || adoptArmedTurn.current === null) return;
 			adoptArmedTurn.current = null;
 			const store = useAsideStore.getState();
 			const sessionForAside = asideSessionId ?? "";
 			if (store.attached[sessionForAside]?.notice === asideAdoptConfirm(IS_MAC))
 				store.setAsideNotice(sessionForAside, null);
-		}, [asideStreaming, asideSessionId]);
+		}, [asideStreaming, asideSessionId, asideAdoptQueue]);
 		const removeReply = useConversationInputStore((state) => state.removeReply);
 		const addAttachment = useConversationInputStore(
 			(state) => state.addAttachment,
@@ -5311,7 +5327,12 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					const stream = lastTurn
 						? useAsideStore.getState().streams[lastTurn.asideId]
 						: undefined;
-					if (!lastTurn || !asideAdoptReady(stream, asideStreaming)) return;
+					if (
+						!lastTurn ||
+						aside.queued !== undefined ||
+						!asideAdoptReady(stream, asideStreaming, asideAdoptQueue)
+					)
+						return;
 					event.preventDefault();
 					/*
 					 * THE FIRST PRESS ASKS, THE SECOND ADOPTS (UX round 2, U16). `⌘+F` is Find
@@ -5503,6 +5524,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				aside,
 				asideSessionId,
 				asideStreaming,
+				asideAdoptQueue,
 			],
 		);
 
@@ -7871,6 +7893,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					<AsidePanel
 						sessionId={asideSessionId}
 						sessionStreaming={asideStreaming}
+						adoptQueueSupported={asideAdoptQueue}
 						isSmallView={isSmallView}
 						/*
 						 * The panel's own controls take focus with them when they close it, so

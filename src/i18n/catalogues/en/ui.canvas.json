@@ -47,7 +47,7 @@
 	"ui.canvas.files.error": "Could not load session files",
 	"ui.canvas.files.remote": "Remote files are unavailable here",
 	"ui.canvas.files.inSession": "In session",
-	"ui.canvas.files.count": "{count, plural, one {# file} other {# files}}",
+	"ui.canvas.files.count": "{count, plural, one {{count, number, ::group-off} file} other {{count, number, ::group-off} files}}",
 	"ui.canvas.files.narrowCount": "{shown} of {total} files",
 	"ui.canvas.files.gone": "No longer in the session",
 	"ui.canvas.files.earlier": "Search earlier messages",
