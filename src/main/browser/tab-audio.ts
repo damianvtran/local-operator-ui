@@ -100,10 +100,22 @@ export class TabAudioTracker {
 			audible: wc.isDestroyed() ? false : (wc.isCurrentlyAudible?.() ?? false),
 			muted: wc.isDestroyed() ? false : (wc.isAudioMuted?.() ?? false),
 		});
-		const listener = ((_event: unknown, params: { audible?: boolean }) => {
+		// ELECTRON 44.3.0 DELIVERS THE PARAMS ON THE EVENT ITSELF, AS THE FIRST
+		// AND ONLY ARGUMENT (electron.d.ts:16120, and
+		// `WebContentsAudioStateChangedEventParams = { audible: boolean }` at
+		// :24316): `listener: (event: Event<WebContentsAudioStateChangedEventParams>)
+		// => void`, so `event.audible` is the flag. The earlier two-argument read
+		// (`(_event, params) => params?.audible`) was wrong for this Electron: the
+		// second argument is undefined, every event wrote `audible: false`, and a
+		// tab that began silent and later played never showed the mute control.
+		// QA reached the same conclusion from the live app
+		// (`argCount:1, arg0={audible:true}, arg1:ABSENT`). Reading the first
+		// argument is the fix; `stateFor`'s live re-read is the belt to this
+		// braces.
+		const listener = ((event: { audible?: boolean }) => {
 			const current = this.states.get(tab.tabId);
 			if (!current) return;
-			current.audible = params?.audible ?? false;
+			current.audible = event?.audible ?? false;
 			this.states.set(tab.tabId, current);
 			this.changed();
 		}) as (...args: never[]) => void;

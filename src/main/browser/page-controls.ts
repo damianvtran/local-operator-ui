@@ -225,6 +225,15 @@ export class PageControls {
 		if (!active.presented) return;
 		const wc = active.view.webContents;
 		if (wc.isDestroyed() || !wc.print) {
+			// A MAIN-SIDE LITERAL, DELIBERATELY (LOH-13 slice C, review minor 2).
+			// These notices follow the class the zoom notice above already
+			// establishes: this class is main-only native page chrome with no
+			// renderer/catalogue surface of its own, and the notice band renders
+			// whatever string it is handed. Keying these two alone would give
+			// this one file a second way of producing a user-visible sentence
+			// beside the literal the zoom notice already uses — the defect the
+			// repo's own convention names. If the notice band is ever moved onto
+			// the catalogue, all of this file's sentences move together.
 			this.notice = "Printing is not available for this page";
 			this.noticeTabId = active.tabId;
 			return;

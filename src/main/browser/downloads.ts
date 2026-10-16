@@ -342,6 +342,21 @@ export interface DownloadArmerOptions {
 	 * caller-named directory would be the disclosure primitive `ipc.ts`'s
 	 * reveal channel is designed against. */
 	humanDownloadDir?: () => string | null;
+	/** How long a HUMAN capture lives before it settles itself, in
+	 * milliseconds (LOH-13 slice C, review minor 4).
+	 *
+	 * WITHOUT A DEADLINE a human capture has no upper bound at all: it is
+	 * created on the first download of a user-owned tab and, absent one, sits
+	 * in `captures` with its `CAP_SAMPLE_MS` sampler running until the tab is
+	 * closed — a timer and a map entry for the life of the tab. The armed path
+	 * is bounded by the caller's `timeout_s`; this gives the human path the
+	 * SAME budget (the wiring passes `COMMAND_TIMEOUTS_S.download`), after
+	 * which the capture settles and its sampler stops. A settled capture is
+	 * replaced by the next download on that tab, so the person's next click is
+	 * never refused by an old capture's budget. Optional and defaulting to no
+	 * deadline, so a test that builds an armer without a clock keeps the
+	 * simpler behaviour. */
+	humanDeadlineMs?: number;
 	log: (message: string) => void;
 	/** Called whenever the surface's state changes (arm, accept, refusal, finish),
 	 * so the chrome can re-render the row without polling. */
@@ -772,6 +787,19 @@ export class DownloadArmer {
 			CAP_SAMPLE_MS,
 		);
 		capture.capTimer.unref?.();
+		// A BOUNDED HUMAN CAPTURE (review minor 4): see `humanDeadlineMs`. The
+		// deadline uses `settle`, which cancels anything still writing rather
+		// than letting a write outlive the capture and land unjudged, exactly
+		// as the armed path's deadline does. `capture.timeoutMs` is set to the
+		// real budget so a cancellation sentence and a `deadline` refusal rule
+		// name the same number the armed path would.
+		const deadlineMs = this.options.humanDeadlineMs;
+		if (deadlineMs && deadlineMs > 0) {
+			capture.timeoutMs = deadlineMs;
+			const deadline = setTimeout(() => this.settle(capture), deadlineMs);
+			deadline.unref?.();
+			capture.deadlineTimer = deadline;
+		}
 		this.captures.set(tabId, capture);
 		return capture;
 	}
@@ -901,7 +929,17 @@ export class DownloadArmer {
 				// the design states rather than the load-bearing half. It is BEST EFFORT for
 				// the same reason the audit append is: a chmod that failed would otherwise cost
 				// the user a file that did land.
-				restrictMode(savePath, this.options.log);
+				// THE 0600 IS SCOPED TO THE ARMED PATH (LOH-13 slice C, review
+				// minor 3). It is the quarantine's promise — "private by
+				// construction: created 0700, files 0600" — and a HUMAN capture
+				// does not land in a quarantine: it lands in the person's own
+				// downloads folder, which predates this app and where a file
+				// forced to 0600 would be one their own file-sharing or backup
+				// cannot read without a chmod they never asked for. So the human
+				// path takes the platform's normal mode (the process umask),
+				// exactly as the browser they would otherwise have used, and the
+				// armed path keeps its asserted mode unchanged.
+				if (!capture.human) restrictMode(savePath, this.options.log);
 				capture.files.push(fileFact(item, savePath));
 				this.note(capture, name, "saved", 1, "", null);
 			} else {
