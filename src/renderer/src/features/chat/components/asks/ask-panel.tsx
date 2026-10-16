@@ -1305,6 +1305,13 @@ const AskRow = ({
 	);
 };
 
+/**
+ * How long the lapse sentence stays in its live region before it is cleared: long
+ * enough to be read out behind whatever the screen reader is already saying, short
+ * enough that a reader browsing the panel later does not meet a stale sentence.
+ */
+export const LAPSE_NOTE_CLEAR_MS = 8000;
+
 export const AskPanel = ({
 	view,
 	onAnswer,
@@ -1470,32 +1477,62 @@ export const AskPanel = ({
 	 * without a word. The panel's own polite region states it, only when the card held
 	 * something: an untouched card lost nothing. `prevDrafts` is the draft as it stood on
 	 * the frame before, in case the owner of the drafts clears it on the same frame.
+	 *
+	 * "Something" is a pick or typed text: an opened `Other` writes `[""]` with nothing in
+	 * it (review round 3, m2), which could never have been sent.
+	 *
+	 * EACH LAPSE IS ITS OWN ANNOUNCEMENT (review round 3, m1 = QA Q-4). A live region
+	 * speaks on a DOM change, so writing the same sentence twice said nothing the second
+	 * time. The sentence is keyed per lapse, so React replaces the text node each time,
+	 * and it is cleared after `LAPSE_NOTE_CLEAR_MS` so a reader browsing later does not
+	 * find a stale sentence.
 	 */
-	const [lapseNote, setLapseNote] = useState("");
+	const [lapseNote, setLapseNote] = useState<{ seq: number; text: string }>({
+		seq: 0,
+		text: "",
+	});
 	const prevDrafts = useRef(drafts);
+	useEffect(() => {
+		if (lapseNote.text === "") return;
+		const clear = setTimeout(
+			() => setLapseNote((note) => ({ seq: note.seq, text: "" })),
+			LAPSE_NOTE_CLEAR_MS,
+		);
+		return () => clearTimeout(clear);
+	}, [lapseNote]);
 	useLayoutEffect(() => {
 		const newlyHeld = [...heldIds].filter((id) => !prevHeld.current.has(id));
 		const held = prevHeld.current;
 		prevHeld.current = heldIds;
-		/* Last measured height of every card still answerable, for the held slot (M1). */
-		for (const row of view.rows) {
-			if (!row.canAnswer) continue;
-			const card = [
+		/*
+		 * Last measured height of every card still answerable, for the held slot (M1).
+		 * One query per commit, indexed by id (review round 3, n1): this runs on the
+		 * clock's tick as well, so a per-row query would grow with the square of the rows.
+		 */
+		const cards = new Map(
+			[
 				...(panelRef.current?.querySelectorAll<HTMLElement>(
 					"[data-lo-ask-row]",
 				) ?? []),
-			].find((el) => el.getAttribute("data-lo-ask-row") === row.ask.ask_id);
-			const height = card?.getBoundingClientRect().height ?? 0;
+			].map((el) => [el.getAttribute("data-lo-ask-row"), el]),
+		);
+		for (const row of view.rows) {
+			if (!row.canAnswer) continue;
+			const height =
+				cards.get(row.ask.ask_id)?.getBoundingClientRect().height ?? 0;
 			if (height > 0) cardHeights.current.set(row.ask.ask_id, height);
 		}
 		const dropped = newlyHeld.some((id) =>
-			Object.values(prevDrafts.current[id] ?? drafts[id] ?? {}).some(
-				(values) => values.length > 0,
+			Object.values(prevDrafts.current[id] ?? drafts[id] ?? {}).some((values) =>
+				values.some((value) => value.trim() !== ""),
 			),
 		);
 		prevDrafts.current = drafts;
 		if (dropped)
-			setLapseNote("That question timed out; your answer was not sent.");
+			setLapseNote((note) => ({
+				seq: note.seq + 1,
+				text: "That question timed out; your answer was not sent.",
+			}));
 		const id = focusedAsk;
 		if (id === null || !heldIds.has(id) || held.has(id)) return;
 		const now = document.activeElement;
@@ -1739,7 +1776,9 @@ export const AskPanel = ({
 			 * into it is announced.
 			 */}
 			<div data-lo-ask-lapse-note="" aria-live="polite" className="sr-only">
-				{lapseNote}
+				{lapseNote.text === "" ? null : (
+					<span key={lapseNote.seq}>{lapseNote.text}</span>
+				)}
 			</div>
 			{/*
 			 * THE EMPTY LINE SITS UNDER THE CONTROL IT ANSWERS (design round 1, D1 = UX
