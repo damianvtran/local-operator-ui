@@ -28,7 +28,8 @@
  *    the scroll offset, and none of them is a reader asking for more history.
  *    The caller is responsible for only reporting real input to `noteInput`;
  *    this module never infers demand from geometry alone.
- * 2. AT MOST ONE DEMAND, AT MOST ONE RETAINED, AND ONE FETCH PER ACT. A fling
+ * 2. AT MOST ONE DEMAND, AT MOST ONE RETAINED, AND ONE FETCH PER ACT — EXCEPT
+ *    WHERE THE READER IS PROVABLY NOT TRAVELLING. A fling
  *    is dozens of wheel events; it is one request for older messages. While a
  *    page is in flight a further gesture retains exactly one follow-up demand,
  *    and a downward gesture cancels it — the reader turned around, so the debt
@@ -48,6 +49,20 @@
  *    asking again is honoured (round-1 review F2). Local widens are not
  *    budgeted, because they show the reader rows already in hand rather than
  *    crossing the network.
+ *
+ *    THE EXCEPTION, and the number it carries (design review round 1, D5 — the
+ *    rule above understated the act's spend by 12x and the code was right, so
+ *    the TEXT moved). A reader pinned at the hard top is not travelling and not
+ *    crossing any wall: their press moves the content by nothing, and the
+ *    reported snag was this rule refusing them a page per press forever. So the
+ *    STOP at a clamped edge buys a page (`decide`'s stop-door, gated on
+ *    `pressDemand` — proven clamped provenance — `clampLatched`, `!actTravelled`
+ *    and `actAsks < MAX_ACT_ASKS`). The act's bound is therefore expressed as a
+ *    SUM rather than as one: one act buys at most `MAX_ACT_ASKS` (12) round
+ *    trips, charged through `spend` whether the door was the reader's own
+ *    arrival or a stop at the edge, and a travelling act still spends exactly
+ *    one because its first real notch sets `actTravelled` and shuts the door for
+ *    the rest of the act.
  * 3. SPEND WHEN THE MOTION HAS SETTLED, OR AT THE HARD TOP. A demand is spent
  *    after `SETTLE_MS` of input silence, or at the hard top where the content
  *    has stopped moving because it cannot move further. There is deliberately
@@ -358,9 +373,21 @@ export type PagingState = {
 	 * content CANNOT move, whose notches report zero travel for the whole act.
 	 *
 	 * Cleared where the other act fields are cleared (a notch that opens a new
-	 * act), and set by ANY in-act notch that reported travel -- so an act that
-	 * travelled even once keeps the original refusal, and the act budget's
-	 * meaning for a travelling gesture is untouched.
+	 * act), and set by any in-act notch that reported travel at or above
+	 * `TRAVEL_MIN_PX` -- so an act that travelled keeps the original refusal, and
+	 * the act budget's meaning for a travelling gesture is untouched.
+	 *
+	 * THE THRESHOLD IS `TRAVEL_MIN_PX`, NOT ZERO, and that is load-bearing rather
+	 * than tidy (design review round 1, D2). `travelledPx` is sampled from the
+	 * scroller's own offsets at the input event -- a signal this file elsewhere
+	 * treats as noisy at the ±24px the browser's clamp-follow produces, and which
+	 * `TRAVEL_MIN_PX` exists to require PROOF of before believing ("a clamped
+	 * notch moves the content by ZERO"). A `> 0` test here would let one pixel of
+	 * sub-pixel layout rounding or fractional DPI shut the stop-door for the rest
+	 * of the act -- silently restoring the reported snag for exactly the reader
+	 * this change is for. It must also agree in DIRECTION with
+	 * `travelledSinceLatch` beside it, which needs >= `TRAVEL_MIN_PX` to OPEN a
+	 * release: one threshold, used the same way, in both.
 	 */
 	actTravelled: boolean;
 	/**
@@ -555,7 +582,7 @@ export const noteInput = (
 			travelledSinceLatch: false,
 			// The act continues across a reversal, so this record does too; a
 			// downward notch that moved the reader is still the reader moving.
-			actTravelled: state.actTravelled || input.travelledPx > 0,
+			actTravelled: state.actTravelled || input.travelledPx >= TRAVEL_MIN_PX,
 			// The reader turned around. A page that landed with rows held back is
 			// still holding them back, but a reader scrolling AWAY from it is not
 			// waiting to see it, and spending a widen on their behalf would grow
@@ -613,8 +640,8 @@ export const noteInput = (
 		 * content", not "did the last notch". See `actTravelled`.
 		 */
 		actTravelled: gestureEnded
-			? input.travelledPx > 0
-			: state.actTravelled || input.travelledPx > 0,
+			? input.travelledPx >= TRAVEL_MIN_PX
+			: state.actTravelled || input.travelledPx >= TRAVEL_MIN_PX,
 		continuation: false,
 		turnedAround: false,
 		chainFetch: 0,
@@ -823,6 +850,71 @@ const spend = (
  * the demand is a request waiting for the reader to come back, and the row must
  * say so rather than claim a load.
  */
+export const slotClaimsLoad = (
+	state: PagingState,
+	geo: PagingGeometry,
+	now: number,
+): boolean => {
+	if (state.busy || state.pageWidenOwed) return true;
+	if (!state.armed) return false;
+	if (!spendWindows(geo).inZone) return false;
+	/*
+	 * AT THE WALL, CLAIM ONLY WHAT THE STOP-DOOR WILL ACTUALLY ANSWER.
+	 *
+	 * An armed demand inside the zone is normally a load on its way: `decide`
+	 * spends it at the reader's settle, which is the same instant the paint
+	 * describes. At the hard top that inference breaks, and it broke twice in
+	 * opposite directions (design review round 1, D1):
+	 *
+	 * - a demand minted by the A4 TRAVEL RELEASE is a reader whose momentum just
+	 *   carried them across a mounted wall. The act's budget refuses it (that is
+	 *   the operator's earlier anti-loop report), so nothing is on its way -- yet
+	 *   `armed && inZone` was true and the row claimed "Loading earlier messages",
+	 *   measured standing 624ms and then WITHDRAWN with nothing loaded. That is a
+	 *   new false claim, painted at the one reader the row is in view for.
+	 * - a demand armed by a CLAMPED PRESS *will* be answered -- but only at the
+	 *   reader's stop, so while the press is still arriving it is a wait, not a
+	 *   load, and claiming it would be the false promise rule 3's wait exists to
+	 *   avoid.
+	 *
+	 * Both are the same question, and it is the door's own: this predicate now
+	 * mirrors `decide`'s `mayTakeTheStop` terms rather than approximating them.
+	 */
+	if (geo.distanceFromTopPx <= HARD_TOP_PX) {
+		if (!state.pressDemand) return false;
+		if (state.actTravelled || state.actAsks >= MAX_ACT_ASKS) return false;
+		return now - state.lastInputAt >= SETTLE_MS;
+	}
+	// Inside the zone but off the wall: spent at its own settle, so the claim is
+	// true when it is painted.
+	return true;
+};
+
+/**
+ * The window a demand is spent from, right now.
+ *
+ * Exported because the DOM half has to answer the same question for the top
+ * row's paint and cannot answer it by re-deriving it. `use-scroll-paging`
+ * mirrored `state.armed` into the slot unconditionally, so any armed demand
+ * painted "Loading earlier messages" at a reader following the tail — a demand
+ * `decide` refuses there (the `followingTail` guard returns before the armed
+ * branch) and keeps refusing until they travel closer. That is a false
+ * statement, and a false `aria-live` announcement, in the one surface this
+ * change exists to stop lying in (review round 2, R2-3a).
+ *
+ * A demand inside the zone is one the policy is about to spend: at the
+ * reader's settle if they stop inside it, or at the wall if the motion carries
+ * them there first (the wall is inside the zone by construction). Outside it
+ * the demand is a request waiting for the reader to come back, and the row must
+ * say so rather than claim a load.
+ */
+export function spendWindows(
+	geo: PagingGeometry,
+	zonePx = prefetchZonePx(geo.clientHeight),
+): { inZone: boolean } {
+	return { inZone: geo.distanceFromTopPx <= zonePx };
+}
+
 /**
  * Whether the slot may CLAIM a load right now: the one question the DOM half's
  * paint needs, answered by the policy that is about to act.
@@ -845,24 +937,6 @@ const spend = (
  * into the zone is spent at its own settle, which is the same instant, so the
  * claim is true when it is painted.
  */
-export const slotClaimsLoad = (
-	state: PagingState,
-	geo: PagingGeometry,
-	now: number,
-): boolean => {
-	if (state.busy || state.pageWidenOwed) return true;
-	if (!state.armed) return false;
-	if (!spendWindows(geo).inZone) return false;
-	if (state.pressDemand && now - state.lastInputAt < SETTLE_MS) return false;
-	return true;
-};
-
-export function spendWindows(
-	geo: PagingGeometry,
-	zonePx = prefetchZonePx(geo.clientHeight),
-): { inZone: boolean } {
-	return { inZone: geo.distanceFromTopPx <= zonePx };
-}
 
 /**
  * Decide whether to spend a demand now, and on what.
@@ -1391,6 +1465,11 @@ export const noteSettled = (
 export const noteFailed = (state: PagingState): PagingState => ({
 	...state,
 	busy: false,
+
+	// The demand is gone, so its provenance goes with it: a stale `true`
+	// would let `slotClaimsLoad` describe a press that is no longer standing
+	// (agent review round 1, R1-2).
+	pressDemand: false,
 	failures: state.failures + 1,
 	armed: false,
 	deliberate: false,
@@ -1425,6 +1504,11 @@ export const noteFailed = (state: PagingState): PagingState => ({
 export const noteAborted = (state: PagingState): PagingState => ({
 	...state,
 	busy: false,
+
+	// The demand is gone, so its provenance goes with it: a stale `true`
+	// would let `slotClaimsLoad` describe a press that is no longer standing
+	// (agent review round 1, R1-2).
+	pressDemand: false,
 	armed: false,
 	deliberate: false,
 	retained: false,

@@ -811,11 +811,17 @@ export function useScrollPaging({
 			pump.current = 0;
 			const geo = measure();
 			if (!geo) return;
-			const { action, state: next } = decide(
-				state.current,
-				geo,
-				performance.now(),
-			);
+			/*
+			 * ONE clock for the decision and for the paint it drives (agent review
+			 * round 1, R1-1). `decide` and `slotClaimsLoad` both read `now` against
+			 * `lastInputAt`; handing them two separate `performance.now()` reads let
+			 * them straddle the `SETTLE_MS` boundary and disagree by up to a frame —
+			 * the row could claim a load the same frame refused, or stay silent on
+			 * the frame that dispatched one. Reading it once makes the two opinions
+			 * provably identical.
+			 */
+			const frameNow = performance.now();
+			const { action, state: next } = decide(state.current, geo, frameNow);
 			state.current = next;
 			/*
 			 * The slot's paint follows the policy's own view of what is on its way:
@@ -848,13 +854,14 @@ export function useScrollPaging({
 			/*
 			 * The paint is the POLICY's own answer, not a second expression over
 			 * its state: `slotClaimsLoad` is the one place the "is a load on its
-			 * way?" test lives, and it carries the term this file could not know
-			 * -- a demand armed by a clamped PRESS is a wait for the reader's
-			 * stop, so it must not paint "Loading earlier messages" while the
-			 * press is still arriving. See its own note.
+			 * way?" test lives, and it mirrors the stop-door's own terms — a
+			 * demand armed by a clamped PRESS is a wait for the reader's stop, and
+			 * a demand minted by a travel release at the wall is refused by the
+			 * act's budget, so neither may paint "Loading earlier messages". See
+			 * its own note.
 			 */
 			setRevealInFlight(
-				action !== "none" || slotClaimsLoad(next, geo, performance.now()),
+				action !== "none" || slotClaimsLoad(next, geo, frameNow),
 			);
 			if (action === "none") {
 				// An armed demand waiting only on the settle debounce needs someone to
@@ -1310,7 +1317,19 @@ export function useScrollPaging({
 					break;
 				case "ArrowUp":
 				case "PageUp":
-					input("up", false);
+					/*
+					 * `event.repeat` is the `continuous` flag, which is what removes this
+					 * route's asymmetry with the wheel (design review round 1, D6). A held
+					 * key auto-repeats, and a repeat IS a free-running gesture exactly as a
+					 * wheel notch is: the reader is holding the capture down and the OS is
+					 * reporting it. Passed as `false` (as it was), a reader holding PageUp
+					 * at the wall could never reach the clamped-press arm, so the stop
+					 * door opened only for notches more than `GESTURE_GAP_MS` apart --
+					 * measured 1 page at 250ms spacing against 5 for the same cadence on the
+					 * wheel. A single discrete press stays discrete, which is what the
+					 * latch's own contract wants.
+					 */
+					input("up", event.repeat);
 					break;
 				case "ArrowDown":
 				case "PageDown":
