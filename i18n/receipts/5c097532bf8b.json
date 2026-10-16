@@ -1,0 +1,14 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "radient/auto",
+  "instance": "5c097532bf8b",
+  "locale": "hi",
+  "status": "passed",
+  "namespace": "ui.console",
+  "sha256": {
+    "hi": "c2d5909eb3ca5fb712df098afb9fb26ab9894166fcb348694ca6ce48ba8e4841",
+    "en": "4fe88a76de4992e0b890a15c6faafe594ac345e7f62a7deb849b486ec3c14c7e"
+  },
+  "scope": "Independent copy audit of the plural fix in commit 958f2cb222 (ui.console.capacity.archived, ui.console.capacity.summary_compact): Hindi singular/plural agreement, hi CLDR one/other coverage (one = 0 and 1), placeholder/argument-set integrity, and the composed sentence rendered through the real esbuild-bundled runtime at archived = 0/1/2/5/33/1000000.",
+  "findings": []
+}
