@@ -49,8 +49,8 @@
  *   - `LiveListingFailed` — that automatic listing failing: the failure is a
  *     NOTE ABOVE rows that are still there, not a wall of error text where the
  *     list was (review round 1, R1-1 / UX U3).
- *   - `PersistChecked` — the checkbox that changes what the pick DOES, with the
- *     label that states the consequence.
+ *   - `PersistChecked` — the checkbox ticked: it saved the model in force, and
+ *     its label states the default it saved.
  *   - `Empty` / `PartialError` — a query that matches nothing, and a catalogue
  *     that came back with a per-provider failure (which keeps its rows now).
  *   - `Narrow` — the toolbar at the width where its two controls compete.
@@ -78,6 +78,10 @@ const SAVE_DEFAULT_FAILED = /The default was not saved/;
 const EFFORT_DEFAULT_FAILED = /The effort default was not saved/;
 const EFFORT_DEFAULT_LABEL = /default effort for new sessions/i;
 const EFFORT_DEFAULT_SUCCESS = /Default effort for new sessions: High/;
+const EFFORT_DEFAULT_STAYS =
+	/Effort not changed\. Default for new sessions stays Medium\./;
+/* Case-insensitive: ticked, the label opens with "Default for new sessions:". */
+const MODEL_DEFAULT_LABEL = /default for new sessions/i;
 import type { FC, ReactNode } from "react";
 import { useLayoutEffect } from "react";
 import "../../../styles/index.css";
@@ -881,7 +885,8 @@ export const SetCurrentAsDefault: Story = {
 		);
 		await waitFor(() =>
 			expect(
-				screen.getByText(`Default for new sessions: ${CURRENT_SELECTOR}`),
+				// Named as the ticked label names it (QA round 3, Q4).
+				screen.getByText("Default for new sessions: Claude Opus 5"),
 			).toBeTruthy(),
 		);
 	},
@@ -890,37 +895,39 @@ export const SetCurrentAsDefault: Story = {
 /** Accepted session effort may be saved as the machine default by explicit opt-in. */
 export const EffortSetAsDefault: Story = {
 	render: () => (
-		<Frame
-			picker="effort"
-			commandResponse={ok({
-				result: {
-					kind: "notice",
-					text: "Effort set",
-					style: "info",
-					data: {},
-				},
-			})}
-			bridge={(request) => {
-				if (request.op === "commands.entities")
-					return Promise.resolve(
-						ok({
-							entities: [
-								{ value: "low", name: "low" },
-								{ value: "medium", name: "medium" },
-								{ value: "high", name: "high" },
-							],
-							current: "medium",
-						}),
-					);
-				if (request.op === "settings.edit")
-					return Promise.resolve(
-						ok({ key: request.key, value: request.value }),
-					);
-				if (request.op === "sessions.command")
-					return sleep(100).then(() => undefined);
-				return Promise.resolve(ok({}));
-			}}
-		/>
+		<HeldForPlay>
+			<Frame
+				picker="effort"
+				commandResponse={ok({
+					result: {
+						kind: "notice",
+						text: "Effort set",
+						style: "info",
+						data: {},
+					},
+				})}
+				bridge={(request) => {
+					if (request.op === "commands.entities")
+						return Promise.resolve(
+							ok({
+								entities: [
+									{ value: "low", name: "low" },
+									{ value: "medium", name: "medium" },
+									{ value: "high", name: "high" },
+								],
+								current: "medium",
+							}),
+						);
+					if (request.op === "settings.edit")
+						return Promise.resolve(
+							ok({ key: request.key, value: request.value }),
+						);
+					if (request.op === "sessions.command")
+						return sleep(100).then(() => undefined);
+					return Promise.resolve(ok({}));
+				}}
+			/>
+		</HeldForPlay>
 	),
 	play: async () => {
 		const page = window as unknown as {
@@ -935,11 +942,18 @@ export const EffortSetAsDefault: Story = {
 		await waitFor(() =>
 			expect(screen.getByText("Switching the effort…")).toBeTruthy(),
 		);
+		/*
+		 * The tick saves the rung in force (Medium) the moment it is made, and the
+		 * pick then saves the rung it lands on: two writes, the pick's last, so
+		 * config.yml ends on High.
+		 */
 		await waitFor(() =>
 			expect(page.__pickerSettingsWrites).toEqual([
+				{ key: "model_effort", value: "medium" },
 				{ key: "model_effort", value: "high" },
 			]),
 		);
+		// The ticked label states the saved default; the strip does not repeat it.
 		await waitFor(() =>
 			expect(screen.getByText(EFFORT_DEFAULT_SUCCESS)).toBeTruthy(),
 		);
@@ -948,37 +962,51 @@ export const EffortSetAsDefault: Story = {
 				screen.getByText(
 					(_, element) =>
 						element?.tagName === "P" &&
-						element.textContent?.replace(/\s+/g, " ").trim() ===
-							"Effort set Default effort for new sessions: High.",
+						element.textContent?.replace(/\s+/g, " ").trim() === "Effort set",
 				),
 			).toBeTruthy(),
 		);
+		// The frame is the settled state: ticked, the saved label, one strip line.
+		delete document.documentElement.dataset.capturePending;
 	},
 };
 
+/**
+ * A refused pick does not save the rung it asked for. The tick before it has
+ * already saved the rung in force, so the strip says the default STAYS that
+ * rung rather than that nothing was saved, which config.yml would contradict.
+ * The rung in force is Medium: the shared bridge answers the cached entity read
+ * (`current: "medium"`), and the frame's model names no rung of its own.
+ */
 export const EffortRefusedDoesNotSaveDefault: Story = {
 	render: () => (
-		<Frame
-			picker="effort"
-			commandResponse={ok({
-				result: {
-					kind: "notice",
-					text: "Refused",
-					style: "warning",
-					data: {},
-				},
-			})}
-			bridge={(request) =>
-				request.op === "commands.entities"
-					? Promise.resolve(
+		<HeldForPlay>
+			<Frame
+				picker="effort"
+				commandResponse={ok({
+					result: {
+						kind: "notice",
+						text: "Refused",
+						style: "warning",
+						data: {},
+					},
+				})}
+				bridge={(request) => {
+					if (request.op === "commands.entities")
+						return Promise.resolve(
 							ok({
 								entities: [{ value: "low" }, { value: "high" }],
 								current: "low",
 							}),
-						)
-					: Promise.resolve(undefined)
-			}
-		/>
+						);
+					if (request.op === "settings.edit")
+						return Promise.resolve(
+							ok({ key: request.key, value: request.value }),
+						);
+					return Promise.resolve(undefined);
+				}}
+			/>
+		</HeldForPlay>
 	),
 	play: async () => {
 		const page = window as unknown as {
@@ -988,12 +1016,29 @@ export const EffortRefusedDoesNotSaveDefault: Story = {
 		await userEvent.click(
 			await screen.findByRole("checkbox", { name: EFFORT_DEFAULT_LABEL }),
 		);
-		await userEvent.click(await screen.findByRole("option", { name: "High" }));
-		await new Promise((resolve) => setTimeout(resolve, 0));
-		await waitFor(() => expect(page.__pickerSettingsWrites).toEqual([]));
+		// The tick's own save lands before the pick: the dialog is busy until it does.
 		await waitFor(() =>
-			expect(screen.getByText(EFFORT_DEFAULT_FAILED)).toBeTruthy(),
+			expect(page.__pickerSettingsWrites).toEqual([
+				{ key: "model_effort", value: "medium" },
+			]),
 		);
+		await waitFor(() =>
+			expect(
+				screen
+					.getByRole("checkbox", { name: EFFORT_DEFAULT_LABEL })
+					.getAttribute("data-state"),
+			).toBe("checked"),
+		);
+		await userEvent.click(await screen.findByRole("option", { name: "High" }));
+		await waitFor(() =>
+			expect(screen.getByText(EFFORT_DEFAULT_STAYS)).toBeTruthy(),
+		);
+		// The refused High was never written.
+		expect(page.__pickerSettingsWrites).toEqual([
+			{ key: "model_effort", value: "medium" },
+		]);
+		expect(screen.queryByText(EFFORT_DEFAULT_FAILED)).toBeNull();
+		delete document.documentElement.dataset.capturePending;
 	},
 };
 
@@ -1294,20 +1339,52 @@ export const RefetchFailedOverLiveRows: Story = {
 	},
 };
 
-/** The persist checkbox, checked. Nothing else on the surface changes. */
+/**
+ * The persist checkbox, checked. A tick saves the model in force at once, so
+ * this frame's bridge ACCEPTS the write: the state the story names is the box
+ * that stayed ticked, with the label stating the default it saved. (Under
+ * `catalogueOnly`, which refuses `settings.edit`, the failed save unticks the
+ * box - the retry rule - and the frame would show the unticked state.)
+ */
 export const PersistChecked: Story = {
-	render: () => <Frame bridge={catalogueOnly(catalogue())} />,
+	render: () => (
+		<HeldForPlay>
+			<Frame
+				bridge={(request) =>
+					request.op === "settings.edit"
+						? Promise.resolve(ok({ key: request.key, value: request.value }))
+						: catalogueOnly(catalogue())(request)
+				}
+			/>
+		</HeldForPlay>
+	),
 	play: async () => {
+		const page = window as unknown as {
+			__pickerSettingsWrites?: { key: string; value: unknown }[];
+		};
+		page.__pickerSettingsWrites = [];
 		await userEvent.click(
-			await screen.findByRole("checkbox", { name: /default for new sessions/ }),
+			await screen.findByRole("checkbox", { name: MODEL_DEFAULT_LABEL }),
+		);
+		await waitFor(() =>
+			expect(page.__pickerSettingsWrites).toEqual([
+				{ key: "hosting", value: CURRENT.provider },
+				{ key: "model_name", value: CURRENT.model_id },
+			]),
 		);
 		await waitFor(() =>
 			expect(
-				screen
-					.getByRole("checkbox", { name: /default for new sessions/ })
-					.getAttribute("data-state"),
-			).toBe("checked"),
+				screen.getByText(
+					"Default for new sessions: Claude Opus 5. Picks here update it too.",
+				),
+			).toBeTruthy(),
 		);
+		expect(
+			screen
+				.getByRole("checkbox", { name: MODEL_DEFAULT_LABEL })
+				.getAttribute("data-state"),
+		).toBe("checked");
+		delete document.documentElement.dataset.capturePending;
 	},
 };
 

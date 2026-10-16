@@ -60,7 +60,7 @@
 
 import { Textarea } from "@shared/components/ui/textarea";
 import { cn } from "@shared/lib/utils";
-import { type RefObject, useState } from "react";
+import { type KeyboardEvent, type RefObject, useState } from "react";
 import { ASK_ANSWER_MAX_CHARS } from "../../ask-queue";
 
 /**
@@ -79,6 +79,28 @@ const ATTACHMENT_REFUSAL =
  * stated the moment it is reached instead of surfacing as a failed Send.
  */
 const LIMIT_NOTICE = `Answers stop at ${ASK_ANSWER_MAX_CHARS.toLocaleString("en-US")} characters; anything past that is not kept.`;
+
+/**
+ * The card's Enter-commits key handler, shared by this field and the secret question's
+ * masked `<input>` so the two cannot drift: the masked field once had no Enter at all,
+ * and a user who pasted a key and pressed Enter got no response (PR #1109, QA round 2,
+ * Q-2). What committing MEANS stays the card's (`onEnter`).
+ */
+export const commitOnEnter =
+	(onEnter: () => void) =>
+	(event: KeyboardEvent<HTMLTextAreaElement | HTMLInputElement>) => {
+		if (event.key !== "Enter" || event.shiftKey) return;
+		// An IME's Enter confirms a candidate; it is not the user's commit.
+		if (event.nativeEvent.isComposing) return;
+		event.preventDefault();
+		/*
+		 * A HELD KEY DOES NOT REPEAT THE COMMIT. Committing can move focus onto
+		 * an option row, where the same Enter would activate it - a user who
+		 * leans on the key would answer the NEXT question by accident.
+		 */
+		if (event.repeat) return;
+		onEnter();
+	};
 
 export type AskAnswerFieldProps = {
 	value: string;
@@ -126,19 +148,7 @@ export const AskAnswerField = ({
 					setRefusal(null);
 					onChange(event.target.value);
 				}}
-				onKeyDown={(event) => {
-					if (event.key !== "Enter" || event.shiftKey) return;
-					// An IME's Enter confirms a candidate; it is not the user's commit.
-					if (event.nativeEvent.isComposing) return;
-					event.preventDefault();
-					/*
-					 * A HELD KEY DOES NOT REPEAT THE COMMIT. Committing can move focus onto
-					 * an option row, where the same Enter would activate it - a user who
-					 * leans on the key would answer the NEXT question by accident.
-					 */
-					if (event.repeat) return;
-					onEnter();
-				}}
+				onKeyDown={commitOnEnter(onEnter)}
 				onPaste={(event) => {
 					const data = event.clipboardData;
 					if (!data) return;
