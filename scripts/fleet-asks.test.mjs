@@ -130,15 +130,17 @@ test("the rows are normalised, and a row with no identity is dropped", () => {
 	assert.deepEqual(fleetAskRows({ nope: true }), []);
 });
 
-test("the outstanding count is the backend's own set: open and timed-out, not settled", () => {
+test("the badge counts only ANSWERABLE asks: open, never lapsed or settled", () => {
 	const rows = [
 		row({ ask_id: "a-1", status: "open" }),
 		row({ ask_id: "a-2", status: "timed_out" }),
 		row({ ask_id: "a-3", status: "answered" }),
 		row({ ask_id: "a-4", status: "declined" }),
 	];
-	assert.equal(fleetAsksOutstanding(rows), 2);
+	assert.equal(fleetAsksOutstanding(rows), 1);
 	assert.equal(fleetAsksOutstanding([]), 0);
+	/* A lapsed ask is read-only (D10), so it pulls no attention: it adds nothing. */
+	assert.equal(fleetAsksOutstanding([row({ status: "timed_out" })]), 0);
 });
 
 /*
@@ -159,15 +161,22 @@ test("the outstanding set is counted per conversation, and a quiet row is absent
 		row({ ask_id: "a-5", session_id: "s-three", status: "declined" }),
 	];
 	const bySession = fleetAsksBySession(rows);
-	// Timed-out is still outstanding (a late answer reaches the agent), settled is
-	// not - so `s-one` is 2 and not 3, and not 1 either.
-	assert.equal(bySession.get("s-one"), 2);
+	// Only the answerable ask marks the row: a lapsed one is read-only (D10) and a
+	// settled one is history - so `s-one` is 1, not 2 or 3.
+	assert.equal(bySession.get("s-one"), 1);
 	assert.equal(bySession.get("s-two"), 1);
 	/* Absent, not `0`: every reader treats a miss as "draw nothing", and a zero
 	 * entry would be a claim no caller wants and one more shape to keep true. */
 	assert.equal(bySession.has("s-three"), false);
 	assert.equal(bySession.size, 2);
 	assert.equal(fleetAsksBySession([]).size, 0);
+	/* A conversation whose only ask has lapsed gets NO mark (D11: it pulls no attention). */
+	assert.equal(
+		fleetAsksBySession([
+			row({ ask_id: "a-6", session_id: "s-lapsed", status: "timed_out" }),
+		]).has("s-lapsed"),
+		false,
+	);
 });
 
 test("the drawer's frontend states the same count the badge does", () => {
