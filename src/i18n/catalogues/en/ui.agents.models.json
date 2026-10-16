@@ -1,0 +1,21 @@
+{
+	"ui.agents.models.reading.title": "Model and effort",
+	"ui.agents.models.reading.description": "What each member runs on, and which layer set it.",
+	"ui.agents.models.reading.session_model": "the launching session's model",
+	"ui.agents.models.reading.tier": "tier {tier}",
+	"ui.agents.models.reading.effort": "effort {effort}",
+	"ui.agents.models.reading.unavailable": "This member cannot start: {reason}",
+	"ui.agents.models.reading.read_failed": "The effective models could not be read.",
+	"ui.agents.models.source.team": "from this team",
+	"ui.agents.models.source.row": "from the agent",
+	"ui.agents.models.source.none": "no override",
+	"ui.agents.models.source.tier": "the tier map",
+	"ui.agents.models.source.session": "the session",
+	"ui.agents.models.source.model_default": "the model's default",
+	"ui.agents.models.override.tier_label": "Model tier for {member}",
+	"ui.agents.models.override.tier_field": "Model tier",
+	"ui.agents.models.override.effort_label": "Reasoning effort for {member}",
+	"ui.agents.models.override.effort_field": "Reasoning effort",
+	"ui.agents.models.override.inherit": "Inherit",
+	"ui.agents.models.pin_reach": "Used by {count, plural, one {{count, number, ::group-off} team} other {{count, number, ::group-off} teams}}: {teams}"
+}

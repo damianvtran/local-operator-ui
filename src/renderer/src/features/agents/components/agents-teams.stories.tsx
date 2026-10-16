@@ -945,3 +945,61 @@ export const TeamComposerUnavailable: Story = {
 		</Scene>
 	),
 };
+
+/**
+ * A roster that CARRIES per-member model overrides, which none of the shared
+ * catalogue's teams do: the shared teams are the world every other frame (and the
+ * before frames on the base tree) was photographed in, so the overrides live on a
+ * team of their own rather than moving those rosters.
+ *
+ * `med` IS THE UNCONFIGURED ONE, deliberately. The rig's tier map
+ * (`STORY_TIER_MAP` in `agent-class.stories.tsx`) configures `lo` and `hi` only,
+ * which is how the editor's unavailable state - the warning the operator must see
+ * before a launch fails - gets on screen at all. The other three members cover the
+ * three layers in one frame: a tier with an explicit effort, a tier asking for the
+ * model's own effort (`auto`), and a slot with no override, which falls through to
+ * the session.
+ */
+const OVERRIDES_TEAM = team(
+	"model-overrides",
+	"One member on the tier map's strongest model, one asking for the model's own effort, and one on a tier this machine has not configured.",
+	"manager",
+	[],
+	{ label: "Model overrides", instructions: "Work through the list." },
+);
+OVERRIDES_TEAM.members = [
+	{ role: "manager", count: 1, kind: "agent" },
+	{ role: "coder", count: 1, kind: "agent", tier: "hi", effort: "xhigh" },
+	{ role: "reviewer", count: 1, kind: "agent", tier: "hi", effort: "auto" },
+	{ role: "trend-scout", count: 1, kind: "agent", tier: "med" },
+];
+const OVERRIDES_EXTRA = [OVERRIDES_TEAM];
+
+/**
+ * THE EFFECTIVE READING: each member's resolved model and reasoning effort, with
+ * the layer that set each one, and the one member whose tier this machine has not
+ * configured. The design note calls this the single most important surface of the
+ * member-override layers (design §4).
+ */
+export const TeamMemberOverrides: Story = {
+	render: () => (
+		<Scene
+			at={`/agents?kind=team&name=${OVERRIDES_TEAM.name}`}
+			extraTeams={OVERRIDES_EXTRA}
+		>
+			<HoldShutterUntil done={paneSays("Model and effort")} />
+		</Scene>
+	),
+};
+
+/** THE SAME TEAM, Edit pressed: the two override selects on every member row. */
+export const TeamMemberOverridesEditing: Story = {
+	render: () => (
+		<Scene
+			at={`/agents?kind=team&name=${OVERRIDES_TEAM.name}`}
+			extraTeams={OVERRIDES_EXTRA}
+		>
+			<PressEdit />
+		</Scene>
+	),
+};
