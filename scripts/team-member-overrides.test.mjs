@@ -125,7 +125,13 @@ test("the tier and effort words are the wire's own, and inherit is not one of th
 });
 
 test("inherit clears the field to null, keeps it present, and reads back as inherit", () => {
-	const wire = { role: "coder", count: 2, kind: "agent", tier: "hi", effort: "xhigh" };
+	const wire = {
+		role: "coder",
+		count: 2,
+		kind: "agent",
+		tier: "hi",
+		effort: "xhigh",
+	};
 	const cleared = MOD.withOverride(wire, { tier: MOD.INHERIT });
 	assert.equal(cleared.tier, null);
 	assert.equal(cleared.effort, "xhigh", "the other field is untouched");
@@ -134,10 +140,7 @@ test("inherit clears the field to null, keeps it present, and reads back as inhe
 		/"tier":null/,
 		"a cleared override stays in the payload: it is an act on the roster, not an omission",
 	);
-	assert.equal(
-		MOD.withOverride(wire, { effort: MOD.INHERIT }).effort,
-		null,
-	);
+	assert.equal(MOD.withOverride(wire, { effort: MOD.INHERIT }).effort, null);
 	assert.deepEqual(MOD.withOverride(wire, { tier: "lo" }), {
 		...wire,
 		tier: "lo",
@@ -161,7 +164,10 @@ const reading = (over = {}) => ({
 });
 
 test("a reading is matched by kind and casefolded role, and by nothing else", () => {
-	const payload = { team: "crew", members: [reading(), reading({ role: "pod", kind: "team" })] };
+	const payload = {
+		team: "crew",
+		members: [reading(), reading({ role: "pod", kind: "team" })],
+	};
 	assert.equal(
 		MOD.effectiveFor(payload, { role: "CODER", kind: "agent" })?.role,
 		"coder",
@@ -171,8 +177,14 @@ test("a reading is matched by kind and casefolded role, and by nothing else", ()
 		null,
 		"the same name on a team slot is a different slot",
 	);
-	assert.equal(MOD.effectiveFor(payload, { role: "nobody", kind: "agent" }), null);
-	assert.equal(MOD.effectiveFor(undefined, { role: "coder", kind: "agent" }), null);
+	assert.equal(
+		MOD.effectiveFor(payload, { role: "nobody", kind: "agent" }),
+		null,
+	);
+	assert.equal(
+		MOD.effectiveFor(undefined, { role: "coder", kind: "agent" }),
+		null,
+	);
 });
 
 test("every layer word the reading can carry has a catalogue key", () => {
@@ -200,7 +212,10 @@ test("every layer word the reading can carry has a catalogue key", () => {
 });
 
 test("only a 404 on the route hides the override editor", () => {
-	assert.equal(MOD.overrideEditorVisible(new MOD.DesktopControlError(404, "missing")), false);
+	assert.equal(
+		MOD.overrideEditorVisible(new MOD.DesktopControlError(404, "missing")),
+		false,
+	);
 	assert.equal(
 		MOD.overrideEditorVisible(new MOD.DesktopControlError(500, "boom")),
 		true,
@@ -210,7 +225,10 @@ test("only a 404 on the route hides the override editor", () => {
 		MOD.overrideEditorVisible(new MOD.DesktopControlError(403, "no")),
 		true,
 	);
-	assert.equal(MOD.overrideEditorVisible(new MOD.DesktopControlError(null, "gone")), true);
+	assert.equal(
+		MOD.overrideEditorVisible(new MOD.DesktopControlError(null, "gone")),
+		true,
+	);
 	assert.equal(MOD.overrideEditorVisible(new Error("network")), true);
 	assert.equal(
 		MOD.overrideEditorVisible(undefined),
@@ -234,14 +252,18 @@ test("the route is a read on its own path, and the probe reads the same route it
 		path: "/v1/desktop/teams/crew",
 		method: "GET",
 	});
-	assert.deepEqual(MOD.desktopEndpoint({ op: "teams.effective", name: "a b" }).path, "/v1/desktop/teams/a%20b/effective");
+	assert.deepEqual(
+		MOD.desktopEndpoint({ op: "teams.effective", name: "a b" }).path,
+		"/v1/desktop/teams/a%20b/effective",
+	);
 });
 
 /* ------------------------------------------------------------- the editor -- */
 
 const pageBundle = await build({
 	stdin: {
-		contents: 'export { TeamDetail } from "./src/renderer/src/features/agents/components/team-detail";',
+		contents:
+			'export { TeamDetail } from "./src/renderer/src/features/agents/components/team-detail";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -481,7 +503,10 @@ const installBridge = (outcome = "ok") => {
 				};
 			case "teams.update":
 				writes.push(request.fields);
-				return { status: 200, body: { result: { ...crew(), ...request.fields } } };
+				return {
+					status: 200,
+					body: { result: { ...crew(), ...request.fields } },
+				};
 			default:
 				throw new Error(`unexpected desktop op in this test: ${request.op}`);
 		}
@@ -517,7 +542,11 @@ const mountEditor = async (outcome = "ok") => {
 					null,
 					h(PAGE.TeamDetail, {
 						team: crew(),
-						agents: [agentRow("coder"), agentRow("reviewer"), agentRow("manager")],
+						agents: [
+							agentRow("coder"),
+							agentRow("reviewer"),
+							agentRow("manager"),
+						],
 						teams: [crew()],
 						askEnabled: false,
 						onSaved: () => {},
@@ -630,7 +659,7 @@ test("a save that writes the roster echoes every slot's override, including the 
 });
 
 test("clearing an override on one slot sends null for it and leaves the other slot's alone", async () => {
-	await withEditor("ok", async ({ container, writes }) => {
+	await withEditor("ok", async ({ container }) => {
 		await openEditor({ container });
 		/*
 		 * THE CLEAR IS DRIVEN THROUGH THE MODULE'S OWN MAPPING, because jsdom cannot
@@ -640,7 +669,13 @@ test("clearing an override on one slot sends null for it and leaves the other sl
 		 * which is the half a frame cannot show either.
 		 */
 		const cleared = MOD.withOverride(
-			{ role: "reviewer", count: 2, kind: "agent", tier: "hi", effort: "xhigh" },
+			{
+				role: "reviewer",
+				count: 2,
+				kind: "agent",
+				tier: "hi",
+				effort: "xhigh",
+			},
 			{ tier: MOD.INHERIT },
 		);
 		assert.deepEqual(cleared, {
@@ -652,15 +687,11 @@ test("clearing an override on one slot sends null for it and leaves the other sl
 		});
 		/* And the editor's own controls are on screen for the operator to use. */
 		assert.ok(
-			container.querySelector(
-				'[aria-label="Model tier for reviewer"]',
-			),
+			container.querySelector('[aria-label="Model tier for reviewer"]'),
 			"the tier select is not mounted on a backend that has the route",
 		);
 		assert.ok(
-			container.querySelector(
-				'[aria-label="Reasoning effort for reviewer"]',
-			),
+			container.querySelector('[aria-label="Reasoning effort for reviewer"]'),
 			"the effort select is not mounted on a backend that has the route",
 		);
 	});
@@ -773,4 +804,3 @@ test("a read that failed for any other reason keeps the controls and says the re
 		);
 	});
 });
-
