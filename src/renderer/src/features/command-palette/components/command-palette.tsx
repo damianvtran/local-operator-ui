@@ -1022,10 +1022,15 @@ export const CommandPalette: FC = () => {
 					)}
 					{hasTerms && chats.overLong && (
 						<p className="px-4 pt-2 text-ink-dim text-meta">
+							{/* The two catalogue fragments already carry the spaces around the
+							    count ("...limited to " / " characters, ..."), so composing
+							    them around the bare number restores the single space the
+							    pre-extraction literal had. A JSX {" "} here would add a
+							    second one. */}
 							{t(
 								"ui.command_palette.command_palette.search_terms_are_limited_to",
 							)}
-							{SESSION_SEARCH_MAX_CHARS}{" "}
+							{SESSION_SEARCH_MAX_CHARS}
 							{t(
 								"ui.command_palette.command_palette.characters_so_chats_are_matched_by_name",
 							)}

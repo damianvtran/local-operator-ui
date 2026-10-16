@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -8,6 +9,7 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export { t, setLocale, registerCatalogue, clearRegisteredCatalogues } from "./src/i18n";',
+			'export { SESSION_SEARCH_MAX_CHARS } from "./src/shared/desktop-contract";',
 			'export { chipClause, laneStateClause, ciClause, commentClause, updatedClause, viaTag, actedTag } from "./src/renderer/src/features/code-review/code-review-model";',
 			'export { PALETTE_SECTION_TITLES, SCOPE_LEGEND, parsePaletteQuery, paletteEmptyStateCopy } from "./src/renderer/src/features/command-palette/palette-search";',
 		].join("\n"),
@@ -21,6 +23,82 @@ const bundle = await build({
 const runtime = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
+
+/*
+ * The "search terms are limited to <N> characters, so chats are matched by
+ * name." line is not a stored string: it is composed in
+ * `command-palette.tsx` from two catalogue fragments around the bare
+ * `SESSION_SEARCH_MAX_CHARS` constant. Each fragment already carries its own
+ * surrounding space ("...limited to " / " characters, ..."), so the JSX must
+ * NOT insert a `{" "}` between them — that renders a doubled space the
+ * pre-extraction literal never had, when the whole line was one JSX text node:
+ *
+ *     Search terms are limited to {SESSION_SEARCH_MAX_CHARS} characters,
+ *     so chats are matched by name.
+ *
+ * That defect lives in the JSX, so reading only the catalogue cannot see it:
+ * these assertions read the composition out of the component source, render it
+ * through the shipped `t`, and compare byte-for-byte to that base literal at
+ * the SHIPPED characters constant.
+ */
+const MATCH_LINE_COMPONENT =
+	"src/renderer/src/features/command-palette/components/command-palette.tsx";
+const MATCH_LINE_SOURCE = readFileSync(MATCH_LINE_COMPONENT, "utf8");
+
+// The byte-comparison failure the negative control must reach.
+const STRICT_EQUAL_FAILURE = /Expected values to be strictly equal/;
+
+// Text the JSX children between the two fragments contribute: the constant, a
+// literal space, or nothing (a JSX comment). Anything else is a shape this pin
+// does not understand and must fail loudly rather than silently pass.
+function matchLineMiddleText(middle, count) {
+	let text = "";
+	for (const match of middle.matchAll(/\{([\s\S]*?)\}/g)) {
+		const inner = match[1].trim();
+		if (inner.startsWith("/*")) continue;
+		if (inner === '" "' || inner === "' '") {
+			text += " ";
+			continue;
+		}
+		if (inner === "SESSION_SEARCH_MAX_CHARS") {
+			text += String(count);
+			continue;
+		}
+		assert.fail(
+			`unexpected JSX child between the palette match fragments: {${inner}}`,
+		);
+	}
+	return text;
+}
+
+function composePaletteMatchLine(source) {
+	runtime.setLocale("en");
+	const head = runtime.t(
+		"ui.command_palette.command_palette.search_terms_are_limited_to",
+	);
+	const tail = runtime.t(
+		"ui.command_palette.command_palette.characters_so_chats_are_matched_by_name",
+	);
+	const headAt = source.indexOf(
+		"ui.command_palette.command_palette.search_terms_are_limited_to",
+	);
+	const tailAt = source.indexOf(
+		"ui.command_palette.command_palette.characters_so_chats_are_matched_by_name",
+		headAt,
+	);
+	assert.ok(
+		headAt !== -1 && tailAt !== -1,
+		"the palette match line no longer renders both fragments together",
+	);
+	const headClose = source.indexOf(")}", headAt);
+	assert.ok(headClose !== -1, "the lead fragment is no longer a t() call");
+	const tailOpen = source.lastIndexOf("{t(", tailAt);
+	assert.ok(tailOpen !== -1, "the trailing fragment is no longer a t() call");
+	const middle = source.slice(headClose + 2, tailOpen);
+	return (
+		head + matchLineMiddleText(middle, runtime.SESSION_SEARCH_MAX_CHARS) + tail
+	);
+}
 
 test("English feature copy preserves singular, plural and unknown wire fallback", () => {
 	runtime.setLocale("en");
@@ -130,4 +208,36 @@ test("display headings read current locale without translating scope identifiers
 		runtime.clearRegisteredCatalogues();
 		runtime.setLocale("en");
 	}
+});
+
+test("the composed palette match line is byte-identical to its base literal", () => {
+	const composed = composePaletteMatchLine(MATCH_LINE_SOURCE);
+	const base = `Search terms are limited to ${runtime.SESSION_SEARCH_MAX_CHARS} characters, so chats are matched by name.`;
+	assert.equal(composed, base);
+	// The base had exactly one space between the count and the word, so a
+	// doubled space is the exact defect this pin exists to catch.
+	assert.ok(
+		!composed.includes("  "),
+		"the composed line carries a doubled space",
+	);
+});
+
+test("negative control: the pin fails when the doubled space is reinstated", () => {
+	const doubled = MATCH_LINE_SOURCE.replace(
+		"{SESSION_SEARCH_MAX_CHARS}",
+		'{SESSION_SEARCH_MAX_CHARS}{" "}',
+	);
+	assert.notEqual(
+		doubled,
+		MATCH_LINE_SOURCE,
+		"the negative control no longer finds the count to double",
+	);
+	assert.throws(
+		() =>
+			assert.equal(
+				composePaletteMatchLine(doubled),
+				`Search terms are limited to ${runtime.SESSION_SEARCH_MAX_CHARS} characters, so chats are matched by name.`,
+			),
+		STRICT_EQUAL_FAILURE,
+	);
 });
