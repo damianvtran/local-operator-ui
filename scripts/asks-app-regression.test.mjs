@@ -64,6 +64,35 @@ test("the control revision is DERIVED, and satisfies the reuse assertion by cons
 		/^[0-9a-f]{40}$/,
 		`the control must resolve to a full commit sha, got ${JSON.stringify(base)}`,
 	);
+	/*
+	 * THE COMPARISON NEEDS BOTH TREES, AND A SHALLOW CLONE MAY NOT HAVE THE
+	 * CONTROL'S. `pnpm test:desktop` runs under `actions/checkout`, whose default
+	 * is a depth-1 (or depth-2) fetch: the control commit object is there - it is
+	 * the merge base - but its TREE is not, so `git rev-parse <sha>:src/main` dies
+	 * with `fatal: path 'src/main' exists on disk, but not in <sha>` and the test
+	 * throws instead of reporting what it can. That is a property of the clone,
+	 * not of the change: the same test is the real assertion in a full checkout
+	 * (a developer's tree, or CI's own npX leg which fetches the control), and it
+	 * is still worth running there.
+	 *
+	 * So the trees are PROBED first, and an unreadable one is reported as skipped
+	 * with the reason rather than thrown. The probe is deliberately narrow: a
+	 * clone that HAS both trees runs every assertion below unchanged, and the
+	 * mutation check for this guard is what proves it still catches a genuine
+	 * disagreement (see the PR discussion: pointing ASKS_CONTROL at a revision
+	 * whose tree IS present fails it).
+	 */
+	const readable = [base, "HEAD"].every(
+		(rev) =>
+			spawnSync("git", ["cat-file", "-e", `${rev}^{tree}`], { cwd: REPO })
+				.status === 0,
+	);
+	if (!readable) {
+		console.log(
+			`asks-app-regression: the control ${base} or HEAD has no readable tree in this clone (shallow checkout); the byte-identity assertion is skipped here and runs in a full checkout`,
+		);
+		return;
+	}
 	for (const part of [
 		"src/main",
 		"src/preload",
