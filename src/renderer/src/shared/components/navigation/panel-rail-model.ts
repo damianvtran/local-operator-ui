@@ -25,10 +25,17 @@
  * the TOOLTIP keeps the verb, because a sighted pointer user is reading the action
  * the press will take, and its sentences are the header's verbatim.
  *
+ * LOCALE REPAINT BELONGS TO THE REACT CONSUMER. These derivations deliberately
+ * remain framework-free and read the messages leaf at call time; PanelRail
+ * subscribes through useI18nLocale so a language change calls them again. Do not
+ * cache their formatted return values across a locale change.
+ *
  * A COUNT IS NEVER CAPPED HERE. The `9+` cap belongs to the drawn badge
  * (`countLabel(count, 9)`), a geometry fact about a 16px glyph; the name a screen
  * reader hears and the tooltip a pointer reads carry the exact number.
  */
+
+import { t } from "../../../../../i18n/messages";
 
 import {
 	type AskScope,
@@ -57,9 +64,6 @@ export const PANEL_RAIL_ORDER = [
 
 export type PanelRailItemId = (typeof PANEL_RAIL_ORDER)[number];
 
-const plural = (count: number, one: string, many: string): string =>
-	count === 1 ? one : many;
-
 /**
  * The parenthesised chord a BOUND action prints, or nothing when unbound.
  *
@@ -78,14 +82,26 @@ export function browserRailLabels(
 	attentionCount: number,
 	cap: string | null,
 ): { tooltip: string; aria: string } {
-	const verb = open ? "Close" : "Open";
+	const state = open ? "open" : "closed";
 	const chord = capClause(cap);
 	if (attentionCount <= 0) {
-		return { tooltip: `${verb} browser${chord}`, aria: `Browser${chord}` };
+		return {
+			tooltip: t("ui.shell.rail.browser.tooltip", { state, chord }),
+			aria: t("ui.shell.rail.browser.aria", { chord }),
+		};
 	}
 	return {
-		tooltip: `${verb} browser${chord} — ${attentionCount} ${plural(attentionCount, "approval", "approvals")} waiting`,
-		aria: `Browser${chord}, ${attentionCount} waiting`,
+		tooltip: t("ui.shell.rail.browser.tooltip_count", {
+			state,
+			chord,
+			count: attentionCount,
+			countText: String(attentionCount),
+		}),
+		aria: t("ui.shell.rail.browser.aria_count", {
+			chord,
+			count: attentionCount,
+			countText: String(attentionCount),
+		}),
 	};
 }
 
@@ -95,14 +111,26 @@ export function consoleRailLabels(
 	unseenCount: number,
 	cap: string | null,
 ): { tooltip: string; aria: string } {
-	const verb = open ? "Close" : "Open";
+	const state = open ? "open" : "closed";
 	const chord = capClause(cap);
 	if (unseenCount <= 0) {
-		return { tooltip: `${verb} console${chord}`, aria: `Console${chord}` };
+		return {
+			tooltip: t("ui.shell.rail.console.tooltip", { state, chord }),
+			aria: t("ui.shell.rail.console.aria", { chord }),
+		};
 	}
 	return {
-		tooltip: `${verb} console${chord} — ${unseenCount} finished since you looked`,
-		aria: `Console${chord}, ${unseenCount} finished since you looked`,
+		tooltip: t("ui.shell.rail.console.tooltip_count", {
+			state,
+			chord,
+			count: unseenCount,
+			countText: String(unseenCount),
+		}),
+		aria: t("ui.shell.rail.console.aria_count", {
+			chord,
+			count: unseenCount,
+			countText: String(unseenCount),
+		}),
 	};
 }
 
@@ -112,18 +140,26 @@ export function canvasRailLabels(
 	fileCount: number,
 	cap: string | null,
 ): { tooltip: string; aria: string } {
-	const verb = open ? "Close" : "Open";
+	const state = open ? "open" : "closed";
 	const chord = capClause(cap);
 	if (fileCount <= 0) {
 		return {
-			tooltip: `${verb} canvas${chord}`,
-			aria: `Canvas${chord}`,
+			tooltip: t("ui.shell.rail.canvas.tooltip", { state, chord }),
+			aria: t("ui.shell.rail.canvas.aria", { chord }),
 		};
 	}
-	const noun = plural(fileCount, "file", "files");
 	return {
-		tooltip: `${verb} canvas${chord} — ${fileCount} ${noun}`,
-		aria: `Canvas${chord}, ${fileCount} ${noun}`,
+		tooltip: t("ui.shell.rail.canvas.tooltip_count", {
+			state,
+			chord,
+			count: fileCount,
+			countText: String(fileCount),
+		}),
+		aria: t("ui.shell.rail.canvas.aria_count", {
+			chord,
+			count: fileCount,
+			countText: String(fileCount),
+		}),
 	};
 }
 
@@ -157,8 +193,16 @@ export function askRailLabels(
 		tooltip: askRailToggleLabel({ open, scope, count, cap }),
 		aria:
 			count > 0
-				? `Asks${chord}, ${askScopeSubject(scope)}, ${count} waiting or moved on`
-				: `Asks${chord}, ${askScopeSubject(scope)}`,
+				? t("ui.shell.rail.ask.aria_count", {
+						chord,
+						subject: askScopeSubject(scope),
+						count,
+						countText: String(count),
+					})
+				: t("ui.shell.rail.ask.aria", {
+						chord,
+						subject: askScopeSubject(scope),
+					}),
 	};
 }
 
@@ -184,11 +228,21 @@ export function codeRailLabels(
 	attention: string | null,
 	cap: string | null,
 ): { tooltip: string; aria: string } {
-	const verb = open ? "Close" : "Open";
+	const state = open ? "open" : "closed";
 	const chord = capClause(cap);
 	const halves = [
-		opened > 0 ? `${opened} opened` : null,
-		mentioned > 0 ? `${mentioned} mentioned` : null,
+		opened > 0
+			? t("ui.shell.rail.code.opened", {
+					count: opened,
+					countText: String(opened),
+				})
+			: null,
+		mentioned > 0
+			? t("ui.shell.rail.code.mentioned", {
+					count: mentioned,
+					countText: String(mentioned),
+				})
+			: null,
 	].filter((half): half is string => half !== null);
 	const details = halves.length > 0 ? halves.join(", ") : "";
 	/*
@@ -201,12 +255,17 @@ export function codeRailLabels(
 	const mark = attention ? `, ${attention}` : "";
 	if (details === "") {
 		return {
-			tooltip: `${verb} code review${chord}${mark}`,
-			aria: `Code review${chord}${mark}`,
+			tooltip: t("ui.shell.rail.code.tooltip", { state, chord, mark }),
+			aria: t("ui.shell.rail.code.aria", { chord, mark }),
 		};
 	}
 	return {
-		tooltip: `${verb} code review${chord} — ${details}${mark}`,
-		aria: `Code review${chord}, ${details}${mark}`,
+		tooltip: t("ui.shell.rail.code.tooltip_details", {
+			state,
+			chord,
+			details,
+			mark,
+		}),
+		aria: t("ui.shell.rail.code.aria_details", { chord, details, mark }),
 	};
 }
