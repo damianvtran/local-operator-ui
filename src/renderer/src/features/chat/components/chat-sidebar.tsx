@@ -11,6 +11,7 @@ import { InstallBuiltinAgents } from "@features/agents/components/install-builti
  * device half rides the row itself (`chat-remote.ts`).
  */
 import { useMeshNetworks } from "@features/mesh/mesh-store";
+import { VoiceRowMarker } from "@features/voice/voice-indicator";
 import { compatibilityBannerShown } from "@shared/api/local-operator/backend-error";
 import {
 	isRemoteReceiptDeferral,
@@ -4611,6 +4612,12 @@ export function ChatSidebar({
 						className="ml-1 size-3.5 shrink-0 text-ink-muted"
 					/>
 				)}
+				{/*
+				 * SESSION VOICE'S MARK: on exactly the row whose session holds the
+				 * machine-wide slot, so a switch visibly moves it off the old row.
+				 * `shrink-0` like the marks above - the title's clip pays for it.
+				 */}
+				<VoiceRowMarker sessionId={row.session_id} />
 				{/* In a flat list nothing else names the profile answering, so two
 			    untitled chats on different agents were indistinguishable. Nested
 			    rows already inherit the identity from their parent, and a row that

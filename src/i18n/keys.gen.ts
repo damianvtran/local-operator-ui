@@ -33,6 +33,7 @@ import enUiCanvas from "./catalogues/en/ui.canvas.json";
 import enUiChatComposerMedia from "./catalogues/en/ui.chat.composer_media.json";
 import enUiChat from "./catalogues/en/ui.chat.json";
 import enUiChatSidebarView from "./catalogues/en/ui.chat.sidebar_view.json";
+import enUiChatVoice from "./catalogues/en/ui.chat.voice.json";
 import enUiCodeReview from "./catalogues/en/ui.code_review.json";
 import enUiCommandPalette from "./catalogues/en/ui.command_palette.json";
 import enUiCommonAccount from "./catalogues/en/ui.common.account.json";
@@ -84,6 +85,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiChatComposerMedia,
 	...enUiChat,
 	...enUiChatSidebarView,
+	...enUiChatVoice,
 	...enUiCodeReview,
 	...enUiCommandPalette,
 	...enUiCommonAccount,
@@ -643,6 +645,26 @@ export type MessageParams = {
 	"ui.chat.sidebar_view.sections": undefined;
 	"ui.chat.sidebar_view.time_basis": undefined;
 	"ui.chat.sidebar_view.time_section": undefined;
+	"ui.chat.voice.approval_waiting": undefined;
+	"ui.chat.voice.card_pending": undefined;
+	"ui.chat.voice.disable_failed": { reason: string };
+	"ui.chat.voice.empty_transcript": undefined;
+	"ui.chat.voice.enable_failed": { reason: string };
+	"ui.chat.voice.marker": undefined;
+	"ui.chat.voice.not_enabled": undefined;
+	"ui.chat.voice.phase_error": undefined;
+	"ui.chat.voice.phase_listening": undefined;
+	"ui.chat.voice.phase_starting": undefined;
+	"ui.chat.voice.phase_working": undefined;
+	"ui.chat.voice.start_rig": undefined;
+	"ui.chat.voice.stream_lost": undefined;
+	"ui.chat.voice.stream_reconnect": undefined;
+	"ui.chat.voice.switched_from": { title: string };
+	"ui.chat.voice.toggle_off": undefined;
+	"ui.chat.voice.toggle_on": undefined;
+	"ui.chat.voice.toggle_switch": { title: string };
+	"ui.chat.voice.untitled": undefined;
+	"ui.chat.voice.utterance_failed": { reason: string };
 	"ui.code_review.activity.close": undefined;
 	"ui.code_review.activity.comment": undefined;
 	"ui.code_review.activity.edit": undefined;

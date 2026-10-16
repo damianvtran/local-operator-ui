@@ -710,3 +710,36 @@ export type DesktopAidaState = {
  * (`aidaControlFailureCopy`).
  */
 export type DesktopAidaControlResult = Omit<DesktopAidaState, "enabled">;
+
+/**
+ * The ONE session voice is enabled on, machine-wide (the backend's `docs/design/qwen-voice.md`,
+ * V3): the slot file's public half. `null` is "voice is off everywhere".
+ */
+export type DesktopVoiceActive = {
+	session_id: string;
+	/** Epoch milliseconds, as the slot file records it. */
+	enabled_at: number;
+} | null;
+
+/**
+ * `GET /v1/desktop/voice` (the frozen contract). `settings.max_spoken_chars` is the
+ * server's own cap on what `/voice/text` returns; the renderer never trims text.
+ * There is no speech-path report: hearing and speaking are the Qwen rig's.
+ */
+export type DesktopVoiceState = {
+	active: DesktopVoiceActive;
+	settings: { max_spoken_chars: number };
+};
+
+/** `POST /v1/desktop/voice/text`'s answer: the words to speak, already cleaned. */
+export type DesktopVoiceText = { text: string; spoken_chars: number };
+
+/**
+ * `POST /v1/desktop/voice`'s answer. `replaced` is the session that LOST the slot
+ * to this enable - the switch is one atomic swap on the server, so this is the
+ * only place the renderer learns that A went off because B came on.
+ */
+export type DesktopVoiceControlResult = {
+	active: DesktopVoiceActive;
+	replaced: string | null;
+};

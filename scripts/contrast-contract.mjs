@@ -58,7 +58,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { deltaE, labToHex, r2, toLab } from "./color.mjs";
+import { deltaE, labToHex, mixOklab, r2, toLab } from "./color.mjs";
 import { loadPalettes } from "./palette-source.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -4433,6 +4433,51 @@ const INK_STEP_FLOOR = SYNTAX_COMMENT_FLOOR;
  */
 const FIELD_SEPARATION_FLOOR = 2.0;
 const LINE_SEPARATION_FLOOR = 4.0;
+
+/**
+ * Pairs whose GROUND is a `color-mix`, asserted in the palette loop's "MIXED
+ * FILLS" block. `mix` is `[A, B, A's share]`, exactly as the class spells it;
+ * `apartFrom` lists the neighbouring states the fill must not be confused with,
+ * each with its ΔE00 floor.
+ */
+const MIXED_FILLS = [
+	{
+		/*
+		 * THE SESSION VOICE TOGGLE, PRESSED (design rounds 1-2, D2/D6). `AudioLines`
+		 * is the glyph in both states, so the pressed GROUND is what says "on". It
+		 * was plain `accentWash`, which is also the ghost variant's HOVER fill: a
+		 * pressed toggle and a hovered off one were the same picture (D6). The fill
+		 * is now the outline variant's pressed mix, and the glyph stays `accent`.
+		 *
+		 * Measured across all 59 palettes when this row was written: `accent` on
+		 * the mix 3.27:1 at worst (everforest) - over the 3:1 icon floor, under 4.5,
+		 * which is why the glyph is held to the non-text floor and no more. The mix
+		 * sits ΔE00 7.24 from `accentWash` at worst (sage), so pressed no longer
+		 * reads as hovered; FIELD_SEPARATION_FLOOR is the bar because this is a
+		 * filled 28px square, a field rather than a line.
+		 */
+		name: "voice toggle (pressed)",
+		mix: ["accentWash", "accent", 0.8],
+		ink: "accent",
+		floor: FLOOR.nonText,
+		apartFrom: [["accentWash", FIELD_SEPARATION_FLOOR]],
+	},
+	{
+		/*
+		 * THE SAME TOGGLE, PRESSED AND HOVERED (D6): one rung further toward
+		 * `accent` (70%). The glyph steps to `ink` here because `accent` on this
+		 * fill measured 2.77:1 at worst and fell under 3:1 in two palettes, while
+		 * `ink` measured 4.31:1 at worst (everforest). The rung is ΔE00 3.92 from
+		 * the resting pressed fill at worst (tokyoNight) - the hover step a
+		 * reader must see.
+		 */
+		name: "voice toggle (pressed, hovered)",
+		mix: ["accentWash", "accent", 0.7],
+		ink: "ink",
+		floor: FLOOR.nonText,
+		apartFrom: [[["accentWash", "accent", 0.8], FIELD_SEPARATION_FLOOR]],
+	},
+];
 /*
  * THE REGION FLOOR, for two planes of the same kind meeting with no rule between
  * them. Declared separately from the two above for the reason the pair above is:
@@ -5627,6 +5672,40 @@ for (const { id, palette: p } of palettes) {
 	for (const g of GRAPHICS) {
 		for (const ground of g.on) {
 			assertPair(id, p, g.fg, ground, FLOOR.nonText, g.name);
+		}
+	}
+
+	/*
+	 * MIXED FILLS: a ground the stylesheet builds with `color-mix(in oklab, …)`
+	 * rather than names, measured as the hex the browser paints (`mixOklab`). A
+	 * row here is the only way such a pair is asserted at all - `CONTROLS` and
+	 * `GRAPHICS` read tokens - so a component that mixes its own ground lists it
+	 * here or is not covered.
+	 */
+	for (const m of MIXED_FILLS) {
+		const a = p[m.mix[0]];
+		const b = p[m.mix[1]];
+		const fg = p[m.ink];
+		if (!isHex(a) || !isHex(b) || !isHex(fg)) continue;
+		const fill = mixOklab(a, b, m.mix[2]);
+		assertions++;
+		const got = r2(ratio(fg, fill));
+		if (got < m.floor && !findException(id, m.ink, m.name, got)) {
+			fail(
+				`${id}: ${m.name} — ${m.ink} ${fg} on color-mix(${m.mix[0]} ${m.mix[2] * 100}%, ${m.mix[1]}) ${fill} = ${got}:1, need ${m.floor}:1`,
+			);
+		}
+		for (const [other, floor] of m.apartFrom ?? []) {
+			const otherHex = Array.isArray(other)
+				? mixOklab(p[other[0]], p[other[1]], other[2])
+				: p[other];
+			if (!isHex(otherHex)) continue;
+			assertions++;
+			const d = r2(deltaE(fill, otherHex));
+			if (d < floor)
+				fail(
+					`${id}: ${m.name} — the fill ${fill} is ΔE00 ${d} from ${Array.isArray(other) ? `color-mix(${other.join(", ")})` : other} ${otherHex}, need ${floor}: the two states would read as one`,
+				);
 		}
 	}
 

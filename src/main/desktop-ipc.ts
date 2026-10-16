@@ -487,3 +487,44 @@ export function registerDesktopIPC(
 		});
 	}
 }
+
+/**
+ * THE QWEN VOICE CHANNELS (`src/main/voice/qwen-voice.ts`; the main <-> renderer
+ * contract in `shared/desktop-contract.ts`, `QwenVoiceBridge`). Admitted for the
+ * MAIN window's own document only - the mini view has no voice - by the same
+ * frame check every desktop channel uses. The renderer's values are untrusted:
+ * `QwenVoice` validates each one, and `speak` is honoured only for a text main
+ * relayed itself.
+ */
+export function registerQwenVoiceIPC(
+	window: () => BrowserWindow | null,
+	expectedUrl: string,
+	voice: {
+		result: (input: unknown) => boolean;
+		speak: (input: unknown) => { spoken: boolean; reason?: string };
+		start: (reason: "renderer") => Promise<unknown>;
+		getStatus: () => unknown;
+	},
+): void {
+	const authorize = (event: IpcMainInvokeEvent): void => {
+		if (!isAdmittedSender(event, [{ window: window(), url: expectedUrl }])) {
+			throw new Error("This window cannot use desktop controls.");
+		}
+	};
+	ipcMain.handle("voice.qwen.result", (event, input: unknown) => {
+		authorize(event);
+		return voice.result(input);
+	});
+	ipcMain.handle("voice.qwen.speak", (event, input: unknown) => {
+		authorize(event);
+		return voice.speak(input);
+	});
+	ipcMain.handle("voice.qwen.start", (event) => {
+		authorize(event);
+		return voice.start("renderer");
+	});
+	ipcMain.handle("voice.qwen.status.get", (event) => {
+		authorize(event);
+		return voice.getStatus();
+	});
+}

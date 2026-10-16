@@ -1,3 +1,5 @@
+import { VoicePhase } from "@features/voice/voice-indicator";
+import { VoiceToggle } from "@features/voice/voice-toggle";
 import {
 	desktopFeatureState,
 	useDesktopCapabilities,
@@ -1088,6 +1090,14 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 				 */
 				className="ml-auto flex items-center gap-2"
 			>
+				{/*
+				 * SESSION VOICE: the toggle and, while this conversation holds the slot,
+				 * the exchange's phase word. Leading the trailing cluster so it sits
+				 * nearest the title it acts on; both render nothing without
+				 * `features.voice` or on a draft (`features/voice`).
+				 */}
+				<VoicePhase sessionId={sessionId} />
+				<VoiceToggle sessionId={sessionId} />
 				{/*
 				 * THE ARCHIVED STATE, and its restore control, as a PAIR.
 				 *

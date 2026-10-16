@@ -27,6 +27,9 @@ import {
 	type ExternalOpenOutcome,
 	type ExternalOpenRefusedPayload,
 	type FileActionOutcome,
+	type QwenVoiceResult,
+	type QwenVoiceStatus,
+	type QwenVoiceTake,
 } from "../shared/desktop-contract";
 import type { DesktopFeedFrame } from "../shared/desktop-session-contract";
 import { DESKTOP_STREAM_DETAIL } from "../shared/desktop-stream-notice";
@@ -150,6 +153,40 @@ const api = {
 				ipcRenderer.send("desktop-feed-watch");
 				return () => {
 					ipcRenderer.removeListener("desktop-feed-state", handler);
+				};
+			},
+		},
+		/*
+		 * THE QWEN VOICE RIG (`src/main/voice/qwen-voice.ts`). Every value crosses as
+		 * data; main validates it, and `speak` is honoured only for a text main
+		 * relayed itself (`QwenVoiceBridge` in the contract).
+		 */
+		qwenVoice: {
+			onTake: (listener: (take: QwenVoiceTake) => void) => {
+				const handler = (_event: unknown, take: QwenVoiceTake) =>
+					listener(take);
+				ipcRenderer.on("voice.qwen.take", handler);
+				return () => {
+					ipcRenderer.removeListener("voice.qwen.take", handler);
+				};
+			},
+			result: (result: QwenVoiceResult): Promise<boolean> =>
+				ipcRenderer.invoke("voice.qwen.result", result),
+			speak: (input: {
+				text: string;
+				kind: "reply" | "gate";
+			}): Promise<{ spoken: boolean; reason?: string }> =>
+				ipcRenderer.invoke("voice.qwen.speak", input),
+			start: (): Promise<QwenVoiceStatus> =>
+				ipcRenderer.invoke("voice.qwen.start"),
+			getStatus: (): Promise<QwenVoiceStatus> =>
+				ipcRenderer.invoke("voice.qwen.status.get"),
+			onStatus: (listener: (status: QwenVoiceStatus) => void) => {
+				const handler = (_event: unknown, status: QwenVoiceStatus) =>
+					listener(status);
+				ipcRenderer.on("voice.qwen.status", handler);
+				return () => {
+					ipcRenderer.removeListener("voice.qwen.status", handler);
 				};
 			},
 		},

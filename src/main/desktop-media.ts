@@ -17,8 +17,11 @@ import {
 	DESKTOP_MACHINE_DETAIL,
 	DESKTOP_REFUSAL_CODE,
 	type DesktopRefusalCode,
+	REQUEST_ID_PATTERN,
+	type VoiceRefusalCode,
 	desktopRefusalCodeForStatus,
 	isDesktopRefusalCode,
+	isVoiceRefusalCode,
 } from "../shared/desktop-contract";
 
 const id = z
@@ -109,6 +112,23 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 			digest: z.string().regex(/^[a-f0-9]{32}$/),
 		})
 		.strict(),
+	// SESSION VOICE'S TEXT DOOR (the frozen contract): the Qwen rig's transcript,
+	// as TEXT. The fields are NAMED rather than a free record, and the object is
+	// strict, so renderer code cannot add a field the route might one day read as
+	// authority - in particular there is no `file`/`fileName`/`mimeType`: this app
+	// never uploads a recording, and `requestDesktopMediaOutcome` refuses bytes for
+	// this op. The route admits the words as an ordinary prompt/steer and has no
+	// path to a gate answer (V7).
+	z
+		.object({
+			op: z.literal("voice.utterance"),
+			sessionId: z.string().regex(/^[a-f0-9]{12}$/),
+			// The route's own `RequestID`; refused here rather than as its 422.
+			requestId: z.string().regex(REQUEST_ID_PATTERN),
+			text: z.string().min(1).max(16_000),
+			textOrigin: z.literal("qwen_s2s").optional(),
+		})
+		.strict(),
 ]);
 
 export type DesktopMediaRequest = z.infer<typeof mediaRequestSchema>;
@@ -129,6 +149,8 @@ export type DesktopMediaResponse =
 			 * rendered as this app's own sentence (design § 3.5, § 5.1).
 			 */
 			code?: DesktopRefusalCode;
+			/** A voice route's declared refusal (see `VOICE_REFUSAL_CODES`). */
+			voiceCode?: VoiceRefusalCode;
 	  };
 
 function endpoint(request: DesktopMediaRequest): {
@@ -161,6 +183,8 @@ function endpoint(request: DesktopMediaRequest): {
 				path: `/v1/desktop/sessions/${request.sessionId}/supplements/${request.digest}/document`,
 				method: "GET",
 			};
+		case "voice.utterance":
+			return { path: "/v1/desktop/voice/utterance", method: "POST" };
 	}
 }
 
@@ -238,6 +262,26 @@ export async function requestDesktopMediaOutcome(
 	} else if (request.op === "speech.create" || request.op === "speech.agent") {
 		body = JSON.stringify(request.request);
 		contentType = "application/json";
+	} else if (request.op === "voice.utterance") {
+		if (bytes) {
+			// Never sent: the text door carries no recording (see the schema).
+			return {
+				response: {
+					status: 422,
+					kind: "error",
+					detail: "A voice utterance carries text only.",
+				},
+				answered: false,
+			};
+		}
+		// The route's own field names. `URLSearchParams` is the form encoding FastAPI's
+		// `Form(...)` reads; no multipart, because there is no file part to carry.
+		const form = new URLSearchParams();
+		form.append("session_id", request.sessionId);
+		form.append("request_id", request.requestId);
+		form.append("text", request.text);
+		if (request.textOrigin) form.append("text_origin", request.textOrigin);
+		body = form;
 	} else {
 		if (!bytes) {
 			return {
@@ -333,6 +377,12 @@ export async function requestDesktopMediaOutcome(
 						declaredCode !== undefined && isDesktopRefusalCode(declaredCode)
 							? declaredCode
 							: desktopRefusalCodeForStatus(target.path, response.status),
+					// The voice routes' declared words, op-scoped, so the controller can
+					// act on "the slot moved" rather than parse a sentence.
+					...(request.op === "voice.utterance" &&
+					isVoiceRefusalCode(declaredCode)
+						? { voiceCode: declaredCode }
+						: {}),
 				},
 				answered: true,
 			};
