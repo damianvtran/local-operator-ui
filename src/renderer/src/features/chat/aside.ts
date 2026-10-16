@@ -850,13 +850,16 @@ function clearQueuedFallback(asideId: string): void {
  *
  * WHY THE FIRST STEP IS A WAIT AND NOT A RE-READ. A re-read closes and reopens
  * the session's stream (`resync`), and the turn's end is exactly when the owner
- * sends what this panel is waiting for: the history delta that lands the pair,
- * or - when the owner is being stopped with a tool call open - the error notice
- * saying the pair will never land. Neither is durable, so a re-read fired at the
- * turn's end drops whichever arrives while the stream is down (measured: the
- * stranded-adopt notice was never painted, and the panel detached 1.7s after the
- * stop). Waiting first keeps the stream open for both, and the ordinary landing
- * then needs no re-read at all.
+ * sends what this panel is waiting for: the history delta that lands the pair.
+ * The delta is not durable, so a re-read fired at the turn's end drops it if it
+ * arrives while the stream is down, and the ordinary landing then needs a
+ * re-read it would otherwise not. Waiting first keeps the stream open for it.
+ *
+ * WHAT TELLS THE USER A PAIR NEVER LANDED is this function's own sentence on the
+ * panel plus the owner's durable `session_incident` row, which the transcript
+ * paints. The owner's live dispose `notice{kind:"error"}` is NOT painted by the
+ * app today (QA round 2, Q2-2: the client receives it, and its text never reaches
+ * the DOM), so nothing here may rely on it.
  */
 export function settleQueuedAdoption(
 	sessionId: string,

@@ -229,15 +229,19 @@ The allowlist additionally provides:
   the delta, re-reads the session once, and then - rather than detach as if the
   aside were added - leaves the queued state with "The aside was not added to
   the conversation. Add it again to try once more." and a live control (a
-  re-press is safe: the owner skips a pair it already saved). A backend without the key keeps the old rule (idle sessions
-  only), because it writes the pair immediately and a write into a live tool
+  re-press is safe: the owner skips a pair it already saved). A backend
+  without the key keeps the old rule (idle sessions only), because it writes the pair immediately and a write into a live tool
   batch is a request no provider accepts. An answer with no `status` reads as
   `"adopted"`. An adopt that cannot be deferred is refused with
   `409 {"detail": {"code": "aside_adopt_refused", "reason": "session_closed" |
   "open_tool_batch" | "turn_running"}}`, which the panel states in its own
   sentence (`turn_running` is an owner older than the queue refusing a
-  mid-turn adopt). The owner's stranded-adopt `notice{kind:"error"}` at dispose
-  paints as an error notice row in the transcript.
+  mid-turn adopt). When the conversation closes with an adopt still queued,
+  what the transcript paints is the owner's durable `session_incident` row
+  ("unsaved records … 1 aside exchange(s) …"), in red. The owner also sends a
+  live `notice{kind:"error"}` at dispose, but the app does not paint that
+  notice today: the panel's own "not added" sentence and the incident row are
+  what the user sees.
 - `mcp.list/control`: effective source ownership, array-valued command args, only
   secret references in env/headers, connect/disconnect/reload, OAuth probe,
   login/logout/reauth and operation status/cancel. Canonical grants remain owner-side.
