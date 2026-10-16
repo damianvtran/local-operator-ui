@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { unlink, writeFile } from "node:fs/promises";
+import { readFile, unlink, writeFile } from "node:fs/promises";
+import { dirname } from "node:path";
 import { after, test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
@@ -41,7 +42,14 @@ for (const key of Object.getOwnPropertyNames(bootstrapDOM.window)) {
 }
 globalThis.window = bootstrapDOM.window;
 globalThis.document = bootstrapDOM.window.document;
+// Node supplies navigator without onLine; the component's connectivity query
+// needs this DOM's navigator, not Node's partial browser-shaped global.
+Object.defineProperty(globalThis, "navigator", {
+	value: bootstrapDOM.window.navigator,
+	configurable: true,
+});
 globalThis.localStorage = bootstrapDOM.window.localStorage;
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 /*
  * The component's refresh hook arms a `window.setInterval`; nothing here waits for
  * a refresh, and a live interval keeps the event loop open after the assertions,
@@ -63,6 +71,9 @@ bootstrapDOM.window.fetch = async () => ({
 	json: async () => ({ models: [], providers: [] }),
 	text: async () => "{}",
 });
+// Some data helpers use the global fetch rather than window.fetch. Both must
+// stay synthetic so delayed transport completions cannot fake a locale repaint.
+globalThis.fetch = bootstrapDOM.window.fetch;
 bootstrapDOM.window.XMLHttpRequest = class {
 	open() {}
 	send() {}
@@ -85,7 +96,51 @@ globalThis.window.api = {
 	},
 };
 
+// The negative-control invocation removes only the model's subscription from
+// the real source. The mounted repaint assertion must then fail, proving the
+// harness is not passing because another store happened to trigger a render.
+const localeNegativeControl =
+	process.env.I18N_TEST_DISABLE_MODEL_SUBSCRIPTION === "1";
+const staleCopyNegativeControl =
+	process.env.I18N_TEST_FREEZE_MODEL_COPY === "1";
 const bundle = await build({
+	plugins:
+		localeNegativeControl || staleCopyNegativeControl
+			? [
+					{
+						name: "i18n-model-subscription-negative-control",
+						setup(builder) {
+							builder.onLoad({ filter: /model-select\.tsx$/ }, async (args) => {
+								let contents = await readFile(args.path, "utf8");
+								if (localeNegativeControl)
+									contents = contents.replaceAll("useI18nLocale();", "");
+								if (staleCopyNegativeControl) {
+									// Restore only the old copy cache, not data fetching or the
+									// locale hook. Label repaint alone must not hide stale options.
+									const start = contents.indexOf(
+										"const modelOptions: ModelOption[] = (() => {",
+									);
+									const end = contents.indexOf("\n\t})();", start);
+									assert.ok(start >= 0 && end > start);
+									contents = [
+										contents.slice(0, start),
+										contents
+											.slice(start, end)
+											.replace("= (() => {", "= useMemo(() => {"),
+										"\n\t}, [availableModels, hostingId, value, allowCustom, allowDefault]);",
+										contents.slice(end + "\n\t})();".length),
+									].join("");
+								}
+								return {
+									contents,
+									loader: "tsx",
+									resolveDir: dirname(args.path),
+								};
+							});
+						},
+					},
+				]
+			: [],
 	stdin: {
 		contents: `
 			import { createElement } from "react";
@@ -93,6 +148,7 @@ const bundle = await build({
 			export { ModelSelect } from "./src/renderer/src/shared/components/hosting/model-select";
 			export { useModelsStore } from "./src/renderer/src/shared/store/models-store";
 			export { getModelsForHostingProvider } from "./src/renderer/src/shared/components/hosting/hosting-model-manifest";
+			export { setLocale, registerCatalogue, clearRegisteredCatalogues } from "./src/i18n";
 			export { createElement };
 		`,
 		resolveDir: process.cwd(),
@@ -136,6 +192,9 @@ const {
 	QueryClientProvider,
 	useModelsStore,
 	getModelsForHostingProvider,
+	setLocale,
+	registerCatalogue,
+	clearRegisteredCatalogues,
 } = await import(bundlePath.href);
 
 // The component refreshes the catalogue through react-query, so the tree needs a
@@ -204,7 +263,7 @@ run(
 					createElement(ModelSelect, {
 						hostingId: "radient",
 						value: "",
-						onChange: () => undefined,
+						onSave: async () => undefined,
 					}),
 				),
 			);
@@ -348,7 +407,7 @@ run(
 					createElement(ModelSelect, {
 						hostingId: "radient",
 						value: "",
-						onChange: () => undefined,
+						onSave: async () => undefined,
 					}),
 				),
 			);
@@ -378,6 +437,65 @@ run(
 			getModelsForHostingProvider("radient").map((model) => model.id),
 			["auto-2"],
 			"a listing inside the old cache's window must reach the picker: the cache belongs to the store, not the clock",
+		);
+	},
+);
+
+run(
+	"a mounted model picker repaints labels and cached option copy on locale change",
+	async (t) => {
+		setLocale("en");
+		const realFetch = useModelsStore.getState().fetchModels;
+		useModelsStore.setState({
+			models: [],
+			providers: [],
+			isInitialized: true,
+			fetchModels: async () => undefined,
+		});
+		const container = document.createElement("div");
+		document.body.append(container);
+		const root = createRoot(container);
+		t.after(async () => {
+			await act(async () => root.unmount());
+			container.remove();
+			queryClient.clear();
+			clearRegisteredCatalogues();
+			setLocale("en");
+			useModelsStore.setState({ fetchModels: realFetch });
+		});
+		await act(async () => {
+			root.render(
+				createElement(
+					QueryClientProvider,
+					{ client: queryClient },
+					createElement(ModelSelect, {
+						hostingId: "radient",
+						value: "",
+						allowDefault: true,
+						onSave: async () => undefined,
+					}),
+				),
+			);
+		});
+		// Query notifications are scheduled outside the initial commit. Let those
+		// settle before the only state transition under test: the locale change.
+		await act(async () => new Promise((resolve) => setTimeout(resolve, 50)));
+		assert.ok(container.textContent.includes("Model"));
+		assert.equal(container.querySelector('[role="combobox"]').value, "Default");
+		// Synthetic fixture strings exercise repaint only; this is not a native
+		// French translation or audit. The component stays mounted throughout.
+		registerCatalogue("fr", {
+			"ui.common.models.model_select.model": "Fixture model label",
+			"ui.common.models.default": "Fixture inherited option",
+		});
+		await act(async () => setLocale("fr"));
+		assert.ok(
+			container.textContent.includes("Fixture model label"),
+			container.textContent,
+		);
+		assert.equal(
+			container.querySelector('[role="combobox"]').value,
+			"Fixture inherited option",
 		);
 	},
 );

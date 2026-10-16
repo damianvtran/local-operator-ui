@@ -18,6 +18,7 @@ import {
 	BACKEND_STATUS_EVENT,
 	type DaemonStatusSnapshot,
 } from "../shared/backend-status";
+import type { HumanTabActionOutcome } from "../shared/browser-tab-action";
 import {
 	type DesktopMediaRequest,
 	type DesktopRequest,
@@ -793,10 +794,49 @@ const api = {
 	 * moves to a session (the hand-over) mints a nonce main never sends back here.
 	 */
 	browser: {
+		pageControl: (
+			tabId: number,
+			action: "open" | "close" | "search" | "in" | "out" | "reset",
+			query: string,
+			forward: boolean,
+			next: boolean,
+		): Promise<unknown> =>
+			ipcRenderer.invoke(
+				"browser-page-control",
+				tabId,
+				action,
+				query,
+				forward,
+				next,
+			),
+		setChordFocus: (focused: boolean): Promise<void> =>
+			ipcRenderer.invoke("browser-set-chord-focus", focused),
+		reopenTab: (sessionId?: string | null): Promise<unknown> =>
+			ipcRenderer.invoke("browser-reopen-tab", sessionId ?? null),
+		focusPage: (): Promise<void> => ipcRenderer.invoke("browser-focus-page"),
+		onChord: (
+			callback: (
+				message: import("../shared/browser-chord").BrowserChordMessage,
+			) => void,
+		) => {
+			const listener = (
+				_event: unknown,
+				message: import("../shared/browser-chord").BrowserChordMessage,
+			) => callback(message);
+			ipcRenderer.on("browser-chord", listener);
+			return () => ipcRenderer.removeListener("browser-chord", listener);
+		},
 		state: (): Promise<unknown> => ipcRenderer.invoke("browser-state"),
 		/** `sessionId` attributes the tab to the conversation it was opened from
 		 * (design R1); `null` is a tab that belongs to no conversation, which is what
 		 * the route and a draft pane open. Main validates it rather than trusting it. */
+		reorderTabs: (ids: number[]): Promise<unknown> =>
+			ipcRenderer.invoke("browser-reorder-tabs", ids),
+		actOnTab: (
+			tabId: number,
+			action: "duplicate" | "reload",
+		): Promise<HumanTabActionOutcome> =>
+			ipcRenderer.invoke("browser-tab-action", tabId, action),
 		newTab: (sessionId?: string | null): Promise<unknown> =>
 			ipcRenderer.invoke("browser-new-tab", sessionId ?? null),
 		closeTab: (tabId: number): Promise<unknown> =>
@@ -811,7 +851,9 @@ const api = {
 			ipcRenderer.invoke("browser-activate-tab", tabId),
 		navigate: (url: string): Promise<unknown> =>
 			ipcRenderer.invoke("browser-navigate", url),
-		reload: (): Promise<unknown> => ipcRenderer.invoke("browser-reload"),
+		home: (): Promise<unknown> => ipcRenderer.invoke("browser-home"),
+		reload: (hard = false): Promise<unknown> =>
+			ipcRenderer.invoke("browser-reload", hard),
 		stop: (): Promise<unknown> => ipcRenderer.invoke("browser-stop"),
 		history: (direction: "back" | "forward"): Promise<unknown> =>
 			ipcRenderer.invoke("browser-history", direction),

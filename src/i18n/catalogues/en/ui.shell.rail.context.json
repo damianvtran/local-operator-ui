@@ -1,0 +1,223 @@
+{
+	"ui.shell.rail.ask.aria": {
+		"role": "button accessible name",
+		"tone": "Compact panel action or status; preserve the destination and pending-work distinction.",
+		"note": "Subject is the queue owner text from the chat-owned ask classifier, retained verbatim; tooltip remains delegated to that same owner.",
+		"length": "One tooltip or accessible name; exact counts are never badge-capped.",
+		"placeholders": {
+			"chord": "Empty when unbound, otherwise the already-formatted platform keyboard chord including leading space and parentheses.",
+			"subject": "Already-formatted queue scope: this conversation or all conversations."
+		}
+	},
+	"ui.shell.rail.ask.aria_count": {
+		"role": "button accessible name",
+		"tone": "Compact panel action or status; preserve the destination and pending-work distinction.",
+		"note": "Ask count includes pending or recently settled requests, so preserve waiting or moved on, not waiting alone.",
+		"length": "One tooltip or accessible name; exact counts are never badge-capped.",
+		"placeholders": {
+			"chord": "Empty when unbound, otherwise the already-formatted platform keyboard chord including leading space and parentheses.",
+			"subject": "Chat-owned already-formatted queue scope.",
+			"count": "Uncapped request count.",
+			"countText": "Existing decimal count text from String(count); separate from ICU cardinal so English does not gain thousands separators."
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+	},
+	"ui.shell.rail.browser.aria": {
+		"role": "button accessible name",
+		"tone": "Compact panel action or status; preserve the destination and pending-work distinction.",
+		"note": "Stable destination name: aria-pressed already states open/closed, so do not repeat an action verb.",
+		"length": "One tooltip or accessible name; exact counts are never badge-capped.",
+		"placeholders": {
+			"chord": "Empty when unbound, otherwise the already-formatted platform keyboard chord including leading space and parentheses."
+		}
+	},
+	"ui.shell.rail.browser.aria_count": {
+		"role": "button accessible name",
+		"tone": "Compact panel action or status; preserve the destination and pending-work distinction.",
+		"note": "Stable browser destination with its approval count; does not restate the toggle state.",
+		"length": "One tooltip or accessible name; exact counts are never badge-capped.",
+		"placeholders": {
+			"chord": "Empty when unbound, otherwise the already-formatted platform keyboard chord including leading space and parentheses.",
+			"count": "Uncapped pending browser approvals.",
+			"countText": "Existing decimal count text from String(count); separate from ICU cardinal so English does not gain thousands separators."
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+	},
+	"ui.shell.rail.browser.tooltip": {
+		"role": "tooltip",
+		"tone": "Compact panel action or status; preserve the destination and pending-work distinction.",
+		"note": "Names the action the rail press will perform; the accessible name separately stays a stable destination noun.",
+		"length": "One tooltip or accessible name; exact counts are never badge-capped.",
+		"placeholders": {
+			"state": "Stable action state: open means pressing closes; closed means pressing opens.",
+			"chord": "Empty when unbound, otherwise the already-formatted platform keyboard chord including leading space and parentheses."
+		}
+	},
+	"ui.shell.rail.browser.tooltip_count": {
+		"role": "tooltip",
+		"tone": "Compact panel action or status; preserve the destination and pending-work distinction.",
+		"note": "Full action and count: approvals awaiting the operator.",
+		"length": "One tooltip or accessible name; exact counts are never badge-capped.",
+		"placeholders": {
+			"state": "Stable action state: open means pressing closes; closed means pressing opens.",
+			"chord": "Empty when unbound, otherwise the already-formatted platform keyboard chord including leading space and parentheses.",
+			"count": "Uncapped pending browser approvals.",
+			"countText": "Existing decimal count text from String(count); separate from ICU cardinal so English does not gain thousands separators."
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+	},
+	"ui.shell.rail.canvas.aria": {
+		"role": "button accessible name",
+		"tone": "Compact panel action or status; preserve the destination and pending-work distinction.",
+		"note": "Stable destination name: aria-pressed already states open/closed, so do not repeat an action verb.",
+		"length": "One tooltip or accessible name; exact counts are never badge-capped.",
+		"placeholders": {
+			"chord": "Empty when unbound, otherwise the already-formatted platform keyboard chord including leading space and parentheses."
+		}
+	},
+	"ui.shell.rail.canvas.aria_count": {
+		"role": "button accessible name",
+		"tone": "Compact panel action or status; preserve the destination and pending-work distinction.",
+		"note": "Stable canvas destination with its file count; does not restate the toggle state.",
+		"length": "One tooltip or accessible name; exact counts are never badge-capped.",
+		"placeholders": {
+			"chord": "Empty when unbound, otherwise the already-formatted platform keyboard chord including leading space and parentheses.",
+			"count": "Number of canvas files.",
+			"countText": "Existing decimal count text from String(count); separate from ICU cardinal so English does not gain thousands separators."
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+	},
+	"ui.shell.rail.canvas.tooltip": {
+		"role": "tooltip",
+		"tone": "Compact panel action or status; preserve the destination and pending-work distinction.",
+		"note": "Names the action the rail press will perform; the accessible name separately stays a stable destination noun.",
+		"length": "One tooltip or accessible name; exact counts are never badge-capped.",
+		"placeholders": {
+			"state": "Stable action state: open means pressing closes; closed means pressing opens.",
+			"chord": "Empty when unbound, otherwise the already-formatted platform keyboard chord including leading space and parentheses."
+		}
+	},
+	"ui.shell.rail.canvas.tooltip_count": {
+		"role": "tooltip",
+		"tone": "Compact panel action or status; preserve the destination and pending-work distinction.",
+		"note": "Full action and count: files currently available in the canvas.",
+		"length": "One tooltip or accessible name; exact counts are never badge-capped.",
+		"placeholders": {
+			"state": "Stable action state: open means pressing closes; closed means pressing opens.",
+			"chord": "Empty when unbound, otherwise the already-formatted platform keyboard chord including leading space and parentheses.",
+			"count": "Number of canvas files.",
+			"countText": "Existing decimal count text from String(count); separate from ICU cardinal so English does not gain thousands separators."
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+	},
+	"ui.shell.rail.code.aria": {
+		"role": "button accessible name",
+		"tone": "Compact panel action or status; preserve the destination and pending-work distinction.",
+		"note": "Code-review door; opened and mentioned are request provenance, not code-review finding counts. Accessible name stays a destination, tooltip says the action.",
+		"length": "One tooltip or accessible name; exact counts are never badge-capped.",
+		"placeholders": {
+			"chord": "Empty when unbound, otherwise the already-formatted platform keyboard chord including leading space and parentheses.",
+			"mark": "Empty, or comma-prefixed already-localized caller-owned attention cause (e.g. checks failing)."
+		}
+	},
+	"ui.shell.rail.code.aria_details": {
+		"role": "button accessible name",
+		"tone": "Compact panel action or status; preserve the destination and pending-work distinction.",
+		"note": "Code-review door; opened and mentioned are request provenance, not code-review finding counts. Accessible name stays a destination, tooltip says the action.",
+		"length": "One tooltip or accessible name; exact counts are never badge-capped.",
+		"placeholders": {
+			"chord": "Empty when unbound, otherwise the already-formatted platform keyboard chord including leading space and parentheses.",
+			"mark": "Empty, or comma-prefixed already-localized caller-owned attention cause (e.g. checks failing).",
+			"details": "Already-localized opened and mentioned clauses joined by the existing comma-space separator; zero clauses omitted."
+		}
+	},
+	"ui.shell.rail.code.mentioned": {
+		"role": "status clause",
+		"tone": "Compact panel action or status; preserve the destination and pending-work distinction.",
+		"note": "Counts code requests mentioned by this session; the zero half is omitted before composing the tooltip.",
+		"length": "One tooltip or accessible name; exact counts are never badge-capped.",
+		"placeholders": {
+			"count": "Number of code requests mentioned.",
+			"countText": "Existing decimal count text from String(count); separate from ICU cardinal so English does not gain thousands separators."
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+	},
+	"ui.shell.rail.code.opened": {
+		"role": "status clause",
+		"tone": "Compact panel action or status; preserve the destination and pending-work distinction.",
+		"note": "Counts code requests opened by this session; the zero half is omitted before composing the tooltip.",
+		"length": "One tooltip or accessible name; exact counts are never badge-capped.",
+		"placeholders": {
+			"count": "Number of code requests opened.",
+			"countText": "Existing decimal count text from String(count); separate from ICU cardinal so English does not gain thousands separators."
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+	},
+	"ui.shell.rail.code.tooltip": {
+		"role": "tooltip",
+		"tone": "Compact panel action or status; preserve the destination and pending-work distinction.",
+		"note": "Code-review door; opened and mentioned are request provenance, not code-review finding counts. Accessible name stays a destination, tooltip says the action.",
+		"length": "One tooltip or accessible name; exact counts are never badge-capped.",
+		"placeholders": {
+			"chord": "Empty when unbound, otherwise the already-formatted platform keyboard chord including leading space and parentheses.",
+			"mark": "Empty, or comma-prefixed already-localized caller-owned attention cause (e.g. checks failing).",
+			"state": "Stable action state: open means pressing closes; closed means pressing opens."
+		}
+	},
+	"ui.shell.rail.code.tooltip_details": {
+		"role": "tooltip",
+		"tone": "Compact panel action or status; preserve the destination and pending-work distinction.",
+		"note": "Code-review door; opened and mentioned are request provenance, not code-review finding counts. Accessible name stays a destination, tooltip says the action.",
+		"length": "One tooltip or accessible name; exact counts are never badge-capped.",
+		"placeholders": {
+			"chord": "Empty when unbound, otherwise the already-formatted platform keyboard chord including leading space and parentheses.",
+			"mark": "Empty, or comma-prefixed already-localized caller-owned attention cause (e.g. checks failing).",
+			"state": "Stable action state: open means pressing closes; closed means pressing opens.",
+			"details": "Already-localized opened and mentioned clauses joined by the existing comma-space separator; zero clauses omitted."
+		}
+	},
+	"ui.shell.rail.console.aria": {
+		"role": "button accessible name",
+		"tone": "Compact panel action or status; preserve the destination and pending-work distinction.",
+		"note": "Stable destination name: aria-pressed already states open/closed, so do not repeat an action verb.",
+		"length": "One tooltip or accessible name; exact counts are never badge-capped.",
+		"placeholders": {
+			"chord": "Empty when unbound, otherwise the already-formatted platform keyboard chord including leading space and parentheses."
+		}
+	},
+	"ui.shell.rail.console.aria_count": {
+		"role": "button accessible name",
+		"tone": "Compact panel action or status; preserve the destination and pending-work distinction.",
+		"note": "Stable console destination with its finished count; does not restate the toggle state.",
+		"length": "One tooltip or accessible name; exact counts are never badge-capped.",
+		"placeholders": {
+			"chord": "Empty when unbound, otherwise the already-formatted platform keyboard chord including leading space and parentheses.",
+			"count": "Unseen completed console commands.",
+			"countText": "Existing decimal count text from String(count); separate from ICU cardinal so English does not gain thousands separators."
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+	},
+	"ui.shell.rail.console.tooltip": {
+		"role": "tooltip",
+		"tone": "Compact panel action or status; preserve the destination and pending-work distinction.",
+		"note": "Names the action the rail press will perform; the accessible name separately stays a stable destination noun.",
+		"length": "One tooltip or accessible name; exact counts are never badge-capped.",
+		"placeholders": {
+			"state": "Stable action state: open means pressing closes; closed means pressing opens.",
+			"chord": "Empty when unbound, otherwise the already-formatted platform keyboard chord including leading space and parentheses."
+		}
+	},
+	"ui.shell.rail.console.tooltip_count": {
+		"role": "tooltip",
+		"tone": "Compact panel action or status; preserve the destination and pending-work distinction.",
+		"note": "Full action and count: commands finished since this console was last viewed.",
+		"length": "One tooltip or accessible name; exact counts are never badge-capped.",
+		"placeholders": {
+			"state": "Stable action state: open means pressing closes; closed means pressing opens.",
+			"chord": "Empty when unbound, otherwise the already-formatted platform keyboard chord including leading space and parentheses.",
+			"count": "Unseen completed console commands.",
+			"countText": "Existing decimal count text from String(count); separate from ICU cardinal so English does not gain thousands separators."
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+	}
+}

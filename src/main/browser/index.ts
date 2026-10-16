@@ -4,12 +4,18 @@ import {
 	type BrowserWindow,
 	type DidCreateWindowDetails,
 	type Event,
+	Menu,
 	WebContentsView,
 	type WebFrameMain,
 	app,
+	clipboard,
 	shell,
 	webContents,
 } from "electron";
+import {
+	type BrowserChord,
+	browserChordIntent,
+} from "../../shared/browser-chord";
 import { startConsoleHost } from "../console";
 import type { ConsoleCompletionNotifier } from "../console/completion";
 import { isConsoleDispatchMethod } from "../console/dispatch";
@@ -21,8 +27,16 @@ import {
 	attachWebauthnChooser,
 	installWebauthn,
 } from "../webauthn";
-import { type RaiseReport, presentPopupWindow } from "../window-raise";
+import {
+	type RaiseReport,
+	focusBrowserChordTarget,
+	presentPopupWindow,
+} from "../window-raise";
 import { ApprovalStore } from "./approvals";
+import {
+	browserChromeOwnsChord,
+	createBrowserChordRouter,
+} from "./browser-chord";
 import { CdpPool } from "./cdp";
 import {
 	type ConsentAttentionPayload,
@@ -46,6 +60,7 @@ import {
 import { startLogCapture, stopLogCapture } from "./log-capture";
 import { paneNavigationDirection } from "./navigation-chord";
 import { OwnershipLedger } from "./ownership";
+import { buildPageContextMenuItems } from "./page-context-menu";
 import { decidePopup, effectivePresentation } from "./popups";
 import {
 	BROWSER_PARTITION,
@@ -201,6 +216,7 @@ export interface StartBrowserHostOptions {
 }
 
 export interface BrowserHostHandle {
+	chords: ReturnType<typeof createBrowserChordRouter>;
 	host: BrowserHost;
 	port: number;
 	profileDir: string;
@@ -220,6 +236,27 @@ export interface BrowserHostHandle {
  * honest about the fact that this app runs one host.
  */
 let activeHost: BrowserHostHandle | null = null;
+
+/** Explicit menu clicks use the same owner decision as keys. Outside the browser
+ * the caller retains its original app-window action, never a global tab binding. */
+/** The pre-existing app zoom listener is registered before the browser hook.
+ * Route its browser-owned zoom keys here FIRST, including rejected repeats/IME,
+ * so they cannot change the app before our hook sees the same input. */
+export function routeBrowserZoomInput(
+	event: { preventDefault(): void },
+	input: import("../../shared/browser-chord").BrowserChordInput,
+): boolean {
+	const candidate = browserChordIntent(
+		{ ...input, isAutoRepeat: false, isComposing: false },
+		process.platform,
+	);
+	if (!candidate?.startsWith("zoom-") || !activeHost) return false;
+	return activeHost.chords.chromeInput(event, input);
+}
+
+export function routeBrowserMenu(intent: BrowserChord): boolean {
+	return activeHost?.chords.menu(intent) ?? false;
+}
 
 /** The in-flight stop, so a second caller waits for the first instead of
  * returning while the first is still writing the session-cookie snapshot. */
@@ -342,6 +379,14 @@ export function startBrowserHost(
 		expectedUrl: options.expectedUrl,
 		host: () => bindings.host?.() ?? null,
 		webauthn: () => bindings.webauthn?.() ?? null,
+		focusPage: () => {
+			const record = bindings.host?.()?.registry.activeTab;
+			const target = record?.presented
+				? webContents.fromId(record.view.webContents.id)
+				: null;
+			if (target)
+				focusBrowserChordTarget(options.window, target, options.windowShow);
+		},
 		availability: () => availability,
 		clearData: async (what) => {
 			if (!bindings.clearData)
@@ -810,6 +855,112 @@ async function initializeBrowserHost(
 			forgetSiteData: (origin) => clearOriginData(browserSession, origin),
 		});
 
+		// Logical ownership includes the standalone BODY / pane header. Native
+		// commands still require the real foreground window and visible chrome;
+		// a renderer report is never a substitute for those main-owned facts.
+		const ownsChrome = () =>
+			browserChromeOwnsChord({
+				logicalFocus: host.chordFocus,
+				chromeVisible: registry.chromeVisible,
+				window: options.window,
+			});
+		const chords = createBrowserChordRouter({
+			platform: process.platform,
+			ownsChrome,
+			ownsPage: () => {
+				const record = registry.activeTab;
+				return Boolean(
+					record?.presented &&
+						webContents.getFocusedWebContents()?.id ===
+							record.view.webContents.id,
+				);
+			},
+			reload: (hard) => {
+				host.reloadActive(hard);
+			},
+			zoom: (command) => {
+				const tabId = registry.activeTab?.tabId;
+				if (tabId !== undefined)
+					void host
+						.controlPage(tabId, command)
+						.catch((error) =>
+							log(
+								`Page zoom refused: ${error instanceof Error ? error.message : "unavailable"}`,
+							),
+						);
+			},
+			history: (direction) => {
+				host.historyActive(direction);
+			},
+			send: (message) =>
+				options.window.webContents.send("browser-chord", message),
+			focusChrome: () =>
+				focusBrowserChordTarget(
+					options.window,
+					options.window.webContents,
+					options.windowShow,
+				),
+		});
+		const onChromeInput = (event: Event, input: Electron.Input): void => {
+			// The app zoom listener may already have routed this through our menu
+			// door. Do not execute it twice; no timing/debounce heuristic is needed.
+			if (event.defaultPrevented) return;
+			const handled = chords.chromeInput(event, input);
+			// Per-input suppression, NOT a 150ms command debounce. Key-up or any
+			// unrelated key restores menu shortcuts. Focus departure resets too.
+			options.window.webContents.setIgnoreMenuShortcuts(handled);
+		};
+		const resetChordFocus = (): void => {
+			host.setChordFocus(false);
+		};
+		const resetMenuShortcutSuppression = () => {
+			if (!options.window.webContents.isDestroyed())
+				options.window.webContents.setIgnoreMenuShortcuts(false);
+		};
+		host.onChordFocusChanged = (focused) => {
+			if (!focused) resetMenuShortcutSuppression();
+		};
+		options.window.webContents.on("before-input-event", onChromeInput);
+		// OS blur is not departure from the browser's DOM owner. Native guards
+		// above refuse inactive windows; retaining the logical owner removes the
+		// reactivation/menu race against an asynchronous renderer focus report.
+		options.window.on("blur", resetMenuShortcutSuppression);
+		options.window.on("closed", resetChordFocus);
+		// A renderer that reloads (HMR, Cmd+R on a non-browser route) or crashes runs
+		// no unmount cleanup, so its `focusout`/`report(false)` never arrives and the
+		// flag would stay true while the window keeps focus: chat would then have
+		// Cmd+R/W/T/L claimed and sent to a renderer with no listener (review R7).
+		// Only a MAIN-FRAME, cross-document navigation counts; an in-page route
+		// change keeps the same renderer and its own focus reports.
+		const resetOnNavigation = (details: {
+			isMainFrame: boolean;
+			isSameDocument: boolean;
+		}): void => {
+			if (details.isMainFrame && !details.isSameDocument) resetChordFocus();
+		};
+		options.window.webContents.on("did-start-navigation", resetOnNavigation);
+		options.window.webContents.on("render-process-gone", resetChordFocus);
+		const detachChords = (): void => {
+			host.clearChordState();
+			options.window.webContents.removeListener(
+				"before-input-event",
+				onChromeInput,
+			);
+			options.window.removeListener("blur", resetMenuShortcutSuppression);
+			options.window.removeListener("closed", resetChordFocus);
+			options.window.webContents.removeListener(
+				"did-start-navigation",
+				resetOnNavigation,
+			);
+			options.window.webContents.removeListener(
+				"render-process-gone",
+				resetChordFocus,
+			);
+		};
+		// An initialization failure after wiring must not leave an old input
+		// router beside the next attempt's router or keep menu suppression alive.
+		rollback.add(detachChords);
+
 		// Restore BEFORE any interaction is possible, and after the session handlers
 		// exist (the user agent must already be set: Electron documents that
 		// `setUserAgent` does not affect existing WebContents, so a restore that beat
@@ -963,12 +1114,14 @@ async function initializeBrowserHost(
 		);
 
 		const handle: BrowserHostHandle = {
+			chords,
 			host,
 			port: server.port,
 			profileDir,
 			agentTabs: () => registry.agentTabCount(),
 			sessionCookies: () => restoreReport,
 			stop: async () => {
+				detachChords();
 				/*
 				 * The quit-time capture, taken BEFORE the views are destroyed
 				 * (`captureTabs` reads each view's live navigation history and a destroyed
@@ -1066,6 +1219,10 @@ async function initializeBrowserHost(
 					// No `preload`: a driven page has no bridge to anything.
 				},
 			});
+			// Native isolated zoom is per WebContents, not Chromium's origin-wide
+			// default. Cookies/policy still use the same persistent partition.
+			view.webContents.setZoomMode("isolated");
+			view.webContents.setZoomFactor(1);
 			window.contentView.addChildView(view);
 			// SIZED BEFORE THE FIRST HIDE, and the order is load-bearing: measured on
 			// Electron 44, a WebContentsView that is hidden first and sized afterwards
@@ -1174,6 +1331,53 @@ async function initializeBrowserHost(
 			contents.on("will-navigate", onWillNavigate);
 			contents.on("will-redirect", onWillNavigate);
 
+			// THE PAGE CONTEXT MENU (LOH-13 slice A, gap 3). A driven page is a
+			// native view above all renderer DOM, so this `context-menu` event
+			// is the only place a right-click over the page exists. The item
+			// RULE lives in `page-context-menu.ts` (pure, tested); this block
+			// only turns it into a native menu for THIS view - back/forward
+			// walk this contents' own history, not the active tab's, so a
+			// menu can never steer a tab it was not opened on. Read/navigation
+			// only: no downloads, no devtools, no consent actions.
+			contents.on("context-menu", (_event, params) => {
+				const navigation = contents.navigationHistory;
+				const items = buildPageContextMenuItems({
+					linkUrl: params.linkURL ?? "",
+					pageUrl: contents.getURL(),
+					canGoBack: navigation ? navigation.canGoBack() : false,
+					canGoForward: navigation ? navigation.canGoForward() : false,
+					isEditable: params.isEditable,
+					editFlags: params.editFlags,
+				});
+				const menu = Menu.buildFromTemplate(
+					items.map((item) => {
+						if (item.id === "separator") return { type: "separator" as const };
+						return {
+							label: item.label,
+							enabled: item.enabled,
+							click: () => {
+								if (item.id === "back") navigation?.goBack();
+								else if (item.id === "forward") navigation?.goForward();
+								else if (item.id === "reload") contents.reload();
+								else if (item.id === "copy-link")
+									clipboard.writeText(params.linkURL ?? "");
+								else if (item.id === "copy-page")
+									clipboard.writeText(contents.getURL());
+								else if (item.id === "cut") contents.cut();
+								else if (item.id === "copy") contents.copy();
+								else if (item.id === "paste") contents.paste();
+								else if (item.id === "select-all") contents.selectAll();
+								else if (item.id === "open-link")
+									void host
+										.openLinkInNewTab(params.linkURL ?? "")
+										.catch(() => {});
+							},
+						};
+					}),
+				);
+				menu.popup({ window: options.window });
+			});
+
 			/*
 			 * THE NAVIGATION CHORDS (issue #675), answered for the PANE's own history
 			 * while THIS view's webContents has focus. The window-level half — the
@@ -1193,10 +1397,11 @@ async function initializeBrowserHost(
 			 * renderer.
 			 */
 			contents.on("before-input-event", (event, input) => {
-				const direction = paneNavigationDirection(input);
-				if (!direction) return;
-				event.preventDefault();
-				host.historyActive(direction);
+				const record = registry.get(tabId);
+				const owns =
+					record === registry.activeTab && record?.presented === true;
+				const handled = chords.input(event, input, "page", owns);
+				contents.setIgnoreMenuShortcuts(handled);
 			});
 
 			// THE CHROME'S OWN FEEDBACK, and the reason it is wired per view rather than

@@ -1,3 +1,8 @@
+import { t } from "../../i18n";
+import type {
+	HumanTabAction,
+	HumanTabActionOutcome,
+} from "../../shared/browser-tab-action";
 import type { BrowserActionContext, HostFacts } from "./actions/context";
 import { requesterOf } from "./actions/context";
 import * as downloadActions from "./actions/download";
@@ -8,13 +13,17 @@ import * as pageActions from "./actions/page";
 import * as tabActions from "./actions/tabs";
 import * as uploadActions from "./actions/upload";
 import type { ConsentDecision } from "./approvals";
+import { ChromeTabOrder } from "./chrome-tab-order";
 import { BrowserHostError } from "./errors";
+import { PageControls, type PageZoomCommand } from "./page-controls";
 import { COMMAND_TIMEOUTS_S, type Method, PROTO_VERSION } from "./protocol";
 import type { ContentRect, TabRecord } from "./registry";
 import { redactToken, surfaceToken } from "./registry";
 import type { PersistedTab } from "./session-store";
 import { permittedScheme } from "./settle";
 import { safeHttpUrl } from "./vendor/driver/origin-policy";
+
+const DUPLICATABLE_WEB_URL = /^https?:\/\//i;
 
 /**
  * The command dispatcher, and the operations the app's own chrome uses.
@@ -320,7 +329,9 @@ export interface BrowserHostOptions {
 }
 
 export class BrowserHost implements BrowserActionContext {
+	private readonly chromeTabOrder = new ChromeTabOrder();
 	readonly registry: BrowserActionContext["registry"];
+	readonly pageControls: PageControls;
 	readonly cdp: BrowserActionContext["cdp"];
 	readonly approvals: BrowserActionContext["approvals"];
 	readonly ownership: BrowserActionContext["ownership"];
@@ -348,6 +359,7 @@ export class BrowserHost implements BrowserActionContext {
 
 	constructor(options: BrowserHostOptions) {
 		this.registry = options.registry;
+		this.pageControls = new PageControls(() => this.onChanged());
 		this.cdp = options.cdp;
 		this.approvals = options.approvals;
 		this.ownership = options.ownership;
@@ -386,6 +398,13 @@ export class BrowserHost implements BrowserActionContext {
 		params: Record<string, unknown>,
 		requestId: string,
 	): Promise<Record<string, unknown>> {
+		// Human find highlights can appear in native screenshots. This executes
+		// under the existing tab lane AFTER ownership authorization; human find IPC
+		// takes the same lane, so it cannot re-highlight during an agent capture.
+		if (typeof params.tab === "string" && TAB_SCOPED.has(method)) {
+			const record = this.registry.requireSurface(params.tab);
+			this.pageControls.prepareAgent(record);
+		}
 		if (!DOCUMENT_SCOPED.has(method))
 			return this.perform(method, params, requestId);
 		const token = String(params.tab ?? "");
@@ -736,40 +755,44 @@ export class BrowserHost implements BrowserActionContext {
 				: null;
 		const navigation = active?.view.webContents.navigationHistory;
 		return {
-			tabs: this.registry.snapshot().map((entry) => ({
-				tabId: entry.tabId,
-				title: this.titleForChrome(entry.title) || "New tab",
-				url: entry.url,
-				owner: entry.owner,
-				// WHICH CONVERSATION THIS TAB BELONGS TO, and the ONLY new field this
-				// change adds to the wire. `null` is a real and common value — a restored
-				// tab is nobody's (`registry.ts:231`), a user tab never handed over and
-				// opened from the route or a draft is nobody's — and it means "not any
-				// conversation's", which is why a conversation's scope shows it under no
-				// scope but `"all"` (spec 7.2).
-				//
-				// A TAB HANDED BACK KEEPS ITS CONVERSATION (review round 1, Q2):
-				// revocation restores `homeSessionId` rather than writing `null`, so the
-				// field is "which conversation this belongs to", not "which session is
-				// driving it" — the second question is `handedOver` and `owner`.
-				sessionId: entry.sessionId,
-				active: entry.active,
-				restored: entry.restored,
-				handedOver: entry.handedTo !== null,
-				// Per TAB, not only for the active one: a background tab whose load was
-				// refused has no other way to say so - its page area is blank and the
-				// band belongs to the active tab - so the strip carries the mark.
-				failed: this.loadFailures.has(entry.tabId),
-				// PER TAB, and it is the one projection field this feature adds. The strip
-				// could only ever see the ACTIVE tab's loading state before (`loading`
-				// below), so a background agent tab that is loading a page showed nothing
-				// at all - and since an agent tab is created non-active and only the active
-				// tab occupies the content rect (`registry.ts:492-503`), "nothing at all"
-				// was the whole of what the user saw of an agent's work. Read from the
-				// record rather than the snapshot: `snapshot()` is the diagnostic
-				// projection shared with `status`/`tabs`, and this field is chrome.
-				loading: this.tabLoading(entry.tabId),
-			})),
+			pageControls: this.pageControls.state(active),
+			tabs: this.chromeTabOrder
+				.project(this.registry.snapshot())
+				.map((entry, displayOrder) => ({
+					...(this.chromeTabOrder.hasCustomOrder ? { displayOrder } : {}),
+					tabId: entry.tabId,
+					title: this.titleForChrome(entry.title) || "New tab",
+					url: entry.url,
+					owner: entry.owner,
+					// WHICH CONVERSATION THIS TAB BELONGS TO, and the ONLY new field this
+					// change adds to the wire. `null` is a real and common value — a restored
+					// tab is nobody's (`registry.ts:231`), a user tab never handed over and
+					// opened from the route or a draft is nobody's — and it means "not any
+					// conversation's", which is why a conversation's scope shows it under no
+					// scope but `"all"` (spec 7.2).
+					//
+					// A TAB HANDED BACK KEEPS ITS CONVERSATION (review round 1, Q2):
+					// revocation restores `homeSessionId` rather than writing `null`, so the
+					// field is "which conversation this belongs to", not "which session is
+					// driving it" — the second question is `handedOver` and `owner`.
+					sessionId: entry.sessionId,
+					active: entry.active,
+					restored: entry.restored,
+					handedOver: entry.handedTo !== null,
+					// Per TAB, not only for the active one: a background tab whose load was
+					// refused has no other way to say so - its page area is blank and the
+					// band belongs to the active tab - so the strip carries the mark.
+					failed: this.loadFailures.has(entry.tabId),
+					// PER TAB, and it is the one projection field this feature adds. The strip
+					// could only ever see the ACTIVE tab's loading state before (`loading`
+					// below), so a background agent tab that is loading a page showed nothing
+					// at all - and since an agent tab is created non-active and only the active
+					// tab occupies the content rect (`registry.ts:492-503`), "nothing at all"
+					// was the whole of what the user saw of an agent's work. Read from the
+					// record rather than the snapshot: `snapshot()` is the diagnostic
+					// projection shared with `status`/`tabs`, and this field is chrome.
+					loading: this.tabLoading(entry.tabId),
+				})),
 			activeTabId: activeRecord?.tabId ?? null,
 			// The download surface's facts (§16.4): what is in flight, where it went and
 			// what was refused, so the chrome row renders from the host's own state rather
@@ -856,17 +879,202 @@ export class BrowserHost implements BrowserActionContext {
 	 * one field.
 	 */
 	async newTab(sessionId?: string | null): Promise<Record<string, unknown>> {
-		const record = this.registry.create({
-			owner: "user",
-			sessionId: sessionId ?? null,
-		});
-		await record.view.webContents.loadURL("about:blank");
-		await this.cdp.attach(record.view.webContents);
+		await this.createUserTab(sessionId ?? null);
+		return this.chromeState();
+	}
+
+	/** Human duplicates copy URL ONLY. Session attribution is not a capability,
+	 * but copying it would still put an agent's duplicate inside its conversation.
+	 * User records have no nonce/handover; an explicit later handover is the only
+	 * way they can become agent-drivable. Failure retains that plain user tab. */
+	async actOnChromeTab(
+		tabId: number,
+		action: HumanTabAction,
+	): Promise<HumanTabActionOutcome> {
+		const record = this.registry.get(tabId);
+		if (!record || record.view.webContents.isDestroyed())
+			return {
+				status: "failed",
+				action,
+				tabId: null,
+				error: { code: "tab_closed", message: t("ui.browser.chrome.tab_gone") },
+			};
+		let url = "";
+		let destinationId: number | null = action === "reload" ? tabId : null;
+		try {
+			url = record.view.webContents.getURL();
+			if (
+				action === "duplicate" &&
+				url !== "about:blank" &&
+				!DUPLICATABLE_WEB_URL.test(url)
+			)
+				return {
+					status: "failed",
+					action,
+					tabId: null,
+					error: {
+						code: "unsupported_page",
+						message: t("ui.browser.chrome.duplicate_refused"),
+					},
+				};
+
+			if (action === "reload") record.view.webContents.reload();
+			else {
+				// One initial load on the exact newly-created record, not a redundant
+				// blank load followed by a target load. Publish its identity before any
+				// await so a failed load can be reported without deleting/losing the tab.
+				const copy = await this.createUserTab(null, url, (created) => {
+					destinationId = created.tabId;
+				});
+				destinationId = copy.tabId;
+			}
+			this.onChanged();
+			return { status: "completed", action, tabId: destinationId as number };
+		} catch {
+			if (destinationId !== null && action === "duplicate")
+				this.recordLoadFailure(destinationId, {
+					code: -2,
+					description: "DUPLICATE_NAVIGATION_FAILED",
+					url,
+				});
+			// Operational failure is data, not an uncaught ipcMain handler rejection.
+			// The UI uses the established action-error/toast path; no URL/token detail
+			// is interpolated into this message or a new log channel.
+			return {
+				status: "failed",
+				action,
+				tabId: destinationId,
+				error: {
+					code: "navigation_failed",
+					message: t("ui.browser.chrome.operation_failed", { action }),
+				},
+			};
+		}
+	}
+
+	reorderChromeTabs(ids: number[]): Record<string, unknown> {
+		if (!this.chromeTabOrder.reorder(this.registry.snapshot(), ids))
+			throw new Error(t("ui.browser.chrome.invalid_order"));
 		this.onChanged();
 		return this.chromeState();
 	}
 
+	/** `newTab`'s body, returning the record so `reopenClosed` can navigate the tab
+	 * it created rather than whichever tab is active by the time the await ends. */
+	private async createUserTab(
+		sessionId: string | null,
+		initialUrl = "about:blank",
+		onCreated?: (record: TabRecord) => void,
+	): Promise<TabRecord> {
+		const record = this.registry.create({
+			owner: "user",
+			sessionId,
+		});
+		onCreated?.(record);
+		await record.view.webContents.loadURL(initialUrl);
+		await this.cdp.attach(record.view.webContents);
+		this.onChanged();
+		return record;
+	}
+
+	/** Main owns this short-lived UI focus fact; it conveys no page capability. */
+	chordFocus = false;
+	onChordFocusChanged?: (focused: boolean) => void;
+	/** An explicit tab id fences queued chrome intents: a switch between key
+	 * delivery and IPC must never search/zoom the newly active tab instead. */
+	async controlPage(
+		tabId: number,
+		action: "open" | "close" | "search" | PageZoomCommand,
+		query = "",
+		forward = true,
+		next = false,
+	): Promise<Record<string, unknown>> {
+		return this.registry.lane(tabId, async () => {
+			const active = this.registry.activeTab;
+			if (
+				!active ||
+				active.tabId !== tabId ||
+				!active.presented ||
+				active.view.webContents.isDestroyed()
+			)
+				throw new Error("The browser tab is no longer presented.");
+			if (action === "open") this.pageControls.open(active);
+			else if (action === "close") this.pageControls.clear();
+			else if (action === "search")
+				this.pageControls.search(active, query, forward, next);
+			else this.pageControls.zoom(active, action);
+			this.onChanged();
+			return this.chromeState();
+		});
+	}
+	setChordFocus(focused: boolean): void {
+		this.chordFocus = focused;
+		this.onChordFocusChanged?.(focused);
+	}
+	/** Only user URLs survive a close, never a capability, page state or nonce.
+	 * Conversation attribution is retained only to find the appropriate scope. */
+	private closedUserTabs: Array<{ url: string; sessionId: string | null }> = [];
+	private rememberClosed(tabId: number): void {
+		const record = this.registry.get(tabId);
+		if (!record || record.owner !== "user" || record.handedTo !== null) return;
+		const url = record.view.webContents.getURL();
+		try {
+			if (!permittedScheme(new URL(url))) return;
+		} catch {
+			return;
+		}
+		this.closedUserTabs.push({ url, sessionId: record.homeSessionId });
+		if (this.closedUserTabs.length > 10) this.closedUserTabs.shift();
+	}
+	clearChordState(): void {
+		this.pageControls.clear();
+		this.setChordFocus(false);
+		this.closedUserTabs = [];
+	}
+	/**
+	 * Forget remembered closes. Called when the user clears browsing data or forgets
+	 * a site, because a closed tab's URL can carry a one-time token or name a page
+	 * the user just asked this app to erase: Cmd+Shift+T must not resurrect it
+	 * (review R3). `origin` filters to one site; omitted forgets every entry. Clearing
+	 * only cookies or only the cache leaves the stack alone: neither erases what the
+	 * user visited, and a logged-out reopen simply lands on the site's own login.
+	 */
+	forgetClosedTabs(origin?: string): void {
+		this.closedUserTabs = origin
+			? this.closedUserTabs.filter((entry) => {
+					try {
+						return new URL(entry.url).origin !== origin;
+					} catch {
+						return false;
+					}
+				})
+			: [];
+	}
+	async reopenClosed(
+		sessionId: string | null,
+	): Promise<Record<string, unknown>> {
+		// An all-tabs surface may reopen the newest user close; a conversation
+		// cannot pull another conversation's URL into its scoped strip.
+		const index = this.closedUserTabs.findLastIndex(
+			(entry) => sessionId === null || entry.sessionId === sessionId,
+		);
+		if (index < 0) return this.chromeState();
+		// TAKEN BEFORE ANY AWAIT (review R4). Two quick reopens, or a close landing
+		// during the awaits below, would otherwise splice by a stale index and drop
+		// the wrong entry or reopen the same one twice. Once taken, the entry is the
+		// caller's: a navigation that then fails leaves the tab on its failure page,
+		// exactly as a typed URL would, instead of a blank tab plus an entry that
+		// makes every further Cmd+Shift+T add another blank tab.
+		const [entry] = this.closedUserTabs.splice(index, 1);
+		const record = await this.createUserTab(sessionId ?? entry.sessionId);
+		// The record this call created, never `registry.activeTab`: a tab the user
+		// clicked during the await must not be the one navigated.
+		await record.view.webContents.loadURL(entry.url);
+		this.onChanged();
+		return this.chromeState();
+	}
 	closeTab(tabId: number): Record<string, unknown> {
+		this.rememberClosed(tabId);
 		this.dropReceipt(tabId);
 		this.loadFailures.delete(tabId);
 		this.registry.destroy(tabId);
@@ -900,6 +1108,7 @@ export class BrowserHost implements BrowserActionContext {
 						.filter((record) => record.sessionId === intent.sessionId)
 						.map((record) => record.tabId);
 		for (const tabId of tabIds) {
+			this.rememberClosed(tabId);
 			// Per tab, before the batch drops them: a pending receipt and a last load
 			// failure are keyed by tab id, and both are stale the moment the tab is gone.
 			this.dropReceipt(tabId);
@@ -1266,8 +1475,59 @@ export class BrowserHost implements BrowserActionContext {
 		return this.chromeState();
 	}
 
-	reloadActive(): Record<string, unknown> {
-		this.registry.activeTab?.view.webContents.reload();
+	/**
+	 * Home (LOH-13 slice A): return the ACTIVE tab to the browser's start
+	 * state. The start state is `about:blank` — what `createUserTab` opens a
+	 * new tab on and what the URL bar renders as an empty bar — so Home is a
+	 * load of that one allowed `about:` URL, not a navigation to an origin.
+	 * It deliberately bypasses `navigateActive`'s http(s)-only rule: that rule
+	 * guards typed/agent-reachable origins, and `about:blank` reaches no
+	 * origin at all (the same exception `refusesNavigation` makes in
+	 * `index.ts`). No consent is involved, for the same reason a typed URL
+	 * needs none: this is the user's own press.
+	 */
+	async goHomeActive(): Promise<Record<string, unknown>> {
+		const record = this.registry.activeTab;
+		if (!record)
+			throw new BrowserHostError("tab_closed", "no browser tab is open");
+		await record.view.webContents.loadURL("about:blank");
+		this.onChanged();
+		return this.chromeState();
+	}
+
+	/**
+	 * Open a link the user right-clicked in a NEW user tab (LOH-13 slice A,
+	 * page context menu). Human-only by construction: it is reached from the
+	 * native context menu in `index.ts`, never from IPC or the agent RPC, and
+	 * the tab it creates is a plain user tab (no nonce, no handover), so an
+	 * agent still cannot drive it without an explicit hand-over. The scheme
+	 * rule is the typed-navigation rule (`permittedScheme`): only http(s)
+	 * links open, so a `file:`/`javascript:` link cannot ride this path onto
+	 * the local filesystem.
+	 */
+	async openLinkInNewTab(rawUrl: string): Promise<Record<string, unknown>> {
+		let url: URL;
+		try {
+			url = new URL(rawUrl);
+		} catch {
+			throw new BrowserHostError("nav_failed", "that is not a URL");
+		}
+		if (!permittedScheme(url)) {
+			throw new BrowserHostError(
+				"nav_failed",
+				"only http:// and https:// can be opened",
+			);
+		}
+		await this.createUserTab(null, url.href);
+		return this.chromeState();
+	}
+
+	reloadActive(hard = false): Record<string, unknown> {
+		const contents = this.registry.activeTab?.view.webContents;
+		// Falls back to a plain reload rather than doing nothing: a hard reload that
+		// silently vanishes is worse than one that keeps the cache (review R10).
+		if (hard && contents?.reloadIgnoringCache) contents.reloadIgnoringCache();
+		else contents?.reload();
 		return this.chromeState();
 	}
 
@@ -1304,6 +1564,8 @@ export class BrowserHost implements BrowserActionContext {
 	 * sees the nonce: it travels to the session through `tabs`, which is what keeps
 	 * this the one authority transfer rather than an exposure (design 6.3, 11.7). */
 	handOver(tabId: number, sessionId: string): Record<string, unknown> {
+		const record = this.registry.get(tabId);
+		if (record) this.pageControls.prepareAgent(record);
 		// The hand-over re-mints the nonce, so the token the receipt is keyed on
 		// stops existing here; dropping it now keeps the map bounded by LIVE tabs
 		// rather than by every token a tab has ever had.
@@ -1379,6 +1641,7 @@ export class BrowserHost implements BrowserActionContext {
 		const origin = safeHttpUrl(rawOrigin).origin;
 		const removed = this.approvals.revokeOrigin(origin);
 		await this.forgetSiteData(origin);
+		this.forgetClosedTabs(origin);
 		this.log(`[browser] forgot ${origin}: ${removed} approval(s) revoked`);
 		this.onChanged();
 		return { origin, removed, ...this.chromeState() };

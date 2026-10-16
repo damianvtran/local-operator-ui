@@ -1,0 +1,58 @@
+{
+	"producer_ref": "bc3d68bf3d9ad4661aeba306c602f2f6e17e65e2",
+	"producer_source_sha256": {
+		"types": "0e5090dea0730de5e5096de62e27551e2e3ada6118c4bb7fed234472c7db0899",
+		"effective": "ba5aaafdacaf0e1c29d96d0f2acd234e4bc1d0e5208c36c9381feff15261b40a"
+	},
+	"method": "Immutable note_resolution + effective_access; synthetic holder eligible, status-client and explicit-root seams only; contexts are keyless; no live access",
+	"cases": [
+		{
+			"cause": "no_local_credential",
+			"eligible": true,
+			"synthetic_owner_reachable": true,
+			"frontend": {
+				"selected_model": {
+					"provider": "openai",
+					"model_id": "gpt-6.1-sol",
+					"reasoning_effort": "high"
+				},
+				"model_access": {
+					"state": "signed_out",
+					"effective_state": "withdrawn",
+					"provider": "openai",
+					"label": "OpenAI",
+					"owner_device": "synthetic-owner",
+					"owner_label": "Work laptop",
+					"observed_at": 1791926283,
+					"last_grant_at": 1791926163,
+					"last_grant_expires_at": 1791926883.0
+				}
+			},
+			"recovered_without_permission_change": "effective_borrow"
+		},
+		{
+			"cause": "refresh_failed",
+			"eligible": true,
+			"synthetic_owner_reachable": true,
+			"frontend": {
+				"selected_model": {
+					"provider": "openai",
+					"model_id": "gpt-6.1-sol",
+					"reasoning_effort": "high"
+				},
+				"model_access": {
+					"state": "temporarily_unavailable",
+					"effective_state": "owner_unavailable",
+					"provider": "openai",
+					"label": "OpenAI",
+					"owner_device": "synthetic-owner",
+					"owner_label": "Work laptop",
+					"observed_at": 1791926283,
+					"last_grant_at": 1791926163,
+					"last_grant_expires_at": 1791926883.0
+				}
+			},
+			"recovered_without_permission_change": "effective_borrow"
+		}
+	]
+}

@@ -1,0 +1,8 @@
+{
+	"ui.common.loading.page": {
+		"role": "spinner accessible status label",
+		"tone": "Brief ongoing action, not a page title.",
+		"note": "Route-level lazy page code is being loaded. The already-mounted shell remains available; this does not describe a backend connection failure.",
+		"length": "Two-word status; no explanatory sentence."
+	}
+}

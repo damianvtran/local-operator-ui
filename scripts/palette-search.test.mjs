@@ -55,13 +55,12 @@ const {
  */
 const RECENTS_JOIN_CALL =
 	/chatRecentsOfRow\(\s*row,\s*conversationRecents,\s*displayedSessionId,\s*archiveEnabled,\s*archiveFacts,?\s*\)/;
-/* The facts are read from the store, and are an input of the `chatItems` memo:
- * without the dependency the memo would not rebuild when an archive press settles
- * its fact, which is the whole of agent review round 2's R2-1. */
+/* The facts are read from the store and the copy-bearing chat projection runs
+ * on each hook repaint. Unlike a memo, this cannot retain the previous locale or
+ * a settled archive fact; the same tested row-to-ring helper still owns the join. */
 const ARCHIVE_FACTS_SELECTOR =
 	/const archiveFacts = useCanonicalSessionsStore\(\s*\(state\) => state\.archiveFacts,?\s*\);/;
-const ARCHIVE_FACTS_MEMO_DEPENDENCY =
-	/archiveEnabled,\s*archiveFacts,?\s*\]\);/;
+const CHAT_ITEMS_RENDER_PROJECTION = /const chatItems = \(\(\) => \{/;
 const ARCHIVE_CAPABILITY_GATE =
 	/desktopFeatureEnabled\(\s*capabilities\.data,\s*"session_archive",\s*\)/;
 const RECENTS_FIELDS_FROM_HELPER =
@@ -1436,7 +1435,7 @@ test("the Recents pin's row facts come from the one tested helper, over the side
 	/*
 	 * The source hook is a React module this node harness cannot mount, so the
 	 * half that CAN be pinned is that the seam exists rather than being re-derived
-	 * inline: the memo calls `chatRecentsOfRow` - whose in-ring/not, duplicate,
+	 * inline: the render projection calls `chatRecentsOfRow` - whose in-ring/not, duplicate,
 	 * current and archived cases are exercised for real in
 	 * `scripts/palette-recents.test.mjs` - and the archive fact is read from the
 	 * same capability the sidebar's own list reads.
@@ -1463,8 +1462,8 @@ test("the Recents pin's row facts come from the one tested helper, over the side
 	);
 	assert.match(
 		source,
-		ARCHIVE_FACTS_MEMO_DEPENDENCY,
-		"the facts must be a dependency of the chatItems memo, or a settled press never rebuilds it",
+		CHAT_ITEMS_RENDER_PROJECTION,
+		"copy-bearing chat rows must rebuild on hook repaint, including locale and settled archive facts",
 	);
 });
 

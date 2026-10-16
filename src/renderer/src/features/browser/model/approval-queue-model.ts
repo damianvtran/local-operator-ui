@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SurfaceScope } from "./tab-index-model";
 
@@ -176,11 +177,12 @@ export function liveApprovalCount(
 export function remainingLabel(expiresAt: number, now: number): string | null {
 	const left = expiresAt - now;
 	if (left <= 0) return null;
-	if (left < UNDER_A_MINUTE_MS) return "expires in under a minute";
+	if (left < UNDER_A_MINUTE_MS)
+		return t("ui.browser.approval_queue_model.expires_in_under_a_minute");
 	const minutes = Math.ceil(left / MINUTE_MS);
-	return minutes === 1
-		? "expires in 1 minute"
-		: `expires in ${minutes} minutes`;
+	return t("ui.browser.approval_queue_model.expires_minutes", {
+		count: minutes,
+	});
 }
 
 /** The numbered, timed list every surface renders from (§5.2). */
@@ -326,15 +328,15 @@ export function approvalScopeLabel(
 ): string {
 	switch (scope) {
 		case "origin":
-			return "This site";
+			return t("ui.browser.approval_queue_model.this_site");
 		case "domain":
-			return "Whole domain";
+			return t("ui.browser.approval_queue_model.whole_domain");
 		case "host":
-			return "This host";
+			return t("ui.browser.approval_queue_model.this_host");
 		case "deny":
-			return "Denied";
+			return t("ui.browser.approval_queue_model.denied");
 		case "session":
-			return "This session only";
+			return t("ui.browser.approval_queue_model.this_session_only");
 	}
 }
 

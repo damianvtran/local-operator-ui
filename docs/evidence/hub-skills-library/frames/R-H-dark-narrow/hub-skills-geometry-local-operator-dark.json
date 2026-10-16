@@ -1,0 +1,41 @@
+{
+  "size": "800x900",
+  "theme": "local-operator-dark",
+  "hasOrgChip": true,
+  "geometry": {
+    "library": {
+      "x": 80,
+      "y": 225,
+      "w": 688,
+      "h": 722,
+      "sw": 688,
+      "cw": 688
+    },
+    "detail": {
+      "x": 80,
+      "y": 503,
+      "w": 688,
+      "h": 404,
+      "sw": 688,
+      "cw": 688
+    },
+    "consent": {
+      "x": 144,
+      "y": 330,
+      "w": 512,
+      "h": 240,
+      "sw": 510,
+      "cw": 510
+    },
+    "publication": {
+      "x": 80,
+      "y": 653,
+      "w": 688,
+      "h": 422,
+      "sw": 688,
+      "cw": 688
+    }
+  },
+  "requestedSize": "720x900",
+  "actualSizeProvenance": "Derived from 1600x1800 PNG and production WINDOW_MIN_WIDTH=800 clamp; no live innerWidth/DPR was recorded in this run. DPR2 is inferred, not measured."
+}

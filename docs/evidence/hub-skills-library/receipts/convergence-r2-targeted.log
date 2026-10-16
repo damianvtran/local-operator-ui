@@ -1,0 +1,734 @@
+✔ every organization operation is named in both closed vocabularies (3.230875ms)
+✔ the publish and team ops are in the desktop request union (0.430125ms)
+✔ an org target rides the publish query; no target sends no query (1.053791ms)
+✔ the team pull names the document, and the tenant only when known (0.072875ms)
+(node:65095) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ the membership matrix matches the server's own rule (0.328833ms)
+✔ a plan-active home tenant is offered, and a plan-less one is not (0.698709ms)
+✔ the list hook reads the org route and keys it separately when given a tenant (107.788209ms)
+✔ the list hook is the public read when it is not given a tenant (5.849125ms)
+✔ the org list is not fetched on window focus, like the hub's (0.169833ms)
+✔ the frozen org codes classify as a state, and nothing else does (47.670791ms)
+✔ every org refusal has a treatment, and only the plan one offers a retry (40.565583ms)
+✔ the surfaces hide the public-only affordances for an org row (1.354291ms)
+✔ the hub page scopes its read and renders the org states (1.048041ms)
+✔ the publish dialog offers the org target and disables a plan-blocked one (0.820333ms)
+✔ the dialog's title and submit label describe the selected target (0.439458ms)
+✔ the dialog says why there is no picker, and names the right remedy (0.148334ms)
+✔ a backend without the org capability is told to update, not to retry (39.269708ms)
+✔ the org capability key is a typed member of the feature union (1.489166ms)
+✔ a half-specified publication target is refused, not read as the public hub (1.394541ms)
+✔ a pulled team's report reads `invalid_name` as the boolean the wire sends (0.139292ms)
+✔ held records never cross a scope flip (6.283ms)
+✔ both refusal sections agree on severity, and both retries are filled controls (4.802375ms)
+✔ the roster renders a coded pull refusal through the shared treatment (0.638416ms)
+✔ the details page reads memberships only for an org row (0.263667ms)
+✔ the plan remedy names the Team plan and the console (0.994208ms)
+✔ the shipped pull hook toasts the real responses and crashes on neither (28.775916ms)
+✔ the treatment speaks the puller's verbs when the roster asks (28.095458ms)
+✔ the roster honours its actions, and renders no others (0.470833ms)
+✔ a falsy-but-defined tenantId is refused at both boundaries (0.276792ms)
+✔ the org capability notice is a warning, like its four siblings (0.233125ms)
+✔ each scope reads its own team list, and neither reads the other's (1.061209ms)
+✔ the status sentence names the scope, and the pager keeps its labels (0.557166ms)
+✔ the author line drops the email fallback (0.198541ms)
+✔ no surface still says the public hub lists agents only (4.803875ms)
+✔ the pager and the roster hand focus to a surviving control (0.153542ms)
+✔ every agent-hub-page state holds one frame per sweep theme (4.255333ms)
+(node:65116) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ the display-name rule is the runtime's, case by case (28.848ms)
+✔ listPublicTeams asks the hub's public route, anonymously, and paginates (13.4935ms)
+✔ getPublicTeam reads one document by id, and encodes it into the path (12.556083ms)
+✔ a hub failure is reported as a hub failure, never as the local server (12.90475ms)
+✔ a refusal and a transport failure raise typed errors, and are told apart (12.776083ms)
+✔ the library paints the display names and the rows' own facts (1328.071625ms)
+✔ the search narrows the rendered rows without a second request (21.603541ms)
+✔ opening a row is the ONE brief read the list form omits (14.676083ms)
+✔ clearing the search returns the caret to the box (11.999166ms)
+Pulling an organization team failed: DesktopControlError: Unauthorized
+    at controlRefusal (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_public-teams-mount-65116.mjs:5548:10)
+    at async Object.pullOrgTeamFromRadient (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/_public-teams-mount-65116.mjs:5942:29) {
+  status: 401,
+  cause: undefined,
+  code: undefined,
+  retryAfterMs: undefined,
+  detail: undefined
+}
+✔ a refused pull renders its sentence beside the control, not under the brief (27.0355ms)
+✔ the prose about a name paints the derived form too (0.4075ms)
+✔ the hook registers the key its own builder produces (5.855625ms)
+(node:65125) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ the list hook registers the key its own builder produces, and invalidation reaches it (197.841708ms)
+✔ the list key builder is faithful, and stable across calls (78.025833ms)
+✔ the batched status key carries the ids and is patched in place (87.33575ms)
+✔ the per-card fan-out's hooks are gone, and nothing references them (371.31475ms)
+✔ the page reads the viewer's state once, and never on window focus (0.63425ms)
+✔ the batched op is in both closed vocabularies the request passes through (0.521959ms)
+✔ the page issues one teams read per org scope and none without a tenant (0.472708ms)
+✔ address draft belongs to its tab: a chord-driven tab change drops it and blur never navigates the new tab (285.788459ms)
+Warning: An update to Tooltip inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at Tooltip (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipProvider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+    at TooltipProvider (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), TooltipProvider:896:3)
+    at Tooltip (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), Tooltip:961:3)
+    at div
+    at BrowserUrlBar (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), <anonymous>:2182:3)
+Warning: An update to Presence inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipPortal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:268:11)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Popper (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+    at Tooltip (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipProvider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+    at TooltipProvider (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), TooltipProvider:896:3)
+    at Tooltip (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), Tooltip:961:3)
+    at div
+    at BrowserUrlBar (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), <anonymous>:2182:3)
+Warning: An update to ForwardRef(Portal) inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at Portal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-portal@1.1.17_@types+react-dom@18.3.5_@types+react@18.3.18__@types+reac_e1ab44dcd0dcfc8aedd59964c741ad4a/node_modules/@radix-ui/react-portal/dist/index.js:48:24)
+    at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipPortal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:268:11)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Popper (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+    at Tooltip (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipProvider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+    at TooltipProvider (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), TooltipProvider:896:3)
+    at Tooltip (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), Tooltip:961:3)
+    at div
+    at BrowserUrlBar (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), <anonymous>:2182:3)
+Warning: An update to ForwardRef(DismissableLayer) inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at DismissableLayer (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-dismissable-layer@1.1.19_@types+react-dom@18.3.5_@types+react@18.3.18___e263e6a7af26df53477d756ce352ea78/node_modules/@radix-ui/react-dismissable-layer/dist/index.js:69:7)
+    at TooltipContentImpl (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:347:7)
+    at TooltipContentHoverable (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:282:57)
+    at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at TooltipContent (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:275:64)
+    at eval (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), TooltipContent:913:56)
+    at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+    at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+    at Portal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-portal@1.1.17_@types+react-dom@18.3.5_@types+react@18.3.18__@types+reac_e1ab44dcd0dcfc8aedd59964c741ad4a/node_modules/@radix-ui/react-portal/dist/index.js:48:24)
+    at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipPortal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:268:11)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Popper (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+    at Tooltip (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipProvider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+    at TooltipProvider (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), TooltipProvider:896:3)
+    at Tooltip (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), Tooltip:961:3)
+    at div
+    at BrowserUrlBar (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), <anonymous>:2182:3)
+Warning: An update to Presence inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at TooltipContent (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:275:64)
+    at eval (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), TooltipContent:913:56)
+    at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+    at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+    at Portal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-portal@1.1.17_@types+react-dom@18.3.5_@types+react@18.3.18__@types+reac_e1ab44dcd0dcfc8aedd59964c741ad4a/node_modules/@radix-ui/react-portal/dist/index.js:48:24)
+    at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipPortal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:268:11)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Popper (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+    at Tooltip (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipProvider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+    at TooltipProvider (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), TooltipProvider:896:3)
+    at Tooltip (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), Tooltip:961:3)
+    at div
+    at BrowserUrlBar (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), <anonymous>:2182:3)
+Warning: An update to Presence inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipPortal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:268:11)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Popper (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+    at Tooltip (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipProvider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+    at TooltipProvider (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), TooltipProvider:896:3)
+    at Tooltip (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), Tooltip:961:3)
+    at div
+    at BrowserUrlBar (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), <anonymous>:2182:3)
+Warning: An update to ForwardRef(PopperContent) inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at PopperContent (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:128:7)
+    at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+    at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+    at DismissableLayer (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-dismissable-layer@1.1.19_@types+react-dom@18.3.5_@types+react@18.3.18___e263e6a7af26df53477d756ce352ea78/node_modules/@radix-ui/react-dismissable-layer/dist/index.js:69:7)
+    at TooltipContentImpl (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:347:7)
+    at TooltipContentHoverable (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:282:57)
+    at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at TooltipContent (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:275:64)
+    at eval (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), TooltipContent:913:56)
+    at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+    at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+    at Portal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-portal@1.1.17_@types+react-dom@18.3.5_@types+react@18.3.18__@types+reac_e1ab44dcd0dcfc8aedd59964c741ad4a/node_modules/@radix-ui/react-portal/dist/index.js:48:24)
+    at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipPortal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:268:11)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Popper (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+    at Tooltip (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipProvider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+    at TooltipProvider (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), TooltipProvider:896:3)
+    at Tooltip (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), Tooltip:961:3)
+    at div
+    at BrowserUrlBar (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), <anonymous>:2182:3)
+Warning: An update to ForwardRef(PopperContent) inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at PopperContent (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:128:7)
+    at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+    at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+    at DismissableLayer (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-dismissable-layer@1.1.19_@types+react-dom@18.3.5_@types+react@18.3.18___e263e6a7af26df53477d756ce352ea78/node_modules/@radix-ui/react-dismissable-layer/dist/index.js:69:7)
+    at TooltipContentImpl (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:347:7)
+    at TooltipContentHoverable (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:282:57)
+    at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at TooltipContent (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:275:64)
+    at eval (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), TooltipContent:913:56)
+    at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+    at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+    at Portal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-portal@1.1.17_@types+react-dom@18.3.5_@types+react@18.3.18__@types+reac_e1ab44dcd0dcfc8aedd59964c741ad4a/node_modules/@radix-ui/react-portal/dist/index.js:48:24)
+    at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipPortal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:268:11)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Popper (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+    at Tooltip (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipProvider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+    at TooltipProvider (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), TooltipProvider:896:3)
+    at Tooltip (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), Tooltip:961:3)
+    at div
+    at BrowserUrlBar (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), <anonymous>:2182:3)
+Warning: An update to ForwardRef(PopperContent) inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at PopperContent (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:128:7)
+    at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+    at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+    at DismissableLayer (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-dismissable-layer@1.1.19_@types+react-dom@18.3.5_@types+react@18.3.18___e263e6a7af26df53477d756ce352ea78/node_modules/@radix-ui/react-dismissable-layer/dist/index.js:69:7)
+    at TooltipContentImpl (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:347:7)
+    at TooltipContentHoverable (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:282:57)
+    at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at TooltipContent (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:275:64)
+    at eval (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), TooltipContent:913:56)
+    at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+    at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+    at Portal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-portal@1.1.17_@types+react-dom@18.3.5_@types+react@18.3.18__@types+reac_e1ab44dcd0dcfc8aedd59964c741ad4a/node_modules/@radix-ui/react-portal/dist/index.js:48:24)
+    at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipPortal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:268:11)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Popper (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+    at Tooltip (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipProvider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+    at TooltipProvider (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), TooltipProvider:896:3)
+    at Tooltip (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), Tooltip:961:3)
+    at div
+    at BrowserUrlBar (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), <anonymous>:2182:3)
+Warning: An update to Popper inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at Popper (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+    at Tooltip (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipProvider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+    at TooltipProvider (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), TooltipProvider:896:3)
+    at Tooltip (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), Tooltip:961:3)
+    at div
+    at BrowserUrlBar (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), <anonymous>:2182:3)
+Warning: An update to Presence inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at TooltipContent (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:275:64)
+    at eval (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), TooltipContent:913:56)
+    at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+    at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+    at Portal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-portal@1.1.17_@types+react-dom@18.3.5_@types+react@18.3.18__@types+reac_e1ab44dcd0dcfc8aedd59964c741ad4a/node_modules/@radix-ui/react-portal/dist/index.js:48:24)
+    at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipPortal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:268:11)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Popper (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+    at Tooltip (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipProvider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+    at TooltipProvider (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), TooltipProvider:896:3)
+    at Tooltip (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), Tooltip:961:3)
+    at div
+    at BrowserUrlBar (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), <anonymous>:2182:3)
+Warning: An update to ForwardRef(PopperContent) inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at PopperContent (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:128:7)
+    at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+    at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+    at DismissableLayer (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-dismissable-layer@1.1.19_@types+react-dom@18.3.5_@types+react@18.3.18___e263e6a7af26df53477d756ce352ea78/node_modules/@radix-ui/react-dismissable-layer/dist/index.js:69:7)
+    at TooltipContentImpl (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:347:7)
+    at TooltipContentHoverable (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:282:57)
+    at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at TooltipContent (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:275:64)
+    at eval (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), TooltipContent:913:56)
+    at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+    at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+    at Portal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-portal@1.1.17_@types+react-dom@18.3.5_@types+react@18.3.18__@types+reac_e1ab44dcd0dcfc8aedd59964c741ad4a/node_modules/@radix-ui/react-portal/dist/index.js:48:24)
+    at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipPortal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:268:11)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Popper (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+    at Tooltip (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipProvider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+    at TooltipProvider (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), TooltipProvider:896:3)
+    at Tooltip (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), Tooltip:961:3)
+    at div
+    at BrowserUrlBar (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), <anonymous>:2182:3)
+Warning: An update to ForwardRef(DismissableLayer) inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at DismissableLayer (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-dismissable-layer@1.1.19_@types+react-dom@18.3.5_@types+react@18.3.18___e263e6a7af26df53477d756ce352ea78/node_modules/@radix-ui/react-dismissable-layer/dist/index.js:69:7)
+    at TooltipContentImpl (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:347:7)
+    at TooltipContentHoverable (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:282:57)
+    at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at TooltipContent (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:275:64)
+    at eval (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), TooltipContent:913:56)
+    at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+    at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+    at Portal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-portal@1.1.17_@types+react-dom@18.3.5_@types+react@18.3.18__@types+reac_e1ab44dcd0dcfc8aedd59964c741ad4a/node_modules/@radix-ui/react-portal/dist/index.js:48:24)
+    at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipPortal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:268:11)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Popper (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+    at Tooltip (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipProvider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+    at TooltipProvider (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), TooltipProvider:896:3)
+    at Tooltip (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), Tooltip:961:3)
+    at div
+    at BrowserUrlBar (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), <anonymous>:2182:3)
+Warning: An update to ForwardRef(PopperContent) inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at PopperContent (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:128:7)
+    at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+    at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+    at DismissableLayer (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-dismissable-layer@1.1.19_@types+react-dom@18.3.5_@types+react@18.3.18___e263e6a7af26df53477d756ce352ea78/node_modules/@radix-ui/react-dismissable-layer/dist/index.js:69:7)
+    at TooltipContentImpl (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:347:7)
+    at TooltipContentHoverable (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:282:57)
+    at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at TooltipContent (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:275:64)
+    at eval (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), TooltipContent:913:56)
+    at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-slot@1.3.3_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-slot/dist/index.js:48:11
+    at /Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-primitive@2.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+r_495dd00784694e3f29cf9dd78e364e0c/node_modules/@radix-ui/react-primitive/dist/index.js:67:13
+    at Portal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-portal@1.1.17_@types+react-dom@18.3.5_@types+react@18.3.18__@types+reac_e1ab44dcd0dcfc8aedd59964c741ad4a/node_modules/@radix-ui/react-portal/dist/index.js:48:24)
+    at Presence (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-presence@1.1.10_@types+react-dom@18.3.5_@types+react@18.3.18__@types+re_f4960deff7204d79d89e300c1163f749/node_modules/@radix-ui/react-presence/dist/index.js:56:11)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipPortal (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:268:11)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at Popper (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-popper@1.3.7_@types+react-dom@18.3.5_@types+react@18.3.18__@types+react_25a7d070a7e279166c5fa282b89ae9a8/node_modules/@radix-ui/react-popper/dist/index.js:66:11)
+    at Tooltip (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:123:5)
+    at Provider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-context@1.2.2_@types+react@18.3.18_react@18.3.1/node_modules/@radix-ui/react-context/dist/index.js:73:15)
+    at TooltipProvider (/Users/damian/local-operator-ui/.worktrees/hub-q1-bf398d53/node_modules/.pnpm/@radix-ui+react-tooltip@1.2.16_@types+react-dom@18.3.5_@types+react@18.3.18__@types+rea_3e013ec6094314abb965503bdb4baf2d/node_modules/@radix-ui/react-tooltip/dist/index.js:78:5)
+    at TooltipProvider (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), TooltipProvider:896:3)
+    at Tooltip (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), Tooltip:961:3)
+    at div
+    at BrowserUrlBar (eval at loadBar (file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/scripts/browser-chord-renderer.test.mjs:263:2), <anonymous>:2182:3)
+✔ the address field renders no tooltip, while a chrome-band control still does (D-PR9) (11561.157833ms)
+✔ real renderer hook owns scoped DOM commands, focus lifecycle and queued rapid input (216.087833ms)
+✔ keyboard close with focus ON the closing tab button keeps the browser as focus owner (UX U2) (48.868458ms)
+✔ rapid double Cmd+W closes two different tabs, never the same one twice (UX U8 stale projection) (19.765709ms)
+✔ closing the last tab opens the fresh blank tab and puts the caret in the address bar (91.151125ms)
+✔ strip close shares last-tab replacement and a refusal creates nothing (4.073667ms)
+✔ one platform-strict decision table covers every browser column and leaves chat to app (0.750333ms)
+✔ negative controls preserve composition/editing, platform modifiers, and reject action repeat (0.121083ms)
+✔ router menu fallback ownership and rapid genuine presses have no debounce (0.399459ms)
+✔ menu fallback respects actual popup/mini target even with stale main chrome focus (0.116125ms)
+✔ tab digits fall back to the physical key on layouts whose digit row types symbols (review R11) (0.081125ms)
+✔ ordinal/cycle use the grouped scoped strip order, never registry order (0.16025ms)
+✔ owned menu aliases replace destructive roles; suppression is per input and focus teardown is explicit (6.106292ms)
+▲ [WARNING] "import.meta" is not available with the "cjs" output format and will be empty [empty-import-meta]
+
+    src/renderer/src/features/chat/canonical/record-immutability.ts:42:1:
+      42 │   import.meta.env?.DEV === true;
+         ╵   ~~~~~~~~~~~
+
+  You need to set the output format to "esm" for "import.meta" to work correctly.
+
+(node:65305) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ read complete rests, unread complete keeps the attention check (6.580125ms)
+✔ error draws its own glyph and names the unseen mark (0.310667ms)
+✔ interrupted draws its own glyph and names the unseen mark (0.208375ms)
+✔ wedged does not lose status when acknowledged (0.168083ms)
+✔ busy does not lose status when acknowledged (0.155416ms)
+✔ answer does not lose status when acknowledged (0.141709ms)
+✔ approval does not lose status when acknowledged (0.154417ms)
+✔ scheduled does not lose status when acknowledged (0.149917ms)
+✔ attached does not lose status when acknowledged (0.135583ms)
+✔ delegating does not lose status when acknowledged (0.259084ms)
+✔ idle does not lose status when acknowledged (0.131333ms)
+✔ dormant does not lose status when acknowledged (0.169209ms)
+✔ unknown does not lose status when acknowledged (0.117084ms)
+✔ delegating draws the delegated-work mark and names its counts (0.613667ms)
+✔ a not-answering row is not drawn like a failed one (0.156042ms)
+✔ the wedged row renders the backend's sentence, not one of its own (0.101584ms)
+✔ a completion delivered by frames renders as an unread complete row (0.897875ms)
+✔ the asks mark draws the caller's count, in the accent glyph and the count ink (0.255042ms)
+✔ zero, absent and unreadable counts draw nothing at all (0.063875ms)
+✔ the row's own field answers when the caller has no read, and the caller wins when it has one (0.174209ms)
+✔ healthy linked agent/team/skill keeps a discoverable policy action (1.070292ms)
+✔ manual safe available applies when subscription is off (0.095375ms)
+✔ available without service safety admission opens review (0.067583ms)
+✔ paused outgoing preference outranks incoming activity, without changing policy (0.074709ms)
+✔ retry is directional and only offered when service admits it (0.077042ms)
+✔ unknown future state cannot become healthy, apply, or automatic write (0.054958ms)
+✔ transient success retains policy entry and direction (0.063917ms)
+✔ full inventory supports skills without altering legacy pending route (1.471625ms)
+✔ policy transports captured revision and only the changed independent flag (0.57425ms)
+✔ policy fails closed before transport for missing revision, coercion or grant-only write (0.662792ms)
+✔ outbound consent never implicitly changes subscription (0.130208ms)
+✔ preview visible binding accepts same opaque identity but expires and changes fail closed (0.250834ms)
+✔ source adapter never guesses Public for unavailable organization (0.16125ms)
+✔ immutable local ID never falls back to an alias belonging to another copy (0.093667ms)
+✔ stable retry names direction and cannot also select another named copy (0.228167ms)
+✔ manual publish cannot confirm unseen proposal or treat dry-run as consent (0.203208ms)
+✔ incoming viewed result requires receipt + explicit confirm and cannot share dry-run (0.19475ms)
+✔ inbound old-server nullable revision remains bound to remote hash and source (0.059834ms)
+✔ same immutable editor survives changed fetched bytes but another source does not (0.112125ms)
+✔ OFF outbound retry cannot infer future-write consent from an operation ID (0.050916ms)
+✔ initial skill confirmation binds source alias scope flags expiry and full proposal (0.143041ms)
+✔ remote success and pending receipts do not acknowledge stored policies (0.075916ms)
+✔ initial transports preserve exact echo arms and reject guessed scope or consent (0.440667ms)
+✔ Skills draft mount and scope authority do not depend on inventory bytes (4.437958ms)
+✔ definition CAS echoes the opaque revision beside the fields, never inside them (0.293167ms)
+✔ team definition CAS mirrors the profile arm (0.125625ms)
+✔ source resolution requires the full stated destination and refuses guessed scope (0.231417ms)
+✔ source-resolution baseline field tracks core's emitted key and literals (0.308167ms)
+✔ a PUBLIC no-grant link requires consent, not unavailability; every other refusal stays (0.109417ms)
+✔ the auto-push line follows EFFECTIVE state: the carve-out never hides a pause (0.090875ms)
+✔ the adapter's canEnableAutoPush is the shared gate, so a public no-grant link can start consent (0.098375ms)
+direction negative control: {"bad":["not-a-wire-state"],"receiptMisclassified":false}
+✔ the hub-links scene is registered and backend-gated (4.7255ms)
+✔ the resolve-arm wire literals are the FROZEN ones, never the retired shorthand (0.286917ms)
+✔ the stub fixture answers the frozen inventory shape and its resolve arm (0.704584ms)
+✔ the hub-links panel imports every hook it calls (1.001334ms)
+✔ the resolve arm is typed to the frozen agent|team Kind (0.369166ms)
+✔ the policy write consumes the PATCH's {link_id, policy} snapshot, never a full HubLink (0.3305ms)
+✔ the stub emits only real wire direction states (1.579917ms)
+✔ baseline known-ness follows the provenance literal, not a "known" sentinel (0.160583ms)
+✔ the public-egress consent body states the reversibility limit, without em dashes (0.367167ms)
+✔ the auto-push switch is described by its pause line only while that line renders (0.316458ms)
+actual IPC label negative: 70 chars REFUSED; short labels accepted; actual policy endpoint PATCH /v1/desktop/hub/links/link-public-agent
+geometry negative controls: zero-wrapper REFUSED, horizontal-overflow REFUSED, actual-size positive ACCEPTED
+✔ capture labels obey the real IPC length guard and policy path follows the actual contract (2.00525ms)
+✔ painted geometry rejects both zero-wrapper and horizontal-overflow negative controls (0.131459ms)
+✔ strict published core minimum, identity, and uncertainty fail closed (0.23025ms)
+guard negatives: old/unknown/disconnected/replaced/late-positive blocked; accepted in-flight request not replayed
+✔ fresh invoke, newer push, and target identity fence stale positive results (17.563459ms)
+actual hooks: 13 fixed-version arms transmitted; 52 stale old/unknown/disconnected/identity callbacks -> ZERO additional writes; normal poll only blocks Hub writes, no upgrade flash
+✔ mounted actual policy/link/source/legacy hooks fence every write arm and retain read eligibility (506.792292ms)
+capability withdrawal: pending read settled, remote calls 5 -> 5, writes 2 -> 2
+✔ real mounted Skills hooks gate absence, explicit enablement, and retained callbacks after cap loss (7395.695042ms)
+✔ page gates its effective selection, entry and mount on complete adapter, not legacy link cap (0.797791ms)
+✔ shared stub retains legacy links and refuses only unsafe public auto-push writes, not previews or read-only copies (220.783ms)
+✔ an available item is marked whether or not auto-update is on (1.214625ms)
+✔ up-to-date, absent and no-credential items draw no mark (0.127292ms)
+✔ a refused merge goes to review; other failures go to retry (0.120792ms)
+✔ the accessible name states the action and names the item (0.099083ms)
+✔ the detail separates 'updates automatically' from 'needs you' (0.197792ms)
+✔ the copy table is B6.4 (with the provider-error line re-worded), and an unknown class is generic (0.1865ms)
+✔ the sign-in line is drawn only for an item that needs the login (0.123166ms)
+✔ update-all counts only what a click would take, per kind (0.120875ms)
+✔ an item that needs a decision is a review mark, never an apply (UX U3) (0.122459ms)
+✔ a failed mark whose class a retry cannot fix opens details instead (0.172875ms)
+✔ 'Updated just now' decays with the apply time (UX U4) (0.148375ms)
+✔ the roll-up counts every outcome and never says nothing over a failed run (R4) (0.2145ms)
+✔ every non-success report has a sentence, and a plain success has none (U2) (0.179125ms)
+✔ the five ops compose the backend's routes (1.065833ms)
+✔ the schema is closed: stray fields, bad kinds and bad ids are refused (1.91325ms)
+✔ the unknown-baseline acknowledgement and the preview reach the wire (R3/R5) (0.077125ms)
+✔ the hub's writes wait longer than the backend's 120 s merge (R2/U9) (0.196208ms)
+✔ the poll is 60 s, foreground-only, and gated on its own capability (R9) (3.299958ms)
+✔ without a hub item nothing renders, and the sidebar has ONE action store (R6/R9) (1.298292ms)
+✔ same source editor stays mounted across definition refresh (2.591542ms)
+✔ every editor still reports scoped dirty state without replacing the draft (0.3485ms)
+✔ normalizeChord: aliases, order, dedupe, validation (0.80875ms)
+✔ chordFromEvent: the event shapes the recorder and dispatcher pass (0.2085ms)
+✔ display: glyph, caps and tokens match the mini view's own tables (0.307125ms)
+✔ captureRefusal: the four sentences, in precedence order (0.428666ms)
+✔ effectiveChord and buildChordMap: override ?? default, first claim wins (0.148792ms)
+✔ sanitizeShortcutBindings: junk, unknown ids, reserved chords, duplicates (0.716625ms)
+✔ all fourteen legacy browser mappings survive dormant, never dispatch, and remain refused (0.279167ms)
+✔ the match matrix: defaults, overrides, exact modifier sets (0.8375ms)
+✔ the bails, in the RFC's order (0.06775ms)
+✔ an overlay owns its own keys (rule 4) (0.095708ms)
+✔ a door-absent action is a no-op, in every door shape (0.083375ms)
+✔ the router is registered in the BUBBLE phase: a descendant's stopPropagation keeps it from firing (21.575542ms)
+✔ the field persists, and a blob without it rehydrates to no overrides (1.248083ms)
+✔ junk, unknown ids, reserved chords and duplicates are dropped at the boundary (0.427041ms)
+✔ the six ids are stable and unique, in registry order (0.9775ms)
+✔ every default parses, is unique, and is not reserved (0.187875ms)
+✔ the shipped defaults are the decided ones (0.173375ms)
+✔ every reserved entry is canonical, stated in the app's voice, and explained (0.212917ms)
+✔ the reserved inventory is exactly the decoded list (0.082667ms)
+R15 actual store: 28 hydration/save/reload/downgrade cases + 3 explicit-edit roundtrips PASS; no live profile
+✔ R15 actual store: all14 survive hydration, unrelated saves, repeat loads and downgrade; edits supersede (4.285916ms)
+✔ the owner ledger and the compatibility map are never summed together (2.681334ms)
+✔ `is not None` is the switch, so an owner that reports `unknown` still wins (0.104292ms)
+✔ an empty child_costs map is no children, not children costing zero (0.058583ms)
+✔ a null parent with known children still totals (0.057042ms)
+✔ the session's own floor outranks an exact child ledger (0.055708ms)
+✔ a partial child ledger degrades an exact session (0.037167ms)
+✔ an unknown child ledger degrades only when there are rows to be unknown about (0.046333ms)
+✔ an unrecognised rung degrades to unknown rather than throwing (0.036708ms)
+✔ format_cost switches decimals at a cent and at a dollar (0.088708ms)
+✔ a zero spend renders no segment at all (0.092417ms)
+✔ a floor figure carries the mark, an exact one does not (0.08075ms)
+✔ billed tokens at an unresolvable price spell the unknown, not a zero (0.14075ms)
+✔ the cost tooltip explains the mark rather than repeating it (0.135666ms)
+✔ the published total is taken as published, never recomputed (0.512167ms)
+✔ the capability gate is the caller's, and off means exactly today's numbers (0.044375ms)
+✔ a malformed object or a future version falls back to the legacy port (0.063917ms)
+✔ the fixture's breakdown is composed, row for row (0.647041ms)
+✔ an object without the sections keeps the plan gloss and today's body (0.126625ms)
+✔ tracked=false says so, carries the cue, and never fabricates a zero (0.166791ms)
+✔ an untracked session renders no subscription claim (0.12025ms)
+✔ the three zeroes: stated, unpriceable, and billed-but-unstated (0.127375ms)
+✔ a channel row with no sizeable amount is a fact with its own words (0.08975ms)
+✔ subscription money never joins billed, and the words keep them apart (0.07575ms)
+✔ unknown channel and basis words pass through rather than vanish (0.128584ms)
+✔ the remaining money is the published not_tracked_micro, never a re-sum (0.0965ms)
+✔ an absent not_tracked_micro prints the count with no money clause (0.082ms)
+✔ the remainder carries the lower-bound mark when its money is a floor (0.15675ms)
+✔ the children share is named inside the remainder it belongs to (0.074708ms)
+✔ the v1 guard accepts only what this build can render (0.034708ms)
+✔ every session-status producer threads the channel gate (136.454875ms)
+✔ the golden fixture is the frozen v1 wire shape (0.292042ms)
+✔ the contract declares the published field, and the strip reads it (0.406625ms)
+✔ a new channel and basis render from the published vocabulary with zero UI edits (0.162875ms)
+✔ paygo-only money renders its markers and no note (0.145958ms)
+✔ a malformed entry is dropped while the body stands (0.523083ms)
+✔ the band tuples match the Python constants exactly (0.636083ms)
+✔ the absolute ladder alone governs when the window is unknown (0.310292ms)
+✔ the proportional ladder is what makes a small window legible (0.123125ms)
+✔ the warmer of the two ladders wins, in both directions (0.225708ms)
+✔ both ladders compare strictly greater-than, so a boundary stays calm (0.107834ms)
+✔ format_context_tokens and format_window spell a number and a label differently (0.216708ms)
+✔ a reading with no window reports against an explicit unknown (0.166292ms)
+✔ a rounded 0% over a real reading is refused (0.08675ms)
+✔ no reading yet is a state, not a zero (0.184917ms)
+✔ an unknown window yields absolute tokens and no arc (0.392667ms)
+✔ an estimate is marked, and a measurement is not (47.903375ms)
+✔ a saturated window clamps the arc but not the number (0.139584ms)
+✔ the tooltip names the model maximum only when it differs from the budget (0.207208ms)
+✔ display_name wins, model_id is the fallback, and the selector is the tooltip (0.206666ms)
+✔ the aggregator router prints title case, and only behind an aggregator (0.127584ms)
+✔ _effort_label's three states (0.384584ms)
+✔ an older backend with no ladder field degrades rather than claiming `auto` (0.241792ms)
+✔ the effort VALUE is title-cased for display, and the raw level is untouched (0.202333ms)
+✔ the fast dial is a tri-state, and `nothing` is not an OFF (0.125208ms)
+✔ every captured backend payload renders what the TUI would render (0.407042ms)
+✔ the captured floor state is the one that proves the knowledge ORDER (0.113875ms)
+✔ pyFixed reproduces Python's half-to-even at exact ties (0.094875ms)
+✔ pyFixed follows the BITS, not the literal, at near-ties (0.10825ms)
+✔ every context percentage tie prints what Python prints (0.550792ms)
+✔ every token and window tie prints what Python prints (0.162875ms)
+✔ every cost tie prints what Python prints, in all three magnitude bands (0.172125ms)
+✔ no reading anywhere in the strip is spelled with toFixed (1.193ms)
+✔ a cold snapshot reports effort as unknown, not as absent (0.106542ms)
+✔ a non-empty picker list opens a chip whose spec named no ladder (0.462917ms)
+✔ pyFixed carries the sign, at every precision and magnitude (0.236ms)
+✔ formatCost prints a negative total as negative (0.267375ms)
+✔ the chip prints what the TUI band prints, over the whole registry (1.315167ms)
+✔ the refusal rules are mirrored one by one (0.13625ms)
+✔ an empty effort ladder is evidence of nothing (0.15825ms)
+✔ an unresolved spec is told apart from a model with no levels (0.1325ms)
+✔ the effort query's model reads through the hold, so a gap is not an edge (0.119208ms)
+✔ the picker is wired to the shared predicate, not to a copy of the read (0.638458ms)
+✔ both pickers describe a row in the backend's words, not the live_state token (0.912ms)
+✔ the model-access reading exists only for `signed_out`, and never from a silence (0.214958ms)
+✔ access follows the effective provider through fallback and recovery without moving primary (0.103833ms)
+✔ the band yields to the Radient callout when both name one missing sign-in (R1-6) (0.07625ms)
+✔ the yielded-to callout must OWN the sign-in (design round 2, D7) (0.133166ms)
+✔ native model access: pending is a truthful reading, not a local logout (8.3735ms)
+✔ native model access: eligible_borrow_unverified is a truthful reading, not a local logout (0.430042ms)
+✔ native model access: effective_borrow is a truthful reading, not a local logout (0.320542ms)
+✔ native model access: expired is a truthful reading, not a local logout (0.30875ms)
+✔ native model access: withdrawn is a truthful reading, not a local logout (0.279041ms)
+✔ native model access: owner_unavailable is a truthful reading, not a local logout (0.267875ms)
+✔ native model access: device_bound is a truthful reading, not a local logout (0.265583ms)
+✔ native model access: absent is a truthful reading, not a local logout (0.279459ms)
+✔ native model access: expiry retains permission; withdrawal does not promise automatic regrant (0.724708ms)
+✔ native model access: unreachable-owner expiry is explicitly history, never cached permission (0.283916ms)
+✔ native model access: local and unpublished fields retain legacy behavior (0.083417ms)
+✔ native model access: a selected-provider borrow is not hidden by fallback routing (0.067917ms)
+✔ native model access: stale previous-provider status cannot accuse the current selection (0.048083ms)
+✔ native model access: malformed metadata and future states fail conservatively (0.310125ms)
+✔ native model access: Radient local-login suppression cannot hide borrowed access (0.10125ms)
+✔ composer native absence uses trusted matching source: local (0.402792ms)
+✔ composer native absence uses trusted matching source: remote (0.282875ms)
+✔ composer native absence uses trusted matching source: unproven (0.272833ms)
+✔ composer native remote Radient absence cannot fall through to a local signup callout (0.483584ms)
+✔ immutable bc3d producer no_local_credential does not imply its guessed cause (0.334542ms)
+✔ immutable bc3d producer refresh_failed does not imply its guessed cause (0.142334ms)
+✔ the real page/content/composer wires the tested serving context and decision (1.415459ms)
+CONTROL process cwd=/ without session: {"resolved":"workspace/report/RUN-RECORD.md","exists":false}
+AFTER renderer bridge: [["probe-files",["workspace/report/RUN-RECORD.md"],"/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/supplement-action-ZwPfke/workspace/project","/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/supplement-action-ZwPfke/workspace/project/workspace/report/RUN-RECORD.md"],["probe-files",["/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/supplement-action-ZwPfke/workspace/project/workspace/report/RUN-RECORD.md"],null,"/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/supplement-action-ZwPfke/workspace/project/workspace/report/RUN-RECORD.md"],["read-file","/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/supplement-action-ZwPfke/workspace/project/workspace/report/RUN-RECORD.md"],["probe-files",["workspace/report/RUN-RECORD.md"],"/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/supplement-action-ZwPfke/workspace/project","/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/supplement-action-ZwPfke/workspace/project/workspace/report/RUN-RECORD.md"],["open-file","/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/supplement-action-ZwPfke/workspace/project/workspace/report/RUN-RECORD.md"],["probe-files",["workspace/report/RUN-RECORD.md"],"/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/supplement-action-ZwPfke/workspace/project","/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/supplement-action-ZwPfke/workspace/project/workspace/report/RUN-RECORD.md"],["show-item-in-folder","/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/supplement-action-ZwPfke/workspace/project/workspace/report/RUN-RECORD.md"],["probe-files",["workspace/report/RUN-RECORD.md"],"/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/supplement-action-ZwPfke/workspace/project","/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/supplement-action-ZwPfke/workspace/project/workspace/report/RUN-RECORD.md"],["probe-files",["/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/supplement-action-ZwPfke/workspace/project/workspace/report/RUN-RECORD.md"],null,"/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/supplement-action-ZwPfke/workspace/project/workspace/report/RUN-RECORD.md"]]
+TILDE: {"resolved":"/Users/damian/.local-operator/sessions/600f0e16eb4b/scratchpad/supplement-action-ZwPfke/workspace/project/workspace/report/RUN-RECORD.md","exists":true}
+
+Interrupted while running:
+
+⚠ scripts/supplement-file-actions.test.mjs (scripts/supplement-file-actions.test.mjs:1:1)
+✖ scripts/supplement-file-actions.test.mjs (90161.781875ms)
+ℹ tests 279
+ℹ suites 0
+ℹ pass 278
+ℹ fail 0
+ℹ cancelled 1
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 120003.122791
+
+✖ failing tests:
+
+test at scripts/supplement-file-actions.test.mjs:1:1
+✖ scripts/supplement-file-actions.test.mjs (90161.781875ms)
+  'Promise resolution is still pending but the event loop has already resolved'

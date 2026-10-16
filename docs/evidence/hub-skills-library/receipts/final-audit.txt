@@ -1,0 +1,10 @@
+Static token scan (three library/publication/consent files):
+zero matches (exit1 expected)
+Final cleanup:
+2026-10-14T23:28:21-04:00
+No listener on8127
+No owned app/driver/stub process matches
+/dev/disk3s1s1   460Gi    13Gi    31Gi    30%    484k  321M    0%   /
+vm.swapusage: total = 11264.00M  used = 9906.25M  free = 1357.75M  (encrypted)
+The system has 38654705664 (2359296 pages with a page size of 16384).
+System-wide memory free percentage: 45%

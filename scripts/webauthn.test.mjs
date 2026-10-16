@@ -42,6 +42,7 @@ const bundle = await build({
 	write: false,
 	alias: {
 		electron: join(process.cwd(), "scripts/browser-electron-stub.ts"),
+		"@shared": join(process.cwd(), "src/renderer/src/shared"),
 	},
 });
 const mod = await import(
@@ -75,7 +76,7 @@ const {
 	replaceWebauthnRequests,
 	webauthnRequestsSnapshot,
 	settledChooserCopy,
-	UNNAMED_ACCOUNT_DETAIL,
+	unnamedAccountDetail,
 	accountChoiceLabel,
 } = mod;
 
@@ -531,7 +532,7 @@ test("the chooser labels an account without inventing an identity", () => {
 	// An account with NO name of any kind now says so rather than leaving a blank
 	// second line (design round 1, D9; UX round 1, U1): the row is the only place
 	// the user can learn that the choice is arbitrary.
-	assert.equal(accountChoiceDetail(null, 0), UNNAMED_ACCOUNT_DETAIL);
+	assert.equal(accountChoiceDetail(null, 0), unnamedAccountDetail());
 });
 
 /**
@@ -846,18 +847,18 @@ test("the recovery clause lives in the lead, where prose wraps, and not in a tru
 	const lead = chooserLead(nameless);
 	assert.match(lead, /sign out and ask the site again/);
 	assert.equal(
-		UNNAMED_ACCOUNT_DETAIL,
+		unnamedAccountDetail(),
 		"The site stored no name for this passkey.",
 	);
 	assert.ok(
-		!UNNAMED_ACCOUNT_DETAIL.includes("sign out and ask the site again"),
+		!unnamedAccountDetail().includes("sign out and ask the site again"),
 		"the recovery clause is not in the row's line",
 	);
 	// A length ceiling rather than a pixel measurement: the row's box is 380px at the
 	// panel's fixed width, and this is the string that has to fit it.
 	assert.ok(
-		UNNAMED_ACCOUNT_DETAIL.length <= 60,
-		`the row's line stays short (${UNNAMED_ACCOUNT_DETAIL.length} chars)`,
+		unnamedAccountDetail().length <= 60,
+		`the row's line stays short (${unnamedAccountDetail().length} chars)`,
 	);
 });
 

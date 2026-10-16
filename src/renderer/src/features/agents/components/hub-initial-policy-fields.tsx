@@ -142,12 +142,14 @@ export function HubInitialPolicyFields({
 					<DialogFooter>
 						<Button
 							ref={cancel}
+							data-testid="hub-policy-cancel"
 							variant="outline"
 							onClick={() => setConfirming(null)}
 						>
 							{t("ui.hub.subscriptions.cancel")}
 						</Button>
 						<Button
+							data-testid="hub-policy-enable"
 							disabled={
 								disabled || !canEnableAutoPush || confirming !== destinationKey
 							}

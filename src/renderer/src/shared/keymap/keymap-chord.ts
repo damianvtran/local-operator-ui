@@ -34,6 +34,7 @@ import {
 import {
 	type ActionId,
 	KEYMAP_ACTIONS,
+	LEGACY_BROWSER_CHORDS,
 	RESERVED_CHORDS,
 	type ShortcutBindings,
 	actionById,
@@ -155,7 +156,13 @@ export function effectiveChord(
 	 * dispatches it. Only a stored string is read as a chord (both writers keep
 	 * it canonical).
 	 */
-	if (typeof override === "string" || override === null) return override;
+	// Stored legacy browser assignments survive hydration/save for downgrade,
+	// but never dispatch or print as active here. Every runtime reader (including
+	// capture's collision check) shares this gate; storage retention is not consent
+	// to arm a now-reserved chord. Explicit null remains deliberately unbound.
+	if (override === null) return null;
+	if (typeof override === "string" && !RESERVED_CHORDS.has(override))
+		return override;
 	return actionById(actionId)?.defaultChord ?? null;
 }
 
@@ -237,13 +244,16 @@ export function captureRefusal(
  * half-written blob), so every override is re-validated here — and the drop
  * rules are exactly the capture rules: non-strings (except the explicit `null`
  * the Clear button writes), unknown ids (never read: the loop IS the registry),
- * unparseable or primary-less chords, reserved chords, and a chord an earlier
+ * unparseable or primary-less chords, pre-existing reserved chords, and a chord an earlier
  * action in registry order already claimed. A dropped override falls back to
  * the action's default, which itself claims its chord — so two entries fighting
  * over one chord resolve to the first action in the registry, and dispatch
  * stays unambiguous. A stored `null` survives (it is the deliberate no-chord
  * state) and claims nothing, which is what frees a cleared action's default for
- * another row.
+ * another row. The newly reserved browser chords are the exception:
+ * retain their legacy assignments in this same map, dormant through
+ * `effectiveChord`, so unrelated saves cannot destroy a user's downgrade data.
+ * New capture still refuses them; explicit Reset/Clear/rebind supersedes them.
  */
 export function sanitizeShortcutBindings(raw: unknown): ShortcutBindings {
 	if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return {};
@@ -258,15 +268,21 @@ export function sanitizeShortcutBindings(raw: unknown): ShortcutBindings {
 		}
 		const normalized =
 			typeof stored === "string" ? normalizeChord(stored) : null;
+		// ONLY these formerly assignable chords are retained dormant (R15).
+		// Claim the effective DEFAULT, not the dormant string, so a later action
+		// cannot take a default this action still answers. Pre-existing reserved,
+		// invalid and duplicate active overrides keep the old rejection rules.
+		const dormant =
+			normalized !== null && LEGACY_BROWSER_CHORDS.has(normalized);
 		const override =
 			normalized !== null &&
 			chordHasPrimary(normalized) &&
-			!RESERVED_CHORDS.has(normalized) &&
-			!claimed.has(normalized)
+			(dormant ||
+				(!RESERVED_CHORDS.has(normalized) && !claimed.has(normalized)))
 				? normalized
 				: null;
 		if (override !== null) bindings[action.id] = override;
-		const effective = override ?? action.defaultChord;
+		const effective = effectiveChord(action.id, bindings);
 		if (effective !== null) claimed.add(effective);
 	}
 	return bindings;
@@ -318,6 +334,35 @@ export function chordTokens(
  */
 export function chordGlyph(chord: string, platform: MiniViewPlatform): string {
 	return formatQuickSendDisplay(chord, platform);
+}
+
+/**
+ * One chord id, both captions a control needs: the glyph a sighted user reads in
+ * the tooltip and the `aria-keyshortcuts` value a screen reader announces.
+ *
+ * WHY ONE FUNCTION (design review D-PR5). The browser chrome used to spell the
+ * glyph from `chordGlyph` and the ARIA value as a hand-typed `isMac ? "Meta+W" :
+ * "Control+W"` beside it, in four places; the two could drift and nothing would
+ * notice. Deriving both from the canonical chord string makes a rebind or a typo
+ * change both or neither. The ARIA grammar is the WAI-ARIA one (`Meta+Shift+T`),
+ * which is NOT the glyph grammar, so it is derived here rather than reused.
+ */
+export function chordCaption(
+	chord: string,
+	platform: MiniViewPlatform,
+): { glyph: string; aria: string } {
+	const tokens = chord.split("+");
+	const key = tokens[tokens.length - 1];
+	const modifiers = tokens.slice(0, -1).map((token) => {
+		if (token === "primary") return platform === "mac" ? "Meta" : "Control";
+		if (token === "shift") return "Shift";
+		if (token === "alt") return "Alt";
+		return token;
+	});
+	return {
+		glyph: chordGlyph(chord, platform),
+		aria: [...modifiers, key.length === 1 ? key.toUpperCase() : key].join("+"),
+	};
 }
 
 /**

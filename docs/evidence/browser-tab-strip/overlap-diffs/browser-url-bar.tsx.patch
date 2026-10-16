@@ -1,0 +1,27 @@
+diff --git a/src/renderer/src/features/browser/components/browser-url-bar.tsx b/src/renderer/src/features/browser/components/browser-url-bar.tsx
+index c87b945836..a7a3f32d3c 100644
+--- a/src/renderer/src/features/browser/components/browser-url-bar.tsx
++++ b/src/renderer/src/features/browser/components/browser-url-bar.tsx
+@@ -15 +14,0 @@ import {
+-	Loader2,
+@@ -430,9 +428,0 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
+-				{loading && (
+-					// The loading state, in the field rather than only on the reload
+-					// button: a page that takes ten seconds says so where the eye
+-					// already is.
+-					<Loader2
+-						aria-hidden
+-						className="pointer-events-none absolute top-1/2 right-2 size-3.5 -translate-y-1/2 animate-spin text-ink-dim"
+-					/>
+-				)}
+@@ -446,2 +436,2 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
+-					variant="outline"
+-					size="sm"
++					variant={waitingCount > 0 ? "outline" : "ghost"}
++					size={waitingCount > 0 ? "sm" : "icon-sm"}
+@@ -456 +446 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
+-					className="pr-5"
++					className={waitingCount > 0 ? "pr-5" : undefined}
+@@ -465 +455 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
+-					Approvals
++					{waitingCount > 0 && "Approvals"}

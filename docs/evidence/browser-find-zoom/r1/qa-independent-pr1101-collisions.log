@@ -1,0 +1,54 @@
+{"chord":"primary+p","owners":["reserved: Reserved: opens the command palette from anywhere."],"disposition":"single owner"}
+{"chord":"primary+shift+p","owners":["reserved: Reserved: opens the command palette on commands."],"disposition":"single owner"}
+{"chord":"primary+shift+s","owners":["reserved: Reserved: starts speech to text."],"disposition":"single owner"}
+{"chord":"primary+k","owners":["reserved: Reserved: opens the command palette on chats."],"disposition":"single owner"}
+{"chord":"primary+n","owners":["reserved: Reserved: starts a new chat."],"disposition":"single owner"}
+{"chord":"primary+b","owners":["reserved: Reserved: toggles the sidebar."],"disposition":"single owner"}
+{"chord":"primary+[","owners":["reserved: Reserved: goes back in the browser, or between chats outside it.","browser: back (main/DOM)"],"disposition":"history: browser page vs chat route, by focus"}
+{"chord":"primary+]","owners":["reserved: Reserved: goes forward in the browser, or between chats outside it.","browser: forward (main/DOM)"],"disposition":"history: browser page vs chat route, by focus"}
+{"chord":"alt+primary+up","owners":["reserved: Reserved: walks up the chat regions."],"disposition":"single owner"}
+{"chord":"alt+primary+down","owners":["reserved: Reserved: walks down the chat regions."],"disposition":"single owner"}
+{"chord":"primary+shift+a","owners":["reserved: Reserved: archives the focused conversation."],"disposition":"single owner"}
+{"chord":"primary+s","owners":["reserved: Reserved: saves the canvas document."],"disposition":"single owner"}
+{"chord":"primary+o","owners":["reserved: Reserved: opens a file in the canvas."],"disposition":"single owner"}
+{"chord":"primary+shift+up","owners":["reserved: Reserved: moves the focused chat up the pinned order."],"disposition":"single owner"}
+{"chord":"primary+shift+down","owners":["reserved: Reserved: moves the focused chat down the pinned order."],"disposition":"single owner"}
+{"chord":"primary+c","owners":["reserved: Reserved: copy.","menu: copy"],"disposition":"existing native copy"}
+{"chord":"primary+x","owners":["reserved: Reserved: cut.","menu: cut"],"disposition":"existing native cut"}
+{"chord":"primary+v","owners":["reserved: Reserved: paste.","menu: paste"],"disposition":"existing native paste"}
+{"chord":"primary+a","owners":["reserved: Reserved: select all.","menu: selectall"],"disposition":"existing native select all"}
+{"chord":"primary+z","owners":["reserved: Reserved: undo.","menu: undo"],"disposition":"existing native undo"}
+{"chord":"primary+shift+z","owners":["reserved: Reserved: redo.","menu: redo"],"disposition":"existing native redo"}
+{"chord":"primary+y","owners":["reserved: Reserved: redo on Windows and Linux."],"disposition":"single owner"}
+{"chord":"primary+q","owners":["reserved: Reserved: quits the app.","menu: quit","menu: quit"],"disposition":"existing app quit (platform/menu aliases)"}
+{"chord":"primary+w","owners":["reserved: Reserved: closes the browser tab, or the window outside it.","menu: app-close","browser: close-tab (main/DOM)"],"disposition":"close: browser tab vs existing app window, by focus"}
+{"chord":"primary+m","owners":["reserved: Reserved: minimises the window.","menu: minimize"],"disposition":"existing native minimize"}
+{"chord":"primary+j","owners":["default: panel.console"],"disposition":"single owner"}
+{"chord":"primary+shift+c","owners":["default: panel.canvas"],"disposition":"single owner"}
+{"chord":"primary+h","owners":["menu: hide"],"disposition":"single owner"}
+{"chord":"alt+primary+h","owners":["menu: hideothers"],"disposition":"single owner"}
+{"chord":"primary+r","owners":["menu: app-reload","browser: reload (main/DOM)"],"disposition":"reload: menu/main/DOM are focus-scoped doors"}
+{"chord":"primary+shift+r","owners":["menu: app-force-reload","browser: hard-reload (main/DOM)"],"disposition":"hard-reload: menu/main/DOM are focus-scoped doors"}
+{"chord":"primary+0","owners":["menu: app-actual-size","browser: zoom-reset (main/DOM)"],"disposition":"actual size: browser view vs app window, by focus"}
+{"chord":"primary+plus","owners":["menu: app-zoom-in","browser: zoom-in (main/DOM)","browser: zoom-in (main/DOM)"],"disposition":"zoom in: browser view vs app window, by focus"}
+{"chord":"primary+-","owners":["menu: app-zoom-out","browser: zoom-out (main/DOM)"],"disposition":"zoom out: browser view vs app window, by focus"}
+{"chord":"control+primary+f","owners":["menu: togglefullscreen"],"disposition":"single owner"}
+{"chord":"primary+f","owners":["browser: find-page (main/DOM)"],"disposition":"single owner"}
+{"chord":"primary+l","owners":["browser: focus-address (main/DOM)"],"disposition":"single owner"}
+{"chord":"primary+t","owners":["browser: new-tab (main/DOM)"],"disposition":"single owner"}
+{"chord":"primary+shift+t","owners":["browser: reopen-tab (main/DOM)"],"disposition":"single owner"}
+{"chord":"primary+shift+[","owners":["browser: prev-tab (main/DOM)"],"disposition":"single owner"}
+{"chord":"primary+shift+]","owners":["browser: next-tab (main/DOM)"],"disposition":"single owner"}
+{"chord":"primary+1","owners":["browser: tab-1 (main/DOM)"],"disposition":"single owner"}
+{"chord":"primary+2","owners":["browser: tab-2 (main/DOM)"],"disposition":"single owner"}
+{"chord":"primary+3","owners":["browser: tab-3 (main/DOM)"],"disposition":"single owner"}
+{"chord":"primary+4","owners":["browser: tab-4 (main/DOM)"],"disposition":"single owner"}
+{"chord":"primary+5","owners":["browser: tab-5 (main/DOM)"],"disposition":"single owner"}
+{"chord":"primary+6","owners":["browser: tab-6 (main/DOM)"],"disposition":"single owner"}
+{"chord":"primary+7","owners":["browser: tab-7 (main/DOM)"],"disposition":"single owner"}
+{"chord":"primary+8","owners":["browser: tab-8 (main/DOM)"],"disposition":"single owner"}
+{"chord":"primary+9","owners":["browser: tab-9 (main/DOM)"],"disposition":"single owner"}
+{"chord":"control+tab","owners":["browser: next-tab"],"disposition":"single owner"}
+{"chord":"control+shift+tab","owners":["browser: prev-tab"],"disposition":"single owner"}
+PASS: actual native menu + reserved/default registry + per-view classifier; known aliases explicit; Actual Size is 0 (zero); old O conflict removed
+[run_bounded] node rc=0 wall=0.4s

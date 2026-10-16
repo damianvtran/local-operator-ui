@@ -20,12 +20,15 @@ import {
 	DialogDescription,
 	DialogTitle,
 } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { type FC, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useConnectProviderStore } from "./connect-provider-store";
 import { ProviderGrid } from "./provider-grid";
 
 export const ConnectProviderDialog: FC = () => {
+	useI18nLocale();
 	const { open, focusGroup, providerId, closeConnect } =
 		useConnectProviderStore();
 	/*
@@ -73,11 +76,12 @@ export const ConnectProviderDialog: FC = () => {
 			>
 				<div className="flex flex-col gap-1">
 					<DialogTitle className="text-title">
-						Connect a model provider
+						{t("ui.providers.connect_provider_dialog.connect_a_model_provider")}
 					</DialogTitle>
 					<DialogDescription className="text-body-sm text-ink-muted">
-						Your agents need a model to think with. Sign in with an account you
-						already have, or add an API key.
+						{t(
+							"ui.providers.connect_provider_dialog.your_agents_need_a_model_to_think",
+						)}
 					</DialogDescription>
 				</div>
 				{open ? (

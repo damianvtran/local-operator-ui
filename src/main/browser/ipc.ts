@@ -1,4 +1,5 @@
 import { type BrowserWindow, type IpcMainInvokeEvent, ipcMain } from "electron";
+import { t } from "../../i18n";
 import { trustedDesktopFrame } from "../desktop-transport";
 import type { WebauthnChooser } from "../webauthn";
 import type { BrowserHost, CloseTabsIntent } from "./host";
@@ -71,17 +72,28 @@ export interface RegisterBrowserIpcOptions {
 	 * calls. It is authorized like every other channel and is a no-op when a host
 	 * is already running, so a stray click cannot start a second one. */
 	retry?: () => Promise<void>;
+	/** Move DOM focus into the presented page after a chord that came from the page.
+	 * Optional because only a launch mode that may focus a window supplies it; the
+	 * helper behind it refuses an unfocused or hidden window and never raises one. */
+	focusPage?: () => void;
 	log: (message: string) => void;
 }
 
 /** The channels this namespace owns, in one place so a test can enumerate them. */
 export const BROWSER_IPC_CHANNELS = [
 	"browser-state",
+	"browser-set-chord-focus",
+	"browser-page-control",
+	"browser-reopen-tab",
+	"browser-focus-page",
 	"browser-new-tab",
+	"browser-reorder-tabs",
+	"browser-tab-action",
 	"browser-close-tab",
 	"browser-close-tabs",
 	"browser-activate-tab",
 	"browser-navigate",
+	"browser-home",
 	"browser-reload",
 	"browser-stop",
 	"browser-history",
@@ -159,6 +171,27 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 		return host.newTab(optionalConversationOrThrow(sessionId));
 	});
 
+	ipcMain.handle("browser-reorder-tabs", (event, ids: unknown) => {
+		const host = authorize(event);
+		if (
+			!Array.isArray(ids) ||
+			ids.length > 512 ||
+			Array.from(ids).some(
+				(id) => typeof id !== "number" || !Number.isSafeInteger(id) || id < 0,
+			)
+		)
+			throw new Error(t("ui.browser.chrome.invalid_order"));
+		return host.reorderChromeTabs(ids);
+	});
+	ipcMain.handle(
+		"browser-tab-action",
+		(event, tabId: unknown, action: unknown) => {
+			const host = authorize(event);
+			if (action !== "duplicate" && action !== "reload")
+				throw new Error(t("ui.browser.chrome.invalid_action"));
+			return host.actOnChromeTab(numberOrThrow(tabId, "tabId"), action);
+		},
+	);
 	ipcMain.handle("browser-close-tab", (event, tabId: unknown) => {
 		const host = authorize(event);
 		return host.closeTab(numberOrThrow(tabId, "tabId"));
@@ -182,7 +215,64 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 		return host.navigateActive(url.trim());
 	});
 
-	ipcMain.handle("browser-reload", (event) => authorize(event).reloadActive());
+	ipcMain.handle(
+		"browser-page-control",
+		(
+			event,
+			tabId: unknown,
+			action: unknown,
+			query: unknown,
+			forward: unknown,
+			next: unknown,
+		) => {
+			const host = authorize(event);
+			if (
+				typeof action !== "string" ||
+				!["open", "close", "search", "in", "out", "reset"].includes(action)
+			)
+				throw new Error("Invalid page control action.");
+			if (
+				typeof query !== "string" ||
+				query.length > 4096 ||
+				typeof forward !== "boolean" ||
+				typeof next !== "boolean"
+			)
+				throw new Error("Invalid page search input.");
+			return host.controlPage(
+				numberOrThrow(tabId, "tabId"),
+				action as "open" | "close" | "search" | "in" | "out" | "reset",
+				query,
+				forward,
+				next,
+			);
+		},
+	);
+	ipcMain.handle("browser-set-chord-focus", (event, focused: unknown) => {
+		const host = authorize(event);
+		if (typeof focused !== "boolean")
+			throw new Error("Browser focus must be a boolean.");
+		host.setChordFocus(focused);
+	});
+	ipcMain.handle("browser-reopen-tab", (event, sessionId: unknown) =>
+		authorize(event).reopenClosed(optionalConversationOrThrow(sessionId)),
+	);
+	ipcMain.handle("browser-focus-page", (event) => {
+		authorize(event);
+		options.focusPage?.();
+	});
+	// Home (LOH-13): the user's own press, no argument — main decides the
+	// start state, so a renderer cannot aim this channel at an origin.
+	ipcMain.handle("browser-home", async (event) => {
+		const host = authorize(event);
+		return host.goHomeActive();
+	});
+
+	ipcMain.handle("browser-reload", (event, hard: unknown) => {
+		const host = authorize(event);
+		if (hard !== undefined && typeof hard !== "boolean")
+			throw new Error("Hard reload must be a boolean.");
+		return host.reloadActive(hard === true);
+	});
 
 	ipcMain.handle("browser-stop", (event) => authorize(event).stopActive());
 
@@ -313,11 +403,14 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 	});
 
 	ipcMain.handle("browser-clear-data", async (event, what: unknown) => {
-		authorize(event);
+		const host = authorize(event);
 		if (what !== "cookies" && what !== "cache" && what !== "everything") {
 			throw new Error("Unsupported clear-data request.");
 		}
 		await options.clearData(what);
+		// "Everything" erases what the user visited; a remembered closed tab is part
+		// of that history and must not survive it (review R3).
+		if (what === "everything") host.forgetClosedTabs();
 		options.log(`[browser] cleared browsing data: ${what}`);
 		return { cleared: what };
 	});

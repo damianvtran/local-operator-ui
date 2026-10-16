@@ -1,3 +1,4 @@
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	BookOpen,
@@ -19,9 +20,12 @@ import {
 	Users,
 } from "lucide-react";
 import type { FC } from "react";
+import { t } from "../../../../../i18n/messages";
 
 /**
- * Maps agent category (snake_case) to icon and label.
+ * Maps stable category identifiers to icons and locale-aware labels.
+ * Getters preserve the shared entry shape while reading the current locale;
+ * eagerly translated module constants would remain in the startup language.
  */
 export const CATEGORY_ICON_MAP: Record<
 	string,
@@ -29,70 +33,102 @@ export const CATEGORY_ICON_MAP: Record<
 > = {
 	investment: {
 		icon: <Briefcase size={14} aria-hidden="true" />,
-		label: "Investment",
+		get label() {
+			return t("ui.hub.taxonomy.category.investment");
+		},
 	},
 	accounting: {
 		/* Not `Briefcase`: `investment` uses it and the two sit next to each
 		   other in the rail, so a 16-item filter opened with two adjacent rows
 		   drawing the same silhouette. A ledger is what this category is. */
 		icon: <BookOpen size={14} aria-hidden="true" />,
-		label: "Accounting",
+		get label() {
+			return t("ui.hub.taxonomy.category.accounting");
+		},
 	},
 	healthcare: {
 		icon: <HeartPulse size={14} aria-hidden="true" />,
-		label: "Healthcare",
+		get label() {
+			return t("ui.hub.taxonomy.category.healthcare");
+		},
 	},
 	legal: {
 		icon: <Scale size={14} aria-hidden="true" />,
-		label: "Legal",
+		get label() {
+			return t("ui.hub.taxonomy.category.legal");
+		},
 	},
 	software: {
 		icon: <CodeXml size={14} aria-hidden="true" />,
-		label: "Software",
+		get label() {
+			return t("ui.hub.taxonomy.category.software");
+		},
 	},
 	security: {
 		icon: <Shield size={14} aria-hidden="true" />,
-		label: "Security",
+		get label() {
+			return t("ui.hub.taxonomy.category.security");
+		},
 	},
 	role_play: {
 		icon: <Users size={14} aria-hidden="true" />,
-		label: "Role play",
+		get label() {
+			return t("ui.hub.taxonomy.category.role_play");
+		},
 	},
 	personal_assistance: {
 		icon: <User size={14} aria-hidden="true" />,
-		label: "Personal assistance",
+		get label() {
+			return t("ui.hub.taxonomy.category.personal_assistance");
+		},
 	},
 	education: {
 		icon: <GraduationCap size={14} aria-hidden="true" />,
-		label: "Education",
+		get label() {
+			return t("ui.hub.taxonomy.category.education");
+		},
 	},
 	marketing: {
 		icon: <Megaphone size={14} aria-hidden="true" />,
-		label: "Marketing",
+		get label() {
+			return t("ui.hub.taxonomy.category.marketing");
+		},
 	},
 	sales: {
 		icon: <ShoppingCart size={14} aria-hidden="true" />,
-		label: "Sales",
+		get label() {
+			return t("ui.hub.taxonomy.category.sales");
+		},
 	},
 	research: {
 		icon: <FlaskConical size={14} aria-hidden="true" />,
-		label: "Research",
+		get label() {
+			return t("ui.hub.taxonomy.category.research");
+		},
 	},
 	analysis: {
 		icon: <ChartNoAxesColumn size={14} aria-hidden="true" />,
-		label: "Analysis",
+		get label() {
+			return t("ui.hub.taxonomy.category.analysis");
+		},
 	},
 	management: {
 		icon: <ClipboardList size={14} aria-hidden="true" />,
-		label: "Management",
+		get label() {
+			return t("ui.hub.taxonomy.category.management");
+		},
 	},
 	social_media: {
 		icon: <Earth size={14} aria-hidden="true" />,
-		label: "Social media",
+		get label() {
+			return t("ui.hub.taxonomy.category.social_media");
+		},
 	},
 	other: {
 		icon: <FileQuestion size={14} aria-hidden="true" />,
-		label: "Other",
+		get label() {
+			return t("ui.hub.taxonomy.category.other");
+		},
 	},
 };
 
@@ -145,6 +181,7 @@ export const AgentTagsAndCategories: FC<AgentTagsAndCategoriesProps> = ({
 	categories,
 	className,
 }) => {
+	useI18nLocale();
 	if (
 		(!tags || tags.length === 0) &&
 		(!categories || categories.length === 0)
@@ -156,11 +193,11 @@ export const AgentTagsAndCategories: FC<AgentTagsAndCategoriesProps> = ({
 	 * A tag that repeats a category is noise: cards were showing "Finance"
 	 * twice and "Research" twice, in two pills that look almost identical.
 	 * Categories win, because they are the axis the sidebar filters on.
+	 * Compare the unchanged identifiers, not translated labels: translating a
+	 * category must not change which author-provided tags survive this filter.
 	 */
 	const categoryLabels = new Set(
-		(categories ?? []).map((cat) =>
-			(CATEGORY_ICON_MAP[cat]?.label ?? formatLabel(cat)).toLowerCase(),
-		),
+		(categories ?? []).map((cat) => formatLabel(cat).toLowerCase()),
 	);
 	const distinctTags = (tags ?? []).filter(
 		(tag) => !categoryLabels.has(formatLabel(tag).toLowerCase()),

@@ -63,9 +63,12 @@ import { LogFileType, logger } from "./backend/logger";
 import {
 	browserHostEnabled,
 	browserHostStopPending,
+	routeBrowserMenu,
+	routeBrowserZoomInput,
 	startBrowserHost,
 	stopBrowserHost,
 } from "./browser";
+import { runBrowserMenuAction } from "./browser/browser-chord";
 import {
 	CONSENT_ATTENTION_CHANNEL,
 	type ConsentAttentionPayload,
@@ -530,27 +533,6 @@ function createApplicationMenu(): void {
 	const isDev = Boolean(process.env.ELECTRON_RENDERER_URL);
 
 	// Define zoom functions
-	const zoomInHandler = () => {
-		if (mainWindow) {
-			const webContents = mainWindow.webContents;
-			const currentZoom = webContents.getZoomFactor();
-			webContents.setZoomFactor(currentZoom + 0.1);
-		}
-	};
-
-	const zoomOutHandler = () => {
-		if (mainWindow) {
-			const webContents = mainWindow.webContents;
-			const currentZoom = webContents.getZoomFactor();
-			webContents.setZoomFactor(currentZoom - 0.1);
-		}
-	};
-
-	const actualSizeHandler = () => {
-		if (mainWindow) {
-			mainWindow.webContents.setZoomFactor(1.0);
-		}
-	};
 
 	// Create menu template
 	const template: Electron.MenuItemConstructorOptions[] = [
@@ -576,28 +558,72 @@ function createApplicationMenu(): void {
 			label: "View",
 			submenu: [
 				{
-					role: "reload",
+					id: "app-reload",
+					label: "Reload",
 					accelerator: "CmdOrCtrl+R",
+					click: (_item, target) =>
+						runBrowserMenuAction(
+							"reload",
+							target,
+							mainWindow,
+							routeBrowserMenu,
+						),
 				},
 				{
-					role: "forceReload",
+					id: "app-force-reload",
+					label: "Force Reload",
 					accelerator: "CmdOrCtrl+Shift+R",
+					click: (_item, target) =>
+						runBrowserMenuAction(
+							"hard-reload",
+							target,
+							mainWindow,
+							routeBrowserMenu,
+						),
 				},
 				{ type: "separator" as const },
 				{
+					id: "app-actual-size",
 					label: "Actual Size",
-					accelerator: "CmdOrCtrl+O",
-					click: actualSizeHandler,
+					accelerator: "CmdOrCtrl+0",
+					click: (
+						_item: Electron.MenuItem,
+						target: Electron.BaseWindow | undefined,
+					) => {
+						if (!(target instanceof BrowserWindow)) return;
+						if (target === mainWindow && routeBrowserMenu("zoom-reset")) return;
+						target.webContents.setZoomFactor(1);
+					},
 				},
 				{
+					id: "app-zoom-in",
 					label: "Zoom In",
 					accelerator: "CmdOrCtrl+Plus", // On macOS, this often requires Shift as well (Cmd+Shift+=)
-					click: zoomInHandler,
+					click: (
+						_item: Electron.MenuItem,
+						target: Electron.BaseWindow | undefined,
+					) => {
+						if (!(target instanceof BrowserWindow)) return;
+						if (target === mainWindow && routeBrowserMenu("zoom-in")) return;
+						target.webContents.setZoomFactor(
+							target.webContents.getZoomFactor() + 0.1,
+						);
+					},
 				},
 				{
+					id: "app-zoom-out",
 					label: "Zoom Out",
 					accelerator: "CmdOrCtrl+-",
-					click: zoomOutHandler,
+					click: (
+						_item: Electron.MenuItem,
+						target: Electron.BaseWindow | undefined,
+					) => {
+						if (!(target instanceof BrowserWindow)) return;
+						if (target === mainWindow && routeBrowserMenu("zoom-out")) return;
+						target.webContents.setZoomFactor(
+							target.webContents.getZoomFactor() - 0.1,
+						);
+					},
 				},
 				{ type: "separator" as const },
 				{ role: "togglefullscreen" },
@@ -624,11 +650,43 @@ function createApplicationMenu(): void {
 							 * `window-all-closed` path the red button takes, which is the one
 							 * this change made safe for an install in flight.
 							 */
-							{ role: "close" },
+							{
+								id: "app-close",
+								// One honest label for both owners: the SAME accelerator closes a
+								// browser TAB while the browser has focus and the WINDOW elsewhere,
+								// and a menu label cannot follow focus that lives in a page view
+								// (UX r1 U4). The roles it replaced were "Close Window"/"Close".
+								label: "Close Tab or Window",
+								accelerator: "CmdOrCtrl+W",
+								click: (_item, target) =>
+									runBrowserMenuAction(
+										"close-tab",
+										target,
+										mainWindow,
+										routeBrowserMenu,
+									),
+							},
 							{ type: "separator" as const },
 							{ role: "window" },
 						] as Electron.MenuItemConstructorOptions[])
-					: ([{ role: "close" }] as Electron.MenuItemConstructorOptions[])),
+					: ([
+							{
+								id: "app-close",
+								// One honest label for both owners: the SAME accelerator closes a
+								// browser TAB while the browser has focus and the WINDOW elsewhere,
+								// and a menu label cannot follow focus that lives in a page view
+								// (UX r1 U4). The roles it replaced were "Close Window"/"Close".
+								label: "Close Tab or Window",
+								accelerator: "CmdOrCtrl+W",
+								click: (_item, target) =>
+									runBrowserMenuAction(
+										"close-tab",
+										target,
+										mainWindow,
+										routeBrowserMenu,
+									),
+							},
+						] as Electron.MenuItemConstructorOptions[])),
 			],
 		},
 		{
@@ -3615,14 +3673,23 @@ app
 				mainWindow.webContents.on("before-input-event", (event, input) => {
 					const isCmdOrCtrl = input.control || input.meta; // Ctrl on Win/Linux, Cmd on macOS
 
-					if (isCmdOrCtrl) {
+					// Browser focus routes first, through the same classifier/menu door
+					// as the native page hook. Outside it app zoom keeps its meaning.
+					if (event.defaultPrevented) return;
+					if (routeBrowserZoomInput(event, input)) return;
+					if (
+						isCmdOrCtrl &&
+						input.type === "keyDown" &&
+						!input.alt &&
+						!input.isComposing
+					) {
 						if (input.key === "+" || input.key === "=") {
 							zoomInFromEvent();
 							event.preventDefault();
 						} else if (input.key === "-") {
 							zoomOutFromEvent();
 							event.preventDefault();
-						} else if (input.key === "O") {
+						} else if (input.key === "0") {
 							actualSizeFromEvent();
 							event.preventDefault();
 						}

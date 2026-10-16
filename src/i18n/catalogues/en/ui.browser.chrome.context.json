@@ -1,0 +1,107 @@
+{
+	"ui.browser.chrome.approvals": {
+		"role": "browser toolbar tooltip and accessible name",
+		"tone": "concise, neutral, sentence case",
+		"length": "Keep concise for a small toolbar tooltip.",
+		"placeholders": {},
+		"note": "Names the shield control opening agent approval requests and site-access policy. Does not promise that clicking grants access. Browser page chrome, not application settings."
+	},
+	"ui.browser.chrome.error_title": {
+		"role": "tab management action or feedback",
+		"tone": "concise, neutral, sentence case",
+		"length": "Aim for 28 characters for menu labels; feedback may wrap. Never truncate page-title placeholders.",
+		"placeholders": {},
+		"note": "Slice-b browser page tabs, NOT application-level project/chat tabs. English fallback only until audited translations exist."
+	},
+	"ui.browser.chrome.move_left": {
+		"role": "tab management action or feedback",
+		"tone": "concise, neutral, sentence case",
+		"length": "Aim for 28 characters for menu labels; feedback may wrap. Never truncate page-title placeholders.",
+		"placeholders": {},
+		"note": "Slice-b browser page tabs, NOT application-level project/chat tabs. English fallback only until audited translations exist."
+	},
+	"ui.browser.chrome.move_right": {
+		"role": "tab management action or feedback",
+		"tone": "concise, neutral, sentence case",
+		"length": "Aim for 28 characters for menu labels; feedback may wrap. Never truncate page-title placeholders.",
+		"placeholders": {},
+		"note": "Slice-b browser page tabs, NOT application-level project/chat tabs. English fallback only until audited translations exist."
+	},
+	"ui.browser.chrome.duplicate": {
+		"role": "tab management action or feedback",
+		"tone": "concise, neutral, sentence case",
+		"length": "Aim for 28 characters for menu labels; feedback may wrap. Never truncate page-title placeholders.",
+		"placeholders": {},
+		"note": "Slice-b browser page tabs, NOT application-level project/chat tabs. English fallback only until audited translations exist."
+	},
+	"ui.browser.chrome.reload": {
+		"role": "tab management action or feedback",
+		"tone": "concise, neutral, sentence case",
+		"length": "Aim for 28 characters for menu labels; feedback may wrap. Never truncate page-title placeholders.",
+		"placeholders": {},
+		"note": "Slice-b browser page tabs, NOT application-level project/chat tabs. English fallback only until audited translations exist."
+	},
+	"ui.browser.chrome.scroll_left": {
+		"role": "tab management action or feedback",
+		"tone": "concise, neutral, sentence case",
+		"length": "Aim for 28 characters for menu labels; feedback may wrap. Never truncate page-title placeholders.",
+		"placeholders": {},
+		"note": "Slice-b browser page tabs, NOT application-level project/chat tabs. English fallback only until audited translations exist."
+	},
+	"ui.browser.chrome.scroll_right": {
+		"role": "tab management action or feedback",
+		"tone": "concise, neutral, sentence case",
+		"length": "Aim for 28 characters for menu labels; feedback may wrap. Never truncate page-title placeholders.",
+		"placeholders": {},
+		"note": "Slice-b browser page tabs, NOT application-level project/chat tabs. English fallback only until audited translations exist."
+	},
+	"ui.browser.chrome.accessible_tab": {
+		"role": "browser tab accessible name",
+		"tone": "page title followed by optional plain status phrases",
+		"length": "Not visually displayed; never truncate the page title.",
+		"placeholders": {
+			"title": "Untranslated page-title user data",
+			"loading": "yes/no token; failed tabs suppress loading",
+			"failed": "yes/no token",
+			"owner": "agent/shared/user token; shared means a user tab handed to an agent",
+			"waiting": "none, or the decimal queue REQUEST ORDINAL (not a request count)",
+			"restored": "yes/no token; restored from a prior browser run"
+		},
+		"note": "Slice-b browser page tabs, NOT application-level project/chat tabs. English fallback only until audited translations exist."
+	},
+	"ui.browser.chrome.invalid_order": {
+		"role": "tab management action or feedback",
+		"tone": "concise, neutral, sentence case",
+		"length": "Aim for 28 characters for menu labels; feedback may wrap. Never truncate page-title placeholders.",
+		"placeholders": {},
+		"note": "Slice-b browser page tabs, NOT application-level project/chat tabs. English fallback only until audited translations exist."
+	},
+	"ui.browser.chrome.duplicate_refused": {
+		"role": "tab management action or feedback",
+		"tone": "concise, neutral, sentence case",
+		"length": "Aim for 28 characters for menu labels; feedback may wrap. Never truncate page-title placeholders.",
+		"placeholders": {},
+		"note": "Slice-b browser page tabs, NOT application-level project/chat tabs. English fallback only until audited translations exist."
+	},
+	"ui.browser.chrome.invalid_action": {
+		"role": "invalid tab management request error",
+		"tone": "concise, neutral, sentence case",
+		"length": "Aim for 28 characters for menu labels; feedback may wrap. Never truncate page-title placeholders.",
+		"placeholders": {},
+		"note": "Slice-b browser page tabs, NOT application-level project/chat tabs. English fallback only until audited translations exist."
+	},
+	"ui.browser.chrome.tab_gone": {
+		"role": "human tab action error",
+		"tone": "plain sentence",
+		"length": "One short sentence; toast/error banner",
+		"placeholders": {}
+	},
+	"ui.browser.chrome.operation_failed": {
+		"role": "recoverable human tab action failure",
+		"tone": "plain explanation plus next action; never blame the user",
+		"length": "Two short sentences; toast/error banner",
+		"placeholders": {
+			"action": "duplicate/reload machine token; selects the corresponding sentence"
+		}
+	}
+}

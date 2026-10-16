@@ -25,6 +25,7 @@
  * no fly-to, so there is no entrance to cap.
  */
 
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	type FC,
@@ -34,6 +35,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { t } from "../../../../i18n/messages";
 import {
 	type DragState,
 	IDLE_DRAG,
@@ -140,6 +142,7 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 	onShowAllSessions,
 	summaryId,
 }) => {
+	useI18nLocale();
 	const viewportRef = useRef<HTMLDivElement | null>(null);
 	/*
 	 * The canvas's own box, POSITION INCLUDED. The size is what "fit" needs; the
@@ -877,7 +880,10 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 				 * Two lists, so the arrow walk meets the networks before the devices that
 				 * belong to them - the reading order the graph is drawn in.
 				 */}
-				<ul aria-label="Networks" className="m-0 list-none p-0">
+				<ul
+					aria-label={t("ui.mesh.mesh_canvas.networks")}
+					className="m-0 list-none p-0"
+				>
 					{graph.networks.map((network) => {
 						const box = geometry.networks.get(network.id);
 						if (!box) return null;
@@ -897,7 +903,10 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 						);
 					})}
 				</ul>
-				<ul aria-label="Devices" className="m-0 list-none p-0">
+				<ul
+					aria-label={t("ui.mesh.mesh_canvas.devices")}
+					className="m-0 list-none p-0"
+				>
 					{graph.devices.map((device) => {
 						const box = geometry.devices.get(device.id);
 						if (!box) return null;

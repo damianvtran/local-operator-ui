@@ -16,6 +16,11 @@ const f = () => globalThis.__browserStartupFixture;
 export const app = { getVersion: () => 'isolated-test' };
 export class BrowserWindow { constructor() { throw new Error('A test must never create a desktop window'); } }
 export const shell = { openPath: async () => '' };
+// The page context menu's two Electron members (LOH-13), modelled only so
+// the shipped import in main/browser/index.ts resolves: startup never
+// opens the menu, so building one is a no-op here rather than a fake menu.
+export const Menu = { buildFromTemplate: () => ({ popup: () => {} }) };
+export const clipboard = { writeText: () => {} };
 export const webContents = { getAllWebContents: () => [] };
 export class Notification { static isSupported() { return false; } }
 export const safeStorage = { isEncryptionAvailable: () => false };
@@ -30,6 +35,7 @@ export class WebContentsView {
   Object.assign(wc, { id: ++f().id, session: f().session,
    isDestroyed: () => !!wc.destroyed, isLoading: () => false, getURL: () => wc.url || 'about:blank', getTitle: () => '',
    getUserAgent: () => 'isolated-test', setUserAgent() {}, setAudioMuted() {}, setBackgroundThrottling() {},
+   setZoomMode() {}, setZoomFactor() {}, getZoomFactor: () => 1,
    setWindowOpenHandler() {}, loadURL: async url => { wc.url = url; },
    close: () => { if (!wc.destroyed) { wc.destroyed = true; wc.emit('destroyed'); f().views.delete(wc.id); } },
    debugger: { isAttached: () => false },
@@ -149,13 +155,21 @@ function fixture(failConsole) {
 		},
 	});
 	const mainFrame = { url: "http://localhost:5173/index.html" };
-	const webContents = { id: 700, mainFrame, send() {} };
-	const window = {
+	const webContents = Object.assign(new EventEmitter(), {
+		id: 700,
+		mainFrame,
+		send() {},
+		isDestroyed: () => false,
+		setIgnoreMenuShortcuts(value) {
+			webContents.ignoringMenu = value;
+		},
+	});
+	const window = Object.assign(new EventEmitter(), {
 		isDestroyed: () => false,
 		webContents,
 		contentView: { addChildView() {}, removeChildView() {} },
 		getContentBounds: () => ({ x: 0, y: 0, width: 1000, height: 700 }),
-	};
+	});
 	const f = {
 		dir,
 		saved,
@@ -251,6 +265,93 @@ test("production shared browser serves seven restored user-owned tabs even when 
 		assert.equal(f.views.size, 0);
 		assert.equal(f.session.listenerCount("will-download"), 0);
 	}
+});
+
+test("chrome focus is reset by a renderer reload or crash, and the listeners detach on stop (review R7)", async () => {
+	const f = fixture(false);
+	const contents = f.window.webContents;
+	let handle;
+	try {
+		handle = await startBrowserHost(options(f));
+		const setFocus = f.handlers.get("browser-set-chord-focus");
+		const sender = { sender: contents, senderFrame: contents.mainFrame };
+		const reportFocus = (value) => setFocus(sender, value);
+		const ignoring = () => contents.ignoringMenu;
+		reportFocus(true);
+		assert.equal(
+			handle.host.chordFocus,
+			true,
+			"renderer reported logical ownership",
+		);
+		// An in-page route change or a subframe load is NOT a renderer reload.
+		contents.emit("did-start-navigation", {
+			isMainFrame: true,
+			isSameDocument: true,
+		});
+		contents.emit("did-start-navigation", {
+			isMainFrame: false,
+			isSameDocument: false,
+		});
+		// This startup fixture never presents browser chrome. Retaining the DOM's
+		// logical owner is necessary across in-page navigation, but it must NOT
+		// authorize a menu action without presentation and foreground window facts.
+		assert.equal(
+			handle.host.chordFocus,
+			true,
+			"logical focus survives non-reloads",
+		);
+		assert.equal(
+			handle.chords.menu("close-tab"),
+			false,
+			"unpresented chrome cannot execute a menu despite logical ownership",
+		);
+		// A main-frame, cross-document navigation is a reload: no unmount cleanup runs.
+		contents.emit("did-start-navigation", {
+			isMainFrame: true,
+			isSameDocument: false,
+		});
+		assert.equal(
+			handle.host.chordFocus,
+			false,
+			"reload dropped the logical owner",
+		);
+		assert.equal(
+			handle.chords.menu("close-tab"),
+			false,
+			"reload cannot authorize a menu",
+		);
+		assert.equal(ignoring(), false);
+		reportFocus(true);
+		assert.equal(
+			handle.host.chordFocus,
+			true,
+			"logical owner restored before crash",
+		);
+		contents.emit("render-process-gone", {}, { reason: "crashed" });
+		assert.equal(
+			handle.host.chordFocus,
+			false,
+			"crash dropped the logical owner",
+		);
+		assert.equal(
+			handle.chords.menu("close-tab"),
+			false,
+			"crash cannot authorize a menu",
+		);
+		assert.equal(contents.listenerCount("did-start-navigation") >= 1, true);
+	} finally {
+		await stopBrowserHost();
+	}
+	assert.equal(
+		contents.listenerCount("did-start-navigation"),
+		0,
+		"stop detached",
+	);
+	assert.equal(
+		contents.listenerCount("render-process-gone"),
+		0,
+		"stop detached",
+	);
 });
 
 /** The ipcMain stub above now throws on a duplicate `handle`, exactly as
