@@ -2,7 +2,7 @@
  * this suite never launches Electron or claims rendered evidence. */
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -21,15 +21,356 @@ import {
 import {
 	ASKS_CONTROL,
 	ASKS_CONTROL_PINNED,
-	expectedRailClose,
+	ASKS_RAIL_CLOSE_POST_STATE,
+	CASES,
+	railCloseAssertion,
+	railCloseReading,
 	resolveAsksControl,
 } from "./asks-app-regression.mjs";
 import { categoryOf, flagsFor } from "./ci-scope.mjs";
 
-test("the historical source control expects restoration; candidate must empty", () => {
-	assert.equal(expectedRailClose("control"), true);
-	assert.equal(expectedRailClose("candidate"), false);
-	assert.throws(() => expectedRailClose("invented"));
+/*
+ * THE DRIVE'S OWN SCOPE, GUARDED LOCALLY (round 2, Q-4). A case's `drive(ctx)` may
+ * only touch what the runner hands it; reaching for a runner local compiles, reads as
+ * an ordinary mutation, and dies only where that name does not exist - measured on
+ * run 38955215215, where `frames.at(-1).railClosePolicy = ...` killed the FIRST leg
+ * in CI (`ReferenceError: frames is not defined`) with no source test able to see it.
+ *
+ * SO A REAL CASE IS DRIVEN HERE against stub helpers: the asks case runs end to end
+ * on BOTH legs and the reading it stamps must land on its OWN rail-close frame. The
+ * stub is a scripted stand-in - not an app, and no native proof - and its job is
+ * narrow: a scope slip, a wrong stamp target or a broken leg obligation fails in this
+ * suite instead of on a thirty-five minute macOS run.
+ */
+function stubDriveContext(leg, { restoreOnRailClose = false } = {}) {
+	const script = { browserOpen: false, askDrawer: false };
+	const frames = [];
+	const presses = [];
+	const facts = async () => ({
+		state: { browserPaneOpen: script.browserOpen },
+		dom: { ask: script.askDrawer, focusedConnected: true, panes: [] },
+	});
+	return {
+		frames,
+		presses,
+		ctx: {
+			kind: leg,
+			cdp: { evaluate: async () => null },
+			wait: async () => {},
+			fixtureMode: async () => {},
+			session: async () => {},
+			facts,
+			/*
+			 * Escape is the WITHDRAWAL while the drawer is up: it closes the drawer and
+			 * gives the displaced pane back (UX round 1, U6) - the branch the candidate's
+			 * `escape-give-back` frame exists to photograph.
+			 */
+			pressEscape: async () => {
+				presses.push("escape");
+				if (script.askDrawer) {
+					script.askDrawer = false;
+					script.browserOpen = true;
+				}
+			},
+			press: async (selector) => {
+				presses.push(selector);
+				if (selector.includes('data-panel-rail-item="browser"')) {
+					script.browserOpen = true;
+				} else if (selector.includes('data-panel-rail-item="ask"')) {
+					if (script.askDrawer) {
+						/*
+						 * THE LIT ITEM'S CLOSE EMPTIES THE SLOT (#1079) - unless the caller asked
+						 * for the pre-fix policy, which is how the discrimination below is driven.
+						 */
+						script.askDrawer = false;
+						script.browserOpen = restoreOnRailClose;
+					} else {
+						script.askDrawer = true;
+					}
+				} else if (
+					selector.includes("close-asks-button") ||
+					selector.includes("data-ci-close-asks") ||
+					selector.includes("status-asks")
+				) {
+					script.askDrawer = false;
+					script.browserOpen = false;
+				}
+			},
+			waitFor: async (probe) => {
+				await probe();
+				return await facts();
+			},
+			frame: async (label) => {
+				const measured = await facts();
+				frames.push({ label, ...measured });
+				return measured;
+			},
+			stamp: (key, value) => {
+				frames.at(-1)[key] = value;
+				return frames.at(-1);
+			},
+		},
+	};
+}
+
+test("a case's drive touches only what the runner hands it, and stamps its own frame", async () => {
+	for (const leg of ["control", "candidate"]) {
+		const { ctx, frames, presses } = stubDriveContext(leg);
+		await CASES.asks.drive(ctx);
+		const railClose = frames.find((frame) => frame.label === "rail-close");
+		assert(railClose, `${leg}: the drive captured no rail-close frame`);
+		assert(
+			railClose.railClosePolicy,
+			`${leg}: the rail-close frame carries no reading - the stamp must land on the frame the runner owns`,
+		);
+		assert.equal(railClose.railClosePolicy.leg, leg);
+		assert.equal(
+			railClose.railClosePolicy.observed,
+			false,
+			`${leg}: this stub empties the slot, so the reading must say so`,
+		);
+		for (const label of CASES.asks.frames[leg])
+			assert(
+				frames.some((frame) => frame.label === label),
+				`${leg}: promised frame ${JSON.stringify(label)} was not captured by the drive`,
+			);
+		assert(presses.length > 0, `${leg}: the drive pressed nothing`);
+	}
+
+	/*
+	 * AND THE CANDIDATE'S OBLIGATION IS REAL, not decoration: the same drive against a
+	 * stub whose lit-item close RESTORES the pane - the pre-fix policy - must FAIL on
+	 * the candidate leg and PASS on the control leg, which only records. That pair is
+	 * the discrimination the macOS leg makes, executed here at unit cost.
+	 */
+	const restoringCandidate = stubDriveContext("candidate", {
+		restoreOnRailClose: true,
+	});
+	await assert.rejects(
+		() => CASES.asks.drive(restoringCandidate.ctx),
+		/candidate rail-close wrong restore policy/,
+	);
+	const restoringControl = stubDriveContext("control", {
+		restoreOnRailClose: true,
+	});
+	await assert.doesNotReject(() => CASES.asks.drive(restoringControl.ctx));
+	assert.match(
+		restoringControl.frames.find((frame) => frame.label === "rail-close")
+			.railClosePolicy.reading,
+		/RESTORES the displaced pane/,
+		"a pre-fix control must be recorded as pre-fix rather than failing",
+	);
+});
+
+/*
+ * THE TABLE IS A CONTRACT, so it is held to one here rather than trusted. A case
+ * that declares no drive, no route, no readable purpose or no frames is a case
+ * whose artifact a reviewer cannot read; a case that promises `acceptance` is
+ * claiming a row the RUNNER pushes, which would make the runner's own verification
+ * of "every promised frame was captured" circular.
+ */
+test("every case declares what it drives and the frames it promises", () => {
+	const cases = Object.entries(CASES);
+	assert(
+		cases.length >= 3,
+		`the table carries the asks case plus new ones, got ${cases.length}`,
+	);
+	for (const [name, scenario] of cases) {
+		assert.equal(
+			typeof scenario.drive,
+			"function",
+			`${name} declares no drive`,
+		);
+		assert.match(scenario.route, /^\//, `${name} declares no route`);
+		assert(
+			typeof scenario.purpose === "string" && scenario.purpose.length > 60,
+			`${name} declares no purpose a reviewer could read`,
+		);
+		/*
+		 * THE PROMISE IS PER LEG, and the control leg's list is a SUBSET of the
+		 * candidate's: a control is a real historical revision, so a case whose
+		 * candidate-only steps photograph closers that revision predates would be
+		 * promising the control frames it cannot take - a red run for a correct case.
+		 */
+		for (const leg of ["control", "candidate"]) {
+			const promised = scenario.frames[leg];
+			assert(
+				Array.isArray(promised) && promised.length > 0,
+				`${name} promises no frames for the ${leg} leg`,
+			);
+			for (const label of promised)
+				assert.equal(
+					typeof label,
+					"string",
+					`${name} promises a non-string frame`,
+				);
+			assert(
+				!promised.includes("acceptance"),
+				`${name} must not promise the acceptance row: the runner pushes it, so promising it would make the runner's own check circular`,
+			);
+		}
+		for (const label of scenario.frames.control)
+			assert(
+				scenario.frames.candidate.includes(label),
+				`${name} promises the control leg a frame (${label}) the candidate does not take, so the two legs are not the same drive`,
+			);
+		/*
+		 * AND EVERY LABEL A DRIVE CAPTURES IS PROMISED, PER LEG. A label nobody promised
+		 * means the promise list has drifted from the drive - the failure mode the
+		 * runner's own check cannot see, because it only asks whether the promised labels
+		 * appeared. Comments are stripped first: a prose line naming `frame("...")` is not
+		 * a capture, and reading them made this scan answer about the file's commentary
+		 * instead of its steps (round 1, N2).
+		 */
+		const drive = scenario.drive
+			.toString()
+			.replace(/\/\*[\s\S]*?\*\//g, "")
+			.replace(/^\s*\/\/.*$/gm, "");
+		const captured = (text) =>
+			[...text.matchAll(/frame\("([^"]+)"\)|closed\("([^"]+)"/g)].map(
+				(match) => match[1] ?? match[2],
+			);
+		/*
+		 * A LEG'S OBLIGATION IS WHAT IT PROMISES: the shared steps run on BOTH legs, so
+		 * every label they capture must be promised by both, while the candidate-only
+		 * block runs on one leg and needs the candidate's list alone (round 1, Q-2).
+		 * Splitting on the drive's own gate keeps this about the steps rather than about
+		 * a second copy of the drive.
+		 */
+		const gate = drive.indexOf('kind === "candidate"');
+		const shared = gate === -1 ? drive : drive.slice(0, gate);
+		/*
+		 * ONE ASSERTION PER LABEL, NAMING THE LEGS THAT LACK IT (round 2, Q-5). The
+		 * nested loop this replaces carried a candidate-side arm that could never fire:
+		 * the subset check above pins control ⊆ candidate, so a shared label missing from
+		 * control is the only case the loop can reach, and by the time it reaches the
+		 * candidate it has already established the label is there. Computing the missing
+		 * legs keeps the direction enforced without an arm that is dead by construction.
+		 */
+		for (const label of captured(shared)) {
+			const missing = ["control", "candidate"].filter(
+				(leg) => !scenario.frames[leg].includes(label),
+			);
+			assert.equal(
+				missing.length,
+				0,
+				`${name}: a shared step captures ${JSON.stringify(label)} without promising it to ${missing.join(" and ")}`,
+			);
+		}
+		if (gate !== -1)
+			for (const label of captured(drive.slice(gate)))
+				assert(
+					scenario.frames.candidate.includes(label),
+					`${name} captures ${JSON.stringify(label)} in a candidate-only step without promising it`,
+				);
+	}
+	/*
+	 * The asks case's frames stay where the QA howto and the review threads point
+	 * (`<output>/control|candidate`); every other case gets its own directory. Pinned
+	 * here because moving it silently would break paths outside this repository.
+	 */
+	assert.equal(
+		CASES.asks.legacyOutputLayout,
+		true,
+		"the asks case must keep <output>/control|candidate, where its recorded howto points",
+	);
+	assert.equal(
+		CASES.palette.legacyOutputLayout,
+		undefined,
+		"a new case must not claim the asks case's output layout",
+	);
+});
+
+/*
+ * THE REFUSAL IS DRIVEN, NOT READ. A case name outside the table must exit 1 with
+ * the refusal on stderr and leave no artifact root behind - that is the property
+ * "a case that cannot run refuses loudly, never silently skips" rests on, and it is
+ * cheap to execute because it happens before any fixture, artifact root or Electron
+ * binary is resolved.
+ */
+test("a case name outside the table refuses before any artifact root exists", () => {
+	const root = mkdtempSync(join(tmpdir(), "asks-case-refusal-"));
+	const out = join(root, "out");
+	const result = spawnSync(
+		process.execPath,
+		[
+			fileURLToPath(new URL("./asks-app-regression.mjs", import.meta.url)),
+			"--case",
+			"no-such-case",
+			"--leg",
+			"candidate",
+		],
+		{
+			encoding: "utf8",
+			env: {
+				...process.env,
+				ASKS_APP_ROOT: root,
+				ASKS_OUTPUT: out,
+				ASKS_RECORDS: join(root, "records"),
+			},
+			timeout: 30_000,
+		},
+	);
+	assert.equal(
+		result.status,
+		1,
+		`expected a refusal, got status ${result.status}`,
+	);
+	assert.match(
+		result.stderr,
+		/asks-app-regression: --case needs <scenario> from .+ --leg control\|candidate/,
+	);
+	assert(
+		!existsSync(out),
+		"the refusal must come before the artifact root exists, not after it",
+	);
+	rmSync(root, { recursive: true, force: true });
+});
+
+test("the rail's close declares ONE post-state, and only the candidate owes it", () => {
+	assert.equal(ASKS_RAIL_CLOSE_POST_STATE, false);
+	assert.equal(railCloseAssertion("candidate"), ASKS_RAIL_CLOSE_POST_STATE);
+	/*
+	 * A CONTROL OWES A READING, NOT THE LITERAL. The control is derived (the
+	 * merge-base of `origin/main` and `HEAD`), so on every head cut from a main that
+	 * carries the asks fix its close empties the slot too - and the old per-leg
+	 * literal (`control` restores) failed a correct run. Run 38951889082 is the
+	 * measurement: the macOS leg died at its FIRST case on `false !== true`, because
+	 * the merge-base `a23faab0` already contains `2424010d2ae4`.
+	 */
+	assert.equal(
+		railCloseAssertion("control"),
+		undefined,
+		"a control leg must not carry the pre-fix literal: with a derived control it post-dates the fix",
+	);
+	assert.throws(() => railCloseAssertion("invented"));
+
+	/*
+	 * AND THE GATE SURVIVES: a candidate that RESTORES the pane where it must empty
+	 * the slot fails the case's own assertion. Driven as the same expression the drive
+	 * uses - the discrimination the macOS leg makes, at unit cost.
+	 */
+	const restoredInstead = true;
+	assert.throws(
+		() => assert.equal(restoredInstead, railCloseAssertion("candidate")),
+		"a candidate that restores the pane on the rail's close must fail the case",
+	);
+	assert.doesNotThrow(() =>
+		assert.equal(false, railCloseAssertion("candidate")),
+	);
+
+	/*
+	 * A POST-FIX CONTROL IS AN ORDINARY, PASSING OUTCOME, and its reading says which
+	 * policy it has rather than throwing: both branches are correct answers, which is
+	 * why the recording is the evidence and not a pass/fail.
+	 */
+	const postFix = railCloseReading("control", false);
+	assert.equal(postFix.observed, false);
+	assert.equal(postFix.declaredPostState, ASKS_RAIL_CLOSE_POST_STATE);
+	assert.match(postFix.reading, /EMPTIES the slot/);
+	const preFix = railCloseReading("control", true);
+	assert.match(preFix.reading, /RESTORES the displaced pane/);
+	assert.throws(() => railCloseReading("control", "nope"));
 	// The PINNED historical revision is the provenance record; it is no longer
 	// what boots (see the rule below), so this asserts the record held rather
 	// than that the run uses it.
@@ -408,24 +749,35 @@ test("existing job performs real native capture and always uploads measurements"
 		"the target must be the built renderer path the other callers use",
 	);
 	/*
-	 * The control tree is PINNED, so whether its revision is in this clone is a
-	 * property of the clone and not of the change: `pnpm test:desktop` runs under
-	 * `actions/checkout`'s default depth-1, where 2461cfa3 is a commit this clone
-	 * has never seen. Read it when it is here (a developer's tree), say so plainly
-	 * when it is not, and never turn a shallow clone into a red test.
+	 * THE QUESTION IS ASKED OF THE PIN, NOT OF THE DERIVED CONTROL, and the
+	 * difference is not cosmetic. The control became DERIVED (`resolveAsksControl`:
+	 * the merge-base of `origin/main` and `HEAD`, the pin only when that cannot be
+	 * resolved), so in a full clone the tree a leg boots is usually a RECENT one -
+	 * at main it is main itself - and main's driver DOES export the wait. Asserting
+	 * the absence on the derived control therefore asked about a revision the
+	 * fallback does not serve. The pin is the tree the fallback exists for: it is
+	 * what a shallow or detached clone degrades to, and it genuinely lacks the
+	 * export, so the assertion still proves the fallback is exercised rather than
+	 * dead code.
+	 *
+	 * Whether that revision is IN this clone is a property of the clone and not of
+	 * the change: `pnpm test:desktop` runs under `actions/checkout`'s default
+	 * depth-1, where 2461cfa3 is a commit this clone has never seen. Read it when it
+	 * is here (a developer's tree), say so plainly when it is not, and never turn a
+	 * shallow clone into a red test.
 	 *
 	 * maxBuffer, because the shared driver is a 45k-line file and the default
 	 * 1 MiB ceiling turns reading it into an ENOBUFS that reads like a git fault.
 	 */
 	const present = spawnSync(
 		"git",
-		["cat-file", "-e", `${ASKS_CONTROL}^{commit}`],
+		["cat-file", "-e", `${ASKS_CONTROL_PINNED}^{commit}`],
 		{ cwd: REPO },
 	).status;
 	if (present === 0) {
 		const historical = execFileSync(
 			"git",
-			["show", `${ASKS_CONTROL}:scripts/renderer-driver.mjs`],
+			["show", `${ASKS_CONTROL_PINNED}:scripts/renderer-driver.mjs`],
 			{ encoding: "utf8", cwd: REPO, maxBuffer: 32 * 1024 * 1024 },
 		);
 		assert(
