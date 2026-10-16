@@ -40,8 +40,9 @@
  * anyway, because the desktop reads the payload back off the row it already
  * holds: a persisted `$name` turn is the whole payload, and painting it as the
  * user's row is the "wall of skill body" defect
- * (`docs/design/history-fold-convergence.md` row D8). `typedLineOf` recovers
- * the typed line from that payload; `skill-row.ts` is the caller that turns the
+ * (the harness repo's `docs/design/history-fold-convergence.md` row D8).
+ * `typedLineOf` recovers the typed line from that payload; `skill-row.ts` is
+ * the caller that turns the
  * same payload into a row a reader can scan.
  *
  * `unescapeSkillAttribute` alone is ported DEAD — nothing here reads an escaped

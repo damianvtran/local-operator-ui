@@ -8,9 +8,9 @@
  * the phone hide that: they paint the typed line recovered from the payload's
  * `invocation` attribute (`local_operator/harness/rows.py:typed_line_of`). The
  * desktop never ported the read half, so its bubble paints the entire payload —
- * a wall of skill body standing in for one typed line, and the defect
- * `docs/design/history-fold-convergence.md` row D8 records as belonging to a
- * user bubble ("also poisons any phone-side session titling").
+ * a wall of skill body standing in for one typed line, and the defect the
+ * harness repo's `docs/design/history-fold-convergence.md` row D8 records as
+ * belonging to a user bubble ("also poisons any phone-side session titling").
  *
  * WHAT IT ANSWERS. `skillRowOf` is the ONE derivation every reader of such a
  * row goes through: the reducer stamps it on the record, so the row, the

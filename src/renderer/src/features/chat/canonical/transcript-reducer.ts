@@ -207,8 +207,9 @@ type TranscriptPayloadRecord =
 			 * what the wire holds and the user's row would otherwise paint it: the
 			 * header sentence, the `<skill>` tag, the whole SKILL.md body and the
 			 * request, standing in for one typed line that the payload also records
-			 * (`docs/design/history-fold-convergence.md` row D8). Deriving it here
-			 * means the LIVE row and the REPLAYED one are the same record shape, which
+			 * (the harness repo's `docs/design/history-fold-convergence.md` row D8).
+			 * Deriving it here means the LIVE row and the REPLAYED one are the same
+			 * record shape, which
 			 * is the property every test of this folds: a durable page row and the
 			 * optimistic echo differ by `local`/`provisional` and by nothing else.
 			 *
