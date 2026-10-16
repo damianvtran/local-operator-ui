@@ -1449,7 +1449,7 @@ export const AskPanel = ({
 		answerableSeen.current = new Set(
 			view.rows.filter((row) => row.canAnswer).map((row) => row.ask.ask_id),
 		);
-		setLandingText("");
+		setLanding((current) => ({ ...current, text: "" }));
 		setReleases((count) => count + 1);
 	};
 	const shown = askPanelHalves(view.rows, answerableSeen.current);
@@ -1510,10 +1510,27 @@ export const AskPanel = ({
 	 * and BEFORE the first card: its text says why focus moved, Tab from it goes forward
 	 * into the next card (as under `All`), and only a deliberate Shift+Tab reaches the
 	 * chips. Its text is set first and focused on the commit that renders it.
+	 *
+	 * A REQUEST, NOT A FLAG (agent review round 6, M1 = QA round 6, Q-6). A second lapse
+	 * set the same text, React bailed out, nothing committed and focus stayed on BODY;
+	 * and the armed flag then took the keyboard on some later, unrelated render. So each
+	 * lapse is a NEW request (`seq`), which always commits; the layout effect consumes it
+	 * exactly once, and moves focus only if focus is still lost - BODY, disconnected, or
+	 * inside the card that lapsed (`from`). A request that finds the reader elsewhere is
+	 * dropped, never deferred.
+	 *
+	 * AND THE SENTENCE IS GONE ONCE FOCUS LEAVES (review m1 = UX U14): it explains a
+	 * focus move, so it stays only while focus is on it, never as a stale line between
+	 * the chips and the first card.
 	 */
-	const [landingText, setLandingText] = useState("");
+	const [landing, setLanding] = useState<{
+		seq: number;
+		text: string;
+		from: string | null;
+	}>({ seq: 0, text: "", from: null });
+	const landingText = landing.text;
 	const landingRef = useRef<HTMLDivElement | null>(null);
-	const focusLanding = useRef(false);
+	const landingConsumed = useRef(0);
 	useEffect(() => {
 		if (lapseNote.text === "") return;
 		const clear = setTimeout(
@@ -1527,9 +1544,18 @@ export const AskPanel = ({
 		 * `preventScroll` on BOTH landings (U10): a target above the fold scrolled the
 		 * list back to it, which moved the next card under the pointer by another route.
 		 */
-		if (focusLanding.current && landingRef.current !== null) {
-			focusLanding.current = false;
-			landingRef.current.focus({ preventScroll: true });
+		if (landing.seq !== landingConsumed.current) {
+			landingConsumed.current = landing.seq;
+			const now = document.activeElement;
+			const lost =
+				now === null ||
+				now === document.body ||
+				!now.isConnected ||
+				(landing.from !== null &&
+					now.closest("[data-lo-ask-row]")?.getAttribute("data-lo-ask-row") ===
+						landing.from);
+			if (lost && landingRef.current !== null)
+				landingRef.current.focus({ preventScroll: true });
 		}
 		const newlyHeld = [...heldIds].filter((id) => !prevHeld.current.has(id));
 		const held = prevHeld.current;
@@ -1573,12 +1599,14 @@ export const AskPanel = ({
 		if (now !== null && now !== document.body && now.isConnected) return;
 		/* Under `Pending`: the landing above (U10/U11, Q-5), counted per commit. */
 		if (filter === "outstanding") {
-			setLandingText(
-				newlyHeld.length === 1
-					? "Question timed out"
-					: `${newlyHeld.length} questions timed out`,
-			);
-			focusLanding.current = true;
+			setLanding((current) => ({
+				seq: current.seq + 1,
+				text:
+					newlyHeld.length === 1
+						? "Question timed out"
+						: `${newlyHeld.length} questions timed out`,
+				from: id,
+			}));
 			return;
 		}
 		/* Matched by attribute VALUE rather than a composed selector: an ask id is the
@@ -1626,7 +1654,7 @@ export const AskPanel = ({
 		 * A HELD row sits inside the reserved slot's rounded frame, so its trigger's
 		 * hover fill and ring take the frame's inner radius (design round 4, D6).
 		 */
-		held = false,
+		{ held = false }: { held?: boolean } = {},
 	) => {
 		/*
 		 * The one line, and the two things it has to keep apart (D9): the
@@ -1860,6 +1888,7 @@ export const AskPanel = ({
 						if (event.target === event.currentTarget && event.key === " ")
 							event.preventDefault();
 					}}
+					onBlur={() => setLanding((current) => ({ ...current, text: "" }))}
 				>
 					{landingText}
 				</div>
@@ -1886,7 +1915,7 @@ export const AskPanel = ({
 								className={HELD_SLOT_FRAME}
 								style={reserve}
 							>
-								{collapsedRow(presentation, true)}
+								{collapsedRow(presentation, { held: true })}
 							</div>
 						);
 					})
