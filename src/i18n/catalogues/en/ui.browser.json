@@ -78,7 +78,7 @@
 	"ui.browser.browser_file_transfer_row.just_now": "just now",
 	"ui.browser.browser_file_transfer_row.age_minutes": "{count, plural, other {# min ago}}",
 	"ui.browser.browser_file_transfer_row.age_hours": "{count, plural, other {# h ago}}",
-	"ui.browser.browser_file_transfer_row.byte_count": "{count, plural, one {# bytes} other {# bytes}}",
+	"ui.browser.browser_file_transfer_row.byte_count": "{count, plural, one {{count, number, ::group-off} bytes} other {{count, number, ::group-off} bytes}}",
 	"ui.browser.browser_find_row.find_in_page": "Find in page",
 	"ui.browser.browser_find_row.searching": "Searching\u2026",
 	"ui.browser.browser_find_row.no_result_reported_press_enter_to_search_again": "No result reported. Press Enter to search again.",
