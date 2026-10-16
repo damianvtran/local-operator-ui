@@ -6,7 +6,8 @@
 		"src/i18n/",
 		"src/renderer/src/features/console/",
 		"src/renderer/src/features/onboarding/",
-		"src/renderer/src/features/providers/"
+		"src/renderer/src/features/providers/",
+		"src/renderer/src/features/chat/components/chat-sidebar-view-menu.tsx"
 	],
 	"files": {
 		"src/renderer/src/features/agent-hub/agent-details-page.tsx": 16,
@@ -76,7 +77,6 @@
 		"src/renderer/src/features/chat/components/chat-header.tsx": 8,
 		"src/renderer/src/features/chat/components/chat-options-sidebar.tsx": 5,
 		"src/renderer/src/features/chat/components/chat-page.tsx": 2,
-		"src/renderer/src/features/chat/components/chat-sidebar-view-menu.tsx": 4,
 		"src/renderer/src/features/chat/components/chat-sidebar.tsx": 52,
 		"src/renderer/src/features/chat/components/chat-status-strip.tsx": 1,
 		"src/renderer/src/features/chat/components/chat-tabs.tsx": 2,
