@@ -26,8 +26,8 @@
 	"ui.chat.voice.empty_take": "Nothing was heard. Hold the key while you speak.",
 	"ui.chat.voice.approval_waiting": "Approve or deny it on screen. Voice can't answer approvals.",
 	"ui.chat.voice.empty_transcript": "Didn't catch that. Hold the key and try again.",
-	"ui.chat.voice.approval_pending": "Answer the approval on screen first.",
 	"ui.chat.voice.toggle_off_hint": "Turn off voice for this conversation. Hold {key} to talk.",
 	"ui.chat.voice.stream_lost": "Voice lost this conversation's updates. Answers will not be spoken until it reconnects.",
-	"ui.chat.voice.stream_reconnect": "Reconnect"
+	"ui.chat.voice.stream_reconnect": "Reconnect",
+	"ui.chat.voice.card_pending": "Answer the question or approval on screen first."
 }

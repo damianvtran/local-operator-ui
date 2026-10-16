@@ -9,19 +9,30 @@
  * It costs one of the bridge's subscriber seats (32 per session) and paints
  * nothing - its frames go to `voice-turns.ts` and nowhere else.
  *
- * RECONNECTS REPLAY. The subscription resumes from its last receipt cursor
- * (`epoch` + `after_seq`), so frames the backend still holds arrive again; the
- * fold dedupes by message id and gate id, which is what makes a replay safe.
+ * RECONNECTS REPLAY, AND THE SERVER'S ORDER IS WHAT THE CURSOR RULE IS BUILT ON.
+ * A subscription resumes from its last receipt cursor (`epoch` + `after_seq`).
+ * The server then sends, in this order (`desktop_sessions.py`, the stream
+ * generator): `open` stamped `seq = cutoff`; every frame it still holds with
+ * `after_seq < seq <= cutoff`; then `snapshot@cutoff`; then live frames.
  *
- * A SNAPSHOT IS STATE, NEVER A REPLAY (QA round 2, Q4). The server stamps the
- * subscription's `open` and the `snapshot` that follows it with the SAME
- * (epoch, seq) - measured: open@292, snapshot@292 - so a cursor rule that drops
- * "a frame at or behind the cursor" dropped every snapshot, and a card already
- * parked when the slot arrived never set `pendingApproval`: push-to-talk opened
- * the microphone for words the route then refused. A snapshot is therefore
- * always folded, and folded as STATE only (`snapshot: true` on the inputs it
- * produces): the gate it names is recorded but never announced, since it was
- * on screen before anything here armed a take.
+ * - `open` DOES NOT MOVE THE CURSOR (review round 3, R3-M1). It carries the
+ *   cutoff, which is AHEAD of the replay behind it; moving the cursor there
+ *   dropped every replayed frame as "already seen", so a spoken turn's
+ *   `message_end`/`agent_end` that landed during a drop were lost, the take
+ *   stayed armed, and the NEXT turn - typed - was read aloud instead.
+ * - Event and frontend frames advance the cursor and are dropped only when at
+ *   or below it: a true duplicate of something this watcher already folded,
+ *   including anything at or below the `after_seq` it asked to resume from.
+ * - A SNAPSHOT IS STATE, NEVER A REPLAY (QA round 2, Q4). It shares the open's
+ *   seq on a fresh subscription (measured: open@292, snapshot@292) and must not
+ *   be dropped by the rule above, or a card already parked when the slot
+ *   arrived never sets the pending card and push-to-talk opens the microphone
+ *   for words the route then refuses. It is always folded, as STATE only
+ *   (`snapshot: true` on the inputs it produces): the gate it names is recorded
+ *   but never announced. It advances the cursor like any receipt.
+ *
+ * The fold also dedupes by message id and gate id, so a frame that slipped past
+ * the cursor rule still cannot be spoken twice.
  *
  * RETRY IS BOUNDED (review round 1, U5) AND AN UNASKED END IS A FAILURE (review
  * round 2, N1). Backoff follows the pane's own ladder (`streamRetryDelayMs`) for
@@ -39,7 +50,9 @@
  * takes, and a turn it can no longer see end must not be counted as running.
  * `retry()` on the returned handle starts a fresh ladder after `exhausted`; the
  * controller calls it on window focus, on a feed reconnect, and from the
- * notice's Reconnect action.
+ * notice's Reconnect action. The first frame after such a retry reports
+ * `recovered` (review round 3, R3-m1), so the "lost" notice is taken back by
+ * whichever path brought the stream back.
  */
 
 import { subscribeDesktopStream } from "@shared/api/local-operator/desktop-api";
@@ -53,7 +66,8 @@ import {
 /** Consecutive failed connections before the watcher gives up. */
 export const VOICE_STREAM_MAX_ATTEMPTS = 6;
 
-export type VoiceStreamStop = "exhausted" | "gone";
+/** `exhausted`/`gone`: the watcher stopped. `recovered`: a retry got a frame. */
+export type VoiceStreamStatus = "exhausted" | "gone" | "recovered";
 
 /** The seams a test drives; production uses the real ones. */
 export type VoiceStreamDeps = {
@@ -84,7 +98,7 @@ export type VoiceStreamHandle = {
 export function subscribeVoiceStream(
 	sessionId: string,
 	onInput: (input: VoiceTurnsInput) => void,
-	onStop: (reason: VoiceStreamStop) => void = () => undefined,
+	onStatus: (status: VoiceStreamStatus) => void = () => undefined,
 	deps: VoiceStreamDeps = realDeps,
 ): VoiceStreamHandle {
 	let cursor: { epoch: string; seq: number } | null = null;
@@ -96,6 +110,8 @@ export function subscribeVoiceStream(
 	let state: "live" | "exhausted" | "gone" | "closed" = "live";
 	/** Which connection is current, so a late event from an old one is dropped. */
 	let connection = 0;
+	/** A `retry()` after `exhausted` is waiting for its first frame. */
+	let recovering = false;
 
 	/** Tear down the current connection; the `end` it may emit is ours. */
 	const drop = () => {
@@ -105,11 +121,12 @@ export function subscribeVoiceStream(
 		current?.();
 	};
 
-	const stop = (reason: VoiceStreamStop) => {
+	const stop = (reason: "exhausted" | "gone") => {
 		state = reason;
+		recovering = false;
 		drop();
 		onInput({ kind: "stopped" });
-		onStop(reason);
+		onStatus(reason);
 	};
 
 	const fail = (status: number | undefined) => {
@@ -153,13 +170,20 @@ export function subscribeVoiceStream(
 						return;
 					}
 					failures = 0;
+					if (recovering) {
+						recovering = false;
+						onStatus("recovered");
+					}
+					// `open` is metadata stamped with the cutoff, ahead of the replay
+					// that follows it: it neither moves the cursor nor is folded (R3-M1).
+					if (frame.type === "open") return;
 					const snapshot = frame.type === "snapshot";
 					if (
 						typeof frame.epoch === "string" &&
 						typeof frame.seq === "number"
 					) {
-						// A frame at or behind the cursor is a replay already folded -
-						// except a snapshot, which is state (Q4: it shares the open's seq).
+						// At or below the cursor is a duplicate already folded - except a
+						// snapshot, which is state (Q4: it can share a seq it follows).
 						if (
 							!snapshot &&
 							cursor &&
@@ -215,6 +239,7 @@ export function subscribeVoiceStream(
 			if (state !== "exhausted") return;
 			state = "live";
 			failures = 0;
+			recovering = true;
 			open();
 		},
 	};

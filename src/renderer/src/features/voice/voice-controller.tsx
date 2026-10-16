@@ -84,7 +84,7 @@ function utteranceFailure(result: DesktopMediaResponse): string {
 	if (result.kind === "error" && result.voiceCode === "empty_transcript")
 		return t("ui.chat.voice.empty_transcript");
 	if (result.kind === "error" && result.voiceCode === "approval_pending")
-		return t("ui.chat.voice.approval_pending");
+		return t("ui.chat.voice.card_pending");
 	if (result.kind === "error" && result.voiceCode === "stt_unavailable")
 		return t("ui.chat.voice.stt_unavailable", { reason: result.detail });
 	return t("ui.chat.voice.utterance_failed", {
@@ -184,7 +184,7 @@ export function feedTurns(sessionId: string, input: VoiceTurnsInput): void {
 	}
 	useVoiceStore
 		.getState()
-		.setApprovalPending(sessionId, step.state.pendingApproval !== null);
+		.setCardPending(sessionId, step.state.pendingCard !== null);
 	for (const source of step.speak) speakSink?.(source);
 }
 
@@ -197,7 +197,7 @@ function resetTurnFlight(sessionId: string): void {
 		spoken: state.spoken,
 		announced: state.announced,
 	});
-	useVoiceStore.getState().setApprovalPending(sessionId, false);
+	useVoiceStore.getState().setCardPending(sessionId, false);
 }
 
 /*
@@ -214,9 +214,13 @@ function showApprovalToast(sessionId: string, message: string): void {
 	showWarningToast(message, { id: voiceApprovalToastId(sessionId) });
 }
 
-/** Whether the slot session has an approval pending, as its stream last said. */
-export function voiceApprovalPending(sessionId: string): boolean {
-	return Boolean(turnsBySession.get(sessionId)?.pendingApproval);
+/**
+ * Whether the slot session has a card pending - an approval or a blocking ask -
+ * as its stream last said. Any card, because the route's V13 refuses at any
+ * (review round 3, R3-m2): a take refused here never opens the microphone.
+ */
+export function voiceCardPending(sessionId: string): boolean {
+	return Boolean(turnsBySession.get(sessionId)?.pendingCard);
 }
 
 /**
@@ -322,9 +326,14 @@ export const VoiceController: FC = () => {
 		const handle = subscribeVoiceStream(
 			activeSessionId,
 			(input) => feedTurns(activeSessionId, input),
-			(reason) => {
+			(status) => {
+				// Back by any path - focus, feed reconnect, Reconnect (R3-m1).
+				if (status === "recovered") {
+					dismissToast(lostToastId);
+					return;
+				}
 				// The bounded retry gave up (U5): say so once, with the way back (N1).
-				if (reason !== "exhausted") return;
+				if (status !== "exhausted") return;
 				showWarningToast(t("ui.chat.voice.stream_lost"), {
 					id: lostToastId,
 					duration: Number.POSITIVE_INFINITY,
@@ -384,12 +393,13 @@ export const VoiceController: FC = () => {
 		const sessionId = viewedSessionId();
 		if (!sessionId || recorder.current || starting.current) return;
 		/*
-		 * AN APPROVAL ON SCREEN FIRST (V7, V13). The route would refuse the take
-		 * with `approval_pending`; refusing it here means the microphone never
-		 * opens for words that cannot be admitted, and the hint is immediate.
+		 * A CARD ON SCREEN FIRST (V7, V13). The route refuses the take with
+		 * `approval_pending` at any parked card - an approval or a blocking ask
+		 * (R3-m2) - so refusing it here means the microphone never opens for words
+		 * that cannot be admitted, and the hint is immediate.
 		 */
-		if (voiceApprovalPending(sessionId)) {
-			showApprovalToast(sessionId, t("ui.chat.voice.approval_pending"));
+		if (voiceCardPending(sessionId)) {
+			showApprovalToast(sessionId, t("ui.chat.voice.card_pending"));
 			return;
 		}
 		// A new take interrupts the answer being spoken: barge-in by hand.

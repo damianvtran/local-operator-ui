@@ -59,6 +59,15 @@ export type VoiceTurnsState = {
 	announced: string[];
 	/** The approval gate pending on the session right now, or null. */
 	pendingApproval: string | null;
+	/**
+	 * ANY card pending on the session - an approval or a blocking ask - or null
+	 * (review round 3, R3-m2). The route's V13 refuses words at every parked card
+	 * (`_card_pending`: `pending_gate is not None`), because a blocking ask is
+	 * withdrawn by a steer exactly like an approval; the push-to-talk pre-check
+	 * reads this so it refuses what the server would. Announcing stays
+	 * approval-only (`pendingApproval`).
+	 */
+	pendingCard: string | null;
 };
 
 export type VoiceTurnsInput =
@@ -98,6 +107,7 @@ export function initialVoiceTurns(): VoiceTurnsState {
 		spoken: [],
 		announced: [],
 		pendingApproval: null,
+		pendingCard: null,
 	};
 }
 
@@ -161,20 +171,28 @@ export function stepVoiceTurns(
 	}
 	if (input.kind === "stopped") {
 		return {
-			state: { ...state, pendingApproval: null, inFlight: false },
+			state: {
+				...state,
+				pendingApproval: null,
+				pendingCard: null,
+				inFlight: false,
+			},
 			speak: [],
 		};
 	}
 	if (input.kind === "gate") {
 		const gate = input.gate;
-		const requestId =
-			gate && gate.kind === "approval" && typeof gate.request_id === "string"
-				? gate.request_id
-				: "";
+		const cardId =
+			gate && typeof gate.request_id === "string" ? gate.request_id : "";
+		const carded = {
+			...state,
+			pendingCard: cardId === "" ? null : cardId,
+		};
+		const requestId = gate?.kind === "approval" ? cardId : "";
 		if (requestId === "") {
-			return { state: { ...state, pendingApproval: null }, speak: [] };
+			return { state: { ...carded, pendingApproval: null }, speak: [] };
 		}
-		const pending = { ...state, pendingApproval: requestId };
+		const pending = { ...carded, pendingApproval: requestId };
 		if (state.announced.includes(requestId))
 			return { state: pending, speak: [] };
 		const seen = {
