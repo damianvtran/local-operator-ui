@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { after, before, test } from "node:test";
 import { build } from "esbuild";
@@ -39,6 +40,13 @@ const { requestDesktopMediaOutcome, VOICE_REFUSAL_CODES } = await import(
 );
 
 const SESSION = "a1b2c3d4e5f6";
+/*
+ * A BACKEND-SHAPED request id: a dashed lowercase UUID, as `crypto.randomUUID()`
+ * mints it. Round 1's fixtures used `"req1"`/`"r"`, which the relay accepted and
+ * the real route refuses 422 - the tests passed while every take failed (voice
+ * QA round 1, Q1). Every utterance below carries this shape now.
+ */
+const RID = crypto.randomUUID();
 const TOKEN = "synthetic-voice-relay-token";
 let server;
 let base;
@@ -96,7 +104,7 @@ test("a text utterance posts multipart session_id/request_id/text with the beare
 	const outcome = await relay({
 		op: "voice.utterance",
 		sessionId: SESSION,
-		requestId: "req1",
+		requestId: RID,
 		text: "what is on my calendar",
 	});
 	assert.equal(outcome.answered, true);
@@ -112,7 +120,7 @@ test("a text utterance posts multipart session_id/request_id/text with the beare
 		"exactly the route's three fields, no file",
 	);
 	assert.equal(hit.form.get("session_id"), SESSION);
-	assert.equal(hit.form.get("request_id"), "req1");
+	assert.equal(hit.form.get("request_id"), RID, "sent exactly as minted");
 	assert.equal(hit.form.get("text"), "what is on my calendar");
 });
 
@@ -123,7 +131,7 @@ test("an audio utterance posts the take as `file` with its own mime type", async
 		{
 			op: "voice.utterance",
 			sessionId: SESSION,
-			requestId: "req2",
+			requestId: RID,
 			fileName: "utterance.webm",
 			mimeType: "audio/webm;codecs=opus",
 		},
@@ -148,7 +156,7 @@ test("an utterance with both audio and text, or neither, is refused unsent", asy
 		{
 			op: "voice.utterance",
 			sessionId: SESSION,
-			requestId: "req3",
+			requestId: RID,
 			mimeType: "audio/webm",
 			text: "hi",
 		},
@@ -157,10 +165,10 @@ test("an utterance with both audio and text, or neither, is refused unsent", asy
 	const neither = await relay({
 		op: "voice.utterance",
 		sessionId: SESSION,
-		requestId: "req4",
+		requestId: RID,
 	});
 	const noMime = await relay(
-		{ op: "voice.utterance", sessionId: SESSION, requestId: "req5" },
+		{ op: "voice.utterance", sessionId: SESSION, requestId: RID },
 		new Uint8Array([1, 2, 3]),
 	);
 	for (const outcome of [both, neither, noMime]) {
@@ -176,19 +184,19 @@ test("the schema refuses a non-audio mime type, a bad session id and extra field
 		{
 			op: "voice.utterance",
 			sessionId: SESSION,
-			requestId: "r",
+			requestId: RID,
 			mimeType: "text/html",
 		},
 		{
 			op: "voice.utterance",
 			sessionId: "../../etc",
-			requestId: "r",
+			requestId: RID,
 			text: "x",
 		},
 		{
 			op: "voice.utterance",
 			sessionId: SESSION,
-			requestId: "r",
+			requestId: RID,
 			text: "x",
 			mode: "answer",
 		},
@@ -275,6 +283,7 @@ test("every voice refusal code reaches the renderer as voiceCode on voice ops on
 		invalid_voice_request: 422,
 		voice_upload_too_large: 413,
 		empty_transcript: 422,
+		approval_pending: 409,
 	};
 	assert.deepEqual(
 		[...VOICE_REFUSAL_CODES].sort(),
@@ -292,7 +301,7 @@ test("every voice refusal code reaches the renderer as voiceCode on voice ops on
 		const voice = await relay({
 			op: "voice.utterance",
 			sessionId: SESSION,
-			requestId: "r",
+			requestId: RID,
 			text: "x",
 		});
 		assert.equal(voice.response.kind, "error");
@@ -320,8 +329,48 @@ test("every voice refusal code reaches the renderer as voiceCode on voice ops on
 	const stranger = await relay({
 		op: "voice.utterance",
 		sessionId: SESSION,
-		requestId: "r",
+		requestId: RID,
 		text: "x",
 	});
 	assert.equal(stranger.response.voiceCode, undefined);
+});
+
+/*
+ * PARITY WITH THE ROUTE'S `RequestID` (voice QA round 1, Q1). The pattern is the
+ * backend's (`desktop_sessions.py`: `^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-
+ * [a-f0-9]{4}-[a-f0-9]{12}$`), restated here on purpose: this file is the
+ * cross-repo pin, so it must not import the very constant it is checking.
+ */
+const BACKEND_REQUEST_ID =
+	/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
+const MINTS_AS_IS = /return crypto\.randomUUID\(\);/;
+const RESHAPES = /replace\(/;
+
+test("Q1: the minted utterance id is the route's RequestID shape, and dashless is refused unsent", async () => {
+	const controller = readFileSync(
+		"src/renderer/src/features/voice/voice-controller.tsx",
+		"utf8",
+	);
+	const minter = controller.slice(
+		controller.indexOf("export function newVoiceRequestId"),
+	);
+	const body = minter.slice(0, minter.indexOf("\n}") + 2);
+	assert.match(body, MINTS_AS_IS, "minted as-is");
+	assert.doesNotMatch(body, RESHAPES, "never reshaped");
+	for (let i = 0; i < 50; i += 1)
+		assert.match(crypto.randomUUID(), BACKEND_REQUEST_ID);
+
+	seen.length = 0;
+	const dashless = RID.replace(/-/g, "");
+	for (const bad of [dashless, RID.toUpperCase(), "req1", ""]) {
+		const outcome = await relay({
+			op: "voice.utterance",
+			sessionId: SESSION,
+			requestId: bad,
+			text: "x",
+		});
+		assert.equal(outcome.answered, false, `${bad} refused before the wire`);
+		assert.equal(outcome.response.status, 422);
+	}
+	assert.equal(seen.length, 0, "no malformed id reached the backend");
 });

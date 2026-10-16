@@ -12,8 +12,12 @@
  * only while the server says it cannot speak, with the server's own reason in the
  * label - a press that can only answer `409 voice_unavailable` is not offered.
  *
- * `aria-pressed` carries the state for a reader; the drawn state is the icon
- * (`AudioLines` on, `Mic` off) plus the accent ink, never colour alone.
+ * ONE GLYPH, TWO STATES (design round 1, D2). `AudioLines` in both: the composer
+ * owns the microphone glyph for dictation, and a second mic in the header read as
+ * a second dictation control. Off rests at `ink-muted` like the ghost buttons
+ * beside it; on is `accent` on `accent-wash`, driven by `aria-pressed` so the
+ * drawn state and the announced state are one attribute. The pair is asserted in
+ * `scripts/contrast-contract.mjs` ("voice toggle (pressed)").
  */
 
 import {
@@ -21,12 +25,14 @@ import {
 	userFacingMessage,
 } from "@shared/api/local-operator/desktop-api";
 import { Button } from "@shared/components/ui/button";
+import { resolvePushToTalkBinding } from "@shared/hooks/use-speech-to-text-manager";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { showErrorToast, showInfoToast } from "@shared/utils/toast-manager";
-import { AudioLines, Mic } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { AudioLines } from "lucide-react";
 import type { FC } from "react";
 import { controlVoice, useVoiceStatus } from "./use-voice-status";
 import { useVoiceStore } from "./voice-store";
@@ -47,12 +53,16 @@ export const VoiceToggle: FC<{ sessionId: string | undefined }> = ({
 	useI18nLocale();
 	const status = useVoiceStatus();
 	const pending = useVoiceStore((s) => s.pending);
+	// The provider's client, so the answer lands in the entry this tree reads.
+	const client = useQueryClient();
 	if (!status.enabled || !sessionId) return null;
 	const on = status.activeSessionId === sessionId;
 	const holder = status.activeSessionId;
 	const unavailable = !on && !status.canSpeak;
 	const label = on
-		? t("ui.chat.voice.toggle_off")
+		? t("ui.chat.voice.toggle_off_hint", {
+				key: resolvePushToTalkBinding().label,
+			})
 		: unavailable
 			? status.state?.tts.reason
 				? t("ui.chat.voice.toggle_unavailable", {
@@ -66,7 +76,11 @@ export const VoiceToggle: FC<{ sessionId: string | undefined }> = ({
 	const press = async () => {
 		if (pending || unavailable) return;
 		try {
-			const result = await controlVoice(on ? "disable" : "enable", sessionId);
+			const result = await controlVoice(
+				on ? "disable" : "enable",
+				sessionId,
+				client,
+			);
 			if (!on && result.replaced && result.replaced !== sessionId) {
 				showInfoToast(
 					t("ui.chat.voice.switched_from", {
@@ -99,11 +113,12 @@ export const VoiceToggle: FC<{ sessionId: string | undefined }> = ({
 			aria-busy={pending || undefined}
 			onClick={() => void press()}
 			className={cn(
-				on && "text-accent hover:text-accent",
+				"aria-pressed:bg-accent-wash aria-pressed:text-accent",
+				"aria-pressed:hover:bg-accent-wash aria-pressed:hover:text-accent",
 				unavailable && "text-ink-disabled hover:bg-transparent",
 			)}
 		>
-			{on ? <AudioLines aria-hidden="true" /> : <Mic aria-hidden="true" />}
+			<AudioLines aria-hidden="true" />
 		</Button>
 	);
 };

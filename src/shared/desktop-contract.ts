@@ -86,9 +86,16 @@ const mcpCatalogCwd = z.string().min(1).max(4096).regex(mcpCatalogCwdPattern);
  * at every hop instead of being assumed from the id's presence.
  */
 export const SUBSCRIPTION_ID_PATTERN = /^[a-f0-9]{32}$/;
-const requestId = z
-	.string()
-	.regex(/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/);
+/**
+ * The backend's `RequestID` (`desktop_sessions.py`): a dashed lowercase UUID, the
+ * shape `crypto.randomUUID()` returns. Exported so the media relay validates the
+ * voice utterance's id against the SAME pattern rather than a second spelling of
+ * it - the dashless id round 1 sent passed a looser local check and was refused
+ * 422 by the route on every take (voice QA round 1, Q1).
+ */
+export const REQUEST_ID_PATTERN =
+	/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
+const requestId = z.string().regex(REQUEST_ID_PATTERN);
 /**
  * An OPAQUE definition-revision token, echoed verbatim on a definition write.
  *
@@ -5592,6 +5599,9 @@ export const VOICE_REFUSAL_CODES = [
 	"voice_upload_too_large",
 	// The take held no words: nothing was admitted, and the reader is told so.
 	"empty_transcript",
+	// An approval is pending on the session (backend V13): words are refused, not
+	// admitted as a steer, so they cannot cancel the card. Answered on screen.
+	"approval_pending",
 ] as const;
 export type VoiceRefusalCode = (typeof VOICE_REFUSAL_CODES)[number];
 

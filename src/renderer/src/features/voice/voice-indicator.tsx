@@ -7,13 +7,14 @@
  *   how "enabling B turns A off" is visible without opening A.
  * - `VoicePhase`: the header's word for where this window's exchange is
  *   (listening / sending / working / speaking / error), beside the toggle, on the
- *   session that holds the slot only.
+ *   session that holds the slot only - and, while idle there, the hold hint.
  *
  * Both render nothing when `features.voice` is absent. Ink, not controls: the
  * row marker is `aria-hidden` with an `sr-only` sentence, the row idiom
  * `chat-sidebar.tsx` uses for its other marks.
  */
 
+import { resolvePushToTalkBinding } from "@shared/hooks/use-speech-to-text-manager";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
@@ -52,10 +53,29 @@ export const VoicePhase: FC<{ sessionId: string | undefined }> = ({
 }) => {
 	useI18nLocale();
 	const enabled = useVoiceCapability();
+	const holds = useVoiceStore((s) => s.active?.session_id === sessionId);
 	const phase = useVoiceStore((s) =>
 		s.phaseSessionId === sessionId ? s.phase : "idle",
 	);
-	if (!enabled || !sessionId || phase === "idle") return null;
+	if (!enabled || !sessionId || (!holds && phase === "idle")) return null;
+	/*
+	 * IDLE ON THE HOLDER TEACHES THE KEY (design round 1, D1). Voice on with
+	 * nothing happening is exactly when a reader needs to know how to talk, and
+	 * the key is the user's own binding (`keymap.push_to_talk`), resolved the way
+	 * the composer's tooltip resolves it - never a hard-coded name.
+	 */
+	if (phase === "idle") {
+		return (
+			<span
+				data-voice-phase="idle"
+				className="shrink-0 whitespace-nowrap text-meta text-ink-dim"
+			>
+				{t("ui.chat.voice.hold_hint", {
+					key: resolvePushToTalkBinding().label,
+				})}
+			</span>
+		);
+	}
 	return (
 		<output
 			data-voice-phase={phase}

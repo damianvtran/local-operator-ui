@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
-import { test } from "node:test";
+import { readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { after, test } from "node:test";
 import { build } from "esbuild";
 
 /*
@@ -155,6 +155,8 @@ test("two takes in one turn are one answer", () => {
 test("an approval is announced once per gate; an ask and a cleared gate are not", () => {
 	const approval = { request_id: "g1", kind: "approval" };
 	const { spoken } = run([
+		{ kind: "armed" },
+		start,
 		{ kind: "gate", gate: approval },
 		{ kind: "gate", gate: approval },
 		{ kind: "gate", gate: null },
@@ -165,6 +167,102 @@ test("an approval is announced once per gate; an ask and a cleared gate are not"
 		{ kind: "gate", requestId: "g1" },
 		{ kind: "gate", requestId: "g2" },
 	]);
+});
+
+test("U2: only a window with an armed take announces; others record the gate silently", () => {
+	const approval = { request_id: "g1", kind: "approval" };
+	// A second window on the same slot: nothing armed, so nothing said.
+	const other = run([start, { kind: "gate", gate: approval }]);
+	assert.deepEqual(other.spoken, []);
+	assert.equal(other.state.pendingApproval, "g1");
+	// A take armed AFTER the gate was already on screen does not announce it.
+	const late = run(
+		[{ kind: "armed" }, { kind: "gate", gate: approval }],
+		other.state,
+	);
+	assert.deepEqual(late.spoken, []);
+});
+
+test("the pending approval follows the gate frames (for the approval_pending pre-check)", () => {
+	const { state } = run([
+		{ kind: "gate", gate: { request_id: "g1", kind: "approval" } },
+	]);
+	assert.equal(state.pendingApproval, "g1");
+	assert.equal(
+		run([{ kind: "gate", gate: null }], state).state.pendingApproval,
+		null,
+	);
+	assert.equal(
+		run([{ kind: "gate", gate: { request_id: "a1", kind: "ask" } }], state)
+			.state.pendingApproval,
+		null,
+		"an ask is not an approval",
+	);
+});
+
+test("U3: an interrupted turn is not spoken, and the take is consumed", () => {
+	for (const ending of [
+		{ type: "agent_end", aborted: true },
+		{ type: "agent_end", error: "provider failed" },
+		{ type: "agent_end", cut_off_cause: "restart" },
+	]) {
+		const { spoken, state } = run([
+			{ kind: "armed" },
+			start,
+			said("m1", "Partial answer"),
+			event(ending),
+		]);
+		assert.deepEqual(spoken, [], JSON.stringify(ending));
+		assert.equal(state.armed, 0, "the take does not carry to the next turn");
+		// The next typed turn is still silent.
+		assert.deepEqual(run([start, said("m2"), end], state).spoken, []);
+	}
+	// A message that itself stopped short is not the answer either.
+	const cut = event({
+		type: "message_end",
+		message: {
+			id: "m9",
+			role: "assistant",
+			stop_reason: "aborted",
+			content: [{ type: "text", text: "Half a sen" }],
+		},
+	});
+	assert.deepEqual(run([{ kind: "armed" }, start, cut, end]).spoken, []);
+});
+
+const KEEPS_DEDUPE = /spoken: state\.spoken,\s*announced: state\.announced/;
+const DROPS_TURNS = /turns = null/;
+
+test("U4: the dedupe sets survive the slot leaving and returning (A -> B -> A)", () => {
+	const approval = { request_id: "g1", kind: "approval" };
+	const first = run([
+		{ kind: "armed" },
+		start,
+		{ kind: "gate", gate: approval },
+	]);
+	assert.deepEqual(first.spoken, [{ kind: "gate", requestId: "g1" }]);
+	// The controller's resetTurnFlight: in-flight state dropped, dedupe kept.
+	const back = {
+		...initialVoiceTurns(),
+		spoken: first.state.spoken,
+		announced: first.state.announced,
+	};
+	// Returning to A re-reads the snapshot, which still names the pending gate.
+	const again = run(
+		[{ kind: "armed" }, { kind: "gate", gate: approval }],
+		back,
+	);
+	assert.deepEqual(again.spoken, [], "the same gate is not announced twice");
+	const controller = readFileSync(
+		"src/renderer/src/features/voice/voice-controller.tsx",
+		"utf8",
+	);
+	assert.match(controller, KEEPS_DEDUPE);
+	assert.doesNotMatch(
+		controller,
+		DROPS_TURNS,
+		"the slot leaving no longer drops the sets",
+	);
 });
 
 test("the dedupe sets are bounded", () => {
@@ -264,4 +362,140 @@ test("V7: no voice code path can answer a gate", () => {
 		"voice.status",
 		"voice.utterance",
 	]);
+});
+
+/*
+ * U5: THE SLOT HOLDER'S STREAM WATCHER RETRIES WITH BACKOFF, BOUNDED, AND STOPS
+ * ON A GONE SESSION. Driven through the shipped `voice-stream.ts` with its
+ * transport and timers injected, so the retry ladder is observed, not assumed.
+ */
+const streamBundle = await build({
+	stdin: {
+		contents:
+			'export { subscribeVoiceStream, VOICE_STREAM_MAX_ATTEMPTS } from "./src/renderer/src/features/voice/voice-stream";',
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	external: ["electron"],
+	alias: {
+		"@shared": `${process.cwd()}/src/renderer/src/shared`,
+		"@features": `${process.cwd()}/src/renderer/src/features`,
+		"@renderer": `${process.cwd()}/src/renderer/src`,
+	},
+	loader: { ".css": "empty" },
+	jsx: "automatic",
+	packages: "external",
+	write: false,
+});
+const streamPath = new URL(
+	`./_voice-stream-${process.pid}.mjs`,
+	import.meta.url,
+);
+writeFileSync(streamPath, streamBundle.outputFiles[0].text);
+after(() => rmSync(streamPath, { force: true }));
+
+async function streamRig(answers) {
+	const { subscribeVoiceStream, VOICE_STREAM_MAX_ATTEMPTS } = await import(
+		streamPath.href
+	);
+	const opened = [];
+	const delays = [];
+	const timers = [];
+	const stops = [];
+	const inputs = [];
+	const deps = {
+		subscribe: (args, onEvent) => {
+			opened.push(args);
+			// One answer, or a sequence (a frame, then the connection dropping).
+			const next = [answers(opened.length)].flat();
+			queueMicrotask(() => {
+				for (const event of next) onEvent(event);
+			});
+			return () => undefined;
+		},
+		delayMs: (attempt) => attempt * 100,
+		schedule: (run, ms) => {
+			delays.push(ms);
+			timers.push(run);
+			return timers.length;
+		},
+		cancel: () => undefined,
+	};
+	const dispose = subscribeVoiceStream(
+		"a1a1a1a1a1a1",
+		(input) => inputs.push(input),
+		(reason) => stops.push(reason),
+		deps,
+	);
+	const drain = async () => {
+		for (let i = 0; i < 20; i += 1) {
+			await new Promise((resolve) => setImmediate(resolve));
+			const run = timers.shift();
+			if (run) run();
+		}
+	};
+	return {
+		opened,
+		delays,
+		stops,
+		inputs,
+		dispose,
+		drain,
+		VOICE_STREAM_MAX_ATTEMPTS,
+	};
+}
+
+test("U5: a failing stream backs off on a bounded ladder, then stops as exhausted", async () => {
+	const rig = await streamRig(() => ({ kind: "error", status: 503 }));
+	await rig.drain();
+	assert.equal(rig.opened.length, rig.VOICE_STREAM_MAX_ATTEMPTS);
+	assert.deepEqual(
+		rig.delays,
+		Array.from(
+			{ length: rig.VOICE_STREAM_MAX_ATTEMPTS - 1 },
+			(_, i) => (i + 1) * 100,
+		),
+		"each retry waits the ladder's next step",
+	);
+	assert.deepEqual(rig.stops, ["exhausted"]);
+	rig.dispose();
+});
+
+test("U5: a 404 (unknown_session) stops at once, with no retry", async () => {
+	const rig = await streamRig(() => ({ kind: "error", status: 404 }));
+	await rig.drain();
+	assert.equal(rig.opened.length, 1);
+	assert.deepEqual(rig.delays, []);
+	assert.deepEqual(rig.stops, ["gone"]);
+	rig.dispose();
+});
+
+test("U5: a frame resets the failure count, and the retry resumes from the cursor", async () => {
+	const frame = JSON.stringify({
+		type: "event",
+		epoch: "e1",
+		seq: 7,
+		payload: { type: "agent_start" },
+	});
+	const rig = await streamRig((n) =>
+		n === 2
+			? [
+					{ kind: "data", data: frame },
+					{ kind: "error", status: 503 },
+				]
+			: { kind: "error", status: 503 },
+	);
+	await rig.drain();
+	// 1 failure, a frame (count reset to 0), then a full fresh ladder: 1 + 6.
+	assert.equal(rig.opened.length, 1 + rig.VOICE_STREAM_MAX_ATTEMPTS);
+	assert.deepEqual(rig.stops, ["exhausted"]);
+	assert.deepEqual(rig.opened[2], {
+		sessionId: "a1a1a1a1a1a1",
+		epoch: "e1",
+		afterSeq: 7,
+	});
+	assert.equal(rig.inputs.length, 1);
+	rig.dispose();
 });

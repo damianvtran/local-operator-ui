@@ -50,8 +50,15 @@ export type VoiceTurnsState = {
 	lastMessageId: string | null;
 	/** Message ids already spoken, oldest first (bounded). */
 	spoken: string[];
-	/** Gate request ids already announced, oldest first (bounded). */
+	/**
+	 * Approval gate ids this window has SEEN, oldest first (bounded) - announced
+	 * or not. A gate is announced at most once, and only by the window that armed
+	 * a take (U2); one seen while nothing was armed is recorded so a later take
+	 * cannot announce an approval that was already on screen before it.
+	 */
 	announced: string[];
+	/** The approval gate pending on the session right now, or null. */
+	pendingApproval: string | null;
 };
 
 export type VoiceTurnsInput =
@@ -80,6 +87,7 @@ export function initialVoiceTurns(): VoiceTurnsState {
 		lastMessageId: null,
 		spoken: [],
 		announced: [],
+		pendingApproval: null,
 	};
 }
 
@@ -143,15 +151,27 @@ export function stepVoiceTurns(
 	}
 	if (input.kind === "gate") {
 		const gate = input.gate;
-		if (!gate || gate.kind !== "approval") return { state, speak: [] };
-		const requestId = gate.request_id;
-		if (typeof requestId !== "string" || requestId === "")
-			return { state, speak: [] };
-		if (state.announced.includes(requestId)) return { state, speak: [] };
-		return {
-			state: { ...state, announced: remember(state.announced, requestId) },
-			speak: [{ kind: "gate", requestId }],
+		const requestId =
+			gate && gate.kind === "approval" && typeof gate.request_id === "string"
+				? gate.request_id
+				: "";
+		if (requestId === "") {
+			return { state: { ...state, pendingApproval: null }, speak: [] };
+		}
+		const pending = { ...state, pendingApproval: requestId };
+		if (state.announced.includes(requestId))
+			return { state: pending, speak: [] };
+		const seen = {
+			...pending,
+			announced: remember(state.announced, requestId),
 		};
+		/*
+		 * ONLY THE WINDOW THAT SENT WORDS ANNOUNCES (U2). Every window holding the
+		 * slot watches the same stream, and an approval reached by typing - or by
+		 * another window's take - is not this window's to say aloud.
+		 */
+		if (state.armed === 0) return { state: seen, speak: [] };
+		return { state: seen, speak: [{ kind: "gate", requestId }] };
 	}
 	const event = input.event;
 	const type = event.type;
@@ -173,6 +193,9 @@ export function stepVoiceTurns(
 		const id = message.id;
 		if (typeof id !== "string" || id === "" || !hasText(message))
 			return { state, speak: [] };
+		// A message cut short is not an answer (U3): it is not what the agent said.
+		if (message.stop_reason === "aborted" || message.stop_reason === "error")
+			return { state, speak: [] };
 		return { state: { ...state, lastMessageId: id }, speak: [] };
 	}
 	if (type === "agent_end") {
@@ -188,7 +211,17 @@ export function stepVoiceTurns(
 		}
 		const id = state.lastMessageId;
 		const next: VoiceTurnsState = { ...ended, armed: 0, turnSeen: false };
-		if (id === null || state.spoken.includes(id))
+		/*
+		 * AN INTERRUPTED TURN IS NOT SPOKEN (U3). A stop, an abort or an error
+		 * ends the turn without the answer the words asked for; reading out its
+		 * last partial message would present a fragment as the reply. The take is
+		 * consumed either way - the operator can speak again.
+		 */
+		const interrupted =
+			event.aborted === true ||
+			(typeof event.error === "string" && event.error !== "") ||
+			(typeof event.cut_off_cause === "string" && event.cut_off_cause !== "");
+		if (interrupted || id === null || state.spoken.includes(id))
 			return { state: next, speak: [] };
 		return {
 			state: { ...next, spoken: remember(state.spoken, id) },
