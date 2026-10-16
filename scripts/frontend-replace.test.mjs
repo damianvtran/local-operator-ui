@@ -95,9 +95,11 @@ export default { useState, useEffect, useLayoutEffect, useInsertionEffect, useRe
 const bundle = await build({
 	stdin: {
 		contents: `
-			export { useCanonicalSessionStream, paintPendingSend } from "./src/renderer/src/shared/hooks/use-canonical-session";
+			export { useCanonicalSessionStream, paintPendingSend, RECONCILE_WALK_MAX_REQUESTS } from "./src/renderer/src/shared/hooks/use-canonical-session";
 			export { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
 			export { acceptFrontendReplace } from "./src/shared/desktop-session-contract";
+			export { writePaint, __resetPaintCache } from "./src/renderer/src/shared/store/paint-cache";
+			export { EMPTY_TRANSCRIPT, applyHistoryPage } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -142,8 +144,13 @@ const bundle = await build({
 const {
 	useCanonicalSessionStream,
 	paintPendingSend,
+	RECONCILE_WALK_MAX_REQUESTS,
 	useCanonicalSessionsStore,
 	acceptFrontendReplace,
+	writePaint,
+	__resetPaintCache,
+	EMPTY_TRANSCRIPT,
+	applyHistoryPage,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -1049,3 +1056,569 @@ test("source hook does not turn ordinary tokens into retries of an unchanged mis
 		true,
 	);
 });
+
+/*
+ * THE SNAPSHOT ORDER FENCE FENCES THE PAGE, NEVER THE FRAME.
+ *
+ * A snapshot is tagged with the order revision current at `connect()`. When a
+ * generation install moves that revision before the frame is applied - the
+ * measured case is the mount-time order repair's `sessions.get` landing first,
+ * on switching back to a conversation whose cached paint is from an older
+ * journal generation - the frame used to be skipped whole. It is the only frame
+ * that publishes `frontend`, and the snapshot deadline was cleared when it
+ * arrived, so the pane sat on "Loading conversation..." with nothing retrying.
+ *
+ * Each case seeds the paint cache the way a previous visit leaves it (rows
+ * stamped with `G-old`, plus one stream-born row with no ordinal, which is what
+ * makes the mount fire the repair), lets the repair's authoritative read commit
+ * `G-new`, and only then delivers the stream's open + snapshot.
+ */
+const FENCE_SESSION = "dddddddddddd";
+const FENCE_STREAM_BORN = "row-stream-born";
+const FENCE_STALE_ONLY = "row-stale-only";
+const fenceRow = (id, text, journalSeq) => ({
+	id,
+	ts: 100,
+	type: "message",
+	payload: { kind: "message", role: "user", content: [{ text }] },
+	...(journalSeq === undefined ? {} : { journal_seq: journalSeq }),
+});
+const fencePage = (entries, generation) => ({
+	entries,
+	has_more: false,
+	cursor_missing: false,
+	journal_order_state: "ready",
+	...(generation === undefined ? {} : { journal_generation: generation }),
+});
+const FENCE_SERVER_ROWS = [
+	fenceRow(ROW_EARLY, "early", 0),
+	fenceRow(ROW_LATER, "later", 1),
+	fenceRow(FENCE_STREAM_BORN, "newer row", 2),
+];
+const fenceSnapshot = (seq, history, cwd = "/fence") => {
+	const frame = snapshotFrame(seq, cwd);
+	frame.session_id = FENCE_SESSION;
+	frame.payload.frontend.snapshot.session_id = FENCE_SESSION;
+	frame.payload.history = history;
+	return frame;
+};
+const fenceFrame = (frame) => ({ ...frame, session_id: FENCE_SESSION });
+const historyReadCount = () =>
+	requests.filter((request) => request.op === "sessions.history").length;
+
+/**
+ * Mount on a `G-old` paint, release the repair read so it commits `G-new`, then
+ * deliver `frames()` on the connection that was opened BEFORE that commit.
+ */
+async function fencedMount({ snapshotHistory, frames, history, drafts }) {
+	__resetPaintCache();
+	subscriptions.length = 0;
+	requests.length = 0;
+	rafQueue = [];
+	const cached = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		fencePage(
+			[
+				fenceRow(ROW_EARLY, "cached early", 0),
+				fenceRow(ROW_LATER, "cached later", 1),
+				// The live stream delivered this one: no journal ordinal yet, so the
+				// mount owes an order repair.
+				fenceRow(FENCE_STREAM_BORN, "stream-born row"),
+			],
+			"G-old",
+		),
+		{ authoritative: true },
+	);
+	writePaint(FENCE_SESSION, { transcript: cached });
+	const serverPage = fencePage(FENCE_SERVER_ROWS, "G-new");
+	let releaseRepair;
+	const repairGate = new Promise((resolve) => {
+		releaseRepair = resolve;
+	});
+	globalThis.__replaceHistory = async () => serverPage;
+	globalThis.__replaceSnapshot = async () => {
+		await repairGate;
+		return fenceSnapshot(9, serverPage);
+	};
+	useCanonicalSessionsStore.setState({
+		activeSessionId: null,
+		drafts: {},
+		sessions: [],
+		placementFacts: {},
+	});
+	const runtime = makeRuntime();
+	let handle;
+	// The session the pane shows; `switchTo` moves it the way a sidebar click
+	// (another id) or an unmount (`undefined`) does.
+	let shown = FENCE_SESSION;
+	runtime.render = () => {
+		handle = useCanonicalSessionStream(shown, true, true, shown, {
+			journalOrder: true,
+		});
+		return handle;
+	};
+	runtime.rerender();
+	assert.ok(
+		requests.some((r) => r.op === "sessions.get" && r.journalOrder === true),
+		"the mount fires the order repair's authoritative read",
+	);
+	releaseRepair();
+	await settle();
+	assert.equal(
+		handle.transcript.journalGeneration,
+		"G-new",
+		"the repair committed the new generation before the snapshot arrived",
+	);
+	// Installed only now, so a gated walk cannot hold up the repair itself.
+	if (history) globalThis.__replaceHistory = history;
+	if (drafts) useCanonicalSessionsStore.setState({ drafts });
+	const readsBefore = historyReadCount();
+	deliver(fenceFrame(openFrame(1)));
+	for (const frame of frames ? frames() : [fenceSnapshot(2, snapshotHistory)])
+		deliver(frame);
+	await pump();
+	return {
+		get: () => handle,
+		historyReads: () => historyReadCount() - readsBefore,
+		switchTo: (sessionId) => {
+			shown = sessionId;
+			runtime.rerender();
+		},
+	};
+}
+
+test("T1: a same-generation snapshot after the repair commits hydrates the pane without a history read", async () => {
+	const h = await fencedMount({
+		snapshotHistory: fencePage(FENCE_SERVER_ROWS, "G-new"),
+	});
+	const view = h.get();
+	assert.notEqual(view.frontend, null, "the snapshot published `frontend`");
+	assert.equal(view.status, "live");
+	assert.equal(view.hydrated, true, "the page applied, so it is the proof");
+	assert.deepEqual(ids(view.transcript), [
+		ROW_EARLY,
+		ROW_LATER,
+		FENCE_STREAM_BORN,
+	]);
+	assert.equal(
+		view.transcript.records.find((r) => r.id === ROW_EARLY).text,
+		"early",
+		"the page's own text replaced the cached paint",
+	);
+	assert.equal(h.historyReads(), 0, "a usable page owes no /history walk");
+});
+
+test("T2: a cross-generation snapshot page is dropped, the frame still applies, and one walk hydrates", async () => {
+	const h = await fencedMount({
+		snapshotHistory: fencePage(
+			[
+				fenceRow(ROW_EARLY, "early", 0),
+				fenceRow(FENCE_STALE_ONLY, "only in the old journal", 1),
+			],
+			"G-old",
+		),
+	});
+	const view = h.get();
+	assert.notEqual(view.frontend, null, "the frame applied");
+	assert.equal(view.frontend.cwd, "/fence");
+	assert.equal(view.status, "live", "the pane is not left at connecting");
+	assert.equal(view.transcript.journalGeneration, "G-new");
+	assert.ok(
+		!ids(view.transcript).includes(FENCE_STALE_ONLY),
+		"the stale page's rows never reach the pane",
+	);
+	assert.equal(h.historyReads(), 1, "the dropped page is owed one walk");
+	assert.equal(view.hydrated, true, "the walk is the hydration authority");
+});
+
+test("a snapshot page with no generation after the revision moved is dropped and walked", async () => {
+	const h = await fencedMount({
+		snapshotHistory: fencePage([
+			fenceRow(ROW_EARLY, "early"),
+			fenceRow(FENCE_STALE_ONLY, "unstamped"),
+		]),
+	});
+	const view = h.get();
+	assert.notEqual(view.frontend, null);
+	assert.equal(view.status, "live");
+	assert.ok(!ids(view.transcript).includes(FENCE_STALE_ONLY));
+	assert.equal(h.historyReads(), 1);
+	assert.equal(view.hydrated, true);
+});
+
+test("a fenced snapshot after a reconnect leaves `reconnecting`, replaces the held readings, and keeps the replay", async () => {
+	const inflight = "a-inflight";
+	const h = await fencedMount({
+		frames: () => [
+			// The connection's first snapshot carries the new generation and applies.
+			fenceSnapshot(2, fencePage(FENCE_SERVER_ROWS, "G-new"), "/before"),
+		],
+	});
+	assert.equal(h.get().status, "live");
+	assert.equal(h.get().frontend.cwd, "/before");
+	// The receipt breaks on the same connection; the pane holds what it painted.
+	deliver(
+		fenceFrame({
+			...openFrame(3),
+			payload: { ...openFrame(3).payload, gap: true },
+		}),
+	);
+	await pump();
+	assert.equal(h.get().status, "reconnecting");
+	assert.equal(h.get().frontend, null);
+	assert.equal(h.get().heldFrontend?.cwd, "/before");
+	// The replay window, then a snapshot whose page is from the old journal.
+	deliver(
+		fenceFrame({
+			epoch: BRIDGE_EPOCH,
+			seq: 4,
+			type: "event",
+			payload: {
+				type: "message_start",
+				message: { id: inflight, role: "assistant", content: [] },
+			},
+		}),
+	);
+	deliver(
+		fenceFrame({
+			epoch: BRIDGE_EPOCH,
+			seq: 5,
+			type: "event",
+			payload: {
+				type: "message_update",
+				message: { id: inflight, role: "assistant", content: [] },
+				delta: "replayed answer",
+			},
+		}),
+	);
+	deliver(
+		fenceSnapshot(
+			6,
+			fencePage([fenceRow(FENCE_STALE_ONLY, "old journal", 0)], "G-old"),
+			"/after",
+		),
+	);
+	await pump();
+	const view = h.get();
+	assert.equal(view.status, "live", "a fenced page still ends the reconnect");
+	assert.equal(view.frontend?.cwd, "/after", "the frame's readings govern");
+	assert.equal(view.heldFrontend?.cwd, "/after", "and replace the held ones");
+	assert.ok(!ids(view.transcript).includes(FENCE_STALE_ONLY));
+	assert.equal(
+		view.transcript.records.find((r) => r.id === inflight)?.text,
+		"replayed answer",
+		"the replay is kept when the page is dropped",
+	);
+});
+
+/*
+ * The fence's own protections, each pinned on a page whose NEWEST ROW IS
+ * ALREADY HELD. That is the shape where `pageIsPaintedTail` stands the walk
+ * down by itself, so only `fencedPage` can owe it - and the one where a mutant
+ * that drops a protection still looks healthy once the walk has answered. The
+ * walk is therefore gated: each protection is read while it is still owed.
+ */
+const FENCE_HELD_TAIL_PAGE = () =>
+	fencePage(
+		[
+			fenceRow(ROW_EARLY, "early (old journal)", 0),
+			fenceRow(ROW_LATER, "later (old journal)", 1),
+			fenceRow(FENCE_STREAM_BORN, "newer row (old journal)", 2),
+		],
+		"G-old",
+	);
+const gatedHistory = () => {
+	const gate = { reads: [] };
+	gate.handler = (request) =>
+		new Promise((resolve) => {
+			gate.reads.push({ request, resolve });
+		});
+	return gate;
+};
+const HELD_CLAIM_ID = "req-held-send";
+const heldClaimDrafts = () => ({
+	[`send:${FENCE_SESSION}`]: {
+		key: `send:${FENCE_SESSION}`,
+		sessionId: FENCE_SESSION,
+		createRequestId: "create-held",
+		admissionRequestId: HELD_CLAIM_ID,
+		submittedText: "did this land?",
+		submittedAt: Date.now(),
+		admissionAttempted: true,
+	},
+});
+
+test("a fenced page whose newest row is held still owes the walk, and proves nothing until it answers", async () => {
+	const gate = gatedHistory();
+	const h = await fencedMount({
+		snapshotHistory: FENCE_HELD_TAIL_PAGE(),
+		history: gate.handler,
+		drafts: heldClaimDrafts(),
+	});
+	let view = h.get();
+	assert.notEqual(view.frontend, null, "the frame applied");
+	assert.equal(view.status, "live");
+	assert.equal(
+		h.historyReads(),
+		1,
+		"the dropped page owes the walk even though its newest row is held",
+	);
+	assert.equal(
+		view.hydrated,
+		false,
+		"a fenced page is not proof of hydration; the walk is",
+	);
+	assert.equal(view.history, null, "a fenced page is not published");
+	const claim =
+		useCanonicalSessionsStore.getState().drafts[`send:${FENCE_SESSION}`];
+	assert.equal(
+		claim?.admissionAttempted,
+		true,
+		"a fenced page's silence does not adjudicate the held send",
+	);
+	assert.equal(claim?.undelivered, undefined);
+	assert.equal(
+		view.transcript.records.find((r) => r.id === ROW_EARLY)?.text,
+		"cached early",
+		"the old journal's text never reaches the pane",
+	);
+	gate.reads[0].resolve(fencePage(FENCE_SERVER_ROWS, "G-new"));
+	await pump();
+	view = h.get();
+	assert.equal(view.hydrated, true, "the walk hydrated the pane");
+	assert.equal(
+		view.transcript.records.find((r) => r.id === ROW_EARLY)?.text,
+		"early",
+	);
+	assert.equal(h.historyReads(), 1);
+});
+
+test("a fenced page's rows are not connection proof for the walk", async () => {
+	// The walk's pages never name the fenced page's only row. Counted as painted,
+	// that row would keep the walk from joining and it would page to its bound.
+	const h = await fencedMount({
+		snapshotHistory: fencePage(
+			[fenceRow(FENCE_STALE_ONLY, "only in the old journal", 0)],
+			"G-old",
+		),
+		history: async () => ({
+			...fencePage(FENCE_SERVER_ROWS, "G-new"),
+			has_more: true,
+		}),
+	});
+	assert.equal(h.get().hydrated, true);
+	assert.ok(!ids(h.get().transcript).includes(FENCE_STALE_ONLY));
+	assert.equal(h.historyReads(), 1, "one read joins the rows the pane held");
+});
+
+test("a fenced page during a running turn costs the walk one read, not its whole budget", async () => {
+	const liveId = "a-live-turn";
+	let older = 0;
+	const h = await fencedMount({
+		frames: () => {
+			const frame = fenceSnapshot(2, FENCE_HELD_TAIL_PAGE());
+			// A turn in flight: the seed paints an untimed row only while streaming.
+			frame.payload.frontend.snapshot.streaming = true;
+			frame.payload.frontend.snapshot.live_events = [
+				{
+					type: "message_update",
+					message: {
+						id: liveId,
+						role: "assistant",
+						content: [{ type: "text", text: "still writing" }],
+					},
+					delta: " (live delta)",
+				},
+			];
+			return [frame];
+		},
+		// A long conversation: every older page is new rows, so only a page that
+		// overlaps what the pane painted can stop the walk.
+		history: async (request) => {
+			older += 1;
+			return request.beforeId
+				? {
+						...fencePage([fenceRow(`row-older-${older}`, "older", 0)], "G-new"),
+						has_more: true,
+					}
+				: { ...fencePage(FENCE_SERVER_ROWS, "G-new"), has_more: true };
+		},
+	});
+	assert.equal(h.get().hydrated, true);
+	assert.ok(
+		ids(h.get().transcript).includes(liveId),
+		"the live seed still paints",
+	);
+	assert.equal(
+		h.historyReads(),
+		1,
+		"the in-flight turn has no durable row, so it is not what the walk joins on",
+	);
+});
+
+test("a walk whose read is overtaken by another generation install re-asks under the new one", async () => {
+	const gate = gatedHistory();
+	const h = await fencedMount({
+		snapshotHistory: FENCE_HELD_TAIL_PAGE(),
+		history: gate.handler,
+	});
+	assert.equal(h.historyReads(), 1, "the fenced page's walk is out");
+	assert.equal(h.get().hydrated, false);
+	// A further install lands while that read is out: a ready wake for G-newer,
+	// whose repair read commits it.
+	const newerRows = FENCE_SERVER_ROWS.map((row) => ({
+		...row,
+		payload: {
+			...row.payload,
+			content: [{ text: `${row.payload.content[0].text} (newer)` }],
+		},
+	}));
+	globalThis.__replaceSnapshot = async () =>
+		fenceSnapshot(9, fencePage(newerRows, "G-newer"));
+	deliver(
+		fenceFrame({
+			epoch: BRIDGE_EPOCH,
+			seq: 3,
+			type: "event",
+			payload: {
+				type: "journal_order_ready",
+				journal_generation: "G-newer",
+				rows: [{ id: ROW_EARLY, journal_seq: 0 }],
+			},
+		}),
+	);
+	await pump();
+	assert.equal(h.get().transcript.journalGeneration, "G-newer");
+	assert.equal(h.get().hydrated, false, "the repair read is not the proof");
+	// The overtaken read answers under the domain it was dispatched for.
+	gate.reads[0].resolve(
+		fencePage(
+			[...FENCE_SERVER_ROWS, fenceRow("row-walk-old-gen", "G-new only", 3)],
+			"G-new",
+		),
+	);
+	await pump();
+	assert.equal(gate.reads.length, 2, "the walk re-asked under G-newer");
+	gate.reads[1].resolve(fencePage(newerRows, "G-newer"));
+	await pump();
+	const view = h.get();
+	assert.equal(view.hydrated, true, "the pane ends hydrated");
+	assert.equal(view.transcript.journalGeneration, "G-newer");
+	assert.ok(
+		!ids(view.transcript).includes("row-walk-old-gen"),
+		"the overtaken page was never merged",
+	);
+	assert.equal(
+		view.transcript.records.find((r) => r.id === ROW_EARLY)?.text,
+		"early (newer)",
+	);
+});
+
+/*
+ * THE RE-ASK'S THREE GUARDS (PR #1130 review round 2, m1). A walk whose read
+ * is overtaken by a generation install re-asks under the new revision only
+ * while the pane is unhydrated, only inside the walk's own request budget,
+ * and only after the generation/clear check has had its say. Each test below
+ * is the one a refactor that loses one of those would fail.
+ */
+const fenceReady = (seq, generation) =>
+	fenceFrame({
+		epoch: BRIDGE_EPOCH,
+		seq,
+		type: "event",
+		payload: {
+			type: "journal_order_ready",
+			journal_generation: generation,
+			rows: [{ id: ROW_EARLY, journal_seq: 0 }],
+		},
+	});
+/** Lands an install while a walk read is out: the wake, then its repair read. */
+async function installGeneration(seq, generation) {
+	globalThis.__replaceSnapshot = async () =>
+		fenceSnapshot(9, fencePage(FENCE_SERVER_ROWS, generation));
+	deliver(fenceReady(seq, generation));
+	await pump();
+}
+const walkReadsFor = (sessionId) =>
+	requests.filter(
+		(r) =>
+			r.op === "sessions.history" &&
+			r.sessionId === sessionId &&
+			r.sourceRead === undefined,
+	).length;
+
+test("an overtaken walk read on an already-hydrated pane is not asked again", async () => {
+	// A usable same-generation page hydrates the pane, but its newest row is one
+	// the pane never held, so the batch still owes a walk.
+	const gate = gatedHistory();
+	const h = await fencedMount({
+		snapshotHistory: fencePage(
+			[...FENCE_SERVER_ROWS, fenceRow("row-unheld-newest", "newest", 3)],
+			"G-new",
+		),
+		history: gate.handler,
+	});
+	assert.equal(h.get().hydrated, true, "the applied page hydrated the pane");
+	assert.equal(gate.reads.length, 1, "the walk is out");
+	await installGeneration(3, "G-newer");
+	assert.equal(h.get().transcript.journalGeneration, "G-newer");
+	gate.reads[0].resolve(fencePage(FENCE_SERVER_ROWS, "G-new"));
+	await pump();
+	assert.equal(
+		gate.reads.length,
+		1,
+		"a hydrated pane owes nothing more, so the dropped page is not re-asked",
+	);
+	assert.equal(h.get().hydrated, true);
+});
+
+test("generation churn inside one walk is bounded by the walk's request budget", async () => {
+	const gate = gatedHistory();
+	const h = await fencedMount({
+		snapshotHistory: FENCE_HELD_TAIL_PAGE(),
+		history: gate.handler,
+	});
+	assert.equal(gate.reads.length, 1, "the fenced page's walk is out");
+	// Ten installs, each landing while the walk's latest read is out; each read
+	// then answers under the domain it was dispatched for, and is dropped.
+	for (let install = 1; install <= 10; install++) {
+		await installGeneration(2 + install, `G-churn-${install}`);
+		const open = gate.reads.at(-1);
+		if (open.answered) break;
+		open.answered = true;
+		open.resolve(fencePage(FENCE_SERVER_ROWS, `G-churn-${install - 1}`));
+		await pump();
+	}
+	assert.equal(
+		gate.reads.length,
+		RECONCILE_WALK_MAX_REQUESTS,
+		"each re-ask is charged to the walk's own budget, so churn stops there",
+	);
+	assert.equal(h.get().historyReadPending, false, "and the walk has ended");
+	assert.equal(h.get().status, "live");
+});
+
+for (const [mode, nextSession] of [
+	["a switch to another conversation", OTHER_SESSION],
+	["an unmount", undefined],
+]) {
+	test(`no stale /history read after ${mode} while an overtaken walk read is out`, async () => {
+		const gate = gatedHistory();
+		const h = await fencedMount({
+			snapshotHistory: FENCE_HELD_TAIL_PAGE(),
+			history: gate.handler,
+		});
+		assert.equal(walkReadsFor(FENCE_SESSION), 1, "the walk is out");
+		await installGeneration(3, "G-switched");
+		h.switchTo(nextSession);
+		await pump();
+		const before = walkReadsFor(FENCE_SESSION);
+		gate.reads[0].resolve(fencePage(FENCE_SERVER_ROWS, "G-new"));
+		await pump();
+		assert.equal(
+			walkReadsFor(FENCE_SESSION),
+			before,
+			"the pane this walk was for is gone, so its read is not asked again",
+		);
+	});
+}

@@ -52,6 +52,7 @@ import {
 	isDraftMemoryKey,
 	isMemoryPane,
 	memoryCarry,
+	memoryDismiss,
 	memoryPaneFlag,
 	memoryProject,
 	memoryPut,
@@ -68,6 +69,33 @@ import {
 export type ProfileRecencyKind = "agent" | "team";
 
 /**
+ * WHICH KIND OF CLOSE a `setAskDrawerOpen(false, ...)` is (#1079).
+ *
+ * There are two, and they differ in what the slot is owed afterwards - in WHETHER
+ * THE USER ASKED FOR THE CLOSE, not in which control they aimed at. EVERY CLOSE THE
+ * USER ASKS FOR EMPTIES THE SLOT: the rail's lit asks item, its `panel.ask` chord,
+ * the header menu's `Close asks` row, the drawer's own X, and the composer chip that
+ * flips the same flag. The close is the same door in both directions (see
+ * `panel-rail.tsx`), so the displaced pane must not return and the conversation must
+ * remember no pane.
+ *
+ * EVERY OTHER CLOSE IS THE DRAWER WITHDRAWING, and keeps the give-back (UX round 1,
+ * U6): the queue emptying under the open drawer, and the carried fleet drawer being
+ * retired on a switch. ESCAPE INSIDE THE DRAWER IS A GIVE-BACK TOO, deliberately
+ * rather than by omission: it reads as dismissing an overlay rather than as a request
+ * for an empty slot, which is the one exception to the rule above (the U2 decision,
+ * UX round 1).
+ */
+export type AskDrawerCloseOptions = {
+	/**
+	 * The close is the user asking for the slot to be EMPTY, rather than the drawer
+	 * withdrawing: bound, the conversation's memory entry is CLEARED instead of
+	 * projected; unbound, the per-run borrow record is dropped instead of restored.
+	 */
+	dismissSlot?: boolean;
+};
+
+/**
  * Which door filed an asks-drawer open request (see `askOpenIntent`): the `…`
  * menu's row, or a bound `panel.ask` chord. Both mark the drawer's mount as the
  * user's own; only the menu's arms the claim that answers the menu's focus
@@ -79,6 +107,7 @@ export type AskOpenVia = "menu" | "chord";
 export type AskOpenIntent = { scope: AskScope; via: AskOpenVia };
 
 /**
+
  * Type definition for the UI preferences store state
  */
 type UiPreferencesState = {
@@ -491,6 +520,19 @@ type UiPreferencesState = {
 	 * In both modes an explicit choice made while the drawer is up (any of the four
 	 * claiming the slot) forfeits the borrow: the user replaced the pane on purpose,
 	 * and returning it later would be the surface resurrecting itself.
+	 *
+	 * AND SINCE #1079 THERE ARE TWO KINDS OF CLOSE, because "the drawer withdrew" and
+	 * "the user asked for an empty slot" are not the same request. EVERY CLOSE THE USER
+	 * ASKS FOR EMPTIES THE SLOT - the rail's lit asks item (and its `panel.ask` chord,
+	 * one path through `togglePanelRailItem`), the header menu's `Close asks` row, the
+	 * drawer's X, the composer chip - because each of those doors is a TOGGLE the user
+	 * pressed, the same door in both directions as every sibling item is. Bound, the
+	 * conversation's memory entry goes (`memoryDismiss`) rather than being projected,
+	 * so switching away and back shows no panel; unbound, the per-run borrow record is
+	 * dropped rather than restored. The give-back above is the WITHDRAWAL that nobody
+	 * asked for - the queue emptying, a carried fleet drawer retired - plus Escape
+	 * inside the drawer, which reads as dismissing an overlay (the U2 decision). The
+	 * sign of all of it is `AskDrawerCloseOptions`.
 	 */
 	isAskDrawerOpen: boolean;
 
@@ -536,8 +578,10 @@ type UiPreferencesState = {
 	 * Opening it closes the other four occupants, by the same construction as
 	 * theirs: one slot, one pane, and the exclusion lives in `claimRightSlot` so no
 	 * call site has to remember it. Whatever pane it displaced is REMEMBERED rather
-	 * than merely cleared, so closing the drawer puts it back (see
-	 * `askDrawerEvictedPane`).
+	 * than merely cleared, so a close NOBODY ASKED FOR - the drawer withdrawing,
+	 * because its queue emptied or because a carried fleet drawer was retired - puts it
+	 * back (see `askDrawerEvictedPane`); while a close THE USER ASKED FOR, through
+	 * `options.dismissSlot`, is "empty this slot" and deliberately does not (#1079).
 	 *
 	 * IT ALSO CLEARS ANY OPEN REQUEST IN FLIGHT (`askOpenIntent`, round-2 N1): a
 	 * request names an open that is about to happen, so any newer statement about
@@ -552,8 +596,15 @@ type UiPreferencesState = {
 	 *
 	 * @param open - Whether the asks drawer should be open
 	 * @param scope - Which queue the drawer shows
+	 * @param options - `dismissSlot` for a close the USER ASKED FOR, read as "empty
+	 * the slot" rather than as the drawer withdrawing; ignored on an open. See
+	 * `AskDrawerCloseOptions`.
 	 */
-	setAskDrawerOpen: (open: boolean, scope: AskScope) => void;
+	setAskDrawerOpen: (
+		open: boolean,
+		scope: AskScope,
+		options?: AskDrawerCloseOptions,
+	) => void;
 
 	/**
 	 * THE QUEUE the user has just asked to open from the header's `…` menu, and
@@ -609,11 +660,14 @@ type UiPreferencesState = {
 	 *
 	 * TWO CALLERS, both OPEN presses that leave no door under focus: the menu
 	 * row (`chat-content.tsx`, `via: "menu"`) and a bound `panel.ask` chord
-	 * (`panel-rail-actions.ts`, `via: "chord"`). Each close arm is a plain
-	 * `setAskDrawerOpen(false, scope)` with no request; the chip and the rail
-	 * item deliberately do not call it (their presses are read off focus), and
-	 * the open policy must not (its opens move no keyboard — the lane's
+	 * (`panel-rail-actions.ts`, `via: "chord"`). Each CLOSE arm writes no request
+	 * - a request is a statement about the OPEN, and an open that is not this
+	 * caller's own has nothing to consume - and each asks for the kind of close
+	 * the user pressed instead (`dismissSlot`, #1079); the chip and the rail item
+	 * deliberately do not call it (their presses are read off focus), and the
+	 * open policy must not (its opens move no keyboard - the lane's
 	 * no-focus-steal promise).
+
 	 *
 	 * WRITTEN AFTER ITS OPEN, DELIBERATELY: `setAskDrawerOpen` supersedes any
 	 * request in flight, so a caller that requested first and opened second would
@@ -1379,6 +1433,29 @@ const releasedMemory = (
 	return memory === state.rightSlotMemory ? {} : { rightSlotMemory: memory };
 };
 
+/**
+ * THE MEMORY SIDE OF A DISMISS: the bound conversation's entry goes, whatever it
+ * holds (#1079).
+ *
+ * `releasedMemory`'s guard is the pane the closing control belongs to, which is
+ * what an automatic close needs; here the guard would be wrong. The asks drawer
+ * does not know which pane it displaced - bound, the memory is the record, and the
+ * record can even name a pane the drawer never covered (the fleet drawer travels
+ * between conversations, so it can be closed over a conversation whose entry the
+ * user has never seen the pane for) - and it does not need to know: the press said
+ * "empty this slot", so the conversation is meant to come back with NO pane. That
+ * is why the pure helper is `memoryDismiss` rather than `memoryRemove` with a pane
+ * guessed at the call site.
+ */
+const dismissedMemory = (
+	state: Pick<UiPreferencesState, "rightSlotKey" | "rightSlotMemory">,
+): Partial<Pick<UiPreferencesState, "rightSlotMemory">> => {
+	const key = state.rightSlotKey;
+	if (typeof key !== "string") return {};
+	const memory = memoryDismiss(state.rightSlotMemory, key);
+	return memory === state.rightSlotMemory ? {} : { rightSlotMemory: memory };
+};
+
 export type RightSlotPane =
 	| "canvas"
 	| "run"
@@ -2090,7 +2167,11 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				}));
 			},
 
-			setAskDrawerOpen: (open: boolean, scope: AskScope) => {
+			setAskDrawerOpen: (
+				open: boolean,
+				scope: AskScope,
+				options?: AskDrawerCloseOptions,
+			) => {
 				set((state) => {
 					const bound = typeof state.rightSlotKey === "string";
 					if (open) {
@@ -2130,6 +2211,17 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 					} as const;
 					if (bound) {
 						/*
+						 * A CLOSE THE USER ASKED FOR EMPTIES THE SLOT (#1079) instead of projecting
+						 * the conversation's memory: the press means "close the panel", which is what
+						 * it means on every sibling item, so the entry is RETRACTED - a closed pane is
+						 * the ABSENCE of an entry (`right-slot-memory.ts`) - and the flags stay as
+						 * the open left them, all false. A close NOBODY ASKED FOR keeps the give-back
+						 * below (UX round 1, U6).
+						 */
+						if (options?.dismissSlot) {
+							return { ...closed, ...dismissedMemory(state) };
+						}
+						/*
 						 * BOUND: the close restores the BOUND conversation's own memory, which is
 						 * the fix for a fleet drawer opened over A's canvas and closed over B —
 						 * the per-run record could only ever name A's pane.
@@ -2147,9 +2239,29 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 						/*
 						 * BOUND, NO CONVERSATION: nothing was displaced (the open wrote no
 						 * record) and there is no memory to restore, so the close only clears the
-						 * flag.
+						 * flag. A close the user asked for lands here too - there is no entry to
+						 * retract either - BUT IT MUST ALSO SPEND THE PENDING LEGACY SEED (#1079,
+						 * agent review round 1 R2): the seed is the migrated profile's "this
+						 * window was looking at that pane", and it plants itself on the first
+						 * conversation to bind. Left standing, the press that asked for an empty
+						 * slot is followed by a browser pane on the next conversation, which is the
+						 * request it just made, undone one hop later.
 						 */
-						return closed;
+						return options?.dismissSlot
+							? { ...closed, rightSlotLegacySeed: null }
+							: closed;
+					}
+					if (options?.dismissSlot) {
+						/*
+						 * UNBOUND, AND THE USER ASKED FOR THE CLOSE (#1079): the per-run borrow
+						 * record is dropped rather than given back - `closed` already nulls it -
+						 * and the global flags stay as the open left them, all false, so the slot
+						 * is empty. A PENDING LEGACY SEED GOES WITH IT for the reason the
+						 * `rightSlotKey === null` arm above gives: this is the other shape of
+						 * "no conversation to hold it yet", and a seed left standing would plant
+						 * the pane this close was asked to empty.
+						 */
+						return { ...closed, rightSlotLegacySeed: null };
 					}
 					return {
 						...closed,

@@ -147,6 +147,7 @@ import {
 	type Reply,
 	useConversationInputStore,
 } from "@shared/store/conversation-input-store";
+import type { AskDrawerCloseOptions } from "@shared/store/ui-preferences-store";
 import { normalizePath } from "@shared/utils/path-utils";
 import {
 	dismissToast,
@@ -871,7 +872,12 @@ export type MessageInputProps = {
 	 * state.
 	 */
 	askExpanded?: boolean;
-	onAskToggle?: (next: boolean) => void;
+	/**
+	 * The toggle, CARRYING WHICH KIND OF CLOSE IT IS (#1079) and forwarded untouched: the
+	 * chip's own close asks for an empty slot (`dismissSlot`), while Escape's withdrawal
+	 * does not. See `AskDrawerCloseOptions`.
+	 */
+	onAskToggle?: (next: boolean, options?: AskDrawerCloseOptions) => void;
 	/**
 	 * The page's record of the asks it posted for, forwarded to the status row's ask
 	 * item beside the flag above and for the same reason: the count clause reads it so

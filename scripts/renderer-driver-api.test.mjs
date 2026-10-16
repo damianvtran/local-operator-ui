@@ -68,6 +68,17 @@ const FACADE_KEYS = [
 	"prepareDriverContext",
 	"reapLiveBoots",
 	"verb",
+	// Added deliberately when the CI asks producer became a caller: it spawned the
+	// app and attached straight away, and a port nothing was listening on turned
+	// `fetch` into a bare `TypeError: fetch failed`. This wait is the step every
+	// in-repo caller already took before its own attach, so it is part of the
+	// caller contract rather than an internal detail.
+	// Exported together, for the same caller: a scene must wait for the endpoint,
+	// then for the page to paint, then for the bridge to register its verbs -
+	// before it sends one. Listed in the sort order the assertion reads them in.
+	"waitForBridge",
+	"waitForDevtools",
+	"waitForPage",
 ];
 
 /** The two pre-spawn refusals a synthetic tree can reach (`assertBuildIsCurrent`). */
@@ -157,6 +168,52 @@ test("the export surface is exactly the frozen facade", async () => {
 	for (const key of FACADE_KEYS) {
 		assert.equal(typeof api[key], "function", `${key} must be a function`);
 	}
+});
+
+test("attach to a port nothing is listening on RETRIES, and names the port when it gives up", async () => {
+	/*
+	 * The defect CI caught: a caller attached straight after `launchApp`, the
+	 * debugging port was not listening yet, `fetch` REJECTED, and the reject
+	 * escaped the retry loop as a bare `TypeError: fetch failed` - a message that
+	 * names neither the port nor the fact that the app was still starting. The
+	 * loop's own contract is "retry until the target exists", so an unanswered
+	 * port is one more not-yet.
+	 *
+	 * Driven over a port that is provably closed (bound, then released) rather
+	 * than a patched `fetch`: the behaviour under test is what the kernel does
+	 * with a connection nobody accepts, and a stub would assert the stub.
+	 */
+	const mod = await import("./renderer-driver.mjs");
+	const { CdpClient } = mod.rendererDriverApi;
+	const { createServer } = await import("node:net");
+	const probe = createServer();
+	await new Promise((open) => probe.listen(0, "127.0.0.1", open));
+	const closedPort = probe.address().port;
+	await new Promise((close) => probe.close(close));
+
+	const started = Date.now();
+	await assert.rejects(
+		() => CdpClient.attach(closedPort, "out/renderer/index.html", 900),
+		(error) => {
+			assert.equal(error.name, "Error");
+			assert.doesNotMatch(
+				String(error.message),
+				/TypeError|fetch failed/,
+				"a not-yet-listening port is a wait, not a transport failure",
+			);
+			assert.match(
+				error.message,
+				new RegExp(
+					`no renderer target for out/renderer/index.html on port ${closedPort} after \\d+ms`,
+				),
+			);
+			return true;
+		},
+	);
+	assert.ok(
+		Date.now() - started >= 900,
+		"the loop must actually have retried for its whole timeout",
+	);
 });
 
 test("importing the driver runs nothing: no main, no scratch, no handlers, no driver env", () => {

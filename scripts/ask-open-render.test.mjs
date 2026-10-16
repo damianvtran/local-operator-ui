@@ -262,7 +262,13 @@ const Pane = ({ sessionId, frontend }) => {
 			? h(AskDrawer, {
 					frontend,
 					scope: "session",
-					onClose: () => setAskDrawerOpen(false, "session"),
+					/*
+					 * `chat-content.tsx`'s own door, verbatim: the DRAWER decides which kind of close
+					 * it is - the X passes `dismissSlot`, Escape and the emptied queue pass nothing -
+					 * and this forwards it to the store (#1079). A rig that flattened the two would
+					 * make every cell below blind to the difference the issue is about.
+					 */
+					onClose: (options) => setAskDrawerOpen(false, "session", options),
 				})
 			: null,
 	);
@@ -486,6 +492,58 @@ test("the drawer's own close over a queue that emptied is NOT a dismissal", asyn
 	await view.show("c-b", liveEmpty());
 	await view.show("c-a", withRows([ask("open")]));
 	assert.equal(view.flag(), true);
+});
+
+test("the withdraw-kind closes still GIVE THE DISPLACED PANE BACK: Escape and an emptied queue are not the rail's press (#1079)", async (t) => {
+	const view = await rig(t);
+	await act(async () => {
+		useUiPreferencesStore.getState().setCanvasOpen(true);
+	});
+	await view.show("c-a", withRows([ask("open")]));
+	const state = () => useUiPreferencesStore.getState();
+	assert.equal(state().isAskDrawerOpen, true);
+	assert.equal(
+		state().isCanvasOpen,
+		false,
+		"the drawer borrowed the canvas's slot",
+	);
+	assert.equal(state().askDrawerEvictedPane, "isCanvasOpen");
+	/*
+	 * ESCAPE is the drawer's own door, and "dismiss this overlay" is not "empty the
+	 * slot": the borrow is given back rather than retracted, which is the U6
+	 * behaviour #1079 deliberately leaves alone. Under the manager's rule - every
+	 * close the USER ASKED FOR empties the slot - Escape is the one exception, and it
+	 * is a key rather than a labelled control, so no label lies: the rail item, the
+	 * header menu's row, the drawer's X and the composer chip all pass `dismissSlot`
+	 * (see the pressed-kind cells here and in `panel-rail.test.mjs`).
+	 */
+	const surface = view.container.querySelector("[data-lo-ask-surfaces]");
+	await act(async () => {
+		surface.dispatchEvent(
+			new window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+		);
+	});
+	assert.equal(state().isAskDrawerOpen, false);
+	assert.equal(state().isCanvasOpen, true, "the canvas comes back");
+	assert.equal(state().askDrawerEvictedPane, null);
+	/*
+	 * The QUEUE EMPTYING under the open drawer (#864) closes through the same
+	 * withdrawal, and gives the same pane back - the second acceptance case.
+	 */
+	await view.show("c-b", withRows([ask("open")]));
+	assert.equal(
+		state().isAskDrawerOpen,
+		true,
+		"a fresh conversation opens again",
+	);
+	assert.equal(state().isCanvasOpen, false, "over the canvas again");
+	await view.show("c-b", liveEmpty());
+	assert.equal(state().isAskDrawerOpen, false, "the drawer closed itself");
+	assert.equal(
+		state().isCanvasOpen,
+		true,
+		"and the pane it displaced is handed back",
+	);
 });
 
 test("a settled-only queue keeps the drawer open (#864), and closing it records nothing", async (t) => {
@@ -736,7 +794,7 @@ test("StrictMode's second effect pass is not a second 'once'", async (t) => {
 	assert.equal(view.flag(), false);
 });
 
-test("the policy opens through the store's one writer, borrowing a durable pane the close gives back", async (t) => {
+test("the policy opens through the store's one writer, borrowing a durable pane a withdrawal gives back", async (t) => {
 	const view = await rig(t);
 	await act(async () => {
 		useUiPreferencesStore.getState().setCanvasOpen(true);
@@ -750,8 +808,57 @@ test("the policy opens through the store's one writer, borrowing a durable pane 
 		"the slot is borrowed from the canvas",
 	);
 	assert.equal(state().askDrawerEvictedPane, "isCanvasOpen");
-	await view.press("Close asks");
+	/*
+	 * THE DOOR THAT STILL GIVES IT BACK IS ESCAPE, NOT THE X (#1079): this cell's claim
+	 * is about the BORROW, and the only closes that still return it are the ones nobody
+	 * asked for - Escape, and the queue emptying. The X is a control the user aimed at,
+	 * so it empties the slot instead (see the pressed-kind cell below); pressing it here
+	 * would have measured a different request and left the borrow untested.
+	 */
+	const surface = view.container.querySelector("[data-lo-ask-surfaces]");
+	await act(async () => {
+		surface.dispatchEvent(
+			new window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+		);
+	});
+	assert.equal(state().isAskDrawerOpen, false, "the withdrawal closed it");
 	assert.equal(state().isCanvasOpen, true, "and the close gives it back");
+});
+
+/*
+ * AND THE X IS THE OTHER KIND (#1079, UX round 1 U2). The drawer's own dismiss is a
+ * control the user AIMED AT, so under the manager's rule - every close the user asks for
+ * empties the slot - it must leave the slot empty rather than hand back the pane it
+ * displaced. This is the cell that would have failed before the rule was extended past
+ * the rail item: its sibling above is the same drawer, the same borrowed canvas and the
+ * same `onClose`, differing only in which arm fired.
+ */
+test("the drawer's X is the pressed kind: it empties the slot rather than handing the pane back (#1079)", async (t) => {
+	const view = await rig(t);
+	await act(async () => {
+		useUiPreferencesStore.getState().setCanvasOpen(true);
+	});
+	await view.show("c-a", withRows([ask("open")]));
+	const state = () => useUiPreferencesStore.getState();
+	assert.equal(state().isAskDrawerOpen, true);
+	assert.equal(
+		state().isCanvasOpen,
+		false,
+		"the drawer borrowed the canvas's slot",
+	);
+	assert.equal(state().askDrawerEvictedPane, "isCanvasOpen");
+	await view.press("Close asks");
+	assert.equal(state().isAskDrawerOpen, false, "the X closed it");
+	assert.equal(
+		state().isCanvasOpen,
+		false,
+		"the canvas does NOT come back: the X is the user's own press, so it asks for an empty slot exactly as the rail item, the menu row and the chip do",
+	);
+	assert.equal(
+		state().askDrawerEvictedPane,
+		null,
+		"and the borrow record is dropped rather than restored",
+	);
 });
 
 /* ================================================ the flag follows the user ==== */

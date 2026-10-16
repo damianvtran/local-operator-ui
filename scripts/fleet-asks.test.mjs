@@ -722,8 +722,14 @@ test("the asks door left the sidebar for the conversation header, and then for t
 	);
 	assert.match(
 		railActions,
-		/const open = !\(\s*state\.isAskDrawerOpen && state\.askDrawerScope === context\.askScope\s*\);\s*state\.setAskDrawerOpen\(open, context\.askScope\);/,
+		/const open = !\(\s*state\.isAskDrawerOpen && state\.askDrawerScope === context\.askScope\s*\);\s*state\.setAskDrawerOpen\(\s*open,\s*context\.askScope,/,
+
 		"the shared toggle must be the header trigger's old door: a toggle in the ITEM's own scope (this scope open closes; the other scope's open is replaced).",
+	);
+	assert.match(
+		railActions,
+		/setAskDrawerOpen\(\s*open,\s*context\.askScope,\s*open \? undefined : \{ dismissSlot: true \},?\s*\);/,
+		"and its CLOSE is the kind the user pressed (#1079): `dismissSlot` empties the slot the drawer borrowed, so the lit item is the same door in both directions as its five siblings are - while the re-scope arm (an open) passes no option.",
 	);
 	assert.match(
 		rail,
@@ -735,8 +741,8 @@ test("the asks door left the sidebar for the conversation header, and then for t
 	);
 	assert.match(
 		content,
-		/if \(headerAsksOpen\) \{\s*setAskDrawerOpen\(false, headerAsksScope\);\s*return;\s*\}\s*setAskDrawerOpen\(true, headerAsksScope\);\s*requestAskOpen\(headerAsksScope\);/,
-		"the header's menu row must toggle in the scope its own conversation resolves to (session inside a session, fleet at the top level) and, on the OPEN arm, write the lane's open request - the row cannot signal its press through focus, and without the request the drawer's empty state is unreachable from this door (round-1 Q1).",
+		/if \(headerAsksOpen\) \{\s*setAskDrawerOpen\(false, headerAsksScope, \{\s*dismissSlot: true,\s*\}\);\s*return;\s*\}\s*setAskDrawerOpen\(true, headerAsksScope\);\s*requestAskOpen\(headerAsksScope\);/,
+		"the header's menu row must toggle in the scope its own conversation resolves to (session inside a session, fleet at the top level) and, on the OPEN arm, write the lane's open request - the row cannot signal its press through focus, and without the request the drawer's empty state is unreachable from this door (round-1 Q1). On the CLOSE arm it asks for the kind the USER asked for (#1079, UX round 1 U1/U2): this row is a toggle the user pressed, so `dismissSlot` makes it empty the slot like the rail item and the drawer's X, rather than sending the user who closed asks from the menu back to a pane they did not ask for. What that arm DOES is walked in `panel-rail.test.mjs` (the row cannot be mounted outside `ChatContent`).",
 	);
 	assert.match(
 		content,

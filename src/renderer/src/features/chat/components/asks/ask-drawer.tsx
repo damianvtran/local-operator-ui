@@ -90,7 +90,10 @@
 
 import { Button, Tooltip } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
-import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import {
+	type AskDrawerCloseOptions,
+	useUiPreferencesStore,
+} from "@shared/store/ui-preferences-store";
 import { PanelRightClose } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import type { CanonicalFrontendState } from "../../../../../../shared/desktop-session-contract";
@@ -226,9 +229,14 @@ export type AskDrawerProps = {
 	scope: AskScope;
 	/**
 	 * The door that closes the drawer WITHOUT answering. The caller owns the flag
-	 * (the store does), so this reports the request rather than applying it.
+	 * (the store does), so this reports the request rather than applying it - AND
+	 * IT CARRIES WHICH KIND OF CLOSE IT IS (#1079): the X below is the user asking
+	 * for the slot to be EMPTY and passes `dismissSlot`, while the two closes the
+	 * user did NOT ask for pass nothing and keep the give-back - the queue emptying
+	 * under this surface, and Escape, which reads as dismissing an overlay rather
+	 * than as a request for an empty slot (see `AskDrawerCloseOptions`).
 	 */
-	onClose: () => void;
+	onClose: (options?: AskDrawerCloseOptions) => void;
 	/**
 	 * The three doors, addressed by ASK ID rather than by the record: the caller
 	 * posts to a session by id and has no use for the rest of the row, and passing
@@ -370,10 +378,10 @@ export const AskDrawer = ({
 	 * One close per mount, whatever the caller's `onClose` identity does. The effect
 	 * re-runs whenever a dependency's identity changes, and one caller passes an inline
 	 * arrow (`chat-layout.tsx` mounts the fleet drawer with
-	 * `onClose={() => setAskDrawerOpen(false, "fleet")}`), so a rule that only compares
-	 * deps would re-close on every render it happened to see. The drawer unmounts on a
-	 * close, so a per-mount latch is exactly "fire once" rather than a weakening of the
-	 * per-emptying rule.
+	 * `onClose={(options) => setAskDrawerOpen(false, "fleet", options)}`), so a rule that
+	 * only compares deps would re-close on every render it happened to see. The drawer
+	 * unmounts on a close, so a per-mount latch is exactly "fire once" rather than a
+	 * weakening of the per-emptying rule.
 	 */
 	const closedOnce = useRef(false);
 	/*
@@ -970,6 +978,12 @@ export const AskDrawer = ({
 			 * `preventDefault` so the app-wide interrupt ladder does not also treat it as
 			 * a stop - the same claim `chat-page.tsx`'s window listener makes, which then
 			 * stands down on `defaultPrevented`.
+			 *
+			 * AND IT CLOSES AS A WITHDRAWAL, NOT AS A REQUEST FOR AN EMPTY SLOT (#1079):
+			 * no options, so the displaced pane is given back. Escape is a key rather
+			 * than a labelled control - a user pressing it is putting an overlay away,
+			 * and the pane they had before it is what "away" means. The X below is the
+			 * opposite case and the only difference between them is this argument.
 			 */
 			onKeyDown={(event) => {
 				if (event.key !== "Escape") return;
@@ -1013,7 +1027,13 @@ export const AskDrawer = ({
 						variant="ghost"
 						size="icon-sm"
 						aria-label="Close asks"
-						onClick={onClose}
+						/*
+						 * THE PRESSED KIND (#1079): this is the control the user aimed at, so it
+						 * asks for an EMPTY SLOT rather than handing the pane it displaced back.
+						 * `dismissSlot` is the whole difference between this door and the Escape
+						 * arm above, which is why they share one prop.
+						 */
+						onClick={() => onClose({ dismissSlot: true })}
 						data-tour-tag="close-asks-button"
 					>
 						<PanelRightClose aria-hidden="true" />

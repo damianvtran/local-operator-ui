@@ -33,8 +33,11 @@
  * The FIVE DURABLE occupants of the right slot, by their short name.
  *
  * `"ask"` is deliberately NOT a member: the asks drawer is a transient overlay
- * that BORROWS the slot and gives it back (see `isAskDrawerOpen` in the store),
- * so it is never remembered and never written to a conversation's entry.
+ * that BORROWS the slot and gives it back (see `isAskDrawerOpen` in the store), so
+ * it is never remembered and never written to a conversation's entry. A close the
+ * USER pressed is the one case that touches the memory — it RETRACTS the entry
+ * (`memoryDismiss`, #1079), which is this shape's own way of saying "closed" rather
+ * than an entry naming the drawer.
  *
  * `"code"` is the code review pane, appended last on the store's side too: it
  * is a conversation's own list (the PR/MR ledger derived from that session's
@@ -176,6 +179,28 @@ export function memoryRemove(
 	pane: MemoryPane,
 ): RightSlotMemory {
 	if (memoryRead(memory, key) !== pane) return memory;
+	return memory.filter(([entryKey]) => entryKey !== key);
+}
+
+/**
+ * Drop a conversation's entry WHATEVER pane it names — a dismissal (#1079).
+ *
+ * `memoryRemove`'s pane guard exists because an AUTOMATIC close cannot know
+ * whether the entry still belongs to the pane it is closing; this is the other
+ * kind of close: the user pressed the door that says "empty this slot", so the
+ * conversation is meant to come back with NO pane and the entry is retracted
+ * whatever it holds. The guard cannot even be supplied at that call site — the
+ * asks drawer does not know which pane it displaced, and the entry can name a pane
+ * the drawer never covered (the fleet drawer travels between conversations).
+ *
+ * A missing entry returns the list UNCHANGED by identity, so the store skips a
+ * write that would change no byte, exactly as `memoryRemove` does.
+ */
+export function memoryDismiss(
+	memory: RightSlotMemory,
+	key: string,
+): RightSlotMemory {
+	if (memoryRead(memory, key) === undefined) return memory;
 	return memory.filter(([entryKey]) => entryKey !== key);
 }
 

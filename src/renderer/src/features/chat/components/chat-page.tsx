@@ -65,7 +65,10 @@ import {
 } from "@shared/store/canonical-sessions-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
-import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import {
+	type AskDrawerCloseOptions,
+	useUiPreferencesStore,
+} from "@shared/store/ui-preferences-store";
 import { showSuccessToast } from "@shared/utils/toast-manager";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -2871,6 +2874,12 @@ function SessionPanel({
 	 * fresh closure per render would re-register the window listener on every render,
 	 * and the claim would be a listener churn rather than a claim.
 	 *
+	 * IT ALSO CARRIES WHICH KIND OF CLOSE IT IS (#1079), because its two closers are
+	 * not the same request: the composer chip is a press the user aimed at, so it asks
+	 * for an EMPTY SLOT, while ESCAPE (the window listener below) is a withdrawal that
+	 * gives the displaced pane back. See `AskDrawerCloseOptions`; an open passes no
+	 * option, as there is nothing to retract.
+	 *
 	 * IT TOGGLES A SURFACE AND NOTHING ELSE. The composer used to change mode with it
 	 * (answer mode, a swapped draft buffer, and `sendToAsk` writing typed text into
 	 * the first unanswered question); that routing was retired on 2026-10-07 (the
@@ -2879,9 +2888,9 @@ function SessionPanel({
 	 * and a send from it is an ordinary chat message that never touches an ask draft.
 	 */
 	const toggleAskExpanded = useCallback(
-		(next: boolean) => {
+		(next: boolean, options?: AskDrawerCloseOptions) => {
 			if (next === askExpanded) return;
-			setAskDrawerOpen(next, "session");
+			setAskDrawerOpen(next, "session", options);
 		},
 		[askExpanded, setAskDrawerOpen],
 	);
@@ -3302,6 +3311,11 @@ function SessionPanel({
 			 */
 			if (!askClaimsEscape(event)) return;
 			event.preventDefault();
+			/*
+			 * NO OPTIONS: Escape is the withdrawal, not a press on a door (#1079), so the
+			 * pane the drawer displaced is handed back. The chip's press asks for an empty
+			 * slot through this same toggle, and `dismissSlot` is the whole difference.
+			 */
 			toggleAskExpanded(false);
 		};
 		window.addEventListener("keydown", onKeyDown);

@@ -114,7 +114,10 @@ const ROW_KEYS = new Set(["ArrowUp", "ArrowDown", "Home", "End"]);
  * nothing on the rail and the only sign of what was open lived in the header. A
  * press on any OTHER item is a swap (`claimRightSlot` clears the ask flag and
  * forfeits the borrow); a press on the ask item itself is the same door in both
- * directions - it closes its own drawer, or replaces the other scope's open.
+ * directions - it closes its own drawer, or replaces the other scope's open - and,
+ * being a close the user asked for, it leaves the SLOT EMPTY rather than handing a
+ * borrowed pane back (#1079, the one sibling item that used to swap instead of
+ * close).
  *
  * ALL SIX DOORS ARE ALWAYS PRESENT, AND A PANE THAT CANNOT ACT SAYS WHY (the
  * always-visible rail, D1; it retires #872/#896/#927's "absent, not disabled"). A
@@ -402,9 +405,16 @@ export const PanelRail: FC<PanelRailProps> = ({
 					 * `claimRightSlot` does the swap clearing. The sequence lives in the
 					 * shared toggle since #928, because the chord performs the same press
 					 * and two spellings of it would drift.
+					 *
+					 * AND THE CLOSE IS THE SAME DOOR IN BOTH DIRECTIONS (#1079): this item is
+					 * one of six siblings, five of which close the slot on a press while lit,
+					 * so its close asks for an EMPTY SLOT rather than letting the drawer
+					 * withdraw and hand the borrowed pane back - the shared toggle passes
+					 * `dismissSlot`, and the withdraw-kind closes do not.
 					 */
 					onClick={() => togglePanelRailItem("ask", actionContext)}
 					/* The drawer's focus-return anchor and Escape door (#820/#835): the tag
+
 						   moved with the control, value unchanged - four harnesses, the tour and
 						   the driver attach to it. */
 					data-tour-tag="ask-pane-trigger"
