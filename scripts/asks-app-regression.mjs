@@ -100,6 +100,48 @@ async function prepareControl(root, output) {
 	};
 }
 /**
+ * Wait for the renderer to be READY for a verb: painted, with the dev-driver
+ * bridge answering, on whichever driver tree this run imported.
+ *
+ * The candidate tree exports both waits and they are preferred; the pinned
+ * historical control tree carries the same two functions INTERNALLY without
+ * exporting them (verified at 2461cfa3: `waitForPage` at 1761, `waitForBridge`
+ * at 1777, neither on the facade), so there the equivalent polls are repeated.
+ * What the scene needs - a mounted page whose `__loDevDriver` answers `verbs()`
+ * with `hello` - is the same requirement on both trees.
+ */
+async function waitForSceneReady(cdp, api, timeoutMs = 90_000) {
+	if (
+		typeof api?.waitForPage === "function" &&
+		typeof api?.waitForBridge === "function"
+	) {
+		await api.waitForPage(cdp);
+		await api.waitForBridge(cdp);
+		return;
+	}
+	const started = Date.now();
+	for (;;) {
+		const state = await cdp
+			.evaluate(
+				"({ ready: document.readyState, mounted: Boolean(document.getElementById('app')?.childElementCount), verbs: typeof window.__loDevDriver?.verbs === 'function' ? window.__loDevDriver.verbs() : null })",
+			)
+			.catch(() => null);
+		if (
+			state?.ready === "complete" &&
+			state.mounted &&
+			Array.isArray(state.verbs) &&
+			state.verbs.includes("hello")
+		)
+			return;
+		if (Date.now() - started > timeoutMs)
+			throw new Error(
+				`the renderer never registered the dev driver verbs (last: ${JSON.stringify(state)})`,
+			);
+		await new Promise((resumed) => setTimeout(resumed, 250));
+	}
+}
+
+/**
  * Wait for the app's own debugging port to ANSWER, whatever driver tree this run
  * imported.
  *
@@ -297,7 +339,17 @@ async function runCase(kind, root, output, records) {
 				'localStorage.setItem("onboarding-storage",JSON.stringify({state:{isModalComplete:true,isTourComplete:true,currentStep:"create_agent"},version:0}));',
 		});
 		await cdp.send("Page.reload", { ignoreCache: false });
-		await wait("Boolean(window.__loDevDriver)");
+		/*
+		 * The page paint and the bridge registration, in the order every scene in
+		 * the shared driver uses them. Waiting on `Boolean(window.__loDevDriver)`
+		 * instead - which is what this did - is satisfied the moment the object
+		 * EXISTS, before it has registered a single verb, and the first
+		 * `api.verb(cdp, "navigate", …)` then failed with "no dev driver verb
+		 * navigate (have: none yet)". Both waits go through the same api-else-poll
+		 * resolution as the port wait above, because the control leg imports the
+		 * pinned historical facade, which does not export them either.
+		 */
+		await waitForSceneReady(cdp, api);
 		const windowFacts = await cdp.evaluate("window.__loDevDriver.facts()");
 		assert.equal(windowFacts.visible, false);
 		assert.equal(windowFacts.focused, false);
@@ -432,6 +484,7 @@ async function main() {
 			"NOT COVERED: capturePage excludes sibling native WebContentsView/compositor",
 		fixture: "owned loopback HTTP; no bridge or UI replacements",
 	};
+	let primaryError = null;
 	try {
 		manifest.controlIdentity = await prepareControl(
 			join(scratch, "control-app"),
@@ -479,34 +532,70 @@ async function main() {
 				})),
 			});
 		}
+	} catch (error) {
+		primaryError = error;
+		throw error;
 	} finally {
 		manifest.requests = fixture.requests;
-		const forbidden =
-			/\/(send|answer|answers|interrupt|steer|messages|turns)(\/|$|\?)/;
-		for (const request of fixture.requests) {
-			assert(
-				!forbidden.test(request.path),
-				`fixture traffic reached a forbidden write: ${request.method} ${request.path}`,
-			);
-			const allowedPost = ["/watch", "/__fixture/state"].some((suffix) =>
-				request.path.endsWith(suffix),
-			);
-			assert(
-				request.method === "GET" || allowedPost,
-				`fixture traffic used an unmodelled method: ${request.method} ${request.path}`,
-			);
-			const openRead =
-				request.path === "/health" || request.path === "/v1/capabilities";
-			assert(
-				request.authenticated || openRead,
-				`fixture traffic was unauthenticated outside the open reads: ${request.path}`,
-			);
-		}
 		writeFileSync(
 			join(output, "manifest.json"),
 			JSON.stringify(manifest, null, 2),
 		);
+		/*
+		 * THE CLOSE COMES BEFORE THE TRAFFIC ASSERTIONS, and that ordering is the
+		 * fix for a measured hang rather than a tidiness preference. The assertions
+		 * used to sit ahead of it, so the first one that threw skipped
+		 * `fixture.close()` entirely: the fixture's HTTP listener stayed open, the
+		 * child producer was left holding it, and the CI step ran on with nothing
+		 * to do until GitHub killed it at its own 8-minute ceiling (measured on run
+		 * 38844071896: the assertion failed at 03:30:46, the step was killed at
+		 * 03:37:55, and `node` was then reaped as an orphan). A failed assertion is
+		 * a verdict; a leaked listener is an outage that hides it.
+		 *
+		 * The assertions also do not run over a run that ALREADY failed: a second
+		 * message about traffic says nothing the first failure did not, and burying
+		 * a real failure under a derived one is the pattern this suite exists to
+		 * remove.
+		 */
 		await fixture.close();
+		if (primaryError === null) assertTrafficAllowed(fixture.requests);
+	}
+}
+
+/**
+ * Every request this run made of the fixture, against what the fixture is
+ * allowed to have served.
+ *
+ * Reads only, plus the two modelled POSTs: `/watch`, the push subscription the
+ * fixture answers, and `/__fixture/state`, its own control door. The Radient
+ * proxy (`POST /v1/desktop/radient`) is a POST the app legitimately makes for its
+ * quota notice and the fixture answers for the READ operations only, so it is
+ * admitted here as a read door - the forbidden-write pattern below is what keeps
+ * the turn and answer routes shut, and it is checked first.
+ */
+function assertTrafficAllowed(requests) {
+	const forbidden =
+		/\/(send|answer|answers|interrupt|steer|messages|turns)(\/|$|\?)/;
+	for (const request of requests) {
+		assert(
+			!forbidden.test(request.path),
+			`fixture traffic reached a forbidden write: ${request.method} ${request.path}`,
+		);
+		const allowedPost = [
+			"/watch",
+			"/__fixture/state",
+			"/v1/desktop/radient",
+		].some((suffix) => request.path.endsWith(suffix));
+		assert(
+			request.method === "GET" || allowedPost,
+			`fixture traffic used an unmodelled method: ${request.method} ${request.path}`,
+		);
+		const openRead =
+			request.path === "/health" || request.path === "/v1/capabilities";
+		assert(
+			request.authenticated || openRead,
+			`fixture traffic was unauthenticated outside the open reads: ${request.path}`,
+		);
 	}
 }
 if (isEntryPoint(import.meta.url))

@@ -1885,6 +1885,18 @@ export const rendererDriverApi = Object.freeze({
 	 * the one wait every in-repo caller already uses before its own attach.
 	 */
 	waitForDevtools,
+	/*
+	 * The two readiness waits every in-repo scene takes after attaching and
+	 * before its first verb. They were internal until the CI asks producer needed
+	 * them: it waited on `Boolean(window.__loDevDriver)` - which is true as soon
+	 * as the object exists, BEFORE it has registered a verb - and then called
+	 * `navigate`, failing with "no dev driver verb navigate (have: none yet)".
+	 * Waiting for the page to paint and for the bridge to answer is the same
+	 * contract the driver's own scenes use, so a caller that cannot see them
+	 * repeats them badly. Exported for that reason and no other.
+	 */
+	waitForPage,
+	waitForBridge,
 	verb,
 	capture,
 	reapLiveBoots,
