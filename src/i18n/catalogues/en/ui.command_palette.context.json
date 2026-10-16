@@ -128,7 +128,7 @@
 	"ui.command_palette.matches.best": {
 		"role": "status",
 		"tone": "Lowercase compact result summary.",
-		"note": "Rendered only for a clipped ranked search, so the existing reachable English uses plural matches (total exceeds shown rows). Singular is explicit for a one-result fixture/future cap; count is shown rows, total governs the result noun.",
+		"note": "Rendered only for a clipped ranked search, so the existing reachable English uses plural matches (total exceeds shown rows). The one arm reproduces the plural bytes, byte-faithful to the pre-extraction form that never singularized; count is shown rows, total governs the result noun.",
 		"length": "One row; avoid adding an explanatory sentence.",
 		"placeholders": {
 			"total": "Numeric total matching-result cardinal; determines match/matches.",

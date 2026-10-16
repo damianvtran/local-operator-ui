@@ -19,7 +19,7 @@
 	"ui.command_palette.command_palette.to_run": "to run",
 	"ui.command_palette.empty.backspace": "Try another word, or backspace {glyph} to search everything.",
 	"ui.command_palette.empty.no_matches": "No matches for “{terms}”",
-	"ui.command_palette.matches.best": "{total, plural, one {showing the best {countText} of {totalText} match} other {showing the best {countText} of {totalText} matches}}",
+	"ui.command_palette.matches.best": "{total, plural, one {showing the best {countText} of {totalText} matches} other {showing the best {countText} of {totalText} matches}}",
 	"ui.command_palette.matches.showing": "showing {count} of {total}",
 	"ui.command_palette.palette_search.actions": "Actions",
 	"ui.command_palette.palette_search.agents": "Agents",

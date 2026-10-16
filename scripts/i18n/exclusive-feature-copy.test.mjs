@@ -100,7 +100,7 @@ for (const count of [0, 1, 2]) {
 				total: count,
 				totalText: String(count),
 			}),
-			`showing the best ${count} of ${count} match${count === 1 ? "" : "es"}`,
+			`showing the best ${count} of ${count} matches`,
 		);
 	});
 }
