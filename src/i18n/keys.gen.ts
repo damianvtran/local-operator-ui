@@ -45,6 +45,7 @@ import enUiCommonUpdates from "./catalogues/en/ui.common.updates.json";
 import enUiConsole from "./catalogues/en/ui.console.json";
 import enUiHubComments from "./catalogues/en/ui.hub.comments.json";
 import enUiHub from "./catalogues/en/ui.hub.json";
+import enUiHubTaxonomy from "./catalogues/en/ui.hub.taxonomy.json";
 import enUiInstaller from "./catalogues/en/ui.installer.json";
 import enUiMesh from "./catalogues/en/ui.mesh.json";
 import enUiOnboarding from "./catalogues/en/ui.onboarding.json";
@@ -84,6 +85,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiConsole,
 	...enUiHubComments,
 	...enUiHub,
+	...enUiHubTaxonomy,
 	...enUiInstaller,
 	...enUiMesh,
 	...enUiOnboarding,
@@ -1267,6 +1269,27 @@ export type MessageParams = {
 	"ui.hub.subscriptions.subscribe_description": { source: string };
 	"ui.hub.subscriptions.subscribe_description_blocked": { source: string };
 	"ui.hub.subscriptions.unsupported": undefined;
+	"ui.hub.taxonomy.all": undefined;
+	"ui.hub.taxonomy.category.accounting": undefined;
+	"ui.hub.taxonomy.category.analysis": undefined;
+	"ui.hub.taxonomy.category.education": undefined;
+	"ui.hub.taxonomy.category.healthcare": undefined;
+	"ui.hub.taxonomy.category.investment": undefined;
+	"ui.hub.taxonomy.category.legal": undefined;
+	"ui.hub.taxonomy.category.management": undefined;
+	"ui.hub.taxonomy.category.marketing": undefined;
+	"ui.hub.taxonomy.category.other": undefined;
+	"ui.hub.taxonomy.category.personal_assistance": undefined;
+	"ui.hub.taxonomy.category.research": undefined;
+	"ui.hub.taxonomy.category.role_play": undefined;
+	"ui.hub.taxonomy.category.sales": undefined;
+	"ui.hub.taxonomy.category.security": undefined;
+	"ui.hub.taxonomy.category.social_media": undefined;
+	"ui.hub.taxonomy.category.software": undefined;
+	"ui.hub.taxonomy.heading": undefined;
+	"ui.hub.taxonomy.origin.named": { name: string };
+	"ui.hub.taxonomy.origin.organization": undefined;
+	"ui.hub.taxonomy.origin.unnamed": undefined;
 	"ui.installer.expectation": undefined;
 	"ui.installer.installer_panel.cancel_setup": undefined;
 	"ui.installer.installer_panel.getting_started": undefined;
