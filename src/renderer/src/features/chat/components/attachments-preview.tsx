@@ -4,6 +4,8 @@ import {
 	previewFailureReason,
 	useFileBlobUrl,
 } from "@shared/hooks/use-file-blob-url";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { File, X } from "lucide-react";
 import type { FC } from "react";
@@ -114,9 +116,11 @@ const getFileName = (path: string): string => {
 		}
 		const mimeTypeMatch = path.match(MIME_TYPE_REGEX);
 		if (mimeTypeMatch?.[1]) {
-			return `Pasted ${mimeTypeMatch[1]}`;
+			return t("ui.chat.composer_media.pasted_type", {
+				mimeType: mimeTypeMatch[1],
+			});
 		}
-		return "Pasted file"; // Generic fallback for non-image data URIs
+		return t("ui.chat.composer_media.pasted_file"); // Generic fallback for non-image data URIs
 	}
 	// Handle both local paths and URLs for actual files
 	const parts = path.split(PATH_SEPARATOR_REGEX);
@@ -169,6 +173,7 @@ const AttachmentTile: FC<AttachmentTileProps> = ({
 	disabled,
 	onRemove,
 }) => {
+	useI18nLocale();
 	const state = useFileBlobUrl(attachment, {
 		mimeType: mimeTypeForPath(attachment),
 	});
@@ -185,7 +190,7 @@ const AttachmentTile: FC<AttachmentTileProps> = ({
 		state.status === "unavailable"
 			? previewFailureReason(state.code)
 			: degraded
-				? "Could not be previewed"
+				? t("ui.chat.composer_media.preview_failed")
 				: null;
 
 	/*
@@ -243,7 +248,10 @@ const AttachmentTile: FC<AttachmentTileProps> = ({
 						{fileName}
 					</span>
 				)}
-				<Tooltip content="Remove attachment" disabled={disabled}>
+				<Tooltip
+					content={t("ui.chat.composer_media.remove_attachment")}
+					disabled={disabled}
+				>
 					<Button
 						variant="ghost"
 						size="icon-sm"
@@ -254,7 +262,7 @@ const AttachmentTile: FC<AttachmentTileProps> = ({
 						)}
 						onClick={onRemove}
 						disabled={disabled}
-						aria-label="Remove attachment"
+						aria-label={t("ui.chat.composer_media.remove_attachment")}
 					>
 						<X aria-hidden="true" />
 					</Button>
@@ -291,6 +299,8 @@ export const AttachmentsPreview: FC<AttachmentsPreviewProps> = ({
 	onRemoveAttachment,
 	disabled = false,
 }) => {
+	// Filename fallbacks are derived here, not cached when the attachment is added.
+	useI18nLocale();
 	/**
 	 * Handle removing an attachment
 	 */
