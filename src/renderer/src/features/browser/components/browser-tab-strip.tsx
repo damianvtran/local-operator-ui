@@ -207,12 +207,14 @@ type CloseFocusPending = {
  * Distinct ownership glyphs are not colour-only; the tab's complete accessible
  * name and menu retain every state when the single compact badge has to choose.
  * No favicon bytes are published by main, so this never fetches a remote icon. */
+// The `animate` prop this slot used to take is gone with the pulse it drove:
+// loading now spins for every tab (below), so there is no per-call-site
+// motion left to switch.
 const TabMark: FC<{
 	tab: BrowserTabView;
 	showOwnership?: boolean;
-	animate?: boolean;
 	waitingOrdinal?: number;
-}> = ({ tab, showOwnership = true, animate = false, waitingOrdinal }) => {
+}> = ({ tab, showOwnership = true, waitingOrdinal }) => {
 	const { shown, collapsed } = stateChips(tab, waitingOrdinal);
 	const states = [...shown, ...collapsed];
 	const status = states.find(
@@ -250,7 +252,15 @@ const TabMark: FC<{
 				className={cn(
 					"size-4 shrink-0",
 					owned ? "text-accent" : "text-ink-dim",
-					animate && tab.loading && !tab.failed && "animate-pulse",
+					// The per-tab loading spinner (brief 2.2): it must actually
+					// turn — a static dashed circle reads as a state glyph, not
+					// as progress — and under `prefers-reduced-motion` the global
+					// cap in `styles/index.css` freezes the rotation, leaving
+					// this same glyph standing as the static mark the brief
+					// requires, so the tab's loading state never disappears
+					// with the animation. The old `animate-pulse` on the active
+					// tab only was neither a spinner nor that fallback.
+					tab.loading && !tab.failed && "animate-spin",
 				)}
 			/>
 			{status && (
@@ -1269,11 +1279,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 													tabIndex={active ? 0 : -1}
 													data-tour-tag="browser-tab-menu"
 												>
-													<TabMark
-														tab={tab}
-														animate={active}
-														waitingOrdinal={waitingOrdinal}
-													/>
+													<TabMark tab={tab} waitingOrdinal={waitingOrdinal} />
 												</Button>
 											</DropdownMenuTrigger>
 											{/*

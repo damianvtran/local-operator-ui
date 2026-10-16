@@ -408,6 +408,12 @@ export type MessageParams = {
 	"ui.browser.browser_load_failure.this_machine_is_not_connected_to_the": undefined;
 	"ui.browser.browser_load_failure.try_again": undefined;
 	"ui.browser.browser_load_failure.try_again_or_correct_the_address_in": undefined;
+	"ui.browser.browser_new_tab.address": undefined;
+	"ui.browser.browser_new_tab.address_placeholder": undefined;
+	"ui.browser.browser_new_tab.agents_can_only_open_sites_you_approve": undefined;
+	"ui.browser.browser_new_tab.enter_an_address_to_open_a_page": undefined;
+	"ui.browser.browser_new_tab.go": undefined;
+	"ui.browser.browser_new_tab.wordmark": undefined;
 	"ui.browser.browser_pane.all_tabs": undefined;
 	"ui.browser.browser_pane.browser": undefined;
 	"ui.browser.browser_pane.close_browser": undefined;

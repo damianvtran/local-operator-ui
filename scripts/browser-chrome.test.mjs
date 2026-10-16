@@ -59,12 +59,17 @@ globalThis.localStorage = {
  * `requestAnimationFrame` on its own. That is enough to call the hook's returned
  * API by hand and watch what it delivers — which is what R4's fix is about.
  */
+/** The surface's own view-registration exclusion list, read as source (LOH-13 B):
+ * hoisted per `useTopLevelRegex`, the same as LANDED_CLOSE_CARET below. */
+const SELF_SUPPRESSION_BLOCK = /const SELF_SUPPRESSION_IDS = \[([\s\S]*?)\];/;
+
 const PROBE = `
 	import { createElement } from "react";
 	import { renderToStaticMarkup } from "react-dom/server";
 	import { useBrowserChrome } from "./src/renderer/src/features/browser/hooks/use-browser-chrome";
 
 	import { BrowserPane, PANE_SURFACE_ID } from "./src/renderer/src/features/browser/components/browser-pane";
+	import { BrowserSurface } from "./src/renderer/src/features/browser/components/browser-surface";
 	import { BrowserPage } from "./src/renderer/src/features/browser/components/browser-page";
 	import { BrowserConsentBar } from "./src/renderer/src/features/browser/components/browser-consent-bar";
 	import { BrowserConsentRequest, requesterLabel } from "./src/renderer/src/features/browser/components/browser-consent-request";
@@ -74,8 +79,9 @@ const PROBE = `
 	import { approvalRows, approvalScopeLabel, liveApprovalCount, liveRequests, originOfUrl, reconcileResolved, remainingLabel, requestsInScope, waitingOrdinals, RESOLVED_KEEP } from "./src/renderer/src/features/browser/model/approval-queue-model";
 	import { closeConversationIntent, closeFailedIntent, closeOthersIntent, closeToTheRightIntent, groupTabsBySession, pooledTabs, scopeFromKey, scopeKey, sessionDisplayName, summariseConversations, tabsBySession, tabsInScope } from "./src/renderer/src/features/browser/model/tab-index-model";
 	import { BrowserLoadFailure, loadFailureSentence } from "./src/renderer/src/features/browser/components/browser-load-failure";
+	import { BrowserNewTab, isStartPageUrl } from "./src/renderer/src/features/browser/components/browser-new-tab";
 	import { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
-	import { browserBridgeAvailable, clearBrowserProjectionReadError, readBrowserProjection, refreshBrowserProjection, subscribeBrowserProjection } from "./src/renderer/src/features/browser/model/browser-projection-store";
+	import { browserBridgeAvailable, clearBrowserProjectionReadError, publishStagedProjection, readBrowserProjection, refreshBrowserProjection, subscribeBrowserProjection } from "./src/renderer/src/features/browser/model/browser-projection-store";
 	import { SidebarNavigation } from "./src/renderer/src/shared/components/navigation/sidebar-navigation";
 	import { ChatLayout } from "./src/renderer/src/shared/components/common/chat-layout";
 	import { MemoryRouter } from "react-router-dom";
@@ -135,8 +141,12 @@ const PROBE = `
 		readBrowserProjection,
 		refreshBrowserProjection,
 		subscribeBrowserProjection,
+		publishStagedProjection,
+		BrowserSurface,
 		BrowserLoadFailure,
 		loadFailureSentence,
+		BrowserNewTab,
+		isStartPageUrl,
 		useCanonicalSessionsStore,
 		useUiPreferencesStore,
 		SidebarNavigation,
@@ -258,8 +268,12 @@ const {
 	readBrowserProjection,
 	refreshBrowserProjection,
 	subscribeBrowserProjection,
+	publishStagedProjection,
+	BrowserSurface,
 	BrowserLoadFailure,
 	loadFailureSentence,
+	BrowserNewTab,
+	isStartPageUrl,
 	useUiPreferencesStore,
 	SidebarNavigation,
 	ChatLayout,
@@ -3072,8 +3086,8 @@ test("a failed navigation names the reason in the app's own chrome, and offers a
 	);
 	assert.ok(
 		markup.includes("ERR_EMPTY_RESPONSE") &&
-			markup.includes("http://127.0.0.1:9/"),
-		"and the raw refusal and the attempted address are on screen for a bug report",
+			!markup.includes("http://127.0.0.1:9/"),
+		"the raw refusal is on screen for a bug report, and the attempted address is NOT repeated here — the bar above still holds it as the one editable copy (brief 2.4)",
 	);
 	assert.ok(
 		markup.includes("browser-load-failure-retry") &&
@@ -3099,6 +3113,168 @@ test("a failed navigation names the reason in the app's own chrome, and offers a
 		loadFailureSentence("ERR_FAILED (restore)"),
 		"The site did not answer in time.",
 	);
+});
+
+test("the start page paints the app's own surface, and only the exact start state counts as one", () => {
+	// Only the state a fresh tab is CREATED in (and Home returns to) may hide
+	// the native view behind the start page: a site that navigates itself to
+	// another `about:` document has a real page the view must keep painting.
+	assert.equal(isStartPageUrl("about:blank"), true);
+	assert.equal(isStartPageUrl(""), true);
+	assert.equal(isStartPageUrl("about:blank#x"), false);
+	assert.equal(isStartPageUrl("about:config"), false);
+	assert.equal(isStartPageUrl("https://example.com/"), false);
+
+	const navigated = [];
+	const markup = render(
+		el(BrowserNewTab, { onNavigate: (url) => navigated.push(url) }),
+	);
+	assert.ok(
+		markup.includes("browser-start-page") && markup.includes("data-brand-mark"),
+		"the brand mark leads the surface, not a bare blank rectangle",
+	);
+	assert.ok(
+		markup.includes("Local Operator") &&
+			markup.includes("Enter an address to open a page"),
+		"the wordmark and the one instruction the page gives",
+	);
+	assert.ok(
+		markup.includes("browser-start-page-address") &&
+			markup.includes("browser-start-page-go"),
+		"a way to start a navigation from the page itself",
+	);
+	assert.ok(
+		!markup.includes("http") && !markup.includes("<img"),
+		"nothing remote is suggested, fetched or pictured by default",
+	);
+	assert.deepEqual(navigated, [], "rendering navigates nowhere");
+});
+
+test("a tab on its start state shows the start page, and the page's own registration does not suppress it", () => {
+	// THE SELF-SUPPRESSION BUG, pinned through the shipped component rather than
+	// the leaf. `overlaySuppressing` reads the ids the view policy reports, and
+	// the start page REGISTERS one of those ids for as long as it is on screen: a
+	// filter that knew only the failure panel's prefix read the start page's own
+	// registration as "a dialog is open" and hid the page behind the paused note.
+	// The leaf test above cannot see it (it renders `BrowserNewTab` alone), so the
+	// assertion has to go through `BrowserSurface`.
+	const previousWindow = globalThis.window;
+	globalThis.window = {
+		api: {
+			browser: { state: async () => null, setContentRect: async () => {} },
+		},
+	};
+	try {
+		const surfaceProps = {
+			tabScope: "all",
+			requestScope: "all",
+			hostSessionId: null,
+			surfaceTag: "browser-route",
+			dockSurfaceTag: "browser-route-dock",
+		};
+		// The start state: one user tab, active, on the exact `about:blank` a new
+		// tab is created with, not loading and with nothing pending.
+		publishStagedProjection({
+			tabs: [
+				{
+					tabId: 1,
+					title: "",
+					url: "about:blank",
+					owner: "user",
+					sessionId: null,
+					active: true,
+					restored: false,
+					handedOver: false,
+					failed: false,
+					loading: false,
+				},
+			],
+			activeTabId: 1,
+			url: "about:blank",
+			title: "",
+			loading: false,
+			canGoBack: false,
+			canGoForward: false,
+			pendingConsent: [],
+			approvals: [],
+			navFailure: null,
+		});
+		const start = render(el(BrowserSurface, surfaceProps));
+		assert.ok(
+			start.includes("browser-start-page"),
+			"the start page is what a fresh tab shows, not a blank rectangle",
+		);
+		assert.ok(
+			!start.includes("browser-paused"),
+			"and the page's own view registration is not misread as an overlay that hides it",
+		);
+
+		// A landed navigation: the page is a real document and the view must paint
+		// it, so the start surface goes away.
+		publishStagedProjection({
+			tabs: [
+				{
+					tabId: 1,
+					title: "Example",
+					url: "https://example.com/",
+					owner: "user",
+					sessionId: null,
+					active: true,
+					restored: false,
+					handedOver: false,
+					failed: false,
+					loading: false,
+				},
+			],
+			activeTabId: 1,
+			url: "https://example.com/",
+			title: "Example",
+			loading: false,
+			canGoBack: false,
+			canGoForward: false,
+			pendingConsent: [],
+			approvals: [],
+			navFailure: null,
+		});
+		const landed = render(el(BrowserSurface, surfaceProps));
+		assert.ok(
+			!landed.includes("browser-start-page"),
+			"a loaded page is not covered by the start surface",
+		);
+	} finally {
+		globalThis.window = previousWindow;
+	}
+});
+
+test("the surface's own view registrations are not read as the overlay that hides their state (LOH-13 B)", () => {
+	// THE RULE A RENDER CANNOT SEE, and the reason this assertion is on the source:
+	// `useSuppressBrowserView` registers in an EFFECT, and `renderToStaticMarkup`
+	// never runs effects — so the self-suppression bug is invisible to the render
+	// tests above, which is exactly how the first cut shipped it. The registration
+	// id the start page publishes lands in the very `suppressedBy` list the overlay
+	// filter reads, so a filter that knew only the failure panel's prefix read the
+	// start page's own registration as "a dialog is open" and hid the page behind
+	// the paused note. The fix is the exclusion list, and its completeness is the
+	// thing to pin: every `useSuppressBrowserView` id this component registers must
+	// appear in it, or that state is invisible and its own registration is why.
+	const surface = shippedSource(
+		"src/renderer/src/features/browser/components/browser-surface.tsx",
+	);
+	const registered = [
+		...surface.matchAll(/useSuppressBrowserView\([^,]+,\s*"([^"]+)"/g),
+	].map((match) => match[1]);
+	assert.ok(
+		registered.length >= 2,
+		`both registrations are read: ${registered.join(", ")}`,
+	);
+	const exclusionBlock = surface.match(SELF_SUPPRESSION_BLOCK);
+	assert.ok(exclusionBlock, "the exclusion list exists");
+	for (const name of registered) {
+		assert.ok(
+			exclusionBlock[1].includes(`"${name}:"`),
+			`\`${name}\` registers itself for the view, so the overlay filter must exclude it — otherwise the state is hidden by its own registration`,
+		);
+	}
 });
 
 /* ---------------------------------------------------------------- */
@@ -3598,10 +3774,15 @@ test("rendered tabs preserve custom order, roving selection and complete keyed s
 		),
 	);
 	assert.ok(!failed.includes("private/path") && !failed.includes(", loading"));
+	// The spinner is STRICTLY per tab (brief 2.2): a background tab's loading
+	// state has no other signal, so every loading row spins — and a row that is
+	// FAILED carries the static glyph and no motion, so the two states never
+	// look alike. Here tab 2 is loading, tab 3 is loading-AND-failed, and tab 1
+	// is idle: exactly one spin.
 	assert.equal(
-		(html.match(/animate-pulse/g) || []).length,
+		(html.match(/animate-spin/g) || []).length,
 		1,
-		"only active strip loading animates; a failed/background tab cannot add motion",
+		"every loading row spins and a failed row does not, so motion is never the only state signal",
 	);
 });
 
