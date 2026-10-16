@@ -28,6 +28,7 @@ const bundle = await build({
 const {
 	initialVoiceTurns,
 	stepVoiceTurns,
+	VOICE_TAKE_ROW_TTL_MS,
 	gateOfFrame,
 	streamingOfFrame,
 	VOICE_DEDUPE_LIMIT,
@@ -1035,6 +1036,23 @@ async function liveRig() {
 			payload,
 		}),
 	});
+	/*
+	 * THE SERVER'S `generation`, as it stamps it (measured in the round-6
+	 * capture, scripts/fixtures/voice-absorb-r6.json): +1 on each turn's
+	 * `agent_start`, carried by that turn's `agent_start`/`agent_end`, by the
+	 * `frontend.update` that flips `streaming`, and by every snapshot. Frames are
+	 * built in the order they are pushed, so the counter follows the stream.
+	 */
+	let generation = 0;
+	const stamped = (payload) => {
+		if (payload?.type === "agent_start" && payload.generation === undefined) {
+			generation += 1;
+			return { ...payload, generation };
+		}
+		if (payload?.type === "agent_end" && payload.generation === undefined)
+			return { ...payload, generation };
+		return payload;
+	};
 	const push = (...events) => {
 		for (const event of events) connections.at(-1).onEvent(event);
 	};
@@ -1065,17 +1083,35 @@ async function liveRig() {
 				subscription_id: "0123456789abcdef0123456789abcdef",
 				...payload,
 			}),
-		snapshot: (epoch, seq, streaming, historyIds = []) =>
+		snapshot: (epoch, seq, streaming, historyIds = [], gen = generation) =>
 			at(epoch, seq, "snapshot", {
-				frontend: { snapshot: { pending_gate: null, streaming } },
+				frontend: {
+					snapshot: { pending_gate: null, streaming, generation: gen },
+				},
 				history: {
 					entries: historyIds.map((id) => ({ id, type: "message" })),
 				},
 				cold: false,
 			}),
 		update: (epoch, seq, streaming) =>
-			at(epoch, seq, "frontend.update", { changes: { streaming } }),
-		event: (epoch, seq, payload) => at(epoch, seq, "event", payload),
+			at(epoch, seq, "frontend.update", {
+				changes: { streaming, generation },
+			}),
+		gate: (epoch, seq, gate) =>
+			at(epoch, seq, "frontend.update", { changes: { pending_gate: gate } }),
+		admissionFailed: (epoch, seq, requestId) =>
+			at(epoch, seq, "admission.failed", {
+				request_id: requestId,
+				mode: "prompt",
+				status: "failed",
+				detail: "The session could not take the message.",
+			}),
+		event: (epoch, seq, payload) => at(epoch, seq, "event", stamped(payload)),
+		/** Skip the counter ahead, as a turn the snapshot absorbed would have. */
+		absorbTurn: () => {
+			generation += 1;
+			return generation;
+		},
 		/** The take's own user message, as the server mints it (id == request_id). */
 		userMessage: (epoch, seq, id = "take-1") =>
 			at(epoch, seq, "event", {
@@ -1423,7 +1459,7 @@ test("R5-M1 keeps what must keep working: a fresh take across an idle snapshot, 
  */
 const CONTROLLER_STUBS = {
 	"@shared/api/local-operator/desktop-api":
-		"export const desktopMedia=(req)=>new Promise((resolve)=>{globalThis.__voiceUpload={req,resolve};}); export const mediaError=()=>({message:''}); export const desktopResult=async()=>({}); export const subscribeDesktopStream=()=>()=>{};",
+		"export const desktopMedia=(req)=>new Promise((resolve,reject)=>{globalThis.__voiceUpload={req,resolve,reject};}); export const mediaError=()=>({message:''}); export const desktopResult=async()=>({}); export const subscribeDesktopStream=()=>()=>{};",
 	"@shared/hooks/use-desktop-feed": "export const useDesktopFeed=()=>({});",
 	"@shared/hooks/use-speech-to-text-manager":
 		"export const SpeechToTextPriority={}; export const useSpeechToTextManager=()=>({});",
@@ -1447,7 +1483,7 @@ const READS_INPUT_MODE = /input_mode|inputMode/;
 const controllerBundle = await build({
 	stdin: {
 		contents:
-			'export { feedTurns, sendVoiceUtterance } from "./src/renderer/src/features/voice/voice-controller"; export { useVoiceStore } from "./src/renderer/src/features/voice/voice-store";',
+			'export { feedTurns, sendVoiceUtterance, settleVoicePhase } from "./src/renderer/src/features/voice/voice-controller"; export { useVoiceStore } from "./src/renderer/src/features/voice/voice-store";',
 		resolveDir: process.cwd(),
 		loader: "tsx",
 	},
@@ -1546,5 +1582,238 @@ test("V14: the binding never reads input_mode", () => {
 			readFileSync(`src/renderer/src/features/voice/${file}`, "utf8"),
 		);
 		assert.doesNotMatch(source, READS_INPUT_MODE, file);
+	}
+});
+
+/*
+ * REVIEW ROUND 6. R6-M1 replays the reviewer's REAL capture
+ * (`scripts/fixtures/voice-absorb-r6.json`, lo-voice b2533239d, mock provider):
+ * the take's turn runs as generation 1, a typed steer is admitted, the stream
+ * drops, and the gap-free resume's snapshot@44 says `streaming:true,
+ * generation:2` - turn 1's `agent_end` and the typed turn's `agent_start` were
+ * both absorbed. The typed turn's answer (seq 61) must not be spoken.
+ */
+const ABSORB = JSON.parse(
+	readFileSync("scripts/fixtures/voice-absorb-r6.json", "utf8"),
+);
+
+test("R6-M1: the captured absorb (bound end + next start both absorbed, streaming:true) speaks nothing", async () => {
+	const { subscribeVoiceStream } = await import(streamPath.href);
+	const connections = [];
+	const timers = [];
+	let state = stepVoiceTurns(initialVoiceTurns(), {
+		kind: "armed",
+		requestId: ABSORB.take,
+	}).state;
+	const spoken = [];
+	const handle = subscribeVoiceStream(
+		"ff0d7764d2e5",
+		(input) => {
+			const step = stepVoiceTurns(state, input);
+			state = step.state;
+			spoken.push(...step.speak);
+		},
+		() => undefined,
+		{
+			subscribe: (args, onEvent) => {
+				connections.push({ args, onEvent });
+				return () => undefined;
+			},
+			delayMs: () => 0,
+			schedule: (run) => timers.push(run),
+			cancel: () => undefined,
+		},
+	);
+	const feed = (frames) => {
+		for (const frame of frames)
+			connections.at(-1).onEvent({ kind: "data", data: JSON.stringify(frame) });
+	};
+	feed(ABSORB.conn1);
+	assert.equal(state.answering, true, "the take bound to its own row");
+	assert.equal(state.boundGeneration, 1, "and to generation 1, its turn's");
+	connections.at(-1).onEvent({ kind: "error", status: 503 });
+	timers.shift()();
+	assert.equal(connections.at(-1).args.afterSeq, ABSORB.cut);
+	feed(ABSORB.conn2);
+	assert.deepEqual(spoken, [], "the typed turn's answer is not spoken");
+	assert.equal(state.answering, false, "unbound at the generation-2 snapshot");
+	handle.dispose();
+});
+
+test("R6-M1: a bound turn still running at a SAME-generation snapshot is answered (K2 shape)", async () => {
+	const rig = await liveRig();
+	quiet(rig);
+	rig.arm();
+	rig.push(
+		rig.userMessage("ep-1", 6),
+		rig.event("ep-1", 7, { type: "agent_start" }),
+		rig.update("ep-1", 8, true),
+	);
+	assert.equal(rig.state.boundGeneration, 1);
+	rig.push(DROP);
+	rig.tick();
+	rig.push(
+		rig.open("ep-1", 8, { gap: false }),
+		rig.snapshot("ep-1", 8, true, ["take-1"], 1),
+		rig.said("ep-1", 9, "SAME-GEN"),
+		rig.event("ep-1", 10, { type: "agent_end" }),
+	);
+	assert.deepEqual(rig.spoken, spokeOnly("SAME-GEN"));
+	rig.handle.dispose();
+});
+
+test("R6-M1: a bound turn whose generation is still unknown at a running snapshot is dropped (silence is safe)", () => {
+	// Bound while idle; the stream dropped before the turn's agent_start.
+	const bound = run([
+		{ kind: "armed", requestId: "t1" },
+		event({
+			type: "message_start",
+			message: { id: "t1", role: "user", content: "Hi." },
+		}),
+	]).state;
+	assert.equal(bound.answering, true);
+	assert.equal(bound.boundGeneration, null);
+	const after = run(
+		[
+			{ kind: "streaming", streaming: true, snapshot: true, generation: 4 },
+			said("m-unknown"),
+			event({ type: "agent_end", generation: 4 }),
+		],
+		bound,
+	);
+	assert.deepEqual(after.spoken, []);
+});
+
+test("R6-m1: admission.failed for a take's request_id disarms it; another id does nothing", async () => {
+	const rig = await liveRig();
+	quiet(rig);
+	rig.arm("t-ok");
+	rig.arm("t-failed");
+	rig.push(rig.admissionFailed("ep-1", 6, "t-failed"));
+	assert.deepEqual(rig.state.takes, ["t-ok"]);
+	rig.push(rig.admissionFailed("ep-1", 7, "someone-else"));
+	assert.deepEqual(rig.state.takes, ["t-ok"]);
+	rig.handle.dispose();
+});
+
+test("R6-m1 (probe N5b): a take whose row never arrives does not make this window announce a typed turn's approval", async () => {
+	const rig = await liveRig();
+	quiet(rig);
+	rig.arm("lost");
+	rig.push(...typedTurn(rig, "ep-1", 6));
+	rig.push(
+		rig.userMessage("ep-1", 12, "u-typed-2"),
+		rig.event("ep-1", 13, { type: "agent_start" }),
+		rig.update("ep-1", 14, true),
+		rig.gate("ep-1", 15, { request_id: "g2", kind: "approval" }),
+	);
+	assert.deepEqual(rig.spoken, [], "GATE:g2 is not announced");
+	assert.equal(rig.state.pendingApproval, "g2", "but it is still recorded");
+	rig.handle.dispose();
+});
+
+test("R6-m1: an expired take is dropped unless the server still holds it as a queued steer", () => {
+	const armed = run([
+		{ kind: "armed", requestId: "a" },
+		{ kind: "armed", requestId: "b" },
+		{ kind: "queued", requestIds: ["b"] },
+	]).state;
+	const expired = run(
+		[
+			{ kind: "expired", requestId: "a" },
+			{ kind: "expired", requestId: "b" },
+		],
+		armed,
+	).state;
+	assert.deepEqual(expired.takes, ["b"], "a held steer survives");
+	const drained = run(
+		[
+			{ kind: "queued", requestIds: [] },
+			{ kind: "expired", requestId: "b" },
+		],
+		expired,
+	).state;
+	assert.deepEqual(
+		drained.takes,
+		[],
+		"once released and still rowless, it goes",
+	);
+	assert.ok(VOICE_TAKE_ROW_TTL_MS >= 120_000, "never shorter than the send");
+});
+
+test("R6-m2: a thrown send disarms the take and settles the phase", async () => {
+	const { feedTurns, sendVoiceUtterance, useVoiceStore } = await import(
+		controllerPath.href
+	);
+	const sent = sendVoiceUtterance("s-throw", { text: "hi" });
+	const id = globalThis.__voiceUpload.req.requestId;
+	globalThis.__voiceUpload.reject(new TypeError("Failed to fetch"));
+	const result = await sent;
+	assert.equal(result.ok, false);
+	assert.equal(useVoiceStore.getState().phase, "error", "not stuck on sending");
+	// The take is gone: its row arriving later binds nothing.
+	feedTurns("s-throw", userStart(id));
+	feedTurns("s-throw", { kind: "event", event: { type: "agent_start" } });
+	assert.notEqual(
+		useVoiceStore.getState().phaseSessionId === "s-throw" &&
+			useVoiceStore.getState().phase === "working",
+		true,
+	);
+});
+
+test("I9: while a take's bound turn runs - including after an announced approval - the header settles on working, then idle", async () => {
+	const { feedTurns, sendVoiceUtterance, settleVoicePhase, useVoiceStore } =
+		await import(controllerPath.href);
+	const sent = sendVoiceUtterance("s-i9", { text: "hi" });
+	const id = globalThis.__voiceUpload.req.requestId;
+	settle();
+	await sent;
+	feedTurns("s-i9", userStart(id));
+	feedTurns("s-i9", {
+		kind: "event",
+		event: { type: "agent_start", generation: 1 },
+	});
+	assert.equal(useVoiceStore.getState().phase, "working");
+	// The approval is announced (speaking), approved on screen; the audio ends.
+	useVoiceStore.getState().setPhase("speaking", "s-i9");
+	settleVoicePhase("s-i9");
+	assert.equal(useVoiceStore.getState().phase, "working", "not idle mid-turn");
+	feedTurns("s-i9", {
+		kind: "event",
+		event: { type: "agent_end", generation: 1, aborted: true },
+	});
+	settleVoicePhase("s-i9");
+	assert.equal(
+		useVoiceStore.getState().phase,
+		"idle",
+		"rests once owed nothing",
+	);
+});
+
+test("R6-m1: a take's expiry timer is cleared once the take is settled (no timer outlives it)", async () => {
+	const { feedTurns, sendVoiceUtterance } = await import(controllerPath.href);
+	const real = globalThis.setTimeout;
+	const realClear = globalThis.clearTimeout;
+	const live = new Set();
+	globalThis.setTimeout = (fn, ms, ...rest) => {
+		const handle = real(fn, ms, ...rest);
+		if (ms === VOICE_TAKE_ROW_TTL_MS) live.add(handle);
+		return handle;
+	};
+	globalThis.clearTimeout = (handle) => {
+		live.delete(handle);
+		realClear(handle);
+	};
+	try {
+		const sent = sendVoiceUtterance("s-timer", { text: "hi" });
+		settle();
+		await sent;
+		assert.equal(live.size, 1, "one expiry for the outstanding take");
+		feedTurns("s-timer", { kind: "reset" });
+		assert.equal(live.size, 0, "settled by the reset, the timer is gone");
+	} finally {
+		for (const handle of live) realClear(handle);
+		globalThis.setTimeout = real;
+		globalThis.clearTimeout = realClear;
 	}
 });

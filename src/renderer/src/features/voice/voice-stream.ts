@@ -78,7 +78,9 @@ import { streamRetryDelayMs } from "@shared/hooks/use-canonical-session";
 import {
 	type VoiceTurnsInput,
 	gateOfFrame,
+	generationOfFrame,
 	historyIdsOfFrame,
+	queuedSteeringOfFrame,
 	streamingOfFrame,
 } from "./voice-turns";
 
@@ -258,9 +260,29 @@ export function subscribeVoiceStream(
 					// idle snapshot is read against what is still bound.
 					const entryIds = historyIdsOfFrame(frame);
 					if (entryIds !== undefined) onInput({ kind: "history", entryIds });
+					/*
+					 * A failed admission names the take that will never get a row
+					 * (R6-m1): it stops being outstanding now, not at its expiry.
+					 */
+					if (frame.type === "admission.failed") {
+						const requestId = (frame.payload as { request_id?: unknown })
+							?.request_id;
+						if (typeof requestId === "string" && requestId !== "")
+							onInput({ kind: "disarmed", requestId });
+						return;
+					}
+					const queued = queuedSteeringOfFrame(frame);
+					if (queued !== undefined)
+						onInput({ kind: "queued", requestIds: queued });
 					const streaming = streamingOfFrame(frame);
+					const generation = generationOfFrame(frame);
 					if (streaming !== undefined)
-						onInput({ kind: "streaming", streaming, snapshot });
+						onInput({
+							kind: "streaming",
+							streaming,
+							snapshot,
+							...(generation !== undefined ? { generation } : {}),
+						});
 					const gate = gateOfFrame(frame);
 					if (gate !== undefined) onInput({ kind: "gate", gate, snapshot });
 					return;
