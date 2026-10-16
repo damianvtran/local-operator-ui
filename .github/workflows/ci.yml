@@ -848,6 +848,7 @@ jobs:
           VITE_GOOGLE_CLIENT_SECRET: "ci-fixture-unused"
           VITE_MICROSOFT_CLIENT_ID: 00000000-0000-4000-8000-000000000001
           VITE_MICROSOFT_TENANT_ID: 00000000-0000-4000-8000-000000000002
+
         # npm pack triggers the prepack script, which builds the npm-channel
         # bundle (plain JS, no V8 bytecode). Do not add a separate pnpm build
         # here: it would emit bytecode that prepack then overwrites, which is

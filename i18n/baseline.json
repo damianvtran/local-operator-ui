@@ -11,7 +11,9 @@
 		"src/renderer/src/features/browser/",
 		"src/renderer/src/features/mesh/",
 		"src/renderer/src/features/schedules/",
-		"src/renderer/src/features/settings/"
+		"src/renderer/src/features/settings/",
+		"src/renderer/src/features/chat/components/audio-recording-indicator.tsx",
+		"src/renderer/src/features/chat/components/attachments-preview.tsx"
 	],
 	"files": {
 		"src/renderer/src/features/agent-hub/agent-details-page.tsx": 16,
@@ -57,8 +59,6 @@
 		"src/renderer/src/features/chat/components/asks/ask-drawer.tsx": 1,
 		"src/renderer/src/features/chat/components/asks/ask-panel.tsx": 13,
 		"src/renderer/src/features/chat/components/at-picker.tsx": 1,
-		"src/renderer/src/features/chat/components/attachments-preview.tsx": 1,
-		"src/renderer/src/features/chat/components/audio-recording-indicator.tsx": 3,
 		"src/renderer/src/features/chat/components/canvas/audio-preview.tsx": 1,
 		"src/renderer/src/features/chat/components/canvas/canvas-file-viewer.tsx": 12,
 		"src/renderer/src/features/chat/components/canvas/canvas-goals-viewer.tsx": 3,
