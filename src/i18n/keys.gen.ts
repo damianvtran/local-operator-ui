@@ -30,6 +30,7 @@ import enUiAgentsStarters from "./catalogues/en/ui.agents.starters.json";
 import enUiBrowserChrome from "./catalogues/en/ui.browser.chrome.json";
 import enUiBrowser from "./catalogues/en/ui.browser.json";
 import enUiCanvas from "./catalogues/en/ui.canvas.json";
+import enUiChatComposerMedia from "./catalogues/en/ui.chat.composer_media.json";
 import enUiChat from "./catalogues/en/ui.chat.json";
 import enUiChatSidebarView from "./catalogues/en/ui.chat.sidebar_view.json";
 import enUiCodeReview from "./catalogues/en/ui.code_review.json";
@@ -80,6 +81,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiBrowserChrome,
 	...enUiBrowser,
 	...enUiCanvas,
+	...enUiChatComposerMedia,
 	...enUiChat,
 	...enUiChatSidebarView,
 	...enUiCodeReview,
@@ -606,6 +608,13 @@ export type MessageParams = {
 	"ui.canvas.files.unreadable": undefined;
 	"ui.canvas.files.videos": undefined;
 	"ui.canvas.files.working": undefined;
+	"ui.chat.composer_media.cancels": undefined;
+	"ui.chat.composer_media.confirms": undefined;
+	"ui.chat.composer_media.pasted_file": undefined;
+	"ui.chat.composer_media.pasted_type": { mimeType: string };
+	"ui.chat.composer_media.preview_failed": undefined;
+	"ui.chat.composer_media.recording": undefined;
+	"ui.chat.composer_media.remove_attachment": undefined;
 	"ui.chat.highlights.file_resolution_failed": undefined;
 	"ui.chat.usage.blocked": undefined;
 	"ui.chat.usage.continue": undefined;

@@ -1,4 +1,3 @@
-import { useSuppressBrowserViewWhileReaching } from "@shared/browser-view-policy";
 import { Button, Tooltip } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import {
@@ -8,8 +7,6 @@ import {
 	forwardRef,
 	useContext,
 	useLayoutEffect,
-	useRef,
-	useState,
 } from "react";
 
 /**
@@ -112,36 +109,23 @@ export const PanelRailItem = forwardRef<HTMLButtonElement, PanelRailItemProps>(
 		 * touched it. #896 added a FIFTH item above the lower three, which shifts each
 		 * lower tooltip down by one pitch: which items cross the view's top edge is the
 		 * measurement's to say (the evidence pass re-derives the numbers), and the
-		 * mechanism below never assumed a fixed count. `useSuppressBrowserViewWhileReaching` measures the
-		 * open tooltip's painted box against the rect the browser surface reports to
-		 * main, and ends the registration on pointer-leave / window blur as well as on
-		 * close (a tooltip left open by an exit through the window edge would otherwise
-		 * hold the page blank until the pointer returned).
+		 * mechanism never assumed a fixed count. `useSuppressBrowserViewWhileReaching`
+		 * measures the open tooltip's painted box against the rect the browser surface
+		 * reports to main, and ends the registration on pointer-leave / window blur as
+		 * well as on close (a tooltip left open by an exit through the window edge would
+		 * otherwise hold the page blank until the pointer returned).
 		 *
-		 * The tooltip's element is found through the trigger's own `aria-describedby`,
-		 * which Radix points at the open panel: the wrapper exposes no content ref, and
-		 * a document query for "the tooltip" would pick up another one.
+		 * The shared `Tooltip` now makes that measured registration for every tooltip that
+		 * reaches the view (the sidebar's conversation flyout had the same occlusion,
+		 * opening `right`); this item only names its registrations, so the paused page and
+		 * the tests can still tell a rail tooltip from the rest.
 		 */
-		const [tooltipOpen, setTooltipOpen] = useState(false);
-		const triggerRef = useRef<HTMLButtonElement | null>(null);
-		useSuppressBrowserViewWhileReaching(
-			tooltipOpen,
-			"panel-rail-tooltip",
-			() => {
-				const id = triggerRef.current?.getAttribute("aria-describedby");
-				return id ? document.getElementById(id) : null;
-			},
-		);
 		return (
 			/* Tooltips open TOWARD the pane (`left`): the rail is at the window's edge, so
 			   the other three sides either leave the window or cover a sibling item. */
-			<Tooltip content={label} side="left" onOpenChange={setTooltipOpen}>
+			<Tooltip content={label} side="left" overlayName="panel-rail-tooltip">
 				<Button
-					ref={(node) => {
-						triggerRef.current = node;
-						if (typeof ref === "function") ref(node);
-						else if (ref) ref.current = node;
-					}}
+					ref={ref}
 					variant="ghost"
 					size="icon"
 					data-panel-rail-item={id}
