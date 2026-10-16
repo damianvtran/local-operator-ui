@@ -1693,10 +1693,18 @@ async function main() {
 					const panel = document.querySelector('[data-tour-tag="browser-load-failure"]');
 					const band = document.querySelector('[data-tour-tag="browser-error"]');
 					const content = document.querySelector('[data-tour-tag="browser-content"]');
+					// The address bar's own value, which is the ONE place the attempted address
+					// is allowed to live (LOH-13 B, brief 2.4). Read here so the assertion below
+					// is a real check of the other half of the rule rather than a claim about a
+					// reading this object did not carry — which is exactly the round-3 F5
+					// finding. It is the SAME address field the loading-matrix check above
+					// reads (same data-tour-tag), so nothing new is being reached for.
+					const address = document.querySelector('[data-tour-tag="browser-address"]');
 					return {
 						panel: panel ? panel.innerText : "",
 						retry: !!document.querySelector('[data-tour-tag="browser-load-failure-retry"]'),
 						band: band ? band.innerText : "",
+						address: address ? address.value : "",
 						suppressedBy: content ? content.dataset.suppressedBy || "" : "",
 					};
 				})()`);
@@ -1706,9 +1714,16 @@ async function main() {
 			20_000,
 		);
 		check(
-			"a refused navigation says why, in the app's own chrome, with the raw code and the address it tried",
+			"a refused navigation says why, in the app's own chrome, with the raw code, and the address is NOT repeated in the panel",
 			refusedDom.panel.includes("ERR_") &&
-				refusedDom.panel.includes("127.0.0.1:9") &&
+				// THE ADDRESS APPEARS ONCE, IN THE EDITABLE BAR (LOH-13 B). The panel used to
+				// print it a second time, as plain text in its machine line; the brief
+				// forbids that duplication (section 2.4) because the omnibox above still
+				// holds the attempted address and is still editable, so a second copy is a
+				// second place that looks like where the address lives. Both halves of that
+				// rule are asserted here: the panel does NOT carry it, and the bar DOES.
+				!refusedDom.panel.includes("127.0.0.1:9") &&
+				refusedDom.address.includes("127.0.0.1:9") &&
 				refusedDom.retry,
 			JSON.stringify(refusedDom, null, 2),
 		);

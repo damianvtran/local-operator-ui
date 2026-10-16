@@ -7,10 +7,13 @@
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { Spinner } from "@shared/components/common/spinner";
 import { useImportAgent } from "@shared/hooks/use-agent-mutations";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { FileInput as FileImportIcon, Upload } from "lucide-react";
 import type { FC } from "react";
 import { useCallback, useRef, useState } from "react";
+import type { WithoutParams } from "../../../../../i18n/keys.gen";
+import { t } from "../../../../../i18n/messages";
 import { BaseDialog, PrimaryButton, SecondaryButton } from "./base-dialog";
 
 /**
@@ -41,9 +44,11 @@ export const ImportAgentDialog: FC<ImportAgentDialogProps> = ({
 	onClose,
 	onAgentImported,
 }) => {
+	// Language refresh must preserve entered fields and any open confirmation.
+	useI18nLocale();
 	const [file, setFile] = useState<File | null>(null);
 	const [isDragActive, setIsDragActive] = useState(false);
-	const [error, setError] = useState<string | null>(null);
+	const [error, setError] = useState<WithoutParams | null>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	const importAgentMutation = useImportAgent();
@@ -68,7 +73,9 @@ export const ImportAgentDialog: FC<ImportAgentDialogProps> = ({
 	const validateFile = useCallback((file: File): boolean => {
 		// Check if it's a ZIP file
 		if (!file.name.toLowerCase().endsWith(".zip")) {
-			setError("Only ZIP files are supported");
+			// Store the key, not a rendered error, so a later language switch
+			// refreshes this validation message without clearing the selected file.
+			setError("ui.agents.dialogs.import.invalid_zip");
 			return false;
 		}
 
@@ -144,21 +151,21 @@ export const ImportAgentDialog: FC<ImportAgentDialogProps> = ({
 	const dialogTitle = (
 		<>
 			<FileImportIcon size={19} className="text-accent" aria-hidden="true" />
-			Import agent
+			{t("ui.agents.dialogs.import.title")}
 		</>
 	);
 
 	const dialogActions = (
 		<>
 			<SecondaryButton onClick={handleClose} disabled={isLoading}>
-				Cancel
+				{t("ui.agents.dialogs.import.cancel")}
 			</SecondaryButton>
 			<PrimaryButton
 				onClick={handleSubmit}
 				disabled={isSubmitDisabled}
 				startIcon={isLoading ? <Spinner /> : null}
 			>
-				Import agent
+				{t("ui.agents.dialogs.import.submit")}
 			</PrimaryButton>
 		</>
 	);
@@ -172,8 +179,7 @@ export const ImportAgentDialog: FC<ImportAgentDialogProps> = ({
 			maxWidth="sm"
 		>
 			<p className="mb-4 text-body-sm text-ink-muted">
-				Import an agent from a ZIP file exported from Local Operator. The file
-				should contain an agent.yml file.
+				{t("ui.agents.dialogs.import.intro")}
 			</p>
 			<div className="flex flex-col gap-5">
 				<input
@@ -213,7 +219,7 @@ export const ImportAgentDialog: FC<ImportAgentDialogProps> = ({
 							/>
 							<p className="text-body text-ink">{file.name}</p>
 							<p className="text-body-sm text-ink-muted">
-								Click or drag to replace
+								{t("ui.agents.dialogs.import.replace_file")}
 							</p>
 						</>
 					) : (
@@ -224,10 +230,10 @@ export const ImportAgentDialog: FC<ImportAgentDialogProps> = ({
 								aria-hidden="true"
 							/>
 							<p className="text-body text-ink">
-								Drag and drop a ZIP file here
+								{t("ui.agents.dialogs.import.drop_file")}
 							</p>
 							<p className="text-body-sm text-ink-muted">
-								or click to select a file
+								{t("ui.agents.dialogs.import.choose_file")}
 							</p>
 						</>
 					)}
@@ -235,7 +241,7 @@ export const ImportAgentDialog: FC<ImportAgentDialogProps> = ({
 
 				{error && (
 					<p role="alert" className="text-body-sm text-danger">
-						{error}
+						{t(error)}
 					</p>
 				)}
 			</div>
