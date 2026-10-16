@@ -47,12 +47,14 @@ import {
 import { NOTICE_BAND } from "@shared/components/common/notice-band";
 import { Alert, Button } from "@shared/components/ui";
 import { useServerHealth } from "@shared/hooks/use-connectivity-status";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import {
 	serverUpdateFailureReason,
 	updateMessageOf,
 } from "@shared/utils/update-error-copy";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
+import { t } from "../../../../../i18n/messages";
 import type { DaemonPairingCause } from "../../../../../shared/backend-status";
 
 const REQUIRED_FEATURES = REQUIRED_BACKEND_FEATURES;
@@ -70,8 +72,9 @@ const REQUIRED_FEATURES = REQUIRED_BACKEND_FEATURES;
  * SAME string the container sets, rather than a second copy of it drifting in a
  * story file (`backend-compatibility-banner.stories.tsx`, `UpdateFailed`).
  */
-export const BACKEND_UPDATE_UNEXPLAINED =
-	"The backend update could not start. Retry, or update from Settings, under Application updates.";
+export const BACKEND_UPDATE_UNEXPLAINED = t(
+	"ui.common.connection.backend_compatibility_banner.the_backend_update_could_not_start_retry_or_update_from_settings_",
+);
 
 export type BackendCompatibilityBannerViewProps = {
 	message: string;
@@ -117,41 +120,50 @@ export const BackendCompatibilityBannerView = ({
 	updateError,
 	onRetry,
 	onUpdate,
-}: BackendCompatibilityBannerViewProps) => (
-	<div className="shrink-0 px-6 py-1">
-		<Alert variant={severity} className={NOTICE_BAND}>
-			<div className="flex w-full min-w-0 items-center gap-2">
-				<span className="min-w-0 flex-1 text-body-sm text-ink">
-					{message}
-					{updateError ? ` ${updateError}` : null}
-				</span>
-				{(offerUpdate || offerRetry) && (
-					<span className="flex shrink-0 items-center gap-2">
-						{offerUpdate && (
-							<Button
-								variant="primary"
-								size="sm"
-								onClick={onUpdate}
-								disabled={updating}
-							>
-								{updating ? "Updating" : "Update backend"}
-							</Button>
-						)}
-						{offerRetry && (
-							<Button
-								variant={offerUpdate ? "ghost" : "primary"}
-								size="sm"
-								onClick={onRetry}
-							>
-								Retry
-							</Button>
-						)}
+}: BackendCompatibilityBannerViewProps) => {
+	useI18nLocale();
+	return (
+		<div className="shrink-0 px-6 py-1">
+			<Alert variant={severity} className={NOTICE_BAND}>
+				<div className="flex w-full min-w-0 items-center gap-2">
+					<span className="min-w-0 flex-1 text-body-sm text-ink">
+						{message}
+						{updateError ? ` ${updateError}` : null}
 					</span>
-				)}
-			</div>
-		</Alert>
-	</div>
-);
+					{(offerUpdate || offerRetry) && (
+						<span className="flex shrink-0 items-center gap-2">
+							{offerUpdate && (
+								<Button
+									variant="primary"
+									size="sm"
+									onClick={onUpdate}
+									disabled={updating}
+								>
+									{updating
+										? t(
+												"ui.common.connection.backend_compatibility_banner.updating",
+											)
+										: t(
+												"ui.common.connection.backend_compatibility_banner.update_backend",
+											)}
+								</Button>
+							)}
+							{offerRetry && (
+								<Button
+									variant={offerUpdate ? "ghost" : "primary"}
+									size="sm"
+									onClick={onRetry}
+								>
+									{t("ui.common.actions.retry")}
+								</Button>
+							)}
+						</span>
+					)}
+				</div>
+			</Alert>
+		</div>
+	);
+};
 
 /**
  * Whether the compatibility banner yields this state to the pane's status strip.

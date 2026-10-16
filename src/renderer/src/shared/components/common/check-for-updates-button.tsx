@@ -2,6 +2,7 @@ import { FloatingAlert } from "@shared/components/common/floating-alert";
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui";
 import { useElapsedSince } from "@shared/hooks/use-elapsed-since";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import {
 	UpdateType,
 	useDeferredUpdatesStore,
@@ -11,6 +12,7 @@ import { isDevelopmentMode } from "@shared/utils/env-utils";
 import { updateMessageOf } from "@shared/utils/update-error-copy";
 import { SLOW_WAIT_HINT_MS } from "@shared/utils/update-slow-wait";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { t } from "../../../../../i18n/messages";
 
 /**
  * Component that shows a button to manually check for updates.
@@ -47,6 +49,7 @@ export const CheckForUpdatesButton = ({
 	 */
 	slowWaitHintMs?: number;
 }) => {
+	useI18nLocale();
 	/** Where a user gets a copy that installs by hand. */
 	const DOWNLOAD_PAGE = "https://local-operator.com/download";
 	const [checking, setChecking] = useState(false);
@@ -234,8 +237,9 @@ export const CheckForUpdatesButton = ({
 					// installer owns an environment from a string it was handed, and
 					// naming the wrong one is the defect this change exists to fix.
 					setManualUpdateInfo({
-						message:
-							"The server is installed outside the app, so use the tool you installed it with - uv, pipx or pip.",
+						message: t(
+							"ui.common.updates.check_for_updates_button.the_server_is_installed_outside_the_app_so_use_the_tool_you_insta",
+						),
 						command: "",
 					});
 					/*
@@ -355,7 +359,9 @@ export const CheckForUpdatesButton = ({
 	const checkForUpdates = async () => {
 		if (isDevelopmentMode()) {
 			showMessage(
-				"Updates are not checked in development mode. This feature is only available in production builds.",
+				t(
+					"ui.common.updates.check_for_updates_button.updates_are_not_checked_in_development_mode_this_feature_is_only_",
+				),
 				"info",
 			);
 			return;
@@ -506,9 +512,16 @@ export const CheckForUpdatesButton = ({
 				 */
 				<div className="mb-3 rounded-sm bg-sunken p-3">
 					<p className="text-body-sm text-ink">
-						The last update to version {lastAttempt.targetVersion} didn't finish
+						{t(
+							"ui.common.updates.check_for_updates_button.the_last_update_to_version",
+						)}
+						{lastAttempt.targetVersion}{" "}
+						{t("ui.common.updates.check_for_updates_button.didn_t_finish")}
 						{lastAttempt.attempts > 1
-							? ` (${lastAttempt.attempts} attempts)`
+							? t("ui.common.updates.check_for_updates_button.detail", {
+									attempts: lastAttempt.attempts,
+									attemptsText: String(lastAttempt.attempts),
+								})
 							: ""}
 						.{/*
 						 * THE LIVE READING, never the record's captured `runningVersion` (design D1):
@@ -517,10 +530,14 @@ export const CheckForUpdatesButton = ({
 						 * that is not the one running - the sentence below the card's own row
 						 * contradicting it. Unknown prints no clause rather than a stale one.
 						 */}
-						{liveVersion ? ` Version ${liveVersion} is running.` : null}
+						{liveVersion
+							? t("ui.common.updates.check_for_updates_button.version", {
+									liveversion: String(liveVersion),
+								})
+							: null}
 					</p>
 					<p className="mt-1 text-meta text-ink-dim">
-						Detected{" "}
+						{t("ui.common.updates.check_for_updates_button.detected")}{" "}
 						{lastAttempt.detectedAt
 							? new Date(lastAttempt.detectedAt).toLocaleString()
 							: "at an unknown time"}
@@ -532,7 +549,9 @@ export const CheckForUpdatesButton = ({
 						className="mt-2"
 						onClick={() => void window.api.openExternal(DOWNLOAD_PAGE)}
 					>
-						Download a fresh copy
+						{t(
+							"ui.common.updates.check_for_updates_button.download_a_fresh_copy",
+						)}
 					</Button>
 				</div>
 			)}
@@ -543,7 +562,9 @@ export const CheckForUpdatesButton = ({
 			>
 				{/* Unlabelled: the button's own caption already says what is busy. */}
 				{checking ? <Spinner size="sm" /> : null}
-				{checking ? "Checking..." : "Check for updates"}
+				{checking
+					? t("ui.common.updates.check_for_updates_button.checking")
+					: t("ui.common.updates.check_for_updates_button.check_for_updates")}
 			</Button>
 			{/*
 			 * THE STILL-WORKING LINE (UX U1), under the control whose caption it
@@ -552,8 +573,9 @@ export const CheckForUpdatesButton = ({
 			 */}
 			{slowCheck && (
 				<p className="mt-2 text-meta text-ink-muted">
-					Still checking. A slow or stalled connection can hold this for about a
-					minute and a half - the app stops waiting on its own.
+					{t(
+						"ui.common.updates.check_for_updates_button.still_checking_a_slow_or_stalled_connection_can_hold_this_for_abo",
+					)}
 				</p>
 			)}
 
