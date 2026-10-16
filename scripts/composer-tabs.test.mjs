@@ -1789,13 +1789,15 @@ test("the wake chip, the pane and the page are ONE derivation", () => {
 	assert.match(row, /\{wakeClause\(wakes\.length\)\}/);
 
 	const page = code(CHAT_PAGE);
-	assert.match(page, /wakes: canonical\.frontend\.wakes,/);
+	/* The derivation reads the frame through the hold (`runFrontend`, the
+	   always-visible rail's change 9) - still the one read of the field. */
+	assert.match(page, /wakes: runFrontend\.wakes,/);
 	/*
 	 * The page is the ONLY reader of the wire's field: a second `.wakes` read
 	 * anywhere in the renderer is the second source of truth this pins against.
 	 */
 	assert.equal(
-		(page.match(/canonical\.frontend\.wakes/g) ?? []).length,
+		(page.match(/(?:canonical\.frontend|runFrontend)\.wakes/g) ?? []).length,
 		1,
 		"one read of the wire, threaded into the one derivation",
 	);
@@ -5986,9 +5988,11 @@ test("the monitor chip, the pane and the page are ONE derivation", () => {
 	assert.match(row, /\{monitorClause\(monitors\.length\)\}/);
 
 	const page = code(CHAT_PAGE);
-	assert.match(page, /monitors: canonical\.frontend\.monitors,/);
+	/* The derivation reads the frame through the hold (`runFrontend`, the
+	   always-visible rail's change 9) - still the one read of the field. */
+	assert.match(page, /monitors: runFrontend\.monitors,/);
 	assert.equal(
-		(page.match(/canonical\.frontend\.monitors/g) ?? []).length,
+		(page.match(/(?:canonical\.frontend|runFrontend)\.monitors/g) ?? []).length,
 		1,
 		"one read of the wire, threaded into the one derivation",
 	);

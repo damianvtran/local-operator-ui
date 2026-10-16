@@ -640,14 +640,12 @@ const ConversationColumn: FC<{
 	records: TranscriptRecord[];
 	containerRef: RefObject<HTMLDivElement>;
 }> = ({ records, containerRef }) => {
-	const details = deriveRunDetails(runFixtures.bothInFlight());
 	return (
 		<div className="flex h-full min-h-0 w-0 min-w-[480px] flex-1 flex-col overflow-hidden">
 			<ChatHeader
 				agentName="Core"
 				description="Invoices workspace · on this machine"
 				onOpenOptions={() => undefined}
-				runDetails={details}
 			/>
 			<div className="flex min-h-0 grow flex-col px-6 pt-4">
 				<CanonicalTranscript
@@ -692,17 +690,11 @@ const ConversationColumn: FC<{
  */
 const DRAWABLE_ROUTE = {
 	mounted: true,
-	runDetails: true,
 	session: true,
-	codeReview: true,
-	asksOffered: true,
 } as const;
 const EMPTY_ROUTE = {
 	mounted: false,
-	runDetails: false,
 	session: false,
-	codeReview: false,
-	asksOffered: false,
 } as const;
 
 /**
@@ -810,16 +802,11 @@ const AppShell: FC<{
 								listOnScreen={false}
 								readerChildId={null}
 								browserAttentionCount={0}
-								/* The asks item is not offered in this frame (#896): a docs board
-								   mounts the rail with explicit inputs, and this one does not
-								   simulate a host that publishes a queue. */
-								askOffered={false}
 								askCount={0}
 								askScope="session"
 								consoleUnseenCount={0}
 								consoleUnseenPulsing={false}
 								fileCount={0}
-								codeOffered={false}
 								codeOpened={0}
 								codeMentioned={0}
 								codeAttention={null}
