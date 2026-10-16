@@ -1,4 +1,6 @@
 import { Badge, Button, Separator } from "@shared/components/ui";
+import { formatDateTime, t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { ShieldCheck, X } from "lucide-react";
@@ -91,7 +93,14 @@ export interface BrowserApprovalsDockProps {
 
 function grantedWhen(grantedAt: number): string {
 	if (!grantedAt) return "";
-	return new Date(grantedAt).toLocaleString();
+	return formatDateTime(new Date(grantedAt), {
+		year: "numeric",
+		month: "numeric",
+		day: "numeric",
+		hour: "numeric",
+		minute: "numeric",
+		second: "numeric",
+	});
 }
 
 export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
@@ -111,6 +120,7 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 	onClose,
 	surfaceTag,
 }) => {
+	useI18nLocale();
 	// Opening the dock moves focus to its header, so the next Tab lands inside the
 	// list the user just opened rather than back at the top of the page.
 	const headingRef = useRef<HTMLHeadingElement | null>(null);
@@ -180,7 +190,7 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 
 	return (
 		<section
-			aria-label="Approvals"
+			aria-label={t("ui.browser.browser_approvals_dock.approvals")}
 			data-tour-tag={surfaceTag}
 			className={cn(
 				"flex shrink-0 flex-col gap-4 overflow-y-auto px-3 py-3",
@@ -214,7 +224,7 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 						className="text-heading text-ink outline-none"
 						data-tour-tag="browser-approvals-dock-title"
 					>
-						Approvals
+						{t("ui.browser.browser_approvals_dock.approvals")}
 					</h2>
 					{/* The queue is what this panel opens onto, so its own line says so
 					    before the approved count does (design round 2, D8): the dock is where
@@ -223,12 +233,16 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 					{(rows.length > 0 || granted.length > 0) && (
 						<p className="text-meta text-ink-dim">
 							{[
-								rows.length > 0 ? `${rows.length} waiting` : null,
-								granted.length === 1
-									? "1 site approved"
-									: granted.length > 1
-										? `${granted.length} sites approved`
-										: null,
+								rows.length > 0
+									? t("ui.browser.browser_approvals_dock.waiting_count", {
+											count: rows.length,
+										})
+									: null,
+								granted.length > 0
+									? t("ui.browser.browser_approvals_dock.approved_count", {
+											count: granted.length,
+										})
+									: null,
 							]
 								.filter(Boolean)
 								.join(" \u00b7 ")}
@@ -238,7 +252,7 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 				<Button
 					variant="ghost"
 					size="icon-sm"
-					aria-label="Close approvals"
+					aria-label={t("ui.browser.browser_approvals_dock.close_approvals")}
 					onClick={onClose}
 					data-tour-tag="browser-approvals-dock-close"
 				>
@@ -247,12 +261,9 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 			</div>
 
 			<p className="text-body-sm text-ink-muted">
-				Approvals are kept per origin and are separate from cookies. Revoking
-				one does not sign you out; clearing cookies does not restore a denial.
-				This app's browser keeps its sign-ins across conversations and app
-				restarts, and an approval here applies to every conversation — not only
-				the one that asked. Requests wait for ten minutes; after that the agent
-				has to ask again.
+				{t(
+					"ui.browser.browser_approvals_dock.approvals_are_kept_per_origin_and_are",
+				)}
 			</p>
 
 			{/* The persistent statement (design 9.3): a standing notice in the browser
@@ -268,18 +279,23 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 			>
 				<ShieldCheck aria-hidden className="mt-0.5 size-4 shrink-0 text-ink" />
 				<p className="text-body-sm text-ink">
-					Agents can drive tabs in this app. Sites an agent can reach were
-					approved by a click in this window, and none of them can be reached
-					without one.
+					{t(
+						"ui.browser.browser_approvals_dock.agents_can_drive_tabs_in_this_app",
+					)}
 				</p>
 			</div>
 
-			<section aria-label="Waiting requests">
-				<h3 className="text-heading text-ink">Waiting</h3>
+			<section
+				aria-label={t("ui.browser.browser_approvals_dock.waiting_requests")}
+			>
+				<h3 className="text-heading text-ink">
+					{t("ui.browser.browser_approvals_dock.waiting")}
+				</h3>
 				{rows.length === 0 ? (
 					<p className="mt-2 text-body-sm text-ink-muted">
-						Nothing is waiting. An agent that needs a site appears here and in
-						the band above the page.
+						{t(
+							"ui.browser.browser_approvals_dock.nothing_is_waiting_an_agent_that_needs",
+						)}
 					</p>
 				) : (
 					<ol
@@ -385,20 +401,29 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 							<li key={row.key}>
 								{row.authority} —{" "}
 								{row.kind === "expired"
-									? "Expired — the agent has to ask again"
-									: "Withdrawn by the agent"}
+									? t(
+											"ui.browser.browser_approvals_dock.expired_the_agent_has_to_ask_again",
+										)
+									: t(
+											"ui.browser.browser_approvals_dock.withdrawn_by_the_agent",
+										)}
 							</li>
 						))}
 					</ul>
 				)}
 			</section>
 
-			<section aria-label="Approved sites">
-				<h3 className="text-heading text-ink">Approved</h3>
+			<section
+				aria-label={t("ui.browser.browser_approvals_dock.approved_sites")}
+			>
+				<h3 className="text-heading text-ink">
+					{t("ui.browser.browser_approvals_dock.approved")}
+				</h3>
 				{granted.length === 0 ? (
 					<p className="mt-2 text-body-sm text-ink-muted">
-						No site is approved yet. The agent will ask the first time it needs
-						one.
+						{t(
+							"ui.browser.browser_approvals_dock.no_site_is_approved_yet_the_agent",
+						)}
 					</p>
 				) : (
 					<ul className="mt-2 flex flex-col gap-2">
@@ -425,7 +450,7 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 									onClick={() => onRevoke(row.origin)}
 									data-tour-tag="browser-revoke-approval"
 								>
-									Revoke
+									{t("ui.browser.browser_approvals_dock.revoke")}
 								</Button>
 							</li>
 						))}
@@ -446,17 +471,22 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 						onClick={onRevokeAll}
 						data-tour-tag="browser-revoke-all"
 					>
-						Revoke all site approvals
+						{t("ui.browser.browser_approvals_dock.revoke_all_site_approvals")}
 					</Button>
 				)}
 			</section>
 
 			{denied.length > 0 && (
-				<section aria-label="Denied sites">
-					<h3 className="text-heading text-ink">Denied</h3>
+				<section
+					aria-label={t("ui.browser.browser_approvals_dock.denied_sites")}
+				>
+					<h3 className="text-heading text-ink">
+						{t("ui.browser.browser_approvals_dock.denied")}
+					</h3>
 					<p className="mt-1 text-body-sm text-ink-muted">
-						The agent stops asking about these. Revoking a denial lets it ask
-						again.
+						{t(
+							"ui.browser.browser_approvals_dock.the_agent_stops_asking_about_these_revoking",
+						)}
 					</p>
 					<ul className="mt-2 flex flex-col gap-2">
 						{denied.map((row) => (
@@ -473,7 +503,7 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 									disabled={busy}
 									onClick={() => onRevoke(row.origin)}
 								>
-									Revoke
+									{t("ui.browser.browser_approvals_dock.revoke")}
 								</Button>
 							</li>
 						))}
@@ -482,10 +512,16 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 			)}
 
 			{currentOrigin && (
-				<section aria-label="Current site">
-					<h3 className="text-heading text-ink">This site</h3>
+				<section
+					aria-label={t("ui.browser.browser_approvals_dock.current_site")}
+				>
+					<h3 className="text-heading text-ink">
+						{t("ui.browser.browser_approvals_dock.this_site")}
+					</h3>
 					<p className="mt-1 text-body-sm text-ink-muted">
-						The page the active tab is on right now.
+						{t(
+							"ui.browser.browser_approvals_dock.the_page_the_active_tab_is_on",
+						)}
 					</p>
 					<p className="mt-2 truncate font-mono text-mono-sm text-ink">
 						{currentOrigin}
@@ -498,26 +534,32 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 						onClick={() => onForgetSite(currentOrigin)}
 						data-tour-tag="browser-forget-site"
 					>
-						Forget this site
+						{t("ui.browser.browser_approvals_dock.forget_this_site")}
 					</Button>
 					<p className="mt-1 text-meta text-ink-dim">
-						Revokes any approval for it and clears what this app stored for it.
-						It does not touch your real browser's data.
+						{t(
+							"ui.browser.browser_approvals_dock.revokes_any_approval_for_it_and_clears",
+						)}
 					</p>
 				</section>
 			)}
 
 			<Separator className="my-1" />
 
-			<section aria-label="Browsing data">
-				<h3 className="text-heading text-ink">Browsing data</h3>
+			<section
+				aria-label={t("ui.browser.browser_approvals_dock.browsing_data")}
+			>
+				<h3 className="text-heading text-ink">
+					{t("ui.browser.browser_approvals_dock.browsing_data")}
+				</h3>
 				{/* The sentence the design asks for by name: revoking and clearing are
 				    different actions with different consequences, and a user who has
 				    just revoke-all'd needs to know that clearing cookies will NOT bring
 				    the deny state back. */}
 				<p className="mt-1 text-body-sm text-ink-muted">
-					These clear what this app's browser profile stored. They do not change
-					which sites the agent may reach — that is the list above.
+					{t(
+						"ui.browser.browser_approvals_dock.these_clear_what_this_app_s_browser",
+					)}
 				</p>
 				<div className="mt-3 flex flex-wrap gap-2">
 					<Button
@@ -527,7 +569,7 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 						onClick={() => onClearData("cookies")}
 						data-tour-tag="browser-clear-cookies"
 					>
-						Clear cookies and site data
+						{t("ui.browser.browser_approvals_dock.clear_cookies_and_site_data")}
 					</Button>
 					<Button
 						variant="outline"
@@ -535,7 +577,7 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 						disabled={busy}
 						onClick={() => onClearData("cache")}
 					>
-						Clear cache
+						{t("ui.browser.browser_approvals_dock.clear_cache")}
 					</Button>
 					<Button
 						variant="outline"
@@ -543,13 +585,13 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 						disabled={busy}
 						onClick={() => onClearData("everything")}
 					>
-						Clear everything
+						{t("ui.browser.browser_approvals_dock.clear_everything")}
 					</Button>
 				</div>
 				<p className="mt-2 text-meta text-ink-dim">
-					Clearing cookies signs this app out of sites you logged into inside
-					it. Your approvals are kept, so the agent will not have to ask again
-					for a site you already approved.
+					{t(
+						"ui.browser.browser_approvals_dock.clearing_cookies_signs_this_app_out_of",
+					)}
 				</p>
 			</section>
 		</section>

@@ -1,0 +1,11 @@
+{
+	"ui.settings.shortcuts.keyboard_shortcuts_section.clear": "Clear",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.reset": "Reset",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.press_the_keys_you_want_esc_cancels": "Press the keys you want; Esc cancels.",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.keyboard_shortcuts": "Keyboard shortcuts",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.shortcuts_for_the_panel_rail_focus_a_field_and_press_the_keys_you": "Shortcuts for the panel rail. Focus a field and press the keys you want; Esc cancels, Reset restores an action's default, and Clear leaves it unbound.",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.no_shortcut": "No shortcut",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.label_press_the_keys_you_want": "{label}: press the keys you want",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.clear_label_s_shortcut": "Clear {label}'s shortcut",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.reset_label_to_its_default": "Reset {label} to its default"
+}

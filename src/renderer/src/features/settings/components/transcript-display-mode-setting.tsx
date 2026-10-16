@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The transcript display-mode setting: a labelled row whose control is the
  * app's own segmented one (`Tabs`/`TabsList`/`TabsTrigger`, the shape
@@ -48,6 +50,7 @@ type TranscriptDisplayModeSettingProps = {
 export const TranscriptDisplayModeSetting: FC<
 	TranscriptDisplayModeSettingProps
 > = ({ value, onChange }) => {
+	useI18nLocale();
 	const labelId = useId();
 	return (
 		<div className="flex items-start justify-between gap-4">
@@ -56,11 +59,14 @@ export const TranscriptDisplayModeSetting: FC<
 					id={labelId}
 					className="flex min-h-6 items-center text-body text-ink"
 				>
-					Transcript display
+					{t(
+						"ui.settings.appearance.transcript_display_mode_setting.transcript_display",
+					)}
 				</span>
 				<p className="mt-0.5 max-w-2xl text-body-sm text-ink-muted">
-					By turn condenses each turn to its answer. By response keeps every
-					settled response on screen, with the turn's final answer still marked.
+					{t(
+						"ui.settings.appearance.transcript_display_mode_setting.by_turn_condenses_each_turn_to_its_answer_by_response_keeps_every",
+					)}
 				</p>
 			</div>
 			{/* Fixed height, matching `ToggleSetting`: swapping control shapes between
@@ -79,7 +85,13 @@ export const TranscriptDisplayModeSetting: FC<
 					<TabsList aria-labelledby={labelId}>
 						{TRANSCRIPT_DISPLAY_MODE_OPTIONS.map((option) => (
 							<TabsTrigger key={option.value} value={option.value}>
-								{option.label}
+								{option.value === "by-turn"
+									? t(
+											"ui.settings.appearance.transcript_display_mode_setting.by_turn",
+										)
+									: t(
+											"ui.settings.appearance.transcript_display_mode_setting.by_response",
+										)}
 							</TabsTrigger>
 						))}
 					</TabsList>

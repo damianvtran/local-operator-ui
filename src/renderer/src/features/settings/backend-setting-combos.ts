@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * Which registry keys get a searchable combobox, and what each one searches.
  *
@@ -75,7 +76,13 @@ export function settingComboSource(key: string): ComboKind | null {
  * uses, so this reuses a sentence rather than inventing one.
  */
 export const COMBO_PLACEHOLDER: Record<ComboKind, string> = {
-	provider: "Search providers",
-	model: "Search models",
-	"provider-model": "Search models",
+	get provider() {
+		return t("ui.settings.model.backend_setting_combos.search_providers");
+	},
+	get model() {
+		return t("ui.settings.model.backend_setting_combos.search_models");
+	},
+	get "provider-model"() {
+		return t("ui.settings.model.backend_setting_combos.search_models");
+	},
 };

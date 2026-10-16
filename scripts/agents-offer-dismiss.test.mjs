@@ -233,6 +233,9 @@ export const desktopResult = request => globalThis.__desktop(request);`,
 	 * `session_catalogue: 2` is present as it is in `mark-all-read`'s harness,
 	 * and `profile_catalogue` as the agents section needs.
 	 */
+	// The view menu imports the renderer i18n barrel, whose language-write seam
+	// uses real query keys. Re-export those keys too: keep this partial hook
+	// fixture compatible without inventing fake keys or suppressing link errors.
 	"@shared/api/local-operator/desktop-hooks": `export {desktopFeatureEnabled, desktopFeatureState, desktopKeys} from ${JSON.stringify(
 		`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-hooks.ts`,
 	)}

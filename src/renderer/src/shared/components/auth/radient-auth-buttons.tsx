@@ -17,8 +17,10 @@ import {
 import { Spinner } from "@shared/components/common/spinner";
 import { Alert } from "@shared/components/ui";
 import { radientUserKeys } from "@shared/hooks/use-radient-user-query";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useQueryClient } from "@tanstack/react-query";
 import type { FC } from "react";
+import { t } from "../../../../../i18n/messages";
 
 const RADIENT_PROVIDER_ID = "radient";
 
@@ -34,9 +36,12 @@ type RadientAuthButtonsProps = {
 export const RadientAuthButtons: FC<RadientAuthButtonsProps> = ({
 	onSignInSuccess,
 	onAfterCredentialUpdate,
-	titleText = "Sign in to Radient",
-	descriptionText = "Connect your Radient account to use Radient services.",
+	titleText = t("ui.common.account.radient_auth_buttons.sign_in_to_radient"),
+	descriptionText = t(
+		"ui.common.account.radient_auth_buttons.connect_your_radient_account_to_use_radient_services",
+	),
 }) => {
+	useI18nLocale();
 	const queryClient = useQueryClient();
 	const capabilities = useDesktopCapabilities();
 	const enabled = desktopFeatureEnabled(capabilities.data, "auth");
@@ -48,8 +53,9 @@ export const RadientAuthButtons: FC<RadientAuthButtonsProps> = ({
 	if (capabilities.isSuccess && !enabled) {
 		return (
 			<Alert variant="warning">
-				Signing in needs a newer Local Operator backend. Update the backend and
-				restart the app.
+				{t(
+					"ui.common.account.radient_auth_buttons.signing_in_needs_a_newer_local_operator_backend_update_the_backen",
+				)}
 			</Alert>
 		);
 	}
@@ -57,7 +63,12 @@ export const RadientAuthButtons: FC<RadientAuthButtonsProps> = ({
 	if (providers.isLoading || capabilities.isLoading) {
 		return (
 			<div className="flex h-24 items-center justify-center">
-				<Spinner size="md" label="Loading sign-in options" />
+				<Spinner
+					size="md"
+					label={t(
+						"ui.common.account.radient_auth_buttons.loading_sign_in_options",
+					)}
+				/>
 			</div>
 		);
 	}
@@ -65,7 +76,9 @@ export const RadientAuthButtons: FC<RadientAuthButtonsProps> = ({
 	if (!radient) {
 		return (
 			<Alert variant="warning">
-				Radient is not available from this backend's provider registry.
+				{t(
+					"ui.common.account.radient_auth_buttons.radient_is_not_available_from_this_backend_s_provider_registry",
+				)}
 			</Alert>
 		);
 	}

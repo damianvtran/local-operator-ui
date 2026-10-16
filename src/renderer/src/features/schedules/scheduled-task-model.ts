@@ -6,6 +6,11 @@ import {
 } from "@features/chat/components/run-details/run-detail-model";
 import type { ScheduleResponse } from "@shared/api/local-operator";
 import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
+import { t } from "@shared/i18n";
+// Exported English source constants are compatibility contracts for model consumers.
+// Rendered product copy resolves the same key at use time, so a language change
+// cannot leave a parked/stale explanation frozen in the module-load locale.
+import { bundledEnglish } from "../../../../i18n/keys.gen";
 import {
 	DESKTOP_REFUSAL_CODE,
 	type DesktopWakeSupervisor,
@@ -143,7 +148,7 @@ export type ScheduledTaskRow = {
  * what the list below it shows.
  */
 export const wakeCountClause = (count: number): string =>
-	count === 1 ? "1 wake" : `${count} wakes`;
+	t("ui.schedules.count.wake", { count });
 
 /**
  * The parked clause, which replaces BOTH the due label and the count.
@@ -154,7 +159,10 @@ export const wakeCountClause = (count: number): string =>
  * a TURN is what clears the marker and re-arms the wakes (round-2 U9). The clause
  * says the thing that actually resumes them.
  */
-export const PARKED_CLAUSE = "Parked — wakes resume after its next turn";
+export const PARKED_CLAUSE =
+	bundledEnglish[
+		"ui.schedules.scheduled_task_model.parked_wakes_resume_after_its_next_turn"
+	];
 
 /**
  * The disclosure's label, singular at one.
@@ -165,7 +173,7 @@ export const PARKED_CLAUSE = "Parked — wakes resume after its next turn";
  * `wakeCountClause` pluralises; this is the same rule on the same kind of noun.
  */
 export const hiddenWakesLabel = (hidden: number): string =>
-	hidden === 1 ? "Show 1 more wake" : `Show ${hidden} more wakes`;
+	t("ui.schedules.count.hidden", { hidden });
 
 /**
  * What the editor's `keep` options say, with the value they are keeping.
@@ -182,18 +190,22 @@ export const keepFirstRunLabel = (
 	nowMs: number,
 	parked: boolean,
 ): string => {
-	if (parked) return "Keep it parked";
+	if (parked) return t("ui.schedules.scheduled_task_model.keep_it_parked");
 	/* `next_due_at` is non-null on this wire, and a null would be a row with no
 	   instant to keep: the fallback says that rather than printing `NaN`. */
 	return wake.next_due_at === null
-		? "Keep the current time"
-		: `Keep ${formatWakeDue(wake.next_due_at, nowMs)}`;
+		? t("ui.schedules.scheduled_task_model.keep_the_current_time")
+		: t("ui.schedules.scheduled_task_model.keep_next_due_at_nowms", {
+				next_due_at__nowMs: String(formatWakeDue(wake.next_due_at, nowMs)),
+			});
 };
 
 export const keepRepeatLabel = (wake: DesktopWakeScheduleRow): string =>
 	wake.every_ms === null
-		? "Keep as once"
-		: `Keep ${formatWakeCadence(wake.every_ms, null)}`;
+		? t("ui.schedules.scheduled_task_model.keep_as_once")
+		: t("ui.schedules.scheduled_task_model.keep_every_ms_null", {
+				every_ms__null: String(formatWakeCadence(wake.every_ms, null)),
+			});
 
 export const keepEndsLabel = (
 	wake: DesktopWakeScheduleRow,
@@ -201,12 +213,14 @@ export const keepEndsLabel = (
 ): string => {
 	if (wake.limit !== null) {
 		const left = Math.max(0, wake.limit - wake.fired_count);
-		return `Keep ${left} run${left === 1 ? "" : "s"} left`;
+		return t("ui.schedules.count.keep_runs", { left });
 	}
 	if (wake.until_at !== null) {
-		return `Keep ending ${formatWakeDue(wake.until_at, nowMs)}`;
+		return t("ui.schedules.scheduled_task_model.keep_ending_until_at_nowms", {
+			until_at__nowMs: String(formatWakeDue(wake.until_at, nowMs)),
+		});
 	}
-	return "Keep never ending";
+	return t("ui.schedules.scheduled_task_model.keep_never_ending");
 };
 
 /**
@@ -221,12 +235,18 @@ export const keepEndsLabel = (
  */
 export const supervisorLead = (supervisor: DesktopWakeSupervisor): string => {
 	if (!supervisor.supported) {
-		return "Wakes are not supervised on this platform yet, so the wakes below only fire while a conversation is running.";
+		return t(
+			"ui.schedules.scheduled_task_model.wakes_are_not_supervised_on_this_platform_yet_so_the_wakes_below",
+		);
 	}
 	if (supervisor.verifiable === false) {
-		return "Nothing supervises the wakes below, so they only fire while their conversation is running.";
+		return t(
+			"ui.schedules.scheduled_task_model.nothing_supervises_the_wakes_below_so_they_only_fire_while_their",
+		);
 	}
-	return "The wake supervisor is installed but not running, so the wakes below will not fire.";
+	return t(
+		"ui.schedules.scheduled_task_model.the_wake_supervisor_is_installed_but_not_running_so_the_wakes_bel",
+	);
 };
 
 /**
@@ -247,7 +267,9 @@ export const supervisorLead = (supervisor: DesktopWakeSupervisor): string => {
  * stays gated on the supervisor, where it belongs.
  */
 export const PARK_FOOTER_CLAUSE =
-	"A terminal stop parks a conversation's wakes until its next turn; stopping one from this window leaves them armed.";
+	bundledEnglish[
+		"ui.schedules.scheduled_task_model.a_terminal_stop_parks_a_conversation_s_wakes_until_its_next_turn"
+	];
 
 /**
  * What the rows say when the listing that drew them is no longer answering.
@@ -259,7 +281,9 @@ export const PARK_FOOTER_CLAUSE =
  * (U4).
  */
 export const STALE_ROWS_CLAUSE =
-	"The list below is the last one that loaded, so it may be out of date.";
+	bundledEnglish[
+		"ui.schedules.scheduled_task_model.the_list_below_is_the_last_one_that_loaded_so_it_may_be_out_of_da"
+	];
 
 /**
  * The workspace's NAME, as the sentence under `Run in` prints it.
@@ -272,7 +296,8 @@ export const STALE_ROWS_CLAUSE =
  */
 export const workspaceName = (cwd: string): string => {
 	const last = cwd.split("/").filter(Boolean).pop() ?? "";
-	if (last === "" || last.startsWith("~")) return "your home folder";
+	if (last === "" || last.startsWith("~"))
+		return t("ui.schedules.scheduled_task_model.your_home_folder");
 	return last;
 };
 
@@ -394,7 +419,10 @@ export const validateScheduledTask = (
 	const length = input.message.trim().length;
 	const prompt =
 		length > WAKE_MESSAGE_MAX_CHARS
-			? `This prompt is ${length.toLocaleString()} characters, and a wake holds at most ${WAKE_MESSAGE_MAX_CHARS.toLocaleString()}. Shorten it to save.`
+			? t("ui.schedules.validation.prompt_length", {
+					length,
+					max: WAKE_MESSAGE_MAX_CHARS,
+				})
 			: "";
 	/*
 	 * The SENTENCE yields when there is nothing to pick (the empty-list line
@@ -405,7 +433,7 @@ export const validateScheduledTask = (
 	 */
 	const conversation =
 		input.needsConversation && input.hasConversationChoices
-			? "Pick a conversation."
+			? t("ui.schedules.scheduled_task_model.pick_a_conversation")
 			: "";
 	/*
 	 * The refusal is STATED rather than substituted: falling back to `1` would
@@ -414,19 +442,28 @@ export const validateScheduledTask = (
 	 * an unarmable count produces no interval for the floor to judge.
 	 */
 	const repeatInterval = input.repeatIntervalNotWhole
-		? "Every needs a positive whole number — how many minutes, hours, days or weeks between runs."
+		? t(
+				"ui.schedules.scheduled_task_model.every_needs_a_positive_whole_number_how_many_minutes_hours_days_o",
+			)
 		: "";
 	const repeat =
 		input.repeatMs !== null && input.repeatMs < MIN_WAKE_INTERVAL_MS
-			? "Wakes repeat no more often than once a minute."
+			? t(
+					"ui.schedules.scheduled_task_model.wakes_repeat_no_more_often_than_once_a_minute",
+				)
 			: "";
 	const ends =
 		input.endsRuns !== null && input.endsRuns <= input.alreadyRun
-			? `This wake has already run ${input.alreadyRun} time${input.alreadyRun === 1 ? "" : "s"}, so the run budget has to be at least ${input.alreadyRun + 1}.`
+			? t("ui.schedules.validation.run_budget", {
+					alreadyRun: input.alreadyRun,
+					budget: input.alreadyRun + 1,
+				})
 			: "";
 	const ceiling =
 		input.existingWakeCount >= MAX_WAKE_SCHEDULES
-			? `This conversation already has ${input.existingWakeCount} wakes, the most it can hold. Cancel one to add another.`
+			? t("ui.schedules.validation.wake_ceiling", {
+					count: input.existingWakeCount,
+				})
 			: "";
 	return {
 		invalid:
@@ -534,7 +571,7 @@ const wakeLines = (
 				position: index + 1,
 				ranLabel:
 					typeof fired === "number" && fired > 0
-						? `Ran ${fired} time${fired === 1 ? "" : "s"}`
+						? t("ui.schedules.count.ran", { fired })
 						: "",
 			};
 		})
@@ -596,11 +633,16 @@ export const toScheduledTaskRow = (
 	const nextDueAt =
 		entry.next_due_at ?? wakes.find((row) => row.nextDueAt)?.nextDueAt ?? null;
 	const head = parked
-		? PARKED_CLAUSE
+		? t(
+				"ui.schedules.scheduled_task_model.parked_wakes_resume_after_its_next_turn",
+			)
 		: wakes.length === 0
 			? ""
 			: wakes[0].dueLabel
-				? `${wakeCountClause(wakes.length)} · next ${wakes[0].dueLabel}`
+				? t("ui.schedules.scheduled_task_model.length_next_duelabel", {
+						length: String(wakeCountClause(wakes.length)),
+						dueLabel: String(wakes[0].dueLabel),
+					})
 				: wakeCountClause(wakes.length);
 	return {
 		sessionId: entry.session_id,
@@ -673,15 +715,26 @@ export const legacyScheduleCadence = (
 	 * silently changed kind and `from` was doing work no user could decode.
 	 */
 	if (schedule.one_time) {
-		return start === null ? "once" : `once · at ${formatWakeDue(start, nowMs)}`;
+		return start === null
+			? t("ui.schedules.legacy.once")
+			: t("ui.schedules.scheduled_task_model.once_at_value1", {
+					value1: String(formatWakeDue(start, nowMs)),
+				});
 	}
 	const cadence = formatWakeCadence(
 		schedule.interval * UNIT_MS[schedule.unit],
 		null,
 	);
-	if (end !== null) return `${cadence} · until ${formatWakeDue(end, nowMs)}`;
+	if (end !== null)
+		return t("ui.schedules.scheduled_task_model.cadence_until_value2", {
+			cadence: String(cadence),
+			value2: String(formatWakeDue(end, nowMs)),
+		});
 	if (start !== null) {
-		return `${cadence} · starts ${formatWakeDue(start, nowMs)}`;
+		return t("ui.schedules.scheduled_task_model.cadence_starts_value2", {
+			cadence: String(cadence),
+			value2: String(formatWakeDue(start, nowMs)),
+		});
 	}
 	return cadence;
 };

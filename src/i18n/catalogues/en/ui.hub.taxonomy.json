@@ -1,0 +1,23 @@
+{
+	"ui.hub.taxonomy.category.investment": "Investment",
+	"ui.hub.taxonomy.category.accounting": "Accounting",
+	"ui.hub.taxonomy.category.healthcare": "Healthcare",
+	"ui.hub.taxonomy.category.legal": "Legal",
+	"ui.hub.taxonomy.category.software": "Software",
+	"ui.hub.taxonomy.category.security": "Security",
+	"ui.hub.taxonomy.category.role_play": "Role play",
+	"ui.hub.taxonomy.category.personal_assistance": "Personal assistance",
+	"ui.hub.taxonomy.category.education": "Education",
+	"ui.hub.taxonomy.category.marketing": "Marketing",
+	"ui.hub.taxonomy.category.sales": "Sales",
+	"ui.hub.taxonomy.category.research": "Research",
+	"ui.hub.taxonomy.category.analysis": "Analysis",
+	"ui.hub.taxonomy.category.management": "Management",
+	"ui.hub.taxonomy.category.social_media": "Social media",
+	"ui.hub.taxonomy.category.other": "Other",
+	"ui.hub.taxonomy.heading": "Categories",
+	"ui.hub.taxonomy.all": "All categories",
+	"ui.hub.taxonomy.origin.named": "Shared with {name}, not the public hub",
+	"ui.hub.taxonomy.origin.unnamed": "Shared with an organization, not the public hub",
+	"ui.hub.taxonomy.origin.organization": "Organization"
+}

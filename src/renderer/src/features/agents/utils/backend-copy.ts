@@ -75,6 +75,9 @@ export type FieldTarget =
 	| "members"
 	| null;
 
+// Parsing stays English and stable; translate only the operator-facing result.
+import { t } from "../../../../../i18n";
+
 export type RefusalCopy = {
 	/** The sentence to show, in user vocabulary. */
 	message: string;
@@ -117,7 +120,7 @@ export function refusalCopy(raw: string): RefusalCopy {
 	const taken = message.match(NAME_TAKEN);
 	if (taken) {
 		return {
-			message: `An agent called “${taken[1]}” already exists. Choose another name, or open the existing one to change it.`,
+			message: t("ui.agents.refusals.name_taken", { name: taken[1] }),
 			field: "name",
 		};
 	}
@@ -126,7 +129,7 @@ export function refusalCopy(raw: string): RefusalCopy {
 	// separators" — already user vocabulary; attached to the field it is about.
 	if (NAME_GRAMMAR.test(message)) {
 		return {
-			message: "Names cannot contain spaces or slashes.",
+			message: t("ui.agents.refusals.name_grammar"),
 			field: "name",
 		};
 	}
@@ -136,7 +139,7 @@ export function refusalCopy(raw: string): RefusalCopy {
 	const effort = message.match(EFFORT_TIER);
 	if (effort) {
 		return {
-			message: `“${effort[1]}” is not a configured effort tier. Use inherit, or add the tier in Settings.`,
+			message: t("ui.agents.refusals.effort_unavailable", { tier: effort[1] }),
 			field: "effort",
 		};
 	}
@@ -146,21 +149,21 @@ export function refusalCopy(raw: string): RefusalCopy {
 	const teamName = message.match(TEAM_NAME_BOUND);
 	if (teamName) {
 		return {
-			message: "A team name is 1-64 characters.",
+			message: t("ui.agents.refusals.team_name_bound"),
 			field: "name",
 		};
 	}
 	const manager = message.match(MANAGER_MISSING);
 	if (manager) {
 		return {
-			message: `“${manager[1]}” is not an agent or a team on this machine.`,
+			message: t("ui.agents.refusals.missing_manager", { name: manager[1] }),
 			field: "manager",
 		};
 	}
 	const member = message.match(MEMBER_MISSING);
 	if (member) {
 		return {
-			message: `“${member[1]}” is not an agent or a team on this machine.`,
+			message: t("ui.agents.refusals.missing_member", { name: member[1] }),
 			field: "members",
 		};
 	}
@@ -168,8 +171,7 @@ export function refusalCopy(raw: string): RefusalCopy {
 	// A team that would nest too deeply (`MAX_ORG_DEPTH`) or loop.
 	if (NESTING_FAILURE.test(message)) {
 		return {
-			message:
-				"That team would nest too deeply, or would contain itself. Check its members.",
+			message: t("ui.agents.refusals.team_nesting"),
 			field: "members",
 		};
 	}
