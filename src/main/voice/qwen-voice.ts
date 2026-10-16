@@ -196,6 +196,13 @@ export class QwenVoice {
 			try {
 				const webuiUrl = await this.deps.gateway.start();
 				await this.deps.speech.start();
+				/*
+				 * The Gateway can die while s2s loads (the 8-minute leg). Reporting
+				 * "ready" over a dead launcher would say Listening with nothing to
+				 * hear (review round 2, minor 1).
+				 */
+				if (!this.deps.gateway.running)
+					throw new Error("The voice Gateway stopped while the models loaded");
 				this.setStatus({
 					rig: "ready",
 					webui_url: webuiUrl,

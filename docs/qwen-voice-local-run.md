@@ -104,6 +104,9 @@ If 3101, 8765 or 8766 were busy in step 1, put `LOP_QWEN_PORTS=3191,8795,8796 \`
 You should see a window titled Local Operator, separate from your installed app.
 The terminal prints the dev server's lines and stays open while the app runs.
 
+Because the profile folder is new, the app first shows a **"Connect an AI
+account"** window. Press **"Skip for now"**: the test backend needs no account.
+
 ## 4. What to click
 
 1. Open a conversation and send it a first message by typing, for example
@@ -118,22 +121,23 @@ The terminal prints the dev server's lines and stays open while the app runs.
 4. After about 15-20 s the speech models are loaded (the very first run can take
    longer). Your browser **comes to the front** with the Qwen page at
    `http://127.0.0.1:3101/` (or the first port you set in `LOP_QWEN_PORTS`).
-   Meanwhile the app's header says **"Voice ready"** with an **"Open voice page"**
-   action: the models are loaded, but nothing is listening yet.
-5. On the Qwen page, press **"Enable voice"** and allow the microphone when your
-   browser asks.
-6. The app's header changes to **"Listening"**. Now it hears you.
+   The app's header says **"Voice ready"** with an **"Open voice page"** action
+   until that page has loaded, then changes to **"Listening"**.
+
+   **The Qwen page's own welcome text does not apply here.** It says "You speak,
+   I orchestrate." and suggests things to try. In this setup the page is only
+   the microphone and the speaker: EVERYTHING you say, including "hello", goes
+   to the conversation with voice on, and what you hear back is that
+   conversation's reply.
+5. On the Qwen page, press **"Enable microphone"** and allow the microphone when
+   your browser asks. The header already says "Listening" once the page has
+   loaded, but nothing reaches the conversation until the microphone is on.
 
 If you close the Qwen tab, the header goes back to "Voice ready". Press
 "Open voice page" to open it again.
 
 If you restart the app while voice is still on, nothing loads by itself. The
 header shows "Start voice". Press it to load the models again.
-
-**The Qwen page's own welcome text does not apply here.** It says "You speak, I
-orchestrate." and suggests things to try. In this setup the page is only the
-microphone and the speaker: EVERYTHING you say, including "hello", goes to the
-conversation with voice on, and what you hear back is that conversation's reply.
 
 ## 5. What to say, and what should happen
 
@@ -202,13 +206,16 @@ holds the port, the header says "Voice error" with the reason.
 **It does not talk.** Check these in order:
 
 1. **The header says "Voice ready", not "Listening":** no Qwen page is
-   connected. Press "Open voice page", then "Enable voice" on the page.
+   connected. Press "Open voice page".
+   **The header says "Listening" but nothing happens when you speak:** the page
+   is open but its microphone is off. Press "Enable microphone" on the page.
 2. **Microphone permission:** the browser must be allowed to use the microphone
    for `http://127.0.0.1:3101` (or your `LOP_QWEN_PORTS` page port).
 3. **"Voice error":** the reason is written beside it, and "Try again" restarts
    the models. "Voice stopped unexpectedly." means a rig process died while
-   voice was on; "Voice could not start." means it failed to start (hover for
-   the exact reason, for example a busy port). "Your last words were not sent."
+   voice was on. A failed start shows its cause, for example "Port 8765 is in
+   use; stop the other voice rig first" or "Voice rig not found at …"; hover it
+   for the full text if it is cut short. "Your last words were not sent."
    is about one take only; the next thing you say is tried again.
 4. **Logs:**
    - the speech process: `$QV/profile/qwen-voice/qwen-s2s.log`;

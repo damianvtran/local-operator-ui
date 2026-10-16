@@ -13,6 +13,14 @@ import { join } from "node:path";
 import { after, test } from "node:test";
 import { build } from "esbuild";
 
+const SAYS_EXITED = /exited/;
+const GATEWAY_DIED_LOADING = /Gateway stopped while the models loaded/;
+const NAMES_3101 = /3101/;
+const RIG_NOT_FOUND =
+	/^Error: Voice rig not found at \/nonexistent-rig \(missing /;
+const PORT_8765_IN_USE = /^Error: Port 8765 is in use;/;
+const FORM_URLENCODED = /application\/x-www-form-urlencoded/;
+
 /*
  * QWEN VOICE IN MAIN (the backend's docs/design/qwen-voice.md, Q4/Q5/Q9),
  * driven through the SHIPPED modules with their Electron and process seams
@@ -324,7 +332,7 @@ test("STATUS: an unexpected process exit under a ready rig is error 'unexpected_
 		const status = r.voice.getStatus();
 		assert.equal(status.rig, "error", which);
 		assert.equal(status.cause, "unexpected_exit");
-		assert.match(status.reason, /exited/);
+		assert.match(status.reason, SAYS_EXITED);
 		assert.equal(status.webui_url, null);
 		// An exit during a start, or after a stop, is not reported again.
 		await r.voice.stop();
@@ -334,6 +342,25 @@ test("STATUS: an unexpected process exit under a ready rig is error 'unexpected_
 		const again = await r.voice.start("renderer");
 		assert.equal(again.rig, "ready");
 	}
+});
+
+test("minor 1: a Gateway that died while s2s loaded fails the start; it is never reported ready", async () => {
+	const r = rig();
+	r.speech.start = async function () {
+		r.calls.speechStart += 1;
+		this.running = true;
+		r.gateway.running = false; // the launcher exits during the long load
+	};
+	const status = await r.voice.start("renderer");
+	assert.equal(status.rig, "error");
+	assert.match(status.reason, GATEWAY_DIED_LOADING);
+	assert.equal(r.calls.speechStop, 1, "nothing left running");
+	assert.equal(
+		r.toRenderer.some(
+			(x) => x.channel === "voice.qwen.status" && x.payload.rig === "ready",
+		),
+		false,
+	);
 });
 
 test("OPEN VOICE PAGE: voice.qwen.start on a ready rig reopens the page; an enable does not", async () => {
@@ -359,7 +386,7 @@ test("a failed start reports error with the reason and leaves nothing running", 
 	const r = rig({ gatewayFails: true });
 	const status = await r.voice.start("renderer");
 	assert.equal(status.rig, "error");
-	assert.match(status.reason, /3101/);
+	assert.match(status.reason, NAMES_3101);
 	assert.equal(r.calls.speechStart, 0);
 	assert.equal(r.calls.speechStop, 1, "stopped what it might have started");
 });
@@ -602,14 +629,18 @@ test("s2s is stopped by its recorded PROCESS GROUP, SIGTERM then SIGKILL, idempo
 		"idempotent",
 	);
 	// A start against a rig directory that is not there refuses by name.
-	await assert.rejects(proc.start(), /missing/);
+	await assert.rejects(
+		proc.start(),
+		RIG_NOT_FOUND,
+		"the header shows this sentence verbatim (D10)",
+	);
 });
 
 /*
  * THE APP'S OWN CRASH ORPHAN (QA round 1, Q5): s2s's pid/pgid is recorded in
  * the profile at spawn; the next start reaps that group only when the pid is
  * alive, leads the recorded group and runs THIS rig's s2s on the relay model.
- * Anything else holding the port keeps the "already in use" error.
+ * Anything else holding the port keeps the "Port ... is in use" error.
  */
 function fakeRigDir() {
 	const root = mkdtempSync(join(tmpdir(), `qv-rig-${process.pid}-`));
@@ -712,7 +743,7 @@ test("ORPHAN: a port holder that is not ours is NEVER killed, and the clear erro
 		],
 	]) {
 		const c = orphanCase({ command, pgid });
-		await assert.rejects(c.proc.start(), /already in use/, label);
+		await assert.rejects(c.proc.start(), PORT_8765_IN_USE, label);
 		assert.deepEqual(c.signals, [], `${label}: nothing signalled`);
 		assert.equal(c.spawned.length, 0, label);
 		rmSync(c.rigDir, { recursive: true, force: true });
@@ -806,7 +837,7 @@ test("voice.utterance posts the route's form fields, text only, with main's bear
 	assert.equal(response.status, 200);
 	const sent = received.at(-1);
 	assert.equal(sent.url, "/v1/desktop/voice/utterance");
-	assert.match(sent.type, /application\/x-www-form-urlencoded/);
+	assert.match(sent.type, FORM_URLENCODED);
 	assert.equal(sent.auth, "Bearer synthetic-token");
 	assert.deepEqual(Object.fromEntries(new URLSearchParams(sent.body)), {
 		session_id: "0123456789ab",

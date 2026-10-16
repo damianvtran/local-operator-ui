@@ -3,6 +3,10 @@ import { readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { after, test } from "node:test";
 import { build } from "esbuild";
 
+const RETRY_UNLESS_RIG_ERROR =
+	/rig\?\.rig !== "error" && exchangeReason \? null :/;
+const RIG_REASON_SHOWN = /const reason = rig\.reason\?\.trim\(\);/;
+
 /*
  * SESSION VOICE'S SPEAK-TRIGGER RULE (`docs/design/session-voice.md`, the frozen
  * contract's turn-trigger bullets), driven through the SHIPPED fold
@@ -1480,7 +1484,7 @@ const READS_INPUT_MODE = /input_mode|inputMode/;
 const controllerBundle = await build({
 	stdin: {
 		contents:
-			'export { feedTurns, sendVoiceTake, takeIsEcho, isEcho, isQwenPhrase, rememberSpoken, viewedSessionId } from "./src/renderer/src/features/voice/qwen-voice-controller"; export { useVoiceStore, voicePhaseOf } from "./src/renderer/src/features/voice/voice-store";',
+			'export { feedTurns, sendVoiceTake, takeIsEcho, isEcho, isQwenPhrase, rememberSpoken, speechMs, viewedSessionId } from "./src/renderer/src/features/voice/qwen-voice-controller"; export { useVoiceStore, voicePhaseOf } from "./src/renderer/src/features/voice/voice-store";',
 		resolveDir: process.cwd(),
 		loader: "tsx",
 	},
@@ -1869,8 +1873,113 @@ test("echo guard: the reviewer's real follow-ups are NOT echoes of a long reply"
 		"go ahead",
 		"why did the loader read the file twice",
 		"tell me about the clock",
+		"what is the status of it",
+		"is that the same as the other",
 	])
 		assert.equal(isEcho(take, REVIEWER_REPLY), false, take);
+});
+
+/*
+ * QA ROUND 2, Q10: Parakeet does not hear the rig's own phrases back exactly.
+ * These are its measured transcripts (r2 matrix rows 19, 22, 23, 25, 60, and
+ * the guide walk's "Sand"), and each is the rig's speech, so each is dropped.
+ */
+const HEARD_BACK = [
+	["Scent", "sent"],
+	["Sent", "sent"],
+	["Sand", "sent"],
+	["Voices off for this conversation.", "voice_off"],
+	["Voice's off for this conversation", "voice_off"],
+	["voice is off for this conversation", "voice_off"],
+	["Answer it on screen first", "on_screen_first"],
+	["answer on screen first", "on_screen_first"],
+	["That did not go through", "failed"],
+	["That didn't go through.", "failed"],
+	["Switch.", "switched"],
+	["switched", "switched"],
+];
+
+/* The false-positive bar: real things a person says to the agent. */
+const REAL_SHORT_TAKES = [
+	"send it",
+	"stop",
+	"yes",
+	"scan the repo",
+	"test",
+	"next",
+	"end",
+	"go ahead",
+	"switch it off",
+	"answer the question",
+	"that did it",
+	"voice off please",
+	"what did you send",
+	"is it off",
+];
+
+test("Q10: the rig's phrases as Parakeet MISHEARS them are dropped; real short takes are not", async () => {
+	const { isQwenPhrase, takeIsEcho } = await controller();
+	for (const [heard, phrase] of HEARD_BACK) {
+		assert.equal(isQwenPhrase(heard), true, `${heard} (${phrase})`);
+		assert.equal(takeIsEcho(heard, Date.now() + 3_600_000), true, heard);
+	}
+	for (const take of REAL_SHORT_TAKES)
+		assert.equal(isQwenPhrase(take), false, take);
+	for (const take of [
+		"can you mock the clock",
+		"fix the scheduler test now",
+		"and the loader is it fixed",
+		"what is the clock tolerance",
+		"and then the test is run",
+		"mock the clock",
+		"widen the tolerance",
+		"leave the scheduler test alone",
+		"fix the parser and the loader",
+		"yes go ahead and fix it",
+		"please run the tests again",
+		"what is the third one",
+		"commit it and push the change",
+		"go ahead",
+		"why did the loader read the file twice",
+		"tell me about the clock",
+		"what is the status of it",
+		"is that the same as the other",
+	])
+		assert.equal(isQwenPhrase(take), false, `reviewer follow-up: ${take}`);
+});
+
+test("Q10: a short reply or gate sentence misheard is still its echo; a long sentence's fragment is not", async () => {
+	const { isEcho } = await controller();
+	assert.equal(
+		isEcho("Hello from the mock provider.", "Hello from the mock provider!"),
+		true,
+	);
+	assert.equal(
+		isEcho("Hello from a mock provider", "Hello from the mock provider!"),
+		true,
+		"one word misheard",
+	);
+	assert.equal(
+		isEcho("approval needed bash", "Approval needed: bash. run: sleep 1"),
+		true,
+		"a gate's short first sentence",
+	);
+	assert.equal(isEcho("hello", "Hello from the mock provider!"), false);
+	assert.equal(isEcho("send it", "Sent. I sent the report."), false);
+	assert.equal(isEcho("the third is a flaky test", REVIEWER_REPLY), false);
+});
+
+test("minor 2: the echo window is measured from the estimated END of playback", async () => {
+	const { takeIsEcho, rememberSpoken, speechMs } = await controller();
+	const long = `${"word ".repeat(150).trim()}. And then the summary closes here.`;
+	assert.equal(speechMs(long), Math.ceil((156 / 2.5) * 1000));
+	const at = Date.now() + 10_000_000;
+	rememberSpoken(long, at);
+	const sentence = "and then the summary closes here";
+	// 60 s after it started the reply is still playing (62.4 s long): an echo.
+	assert.equal(takeIsEcho(sentence, at + 60_000), true);
+	assert.equal(takeIsEcho(sentence, at + speechMs(long) + 29_000), true);
+	assert.equal(takeIsEcho(sentence, at + speechMs(long) + 31_000), false);
 });
 
 test("echo guard: the played-back reply IS an echo, whole or a sentence of it", async () => {
@@ -1979,6 +2088,37 @@ test("echo guard: the rig's 'Voice is off' heard back with the slot empty is an 
 	assert.equal(heard.code, "echo");
 	const real = await sendVoiceTake("turn voice on please");
 	assert.equal(real.code, "voice_not_enabled");
+});
+
+test("U9: a rig error wins over a stale exchange error, so its reason and Try again show", async () => {
+	const { useVoiceStore, voicePhaseOf } = await controller();
+	const store = useVoiceStore.getState();
+	store.setActive({ session_id: "s-u9", enabled_at: 1 });
+	store.setExchange("error", "s-u9", "not_sent");
+	store.setRig({ rig: "ready", webui_url: null, clients: 1 });
+	assert.equal(voicePhaseOf(useVoiceStore.getState(), "s-u9"), "error");
+	store.setRig({
+		rig: "error",
+		webui_url: null,
+		reason: "Port 8765 is in use; stop the other voice rig first",
+	});
+	assert.equal(voicePhaseOf(useVoiceStore.getState(), "s-u9"), "error");
+	const indicator = readFileSync(
+		"src/renderer/src/features/voice/voice-indicator.tsx",
+		"utf8",
+	);
+	// The rig's reason is checked before the exchange's, and Try again is
+	// withheld only when the rig is NOT in error.
+	const reason = indicator.slice(indicator.indexOf("function errorReason"));
+	assert.ok(
+		reason.indexOf('rig?.rig === "error"') <
+			reason.indexOf('exchange === "not_sent"'),
+	);
+	assert.match(indicator, RETRY_UNLESS_RIG_ERROR);
+	// D10: the start failure's own sentence is the visible reason.
+	assert.match(reason, RIG_REASON_SHOWN);
+	store.setExchange(null, null);
+	store.setRig({ rig: "ready", webui_url: null, clients: 1 });
 });
 
 test("viewedSessionId reads the HashRouter's chat route", async () => {

@@ -86,8 +86,19 @@ export function newVoiceRequestId(): string {
 /* THE ECHO GUARD                                                              */
 /* -------------------------------------------------------------------------- */
 
-/** How long a spoken text can come back through the microphone. */
+/**
+ * How long a spoken text can come back through the microphone AFTER it has
+ * finished playing. The launcher does not report the end of playback, so the
+ * playback itself is estimated from the word count (`speechMs`) and added.
+ */
 export const ECHO_WINDOW_MS = 30_000;
+/** Qwen3-TTS speaks at roughly 2.5 words a second. */
+export const ECHO_WORDS_PER_SECOND = 2.5;
+
+/** How long the rig takes to say `text`, estimated from its words. */
+export function speechMs(text: string): number {
+	return Math.ceil((echoWords(text).length / ECHO_WORDS_PER_SECOND) * 1000);
+}
 /** The shortest run of shared words that can make a longer take an echo. */
 export const ECHO_MIN_RUN = 6;
 /** The share of a take's words that run must cover. */
@@ -98,32 +109,118 @@ const WHITESPACE = /\s+/;
 /** A sentence ends at `.`, `!` or `?` followed by space or the end ("plan.txt" does not). */
 const SENTENCE_END = /(?<=[.!?])\s+/u;
 
+/*
+ * Contractions spelled out, so "Voice's off" and "Voice is off" are the same
+ * words. Applied after lower-casing; the apostrophe is the one punctuation mark
+ * `NON_WORD` keeps so that this can run.
+ */
+const CONTRACTIONS: ReadonlyArray<readonly [RegExp, string]> = [
+	[/\bcan't\b/g, "can not"],
+	[/\bwon't\b/g, "will not"],
+	[/n't\b/g, " not"],
+	[/'re\b/g, " are"],
+	[/'s\b/g, " is"],
+	[/'ll\b/g, " will"],
+	[/'ve\b/g, " have"],
+	[/'m\b/g, " am"],
+	[/'d\b/g, " would"],
+];
+
 /** Lowercase words, punctuation dropped: what Parakeet and the reply share. */
 export function echoWords(text: string): string[] {
-	return text
+	let value = text
 		.toLowerCase()
 		.normalize("NFKD")
+		.replace(/[\u2018\u2019]/g, "'");
+	for (const [pattern, spelled] of CONTRACTIONS)
+		value = value.replace(pattern, spelled);
+	return value
 		.replace(NON_WORD, " ")
+		.replace(/'/g, "")
 		.split(WHITESPACE)
 		.filter(Boolean);
 }
 
-const echoKey = (text: string): string => echoWords(text).join(" ");
+/* -------- the fuzzy match for SHORT takes (QA round 2, Q10) ---------------- */
+
+/** Edit distance allowed for a one-word phrase ("Sent." heard as "Scent"). */
+export const ECHO_WORD_EDITS = 2;
+/** Word-level similarity a multi-word short take needs ("Voices off ..."). */
+export const ECHO_WORD_SIMILARITY = 0.8;
+
+/** Levenshtein distance between two strings (characters or word arrays). */
+function editDistance<T>(
+	a: ArrayLike<T>,
+	b: ArrayLike<T>,
+	same: (x: T, y: T) => boolean,
+): number {
+	let previous = Array.from({ length: b.length + 1 }, (_, j) => j);
+	for (let i = 1; i <= a.length; i += 1) {
+		const row = [i];
+		for (let j = 1; j <= b.length; j += 1)
+			row[j] = Math.min(
+				previous[j] + 1,
+				row[j - 1] + 1,
+				previous[j - 1] + (same(a[i - 1], b[j - 1]) ? 0 : 1),
+			);
+		previous = row;
+	}
+	return previous[b.length];
+}
+
+const charDistance = (a: string, b: string): number =>
+	editDistance(a, b, (x, y) => x === y);
+
+/*
+ * Two words are "the same word heard" when they are equal, or when both are
+ * long enough to carry a mishearing (4+ letters) and differ by one edit:
+ * "voices"/"voice", "scent"/"sent". Short words must match exactly, so "is"
+ * never stands in for "it".
+ */
+const sameHeardWord = (a: string, b: string): boolean =>
+	a === b || (a.length >= 4 && b.length >= 4 && charDistance(a, b) <= 1);
+
+/**
+ * Whether a SHORT take is the rig's `target` misheard by Parakeet. A one-word
+ * target allows `ECHO_WORD_EDITS` character edits against a one-word take; a
+ * longer target needs a word-level similarity of `ECHO_WORD_SIMILARITY`
+ * (1 - word edits / longer length, with misheard words counted as equal).
+ */
+export function isHeardAs(take: string[], target: string[]): boolean {
+	if (take.length === 0 || target.length === 0) return false;
+	/*
+	 * One word: up to `ECHO_WORD_EDITS` edits AND the same first letter. The
+	 * letter is what keeps real one-word commands that sit two edits from
+	 * "sent" ("test", "next", "best", "end") from being dropped, while every
+	 * mishearing measured so far keeps it ("Scent", "Sent", "Sand").
+	 */
+	if (target.length === 1)
+		return (
+			take.length === 1 &&
+			take[0][0] === target[0][0] &&
+			charDistance(take[0], target[0]) <= ECHO_WORD_EDITS
+		);
+	const edits = editDistance(take, target, sameHeardWord);
+	return (
+		1 - edits / Math.max(take.length, target.length) >= ECHO_WORD_SIMILARITY
+	);
+}
 
 /**
  * THE RIG'S OWN PHRASES (Q7), the closed set the launcher speaks from the same
- * file. The renderer never learns WHEN the launcher said one, so a take equal to
- * a phrase is an echo at any time and at any length: a person does not say
- * "Answer it on screen first." to their own agent, and relaying it is what made
- * the rig answer itself in a loop (QA round 1, Q4).
+ * file. The renderer never learns WHEN the launcher said one, so a take that is
+ * a phrase - exactly, or as Parakeet mishears it - is an echo at any time: a
+ * person does not say "Answer it on screen first." to their own agent, and
+ * relaying it is what made the rig answer itself in a loop (QA round 1, Q4;
+ * round 2, Q10: "Scent", "Voices off for this conversation.").
  */
-const PHRASE_KEYS: ReadonlySet<string> = new Set(
-	Object.values(QWEN_PHRASES as Record<string, string>).map(echoKey),
-);
+const PHRASE_WORDS: ReadonlyArray<string[]> = Object.values(
+	QWEN_PHRASES as Record<string, string>,
+).map(echoWords);
 
 export function isQwenPhrase(take: string): boolean {
-	const key = echoKey(take);
-	return key.length > 0 && PHRASE_KEYS.has(key);
+	const words = echoWords(take);
+	return PHRASE_WORDS.some((phrase) => isHeardAs(words, phrase));
 }
 
 /** The longest run of consecutive words `a` and `b` share. */
@@ -151,18 +248,23 @@ function longestSharedRun(a: string[], b: string[]): number {
  *   covers at least 80% of the take. Contiguous, not a subsequence: the earlier
  *   in-order-subsequence ratio dropped real follow-ups such as "can you mock the
  *   clock" after a reply that happened to contain "mock the clock".
- * - A shorter take is an echo only when it equals one whole sentence of the
- *   spoken text (or all of it). Too few words to tell otherwise, and dropping a
- *   real "stop" is worse than relaying a stray fragment.
+ * - A shorter take is an echo only when it is the whole spoken text, or one of
+ *   its sentences under 6 words, as Parakeet hears it (`isHeardAs`). Too few
+ *   words to tell otherwise, and dropping a real "stop" is worse than relaying
+ *   a stray fragment.
  */
 export function isEcho(take: string, spoken: string): boolean {
 	const a = echoWords(take);
 	const b = echoWords(spoken);
 	if (a.length === 0 || b.length === 0) return false;
 	if (a.length < ECHO_MIN_RUN) {
-		const key = a.join(" ");
-		if (key === b.join(" ")) return true;
-		return spoken.split(SENTENCE_END).some((part) => echoKey(part) === key);
+		if (isHeardAs(a, b)) return true;
+		// Against each SHORT sentence of the spoken text, mishearings included;
+		// a longer sentence needs the contiguous-run rule below, not a fragment.
+		return spoken
+			.split(SENTENCE_END)
+			.map(echoWords)
+			.some((part) => part.length < ECHO_MIN_RUN && isHeardAs(a, part));
 	}
 	const run = longestSharedRun(a, b);
 	return run >= ECHO_MIN_RUN && run / a.length >= ECHO_COVERAGE;
@@ -178,12 +280,15 @@ export function rememberSpoken(text: string, now = Date.now()): void {
 
 /**
  * The echo guard's verdict for one take: a Q7 phrase at any time, or a reply or
- * gate text this window had the rig say in the last 30 s.
+ * gate text this window had the rig say, within its estimated playback plus
+ * 30 s (review round 2, minor 2: a long reply still plays after 30 s).
  */
 export function takeIsEcho(text: string, now = Date.now()): boolean {
 	if (isQwenPhrase(text)) return true;
 	return recentlySpoken.some(
-		(entry) => now - entry.at <= ECHO_WINDOW_MS && isEcho(text, entry.text),
+		(entry) =>
+			now - entry.at <= ECHO_WINDOW_MS + speechMs(entry.text) &&
+			isEcho(text, entry.text),
 	);
 }
 

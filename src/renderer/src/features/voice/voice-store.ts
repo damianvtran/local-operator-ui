@@ -126,9 +126,11 @@ export function voicePhaseOf(
 	sessionId: string | undefined,
 ): VoicePhase {
 	if (!sessionId || state.active?.session_id !== sessionId) return "off";
-	if (state.exchange?.sessionId === sessionId) return state.exchange.kind;
 	const rig = state.rig?.rig;
+	// A RIG error wins over this window's exchange (UX round 2, U9): a stale
+	// "not sent" would hide the rig's reason and its "Try again".
 	if (rig === "error") return "error";
+	if (state.exchange?.sessionId === sessionId) return state.exchange.kind;
 	if (rig === "starting") return "starting";
 	// `stopped` while the slot is held (an app relaunch) is `off` with the
 	// "Start voice" action; the indicator reads `rig` for that.
