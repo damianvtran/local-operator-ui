@@ -21,8 +21,10 @@ import {
 import {
 	ASKS_CONTROL,
 	ASKS_CONTROL_PINNED,
+	ASKS_RAIL_CLOSE_POST_STATE,
 	CASES,
-	expectedRailClose,
+	railCloseAssertion,
+	railCloseReading,
 	resolveAsksControl,
 } from "./asks-app-regression.mjs";
 import { categoryOf, flagsFor } from "./ci-scope.mjs";
@@ -80,20 +82,42 @@ test("every case declares what it drives and the frames it promises", () => {
 				`${name} promises the control leg a frame (${label}) the candidate does not take, so the two legs are not the same drive`,
 			);
 		/*
-		 * AND EVERY LABEL THE DRIVE ACTUALLY CAPTURES IS PROMISED. A frame taken under
-		 * a label nobody promised means the promise list has drifted from the drive -
-		 * the failure mode the runner's own check cannot see, because it only asks
-		 * whether the promised labels appeared.
+		 * AND EVERY LABEL A DRIVE CAPTURES IS PROMISED, PER LEG. A label nobody promised
+		 * means the promise list has drifted from the drive - the failure mode the
+		 * runner's own check cannot see, because it only asks whether the promised labels
+		 * appeared. Comments are stripped first: a prose line naming `frame("...")` is not
+		 * a capture, and reading them made this scan answer about the file's commentary
+		 * instead of its steps (round 1, N2).
 		 */
-		const drive = scenario.drive.toString();
-		const taken = [
-			...drive.matchAll(/frame\("([^"]+)"\)|closed\("([^"]+)"/g),
-		].map((match) => match[1] ?? match[2]);
-		for (const label of taken)
-			assert(
-				scenario.frames.candidate.includes(label),
-				`${name} captures ${JSON.stringify(label)} without promising it`,
+		const drive = scenario.drive
+			.toString()
+			.replace(/\/\*[\s\S]*?\*\//g, "")
+			.replace(/^\s*\/\/.*$/gm, "");
+		const captured = (text) =>
+			[...text.matchAll(/frame\("([^"]+)"\)|closed\("([^"]+)"/g)].map(
+				(match) => match[1] ?? match[2],
 			);
+		/*
+		 * A LEG'S OBLIGATION IS WHAT IT PROMISES: the shared steps run on BOTH legs, so
+		 * every label they capture must be promised by both, while the candidate-only
+		 * block runs on one leg and needs the candidate's list alone (round 1, Q-2).
+		 * Splitting on the drive's own gate keeps this about the steps rather than about
+		 * a second copy of the drive.
+		 */
+		const gate = drive.indexOf('kind === "candidate"');
+		const shared = gate === -1 ? drive : drive.slice(0, gate);
+		for (const label of captured(shared))
+			for (const leg of ["control", "candidate"])
+				assert(
+					scenario.frames[leg].includes(label),
+					`${name}: a shared step captures ${JSON.stringify(label)} without promising it to the ${leg} leg`,
+				);
+		if (gate !== -1)
+			for (const label of captured(drive.slice(gate)))
+				assert(
+					scenario.frames.candidate.includes(label),
+					`${name} captures ${JSON.stringify(label)} in a candidate-only step without promising it`,
+				);
 	}
 	/*
 	 * The asks case's frames stay where the QA howto and the review threads point
@@ -158,10 +182,50 @@ test("a case name outside the table refuses before any artifact root exists", ()
 	rmSync(root, { recursive: true, force: true });
 });
 
-test("the historical source control expects restoration; candidate must empty", () => {
-	assert.equal(expectedRailClose("control"), true);
-	assert.equal(expectedRailClose("candidate"), false);
-	assert.throws(() => expectedRailClose("invented"));
+test("the rail's close declares ONE post-state, and only the candidate owes it", () => {
+	assert.equal(ASKS_RAIL_CLOSE_POST_STATE, false);
+	assert.equal(railCloseAssertion("candidate"), ASKS_RAIL_CLOSE_POST_STATE);
+	/*
+	 * A CONTROL OWES A READING, NOT THE LITERAL. The control is derived (the
+	 * merge-base of `origin/main` and `HEAD`), so on every head cut from a main that
+	 * carries the asks fix its close empties the slot too - and the old per-leg
+	 * literal (`control` restores) failed a correct run. Run 38951889082 is the
+	 * measurement: the macOS leg died at its FIRST case on `false !== true`, because
+	 * the merge-base `a23faab0` already contains `2424010d2ae4`.
+	 */
+	assert.equal(
+		railCloseAssertion("control"),
+		undefined,
+		"a control leg must not carry the pre-fix literal: with a derived control it post-dates the fix",
+	);
+	assert.throws(() => railCloseAssertion("invented"));
+
+	/*
+	 * AND THE GATE SURVIVES: a candidate that RESTORES the pane where it must empty
+	 * the slot fails the case's own assertion. Driven as the same expression the drive
+	 * uses - the discrimination the macOS leg makes, at unit cost.
+	 */
+	const restoredInstead = true;
+	assert.throws(
+		() => assert.equal(restoredInstead, railCloseAssertion("candidate")),
+		"a candidate that restores the pane on the rail's close must fail the case",
+	);
+	assert.doesNotThrow(() =>
+		assert.equal(false, railCloseAssertion("candidate")),
+	);
+
+	/*
+	 * A POST-FIX CONTROL IS AN ORDINARY, PASSING OUTCOME, and its reading says which
+	 * policy it has rather than throwing: both branches are correct answers, which is
+	 * why the recording is the evidence and not a pass/fail.
+	 */
+	const postFix = railCloseReading("control", false);
+	assert.equal(postFix.observed, false);
+	assert.equal(postFix.declaredPostState, ASKS_RAIL_CLOSE_POST_STATE);
+	assert.match(postFix.reading, /EMPTIES the slot/);
+	const preFix = railCloseReading("control", true);
+	assert.match(preFix.reading, /RESTORES the displaced pane/);
+	assert.throws(() => railCloseReading("control", "nope"));
 	// The PINNED historical revision is the provenance record; it is no longer
 	// what boots (see the rule below), so this asserts the record held rather
 	// than that the run uses it.

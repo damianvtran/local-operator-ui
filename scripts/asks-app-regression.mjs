@@ -73,9 +73,64 @@ const sha = (value) => createHash("sha256").update(value).digest("hex");
 const git = (...args) => execFileSync("git", args, { encoding: "utf8" }).trim();
 export const ASKS_CONTROL = resolveAsksControl();
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-export function expectedRailClose(kind) {
+/*
+ * WHAT THE RAIL'S CLOSE MEANS (#1079), AND WHY A CONTROL NO LONGER OWES THE
+ * OPPOSITE OF IT (remediation round 1, stream A).
+ *
+ * The asks fix made a press on the lit rail item EMPTY the slot instead of handing
+ * the borrowed pane back, so a control from before the fix restored the pane while a
+ * candidate empties it - and this file used to encode exactly that as a per-leg
+ * literal: `expectedRailClose("control") === true`. That literal is only true while
+ * the control PREDATES the fix. The control is now DERIVED (the merge-base of
+ * `origin/main` and `HEAD`), so on any head cut from a main that already carries the
+ * fix - every head from 2026-10-16 on - the control empties the slot too, and the
+ * literal failed a correct run. Measured on run 38951889082: the macOS leg died at
+ * its FIRST case, `--case asks --leg control`, with `control rail-close wrong restore
+ * policy: false !== true`, because the merge-base `a23faab0` already contains
+ * `2424010d2ae4`.
+ *
+ * SO THE DECLARATION IS ONE VALUE, NOT ONE PER LEG: the post-state the fix promises.
+ * A candidate must exhibit it, and a control that exhibits it too is a CORRECT,
+ * PASSING outcome rather than a mismatch to assert against. What the control owes
+ * instead is its READING, recorded in its frames beside the candidate's, so the pair
+ * still shows which policy each revision has.
+ */
+export const ASKS_RAIL_CLOSE_POST_STATE = false;
+
+/**
+ * The policy assertion a leg owes, or `undefined` when it owes only a reading.
+ *
+ * Only the CANDIDATE owes the assertion: it is the revision under test, so a
+ * candidate that restores the pane where it must empty the slot has to fail. The
+ * control is a historical revision whose policy is whatever that revision does, so
+ * asserting the literal failed every control that post-dates the fix - which, with
+ * a derived control, is all of them.
+ */
+export function railCloseAssertion(kind) {
 	assert(["control", "candidate"].includes(kind));
-	return kind === "control";
+	return kind === "candidate" ? ASKS_RAIL_CLOSE_POST_STATE : undefined;
+}
+
+/**
+ * What a leg's close actually did, in the words a reader of the artifact needs.
+ *
+ * BOTH BRANCHES ARE ORDINARY OUTCOMES, so this cannot be a pass/fail: a control that
+ * EMPTIES the slot already carries the fix (`main` does) and a control that RESTORES
+ * the pane is one from before it. Recording it is the point - the artifact says
+ * which, instead of a reviewer inferring it from a frame's raw boolean.
+ */
+export function railCloseReading(kind, observed) {
+	assert(["control", "candidate"].includes(kind));
+	assert.equal(typeof observed, "boolean");
+	return {
+		leg: kind,
+		observed,
+		declaredPostState: ASKS_RAIL_CLOSE_POST_STATE,
+		reading:
+			observed === ASKS_RAIL_CLOSE_POST_STATE
+				? "this revision EMPTIES the slot when the lit asks item closes - the #1079 policy is present"
+				: "this revision RESTORES the displaced pane when the lit asks item closes - the pre-#1079 policy",
+	};
 }
 function files(root) {
 	return readdirSync(root).flatMap((name) => {
@@ -350,11 +405,17 @@ export const CASES = {
 			async function closed(label, expected) {
 				await wait('!document.querySelector("[data-ask-drawer]")');
 				const x = await frame(label);
-				assert.equal(
-					x.state.browserPaneOpen,
-					expected,
-					`${kind} ${label} wrong restore policy`,
-				);
+				/*
+				 * NO POLICY IS OWED ON A CONTROL LEG (`railCloseAssertion`): the drawer being
+				 * shut and the focus still connected are asserted either way, and the pane's
+				 * state is left to the frame's `railClosePolicy` reading.
+				 */
+				if (expected !== undefined)
+					assert.equal(
+						x.state.browserPaneOpen,
+						expected,
+						`${kind} ${label} wrong restore policy`,
+					);
 				assert.equal(x.dom.focusedConnected, true);
 				return x;
 			}
@@ -384,12 +445,33 @@ export const CASES = {
 			await asks();
 			await frame("populated-asks");
 			await press('[data-panel-rail-item="ask"]');
-			await closed("rail-close", expectedRailClose(kind));
+			/*
+			 * THE CLOSE, WITH THE LEG'S OWN OBLIGATION: the candidate must empty the slot;
+			 * the control is READ, not asserted, because a control that already carries the
+			 * fix is a correct outcome. Its reading goes on the frame below, so the pair
+			 * still records which policy each revision has.
+			 */
+			const railClose = await closed("rail-close", railCloseAssertion(kind));
+			frames.at(-1).railClosePolicy = railCloseReading(
+				kind,
+				railClose.state.browserPaneOpen,
+			);
 			await session(1);
 			await session(0);
+			/*
+			 * A->B->A, AGAINST THIS RUN'S OWN CLOSE RATHER THAN A LITERAL (round 1, stream
+			 * A). The pane's state after the sessions switch must equal what the close left:
+			 * a revision that empties the slot must NOT bring the pane back when the
+			 * conversation is re-entered (that is the memory the fix retracts), and a
+			 * pre-fix revision that restored it must restore it again. Comparing against
+			 * the observation keeps that a real gate on BOTH legs - a candidate whose close
+			 * empties the slot but whose memory still restores it fails here - without
+			 * hard-coding one revision's policy.
+			 */
 			assert.equal(
 				(await facts()).state.browserPaneOpen,
-				expectedRailClose(kind),
+				railClose.state.browserPaneOpen,
+				`${kind}: the pane after A->B->A must equal what the rail's close left (${railClose.state.browserPaneOpen})`,
 			);
 			await frame("session-a-b-a");
 			if (kind === "candidate") {
@@ -922,9 +1004,21 @@ async function main() {
 					readFileSync(join(dir, "measurements.json"), "utf8"),
 				);
 				assert(measured.frames.some((x) => x.verdict === "PASS"));
+				/*
+				 * A CASE'S RECORDED READINGS ARE LIFTED INTO THE MANIFEST, so a reviewer
+				 * skimming `manifest.json` sees the evidence pair without unpacking every
+				 * leg's `measurements.json`: the asks case records which close policy each
+				 * revision has here, control beside candidate (remediation round 1, stream A).
+				 */
+				const readings = Object.fromEntries(
+					measured.frames
+						.filter((frame) => frame.railClosePolicy)
+						.map((frame) => [frame.label, frame.railClosePolicy]),
+				);
 				manifest.captures.push({
 					case: scenarioName,
 					kind,
+					...(Object.keys(readings).length > 0 ? { readings } : {}),
 					files: files(dir).map((p) => ({
 						path: p.slice(output.length + 1),
 						sha256: sha(readFileSync(p)),
