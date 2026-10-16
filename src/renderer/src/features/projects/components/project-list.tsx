@@ -375,9 +375,7 @@ export const ProjectList: FC<ProjectListProps> = ({
 												onKeyDown={onHeaderKeyDown(index)}
 												className={cn(
 													"group flex w-full min-w-0 items-center gap-1 rounded-xs text-left",
-													t(
-														"ui.projects.project_list.transition_colors_duration_fast_ease_out_quart",
-													),
+													"transition-colors duration-fast ease-out-quart",
 													active ? "text-ink" : "hover:text-ink",
 												)}
 											>
@@ -443,7 +441,7 @@ export const ProjectList: FC<ProjectListProps> = ({
 						/>
 						<ul
 							aria-labelledby={sectionHeadingId(index)}
-							className={t("ui.projects.project_list.divide_y_divide_hairline")}
+							className="divide-y divide-hairline"
 						>
 							{group.items.map((project) => {
 								const meta = new Map(
@@ -465,9 +463,7 @@ export const ProjectList: FC<ProjectListProps> = ({
 											data-project-name={project.name}
 											className={cn(
 												"flex w-full items-center gap-3 px-3 py-2 text-left",
-												t(
-													"ui.projects.project_list.transition_colors_duration_fast_ease_out_quart",
-												),
+												"transition-colors duration-fast ease-out-quart",
 												"hover:bg-elevated",
 											)}
 										>

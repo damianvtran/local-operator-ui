@@ -1312,12 +1312,6 @@
 			"title": "Runtime binding on project-links: title: String(title)"
 		}
 	},
-	"ui.projects.project_list.divide_y_divide_hairline": {
-		"role": "project list: field, view or status label for “divide-y divide-hairline”",
-		"tone": "Concise neutral label, retaining English sentence case.",
-		"note": "English source: divide-y divide-hairline.  Markup and emphasized user names stay outside this message.",
-		"length": "English is 24 source characters. Keep this as a compact single control/status label; prefer comparable width, do not add an explanatory sentence."
-	},
 	"ui.projects.project_list.estimate": {
 		"role": "project list: field, view or status label for “Estimate”",
 		"tone": "Concise neutral label, retaining English sentence case.",
@@ -1380,12 +1374,6 @@
 		"tone": "Concise neutral label, retaining English sentence case.",
 		"note": "English source: Target.  Markup and emphasized user names stay outside this message.",
 		"length": "English is 6 source characters. Keep this as a compact single control/status label; prefer comparable width, do not add an explanatory sentence."
-	},
-	"ui.projects.project_list.transition_colors_duration_fast_ease_out_quart": {
-		"role": "project list: explanatory sentence for “transition-colors duration-fast ease-out-quart”",
-		"tone": "Plain explanatory prose; preserve consequences and qualifiers.",
-		"note": "English source: transition-colors duration-fast ease-out-quart.  Markup and emphasized user names stay outside this message.",
-		"length": "English is 46 source characters. Existing feedback may wrap; keep the same sentence/paragraph count, no additional instructions."
 	},
 	"ui.projects.project_milestones.add": {
 		"role": "project milestones: action/accessibility label for “Add”",

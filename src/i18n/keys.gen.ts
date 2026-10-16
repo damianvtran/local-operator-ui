@@ -2009,7 +2009,6 @@ export type MessageParams = {
 	"ui.projects.project_links.search_sessions": undefined;
 	"ui.projects.project_links.session": undefined;
 	"ui.projects.project_links.unlink_title": { title: string };
-	"ui.projects.project_list.divide_y_divide_hairline": undefined;
 	"ui.projects.project_list.estimate": undefined;
 	"ui.projects.project_list.label_column": { label: string };
 	"ui.projects.project_list.live": undefined;
@@ -2020,7 +2019,6 @@ export type MessageParams = {
 	"ui.projects.project_list.project_columns": undefined;
 	"ui.projects.project_list.status": undefined;
 	"ui.projects.project_list.target": undefined;
-	"ui.projects.project_list.transition_colors_duration_fast_ease_out_quart": undefined;
 	"ui.projects.project_milestones.add": undefined;
 	"ui.projects.project_milestones.beta_cut": undefined;
 	"ui.projects.project_milestones.dates_are_yyyy_mm_dd_or_empty": undefined;
