@@ -45,6 +45,7 @@ import {
 } from "@shared/store/canonical-sessions-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import {
+	type AskDrawerCloseOptions,
 	BROWSER_PANEL_MIN_PX,
 	CONSOLE_PANEL_MIN_PX,
 	DEFAULT_RIGHT_SLOT_WIDTH,
@@ -532,7 +533,12 @@ type ChatContentProps = {
 		 * there is no sentence or mode to pass it. `askDrafts` is the panel's own draft.
 		 */
 		askExpanded?: boolean;
-		onAskToggle?: (next: boolean) => void;
+		/**
+		 * The toggle, CARRYING WHICH KIND OF CLOSE IT IS (#1079): the chip's own close asks
+		 * for an empty slot, the page's Escape withdrawal does not. Forwarded to the
+		 * status row's item untouched. See `AskDrawerCloseOptions`.
+		 */
+		onAskToggle?: (next: boolean, options?: AskDrawerCloseOptions) => void;
 		askDrafts?: Record<string, AskDraft>;
 		onAskDraftChange?: (askId: string, next: AskDraft) => void;
 	};
@@ -1880,14 +1886,23 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		}, []);
 
 		/*
-		 * The drawer's own dismiss door. It reports to the store rather than to local
-		 * state because the flag it clears is the ask lane's one flag (the chip reads it,
-		 * the composer's routing reads it), and closing by the X must be the same act as
-		 * closing by Escape - `chat-page.tsx`'s window listener runs the same write.
+		 * The drawer's own dismiss door, and it FORWARDS WHICH KIND OF CLOSE IT IS (#1079).
+		 * The drawer's X passes `dismissSlot` - the user asked for the slot to be EMPTY -
+		 * while the two closes the user did NOT ask for pass nothing and keep the give-back
+		 * (the queue emptying under the surface, and Escape inside it, which reads as
+		 * dismissing an overlay). The X and Escape write the same flag through this one call,
+		 * which is why the kind has to travel as an argument rather than as a second door.
+		 *
+		 * It reports to the store rather than to local state because the flag it clears is
+		 * the ask lane's one flag (the chip reads it, the composer's routing reads it), so
+		 * closing by the X cannot be a private write.
 		 */
-		const handleCloseAskDrawer = useCallback(() => {
-			setAskDrawerOpen(false, "session");
-		}, [setAskDrawerOpen]);
+		const handleCloseAskDrawer = useCallback(
+			(options?: AskDrawerCloseOptions) => {
+				setAskDrawerOpen(false, "session", options);
+			},
+			[setAskDrawerOpen],
+		);
 
 		const handleCloseDocument = useCallback(
 			(docId: string) => {
@@ -2133,8 +2148,20 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 * own order one control over: the claim is what shows the pane;
 								 * the request is what marks the open as the user's.
 								 */
+								/*
+								 * AND THE CLOSE IS THE KIND THE USER ASKED FOR (#1079,
+								 * UX round 1 U1/U2): this row is a toggle the user pressed, so
+								 * "Close asks" must mean here what it means on the rail item
+								 * and on the drawer's X - an empty slot - rather than handing
+								 * back the pane it displaced. One screen, one label, one
+								 * outcome; the request above is not a substitute for it (a
+								 * request is a statement about the OPEN, `dismissSlot` about the
+								 * SLOT).
+								 */
 								if (headerAsksOpen) {
-									setAskDrawerOpen(false, headerAsksScope);
+									setAskDrawerOpen(false, headerAsksScope, {
+										dismissSlot: true,
+									});
 									return;
 								}
 								setAskDrawerOpen(true, headerAsksScope);

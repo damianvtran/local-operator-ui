@@ -121,6 +121,7 @@ import { Tooltip } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
 import {
+	type AskDrawerCloseOptions,
 	resolveDrawnRightSlotPane,
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
@@ -1296,7 +1297,13 @@ export type ComposerStatusRowProps = {
 	 * own press still opens the drawer there.
 	 */
 	askExpanded?: boolean;
-	onAskToggle?: (next: boolean) => void;
+	/**
+	 * The toggle, CARRYING WHICH KIND OF CLOSE IT IS (#1079): this row's chip is a press
+	 * the user aimed at, so its close passes `dismissSlot` and asks for an EMPTY SLOT,
+	 * while the page's Escape handler calls the same toggle with no options and gives the
+	 * displaced pane back. See `AskDrawerCloseOptions`.
+	 */
+	onAskToggle?: (next: boolean, options?: AskDrawerCloseOptions) => void;
 	/**
 	 * The page's own record of the asks IT posted for, when this row is on a route that
 	 * has one.
@@ -1364,7 +1371,13 @@ export const ComposerStatusRow = ({
 	const askExpanded = askExpandedProp ?? uncontrolledAskExpanded;
 	const setAskExpanded = (next: boolean) => {
 		setUncontrolledAskExpanded(next);
-		onAskToggle?.(next);
+		/*
+		 * A CLOSE HERE IS THE USER'S OWN PRESS (#1079): this chip is the session scope's
+		 * most discoverable door, so it asks for an EMPTY SLOT rather than handing the pane
+		 * the drawer borrowed back - the same act as the rail item, the header menu's row and
+		 * the drawer's X. The OPEN arm passes no option, as there is nothing to retract.
+		 */
+		onAskToggle?.(next, next ? undefined : { dismissSlot: true });
 	};
 	const revealPlan = useUiPreferencesStore(
 		(state) => state.revealRunPanelSection,

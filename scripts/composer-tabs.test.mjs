@@ -1468,7 +1468,13 @@ test("the item's press drives the door the host supplied, driven", async () => {
 				createElement(ComposerStatusRow, {
 					frontend: askFrontend([wireAsk("a-1")]),
 					runDetails: NO_DETAILS,
-					onAskToggle: (next) => calls.push(next),
+					/*
+					 * THE SECOND ARGUMENT IS PART OF THE DOOR'S CONTRACT (#1079): the chip is the
+					 * session scope's most discoverable way in, so its CLOSE has to carry
+					 * `dismissSlot` - the kind of close the user asked for, which empties the right
+					 * slot rather than handing the pane it displaced back. An open carries nothing.
+					 */
+					onAskToggle: (next, options) => calls.push([next, options]),
 				}),
 			);
 		});
@@ -1483,11 +1489,22 @@ test("the item's press drives the door the host supplied, driven", async () => {
 				);
 			});
 		await press();
-		assert.deepEqual(calls, [true], "the press tells the host to open");
+		assert.deepEqual(
+			calls,
+			[[true, undefined]],
+			"the press tells the host to open, and an open names no close kind",
+		);
 		assert.equal(chip.getAttribute("aria-expanded"), "true");
 		assert.equal(chip.getAttribute("data-lo-ask-item"), "expanded");
 		await press();
-		assert.deepEqual(calls, [true, false], "and the second press to close");
+		assert.deepEqual(
+			calls,
+			[
+				[true, undefined],
+				[false, { dismissSlot: true }],
+			],
+			"and the second press to close - as the PRESSED kind (#1079): the chip is a door the user aimed at, so its close asks for an empty slot, exactly as the rail item, the header menu's row and the drawer's X do",
+		);
 		assert.equal(chip.getAttribute("aria-expanded"), "false");
 	} finally {
 		await cleanup();
