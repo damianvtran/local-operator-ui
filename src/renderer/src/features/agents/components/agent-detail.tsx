@@ -1139,11 +1139,16 @@ export function AgentDetail({
 							{/*
 							 * THE PIN'S REACH, at the pin (design note §4). An agent-level effort
 							 * tier is machine-wide: it decides the model of every team slot that
-							 * names this agent and nothing of it is visible on this pane, where the
-							 * whole change is one word. The teams are already in hand for the
+							 * names this agent, and nothing of it is visible on this pane, where
+							 * the whole change is one word. The teams are already in hand for the
 							 * "Used by" section below (`usedBy`), so this costs no request.
+							 *
+							 * ONLY WHEN THERE IS A PIN (design round 1, D9). With no tier of its
+							 * own, the line read as a remark about the word `inherit` - "inherit
+							 * is used by content" - and an inherit reaches nothing. The sentence
+							 * names its subject, and the subject has to exist.
 							 */}
-							{usedBy.length ? (
+							{profile.effort && usedBy.length ? (
 								<p className="text-body-sm text-ink-muted">
 									{t("ui.agents.models.pin_reach", {
 										count: usedBy.length,

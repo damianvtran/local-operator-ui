@@ -237,6 +237,79 @@ test("only a 404 on the route hides the override editor", () => {
 	);
 });
 
+test("the probe has three states, and only a positive success opens the editor", () => {
+	/*
+	 * M1 OF THE CODE REVIEW: `error === null` is not "supported". A create form has no
+	 * team to read and an in-flight request has no answer, and both used to render the
+	 * controls and then take them back when the 404 landed.
+	 */
+	assert.equal(
+		MOD.overrideEditorState({ isSuccess: true, isError: false, error: null }),
+		"available",
+	);
+	for (const probe of [
+		/* in flight */
+		{ isSuccess: false, isError: false, error: null },
+		/* no team to probe at all, which is a create form on an empty machine */
+		{ isSuccess: false, isError: false, error: null },
+		/* the route is not there: an older server, which also ignores the member keys */
+		{
+			isSuccess: false,
+			isError: true,
+			error: new MOD.DesktopControlError(404, "missing"),
+		},
+	]) {
+		assert.equal(
+			MOD.overrideEditorState(probe),
+			"absent",
+			"only a success may offer the override controls",
+		);
+	}
+	/* A failure that is not the route's absence keeps the controls hidden AND speaks. */
+	assert.equal(
+		MOD.overrideEditorState({
+			isSuccess: false,
+			isError: true,
+			error: new MOD.DesktopControlError(500, "boom"),
+		}),
+		"unavailable",
+	);
+	assert.equal(
+		MOD.overrideEditorState({
+			isSuccess: false,
+			isError: true,
+			error: new MOD.DesktopControlError(null, "gone"),
+		}),
+		"unavailable",
+		"a backend that is down has not said the route is absent",
+	);
+});
+
+test("a cleared override compares equal to one that was never set", () => {
+	/*
+	 * MINOR 2 OF THE CODE REVIEW. `members` replaces the roster wholesale, so the
+	 * PAYLOAD keeps a cleared field as an explicit null; the FORM must not read that
+	 * null as unsaved work when a slot went `hi` -> `Inherit`.
+	 */
+	const untouched = { role: "coder", kind: "agent", count: 1, key: "row-1" };
+	const cleared = { ...untouched, tier: null, effort: null };
+	assert.equal(MOD.memberSignature(cleared), MOD.memberSignature(untouched));
+	assert.notEqual(
+		MOD.memberSignature({ ...untouched, tier: "hi" }),
+		MOD.memberSignature(untouched),
+	);
+	assert.notEqual(
+		MOD.memberSignature({ ...untouched, count: 2 }),
+		MOD.memberSignature(untouched),
+		"a real change is still a change",
+	);
+	assert.equal(
+		MOD.memberSignature(untouched),
+		MOD.memberSignature({ ...untouched, key: "row-9" }),
+		"the form's own row id is never part of the comparison",
+	);
+});
+
 test("the route is a read on its own path, and the probe reads the same route it would ask", () => {
 	const request = { op: "teams.effective", name: "crew" };
 	assert.ok(MOD.desktopRequestSchema.safeParse(request).success);
@@ -442,8 +515,15 @@ const crew = () => ({
 	],
 });
 
-/** What `/effective` answers for that roster. */
-const effective = (over = {}) => ({
+/**
+ * What `/effective` answers for that roster, per member, as the BACKEND answers it
+ * (`_effective_member` at branch head `edd506911`).
+ *
+ * `coder` has no override at all, so its model is the launching session's; the
+ * `reviewer` slot carries tier `hi`, which this machine's tier map resolves to a
+ * model. Each case states only the row it is about.
+ */
+const effective = ({ coder = {}, reviewer = {} } = {}) => ({
 	team: "crew",
 	members: [
 		{
@@ -454,7 +534,7 @@ const effective = (over = {}) => ({
 			effort: { value: null, requested: null, source: "model_default" },
 			available: true,
 			reason: "",
-			...over,
+			...coder,
 		},
 		{
 			role: "reviewer",
@@ -464,17 +544,58 @@ const effective = (over = {}) => ({
 			effort: { value: "xhigh", requested: "xhigh", source: "team" },
 			available: true,
 			reason: "",
+			...reviewer,
 		},
 	],
 });
 
 /**
+ * The readings the bridge can answer with, by name, so a case names the state it is
+ * about instead of restating the wire.
+ */
+const READINGS = {
+	ok: () => effective(),
+	/*
+	 * `auto`, RESOLVED AS THE BACKEND RESOLVES IT: to the MODEL's own default, which
+	 * is not the tier map's level. A fixture that made them equal would photograph the
+	 * one case where a wrong display looks right (design round 1, D0).
+	 */
+	auto: () =>
+		effective({
+			reviewer: {
+				effort: { value: "high", requested: "auto", source: "team" },
+			},
+		}),
+	/* A request the model's ladder clamps: asked for max, runs at high. */
+	clamped: () =>
+		effective({
+			reviewer: {
+				effort: { value: "high", requested: "max", source: "team" },
+			},
+		}),
+	/*
+	 * The tier is WRITTEN but nothing is configured at it. The backend keeps
+	 * `source: "tier"` for the model and reports no model value at all, so the pane
+	 * must not print a model clause for this row.
+	 */
+	refuse: () =>
+		effective({
+			reviewer: {
+				model: { value: null, source: "tier" },
+				available: false,
+				reason:
+					"tier 'hi' is not configured: no models are configured under subagents.models",
+			},
+		}),
+};
+
+/**
  * The bridge, over a world the write does NOT mutate.
  *
- * `effectiveOutcome` is the probe's own variable: "ok" answers the reading, a
- * number answers that HTTP status (404 = a backend that predates the route, 500 =
- * one that is merely failing), and "refuse" marks the reading unavailable with the
- * backend's reason instead.
+ * `outcome` is the probe's own variable: a name in `READINGS` answers with that
+ * reading, a number answers that HTTP status (404 = a backend that predates the
+ * route, 500 = one that is merely failing), and "pending" never answers at all -
+ * the state the editor must survive without claiming a capability.
  */
 const installBridge = (outcome = "ok") => {
 	const calls = [];
@@ -485,21 +606,12 @@ const installBridge = (outcome = "ok") => {
 			case "teams.get":
 				return { status: 200, body: { result: { ...crew() } } };
 			case "teams.effective":
+				if (outcome === "pending") return new Promise(() => {});
 				if (typeof outcome === "number")
 					return { status: outcome, body: { detail: "no such route" } };
 				return {
 					status: 200,
-					body: {
-						result:
-							outcome === "refuse"
-								? effective({
-										tier: { value: "hi", source: "team" },
-										model: { value: null, source: "session" },
-										available: false,
-										reason: "tier 'hi' is not configured",
-									})
-								: effective(),
-					},
+					body: { result: (READINGS[outcome] ?? READINGS.ok)() },
 				};
 			case "teams.update":
 				writes.push(request.fields);
@@ -524,7 +636,15 @@ const installBridge = (outcome = "ok") => {
  * props are the page's own (see `agents-page.tsx`), and `MemoryRouter` is what
  * `useNavigate` reads.
  */
-const mountEditor = async (outcome = "ok") => {
+const mountEditor = async (
+	outcome = "ok",
+	/*
+	 * `create` MOUNTS THE FORM FOR A TEAM THAT DOES NOT EXIST YET, which is M1's case:
+	 * there is no name to probe with, so the catalogue is the only thing that can say
+	 * whether this backend has the route.
+	 */
+	{ create = false, teams = [crew()] } = {},
+) => {
 	const bridge = installBridge(outcome);
 	const container = document.createElement("div");
 	document.body.append(container);
@@ -541,13 +661,14 @@ const mountEditor = async (outcome = "ok") => {
 					MemoryRouter,
 					null,
 					h(PAGE.TeamDetail, {
-						team: crew(),
+						/* `create` mounts the form for a team that does not exist yet. */
+						team: create ? undefined : crew(),
 						agents: [
 							agentRow("coder"),
 							agentRow("reviewer"),
 							agentRow("manager"),
 						],
-						teams: [crew()],
+						teams,
 						askEnabled: false,
 						onSaved: () => {},
 						onOpenAgent: () => {},
@@ -604,10 +725,10 @@ const save = (container) =>
 		"Save changes",
 	);
 
-const withEditor = async (outcome, body) => {
+const withEditor = async (outcome, body, options) => {
 	let mounted;
 	try {
-		mounted = await mountEditor(outcome);
+		mounted = await mountEditor(outcome, options);
 		await body(mounted);
 	} finally {
 		if (mounted) {
@@ -625,69 +746,92 @@ const withEditor = async (outcome, body) => {
 	}
 };
 
+/** The reading table's own header, so a case can say what the columns are. */
+const readingHeaders = (container) =>
+	[
+		...container.querySelectorAll('[aria-label="Model and effort"] thead th'),
+	].map((cell) => cell.textContent?.trim());
+
+/**
+ * One member's reading cells, each as the two facts it prints: a value and, under
+ * it, the layer that set it (design round 1, D1 - the point of the columns is that
+ * a value and its layer are different things, so they are asserted as different
+ * things).
+ */
+const readingCells = (container, role) => {
+	const row = [
+		...container.querySelectorAll('[aria-label="Model and effort"] tbody tr'),
+	].find(
+		(candidate) => candidate.querySelector("td")?.textContent?.trim() === role,
+	);
+	assert.ok(row, `no reading row for ${role}`);
+	return [...row.querySelectorAll("td")].map((cell) => ({
+		text: cell.textContent?.trim() ?? "",
+		parts: [...cell.querySelectorAll("span")].map(
+			(span) => span.textContent?.trim() ?? "",
+		),
+	}));
+};
+
 test("a save that writes the roster echoes every slot's override, including the ones it did not touch", async () => {
-	await withEditor("ok", async ({ container, writes }) => {
+	await withEditor("ok", async ({ container, writes, calls }) => {
 		await openEditor({ container });
-		/*
-		 * THE PRESS IS ON THE OTHER MEMBER'S COUNT. `coder` carries no override, and
-		 * `reviewer` carries both - so the roster goes out with the touch on `coder`
-		 * and the overrides riding along from the read.
-		 */
-		const more = stepper(container, "coder", "more");
-		assert.ok(more, "the count stepper is not mounted");
-		await act(async () => {
-			more.click();
-		});
-		await act(async () => {
-			save(container)?.click();
-		});
+		await act(async () => stepper(container, "coder", "more")?.click());
+		await act(async () => save(container)?.click());
 		assert.ok(
 			await settle(() => writes.length === 1),
 			"the save never reached the bridge",
 		);
-		assert.deepEqual(writes[0].members, [
-			{ role: "coder", count: 2, kind: "agent" },
-			{
-				role: "reviewer",
-				count: 2,
-				kind: "agent",
-				tier: "hi",
-				effort: "xhigh",
-			},
-		]);
+		assert.deepEqual(
+			writes[0].members,
+			[
+				{ role: "coder", kind: "agent", count: 2 },
+				{
+					role: "reviewer",
+					kind: "agent",
+					count: 2,
+					tier: "hi",
+					effort: "xhigh",
+				},
+			],
+			"every slot carries its override, including the one this save never touched",
+		);
+		/*
+		 * AND THE READING IS RE-READ, not patched locally (code review round 1, minor
+		 * 1): only the backend knows what the tier just written resolves to, so the pane
+		 * asks again rather than guessing. One call at mount, and AT LEAST one more after
+		 * the save - two, in fact, because both the explicit refetch and the authoring
+		 * prefix invalidation match this key, which is a redundant GET rather than a
+		 * missing one, so the assertion counts a floor instead of an exact number.
+		 */
+		const probes = () => calls.filter((op) => op === "teams.effective").length;
+		assert.ok(
+			await settle(() => probes() >= 2),
+			`the reading was not re-read after the save (calls: ${calls.join(", ")})`,
+		);
 	});
 });
 
-test("clearing an override on one slot sends null for it and leaves the other slot's alone", async () => {
+test("a cleared override reaches the wire as null, and both controls stay mounted", async () => {
+	/*
+	 * WHAT THIS PROVES, AND WHAT IT CANNOT (code review round 1, minor 1). Radix's
+	 * select menu does not open under jsdom - no layout engine and a pointer-driven
+	 * item - so the CLEAR is driven through the module's own mapping instead of
+	 * through the menu. That pins the shape the form holds after a clear: a `null` on
+	 * the wire, not the word `inherit` and not a dropped key. The menu's own wiring is
+	 * what the rendered frames carry.
+	 */
 	await withEditor("ok", async ({ container }) => {
 		await openEditor({ container });
-		/*
-		 * THE CLEAR IS DRIVEN THROUGH THE MODULE'S OWN MAPPING, because jsdom cannot
-		 * open a Radix menu (no layout, and Radix's item selection is pointer-driven).
-		 * What this case therefore pins is the SHAPE of what the form holds after a
-		 * clear - a `null` on the wire, not the word `inherit` and not a dropped key -
-		 * which is the half a frame cannot show either.
-		 */
-		const cleared = MOD.withOverride(
-			{
-				role: "reviewer",
-				count: 2,
-				kind: "agent",
-				tier: "hi",
-				effort: "xhigh",
-			},
-			{ tier: MOD.INHERIT },
-		);
-		assert.deepEqual(cleared, {
-			role: "reviewer",
-			count: 2,
-			kind: "agent",
-			tier: null,
-			effort: "xhigh",
+		const cleared = MOD.withOverride(crew().members[1], {
+			tier: MOD.INHERIT,
+			effort: MOD.INHERIT,
 		});
-		/* And the editor's own controls are on screen for the operator to use. */
+		assert.equal(cleared.tier, null);
+		assert.equal(cleared.effort, null);
+		assert.match(JSON.stringify(cleared), /"tier":null.*"effort":null/);
 		assert.ok(
-			container.querySelector('[aria-label="Model tier for reviewer"]'),
+			container.querySelector('[aria-label="Model tier for coder"]'),
 			"the tier select is not mounted on a backend that has the route",
 		);
 		assert.ok(
@@ -697,64 +841,114 @@ test("clearing an override on one slot sends null for it and leaves the other sl
 	});
 });
 
-test("the read pane prints each member's effective model, effort and the layer that set it", async () => {
-	await withEditor("ok", async ({ container, calls }) => {
-		/*
-		 * THE READING IS IN THE READ VIEW, which is where a launch's resolution is
-		 * read; the selects live behind Edit. So this case waits on the reading
-		 * itself - the model id the tier map resolved to - and not on a control.
-		 */
+test("the reading is a table of values over their layers, not a run-on line", async () => {
+	await withEditor("ok", async ({ container }) => {
+		await openEditor({ container });
+		await act(async () => buttonNamed(container, "Cancel")?.click());
 		assert.ok(
-			await settle(() =>
-				(container.textContent ?? "").includes("anthropic/claude-opus-5-5"),
-			),
-			"the resolved model is not printed",
+			await settle(() => Boolean(readingHeaders(container)?.length)),
+			"the read view never rendered its reading table",
 		);
-		assert.equal(calls.filter((op) => op === "teams.effective").length, 1);
-		const line = [...container.querySelectorAll("li")]
-			.map((row) => row.textContent ?? "")
-			.find((text) => text.includes("reviewer"));
-		assert.ok(line, "the reading for reviewer is not printed");
-		assert.match(line, /effort xhigh/);
-		assert.match(line, /from this team/);
-		assert.match(line, /tier hi/);
-		const session = [...container.querySelectorAll("li")]
-			.map((row) => row.textContent ?? "")
-			.find((text) => text.includes("coder"));
-		assert.match(
-			session ?? "",
-			/the launching session's model/,
-			"a null model prints as inheriting the session, not as a blank",
+		assert.deepEqual(
+			readingHeaders(container),
+			["Member", "Model", "Effort"],
+			"the reading's columns are the two facts plus the member they belong to",
 		);
-		assert.match(session ?? "", /the model's default/);
+		const reviewer = readingCells(container, "reviewer");
+		assert.deepEqual(
+			reviewer[1].parts,
+			["anthropic/claude-opus-5-5", "tier hi (from this team)"],
+			"the model, then the tier in play and the layer that set it",
+		);
+		assert.deepEqual(
+			reviewer[2].parts,
+			["xhigh", "from this team"],
+			"the effort, then the layer that set it",
+		);
+		const coder = readingCells(container, "coder");
+		assert.deepEqual(
+			coder[1].parts,
+			["the launching session's model"],
+			"a slot with no tier names the session once, not twice (D5)",
+		);
+		assert.deepEqual(
+			coder[2].parts,
+			["the model's default"],
+			"an unnamed effort is its layer, not a layer under itself",
+		);
 	});
 });
 
-test("an unavailable member is printed with the backend's reason, not as a silent fall-through", async () => {
+test("auto reads as the model's own default, never as the level it resolved to", async () => {
+	/*
+	 * D0. The backend resolves `auto` to the MODEL's default, which for this model is
+	 * not the tier map's level; printing the resolved level alone said the operator
+	 * had chosen it by hand, and two members with different stored overrides read
+	 * identically.
+	 */
+	await withEditor("auto", async ({ container }) => {
+		assert.ok(
+			await settle(() => Boolean(readingHeaders(container)?.length)),
+			"the reading table never rendered",
+		);
+		const reviewer = readingCells(container, "reviewer");
+		assert.deepEqual(reviewer[2].parts, [
+			"model default (auto)",
+			"from this team",
+		]);
+	});
+});
+
+test("a clamped request shows both the ask and the level it runs at", async () => {
+	await withEditor("clamped", async ({ container }) => {
+		assert.ok(
+			await settle(() => Boolean(readingHeaders(container)?.length)),
+			"the reading table never rendered",
+		);
+		const reviewer = readingCells(container, "reviewer");
+		assert.deepEqual(reviewer[2].parts, ["max → high", "from this team"]);
+	});
+});
+
+test("an unavailable member is printed with the backend's reason, names no model, and says where to fix it", async () => {
 	await withEditor("refuse", async ({ container }) => {
+		assert.ok(
+			await settle(() => Boolean(readingHeaders(container)?.length)),
+			"the reading table never rendered",
+		);
+		const reviewer = readingCells(container, "reviewer");
+		assert.deepEqual(
+			reviewer[1].parts,
+			["not resolved", "tier hi (from this team)"],
+			"a tier that produced no model must not be shown as one that did",
+		);
+		const reason = container.querySelector(
+			'[data-testid="team-effective-unavailable"]',
+		);
+		assert.ok(reason, "the reason was not printed");
+		assert.match(reason.textContent ?? "", /tier 'hi' is not configured/);
+		assert.match(
+			container.textContent ?? "",
+			/Add the tier in Settings\./,
+			"the backend names a config path; the pane has to name the place to go",
+		);
+		/* And the same warning is on the member's row in the editor, marked as saved. */
+		await act(async () => {
+			const edit = buttonNamed(container, "Edit");
+			edit?.click();
+		});
 		assert.ok(
 			await settle(() =>
 				Boolean(
-					container.querySelector('[data-testid="team-effective-unavailable"]'),
+					container.querySelector('[data-testid="team-member-unavailable"]'),
 				),
 			),
-			"the unavailable state never rendered",
+			"the editor did not warn about the saved tier",
 		);
-		assert.match(
-			container.querySelector('[data-testid="team-effective-unavailable"]')
-				?.textContent ?? "",
-			/tier 'hi' is not configured/,
-		);
-		/*
-		 * AND THE SAME WARNING SITS BESIDE THE CONTROL THAT CAN FIX IT: the operator
-		 * choosing a tier sees the one it is replacing before saving, not only the
-		 * resolution afterwards.
-		 */
-		await openEditor({ container });
 		assert.match(
 			container.querySelector('[data-testid="team-member-unavailable"]')
-				?.textContent ?? "",
-			/tier 'hi' is not configured/,
+				.textContent ?? "",
+			/Saved setting/,
 		);
 	});
 });
@@ -763,44 +957,108 @@ test("a backend without the route shows no override controls and no reading", as
 	await withEditor(404, async ({ container, calls }) => {
 		assert.ok(
 			await settle(() => calls.includes("teams.effective")),
-			"the probe never asked",
-		);
-		assert.doesNotMatch(
-			container.textContent ?? "",
-			/Model and effort/,
-			"and it must not print a reading it never received",
-		);
-		assert.doesNotMatch(container.textContent ?? "", /could not be read/);
-		/*
-		 * THE CONTROLS ARE ASKED FOR IN THE FORM, which is the only place they can
-		 * appear: asserting their absence in the read view would be true of every
-		 * backend and would pin nothing.
-		 */
-		await openEditor({ container });
-		assert.equal(
-			container.querySelector('[aria-label="Model tier for reviewer"]'),
-			null,
-			"an older server must not be offered an override it would ignore",
+			"the probe was never taken",
 		);
 		assert.equal(
-			container.querySelector('[aria-label="Reasoning effort for reviewer"]'),
+			container.querySelector('[aria-label="Model tier for coder"]'),
 			null,
+			"a server without the route must not offer an override it would discard",
+		);
+		assert.equal(
+			container.querySelector('[data-testid="team-effective-unavailable"]'),
+			null,
+		);
+		assert.equal(
+			(container.textContent ?? "").includes("could not be read"),
+			false,
+			"an older server says nothing: there is nothing the operator can do about it",
 		);
 	});
 });
 
-test("a read that failed for any other reason keeps the controls and says the reading is missing", async () => {
+test("a probe that failed for another reason hides the controls and says the reading is missing", async () => {
+	/*
+	 * M1's other half. The controls are hidden until a POSITIVE success, so a backend
+	 * that is merely failing gets neither the controls nor silence: hiding them without
+	 * a word would read as a feature that is not there.
+	 */
 	await withEditor(500, async ({ container }) => {
 		assert.ok(
 			await settle(() =>
 				(container.textContent ?? "").includes("could not be read"),
 			),
-			"a failed read was reported as nothing at all",
+			"a failing probe must not be silent",
 		);
-		await openEditor({ container });
-		assert.ok(
-			container.querySelector('[aria-label="Model tier for reviewer"]'),
-			"the controls were hidden for a failure that is not the route's absence",
+		assert.equal(
+			container.querySelector('[aria-label="Model tier for coder"]'),
+			null,
 		);
 	});
+});
+
+test("an in-flight probe offers nothing and says nothing", async () => {
+	await withEditor("pending", async ({ container, calls }) => {
+		assert.ok(
+			await settle(() => calls.includes("teams.effective")),
+			"the probe was never taken",
+		);
+		assert.equal(
+			container.querySelector('[aria-label="Model tier for coder"]'),
+			null,
+			"a pending read is not a supported backend (M1)",
+		);
+		assert.equal(
+			(container.textContent ?? "").includes("could not be read"),
+			false,
+		);
+	});
+});
+
+test("a create form probes with a team the catalogue has, and offers the controls when it answers", async () => {
+	await withEditor(
+		"ok",
+		async ({ container, calls }) => {
+			assert.ok(
+				await settle(() => calls.includes("teams.effective")),
+				"a create form must probe: nothing else can say whether this backend has the route",
+			);
+			/*
+			 * A CREATE FORM STARTS WITH NO ROSTER, so the row that carries the controls only
+			 * exists once a member does.
+			 */
+			await act(async () => buttonNamed(container, "Add member")?.click());
+			assert.ok(
+				await settle(() =>
+					Boolean(container.querySelector('[aria-label^="Model tier for"]')),
+				),
+				"the create form did not offer the overrides after a positive probe",
+			);
+			assert.equal(
+				readingHeaders(container).length,
+				0,
+				"the probed team's own reading is not this new team's reading",
+			);
+		},
+		{ create: true },
+	);
+});
+
+test("a create form with no team to probe offers nothing", async () => {
+	await withEditor(
+		"ok",
+		async ({ container, calls }) => {
+			assert.equal(
+				calls.includes("teams.effective"),
+				false,
+				"the probe was taken with nothing to name",
+			);
+			await act(async () => buttonNamed(container, "Add member")?.click());
+			assert.equal(
+				container.querySelector('[aria-label^="Model tier for"]'),
+				null,
+				"with no team to ask about, the capability is unknown (M1)",
+			);
+		},
+		{ create: true, teams: [] },
+	);
 });

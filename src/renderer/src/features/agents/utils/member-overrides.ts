@@ -105,6 +105,36 @@ export function withOverride<T extends TeamMember>(
 }
 
 /**
+ * One member's COMPARISON signature: an override cleared to `null` and one that was
+ * never set are the same absence here.
+ *
+ * WHY THE NORMALISATION IS ONLY FOR COMPARISONS. `members` replaces the roster
+ * wholesale, so the PAYLOAD keeps the difference - a cleared field is an explicit
+ * act (`withOverride`) and a key that was never mentioned is not. But the FORM must
+ * not read that difference as work: a slot set to `hi` and back to `Inherit` holds
+ * `tier: null`, which `JSON.stringify` sees as different from an absent key, so the
+ * editor claimed unsaved changes for a round trip that changes nothing on disk
+ * (`None` overrides are dropped on the backend's own dump).
+ *
+ * The `key` is the form's own row id, never part of the write.
+ */
+export function memberSignature(member: TeamMember): string {
+	const {
+		tier,
+		effort,
+		key: _key,
+		...rest
+	} = member as TeamMember & {
+		key?: string;
+	};
+	return JSON.stringify({
+		...rest,
+		...(tier ? { tier } : {}),
+		...(effort ? { effort } : {}),
+	});
+}
+
+/**
  * The reading for one slot of a team, or null when the route did not name it.
  *
  * MATCHED ON (kind, casefolded role), which is the key the backend itself
@@ -158,7 +188,34 @@ export const effortSourceKey = (
 ): WithoutParams => EFFORT_SOURCE_KEY[source];
 
 /**
- * Whether the editor may offer per-member overrides at all.
+ * The three states the override editor can be in, derived from the probe alone.
+ *
+ * `absent` is the silent one and covers both "this backend predates the route" and
+ * "we have not established that it has one": an in-flight read, and a create form
+ * whose catalogue has no team to probe with. Silence is right for those - there is
+ * nothing the operator can act on - while the controls stay hidden, because a
+ * control whose value is discarded in silence is the defect this probe exists to
+ * prevent (M1: an absent team or a pending read used to render the controls).
+ *
+ * `unavailable` is the one that SPEAKS: the probe failed and the failure was not
+ * the route's absence, which is worth a sentence because the pane is otherwise
+ * silent about a feature that is not there.
+ */
+export type OverrideEditorState = "available" | "absent" | "unavailable";
+
+/** Which of the three states a probe's own result puts the editor in. */
+export function overrideEditorState(probe: {
+	isSuccess: boolean;
+	isError: boolean;
+	error: unknown;
+}): OverrideEditorState {
+	if (probe.isSuccess) return "available";
+	if (probe.isError && overrideEditorVisible(probe.error)) return "unavailable";
+	return "absent";
+}
+
+/**
+ * Whether a FAILED probe leaves the override editor in place.
  *
  * THE PROBE IS THE POINT, and its direction is the whole decision. A 404 on
  * `/effective` means the running backend predates the route - `backendErrorKind`
@@ -168,6 +225,19 @@ export const effortSourceKey = (
  * end. Every OTHER failure keeps the controls: a backend that is down, wedged or
  * refusing this app's bearer has not said anything about the route, and hiding a
  * working affordance on a transient error is the opposite mistake.
+ *
+ * A 404 IS NOT ALWAYS "NO ROUTE": the route raises `KeyError` for an unknown team,
+ * and the server maps that to the same status (local-operator
+ * `server/utils/desktop_profiles.py:team_effective`). So a team that vanished
+ * under an open pane reads as an older server. The reading is the same either way
+ * - do not offer overrides you cannot show the resolution of - which is why this
+ * stays one verdict rather than a second probe.
+ *
+ * WHAT THIS DOES NOT DECIDE IS WHETHER THE CONTROLS ARE SHOWN AT ALL. That is
+ * `isSuccess` on the query, because a failure is not the only state before the
+ * answer: an in-flight probe and a create form with no team to probe have no
+ * error and no capability, and "no error" must never read as "supported"
+ * (see `overrideEditorState`).
  */
 export function overrideEditorVisible(failure: unknown): boolean {
 	return backendErrorKind(failure) !== "outdated";
