@@ -46,7 +46,7 @@
 	"ui.providers.connect_provider_dialog.your_agents_need_a_model_to_think": "Your agents need a model to think with. Sign in with an account you already have, or add an API key.",
 	"ui.providers.provider_catalog.local_models": "local models",
 	"ui.providers.provider_catalog.more_providers": "More providers",
-	"ui.providers.provider_catalog.more_providers_and": "More providers: {providers} and {count, plural, other {# more}}",
+	"ui.providers.provider_catalog.more_providers_and": "More providers: {providers} and {count, plural, other {{count, number, ::group-off} more}}",
 	"ui.providers.provider_catalog.more_providers_variant_41": "More providers: {provider}",
 	"ui.providers.provider_catalog.more_providers_and_variant_42": "More providers: {providers} and {last}",
 	"ui.providers.provider_catalog.claude_subscription": "Claude subscription",
@@ -186,6 +186,6 @@
 	"ui.providers.sign_in_flow.sign_in_could_not_start": "Sign-in could not start.",
 	"ui.providers.provider_detail.the_sign_in_page": "the sign-in page",
 	"ui.providers.provider_grid.row_action": "{action}: {brand}",
-	"ui.providers.provider_detail.code_expiry": "Code expires in {minutes, plural, other {# min}}",
-	"ui.providers.provider_detail.link_expiry": "Link expires in {minutes, plural, other {# min}}"
+	"ui.providers.provider_detail.code_expiry": "Code expires in {minutes, plural, other {{minutes, number, ::group-off} min}}",
+	"ui.providers.provider_detail.link_expiry": "Link expires in {minutes, plural, other {{minutes, number, ::group-off} min}}"
 }

@@ -78,12 +78,13 @@ test("menu preserves all English groups, choices, section labels and reorder nam
 	assert.ok(html.includes('aria-label="Move Today up"'));
 	assert.ok(html.includes('aria-label="Move Today down"'));
 });
-test("hidden-section ICU count preserves English zero, one and two; zero footer stays absent", () => {
+test("hidden-section ICU count preserves English zero, one, two and one thousand; zero footer stays absent", () => {
 	ui.setLocale("en");
 	for (const [count, text] of [
 		[0, "0 sections hidden"],
 		[1, "1 section hidden"],
 		[2, "2 sections hidden"],
+		[1000, "1000 sections hidden"],
 	])
 		assert.equal(ui.t("ui.chat.sidebar_view.hidden", { count }), text);
 	assert.ok(!ui.menu().includes("sections hidden"));
