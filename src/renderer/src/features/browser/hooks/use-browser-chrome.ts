@@ -340,6 +340,9 @@ export interface BrowserChrome {
 	closeTabs: (intent: CloseTabsIntent) => Promise<boolean>;
 	activateTab: (tabId: number) => Promise<void>;
 	navigate: (url: string) => Promise<void>;
+	/** Home: return the active tab to the browser's start state. No URL
+	 * travels with it — main owns what the start state is (LOH-13). */
+	home: () => Promise<void>;
 	reload: (hard?: boolean) => Promise<void>;
 	pageControl: (
 		tabId: number,
@@ -640,6 +643,7 @@ export function useBrowserChrome(): BrowserChrome {
 				setPendingUrl(url);
 				return runVoid(() => api?.navigate(url));
 			},
+			home: () => runVoid(() => api?.home()),
 			reload: (hard) => runVoid(() => api?.reload(hard)),
 			pageControl: (tabId, action, query = "", forward = true, next = false) =>
 				runVoid(() => api?.pageControl(tabId, action, query, forward, next)),
