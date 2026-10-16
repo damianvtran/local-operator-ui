@@ -126,7 +126,14 @@ declare global {
 			browser: {
 				pageControl: (
 					tabId: number,
-					action: "open" | "close" | "search" | "print" | "in" | "out" | "reset",
+					action:
+						| "open"
+						| "close"
+						| "search"
+						| "print"
+						| "in"
+						| "out"
+						| "reset",
 					query: string,
 					forward: boolean,
 					next: boolean,
