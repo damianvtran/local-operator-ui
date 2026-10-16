@@ -48,7 +48,7 @@ import {
 	focusManager,
 } from "@tanstack/react-query";
 import { PostHogProvider } from "posthog-js/react";
-import React, { type ReactNode, useLayoutEffect } from "react";
+import React, { type ReactNode, useLayoutEffect, useRef } from "react";
 import { MemoryRouter } from "react-router-dom";
 
 // Mock the Electron preload API for Storybook
@@ -226,8 +226,6 @@ const LOCALE_IDS = Object.keys(
 	)
 	.sort((a, b) => a.localeCompare(b));
 
-type LocaleId = string;
-
 /**
  * The locale frame, applied to every story, mirroring `ThemeFrame`.
  *
@@ -239,25 +237,42 @@ const LocaleFrame = ({
 	locale,
 	children,
 }: {
-	locale: LocaleId;
+	locale: string;
 	children: ReactNode;
 }) => {
 	/*
-	 * Set SYNCHRONOUSLY, in the render body, before the children below render.
-	 * A layout effect would be too late: children render before their parent's
-	 * effects run, so a story that calls `t()` inline would read the PREVIOUS
-	 * locale and paint English under an `?args=locale:ru` request. `setLocale`
-	 * is the store's own seam (the one `locale.ts` documents for fixtures), and
-	 * it no-ops when the value already matches, so this cannot loop.
+	 * Set the locale before the children below render, so a story that calls `t()`
+	 * inline reads the requested locale on its VERY FIRST paint.
+	 *
+	 * WHY FIRST RENDER ONLY, and why in the body at all. Two failed shapes, both
+	 * measured:
+	 *  - a `useLayoutEffect` is too late: children render before their parent's
+	 *    effects run, so an inline `t()` would paint the previous locale (English
+	 *    under an `?args=locale:ru` request);
+	 *  - a guarded body write (`if (currentLocale() !== locale)`) does not help and
+	 *    is not what the effect below uses: on the interactive arg-change path the
+	 *    store still holds the OLD locale, so the guard is true, the write proceeds
+	 *    during render, and React still warns "Cannot update a component while
+	 *    rendering a different component"; where the guard would be false, the
+	 *    store's `setState` has already no-opped, so the guard buys nothing.
+	 *
+	 * The ref gate writes exactly once, on mount, and hands every later change
+	 * (the arg moving, or a story's bridge stub answering `capabilities` with a
+	 * fixed `language`) to the layout effect + subscription below, which run
+	 * outside render and therefore cannot warn.
 	 */
-	setLocale(locale);
+	const seeded = useRef(false);
+	if (!seeded.current) {
+		seeded.current = true;
+		setLocale(locale);
+	}
 
 	/*
-	 * A STICKY re-assert on top, via an effect. A story's own bridge stub answers
-	 * `capabilities` with its own `language` (e.g. the language-door story returns
-	 * "en"), and `useI18nLocaleSync` applies that answer to the store - which would
-	 * silently undo the pin and render English. The subscription keeps the requested
-	 * locale the store's value for the whole frame, re-serting only on real drift.
+	 * Every later locale move, outside render: the requested value on an arg
+	 * change, and a STICKY re-assert against a story whose own bridge stub answers
+	 * `capabilities` with a fixed `language` (the language-door story returns "en"),
+	 * which `useI18nLocaleSync` would otherwise apply over the pin. The
+	 * subscription re-asserts only on real drift, so it cannot spin.
 	 */
 	useLayoutEffect(() => {
 		setLocale(locale);
@@ -296,7 +311,7 @@ const preview: Preview = {
 			const queryClient = queryClientFor(context.id);
 			const theme = (context.args.theme as ThemeName) ?? DEFAULT_THEME;
 			const locale =
-				(context.args.locale as LocaleId | undefined) ?? DEFAULT_LOCALE;
+				(context.args.locale as string | undefined) ?? DEFAULT_LOCALE;
 			const muiTheme = getTheme(theme).theme;
 
 			return (
@@ -319,7 +334,7 @@ const preview: Preview = {
 									<MuiThemeProvider theme={muiTheme}>
 										<CssBaseline />
 										<ThemeFrame theme={theme}>
-											<LocaleFrame locale={locale as LocaleId}>
+											<LocaleFrame locale={locale}>
 												<Story />
 											</LocaleFrame>
 										</ThemeFrame>
