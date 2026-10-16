@@ -637,8 +637,9 @@ type TranscriptPayloadRecord =
 			 *
 			 * It says the deadline passed AND what the agent did about it - it went ahead
 			 * without the answer - because "timed out" alone does not say whether anything
-			 * is still waiting on the reader (`askTimeoutSummary`). The row is the user's one record of that moment,
-			 * which is why it is a receipt of its own rather than a notice line.
+			 * is still waiting on the reader (`askTimeoutSummary`). The row is the user's
+			 * one record of that moment, which is why it is a receipt of its own rather
+			 * than a notice line.
 			 */
 			kind: "ask_timeout";
 			id: string;

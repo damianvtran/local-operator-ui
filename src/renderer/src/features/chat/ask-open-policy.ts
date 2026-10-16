@@ -765,10 +765,11 @@ export const createAskOpenView = (
 					 * ASKS REMAIN - an outstanding row (old or arrived: the user turned the
 					 * surface away over live asks either way), or a tally the frame could not
 					 * show rows for (the chip still counts them). Lapsed rows are not asks that
-					 * remain: closing over them waves nothing off (D12). That is the rule-4 dismissal,
-					 * recorded AGAINST THE IDS the frame names: those are the asks waved off, and
-					 * a frame that could not name them all says so (`listComplete`), which makes
-					 * the record hold until a complete frame shows an empty queue.
+					 * remain: closing over them waves nothing off (D12). That is the rule-4
+					 * dismissal, recorded AGAINST THE IDS the frame names: those are the asks
+					 * waved off, and a frame that could not name them all says so
+					 * (`listComplete`), which makes the record hold until a complete frame
+					 * shows an empty queue.
 					 */
 					dismissals.record(frame.conversationId, reading);
 					closeWatch = "dismissed";

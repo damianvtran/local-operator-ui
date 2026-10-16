@@ -93,12 +93,9 @@ import { AskAnswerField, commitOnEnter } from "./ask-answer-field";
  * local state rather than a stored preference.
  *
  * THE MIDDLE KEY IS `outstanding`, NOT `waiting` (agent review round 1, M1 = UX
- * round 1, U1). This module RESERVES "waiting" for the agent-still-waiting subset
- * that EXCLUDES a moved-on row, and the half this button selects is the panel's
- * whole pending half - the outstanding population AND a §10 answer not yet
- * delivered - so an internal name taken from the reserved word is the visible
- * label's own defect one layer down. The label the reader sees is the phrase the
- * removed rail row used for the same population (see the filter control).
+ * round 1, U1): the half it selects is the panel's whole pending half - the
+ * answerable asks AND a §10 answer not yet delivered - which is wider than
+ * "waiting". Its visible label is `Pending` (design round 1 on #1116, D1).
  */
 type AskFilter = "all" | "outstanding" | "settled";
 
@@ -108,8 +105,9 @@ type AskFilter = "all" | "outstanding" | "settled";
  * `success` for a delivered answer (the agent was told), `warning` for a late one
  * (recorded, the model has not seen it), `neutral` for a decline, for a lapsed
  * (`timed_out`) ask - styled like the decline it now sits beside (D11) - and for
- * anything the wire did not name - so the chip's ink is a reading of the status rather than
- * decoration, and the word inside it stays the contract's own (`askStatusWord`).
+ * anything the wire did not name - so the chip's ink is a reading of the status
+ * rather than decoration, and the word inside it stays the contract's own
+ * (`askStatusWord`).
  * Every state is drawn from `Badge`'s `wash` family, whose semantic inks the
  * contrast gate already covers; no state inherits its meaning from the hue alone,
  * because the word travels with it.
@@ -193,8 +191,13 @@ const askStatusMark = (
 		case "answered":
 		case "late":
 			return { Icon: Check, className: "text-success" };
+		/*
+		 * The Clock tells a timed-out row from a decline; the ink is the settled rows'
+		 * muted one (design round 1 on #1116, D3). Amber is this panel's late-answer and
+		 * urgency ink, and a read-only row filed with the history is neither.
+		 */
 		case "timed_out":
-			return { Icon: Clock, className: "text-warning" };
+			return { Icon: Clock, className: "text-ink-muted" };
 		case "declined":
 		case "dismissed":
 		case "expired":
@@ -1371,21 +1374,15 @@ export const AskPanel = ({
 	 *
 	 * It replaces the `Settled . 17` group node's two jobs with one answerable
 	 * question: which half am I reading? `All` is the default and keeps the whole
-	 * queue in one list, `Waiting or moved on` drops the history and `Settled` drops
-	 * the work - so the history that used to cost a chevron to escape now costs a
-	 * press, and the counts are stated ON the controls rather than in a line of
-	 * prose about them.
+	 * queue in one list, `Pending` drops the history and `Settled` drops the work -
+	 * so the history that used to cost a chevron to escape now costs a press, and
+	 * the counts are stated ON the controls rather than in a line of prose about them.
 	 *
-	 * THE MIDDLE HALF IS `open || delivering`, i.e. every row that has NOT settled -
-	 * and its label says so in the module's own words rather than in the one word it
-	 * does not own (agent review round 1, M1 = UX round 1, U1). "Waiting" here means
-	 * the agent is still waiting, which EXCLUDES a moved-on ask, so the middle button
-	 * can no longer claim it: a drawer bar reading `1 waiting, 1 moved on` directly
-	 * above a filter reading `Waiting · 2` was two names for one population, and the
-	 * row it counted spelled its own status `moved on`. The phrase is the removed rail
-	 * row's own for the outstanding population, kept rather than replaced with a new
-	 * coinage. A §10 answer that is recorded but not yet delivered belongs to this half
-	 * too - the panel draws it as a pending card - and it is named on its own row.
+	 * THE MIDDLE HALF IS `canAnswer || delivering` (`askPanelHalves`): every row a
+	 * control can still act on. A §10 answer that is recorded but not yet delivered
+	 * belongs to it too - the panel draws it as a pending card. A timed-out ask does
+	 * not (D11), which is why the label is `Pending` and no longer
+	 * `Waiting or moved on` (design round 1 on #1116, D1).
 	 *
 	 * LOCAL STATE, not the store: which slice of ONE surface's list the reader is
 	 * looking at is not a preference that has to survive a remount, and putting it in
@@ -1395,6 +1392,73 @@ export const AskPanel = ({
 	const [filter, setFilter] = useState<AskFilter>("all");
 	const showPending = filter !== "settled";
 	const showSettledRows = filter !== "outstanding";
+
+	/*
+	 * A CARD THAT LAPSES UNDER THE READER STAYS WHERE IT IS (UX round 1 on #1116, U1).
+	 *
+	 * `answerableSeen` is every ask this MOUNT has drawn as answerable. One of them that
+	 * lapses is HELD in the pending half, collapsed in its own slot behind its `Timed out`
+	 * badge, instead of jumping to Settled: the jump slid the next card up, and that
+	 * card's one-click, irreversible Decline landed exactly under the pointer. The hold
+	 * lasts for this mount only, so the row files under Settled the next time the drawer
+	 * opens or the conversation changes (both remount the panel). A ref, written during
+	 * render, because the hold has to apply on the very frame that lapses the ask; the
+	 * adds are idempotent, so a StrictMode double render changes nothing.
+	 *
+	 * The COUNTS stay the truth (`pending`/`settled` above): a held row is settled, so the
+	 * filter, the bar and the empty sentences never count it as pending. Only the LAYOUT of
+	 * the `All` and `Pending` views keeps it in place; the `Settled` view lists it with
+	 * the rest of the history, where the reader went looking for it.
+	 */
+	const answerableSeen = useRef<Set<string>>(new Set());
+	for (const row of view.rows) {
+		if (row.canAnswer) answerableSeen.current.add(row.ask.ask_id);
+	}
+	const shown = askPanelHalves(view.rows, answerableSeen.current);
+	const heldIds = new Set(
+		shown.pending.filter((row) => row.lapsed).map((row) => row.ask.ask_id),
+	);
+	/*
+	 * AND THE KEYBOARD FOLLOWS IT. A focused control inside the card unmounts when the
+	 * card collapses, and the browser drops focus to BODY (measured, U1). So the ask the
+	 * keyboard is inside is read DURING RENDER, while the DOM still holds the frame
+	 * before the commit - the one moment the doomed control is still `activeElement`.
+	 * Focus EVENTS are not the source: a window without OS focus fires no `focusin`
+	 * (measured in headless Chrome), which left the reader's position unrecorded. When
+	 * that ask has JUST become held and focus fell to BODY, the keyboard lands on the
+	 * held row's own header - never on the next card's controls. "Just" is `prevHeld`:
+	 * an ask held on an earlier frame is never re-focused, so this cannot steal a
+	 * keyboard the reader has since moved away. Focus outside the panel records nothing.
+	 */
+	const panelRef = useRef<HTMLDivElement | null>(null);
+	const prevHeld = useRef<ReadonlySet<string>>(new Set());
+	const active =
+		typeof document === "undefined" ? null : document.activeElement;
+	const focusedRow =
+		active !== null && panelRef.current?.contains(active)
+			? active.closest("[data-lo-ask-row], [data-lo-ask-held]")
+			: null;
+	const focusedAsk =
+		focusedRow?.getAttribute("data-lo-ask-held") ??
+		focusedRow?.getAttribute("data-lo-ask-row") ??
+		null;
+	useLayoutEffect(() => {
+		const id = focusedAsk;
+		const justHeld =
+			id !== null && heldIds.has(id) && !prevHeld.current.has(id);
+		prevHeld.current = heldIds;
+		if (!justHeld) return;
+		const now = document.activeElement;
+		if (now !== null && now !== document.body && now.isConnected) return;
+		/* Matched by attribute VALUE rather than a composed selector: an ask id is the
+		 * backend's string and needs no escaping this way. */
+		const held = [
+			...(panelRef.current?.querySelectorAll<HTMLElement>(
+				"[data-lo-ask-held]",
+			) ?? []),
+		].find((row) => row.getAttribute("data-lo-ask-held") === id);
+		held?.querySelector<HTMLElement>("button[aria-expanded]")?.focus();
+	});
 
 	/*
 	 * ONE ROW, ONE CONSTRUCTION, used by both halves of the list: a settled ask's
@@ -1419,6 +1483,88 @@ export const AskPanel = ({
 	);
 
 	/*
+	 * ONE COLLAPSED ROW, used by the settled half AND by a held lapsed card (UX round 1
+	 * on #1116, U1): a card that lapses under the reader collapses IN ITS OWN SLOT into
+	 * exactly the row it will be under Settled on the next mount, so the two cannot drift.
+	 */
+	const collapsedRow = (presentation: (typeof view.rows)[number]) => {
+		/*
+		 * The one line, and the two things it has to keep apart (D9): the
+		 * status WORD (`askStatusWord`, the copy contract's own leading clause)
+		 * and the question. `Timed out`, `Declined` and `Answered` are what tells the
+		 * reader what became of two look-alike rows, so the word is
+		 * DRAWN - now as a chip rather than as a leading word in the same ink as
+		 * the question (operator ask, 2026-10-05) - and it travels in the
+		 * accessible name as well.
+		 */
+		const word = askStatusWord(presentation.status);
+		const question =
+			presentation.ask.questions[0]?.question ?? "No question text";
+		/*
+		 * THE REFUSAL TRAVELS WITH THE ROW (UX round 1, U1 = design round 1, D1).
+		 *
+		 * The reachable path this exists for: the user presses `Change answer`
+		 * while the wire still says undelivered, and by the time the press lands
+		 * the response row exists - the row is what refuses it - so the ask has
+		 * already left `pending` for this half of the list, whose collapsed line
+		 * painted nothing but the word and the question. The owner's sentence was
+		 * then measured on screen and gone, which §10 calls the worse failure than
+		 * the refusal itself ("a silent no-op would be the worse failure").
+		 */
+		const refusal = outcomes?.[presentation.ask.ask_id]?.refused ?? null;
+		return (
+			<Disclosure
+				key={presentation.ask.ask_id}
+				triggerClassName="text-ink hover:bg-row-hover hover:text-ink"
+				chevronClassName="text-ink-dim"
+				rowClassName="min-h-7 py-1"
+				triggerLabel={`${word} - ${question}`}
+				summary={
+					<span className="flex min-w-0 flex-col gap-0.5">
+						<span className="flex min-w-0 items-start gap-1.5">
+							{/*
+							 * THE STATUS IS A CHIP (operator ask, 2026-10-05): at the
+							 * question's own 12px in `ink-dim`, `Answered` and
+							 * `Answered late` read as the first two words of the
+							 * sentence rather than as a mark on it - the same
+							 * "reads as prose" fault the recommendation badge had
+							 * (see `ask-recommended.tsx`), answered the same way.
+							 */}
+							<Badge
+								variant={settledStatusVariant(presentation.status)}
+								shape="pill"
+								className="mt-px shrink-0"
+							>
+								{word}
+							</Badge>
+							{/*
+							 * THE QUESTION WRAPS (operator ask, 2026-10-05): "full
+							 * questions not truncated" is what he asked for, and a
+							 * `truncate` here is what put the whole question behind a
+							 * tooltip instead of on the row. `break-words` so a long
+							 * unbroken token cannot push the row wider than the pane.
+							 */}
+							<span className="min-w-0 whitespace-normal break-words text-ink text-meta">
+								{question}
+							</span>
+						</span>
+						{refusal === null ? null : (
+							/*
+							 * The danger band and no mark, for the reason the card's own
+							 * line gives above: one refusal, one treatment, on both
+							 * surfaces.
+							 */
+							<span className="min-w-0 text-danger text-meta">{refusal}</span>
+						)}
+					</span>
+				}
+			>
+				<div className="pt-1.5">{askRow(presentation)}</div>
+			</Disclosure>
+		);
+	};
+
+	/*
 	 * THE FILTER, drawn only when there is something to filter. Three pressed-state
 	 * buttons rather than a select: the counts are the point of the control (the
 	 * reader picks the half by its size as often as by its name), and a select would
@@ -1441,13 +1587,13 @@ export const AskPanel = ({
 				[
 					["all", "All", view.rows.length],
 					/*
-					 * THE MIDDLE BUTTON NAMES THE SET IT COUNTS, and the set is the whole
-					 * pending half (`open || delivering`) - not "waiting", which this module
-					 * reserves for the agent-still-waiting subset that excludes a moved-on ask
-					 * (agent review round 1, M1 = UX round 1, U1). The phrase is the removed
-					 * rail row's own for the same population; see the filter block's note.
+					 * `Pending`, the panel's own word for the half (`askPanelHalves`) and the
+					 * opposite of `Settled` (design round 1 on #1116, D1). It replaced
+					 * `Waiting or moved on`, coined when a timed-out ask was a pending card;
+					 * since D11 that ask is settled, so the old label named a set the half no
+					 * longer held. The backend's TUI filter takes the same word (#2481).
 					 */
-					["outstanding", "Waiting or moved on", pending.length],
+					["outstanding", "Pending", pending.length],
 					["settled", "Settled", settled.length],
 				] as const
 			).map(([value, label, count]) => (
@@ -1502,14 +1648,15 @@ export const AskPanel = ({
 			? view.open > 0
 				? "The details for these asks could not be loaded."
 				: "No asks outstanding. The agent is not waiting on anything."
-			: filter === "outstanding" && pending.length === 0
-				? "No asks are waiting or moved on. They have all settled — see Settled."
+			: filter === "outstanding" && shown.pending.length === 0
+				? "No asks are pending. They have all settled — see Settled."
 				: filter === "settled" && settled.length === 0
-					? "No asks have settled yet. They are all still under Waiting or moved on."
+					? "No asks have settled yet. They are all still pending."
 					: null;
 
 	return (
 		<div
+			ref={panelRef}
 			data-lo-ask-panel="open"
 			className={cn("flex w-full flex-col gap-2", className)}
 		>
@@ -1536,8 +1683,21 @@ export const AskPanel = ({
 					{emptySlice}
 				</p>
 			)}
-			{showPending ? pending.map(askRow) : null}
-			{showSettledRows && settled.length > 0 ? (
+			{showPending
+				? shown.pending.map((presentation) =>
+						heldIds.has(presentation.ask.ask_id) ? (
+							<div
+								key={presentation.ask.ask_id}
+								data-lo-ask-held={presentation.ask.ask_id}
+							>
+								{collapsedRow(presentation)}
+							</div>
+						) : (
+							askRow(presentation)
+						),
+					)
+				: null}
+			{showSettledRows && (showPending ? shown.settled : settled).length > 0 ? (
 				/*
 				 * THE SETTLED GROUP: a plain list in the same column, with a quiet boundary
 				 * label drawn only while there IS a pending half above it to be separated
@@ -1557,88 +1717,10 @@ export const AskPanel = ({
 					 * group node used to carry is gone for the same reason: with a chip on every
 					 * row, a legend above them names twice what the rows already say.
 					 */}
-					{showPending && pending.length > 0 ? (
+					{showPending && shown.pending.length > 0 ? (
 						<p className="px-3 pt-1 text-ink-dim text-meta">Settled</p>
 					) : null}
-					{settled.map((presentation) => {
-						/*
-						 * The one line, and the two things it has to keep apart (D9): the
-						 * status WORD (`askStatusWord`, the copy contract's own leading clause)
-						 * and the question. `Timed out`, `Declined` and `Answered` are what tells the
-						 * reader what became of two look-alike rows, so the word is
-						 * DRAWN - now as a chip rather than as a leading word in the same ink as
-						 * the question (operator ask, 2026-10-05) - and it travels in the
-						 * accessible name as well.
-						 */
-						const word = askStatusWord(presentation.status);
-						const question =
-							presentation.ask.questions[0]?.question ?? "No question text";
-						/*
-						 * THE REFUSAL TRAVELS WITH THE ROW (UX round 1, U1 = design round 1, D1).
-						 *
-						 * The reachable path this exists for: the user presses `Change answer`
-						 * while the wire still says undelivered, and by the time the press lands
-						 * the response row exists - the row is what refuses it - so the ask has
-						 * already left `pending` for this half of the list, whose collapsed line
-						 * painted nothing but the word and the question. The owner's sentence was
-						 * then measured on screen and gone, which §10 calls the worse failure than
-						 * the refusal itself ("a silent no-op would be the worse failure").
-						 */
-						const refusal =
-							outcomes?.[presentation.ask.ask_id]?.refused ?? null;
-						return (
-							<Disclosure
-								key={presentation.ask.ask_id}
-								triggerClassName="text-ink hover:bg-row-hover hover:text-ink"
-								chevronClassName="text-ink-dim"
-								rowClassName="min-h-7 py-1"
-								triggerLabel={`${word} - ${question}`}
-								summary={
-									<span className="flex min-w-0 flex-col gap-0.5">
-										<span className="flex min-w-0 items-start gap-1.5">
-											{/*
-											 * THE STATUS IS A CHIP (operator ask, 2026-10-05): at the
-											 * question's own 12px in `ink-dim`, `Answered` and
-											 * `Answered late` read as the first two words of the
-											 * sentence rather than as a mark on it - the same
-											 * "reads as prose" fault the recommendation badge had
-											 * (see `ask-recommended.tsx`), answered the same way.
-											 */}
-											<Badge
-												variant={settledStatusVariant(presentation.status)}
-												shape="pill"
-												className="mt-px shrink-0"
-											>
-												{word}
-											</Badge>
-											{/*
-											 * THE QUESTION WRAPS (operator ask, 2026-10-05): "full
-											 * questions not truncated" is what he asked for, and a
-											 * `truncate` here is what put the whole question behind a
-											 * tooltip instead of on the row. `break-words` so a long
-											 * unbroken token cannot push the row wider than the pane.
-											 */}
-											<span className="min-w-0 whitespace-normal break-words text-ink text-meta">
-												{question}
-											</span>
-										</span>
-										{refusal === null ? null : (
-											/*
-											 * The danger band and no mark, for the reason the card's own
-											 * line gives above: one refusal, one treatment, on both
-											 * surfaces.
-											 */
-											<span className="min-w-0 text-danger text-meta">
-												{refusal}
-											</span>
-										)}
-									</span>
-								}
-							>
-								<div className="pt-1.5">{askRow(presentation)}</div>
-							</Disclosure>
-						);
-					})}
+					{(showPending ? shown.settled : settled).map(collapsedRow)}
 				</div>
 			) : null}
 		</div>
