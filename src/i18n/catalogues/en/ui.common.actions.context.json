@@ -11,6 +11,20 @@
 		"note": "Dismisses a dialog, sheet or other closeable surface without quitting the application.",
 		"length": "One word."
 	},
+	"ui.common.actions.copied": {
+		"role": "button label, confirmation state",
+		"tone": "Short past-tense confirmation.",
+		"note": "Replaces the button's own label for a moment after a successful clipboard write, then reverts. A state, not an action the reader can press again: do not rephrase it as an imperative or as a second verb.",
+		"length": "One word; the button keeps its width while this shows.",
+		"placeholders": {}
+	},
+	"ui.common.actions.copy_failed": {
+		"role": "error toast body",
+		"tone": "Plain statement plus the manual workaround; no apology, no blame.",
+		"note": "Shown when the clipboard write is refused (browser permission policy, inactive document). The content is still on screen, so the second sentence names the recovery the reader has; never drop it and never promise a retry the component cannot make.",
+		"length": "Two short sentences.",
+		"placeholders": {}
+	},
 	"ui.common.actions.retry": {
 		"role": "button label",
 		"tone": "Direct recovery verb.",
