@@ -795,6 +795,24 @@ const CONTROLS = [
 		ink: "ink",
 	},
 	{
+		/*
+		 * THE SESSION VOICE TOGGLE, PRESSED (design round 1, D2). The header's icon
+		 * button paints `bg-accent-wash text-accent` while `aria-pressed` is true -
+		 * the glyph is the same `AudioLines` in both states, so this pair IS the
+		 * on-state. Borderless like the ghost buttons beside it: the EDGE half is
+		 * declared away for the reason the image-actions trigger states (a ghost
+		 * control is found by its glyph, not by a boundary), and the glyph's 3:1
+		 * non-text floor is what must hold on the wash in every palette. The header
+		 * paints on `canvas`; `surface` is listed for the pane's other ground.
+		 */
+		name: "voice toggle (pressed)",
+		on: ["canvas", "surface"],
+		fill: "accentWash",
+		border: null,
+		ink: "accent",
+		edge: false,
+	},
+	{
 		name: "accent wash chip",
 		on: ["canvas", "surface"],
 		fill: "accentWash",

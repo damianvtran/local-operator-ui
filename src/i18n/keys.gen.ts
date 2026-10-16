@@ -155,6 +155,7 @@ export type MessageParams = {
 	"ui.chat.usage.eligibility_unknown": undefined;
 	"ui.chat.usage.family_caps": undefined;
 	"ui.chat.usage.unlimited": undefined;
+	"ui.chat.voice.approval_pending": undefined;
 	"ui.chat.voice.approval_waiting": undefined;
 	"ui.chat.voice.disable_failed": { reason: string };
 	"ui.chat.voice.empty_take": undefined;
@@ -169,10 +170,10 @@ export type MessageParams = {
 	"ui.chat.voice.phase_speaking": undefined;
 	"ui.chat.voice.phase_working": undefined;
 	"ui.chat.voice.speech_failed": undefined;
+	"ui.chat.voice.stream_lost": undefined;
 	"ui.chat.voice.stt_unavailable": { reason: string };
 	"ui.chat.voice.switched_from": { title: string };
-	"ui.chat.voice.toggle_label": undefined;
-	"ui.chat.voice.toggle_off": undefined;
+	"ui.chat.voice.toggle_off_hint": { key: string };
 	"ui.chat.voice.toggle_on": undefined;
 	"ui.chat.voice.toggle_switch": { title: string };
 	"ui.chat.voice.toggle_unavailable": { reason: string };

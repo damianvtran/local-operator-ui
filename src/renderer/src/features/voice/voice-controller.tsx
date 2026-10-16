@@ -30,7 +30,6 @@ import {
 import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
 import {
 	SpeechToTextPriority,
-	resolvePushToTalkBinding,
 	useSpeechToTextManager,
 } from "@shared/hooks/use-speech-to-text-manager";
 import { t } from "@shared/i18n";
@@ -44,9 +43,10 @@ import {
 	showInfoToast,
 	showWarningToast,
 } from "@shared/utils/toast-manager";
+import { useQueryClient } from "@tanstack/react-query";
 import { type FC, useCallback, useEffect, useRef } from "react";
 import type { DesktopMediaResponse } from "../../../../shared/desktop-contract";
-import { useVoiceStatus } from "./use-voice-status";
+import { applyVoiceActive, useVoiceStatus } from "./use-voice-status";
 import { useVoiceStore } from "./voice-store";
 import { subscribeVoiceStream } from "./voice-stream";
 import {
@@ -66,8 +66,14 @@ export const voiceSpeechKey = (source: VoiceSpeakSource): string =>
 		? `voice:message:${source.messageId}`
 		: `voice:gate:${source.requestId}`;
 
-function newRequestId(): string {
-	return crypto.randomUUID().replace(/-/g, "");
+/**
+ * The utterance's idempotency key: a DASHED lowercase UUID, exactly what
+ * `crypto.randomUUID()` returns. The route validates it with the same
+ * `RequestID` pattern `/messages` uses (`desktop_sessions.py`), and the dashless
+ * form round 1 sent was refused 422 on every take (QA round 1, Q1).
+ */
+export function newVoiceRequestId(): string {
+	return crypto.randomUUID();
 }
 
 /** The sentence a refused media call owes the reader, per voice code. */
@@ -76,6 +82,8 @@ function utteranceFailure(result: DesktopMediaResponse): string {
 		return t("ui.chat.voice.not_enabled");
 	if (result.kind === "error" && result.voiceCode === "empty_transcript")
 		return t("ui.chat.voice.empty_transcript");
+	if (result.kind === "error" && result.voiceCode === "approval_pending")
+		return t("ui.chat.voice.approval_pending");
 	if (result.kind === "error" && result.voiceCode === "stt_unavailable")
 		return t("ui.chat.voice.stt_unavailable", { reason: result.detail });
 	return t("ui.chat.voice.utterance_failed", {
@@ -97,7 +105,7 @@ export async function sendVoiceUtterance(
 	const store = useVoiceStore.getState();
 	store.setPhase("sending", sessionId);
 	feedTurns(sessionId, { kind: "armed" });
-	const requestId = newRequestId();
+	const requestId = newVoiceRequestId();
 	const result =
 		"text" in take
 			? await desktopMedia(
@@ -125,8 +133,13 @@ export async function sendVoiceUtterance(
 	}
 	feedTurns(sessionId, { kind: "disarmed" });
 	const sentence = utteranceFailure(result);
-	if (result.kind === "error" && result.voiceCode === "empty_transcript") {
-		// Nothing broke: the take held no words. Info, and back to rest.
+	if (
+		result.kind === "error" &&
+		(result.voiceCode === "empty_transcript" ||
+			result.voiceCode === "approval_pending")
+	) {
+		// Nothing broke: no words, or an approval must be answered on screen
+		// first (V7, V13). Info, and back to rest.
 		useVoiceStore.getState().setPhase("idle", null);
 		showInfoToast(sentence);
 	} else {
@@ -141,19 +154,48 @@ export async function sendVoiceUtterance(
 }
 
 /*
- * THE TURN STATE IS MODULE STATE, keyed by session, so the driver verb and the
- * hold path feed the same fold the stream watcher reads. It is dropped when the
- * slot leaves the session (a new holder starts clean).
+ * THE TURN STATE IS MODULE STATE, PER SESSION, so the driver verb and the hold
+ * path feed the same fold the stream watcher reads.
+ *
+ * KEPT ACROSS A SLOT ROUND-TRIP (U4): A -> B -> A must not re-announce the gate
+ * A already announced, nor re-speak a message A already spoke, so a session's
+ * dedupe sets outlive the slot leaving it. What does NOT outlive it is the
+ * in-flight part - an armed take whose session lost the slot is not answered
+ * aloud (`resetTurnFlight`). Bounded to a handful of sessions; the oldest goes.
  */
-let turns: { sessionId: string; state: VoiceTurnsState } | null = null;
+const TURN_SESSIONS_KEPT = 8;
+const turnsBySession = new Map<string, VoiceTurnsState>();
 let speakSink: ((source: VoiceSpeakSource) => void) | null = null;
 
-function feedTurns(sessionId: string, input: VoiceTurnsInput): void {
-	if (turns?.sessionId !== sessionId)
-		turns = { sessionId, state: initialVoiceTurns() };
-	const step = stepVoiceTurns(turns.state, input);
-	turns = { sessionId, state: step.state };
+export function feedTurns(sessionId: string, input: VoiceTurnsInput): void {
+	const step = stepVoiceTurns(
+		turnsBySession.get(sessionId) ?? initialVoiceTurns(),
+		input,
+	);
+	turnsBySession.delete(sessionId);
+	turnsBySession.set(sessionId, step.state);
+	while (turnsBySession.size > TURN_SESSIONS_KEPT) {
+		const oldest = turnsBySession.keys().next().value;
+		if (oldest === undefined) break;
+		turnsBySession.delete(oldest);
+	}
 	for (const source of step.speak) speakSink?.(source);
+}
+
+/** The slot left this session: forget its takes, keep what it has said. */
+function resetTurnFlight(sessionId: string): void {
+	const state = turnsBySession.get(sessionId);
+	if (!state) return;
+	turnsBySession.set(sessionId, {
+		...initialVoiceTurns(),
+		spoken: state.spoken,
+		announced: state.announced,
+	});
+}
+
+/** Whether the slot session has an approval pending, as its stream last said. */
+export function voiceApprovalPending(sessionId: string): boolean {
+	return Boolean(turnsBySession.get(sessionId)?.pendingApproval);
 }
 
 /**
@@ -217,14 +259,15 @@ function viewedSessionId(): string | undefined {
 
 export const VoiceController: FC = () => {
 	const status = useVoiceStatus();
-	const setActive = useVoiceStore((s) => s.setActive);
 	const activeSessionId = status.activeSessionId;
 	const feed = useDesktopFeed();
 
-	// 1. The slot mirror: the feed's level frame wins over a stale poll.
+	// 1. The slot mirror: the feed's level frame goes into the one cache entry.
+	const client = useQueryClient();
 	useEffect(() => {
-		if (feed.voiceActive !== undefined) setActive(feed.voiceActive);
-	}, [feed.voiceActive, setActive]);
+		if (feed.voiceActive !== undefined)
+			applyVoiceActive(feed.voiceActive, client);
+	}, [feed.voiceActive, client]);
 
 	/*
 	 * `speaking` ends when the audio does. The store's `speak` resolves when
@@ -249,17 +292,23 @@ export const VoiceController: FC = () => {
 	// 2. The speak trigger, on the slot holder's own stream.
 	useEffect(() => {
 		if (!status.enabled || !activeSessionId) {
-			turns = null;
 			speakSink = null;
 			return;
 		}
 		speakSink = (source) => void speakSource(activeSessionId, source);
-		const dispose = subscribeVoiceStream(activeSessionId, (input) =>
-			feedTurns(activeSessionId, input),
+		const dispose = subscribeVoiceStream(
+			activeSessionId,
+			(input) => feedTurns(activeSessionId, input),
+			(reason) => {
+				// The bounded retry gave up (U5): say so once, rather than go quiet.
+				if (reason === "exhausted")
+					showWarningToast(t("ui.chat.voice.stream_lost"));
+			},
 		);
 		return () => {
 			dispose();
 			speakSink = null;
+			resetTurnFlight(activeSessionId);
 			/*
 			 * The slot leaving this session stops what it is saying: the operator
 			 * moved the microphone, and an answer from the old session playing over
@@ -284,6 +333,15 @@ export const VoiceController: FC = () => {
 	const start = useCallback(() => {
 		const sessionId = viewedSessionId();
 		if (!sessionId || recorder.current || starting.current) return;
+		/*
+		 * AN APPROVAL ON SCREEN FIRST (V7, V13). The route would refuse the take
+		 * with `approval_pending`; refusing it here means the microphone never
+		 * opens for words that cannot be admitted, and the hint is immediate.
+		 */
+		if (voiceApprovalPending(sessionId)) {
+			showInfoToast(t("ui.chat.voice.approval_pending"));
+			return;
+		}
 		// A new take interrupts the answer being spoken: barge-in by hand.
 		useSpeechStore.getState().stopSpeech();
 		useVoiceStore.getState().setPhase("listening", sessionId);
@@ -366,6 +424,3 @@ export const VoiceController: FC = () => {
 
 	return null;
 };
-
-/** The hold key's label, for the toggle's hint. */
-export const voiceHoldKeyLabel = (): string => resolvePushToTalkBinding().label;

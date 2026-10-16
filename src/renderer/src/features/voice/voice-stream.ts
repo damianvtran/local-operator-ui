@@ -14,6 +14,12 @@
  * fold dedupes by message id and gate id, which is what makes a replay safe. A
  * gap (a new epoch) re-reads the snapshot, whose `pending_gate` is folded like
  * any other.
+ *
+ * RETRY IS BOUNDED (review round 1, U5). Backoff follows the pane's own ladder
+ * (`streamRetryDelayMs`) for `VOICE_STREAM_MAX_ATTEMPTS` consecutive failures,
+ * then stops and reports `exhausted`; any frame resets the count. A 404 is the
+ * session itself being gone (`unknown_session`), which no retry can change, so
+ * it stops at once and reports `gone`.
  */
 
 import { subscribeDesktopStream } from "@shared/api/local-operator/desktop-api";
@@ -24,19 +30,49 @@ import {
 	streamingOfFrame,
 } from "./voice-turns";
 
+/** Consecutive failed connections before the watcher gives up. */
+export const VOICE_STREAM_MAX_ATTEMPTS = 6;
+
+export type VoiceStreamStop = "exhausted" | "gone";
+
+/** The seams a test drives; production uses the real ones. */
+export type VoiceStreamDeps = {
+	subscribe: typeof subscribeDesktopStream;
+	delayMs: (attempt: number) => number;
+	schedule: (run: () => void, ms: number) => unknown;
+	cancel: (handle: unknown) => void;
+};
+
+const realDeps: VoiceStreamDeps = {
+	subscribe: subscribeDesktopStream,
+	delayMs: streamRetryDelayMs,
+	schedule: (run, ms) => setTimeout(run, ms),
+	cancel: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
+};
+
 export function subscribeVoiceStream(
 	sessionId: string,
 	onInput: (input: VoiceTurnsInput) => void,
+	onStop: (reason: VoiceStreamStop) => void = () => undefined,
+	deps: VoiceStreamDeps = realDeps,
 ): () => void {
 	let cursor: { epoch: string; seq: number } | null = null;
 	let dispose: (() => void) | null = null;
-	let retry: ReturnType<typeof setTimeout> | null = null;
-	let attempt = 0;
+	let retry: unknown = null;
+	let failures = 0;
 	let closed = false;
+
+	const stop = (reason: VoiceStreamStop) => {
+		closed = true;
+		dispose?.();
+		dispose = null;
+		onStop(reason);
+	};
 
 	const open = () => {
 		if (closed) return;
-		dispose = subscribeDesktopStream(
+		retry = null;
+		dispose = deps.subscribe(
 			{
 				sessionId,
 				...(cursor ? { epoch: cursor.epoch, afterSeq: cursor.seq } : {}),
@@ -55,7 +91,7 @@ export function subscribeVoiceStream(
 					} catch {
 						return;
 					}
-					attempt = 0;
+					failures = 0;
 					if (
 						typeof frame.epoch === "string" &&
 						typeof frame.seq === "number"
@@ -90,8 +126,16 @@ export function subscribeVoiceStream(
 				if (event.kind === "error") {
 					dispose?.();
 					dispose = null;
-					attempt += 1;
-					retry = setTimeout(open, streamRetryDelayMs(attempt));
+					if (event.status === 404) {
+						stop("gone");
+						return;
+					}
+					failures += 1;
+					if (failures >= VOICE_STREAM_MAX_ATTEMPTS) {
+						stop("exhausted");
+						return;
+					}
+					retry = deps.schedule(open, deps.delayMs(failures));
 				}
 			},
 		);
@@ -99,7 +143,7 @@ export function subscribeVoiceStream(
 	open();
 	return () => {
 		closed = true;
-		if (retry) clearTimeout(retry);
+		if (retry !== null) deps.cancel(retry);
 		dispose?.();
 	};
 }

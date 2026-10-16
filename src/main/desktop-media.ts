@@ -17,6 +17,7 @@ import {
 	DESKTOP_MACHINE_DETAIL,
 	DESKTOP_REFUSAL_CODE,
 	type DesktopRefusalCode,
+	REQUEST_ID_PATTERN,
 	type VoiceRefusalCode,
 	desktopRefusalCodeForStatus,
 	isDesktopRefusalCode,
@@ -124,7 +125,8 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 		.object({
 			op: z.literal("voice.utterance"),
 			sessionId: z.string().regex(/^[a-f0-9]{12}$/),
-			requestId: id,
+			// The route's own `RequestID`; refused here rather than as its 422.
+			requestId: z.string().regex(REQUEST_ID_PATTERN),
 			fileName: z.string().min(1).max(255).optional(),
 			mimeType: z
 				.string()
