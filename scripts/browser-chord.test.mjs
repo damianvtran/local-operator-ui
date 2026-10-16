@@ -30,6 +30,28 @@ const {
 } = await moduleAt("src/main/browser/browser-chord.ts");
 const { TabRegistry } = await moduleAt("src/main/browser/registry.ts");
 
+// WHY this lives above the first test(): `input` was previously declared at
+// module scope AFTER the first test() registration, so a test callback that
+// ran before module evaluation reached that declaration hit the temporal
+// dead zone (ReferenceError: Cannot access 'input' before initialization).
+// Whether the callback won that race varied run to run, which made the suite
+// intermittently red on an unchanged file. This helper closes over nothing
+// declared later, so hoisting the identical definition above its first use
+// removes the race without changing what any test asserts. The pre-move blob
+// was identical on main and on unrelated PR heads, so those failures were
+// this latent ordering bug, not a regression introduced by any such PR.
+const input = (key, overrides = {}) => ({
+	type: "keyDown",
+	key,
+	meta: true,
+	control: false,
+	alt: false,
+	shift: false,
+	isAutoRepeat: false,
+	isComposing: false,
+	...overrides,
+});
+
 // Execute the actual production entries without booting index.ts/Electron.
 // Exact, uniquely delimited source keeps this coupled to the reached caller, not a lookalike that
 // merely reasserts the router predicate (the missing coverage behind review R1).
@@ -217,18 +239,6 @@ test("RT-only visibility uses actual registry setters, not absence of an active 
 const { chordTarget } = await moduleAt(
 	"src/renderer/src/features/browser/model/tab-index-model.ts",
 );
-const input = (key, overrides = {}) => ({
-	type: "keyDown",
-	key,
-	meta: true,
-	control: false,
-	alt: false,
-	shift: false,
-	isAutoRepeat: false,
-	isComposing: false,
-	...overrides,
-});
-
 test("logical BODY/header ownership is never native authorization without real foreground chrome facts", () => {
 	for (let mask = 0; mask < 32; mask++) {
 		const facts = {
