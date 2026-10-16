@@ -3379,6 +3379,31 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	/*
+	 * SESSION VOICE'S SLOT (`docs/design/session-voice.md`, the frozen contract): one
+	 * read and one control on `/v1/desktop/voice`, mirroring Aida's pair above and
+	 * gated the same way, on its OWN key (`features.voice`), so a renderer that does
+	 * not read it keeps working and this one never calls the route while the key is
+	 * absent.
+	 *
+	 * The control names its session even for `disable`: a disable from a session
+	 * that does not hold the slot is a no-op that answers the current slot
+	 * unchanged, so a stale window cannot turn off a slot another window just
+	 * moved. `replaced` is always null on a disable.
+	 *
+	 * The two media halves (the utterance upload and the speech download) are NOT
+	 * here: they carry bytes, so they ride `desktop-media.ts`'s relay.
+	 */
+	z
+		.object({ op: z.literal("voice.status") })
+		.strict(),
+	z
+		.object({
+			op: z.literal("voice.control"),
+			action: z.enum(["enable", "disable"]),
+			sessionId,
+		})
+		.strict(),
+	/*
 	 * THE CODE REQUEST LEDGER (the per-session PR/MR list, and its refresh).
 	 *
 	 * BOTH ROUTES SIT UNDER THE SESSION because the LEDGER is the session's: the
@@ -5185,6 +5210,8 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"tunnel.setup.plan",
 	"tunnel.setup.read",
 	"usage.get",
+	// The voice slot's read: which session holds it and whether a path exists.
+	"voice.status",
 ]);
 
 /**
@@ -5522,7 +5549,60 @@ export type DesktopMediaRequest =
 			op: "sessions.supplementDocument";
 			sessionId: string;
 			digest: string;
+	  }
+	/*
+	 * SESSION VOICE (`docs/design/session-voice.md`, the frozen contract). The
+	 * upload carries audio bytes OR `text` (the key-free door, V10), never both;
+	 * the download names a SOURCE REFERENCE the server resolves and never text
+	 * (V8), so no renderer bug can make the app speak words the agent never wrote.
+	 */
+	| {
+			op: "voice.utterance";
+			sessionId: string;
+			requestId: string;
+			fileName?: string;
+			mimeType?: string;
+			text?: string;
+	  }
+	| {
+			op: "voice.speech";
+			sessionId: string;
+			source:
+				| { kind: "message"; messageId: string }
+				| { kind: "gate"; requestId: string }
+				| { kind: "ask"; askId: string };
 	  };
+
+/**
+ * The refusal codes the voice routes declare (the frozen contract). Carried to
+ * the renderer as `voiceCode` - only for `voice.*` media ops, and only these
+ * words - because the controller ACTS on them: `voice_not_enabled` means the slot
+ * moved away under this window and the exchange must stop, which a sentence
+ * cannot tell it. Every other declared code is still dropped, as before, so this
+ * is not a general channel.
+ */
+export const VOICE_REFUSAL_CODES = [
+	"voice_not_enabled",
+	"voice_unavailable",
+	"voice_store_busy",
+	"stt_unavailable",
+	"unknown_session",
+	"unknown_source",
+	"invalid_voice_request",
+	"voice_upload_too_large",
+	// The take held no words: nothing was admitted, and the reader is told so.
+	"empty_transcript",
+] as const;
+export type VoiceRefusalCode = (typeof VOICE_REFUSAL_CODES)[number];
+
+export function isVoiceRefusalCode(
+	code: string | undefined,
+): code is VoiceRefusalCode {
+	return (
+		code !== undefined &&
+		(VOICE_REFUSAL_CODES as readonly string[]).includes(code)
+	);
+}
 
 export type DesktopMediaResponse =
 	| { status: number; kind: "bytes"; mimeType: string; data: Uint8Array }
@@ -5541,6 +5621,8 @@ export type DesktopMediaResponse =
 			 * exactly as the JSON transport's refusals are (design § 3.5, § 5.1).
 			 */
 			code?: DesktopRefusalCode;
+			/** A voice route's declared refusal (see `VOICE_REFUSAL_CODES`). */
+			voiceCode?: VoiceRefusalCode;
 	  };
 
 export type DesktopAPI = {
@@ -7717,6 +7799,15 @@ export function desktopEndpoint(request: DesktopRequest): {
 				 * cannot be read as one.
 				 */
 				body: { op: request.action },
+			};
+		case "voice.status":
+			return { path: "/v1/desktop/voice", method: "GET" };
+		case "voice.control":
+			return {
+				path: "/v1/desktop/voice",
+				method: "POST",
+				// The route's own field names (`op`, `session_id`), as `aida.control` does.
+				body: { op: request.action, session_id: request.sessionId },
 			};
 		/*
 		 * THE CODE REQUEST LEDGER, the session-scoped pair (see the union members'

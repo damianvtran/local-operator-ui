@@ -710,3 +710,45 @@ export type DesktopAidaState = {
  * (`aidaControlFailureCopy`).
  */
 export type DesktopAidaControlResult = Omit<DesktopAidaState, "enabled">;
+
+/**
+ * The ONE session voice is enabled on, machine-wide (`docs/design/session-voice.md`
+ * V3): the slot file's public half. `null` is "voice is off everywhere".
+ */
+export type DesktopVoiceActive = {
+	session_id: string;
+	/** Epoch milliseconds, as the slot file records it. */
+	enabled_at: number;
+} | null;
+
+/**
+ * One direction's availability, as the cascade reports it: which rung would
+ * serve (`path`), whether one exists at all, and the cascade's own sentence for
+ * why not. Read for `available`; `reason` is shown verbatim, never parsed.
+ */
+export type DesktopVoicePathReport = {
+	path: string | null;
+	available: boolean;
+	reason: string | null;
+};
+
+/**
+ * `GET /v1/desktop/voice` (the frozen contract). `settings.max_spoken_chars` is the
+ * server's own cap on what it will synthesise; the renderer never trims text.
+ */
+export type DesktopVoiceState = {
+	active: DesktopVoiceActive;
+	stt: DesktopVoicePathReport;
+	tts: DesktopVoicePathReport;
+	settings: { max_spoken_chars: number };
+};
+
+/**
+ * `POST /v1/desktop/voice`'s answer. `replaced` is the session that LOST the slot
+ * to this enable - the switch is one atomic swap on the server, so this is the
+ * only place the renderer learns that A went off because B came on.
+ */
+export type DesktopVoiceControlResult = {
+	active: DesktopVoiceActive;
+	replaced: string | null;
+};

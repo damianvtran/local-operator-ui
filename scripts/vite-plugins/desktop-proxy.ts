@@ -319,7 +319,18 @@ export function desktopProxyPlugin(): Plugin {
 						res.end(JSON.stringify(result.body));
 					} else {
 						res.setHeader("Content-Type", "application/json");
-						res.end(JSON.stringify({ detail: result.detail }));
+						/*
+						 * A voice refusal keeps its declared code in the core's envelope
+						 * shape, so the renderer's reader (`desktopMedia`) recovers the
+						 * same `voiceCode` main's relay hands it directly.
+						 */
+						res.end(
+							JSON.stringify({
+								detail: result.voiceCode
+									? { code: result.voiceCode, text: result.detail }
+									: result.detail,
+							}),
+						);
 					}
 					return;
 				}

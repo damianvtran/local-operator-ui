@@ -16,6 +16,7 @@ import {
 	desktopRequestDeadlineDetail,
 	desktopRequestTimeoutMs,
 	isDesktopRefusalCode,
+	isVoiceRefusalCode,
 } from "../../../../../shared/desktop-contract";
 import {
 	SESSION_IS_REMOTE_CAUSE_BUILD_BEHIND,
@@ -829,6 +830,10 @@ export async function desktopMedia(
 					: detail === DESKTOP_MACHINE_DETAIL.noCredential
 						? DESKTOP_REFUSAL_CODE.noCredential
 						: undefined,
+			// The same op-scoped pass-through main's relay applies (`VOICE_REFUSAL_CODES`).
+			...(request.op.startsWith("voice.") && isVoiceRefusalCode(declaredCode)
+				? { voiceCode: declaredCode }
+				: {}),
 		};
 	}
 	if (type.includes("application/json")) {

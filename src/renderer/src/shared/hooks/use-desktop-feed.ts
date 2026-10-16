@@ -125,6 +125,14 @@ export type DesktopFeedConnection = {
 	 */
 	codeRequestsRevision: { sessionId: string; revision: number } | null;
 	/**
+	 * The voice slot as the last `voice` frame stated it (`docs/design/
+	 * session-voice.md`), or `undefined` before the first one - which is also what
+	 * a backend without `features.voice` gives forever. `null` is a real value:
+	 * voice is off everywhere. Exposed rather than acted on, like the revisions
+	 * above: the voice controller owns what the slot means.
+	 */
+	voiceActive: { session_id: string; enabled_at: number } | null | undefined;
+	/**
 	 * The last `config` frame, or null before the first one - which is also the
 	 * answer an older backend gives forever, so a consumer guards on null and a
 	 * frame that never arrives changes nothing.
@@ -166,6 +174,9 @@ export function useDesktopFeed(): DesktopFeedConnection {
 		sessionId: string;
 		revision: number;
 	} | null>(null);
+	const [voiceActive, setVoiceActive] = useState<
+		{ session_id: string; enabled_at: number } | null | undefined
+	>(undefined);
 	const [configChange, setConfigChange] = useState<{
 		changedKeys: string[];
 		language: string;
@@ -306,6 +317,10 @@ export function useDesktopFeed(): DesktopFeedConnection {
 			 * decides what to invalidate and whether the change is worth announcing
 			 * (slice B1).
 			 */
+			if (frame.type === "voice") {
+				setVoiceActive(frame.payload.active ?? null);
+				return;
+			}
 			if (frame.type === "config") {
 				setConfigChange({
 					changedKeys: frame.payload.changed_keys,
@@ -337,5 +352,6 @@ export function useDesktopFeed(): DesktopFeedConnection {
 		authoringReconnectRevision,
 		codeRequestsRevision,
 		configChange,
+		voiceActive,
 	};
 }
