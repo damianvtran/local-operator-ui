@@ -1,5 +1,8 @@
 import { PANEL_RAIL_WIDTH_PX } from "@features/chat/chat-sidebar-layout";
-import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import {
+	EMPTY_RIGHT_SLOT_ROUTE,
+	useUiPreferencesStore,
+} from "@shared/store/ui-preferences-store";
 import { type FC, useLayoutEffect } from "react";
 import { PanelRail, type PanelRailProps } from "./panel-rail";
 
@@ -19,8 +22,8 @@ import { PanelRail, type PanelRailProps } from "./panel-rail";
  * facts the rail's lit state is built on (`rightSlotRoute`); a story that draws its
  * own row publishes nothing, and an unpublished route is "nothing is drawable", so
  * a rail over an open pane would photograph unlit. The frame therefore publishes
- * the facts its own props imply (a run model means run details, a session id means
- * a conversation), exactly as `chat-content` derives them from the same values.
+ * the facts its own props imply (a session id means a conversation), exactly as
+ * `chat-content` derives them from the same value.
  *
  * It lives beside the rail rather than in a `.stories` file so that stories in
  * other features can import it without importing a story.
@@ -32,48 +35,23 @@ export const PanelRailFrame: FC<Partial<PanelRailProps>> = ({
 	listOnScreen = false,
 	readerChildId = null,
 	browserAttentionCount = 0,
-	/*
-	 * THE ASKS ITEM IS OPT-IN (#896), unlike the four route-gated siblings. Whether
-	 * a host offers a door is the APP's fact (`published`/`answered`), and a frame
-	 * that cannot know it must not pretend one was offered - so the default is
-	 * ABSENT, and a story that means to photograph the fifth item passes
-	 * `askOffered`. The scope defaults to `session` because the frame's own route
-	 * default has a conversation, exactly as `sessionId` does.
-	 */
-	askOffered = false,
+	/* The scope defaults to `session` because the frame's own route default has a
+	   conversation, exactly as `sessionId` does. */
 	askCount = 0,
 	askScope = "session",
 	consoleUnseenCount = 0,
 	consoleUnseenPulsing = false,
 	fileCount = 0,
-	codeOffered = false,
 	codeOpened = 0,
 	codeMentioned = 0,
 	codeAttention = null,
 }) => {
 	const setRightSlotRoute = useUiPreferencesStore((s) => s.setRightSlotRoute);
-	const hasRunDetails = runDetails !== null;
 	const hasSession = sessionId !== null;
 	useLayoutEffect(() => {
-		setRightSlotRoute({
-			mounted: true,
-			runDetails: hasRunDetails,
-			session: hasSession,
-			codeReview: true,
-			/* The frame's own prop IS the offer (issue #928): a story that does not
-			   pass `askOffered` publishes a route whose ask chord is inert, exactly
-			   as the real host without a door would. */
-			asksOffered: askOffered,
-		});
-		return () =>
-			setRightSlotRoute({
-				mounted: false,
-				runDetails: false,
-				session: false,
-				codeReview: false,
-				asksOffered: false,
-			});
-	}, [setRightSlotRoute, hasRunDetails, hasSession, askOffered]);
+		setRightSlotRoute({ mounted: true, session: hasSession });
+		return () => setRightSlotRoute(EMPTY_RIGHT_SLOT_ROUTE);
+	}, [setRightSlotRoute, hasSession]);
 	return (
 		<div
 			data-panel-rail-host=""
@@ -87,13 +65,11 @@ export const PanelRailFrame: FC<Partial<PanelRailProps>> = ({
 				listOnScreen={listOnScreen}
 				readerChildId={readerChildId}
 				browserAttentionCount={browserAttentionCount}
-				askOffered={askOffered}
 				askCount={askCount}
 				askScope={askScope}
 				consoleUnseenCount={consoleUnseenCount}
 				consoleUnseenPulsing={consoleUnseenPulsing}
 				fileCount={fileCount}
-				codeOffered={codeOffered}
 				codeOpened={codeOpened}
 				codeMentioned={codeMentioned}
 				codeAttention={codeAttention}
