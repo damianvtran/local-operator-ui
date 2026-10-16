@@ -25445,6 +25445,7 @@ async function scenePlainNewchatLifecycle(cdp) {
 			catalogueActivityHead: steadyState.catalogueActivityHead ?? false,
 			cataloguePageable: steadyState.cataloguePageable ?? false,
 			sessionCount: steadyState.sessionCount ?? null,
+			cataloguePinnedCount: steadyState.cataloguePinnedCount ?? null,
 		}),
 	);
 	const steadyFrame = await captureSettled(cdp, "plain-06-drained");
@@ -25476,11 +25477,91 @@ async function scenePlainNewchatLifecycle(cdp) {
 	);
 	check(
 		"the store holds the head page, not the legacy whole-catalogue read",
+		/*
+		 * EXACT FOR PINNED EXTRAS, NOT LOOSE FOR EVERY STORE (QA round 1, Q1). The
+		 * daemon appends pinned rows that fall off the page below the page's own rows
+		 * (the route's own docs: `len(sessions)` may exceed `limit`), so a bound on
+		 * `sessionCount` alone false-fails a correct read the moment one pin falls off
+		 * the page - QA measured 50 page rows + 1 off-page pin = 51, which this check
+		 * would have called a legacy read and failed. Subtracting the pinned count
+		 * keeps the bound tight where it matters: the legacy whole-catalogue read (the
+		 * 500 an early take's store held) still fails it, and an ordinary head page
+		 * passes with or without extras.
+		 */
 		typeof steadyState.sessionCount === "number" &&
-			steadyState.sessionCount <= LAZY_CATALOGUE_HEAD_PAGE,
-		`sessionCount=${steadyState.sessionCount}`,
-		`sessionCount=${steadyState.sessionCount} (<= ${LAZY_CATALOGUE_HEAD_PAGE} is the head page)`,
+			typeof steadyState.cataloguePinnedCount === "number" &&
+			steadyState.sessionCount - steadyState.cataloguePinnedCount <=
+				LAZY_CATALOGUE_HEAD_PAGE,
+		`sessionCount=${steadyState.sessionCount} pinnedCount=${steadyState.cataloguePinnedCount}`,
+		`sessionCount=${steadyState.sessionCount} minus ${steadyState.cataloguePinnedCount} pinned extra(s) (<= ${LAZY_CATALOGUE_HEAD_PAGE} is the head page)`,
 	);
+
+	/*
+	 * THE SCROLLED FRAME (design round 1, D1). The drained frame above proves
+	 * membership in the DOM; it cannot prove VISIBILITY. On this store the panel's
+	 * fold falls between the pinned row and the first TODAY row - the sidebar
+	 * columns of the before/after pair were pixel-identical, with the cured row
+	 * just past the scroller's edge - so the pair made a membership fix read as
+	 * "no visible change". This step scrolls the chats scroller until the subject
+	 * row sits about a third down the window and captures THAT state, reading back
+	 * where it landed rather than asserting the scroll it asked for. In the before
+	 * half the row is not in the DOM at all and the same step lands on the first
+	 * TODAY row instead: the pair then shows the same window position with and
+	 * without the conversation in it.
+	 */
+	const scrollShot = await cdp.evaluate(`(() => {
+		const rows = [...document.querySelectorAll('[data-sidebar-region="chats"] [data-session-row]')];
+		const subject = rows.find((el) => el.getAttribute("data-session-row") === ${JSON.stringify(sessionId)});
+		const target = subject ?? rows.find((el) => el.closest('[data-chat-section]')?.getAttribute("data-chat-section") === "today") ?? null;
+		if (!target) return { ok: false, reason: "no target row" };
+		let list = target.parentElement;
+		while (list && !String(list.className).includes("overflow-y-auto")) list = list.parentElement;
+		if (!list) return { ok: false, reason: "no scroller" };
+		const lr = list.getBoundingClientRect();
+		const tr = target.getBoundingClientRect();
+		list.scrollTop += tr.top - lr.top - lr.height * 0.3;
+		return { ok: true, isSubject: subject !== undefined, scrollTop: list.scrollTop, maxScroll: list.scrollHeight - list.clientHeight };
+	})()`);
+	await wait(450);
+	const scrolledRead = await cdp.evaluate(`(() => {
+		const rows = [...document.querySelectorAll('[data-sidebar-region="chats"] [data-session-row]')];
+		const subject = rows.find((el) => el.getAttribute("data-session-row") === ${JSON.stringify(sessionId)});
+		const pick = subject ?? rows.find((el) => el.closest('[data-chat-section]')?.getAttribute("data-chat-section") === "today");
+		const scroller = document.querySelector('[data-sidebar-region="scroller"]');
+		if (!pick || !scroller) return null;
+		const sr = scroller.getBoundingClientRect();
+		const pr = pick.getBoundingClientRect();
+		return {
+			isSubject: subject !== undefined,
+			scrollTop: scroller.scrollTop,
+			clientHeight: scroller.clientHeight,
+			scrollHeight: scroller.scrollHeight,
+			rowTop: pr.top,
+			rowBottom: pr.bottom,
+			windowTop: sr.top,
+			windowBottom: sr.bottom,
+		};
+	})()`);
+	note(
+		"phase 6 scrolled read",
+		JSON.stringify({ at: at(), scrollShot, scrolledRead }),
+	);
+	check(
+		"the scrolled frame is taken with the list's subject (or first TODAY) row inside the window",
+		scrolledRead !== null &&
+			scrolledRead.rowBottom > scrolledRead.windowTop &&
+			scrolledRead.rowTop < scrolledRead.windowBottom,
+		`scrolledRead=${JSON.stringify(scrolledRead)}`,
+		`scrolledRead=${JSON.stringify(scrolledRead)}`,
+	);
+	const scrolledFrame = await captureSettled(cdp, "plain-06-scrolled");
+	note("frame", JSON.stringify(scrolledFrame));
+	await cdp.evaluate(`(() => {
+		const scroller = document.querySelector('[data-sidebar-region="scroller"]');
+		if (scroller) scroller.scrollTop = 0;
+		return scroller ? scroller.scrollTop : null;
+	})()`);
+	await wait(250);
 
 	/*
 	 * INVARIANT 1, MEASURED: the conversation the reader is IN, even one the
