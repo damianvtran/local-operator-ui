@@ -414,6 +414,15 @@ export const AskDrawer = ({
 			hadRows.current = true;
 			return;
 		}
+		/*
+		 * AN UNREAD FRAME IS NEVER A JUDGEMENT about the queue - not on a mount (the switch
+		 * case below) and not mid-life either. It is checked BEFORE the emptying arm (agent
+		 * review m3 of the always-visible rail): a reconnect gap nulls the session frame
+		 * for ~1.5-4 s, and reading that as "the rows went away" closed a drawer the user
+		 * was answering in. `hadRows` is left as it was, so the frame that comes back
+		 * decides: rows keep the drawer, an empty queue is a real emptying and closes it.
+		 */
+		if (frameUnread) return;
 		const wasPopulated = hadRows.current === true;
 		hadRows.current = false;
 		if (wasPopulated) {
@@ -421,12 +430,7 @@ export const AskDrawer = ({
 			onClose();
 			return;
 		}
-		/*
-		 * A MOUNT over a queue with nothing to show: the switch case. Never a judgement about the
-		 * read - an unread frame is not an empty one, and the map it would close on is
-		 * exactly the read's own pending state.
-		 */
-		if (frameUnread) return;
+		/* A MOUNT over a queue with nothing to show: the switch case. */
 		if (openedByDoor.current) return;
 		closedOnce.current = true;
 		onClose();
@@ -465,6 +469,8 @@ export const AskDrawer = ({
 	 * promise in this file.
 	 */
 	const requestedOpen = useRef(false);
+	/* Whether that request came from the `…` menu (vs a chord); see the entry effect. */
+	const viaMenu = useRef(false);
 	/*
 	 * THE MENU'S RESTORE, ANSWERED (round-1 Q1, second half).
 	 *
@@ -666,7 +672,7 @@ export const AskDrawer = ({
 		 * this check sits ABOVE the bootstrap guard rather than inside the
 		 * consumption branch.
 		 */
-		if (requestedOpen.current) armMenuClaim();
+		if (requestedOpen.current && viaMenu.current) armMenuClaim();
 		if (wasBootstrapped.current) return;
 		const active = document.activeElement;
 		if (active === null || typeof active.matches !== "function") return;
@@ -690,9 +696,17 @@ export const AskDrawer = ({
 		 * below. A request for the other queue is left alone: the drawer that was
 		 * asked for answers it.
 		 */
-		if (askOpenIntent === scope) {
+		if (askOpenIntent?.scope === scope) {
 			clearAskOpenIntent(scope);
 			requestedOpen.current = true;
+			/*
+			 * A CHORD'S REQUEST HAS NO MENU BEHIND IT (the always-visible rail, Q1): it
+			 * latches the mount as the user's and moves the keyboard in, but there is
+			 * no `…` trigger to give the keyboard back to and no Radix restore to
+			 * answer - so neither the return target nor the claim below is armed for
+			 * it. A stranded close then takes the drawer's no-door path (the composer).
+			 */
+			viaMenu.current = askOpenIntent.via === "menu";
 			/*
 			 * THE RETURN TARGET IS RECORDED AT THE PRESS, not at the resolve: the
 			 * trigger is what the keyboard ends on once Radix's own restore lands,
@@ -701,9 +715,11 @@ export const AskDrawer = ({
 			 * move and a StrictMode pass tears the mount down once. See
 			 * `MENU_TRIGGER_SELECTOR`.
 			 */
-			doorRef.current = menuReturnTarget(active);
-			/* And the claim is armed for the restore that is coming (see `claimRef`). */
-			armMenuClaim();
+			if (viaMenu.current) {
+				doorRef.current = menuReturnTarget(active);
+				/* And the claim is armed for the restore that is coming (see `claimRef`). */
+				armMenuClaim();
+			}
 		}
 		const requested = door === null && requestedOpen.current;
 		/*
@@ -765,7 +781,7 @@ export const AskDrawer = ({
 		if (door !== null) doorRef.current = door;
 		/* The request's target was recorded when the request was SEEN (above); this
 		 * is the fallback for a paint that could not find one then. */
-		doorRef.current ??= menuReturnTarget(active);
+		if (viaMenu.current) doorRef.current ??= menuReturnTarget(active);
 		if (door === null && !keyboardLeftOnMenuPress(active)) return;
 		/*
 		 * THE LIST'S FIRST CONTROL, not the bar's and not the filter's (UX round 1, U4;

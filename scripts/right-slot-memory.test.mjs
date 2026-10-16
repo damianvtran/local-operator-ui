@@ -636,14 +636,15 @@ test("(H) setActiveSession then an open writes only the conversation named", () 
 });
 
 /*
- * (I) THE #868 REGRESSION PIN. A remembered run panel on a conversation with no
- * run details still resolves to NOTHING DRAWN and a zero width: the claim is not a
- * promise, and the memory must not re-open the reserved band #868 closed. When the
- * route CAN draw it, the width is the slot's one default (`DEFAULT_RIGHT_SLOT_WIDTH`,
- * #910's #872 follow-up: unset resolves to one number for every pane, not the old
- * per-pane `DEFAULT_RUN_PANEL_WIDTH`).
+ * (I) A REMEMBERED RUN PANEL ON A CONVERSATION WITH NO RUN DETAILS DRAWS ITS
+ * NOTICE (the always-visible rail, D2). It used to resolve to nothing drawn (#868):
+ * the run panel's mount needed a model, so a claim without one would have reserved
+ * an empty band. The slot now mounts a notice there ("Reading this conversation's
+ * run…"), so the claim is drawn at the slot's one default width
+ * (`DEFAULT_RIGHT_SLOT_WIDTH`) from the moment the conversation opens - no reflow
+ * when its frame lands. A route with no chat surface still draws nothing.
  */
-test("(I) a remembered run panel on a conversation without details draws nothing (#868)", () => {
+test("(I) a remembered run panel draws on a conversation whose frame is not read yet (D2)", () => {
 	reset();
 	sessions().setActiveSession("I-A");
 	prefs().setRunPanelOpen(true);
@@ -653,13 +654,13 @@ test("(I) a remembered run panel on a conversation without details draws nothing
 	assert.equal(prefs().isRunPanelOpen, true, "and A's is remembered");
 
 	useUiPreferencesStore.setState({
-		rightSlotRoute: { mounted: true, runDetails: false, session: true },
+		rightSlotRoute: { mounted: false, session: false },
 	});
 	assert.equal(resolveDrawnRightSlotPane(prefs()), null);
 	assert.equal(resolveRightSlotWidth(1400, prefs()), 0);
 
 	useUiPreferencesStore.setState({
-		rightSlotRoute: { mounted: true, runDetails: true, session: true },
+		rightSlotRoute: { mounted: true, session: true },
 	});
 	assert.equal(resolveDrawnRightSlotPane(prefs()), "run");
 	assert.equal(resolveRightSlotWidth(1400, prefs()), DEFAULT_RIGHT_SLOT_WIDTH);
@@ -676,7 +677,7 @@ test("(J) the shared width is identical across a switch between two remembered p
 	 * pane (#868), so an unmounted route resolves 0 whatever the memory says.
 	 */
 	useUiPreferencesStore.setState({
-		rightSlotRoute: { mounted: true, runDetails: true, session: true },
+		rightSlotRoute: { mounted: true, session: true },
 	});
 	prefs().setRightSlotWidth(700);
 	sessions().setActiveSession("J-A");
@@ -845,44 +846,26 @@ test("(Q) the follower's key is the pane's identity, and only an admission carri
 });
 
 /*
- * (L) A LATE CAPABILITY REACHES THE SLOT (agent review round 2, M1). The route
- * facts arrive in one publish, but `codeReview` is `codeReviewEnabled` in
- * `chat-content`, which starts FALSE while `capabilities.data` is pending; the
- * later `true` publish must not be dropped as a duplicate by the setter's
- * equality guard, or `resolveDrawnRightSlotPane` never learns the pane may draw
- * - the rail item stays unlit on F6's cold-relaunch case even though the pane
- * itself mounts (its gate reads the capability directly). The round-1
- * pane-slot tests pinned the publisher by source regex and stayed green through
- * exactly this defect, which is why this cell drives the real setter.
+ * (L) THE CODE PANE DRAWS BEFORE THE CAPABILITY IS KNOWN (the always-visible rail,
+ * D3). It used to wait on a `codeReview` route fact that started false while
+ * `capabilities.data` was pending (agent review round 2, M1 pinned the late
+ * `true` getting through). The capability is no longer a route fact: the slot
+ * draws the pane on any chat route, and the pane itself says "checking" until the
+ * capability answers - so the lit item and the drawn column agree from the first
+ * frame, through the real setter.
  */
-test("(L) a codeReview fact arriving after the other route facts reaches the slot (M1)", () => {
+test("(L) a remembered code review pane draws on a chat route whatever the capability (D3)", () => {
 	reset();
 	useUiPreferencesStore.setState({
-		rightSlotRoute: { mounted: true, runDetails: true, session: true },
+		rightSlotRoute: { mounted: false, session: false },
 	});
 	prefs().setCodeReviewPaneOpen(true);
 	assert.equal(
 		resolveDrawnRightSlotPane(prefs()),
 		null,
-		"the claim alone draws nothing while the capability is unknown",
+		"no chat surface, nothing drawn",
 	);
-	prefs().setRightSlotRoute({
-		mounted: true,
-		runDetails: true,
-		session: true,
-		codeReview: false,
-	});
-	prefs().setRightSlotRoute({
-		mounted: true,
-		runDetails: true,
-		session: true,
-		codeReview: true,
-	});
-	assert.equal(
-		prefs().rightSlotRoute.codeReview,
-		true,
-		"the later true is not a duplicate of the earlier false",
-	);
+	prefs().setRightSlotRoute({ mounted: true, session: true });
 	assert.equal(resolveDrawnRightSlotPane(prefs()), "code");
 	prefs().setRightSlotWidth(DEFAULT_RIGHT_SLOT_WIDTH);
 	assert.equal(
