@@ -2739,6 +2739,41 @@ test("retain outlives a finish, and a terminal scope refuses everything but clos
 
 // ---- the dispatcher, with a fake browser -----------------------------------
 
+test("LOH-13: Home returns the active tab to the start state and open-link creates a plain user tab", async () => {
+	const { host, registry } = makeHost();
+	await host.newTab();
+	await host.navigateActive("https://example.com/page");
+	assert.equal(
+		registry.activeTab.view.webContents.getURL(),
+		"https://example.com/page",
+	);
+	await host.goHomeActive();
+	assert.equal(
+		registry.activeTab.view.webContents.getURL(),
+		"about:blank",
+		"Home is the start state a new tab opens on",
+	);
+	const before = registry.snapshot().length;
+	const opened = await host.openLinkInNewTab("https://example.org/next");
+	assert.equal(opened.url, "https://example.org/next");
+	assert.equal(registry.snapshot().length, before + 1);
+	const created = registry.activeTab;
+	assert.equal(created.owner, "user");
+	assert.equal(
+		created.nonce,
+		null,
+		"a context-menu tab mints no agent capability",
+	);
+	await assert.rejects(
+		() => host.openLinkInNewTab("file:///etc/passwd"),
+		(error) => error.code === "nav_failed",
+	);
+	await assert.rejects(
+		() => host.openLinkInNewTab("javascript:void(0)"),
+		(error) => error.code === "nav_failed",
+	);
+});
+
 function makeHost(overrides = {}) {
 	// `removed` and `notified` travel too: the batch-close tests count the webContents
 	// RELEASES and the registry's own NOTIFICATIONS, which are the two things the design's
