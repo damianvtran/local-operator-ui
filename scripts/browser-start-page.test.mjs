@@ -131,8 +131,17 @@ import { BrowserSurface } from "./src/renderer/src/features/browser/components/b
  * also the state that proves the fix, because the old gate hid the start page
  * against exactly this projection.
  */
-export function mount(container) {
-	const startState = {
+export function mount(container, options = {}) {
+	const { refuse = true } = options;
+	/*
+	 * A MUTABLE PROJECTION, because F6 needs a real unmount and F3 needs two tabs.
+	 * A fixed startState cannot produce either: to pin restoreAddress the start
+	 * page must UNMOUNT between the refusal and the re-read (otherwise React keeps
+	 * the draft and removing the seed still passes), and to pin the per-tab keying a
+	 * fresh tab must become active while the refused tab keeps its own note.
+	 */
+	const START = { url: "about:blank", title: "", loading: false };
+	const state = {
 		tabs: [
 			{
 				tabId: 1,
@@ -157,30 +166,34 @@ export function mount(container) {
 		approvals: [],
 		navFailure: null,
 	};
-	let refused = [];
-	/*
-	 * A FAKE BRIDGE WIDE ENOUGH TO MOUNT THE REAL SURFACE. The surface is a large
-	 * component and reads many of the browser bridge's members across its own
-	 * effects (the rect reporter, the view-visibility policy, the chord reporter,
-	 * the projection subscription), so enumerating them here would be a second,
-	 * drifting copy of the preload contract — and each omission would surface as a
-	 * thrown "TypeError" from inside an effect rather than as a test failure about
-	 * this finding. The members that MATTER to this test are the explicit ones
-	 * ("state", the subscriptions, "navigate"); everything else answers a resolved
-	 * no-op, which is what a host on the start state would answer anyway.
-	 */
+	const refused = [];
+	/** Republish what state now holds, so every mounted reader sees the change. */
+	let notify = () => {};
 	const explicit = {
-		state: async () => startState,
+		state: async () => structuredClone(state),
 		// The projection store subscribes on the 0 -> 1 consumer edge and stops on
-		// the way back, so these have to answer an unsubscribe function.
-		onStateChanged: () => () => {},
+		// the way back, so these have to answer an unsubscribe function. The app's own
+		// push is what notify imitates: a real host fires it on every change, and
+		// without it a mutated state would never reach the surface.
+		onStateChanged: (callback) => {
+			notify = callback;
+			return () => {
+				notify = () => {};
+			};
+		},
+		// The chord reporter subscribes the same way and CALLS the returned
+		// unsubscribe on unmount, so it cannot take the Proxy's default (which
+		// answers a promise): it needs a real function back.
+		onChord: () => () => {},
 		onConsentChanged: () => () => {},
 		onConsentAttention: () => () => {},
-		// REJECTS for an unparseable address, exactly as the preload forwards main's
-		// "nav_failed" ("that is not a URL", host.ts) for a stray string like
-		// "foo bar".
+		// REJECTS for an unparseable address when asked to, exactly as the preload
+		// forwards main's "nav_failed" ("that is not a URL", host.ts) for a stray
+		// string like "foo bar". refuse:false models the ACCEPTED case (F4): the
+		// invoke resolves, and main has not yet pushed loading.
 		navigate: async (url) => {
 			refused.push(url);
+			if (!refuse) return;
 			throw new Error(
 				"Error invoking remote method 'browser-navigate': Error: that is not a URL",
 			);
@@ -192,17 +205,66 @@ export function mount(container) {
 				key in target ? target[key] : () => Promise.resolve(undefined),
 		}),
 	};
-	const root = createRoot(container);
-	root.render(
+	const surface = () =>
 		createElement(BrowserSurface, {
 			tabScope: "all",
 			requestScope: "all",
 			hostSessionId: null,
 			surfaceTag: "browser-route",
 			dockSurfaceTag: "browser-route-dock",
-		}),
-	);
-	return { refused: () => refused };
+		});
+	const root = createRoot(container);
+	root.render(surface());
+	return {
+		refused: () => refused,
+		/** Unmount everything, as leaving the route (or a tab switch that unmounts
+		 * the start page) does. Used to prove restoreAddress is what puts the
+		 * address back rather than a surviving draft (F6). */
+		unmount: () => root.unmount(),
+		/** Mount again from scratch, with the SAME bridge and state. */
+		remount: () => {
+			const again = createRoot(container);
+			again.render(surface());
+			return again;
+		},
+		/** Land a real page in tab 1, as main's own push would report it. */
+		land: (url) => {
+			state.tabs[0].url = url;
+			state.tabs[0].title = "Loaded";
+			state.url = url;
+			state.title = "Loaded";
+			notify();
+		},
+		/** Open + activate a FRESH tab, the cross-tab case F3 is about. */
+		openFreshTab: () => {
+			state.tabs[0].active = false;
+			state.tabs.push({
+				tabId: 2,
+				title: "",
+				url: "about:blank",
+				owner: "user",
+				sessionId: null,
+				active: true,
+				restored: false,
+				handedOver: false,
+				failed: false,
+				loading: false,
+			});
+			state.activeTabId = 2;
+			state.url = START.url;
+			state.title = START.title;
+			notify();
+		},
+		/** Switch back to tab 1, whose own note must still be there. */
+		activateTab: (tabId) => {
+			for (const tab of state.tabs) tab.active = tab.tabId === tabId;
+			state.activeTabId = tabId;
+			const current = state.tabs.find((tab) => tab.tabId === tabId);
+			state.url = current.url;
+			state.title = current.title;
+			notify();
+		},
+	};
 }
 `;
 
@@ -239,46 +301,62 @@ try {
 	await unlink(bundlePath).catch(() => {});
 }
 
-/** What the surface is showing right now, read the way QA read it. */
-function reading() {
-	const field = document.querySelector(
+/**
+ * What the surface is showing right now, read the way QA read it.
+ *
+ * SCOPED TO ONE CONTAINER, and that is not tidiness: every test here adds its own
+ * mount point, so a document-wide query would find a PREVIOUS test's start page and
+ * the readings would be about the wrong tree entirely (measured — the F3 fresh-tab
+ * reading came back with the earlier test's "foo bar").
+ */
+function reading(container) {
+	const within = container ?? document;
+	const field = within.querySelector(
 		'[data-tour-tag="browser-start-page-address"]',
 	);
 	return {
-		startPage: !!document.querySelector('[data-tour-tag="browser-start-page"]'),
+		startPage: !!within.querySelector('[data-tour-tag="browser-start-page"]'),
 		fieldValue: field ? field.value : null,
 		// `textContent`, not `innerText`: jsdom implements the first and leaves the
 		// second undefined, which is exactly how this reading came back empty.
-		band: document.querySelector('[data-tour-tag="browser-error"]')
-			? document.querySelector('[data-tour-tag="browser-error"]').textContent
+		band: within.querySelector('[data-tour-tag="browser-error"]')
+			? within.querySelector('[data-tour-tag="browser-error"]').textContent
 			: "",
 	};
 }
 
 async function flush() {
-	// Two turns: the refusal resolves a promise chain (run -> then), and the
-	// projection read that follows it is a second await. jsdom's microtask queue
-	// drains between them.
-	await act(async () => {
-		await new Promise((resolve) => setImmediate(resolve));
-	});
-	await act(async () => {
-		await new Promise((resolve) => setImmediate(resolve));
-	});
+	// Several turns: a refusal resolves a promise chain (run -> then), the
+	// projection read that follows it is a second await, and a state push
+	// (onStateChanged -> refreshBrowserProjection -> publish -> re-render) adds a
+	// third. jsdom's microtask queue drains between them, so draining generously
+	// here is what keeps the assertions about the surface rather than about timing.
+	for (let i = 0; i < 6; i++) {
+		await act(async () => {
+			await new Promise((resolve) => setImmediate(resolve));
+		});
+	}
+}
+
+/** A clean mount point per test: reusing one container across `createRoot` calls is
+ * what React warns about and what made the remount cases fight each other. */
+function freshContainer() {
+	const host = document.createElement("div");
+	document.body.appendChild(host);
+	return host;
 }
 
 test("an invalid address from the START PAGE's own field returns to the start page with the address restored", async () => {
-	const container = document.getElementById("root");
-	container.innerHTML = "";
+	const container = freshContainer();
 	const handle = mount(container);
 	await flush();
 
 	assert.ok(
-		reading().startPage,
+		reading(container).startPage,
 		"the fresh tab shows the start page before anything is attempted",
 	);
 	assert.equal(
-		reading().fieldValue,
+		reading(container).fieldValue,
 		"",
 		"and its field starts empty, so a restored value below is the fix rather than a leftover",
 	);
@@ -310,7 +388,7 @@ test("an invalid address from the START PAGE's own field returns to the start pa
 		["foo bar"],
 		"the typed address reached main through the surface's own navigate path",
 	);
-	const after = reading();
+	const after = reading(container);
 	assert.ok(
 		after.startPage,
 		`the start page comes back after the refusal, so the user has a surface to retry from (reading: ${JSON.stringify(after)})`,
@@ -324,4 +402,166 @@ test("an invalid address from the START PAGE's own field returns to the start pa
 		after.band.length > 0,
 		`and the refusal is still stated in the band above (band: ${JSON.stringify(after.band)})`,
 	);
+	// Unmount so the SHARED projection store's subscription stops: it is a
+	// module-level singleton, and a tree left mounted keeps the next test's bridge
+	// from ever being registered (its `onStateChanged` is only called on the 0 -> 1
+	// consumer edge).
+	await act(async () => {
+		handle.unmount();
+	});
+});
+
+/*
+ * The shared driver for the three cases below: type an address into the start
+ * page's own field and submit it. Extracted because every test here drives the
+ * same control, and a second copy of the event sequence is a second thing to keep
+ * in step with the component.
+ */
+async function submitFromStartField(container, value) {
+	const field = container.querySelector(
+		'[data-tour-tag="browser-start-page-address"]',
+	);
+	const setter = Object.getOwnPropertyDescriptor(
+		dom.window.HTMLInputElement.prototype,
+		"value",
+	).set;
+	await act(async () => {
+		setter.call(field, value);
+		field.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+	});
+	await act(async () => {
+		field
+			.closest("form")
+			.dispatchEvent(
+				new dom.window.Event("submit", { bubbles: true, cancelable: true }),
+			);
+	});
+}
+
+test("the restored address SURVIVES the page being destroyed and rebuilt (F6, round 3)", async () => {
+	// WHY THIS IS A SEPARATE TEST FROM F1. The F1 test leaves the start page
+	// MOUNTED across the refusal, and React keeps a mounted component's state — so
+	// its field would still hold the draft even if the `restoreAddress` seeding did
+	// not exist, and the test would pass with that seeding deleted. This test
+	// destroys the page between the refusal and the re-read, which is the only way
+	// to make the seed the thing under test.
+	//
+	// HOW THE PAGE IS DESTROYED, AND WHY NOT BY UNMOUNTING THE SURFACE. Unmounting
+	// `BrowserSurface` would take the HOOK's state with it (the refused note lives
+	// there), so the address could not come back for any implementation — that would
+	// assert the wrong thing. The real unmount is a TAB SWITCH: the surface renders
+	// one start page, for the active tab, keyed by that tab (`browser-surface.tsx`),
+	// so making another tab active destroys tab 1's page instance and switching back
+	// builds a fresh one with an empty draft. The address must therefore come from
+	// the seeded note. This is also a real user flow, not a synthetic one.
+	const container = freshContainer();
+	const handle = mount(container);
+	await flush();
+
+	await submitFromStartField(container, "foo bar");
+	await flush();
+	assert.equal(
+		reading(container).fieldValue,
+		"foo bar",
+		"the refusal restored the address",
+	);
+
+	// Tab 2 becomes active: tab 1's start page is destroyed.
+	await act(async () => {
+		handle.openFreshTab();
+	});
+	await flush();
+
+	// Back to tab 1: a BRAND NEW page instance (empty draft) whose field can only
+	// hold the address if it was seeded from the note.
+	await act(async () => {
+		handle.activateTab(1);
+	});
+	await flush();
+	assert.equal(
+		reading(container).fieldValue,
+		"foo bar",
+		"the address is seeded into the rebuilt page; with the seed removed this reads empty",
+	);
+	await act(async () => {
+		handle.unmount();
+	});
+});
+
+test("a refused address does NOT leak into a fresh tab, and the refused tab keeps its own (F3, round 3)", async () => {
+	// THE CROSS-TAB LEAK, exactly as the reviewer reproduced it: refuse an address on
+	// tab 1, then open a fresh tab and read its start field. With a hook-level note
+	// the fresh tab is seeded with tab 1's address; keyed to its own tab it starts
+	// EMPTY, and switching back to tab 1 still restores tab 1's address.
+	const container = freshContainer();
+	const handle = mount(container);
+	await flush();
+
+	await submitFromStartField(container, "foo bar");
+	await flush();
+	assert.equal(
+		reading(container).fieldValue,
+		"foo bar",
+		"tab 1 restored its refused address",
+	);
+
+	// A fresh tab becomes active: its field must be empty.
+	await act(async () => {
+		handle.openFreshTab();
+	});
+	await flush();
+	const fresh = reading(container);
+	assert.ok(fresh.startPage, "the fresh tab shows its own start page");
+	assert.equal(
+		fresh.fieldValue,
+		"",
+		`a fresh tab starts empty rather than inheriting another tab's refused address (reading: ${JSON.stringify(fresh)})`,
+	);
+
+	// Back to tab 1: its own address is still there.
+	await act(async () => {
+		handle.activateTab(1);
+	});
+	await flush();
+	assert.equal(
+		reading(container).fieldValue,
+		"foo bar",
+		"and the tab that made the attempt still restores its own address",
+	);
+	await act(async () => {
+		handle.unmount();
+	});
+});
+
+test("an ACCEPTED navigation does not linger under the start page (F4, round 3)", async () => {
+	// The window F4 is about: the user submits and main ACCEPTS, but the projection
+	// still says about:blank / loading:false until main's own did-start-loading push
+	// arrives. The start page must not paint over the navigation the user just
+	// launched, and the pending note — set synchronously on submit — is what closes
+	// that window.
+	const container = document.getElementById("root");
+	container.innerHTML = "";
+	const handle = mount(container, { refuse: false });
+	await flush();
+	assert.ok(
+		reading(container).startPage,
+		"the fresh tab shows the start page first",
+	);
+
+	await submitFromStartField(container, "example.com");
+	await flush();
+
+	assert.deepEqual(
+		handle.refused(),
+		["example.com"],
+		"the submit reached main",
+	);
+	const after = reading(container);
+	assert.ok(
+		!after.startPage,
+		`an accepted submit does not leave the start page over the navigation (reading: ${JSON.stringify(after)})`,
+	);
+	await act(async () => {
+		handle.unmount();
+	});
 });

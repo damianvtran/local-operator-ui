@@ -516,26 +516,31 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	// DOM under a hidden view, and the tab's own `about:blank` is untouched.
 	//
 	// WHAT ENDS IT. The gate reads the facts MAIN owns about the tab it is
-	// actually on: its url and its own per-tab `loading`. It deliberately does
-	// NOT read `chrome.pendingUrl` any more (F1, round 2). That note is cleared
-	// only by a landed non-blank url, so a REFUSED or invalid navigate — main's
-	// `nav_failed` for an unparseable or non-http(s) address, or an IPC
-	// rejection of a blank one — left it set with the tab back on `about:blank`:
-	// the start page stayed suppressed and the user was left with a blank
-	// rectangle and no surface to retry from. `activeTab.loading` says the same
-	// thing without outliving the attempt: while a page is on its way it is true
-	// and the start page stays away; the moment the attempt ends without a page,
-	// it is false and the surface comes back. Both terms are per-tab, so
-	// switching to a fresh `about:blank` tab shows its start page regardless of
-	// what any other tab is doing — the old note was hook-level and leaked across
-	// tabs.
+	// actually on — its url, its own per-tab `loading` — PLUS its own pending note
+	// for that same tab (`chrome.pendingUrl`, F3/F4 round 3).
 	//
-	// THE REFUSAL ITSELF IS STILL THE BAND'S. Like a load that started and then
-	// failed, a refused attempt puts its message in the band above; the start
-	// page's job here is only to be the thing the user can retry from, with the
-	// address they typed restored into its field (`chrome.refusedUrl`).
+	// THE PENDING TERM IS BACK, AND IT IS NOT THE ROUND-2 BUG. Round 2 removed it
+	// because the note then outlived a refused attempt (F1): cleared only by a
+	// landed non-blank url, it stayed set with the tab back on `about:blank`, so the
+	// start page was suppressed for good behind a blank view. Two things changed and
+	// make the term correct rather than dangerous. First, the note is RELEASED when
+	// an attempt is refused (`navigate` in the hook) and when a read shows the start
+	// state with nothing in flight (`refresh`) — so it can no longer outlive its
+	// attempt. Second, it is KEYED to the tab that made it (F3), so the hook only
+	// reports it for the active tab, and neither the round-2 leak across tabs nor a
+	// fresh tab reading another tab's state is possible.
+	//
+	// WHY IT IS NEEDED AT ALL (F4). Without it the start page lingered over an
+	// ACCEPTED navigation for the window between the user's submit and main's own
+	// `loading` push: the last projection still said `about:blank` and
+	// `loading:false` for that tab, so a page the user had just launched was
+	// painted over by the start surface. The note is set synchronously on submit, so
+	// it closes exactly that window.
 	const onStartPage =
-		activeTab !== null && isStartPageUrl(activeTab.url) && !activeTab.loading;
+		activeTab !== null &&
+		isStartPageUrl(activeTab.url) &&
+		!activeTab.loading &&
+		!chrome.pendingUrl;
 	const showingNewTab =
 		onStartPage && navFailure === null && !overlaySuppressing;
 	useSuppressBrowserView(onStartPage, "browser-start-page");
@@ -927,7 +932,17 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 						</output>
 					)}
 					{showingNewTab && (
+						/*
+						 * KEYED BY TAB (F3, round 3). The field's draft is mount-local state, so a
+						 * tab switch that kept this component mounted would carry the previous
+						 * tab's typed text into the new tab's field — the same cross-tab leak the
+						 * hook's note keying closes one layer up, and it has to be closed here too
+						 * because this is where the text actually lives. A key change remounts the
+						 * component, so each tab gets its own field seeded from its own
+						 * `refusedUrl` (which is itself already filtered to the active tab).
+						 */
 						<BrowserNewTab
+							key={activeTab?.tabId ?? "none"}
 							restoreAddress={chrome.refusedUrl}
 							onNavigate={(url) => void chrome.navigate(url)}
 						/>
