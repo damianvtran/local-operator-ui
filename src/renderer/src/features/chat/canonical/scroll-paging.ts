@@ -345,6 +345,43 @@ export type PagingState = {
 	 */
 	travelledSinceLatch: boolean;
 	/**
+	 * Whether ANY notch in the CURRENT act reported the reader's own travel.
+	 *
+	 * The discriminator that separates the reported snag from the operator's
+	 * earlier report, and the reason it is a field rather than a local: both are
+	 * "push at the hard top inside one act", and the act budget refused them
+	 * identically. What differs is how the reader GOT to the wall. A fling
+	 * travelling under momentum crosses wall after wall as each reveal mounts the
+	 * next one -- its notches move the content, and answering it once per wall is
+	 * the loop (`MAX_ACT_ASKS`' own case, "a fling that crosses two walls spends
+	 * exactly one fetch"). The snag is the opposite reader: pinned so hard the
+	 * content CANNOT move, whose notches report zero travel for the whole act.
+	 *
+	 * Cleared where the other act fields are cleared (a notch that opens a new
+	 * act), and set by ANY in-act notch that reported travel -- so an act that
+	 * travelled even once keeps the original refusal, and the act budget's
+	 * meaning for a travelling gesture is untouched.
+	 */
+	actTravelled: boolean;
+	/**
+	 * The standing demand was armed by a CLAMPED PRESS at the wall.
+	 *
+	 * Provenance the stop-door needs and no other field carries. Two demands can
+	 * stand at the same edge with the same geometry and differ in where they came
+	 * from: one armed by a notch pressed against an edge that cannot move (the
+	 * snag -- its reader has nothing else to give), and one armed OFF the wall
+	 * that travelled on to the next one (rule A4's arrival, or a notch that left
+	 * the top and came back). Only the first is a reader standing still asking
+	 * again; the second already spent the act's round trip on its own arrival, and
+	 * "a demand armed off the wall survives the clamped notches it is swallowed
+	 * beside" pins that it is refused rather than spent.
+	 *
+	 * Set only by `noteInput`'s clamped-press arm, cleared by every other arm that
+	 * puts a demand up, and carried across a settle only while the demand itself
+	 * is retained.
+	 */
+	pressDemand: boolean;
+	/**
 	 * A reveal is OWED to the reader for the reveal that just settled: `decide`
 	 * will spend one without fresh input.
 	 *
@@ -441,6 +478,8 @@ export const initialPagingState = (): PagingState => ({
 	clampLatched: false,
 	actFetchSpent: false,
 	travelledSinceLatch: false,
+	actTravelled: false,
+	pressDemand: false,
 	pageWidenOwed: false,
 	turnedAround: false,
 	// Not `Date.now()`: a state created at mount would otherwise hold the settle
@@ -514,6 +553,9 @@ export const noteInput = (
 			// The travel the release below is earned by belongs to the latch, and
 			// the reader has just left the wall: there is nothing left to release.
 			travelledSinceLatch: false,
+			// The act continues across a reversal, so this record does too; a
+			// downward notch that moved the reader is still the reader moving.
+			actTravelled: state.actTravelled || input.travelledPx > 0,
 			// The reader turned around. A page that landed with rows held back is
 			// still holding them back, but a reader scrolling AWAY from it is not
 			// waiting to see it, and spending a widen on their behalf would grow
@@ -565,6 +607,14 @@ export const noteInput = (
 		// new act starts a new question, and the release it guards is one per
 		// latch rather than one per reader.
 		travelledSinceLatch: gestureEnded ? false : state.travelledSinceLatch,
+		/*
+		 * Set by ANY in-act notch that reported the reader's own travel, and reset
+		 * where the act opens -- so the whole act is "did this act ever move the
+		 * content", not "did the last notch". See `actTravelled`.
+		 */
+		actTravelled: gestureEnded
+			? input.travelledPx > 0
+			: state.actTravelled || input.travelledPx > 0,
 		continuation: false,
 		turnedAround: false,
 		chainFetch: 0,
@@ -586,6 +636,8 @@ export const noteInput = (
 			actFetchSpent: false,
 			actAsks: 0,
 			revealsThisAct: 0,
+			actTravelled: false,
+			pressDemand: false,
 			...(state.busy ? { retained: true } : { armed: true }),
 		};
 	}
@@ -630,8 +682,42 @@ export const noteInput = (
 			return {
 				...base,
 				armed: true,
+				pressDemand: false,
 				clampLatched: false,
 				travelledSinceLatch: true,
+			};
+		}
+		/*
+		 * A READER PRESSING AT THE WALL IS STILL ASKING.
+		 *
+		 * This arm exists for the reported snag: "the scroll view gets snagged at
+		 * the top and requires the user to jitter down and back up to trigger the
+		 * scroll loading". A clamped notch moves the content by ZERO, so it can
+		 * never earn the travel release above, and the spent demand it sits beside
+		 * was already cleared by its own spend. Without this the reader's continued
+		 * press left NOTHING armed, so the one signal a stop could be noticed on
+		 * (an armed demand, which the DOM half schedules its settle re-decide for)
+		 * was absent, and the only way back to a page was a direction reversal or
+		 * `GESTURE_GAP_MS` of quiet -- not the stop itself. That is why the reported
+		 * workaround is a jitter: a reversal is the one exit this branch leaves.
+		 *
+		 * It re-arms a DEMAND, never a spend. What the demand is worth is decided
+		 * by `decide`, which offers the stop-door below only at `SETTLE_MS` of
+		 * input quiet -- so a momentum tail that never stops still buys nothing,
+		 * and this arm cannot mint a page per notch the way `base` would.
+		 *
+		 * Bounded by the act's own ask budget (`MAX_ACT_ASKS`, the same sum the
+		 * continuation door charges), so a finger resting on the trackpad for a
+		 * minute cannot walk more than one act's worth of history into memory: its
+		 * thousands of notches mint one demand it never spends, because it never
+		 * stops.
+		 */
+		if (!state.armed && state.clampLatched && !state.actTravelled) {
+			return {
+				...state,
+				armed: true,
+				pressDemand: true,
+				lastInputAt: input.at,
 			};
 		}
 		return {
@@ -639,8 +725,8 @@ export const noteInput = (
 			lastInputAt: input.at,
 		};
 	}
-	if (state.busy) return { ...base, retained: true };
-	return { ...base, armed: true };
+	if (state.busy) return { ...base, retained: true, pressDemand: false };
+	return { ...base, armed: true, pressDemand: false };
 };
 
 const spend = (
@@ -737,6 +823,40 @@ const spend = (
  * the demand is a request waiting for the reader to come back, and the row must
  * say so rather than claim a load.
  */
+/**
+ * Whether the slot may CLAIM a load right now: the one question the DOM half's
+ * paint needs, answered by the policy that is about to act.
+ *
+ * Exported for the same reason `spendWindows` is, and replacing the inline
+ * `armed && inZone` that used to live in `use-scroll-paging`'s paint: a second
+ * copy of this test is how the slot came to claim a load the policy had already
+ * decided against. The third term is the one that copy could not know about.
+ *
+ * `pressDemand` is a demand armed by a CLAMPED PRESS at an edge that cannot move
+ * (see `pressDemand`). The door that answers it is the reader's STOP --
+ * `SETTLE_MS` of input quiet -- so while the press is still arriving there is
+ * nothing on its way, and painting "Loading earlier messages" would be the false
+ * promise this file's rule 3 wait exists to avoid: the reader is told a load is
+ * happening exactly while the policy is holding one back. The paint flips the
+ * instant the stop is decided, because the armed demand already schedules the
+ * pump's re-decide at `SETTLE_MS` (`use-scroll-paging`'s settle timer).
+ *
+ * Every other armed demand keeps the old claim: one that arrived by travelling
+ * into the zone is spent at its own settle, which is the same instant, so the
+ * claim is true when it is painted.
+ */
+export const slotClaimsLoad = (
+	state: PagingState,
+	geo: PagingGeometry,
+	now: number,
+): boolean => {
+	if (state.busy || state.pageWidenOwed) return true;
+	if (!state.armed) return false;
+	if (!spendWindows(geo).inZone) return false;
+	if (state.pressDemand && now - state.lastInputAt < SETTLE_MS) return false;
+	return true;
+};
+
 export function spendWindows(
 	geo: PagingGeometry,
 	zonePx = prefetchZonePx(geo.clientHeight),
@@ -934,13 +1054,74 @@ export const decide = (
 			return { action: "none", state: { ...state, armed: false } };
 		}
 		if (growth === "fetch" && state.actFetchSpent) {
-			// Rule 2's act budget: this gesture has already bought its round trip
-			// (the widens that showed it are not budgeted). The demand is dropped
-			// rather than held — a held one would be spent again by the next quiet
-			// frame, which is a new act's job. A reader who wants the next chunk
-			// gives one: the measured pause between two deliberate flicks is far
-			// above `GESTURE_GAP_MS`, and the affordance needs nothing at all.
-			return { action: "none", state: { ...state, armed: false } };
+			/*
+			 * THE STOP AT THE WALL -- the other half of the snag fix, and the one
+			 * place the act budget was over-applying.
+			 *
+			 * `actFetchSpent` exists to stop ONE FLING becoming N pages, and it does
+			 * that by treating "this gesture already bought a round trip" as "this
+			 * gesture is answered". The reported defect is what happens when that
+			 * inference is applied to a reader who is still ASKING: a fling's notches
+			 * never stop arriving, so every further push at the wall was refused until
+			 * a direction reversal or `GESTURE_GAP_MS` of quiet reset the act. The two
+			 * cases are not the same act and the difference is measurable: quiet.
+			 *
+			 * `SETTLE_MS` of input silence is the same signal rule 3 spends every other
+			 * reveal on, and the same contract the terminal UI draws for the reader
+			 * ("spend at a stop or against the edge" -- `_check_resume_page` returns
+			 * while the animator runs and spends at the stop). NOTE it is stated as the
+			 * raw quiet term rather than `settled` above: at the hard top `settled` is
+			 * forced true, so it cannot tell a stop from a continuous press, and using
+			 * it here would make every momentum notch spend.
+			 *
+			 * WHAT BOUNDS IT. The spend charges the act's ask budget through `spend`,
+			 * and this door is offered only while that budget stands, so one
+			 * press-session buys at most `MAX_ACT_ASKS` pages and a new one needs the
+			 * 400ms `GESTURE_GAP_MS` quiet that defines a new act. A fling therefore
+			 * still buys its one page; a reader standing at the wall gets one page per
+			 * stop, up to the act's stated sum -- which is the terminal UI's own
+			 * reading of the same edge.
+			 */
+			const stoppedHere = now - state.lastInputAt >= SETTLE_MS;
+			/*
+			 * THE PRESS MUST BE A *REST*, not a travelling arrival.
+			 *
+			 * `clampLatched` is the discriminator, and it is the file's own definition of
+			 * the case: `spend` sets it exactly when a demand was spent against an edge
+			 * that cannot move (`state.armed && distanceFromTopPx <= HARD_TOP_PX`). A
+			 * reader whose momentum CARRIES them to a freshly mounted wall arrived
+			 * there by travelling; their notches move the content, and the act budget
+			 * is written for precisely that reader -- one crossing of many walls is one
+			 * act, one round trip (see the case that pins it: "a fling that crosses two
+			 * walls spends exactly one fetch", the operator's own earlier report).
+			 * Without this term the door answers that reader once per mounted wall,
+			 * which is the loop rule 2 exists to bound, and it breaks six pinned cases.
+			 * The reader the snag is ABOUT is the opposite one: pinned so hard the
+			 * content cannot move at all, which is what the latch records.
+			 */
+			const mayTakeTheStop =
+				stoppedHere &&
+				state.clampLatched &&
+				!state.actTravelled &&
+				state.pressDemand &&
+				state.actAsks < MAX_ACT_ASKS;
+			if (mayTakeTheStop) return spend(state, growth, geo);
+			if (stoppedHere) {
+				// A stop this door will not answer: the act travelled (its budget
+				// is what bounds the mounted-wall crossing), or its asks are spent.
+				// DROP it, exactly as the budget always did -- a kept demand would
+				// outlive the act and be spent by the next one's first quiet frame,
+				// which is not an ask that act's reader made.
+				return { action: "none", state: { ...state, armed: false } };
+			}
+			// Still moving: KEEP the demand for the stop that is coming, which is
+			// rule 3's own shape one clause up ("the demand survives the wait"). The
+			// stop is the only frame this door can answer on, and dropping the
+			// demand here is what made it unobservable -- see `noteInput`'s
+			// clamped-press arm. The slot does not claim a load off a held demand
+			// (`use-scroll-paging` paints on the same quiet test), so this is a
+			// wait, not a false promise.
+			return { action: "none", state };
 		}
 		return spend(state, growth, geo);
 	}
@@ -1152,6 +1333,7 @@ export const noteSettled = (
 		busy: false,
 		failures: network ? 0 : state.failures,
 		armed: state.retained,
+		pressDemand: state.retained && state.pressDemand,
 		deliberate: state.retained ? state.deliberate : false,
 		retained: false,
 		turnedAround: false,

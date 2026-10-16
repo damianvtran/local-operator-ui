@@ -24,7 +24,7 @@ import {
 	noteFailed,
 	noteInput,
 	noteSettled,
-	spendWindows,
+	slotClaimsLoad,
 } from "./scroll-paging";
 import { createScrollLayoutCoordinator } from "./transcript-scroll-layout";
 
@@ -845,12 +845,16 @@ export function useScrollPaging({
 			 * those windows, so no reader sees the churn. Both halves are in the set's
 			 * README.
 			 */
-			const windows = spendWindows(geo);
+			/*
+			 * The paint is the POLICY's own answer, not a second expression over
+			 * its state: `slotClaimsLoad` is the one place the "is a load on its
+			 * way?" test lives, and it carries the term this file could not know
+			 * -- a demand armed by a clamped PRESS is a wait for the reader's
+			 * stop, so it must not paint "Loading earlier messages" while the
+			 * press is still arriving. See its own note.
+			 */
 			setRevealInFlight(
-				action !== "none" ||
-					next.busy ||
-					next.pageWidenOwed ||
-					(next.armed && windows.inZone),
+				action !== "none" || slotClaimsLoad(next, geo, performance.now()),
 			);
 			if (action === "none") {
 				// An armed demand waiting only on the settle debounce needs someone to

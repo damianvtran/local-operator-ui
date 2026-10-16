@@ -2063,3 +2063,108 @@ test("NO-CLICK INVARIANT: an in-zone reader at a condensed top is never left wit
 	);
 	assert.equal(hidden, 0, "the tape ends with the whole window mounted");
 });
+
+/*
+ * ---------------------------------------------------------------------------
+ * THE SNAG AT THE HARD TOP (the operator's report: "the scroll view gets
+ * snagged at the top and requires the user to jitter down and back up to
+ * trigger the scroll loading. It's not smooth").
+ *
+ * The policy refused a press at the wall for the same reason it refused a
+ * fling from crossing wall after wall, and the two readers are not the same
+ * one. What separates them is how they got to the edge, and the cases below
+ * pin each arm of that distinction:
+ *
+ *   - a CLAMPED PRESS (the content cannot move; the reader has nothing else to
+ *     give) arms a demand, and the STOP that follows spends it;
+ *   - a TRAVELLING act keeps the act budget exactly as it was -- one round trip
+ *     however many walls its momentum mounts in front of it;
+ *   - and a standing press is bounded by the act's own ask budget, so "answer
+ *     the stop" is a page per stop and not a page per notch.
+ * ---------------------------------------------------------------------------
+ */
+
+test("a clamped press at the hard top arms a demand, so the stop can be noticed", () => {
+	let state = wheelUp(initialPagingState(), 0, { atHardTop: true });
+	const spent = decide(state, geo({ distanceFromTopPx: 0 }), SETTLE_MS + 1);
+	assert.equal(spent.action, "fetch");
+	// A VISIBLE page: the reader saw it, so the act's round trip stays spent.
+	state = settled(spent.state, { paintedDelta: 100 });
+	assert.equal(state.actFetchSpent, true, "the act's round trip is spent");
+
+	// The press, well inside the same act.
+	state = wheelUp(state, SETTLE_MS + 20, { atHardTop: true });
+	assert.equal(state.armed, true, "the press arms a demand");
+	assert.equal(state.pressDemand, true, "and records where it came from");
+
+	// Not spent while the press continues -- rule 3's stop is the trigger.
+	const mid = decide(state, geo({ distanceFromTopPx: 0 }), SETTLE_MS + 28);
+	assert.equal(mid.action, "none", "a continuous press is not a stop");
+	assert.equal(mid.state.armed, true, "the demand waits for one");
+
+	// Spent at the stop.
+	const stopped = decide(
+		mid.state,
+		geo({ distanceFromTopPx: 0 }),
+		SETTLE_MS + 20 + SETTLE_MS + 1,
+	);
+	assert.equal(stopped.action, "fetch", "the stop at the wall buys the page");
+});
+
+test("an act that ever moved the content keeps the act's budget at the wall", () => {
+	// The reader momentum carried here. Their budget is what bounds the
+	// mounted-wall crossing, so the stop-door must not answer them.
+	let state = wheelUp(initialPagingState(), 0, {
+		atHardTop: true,
+		travelledPx: 600,
+	});
+	state = settled(
+		decide(state, geo({ distanceFromTopPx: 0 }), SETTLE_MS + 1).state,
+		{ paintedDelta: 100 },
+	);
+	assert.equal(state.actTravelled, true, "the act moved the content once");
+
+	state = wheelUp(state, SETTLE_MS + 20, { atHardTop: true });
+	const stopped = decide(
+		state,
+		geo({ distanceFromTopPx: 0 }),
+		SETTLE_MS + 20 + SETTLE_MS + 1,
+	);
+	assert.equal(stopped.action, "none", "the stop does not answer it");
+	assert.equal(
+		stopped.state.armed,
+		false,
+		"and the demand is dropped, as the budget always did",
+	);
+});
+
+test("a stop at the wall is answered at most MAX_ACT_ASKS times in one act", () => {
+	// The bound the fix must not lose: answering the stop is one page per STOP,
+	// capped by the act's own ask budget -- the same sum every other door pays.
+	// Past it the act is spent and only a new gesture reopens it.
+	let state = wheelUp(initialPagingState(), 0, { atHardTop: true });
+	let t = SETTLE_MS + 1;
+	let pages = 0;
+	const first = decide(state, geo({ distanceFromTopPx: 0 }), t);
+	state = first.state;
+	assert.equal(first.action, "fetch");
+	pages += 1;
+	state = settled(state, { paintedDelta: 100 });
+
+	for (let i = 0; i < 40; i++) {
+		t += 30; // press, inside the act
+		state = wheelUp(state, t, { atHardTop: true });
+		t += SETTLE_MS; // then stop
+		const stopped = decide(state, geo({ distanceFromTopPx: 0 }), t);
+		state = stopped.state;
+		if (stopped.action === "fetch") {
+			pages += 1;
+			state = settled(state, { paintedDelta: 100 });
+		}
+	}
+	assert.equal(
+		pages,
+		MAX_ACT_ASKS,
+		`one act bought ${pages} pages; the cap is ${MAX_ACT_ASKS}`,
+	);
+});
