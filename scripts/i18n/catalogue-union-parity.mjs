@@ -39,6 +39,14 @@
  * side, so it is reported — that is a real conflict for the merger to
  * resolve and explain on the PR, not something to silence.
  *
+ * A run whose `--head` and `--old-head` resolve to the SAME commit is also a
+ * usage error (exit 2), refused before any comparison: it proves only that
+ * the pre-merge tree equals itself, printing a green-looking `union N /
+ * missing []` result while proving nothing about any union — a tautology
+ * that reads as evidence. That exact failure mode occurred on PR #1058 and
+ * was caught only by review; refusing it structurally makes the class
+ * impossible rather than merely detectable.
+ *
  * USAGE:
  *   node scripts/i18n/catalogue-union-parity.mjs \
  *     --pr 1234 --head <merged-head-sha> --old-head <pre-merge-head-sha> \
@@ -57,6 +65,26 @@ import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isDeepStrictEqual, parseArgs } from "node:util";
+
+/**
+ * Resolve a ref to the commit SHA it names, or throw. Resolution must happen
+ * before any same-commit comparison (see `checkUnionParity`): two identical
+ * UNRESOLVABLE refs are the usage error for the ref, not for a vacuous union,
+ * and masking either error behind the other would misname the operator's
+ * mistake. `^{commit}` peels annotated tags so the comparison is between the
+ * commits themselves, not the tag objects pointing at them.
+ */
+export function resolveRefSha(ref, { repo } = {}) {
+	try {
+		return execFileSync(
+			"git",
+			["rev-parse", "--verify", "--quiet", `${ref}^{commit}`],
+			{ cwd: repo, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+		).trim();
+	} catch {
+		throw new Error(`cannot resolve ref ${ref}`);
+	}
+}
 
 /**
  * Read one catalogue blob at a ref without touching the worktree — the whole
@@ -158,6 +186,22 @@ export function compareCatalogues({ baseCat, prCat, mergedCat }) {
 
 /** Run the parity check for every requested file. Throws on unreadable input. */
 export function checkUnionParity({ repo, head, oldHead, base, files }) {
+	/* Resolve both heads BEFORE reading any catalogue, and refuse the run if
+	 * they are the same commit: with `--head` == `--old-head` the PR-side and
+	 * merged catalogues are the same blob by construction, so assertions (2)
+	 * and the PR half of (3) cannot fail and a PASS would be a tautology, not
+	 * evidence of a union (see the header; PR #1058). Resolution comes first
+	 * so an unresolvable ref still reports as itself — including when the
+	 * same bad ref was pasted into both flags — rather than being masked by
+	 * (or masking) this refusal. The thrown error surfaces in `main` with the
+	 * tool's exit-2 usage-error contract, and no PASS output is printed. */
+	const headSha = resolveRefSha(head, { repo });
+	const oldHeadSha = resolveRefSha(oldHead, { repo });
+	if (headSha === oldHeadSha) {
+		throw new Error(
+			`no union to prove: --head and --old-head are the same commit (${headSha}) \u2014 run this at the merge that actually unions the catalogue`,
+		);
+	}
 	const results = files.map((file) => ({
 		file,
 		...compareCatalogues({
