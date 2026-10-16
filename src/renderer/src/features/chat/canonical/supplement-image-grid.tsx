@@ -45,9 +45,14 @@
  * THE GLYPH FALLBACK is the finder grid's own answer to a failed thumbnail
  * (`File size={16}` on the well): the file keeps its slot, the tile states the
  * KIND rather than showing damage, and the name travels in the button's
- * accessible label. Here the receipt keeps the `border-control`/`sunken` edge
- * (pinned for this file) because that is the only extent a picture-less tile
- * has; a working tile's extent is the `mediaSurface` fill.
+ * accessible label. It is the terminal state for BOTH failure classes — a path
+ * the probe cannot resolve to an absolute target, and a read the pipeline
+ * refuses — and never a reserved box: the box is the loading arm only, and a
+ * DISABLED read never leaves the hook's initial `loading` (the disposition line
+ * in the tile carries the mechanism; agent review round 1, R1). Here the
+ * receipt keeps the `border-control`/`sunken` edge (pinned for this file)
+ * because that is the only extent a picture-less tile has; a working tile's
+ * extent is the `mediaSurface` fill.
  */
 
 import { useEverInView } from "@shared/hooks/use-ever-in-view";
@@ -146,7 +151,21 @@ const SupplementImageTile = memo(function SupplementImageTile({
 	const { press } = useFileTargets(file.path, cwd, pane);
 
 	const ready = thumb.state === "ready" && typeof thumb.url === "string";
-	const deferred = !probed || thumb.state === "loading";
+	/*
+	 * THE THREE DISPOSITIONS, and the one trap this line exists to survive
+	 * (agent review round 1, R1). `useFinderThumbnail`'s initial state IS
+	 * `loading`, and a DISABLED read never leaves it - so `loading` alone cannot
+	 * mean "in flight": with the read gated on `resolved !== null`, an
+	 * unresolvable tile (no session cwd, a refused resolution, a probe throw)
+	 * would sit on `loading` forever and, counted as deferred, would show the
+	 * reserved box as its terminal state. That is the empty box the round-1
+	 * review measured. The deferred arm therefore requires an ACTUAL read:
+	 * `resolved !== null && loading` is the in-flight pair, `!probed` is the
+	 * probe leg, and every terminal shape falls through to `failed` (the glyph
+	 * receipt) - `resolved === null` however the probe ended, or the pipeline's
+	 * own `unavailable`.
+	 */
+	const deferred = !probed || (resolved !== null && thumb.state === "loading");
 	const failed =
 		!deferred && (resolved === null || thumb.state === "unavailable");
 
