@@ -110,6 +110,7 @@ import {
 	askRefusalSentence,
 	effectiveGate,
 } from "../ask-queue";
+import { skillRowOf } from "../canonical/skill-row";
 import { canonicalTranscriptTerminal } from "../canonical/transcript-pane";
 import { useOpenPrefetch } from "../canonical/use-open-prefetch";
 import {
@@ -3822,6 +3823,23 @@ function SessionPanel({
 						draft.errorRetry ?? retryOfferedForFailureCode(draft.errorCode),
 				}
 			: (draft.undelivered ?? null);
+	/*
+	 * WHAT `Edit` HANDS BACK, computed once so the press and the dimming beside it
+	 * cannot disagree: `retryDisabled` is spelled as a comparison against THIS
+	 * string, and comparing against the payload would leave the row offering a
+	 * second live press for a message the box already holds.
+	 *
+	 * The typed line rather than the payload, because a `$skill` send persists its
+	 * whole expansion: handing that back would put a wall of SKILL.md in the box to
+	 * edit - and it would not re-expand either, since the recognition rule reads the
+	 * FIRST token of what is submitted and the payload begins with the header
+	 * sentence (`skill-invocation.ts`). `skillRowOf` reads the line back off the
+	 * payload this app itself sent, with any staged quote markup kept so a re-send
+	 * assembles the same string; every other message comes back verbatim.
+	 */
+	const editText = deliveryTurn
+		? (skillRowOf(deliveryTurn.text)?.text ?? deliveryTurn.text)
+		: null;
 	const undeliveredTurn = deliveryTurn
 		? {
 				recordId: deliveryTurn.recordId,
@@ -3836,7 +3854,7 @@ function SessionPanel({
 				 * different message and the row's press is re-armed rather than dimmed.
 				 */
 				retryDisabled:
-					composerText.trim().length > 0 && composerText === deliveryTurn.text,
+					composerText.trim().length > 0 && composerText === editText,
 				onSendAgain: () => {
 					void send(deliveryTurn.text, [...deliveryTurn.attachments]);
 				},
@@ -3847,7 +3865,7 @@ function SessionPanel({
 					 * double the message.
 					 */
 					useConversationInputStore.getState().returnPayload(identity, {
-						text: deliveryTurn.text,
+						text: editText ?? deliveryTurn.text,
 						attachments: [...deliveryTurn.attachments],
 						replies: [],
 					});

@@ -1,0 +1,7 @@
+{
+	"ui.chat.skill_invocation.instructions_label": {
+		"role": "label above the skill instructions a `$name` invocation sent",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"note": "Sits at the top of the recessed block a reader gets by expanding a `$skill` row's header. It names what the block is - the skill's own instructions, which the app sent on the reader's behalf - so keep it a description of the content and not an action. Space is a full-width prose column, so it may run to a line."
+	}
+}
