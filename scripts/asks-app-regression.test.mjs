@@ -1,9 +1,16 @@
 /* Cheap fixture/oracle controls. Native UI acceptance is ONLY the CI app run;
  * this suite never launches Electron or claims rendered evidence. */
 import assert from "node:assert/strict";
+import { execFileSync, spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+/** The checkout this suite ships in, for reading the pinned control revision. */
+const REPO = dirname(
+	dirname(fileURLToPath(new URL("./asks-app-regression.mjs", import.meta.url))),
+);
 import { test } from "node:test";
 import {
 	ASK_SESSION_IDS,
@@ -137,4 +144,56 @@ test("existing job performs real native capture and always uploads measurements"
 	assert(source.includes("api.launchApp"));
 	assert(source.includes("api.capture"));
 	assert(!source.includes("window.api ="));
+	/*
+	 * The order CI caught: attach straight after launch, before the debugging
+	 * port was listening. `fetch` then rejected and the rejection escaped the
+	 * attach loop as a bare `TypeError: fetch failed`. What is pinned here is the
+	 * ORDER - the endpoint wait is called before any attach - and that the wait
+	 * does not depend on which driver tree was imported, because the control leg
+	 * loads a pinned historical facade that does not export one.
+	 */
+	const waitAt = source.indexOf("await waitForDevtoolsPort(app, api)");
+	const attachAt = source.indexOf(
+		'api.CdpClient.attach(app.port, "out/renderer/index.html")',
+	);
+	assert(waitAt > 0, "the producer must wait for the debugging port");
+	assert(attachAt > waitAt, "the wait must precede the attach");
+	assert(
+		source.includes('typeof api?.waitForDevtools === "function"'),
+		"the wait must fall back for the pinned historical driver the control leg imports",
+	);
+	assert(
+		!source.includes('CdpClient.attach(app.port, "index.html")'),
+		"the target must be the built renderer path the other callers use",
+	);
+	/*
+	 * The control tree is PINNED, so whether its revision is in this clone is a
+	 * property of the clone and not of the change: `pnpm test:desktop` runs under
+	 * `actions/checkout`'s default depth-1, where 2461cfa3 is a commit this clone
+	 * has never seen. Read it when it is here (a developer's tree), say so plainly
+	 * when it is not, and never turn a shallow clone into a red test.
+	 *
+	 * maxBuffer, because the shared driver is a 45k-line file and the default
+	 * 1 MiB ceiling turns reading it into an ENOBUFS that reads like a git fault.
+	 */
+	const present = spawnSync(
+		"git",
+		["cat-file", "-e", `${ASKS_CONTROL}^{commit}`],
+		{ cwd: REPO },
+	).status;
+	if (present === 0) {
+		const historical = execFileSync(
+			"git",
+			["show", `${ASKS_CONTROL}:scripts/renderer-driver.mjs`],
+			{ encoding: "utf8", cwd: REPO, maxBuffer: 32 * 1024 * 1024 },
+		);
+		assert(
+			!historical.includes("waitForDevtools,\n"),
+			"the pinned control tree must really lack the exported wait, or the fallback above is untested",
+		);
+	} else {
+		console.log(
+			"asks-app-regression: pinned control commit not in this clone (shallow checkout); the fallback is asserted from source only",
+		);
+	}
 });
