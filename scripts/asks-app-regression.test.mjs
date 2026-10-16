@@ -194,6 +194,35 @@ test("existing job performs real native capture and always uploads measurements"
 		"the fixture must model the radient reads and refuse the rest by name",
 	);
 
+	/*
+	 * EVERY `data-tour-tag` THIS PRODUCER PRESSES MUST EXIST IN `src/`. The press
+	 * that cost run 38846903646 was `[data-tour-tag="chat-all-chats"]`, a selector
+	 * the app has never drawn - `git grep` finds it in the shared driver's own
+	 * comments and in NO source file, at this head or the pinned control one - so
+	 * the scene waited fifteen seconds for an element that could not appear and the
+	 * case died with `Unsettled real UI`. A scene that presses a tag the renderer
+	 * does not carry is not a failing app, it is a wrong assertion, and it is
+	 * decidable statically: the tags are in the source and the presses are here.
+	 */
+	const pressedTags = [
+		...source.matchAll(/press\(\s*'\[data-tour-tag="([^"]+)"\]/g),
+	].map((match) => match[1]);
+	assert(
+		pressedTags.length > 0,
+		"the scan must find the producer's tag presses, or it proves nothing",
+	);
+	for (const tag of pressedTags) {
+		const hits = execFileSync(
+			"git",
+			["grep", "-l", `data-tour-tag="${tag}"`, "--", "src"],
+			{ encoding: "utf8", cwd: REPO, maxBuffer: 32 * 1024 * 1024 },
+		).trim();
+		assert(
+			hits.length > 0,
+			`the producer presses [data-tour-tag="${tag}"], which no file under src/ carries`,
+		);
+	}
+
 	const waitAt = source.indexOf("await waitForDevtoolsPort(app, api)");
 	const attachAt = source.indexOf(
 		'api.CdpClient.attach(app.port, "out/renderer/index.html")',

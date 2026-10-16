@@ -354,7 +354,20 @@ async function runCase(kind, root, output, records) {
 		assert.equal(windowFacts.visible, false);
 		assert.equal(windowFacts.focused, false);
 		await api.verb(cdp, "navigate", "/chat");
-		await press('[data-tour-tag="chat-all-chats"]');
+		/*
+		 * The conversation is opened by PRESSING THE ROW, not by a disclosure press
+		 * first. `[data-tour-tag="chat-all-chats"]` was pressed here unguarded and
+		 * that selector has NO home in `src/` at either this head or the pinned
+		 * control one (the shared driver's own comment at its `--backend` scene says
+		 * so, and `git grep` over `src` in both trees finds nothing), so the press
+		 * waited fifteen seconds for an element the app never draws and the whole
+		 * case died with `Unsettled real UI: Boolean(document.querySelector(
+		 * "[data-tour-tag=\"chat-all-chats\"]"))` - measured on run 38846903646.
+		 *
+		 * `session()` below is the shape the driver's own scenes use instead: wait
+		 * for the seeded row, mark it, press that. The rail this scene is about is
+		 * on every route and needs no conversation at all.
+		 */
 		await session(0);
 		await frame("session-loading");
 		await fixtureMode("populated");
