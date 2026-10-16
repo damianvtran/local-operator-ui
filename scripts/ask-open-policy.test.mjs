@@ -698,6 +698,23 @@ test("a close over nothing refused nothing: only a close over asks, named or not
 	assert.equal(dismissals.size, 1);
 });
 
+test("D12 - a waved-off open ask that then TIMES OUT clears the record", () => {
+	/*
+	 * The transition the "state 4" frame was dropped for (agent review round 1 on
+	 * #1116, MINOR-2): the record names the open ask; when that ask lapses it is no
+	 * longer something a close waved off, so the conversation is un-muted.
+	 */
+	const dismissals = createAskDismissals();
+	const a = ask("open");
+	dismissals.record("c-a", reading([a]));
+	assert.equal(dismissals.has("c-a"), true);
+	dismissals.reconcile(
+		"c-a",
+		askOpenFacts(askQueueView(withRows([{ ...a, status: "timed_out" }])), T0),
+	);
+	assert.equal(dismissals.has("c-a"), false);
+});
+
 test("U3 - a second close over a different set UNIONS into the record, it never replaces it", () => {
 	const dismissals = createAskDismissals();
 	const a = ask("open");
