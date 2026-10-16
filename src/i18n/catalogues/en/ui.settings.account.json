@@ -29,8 +29,8 @@
 	"ui.settings.account.settings_page.tokens": "Tokens",
 	"ui.settings.account.settings_usage_chart.credits_consumed": "Credits consumed",
 	"ui.settings.account.settings_usage_chart.tokens_used": "Tokens used",
-	"ui.settings.account.settings_usage_chart.credits_summary": "Credits consumed over the last 30 days, plotted per day across {days, plural, one {# day} other {# days}}.",
-	"ui.settings.account.settings_usage_chart.tokens_summary": "Tokens used over the last 30 days, plotted per day across {days, plural, one {# day} other {# days}}.",
+	"ui.settings.account.settings_usage_chart.credits_summary": "Credits consumed over the last 30 days, plotted per day across {days, plural, one {{days, number, ::group-off} day} other {{days, number, ::group-off} days}}.",
+	"ui.settings.account.settings_usage_chart.tokens_summary": "Tokens used over the last 30 days, plotted per day across {days, plural, one {{days, number, ::group-off} day} other {{days, number, ::group-off} days}}.",
 	"ui.settings.account.settings_page.credit_balance_load_failed": "Could not load your credit balance. {reason}",
 	"ui.settings.account.settings_page.usage_load_failed": "Could not load your usage data. {reason}"
 }
