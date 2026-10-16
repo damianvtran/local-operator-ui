@@ -57,6 +57,8 @@ import { ConfirmationModal } from "@shared/components/common/confirmation-modal"
 import { PageHeader } from "@shared/components/common/page-header";
 import { Spinner } from "@shared/components/common/spinner";
 import { Alert, Button } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { useQueryClient } from "@tanstack/react-query";
@@ -72,8 +74,6 @@ import {
 } from "../hooks/use-schedules-queries";
 import { useCancelWake, useWakesListing } from "../hooks/use-wakes-queries";
 import {
-	PARK_FOOTER_CLAUSE,
-	STALE_ROWS_CLAUSE,
 	type ScheduledTaskRow,
 	type WakeLine,
 	isEmptyListing,
@@ -110,6 +110,7 @@ export type SchedulesPageProps = {
 export const SchedulesPage: FC<SchedulesPageProps> = ({
 	nowMs = Date.now(),
 }) => {
+	useI18nLocale();
 	const navigate = useNavigate();
 	const [dialog, setDialog] = useState<DialogState | null>(null);
 	const [pendingCancel, setPendingCancel] = useState<PendingCancel | null>(
@@ -216,9 +217,11 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 			 * stays." and, when this was the last wake, the row that held the door
 			 * open is gone - leaving the promise with no path to it (round-2 U6).
 			 */
-			showSuccessToast("Wake cancelled", {
+			showSuccessToast(t("ui.schedules.schedules_page.wake_cancelled"), {
 				action: {
-					label: "Open conversation",
+					get label() {
+						return t("ui.schedules.schedules_page.open_conversation");
+					},
 					onClick: () => openConversation(sessionId),
 				},
 			});
@@ -226,8 +229,10 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 		} catch (error) {
 			showErrorToast(
 				error instanceof Error
-					? `Could not cancel the wake: ${error.message}`
-					: "Could not cancel the wake.",
+					? t("ui.schedules.schedules_page.could_not_cancel_the_wake_message", {
+							message: String(error.message),
+						})
+					: t("ui.schedules.schedules_page.could_not_cancel_the_wake"),
 			);
 		}
 	};
@@ -242,13 +247,16 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 				scheduleId: editingLegacy.id,
 				scheduleData: data,
 			});
-			showSuccessToast("Schedule updated");
+			showSuccessToast(t("ui.schedules.schedules_page.schedule_updated"));
 			setEditingLegacy(null);
 		} catch (error) {
 			showErrorToast(
 				error instanceof Error
-					? `Could not save the schedule: ${error.message}`
-					: "Could not save the schedule.",
+					? t(
+							"ui.schedules.schedules_page.could_not_save_the_schedule_message",
+							{ message: String(error.message) },
+						)
+					: t("ui.schedules.schedules_page.could_not_save_the_schedule"),
 			);
 		}
 	};
@@ -260,12 +268,15 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 				scheduleId,
 				agentId: schedule?.agent_id,
 			});
-			showSuccessToast("Schedule removed");
+			showSuccessToast(t("ui.schedules.schedules_page.schedule_removed"));
 		} catch (error) {
 			showErrorToast(
 				error instanceof Error
-					? `Could not remove the schedule: ${error.message}`
-					: "Could not remove the schedule.",
+					? t(
+							"ui.schedules.schedules_page.could_not_remove_the_schedule_message",
+							{ message: String(error.message) },
+						)
+					: t("ui.schedules.schedules_page.could_not_remove_the_schedule"),
 			);
 		}
 	};
@@ -277,13 +288,18 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 				scheduleData: { is_active: !schedule.is_active },
 			});
 			showSuccessToast(
-				`Schedule ${schedule.is_active ? "deactivated" : "activated"}.`,
+				schedule.is_active
+					? t("ui.schedules.legacy.deactivated")
+					: t("ui.schedules.legacy.activated"),
 			);
 		} catch (error) {
 			showErrorToast(
 				error instanceof Error
-					? `Could not toggle the schedule: ${error.message}`
-					: "Could not toggle the schedule.",
+					? t(
+							"ui.schedules.schedules_page.could_not_toggle_the_schedule_message",
+							{ message: String(error.message) },
+						)
+					: t("ui.schedules.schedules_page.could_not_toggle_the_schedule"),
 			);
 		}
 	};
@@ -311,9 +327,11 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 		/* `gap-8`: `PageHeader` no longer ships its own bottom margin. */
 		<div className="flex h-full flex-col gap-8 p-6">
 			<PageHeader
-				title="Schedules"
+				title={t("ui.schedules.schedules_page.schedules")}
 				icon={CalendarDays}
-				subtitle="Work your conversations do on a schedule, repeating or once."
+				subtitle={t(
+					"ui.schedules.schedules_page.work_your_conversations_do_on_a_schedule_repeating_or_once",
+				)}
 			>
 				{/*
 				 * A way to ask for a fresh read, because the listing's own poll is a
@@ -337,8 +355,10 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 					<Button
 						variant="secondary"
 						size="icon"
-						aria-label="Refresh scheduled tasks"
-						title="Refresh scheduled tasks"
+						aria-label={t(
+							"ui.schedules.schedules_page.refresh_scheduled_tasks",
+						)}
+						title={t("ui.schedules.schedules_page.refresh_scheduled_tasks")}
 						disabled={listing.isFetching}
 						onClick={refreshAll}
 						data-tour-tag="refresh-schedules-button"
@@ -352,7 +372,7 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 						data-tour-tag="create-schedule-button"
 					>
 						<Plus />
-						New scheduled task
+						{t("ui.schedules.schedules_page.new_scheduled_task")}
 					</Button>
 				</div>
 			</PageHeader>
@@ -368,7 +388,9 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 				    list whose length is known before it loads. */}
 				{listing.isLoading && (
 					<div className="flex justify-center py-16">
-						<Spinner label="Loading scheduled tasks" />
+						<Spinner
+							label={t("ui.schedules.schedules_page.loading_scheduled_tasks")}
+						/>
 					</div>
 				)}
 
@@ -379,7 +401,7 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 					   no way back. */
 					<div className="flex flex-col items-start gap-2 border-hairline border-b p-4">
 						<p className="text-body text-ink">
-							Could not load scheduled tasks.
+							{t("ui.schedules.schedules_page.could_not_load_scheduled_tasks")}
 						</p>
 						<p className="text-body-sm text-ink-muted">
 							{listing.error.message}
@@ -389,10 +411,14 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 						    now - and they used to assert `1 wake` each with nothing saying
 						    so (round-2 U4). */}
 						{(rows.length > 0 || legacyRows.length > 0) && (
-							<p className="text-body-sm text-ink-muted">{STALE_ROWS_CLAUSE}</p>
+							<p className="text-body-sm text-ink-muted">
+								{t(
+									"ui.schedules.scheduled_task_model.the_list_below_is_the_last_one_that_loaded_so_it_may_be_out_of_da",
+								)}
+							</p>
 						)}
 						<Button variant="secondary" size="sm" onClick={refreshAll}>
-							Try again
+							{t("ui.schedules.schedules_page.try_again")}
 						</Button>
 					</div>
 				)}
@@ -403,15 +429,16 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 				{!listing.isLoading && listing.data?.read_error && (
 					<div className="flex flex-col items-start gap-2 border-hairline border-b p-4">
 						<Alert variant="warning">
-							Could not read this machine's scheduled tasks, so the list below
-							may be incomplete.
+							{t(
+								"ui.schedules.schedules_page.could_not_read_this_machine_s_scheduled_tasks_so_the_list_below_m",
+							)}
 						</Alert>
 						{/* The partial failure had no way back either: the only recovery
 						    was to leave the page and return (the designer's D6). Same
 						    `refetch` the total-failure branch uses, because it is the same
 						    recovery. */}
 						<Button variant="secondary" size="sm" onClick={refreshAll}>
-							Try again
+							{t("ui.schedules.schedules_page.try_again")}
 						</Button>
 					</div>
 				)}
@@ -443,11 +470,13 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 					   reporting the absence - and after this change that promise is
 					   true: a wake an agent armed in chat appears on this page. */
 					<div className="flex flex-col items-center gap-2 px-6 py-16 text-center">
-						<p className="text-heading text-ink">No scheduled tasks yet</p>
+						<p className="text-heading text-ink">
+							{t("ui.schedules.schedules_page.no_scheduled_tasks_yet")}
+						</p>
 						<p className="max-w-100 text-body-sm text-ink-muted">
-							Ask an agent in chat to do something on a regular basis — “send me
-							the news at 8am every day” — and it will appear here. You can also
-							set one up by hand.
+							{t(
+								"ui.schedules.schedules_page.ask_an_agent_in_chat_to_do_something_on_a_regular_basis_send_me_t",
+							)}
 						</p>
 						<Button
 							variant="secondary"
@@ -456,7 +485,7 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 							className="mt-2"
 						>
 							<Plus />
-							New scheduled task
+							{t("ui.schedules.schedules_page.new_scheduled_task")}
 						</Button>
 					</div>
 				)}
@@ -508,14 +537,20 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 					 */
 					<section className="border-hairline border-t bg-sunken">
 						<div className="flex flex-col gap-1 px-4 py-3">
-							<h2 className="text-heading text-ink">Legacy schedules</h2>
+							<h2 className="text-heading text-ink">
+								{t("ui.schedules.schedules_page.legacy_schedules")}
+							</h2>
 							<p className="max-w-150 text-body-sm text-ink-muted">
-								These run on the older agent-schedule engine. New scheduled
-								tasks are created as wakes, in a conversation.
+								{t(
+									"ui.schedules.schedules_page.these_run_on_the_older_agent_schedule_engine_new_scheduled_tasks",
+								)}
 							</p>
 							{legacy.error && (
 								<p className="text-body-sm text-danger">
-									Could not load legacy schedules. {legacy.error.message}
+									{t(
+										"ui.schedules.schedules_page.could_not_load_legacy_schedules",
+									)}
+									{legacy.error.message}
 								</p>
 							)}
 						</div>
@@ -537,8 +572,10 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 				    so a client can say "showing N of M" (the reviewer's R7). */}
 				{!listing.isLoading && listing.data?.truncated && (
 					<p className="border-hairline border-t px-4 py-3 text-body-sm text-ink-dim">
-						Showing {listing.data.entries.length} of {listing.data.total}{" "}
-						conversations with wakes.
+						{t("ui.schedules.count.list_truncated", {
+							shown: listing.data.entries.length,
+							total: listing.data.total,
+						})}
 					</p>
 				)}
 
@@ -553,8 +590,14 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 				    U9; the two measurements are in `PARK_FOOTER_CLAUSE`'s own note). */}
 				{(rows.length > 0 || legacyRows.length > 0) && (
 					<p className="border-hairline border-t px-4 py-3 text-body-sm text-ink-dim">
-						{canFire ? "Wakes fire whether or not this window is open. " : ""}
-						{PARK_FOOTER_CLAUSE}
+						{canFire
+							? t(
+									"ui.schedules.schedules_page.wakes_fire_whether_or_not_this_window_is_open",
+								)
+							: ""}
+						{t(
+							"ui.schedules.scheduled_task_model.a_terminal_stop_parks_a_conversation_s_wakes_until_its_next_turn",
+						)}
 					</p>
 				)}
 			</div>
@@ -599,7 +642,7 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 						: ""
 				}
 				confirmText={wakeConfirmActionLabel(namedCancel)}
-				cancelText="Keep"
+				cancelText={t("ui.schedules.schedules_page.keep")}
 				isDangerous
 				onConfirm={() => void handleCancelWake()}
 				onCancel={() => setPendingCancel(null)}
