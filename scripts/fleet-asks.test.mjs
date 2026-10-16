@@ -227,7 +227,7 @@ test("the drawer's frontend states the same count the badge does", () => {
 			truncated: false,
 			published: true,
 		}),
-		"All conversations · 2 waiting, 3 moved on",
+		"All conversations · 2 questions waiting",
 	);
 	/*
 	 * AND AN UNREAD FRAME IS NOT A ZERO ONE, NOR AN UNSUPPORTED ONE (remediation round

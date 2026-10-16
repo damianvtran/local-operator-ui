@@ -657,7 +657,7 @@ test("the asks item follows the host's offer, and its labels carry the scope and
 		assert.equal(offered.getAttribute("data-ask-scope"), "session");
 		assert.equal(
 			offered.getAttribute("aria-label"),
-			"Asks, This conversation, 3 waiting or moved on",
+			"Asks, This conversation, 3 waiting",
 			"the name is the stable noun + scope + count (U2); no verb",
 		);
 		assert.equal(
@@ -670,7 +670,7 @@ test("the asks item follows the host's offer, and its labels carry the scope and
 		);
 		assert.equal(
 			api.item("ask").getAttribute("aria-label"),
-			"Asks, All conversations, 11 waiting or moved on",
+			"Asks, All conversations, 11 waiting",
 		);
 		assert.equal(api.item("ask").getAttribute("data-ask-scope"), "fleet");
 		/* Zero still names its subject (U3): the scope word is what says WHICH queue
@@ -707,7 +707,7 @@ test("the asks item's tooltip verb follows its SCOPE while aria-pressed follows 
 		await frames(30);
 		assert.equal(
 			tooltip(),
-			"Open asks — This conversation, 2 waiting or moved on",
+			"Open asks — This conversation, 2 waiting",
 			"closed: the item offers the open",
 		);
 		assert.equal(api.item("ask").getAttribute("aria-pressed"), "false");
@@ -717,7 +717,7 @@ test("the asks item's tooltip verb follows its SCOPE while aria-pressed follows 
 		await frames(2);
 		assert.equal(
 			tooltip(),
-			"Open asks — This conversation, 2 waiting or moved on",
+			"Open asks — This conversation, 2 waiting",
 			"cross-scope: the press re-scopes, so the verb stays the action it will take",
 		);
 		assert.equal(
@@ -731,7 +731,7 @@ test("the asks item's tooltip verb follows its SCOPE while aria-pressed follows 
 		await frames(2);
 		assert.equal(
 			tooltip(),
-			"Close asks — This conversation, 2 waiting or moved on",
+			"Close asks — This conversation, 2 waiting",
 			"same-scope: the press closes, and now the verb says so",
 		);
 		assert.equal(api.item("ask").getAttribute("aria-pressed"), "true");
@@ -739,10 +739,7 @@ test("the asks item's tooltip verb follows its SCOPE while aria-pressed follows 
 		/* Closed again. */
 		api.store({ isAskDrawerOpen: false });
 		await frames(2);
-		assert.equal(
-			tooltip(),
-			"Open asks — This conversation, 2 waiting or moved on",
-		);
+		assert.equal(tooltip(), "Open asks — This conversation, 2 waiting");
 		assert.equal(api.item("ask").getAttribute("aria-pressed"), "false");
 		/*
 		 * ...and the bound cap rides the tooltip too (#928, review round 1's
@@ -753,7 +750,7 @@ test("the asks item's tooltip verb follows its SCOPE while aria-pressed follows 
 		await frames(2);
 		assert.equal(
 			tooltip(),
-			"Open asks (Ctrl+Shift+U) — This conversation, 2 waiting or moved on",
+			"Open asks (Ctrl+Shift+U) — This conversation, 2 waiting",
 		);
 		api.store({ shortcutBindings: {} });
 		act(() => api.item("ask").blur());
@@ -809,12 +806,12 @@ test("the tooltips are the header's verbatim; the accessible names are stable no
 	 * keeps it distinct from the drawer's own `Close asks` dismiss.
 	 */
 	assert.deepEqual(askRailLabels(false, "session", 1, null), {
-		tooltip: "Open asks — This conversation, 1 waiting or moved on",
-		aria: "Asks, This conversation, 1 waiting or moved on",
+		tooltip: "Open asks — This conversation, 1 waiting",
+		aria: "Asks, This conversation, 1 waiting",
 	});
 	assert.deepEqual(askRailLabels(true, "fleet", 2, null), {
-		tooltip: "Close asks — All conversations, 2 waiting or moved on",
-		aria: "Asks, All conversations, 2 waiting or moved on",
+		tooltip: "Close asks — All conversations, 2 waiting",
+		aria: "Asks, All conversations, 2 waiting",
 	});
 	assert.deepEqual(askRailLabels(false, "session", 0, null), {
 		tooltip: "Open asks — This conversation",
@@ -827,8 +824,8 @@ test("the tooltips are the header's verbatim; the accessible names are stable no
 	 * answered but the control never showed.
 	 */
 	assert.deepEqual(askRailLabels(false, "session", 1, "⌘A"), {
-		tooltip: "Open asks (⌘A) — This conversation, 1 waiting or moved on",
-		aria: "Asks (⌘A), This conversation, 1 waiting or moved on",
+		tooltip: "Open asks (⌘A) — This conversation, 1 waiting",
+		aria: "Asks (⌘A), This conversation, 1 waiting",
 	});
 	assert.deepEqual(askRailLabels(true, "fleet", 0, "⌘A"), {
 		tooltip: "Close asks (⌘A) — All conversations",
@@ -992,7 +989,7 @@ test("the ask badge (#896): the count, capped at 9+ on the glyph, styled like th
 		assert.equal(capped.textContent, "9+", "the glyph is capped");
 		assert.match(
 			api.item("ask").getAttribute("aria-label"),
-			/12 waiting or moved on/,
+			/12 waiting/,
 			"the name keeps the exact number",
 		);
 		assert.ok(

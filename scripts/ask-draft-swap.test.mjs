@@ -603,14 +603,15 @@ test("a settled-only queue lands on the first settled row, never on the filter (
 	chip.remove();
 });
 
-test("a filter whose half is empty says so, and the boundary label goes with the boundary (design D1 = UX U2)", async () => {
+test("a filter whose half is empty says so, and the boundary label goes with the boundary (design D1 = UX U2)", async (t) => {
 	/*
 	 * THE REPORTED REPRO, on the shipped panel: one open ask, press the chip whose count
 	 * is zero. Before the fix the pane went blank under the chips - no empty copy at all
 	 * - which reads as "there are no asks" over a queue that has one, and the drawer's
 	 * own bar was still saying "1 question waiting" above it.
 	 */
-	const view = await mount(
+	const view = await mountFor(
+		t,
 		h(AskDrawer, { frontend: frontend([radioAsk]), scope: "session" }),
 	);
 	const chip = [
@@ -632,8 +633,14 @@ test("a filter whose half is empty says so, and the boundary label goes with the
 		"the empty half states its own emptiness rather than leaving the pane blank",
 	);
 	assert.ok(
-		text.includes("Waiting or moved on"),
+		text.includes("They are all still pending."),
 		"and names the half that does hold the asks, so it cannot read as an empty queue",
+	);
+	assert.ok(
+		[...view.container.querySelectorAll("[data-lo-ask-filter] button")].some(
+			(b) => b.textContent === "Pending · 1",
+		),
+		"the half is named `Pending`, the opposite of `Settled` (design round 1 on #1116, D1)",
 	);
 	assert.equal(
 		view.container.querySelectorAll("[data-lo-ask-row]").length,
@@ -659,7 +666,6 @@ test("a filter whose half is empty says so, and the boundary label goes with the
 		null,
 		"with one pending ask and none settled, there is no group to head",
 	);
-	await view.unmount();
 });
 
 test("the settled group labels only what it holds, and each row carries its own word (M1 = U1 = D1)", async () => {
@@ -710,9 +716,10 @@ test("the settled group labels only what it holds, and each row carries its own 
 	await view.unmount();
 });
 
-test("the bar counts what the surface shows, not only what the agent waits on (UX U5)", async () => {
+test("the bar counts the Pending half, and a timed-out-only drawer is settled (design D2, UX U2)", async (t) => {
 	const movedOn = { ...radioAsk, ask_id: "a-moved", status: "timed_out" };
-	const view = await mount(
+	const view = await mountFor(
+		t,
 		h(AskDrawer, {
 			frontend: frontend([radioAsk, movedOn]),
 			scope: "session",
@@ -721,10 +728,143 @@ test("the bar counts what the surface shows, not only what the agent waits on (U
 	const scope = view.container.querySelector("[data-ask-scope]");
 	assert.equal(
 		scope?.textContent,
-		"This conversation · 1 waiting, 1 moved on",
-		"both answerable cards the drawer draws are counted",
+		"This conversation · 1 question waiting",
+		"the timed-out ask is a settled row, and settled rows are not in the title",
 	);
-	await view.unmount();
+	const lapsedOnly = await mountFor(
+		t,
+		h(AskDrawer, { frontend: frontend([movedOn]), scope: "session" }),
+	);
+	assert.equal(
+		lapsedOnly.container.querySelector("[data-ask-scope]")?.textContent,
+		"This conversation · All asks settled",
+	);
+	const pendingChip = [
+		...lapsedOnly.container.querySelectorAll("[data-lo-ask-filter] button"),
+	].find((b) => (b.textContent ?? "").startsWith("Pending"));
+	if (!pendingChip) throw new Error("the Pending chip is not rendered");
+	await act(async () => {
+		pendingChip.click();
+	});
+	assert.equal(
+		lapsedOnly.container.querySelector("[data-lo-ask-empty]")?.textContent,
+		"No asks are pending. They have all settled — see Settled.",
+		"the empty Pending half and the bar now say the same thing",
+	);
+});
+
+/*
+ * AN ASK THAT LAPSES UNDER THE READER (UX round 1 on #1116, U1, MAJOR). The card used
+ * to leave the pending half on the frame that lapsed it, so the next card slid up into
+ * its place: that card's one-click, irreversible Decline landed exactly where the
+ * reader's pointer was, and keyboard focus fell to BODY. The lapsed card now stays in
+ * its slot, read-only, until the next mount files it under Settled.
+ */
+test("a card that lapses while the drawer is open stays in its slot, read-only (UX U1)", async (t) => {
+	const a1 = { ...radioAsk, ask_id: "a-1", created_at: TS };
+	const a2 = { ...radioAsk, ask_id: "a-2", created_at: TS + 10 };
+	/*
+	 * Document order of the cards and of a HELD row (a card that lapsed in place,
+	 * `data-lo-ask-held`); a collapsed settled row paints no card, so it is absent.
+	 */
+	const order = (view) =>
+		[
+			...view.container.querySelectorAll(
+				"[data-lo-ask-row], [data-lo-ask-held]",
+			),
+		].map((row) =>
+			row.hasAttribute("data-lo-ask-held")
+				? `${row.getAttribute("data-lo-ask-held")}:held`
+				: `${row.getAttribute("data-lo-ask-row")}:pending`,
+		);
+	const props = { scope: "session" };
+	const view = await mountFor(
+		t,
+		h(AskDrawer, { frontend: frontend([a1, a2]), ...props }),
+	);
+	assert.deepEqual(order(view), ["a-1:pending", "a-2:pending"]);
+	await view.rerender(
+		h(AskDrawer, {
+			frontend: frontend([{ ...a1, status: "timed_out" }, a2]),
+			...props,
+		}),
+	);
+	assert.deepEqual(
+		order(view),
+		["a-1:held", "a-2:pending"],
+		"the lapsed card collapses in its own slot, above a-2, not at the bottom",
+	);
+	const lapsed = view.container.querySelector('[data-lo-ask-held="a-1"]');
+	const header = lapsed.querySelector("button[aria-expanded]");
+	assert.equal(header?.getAttribute("aria-expanded"), "false", "collapsed");
+	assert.match(header?.getAttribute("aria-label") ?? "", /^Timed out - /);
+	assert.ok(
+		!lapsed.closest("[data-lo-ask-settled]"),
+		"held in the pending half, not filed under Settled yet",
+	);
+	/* Opened by the reader, it is read-only: no option, no Send answer, no Decline. */
+	await act(async () => {
+		header.click();
+	});
+	assert.equal(
+		lapsed.querySelectorAll("button[data-ask-option]:not([disabled])").length,
+		0,
+		"held, but read-only: no enabled option",
+	);
+	assert.ok(
+		![...lapsed.querySelectorAll("button")].some((b) =>
+			["Send answer", "Decline"].includes(b.textContent ?? ""),
+		),
+		"no Send answer or Decline on the held row",
+	);
+	/* The next open of the drawer files it with the settled rows. */
+	const reopened = await mountFor(
+		t,
+		h(AskDrawer, {
+			frontend: frontend([{ ...a1, status: "timed_out" }, a2]),
+			...props,
+		}),
+	);
+	assert.deepEqual(order(reopened), ["a-2:pending"], "nothing is held");
+	assert.ok(
+		reopened.container.querySelector("[data-lo-ask-settled]"),
+		"the lapsed ask is a collapsed settled row on the next open",
+	);
+});
+
+test("focus inside a card that lapses stays on that card, never on BODY (UX U1)", async (t) => {
+	const a1 = { ...radioAsk, ask_id: "a-1", created_at: TS };
+	const a2 = { ...radioAsk, ask_id: "a-2", created_at: TS + 10 };
+	const props = { scope: "session" };
+	const view = await mountFor(
+		t,
+		h(AskDrawer, { frontend: frontend([a1, a2]), ...props }),
+	);
+	const option = view.container.querySelector(
+		'[data-lo-ask-row="a-1"] [data-ask-option="production"]',
+	);
+	option.focus();
+	assert.equal(document.activeElement, option);
+	await view.rerender(
+		h(AskDrawer, {
+			frontend: frontend([{ ...a1, status: "timed_out" }, a2]),
+			...props,
+		}),
+	);
+	const active = document.activeElement;
+	assert.notEqual(active, document.body, "focus must not fall to BODY");
+	const header = view.container.querySelector(
+		'[data-lo-ask-held="a-1"] button[aria-expanded]',
+	);
+	assert.equal(
+		active,
+		header,
+		`focus lands on the lapsed row's own header, got ${active?.outerHTML?.slice(0, 80)}`,
+	);
+	assert.ok(
+		!view.container.querySelector('[data-lo-ask-row="a-2"]').contains(active),
+		"never on the next ask's controls",
+	);
 });
 
 test("an answer that is not one of the labels is DRAWN as Other (design D2)", async (t) => {
