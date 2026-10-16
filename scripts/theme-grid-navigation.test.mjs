@@ -387,8 +387,17 @@ test("the component consumes the module rather than keeping its own arithmetic",
 test("the component groups the tiles by the same rule this file derives them with", () => {
 	/* The boundary cases above are about the DARK group's last tile, and they
 	 * only mean that if the component still groups on `palette.mode`. */
-	assert.match(component, /t\.theme\.palette\.mode === "dark"/);
-	assert.match(component, /t\.theme\.palette\.mode === "light"/);
+	// The callback variable is not part of the grouping contract (it cannot be
+	// `t` now that the component imports the translation function under that name).
+	// Still require each filter to compare its OWN element's palette mode.
+	assert.match(
+		component,
+		/all\.filter\(\((\w+)\) => \1\.theme\.palette\.mode === "dark"\)/,
+	);
+	assert.match(
+		component,
+		/all\.filter\(\((\w+)\) => \1\.theme\.palette\.mode === "light"\)/,
+	);
 	/* And the tab stop follows focus rather than the selection (round 2, M-6). */
 	assert.match(component, /onFocus=\{onFocusTile\}/);
 	assert.match(component, /setFocusedId\(/);

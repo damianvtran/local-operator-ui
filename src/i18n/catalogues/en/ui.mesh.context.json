@@ -1,0 +1,1117 @@
+{
+	"ui.mesh.mesh_actions.copy_notice": {
+		"role": "confirmation explanation — move/invite/removal dialog and outcome notice",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Shown for the reversible Copy alternative. keeper identifies which original device keeps its own conversation; the destination receives a new id. Do not describe this as a move. Placeholders: keeper = already localized owner/retention phrase. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_actions.the_other_device_keeps": {
+		"role": "confirmation explanation — move/invite/removal dialog and outcome notice",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Move/invite/removal dialog and outcome notice: names/explains the other device keeps. Length: keep the confirmation explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_actions.this_device_keeps": {
+		"role": "confirmation explanation — move/invite/removal dialog and outcome notice",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Move/invite/removal dialog and outcome notice: names/explains this device keeps. Length: keep the confirmation explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_actions.which_operation": {
+		"role": "status or explanatory text — move/invite/removal dialog and outcome notice",
+		"tone": "Factual and restrained",
+		"note": "Move/invite/removal dialog and outcome notice: names/explains which operation. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_actions.the_original_stays_where_it_is": {
+		"role": "status or explanatory text — move/invite/removal dialog and outcome notice",
+		"tone": "Factual and restrained",
+		"note": "Move/invite/removal dialog and outcome notice: names/explains the original stays where it is. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_actions.the_copy_here_is_deleted_once_it": {
+		"role": "status or explanatory text — move/invite/removal dialog and outcome notice",
+		"tone": "Factual and restrained",
+		"note": "Move/invite/removal dialog and outcome notice: names/explains the copy here is deleted once it. Distinguish moving from keeping a copy, and preserve which device retains or loses the conversation; a refusal means no transfer happened. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_actions.it_is_open_on_the_other_end": {
+		"role": "warning/error explanation — move/invite/removal dialog and outcome notice",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Move/invite/removal dialog and outcome notice: names/explains it is open on the other end. Distinguish moving from keeping a copy, and preserve which device retains or loses the conversation; a refusal means no transfer happened. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_actions.it_is_open_elsewhere_right_now_whatever": {
+		"role": "warning/error explanation — move/invite/removal dialog and outcome notice",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Move/invite/removal dialog and outcome notice: names/explains it is open elsewhere right now whatever. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_actions.cancel": {
+		"role": "button/menu choice — move/invite/removal dialog and outcome notice",
+		"tone": "Short imperative",
+		"note": "Dismisses this pending dialog without sending its action. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_actions.invite_to_a_network": {
+		"role": "button/menu choice — move/invite/removal dialog and outcome notice",
+		"tone": "Short imperative",
+		"note": "Opens the invitation dialog; the ellipsis signals further choice/confirmation. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_actions.admission_is_two_sided_so_this_mints": {
+		"role": "confirmation explanation — move/invite/removal dialog and outcome notice",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Move/invite/removal dialog and outcome notice: names/explains admission is two sided so this mints. Inline fragment: preserve boundary spaces; its adjacent name/value stays in the existing markup. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_actions.proves_the_short_authentication_string_when_it": {
+		"role": "confirmation explanation — move/invite/removal dialog and outcome notice",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Move/invite/removal dialog and outcome notice: names/explains proves the short authentication string when it. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_actions.invited_the_device_appears_once_it_redeems": {
+		"role": "status or explanatory text — move/invite/removal dialog and outcome notice",
+		"tone": "Factual and restrained",
+		"note": "Move/invite/removal dialog and outcome notice: names/explains invited the device appears once it redeems. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_actions.the_token_was_written_here_and_this": {
+		"role": "status or explanatory text — move/invite/removal dialog and outcome notice",
+		"tone": "Factual and restrained",
+		"note": "Invite success: token material is written to the path displayed in separate monospace markup; the app never reads or renders the token value. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_actions.the_route_did_not_name_a_path": {
+		"role": "status or explanatory text — move/invite/removal dialog and outcome notice",
+		"tone": "Factual and restrained",
+		"note": "Move/invite/removal dialog and outcome notice: names/explains the route did not name a path. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_actions.network_to_invite_it_to": {
+		"role": "input label — move/invite/removal dialog and outcome notice",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Move/invite/removal dialog and outcome notice: names/explains network to invite it to. Length: keep the input label compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_actions.inviting_to": {
+		"role": "status or explanatory text — move/invite/removal dialog and outcome notice",
+		"tone": "Factual and restrained",
+		"note": "Move/invite/removal dialog and outcome notice: names/explains inviting to. Inline fragment: preserve boundary spaces; its adjacent name/value stays in the existing markup. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_actions.role_the_device_will_have": {
+		"role": "input label — move/invite/removal dialog and outcome notice",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Move/invite/removal dialog and outcome notice: names/explains role the device will have. Length: keep the input label compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_actions.read_sees_sessions_drive_may_ask_this": {
+		"role": "status or explanatory text — move/invite/removal dialog and outcome notice",
+		"tone": "Factual and restrained",
+		"note": "Role picker help: read, drive and admin are literal protocol role names, not adjectives to translate. Each higher role adds the stated permission. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_actions.close": {
+		"role": "button/menu choice — move/invite/removal dialog and outcome notice",
+		"tone": "Short imperative",
+		"note": "Dismisses the finished dialog/panel. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_actions.mint_the_token": {
+		"role": "button/menu choice — move/invite/removal dialog and outcome notice",
+		"tone": "Short imperative",
+		"note": "Creates a single-use invitation token; does not directly add the device. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_actions.remove": {
+		"role": "dialog/section heading — move/invite/removal dialog and outcome notice",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Move/invite/removal dialog and outcome notice: names/explains remove. Inline fragment: preserve boundary spaces; its adjacent name/value stays in the existing markup. Length: keep the dialog/section heading compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_actions.from": {
+		"role": "dialog/section heading — move/invite/removal dialog and outcome notice",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Move/invite/removal dialog and outcome notice: names/explains from. Inline fragment: preserve boundary spaces; its adjacent name/value stays in the existing markup. Length: keep the dialog/section heading compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_actions.every_device_in_the_network_is_rekeyed": {
+		"role": "confirmation explanation — move/invite/removal dialog and outcome notice",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Removal confirmation: rekeying affects all members; the named removed device is locked out on its next handshake, not necessarily immediately. Inline fragment: preserve boundary spaces; its adjacent name/value stays in the existing markup. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_actions.is_locked_out_on_its_next_handshake": {
+		"role": "confirmation explanation — move/invite/removal dialog and outcome notice",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Continuation after the removed device name; permanent device-id exclusion is stronger than a temporary disconnect. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_actions.removed_the_membership_epoch_is_now": {
+		"role": "status or explanatory text — move/invite/removal dialog and outcome notice",
+		"tone": "Factual and restrained",
+		"note": "Move/invite/removal dialog and outcome notice: names/explains removed the membership epoch is now. Distinguish moving from keeping a copy, and preserve which device retains or loses the conversation; a refusal means no transfer happened. Inline fragment: preserve boundary spaces; its adjacent name/value stays in the existing markup. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_actions.type_the_network_s_name_to_confirm": {
+		"role": "input label — move/invite/removal dialog and outcome notice",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Destructive removal gate: the user must enter the existing network name verbatim; do not imply merely checking a box confirms it. Inline fragment: preserve boundary spaces; its adjacent name/value stays in the existing markup. Length: keep the input label compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_actions.remove_the_device": {
+		"role": "button/menu choice — move/invite/removal dialog and outcome notice",
+		"tone": "Short imperative",
+		"note": "Confirms permanent member/device-id removal after the name gate. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_actions.wait_for_the_turn_to_finish": {
+		"role": "button/menu choice — move/invite/removal dialog and outcome notice",
+		"tone": "Short imperative",
+		"note": "Offers the busy refusal’s remedy; it does not stop the active turn. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_actions.check_again": {
+		"role": "button/menu choice — move/invite/removal dialog and outcome notice",
+		"tone": "Short imperative",
+		"note": "Reads the mesh again to re-evaluate reach/refusal state. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_actions.dismiss": {
+		"role": "button/menu choice — move/invite/removal dialog and outcome notice",
+		"tone": "Short imperative",
+		"note": "Hides the outcome/refusal notice without retrying the transfer. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals_tray.abandon": {
+		"role": "status or explanatory text — approvals waiting/settled tray",
+		"tone": "Short imperative",
+		"note": "Denies a stopped/retryable record; distinct from retrying it. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals_tray.stop": {
+		"role": "explanatory term — approvals waiting/settled tray",
+		"tone": "Short imperative",
+		"note": "Stops an approved/in-flight runner at its next step; nothing in the wording promises rollback. Length: keep the explanatory term compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals_tray.signing": {
+		"role": "explanatory term — approvals waiting/settled tray",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Approvals waiting/settled tray: names/explains signing. This is authority-bearing copy: keep who grants/signs and which machine receives/uses the permission explicit; do not strengthen the permission. Length: keep the explanatory term compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals_tray.approving_signs_with_this_machine_s_operator": {
+		"role": "status or explanatory text — approvals waiting/settled tray",
+		"tone": "Factual and restrained",
+		"note": "Approvals waiting/settled tray: names/explains approving signs with this machine s operator. This is authority-bearing copy: keep who grants/signs and which machine receives/uses the permission explicit; do not strengthen the permission. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_approvals_tray.next": {
+		"role": "explanatory term — approvals waiting/settled tray",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Approvals waiting/settled tray: names/explains next. Length: keep the explanatory term compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals_tray.an_agent_runs_the_install_and_connect": {
+		"role": "status or explanatory text — approvals waiting/settled tray",
+		"tone": "Factual and restrained",
+		"note": "Approvals waiting/settled tray: names/explains an agent runs the install and connect. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_approvals_tray.stopping_now_denies_the_request_nothing_has": {
+		"role": "status or explanatory text — approvals waiting/settled tray",
+		"tone": "Factual and restrained",
+		"note": "Approvals waiting/settled tray: names/explains stopping now denies the request nothing has. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_approvals_tray.stopping_now_denies_the_request_the_runner": {
+		"role": "status or explanatory text — approvals waiting/settled tray",
+		"tone": "Factual and restrained",
+		"note": "Approvals waiting/settled tray: names/explains stopping now denies the request the runner. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_approvals_tray.after_a_stop": {
+		"role": "explanatory term — approvals waiting/settled tray",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Approvals waiting/settled tray: names/explains after a stop. Length: keep the explanatory term compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals_tray.the_runner_stopped_before_it_finished_abandoning": {
+		"role": "status or explanatory text — approvals waiting/settled tray",
+		"tone": "Factual and restrained",
+		"note": "Approvals waiting/settled tray: names/explains the runner stopped before it finished abandoning. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_approvals_tray.approvals": {
+		"role": "accessible control/region name — approvals waiting/settled tray",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Approvals waiting/settled tray: names/explains approvals. This is authority-bearing copy: keep who grants/signs and which machine receives/uses the permission explicit; do not strengthen the permission. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals_tray.waiting_count": {
+		"role": "status or explanatory text — approvals waiting/settled tray",
+		"tone": "Factual and restrained",
+		"note": "Approvals waiting/settled tray: names/explains waiting count. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale’s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+	},
+	"ui.mesh.mesh_approvals_tray.ask_again": {
+		"role": "button/menu choice — approvals waiting/settled tray",
+		"tone": "Short imperative",
+		"note": "Retries the failed read, not a previously sent mutation. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals_tray.settled_approvals": {
+		"role": "summary prop — approvals waiting/settled tray",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Approvals waiting/settled tray: names/explains settled approvals. This is authority-bearing copy: keep who grants/signs and which machine receives/uses the permission explicit; do not strengthen the permission. Length: keep the summary prop compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals_tray.the_runner_stopped_before_it_finished_it": {
+		"role": "status or explanatory text — approvals waiting/settled tray",
+		"tone": "Factual and restrained",
+		"note": "Approvals waiting/settled tray: names/explains the runner stopped before it finished it. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_approvals_tray.approve": {
+		"role": "button/menu choice — approvals waiting/settled tray",
+		"tone": "Short imperative",
+		"note": "Signs the waiting request with the operator key; preserve the distinction from the later agent-run install/connect. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals_tray.deny": {
+		"role": "button/menu choice — approvals waiting/settled tray",
+		"tone": "Short imperative",
+		"note": "Denies this waiting request, rather than stopping a completed install. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals_tray.waiting_for_the_signing_prompt": {
+		"role": "status or explanatory text — approvals waiting/settled tray",
+		"tone": "Factual and restrained",
+		"note": "Approvals waiting/settled tray: names/explains waiting for the signing prompt. This is authority-bearing copy: keep who grants/signs and which machine receives/uses the permission explicit; do not strengthen the permission. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals_tray.writing_the_decision": {
+		"role": "status or explanatory text — approvals waiting/settled tray",
+		"tone": "Factual and restrained",
+		"note": "Approvals waiting/settled tray: names/explains writing the decision. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals_tray.details": {
+		"role": "summary prop — approvals waiting/settled tray",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Approvals waiting/settled tray: names/explains details. Length: keep the summary prop compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.waiting_for_you": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains waiting for you. Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.approved": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains approved. Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.connecting": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains connecting. Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.connected": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains connected. Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.denied": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains denied. Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.expired": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains expired. Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.failed": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains failed. Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.this_machine": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains this machine. Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.approval_title": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains approval title. Placeholders: head = already localized approval heading. Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.approval_title_with_clauses": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Complete waiting-card consent sentence. head is the onboarding subject, clauses are the permissions in CLI order; this is one sentence even when it wraps. Placeholders: head = already localized approval heading; clauses = already localized permission clauses. Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.set_up_operator_authority_on_this_machine": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains set up operator authority on this machine. This is authority-bearing copy: keep who grants/signs and which machine receives/uses the permission explicit; do not strengthen the permission. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_approvals.onboard_subject": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains onboard subject. Placeholders: subject = onboarding subject label. Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.join_clauses": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains join clauses. Placeholders: clauses = already localized permission clauses; last = already localized final clause. Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.via_transport": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains via transport. Placeholders: transport = transport name (keep unchanged). Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.session_suffix": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains session suffix. Placeholders: suffix = literal last six characters of a technical id. Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.asked_by": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains asked by. Placeholders: requester = already composed requester provenance. Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.connect_over": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains connect over. Placeholders: transport = transport name (keep unchanged). Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.connect_to_it": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains connect to it. Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.may_connect_over": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains may connect over. Placeholders: transport = transport name (keep unchanged). Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_approvals.this_machine_may_connect_to_it": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains this machine may connect to it. Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.install_local_operator": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains install local operator. This is authority-bearing copy: keep who grants/signs and which machine receives/uses the permission explicit; do not strengthen the permission. Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.install_local_operator_there": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains install local operator there. This is authority-bearing copy: keep who grants/signs and which machine receives/uses the permission explicit; do not strengthen the permission. Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.local_operator_is_installed_on_this_machine": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains local operator is installed on this machine. This is authority-bearing copy: keep who grants/signs and which machine receives/uses the permission explicit; do not strengthen the permission. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_approvals.local_operator_is_installed_on_it": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains local operator is installed on it. This is authority-bearing copy: keep who grants/signs and which machine receives/uses the permission explicit; do not strengthen the permission. Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.install_operator_anchor": {
+		"role": "explanatory term — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains install operator anchor. This is authority-bearing copy: keep who grants/signs and which machine receives/uses the permission explicit; do not strengthen the permission. Length: keep the explanatory term compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.check_approvals_signed_on_your_machines": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Verification only: the remote anchor can verify signatures from the operator machines but cannot sign approvals itself. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_approvals.that_device_can_check_approvals_signed_on": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains that device can check approvals signed on. This is authority-bearing copy: keep who grants/signs and which machine receives/uses the permission explicit; do not strengthen the permission. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_approvals.join_network": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains join network. Placeholders: network = network label or stable id; role = read/drive/admin protocol token (keep unchanged). Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.joins_network": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains joins network. Placeholders: network = network label or stable id; role = read/drive/admin protocol token (keep unchanged). Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.trust_unattended_sessions": {
+		"role": "explanatory term — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains trust unattended sessions. This is authority-bearing copy: keep who grants/signs and which machine receives/uses the permission explicit; do not strengthen the permission. Length: keep the explanatory term compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.run_sessions_there_without_an_approval_prompt": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains run sessions there without an approval prompt. This is authority-bearing copy: keep who grants/signs and which machine receives/uses the permission explicit; do not strengthen the permission. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_approvals.sessions_you_start_on_that_device_run": {
+		"role": "permission consequence — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Unattended execution permission: sessions explicitly started on that remote device run there without an approval prompt; not blanket authority over unrelated devices. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_approvals.grant_capability": {
+		"role": "explanatory term — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Compact permission term for an unrecognized capability token, not a promise that the operation already ran. Placeholders: grant = capability identifier (keep unchanged). Length: keep the explanatory term compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.use_capability": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains use capability. This is authority-bearing copy: keep who grants/signs and which machine receives/uses the permission explicit; do not strengthen the permission. Placeholders: grant = capability identifier (keep unchanged). Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.may_use_capability": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Permission direction is from the reader toward the remote device: the grant allows the reader to act there. Placeholders: grant = capability identifier (keep unchanged). Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.borrow_logins_there": {
+		"role": "explanatory term — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains borrow logins there. This is authority-bearing copy: keep who grants/signs and which machine receives/uses the permission explicit; do not strengthen the permission. Length: keep the explanatory term compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.your_sessions_may_use_the_logins_stored": {
+		"role": "permission consequence — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Credential borrowing: sessions on the reader’s own machine may use credentials stored on the remote device. Do not move the session to that device in the wording. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_approvals.see_its_sessions": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains see its sessions. Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.watch_a_session_there": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains watch a session there. Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.send_prompts_to_a_session_there": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains send prompts to a session there. Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.steer_a_running_turn_there": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains steer a running turn there. Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.stop_a_session_there": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains stop a session there. Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.run_slash_commands_there": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains run slash commands there. Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.archive_or_delete_a_session_there": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains archive or delete a session there. Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.move_sessions_to_or_from_there": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains move sessions to or from there. Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.borrow_the_logins_stored_there": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains borrow the logins stored there. This is authority-bearing copy: keep who grants/signs and which machine receives/uses the permission explicit; do not strengthen the permission. Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.answer_approval_prompts_there": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains answer approval prompts there. This is authority-bearing copy: keep who grants/signs and which machine receives/uses the permission explicit; do not strengthen the permission. Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.expires_in_under_a_minute": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains expires in under a minute. Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.expires_minutes": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains expires minutes. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale’s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+	},
+	"ui.mesh.mesh_approvals.expires_hours": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains expires hours. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale’s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+	},
+	"ui.mesh.mesh_approvals.the_approvals_could_not_be_read": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains the approvals could not be read. This is authority-bearing copy: keep who grants/signs and which machine receives/uses the permission explicit; do not strengthen the permission. Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_canvas.networks": {
+		"role": "accessible control/region name — mesh canvas columns",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Mesh canvas columns: names/explains networks. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_canvas.devices": {
+		"role": "accessible control/region name — mesh canvas columns",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Mesh canvas columns: names/explains devices. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_card.recall_to_this_device": {
+		"role": "status or explanatory text — device detail panel and conversation move menu",
+		"tone": "Short imperative",
+		"note": "Moves the remote conversation here; source copy is removed on successful handoff. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_card.copy_here_leave_it_there": {
+		"role": "status or explanatory text — device detail panel and conversation move menu",
+		"tone": "Short imperative",
+		"note": "Copies a remote conversation here while explicitly retaining the original there. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_card.move_to": {
+		"role": "status or explanatory text — device detail panel and conversation move menu",
+		"tone": "Factual and restrained",
+		"note": "Device detail panel and conversation move menu: names/explains move to. Placeholders: device = operator-supplied device label. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_card.copy_to": {
+		"role": "status or explanatory text — device detail panel and conversation move menu",
+		"tone": "Factual and restrained",
+		"note": "Device detail panel and conversation move menu: names/explains copy to. Distinguish moving from keeping a copy, and preserve which device retains or loses the conversation; a refusal means no transfer happened. Placeholders: device = operator-supplied device label. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_card.conversation_count": {
+		"role": "status or explanatory text — device detail panel and conversation move menu",
+		"tone": "Factual and restrained",
+		"note": "Device detail panel and conversation move menu: names/explains conversation count. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale’s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility."
+	},
+	"ui.mesh.mesh_card.revoked_membership": {
+		"role": "status or explanatory text — device detail panel and conversation move menu",
+		"tone": "Factual and restrained",
+		"note": "Device detail panel and conversation move menu: names/explains revoked membership. Identity/membership security state, not mere lack of a network response. Preserve the lockout or identity warning. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_card.shown_of": {
+		"role": "status or explanatory text — device detail panel and conversation move menu",
+		"tone": "Factual and restrained",
+		"note": "Device detail panel and conversation move menu: names/explains shown of. Placeholders: shown = visible row count; total = known total; missing census must not be coerced to zero. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_card.device_details": {
+		"role": "accessible control/region name — device detail panel and conversation move menu",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Device detail panel and conversation move menu: names/explains device details. Placeholders: device = operator-supplied device label. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_card.memberships": {
+		"role": "dialog/section heading — device detail panel and conversation move menu",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Device detail panel and conversation move menu: names/explains memberships. Length: keep the dialog/section heading compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_card.revoked": {
+		"role": "status or explanatory text — device detail panel and conversation move menu",
+		"tone": "Factual and restrained",
+		"note": "Device detail panel and conversation move menu: names/explains revoked. Identity/membership security state, not mere lack of a network response. Preserve the lockout or identity warning. Inline fragment: preserve boundary spaces; its adjacent name/value stays in the existing markup. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_card.remove_from": {
+		"role": "button/menu choice — device detail panel and conversation move menu",
+		"tone": "Short imperative",
+		"note": "Device detail panel and conversation move menu: names/explains remove from. Inline fragment: preserve boundary spaces; its adjacent name/value stays in the existing markup. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_card.conversations": {
+		"role": "dialog/section heading — device detail panel and conversation move menu",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Device detail panel and conversation move menu: names/explains conversations. Inline fragment: preserve boundary spaces; its adjacent name/value stays in the existing markup. Length: keep the dialog/section heading compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_card.this_device_did_not_report_its_conversations": {
+		"role": "status or explanatory text — device detail panel and conversation move menu",
+		"tone": "Factual and restrained",
+		"note": "Device detail panel and conversation move menu: names/explains this device did not report its conversations. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_card.no_conversations_here": {
+		"role": "status or explanatory text — device detail panel and conversation move menu",
+		"tone": "Factual and restrained",
+		"note": "Device detail panel and conversation move menu: names/explains no conversations here. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_card.moving": {
+		"role": "status or explanatory text — device detail panel and conversation move menu",
+		"tone": "Factual and restrained",
+		"note": "Device detail panel and conversation move menu: names/explains moving. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_card.move_conversation": {
+		"role": "triggerLabel prop — device detail panel and conversation move menu",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Device detail panel and conversation move menu: names/explains move conversation. Placeholders: conversation = operator-supplied conversation title or localized fallback. Length: keep the triggerLabel prop compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_card.network_addresses": {
+		"role": "dialog/section heading — device detail panel and conversation move menu",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Device detail panel and conversation move menu: names/explains network addresses. Length: keep the dialog/section heading compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_card.no_address_published": {
+		"role": "status or explanatory text — device detail panel and conversation move menu",
+		"tone": "Factual and restrained",
+		"note": "Device detail panel and conversation move menu: names/explains no address published. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_card.advertised": {
+		"role": "status or explanatory text — device detail panel and conversation move menu",
+		"tone": "Factual and restrained",
+		"note": "Device detail panel and conversation move menu: names/explains advertised. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_card.status": {
+		"role": "dialog/section heading — device detail panel and conversation move menu",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Device detail panel and conversation move menu: names/explains status. Length: keep the dialog/section heading compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_card.reach": {
+		"role": "explanatory term — device detail panel and conversation move menu",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Device detail panel and conversation move menu: names/explains reach. Length: keep the explanatory term compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_card.last_status_frame": {
+		"role": "explanatory term — device detail panel and conversation move menu",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "The wire’s rotation/status timestamp, not a heartbeat or proof of current reachability. age uses the existing common relative-time formatter. Length: keep the explanatory term compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_card.never": {
+		"role": "status or explanatory text — device detail panel and conversation move menu",
+		"tone": "Factual and restrained",
+		"note": "Device detail panel and conversation move menu: names/explains never. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_card.show_in_list": {
+		"role": "button/menu choice — device detail panel and conversation move menu",
+		"tone": "Short imperative",
+		"note": "Navigates to this device’s row in the list presentation. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_drop.recall_it": {
+		"role": "move resolver outcome/remedy — conversation drag/drop resolution",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Conversation drag/drop resolution: names/explains recall it. Distinguish moving from keeping a copy, and preserve which device retains or loses the conversation; a refusal means no transfer happened. Length: keep the move resolver outcome/remedy compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_drop.move_it": {
+		"role": "move resolver outcome/remedy — conversation drag/drop resolution",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Conversation drag/drop resolution: names/explains move it. Length: keep the move resolver outcome/remedy compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_drop.copy_loss": {
+		"role": "move resolver outcome/remedy — conversation drag/drop resolution",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Destructive-move confirmation: source copy is deleted only after destination holds the conversation. Placeholders: source = device losing its copy; destination = device receiving the conversation. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_drop.running_now": {
+		"role": "move resolver outcome/remedy — conversation drag/drop resolution",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Conversation drag/drop resolution: names/explains running now. Placeholders: conversation = operator-supplied conversation title or localized fallback; where = already localized location phrase. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_drop.this_conversation": {
+		"role": "move resolver outcome/remedy — conversation drag/drop resolution",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Conversation drag/drop resolution: names/explains this conversation. Length: keep the move resolver outcome/remedy compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_drop.duplicate_key": {
+		"role": "move resolver outcome/remedy — conversation drag/drop resolution",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Conversation drag/drop resolution: names/explains duplicate key. Distinguish moving from keeping a copy, and preserve which device retains or loses the conversation; a refusal means no transfer happened. Placeholders: device = operator-supplied device label; reason = backend diagnostic with its existing parentheses, or empty. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_drop.see_this_device": {
+		"role": "move resolver outcome/remedy — conversation drag/drop resolution",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Conversation drag/drop resolution: names/explains see this device. Length: keep the move resolver outcome/remedy compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_drop.no_shared_network": {
+		"role": "move resolver outcome/remedy — conversation drag/drop resolution",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Conversation drag/drop resolution: names/explains no shared network. Placeholders: device = operator-supplied device label. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_drop.no_answer": {
+		"role": "move resolver outcome/remedy — conversation drag/drop resolution",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Conversation drag/drop resolution: names/explains no answer. Distinguish moving from keeping a copy, and preserve which device retains or loses the conversation; a refusal means no transfer happened. Placeholders: device = operator-supplied device label; reason = backend diagnostic with its existing parentheses, or empty. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_drop.network_not_destination": {
+		"role": "move resolver outcome/remedy — conversation drag/drop resolution",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Drop on a network is refused: a network groups devices, never owns conversations. network names the proposed non-device target. Placeholders: network = network label or stable id. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_drop.a_network": {
+		"role": "move resolver outcome/remedy — conversation drag/drop resolution",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Conversation drag/drop resolution: names/explains a network. Length: keep the move resolver outcome/remedy compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_drop.turn_in_flight": {
+		"role": "move resolver outcome/remedy — conversation drag/drop resolution",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Busy refusal: the conversation remains unchanged; wait until its active turn finishes rather than claiming it moved. Placeholders: conversation = operator-supplied conversation title or localized fallback. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_drop.that_device_is_no_longer_in_any": {
+		"role": "move resolver outcome/remedy — conversation drag/drop resolution",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Conversation drag/drop resolution: names/explains that device is no longer in any. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_drop.owner_no_answer": {
+		"role": "move resolver outcome/remedy — conversation drag/drop resolution",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Conversation drag/drop resolution: names/explains owner no answer. Report only the observed reach/census fact: silence, not attempted and not reported are different states; the status frame is not a heartbeat. Placeholders: device = operator-supplied device label; reason = backend diagnostic with its existing parentheses, or empty. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_drop.recall_first": {
+		"role": "move resolver outcome/remedy — conversation drag/drop resolution",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Conversation drag/drop resolution: names/explains recall first. Distinguish moving from keeping a copy, and preserve which device retains or loses the conversation; a refusal means no transfer happened. Placeholders: owner = current owner device label. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_drop.on_owner": {
+		"role": "move resolver outcome/remedy — conversation drag/drop resolution",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Conversation drag/drop resolution: names/explains on owner. Placeholders: owner = current owner device label. Length: keep the move resolver outcome/remedy compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_drop.this_device": {
+		"role": "selfLabel prop — conversation drag/drop resolution",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Conversation drag/drop resolution: names/explains this device. Length: keep the selfLabel prop compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_drop.on_this_device": {
+		"role": "move resolver outcome/remedy — conversation drag/drop resolution",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Conversation drag/drop resolution: names/explains on this device. Length: keep the move resolver outcome/remedy compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_drop.drop_refusal": {
+		"role": "move resolver outcome/remedy — conversation drag/drop resolution",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Conversation drag/drop resolution: names/explains drop refusal. Placeholders: sentence = already authored refusal; do not paraphrase it. Length: keep the move resolver outcome/remedy compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_graph.just_now": {
+		"role": "device/census status phrase — mesh device/census summary",
+		"tone": "Factual and restrained",
+		"note": "Mesh device/census summary: names/explains just now. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_graph.last_status_frame": {
+		"role": "device/census status phrase — mesh device/census summary",
+		"tone": "Factual and restrained",
+		"note": "The wire’s rotation/status timestamp, not a heartbeat or proof of current reachability. age uses the existing common relative-time formatter. Placeholders: age = age from the common relative-time formatter. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_graph.conversations_not_reported": {
+		"role": "device/census status phrase — mesh device/census summary",
+		"tone": "Factual and restrained",
+		"note": "Mesh device/census summary: names/explains conversations not reported. Report only the observed reach/census fact: silence, not attempted and not reported are different states; the status frame is not a heartbeat. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_graph.revoked_membership": {
+		"role": "device/census status phrase — mesh device/census summary",
+		"tone": "Factual and restrained",
+		"note": "Mesh device/census summary: names/explains revoked membership. Identity/membership security state, not mere lack of a network response. Preserve the lockout or identity warning. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_graph.self_conversations": {
+		"role": "device/census status phrase — mesh device/census summary",
+		"tone": "Factual and restrained",
+		"note": "Stat line for the reader’s device: conversation total is separately derived; null census is not zero. Placeholders: conversations = runtime value, preserve verbatim. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_graph.identity_suspect": {
+		"role": "device/census status phrase — mesh device/census summary",
+		"tone": "Factual and restrained",
+		"note": "Security overlay for duplicated/suspected identity, independent of the reached/unanswered status. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_graph.no_sessions_reported": {
+		"role": "device/census status phrase — mesh device/census summary",
+		"tone": "Factual and restrained",
+		"note": "Mesh device/census summary: names/explains no sessions reported. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_graph.network_count": {
+		"role": "device/census status phrase — mesh device/census summary",
+		"tone": "Factual and restrained",
+		"note": "Mesh device/census summary: names/explains network count. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale’s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility."
+	},
+	"ui.mesh.mesh_graph.device_count": {
+		"role": "dialog/section heading — mesh device/census summary",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Mesh device/census summary: names/explains device count. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale’s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility."
+	},
+	"ui.mesh.mesh_graph.suspected_count": {
+		"role": "device/census status phrase — mesh device/census summary",
+		"tone": "Factual and restrained",
+		"note": "Mesh device/census summary: names/explains suspected count. Identity/membership security state, not mere lack of a network response. Preserve the lockout or identity warning. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale’s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+	},
+	"ui.mesh.mesh_graph.reached_count": {
+		"role": "device/census status phrase — mesh device/census summary",
+		"tone": "Factual and restrained",
+		"note": "Mesh device/census summary: names/explains reached count. Report only the observed reach/census fact: silence, not attempted and not reported are different states; the status frame is not a heartbeat. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale’s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+	},
+	"ui.mesh.mesh_graph.no_answer_count": {
+		"role": "device/census status phrase — mesh device/census summary",
+		"tone": "Factual and restrained",
+		"note": "Mesh device/census summary: names/explains no answer count. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale’s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+	},
+	"ui.mesh.mesh_graph.not_asked_count": {
+		"role": "device/census status phrase — mesh device/census summary",
+		"tone": "Factual and restrained",
+		"note": "Mesh device/census summary: names/explains not asked count. Report only the observed reach/census fact: silence, not attempted and not reported are different states; the status frame is not a heartbeat. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale’s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+	},
+	"ui.mesh.mesh_graph.unknown_count": {
+		"role": "device/census status phrase — mesh device/census summary",
+		"tone": "Factual and restrained",
+		"note": "Mesh device/census summary: names/explains unknown count. Report only the observed reach/census fact: silence, not attempted and not reported are different states; the status frame is not a heartbeat. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale’s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+	},
+	"ui.mesh.mesh_graph.self_identity": {
+		"role": "device/census status phrase — mesh device/census summary",
+		"tone": "Factual and restrained",
+		"note": "Mesh device/census summary: names/explains self identity. Placeholders: device = operator-supplied device label. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_list.name": {
+		"role": "status or explanatory text — mesh device table",
+		"tone": "Factual and restrained",
+		"note": "Mesh device table: names/explains name. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_list.state": {
+		"role": "status or explanatory text — mesh device table",
+		"tone": "Factual and restrained",
+		"note": "Mesh device table: names/explains state. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_list.on_device_state": {
+		"role": "status or explanatory text — mesh device table",
+		"tone": "Factual and restrained",
+		"note": "Mesh device table: names/explains on device state. Placeholders: device = operator-supplied device label; state = runtime value, preserve verbatim. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_list.on_device_no_answer": {
+		"role": "status or explanatory text — mesh device table",
+		"tone": "Factual and restrained",
+		"note": "Conversation location annotation: device is the owner; not answering describes owner reach, not conversation activity. Placeholders: device = operator-supplied device label. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_list.sort_devices_by": {
+		"role": "status or explanatory text — mesh device table",
+		"tone": "Factual and restrained",
+		"note": "Mesh device table: names/explains sort devices by. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_list.epoch": {
+		"role": "hover tooltip — mesh device table",
+		"tone": "Factual and restrained",
+		"note": "Mesh device table: names/explains epoch. Placeholders: epoch = membership epoch integer, not a date. Length: keep the hover tooltip compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_list.revoked_count": {
+		"role": "dialog/section heading — mesh device table",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Mesh device table: names/explains revoked count. Identity/membership security state, not mere lack of a network response. Preserve the lockout or identity warning. Placeholders: count = count of the named objects/states; ICU controls grammar. Inline fragment: preserve boundary spaces; its adjacent name/value stays in the existing markup. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale’s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+	},
+	"ui.mesh.mesh_list.revoked": {
+		"role": "status or explanatory text — mesh device table",
+		"tone": "Factual and restrained",
+		"note": "Mesh device table: names/explains revoked. Identity/membership security state, not mere lack of a network response. Preserve the lockout or identity warning. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_list.member": {
+		"role": "status or explanatory text — mesh device table",
+		"tone": "Factual and restrained",
+		"note": "Mesh device table: names/explains member. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_list.move_conversation": {
+		"role": "triggerLabel prop — mesh device table",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Mesh device table: names/explains move conversation. Placeholders: conversation = operator-supplied conversation title or localized fallback. Length: keep the triggerLabel prop compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_list.show_all_panel": {
+		"role": "status or explanatory text — mesh device table",
+		"tone": "Factual and restrained",
+		"note": "Mesh device table: names/explains show all panel. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale’s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+	},
+	"ui.mesh.mesh_list.answered_the_peer_read_but_is_in": {
+		"role": "status or explanatory text — mesh device table",
+		"tone": "Factual and restrained",
+		"note": "Mesh device table: names/explains answered the peer read but is in. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_node.on_device": {
+		"role": "status or explanatory text — network/device canvas node",
+		"tone": "Factual and restrained",
+		"note": "Network/device canvas node: names/explains on device. Placeholders: device = operator-supplied device label. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_node.working": {
+		"role": "status or explanatory text — network/device canvas node",
+		"tone": "Factual and restrained",
+		"note": "Network/device canvas node: names/explains working. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_node.conversations_on": {
+		"role": "accessible control/region name — network/device canvas node",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Network/device canvas node: names/explains conversations on. Placeholders: device = operator-supplied device label. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_node.shown_conversations": {
+		"role": "hover tooltip — network/device canvas node",
+		"tone": "Factual and restrained",
+		"note": "Network/device canvas node: names/explains shown conversations. Placeholders: shown = visible row count; total = known total; missing census must not be coerced to zero. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale’s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility. Historical English tooltip at 65708b16a40141a40ddb3a4f12dc4943e2fa67e6, src/renderer/src/features/mesh/mesh-node.tsx, said Showing ${sessions.shown.length} of ${sessionTotal} conversations without noun inflection. English one/other intentionally both retain conversations; do not singularize this extraction. Other locales must still use proper target-language singular and full CLDR categories."
+	},
+	"ui.mesh.mesh_node.show_all_conversations": {
+		"role": "accessible control/region name — network/device canvas node",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Network/device canvas node: names/explains show all conversations. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale’s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility. Historical English aria-label at 65708b16a40141a40ddb3a4f12dc4943e2fa67e6, src/renderer/src/features/mesh/mesh-node.tsx, said Show all ${sessionTotal} conversations without noun inflection. English one/other intentionally both retain conversations to preserve that accessible name, not to prohibit correct singular grammar in other locales. Keep their complete CLDR categories and every placeholder."
+	},
+	"ui.mesh.mesh_node.open_conversation": {
+		"role": "accessible control/region name — network/device canvas node",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Network/device canvas node: names/explains open conversation. Placeholders: conversation = operator-supplied conversation title or localized fallback; fact = already localized conversation/reach fact; owner = current owner device label. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_page.canvas": {
+		"role": "status or explanatory text — mesh page and action receipts",
+		"tone": "Factual and restrained",
+		"note": "Mesh page and action receipts: names/explains canvas. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_page.list": {
+		"role": "status or explanatory text — mesh page and action receipts",
+		"tone": "Factual and restrained",
+		"note": "Mesh page and action receipts: names/explains list. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_page.mesh": {
+		"role": "hover tooltip — mesh page and action receipts",
+		"tone": "Factual and restrained",
+		"note": "Mesh page and action receipts: names/explains mesh. Length: keep the hover tooltip compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_page.devices_this_app_is_paired_with_and": {
+		"role": "subtitle prop — mesh page and action receipts",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Mesh page and action receipts: names/explains devices this app is paired with and. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_page.checking": {
+		"role": "status or explanatory text — mesh page and action receipts",
+		"tone": "Factual and restrained",
+		"note": "Mesh page and action receipts: names/explains checking. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_page.presentation": {
+		"role": "status or explanatory text — mesh page and action receipts",
+		"tone": "Factual and restrained",
+		"note": "Mesh page and action receipts: names/explains presentation. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_page.no_network_on_this_device": {
+		"role": "dialog/section heading — mesh page and action receipts",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Mesh page and action receipts: names/explains no network on this device. Length: keep the dialog/section heading compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_page.this_device_is_not_in_any_network": {
+		"role": "status or explanatory text — mesh page and action receipts",
+		"tone": "Factual and restrained",
+		"note": "Mesh page and action receipts: names/explains this device is not in any network. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_page.a_network_appears_here_once_this_device": {
+		"role": "status or explanatory text — mesh page and action receipts",
+		"tone": "Factual and restrained",
+		"note": "Mesh page and action receipts: names/explains a network appears here once this device. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_page.copied": {
+		"role": "status or explanatory text — mesh page and action receipts",
+		"tone": "Factual and restrained",
+		"note": "Mesh page and action receipts: names/explains copied. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_page.moved": {
+		"role": "status or explanatory text — mesh page and action receipts",
+		"tone": "Factual and restrained",
+		"note": "Mesh page and action receipts: names/explains moved. Distinguish moving from keeping a copy, and preserve which device retains or loses the conversation; a refusal means no transfer happened. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_page.copy_receipt": {
+		"role": "status or explanatory text — mesh page and action receipts",
+		"tone": "Factual and restrained",
+		"note": "Copy receipt: destination has the new id suffix; the original still exists on the source. Placeholders: destination = device receiving the conversation; suffix = literal last six characters of a technical id. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_page.move_receipt": {
+		"role": "status or explanatory text — mesh page and action receipts",
+		"tone": "Factual and restrained",
+		"note": "Success receipt from backend. retirement is present only when source_retired was observed; do not claim the original is gone otherwise. Placeholders: destination = device receiving the conversation; retirement = localized source-retirement clause or empty. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_page.the_copy_here_is_gone": {
+		"role": "status or explanatory text — mesh page and action receipts",
+		"tone": "Factual and restrained",
+		"note": "Mesh page and action receipts: names/explains the copy here is gone. Distinguish moving from keeping a copy, and preserve which device retains or loses the conversation; a refusal means no transfer happened. Continuation fragment: its initial punctuation joins the preceding sentence/value. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_page.bring_copy_back": {
+		"role": "status or explanatory text — mesh page and action receipts",
+		"tone": "Factual and restrained",
+		"note": "Mesh page and action receipts: names/explains bring copy back. Distinguish moving from keeping a copy, and preserve which device retains or loses the conversation; a refusal means no transfer happened. Placeholders: device = operator-supplied device label. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_page.the_move_could_not_be_sent_nothing": {
+		"role": "status or explanatory text — mesh page and action receipts",
+		"tone": "Factual and restrained",
+		"note": "Mesh page and action receipts: names/explains the move could not be sent nothing. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_reach.reached": {
+		"role": "device/census status phrase — device reach classification",
+		"tone": "Factual and restrained",
+		"note": "Device reach classification: names/explains reached. Report only the observed reach/census fact: silence, not attempted and not reported are different states; the status frame is not a heartbeat. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_reach.no_answer": {
+		"role": "device/census status phrase — device reach classification",
+		"tone": "Factual and restrained",
+		"note": "Device reach classification: names/explains no answer. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_reach.not_asked": {
+		"role": "device/census status phrase — device reach classification",
+		"tone": "Factual and restrained",
+		"note": "Device reach classification: names/explains not asked. Report only the observed reach/census fact: silence, not attempted and not reported are different states; the status frame is not a heartbeat. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_reach.unknown": {
+		"role": "device/census status phrase — device reach classification",
+		"tone": "Factual and restrained",
+		"note": "Device reach classification: names/explains unknown. Report only the observed reach/census fact: silence, not attempted and not reported are different states; the status frame is not a heartbeat. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_scope.declared": {
+		"role": "status or explanatory text — network-prefix overlay",
+		"tone": "Factual and restrained",
+		"note": "Grouping evidence explicitly published by the backend; stronger evidence than a shared address-prefix calculation. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_scope.shared_with_this_device": {
+		"role": "status or explanatory text — network-prefix overlay",
+		"tone": "Factual and restrained",
+		"note": "The remote advertised prefix matches one published by this device; do not infer a network from it. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_scope.same_prefix": {
+		"role": "status or explanatory text — network-prefix overlay",
+		"tone": "Factual and restrained",
+		"note": "Arithmetic similarity of advertised prefixes only, not proof of shared network membership. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_store.the_mesh_could_not_be_read": {
+		"role": "status or explanatory text — mesh read/transfer failures",
+		"tone": "Factual and restrained",
+		"note": "Mesh read/transfer failures: names/explains the mesh could not be read. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_store.the_move_answered_and_this_app_could": {
+		"role": "status or explanatory text — mesh read/transfer failures",
+		"tone": "Factual and restrained",
+		"note": "Mesh read/transfer failures: names/explains the move answered and this app could. Distinguish moving from keeping a copy, and preserve which device retains or loses the conversation; a refusal means no transfer happened. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
+	"ui.mesh.mesh_types.device_suffix": {
+		"role": "unnamed record fallback label — unnamed network/device label",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Unnamed network/device label: names/explains device suffix. Placeholders: suffix = literal last six characters of a technical id. Length: keep the unnamed record fallback label compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_types.network_suffix": {
+		"role": "unnamed record fallback label — unnamed network/device label",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Unnamed network/device label: names/explains network suffix. Placeholders: suffix = literal last six characters of a technical id. Length: keep the unnamed record fallback label compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_actions.this_moves_the_conversation": {
+		"role": "confirmation explanation — move/invite/removal dialog and outcome notice",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Move/invite/removal dialog and outcome notice: names/explains this moves the conversation. Distinguish moving from keeping a copy, and preserve which device retains or loses the conversation; a refusal means no transfer happened. Length: keep the confirmation explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_actions.the_device": {
+		"role": "confirmation explanation — move/invite/removal dialog and outcome notice",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Move/invite/removal dialog and outcome notice: names/explains the device. Length: keep the confirmation explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_approvals.decision_could_not_be_answered": {
+		"role": "approval/permission explanation — onboarding authority approval",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Onboarding authority approval: names/explains decision could not be answered. Length: keep the approval/permission explanation compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_node.memberships": {
+		"role": "status or explanatory text — network/device canvas node",
+		"tone": "Factual and restrained",
+		"note": "Network/device canvas node: names/explains memberships. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale’s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility. Historical English source at 65708b16a40141a40ddb3a4f12dc4943e2fa67e6, src/renderer/src/features/mesh/mesh-node.tsx, unconditionally said networks after device.memberships.length; its >1 visibility guard remains unchanged. English one/other intentionally both retain networks for extraction fidelity, not editorial grammar repair. Other locales must still use their own correct singular and full CLDR categories."
+	},
+	"ui.mesh.mesh_graph.conversation_unit": {
+		"role": "device/census status phrase — mesh device/census summary",
+		"tone": "Factual and restrained",
+		"note": "Mesh device/census summary: names/explains conversation unit. Placeholders: count = count of the named objects/states; ICU controls grammar; conversation = operator-supplied conversation title or localized fallback; conversations = runtime value, preserve verbatim. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale’s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+	},
+	"ui.mesh.mesh_approvals_tray.failed_count": {
+		"role": "summary prop — approvals waiting/settled tray",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Approvals waiting/settled tray: names/explains failed count. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the summary prop compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale’s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+	},
+	"ui.mesh.mesh_list.sort_conversations": {
+		"role": "status or explanatory text — mesh device table",
+		"tone": "Factual and restrained",
+		"note": "Mesh device table: names/explains sort conversations. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_list.conversation_count": {
+		"role": "status or explanatory text — mesh device table",
+		"tone": "Factual and restrained",
+		"note": "Mesh device table: names/explains conversation count. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale’s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility."
+	},
+	"ui.mesh.approval.credential_title": {
+		"role": "heading — mesh approval card, credential request with no server-provided summary",
+		"tone": "Plain and factual; a neutral label, not a warning",
+		"note": "The card's heading when the server sent a CREDENTIAL access request but no summary line, so this stands as the title. It names the CATEGORY of request, not the specific credential, and it is not a grant: the card's own approve/deny controls are what ask for the decision. Length: this is the card's LEAD body line (`text-body-sm`, below the state line), so it carries the card - keep it to a couple of words, around the English footprint; an over-long title wraps the card's longest line. Do not expand it into a sentence and do not name a credential the server did not name."
+	},
+	"ui.mesh.approval.unknown_title": {
+		"role": "heading — mesh approval card, request whose kind the app does not recognise",
+		"tone": "Plain and factual; neutral fallback, not an error or a warning",
+		"note": "The card's heading when the server sends an approval request of a kind this app version does not understand and gave no summary, so this stands as the title. It is a FALLBACK, not a failure: the request is still real and still decidable elsewhere, so keep it neutral rather than alarming. Length: this is the card's LEAD body line (`text-body-sm`, below the state line), so it carries the card - a couple of words, around the English footprint; an over-long title wraps the card's longest line. Do not turn it into an error message."
+	},
+	"ui.mesh.approval.details_unavailable": {
+		"role": "status text — mesh approval card details section, no detail lines to show",
+		"tone": "Factual and restrained; a plain statement of absence",
+		"note": "Stands inside the card's details section when the request carried no detail lines to list, so the section says so rather than rendering empty. It is not an error and not a permission statement - it states that no description was provided. THE ENGLISH ITSELF CARRIES BOTH HALVES and both must survive: the absence (\"The full request details are unavailable in this app.\") AND the remedy (\"Review the request from the command line on this machine.\"). Keep `this machine` uncompromised, and do not translate this into a bare \"no details\" line - the command-line sentence is the reader's way forward, and this string is the only place it appears for a request with no detail lines. Length: two short sentences where a list would have been; the surrounding section is `text-meta` and muted."
+	},
+	"ui.mesh.approval.cli_review": {
+		"role": "instruction — mesh approval card, restricted request that must be reviewed at the command line",
+		"tone": "Plain and factual; an instruction, not a refusal and not an apology",
+		"note": "Shown on a still-pending request the app cannot decide here (an opaque credential/unknown kind, or `canApproveHere` false) and for which the server sent no `approve_remedy` text, so this is the generic remedy. It must stay TRUE: the app genuinely cannot approve it, and the command line on THIS machine genuinely can. Keep `command line` and `on this machine` uncompromised - a translation that drops either sends the reader to a surface that cannot help. Length: an explanatory line under the card, may wrap onto two lines; `text-meta` and muted, so keep it near the English length where the language allows."
+	},
+	"ui.mesh.approval.approved_pending_apply": {
+		"role": "status label — mesh approval card, credential request approved but not yet applied",
+		"tone": "Factual and restrained; a state statement, not a progress indicator",
+		"note": "Replaces the card's normal state line for exactly one case: a credential request whose state is `approved` in the store, where approval is recorded but the apply step has not happened yet. There is no count and no time in it. THIS IS A LIE IF ENLARGED: it must not promise that access now works - approval and apply are two steps and only the second grants use. Length: one short state line in the card header, around the English footprint; it stands where the card's ordinary state word stands, so it may be slightly longer than a single word but must not wrap into a second line."
+	},
+	"ui.mesh.approval.approved_apply_hint": {
+		"role": "instruction — mesh approval card, approved credential request with server-provided details",
+		"tone": "Plain and factual; points onward without promising the outcome",
+		"note": "Shown after a credential request is approved, when the server DID send detail lines, so the apply step exists to open. It points the reader at Details rather than telling them access is live: approval is recorded, apply is separate. Keep the reference to Details (the card's own disclosure control) - a translation that renames it sends the reader to a control that does not exist under that name. No placeholders. Length: an explanatory line under the card, may wrap; keep the two short sentences."
+	},
+	"ui.mesh.approval.approved_details_missing": {
+		"role": "status text — mesh approval card, approved credential request whose details did not arrive",
+		"tone": "Factual and restrained; states the gap without blaming the reader or the server",
+		"note": "The sibling of `approved_apply_hint` for the case where approval is recorded but the server sent NO detail lines, so there is nothing to open. It must not imply the reader can do the apply step here - unlike its sibling it should NOT send them to Details for content that is absent. No placeholders. Length: an explanatory line under the card, may wrap; keep it to the same footprint as `approved_apply_hint` so the two variants do not shift the card's height."
+	},
+	"ui.mesh.approval.request_window": {
+		"role": "status text — mesh approval card, credential request's remaining decision window",
+		"tone": "Factual and restrained; quiet, secondary to the card's state",
+		"note": "The countdown beside a still-decidable credential request. Placeholder: `remaining` is an ALREADY-LOCALIZED string produced by the meshes' own `approvalRemainingLabel`, which picks one of the sibling `expires_*` messages (under a minute / minutes / hours) - it is never a raw number here. Do not reformat it, pluralize it, add units to it, or wrap it in `{remaining, number}`: that work is already done by those sibling keys, and doing it again would double the unit or the plural. Length: a compact line (`text-meta`, dim) in the card header, around the English footprint. Keep the trailing colon of the English label; the duration reads after it. Note the sibling `expires_*` keys carry the plural forms, so a locale's plural categories belong to THEM, not to this label."
+	}
+}

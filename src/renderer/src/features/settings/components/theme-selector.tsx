@@ -1,4 +1,6 @@
 import { Tooltip, TooltipProvider } from "@shared/components/ui/tooltip";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { type ThemeName, themes } from "@shared/themes";
@@ -661,21 +663,22 @@ const measureTileGrids = (root: Element): TileGridGroup[] =>
 	});
 
 export const ThemeSelector: FC = () => {
+	useI18nLocale();
 	const { themeName, setTheme } = useUiPreferencesStore();
 
-	const groups = useMemo(() => {
-		const all = Object.values(themes);
-		return [
-			{
-				label: "Dark",
-				items: all.filter((t) => t.theme.palette.mode === "dark"),
-			},
-			{
-				label: "Light",
-				items: all.filter((t) => t.theme.palette.mode === "light"),
-			},
-		].filter((group) => group.items.length > 0);
-	}, []);
+	// Not memoized: the headings come from t(), and a memo with no dependencies would
+	// keep the previous language after a live switch. Only two filters run per render.
+	const all = Object.values(themes);
+	const groups = [
+		{
+			label: t("ui.settings.appearance.theme_selector.dark"),
+			items: all.filter((theme) => theme.theme.palette.mode === "dark"),
+		},
+		{
+			label: t("ui.settings.appearance.theme_selector.light"),
+			items: all.filter((theme) => theme.theme.palette.mode === "light"),
+		},
+	].filter((group) => group.items.length > 0);
 
 	/*
 	 * The tile the tab stop follows: the one that has focus, so Tab-away and

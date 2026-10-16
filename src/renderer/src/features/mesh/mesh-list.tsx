@@ -16,9 +16,11 @@
  */
 
 import { Button, Separator } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { MoreHorizontal, ShieldAlert } from "lucide-react";
 import { type FC, useMemo, useState } from "react";
+import { t } from "../../../../i18n/messages";
 import {
 	type MoveDestination,
 	SessionMoveMenu,
@@ -26,12 +28,7 @@ import {
 } from "./mesh-card";
 import type { MeshDevice, MeshGraph } from "./mesh-graph";
 import { deviceStatLine } from "./mesh-graph";
-import {
-	REACH_INK,
-	SUSPECT_WORDS,
-	deviceReach,
-	reachWords,
-} from "./mesh-reach";
+import { REACH_INK, deviceReach, reachWords, suspectWords } from "./mesh-reach";
 import type { DeviceSessions } from "./mesh-sessions";
 import { deviceSessionTotal } from "./mesh-sessions";
 import type { MeshSessionRow } from "./mesh-types";
@@ -41,12 +38,18 @@ export const MESH_SORTS = ["name", "chats", "state"] as const;
 export type MeshSort = (typeof MESH_SORTS)[number];
 
 const SORT_LABEL: Record<MeshSort, string> = {
-	name: "Name",
+	get name() {
+		return t("ui.mesh.mesh_list.name");
+	},
 	// THE ONE NOUN (design review round 1, D5): the row's own right column said "chats"
 	// while the left said "conversations", and this feature states the protocol's own
 	// vocabulary rather than a friendlier invention.
-	chats: "Conversations",
-	state: "State",
+	get chats() {
+		return t("ui.mesh.mesh_list.sort_conversations");
+	},
+	get state() {
+		return t("ui.mesh.mesh_list.state");
+	},
 };
 
 /**
@@ -109,8 +112,8 @@ function sessionFact(session: MeshSessionRow, selfLabel: string): string {
 	const where = session.owner_device_name || selfLabel;
 	const state = session.live_state ? ` \u00b7 ${session.live_state}` : "";
 	return session.reachable
-		? `on ${where}${state}`
-		: `on ${where} (not answering)`;
+		? t("ui.mesh.mesh_list.on_device_state", { device: where, state })
+		: t("ui.mesh.mesh_list.on_device_no_answer", { device: where });
 }
 
 type MeshListProps = {
@@ -154,6 +157,7 @@ export const MeshList: FC<MeshListProps> = ({
 	onInvite,
 	onRemove,
 }) => {
+	useI18nLocale();
 	const [sort, setSort] = useState<MeshSort>("name");
 	/*
 	 * Devices grouped under the network that holds them, IN THE NETWORK'S OWN ORDER.
@@ -184,7 +188,9 @@ export const MeshList: FC<MeshListProps> = ({
 			 * `settings-page.tsx` records for its own usage pair.
 			 */}
 			<fieldset className="m-0 w-fit border-0 p-0">
-				<legend className="sr-only">Sort devices by</legend>
+				<legend className="sr-only">
+					{t("ui.mesh.mesh_list.sort_devices_by")}
+				</legend>
 				<div className="flex gap-0.5 rounded-md bg-sunken p-0.5">
 					{MESH_SORTS.map((option) => (
 						<button
@@ -220,14 +226,18 @@ export const MeshList: FC<MeshListProps> = ({
 						 * policy for the same field, and its own heading is where a reader looks
 						 * first, so the disagreement showed.
 						 */
-						title={`epoch ${network.epoch}`}
+						title={t("ui.mesh.mesh_list.epoch", { epoch: network.epoch })}
 					>
 						{network.label}
 						<span className="text-meta text-ink-dim">
-							{network.trust} · {network.memberCount}{" "}
-							{network.memberCount === 1 ? "device" : "devices"}
+							{network.trust} ·{" "}
+							{t("ui.mesh.mesh_graph.device_count", {
+								count: network.memberCount,
+							})}
 							{network.revokedCount > 0
-								? ` · ${network.revokedCount} revoked`
+								? t("ui.mesh.mesh_list.revoked_count", {
+										count: network.revokedCount,
+									})
 								: ""}
 						</span>
 					</h2>
@@ -319,13 +329,15 @@ export const MeshList: FC<MeshListProps> = ({
 												: deviceStatLine(device, nowSeconds)}
 											{device.suspect && (
 												<span className="shrink-0 rounded-sm border border-danger px-1 text-danger">
-													{SUSPECT_WORDS}
+													{suspectWords()}
 												</span>
 											)}
 										</span>
 										<span className="shrink-0 text-meta text-ink-dim">
 											{membership?.role ? `${membership.role} · ` : ""}
-											{membership && !membership.active ? "revoked" : "member"}
+											{membership && !membership.active
+												? t("ui.mesh.mesh_list.revoked")
+												: t("ui.mesh.mesh_list.member")}
 										</span>
 									</div>
 									{rows.length > 0 ? (
@@ -367,7 +379,10 @@ export const MeshList: FC<MeshListProps> = ({
 																	className="size-3.5"
 																/>
 															}
-															triggerLabel={`Move ${session.name || session.id}`}
+															triggerLabel={t(
+																"ui.mesh.mesh_list.move_conversation",
+																{ conversation: session.name || session.id },
+															)}
 														/>
 													</li>
 												))}
@@ -378,17 +393,17 @@ export const MeshList: FC<MeshListProps> = ({
 													onClick={() => onSelect(device.id)}
 													className="w-fit text-meta text-ink-dim hover:text-ink"
 												>
-													{`show all ${total} in the panel`}
+													{t("ui.mesh.mesh_list.show_all_panel", {
+														count: total,
+													})}
 												</button>
 											)}
 										</>
 									) : (
 										<span className="text-meta text-ink-dim">
-											{total === 0
-												? "no conversations"
-												: total === 1
-													? "1 conversation"
-													: `${total} conversations`}
+											{t("ui.mesh.mesh_list.conversation_count", {
+												count: total,
+											})}
 										</span>
 									)}
 									{(membership?.active || device.state !== "self") && (
@@ -408,7 +423,7 @@ export const MeshList: FC<MeshListProps> = ({
 													})
 												}
 											>
-												Invite to a network…
+												{t("ui.mesh.mesh_actions.invite_to_a_network")}
 											</Button>
 											{membership?.active && (
 												<Button
@@ -424,7 +439,8 @@ export const MeshList: FC<MeshListProps> = ({
 														})
 													}
 												>
-													Remove from {network.label}…
+													{t("ui.mesh.mesh_card.remove_from")}
+													{network.label}…
 												</Button>
 											)}
 										</div>
@@ -444,9 +460,10 @@ export const MeshList: FC<MeshListProps> = ({
 				 * a device the relay says is there.
 				 */
 				<p className="text-meta text-warning">
-					{graph.unmatchedPeers.length}{" "}
-					{graph.unmatchedPeers.length === 1 ? "device" : "devices"} answered
-					the peer read but is in no network this app can name.
+					{t("ui.mesh.mesh_graph.device_count", {
+						count: graph.unmatchedPeers.length,
+					})}{" "}
+					{t("ui.mesh.mesh_list.answered_the_peer_read_but_is_in")}
 				</p>
 			)}
 		</div>

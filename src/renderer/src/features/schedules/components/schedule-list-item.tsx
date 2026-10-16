@@ -2,6 +2,8 @@ import type { ScheduleResponse } from "@shared/api/local-operator";
 import { AgentsApi } from "@shared/api/local-operator/agents-api";
 import { Button, Skeleton, Switch, Tooltip } from "@shared/components/ui";
 import { apiConfig } from "@shared/config";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { SquarePen, Trash2 } from "lucide-react";
@@ -45,10 +47,13 @@ const useAgentName = (agentId: string) => {
 			if (!baseUrl) {
 				// eslint-disable-next-line no-console
 				console.warn("Base URL for Local Operator API is not configured.");
-				return "Agent ID";
+				return t("ui.schedules.schedule_list_item.agent_id");
 			}
 			const response = await AgentsApi.getAgent(baseUrl, agentId);
-			return response.result?.name || "Unknown agent";
+			return (
+				response.result?.name ||
+				t("ui.schedules.schedule_list_item.unknown_agent")
+			);
 		},
 		enabled: !!agentId && !!baseUrl,
 		staleTime: 1000 * 60 * 5,
@@ -91,6 +96,7 @@ export const ScheduleListItem: FC<ScheduleListItemProps> = ({
 	onToggleActive,
 	nowMs = Date.now(),
 }) => {
+	useI18nLocale();
 	const { data: agentName, isLoading: isLoadingAgentName } = useAgentName(
 		schedule.agent_id,
 	);
@@ -98,7 +104,9 @@ export const ScheduleListItem: FC<ScheduleListItemProps> = ({
 
 	return (
 		<div
-			title={`Schedule ID: ${schedule.id}`}
+			title={t("ui.schedules.schedule_list_item.schedule_id_id", {
+				id: String(schedule.id),
+			})}
 			className={cn(
 				"group flex items-start gap-3 border-hairline border-b px-4 py-3 last:border-b-0",
 				"transition-colors duration-fast ease-out-quart hover:bg-row-hover",
@@ -139,7 +147,11 @@ export const ScheduleListItem: FC<ScheduleListItemProps> = ({
 				 * actions, and they reveal like every other row action in the app.
 				 */}
 				<Tooltip
-					content={schedule.is_active ? "Pause schedule" : "Resume schedule"}
+					content={
+						schedule.is_active
+							? t("ui.schedules.schedule_list_item.pause_schedule")
+							: t("ui.schedules.schedule_list_item.resume_schedule")
+					}
 				>
 					<span className={cn("flex items-center pr-1")}>
 						<Switch
@@ -147,7 +159,9 @@ export const ScheduleListItem: FC<ScheduleListItemProps> = ({
 							checked={schedule.is_active}
 							onCheckedChange={() => onToggleActive(schedule)}
 							aria-label={
-								schedule.is_active ? "Pause schedule" : "Resume schedule"
+								schedule.is_active
+									? t("ui.schedules.schedule_list_item.pause_schedule")
+									: t("ui.schedules.schedule_list_item.resume_schedule")
 							}
 						/>
 					</span>
@@ -160,22 +174,24 @@ export const ScheduleListItem: FC<ScheduleListItemProps> = ({
 						"group-focus-within:pointer-events-auto group-focus-within:opacity-100",
 					)}
 				>
-					<Tooltip content="Edit schedule">
+					<Tooltip content={t("ui.schedules.schedule_list_item.edit_schedule")}>
 						<Button
 							variant="ghost"
 							size="icon-sm"
 							onClick={() => onEdit(schedule)}
-							aria-label="Edit schedule"
+							aria-label={t("ui.schedules.schedule_list_item.edit_schedule")}
 						>
 							<SquarePen />
 						</Button>
 					</Tooltip>
-					<Tooltip content="Delete schedule">
+					<Tooltip
+						content={t("ui.schedules.schedule_list_item.delete_schedule")}
+					>
 						<Button
 							variant="ghost"
 							size="icon-sm"
 							onClick={() => onDelete(schedule.id)}
-							aria-label="Delete schedule"
+							aria-label={t("ui.schedules.schedule_list_item.delete_schedule")}
 							className={cn("hover:bg-danger-wash hover:text-danger")}
 						>
 							<Trash2 />

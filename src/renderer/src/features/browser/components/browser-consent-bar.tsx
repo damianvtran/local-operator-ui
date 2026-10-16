@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import type { FC } from "react";
 import type { ApprovalRow, ResolvedRow } from "../model/approval-queue-model";
 import { BrowserApprovalsTray } from "./browser-approvals-tray";
@@ -51,13 +53,14 @@ export interface BrowserConsentBarProps {
 }
 
 export const BrowserConsentBar: FC<BrowserConsentBarProps> = (props) => {
+	useI18nLocale();
 	return (
 		<section
 			// A control boundary, so `border-control` and not `hairline` (design 11.2):
 			// this band's edge is what separates "an agent is asking" from the page's
 			// chrome below it, so it is structural and carries the 3:1 floor.
 			className="flex flex-col gap-2 border-control border-b bg-surface px-3 py-2"
-			aria-label="Site approval request"
+			aria-label={t("ui.browser.browser_consent_bar.site_approval_request")}
 			data-tour-tag="browser-consent-bar"
 		>
 			<BrowserApprovalsTray

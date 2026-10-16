@@ -158,6 +158,7 @@ function desktopChordAllowed(binding: string): boolean {
  * fabricated answer there is worse than an absent one.
  */
 const DesktopHotkeyDetails = () => {
+	useI18nLocale();
 	const [registration, setRegistration] =
 		useState<MiniViewRegistrationState | null>(null);
 	const platform = useMemo(rendererPlatform, []);
@@ -261,6 +262,7 @@ const HotkeyInput = ({
 	desktop?: boolean;
 	onChange: (value: string) => void;
 }) => {
+	useI18nLocale();
 	/*
 	 * The refusal holds until the next captured chord: it explains the LAST
 	 * press, so it must not linger once a different (accepted) chord replaces
@@ -277,7 +279,10 @@ const HotkeyInput = ({
 				readOnly
 				value={value}
 				disabled={disabled}
-				aria-label={`${label}: press the key you want`}
+				aria-label={t(
+					"ui.settings.configuration.setting_control.label_press_the_key_you_want",
+					{ label: String(label) },
+				)}
 				className="font-mono text-body-sm"
 				onKeyDown={(event) => {
 					// Cancel/commit first: a keystroke that ends the edit is not a
@@ -301,7 +306,9 @@ const HotkeyInput = ({
 				}}
 			/>
 			<span className="text-meta text-ink-dim">
-				Press the keys you want; Esc cancels.
+				{t(
+					"ui.settings.configuration.setting_control.press_the_keys_you_want_esc_cancels",
+				)}
 			</span>
 			{refusal ? (
 				<output className="text-meta text-danger">{refusal}</output>
@@ -418,6 +425,7 @@ export function languageChoices(setting: BackendSetting) {
 }
 
 const LanguageFlag: FC<{ country: string }> = ({ country }) => {
+	useI18nLocale();
 	/*
 	 * Explicit artwork rather than generated bands: a repeated pigment (Spain's
 	 * two reds) has no natural list index to key on, so each band carries the
@@ -528,6 +536,7 @@ export const LanguageChoiceLabel: FC<{
 	 */
 	disabled?: boolean;
 }> = ({ value, fallback, disabled = false }) => {
+	useI18nLocale();
 	const identity = languageIdentifierFor(value);
 	if (!identity)
 		return (
@@ -636,6 +645,7 @@ export const SettingControl = ({
 	suppressEffectiveNote = false,
 	effectiveNoteId: effectiveNoteIdProp,
 }: SettingControlProps) => {
+	useI18nLocale();
 	/*
 	 * The searchable combobox branch, keyed on the setting's KEY rather than on
 	 * its kind, and placed before the switch so it cannot be reached by a later
@@ -853,8 +863,9 @@ export const SettingControl = ({
 						</div>
 					))}
 					<p className="text-meta text-ink-dim">
-						One hop per line, as provider/model (effort). An empty chain moves
-						to the next provider.
+						{t(
+							"ui.settings.configuration.setting_control.one_hop_per_line_as_provider_model_effort_an_empty_chain_moves_to",
+						)}
 					</p>
 				</div>
 			);

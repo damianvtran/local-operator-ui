@@ -31,9 +31,11 @@
  * pointer. `NODE_HEIGHT` therefore includes the band, always.
  */
 
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Monitor, Network, ShieldAlert } from "lucide-react";
 import type { FC } from "react";
+import { t } from "../../../../i18n/messages";
 import { DRAG_THRESHOLD_PX } from "./mesh-drag";
 import type { DeviceState, MeshDevice, MeshNetwork } from "./mesh-graph";
 import { conversationUnit, deviceStatLine } from "./mesh-graph";
@@ -211,7 +213,9 @@ export function chipFact(
 			: words;
 	}
 	if (session.live_state.trim()) return session.live_state.trim();
-	return session.locality === "local" ? "on this device" : `on ${ownerLabel}`;
+	return session.locality === "local"
+		? t("ui.mesh.mesh_drop.on_this_device")
+		: t("ui.mesh.mesh_node.on_device", { device: ownerLabel });
 }
 
 /*
@@ -259,41 +263,48 @@ export const MeshNetworkNode: FC<NetworkNodeProps> = ({
 	x,
 	y,
 	refused,
-}) => (
-	<li
-		data-mesh-network={network.id}
-		data-mesh-network-refused={refused ? "true" : undefined}
-		className={cn(
-			"absolute flex items-center gap-2 rounded-md border bg-elevated px-3",
-			// A refusal is the WARNING role and never the accent: the accent is spent on
-			// "this device", and a lane that lit up in it would read as "drop here".
-			refused ? "border-warning" : "border-hairline",
-		)}
-		style={{ left: x, top: y, width: NODE_WIDTH, height: NETWORK_HEIGHT }}
-	>
-		<Network aria-hidden="true" className="size-4 shrink-0 text-ink-muted" />
-		<span className="min-w-0 flex-1">
-			<span className="block truncate text-body-sm text-ink">
-				{network.label}
+}) => {
+	useI18nLocale();
+	return (
+		<li
+			data-mesh-network={network.id}
+			data-mesh-network-refused={refused ? "true" : undefined}
+			className={cn(
+				"absolute flex items-center gap-2 rounded-md border bg-elevated px-3",
+				// A refusal is the WARNING role and never the accent: the accent is spent on
+				// "this device", and a lane that lit up in it would read as "drop here".
+				refused ? "border-warning" : "border-hairline",
+			)}
+			style={{ left: x, top: y, width: NODE_WIDTH, height: NETWORK_HEIGHT }}
+		>
+			<Network aria-hidden="true" className="size-4 shrink-0 text-ink-muted" />
+			<span className="min-w-0 flex-1">
+				<span className="block truncate text-body-sm text-ink">
+					{network.label}
+				</span>
+				<span
+					/*
+					 * The member count, and `epoch` as the element's `title` rather than as a
+					 * second line: a lane has one line of room, and the epoch is the fact a
+					 * reader consults once (when something was revoked) rather than the one
+					 * they scan. Keeping it in the title spends no vertical space and keeps
+					 * the number on screen - the plan § 5's node contract, and #498's design
+					 * round 1, D10.
+					 */
+					title={t("ui.mesh.mesh_list.epoch", { epoch: network.epoch })}
+					className="block truncate text-meta text-ink-dim"
+				>
+					{t("ui.mesh.mesh_graph.device_count", { count: network.memberCount })}
+					{network.revokedCount > 0
+						? t("ui.mesh.mesh_list.revoked_count", {
+								count: network.revokedCount,
+							})
+						: ""}
+				</span>
 			</span>
-			<span
-				/*
-				 * The member count, and `epoch` as the element's `title` rather than as a
-				 * second line: a lane has one line of room, and the epoch is the fact a
-				 * reader consults once (when something was revoked) rather than the one
-				 * they scan. Keeping it in the title spends no vertical space and keeps
-				 * the number on screen - the plan § 5's node contract, and #498's design
-				 * round 1, D10.
-				 */
-				title={`epoch ${network.epoch}`}
-				className="block truncate text-meta text-ink-dim"
-			>
-				{network.memberCount} {network.memberCount === 1 ? "device" : "devices"}
-				{network.revokedCount > 0 ? ` · ${network.revokedCount} revoked` : ""}
-			</span>
-		</span>
-	</li>
-);
+		</li>
+	);
+};
 
 type DeviceNodeProps = {
 	device: MeshDevice;
@@ -338,6 +349,7 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 	onChipClick,
 	onShowAllSessions,
 }) => {
+	useI18nLocale();
 	/*
 	 * WHAT THE NODE SAYS, and what it deliberately does not.
 	 *
@@ -526,12 +538,14 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 					</span>
 					{working && (
 						<span data-mesh-working="" className="shrink-0 text-info">
-							working
+							{t("ui.mesh.mesh_node.working")}
 						</span>
 					)}
 					{device.memberships.length > 1 && (
 						<span className="min-w-0 truncate text-ink-dim">
-							· {device.memberships.length} networks
+							{t("ui.mesh.mesh_node.memberships", {
+								count: device.memberships.length,
+							})}
 						</span>
 					)}
 				</span>
@@ -545,7 +559,9 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 			 * only place the whole list is offered.
 			 */}
 			<ul
-				aria-label={`Conversations on ${device.label}`}
+				aria-label={t("ui.mesh.mesh_node.conversations_on", {
+					device: device.label,
+				})}
 				className={cn(
 					/*
 					 * THE BAND IS A FIXED 24 px, EMPTY OR NOT (`NODE_CHIP_BAND`): it is awarded by
@@ -605,7 +621,10 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 							// The second number is the CATALOGUE's when it named one, because
 							// "4 of 37" over a page of 8 rows is a wrong total rather than a
 							// rounded one (`deviceSessionTotal`).
-							title={`Showing ${sessions.shown.length} of ${sessionTotal} conversations`}
+							title={t("ui.mesh.mesh_node.shown_conversations", {
+								shown: sessions.shown.length,
+								total: sessionTotal,
+							})}
 							/*
 							 * THE WORD "MORE" IS IN THE NAME, NOT ON THE CONTROL (design review round 2,
 							 * D8). Measured in the shipped renderer at the pinned 200 px: the full `+4 more`
@@ -617,7 +636,9 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 							 * The affordance is not the word: the button's own name and its tooltip both
 							 * still say what it opens, and the panel it opens is the whole list.
 							 */
-							aria-label={`Show all ${sessionTotal} conversations`}
+							aria-label={t("ui.mesh.mesh_node.show_all_conversations", {
+								count: sessionTotal,
+							})}
 						>
 							+{sessions.hidden}
 						</button>
@@ -684,13 +705,14 @@ const SessionChip: FC<SessionChipProps> = ({
 	onPointerDown,
 	onClick,
 }) => {
+	useI18nLocale();
 	const fact = chipFact(session, ownerLabel, ownerReach);
 	if (moving) {
 		return (
 			// biome-ignore lint/a11y/useSemanticElements: `role="status"` has no semantic element of its own; `<output>` is for a form's result, and this is a live region inside a list item.
 			<li role="status" data-mesh-session={session.id} data-mesh-moving="true">
 				<span className="flex min-h-6 items-center rounded-sm bg-sunken px-1.5 text-meta text-ink-muted">
-					moving…
+					{t("ui.mesh.mesh_card.moving")}
 				</span>
 			</li>
 		);
@@ -708,7 +730,11 @@ const SessionChip: FC<SessionChipProps> = ({
 				// also start a text selection or a native scroll while it is happening.
 				style={{ touchAction: "none" }}
 				title={`${chipLabel(session)} · ${fact}`}
-				aria-label={`${chipLabel(session)}, ${fact}. Opens ${ownerLabel}.`}
+				aria-label={t("ui.mesh.mesh_node.open_conversation", {
+					conversation: chipLabel(session),
+					fact,
+					owner: ownerLabel,
+				})}
 				onPointerDown={(event) => onPointerDown(event, session)}
 				onClick={() => onClick(session)}
 				className={cn(

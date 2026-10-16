@@ -11,9 +11,11 @@ import {
 	useAgentSystemPrompt,
 	useUpdateAgentSystemPrompt,
 } from "@shared/hooks/use-agent-system-prompt";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { Info, NotebookPen } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
+import { t } from "../../../../../i18n/messages";
 
 type SystemPromptSettingsProps = {
 	/**
@@ -54,6 +56,8 @@ export const SystemPromptSettings: FC<SystemPromptSettingsProps> = ({
 	refetchAgent,
 	initialSelectedAgentId,
 }) => {
+	// Subscribe without remounting: language changes must not discard unsaved fields.
+	useI18nLocale();
 	const { data: systemPrompt, isLoading } = useAgentSystemPrompt(
 		selectedAgent.id,
 	);
@@ -78,18 +82,22 @@ export const SystemPromptSettings: FC<SystemPromptSettingsProps> = ({
 		<div data-tour-tag="agent-settings-system-prompt">
 			<h2 className="flex items-center gap-2 text-heading text-ink">
 				<NotebookPen size={16} className="shrink-0 text-ink-dim" />
-				Agent instructions
+				{t("ui.agents.settings.system_prompt.agent_instructions")}
 				{/*
 				 * A real button rather than a bare icon: the tooltip is keyboard
 				 * reachable only if its trigger can take focus.
 				 */}
 				<Tooltip
-					content={`System instructions that define the agent's behavior and capabilities. This is the agent's "system prompt".`}
+					content={t(
+						"ui.agents.settings.system_prompt.system_instructions_that_define_the_agent_s",
+					)}
 				>
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						aria-label="About agent instructions"
+						aria-label={t(
+							"ui.agents.settings.system_prompt.about_agent_instructions",
+						)}
 					>
 						<Info />
 					</Button>
@@ -97,9 +105,9 @@ export const SystemPromptSettings: FC<SystemPromptSettingsProps> = ({
 			</h2>
 
 			<p className="mt-1 max-w-2xl text-body-sm text-ink-muted">
-				Define the agent's role, personality, or provide context. Write as if
-				talking to the agent (e.g., "You are an expert researcher") and/or about
-				yourself (e.g., "My name is John").
+				{t(
+					"ui.agents.settings.system_prompt.define_the_agent_s_role_personality_or",
+				)}
 			</p>
 
 			<div className="mt-4">
@@ -108,8 +116,10 @@ export const SystemPromptSettings: FC<SystemPromptSettingsProps> = ({
 					label=""
 					placeholder={
 						isLoading
-							? "Loading system prompt..."
-							: "Enter instructions for the agent..."
+							? t("ui.agents.settings.system_prompt.loading_system_prompt")
+							: t(
+									"ui.agents.settings.system_prompt.enter_instructions_for_the_agent",
+								)
 					}
 					multiline
 					rows={6}
