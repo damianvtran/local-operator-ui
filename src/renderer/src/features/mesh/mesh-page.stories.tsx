@@ -157,6 +157,48 @@ const approvalRecord = (
 });
 
 /**
+ * Synthetic #2435 desktop rows. The intent stays opaque: only the backend
+ * derives the signed disclosure and commands. These stories exercise the real
+ * MeshPage/query/controller bridge, not OAuth, signatures or live permissions.
+ */
+const inheritanceRecord = (
+	fields: { approval_id?: string; state?: string; recipient?: string } = {},
+) => {
+	const base = approvalRecord(fields);
+	const recipient = fields.recipient ?? "cloud-worker";
+	const summary = `Let ${recipient} borrow your openai login for account test-account: this sign-in and any later re-login of the SAME account, until you revoke it. Nothing is copied; the device gets short-lived access only.`;
+	return {
+		...base,
+		// Inheritance requests name the recipient; they carry no SSH install target.
+		device: {
+			device_id: DEVICE_PEER,
+			name: recipient,
+			fingerprint: "SHA256:fixture-recipient",
+		},
+		what: { credential_inheritance: { schema: 1 }, anchor: base.what.anchor },
+		summary,
+		can_approve_here: false,
+		approve_remedy: `Review and approve it from the command line on this machine: lop network approvals approve ${base.approval_id}`,
+		details: [
+			summary,
+			"Provider: openai (a native sign-in on THIS device; copied, borrowed, device-bound, static-key and MCP logins are not covered)",
+			"Account: test-account",
+			"Org: not constrained (any org of this account)",
+			`Recipient device: ${recipient}`,
+			"Recipient key fingerprint: SHA256:fixture-recipient",
+			`Network: ${NET_HOME}`,
+			"Signing principal: your operator key op_fixture on this machine",
+			"Duration: UNTIL YOU REVOKE IT. This permission has no automatic expiry; a sign-in to the same account later is covered without asking again, a different account is not.",
+			"Request window: this CARD can be approved and applied until its set time. That one-hour window only limits how long this request stays answerable; it is NOT the lifetime of the permission.",
+			"What the device receives: short-lived access minted here on request. The sign-in and its refresh token stay on this device; nothing is copied.",
+			`Needs, and this does not grant: broker_credential on this device's own member row and on the row for the recipient (lop network member grant ${NET_HOME} ${DEVICE_PEER} broker_credential).`,
+			`Revoke at any time: lop network credential revoke openai --from ${DEVICE_PEER} --network ${NET_HOME}`,
+			`Approving records your decision only. Then run: lop network credential inherit openai --to ${DEVICE_PEER} --network ${NET_HOME} --account test-account --approval ${base.approval_id}`,
+		],
+	};
+};
+
+/**
  * One `local_authority` record, in the same frozen §3.5 read shape: the
  * sibling kind REPLACES the device block with a `machine` block (that is what
  * tells a reader which machine the record is about), and `what` carries the
@@ -234,6 +276,8 @@ type Fixture = {
 	 * sentence is the whole answer, which is the state the card must carry.
 	 */
 	decisionRefusal?: { code: string; message: string } | null;
+	/** Observe the real controller boundary; decisions still mutate/refetch below. */
+	onDecisionRequest?: (request: BridgeRequest) => void;
 };
 
 /**
@@ -275,6 +319,7 @@ function installBridge(fixture: Fixture) {
 			return answer({ approvals: fixture.approvals ?? [] });
 		}
 		if (request.op === "approvals.approve" || request.op === "approvals.deny") {
+			fixture.onDecisionRequest?.(request);
 			if (fixture.decisionRefusal) {
 				return {
 					status: 409,
@@ -1828,6 +1873,242 @@ export const InviteReceipt: Story = {
  * exists for. The write path is proven by `ApprovalsDecisionWrites` beside this
  * one, where the story's own name says that is what it drives.
  */
+export const CredentialPending: Story = {
+	render: () => {
+		installBridge({
+			...singleDeviceFixture(),
+			approvals: [inheritanceRecord()],
+		});
+		return <MeshPage />;
+	},
+};
+
+export const CredentialApproved: Story = {
+	render: () => {
+		installBridge({
+			...singleDeviceFixture(),
+			approvals: [inheritanceRecord({ state: "approved" })],
+		});
+		return <MeshPage />;
+	},
+};
+
+export const CredentialApprovedDetails: Story = {
+	...CredentialApproved,
+	play: async () => {
+		const user = userEvent.setup();
+		await user.click(
+			await screen.findByRole("button", { name: /^Settled approvals \(1\)/ }),
+		);
+		await screen.findByText("Approved; waiting to apply");
+		if (document.querySelector('[data-tour-tag="mesh-approval-cli-remedy"]'))
+			throw new Error("Approved request repeated the approval instruction");
+		await user.click(await screen.findByRole("button", { name: "Details" }));
+		await screen.findByText(
+			/^Approving records your decision only. Then run: lop network credential inherit/,
+		);
+		if (screen.queryByRole("button", { name: "Approve" }))
+			throw new Error("Approved request offered Approve");
+	},
+};
+
+export const CredentialSettled: Story = {
+	render: () => {
+		installBridge({
+			...singleDeviceFixture(),
+			approvals: ["connected", "denied", "expired"].map((state, index) =>
+				inheritanceRecord({ state, approval_id: `ap_settled${index}` }),
+			),
+		});
+		return <MeshPage />;
+	},
+};
+
+export const CredentialSettledOpen: Story = {
+	...CredentialSettled,
+	play: async () => {
+		await userEvent.click(
+			await screen.findByRole("button", { name: /^Settled approvals \(3\)/ }),
+		);
+		for (const state of ["Connected", "Denied", "Expired"])
+			await screen.findByText(state);
+		if (screen.queryByRole("button", { name: /^(Approve|Deny|Stop)$/ }))
+			throw new Error("Terminal credentials exposed a decision");
+		if (screen.queryByText(/\d waiting/))
+			throw new Error("Terminal credentials contributed to waiting count");
+	},
+};
+
+export const CredentialMultiple: Story = {
+	render: () => {
+		installBridge({
+			...singleDeviceFixture(),
+			approvals: [
+				inheritanceRecord(),
+				inheritanceRecord({
+					approval_id: "ap_second",
+					recipient: "analysis-worker",
+				}),
+				inheritanceRecord({ approval_id: "ap_approved", state: "approved" }),
+			],
+		});
+		return <MeshPage />;
+	},
+};
+
+export const CredentialMultipleNarrow: Story = {
+	...CredentialMultiple,
+	parameters: {
+		viewport: {
+			defaultViewport: "credentialNarrow",
+			viewports: {
+				credentialNarrow: {
+					name: "Credential narrow 800",
+					styles: { width: "800px", height: "600px" },
+					type: "desktop",
+				},
+			},
+		},
+	},
+};
+
+export const CredentialDetails: Story = {
+	...CredentialPending,
+	play: async () => {
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Details" }),
+		);
+		await screen.findByText(/^Duration: UNTIL YOU REVOKE IT/);
+		if (screen.queryByRole("button", { name: "Approve" }))
+			throw new Error("Credential intent exposed generic Approve");
+		const lines = document.querySelectorAll(
+			'[data-tour-tag="mesh-approval-server-details"] li',
+		);
+		if (lines.length !== 14)
+			throw new Error(`Expected full 14-line disclosure, got ${lines.length}`);
+	},
+};
+
+// A real gesture -> normal mutation -> stateful bridge -> invalidated read.
+// There is deliberately no fake onDecide/no-op callback in this flow.
+const credentialDecisions: string[] = [];
+export const CredentialDenyFlow: Story = {
+	render: () => {
+		credentialDecisions.length = 0;
+		installBridge({
+			...singleDeviceFixture(),
+			approvals: [inheritanceRecord()],
+			onDecisionRequest: (request) => credentialDecisions.push(request.op),
+		});
+		return <MeshPage />;
+	},
+	play: async () => {
+		const user = userEvent.setup();
+		await user.click(await screen.findByRole("button", { name: "Details" }));
+		await screen.findByText(/^Duration: UNTIL YOU REVOKE IT/);
+		if (credentialDecisions.length)
+			throw new Error("Disclosure unexpectedly executed a decision");
+		if (screen.queryByRole("button", { name: "Approve" }))
+			throw new Error("Credential intent exposed generic Approve");
+		await user.click(await screen.findByRole("button", { name: "Deny" }));
+		const history = await screen.findByRole("button", {
+			name: /^Settled approvals \(1\)/,
+		});
+		await waitFor(() => {
+			if (document.activeElement !== history)
+				throw new Error(
+					"Deny lost focus instead of handing it to settled history",
+				);
+		});
+		await user.click(history);
+		await screen.findByText("Denied");
+		if (credentialDecisions.join() !== "approvals.deny")
+			throw new Error(`Unexpected decisions: ${credentialDecisions.join()}`);
+		if (screen.queryByText("1 waiting"))
+			throw new Error("Denied credential still counted as waiting");
+		console.info(
+			"CredentialDenyFlow",
+			JSON.stringify({
+				denyRequests: 1,
+				approveRequests: 0,
+				disclosureRequests: 0,
+				historyFocused: true,
+				state: "denied",
+			}),
+		);
+	},
+};
+
+export const CredentialMalformed: Story = {
+	render: () => {
+		installBridge({
+			...singleDeviceFixture(),
+			approvals: [
+				{
+					...inheritanceRecord(),
+					what: { credential_inheritance: null },
+					can_approve_here: true,
+					summary: "<img src=x onerror=alert(1)>",
+					details: ["Not a complete disclosure", {}],
+					approve_remedy: [],
+				},
+			],
+		});
+		return <MeshPage />;
+	},
+	play: async () => {
+		await screen.findByText("<img src=x onerror=alert(1)>");
+		if (document.querySelector('img[src="x"]'))
+			throw new Error("Backend text was interpreted as HTML");
+		if (screen.queryByRole("button", { name: "Approve" }))
+			throw new Error("Malformed intent regained generic signing");
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Details" }),
+		);
+		await screen.findByText(
+			/^The full request details are unavailable in this app/,
+		);
+	},
+};
+
+export const CredentialRestrictedCompatibility: Story = {
+	render: () => {
+		installBridge({
+			...singleDeviceFixture(),
+			approvals: [
+				{
+					...approvalRecord(),
+					can_approve_here: false,
+					summary: "Review this device request through its supported workflow.",
+					approve_remedy: "Use the command-line review for this request.",
+				},
+				{
+					...approvalRecord({ approval_id: "ap_future" }),
+					kind: "future_typed_workflow",
+					can_approve_here: true,
+					summary: "A request from a newer workflow.",
+					approve_remedy: "Use the workflow that created this request.",
+				},
+			],
+		});
+		return <MeshPage />;
+	},
+	play: async () => {
+		await screen.findByText("A request from a newer workflow.");
+		if (screen.queryByRole("button", { name: "Approve" }))
+			throw new Error("Restricted or unknown workflow exposed generic signing");
+		await screen.findByText("Use the command-line review for this request.");
+		await screen.findByText("Use the workflow that created this request.");
+	},
+};
+
+export const CredentialNone: Story = {
+	render: () => {
+		installBridge({ ...singleDeviceFixture(), approvals: [] });
+		return <MeshPage />;
+	},
+};
+
 export const ApprovalsWaiting: Story = {
 	render: () => {
 		installBridge({
