@@ -894,6 +894,22 @@ test("the item's clause never claims a split the frame cannot know", () => {
 		queue.askChipLabel(exact, false, TS),
 		"Expand this conversation's asks — 1 question waiting · expires in 1h · 1 timed out",
 	);
+
+	/*
+	 * AN UNDELIVERED ANSWER BESIDE A TIMED-OUT ASK (QA round 2 on #1116, Q-2): the chip
+	 * leads with the delivering clause, and the announced name still carries the
+	 * timed-out tail rather than dropping the row a screen-reader user cannot see.
+	 */
+	const deliveringBeside = queue.askQueueView({
+		asks: [
+			single({ ask_id: "a-1", status: "answered", delivered: false }),
+			single({ ask_id: "a-2", status: "timed_out" }),
+		],
+	});
+	assert.equal(
+		queue.askChipLabel(deliveringBeside, false, TS),
+		"Expand this conversation's asks — 1 answer not yet delivered — you can still change it · 1 timed out",
+	);
 });
 
 /*
