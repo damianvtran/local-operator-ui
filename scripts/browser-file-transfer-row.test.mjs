@@ -689,6 +689,104 @@ test("a mounted transfer row refreshes language and absent messages keep English
 				`passkey_anonymous_many groups at ${count}`,
 			);
 		}
+		/* THE SIBLINGS OF THE SAME CLASS (QA round 1 follow-up). Sixteen more keys
+		 * the same extraction added still replaced a base literal that interpolated the
+		 * RAW number — so a bare `#` selector rendered `1,000` where the base rendered
+		 * `1000` — and the loops above only pinned four of them. The [0, 1, 21] table
+		 * cannot see it (below 1000 `#` and `::group-off` agree); each of these carries
+		 * `{count, number, ::group-off}` at every count it interpolates, so pin each at
+		 * 1000, where the two forms differ by one comma. A bare `#` restored to any of
+		 * these arms fails here by name. */
+		const GROUPED_AT_A_THOUSAND = [
+			[
+				"ui.browser.browser_approvals_dock.waiting_count",
+				{},
+				(rendered) => `${rendered} waiting`,
+			],
+			[
+				"ui.browser.browser_approvals_dock.approved_count",
+				{},
+				(rendered) => `${rendered} sites approved`,
+			],
+			[
+				"ui.browser.browser_approvals_tray.header_waiting",
+				{},
+				(rendered) => `${rendered} approvals waiting`,
+			],
+			[
+				"ui.browser.browser_approvals_tray.header_conversation",
+				{},
+				(rendered) => `${rendered} approvals for this conversation`,
+			],
+			[
+				"ui.browser.browser_file_transfer_row.age_minutes",
+				{},
+				(rendered) => `${rendered} min ago`,
+			],
+			[
+				"ui.browser.browser_file_transfer_row.age_hours",
+				{},
+				(rendered) => `${rendered} h ago`,
+			],
+			[
+				"ui.browser.browser_tab_strip.all_tabs_unshown",
+				{},
+				(rendered) => `All tabs \u2014 ${rendered} not shown`,
+			],
+			[
+				"ui.browser.browser_tab_strip.all_tabs_unshown_accessible",
+				{},
+				(rendered) => `All tabs, ${rendered} not shown`,
+			],
+			[
+				"ui.browser.browser_url_bar.newest_download",
+				{ name: "receipt-1.pdf" },
+				(rendered) =>
+					`Open downloads folder \u2014 receipt-1.pdf was the newest saved there (${rendered} this session)`,
+			],
+			[
+				"ui.browser.browser_url_bar.approvals_waiting",
+				{},
+				(rendered) => `Approvals, ${rendered} waiting`,
+			],
+			[
+				"ui.browser.approval_queue_model.expires_minutes",
+				{},
+				(rendered) => `expires in ${rendered} minutes`,
+			],
+			[
+				"ui.browser.webauthn_chooser.passkeys_waiting",
+				{},
+				(rendered) => `${rendered} more passkey requests are waiting.`,
+			],
+			[
+				"ui.browser.browser_tab_strip.close_other_tabs",
+				{},
+				(rendered) => `Close ${rendered} other tabs`,
+			],
+			[
+				"ui.browser.browser_tab_strip.close_right_tabs",
+				{},
+				(rendered) => `Close ${rendered} tabs to the right`,
+			],
+			[
+				"ui.browser.browser_tab_strip.close_failed_tabs",
+				{},
+				(rendered) => `Close ${rendered} failed tabs`,
+			],
+			[
+				"ui.browser.browser_file_transfer_row.upload_more",
+				{},
+				(rendered) => `+ ${rendered} more`,
+			],
+		];
+		for (const [key, extra, expected] of GROUPED_AT_A_THOUSAND) {
+			assert.equal(
+				tr(key, { count: 1000, ...extra }),
+				expected("1000"),
+				`${key} must render the raw count at 1000, not the digit-grouped one`,
+			);
+		}
 	} finally {
 		clearRegisteredCatalogues();
 		await act(() => setLocale("en"));

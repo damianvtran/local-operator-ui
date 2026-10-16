@@ -7,12 +7,12 @@
 	"ui.browser.browser_approvals_dock.waiting_count": {
 		"role": "status or explanatory text \u2014 app-wide site approvals dock",
 		"tone": "Factual and restrained",
-		"note": "Dock summary of live waiting requests; distinct from the adjacent approved-site count. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+		"note": "Dock summary of live waiting requests; distinct from the adjacent approved-site count. count formatting uses ICU number ::group-off on the arm that interpolates the count, because the pre-extraction literal interpolated the raw number and bare # would group it (1000 rendered as 1,000). Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
 	},
 	"ui.browser.browser_approvals_dock.approved_count": {
 		"role": "status or explanatory text \u2014 app-wide site approvals dock",
 		"tone": "Factual and restrained",
-		"note": "Dock summary of granted sites. Only shown when the granted list is nonempty; count is approved origins/scopes, not requests. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+		"note": "Dock summary of granted sites. Only shown when the granted list is nonempty; count is approved origins/scopes, not requests. count formatting uses ICU number ::group-off on both arms, because the pre-extraction literal interpolated the raw number and bare # would group it (1000 rendered as 1,000). Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
 	},
 	"ui.browser.browser_approvals_dock.close_approvals": {
 		"role": "accessible control/region name \u2014 app-wide site approvals dock",
@@ -152,12 +152,12 @@
 	"ui.browser.browser_approvals_tray.header_waiting": {
 		"role": "status or explanatory text \u2014 pending/resolved approvals tray",
 		"tone": "Factual and restrained",
-		"note": "Default all-conversations approval header. count is every currently live request, not granted sites or settled notices. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility."
+		"note": "Default all-conversations approval header. count is every currently live request, not granted sites or settled notices. count formatting uses ICU number ::group-off on both arms, because the pre-extraction literal interpolated the raw number and bare # would group it (1000 rendered as 1,000). Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility."
 	},
 	"ui.browser.browser_approvals_tray.header_conversation": {
 		"role": "status or explanatory text \u2014 pending/resolved approvals tray",
 		"tone": "Factual and restrained",
-		"note": "Pane approval header. count is this conversation\u2019s pending requests even when the strip displays All tabs; preserve the explicit conversation scope. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility."
+		"note": "Pane approval header. count is this conversation\u2019s pending requests even when the strip displays All tabs; preserve the explicit conversation scope. count formatting uses ICU number ::group-off on both arms, because the pre-extraction literal interpolated the raw number and bare # would group it (1000 rendered as 1,000). Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility."
 	},
 	"ui.browser.browser_approvals_tray.request_from": {
 		"role": "accessible control/region name \u2014 pending/resolved approvals tray",
@@ -387,12 +387,12 @@
 	"ui.browser.browser_file_transfer_row.age_minutes": {
 		"role": "status or explanatory text \u2014 file upload/download status row",
 		"tone": "Factual and restrained",
-		"note": "Visible but aria-hidden staleness cue. count is rounded age in minutes; compact min ago is deliberately retained instead of a full relative-time phrase. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+		"note": "Visible but aria-hidden staleness cue. count is rounded age in minutes; compact min ago is deliberately retained instead of a full relative-time phrase. count formatting uses ICU number ::group-off on the arm that interpolates the count, because the pre-extraction literal interpolated the raw number and bare # would group it (1000 rendered as 1,000). Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
 	},
 	"ui.browser.browser_file_transfer_row.age_hours": {
 		"role": "status or explanatory text \u2014 file upload/download status row",
 		"tone": "Factual and restrained",
-		"note": "Visible but aria-hidden staleness cue. count is rounded age in hours; compact h ago is deliberately retained. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+		"note": "Visible but aria-hidden staleness cue. count is rounded age in hours; compact h ago is deliberately retained. count formatting uses ICU number ::group-off on the arm that interpolates the count, because the pre-extraction literal interpolated the raw number and bare # would group it (1000 rendered as 1,000). Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
 	},
 	"ui.browser.browser_file_transfer_row.byte_count": {
 		"role": "status or explanatory text \u2014 file upload/download status row",
@@ -675,7 +675,7 @@
 		"note": "Tab chip/action/overflow strip: names/explains close tab. Length: keep the content prop compact, around the English footprint; no hard cell cap is defined."
 	},
 	"ui.browser.browser_tab_strip.close_tab_shortcut": {
-		"role": "content prop — browser tab strip",
+		"role": "content prop \u2014 browser tab strip",
 		"tone": "concise, neutral, sentence case",
 		"note": "Close control's tooltip on the ACTIVE tab, naming the chord. shortcut is runtime technical data and stays unchanged."
 	},
@@ -687,12 +687,12 @@
 	"ui.browser.browser_tab_strip.all_tabs_unshown": {
 		"role": "content prop \u2014 tab chip/action/overflow strip",
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
-		"note": "Tooltip for the compact off-screen tab control. count counts tabs outside the visible strip; the em dash belongs to the tooltip, not the accessible comma variant. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+		"note": "Tooltip for the compact off-screen tab control. count counts tabs outside the visible strip; the em dash belongs to the tooltip, not the accessible comma variant. count formatting uses ICU number ::group-off on the arm that interpolates the count, because the pre-extraction literal interpolated the raw number and bare # would group it (1000 rendered as 1,000). Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
 	},
 	"ui.browser.browser_tab_strip.all_tabs_unshown_accessible": {
 		"role": "accessible control/region name \u2014 tab chip/action/overflow strip",
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
-		"note": "Accessible name and overflow section heading for off-screen tabs. count counts hidden strip tabs, not closed tabs; the comma suits speech and is distinct from the tooltip\u2019s em dash. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+		"note": "Accessible name and overflow section heading for off-screen tabs. count counts hidden strip tabs, not closed tabs; the comma suits speech and is distinct from the tooltip\u2019s em dash. count formatting uses ICU number ::group-off on the arm that interpolates the count, because the pre-extraction literal interpolated the raw number and bare # would group it (1000 rendered as 1,000). Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
 	},
 	"ui.browser.browser_tab_strip.hide_all_tabs": {
 		"role": "accessible control/region name \u2014 tab chip/action/overflow strip",
@@ -702,7 +702,7 @@
 	"ui.browser.browser_url_bar.newest_download": {
 		"role": "status or explanatory text \u2014 address and navigation bar",
 		"tone": "Factual and restrained",
-		"note": "Downloads-folder tooltip for multiple saved files in this session. name is the newest filename, count is the saved-file count; both are read from projection data. Placeholders: name = runtime value, preserve verbatim; count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+		"note": "Downloads-folder tooltip for multiple saved files in this session. name is the newest filename, count is the saved-file count; both are read from projection data. count formatting uses ICU number ::group-off on the arm that interpolates the count, because the pre-extraction literal interpolated the raw number and bare # would group it (1000 rendered as 1,000). Placeholders: name = runtime value, preserve verbatim; count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
 	},
 	"ui.browser.browser_url_bar.latest_download": {
 		"role": "status or explanatory text \u2014 address and navigation bar",
@@ -747,7 +747,7 @@
 	"ui.browser.browser_url_bar.approvals_waiting": {
 		"role": "accessible control/region name \u2014 address and navigation bar",
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
-		"note": "Address and navigation bar: names/explains approvals waiting. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+		"note": "Address and navigation bar: names/explains approvals waiting. count formatting uses ICU number ::group-off on the arm that interpolates the count, because the pre-extraction literal interpolated the raw number and bare # would group it (1000 rendered as 1,000). Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
 	},
 	"ui.browser.browser_webauthn_dialog.choose_a_passkey": {
 		"role": "hover tooltip \u2014 passkey chooser",
@@ -797,7 +797,7 @@
 	"ui.browser.approval_queue_model.expires_minutes": {
 		"role": "status or explanatory text \u2014 approval queue count/scope/expiry",
 		"tone": "Factual and restrained",
-		"note": "Approval queue count/scope/expiry: names/explains expires minutes. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+		"note": "Approval queue count/scope/expiry: names/explains expires minutes. count formatting uses ICU number ::group-off on both arms, because the pre-extraction literal interpolated the raw number and bare # would group it (1000 rendered as 1,000). Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
 	},
 	"ui.browser.approval_queue_model.this_site": {
 		"role": "status or explanatory text \u2014 approval queue count/scope/expiry",
@@ -862,7 +862,7 @@
 	"ui.browser.webauthn_chooser.passkeys_waiting": {
 		"role": "status or explanatory text \u2014 passkey choice and cancellation model",
 		"tone": "Factual and restrained",
-		"note": "Additional queued passkey requests behind the currently shown one. count excludes the current request; the singular English starts One, while plural uses digits. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+		"note": "Additional queued passkey requests behind the currently shown one. count excludes the current request; the singular English starts One, while plural uses digits. count formatting uses ICU number ::group-off on the arm that interpolates the count, because the pre-extraction literal interpolated the raw number and bare # would group it (1000 rendered as 1,000). Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
 	},
 	"ui.browser.webauthn_chooser.this_passkey_request_expired": {
 		"role": "status or explanatory text \u2014 passkey choice and cancellation model",
@@ -897,17 +897,17 @@
 	"ui.browser.browser_tab_strip.close_other_tabs": {
 		"role": "button/menu choice \u2014 tab chip/action/overflow strip",
 		"tone": "Short imperative",
-		"note": "Destructive batch-close menu item. count is the number of other tabs in the computed intent; the current tab is retained. Preserve number and singular/plural tab wording. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+		"note": "Destructive batch-close menu item. count is the number of other tabs in the computed intent; the current tab is retained. Preserve number and singular/plural tab wording. count formatting uses ICU number ::group-off on both arms, because the pre-extraction literal interpolated the raw number and bare # would group it (1000 rendered as 1,000). Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
 	},
 	"ui.browser.browser_tab_strip.close_right_tabs": {
 		"role": "button/menu choice \u2014 tab chip/action/overflow strip",
 		"tone": "Short imperative",
-		"note": "Destructive batch-close menu item. count counts tabs to the right in rendered grouped order, not creation order. The current tab and left neighbors remain. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility."
+		"note": "Destructive batch-close menu item. count counts tabs to the right in rendered grouped order, not creation order. The current tab and left neighbors remain. count formatting uses ICU number ::group-off on both arms, because the pre-extraction literal interpolated the raw number and bare # would group it (1000 rendered as 1,000). Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility."
 	},
 	"ui.browser.browser_tab_strip.close_failed_tabs": {
 		"role": "button/menu choice \u2014 tab chip/action/overflow strip",
 		"tone": "Short imperative",
-		"note": "Destructive batch-close menu item. count counts only failed-navigation tabs in the intent. Do not imply closing healthy tabs. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+		"note": "Destructive batch-close menu item. count counts only failed-navigation tabs in the intent. Do not imply closing healthy tabs. count formatting uses ICU number ::group-off on both arms, because the pre-extraction literal interpolated the raw number and bare # would group it (1000 rendered as 1,000). Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
 	},
 	"ui.browser.browser_tab_strip.close_conversation_tabs": {
 		"role": "button/menu choice \u2014 tab chip/action/overflow strip",
@@ -922,80 +922,80 @@
 	"ui.browser.browser_file_transfer_row.upload_more": {
 		"role": "remaining-file count beside upload filename",
 		"tone": "compact count",
-		"note": "count is total uploaded files minus the first named file. Keep the leading +; this line names what left the machine instead of replacing the first filename with a bare file count. Length: compact single-line suffix. Plural guidance: use the target locale’s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+		"note": "count is total uploaded files minus the first named file. Keep the leading +; this line names what left the machine instead of replacing the first filename with a bare file count. count formatting uses ICU number ::group-off on the arm that interpolates the count, because the pre-extraction literal interpolated the raw number and bare # would group it (1000 rendered as 1,000). Length: compact single-line suffix. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
 	},
 	"ui.browser.browser_find_row.close_find": {
-		"role": "accessible control/region name — in-page find row",
+		"role": "accessible control/region name \u2014 in-page find row",
 		"tone": "concise, neutral, sentence case",
 		"note": "In-page find row: closes the row and returns focus to the page. Length: compact control name."
 	},
 	"ui.browser.browser_find_row.close_find_shortcut": {
-		"role": "content prop — in-page find row",
+		"role": "content prop \u2014 in-page find row",
 		"tone": "concise, neutral, sentence case",
 		"note": "Tooltip naming the close-find chord. shortcut is runtime technical data and stays unchanged."
 	},
 	"ui.browser.browser_find_row.find_in_page": {
-		"role": "accessible control/region name — in-page find row",
+		"role": "accessible control/region name \u2014 in-page find row",
 		"tone": "concise, neutral, sentence case",
 		"note": "In-page find row: names the field. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
 	},
 	"ui.browser.browser_find_row.match_position": {
-		"role": "status or explanatory text — in-page find row",
+		"role": "status or explanatory text \u2014 in-page find row",
 		"tone": "factual and restrained",
 		"note": "Live-region match position. ordinal and matches are numbers; ICU controls formatting."
 	},
 	"ui.browser.browser_find_row.next_match": {
-		"role": "accessible control/region name — in-page find row",
+		"role": "accessible control/region name \u2014 in-page find row",
 		"tone": "concise, neutral, sentence case",
 		"note": "In-page find row: steps to the next match. Length: compact control name."
 	},
 	"ui.browser.browser_find_row.next_match_shortcut": {
-		"role": "content prop — in-page find row",
+		"role": "content prop \u2014 in-page find row",
 		"tone": "concise, neutral, sentence case",
 		"note": "Tooltip naming the next-match chord. shortcut is runtime technical data and stays unchanged."
 	},
 	"ui.browser.browser_find_row.no_matches": {
-		"role": "status or explanatory text — in-page find row",
+		"role": "status or explanatory text \u2014 in-page find row",
 		"tone": "factual and restrained",
 		"note": "A completed search with no matches. Length: short status phrase."
 	},
 	"ui.browser.browser_find_row.no_result_reported_press_enter_to_search_again": {
-		"role": "status or explanatory text — in-page find row",
+		"role": "status or explanatory text \u2014 in-page find row",
 		"tone": "plain sentence giving the next action",
 		"note": "Recovery copy for a search main did not report on. Length: one short sentence."
 	},
 	"ui.browser.browser_find_row.previous_match": {
-		"role": "accessible control/region name — in-page find row",
+		"role": "accessible control/region name \u2014 in-page find row",
 		"tone": "concise, neutral, sentence case",
 		"note": "In-page find row: steps to the previous match. Length: compact control name."
 	},
 	"ui.browser.browser_find_row.previous_match_shortcut": {
-		"role": "content prop — in-page find row",
+		"role": "content prop \u2014 in-page find row",
 		"tone": "concise, neutral, sentence case",
 		"note": "Tooltip naming the previous-match chord. shortcut is runtime technical data and stays unchanged."
 	},
 	"ui.browser.browser_find_row.searching": {
-		"role": "status or explanatory text — in-page find row",
+		"role": "status or explanatory text \u2014 in-page find row",
 		"tone": "factual and restrained",
 		"note": "Transient state while the page search is in flight. Length: short status phrase."
 	},
 	"ui.browser.browser_url_bar.find_in_page": {
-		"role": "accessible control/region name — address and navigation bar",
+		"role": "accessible control/region name \u2014 address and navigation bar",
 		"tone": "concise, neutral, sentence case",
 		"note": "URL bar: opens the in-page find row. Length: compact control name."
 	},
 	"ui.browser.browser_url_bar.find_in_page_shortcut": {
-		"role": "content prop — address and navigation bar",
+		"role": "content prop \u2014 address and navigation bar",
 		"tone": "concise, neutral, sentence case",
 		"note": "Tooltip naming the find chord. shortcut is runtime technical data and stays unchanged."
 	},
 	"ui.browser.browser_url_bar.page_zoom_reset": {
-		"role": "accessible control/region name — address and navigation bar",
+		"role": "accessible control/region name \u2014 address and navigation bar",
 		"tone": "concise, neutral, sentence case",
 		"note": "Zoom control's accessible name: the current percent and the reset target. zoom is a number; ICU controls formatting."
 	},
 	"ui.browser.browser_url_bar.reset_page_zoom_shortcut": {
-		"role": "content prop — address and navigation bar",
+		"role": "content prop \u2014 address and navigation bar",
 		"tone": "concise, neutral, sentence case",
 		"note": "Tooltip naming the reset-zoom chord. shortcut is runtime technical data and stays unchanged."
 	}

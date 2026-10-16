@@ -2994,9 +2994,13 @@ test("the pinned strip control appears only when a tab is off screen, and counts
 	const english = JSON.parse(
 		readFileSync("src/i18n/catalogues/en/ui.browser.json", "utf8"),
 	);
+	// SOURCE PIN, not the count discriminator: this asserts the catalogue's bytes. The
+	// four-digit discrimination for this key (a bare `#` renders `1,000`) is the
+	// GROUPS_AT_A_THOUSAND table in `browser-file-transfer-row.test.mjs`, which drives
+	// the shipped `translate()` at 1000 where `#` and `::group-off` differ.
 	assert.equal(
 		english["ui.browser.browser_tab_strip.all_tabs_unshown_accessible"],
-		"All tabs, {count, plural, other {# not shown}}",
+		"All tabs, {count, plural, other {{count, number, ::group-off} not shown}}",
 	);
 	assert.ok(
 		strip.includes('querySelectorAll("[data-tab-id]")'),
