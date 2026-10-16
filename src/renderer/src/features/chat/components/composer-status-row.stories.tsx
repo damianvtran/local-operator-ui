@@ -2751,7 +2751,7 @@ export const AskMultiple: Story = {
 };
 
 /**
- * A MIXED queue: one still waiting, one the agent moved on from.
+ * A MIXED queue: one still waiting, one timed out.
  *
  * The visible clause says only the waiting half (a chip is a register, not a
  * paragraph) and the announced name carries the split - open the tooltip or read
@@ -2762,7 +2762,7 @@ export const AskMixed: Story = {
 	render: () => (
 		<AskBand
 			width={569}
-			label="One ask waiting, one the agent moved on from"
+			label="One ask waiting, one timed out"
 			asks={[ASK_OPEN, ASK_MOVED_ON]}
 		/>
 	),
@@ -2845,15 +2845,16 @@ export const AskNeighboursNarrow: Story = {
 };
 
 /**
- * A long clause at the narrow band (`1 question timed out`; the 148.39px measured
- * for the former `1 question moved on` against the waiting clause's 133.47px is
- * not re-measured for the new words): the place a width defect would show.
+ * The LONGEST clause at the narrow band: `1 question timed out`, measured at
+ * 146.95x24px at the 393px band (headless Chrome over this story, #1116 round 2),
+ * one line, against the waiting clause's 133.47px recorded earlier. It replaces the
+ * 148.39px of the former `1 question moved on`. The place a width defect would show.
  */
 export const AskNarrowLongest: Story = {
 	render: () => (
 		<AskBand
 			width={393}
-			label="A long clause at 393px: `1 question timed out` wraps as a unit rather than truncating"
+			label="The longest clause at 393px: `1 question timed out` wraps as a unit rather than truncating"
 			asks={[ASK_MOVED_ON]}
 			goal="Reconcile the March invoices"
 			runDetails={ASK_NEIGHBOURS_DETAILS}
@@ -2881,7 +2882,7 @@ export const AskExpandedMovedOn: Story = {
 	render: () => (
 		<AskBand
 			width={569}
-			label="Moved on and expanded: the item stays, and the panel files the ask under a collapsed `Timed out` badge"
+			label="Timed out and expanded: the item stays, and the panel files the ask under a collapsed `Timed out` badge"
 			asks={[ASK_MOVED_ON]}
 			defaultOpen
 		/>

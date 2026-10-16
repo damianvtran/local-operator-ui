@@ -624,10 +624,15 @@ export const askChipDeadlineShort = (
  * paragraph), but the announced name is the one place with room for the split a
  * mixed queue needs - and a screen-reader user is told about the timed-out rows
  * that the chip's short form elides, rather than about a state the screen is not
- * in.
+ * in. That includes a queue led by an undelivered answer (QA round 2 on #1116, Q-2):
+ * the timed-out rows are still on screen beside it, so the name still counts them.
  */
 const askChipFullClause = (view: AskQueueView, nowMs: number): string => {
-	if (askSplitIsKnowable(view) && view.waiting > 0 && view.movedOn > 0) {
+	if (
+		askSplitIsKnowable(view) &&
+		(view.waiting > 0 || view.delivering > 0) &&
+		view.movedOn > 0
+	) {
 		return `${askChipClause(view, nowMs)} · ${view.movedOn} timed out`;
 	}
 	return askChipClause(view, nowMs);
