@@ -3404,6 +3404,51 @@ const STRUCTURAL_CALL_SITES = [
 	},
 	{
 		/*
+		 * THE SUPPLEMENT GRID'S GLYPH RECEIPT (operator decision 2026-10-16): the
+		 * tile whose thumbnail cannot load keeps its slot as the file-kind glyph on
+		 * the receipt triple — `border-control` + `sunken` — for the same reason
+		 * `attachment-frame.tsx`'s compact receipt does, and it is a SEPARATE pin
+		 * because that one greps a different file: an edit here could drop the edge
+		 * or move the glyph onto the `mediaSurface` fill (whose ink floors the
+		 * receipt deliberately does not wear; the glyph's `ink-dim` falls under its
+		 * 5.0:1 floor on several light palettes there) and leave every palette
+		 * assertion green.
+		 */
+		what: "supplement image grid glyph receipt edge",
+		file: "src/renderer/src/features/chat/canonical/supplement-image-grid.tsx",
+		must: "flex h-[78px] w-[117px] items-center justify-center rounded-sm border border-control bg-sunken text-ink-dim",
+		why: "a failed thumbnail keeps its slot as the receipt triple; dropping the edge or the `sunken` well leaves every palette ratio computed for the working tile green while the receipt loses its only boundary and its glyph slides under its floor on the media fill",
+	},
+	{
+		/*
+		 * THE SUPPLEMENT GRID'S WORKING TILE wears the SAME control-boundary recipe
+		 * the condensed group's strip does (`AttachmentFrame boundary="control"`,
+		 * whose classes the two pins above and the `mediaSurface` palette rows
+		 * assert) — this pin is what keeps THIS call site from quietly falling back
+		 * to the default `hairline` frame, which would repaint the tile `sunken`
+		 * with a decorative edge and read as a different object in the app.
+		 */
+		what: "supplement image tile wears the control-boundary recipe",
+		file: "src/renderer/src/features/chat/canonical/supplement-image-grid.tsx",
+		must: 'boundary="control"',
+		why: "the tile's fill and returning edge live in `AttachmentFrame`'s `control` boundary; a call site that drops to the default `hairline` frame repaints the well and swaps the control edge for decoration with no palette assertion able to see which boundary a caller chose",
+	},
+	{
+		/*
+		 * THE SUPPLEMENT TILE'S MENU TRIGGER (the overlay half of
+		 * `supplement-file-actions.tsx`): a menu that floats over picture pixels
+		 * wears the `accentWash` chip `image-actions-menu.tsx` measured and set — the
+		 * bare ellipsis failed the 3:1 icon floor over a dark picture (1.63:1). The
+		 * palette row "image actions trigger" asserts the pair (`inkMuted` on
+		 * `accentWash`); only this pin can see that THIS call site keeps the chip.
+		 */
+		what: "supplement file menu trigger chip over picture pixels",
+		file: "src/renderer/src/features/chat/canonical/supplement-file-actions.tsx",
+		must: 'className="bg-accent-wash"',
+		why: "the overlay trigger exists so the glyph reads against a token on every surface; removing the chip returns it to whatever pixels the picture paints, under the 3:1 icon floor, with no palette assertion able to see which class a component renders",
+	},
+	{
+		/*
 		 * THE STATUS BAND'S REMEDY, the same class of pin as the failure alert's
 		 * above and mirrored from it deliberately: the palette rows
 		 * ("primary button on the danger wash", "primary remedy on the warning
