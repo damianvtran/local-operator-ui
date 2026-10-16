@@ -97,6 +97,8 @@ const tab = (
 	handedOver: false,
 	failed: false,
 	loading: false,
+	audible: false,
+	muted: false,
 	sessionId: THIS_CONVERSATION,
 	...overrides,
 });

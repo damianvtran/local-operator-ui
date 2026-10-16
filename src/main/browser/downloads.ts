@@ -312,6 +312,11 @@ interface Capture {
 	capTimer: ReturnType<typeof setInterval> | null;
 	finish: (() => void) | null;
 	settled: boolean;
+	/** True for a HUMAN capture (see `humanCapture`): no caller is awaiting
+	 * `done()`, there is no deadline budget, and the capture retires on the
+	 * quiet window so the per-call file cap bounds one human burst rather
+	 * than the person's whole session. */
+	human: boolean;
 }
 
 /** What a caller holds between `arm` and `release`. */
@@ -329,6 +334,29 @@ export interface DownloadArmerOptions {
 	 * U10). Optional because a test armer has no registry: absent means "cannot
 	 * say", which the row renders as it did before rather than inventing a kind. */
 	ownerKindFor?: (tabId: number) => "user" | "agent" | null;
+	/** The directory a HUMAN-initiated download lands in (LOH-13 slice C):
+	 * the person's own downloads folder, composed by the wiring that owns
+	 * the app paths. Optional because a test armer has no app: absent means
+	 * the human path is closed and an un-armed download is cancelled exactly
+	 * as before. Never harness-composed and never renderer-supplied — a
+	 * caller-named directory would be the disclosure primitive `ipc.ts`'s
+	 * reveal channel is designed against. */
+	humanDownloadDir?: () => string | null;
+	/** How long a HUMAN capture lives before it settles itself, in
+	 * milliseconds (LOH-13 slice C, review minor 4).
+	 *
+	 * WITHOUT A DEADLINE a human capture has no upper bound at all: it is
+	 * created on the first download of a user-owned tab and, absent one, sits
+	 * in `captures` with its `CAP_SAMPLE_MS` sampler running until the tab is
+	 * closed — a timer and a map entry for the life of the tab. The armed path
+	 * is bounded by the caller's `timeout_s`; this gives the human path the
+	 * SAME budget (the wiring passes `COMMAND_TIMEOUTS_S.download`), after
+	 * which the capture settles and its sampler stops. A settled capture is
+	 * replaced by the next download on that tab, so the person's next click is
+	 * never refused by an old capture's budget. Optional and defaulting to no
+	 * deadline, so a test that builds an armer without a clock keeps the
+	 * simpler behaviour. */
+	humanDeadlineMs?: number;
 	log: (message: string) => void;
 	/** Called whenever the surface's state changes (arm, accept, refusal, finish),
 	 * so the chrome can re-render the row without polling. */
@@ -454,6 +482,7 @@ export class DownloadArmer {
 			capTimer: null,
 			finish: null,
 			settled: false,
+			human: false,
 		};
 		this.captures.set(tabId, capture);
 		const deadline = setTimeout(() => this.settle(capture), timeoutMs);
@@ -525,9 +554,33 @@ export class DownloadArmer {
 	 */
 	decide(item: DownloadItemLike, webContentsId: number): DownloadDecision {
 		const tabId = this.options.tabForWebContents(webContentsId);
-		const capture = tabId === null ? undefined : this.captures.get(tabId);
+		let capture = tabId === null ? undefined : this.captures.get(tabId);
 		if (!capture || capture.settled) {
-			return { cancel: true, reason: "no download call is armed on this tab" };
+			// THE HUMAN PATH (LOH-13 slice C). `will-download` cannot tell a
+			// person's click on a download link from a page script starting a
+			// download — Electron delivers the same item either way — so the
+			// distinction this host CAN honestly make is WHO OWNS THE TAB.
+			// On a user-owned tab the person is the actor browsing, and a
+			// download the page starts there is the one they asked the page
+			// for; on an agent-owned (or handed-over) tab a page script could
+			// start one exactly as easily, so those tabs stay armed-only and
+			// the agent must use its `download` call, whose harness-composed
+			// quarantine directory and Python verdict are the point of that
+			// path. The human capture below reuses EVERY guard the armed
+			// path applies (executable names, per-file cap before the write,
+			// runtime cap while writing, per-burst file count, sanitised
+			// name, unique path) — what changes is only the destination
+			// (the person's own downloads folder, not a quarantine) and the
+			// absence of a waiting caller. Nothing here weakens the armed
+			// path: an armed capture is found above and this branch is never
+			// reached for it.
+			capture = (tabId !== null ? this.humanCapture(tabId) : null) ?? undefined;
+			if (!capture) {
+				return {
+					cancel: true,
+					reason: "no download call is armed on this tab",
+				};
+			}
 		}
 		const raw = item.getFilename();
 		const clean = safeName(raw);
@@ -685,6 +738,72 @@ export class DownloadArmer {
 		return [...this.captures.values()].at(-1)?.dir ?? dirs.at(-1) ?? null;
 	}
 
+	/** Build (or reuse) the human capture for one user-owned tab.
+	 *
+	 * Returns null — leaving the caller to cancel — when this host cannot
+	 * honestly call the download human-initiated: the tab is agent-owned or
+	 * handed to an agent (`ownerKindOf` reads the registry's CURRENT owner,
+	 * which hand-over flips), the armer was built without a human directory,
+	 * or that directory cannot be made. A settled human capture is replaced
+	 * rather than reused, so its file count bounds one burst (up to the
+	 * quiet window after the last write) and never the session.
+	 *
+	 * The directory is NOT chmodded, unlike `arm`: it is the person's own
+	 * downloads folder, which predates this app and whose mode is theirs.
+	 * The runtime-cap sampler IS started, for the reason `CAP_SAMPLE_MS`
+	 * states: an unknown-size human download has the same disk to fill as
+	 * an agent's. */
+	private humanCapture(tabId: number): Capture | null {
+		if (this.ownerKindOf(tabId) !== "user") return null;
+		const dir = this.options.humanDownloadDir?.() ?? null;
+		if (!dir) return null;
+		try {
+			mkdirSync(dir, { recursive: true });
+		} catch {
+			return null;
+		}
+		const capture: Capture = {
+			tabId,
+			dir,
+			timeoutMs: 0,
+			startedAt: (this.options.now ?? Date.now)(),
+			files: [],
+			refusals: [],
+			pending: 0,
+			started: false,
+			live: [],
+			handedOut: new Set(),
+			active: null,
+			lastProgressAt: 0,
+			quietTimer: null,
+			deadlineTimer: null,
+			capTimer: null,
+			finish: null,
+			settled: false,
+			human: true,
+		};
+		capture.capTimer = setInterval(
+			() => this.sampleCaps(capture),
+			CAP_SAMPLE_MS,
+		);
+		capture.capTimer.unref?.();
+		// A BOUNDED HUMAN CAPTURE (review minor 4): see `humanDeadlineMs`. The
+		// deadline uses `settle`, which cancels anything still writing rather
+		// than letting a write outlive the capture and land unjudged, exactly
+		// as the armed path's deadline does. `capture.timeoutMs` is set to the
+		// real budget so a cancellation sentence and a `deadline` refusal rule
+		// name the same number the armed path would.
+		const deadlineMs = this.options.humanDeadlineMs;
+		if (deadlineMs && deadlineMs > 0) {
+			capture.timeoutMs = deadlineMs;
+			const deadline = setTimeout(() => this.settle(capture), deadlineMs);
+			deadline.unref?.();
+			capture.deadlineTimer = deadline;
+		}
+		this.captures.set(tabId, capture);
+		return capture;
+	}
+
 	/** One upload's own line (review round 1, U3).
 	 *
 	 * WHY AN UPLOAD HAS A NOTE AT ALL, when §16.4 deliberately has no upload
@@ -810,7 +929,17 @@ export class DownloadArmer {
 				// the design states rather than the load-bearing half. It is BEST EFFORT for
 				// the same reason the audit append is: a chmod that failed would otherwise cost
 				// the user a file that did land.
-				restrictMode(savePath, this.options.log);
+				// THE 0600 IS SCOPED TO THE ARMED PATH (LOH-13 slice C, review
+				// minor 3). It is the quarantine's promise — "private by
+				// construction: created 0700, files 0600" — and a HUMAN capture
+				// does not land in a quarantine: it lands in the person's own
+				// downloads folder, which predates this app and where a file
+				// forced to 0600 would be one their own file-sharing or backup
+				// cannot read without a chmod they never asked for. So the human
+				// path takes the platform's normal mode (the process umask),
+				// exactly as the browser they would otherwise have used, and the
+				// armed path keeps its asserted mode unchanged.
+				if (!capture.human) restrictMode(savePath, this.options.log);
 				capture.files.push(fileFact(item, savePath));
 				this.note(capture, name, "saved", 1, "", null);
 			} else {

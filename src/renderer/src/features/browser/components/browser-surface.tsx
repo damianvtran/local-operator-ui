@@ -689,6 +689,10 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 				// so the control cannot describe a save the host does not have.
 				downloadsRecent={chrome.state?.transfers?.recent ?? null}
 				onFind={() => void openFind("chrome")}
+				onPrint={() => {
+					if (state?.activeTabId != null)
+						void chrome.pageControl(state.activeTabId, "print");
+				}}
 				pageZoom={state?.pageControls?.zoom ?? 1}
 				onResetZoom={() => {
 					if (state?.activeTabId != null)

@@ -21,6 +21,7 @@ import type { ContentRect, TabRecord } from "./registry";
 import { redactToken, surfaceToken } from "./registry";
 import type { PersistedTab } from "./session-store";
 import { permittedScheme } from "./settle";
+import { TabAudioTracker } from "./tab-audio";
 import { safeHttpUrl } from "./vendor/driver/origin-policy";
 
 const DUPLICATABLE_WEB_URL = /^https?:\/\//i;
@@ -332,6 +333,10 @@ export class BrowserHost implements BrowserActionContext {
 	private readonly chromeTabOrder = new ChromeTabOrder();
 	readonly registry: BrowserActionContext["registry"];
 	readonly pageControls: PageControls;
+	/** Per-tab audio for the strip's mute control (LOH-13 slice C). Main owns
+	 * it for the reason `tabLoading` is read here: a background tab's sound
+	 * is legible only through this projection. */
+	readonly tabAudio = new TabAudioTracker(() => this.onChanged());
 	readonly cdp: BrowserActionContext["cdp"];
 	readonly approvals: BrowserActionContext["approvals"];
 	readonly ownership: BrowserActionContext["ownership"];
@@ -754,6 +759,12 @@ export class BrowserHost implements BrowserActionContext {
 				? activeRecord
 				: null;
 		const navigation = active?.view.webContents.navigationHistory;
+		// Audio tracking is pruned against the live set on every projection:
+		// the projection is the one enumeration of live tabs main already
+		// makes on each change, so a closed tab's listener cannot outlive it.
+		this.tabAudio.prune(
+			new Set(this.registry.snapshot().map((entry) => entry.tabId)),
+		);
 		return {
 			pageControls: this.pageControls.state(active),
 			tabs: this.chromeTabOrder
@@ -792,6 +803,23 @@ export class BrowserHost implements BrowserActionContext {
 					// record rather than the snapshot: `snapshot()` is the diagnostic
 					// projection shared with `status`/`tabs`, and this field is chrome.
 					loading: this.tabLoading(entry.tabId),
+					// PER TAB, projected with `loading` and for the same reason: a
+					// background tab making sound has no other surface. `audible`
+					// gates the mute control's visibility; `muted` is its state.
+					// Read from the record (guarded like `tabLoading`) because the
+					// snapshot carries no webContents.
+					audible: (() => {
+						const record = this.registry.get(entry.tabId);
+						return record && !record.view.webContents.isDestroyed()
+							? this.tabAudio.stateFor(record).audible
+							: false;
+					})(),
+					muted: (() => {
+						const record = this.registry.get(entry.tabId);
+						return record && !record.view.webContents.isDestroyed()
+							? this.tabAudio.stateFor(record).muted
+							: false;
+					})(),
 				})),
 			activeTabId: activeRecord?.tabId ?? null,
 			// The download surface's facts (§16.4): what is in flight, where it went and
@@ -900,8 +928,27 @@ export class BrowserHost implements BrowserActionContext {
 				error: { code: "tab_closed", message: t("ui.browser.chrome.tab_gone") },
 			};
 		let url = "";
-		let destinationId: number | null = action === "reload" ? tabId : null;
+		let destinationId: number | null = action === "duplicate" ? null : tabId;
 		try {
+			// Mute is a per-tab human control, not a page navigation: it lands
+			// on the tab it names (background tabs included, which is the
+			// whole point — the tab making sound is usually not the active
+			// one) and never touches the URL or the presented view.
+			if (action === "mute" || action === "unmute") {
+				const result = this.tabAudio.setMuted(record, action === "mute");
+				if (!result)
+					return {
+						status: "failed",
+						action,
+						tabId: null,
+						error: {
+							code: "tab_closed",
+							message: t("ui.browser.chrome.tab_gone"),
+						},
+					};
+				this.onChanged();
+				return { status: "completed", action, tabId };
+			}
 			url = record.view.webContents.getURL();
 			if (
 				action === "duplicate" &&
@@ -984,7 +1031,7 @@ export class BrowserHost implements BrowserActionContext {
 	 * delivery and IPC must never search/zoom the newly active tab instead. */
 	async controlPage(
 		tabId: number,
-		action: "open" | "close" | "search" | PageZoomCommand,
+		action: "open" | "close" | "search" | "print" | PageZoomCommand,
 		query = "",
 		forward = true,
 		next = false,
@@ -999,6 +1046,7 @@ export class BrowserHost implements BrowserActionContext {
 			)
 				throw new Error("The browser tab is no longer presented.");
 			if (action === "open") this.pageControls.open(active);
+			else if (action === "print") this.pageControls.print(active);
 			else if (action === "close") this.pageControls.clear();
 			else if (action === "search")
 				this.pageControls.search(active, query, forward, next);

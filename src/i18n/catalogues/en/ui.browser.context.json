@@ -704,6 +704,16 @@
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
 		"note": "Tab chip/action/overflow strip: names/explains close tab. Length: keep the content prop compact, around the English footprint; no hard cell cap is defined."
 	},
+	"ui.browser.browser_tab_strip.mute_tab": {
+		"role": "accessible control/region name \u2014 browser tab strip mute control",
+		"tone": "concise, neutral, sentence case",
+		"note": "Tab strip: mutes a tab that is producing sound. Shown only on an audible or muted tab. Length: compact control name."
+	},
+	"ui.browser.browser_tab_strip.unmute_tab": {
+		"role": "accessible control/region name \u2014 browser tab strip mute control",
+		"tone": "concise, neutral, sentence case",
+		"note": "Tab strip: restores sound on a muted tab. Shown only on a muted tab. Length: compact control name."
+	},
 	"ui.browser.browser_tab_strip.close_tab_shortcut": {
 		"role": "content prop \u2014 browser tab strip",
 		"tone": "concise, neutral, sentence case",
@@ -1093,6 +1103,11 @@
 		"role": "content prop \u2014 address and navigation bar",
 		"tone": "concise, neutral, sentence case",
 		"note": "Tooltip naming the find chord. shortcut is runtime technical data and stays unchanged."
+	},
+	"ui.browser.browser_url_bar.print_page": {
+		"role": "accessible control/region name \u2014 address and navigation bar",
+		"tone": "concise, neutral, sentence case",
+		"note": "URL bar: opens the system print dialog for the active page. Length: compact control name."
 	},
 	"ui.browser.browser_url_bar.page_zoom_reset": {
 		"role": "accessible control/region name \u2014 address and navigation bar",

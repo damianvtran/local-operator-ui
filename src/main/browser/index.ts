@@ -73,6 +73,7 @@ import {
 	installBrowserSessionHandlers,
 	resolveBrowserSession,
 } from "./profile";
+import { COMMAND_TIMEOUTS_S } from "./protocol";
 import { BACKGROUND_VIEWPORT, TabRegistry, surfaceToken } from "./registry";
 import { type RpcServer, startRpcServer } from "./rpc";
 import {
@@ -475,6 +476,15 @@ async function initializeBrowserHost(
 			// exists is a marker pointing at nothing. `null` when the lookup cannot answer
 			// (a tab already gone), which the row renders the old way rather than guessing.
 			ownerKindFor: (tabId) => registryForDownloads?.get(tabId)?.owner ?? null,
+			// The human download destination (LOH-13 slice C): the person's
+			// own downloads folder, read from the app at decision time. Main
+			// composes it here for the same reason the reveal channel takes
+			// no path: no renderer or page string ever becomes a directory.
+			humanDownloadDir: () => app.getPath("downloads"),
+			// The human capture gets the SAME budget the armed path's caller
+			// allows (review minor 4): without it a capture would live — and
+			// keep its runtime-cap sampler ticking — until the tab closed.
+			humanDeadlineMs: COMMAND_TIMEOUTS_S.download * 1000,
 			log,
 			onActivity: () => {
 				// The project is the ONE projection: `chromeState` carries the activity and

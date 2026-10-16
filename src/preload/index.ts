@@ -18,7 +18,10 @@ import {
 	BACKEND_STATUS_EVENT,
 	type DaemonStatusSnapshot,
 } from "../shared/backend-status";
-import type { HumanTabActionOutcome } from "../shared/browser-tab-action";
+import type {
+	HumanTabAction,
+	HumanTabActionOutcome,
+} from "../shared/browser-tab-action";
 import {
 	type DesktopMediaRequest,
 	type DesktopRequest,
@@ -796,7 +799,7 @@ const api = {
 	browser: {
 		pageControl: (
 			tabId: number,
-			action: "open" | "close" | "search" | "in" | "out" | "reset",
+			action: "open" | "close" | "search" | "print" | "in" | "out" | "reset",
 			query: string,
 			forward: boolean,
 			next: boolean,
@@ -834,7 +837,7 @@ const api = {
 			ipcRenderer.invoke("browser-reorder-tabs", ids),
 		actOnTab: (
 			tabId: number,
-			action: "duplicate" | "reload",
+			action: HumanTabAction,
 		): Promise<HumanTabActionOutcome> =>
 			ipcRenderer.invoke("browser-tab-action", tabId, action),
 		newTab: (sessionId?: string | null): Promise<unknown> =>
