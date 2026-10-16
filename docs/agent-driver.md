@@ -219,13 +219,14 @@ The frames below came from exactly that command —
 `scripts/asks-app-regression.mjs` runs in `ci.yml`'s macOS NPX leg on every pull
 request, and it is what supplies the frames a design or UX round reads for a
 CHANGE (the scenes above are how a surface is photographed deliberately, by
-hand). It boots the real assembled app once per case per leg — a **candidate** leg built from the
-checkout, and a **control** leg built from a real historical revision
+hand). It boots the real assembled app once per case per leg — a **candidate** leg
+built from the checkout, and a **control** leg built from a real historical revision
 (`resolveAsksControl`: the merge-base of `origin/main` and `HEAD`, the pinned
 `2461cfa3` only when that cannot be resolved) — drives the same case on both, and
-uploads every leg's PNGs and `measurements.json` as one artifact, and each leg's
-rail-close frame carries a `railClosePolicy` reading, so the pair records which
-close policy each revision has rather than asserting one of them. Main and preload
+uploads every leg's PNGs and `measurements.json` as one artifact. Each leg's
+rail-close frame carries a `railClosePolicy` reading — the candidate's post-state is
+asserted and the control's is only recorded, so the pair shows which close policy
+each revision has without hard-asserting one revision's. Main and preload
 are reused byte-identically across the two legs and only the renderer is rebuilt
 for the control, which is why `prepareControl` asserts the four reused parts
 (`src/main`, `src/preload`, `electron.vite.config.js`, `pnpm-lock.yaml`) agree
