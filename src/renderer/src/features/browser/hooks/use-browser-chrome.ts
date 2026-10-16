@@ -72,6 +72,13 @@ export interface BrowserTabView {
 	 * occupies the content rectangle, so the strip's spinner is the only signal a
 	 * parked tab can give (docs/design/browser-approval-ux.md 8.1, 8.3). */
 	loading: boolean;
+	/** THIS tab is producing sound right now, and whether the user has
+	 * muted it. Per tab for the same reason as `loading`: a background tab
+	 * making sound is legible (and silenceable) only from the strip.
+	 * Projected by main from `tab-audio.ts`; the renderer never reads a
+	 * page's media state itself. */
+	audible: boolean;
+	muted: boolean;
 }
 
 /** A pending per-origin approval request (design 9.2). */
@@ -347,7 +354,7 @@ export interface BrowserChrome {
 	reorderTabs: (ids: number[]) => Promise<void>;
 	actOnTab: (
 		tabId: number,
-		action: "duplicate" | "reload",
+		action: "duplicate" | "reload" | "mute" | "unmute",
 	) => Promise<HumanTabActionOutcome | undefined>;
 	newTab: (sessionId?: string | null) => Promise<void>;
 	closeTab: (tabId: number) => Promise<boolean>;
@@ -377,7 +384,7 @@ export interface BrowserChrome {
 	reload: (hard?: boolean) => Promise<void>;
 	pageControl: (
 		tabId: number,
-		action: "open" | "close" | "search" | "in" | "out" | "reset",
+		action: "open" | "close" | "search" | "print" | "in" | "out" | "reset",
 		query?: string,
 		forward?: boolean,
 		next?: boolean,

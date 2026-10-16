@@ -187,7 +187,12 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 		"browser-tab-action",
 		(event, tabId: unknown, action: unknown) => {
 			const host = authorize(event);
-			if (action !== "duplicate" && action !== "reload")
+			if (
+				action !== "duplicate" &&
+				action !== "reload" &&
+				action !== "mute" &&
+				action !== "unmute"
+			)
 				throw new Error(t("ui.browser.chrome.invalid_action"));
 			return host.actOnChromeTab(numberOrThrow(tabId, "tabId"), action);
 		},
@@ -228,7 +233,9 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 			const host = authorize(event);
 			if (
 				typeof action !== "string" ||
-				!["open", "close", "search", "in", "out", "reset"].includes(action)
+				!["open", "close", "search", "print", "in", "out", "reset"].includes(
+					action,
+				)
 			)
 				throw new Error("Invalid page control action.");
 			if (
@@ -240,7 +247,14 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 				throw new Error("Invalid page search input.");
 			return host.controlPage(
 				numberOrThrow(tabId, "tabId"),
-				action as "open" | "close" | "search" | "in" | "out" | "reset",
+				action as
+					| "open"
+					| "close"
+					| "search"
+					| "print"
+					| "in"
+					| "out"
+					| "reset",
 				query,
 				forward,
 				next,

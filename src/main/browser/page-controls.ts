@@ -5,6 +5,10 @@ export const PAGE_ZOOM_STEPS = [
 	5,
 ] as const;
 export type PageZoomCommand = "in" | "out" | "reset";
+/** Electron's print failure wording for the person cancelling their own
+ * dialog ("Print job canceled" and platform variants): a cancellation is
+ * the human changing their mind, not a failure to report. */
+const PRINT_CANCELLED = /cancel/i;
 export interface PageFindState {
 	tabId: number;
 	query: string;
@@ -202,6 +206,36 @@ export class PageControls {
 							.reverse()
 							.find((step) => step < current - 0.001) ?? 0.25);
 		active.view.webContents.setZoomFactor?.(factor);
+	}
+	/** Print the presented page (LOH-13 slice C).
+	 *
+	 * HUMAN-ONLY, like everything in this class: it travels the sender-
+	 * authorized page-control IPC and the tab's serial lane, never the agent
+	 * protocol — an agent that needs a page as a document already has the
+	 * PDF/screenshot actions, and silently sending a page to a physical
+	 * printer is not a capability a tool call should hold.
+	 *
+	 * `silent: false` is the load-bearing option: Electron's silent mode
+	 * prints to the default printer with default settings and NO dialog,
+	 * which for a human press would be a side effect they never confirmed.
+	 * The dialog is the consent. A failure the dialog itself reports
+	 * (cancelled is the person changing their mind, not a failure) only
+	 * surfaces through `notice` when Electron names a real reason. */
+	print(active: TabRecord): void {
+		if (!active.presented) return;
+		const wc = active.view.webContents;
+		if (wc.isDestroyed() || !wc.print) {
+			this.notice = "Printing is not available for this page";
+			this.noticeTabId = active.tabId;
+			return;
+		}
+		this.notice = null;
+		wc.print({ silent: false, printBackground: false }, (success, reason) => {
+			if (success || !reason || PRINT_CANCELLED.test(reason)) return;
+			this.notice = `Printing failed: ${reason}`;
+			this.noticeTabId = active.tabId;
+			this.changed();
+		});
 	}
 	/** Call BEFORE a capability transfer. Isolated per-WebContents zoom means
 	 * resetting this tab cannot alter another tab at the same origin. */
