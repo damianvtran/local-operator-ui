@@ -831,7 +831,7 @@ test("provider labels refresh and missing namespaces keep English counts", () =>
 			"Fixture subscription",
 		);
 		assert.equal(GROUP_HEADINGS.subscription, "Fixture group");
-		for (const minutes of [0, 1, 21]) {
+		for (const minutes of [0, 1, 21, 1000]) {
 			assert.equal(
 				t("ui.providers.provider_detail.code_expiry", { minutes }),
 				`Code expires in ${minutes} min`,
