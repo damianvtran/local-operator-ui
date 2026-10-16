@@ -251,6 +251,23 @@ sees the renderer document, not a sibling native view or the macOS z-order, so
 `physical1106` in the manifest records that gap by name rather than letting a
 green frame imply coverage it does not have.
 
+Some screens are recorded as **not yet caseable**, because a case there would
+photograph the wrong thing rather than nothing. `settings` is the example that
+matters most, and it was rejected on source rather than on taste: the settings
+read travels `GET /v1/settings`, and the fixture models no answer for that path,
+so a settings case would capture the fixture's `404 No fixture for /v1/settings`
+fallthrough as though it were the screen a user sees. The Radient read door is a
+separate matter: its allowlist carries `quota.notice` alone, which is why the
+credit census is answered and anything else on that door is refused — that is
+not what stops a settings case, and widening it would not unblock one. Making
+`settings` a case means modelling the settings answer in the fixture, which is
+its own reviewed change rather than an edit smuggled in beside a frame capture.
+Until then, settings frames come from the Storybook locale rig
+(`.storybook/preview.tsx`, whose evidence-locale global landed in #1125) rather
+than from here. The test generalises: a case that would photograph a read the
+fixture does not model, or a refusal the fixture raises, is not evidence of the
+screen — that surface is recorded here instead of being added to the table.
+
 ## The gate: off unless the launch asked for it
 
 Arming needs **both** `LOCAL_OPERATOR_UI_DEV_DRIVER=1` (or `true`) and an
