@@ -22,30 +22,18 @@ import type { PanelRailItemId } from "./panel-rail-model";
 /**
  * Whether this route could render the rail item an action drives.
  *
- * The conditions are the ITEMS' mount gates, stated once (`chat-content`'s
- * `rightSlotRoute` is the published form of the same facts — see its note for
- * why the split is exactly these): run needs run details; console needs a
- * conversation; code review needs the capability and a conversation; the asks
- * item needs a host to offer the door (the fleet drawer's home is the shell, so
- * its offer is its own fact, not a route shape).
+ * EVERY DOOR IS PRESENT WHEREVER THE RAIL IS (the always-visible rail, D1): the
+ * rail mounts with the chat surface, and on that surface all six doors render
+ * whatever the conversation's state - a pane that cannot act yet opens to a
+ * notice that says why. The function stays, taking the id, because the keymap
+ * dispatcher gates on it (`use-keymap-shortcuts.ts`): the chord and the door
+ * answer to one rule, so a chord can never act where its door is not drawn.
  */
 export function panelRailDoorPresent(
-	id: PanelRailItemId,
+	_id: PanelRailItemId,
 	route: RightSlotRouteFacts,
 ): boolean {
-	switch (id) {
-		case "run":
-			return route.runDetails;
-		case "console":
-			return route.mounted && route.session;
-		case "browser":
-		case "canvas":
-			return route.mounted;
-		case "code":
-			return route.mounted && route.session && route.codeReview;
-		case "ask":
-			return route.asksOffered;
-	}
+	return route.mounted;
 }
 
 /**
@@ -101,11 +89,15 @@ export function togglePanelRailItem(
 				state.setConsolePaneOpen(false);
 				return true;
 			}
-			if (context.sessionId === undefined || context.sessionId === null) {
-				return false;
-			}
+			/*
+			 * ON A DRAFT THE PANE STILL OPENS (D1): it draws its own "needs a
+			 * conversation" state, which is the answer to the press. Only a press with
+			 * a conversation files the open request - that request is what tells the
+			 * pane this open came from the user and spawns a console, and a draft has
+			 * no working directory to spawn one in.
+			 */
 			state.setConsolePaneOpen(true);
-			state.requestConsoleOpen(context.sessionId);
+			if (context.sessionId) state.requestConsoleOpen(context.sessionId);
 			return true;
 		}
 		case "ask": {

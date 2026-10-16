@@ -34,10 +34,10 @@ globalThis.localStorage = {
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { fleetAskRows, fleetAskFrontend, fleetAsksOutstanding, fleetAsksBySession, fleetAskSessionFor, fleetAskConversationLabel, fleetAskConversationLabels, FLEET_ASKS_QUERY_KEY, FLEET_ASKS_POLL_MS } from "./src/renderer/src/features/chat/fleet-asks";',
+			'export { fleetAskRows, fleetAskFrontend, fleetAskFrontendFor, FLEET_ASKS_UNAVAILABLE_FRONTEND, fleetAsksOutstanding, fleetAsksBySession, fleetAskSessionFor, fleetAskConversationLabel, fleetAskConversationLabels, FLEET_ASKS_QUERY_KEY, FLEET_ASKS_POLL_MS } from "./src/renderer/src/features/chat/fleet-asks";',
 			'export { useUiPreferencesStore, persistedUiPreferences, resolveRightSlotWidth } from "./src/renderer/src/shared/store/ui-preferences-store";',
 			'export { desktopEndpoint, desktopRequestSchema } from "./src/shared/desktop-contract";',
-			'export { askScopeLine, ASK_ITEM_SELECTOR, ASK_RAIL_ITEM_SELECTOR } from "./src/renderer/src/features/chat/ask-queue";',
+			'export { askScopeLine, askQueueView, ASK_ITEM_SELECTOR, ASK_RAIL_ITEM_SELECTOR } from "./src/renderer/src/features/chat/ask-queue";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 		loader: "ts",
@@ -58,6 +58,8 @@ const mod = await import(
 const {
 	fleetAskRows,
 	fleetAskFrontend,
+	fleetAskFrontendFor,
+	FLEET_ASKS_UNAVAILABLE_FRONTEND,
 	fleetAsksOutstanding,
 	fleetAsksBySession,
 	fleetAskSessionFor,
@@ -70,6 +72,7 @@ const {
 	desktopEndpoint,
 	desktopRequestSchema,
 	askScopeLine,
+	askQueueView,
 	ASK_ITEM_SELECTOR,
 	ASK_RAIL_ITEM_SELECTOR,
 } = mod;
@@ -258,6 +261,26 @@ test("the drawer's frontend states the same count the badge does", () => {
 });
 
 /* ------------------------------------------------- the correctness heart */
+
+test("a failed fleet read is a resolved frame publishing nothing, not an unread one (D4)", () => {
+	/*
+	 * The rail's asks door is on every chat route now, so the fleet drawer can be
+	 * opened over a backend whose `asks.list` fails. `null` would read as UNREAD
+	 * ("Reading the asks…") forever; the failure is handed over as the resolved
+	 * `{asks: null, asks_open: null}` frame the drawer words as unsupported.
+	 */
+	const failed = fleetAskFrontendFor(null, true);
+	assert.equal(failed, FLEET_ASKS_UNAVAILABLE_FRONTEND);
+	const view = askQueueView(failed);
+	assert.equal(view.unread, false, "a failed read is not an unread frame");
+	assert.equal(view.published, false, "and it publishes no queue");
+	// In flight: still unread, so the drawer says it is reading.
+	assert.equal(fleetAskFrontendFor(null, false), null);
+	assert.equal(askQueueView(fleetAskFrontendFor(null, false)).unread, true);
+	// An answer in hand wins over a later failed refetch: the rows stay.
+	const rows = fleetAskRows([row()]);
+	assert.deepEqual(fleetAskFrontendFor(rows, true), fleetAskFrontend(rows));
+});
 
 test("an answer is addressed at the ROW's own conversation", () => {
 	const rows = [
@@ -509,7 +532,7 @@ test("the drawer wears the canvas family's width in either scope", () => {
 	 * session-scope arm needs them (a session drawer has no home without a
 	 * conversation); the fleet arm's home is the shell whatever the route.
 	 */
-	const drawable = { mounted: true, runDetails: true, session: true };
+	const drawable = { mounted: true, session: true };
 	const fleet = resolveRightSlotWidth(1400, {
 		...base,
 		isAskDrawerOpen: true,

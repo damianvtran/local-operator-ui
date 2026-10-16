@@ -86,7 +86,7 @@ const withPane = (pane, width) => ({
 	 * #868. These cells are about the WIDTH arithmetic, so the route is the
 	 * drawable one; the route matrix is `claimed`'s subject below.
 	 */
-	rightSlotRoute: { mounted: true, runDetails: true, session: true },
+	rightSlotRoute: { mounted: true, session: true },
 });
 
 const ROW = 1400;
@@ -209,11 +209,7 @@ test("the conversation's floor still wins over the shared width", () => {
  * flag that outlived its route reserves an empty column and paints the empty
  * band the operator reported.
  */
-const route = (mounted, runDetails, session) => ({
-	mounted,
-	runDetails,
-	session,
-});
+const route = (mounted, session) => ({ mounted, session });
 /** The store's state with `pane` claimed and the route's facts set. */
 const claimed = (pane, facts, scope = "session") => ({
 	...useUiPreferencesStore.getState(),
@@ -228,43 +224,27 @@ const claimed = (pane, facts, scope = "session") => ({
 });
 
 test("a claimed pane the route cannot draw answers no width (#868)", () => {
-	// The captured sequence: the drawer closes and hands the run flag back, then
-	// New chat - no run details, nothing to mount.
-	assert.equal(
-		resolveRightSlotWidth(ROW, claimed("run", route(true, false, false))),
-		0,
-	);
-	// A conversation whose canonical frame has not arrived: same answer, same
-	// reason - the run panel's mount gate is runDetails, not the flag.
-	assert.equal(
-		resolveRightSlotWidth(ROW, claimed("run", route(true, false, true))),
-		0,
-	);
 	// The session-scoped drawer's flag on a draft: no conversation, no home.
 	assert.equal(
-		resolveRightSlotWidth(ROW, claimed("ask", route(true, false, false))),
+		resolveRightSlotWidth(ROW, claimed("ask", route(true, false))),
 		0,
 	);
 	// A route with no chat surface at all (settings, agents): none of the five
 	// mounts, so no flag holds the slot.
 	for (const pane of ["canvas", "run", "browser", "console", "ask"]) {
 		assert.equal(
-			resolveRightSlotWidth(ROW, claimed(pane, route(false, false, false))),
+			resolveRightSlotWidth(ROW, claimed(pane, route(false, false))),
 			0,
 			`${pane} held the slot on a route with no chat surface`,
 		);
 	}
 	// The occupancy boolean the header reserves from answers the same.
 	assert.equal(
-		resolveRightSlotOccupied(claimed("run", route(true, false, false))),
+		resolveRightSlotOccupied(claimed("ask", route(true, false))),
 		false,
 	);
 	assert.equal(
-		resolveRightSlotOccupied(claimed("ask", route(true, false, false))),
-		false,
-	);
-	assert.equal(
-		resolveRightSlotOccupied(claimed("canvas", route(false, false, false))),
+		resolveRightSlotOccupied(claimed("canvas", route(false, false))),
 		false,
 	);
 });
@@ -273,39 +253,47 @@ test("the drawable half is untouched: a pane the route mounts still holds the sl
 	// The fix must not release panes a route CAN draw - a second way of leaking
 	// the column would be no better than the first.
 	assert.equal(
-		resolveRightSlotWidth(ROW, claimed("run", route(true, true, true))),
+		resolveRightSlotWidth(ROW, claimed("run", route(true, true))),
+		DEFAULT_RIGHT_SLOT_WIDTH,
+	);
+	/*
+	 * THE ALWAYS-VISIBLE RAIL (D2): the run panel on a draft, or on a conversation
+	 * whose frame has not arrived, DRAWS - its notice ("needs a conversation",
+	 * "reading") - so it holds the slot like any other pane on a chat route.
+	 */
+	assert.equal(
+		resolveRightSlotWidth(ROW, claimed("run", route(true, false))),
 		DEFAULT_RIGHT_SLOT_WIDTH,
 	);
 	assert.equal(
-		resolveRightSlotWidth(ROW, claimed("canvas", route(true, false, false))),
+		resolveRightSlotOccupied(claimed("run", route(true, false))),
+		true,
+	);
+	assert.equal(
+		resolveRightSlotWidth(ROW, claimed("canvas", route(true, false))),
 		Math.min(DEFAULT_RIGHT_SLOT_WIDTH, canvasDockWidth(ROW)),
 	);
 	assert.equal(
-		resolveRightSlotWidth(ROW, claimed("ask", route(true, false, true))),
+		resolveRightSlotWidth(ROW, claimed("ask", route(true, true))),
 		Math.min(DEFAULT_RIGHT_SLOT_WIDTH, canvasDockWidth(ROW)),
 	);
 	// The fleet drawer's home is the shell, which every route has - it needs no
 	// conversation, and it is drawable even where the chat surface is not.
 	assert.equal(
-		resolveRightSlotWidth(
-			ROW,
-			claimed("ask", route(false, false, false), "fleet"),
-		),
+		resolveRightSlotWidth(ROW, claimed("ask", route(false, false), "fleet")),
 		Math.min(DEFAULT_RIGHT_SLOT_WIDTH, canvasDockWidth(ROW)),
 	);
 	assert.equal(
-		resolveRightSlotOccupied(claimed("run", route(true, true, true))),
+		resolveRightSlotOccupied(claimed("run", route(true, true))),
 		true,
 	);
 	assert.equal(
-		resolveRightSlotOccupied(
-			claimed("ask", route(false, false, false), "fleet"),
-		),
+		resolveRightSlotOccupied(claimed("ask", route(false, false), "fleet")),
 		true,
 	);
 	// Nothing claimed is nothing occupied, whatever the route could draw.
 	assert.equal(
-		resolveRightSlotOccupied(claimed("none", route(true, true, true))),
+		resolveRightSlotOccupied(claimed("none", route(true, true))),
 		false,
 	);
 	// The route facts are not persisted: they describe where the app IS, and the
@@ -326,7 +314,7 @@ test("publishing facts that did not move wakes nobody and writes nothing (#868, 
 	 * five notifications and five localStorage writes.
 	 */
 	const store = useUiPreferencesStore;
-	const facts = { mounted: true, runDetails: true, session: true };
+	const facts = { mounted: true, session: true };
 	// Start from a known, different answer so the first publish is a real move.
 	store.getState().setRightSlotRoute(EMPTY_RIGHT_SLOT_ROUTE);
 	let notifications = 0;
@@ -365,9 +353,9 @@ test("publishing facts that did not move wakes nobody and writes nothing (#868, 
 			"the facts object was replaced by an identical one",
 		);
 		// And a real move still gets through, so the guard is not a stuck setter.
-		store.getState().setRightSlotRoute({ ...facts, runDetails: false });
+		store.getState().setRightSlotRoute({ ...facts, session: false });
 		assert.equal(notifications - afterFirst.notifications, 1);
-		assert.equal(store.getState().rightSlotRoute.runDetails, false);
+		assert.equal(store.getState().rightSlotRoute.session, false);
 	} finally {
 		memory.set = realSet;
 		unsubscribe();
@@ -401,8 +389,8 @@ test("a flag that outlived its route does not collapse the docked sidebar (#868,
 		// Stale: the session drawer's flag on a draft, and a canvas flag on a
 		// route with no chat surface. Both must leave the sidebar docked.
 		for (const stale of [
-			claimed("ask", route(true, false, false)),
-			claimed("canvas", route(false, false, false)),
+			claimed("ask", route(true, false)),
+			claimed("canvas", route(false, false)),
 		]) {
 			const layout = layoutFor(width, stale);
 			assert.equal(
@@ -415,10 +403,10 @@ test("a flag that outlived its route does not collapse the docked sidebar (#868,
 		// Drawn: the same claims on a route that can draw them yield exactly as
 		// the bare flag did before.
 		for (const drawn of [
-			claimed("canvas", route(true, false, false)),
-			claimed("ask", route(true, false, true)),
+			claimed("canvas", route(true, false)),
+			claimed("ask", route(true, true)),
 			// the fleet scope's home is the shell: drawn on every route
-			claimed("ask", route(false, false, false), "fleet"),
+			claimed("ask", route(false, false), "fleet"),
 		]) {
 			const layout = layoutFor(width, drawn);
 			assert.equal(
@@ -432,14 +420,14 @@ test("a flag that outlived its route does not collapse the docked sidebar (#868,
 	// Outside the band nothing yields, drawn or not: 1184 keeps both floors (the
 	// band is 1024-1183 since the 44px panel rail joined the row's deficit, #872).
 	assert.equal(
-		layoutFor(1184, claimed("canvas", route(true, false, false))).mode,
+		layoutFor(1184, claimed("canvas", route(true, false))).mode,
 		"docked",
 	);
 	// The run panel, the browser and the console never yielded the sidebar, and
 	// still do not - the answer is the canvas family's, not "any pane".
 	for (const pane of ["run", "browser", "console"]) {
 		assert.equal(
-			resolveRightSlotYieldsSidebar(claimed(pane, route(true, true, true))),
+			resolveRightSlotYieldsSidebar(claimed(pane, route(true, true))),
 			false,
 			`${pane} started yielding the sidebar`,
 		);
@@ -836,57 +824,55 @@ test("the panel rail's lit pane is the DRAWN pane, built from the same two input
 	 */
 	for (const pane of ["run", "browser", "console", "canvas"]) {
 		assert.equal(
-			resolveDrawnRightSlotPane(claimed(pane, route(true, true, true))),
+			resolveDrawnRightSlotPane(claimed(pane, route(true, true))),
 			pane,
 			`${pane} is drawn on a route that mounts it`,
 		);
 		/* The sibling readers agree with it on WHETHER, which is the point of one derivation. */
 		assert.equal(
-			resolveRightSlotOccupied(claimed(pane, route(true, true, true))),
+			resolveRightSlotOccupied(claimed(pane, route(true, true))),
 			true,
 		);
 		assert.equal(
-			resolveDrawnRightSlotPane(claimed(pane, route(false, false, false))),
+			resolveDrawnRightSlotPane(claimed(pane, route(false, false))),
 			null,
 			`${pane} claimed on a route with no chat surface is not drawn`,
 		);
 	}
 	assert.equal(
-		resolveDrawnRightSlotPane(claimed("run", route(true, false, false))),
-		null,
-		"the run panel on a draft has no run details to draw",
+		resolveDrawnRightSlotPane(claimed("run", route(true, false))),
+		"run",
+		"the run panel on a draft draws its notice (D2)",
 	);
-	/* The other three mount whenever the chat surface does, with or without run details. */
+	/* The other three mount whenever the chat surface does, with or without a conversation. */
 	assert.equal(
-		resolveDrawnRightSlotPane(claimed("browser", route(true, false, false))),
+		resolveDrawnRightSlotPane(claimed("browser", route(true, false))),
 		"browser",
 	);
 	assert.equal(
-		resolveDrawnRightSlotPane(claimed("ask", route(true, false, true))),
+		resolveDrawnRightSlotPane(claimed("ask", route(true, true))),
 		"ask",
 	);
 	assert.equal(
-		resolveDrawnRightSlotPane(claimed("ask", route(true, false, false))),
+		resolveDrawnRightSlotPane(claimed("ask", route(true, false))),
 		null,
 		"the session drawer on a draft is not drawn",
 	);
 	assert.equal(
-		resolveDrawnRightSlotPane(
-			claimed("ask", route(false, false, false), "fleet"),
-		),
+		resolveDrawnRightSlotPane(claimed("ask", route(false, false), "fleet")),
 		"ask",
 		"the fleet drawer's home is the shell: drawn on every route",
 	);
 	assert.equal(
-		resolveDrawnRightSlotPane(claimed("none", route(true, true, true))),
+		resolveDrawnRightSlotPane(claimed("none", route(true, true))),
 		null,
 	);
 	/* Whatever it answers, WHETHER is the occupied reader's answer. */
 	for (const pane of ["run", "browser", "console", "canvas", "ask", "none"]) {
 		for (const r of [
-			route(true, true, true),
-			route(true, false, false),
-			route(false, false, false),
+			route(true, true),
+			route(true, false),
+			route(false, false),
 		]) {
 			const state = claimed(pane, r);
 			assert.equal(
