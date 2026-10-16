@@ -408,11 +408,16 @@ export type MessageParams = {
 	"ui.browser.browser_url_bar.find_in_page_shortcut": { shortcut: string };
 	"ui.browser.browser_url_bar.forward": undefined;
 	"ui.browser.browser_url_bar.forward_shortcut": { shortcut: string };
+	"ui.browser.browser_url_bar.home": undefined;
 	"ui.browser.browser_url_bar.latest_download": { name: string };
 	"ui.browser.browser_url_bar.newest_download": { name: string; count: number };
 	"ui.browser.browser_url_bar.page_zoom_reset": { zoom: number };
 	"ui.browser.browser_url_bar.reload": undefined;
 	"ui.browser.browser_url_bar.reset_page_zoom_shortcut": { shortcut: string };
+	"ui.browser.browser_url_bar.site_file": undefined;
+	"ui.browser.browser_url_bar.site_internal": undefined;
+	"ui.browser.browser_url_bar.site_not_secure": { origin: string };
+	"ui.browser.browser_url_bar.site_secure": { origin: string };
 	"ui.browser.browser_url_bar.stop_loading": undefined;
 	"ui.browser.browser_webauthn_dialog.answering": undefined;
 	"ui.browser.browser_webauthn_dialog.cancel": undefined;
@@ -420,6 +425,8 @@ export type MessageParams = {
 	"ui.browser.browser_webauthn_dialog.close": undefined;
 	"ui.browser.browser_webauthn_dialog.your_mac_will_ask_for_touch_id": undefined;
 	"ui.browser.browser_webauthn_prompt.answer_failed": { error: string };
+	"ui.browser.page_context_menu.copy_link_address": undefined;
+	"ui.browser.page_context_menu.open_link_in_new_tab": undefined;
 	"ui.browser.use_browser_chrome.downloads_folder_failed": { message: string };
 	"ui.browser.use_consent_attention_lifetime.that_request_is_no_longer_waiting": undefined;
 	"ui.browser.webauthn_chooser.a_site": undefined;

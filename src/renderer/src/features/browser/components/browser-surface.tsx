@@ -615,6 +615,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 				onNavigate={(url) => void chrome.navigate(url)}
 				onBack={() => void chrome.history("back")}
 				onForward={() => void chrome.history("forward")}
+				onHome={() => void chrome.home()}
 				onReload={() => void chrome.reload()}
 				onStop={() => void chrome.stop()}
 				onOpenApprovals={() => setDockOpen((open) => !open)}

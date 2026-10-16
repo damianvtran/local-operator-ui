@@ -851,6 +851,7 @@ const api = {
 			ipcRenderer.invoke("browser-activate-tab", tabId),
 		navigate: (url: string): Promise<unknown> =>
 			ipcRenderer.invoke("browser-navigate", url),
+		home: (): Promise<unknown> => ipcRenderer.invoke("browser-home"),
 		reload: (hard = false): Promise<unknown> =>
 			ipcRenderer.invoke("browser-reload", hard),
 		stop: (): Promise<unknown> => ipcRenderer.invoke("browser-stop"),
