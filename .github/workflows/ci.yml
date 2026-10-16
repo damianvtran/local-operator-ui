@@ -900,6 +900,12 @@ jobs:
       # own per-boot timeouts (150 s each) are what stop a hung app.
       - name: Exercise assembled asks and capture regression frames
         id: asks_regression
+        # The producer this step runs is now a CASE TABLE (scripts/asks-app-regression.mjs):
+        # the asks scenario is its first entry and two further cases ride the same
+        # step, each with its own candidate and derived-control leg. The file name and
+        # the artifact names below keep their historical spelling on purpose - QA
+        # howtos and review threads resolve against those paths. Adding a case is a
+        # table entry, not a workflow change.
         if: runner.os == 'macOS' && github.event_name == 'pull_request'
         timeout-minutes: 15
         env:
