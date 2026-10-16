@@ -1527,3 +1527,44 @@ test("the drawer's scope line counts every answerable card, and still falls thro
 		"All conversations · 1 question waiting",
 	);
 });
+
+test("the rail badge counts ANSWERABLE asks when the list is complete, the tally when it is not", () => {
+	/*
+	 * Complete list: a lapsed ask is read-only (D10), so it pulls no attention and the
+	 * badge agrees with the fleet marks (`fleetAsksBySession`).
+	 */
+	const complete = queue.askQueueView({
+		asks: [
+			single({ ask_id: "a-open", status: "open" }),
+			single({ ask_id: "a-lapsed", status: "timed_out" }),
+		],
+		asks_open: 2,
+	});
+	assert.equal(queue.askAttentionCount(complete), 1);
+	const lapsedOnly = queue.askQueueView({
+		asks: [single({ status: "timed_out" })],
+		asks_open: 1,
+	});
+	assert.equal(
+		queue.askAttentionCount(lapsedOnly),
+		0,
+		"a lapsed-only queue draws no badge",
+	);
+	/*
+	 * Truncated, or a tally above the rows: only the tally is known, and some of the
+	 * asks it counts are not in the list - so the badge keeps the tally. Over-counting a
+	 * lapsed ask is the safe side of hiding a real open one.
+	 */
+	const truncated = queue.askQueueView({
+		asks: [single({ status: "timed_out" })],
+		asks_open: 5,
+		asks_truncated: true,
+	});
+	assert.equal(queue.askAttentionCount(truncated), 5);
+	const lagging = queue.askQueueView({
+		asks: [single({ status: "timed_out" })],
+		asks_open: 3,
+	});
+	assert.equal(queue.askAttentionCount(lagging), 3);
+	assert.equal(queue.askAttentionCount(queue.askQueueView(null)), 0);
+});
