@@ -1,8 +1,8 @@
 {
 	"ui.console.capacity.summary": "{live, number} activas de {limit, number} en la app",
-	"ui.console.capacity.summary_compact": "{live, number}/{limit, number} · {archived, number} conservadas",
+	"ui.console.capacity.summary_compact": "{live, number}/{limit, number} · {archived, plural, one {# conservado} many {# de conservados} other {# conservados}}",
 	"ui.console.capacity.summary_compact_bare": "{live, number}/{limit, number}",
-	"ui.console.capacity.archived": " · {archived, number} conservadas",
+	"ui.console.capacity.archived": " · {archived, plural, one {# conservado} many {# de conservados} other {# conservados}}",
 	"ui.console.capacity.full": " · sin plazas libres",
 	"ui.console.capacity.help": "El recuento abarca toda la app y todas las conversaciones. El historial conservado no ocupa una plaza de proceso.",
 	"ui.console.capacity.resources": "Almacenamiento gestionado estimado: {memory, number} MiB. Registros: {logs, number} MiB. Salida pendiente: {pending, number} MiB. Celdas de terminal: {cells, number}. Terminales protegidas: {protected, number}. No incluye la memoria de los procesos hijo.",
