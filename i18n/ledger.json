@@ -1063,8 +1063,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.console",
-			"source_sha256": "4fe88a76de4992e0b890a15c6faafe594ac345e7f62a7deb849b486ec3c14c7e",
-			"target_sha256": "c2d5909eb3ca5fb712df098afb9fb26ab9894166fcb348694ca6ce48ba8e4841",
+			"source_sha256": "65a71fecf4d10d1d2e2c1de1489101a752115cccaceee6d59bb98910273d4de0",
+			"target_sha256": "f4defd0edb77e9a83cd32a1c5f27e99e6b65d903b6731abeb4d7ffa3dbf51214",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -1076,17 +1076,32 @@
 					"model": "radient/auto",
 					"date": "2026-10-16",
 					"result": "clean",
-					"instance": "5c097532bf8b",
+					"instance": "06a1cfb62b1e",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/5c097532bf8b.json",
-					"receipt_sha256": "e0769c9710be97ab0f377a59c3afa3d381921b8bf1dadfb9787b221a9adef910",
-					"scope": "Independent copy audit of the plural fix in 958f2cb222: ui.console.capacity.archived + ui.console.capacity.summary_compact — Hindi singular/plural agreement, hi one/other coverage (one = 0 and 1), placeholder arg-set integrity, composed sentence via the real runtime at archived = 0/1/2/5/33/1000000.",
-					"note": "0 BLOCKER/MAJOR/MINOR/NIT. Parent's bare {archived, number} रखे गए wrongly rendered plural at 0 and 1; reproduced and now fixed by a real hi ICU plural. Runs: generate.mjs --check byte-identical, locale-parity + hi-activation + runtime + check-strings clean."
+					"receipt": "i18n/receipts/06a1cfb62b1e.json",
+					"receipt_sha256": "5cac80053b3487309b8ec079d055b3198328de45f143ae821c61e144216a695e",
+					"scope": "hi ui.console vs en source - token-only ::group-off count carriage closing the #1131 fidelity fix (base af6de1dd9)"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-16",
+					"result": "clean",
+					"instance": "c714d9b2d14a",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/c714d9b2d14a.json",
+					"receipt_sha256": "476ac5d97db5f214f42801bdb6f305eb7a39ee9f21eab83b1371c979290ec0bc",
+					"scope": "hi ui.console vs en source - token-only ::group-off count carriage closing the #1131 fidelity fix (base af6de1dd9)"
 				}
 			],
 			"status": "audited",
@@ -1131,14 +1146,38 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "4fe88a76de4992e0b890a15c6faafe594ac345e7f62a7deb849b486ec3c14c7e",
+					"target_sha256": "c2d5909eb3ca5fb712df098afb9fb26ab9894166fcb348694ca6ce48ba8e4841",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-16",
+							"result": "clean",
+							"instance": "5c097532bf8b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/5c097532bf8b.json",
+							"receipt_sha256": "e0769c9710be97ab0f377a59c3afa3d381921b8bf1dadfb9787b221a9adef910",
+							"scope": "Independent copy audit of the plural fix in 958f2cb222: ui.console.capacity.archived + ui.console.capacity.summary_compact — Hindi singular/plural agreement, hi one/other coverage (one = 0 and 1), placeholder arg-set integrity, composed sentence via the real runtime at archived = 0/1/2/5/33/1000000.",
+							"note": "0 BLOCKER/MAJOR/MINOR/NIT. Parent's bare {archived, number} रखे गए wrongly rendered plural at 0 and 1; reproduced and now fixed by a real hi ICU plural. Runs: generate.mjs --check byte-identical, locale-parity + hi-activation + runtime + check-strings clean."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "hi",
 			"namespace": "ui.onboarding",
-			"source_sha256": "b086c241aa70e44cdaab8f02d20e5aaac33d4732df09204481afc4128c08a6ae",
-			"target_sha256": "b0b3475b5b9d2294d2c98b4c21edda51693d7befa8220dbba469daebb98d346c",
+			"source_sha256": "a04d3feacdef1168af407cb82b94173cb95d37092e8722d46df2cae4e4fc9e53",
+			"target_sha256": "690445b67a1346a3132ba2245aa4b161148b72e772cd9ea9c6e719973c9c5632",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -1147,40 +1186,81 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-15",
+					"model": "radient/auto",
+					"date": "2026-10-16",
 					"result": "clean",
-					"instance": "29b93222d4a2",
+					"instance": "06a1cfb62b1e",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/29b93222d4a2.json",
-					"receipt_sha256": "a0136ee4bfae391ea184730b50a2a8fe2b4c57a660d48953ac94bd8d529b8fd8",
-					"scope": "Full cumulative 143-key copy audit including three #1073 delta keys",
-					"note": "Incremental i18n-translator/openai/gpt-6.1-sol retains original 140-key translation and two independent audit histories; cumulative receipts cover 143 final keys including three #1073 delta keys. Rendered QA/design remain separate. Minor last_known deferred, nonblocking."
+					"receipt": "i18n/receipts/06a1cfb62b1e.json",
+					"receipt_sha256": "5cac80053b3487309b8ec079d055b3198328de45f143ae821c61e144216a695e",
+					"scope": "hi ui.onboarding vs en source - token-only ::group-off count carriage closing the #1131 fidelity fix (base af6de1dd9)"
 				},
 				{
 					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-15",
+					"model": "radient/auto",
+					"date": "2026-10-16",
 					"result": "clean",
-					"instance": "47e492dc0efe",
+					"instance": "c714d9b2d14a",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/47e492dc0efe.json",
-					"receipt_sha256": "dd00588a83a42b589640bc5d38dc8d5900be029a717129432f3f9e86ba065382",
-					"scope": "Full cumulative 143-key copy audit including three #1073 delta keys",
-					"note": "Incremental i18n-translator/openai/gpt-6.1-sol retains original 140-key translation and two independent audit histories; cumulative receipts cover 143 final keys including three #1073 delta keys. Rendered QA/design remain separate. Minor last_known deferred, nonblocking."
+					"receipt": "i18n/receipts/c714d9b2d14a.json",
+					"receipt_sha256": "476ac5d97db5f214f42801bdb6f305eb7a39ee9f21eab83b1371c979290ec0bc",
+					"scope": "hi ui.onboarding vs en source - token-only ::group-off count carriage closing the #1131 fidelity fix (base af6de1dd9)"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "b086c241aa70e44cdaab8f02d20e5aaac33d4732df09204481afc4128c08a6ae",
+					"target_sha256": "b0b3475b5b9d2294d2c98b4c21edda51693d7befa8220dbba469daebb98d346c",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-15",
+							"result": "clean",
+							"instance": "29b93222d4a2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/29b93222d4a2.json",
+							"receipt_sha256": "a0136ee4bfae391ea184730b50a2a8fe2b4c57a660d48953ac94bd8d529b8fd8",
+							"scope": "Full cumulative 143-key copy audit including three #1073 delta keys",
+							"note": "Incremental i18n-translator/openai/gpt-6.1-sol retains original 140-key translation and two independent audit histories; cumulative receipts cover 143 final keys including three #1073 delta keys. Rendered QA/design remain separate. Minor last_known deferred, nonblocking."
+						},
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-15",
+							"result": "clean",
+							"instance": "47e492dc0efe",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/47e492dc0efe.json",
+							"receipt_sha256": "dd00588a83a42b589640bc5d38dc8d5900be029a717129432f3f9e86ba065382",
+							"scope": "Full cumulative 143-key copy audit including three #1073 delta keys",
+							"note": "Incremental i18n-translator/openai/gpt-6.1-sol retains original 140-key translation and two independent audit histories; cumulative receipts cover 143 final keys including three #1073 delta keys. Rendered QA/design remain separate. Minor last_known deferred, nonblocking."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		}
 	]
 }

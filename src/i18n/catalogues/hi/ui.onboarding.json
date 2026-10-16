@@ -44,6 +44,6 @@
 	"ui.onboarding.search.row.save_failed": "कुंजी सहेजी नहीं जा सकी।",
 	"ui.onboarding.search.row.saved": "सहेजी गई",
 	"ui.onboarding.search.row.saving": "{name} सहेजी जा रही है",
-	"ui.onboarding.modal.step_of": "चरण {current, number}, कुल {total, number}",
-	"ui.onboarding.modal.steps_total": "{total, plural, one {# चरण} other {# चरण}}"
+	"ui.onboarding.modal.step_of": "चरण {current, number, ::group-off}, कुल {total, number, ::group-off}",
+	"ui.onboarding.modal.steps_total": "{total, plural, one {{total, number, ::group-off} चरण} other {{total, number, ::group-off} चरण}}"
 }
