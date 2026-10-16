@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * A registry section's heading, as the app's one disclosure.
  *
@@ -34,14 +36,21 @@ import type { FC } from "react";
  * times. The dot carries it, `title`/`aria-label` spell it out for a reader who
  * cannot see the dot, and the scope it used to repeat now lives in this header.
  */
-export const ChangedDot: FC<{ className?: string }> = ({ className }) => (
-	<span
-		role="img"
-		aria-label="Changed from the default"
-		title="Changed from the default"
-		className={cn("size-1.5 shrink-0 rounded-full bg-accent", className)}
-	/>
-);
+export const ChangedDot: FC<{ className?: string }> = ({ className }) => {
+	useI18nLocale();
+	return (
+		<span
+			role="img"
+			aria-label={t(
+				"ui.settings.configuration.settings_group_header.changed_from_the_default",
+			)}
+			title={t(
+				"ui.settings.configuration.settings_group_header.changed_from_the_default",
+			)}
+			className={cn("size-1.5 shrink-0 rounded-full bg-accent", className)}
+		/>
+	);
+};
 
 export type SettingsGroupHeaderProps = {
 	title: string;
@@ -67,57 +76,59 @@ export const SettingsGroupHeader = ({
 	modified,
 	onOpenChange,
 	defaultOpen = false,
-}: SettingsGroupHeaderProps) => (
-	/*
-	 * A stable handle for the things that have to find a SECTION HEADER in the
-	 * DOM — the capture rigs, the stories' own plays — because the trigger's
-	 * accessible name is a row of marks and its text is the registry's copy, and
-	 * neither is a selector. It also keeps a header's disclosure distinguishable
-	 * from a row's own help reveal, which repeats the same `aria-expanded`.
-	 */
-	<div data-section-header={title} className="flex w-full flex-col">
-		<Disclosure
-			defaultOpen={defaultOpen}
-			onOpenChange={onOpenChange}
-			/*
-			 * Two overrides, and both are corrections rather than preferences.
-			 *
-			 * INK. The trigger's own resting ink is `ink-dim` for a trace chip; a
-			 * section heading is a heading, so the resting ink steps up to `ink`.
-			 *
-			 * THE HOVER STEP. The override used to be `text-ink hover:text-ink`,
-			 * which cancels the primitive's only hover step (`disclosure.tsx`'s
-			 * `hover:text-ink-muted`) without putting anything in its place — so
-			 * hovering a 40px header changed nothing at all and the surface's
-			 * primary interaction had cursor-only feedback (design round 1, D1b).
-			 * The ground is the app's own list-row hover (`settings-sidebar`),
-			 * not a new treatment, and `hover:text-ink` stays
-			 * because the primitive would otherwise step a heading DOWN in ink on
-			 * hover.
-			 */
-			triggerClassName="text-ink hover:bg-row-hover hover:text-ink"
-			/*
-			 * The chevron is this surface's only affordance, so it is the one mark
-			 * that must clear the 3:1 non-text floor: the primitive paints the slot
-			 * `ink-disabled` (2.70:1 dark / 2.80:1 light measured), which is the
-			 * role reserved for controls that are NOT operable. `ink-dim` measures
-			 * 5.81:1 / 5.31:1 beside the title it belongs to, and taking it here
-			 * rather than changing the primitive's line leaves the trace
-			 * hierarchy's chrome exactly as designed.
-			 */
-			chevronClassName="text-ink-dim"
-			/*
-			 * `firstLine`, because a header's mark belongs on the TITLE's line
-			 * (design round 1, D1): at a wrapping width the chevron sat on the
-			 * second line (measured at a 420px column, chevron centre 754 against
-			 * line-1 centre 734), reading as attached to the word "sessions"
-			 * rather than to the group it opens. The settings ROW already passes
-			 * this for the same reason ("a row's mark belongs on the label's
-			 * line", `backend-setting-row.tsx`), and this is the other half of
-			 * that rule.
-			 */
-			summaryAlign="firstLine"
-			/* One shape for all 22 headers, which is what makes the arrival index
+}: SettingsGroupHeaderProps) => {
+	useI18nLocale();
+	return (
+		/*
+		 * A stable handle for the things that have to find a SECTION HEADER in the
+		 * DOM — the capture rigs, the stories' own plays — because the trigger's
+		 * accessible name is a row of marks and its text is the registry's copy, and
+		 * neither is a selector. It also keeps a header's disclosure distinguishable
+		 * from a row's own help reveal, which repeats the same `aria-expanded`.
+		 */
+		<div data-section-header={title} className="flex w-full flex-col">
+			<Disclosure
+				defaultOpen={defaultOpen}
+				onOpenChange={onOpenChange}
+				/*
+				 * Two overrides, and both are corrections rather than preferences.
+				 *
+				 * INK. The trigger's own resting ink is `ink-dim` for a trace chip; a
+				 * section heading is a heading, so the resting ink steps up to `ink`.
+				 *
+				 * THE HOVER STEP. The override used to be `text-ink hover:text-ink`,
+				 * which cancels the primitive's only hover step (`disclosure.tsx`'s
+				 * `hover:text-ink-muted`) without putting anything in its place — so
+				 * hovering a 40px header changed nothing at all and the surface's
+				 * primary interaction had cursor-only feedback (design round 1, D1b).
+				 * The ground is the app's own list-row hover (`settings-sidebar`),
+				 * not a new treatment, and `hover:text-ink` stays
+				 * because the primitive would otherwise step a heading DOWN in ink on
+				 * hover.
+				 */
+				triggerClassName="text-ink hover:bg-row-hover hover:text-ink"
+				/*
+				 * The chevron is this surface's only affordance, so it is the one mark
+				 * that must clear the 3:1 non-text floor: the primitive paints the slot
+				 * `ink-disabled` (2.70:1 dark / 2.80:1 light measured), which is the
+				 * role reserved for controls that are NOT operable. `ink-dim` measures
+				 * 5.81:1 / 5.31:1 beside the title it belongs to, and taking it here
+				 * rather than changing the primitive's line leaves the trace
+				 * hierarchy's chrome exactly as designed.
+				 */
+				chevronClassName="text-ink-dim"
+				/*
+				 * `firstLine`, because a header's mark belongs on the TITLE's line
+				 * (design round 1, D1): at a wrapping width the chevron sat on the
+				 * second line (measured at a 420px column, chevron centre 754 against
+				 * line-1 centre 734), reading as attached to the word "sessions"
+				 * rather than to the group it opens. The settings ROW already passes
+				 * this for the same reason ("a row's mark belongs on the label's
+				 * line", `backend-setting-row.tsx`), and this is the other half of
+				 * that rule.
+				 */
+				summaryAlign="firstLine"
+				/* One shape for all 22 headers, which is what makes the arrival index
 			   scan as a list rather than as 22 differently-sized things.
 
 			   The empty disclosed-content box this header used to grow is gone from
@@ -125,10 +136,10 @@ export const SettingsGroupHeader = ({
 			   `[&>div:empty]:hidden` workaround that was here: with no children there is
 			   no box, so the 8px, the `aria-controls` at a `display: none` target and
 			   the workaround all went with it. */
-			rowClassName="min-h-10 py-0"
-			className="w-full"
-			summary={
-				/* Marks, and only marks. The section's own description is NOT here:
+				rowClassName="min-h-10 py-0"
+				className="w-full"
+				summary={
+					/* Marks, and only marks. The section's own description is NOT here:
 			   it renders inside the section when it is open, because a second
 			   line under every title is what turned the index into 18 blocks
 			   and made the region 12 screens tall.
@@ -141,41 +152,48 @@ export const SettingsGroupHeader = ({
 						(design round 1, D4). Pinned to the trigger's right edge it can, and
 							the title keeps its rail because the cluster beside it still hugs
 						the left. */
-				<span className="flex w-full min-w-0 items-center gap-2">
-					{/*
-					 * `flex-wrap` and `gap-y-0`: a long TITLE ("Delegated work: subagents and
-					 * background sessions") used to be squeezed by its `shrink-0` count and
-					 * scope marks until it read `Dele...` at a 420px column. Wrapped, the
-					 * marks drop to a second line, and a title that is itself wider than the
-					 * column wraps rather than truncates (a name cut to `Dele...` is a name
-					 * lost). A header whose cluster fits on one line is unchanged, which is
-					 * every other header on the page; `min-h-10` on the row is a floor, so a
-					 * two-line header grows.
-					 */}
-					<span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0">
-						<span className="min-w-0 break-words text-heading text-ink">
-							{title}
-						</span>
-						{/* The count is stated only when there is one to state: a section whose
+					<span className="flex w-full min-w-0 items-center gap-2">
+						{/*
+						 * `flex-wrap` and `gap-y-0`: a long TITLE ("Delegated work: subagents and
+						 * background sessions") used to be squeezed by its `shrink-0` count and
+						 * scope marks until it read `Dele...` at a 420px column. Wrapped, the
+						 * marks drop to a second line, and a title that is itself wider than the
+						 * column wraps rather than truncates (a name cut to `Dele...` is a name
+						 * lost). A header whose cluster fits on one line is unchanged, which is
+						 * every other header on the page; `min-h-10` on the row is a floor, so a
+						 * two-line header grows.
+						 */}
+						<span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0">
+							<span className="min-w-0 break-words text-heading text-ink">
+								{title}
+							</span>
+							{/* The count is stated only when there is one to state: a section whose
 							   rows the tier filter is holding back reads `14 advanced`, not
 						    `0 settings, 14 advanced`. */}
-						{rowCount > 0 && (
-							<span className="shrink-0 text-meta text-ink-dim">
-								{rowCount === 1 ? "1 setting" : `${rowCount} settings`}
-							</span>
-						)}
-						{scope && (
-							<span className="shrink-0 text-meta text-ink-dim">{scope}</span>
-						)}
-						{advancedCount > 0 && (
-							<span className="shrink-0 text-meta text-ink-dim">
-								{advancedCount} advanced
-							</span>
-						)}
+							{rowCount > 0 && (
+								<span className="shrink-0 text-meta text-ink-dim">
+									{t(
+										"ui.settings.configuration.settings_group_header.setting_count",
+										{ count: rowCount },
+									)}
+								</span>
+							)}
+							{scope && (
+								<span className="shrink-0 text-meta text-ink-dim">{scope}</span>
+							)}
+							{advancedCount > 0 && (
+								<span className="shrink-0 text-meta text-ink-dim">
+									{t(
+										"ui.settings.configuration.settings_group_header.advanced_count",
+										{ count: advancedCount },
+									)}
+								</span>
+							)}
+						</span>
+						{modified && <ChangedDot className="ml-auto" />}
 					</span>
-					{modified && <ChangedDot className="ml-auto" />}
-				</span>
-			}
-		/>
-	</div>
-);
+				}
+			/>
+		</div>
+	);
+};

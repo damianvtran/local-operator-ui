@@ -1,0 +1,197 @@
+{
+	"ui.agents.navigation.updates.preview.empty": {
+		"role": "Empty merge-preview result",
+		"tone": "Quiet factual sentence",
+		"length_hint": "One wrapped status line above the diff area",
+		"note": "The dry-run comparison found no differing regions; no selection is needed."
+	},
+	"ui.agents.navigation.updates.preview.local": {
+		"role": "Heading above local text in comparison",
+		"tone": "Single possessive label",
+		"length_hint": "Tiny comparison-column heading",
+		"note": "Labels the person’s current local wording, not the hub version."
+	},
+	"ui.agents.navigation.updates.preview.remote": {
+		"role": "Heading above hub text in comparison",
+		"tone": "Single possessive source label",
+		"length_hint": "Tiny comparison-column heading",
+		"note": "Labels incoming wording from the hub, not the local wording."
+	},
+	"ui.agents.navigation.updates.accessible": {
+		"role": "Accessible name of hub-update status section",
+		"tone": "Name the section rather than its action",
+		"length_hint": "Screen-reader label; no visible width limit",
+		"note": "Shared by the current update panel and the residual action-result section."
+	},
+	"ui.agents.navigation.updates.baseline_unknown": {
+		"role": "Warning guidance before unknown-baseline merge choice",
+		"tone": "Explain what both actions retain, without recommending one",
+		"length_hint": "Wrapped paragraph under update state",
+		"note": "No saved baseline exists. Both choices add hub additions and delete nothing local; preference decides only conflicting wording."
+	},
+	"ui.agents.navigation.updates.merge_guidance": {
+		"role": "Guidance before conflicting-update merge choice",
+		"tone": "Calm, precise choice consequences",
+		"length_hint": "Wrapped paragraph under update state",
+		"note": "Nonconflicting parts merge normally; current content is backed up before either choice."
+	},
+	"ui.agents.navigation.updates.action.updating": {
+		"role": "Update button label while busy",
+		"tone": "Progress word with ellipsis",
+		"length_hint": "Small update action button",
+		"note": "An update is already in flight; control remains in its existing busy state."
+	},
+	"ui.agents.navigation.updates.action.update": {
+		"role": "Button applying an available hub update",
+		"tone": "Clear source-specific action",
+		"length_hint": "Small update action button, about 19 English characters",
+		"note": "Applies an update eligible for the existing nondecision path; not a destructive replacement."
+	},
+	"ui.agents.navigation.updates.action.retrying": {
+		"role": "Retry button label while busy",
+		"tone": "Progress word with ellipsis",
+		"length_hint": "Small retry action button",
+		"note": "Retry is running; does not represent a successful update."
+	},
+	"ui.agents.navigation.updates.action.retry": {
+		"role": "Button retrying a retryable hub failure",
+		"tone": "Brief imperative",
+		"length_hint": "Small retry action button",
+		"note": "Shown only when the failure is classified retryable."
+	},
+	"ui.agents.navigation.updates.action.loading": {
+		"role": "Preview button label during first preview request",
+		"tone": "Quiet progress word with ellipsis",
+		"length_hint": "Small preview button",
+		"note": "Loading refers to dry-run differences, not installing an agent."
+	},
+	"ui.agents.navigation.updates.action.preview": {
+		"role": "Button fetching a dry-run difference preview",
+		"tone": "Explain that this displays differences",
+		"length_hint": "Small outline action button; may be wider than Retry",
+		"note": "Runs a dry-run apply without choosing which wording to keep."
+	},
+	"ui.agents.navigation.updates.action.keep_local": {
+		"role": "Conflict-choice button preferring local wording",
+		"tone": "Explicit choice consequences, not blanket replacement",
+		"length_hint": "Small ghost action button; about 26 English characters",
+		"note": "Only where the two versions differ, keep local wording. Other regions merge normally."
+	},
+	"ui.agents.navigation.updates.action.use_remote": {
+		"role": "Conflict-choice button preferring hub wording",
+		"tone": "Explicit choice consequences; no promotional emphasis",
+		"length_hint": "Small ghost action button; about 30 English characters",
+		"note": "Only differing regions use incoming hub wording; it is not whole-document replace."
+	},
+	"ui.agents.navigation.sidebar.options": {
+		"role": "Tooltip for per-agent options menu",
+		"tone": "Short menu purpose",
+		"length_hint": "Compact icon tooltip",
+		"note": "Opens options for this agent without selecting its row."
+	},
+	"ui.agents.navigation.sidebar.title": {
+		"role": "Legacy agents-sidebar heading",
+		"tone": "Single section noun",
+		"length_hint": "Short header beside sidebar actions",
+		"note": "Names the local agent list, not the public hub."
+	},
+	"ui.agents.navigation.sidebar.loading": {
+		"role": "Accessible loading-spinner label",
+		"tone": "Progress phrase",
+		"length_hint": "Screen-reader spinner label",
+		"note": "The local agent list request is pending."
+	},
+	"ui.agents.navigation.sidebar.error": {
+		"role": "Agent-list load failure alert",
+		"tone": "Neutral failure with retry guidance",
+		"length_hint": "Short wrapped alert in the sidebar",
+		"note": "Shown after the list request fails, not when a search has no results."
+	},
+	"ui.agents.navigation.sidebar.retry": {
+		"role": "Button retrying agent-list request",
+		"tone": "Single imperative",
+		"length_hint": "Small sidebar alert action",
+		"note": "Refetches the failed local list request."
+	},
+	"ui.agents.navigation.sidebar.search_empty": {
+		"role": "No-results state for filtered local agent list",
+		"tone": "Neutral search result",
+		"length_hint": "Compact empty-state label inside sidebar",
+		"note": "A search term exists but no local agents match; not evidence that none are installed."
+	},
+	"ui.agents.navigation.sidebar.empty": {
+		"role": "No-agents state for unfiltered local list",
+		"tone": "Neutral empty-state label",
+		"length_hint": "Compact sidebar empty-state label",
+		"note": "No search is active and the local list is empty."
+	},
+	"ui.agents.navigation.legacy.title": {
+		"role": "Legacy agent-management page heading",
+		"tone": "Brief page title",
+		"length_hint": "Single-line heading above selected agent",
+		"note": "Names the old management surface, not the hub catalogue."
+	},
+	"ui.agents.navigation.legacy.more_actions": {
+		"role": "Accessible name of compact agent-actions menu button",
+		"tone": "Name the menu scope",
+		"length_hint": "Screen-reader icon-button label",
+		"note": "In compact layout this menu contains export and hub upload actions."
+	},
+	"ui.agents.navigation.legacy.export": {
+		"role": "Export action in menu and full-width header button",
+		"tone": "Single action verb",
+		"length_hint": "Short button/menu item, about 6 English characters",
+		"note": "Downloads the selected agent archive; it does not publish the agent."
+	},
+	"ui.agents.navigation.legacy.upload": {
+		"role": "Publication action in menu and header button",
+		"tone": "Brief source-specific action",
+		"length_hint": "Menu item or button, about 13 English characters",
+		"note": "Opens the publication dialog for the selected agent; not a local ZIP import."
+	},
+	"ui.agents.navigation.legacy.chat": {
+		"role": "Button starting a chat with selected agent",
+		"tone": "Single action verb",
+		"length_hint": "Short primary header button",
+		"note": "Creates a draft conversation using this agent; backend agent identity is unchanged."
+	},
+	"ui.agents.navigation.updates.preview.nothing": {
+		"role": "Empty local or hub diff-region marker",
+		"tone": "Parenthesized absence marker",
+		"length_hint": "Short monospace diff-body placeholder",
+		"note": "Shown when a comparison region contains no text. Parentheses distinguish it from authored content."
+	},
+	"ui.agents.navigation.sidebar.no_description": {
+		"role": "Fallback agent-row description",
+		"tone": "Quiet metadata absence, not an error",
+		"length_hint": "Truncated second line of a row and its hover tooltip",
+		"note": "Only shown when author-provided description is empty; descriptions themselves are not translated."
+	},
+	"ui.agents.navigation.sidebar.import_hint": {
+		"role": "Tooltip on local-agent import action",
+		"tone": "Explain accepted archive type",
+		"length_hint": "One short icon tooltip",
+		"note": "Imports an agent from a ZIP file; keep ZIP as the format name."
+	},
+	"ui.agents.navigation.legacy.subtitle": {
+		"role": "Subtitle below management heading",
+		"tone": "Direct description of page capability",
+		"length_hint": "One header subtitle line; wraps if necessary",
+		"note": "Explains viewing and configuring local agents."
+	},
+	"ui.agents.navigation.legacy.unnamed_agent": {
+		"role": "Fallback noun inside chat tooltip",
+		"tone": "Lowercase demonstrative noun phrase",
+		"length_hint": "Short phrase inside legacy.chat_named",
+		"note": "Used only when the selected agent has no display name; not an actual agent identifier."
+	},
+	"ui.agents.navigation.legacy.chat_named": {
+		"role": "Tooltip for selected-agent chat action",
+		"tone": "Clear action and recipient",
+		"length_hint": "One short tooltip line plus the agent display name",
+		"note": "The visible button says Chat; the tooltip identifies its recipient.",
+		"placeholders": {
+			"name": "Selected agent display name unchanged, or localized legacy.unnamed_agent if missing; never translate real agent names."
+		}
+	}
+}

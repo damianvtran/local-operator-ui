@@ -731,6 +731,11 @@ test("a stored value the app does not recognise falls back to the default", asyn
 
 test("the indicator draws no band at rest and one control per surface", () => {
 	/*
+	 * The views now subscribe to the locale (a hook), so they must be rendered as
+	 * elements; calling them as plain functions has no dispatcher for the hook.
+	 * The same markup is asserted - only the way React is entered changed.
+	 */
+	/*
 	 * THE REGION IS MOUNTED, THE BAND IS NOT (review R4). A polite live region is
 	 * announced when its CONTENT CHANGES and unreliably when it arrives already
 	 * populated, so the element is always there and only its contents and its box
@@ -738,7 +743,7 @@ test("the indicator draws no band at rest and one control per surface", () => {
 	 * while the announcement becomes reliable.
 	 */
 	const atRest = renderToStaticMarkup(
-		UpdateQuietIndicatorView({
+		React.createElement(UpdateQuietIndicatorView, {
 			offers: [],
 			onOpen: () => undefined,
 			onDismiss: () => undefined,
@@ -759,7 +764,7 @@ test("the indicator draws no band at rest and one control per surface", () => {
 	);
 
 	const markup = renderToStaticMarkup(
-		UpdateQuietIndicatorView({
+		React.createElement(UpdateQuietIndicatorView, {
 			offers: [
 				{ type: UpdateType.UI, version: "0.31.0" },
 				{ type: UpdateType.BACKEND, version: "0.55.10" },
@@ -799,7 +804,7 @@ test("the indicator draws no band at rest and one control per surface", () => {
 
 test("the foot icon draws nothing at rest, and one control per state otherwise", () => {
 	const atRest = renderToStaticMarkup(
-		UpdateFootIconView({
+		React.createElement(UpdateFootIconView, {
 			surfaces: [],
 			inflight: null,
 			onShow: () => undefined,
@@ -812,7 +817,7 @@ test("the foot icon draws nothing at rest, and one control per state otherwise",
 	);
 
 	const available = renderToStaticMarkup(
-		UpdateFootIconView({
+		React.createElement(UpdateFootIconView, {
 			surfaces: [
 				{ type: UpdateType.UI, offer: { version: "0.30.1" } },
 				{ type: UpdateType.BACKEND, offer: { version: "0.55.10" } },
@@ -846,7 +851,7 @@ test("the foot icon draws nothing at rest, and one control per state otherwise",
 	 */
 
 	const inflight = renderToStaticMarkup(
-		UpdateFootIconView({
+		React.createElement(UpdateFootIconView, {
 			surfaces: [],
 			inflight: { type: UpdateType.BACKEND, percent: null },
 			onShow: () => undefined,

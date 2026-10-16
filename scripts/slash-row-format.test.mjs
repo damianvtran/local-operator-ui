@@ -28,6 +28,8 @@ const bundle = await build({
 	bundle: true,
 	format: "esm",
 	platform: "node",
+	// Resolve the provider catalogue's shared renderer i18n import transitively.
+	alias: { "@shared": `${process.cwd()}/src/renderer/src/shared` },
 	write: false,
 });
 const {

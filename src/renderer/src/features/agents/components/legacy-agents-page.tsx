@@ -21,6 +21,7 @@ import { useExportAgent } from "@shared/hooks/use-agent-mutations";
 import { useAgent } from "@shared/hooks/use-agents";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { useAgentRouteParam } from "@shared/hooks/use-route-params";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import {
@@ -33,6 +34,7 @@ import {
 import { useEffect, useState } from "react";
 import type { FC } from "react";
 import { useNavigate } from "react-router-dom";
+import { t } from "../../../../../i18n/messages";
 import { AgentSettings } from "./agent-settings";
 import { AgentsSidebar } from "./agents-sidebar";
 import { UploadAgentDialog } from "./upload-agent-dialog";
@@ -51,6 +53,8 @@ type AgentsPageProps = Record<string, never>;
  * Layout follows the pattern of other pages with a sidebar and content area.
  */
 export const LegacyAgentsPage: FC<AgentsPageProps> = () => {
+	// Refresh translated copy without resetting the current selection or action.
+	useI18nLocale();
 	const laneLeadingColumn = useLaneLeadingColumn("surface");
 	const { agentId, navigateToAgent } = useAgentRouteParam();
 	const navigate = useNavigate();
@@ -153,9 +157,9 @@ export const LegacyAgentsPage: FC<AgentsPageProps> = () => {
 				<div className="flex h-full flex-col gap-8 p-4 sm:p-6 lg:p-8">
 					<div className="mx-auto w-full max-w-4xl">
 						<PageHeader
-							title="Agent management"
+							title={t("ui.agents.navigation.legacy.title")}
 							icon={Bot}
-							subtitle="View, configure and manage your agents"
+							subtitle={t("ui.agents.navigation.legacy.subtitle")}
 						>
 							{selectedAgent && (
 								<div className="flex items-center gap-2">
@@ -189,7 +193,9 @@ export const LegacyAgentsPage: FC<AgentsPageProps> = () => {
 												data-tour-tag="upload-to-hub-header-button"
 												variant="secondary"
 												size="icon"
-												aria-label="More agent actions"
+												aria-label={t(
+													"ui.agents.navigation.legacy.more_actions",
+												)}
 												className="@min-[400px]:hidden"
 											>
 												<Ellipsis aria-hidden="true" />
@@ -201,11 +207,11 @@ export const LegacyAgentsPage: FC<AgentsPageProps> = () => {
 												onSelect={handleExportAgent}
 											>
 												<FileUp aria-hidden="true" />
-												<span>Export</span>
+												<span>{t("ui.agents.navigation.legacy.export")}</span>
 											</DropdownMenuItem>
 											<DropdownMenuItem onSelect={handleOpenUploadDialog}>
 												<CloudUpload aria-hidden="true" />
-												<span>Upload to hub</span>
+												<span>{t("ui.agents.navigation.legacy.upload")}</span>
 											</DropdownMenuItem>
 										</DropdownMenuContent>
 									</DropdownMenu>
@@ -217,7 +223,7 @@ export const LegacyAgentsPage: FC<AgentsPageProps> = () => {
 										className="hidden @min-[400px]:inline-flex"
 									>
 										<FileUp aria-hidden="true" />
-										Export
+										{t("ui.agents.navigation.legacy.export")}
 									</Button>
 
 									<Button
@@ -237,13 +243,17 @@ export const LegacyAgentsPage: FC<AgentsPageProps> = () => {
 										className="hidden @min-[400px]:inline-flex"
 									>
 										<CloudUpload aria-hidden="true" />
-										Upload to hub
+										{t("ui.agents.navigation.legacy.upload")}
 									</Button>
 
 									{/* The only tooltip here: it names the agent, which the
 								    button label cannot. */}
 									<Tooltip
-										content={`Chat with ${selectedAgent.name || "this agent"}`}
+										content={t("ui.agents.navigation.legacy.chat_named", {
+											name:
+												selectedAgent.name ||
+												t("ui.agents.navigation.legacy.unnamed_agent"),
+										})}
 									>
 										<Button
 											variant="primary"
@@ -262,7 +272,7 @@ export const LegacyAgentsPage: FC<AgentsPageProps> = () => {
 											}}
 										>
 											<MessageSquare aria-hidden="true" />
-											Chat
+											{t("ui.agents.navigation.legacy.chat")}
 										</Button>
 									</Tooltip>
 								</div>

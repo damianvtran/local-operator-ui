@@ -7,6 +7,8 @@ import {
 } from "@shared/browser-view-policy";
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { AlertTriangle, Globe, X } from "lucide-react";
 import type { FC } from "react";
@@ -205,6 +207,13 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	onShowAllTabs,
 }) => {
 	const tabPanelId = useId();
+	/**
+	 * WHY BOTH: `useId()` names this surface's tab panel elements (main's redesign,
+	 * used at four sites below), and `useI18nLocale()` subscribes this component to
+	 * locale changes so its extracted copy re-renders when the user switches
+	 * language. They are independent concerns and neither replaces the other.
+	 */
+	useI18nLocale();
 	const chrome = useBrowserChrome();
 	/**
 	 * The conversation list, read ONCE here and handed to the strip, which needs it
@@ -232,8 +241,8 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	 * the sentence.
 	 */
 	const newTabLabel = hostSessionId
-		? "New tab in this conversation"
-		: "New tab";
+		? t("ui.browser.browser_surface.new_tab_in_this_conversation")
+		: t("ui.browser.browser_surface.new_tab");
 	const suppressed = useBrowserViewSuppressed();
 	const suppressedBy = useSuppressedOverlayIds();
 	const contentRef = useRef<HTMLDivElement | null>(null);
@@ -496,7 +505,9 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 					<>
 						<span className="flex items-center gap-2">
 							<AlertTriangle className="size-6 text-warning" />
-							<span className="text-title text-ink">Browser unavailable</span>
+							<span className="text-title text-ink">
+								{t("ui.browser.browser_surface.browser_unavailable")}
+							</span>
 						</span>
 						<p className="max-w-sm text-body text-ink-muted">
 							{availability.message}
@@ -508,7 +519,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 								onClick={() => void chrome.retry()}
 								data-tour-tag="browser-availability-retry"
 							>
-								Try again
+								{t("ui.browser.browser_surface.try_again")}
 							</Button>
 						) : null}
 					</>
@@ -517,8 +528,11 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 						<Spinner size="lg" />
 						<p className="text-body text-ink-muted">
 							{availability.status === "retrying"
-								? `Retrying browser startup (attempt ${availability.attempt} of ${availability.maxAttempts})`
-								: "Starting browser"}
+								? t("ui.browser.browser_surface.startup_retry", {
+										attempt: availability.attempt,
+										maximum: availability.maxAttempts,
+									})
+								: t("ui.browser.browser_surface.starting_browser")}
 						</p>
 					</>
 				)}
@@ -530,7 +544,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 		return (
 			<div className="flex h-full items-center justify-center bg-elevated p-6">
 				<p className="text-body text-ink-muted">
-					The browser is only available in the desktop app.
+					{t("ui.browser.browser_surface.the_browser_is_only_available_in_the")}
 				</p>
 			</div>
 		);
@@ -601,6 +615,8 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 				onNavigate={(url) => void chrome.navigate(url)}
 				onBack={() => void chrome.history("back")}
 				onForward={() => void chrome.history("forward")}
+				onHome={() => void chrome.home()}
+				loadFailure={state?.navFailure ?? null}
 				onReload={() => void chrome.reload()}
 				onStop={() => void chrome.stop()}
 				onOpenApprovals={() => setDockOpen((open) => !open)}
@@ -657,8 +673,8 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 					const owner =
 						state?.tabs.find((tab) => tab.tabId === tabId)?.owner ?? ownerKind;
 					return owner === "agent"
-						? "· on the agent's tab"
-						: "· on another tab";
+						? t("ui.browser.browser_surface.on_the_agent_s_tab")
+						: t("ui.browser.browser_surface.on_another_tab");
 				}}
 			/>
 			{/* The band renders while there is anything to say: a live request, or a
@@ -692,7 +708,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						aria-label="Dismiss"
+						aria-label={t("ui.browser.browser_surface.dismiss")}
 						// An explicit dismissal, rather than a `refresh()` that happened to
 						// succeed: a refusal is the user's to clear once they have read it,
 						// and re-reading the projection must not be able to erase it (R6).
@@ -747,7 +763,10 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 				>
 					{!state && (
 						<div className="flex h-full items-center justify-center">
-							<Spinner size="lg" label="Loading browser" />
+							<Spinner
+								size="lg"
+								label={t("ui.browser.browser_surface.loading_browser")}
+							/>
 						</div>
 					)}
 					{state && tabs.length === 0 && (
@@ -771,11 +790,14 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 						<div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center @max-[330px]/bpane:px-4">
 							<Globe aria-hidden className="size-6 text-ink-dim" />
 							{tabScope === "all" ? (
-								<p className="text-body text-ink-muted">No tabs are open.</p>
+								<p className="text-body text-ink-muted">
+									{t("ui.browser.browser_surface.no_tabs_are_open")}
+								</p>
 							) : (
 								<p className="text-body text-ink-muted">
-									No browser tabs in this conversation yet. Tabs opened here,
-									and tabs an agent opens while it works, appear here.
+									{t(
+										"ui.browser.browser_surface.no_browser_tabs_in_this_conversation_yet",
+									)}
 								</p>
 							)}
 							{/* `flex-wrap justify-center`: the two buttons are ~282px side by
@@ -797,7 +819,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 										onClick={onShowAllTabs}
 										data-tour-tag="browser-scope-show-all"
 									>
-										Show all tabs
+										{t("ui.browser.browser_surface.show_all_tabs")}
 									</Button>
 								)}
 								<Button
@@ -824,7 +846,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 						<div className="flex h-full flex-col items-center justify-center gap-3">
 							<Globe aria-hidden className="size-6 text-ink-dim" />
 							<p className="text-body text-ink-muted">
-								No tab is selected. Pick a tab above, or open a new one.
+								{t("ui.browser.browser_surface.no_tab_is_selected_pick_a_tab")}
 							</p>
 							<Button
 								variant="outline"
@@ -842,11 +864,14 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 							data-suppressed-by={suppressedBy}
 						>
 							<p className="max-w-lg truncate text-title text-ink">
-								{state.title || activeTab?.title || "This page"}
+								{state.title ||
+									activeTab?.title ||
+									t("ui.browser.browser_surface.this_page")}
 							</p>
 							<p className="text-body-sm text-ink-muted">
-								Paused while a dialog, menu or panel is open — close it to bring
-								the page back.
+								{t(
+									"ui.browser.browser_surface.paused_while_a_dialog_menu_or_panel",
+								)}
 							</p>
 						</output>
 					)}

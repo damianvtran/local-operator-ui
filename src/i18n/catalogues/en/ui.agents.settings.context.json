@@ -1,0 +1,353 @@
+{
+	"ui.agents.settings.chat.not_set_yet": {
+		"role": "Unset-parameter status beside its label",
+		"tone": "Quiet status, not an error.",
+		"length_hint": "Compact inline status, about 11 English characters.",
+		"note": "The parameter has no agent override; the backend uses its optimized default."
+	},
+	"ui.agents.settings.chat.set_to_default": {
+		"role": "Button that writes a default parameter override",
+		"tone": "Action verb; clearly says a value will be applied.",
+		"length_hint": "Small nonshrinking button beside a parameter row; keep the label and value compact.",
+		"note": "The click saves the displayed default for this parameter, rather than clearing it.",
+		"placeholders": {
+			"value": "Default value converted to its original ungrouped string (for example 0.7, 4096 or the localized chat.empty word). Appears inside parentheses; numeric values retain source punctuation in this extraction."
+		}
+	},
+	"ui.agents.settings.chat.advanced_chat_settings": {
+		"role": "Expandable chat-parameter section heading",
+		"tone": "Brief descriptive heading.",
+		"length_hint": "Single line beside a chevron.",
+		"note": "This button expands advanced sampling, repetition and output-length controls."
+	},
+	"ui.agents.settings.chat.advanced_settings_to_change_how_the_agent": {
+		"role": "Tooltip explaining advanced chat parameters",
+		"tone": "Plain explanation for a reader unfamiliar with model settings.",
+		"length_hint": "Short tooltip sentence; wrapping is allowed.",
+		"note": "Displayed on the information control beside the expandable advanced-chat heading."
+	},
+	"ui.agents.settings.chat.about_advanced_chat_settings": {
+		"role": "Accessible name of advanced-chat information button",
+		"tone": "Name the information topic, not a save action.",
+		"length_hint": "Screen-reader label only; no visible width limit.",
+		"note": "The icon button opens the tooltip describing how response-generation settings work."
+	},
+	"ui.agents.settings.chat.set_custom_values_for_any_of_these": {
+		"role": "Introductory paragraph inside expanded advanced settings",
+		"tone": "Reassuring guidance: overrides are optional.",
+		"length_hint": "Two short sentences in a max-width prose column; wraps.",
+		"note": "Explain that leaving an option unset uses a tested backend default, not zero or an empty value."
+	},
+	"ui.agents.settings.chat.sampling": {
+		"role": "Group heading above sampling controls",
+		"tone": "Short technical category noun.",
+		"length_hint": "Single-line subgroup heading.",
+		"note": "Groups Temperature, Top P, Top K and Seed controls."
+	},
+	"ui.agents.settings.chat.temperature": {
+		"role": "Temperature parameter field label",
+		"tone": "Use the recognized model-sampling term.",
+		"length_hint": "Short inline label beside the unset status or input.",
+		"note": "The numerical control changes sampling randomness, not physical temperature."
+	},
+	"ui.agents.settings.chat.controls_randomness_in_responses_0_0_1": {
+		"role": "Help text below Temperature",
+		"tone": "Technical but readable; explain the direction of the effect.",
+		"length_hint": "Two compact sentences beneath a control; wraps.",
+		"note": "Keep the range 0.0-1.0 and explain that higher settings make output more random."
+	},
+	"ui.agents.settings.chat.top_p": {
+		"role": "Top P sampling-parameter label",
+		"tone": "Established technical term; do not expand into prose.",
+		"length_hint": "Very short field label, 5 English characters.",
+		"note": "Names nucleus sampling: P is a parameter name, not a placeholder."
+	},
+	"ui.agents.settings.chat.controls_cumulative_probability_of_tokens_to_sample": {
+		"role": "Help text below Top P",
+		"tone": "Precise sampling explanation.",
+		"length_hint": "One short sentence below a control; wraps.",
+		"note": "Describes cumulative token probability and preserves the 0.0-1.0 range."
+	},
+	"ui.agents.settings.chat.top_k": {
+		"role": "Top K sampling-parameter label",
+		"tone": "Established technical term; keep K identifiable.",
+		"length_hint": "Very short field label, 5 English characters.",
+		"note": "Names the token-candidate limit; K is not a replacement variable."
+	},
+	"ui.agents.settings.chat.limits_tokens_to_sample_from_at_each": {
+		"role": "Help text below Top K",
+		"tone": "Direct explanation of the token limit.",
+		"length_hint": "One short sentence below a control.",
+		"note": "The setting restricts candidate tokens at every generation step."
+	},
+	"ui.agents.settings.chat.seed": {
+		"role": "Random-seed parameter label",
+		"tone": "Recognized reproducibility term.",
+		"length_hint": "Short field label, 4 English characters.",
+		"note": "Names a numeric random seed, not an agent name or built-in seed profile."
+	},
+	"ui.agents.settings.chat.random_number_seed_for_deterministic_generation": {
+		"role": "Help text for an unset Seed row",
+		"tone": "Technical description of repeatable generation.",
+		"length_hint": "One sentence beside the default-setting action.",
+		"note": "Displayed when no agent seed override exists; keep its terminal period."
+	},
+	"ui.agents.settings.chat.random_number_seed_for_deterministic_generation_detail": {
+		"role": "Description/placeholder for the editable Seed field",
+		"tone": "Brief technical input guidance.",
+		"length_hint": "Single-line input hint, about 52 English characters; may truncate.",
+		"note": "The editable seed field uses the same concept as the unset row but originally has no terminal period."
+	},
+	"ui.agents.settings.chat.repetition": {
+		"role": "Group heading above repetition penalties",
+		"tone": "Short category noun.",
+		"length_hint": "Single-line subgroup heading.",
+		"note": "Groups Frequency penalty and Presence penalty rather than describing an error."
+	},
+	"ui.agents.settings.chat.frequency_penalty": {
+		"role": "Frequency-penalty parameter label",
+		"tone": "Recognized model-generation term.",
+		"length_hint": "Short field label, about 17 English characters.",
+		"note": "Names the penalty applied to token repetition frequency."
+	},
+	"ui.agents.settings.chat.reduces_repetition_by_lowering_likelihood_of_repeated": {
+		"role": "Help text below Frequency penalty",
+		"tone": "Explain the effect without promising repetition will disappear.",
+		"length_hint": "One sentence beneath a numerical control; wraps.",
+		"note": "Retain the -2.0 to 2.0 range; the penalty lowers the likelihood of repeated tokens."
+	},
+	"ui.agents.settings.chat.presence_penalty": {
+		"role": "Presence-penalty parameter label",
+		"tone": "Recognized model-generation term.",
+		"length_hint": "Short field label, about 16 English characters.",
+		"note": "Names a distinct diversity parameter, not the frequency penalty."
+	},
+	"ui.agents.settings.chat.increases_diversity_by_lowering_likelihood_of_prompt": {
+		"role": "Help text below Presence penalty",
+		"tone": "Explain token diversity in plain technical language.",
+		"length_hint": "One sentence beneath a numerical control; wraps.",
+		"note": "Retain -2.0 to 2.0; this sentence describes reduced likelihood of tokens from the prompt."
+	},
+	"ui.agents.settings.chat.length_and_stopping": {
+		"role": "Group heading above output-limit controls",
+		"tone": "Brief descriptive heading.",
+		"length_hint": "Single-line subgroup heading.",
+		"note": "Groups Max tokens and Stop sequences."
+	},
+	"ui.agents.settings.chat.max_tokens": {
+		"role": "Maximum-output-token parameter label",
+		"tone": "Compact technical label.",
+		"length_hint": "Short field label, about 10 English characters.",
+		"note": "The limit concerns generated output tokens, not the context window size."
+	},
+	"ui.agents.settings.chat.maximum_tokens_to_generate_in_response": {
+		"role": "Help text below Max tokens",
+		"tone": "Direct numerical-limit explanation.",
+		"length_hint": "One short sentence below the control.",
+		"note": "Clarifies that the configured maximum bounds a generated response."
+	},
+	"ui.agents.settings.chat.stop_sequences": {
+		"role": "Stop-sequences parameter label",
+		"tone": "Recognized generation-control term.",
+		"length_hint": "Short field label, about 14 English characters.",
+		"note": "Names literal text sequences that stop generation; user-entered sequences remain untranslated."
+	},
+	"ui.agents.settings.chat.sequences_that_will_cause_the_model_to": {
+		"role": "Help text for unset Stop sequences",
+		"tone": "Explain the stopping condition without inventing a default sequence.",
+		"length_hint": "One short sentence beside the default-setting action.",
+		"note": "Displayed when no stop override exists; the offered default is an empty list."
+	},
+	"ui.agents.settings.chat.empty": {
+		"role": "Default-value word inside the Stop sequences button",
+		"tone": "Lowercase value description, not an empty-state heading.",
+		"length_hint": "Very short word, 5 English characters; fits inside button parentheses.",
+		"note": "Substituted as {value} in chat.set_to_default: English renders Set to default (empty). It describes an empty stop-sequence list."
+	},
+	"ui.agents.settings.chat.enter_stop_sequences_one_per_line": {
+		"role": "Placeholder in the editable Stop sequences textarea",
+		"tone": "Brief input instruction.",
+		"length_hint": "Short textarea hint; preserve the one-sequence-per-line instruction.",
+		"note": "This text is only a placeholder; sequences typed by the user are model configuration and are never translated."
+	},
+	"ui.agents.settings.general.agent_name": {
+		"role": "Editable agent-name field label",
+		"tone": "Short descriptive noun phrase.",
+		"length_hint": "Single-line field label, about 10 English characters.",
+		"note": "Names the agent display-name field, not its immutable ID."
+	},
+	"ui.agents.settings.general.enter_agent_name": {
+		"role": "Placeholder in agent-name input",
+		"tone": "Brief entry prompt.",
+		"length_hint": "Single-line input hint, about 19 English characters.",
+		"note": "Shown only when the name input has no text; preserve the ellipsis style."
+	},
+	"ui.agents.settings.general.select_a_hosting_provider_first_and_then": {
+		"role": "Tooltip for the disabled model-selection field",
+		"tone": "Instructional; explain dependency and recommendation.",
+		"length_hint": "Long tooltip, wrapping allowed.",
+		"note": "Explains that hosting must be selected before the AI model; Automatic is a recommendation, not an identifier passed to the backend."
+	},
+	"ui.agents.settings.general.model": {
+		"role": "Label above unavailable model-selection control",
+		"tone": "Single technical noun.",
+		"length_hint": "Short field label, 5 English characters.",
+		"note": "Displayed above the disabled placeholder before a hosting provider is selected."
+	},
+	"ui.agents.settings.general.select_a_hosting_provider_first": {
+		"role": "Disabled model-selection placeholder",
+		"tone": "Brief prerequisite instruction, not an error.",
+		"length_hint": "One truncated control row, about 34 English characters.",
+		"note": "The model picker cannot offer choices before a hosting provider is available."
+	},
+	"ui.agents.settings.general.agent_information": {
+		"role": "Heading above descriptive agent metadata",
+		"tone": "Short section heading.",
+		"length_hint": "Single-line heading above Description, Tags and Categories.",
+		"note": "Introduces editable informational fields and the read-only metadata grid."
+	},
+	"ui.agents.settings.general.description": {
+		"role": "Editable agent-description field label",
+		"tone": "Single descriptive noun.",
+		"length_hint": "Single-line field label, about 11 English characters.",
+		"note": "The agent description is user-authored data; translate only this label."
+	},
+	"ui.agents.settings.general.enter_agent_description": {
+		"role": "Placeholder in agent-description input",
+		"tone": "Brief entry instruction.",
+		"length_hint": "Input hint, about 26 English characters; wraps with the control.",
+		"note": "Shown when the description field is empty; saved description text stays unchanged."
+	},
+	"ui.agents.settings.general.tags": {
+		"role": "Agent tags editor label",
+		"tone": "Short plural noun.",
+		"length_hint": "Very short field label, 4 English characters.",
+		"note": "Tags are user-defined metadata and not translated by this message."
+	},
+	"ui.agents.settings.general.add_tag": {
+		"role": "Placeholder in tag-entry control",
+		"tone": "Short add-item prompt.",
+		"length_hint": "Compact entry hint, about 10 English characters.",
+		"note": "Prompts adding one tag to the agent; no tag value is supplied by this message."
+	},
+	"ui.agents.settings.general.categories": {
+		"role": "Agent categories editor label",
+		"tone": "Short plural taxonomy noun.",
+		"length_hint": "Single-line field label, about 10 English characters.",
+		"note": "Names the metadata editor, not the hub category filter rail."
+	},
+	"ui.agents.settings.general.add_category": {
+		"role": "Placeholder in category-entry control",
+		"tone": "Short add-item prompt.",
+		"length_hint": "Compact entry hint, about 15 English characters.",
+		"note": "Prompts adding one category; stored category identifiers remain unchanged."
+	},
+	"ui.agents.settings.general.id": {
+		"role": "Read-only agent identifier metadata label",
+		"tone": "Compact identifier abbreviation.",
+		"length_hint": "Tight metadata-grid label, 2 English characters, beside an ID-card icon.",
+		"note": "The adjacent value is the immutable machine identifier; never translate that value."
+	},
+	"ui.agents.settings.general.created": {
+		"role": "Read-only creation-date metadata label",
+		"tone": "Short past-participle label.",
+		"length_hint": "Tight metadata-grid label, 7 English characters, beside a calendar icon.",
+		"note": "The adjacent value is the agent creation calendar date, not a relative message timestamp."
+	},
+	"ui.agents.settings.general.version": {
+		"role": "Read-only agent version metadata label",
+		"tone": "Single technical noun.",
+		"length_hint": "Tight metadata-grid label, 7 English characters, beside a branch icon.",
+		"note": "The adjacent version value comes from the agent record and remains unchanged."
+	},
+	"ui.agents.settings.security.security_instructions": {
+		"role": "Heading above security-reviewer instructions editor",
+		"tone": "Brief descriptive heading.",
+		"length_hint": "Single-line section heading beside a shield icon.",
+		"note": "This editor configures the security reviewer, not the main agent system prompt."
+	},
+	"ui.agents.settings.security.about_security_instructions": {
+		"role": "Accessible name of security-instructions information button",
+		"tone": "Name the help topic.",
+		"length_hint": "Screen-reader label only; no visible width constraint.",
+		"note": "The information icon explains which agent receives these instructions."
+	},
+	"ui.agents.settings.security.this_prompt_is_directed_to_the_ai": {
+		"role": "Guidance paragraph above security-reviewer prompt textarea",
+		"tone": "Concrete instructional prose; distinguish reviewer and working agent.",
+		"length_hint": "Long paragraph in a max-width prose column; wraps freely.",
+		"note": "Examples explain how to instruct the reviewer about allowed git operations and restricted files. Only this UI explanation is translated; the saved security prompt is not."
+	},
+	"ui.agents.settings.security.enter_instructions_for_the_security_agent": {
+		"role": "Placeholder in security-reviewer prompt textarea",
+		"tone": "Brief entry instruction.",
+		"length_hint": "Textarea hint, about 45 English characters; wrapping allowed.",
+		"note": "Address instructions to the AI security reviewer, not the primary agent; user-entered content stays unchanged."
+	},
+	"ui.agents.settings.system_prompt.agent_instructions": {
+		"role": "Heading above main agent system-prompt editor",
+		"tone": "Brief descriptive heading.",
+		"length_hint": "Single-line section heading beside a notebook icon.",
+		"note": "Names the working agent instruction editor; distinguish it from security instructions."
+	},
+	"ui.agents.settings.system_prompt.about_agent_instructions": {
+		"role": "Accessible name of agent-instructions information button",
+		"tone": "Name the explanatory topic.",
+		"length_hint": "Screen-reader label only; no visible width limit.",
+		"note": "The icon opens a tooltip defining the main agent system prompt."
+	},
+	"ui.agents.settings.system_prompt.define_the_agent_s_role_personality_or": {
+		"role": "Guidance paragraph above main system-prompt textarea",
+		"tone": "Helpful examples, addressed to the person configuring the agent.",
+		"length_hint": "Paragraph in a max-width prose column; wraps.",
+		"note": "Examples include an expert-researcher role and the operator name John. These are explanation examples, not defaults written into the agent prompt."
+	},
+	"ui.agents.settings.system_prompt.loading_system_prompt": {
+		"role": "Placeholder while fetching agent system prompt",
+		"tone": "Quiet progress, not failure.",
+		"length_hint": "Short textarea loading hint, about 24 English characters.",
+		"note": "Shown until the existing prompt is loaded; preserve its loading meaning so readers do not start overwriting unseen content."
+	},
+	"ui.agents.settings.system_prompt.enter_instructions_for_the_agent": {
+		"role": "Placeholder in loaded main system-prompt textarea",
+		"tone": "Brief entry instruction.",
+		"length_hint": "Textarea hint, about 35 English characters.",
+		"note": "Once loading completes, prompts entry of instructions for the working agent; stored instruction content is not translated."
+	},
+	"ui.agents.settings.agent.no_agent_selected": {
+		"role": "Empty-selection pane heading",
+		"tone": "Neutral empty state, not an error or disabled command.",
+		"length_hint": "Short heading beside an agent icon, about 17 English characters.",
+		"note": "Shown when the legacy agent-settings pane has no selected record."
+	},
+	"ui.agents.settings.agent.select_an_agent_from_the_list_on": {
+		"role": "Empty-selection pane instruction",
+		"tone": "Direct navigation guidance.",
+		"length_hint": "One short paragraph in a centered max-width empty state; wraps.",
+		"note": "Tells the reader to select an agent from the list on the left to open its configuration and details."
+	},
+	"ui.agents.settings.security.security_instructions_that_guide_the_agent_s": {
+		"role": "Tooltip defining security-reviewer system prompt",
+		"tone": "Precise explanation of the reviewer role.",
+		"length_hint": "Two short tooltip sentences; wraps.",
+		"note": "The quoted system prompt belongs to the security agent and guides its safety decisions."
+	},
+	"ui.agents.settings.system_prompt.system_instructions_that_define_the_agent_s": {
+		"role": "Tooltip defining main agent system prompt",
+		"tone": "Plain definition of behavior and capabilities.",
+		"length_hint": "Two short tooltip sentences; wraps.",
+		"note": "Defines system prompt for the working agent, not the security reviewer."
+	},
+	"ui.agents.settings.chat.error.invalid_seed": {
+		"role": "Validation-error toast when saving a nonnumeric Seed",
+		"tone": "Concise corrective message.",
+		"length_hint": "One short toast line, about 32 English characters; wrapping allowed.",
+		"note": "Shown only after attempting to save a nonempty seed value that cannot parse as a number."
+	},
+	"ui.agents.settings.general.error.empty_name": {
+		"role": "Validation-error toast when saving an empty agent name",
+		"tone": "Concise input constraint, without blame.",
+		"length_hint": "One short toast line, about 26 English characters.",
+		"note": "Shown when the trimmed name is empty; no save request is sent."
+	}
+}

@@ -1,0 +1,18 @@
+{
+	"ui.agents.refusals.name_taken": "An agent called “{name}” already exists. Choose another name, or open the existing one to change it.",
+	"ui.agents.refusals.name_grammar": "Names cannot contain spaces or slashes.",
+	"ui.agents.refusals.effort_unavailable": "“{tier}” is not a configured effort tier. Use inherit, or add the tier in Settings.",
+	"ui.agents.refusals.team_name_bound": "A team name is 1-64 characters.",
+	"ui.agents.refusals.missing_manager": "“{name}” is not an agent or a team on this machine.",
+	"ui.agents.refusals.missing_member": "“{name}” is not an agent or a team on this machine.",
+	"ui.agents.refusals.team_nesting": "That team would nest too deeply, or would contain itself. Check its members.",
+	"ui.agents.refusals.class.label.proactive": "Proactive",
+	"ui.agents.refusals.class.label.reactive": "Reactive",
+	"ui.agents.refusals.class.meaning.proactive": "It may message you on its own: after sending you something it waits a few minutes for a reply, nudges again with growing gaps for a fixed number of tries, then waits for you — and it may also wake on its own schedule.",
+	"ui.agents.refusals.class.meaning.reactive": "It replies when you write to it. It does not nudge you, and it does not wake on its own schedule.",
+	"ui.agents.refusals.class.effect.proactive": "Turning this off stops the nudging and the scheduled wakes. It still replies when you write to it.",
+	"ui.agents.refusals.class.effect.reactive": "Turning this on lets it write first: it will wait a few minutes for your reply, nudge you again up to a fixed number of tries, and it may wake on its own schedule. It still replies when you write to it.",
+	"ui.agents.refusals.class.install_disclosure": "This one ships with the app and has no copy of its own yet, so switching installs it first — the same agent and the same instructions, now editable — and then sets its class.",
+	"ui.agents.refusals.class.error.no_reason": "The backend sent no reason for it. Try the switch again.",
+	"ui.agents.refusals.class.error.install_landed": "{reason} The install did land, so the agent is editable now."
+}

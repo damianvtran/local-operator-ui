@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { build } from "esbuild";
+import { build, transform } from "esbuild";
+
+const SHARED_MENU_OWNER = /ownsChrome,/;
+const GUARDED_CHROME_INPUT = /chords\.chromeInput\(event, input\)/;
+const BLUR_RESETS_SUPPRESSION_ONLY =
+	/window\.on\("blur", resetMenuShortcutSuppression\)/;
 
 // In-memory compilation exercises shipped TypeScript without writing generated
 // modules into a checkout or allocating another dependency tree.
@@ -18,9 +23,197 @@ async function moduleAt(file) {
 	);
 }
 const { browserChordIntent } = await moduleAt("src/shared/browser-chord.ts");
-const { createBrowserChordRouter, runBrowserMenuAction } = await moduleAt(
-	"src/main/browser/browser-chord.ts",
-);
+const {
+	browserChromeOwnsChord,
+	createBrowserChordRouter,
+	runBrowserMenuAction,
+} = await moduleAt("src/main/browser/browser-chord.ts");
+const { TabRegistry } = await moduleAt("src/main/browser/registry.ts");
+
+// Execute the actual production entries without booting index.ts/Electron.
+// Exact, uniquely delimited source keeps this coupled to the reached caller, not a lookalike that
+// merely reasserts the router predicate (the missing coverage behind review R1).
+async function productionChromeDoors(activeHost, ownsChrome, suppression) {
+	const source = readFileSync("src/main/browser/index.ts", "utf8");
+	const unique = (marker) => {
+		const at = source.indexOf(marker);
+		assert.ok(
+			at >= 0 && source.indexOf(marker, at + marker.length) < 0,
+			`unique production marker required: ${marker}`,
+		);
+		return at;
+	};
+	const early = source.slice(
+		unique("export function routeBrowserZoomInput("),
+		unique("export function routeBrowserMenu("),
+	);
+	const later = source.slice(
+		unique("const onChromeInput ="),
+		unique("const resetChordFocus ="),
+	);
+	const compiled = await transform(`${early}\nexport ${later}`, {
+		loader: "ts",
+		format: "cjs",
+		target: "node22",
+	});
+	const module = { exports: {} };
+	new Function(
+		"module",
+		"exports",
+		"activeHost",
+		"browserChordIntent",
+		"process",
+		"chords",
+		"ownsChrome",
+		"options",
+		compiled.code,
+	)(
+		module,
+		module.exports,
+		activeHost,
+		browserChordIntent,
+		{ platform: "darwin" },
+		activeHost?.chords,
+		ownsChrome,
+		{
+			window: {
+				webContents: {
+					setIgnoreMenuShortcuts: (value) => suppression.push(value),
+				},
+			},
+		},
+	);
+	return module.exports;
+}
+
+test("R1 actual earlier zoom door and later chrome handler share guarded ownership, not a retained raw flag", async (t) => {
+	for (const context of [
+		"foreground",
+		"inactive",
+		"hidden",
+		"chrome-hidden",
+		"modal",
+		"destroyed",
+		"foreign",
+		"no-host",
+	]) {
+		const facts = {
+			logicalFocus: true,
+			chromeVisible: !["chrome-hidden", "modal"].includes(context),
+		};
+		const native = {
+			isDestroyed: () => context === "destroyed",
+			isVisible: () => {
+				assert.notEqual(context, "destroyed");
+				return context !== "hidden";
+			},
+			isFocused: () => !["inactive", "foreign"].includes(context),
+		};
+		const ownsChrome = () =>
+			browserChromeOwnsChord({ ...facts, window: native });
+		const mutations = [];
+		const suppression = [];
+		const router = createBrowserChordRouter({
+			platform: "darwin",
+			ownsChrome,
+			ownsPage: () => false,
+			reload: () => mutations.push(["reload", 3]),
+			zoom: (command) => mutations.push(["zoom", 3, command]),
+			history: () => {},
+			send: (message) => mutations.push([message.intent, 3]),
+			focusChrome: () => {},
+		});
+		const host =
+			context === "no-host"
+				? null
+				: { chords: router, host: { chordFocus: true } };
+		const doors = await productionChromeDoors(host, ownsChrome, suppression);
+		const event = () => ({
+			defaultPrevented: false,
+			preventDefault() {
+				this.defaultPrevented = true;
+			},
+		});
+		const e = event();
+		const handled = doors.routeBrowserZoomInput(e, input("="));
+		const expected = context === "foreground";
+		t.diagnostic(
+			JSON.stringify({
+				tier: "actual-production-source/fake-window-facts",
+				context,
+				guardedOwner: ownsChrome(),
+				handled,
+				zoomCallbacks: [...mutations],
+			}),
+		);
+		assert.equal(
+			handled,
+			expected,
+			`${context}: earlier production door must not trust raw logical=true`,
+		);
+		assert.deepEqual(mutations, expected ? [["zoom", 3, "in"]] : [], context);
+		assert.equal(e.defaultPrevented, expected);
+		if (host) {
+			// This is the SAME event the second listener receives: no doubled zoom.
+			doors.onChromeInput(e, input("="));
+			assert.deepEqual(mutations, expected ? [["zoom", 3, "in"]] : [], context);
+		}
+		for (const flags of [{ isAutoRepeat: true }, { isComposing: true }]) {
+			mutations.length = 0;
+			assert.equal(
+				doors.routeBrowserZoomInput(event(), input("=", flags)),
+				expected,
+				`${context}: rejection consumption preserved`,
+			);
+			assert.deepEqual(mutations, []);
+		}
+		for (const key of ["r", "t"]) {
+			mutations.length = 0;
+			const ordinary = event();
+			assert.equal(
+				doors.routeBrowserZoomInput(ordinary, input(key)),
+				false,
+				"non-zoom is never consumed by early app-zoom entry",
+			);
+			assert.equal(ordinary.defaultPrevented, false);
+			if (host) doors.onChromeInput(ordinary, input(key));
+			assert.deepEqual(
+				mutations,
+				expected ? [[key === "r" ? "reload" : "new-tab", 3]] : [],
+				`${context}: R/T executed at most once by later door`,
+			);
+		}
+	}
+});
+
+test("RT-only visibility uses actual registry setters, not absence of an active page", () => {
+	const registry = new TabRegistry(() => {
+		throw new Error("No native view may be created by this source control");
+	});
+	assert.equal(registry.activeTab, null);
+	assert.equal(registry.chromeVisible, false);
+	registry.setContentRect({ x: 0, y: 0, width: 400, height: 300 });
+	assert.equal(
+		registry.chromeVisible,
+		true,
+		"blank browser chrome still owns New tab",
+	);
+	registry.setViewVisible(false);
+	assert.equal(
+		registry.chromeVisible,
+		false,
+		"blocking-overlay intent refuses native shortcuts",
+	);
+	registry.setViewVisible(true);
+	assert.equal(registry.chromeVisible, true);
+	registry.setContentRect(null);
+	assert.equal(
+		registry.chromeVisible,
+		false,
+		"unmounted chrome never owns a shortcut",
+	);
+});
+
 const { chordTarget } = await moduleAt(
 	"src/renderer/src/features/browser/model/tab-index-model.ts",
 );
@@ -34,6 +227,134 @@ const input = (key, overrides = {}) => ({
 	isAutoRepeat: false,
 	isComposing: false,
 	...overrides,
+});
+
+test("logical BODY/header ownership is never native authorization without real foreground chrome facts", () => {
+	for (let mask = 0; mask < 32; mask++) {
+		const facts = {
+			logicalFocus: Boolean(mask & 1),
+			chromeVisible: Boolean(mask & 2),
+			windowVisible: Boolean(mask & 4),
+			windowFocused: Boolean(mask & 8),
+			destroyed: Boolean(mask & 16),
+		};
+		const eligibility = () =>
+			browserChromeOwnsChord({
+				logicalFocus: facts.logicalFocus,
+				chromeVisible: facts.chromeVisible,
+				window: {
+					isDestroyed: () => facts.destroyed,
+					isVisible: () => {
+						assert.equal(
+							facts.destroyed,
+							false,
+							"never read native methods on a destroyed window",
+						);
+						return facts.windowVisible;
+					},
+					isFocused: () => facts.windowFocused,
+				},
+			});
+		const owned = eligibility();
+		assert.equal(owned, mask === 15, JSON.stringify(facts));
+		const effects = [];
+		let prevented = 0;
+		const router = createBrowserChordRouter({
+			platform: "darwin",
+			ownsChrome: eligibility,
+			ownsPage: () => false,
+			reload: (hard) => effects.push(["reload", hard]),
+			history: () => {},
+			send: (m) => effects.push([m.intent, m.origin]),
+			focusChrome: () => {},
+		});
+		const event = {
+			preventDefault() {
+				prevented++;
+			},
+		};
+		assert.equal(router.input(event, input("r"), "chrome", owned), owned);
+		assert.equal(router.input(event, input("t"), "chrome", owned), owned);
+		assert.equal(
+			router.input(event, input("t"), "chrome", owned),
+			owned,
+			"genuine rapid presses are distinct, no clock debounce",
+		);
+		assert.equal(
+			router.menu("reload"),
+			owned,
+			"app-menu alias reads the exact same owner",
+		);
+		assert.deepEqual(
+			effects,
+			owned
+				? [
+						["reload", false],
+						["new-tab", "chrome"],
+						["new-tab", "chrome"],
+						["reload", false],
+					]
+				: [],
+		);
+		assert.equal(prevented, owned ? 3 : 0);
+	}
+	const facts = {
+		logicalFocus: true,
+		chromeVisible: true,
+		visible: true,
+		focused: false,
+	};
+	const effects = [];
+	const route = createBrowserChordRouter({
+		platform: "darwin",
+		ownsChrome: () =>
+			browserChromeOwnsChord({
+				logicalFocus: facts.logicalFocus,
+				chromeVisible: facts.chromeVisible,
+				window: {
+					isDestroyed: () => false,
+					isVisible: () => facts.visible,
+					isFocused: () => facts.focused,
+				},
+			}),
+		ownsPage: () => false,
+		reload: () => effects.push("reload"),
+		history: () => {},
+		send: (m) => effects.push(m.intent),
+		focusChrome: () => {},
+	});
+	assert.equal(route.menu("reload"), false);
+	facts.focused = true;
+	assert.equal(route.menu("reload"), true);
+	assert.deepEqual(
+		effects,
+		["reload"],
+		"same logical browser context returns without another focus IPC",
+	);
+	facts.logicalFocus = false;
+	assert.equal(
+		route.menu("reload"),
+		false,
+		"chat/outside ownership clears the retained claim",
+	);
+	assert.deepEqual(effects, ["reload"]);
+	const source = readFileSync("src/main/browser/index.ts", "utf8");
+	assert.match(source, SHARED_MENU_OWNER);
+	assert.match(source, GUARDED_CHROME_INPUT);
+	assert.ok(
+		source.includes("activeHost.chords.chromeInput(event, input)"),
+		"earlier zoom caller uses the same guarded entry",
+	);
+	assert.match(
+		source,
+		BLUR_RESETS_SUPPRESSION_ONLY,
+		"OS blur clears shortcut suppression, not logical DOM ownership",
+	);
+	for (const lifetime of ["render-process-gone", "closed"])
+		assert.ok(
+			source.includes(`"${lifetime}", resetChordFocus`),
+			"renderer/window destruction still forgets ownership",
+		);
 });
 
 test("one platform-strict decision table covers every browser column and leaves chat to app", () => {

@@ -88,7 +88,17 @@ test("the panel uses these sentences rather than a copy of them", async () => {
 	// The JSX wraps its sentences across lines, so the assertions below are made
 	// against the text with its whitespace collapsed: what is being checked is the
 	// sentence a person reads, not how it was laid out in the file.
-	const prose = source.replace(/\s+/g, " ");
+	const catalogue = JSON.parse(
+		await readFile("src/i18n/catalogues/en/ui.common.updates.json", "utf8"),
+	);
+	const costKey =
+		"ui.common.updates.update_notification.installing_closes_the_app_while_the_update_is_verified_and_put_in";
+	const compactSource = source.replace(/\s+/g, "");
+	assert.ok(
+		compactSource.includes(`t("${costKey}")`) ||
+			compactSource.includes(`t("${costKey}",)`),
+	);
+	const prose = catalogue[costKey];
 	// Imported from the module under test: a second literal in the component would
 	// leave the assertions above passing while the screen said something else.
 	assert.match(source, /from "@shared\/utils\/update-install-copy"/);
@@ -143,7 +153,17 @@ test("the panel names the current step once, and resets it for the next attempt"
 		source,
 		/installing \? "Preparing to install\.\.\." : "Install now"/,
 	);
-	assert.match(source, /Install now\n\s*<\/Button>/);
+	assert.match(
+		source,
+		/\{t\("ui\.common\.updates\.update_notification\.install_now"\)\}\s*<\/Button>/,
+	);
+	const catalogue = JSON.parse(
+		await readFile("src/i18n/catalogues/en/ui.common.updates.json", "utf8"),
+	);
+	assert.equal(
+		catalogue["ui.common.updates.update_notification.install_now"],
+		"Install now",
+	);
 
 	// Every attempt starts from no phase: the state survives a refusal, and a
 	// second press must not name the previous attempt's step while the new one is

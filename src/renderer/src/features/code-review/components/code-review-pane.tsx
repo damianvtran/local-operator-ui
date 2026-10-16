@@ -1,9 +1,11 @@
 import { PanelNotice } from "@features/chat/pickers/panels/panel-states";
 import { Button, Separator, Skeleton } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { PanelRightClose, RefreshCw } from "lucide-react";
 import { type FC, type Ref, useEffect, useRef, useState } from "react";
+import { t } from "../../../../../i18n/messages";
 import type { DesktopCodeRequestsList } from "../../../../../shared/desktop-contract";
 import { COMPOSER_TEXTAREA_SELECTOR } from "../../chat/composer-field";
 import { ownsEscapeOutsideComposer } from "../../chat/hooks/use-interrupt-on-escape";
@@ -146,13 +148,14 @@ export const CodeReviewPaneBody: FC<CodeReviewPaneBodyProps> = ({
 	pendingRevealMs,
 	rootRef,
 }) => {
+	useI18nLocale();
 	const cooling = coolingClauses(data?.cooling, nowMs);
 	const groups = groupRows(data?.rows ?? []);
 	return (
 		<div
 			ref={rootRef}
 			data-code-review-pane=""
-			aria-label="Code review"
+			aria-label={t("ui.code_review.code_review_pane.code_review")}
 			tabIndex={-1}
 			className={cn("flex h-full flex-col bg-elevated")}
 		>
@@ -171,7 +174,7 @@ export const CodeReviewPaneBody: FC<CodeReviewPaneBodyProps> = ({
 			>
 				<span className={cn("flex min-w-0 items-baseline gap-2")}>
 					<span className={cn("min-w-0 truncate text-meta text-ink-muted")}>
-						Code review
+						{t("ui.code_review.code_review_pane.code_review")}
 					</span>
 					{/*
 					 * ALWAYS RENDERED, EMPTY WHEN IDLE (UX round 2, U21): a live
@@ -182,7 +185,9 @@ export const CodeReviewPaneBody: FC<CodeReviewPaneBodyProps> = ({
 					 * loading caption uses - rather than a `role` on a span.
 					 */}
 					<output className={cn("shrink-0 text-meta text-ink-dim")}>
-						{checked ? "Checked just now" : ""}
+						{checked
+							? t("ui.code_review.code_review_pane.checked_just_now")
+							: ""}
 					</output>
 				</span>
 				<span className={cn("flex shrink-0 items-center gap-1")}>
@@ -190,7 +195,9 @@ export const CodeReviewPaneBody: FC<CodeReviewPaneBodyProps> = ({
 						variant="ghost"
 						size="icon-sm"
 						aria-label={
-							refreshing ? "Refreshing code reviews" : "Refresh code reviews"
+							refreshing
+								? t("ui.code_review.code_review_pane.refreshing_code_reviews")
+								: t("ui.code_review.code_review_pane.refresh_code_reviews")
 						}
 						/*
 						 * `aria-disabled`, NOT `disabled` (UX round 1, U3): a disabled
@@ -209,7 +216,7 @@ export const CodeReviewPaneBody: FC<CodeReviewPaneBodyProps> = ({
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						aria-label="Close code review"
+						aria-label={t("ui.code_review.code_review_pane.close_code_review")}
 						onClick={onClose}
 					>
 						<PanelRightClose aria-hidden="true" />
@@ -253,7 +260,9 @@ export const CodeReviewPaneBody: FC<CodeReviewPaneBodyProps> = ({
 							</div>
 						))}
 						<output className={cn("text-meta text-ink-dim")}>
-							{scanning ? "Scanning this session…" : "Loading code reviews…"}
+							{scanning
+								? t("ui.code_review.code_review_pane.scanning_this_session")
+								: t("ui.code_review.code_review_pane.loading_code_reviews")}
 						</output>
 					</div>
 				)}
@@ -261,8 +270,12 @@ export const CodeReviewPaneBody: FC<CodeReviewPaneBodyProps> = ({
 					<div className={cn("px-3 py-2")}>
 						<PanelNotice
 							kind="unavailable"
-							text="Code reviews could not be read."
-							detail="Nothing was lost — the session's record is unchanged."
+							text={t(
+								"ui.code_review.code_review_pane.code_reviews_could_not_be_read",
+							)}
+							detail={t(
+								"ui.code_review.code_review_pane.nothing_was_lost_the_session_s_record_is_unchanged",
+							)}
 						/>
 						<Button
 							variant="outline"
@@ -270,7 +283,7 @@ export const CodeReviewPaneBody: FC<CodeReviewPaneBodyProps> = ({
 							className={cn("mt-2")}
 							onClick={onRefresh}
 						>
-							Retry
+							{t("ui.common.actions.retry")}
 						</Button>
 					</div>
 				)}
@@ -279,15 +292,17 @@ export const CodeReviewPaneBody: FC<CodeReviewPaneBodyProps> = ({
 						<div className={cn("px-3 py-3")}>
 							<PanelNotice
 								kind="empty"
-								text="No code reviews yet."
-								detail="Pull requests and merge requests this session opens or mentions will appear here."
+								text={t("ui.code_review.code_review_pane.no_code_reviews_yet")}
+								detail={t(
+									"ui.code_review.code_review_pane.pull_requests_and_merge_requests_this_session_opens_or_mentions_w",
+								)}
 							/>
 						</div>
 					) : (
 						<>
 							{groups.opened.length > 0 && (
 								<RowGroup
-									label="Opened"
+									label={t("ui.code_review.code_review_pane.opened")}
 									rows={groups.opened}
 									nowMs={nowMs}
 									pendingRevealMs={pendingRevealMs}
@@ -300,7 +315,7 @@ export const CodeReviewPaneBody: FC<CodeReviewPaneBodyProps> = ({
 							)}
 							{groups.mentioned.length > 0 && (
 								<RowGroup
-									label="Mentioned"
+									label={t("ui.code_review.code_review_pane.mentioned")}
 									rows={groups.mentioned}
 									nowMs={nowMs}
 									pendingRevealMs={pendingRevealMs}

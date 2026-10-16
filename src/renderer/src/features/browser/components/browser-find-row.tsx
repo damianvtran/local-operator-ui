@@ -1,4 +1,6 @@
 import { Button, Input, Tooltip } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { chordCaption } from "@shared/keymap/keymap-chord";
 import { ChevronDown, ChevronUp, X } from "lucide-react";
 import { type RefObject, useEffect, useRef } from "react";
@@ -13,6 +15,7 @@ export function BrowserFindRow({
 	chrome,
 	returnToPage,
 }: { chrome: BrowserChrome; returnToPage?: RefObject<boolean> }) {
+	useI18nLocale();
 	const find = chrome.state?.pageControls?.find;
 	const tabId = find?.tabId;
 	const active = useRef(chrome.state?.activeTabId);
@@ -72,8 +75,8 @@ export function BrowserFindRow({
 		>
 			<Input
 				ref={input}
-				aria-label="Find in page"
-				placeholder="Find in page"
+				aria-label={t("ui.browser.browser_find_row.find_in_page")}
+				placeholder={t("ui.browser.browser_find_row.find_in_page")}
 				// A native editor draft, not a value bounced through asynchronous IPC:
 				// React's controlled-value restore could otherwise lose the next key
 				// before main acknowledges the previous one. Tab identity remounts it;
@@ -100,22 +103,32 @@ export function BrowserFindRow({
 			>
 				{find.query
 					? find.pending
-						? "Searching…"
+						? t("ui.browser.browser_find_row.searching")
 						: find.unreported
-							? "No result reported. Press Enter to search again."
+							? t(
+									"ui.browser.browser_find_row.no_result_reported_press_enter_to_search_again",
+								)
 							: find.matches
-								? `${find.ordinal} of ${find.matches}`
-								: "No matches"
+								? t("ui.browser.browser_find_row.match_position", {
+										ordinal: find.ordinal,
+										matches: find.matches,
+									})
+								: t("ui.browser.browser_find_row.no_matches")
 					: ""}
 			</output>
 			{/* Keep controls together; the longest recovery message yields a row in
 			    a narrow pane instead of stealing the editor/Close target's width. */}
 			<div className="order-2 flex shrink-0 items-center gap-2 @max-[480px]/bfind:order-1">
-				<Tooltip side="top" content={`Previous match (${previousChord.glyph})`}>
+				<Tooltip
+					side="top"
+					content={t("ui.browser.browser_find_row.previous_match_shortcut", {
+						shortcut: previousChord.glyph,
+					})}
+				>
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						aria-label="Previous match"
+						aria-label={t("ui.browser.browser_find_row.previous_match")}
 						aria-keyshortcuts={previousChord.aria}
 						disabled={!find.query || find.pending}
 						onClick={() => void step(false)}
@@ -123,11 +136,16 @@ export function BrowserFindRow({
 						<ChevronUp aria-hidden className="size-4" />
 					</Button>
 				</Tooltip>
-				<Tooltip side="top" content={`Next match (${nextChord.glyph})`}>
+				<Tooltip
+					side="top"
+					content={t("ui.browser.browser_find_row.next_match_shortcut", {
+						shortcut: nextChord.glyph,
+					})}
+				>
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						aria-label="Next match"
+						aria-label={t("ui.browser.browser_find_row.next_match")}
 						aria-keyshortcuts={nextChord.aria}
 						disabled={!find.query || find.pending}
 						onClick={() => void step(true)}
@@ -135,11 +153,16 @@ export function BrowserFindRow({
 						<ChevronDown aria-hidden className="size-4" />
 					</Button>
 				</Tooltip>
-				<Tooltip side="top" content={`Close find (${closeChord.glyph})`}>
+				<Tooltip
+					side="top"
+					content={t("ui.browser.browser_find_row.close_find_shortcut", {
+						shortcut: closeChord.glyph,
+					})}
+				>
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						aria-label="Close find"
+						aria-label={t("ui.browser.browser_find_row.close_find")}
 						aria-keyshortcuts={closeChord.aria}
 						onClick={() => void close()}
 					>

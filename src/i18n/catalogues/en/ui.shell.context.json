@@ -1,0 +1,194 @@
+{
+	"ui.shell.collapsible_app_logo.local_operator": {
+		"role": "brand label and accessible name",
+		"tone": "Product name; do not translate.",
+		"note": "Expanded wordmark beside the icon; collapsed icon accessible name.",
+		"length": "Two-word product name."
+	},
+	"ui.shell.panel_rail.panels": {
+		"role": "toolbar accessible name",
+		"tone": "Collective noun.",
+		"note": "Names the toolbar holding the run, console, browser, canvas, code-review and asks doors."
+	},
+	"ui.shell.sidebar_navigation.agent_hub": {
+		"role": "navigation label",
+		"tone": "Short destination noun; sentence case.",
+		"note": "The public catalogue for discovering and installing agents.",
+		"length": "Single sidebar row; aim for 1–2 words."
+	},
+	"ui.shell.sidebar_navigation.agents": {
+		"role": "navigation label",
+		"tone": "Short destination noun; sentence case.",
+		"note": "The operator-owned agent roster, not the public catalogue.",
+		"length": "Single sidebar row; aim for 1–2 words."
+	},
+	"ui.shell.sidebar_navigation.aida_missed": {
+		"role": "navigation accessible name",
+		"tone": "Matter-of-fact notification count.",
+		"note": "Names the chief-of-staff row with unread messages; singular and plural must agree with count. The number skeleton disables grouping to preserve the original English decimal count spelling even at 1000; cardinal selection remains numeric.",
+		"placeholders": {
+			"name": "User-configured chief-of-staff display name, verbatim.",
+			"count": "Number of missed messages; ICU plural cardinal."
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+	},
+	"ui.shell.sidebar_navigation.aida_working": {
+		"role": "navigation accessible name",
+		"tone": "Quiet in-progress status.",
+		"note": "Chief-of-staff row while a turn is running; no completion implied.",
+		"placeholders": {
+			"name": "Chief-of-staff display name, verbatim."
+		}
+	},
+	"ui.shell.sidebar_navigation.browser": {
+		"role": "navigation label",
+		"tone": "Short destination noun; sentence case.",
+		"note": "The integrated browser workspace.",
+		"length": "Single sidebar row; aim for 1–2 words."
+	},
+	"ui.shell.sidebar_navigation.browser_waiting": {
+		"role": "navigation accessible name",
+		"tone": "Pending-work status, not an error.",
+		"note": "Names browser approvals waiting for the operator. English waiting is count-invariant but both grammatical branches are intentional.",
+		"placeholders": {
+			"count": "Uncapped pending cardinal count for grammatical number.",
+			"countText": "Existing decimal display string, without English grouping punctuation."
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+	},
+	"ui.shell.sidebar_navigation.close_sidebar": {
+		"role": "button accessible name",
+		"tone": "Direct action verb.",
+		"note": "Describes what pressing the sidebar toggle will do: dismiss the narrow-screen drawer."
+	},
+	"ui.shell.sidebar_navigation.collapse_sidebar": {
+		"role": "button accessible name",
+		"tone": "Direct action verb.",
+		"note": "Describes what pressing the sidebar toggle will do: reduce the desktop sidebar to icons."
+	},
+	"ui.shell.sidebar_navigation.expand_sidebar": {
+		"role": "button accessible name",
+		"tone": "Direct action verb.",
+		"note": "Describes what pressing the sidebar toggle will do: restore desktop navigation labels."
+	},
+	"ui.shell.sidebar_navigation.mesh": {
+		"role": "navigation label",
+		"tone": "Short destination noun; sentence case.",
+		"note": "Linked devices and peer sessions.",
+		"length": "Single sidebar row; aim for 1–2 words."
+	},
+	"ui.shell.sidebar_navigation.mesh_waiting": {
+		"role": "navigation accessible name",
+		"tone": "Pending-work status, not an error.",
+		"note": "Names mesh requests waiting for the operator. English waiting is count-invariant but both grammatical branches are intentional.",
+		"placeholders": {
+			"count": "Uncapped pending cardinal count for grammatical number.",
+			"countText": "Existing decimal display string, without English grouping punctuation."
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+	},
+	"ui.shell.sidebar_navigation.new_chat": {
+		"role": "button label",
+		"tone": "Short creation action.",
+		"note": "Stages an untargeted conversation draft; does not immediately send a message.",
+		"length": "Two-word rail button."
+	},
+	"ui.shell.sidebar_navigation.new_chat_shortcut": {
+		"role": "button accessible name",
+		"tone": "Action plus keyboard shortcut.",
+		"note": "Same new-chat action as the visible button, with its platform-specific chord.",
+		"placeholders": {
+			"shortcut": "Keyboard chord already formatted for the platform; preserve verbatim."
+		}
+	},
+	"ui.shell.sidebar_navigation.projects": {
+		"role": "navigation label",
+		"tone": "Short destination noun; sentence case.",
+		"note": "Workstreams and milestones, not filesystem folders.",
+		"length": "Single sidebar row; aim for 1–2 words."
+	},
+	"ui.shell.sidebar_navigation.schedules": {
+		"role": "navigation label",
+		"tone": "Short destination noun; sentence case.",
+		"note": "Recurring or scheduled runs.",
+		"length": "Single sidebar row; aim for 1–2 words."
+	},
+	"ui.shell.sidebar_navigation.search": {
+		"role": "button label",
+		"tone": "Short action verb.",
+		"note": "Opens the everything command palette; chats have a separate shortcut.",
+		"length": "One-word rail button."
+	},
+	"ui.shell.sidebar_navigation.search_accessible": {
+		"role": "button accessible name",
+		"tone": "Concise distinction between search scopes.",
+		"note": "Everything palette versus conversation-only quick switcher; do not collapse the two actions into one.",
+		"placeholders": {
+			"everything": "Platform shortcut for the everything palette.",
+			"chats": "Platform shortcut for searching conversations."
+		}
+	},
+	"ui.shell.sidebar_navigation.search_tooltip": {
+		"role": "tooltip",
+		"tone": "Concise distinction between search scopes.",
+		"note": "Everything palette versus conversation-only quick switcher; do not collapse the two actions into one.",
+		"placeholders": {
+			"everything": "Platform shortcut for the everything palette.",
+			"chats": "Platform shortcut for searching conversations."
+		}
+	},
+	"ui.shell.sidebar_navigation.settings": {
+		"role": "navigation label",
+		"tone": "Short destination noun; sentence case.",
+		"note": "Application preferences.",
+		"length": "Single sidebar row; aim for 1–2 words."
+	},
+	"ui.shell.user_profile_sidebar.account_settings": {
+		"role": "profile button tooltip",
+		"tone": "Destination noun phrase.",
+		"note": "Profile-row press opens account preferences when there is no reconnect action.",
+		"length": "Two-word tooltip."
+	},
+	"ui.shell.user_profile_sidebar.account_unavailable": {
+		"role": "status label",
+		"tone": "Neutral failure fact.",
+		"note": "Account read failed; do not imply the user signed out or the account was deleted.",
+		"length": "One short profile-row line."
+	},
+	"ui.shell.user_profile_sidebar.checking_account": {
+		"role": "status label",
+		"tone": "Temporary checking state.",
+		"note": "Replaces the account display name while Radient account data is unresolved; retain ellipsis.",
+		"length": "One short profile-row line."
+	},
+	"ui.shell.user_profile_sidebar.privacy_and_security": {
+		"role": "menu label",
+		"tone": "Preference-category nouns.",
+		"note": "Account dropdown privacy/security entry; this extraction does not alter its interaction.",
+		"length": "Short menu row."
+	},
+	"ui.shell.user_profile_sidebar.reconnect_radient": {
+		"role": "menu action, profile-row hint and tooltip",
+		"tone": "Repair action with service brand.",
+		"note": "Opens Settings with Radient preselected so the refused account connection can be repaired.",
+		"length": "Two-word profile-row action."
+	},
+	"ui.shell.user_profile_sidebar.settings": {
+		"role": "menu action",
+		"tone": "Destination noun.",
+		"note": "Opens the main application Settings page from the profile dropdown.",
+		"length": "One word."
+	},
+	"ui.shell.user_profile_sidebar.sign_out": {
+		"role": "menu button",
+		"tone": "Direct session-ending action.",
+		"note": "Signs out and reloads the app to clear authentication state; not a quit action.",
+		"length": "Two words."
+	},
+	"ui.shell.user_profile_sidebar.user": {
+		"role": "profile fallback label",
+		"tone": "Neutral generic person noun.",
+		"note": "Only the ordinary signed-out placeholder, not an account failure.",
+		"length": "One word."
+	}
+}

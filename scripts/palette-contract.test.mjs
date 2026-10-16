@@ -739,8 +739,14 @@ test("the palette's entity rows stage a draft and build no chat URL", () => {
 	 * The kinds are said on the row, so a same-named agent and team cannot be
 	 * confused even with the section heading scrolled away.
 	 */
-	assert.match(sources, /hint: "Agent chat"/);
-	assert.match(sources, /hint: "Team chat"/);
+	assert.match(
+		sources,
+		/hint: t\("ui\.command_palette\.use_palette_sources\.agent_chat"\)/,
+	);
+	assert.match(
+		sources,
+		/hint: t\("ui\.command_palette\.use_palette_sources\.team_chat"\)/,
+	);
 	/*
 	 * And NOTHING in this file builds a chat URL any more. Asserted as an
 	 * absence because that is the defect: the row that built one is the row that
