@@ -39,6 +39,7 @@ import {
 } from "@shared/store/canonical-sessions-store";
 import { useSpeechStore } from "@shared/store/speech-store";
 import {
+	dismissToast,
 	showErrorToast,
 	showInfoToast,
 	showWarningToast,
@@ -48,7 +49,7 @@ import { type FC, useCallback, useEffect, useRef } from "react";
 import type { DesktopMediaResponse } from "../../../../shared/desktop-contract";
 import { applyVoiceActive, useVoiceStatus } from "./use-voice-status";
 import { useVoiceStore } from "./voice-store";
-import { subscribeVoiceStream } from "./voice-stream";
+import { type VoiceStreamHandle, subscribeVoiceStream } from "./voice-stream";
 import {
 	type VoiceSpeakSource,
 	type VoiceTurnsInput,
@@ -133,13 +134,15 @@ export async function sendVoiceUtterance(
 	}
 	feedTurns(sessionId, { kind: "disarmed" });
 	const sentence = utteranceFailure(result);
-	if (
+	if (result.kind === "error" && result.voiceCode === "approval_pending") {
+		// The card is on screen and blocking; the take changed nothing (V7, V13).
+		useVoiceStore.getState().setPhase("idle", null);
+		showApprovalToast(sessionId, sentence);
+	} else if (
 		result.kind === "error" &&
-		(result.voiceCode === "empty_transcript" ||
-			result.voiceCode === "approval_pending")
+		result.voiceCode === "empty_transcript"
 	) {
-		// Nothing broke: no words, or an approval must be answered on screen
-		// first (V7, V13). Info, and back to rest.
+		// Nothing broke: the take held no words. Info, and back to rest.
 		useVoiceStore.getState().setPhase("idle", null);
 		showInfoToast(sentence);
 	} else {
@@ -179,6 +182,9 @@ export function feedTurns(sessionId: string, input: VoiceTurnsInput): void {
 		if (oldest === undefined) break;
 		turnsBySession.delete(oldest);
 	}
+	useVoiceStore
+		.getState()
+		.setApprovalPending(sessionId, step.state.pendingApproval !== null);
 	for (const source of step.speak) speakSink?.(source);
 }
 
@@ -191,6 +197,21 @@ function resetTurnFlight(sessionId: string): void {
 		spoken: state.spoken,
 		announced: state.announced,
 	});
+	useVoiceStore.getState().setApprovalPending(sessionId, false);
+}
+
+/*
+ * ONE TOAST PER SESSION FOR "AN APPROVAL IS ON SCREEN" (design round 2, D8).
+ * The gate's announcement and a refused take say the same thing - answer the
+ * card - so they share an id and the later replaces the earlier rather than
+ * stacking two notices about one card. A warning in both cases: the card is
+ * blocking, and the refusal is the same fact restated.
+ */
+export const voiceApprovalToastId = (sessionId: string): string =>
+	`voice-approval:${sessionId}`;
+
+function showApprovalToast(sessionId: string, message: string): void {
+	showWarningToast(message, { id: voiceApprovalToastId(sessionId) });
 }
 
 /** Whether the slot session has an approval pending, as its stream last said. */
@@ -212,7 +233,7 @@ async function speakSource(
 ): Promise<void> {
 	if (source.kind === "gate") {
 		// The announcement's on-screen half: the approval card is the only answer.
-		showWarningToast(t("ui.chat.voice.approval_waiting"));
+		showApprovalToast(sessionId, t("ui.chat.voice.approval_waiting"));
 	}
 	useVoiceStore.getState().setPhase("speaking", sessionId);
 	const result = await desktopMedia(
@@ -290,23 +311,35 @@ export const VoiceController: FC = () => {
 	);
 
 	// 2. The speak trigger, on the slot holder's own stream.
+	const watcher = useRef<VoiceStreamHandle | null>(null);
 	useEffect(() => {
 		if (!status.enabled || !activeSessionId) {
 			speakSink = null;
 			return;
 		}
 		speakSink = (source) => void speakSource(activeSessionId, source);
-		const dispose = subscribeVoiceStream(
+		const lostToastId = `voice-stream-lost:${activeSessionId}`;
+		const handle = subscribeVoiceStream(
 			activeSessionId,
 			(input) => feedTurns(activeSessionId, input),
 			(reason) => {
-				// The bounded retry gave up (U5): say so once, rather than go quiet.
-				if (reason === "exhausted")
-					showWarningToast(t("ui.chat.voice.stream_lost"));
+				// The bounded retry gave up (U5): say so once, with the way back (N1).
+				if (reason !== "exhausted") return;
+				showWarningToast(t("ui.chat.voice.stream_lost"), {
+					id: lostToastId,
+					duration: Number.POSITIVE_INFINITY,
+					action: {
+						label: t("ui.chat.voice.stream_reconnect"),
+						onClick: () => handle.retry(),
+					},
+				});
 			},
 		);
+		watcher.current = handle;
 		return () => {
-			dispose();
+			watcher.current = null;
+			handle.dispose();
+			dismissToast(lostToastId);
 			speakSink = null;
 			resetTurnFlight(activeSessionId);
 			/*
@@ -319,6 +352,23 @@ export const VoiceController: FC = () => {
 				useSpeechStore.getState().stopSpeech();
 		};
 	}, [status.enabled, activeSessionId]);
+
+	/*
+	 * THE WAY BACK FROM `exhausted` (review round 2, N1): a watcher that gave up
+	 * is retried when the window regains focus - the operator came back to it -
+	 * and when the machine feed reconnects, which is the backend itself coming
+	 * back. `retry()` is a no-op unless the watcher is exhausted, so neither
+	 * signal disturbs a healthy stream.
+	 */
+	useEffect(() => {
+		const onFocus = () => watcher.current?.retry();
+		window.addEventListener("focus", onFocus);
+		return () => window.removeEventListener("focus", onFocus);
+	}, []);
+	const feedReconnects = feed.authoringReconnectRevision;
+	useEffect(() => {
+		if (feedReconnects > 0) watcher.current?.retry();
+	}, [feedReconnects]);
 
 	// 3. Push-to-talk.
 	const recorder = useRef<{
@@ -339,7 +389,7 @@ export const VoiceController: FC = () => {
 		 * opens for words that cannot be admitted, and the hint is immediate.
 		 */
 		if (voiceApprovalPending(sessionId)) {
-			showInfoToast(t("ui.chat.voice.approval_pending"));
+			showApprovalToast(sessionId, t("ui.chat.voice.approval_pending"));
 			return;
 		}
 		// A new take interrupts the answer being spoken: barge-in by hand.

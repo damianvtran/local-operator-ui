@@ -70,11 +70,21 @@ export type VoiceTurnsInput =
 	| { kind: "streaming"; streaming: boolean }
 	/** One canonical AgentEvent off the session stream (`frame.type === "event"`). */
 	| { kind: "event"; event: Record<string, unknown> }
-	/** The session's blocking gate as a snapshot/update/replace frame states it. */
+	/**
+	 * The session's blocking gate as a snapshot/update/replace frame states it.
+	 * `snapshot` marks a gate read off a SNAPSHOT: state that was already on
+	 * screen, recorded so a take can be refused, never announced (Q4).
+	 */
 	| {
 			kind: "gate";
 			gate: { request_id?: unknown; kind?: unknown } | null | undefined;
-	  };
+			snapshot?: boolean;
+	  }
+	/**
+	 * The stream watcher stopped: it can no longer see a gate clear or a turn
+	 * end, so neither may keep being asserted (review round 2, N1).
+	 */
+	| { kind: "stopped" };
 
 /** How many ids each dedupe set keeps. */
 export const VOICE_DEDUPE_LIMIT = 256;
@@ -149,6 +159,12 @@ export function stepVoiceTurns(
 			speak: [],
 		};
 	}
+	if (input.kind === "stopped") {
+		return {
+			state: { ...state, pendingApproval: null, inFlight: false },
+			speak: [],
+		};
+	}
 	if (input.kind === "gate") {
 		const gate = input.gate;
 		const requestId =
@@ -165,6 +181,8 @@ export function stepVoiceTurns(
 			...pending,
 			announced: remember(state.announced, requestId),
 		};
+		// A snapshot's gate was parked before this watcher saw it: never spoken.
+		if (input.snapshot) return { state: seen, speak: [] };
 		/*
 		 * ONLY THE WINDOW THAT SENT WORDS ANNOUNCES (U2). Every window holding the
 		 * slot watches the same stream, and an approval reached by typing - or by

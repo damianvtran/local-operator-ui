@@ -7,7 +7,6 @@
 	"ui.chat.highlights.file_resolution_failed": "Couldn't resolve this file in the session working directory. Use Copy file path to check its location against this session's workspace before trying again.",
 	"ui.chat.voice.toggle_on": "Turn on voice for this conversation",
 	"ui.chat.voice.toggle_switch": "Move voice to this conversation from {title}",
-	"ui.chat.voice.toggle_unavailable": "Voice is unavailable: {reason}",
 	"ui.chat.voice.toggle_unavailable_generic": "Voice is unavailable on this machine.",
 	"ui.chat.voice.hold_hint": "Hold {key} to talk.",
 	"ui.chat.voice.marker": "Voice on",
@@ -29,5 +28,6 @@
 	"ui.chat.voice.empty_transcript": "Didn't catch that. Hold the key and try again.",
 	"ui.chat.voice.approval_pending": "Answer the approval on screen first.",
 	"ui.chat.voice.toggle_off_hint": "Turn off voice for this conversation. Hold {key} to talk.",
-	"ui.chat.voice.stream_lost": "Voice lost this conversation's updates. Answers will not be spoken until it reconnects."
+	"ui.chat.voice.stream_lost": "Voice lost this conversation's updates. Answers will not be spoken until it reconnects.",
+	"ui.chat.voice.stream_reconnect": "Reconnect"
 }

@@ -64,11 +64,13 @@ export const VoiceToggle: FC<{ sessionId: string | undefined }> = ({
 				key: resolvePushToTalkBinding().label,
 			})
 		: unavailable
-			? status.state?.tts.reason
-				? t("ui.chat.voice.toggle_unavailable", {
-						reason: status.state.tts.reason,
-					})
-				: t("ui.chat.voice.toggle_unavailable_generic")
+			? /*
+				 * THE SERVER'S REASON ALONE (design round 2, D9): it is already a whole
+				 * sentence saying voice cannot speak, and a "Voice is unavailable:"
+				 * prefix in front of it said the same thing twice.
+				 */
+				status.state?.tts.reason?.trim() ||
+				t("ui.chat.voice.toggle_unavailable_generic")
 			: holder
 				? t("ui.chat.voice.toggle_switch", { title: voiceSessionTitle(holder) })
 				: t("ui.chat.voice.toggle_on");
@@ -113,9 +115,21 @@ export const VoiceToggle: FC<{ sessionId: string | undefined }> = ({
 			aria-busy={pending || undefined}
 			onClick={() => void press()}
 			className={cn(
-				"aria-pressed:bg-accent-wash aria-pressed:text-accent",
-				"aria-pressed:hover:bg-accent-wash aria-pressed:hover:text-accent",
-				unavailable && "text-ink-disabled hover:bg-transparent",
+				/*
+				 * THE PRESSED STATE HAS ITS OWN GROUND (design round 2, D6). Plain
+				 * `accent-wash` is also the ghost variant's HOVER fill, so a pressed
+				 * toggle and a hovered off one were the same picture. The pressed fill
+				 * is the outline variant's pressed mix (`button.tsx`), and pressed+hover
+				 * steps one rung further toward `accent` with `ink` as the glyph -
+				 * `accent` on the deeper mix falls under 3:1 in two palettes, `ink`
+				 * clears 4.5:1 in all. Both pairs are asserted in
+				 * `scripts/contrast-contract.mjs` ("voice toggle (pressed[, hovered])").
+				 */
+				"aria-pressed:bg-[color-mix(in_oklab,var(--color-accent-wash)_80%,var(--color-accent))] aria-pressed:text-accent",
+				"aria-pressed:hover:bg-[color-mix(in_oklab,var(--color-accent-wash)_70%,var(--color-accent))] aria-pressed:hover:text-ink",
+				// Hover must not lift it: the ghost's `hover:text-ink` read as "pressable".
+				unavailable &&
+					"text-ink-disabled hover:bg-transparent hover:text-ink-disabled",
 			)}
 		>
 			<AudioLines aria-hidden="true" />
