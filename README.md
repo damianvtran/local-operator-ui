@@ -1,0 +1,1 @@
+Evidence images for damianvtran/local-operator-ui PR "feat(window): optional translucent window glass". Images only; no code. Produced from the built app on macOS 27 (headless-safe `inactive` mode, scratch profile, own-process window compositing - no Screen Recording grant).
