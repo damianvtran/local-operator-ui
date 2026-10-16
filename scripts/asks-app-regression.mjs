@@ -277,9 +277,27 @@ async function runCase(kind, root, output, records) {
 			`(()=>{const e=[...document.querySelectorAll('[data-tour-tag="chat-session-row"]')].find(e=>e.textContent.includes('Synthetic CI session ${index + 1}'));if(!e)throw Error('seeded session row missing');e.setAttribute('data-ci-session','${index}')})()`,
 		);
 		await press(`[data-ci-session="${index}"]`);
-		await wait(
-			`window.__loDevDriver.call('state').then(x=>x.activeSessionId===${JSON.stringify(ASK_SESSION_IDS[index])})`,
-		);
+		/*
+		 * The open is confirmed by READING the state through the driver, from Node,
+		 * in a bounded poll. Calling `window.__loDevDriver.call('state')` inside a
+		 * page expression and awaiting its `.then` does NOT work: the verb's return
+		 * is not a page promise, so the expression threw
+		 * `TypeError: window.__loDevDriver.call(...).then is not a function` (run
+		 * 38849663528) and took the case down before any frame. `verb()` already
+		 * resolves the answer over CDP - that is the documented door, and it is how
+		 * the shared driver's own scenes read this exact field.
+		 */
+		const wanted = ASK_SESSION_IDS[index];
+		const deadline = Date.now() + 20_000;
+		for (;;) {
+			const live = await api.verb(cdp, "state");
+			if (live.activeSessionId === wanted) return;
+			if (Date.now() > deadline)
+				throw Error(
+					`session ${index} never became active (active=${JSON.stringify(live.activeSessionId)})`,
+				);
+			await pause(250);
+		}
 	}
 	async function browser() {
 		if ((await facts()).dom.ask) await pressEscape();

@@ -204,8 +204,15 @@ test("existing job performs real native capture and always uploads measurements"
 	 * does not carry is not a failing app, it is a wrong assertion, and it is
 	 * decidable statically: the tags are in the source and the presses are here.
 	 */
+	// Comments are stripped first: this file describes the defect in prose (the
+	// error string the page produced), and a scan that reads its own explanation as
+	// an offence is a scan nobody can act on.
+	const codeOnly = source
+		.replace(/\/\*[\s\S]*?\*\//g, "")
+		.replace(/^\s*\/\/.*$/gm, "");
+
 	const pressedTags = [
-		...source.matchAll(/press\(\s*'\[data-tour-tag="([^"]+)"\]/g),
+		...codeOnly.matchAll(/press\(\s*'\[data-tour-tag="([^"]+)"\]/g),
 	].map((match) => match[1]);
 	assert(
 		pressedTags.length > 0,
@@ -223,7 +230,20 @@ test("existing job performs real native capture and always uploads measurements"
 		);
 	}
 
-	const waitAt = source.indexOf("await waitForDevtoolsPort(app, api)");
+	/*
+	 * NO PAGE-SIDE `window.__loDevDriver.call(...)` WAIT. The verb's return is not a
+	 * page promise, so awaiting `.then` inside an expression throws
+	 * `TypeError: window.__loDevDriver.call(...).then is not a function` and takes
+	 * the case down before any frame - measured on run 38849663528, at the session
+	 * helper. State is read through `api.verb`/`cdp.evaluate` from Node, which is the
+	 * documented door and what the shared driver's own scenes use.
+	 */
+	assert(
+		!/__loDevDriver\.call\([^)]*\)\.then/.test(codeOnly),
+		"a page-side .then on a driver verb is not a promise and throws; read state through the api instead",
+	);
+
+	const waitAt = codeOnly.indexOf("await waitForDevtoolsPort(app, api)");
 	const attachAt = source.indexOf(
 		'api.CdpClient.attach(app.port, "out/renderer/index.html")',
 	);
