@@ -54,6 +54,7 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export { AskDrawer } from "./src/renderer/src/features/chat/components/asks/ask-drawer";
+			export { LAPSE_NOTE_CLEAR_MS } from "./src/renderer/src/features/chat/components/asks/ask-panel";
 			export { useConversationInputStore } from "./src/renderer/src/shared/store/conversation-input-store";
 		`,
 		loader: "tsx",
@@ -97,7 +98,8 @@ const bundlePath = new URL(
 	import.meta.url,
 );
 await writeFile(bundlePath, bundle.outputFiles[0].text);
-const { AskDrawer, useConversationInputStore } = await import(bundlePath.href);
+const { AskDrawer, LAPSE_NOTE_CLEAR_MS, useConversationInputStore } =
+	await import(bundlePath.href);
 await unlink(bundlePath).catch(() => {});
 
 const h = React.createElement;
@@ -1144,6 +1146,88 @@ test("an answer in progress on a card that lapses is announced as not sent (UX U
 		note(blank)?.textContent,
 		"",
 		"a card with nothing typed or picked loses nothing, so nothing is said",
+	);
+});
+
+test("every drafted lapse is a fresh announcement, and the sentence does not linger (review m1 = QA Q-4)", async (t) => {
+	/*
+	 * A live region speaks on a DOM CHANGE. Writing the same sentence a second time
+	 * changed nothing (QA counted one mutation across two lapses), so the second dropped
+	 * answer went unsaid; and the stale sentence stayed for a reader browsing later.
+	 */
+	const asks = ["a-1", "a-2", "a-3"].map((id, i) => optionAsk(id, 2, TS + i));
+	const drafts = {
+		"a-1": { target: ["a-1-opt-1"] },
+		"a-2": { target: ["a-2-opt-2"] },
+	};
+	const props = { scope: "session", onDraftChange: () => undefined, drafts };
+	const lapse = (...ids) =>
+		frontend(
+			asks.map((ask) =>
+				ids.includes(ask.ask_id) ? { ...ask, status: "timed_out" } : ask,
+			),
+		);
+	const view = await mountFor(t, h(AskDrawer, { frontend: lapse(), ...props }));
+	const region = view.container.querySelector("[data-lo-ask-lapse-note]");
+	if (!region) throw new Error("no lapse-note region");
+	const writes = [];
+	const observer = new window.MutationObserver((records) => {
+		for (const record of records)
+			if (record.type === "childList" && record.addedNodes.length > 0)
+				writes.push(region.textContent);
+	});
+	observer.observe(region, {
+		childList: true,
+		subtree: true,
+		characterData: true,
+	});
+	t.after(() => observer.disconnect());
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	await view.rerender(h(AskDrawer, { frontend: lapse("a-1"), ...props }));
+	await view.rerender(
+		h(AskDrawer, { frontend: lapse("a-1", "a-2"), ...props }),
+	);
+	await act(async () => {});
+	assert.deepEqual(
+		writes,
+		[
+			"That question timed out; your answer was not sent.",
+			"That question timed out; your answer was not sent.",
+		],
+		"each drafted lapse writes the sentence into the region anew",
+	);
+	await act(async () => {
+		t.mock.timers.tick(LAPSE_NOTE_CLEAR_MS);
+	});
+	assert.equal(
+		region.textContent,
+		"",
+		"once it has had time to be read, the region empties",
+	);
+});
+
+test("opening Other without typing is not an answer in progress (review m2)", async (t) => {
+	const a1 = optionAsk("a-1", 2, TS);
+	const a2 = optionAsk("a-2", 2, TS + 10);
+	const props = {
+		scope: "session",
+		onDraftChange: () => undefined,
+		drafts: { "a-1": { target: [""] } },
+	};
+	const view = await mountFor(
+		t,
+		h(AskDrawer, { frontend: frontend([a1, a2]), ...props }),
+	);
+	await view.rerender(
+		h(AskDrawer, {
+			frontend: frontend([{ ...a1, status: "timed_out" }, a2]),
+			...props,
+		}),
+	);
+	assert.equal(
+		view.container.querySelector("[data-lo-ask-lapse-note]")?.textContent,
+		"",
+		"an opened, empty Other field held nothing that could have been sent",
 	);
 });
 
