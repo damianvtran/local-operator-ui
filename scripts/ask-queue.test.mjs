@@ -145,14 +145,17 @@ test("the legacy mirror is suppressed only when it actually is one", () => {
 
 /* ------------------------------------------------------- classification ---- */
 
-test("a timed-out ask is still answerable, and its own state is `movedOn`, not `waiting`", () => {
+test("a timed-out ask is LAPSED: still outstanding to the backend, read-only on this surface (D10, D11)", () => {
 	// The pair the surfaces have to keep apart: the BACKEND's outstanding set folds
-	// `timed_out` in (a late answer still reaches the agent, so every surface keeps
-	// offering the row), but the agent is no longer WAITING on it - so the copy is
-	// a different sentence over the same controls.
+	// `timed_out` in (the tally and the chat path still count it), but the agent is no
+	// longer WAITING on it and no surface offers a late answer any more (D10) - so the
+	// row is `lapsed`: no answer, no decline.
 	const open = queue.presentAsk(ask({ status: "open" }));
 	assert.equal(open.waiting, true);
 	assert.equal(open.movedOn, false);
+	assert.equal(open.lapsed, false);
+	assert.equal(open.canAnswer, true);
+	assert.equal(open.canDecline, true);
 
 	const timedOut = queue.presentAsk(ask({ status: "timed_out" }));
 	assert.equal(
@@ -164,11 +167,13 @@ test("a timed-out ask is still answerable, and its own state is `movedOn`, not `
 	assert.equal(
 		timedOut.open,
 		true,
-		"still outstanding: a late answer reaches the model",
+		"still in the backend's outstanding set: `asks_open` counts it (D10)",
 	);
-	assert.equal(timedOut.canAnswer, true);
+	assert.equal(timedOut.lapsed, true);
+	assert.equal(timedOut.canAnswer, false, "a lapsed ask takes no late answer");
+	assert.equal(timedOut.canDecline, false, "nor a decline");
 
-	// Every terminal state is neither waiting nor moved on.
+	// Every terminal state is neither waiting nor moved on, and none is lapsed.
 	for (const status of [
 		"answered",
 		"declined",
@@ -179,6 +184,7 @@ test("a timed-out ask is still answerable, and its own state is `movedOn`, not `
 		const settled = queue.presentAsk(ask({ status }));
 		assert.equal(settled.waiting, false, `${status} is settled`);
 		assert.equal(settled.movedOn, false, `${status} is settled`);
+		assert.equal(settled.lapsed, false, `${status} is settled, not lapsed`);
 	}
 
 	// `late` means the answer LANDED after the deadline and the model was told, so
@@ -221,6 +227,7 @@ test("an unknown status is its own case, never coerced into `open`", () => {
 	const unknown = queue.presentAsk(ask({ status: "something_new" }));
 	assert.equal(unknown.status, "unknown");
 	assert.equal(unknown.canAnswer, false);
+	assert.equal(unknown.lapsed, false);
 });
 
 test("`delivering` is the recorded-and-undelivered reading, `answered` OR `late`", () => {
@@ -750,7 +757,7 @@ test("the copy contract mirrors the backend's own sentences", () => {
 	);
 	assert.equal(
 		queue.askTimeoutSummary({ askId: "a-1", waitedS: 900 }),
-		"Timed out after 15m — the agent moved on; you can still answer (ask a-1)",
+		"Timed out after 15m — the agent goes ahead without your answer (ask a-1)",
 	);
 });
 
@@ -1403,24 +1410,66 @@ test("the wire's `urgent` flag reaches the view, and only for the asks the item 
  * load-bearing - that a `timed_out` ask can never reach the settled half at all,
  * which is a fact about the VIEW rather than about the copy.
  */
-test("a row's word is the copy contract's, and the settled half holds no moved-on row", () => {
+test("a row's word is the copy contract's, and a lapsed row collapses with the settled half (D11)", () => {
 	const view = queue.askQueueView({
 		asks: [
 			single({ status: "declined" }),
 			single({ ask_id: "a-moved", status: "timed_out" }),
-			single({ ask_id: "a-answered", status: "answered" }),
+			single({ ask_id: "a-answered", status: "answered", delivered: true }),
+			single({ ask_id: "a-open", status: "open" }),
 		],
 	});
-	/** The section's own predicate, spelled once here: the rows the panel collapses. */
-	const settled = view.rows.filter((row) => !row.open);
+	/** The panel's own predicate (`askPanelHalves`): the rows it collapses. */
+	const { pending, settled } = queue.askPanelHalves(view.rows);
+	assert.deepEqual(
+		pending.map((row) => row.ask.ask_id),
+		["a-open"],
+		"only the answerable ask is a card",
+	);
 	assert.deepEqual(
 		[...new Set(settled.map((row) => queue.askStatusWord(row.status)))].sort(),
-		["Answered", "Declined"],
+		["Answered", "Declined", "Timed out"],
+		"the lapsed row wears the `Timed out` word on its collapsed line",
 	);
 	assert.ok(
-		!settled.some((row) => row.status === "timed_out"),
-		"a `timed_out` row is in the outstanding set, so it can never be in the settled half",
+		settled.some((row) => row.ask.ask_id === "a-moved"),
+		"a `timed_out` row is lapsed, so it sits behind a badge like a declined one",
 	);
+	assert.equal(
+		queue.ASK_STATUS_COPY.timed_out,
+		"Timed out — the agent goes ahead without your answer",
+		"the sentence no longer promises a late answer no surface offers (D10)",
+	);
+});
+
+test("the composer's secret guard reads the oldest ANSWERABLE ask, never a lapsed head", () => {
+	/*
+	 * `head` is what `askComposerHoldsSecret` reads. A lapsed ask is older than any open
+	 * one, so a head of "oldest outstanding" would be the lapsed row and its
+	 * `canAnswer: false` would release the guard over a secret-only ask that IS open.
+	 */
+	const view = queue.askQueueView({
+		asks: [
+			single({ ask_id: "a-lapsed", status: "timed_out", created_at: TS }),
+			single({
+				ask_id: "a-secret",
+				created_at: TS + 10,
+				questions: [{ id: "k", question: "Paste the key", secret: true }],
+			}),
+		],
+	});
+	assert.equal(view.head?.ask.ask_id, "a-secret");
+	assert.equal(queue.askComposerHoldsSecret(view), true);
+	const lapsedOnly = queue.askQueueView({
+		asks: [
+			single({
+				status: "timed_out",
+				questions: [{ id: "k", question: "Paste the key", secret: true }],
+			}),
+		],
+	});
+	assert.equal(lapsedOnly.head, null, "nothing answerable, so no head");
+	assert.equal(queue.askComposerHoldsSecret(lapsedOnly), false);
 });
 
 /* ------------------------------------------------------- the drawer's bar ---- */
