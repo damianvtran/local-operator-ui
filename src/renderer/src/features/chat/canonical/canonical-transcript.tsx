@@ -48,7 +48,10 @@ import {
 	useConnectProviderStore,
 } from "@features/providers/connect-provider-store";
 import { Button } from "@shared/components/ui";
+import { Disclosure } from "@shared/components/ui/disclosure";
 import { useCompletionView } from "@shared/hooks/use-completion-view";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import {
@@ -169,6 +172,7 @@ import { QuoteToolkit } from "./quote-toolkit";
 import { RadientCreditsGuidance } from "./radient-credits-guidance";
 import { ensureReachable, jumpToEntry } from "./reveal-record";
 import { SETTLE_MS } from "./scroll-paging";
+import { skillRowOf } from "./skill-row";
 import { SupplementRow } from "./supplement-row";
 import { THREAD_SEARCH_JUMP_MISS_COPY } from "./thread-search-model";
 import { ThreadSearchOverlay } from "./thread-search-overlay";
@@ -837,6 +841,14 @@ const UserRow = memo(function UserRow({
 	 */
 	const turnRef = useRef<HTMLDivElement>(null);
 	/*
+	 * The one string this row translates is the disclosed body's own label, and a
+	 * `memo` row does not re-render for a locale change by itself: `App` subscribes
+	 * and re-renders, but this component's props have not moved, so the row would
+	 * keep the language it was first painted in. Hence its own subscription - the
+	 * per-surface one the mesh components carry for the same reason.
+	 */
+	useI18nLocale();
+	/*
 	 * Which link on this turn the toolbar is about, if any. ONE subject per row,
 	 * decided by one hook (`use-link-subject.ts`), because the alternative is one
 	 * hover state per link and therefore two toolbars on screen at once or a
@@ -857,11 +869,27 @@ const UserRow = memo(function UserRow({
 	 * `parseReplies` reads that prefix across newlines, which is what makes this
 	 * hold for the multi-paragraph turn that is the common case rather than for
 	 * one-line ones only.
+	 *
+	 * A `$skill` INVOCATION IS READ HERE FIRST, and for the same reason the reply
+	 * split happens here rather than downstream: this string is what the row paints
+	 * AND what the turn's own Copy and Quote read (`bodyText` below), so a payload
+	 * still standing in for the typed line would be quoted and copied as a wall of
+	 * SKILL.md. `skill-row.ts` is the one derivation; `record.skill` below is the
+	 * seal built from it at record time.
 	 */
+	const invocation = useMemo(() => skillRowOf(record.text), [record.text]);
 	const { replies, remainingContent } = useMemo(
-		() => parseReplies(record.text),
-		[record.text],
+		() => parseReplies(invocation?.text ?? record.text),
+		[invocation, record.text],
 	);
+	/*
+	 * The seal the reducer stamped beside the text, when this row is an
+	 * invocation. Read off the RECORD rather than off the parse above so the row
+	 * and the reducer cannot disagree about whether a message is one of these: the
+	 * reducer's answer is the one the equality gate, the tests and every other
+	 * reader of the record already share.
+	 */
+	const seal = record.skill;
 	/*
 	 * The turn's PICTURES, by the media array's shared predicate (`isPictureRef`):
 	 * this block draws `<img>` frames only, and a video ref must not be handed to
@@ -999,6 +1027,83 @@ const UserRow = memo(function UserRow({
 							    idiom for "this is quoted" whether it is pending or sent. */}
 							{replies.length > 0 && <ReplyPreview replies={replies} />}
 							{/*
+							 * THE `$skill` SEAL. Without it this bubble IS the payload: the
+							 * header sentence, the `<skill>` tag, the whole SKILL.md body and
+							 * the request, painted at reading weight as though the reader had
+							 * typed them (`docs/design/history-fold-convergence.md` row D8).
+							 * The typed line is the row; the instructions the model received
+							 * are one press away.
+							 *
+							 * A `Disclosure` rather than a fold of its own, because branding
+							 * § 7 allows exactly one expand/collapse idiom app-wide. Its
+							 * chevron slot is repainted `text-ink-dim`: the primitive's
+							 * `ink-disabled` is the one role exempt from every contrast floor,
+							 * while this chevron is the surface's only affordance rather than
+							 * chrome beside a trace row.
+							 */}
+							{seal && (
+								<Disclosure
+									className={cn("mb-1.5")}
+									chevronClassName="text-ink-dim"
+									summary={
+										<span className={cn("flex min-w-0 items-center gap-1.5")}>
+											{/*
+											 * The composer's RESOLVED-skill ink, name for name
+											 * (`slash-highlight.ts`'s `RUN_INK`): the token a reader
+											 * sees on the row is the same object they saw in the box
+											 * they typed it in, so the two surfaces cannot drift into
+											 * two opinions about what a `$skill` looks like.
+											 */}
+											<span
+												className={cn(
+													"shrink-0 text-token-command slash-run-bold",
+												)}
+											>
+												{seal.token}
+											</span>
+											{seal.purpose !== null && (
+												<>
+													<span
+														className={cn("shrink-0 text-ink-dim")}
+														aria-hidden="true"
+													>
+														·
+													</span>
+													{/*
+													 * ONE LINE, ELLIPSIZED, the whole sentence in the
+													 * native `title` rather than in a popper: this sits
+													 * inside every invocation row of a windowed
+													 * transcript, which is the cost `reply-preview.tsx`
+													 * records for the same choice one block away.
+													 */}
+													<span
+														className={cn(
+															"min-w-0 truncate text-ink-muted text-meta",
+														)}
+														title={seal.purpose}
+													>
+														{seal.purpose}
+													</span>
+												</>
+											)}
+										</span>
+									}
+								>
+									{/*
+									 * The same recessed ground the quoted turn above takes, and
+									 * the same reason: this block is not the reader's words but
+									 * text the app sent on their behalf, and the ground says so
+									 * without a rule between the two.
+									 */}
+									<div className={cn("rounded-sm bg-sunken p-2")}>
+										<div className={cn("mb-1 text-ink-dim text-meta")}>
+											{t("ui.chat.skill_invocation.instructions_label")}
+										</div>
+										<MarkdownRenderer content={seal.body} />
+									</div>
+								</Disclosure>
+							)}
+							{/*
 							 * `credentialCitations`, and only on the user's own turn: this is the only
 							 * place in the transcript where a citation is the app's own words rather than
 							 * the agent's prose about one. A message sent with a pasted secret reads in the
@@ -1008,7 +1113,7 @@ const UserRow = memo(function UserRow({
 							 * message's own text; only how it is drawn changes.
 							 */}
 							<MarkdownRenderer
-								content={remainingContent}
+								content={seal ? seal.request : remainingContent}
 								credentialCitations
 							/>
 							{clamped && (
