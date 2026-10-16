@@ -235,6 +235,21 @@ const askSplitIsKnowable = (view: AskQueueView): boolean =>
 	 */
 	!view.truncated && view.open <= view.waiting + view.movedOn;
 
+/**
+ * The number an attention BADGE draws for one conversation's queue: the asks a
+ * control can still act on.
+ *
+ * With a complete list (`askSplitIsKnowable`) that is the answerable rows only, so a
+ * lapsed ask - read-only on every surface (D10) - pulls no attention and the rail
+ * badge agrees with the sidebar's mark (`fleetAsksBySession`). With a truncated or
+ * lagging list only the tally is known, and it counts lapsed asks too; the badge keeps
+ * it, because over-counting a lapsed ask is the safe side of hiding a real open one.
+ */
+export const askAttentionCount = (view: AskQueueView): number =>
+	askSplitIsKnowable(view)
+		? view.rows.filter((row) => row.canAnswer).length
+		: view.open;
+
 export const askChipClause = (view: AskQueueView, nowMs: number): string => {
 	const count = askChipCountClause(view);
 	const deadline = askChipDeadline(view, nowMs);
