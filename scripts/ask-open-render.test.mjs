@@ -414,7 +414,11 @@ test("state 4 - dismissed while pending: stays closed through a re-render, a ref
 		"c-a",
 		withRows([...rows, ask("open", { created_at: NOW() + 30_000 })]),
 	);
-	await view.show("c-a", withRows([{ ...rows[0], status: "timed_out" }]));
+	/*
+	 * (No `timed_out` frame here: the waved-off ask LAPSING ends the record, because a
+	 * lapsed ask is nothing to wave off (D12) - `ask-open-policy.test.mjs`, "a dismissal
+	 * over open + lapsed asks".)
+	 */
 	assert.equal(view.flag(), false);
 	assert.equal(view.drawer(), null);
 
