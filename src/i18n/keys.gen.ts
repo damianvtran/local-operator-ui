@@ -26,6 +26,9 @@ import enUiBrowserChrome from "./catalogues/en/ui.browser.chrome.json";
 import enUiBrowser from "./catalogues/en/ui.browser.json";
 import enUiCanvas from "./catalogues/en/ui.canvas.json";
 import enUiChat from "./catalogues/en/ui.chat.json";
+import enUiCommonActions from "./catalogues/en/ui.common.actions.json";
+import enUiCommonErrors from "./catalogues/en/ui.common.errors.json";
+import enUiCommonForms from "./catalogues/en/ui.common.forms.json";
 import enUiConsole from "./catalogues/en/ui.console.json";
 import enUiHub from "./catalogues/en/ui.hub.json";
 import enUiMesh from "./catalogues/en/ui.mesh.json";
@@ -46,6 +49,9 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiBrowser,
 	...enUiCanvas,
 	...enUiChat,
+	...enUiCommonActions,
+	...enUiCommonErrors,
+	...enUiCommonForms,
 	...enUiConsole,
 	...enUiHub,
 	...enUiMesh,
@@ -155,6 +161,15 @@ export type MessageParams = {
 	"ui.chat.usage.eligibility_unknown": undefined;
 	"ui.chat.usage.family_caps": undefined;
 	"ui.chat.usage.unlimited": undefined;
+	"ui.common.actions.cancel": undefined;
+	"ui.common.actions.close": undefined;
+	"ui.common.actions.retry": undefined;
+	"ui.common.actions.retry_again": undefined;
+	"ui.common.errors.error_boundary.error_details": undefined;
+	"ui.common.errors.error_boundary.something_went_wrong": undefined;
+	"ui.common.errors.error_boundary.stack_trace": undefined;
+	"ui.common.errors.error_boundary.the_application_encountered_an_error_try_again_or_contact_support": undefined;
+	"ui.common.forms.select.unlisted_value": undefined;
 	"ui.console.capacity.archived": { archived: number };
 	"ui.console.capacity.full": undefined;
 	"ui.console.capacity.help": undefined;
@@ -516,6 +531,47 @@ export type MessageParams = {
 	"ui.settings.tour.action": undefined;
 	"ui.settings.tour.description": undefined;
 	"ui.settings.tour.title": undefined;
+	"ui.shell.collapsible_app_logo.local_operator": undefined;
+	"ui.shell.panel_rail.panels": undefined;
+	"ui.shell.sidebar_navigation.agent_hub": undefined;
+	"ui.shell.sidebar_navigation.agents": undefined;
+	"ui.shell.sidebar_navigation.aida_missed": { name: string; count: number };
+	"ui.shell.sidebar_navigation.aida_working": { name: string };
+	"ui.shell.sidebar_navigation.browser": undefined;
+	"ui.shell.sidebar_navigation.browser_waiting": {
+		count: number;
+		countText: string;
+	};
+	"ui.shell.sidebar_navigation.close_sidebar": undefined;
+	"ui.shell.sidebar_navigation.collapse_sidebar": undefined;
+	"ui.shell.sidebar_navigation.expand_sidebar": undefined;
+	"ui.shell.sidebar_navigation.mesh": undefined;
+	"ui.shell.sidebar_navigation.mesh_waiting": {
+		count: number;
+		countText: string;
+	};
+	"ui.shell.sidebar_navigation.new_chat": undefined;
+	"ui.shell.sidebar_navigation.new_chat_shortcut": { shortcut: string };
+	"ui.shell.sidebar_navigation.projects": undefined;
+	"ui.shell.sidebar_navigation.schedules": undefined;
+	"ui.shell.sidebar_navigation.search": undefined;
+	"ui.shell.sidebar_navigation.search_accessible": {
+		everything: string;
+		chats: string;
+	};
+	"ui.shell.sidebar_navigation.search_tooltip": {
+		everything: string;
+		chats: string;
+	};
+	"ui.shell.sidebar_navigation.settings": undefined;
+	"ui.shell.user_profile_sidebar.account_settings": undefined;
+	"ui.shell.user_profile_sidebar.account_unavailable": undefined;
+	"ui.shell.user_profile_sidebar.checking_account": undefined;
+	"ui.shell.user_profile_sidebar.privacy_and_security": undefined;
+	"ui.shell.user_profile_sidebar.reconnect_radient": undefined;
+	"ui.shell.user_profile_sidebar.settings": undefined;
+	"ui.shell.user_profile_sidebar.sign_out": undefined;
+	"ui.shell.user_profile_sidebar.user": undefined;
 };
 
 export type MessageKey = keyof MessageParams;

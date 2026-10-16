@@ -1,0 +1,8 @@
+{
+	"ui.common.forms.select.unlisted_value": {
+		"role": "input status hint",
+		"tone": "Factual reassurance.",
+		"note": "Free-typed value is absent from searchable listings but remains valid and is saved literally; not an error.",
+		"length": "One short line below the control."
+	}
+}
