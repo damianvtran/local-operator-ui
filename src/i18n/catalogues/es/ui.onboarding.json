@@ -44,6 +44,6 @@
 	"ui.onboarding.search.row.save_failed": "No se pudo guardar la clave.",
 	"ui.onboarding.search.row.saved": "Guardada",
 	"ui.onboarding.search.row.saving": "Guardando {name}",
-	"ui.onboarding.modal.step_of": "Paso {current, number} de {total, number}",
-	"ui.onboarding.modal.steps_total": "{total, plural, one {# paso} many {# de pasos} other {# pasos}}"
+	"ui.onboarding.modal.step_of": "Paso {current, number, ::group-off} de {total, number, ::group-off}",
+	"ui.onboarding.modal.steps_total": "{total, plural, one {{total, number, ::group-off} paso} many {{total, number, ::group-off} de pasos} other {{total, number, ::group-off} pasos}}"
 }

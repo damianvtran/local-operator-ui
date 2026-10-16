@@ -36,28 +36,48 @@ test("shipped Spanish covers settings, console and onboarding and switches back"
 	console.log("en: Settings | Console");
 });
 
-test("Spanish placeholders use Spanish rules; uncarried namespaces use English rules", () => {
+test("counts render ungrouped (the #1131 fidelity rule); uncarried namespaces use the English source", () => {
 	locale.setLocale("es");
+	// The count sinks carry ::group-off exactly as the English source has since
+	// #1131: 1 / >1 / >=1000 all render the raw number, matching what the
+	// pre-extraction source rendered (`1000`, never `1.000`).
+	for (const [live, limit, expected] of [
+		[1, 3, "1/3"],
+		[64, 128, "64/128"],
+		[1234567, 2000000, "1234567/2000000"],
+	]) {
+		assert.equal(
+			messages.t("ui.console.capacity.summary_compact_bare", { live, limit }),
+			expected,
+		);
+	}
 	const formatted = messages.t("ui.console.capacity.summary_compact_bare", {
 		live: 1234567,
 		limit: 2000000,
 	});
 	const esNumber = new Intl.NumberFormat("es");
-	assert.equal(
+	assert.notEqual(
 		formatted,
 		`${esNumber.format(1234567)}/${esNumber.format(2000000)}`,
+		"the group-off token must suppress Spanish grouping at >= 1000",
 	);
-	assert.notEqual(formatted, "1,234,567/2,000,000");
-	// Canvas is intentionally uncarried: source selection must also select the
-	// English formatter, rather than mixing English prose with Spanish numbers.
+	assert.equal(
+		messages.t("ui.onboarding.modal.step_of", {
+			current: 1234567,
+			total: 2000000,
+		}),
+		"Paso 1234567 de 2000000",
+	);
+	// Canvas is intentionally uncarried: source selection must still select the
+	// English source, including its own group-off rule.
 	const fallback = messages.t("ui.canvas.files.count", { count: 1234567 });
-	assert.equal(fallback, "1,234,567 files");
+	assert.equal(fallback, "1234567 files");
 	assert.equal(
 		fallback,
 		messages.translate("ui.canvas.files.count", { count: 1234567 }, "en"),
 	);
 	console.log(
-		`es placeholder: ${formatted}; English fallback ui.canvas.files.count: ${fallback}`,
+		`es counts ungrouped: ${formatted}; English fallback ui.canvas.files.count: ${fallback}`,
 	);
 });
 const DOUBLED_SPACE = / {2,}/;
@@ -77,6 +97,14 @@ const CAPACITY_CASES_es = [
 		{ live: 128, archived: 2, limit: 128 },
 		"128 activas de 128 en la app · 2 conservados · sin plazas libres",
 	],
+	[
+		{ live: 1000, archived: 1, limit: 1000 },
+		"1000 activas de 1000 en la app · 1 conservado · sin plazas libres",
+	],
+	[
+		{ live: 1234567, archived: 3000000, limit: 2000000 },
+		"1234567 activas de 2000000 en la app · 3000000 de conservados",
+	],
 ];
 
 /*
@@ -86,8 +114,9 @@ const CAPACITY_CASES_es = [
  * `ui.console.capacity.summary` + `.archived` + `.full` - around the counts, so
  * a value-only pin of one fragment cannot catch a doubled or absent separator
  * space. This pins the WHOLE sentence the user reads, through the real t(), at
- * archived 33/1/0 and at the full-capacity state, appending `archived` only when
- * > 0 and `full` only when live >= limit, exactly as the component does.
+ * archived 33/1/0, at the >=1000 count boundaries (where ::group-off must render
+ * raw) and at the full-capacity state, appending `archived` only when > 0 and
+ * `full` only when live >= limit, exactly as the component does.
  */
 test("es: the composed console capacity sentence reads as one sentence", () => {
 	locale.setLocale("es");
