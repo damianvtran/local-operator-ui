@@ -30,6 +30,139 @@ import {
 import { categoryOf, flagsFor } from "./ci-scope.mjs";
 
 /*
+ * THE DRIVE'S OWN SCOPE, GUARDED LOCALLY (round 2, Q-4). A case's `drive(ctx)` may
+ * only touch what the runner hands it; reaching for a runner local compiles, reads as
+ * an ordinary mutation, and dies only where that name does not exist - measured on
+ * run 38955215215, where `frames.at(-1).railClosePolicy = ...` killed the FIRST leg
+ * in CI (`ReferenceError: frames is not defined`) with no source test able to see it.
+ *
+ * SO A REAL CASE IS DRIVEN HERE against stub helpers: the asks case runs end to end
+ * on BOTH legs and the reading it stamps must land on its OWN rail-close frame. The
+ * stub is a scripted stand-in - not an app, and no native proof - and its job is
+ * narrow: a scope slip, a wrong stamp target or a broken leg obligation fails in this
+ * suite instead of on a thirty-five minute macOS run.
+ */
+function stubDriveContext(leg, { restoreOnRailClose = false } = {}) {
+	const script = { browserOpen: false, askDrawer: false };
+	const frames = [];
+	const presses = [];
+	const facts = async () => ({
+		state: { browserPaneOpen: script.browserOpen },
+		dom: { ask: script.askDrawer, focusedConnected: true, panes: [] },
+	});
+	return {
+		frames,
+		presses,
+		ctx: {
+			kind: leg,
+			cdp: { evaluate: async () => null },
+			wait: async () => {},
+			fixtureMode: async () => {},
+			session: async () => {},
+			facts,
+			/*
+			 * Escape is the WITHDRAWAL while the drawer is up: it closes the drawer and
+			 * gives the displaced pane back (UX round 1, U6) - the branch the candidate's
+			 * `escape-give-back` frame exists to photograph.
+			 */
+			pressEscape: async () => {
+				presses.push("escape");
+				if (script.askDrawer) {
+					script.askDrawer = false;
+					script.browserOpen = true;
+				}
+			},
+			press: async (selector) => {
+				presses.push(selector);
+				if (selector.includes('data-panel-rail-item="browser"')) {
+					script.browserOpen = true;
+				} else if (selector.includes('data-panel-rail-item="ask"')) {
+					if (script.askDrawer) {
+						/*
+						 * THE LIT ITEM'S CLOSE EMPTIES THE SLOT (#1079) - unless the caller asked
+						 * for the pre-fix policy, which is how the discrimination below is driven.
+						 */
+						script.askDrawer = false;
+						script.browserOpen = restoreOnRailClose;
+					} else {
+						script.askDrawer = true;
+					}
+				} else if (
+					selector.includes("close-asks-button") ||
+					selector.includes("data-ci-close-asks") ||
+					selector.includes("status-asks")
+				) {
+					script.askDrawer = false;
+					script.browserOpen = false;
+				}
+			},
+			waitFor: async (probe) => {
+				await probe();
+				return await facts();
+			},
+			frame: async (label) => {
+				const measured = await facts();
+				frames.push({ label, ...measured });
+				return measured;
+			},
+			stamp: (key, value) => {
+				frames.at(-1)[key] = value;
+				return frames.at(-1);
+			},
+		},
+	};
+}
+
+test("a case's drive touches only what the runner hands it, and stamps its own frame", async () => {
+	for (const leg of ["control", "candidate"]) {
+		const { ctx, frames, presses } = stubDriveContext(leg);
+		await CASES.asks.drive(ctx);
+		const railClose = frames.find((frame) => frame.label === "rail-close");
+		assert(railClose, `${leg}: the drive captured no rail-close frame`);
+		assert(
+			railClose.railClosePolicy,
+			`${leg}: the rail-close frame carries no reading - the stamp must land on the frame the runner owns`,
+		);
+		assert.equal(railClose.railClosePolicy.leg, leg);
+		assert.equal(
+			railClose.railClosePolicy.observed,
+			false,
+			`${leg}: this stub empties the slot, so the reading must say so`,
+		);
+		for (const label of CASES.asks.frames[leg])
+			assert(
+				frames.some((frame) => frame.label === label),
+				`${leg}: promised frame ${JSON.stringify(label)} was not captured by the drive`,
+			);
+		assert(presses.length > 0, `${leg}: the drive pressed nothing`);
+	}
+
+	/*
+	 * AND THE CANDIDATE'S OBLIGATION IS REAL, not decoration: the same drive against a
+	 * stub whose lit-item close RESTORES the pane - the pre-fix policy - must FAIL on
+	 * the candidate leg and PASS on the control leg, which only records. That pair is
+	 * the discrimination the macOS leg makes, executed here at unit cost.
+	 */
+	const restoringCandidate = stubDriveContext("candidate", {
+		restoreOnRailClose: true,
+	});
+	await assert.rejects(
+		() => CASES.asks.drive(restoringCandidate.ctx),
+		/candidate rail-close wrong restore policy/,
+	);
+	const restoringControl = stubDriveContext("control", {
+		restoreOnRailClose: true,
+	});
+	await assert.doesNotReject(() => CASES.asks.drive(restoringControl.ctx));
+	assert.match(
+		restoringControl.frames.find((frame) => frame.label === "rail-close")
+			.railClosePolicy.reading,
+		/RESTORES the displaced pane/,
+		"a pre-fix control must be recorded as pre-fix rather than failing",
+	);
+});
+
+/*
  * THE TABLE IS A CONTRACT, so it is held to one here rather than trusted. A case
  * that declares no drive, no route, no readable purpose or no frames is a case
  * whose artifact a reviewer cannot read; a case that promises `acceptance` is
@@ -106,12 +239,24 @@ test("every case declares what it drives and the frames it promises", () => {
 		 */
 		const gate = drive.indexOf('kind === "candidate"');
 		const shared = gate === -1 ? drive : drive.slice(0, gate);
-		for (const label of captured(shared))
-			for (const leg of ["control", "candidate"])
-				assert(
-					scenario.frames[leg].includes(label),
-					`${name}: a shared step captures ${JSON.stringify(label)} without promising it to the ${leg} leg`,
-				);
+		/*
+		 * ONE ASSERTION PER LABEL, NAMING THE LEGS THAT LACK IT (round 2, Q-5). The
+		 * nested loop this replaces carried a candidate-side arm that could never fire:
+		 * the subset check above pins control ⊆ candidate, so a shared label missing from
+		 * control is the only case the loop can reach, and by the time it reaches the
+		 * candidate it has already established the label is there. Computing the missing
+		 * legs keeps the direction enforced without an arm that is dead by construction.
+		 */
+		for (const label of captured(shared)) {
+			const missing = ["control", "candidate"].filter(
+				(leg) => !scenario.frames[leg].includes(label),
+			);
+			assert.equal(
+				missing.length,
+				0,
+				`${name}: a shared step captures ${JSON.stringify(label)} without promising it to ${missing.join(" and ")}`,
+			);
+		}
 		if (gate !== -1)
 			for (const label of captured(drive.slice(gate)))
 				assert(

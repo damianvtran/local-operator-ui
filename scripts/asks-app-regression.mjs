@@ -358,6 +358,7 @@ export const CASES = {
 				waitFor,
 				facts,
 				frame,
+				stamp,
 				fixtureMode,
 				session,
 			} = ctx;
@@ -452,9 +453,9 @@ export const CASES = {
 			 * still records which policy each revision has.
 			 */
 			const railClose = await closed("rail-close", railCloseAssertion(kind));
-			frames.at(-1).railClosePolicy = railCloseReading(
-				kind,
-				railClose.state.browserPaneOpen,
+			stamp(
+				"railClosePolicy",
+				railCloseReading(kind, railClose.state.browserPaneOpen),
 			);
 			await session(1);
 			await session(0);
@@ -734,6 +735,24 @@ async function runCase(scenarioName, kind, root, output, records) {
 		save();
 		return measured;
 	}
+	/**
+	 * Record a reading on the case's most recent frame - THE RUNNER'S OWN DOOR, because
+	 * the frame store is this function's local and a case cannot reach it (round 2,
+	 * Q-4).
+	 *
+	 * A case stamping `frames.at(-1).something = ...` itself compiles, reads as an
+	 * ordinary mutation and dies only where `frames` does not exist: measured on run
+	 * 38955215215 as `ReferenceError: frames is not defined at Object.drive
+	 * (asks-app-regression.mjs:455:4)`, on the FIRST leg, before either new case had
+	 * ever run. So the stamp goes through here, and the guard beside this file drives a
+	 * real case against stub helpers so the same slip fails locally.
+	 */
+	function stamp(key, value) {
+		assert(frames.length > 0, `stamp(${key}) with no frame captured yet`);
+		frames.at(-1)[key] = value;
+		save();
+		return frames.at(-1);
+	}
 	async function fixtureMode(mode) {
 		const response = await fetch("http://127.0.0.1:8080/__fixture/state", {
 			method: "POST",
@@ -792,6 +811,7 @@ async function runCase(scenarioName, kind, root, output, records) {
 		pressEscape,
 		facts,
 		frame,
+		stamp,
 		fixtureMode,
 		session,
 	};

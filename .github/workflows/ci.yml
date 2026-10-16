@@ -892,10 +892,10 @@ jobs:
       # Storybook surrogate. macOS already owns Electron launch in this job;
       # Linux's documented sandbox limitation is not waived for screenshots.
       # 15 minutes, up from 8, because the case table ships three cases and each
-      # case boots the app TWICE (control + candidate): six boots, six renderer
-      # builds for the control legs and the capture sequences have to fit. The run
-      # that proved the producer works end to end spent its first 60 s on the
-      # control boot's
+      # case boots the app TWICE (control + candidate): six boots and ONE control
+      # renderer build (the candidate renderer arrives prebuilt from the job's
+      # "Build and pack" step), plus the capture sequences. The run that proved
+      # the producer works end to end spent its first 60 s on the control boot's
       # build and its last minute on the candidate's, and an 8-minute ceiling left
       # no room for the frames. Bounded deliberately: a timeout must stay a FAIL,
       # so this is a ceiling that fits the work rather than a wait, and the script's
