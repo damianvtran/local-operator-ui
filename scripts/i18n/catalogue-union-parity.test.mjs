@@ -14,7 +14,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
  * network) holding the exact three versions the tool compares, then requires:
  * (a) a correct disjoint hand-union -> exit 0; (b) the `--ours` outcome (PR
  * keys dropped) -> exit 1, keys named; (c) the `--theirs` outcome (base keys
- * lost) -> exit 1, keys named; (d) a value changed for a shared key -> exit 1.
+ * lost) -> exit 1, keys named; (d) a value changed for a shared key -> exit 1;
+ * (e) `--head` identical to `--old-head` -> exit 2, refused as vacuous.
  *
  * DISCRIMINATION PROOF: (a) fails if the tool is absent or fails everything;
  * (b)-(d) fail if it is sabotaged to pass everything. The last case makes that
@@ -126,6 +127,12 @@ function buildRepo() {
 
 function runParity(repo, extraArgs, tool = TOOL) {
 	const head = extraArgs.includes("--head") ? [] : ["--head", repo.merged];
+	/* Same override rule for --old-head: case (e) must name it explicitly to
+	 * make it identical to --head, and a duplicated flag would be a parse
+	 * error testing the parser rather than the refusal. */
+	const oldHead = extraArgs.includes("--old-head")
+		? []
+		: ["--old-head", repo.pr];
 	const r = spawnSync(
 		process.execPath,
 		[
@@ -135,8 +142,7 @@ function runParity(repo, extraArgs, tool = TOOL) {
 			"--pr",
 			"1234",
 			...head,
-			"--old-head",
-			repo.pr,
+			...oldHead,
 			"--base",
 			repo.base,
 			...extraArgs,
@@ -157,6 +163,8 @@ const MERGED_KEYS_5 = /merged keys : 5/;
 const UNION_KEYS_5 = /union\s+keys : 5/;
 const RESULT_PASS = /RESULT: PASS/;
 const USAGE_ERROR = /catalogue-union-parity:/;
+const SAME_COMMIT =
+	/no union to prove: --head and --old-head are the same commit/;
 
 test("(a) correct disjoint union passes, counts printed per side", () => {
 	const run = runParity(repo, BOTH_FILES);
@@ -190,7 +198,26 @@ test("(b) --ours outcome (PR keys dropped) fails and names them", () => {
 });
 
 test("(c) --theirs outcome (base keys dropped) fails and names them", () => {
-	const run = runParity(repo, [...BOTH_FILES, "--head", repo.pr, "--json"]);
+	/* The --theirs tree must sit on a DISTINCT commit from the PR head: using
+	 * repo.pr itself as --head would now be refused as a vacuous same-commit
+	 * run (case (e)), and a real merge produces a new commit even when its
+	 * catalogue tree is exactly the PR side's. An empty commit carries that
+	 * tree unchanged onto a new SHA. */
+	git(repo.dir, "checkout", "-q", "-b", "theirs-head", repo.pr);
+	git(
+		repo.dir,
+		"-c",
+		"user.name=Parity Test",
+		"-c",
+		"user.email=parity@test.invalid",
+		"commit",
+		"-q",
+		"--allow-empty",
+		"-m",
+		"theirs outcome as merged commit",
+	);
+	const theirs = git(repo.dir, "rev-parse", "HEAD");
+	const run = runParity(repo, [...BOTH_FILES, "--head", theirs, "--json"]);
 	assert.equal(run.status, 1, run.stdout);
 	const parsed = JSON.parse(run.stdout);
 	assert.deepEqual(parsed.files[0].missingFromBase, [
@@ -251,6 +278,29 @@ test("sabotage proof: an always-pass wrapper disagrees with the real tool on (b)
 	assert.equal(sabotagedRun.status, 0, sabotagedRun.stderr);
 	assert.equal(realRun.status, 1, realRun.stdout);
 	assert.notEqual(realRun.status, sabotagedRun.status);
+});
+
+test("(e) identical --head and --old-head is refused as vacuous, no PASS", () => {
+	/* The merged commit named as BOTH heads is the #1058 shape: without the
+	 * refusal this run prints RESULT: PASS (base and PR keys are all in the
+	 * merged tree, and the PR side is compared against itself), so asserting
+	 * exit 2 here fails the moment the guard is removed. */
+	const run = runParity(repo, [
+		...BOTH_FILES,
+		"--head",
+		repo.merged,
+		"--old-head",
+		repo.merged,
+	]);
+	assert.equal(run.status, 2, run.stdout + run.stderr);
+	assert.match(run.stderr, USAGE_ERROR);
+	assert.match(run.stderr, SAME_COMMIT);
+	assert.ok(
+		run.stderr.includes(repo.merged),
+		`stderr should name the shared commit: ${run.stderr}`,
+	);
+	assert.equal(run.stdout, "");
+	assert.doesNotMatch(run.stdout, RESULT_PASS);
 });
 
 test("an unresolvable ref is a usage error (exit 2), never a silent pass", () => {
