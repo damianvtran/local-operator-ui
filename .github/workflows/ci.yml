@@ -891,6 +891,7 @@ jobs:
       # Storybook surrogate. macOS already owns Electron launch in this job;
       # Linux's documented sandbox limitation is not waived for screenshots.
       - name: Exercise assembled asks and capture regression frames
+        id: asks_regression
         if: runner.os == 'macOS' && github.event_name == 'pull_request'
         timeout-minutes: 8
         env:
@@ -909,12 +910,26 @@ jobs:
           git cat-file -e "$CONTROL^{commit}" || git fetch --no-tags --depth=1 origin "$CONTROL"
           node scripts/asks-app-regression.mjs
 
+      # A run that completed must have produced frames, or this step fails red.
+      # The step above being SKIPPED (an earlier gate went red) is not a missing
+      # artifact, and reporting it as one buries the real failure under a second,
+      # misleading one - which is what the outcome guard and the sibling below
+      # separate. Partial evidence from a failed run is still uploaded, quietly.
       - name: Upload assembled asks frames and measurements
-        if: ${{ always() && runner.os == 'macOS' && github.event_name == 'pull_request' }}
+        if: ${{ always() && steps.asks_regression.conclusion == 'success' }}
         uses: actions/upload-artifact@v4
         with:
           name: asks-app-regression-${{ github.event.pull_request.number }}-${{ github.run_id }}
           path: artifacts/asks-app/
           if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload partial asks frames from a failed run
+        if: ${{ always() && steps.asks_regression.conclusion == 'failure' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: asks-app-regression-partial-${{ github.event.pull_request.number }}-${{ github.run_id }}
+          path: artifacts/asks-app/
+          if-no-files-found: ignore
           retention-days: 7
 
