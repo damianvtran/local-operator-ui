@@ -31,6 +31,7 @@ import {
 	requestsInScope,
 	useApprovalQueue,
 } from "../model/approval-queue-model";
+import { isStartPageUrl } from "../model/start-page";
 import {
 	type SurfaceScope,
 	scopeFromKey,
@@ -44,7 +45,7 @@ import { BrowserFileTransferRow } from "./browser-file-transfer-row";
 import { BrowserFindRow } from "./browser-find-row";
 import { BrowserHandOverDialog } from "./browser-hand-over-dialog";
 import { BrowserLoadFailure } from "./browser-load-failure";
-import { BrowserNewTab, isStartPageUrl } from "./browser-new-tab";
+import { BrowserNewTab } from "./browser-new-tab";
 import { BrowserTabStrip } from "./browser-tab-strip";
 import { BrowserUrlBar } from "./browser-url-bar";
 
@@ -511,16 +512,30 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	// view is suppressed by the same lever as the failure panel — registered
 	// whenever the state holds, shown only when no overlay owns the moment
 	// (an open dialog's paused note keeps precedence, exactly as it does over
-	// the failure panel). A pending or in-flight navigation hides the page at
-	// once: the user has already chosen a destination, and leaving the start
-	// surface up would read as the navigation being ignored. No URL is loaded
-	// and no origin is created — this is DOM under a hidden view, and the
-	// tab's own `about:blank` is untouched.
+	// the failure panel). No URL is loaded and no origin is created — this is
+	// DOM under a hidden view, and the tab's own `about:blank` is untouched.
+	//
+	// WHAT ENDS IT. The gate reads the facts MAIN owns about the tab it is
+	// actually on: its url and its own per-tab `loading`. It deliberately does
+	// NOT read `chrome.pendingUrl` any more (F1, round 2). That note is cleared
+	// only by a landed non-blank url, so a REFUSED or invalid navigate — main's
+	// `nav_failed` for an unparseable or non-http(s) address, or an IPC
+	// rejection of a blank one — left it set with the tab back on `about:blank`:
+	// the start page stayed suppressed and the user was left with a blank
+	// rectangle and no surface to retry from. `activeTab.loading` says the same
+	// thing without outliving the attempt: while a page is on its way it is true
+	// and the start page stays away; the moment the attempt ends without a page,
+	// it is false and the surface comes back. Both terms are per-tab, so
+	// switching to a fresh `about:blank` tab shows its start page regardless of
+	// what any other tab is doing — the old note was hook-level and leaked across
+	// tabs.
+	//
+	// THE REFUSAL ITSELF IS STILL THE BAND'S. Like a load that started and then
+	// failed, a refused attempt puts its message in the band above; the start
+	// page's job here is only to be the thing the user can retry from, with the
+	// address they typed restored into its field (`chrome.refusedUrl`).
 	const onStartPage =
-		activeTab !== null &&
-		isStartPageUrl(activeTab.url) &&
-		!activeTab.loading &&
-		!chrome.pendingUrl;
+		activeTab !== null && isStartPageUrl(activeTab.url) && !activeTab.loading;
 	const showingNewTab =
 		onStartPage && navFailure === null && !overlaySuppressing;
 	useSuppressBrowserView(onStartPage, "browser-start-page");
@@ -912,7 +927,10 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 						</output>
 					)}
 					{showingNewTab && (
-						<BrowserNewTab onNavigate={(url) => void chrome.navigate(url)} />
+						<BrowserNewTab
+							restoreAddress={chrome.refusedUrl}
+							onNavigate={(url) => void chrome.navigate(url)}
+						/>
 					)}
 					{showingFailure && navFailure && (
 						<BrowserLoadFailure

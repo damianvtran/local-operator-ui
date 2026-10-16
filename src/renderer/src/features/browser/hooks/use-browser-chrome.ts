@@ -11,6 +11,7 @@ import {
 	refreshBrowserProjection,
 	useBrowserProjectionStore,
 } from "../model/browser-projection-store";
+import { isStartPageUrl } from "../model/start-page";
 import {
 	type CloseTabsIntent,
 	mergeChromeTabOrder,
@@ -290,8 +291,35 @@ export interface BrowserChrome {
 	 * run measured as a loading frame with an empty placeholder. Cleared as soon as
 	 * the tab has a real URL, which is what makes it a statement about a PENDING
 	 * navigation rather than a copy of the bar.
+	 *
+	 * IT IS ALSO THE START PAGE'S OWN LIFETIME (LOH-13 B round 2, F1), and that is
+	 * the second half of the same rule: the surface hides the native view while the
+	 * active tab is on its start state, and a PENDING note here is what says "the
+	 * user has chosen a destination, so do not show the start page". A note that
+	 * outlived a refused or invalid navigate therefore hid the start page for good
+	 * with nothing but a blank rectangle behind the band, so it is now released as
+	 * soon as the tab is back on its start state with nothing in flight (see
+	 * `refresh`), and on the refusal itself (see `navigate`).
 	 */
 	pendingUrl: string | null;
+	/**
+	 * The address of the last `navigate` that was REFUSED, or null.
+	 *
+	 * WHY A SECOND FIELD RATHER THAN THE NOTE'S OWN VALUE. A refused navigate — an
+	 * IPC rejection of a blank url, or main's `nav_failed` for an unparseable or
+	 * non-http(s) address — must both (a) stop suppressing the native view, so the
+	 * start page comes back with a surface to retry from, and (b) hand the user's
+	 * typed address BACK, because the start field's draft is mount-local and dies on
+	 * submit. `pendingUrl` is cleared for (a) — its whole meaning is "a page is on its
+	 * way", which is false the moment the invoke is refused — so the value has to
+	 * survive somewhere for (b), and this is that somewhere.
+	 *
+	 * Non-null therefore means "a navigation was attempted and nothing started
+	 * loading", and the string is what was attempted. It is cleared by the next
+	 * accepted navigate and by the next landed read, so it describes the LATEST
+	 * attempt rather than accumulating.
+	 */
+	refusedUrl: string | null;
 	/** An action refusal or a failed state read, whichever is newest. Shown in the
 	 * band, not as a toast per keystroke. */
 	error: string | null;
@@ -460,6 +488,9 @@ export function useBrowserChrome(): BrowserChrome {
 	/** An ACTION was refused: `nav_failed`, `tab_limit`, `origin_not_allowed`... */
 	const [actionError, setActionError] = useState<string | null>(null);
 	const [pendingUrl, setPendingUrl] = useState<string | null>(null);
+	/** See `BrowserChrome.refusedUrl`: the attempt whose invoke was refused, held so
+	 * the start page can restore the address the user typed (F1, round 2). */
+	const [refusedUrl, setRefusedUrl] = useState<string | null>(null);
 	const available = browserBridgeAvailable();
 
 	/**
@@ -488,7 +519,38 @@ export function useBrowserChrome(): BrowserChrome {
 	 */
 	const refresh = useCallback(async (): Promise<void> => {
 		const next = await readState();
-		if (next?.url && next.url !== "about:blank") setPendingUrl(null);
+		if (next?.url && next.url !== "about:blank") {
+			setPendingUrl(null);
+			setRefusedUrl(null);
+			return;
+		}
+		/*
+		 * THE START STATE RELEASES THE PENDING NOTE (F1, round 2). This is the second
+		 * way a note ends, and it exists because the first one is not sufficient: the
+		 * note is set by every `navigate` and cleared only by a LANDED non-blank url,
+		 * so an attempt that never loaded anything — refused up front, or accepted and
+		 * then dropped by main — left it set with the tab back on `about:blank`, which
+		 * suppressed the native view and hid the start page with a blank rectangle
+		 * behind the band. A note whose whole meaning is "a page is on its way" is
+		 * false once the tab is on its start state with nothing in flight, so it ends
+		 * here.
+		 *
+		 * WHY THE READ AND NOT A CLOCK. Main owns both facts the condition needs: the
+		 * url the tab is actually on (`next.url`), and whether it is loading right now
+		 * (`next.loading`, per tab, the same field the strip's per-tab spinner reads). A
+		 * timer would be a second opinion about a fact main already published, and it
+		 * would hide the start page for its whole duration over a page that is not
+		 * coming. The `next` value is used rather than the `state` React is about to
+		 * render, for the same reason the landing branch above does: the note is about
+		 * the read that just landed, not about the render it triggers.
+		 *
+		 * NOT EVERY READ RELEASES IT — only a read that shows the start state with
+		 * nothing in flight. A slow page still has `loading` true and its note intact,
+		 * which is what keeps the url bar's placeholder (and the start page's absence)
+		 * correct for the whole of a real load.
+		 */
+		if (!next || next.loading) return;
+		if (isStartPageUrl(next.url)) setPendingUrl(null);
 	}, [readState]);
 
 	/**
@@ -641,7 +703,22 @@ export function useBrowserChrome(): BrowserChrome {
 				// Recorded before the intent is sent: the reply may take a while (the tab
 				// has to load), and the point of the note is to cover exactly that window.
 				setPendingUrl(url);
-				return runVoid(() => api?.navigate(url));
+				setRefusedUrl(null);
+				// A REFUSED ATTEMPT ENDS THE NOTE AND REMEMBERS THE ADDRESS (F1, round 2).
+				// `run` answers whether main accepted the invoke, so a refusal is known
+				// HERE rather than inferred later from a note that never cleared — which
+				// is what stranded the start page behind a blank view. Clearing the note
+				// puts the start page (and its retry) back; keeping the address lets the
+				// start field restore what was typed, because its draft is mount-local
+				// and dies with the submit that carried it here.
+				return run(async () => {
+					await api?.navigate(url);
+				}).then((accepted) => {
+					if (!accepted) {
+						setPendingUrl(null);
+						setRefusedUrl(url);
+					}
+				});
 			},
 			home: () => runVoid(() => api?.home()),
 			reload: (hard) => runVoid(() => api?.reload(hard)),
@@ -654,6 +731,7 @@ export function useBrowserChrome(): BrowserChrome {
 			history: (direction) => runVoid(() => api?.history(direction)),
 			setContentRect,
 			setViewVisible,
+			refusedUrl,
 			respondToConsent: (entryId, decision) =>
 				runVoid(() => api?.respondToConsent(entryId, decision)),
 			handOver: (tabId, sessionId) =>
@@ -683,6 +761,7 @@ export function useBrowserChrome(): BrowserChrome {
 		[
 			state,
 			pendingUrl,
+			refusedUrl,
 			error,
 			dismissError,
 			available,

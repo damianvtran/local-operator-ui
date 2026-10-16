@@ -92,6 +92,16 @@ export const BrowserLoadFailure: FC<BrowserLoadFailureProps> = ({
 	onRetry,
 }) => {
 	useI18nLocale();
+	/*
+	 * DEFERRED, ROUND 2 (U3/U4, deliberately out of this remediation's scope).
+	 * U3 asked for more loading feedback than the panel gives, and U4 for wording
+	 * changes in this panel's sentence. Both are copy/affordance changes to an
+	 * error surface whose structure this slice did not otherwise touch, and the
+	 * gate that mattered here was F1 — shipping either while the refusal path was
+	 * still stranding the view would have been remediation on top of a broken
+	 * state. They are recorded for the follow-up on the LOH-13 track rather than
+	 * silently dropped.
+	 */
 	return (
 		<div
 			className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center"

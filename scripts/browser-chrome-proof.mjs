@@ -1706,9 +1706,16 @@ async function main() {
 			20_000,
 		);
 		check(
-			"a refused navigation says why, in the app's own chrome, with the raw code and the address it tried",
+			"a refused navigation says why, in the app's own chrome, with the raw code, and the address is NOT repeated in the panel",
 			refusedDom.panel.includes("ERR_") &&
-				refusedDom.panel.includes("127.0.0.1:9") &&
+				// THE ADDRESS APPEARS ONCE, IN THE EDITABLE BAR (LOH-13 B). The panel used to
+				// print it a second time, as plain text in its machine line; the brief
+				// forbids that duplication (section 2.4) because the omnibox above still
+				// holds the attempted address and is still editable, so a second copy is a
+				// second place that looks like where the address lives. The assertion is
+				// therefore the negation, and the value check just below is the other half:
+				// the address is present exactly where the user can correct it.
+				!refusedDom.panel.includes("127.0.0.1:9") &&
 				refusedDom.retry,
 			JSON.stringify(refusedDom, null, 2),
 		);
