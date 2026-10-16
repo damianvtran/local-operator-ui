@@ -110,6 +110,8 @@ const bundle = await build({
 				ASIDE_ADOPT_REFUSED_SENTENCES,
 				ASIDE_ASK_QUEUED,
 				ASIDE_QUEUED_RETRY_MS,
+				ASIDE_ADOPT_NOT_LANDED,
+				ASIDE_ADOPT_UNCONFIRMED,
 			} from "./src/renderer/src/features/chat/aside";
 			/*
 			   The canonical hook rides this bundle because adoptAside re-reads the
@@ -277,6 +279,8 @@ const {
 	ASIDE_ADOPT_REFUSED_SENTENCES,
 	ASIDE_ASK_QUEUED,
 	ASIDE_QUEUED_RETRY_MS,
+	ASIDE_ADOPT_NOT_LANDED,
+	ASIDE_ADOPT_UNCONFIRMED,
 	__registerCanonicalResync,
 	resyncCanonicalSession,
 	batchMovesView,
@@ -1180,15 +1184,80 @@ test("a queued adopt keeps the panel up, read-only, until the pair lands", async
 	);
 });
 
-test("a queued adopt whose turn ends without the rows re-reads, retries once, and detaches", async () => {
+const settleFor = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/*
+ * THE TURN'S END IS WAITED OUT BEFORE ANY RE-READ (QA round 1, Q1). The owner
+ * sends the two things this panel waits for exactly then - the history delta
+ * that lands the pair, and the stranded-adopt error notice - and neither is
+ * durable, so a re-read fired at the turn's end (which closes and reopens the
+ * stream) dropped the notice and detached the panel in silence 1.7s later.
+ */
+test("a queued pair the delta lands after the turn ends retires the panel with no re-read", async () => {
 	reset();
 	const reads = [];
 	const unregister = __registerCanonicalResync(SESSION, () => reads.push(1));
 	try {
 		useAsideStore.getState().beginAsk(SESSION, "t1", "q");
 		useAsideStore.getState().settleAside("t1", "a");
-		// No ids could be read: only the turn's end retires the panel.
-		useAsideStore.getState().queueAdoption(SESSION, []);
+		useAsideStore.getState().queueAdoption(SESSION, "t1", ["m1", "m2"]);
+		// agent_end arrives before the owner's flush: the turn is over, rows absent.
+		settleQueuedAdoption(SESSION, () => false, false);
+		assert.equal(reads.length, 0, "no re-read at the turn's end");
+		assert.notEqual(useAsideStore.getState().attached[SESSION], undefined);
+		// The delta folds the pair a moment later.
+		await settleFor(50);
+		settleQueuedAdoption(SESSION, () => true, false);
+		assert.equal(useAsideStore.getState().attached[SESSION], undefined);
+		// And the cancelled fallback never fires a re-read afterwards.
+		await settleFor(ASIDE_QUEUED_RETRY_MS + 50);
+		assert.equal(reads.length, 0);
+	} finally {
+		unregister();
+	}
+});
+
+/*
+ * A PAIR THAT NEVER LANDS IS SAID, NOT HIDDEN (review round 1, R-U1; QA Q1b).
+ * The owner can be stopped with a tool call open, or the adopt queued after the
+ * last flush; the panel used to detach as if the aside had been added. It now
+ * waits, re-reads once, and then leaves the queued state with a sentence and a
+ * live control - the press is safe again, the owner skips a pair it already saved.
+ */
+test("a queued pair that never lands leaves the panel up, says so, and re-enables the control", async () => {
+	reset();
+	const reads = [];
+	const unregister = __registerCanonicalResync(SESSION, () => reads.push(1));
+	try {
+		useAsideStore.getState().beginAsk(SESSION, "t1", "q");
+		useAsideStore.getState().settleAside("t1", "a");
+		useAsideStore.getState().queueAdoption(SESSION, "t1", ["m1", "m2"]);
+		settleQueuedAdoption(SESSION, () => false, false);
+		// Called again on every transcript move: still one fallback, not one per call.
+		settleQueuedAdoption(SESSION, () => false, false);
+		assert.equal(reads.length, 0);
+		await settleFor(ASIDE_QUEUED_RETRY_MS + 50);
+		assert.equal(reads.length, 1, "one re-read once the wait is over");
+		assert.notEqual(
+			useAsideStore.getState().attached[SESSION].queued,
+			undefined,
+		);
+		await settleFor(ASIDE_QUEUED_RETRY_MS + 50);
+		assert.equal(reads.length, 1);
+		const attached = useAsideStore.getState().attached[SESSION];
+		assert.notEqual(attached, undefined, "the panel is NOT detached");
+		assert.equal(attached.queued, undefined, "and is no longer read-only");
+		assert.equal(attached.notice, ASIDE_ADOPT_NOT_LANDED);
+		assert.equal(attached.turns.length, 1);
+		// The exchange is still there to add, and the control is live for it.
+		const stream = useAsideStore.getState().streams.t1;
+		assert.equal(asideAdoptReady(stream, false, true), true);
+		assert.equal(
+			asideAskBlockedReason(useAsideStore.getState(), SESSION),
+			null,
+		);
+		// No ids could be read: the sentence says only what is known.
+		useAsideStore.getState().queueAdoption(SESSION, "t1", []);
 		assert.equal(
 			queuedAdoptionStep({
 				messageIds: [],
@@ -1198,21 +1267,90 @@ test("a queued adopt whose turn ends without the rows re-reads, retries once, an
 			"wait",
 		);
 		settleQueuedAdoption(SESSION, () => false, false);
-		// agent_end precedes the owner's flush, so the first re-read may miss the
-		// pair: the panel stays for the one retry.
-		assert.equal(reads.length, 1);
-		assert.notEqual(useAsideStore.getState().attached[SESSION], undefined);
-		// Asked again before the retry fires: still one re-read, not one per call.
-		settleQueuedAdoption(SESSION, () => false, false);
-		assert.equal(reads.length, 1);
-		await new Promise((resolve) =>
-			setTimeout(resolve, ASIDE_QUEUED_RETRY_MS + 50),
+		await settleFor(2 * ASIDE_QUEUED_RETRY_MS + 100);
+		assert.equal(
+			useAsideStore.getState().attached[SESSION].notice,
+			ASIDE_ADOPT_UNCONFIRMED,
 		);
-		assert.equal(reads.length, 2);
-		assert.equal(useAsideStore.getState().attached[SESSION], undefined);
 	} finally {
 		unregister();
 	}
+	// The false durability claim is gone from the source.
+	assert.doesNotMatch(
+		read("src/renderer/src/features/chat/aside.ts"),
+		/rows are durable by then/,
+	);
+});
+
+/*
+ * THE FALLBACK IS KEYED BY THE ADOPT, NOT THE SESSION (review round 1, R-U3): a
+ * fallback armed for one queued adopt must not retire a later one queued on the
+ * same session inside its window.
+ */
+test("a fallback armed for one queued adopt does not retire the next one", async () => {
+	reset();
+	const unregister = __registerCanonicalResync(SESSION, () => {});
+	try {
+		useAsideStore.getState().beginAsk(SESSION, "t1", "q");
+		useAsideStore.getState().settleAside("t1", "a");
+		useAsideStore.getState().queueAdoption(SESSION, "t1", ["m1", "m2"]);
+		settleQueuedAdoption(SESSION, () => false, false);
+		// The first one is retired by hand (say it landed through a page the
+		// effect did not see), and a second exchange is queued on the session.
+		useAsideStore.getState().detachAside(SESSION);
+		useAsideStore.getState().beginAsk(SESSION, "t2", "q2");
+		useAsideStore.getState().settleAside("t2", "a2");
+		useAsideStore.getState().queueAdoption(SESSION, "t2", ["m3", "m4"]);
+		// The second turn is still running, so nothing may judge it yet.
+		await settleFor(2 * ASIDE_QUEUED_RETRY_MS + 100);
+		const attached = useAsideStore.getState().attached[SESSION];
+		assert.equal(attached.queued?.asideId, "t2", "still queued");
+		assert.equal(attached.notice, null, "and not told it failed");
+	} finally {
+		unregister();
+	}
+});
+
+/*
+ * GET's `adoptable` is NOT a reason to re-enable a queued panel: the owner
+ * releases its latch once the pair is queued, so it reads true for exactly the
+ * state the panel holds read-only (harness #2496 Q4).
+ */
+test("a queued panel stays read-only when the aside reads back as adoptable", async () => {
+	reset();
+	handler = async (request) => {
+		if (request.op === "sessions.adopt")
+			return { data: { aside_id: request.asideId, status: "queued" } };
+		if (request.op === "sessions.aside.get")
+			return {
+				data: {
+					aside_id: request.asideId,
+					turns: [{ id: "m-user" }, { id: "m-assistant" }],
+					complete: true,
+					adoptable: true,
+				},
+			};
+		return {
+			data: { aside_id: request.requestId, text: "one", off_record: true },
+		};
+	};
+	await askAside(SESSION, "a");
+	await adoptAside(SESSION);
+	await new Promise((resolve) => setImmediate(resolve));
+	const attached = useAsideStore.getState().attached[SESSION];
+	assert.notEqual(attached.queued, undefined);
+	assert.equal(
+		asideAskBlockedReason(useAsideStore.getState(), SESSION),
+		ASIDE_ASK_QUEUED,
+	);
+	const panel = read(
+		"src/renderer/src/features/chat/components/aside-panel.tsx",
+	);
+	assert.match(
+		panel,
+		/!queued && asideAdoptReady\(stream, sessionStreaming, adoptQueueSupported\)/,
+	);
+	useAsideStore.getState().detachAside(SESSION);
 });
 
 test("the owner's typed adopt refusal is stated in the app's own sentence", async () => {
@@ -1227,39 +1365,48 @@ test("the owner's typed adopt refusal is stated in the app's own sentence", asyn
 		);
 	assert.equal(
 		asideAdoptFailure(refused("session_closed")),
-		ASIDE_ADOPT_REFUSED_SENTENCES.session_closed,
+		"The aside was not added: this conversation has closed, so there is nothing to add it to.",
 	);
+	// D10 / R-U2: the state that produces it has no running turn, so the sentence
+	// names the act that clears it and never says to wait for one.
 	assert.equal(
 		asideAdoptFailure(refused("open_tool_batch")),
-		ASIDE_ADOPT_REFUSED_SENTENCES.open_tool_batch,
+		"The conversation stopped in the middle of a tool call, so the aside was not added. Send a message to continue the conversation, then add the aside.",
 	);
-	assert.match(
-		ASIDE_ADOPT_REFUSED_SENTENCES.session_closed,
-		/^The aside was not added: /,
+	// D9: an owner older than the queue refused a mid-turn adopt.
+	assert.equal(
+		asideAdoptFailure(refused("turn_running")),
+		"This conversation is busy, and the version it's running can't queue an aside. Add it when the reply finishes.",
 	);
-	assert.match(
-		ASIDE_ADOPT_REFUSED_SENTENCES.open_tool_batch,
-		/^The aside was not added: /,
-	);
+	for (const sentence of Object.values(ASIDE_ADOPT_REFUSED_SENTENCES))
+		assert.doesNotMatch(sentence, /when the turn finishes/);
 	// A reason this build does not know falls back to the owner's own sentence.
 	assert.equal(
 		asideAdoptFailure(refused("later_reason")),
 		"owner prose that is not shown",
 	);
 
-	reset();
-	handler = async (request) =>
-		request.op === "sessions.adopt"
-			? Promise.reject(refused("open_tool_batch"))
-			: {
-					data: { aside_id: request.requestId, text: "one", off_record: true },
-				};
-	await askAside(SESSION, "a");
-	await assert.rejects(() => adoptAside(SESSION));
-	const attached = useAsideStore.getState().attached[SESSION];
-	assert.equal(attached.notice, ASIDE_ADOPT_REFUSED_SENTENCES.open_tool_batch);
-	// A refusal is not a queue: the panel stays live for another press.
-	assert.equal(attached.queued, undefined);
+	for (const reason of ["open_tool_batch", "turn_running"]) {
+		reset();
+		handler = async (request) =>
+			request.op === "sessions.adopt"
+				? Promise.reject(refused(reason))
+				: {
+						data: {
+							aside_id: request.requestId,
+							text: "one",
+							off_record: true,
+						},
+					};
+		await askAside(SESSION, "a");
+		await assert.rejects(() => adoptAside(SESSION));
+		const attached = useAsideStore.getState().attached[SESSION];
+		assert.equal(attached.notice, ASIDE_ADOPT_REFUSED_SENTENCES[reason]);
+		// A refusal is not a queue: the control is live for another press.
+		assert.equal(attached.queued, undefined);
+		const stream = useAsideStore.getState().streams[attached.turns[0].asideId];
+		assert.equal(asideAdoptReady(stream, true, true), true);
+	}
 });
 
 /* --------------------------------------------------------- the composer's half */

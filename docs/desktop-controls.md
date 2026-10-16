@@ -225,13 +225,19 @@ The allowlist additionally provides:
   after the open tool batch has closed, and emits a `history_delta` carrying it.
   The panel then stays up, read-only, with "Queued — this aside joins the
   conversation when the current turn finishes.", and detaches when the pair's
-  rows are in the transcript, or when the turn ends (one re-read, one retry,
-  then detach). A backend without the key keeps the old rule (idle sessions
+  rows are in the transcript. If the turn ends without them, the panel waits for
+  the delta, re-reads the session once, and then - rather than detach as if the
+  aside were added - leaves the queued state with "The aside was not added to
+  the conversation. Add it again to try once more." and a live control (a
+  re-press is safe: the owner skips a pair it already saved). A backend without the key keeps the old rule (idle sessions
   only), because it writes the pair immediately and a write into a live tool
   batch is a request no provider accepts. An answer with no `status` reads as
   `"adopted"`. An adopt that cannot be deferred is refused with
   `409 {"detail": {"code": "aside_adopt_refused", "reason": "session_closed" |
-  "open_tool_batch"}}`, which the panel states in its own sentence.
+  "open_tool_batch" | "turn_running"}}`, which the panel states in its own
+  sentence (`turn_running` is an owner older than the queue refusing a
+  mid-turn adopt). The owner's stranded-adopt `notice{kind:"error"}` at dispose
+  paints as an error notice row in the transcript.
 - `mcp.list/control`: effective source ownership, array-valued command args, only
   secret references in env/headers, connect/disconnect/reload, OAuth probe,
   login/logout/reauth and operation status/cancel. Canonical grants remain owner-side.
