@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * Signing in to one integration, from Settings.
  *
@@ -65,37 +67,54 @@ export function signInProgress(
 	if (!operation || operation.status === "running") {
 		if (operation?.browser_opened === true)
 			return {
-				message: `Your browser opened. Approve access to ${name} there, then come back here.`,
+				message: t(
+					"ui.settings.integrations.integration_sign_in_dialog.your_browser_opened_approve_access_to_name_there_then_come_back_h",
+					{ name: String(name) },
+				),
 				tone: "progress",
 				link: operation.authorization_url ?? null,
 			};
 		if (operation?.browser_opened === false)
 			return {
 				message: operation.authorization_url
-					? "Your browser didn't open. Open this link to approve access:"
-					: "Your browser didn't open, and no link was provided. Cancel and try again.",
+					? t(
+							"ui.settings.integrations.integration_sign_in_dialog.your_browser_didn_t_open_open_this_link_to_approve_access",
+						)
+					: t(
+							"ui.settings.integrations.integration_sign_in_dialog.your_browser_didn_t_open_and_no_link_was_provided_cancel_and_try_",
+						),
 				tone: "progress",
 				link: operation.authorization_url ?? null,
 			};
 		return {
-			message: `Waiting for you to approve access to ${name}…`,
+			message: t(
+				"ui.settings.integrations.integration_sign_in_dialog.waiting_for_you_to_approve_access_to_name",
+				{ name: String(name) },
+			),
 			tone: "progress",
 			link: operation?.authorization_url ?? null,
 		};
 	}
 	if (operation.status === "complete")
 		return {
-			message: `Signed in to ${name}. Agents can use it now.`,
+			message: t(
+				"ui.settings.integrations.integration_sign_in_dialog.signed_in_to_name_agents_can_use_it_now",
+				{ name: String(name) },
+			),
 			tone: "success",
 			link: null,
 		};
 	if (operation.status === "cancelled")
 		return {
-			message: "Sign-in cancelled.",
+			message: t(
+				"ui.settings.integrations.integration_sign_in_dialog.sign_in_cancelled",
+			),
 			tone: "failure",
 			link: null,
 			reason: null,
-			nextStep: "Press Try again when you are ready.",
+			nextStep: t(
+				"ui.settings.integrations.integration_sign_in_dialog.press_try_again_when_you_are_ready",
+			),
 		};
 	/*
 	 * WHAT HAPPENED, THEN THE SERVER'S OWN WORDS, THEN WHAT TO DO (D6). One
@@ -106,14 +125,18 @@ export function signInProgress(
 	 * `ink-muted`, and a next step that is actually about this failure.
 	 */
 	return {
-		message: "Sign-in didn't finish.",
+		message: t(
+			"ui.settings.integrations.integration_sign_in_dialog.sign_in_didn_t_finish",
+		),
 		tone: "failure",
 		link: null,
 		// The absent-reason case still says so rather than leaving the reader to
 		// wonder whether the dialog lost it (N4).
 		reason:
 			publicSignInReason(operation.message, keyRoute) ??
-			"The server didn't say why.",
+			t(
+				"ui.settings.integrations.integration_sign_in_dialog.the_server_didn_t_say_why",
+			),
 		nextStep: signInNextStep(operation.message ?? null, keyRoute),
 	};
 }
@@ -142,15 +165,27 @@ export function signInNextStep(
 	 */
 	if (text.includes("redirect"))
 		return keyRoute
-			? "This server may not accept sign-ins from Local Operator. Check the server's settings, or add a key instead."
-			: "This server may not accept sign-ins from Local Operator. Check the server's settings, then try again.";
+			? t(
+					"ui.settings.integrations.integration_sign_in_dialog.this_server_may_not_accept_sign_ins_from_local_operator_check_the",
+				)
+			: t(
+					"ui.settings.integrations.integration_sign_in_dialog.this_server_may_not_accept_sign_ins_from_local_operator_check_the_2",
+				);
 	if (text.includes("no oauth") || text.includes("authorization server"))
 		return keyRoute
-			? "This server doesn't publish a browser sign-in. Add its key instead."
-			: "This server doesn't publish a browser sign-in. Check the server's settings, then try again.";
+			? t(
+					"ui.settings.integrations.integration_sign_in_dialog.this_server_doesn_t_publish_a_browser_sign_in_add_its_key_instead",
+				)
+			: t(
+					"ui.settings.integrations.integration_sign_in_dialog.this_server_doesn_t_publish_a_browser_sign_in_check_the_server_s_",
+				);
 	if (text.includes("network") || text.includes("connect"))
-		return "Check the server's URL and your network, then try again.";
-	return "Check the server's settings, then try again.";
+		return t(
+			"ui.settings.integrations.integration_sign_in_dialog.check_the_server_s_url_and_your_network_then_try_again",
+		);
+	return t(
+		"ui.settings.integrations.integration_sign_in_dialog.check_the_server_s_settings_then_try_again",
+	);
 }
 
 /**
@@ -206,6 +241,7 @@ export const IntegrationSignInDialog: FC<IntegrationSignInDialogProps> = ({
 	onOpenLink,
 	onClose,
 }) => {
+	useI18nLocale();
 	const operation = phase.kind === "running" ? phase.operation : null;
 	const progress =
 		phase.kind === "running" ? signInProgress(name, operation, keyRoute) : null;
@@ -254,7 +290,10 @@ export const IntegrationSignInDialog: FC<IntegrationSignInDialogProps> = ({
 			 * eye was on it. `w-full` makes every phase hold the same 448 px.
 			 */
 			fullWidth
-			title={`Sign in to ${name}`}
+			title={t(
+				"ui.settings.integrations.integration_sign_in_dialog.sign_in_to_name",
+				{ name: String(name) },
+			)}
 			/*
 			 * Initial focus belongs on the control the dialog opens FOR, not on
 			 * Close (D3): the ready state exists to be continued.
@@ -272,19 +311,27 @@ export const IntegrationSignInDialog: FC<IntegrationSignInDialogProps> = ({
 							ref={leadRef}
 							onClick={() => onCancel(operation.id)}
 						>
-							Cancel sign-in
+							{t(
+								"ui.settings.integrations.integration_sign_in_dialog.cancel_sign_in",
+							)}
 						</SecondaryButton>
 					) : (
 						<SecondaryButton
 							ref={phase.kind === "ready" ? undefined : leadRef}
 							onClick={close}
 						>
-							{progress?.tone === "success" ? "Done" : "Close"}
+							{progress?.tone === "success"
+								? t("ui.settings.integrations.integration_sign_in_dialog.done")
+								: t(
+										"ui.settings.integrations.integration_sign_in_dialog.close",
+									)}
 						</SecondaryButton>
 					)}
 					{phase.kind === "ready" ? (
 						<PrimaryButton ref={leadRef} onClick={onStart}>
-							Continue in browser
+							{t(
+								"ui.settings.integrations.integration_sign_in_dialog.continue_in_browser",
+							)}
 						</PrimaryButton>
 					) : null}
 					{phase.kind === "refused" || progress?.tone === "failure" ? (
@@ -292,7 +339,9 @@ export const IntegrationSignInDialog: FC<IntegrationSignInDialogProps> = ({
 							ref={progress?.tone === "failure" ? leadRef : undefined}
 							onClick={onStart}
 						>
-							Try again
+							{t(
+								"ui.settings.integrations.integration_sign_in_dialog.try_again",
+							)}
 						</PrimaryButton>
 					) : null}
 				</>
@@ -315,17 +364,18 @@ export const IntegrationSignInDialog: FC<IntegrationSignInDialogProps> = ({
 			>
 				{phase.kind === "ready" ? (
 					<p className="-mx-1.5">
-						Local Operator opens your browser so you can approve access to{" "}
-						{name}.
-						{action === "reauth"
-							? " This replaces the sign-in it has now."
-							: ""}
+						{t(
+							"ui.settings.integrations.integration_sign_in_dialog.browser_approval_notice",
+							{ name, replaces: action === "reauth" ? "yes" : "no" },
+						)}
 					</p>
 				) : null}
 				{phase.kind === "starting" ? (
 					<p className="-mx-1.5 flex items-center gap-2">
 						<Spinner size="xs" />
-						Starting sign-in…
+						{t(
+							"ui.settings.integrations.integration_sign_in_dialog.starting_sign_in",
+						)}
 					</p>
 				) : null}
 				{progress ? (
@@ -392,12 +442,22 @@ export const IntegrationSignInDialog: FC<IntegrationSignInDialogProps> = ({
 							<Button
 								variant="ghost"
 								size="icon-sm"
-								aria-label="Copy the sign-in link"
-								title="Copy the sign-in link"
+								aria-label={t(
+									"ui.settings.integrations.integration_sign_in_dialog.copy_the_sign_in_link",
+								)}
+								title={t(
+									"ui.settings.integrations.integration_sign_in_dialog.copy_the_sign_in_link",
+								)}
 								onClick={() => {
 									void navigator.clipboard
 										.writeText(progress.link ?? "")
-										.then(() => showInfoToast("Sign-in link copied."))
+										.then(() =>
+											showInfoToast(
+												t(
+													"ui.settings.integrations.integration_sign_in_dialog.sign_in_link_copied",
+												),
+											),
+										)
 										.catch(() => undefined);
 								}}
 							>
@@ -409,7 +469,9 @@ export const IntegrationSignInDialog: FC<IntegrationSignInDialogProps> = ({
 							size="sm"
 							onClick={() => onOpenLink(progress.link ?? "")}
 						>
-							Open the sign-in page
+							{t(
+								"ui.settings.integrations.integration_sign_in_dialog.open_the_sign_in_page",
+							)}
 						</Button>
 					</div>
 				) : null}

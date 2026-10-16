@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * The draft model behind one settings row: what a draft IS, whether it differs
  * from the server, and what request it becomes.
@@ -117,7 +118,12 @@ export function editOutcome(
 			}
 			const parsed = Number.parseInt(draft.value, 10);
 			if (Number.isNaN(parsed)) {
-				return { ok: false, error: "Enter a whole number." };
+				return {
+					ok: false,
+					error: t(
+						"ui.settings.configuration.backend_settings_drafts.enter_a_whole_number",
+					),
+				};
 			}
 			value = parsed;
 			break;
@@ -125,7 +131,12 @@ export function editOutcome(
 		case "float": {
 			const parsed = Number.parseFloat(draft.value);
 			if (!Number.isFinite(parsed)) {
-				return { ok: false, error: "Enter a finite number." };
+				return {
+					ok: false,
+					error: t(
+						"ui.settings.configuration.backend_settings_drafts.enter_a_finite_number",
+					),
+				};
 			}
 			value = parsed;
 			break;
@@ -147,7 +158,12 @@ export function editOutcome(
 			break;
 		case "cascade": {
 			if (!draft.cascadeBase) {
-				return { ok: false, error: "Nothing has been edited yet." };
+				return {
+					ok: false,
+					error: t(
+						"ui.settings.configuration.backend_settings_drafts.nothing_has_been_edited_yet",
+					),
+				};
 			}
 			const chains: Record<string, string[]> = {};
 			for (const [key, entry] of Object.entries(draft.cascadeBase)) {
