@@ -2314,7 +2314,7 @@ export const GoalCapabilityOff: Story = {
  *
  *   waiting    one open ask            -> `1 question waiting`  (ATTENTION)
  *   settled    one answered ask        -> `All asks settled`    (quiet)
- *   moved-on   one timed-out ask       -> `1 question moved on` (quiet)
+ *   moved-on   one timed-out ask       -> `1 question timed out` (quiet)
  *   multiple   two waiting asks        -> `2 questions waiting` (ATTENTION)
  *   mixed      one waiting + one moved -> `1 question waiting` visible, the split
  *                                         in the announced name alone
@@ -2333,8 +2333,8 @@ export const GoalCapabilityOff: Story = {
  *   ask; it never stands for anything else in this row.
  * - **Expanded, the panel carries the question as asked and the answer as
  *   given** - the pair that makes `expanded-settled` worth a frame beside
- *   `expanded-moved-on`, whose row says "Timed out - the agent moved on; you can
- *   still answer" without pretending nothing happened.
+ *   `expanded-moved-on`, whose collapsed `Timed out` row opens onto "Timed out -
+ *   the agent goes ahead without your answer", read-only.
  *
  * THE STORIES DRIVE THE FLAG FOR REAL (UX round 1, U2). Every band owns the ask
  * lane's ONE flag and hands the same state to both halves - the row item's
@@ -2447,7 +2447,7 @@ const ASK_ANSWERED = askOf({
 });
 
 /**
- * The deadline passed and the agent moved on; a late answer still reaches it.
+ * The deadline passed and the agent went ahead without the answer (lapsed, D10).
  *
  * Its window is the factory's hour measured from an hour BEFORE the pinned clock, so
  * the ask is twelve minutes past its deadline and internally consistent (see
@@ -2733,7 +2733,7 @@ export const AskMovedOn: Story = {
 	render: () => (
 		<AskBand
 			width={569}
-			label="A moved-on ask: `1 question moved on` — quiet, because the agent is no longer waiting on it"
+			label="A timed-out ask: `1 question timed out` — quiet, because nobody can answer it any more"
 			asks={[ASK_MOVED_ON]}
 		/>
 	),
@@ -2751,18 +2751,18 @@ export const AskMultiple: Story = {
 };
 
 /**
- * A MIXED queue: one still waiting, one the agent moved on from.
+ * A MIXED queue: one still waiting, one timed out.
  *
  * The visible clause says only the waiting half (a chip is a register, not a
  * paragraph) and the announced name carries the split - open the tooltip or read
- * `aria-label` to see `1 question waiting · 1 moved on`. This is the state where
+ * `aria-label` to see `1 question waiting · 1 timed out`. This is the state where
  * the old strip could say nothing at all but `2 questions waiting`.
  */
 export const AskMixed: Story = {
 	render: () => (
 		<AskBand
 			width={569}
-			label="One ask waiting, one the agent moved on from"
+			label="One ask waiting, one timed out"
 			asks={[ASK_OPEN, ASK_MOVED_ON]}
 		/>
 	),
@@ -2845,14 +2845,16 @@ export const AskNeighboursNarrow: Story = {
 };
 
 /**
- * The LONGEST clause at the narrow band (`1 question moved on`, 148.39px against
- * the waiting clause's 133.47px): the one place a width defect could show.
+ * The LONGEST clause at the narrow band: `1 question timed out`, measured at
+ * 146.95x24px at the 393px band (headless Chrome over this story, #1116 round 2),
+ * one line, against the waiting clause's 133.47px recorded earlier. It replaces the
+ * 148.39px of the former `1 question moved on`. The place a width defect would show.
  */
 export const AskNarrowLongest: Story = {
 	render: () => (
 		<AskBand
 			width={393}
-			label="The longest clause at 393px: `1 question moved on` wraps as a unit rather than truncating"
+			label="The longest clause at 393px: `1 question timed out` wraps as a unit rather than truncating"
 			asks={[ASK_MOVED_ON]}
 			goal="Reconcile the March invoices"
 			runDetails={ASK_NEIGHBOURS_DETAILS}
@@ -2872,12 +2874,15 @@ export const AskExpandedSettled: Story = {
 	),
 };
 
-/** Expanded over a moved-on ask: still answerable, and it says so. */
+/**
+ * Expanded over a timed-out ask: collapsed behind its `Timed out` badge, read-only
+ * (D11).
+ */
 export const AskExpandedMovedOn: Story = {
 	render: () => (
 		<AskBand
 			width={569}
-			label="Moved on and expanded: `Timed out - the agent moved on`, and the answer controls stay live"
+			label="Timed out and expanded: the item stays, and the panel files the ask under a collapsed `Timed out` badge"
 			asks={[ASK_MOVED_ON]}
 			defaultOpen
 		/>

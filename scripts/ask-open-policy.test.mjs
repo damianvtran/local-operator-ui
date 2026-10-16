@@ -223,17 +223,58 @@ test("state 2 - pending on open: opens, once, and then lets go", () => {
 	}
 });
 
-test("state 2 - an ask the agent has stopped waiting for is still pending", () => {
+test("D12 - a LAPSED-only queue never opens the drawer: nothing is pending", () => {
 	/*
-	 * `timed_out` is OUTSTANDING (the fold keeps it answerable: a late answer still
-	 * reaches the agent) and the header badge counts it, so a conversation whose only
-	 * ask has moved on is not a conversation with nothing to answer.
+	 * `timed_out` stays in the wire's outstanding TALLY (`asks_open` counts it), but a
+	 * lapsed ask is read-only on every surface (D10) - there is no control for an open
+	 * to put in front of the user, so a conversation whose only ask has lapsed is a
+	 * settled decision, not a wait for rows (`tally-only`) and not an open.
 	 */
 	const { view } = pane();
-	assert.equal(
-		view.observe(frame(withRows([ask("timed_out")]))).verdict.action,
-		"open",
+	const first = view.observe(frame(withRows([ask("timed_out")])));
+	assert.deepEqual(
+		{
+			action: first.verdict.action,
+			reason: first.verdict.reason,
+			settled: first.verdict.settled,
+		},
+		{ action: "leave", reason: "nothing-pending", settled: true },
 	);
+});
+
+test("D12 - a tally ABOVE the lapsed rows it names still waits for its rows", () => {
+	/* One lapsed row named, a tally of three: two outstanding asks no row shows yet. */
+	const { view } = pane();
+	const verdict = view.observe(frame(prefixOf([ask("timed_out")], 3))).verdict;
+	assert.deepEqual(
+		{
+			action: verdict.action,
+			reason: verdict.reason,
+			settled: verdict.settled,
+		},
+		{ action: "leave", reason: "tally-only", settled: false },
+	);
+});
+
+test("D12 - an open ask beside a lapsed one still opens, on the open one alone", () => {
+	const { view } = pane();
+	const rows = [ask("timed_out"), ask("open")];
+	assert.equal(view.observe(frame(withRows(rows))).verdict.action, "open");
+	const facts = askOpenFacts(askQueueView(withRows(rows)), T0);
+	assert.equal(facts.pendingRows, 1, "the lapsed row is not pending");
+	assert.equal(facts.lapsedRows, 1);
+});
+
+test("D12 - closing the drawer over a lapsed-only queue is not a dismissal", () => {
+	const { view, dismissals } = pane();
+	const rows = [ask("timed_out")];
+	/* The user opened it by hand (the chip), then closed it. */
+	view.observe(frame(withRows(rows), opened));
+	assert.equal(
+		view.observe(frame(withRows(rows))).closeWatch,
+		"nothing-to-show",
+	);
+	assert.equal(dismissals.size, 0);
 });
 
 test("state 3 - all addressed on open: closed, and settling never re-opens", () => {
@@ -300,7 +341,10 @@ test("state 4 - dismissed while pending: stays closed, including after switching
 		frame(withRows(rows)),
 		frame(withRows(rows)),
 		frame(withRows([ask("open"), ...rows])),
-		frame(withRows([{ ...rows[0], status: "timed_out" }])),
+		/*
+		 * (No `timed_out` frame here: the waved-off ask LAPSING ends the record, because a
+		 * lapsed ask is nothing to wave off (D12) - see "a dismissal over open + lapsed".)
+		 */
 		/* Others settle and arrive around it; the waved-off ask is still outstanding. */
 		frame(withRows([ask("answered"), ask("open"), ...rows])),
 	]) {
@@ -365,6 +409,40 @@ test("E1 - a partial resolve holds: the dismissal stands while ANY waved-off ask
 			{ action: "leave", reason: "dismissed" },
 		);
 	}
+});
+
+test("a dismissal over open + lapsed asks does not mute a later new open ask", () => {
+	/*
+	 * The record holds while any waved-off ask is still OUTSTANDING. A lapsed ask stays
+	 * in the wire's tally for up to `LATE_WINDOW_S` (7 d), so recording its id kept the
+	 * conversation muted for a week after the open ask beside it was answered - over
+	 * an ask nobody can act on. The reading names only answerable ids; `listComplete`
+	 * still compares the tally against EVERY outstanding row, so a dropped row is still
+	 * detected.
+	 */
+	const dismissals = createAskDismissals();
+	const a = ask("open");
+	const b = ask("timed_out");
+	const reading = askOpenFacts(askQueueView(withRows([a, b])), T0);
+	assert.deepEqual(reading.outstandingIds, [a.ask_id]);
+	assert.equal(reading.listComplete, true);
+	const watching = dismissOver(dismissals, withRows([a, b]));
+	watching.observe(frame(withRows([answered(a), b])));
+	assert.equal(
+		dismissals.has("c-a"),
+		false,
+		"only the lapsed ask remains, and it was never something to wave off",
+	);
+	const fresh = returnTo(dismissals, withRows([answered(a), b, ask("open")]));
+	assert.deepEqual(
+		{ action: fresh.action, reason: fresh.reason },
+		{ action: "open", reason: "pending-on-open" },
+	);
+	/* A frame whose tally is above every outstanding row it names is still incomplete. */
+	assert.equal(
+		askOpenFacts(askQueueView(prefixOf([a, b], 3)), T0).listComplete,
+		false,
+	);
 });
 
 test("E2 - resolve both, leave and return, and a NEW batch opens a fresh view", () => {
@@ -618,6 +696,23 @@ test("a close over nothing refused nothing: only a close over asks, named or not
 	/* A draft has no conversation to hold a record against. */
 	dismissals.record("", reading([ask("open")]));
 	assert.equal(dismissals.size, 1);
+});
+
+test("D12 - a waved-off open ask that then TIMES OUT clears the record", () => {
+	/*
+	 * The transition the "state 4" frame was dropped for (agent review round 1 on
+	 * #1116, MINOR-2): the record names the open ask; when that ask lapses it is no
+	 * longer something a close waved off, so the conversation is un-muted.
+	 */
+	const dismissals = createAskDismissals();
+	const a = ask("open");
+	dismissals.record("c-a", reading([a]));
+	assert.equal(dismissals.has("c-a"), true);
+	dismissals.reconcile(
+		"c-a",
+		askOpenFacts(askQueueView(withRows([{ ...a, status: "timed_out" }])), T0),
+	);
+	assert.equal(dismissals.has("c-a"), false);
 });
 
 test("U3 - a second close over a different set UNIONS into the record, it never replaces it", () => {
@@ -1032,6 +1127,7 @@ test("the reason a verdict names is the first thing that kept the drawer shut", 
 		resolved: true,
 		pendingRows: 2,
 		arrivedRows: 0,
+		lapsedRows: 0,
 		outstanding: 2,
 		viewAgeMs: 1_000,
 		dismissed: { has: () => false },
@@ -1046,6 +1142,16 @@ test("the reason a verdict names is the first thing that kept the drawer shut", 
 	assert.equal(reason({ resolved: false }), "unresolved");
 	assert.equal(reason({ pendingRows: 0, outstanding: 0 }), "nothing-pending");
 	assert.equal(reason({ pendingRows: 0, outstanding: 3 }), "tally-only");
+	/* A tally made only of the lapsed rows the frame names has nothing to wait
+	 * for (D12). */
+	assert.equal(
+		reason({ pendingRows: 0, lapsedRows: 2, outstanding: 2 }),
+		"nothing-pending",
+	);
+	assert.equal(
+		reason({ pendingRows: 0, lapsedRows: 2, outstanding: 3 }),
+		"tally-only",
+	);
 	assert.equal(
 		reason({ pendingRows: 0, arrivedRows: 2, outstanding: 2 }),
 		"arrived",
@@ -1085,7 +1191,12 @@ test("the reason a verdict names is the first thing that kept the drawer shut", 
 test("the facts are read off the shipped view: published, rows, and the wire's tally", () => {
 	const facts = (frontend, startedAtMs = T0) =>
 		askOpenFacts(askQueueView(frontend), startedAtMs);
-	const none = { pendingRows: 0, arrivedRows: 0, outstanding: 0 };
+	const none = {
+		pendingRows: 0,
+		arrivedRows: 0,
+		lapsedRows: 0,
+		outstanding: 0,
+	};
 	const nothingNamed = { outstandingIds: [], listComplete: false };
 	assert.deepEqual(facts(null), { resolved: false, ...none, ...nothingNamed });
 	assert.deepEqual(facts(unsupported()), {
@@ -1104,6 +1215,7 @@ test("the facts are read off the shipped view: published, rows, and the wire's t
 		resolved: true,
 		pendingRows: 0,
 		arrivedRows: 0,
+		lapsedRows: 0,
 		outstanding: 4,
 		...nothingNamed,
 	});
@@ -1115,13 +1227,14 @@ test("the facts are read off the shipped view: published, rows, and the wire's t
 		{ ...got, outstandingIds: [...got.outstandingIds].sort() },
 		{
 			resolved: true,
-			pendingRows: 2,
+			pendingRows: 1,
 			arrivedRows: 0,
+			lapsedRows: 1,
 			outstanding: 2,
-			outstandingIds: [open.ask_id, movedOn.ask_id].sort(),
+			outstandingIds: [open.ask_id],
 			listComplete: true,
 		},
-		"the outstanding set is open plus timed_out, never the settled row",
+		"the tally is open plus timed_out; only the answerable row is pending or named (D12)",
 	);
 });
 
@@ -1195,11 +1308,11 @@ test("an ask with no usable created_at is read as old, the safe reading of a fac
 	}
 });
 
-test("a timed-out ask that arrived during the view is an arrival too", () => {
+test("a lapsed ask that arrived during the view is neither pending nor an arrival (D12)", () => {
 	const row = arrivedAfter(40_000, "timed_out");
 	assert.equal(
 		pane().view.observe(frame(withRows([row]))).verdict.reason,
-		"arrived",
+		"nothing-pending",
 	);
 });
 

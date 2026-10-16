@@ -235,6 +235,21 @@ const askSplitIsKnowable = (view: AskQueueView): boolean =>
 	 */
 	!view.truncated && view.open <= view.waiting + view.movedOn;
 
+/**
+ * The number an attention BADGE draws for one conversation's queue: the asks a
+ * control can still act on.
+ *
+ * With a complete list (`askSplitIsKnowable`) that is the answerable rows only, so a
+ * lapsed ask - read-only on every surface (D10) - pulls no attention and the rail
+ * badge agrees with the sidebar's mark (`fleetAsksBySession`). With a truncated or
+ * lagging list only the tally is known, and it counts lapsed asks too; the badge keeps
+ * it, because over-counting a lapsed ask is the safe side of hiding a real open one.
+ */
+export const askAttentionCount = (view: AskQueueView): number =>
+	askSplitIsKnowable(view)
+		? view.rows.filter((row) => row.canAnswer).length
+		: view.open;
+
 export const askChipClause = (view: AskQueueView, nowMs: number): string => {
 	const count = askChipCountClause(view);
 	const deadline = askChipDeadline(view, nowMs);
@@ -263,10 +278,6 @@ export const askChipCountClause = (view: AskQueueView): string => {
 		return view.waiting === 1
 			? "1 question waiting"
 			: `${view.waiting} questions waiting`;
-	if (view.movedOn > 0)
-		return view.movedOn === 1
-			? "1 question moved on"
-			: `${view.movedOn} questions moved on`;
 	/*
 	 * ANSWERS STILL TO DELIVER COME BEFORE `All asks settled` (design §10, #1936).
 	 *
@@ -299,6 +310,16 @@ export const askChipCountClause = (view: AskQueueView): string => {
 		return view.delivering === 1
 			? "1 answer not yet delivered — you can still change it"
 			: `${view.delivering} answers not yet delivered — you can still change them`;
+	/*
+	 * TIMED OUT, in the badge's own word (design round 1 on #1116, D2): the quiet
+	 * register, and AFTER the delivering clause because nothing on a timed-out ask can
+	 * be acted on (D10) - the same "actionable first" order as above. "Moved on" was a
+	 * third name for the state the row's badge calls `Timed out`.
+	 */
+	if (view.movedOn > 0)
+		return view.movedOn === 1
+			? "1 question timed out"
+			: `${view.movedOn} questions timed out`;
 	return "All asks settled";
 };
 
@@ -377,20 +398,12 @@ export const ASK_DRAWER_UNAVAILABLE_LINE =
 /**
  * The DRAWER's count clause: what the surface shows, not only what the agent waits on.
  *
- * WHY THE DRAWER DIFFERS FROM THE CHIP (UX round 1, U5). `askChipCountClause`
- * counts the WAITING rows, which is the right register for a chip: it is a
- * standing tally in a row of tallies, and a moved-on row is not something the chip
- * asks you to look at. As the DRAWER's own title it under-described its own
- * contents - the drawer draws a card for EVERY outstanding ask, including a
- * moved-on one that is still answerable, so `1 question waiting` sat over two
- * answerable cards, and the row under it read `Timed out - the agent moved on; you
- * can still answer`.
- *
- * So a mixed queue spells BOTH halves here, with the drawer's own words, and every
- * other state falls through to the chip's clause unchanged (`All asks settled`, the
- * outstanding tally on a truncated frame, `N questions moved on`). The two surfaces
- * cannot disagree about a single-state queue, which is the shared-clause rule the
- * functions below still keep.
+ * WHERE THE DRAWER DIFFERS FROM THE CHIP. It used to spell a mixed queue as
+ * `1 waiting, 1 moved on` (UX round 1, U5), when a timed-out ask was a pending card.
+ * Since D11 that ask is a collapsed settled row, and the title counts only what the
+ * Pending half holds (design round 1 on #1116, D2): a timed-out-only drawer reads
+ * `All asks settled`, where the chip still names the `N questions timed out` it opens
+ * onto. Every other state falls through to the chip's clause unchanged.
  *
  * AND ALL THREE UNRESOLVED STATES ARE TOLD APART HERE (remediation round 1: D1, D5,
  * R1). `unread` is the frame nobody has read; `published: false` on a RESOLVED frame
@@ -403,8 +416,13 @@ export const askDrawerCountClause = (view: AskQueueView): string => {
 	/* No clause at all while unresolved: the body names that fact once (D5). */
 	if (view.unread) return "";
 	if (!view.published) return ASK_DRAWER_UNAVAILABLE_CLAUSE;
-	if (askSplitIsKnowable(view) && view.waiting > 0 && view.movedOn > 0) {
-		return `${view.waiting} waiting, ${view.movedOn} moved on`;
+	/*
+	 * A timed-out ask is a settled ROW in this drawer (D11), and settled rows are not in
+	 * the title (design round 1 on #1116, D2), so a queue with nothing waiting or being
+	 * delivered is a settled drawer, as the TUI's is.
+	 */
+	if (askSplitIsKnowable(view) && view.waiting === 0 && view.delivering === 0) {
+		return "All asks settled";
 	}
 	return askChipCountClause(view);
 };
@@ -455,11 +473,12 @@ export const askScopeLine = (scope: AskScope, view: AskQueueView): string => {
  * one closes the pane). The subject is what keeps the two controls from ever being one
  * string, and the scope glyph carries the same distinction visually.
  *
- * "WAITING OR MOVED ON" RATHER THAN "WAITING" (agent review round 1, M1 = UX round 1,
- * U1). The number this sentence qualifies is the OUTSTANDING set, which folds a moved-on
- * ask in, so `waiting` - reserved for the subset that excludes it - would be the wrong
- * word for it. See the rail item's `askCount` (`panel-rail.tsx`) for the decision to
- * count outstanding.
+ * "WAITING" (agent review round 1 on #1116, MAJOR-1). The number this sentence
+ * qualifies is the badge's ANSWERABLE count (`askAttentionCount`,
+ * `fleetAsksOutstanding`), which no longer folds a timed-out ask in, so the subset's
+ * own word is the right one again. (It read `waiting or moved on` while the count was
+ * the outstanding set.) A truncated frame's badge falls back to the tally; see
+ * `askAttentionCount`.
  */
 export const askRailToggleLabel = (args: {
 	open: boolean;
@@ -480,7 +499,7 @@ export const askRailToggleLabel = (args: {
 		args.cap === null || args.cap === undefined ? "" : ` (${args.cap})`;
 	const subject = askScopeSubject(args.scope);
 	return args.count > 0
-		? `${verb} asks${chord} \u2014 ${subject}, ${args.count} waiting or moved on`
+		? `${verb} asks${chord} \u2014 ${subject}, ${args.count} waiting`
 		: `${verb} asks${chord} \u2014 ${subject}`;
 };
 
@@ -603,13 +622,18 @@ export const askChipDeadlineShort = (
  *
  * The visible chip carries the short waiting clause (a chip is a register, not a
  * paragraph), but the announced name is the one place with room for the split a
- * mixed queue needs - and a screen-reader user is told about the moved-on rows
+ * mixed queue needs - and a screen-reader user is told about the timed-out rows
  * that the chip's short form elides, rather than about a state the screen is not
- * in.
+ * in. That includes a queue led by an undelivered answer (QA round 2 on #1116, Q-2):
+ * the timed-out rows are still on screen beside it, so the name still counts them.
  */
 const askChipFullClause = (view: AskQueueView, nowMs: number): string => {
-	if (askSplitIsKnowable(view) && view.waiting > 0 && view.movedOn > 0) {
-		return `${askChipClause(view, nowMs)} · ${view.movedOn} moved on`;
+	if (
+		askSplitIsKnowable(view) &&
+		(view.waiting > 0 || view.delivering > 0) &&
+		view.movedOn > 0
+	) {
+		return `${askChipClause(view, nowMs)} · ${view.movedOn} timed out`;
 	}
 	return askChipClause(view, nowMs);
 };
@@ -808,11 +832,12 @@ export const legacyAskMirrorSuppressed = (
 /**
  * One ask's presentation, as every surface reads it.
  *
- * `canAnswer`/`canDecline` are the backend's fold read through the two questions
- * a control actually asks: may an answer still be accepted, and is there anything
- * left to decline. A settled ask cannot be declined (`declined` is settled, and
- * `answered` is somebody else's answer), while a timed-out one can be answered
- * (that is the `late` path) and therefore can also be declined.
+ * `canAnswer`/`canDecline` are the two questions a control actually asks: may this
+ * surface take an answer, and is there anything left to decline. Only an `open` ask
+ * says yes to either. A settled ask cannot be declined (`declined` is settled, and
+ * `answered` is somebody else's answer), and a timed-out ask is LAPSED (see
+ * `lapsed`): the backend would still accept a late answer, but no surface offers
+ * one any more (D10 in the lapsed-retention decisions).
  *
  * `late` is TERMINAL, and confusing it with `timed_out` is the one mistake that
  * reads as a live control on a closed question: `late` means "the answer arrived
@@ -831,14 +856,27 @@ export type AskPresentation = {
 	 * surface ("does it tell me the agent is waiting versus has moved on"), and it
 	 * is a COPY distinction rather than a liveness one: `open` above stays the
 	 * BACKEND's outstanding set - `open` OR `timed_out` (`asks/store.py`'s
-	 * `OUTSTANDING_STATUSES`), because a late answer still reaches the agent and
-	 * every surface must keep offering the row. But a timed-out ask has had its
+	 * `OUTSTANDING_STATUSES`), which the wire's tally counts (see `lapsed` for what a
+	 * surface may still do with the row). But a timed-out ask has had its
 	 * deadline pass and the agent has walked past it, so a surface that called
 	 * both "waiting" would be stating a fact the fold contradicts.
 	 */
 	waiting: boolean;
-	/** The deadline passed and the agent moved on; a LATE answer still reaches it. */
+	/** The deadline passed and the agent moved on. */
 	movedOn: boolean;
+	/**
+	 * The ask timed out and is READ-ONLY here: no answer, no decline, never a pending
+	 * card, never a reason to open a surface (D10-D12).
+	 *
+	 * `timed_out` ONLY, never re-derived from `expires_at` on this clock (see the module
+	 * note): the store re-derives a stale `open` to `timed_out` on its own host's clock
+	 * (#2465 D5), so the status is already the whole fact. It stays in `open` above
+	 * because the backend's outstanding set and the wire's `asks_open` still count it -
+	 * the chat path can still deliver a late answer - and a tally read against the rows
+	 * has to keep meaning "outstanding" for the dropped-rows check
+	 * (`askOutstandingReading`). Surfaces read "answerable now" as `canAnswer`.
+	 */
+	lapsed: boolean;
 	canAnswer: boolean;
 	canDecline: boolean;
 	/**
@@ -957,14 +995,15 @@ export const askResponseSummary = (receipt: {
 /**
  * The one-liner for an `ask_timeout` receipt (`harness/rows.ask_timeout_notice`).
  *
- * It names BOTH halves on purpose: "timed out" alone reads as finished, and
- * "you can still answer" alone hides that the agent stopped waiting.
+ * Word for word the backend's sentence, so one event reads one way on every surface.
+ * It used to end "you can still answer"; that stopped being true once a lapsed ask
+ * became read-only on every surface (D10), and the backend changed it in the same set.
  */
 export const askTimeoutSummary = (receipt: {
 	askId: string;
 	waitedS: number;
 }): string =>
-	`Timed out after ${askWaitedText(receipt.waitedS)} — the agent moved on; you can still answer (ask ${receipt.askId})`;
+	`Timed out after ${askWaitedText(receipt.waitedS)} — the agent goes ahead without your answer (ask ${receipt.askId})`;
 
 /**
  * WHAT CLOSES THE CHANGE WINDOW, said where the control that uses it is (design §10,
@@ -1026,19 +1065,21 @@ const OPEN_STATUSES: ReadonlySet<string> = new Set(["open", "timed_out"]);
 export const presentAsk = (ask: PendingAsk): AskPresentation => {
 	const status = isKnownAskStatus(ask.status) ? ask.status : "unknown";
 	const undecided = OPEN_STATUSES.has(status);
+	const lapsed = status === "timed_out";
 	return {
 		ask,
 		status,
 		open: undecided,
 		waiting: status === "open",
-		movedOn: status === "timed_out",
-		// Answerable while undecided - and that INCLUDES a timed-out ask, whose late
-		// answer reaches the model rather than being refused client-side.
-		canAnswer: undecided,
-		// A decline is "no answer, decide yourself". It is only meaningful while
-		// the ask is unsettled, and it is offered on a timed-out ask too: the
-		// alternative to answering late is telling the agent to decide.
-		canDecline: undecided,
+		movedOn: lapsed,
+		lapsed,
+		// Answerable only while the agent is still waiting. A lapsed ask's late answer
+		// would still reach the model through the store, but the rule is one late-answer
+		// rule on every surface: the deadline passed, the agent went ahead (D10).
+		canAnswer: status === "open",
+		// A decline is "no answer, decide yourself", which is what the deadline already
+		// told the agent on a lapsed ask - so it is only offered while open.
+		canDecline: status === "open",
 		/*
 		 * §10's WINDOW, as the wire states it: a recorded answer (`answered` or `late`)
 		 * the fold has not yet called delivered. See `AskPresentation.delivering` for the
@@ -1158,7 +1199,11 @@ export type AskQueueView = {
 	 * being knowable at all.
 	 */
 	soonestExpiryMs: number | null;
-	/** The oldest open ask, or null when nothing is open. */
+	/**
+	 * The oldest ANSWERABLE ask, or null when nothing can be answered. A lapsed ask is
+	 * outstanding but never the head: the composer's secret guard reads `canAnswer` off
+	 * it, and a lapsed head would release that guard over an open secret ask behind it.
+	 */
 	head: AskPresentation | null;
 };
 
@@ -1275,7 +1320,7 @@ export const askQueueView = (
 		truncated: frontend?.asks_truncated === true,
 		urgent: rows.some((row) => row.waiting && row.ask.urgent === true),
 		soonestExpiryMs: deadlines.length > 0 ? Math.min(...deadlines) : null,
-		head: rows.find((row) => row.open) ?? null,
+		head: rows.find((row) => row.canAnswer) ?? null,
 	};
 };
 
@@ -1290,6 +1335,11 @@ export const askQueueView = (
  */
 const compareAsks = (a: AskPresentation, b: AskPresentation): number => {
 	if (a.open !== b.open) return a.open ? -1 : 1;
+	return compareAge(a, b);
+};
+
+/** Oldest first, then by id, so equal timestamps order the same way on every frame. */
+const compareAge = (a: AskPresentation, b: AskPresentation): number => {
 	const at = Number(a.ask.created_at ?? 0);
 	const bt = Number(b.ask.created_at ?? 0);
 	if (at !== bt) return at - bt;
@@ -1302,13 +1352,15 @@ const compareAsks = (a: AskPresentation, b: AskPresentation): number => {
  * Every one of these is a claim the backend CAN substantiate, and the omissions
  * are the contract: none of them says "you were notified", because the backend
  * measures reach (a client is connected, a banner is possible) and never
- * delivery to a person. `timed_out` says both halves - the agent moved on AND the
- * ask is still answerable - because "timed out" alone reads as finished.
+ * delivery to a person. `timed_out` says what happened next - the agent went ahead
+ * without the answer - because "timed out" alone does not say whether anything is
+ * still waiting on the reader. It used to add "you can still answer"; no surface
+ * offers that any more (D10).
  */
 export const ASK_STATUS_COPY: Record<AskStatus | "unknown", string> = {
 	open: "Queued — the agent is continuing",
 	answered: "Answered — delivering",
-	timed_out: "Timed out — the agent moved on; you can still answer",
+	timed_out: "Timed out — the agent goes ahead without your answer",
 	late: "Answered late — the agent was told",
 	declined: "Declined — the agent was told",
 	dismissed: "Dismissed — no reply was sent",
@@ -1342,20 +1394,53 @@ export const ASK_LATE_UNDELIVERED_TEXT = "Answered late — not yet delivered";
  * sentence moves the word with it, and a status whose sentence carries no clause
  * (`unknown`) answers with the whole sentence rather than a guess.
  *
- * WHAT THE SECTION ACTUALLY HOLDS, WHICH IS NOT WHAT D9 ASSUMED (agent review
- * round 1, M1 = UX U1 = design D1). The words that must stay apart IN THE SECTION
- * are the ones the section can hold, and it cannot hold `Timed out`: the backend's
- * outstanding set folds `timed_out` in, so `presentAsk` marks such a row `open` and
- * it is drawn as a pending CARD with live controls - the distinction D9 wanted is
- * kept by the ROW SHAPE there (a card, not a one-line history row) rather than by
- * this word. The pair that has to be told apart by word is the shipped pair: a
- * delivered `Answered` and an `Answered late`, which look identical in a one-line
- * row and are different facts about the agent's day.
+ * WHAT THE SECTION HOLDS. A lapsed ask is collapsed with the settled rows (D11), so
+ * `Timed out` is a word the section now carries, beside `Declined`. The pair that
+ * still has to be told apart by word alone is a delivered `Answered` and an
+ * `Answered late`, which look identical in a one-line row and are different facts
+ * about the agent's day.
  */
 export const askStatusWord = (status: AskStatus | "unknown"): string => {
 	const copy = ASK_STATUS_COPY[status];
 	const cut = copy.indexOf(" — ");
 	return cut === -1 ? copy : copy.slice(0, cut);
+};
+
+/**
+ * The ask panel's two halves: the cards a control can still act on, and the rows it
+ * collapses to one line each behind their status badge.
+ *
+ * PENDING is `canAnswer || delivering`: an ask the user can answer, or an answer the
+ * agent has not been handed yet, which is still the user's to change (design §10).
+ * Everything else is SETTLED, and that includes a LAPSED ask (D11): it is read-only,
+ * so it renders exactly as a declined one does - collapsed, opened only by the reader.
+ *
+ * `held` is the one exception: the ids this MOUNT has already shown as answerable. A
+ * held ask that lapses stays in the pending half, in its own slot, until the next
+ * mount (UX round 1 on #1116, U1). Filing it under Settled on the frame that lapsed it
+ * slid the next card up into its place, which put that card's one-click, irreversible
+ * Decline exactly under the reader's pointer. Only a LAPSED row is held: a row that
+ * settles another way has nothing left to read in place and moves as it always did.
+ *
+ * NEWEST FIRST within the settled half, the history's own order, sorted here rather
+ * than by reversing `rows`: the queue sorts every outstanding row (lapsed ones too)
+ * ahead of the settled ones, so a reversal would file every lapsed row below the
+ * whole history regardless of when it was asked.
+ *
+ * Here rather than in the panel so a DOM-free test can pin the partition.
+ */
+export const askPanelHalves = (
+	rows: readonly AskPresentation[],
+	held: ReadonlySet<string> = new Set(),
+): { pending: AskPresentation[]; settled: AskPresentation[] } => {
+	const isPending = (row: AskPresentation) =>
+		row.canAnswer || row.delivering || (row.lapsed && held.has(row.ask.ask_id));
+	return {
+		pending: rows.filter(isPending),
+		settled: rows
+			.filter((row) => !isPending(row))
+			.sort((a, b) => compareAge(b, a)),
+	};
 };
 
 /**

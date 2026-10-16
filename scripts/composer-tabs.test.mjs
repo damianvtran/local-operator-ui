@@ -1253,7 +1253,7 @@ test("the ask item states the queue's own reading, in two registers", () => {
 	const cases = [
 		[[wireAsk("a-1")], "1 question waiting"],
 		[[wireAsk("a-1"), wireAsk("a-2")], "2 questions waiting"],
-		[[wireAsk("a-1", "timed_out")], "1 question moved on"],
+		[[wireAsk("a-1", "timed_out")], "1 question timed out"],
 		/*
 		 * A DELIVERED answered ask is the finished queue; an UNDELIVERED one is §10's
 		 * window - the answer is still the user's to change - so it takes the clause that
