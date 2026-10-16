@@ -54,6 +54,9 @@ export const VoicePhase: FC<{ sessionId: string | undefined }> = ({
 	useI18nLocale();
 	const enabled = useVoiceCapability();
 	const holds = useVoiceStore((s) => s.active?.session_id === sessionId);
+	const approvalPending = useVoiceStore((s) =>
+		sessionId ? Boolean(s.approvalPending[sessionId]) : false,
+	);
 	const phase = useVoiceStore((s) =>
 		s.phaseSessionId === sessionId ? s.phase : "idle",
 	);
@@ -65,14 +68,22 @@ export const VoicePhase: FC<{ sessionId: string | undefined }> = ({
 	 * the composer's tooltip resolves it - never a hard-coded name.
 	 */
 	if (phase === "idle") {
+		/*
+		 * AN APPROVAL ON SCREEN REPLACES THE HOLD HINT (design round 2, D7): holding
+		 * the key would be refused, so the line says what to do instead, in the same
+		 * quiet style - it is guidance, not an alarm; the card itself is the alarm.
+		 */
 		return (
 			<span
 				data-voice-phase="idle"
+				data-voice-hint={approvalPending ? "approval" : "hold"}
 				className="shrink-0 whitespace-nowrap text-meta text-ink-dim"
 			>
-				{t("ui.chat.voice.hold_hint", {
-					key: resolvePushToTalkBinding().label,
-				})}
+				{approvalPending
+					? t("ui.chat.voice.approval_pending")
+					: t("ui.chat.voice.hold_hint", {
+							key: resolvePushToTalkBinding().label,
+						})}
 			</span>
 		);
 	}

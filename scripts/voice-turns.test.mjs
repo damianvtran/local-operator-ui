@@ -413,7 +413,12 @@ async function streamRig(answers) {
 			queueMicrotask(() => {
 				for (const event of next) onEvent(event);
 			});
-			return () => undefined;
+			/*
+			 * Teardown emits an `end`, as the dev transport's dispose does
+			 * (`subscribeDesktopStream`): the watcher must not read its own
+			 * teardown as the bridge closing the stream (N1).
+			 */
+			return () => onEvent({ kind: "end" });
 		},
 		delayMs: (attempt) => attempt * 100,
 		schedule: (run, ms) => {
@@ -423,7 +428,7 @@ async function streamRig(answers) {
 		},
 		cancel: () => undefined,
 	};
-	const dispose = subscribeVoiceStream(
+	const handle = subscribeVoiceStream(
 		"a1a1a1a1a1a1",
 		(input) => inputs.push(input),
 		(reason) => stops.push(reason),
@@ -441,7 +446,8 @@ async function streamRig(answers) {
 		delays,
 		stops,
 		inputs,
-		dispose,
+		dispose: () => handle.dispose(),
+		retry: () => handle.retry(),
 		drain,
 		VOICE_STREAM_MAX_ATTEMPTS,
 	};
@@ -496,6 +502,227 @@ test("U5: a frame resets the failure count, and the retry resumes from the curso
 		epoch: "e1",
 		afterSeq: 7,
 	});
-	assert.equal(rig.inputs.length, 1);
+	assert.equal(rig.inputs.filter((i) => i.kind === "event").length, 1);
+	assert.equal(rig.inputs.at(-1).kind, "stopped", "giving up folds `stopped`");
 	rig.dispose();
+});
+
+test("N1: an unrequested end is a failure: retried on the ladder, then exhausted", async () => {
+	const rig = await streamRig(() => ({ kind: "end" }));
+	await rig.drain();
+	assert.equal(rig.opened.length, rig.VOICE_STREAM_MAX_ATTEMPTS);
+	assert.deepEqual(rig.stops, ["exhausted"]);
+	rig.dispose();
+});
+
+test("N1: the end its own teardown provokes is ignored (no retry, no stop)", async () => {
+	const live = JSON.stringify({
+		type: "event",
+		epoch: "e1",
+		seq: 1,
+		payload: { type: "agent_start" },
+	});
+	const rig = await streamRig(() => ({ kind: "data", data: live }));
+	await rig.drain();
+	rig.dispose();
+	await rig.drain();
+	assert.equal(rig.opened.length, 1, "dispose's own end did not reopen");
+	assert.deepEqual(rig.delays, []);
+	assert.deepEqual(rig.stops, []);
+});
+
+test("N1: retry() after exhausted starts a fresh ladder; it is a no-op while live or gone", async () => {
+	const rig = await streamRig(() => ({ kind: "error", status: 503 }));
+	await rig.drain();
+	assert.deepEqual(rig.stops, ["exhausted"]);
+	const before = rig.opened.length;
+	rig.retry();
+	await rig.drain();
+	assert.equal(
+		rig.opened.length,
+		before + rig.VOICE_STREAM_MAX_ATTEMPTS,
+		"a whole new ladder",
+	);
+	assert.deepEqual(rig.stops, ["exhausted", "exhausted"]);
+	rig.dispose();
+	rig.retry();
+	await rig.drain();
+	assert.equal(
+		rig.opened.length,
+		before + rig.VOICE_STREAM_MAX_ATTEMPTS,
+		"no retry after dispose",
+	);
+
+	const gone = await streamRig(() => ({ kind: "error", status: 404 }));
+	await gone.drain();
+	gone.retry();
+	await gone.drain();
+	assert.equal(gone.opened.length, 1, "a gone session is not retried");
+});
+
+test("N1: every stop folds `stopped`, which clears the pending approval and the streaming flag", async () => {
+	const parked = JSON.stringify({
+		type: "frontend.update",
+		epoch: "e1",
+		seq: 3,
+		payload: {
+			epoch: "e1",
+			sequence: 3,
+			changes: {
+				streaming: true,
+				pending_gate: { request_id: "g1", kind: "approval" },
+			},
+		},
+	});
+	for (const [label, answer, end] of [
+		[
+			"exhausted",
+			(n) =>
+				n === 1
+					? [
+							{ kind: "data", data: parked },
+							{ kind: "error", status: 503 },
+						]
+					: { kind: "error", status: 503 },
+			null,
+		],
+		[
+			"gone",
+			(n) =>
+				n === 1
+					? [
+							{ kind: "data", data: parked },
+							{ kind: "error", status: 404 },
+						]
+					: null,
+			null,
+		],
+		["disposed", () => ({ kind: "data", data: parked }), "dispose"],
+	]) {
+		const rig = await streamRig(answer);
+		await rig.drain();
+		if (end === "dispose") rig.dispose();
+		let state = initialVoiceTurns();
+		for (const input of rig.inputs) state = stepVoiceTurns(state, input).state;
+		assert.equal(rig.inputs.at(-1).kind, "stopped", label);
+		assert.equal(state.pendingApproval, null, `${label}: no stale gate`);
+		assert.equal(state.inFlight, false, `${label}: no stale turn`);
+		rig.dispose();
+	}
+});
+
+/*
+ * Q4, WITH REAL-SHAPED FRAMES. Measured on the backend at 5c3cdc102: the
+ * subscription's `open` and the `snapshot` after it carry the SAME (epoch, seq),
+ * here 292. The snapshot names a card that was parked before the slot arrived.
+ */
+const OPEN_292 = JSON.stringify({
+	session_id: "a1a1a1a1a1a1",
+	epoch: "ep-7",
+	seq: 292,
+	type: "open",
+	payload: { subscription_id: "0123456789abcdef0123456789abcdef", gap: true },
+});
+const SNAPSHOT_292 = JSON.stringify({
+	session_id: "a1a1a1a1a1a1",
+	epoch: "ep-7",
+	seq: 292,
+	type: "snapshot",
+	payload: {
+		frontend: {
+			snapshot: {
+				streaming: true,
+				pending_gate: {
+					request_id: "gate-parked",
+					kind: "approval",
+					title: "Run bash",
+				},
+			},
+		},
+		history: {},
+		cold: false,
+	},
+});
+
+test("Q4: a snapshot sharing the open's seq is folded as state - gate pending, turn streaming, nothing spoken", async () => {
+	const rig = await streamRig(() => [
+		{ kind: "data", data: OPEN_292 },
+		{ kind: "data", data: SNAPSHOT_292 },
+	]);
+	await rig.drain();
+	let state = initialVoiceTurns();
+	const spoken = [];
+	for (const input of rig.inputs) {
+		const step = stepVoiceTurns(state, input);
+		state = step.state;
+		spoken.push(...step.speak);
+	}
+	assert.equal(
+		state.pendingApproval,
+		"gate-parked",
+		"the parked card is known",
+	);
+	assert.equal(
+		state.inFlight,
+		true,
+		"the subscribe-time streaming flag came through",
+	);
+	assert.deepEqual(spoken, [], "a snapshot is never spoken");
+	// Even with a take armed, a snapshot's gate is state, not news.
+	const armed = stepVoiceTurns(
+		stepVoiceTurns(initialVoiceTurns(), { kind: "armed" }).state,
+		rig.inputs.find((i) => i.kind === "gate"),
+	);
+	assert.deepEqual(armed.speak, []);
+	// And a genuine replay (non-snapshot at or behind the cursor) is still dropped.
+	rig.dispose();
+	const replay = await streamRig(() => [
+		{ kind: "data", data: OPEN_292 },
+		{
+			kind: "data",
+			data: JSON.stringify({
+				epoch: "ep-7",
+				seq: 292,
+				type: "event",
+				payload: { type: "agent_end" },
+			}),
+		},
+	]);
+	await replay.drain();
+	assert.equal(replay.inputs.filter((i) => i.kind === "event").length, 0);
+	replay.dispose();
+});
+
+const APPROVAL_TOAST = /showApprovalToast\(/g;
+const SHARED_ID_TOAST =
+	/showWarningToast\(message, \{ id: voiceApprovalToastId\(sessionId\) \}\)/;
+const RAW_APPROVAL_TOAST =
+	/show(Info|Warning|Error)Toast\(\s*t\("ui\.chat\.voice\.approval_(pending|waiting)"\)/;
+const PENDING_REFUSAL_ROUTED =
+	/voiceCode === "approval_pending"\) \{[^}]*showApprovalToast\(sessionId, sentence\)/;
+
+test("D8: the gate announcement and every refused take share one per-session warning toast", () => {
+	const controller = stripComments(
+		readFileSync(
+			"src/renderer/src/features/voice/voice-controller.tsx",
+			"utf8",
+		),
+	);
+	const helper = controller.slice(
+		controller.indexOf("function showApprovalToast"),
+	);
+	assert.match(helper.slice(0, helper.indexOf("\n}")), SHARED_ID_TOAST);
+	// The announcement, the pre-check and the server's refusal all route through it.
+	// Its declaration plus three call sites.
+	assert.equal([...controller.matchAll(APPROVAL_TOAST)].length, 4);
+	assert.doesNotMatch(
+		controller,
+		RAW_APPROVAL_TOAST,
+		"no approval sentence bypasses the shared id",
+	);
+	assert.match(
+		controller,
+		PENDING_REFUSAL_ROUTED,
+		"the server's refusal uses the shared id",
+	);
 });

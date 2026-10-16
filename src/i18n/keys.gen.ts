@@ -171,12 +171,12 @@ export type MessageParams = {
 	"ui.chat.voice.phase_working": undefined;
 	"ui.chat.voice.speech_failed": undefined;
 	"ui.chat.voice.stream_lost": undefined;
+	"ui.chat.voice.stream_reconnect": undefined;
 	"ui.chat.voice.stt_unavailable": { reason: string };
 	"ui.chat.voice.switched_from": { title: string };
 	"ui.chat.voice.toggle_off_hint": { key: string };
 	"ui.chat.voice.toggle_on": undefined;
 	"ui.chat.voice.toggle_switch": { title: string };
-	"ui.chat.voice.toggle_unavailable": { reason: string };
 	"ui.chat.voice.toggle_unavailable_generic": undefined;
 	"ui.chat.voice.untitled": undefined;
 	"ui.chat.voice.utterance_failed": { reason: string };
