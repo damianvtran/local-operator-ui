@@ -1,8 +1,8 @@
 {
 	"ui.console.capacity.summary": "ऐप में {live, number} चालू, सीमा {limit, number}",
-	"ui.console.capacity.summary_compact": "{live, number}/{limit, number} · {archived, number} रखे गए",
+	"ui.console.capacity.summary_compact": "{live, number}/{limit, number} · {archived, plural, one {# रखा गया} other {# रखे गए}}",
 	"ui.console.capacity.summary_compact_bare": "{live, number}/{limit, number}",
-	"ui.console.capacity.archived": " · {archived, number} रखे गए",
+	"ui.console.capacity.archived": " · {archived, plural, one {# रखा गया} other {# रखे गए}}",
 	"ui.console.capacity.full": " · सीमा पूरी",
 	"ui.console.capacity.help": "ये गिनतियाँ पूरे ऐप की सभी बातचीतों के लिए हैं। रखे गए इतिहास के लिए प्रोसेस स्लॉट नहीं लगता।",
 	"ui.console.capacity.resources": "प्रबंधित स्टोरेज का अनुमान: {memory, number} MiB। लॉग: {logs, number} MiB। लंबित आउटपुट: {pending, number} MiB। टर्मिनल सेल: {cells, number}। सुरक्षित रखे गए टर्मिनल: {protected, number}। इसमें चाइल्ड प्रोसेस की मेमोरी शामिल नहीं है।",
