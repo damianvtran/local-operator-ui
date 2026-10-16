@@ -1188,10 +1188,11 @@ const settleFor = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /*
  * THE TURN'S END IS WAITED OUT BEFORE ANY RE-READ (QA round 1, Q1). The owner
- * sends the two things this panel waits for exactly then - the history delta
- * that lands the pair, and the stranded-adopt error notice - and neither is
+ * sends the history delta that lands the pair exactly then, and it is not
  * durable, so a re-read fired at the turn's end (which closes and reopens the
- * stream) dropped the notice and detached the panel in silence 1.7s later.
+ * stream) could drop it; that same early re-read is what detached the panel in
+ * silence 1.7s after a stop. (The owner's live dispose error notice is not what
+ * the user sees after a stop either way - see QA round 2, Q2-2.)
  */
 test("a queued pair the delta lands after the turn ends retires the panel with no re-read", async () => {
 	reset();

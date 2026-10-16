@@ -8270,13 +8270,13 @@ test("a `no_reply` call folds as an ordinary tool row, live and replayed", () =>
 });
 
 /*
- * THE STRANDED-ADOPT NOTICE PAINTS, AND A RE-READ DOES NOT ERASE IT (aside queue,
- * QA round 1, Q1). The owner says a queued aside never landed with one live
- * `notice{kind:"error"}` at dispose. It is not durable, so the only way to lose it
- * is to have no stream open when it arrives - which is what the aside panel's
- * turn-end re-read used to do (`settleQueuedAdoption` now waits first). This pins
- * the other half: once folded, the row is an error notice, and an authoritative
- * page of the same conversation keeps it.
+ * THE REDUCER'S HALF OF THE STRANDED-ADOPT NOTICE (aside queue, QA round 1, Q1).
+ * The owner says a queued aside never landed with one live `notice{kind:"error"}`
+ * at dispose. This pins only the REDUCER: once folded, the row is an error notice,
+ * and an authoritative page of the same conversation keeps it. It does NOT mean
+ * the app paints that notice - measured in QA round 2 (Q2-2), its text never
+ * reaches the DOM after a stop; the durable `session_incident` row is what the
+ * user sees. Which step past the reducer drops it is not isolated (deferred).
  */
 test("an error notice folds into an error row and survives an authoritative page", () => {
 	const user = {
