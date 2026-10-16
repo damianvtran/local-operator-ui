@@ -9,7 +9,8 @@
  *   -> `voice.qwen.result {taskId, ok | code}` (the launcher speaks a Q7 phrase)
  *   -> the take's own user message on the session stream binds the turn (V14)
  *   -> its last assistant message -> `/voice/text {kind: message}`
- *   -> `voice.qwen.speak {text, kind: reply}` -> Qwen3-TTS, word for word.
+ *   -> `voice.qwen.speak {text, kind: reply}` -> Qwen3-TTS, verbatim up to
+ *      whitespace normalisation.
  *
  * An approval on the bound turn is announced the same way with `{kind: gate}`
  * and is answered ON SCREEN ONLY (V7): a spoken "yes" reaches `/utterance`,
@@ -21,9 +22,10 @@
  * 2. THE RIG MIRROR: main's `voice.qwen.status` writes the store.
  * 3. THE SPEAK TRIGGER: one subscription to the slot session's stream, folded
  *    through `voice-turns.ts` (carried unchanged).
- * 4. THE ECHO GUARD (design "Risks"): a take whose words match 80% or more of
- *    anything this window had spoken in the last 30 s is dropped unsent - the
- *    microphone heard the reply - so the reply cannot steer the session.
+ * 4. THE ECHO GUARD (design "Risks"): a take that is one of the rig's own Q7
+ *    phrases, or a reply or gate text this window had spoken in the last 30 s,
+ *    is dropped unsent and silently - the microphone heard the rig - so the
+ *    rig's own speech never steers the session or answers itself.
  *
  * THERE IS NO PATH FROM HERE TO A GATE ANSWER. This file sends `voice.utterance`
  * (words in) and `voice.text` (a source reference out), and imports nothing that
@@ -46,6 +48,8 @@ import {
 } from "@shared/utils/toast-manager";
 import { useQueryClient } from "@tanstack/react-query";
 import { type FC, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import QWEN_PHRASES from "../../../../../resources/qwen-voice/phrases.json";
 import type {
 	DesktopMediaResponse,
 	QwenVoiceBridge,
@@ -84,11 +88,15 @@ export function newVoiceRequestId(): string {
 
 /** How long a spoken text can come back through the microphone. */
 export const ECHO_WINDOW_MS = 30_000;
-/** The share of a take's words that must match a spoken text to be its echo. */
-export const ECHO_THRESHOLD = 0.8;
+/** The shortest run of shared words that can make a longer take an echo. */
+export const ECHO_MIN_RUN = 6;
+/** The share of a take's words that run must cover. */
+export const ECHO_COVERAGE = 0.8;
 
 const NON_WORD = /[^\p{L}\p{N}\s']/gu;
 const WHITESPACE = /\s+/;
+/** A sentence ends at `.`, `!` or `?` followed by space or the end ("plan.txt" does not). */
+const SENTENCE_END = /(?<=[.!?])\s+/u;
 
 /** Lowercase words, punctuation dropped: what Parakeet and the reply share. */
 export function echoWords(text: string): string[] {
@@ -100,30 +108,64 @@ export function echoWords(text: string): string[] {
 		.filter(Boolean);
 }
 
+const echoKey = (text: string): string => echoWords(text).join(" ");
+
 /**
- * Whether `take` is an echo of `spoken`: 80% or more of the take's words appear,
- * IN ORDER, as a contiguous-enough run of the spoken text (the longest common
- * subsequence, over the take's length). Order matters because "yes do it" is
- * not an echo of a reply that merely contains those three words somewhere; a
- * take of one or two words is never judged an echo (it is too short to tell, and
- * dropping a real "stop" would be worse than relaying a stray "okay").
+ * THE RIG'S OWN PHRASES (Q7), the closed set the launcher speaks from the same
+ * file. The renderer never learns WHEN the launcher said one, so a take equal to
+ * a phrase is an echo at any time and at any length: a person does not say
+ * "Answer it on screen first." to their own agent, and relaying it is what made
+ * the rig answer itself in a loop (QA round 1, Q4).
  */
-export function isEcho(take: string, spoken: string): boolean {
-	const a = echoWords(take);
-	const b = echoWords(spoken);
-	if (a.length < 3 || b.length === 0) return false;
+const PHRASE_KEYS: ReadonlySet<string> = new Set(
+	Object.values(QWEN_PHRASES as Record<string, string>).map(echoKey),
+);
+
+export function isQwenPhrase(take: string): boolean {
+	const key = echoKey(take);
+	return key.length > 0 && PHRASE_KEYS.has(key);
+}
+
+/** The longest run of consecutive words `a` and `b` share. */
+function longestSharedRun(a: string[], b: string[]): number {
+	let best = 0;
 	let previous = new Array<number>(b.length + 1).fill(0);
 	for (let i = 1; i <= a.length; i += 1) {
 		const row = new Array<number>(b.length + 1).fill(0);
 		for (let j = 1; j <= b.length; j += 1) {
-			row[j] =
-				a[i - 1] === b[j - 1]
-					? previous[j - 1] + 1
-					: Math.max(previous[j], row[j - 1]);
+			if (a[i - 1] !== b[j - 1]) continue;
+			row[j] = previous[j - 1] + 1;
+			if (row[j] > best) best = row[j];
 		}
 		previous = row;
 	}
-	return previous[b.length] / a.length >= ECHO_THRESHOLD;
+	return best;
+}
+
+/**
+ * Whether `take` is an echo of `spoken`, the rule round 1 settled on: the take
+ * must BE the spoken text, not merely share its vocabulary.
+ *
+ * - A take of `ECHO_MIN_RUN` (6) words or more is an echo when one CONTIGUOUS
+ *   run of words it shares with the spoken text is at least 6 words long and
+ *   covers at least 80% of the take. Contiguous, not a subsequence: the earlier
+ *   in-order-subsequence ratio dropped real follow-ups such as "can you mock the
+ *   clock" after a reply that happened to contain "mock the clock".
+ * - A shorter take is an echo only when it equals one whole sentence of the
+ *   spoken text (or all of it). Too few words to tell otherwise, and dropping a
+ *   real "stop" is worse than relaying a stray fragment.
+ */
+export function isEcho(take: string, spoken: string): boolean {
+	const a = echoWords(take);
+	const b = echoWords(spoken);
+	if (a.length === 0 || b.length === 0) return false;
+	if (a.length < ECHO_MIN_RUN) {
+		const key = a.join(" ");
+		if (key === b.join(" ")) return true;
+		return spoken.split(SENTENCE_END).some((part) => echoKey(part) === key);
+	}
+	const run = longestSharedRun(a, b);
+	return run >= ECHO_MIN_RUN && run / a.length >= ECHO_COVERAGE;
 }
 
 /** What this window asked the rig to say, newest last, for the guard. */
@@ -134,8 +176,12 @@ export function rememberSpoken(text: string, now = Date.now()): void {
 	while (recentlySpoken.length > 16) recentlySpoken.shift();
 }
 
-/** The echo guard's verdict for one take, against the last 30 s of speech. */
+/**
+ * The echo guard's verdict for one take: a Q7 phrase at any time, or a reply or
+ * gate text this window had the rig say in the last 30 s.
+ */
 export function takeIsEcho(text: string, now = Date.now()): boolean {
+	if (isQwenPhrase(text)) return true;
 	return recentlySpoken.some(
 		(entry) => now - entry.at <= ECHO_WINDOW_MS && isEcho(text, entry.text),
 	);
@@ -177,6 +223,18 @@ function utteranceFailure(result: DesktopMediaResponse): string {
  */
 export async function sendVoiceTake(text: string): Promise<VoiceTakeOutcome> {
 	const sessionId = useVoiceStore.getState().active?.session_id ?? null;
+	/*
+	 * THE ECHO GUARD RUNS FIRST, before the slot and card checks, because each of
+	 * those answers with a phrase the rig speaks aloud: an echoed "Answer it on
+	 * screen first." refused at the card, or "Voice is off for this
+	 * conversation." refused for an empty slot, would be spoken again and heard
+	 * again, forever (QA round 1, Q4). `echo` is a SILENT drop: the launcher says
+	 * nothing for it, and nothing is sent.
+	 */
+	if (takeIsEcho(text)) {
+		console.warn("[voice] take dropped by the echo guard");
+		return { ok: false, status: 0, code: "echo", sessionId };
+	}
 	if (!sessionId)
 		return { ok: false, status: 0, code: "voice_not_enabled", sessionId };
 	if (!text.trim())
@@ -190,12 +248,6 @@ export async function sendVoiceTake(text: string): Promise<VoiceTakeOutcome> {
 	if (voiceCardPending(sessionId)) {
 		showCardToast(sessionId, t("ui.chat.voice.card_pending"));
 		return { ok: false, status: 409, code: "approval_pending", sessionId };
-	}
-	if (takeIsEcho(text)) {
-		// The microphone heard the reply: relaying it would steer the session
-		// with the agent's own words. Dropped unsent, and said so in the log.
-		console.warn("[voice] take dropped by the echo guard");
-		return { ok: false, status: 0, code: "echo", sessionId };
 	}
 	/*
 	 * The id is minted BEFORE arming, because it is the binding: the server mints
@@ -223,7 +275,7 @@ export async function sendVoiceTake(text: string): Promise<VoiceTakeOutcome> {
 		// A thrown send is a failed send: nothing was admitted.
 		feedTurns(sessionId, { kind: "disarmed", requestId });
 		const reason = error instanceof Error ? error.message : String(error);
-		useVoiceStore.getState().setExchange("error", sessionId);
+		useVoiceStore.getState().setExchange("error", sessionId, "not_sent");
 		showErrorToast(t("ui.chat.voice.utterance_failed", { reason }));
 		return { ok: false, status: 0, code: "failed", sessionId, detail: reason };
 	}
@@ -245,7 +297,7 @@ export async function sendVoiceTake(text: string): Promise<VoiceTakeOutcome> {
 		settleExchange(sessionId);
 		showInfoToast(sentence);
 	} else {
-		useVoiceStore.getState().setExchange("error", sessionId);
+		useVoiceStore.getState().setExchange("error", sessionId, "not_sent");
 		showErrorToast(sentence);
 	}
 	return {
@@ -361,8 +413,33 @@ export function voiceCardPending(sessionId: string): boolean {
 export const voiceCardToastId = (sessionId: string): string =>
 	`voice-card:${sessionId}`;
 
+/** The router's navigate, set by the mounted controller (it sits inside the router). */
+let openSession: ((sessionId: string) => void) | null = null;
+
+/** The session the window shows now, from the `HashRouter` URL. */
+const VIEWED_CHAT = /^#\/chat\/([^/?#]+)/;
+export function viewedSessionId(
+	hash = globalThis.location?.hash ?? "",
+): string | null {
+	const match = VIEWED_CHAT.exec(hash);
+	return match ? decodeURIComponent(match[1]) : null;
+}
+
+/*
+ * ONLY WHEN BEN IS ELSEWHERE (round 1, U5/D7): inside the voice session the
+ * header's own hint says "Answer on screen first." beside the card itself, so
+ * a toast there repeats it. Elsewhere the toast is how he learns of the card,
+ * and its "Open" action takes him to it.
+ */
 function showCardToast(sessionId: string, message: string): void {
-	showWarningToast(message, { id: voiceCardToastId(sessionId) });
+	if (viewedSessionId() === sessionId) return;
+	showWarningToast(message, {
+		id: voiceCardToastId(sessionId),
+		action: {
+			label: t("ui.chat.voice.open_session"),
+			onClick: () => openSession?.(sessionId),
+		},
+	});
 }
 
 /* -------------------------------------------------------------------------- */
@@ -419,6 +496,14 @@ export const QwenVoiceController: FC = () => {
 	const status = useVoiceStatus();
 	const activeSessionId = status.activeSessionId;
 	const feed = useDesktopFeed();
+	const navigate = useNavigate();
+	useEffect(() => {
+		openSession = (sessionId) =>
+			navigate(`/chat/${encodeURIComponent(sessionId)}`);
+		return () => {
+			openSession = null;
+		};
+	}, [navigate]);
 
 	// 1. The slot mirror: the feed's level frame goes into the one cache entry.
 	const client = useQueryClient();

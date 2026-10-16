@@ -36,14 +36,18 @@ import type { FC } from "react";
 import { controlVoice, useVoiceStatus } from "./use-voice-status";
 import { useVoiceStore } from "./voice-store";
 
-/** A conversation's display title, for the switch's label and notice. */
-export function voiceSessionTitle(sessionId: string | null): string {
-	if (!sessionId) return t("ui.chat.voice.untitled");
+/**
+ * A conversation's display title, or null when it has none. The callers pick a
+ * whole sentence for each case (round 1, D6): a title is quoted, and the
+ * untitled case is its own sentence rather than a phrase spliced into quotes.
+ */
+export function voiceSessionTitle(sessionId: string | null): string | null {
+	if (!sessionId) return null;
 	const row = useCanonicalSessionsStore
 		.getState()
 		.sessions.find((session) => session.session_id === sessionId);
 	const title = row?.title?.trim();
-	return title ? title : t("ui.chat.voice.untitled");
+	return title ? title : null;
 }
 
 export const VoiceToggle: FC<{ sessionId: string | undefined }> = ({
@@ -57,10 +61,13 @@ export const VoiceToggle: FC<{ sessionId: string | undefined }> = ({
 	if (!status.enabled || !sessionId) return null;
 	const on = status.activeSessionId === sessionId;
 	const holder = status.activeSessionId;
+	const holderTitle = voiceSessionTitle(holder);
 	const label = on
 		? t("ui.chat.voice.toggle_off")
 		: holder
-			? t("ui.chat.voice.toggle_switch", { title: voiceSessionTitle(holder) })
+			? holderTitle
+				? t("ui.chat.voice.toggle_switch", { title: holderTitle })
+				: t("ui.chat.voice.toggle_switch_untitled")
 			: t("ui.chat.voice.toggle_on");
 
 	const press = async () => {
@@ -72,10 +79,11 @@ export const VoiceToggle: FC<{ sessionId: string | undefined }> = ({
 				client,
 			);
 			if (!on && result.replaced && result.replaced !== sessionId) {
+				const replacedTitle = voiceSessionTitle(result.replaced);
 				showInfoToast(
-					t("ui.chat.voice.switched_from", {
-						title: voiceSessionTitle(result.replaced),
-					}),
+					replacedTitle
+						? t("ui.chat.voice.switched_from", { title: replacedTitle })
+						: t("ui.chat.voice.switched_from_untitled"),
 				);
 			}
 		} catch (error) {

@@ -12,17 +12,28 @@
  * is main's to start and stop, and this window only shows it.
  *
  * `phase` is the exchange, hands-free now (design Q8): `off` when this session
- * does not hold the slot, `starting` while the rig loads, `listening` while it is
- * ready and nothing is owed, `working` while a take this window relayed is out
- * or its turn runs, `error` when the rig or the last step failed. Speaking is the
- * rig's (it is heard, in the WebUI), not a phase this window tracks.
+ * does not hold the slot, `starting` while the rig loads, `unheard` while the rig
+ * is ready but no voice page is connected (nothing can hear Ben, so it must not
+ * say "Listening"), `listening` while it is ready, a page is connected and
+ * nothing is owed, `working` while a take this window relayed is out or its turn
+ * runs, `error` when the rig or the last step failed. Speaking is the rig's (it
+ * is heard, in the WebUI), not a phase this window tracks.
  */
 
 import { create } from "zustand";
 import type { QwenVoiceStatus } from "../../../../shared/desktop-contract";
 import type { DesktopVoiceActive } from "../../../../shared/desktop-control-contract";
 
-export type VoicePhase = "off" | "starting" | "listening" | "working" | "error";
+export type VoicePhase =
+	| "off"
+	| "starting"
+	| "unheard"
+	| "listening"
+	| "working"
+	| "error";
+
+/** Why one exchange failed, as the header says it. */
+export type VoiceExchangeError = "not_sent";
 
 type VoiceStoreState = {
 	/** The slot as the server last stated it, or `undefined` before any read. */
@@ -30,7 +41,11 @@ type VoiceStoreState = {
 	/** Main's rig status, or `undefined` outside Electron (browser development). */
 	rig: QwenVoiceStatus | undefined;
 	/** `working` (a take owed an answer) or `error` for one session; else null. */
-	exchange: { kind: "working" | "error"; sessionId: string } | null;
+	exchange: {
+		kind: "working" | "error";
+		sessionId: string;
+		reason?: VoiceExchangeError;
+	} | null;
 	/** A control call (enable/disable) is in flight; the toggle shows it. */
 	pending: boolean;
 	/** The session that just LOST the slot to a switch, for its notice. */
@@ -48,6 +63,7 @@ type VoiceStoreActions = {
 	setExchange: (
 		kind: "working" | "error" | null,
 		sessionId: string | null,
+		reason?: VoiceExchangeError,
 	) => void;
 	setPending: (pending: boolean) => void;
 	setReplaced: (sessionId: string | null) => void;
@@ -74,9 +90,14 @@ export const useVoiceStore = create<VoiceStoreState & VoiceStoreActions>(
 			set(lost ? { active, exchange: null } : { active });
 		},
 		setRig: (rig) => set({ rig }),
-		setExchange: (kind, sessionId) =>
+		setExchange: (kind, sessionId, reason) =>
 			set({
-				exchange: kind && sessionId ? { kind, sessionId } : null,
+				exchange:
+					kind && sessionId
+						? reason
+							? { kind, sessionId, reason }
+							: { kind, sessionId }
+						: null,
 			}),
 		setPending: (pending) => set({ pending }),
 		setReplaced: (replaced) => set({ replaced }),
@@ -112,5 +133,7 @@ export function voicePhaseOf(
 	// `stopped` while the slot is held (an app relaunch) is `off` with the
 	// "Start voice" action; the indicator reads `rig` for that.
 	if (rig === "stopped") return "off";
-	return "listening";
+	// Outside Electron there is no rig to ask (browser development): as before.
+	if (state.rig === undefined) return "listening";
+	return (state.rig.clients ?? 0) > 0 ? "listening" : "unheard";
 }

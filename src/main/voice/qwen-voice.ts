@@ -15,7 +15,13 @@
  *   slot is held and the rig is stopped, e.g. after an app relaunch). Never at
  *   app launch on its own: that loads gigabytes of models nobody asked for.
  * - STOP: 10 minutes after the slot goes empty, and at quit. Start and stop are
- *   idempotent.
+ *   idempotent. The idle timer is ARMED by the slot becoming empty (or a start
+ *   with no slot), never RE-armed by a repeat of the same empty answer: the
+ *   renderer re-reads the slot every 60 s, and re-arming on each read meant the
+ *   timer never fired (QA round 1, Q3).
+ * - TRUTH: "ready" says both processes are up; `clients` says whether a voice
+ *   page is connected to hear anything; a process dying under a ready rig is
+ *   `error` with `cause: unexpected_exit`, never a silent "ready".
  * - THE SLOT MOVING silences the old session: `cancel_all` to the Gateway, and
  *   every reply/gate text relayed for it is forgotten, so it can no longer be
  *   spoken.
@@ -40,6 +46,10 @@ export type QwenVoiceStatus = {
 	webui_url: string | null;
 	/** Why the rig is in `error`, as one sentence; null otherwise. */
 	reason?: string | null;
+	/** Voice pages connected to the Gateway right now. */
+	clients?: number;
+	/** `unexpected_exit`: a rig process died while the rig was ready. */
+	cause?: "unexpected_exit" | null;
 };
 
 export const QWEN_IDLE_STOP_MS = 10 * 60_000;
@@ -98,6 +108,8 @@ function slotOf(payload: unknown): string | null {
 export class QwenVoice {
 	private status: QwenVoiceStatus = { rig: "stopped", webui_url: null };
 	private slot: string | null = null;
+	/** Voice pages connected to the CURRENT launcher; reset when it stops. */
+	private clients = 0;
 	private relayed: Relayed[] = [];
 	private idleTimer: unknown = null;
 	private starting: Promise<QwenVoiceStatus> | null = null;
@@ -155,7 +167,7 @@ export class QwenVoice {
 			});
 		}
 		if (next === null) {
-			this.armIdleStop();
+			if (previous !== null || this.idleTimer === null) this.armIdleStop();
 			return;
 		}
 		this.disarmIdleStop();
@@ -167,8 +179,16 @@ export class QwenVoice {
 	 * LLM). Idempotent; concurrent calls share one start.
 	 */
 	start(reason: "enable" | "renderer"): Promise<QwenVoiceStatus> {
-		if (this.status.rig === "ready" && this.deps.gateway.running)
+		if (this.rigUp()) {
+			/*
+			 * ALREADY READY: the renderer's call is the "open the voice page"
+			 * action (shown while no page is connected, e.g. Ben closed the tab),
+			 * so it reopens the page main built; an enable's call changes nothing.
+			 */
+			if (reason === "renderer" && this.status.webui_url)
+				this.deps.openWebUi(this.status.webui_url);
 			return Promise.resolve(this.getStatus());
+		}
 		if (this.starting) return this.starting;
 		this.disarmIdleStop();
 		this.setStatus({ rig: "starting", webui_url: null });
@@ -176,12 +196,18 @@ export class QwenVoice {
 			try {
 				const webuiUrl = await this.deps.gateway.start();
 				await this.deps.speech.start();
-				this.setStatus({ rig: "ready", webui_url: webuiUrl });
+				this.setStatus({
+					rig: "ready",
+					webui_url: webuiUrl,
+					clients: this.clients,
+				});
 				this.log(`qwen-voice: rig ready (${reason}); WebUI ${webuiUrl}`);
 				this.deps.gateway.send({
 					type: "slot",
 					active: this.slot ? { session_id: this.slot } : null,
 				});
+				// Started with nothing holding the slot: the idle stop still applies.
+				if (this.slot === null) this.armIdleStop();
 				this.deps.openWebUi(webuiUrl);
 			} catch (error) {
 				const message = error instanceof Error ? error.message : String(error);
@@ -196,6 +222,35 @@ export class QwenVoice {
 		return this.starting;
 	}
 
+	/** Both processes are up and the status says so. */
+	private rigUp(): boolean {
+		return (
+			this.status.rig === "ready" &&
+			this.deps.gateway.running &&
+			this.deps.speech.running
+		);
+	}
+
+	/**
+	 * A rig process exited without being asked to (wired from both process
+	 * hosts in `index.ts`). Under a ready rig that is an error the header must
+	 * show; during a start the start path reports it itself, and after a stop
+	 * it was asked for.
+	 */
+	processExited(which: "gateway" | "speech", detail: string): void {
+		if (this.status.rig !== "ready") return;
+		this.log(`qwen-voice: ${which} exited unexpectedly (${detail})`);
+		this.disarmIdleStop();
+		void this.stopProcesses();
+		this.setStatus({
+			rig: "error",
+			webui_url: null,
+			reason: `${which === "gateway" ? "The voice Gateway" : "speech-to-speech"} exited (${detail}); see the voice logs.`,
+			cause: "unexpected_exit",
+			clients: 0,
+		});
+	}
+
 	/** Stop both processes. Idempotent. */
 	async stop(): Promise<void> {
 		this.disarmIdleStop();
@@ -205,12 +260,18 @@ export class QwenVoice {
 	}
 
 	private async stopProcesses(): Promise<void> {
+		this.clients = 0;
 		this.deps.gateway.stop();
 		await this.deps.speech.stop();
 	}
 
-	/** `will-quit`: nothing may be awaited, and no model process may outlive us. */
+	/**
+	 * `will-quit` and `process.on("exit")`: nothing may be awaited, and no model
+	 * process may outlive us. Synchronous and idempotent, so the two quit paths
+	 * can both call it.
+	 */
 	stopNow(): void {
+		this.clients = 0;
 		this.disarmIdleStop();
 		this.deps.gateway.stop();
 		this.deps.speech.killNow();
@@ -253,6 +314,22 @@ export class QwenVoice {
 		}
 		if (message?.type === "status") {
 			this.log(`qwen-voice: gateway ${String(message.event)}`);
+			if (
+				message.event === "client_attached" ||
+				message.event === "client_detached"
+			) {
+				/*
+				 * Counted whatever the rig's state: a WebUI tab left open from an
+				 * earlier run reconnects while s2s is still loading, and that page
+				 * must count once the rig is ready.
+				 */
+				this.clients =
+					typeof message.clients === "number" && message.clients >= 0
+						? message.clients
+						: 0;
+				if (this.status.rig === "ready" && this.clients !== this.status.clients)
+					this.setStatus({ ...this.status, clients: this.clients });
+			}
 		}
 	}
 
@@ -331,6 +408,8 @@ export class QwenVoice {
 		if (index < 0) return { spoken: false, reason: "not_relayed" };
 		if (this.status.rig !== "ready")
 			return { spoken: false, reason: "rig_not_ready" };
+		// No voice page connected: nothing would be heard, so nothing is claimed.
+		if (this.clients === 0) return { spoken: false, reason: "no_client" };
 		const [entry] = this.relayed.splice(index, 1);
 		const sent = this.deps.gateway.send({
 			type: "speak",

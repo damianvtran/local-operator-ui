@@ -8,11 +8,13 @@
  * turn. There is no LLM: this module answers in its place.
  *
  *   - A USER TURN -> one `spawn_thinking` tool call whose `objective` is the last
- *     user message BYTE FOR BYTE (the Parakeet final). That hands the words to the
+ *     user message, unchanged (the Parakeet final; the relay test pins internal
+ *     double spaces and non-ASCII through). That hands the words to the
  *     Gateway's task path, which hands them to the lop-slot backend.
  *   - A TOKEN `⟦lop-say:<uuid>⟧` in the system prompt -> exactly the text this
  *     process registered under that uuid, and nothing else. That is how a reply
- *     is spoken word for word (Q3): the provider puts only the token into
+ *     is spoken verbatim up to whitespace normalisation (Q3): the provider puts
+ *     only the token into
  *     `instructions`, and s2s's own `instructions` override puts it here.
  *   - ANYTHING ELSE (a tool-result follow-up, a warmup, a compaction or summary
  *     request, an unknown token) -> EMPTY TEXT. The failure mode is silence.
@@ -30,6 +32,30 @@ export const PHRASES = Object.freeze(
 	JSON.parse(readFileSync(new URL("./phrases.json", import.meta.url), "utf8")),
 );
 export const PHRASE_KINDS = Object.freeze(Object.keys(PHRASES));
+
+/**
+ * The Q7 phrase a take's admission is answered with, or null for SILENCE.
+ *
+ * `echo` is silent above all: it is the renderer's echo guard dropping the rig's
+ * own speech heard back through the microphone, and answering it with "That did
+ * not go through." would be heard back in turn (QA round 1, Q4). `cancelled` and
+ * `closed` are the Gateway tearing a task down, not a take being refused.
+ */
+export function phraseForOutcome(outcome) {
+	if (outcome?.ok) return "sent";
+	switch (outcome?.code) {
+		case "echo":
+		case "cancelled":
+		case "closed":
+			return null;
+		case "approval_pending":
+			return "on_screen_first";
+		case "voice_not_enabled":
+			return "voice_off";
+		default:
+			return "failed";
+	}
+}
 
 /** The relay's model name; s2s is started with `--model_name lop-relay`. */
 export const RELAY_MODEL = "lop-relay";

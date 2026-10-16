@@ -5653,14 +5653,24 @@ export type DesktopMediaResponse =
  * - invoke `voice.qwen.speak {text, kind}`: speak a reply or gate text. Main
  *   honours it ONLY for a text it relayed itself as a 200 `/voice/text` answer in
  *   the last 10 minutes; anything else answers `{spoken: false}`.
- * - status `voice.qwen.status {rig, webui_url}` (`onStatus`, `getStatus`).
- * - invoke `voice.qwen.start`: start the rig for the slot already held.
+ * - status `voice.qwen.status {rig, webui_url, reason?, clients?, cause?}`
+ *   (`onStatus`, `getStatus`).
+ * - invoke `voice.qwen.start`: start the rig for the slot already held; on a
+ *   rig that is already ready, open the voice page again instead.
  */
 export type QwenRigState = "stopped" | "starting" | "ready" | "error";
 export type QwenVoiceStatus = {
 	rig: QwenRigState;
 	webui_url: string | null;
 	reason?: string | null;
+	/**
+	 * Voice pages connected to the Gateway (the launcher's `client_attached` /
+	 * `client_detached`). "Listening" is true only with one or more: a ready rig
+	 * with no page open hears nothing.
+	 */
+	clients?: number;
+	/** Why the rig is in `error` when it was not a start failure. */
+	cause?: "unexpected_exit" | null;
 };
 export type QwenVoiceTake = { taskId: string; text: string };
 export type QwenVoiceResult =

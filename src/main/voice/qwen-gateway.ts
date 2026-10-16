@@ -94,6 +94,8 @@ export class QwenGatewayHost {
 		private readonly onMessage: (message: GatewayUpMessage) => void,
 		private readonly fork: ForkImpl,
 		private readonly log: (message: string) => void = () => {},
+		/** The launcher exited after it was ready, without being stopped. */
+		private readonly onUnexpectedExit: (detail: string) => void = () => {},
 	) {}
 
 	get running(): boolean {
@@ -150,10 +152,13 @@ export class QwenGatewayHost {
 			});
 			child.onExit((code) => {
 				this.log(`qwen-gateway: launcher exited (${String(code)})`);
+				// Still current means nobody asked it to stop (stop() lets go first).
+				const unexpected = this.child === child && settled;
 				if (this.child === child) {
 					this.child = null;
 					this.webuiUrl = null;
 				}
+				if (unexpected) this.onUnexpectedExit(`code ${String(code)}`);
 				if (!settled) {
 					settled = true;
 					clearTimeout(timer);

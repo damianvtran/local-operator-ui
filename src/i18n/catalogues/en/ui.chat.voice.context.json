@@ -12,7 +12,7 @@
 	"ui.chat.voice.toggle_switch": {
 		"role": "icon button label and tooltip in the conversation header",
 		"tone": "imperative, sentence case",
-		"note": "{title} is the title of the conversation that holds voice now and will lose it."
+		"note": "{title} is the title of the conversation that holds voice now and will lose it; it is quoted."
 	},
 	"ui.chat.voice.marker": {
 		"role": "screen-reader text after a sidebar row's title",
@@ -22,12 +22,12 @@
 	"ui.chat.voice.phase_starting": {
 		"role": "status word beside the voice button",
 		"tone": "short status, sentence case",
-		"note": "The local speech models are loading (about 25 s)."
+		"note": "The local speech models are loading (about 15-20 s)."
 	},
 	"ui.chat.voice.phase_listening": {
 		"role": "status word beside the voice button",
 		"tone": "short status, sentence case",
-		"note": "Voice is on and the microphone is live."
+		"note": "Voice is on, the models are loaded and a voice page is connected, so the microphone is live."
 	},
 	"ui.chat.voice.phase_working": {
 		"role": "status word beside the voice button",
@@ -48,11 +48,6 @@
 		"role": "info toast",
 		"tone": "one sentence",
 		"note": "{title} is the conversation that lost voice to this one."
-	},
-	"ui.chat.voice.untitled": {
-		"role": "fills {title} when a conversation has no title",
-		"tone": "lowercase noun phrase, used mid-sentence",
-		"note": "Keep it lowercase: it is inserted inside another sentence."
 	},
 	"ui.chat.voice.enable_failed": {
 		"role": "error toast",
@@ -98,5 +93,55 @@
 		"role": "toast action button",
 		"tone": "single verb",
 		"note": "Retries the conversation's update stream."
+	},
+	"ui.chat.voice.toggle_switch_untitled": {
+		"role": "icon button label and tooltip in the conversation header",
+		"tone": "imperative, sentence case",
+		"note": "The conversation that holds voice now has no title."
+	},
+	"ui.chat.voice.switched_from_untitled": {
+		"role": "toast",
+		"tone": "plain statement, one sentence",
+		"note": "Voice moved to this conversation from one that has no title."
+	},
+	"ui.chat.voice.phase_unheard": {
+		"role": "status word beside the voice button",
+		"tone": "short status, sentence case",
+		"note": "The speech models are loaded, but no voice page is open, so nothing can hear yet. Followed by the open_page action."
+	},
+	"ui.chat.voice.open_page": {
+		"role": "small text button beside the status word",
+		"tone": "imperative, sentence case",
+		"note": "Opens the local voice page in the browser, where the microphone is."
+	},
+	"ui.chat.voice.try_again": {
+		"role": "small text button beside the error",
+		"tone": "imperative, sentence case",
+		"note": "Restarts the local speech models."
+	},
+	"ui.chat.voice.error_start_failed": {
+		"role": "visible reason after 'Voice error'",
+		"tone": "plain statement, one sentence",
+		"note": "The local speech models failed to start; the detail is in the tooltip."
+	},
+	"ui.chat.voice.error_exited": {
+		"role": "visible reason after 'Voice error'",
+		"tone": "plain statement, one sentence",
+		"note": "The local speech models stopped while voice was on."
+	},
+	"ui.chat.voice.error_not_sent": {
+		"role": "visible reason after 'Voice error'",
+		"tone": "plain statement, one sentence",
+		"note": "The last thing the user said could not be delivered to the conversation."
+	},
+	"ui.chat.voice.card_pending_short": {
+		"role": "status hint beside the voice button",
+		"tone": "imperative, short",
+		"note": "An approval or question is on screen; spoken words are refused until it is answered there."
+	},
+	"ui.chat.voice.open_session": {
+		"role": "toast action button",
+		"tone": "one word, imperative",
+		"note": "Opens the conversation that holds voice, where an approval or question waits."
 	}
 }
