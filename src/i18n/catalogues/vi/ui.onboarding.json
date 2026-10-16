@@ -44,6 +44,6 @@
 	"ui.onboarding.search.row.save_failed": "Không lưu được khóa.",
 	"ui.onboarding.search.row.saved": "Đã lưu",
 	"ui.onboarding.search.row.saving": "Đang lưu {name}",
-	"ui.onboarding.modal.step_of": "Bước {current, number} trên {total, number}",
-	"ui.onboarding.modal.steps_total": "{total, plural, other {# bước}}"
+	"ui.onboarding.modal.step_of": "Bước {current, number, ::group-off} trên {total, number, ::group-off}",
+	"ui.onboarding.modal.steps_total": "{total, plural, other {{total, number, ::group-off} bước}}"
 }
