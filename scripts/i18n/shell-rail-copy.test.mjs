@@ -67,12 +67,12 @@ test("code details preserve optional halves, comma grammar and caller attention 
 
 test("ask scope and tooltip stay delegated to their chat-owned derivation", () => {
 	assert.deepEqual(model.askRailLabels(false, "session", 2, null), {
-		tooltip: "Open asks — This conversation, 2 waiting or moved on",
-		aria: "Asks, This conversation, 2 waiting or moved on",
+		tooltip: "Open asks — This conversation, 2 waiting",
+		aria: "Asks, This conversation, 2 waiting",
 	});
 	assert.equal(
 		model.askRailLabels(true, "fleet", 1000, "⌘A").aria,
-		"Asks (⌘A), All conversations, 1000 waiting or moved on",
+		"Asks (⌘A), All conversations, 1000 waiting",
 	);
 });
 

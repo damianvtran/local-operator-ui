@@ -76,6 +76,7 @@ import { DelegatedCleanupNoticeBand } from "../../settings/components/delegated-
 import { gateIsSecret } from "../ask-answer";
 import type { AskDraft, AskOutcome, AskScope } from "../ask-queue";
 import {
+	askAttentionCount,
 	askComposerHoldsSecret,
 	askQueueView,
 	effectiveGate,
@@ -1475,8 +1476,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const fleetAsks = useFleetAsks();
 		const headerAsksSession = Boolean(sessionId);
 		const headerAsksScope: AskScope = headerAsksSession ? "session" : "fleet";
+		/*
+		 * Both scopes count ANSWERABLE asks, so a lapsed one pulls no attention (D10, D11):
+		 * the session read falls back to the tally only when its list is incomplete.
+		 */
 		const headerAsksCount = headerAsksSession
-			? sessionAsksView.open
+			? askAttentionCount(sessionAsksView)
 			: fleetAsks.outstanding;
 		const headerAsksOpen =
 			isAskDrawerOpen && askDrawerScope === headerAsksScope;

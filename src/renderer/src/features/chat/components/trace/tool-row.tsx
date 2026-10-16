@@ -815,7 +815,7 @@ export const ToolRow = ({
 	 * the designer's own first remedy - drop the label when the sentence already
 	 * carries it - applied to the ask receipt FAMILY rather than keyed on the leading
 	 * word, because the timeout row reads better without it too ("Timed out after 15m
-	 * - the agent moved on; you can still answer") and a string test would have to
+	 * - the agent goes ahead without your answer") and a string test would have to
 	 * know each sentence's first word.
 	 *
 	 * The verb column is SKIPPED rather than blanked, so the row's gap does not hold
