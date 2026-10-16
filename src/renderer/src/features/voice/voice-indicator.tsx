@@ -76,11 +76,13 @@ export const VoicePhase: FC<{ sessionId: string | undefined }> = ({
 	}
 	if (phase === "off") return null;
 	/*
-	 * A CARD ON SCREEN REPLACES "Listening": words spoken now are refused (V13),
-	 * so the line says what to do instead. Guidance, not an alarm: the card
+	 * A CARD ON SCREEN REPLACES "Listening" AND "Working": words spoken now are
+	 * refused (V13), so the line says what to do instead. "Working" too, because
+	 * the usual way a card appears is a turn voice itself started, which holds
+	 * the phase at working until it ends. Guidance, not an alarm: the card
 	 * itself is the alarm.
 	 */
-	if (phase === "listening" && cardPending) {
+	if ((phase === "listening" || phase === "working") && cardPending) {
 		return (
 			<span
 				data-voice-phase="listening"
