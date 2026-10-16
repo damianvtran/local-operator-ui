@@ -19,12 +19,13 @@
  * `ask-queue.ts`'s first rule is that a backend which does not publish `asks`
  * must not grow an affordance that can never be satisfied. The aggregate route
  * is newer than the per-session field, so on a backend that predates it the read
- * FAILS (404) and this module answers `frontend: null` - the same value the
- * session lane uses for "this backend does not do queued asks" - which is what
- * keeps the top-level row and the drawer off rather than drawing a control whose
- * every press would 404. `answered` is the separate fact a caller needs when it
- * wants to know whether the route exists at all (an empty list is a legitimate
- * answer and renders an empty surface).
+ * FAILS (404). The asks door is drawn on every chat route regardless (the
+ * always-visible rail, D4), so a failure with no answer in hand is handed to the
+ * drawer as a RESOLVED frame that publishes nothing
+ * ({@link FLEET_ASKS_UNAVAILABLE_FRONTEND}) - which the drawer words as "this
+ * runtime doesn't support queued asks" - rather than as `null`, which it reads as
+ * a read still in flight. An empty list is a legitimate answer and renders an
+ * empty surface; the badge counts zero for both.
  *
  * ## Identity comes from the wire, never from display text
  *
@@ -383,8 +384,6 @@ export type FleetAsks = {
 	rows: PendingAsk[] | null;
 	/** The outstanding count for the badge, 0 whenever `rows` is null. */
 	outstanding: number;
-	/** Whether the route has answered at all: the capability-by-answer gate. */
-	answered: boolean;
 	/**
 	 * The drawer's own prop: `null` while the read is in flight, the rows once it
 	 * answers, and {@link FLEET_ASKS_UNAVAILABLE_FRONTEND} when it failed with no
@@ -427,7 +426,6 @@ export function useFleetAsks(): FleetAsks {
 	return {
 		rows,
 		outstanding: rows === null ? 0 : fleetAsksOutstanding(rows),
-		answered: query.data !== undefined,
 		frontend: fleetAskFrontendFor(rows, query.isError),
 		rowFor: (askId) =>
 			rows === null ? null : (rows.find((row) => row.ask_id === askId) ?? null),

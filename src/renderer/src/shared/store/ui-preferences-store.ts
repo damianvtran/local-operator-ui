@@ -68,6 +68,17 @@ import {
 export type ProfileRecencyKind = "agent" | "team";
 
 /**
+ * Which door filed an asks-drawer open request (see `askOpenIntent`): the `…`
+ * menu's row, or a bound `panel.ask` chord. Both mark the drawer's mount as the
+ * user's own; only the menu's arms the claim that answers the menu's focus
+ * restore.
+ */
+export type AskOpenVia = "menu" | "chord";
+
+/** An asks-drawer open request: the queue it is for, and the door that filed it. */
+export type AskOpenIntent = { scope: AskScope; via: AskOpenVia };
+
+/**
  * Type definition for the UI preferences store state
  */
 type UiPreferencesState = {
@@ -580,8 +591,15 @@ type UiPreferencesState = {
 	 * clears it on ANY open or close write besides (round-2 N1), so a request
 	 * that was never answered cannot be inherited by a later mount - not by the
 	 * same scope's next mount, and not by a mount of the other queue either.
+	 *
+	 * IT NAMES ITS DOOR TOO (`via`, round-1 Q1 of the always-visible rail): a
+	 * bound chord is the second door that leaves no focus on anything the drawer
+	 * recognises, so it files a request as well. Only the MENU's request arms the
+	 * claim that answers Radix's restore to the `…` trigger: a chord has no menu
+	 * in flight, and arming that claim for it would bounce the user's own next
+	 * click on the trigger back into the drawer.
 	 */
-	askOpenIntent: AskScope | null;
+	askOpenIntent: AskOpenIntent | null;
 
 	/**
 	 * Ask the drawer, on its next mount, to take a user's open of the asks
@@ -589,18 +607,20 @@ type UiPreferencesState = {
 	 * empty auto-close), land the keyboard in the list, and remember the menu's
 	 * trigger as the close's return. See `askOpenIntent`.
 	 *
-	 * ONE CALLER: the menu row's OPEN press (`chat-content.tsx`). The row's close
-	 * arm is a plain `setAskDrawerOpen(false, scope)` with no request; the chip and
-	 * the rail item deliberately do not call it (their presses are read off
-	 * focus), and the open policy must not (its opens move no keyboard — the
-	 * lane's no-focus-steal promise).
+	 * TWO CALLERS, both OPEN presses that leave no door under focus: the menu
+	 * row (`chat-content.tsx`, `via: "menu"`) and a bound `panel.ask` chord
+	 * (`panel-rail-actions.ts`, `via: "chord"`). Each close arm is a plain
+	 * `setAskDrawerOpen(false, scope)` with no request; the chip and the rail
+	 * item deliberately do not call it (their presses are read off focus), and
+	 * the open policy must not (its opens move no keyboard — the lane's
+	 * no-focus-steal promise).
 	 *
 	 * WRITTEN AFTER ITS OPEN, DELIBERATELY: `setAskDrawerOpen` supersedes any
 	 * request in flight, so a caller that requested first and opened second would
 	 * clear its own request - the row's order (open, then request) is what makes
 	 * the pair one act.
 	 */
-	requestAskOpen: (scope: AskScope) => void;
+	requestAskOpen: (scope: AskScope, via?: AskOpenVia) => void;
 
 	/** The drawer has answered the request FOR THIS SCOPE, and only that one —
 	 * the guard `clearConsoleOpenIntent` keeps one pane over: an unconditional
@@ -2140,8 +2160,8 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				});
 			},
 
-			requestAskOpen: (scope: AskScope) => {
-				set({ askOpenIntent: scope });
+			requestAskOpen: (scope: AskScope, via: AskOpenVia = "menu") => {
+				set({ askOpenIntent: { scope, via } });
 			},
 
 			clearAskOpenIntent: (scope: AskScope) => {
@@ -2150,7 +2170,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				// clear the other queue's request), and a no-op clear writes no new
 				// state object - the unmount cleanup calls this on every close.
 				set((state) =>
-					state.askOpenIntent === scope ? { askOpenIntent: null } : {},
+					state.askOpenIntent?.scope === scope ? { askOpenIntent: null } : {},
 				);
 			},
 

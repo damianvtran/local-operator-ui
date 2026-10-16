@@ -485,11 +485,14 @@ test("the scope travels with the flag and is never persisted", () => {
 	/* Its two writers, and the scope guard on the answer: an answer belongs to the
 	 * request it answers (the console's own clearing rule, one control over). */
 	store.requestAskOpen("fleet");
-	assert.equal(useUiPreferencesStore.getState().askOpenIntent, "fleet");
+	assert.deepEqual(useUiPreferencesStore.getState().askOpenIntent, {
+		scope: "fleet",
+		via: "menu",
+	});
 	store.clearAskOpenIntent("session");
-	assert.equal(
+	assert.deepEqual(
 		useUiPreferencesStore.getState().askOpenIntent,
-		"fleet",
+		{ scope: "fleet", via: "menu" },
 		"a clear for the other queue cannot throw this request away",
 	);
 	store.clearAskOpenIntent("fleet");
@@ -519,8 +522,12 @@ test("the scope travels with the flag and is never persisted", () => {
 	assert.equal(useUiPreferencesStore.getState().isAskDrawerOpen, true);
 	/* The row's own order - open, then request - leaves ITS request standing. */
 	store.setAskDrawerOpen(true, "session");
-	store.requestAskOpen("session");
-	assert.equal(useUiPreferencesStore.getState().askOpenIntent, "session");
+	store.requestAskOpen("session", "chord");
+	assert.deepEqual(
+		useUiPreferencesStore.getState().askOpenIntent,
+		{ scope: "session", via: "chord" },
+		"the request names the door that filed it (a chord arms no menu claim)",
+	);
 	store.setAskDrawerOpen(false, "session");
 	assert.equal(useUiPreferencesStore.getState().askOpenIntent, null);
 });
@@ -705,7 +712,7 @@ test("the asks door left the sidebar for the conversation header, and then for t
 	);
 	assert.match(
 		railActions,
-		/setAskDrawerOpen\(\s*!\(state\.isAskDrawerOpen && state\.askDrawerScope === context\.askScope\),\s*context\.askScope,\s*\)/,
+		/const open = !\(\s*state\.isAskDrawerOpen && state\.askDrawerScope === context\.askScope\s*\);\s*state\.setAskDrawerOpen\(open, context\.askScope\);/,
 		"the shared toggle must be the header trigger's old door: a toggle in the ITEM's own scope (this scope open closes; the other scope's open is replaced).",
 	);
 	assert.match(

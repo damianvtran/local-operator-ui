@@ -363,7 +363,6 @@ const CompositionGround: FC<{
 						description="Quarterly reporting · on this machine"
 						onOpenOptions={() => undefined}
 						onToggleBrowser={() => undefined}
-						runDetails={details}
 					/>
 					<div className="flex min-h-0 grow flex-col gap-3 p-4">
 						<div className="h-16 rounded-frame bg-surface" />

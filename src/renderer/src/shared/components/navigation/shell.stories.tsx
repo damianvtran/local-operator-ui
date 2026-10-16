@@ -31,15 +31,19 @@ import type { WakeControls } from "@features/chat/components/run-details/use-wak
 import type { AidaWakeIdentity } from "@features/chat/components/run-details/wake-controls-model";
 import {
 	CODE_NOTICE_BELOW_VERSION,
+	CODE_NOTICE_CHECKING,
 	CODE_NOTICE_DRAFT,
 	RUN_NOTICE_DRAFT,
 	RUN_NOTICE_READING,
 	type SlotNotice,
+	codeReviewPaneNotice,
+	runPaneNotice,
 } from "@features/chat/right-slot-notices";
 import type { CanvasDocument } from "@features/chat/types/canvas";
 import { ConsolePane } from "@features/console/components/console-pane";
 import { PROVIDER_ROWS } from "@features/settings/components/setting-combobox.fixtures";
 import { SettingsPage } from "@features/settings/components/settings-page";
+import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
 import type { ReusableProfile } from "@shared/api/local-operator/profile-hooks";
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { PaneSlot } from "@shared/components/common/pane-slot";
@@ -928,7 +932,6 @@ const ConversationStandIn = ({
 				onToggleBrowser={() => undefined}
 				onOpenConsole={details ? () => undefined : undefined}
 				onToggleAsks={asksCount > 0 ? () => undefined : undefined}
-				runDetails={details}
 				{...legacyHeaderProps}
 			/>
 			{body ? (
@@ -2085,6 +2088,8 @@ export const ChatDockRunPanelOnDraft: Story = {
 							label="Run details"
 							closeLabel="Close run details"
 							onClose={() => undefined}
+							labelInk="dim"
+							labelInset
 							{...RUN_NOTICE_DRAFT}
 						/>
 					</PaneSlot>
@@ -2172,6 +2177,9 @@ const NoticeArm: FC<{
 						label={label}
 						closeLabel={closeLabel}
 						onClose={() => undefined}
+						/* The label of the pane each notice stands in for, as `chat-content` passes it (D4). */
+						labelInk={flag === "isRunPanelOpen" ? "dim" : "muted"}
+						labelInset={flag === "isRunPanelOpen"}
 						{...notice}
 					/>
 				</PaneSlot>
@@ -2218,6 +2226,98 @@ export const ChatDockRunReading: Story = {
 			closeLabel="Close run details"
 			tourTag="run-panel-dock"
 			notice={RUN_NOTICE_READING}
+		/>
+	),
+};
+
+/*
+ * THE CODE REVIEW STATES THE DESIGN ROUND RENDERED BY HAND (design round 1, D5),
+ * each built by `codeReviewPaneNotice` itself rather than a hand-written notice, so
+ * the frame is the copy and the tone the app would draw: the capability read in
+ * flight, an unpaired server, and the two load errors the shared table words
+ * differently (not answering, and older than this app expects).
+ */
+const codeArm = (notice: SlotNotice) => (
+	<NoticeArm
+		flag="isCodeReviewPaneOpen"
+		session={true}
+		label="Code review"
+		closeLabel="Close code review"
+		tourTag="code-review-pane-slot"
+		notice={notice}
+	/>
+);
+const codeSlotNotice = (
+	input: Omit<Parameters<typeof codeReviewPaneNotice>[0], "sessionId">,
+): SlotNotice => {
+	const slot = codeReviewPaneNotice({ sessionId: "4b7f2c9a1e05", ...input });
+	if (slot.notice === null) throw new Error("this state draws the real pane");
+	return slot.notice;
+};
+
+/** Code review while the capability read is still in flight. */
+export const ChatDockCodeChecking: Story = {
+	render: () => codeArm(CODE_NOTICE_CHECKING),
+};
+
+/** Code review against a server that refused this app's credential. */
+export const ChatDockCodeUnpaired: Story = {
+	render: () =>
+		codeArm(
+			codeSlotNotice({
+				state: "unpaired",
+				cause: "credential-refused",
+				loadError: null,
+			}),
+		),
+};
+
+/** Code review when the capability read failed: the server is not answering. */
+export const ChatDockCodeUnreachable: Story = {
+	render: () =>
+		codeArm(
+			codeSlotNotice({
+				state: "unknown",
+				cause: null,
+				loadError: new DesktopControlError(null, "no answer"),
+			}),
+		),
+};
+
+/** Code review when the capability read 404'd: the server predates this app. */
+export const ChatDockCodeOutdated: Story = {
+	render: () =>
+		codeArm(
+			codeSlotNotice({
+				state: "unknown",
+				cause: null,
+				loadError: new DesktopControlError(404, "not found"),
+			}),
+		),
+};
+
+/*
+ * Run details on a conversation whose stream gave up (design round 1, D1): a
+ * resolved line, never "Reading…", with the transcript's own failure sentence as
+ * its detail.
+ */
+export const ChatDockRunUnreadable: Story = {
+	render: () => (
+		<NoticeArm
+			flag="isRunPanelOpen"
+			session={true}
+			label="Run details"
+			closeLabel="Close run details"
+			tourTag="run-panel-dock"
+			notice={runPaneNotice({
+				sessionId: "4b7f2c9a1e05",
+				status: "unavailable",
+				missing: false,
+				failure: {
+					statement:
+						"Lost the connection to this conversation — reconnect to keep reading.",
+				},
+			})}
 		/>
 	),
 };

@@ -263,16 +263,17 @@ room its content actually needs (a roster *and* a conversation).
 
 ### 3.3 The trigger
 
-**Visibility: `details !== null`.** Not `hasRunDetails`, not `!isCanvasOpen`.
-`hasRunDetails` (`run-detail-model.ts:946-956`) is deleted as a visibility
-predicate and survives only inside the panel's own copy logic, where "is there
-anything outstanding" is still a fact worth stating. The remaining condition is
-not a work gate but a data gate: `chat-page.tsx:159-167` derives the model only
-when `canonical.frontend` exists and passes `null` on the legacy path
-(`chat-content.tsx:132-137`), where there is no session identity and no
-`jobs`/`todos` stream to show. So "always visible" means *always visible in a
-canonical session*, which is the state every session this surface can describe is
-in — and a legacy chat grows no button, exactly as it does not today.
+**Visibility: always, wherever the panel rail is mounted** (the always-visible
+rail, 2026-10). This section first shipped the rule `details !== null`, which tied
+the door to the model: it vanished on every draft, every conversation switch and
+every reconnect gap, because the model is derived from `canonical.frontend` and
+that is null in all three. The door is now drawn on every chat route, and the
+pane it opens answers with the roster when there is a model and otherwise with a
+notice that says why there is none (`runPaneNotice` in
+`features/chat/right-slot-notices.ts`): the conversation has not started, its
+run is still being read, or the read failed. `hasRunDetails`
+(`run-detail-model.ts`) is still not a visibility predicate; it survives only
+inside the panel's own copy logic.
 
 **Icon: `Info`, not `Activity`** — see `docs/composer-status-tabs.md` § 6. The
 surviving half of the old reasoning still holds: `Users` and `ListChecks` already

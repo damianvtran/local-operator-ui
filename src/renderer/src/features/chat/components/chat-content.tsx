@@ -110,11 +110,7 @@ import type {
 	DraftResolution,
 } from "../draft-selection";
 import { useFleetAsks } from "../fleet-asks";
-import {
-	CODE_NOTICE_DRAFT,
-	codeReviewPaneNotice,
-	runPaneNotice,
-} from "../right-slot-notices";
+import { codeReviewPaneNotice, runPaneNotice } from "../right-slot-notices";
 import type { Message } from "../types/message";
 import { useAskOpenPolicy } from "../use-ask-open-policy";
 import { AskDrawer } from "./asks/ask-drawer";
@@ -541,11 +537,11 @@ type ChatContentProps = {
 	};
 	/**
 	 * The session's derived subagent and to-do view model (`run-details.md` § 8),
-	 * derived by the page that owns the canonical stream and handed down here so
-	 * the header can place the trigger. OPTIONAL, and its absence is the whole
-	 * gate for every path that has no canonical session: `ChatHeader` renders with
-	 * no `runDetails` below, `RunDetailsTrigger` returns null for a null model, and
-	 * so the legacy transcript grows no button and no reserved space.
+	 * derived by the page that owns the canonical stream and handed down here for
+	 * the run pane, the panel rail and the composer's status row. `null` on a
+	 * draft and while the conversation's frame has not been read; it gates no
+	 * door (the always-visible rail, D1) - the run pane opens either way, and with
+	 * no model it draws a notice saying why (`runPaneNotice`).
 	 */
 	runDetails?: RunDetails | null;
 	/**
@@ -939,7 +935,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * neither gates anything here.
 		 */
 		const pairingCause = usePairingCause();
-		const codeNotice = codeReviewPaneNotice({
+		const codeSlot = codeReviewPaneNotice({
 			sessionId,
 			state: codeReviewState,
 			cause: pairingCause ?? null,
@@ -2087,7 +2083,6 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							 */
 							sessionId={sessionId}
 							onOpenOptions={onOpenOptions}
-							runDetails={runDetails}
 							/*
 							 * EXACTLY ONE OWNER, DERIVED FROM THE STORE RATHER THAN MEASURED (chat
 							 * redesign §J4). The right slot is exclusive - `claimRightSlot` clears the
@@ -3052,7 +3047,15 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 									wakeControls={wakeControls}
 									jobControls={jobControls}
 									wakeAida={wakeAida}
-									sessionId={canonical?.view.frontend?.session_id ?? null}
+									/*
+									 * THE COMPONENT'S OWN `sessionId`, not the frame's (agent review m2):
+									 * the pane is held through a reconnect gap (`runDetails` reads the
+									 * hold), but `view.frontend` is null for the gap, and `RunPanel`
+									 * resets its open child reader whenever this prop changes - so the
+									 * frame's id sent the reader back to the roster on every gap while
+									 * the pane around it looked stable.
+									 */
+									sessionId={sessionId ?? null}
 									pulses={pulses ?? EMPTY_PULSES}
 									childrenOpenable={childrenOpenable}
 									/*
@@ -3088,7 +3091,14 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 									label="Run details"
 									closeLabel="Close run details"
 									onClose={() => setRunPanelOpen(false)}
-									{...runPaneNotice(sessionId)}
+									labelInk="dim"
+									labelInset
+									{...runPaneNotice({
+										sessionId,
+										status: canonical.view.status,
+										missing: canonical.view.missing,
+										failure: canonical.view.failure,
+									})}
 								/>
 							)}
 						</PaneSlot>
@@ -3184,7 +3194,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				{/*
 				 * THE CODE REVIEW PANE. `CodeReviewPane` - and the ledger's query with it -
 				 * mounts only where it has a SUBJECT (a conversation) and the backend
-				 * serves its feature (`codeNotice` is null): on a draft there is no ledger,
+				 * serves its feature (`codeSlot.notice` is null): on a draft there is no ledger,
 				 * and against an older backend the routes it reads do not exist. Anywhere
 				 * else the slot still opens, because the rail's door is always present
 				 * (D3), and it shows a notice naming which of those is missing
@@ -3205,16 +3215,17 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							width={effectiveCodePanelWidth}
 							tourTag="code-review-pane-slot"
 						>
-							{codeNotice !== null || !sessionId ? (
+							{codeSlot.notice !== null ? (
 								<SlotPaneNotice
 									label="Code review"
 									closeLabel="Close code review"
 									onClose={() => setCodeReviewPaneOpen(false)}
-									{...(codeNotice ?? CODE_NOTICE_DRAFT)}
+									labelInk="muted"
+									{...codeSlot.notice}
 								/>
 							) : (
 								<CodeReviewPane
-									sessionId={sessionId}
+									sessionId={codeSlot.sessionId}
 									/*
 									 * THE POLL GATE'S "live", the Stop control's own reading (`turnAlive`, the
 									 * frontend's `streaming` flag through the held frame): a turn is RUNNING.

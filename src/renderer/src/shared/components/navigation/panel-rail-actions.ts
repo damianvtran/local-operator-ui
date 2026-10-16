@@ -51,6 +51,12 @@ export type PanelRailActionContext = {
 	sessionId?: string | null;
 	/** Which queue the ask door opens (the scope the route's own door passes). */
 	askScope?: AskScope;
+	/**
+	 * The press came from a keyboard chord, not from the item under the pointer
+	 * or the keyboard's focus. Only the ask arm reads it: a chord leaves no door
+	 * focused, so its open has to say it was the user's (`requestAskOpen`).
+	 */
+	via?: "chord";
 };
 
 /**
@@ -102,10 +108,21 @@ export function togglePanelRailItem(
 		}
 		case "ask": {
 			if (context.askScope === undefined) return false;
-			state.setAskDrawerOpen(
-				!(state.isAskDrawerOpen && state.askDrawerScope === context.askScope),
-				context.askScope,
+			const open = !(
+				state.isAskDrawerOpen && state.askDrawerScope === context.askScope
 			);
+			state.setAskDrawerOpen(open, context.askScope);
+			/*
+			 * A CHORD'S OPEN FILES A REQUEST (round-1 Q1/m1 of the always-visible rail).
+			 * The rail item's press is read off focus - the drawer finds the item focused
+			 * and treats the mount as the user's - but a chord leaves focus wherever it
+			 * was, so without a request the drawer took the mount for a carried flag and
+			 * auto-closed it over an empty or unsupported queue. Filed AFTER the open,
+			 * the menu row's order, because the open supersedes any request in flight.
+			 */
+			if (open && context.via === "chord") {
+				state.requestAskOpen(context.askScope, "chord");
+			}
 			return true;
 		}
 	}
