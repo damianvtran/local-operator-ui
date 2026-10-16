@@ -178,6 +178,17 @@ test("existing job performs real native capture and always uploads measurements"
 			source.includes("primaryError === null"),
 		"traffic assertions must be skipped over a run that already failed",
 	);
+	/*
+	 * The auth invariant is "no unauthenticated WRITE", not "every read carries a
+	 * bearer": the app's transport omits the header when it holds no token, so a bare
+	 * read is ordinary (measured: 7 of 153 requests, `/v1/credentials` and `/health`),
+	 * and the fixture answers each 401. Pinned so the guard cannot be tightened back
+	 * into a false failure or loosened into admitting a bare write.
+	 */
+	assert(
+		source.includes('request.authenticated || request.method === "GET"'),
+		"the auth guard must forbid unauthenticated WRITES, not unauthenticated reads",
+	);
 	// The Radient proxy is a POST this scene reaches; the fixture models its read
 	// operations and the guard admits the route while the turn/answer pattern stays shut.
 	assert(
