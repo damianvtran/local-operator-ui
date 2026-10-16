@@ -1350,6 +1350,144 @@ test("an approval read is normalised, never cast: unusable rows drop, every fiel
 	assert.deepEqual(approvalRows(null), []);
 });
 
+test("credential intent consumes authored disclosure, never generic onboarding authority", () => {
+	const raw = approvalCapture({
+		what: {
+			credential_inheritance: { opaque: "signed server-owned scope" },
+			anchor: { key_id: "op_fixture" },
+		},
+		summary: "Let a worker borrow account test-account until revoked.",
+		details: [
+			"Permission: until revoked",
+			"Request window is not permission expiry",
+			"Then run: server-authored apply command",
+		],
+		can_approve_here: false,
+		approve_remedy: "Use the server-authored approval command on this machine.",
+	});
+	const [row] = mesh.approvalRows([raw]);
+	assert.equal(row.kind, "credential");
+	assert.equal(mesh.approvalSummary(row), raw.summary);
+	assert.equal(mesh.approvalHead(row), raw.summary);
+	assert.deepEqual(row.details, raw.details);
+	assert.notEqual(
+		row.details,
+		raw.details,
+		"the boundary snapshots the disclosure array",
+	);
+	assert.equal(row.approveRemedy, raw.approve_remedy);
+	assert.deepEqual(
+		mesh.approvalScopeEntries(row),
+		[],
+		"signer anchor is not an onboarding grant",
+	);
+	assert.equal(mesh.approvalWhereLabel(row), null);
+	assert.equal(mesh.approvalHostKeyLabel(row), null);
+	assert.equal(mesh.canApproveApproval(row), false);
+	assert.equal(mesh.canDenyApproval(row.state), true);
+	assert.equal(
+		mesh.canApproveApproval({ ...row, canApproveHere: true }),
+		false,
+		"true is not a new signing capability",
+	);
+});
+
+test("malformed credential extras stay opaque and cannot regain Approve", () => {
+	for (const intent of [null, [], false, "opaque", {}]) {
+		for (const flag of [undefined, null, false, true, "false", 1, [], {}]) {
+			const [row] = mesh.approvalRows([
+				approvalCapture({
+					what: { credential_inheritance: intent },
+					summary: { html: "not text" },
+					details: ["one line", { omitted: "not a complete disclosure" }],
+					can_approve_here: flag,
+					approve_remedy: ["not a command string"],
+				}),
+			]);
+			assert.equal(row.kind, "credential");
+			assert.equal(mesh.canApproveApproval(row), false);
+			assert.equal(row.summary, undefined);
+			assert.equal(
+				row.details,
+				undefined,
+				"do not silently remove a security disclosure line",
+			);
+			assert.equal(row.approveRemedy, undefined);
+			assert.equal(mesh.approvalHead(row), "Credential access request");
+		}
+	}
+	const [plain] = mesh.approvalRows([
+		approvalCapture({
+			what: { credential_inheritance: {} },
+			summary: "<img src=x onerror=alert(1)>",
+			details: ["<script>not executable</script>"],
+		}),
+	]);
+	assert.equal(
+		plain.summary,
+		"<img src=x onerror=alert(1)>",
+		"backend text is not HTML to interpret",
+	);
+	assert.deepEqual(plain.details, ["<script>not executable</script>"]);
+});
+
+test("optional restrictions are generic and unknown explicit kinds cannot sign", () => {
+	const [legacy] = mesh.approvalRows([approvalCapture()]);
+	assert.equal(mesh.canApproveApproval(legacy), true);
+	for (const kind of [undefined, "device_onboard", "local_authority"]) {
+		const raw = approvalCapture({
+			can_approve_here: false,
+			approve_remedy: "Use the supported typed workflow.",
+		});
+		if (kind !== undefined) raw.kind = kind;
+		const [row] = mesh.approvalRows([raw]);
+		assert.equal(mesh.canApproveApproval(row), false);
+		assert.equal(row.approveRemedy, raw.approve_remedy);
+		assert.equal(mesh.canDenyApproval(row.state), true);
+	}
+	for (const kind of ["future_network_intent", "", null, [], {}]) {
+		const [row] = mesh.approvalRows([
+			approvalCapture({
+				kind,
+				can_approve_here: true,
+				summary: "Backend-only intent",
+			}),
+		]);
+		assert.equal(row.kind, "unknown");
+		assert.equal(mesh.canApproveApproval(row), false);
+		assert.deepEqual(mesh.approvalScopeEntries(row), []);
+	}
+	for (const flag of [null, "false", 0, [], {}]) {
+		const [row] = mesh.approvalRows([
+			approvalCapture({ can_approve_here: flag }),
+		]);
+		assert.equal(mesh.canApproveApproval(row), false);
+	}
+});
+
+test("credential states preserve requested-only counts and ordinary Deny transitions", () => {
+	const states = ["requested", "approved", "connected", "denied", "expired"];
+	const rows = mesh.approvalRows(
+		states.map((state, index) =>
+			approvalCapture({
+				approval_id: `ap_credential${index}`,
+				state,
+				what: { credential_inheritance: {} },
+				can_approve_here: false,
+			}),
+		),
+	);
+	assert.equal(mesh.waitingApprovalCount(rows), 1);
+	assert.deepEqual(
+		rows.map((row) => mesh.isWaitingApproval(row.state)),
+		[true, false, false, false, false],
+	);
+	assert.deepEqual(
+		rows.map((row) => mesh.canDenyApproval(row.state)),
+		[true, true, false, false, false],
+	);
+});
+
 test("the wait count names `requested` alone; the store's open set is unchanged", () => {
 	const {
 		approvalRows,
@@ -1417,7 +1555,7 @@ test("the wait count names `requested` alone; the store's open set is unchanged"
 test("the decision buttons follow the store's own transition matrix", () => {
 	const { canApproveApproval, canDenyApproval } = mesh;
 	assert.equal(
-		canApproveApproval("requested"),
+		canApproveApproval(mesh.approvalRows([approvalCapture()])[0]),
 		true,
 		"approve is the answer to `requested` alone",
 	);
@@ -1429,7 +1567,11 @@ test("the decision buttons follow the store's own transition matrix", () => {
 		"denied",
 		"expired",
 	]) {
-		assert.equal(canApproveApproval(state), false, state);
+		assert.equal(
+			canApproveApproval(mesh.approvalRows([approvalCapture({ state })])[0]),
+			false,
+			state,
+		);
 	}
 	for (const state of ["requested", "approved", "connecting", "failed"]) {
 		assert.equal(canDenyApproval(state), true, state);
@@ -2345,7 +2487,7 @@ test("a refused decision renders its sentence, and the tray splits waiting from 
 	 */
 	assert.match(
 		tray,
-		/className=\{cn\(waiting\.length > 0 && "border-hairline border-t pt-3"\)\}/,
+		/className=\{cn\(\s*waiting\.length > 0 && "border-hairline border-t pt-3",?\s*\)\}/,
 		"the settled section draws its hairline only when a waiting card is above it",
 	);
 	assert.match(

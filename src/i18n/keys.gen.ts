@@ -1341,6 +1341,14 @@ export type MessageParams = {
 	"ui.installer.phase.label.verify": undefined;
 	"ui.installer.status.elapsed": { step: string; elapsed: string; eta: string };
 	"ui.installer.status.step": { step: string; total: string };
+	"ui.mesh.approval.approved_apply_hint": undefined;
+	"ui.mesh.approval.approved_details_missing": undefined;
+	"ui.mesh.approval.approved_pending_apply": undefined;
+	"ui.mesh.approval.cli_review": undefined;
+	"ui.mesh.approval.credential_title": undefined;
+	"ui.mesh.approval.details_unavailable": undefined;
+	"ui.mesh.approval.request_window": { remaining: string };
+	"ui.mesh.approval.unknown_title": undefined;
 	"ui.mesh.mesh_actions.admission_is_two_sided_so_this_mints": undefined;
 	"ui.mesh.mesh_actions.cancel": undefined;
 	"ui.mesh.mesh_actions.check_again": undefined;
