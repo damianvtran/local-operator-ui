@@ -885,13 +885,13 @@ const DISMISS_ON_RECOVERED =
 	/status === "recovered"\) \{\s*dismissToast\(lostToastId\);/;
 const RECONNECT_ACTION =
 	/id: lostToastId,[\s\S]*?onClick: \(\) => handle\.retry\(\)/;
-const APPROVAL_TOAST = /showApprovalToast\(/g;
+const CARD_TOAST = /showCardToast\(/g;
 const SHARED_ID_TOAST =
-	/showWarningToast\(message, \{ id: voiceApprovalToastId\(sessionId\) \}\)/;
-const RAW_APPROVAL_TOAST =
+	/showWarningToast\(message, \{ id: voiceCardToastId\(sessionId\) \}\)/;
+const RAW_CARD_TOAST =
 	/show(Info|Warning|Error)Toast\(\s*t\("ui\.chat\.voice\.(card_pending|approval_waiting)"\)/;
 const PENDING_REFUSAL_ROUTED =
-	/voiceCode === "approval_pending"\) \{[^}]*showApprovalToast\(sessionId, sentence\)/;
+	/voiceCode === "approval_pending"\) \{[^}]*showCardToast\(sessionId, sentence\)/;
 
 test("D8: the gate announcement and every refused take share one per-session warning toast", () => {
 	const controller = stripComments(
@@ -900,16 +900,14 @@ test("D8: the gate announcement and every refused take share one per-session war
 			"utf8",
 		),
 	);
-	const helper = controller.slice(
-		controller.indexOf("function showApprovalToast"),
-	);
+	const helper = controller.slice(controller.indexOf("function showCardToast"));
 	assert.match(helper.slice(0, helper.indexOf("\n}")), SHARED_ID_TOAST);
 	// The announcement, the pre-check and the server's refusal all route through it.
 	// Its declaration plus three call sites.
-	assert.equal([...controller.matchAll(APPROVAL_TOAST)].length, 4);
+	assert.equal([...controller.matchAll(CARD_TOAST)].length, 4);
 	assert.doesNotMatch(
 		controller,
-		RAW_APPROVAL_TOAST,
+		RAW_CARD_TOAST,
 		"no approval sentence bypasses the shared id",
 	);
 	assert.match(
@@ -917,4 +915,258 @@ test("D8: the gate announcement and every refused take share one per-session war
 		PENDING_REFUSAL_ROUTED,
 		"the server's refusal uses the shared id",
 	);
+});
+
+/*
+ * R4-M1 / Q6: THE INVARIANT ACROSS EVERY RESUME PATH - a turn nobody spoke into
+ * is never spoken, and a take whose turn ended while the stream was away is
+ * dropped silently rather than carried into the next turn.
+ *
+ * A hand-driven transport: each test pushes real-shaped frames onto the CURRENT
+ * connection, arms the take at the moment the controller would (`feedTurns`
+ * folds `armed` into the same state the stream feeds), and fires the retry
+ * timer itself. State is folded live, in arrival order, exactly as the
+ * controller folds it.
+ */
+async function liveRig() {
+	const { subscribeVoiceStream } = await import(streamPath.href);
+	const connections = [];
+	const timers = [];
+	let state = initialVoiceTurns();
+	const spoken = [];
+	const fold = (input) => {
+		const step = stepVoiceTurns(state, input);
+		state = step.state;
+		spoken.push(...step.speak);
+	};
+	const handle = subscribeVoiceStream("a1a1a1a1a1a1", fold, () => undefined, {
+		subscribe: (args, onEvent) => {
+			connections.push({ args, onEvent });
+			return () => undefined;
+		},
+		delayMs: () => 0,
+		schedule: (run) => {
+			timers.push(run);
+			return timers.length;
+		},
+		cancel: () => undefined,
+	});
+	const at = (epoch, seq, type, payload) => ({
+		kind: "data",
+		data: JSON.stringify({
+			session_id: "a1a1a1a1a1a1",
+			epoch,
+			seq,
+			type,
+			payload,
+		}),
+	});
+	return {
+		connections,
+		get state() {
+			return state;
+		},
+		spoken,
+		handle,
+		arm: () => fold({ kind: "armed" }),
+		push: (...events) => {
+			for (const event of events) connections.at(-1).onEvent(event);
+		},
+		/** Fire every pending retry timer (each opens one connection). */
+		tick: () => {
+			while (timers.length) timers.shift()();
+		},
+		open: (epoch, seq, payload = { gap: false }) =>
+			at(epoch, seq, "open", {
+				subscription_id: "0123456789abcdef0123456789abcdef",
+				...payload,
+			}),
+		snapshot: (epoch, seq, streaming) =>
+			at(epoch, seq, "snapshot", {
+				frontend: { snapshot: { pending_gate: null, streaming } },
+				history: {},
+				cold: false,
+			}),
+		event: (epoch, seq, payload) => at(epoch, seq, "event", payload),
+	};
+}
+
+const TYPED_ANSWER = "m-typed";
+/** A whole typed turn (nobody spoke into it) on `epoch` from `seq`. */
+const typedTurn = (rig, epoch, seq) => [
+	rig.event(epoch, seq, { type: "agent_start" }),
+	rig.event(epoch, seq + 1, {
+		type: "message_end",
+		message: {
+			id: TYPED_ANSWER,
+			role: "assistant",
+			content: [{ type: "text", text: "Typed reply." }],
+		},
+	}),
+	rig.event(epoch, seq + 2, { type: "agent_end" }),
+];
+const DROP = { kind: "error", status: 503 };
+
+test("R4-M1 path E: resume with open{gap:true}, empty replay, snapshot streaming:false - the take is dropped, the typed turn is silent", async () => {
+	const rig = await liveRig();
+	rig.push(rig.open("ep-1", 1, { gap: true }), rig.snapshot("ep-1", 1, false));
+	rig.arm();
+	rig.push(rig.event("ep-1", 2, { type: "agent_start" }), DROP);
+	rig.tick();
+	assert.deepEqual(rig.connections[1].args, {
+		sessionId: "a1a1a1a1a1a1",
+		epoch: "ep-1",
+		afterSeq: 2,
+	});
+	rig.push(rig.open("ep-1", 5, { gap: true }), rig.snapshot("ep-1", 5, false));
+	assert.equal(rig.state.armed, 0, "disarmed on the gap");
+	rig.push(...typedTurn(rig, "ep-1", 6));
+	assert.deepEqual(rig.spoken, []);
+	rig.handle.dispose();
+});
+
+test("R4-M1 path F (QA Q6): an epoch change - long cut or daemon restart - drops the take even while the next turn is running", async () => {
+	const rig = await liveRig();
+	rig.push(rig.open("ep-1", 1, { gap: true }), rig.snapshot("ep-1", 1, false));
+	rig.arm();
+	rig.push(rig.event("ep-1", 2, { type: "agent_start" }), DROP);
+	rig.tick();
+	// New epoch, no gap flag, and a typed turn already RUNNING at the snapshot:
+	// only the epoch says continuity was lost.
+	rig.push(rig.open("ep-2", 1, {}), rig.snapshot("ep-2", 1, true));
+	assert.equal(rig.state.armed, 0, "disarmed on the new epoch");
+	rig.push(
+		rig.event("ep-2", 2, {
+			type: "message_end",
+			message: {
+				id: TYPED_ANSWER,
+				role: "assistant",
+				content: [{ type: "text", text: "Typed reply." }],
+			},
+		}),
+		rig.event("ep-2", 3, { type: "agent_end" }),
+	);
+	assert.deepEqual(rig.spoken, []);
+	rig.handle.dispose();
+});
+
+test("R4-M1 path H: gap-free resume whose agent_end was absorbed into the snapshot (streaming:false) - dropped silently", async () => {
+	const rig = await liveRig();
+	rig.push(rig.open("ep-1", 6, { gap: true }), rig.snapshot("ep-1", 6, false));
+	rig.arm();
+	rig.push(rig.event("ep-1", 7, { type: "agent_start" }), DROP);
+	rig.tick();
+	// No gap, same epoch, nothing replayed: the end exists only as snapshot state.
+	rig.push(
+		rig.open("ep-1", 10, { gap: false }),
+		rig.snapshot("ep-1", 10, false),
+	);
+	assert.equal(rig.state.armed, 0, "disarmed by the idle snapshot");
+	rig.push(...typedTurn(rig, "ep-1", 11));
+	assert.deepEqual(rig.spoken, []);
+	rig.handle.dispose();
+});
+
+test("R4-M1 path I: exhausted, then retry() - the take does not survive the stop", async () => {
+	const rig = await liveRig();
+	rig.push(rig.open("ep-1", 1, { gap: true }), rig.snapshot("ep-1", 1, false));
+	rig.arm();
+	rig.push(rig.event("ep-1", 2, { type: "agent_start" }), DROP);
+	for (let i = 0; i < 10; i += 1) {
+		rig.tick();
+		if (rig.connections.length > i + 1) rig.push(DROP);
+	}
+	assert.equal(rig.state.armed, 0, "disarmed when the watcher stopped");
+	rig.handle.retry();
+	// Same epoch, no gap, and the typed turn already running: nothing but the
+	// stop could have dropped the take.
+	rig.push(rig.open("ep-1", 5, { gap: false }), rig.snapshot("ep-1", 5, true));
+	rig.push(
+		rig.event("ep-1", 6, {
+			type: "message_end",
+			message: {
+				id: TYPED_ANSWER,
+				role: "assistant",
+				content: [{ type: "text", text: "Typed reply." }],
+			},
+		}),
+		rig.event("ep-1", 7, { type: "agent_end" }),
+	);
+	assert.deepEqual(rig.spoken, []);
+	rig.handle.dispose();
+});
+
+test("R4-M1 QA repro: take sent while the watcher is down, its turn finishes unseen, then recovery - silent", async () => {
+	const rig = await liveRig();
+	rig.push(
+		rig.open("ep-1", 1, { gap: true }),
+		rig.snapshot("ep-1", 1, false),
+		DROP,
+	);
+	// The watcher is down (a retry is pending); the take goes out now.
+	rig.arm();
+	rig.tick();
+	// QA rows a-d: the cut outlived the dwell, the turn ran and ended, and the
+	// resume came back on a new epoch with gap=True and nothing replayed.
+	rig.push(rig.open("ep-2", 1, { gap: true }), rig.snapshot("ep-2", 1, false));
+	rig.push(...typedTurn(rig, "ep-2", 2));
+	assert.deepEqual(rig.spoken, []);
+	rig.handle.dispose();
+});
+
+test("R4-M1 keeps what must keep working: a fresh take is answered, and a gap-free replay speaks its answer once", async () => {
+	const rig = await liveRig();
+	rig.push(rig.open("ep-1", 1, { gap: true }), rig.snapshot("ep-1", 1, false));
+	// A fresh take whose turn has not started: an idle state frame keeps it.
+	rig.arm();
+	rig.push(rig.snapshot("ep-1", 1, false));
+	rig.push(
+		rig.event("ep-1", 2, { type: "agent_start" }),
+		rig.event("ep-1", 3, {
+			type: "message_end",
+			message: {
+				id: "m-fresh",
+				role: "assistant",
+				content: [{ type: "text", text: "Fresh answer." }],
+			},
+		}),
+		rig.event("ep-1", 4, { type: "agent_end" }),
+	);
+	assert.deepEqual(rig.spoken, [{ kind: "message", messageId: "m-fresh" }]);
+	// The R3-M1 shape: a drop inside the dwell, answer replayed before the snapshot.
+	rig.arm();
+	rig.push(rig.event("ep-1", 5, { type: "agent_start" }), DROP);
+	rig.tick();
+	rig.push(
+		rig.open("ep-1", 8, { gap: false }),
+		rig.event("ep-1", 6, {
+			type: "message_end",
+			message: {
+				id: "m-replayed",
+				role: "assistant",
+				content: [{ type: "text", text: "Replayed answer." }],
+			},
+		}),
+		rig.event("ep-1", 7, { type: "agent_end" }),
+		rig.snapshot("ep-1", 8, false),
+	);
+	rig.push(...typedTurn(rig, "ep-1", 9));
+	assert.deepEqual(rig.spoken, [
+		{ kind: "message", messageId: "m-fresh" },
+		{ kind: "message", messageId: "m-replayed" },
+	]);
+	rig.handle.dispose();
+});
+
+const IDLES_ON_SILENT_CONSUME =
+	/before\.armed > 0 && step\.state\.armed === 0 && step\.speak\.length === 0[\s\S]{0,200}voice\.phase === "working"\)\s*voice\.setPhase\("idle", null\)/;
+
+test("R4-M1: a take dropped in silence returns the header from Working to rest", () => {
+	const controller = stripComments(
+		readFileSync(
+			"src/renderer/src/features/voice/voice-controller.tsx",
+			"utf8",
+		),
+	);
+	assert.match(controller, IDLES_ON_SILENT_CONSUME);
 });

@@ -137,7 +137,7 @@ export async function sendVoiceUtterance(
 	if (result.kind === "error" && result.voiceCode === "approval_pending") {
 		// The card is on screen and blocking; the take changed nothing (V7, V13).
 		useVoiceStore.getState().setPhase("idle", null);
-		showApprovalToast(sessionId, sentence);
+		showCardToast(sessionId, sentence);
 	} else if (
 		result.kind === "error" &&
 		result.voiceCode === "empty_transcript"
@@ -171,10 +171,20 @@ const turnsBySession = new Map<string, VoiceTurnsState>();
 let speakSink: ((source: VoiceSpeakSource) => void) | null = null;
 
 export function feedTurns(sessionId: string, input: VoiceTurnsInput): void {
-	const step = stepVoiceTurns(
-		turnsBySession.get(sessionId) ?? initialVoiceTurns(),
-		input,
-	);
+	const before = turnsBySession.get(sessionId) ?? initialVoiceTurns();
+	const step = stepVoiceTurns(before, input);
+	/*
+	 * A TAKE CONSUMED IN SILENCE ENDS THE EXCHANGE (R4-M1). When a step drops the
+	 * armed take without asking to speak - a turn that ended unseen across a
+	 * resume, an interrupted turn, a turn with nothing to say - nothing else will
+	 * move the header off "Working", so it returns to rest here. `sending` is
+	 * left alone: the upload's own answer settles that phase.
+	 */
+	if (before.armed > 0 && step.state.armed === 0 && step.speak.length === 0) {
+		const voice = useVoiceStore.getState();
+		if (voice.phaseSessionId === sessionId && voice.phase === "working")
+			voice.setPhase("idle", null);
+	}
 	turnsBySession.delete(sessionId);
 	turnsBySession.set(sessionId, step.state);
 	while (turnsBySession.size > TURN_SESSIONS_KEPT) {
@@ -201,17 +211,18 @@ function resetTurnFlight(sessionId: string): void {
 }
 
 /*
- * ONE TOAST PER SESSION FOR "AN APPROVAL IS ON SCREEN" (design round 2, D8).
+ * ONE TOAST PER SESSION FOR "A CARD IS ON SCREEN" (design round 2, D8; named for
+ * any card since round 3, R4-n1: an approval or a blocking ask).
  * The gate's announcement and a refused take say the same thing - answer the
  * card - so they share an id and the later replaces the earlier rather than
  * stacking two notices about one card. A warning in both cases: the card is
  * blocking, and the refusal is the same fact restated.
  */
-export const voiceApprovalToastId = (sessionId: string): string =>
-	`voice-approval:${sessionId}`;
+export const voiceCardToastId = (sessionId: string): string =>
+	`voice-card:${sessionId}`;
 
-function showApprovalToast(sessionId: string, message: string): void {
-	showWarningToast(message, { id: voiceApprovalToastId(sessionId) });
+function showCardToast(sessionId: string, message: string): void {
+	showWarningToast(message, { id: voiceCardToastId(sessionId) });
 }
 
 /**
@@ -237,7 +248,7 @@ async function speakSource(
 ): Promise<void> {
 	if (source.kind === "gate") {
 		// The announcement's on-screen half: the approval card is the only answer.
-		showApprovalToast(sessionId, t("ui.chat.voice.approval_waiting"));
+		showCardToast(sessionId, t("ui.chat.voice.approval_waiting"));
 	}
 	useVoiceStore.getState().setPhase("speaking", sessionId);
 	const result = await desktopMedia(
@@ -399,7 +410,7 @@ export const VoiceController: FC = () => {
 		 * that cannot be admitted, and the hint is immediate.
 		 */
 		if (voiceCardPending(sessionId)) {
-			showApprovalToast(sessionId, t("ui.chat.voice.card_pending"));
+			showCardToast(sessionId, t("ui.chat.voice.card_pending"));
 			return;
 		}
 		// A new take interrupts the answer being spoken: barge-in by hand.
