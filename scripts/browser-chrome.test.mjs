@@ -79,7 +79,8 @@ const PROBE = `
 	import { approvalRows, approvalScopeLabel, liveApprovalCount, liveRequests, originOfUrl, reconcileResolved, remainingLabel, requestsInScope, waitingOrdinals, RESOLVED_KEEP } from "./src/renderer/src/features/browser/model/approval-queue-model";
 	import { closeConversationIntent, closeFailedIntent, closeOthersIntent, closeToTheRightIntent, groupTabsBySession, pooledTabs, scopeFromKey, scopeKey, sessionDisplayName, summariseConversations, tabsBySession, tabsInScope } from "./src/renderer/src/features/browser/model/tab-index-model";
 	import { BrowserLoadFailure, loadFailureSentence } from "./src/renderer/src/features/browser/components/browser-load-failure";
-	import { BrowserNewTab, isStartPageUrl } from "./src/renderer/src/features/browser/components/browser-new-tab";
+	import { BrowserNewTab } from "./src/renderer/src/features/browser/components/browser-new-tab";
+	import { isStartPageUrl } from "./src/renderer/src/features/browser/model/start-page";
 	import { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
 	import { browserBridgeAvailable, clearBrowserProjectionReadError, publishStagedProjection, readBrowserProjection, refreshBrowserProjection, subscribeBrowserProjection } from "./src/renderer/src/features/browser/model/browser-projection-store";
 	import { SidebarNavigation } from "./src/renderer/src/shared/components/navigation/sidebar-navigation";
@@ -3774,15 +3775,92 @@ test("rendered tabs preserve custom order, roving selection and complete keyed s
 		),
 	);
 	assert.ok(!failed.includes("private/path") && !failed.includes(", loading"));
-	// The spinner is STRICTLY per tab (brief 2.2): a background tab's loading
-	// state has no other signal, so every loading row spins — and a row that is
-	// FAILED carries the static glyph and no motion, so the two states never
-	// look alike. Here tab 2 is loading, tab 3 is loading-AND-failed, and tab 1
-	// is idle: exactly one spin.
+});
+
+test("a NON-ACTIVE background loading tab spins, which is the only signal it can give (F2, round 2)", () => {
+	// WHY THIS IS A TEST OF ITS OWN, AND WHY THE ROW IS NON-ACTIVE. The assertion
+	// this replaces lived inside the ordering fixture above and counted spins
+	// there — but that fixture's loading rows were an ACTIVE loading tab and a
+	// loading-and-FAILED tab, which yield exactly one spin under BOTH the per-tab
+	// gate and the pre-PR `tab.active && tab.loading` gate. It therefore could not
+	// have failed on the base tree, and a guard that cannot fail is a comment.
+	//
+	// The case the per-tab gate exists for is the one the old gate MISSED: an
+	// agent tab loading a page is created NON-ACTIVE (design 11.4/§8.3 — an agent
+	// open must never switch what the user is looking at) and only the active tab
+	// occupies the content rectangle, so the strip's spinner is the only place an
+	// agent's work is legible at all. So the loading row here is a background
+	// agent tab and the active row is idle: under the old active-only gate this
+	// fixture produces ZERO spins, and the assertion fails.
+	const tabs = [
+		{
+			tabId: 1,
+			title: "The user's page",
+			url: "https://mine.test/",
+			sessionId: null,
+			displayOrder: 0,
+			owner: "user",
+			active: true,
+			restored: false,
+			handedOver: false,
+			failed: false,
+			loading: false,
+		},
+		{
+			tabId: 2,
+			title: "The agent's page",
+			url: "https://agent.test/",
+			sessionId: "b",
+			displayOrder: 1,
+			owner: "agent",
+			active: false,
+			restored: false,
+			handedOver: false,
+			failed: false,
+			loading: true,
+		},
+	];
+	const html = render(
+		el(mod.BrowserTabStrip, {
+			tabs,
+			activeTabId: 1,
+			waiting: {},
+			tabPanelId: "spin-panel",
+			onActivate: () => {},
+			onClose: async () => false,
+			onCloseTabs: async () => false,
+			onNewTab: () => {},
+			onHandOver: () => {},
+			onRevokeHandOver: () => {},
+		}),
+	);
 	assert.equal(
 		(html.match(/animate-spin/g) || []).length,
 		1,
-		"every loading row spins and a failed row does not, so motion is never the only state signal",
+		"the background tab's own loading state is what spins, not only the active tab's",
+	);
+	// And the spin is on the BACKGROUND row, not smuggled in somewhere else: the
+	// ownership glyph the agent tab would otherwise draw is replaced by the
+	// spinner, so the agent tab keeps one glyph that means progress. The row
+	// container carries `data-tab-id` and the button inside it is the tab itself,
+	// so the check slices from the agent row's container onward.
+	const agentRowStart = html.indexOf('data-tab-id="2"');
+	assert.ok(
+		agentRowStart >= 0,
+		"the agent tab's row container is in the markup",
+	);
+	const agentRow = html.slice(agentRowStart, agentRowStart + 3000);
+	assert.ok(
+		agentRow.includes("animate-spin"),
+		`the spin is inside the non-active agent tab's own row: ${agentRow.slice(0, 220)}`,
+	);
+	assert.ok(
+		agentRow.includes('data-tour-tag="browser-tab-spinner"'),
+		"and the loading agent tab shows the spinner glyph rather than a spinning ownership glyph",
+	);
+	assert.ok(
+		!agentRow.includes('data-tour-tag="browser-tab-ownership"'),
+		"the ownership glyph is not what carries the spin, so the robot never spins",
 	);
 });
 

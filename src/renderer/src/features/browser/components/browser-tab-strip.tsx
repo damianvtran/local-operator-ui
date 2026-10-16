@@ -222,13 +222,27 @@ const TabMark: FC<{
 			state === "request" || state === "failed" || state === "restored",
 	);
 	const owned = showOwnership && (tab.owner === "agent" || tab.handedOver);
-	const Icon = owned
-		? tab.handedOver
-			? Hand
-			: Bot
-		: tab.loading && !tab.failed
+	// THE LOADING GLYPH WINS OVER THE OWNERSHIP GLYPH, and that reconciliation is
+	// the fix for the non-gating round-1 finding: the `owned` branch used to pick
+	// `Bot`/`Hand` FIRST, so a loading AGENT tab painted a spinning robot — motion
+	// on a glyph that means "an agent owns this tab", which is neither progress
+	// nor anything the motion explains. The spinner and the owner mark are two
+	// different facts about one tab and a mark slot holds one glyph, so the
+	// question is which fact is lost if the other is drawn. Ownership is NOT lost
+	// by drawing the spinner: it is carried by the `Agent`/`Shared` chip in the
+	// row and by the tab's own accessible name (`stateChips`, below), both of
+	// which survive regardless of the glyph. The loading state has no other
+	// per-tab signal at all — that is the whole premise of the per-tab spinner
+	// (spec §8.3) — so it is the fact that cannot be dropped, and the spinner is
+	// therefore drawn for every loading tab, agent-owned included.
+	const Icon =
+		tab.loading && !tab.failed
 			? LoaderCircle
-			: Globe;
+			: owned
+				? tab.handedOver
+					? Hand
+					: Bot
+				: Globe;
 	const Status =
 		status === "request"
 			? CircleHelp
@@ -251,7 +265,17 @@ const TabMark: FC<{
 				}
 				className={cn(
 					"size-4 shrink-0",
-					owned ? "text-accent" : "text-ink-dim",
+					// The colour follows the GLYPH, not the ownership: a spinner is a
+					// progress mark and wears the register the strip gives progress
+					// (`ink-dim`), while the ownership glyph keeps `accent`. Painting a
+					// loading agent tab's spinner `accent` would make the one moving
+					// thing on the strip the loudest, which is the opposite of what an
+					// indeterminate background load should be.
+					tab.loading && !tab.failed
+						? "text-ink-dim"
+						: owned
+							? "text-accent"
+							: "text-ink-dim",
 					// The per-tab loading spinner (brief 2.2): it must actually
 					// turn — a static dashed circle reads as a state glyph, not
 					// as progress — and under `prefers-reduced-motion` the global
