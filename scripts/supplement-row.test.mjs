@@ -121,8 +121,41 @@ const textOf = (markup) =>
 		.replace(/<[^>]*>/g, "")
 		.replace(/&amp;/g, "&")
 		.replace(/&middot;/g, "·")
+		.replace(/&#x27;/g, "'")
 		.replace(/\s+/g, " ")
 		.trim();
+
+/* --------------------------- the failed line ----------------------------- */
+
+test("the failed line names the typed cause, and stays bare without one", () => {
+	const failed = { state: "failed", error: "generator:ProviderError" };
+	const withCause = render(supplement({ ...failed, cause: "provider_quota" }));
+	assert.ok(
+		textOf(withCause).includes(
+			"Couldn't prepare highlights — provider limit reached",
+		),
+		textOf(withCause),
+	);
+	/*
+	 * A token this build does not know and a row without one both keep the
+	 * bare sentence byte-for-byte (the additive claim).
+	 */
+	const unknown = render(
+		supplement({ ...failed, cause: "provider_from_the_future" }),
+	);
+	assert.ok(
+		textOf(unknown).includes("Couldn't prepare highlights"),
+		textOf(unknown),
+	);
+	assert.ok(!textOf(unknown).includes(" — "), textOf(unknown));
+	const bare = render(supplement(failed));
+	assert.ok(textOf(bare).includes("Couldn't prepare highlights"), textOf(bare));
+	assert.ok(!textOf(bare).includes(" — "), textOf(bare));
+	// The Retry affordance is unchanged on every arm.
+	for (const markup of [withCause, unknown, bare]) {
+		assert.ok(markup.includes("data-supplement-retry"), "retry pin");
+	}
+});
 
 /* -------------------------- the condensed arms --------------------------- */
 
