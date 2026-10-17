@@ -33,6 +33,7 @@ import enUiBrowserChrome from "./catalogues/en/ui.browser.chrome.json";
 import enUiBrowser from "./catalogues/en/ui.browser.json";
 import enUiCanvas from "./catalogues/en/ui.canvas.json";
 import enUiChatComposerMedia from "./catalogues/en/ui.chat.composer_media.json";
+import enUiChatDialogs from "./catalogues/en/ui.chat.dialogs.json";
 import enUiChat from "./catalogues/en/ui.chat.json";
 import enUiChatSidebarView from "./catalogues/en/ui.chat.sidebar_view.json";
 import enUiCodeReview from "./catalogues/en/ui.code_review.json";
@@ -110,6 +111,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiBrowser,
 	...enUiCanvas,
 	...enUiChatComposerMedia,
+	...enUiChatDialogs,
 	...enUiChat,
 	...enUiChatSidebarView,
 	...enUiCodeReview,
@@ -740,6 +742,10 @@ export type MessageParams = {
 	"ui.chat.composer_media.preview_failed": undefined;
 	"ui.chat.composer_media.recording": undefined;
 	"ui.chat.composer_media.remove_attachment": undefined;
+	"ui.chat.dialogs.archive_action": undefined;
+	"ui.chat.dialogs.cancel": undefined;
+	"ui.chat.dialogs.delete_action": undefined;
+	"ui.chat.dialogs.delete_title": undefined;
 	"ui.chat.highlights.file_resolution_failed": undefined;
 	"ui.chat.skill_invocation.instructions_label": undefined;
 	"ui.chat.skill_invocation.trigger_label": { token: string };
