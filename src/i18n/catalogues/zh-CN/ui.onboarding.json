@@ -44,6 +44,6 @@
 	"ui.onboarding.search.row.save_failed": "无法保存密钥。",
 	"ui.onboarding.search.row.saved": "已保存",
 	"ui.onboarding.search.row.saving": "正在保存{name}",
-	"ui.onboarding.modal.step_of": "第{current, number}步，共{total, number}步",
-	"ui.onboarding.modal.steps_total": "{total, plural, other {共#步}}"
+	"ui.onboarding.modal.step_of": "第{current, number, ::group-off}步，共{total, number, ::group-off}步",
+	"ui.onboarding.modal.steps_total": "{total, plural, other {共{total, number, ::group-off}步}}"
 }
