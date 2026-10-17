@@ -678,24 +678,143 @@ export const askChipLabel = (
 /**
  * Whether the head open ask can ONLY be answered in the panel's masked field.
  *
- * The composer refuses input in this state (the same refusal the blocking dock's
- * secret gate uses), rather than leaving an ordinary box that would carry the
- * credential into the transcript as a chat message.
+ * THIS IS THE OPERATOR'S DECISION, TAKEN (operator ask `a-9e0c`, which timed out
+ * and was answered by its recommended option). The previous version of this note
+ * said that dropping the composer's refusal "is a separate decision about that
+ * hazard, and the operator's to make"; this is that decision, so the refusal is
+ * gone and the predicate means something else.
  *
- * THIS IS A CREDENTIAL-SAFETY RULE, NOT ROUTING, and it stays when the routing
- * goes. The main composer used to ANSWER the ask while the drawer was open (design
- * §5.0, R7); that is retired - a send is an ordinary chat message in every state -
- * but this refusal never depended on it. It covers the one state where the ask's only
- * question is secret: an open box there is where a typed credential becomes a chat
- * message, and the panel's masked field is the only door for the value. Dropping it
- * is a separate decision about that hazard, and the operator's to make rather than a
- * clean-up that rides along with removing the routing.
+ * WHAT IT MEANS NOW: "show the composer's secret-ask notice, and guard a
+ * password-shaped send." The chat box stays usable while the secret waits in the
+ * panel — the operator's report was that the panel is where the value is typed,
+ * so locking the conversation he is having beside it bought nothing but a dead
+ * box. A queued ask does not park the turn (that is what "queued" means), so a
+ * message sent meanwhile is an ordinary message.
+ *
+ * WHY THE BLOCKING GATE KEEPS ITS REFUSAL AND THIS ONE DOES NOT. While a gate
+ * parks the turn, a send becomes `sessions.answer`, or a steer the parked turn
+ * cannot read (backend `session/session.py`); a queued ask leaves the turn free.
+ * Blocking asks are only reachable on the `LOP_ASK_NONBLOCKING=0` escape hatch
+ * (backend `asks/policy.py`), which is why that arm is the smaller one. A backend
+ * route that starts a new turn while a blocking gate is parked would overturn
+ * this.
+ *
+ * THE HAZARD IS ANSWERED, NOT IGNORED: a typed credential in a chat box is still
+ * visible while typed and still persists in the draft store, so the composer asks
+ * before sending a password-shaped line and offers the panel's own field as the
+ * default destination. See `looksLikeSecret` in `credential-capture.ts` for the
+ * shape rule and its deliberate narrowness.
  */
 export const askComposerHoldsSecret = (view: AskQueueView): boolean => {
 	const head = view.head;
 	if (head === null || !head.canAnswer) return false;
 	const questions = head.ask.questions;
 	return questions.length > 0 && questions.every((q) => q.secret === true);
+};
+
+/**
+ * THE FIELD A "Put in secret field" WOULD LAND IN, or `null` when one value
+ * names none.
+ *
+ * `key` is the confirm's BINDING (agent review round 1, m1; QA round 1, Q2):
+ * the composer records it when it arms the confirm and hands it back on the
+ * press, so a value typed for one ask can never be posted to a different one
+ * that became the head while the question was up. It names the ask AND the
+ * question, because an ask with several secret questions would otherwise keep
+ * the same key while the field under it changed.
+ *
+ * `questionId` is null for a multi-question ask (and for one whose single
+ * question is not secret): the gesture can put ONE value in ONE field, so there
+ * it degrades to opening the panel instead of guessing a question.
+ */
+export type SecretField = { key: string; questionId: string | null };
+
+export const askSecretField = (ask: PendingAsk): SecretField => {
+	const questions = ask.questions;
+	const single = questions.length === 1 && questions[0].secret === true;
+	return {
+		key: `${ask.ask_id}:${single ? questions[0].id : "*"}`,
+		questionId: single ? questions[0].id : null,
+	};
+};
+
+/**
+ * What one press of "Put in secret field" did, in terms the composer can act on.
+ *
+ * WHY IT IS NOT A BOOLEAN. The composer has to say WHY nothing landed (agent
+ * review round 1, M1; UX round 1, U1) and has to know whether the request can
+ * still address the ask at all, and `false` collapses four different facts into
+ * one. `sent` clears the draft; every other value keeps it, returns focus to the
+ * box and states the reason.
+ */
+export type SecretFillOutcome =
+	| "sent"
+	/** The value was posted and the owner or the transport refused it. */
+	| "refused"
+	/** Nothing was posted: a chat send holds the answer lock. */
+	| "locked"
+	/** Nothing was posted: this pane has no session to answer on. */
+	| "unavailable"
+	/** Nothing was posted: the ask the confirm was raised for is no longer head. */
+	| "stale"
+	/** Nothing was posted: the ask has more than one secret question. */
+	| "multi";
+
+/**
+ * The page's answer door, as the fill path sees it.
+ *
+ * `locked` and `unavailable` are the two states `chat-page.tsx`'s `answerAsk`
+ * used to return as `undefined`, which the composer could not tell apart. The
+ * rest is its own `AnswerOutcome`.
+ */
+export type AskAnswerAttempt =
+	| { status: "sent" }
+	| { status: "refused" }
+	| { status: "failed" }
+	| { status: "locked" }
+	| { status: "unavailable" };
+
+/**
+ * THE WHOLE "Put in secret field" WIRING, as one pure function: which field the
+ * press lands in, the payload shape, the trim, and what the answer's status
+ * means to the composer.
+ *
+ * WHY IT IS EXTRACTED FROM THE COMPONENTS. Both halves lived in `chat-content.tsx`
+ * (which head is filled) and `chat-page.tsx` (the `sent` mapping), and a jsdom rig
+ * that mounts the composer can only mock the result - so the map shape, the trim
+ * and the stale check had no test at all (agent review round 1, m3). Here they are
+ * one function a DOM-free test can drive with a fake head and a recording door.
+ *
+ * THE BINDING IS CHECKED HERE, not in the composer: the caller passes the `key`
+ * its confirm was armed under and the head it would fill now, and a mismatch is
+ * `stale` rather than a value posted to whatever ask happens to be head.
+ */
+export const fillSecretField = async (
+	head: AskPresentation | null,
+	key: string,
+	value: string,
+	fill: (
+		askId: string,
+		answers: Record<string, string[]>,
+	) => Promise<AskAnswerAttempt | undefined>,
+): Promise<SecretFillOutcome> => {
+	if (head === null) return "stale";
+	const field = askSecretField(head.ask);
+	if (field.key !== key) return "stale";
+	if (field.questionId === null) return "multi";
+	/*
+	 * THE VALUE IS TRIMMED ONCE, HERE, exactly as the panel's own answer body is
+	 * (`askAnswerMap` trims the same way): a draft's surrounding whitespace is
+	 * the box's, not the secret's.
+	 */
+	const outcome = await fill(head.ask.ask_id, {
+		[field.questionId]: [value.trim()],
+	});
+	if (outcome === undefined) return "unavailable";
+	if (outcome.status === "sent") return "sent";
+	if (outcome.status === "refused" || outcome.status === "failed")
+		return "refused";
+	return outcome.status;
 };
 
 /**

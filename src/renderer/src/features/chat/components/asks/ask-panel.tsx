@@ -309,7 +309,10 @@ const focusAtEnd = (control: HTMLElement | null | undefined) => {
  * DOOR rather than a variant of the text field: its value must never be drafted,
  * echoed, or sent as an answer, and it gets no `Other` row on purpose - the masked
  * field IS its free-form entry, and a plain text box beside a credential's field is
- * the credential-in-an-ordinary-box failure the composer's secret refusal exists for.
+ * the credential-in-an-ordinary-box failure the mask exists to prevent. (The
+ * composer's own refusal covers only a BLOCKING secret gate; a queued ask leaves
+ * the chat box usable and guards the send instead, so this card cannot lean on it
+ * - agent review round 1, m4.)
  *
  * ## `Other` is explicit, always there, and written into the SAME draft
  *

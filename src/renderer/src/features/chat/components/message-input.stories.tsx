@@ -3270,3 +3270,80 @@ export const NoticeCopyIsTheAppCopy: Story = {
 		releaseShutter();
 	},
 };
+
+/*
+ * THE QUEUED SECRET ASK, AND THE TWO STATES THE OPERATOR'S DECISION SPLITS
+ * (ask `a-9e0c`, answered by its recommended option).
+ *
+ * `QueuedSecretAsk` is what this change ships: a secret question waits in the
+ * asks panel, and the conversation stays usable — the sentence above the box says
+ * where the secret goes and offers the panel.
+ *
+ * `SecretAskConfirm` is the guard that replaces the lock: a password-shaped send
+ * is asked about, with "Put in secret field" as the default. It is driven by a
+ * `play` function rather than drawn by a fixture, because the confirm exists only
+ * after a send attempt — a fixture would be a picture of a state the component
+ * cannot actually be put in that way.
+ *
+ * `BlockingSecretGate` is the state that deliberately still refuses: while a gate
+ * parks the turn, a send becomes a steer the parked turn cannot read. It is also,
+ * visibly, what the queued state used to look like.
+ */
+export const QueuedSecretAsk: Story = {
+	render: () => (
+		<Frame label="queued secret ask — box usable, notice and Open asks">
+			<MessageInput
+				isLoading={false}
+				messages={NONEMPTY}
+				conversationId="story-secret-ask"
+				onSendMessage={async () => true}
+				secretAsk={{
+					key: "story-secret-1:api_token",
+					fillable: true,
+					onOpen: () => {},
+					onFill: async () => "sent",
+				}}
+			/>
+		</Frame>
+	),
+};
+
+export const SecretAskConfirm: Story = {
+	render: () => (
+		<Frame label="queued secret ask — password-shaped send asks first">
+			<MessageInput
+				isLoading={false}
+				messages={NONEMPTY}
+				conversationId="story-secret-ask-confirm"
+				onSendMessage={async () => true}
+				secretAsk={{
+					key: "story-secret-1:api_token",
+					fillable: true,
+					onOpen: () => {},
+					onFill: async () => "sent",
+				}}
+			/>
+		</Frame>
+	),
+	play: async ({ canvasElement }) => {
+		const box = canvasElement.querySelector("textarea");
+		if (!box) throw new Error("the composer box is not mounted");
+		await userEvent.click(box);
+		await userEvent.type(box, "correct-horse-9");
+		await userEvent.keyboard("{Enter}");
+	},
+};
+
+export const BlockingSecretGate: Story = {
+	render: () => (
+		<Frame label="blocking secret gate — the refusal that stays">
+			<MessageInput
+				isLoading={false}
+				messages={NONEMPTY}
+				conversationId="story-secret-gate"
+				onSendMessage={async () => true}
+				secretAnswer={true}
+			/>
+		</Frame>
+	),
+};

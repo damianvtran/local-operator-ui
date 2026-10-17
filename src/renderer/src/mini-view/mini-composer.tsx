@@ -40,6 +40,7 @@
 
 import { AIDA_DISABLED_SENTENCE } from "@features/aida/aida-control";
 import { gateIsSecret } from "@features/chat/ask-answer";
+import { effectiveGate } from "@features/chat/ask-queue";
 import { formatContextTokens } from "@features/chat/pickers/panels/formatters";
 import { encodeImageAttachments } from "@features/chat/utils/attachment-encode";
 import {
@@ -1071,7 +1072,17 @@ export function MiniComposer() {
 					cwdReadOnlyReason={MINI_COPY.cwdReadOnly}
 					sessionStatus={sessionStatus}
 					recordingProbe={recordingProbe}
-					secretAnswer={gateIsSecret(frontend?.pending_gate)}
+					/*
+					 * THE BLOCKING GATE ONLY, read through `effectiveGate` so a mirrored
+					 * ask is not read as a parked gate (the ONE derivation
+					 * `ask-queue.ts` states). A QUEUED secret ask does not lock this box:
+					 * the mini view has no asks drawer to point at, and the main
+					 * composer's notice would promise a panel this surface cannot open.
+					 * The send confirm does not apply here either — the mini view is a
+					 * quick-send box outside the conversation, and the operator's ask
+					 * was about the main composer.
+					 */
+					secretAnswer={gateIsSecret(effectiveGate(frontend))}
 					onDictationStateChange={(active) => {
 						dictationActiveRef.current = active;
 						setDictating(active);

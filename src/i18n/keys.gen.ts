@@ -751,6 +751,21 @@ export type MessageParams = {
 	"ui.chat.composer.delivery_remedies_hint": undefined;
 	"ui.chat.composer.message": undefined;
 	"ui.chat.composer.processing_audio": undefined;
+	"ui.chat.composer.secret_ask_notice": undefined;
+	"ui.chat.composer.secret_ask_open": undefined;
+	"ui.chat.composer.secret_confirm_cancel": undefined;
+	"ui.chat.composer.secret_confirm_chars": { count: number };
+	"ui.chat.composer.secret_confirm_message": undefined;
+	"ui.chat.composer.secret_confirm_put": undefined;
+	"ui.chat.composer.secret_confirm_put_multi": undefined;
+	"ui.chat.composer.secret_confirm_send": undefined;
+	"ui.chat.composer.secret_confirm_sending": undefined;
+	"ui.chat.composer.secret_fill_changed": undefined;
+	"ui.chat.composer.secret_fill_gone": undefined;
+	"ui.chat.composer.secret_fill_locked": undefined;
+	"ui.chat.composer.secret_fill_multi": undefined;
+	"ui.chat.composer.secret_fill_refused": undefined;
+	"ui.chat.composer.secret_fill_unavailable": undefined;
 	"ui.chat.composer.send_message": undefined;
 	"ui.chat.composer.start_recording": undefined;
 	"ui.chat.composer.start_recording_hint": {

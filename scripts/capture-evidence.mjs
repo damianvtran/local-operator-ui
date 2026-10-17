@@ -800,6 +800,17 @@ export const STORIES = [
 		{ expectPresent: 'a[href*="section=providers"]' },
 	],
 
+	/*
+	 * THE COMPOSER'S SECRET-ASK STATES (ask `a-9e0c`). Three rows: the queued state
+	 * this change ships (a usable box, the sentence and its door), the send confirm
+	 * the story's `play` drives into existence, and the blocking gate that
+	 * deliberately still refuses. Registered so the next sweep photographs them;
+	 * this PR's own frames are Storybook stills, because the capture refuses to run
+	 * while a backend answers on 1111 (see `countsMean.surfaces`).
+	 */
+	["chat-message-input--queued-secret-ask", 1280, 620],
+	["chat-message-input--secret-ask-confirm", 1280, 620],
+	["chat-message-input--blocking-secret-gate", 1280, 620],
 	["chat-trace--conversation", 1280, 1308],
 	["chat-trace--conversation-with-reasoning", 1280, 1409],
 	["chat-trace--conversation-reasoning-open", 1280, 3327],
