@@ -1,3 +1,5 @@
+import { formatNumber, t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The Projects tab's search/filter toolbar: the search field, the Filters
  * button and popover, the result count, and the chips row under the switcher.
@@ -114,6 +116,7 @@ export const ProjectsSearchControls: FC<ProjectsSearchControlsProps> = ({
 	disabled = false,
 	searchFieldRef,
 }) => {
+	useI18nLocale();
 	const [filtersOpen, setFiltersOpen] = useState(false);
 	/* Set by the popover header's Clear all; read once by the close-focus
 	 * guard below so the suppressed restore applies only to that path. */
@@ -152,8 +155,8 @@ export const ProjectsSearchControls: FC<ProjectsSearchControlsProps> = ({
 						if (query) onQueryChange("");
 						else event.currentTarget.blur();
 					}}
-					placeholder="Search projects"
-					aria-label="Search projects"
+					placeholder={t("ui.projects.projects_toolbar.search_projects")}
+					aria-label={t("ui.projects.projects_toolbar.search_projects")}
 					autoComplete="off"
 					spellCheck={false}
 					className="pl-9"
@@ -164,7 +167,7 @@ export const ProjectsSearchControls: FC<ProjectsSearchControlsProps> = ({
 						size="icon-sm"
 						className="absolute top-1/2 right-1 -translate-y-1/2"
 						onClick={() => clearSearch(searchFieldRef.current, onQueryChange)}
-						aria-label="Clear search"
+						aria-label={t("ui.projects.projects_toolbar.clear_search")}
 					>
 						<X aria-hidden="true" />
 					</Button>
@@ -196,13 +199,13 @@ export const ProjectsSearchControls: FC<ProjectsSearchControlsProps> = ({
 						data-project-filters-button=""
 					>
 						<ListFilter size={14} aria-hidden="true" />
-						Filters
+						{t("ui.projects.projects_toolbar.filters")}
 						{activeCount > 0 && <Badge variant="neutral">{activeCount}</Badge>}
 					</Button>
 				</PopoverTrigger>
 				<PopoverContent
 					align="end"
-					aria-label="Filters"
+					aria-label={t("ui.projects.projects_toolbar.filters")}
 					className="w-80 p-0"
 					/* U12: after a header Clear all the handoff owns focus; Radix's
 					 * default close restore would drag it back to the trigger. */
@@ -316,6 +319,7 @@ export const ProjectsFilterChips: FC<ProjectsFilterChipsProps> = ({
 	hideClearAll = false,
 	searchFieldRef,
 }) => {
+	useI18nLocale();
 	/*
 	 * The post-commit focus handoff (see the header). `chip` targets the chip
 	 * that took the removed one's slot — the row re-renders without it in the
@@ -355,13 +359,26 @@ export const ProjectsFilterChips: FC<ProjectsFilterChipsProps> = ({
 		const first = labels[0];
 		const label =
 			labels.length > 1
-				? `${FACET_LABELS[facet]} · ${first} +${labels.length - 1}`
-				: `${FACET_LABELS[facet]} · ${first}`;
+				? t("ui.projects.projects_toolbar.facet_labels_facet_first_length_1", {
+						FACET_LABELS_facet: String(FACET_LABELS[facet]),
+						first: String(first),
+						length___1: formatNumber(labels.length - 1, { useGrouping: false }),
+					})
+				: t("ui.projects.projects_toolbar.facet_labels_facet_first", {
+						FACET_LABELS_facet: String(FACET_LABELS[facet]),
+						first: String(first),
+					});
 		chips.push({
 			kind: "facet",
 			facet,
 			label,
-			ariaLabel: `Remove filter: ${FACET_LABELS[facet]} · ${labels.join(", ")}`,
+			ariaLabel: t(
+				"ui.projects.projects_toolbar.remove_filter_facet_labels_facet_join",
+				{
+					FACET_LABELS_facet: String(FACET_LABELS[facet]),
+					join: String(labels.join(", ")),
+				},
+			),
 			clear: () => onFiltersChange({ ...filters, [facet]: [] }),
 		});
 	}
@@ -369,8 +386,13 @@ export const ProjectsFilterChips: FC<ProjectsFilterChipsProps> = ({
 		chips.push({
 			kind: "sort",
 			spec: sort,
-			label: `Sort: ${sortColumnLabel(sort.key)}`,
-			ariaLabel: `Remove sort: ${sortColumnLabel(sort.key)}, ${sortDirectionWords(sort.key, sort.direction)}`,
+			label: t("ui.projects.projects_toolbar.sort_key", {
+				key: String(sortColumnLabel(sort.key)),
+			}),
+			ariaLabel: t("ui.projects.projects_toolbar.remove_sort_key_direction", {
+				key: String(sortColumnLabel(sort.key)),
+				direction: String(sortDirectionWords(sort.key, sort.direction)),
+			}),
 			clear: () => onSortChange(null),
 		});
 	}
@@ -433,7 +455,7 @@ export const ProjectsFilterChips: FC<ProjectsFilterChipsProps> = ({
 						setHandoff({ kind: "search" });
 					}}
 				>
-					Clear all
+					{t("ui.projects.projects_toolbar.clear_all")}
 				</Button>
 			)}
 		</div>

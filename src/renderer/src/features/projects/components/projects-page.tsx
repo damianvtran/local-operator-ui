@@ -1,3 +1,5 @@
+import { formatNumber, t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The Projects route: the tab's gate, the List view, and the two-screen shape
  * (`/projects` and `/projects/:projectId`).
@@ -147,17 +149,27 @@ import {
 const ANNOUNCEMENT_DWELL_MS = 4000;
 
 const GATE_COPY: Record<string, string> = {
-	unpaired:
-		"This app is not paired with the Local Operator server, so Projects are unavailable.",
-	"below-version":
-		"The Local Operator server is older than this app expects, so Projects are unavailable. Update the server and try again.",
-	unknown:
-		"The server's capabilities could not be read, so Projects are unavailable.",
+	get unpaired() {
+		return t(
+			"ui.projects.projects_page.this_app_is_not_paired_with_the_local_operator_server_so_projects",
+		);
+	},
+	get "below-version"() {
+		return t(
+			"ui.projects.projects_page.the_local_operator_server_is_older_than_this_app_expects_so_proje",
+		);
+	},
+	get unknown() {
+		return t(
+			"ui.projects.projects_page.the_server_s_capabilities_could_not_be_read_so_projects_are_unava",
+		);
+	},
 };
 
 export const ProjectsPage: FC<{ nowMs?: number }> = ({
 	nowMs = Date.now(),
 }) => {
+	useI18nLocale();
 	const { projectId } = useParams<{ projectId?: string }>();
 	const navigate = useNavigate();
 	const capabilities = useDesktopCapabilities();
@@ -397,8 +409,18 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 		!searchActive || !list.isSuccess
 			? null
 			: view === "board"
-				? `${boardVisible.length} of ${boardProjects.length} in window`
-				: `${visibleProjects.length} of ${projects.length} projects`;
+				? t("ui.projects.projects_page.length_of_length_2_in_window", {
+						length: formatNumber(boardVisible.length, { useGrouping: false }),
+						length_2: formatNumber(boardProjects.length, {
+							useGrouping: false,
+						}),
+					})
+				: t("ui.projects.projects_page.length_of_length_2_projects", {
+						length: formatNumber(visibleProjects.length, {
+							useGrouping: false,
+						}),
+						length_2: projects.length,
+					});
 	const listReady = list.isSuccess && projects.length > 0;
 	/*
 	 * THE EMPTY-STATE PRECEDENCE, stated once (U5): with a search on and zero
@@ -663,7 +685,11 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 		})
 			.then((outcome) => {
 				if (outcome.kind === "accepted") {
-					showSuccessToast(`Moved to ${label}`);
+					showSuccessToast(
+						t("ui.projects.projects_page.moved_to_label", {
+							label: String(label),
+						}),
+					);
 					/*
 					 * THE CARET COMES BACK AFTER THE LIST SETTLES, from here rather than
 					 * from the card: the refetch re-parents the card into its new column,
@@ -691,7 +717,9 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 					outcome.refusal
 						? {
 								action: {
-									label: "View project",
+									get label() {
+										return t("ui.projects.projects_page.view_project");
+									},
 									onClick: () => void navigate(`/projects/${key}`),
 								},
 							}
@@ -720,10 +748,17 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 	if (!enabled) {
 		return (
 			<div className="flex h-full flex-col gap-8 p-6">
-				<PageHeader title="Projects" icon={FolderKanban} />
+				<PageHeader
+					title={t("ui.projects.projects_page.projects")}
+					icon={FolderKanban}
+				/>
 				{capabilities.isLoading ? (
 					<div className="flex justify-center py-16">
-						<Spinner label="Checking the server's Projects support" />
+						<Spinner
+							label={t(
+								"ui.projects.projects_page.checking_the_server_s_projects_support",
+							)}
+						/>
 					</div>
 				) : (
 					<Alert variant="warning">
@@ -778,16 +813,18 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 			 */}
 			<div className="@container flex shrink-0 flex-col gap-8 px-6 pt-6">
 				<PageHeader
-					title="Projects"
+					title={t("ui.projects.projects_page.projects")}
 					icon={FolderKanban}
-					subtitle="Workstreams you and your agents track across sessions."
+					subtitle={t(
+						"ui.projects.projects_page.workstreams_you_and_your_agents_track_across_sessions",
+					)}
 				>
 					<div className="flex items-center gap-2">
 						<Button
 							variant="secondary"
 							size="icon"
-							aria-label="Refresh projects"
-							title="Refresh projects"
+							aria-label={t("ui.projects.projects_page.refresh_projects")}
+							title={t("ui.projects.projects_page.refresh_projects")}
 							disabled={list.isFetching}
 							onClick={() => void list.refetch()}
 							data-tour-tag="refresh-projects-button"
@@ -800,7 +837,7 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 							data-tour-tag="create-project-button"
 						>
 							<Plus />
-							New project
+							{t("ui.projects.projects_page.new_project")}
 						</Button>
 					</div>
 				</PageHeader>
@@ -913,7 +950,7 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 					 */
 					<div className="flex min-h-0 flex-1 flex-col">
 						<output className="px-9 py-2 text-meta text-ink-dim">
-							Loading projects…
+							{t("ui.projects.projects_page.loading_projects")}
 						</output>
 						{LOADING_SKELETON_ROWS.map((key) => (
 							<div
@@ -944,14 +981,14 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 						<Alert variant="danger">
 							{list.error instanceof Error && list.error.message
 								? list.error.message
-								: "The projects could not be read."}
+								: t("ui.projects.projects_page.the_projects_could_not_be_read")}
 						</Alert>
 						<Button
 							variant="secondary"
 							size="sm"
 							onClick={() => void list.refetch()}
 						>
-							Try again
+							{t("ui.projects.projects_page.try_again")}
 						</Button>
 					</div>
 				)}
@@ -965,10 +1002,13 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 					 * body (`flex-1`), so nothing collapses under the message.
 					 */
 					<div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4">
-						<p className="text-heading text-ink">No projects yet.</p>
+						<p className="text-heading text-ink">
+							{t("ui.projects.projects_page.no_projects_yet")}
+						</p>
 						<p className="max-w-140 text-center text-body-sm text-ink-muted">
-							Create one here, or ask an agent to create one and link this
-							session.
+							{t(
+								"ui.projects.projects_page.create_one_here_or_ask_an_agent_to_create_one_and_link_this_sessi",
+							)}
 						</p>
 						<Button
 							variant="primary"
@@ -976,7 +1016,7 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 							data-tour-tag="create-project-empty-button"
 						>
 							<Plus />
-							New project
+							{t("ui.projects.projects_page.new_project")}
 						</Button>
 					</div>
 				)}
@@ -1011,7 +1051,7 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 					 */
 					<div className="flex min-h-0 flex-1 flex-col">
 						<output className="px-9 py-2 text-meta text-ink-dim">
-							Searching…
+							{t("ui.projects.projects_page.searching")}
 						</output>
 					</div>
 				)}
@@ -1042,13 +1082,17 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 					<div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4">
 						<p className="text-heading text-ink">
 							{query.trim()
-								? `No projects match "${query.trim()}".`
-								: "No projects match."}
+								? t("ui.projects.projects_page.no_projects_match_trim", {
+										trim: String(query.trim()),
+									})
+								: t("ui.projects.projects_page.no_projects_match")}
 						</p>
 						<p className="max-w-140 text-center text-body-sm text-ink-muted">
 							{query.trim()
 								? SEARCH_SUBLINE[searchEngine]
-								: "Try removing a filter. Clearing the filters restores the list."}
+								: t(
+										"ui.projects.projects_page.try_removing_a_filter_clearing_the_filters_restores_the_list",
+									)}
 						</p>
 						<div className="flex flex-col items-center gap-2">
 							<Button
@@ -1062,13 +1106,13 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 									searchFieldRef.current?.focus();
 								}}
 							>
-								Clear all
+								{t("ui.projects.projects_page.clear_all")}
 							</Button>
 							{view === "board" && visibleProjects.length > 0 && (
 								/* The window, not the search, hid the matches: matches exist
 								 * outside it, and this is the action that reveals them. */
 								<Button variant="secondary" onClick={showAllTime}>
-									Show all time
+									{t("ui.projects.projects_page.show_all_time")}
 								</Button>
 							)}
 						</div>
@@ -1143,10 +1187,12 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 						<div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4">
 							<p className="text-heading text-ink">{boardWindowHeading}</p>
 							<p className="max-w-140 text-center text-body-sm text-ink-muted">
-								Older projects are hidden by the window.
+								{t(
+									"ui.projects.projects_page.older_projects_are_hidden_by_the_window",
+								)}
 							</p>
 							<Button variant="secondary" onClick={showAllTime}>
-								Show all time
+								{t("ui.projects.projects_page.show_all_time")}
 							</Button>
 						</div>
 					)}
@@ -1190,7 +1236,7 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 						key: deleting.id,
 						confirmedName: typedName,
 					});
-					showSuccessToast("Project deleted");
+					showSuccessToast(t("ui.projects.projects_page.project_deleted"));
 					setDeleting(null);
 				}}
 			/>
@@ -1224,7 +1270,7 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 					);
 					void list.refetch().then(() => handOffFocus(project.id));
 				}}
-				secondaryLabel="Open project"
+				secondaryLabel={t("ui.projects.projects_page.open_project")}
 				onSecondary={() => {
 					const id = forceTarget?.project.id;
 					dismissForceQuestion();
@@ -1262,12 +1308,25 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 							const message =
 								error instanceof Error && error.message ? error.message : "";
 							showErrorToast(
-								`Project ${label} was created, but the extra fields were not saved: ${refusalCopy(message) || "the server refused them."} Open the project to set them in place.`,
+								t(
+									"ui.projects.projects_page.project_label_was_created_but_the_extra_fields_were_not_saved_val",
+									{
+										label: String(label),
+										value2: String(
+											refusalCopy(message) ||
+												t("ui.projects.projects_page.the_server_refused_them"),
+										),
+									},
+								),
 							);
 							return;
 						}
 					}
-					showSuccessToast(`Project ${label} created`);
+					showSuccessToast(
+						t("ui.projects.projects_page.project_label_created", {
+							label: String(label),
+						}),
+					);
 				}}
 			/>
 		</div>

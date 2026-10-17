@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * The Projects tab's filter model: which rows a facet selection admits, how the
  * popover's options and their counts are derived, and the copy for both.
@@ -110,15 +111,33 @@ export const NO_FILTERS: FilterState = {
 
 /** The facet headings, in sentence case — the popover's labels and the chips' prefix. */
 export const FACET_LABELS: Record<FilterFacetKey, string> = {
-	status: "Status",
-	team: "Team",
-	owner: "Owner",
-	tags: "Tags",
-	progress: "Progress",
-	target: "Target date",
-	estimate: "Estimate",
-	milestones: "Milestones",
-	live: "Live sessions",
+	get status() {
+		return t("ui.projects.project_filters.status");
+	},
+	get team() {
+		return t("ui.projects.project_filters.team");
+	},
+	get owner() {
+		return t("ui.projects.project_filters.owner");
+	},
+	get tags() {
+		return t("ui.projects.project_filters.tags");
+	},
+	get progress() {
+		return t("ui.projects.project_filters.progress");
+	},
+	get target() {
+		return t("ui.projects.project_filters.target_date");
+	},
+	get estimate() {
+		return t("ui.projects.project_filters.estimate");
+	},
+	get milestones() {
+		return t("ui.projects.project_filters.milestones");
+	},
+	get live() {
+		return t("ui.projects.project_filters.live_sessions");
+	},
 };
 
 /**
@@ -163,19 +182,45 @@ const TOKEN_OPTION_ORDER: {
 
 /** Every token option's copy, in the design's exact words. */
 const TOKEN_LABELS: Record<string, string> = {
-	stale: "Stale",
-	"up-to-date": "Up to date",
-	"not-reported": "Not reported",
-	none: "No target date",
-	overdue: "Overdue",
-	"within-7": "Due within 7 days",
-	"within-30": "Due within 30 days",
-	points: "Points",
-	days: "Days",
-	incomplete: "Incomplete",
-	complete: "Complete",
-	"has-live": "Has live sessions",
-	"no-live": "No live sessions",
+	get stale() {
+		return t("ui.projects.project_filters.stale");
+	},
+	get "up-to-date"() {
+		return t("ui.projects.project_filters.up_to_date");
+	},
+	get "not-reported"() {
+		return t("ui.projects.project_filters.not_reported");
+	},
+	get none() {
+		return t("ui.projects.project_filters.no_target_date");
+	},
+	get overdue() {
+		return t("ui.projects.project_filters.overdue");
+	},
+	get "within-7"() {
+		return t("ui.projects.project_filters.due_within_7_days");
+	},
+	get "within-30"() {
+		return t("ui.projects.project_filters.due_within_30_days");
+	},
+	get points() {
+		return t("ui.projects.project_filters.points");
+	},
+	get days() {
+		return t("ui.projects.project_filters.days");
+	},
+	get incomplete() {
+		return t("ui.projects.project_filters.incomplete");
+	},
+	get complete() {
+		return t("ui.projects.project_filters.complete");
+	},
+	get "has-live"() {
+		return t("ui.projects.project_filters.has_live_sessions");
+	},
+	get "no-live"() {
+		return t("ui.projects.project_filters.no_live_sessions");
+	},
 };
 
 /**
@@ -193,19 +238,20 @@ export function filterOptionLabel(
 			// The model's own label rule (unknown values keep their raw word).
 			return projectStatusMeta(value as string).label;
 		case "team":
-			return value === null ? "No team" : value;
+			return value === null ? t("ui.projects.project_filters.no_team") : value;
 		case "owner":
-			return value === null ? "No owner" : value;
+			return value === null ? t("ui.projects.project_filters.no_owner") : value;
 		case "tags":
 			return value ?? "";
 		case "estimate":
-			if (value === "none") return "No estimate";
+			if (value === "none") return t("ui.projects.project_filters.no_estimate");
 			break;
 		case "milestones":
-			if (value === "none") return "None set";
+			if (value === "none") return t("ui.projects.project_filters.none_set");
 			break;
 		case "target":
-			if (value === "none") return "No target date";
+			if (value === "none")
+				return t("ui.projects.project_filters.no_target_date");
 			break;
 		default:
 			break;
