@@ -267,6 +267,22 @@ export type DefaultEffortState = {
 export const NO_EFFORT_SELECTION = "\u0000unread";
 
 /**
+ * The selection for a state whose stored value IS known but whose LADDER for the
+ * current model is not (preview loading/failed/unresolved, or a known-empty
+ * ladder).
+ *
+ * The unset row may be shown only when NOTHING is stored: `""` is exactly what
+ * that row stands for, so naming it claims nothing the registry does not hold.
+ * With a level stored, selecting the unset row would say "Model default" while
+ * the registry holds a level - the false claim the settings read's own failure
+ * avoids with `NO_EFFORT_SELECTION`. The control shows its placeholder until the
+ * model's ladder answers, and the helper beside it says what is being checked.
+ */
+function knownStoredSelection(stored: string): string {
+	return stored.trim() === "" ? "" : NO_EFFORT_SELECTION;
+}
+
+/**
  * The state machine of the row, from the facts its callers already hold.
  *
  * ONE function rather than a ladder of `if`s inside the component, because the
@@ -335,10 +351,18 @@ export function defaultEffortState(input: {
 		);
 	}
 	if (input.preview === "loading") {
-		return state("loading", t("ui.settings.model.default_effort.loading"));
+		return state(
+			"loading",
+			t("ui.settings.model.default_effort.loading"),
+			knownStoredSelection(input.stored),
+		);
 	}
 	if (input.preview === "error") {
-		return state("error", t("ui.settings.model.default_effort.error"));
+		return state(
+			"error",
+			t("ui.settings.model.default_effort.error"),
+			knownStoredSelection(input.stored),
+		);
 	}
 	/*
 	 * A preview that answered without an array, or with a spec the app cannot
@@ -350,11 +374,16 @@ export function defaultEffortState(input: {
 		return state(
 			"unresolved",
 			t("ui.settings.model.default_effort.unresolved"),
+			knownStoredSelection(input.stored),
 		);
 	}
 	const ladder = input.ladder;
 	if (ladder.length === 0) {
-		return state("empty", t("ui.settings.model.default_effort.empty"));
+		return state(
+			"empty",
+			t("ui.settings.model.default_effort.empty"),
+			knownStoredSelection(input.stored),
+		);
 	}
 	const rungs = storableRungs(ladder, input.storable);
 	if (rungs.length === 0) {
@@ -362,16 +391,25 @@ export function defaultEffortState(input: {
 		 * NOTHING TO CHOOSE, because every rung is outside this key's vocabulary —
 		 * on a Radient model the ladder is `auto` (plus levels), and `auto` is the
 		 * registry's LABEL for `""`, not a storable value. The unset row already
-		 * stores that outcome, so the control names the single level and takes no
+		 * stores that outcome, so the control names the single outcome and takes no
 		 * pick rather than offering a row whose write the validator would reject.
+		 *
+		 * The AUTO-ONLY ladder gets its own sentence: `auto` is a delegation to the
+		 * model, not an effort level, so calling it "one effort level: Auto" would
+		 * put a state word in a level's slot. A real single level keeps the level
+		 * sentence.
 		 */
 		const level = effortDisplay(ladder[0]);
+		const sentinel =
+			ladder.length === 1 && ladder[0].trim().toLowerCase() === "auto";
 		return {
 			kind: "one-level",
 			options: [{ id: "", name: level }],
 			selectedId: "",
 			disabled: true,
-			helper: t("ui.settings.model.default_effort.one_level", { level }),
+			helper: sentinel
+				? t("ui.settings.model.default_effort.one_level_sentinel")
+				: t("ui.settings.model.default_effort.one_level", { level }),
 		};
 	}
 	if (ladder.length === 1) {

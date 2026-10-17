@@ -28348,7 +28348,10 @@ async function sceneSettingsFields(cdp) {
  *      level the backend resolves for that model with no rung chosen — the
  *      clamp the row's own module documents;
  *   5. the provider callout, VISIBLE or ABSENT by `--callout-expect`, and the
- *      "Providers" link pressed with the landing measured in numbers.
+ *      "Providers" link pressed with the landing measured in numbers — once by
+ *      pointer, then again as a KEYBOARD walk (real Tab to the link, Enter) so
+ *      the landing target's ring suppression and the next Tab stop are pinned
+ *      rather than inferred.
  *
  * The callout needs two daemons, because its predicate is the provider CENSUS:
  * a config root with no provider credential reports `needsProvider`, and one
@@ -29535,6 +29538,122 @@ async function sceneSettingsDefaultEffort(cdp) {
 			afterTabLanding.found === true && Math.abs(afterTabLanding.top - 80) <= 4,
 			`top=${afterTabLanding.top} (expected 80), scrollTop=${afterTabLanding.scrollerScrollTop}`,
 		);
+		/*
+		 * D6: the same jump, walked WITHOUT a pointer. The callout is the next tab
+		 * stop after the effort row, so a real Tab from the row reaches the link;
+		 * Enter activates it like a keyboard user would. The section is a
+		 * programmatic `tabIndex={-1}` rest-stop, not a control, so it must land
+		 * without painting the app's 2px ring around its whole box - measured here
+		 * as `:focus-visible` (Chromium's own rule after keyboard activation) plus
+		 * the computed outline style, because a headless frame cannot be trusted to
+		 * photograph a ring the window may never focus.
+		 */
+		await cdp.evaluate(`(() => {
+			const input = ${labeledControl(DEFAULT_EFFORT_SECTION, "Default effort")};
+			input?.focus();
+			return Boolean(input);
+		})()`);
+		await wait(150);
+		await pressChord(cdp, { key: "Tab", code: "Tab", virtualKeyCode: 9 });
+		await wait(150);
+		const keyboardLink = await cdp.evaluate(`(() => {
+			const active = document.activeElement;
+			return {
+				tag: active ? active.tagName.toLowerCase() : null,
+				text: (active?.textContent ?? "").trim(),
+			};
+		})()`);
+		note("the tab stop after the effort row", JSON.stringify(keyboardLink));
+		check(
+			"a real Tab from the effort row reaches the Providers link",
+			keyboardLink.tag === "button" && keyboardLink.text === "Providers",
+			JSON.stringify(keyboardLink),
+		);
+		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+		/*
+		 * The jump is smooth; wait for the page's own stated destination rather than
+		 * a fixed sleep, the same rule the pointer leg follows.
+		 */
+		let keyboardLanding = await cdp.evaluate(PROVIDERS_LANDING);
+		for (let attempt = 0; attempt < 40; attempt += 1) {
+			const landed =
+				keyboardLanding.found === true &&
+				Math.abs(keyboardLanding.top - 80) <= 2 &&
+				(keyboardLanding.current ?? []).some((name) =>
+					name.includes("Model providers"),
+				);
+			if (landed) break;
+			await wait(100);
+			keyboardLanding = await cdp.evaluate(PROVIDERS_LANDING);
+		}
+		const keyboardFocus = await cdp.evaluate(`(() => {
+			const section = document.getElementById("model-providers");
+			const active = document.activeElement;
+			return {
+				sectionFocused: section !== null && active === section,
+				focusedInside: Boolean(section && active && section.contains(active)),
+				activeTag: active ? active.tagName.toLowerCase() : null,
+				focusVisible: section ? section.matches(":focus-visible") : null,
+				outlineStyle: section ? getComputedStyle(section).outlineStyle : null,
+			};
+		})()`);
+		note(
+			"the keyboard landing and its ring",
+			JSON.stringify({ focus: keyboardFocus, landing: keyboardLanding }),
+		);
+		check(
+			"Enter on the link moves focus INTO the Model providers section",
+			keyboardFocus.focusedInside === true,
+			JSON.stringify(keyboardFocus),
+		);
+		check(
+			"the keyboard landing sits at the page's own 80px header room",
+			keyboardLanding.found === true && Math.abs(keyboardLanding.top - 80) <= 2,
+			`top=${keyboardLanding.top} (expected 80), scrollTop=${keyboardLanding.scrollerScrollTop}`,
+		);
+		check(
+			"the programmatic landing target paints NO focus ring",
+			keyboardFocus.sectionFocused === true &&
+				keyboardFocus.focusVisible === true &&
+				keyboardFocus.outlineStyle === "none",
+			JSON.stringify({
+				focusVisible: keyboardFocus.focusVisible,
+				outlineStyle: keyboardFocus.outlineStyle,
+			}),
+		);
+		const keyboardFrame = await captureSettled(
+			cdp,
+			"settings-default-effort-providers-jump-keyboard",
+		);
+		await pressChord(cdp, { key: "Tab", code: "Tab", virtualKeyCode: 9 });
+		await wait(250);
+		const keyboardNext = await cdp.evaluate(`(() => {
+			const section = document.getElementById("model-providers");
+			const active = document.activeElement;
+			return {
+				focusedInside: Boolean(section && active && section.contains(active)),
+				activeTag: active ? active.tagName.toLowerCase() : null,
+				label: active?.getAttribute("aria-label") ?? null,
+			};
+		})()`);
+		const keyboardAfterTab = await cdp.evaluate(PROVIDERS_LANDING);
+		note(
+			"the tab stop after the keyboard jump",
+			JSON.stringify({ focus: keyboardNext, landing: keyboardAfterTab }),
+		);
+		check(
+			"after the keyboard jump, one Tab lands on the providers search field",
+			keyboardNext.focusedInside === true &&
+				keyboardNext.activeTag === "input" &&
+				(keyboardNext.label ?? "").toLowerCase().includes("search"),
+			JSON.stringify(keyboardNext),
+		);
+		check(
+			"the keyboard landing stays put after that Tab",
+			keyboardAfterTab.found === true &&
+				Math.abs(keyboardAfterTab.top - 80) <= 4,
+			`top=${keyboardAfterTab.top} (expected 80), scrollTop=${keyboardAfterTab.scrollerScrollTop}`,
+		);
 		return [
 			restFrame,
 			openFrame,
@@ -29543,6 +29662,7 @@ async function sceneSettingsDefaultEffort(cdp) {
 			switchedFrame,
 			calloutFrame,
 			landingFrame,
+			keyboardFrame,
 		];
 	}
 	check(

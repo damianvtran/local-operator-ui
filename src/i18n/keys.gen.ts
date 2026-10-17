@@ -3334,6 +3334,7 @@ export type MessageParams = {
 	"ui.settings.model.default_effort.no_home": undefined;
 	"ui.settings.model.default_effort.no_model": undefined;
 	"ui.settings.model.default_effort.one_level": { level: string };
+	"ui.settings.model.default_effort.one_level_sentinel": undefined;
 	"ui.settings.model.default_effort.placeholder": undefined;
 	"ui.settings.model.default_effort.save_failed": undefined;
 	"ui.settings.model.default_effort.settings_error": undefined;
