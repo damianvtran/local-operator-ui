@@ -98,6 +98,25 @@ export const miniFrameTransitions = {
  * is not the persisted `{ state: { themeName } }` shape all answer null, and the
  * caller leaves the palette it has.
  */
+export function themeNameFromPreferencesWrite(input: {
+	eventKey: string | null;
+	storeKey: string;
+	newValue: string | null;
+	currentTheme: string;
+}): string | null {
+	if (input.eventKey !== input.storeKey || input.newValue === null) return null;
+	try {
+		const parsed = JSON.parse(input.newValue) as {
+			state?: { themeName?: unknown };
+		};
+		const name = parsed.state?.themeName;
+		if (typeof name !== "string" || name.length === 0) return null;
+		return name === input.currentTheme ? null : name;
+	} catch {
+		return null;
+	}
+}
+
 /**
  * THE WRITE ADAPTER the mini document installs.
  *
@@ -121,23 +140,4 @@ export function adoptPreferencesWrite(input: {
 	if (!themeName) return false;
 	Promise.resolve(input.rehydrate()).then(input.publish, () => {});
 	return true;
-}
-
-export function themeNameFromPreferencesWrite(input: {
-	eventKey: string | null;
-	storeKey: string;
-	newValue: string | null;
-	currentTheme: string;
-}): string | null {
-	if (input.eventKey !== input.storeKey || input.newValue === null) return null;
-	try {
-		const parsed = JSON.parse(input.newValue) as {
-			state?: { themeName?: unknown };
-		};
-		const name = parsed.state?.themeName;
-		if (typeof name !== "string" || name.length === 0) return null;
-		return name === input.currentTheme ? null : name;
-	} catch {
-		return null;
-	}
 }
