@@ -487,6 +487,26 @@ test("G-7 the committed floors cover every tier, scheme and role and are not han
 			);
 });
 
+test("G-7b the block veil and the work alpha are committed as derived, not chosen", () => {
+	for (const scheme of ["dark", "light"]) {
+		const veil = floorsFile.blockVeil?.[scheme];
+		assert.ok(
+			typeof veil === "number" && veil > 0 && veil < 1,
+			`blockVeil/${scheme} is a committed alpha`,
+		);
+	}
+	/*
+	 * The work alpha is the SELECTED step under its own name: an in-flight row and
+	 * a selected row are the same claim, and two hand-tuned numbers for one idea
+	 * are a divergence waiting to happen.
+	 */
+	assert.equal(
+		floorsFile.stateAlpha.work,
+		floorsFile.stateAlpha.selected,
+		"the work overlay aliases the selected step",
+	);
+});
+
 test("G-8 paint: which kinds a coverage turns translucent, and the net alphas", () => {
 	const paint = (coverage) =>
 		glass.glassPaintFor({
@@ -528,6 +548,21 @@ test("G-8 paint: which kinds a coverage turns translucent, and the net alphas", 
 		scheme: "light",
 	}).vars;
 	assert.ok(Number(clear["--lo-glass-in-elevated"]) >= 0);
+	/* The round-2 overlays are published from the committed table, per scheme. */
+	assert.equal(a("--lo-glass-a-row-work"), floorsFile.stateAlpha.work);
+	assert.equal(a("--lo-glass-a-block-veil"), floorsFile.blockVeil.dark);
+	const lightVars = glass.glassPaintFor({
+		coverage: "full",
+		intensity: 60,
+		mechanism: "vibrancy",
+		material: "window",
+		scheme: "light",
+	}).vars;
+	assert.equal(
+		Number(lightVars["--lo-glass-a-block-veil"]),
+		floorsFile.blockVeil.light,
+		"the veil follows the palette's scheme",
+	);
 	/* Every var is a bare number the CSS multiplies by 100%. */
 	for (const value of Object.values(v)) assert.match(value, /^\d(\.\d+)?$/);
 });
@@ -577,31 +612,62 @@ test("G-10 a restart is demanded exactly where the toggle cannot be live", () =>
 	assert.equal(glass.glassCapabilityFor(WIN11).liveToggle, false);
 });
 
-test("G-11 every region the CSS names is a marker some component carries", async () => {
+test("G-11 every region, state and well the CSS names is a marker some component carries", async () => {
 	const css = readFileSync(`${ROOT}/src/renderer/src/styles/index.css`, "utf8");
-	const named = new Set(
-		[...css.matchAll(/data-glass-region="([\w-]+)"/g)].map((m) => m[1]),
-	);
-	assert.ok(named.size >= 5);
+	/*
+	 * THE MARKER VOCABULARY IS CLOSED. Round 2 added three more ways a surface can
+	 * opt in (`data-glass-block`, `data-glass-state`, `data-glass-well`), and a CSS
+	 * rule naming a value no component wears is a rule that measures nothing while
+	 * reading as coverage. The check is the same for all four: every attribute value
+	 * the stylesheet selects on must exist in at least one component (or, for a
+	 * valueless marker, the attribute itself must).
+	 */
 	const { execFileSync } = await import("node:child_process");
 	const files = execFileSync(
 		"git",
-		["grep", "-l", "data-glass-region=", "--", "src/renderer/src"],
+		["grep", "-l", "data-glass-", "--", "src/renderer/src"],
 		{ cwd: ROOT, encoding: "utf8" },
 	)
 		.split("\n")
-		.filter(Boolean);
-	const carried = new Set();
-	for (const f of files) {
-		if (f.endsWith(".css")) continue;
-		for (const m of readFileSync(`${ROOT}/${f}`, "utf8").matchAll(
-			/data-glass-region="([\w-]+)"/g,
-		))
-			carried.add(m[1]);
-	}
-	for (const region of named)
+		.filter((f) => f && !f.endsWith(".css"));
+	const sources = files.map((f) => readFileSync(`${ROOT}/${f}`, "utf8"));
+
+	const valuesNamedBy = (attribute) =>
+		new Set(
+			[...css.matchAll(new RegExp(`${attribute}="([\\w-]*)"`, "g"))].map(
+				(m) => m[1],
+			),
+		);
+	const carried = (attribute, value) => {
+		const pattern =
+			value === ""
+				? new RegExp(`${attribute}(?=[\\s>])|${attribute}=""`)
+				: new RegExp(`${attribute}="${value}"`);
+		return sources.some((source) => pattern.test(source));
+	};
+
+	const regions = valuesNamedBy("data-glass-region");
+	assert.ok(regions.size >= 5);
+	for (const region of regions)
 		assert.ok(
-			carried.has(region),
-			`CSS names "${region}" but no component carries it`,
+			carried("data-glass-region", region),
+			`CSS names region "${region}" but no component carries it`,
+		);
+	const states = valuesNamedBy("data-glass-state");
+	for (const state of states)
+		assert.ok(
+			carried("data-glass-state", state),
+			`CSS names state "${state}" but no component carries it`,
+		);
+	const wells = valuesNamedBy("data-glass-well");
+	for (const well of wells)
+		assert.ok(
+			carried("data-glass-well", well),
+			`CSS names well "${well}" but no component carries it`,
+		);
+	if (/\[data-glass-block\]/.test(css))
+		assert.ok(
+			sources.some((source) => /data-glass-block/.test(source)),
+			"CSS names data-glass-block but no component carries it",
 		);
 });

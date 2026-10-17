@@ -134,6 +134,15 @@ export type WindowGlassOptions = {
 	 * palette ground back (it owns that colour). */
 	restoreGround: () => void;
 	log: (line: string) => void;
+	/**
+	 * Every state this window would paint, for the OTHER window of the app: the
+	 * quick-send popout is a second BrowserWindow with the same material, and
+	 * main otherwise pushes only to the window that owns the setting (its
+	 * document would sit on a stale paint after a Settings change or the OS
+	 * reduce-transparency switch). Optional so a caller with one window (the
+	 * tests) is unchanged.
+	 */
+	onState?: (state: WindowGlassState) => void;
 };
 
 export type WindowGlassController = {
@@ -248,8 +257,10 @@ export function attachWindowGlass(
 	};
 
 	const push = (): void => {
-		if (window.isDestroyed()) return;
-		window.webContents.send(WINDOW_GLASS_STATE_CHANNEL, current());
+		const state = current();
+		if (!window.isDestroyed())
+			window.webContents.send(WINDOW_GLASS_STATE_CHANNEL, state);
+		options.onState?.(state);
 	};
 
 	const fromOwnWindow = (event: IpcMainInvokeEvent): boolean =>

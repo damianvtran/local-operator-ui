@@ -171,7 +171,10 @@ export const ProjectLinks: FC<ProjectLinksProps> = ({
 				 * around a list is what the three surfaces' pass removed. The 6px
 				 * hover pill on the rows that open something is this branch's.
 				 */
-				<ul className="flex flex-col divide-y divide-hairline rounded-md bg-surface">
+				<ul
+					data-glass-block=""
+					className="flex flex-col divide-y divide-hairline rounded-md bg-surface"
+				>
 					{links.map((link) => {
 						const meta = linkStateMeta(link);
 						const subagents = subagentChipLabel(link.subagents);

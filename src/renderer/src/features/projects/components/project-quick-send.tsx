@@ -193,6 +193,7 @@ export const ProjectQuickSend: FC<ProjectQuickSendProps> = ({
 			 * ladder already defines between `canvas` and `elevated`, so the box steps off
 			 * its card exactly as it steps off a chat column.
 			 */
+			data-glass-block=""
 			className="flex flex-col gap-2 rounded-md bg-surface p-3"
 		>
 			<div className="flex flex-wrap items-center gap-2">

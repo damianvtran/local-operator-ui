@@ -817,7 +817,17 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 							 * a column that cannot scroll (or has hit its edge) chains to the
 							 * board's own scroller, which is how the next team comes into view.
 							 */}
-							<div className="flex gap-3 rounded-md bg-sunken py-2">
+							{/*
+							 * THE WELL IS CLEAR ON GLASS (`data-glass-well="clear"`, never
+							 * painted): the card above it carries the derived block veil, and
+							 * a well would be a second ink under the same column - the
+							 * alpha-owning law forbids a well under a veil. On the flat system
+							 * the band's recess is unchanged.
+							 */}
+							<div
+								data-glass-well="clear"
+								className="flex gap-3 rounded-md bg-sunken py-2"
+							>
 								{columns.map((column) => {
 									const cards = band.items.filter(
 										(project) => project.status === column.status,
@@ -1019,6 +1029,16 @@ const BoardCard: FC<BoardCardProps> = ({
 			 * target, only the title lifted; now that the whole card is the
 			 * target, the whole card answers the pointer.
 			 */
+			/*
+			 * A BLOCK ON GLASS: the surface fill is the card's boundary in the flat
+			 * system, so it takes the derived block veil instead of staying an opaque
+			 * island (`styles/index.css`, canvas coverage). THE HOVER FILL IS
+			 * DELIBERATELY DROPPED THERE - there is no AA room for a step above the
+			 * veil (measured: +5% breaks `inkMuted` to 4.03 on synthwave) - while the
+			 * flat `hover:bg-elevated` is untouched off glass. The pointer affordance
+			 * rides the cursor and the card's own controls.
+			 */
+			data-glass-block=""
 			className={cn(
 				"group/card flex flex-col gap-2 rounded-sm bg-surface p-3",
 				"transition-colors duration-fast ease-out-quart hover:bg-elevated",

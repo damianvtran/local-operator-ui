@@ -1016,6 +1016,20 @@ export const ToolRow = ({
 	// The state ground, applied to the row box rather than to a card: § 2's
 	// elevation-is-a-lightness-step, and the TUI's own `.tool-running` /
 	// `.tool-error` rules, which set a background and never a border.
+	/*
+	 * A RUNNING ROW IS THE ROW THAT IS THE SUBJECT, which on window glass is the
+	 * selected step's claim; `data-glass-state` lets the stylesheet paint that step
+	 * as an ink overlay instead of this opaque `elevated` slab (near-opaque at its
+	 * dark floor). The marker rides the element that paints the ground (see
+	 * `Disclosure`'s `triggerData`). Off glass it selects nothing.
+	 *
+	 * A FAILED row keeps its `danger-wash` for now: a danger overlay has to be
+	 * derived (ΔE00 step plus AA inks) before a failure may go transient - the
+	 * design note's V2.
+	 */
+	const glassState = running
+		? ({ "data-glass-state": "running" } as const)
+		: undefined;
 	const ground = running
 		? "bg-elevated"
 		: failed
@@ -1036,6 +1050,7 @@ export const ToolRow = ({
 			chevron="leading"
 			defaultOpen={defaultOpen}
 			className={cn("@container/toolrow", className)}
+			triggerData={glassState}
 			rowClassName={ROW_HEIGHT}
 			// The whole row is the target, so it takes a row-shaped ground that
 			// bleeds 8px past the text on both sides while the text stays on the
@@ -1051,6 +1066,7 @@ export const ToolRow = ({
 			summary={row}
 			// Both branches take the same height, or a run alternates between two
 			// pitches depending on which calls happened to produce output.
+			triggerData={glassState}
 			rowClassName={ROW_HEIGHT}
 			className={cn(
 				"@container/toolrow",

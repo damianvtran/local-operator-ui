@@ -29,6 +29,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { deltaE } from "./color.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
 import { loadPalettes } from "./palette-source.mjs";
 
@@ -85,7 +86,36 @@ export const GLASS_EDGE_FLOOR = 3;
  * selected is deliberately about 1.7x it so the two never read as one; a field's
  * fill matches hover, with its `border-control` carrying the boundary.
  */
-export const GLASS_STATE_ALPHA = { hover: 0.05, selected: 0.08, field: 0.05 };
+export const GLASS_STATE_ALPHA = {
+	hover: 0.05,
+	selected: 0.08,
+	field: 0.05,
+	/*
+	 * A RUNNING TOOL ROW is the row that is the subject right now, which is the
+	 * same claim a selected row makes; the two cannot co-occur, and asserting a
+	 * second, separately-tuned alpha would be two constants for one idea. The
+	 * alias is printed into the floors table so the renderer paints it from the
+	 * same published value, and a future divergence is a one-line derivation here
+	 * rather than a hand-tuned CSS number.
+	 */
+	work: 0.08,
+};
+/**
+ * The block veil's step off the canvas glass.
+ *
+ * A BLOCK is text-bearing content whose fill was its ONLY boundary on the flat
+ * system (the user message bubble: `messageSurface`, floored at ΔE00 4.0 off
+ * canvas; project cards, hub cards). On glass the flat role has no usable
+ * answer: `messageSurface` itself measures 0.77 dark / 0.46 light as an alpha
+ * floor and collapses to ΔE00 0.9-1.2 off the canvas on rosewood/oneLight/
+ * iceberg - a bubble that vanishes. So the block's fill becomes a RELATIVE
+ * overlay: the palette's `ink` at the smallest alpha that still steps ΔE00 4.0
+ * off the canvas glass at ITS floor, over the worst measured backdrop. Like a
+ * state overlay it does not scale with the slider (the ground beneath moves, the
+ * step stays >= 4.0), and it is painted once: a well never sits under a veiled
+ * block (`docs/branding.md`, the alpha-owning law).
+ */
+export const GLASS_BLOCK_VEIL_STEP = 4.0;
 export const GLASS_STATE_STEP = { hover: 1.5, selected: 2.5, field: 1.5 };
 /**
  * THE ONE RELAXATION, stated: `inkDim` (captions, metadata, placeholders) is held to
@@ -176,6 +206,46 @@ export const minEdgeAlpha = (palette, role, backdrop) => {
 export const glassEdge = (palette, mix) =>
 	composite(palette.ink, mix, palette.borderControl);
 
+/**
+ * The block veil: the smallest ink alpha clearing `GLASS_BLOCK_VEIL_STEP` off
+ * the canvas glass at its committed floor, max over palettes per scheme.
+ *
+ * ONE CONSTANT PER SCHEME, not per material tier: the veil is relative to the
+ * ground it sits on, and the ground already carries the tier's floor. Measured
+ * minimum steps at the derived values: dark 4.27 (solarizedDark), light 4.20
+ * (ayuLight) - the palettes the note names as binding.
+ */
+export function deriveBlockVeil(floors) {
+	const palettes = loadPalettes();
+	const out = {};
+	for (const scheme of ["dark", "light"]) {
+		let need = 0;
+		for (const tier of Object.keys(BACKDROP_GRAY)) {
+			for (const { palette } of palettes) {
+				if (schemeOf(palette) !== scheme) continue;
+				const ground = composite(
+					palette.canvas,
+					floors[tier][scheme].canvas,
+					gray(BACKDROP_GRAY[tier][scheme]),
+				);
+				let a = 0.01;
+				while (
+					a < 1 &&
+					deltaE(composite(palette.ink, a, ground), ground) <
+						GLASS_BLOCK_VEIL_STEP
+				)
+					a = Math.round((a + 0.01) * 100) / 100;
+				need = Math.max(need, a);
+			}
+		}
+		/* The exact smallest clearing alpha, like `minAlpha`: the contract asserts
+		 * it at the committed value, so headroom here would be a number nobody
+		 * derived. */
+		out[scheme] = Math.round(need * 100) / 100;
+	}
+	return out;
+}
+
 export function derive() {
 	const palettes = loadPalettes();
 	const out = {};
@@ -249,6 +319,7 @@ if (isEntryPoint(import.meta.url)) {
 			JSON.stringify(
 				{
 					alphaFloor: derived,
+					blockVeil: deriveBlockVeil(derived),
 					controlMix: deriveControlMix(derived),
 					stateAlpha: GLASS_STATE_ALPHA,
 				},
@@ -259,7 +330,8 @@ if (isEntryPoint(import.meta.url)) {
 		process.exit(0);
 	}
 	if (process.argv.includes("--check")) {
-		const committed = JSON.parse(readFileSync(FLOORS_PATH, "utf8")).alphaFloor;
+		const file = JSON.parse(readFileSync(FLOORS_PATH, "utf8"));
+		const committed = file.alphaFloor;
 		let bad = 0;
 		for (const tier of Object.keys(derived))
 			for (const scheme of ["dark", "light"])
@@ -270,6 +342,14 @@ if (isEntryPoint(import.meta.url)) {
 							`floor ${tier}/${scheme}/${role} is ${committed[tier][scheme][role]} but the palettes need ${derived[tier][scheme][role]}`,
 						);
 					}
+		const veil = deriveBlockVeil(committed);
+		for (const scheme of ["dark", "light"])
+			if ((file.blockVeil?.[scheme] ?? 0) < veil[scheme]) {
+				bad++;
+				console.error(
+					`block veil ${scheme} is ${file.blockVeil?.[scheme]} but the palettes need ${veil[scheme]} for a ΔE00 ${GLASS_BLOCK_VEIL_STEP} step off the canvas glass - re-derive, never hand-lower it`,
+				);
+			}
 		process.exit(bad ? 1 : 0);
 	}
 }

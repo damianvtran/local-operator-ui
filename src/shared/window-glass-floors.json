@@ -38,6 +38,10 @@
 			}
 		}
 	},
+	"blockVeil": {
+		"dark": 0.09,
+		"light": 0.12
+	},
 	"controlMix": {
 		"under-window": {
 			"dark": 0.15,
@@ -55,6 +59,7 @@
 	"stateAlpha": {
 		"hover": 0.05,
 		"selected": 0.08,
-		"field": 0.05
+		"field": 0.05,
+		"work": 0.08
 	}
 }

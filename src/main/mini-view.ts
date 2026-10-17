@@ -57,7 +57,17 @@ import {
 } from "../shared/mini-view";
 import { windowChromeArgumentFor } from "../shared/window-chrome";
 import type { WindowChromeMode } from "../shared/window-chrome";
+import {
+	GLASS_TRANSPARENT,
+	WINDOW_GLASS_STATE_CHANNEL,
+	type WindowGlassState,
+	glassIsActive,
+	groundWithGlass,
+	macVibrancyFor,
+	windowGlassArgument,
+} from "../shared/window-glass";
 import { telemetryArgument } from "./telemetry-launch";
+import type { ResolvedLaunchGlass } from "./window-glass";
 import type { WindowShow } from "./window-mode";
 import { type RaiseReport, presentMiniView } from "./window-raise";
 
@@ -97,6 +107,13 @@ export interface MiniView {
 	hide(): void;
 	/** The quit path: stand the close interception down and destroy the window. */
 	dispose(): void;
+	/**
+	 * Apply a state main pushed (the Settings row, the OS reduce-transparency
+	 * switch): flip the live material on macOS and forward the state to the
+	 * mini document. Windows records and leaves it to the next launch, like the
+	 * main window.
+	 */
+	applyGlassState(state: WindowGlassState): void;
 }
 
 /**
@@ -190,6 +207,14 @@ export interface MiniViewOptions {
 	 * `mini-view` scene showed (design §I.3).
 	 */
 	chromeMode: WindowChromeMode;
+	/**
+	 * The launch's window-glass resolution, the SAME value the main window was
+	 * built from. The popout is a floating HUD on the window's material: enabled
+	 * glass makes its single card translucent, off is exactly today's opaque
+	 * card. Coverage is meaningless here (one surface), so an enabled setting is
+	 * the whole gate.
+	 */
+	glass: ResolvedLaunchGlass;
 	/** The `[window-raise]` line's sink. */
 	report?: RaiseReport;
 }
@@ -207,8 +232,18 @@ export function createMiniView(options: MiniViewOptions): MiniView {
 		 */
 		useContentSize: true,
 		show: false,
-		/* The dark ground under an as-yet-unpainted document; see MINI_VIEW_GROUND. */
-		backgroundColor: MINI_VIEW_GROUND,
+		/*
+		 * The ground under an as-yet-unpainted document, WITH the glass options in
+		 * the one order that keeps default-off identical: the opaque ground first,
+		 * the glass after it, so only an ACTIVE glass overrides it
+		 * (`groundWithGlass`'s contract).
+		 */
+		...groundWithGlass(
+			MINI_VIEW_GROUND,
+			options.glass.settings,
+			options.glass.capability,
+			process.platform,
+		),
 		// A composer that floats over other apps carries no frame of its own:
 		// the app's own rows are the entire surface, and the one sanctioned
 		// elevation step is the card's ground.
@@ -249,6 +284,12 @@ export function createMiniView(options: MiniViewOptions): MiniView {
 			 */
 			additionalArguments: [
 				windowChromeArgumentFor(process.platform, options.chromeMode),
+				/*
+				 * THE FIRST-FRAME GLASS FACT, the same entry the main window carries:
+				 * without it the popout's first paint is the opaque card and the
+				 * material arrives late as a visible jump.
+				 */
+				windowGlassArgument(options.glass.state, options.glass.scheme),
 				telemetryArgument(false),
 			],
 		},
@@ -263,6 +304,54 @@ export function createMiniView(options: MiniViewOptions): MiniView {
 		 */
 		window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 	}
+
+	/*
+	 * THE LIVE GLASS PATH. The constructor options are the launch's look; this is
+	 * what a Settings change reaches afterwards. macOS flips the whole thing
+	 * (`setVibrancy`); Windows can only change the material of a window built
+	 * with one, so an enable is recorded and applied by the next launch, exactly
+	 * as the main window states it. `launchedGlassOn` is that build fact.
+	 */
+	const launchedGlassOn = glassIsActive(
+		options.glass.settings,
+		options.glass.capability,
+	);
+	let appliedMechanism: "vibrancy" | "background-material" | "none" =
+		launchedGlassOn ? options.glass.capability.mechanism : "none";
+	const applyGlassState = (state: WindowGlassState): void => {
+		if (window.isDestroyed()) return;
+		const active = state.active && state.capability.mechanism !== "none";
+		try {
+			if (state.capability.mechanism === "vibrancy") {
+				if (active) {
+					window.setBackgroundColor(GLASS_TRANSPARENT);
+					window.setVibrancy(macVibrancyFor(state.settings.material));
+					appliedMechanism = "vibrancy";
+				} else if (appliedMechanism === "vibrancy") {
+					window.setVibrancy(null);
+					window.setBackgroundColor(MINI_VIEW_GROUND);
+					appliedMechanism = "none";
+				}
+			} else if (
+				state.capability.mechanism === "background-material" &&
+				launchedGlassOn &&
+				appliedMechanism === "background-material"
+			) {
+				/* Live OFF only: a live ON needs a window built with the material. */
+				if (!active) {
+					window.setBackgroundMaterial("none");
+					window.setBackgroundColor(MINI_VIEW_GROUND);
+					appliedMechanism = "none";
+				}
+			}
+		} catch (error) {
+			options.report?.(
+				`[mini-view] applying the window glass was refused (${String(error)}) - the popout keeps its previous look`,
+			);
+		}
+		/* The DOCUMENT repaints from the same state the main window's does. */
+		window.webContents.send(WINDOW_GLASS_STATE_CHANNEL, state);
+	};
 
 	/*
 	 * THE READINESS LATCH (see `MINI_VIEW_PAINTED`). `painted` is per LOAD, not
@@ -597,5 +686,5 @@ export function createMiniView(options: MiniViewOptions): MiniView {
 		if (!window.isDestroyed()) window.destroy();
 	}
 
-	return { window, toggle, hide, dispose };
+	return { window, toggle, hide, dispose, applyGlassState };
 }

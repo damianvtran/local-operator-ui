@@ -353,3 +353,39 @@ test("the grown ceiling is above the base and the base is unchanged", () => {
 		"a ceiling at the base would make the measured resize a no-op",
 	);
 });
+
+/*
+ * THE POPOUT'S LIVE THEME SYNC (the operator's reported bug: the popout ran
+ * tokyoNightStorm while the app ran obsidian, because each document hydrated the
+ * persisted preferences once and nothing listened for the other's write).
+ *
+ * The reader is the pure half of the `storage` listener the mini document
+ * installs: it must accept exactly the persisted `{ state: { themeName } }`
+ * blob for the preferences key, and answer null for everything else - a foreign
+ * key, a cleared value, a malformed blob, a state without a theme - so a bad
+ * write leaves the palette it has instead of applying `undefined`.
+ */
+test("a preferences write names a theme only when it is the store's own blob", () => {
+	const { themeNameFromPreferencesWrite } = miniView;
+	const storeKey = "ui-preferences-storage";
+	const write = (value, key = storeKey) =>
+		themeNameFromPreferencesWrite({
+			eventKey: key,
+			storeKey,
+			newValue: value,
+		});
+	assert.equal(
+		write(JSON.stringify({ state: { themeName: "obsidian" }, version: 1 })),
+		"obsidian",
+	);
+	assert.equal(write(JSON.stringify({ state: { themeName: "" } })), null);
+	assert.equal(write(JSON.stringify({ state: {} })), null);
+	assert.equal(write(JSON.stringify({})), null);
+	assert.equal(write("{not json"), null);
+	assert.equal(write(null), null, "a cleared key names nothing");
+	assert.equal(
+		write(JSON.stringify({ state: { themeName: "obsidian" } }), "other"),
+		null,
+		"a different key is not a theme change",
+	);
+});

@@ -213,7 +213,10 @@ const UsageInfo: FC = () => {
 					<legend className="sr-only">
 						{t("ui.settings.account.settings_page.usage_metric")}
 					</legend>
-					<div className="flex gap-0.5 rounded-md bg-sunken p-0.5">
+					<div
+						data-glass-well=""
+						className="flex gap-0.5 rounded-md bg-sunken p-0.5"
+					>
 						{USAGE_METRICS.map(({ id, label }) => (
 							<Button
 								key={id}

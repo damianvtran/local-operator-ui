@@ -61,6 +61,7 @@ import { fileURLToPath } from "node:url";
 import { deltaE, labToHex, r2, toLab } from "./color.mjs";
 import {
 	BACKDROP_GRAY,
+	GLASS_BLOCK_VEIL_STEP,
 	GLASS_EDGE_FLOOR,
 	GLASS_INKS,
 	GLASS_INK_FLOOR,
@@ -69,6 +70,7 @@ import {
 	derive as deriveGlassFloors,
 	composite as glassComposite,
 	glassEdge,
+	gray as glassGray,
 	ratio as glassRatio,
 	schemeOf as glassSchemeOf,
 } from "./derive-glass-floors.mjs";
@@ -7357,7 +7359,6 @@ for (const row of ROW_STATE_MEASURED_SHORTFALL) {
 		readFileSync(join(ROOT, "src/shared/window-glass-floors.json"), "utf8"),
 	);
 	const STEP = { hover: 1.5, selected: 2.5, field: 1.5 };
-	const gray = (n) => `#${n.toString(16).padStart(2, "0").repeat(3)}`;
 	const stepMin = {
 		hover: Number.POSITIVE_INFINITY,
 		selected: Number.POSITIVE_INFINITY,
@@ -7368,7 +7369,7 @@ for (const row of ROW_STATE_MEASURED_SHORTFALL) {
 		for (const [tier, byScheme] of Object.entries(BACKDROP_GRAY)) {
 			const floors = committed.alphaFloor[tier][scheme];
 			const mix = committed.controlMix[tier][scheme];
-			const backdrop = gray(byScheme[scheme]);
+			const backdrop = glassGray(byScheme[scheme]);
 			for (const ground of ["surface", "canvas"]) {
 				const groundHex = glassComposite(
 					palette[ground],
@@ -7420,6 +7421,154 @@ for (const row of ROW_STATE_MEASURED_SHORTFALL) {
 	}
 	console.log(
 		`Window glass states: tightest step ΔE00 off the ground - hover ${r2(stepMin.hover)}, selected ${r2(stepMin.selected)}, field ${r2(stepMin.field)}.`,
+	);
+}
+
+/*
+ * THE GLASS BLOCK VEIL, THE RUNNING ROW AND THE CHROME BAND, as component
+ * triples over the composite (the same method as the block above):
+ *
+ *   - "glass block veil": a text-bearing block (a user message bubble, a project
+ *     card, a hub card) painted as `ink` at `blockVeil[scheme]` over the canvas
+ *     glass at its floor. The step is the block's ONLY boundary, so it is held
+ *     at ΔE00 4.0 on every palette and every material tier - the flat
+ *     `messageSurface` floor's own promise, which no role alpha could keep. Inks
+ *     on the veil: `ink`/`inkMuted` AA; `inkDim` at the states' stated 3.5
+ *     relaxation (captions ride a block the way they ride a field).
+ *   - "glass running row": the work overlay (`stateAlpha.work`, the selected
+ *     step's alias) over the canvas glass. An in-flight row is the subject; its
+ *     step is held at the selected floor (ΔE00 2.5) with AA inks.
+ *   - "glass chrome band": the Browser route's tab strip and URL row wear
+ *     `surface` at its floor RAW over the desktop - the app sidebar's own paint,
+ *     so the two measure equal. Inks on the band are held to AA, `inkDim`
+ *     included (this is a ground, not a state: the 3.5 relaxation does not
+ *     apply). The strip is the band plus the field overlay and the active tab
+ *     the band plus the selected overlay - contexts of the same derived alphas,
+ *     asserted here so a future role change cannot quietly reuse them elsewhere.
+ *
+ * The composer is a field on the CANVAS ground, which the block above already
+ * asserts ("glass text field" over canvas); it needs no separate row, and its
+ * edge is the derived `controlMix` already held at 3:1 there.
+ */
+{
+	const committed = JSON.parse(
+		readFileSync(join(ROOT, "src/shared/window-glass-floors.json"), "utf8"),
+	);
+	const veilMin = {
+		dark: Number.POSITIVE_INFINITY,
+		light: Number.POSITIVE_INFINITY,
+	};
+	const workMin = {
+		step: Number.POSITIVE_INFINITY,
+		inkMuted: 4.5,
+		inkDim: 3.5,
+	};
+	const chromeMin = {
+		ink: Number.POSITIVE_INFINITY,
+		inkMuted: Number.POSITIVE_INFINITY,
+		inkDim: Number.POSITIVE_INFINITY,
+		tabStep: Number.POSITIVE_INFINITY,
+	};
+	for (const { id, palette } of palettes) {
+		const scheme = glassSchemeOf(palette);
+		for (const [tier, byScheme] of Object.entries(BACKDROP_GRAY)) {
+			const floors = committed.alphaFloor[tier][scheme];
+			const backdrop = glassGray(byScheme[scheme]);
+			const canvasGlass = glassComposite(
+				palette.canvas,
+				floors.canvas,
+				backdrop,
+			);
+
+			/* The block veil over the canvas glass. */
+			const veilAlpha = committed.blockVeil[scheme];
+			const veil = glassComposite(palette.ink, veilAlpha, canvasGlass);
+			for (const ink of GLASS_INKS) {
+				assertions++;
+				const floor =
+					ink === "inkDim" ? GLASS_STATE_DIM_FLOOR : GLASS_INK_FLOOR;
+				const r = glassRatio(palette[ink], veil);
+				if (r < floor)
+					fail(
+						`${id}: glass block veil (${tier}/${scheme}) ${ink} on the veil is ${r2(r)}:1, floor ${floor}`,
+					);
+			}
+			assertions++;
+			const veilStep = deltaE(veil, canvasGlass);
+			veilMin[scheme] = Math.min(veilMin[scheme], veilStep);
+			if (veilStep < GLASS_BLOCK_VEIL_STEP)
+				fail(
+					`${id}: glass block veil (${tier}/${scheme}) is ΔE00 ${r2(veilStep)} off the canvas glass, floor ${GLASS_BLOCK_VEIL_STEP} - a block would vanish`,
+				);
+
+			/* The running row's work overlay, the selected step under its own name. */
+			const work = glassComposite(
+				palette.ink,
+				committed.stateAlpha.work,
+				canvasGlass,
+			);
+			for (const ink of GLASS_INKS) {
+				assertions++;
+				const floor =
+					ink === "inkDim" ? GLASS_STATE_DIM_FLOOR : GLASS_INK_FLOOR;
+				const r = glassRatio(palette[ink], work);
+				if (r < floor)
+					fail(
+						`${id}: glass running row (${tier}/${scheme}) ${ink} on the work overlay is ${r2(r)}:1, floor ${floor}`,
+					);
+			}
+			assertions++;
+			const workStep = deltaE(work, canvasGlass);
+			if (workStep < 2.5)
+				fail(
+					`${id}: glass running row (${tier}/${scheme}) is ΔE00 ${r2(workStep)} off the canvas glass, floor 2.5: the row would not read as live`,
+				);
+			workMin.step = Math.min(workMin.step, workStep);
+
+			/* The chrome band: surface at its floor, the sidebar's own paint. */
+			const chrome = glassComposite(palette.surface, floors.surface, backdrop);
+			for (const ink of GLASS_INKS) {
+				assertions++;
+				const r = glassRatio(palette[ink], chrome);
+				if (r < GLASS_INK_FLOOR)
+					fail(
+						`${id}: glass chrome band (${tier}/${scheme}) ${ink} on the band is ${r2(r)}:1, floor ${GLASS_INK_FLOOR}`,
+					);
+				chromeMin[ink] = Math.min(chromeMin[ink], r);
+			}
+			for (const [state, label] of [
+				["field", "glass chrome field"],
+				["selected", "glass chrome tab"],
+			]) {
+				const fill = glassComposite(
+					palette.ink,
+					committed.stateAlpha[state],
+					chrome,
+				);
+				for (const ink of GLASS_INKS) {
+					assertions++;
+					const floor =
+						ink === "inkDim" ? GLASS_STATE_DIM_FLOOR : GLASS_INK_FLOOR;
+					const r = glassRatio(palette[ink], fill);
+					if (r < floor)
+						fail(
+							`${id}: ${label} (${tier}/${scheme}) ${ink} on the fill is ${r2(r)}:1, floor ${floor}`,
+						);
+				}
+				if (state === "selected") {
+					assertions++;
+					const step = deltaE(fill, chrome);
+					chromeMin.tabStep = Math.min(chromeMin.tabStep, step);
+					if (step < 2.5)
+						fail(
+							`${id}: glass chrome tab (${tier}/${scheme}) is ΔE00 ${r2(step)} off the band, floor 2.5`,
+						);
+				}
+			}
+		}
+	}
+	console.log(
+		`Window glass round 2: tightest block veil ΔE00 off canvas glass - dark ${r2(veilMin.dark)}, light ${r2(veilMin.light)}; work row step ${r2(workMin.step)}; chrome inks ${r2(chromeMin.ink)}/${r2(chromeMin.inkMuted)}/${r2(chromeMin.inkDim)}, tab step ${r2(chromeMin.tabStep)}.`,
 	);
 }
 

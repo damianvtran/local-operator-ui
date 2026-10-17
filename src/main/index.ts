@@ -1051,6 +1051,14 @@ function createWindow(
 			log: (line) => logger.info(line, LogFileType.BACKEND),
 		},
 		log: (line) => logger.info(line, LogFileType.BACKEND),
+		/*
+		 * EVERY GLASS STATE THIS WINDOW PAINTS, FOR THE POPOUT: the mini view is a
+		 * second BrowserWindow on the same material and its document has no channel
+		 * of its own (it must not own the setting). Forwarded here rather than
+		 * broadcast from the controller so the popout's window, not "every window",
+		 * is the recipient.
+		 */
+		onGlassState: (state) => miniView?.applyGlassState(state),
 	});
 	mainWindow.on("closed", () => surface.chrome.dispose());
 	mainWindow.on("closed", () => surface.glass.dispose());
@@ -2598,6 +2606,15 @@ app
 				url: miniViewUrlFor(rendererUrl),
 				preloadPath: join(__dirname, "../preload/index.js"),
 				show: windowLaunch.show,
+				/*
+				 * The launch's window-glass resolution: the popout is a floating HUD
+				 * on the window's material, and it must be BUILT with it (a Windows
+				 * material cannot be added to a live window). Resolved at this point,
+				 * before the main window exists, from the same persisted file.
+				 */
+				glass: resolveLaunchWindowGlass({
+					userDataDir: app.getPath("userData"),
+				}),
 				/*
 				 * The launch's chrome facts, resolved through the same function the
 				 * main window called — read here rather than threaded through

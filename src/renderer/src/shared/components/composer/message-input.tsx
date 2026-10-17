@@ -8109,13 +8109,16 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					)}
 					<div
 						/*
-						 * GLASS: the composer is a TEXT-BEARING surface, so it joins the `pane`
-						 * region (the `elevated` role at its derived alpha floor, near-opaque on
-						 * dark palettes) rather than staying an opaque slab in a see-through
-						 * column or going as clear as the chat. Marker only: with the window
-						 * glass off, or `pane` not covered, nothing selects it.
+						 * GLASS: THE COMPOSER IS A FIELD, NOT A PANE. Round 1 marked it `pane`
+						 * (the `elevated` role at its floor), which is a near-opaque slab by
+						 * construction on dark palettes - exactly the operator's island. In the
+						 * system's own words an input is "a faintly lifted well with a firm
+						 * edge": ink 5% over the canvas glass plus the derived border mix as
+						 * its resting edge (`styles/index.css`), drawn only on glass so the
+						 * shipped no-edge geometry (D12) is untouched. The `pane` COVERAGE gate
+						 * is kept: Sidebars only leaves the composer flat.
 						 */
-						data-glass-region="pane"
+						data-glass-region="composer"
 						className={cn(
 							COMPOSER_BOX,
 							/*
