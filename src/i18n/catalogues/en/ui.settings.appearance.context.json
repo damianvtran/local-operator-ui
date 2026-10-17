@@ -69,7 +69,7 @@
 		"role": "Help paragraph under the toggle",
 		"tone": "Plain, reassuring second person.",
 		"length": "Wrapping paragraph in the settings column; no length cap, keep every fact.",
-		"note": "Explains the effect, that it is off by default, and that text stays readable because the slider's far end is limited per theme."
+		"note": "Explains the effect, that it is off by default, and that text stays readable because the slider's far end is limited per theme. Plain language only: no mention of floors or contracts."
 	},
 	"ui.settings.appearance.window_glass.restart_needed": {
 		"role": "Inline notice",
@@ -111,22 +111,16 @@
 		"role": "Help text under the row label",
 		"tone": "Plain second person.",
 		"length": "One or two sentences.",
-		"note": "Names the first option so the reader knows the narrowest scope leaves the conversation solid."
+		"note": "Names both options so the reader knows what each leaves solid; the last sentence is the honest limit of Full app (embedded pages and media paint their own opaque ground)."
 	},
 	"ui.settings.appearance.window_glass.coverage_sidebars": {
-		"role": "Segment label (1 of 3)",
+		"role": "Segment label (1 of 2)",
 		"tone": "Neutral noun phrase in sentence case.",
 		"length": "Segmented-tab label; English is 13 characters; stay within ~1.5x.",
 		"note": "Narrowest scope: only the navigation columns."
 	},
-	"ui.settings.appearance.window_glass.coverage_chrome": {
-		"role": "Segment label (2 of 3)",
-		"tone": "Neutral noun phrase in sentence case.",
-		"length": "Segmented-tab label; English is 19 characters; stay within ~1.5x.",
-		"note": "Middle scope: sidebars plus the window's own bars. 'Chrome' means window furniture, not the browser."
-	},
 	"ui.settings.appearance.window_glass.coverage_full": {
-		"role": "Segment label (3 of 3)",
+		"role": "Segment label (2 of 2)",
 		"tone": "Neutral noun phrase in sentence case.",
 		"length": "Segmented-tab label; English is 8 characters.",
 		"note": "Widest scope: every surface including the conversation and pages."
@@ -190,5 +184,23 @@
 		"tone": "Neutral noun.",
 		"length": "Segmented-tab label; one word.",
 		"note": "Microsoft's Tabbed Mica material."
+	},
+	"ui.settings.appearance.window_glass.intensity_start": {
+		"role": "Caption under the left end of the slider",
+		"tone": "One word, sentence case.",
+		"length": "One word; English is 7 characters.",
+		"note": "Names the frosted end so the slider's axis is readable without the description."
+	},
+	"ui.settings.appearance.window_glass.intensity_end": {
+		"role": "Caption under the right end of the slider",
+		"tone": "One word, sentence case.",
+		"length": "One word; English is 11 characters.",
+		"note": "Names the see-through end."
+	},
+	"ui.settings.appearance.window_glass.intensity_value": {
+		"role": "Accessible value text and the readout beside the slider label",
+		"tone": "Short, plain.",
+		"length": "Under 30 characters.",
+		"note": "{value} is a whole number 0-100; it names the axis so '60%' is not a bare number."
 	}
 }

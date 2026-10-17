@@ -107,8 +107,10 @@ export function applyGlassState(state: WindowGlassState | null): void {
 	 * A flip that needs a restart (Windows: the window was built without its
 	 * material) is NOT painted: translucent CSS over an opaque OS window would be a
 	 * see-through app showing a flat colour - the half-applied state the restart
-	 * note exists to prevent. The reverse (a restart-pending OFF) keeps the paint,
-	 * for the same reason in the other direction.
+	 * note exists to prevent. The reverse (a restart-pending OFF) is the branch
+	 * ABOVE: it clears the paint at once, because opaque CSS over a window whose
+	 * material is still on screen reads as the ordinary solid app, which is what an
+	 * OFF should look like while the restart is pending (review R5).
 	 */
 	if (state.restartRequired && state.active) {
 		return;

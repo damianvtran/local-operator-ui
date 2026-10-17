@@ -124,7 +124,7 @@ export const LegacyAgentsPage: FC<AgentsPageProps> = () => {
 	};
 
 	return (
-		<div className="flex h-full w-full overflow-hidden">
+		<div data-glass-split="" className="flex h-full w-full overflow-hidden">
 			{/* The sidebar itself is width:100% — the 280px lives here, and the
 			    pane must not shrink when the agent list has a long name in it. */}
 			{/*
@@ -150,7 +150,10 @@ export const LegacyAgentsPage: FC<AgentsPageProps> = () => {
 			{/* `grow` rather than `flex-1`: the content pane keeps an auto basis so
 			    it fills the space the sidebar leaves, and `overflow-hidden` is what
 			    keeps its scrolling inside the pane instead of the window. */}
-			<div className="h-full grow overflow-hidden">
+			<div
+				data-glass-region="canvas-content"
+				className="h-full grow overflow-hidden"
+			>
 				{/* `gap-8`: `PageHeader` no longer ships its own bottom margin. The
 				    header sits in the same measured column as the settings below it,
 				    so the page title and the fields it heads share one left edge. */}

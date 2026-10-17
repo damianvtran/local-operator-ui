@@ -257,6 +257,12 @@ export function controlReusePlan(revParse, control, head) {
 		lockDiffers: differing.includes("pnpm-lock.yaml"),
 	};
 }
+/** The provenance line for a plan: the manifest's `mainPreloadReuse`. */
+export function describeMainPreloadReuse(plan) {
+	return plan.reuse
+		? "byte-identical source/config/lock"
+		: `rebuilt from control source (main/preload differ: ${plan.differing.join(", ")})`;
+}
 async function prepareControl(root, output) {
 	// Real historical source, not a callback mutation. Main/preload are reused
 	// from the candidate only when the source identities agree (`controlReusePlan`);
@@ -317,9 +323,7 @@ async function prepareControl(root, output) {
 	return {
 		commit: ASKS_CONTROL,
 		srcTree: git("rev-parse", `${ASKS_CONTROL}:src`),
-		mainPreloadReuse: plan.reuse
-			? "byte-identical source/config/lock"
-			: `rebuilt from control source (main/preload differ: ${plan.differing.join(", ")})`,
+		mainPreloadReuse: describeMainPreloadReuse(plan),
 		rendererOutputs: Object.fromEntries(
 			files(join(root, "out/renderer")).map((p) => [
 				p.slice(root.length + 1),

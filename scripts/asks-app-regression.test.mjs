@@ -25,6 +25,7 @@ import {
 	CASES,
 	CONTROL_REUSE_PARTS,
 	controlReusePlan,
+	describeMainPreloadReuse,
 	describePressRead,
 	pressWhenActionable,
 	railCloseAssertion,
@@ -625,8 +626,12 @@ test("the control revision is DERIVED, and satisfies the reuse assertion by cons
 
 test("controlReusePlan: identical trees reuse; a main/preload/config change rebuilds; a lockfile change is refused", () => {
 	const same = (spec) => `tree:${spec.split(":")[1]}`;
-	const plan = controlReusePlan(same, "ctl", "HEAD");
-	assert.deepEqual(plan, { reuse: true, differing: [], lockDiffers: false });
+	const plan0 = controlReusePlan(same, "ctl", "HEAD");
+	assert.deepEqual(plan0, { reuse: true, differing: [], lockDiffers: false });
+	const changedMain = (spec) =>
+		spec.startsWith("ctl:") && spec.endsWith(":src/main")
+			? "other"
+			: same(spec);
 
 	/* A change in each BUILD INPUT is a rebuild, and names what differed. */
 	for (const part of ["src/main", "src/preload", "electron.vite.config.js"]) {
@@ -649,13 +654,18 @@ test("controlReusePlan: identical trees reuse; a main/preload/config change rebu
 	assert.equal(l.reuse, false);
 	assert.equal(l.lockDiffers, true);
 
-	/* The producer's own words for each path are the provenance a reviewer reads. */
-	const src = readFileSync(
-		join(REPO, "scripts/asks-app-regression.mjs"),
-		"utf8",
+	/*
+	 * The provenance string is a function of the plan, so it is asserted through
+	 * the producer's own export rather than by reading its source (review R7).
+	 */
+	assert.equal(
+		describeMainPreloadReuse(plan0),
+		"byte-identical source/config/lock",
 	);
-	assert.match(src, /byte-identical source\/config\/lock/);
-	assert.match(src, /rebuilt from control source \(main\/preload differ:/);
+	assert.equal(
+		describeMainPreloadReuse(controlReusePlan(changedMain, "ctl", "HEAD")),
+		"rebuilt from control source (main/preload differ: src/main)",
+	);
 });
 test("synthetic canonical snapshot is open, bounded and session-scoped", () => {
 	const ask = askFixture(1000000000000);

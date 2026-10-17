@@ -1752,25 +1752,43 @@ html[data-glass~="sidebar"] [data-glass-region="sidebar"] {
 html[data-glass~="sidebar"]
 	[data-glass-region="sidebar"]
 	[data-glass-region="sidebar"],
-html[data-glass~="chrome"]
-	[data-glass-region="chrome"]
-	[data-glass-region="chrome"],
 html[data-glass~="pane"] [data-glass-region="pane"] [data-glass-region="pane"] {
 	background-color: transparent;
 }
-/* The status band along the window's foot (outside <main>). */
-html[data-glass~="chrome"] [data-glass-region="chrome"] {
+/*
+ * A COLUMN OF A PAGE (the Settings nav, the Agents rosters) is a sidebar that lives
+ * INSIDE <main>. A <main> that painted one backing under both columns made the
+ * column's effective alpha a function of two layers (review R3: 0.67 over a 0.59
+ * backing read 0.86), and "net alpha" arithmetic cannot rescue it when the canvas
+ * target is the HIGHER of the two (light themes: canvas 0.78, surface 0.73 -> the
+ * net clamps to 0 and the column reads 0.78, not the app sidebar's 0.73).
+ *
+ * So a page that is split into a column and a content column marks its root
+ * `data-glass-split`, and the rule is the same at every coverage: the backing and
+ * the page root paint NOTHING; the column paints the RAW surface alpha over the
+ * desktop, identical to the app sidebar beside it (which is what makes the two read
+ * as one sidebar); and the content column (`canvas-content`) alone paints the
+ * canvas - opaque under Sidebars only, at its alpha under Full app.
+ */
+html[data-glass~="sidebar"] [data-glass-region="page-sidebar"] {
 	background-color: color-mix(
 		in srgb,
 		var(--lo-surface) calc(var(--lo-glass-a-surface) * 100%),
 		transparent
 	);
 }
-/* A roster that is a column OF a page: surface over the canvas backing. */
-html[data-glass~="canvas"] [data-glass-region="page-sidebar"] {
+html[data-glass]
+	main[data-glass-region="canvas-backing"]:has([data-glass-split]),
+html[data-glass] [data-glass-split] {
+	background-color: transparent;
+}
+html[data-glass] [data-glass-region="canvas-content"] {
+	background-color: var(--lo-canvas);
+}
+html[data-glass~="canvas"] [data-glass-region="canvas-content"] {
 	background-color: color-mix(
 		in srgb,
-		var(--lo-surface) calc(var(--lo-glass-in-surface) * 100%),
+		var(--lo-canvas) calc(var(--lo-glass-a-canvas) * 100%),
 		transparent
 	);
 }
@@ -1784,14 +1802,54 @@ html[data-glass~="pane"] [data-glass-region="pane"] {
 }
 html[data-glass~="pane"]
 	main[data-glass-region="canvas-backing"]
-	[data-glass-region="pane"] {
+	[data-glass-region="pane"]:not([data-glass-split]) {
 	background-color: color-mix(
 		in srgb,
 		var(--lo-elevated) calc(var(--lo-glass-in-elevated) * 100%),
 		transparent
 	);
 }
-/* A pane's own body state (empty, error, reader): the pane already paints. */
+/* A pane that IS the page (the Browser route): the split rule clears it, so outside
+ * pane coverage it must repaint its own opaque rung, and inside it paints the RAW alpha. */
+html[data-glass]:not([data-glass~="pane"])
+	[data-glass-region="pane"][data-glass-split] {
+	background-color: var(--lo-elevated);
+}
+html[data-glass~="pane"]
+	main[data-glass-region="canvas-backing"]
+	[data-glass-region="pane"][data-glass-split] {
+	background-color: color-mix(
+		in srgb,
+		var(--lo-elevated) calc(var(--lo-glass-a-elevated) * 100%),
+		transparent
+	);
+}
+/*
+ * A PANEL is one of the page's own large list frames or rails (the Schedules list, the
+ * Agent hub category rail): a `surface` ground INSIDE <main>, so it paints the NET
+ * surface alpha like a pane does. Individual CARDS and wells (hub cards, the project
+ * board) are text-bearing content surfaces and keep their opaque role - the same
+ * rule as message blocks and inputs (docs/branding.md, Window glass).
+ */
+html[data-glass~="canvas"] [data-glass-region="panel"] {
+	background-color: color-mix(
+		in srgb,
+		var(--lo-surface) calc(var(--lo-glass-in-surface) * 100%),
+		transparent
+	);
+}
+/*
+ * THE ACTIVE BROWSER TAB is the pane's own rung (`bg-elevated`) by design: it is the
+ * strip's tab that "opens" into the page below. On glass an opaque rung is a slab the
+ * width of a tab, so it takes the SELECTED overlay like every other selected thing
+ * (`--color-row-selected` is the ink step), and its borders carry the shape.
+ */
+html[data-glass~="canvas"] [data-glass-region="pane"] [data-glass-active],
+html[data-glass~="pane"] [data-glass-region="pane"] [data-glass-active] {
+	background-color: var(--color-row-selected);
+}
+/* A pane's own body state (empty, error, reader, a bar of the pane): the pane
+ * already paints. Also under Full app from a PAGE that mounts the pane itself. */
 html[data-glass~="pane"] [data-glass-region="pane-leaf"] {
 	background-color: transparent;
 }
@@ -1823,9 +1881,9 @@ html[data-glass~="pane"] [data-glass-region="pane-leaf"] {
  */
 html[data-glass~="sidebar"] [data-glass-region="sidebar"],
 html[data-glass~="sidebar"] [data-glass-region="page-sidebar"],
-html[data-glass~="chrome"] [data-glass-region="chrome"],
 html[data-glass~="canvas"] [data-glass-region="canvas"],
 html[data-glass~="canvas"] main[data-glass-region="canvas-backing"],
+html[data-glass~="canvas"] [data-glass-region="panel"],
 html[data-glass~="pane"] [data-glass-region="pane"] {
 	--color-row-hover: color-mix(
 		in srgb,
@@ -1845,20 +1903,57 @@ html[data-glass~="pane"] [data-glass-region="pane"] {
 	);
 }
 html[data-glass~="sidebar"]
-	[data-glass-region="sidebar"]
-	:is(input, textarea, select, button)[class~="bg-surface"],
-html[data-glass~="chrome"]
-	[data-glass-region="chrome"]
+	:is([data-glass-region="sidebar"], [data-glass-region="page-sidebar"])
 	:is(input, textarea, select, button)[class~="bg-surface"],
 html[data-glass~="canvas"]
 	main[data-glass-region="canvas-backing"]
 	:is(input, textarea, select, button)[class~="bg-surface"],
+html[data-glass~="canvas"]
+	[data-glass-region="panel"]
+	:is(input, textarea, select, button)[class~="bg-surface"],
 html[data-glass~="pane"]
 	[data-glass-region="pane"]
-	:is(input, textarea, select, button)[class~="bg-surface"] {
+	:is(input, textarea, select, button)[class~="bg-surface"],
+/*
+ * A SEGMENTED CONTROL'S TRACK (`TabsList`, or any group marked `data-glass-well`
+ * - an explicit opt-in, because matching every `bg-sunken` div would also catch
+ * controls that must stay solid) is a well, the same class of
+ * element as a field: an opaque `sunken` track is a 256x32 slab in a glass column
+ * (found by the route-aware guard on the Agents roster). It takes the field overlay,
+ * and the selected trigger inside it keeps its own fill.
+ */
+	html[data-glass~="sidebar"]
+	:is([data-glass-region="sidebar"], [data-glass-region="page-sidebar"])
+	[class~="bg-sunken"]:is([role="tablist"], [data-glass-well]),
+html[data-glass~="canvas"]
+	main[data-glass-region="canvas-backing"]
+	[class~="bg-sunken"]:is([role="tablist"], [data-glass-well]),
+html[data-glass~="pane"]
+	[data-glass-region="pane"]
+	[class~="bg-sunken"]:is([role="tablist"], [data-glass-well]) {
 	background-color: color-mix(
 		in srgb,
 		var(--lo-ink) calc(var(--lo-glass-a-field) * 100%),
+		transparent
+	);
+}
+/* The SELECTED segment inside such a track: `bg-surface` is an opaque pill in a
+ * glass column, so it takes the selected-row overlay (a step OVER the track). */
+html[data-glass~="sidebar"]
+	:is([data-glass-region="sidebar"], [data-glass-region="page-sidebar"])
+	[class~="bg-sunken"]:is([role="tablist"], [data-glass-well])
+	[role="tab"][data-state="active"],
+html[data-glass~="canvas"]
+	main[data-glass-region="canvas-backing"]
+	[class~="bg-sunken"]:is([role="tablist"], [data-glass-well])
+	[role="tab"][data-state="active"],
+html[data-glass~="pane"]
+	[data-glass-region="pane"]
+	[class~="bg-sunken"]:is([role="tablist"], [data-glass-well])
+	[role="tab"][data-state="active"] {
+	background-color: color-mix(
+		in srgb,
+		var(--lo-ink) calc(var(--lo-glass-a-row-selected) * 100%),
 		transparent
 	);
 }

@@ -23,7 +23,16 @@ const Harness: FC<{
 	osVersion: string;
 	reducedTransparency?: boolean;
 	initial?: Partial<GlassSettings>;
-}> = ({ platform, osVersion, reducedTransparency = false, initial }) => {
+	/** Windows only: the master switch was flipped and needs a restart (the window
+	 * was built without its material), which no other state makes visible. */
+	restartRequired?: boolean;
+}> = ({
+	platform,
+	osVersion,
+	reducedTransparency = false,
+	initial,
+	restartRequired = false,
+}) => {
 	const capability = glassCapabilityFor({
 		platform,
 		osVersion,
@@ -37,7 +46,7 @@ const Harness: FC<{
 		capability,
 		settings,
 		active: capability.supported && settings.enabled,
-		restartRequired: false,
+		restartRequired,
 	};
 	return (
 		<div className="max-w-3xl bg-canvas p-6 text-ink">
@@ -79,6 +88,15 @@ export const Windows11: Story = {
 		platform: "win32",
 		osVersion: "10.0.22631",
 		initial: { enabled: true },
+	},
+};
+/** The one Windows-specific visible state (design review D4). */
+export const Windows11RestartNeeded: Story = {
+	args: {
+		platform: "win32",
+		osVersion: "10.0.22631",
+		initial: { enabled: true },
+		restartRequired: true,
 	},
 };
 export const Windows10Unsupported: Story = {

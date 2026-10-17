@@ -906,23 +906,61 @@ byte unchanged. The decision lives in `src/shared/window-glass.ts`; the floors i
 and asserted on all 59 palettes by `scripts/contrast-contract.mjs` ("window glass"
 and "glass row / text field / focus ring" rows). Never hand-lower a floor: re-derive.
 
+**Two coverages, and what each one is.** *Sidebars only* makes the navigation columns
+glass (the app sidebar, the right-hand panel rail, the collapsed strip, the status band
+along the window's foot, and a page's own column: the Settings nav, the Agents rosters)
+and leaves every page and pane solid. *Full app* adds the conversation canvas, the
+pages and the side panes. A third "sidebars and chrome" tier existed in the first
+round and was removed (review D1): its one extra element was the status band, which is
+0 px tall except while an update offer shows, so it painted zero different pixels from
+*Sidebars only*; a header-only tier cannot be made real cheaply, because a glass strip
+over the opaque canvas backing shows the canvas, not the desktop. A profile written by
+that build reads back as *Sidebars only*. `scripts/window-glass-cdp.test.mjs` asserts
+the two coverages differ on the chat route, so a future tier cannot ship as a label
+for nothing.
+
 **One alpha-owning layer per region.** `data-glass-region` marks the OUTERMOST
-ground of a column (`sidebar`, `chrome`, `canvas`, `pane`); a marked region nested
-inside one of the same kind is cleared, so the alpha is painted once. Grounds of the
-same role stacked each carrying alpha COMPOUND (0.82 over 0.82 is 0.97), which is the
-seam between a sidebar's nav block and its list pane. `scripts/window-glass-cdp.test.mjs`
-reads the built app back at a grid of points per region and fails on any divergence.
-Do not give a new ground inside a region its own `bg-surface` expecting it to stay
-solid: it will be cleared or it will show as a slab; add the region marker instead.
+ground of a column (`sidebar`, `page-sidebar`, `canvas`, `pane`, `panel`); a marked
+region nested inside one of the same kind is cleared, so the alpha is painted once.
+Grounds of the same role stacked each carrying alpha COMPOUND (0.82 over 0.82 is
+0.97), which is the seam between a sidebar's nav block and its list pane.
+
+**Pages that are a column plus content** (Settings, Agents, and the Browser route) sit
+inside `<main>`, whose backing would otherwise be a second layer under the column
+(measured in review: a 0.67 column over a 0.59 backing read 0.86). Such a page marks
+its root `data-glass-split`; the backing and the root then paint nothing, the column
+paints the RAW alpha over the desktop (so it equals the app sidebar beside it), and only
+the content column (`canvas-content`) paints the canvas: opaque under *Sidebars only*,
+at its alpha under *Full app*.
+
+**What the guard measures.** `scripts/window-glass-cdp.test.mjs` boots the built app
+and, for each of the chat, Settings, Agents, Browser, Schedules and Agent hub routes,
+walks a grid of points through every region that route must contain and fails on a
+region it cannot find (a guard that skips what it cannot find measures nothing), on a
+spread within a region, on an effective alpha that differs from the role variable, on
+the page column differing from the app sidebar beside it, on an opaque slab inside a
+glass region, and on anything not fully opaque outside the chosen coverage. It does NOT
+cover every route (Projects, Mesh, Console and others are not audited) or any state a
+fixture cannot reach, and it needs a display, so no CI job runs it (`pnpm
+test:window-glass`). Do not give a new ground inside a region its own `bg-surface`
+expecting it to stay solid: it will be cleared or it will show as a slab; add the region
+marker instead.
+
+**What stays solid under *Full app*, by design** (the Settings copy says so in one
+sentence): web pages in the browser view (the page paints itself), document and media
+viewers (PDF, image, video, audio), code and diff grounds, message blocks, inputs and
+cards that carry text (the Agent hub cards, the Projects board and its wells), and
+small deliberate marks. A panel's own *frame* (the Schedules list, the Agent hub
+category rail) is a surface and goes glass; the cards inside it do not.
 
 **Per element, on glass:**
 
 | Element | On glass | Why |
 |---|---|---|
-| Column grounds (sidebar, rail, chrome, canvas) | role at its derived alpha | AA ink over the worst backdrop, floors per material and scheme |
-| Text-bearing panes (composer, ask drawer, run panel) | `pane` region: `elevated` at its floor, near-opaque on dark palettes | text must stay legible over any desktop |
-| Row hover / selected (nav, list rows, rail, tabs) | palette `ink` at 0.05 / 0.08 over the glass | an opaque pill is a hole; a faint tint vanishes over a bright desktop. An ink overlay is a step relative to whatever the ground is |
-| Text fields, outlined controls | ink overlay at 0.05; `border-control` mixed toward `ink` by `controlMix` | the BORDER carries the 3:1 edge, the fill only lifts it |
+| Column grounds (sidebar, rail, status band, canvas) | role at its derived alpha | AA ink over the worst backdrop, floors per material and scheme |
+| Text-bearing panes (composer, ask drawer, run panel, console, code review, browser) | `pane` region: `elevated` at its floor, near-opaque on dark palettes | text must stay legible over any desktop |
+| Row hover / selected (nav, list rows, rail, tabs, the active browser tab) | palette `ink` at 0.05 / 0.08 over the glass | an opaque pill is a hole; a faint tint vanishes over a bright desktop. An ink overlay is a step relative to whatever the ground is |
+| Text fields, outlined controls, segmented-control tracks | ink overlay at 0.05; `border-control` mixed toward `ink` by `controlMix` | the BORDER carries the 3:1 edge, the fill only lifts it |
 | Focus | `outline`, never a fill; `accent` held 3:1 against the glass ground | unchanged from section 6 |
 | Pressed (`active:bg-sunken`) | stays opaque `sunken` | a sub-200 ms state of the control, not a surface |
 | Primary buttons, avatars, brand mark, banners | unchanged, opaque | small deliberate marks, not grounds |

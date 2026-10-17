@@ -471,7 +471,7 @@ const AgentsSidebarComponent: FC<AgentsSidebarProps> = ({
 	   is the step. */
 	return (
 		<div
-			data-glass-region="sidebar"
+			data-glass-region="page-sidebar"
 			className="flex h-full w-full flex-col overflow-hidden bg-surface"
 		>
 			<SidebarHeader

@@ -165,11 +165,37 @@ test("G-3 DEFAULT OFF: an untouched launch contributes no window option at all",
 		JSON.stringify(before),
 		"byte for byte, key order included",
 	);
-	const main = readFileSync(`${ROOT}/src/main/index.ts`, "utf8");
-	assert.match(
-		main,
-		/backgroundColor: chrome\.colors\.ground,\s*(?:\/\*[\s\S]*?\*\/\s*)?\.\.\.glassWindowOptions\(glass\.settings, glass\.capability\)/,
-		"the glass spread comes AFTER the palette ground, so only an active glass can override it",
+	/*
+	 * The composition `index.ts` spreads into the BrowserWindow options: the palette
+	 * ground, then the glass. Default off is the ground alone, byte for byte, key
+	 * order included; an active glass overrides ONLY the ground it must.
+	 */
+	const ground = "#22201c";
+	for (const input of [MAC, WIN11]) {
+		const cap = glass.glassCapabilityFor(input);
+		const off = glass.groundWithGlass(
+			ground,
+			glass.DEFAULT_GLASS_SETTINGS,
+			cap,
+		);
+		assert.equal(
+			JSON.stringify(off),
+			JSON.stringify({ backgroundColor: ground }),
+		);
+		assert.equal(
+			glass.groundWithGlass(ground, ON, cap).backgroundColor,
+			"#00000000",
+			"an active glass replaces the ground with the transparent one",
+		);
+	}
+	assert.equal(
+		glass.groundWithGlass(
+			ground,
+			ON,
+			glass.glassCapabilityFor({ ...MAC, reducedTransparency: true }),
+		).backgroundColor,
+		ground,
+		"Reduce transparency is the shipped opaque ground",
 	);
 });
 
@@ -238,7 +264,7 @@ test("G-5 sanitising an untrusted settings value", () => {
 	const merged = glass.sanitizeGlassSettings(
 		{
 			enabled: true,
-			coverage: "chrome",
+			coverage: "full",
 			intensity: 130.4,
 			material: "popover",
 		},
@@ -246,9 +272,16 @@ test("G-5 sanitising an untrusted settings value", () => {
 	);
 	assert.deepEqual(
 		merged,
-		{ enabled: true, coverage: "chrome", intensity: 100, material: "popover" },
+		{ enabled: true, coverage: "full", intensity: 100, material: "popover" },
 		"intensity clamps to 0..100 and rounds",
 	);
+	/* The retired middle tier reads back as the nearest real one (design D1). */
+	assert.equal(
+		glass.sanitizeGlassSettings({ coverage: "chrome" }, mac).coverage,
+		"sidebars",
+		"a profile written by the three-tier build migrates 'chrome' to 'sidebars'",
+	);
+	assert.deepEqual(glass.GLASS_COVERAGES, ["sidebars", "full"], "two tiers");
 	assert.equal(
 		glass.sanitizeGlassSettings({ intensity: -5 }, mac).intensity,
 		0,
@@ -400,8 +433,12 @@ test("G-8 paint: which kinds a coverage turns translucent, and the net alphas", 
 			scheme: "dark",
 		});
 	assert.equal(paint("sidebars").kinds, "sidebar");
-	assert.equal(paint("chrome").kinds, "sidebar chrome");
-	assert.equal(paint("full").kinds, "sidebar chrome canvas pane");
+	assert.equal(paint("full").kinds, "sidebar canvas pane");
+	assert.notEqual(
+		paint("sidebars").kinds,
+		paint("full").kinds,
+		"the two tiers must paint different kinds, or one of them is a label for nothing",
+	);
 	const v = paint("full").vars;
 	const a = (name) => Number(v[name]);
 	assert.ok(a("--lo-glass-a-canvas") > 0 && a("--lo-glass-a-canvas") <= 1);
@@ -435,15 +472,15 @@ test("G-9 argv round-trip: the first-frame fact fails closed", () => {
 	const cap = glass.glassCapabilityFor(MAC);
 	const state = {
 		capability: cap,
-		settings: { ...ON, coverage: "chrome", intensity: 35, material: "menu" },
+		settings: { ...ON, coverage: "full", intensity: 35, material: "menu" },
 		active: true,
 		restartRequired: false,
 	};
 	const arg = glass.windowGlassArgument(state, "light");
-	assert.equal(arg, "--lo-window-glass=vibrancy:chrome:35:menu:light");
+	assert.equal(arg, "--lo-window-glass=vibrancy:full:35:menu:light");
 	assert.deepEqual(glass.readWindowGlassArgument(["x", arg]), {
 		mechanism: "vibrancy",
-		coverage: "chrome",
+		coverage: "full",
 		intensity: 35,
 		material: "menu",
 		scheme: "light",
@@ -455,25 +492,23 @@ test("G-9 argv round-trip: the first-frame fact fails closed", () => {
 	for (const bad of [
 		"--lo-window-glass=off",
 		"--lo-window-glass=",
-		"--lo-window-glass=vibrancy:chrome:35:menu",
-		"--lo-window-glass=vibrancy:chrome:35:menu:light:extra",
-		"--lo-window-glass=none:chrome:35:menu:light",
-		"--lo-window-glass=vibrancy:chrome:101:menu:light",
-		"--lo-window-glass=vibrancy:chrome:3.5:menu:light",
+		"--lo-window-glass=vibrancy:full:35:menu",
+		"--lo-window-glass=vibrancy:full:35:menu:light:extra",
+		"--lo-window-glass=none:full:35:menu:light",
+		"--lo-window-glass=vibrancy:full:101:menu:light",
+		"--lo-window-glass=vibrancy:full:3.5:menu:light",
 		"--lo-window-glass=vibrancy:chrome:35:bogus:light",
 		"--lo-window-glass=vibrancy:all:35:menu:light",
-		"--lo-window-glass=vibrancy:chrome:35:menu:sepia",
+		"--lo-window-glass=vibrancy:chrome:35:menu:light",
+		"--lo-window-glass=vibrancy:full:35:menu:sepia",
 	])
 		assert.equal(glass.readWindowGlassArgument([bad]), null, bad);
 	assert.equal(glass.readWindowGlassArgument([]), null, "no entry is off");
 });
 
-test("G-10 a restart is demanded exactly where the toggle cannot be live", async () => {
-	const main = readFileSync(`${ROOT}/src/main/window-glass.ts`, "utf8");
-	assert.match(
-		main,
-		/restartRequired: !capability\.liveToggle && active !== launchedActive/,
-	);
+test("G-10 a restart is demanded exactly where the toggle cannot be live", () => {
+	/* The main-process half (`restartRequired` on a live enable) is driven by
+	 * `window-glass-main.test.mjs` M-3; here the capability that decides it. */
 	assert.equal(glass.glassCapabilityFor(MAC).liveToggle, true);
 	assert.equal(glass.glassCapabilityFor(WIN11).liveToggle, false);
 });
