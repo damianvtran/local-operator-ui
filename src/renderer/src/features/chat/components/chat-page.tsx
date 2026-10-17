@@ -4178,6 +4178,12 @@ function SessionPanel({
 						held:
 							canonical.frontend === null && canonical.heldFrontend !== null,
 						/*
+						 * The context number in a cold/attaching snapshot is the DURABLE
+						 * reading while the rest of the cluster is live again; the strip
+						 * must not call it "measured now" (design round 1, D1).
+						 */
+						contextHeld: canonical.contextCarried,
+						/*
 						 * Whether the readings were DROPPED at a spent budget rather
 						 * than never painted (task-17, U4): the strip leaves one
 						 * sentence where it was, so the values the reader was
@@ -4224,6 +4230,7 @@ function SessionPanel({
 			sessionId,
 			canonical.frontend,
 			canonical.heldFrontend,
+			canonical.contextCarried,
 			servingLocality,
 			readingsDroppedFor,
 			canonical.pendingModel,

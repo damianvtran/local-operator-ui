@@ -209,6 +209,17 @@ test("M-2 a launch that never enabled glass paints the palette ground and touche
 			"system",
 			"no tone pin without glass",
 		);
+		/*
+		 * darwin constructs this window with the inert `visualEffectState: "active"`
+		 * (`glassWindowOptions`). It must remain inert: the controller is not active,
+		 * no material is created, and the transparent ground is never painted.
+		 */
+		assert.equal(b.glass.state.active, false);
+		assert.equal(b.surface.glass.isActive(), false);
+		assert.ok(
+			!bgCalls().includes("#00000000"),
+			"the inert state never makes the ground transparent by itself",
+		);
 	} finally {
 		b.restore();
 		rmSync(dir, { recursive: true, force: true });

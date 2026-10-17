@@ -128,71 +128,126 @@ test("G-2 Reduce transparency wins on every platform", () => {
 			[false, "none", "reduced-transparency"],
 		);
 		assert.deepEqual(
-			glass.glassWindowOptions(ON, cap),
-			{},
-			"the OS accessibility switch drops the window to the shipped opaque ground",
+			glass.glassWindowOptions(ON, cap, input.platform),
+			input.platform === "darwin" ? { visualEffectState: "active" } : {},
+			"the OS accessibility switch drops the window to the shipped opaque ground (darwin keeps only the inert visual-effect state)",
 		);
 	}
 });
 
-test("G-3 DEFAULT OFF: an untouched launch contributes no window option at all", () => {
-	for (const input of [MAC, WIN11]) {
+test("G-3 DEFAULT OFF: the shipped window stands, plus one inert darwin option", () => {
+	const LINUX = {
+		platform: "linux",
+		osVersion: "6.8.0",
+		reducedTransparency: false,
+	};
+	for (const input of [MAC, WIN11, LINUX]) {
 		const cap = glass.glassCapabilityFor(input);
 		assert.equal(
 			glass.DEFAULT_GLASS_SETTINGS.enabled,
 			false,
 			"the master switch defaults OFF",
 		);
-		assert.deepEqual(
-			glass.glassWindowOptions(glass.DEFAULT_GLASS_SETTINGS, cap),
-			{},
-			"not `vibrancy: undefined`, not a transparent background: the caller's own backgroundColor stands byte for byte",
+		const opts = glass.glassWindowOptions(
+			glass.DEFAULT_GLASS_SETTINGS,
+			cap,
+			input.platform,
 		);
+		if (input.platform === "darwin") {
+			/*
+			 * The ONE exception, and it is inert: no vibrancy view exists to be in
+			 * that state, but a live `setVibrancy` later inherits the constructor
+			 * value (Electron has no setter). Nothing else about the window changes.
+			 */
+			assert.deepEqual(opts, { visualEffectState: "active" });
+			for (const key of ["vibrancy", "backgroundMaterial", "backgroundColor"])
+				assert.equal(
+					key in opts,
+					false,
+					`darwin off must not contribute ${key}`,
+				);
+		} else {
+			assert.deepEqual(
+				opts,
+				{},
+				"not `vibrancy: undefined`, not a transparent background: the caller's own backgroundColor stands byte for byte",
+			);
+		}
 		assert.equal(glass.glassIsActive(glass.DEFAULT_GLASS_SETTINGS, cap), false);
 	}
-	/* The spread the main process does must leave the options object unchanged. */
+	/* The spread the main process does: darwin gains one key, win32 is untouched. */
 	const before = { backgroundColor: "#22201c", titleBarStyle: "hidden" };
-	const after = {
+	const darwinSpread = {
 		...before,
 		...glass.glassWindowOptions(
 			glass.DEFAULT_GLASS_SETTINGS,
 			glass.glassCapabilityFor(MAC),
+			"darwin",
 		),
 	};
-	assert.deepEqual(after, before);
 	assert.equal(
-		JSON.stringify(after),
+		JSON.stringify(darwinSpread),
+		JSON.stringify({ ...before, visualEffectState: "active" }),
+		"darwin: the inert visual-effect state is appended; ground and frame are byte-identical",
+	);
+	const winSpread = {
+		...before,
+		...glass.glassWindowOptions(
+			glass.DEFAULT_GLASS_SETTINGS,
+			glass.glassCapabilityFor(WIN11),
+			"win32",
+		),
+	};
+	assert.equal(
+		JSON.stringify(winSpread),
 		JSON.stringify(before),
-		"byte for byte, key order included",
+		"win32: off contributes nothing at all, byte for byte, key order included",
 	);
 	/*
 	 * The composition `index.ts` spreads into the BrowserWindow options: the palette
-	 * ground, then the glass. Default off is the ground alone, byte for byte, key
-	 * order included; an active glass overrides ONLY the ground it must.
+	 * ground, then the glass. Off keeps the ground; only an active glass overrides it.
 	 */
 	const ground = "#22201c";
-	for (const input of [MAC, WIN11]) {
-		const cap = glass.glassCapabilityFor(input);
-		const off = glass.groundWithGlass(
-			ground,
-			glass.DEFAULT_GLASS_SETTINGS,
-			cap,
-		);
-		assert.equal(
-			JSON.stringify(off),
-			JSON.stringify({ backgroundColor: ground }),
-		);
-		assert.equal(
-			glass.groundWithGlass(ground, ON, cap).backgroundColor,
-			"#00000000",
-			"an active glass replaces the ground with the transparent one",
-		);
-	}
+	const capMac = glass.glassCapabilityFor(MAC);
+	const capWin = glass.glassCapabilityFor(WIN11);
+	assert.equal(
+		JSON.stringify(
+			glass.groundWithGlass(
+				ground,
+				glass.DEFAULT_GLASS_SETTINGS,
+				capMac,
+				"darwin",
+			),
+		),
+		JSON.stringify({ backgroundColor: ground, visualEffectState: "active" }),
+	);
+	assert.equal(
+		JSON.stringify(
+			glass.groundWithGlass(
+				ground,
+				glass.DEFAULT_GLASS_SETTINGS,
+				capWin,
+				"win32",
+			),
+		),
+		JSON.stringify({ backgroundColor: ground }),
+		"win32 off is the ground alone, byte for byte",
+	);
+	assert.equal(
+		glass.groundWithGlass(ground, ON, capMac, "darwin").backgroundColor,
+		"#00000000",
+		"an active glass replaces the ground with the transparent one",
+	);
+	assert.equal(
+		glass.groundWithGlass(ground, ON, capWin, "win32").backgroundColor,
+		"#00000000",
+	);
 	assert.equal(
 		glass.groundWithGlass(
 			ground,
 			ON,
 			glass.glassCapabilityFor({ ...MAC, reducedTransparency: true }),
+			"darwin",
 		).backgroundColor,
 		ground,
 		"Reduce transparency is the shipped opaque ground",
@@ -200,7 +255,11 @@ test("G-3 DEFAULT OFF: an untouched launch contributes no window option at all",
 });
 
 test("G-4 enabled + supported: the constructor options per mechanism", () => {
-	const mac = glass.glassWindowOptions(ON, glass.glassCapabilityFor(MAC));
+	const mac = glass.glassWindowOptions(
+		ON,
+		glass.glassCapabilityFor(MAC),
+		"darwin",
+	);
 	assert.deepEqual(mac, {
 		backgroundColor: "#00000000",
 		vibrancy: "under-window",
@@ -210,6 +269,7 @@ test("G-4 enabled + supported: the constructor options per mechanism", () => {
 		glass.glassWindowOptions(
 			{ ...ON, material: "menu" },
 			glass.glassCapabilityFor(MAC),
+			"darwin",
 		).vibrancy,
 		"menu",
 	);
@@ -217,12 +277,14 @@ test("G-4 enabled + supported: the constructor options per mechanism", () => {
 		glass.glassWindowOptions(
 			{ ...ON, material: "popover" },
 			glass.glassCapabilityFor(MAC),
+			"darwin",
 		).vibrancy,
 		"popover",
 	);
 	const win = glass.glassWindowOptions(
 		{ ...ON, material: "acrylic" },
 		glass.glassCapabilityFor(WIN11),
+		"win32",
 	);
 	assert.deepEqual(win, {
 		backgroundColor: "#00000000",
@@ -232,6 +294,7 @@ test("G-4 enabled + supported: the constructor options per mechanism", () => {
 		glass.glassWindowOptions(
 			{ ...ON, material: "window" },
 			glass.glassCapabilityFor(WIN11),
+			"win32",
 		).backgroundMaterial,
 		"mica",
 		"a macOS material id never reaches setBackgroundMaterial: it falls to the platform's own",
@@ -244,6 +307,7 @@ test("G-4 enabled + supported: the constructor options per mechanism", () => {
 				osVersion: "6",
 				reducedTransparency: false,
 			}),
+			"linux",
 		),
 		{},
 		"Linux: enabled in a persisted file from another machine still does nothing",

@@ -80,6 +80,7 @@ import {
 	type SupplementComponent,
 	type SupplementFile,
 	type SupplementRecord,
+	causePhrase,
 	countClause,
 	diagnosticDisplay,
 	displayText,
@@ -271,6 +272,13 @@ export const SupplementRow = memo(function SupplementRow({
 	const [sticky, setSticky] = useState(0);
 
 	const disposition = supplementDisposition(record, record.live);
+	/*
+	 * The failed line's typed cause phrase (operator ask 2026-10-17; core #2557
+	 * licenses the variant and ONE word list — `CAUSE_PHRASES` is that list's
+	 * desktop transcription). A row without a cause, or carrying a token this
+	 * build does not know, paints the bare sentence exactly as before.
+	 */
+	const failedCause = causePhrase(record.cause);
 
 	const files = record.files;
 	const moreCount = record.filesMore;
@@ -405,7 +413,10 @@ export const SupplementRow = memo(function SupplementRow({
 				)}
 				{(disposition === "failed_retry" ||
 					disposition === "files_failed_retry") && (
-					<span className="text-ink-muted">{COPY_FAILED}</span>
+					<span className="text-ink-muted">
+						{COPY_FAILED}
+						{failedCause ? ` — ${failedCause}` : ""}
+					</span>
 				)}
 				{/*
 				 * The pair is drawn TOGETHER or not at all (D10). Both actions are
