@@ -1,23 +1,23 @@
 {
-  "at": "2026-10-15T02:51:38.927581-04:00",
-  "initial": {
-    "at": "2026-10-15T02:51:38.800098-04:00",
-    "label": "positive-only recovery lease",
-    "availableKiB": 25269784,
-    "availableGiB": 24.099143981933594,
-    "swapUsedMB": 13233.19,
-    "swapFreeMiB": 1102.81,
-    "policy": "PR1091 current: Data>=20GiB, mem>=35%, swapFREE>=500MiB; used diagnostic only",
-    "memoryFreePct": 55
-  },
-  "sourcePinsMatching": 18,
-  "driverOnlyDelta": "single frame label suffix fixture-enabled-policy-off -> fixture-policy-off; reverse edit reconstructs exact compiled preflight driver SHA",
-  "driverBefore": "be0ca45bb06d9da0cc56286125280d32a463f91005152d5c4620b000fe5a3026",
-  "driverAfter": "3452b21ea7a384303dc42a5d6bdcfd48dbbda6582f702e6c3452a8da5031b30e",
-  "allCompiledAssetsExactBeforeReuse": true,
-  "artifactCount": 166,
-  "knownRigPatchedHtmlBeforeRestore": "04d1f60f33484a91b4ed3d6e3a4ffc63512173fe84f17ba5d4c2efebcdddb077",
-  "restoredExactPrebootHtml": "f6ff18b431cbe90e0c6477fd9b9b64386a6d23e795685c51623149446cce3e1d",
-  "noRebuild": true,
-  "scope": "ONE positive-only fixture capture recovery, not backend release proof"
+	"at": "2026-10-15T02:51:38.927581-04:00",
+	"initial": {
+		"at": "2026-10-15T02:51:38.800098-04:00",
+		"label": "positive-only recovery lease",
+		"availableKiB": 25269784,
+		"availableGiB": 24.099143981933594,
+		"swapUsedMB": 13233.19,
+		"swapFreeMiB": 1102.81,
+		"policy": "PR1091 current: Data>=20GiB, mem>=35%, swapFREE>=500MiB; used diagnostic only",
+		"memoryFreePct": 55
+	},
+	"sourcePinsMatching": 18,
+	"driverOnlyDelta": "single frame label suffix fixture-enabled-policy-off -> fixture-policy-off; reverse edit reconstructs exact compiled preflight driver SHA",
+	"driverBefore": "be0ca45bb06d9da0cc56286125280d32a463f91005152d5c4620b000fe5a3026",
+	"driverAfter": "3452b21ea7a384303dc42a5d6bdcfd48dbbda6582f702e6c3452a8da5031b30e",
+	"allCompiledAssetsExactBeforeReuse": true,
+	"artifactCount": 166,
+	"knownRigPatchedHtmlBeforeRestore": "04d1f60f33484a91b4ed3d6e3a4ffc63512173fe84f17ba5d4c2efebcdddb077",
+	"restoredExactPrebootHtml": "f6ff18b431cbe90e0c6477fd9b9b64386a6d23e795685c51623149446cce3e1d",
+	"noRebuild": true,
+	"scope": "ONE positive-only fixture capture recovery, not backend release proof"
 }

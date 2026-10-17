@@ -1,12 +1,9 @@
 {
-  "actualNodeProofSourceClosureFiles": [
-    73,
-    74
-  ],
-  "changedInActualNodeClosure": [
-    "src/renderer/src/features/chat/components/canvas/finder-layout.ts",
-    "src/renderer/src/shared/store/ui-preferences-store.ts",
-    "src/shared/desktop-contract.ts"
-  ],
-  "proofCoverage": "Node module dependency envelope is in addition to whole-src manifests; not a claim this is the full rendered app closure."
+	"actualNodeProofSourceClosureFiles": [73, 74],
+	"changedInActualNodeClosure": [
+		"src/renderer/src/features/chat/components/canvas/finder-layout.ts",
+		"src/renderer/src/shared/store/ui-preferences-store.ts",
+		"src/shared/desktop-contract.ts"
+	],
+	"proofCoverage": "Node module dependency envelope is in addition to whole-src manifests; not a claim this is the full rendered app closure."
 }

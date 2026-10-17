@@ -942,7 +942,7 @@ the page column differing from the app sidebar beside it, on an opaque slab insi
 glass region, and on anything not fully opaque outside the chosen coverage. It does NOT
 cover every route (Projects, Mesh, Console and others are not audited) or any state a
 fixture cannot reach, and it needs a display, so no CI job runs it (`pnpm
-test:window-glass`). Do not give a new ground inside a region its own `bg-surface`
+test:window-glass`; a result quoted for it is a LOCAL display run, never a CI result). Do not give a new ground inside a region its own `bg-surface`
 expecting it to stay solid: it will be cleared or it will show as a slab; add the region
 marker instead.
 
@@ -974,6 +974,36 @@ which switches glass off.
 **Limits:** a state's visibility is held at a fixed overlay alpha and a minimum
 step (ΔE00 1.5 hover, 2.5 selected) on every palette; the floors assume the measured
 worst backdrops of each material over a flat desktop, not an arbitrary wallpaper.
+
+**Floors versus the evidence frames' backdrop (the envelope).** The floors are derived
+against the material's own composite grey over its worst flat desktop
+(`BACKDROP_GRAY` in `scripts/derive-glass-floors.mjs`: 199 for the light
+under-window tier, 81 dark), because AppKit lifts a black desktop to that grey. The
+PR's evidence frames are a two-layer reconstruction with NO material under the app, so
+a frame's black or white band is OUTSIDE that envelope: the light `inkDim` caption
+reads about 3 over the black band and 5.12 over the measured 199 (derived with the
+same arithmetic as the floors, `localOperatorLight` surface at 0.73). A ratio read
+off a frame's black band is therefore not a floor breach; the floor is the number in
+`window-glass-floors.json`, asserted by `pnpm check-themes`. An arbitrary wallpaper
+darker or lighter than the measured worst case is the stated limit above.
+
+**Panels at Full app (a stack limit).** A panel's frame (the Schedules list, the Agent
+hub category rail) rests ON the canvas backing, and the net-alpha arithmetic cannot
+make it more see-through than the layer under it. On light palettes the canvas target
+(0.78) is higher than the surface one (0.73), so the frame lands at the canvas's tone and
+the step between page and frame is zero there (dark palettes keep a 1 point step). This is
+accepted rather than fixed: the rows' own hairlines carry the separation, as they
+did on the flat panel tier, and giving the frame its own rung would stack a second
+alpha over the backing. `scripts/window-glass-cdp.test.mjs` encodes it as
+`max(surface, canvas)`.
+
+**A window enabled live on macOS follows the window's key state.** `visualEffectState`
+is a CONSTRUCTOR option (Electron 44's `setVibrancy` takes only `animationDuration`), so a
+window launched with glass already on holds the material at full strength, while one
+flipped on from Settings keeps the default `followWindow` and dims its material while
+the window is not key. The next launch is built with the option. Nothing is hidden: the
+Settings copy does not promise otherwise, and this is the one visible difference between
+a live-enabled and a launch-enabled window.
 
 ## 7. Showing agent work: the trace hierarchy
 

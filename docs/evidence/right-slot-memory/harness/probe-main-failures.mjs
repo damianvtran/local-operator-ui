@@ -36,7 +36,10 @@ if (!worktree) {
 	process.exit(2);
 }
 const ROOT = resolve(worktree);
-const probeRepo = resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
+const probeRepo = resolve(
+	dirname(fileURLToPath(import.meta.url)),
+	"../../../..",
+);
 
 const esbuildEntry = [
 	join(ROOT, "node_modules/esbuild/lib/main.js"),
@@ -110,10 +113,13 @@ try {
 } catch (error) {
 	bundle = await buildBundle(STORES);
 }
-const { useUiPreferencesStore, useCanonicalSessionsStore, installRightSlotMemoryFollower } =
-	await import(
-		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-	);
+const {
+	useUiPreferencesStore,
+	useCanonicalSessionsStore,
+	installRightSlotMemoryFollower,
+} = await import(
+	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+);
 installRightSlotMemoryFollower?.();
 
 const prefs = () => useUiPreferencesStore.getState();
@@ -193,7 +199,8 @@ const failures = [cellA, cellC].filter((cell) => !cell.pass).length;
 console.log(
 	JSON.stringify(
 		{
-			probed: "the two cells whose discrimination rides `right-slot-memory.test.mjs`'s (A) and (C)",
+			probed:
+				"the two cells whose discrimination rides `right-slot-memory.test.mjs`'s (A) and (C)",
 			ref,
 			worktree: ROOT,
 			cells: { A: cellA, C: cellC },

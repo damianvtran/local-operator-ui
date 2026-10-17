@@ -24,23 +24,15 @@
 				"leftStrip": {
 					"pixels": 10,
 					"handlePixels": 0,
-					"cursors": [
-						"auto"
-					],
-					"topRoles": [
-						"log"
-					],
+					"cursors": ["auto"],
+					"topRoles": ["log"],
 					"distanceFromContainerLeft": 33
 				},
 				"rightStrip": {
 					"pixels": 10,
 					"handlePixels": 0,
-					"cursors": [
-						"auto"
-					],
-					"topRoles": [
-						"log"
-					],
+					"cursors": ["auto"],
+					"topRoles": ["log"],
 					"distanceFromContainerRight": 33
 				},
 				"sidebarDivider": {
@@ -73,23 +65,15 @@
 				"leftStrip": {
 					"pixels": 10,
 					"handlePixels": 0,
-					"cursors": [
-						"auto"
-					],
-					"topRoles": [
-						"log"
-					],
+					"cursors": ["auto"],
+					"topRoles": ["log"],
 					"distanceFromContainerLeft": 16
 				},
 				"rightStrip": {
 					"pixels": 10,
 					"handlePixels": 0,
-					"cursors": [
-						"auto"
-					],
-					"topRoles": [
-						"log"
-					],
+					"cursors": ["auto"],
+					"topRoles": ["log"],
 					"distanceFromContainerRight": 16
 				},
 				"sidebarDivider": {
@@ -132,23 +116,15 @@
 				"leftStrip": {
 					"pixels": 10,
 					"handlePixels": 0,
-					"cursors": [
-						"auto"
-					],
-					"topRoles": [
-						"log"
-					],
+					"cursors": ["auto"],
+					"topRoles": ["log"],
 					"distanceFromContainerLeft": 33
 				},
 				"rightStrip": {
 					"pixels": 10,
 					"handlePixels": 0,
-					"cursors": [
-						"auto"
-					],
-					"topRoles": [
-						"log"
-					],
+					"cursors": ["auto"],
+					"topRoles": ["log"],
 					"distanceFromContainerRight": 33
 				},
 				"sidebarDivider": {
@@ -181,23 +157,15 @@
 				"leftStrip": {
 					"pixels": 10,
 					"handlePixels": 0,
-					"cursors": [
-						"auto"
-					],
-					"topRoles": [
-						"log"
-					],
+					"cursors": ["auto"],
+					"topRoles": ["log"],
 					"distanceFromContainerLeft": 16
 				},
 				"rightStrip": {
 					"pixels": 10,
 					"handlePixels": 0,
-					"cursors": [
-						"auto"
-					],
-					"topRoles": [
-						"log"
-					],
+					"cursors": ["auto"],
+					"topRoles": ["log"],
 					"distanceFromContainerRight": 16
 				},
 				"sidebarDivider": {

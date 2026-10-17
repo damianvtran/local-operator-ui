@@ -1,41 +1,41 @@
 {
-  "capture_date": "2026-10-15",
-  "source_working_tree_blobs": {
-    "src/renderer/src/features/mesh/mesh-approvals.ts": "9160b16d7c0be174b5f7c42c242f214ae51d7c5b",
-    "src/renderer/src/features/mesh/mesh-approvals-tray.tsx": "e4e9af50adf50d72e9a794ad7c6392e9e4cdeca3",
-    "src/renderer/src/features/mesh/mesh-page.stories.tsx": "cbfabae78ada67ddd495430b251aef5e79c1e5c7"
-  },
-  "deny_flow_actual_console_info": {
-    "denyRequests": 1,
-    "approveRequests": 0,
-    "disclosureRequests": 0,
-    "historyFocused": true,
-    "state": "denied"
-  },
-  "narrow_iframe_rect_css": {
-    "x": 240,
-    "y": 80,
-    "width": 800,
-    "height": 600
-  },
-  "standalone_scroll_container_rect_css": {
-    "x": 24,
-    "y": 24,
-    "width": 1232,
-    "height": 672,
-    "overflow_x": "auto",
-    "overflow_y": "auto"
-  },
-  "expanded_details_rect_css": {
-    "x": 88,
-    "y": 354.28,
-    "width": 1144,
-    "height": 356.38
-  },
-  "limits": [
-    "Storybook stateful synthetic bridge; no live account, signing, native Electron or backend grant proof",
-    "Browser scroll reported window(0,0) despite targeted auto-overflow container; targeting the last plain-text detail brought full APPLY command into captured view without navigation. No wheel-scroll acceptance claim.",
-    "Earlier pending/details after-frames precede the focus-only hook; those row semantics are unchanged. Final deny/approved/terminal/malformed/narrow flows use the later component.",
-    "Normal-lease refused cell produced no browser/runtime; one final capture cell reached its intended110s bound and reaped PGID81672."
-  ]
+	"capture_date": "2026-10-15",
+	"source_working_tree_blobs": {
+		"src/renderer/src/features/mesh/mesh-approvals.ts": "9160b16d7c0be174b5f7c42c242f214ae51d7c5b",
+		"src/renderer/src/features/mesh/mesh-approvals-tray.tsx": "e4e9af50adf50d72e9a794ad7c6392e9e4cdeca3",
+		"src/renderer/src/features/mesh/mesh-page.stories.tsx": "cbfabae78ada67ddd495430b251aef5e79c1e5c7"
+	},
+	"deny_flow_actual_console_info": {
+		"denyRequests": 1,
+		"approveRequests": 0,
+		"disclosureRequests": 0,
+		"historyFocused": true,
+		"state": "denied"
+	},
+	"narrow_iframe_rect_css": {
+		"x": 240,
+		"y": 80,
+		"width": 800,
+		"height": 600
+	},
+	"standalone_scroll_container_rect_css": {
+		"x": 24,
+		"y": 24,
+		"width": 1232,
+		"height": 672,
+		"overflow_x": "auto",
+		"overflow_y": "auto"
+	},
+	"expanded_details_rect_css": {
+		"x": 88,
+		"y": 354.28,
+		"width": 1144,
+		"height": 356.38
+	},
+	"limits": [
+		"Storybook stateful synthetic bridge; no live account, signing, native Electron or backend grant proof",
+		"Browser scroll reported window(0,0) despite targeted auto-overflow container; targeting the last plain-text detail brought full APPLY command into captured view without navigation. No wheel-scroll acceptance claim.",
+		"Earlier pending/details after-frames precede the focus-only hook; those row semantics are unchanged. Final deny/approved/terminal/malformed/narrow flows use the later component.",
+		"Normal-lease refused cell produced no browser/runtime; one final capture cell reached its intended110s bound and reaped PGID81672."
+	]
 }

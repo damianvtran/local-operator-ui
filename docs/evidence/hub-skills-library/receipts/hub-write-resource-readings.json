@@ -1,42 +1,42 @@
 [
-  {
-    "at": "2026-10-15T02:07:42.182161-04:00",
-    "label": "lease granted/before fresh build",
-    "availableKiB": 32792744,
-    "availableGiB": 31.273597717285156,
-    "swapUsedMB": 9587.44,
-    "memoryFreePct": 51
-  },
-  {
-    "at": "2026-10-15T02:07:58.711940-04:00",
-    "label": "before fixture R-K-old-core-guard-disabled",
-    "availableKiB": 32805088,
-    "availableGiB": 31.285369873046875,
-    "swapUsedMB": 9587.44,
-    "memoryFreePct": 45
-  },
-  {
-    "at": "2026-10-15T02:07:59.086593-04:00",
-    "label": "before Electron boot R-K-old-core-guard-disabled",
-    "availableKiB": 32804944,
-    "availableGiB": 31.285232543945312,
-    "swapUsedMB": 9587.44,
-    "memoryFreePct": 46
-  },
-  {
-    "at": "2026-10-15T02:08:03.804443-04:00",
-    "label": "before fixture R-L-fixed-version-guard-fixture",
-    "availableKiB": 32784436,
-    "availableGiB": 31.265674591064453,
-    "swapUsedMB": 9587.44,
-    "memoryFreePct": 47
-  },
-  {
-    "at": "2026-10-15T02:08:04.181470-04:00",
-    "label": "before Electron boot R-L-fixed-version-guard-fixture",
-    "availableKiB": 32784412,
-    "availableGiB": 31.26565170288086,
-    "swapUsedMB": 9587.44,
-    "memoryFreePct": 47
-  }
+	{
+		"at": "2026-10-15T02:07:42.182161-04:00",
+		"label": "lease granted/before fresh build",
+		"availableKiB": 32792744,
+		"availableGiB": 31.273597717285156,
+		"swapUsedMB": 9587.44,
+		"memoryFreePct": 51
+	},
+	{
+		"at": "2026-10-15T02:07:58.711940-04:00",
+		"label": "before fixture R-K-old-core-guard-disabled",
+		"availableKiB": 32805088,
+		"availableGiB": 31.285369873046875,
+		"swapUsedMB": 9587.44,
+		"memoryFreePct": 45
+	},
+	{
+		"at": "2026-10-15T02:07:59.086593-04:00",
+		"label": "before Electron boot R-K-old-core-guard-disabled",
+		"availableKiB": 32804944,
+		"availableGiB": 31.285232543945312,
+		"swapUsedMB": 9587.44,
+		"memoryFreePct": 46
+	},
+	{
+		"at": "2026-10-15T02:08:03.804443-04:00",
+		"label": "before fixture R-L-fixed-version-guard-fixture",
+		"availableKiB": 32784436,
+		"availableGiB": 31.265674591064453,
+		"swapUsedMB": 9587.44,
+		"memoryFreePct": 47
+	},
+	{
+		"at": "2026-10-15T02:08:04.181470-04:00",
+		"label": "before Electron boot R-L-fixed-version-guard-fixture",
+		"availableKiB": 32784412,
+		"availableGiB": 31.26565170288086,
+		"swapUsedMB": 9587.44,
+		"memoryFreePct": 47
+	}
 ]

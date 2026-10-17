@@ -49,6 +49,8 @@ import { connect } from "node:net";
 import { networkInterfaces } from "node:os";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { withNotificationsOff } from "/Users/damian/local-operator-ui/.worktrees/browser-tab-strip/scripts/notifications-off.mjs";
+import { withTelemetryOff } from "/Users/damian/local-operator-ui/.worktrees/browser-tab-strip/scripts/telemetry-off.mjs";
 // The REAL Electron binary, not `node_modules/.bin/electron`. That path is a
 // shell -> `node cli.js` -> Electron chain, so the pid a harness holds is the
 // SHIM's: signalling it stops the shim and leaves the app running while the
@@ -56,11 +58,9 @@ import { join } from "node:path";
 // five in their own harness). Imported from `electron` in plain Node it resolves
 // to the binary itself, so the pid we hold is the app's.
 import electronPath from "/Users/damian/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/electron@44.3.0/node_modules/electron/index.js";
-import { withNotificationsOff } from "/Users/damian/local-operator-ui/.worktrees/browser-tab-strip/scripts/notifications-off.mjs";
-import { withTelemetryOff } from "/Users/damian/local-operator-ui/.worktrees/browser-tab-strip/scripts/telemetry-off.mjs";
 
 const ROOT = "/Users/damian/local-operator-ui/.worktrees/browser-tab-strip";
-const APP_CWD=join(process.env.AUDIT_OUT,"app-cwd");
+const APP_CWD = join(process.env.AUDIT_OUT, "app-cwd");
 const SCRATCH = join(process.env.AUDIT_OUT, "runtime");
 let NODE_PORT = 0;
 const HOME_DIR = join(SCRATCH, "home");
@@ -863,16 +863,18 @@ async function launchApp() {
 	 * configures from a value inlined at build time. See `telemetry-off.mjs`.
 	 */
 	const env = withNotificationsOff({
-		PATH: process.env.PATH, TMPDIR: process.env.TMPDIR, TERM: "xterm-256color",
+		PATH: process.env.PATH,
+		TMPDIR: process.env.TMPDIR,
+		TERM: "xterm-256color",
 		HOME: HOME_DIR,
 		LOCAL_OPERATOR_CONFIG_DIR: CONFIG_DIR,
 		// The operator's own log files are the one path HOME does not move; see the
 		// header's isolation note.
 		LOCAL_OPERATOR_LOG_DIR: LOG_DIR,
 		LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
-        VITE_LOCAL_OPERATOR_API_URL: "http://127.0.0.1:1",
-        LOCAL_OPERATOR_UI_DEV_DRIVER: "1",
-        LOCAL_OPERATOR_UI_DEV_DRIVER_OUT: OUT_DIR,
+		VITE_LOCAL_OPERATOR_API_URL: "http://127.0.0.1:1",
+		LOCAL_OPERATOR_UI_DEV_DRIVER: "1",
+		LOCAL_OPERATOR_UI_DEV_DRIVER_OUT: OUT_DIR,
 		// The app would otherwise try to install and start a Local Operator backend
 		// in this scratch HOME — a pip install, a dialog and a quit path that have
 		// nothing to do with the browser host. The same switch the repo's other
@@ -884,7 +886,13 @@ async function launchApp() {
 	// process is driven by a session that has them set, and an inherited workspace
 	// id has already renamed the operator's real workspaces in this project.
 	for (const key of Object.keys(env)) {
-		if (key.startsWith("CMUX_") || key.startsWith("LOP_") || key.startsWith("LOCAL_OPERATOR_DESKTOP_") || key === "ELECTRON_RENDERER_URL") delete env[key];
+		if (
+			key.startsWith("CMUX_") ||
+			key.startsWith("LOP_") ||
+			key.startsWith("LOCAL_OPERATOR_DESKTOP_") ||
+			key === "ELECTRON_RENDERER_URL"
+		)
+			delete env[key];
 	}
 	// A port nobody is listening on, checked immediately before the spawn: the
 	// check that used to run once per run is now per launch, which is where the
@@ -895,9 +903,9 @@ async function launchApp() {
 		electronPath,
 		[
 			"/Users/damian/.local-operator/sessions/291e40a1ea40/scratchpad/b-r1-native-carrier",
-            `--inspect=127.0.0.1:${NODE_PORT}`,
-            "--window-mode=headless",
-            "--use-mock-keychain",
+			`--inspect=127.0.0.1:${NODE_PORT}`,
+			"--window-mode=headless",
+			"--use-mock-keychain",
 			`--user-data-dir=${USER_DATA}`,
 			`--remote-debugging-port=${DEVTOOLS_PORT}`,
 		],
@@ -3315,86 +3323,560 @@ function run(command, args) {
 	});
 }
 
-
 // Round-3 delta: keyboard close focus ownership, address draft, selection, tooltips, 8 state frames.
-const rows=[];const evidenceFile=join(process.env.AUDIT_OUT,'b-r1-cont-results.json');
-function evidence(name,actual){rows.push({name,actual});writeFileSync(evidenceFile,JSON.stringify(rows,null,2));say(JSON.stringify({name,actual}));}
-let fixture=null,ownedPid=null;
-async function re(e){const r=await rendererEvaluate(e);if(r.error)throw Error(r.error);return r.value;}
-async function until(label,fn){const start=Date.now();while(Date.now()-start<7000){if(await fn())return;await new Promise(r=>setTimeout(r,40));}throw Error('timeout '+label);}
-async function state(){return re('window.api.browser.state()');}
-async function shot(label){label=label.toLowerCase();evidence('frame '+label,await re(`window.__loDevDriver.capture(${JSON.stringify(label)})`));}
-async function theme(name){await re(`window.__loDevDriver.call('setTheme','${name}')`);}
-async function domKey(key,flags={}){return re(`(()=>{const a=document.querySelector('[data-tour-tag=browser-address]');a.focus();a.dispatchEvent(new FocusEvent('focusin',{bubbles:true}));const e=new KeyboardEvent('keydown',{key:${JSON.stringify(key)},metaKey:true,bubbles:true,cancelable:true,...${JSON.stringify(flags)}});a.dispatchEvent(e);return {prevented:e.defaultPrevented,route:location.hash}})()`);}
-async function mainEval(expression){const list=await(await fetch(`http://127.0.0.1:${NODE_PORT}/json/list`)).json();return cdpSequence(list[0],async send=>{const r=await send('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.exception?.description||r.exceptionDetails.text);return r.result.value;});}
-async function rendererTarget(){return (await targets()).find(t=>t.url.startsWith('file:')&&t.url.includes('index.html'));}
-const ids=async()=>{const s=await state();return {ids:s.tabs.map(t=>t.tabId),active:s.activeTabId??s.tabs.find(t=>t.active)?.tabId??null,url:s.url,count:s.tabs.length};};
+const rows = [];
+const evidenceFile = join(process.env.AUDIT_OUT, "b-r1-cont-results.json");
+function evidence(name, actual) {
+	rows.push({ name, actual });
+	writeFileSync(evidenceFile, JSON.stringify(rows, null, 2));
+	say(JSON.stringify({ name, actual }));
+}
+let fixture = null,
+	ownedPid = null;
+async function re(e) {
+	const r = await rendererEvaluate(e);
+	if (r.error) throw Error(r.error);
+	return r.value;
+}
+async function until(label, fn) {
+	const start = Date.now();
+	while (Date.now() - start < 7000) {
+		if (await fn()) return;
+		await new Promise((r) => setTimeout(r, 40));
+	}
+	throw Error("timeout " + label);
+}
+async function state() {
+	return re("window.api.browser.state()");
+}
+async function shot(label) {
+	label = label.toLowerCase();
+	evidence(
+		"frame " + label,
+		await re(`window.__loDevDriver.capture(${JSON.stringify(label)})`),
+	);
+}
+async function theme(name) {
+	await re(`window.__loDevDriver.call('setTheme','${name}')`);
+}
+async function domKey(key, flags = {}) {
+	return re(
+		`(()=>{const a=document.querySelector('[data-tour-tag=browser-address]');a.focus();a.dispatchEvent(new FocusEvent('focusin',{bubbles:true}));const e=new KeyboardEvent('keydown',{key:${JSON.stringify(key)},metaKey:true,bubbles:true,cancelable:true,...${JSON.stringify(flags)}});a.dispatchEvent(e);return {prevented:e.defaultPrevented,route:location.hash}})()`,
+	);
+}
+async function mainEval(expression) {
+	const list = await (
+		await fetch(`http://127.0.0.1:${NODE_PORT}/json/list`)
+	).json();
+	return cdpSequence(list[0], async (send) => {
+		const r = await send("Runtime.evaluate", {
+			expression,
+			awaitPromise: true,
+			returnByValue: true,
+		});
+		if (r.exceptionDetails)
+			throw Error(
+				r.exceptionDetails.exception?.description || r.exceptionDetails.text,
+			);
+		return r.result.value;
+	});
+}
+async function rendererTarget() {
+	return (await targets()).find(
+		(t) => t.url.startsWith("file:") && t.url.includes("index.html"),
+	);
+}
+const ids = async () => {
+	const s = await state();
+	return {
+		ids: s.tabs.map((t) => t.tabId),
+		active: s.activeTabId ?? s.tabs.find((t) => t.active)?.tabId ?? null,
+		url: s.url,
+		count: s.tabs.length,
+	};
+};
 // Focus an element the way a click does, plus the focusin the HIDDEN rig never delivers on its own (labelled synthetic: listener/IPC logic, not OS focus).
-const focusTab=(id)=>re(`(()=>{const b=document.querySelector('[data-tab-id="${id}"] [role="tab"]');if(!b)throw Error('no tab button ${id}');b.focus();if(document.activeElement!==b)throw Error('focus not assigned');b.dispatchEvent(new FocusEvent('focusin',{bubbles:true}));return b.id||b.getAttribute('data-tab-id')||'tab'})()`);
-const keyOn=(selector,key,flags={},times=1)=>re(`(()=>{const el=document.querySelector(${JSON.stringify(selector)});const out=[];for(let i=0;i<${times};i++){const e=new KeyboardEvent('keydown',{key:${JSON.stringify(key)},metaKey:true,bubbles:true,cancelable:true,...${JSON.stringify(flags)}});el.dispatchEvent(e);out.push(e.defaultPrevented)}return out})()`);
-const where=()=>re(`(()=>{const a=document.activeElement;const root=document.querySelector('[data-tour-tag="browser-pane"],[data-tour-tag="browser-surface"]')||document.body;return {tag:a?.tagName,tour:a?.getAttribute('data-tour-tag'),role:a?.getAttribute('role'),inBrowserSurface:Boolean(a&&a.closest('[tabindex="-1"]')&&a.closest('[data-tour-tag]')),route:location.hash}})()`);
-const addr=()=>re(`(()=>{const a=document.querySelector('[data-tour-tag=browser-address]');return {value:a.value,start:a.selectionStart,end:a.selectionEnd,len:a.value.length,focused:document.activeElement===a}})()`);
-async function hover(selector,label,themeName){
-  const target=await rendererTarget();
-  const rect=await re(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});if(!e)return null;const r=e.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}})()`);
-  if(!rect)throw Error('no hover target '+selector);
-  await cdpSequence(target,async send=>{await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:rect.x-3,y:rect.y-3});await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:rect.x,y:rect.y});});
-  await until('tooltip '+label,()=>re('Boolean(document.querySelector("[data-lo-tooltip-panel]"))'));
-  await new Promise(r=>setTimeout(r,200));
-  const tip=await re(`(()=>{const p=document.querySelector('[data-lo-tooltip-panel]');const r=p.getBoundingClientRect();const s=getComputedStyle(p);return {text:p.textContent,x:r.x,y:r.y,width:r.width,height:r.height,color:s.color,background:s.backgroundColor,viewport:{w:innerWidth,h:innerHeight}}})()`);
-  evidence('tooltip '+label+' '+themeName,tip);
-  await shot('tooltip-'+label+'-'+themeName);
-  // Leave along a path (Radix's grace-area logic reads successive pointermoves, one jump is not a path), and RECORD whether leaving closed it:
-  // a tooltip that stays after the pointer left would be a product defect, not something to paper over with Escape.
-  await cdpSequence(target,async send=>{for(const f of [0.8,0.6,0.4,0.2,0]){await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:rect.x*f+5*(1-f),y:rect.y*f+300*(1-f)});}});
-  let closedOnLeave=true;
-  try{await until('tooltip closed',()=>re('!document.querySelector("[data-lo-tooltip-panel]")'));}catch{closedOnLeave=false;}
-  evidence('tooltip closes when the pointer leaves: '+label+' '+themeName,{closedOnLeave});
-  if(!closedOnLeave){await cdpSequence(target,async send=>{await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});});await new Promise(r=>setTimeout(r,300));}
+const focusTab = (id) =>
+	re(
+		`(()=>{const b=document.querySelector('[data-tab-id="${id}"] [role="tab"]');if(!b)throw Error('no tab button ${id}');b.focus();if(document.activeElement!==b)throw Error('focus not assigned');b.dispatchEvent(new FocusEvent('focusin',{bubbles:true}));return b.id||b.getAttribute('data-tab-id')||'tab'})()`,
+	);
+const keyOn = (selector, key, flags = {}, times = 1) =>
+	re(
+		`(()=>{const el=document.querySelector(${JSON.stringify(selector)});const out=[];for(let i=0;i<${times};i++){const e=new KeyboardEvent('keydown',{key:${JSON.stringify(key)},metaKey:true,bubbles:true,cancelable:true,...${JSON.stringify(flags)}});el.dispatchEvent(e);out.push(e.defaultPrevented)}return out})()`,
+	);
+const where = () =>
+	re(
+		`(()=>{const a=document.activeElement;const root=document.querySelector('[data-tour-tag="browser-pane"],[data-tour-tag="browser-surface"]')||document.body;return {tag:a?.tagName,tour:a?.getAttribute('data-tour-tag'),role:a?.getAttribute('role'),inBrowserSurface:Boolean(a&&a.closest('[tabindex="-1"]')&&a.closest('[data-tour-tag]')),route:location.hash}})()`,
+	);
+const addr = () =>
+	re(
+		`(()=>{const a=document.querySelector('[data-tour-tag=browser-address]');return {value:a.value,start:a.selectionStart,end:a.selectionEnd,len:a.value.length,focused:document.activeElement===a}})()`,
+	);
+async function hover(selector, label, themeName) {
+	const target = await rendererTarget();
+	const rect = await re(
+		`(()=>{const e=document.querySelector(${JSON.stringify(selector)});if(!e)return null;const r=e.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}})()`,
+	);
+	if (!rect) throw Error("no hover target " + selector);
+	await cdpSequence(target, async (send) => {
+		await send("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x: rect.x - 3,
+			y: rect.y - 3,
+		});
+		await send("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x: rect.x,
+			y: rect.y,
+		});
+	});
+	await until("tooltip " + label, () =>
+		re('Boolean(document.querySelector("[data-lo-tooltip-panel]"))'),
+	);
+	await new Promise((r) => setTimeout(r, 200));
+	const tip = await re(
+		`(()=>{const p=document.querySelector('[data-lo-tooltip-panel]');const r=p.getBoundingClientRect();const s=getComputedStyle(p);return {text:p.textContent,x:r.x,y:r.y,width:r.width,height:r.height,color:s.color,background:s.backgroundColor,viewport:{w:innerWidth,h:innerHeight}}})()`,
+	);
+	evidence("tooltip " + label + " " + themeName, tip);
+	await shot("tooltip-" + label + "-" + themeName);
+	// Leave along a path (Radix's grace-area logic reads successive pointermoves, one jump is not a path), and RECORD whether leaving closed it:
+	// a tooltip that stays after the pointer left would be a product defect, not something to paper over with Escape.
+	await cdpSequence(target, async (send) => {
+		for (const f of [0.8, 0.6, 0.4, 0.2, 0]) {
+			await send("Input.dispatchMouseEvent", {
+				type: "mouseMoved",
+				x: rect.x * f + 5 * (1 - f),
+				y: rect.y * f + 300 * (1 - f),
+			});
+		}
+	});
+	let closedOnLeave = true;
+	try {
+		await until("tooltip closed", () =>
+			re('!document.querySelector("[data-lo-tooltip-panel]")'),
+		);
+	} catch {
+		closedOnLeave = false;
+	}
+	evidence(
+		"tooltip closes when the pointer leaves: " + label + " " + themeName,
+		{ closedOnLeave },
+	);
+	if (!closedOnLeave) {
+		await cdpSequence(target, async (send) => {
+			await send("Input.dispatchKeyEvent", {
+				type: "keyDown",
+				key: "Escape",
+				code: "Escape",
+				windowsVirtualKeyCode: 27,
+			});
+			await send("Input.dispatchKeyEvent", {
+				type: "keyUp",
+				key: "Escape",
+				code: "Escape",
+				windowsVirtualKeyCode: 27,
+			});
+		});
+		await new Promise((r) => setTimeout(r, 300));
+	}
 }
-async function audit(){
- for(const d of [HOME_DIR,CONFIG_DIR,USER_DATA,OUT_DIR,LOG_DIR,APP_CWD])mkdirSync(d,{recursive:true});
- const loopback=[127,0,0,1].join('.');writeFileSync(join(APP_CWD,'.env'),`VITE_LOCAL_OPERATOR_API_URL=http://${loopback}:1\nVITE_DISABLE_BACKEND_MANAGER=true\n`);
- const failures=[];const check=(ok,label,actual)=>{evidence((ok?'PASS ':'FAIL ')+label,actual);if(!ok)failures.push(label);return ok;};
- const requests=new Map();fixture=createServer((req,res)=>{const path=new URL(req.url,'http://fixture').pathname,count=(requests.get(path)||0)+1;requests.set(path,count);if(path==='/failed-copy'&&count>1){req.socket.destroy();return;}res.writeHead(200,{'Content-Type':'text/html','Cache-Control':'no-store'});res.end('<!doctype html><title>'+path.slice(1).replaceAll('-',' ')+'</title><h1>Own local fixture</h1>');});await new Promise(r=>fixture.listen(0,loopback,r));const base=`http://${loopback}:`+fixture.address().port;
- NODE_PORT=await freeDevtoolsPort();app=await launchApp();ownedPid=app.child.pid;await waitForState();await waitForRenderer();await until('driver ready',()=>re('Boolean(window.__loDevDriver?.verbs().includes("hello"))'));
- const hello=await re('window.__loDevDriver.call("hello")'),facts=await re('window.__loDevDriver.facts()'),native=await mainEval('__b.facts()');evidence('PREFLIGHT safety',{hello,facts,native});if(hello.apiBaseUrl!==`http://${loopback}:1`||facts.visible||facts.focused||!native.userData.startsWith(SCRATCH)||native.windows.some(w=>w.visible||w.focused))throw Error('SAFETY preflight');const wire=await waitForState();
- // Real consent BEFORE the Surface mounts: it cannot create a new resolved row
- // halfway through the overflow comparison. No approval bypass or backend fixture.
- await approve(wire,base,'site');evidence('SETUP consent completed before browser route',{pending:(await state()).pendingConsent?.length??0,route:hello.route});
- await re('window.__loDevDriver.call("navigate","/browser")');await until('address ready',()=>re('Boolean(document.querySelector("[data-tour-tag=browser-address]"))'));
- const snap=()=>mainEval('__b.snapshot()'),role=id=>`[data-tab-id="${id}"] [role=tab]`;
- async function settle(){await re('new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))');}
- async function activate(id){await until('tab rendered '+id,()=>re(`Boolean(document.querySelector(${JSON.stringify(role(id))}))`));await re(`document.querySelector(${JSON.stringify(role(id))}).click()`);await until('active '+id,async()=>(await snap()).activeTabId===id);await settle();await re(`document.querySelector('[data-tab-id="${id}"]').scrollIntoView({inline:'nearest',block:'nearest'})`);await settle();}
- async function add(path){await re('window.api.browser.newTab(null)');await re(`window.api.browser.navigate(${JSON.stringify(base+path)})`);await settle();return(await snap()).activeTabId;}
- async function agent(path,who){await rpcOk(wire,'open',{url:base+path,requester:'session:'+who});const t=(await snap()).tabs.find(t=>t.url===base+path);if(!t)throw Error('agent source fixture missing');return t.tabId;}
- async function frames(label){for(const name of ['localOperatorLight','localOperatorDark']){const actual=await re(`window.__loDevDriver.call('setTheme',${JSON.stringify(name)})`);check(actual.theme===name&&actual.dataTheme===name&&!actual.settleTimedOut,'theme '+label+' '+name,actual);await shot(label+'-'+name);}}
- async function geometry(label,{floor=false}={}){
-  const g=await re(`(()=>{const box=e=>{if(!e)return null;const r=e.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom}};const content=document.querySelector('[data-tour-tag=browser-content]'),root=content.closest('[tabindex="-1"]'),band=document.querySelector('[data-tour-tag=browser-tab-strip-row]'),scroll=band.querySelector('[tabindex="-1"]');const visible=e=>{const r=e.getBoundingClientRect();return r.width>0&&r.height>0};return {viewport:{width:innerWidth,height:innerHeight},band:box(band),content:box(content),chromeBands:[...root.children].filter(e=>e!==content.parentElement&&visible(e)).map(e=>({tag:e.getAttribute('data-tour-tag'),role:e.getAttribute('role'),strip:e.contains(band),text:e.textContent.trim(),rect:box(e)})),namedBands:[...root.querySelectorAll('[aria-live],[data-tour-tag]')].filter(e=>visible(e)&&(/consent|find|toolbar|error|transfer|strip-row/.test(e.getAttribute('data-tour-tag')||'')||e.hasAttribute('aria-live'))).map(e=>({tag:e.getAttribute('data-tour-tag'),live:e.getAttribute('aria-live'),text:e.textContent.trim(),rect:box(e)})),scroll:{width:scroll.clientWidth,total:scroll.scrollWidth,left:scroll.scrollLeft,scrollbar:getComputedStyle(scroll).scrollbarWidth},rows:[...band.querySelectorAll('[data-tab-id]')].map(row=>{const mark=row.querySelector('[data-tour-tag=browser-tab-mark]'),title=row.querySelector('[data-tour-tag=browser-tab-title]');return{id:+row.dataset.tabId,row:box(row),text:title?.textContent,title:box(title),name:row.querySelector('[role=tab]')?.getAttribute('aria-label'),mark:box(mark),icons:mark?[...mark.querySelectorAll('svg')].map(box):[],menu:box(row.querySelector('[data-tour-tag=browser-tab-menu]')),close:box(row.querySelector('[data-tour-tag=browser-tab-close]'))}}),groups:[...band.querySelectorAll('[data-tour-tag=browser-tab-group]')].map(e=>({id:e.dataset.groupId,text:e.textContent}))}})()`);
-  try{g.native=await mainEval('__b.bounds()');}catch(error){g.nativeError=error.message;}
-  evidence(label,g);check(g.rows.every(r=>r.title&&r.title.width>=64),'D-B1 readable title '+label,g.rows.map(r=>({id:r.id,width:r.title?.width,text:r.text})));check(g.rows.every(r=>r.mark&&r.icons.every(i=>i.x>=r.mark.x-.2&&i.right<=r.mark.right+.2&&i.y>=r.mark.y-.2&&i.bottom<=r.mark.bottom+.2)),'D-B1 no clipped glyph '+label,g.rows.map(r=>({id:r.id,mark:r.mark,icons:r.icons})));check(g.rows.every(r=>r.menu?.width===28&&r.close?.width===28),'D-B1 28px targets '+label,g.rows.map(r=>({id:r.id,menu:r.menu,close:r.close})));if(floor)check(g.rows.every(r=>Math.abs(r.row.width-144)<1),'D-B1 144px floor '+label,g.rows.map(r=>({id:r.id,width:r.row.width})));return g;
- }
- function comparable(g){return g.chromeBands.filter(b=>!b.strip).map(b=>({tag:b.tag,role:b.role,text:b.text,height:b.rect.height}));}
- function compare(a,b,label){check(Math.abs(a.band.height-b.band.height)<.5,'D-B2 stable strip '+label,{before:a.band,after:b.band});const same=JSON.stringify(comparable(a))===JSON.stringify(comparable(b));check(same,'D-B2 same other chrome '+label,{before:comparable(a),after:comparable(b)});check(same&&a.native&&b.native&&Math.abs(a.native.actual.y-b.native.actual.y)<.5&&Math.abs(a.native.registered.y-b.native.registered.y)<.5,'D-B2 like-for-like native viewport '+label,{before:a.native,after:b.native});}
- async function context(id){await re(`document.querySelector(${JSON.stringify(role(id))}).dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true,button:2}))`);await until('registered menu',()=>re('Boolean(document.querySelector("[data-tour-tag=browser-tab-actions]"))'));}
- // Critical geometry then IMMEDIATE stills. Cosmetic mismatches never abort collection.
- await re(`window.api.browser.navigate(${JSON.stringify(base+'/P1-report')})`);await settle();const first=(await snap()).activeTabId;const one=await geometry('ONE baseline after consent setup');await frames('one');
- const user2=await add('/P2-report'),user3=await add('/P3-report');await activate(first);const three=await geometry('THREE ordinary');compare(one,three,'1 to3');await frames('three');
- const a1=await agent('/A1-report','proof-a'),b1=await agent('/B1-report','proof-b'),a2=await agent('/A2-report','proof-a');await re(`window.api.browser.handOver(${user2},'proof-b')`);while((await snap()).tabs.length<11)await add('/P'+((await snap()).tabs.length+1)+'-report');
- await re('window.api.browser.newTab(null)');const failedId=(await snap()).activeTabId;const failedLoad=await re(`window.api.browser.navigate('http://${loopback}:1/failed').then(()=>({failed:false}),e=>({failed:true,message:e.message}))`);check(failedLoad.failed,'fixture actual refused load',failedLoad);
- const all=(await snap()).tabs.map(t=>t.tabId);await re(`window.api.browser.reorderTabs(${JSON.stringify([a1,b1,a2,...all.filter(id=>![a1,b1,a2].includes(id))])})`);await activate(first);const twelve=await geometry('TWELVE floor same ordinary active',{floor:true});check(JSON.stringify(twelve.groups.slice(0,3).map(g=>g.id))===JSON.stringify(['proof-a','proof-b','proof-a']),'U1 A-B-A contiguous headings',twelve.groups);compare(one,twelve,'1 to12');await frames('twelve-ordinary');
- for(const [label,id]of [['agent',a1],['handed',user2],['failed',failedId]]){await activate(id);await geometry('TWELVE '+label+' floor',{floor:true});await frames('twelve-'+label);}
- // R1/U2 real native route retention. Mounted scoped pane remains functional-only.
- const failureSource=await agent('/failed-copy','proof-a');await activate(failureSource);const n=await mainEval('__b.actions.length');await context(failureSource);await re(`(()=>{const e=[...document.querySelectorAll('[role=menuitem]')].find(e=>e.textContent.trim()==='Duplicate tab');if(!e)throw Error('missing Duplicate tab');e.click()})()`);await until('settled duplicate',()=>mainEval(`__b.actions.length>${n}&&__b.actions[${n}].status!=='pending'`));const outcome=await mainEval(`__b.actions[${n}]`);await settle();const destination=(await snap()).tabs.find(t=>t.tabId===outcome.outcome?.tabId);evidence('R1/U2 actual native route failed copy',{outcome,destination,activeTabId:(await snap()).activeTabId,mountedScopedNative:'NOT EXERCISED; port1 no catalogue/header; real hook+literal scoped callback functional coverage separate'});check(outcome.status==='settled'&&outcome.outcome?.status==='failed'&&destination?.owner==='user'&&destination.sessionId===null&&!destination.handedOver&&destination.failed&&(await snap()).activeTabId===destination.tabId,'R1/U2 typed retained active plain-user copy',{outcome:outcome.outcome,destination});await geometry('R1/U2 failed-copy chrome bands');await frames('failed-copy-feedback');
- await activate(first);for(let i=0;i<3;i++){await settle();const g=await geometry('D-B2 consecutive overflow '+i,{floor:true});compare(one,g,'consecutive'+i);await frames('overflow-consecutive-'+i);}
- // Narrow mixed3 is a separate real viewport, not a claim that setContentSize wins
- // the OS minimum. Preserve actual width and report any unmet floor as FAIL.
- const keep=new Set([first,a1,user2]);for(const t of (await snap()).tabs)if(!keep.has(t.tabId))await re(`window.api.browser.closeTab(${t.tabId})`);await mainEval('__b.resize(800,900)');await activate(a1);await geometry('THREE mixed narrow',{floor:true});await frames('three-mixed-narrow');
- const target=await rendererTarget();const hoverPoint=await re(`(()=>{const r=document.querySelector('[data-tab-id="${first}"]').getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`);await cdpSequence(target,send=>send('Input.dispatchMouseEvent',{type:'mouseMoved',x:hoverPoint.x,y:hoverPoint.y}));await geometry('THREE mixed narrow hover',{floor:true});await frames('three-narrow-hover');
- await cdpSequence(target,async send=>{await send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});await send('DOM.enable',{});await send('CSS.enable',{});const doc=await send('DOM.getDocument',{}),node=await send('DOM.querySelector',{nodeId:doc.root.nodeId,selector:role(a1)});await send('CSS.forcePseudoState',{nodeId:node.nodeId,forcedPseudoClasses:['focus-visible']});});evidence('forced focus/reduced-motion fidelity',{physicalKeys:false,forcedPseudoState:true,styles:await re(`(()=>{const s=getComputedStyle(document.querySelector(${JSON.stringify(role(a1))}));return{outlineStyle:s.outlineStyle,outlineWidth:s.outlineWidth,boxShadow:s.boxShadow}})()`)});await frames('three-narrow-focus-reduced');
- await mainEval('__b.resize(1380,900)');await activate(first);
- // Last and nonfatal: preserve all prior frames even if a tooltip cannot be reached.
- for(const name of ['localOperatorLight','localOperatorDark']){await theme(name);try{const label=await re(`document.querySelector('[data-tour-tag=browser-approvals]').getAttribute('aria-label')`);check(label==='Approvals and site access','D-B3 accessible label '+name,{label});await hover('[data-tour-tag=browser-approvals]','approvals',name);const tip=rows.filter(r=>r.name==='tooltip approvals '+name).at(-1)?.actual,bounds=await mainEval('__b.bounds()');const hit=rect=>!!(tip&&rect&&tip.x<rect.x+rect.width&&tip.x+tip.width>rect.x&&tip.y<rect.y+rect.height&&tip.y+tip.height>rect.y);check(!!tip&&!hit(bounds.actual)&&!hit(bounds.registered),'D-B3 tooltip clear of native view '+name,{tip,bounds,actualIntersection:hit(bounds.actual),registeredIntersection:hit(bounds.registered)});}catch(error){check(false,'D-B3 tooltip BLOCKED '+name,{message:error.message});}}
- evidence('FINAL isolation',await mainEval('__b.facts()'));evidence('FINAL product expectation failures',failures);if(failures.length)process.exitCode=1;
+async function audit() {
+	for (const d of [HOME_DIR, CONFIG_DIR, USER_DATA, OUT_DIR, LOG_DIR, APP_CWD])
+		mkdirSync(d, { recursive: true });
+	const loopback = [127, 0, 0, 1].join(".");
+	writeFileSync(
+		join(APP_CWD, ".env"),
+		`VITE_LOCAL_OPERATOR_API_URL=http://${loopback}:1\nVITE_DISABLE_BACKEND_MANAGER=true\n`,
+	);
+	const failures = [];
+	const check = (ok, label, actual) => {
+		evidence((ok ? "PASS " : "FAIL ") + label, actual);
+		if (!ok) failures.push(label);
+		return ok;
+	};
+	const requests = new Map();
+	fixture = createServer((req, res) => {
+		const path = new URL(req.url, "http://fixture").pathname,
+			count = (requests.get(path) || 0) + 1;
+		requests.set(path, count);
+		if (path === "/failed-copy" && count > 1) {
+			req.socket.destroy();
+			return;
+		}
+		res.writeHead(200, {
+			"Content-Type": "text/html",
+			"Cache-Control": "no-store",
+		});
+		res.end(
+			"<!doctype html><title>" +
+				path.slice(1).replaceAll("-", " ") +
+				"</title><h1>Own local fixture</h1>",
+		);
+	});
+	await new Promise((r) => fixture.listen(0, loopback, r));
+	const base = `http://${loopback}:` + fixture.address().port;
+	NODE_PORT = await freeDevtoolsPort();
+	app = await launchApp();
+	ownedPid = app.child.pid;
+	await waitForState();
+	await waitForRenderer();
+	await until("driver ready", () =>
+		re('Boolean(window.__loDevDriver?.verbs().includes("hello"))'),
+	);
+	const hello = await re('window.__loDevDriver.call("hello")'),
+		facts = await re("window.__loDevDriver.facts()"),
+		native = await mainEval("__b.facts()");
+	evidence("PREFLIGHT safety", { hello, facts, native });
+	if (
+		hello.apiBaseUrl !== `http://${loopback}:1` ||
+		facts.visible ||
+		facts.focused ||
+		!native.userData.startsWith(SCRATCH) ||
+		native.windows.some((w) => w.visible || w.focused)
+	)
+		throw Error("SAFETY preflight");
+	const wire = await waitForState();
+	// Real consent BEFORE the Surface mounts: it cannot create a new resolved row
+	// halfway through the overflow comparison. No approval bypass or backend fixture.
+	await approve(wire, base, "site");
+	evidence("SETUP consent completed before browser route", {
+		pending: (await state()).pendingConsent?.length ?? 0,
+		route: hello.route,
+	});
+	await re('window.__loDevDriver.call("navigate","/browser")');
+	await until("address ready", () =>
+		re('Boolean(document.querySelector("[data-tour-tag=browser-address]"))'),
+	);
+	const snap = () => mainEval("__b.snapshot()"),
+		role = (id) => `[data-tab-id="${id}"] [role=tab]`;
+	async function settle() {
+		await re(
+			"new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))",
+		);
+	}
+	async function activate(id) {
+		await until("tab rendered " + id, () =>
+			re(`Boolean(document.querySelector(${JSON.stringify(role(id))}))`),
+		);
+		await re(`document.querySelector(${JSON.stringify(role(id))}).click()`);
+		await until("active " + id, async () => (await snap()).activeTabId === id);
+		await settle();
+		await re(
+			`document.querySelector('[data-tab-id="${id}"]').scrollIntoView({inline:'nearest',block:'nearest'})`,
+		);
+		await settle();
+	}
+	async function add(path) {
+		await re("window.api.browser.newTab(null)");
+		await re(`window.api.browser.navigate(${JSON.stringify(base + path)})`);
+		await settle();
+		return (await snap()).activeTabId;
+	}
+	async function agent(path, who) {
+		await rpcOk(wire, "open", {
+			url: base + path,
+			requester: "session:" + who,
+		});
+		const t = (await snap()).tabs.find((t) => t.url === base + path);
+		if (!t) throw Error("agent source fixture missing");
+		return t.tabId;
+	}
+	async function frames(label) {
+		for (const name of ["localOperatorLight", "localOperatorDark"]) {
+			const actual = await re(
+				`window.__loDevDriver.call('setTheme',${JSON.stringify(name)})`,
+			);
+			check(
+				actual.theme === name &&
+					actual.dataTheme === name &&
+					!actual.settleTimedOut,
+				"theme " + label + " " + name,
+				actual,
+			);
+			await shot(label + "-" + name);
+		}
+	}
+	async function geometry(label, { floor = false } = {}) {
+		const g = await re(
+			`(()=>{const box=e=>{if(!e)return null;const r=e.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom}};const content=document.querySelector('[data-tour-tag=browser-content]'),root=content.closest('[tabindex="-1"]'),band=document.querySelector('[data-tour-tag=browser-tab-strip-row]'),scroll=band.querySelector('[tabindex="-1"]');const visible=e=>{const r=e.getBoundingClientRect();return r.width>0&&r.height>0};return {viewport:{width:innerWidth,height:innerHeight},band:box(band),content:box(content),chromeBands:[...root.children].filter(e=>e!==content.parentElement&&visible(e)).map(e=>({tag:e.getAttribute('data-tour-tag'),role:e.getAttribute('role'),strip:e.contains(band),text:e.textContent.trim(),rect:box(e)})),namedBands:[...root.querySelectorAll('[aria-live],[data-tour-tag]')].filter(e=>visible(e)&&(/consent|find|toolbar|error|transfer|strip-row/.test(e.getAttribute('data-tour-tag')||'')||e.hasAttribute('aria-live'))).map(e=>({tag:e.getAttribute('data-tour-tag'),live:e.getAttribute('aria-live'),text:e.textContent.trim(),rect:box(e)})),scroll:{width:scroll.clientWidth,total:scroll.scrollWidth,left:scroll.scrollLeft,scrollbar:getComputedStyle(scroll).scrollbarWidth},rows:[...band.querySelectorAll('[data-tab-id]')].map(row=>{const mark=row.querySelector('[data-tour-tag=browser-tab-mark]'),title=row.querySelector('[data-tour-tag=browser-tab-title]');return{id:+row.dataset.tabId,row:box(row),text:title?.textContent,title:box(title),name:row.querySelector('[role=tab]')?.getAttribute('aria-label'),mark:box(mark),icons:mark?[...mark.querySelectorAll('svg')].map(box):[],menu:box(row.querySelector('[data-tour-tag=browser-tab-menu]')),close:box(row.querySelector('[data-tour-tag=browser-tab-close]'))}}),groups:[...band.querySelectorAll('[data-tour-tag=browser-tab-group]')].map(e=>({id:e.dataset.groupId,text:e.textContent}))}})()`,
+		);
+		try {
+			g.native = await mainEval("__b.bounds()");
+		} catch (error) {
+			g.nativeError = error.message;
+		}
+		evidence(label, g);
+		check(
+			g.rows.every((r) => r.title && r.title.width >= 64),
+			"D-B1 readable title " + label,
+			g.rows.map((r) => ({ id: r.id, width: r.title?.width, text: r.text })),
+		);
+		check(
+			g.rows.every(
+				(r) =>
+					r.mark &&
+					r.icons.every(
+						(i) =>
+							i.x >= r.mark.x - 0.2 &&
+							i.right <= r.mark.right + 0.2 &&
+							i.y >= r.mark.y - 0.2 &&
+							i.bottom <= r.mark.bottom + 0.2,
+					),
+			),
+			"D-B1 no clipped glyph " + label,
+			g.rows.map((r) => ({ id: r.id, mark: r.mark, icons: r.icons })),
+		);
+		check(
+			g.rows.every((r) => r.menu?.width === 28 && r.close?.width === 28),
+			"D-B1 28px targets " + label,
+			g.rows.map((r) => ({ id: r.id, menu: r.menu, close: r.close })),
+		);
+		if (floor)
+			check(
+				g.rows.every((r) => Math.abs(r.row.width - 144) < 1),
+				"D-B1 144px floor " + label,
+				g.rows.map((r) => ({ id: r.id, width: r.row.width })),
+			);
+		return g;
+	}
+	function comparable(g) {
+		return g.chromeBands
+			.filter((b) => !b.strip)
+			.map((b) => ({
+				tag: b.tag,
+				role: b.role,
+				text: b.text,
+				height: b.rect.height,
+			}));
+	}
+	function compare(a, b, label) {
+		check(
+			Math.abs(a.band.height - b.band.height) < 0.5,
+			"D-B2 stable strip " + label,
+			{ before: a.band, after: b.band },
+		);
+		const same =
+			JSON.stringify(comparable(a)) === JSON.stringify(comparable(b));
+		check(same, "D-B2 same other chrome " + label, {
+			before: comparable(a),
+			after: comparable(b),
+		});
+		check(
+			same &&
+				a.native &&
+				b.native &&
+				Math.abs(a.native.actual.y - b.native.actual.y) < 0.5 &&
+				Math.abs(a.native.registered.y - b.native.registered.y) < 0.5,
+			"D-B2 like-for-like native viewport " + label,
+			{ before: a.native, after: b.native },
+		);
+	}
+	async function context(id) {
+		await re(
+			`document.querySelector(${JSON.stringify(role(id))}).dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true,button:2}))`,
+		);
+		await until("registered menu", () =>
+			re(
+				'Boolean(document.querySelector("[data-tour-tag=browser-tab-actions]"))',
+			),
+		);
+	}
+	// Critical geometry then IMMEDIATE stills. Cosmetic mismatches never abort collection.
+	await re(
+		`window.api.browser.navigate(${JSON.stringify(base + "/P1-report")})`,
+	);
+	await settle();
+	const first = (await snap()).activeTabId;
+	const one = await geometry("ONE baseline after consent setup");
+	await frames("one");
+	const user2 = await add("/P2-report"),
+		user3 = await add("/P3-report");
+	await activate(first);
+	const three = await geometry("THREE ordinary");
+	compare(one, three, "1 to3");
+	await frames("three");
+	const a1 = await agent("/A1-report", "proof-a"),
+		b1 = await agent("/B1-report", "proof-b"),
+		a2 = await agent("/A2-report", "proof-a");
+	await re(`window.api.browser.handOver(${user2},'proof-b')`);
+	while ((await snap()).tabs.length < 11)
+		await add("/P" + ((await snap()).tabs.length + 1) + "-report");
+	await re("window.api.browser.newTab(null)");
+	const failedId = (await snap()).activeTabId;
+	const failedLoad = await re(
+		`window.api.browser.navigate('http://${loopback}:1/failed').then(()=>({failed:false}),e=>({failed:true,message:e.message}))`,
+	);
+	check(failedLoad.failed, "fixture actual refused load", failedLoad);
+	const all = (await snap()).tabs.map((t) => t.tabId);
+	await re(
+		`window.api.browser.reorderTabs(${JSON.stringify([a1, b1, a2, ...all.filter((id) => ![a1, b1, a2].includes(id))])})`,
+	);
+	await activate(first);
+	const twelve = await geometry("TWELVE floor same ordinary active", {
+		floor: true,
+	});
+	check(
+		JSON.stringify(twelve.groups.slice(0, 3).map((g) => g.id)) ===
+			JSON.stringify(["proof-a", "proof-b", "proof-a"]),
+		"U1 A-B-A contiguous headings",
+		twelve.groups,
+	);
+	compare(one, twelve, "1 to12");
+	await frames("twelve-ordinary");
+	for (const [label, id] of [
+		["agent", a1],
+		["handed", user2],
+		["failed", failedId],
+	]) {
+		await activate(id);
+		await geometry("TWELVE " + label + " floor", { floor: true });
+		await frames("twelve-" + label);
+	}
+	// R1/U2 real native route retention. Mounted scoped pane remains functional-only.
+	const failureSource = await agent("/failed-copy", "proof-a");
+	await activate(failureSource);
+	const n = await mainEval("__b.actions.length");
+	await context(failureSource);
+	await re(
+		`(()=>{const e=[...document.querySelectorAll('[role=menuitem]')].find(e=>e.textContent.trim()==='Duplicate tab');if(!e)throw Error('missing Duplicate tab');e.click()})()`,
+	);
+	await until("settled duplicate", () =>
+		mainEval(`__b.actions.length>${n}&&__b.actions[${n}].status!=='pending'`),
+	);
+	const outcome = await mainEval(`__b.actions[${n}]`);
+	await settle();
+	const destination = (await snap()).tabs.find(
+		(t) => t.tabId === outcome.outcome?.tabId,
+	);
+	evidence("R1/U2 actual native route failed copy", {
+		outcome,
+		destination,
+		activeTabId: (await snap()).activeTabId,
+		mountedScopedNative:
+			"NOT EXERCISED; port1 no catalogue/header; real hook+literal scoped callback functional coverage separate",
+	});
+	check(
+		outcome.status === "settled" &&
+			outcome.outcome?.status === "failed" &&
+			destination?.owner === "user" &&
+			destination.sessionId === null &&
+			!destination.handedOver &&
+			destination.failed &&
+			(await snap()).activeTabId === destination.tabId,
+		"R1/U2 typed retained active plain-user copy",
+		{ outcome: outcome.outcome, destination },
+	);
+	await geometry("R1/U2 failed-copy chrome bands");
+	await frames("failed-copy-feedback");
+	await activate(first);
+	for (let i = 0; i < 3; i++) {
+		await settle();
+		const g = await geometry("D-B2 consecutive overflow " + i, { floor: true });
+		compare(one, g, "consecutive" + i);
+		await frames("overflow-consecutive-" + i);
+	}
+	// Narrow mixed3 is a separate real viewport, not a claim that setContentSize wins
+	// the OS minimum. Preserve actual width and report any unmet floor as FAIL.
+	const keep = new Set([first, a1, user2]);
+	for (const t of (await snap()).tabs)
+		if (!keep.has(t.tabId)) await re(`window.api.browser.closeTab(${t.tabId})`);
+	await mainEval("__b.resize(800,900)");
+	await activate(a1);
+	await geometry("THREE mixed narrow", { floor: true });
+	await frames("three-mixed-narrow");
+	const target = await rendererTarget();
+	const hoverPoint = await re(
+		`(()=>{const r=document.querySelector('[data-tab-id="${first}"]').getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`,
+	);
+	await cdpSequence(target, (send) =>
+		send("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x: hoverPoint.x,
+			y: hoverPoint.y,
+		}),
+	);
+	await geometry("THREE mixed narrow hover", { floor: true });
+	await frames("three-narrow-hover");
+	await cdpSequence(target, async (send) => {
+		await send("Emulation.setEmulatedMedia", {
+			features: [{ name: "prefers-reduced-motion", value: "reduce" }],
+		});
+		await send("DOM.enable", {});
+		await send("CSS.enable", {});
+		const doc = await send("DOM.getDocument", {}),
+			node = await send("DOM.querySelector", {
+				nodeId: doc.root.nodeId,
+				selector: role(a1),
+			});
+		await send("CSS.forcePseudoState", {
+			nodeId: node.nodeId,
+			forcedPseudoClasses: ["focus-visible"],
+		});
+	});
+	evidence("forced focus/reduced-motion fidelity", {
+		physicalKeys: false,
+		forcedPseudoState: true,
+		styles: await re(
+			`(()=>{const s=getComputedStyle(document.querySelector(${JSON.stringify(role(a1))}));return{outlineStyle:s.outlineStyle,outlineWidth:s.outlineWidth,boxShadow:s.boxShadow}})()`,
+		),
+	});
+	await frames("three-narrow-focus-reduced");
+	await mainEval("__b.resize(1380,900)");
+	await activate(first);
+	// Last and nonfatal: preserve all prior frames even if a tooltip cannot be reached.
+	for (const name of ["localOperatorLight", "localOperatorDark"]) {
+		await theme(name);
+		try {
+			const label = await re(
+				`document.querySelector('[data-tour-tag=browser-approvals]').getAttribute('aria-label')`,
+			);
+			check(
+				label === "Approvals and site access",
+				"D-B3 accessible label " + name,
+				{ label },
+			);
+			await hover("[data-tour-tag=browser-approvals]", "approvals", name);
+			const tip = rows
+					.filter((r) => r.name === "tooltip approvals " + name)
+					.at(-1)?.actual,
+				bounds = await mainEval("__b.bounds()");
+			const hit = (rect) =>
+				!!(
+					tip &&
+					rect &&
+					tip.x < rect.x + rect.width &&
+					tip.x + tip.width > rect.x &&
+					tip.y < rect.y + rect.height &&
+					tip.y + tip.height > rect.y
+				);
+			check(
+				!!tip && !hit(bounds.actual) && !hit(bounds.registered),
+				"D-B3 tooltip clear of native view " + name,
+				{
+					tip,
+					bounds,
+					actualIntersection: hit(bounds.actual),
+					registeredIntersection: hit(bounds.registered),
+				},
+			);
+		} catch (error) {
+			check(false, "D-B3 tooltip BLOCKED " + name, { message: error.message });
+		}
+	}
+	evidence("FINAL isolation", await mainEval("__b.facts()"));
+	evidence("FINAL product expectation failures", failures);
+	if (failures.length) process.exitCode = 1;
 }
-try{await audit();}finally{await stopApp();if(fixture)await new Promise(r=>fixture.close(r));let alive=false;try{process.kill(ownedPid,0);alive=true}catch{}evidence('TEARDOWN',{ownedPid,alive,run:SCRATCH});if(alive)process.exitCode=1;}
+try {
+	await audit();
+} finally {
+	await stopApp();
+	if (fixture) await new Promise((r) => fixture.close(r));
+	let alive = false;
+	try {
+		process.kill(ownedPid, 0);
+		alive = true;
+	} catch {}
+	evidence("TEARDOWN", { ownedPid, alive, run: SCRATCH });
+	if (alive) process.exitCode = 1;
+}

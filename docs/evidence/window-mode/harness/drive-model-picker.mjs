@@ -39,7 +39,9 @@ const PORT = process.argv[2];
 const OUT = process.argv[3];
 const ROUTE = process.argv[4] ?? "#/chat/a1a1a1a1a1a1";
 if (!PORT || !OUT) {
-	console.error("usage: drive-model-picker.mjs <cdp-port> <out-dir> [hash-route]");
+	console.error(
+		"usage: drive-model-picker.mjs <cdp-port> <out-dir> [hash-route]",
+	);
 	process.exit(1);
 }
 mkdirSync(OUT, { recursive: true });
@@ -63,7 +65,9 @@ const log = (message) => console.log(`PICKER ${message}`);
 let page = null;
 for (let i = 0; i < 60; i += 1) {
 	try {
-		const list = await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json();
+		const list = await (
+			await fetch(`http://127.0.0.1:${PORT}/json/list`)
+		).json();
 		page = list.find((t) => t.type === "page" && t.url.includes("#/"));
 		if (page) break;
 	} catch {}
@@ -79,7 +83,9 @@ ws.onmessage = (event) => {
 	if (msg.id && pending.has(msg.id)) {
 		const { resolve, reject } = pending.get(msg.id);
 		pending.delete(msg.id);
-		msg.error ? reject(new Error(JSON.stringify(msg.error))) : resolve(msg.result);
+		msg.error
+			? reject(new Error(JSON.stringify(msg.error)))
+			: resolve(msg.result);
 	}
 };
 await new Promise((r) => (ws.onopen = r));
@@ -310,8 +316,15 @@ const metrics = [];
 const capture = async (label) => {
 	const bytes = await shot(`picker-${label}.png`);
 	const state = await readState();
-	metrics.push({ label, frame: `${PREFIX}picker-${label}.png`, bytes, ...state });
-	log(`${label}: rows=${state.rowCount} active=${state.activeIndex} dialog=${state.dialogOpen} footer=${JSON.stringify(state.footerText)} strip=${state.strip ? JSON.stringify(state.strip.text.slice(0, 60)) : "none"} button=${state.footerButton}`);
+	metrics.push({
+		label,
+		frame: `${PREFIX}picker-${label}.png`,
+		bytes,
+		...state,
+	});
+	log(
+		`${label}: rows=${state.rowCount} active=${state.activeIndex} dialog=${state.dialogOpen} footer=${JSON.stringify(state.footerText)} strip=${state.strip ? JSON.stringify(state.strip.text.slice(0, 60)) : "none"} button=${state.footerButton}`,
+	);
 	return state;
 };
 
@@ -385,7 +398,9 @@ await capture("02-picker-open");
 
 const rowCount = (await readState()).rowCount;
 if (!rowCount) {
-	log("WARNING: the catalogue returned no rows — the picker states below cannot be reached");
+	log(
+		"WARNING: the catalogue returned no rows — the picker states below cannot be reached",
+	);
 }
 
 /* Hover a row that is NOT the in-force one. */
@@ -402,7 +417,8 @@ if (hoverPoint) {
 }
 
 /* The same state by keyboard: move the highlight off the current row. */
-for (let step = 0; step < 4; step += 1) await key("ArrowDown", "ArrowDown", ARROWS);
+for (let step = 0; step < 4; step += 1)
+	await key("ArrowDown", "ArrowDown", ARROWS);
 await wait(900);
 await capture("04-keyboard-highlight");
 
@@ -568,7 +584,7 @@ if (await reopen()) {
 		// the row's position in its OLD scroll offset, so a click at it would land
 		// on whatever the scroll had moved under the pointer.
 		await wait(600);
-		const point = await centreOf("[role=\"option\"]", uncredentialed.index);
+		const point = await centreOf('[role="option"]', uncredentialed.index);
 		if (point) {
 			await mouse("mouseMoved", point.x, point.y);
 			await wait(400);
@@ -584,7 +600,9 @@ if (await reopen()) {
 			await capture("20-needs-sign-in-after-close");
 		}
 	} else {
-		log("no row carries the `no credential` caveat; Q1's state is not reachable in this run");
+		log(
+			"no row carries the `no credential` caveat; Q1's state is not reachable in this run",
+		);
 	}
 }
 

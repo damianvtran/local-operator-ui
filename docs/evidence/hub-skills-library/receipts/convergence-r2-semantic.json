@@ -1,110 +1,107 @@
 {
-  "model": "anthropic/claude-sonnet-5-5",
-  "baseline": "f114b314c9675ca903d551f236c6c94e6a2e49a8",
-  "requiredByteIdentical": [
-    "src/renderer/src/shared/api/local-operator/desktop-hooks.ts",
-    "src/renderer/src/shared/api/local-operator/desktop-api.ts",
-    "src/renderer/src/shared/hooks/use-connectivity-status.ts",
-    "src/renderer/src/shared/api/local-operator/hub-mutation-safety.ts",
-    "src/renderer/src/shared/api/local-operator/hub-link-actions.ts",
-    "src/renderer/src/shared/api/local-operator/hub-link-hooks.ts",
-    "src/renderer/src/shared/api/local-operator/hub-hooks.ts",
-    "src/shared/desktop-contract.ts",
-    "src/shared/backend-status.ts",
-    "src/main/backend/backend-service.ts",
-    "src/main/backend/daemon-status.ts",
-    "src/main/desktop-transport.ts",
-    "docs/evidence/hub-links/harness/stub-daemon.mjs"
-  ],
-  "emissions": [
-    {
-      "path": "src/renderer/src/shared/store/ui-preferences-store.ts",
-      "sourceIdentical": false,
-      "emittedSha256": "d930293a85b33071fb91d9a7ae3981cb9f21ec0242e6c48880452766cfdfa4b3",
-      "emittedIdentical": true
-    },
-    {
-      "path": "src/shared/desktop-session-contract.ts",
-      "sourceIdentical": false,
-      "emittedSha256": "2ab95ea18b1d67f341c81817f769c94616d455686c6fd1b12d1006e0980aa291",
-      "emittedIdentical": true
-    },
-    {
-      "path": "src/preload/index.ts",
-      "property": "backend",
-      "sourceSha256": "c636af4ebaac02d0122cffb0d159f100b154bbff19bbc5832e3314575f673669",
-      "identical": true
-    },
-    {
-      "path": "src/preload/index.ts",
-      "property": "desktop",
-      "sourceSha256": "07e4f9e3536a02515158df23ec23593ce65ed49048b217d20c79a51e1f1e033b",
-      "identical": true
-    }
-  ],
-  "composerNullContextReadings": [
-    {
-      "status": "undefined",
-      "before": null,
-      "after": null
-    },
-    {
-      "status": {
-        "frontend": null
-      },
-      "before": null,
-      "after": null
-    },
-    {
-      "status": {
-        "frontend": {}
-      },
-      "before": null,
-      "after": null
-    },
-    {
-      "status": {
-        "frontend": {
-          "selected_model": {
-            "provider": "radient",
-            "model": "auto"
-          }
-        }
-      },
-      "before": null,
-      "after": null
-    },
-    {
-      "status": {
-        "frontend": {
-          "model_access": {
-            "state": "signed_out",
-            "provider": "radient",
-            "label": "Radient"
-          }
-        },
-        "draft": true
-      },
-      "before": null,
-      "after": null
-    }
-  ],
-  "fixtureDraftPreviewAbsent": true,
-  "activeConfigRunStartedByScenes": false,
-  "capturedRoutes": [
-    "/agent-hub",
-    "/agents?name=reviewer"
-  ],
-  "notBrowserOrCanonicalTranscript": true,
-  "defaultActionCount": 6,
-  "defaultActionIdsAndChordsIdentical": true,
-  "emptyBindingsHydrateIdentically": true,
-  "customSavedBrowserBindings": "intentionally changed upstream, not captured; isolated profile/default bindings only",
-  "unfocusedWindowNewFocusCalls": 0,
-  "hubEnglishCataloguesByteIdentical": [
-    "src/i18n/catalogues/en/ui.hub.json",
-    "src/i18n/catalogues/en/ui.hub.context.json"
-  ],
-  "generatedOldKeyNamesLost": [],
-  "scope": "source/pure-function semantic compatibility, NOT a new native capture or blanket all-source byte identity"
+	"model": "anthropic/claude-sonnet-5-5",
+	"baseline": "f114b314c9675ca903d551f236c6c94e6a2e49a8",
+	"requiredByteIdentical": [
+		"src/renderer/src/shared/api/local-operator/desktop-hooks.ts",
+		"src/renderer/src/shared/api/local-operator/desktop-api.ts",
+		"src/renderer/src/shared/hooks/use-connectivity-status.ts",
+		"src/renderer/src/shared/api/local-operator/hub-mutation-safety.ts",
+		"src/renderer/src/shared/api/local-operator/hub-link-actions.ts",
+		"src/renderer/src/shared/api/local-operator/hub-link-hooks.ts",
+		"src/renderer/src/shared/api/local-operator/hub-hooks.ts",
+		"src/shared/desktop-contract.ts",
+		"src/shared/backend-status.ts",
+		"src/main/backend/backend-service.ts",
+		"src/main/backend/daemon-status.ts",
+		"src/main/desktop-transport.ts",
+		"docs/evidence/hub-links/harness/stub-daemon.mjs"
+	],
+	"emissions": [
+		{
+			"path": "src/renderer/src/shared/store/ui-preferences-store.ts",
+			"sourceIdentical": false,
+			"emittedSha256": "d930293a85b33071fb91d9a7ae3981cb9f21ec0242e6c48880452766cfdfa4b3",
+			"emittedIdentical": true
+		},
+		{
+			"path": "src/shared/desktop-session-contract.ts",
+			"sourceIdentical": false,
+			"emittedSha256": "2ab95ea18b1d67f341c81817f769c94616d455686c6fd1b12d1006e0980aa291",
+			"emittedIdentical": true
+		},
+		{
+			"path": "src/preload/index.ts",
+			"property": "backend",
+			"sourceSha256": "c636af4ebaac02d0122cffb0d159f100b154bbff19bbc5832e3314575f673669",
+			"identical": true
+		},
+		{
+			"path": "src/preload/index.ts",
+			"property": "desktop",
+			"sourceSha256": "07e4f9e3536a02515158df23ec23593ce65ed49048b217d20c79a51e1f1e033b",
+			"identical": true
+		}
+	],
+	"composerNullContextReadings": [
+		{
+			"status": "undefined",
+			"before": null,
+			"after": null
+		},
+		{
+			"status": {
+				"frontend": null
+			},
+			"before": null,
+			"after": null
+		},
+		{
+			"status": {
+				"frontend": {}
+			},
+			"before": null,
+			"after": null
+		},
+		{
+			"status": {
+				"frontend": {
+					"selected_model": {
+						"provider": "radient",
+						"model": "auto"
+					}
+				}
+			},
+			"before": null,
+			"after": null
+		},
+		{
+			"status": {
+				"frontend": {
+					"model_access": {
+						"state": "signed_out",
+						"provider": "radient",
+						"label": "Radient"
+					}
+				},
+				"draft": true
+			},
+			"before": null,
+			"after": null
+		}
+	],
+	"fixtureDraftPreviewAbsent": true,
+	"activeConfigRunStartedByScenes": false,
+	"capturedRoutes": ["/agent-hub", "/agents?name=reviewer"],
+	"notBrowserOrCanonicalTranscript": true,
+	"defaultActionCount": 6,
+	"defaultActionIdsAndChordsIdentical": true,
+	"emptyBindingsHydrateIdentically": true,
+	"customSavedBrowserBindings": "intentionally changed upstream, not captured; isolated profile/default bindings only",
+	"unfocusedWindowNewFocusCalls": 0,
+	"hubEnglishCataloguesByteIdentical": [
+		"src/i18n/catalogues/en/ui.hub.json",
+		"src/i18n/catalogues/en/ui.hub.context.json"
+	],
+	"generatedOldKeyNamesLost": [],
+	"scope": "source/pure-function semantic compatibility, NOT a new native capture or blanket all-source byte identity"
 }

@@ -1,3 +1,4 @@
+import { appendFileSync } from "node:fs";
 /**
  * A disposable stand-in for `local-operator serve`, used only to capture what
  * actually crosses the transport boundary.
@@ -9,7 +10,6 @@
  * refuses a body past 900,000 bytes, and that refusal maps to 409.
  */
 import { createServer } from "node:http";
-import { appendFileSync } from "node:fs";
 
 const LOG = process.env.DESKTOP_413_LOG ?? "/tmp/desktop-413-wire.log";
 const PORT = Number(process.env.DESKTOP_413_PORT ?? 8788);
@@ -74,7 +74,9 @@ createServer(async (req, res) => {
 		return;
 	}
 	if (path.endsWith("/messages") || path.endsWith("/commands")) {
-		res.end(JSON.stringify({ result: { status: "admitted", replayed: false } }));
+		res.end(
+			JSON.stringify({ result: { status: "admitted", replayed: false } }),
+		);
 		return;
 	}
 	if (path === "/v1/desktop/sessions" && req.method === "POST") {

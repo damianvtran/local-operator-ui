@@ -118,21 +118,24 @@ function profile(settings) {
 }
 
 /** Boot the real surface attach against the stubbed Electron. */
-function boot(dir, { reduced = false } = {}) {
+function boot(
+	dir,
+	{ reduced = false, platform = "darwin", osVersion = "27.0.1" } = {},
+) {
 	electron.calls.length = 0;
 	electron.nativeTheme.prefersReducedTransparency = reduced;
 	electron.nativeTheme.themeSource = "system";
 	electron.handlers.clear();
 	electron.listeners.length = 0;
 	const platformGlobals = Object.getOwnPropertyDescriptor(process, "platform");
-	Object.defineProperty(process, "platform", { value: "darwin" });
+	Object.defineProperty(process, "platform", { value: platform });
 	const sys = process.getSystemVersion;
-	process.getSystemVersion = () => "27.0.1";
+	process.getSystemVersion = () => osVersion;
 	try {
 		const glass = mod.resolveLaunchWindowGlass({
 			userDataDir: dir,
-			platform: "darwin",
-			osVersion: "27.0.1",
+			platform,
+			osVersion,
 			reducedTransparency: reduced,
 		});
 		const window = electron.makeWindow();
@@ -337,5 +340,42 @@ test("M-6 an unwritable profile is said once and the in-memory state still appli
 	} finally {
 		b.restore();
 		rmSync(dir, { force: true });
+	}
+});
+
+test("M-7 Windows: a window launched with glass can go off and on again and the material is not hidden behind an opaque ground (R2-2)", async () => {
+	const dir = profile({
+		enabled: true,
+		coverage: "full",
+		intensity: 50,
+		material: "mica",
+	});
+	const b = boot(dir, { platform: "win32", osVersion: "10.0.22621" });
+	try {
+		assert.equal(b.glass.capability.mechanism, "background-material");
+		electron.calls.length = 0;
+		await invoke("window-glass:set", b.window, { enabled: false });
+		assert.ok(
+			electron.calls.some((c) => c[0] === "material" && c[1] === "none"),
+			"off removes the material",
+		);
+		assert.equal(
+			bgCalls().at(-1),
+			COLORS.ground,
+			"and leaves the palette ground in place",
+		);
+		electron.calls.length = 0;
+		await invoke("window-glass:set", b.window, { enabled: true });
+		const order = electron.calls
+			.filter((c) => c[0] === "bg" || c[0] === "material")
+			.map((c) => c.join(":"));
+		assert.deepEqual(
+			order,
+			["bg:#00000000", "material:mica"],
+			"re-enable makes the ground transparent first, then applies the material",
+		);
+	} finally {
+		b.restore();
+		rmSync(dir, { recursive: true, force: true });
 	}
 });

@@ -1,75 +1,75 @@
 {
-  "label": "error-dock400",
-  "session": "b1f1de000001",
-  "window": {
-    "width": 1184,
-    "height": 800
-  },
-  "themes": {
-    "dark": {
-      "frame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/repaired/error-dock400/files-error-dock400-dark.png",
-      "reading": {
-        "innerWidth": 1184,
-        "innerHeight": 800,
-        "dock": {
-          "x": 740,
-          "y": 32,
-          "w": 400,
-          "h": 768
-        },
-        "dockMode": "docked",
-        "scroller": {
-          "x": 740,
-          "y": 184,
-          "w": 400,
-          "h": 616
-        },
-        "rowCount": 0,
-        "rows": [],
-        "header": "Mentioned \u2191 Filter 0 files Open folder The file index could not be read. Retry to reconnect.Retry Could not load session files Files the agent creates or highli"
-      }
-    },
-    "light": {
-      "frame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/repaired/error-dock400/files-error-dock400-light.png",
-      "reading": {
-        "innerWidth": 1184,
-        "innerHeight": 800,
-        "dock": {
-          "x": 740,
-          "y": 32,
-          "w": 400,
-          "h": 768
-        },
-        "dockMode": "docked",
-        "scroller": {
-          "x": 740,
-          "y": 184,
-          "w": 400,
-          "h": 616
-        },
-        "rowCount": 0,
-        "rows": [],
-        "header": "Mentioned \u2191 Filter 0 files Open folder The file index could not be read. Retry to reconnect.Retry Could not load session files Files the agent creates or highli"
-      }
-    }
-  },
-  "facts": {
-    "windowMode": "headless",
-    "appVersion": "0.34.40",
-    "platform": "darwin",
-    "title": "Local Operator",
-    "windowSize": {
-      "width": 1184,
-      "height": 800
-    },
-    "contentBounds": {
-      "width": 1184,
-      "height": 800
-    },
-    "visible": false,
-    "focused": false,
-    "minimized": false,
-    "frames": [],
-    "outDir": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/repaired/error-dock400"
-  }
+	"label": "error-dock400",
+	"session": "b1f1de000001",
+	"window": {
+		"width": 1184,
+		"height": 800
+	},
+	"themes": {
+		"dark": {
+			"frame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/repaired/error-dock400/files-error-dock400-dark.png",
+			"reading": {
+				"innerWidth": 1184,
+				"innerHeight": 800,
+				"dock": {
+					"x": 740,
+					"y": 32,
+					"w": 400,
+					"h": 768
+				},
+				"dockMode": "docked",
+				"scroller": {
+					"x": 740,
+					"y": 184,
+					"w": 400,
+					"h": 616
+				},
+				"rowCount": 0,
+				"rows": [],
+				"header": "Mentioned \u2191 Filter 0 files Open folder The file index could not be read. Retry to reconnect.Retry Could not load session files Files the agent creates or highli"
+			}
+		},
+		"light": {
+			"frame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/repaired/error-dock400/files-error-dock400-light.png",
+			"reading": {
+				"innerWidth": 1184,
+				"innerHeight": 800,
+				"dock": {
+					"x": 740,
+					"y": 32,
+					"w": 400,
+					"h": 768
+				},
+				"dockMode": "docked",
+				"scroller": {
+					"x": 740,
+					"y": 184,
+					"w": 400,
+					"h": 616
+				},
+				"rowCount": 0,
+				"rows": [],
+				"header": "Mentioned \u2191 Filter 0 files Open folder The file index could not be read. Retry to reconnect.Retry Could not load session files Files the agent creates or highli"
+			}
+		}
+	},
+	"facts": {
+		"windowMode": "headless",
+		"appVersion": "0.34.40",
+		"platform": "darwin",
+		"title": "Local Operator",
+		"windowSize": {
+			"width": 1184,
+			"height": 800
+		},
+		"contentBounds": {
+			"width": 1184,
+			"height": 800
+		},
+		"visible": false,
+		"focused": false,
+		"minimized": false,
+		"frames": [],
+		"outDir": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/repaired/error-dock400"
+	}
 }

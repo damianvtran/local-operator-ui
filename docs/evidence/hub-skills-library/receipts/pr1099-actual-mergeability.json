@@ -1,1 +1,16 @@
-{"data":{"repository":{"pullRequest":{"headRefOid":"3b6e1a905cc89e19ea2c0d7b4517da08ed568e1b","baseRefOid":"51a2eccfb936eb44340dbc25bad00b04f1b39d01","baseRef":{"name":"main","target":{"oid":"b179da8e2198beffa37195d84111206ea60ea6f0"}},"mergeable":"MERGEABLE","mergeStateStatus":"BLOCKED"}}}}
+{
+	"data": {
+		"repository": {
+			"pullRequest": {
+				"headRefOid": "3b6e1a905cc89e19ea2c0d7b4517da08ed568e1b",
+				"baseRefOid": "51a2eccfb936eb44340dbc25bad00b04f1b39d01",
+				"baseRef": {
+					"name": "main",
+					"target": { "oid": "b179da8e2198beffa37195d84111206ea60ea6f0" }
+				},
+				"mergeable": "MERGEABLE",
+				"mergeStateStatus": "BLOCKED"
+			}
+		}
+	}
+}

@@ -33,10 +33,6 @@ if (CONFIG === join(homedir(), ".local-operator")) {
 mkdirSync(CONFIG, { recursive: true });
 writeFileSync(
 	join(CONFIG, "config.yml"),
-	[
-		"hosting: openrouter",
-		"model_name: deepseek/deepseek-chat",
-		"",
-	].join("\n"),
+	["hosting: openrouter", "model_name: deepseek/deepseek-chat", ""].join("\n"),
 );
 console.log(join(CONFIG, "config.yml"));

@@ -1,51 +1,51 @@
 {
-  "preparationSnapshot": {
-    "availableKiB": 25595892,
-    "availableGiB": 24.410144805908203,
-    "nativeStartFloorKiB": 25165824,
-    "passesDiskStartFloor": true,
-    "swap": "vm.swapusage: total = 11264.00M  used = 10125.75M  free = 1138.25M  (encrypted)",
-    "memoryPressure": "The system has 38654705664 (2359296 pages with a page size of 16384).\nSystem-wide memory free percentage: 37%",
-    "nativeDispatched": false,
-    "leaseQueued": false
-  },
-  "actualDispatchAdmission": {
-    "at": "2026-10-15T01:09:07.523889-04:00",
-    "availableKiB": 24763760,
-    "availableGiB": 23.616561889648438,
-    "minimumKiB": 25165824,
-    "swapUsedMB": 10053.75,
-    "memoryFreePct": 44,
-    "passed": false
-  },
-  "nativeDispatched": false,
-  "leaseQueued": false,
-  "authorizedBuildCell": {
-    "job": "78cd2433d301",
-    "start": "2026-10-15T01:26:13.741654-04:00",
-    "leasePid": 21374,
-    "helperPid": 21384,
-    "buildPid": 21397,
-    "prelease": {
-      "availableKiB": 25846792,
-      "swapUsedMB": 9966.69,
-      "memoryFreePct": 50
-    },
-    "beforeBuild": {
-      "availableKiB": 25701984,
-      "swapUsedMB": 9966.69,
-      "memoryFreePct": 50
-    },
-    "buildExit": 0,
-    "beforeNextDispatch": {
-      "availableKiB": 24615088,
-      "availableGiB": 23.474777221679688,
-      "swapUsedMB": 9958.69,
-      "memoryFreePct": 45
-    },
-    "stoppedBeforeCoreStubOrApp": true,
-    "finalListeners": [],
-    "leaseReleased": true
-  },
-  "newBuildPerformed": true
+	"preparationSnapshot": {
+		"availableKiB": 25595892,
+		"availableGiB": 24.410144805908203,
+		"nativeStartFloorKiB": 25165824,
+		"passesDiskStartFloor": true,
+		"swap": "vm.swapusage: total = 11264.00M  used = 10125.75M  free = 1138.25M  (encrypted)",
+		"memoryPressure": "The system has 38654705664 (2359296 pages with a page size of 16384).\nSystem-wide memory free percentage: 37%",
+		"nativeDispatched": false,
+		"leaseQueued": false
+	},
+	"actualDispatchAdmission": {
+		"at": "2026-10-15T01:09:07.523889-04:00",
+		"availableKiB": 24763760,
+		"availableGiB": 23.616561889648438,
+		"minimumKiB": 25165824,
+		"swapUsedMB": 10053.75,
+		"memoryFreePct": 44,
+		"passed": false
+	},
+	"nativeDispatched": false,
+	"leaseQueued": false,
+	"authorizedBuildCell": {
+		"job": "78cd2433d301",
+		"start": "2026-10-15T01:26:13.741654-04:00",
+		"leasePid": 21374,
+		"helperPid": 21384,
+		"buildPid": 21397,
+		"prelease": {
+			"availableKiB": 25846792,
+			"swapUsedMB": 9966.69,
+			"memoryFreePct": 50
+		},
+		"beforeBuild": {
+			"availableKiB": 25701984,
+			"swapUsedMB": 9966.69,
+			"memoryFreePct": 50
+		},
+		"buildExit": 0,
+		"beforeNextDispatch": {
+			"availableKiB": 24615088,
+			"availableGiB": 23.474777221679688,
+			"swapUsedMB": 9958.69,
+			"memoryFreePct": 45
+		},
+		"stoppedBeforeCoreStubOrApp": true,
+		"finalListeners": [],
+		"leaseReleased": true
+	},
+	"newBuildPerformed": true
 }

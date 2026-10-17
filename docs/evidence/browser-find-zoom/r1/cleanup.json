@@ -1,11 +1,11 @@
 {
-  "ownedPid": 29471,
-  "driverReportedAlive": false,
-  "postStopOwnedProfileProcesses": [],
-  "generatedOutRemoved": true,
-  "nativeRuntimeRemoved": true,
-  "nativeCwdRemoved": true,
-  "verifiedArtifactHashesBeforeRemoval": 170,
-  "preservedCurrentFrames": 16,
-  "srcTree": "a4c4c0d4ea47d2c14b9043fd3ce01feaa51a95fe"
+	"ownedPid": 29471,
+	"driverReportedAlive": false,
+	"postStopOwnedProfileProcesses": [],
+	"generatedOutRemoved": true,
+	"nativeRuntimeRemoved": true,
+	"nativeCwdRemoved": true,
+	"verifiedArtifactHashesBeforeRemoval": 170,
+	"preservedCurrentFrames": 16,
+	"srcTree": "a4c4c0d4ea47d2c14b9043fd3ce01feaa51a95fe"
 }

@@ -39,8 +39,16 @@ const started = Math.floor(Date.now() / 1000) - 60;
 writeFileSync(
 	join(dir, "transcript.jsonl"),
 	`${[
-		row(started, "user", "Headless window check: this row is seeded on purpose"),
-		row(started + 5, "assistant", "Rendered from the real app in headless mode."),
+		row(
+			started,
+			"user",
+			"Headless window check: this row is seeded on purpose",
+		),
+		row(
+			started + 5,
+			"assistant",
+			"Rendered from the real app in headless mode.",
+		),
 	]
 		.map((r) => JSON.stringify(r))
 		.join("\n")}\n`,

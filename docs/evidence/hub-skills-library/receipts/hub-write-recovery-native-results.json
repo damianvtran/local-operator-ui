@@ -1,40 +1,40 @@
 {
-  "initial": {
-    "at": "2026-10-15T02:51:38.800098-04:00",
-    "label": "positive-only recovery lease",
-    "availableKiB": 25269784,
-    "availableGiB": 24.099143981933594,
-    "swapUsedMB": 13233.19,
-    "swapFreeMiB": 1102.81,
-    "policy": "PR1091 current: Data>=20GiB, mem>=35%, swapFREE>=500MiB; used diagnostic only",
-    "memoryFreePct": 55
-  },
-  "final": {
-    "at": "2026-10-15T02:51:47.067517-04:00",
-    "label": "end positive-only recovery",
-    "availableKiB": 25270380,
-    "availableGiB": 24.099712371826172,
-    "swapUsedMB": 13233.19,
-    "swapFreeMiB": 1102.81,
-    "policy": "PR1091 current: Data>=20GiB, mem>=35%, swapFREE>=500MiB; used diagnostic only",
-    "memoryFreePct": 50
-  },
-  "fixedVersionFixture": {
-    "exit": 0,
-    "passCount": 26,
-    "failCount": 0,
-    "failingChecks": [],
-    "actualHubWrites": [
-      "stub PATCH /v1/desktop/hub/links/link-public-agent -> 200"
-    ],
-    "frames": [
-      "hub-core-guard-1380x900-local-operator-dark-fixture-browse-zero.png",
-      "hub-core-guard-1380x900-local-operator-dark-fixture-policy-off.png"
-    ]
-  },
-  "allProductPinsMatch": true,
-  "oneHarnessLabelLiteralOnly": true,
-  "allEarlierPngBytesUnchanged": true,
-  "frameLabelFailureRetainedIn": "R-L-fixed-version-guard-fixture.log",
-  "postRunHtmlSha256": "04d1f60f33484a91b4ed3d6e3a4ffc63512173fe84f17ba5d4c2efebcdddb077"
+	"initial": {
+		"at": "2026-10-15T02:51:38.800098-04:00",
+		"label": "positive-only recovery lease",
+		"availableKiB": 25269784,
+		"availableGiB": 24.099143981933594,
+		"swapUsedMB": 13233.19,
+		"swapFreeMiB": 1102.81,
+		"policy": "PR1091 current: Data>=20GiB, mem>=35%, swapFREE>=500MiB; used diagnostic only",
+		"memoryFreePct": 55
+	},
+	"final": {
+		"at": "2026-10-15T02:51:47.067517-04:00",
+		"label": "end positive-only recovery",
+		"availableKiB": 25270380,
+		"availableGiB": 24.099712371826172,
+		"swapUsedMB": 13233.19,
+		"swapFreeMiB": 1102.81,
+		"policy": "PR1091 current: Data>=20GiB, mem>=35%, swapFREE>=500MiB; used diagnostic only",
+		"memoryFreePct": 50
+	},
+	"fixedVersionFixture": {
+		"exit": 0,
+		"passCount": 26,
+		"failCount": 0,
+		"failingChecks": [],
+		"actualHubWrites": [
+			"stub PATCH /v1/desktop/hub/links/link-public-agent -> 200"
+		],
+		"frames": [
+			"hub-core-guard-1380x900-local-operator-dark-fixture-browse-zero.png",
+			"hub-core-guard-1380x900-local-operator-dark-fixture-policy-off.png"
+		]
+	},
+	"allProductPinsMatch": true,
+	"oneHarnessLabelLiteralOnly": true,
+	"allEarlierPngBytesUnchanged": true,
+	"frameLabelFailureRetainedIn": "R-L-fixed-version-guard-fixture.log",
+	"postRunHtmlSha256": "04d1f60f33484a91b4ed3d6e3a4ffc63512173fe84f17ba5d4c2efebcdddb077"
 }

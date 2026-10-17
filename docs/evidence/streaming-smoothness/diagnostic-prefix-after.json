@@ -1,268 +1,217 @@
 {
-  "pausedCSS": true,
-  "cleanupBoundSuspended": true,
-  "animations": 2,
-  "samples": [
-    {
-      "cssTimeMs": 0,
-      "computedHeight": "42px",
-      "telemetryOptedOut": true,
-      "window": "on",
-      "reason": "windowed",
-      "debugIndex": [
-        {
-          "entryId": "smooth-u-146",
-          "h": 74.3984375
-        },
-        {
-          "entryId": "smooth-a-147",
-          "h": 108.796875
-        },
-        {
-          "entryId": "smooth-u-148",
-          "h": 106.3984375
-        },
-        {
-          "entryId": "smooth-a-149",
-          "h": 108.796875
-        },
-        {
-          "entryId": "smooth-u-150",
-          "h": 106.3984375
-        },
-        {
-          "entryId": "smooth-a-151",
-          "h": 108.796875
-        },
-        {
-          "entryId": "smooth-u-152",
-          "h": 106.3984375
-        },
-        {
-          "entryId": "smooth-a-153",
-          "h": 108.796875
-        }
-      ],
-      "fetchedRecords": 59,
-      "fetchedPages": 0,
-      "pinned": "1",
-      "images": 0,
-      "codeBlocks": 0,
-      "mountedEntries": 10,
-      "mountedRows": 9,
-      "domNodes": 185,
-      "spacers": 1,
-      "spacerHeights": [
-        5023.890625
-      ],
-      "entryHeights": [
-        108.796875,
-        106.3984375,
-        108.796875,
-        106.3984375,
-        108.796875,
-        106.3984375,
-        76.796875,
-        34.3984375,
-        54,
-        368.78125
-      ],
-      "scrollTop": -100,
-      "scrollHeight": 6309,
-      "clientHeight": 560,
-      "slotHeight": 42,
-      "fromHeight": "42",
-      "targetHeight": "20",
-      "phase": "interpolating",
-      "inlineTools": 0,
-      "aggregateHeaders": 1,
-      "contextDocumentY": 5802.2734375,
-      "reactCommitMs": [
-        0.09999999403953552,
-        0.10000002384185791,
-        0.20000001788139343,
-        1.399999976158142,
-        0,
-        0.19999998807907104,
-        0.19999998807907104,
-        2.800000011920929,
-        0.5999999940395355,
-        0
-      ]
-    },
-    {
-      "cssTimeMs": 90,
-      "computedHeight": "21.4453px",
-      "telemetryOptedOut": true,
-      "window": "on",
-      "reason": "windowed",
-      "debugIndex": [
-        {
-          "entryId": "smooth-u-146",
-          "h": 74.3984375
-        },
-        {
-          "entryId": "smooth-a-147",
-          "h": 108.796875
-        },
-        {
-          "entryId": "smooth-u-148",
-          "h": 106.3984375
-        },
-        {
-          "entryId": "smooth-a-149",
-          "h": 108.796875
-        },
-        {
-          "entryId": "smooth-u-150",
-          "h": 106.3984375
-        },
-        {
-          "entryId": "smooth-a-151",
-          "h": 108.796875
-        },
-        {
-          "entryId": "smooth-u-152",
-          "h": 106.3984375
-        },
-        {
-          "entryId": "smooth-a-153",
-          "h": 108.796875
-        }
-      ],
-      "fetchedRecords": 59,
-      "fetchedPages": 0,
-      "pinned": "1",
-      "images": 0,
-      "codeBlocks": 0,
-      "mountedEntries": 10,
-      "mountedRows": 9,
-      "domNodes": 185,
-      "spacers": 1,
-      "spacerHeights": [
-        5023.890625
-      ],
-      "entryHeights": [
-        108.796875,
-        106.3984375,
-        108.796875,
-        106.3984375,
-        108.796875,
-        106.3984375,
-        76.796875,
-        34.3984375,
-        33.4453125,
-        368.78125
-      ],
-      "scrollTop": -79,
-      "scrollHeight": 6288,
-      "clientHeight": 560,
-      "slotHeight": 21.4453125,
-      "fromHeight": "42",
-      "targetHeight": "20",
-      "phase": "interpolating",
-      "inlineTools": 0,
-      "aggregateHeaders": 1,
-      "contextDocumentY": 5802.2734375,
-      "reactCommitMs": [
-        0.09999999403953552,
-        0.10000002384185791,
-        0.20000001788139343,
-        1.399999976158142,
-        0,
-        0.19999998807907104,
-        0.19999998807907104,
-        2.800000011920929,
-        0.5999999940395355,
-        0
-      ]
-    },
-    {
-      "cssTimeMs": 180,
-      "computedHeight": "20px",
-      "telemetryOptedOut": true,
-      "window": "on",
-      "reason": "windowed",
-      "debugIndex": [
-        {
-          "entryId": "smooth-u-146",
-          "h": 74.3984375
-        },
-        {
-          "entryId": "smooth-a-147",
-          "h": 108.796875
-        },
-        {
-          "entryId": "smooth-u-148",
-          "h": 106.3984375
-        },
-        {
-          "entryId": "smooth-a-149",
-          "h": 108.796875
-        },
-        {
-          "entryId": "smooth-u-150",
-          "h": 106.3984375
-        },
-        {
-          "entryId": "smooth-a-151",
-          "h": 108.796875
-        },
-        {
-          "entryId": "smooth-u-152",
-          "h": 106.3984375
-        },
-        {
-          "entryId": "smooth-a-153",
-          "h": 108.796875
-        }
-      ],
-      "fetchedRecords": 59,
-      "fetchedPages": 0,
-      "pinned": "1",
-      "images": 0,
-      "codeBlocks": 0,
-      "mountedEntries": 10,
-      "mountedRows": 9,
-      "domNodes": 185,
-      "spacers": 1,
-      "spacerHeights": [
-        5023.890625
-      ],
-      "entryHeights": [
-        108.796875,
-        106.3984375,
-        108.796875,
-        106.3984375,
-        108.796875,
-        106.3984375,
-        76.796875,
-        34.3984375,
-        32,
-        368.78125
-      ],
-      "scrollTop": -78,
-      "scrollHeight": 6287,
-      "clientHeight": 560,
-      "slotHeight": 20,
-      "fromHeight": "42",
-      "targetHeight": "20",
-      "phase": "interpolating",
-      "inlineTools": 0,
-      "aggregateHeaders": 1,
-      "contextDocumentY": 5802.2734375,
-      "reactCommitMs": [
-        0.09999999403953552,
-        0.10000002384185791,
-        0.20000001788139343,
-        1.399999976158142,
-        0,
-        0.19999998807907104,
-        0.19999998807907104,
-        2.800000011920929,
-        0.5999999940395355,
-        0
-      ]
-    }
-  ]
+	"pausedCSS": true,
+	"cleanupBoundSuspended": true,
+	"animations": 2,
+	"samples": [
+		{
+			"cssTimeMs": 0,
+			"computedHeight": "42px",
+			"telemetryOptedOut": true,
+			"window": "on",
+			"reason": "windowed",
+			"debugIndex": [
+				{
+					"entryId": "smooth-u-146",
+					"h": 74.3984375
+				},
+				{
+					"entryId": "smooth-a-147",
+					"h": 108.796875
+				},
+				{
+					"entryId": "smooth-u-148",
+					"h": 106.3984375
+				},
+				{
+					"entryId": "smooth-a-149",
+					"h": 108.796875
+				},
+				{
+					"entryId": "smooth-u-150",
+					"h": 106.3984375
+				},
+				{
+					"entryId": "smooth-a-151",
+					"h": 108.796875
+				},
+				{
+					"entryId": "smooth-u-152",
+					"h": 106.3984375
+				},
+				{
+					"entryId": "smooth-a-153",
+					"h": 108.796875
+				}
+			],
+			"fetchedRecords": 59,
+			"fetchedPages": 0,
+			"pinned": "1",
+			"images": 0,
+			"codeBlocks": 0,
+			"mountedEntries": 10,
+			"mountedRows": 9,
+			"domNodes": 185,
+			"spacers": 1,
+			"spacerHeights": [5023.890625],
+			"entryHeights": [
+				108.796875, 106.3984375, 108.796875, 106.3984375, 108.796875,
+				106.3984375, 76.796875, 34.3984375, 54, 368.78125
+			],
+			"scrollTop": -100,
+			"scrollHeight": 6309,
+			"clientHeight": 560,
+			"slotHeight": 42,
+			"fromHeight": "42",
+			"targetHeight": "20",
+			"phase": "interpolating",
+			"inlineTools": 0,
+			"aggregateHeaders": 1,
+			"contextDocumentY": 5802.2734375,
+			"reactCommitMs": [
+				0.09999999403953552, 0.10000002384185791, 0.20000001788139343,
+				1.399999976158142, 0, 0.19999998807907104, 0.19999998807907104,
+				2.800000011920929, 0.5999999940395355, 0
+			]
+		},
+		{
+			"cssTimeMs": 90,
+			"computedHeight": "21.4453px",
+			"telemetryOptedOut": true,
+			"window": "on",
+			"reason": "windowed",
+			"debugIndex": [
+				{
+					"entryId": "smooth-u-146",
+					"h": 74.3984375
+				},
+				{
+					"entryId": "smooth-a-147",
+					"h": 108.796875
+				},
+				{
+					"entryId": "smooth-u-148",
+					"h": 106.3984375
+				},
+				{
+					"entryId": "smooth-a-149",
+					"h": 108.796875
+				},
+				{
+					"entryId": "smooth-u-150",
+					"h": 106.3984375
+				},
+				{
+					"entryId": "smooth-a-151",
+					"h": 108.796875
+				},
+				{
+					"entryId": "smooth-u-152",
+					"h": 106.3984375
+				},
+				{
+					"entryId": "smooth-a-153",
+					"h": 108.796875
+				}
+			],
+			"fetchedRecords": 59,
+			"fetchedPages": 0,
+			"pinned": "1",
+			"images": 0,
+			"codeBlocks": 0,
+			"mountedEntries": 10,
+			"mountedRows": 9,
+			"domNodes": 185,
+			"spacers": 1,
+			"spacerHeights": [5023.890625],
+			"entryHeights": [
+				108.796875, 106.3984375, 108.796875, 106.3984375, 108.796875,
+				106.3984375, 76.796875, 34.3984375, 33.4453125, 368.78125
+			],
+			"scrollTop": -79,
+			"scrollHeight": 6288,
+			"clientHeight": 560,
+			"slotHeight": 21.4453125,
+			"fromHeight": "42",
+			"targetHeight": "20",
+			"phase": "interpolating",
+			"inlineTools": 0,
+			"aggregateHeaders": 1,
+			"contextDocumentY": 5802.2734375,
+			"reactCommitMs": [
+				0.09999999403953552, 0.10000002384185791, 0.20000001788139343,
+				1.399999976158142, 0, 0.19999998807907104, 0.19999998807907104,
+				2.800000011920929, 0.5999999940395355, 0
+			]
+		},
+		{
+			"cssTimeMs": 180,
+			"computedHeight": "20px",
+			"telemetryOptedOut": true,
+			"window": "on",
+			"reason": "windowed",
+			"debugIndex": [
+				{
+					"entryId": "smooth-u-146",
+					"h": 74.3984375
+				},
+				{
+					"entryId": "smooth-a-147",
+					"h": 108.796875
+				},
+				{
+					"entryId": "smooth-u-148",
+					"h": 106.3984375
+				},
+				{
+					"entryId": "smooth-a-149",
+					"h": 108.796875
+				},
+				{
+					"entryId": "smooth-u-150",
+					"h": 106.3984375
+				},
+				{
+					"entryId": "smooth-a-151",
+					"h": 108.796875
+				},
+				{
+					"entryId": "smooth-u-152",
+					"h": 106.3984375
+				},
+				{
+					"entryId": "smooth-a-153",
+					"h": 108.796875
+				}
+			],
+			"fetchedRecords": 59,
+			"fetchedPages": 0,
+			"pinned": "1",
+			"images": 0,
+			"codeBlocks": 0,
+			"mountedEntries": 10,
+			"mountedRows": 9,
+			"domNodes": 185,
+			"spacers": 1,
+			"spacerHeights": [5023.890625],
+			"entryHeights": [
+				108.796875, 106.3984375, 108.796875, 106.3984375, 108.796875,
+				106.3984375, 76.796875, 34.3984375, 32, 368.78125
+			],
+			"scrollTop": -78,
+			"scrollHeight": 6287,
+			"clientHeight": 560,
+			"slotHeight": 20,
+			"fromHeight": "42",
+			"targetHeight": "20",
+			"phase": "interpolating",
+			"inlineTools": 0,
+			"aggregateHeaders": 1,
+			"contextDocumentY": 5802.2734375,
+			"reactCommitMs": [
+				0.09999999403953552, 0.10000002384185791, 0.20000001788139343,
+				1.399999976158142, 0, 0.19999998807907104, 0.19999998807907104,
+				2.800000011920929, 0.5999999940395355, 0
+			]
+		}
+	]
 }

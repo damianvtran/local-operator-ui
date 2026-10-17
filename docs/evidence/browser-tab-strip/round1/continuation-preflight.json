@@ -1,17 +1,11 @@
 {
-  "frozenHead": "c7d766d92dabf63b39ca1607a4ccba958fe161c5",
-  "noSourceEdit": true,
-  "noRebuild": true,
-  "sameArtifacts": 170,
-  "methods": [
-    "closeTab",
-    "handOver",
-    "navigate",
-    "newTab",
-    "reorderTabs"
-  ],
-  "policy": "actual approve helper before Surface mount, no backend/session interception",
-  "failures": "safety/setup throws; product/cosmetic checks record FAIL and final rc1, not suppressed",
-  "captureOrder": "each critical geometry row followed immediately by light/dark frames; tooltips last",
-  "scriptSha256": "95b3747382f76b3634990b9825453cb9f6ad68b38b92edcc4889049e64af8516"
+	"frozenHead": "c7d766d92dabf63b39ca1607a4ccba958fe161c5",
+	"noSourceEdit": true,
+	"noRebuild": true,
+	"sameArtifacts": 170,
+	"methods": ["closeTab", "handOver", "navigate", "newTab", "reorderTabs"],
+	"policy": "actual approve helper before Surface mount, no backend/session interception",
+	"failures": "safety/setup throws; product/cosmetic checks record FAIL and final rc1, not suppressed",
+	"captureOrder": "each critical geometry row followed immediately by light/dark frames; tooltips last",
+	"scriptSha256": "95b3747382f76b3634990b9825453cb9f6ad68b38b92edcc4889049e64af8516"
 }

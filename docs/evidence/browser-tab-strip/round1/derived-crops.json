@@ -1,128 +1,98 @@
 [
-  {
-    "source": "captures/twelve-agent-localoperatorlight.png",
-    "geometry": "TWELVE agent floor",
-    "rowId": 4,
-    "cssBox": {
-      "x": 295.796875,
-      "y": 36,
-      "width": 144,
-      "height": 33,
-      "right": 439.796875,
-      "bottom": 69
-    },
-    "pixelCrop": [
-      588,
-      68,
-      884,
-      142
-    ],
-    "scale": 2.0,
-    "output": "crops/agent-localoperatorlight.png"
-  },
-  {
-    "source": "captures/twelve-agent-localoperatordark.png",
-    "geometry": "TWELVE agent floor",
-    "rowId": 4,
-    "cssBox": {
-      "x": 295.796875,
-      "y": 36,
-      "width": 144,
-      "height": 33,
-      "right": 439.796875,
-      "bottom": 69
-    },
-    "pixelCrop": [
-      588,
-      68,
-      884,
-      142
-    ],
-    "scale": 2.0,
-    "output": "crops/agent-localoperatordark.png"
-  },
-  {
-    "source": "captures/twelve-handed-localoperatorlight.png",
-    "geometry": "TWELVE handed floor",
-    "rowId": 2,
-    "cssBox": {
-      "x": 1136.09375,
-      "y": 36,
-      "width": 144,
-      "height": 33,
-      "right": 1280.09375,
-      "bottom": 69
-    },
-    "pixelCrop": [
-      2268,
-      68,
-      2564,
-      142
-    ],
-    "scale": 2.0,
-    "output": "crops/handed-localoperatorlight.png"
-  },
-  {
-    "source": "captures/twelve-handed-localoperatordark.png",
-    "geometry": "TWELVE handed floor",
-    "rowId": 2,
-    "cssBox": {
-      "x": 1136.09375,
-      "y": 36,
-      "width": 144,
-      "height": 33,
-      "right": 1280.09375,
-      "bottom": 69
-    },
-    "pixelCrop": [
-      2268,
-      68,
-      2564,
-      142
-    ],
-    "scale": 2.0,
-    "output": "crops/handed-localoperatordark.png"
-  },
-  {
-    "source": "captures/twelve-failed-localoperatorlight.png",
-    "geometry": "TWELVE failed floor",
-    "rowId": 12,
-    "cssBox": {
-      "x": 1136,
-      "y": 36,
-      "width": 144,
-      "height": 33,
-      "right": 1280,
-      "bottom": 69
-    },
-    "pixelCrop": [
-      2268,
-      68,
-      2564,
-      142
-    ],
-    "scale": 2.0,
-    "output": "crops/failed-localoperatorlight.png"
-  },
-  {
-    "source": "captures/twelve-failed-localoperatordark.png",
-    "geometry": "TWELVE failed floor",
-    "rowId": 12,
-    "cssBox": {
-      "x": 1136,
-      "y": 36,
-      "width": 144,
-      "height": 33,
-      "right": 1280,
-      "bottom": 69
-    },
-    "pixelCrop": [
-      2268,
-      68,
-      2564,
-      142
-    ],
-    "scale": 2.0,
-    "output": "crops/failed-localoperatordark.png"
-  }
+	{
+		"source": "captures/twelve-agent-localoperatorlight.png",
+		"geometry": "TWELVE agent floor",
+		"rowId": 4,
+		"cssBox": {
+			"x": 295.796875,
+			"y": 36,
+			"width": 144,
+			"height": 33,
+			"right": 439.796875,
+			"bottom": 69
+		},
+		"pixelCrop": [588, 68, 884, 142],
+		"scale": 2.0,
+		"output": "crops/agent-localoperatorlight.png"
+	},
+	{
+		"source": "captures/twelve-agent-localoperatordark.png",
+		"geometry": "TWELVE agent floor",
+		"rowId": 4,
+		"cssBox": {
+			"x": 295.796875,
+			"y": 36,
+			"width": 144,
+			"height": 33,
+			"right": 439.796875,
+			"bottom": 69
+		},
+		"pixelCrop": [588, 68, 884, 142],
+		"scale": 2.0,
+		"output": "crops/agent-localoperatordark.png"
+	},
+	{
+		"source": "captures/twelve-handed-localoperatorlight.png",
+		"geometry": "TWELVE handed floor",
+		"rowId": 2,
+		"cssBox": {
+			"x": 1136.09375,
+			"y": 36,
+			"width": 144,
+			"height": 33,
+			"right": 1280.09375,
+			"bottom": 69
+		},
+		"pixelCrop": [2268, 68, 2564, 142],
+		"scale": 2.0,
+		"output": "crops/handed-localoperatorlight.png"
+	},
+	{
+		"source": "captures/twelve-handed-localoperatordark.png",
+		"geometry": "TWELVE handed floor",
+		"rowId": 2,
+		"cssBox": {
+			"x": 1136.09375,
+			"y": 36,
+			"width": 144,
+			"height": 33,
+			"right": 1280.09375,
+			"bottom": 69
+		},
+		"pixelCrop": [2268, 68, 2564, 142],
+		"scale": 2.0,
+		"output": "crops/handed-localoperatordark.png"
+	},
+	{
+		"source": "captures/twelve-failed-localoperatorlight.png",
+		"geometry": "TWELVE failed floor",
+		"rowId": 12,
+		"cssBox": {
+			"x": 1136,
+			"y": 36,
+			"width": 144,
+			"height": 33,
+			"right": 1280,
+			"bottom": 69
+		},
+		"pixelCrop": [2268, 68, 2564, 142],
+		"scale": 2.0,
+		"output": "crops/failed-localoperatorlight.png"
+	},
+	{
+		"source": "captures/twelve-failed-localoperatordark.png",
+		"geometry": "TWELVE failed floor",
+		"rowId": 12,
+		"cssBox": {
+			"x": 1136,
+			"y": 36,
+			"width": 144,
+			"height": 33,
+			"right": 1280,
+			"bottom": 69
+		},
+		"pixelCrop": [2268, 68, 2564, 142],
+		"scale": 2.0,
+		"output": "crops/failed-localoperatordark.png"
+	}
 ]

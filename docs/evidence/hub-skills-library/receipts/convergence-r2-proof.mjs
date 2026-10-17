@@ -1,31 +1,361 @@
-import fs from 'node:fs';import path from 'node:path';import crypto from 'node:crypto';import {execFileSync}from'node:child_process';import assert from'node:assert/strict';import{createRequire}from'node:module';const require=createRequire(path.resolve('package.json'));const{build,transform}=require('esbuild');
-const OLD='f114b314c9675ca903d551f236c6c94e6a2e49a8',root=process.cwd(),R='docs/evidence/hub-skills-library/receipts';
-const sha=b=>crypto.createHash('sha256').update(b).digest('hex');const old=p=>execFileSync('git',['show',`${OLD}:${p}`],{maxBuffer:12e6});const now=p=>fs.readFileSync(p);const save=(n,v)=>fs.writeFileSync(`${R}/convergence-r2-${n}.json`,JSON.stringify(v,null,2)+'\n');
-const painted=JSON.parse(now(`${R}/convergence-painted-core.json`)).paths;for(const p of painted)assert(old(p).equals(now(p)),`painted dependency changed: ${p}`);
-save('painted',painted.map(p=>({path:p,beforeSha256:sha(old(p)),afterSha256:sha(now(p)),identical:true})));
+import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import crypto from "node:crypto";
+import fs from "node:fs";
+import { createRequire } from "node:module";
+import path from "node:path";
+const require = createRequire(path.resolve("package.json"));
+const { build, transform } = require("esbuild");
+const OLD = "f114b314c9675ca903d551f236c6c94e6a2e49a8",
+	root = process.cwd(),
+	R = "docs/evidence/hub-skills-library/receipts";
+const sha = (b) => crypto.createHash("sha256").update(b).digest("hex");
+const old = (p) =>
+	execFileSync("git", ["show", `${OLD}:${p}`], { maxBuffer: 12e6 });
+const now = (p) => fs.readFileSync(p);
+const save = (n, v) =>
+	fs.writeFileSync(
+		`${R}/convergence-r2-${n}.json`,
+		JSON.stringify(v, null, 2) + "\n",
+	);
+const painted = JSON.parse(now(`${R}/convergence-painted-core.json`)).paths;
+for (const p of painted)
+	assert(old(p).equals(now(p)), `painted dependency changed: ${p}`);
+save(
+	"painted",
+	painted.map((p) => ({
+		path: p,
+		beforeSha256: sha(old(p)),
+		afterSha256: sha(now(p)),
+		identical: true,
+	})),
+);
 // Conservative literal-import graph: includes ALL routed pages, MAIN/preload,
 // type imports and code mentioned in import-like comments. It intentionally
 // over-approximates the captures, not a claim that every imported route mounted.
-const aliases={'@shared/':'src/renderer/src/shared/','@features/':'src/renderer/src/features/','@assets/':'src/renderer/src/assets/','@main/':'src/main/'};
-function resolve(spec,from){let p;if(spec.startsWith('.'))p=path.resolve(path.dirname(from),spec);else{const k=Object.keys(aliases).find(k=>spec.startsWith(k));if(!k)return null;p=path.resolve(aliases[k]+spec.slice(k.length));}p=p.split('?')[0];if(!p.startsWith(root+'/'))return null;for(const c of [p,...['.ts','.tsx','.js','.jsx','.json','.css'].map(x=>p+x),...['index.ts','index.tsx','index.js'].map(x=>path.join(p,x))])if(fs.existsSync(c)&&fs.statSync(c).isFile())return path.relative(root,c);return null;}
-const queue=['src/renderer/src/app.tsx','src/main/index.ts','src/preload/index.ts',...painted],seen=new Set(),unresolved=[];
-while(queue.length){const p=queue.pop();if(seen.has(p))continue;assert(!/(^|\/)\.env(?:\.|$)/.test(p),'sensitive import refused');assert(seen.size<6000,'literal closure bound');seen.add(p);if(!/\.(?:ts|tsx|js|jsx|css)$/.test(p))continue;const s=now(p).toString();const regex=/(?:\bfrom\s*|\bimport\s*|\b(?:import|require)\s*\(\s*|@import\s*)["']([^"']+)["']/g;for(const m of s.matchAll(regex)){const target=resolve(m[1],p);if(target)queue.push(target);else if(m[1].startsWith('.')||m[1].startsWith('@shared/')||m[1].startsWith('@features/'))unresolved.push({from:p,literal:m[1]});}}
-const paths=[...seen].sort(),batch=execFileSync('git',['cat-file','--batch'],{input:paths.map(p=>`${OLD}:${p}\n`).join(''),maxBuffer:128e6});let cursor=0;const pins=[];
-for(const p of paths){const nl=batch.indexOf(10,cursor),head=batch.subarray(cursor,nl).toString();cursor=nl+1;const parts=head.split(' ');if(parts.at(-1)==='missing'){pins.push({path:p,oldMissing:true,afterSha256:sha(now(p)),identical:false});continue;}const size=Number(parts[2]),before=batch.subarray(cursor,cursor+size);cursor+=size+1;const after=now(p);pins.push({path:p,beforeSha256:sha(before),afterSha256:sha(after),identical:before.equals(after)});}
-save('literal-closure',{kind:'conservative literal source-import overapproximation, not runtime/native execution or proof all routes mounted',roots:['src/renderer/src/app.tsx','src/main/index.ts','src/preload/index.ts',...painted],count:pins.length,changed:pins.filter(p=>!p.identical),pins,unresolvedRelativeLiterals:unresolved});console.log('CLOSURE',pins.length,'painted unchanged',painted.length,'changed',pins.filter(p=>!p.identical).map(p=>p.path));
-const emit=async(s,loader='ts')=>(await transform(s.toString(),{loader,format:'cjs',target:'es2022',sourcemap:false,minifyWhitespace:true,legalComments:'none'})).code;
-const required=['src/renderer/src/shared/api/local-operator/desktop-hooks.ts','src/renderer/src/shared/api/local-operator/desktop-api.ts','src/renderer/src/shared/hooks/use-connectivity-status.ts','src/renderer/src/shared/api/local-operator/hub-mutation-safety.ts','src/renderer/src/shared/api/local-operator/hub-link-actions.ts','src/renderer/src/shared/api/local-operator/hub-link-hooks.ts','src/renderer/src/shared/api/local-operator/hub-hooks.ts','src/shared/desktop-contract.ts','src/shared/backend-status.ts','src/main/backend/backend-service.ts','src/main/backend/daemon-status.ts','src/main/desktop-transport.ts','docs/evidence/hub-links/harness/stub-daemon.mjs'];
-for(const p of required)assert(old(p).equals(now(p)),`guard/transport/fixture changed: ${p}`);
-const emissions=[];for(const p of ['src/renderer/src/shared/store/ui-preferences-store.ts','src/shared/desktop-session-contract.ts']){const a=await emit(old(p)),b=await emit(now(p));assert.equal(a,b,`runtime emit changed: ${p}`);emissions.push({path:p,sourceIdentical:old(p).equals(now(p)),emittedSha256:sha(a),emittedIdentical:true});}
-function property(s,name){const at=s.indexOf(`\n\t${name}: {`);assert(at>=0);const start=s.indexOf('{',at),end=s.indexOf('\n\t},',start);assert(end>start);return s.slice(start,end+3);}
-for(const name of ['backend','desktop']){const p='src/preload/index.ts',a=property(old(p).toString(),name),b=property(now(p).toString(),name);assert.equal(a,b,`preload ${name} changed`);emissions.push({path:p,property:name,sourceSha256:sha(a),identical:true});}
-const modelPath='src/renderer/src/features/chat/session-status/session-model.ts';const moduleFrom=async s=>{const e=await emit(s);const m={exports:{}};new Function('module','exports',e)(m,m.exports);return m.exports;};const a=await moduleFrom(old(modelPath)),b=await moduleFrom(now(modelPath));
-const contexts=[undefined,{frontend:null},{frontend:{}},{frontend:{selected_model:{provider:'radient',model:'auto'}}},{frontend:{model_access:{state:'signed_out',provider:'radient',label:'Radient'}},draft:true}];
-const readings=contexts.map(status=>{const before=status&&status.draft!==true?a.modelAccessReading(status.frontend):null;const after=b.composerModelAccessReading(status);assert.deepEqual(after,before);assert.equal(b.modelAccessOwnsRadientStatus(after),false);return {status:status??'undefined',before,after};});
-async function moduleEntry(entry,ref){const result=await build({stdin:{contents:entry,resolveDir:root},bundle:true,write:false,platform:'node',format:'esm',plugins:ref?[{name:'old-exact-relative-source',setup(b){b.onResolve({filter:/^snapshot:/},a=>({path:a.path.slice(9),namespace:'snapshot'}));b.onResolve({filter:/^\./,namespace:'snapshot'},a=>{const p=resolve(a.path,a.importer);assert(p,a.path);return{path:p,namespace:'snapshot'};});b.onLoad({filter:/.*/,namespace:'snapshot'},a=>({contents:old(a.path).toString(),loader:a.path.endsWith('.tsx')?'tsx':'ts',resolveDir:path.dirname(path.resolve(a.path))}));}}]:[]});return import('data:text/javascript;base64,'+Buffer.from(result.outputFiles[0].text).toString('base64'));}
-const key='src/renderer/src/shared/keymap/';const beforeKeys=await moduleEntry(`export * from 'snapshot:${key}keymap-chord.ts';export {KEYMAP_ACTIONS}from'snapshot:${key}keymap-registry.ts';`,OLD);const afterKeys=await moduleEntry(`export * from './${key}keymap-chord.ts';export {KEYMAP_ACTIONS}from'./${key}keymap-registry.ts';`);
-assert.deepEqual(beforeKeys.KEYMAP_ACTIONS.map(x=>[x.id,x.defaultChord]),afterKeys.KEYMAP_ACTIONS.map(x=>[x.id,x.defaultChord]));for(const x of beforeKeys.KEYMAP_ACTIONS)assert.equal(beforeKeys.effectiveChord(x.id,{}),afterKeys.effectiveChord(x.id,{}));assert.deepEqual(beforeKeys.sanitizeShortcutBindings({}),{});assert.deepEqual(afterKeys.sanitizeShortcutBindings({}),{});
-const focus=await moduleEntry("export {focusBrowserChordTarget}from'./src/main/window-raise.ts';");let focused=0;focus.focusBrowserChordTarget({isDestroyed:()=>false,isFocused:()=>false},{isDestroyed:()=>false,focus:()=>focused++},'focus');assert.equal(focused,0);
-const caps=now('docs/evidence/hub-links/harness/stub-daemon.mjs').toString();assert(!/\bdraft_preview\s*:/.test(caps));const composer=now('src/renderer/src/features/agents/config-run/config-composer.tsx').toString();assert(composer.includes('"draft_preview"'));assert(composer.includes(': undefined'));const router=now('src/renderer/src/app.tsx').toString();assert(router.includes('<Route path="/agents" element={<AgentsPage />} />'));assert(router.includes('<Route path="/agent-hub" element={<AgentHubPage />} />'));assert(router.includes('<Route path="/browser" element={<BrowserPage />} />'));
-const catalogueFiles=['src/i18n/catalogues/en/ui.hub.json','src/i18n/catalogues/en/ui.hub.context.json'];for(const p of catalogueFiles)assert(old(p).equals(now(p)));const generatedOld=old('src/i18n/keys.gen.ts').toString(),generatedNow=now('src/i18n/keys.gen.ts').toString();const keyNames=s=>[...s.matchAll(/"(ui\.[^"]+)"/g)].map(x=>x[1]);const lost=[...new Set(keyNames(generatedOld))].filter(x=>!new Set(keyNames(generatedNow)).has(x));assert.deepEqual(lost,[]);
-save('semantic',{model:'anthropic/claude-sonnet-5-5',baseline:OLD,requiredByteIdentical:required,emissions,composerNullContextReadings:readings,fixtureDraftPreviewAbsent:true,activeConfigRunStartedByScenes:false,capturedRoutes:['/agent-hub','/agents?name=reviewer'],notBrowserOrCanonicalTranscript:true,defaultActionCount:beforeKeys.KEYMAP_ACTIONS.length,defaultActionIdsAndChordsIdentical:true,emptyBindingsHydrateIdentically:true,customSavedBrowserBindings:'intentionally changed upstream, not captured; isolated profile/default bindings only',unfocusedWindowNewFocusCalls:focused,hubEnglishCataloguesByteIdentical:catalogueFiles,generatedOldKeyNamesLost:lost,scope:'source/pure-function semantic compatibility, NOT a new native capture or blanket all-source byte identity'});console.log('SEMANTIC PASS',required.length,'guard/transport/fixture bytes unchanged;',emissions.length,'emit/property proofs;',beforeKeys.KEYMAP_ACTIONS.length,'default bindings unchanged; composer undefined/unmodeled/draft reads equal; headless focus0; Hub messages unchanged');
+const aliases = {
+	"@shared/": "src/renderer/src/shared/",
+	"@features/": "src/renderer/src/features/",
+	"@assets/": "src/renderer/src/assets/",
+	"@main/": "src/main/",
+};
+function resolve(spec, from) {
+	let p;
+	if (spec.startsWith(".")) p = path.resolve(path.dirname(from), spec);
+	else {
+		const k = Object.keys(aliases).find((k) => spec.startsWith(k));
+		if (!k) return null;
+		p = path.resolve(aliases[k] + spec.slice(k.length));
+	}
+	p = p.split("?")[0];
+	if (!p.startsWith(root + "/")) return null;
+	for (const c of [
+		p,
+		...[".ts", ".tsx", ".js", ".jsx", ".json", ".css"].map((x) => p + x),
+		...["index.ts", "index.tsx", "index.js"].map((x) => path.join(p, x)),
+	])
+		if (fs.existsSync(c) && fs.statSync(c).isFile())
+			return path.relative(root, c);
+	return null;
+}
+const queue = [
+		"src/renderer/src/app.tsx",
+		"src/main/index.ts",
+		"src/preload/index.ts",
+		...painted,
+	],
+	seen = new Set(),
+	unresolved = [];
+while (queue.length) {
+	const p = queue.pop();
+	if (seen.has(p)) continue;
+	assert(!/(^|\/)\.env(?:\.|$)/.test(p), "sensitive import refused");
+	assert(seen.size < 6000, "literal closure bound");
+	seen.add(p);
+	if (!/\.(?:ts|tsx|js|jsx|css)$/.test(p)) continue;
+	const s = now(p).toString();
+	const regex =
+		/(?:\bfrom\s*|\bimport\s*|\b(?:import|require)\s*\(\s*|@import\s*)["']([^"']+)["']/g;
+	for (const m of s.matchAll(regex)) {
+		const target = resolve(m[1], p);
+		if (target) queue.push(target);
+		else if (
+			m[1].startsWith(".") ||
+			m[1].startsWith("@shared/") ||
+			m[1].startsWith("@features/")
+		)
+			unresolved.push({ from: p, literal: m[1] });
+	}
+}
+const paths = [...seen].sort(),
+	batch = execFileSync("git", ["cat-file", "--batch"], {
+		input: paths.map((p) => `${OLD}:${p}\n`).join(""),
+		maxBuffer: 128e6,
+	});
+let cursor = 0;
+const pins = [];
+for (const p of paths) {
+	const nl = batch.indexOf(10, cursor),
+		head = batch.subarray(cursor, nl).toString();
+	cursor = nl + 1;
+	const parts = head.split(" ");
+	if (parts.at(-1) === "missing") {
+		pins.push({
+			path: p,
+			oldMissing: true,
+			afterSha256: sha(now(p)),
+			identical: false,
+		});
+		continue;
+	}
+	const size = Number(parts[2]),
+		before = batch.subarray(cursor, cursor + size);
+	cursor += size + 1;
+	const after = now(p);
+	pins.push({
+		path: p,
+		beforeSha256: sha(before),
+		afterSha256: sha(after),
+		identical: before.equals(after),
+	});
+}
+save("literal-closure", {
+	kind: "conservative literal source-import overapproximation, not runtime/native execution or proof all routes mounted",
+	roots: [
+		"src/renderer/src/app.tsx",
+		"src/main/index.ts",
+		"src/preload/index.ts",
+		...painted,
+	],
+	count: pins.length,
+	changed: pins.filter((p) => !p.identical),
+	pins,
+	unresolvedRelativeLiterals: unresolved,
+});
+console.log(
+	"CLOSURE",
+	pins.length,
+	"painted unchanged",
+	painted.length,
+	"changed",
+	pins.filter((p) => !p.identical).map((p) => p.path),
+);
+const emit = async (s, loader = "ts") =>
+	(
+		await transform(s.toString(), {
+			loader,
+			format: "cjs",
+			target: "es2022",
+			sourcemap: false,
+			minifyWhitespace: true,
+			legalComments: "none",
+		})
+	).code;
+const required = [
+	"src/renderer/src/shared/api/local-operator/desktop-hooks.ts",
+	"src/renderer/src/shared/api/local-operator/desktop-api.ts",
+	"src/renderer/src/shared/hooks/use-connectivity-status.ts",
+	"src/renderer/src/shared/api/local-operator/hub-mutation-safety.ts",
+	"src/renderer/src/shared/api/local-operator/hub-link-actions.ts",
+	"src/renderer/src/shared/api/local-operator/hub-link-hooks.ts",
+	"src/renderer/src/shared/api/local-operator/hub-hooks.ts",
+	"src/shared/desktop-contract.ts",
+	"src/shared/backend-status.ts",
+	"src/main/backend/backend-service.ts",
+	"src/main/backend/daemon-status.ts",
+	"src/main/desktop-transport.ts",
+	"docs/evidence/hub-links/harness/stub-daemon.mjs",
+];
+for (const p of required)
+	assert(old(p).equals(now(p)), `guard/transport/fixture changed: ${p}`);
+const emissions = [];
+for (const p of [
+	"src/renderer/src/shared/store/ui-preferences-store.ts",
+	"src/shared/desktop-session-contract.ts",
+]) {
+	const a = await emit(old(p)),
+		b = await emit(now(p));
+	assert.equal(a, b, `runtime emit changed: ${p}`);
+	emissions.push({
+		path: p,
+		sourceIdentical: old(p).equals(now(p)),
+		emittedSha256: sha(a),
+		emittedIdentical: true,
+	});
+}
+function property(s, name) {
+	const at = s.indexOf(`\n\t${name}: {`);
+	assert(at >= 0);
+	const start = s.indexOf("{", at),
+		end = s.indexOf("\n\t},", start);
+	assert(end > start);
+	return s.slice(start, end + 3);
+}
+for (const name of ["backend", "desktop"]) {
+	const p = "src/preload/index.ts",
+		a = property(old(p).toString(), name),
+		b = property(now(p).toString(), name);
+	assert.equal(a, b, `preload ${name} changed`);
+	emissions.push({
+		path: p,
+		property: name,
+		sourceSha256: sha(a),
+		identical: true,
+	});
+}
+const modelPath =
+	"src/renderer/src/features/chat/session-status/session-model.ts";
+const moduleFrom = async (s) => {
+	const e = await emit(s);
+	const m = { exports: {} };
+	new Function("module", "exports", e)(m, m.exports);
+	return m.exports;
+};
+const a = await moduleFrom(old(modelPath)),
+	b = await moduleFrom(now(modelPath));
+const contexts = [
+	undefined,
+	{ frontend: null },
+	{ frontend: {} },
+	{ frontend: { selected_model: { provider: "radient", model: "auto" } } },
+	{
+		frontend: {
+			model_access: {
+				state: "signed_out",
+				provider: "radient",
+				label: "Radient",
+			},
+		},
+		draft: true,
+	},
+];
+const readings = contexts.map((status) => {
+	const before =
+		status && status.draft !== true
+			? a.modelAccessReading(status.frontend)
+			: null;
+	const after = b.composerModelAccessReading(status);
+	assert.deepEqual(after, before);
+	assert.equal(b.modelAccessOwnsRadientStatus(after), false);
+	return { status: status ?? "undefined", before, after };
+});
+async function moduleEntry(entry, ref) {
+	const result = await build({
+		stdin: { contents: entry, resolveDir: root },
+		bundle: true,
+		write: false,
+		platform: "node",
+		format: "esm",
+		plugins: ref
+			? [
+					{
+						name: "old-exact-relative-source",
+						setup(b) {
+							b.onResolve({ filter: /^snapshot:/ }, (a) => ({
+								path: a.path.slice(9),
+								namespace: "snapshot",
+							}));
+							b.onResolve({ filter: /^\./, namespace: "snapshot" }, (a) => {
+								const p = resolve(a.path, a.importer);
+								assert(p, a.path);
+								return { path: p, namespace: "snapshot" };
+							});
+							b.onLoad({ filter: /.*/, namespace: "snapshot" }, (a) => ({
+								contents: old(a.path).toString(),
+								loader: a.path.endsWith(".tsx") ? "tsx" : "ts",
+								resolveDir: path.dirname(path.resolve(a.path)),
+							}));
+						},
+					},
+				]
+			: [],
+	});
+	return import(
+		"data:text/javascript;base64," +
+			Buffer.from(result.outputFiles[0].text).toString("base64")
+	);
+}
+const key = "src/renderer/src/shared/keymap/";
+const beforeKeys = await moduleEntry(
+	`export * from 'snapshot:${key}keymap-chord.ts';export {KEYMAP_ACTIONS}from'snapshot:${key}keymap-registry.ts';`,
+	OLD,
+);
+const afterKeys = await moduleEntry(
+	`export * from './${key}keymap-chord.ts';export {KEYMAP_ACTIONS}from'./${key}keymap-registry.ts';`,
+);
+assert.deepEqual(
+	beforeKeys.KEYMAP_ACTIONS.map((x) => [x.id, x.defaultChord]),
+	afterKeys.KEYMAP_ACTIONS.map((x) => [x.id, x.defaultChord]),
+);
+for (const x of beforeKeys.KEYMAP_ACTIONS)
+	assert.equal(
+		beforeKeys.effectiveChord(x.id, {}),
+		afterKeys.effectiveChord(x.id, {}),
+	);
+assert.deepEqual(beforeKeys.sanitizeShortcutBindings({}), {});
+assert.deepEqual(afterKeys.sanitizeShortcutBindings({}), {});
+const focus = await moduleEntry(
+	"export {focusBrowserChordTarget}from'./src/main/window-raise.ts';",
+);
+let focused = 0;
+focus.focusBrowserChordTarget(
+	{ isDestroyed: () => false, isFocused: () => false },
+	{ isDestroyed: () => false, focus: () => focused++ },
+	"focus",
+);
+assert.equal(focused, 0);
+const caps = now("docs/evidence/hub-links/harness/stub-daemon.mjs").toString();
+assert(!/\bdraft_preview\s*:/.test(caps));
+const composer = now(
+	"src/renderer/src/features/agents/config-run/config-composer.tsx",
+).toString();
+assert(composer.includes('"draft_preview"'));
+assert(composer.includes(": undefined"));
+const router = now("src/renderer/src/app.tsx").toString();
+assert(router.includes('<Route path="/agents" element={<AgentsPage />} />'));
+assert(
+	router.includes('<Route path="/agent-hub" element={<AgentHubPage />} />'),
+);
+assert(router.includes('<Route path="/browser" element={<BrowserPage />} />'));
+const catalogueFiles = [
+	"src/i18n/catalogues/en/ui.hub.json",
+	"src/i18n/catalogues/en/ui.hub.context.json",
+];
+for (const p of catalogueFiles) assert(old(p).equals(now(p)));
+const generatedOld = old("src/i18n/keys.gen.ts").toString(),
+	generatedNow = now("src/i18n/keys.gen.ts").toString();
+const keyNames = (s) => [...s.matchAll(/"(ui\.[^"]+)"/g)].map((x) => x[1]);
+const lost = [...new Set(keyNames(generatedOld))].filter(
+	(x) => !new Set(keyNames(generatedNow)).has(x),
+);
+assert.deepEqual(lost, []);
+save("semantic", {
+	model: "anthropic/claude-sonnet-5-5",
+	baseline: OLD,
+	requiredByteIdentical: required,
+	emissions,
+	composerNullContextReadings: readings,
+	fixtureDraftPreviewAbsent: true,
+	activeConfigRunStartedByScenes: false,
+	capturedRoutes: ["/agent-hub", "/agents?name=reviewer"],
+	notBrowserOrCanonicalTranscript: true,
+	defaultActionCount: beforeKeys.KEYMAP_ACTIONS.length,
+	defaultActionIdsAndChordsIdentical: true,
+	emptyBindingsHydrateIdentically: true,
+	customSavedBrowserBindings:
+		"intentionally changed upstream, not captured; isolated profile/default bindings only",
+	unfocusedWindowNewFocusCalls: focused,
+	hubEnglishCataloguesByteIdentical: catalogueFiles,
+	generatedOldKeyNamesLost: lost,
+	scope:
+		"source/pure-function semantic compatibility, NOT a new native capture or blanket all-source byte identity",
+});
+console.log(
+	"SEMANTIC PASS",
+	required.length,
+	"guard/transport/fixture bytes unchanged;",
+	emissions.length,
+	"emit/property proofs;",
+	beforeKeys.KEYMAP_ACTIONS.length,
+	"default bindings unchanged; composer undefined/unmodeled/draft reads equal; headless focus0; Hub messages unchanged",
+);

@@ -572,7 +572,11 @@ const runCancel = async () => {
 		 * mark was hoped to outlive (see `relay.mjs`; the README's limits
 		 * section records the negative result).
 		 */
-		await setRelay({ listDelayMs: 0, deleteDelayMs: 1200, eventsDelayMs: 2500 });
+		await setRelay({
+			listDelayMs: 0,
+			deleteDelayMs: 1200,
+			eventsDelayMs: 2500,
+		});
 		/*
 		 * THE PAGE'S OWN TRACE. `evaluate` round trips cost ~50-150 ms each, which
 		 * is longer than the windows under study, so the sampler runs INSIDE the
@@ -641,7 +645,10 @@ const runCancel = async () => {
 		const deleteLanded = await until(
 			async () =>
 				relayLines().some(
-					(line) => line.startsWith("DELETE ") && line.includes(WAKE) && /-> 2\d\d/.test(line),
+					(line) =>
+						line.startsWith("DELETE ") &&
+						line.includes(WAKE) &&
+						/-> 2\d\d/.test(line),
 				),
 			12_000,
 		);
@@ -652,13 +659,17 @@ const runCancel = async () => {
 		 * the round-1 set carried).
 		 */
 		record("churn trace", await pollTrace(1_200));
-		record("page trace (secondary)", await evaluate(`(() => {
+		record(
+			"page trace (secondary)",
+			await evaluate(`(() => {
 			window.clearInterval(window.__wakeSampler);
 			return { ticks: window.__wakeSamples.length, last: window.__wakeSamples.slice(-1)[0] };
-		})()`));
+		})()`),
+		);
 		await setRelay({ listDelayMs: 0, deleteDelayMs: 0, eventsDelayMs: 0 });
 		const gone = await until(
-			async () => evaluate(`document.querySelector(${JSON.stringify(target)}) === null`),
+			async () =>
+				evaluate(`document.querySelector(${JSON.stringify(target)}) === null`),
 			30_000,
 		);
 		record("row dropped by the re-read", { gone });
@@ -808,11 +819,17 @@ const runProbeCancel = async () => {
 	record("direct before", await direct());
 	record(
 		"targets",
-		await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json().then((list) =>
-			list
-				.filter((entry) => entry.type === "page")
-				.map((entry) => ({ id: entry.id, url: entry.url, title: entry.title })),
-		),
+		await (await fetch(`http://127.0.0.1:${PORT}/json/list`))
+			.json()
+			.then((list) =>
+				list
+					.filter((entry) => entry.type === "page")
+					.map((entry) => ({
+						id: entry.id,
+						url: entry.url,
+						title: entry.title,
+					})),
+			),
 	);
 	record(
 		"doc marker (set)",
@@ -846,10 +863,7 @@ const runProbeCancel = async () => {
 		return true;
 	})()`);
 	await wait(1_000);
-	record(
-		"doc marker (read back)",
-		await evaluate(`window.__probeDocName`),
-	);
+	record("doc marker (read back)", await evaluate(`window.__probeDocName`));
 	record("direct after", await direct());
 	/*
 	 * THE PRESS, SAMPLED. From here on the probe is the cancel scenario with the
@@ -859,10 +873,13 @@ const runProbeCancel = async () => {
 	await press(`[data-wake-cancel="${WAKE}"]`);
 	await wait(4_000);
 	record("direct after press", await direct());
-	record("sampler", await evaluate(`(() => {
+	record(
+		"sampler",
+		await evaluate(`(() => {
 		window.clearInterval(window.__probeSampler);
 		return window.__probeSamples;
-	})()`));
+	})()`),
+	);
 };
 
 /**

@@ -1,143 +1,143 @@
 {
-  "size": "1380x900",
-  "theme": "local-operator-dark",
-  "hasOrgChip": true,
-  "requestedSize": "1380x900",
-  "actualSizeProvenance": "Measured renderer innerWidth/innerHeight/devicePixelRatio in this run; requested native size retained separately.",
-  "viewport": {
-    "width": 1380,
-    "height": 900,
-    "devicePixelRatio": 2
-  },
-  "geometry": {
-    "loadingInitial": {
-      "tabs": [
-        {
-          "text": "Agents",
-          "selected": "false",
-          "state": "inactive",
-          "rect": {
-            "x": 288,
-            "y": 151.2890625,
-            "w": 89.7890625,
-            "h": 24
-          },
-          "background": "rgb(43, 39, 33)"
-        },
-        {
-          "text": "Teams0",
-          "selected": "false",
-          "state": "inactive",
-          "rect": {
-            "x": 381.7890625,
-            "y": 151.2890625,
-            "w": 86.5625,
-            "h": 24
-          },
-          "background": "rgba(0, 0, 0, 0)"
-        },
-        {
-          "text": "Skills",
-          "selected": "true",
-          "state": "active",
-          "rect": {
-            "x": 472.3515625,
-            "y": 151.2890625,
-            "w": 56.625,
-            "h": 24
-          },
-          "background": "rgba(0, 0, 0, 0)"
-        }
-      ],
-      "panel": {
-        "x": 284,
-        "y": 224.6875,
-        "w": 1064,
-        "h": 687.1875
-      }
-    },
-    "library": {
-      "x": 284,
-      "y": 225,
-      "w": 1064,
-      "h": 705,
-      "sw": 1064,
-      "cw": 1064
-    },
-    "populatedTabs": {
-      "tabs": [
-        {
-          "text": "Agents",
-          "selected": "false",
-          "state": "inactive",
-          "rect": {
-            "x": 288,
-            "y": 151.2890625,
-            "w": 89.7890625,
-            "h": 24
-          },
-          "background": "rgba(0, 0, 0, 0)"
-        },
-        {
-          "text": "Teams0",
-          "selected": "false",
-          "state": "inactive",
-          "rect": {
-            "x": 381.7890625,
-            "y": 151.2890625,
-            "w": 86.5625,
-            "h": 24
-          },
-          "background": "rgba(0, 0, 0, 0)"
-        },
-        {
-          "text": "Skills",
-          "selected": "true",
-          "state": "active",
-          "rect": {
-            "x": 472.3515625,
-            "y": 151.2890625,
-            "w": 56.625,
-            "h": 24
-          },
-          "background": "rgb(43, 39, 33)"
-        }
-      ],
-      "panel": {
-        "x": 284,
-        "y": 224.6875,
-        "w": 1064,
-        "h": 704.6875
-      }
-    },
-    "withdrawnTabs": {
-      "tabs": [
-        {
-          "text": "Agents",
-          "selected": "true",
-          "state": "active",
-          "rect": {
-            "x": 288,
-            "y": 151.2890625,
-            "w": 89.7890625,
-            "h": 24
-          },
-          "background": "rgb(43, 39, 33)"
-        },
-        {
-          "text": "Teams0",
-          "selected": "false",
-          "state": "inactive",
-          "rect": {
-            "x": 381.7890625,
-            "y": 151.2890625,
-            "w": 86.5625,
-            "h": 24
-          },
-          "background": "rgba(0, 0, 0, 0)"
-        }
-      ],
-      "panel": null
-    }
-  }
+	"size": "1380x900",
+	"theme": "local-operator-dark",
+	"hasOrgChip": true,
+	"requestedSize": "1380x900",
+	"actualSizeProvenance": "Measured renderer innerWidth/innerHeight/devicePixelRatio in this run; requested native size retained separately.",
+	"viewport": {
+		"width": 1380,
+		"height": 900,
+		"devicePixelRatio": 2
+	},
+	"geometry": {
+		"loadingInitial": {
+			"tabs": [
+				{
+					"text": "Agents",
+					"selected": "false",
+					"state": "inactive",
+					"rect": {
+						"x": 288,
+						"y": 151.2890625,
+						"w": 89.7890625,
+						"h": 24
+					},
+					"background": "rgb(43, 39, 33)"
+				},
+				{
+					"text": "Teams0",
+					"selected": "false",
+					"state": "inactive",
+					"rect": {
+						"x": 381.7890625,
+						"y": 151.2890625,
+						"w": 86.5625,
+						"h": 24
+					},
+					"background": "rgba(0, 0, 0, 0)"
+				},
+				{
+					"text": "Skills",
+					"selected": "true",
+					"state": "active",
+					"rect": {
+						"x": 472.3515625,
+						"y": 151.2890625,
+						"w": 56.625,
+						"h": 24
+					},
+					"background": "rgba(0, 0, 0, 0)"
+				}
+			],
+			"panel": {
+				"x": 284,
+				"y": 224.6875,
+				"w": 1064,
+				"h": 687.1875
+			}
+		},
+		"library": {
+			"x": 284,
+			"y": 225,
+			"w": 1064,
+			"h": 705,
+			"sw": 1064,
+			"cw": 1064
+		},
+		"populatedTabs": {
+			"tabs": [
+				{
+					"text": "Agents",
+					"selected": "false",
+					"state": "inactive",
+					"rect": {
+						"x": 288,
+						"y": 151.2890625,
+						"w": 89.7890625,
+						"h": 24
+					},
+					"background": "rgba(0, 0, 0, 0)"
+				},
+				{
+					"text": "Teams0",
+					"selected": "false",
+					"state": "inactive",
+					"rect": {
+						"x": 381.7890625,
+						"y": 151.2890625,
+						"w": 86.5625,
+						"h": 24
+					},
+					"background": "rgba(0, 0, 0, 0)"
+				},
+				{
+					"text": "Skills",
+					"selected": "true",
+					"state": "active",
+					"rect": {
+						"x": 472.3515625,
+						"y": 151.2890625,
+						"w": 56.625,
+						"h": 24
+					},
+					"background": "rgb(43, 39, 33)"
+				}
+			],
+			"panel": {
+				"x": 284,
+				"y": 224.6875,
+				"w": 1064,
+				"h": 704.6875
+			}
+		},
+		"withdrawnTabs": {
+			"tabs": [
+				{
+					"text": "Agents",
+					"selected": "true",
+					"state": "active",
+					"rect": {
+						"x": 288,
+						"y": 151.2890625,
+						"w": 89.7890625,
+						"h": 24
+					},
+					"background": "rgb(43, 39, 33)"
+				},
+				{
+					"text": "Teams0",
+					"selected": "false",
+					"state": "inactive",
+					"rect": {
+						"x": 381.7890625,
+						"y": 151.2890625,
+						"w": 86.5625,
+						"h": 24
+					},
+					"background": "rgba(0, 0, 0, 0)"
+				}
+			],
+			"panel": null
+		}
+	}
 }

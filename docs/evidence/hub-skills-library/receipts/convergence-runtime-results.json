@@ -1,1519 +1,1506 @@
 {
-  "scope": "Node-only targeted module compilation/execution, not a native render proof",
-  "refs": [
-    "43fc66a1b",
-    "51a2eccfb"
-  ],
-  "modules": [
-    {
-      "ref": "43fc66a1b",
-      "moduleBundleSha256": "96d3191011a2aca21f9dd6670fe858eb4fc9b8334eeeed3cd1ab713a5a534039",
-      "sourcePins": {
-        "src/renderer/src/shared/store/ui-preferences-store.ts": "5f7bd77b9437b82d17fa061e2cab86838db2c0509a482e78cddcb1beb51f85a7",
-        "src/shared/desktop-contract.ts": "3d82ccf0704990db56e048e12227204b6f8b2d1f2bfdd5f3eb948c4116379c5b",
-        "src/renderer/src/shared/store/right-slot-memory.ts": "f691f7993ba06f275d20560a50120183273af1805dac5ee2acde7a46b494080a",
-        "src/renderer/src/features/chat/transcript-display-mode.ts": "c97bf8dad4af6b9d21849c44be07ca5d8e1c13aab609de37bb7a6acaaedf08b9",
-        "src/renderer/src/features/chat/chat-sidebar-layout.ts": "7127f617ad7254401d6bfb336de4315ed5f882a42865fc7e1e123506237a73a5",
-        "src/renderer/src/features/chat/chat-sidebar-view.ts": "f0444d7647cb8b7617aef8c45ee1bbdfa3261789fd15873bb20e2f1840dde47d",
-        "src/renderer/src/features/chat/sidebar-split.ts": "8758b8cb940c842be558b179681ea16edc1c4ca1d5b934e8f1afc45b0d27cdde",
-        "src/renderer/src/shared/themes/index.ts": "a90e5b185fd20c5928e8ec9bec77e4528ac10617b70d92d2779e8b293bc6bc85",
-        "src/renderer/src/shared/keymap/keymap-chord.ts": "ccae9cfe4fd19175d7e41585714d986ee0cfe88cbfa469c32d0ef4b4161ea1e8",
-        "src/shared/journal-order-query.ts": "7ddac0c287f5e0da74c78373641d410f918437ceb4b921f8aa81a660f044b616",
-        "src/renderer/src/shared/components/common/resizable-divider-geometry.ts": "d8c48be1726e298ef41fc79454b00b3db1da132e564b83c1790ff92cc0787f64",
-        "src/renderer/src/features/chat/chat-list-sections.ts": "4aecdc3c8c2f15bf853b62540c1a1520e1fdfa0e7c30064438e564657d239f65",
-        "src/renderer/src/shared/themes/palettes/vaporwave.ts": "d09e7f7bb7c11d50987f2a0c2885e4f2901d656528a4684571e0c804251718a8",
-        "src/renderer/src/shared/keymap/keymap-registry.ts": "5e0d96eb88e18728c1354bdc73268668b570e5b614cec741b5155420a7edaa0e",
-        "src/renderer/src/shared/themes/base-theme.ts": "49448578302042ca55326cb9c36252ad4d4f23d8a5d6ff3814764d62a2f83cbb",
-        "src/renderer/src/shared/themes/palettes/alucard.ts": "0ff9670d5ea53706e7a2e961c94ed00dbbc5dbe7824622a5255f57047cabb983",
-        "src/renderer/src/shared/themes/palettes/arcade.ts": "eff29efbaed5d3c91827a18f0f04ae927c1399f6a042617fe655ae0996cbd9ca",
-        "src/renderer/src/shared/themes/palettes/arctic.ts": "c8c74ffa6fc9477dc3e89ad5df1545a260d3b719fbf04e61ac9e339e87221755",
-        "src/renderer/src/shared/themes/palettes/autumn.ts": "34e645efbab11fa0f236e3ac9b75f0e5adeaf398ce044f4bd73c7b881cac366a",
-        "src/renderer/src/shared/themes/palettes/ayu-dark.ts": "88db3063ee1441c7663944a7117bceb041f644cb8eda26cd7c074f9f564d80d5",
-        "src/renderer/src/shared/themes/palettes/ayu-light.ts": "0d2d6db4696422b37d18d15bd588490231964beb4fc3760f302da50ca0a0991b",
-        "src/renderer/src/shared/themes/palettes/ayu-mirage.ts": "fad03889fcaf8186031605737f2e652fc3ef64ee53331641e9db5ce0f32b2924",
-        "src/renderer/src/shared/themes/palettes/catppuccin-frappe.ts": "bd470592f397bc9b970ec950fa8ef5cc888da1ce2f80223b28cb5646db291b71",
-        "src/renderer/src/shared/themes/palettes/catppuccin-latte.ts": "af7212978ea5f0824da3266f92bb0e8da6b43f2a1b17005b78e90417f5ee6e05",
-        "src/renderer/src/shared/themes/palettes/catppuccin-macchiato.ts": "5bdec0cebe4a1d49d205da1a7fca29fa40a62389d305ab43951548ade7b5c4de",
-        "src/renderer/src/shared/themes/palettes/catppuccin-mocha.ts": "f83bdbada1a704254f6dfa368cd9f8c5c6279cd5f011e7cc3686bafb8af10c95",
-        "src/renderer/src/shared/themes/palettes/cyberpunk.ts": "509eda208d8bbebc1407fae3c6c043a5cf3e454341ffa190c68b79a17cf6421d",
-        "src/renderer/src/shared/themes/palettes/desert.ts": "cebe43f749aa6db0bb073abc70bb2c0f4fe1561c01114918da778f6555f3016b",
-        "src/renderer/src/shared/themes/palettes/dracula.ts": "ecae9560ddab63aedb41e765af966eab4b07408afcda2cf5601de24008a8c64c",
-        "src/renderer/src/shared/themes/palettes/dune.ts": "85dfddf2f956e916505aadfedaa82bfc4822e9c6476fdf8024af7ac3061b6c8a",
-        "src/renderer/src/shared/themes/palettes/duskfox.ts": "8ea065642f72adb4105a0c0e60d870c3b7841770271bd63e3719279bfd966a55",
-        "src/renderer/src/shared/themes/palettes/everforest.ts": "43b8590b489aa536828304336d90144a52356535dfe5481f9ff766dee0f4f099",
-        "src/renderer/src/shared/themes/palettes/everforest-light.ts": "8dd50caaa37cb99a3a7fbb9906691a4fc078f0e1e401e85a6dffb166c73c0030",
-        "src/renderer/src/shared/themes/palettes/forest.ts": "542bc4199fa0ec6e80b0b0b54474971646c5fda27c7e4eacdd6a6990f88f4e1d",
-        "src/renderer/src/shared/themes/palettes/github-light.ts": "e78a52a0f142867e8c17ab1d1ac5264f70df8fcf2ec5f0e56458e8faaf0f6665",
-        "src/renderer/src/shared/themes/palettes/gruvbox.ts": "9b1fd11e5b39b38db87a9ccce4f4fbbaf13afad1ef2b35d08f9f197f4603cde0",
-        "src/renderer/src/shared/themes/palettes/gruvbox-light.ts": "218257ea4aae24bbc5bc20096379634be79493b8e85a168dab854bcfd83b9da3",
-        "src/renderer/src/shared/themes/palettes/high-contrast-light.ts": "d1debe1dc7b1b474e99a89c6aff3831b69e4c2fe63a21dbd0dd75265c254df68",
-        "src/renderer/src/shared/themes/palettes/iceberg.ts": "aa7ab6bacf5dd20058afc4d69a28a6c5bf92b54125adf8685b29664ed9a8337a",
-        "src/renderer/src/shared/themes/palettes/kanagawa-lotus.ts": "0ccac4e8bfd92c0e4ae2f5e36671e4cee2a28fa64a7beb8005be494a3f4a547c",
-        "src/renderer/src/shared/themes/palettes/paper.ts": "77c350ca29ead3c2b771daf99c0267f9a5393de90cb475e73c5c366d9871d453",
-        "src/renderer/src/shared/themes/palettes/lavender.ts": "6eb12ad9ecd63bac42b43003d925944db59045f288a8577bb214564a56f91871",
-        "src/renderer/src/shared/themes/palettes/linen.ts": "093f6ded5e45911c7df1f14b89b58f325f0859219260c3694a7e6d5e2fcca7ad",
-        "src/renderer/src/shared/themes/palettes/local-operator.ts": "07d8582195c42e962c279aa9d1a7ca21fd08bbbbe25e973d17f221dd2796fdae",
-        "src/renderer/src/shared/themes/palettes/radient.ts": "1dd7839a5e79286b3d3d0a57b1b648dfe3cf85c06ce20e811d51718ba384465a",
-        "src/renderer/src/shared/themes/palettes/kanagawa-wave.ts": "9ba411f3a6cc299914b8e97349ed64598ba868a8f41fb2ee3976c0ad8c171ec4",
-        "src/renderer/src/shared/themes/palettes/rose-pine.ts": "b14477c88dc2982f5f4ff60dbb26700afebad6f9dcb0753cf0d8cd41885a1976",
-        "src/renderer/src/shared/themes/palettes/synth.ts": "2c8069ef86de80d369d2704899f77c0b1e2b6e2c717f0bef27fe84a19f3ddecf",
-        "src/renderer/src/shared/themes/palettes/synthwave.ts": "508bdb0a09bc8222500f519a6744b75ddb91685b5bfe35aa46b19205cbf718ba",
-        "src/renderer/src/shared/themes/palettes/rose-pine-dawn.ts": "1e8450625af77e8cea272265c864f0dd83b3e3f9bc14f120d2909c41f641a0e6",
-        "src/renderer/src/shared/themes/palettes/rose-pine-moon.ts": "77379012a14a2879a6e3ef4e7089c0e51dbff1b1509a4a4a0e9419d91c899c7c",
-        "src/renderer/src/shared/themes/palettes/rosewood.ts": "15af6b0f13b6f00761d260d120effb1689cf7df54387036493360aa7144833c8",
-        "src/renderer/src/shared/themes/palettes/sage.ts": "511eaed672271e921bc780fdbfafaf6c2c81d639aeab131be0edb9412186980f",
-        "src/renderer/src/shared/themes/palettes/mint-light.ts": "7564e059595391341a80b55135482050755562f75e84186b38da7a40f9015e08",
-        "src/renderer/src/shared/themes/palettes/solarized-dark.ts": "0c878970c7360639345b5deaa28ef5e13420b5b7b71c72f8dcecafe4c615e8ce",
-        "src/renderer/src/shared/themes/palettes/matrix.ts": "b00fdb3e389db7d281176d788de517ab257f8e2e3ee6c168a62394eb7958a049",
-        "src/renderer/src/shared/themes/palettes/tokyo-night.ts": "ad83c1d7161ff4e3ab20f4a78f286242e741d3ef46b0e7ae7eaaaaa47ae0a7c4",
-        "src/renderer/src/shared/themes/palettes/solarized-light.ts": "bd9364cfc1872a1ae414a53e1faf9dfc96ac52899710dcb71a1e6b95ed5fb342",
-        "src/renderer/src/shared/themes/palettes/monokai.ts": "ef0afde2f6340344ff9ff84f17380deed8e520d7b1f7fa263e1eecd71a08846b",
-        "src/renderer/src/shared/themes/palettes/ocean.ts": "d5107aba174101c58d7e070b746669131f52afa075d74550b67281e4ed07f334",
-        "src/renderer/src/shared/themes/palettes/neon-noir.ts": "52b3f33f02ab81e60d9eb6678c235c50079348875039af801a1589b2eeb95f3f",
-        "src/renderer/src/shared/themes/palettes/nightfox.ts": "8ab7122189c0d353a2b4b545abbb4b66c5991ae92cf62b21461ac4e642a08cf3",
-        "src/renderer/src/shared/themes/palettes/nord.ts": "de312131b6c98214028e194c4b674ebe81eba6820744f0a68af088b88776e1fa",
-        "src/renderer/src/shared/themes/palettes/obsidian.ts": "a75f6215a381aa0d51959d20aa4b142bb18417826d7e3cafe2eae473e29b3974",
-        "src/renderer/src/shared/themes/palettes/one-light.ts": "a6af6e1af5b6c95b31ab96dbbec037c96160f5d900bb26d699f57ca89143f326",
-        "src/renderer/src/shared/themes/palettes/one-dark.ts": "b94fcca7e51dc90ba906e00d103e0dca154b5afbcb45174cae3f7aa4cb1b6b19",
-        "src/renderer/src/shared/themes/palettes/tron.ts": "c767e5753c179e0b4d8f1efe4b5bc34db76fc4d695c9a3129bd157e301a84f11",
-        "src/renderer/src/shared/themes/palettes/tokyo-night-storm.ts": "4be0734b1d2973e2d8f0562e229d2fc063cdd74a9d0f37bb88514d58b2be9861",
-        "src/renderer/src/shared/themes/palettes/outrun.ts": "49874f3463ce6f289da86a63f6f4d80caf39af27a60a216e5dadf1c1a11718d9",
-        "src/renderer/src/shared/themes/palettes/neon.ts": "69a1cd5b164575c034ecacc89a35db9026934e79cf39f2e1de10bb403be8feb0",
-        "src/renderer/src/shared/themes/palettes/palenight.ts": "09c9ca4051a0ba2f88e12e17ff33ff14dcdb240c972274d2a3cda998ab66ce65",
-        "src/shared/mini-view.ts": "37a13c0f15de7fde62e793cc42aa03dd8d5e78850ba276ffdf7eece71efc4b77",
-        "src/renderer/src/shared/themes/palettes/tokyo-night-day.ts": "9590e78ed725c70a304957bf11b45947b5255ae63b48ef831f9db6c52db0797d"
-      }
-    },
-    {
-      "ref": "51a2eccfb",
-      "moduleBundleSha256": "530ba266c79cb2ebc19c8b12ffb0a74cf116535d2a2a4a54c0aefabd4d6486a5",
-      "sourcePins": {
-        "src/shared/desktop-contract.ts": "2f1c1fa19ff54ee4377c96c691d34c9e31571bb2587cfd9b503219bc736519d8",
-        "src/renderer/src/shared/store/ui-preferences-store.ts": "f34dfe9fc2a7c5ec4dbef13fb7fed791f1e3ae72aef35e5d585a2f9d64db6a39",
-        "src/renderer/src/shared/store/right-slot-memory.ts": "f691f7993ba06f275d20560a50120183273af1805dac5ee2acde7a46b494080a",
-        "src/renderer/src/features/chat/transcript-display-mode.ts": "c97bf8dad4af6b9d21849c44be07ca5d8e1c13aab609de37bb7a6acaaedf08b9",
-        "src/renderer/src/features/chat/chat-sidebar-layout.ts": "7127f617ad7254401d6bfb336de4315ed5f882a42865fc7e1e123506237a73a5",
-        "src/renderer/src/shared/keymap/keymap-chord.ts": "ccae9cfe4fd19175d7e41585714d986ee0cfe88cbfa469c32d0ef4b4161ea1e8",
-        "src/renderer/src/features/chat/chat-sidebar-view.ts": "f0444d7647cb8b7617aef8c45ee1bbdfa3261789fd15873bb20e2f1840dde47d",
-        "src/renderer/src/features/chat/components/canvas/finder-layout.ts": "849107519912e4d0f6ccbd981763e41d88d90a73a3fc1dd53612968e9e6c6b24",
-        "src/renderer/src/features/chat/sidebar-split.ts": "8758b8cb940c842be558b179681ea16edc1c4ca1d5b934e8f1afc45b0d27cdde",
-        "src/renderer/src/shared/themes/index.ts": "a90e5b185fd20c5928e8ec9bec77e4528ac10617b70d92d2779e8b293bc6bc85",
-        "src/shared/journal-order-query.ts": "7ddac0c287f5e0da74c78373641d410f918437ceb4b921f8aa81a660f044b616",
-        "src/renderer/src/shared/keymap/keymap-registry.ts": "5e0d96eb88e18728c1354bdc73268668b570e5b614cec741b5155420a7edaa0e",
-        "src/shared/mini-view.ts": "37a13c0f15de7fde62e793cc42aa03dd8d5e78850ba276ffdf7eece71efc4b77",
-        "src/renderer/src/shared/components/common/resizable-divider-geometry.ts": "d8c48be1726e298ef41fc79454b00b3db1da132e564b83c1790ff92cc0787f64",
-        "src/renderer/src/features/chat/chat-list-sections.ts": "4aecdc3c8c2f15bf853b62540c1a1520e1fdfa0e7c30064438e564657d239f65",
-        "src/renderer/src/shared/themes/base-theme.ts": "49448578302042ca55326cb9c36252ad4d4f23d8a5d6ff3814764d62a2f83cbb",
-        "src/renderer/src/shared/themes/palettes/vaporwave.ts": "d09e7f7bb7c11d50987f2a0c2885e4f2901d656528a4684571e0c804251718a8",
-        "src/renderer/src/shared/themes/palettes/alucard.ts": "0ff9670d5ea53706e7a2e961c94ed00dbbc5dbe7824622a5255f57047cabb983",
-        "src/renderer/src/shared/themes/palettes/arcade.ts": "eff29efbaed5d3c91827a18f0f04ae927c1399f6a042617fe655ae0996cbd9ca",
-        "src/renderer/src/shared/themes/palettes/arctic.ts": "c8c74ffa6fc9477dc3e89ad5df1545a260d3b719fbf04e61ac9e339e87221755",
-        "src/renderer/src/shared/themes/palettes/autumn.ts": "34e645efbab11fa0f236e3ac9b75f0e5adeaf398ce044f4bd73c7b881cac366a",
-        "src/renderer/src/shared/themes/palettes/ayu-dark.ts": "88db3063ee1441c7663944a7117bceb041f644cb8eda26cd7c074f9f564d80d5",
-        "src/renderer/src/shared/themes/palettes/ayu-light.ts": "0d2d6db4696422b37d18d15bd588490231964beb4fc3760f302da50ca0a0991b",
-        "src/renderer/src/shared/themes/palettes/ayu-mirage.ts": "fad03889fcaf8186031605737f2e652fc3ef64ee53331641e9db5ce0f32b2924",
-        "src/renderer/src/shared/themes/palettes/catppuccin-frappe.ts": "bd470592f397bc9b970ec950fa8ef5cc888da1ce2f80223b28cb5646db291b71",
-        "src/renderer/src/shared/themes/palettes/catppuccin-latte.ts": "af7212978ea5f0824da3266f92bb0e8da6b43f2a1b17005b78e90417f5ee6e05",
-        "src/renderer/src/shared/themes/palettes/catppuccin-macchiato.ts": "5bdec0cebe4a1d49d205da1a7fca29fa40a62389d305ab43951548ade7b5c4de",
-        "src/renderer/src/shared/themes/palettes/cyberpunk.ts": "509eda208d8bbebc1407fae3c6c043a5cf3e454341ffa190c68b79a17cf6421d",
-        "src/renderer/src/shared/themes/palettes/desert.ts": "cebe43f749aa6db0bb073abc70bb2c0f4fe1561c01114918da778f6555f3016b",
-        "src/renderer/src/shared/themes/palettes/dracula.ts": "ecae9560ddab63aedb41e765af966eab4b07408afcda2cf5601de24008a8c64c",
-        "src/renderer/src/shared/themes/palettes/dune.ts": "85dfddf2f956e916505aadfedaa82bfc4822e9c6476fdf8024af7ac3061b6c8a",
-        "src/renderer/src/shared/themes/palettes/duskfox.ts": "8ea065642f72adb4105a0c0e60d870c3b7841770271bd63e3719279bfd966a55",
-        "src/renderer/src/shared/themes/palettes/everforest.ts": "43b8590b489aa536828304336d90144a52356535dfe5481f9ff766dee0f4f099",
-        "src/renderer/src/shared/themes/palettes/everforest-light.ts": "8dd50caaa37cb99a3a7fbb9906691a4fc078f0e1e401e85a6dffb166c73c0030",
-        "src/renderer/src/shared/themes/palettes/forest.ts": "542bc4199fa0ec6e80b0b0b54474971646c5fda27c7e4eacdd6a6990f88f4e1d",
-        "src/renderer/src/shared/themes/palettes/github-light.ts": "e78a52a0f142867e8c17ab1d1ac5264f70df8fcf2ec5f0e56458e8faaf0f6665",
-        "src/renderer/src/shared/themes/palettes/gruvbox.ts": "9b1fd11e5b39b38db87a9ccce4f4fbbaf13afad1ef2b35d08f9f197f4603cde0",
-        "src/renderer/src/shared/themes/palettes/gruvbox-light.ts": "218257ea4aae24bbc5bc20096379634be79493b8e85a168dab854bcfd83b9da3",
-        "src/renderer/src/shared/themes/palettes/high-contrast-light.ts": "d1debe1dc7b1b474e99a89c6aff3831b69e4c2fe63a21dbd0dd75265c254df68",
-        "src/renderer/src/shared/themes/palettes/catppuccin-mocha.ts": "f83bdbada1a704254f6dfa368cd9f8c5c6279cd5f011e7cc3686bafb8af10c95",
-        "src/renderer/src/shared/themes/palettes/kanagawa-lotus.ts": "0ccac4e8bfd92c0e4ae2f5e36671e4cee2a28fa64a7beb8005be494a3f4a547c",
-        "src/renderer/src/shared/themes/palettes/kanagawa-wave.ts": "9ba411f3a6cc299914b8e97349ed64598ba868a8f41fb2ee3976c0ad8c171ec4",
-        "src/renderer/src/shared/themes/palettes/iceberg.ts": "aa7ab6bacf5dd20058afc4d69a28a6c5bf92b54125adf8685b29664ed9a8337a",
-        "src/renderer/src/shared/themes/palettes/lavender.ts": "6eb12ad9ecd63bac42b43003d925944db59045f288a8577bb214564a56f91871",
-        "src/renderer/src/shared/themes/palettes/linen.ts": "093f6ded5e45911c7df1f14b89b58f325f0859219260c3694a7e6d5e2fcca7ad",
-        "src/renderer/src/shared/themes/palettes/local-operator.ts": "07d8582195c42e962c279aa9d1a7ca21fd08bbbbe25e973d17f221dd2796fdae",
-        "src/renderer/src/shared/themes/palettes/matrix.ts": "b00fdb3e389db7d281176d788de517ab257f8e2e3ee6c168a62394eb7958a049",
-        "src/renderer/src/shared/themes/palettes/mint-light.ts": "7564e059595391341a80b55135482050755562f75e84186b38da7a40f9015e08",
-        "src/renderer/src/shared/themes/palettes/rose-pine-dawn.ts": "1e8450625af77e8cea272265c864f0dd83b3e3f9bc14f120d2909c41f641a0e6",
-        "src/renderer/src/shared/themes/palettes/neon.ts": "69a1cd5b164575c034ecacc89a35db9026934e79cf39f2e1de10bb403be8feb0",
-        "src/renderer/src/shared/themes/palettes/neon-noir.ts": "52b3f33f02ab81e60d9eb6678c235c50079348875039af801a1589b2eeb95f3f",
-        "src/renderer/src/shared/themes/palettes/nightfox.ts": "8ab7122189c0d353a2b4b545abbb4b66c5991ae92cf62b21461ac4e642a08cf3",
-        "src/renderer/src/shared/themes/palettes/nord.ts": "de312131b6c98214028e194c4b674ebe81eba6820744f0a68af088b88776e1fa",
-        "src/renderer/src/shared/themes/palettes/obsidian.ts": "a75f6215a381aa0d51959d20aa4b142bb18417826d7e3cafe2eae473e29b3974",
-        "src/renderer/src/shared/themes/palettes/ocean.ts": "d5107aba174101c58d7e070b746669131f52afa075d74550b67281e4ed07f334",
-        "src/renderer/src/shared/themes/palettes/one-dark.ts": "b94fcca7e51dc90ba906e00d103e0dca154b5afbcb45174cae3f7aa4cb1b6b19",
-        "src/renderer/src/shared/themes/palettes/one-light.ts": "a6af6e1af5b6c95b31ab96dbbec037c96160f5d900bb26d699f57ca89143f326",
-        "src/renderer/src/shared/themes/palettes/outrun.ts": "49874f3463ce6f289da86a63f6f4d80caf39af27a60a216e5dadf1c1a11718d9",
-        "src/renderer/src/shared/themes/palettes/palenight.ts": "09c9ca4051a0ba2f88e12e17ff33ff14dcdb240c972274d2a3cda998ab66ce65",
-        "src/renderer/src/shared/themes/palettes/paper.ts": "77c350ca29ead3c2b771daf99c0267f9a5393de90cb475e73c5c366d9871d453",
-        "src/renderer/src/shared/themes/palettes/radient.ts": "1dd7839a5e79286b3d3d0a57b1b648dfe3cf85c06ce20e811d51718ba384465a",
-        "src/renderer/src/shared/themes/palettes/rose-pine.ts": "b14477c88dc2982f5f4ff60dbb26700afebad6f9dcb0753cf0d8cd41885a1976",
-        "src/renderer/src/shared/themes/palettes/synthwave.ts": "508bdb0a09bc8222500f519a6744b75ddb91685b5bfe35aa46b19205cbf718ba",
-        "src/renderer/src/shared/themes/palettes/rose-pine-moon.ts": "77379012a14a2879a6e3ef4e7089c0e51dbff1b1509a4a4a0e9419d91c899c7c",
-        "src/renderer/src/shared/themes/palettes/rosewood.ts": "15af6b0f13b6f00761d260d120effb1689cf7df54387036493360aa7144833c8",
-        "src/renderer/src/shared/themes/palettes/sage.ts": "511eaed672271e921bc780fdbfafaf6c2c81d639aeab131be0edb9412186980f",
-        "src/renderer/src/shared/themes/palettes/solarized-dark.ts": "0c878970c7360639345b5deaa28ef5e13420b5b7b71c72f8dcecafe4c615e8ce",
-        "src/renderer/src/shared/themes/palettes/solarized-light.ts": "bd9364cfc1872a1ae414a53e1faf9dfc96ac52899710dcb71a1e6b95ed5fb342",
-        "src/renderer/src/shared/themes/palettes/synth.ts": "2c8069ef86de80d369d2704899f77c0b1e2b6e2c717f0bef27fe84a19f3ddecf",
-        "src/renderer/src/shared/themes/palettes/tokyo-night.ts": "ad83c1d7161ff4e3ab20f4a78f286242e741d3ef46b0e7ae7eaaaaa47ae0a7c4",
-        "src/renderer/src/shared/themes/palettes/tokyo-night-day.ts": "9590e78ed725c70a304957bf11b45947b5255ae63b48ef831f9db6c52db0797d",
-        "src/renderer/src/shared/themes/palettes/tron.ts": "c767e5753c179e0b4d8f1efe4b5bc34db76fc4d695c9a3129bd157e301a84f11",
-        "src/renderer/src/shared/themes/palettes/monokai.ts": "ef0afde2f6340344ff9ff84f17380deed8e520d7b1f7fa263e1eecd71a08846b",
-        "src/renderer/src/shared/themes/palettes/tokyo-night-storm.ts": "4be0734b1d2973e2d8f0562e229d2fc063cdd74a9d0f37bb88514d58b2be9861"
-      }
-    }
-  ],
-  "preferences": {
-    "versions": [
-      3,
-      4
-    ],
-    "allExistingStateKeys": [
-      "isCommandPaletteOpen",
-      "commandPaletteQuery",
-      "isSidebarCollapsed",
-      "showAgentReasoning",
-      "transcriptDisplayMode",
-      "themeName",
-      "rightSlotWidth",
-      "chatSidebarWidth",
-      "chatSidebarRegions",
-      "chatSidebarView",
-      "chatSidebarListHeight",
-      "chatSidebarOrder",
-      "dismissedBuiltinOfferSignature",
-      "isCanvasOpen",
-      "isRunPanelOpen",
-      "isBrowserPaneOpen",
-      "isConsolePaneOpen",
-      "isCodeReviewPaneOpen",
-      "rightSlotKey",
-      "rightSlotMemory",
-      "rightSlotLegacySeed",
-      "isAskDrawerOpen",
-      "askDrawerScope",
-      "askDrawerEvictedPane",
-      "askOpenIntent",
-      "rightSlotRoute",
-      "consoleOpenIntent",
-      "runPanelReveal",
-      "codeReviewReveal",
-      "browserPaneScope",
-      "consoleActiveSurface",
-      "consoleUnseen",
-      "isCreateAgentDialogOpen",
-      "mentionRecents",
-      "profileRecents",
-      "conversationRecents",
-      "shortcutBindings",
-      "openCreateAgentDialog",
-      "closeCreateAgentDialog",
-      "openCommandPalette",
-      "closeCommandPalette",
-      "toggleCommandPalette",
-      "setCommandPaletteQuery",
-      "toggleSidebar",
-      "setSidebarCollapsed",
-      "setShowAgentReasoning",
-      "setTranscriptDisplayMode",
-      "setTheme",
-      "setCanvasOpen",
-      "setRunPanelOpen",
-      "setBrowserPaneOpen",
-      "setConsolePaneOpen",
-      "setCodeReviewPaneOpen",
-      "clearCodeReviewReveal",
-      "revealCodeReviewPane",
-      "setAskDrawerOpen",
-      "requestAskOpen",
-      "clearAskOpenIntent",
-      "setConsoleActiveSurface",
-      "requestConsoleOpen",
-      "clearConsoleOpenIntent",
-      "markConsoleUnseen",
-      "clearConsoleUnseen",
-      "setRightSlotWidth",
-      "restoreDefaultRightSlotWidth",
-      "bindRightSlotKey",
-      "setRightSlotRoute",
-      "setShortcutBinding",
-      "clearShortcutBinding",
-      "setBrowserPaneScope",
-      "revealRunPanelSection",
-      "clearRunPanelReveal",
-      "setChatSidebarWidth",
-      "setChatSidebarRegions",
-      "setChatSidebarListHeight",
-      "restoreDefaultChatSidebarListHeight",
-      "setChatSidebarOrder",
-      "setChatSidebarView",
-      "dismissBuiltinOffer",
-      "restoreDefaultChatSidebarWidth",
-      "rememberMention",
-      "rememberProfile",
-      "rememberConversation"
-    ],
-    "addedKeys": [
-      "finderFiles",
-      "setFinderFiles"
-    ],
-    "changedExisting": [],
-    "allExistingPersistedKeys": [
-      "isCommandPaletteOpen",
-      "commandPaletteQuery",
-      "isSidebarCollapsed",
-      "showAgentReasoning",
-      "transcriptDisplayMode",
-      "themeName",
-      "rightSlotWidth",
-      "chatSidebarWidth",
-      "chatSidebarRegions",
-      "chatSidebarView",
-      "chatSidebarListHeight",
-      "chatSidebarOrder",
-      "dismissedBuiltinOfferSignature",
-      "rightSlotMemory",
-      "rightSlotLegacySeed",
-      "browserPaneScope",
-      "consoleActiveSurface",
-      "consoleUnseen",
-      "isCreateAgentDialogOpen",
-      "mentionRecents",
-      "profileRecents",
-      "conversationRecents",
-      "shortcutBindings"
-    ],
-    "v3MigrationChangedOnlyFinderFiles": true,
-    "projectionRuns": [
-      {
-        "name": "empty",
-        "version": 0,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "empty",
-        "version": 1,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "empty",
-        "version": 2,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "empty",
-        "version": 3,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "all-existing-persisted-keys",
-        "version": 0,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "all-existing-persisted-keys",
-        "version": 1,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "all-existing-persisted-keys",
-        "version": 2,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "all-existing-persisted-keys",
-        "version": 3,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:isCommandPaletteOpen",
-        "version": 0,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:isCommandPaletteOpen",
-        "version": 1,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:isCommandPaletteOpen",
-        "version": 2,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:isCommandPaletteOpen",
-        "version": 3,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:commandPaletteQuery",
-        "version": 0,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:commandPaletteQuery",
-        "version": 1,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:commandPaletteQuery",
-        "version": 2,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:commandPaletteQuery",
-        "version": 3,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:isSidebarCollapsed",
-        "version": 0,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:isSidebarCollapsed",
-        "version": 1,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:isSidebarCollapsed",
-        "version": 2,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:isSidebarCollapsed",
-        "version": 3,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:showAgentReasoning",
-        "version": 0,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:showAgentReasoning",
-        "version": 1,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:showAgentReasoning",
-        "version": 2,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:showAgentReasoning",
-        "version": 3,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:transcriptDisplayMode",
-        "version": 0,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:transcriptDisplayMode",
-        "version": 1,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:transcriptDisplayMode",
-        "version": 2,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:transcriptDisplayMode",
-        "version": 3,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:themeName",
-        "version": 0,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:themeName",
-        "version": 1,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:themeName",
-        "version": 2,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:themeName",
-        "version": 3,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:rightSlotWidth",
-        "version": 0,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:rightSlotWidth",
-        "version": 1,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:rightSlotWidth",
-        "version": 2,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:rightSlotWidth",
-        "version": 3,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:chatSidebarWidth",
-        "version": 0,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:chatSidebarWidth",
-        "version": 1,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:chatSidebarWidth",
-        "version": 2,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:chatSidebarWidth",
-        "version": 3,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:chatSidebarRegions",
-        "version": 0,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:chatSidebarRegions",
-        "version": 1,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:chatSidebarRegions",
-        "version": 2,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:chatSidebarRegions",
-        "version": 3,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:chatSidebarView",
-        "version": 0,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:chatSidebarView",
-        "version": 1,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:chatSidebarView",
-        "version": 2,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:chatSidebarView",
-        "version": 3,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:chatSidebarListHeight",
-        "version": 0,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:chatSidebarListHeight",
-        "version": 1,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:chatSidebarListHeight",
-        "version": 2,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:chatSidebarListHeight",
-        "version": 3,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:chatSidebarOrder",
-        "version": 0,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:chatSidebarOrder",
-        "version": 1,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:chatSidebarOrder",
-        "version": 2,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:chatSidebarOrder",
-        "version": 3,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:dismissedBuiltinOfferSignature",
-        "version": 0,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:dismissedBuiltinOfferSignature",
-        "version": 1,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:dismissedBuiltinOfferSignature",
-        "version": 2,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:dismissedBuiltinOfferSignature",
-        "version": 3,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:rightSlotMemory",
-        "version": 0,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:rightSlotMemory",
-        "version": 1,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:rightSlotMemory",
-        "version": 2,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:rightSlotMemory",
-        "version": 3,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:rightSlotLegacySeed",
-        "version": 0,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:rightSlotLegacySeed",
-        "version": 1,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:rightSlotLegacySeed",
-        "version": 2,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:rightSlotLegacySeed",
-        "version": 3,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:browserPaneScope",
-        "version": 0,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:browserPaneScope",
-        "version": 1,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:browserPaneScope",
-        "version": 2,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:browserPaneScope",
-        "version": 3,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:consoleActiveSurface",
-        "version": 0,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:consoleActiveSurface",
-        "version": 1,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:consoleActiveSurface",
-        "version": 2,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:consoleActiveSurface",
-        "version": 3,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:consoleUnseen",
-        "version": 0,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:consoleUnseen",
-        "version": 1,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:consoleUnseen",
-        "version": 2,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:consoleUnseen",
-        "version": 3,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:isCreateAgentDialogOpen",
-        "version": 0,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:isCreateAgentDialogOpen",
-        "version": 1,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:isCreateAgentDialogOpen",
-        "version": 2,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:isCreateAgentDialogOpen",
-        "version": 3,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:mentionRecents",
-        "version": 0,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:mentionRecents",
-        "version": 1,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:mentionRecents",
-        "version": 2,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:mentionRecents",
-        "version": 3,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:profileRecents",
-        "version": 0,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:profileRecents",
-        "version": 1,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:profileRecents",
-        "version": 2,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:profileRecents",
-        "version": 3,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:conversationRecents",
-        "version": 0,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:conversationRecents",
-        "version": 1,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:conversationRecents",
-        "version": 2,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:conversationRecents",
-        "version": 3,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:shortcutBindings",
-        "version": 0,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:shortcutBindings",
-        "version": 1,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:shortcutBindings",
-        "version": 2,
-        "existingKeysCompared": 83,
-        "differences": []
-      },
-      {
-        "name": "perturb:shortcutBindings",
-        "version": 3,
-        "existingKeysCompared": 83,
-        "differences": []
-      }
-    ]
-  },
-  "requestInputProvenance": "Reconstructed from exact use-hub-skills.ts and radient/proxy operation shapes plus stub fixture names; fixed synthetic UUID replaces non-retained original random request IDs. These are NOT claimed as raw recorded wire bodies.",
-  "replay": [
-    {
-      "input": {
-        "op": "radient.request",
-        "control": {
-          "operation": "account"
-        }
-      },
-      "result": {
-        "ok": true,
-        "parsed": {
-          "op": "radient.request",
-          "control": {
-            "operation": "account"
-          }
-        },
-        "endpoint": {
-          "path": "/v1/desktop/radient",
-          "method": "POST",
-          "body": {
-            "operation": "account"
-          }
-        },
-        "readOnly": false,
-        "deadlineDetail": {
-          "code": "deadline_exceeded",
-          "message": "The app waits up to 150 seconds for this request, and it was still running when the app stopped waiting. It may or may not have reached the server; check the result before repeating it."
-        }
-      },
-      "identical": true
-    },
-    {
-      "input": {
-        "op": "radient.request",
-        "control": {
-          "operation": "memberships.list"
-        }
-      },
-      "result": {
-        "ok": true,
-        "parsed": {
-          "op": "radient.request",
-          "control": {
-            "operation": "memberships.list"
-          }
-        },
-        "endpoint": {
-          "path": "/v1/desktop/radient",
-          "method": "POST",
-          "body": {
-            "operation": "memberships.list"
-          }
-        },
-        "readOnly": false,
-        "deadlineDetail": {
-          "code": "deadline_exceeded",
-          "message": "The app waits up to 150 seconds for this request, and it was still running when the app stopped waiting. It may or may not have reached the server; check the result before repeating it."
-        }
-      },
-      "identical": true
-    },
-    {
-      "input": {
-        "op": "radient.request",
-        "control": {
-          "operation": "org_agents.list",
-          "tenant_id": "org-minerva"
-        }
-      },
-      "result": {
-        "ok": true,
-        "parsed": {
-          "op": "radient.request",
-          "control": {
-            "operation": "org_agents.list",
-            "tenant_id": "org-minerva"
-          }
-        },
-        "endpoint": {
-          "path": "/v1/desktop/radient",
-          "method": "POST",
-          "body": {
-            "operation": "org_agents.list",
-            "tenant_id": "org-minerva"
-          }
-        },
-        "readOnly": false,
-        "deadlineDetail": {
-          "code": "deadline_exceeded",
-          "message": "The app waits up to 150 seconds for this request, and it was still running when the app stopped waiting. It may or may not have reached the server; check the result before repeating it."
-        }
-      },
-      "identical": true
-    },
-    {
-      "input": {
-        "op": "radient.request",
-        "control": {
-          "operation": "org_teams.list",
-          "tenant_id": "org-minerva"
-        }
-      },
-      "result": {
-        "ok": true,
-        "parsed": {
-          "op": "radient.request",
-          "control": {
-            "operation": "org_teams.list",
-            "tenant_id": "org-minerva"
-          }
-        },
-        "endpoint": {
-          "path": "/v1/desktop/radient",
-          "method": "POST",
-          "body": {
-            "operation": "org_teams.list",
-            "tenant_id": "org-minerva"
-          }
-        },
-        "readOnly": false,
-        "deadlineDetail": {
-          "code": "deadline_exceeded",
-          "message": "The app waits up to 150 seconds for this request, and it was still running when the app stopped waiting. It may or may not have reached the server; check the result before repeating it."
-        }
-      },
-      "identical": true
-    },
-    {
-      "input": {
-        "op": "radient.request",
-        "control": {
-          "operation": "org_skills.list",
-          "tenant_id": "org-minerva"
-        }
-      },
-      "result": {
-        "ok": true,
-        "parsed": {
-          "op": "radient.request",
-          "control": {
-            "operation": "org_skills.list",
-            "tenant_id": "org-minerva"
-          }
-        },
-        "endpoint": {
-          "path": "/v1/desktop/radient",
-          "method": "POST",
-          "body": {
-            "operation": "org_skills.list",
-            "tenant_id": "org-minerva"
-          }
-        },
-        "readOnly": false,
-        "deadlineDetail": {
-          "code": "deadline_exceeded",
-          "message": "The app waits up to 150 seconds for this request, and it was still running when the app stopped waiting. It may or may not have reached the server; check the result before repeating it."
-        }
-      },
-      "identical": true
-    },
-    {
-      "input": {
-        "op": "radient.request",
-        "control": {
-          "operation": "org_skill.get",
-          "tenant_id": "org-minerva",
-          "skill_id": "skill-minerva-deploy"
-        }
-      },
-      "result": {
-        "ok": true,
-        "parsed": {
-          "op": "radient.request",
-          "control": {
-            "operation": "org_skill.get",
-            "tenant_id": "org-minerva",
-            "skill_id": "skill-minerva-deploy"
-          }
-        },
-        "endpoint": {
-          "path": "/v1/desktop/radient",
-          "method": "POST",
-          "body": {
-            "operation": "org_skill.get",
-            "tenant_id": "org-minerva",
-            "skill_id": "skill-minerva-deploy"
-          }
-        },
-        "readOnly": false,
-        "deadlineDetail": {
-          "code": "deadline_exceeded",
-          "message": "The app waits up to 150 seconds for this request, and it was still running when the app stopped waiting. It may or may not have reached the server; check the result before repeating it."
-        }
-      },
-      "identical": true
-    },
-    {
-      "input": {
-        "op": "capabilities"
-      },
-      "result": {
-        "ok": true,
-        "parsed": {
-          "op": "capabilities"
-        },
-        "endpoint": {
-          "path": "/v1/capabilities",
-          "method": "GET"
-        },
-        "readOnly": true,
-        "deadlineDetail": {
-          "code": "deadline_exceeded",
-          "message": "The app waits up to 150 seconds for this read, and it was still running when the app stopped waiting. Nothing was read; ask again."
-        }
-      },
-      "identical": true
-    },
-    {
-      "input": {
-        "op": "skills.list"
-      },
-      "result": {
-        "ok": true,
-        "parsed": {
-          "op": "skills.list"
-        },
-        "endpoint": {
-          "path": "/v1/desktop/skills",
-          "method": "GET"
-        },
-        "readOnly": true,
-        "deadlineDetail": {
-          "code": "deadline_exceeded",
-          "message": "The app waits up to 150 seconds for this read, and it was still running when the app stopped waiting. Nothing was read; ask again."
-        }
-      },
-      "identical": true
-    },
-    {
-      "input": {
-        "op": "hub.links"
-      },
-      "result": {
-        "ok": true,
-        "parsed": {
-          "op": "hub.links"
-        },
-        "endpoint": {
-          "path": "/v1/desktop/hub/links",
-          "method": "GET"
-        },
-        "readOnly": true,
-        "deadlineDetail": {
-          "code": "deadline_exceeded",
-          "message": "The app waits up to 150 seconds for this read, and it was still running when the app stopped waiting. Nothing was read; ask again."
-        }
-      },
-      "identical": true
-    },
-    {
-      "input": {
-        "op": "hub.skillPull",
-        "requestId": "12345678-1234-4123-8123-123456789abc",
-        "hubId": "skill-minerva-deploy",
-        "hubSource": "http://127.0.0.1:8127",
-        "visibility": "org",
-        "tenantId": "org-minerva",
-        "localAlias": "minerva-deploy",
-        "subscribe": true,
-        "autoPush": true,
-        "confirmPublicEgress": false
-      },
-      "result": {
-        "ok": true,
-        "parsed": {
-          "op": "hub.skillPull",
-          "requestId": "12345678-1234-4123-8123-123456789abc",
-          "hubId": "skill-minerva-deploy",
-          "hubSource": "http://127.0.0.1:8127",
-          "visibility": "org",
-          "tenantId": "org-minerva",
-          "localAlias": "minerva-deploy",
-          "subscribe": true,
-          "autoPush": true,
-          "confirmPublicEgress": false
-        },
-        "endpoint": {
-          "path": "/v1/desktop/hub/skills/pull",
-          "method": "POST",
-          "body": {
-            "request_id": "12345678-1234-4123-8123-123456789abc",
-            "hub_id": "skill-minerva-deploy",
-            "hub_source": "http://127.0.0.1:8127",
-            "visibility": "org",
-            "tenant_id": "org-minerva",
-            "local_alias": "minerva-deploy",
-            "subscribe": true,
-            "auto_push": true,
-            "confirm_public_egress": false
-          }
-        },
-        "readOnly": false,
-        "deadlineDetail": {
-          "code": "deadline_exceeded",
-          "message": "This is taking longer than expected. It may still finish; the mark will update."
-        }
-      },
-      "identical": true
-    },
-    {
-      "input": {
-        "op": "hub.skillPublish",
-        "requestId": "12345678-1234-4123-8123-123456789abc",
-        "dryRun": true,
-        "sourceSkill": "release-notes",
-        "localAlias": "release-notes-copy",
-        "visibility": "org",
-        "tenantId": "org-minerva",
-        "subscribe": true,
-        "autoPush": false,
-        "confirmPublicEgress": false
-      },
-      "result": {
-        "ok": true,
-        "parsed": {
-          "op": "hub.skillPublish",
-          "requestId": "12345678-1234-4123-8123-123456789abc",
-          "dryRun": true,
-          "sourceSkill": "release-notes",
-          "localAlias": "release-notes-copy",
-          "visibility": "org",
-          "tenantId": "org-minerva",
-          "subscribe": true,
-          "autoPush": false,
-          "confirmPublicEgress": false
-        },
-        "endpoint": {
-          "path": "/v1/desktop/hub/skills/publish",
-          "method": "POST",
-          "body": {
-            "request_id": "12345678-1234-4123-8123-123456789abc",
-            "dry_run": true,
-            "source_skill": "release-notes",
-            "local_alias": "release-notes-copy",
-            "visibility": "org",
-            "tenant_id": "org-minerva",
-            "subscribe": true,
-            "auto_push": false,
-            "confirm_public_egress": false
-          }
-        },
-        "readOnly": false,
-        "deadlineDetail": {
-          "code": "deadline_exceeded",
-          "message": "This is taking longer than expected. It may still finish; the mark will update."
-        }
-      },
-      "identical": true
-    },
-    {
-      "input": {
-        "op": "hub.skillPublish",
-        "requestId": "12345678-1234-4123-8123-123456789abc",
-        "dryRun": false,
-        "sourceSkill": "release-notes",
-        "localAlias": "release-notes-copy",
-        "visibility": "org",
-        "tenantId": "org-minerva",
-        "subscribe": true,
-        "autoPush": false,
-        "confirmPublicEgress": false,
-        "previewReceipt": "receipt-stub-1",
-        "confirmPublish": true
-      },
-      "result": {
-        "ok": true,
-        "parsed": {
-          "op": "hub.skillPublish",
-          "requestId": "12345678-1234-4123-8123-123456789abc",
-          "dryRun": false,
-          "sourceSkill": "release-notes",
-          "localAlias": "release-notes-copy",
-          "visibility": "org",
-          "tenantId": "org-minerva",
-          "subscribe": true,
-          "autoPush": false,
-          "confirmPublicEgress": false,
-          "previewReceipt": "receipt-stub-1",
-          "confirmPublish": true
-        },
-        "endpoint": {
-          "path": "/v1/desktop/hub/skills/publish",
-          "method": "POST",
-          "body": {
-            "request_id": "12345678-1234-4123-8123-123456789abc",
-            "dry_run": false,
-            "source_skill": "release-notes",
-            "local_alias": "release-notes-copy",
-            "visibility": "org",
-            "tenant_id": "org-minerva",
-            "subscribe": true,
-            "auto_push": false,
-            "confirm_public_egress": false,
-            "preview_receipt": "receipt-stub-1",
-            "confirm_publish": true
-          }
-        },
-        "readOnly": false,
-        "deadlineDetail": {
-          "code": "deadline_exceeded",
-          "message": "This is taking longer than expected. It may still finish; the mark will update."
-        }
-      },
-      "identical": true
-    },
-    {
-      "input": {
-        "op": "hub.skillPull",
-        "requestId": "12345678-1234-4123-8123-123456789abc",
-        "hubId": "skill-release-notes",
-        "hubSource": "http://127.0.0.1:8127",
-        "visibility": "public",
-        "tenantId": null,
-        "localAlias": "release-notes",
-        "subscribe": true,
-        "autoPush": true,
-        "confirmPublicEgress": true
-      },
-      "result": {
-        "ok": true,
-        "parsed": {
-          "op": "hub.skillPull",
-          "requestId": "12345678-1234-4123-8123-123456789abc",
-          "hubId": "skill-release-notes",
-          "hubSource": "http://127.0.0.1:8127",
-          "visibility": "public",
-          "tenantId": null,
-          "localAlias": "release-notes",
-          "subscribe": true,
-          "autoPush": true,
-          "confirmPublicEgress": true
-        },
-        "endpoint": {
-          "path": "/v1/desktop/hub/skills/pull",
-          "method": "POST",
-          "body": {
-            "request_id": "12345678-1234-4123-8123-123456789abc",
-            "hub_id": "skill-release-notes",
-            "hub_source": "http://127.0.0.1:8127",
-            "visibility": "public",
-            "tenant_id": null,
-            "local_alias": "release-notes",
-            "subscribe": true,
-            "auto_push": true,
-            "confirm_public_egress": true
-          }
-        },
-        "readOnly": false,
-        "deadlineDetail": {
-          "code": "deadline_exceeded",
-          "message": "This is taking longer than expected. It may still finish; the mark will update."
-        }
-      },
-      "identical": true
-    },
-    {
-      "input": {
-        "op": "hub.skillPublish",
-        "requestId": "12345678-1234-4123-8123-123456789abc",
-        "dryRun": true,
-        "sourceSkill": "release-notes",
-        "localAlias": "release-notes-copy",
-        "visibility": "public",
-        "tenantId": null,
-        "subscribe": true,
-        "autoPush": false,
-        "confirmPublicEgress": false
-      },
-      "result": {
-        "ok": true,
-        "parsed": {
-          "op": "hub.skillPublish",
-          "requestId": "12345678-1234-4123-8123-123456789abc",
-          "dryRun": true,
-          "sourceSkill": "release-notes",
-          "localAlias": "release-notes-copy",
-          "visibility": "public",
-          "tenantId": null,
-          "subscribe": true,
-          "autoPush": false,
-          "confirmPublicEgress": false
-        },
-        "endpoint": {
-          "path": "/v1/desktop/hub/skills/publish",
-          "method": "POST",
-          "body": {
-            "request_id": "12345678-1234-4123-8123-123456789abc",
-            "dry_run": true,
-            "source_skill": "release-notes",
-            "local_alias": "release-notes-copy",
-            "visibility": "public",
-            "tenant_id": null,
-            "subscribe": true,
-            "auto_push": false,
-            "confirm_public_egress": false
-          }
-        },
-        "readOnly": false,
-        "deadlineDetail": {
-          "code": "deadline_exceeded",
-          "message": "This is taking longer than expected. It may still finish; the mark will update."
-        }
-      },
-      "identical": true
-    },
-    {
-      "input": {
-        "op": "hub.skillPublish",
-        "requestId": "12345678-1234-4123-8123-123456789abc",
-        "dryRun": false,
-        "sourceSkill": "release-notes",
-        "localAlias": "release-notes-copy",
-        "visibility": "public",
-        "tenantId": null,
-        "subscribe": true,
-        "autoPush": false,
-        "confirmPublicEgress": false,
-        "previewReceipt": "receipt-stub-1",
-        "confirmPublish": true
-      },
-      "result": {
-        "ok": true,
-        "parsed": {
-          "op": "hub.skillPublish",
-          "requestId": "12345678-1234-4123-8123-123456789abc",
-          "dryRun": false,
-          "sourceSkill": "release-notes",
-          "localAlias": "release-notes-copy",
-          "visibility": "public",
-          "tenantId": null,
-          "subscribe": true,
-          "autoPush": false,
-          "confirmPublicEgress": false,
-          "previewReceipt": "receipt-stub-1",
-          "confirmPublish": true
-        },
-        "endpoint": {
-          "path": "/v1/desktop/hub/skills/publish",
-          "method": "POST",
-          "body": {
-            "request_id": "12345678-1234-4123-8123-123456789abc",
-            "dry_run": false,
-            "source_skill": "release-notes",
-            "local_alias": "release-notes-copy",
-            "visibility": "public",
-            "tenant_id": null,
-            "subscribe": true,
-            "auto_push": false,
-            "confirm_public_egress": false,
-            "preview_receipt": "receipt-stub-1",
-            "confirm_publish": true
-          }
-        },
-        "readOnly": false,
-        "deadlineDetail": {
-          "code": "deadline_exceeded",
-          "message": "This is taking longer than expected. It may still finish; the mark will update."
-        }
-      },
-      "identical": true
-    },
-    {
-      "input": {
-        "op": "hub.skillPull",
-        "requestId": "12345678-1234-4123-8123-123456789abc",
-        "hubId": "skill-minerva-deploy",
-        "hubSource": "http://127.0.0.1:8127",
-        "visibility": "public",
-        "tenantId": "org-minerva",
-        "localAlias": "minerva-deploy",
-        "subscribe": true,
-        "autoPush": true,
-        "confirmPublicEgress": false
-      },
-      "result": {
-        "ok": false,
-        "issues": [
-          {
-            "code": "custom",
-            "message": "A skill destination requires explicit paired scope",
-            "path": [
-              "tenantId"
-            ]
-          }
-        ]
-      },
-      "identical": true
-    },
-    {
-      "input": {
-        "op": "hub.skillPublish",
-        "requestId": "12345678-1234-4123-8123-123456789abc",
-        "dryRun": false,
-        "sourceSkill": "release-notes",
-        "localAlias": "release-notes-copy",
-        "visibility": "org",
-        "tenantId": "org-minerva",
-        "subscribe": true,
-        "autoPush": false,
-        "confirmPublicEgress": false
-      },
-      "result": {
-        "ok": false,
-        "issues": [
-          {
-            "code": "custom",
-            "message": "An initial skill publication requires its reviewed draft receipt",
-            "path": [
-              "previewReceipt"
-            ]
-          }
-        ]
-      },
-      "identical": true
-    }
-  ]
+	"scope": "Node-only targeted module compilation/execution, not a native render proof",
+	"refs": ["43fc66a1b", "51a2eccfb"],
+	"modules": [
+		{
+			"ref": "43fc66a1b",
+			"moduleBundleSha256": "96d3191011a2aca21f9dd6670fe858eb4fc9b8334eeeed3cd1ab713a5a534039",
+			"sourcePins": {
+				"src/renderer/src/shared/store/ui-preferences-store.ts": "5f7bd77b9437b82d17fa061e2cab86838db2c0509a482e78cddcb1beb51f85a7",
+				"src/shared/desktop-contract.ts": "3d82ccf0704990db56e048e12227204b6f8b2d1f2bfdd5f3eb948c4116379c5b",
+				"src/renderer/src/shared/store/right-slot-memory.ts": "f691f7993ba06f275d20560a50120183273af1805dac5ee2acde7a46b494080a",
+				"src/renderer/src/features/chat/transcript-display-mode.ts": "c97bf8dad4af6b9d21849c44be07ca5d8e1c13aab609de37bb7a6acaaedf08b9",
+				"src/renderer/src/features/chat/chat-sidebar-layout.ts": "7127f617ad7254401d6bfb336de4315ed5f882a42865fc7e1e123506237a73a5",
+				"src/renderer/src/features/chat/chat-sidebar-view.ts": "f0444d7647cb8b7617aef8c45ee1bbdfa3261789fd15873bb20e2f1840dde47d",
+				"src/renderer/src/features/chat/sidebar-split.ts": "8758b8cb940c842be558b179681ea16edc1c4ca1d5b934e8f1afc45b0d27cdde",
+				"src/renderer/src/shared/themes/index.ts": "a90e5b185fd20c5928e8ec9bec77e4528ac10617b70d92d2779e8b293bc6bc85",
+				"src/renderer/src/shared/keymap/keymap-chord.ts": "ccae9cfe4fd19175d7e41585714d986ee0cfe88cbfa469c32d0ef4b4161ea1e8",
+				"src/shared/journal-order-query.ts": "7ddac0c287f5e0da74c78373641d410f918437ceb4b921f8aa81a660f044b616",
+				"src/renderer/src/shared/components/common/resizable-divider-geometry.ts": "d8c48be1726e298ef41fc79454b00b3db1da132e564b83c1790ff92cc0787f64",
+				"src/renderer/src/features/chat/chat-list-sections.ts": "4aecdc3c8c2f15bf853b62540c1a1520e1fdfa0e7c30064438e564657d239f65",
+				"src/renderer/src/shared/themes/palettes/vaporwave.ts": "d09e7f7bb7c11d50987f2a0c2885e4f2901d656528a4684571e0c804251718a8",
+				"src/renderer/src/shared/keymap/keymap-registry.ts": "5e0d96eb88e18728c1354bdc73268668b570e5b614cec741b5155420a7edaa0e",
+				"src/renderer/src/shared/themes/base-theme.ts": "49448578302042ca55326cb9c36252ad4d4f23d8a5d6ff3814764d62a2f83cbb",
+				"src/renderer/src/shared/themes/palettes/alucard.ts": "0ff9670d5ea53706e7a2e961c94ed00dbbc5dbe7824622a5255f57047cabb983",
+				"src/renderer/src/shared/themes/palettes/arcade.ts": "eff29efbaed5d3c91827a18f0f04ae927c1399f6a042617fe655ae0996cbd9ca",
+				"src/renderer/src/shared/themes/palettes/arctic.ts": "c8c74ffa6fc9477dc3e89ad5df1545a260d3b719fbf04e61ac9e339e87221755",
+				"src/renderer/src/shared/themes/palettes/autumn.ts": "34e645efbab11fa0f236e3ac9b75f0e5adeaf398ce044f4bd73c7b881cac366a",
+				"src/renderer/src/shared/themes/palettes/ayu-dark.ts": "88db3063ee1441c7663944a7117bceb041f644cb8eda26cd7c074f9f564d80d5",
+				"src/renderer/src/shared/themes/palettes/ayu-light.ts": "0d2d6db4696422b37d18d15bd588490231964beb4fc3760f302da50ca0a0991b",
+				"src/renderer/src/shared/themes/palettes/ayu-mirage.ts": "fad03889fcaf8186031605737f2e652fc3ef64ee53331641e9db5ce0f32b2924",
+				"src/renderer/src/shared/themes/palettes/catppuccin-frappe.ts": "bd470592f397bc9b970ec950fa8ef5cc888da1ce2f80223b28cb5646db291b71",
+				"src/renderer/src/shared/themes/palettes/catppuccin-latte.ts": "af7212978ea5f0824da3266f92bb0e8da6b43f2a1b17005b78e90417f5ee6e05",
+				"src/renderer/src/shared/themes/palettes/catppuccin-macchiato.ts": "5bdec0cebe4a1d49d205da1a7fca29fa40a62389d305ab43951548ade7b5c4de",
+				"src/renderer/src/shared/themes/palettes/catppuccin-mocha.ts": "f83bdbada1a704254f6dfa368cd9f8c5c6279cd5f011e7cc3686bafb8af10c95",
+				"src/renderer/src/shared/themes/palettes/cyberpunk.ts": "509eda208d8bbebc1407fae3c6c043a5cf3e454341ffa190c68b79a17cf6421d",
+				"src/renderer/src/shared/themes/palettes/desert.ts": "cebe43f749aa6db0bb073abc70bb2c0f4fe1561c01114918da778f6555f3016b",
+				"src/renderer/src/shared/themes/palettes/dracula.ts": "ecae9560ddab63aedb41e765af966eab4b07408afcda2cf5601de24008a8c64c",
+				"src/renderer/src/shared/themes/palettes/dune.ts": "85dfddf2f956e916505aadfedaa82bfc4822e9c6476fdf8024af7ac3061b6c8a",
+				"src/renderer/src/shared/themes/palettes/duskfox.ts": "8ea065642f72adb4105a0c0e60d870c3b7841770271bd63e3719279bfd966a55",
+				"src/renderer/src/shared/themes/palettes/everforest.ts": "43b8590b489aa536828304336d90144a52356535dfe5481f9ff766dee0f4f099",
+				"src/renderer/src/shared/themes/palettes/everforest-light.ts": "8dd50caaa37cb99a3a7fbb9906691a4fc078f0e1e401e85a6dffb166c73c0030",
+				"src/renderer/src/shared/themes/palettes/forest.ts": "542bc4199fa0ec6e80b0b0b54474971646c5fda27c7e4eacdd6a6990f88f4e1d",
+				"src/renderer/src/shared/themes/palettes/github-light.ts": "e78a52a0f142867e8c17ab1d1ac5264f70df8fcf2ec5f0e56458e8faaf0f6665",
+				"src/renderer/src/shared/themes/palettes/gruvbox.ts": "9b1fd11e5b39b38db87a9ccce4f4fbbaf13afad1ef2b35d08f9f197f4603cde0",
+				"src/renderer/src/shared/themes/palettes/gruvbox-light.ts": "218257ea4aae24bbc5bc20096379634be79493b8e85a168dab854bcfd83b9da3",
+				"src/renderer/src/shared/themes/palettes/high-contrast-light.ts": "d1debe1dc7b1b474e99a89c6aff3831b69e4c2fe63a21dbd0dd75265c254df68",
+				"src/renderer/src/shared/themes/palettes/iceberg.ts": "aa7ab6bacf5dd20058afc4d69a28a6c5bf92b54125adf8685b29664ed9a8337a",
+				"src/renderer/src/shared/themes/palettes/kanagawa-lotus.ts": "0ccac4e8bfd92c0e4ae2f5e36671e4cee2a28fa64a7beb8005be494a3f4a547c",
+				"src/renderer/src/shared/themes/palettes/paper.ts": "77c350ca29ead3c2b771daf99c0267f9a5393de90cb475e73c5c366d9871d453",
+				"src/renderer/src/shared/themes/palettes/lavender.ts": "6eb12ad9ecd63bac42b43003d925944db59045f288a8577bb214564a56f91871",
+				"src/renderer/src/shared/themes/palettes/linen.ts": "093f6ded5e45911c7df1f14b89b58f325f0859219260c3694a7e6d5e2fcca7ad",
+				"src/renderer/src/shared/themes/palettes/local-operator.ts": "07d8582195c42e962c279aa9d1a7ca21fd08bbbbe25e973d17f221dd2796fdae",
+				"src/renderer/src/shared/themes/palettes/radient.ts": "1dd7839a5e79286b3d3d0a57b1b648dfe3cf85c06ce20e811d51718ba384465a",
+				"src/renderer/src/shared/themes/palettes/kanagawa-wave.ts": "9ba411f3a6cc299914b8e97349ed64598ba868a8f41fb2ee3976c0ad8c171ec4",
+				"src/renderer/src/shared/themes/palettes/rose-pine.ts": "b14477c88dc2982f5f4ff60dbb26700afebad6f9dcb0753cf0d8cd41885a1976",
+				"src/renderer/src/shared/themes/palettes/synth.ts": "2c8069ef86de80d369d2704899f77c0b1e2b6e2c717f0bef27fe84a19f3ddecf",
+				"src/renderer/src/shared/themes/palettes/synthwave.ts": "508bdb0a09bc8222500f519a6744b75ddb91685b5bfe35aa46b19205cbf718ba",
+				"src/renderer/src/shared/themes/palettes/rose-pine-dawn.ts": "1e8450625af77e8cea272265c864f0dd83b3e3f9bc14f120d2909c41f641a0e6",
+				"src/renderer/src/shared/themes/palettes/rose-pine-moon.ts": "77379012a14a2879a6e3ef4e7089c0e51dbff1b1509a4a4a0e9419d91c899c7c",
+				"src/renderer/src/shared/themes/palettes/rosewood.ts": "15af6b0f13b6f00761d260d120effb1689cf7df54387036493360aa7144833c8",
+				"src/renderer/src/shared/themes/palettes/sage.ts": "511eaed672271e921bc780fdbfafaf6c2c81d639aeab131be0edb9412186980f",
+				"src/renderer/src/shared/themes/palettes/mint-light.ts": "7564e059595391341a80b55135482050755562f75e84186b38da7a40f9015e08",
+				"src/renderer/src/shared/themes/palettes/solarized-dark.ts": "0c878970c7360639345b5deaa28ef5e13420b5b7b71c72f8dcecafe4c615e8ce",
+				"src/renderer/src/shared/themes/palettes/matrix.ts": "b00fdb3e389db7d281176d788de517ab257f8e2e3ee6c168a62394eb7958a049",
+				"src/renderer/src/shared/themes/palettes/tokyo-night.ts": "ad83c1d7161ff4e3ab20f4a78f286242e741d3ef46b0e7ae7eaaaaa47ae0a7c4",
+				"src/renderer/src/shared/themes/palettes/solarized-light.ts": "bd9364cfc1872a1ae414a53e1faf9dfc96ac52899710dcb71a1e6b95ed5fb342",
+				"src/renderer/src/shared/themes/palettes/monokai.ts": "ef0afde2f6340344ff9ff84f17380deed8e520d7b1f7fa263e1eecd71a08846b",
+				"src/renderer/src/shared/themes/palettes/ocean.ts": "d5107aba174101c58d7e070b746669131f52afa075d74550b67281e4ed07f334",
+				"src/renderer/src/shared/themes/palettes/neon-noir.ts": "52b3f33f02ab81e60d9eb6678c235c50079348875039af801a1589b2eeb95f3f",
+				"src/renderer/src/shared/themes/palettes/nightfox.ts": "8ab7122189c0d353a2b4b545abbb4b66c5991ae92cf62b21461ac4e642a08cf3",
+				"src/renderer/src/shared/themes/palettes/nord.ts": "de312131b6c98214028e194c4b674ebe81eba6820744f0a68af088b88776e1fa",
+				"src/renderer/src/shared/themes/palettes/obsidian.ts": "a75f6215a381aa0d51959d20aa4b142bb18417826d7e3cafe2eae473e29b3974",
+				"src/renderer/src/shared/themes/palettes/one-light.ts": "a6af6e1af5b6c95b31ab96dbbec037c96160f5d900bb26d699f57ca89143f326",
+				"src/renderer/src/shared/themes/palettes/one-dark.ts": "b94fcca7e51dc90ba906e00d103e0dca154b5afbcb45174cae3f7aa4cb1b6b19",
+				"src/renderer/src/shared/themes/palettes/tron.ts": "c767e5753c179e0b4d8f1efe4b5bc34db76fc4d695c9a3129bd157e301a84f11",
+				"src/renderer/src/shared/themes/palettes/tokyo-night-storm.ts": "4be0734b1d2973e2d8f0562e229d2fc063cdd74a9d0f37bb88514d58b2be9861",
+				"src/renderer/src/shared/themes/palettes/outrun.ts": "49874f3463ce6f289da86a63f6f4d80caf39af27a60a216e5dadf1c1a11718d9",
+				"src/renderer/src/shared/themes/palettes/neon.ts": "69a1cd5b164575c034ecacc89a35db9026934e79cf39f2e1de10bb403be8feb0",
+				"src/renderer/src/shared/themes/palettes/palenight.ts": "09c9ca4051a0ba2f88e12e17ff33ff14dcdb240c972274d2a3cda998ab66ce65",
+				"src/shared/mini-view.ts": "37a13c0f15de7fde62e793cc42aa03dd8d5e78850ba276ffdf7eece71efc4b77",
+				"src/renderer/src/shared/themes/palettes/tokyo-night-day.ts": "9590e78ed725c70a304957bf11b45947b5255ae63b48ef831f9db6c52db0797d"
+			}
+		},
+		{
+			"ref": "51a2eccfb",
+			"moduleBundleSha256": "530ba266c79cb2ebc19c8b12ffb0a74cf116535d2a2a4a54c0aefabd4d6486a5",
+			"sourcePins": {
+				"src/shared/desktop-contract.ts": "2f1c1fa19ff54ee4377c96c691d34c9e31571bb2587cfd9b503219bc736519d8",
+				"src/renderer/src/shared/store/ui-preferences-store.ts": "f34dfe9fc2a7c5ec4dbef13fb7fed791f1e3ae72aef35e5d585a2f9d64db6a39",
+				"src/renderer/src/shared/store/right-slot-memory.ts": "f691f7993ba06f275d20560a50120183273af1805dac5ee2acde7a46b494080a",
+				"src/renderer/src/features/chat/transcript-display-mode.ts": "c97bf8dad4af6b9d21849c44be07ca5d8e1c13aab609de37bb7a6acaaedf08b9",
+				"src/renderer/src/features/chat/chat-sidebar-layout.ts": "7127f617ad7254401d6bfb336de4315ed5f882a42865fc7e1e123506237a73a5",
+				"src/renderer/src/shared/keymap/keymap-chord.ts": "ccae9cfe4fd19175d7e41585714d986ee0cfe88cbfa469c32d0ef4b4161ea1e8",
+				"src/renderer/src/features/chat/chat-sidebar-view.ts": "f0444d7647cb8b7617aef8c45ee1bbdfa3261789fd15873bb20e2f1840dde47d",
+				"src/renderer/src/features/chat/components/canvas/finder-layout.ts": "849107519912e4d0f6ccbd981763e41d88d90a73a3fc1dd53612968e9e6c6b24",
+				"src/renderer/src/features/chat/sidebar-split.ts": "8758b8cb940c842be558b179681ea16edc1c4ca1d5b934e8f1afc45b0d27cdde",
+				"src/renderer/src/shared/themes/index.ts": "a90e5b185fd20c5928e8ec9bec77e4528ac10617b70d92d2779e8b293bc6bc85",
+				"src/shared/journal-order-query.ts": "7ddac0c287f5e0da74c78373641d410f918437ceb4b921f8aa81a660f044b616",
+				"src/renderer/src/shared/keymap/keymap-registry.ts": "5e0d96eb88e18728c1354bdc73268668b570e5b614cec741b5155420a7edaa0e",
+				"src/shared/mini-view.ts": "37a13c0f15de7fde62e793cc42aa03dd8d5e78850ba276ffdf7eece71efc4b77",
+				"src/renderer/src/shared/components/common/resizable-divider-geometry.ts": "d8c48be1726e298ef41fc79454b00b3db1da132e564b83c1790ff92cc0787f64",
+				"src/renderer/src/features/chat/chat-list-sections.ts": "4aecdc3c8c2f15bf853b62540c1a1520e1fdfa0e7c30064438e564657d239f65",
+				"src/renderer/src/shared/themes/base-theme.ts": "49448578302042ca55326cb9c36252ad4d4f23d8a5d6ff3814764d62a2f83cbb",
+				"src/renderer/src/shared/themes/palettes/vaporwave.ts": "d09e7f7bb7c11d50987f2a0c2885e4f2901d656528a4684571e0c804251718a8",
+				"src/renderer/src/shared/themes/palettes/alucard.ts": "0ff9670d5ea53706e7a2e961c94ed00dbbc5dbe7824622a5255f57047cabb983",
+				"src/renderer/src/shared/themes/palettes/arcade.ts": "eff29efbaed5d3c91827a18f0f04ae927c1399f6a042617fe655ae0996cbd9ca",
+				"src/renderer/src/shared/themes/palettes/arctic.ts": "c8c74ffa6fc9477dc3e89ad5df1545a260d3b719fbf04e61ac9e339e87221755",
+				"src/renderer/src/shared/themes/palettes/autumn.ts": "34e645efbab11fa0f236e3ac9b75f0e5adeaf398ce044f4bd73c7b881cac366a",
+				"src/renderer/src/shared/themes/palettes/ayu-dark.ts": "88db3063ee1441c7663944a7117bceb041f644cb8eda26cd7c074f9f564d80d5",
+				"src/renderer/src/shared/themes/palettes/ayu-light.ts": "0d2d6db4696422b37d18d15bd588490231964beb4fc3760f302da50ca0a0991b",
+				"src/renderer/src/shared/themes/palettes/ayu-mirage.ts": "fad03889fcaf8186031605737f2e652fc3ef64ee53331641e9db5ce0f32b2924",
+				"src/renderer/src/shared/themes/palettes/catppuccin-frappe.ts": "bd470592f397bc9b970ec950fa8ef5cc888da1ce2f80223b28cb5646db291b71",
+				"src/renderer/src/shared/themes/palettes/catppuccin-latte.ts": "af7212978ea5f0824da3266f92bb0e8da6b43f2a1b17005b78e90417f5ee6e05",
+				"src/renderer/src/shared/themes/palettes/catppuccin-macchiato.ts": "5bdec0cebe4a1d49d205da1a7fca29fa40a62389d305ab43951548ade7b5c4de",
+				"src/renderer/src/shared/themes/palettes/cyberpunk.ts": "509eda208d8bbebc1407fae3c6c043a5cf3e454341ffa190c68b79a17cf6421d",
+				"src/renderer/src/shared/themes/palettes/desert.ts": "cebe43f749aa6db0bb073abc70bb2c0f4fe1561c01114918da778f6555f3016b",
+				"src/renderer/src/shared/themes/palettes/dracula.ts": "ecae9560ddab63aedb41e765af966eab4b07408afcda2cf5601de24008a8c64c",
+				"src/renderer/src/shared/themes/palettes/dune.ts": "85dfddf2f956e916505aadfedaa82bfc4822e9c6476fdf8024af7ac3061b6c8a",
+				"src/renderer/src/shared/themes/palettes/duskfox.ts": "8ea065642f72adb4105a0c0e60d870c3b7841770271bd63e3719279bfd966a55",
+				"src/renderer/src/shared/themes/palettes/everforest.ts": "43b8590b489aa536828304336d90144a52356535dfe5481f9ff766dee0f4f099",
+				"src/renderer/src/shared/themes/palettes/everforest-light.ts": "8dd50caaa37cb99a3a7fbb9906691a4fc078f0e1e401e85a6dffb166c73c0030",
+				"src/renderer/src/shared/themes/palettes/forest.ts": "542bc4199fa0ec6e80b0b0b54474971646c5fda27c7e4eacdd6a6990f88f4e1d",
+				"src/renderer/src/shared/themes/palettes/github-light.ts": "e78a52a0f142867e8c17ab1d1ac5264f70df8fcf2ec5f0e56458e8faaf0f6665",
+				"src/renderer/src/shared/themes/palettes/gruvbox.ts": "9b1fd11e5b39b38db87a9ccce4f4fbbaf13afad1ef2b35d08f9f197f4603cde0",
+				"src/renderer/src/shared/themes/palettes/gruvbox-light.ts": "218257ea4aae24bbc5bc20096379634be79493b8e85a168dab854bcfd83b9da3",
+				"src/renderer/src/shared/themes/palettes/high-contrast-light.ts": "d1debe1dc7b1b474e99a89c6aff3831b69e4c2fe63a21dbd0dd75265c254df68",
+				"src/renderer/src/shared/themes/palettes/catppuccin-mocha.ts": "f83bdbada1a704254f6dfa368cd9f8c5c6279cd5f011e7cc3686bafb8af10c95",
+				"src/renderer/src/shared/themes/palettes/kanagawa-lotus.ts": "0ccac4e8bfd92c0e4ae2f5e36671e4cee2a28fa64a7beb8005be494a3f4a547c",
+				"src/renderer/src/shared/themes/palettes/kanagawa-wave.ts": "9ba411f3a6cc299914b8e97349ed64598ba868a8f41fb2ee3976c0ad8c171ec4",
+				"src/renderer/src/shared/themes/palettes/iceberg.ts": "aa7ab6bacf5dd20058afc4d69a28a6c5bf92b54125adf8685b29664ed9a8337a",
+				"src/renderer/src/shared/themes/palettes/lavender.ts": "6eb12ad9ecd63bac42b43003d925944db59045f288a8577bb214564a56f91871",
+				"src/renderer/src/shared/themes/palettes/linen.ts": "093f6ded5e45911c7df1f14b89b58f325f0859219260c3694a7e6d5e2fcca7ad",
+				"src/renderer/src/shared/themes/palettes/local-operator.ts": "07d8582195c42e962c279aa9d1a7ca21fd08bbbbe25e973d17f221dd2796fdae",
+				"src/renderer/src/shared/themes/palettes/matrix.ts": "b00fdb3e389db7d281176d788de517ab257f8e2e3ee6c168a62394eb7958a049",
+				"src/renderer/src/shared/themes/palettes/mint-light.ts": "7564e059595391341a80b55135482050755562f75e84186b38da7a40f9015e08",
+				"src/renderer/src/shared/themes/palettes/rose-pine-dawn.ts": "1e8450625af77e8cea272265c864f0dd83b3e3f9bc14f120d2909c41f641a0e6",
+				"src/renderer/src/shared/themes/palettes/neon.ts": "69a1cd5b164575c034ecacc89a35db9026934e79cf39f2e1de10bb403be8feb0",
+				"src/renderer/src/shared/themes/palettes/neon-noir.ts": "52b3f33f02ab81e60d9eb6678c235c50079348875039af801a1589b2eeb95f3f",
+				"src/renderer/src/shared/themes/palettes/nightfox.ts": "8ab7122189c0d353a2b4b545abbb4b66c5991ae92cf62b21461ac4e642a08cf3",
+				"src/renderer/src/shared/themes/palettes/nord.ts": "de312131b6c98214028e194c4b674ebe81eba6820744f0a68af088b88776e1fa",
+				"src/renderer/src/shared/themes/palettes/obsidian.ts": "a75f6215a381aa0d51959d20aa4b142bb18417826d7e3cafe2eae473e29b3974",
+				"src/renderer/src/shared/themes/palettes/ocean.ts": "d5107aba174101c58d7e070b746669131f52afa075d74550b67281e4ed07f334",
+				"src/renderer/src/shared/themes/palettes/one-dark.ts": "b94fcca7e51dc90ba906e00d103e0dca154b5afbcb45174cae3f7aa4cb1b6b19",
+				"src/renderer/src/shared/themes/palettes/one-light.ts": "a6af6e1af5b6c95b31ab96dbbec037c96160f5d900bb26d699f57ca89143f326",
+				"src/renderer/src/shared/themes/palettes/outrun.ts": "49874f3463ce6f289da86a63f6f4d80caf39af27a60a216e5dadf1c1a11718d9",
+				"src/renderer/src/shared/themes/palettes/palenight.ts": "09c9ca4051a0ba2f88e12e17ff33ff14dcdb240c972274d2a3cda998ab66ce65",
+				"src/renderer/src/shared/themes/palettes/paper.ts": "77c350ca29ead3c2b771daf99c0267f9a5393de90cb475e73c5c366d9871d453",
+				"src/renderer/src/shared/themes/palettes/radient.ts": "1dd7839a5e79286b3d3d0a57b1b648dfe3cf85c06ce20e811d51718ba384465a",
+				"src/renderer/src/shared/themes/palettes/rose-pine.ts": "b14477c88dc2982f5f4ff60dbb26700afebad6f9dcb0753cf0d8cd41885a1976",
+				"src/renderer/src/shared/themes/palettes/synthwave.ts": "508bdb0a09bc8222500f519a6744b75ddb91685b5bfe35aa46b19205cbf718ba",
+				"src/renderer/src/shared/themes/palettes/rose-pine-moon.ts": "77379012a14a2879a6e3ef4e7089c0e51dbff1b1509a4a4a0e9419d91c899c7c",
+				"src/renderer/src/shared/themes/palettes/rosewood.ts": "15af6b0f13b6f00761d260d120effb1689cf7df54387036493360aa7144833c8",
+				"src/renderer/src/shared/themes/palettes/sage.ts": "511eaed672271e921bc780fdbfafaf6c2c81d639aeab131be0edb9412186980f",
+				"src/renderer/src/shared/themes/palettes/solarized-dark.ts": "0c878970c7360639345b5deaa28ef5e13420b5b7b71c72f8dcecafe4c615e8ce",
+				"src/renderer/src/shared/themes/palettes/solarized-light.ts": "bd9364cfc1872a1ae414a53e1faf9dfc96ac52899710dcb71a1e6b95ed5fb342",
+				"src/renderer/src/shared/themes/palettes/synth.ts": "2c8069ef86de80d369d2704899f77c0b1e2b6e2c717f0bef27fe84a19f3ddecf",
+				"src/renderer/src/shared/themes/palettes/tokyo-night.ts": "ad83c1d7161ff4e3ab20f4a78f286242e741d3ef46b0e7ae7eaaaaa47ae0a7c4",
+				"src/renderer/src/shared/themes/palettes/tokyo-night-day.ts": "9590e78ed725c70a304957bf11b45947b5255ae63b48ef831f9db6c52db0797d",
+				"src/renderer/src/shared/themes/palettes/tron.ts": "c767e5753c179e0b4d8f1efe4b5bc34db76fc4d695c9a3129bd157e301a84f11",
+				"src/renderer/src/shared/themes/palettes/monokai.ts": "ef0afde2f6340344ff9ff84f17380deed8e520d7b1f7fa263e1eecd71a08846b",
+				"src/renderer/src/shared/themes/palettes/tokyo-night-storm.ts": "4be0734b1d2973e2d8f0562e229d2fc063cdd74a9d0f37bb88514d58b2be9861"
+			}
+		}
+	],
+	"preferences": {
+		"versions": [3, 4],
+		"allExistingStateKeys": [
+			"isCommandPaletteOpen",
+			"commandPaletteQuery",
+			"isSidebarCollapsed",
+			"showAgentReasoning",
+			"transcriptDisplayMode",
+			"themeName",
+			"rightSlotWidth",
+			"chatSidebarWidth",
+			"chatSidebarRegions",
+			"chatSidebarView",
+			"chatSidebarListHeight",
+			"chatSidebarOrder",
+			"dismissedBuiltinOfferSignature",
+			"isCanvasOpen",
+			"isRunPanelOpen",
+			"isBrowserPaneOpen",
+			"isConsolePaneOpen",
+			"isCodeReviewPaneOpen",
+			"rightSlotKey",
+			"rightSlotMemory",
+			"rightSlotLegacySeed",
+			"isAskDrawerOpen",
+			"askDrawerScope",
+			"askDrawerEvictedPane",
+			"askOpenIntent",
+			"rightSlotRoute",
+			"consoleOpenIntent",
+			"runPanelReveal",
+			"codeReviewReveal",
+			"browserPaneScope",
+			"consoleActiveSurface",
+			"consoleUnseen",
+			"isCreateAgentDialogOpen",
+			"mentionRecents",
+			"profileRecents",
+			"conversationRecents",
+			"shortcutBindings",
+			"openCreateAgentDialog",
+			"closeCreateAgentDialog",
+			"openCommandPalette",
+			"closeCommandPalette",
+			"toggleCommandPalette",
+			"setCommandPaletteQuery",
+			"toggleSidebar",
+			"setSidebarCollapsed",
+			"setShowAgentReasoning",
+			"setTranscriptDisplayMode",
+			"setTheme",
+			"setCanvasOpen",
+			"setRunPanelOpen",
+			"setBrowserPaneOpen",
+			"setConsolePaneOpen",
+			"setCodeReviewPaneOpen",
+			"clearCodeReviewReveal",
+			"revealCodeReviewPane",
+			"setAskDrawerOpen",
+			"requestAskOpen",
+			"clearAskOpenIntent",
+			"setConsoleActiveSurface",
+			"requestConsoleOpen",
+			"clearConsoleOpenIntent",
+			"markConsoleUnseen",
+			"clearConsoleUnseen",
+			"setRightSlotWidth",
+			"restoreDefaultRightSlotWidth",
+			"bindRightSlotKey",
+			"setRightSlotRoute",
+			"setShortcutBinding",
+			"clearShortcutBinding",
+			"setBrowserPaneScope",
+			"revealRunPanelSection",
+			"clearRunPanelReveal",
+			"setChatSidebarWidth",
+			"setChatSidebarRegions",
+			"setChatSidebarListHeight",
+			"restoreDefaultChatSidebarListHeight",
+			"setChatSidebarOrder",
+			"setChatSidebarView",
+			"dismissBuiltinOffer",
+			"restoreDefaultChatSidebarWidth",
+			"rememberMention",
+			"rememberProfile",
+			"rememberConversation"
+		],
+		"addedKeys": ["finderFiles", "setFinderFiles"],
+		"changedExisting": [],
+		"allExistingPersistedKeys": [
+			"isCommandPaletteOpen",
+			"commandPaletteQuery",
+			"isSidebarCollapsed",
+			"showAgentReasoning",
+			"transcriptDisplayMode",
+			"themeName",
+			"rightSlotWidth",
+			"chatSidebarWidth",
+			"chatSidebarRegions",
+			"chatSidebarView",
+			"chatSidebarListHeight",
+			"chatSidebarOrder",
+			"dismissedBuiltinOfferSignature",
+			"rightSlotMemory",
+			"rightSlotLegacySeed",
+			"browserPaneScope",
+			"consoleActiveSurface",
+			"consoleUnseen",
+			"isCreateAgentDialogOpen",
+			"mentionRecents",
+			"profileRecents",
+			"conversationRecents",
+			"shortcutBindings"
+		],
+		"v3MigrationChangedOnlyFinderFiles": true,
+		"projectionRuns": [
+			{
+				"name": "empty",
+				"version": 0,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "empty",
+				"version": 1,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "empty",
+				"version": 2,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "empty",
+				"version": 3,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "all-existing-persisted-keys",
+				"version": 0,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "all-existing-persisted-keys",
+				"version": 1,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "all-existing-persisted-keys",
+				"version": 2,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "all-existing-persisted-keys",
+				"version": 3,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:isCommandPaletteOpen",
+				"version": 0,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:isCommandPaletteOpen",
+				"version": 1,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:isCommandPaletteOpen",
+				"version": 2,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:isCommandPaletteOpen",
+				"version": 3,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:commandPaletteQuery",
+				"version": 0,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:commandPaletteQuery",
+				"version": 1,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:commandPaletteQuery",
+				"version": 2,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:commandPaletteQuery",
+				"version": 3,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:isSidebarCollapsed",
+				"version": 0,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:isSidebarCollapsed",
+				"version": 1,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:isSidebarCollapsed",
+				"version": 2,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:isSidebarCollapsed",
+				"version": 3,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:showAgentReasoning",
+				"version": 0,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:showAgentReasoning",
+				"version": 1,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:showAgentReasoning",
+				"version": 2,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:showAgentReasoning",
+				"version": 3,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:transcriptDisplayMode",
+				"version": 0,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:transcriptDisplayMode",
+				"version": 1,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:transcriptDisplayMode",
+				"version": 2,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:transcriptDisplayMode",
+				"version": 3,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:themeName",
+				"version": 0,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:themeName",
+				"version": 1,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:themeName",
+				"version": 2,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:themeName",
+				"version": 3,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:rightSlotWidth",
+				"version": 0,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:rightSlotWidth",
+				"version": 1,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:rightSlotWidth",
+				"version": 2,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:rightSlotWidth",
+				"version": 3,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:chatSidebarWidth",
+				"version": 0,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:chatSidebarWidth",
+				"version": 1,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:chatSidebarWidth",
+				"version": 2,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:chatSidebarWidth",
+				"version": 3,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:chatSidebarRegions",
+				"version": 0,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:chatSidebarRegions",
+				"version": 1,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:chatSidebarRegions",
+				"version": 2,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:chatSidebarRegions",
+				"version": 3,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:chatSidebarView",
+				"version": 0,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:chatSidebarView",
+				"version": 1,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:chatSidebarView",
+				"version": 2,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:chatSidebarView",
+				"version": 3,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:chatSidebarListHeight",
+				"version": 0,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:chatSidebarListHeight",
+				"version": 1,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:chatSidebarListHeight",
+				"version": 2,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:chatSidebarListHeight",
+				"version": 3,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:chatSidebarOrder",
+				"version": 0,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:chatSidebarOrder",
+				"version": 1,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:chatSidebarOrder",
+				"version": 2,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:chatSidebarOrder",
+				"version": 3,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:dismissedBuiltinOfferSignature",
+				"version": 0,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:dismissedBuiltinOfferSignature",
+				"version": 1,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:dismissedBuiltinOfferSignature",
+				"version": 2,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:dismissedBuiltinOfferSignature",
+				"version": 3,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:rightSlotMemory",
+				"version": 0,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:rightSlotMemory",
+				"version": 1,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:rightSlotMemory",
+				"version": 2,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:rightSlotMemory",
+				"version": 3,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:rightSlotLegacySeed",
+				"version": 0,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:rightSlotLegacySeed",
+				"version": 1,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:rightSlotLegacySeed",
+				"version": 2,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:rightSlotLegacySeed",
+				"version": 3,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:browserPaneScope",
+				"version": 0,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:browserPaneScope",
+				"version": 1,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:browserPaneScope",
+				"version": 2,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:browserPaneScope",
+				"version": 3,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:consoleActiveSurface",
+				"version": 0,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:consoleActiveSurface",
+				"version": 1,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:consoleActiveSurface",
+				"version": 2,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:consoleActiveSurface",
+				"version": 3,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:consoleUnseen",
+				"version": 0,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:consoleUnseen",
+				"version": 1,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:consoleUnseen",
+				"version": 2,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:consoleUnseen",
+				"version": 3,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:isCreateAgentDialogOpen",
+				"version": 0,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:isCreateAgentDialogOpen",
+				"version": 1,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:isCreateAgentDialogOpen",
+				"version": 2,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:isCreateAgentDialogOpen",
+				"version": 3,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:mentionRecents",
+				"version": 0,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:mentionRecents",
+				"version": 1,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:mentionRecents",
+				"version": 2,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:mentionRecents",
+				"version": 3,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:profileRecents",
+				"version": 0,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:profileRecents",
+				"version": 1,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:profileRecents",
+				"version": 2,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:profileRecents",
+				"version": 3,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:conversationRecents",
+				"version": 0,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:conversationRecents",
+				"version": 1,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:conversationRecents",
+				"version": 2,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:conversationRecents",
+				"version": 3,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:shortcutBindings",
+				"version": 0,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:shortcutBindings",
+				"version": 1,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:shortcutBindings",
+				"version": 2,
+				"existingKeysCompared": 83,
+				"differences": []
+			},
+			{
+				"name": "perturb:shortcutBindings",
+				"version": 3,
+				"existingKeysCompared": 83,
+				"differences": []
+			}
+		]
+	},
+	"requestInputProvenance": "Reconstructed from exact use-hub-skills.ts and radient/proxy operation shapes plus stub fixture names; fixed synthetic UUID replaces non-retained original random request IDs. These are NOT claimed as raw recorded wire bodies.",
+	"replay": [
+		{
+			"input": {
+				"op": "radient.request",
+				"control": {
+					"operation": "account"
+				}
+			},
+			"result": {
+				"ok": true,
+				"parsed": {
+					"op": "radient.request",
+					"control": {
+						"operation": "account"
+					}
+				},
+				"endpoint": {
+					"path": "/v1/desktop/radient",
+					"method": "POST",
+					"body": {
+						"operation": "account"
+					}
+				},
+				"readOnly": false,
+				"deadlineDetail": {
+					"code": "deadline_exceeded",
+					"message": "The app waits up to 150 seconds for this request, and it was still running when the app stopped waiting. It may or may not have reached the server; check the result before repeating it."
+				}
+			},
+			"identical": true
+		},
+		{
+			"input": {
+				"op": "radient.request",
+				"control": {
+					"operation": "memberships.list"
+				}
+			},
+			"result": {
+				"ok": true,
+				"parsed": {
+					"op": "radient.request",
+					"control": {
+						"operation": "memberships.list"
+					}
+				},
+				"endpoint": {
+					"path": "/v1/desktop/radient",
+					"method": "POST",
+					"body": {
+						"operation": "memberships.list"
+					}
+				},
+				"readOnly": false,
+				"deadlineDetail": {
+					"code": "deadline_exceeded",
+					"message": "The app waits up to 150 seconds for this request, and it was still running when the app stopped waiting. It may or may not have reached the server; check the result before repeating it."
+				}
+			},
+			"identical": true
+		},
+		{
+			"input": {
+				"op": "radient.request",
+				"control": {
+					"operation": "org_agents.list",
+					"tenant_id": "org-minerva"
+				}
+			},
+			"result": {
+				"ok": true,
+				"parsed": {
+					"op": "radient.request",
+					"control": {
+						"operation": "org_agents.list",
+						"tenant_id": "org-minerva"
+					}
+				},
+				"endpoint": {
+					"path": "/v1/desktop/radient",
+					"method": "POST",
+					"body": {
+						"operation": "org_agents.list",
+						"tenant_id": "org-minerva"
+					}
+				},
+				"readOnly": false,
+				"deadlineDetail": {
+					"code": "deadline_exceeded",
+					"message": "The app waits up to 150 seconds for this request, and it was still running when the app stopped waiting. It may or may not have reached the server; check the result before repeating it."
+				}
+			},
+			"identical": true
+		},
+		{
+			"input": {
+				"op": "radient.request",
+				"control": {
+					"operation": "org_teams.list",
+					"tenant_id": "org-minerva"
+				}
+			},
+			"result": {
+				"ok": true,
+				"parsed": {
+					"op": "radient.request",
+					"control": {
+						"operation": "org_teams.list",
+						"tenant_id": "org-minerva"
+					}
+				},
+				"endpoint": {
+					"path": "/v1/desktop/radient",
+					"method": "POST",
+					"body": {
+						"operation": "org_teams.list",
+						"tenant_id": "org-minerva"
+					}
+				},
+				"readOnly": false,
+				"deadlineDetail": {
+					"code": "deadline_exceeded",
+					"message": "The app waits up to 150 seconds for this request, and it was still running when the app stopped waiting. It may or may not have reached the server; check the result before repeating it."
+				}
+			},
+			"identical": true
+		},
+		{
+			"input": {
+				"op": "radient.request",
+				"control": {
+					"operation": "org_skills.list",
+					"tenant_id": "org-minerva"
+				}
+			},
+			"result": {
+				"ok": true,
+				"parsed": {
+					"op": "radient.request",
+					"control": {
+						"operation": "org_skills.list",
+						"tenant_id": "org-minerva"
+					}
+				},
+				"endpoint": {
+					"path": "/v1/desktop/radient",
+					"method": "POST",
+					"body": {
+						"operation": "org_skills.list",
+						"tenant_id": "org-minerva"
+					}
+				},
+				"readOnly": false,
+				"deadlineDetail": {
+					"code": "deadline_exceeded",
+					"message": "The app waits up to 150 seconds for this request, and it was still running when the app stopped waiting. It may or may not have reached the server; check the result before repeating it."
+				}
+			},
+			"identical": true
+		},
+		{
+			"input": {
+				"op": "radient.request",
+				"control": {
+					"operation": "org_skill.get",
+					"tenant_id": "org-minerva",
+					"skill_id": "skill-minerva-deploy"
+				}
+			},
+			"result": {
+				"ok": true,
+				"parsed": {
+					"op": "radient.request",
+					"control": {
+						"operation": "org_skill.get",
+						"tenant_id": "org-minerva",
+						"skill_id": "skill-minerva-deploy"
+					}
+				},
+				"endpoint": {
+					"path": "/v1/desktop/radient",
+					"method": "POST",
+					"body": {
+						"operation": "org_skill.get",
+						"tenant_id": "org-minerva",
+						"skill_id": "skill-minerva-deploy"
+					}
+				},
+				"readOnly": false,
+				"deadlineDetail": {
+					"code": "deadline_exceeded",
+					"message": "The app waits up to 150 seconds for this request, and it was still running when the app stopped waiting. It may or may not have reached the server; check the result before repeating it."
+				}
+			},
+			"identical": true
+		},
+		{
+			"input": {
+				"op": "capabilities"
+			},
+			"result": {
+				"ok": true,
+				"parsed": {
+					"op": "capabilities"
+				},
+				"endpoint": {
+					"path": "/v1/capabilities",
+					"method": "GET"
+				},
+				"readOnly": true,
+				"deadlineDetail": {
+					"code": "deadline_exceeded",
+					"message": "The app waits up to 150 seconds for this read, and it was still running when the app stopped waiting. Nothing was read; ask again."
+				}
+			},
+			"identical": true
+		},
+		{
+			"input": {
+				"op": "skills.list"
+			},
+			"result": {
+				"ok": true,
+				"parsed": {
+					"op": "skills.list"
+				},
+				"endpoint": {
+					"path": "/v1/desktop/skills",
+					"method": "GET"
+				},
+				"readOnly": true,
+				"deadlineDetail": {
+					"code": "deadline_exceeded",
+					"message": "The app waits up to 150 seconds for this read, and it was still running when the app stopped waiting. Nothing was read; ask again."
+				}
+			},
+			"identical": true
+		},
+		{
+			"input": {
+				"op": "hub.links"
+			},
+			"result": {
+				"ok": true,
+				"parsed": {
+					"op": "hub.links"
+				},
+				"endpoint": {
+					"path": "/v1/desktop/hub/links",
+					"method": "GET"
+				},
+				"readOnly": true,
+				"deadlineDetail": {
+					"code": "deadline_exceeded",
+					"message": "The app waits up to 150 seconds for this read, and it was still running when the app stopped waiting. Nothing was read; ask again."
+				}
+			},
+			"identical": true
+		},
+		{
+			"input": {
+				"op": "hub.skillPull",
+				"requestId": "12345678-1234-4123-8123-123456789abc",
+				"hubId": "skill-minerva-deploy",
+				"hubSource": "http://127.0.0.1:8127",
+				"visibility": "org",
+				"tenantId": "org-minerva",
+				"localAlias": "minerva-deploy",
+				"subscribe": true,
+				"autoPush": true,
+				"confirmPublicEgress": false
+			},
+			"result": {
+				"ok": true,
+				"parsed": {
+					"op": "hub.skillPull",
+					"requestId": "12345678-1234-4123-8123-123456789abc",
+					"hubId": "skill-minerva-deploy",
+					"hubSource": "http://127.0.0.1:8127",
+					"visibility": "org",
+					"tenantId": "org-minerva",
+					"localAlias": "minerva-deploy",
+					"subscribe": true,
+					"autoPush": true,
+					"confirmPublicEgress": false
+				},
+				"endpoint": {
+					"path": "/v1/desktop/hub/skills/pull",
+					"method": "POST",
+					"body": {
+						"request_id": "12345678-1234-4123-8123-123456789abc",
+						"hub_id": "skill-minerva-deploy",
+						"hub_source": "http://127.0.0.1:8127",
+						"visibility": "org",
+						"tenant_id": "org-minerva",
+						"local_alias": "minerva-deploy",
+						"subscribe": true,
+						"auto_push": true,
+						"confirm_public_egress": false
+					}
+				},
+				"readOnly": false,
+				"deadlineDetail": {
+					"code": "deadline_exceeded",
+					"message": "This is taking longer than expected. It may still finish; the mark will update."
+				}
+			},
+			"identical": true
+		},
+		{
+			"input": {
+				"op": "hub.skillPublish",
+				"requestId": "12345678-1234-4123-8123-123456789abc",
+				"dryRun": true,
+				"sourceSkill": "release-notes",
+				"localAlias": "release-notes-copy",
+				"visibility": "org",
+				"tenantId": "org-minerva",
+				"subscribe": true,
+				"autoPush": false,
+				"confirmPublicEgress": false
+			},
+			"result": {
+				"ok": true,
+				"parsed": {
+					"op": "hub.skillPublish",
+					"requestId": "12345678-1234-4123-8123-123456789abc",
+					"dryRun": true,
+					"sourceSkill": "release-notes",
+					"localAlias": "release-notes-copy",
+					"visibility": "org",
+					"tenantId": "org-minerva",
+					"subscribe": true,
+					"autoPush": false,
+					"confirmPublicEgress": false
+				},
+				"endpoint": {
+					"path": "/v1/desktop/hub/skills/publish",
+					"method": "POST",
+					"body": {
+						"request_id": "12345678-1234-4123-8123-123456789abc",
+						"dry_run": true,
+						"source_skill": "release-notes",
+						"local_alias": "release-notes-copy",
+						"visibility": "org",
+						"tenant_id": "org-minerva",
+						"subscribe": true,
+						"auto_push": false,
+						"confirm_public_egress": false
+					}
+				},
+				"readOnly": false,
+				"deadlineDetail": {
+					"code": "deadline_exceeded",
+					"message": "This is taking longer than expected. It may still finish; the mark will update."
+				}
+			},
+			"identical": true
+		},
+		{
+			"input": {
+				"op": "hub.skillPublish",
+				"requestId": "12345678-1234-4123-8123-123456789abc",
+				"dryRun": false,
+				"sourceSkill": "release-notes",
+				"localAlias": "release-notes-copy",
+				"visibility": "org",
+				"tenantId": "org-minerva",
+				"subscribe": true,
+				"autoPush": false,
+				"confirmPublicEgress": false,
+				"previewReceipt": "receipt-stub-1",
+				"confirmPublish": true
+			},
+			"result": {
+				"ok": true,
+				"parsed": {
+					"op": "hub.skillPublish",
+					"requestId": "12345678-1234-4123-8123-123456789abc",
+					"dryRun": false,
+					"sourceSkill": "release-notes",
+					"localAlias": "release-notes-copy",
+					"visibility": "org",
+					"tenantId": "org-minerva",
+					"subscribe": true,
+					"autoPush": false,
+					"confirmPublicEgress": false,
+					"previewReceipt": "receipt-stub-1",
+					"confirmPublish": true
+				},
+				"endpoint": {
+					"path": "/v1/desktop/hub/skills/publish",
+					"method": "POST",
+					"body": {
+						"request_id": "12345678-1234-4123-8123-123456789abc",
+						"dry_run": false,
+						"source_skill": "release-notes",
+						"local_alias": "release-notes-copy",
+						"visibility": "org",
+						"tenant_id": "org-minerva",
+						"subscribe": true,
+						"auto_push": false,
+						"confirm_public_egress": false,
+						"preview_receipt": "receipt-stub-1",
+						"confirm_publish": true
+					}
+				},
+				"readOnly": false,
+				"deadlineDetail": {
+					"code": "deadline_exceeded",
+					"message": "This is taking longer than expected. It may still finish; the mark will update."
+				}
+			},
+			"identical": true
+		},
+		{
+			"input": {
+				"op": "hub.skillPull",
+				"requestId": "12345678-1234-4123-8123-123456789abc",
+				"hubId": "skill-release-notes",
+				"hubSource": "http://127.0.0.1:8127",
+				"visibility": "public",
+				"tenantId": null,
+				"localAlias": "release-notes",
+				"subscribe": true,
+				"autoPush": true,
+				"confirmPublicEgress": true
+			},
+			"result": {
+				"ok": true,
+				"parsed": {
+					"op": "hub.skillPull",
+					"requestId": "12345678-1234-4123-8123-123456789abc",
+					"hubId": "skill-release-notes",
+					"hubSource": "http://127.0.0.1:8127",
+					"visibility": "public",
+					"tenantId": null,
+					"localAlias": "release-notes",
+					"subscribe": true,
+					"autoPush": true,
+					"confirmPublicEgress": true
+				},
+				"endpoint": {
+					"path": "/v1/desktop/hub/skills/pull",
+					"method": "POST",
+					"body": {
+						"request_id": "12345678-1234-4123-8123-123456789abc",
+						"hub_id": "skill-release-notes",
+						"hub_source": "http://127.0.0.1:8127",
+						"visibility": "public",
+						"tenant_id": null,
+						"local_alias": "release-notes",
+						"subscribe": true,
+						"auto_push": true,
+						"confirm_public_egress": true
+					}
+				},
+				"readOnly": false,
+				"deadlineDetail": {
+					"code": "deadline_exceeded",
+					"message": "This is taking longer than expected. It may still finish; the mark will update."
+				}
+			},
+			"identical": true
+		},
+		{
+			"input": {
+				"op": "hub.skillPublish",
+				"requestId": "12345678-1234-4123-8123-123456789abc",
+				"dryRun": true,
+				"sourceSkill": "release-notes",
+				"localAlias": "release-notes-copy",
+				"visibility": "public",
+				"tenantId": null,
+				"subscribe": true,
+				"autoPush": false,
+				"confirmPublicEgress": false
+			},
+			"result": {
+				"ok": true,
+				"parsed": {
+					"op": "hub.skillPublish",
+					"requestId": "12345678-1234-4123-8123-123456789abc",
+					"dryRun": true,
+					"sourceSkill": "release-notes",
+					"localAlias": "release-notes-copy",
+					"visibility": "public",
+					"tenantId": null,
+					"subscribe": true,
+					"autoPush": false,
+					"confirmPublicEgress": false
+				},
+				"endpoint": {
+					"path": "/v1/desktop/hub/skills/publish",
+					"method": "POST",
+					"body": {
+						"request_id": "12345678-1234-4123-8123-123456789abc",
+						"dry_run": true,
+						"source_skill": "release-notes",
+						"local_alias": "release-notes-copy",
+						"visibility": "public",
+						"tenant_id": null,
+						"subscribe": true,
+						"auto_push": false,
+						"confirm_public_egress": false
+					}
+				},
+				"readOnly": false,
+				"deadlineDetail": {
+					"code": "deadline_exceeded",
+					"message": "This is taking longer than expected. It may still finish; the mark will update."
+				}
+			},
+			"identical": true
+		},
+		{
+			"input": {
+				"op": "hub.skillPublish",
+				"requestId": "12345678-1234-4123-8123-123456789abc",
+				"dryRun": false,
+				"sourceSkill": "release-notes",
+				"localAlias": "release-notes-copy",
+				"visibility": "public",
+				"tenantId": null,
+				"subscribe": true,
+				"autoPush": false,
+				"confirmPublicEgress": false,
+				"previewReceipt": "receipt-stub-1",
+				"confirmPublish": true
+			},
+			"result": {
+				"ok": true,
+				"parsed": {
+					"op": "hub.skillPublish",
+					"requestId": "12345678-1234-4123-8123-123456789abc",
+					"dryRun": false,
+					"sourceSkill": "release-notes",
+					"localAlias": "release-notes-copy",
+					"visibility": "public",
+					"tenantId": null,
+					"subscribe": true,
+					"autoPush": false,
+					"confirmPublicEgress": false,
+					"previewReceipt": "receipt-stub-1",
+					"confirmPublish": true
+				},
+				"endpoint": {
+					"path": "/v1/desktop/hub/skills/publish",
+					"method": "POST",
+					"body": {
+						"request_id": "12345678-1234-4123-8123-123456789abc",
+						"dry_run": false,
+						"source_skill": "release-notes",
+						"local_alias": "release-notes-copy",
+						"visibility": "public",
+						"tenant_id": null,
+						"subscribe": true,
+						"auto_push": false,
+						"confirm_public_egress": false,
+						"preview_receipt": "receipt-stub-1",
+						"confirm_publish": true
+					}
+				},
+				"readOnly": false,
+				"deadlineDetail": {
+					"code": "deadline_exceeded",
+					"message": "This is taking longer than expected. It may still finish; the mark will update."
+				}
+			},
+			"identical": true
+		},
+		{
+			"input": {
+				"op": "hub.skillPull",
+				"requestId": "12345678-1234-4123-8123-123456789abc",
+				"hubId": "skill-minerva-deploy",
+				"hubSource": "http://127.0.0.1:8127",
+				"visibility": "public",
+				"tenantId": "org-minerva",
+				"localAlias": "minerva-deploy",
+				"subscribe": true,
+				"autoPush": true,
+				"confirmPublicEgress": false
+			},
+			"result": {
+				"ok": false,
+				"issues": [
+					{
+						"code": "custom",
+						"message": "A skill destination requires explicit paired scope",
+						"path": ["tenantId"]
+					}
+				]
+			},
+			"identical": true
+		},
+		{
+			"input": {
+				"op": "hub.skillPublish",
+				"requestId": "12345678-1234-4123-8123-123456789abc",
+				"dryRun": false,
+				"sourceSkill": "release-notes",
+				"localAlias": "release-notes-copy",
+				"visibility": "org",
+				"tenantId": "org-minerva",
+				"subscribe": true,
+				"autoPush": false,
+				"confirmPublicEgress": false
+			},
+			"result": {
+				"ok": false,
+				"issues": [
+					{
+						"code": "custom",
+						"message": "An initial skill publication requires its reviewed draft receipt",
+						"path": ["previewReceipt"]
+					}
+				]
+			},
+			"identical": true
+		}
+	]
 }

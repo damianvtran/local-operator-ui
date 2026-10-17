@@ -1,9 +1,9 @@
 {
-  "gesture": "real rendered Copy file path menu",
-  "clipboard": "intercepted renderer clipboard method, not OS clipboard smoke",
-  "path": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/generated/child-portrait.png",
-  "exists": true,
-  "size": 268,
-  "same_bytes": true,
-  "different_inode": true
+	"gesture": "real rendered Copy file path menu",
+	"clipboard": "intercepted renderer clipboard method, not OS clipboard smoke",
+	"path": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/generated/child-portrait.png",
+	"exists": true,
+	"size": 268,
+	"same_bytes": true,
+	"different_inode": true
 }

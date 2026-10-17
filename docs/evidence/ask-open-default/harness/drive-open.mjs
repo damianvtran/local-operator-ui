@@ -268,17 +268,18 @@ const probeSource = () => {
 		 * keeps every match, in order, so a record can show what the selector saw.
 		 */
 		liveRegion: q("[data-ask-open-announcer]")?.textContent ?? null,
-		liveRegions: [...document.querySelectorAll('output[aria-live="polite"]')].map(
-			(el, i) => ({
-				i,
-				owner: el.getAttribute("data-ask-open-announcer") !== null
+		liveRegions: [
+			...document.querySelectorAll('output[aria-live="polite"]'),
+		].map((el, i) => ({
+			i,
+			owner:
+				el.getAttribute("data-ask-open-announcer") !== null
 					? "ask-open"
 					: el.getAttribute("data-condense-announcement") !== null
 						? "condense"
 						: null,
-				text: (el.textContent ?? "").slice(0, 80),
-			}),
-		),
+			text: (el.textContent ?? "").slice(0, 80),
+		})),
 		scope: q("[data-ask-drawer] [data-ask-scope]")?.textContent ?? null,
 		canvas: count('[data-tour-tag="canvas-container"]'),
 		other: {

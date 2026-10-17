@@ -1,13 +1,13 @@
+import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { relative, resolve } from "node:path";
 // Bounded Node module proof, following scripts/right-slot-memory.test.mjs.
 // No app build/boot or dependency install. All repository modules load from the
 // nominated Git ref via onLoad, not accidentally from the current worktree.
 import { build } from "esbuild";
-import { execFileSync } from "node:child_process";
-import { createRequire } from "node:module";
-import { createHash } from "node:crypto";
-import { relative, resolve } from "node:path";
-import { writeFileSync } from "node:fs";
-import assert from "node:assert/strict";
 const root = process.cwd(),
 	refs = ["43fc66a1b", "51a2eccfb"],
 	require = createRequire(import.meta.url);

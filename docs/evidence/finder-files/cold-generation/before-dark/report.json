@@ -1,1585 +1,1555 @@
 {
-  "label": "cold-before-dark",
-  "theme": "localOperatorDark",
-  "samples": [
-    {
-      "rows": 0,
-      "first": null,
-      "headers": [],
-      "head": "Mentioned\n\u2191\nFilter",
-      "body": "Loading session files\u2026",
-      "loading": true,
-      "width": 560,
-      "imgs": 0,
-      "elapsed": 58,
-      "resources": {
-        "entries": 0,
-        "queued": 0,
-        "active": 0,
-        "reads": 0,
-        "decodes": 0,
-        "peakActive": 0
-      }
-    },
-    {
-      "rows": 0,
-      "first": null,
-      "headers": [],
-      "head": "Mentioned\n\u2191\nFilter",
-      "body": "Loading session files\u2026",
-      "loading": true,
-      "width": 560,
-      "imgs": 0,
-      "elapsed": 365,
-      "resources": {
-        "entries": 0,
-        "queued": 0,
-        "active": 0,
-        "reads": 0,
-        "decodes": 0,
-        "peakActive": 0
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-4804.png",
-      "headers": [
-        "Images\n51",
-        "Videos\n49",
-        "Documents\n50",
-        "Spreadsheets\n50"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n51\nfile-4804.png\n0 KB\nfile-4808.png\n0 KB\nfile-4812.png\n0 KB\nfile-4816.png\n0 KB\nfile-4820.png\n0 KB\nfile-4824.png\n0 KB\nfile-4828.png\n0 KB\nfile-4832.png\n0 KB\nfile-4836.png\n0 KB\nfile-4840.png\n0 KB\nfile-4844.png\n0 KB\nfile-4848.png\n0 KB\nfile-4852.png\n0 KB\nfile-4856.png\n0 KB\nfile-4860.png\n0 KB\nfile-4864.png\n0 KB\nfile-4868.png\n0 KB\nfile-4872.png\n0 KB\nfile-4876.png\n0 KB\nfile-4880.png\n0 KB\nfile-4884.png\n0 KB\nfile-4888.png\n0 KB\nfile-4892.png\n0 KB\nfile-4896.png\n0 KB\nfile-4900.png\n0 KB\nfile-4904.png\n0 KB\nfile-4908.png\n0 KB\nVideos\n49\nDocuments\n50\nSpreadsheets\n50",
-      "loading": true,
-      "width": 560,
-      "imgs": 1,
-      "elapsed": 618,
-      "resources": {
-        "entries": 15,
-        "queued": 10,
-        "active": 4,
-        "reads": 5,
-        "decodes": 4,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-4604.png",
-      "headers": [
-        "Images\n101",
-        "Videos\n99",
-        "Documents\n100",
-        "Spreadsheets\n100"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n101\nfile-4604.png\n0 KB\nfile-4608.png\n0 KB\nfile-4612.png\n0 KB\nfile-4616.png\n0 KB\nfile-4620.png\n0 KB\nfile-4624.png\n0 KB\nfile-4628.png\n0 KB\nfile-4632.png\n0 KB\nfile-4636.png\n0 KB\nfile-4640.png\n0 KB\nfile-4644.png\n0 KB\nfile-4648.png\n0 KB\nfile-4652.png\n0 KB\nfile-4656.png\n0 KB\nfile-4660.png\n0 KB\nfile-4664.png\n0 KB\nfile-4668.png\n0 KB\nfile-4672.png\n0 KB\nfile-4676.png\n0 KB\nfile-4680.png\n0 KB\nfile-4684.png\n0 KB\nfile-4688.png\n0 KB\nfile-4692.png\n0 KB\nfile-4696.png\n0 KB\nfile-4700.png\n0 KB\nfile-4704.png\n0 KB\nfile-4708.png\n0 KB\nVideos\n99\nDocuments\n100\nSpreadsheets\n100",
-      "loading": true,
-      "width": 560,
-      "imgs": 6,
-      "elapsed": 880,
-      "resources": {
-        "entries": 23,
-        "queued": 5,
-        "active": 4,
-        "reads": 18,
-        "decodes": 17,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-4404.png",
-      "headers": [
-        "Images\n151",
-        "Videos\n149",
-        "Documents\n150",
-        "Spreadsheets\n150"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n151\nfile-4404.png\n0 KB\nfile-4408.png\n0 KB\nfile-4412.png\n0 KB\nfile-4416.png\n0 KB\nfile-4420.png\n0 KB\nfile-4424.png\n0 KB\nfile-4428.png\n0 KB\nfile-4432.png\n0 KB\nfile-4436.png\n0 KB\nfile-4440.png\n0 KB\nfile-4444.png\n0 KB\nfile-4448.png\n0 KB\nfile-4452.png\n0 KB\nfile-4456.png\n0 KB\nfile-4460.png\n0 KB\nfile-4464.png\n0 KB\nfile-4468.png\n0 KB\nfile-4472.png\n0 KB\nfile-4476.png\n0 KB\nfile-4480.png\n0 KB\nfile-4484.png\n0 KB\nfile-4488.png\n0 KB\nfile-4492.png\n0 KB\nfile-4496.png\n0 KB\nfile-4500.png\n0 KB\nfile-4504.png\n0 KB\nfile-4508.png\n0 KB\nVideos\n149\nDocuments\n150\nSpreadsheets\n150",
-      "loading": true,
-      "width": 560,
-      "imgs": 11,
-      "elapsed": 1134,
-      "resources": {
-        "entries": 38,
-        "queued": 0,
-        "active": 3,
-        "reads": 38,
-        "decodes": 38,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-4204.png",
-      "headers": [
-        "Images\n201",
-        "Videos\n199",
-        "Documents\n200",
-        "Spreadsheets\n200"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n201\nfile-4204.png\n0 KB\nfile-4208.png\n0 KB\nfile-4212.png\n0 KB\nfile-4216.png\n0 KB\nfile-4220.png\n0 KB\nfile-4224.png\n0 KB\nfile-4228.png\n0 KB\nfile-4232.png\n0 KB\nfile-4236.png\n0 KB\nfile-4240.png\n0 KB\nfile-4244.png\n0 KB\nfile-4248.png\n0 KB\nfile-4252.png\n0 KB\nfile-4256.png\n0 KB\nfile-4260.png\n0 KB\nfile-4264.png\n0 KB\nfile-4268.png\n0 KB\nfile-4272.png\n0 KB\nfile-4276.png\n0 KB\nfile-4280.png\n0 KB\nfile-4284.png\n0 KB\nfile-4288.png\n0 KB\nfile-4292.png\n0 KB\nfile-4296.png\n0 KB\nfile-4300.png\n0 KB\nfile-4304.png\n0 KB\nfile-4308.png\n0 KB\nVideos\n199\nDocuments\n200\nSpreadsheets\n200",
-      "loading": true,
-      "width": 560,
-      "imgs": 10,
-      "elapsed": 1388,
-      "resources": {
-        "entries": 53,
-        "queued": 1,
-        "active": 4,
-        "reads": 52,
-        "decodes": 52,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-4004.png",
-      "headers": [
-        "Images\n251",
-        "Videos\n249",
-        "Documents\n250",
-        "Spreadsheets\n250"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n251\nfile-4004.png\n0 KB\nfile-4008.png\n0 KB\nfile-4012.png\n0 KB\nfile-4016.png\n0 KB\nfile-4020.png\n0 KB\nfile-4024.png\n0 KB\nfile-4028.png\n0 KB\nfile-4032.png\n0 KB\nfile-4036.png\n0 KB\nfile-4040.png\n0 KB\nfile-4044.png\n0 KB\nfile-4048.png\n0 KB\nfile-4052.png\n0 KB\nfile-4056.png\n0 KB\nfile-4060.png\n0 KB\nfile-4064.png\n0 KB\nfile-4068.png\n0 KB\nfile-4072.png\n0 KB\nfile-4076.png\n0 KB\nfile-4080.png\n0 KB\nfile-4084.png\n0 KB\nfile-4088.png\n0 KB\nfile-4092.png\n0 KB\nfile-4096.png\n0 KB\nfile-4100.png\n0 KB\nfile-4104.png\n0 KB\nfile-4108.png\n0 KB\nVideos\n249\nDocuments\n250\nSpreadsheets\n250",
-      "loading": true,
-      "width": 560,
-      "imgs": 10,
-      "elapsed": 1646,
-      "resources": {
-        "entries": 68,
-        "queued": 0,
-        "active": 4,
-        "reads": 68,
-        "decodes": 67,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-3804.png",
-      "headers": [
-        "Images\n301",
-        "Videos\n299",
-        "Documents\n300",
-        "Spreadsheets\n300"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n301\nfile-3804.png\n0 KB\nfile-3808.png\n0 KB\nfile-3812.png\n0 KB\nfile-3816.png\n0 KB\nfile-3820.png\n0 KB\nfile-3824.png\n0 KB\nfile-3828.png\n0 KB\nfile-3832.png\n0 KB\nfile-3836.png\n0 KB\nfile-3840.png\n0 KB\nfile-3844.png\n0 KB\nfile-3848.png\n0 KB\nfile-3852.png\n0 KB\nfile-3856.png\n0 KB\nfile-3860.png\n0 KB\nfile-3864.png\n0 KB\nfile-3868.png\n0 KB\nfile-3872.png\n0 KB\nfile-3876.png\n0 KB\nfile-3880.png\n0 KB\nfile-3884.png\n0 KB\nfile-3888.png\n0 KB\nfile-3892.png\n0 KB\nfile-3896.png\n0 KB\nfile-3900.png\n0 KB\nfile-3904.png\n0 KB\nfile-3908.png\n0 KB\nVideos\n299\nDocuments\n300\nSpreadsheets\n300",
-      "loading": true,
-      "width": 560,
-      "imgs": 15,
-      "elapsed": 1966,
-      "resources": {
-        "entries": 83,
-        "queued": 0,
-        "active": 0,
-        "reads": 83,
-        "decodes": 83,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-3604.png",
-      "headers": [
-        "Images\n351",
-        "Videos\n349",
-        "Documents\n350",
-        "Spreadsheets\n350"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n351\nfile-3604.png\n0 KB\nfile-3608.png\n0 KB\nfile-3612.png\n0 KB\nfile-3616.png\n0 KB\nfile-3620.png\n0 KB\nfile-3624.png\n0 KB\nfile-3628.png\n0 KB\nfile-3632.png\n0 KB\nfile-3636.png\n0 KB\nfile-3640.png\n0 KB\nfile-3644.png\n0 KB\nfile-3648.png\n0 KB\nfile-3652.png\n0 KB\nfile-3656.png\n0 KB\nfile-3660.png\n0 KB\nfile-3664.png\n0 KB\nfile-3668.png\n0 KB\nfile-3672.png\n0 KB\nfile-3676.png\n0 KB\nfile-3680.png\n0 KB\nfile-3684.png\n0 KB\nfile-3688.png\n0 KB\nfile-3692.png\n0 KB\nfile-3696.png\n0 KB\nfile-3700.png\n0 KB\nfile-3704.png\n0 KB\nfile-3708.png\n0 KB\nVideos\n349\nDocuments\n350\nSpreadsheets\n350",
-      "loading": true,
-      "width": 560,
-      "imgs": 6,
-      "elapsed": 2218,
-      "resources": {
-        "entries": 98,
-        "queued": 4,
-        "active": 4,
-        "reads": 94,
-        "decodes": 93,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-3404.png",
-      "headers": [
-        "Images\n401",
-        "Videos\n399",
-        "Documents\n400",
-        "Spreadsheets\n400"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n401\nfile-3404.png\n0 KB\nfile-3408.png\n0 KB\nfile-3412.png\n0 KB\nfile-3416.png\n0 KB\nfile-3420.png\n0 KB\nfile-3424.png\n0 KB\nfile-3428.png\n0 KB\nfile-3432.png\n0 KB\nfile-3436.png\n0 KB\nfile-3440.png\n0 KB\nfile-3444.png\n0 KB\nfile-3448.png\n0 KB\nfile-3452.png\n0 KB\nfile-3456.png\n0 KB\nfile-3460.png\n0 KB\nfile-3464.png\n0 KB\nfile-3468.png\n0 KB\nfile-3472.png\n0 KB\nfile-3476.png\n0 KB\nfile-3480.png\n0 KB\nfile-3484.png\n0 KB\nfile-3488.png\n0 KB\nfile-3492.png\n0 KB\nfile-3496.png\n0 KB\nfile-3500.png\n0 KB\nfile-3504.png\n0 KB\nfile-3508.png\n0 KB\nVideos\n399\nDocuments\n400\nSpreadsheets\n400",
-      "loading": true,
-      "width": 560,
-      "imgs": 4,
-      "elapsed": 2473,
-      "resources": {
-        "entries": 113,
-        "queued": 6,
-        "active": 4,
-        "reads": 107,
-        "decodes": 106,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-3204.png",
-      "headers": [
-        "Images\n451",
-        "Videos\n449",
-        "Documents\n450",
-        "Spreadsheets\n450"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n451\nfile-3204.png\n0 KB\nfile-3208.png\n0 KB\nfile-3212.png\n0 KB\nfile-3216.png\n0 KB\nfile-3220.png\n0 KB\nfile-3224.png\n0 KB\nfile-3228.png\n0 KB\nfile-3232.png\n0 KB\nfile-3236.png\n0 KB\nfile-3240.png\n0 KB\nfile-3244.png\n0 KB\nfile-3248.png\n0 KB\nfile-3252.png\n0 KB\nfile-3256.png\n0 KB\nfile-3260.png\n0 KB\nfile-3264.png\n0 KB\nfile-3268.png\n0 KB\nfile-3272.png\n0 KB\nfile-3276.png\n0 KB\nfile-3280.png\n0 KB\nfile-3284.png\n0 KB\nfile-3288.png\n0 KB\nfile-3292.png\n0 KB\nfile-3296.png\n0 KB\nfile-3300.png\n0 KB\nfile-3304.png\n0 KB\nfile-3308.png\n0 KB\nVideos\n449\nDocuments\n450\nSpreadsheets\n450",
-      "loading": true,
-      "width": 560,
-      "imgs": 2,
-      "elapsed": 2734,
-      "resources": {
-        "entries": 128,
-        "queued": 9,
-        "active": 4,
-        "reads": 119,
-        "decodes": 119,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-3004.png",
-      "headers": [
-        "Images\n501",
-        "Videos\n499",
-        "Documents\n500",
-        "Spreadsheets\n500"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n501\nfile-3004.png\n0 KB\nfile-3008.png\n0 KB\nfile-3012.png\n0 KB\nfile-3016.png\n0 KB\nfile-3020.png\n0 KB\nfile-3024.png\n0 KB\nfile-3028.png\n0 KB\nfile-3032.png\n0 KB\nfile-3036.png\n0 KB\nfile-3040.png\n0 KB\nfile-3044.png\n0 KB\nfile-3048.png\n0 KB\nfile-3052.png\n0 KB\nfile-3056.png\n0 KB\nfile-3060.png\n0 KB\nfile-3064.png\n0 KB\nfile-3068.png\n0 KB\nfile-3072.png\n0 KB\nfile-3076.png\n0 KB\nfile-3080.png\n0 KB\nfile-3084.png\n0 KB\nfile-3088.png\n0 KB\nfile-3092.png\n0 KB\nfile-3096.png\n0 KB\nfile-3100.png\n0 KB\nfile-3104.png\n0 KB\nfile-3108.png\n0 KB\nVideos\n499\nDocuments\n500\nSpreadsheets\n500",
-      "loading": true,
-      "width": 560,
-      "imgs": 2,
-      "elapsed": 2993,
-      "resources": {
-        "entries": 143,
-        "queued": 8,
-        "active": 4,
-        "reads": 135,
-        "decodes": 134,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-2804.png",
-      "headers": [
-        "Images\n551",
-        "Videos\n549",
-        "Documents\n550",
-        "Spreadsheets\n550"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n551\nfile-2804.png\n0 KB\nfile-2808.png\n0 KB\nfile-2812.png\n0 KB\nfile-2816.png\n0 KB\nfile-2820.png\n0 KB\nfile-2824.png\n0 KB\nfile-2828.png\n0 KB\nfile-2832.png\n0 KB\nfile-2836.png\n0 KB\nfile-2840.png\n0 KB\nfile-2844.png\n0 KB\nfile-2848.png\n0 KB\nfile-2852.png\n0 KB\nfile-2856.png\n0 KB\nfile-2860.png\n0 KB\nfile-2864.png\n0 KB\nfile-2868.png\n0 KB\nfile-2872.png\n0 KB\nfile-2876.png\n0 KB\nfile-2880.png\n0 KB\nfile-2884.png\n0 KB\nfile-2888.png\n0 KB\nfile-2892.png\n0 KB\nfile-2896.png\n0 KB\nfile-2900.png\n0 KB\nfile-2904.png\n0 KB\nfile-2908.png\n0 KB\nVideos\n549\nDocuments\n550\nSpreadsheets\n550",
-      "loading": true,
-      "width": 560,
-      "imgs": 0,
-      "elapsed": 3254,
-      "resources": {
-        "entries": 158,
-        "queued": 11,
-        "active": 4,
-        "reads": 147,
-        "decodes": 147,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-2604.png",
-      "headers": [
-        "Images\n601",
-        "Videos\n599",
-        "Documents\n600",
-        "Spreadsheets\n600"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n601\nfile-2604.png\n0 KB\nfile-2608.png\n0 KB\nfile-2612.png\n0 KB\nfile-2616.png\n0 KB\nfile-2620.png\n0 KB\nfile-2624.png\n0 KB\nfile-2628.png\n0 KB\nfile-2632.png\n0 KB\nfile-2636.png\n0 KB\nfile-2640.png\n0 KB\nfile-2644.png\n0 KB\nfile-2648.png\n0 KB\nfile-2652.png\n0 KB\nfile-2656.png\n0 KB\nfile-2660.png\n0 KB\nfile-2664.png\n0 KB\nfile-2668.png\n0 KB\nfile-2672.png\n0 KB\nfile-2676.png\n0 KB\nfile-2680.png\n0 KB\nfile-2684.png\n0 KB\nfile-2688.png\n0 KB\nfile-2692.png\n0 KB\nfile-2696.png\n0 KB\nfile-2700.png\n0 KB\nfile-2704.png\n0 KB\nfile-2708.png\n0 KB\nVideos\n599\nDocuments\n600\nSpreadsheets\n600",
-      "loading": true,
-      "width": 560,
-      "imgs": 0,
-      "elapsed": 3512,
-      "resources": {
-        "entries": 165,
-        "queued": 11,
-        "active": 4,
-        "reads": 162,
-        "decodes": 162,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-2404.png",
-      "headers": [
-        "Images\n651",
-        "Videos\n649",
-        "Documents\n650",
-        "Spreadsheets\n650"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n651\nfile-2404.png\n0 KB\nfile-2408.png\n0 KB\nfile-2412.png\n0 KB\nfile-2416.png\n0 KB\nfile-2420.png\n0 KB\nfile-2424.png\n0 KB\nfile-2428.png\n0 KB\nfile-2432.png\n0 KB\nfile-2436.png\n0 KB\nfile-2440.png\n0 KB\nfile-2444.png\n0 KB\nfile-2448.png\n0 KB\nfile-2452.png\n0 KB\nfile-2456.png\n0 KB\nfile-2460.png\n0 KB\nfile-2464.png\n0 KB\nfile-2468.png\n0 KB\nfile-2472.png\n0 KB\nfile-2476.png\n0 KB\nfile-2480.png\n0 KB\nfile-2484.png\n0 KB\nfile-2488.png\n0 KB\nfile-2492.png\n0 KB\nfile-2496.png\n0 KB\nfile-2500.png\n0 KB\nfile-2504.png\n0 KB\nfile-2508.png\n0 KB\nVideos\n649\nDocuments\n650\nSpreadsheets\n650",
-      "loading": true,
-      "width": 560,
-      "imgs": 0,
-      "elapsed": 3779,
-      "resources": {
-        "entries": 165,
-        "queued": 11,
-        "active": 4,
-        "reads": 177,
-        "decodes": 177,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-2204.png",
-      "headers": [
-        "Images\n701",
-        "Videos\n699",
-        "Documents\n700",
-        "Spreadsheets\n700"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n701\nfile-2204.png\n0 KB\nfile-2208.png\n0 KB\nfile-2212.png\n0 KB\nfile-2216.png\n0 KB\nfile-2220.png\n0 KB\nfile-2224.png\n0 KB\nfile-2228.png\n0 KB\nfile-2232.png\n0 KB\nfile-2236.png\n0 KB\nfile-2240.png\n0 KB\nfile-2244.png\n0 KB\nfile-2248.png\n0 KB\nfile-2252.png\n0 KB\nfile-2256.png\n0 KB\nfile-2260.png\n0 KB\nfile-2264.png\n0 KB\nfile-2268.png\n0 KB\nfile-2272.png\n0 KB\nfile-2276.png\n0 KB\nfile-2280.png\n0 KB\nfile-2284.png\n0 KB\nfile-2288.png\n0 KB\nfile-2292.png\n0 KB\nfile-2296.png\n0 KB\nfile-2300.png\n0 KB\nfile-2304.png\n0 KB\nfile-2308.png\n0 KB\nVideos\n699\nDocuments\n700\nSpreadsheets\n700",
-      "loading": true,
-      "width": 560,
-      "imgs": 0,
-      "elapsed": 4044,
-      "resources": {
-        "entries": 165,
-        "queued": 11,
-        "active": 4,
-        "reads": 192,
-        "decodes": 192,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-2004.png",
-      "headers": [
-        "Images\n751",
-        "Videos\n749",
-        "Documents\n750",
-        "Spreadsheets\n750"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n751\nfile-2004.png\n0 KB\nfile-2008.png\n0 KB\nfile-2012.png\n0 KB\nfile-2016.png\n0 KB\nfile-2020.png\n0 KB\nfile-2024.png\n0 KB\nfile-2028.png\n0 KB\nfile-2032.png\n0 KB\nfile-2036.png\n0 KB\nfile-2040.png\n0 KB\nfile-2044.png\n0 KB\nfile-2048.png\n0 KB\nfile-2052.png\n0 KB\nfile-2056.png\n0 KB\nfile-2060.png\n0 KB\nfile-2064.png\n0 KB\nfile-2068.png\n0 KB\nfile-2072.png\n0 KB\nfile-2076.png\n0 KB\nfile-2080.png\n0 KB\nfile-2084.png\n0 KB\nfile-2088.png\n0 KB\nfile-2092.png\n0 KB\nfile-2096.png\n0 KB\nfile-2100.png\n0 KB\nfile-2104.png\n0 KB\nfile-2108.png\n0 KB\nVideos\n749\nDocuments\n750\nSpreadsheets\n750",
-      "loading": true,
-      "width": 560,
-      "imgs": 0,
-      "elapsed": 4315,
-      "resources": {
-        "entries": 165,
-        "queued": 11,
-        "active": 4,
-        "reads": 207,
-        "decodes": 207,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-1804.png",
-      "headers": [
-        "Images\n801",
-        "Videos\n799",
-        "Documents\n800",
-        "Spreadsheets\n800"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n801\nfile-1804.png\n0 KB\nfile-1808.png\n0 KB\nfile-1812.png\n0 KB\nfile-1816.png\n0 KB\nfile-1820.png\n0 KB\nfile-1824.png\n0 KB\nfile-1828.png\n0 KB\nfile-1832.png\n0 KB\nfile-1836.png\n0 KB\nfile-1840.png\n0 KB\nfile-1844.png\n0 KB\nfile-1848.png\n0 KB\nfile-1852.png\n0 KB\nfile-1856.png\n0 KB\nfile-1860.png\n0 KB\nfile-1864.png\n0 KB\nfile-1868.png\n0 KB\nfile-1872.png\n0 KB\nfile-1876.png\n0 KB\nfile-1880.png\n0 KB\nfile-1884.png\n0 KB\nfile-1888.png\n0 KB\nfile-1892.png\n0 KB\nfile-1896.png\n0 KB\nfile-1900.png\n0 KB\nfile-1904.png\n0 KB\nfile-1908.png\n0 KB\nVideos\n799\nDocuments\n800\nSpreadsheets\n800",
-      "loading": true,
-      "width": 560,
-      "imgs": 0,
-      "elapsed": 4585,
-      "resources": {
-        "entries": 165,
-        "queued": 11,
-        "active": 4,
-        "reads": 222,
-        "decodes": 222,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-1604.png",
-      "headers": [
-        "Images\n851",
-        "Videos\n849",
-        "Documents\n850",
-        "Spreadsheets\n850"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n851\nfile-1604.png\n0 KB\nfile-1608.png\n0 KB\nfile-1612.png\n0 KB\nfile-1616.png\n0 KB\nfile-1620.png\n0 KB\nfile-1624.png\n0 KB\nfile-1628.png\n0 KB\nfile-1632.png\n0 KB\nfile-1636.png\n0 KB\nfile-1640.png\n0 KB\nfile-1644.png\n0 KB\nfile-1648.png\n0 KB\nfile-1652.png\n0 KB\nfile-1656.png\n0 KB\nfile-1660.png\n0 KB\nfile-1664.png\n0 KB\nfile-1668.png\n0 KB\nfile-1672.png\n0 KB\nfile-1676.png\n0 KB\nfile-1680.png\n0 KB\nfile-1684.png\n0 KB\nfile-1688.png\n0 KB\nfile-1692.png\n0 KB\nfile-1696.png\n0 KB\nfile-1700.png\n0 KB\nfile-1704.png\n0 KB\nfile-1708.png\n0 KB\nVideos\n849\nDocuments\n850\nSpreadsheets\n850",
-      "loading": true,
-      "width": 560,
-      "imgs": 0,
-      "elapsed": 4856,
-      "resources": {
-        "entries": 165,
-        "queued": 11,
-        "active": 4,
-        "reads": 237,
-        "decodes": 237,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-1404.png",
-      "headers": [
-        "Images\n901",
-        "Videos\n899",
-        "Documents\n900",
-        "Spreadsheets\n900"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n901\nfile-1404.png\n0 KB\nfile-1408.png\n0 KB\nfile-1412.png\n0 KB\nfile-1416.png\n0 KB\nfile-1420.png\n0 KB\nfile-1424.png\n0 KB\nfile-1428.png\n0 KB\nfile-1432.png\n0 KB\nfile-1436.png\n0 KB\nfile-1440.png\n0 KB\nfile-1444.png\n0 KB\nfile-1448.png\n0 KB\nfile-1452.png\n0 KB\nfile-1456.png\n0 KB\nfile-1460.png\n0 KB\nfile-1464.png\n0 KB\nfile-1468.png\n0 KB\nfile-1472.png\n0 KB\nfile-1476.png\n0 KB\nfile-1480.png\n0 KB\nfile-1484.png\n0 KB\nfile-1488.png\n0 KB\nfile-1492.png\n0 KB\nfile-1496.png\n0 KB\nfile-1500.png\n0 KB\nfile-1504.png\n0 KB\nfile-1508.png\n0 KB\nVideos\n899\nDocuments\n900\nSpreadsheets\n900",
-      "loading": true,
-      "width": 560,
-      "imgs": 0,
-      "elapsed": 5126,
-      "resources": {
-        "entries": 165,
-        "queued": 11,
-        "active": 4,
-        "reads": 252,
-        "decodes": 252,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-1204.png",
-      "headers": [
-        "Images\n951",
-        "Videos\n949",
-        "Documents\n950",
-        "Spreadsheets\n950"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n951\nfile-1204.png\n0 KB\nfile-1208.png\n0 KB\nfile-1212.png\n0 KB\nfile-1216.png\n0 KB\nfile-1220.png\n0 KB\nfile-1224.png\n0 KB\nfile-1228.png\n0 KB\nfile-1232.png\n0 KB\nfile-1236.png\n0 KB\nfile-1240.png\n0 KB\nfile-1244.png\n0 KB\nfile-1248.png\n0 KB\nfile-1252.png\n0 KB\nfile-1256.png\n0 KB\nfile-1260.png\n0 KB\nfile-1264.png\n0 KB\nfile-1268.png\n0 KB\nfile-1272.png\n0 KB\nfile-1276.png\n0 KB\nfile-1280.png\n0 KB\nfile-1284.png\n0 KB\nfile-1288.png\n0 KB\nfile-1292.png\n0 KB\nfile-1296.png\n0 KB\nfile-1300.png\n0 KB\nfile-1304.png\n0 KB\nfile-1308.png\n0 KB\nVideos\n949\nDocuments\n950\nSpreadsheets\n950",
-      "loading": true,
-      "width": 560,
-      "imgs": 0,
-      "elapsed": 5393,
-      "resources": {
-        "entries": 165,
-        "queued": 11,
-        "active": 4,
-        "reads": 267,
-        "decodes": 267,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-1004.png",
-      "headers": [
-        "Images\n1,001",
-        "Videos\n999",
-        "Documents\n1,000",
-        "Spreadsheets\n1,000"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n1,001\nfile-1004.png\n0 KB\nfile-1008.png\n0 KB\nfile-1012.png\n0 KB\nfile-1016.png\n0 KB\nfile-1020.png\n0 KB\nfile-1024.png\n0 KB\nfile-1028.png\n0 KB\nfile-1032.png\n0 KB\nfile-1036.png\n0 KB\nfile-1040.png\n0 KB\nfile-1044.png\n0 KB\nfile-1048.png\n0 KB\nfile-1052.png\n0 KB\nfile-1056.png\n0 KB\nfile-1060.png\n0 KB\nfile-1064.png\n0 KB\nfile-1068.png\n0 KB\nfile-1072.png\n0 KB\nfile-1076.png\n0 KB\nfile-1080.png\n0 KB\nfile-1084.png\n0 KB\nfile-1088.png\n0 KB\nfile-1092.png\n0 KB\nfile-1096.png\n0 KB\nfile-1100.png\n0 KB\nfile-1104.png\n0 KB\nfile-1108.png\n0 KB\nVideos\n999\nDocuments\n1,000\nSpreadsheets\n1,000",
-      "loading": true,
-      "width": 560,
-      "imgs": 0,
-      "elapsed": 5664,
-      "resources": {
-        "entries": 165,
-        "queued": 11,
-        "active": 4,
-        "reads": 282,
-        "decodes": 282,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0804.png",
-      "headers": [
-        "Images\n1,051",
-        "Videos\n1,049",
-        "Documents\n1,050",
-        "Spreadsheets\n1,050"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n1,051\nfile-0804.png\n0 KB\nfile-0808.png\n0 KB\nfile-0812.png\n0 KB\nfile-0816.png\n0 KB\nfile-0820.png\n0 KB\nfile-0824.png\n0 KB\nfile-0828.png\n0 KB\nfile-0832.png\n0 KB\nfile-0836.png\n0 KB\nfile-0840.png\n0 KB\nfile-0844.png\n0 KB\nfile-0848.png\n0 KB\nfile-0852.png\n0 KB\nfile-0856.png\n0 KB\nfile-0860.png\n0 KB\nfile-0864.png\n0 KB\nfile-0868.png\n0 KB\nfile-0872.png\n0 KB\nfile-0876.png\n0 KB\nfile-0880.png\n0 KB\nfile-0884.png\n0 KB\nfile-0888.png\n0 KB\nfile-0892.png\n0 KB\nfile-0896.png\n0 KB\nfile-0900.png\n0 KB\nfile-0904.png\n0 KB\nfile-0908.png\n0 KB\nVideos\n1,049\nDocuments\n1,050\nSpreadsheets\n1,050",
-      "loading": true,
-      "width": 560,
-      "imgs": 0,
-      "elapsed": 5931,
-      "resources": {
-        "entries": 165,
-        "queued": 11,
-        "active": 4,
-        "reads": 297,
-        "decodes": 297,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0604.png",
-      "headers": [
-        "Images\n1,101",
-        "Videos\n1,099",
-        "Documents\n1,100",
-        "Spreadsheets\n1,100"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n1,101\nfile-0604.png\n0 KB\nfile-0608.png\n0 KB\nfile-0612.png\n0 KB\nfile-0616.png\n0 KB\nfile-0620.png\n0 KB\nfile-0624.png\n0 KB\nfile-0628.png\n0 KB\nfile-0632.png\n0 KB\nfile-0636.png\n0 KB\nfile-0640.png\n0 KB\nfile-0644.png\n0 KB\nfile-0648.png\n0 KB\nfile-0652.png\n0 KB\nfile-0656.png\n0 KB\nfile-0660.png\n0 KB\nfile-0664.png\n0 KB\nfile-0668.png\n0 KB\nfile-0672.png\n0 KB\nfile-0676.png\n0 KB\nfile-0680.png\n0 KB\nfile-0684.png\n0 KB\nfile-0688.png\n0 KB\nfile-0692.png\n0 KB\nfile-0696.png\n0 KB\nfile-0700.png\n0 KB\nfile-0704.png\n0 KB\nfile-0708.png\n0 KB\nVideos\n1,099\nDocuments\n1,100\nSpreadsheets\n1,100",
-      "loading": true,
-      "width": 560,
-      "imgs": 0,
-      "elapsed": 6201,
-      "resources": {
-        "entries": 165,
-        "queued": 11,
-        "active": 4,
-        "reads": 312,
-        "decodes": 312,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0404.png",
-      "headers": [
-        "Images\n1,151",
-        "Videos\n1,149",
-        "Documents\n1,150",
-        "Spreadsheets\n1,150"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n1,151\nfile-0404.png\n0 KB\nfile-0408.png\n0 KB\nfile-0412.png\n0 KB\nfile-0416.png\n0 KB\nfile-0420.png\n0 KB\nfile-0424.png\n0 KB\nfile-0428.png\n0 KB\nfile-0432.png\n0 KB\nfile-0436.png\n0 KB\nfile-0440.png\n0 KB\nfile-0444.png\n0 KB\nfile-0448.png\n0 KB\nfile-0452.png\n0 KB\nfile-0456.png\n0 KB\nfile-0460.png\n0 KB\nfile-0464.png\n0 KB\nfile-0468.png\n0 KB\nfile-0472.png\n0 KB\nfile-0476.png\n0 KB\nfile-0480.png\n0 KB\nfile-0484.png\n0 KB\nfile-0488.png\n0 KB\nfile-0492.png\n0 KB\nfile-0496.png\n0 KB\nfile-0500.png\n0 KB\nfile-0504.png\n0 KB\nfile-0508.png\n0 KB\nVideos\n1,149\nDocuments\n1,150\nSpreadsheets\n1,150",
-      "loading": true,
-      "width": 560,
-      "imgs": 0,
-      "elapsed": 6475,
-      "resources": {
-        "entries": 165,
-        "queued": 11,
-        "active": 4,
-        "reads": 327,
-        "decodes": 327,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0204.png",
-      "headers": [
-        "Images\n1,201",
-        "Videos\n1,199",
-        "Documents\n1,200",
-        "Spreadsheets\n1,200"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n1,201\nfile-0204.png\n0 KB\nfile-0208.png\n0 KB\nfile-0212.png\n0 KB\nfile-0216.png\n0 KB\nfile-0220.png\n0 KB\nfile-0224.png\n0 KB\nfile-0228.png\n0 KB\nfile-0232.png\n0 KB\nfile-0236.png\n0 KB\nfile-0240.png\n0 KB\nfile-0244.png\n0 KB\nfile-0248.png\n0 KB\nfile-0252.png\n0 KB\nfile-0256.png\n0 KB\nfile-0260.png\n0 KB\nfile-0264.png\n0 KB\nfile-0268.png\n0 KB\nfile-0272.png\n0 KB\nfile-0276.png\n0 KB\nfile-0280.png\n0 KB\nfile-0284.png\n0 KB\nfile-0288.png\n0 KB\nfile-0292.png\n0 KB\nfile-0296.png\n0 KB\nfile-0300.png\n0 KB\nfile-0304.png\n0 KB\nfile-0308.png\n0 KB\nVideos\n1,199\nDocuments\n1,200\nSpreadsheets\n1,200",
-      "loading": true,
-      "width": 560,
-      "imgs": 0,
-      "elapsed": 6746,
-      "resources": {
-        "entries": 165,
-        "queued": 11,
-        "active": 4,
-        "reads": 342,
-        "decodes": 342,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0204.png",
-      "headers": [
-        "Images\n1,201",
-        "Videos\n1,199",
-        "Documents\n1,200",
-        "Spreadsheets\n1,200"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n1,201\nfile-0204.png\n0 KB\nfile-0208.png\n0 KB\nfile-0212.png\n0 KB\nfile-0216.png\n0 KB\nfile-0220.png\n0 KB\nfile-0224.png\n0 KB\nfile-0228.png\n0 KB\nfile-0232.png\n0 KB\nfile-0236.png\n0 KB\nfile-0240.png\n0 KB\nfile-0244.png\n0 KB\nfile-0248.png\n0 KB\nfile-0252.png\n0 KB\nfile-0256.png\n0 KB\nfile-0260.png\n0 KB\nfile-0264.png\n0 KB\nfile-0268.png\n0 KB\nfile-0272.png\n0 KB\nfile-0276.png\n0 KB\nfile-0280.png\n0 KB\nfile-0284.png\n0 KB\nfile-0288.png\n0 KB\nfile-0292.png\n0 KB\nfile-0296.png\n0 KB\nfile-0300.png\n0 KB\nfile-0304.png\n0 KB\nfile-0308.png\n0 KB\nVideos\n1,199\nDocuments\n1,200\nSpreadsheets\n1,200",
-      "loading": true,
-      "width": 560,
-      "imgs": 15,
-      "elapsed": 6998,
-      "resources": {
-        "entries": 150,
-        "queued": 0,
-        "active": 0,
-        "reads": 353,
-        "decodes": 353,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 1,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0002.md",
-      "headers": [
-        "Highlights\n1",
-        "Working files\n4,999"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Highlights\n1\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n4,999",
-      "loading": true,
-      "width": 560,
-      "imgs": 0,
-      "elapsed": 7251,
-      "resources": {
-        "entries": 150,
-        "queued": 0,
-        "active": 0,
-        "reads": 353,
-        "decodes": 353,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 2,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png",
-      "headers": [
-        "Highlights\n2",
-        "Working files\n5,000"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files\nOpen folder",
-      "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5,000",
-      "loading": false,
-      "width": 560,
-      "imgs": 1,
-      "elapsed": 7503,
-      "resources": {
-        "entries": 150,
-        "queued": 0,
-        "active": 0,
-        "reads": 354,
-        "decodes": 354,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 2,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png",
-      "headers": [
-        "Highlights\n2",
-        "Working files\n5,000"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files\nOpen folder",
-      "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5,000",
-      "loading": false,
-      "width": 560,
-      "imgs": 1,
-      "elapsed": 7754,
-      "resources": {
-        "entries": 150,
-        "queued": 0,
-        "active": 0,
-        "reads": 354,
-        "decodes": 354,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 2,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png",
-      "headers": [
-        "Highlights\n2",
-        "Working files\n5,000"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files\nOpen folder",
-      "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5,000",
-      "loading": false,
-      "width": 560,
-      "imgs": 1,
-      "elapsed": 8006,
-      "resources": {
-        "entries": 150,
-        "queued": 0,
-        "active": 0,
-        "reads": 354,
-        "decodes": 354,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 2,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png",
-      "headers": [
-        "Highlights\n2",
-        "Working files\n5,000"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files\nOpen folder",
-      "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5,000",
-      "loading": false,
-      "width": 560,
-      "imgs": 1,
-      "elapsed": 8259,
-      "resources": {
-        "entries": 150,
-        "queued": 0,
-        "active": 0,
-        "reads": 354,
-        "decodes": 354,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 2,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png",
-      "headers": [
-        "Highlights\n2",
-        "Working files\n5,000"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files\nOpen folder",
-      "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5,000",
-      "loading": false,
-      "width": 560,
-      "imgs": 1,
-      "elapsed": 8513,
-      "resources": {
-        "entries": 150,
-        "queued": 0,
-        "active": 0,
-        "reads": 354,
-        "decodes": 354,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 2,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png",
-      "headers": [
-        "Highlights\n2",
-        "Working files\n5,000"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files\nOpen folder",
-      "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5,000",
-      "loading": false,
-      "width": 560,
-      "imgs": 1,
-      "elapsed": 8765,
-      "resources": {
-        "entries": 150,
-        "queued": 0,
-        "active": 0,
-        "reads": 354,
-        "decodes": 354,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 2,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png",
-      "headers": [
-        "Highlights\n2",
-        "Working files\n5,000"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files\nOpen folder",
-      "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5,000",
-      "loading": false,
-      "width": 560,
-      "imgs": 1,
-      "elapsed": 9019,
-      "resources": {
-        "entries": 150,
-        "queued": 0,
-        "active": 0,
-        "reads": 354,
-        "decodes": 354,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 2,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png",
-      "headers": [
-        "Highlights\n2",
-        "Working files\n5,000"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files\nOpen folder",
-      "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5,000",
-      "loading": false,
-      "width": 560,
-      "imgs": 1,
-      "elapsed": 9272,
-      "resources": {
-        "entries": 150,
-        "queued": 0,
-        "active": 0,
-        "reads": 354,
-        "decodes": 354,
-        "peakActive": 4
-      }
-    }
-  ],
-  "frames": {
-    "first": "cold-before-dark-first.png",
-    "progress": "cold-before-dark-progress.png",
-    "final": "cold-before-dark-final.png"
-  },
-  "facts": {
-    "windowMode": "headless",
-    "appVersion": "0.34.43",
-    "platform": "darwin",
-    "title": "Local Operator",
-    "windowSize": {
-      "width": 1380,
-      "height": 900
-    },
-    "contentBounds": {
-      "width": 1380,
-      "height": 900
-    },
-    "visible": false,
-    "focused": false,
-    "minimized": false,
-    "frames": [],
-    "outDir": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/cold/before-dark"
-  },
-  "requests": {
-    "pages": 26
-  },
-  "loadingSamples": [
-    {
-      "rows": 0,
-      "first": null,
-      "headers": [],
-      "head": "Mentioned\n\u2191\nFilter",
-      "body": "Loading session files\u2026",
-      "loading": true,
-      "width": 560,
-      "imgs": 0,
-      "elapsed": 58,
-      "resources": {
-        "entries": 0,
-        "queued": 0,
-        "active": 0,
-        "reads": 0,
-        "decodes": 0,
-        "peakActive": 0
-      }
-    },
-    {
-      "rows": 0,
-      "first": null,
-      "headers": [],
-      "head": "Mentioned\n\u2191\nFilter",
-      "body": "Loading session files\u2026",
-      "loading": true,
-      "width": 560,
-      "imgs": 0,
-      "elapsed": 365,
-      "resources": {
-        "entries": 0,
-        "queued": 0,
-        "active": 0,
-        "reads": 0,
-        "decodes": 0,
-        "peakActive": 0
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-4804.png",
-      "headers": [
-        "Images\n51",
-        "Videos\n49",
-        "Documents\n50",
-        "Spreadsheets\n50"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n51\nfile-4804.png\n0 KB\nfile-4808.png\n0 KB\nfile-4812.png\n0 KB\nfile-4816.png\n0 KB\nfile-4820.png\n0 KB\nfile-4824.png\n0 KB\nfile-4828.png\n0 KB\nfile-4832.png\n0 KB\nfile-4836.png\n0 KB\nfile-4840.png\n0 KB\nfile-4844.png\n0 KB\nfile-4848.png\n0 KB\nfile-4852.png\n0 KB\nfile-4856.png\n0 KB\nfile-4860.png\n0 KB\nfile-4864.png\n0 KB\nfile-4868.png\n0 KB\nfile-4872.png\n0 KB\nfile-4876.png\n0 KB\nfile-4880.png\n0 KB\nfile-4884.png\n0 KB\nfile-4888.png\n0 KB\nfile-4892.png\n0 KB\nfile-4896.png\n0 KB\nfile-4900.png\n0 KB\nfile-4904.png\n0 KB\nfile-4908.png\n0 KB\nVideos\n49\nDocuments\n50\nSpreadsheets\n50",
-      "loading": true,
-      "width": 560,
-      "imgs": 1,
-      "elapsed": 618,
-      "resources": {
-        "entries": 15,
-        "queued": 10,
-        "active": 4,
-        "reads": 5,
-        "decodes": 4,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-4604.png",
-      "headers": [
-        "Images\n101",
-        "Videos\n99",
-        "Documents\n100",
-        "Spreadsheets\n100"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n101\nfile-4604.png\n0 KB\nfile-4608.png\n0 KB\nfile-4612.png\n0 KB\nfile-4616.png\n0 KB\nfile-4620.png\n0 KB\nfile-4624.png\n0 KB\nfile-4628.png\n0 KB\nfile-4632.png\n0 KB\nfile-4636.png\n0 KB\nfile-4640.png\n0 KB\nfile-4644.png\n0 KB\nfile-4648.png\n0 KB\nfile-4652.png\n0 KB\nfile-4656.png\n0 KB\nfile-4660.png\n0 KB\nfile-4664.png\n0 KB\nfile-4668.png\n0 KB\nfile-4672.png\n0 KB\nfile-4676.png\n0 KB\nfile-4680.png\n0 KB\nfile-4684.png\n0 KB\nfile-4688.png\n0 KB\nfile-4692.png\n0 KB\nfile-4696.png\n0 KB\nfile-4700.png\n0 KB\nfile-4704.png\n0 KB\nfile-4708.png\n0 KB\nVideos\n99\nDocuments\n100\nSpreadsheets\n100",
-      "loading": true,
-      "width": 560,
-      "imgs": 6,
-      "elapsed": 880,
-      "resources": {
-        "entries": 23,
-        "queued": 5,
-        "active": 4,
-        "reads": 18,
-        "decodes": 17,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-4404.png",
-      "headers": [
-        "Images\n151",
-        "Videos\n149",
-        "Documents\n150",
-        "Spreadsheets\n150"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n151\nfile-4404.png\n0 KB\nfile-4408.png\n0 KB\nfile-4412.png\n0 KB\nfile-4416.png\n0 KB\nfile-4420.png\n0 KB\nfile-4424.png\n0 KB\nfile-4428.png\n0 KB\nfile-4432.png\n0 KB\nfile-4436.png\n0 KB\nfile-4440.png\n0 KB\nfile-4444.png\n0 KB\nfile-4448.png\n0 KB\nfile-4452.png\n0 KB\nfile-4456.png\n0 KB\nfile-4460.png\n0 KB\nfile-4464.png\n0 KB\nfile-4468.png\n0 KB\nfile-4472.png\n0 KB\nfile-4476.png\n0 KB\nfile-4480.png\n0 KB\nfile-4484.png\n0 KB\nfile-4488.png\n0 KB\nfile-4492.png\n0 KB\nfile-4496.png\n0 KB\nfile-4500.png\n0 KB\nfile-4504.png\n0 KB\nfile-4508.png\n0 KB\nVideos\n149\nDocuments\n150\nSpreadsheets\n150",
-      "loading": true,
-      "width": 560,
-      "imgs": 11,
-      "elapsed": 1134,
-      "resources": {
-        "entries": 38,
-        "queued": 0,
-        "active": 3,
-        "reads": 38,
-        "decodes": 38,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-4204.png",
-      "headers": [
-        "Images\n201",
-        "Videos\n199",
-        "Documents\n200",
-        "Spreadsheets\n200"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n201\nfile-4204.png\n0 KB\nfile-4208.png\n0 KB\nfile-4212.png\n0 KB\nfile-4216.png\n0 KB\nfile-4220.png\n0 KB\nfile-4224.png\n0 KB\nfile-4228.png\n0 KB\nfile-4232.png\n0 KB\nfile-4236.png\n0 KB\nfile-4240.png\n0 KB\nfile-4244.png\n0 KB\nfile-4248.png\n0 KB\nfile-4252.png\n0 KB\nfile-4256.png\n0 KB\nfile-4260.png\n0 KB\nfile-4264.png\n0 KB\nfile-4268.png\n0 KB\nfile-4272.png\n0 KB\nfile-4276.png\n0 KB\nfile-4280.png\n0 KB\nfile-4284.png\n0 KB\nfile-4288.png\n0 KB\nfile-4292.png\n0 KB\nfile-4296.png\n0 KB\nfile-4300.png\n0 KB\nfile-4304.png\n0 KB\nfile-4308.png\n0 KB\nVideos\n199\nDocuments\n200\nSpreadsheets\n200",
-      "loading": true,
-      "width": 560,
-      "imgs": 10,
-      "elapsed": 1388,
-      "resources": {
-        "entries": 53,
-        "queued": 1,
-        "active": 4,
-        "reads": 52,
-        "decodes": 52,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-4004.png",
-      "headers": [
-        "Images\n251",
-        "Videos\n249",
-        "Documents\n250",
-        "Spreadsheets\n250"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n251\nfile-4004.png\n0 KB\nfile-4008.png\n0 KB\nfile-4012.png\n0 KB\nfile-4016.png\n0 KB\nfile-4020.png\n0 KB\nfile-4024.png\n0 KB\nfile-4028.png\n0 KB\nfile-4032.png\n0 KB\nfile-4036.png\n0 KB\nfile-4040.png\n0 KB\nfile-4044.png\n0 KB\nfile-4048.png\n0 KB\nfile-4052.png\n0 KB\nfile-4056.png\n0 KB\nfile-4060.png\n0 KB\nfile-4064.png\n0 KB\nfile-4068.png\n0 KB\nfile-4072.png\n0 KB\nfile-4076.png\n0 KB\nfile-4080.png\n0 KB\nfile-4084.png\n0 KB\nfile-4088.png\n0 KB\nfile-4092.png\n0 KB\nfile-4096.png\n0 KB\nfile-4100.png\n0 KB\nfile-4104.png\n0 KB\nfile-4108.png\n0 KB\nVideos\n249\nDocuments\n250\nSpreadsheets\n250",
-      "loading": true,
-      "width": 560,
-      "imgs": 10,
-      "elapsed": 1646,
-      "resources": {
-        "entries": 68,
-        "queued": 0,
-        "active": 4,
-        "reads": 68,
-        "decodes": 67,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-3804.png",
-      "headers": [
-        "Images\n301",
-        "Videos\n299",
-        "Documents\n300",
-        "Spreadsheets\n300"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n301\nfile-3804.png\n0 KB\nfile-3808.png\n0 KB\nfile-3812.png\n0 KB\nfile-3816.png\n0 KB\nfile-3820.png\n0 KB\nfile-3824.png\n0 KB\nfile-3828.png\n0 KB\nfile-3832.png\n0 KB\nfile-3836.png\n0 KB\nfile-3840.png\n0 KB\nfile-3844.png\n0 KB\nfile-3848.png\n0 KB\nfile-3852.png\n0 KB\nfile-3856.png\n0 KB\nfile-3860.png\n0 KB\nfile-3864.png\n0 KB\nfile-3868.png\n0 KB\nfile-3872.png\n0 KB\nfile-3876.png\n0 KB\nfile-3880.png\n0 KB\nfile-3884.png\n0 KB\nfile-3888.png\n0 KB\nfile-3892.png\n0 KB\nfile-3896.png\n0 KB\nfile-3900.png\n0 KB\nfile-3904.png\n0 KB\nfile-3908.png\n0 KB\nVideos\n299\nDocuments\n300\nSpreadsheets\n300",
-      "loading": true,
-      "width": 560,
-      "imgs": 15,
-      "elapsed": 1966,
-      "resources": {
-        "entries": 83,
-        "queued": 0,
-        "active": 0,
-        "reads": 83,
-        "decodes": 83,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-3604.png",
-      "headers": [
-        "Images\n351",
-        "Videos\n349",
-        "Documents\n350",
-        "Spreadsheets\n350"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n351\nfile-3604.png\n0 KB\nfile-3608.png\n0 KB\nfile-3612.png\n0 KB\nfile-3616.png\n0 KB\nfile-3620.png\n0 KB\nfile-3624.png\n0 KB\nfile-3628.png\n0 KB\nfile-3632.png\n0 KB\nfile-3636.png\n0 KB\nfile-3640.png\n0 KB\nfile-3644.png\n0 KB\nfile-3648.png\n0 KB\nfile-3652.png\n0 KB\nfile-3656.png\n0 KB\nfile-3660.png\n0 KB\nfile-3664.png\n0 KB\nfile-3668.png\n0 KB\nfile-3672.png\n0 KB\nfile-3676.png\n0 KB\nfile-3680.png\n0 KB\nfile-3684.png\n0 KB\nfile-3688.png\n0 KB\nfile-3692.png\n0 KB\nfile-3696.png\n0 KB\nfile-3700.png\n0 KB\nfile-3704.png\n0 KB\nfile-3708.png\n0 KB\nVideos\n349\nDocuments\n350\nSpreadsheets\n350",
-      "loading": true,
-      "width": 560,
-      "imgs": 6,
-      "elapsed": 2218,
-      "resources": {
-        "entries": 98,
-        "queued": 4,
-        "active": 4,
-        "reads": 94,
-        "decodes": 93,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-3404.png",
-      "headers": [
-        "Images\n401",
-        "Videos\n399",
-        "Documents\n400",
-        "Spreadsheets\n400"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n401\nfile-3404.png\n0 KB\nfile-3408.png\n0 KB\nfile-3412.png\n0 KB\nfile-3416.png\n0 KB\nfile-3420.png\n0 KB\nfile-3424.png\n0 KB\nfile-3428.png\n0 KB\nfile-3432.png\n0 KB\nfile-3436.png\n0 KB\nfile-3440.png\n0 KB\nfile-3444.png\n0 KB\nfile-3448.png\n0 KB\nfile-3452.png\n0 KB\nfile-3456.png\n0 KB\nfile-3460.png\n0 KB\nfile-3464.png\n0 KB\nfile-3468.png\n0 KB\nfile-3472.png\n0 KB\nfile-3476.png\n0 KB\nfile-3480.png\n0 KB\nfile-3484.png\n0 KB\nfile-3488.png\n0 KB\nfile-3492.png\n0 KB\nfile-3496.png\n0 KB\nfile-3500.png\n0 KB\nfile-3504.png\n0 KB\nfile-3508.png\n0 KB\nVideos\n399\nDocuments\n400\nSpreadsheets\n400",
-      "loading": true,
-      "width": 560,
-      "imgs": 4,
-      "elapsed": 2473,
-      "resources": {
-        "entries": 113,
-        "queued": 6,
-        "active": 4,
-        "reads": 107,
-        "decodes": 106,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-3204.png",
-      "headers": [
-        "Images\n451",
-        "Videos\n449",
-        "Documents\n450",
-        "Spreadsheets\n450"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n451\nfile-3204.png\n0 KB\nfile-3208.png\n0 KB\nfile-3212.png\n0 KB\nfile-3216.png\n0 KB\nfile-3220.png\n0 KB\nfile-3224.png\n0 KB\nfile-3228.png\n0 KB\nfile-3232.png\n0 KB\nfile-3236.png\n0 KB\nfile-3240.png\n0 KB\nfile-3244.png\n0 KB\nfile-3248.png\n0 KB\nfile-3252.png\n0 KB\nfile-3256.png\n0 KB\nfile-3260.png\n0 KB\nfile-3264.png\n0 KB\nfile-3268.png\n0 KB\nfile-3272.png\n0 KB\nfile-3276.png\n0 KB\nfile-3280.png\n0 KB\nfile-3284.png\n0 KB\nfile-3288.png\n0 KB\nfile-3292.png\n0 KB\nfile-3296.png\n0 KB\nfile-3300.png\n0 KB\nfile-3304.png\n0 KB\nfile-3308.png\n0 KB\nVideos\n449\nDocuments\n450\nSpreadsheets\n450",
-      "loading": true,
-      "width": 560,
-      "imgs": 2,
-      "elapsed": 2734,
-      "resources": {
-        "entries": 128,
-        "queued": 9,
-        "active": 4,
-        "reads": 119,
-        "decodes": 119,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-3004.png",
-      "headers": [
-        "Images\n501",
-        "Videos\n499",
-        "Documents\n500",
-        "Spreadsheets\n500"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n501\nfile-3004.png\n0 KB\nfile-3008.png\n0 KB\nfile-3012.png\n0 KB\nfile-3016.png\n0 KB\nfile-3020.png\n0 KB\nfile-3024.png\n0 KB\nfile-3028.png\n0 KB\nfile-3032.png\n0 KB\nfile-3036.png\n0 KB\nfile-3040.png\n0 KB\nfile-3044.png\n0 KB\nfile-3048.png\n0 KB\nfile-3052.png\n0 KB\nfile-3056.png\n0 KB\nfile-3060.png\n0 KB\nfile-3064.png\n0 KB\nfile-3068.png\n0 KB\nfile-3072.png\n0 KB\nfile-3076.png\n0 KB\nfile-3080.png\n0 KB\nfile-3084.png\n0 KB\nfile-3088.png\n0 KB\nfile-3092.png\n0 KB\nfile-3096.png\n0 KB\nfile-3100.png\n0 KB\nfile-3104.png\n0 KB\nfile-3108.png\n0 KB\nVideos\n499\nDocuments\n500\nSpreadsheets\n500",
-      "loading": true,
-      "width": 560,
-      "imgs": 2,
-      "elapsed": 2993,
-      "resources": {
-        "entries": 143,
-        "queued": 8,
-        "active": 4,
-        "reads": 135,
-        "decodes": 134,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-2804.png",
-      "headers": [
-        "Images\n551",
-        "Videos\n549",
-        "Documents\n550",
-        "Spreadsheets\n550"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n551\nfile-2804.png\n0 KB\nfile-2808.png\n0 KB\nfile-2812.png\n0 KB\nfile-2816.png\n0 KB\nfile-2820.png\n0 KB\nfile-2824.png\n0 KB\nfile-2828.png\n0 KB\nfile-2832.png\n0 KB\nfile-2836.png\n0 KB\nfile-2840.png\n0 KB\nfile-2844.png\n0 KB\nfile-2848.png\n0 KB\nfile-2852.png\n0 KB\nfile-2856.png\n0 KB\nfile-2860.png\n0 KB\nfile-2864.png\n0 KB\nfile-2868.png\n0 KB\nfile-2872.png\n0 KB\nfile-2876.png\n0 KB\nfile-2880.png\n0 KB\nfile-2884.png\n0 KB\nfile-2888.png\n0 KB\nfile-2892.png\n0 KB\nfile-2896.png\n0 KB\nfile-2900.png\n0 KB\nfile-2904.png\n0 KB\nfile-2908.png\n0 KB\nVideos\n549\nDocuments\n550\nSpreadsheets\n550",
-      "loading": true,
-      "width": 560,
-      "imgs": 0,
-      "elapsed": 3254,
-      "resources": {
-        "entries": 158,
-        "queued": 11,
-        "active": 4,
-        "reads": 147,
-        "decodes": 147,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-2604.png",
-      "headers": [
-        "Images\n601",
-        "Videos\n599",
-        "Documents\n600",
-        "Spreadsheets\n600"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n601\nfile-2604.png\n0 KB\nfile-2608.png\n0 KB\nfile-2612.png\n0 KB\nfile-2616.png\n0 KB\nfile-2620.png\n0 KB\nfile-2624.png\n0 KB\nfile-2628.png\n0 KB\nfile-2632.png\n0 KB\nfile-2636.png\n0 KB\nfile-2640.png\n0 KB\nfile-2644.png\n0 KB\nfile-2648.png\n0 KB\nfile-2652.png\n0 KB\nfile-2656.png\n0 KB\nfile-2660.png\n0 KB\nfile-2664.png\n0 KB\nfile-2668.png\n0 KB\nfile-2672.png\n0 KB\nfile-2676.png\n0 KB\nfile-2680.png\n0 KB\nfile-2684.png\n0 KB\nfile-2688.png\n0 KB\nfile-2692.png\n0 KB\nfile-2696.png\n0 KB\nfile-2700.png\n0 KB\nfile-2704.png\n0 KB\nfile-2708.png\n0 KB\nVideos\n599\nDocuments\n600\nSpreadsheets\n600",
-      "loading": true,
-      "width": 560,
-      "imgs": 0,
-      "elapsed": 3512,
-      "resources": {
-        "entries": 165,
-        "queued": 11,
-        "active": 4,
-        "reads": 162,
-        "decodes": 162,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-2404.png",
-      "headers": [
-        "Images\n651",
-        "Videos\n649",
-        "Documents\n650",
-        "Spreadsheets\n650"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n651\nfile-2404.png\n0 KB\nfile-2408.png\n0 KB\nfile-2412.png\n0 KB\nfile-2416.png\n0 KB\nfile-2420.png\n0 KB\nfile-2424.png\n0 KB\nfile-2428.png\n0 KB\nfile-2432.png\n0 KB\nfile-2436.png\n0 KB\nfile-2440.png\n0 KB\nfile-2444.png\n0 KB\nfile-2448.png\n0 KB\nfile-2452.png\n0 KB\nfile-2456.png\n0 KB\nfile-2460.png\n0 KB\nfile-2464.png\n0 KB\nfile-2468.png\n0 KB\nfile-2472.png\n0 KB\nfile-2476.png\n0 KB\nfile-2480.png\n0 KB\nfile-2484.png\n0 KB\nfile-2488.png\n0 KB\nfile-2492.png\n0 KB\nfile-2496.png\n0 KB\nfile-2500.png\n0 KB\nfile-2504.png\n0 KB\nfile-2508.png\n0 KB\nVideos\n649\nDocuments\n650\nSpreadsheets\n650",
-      "loading": true,
-      "width": 560,
-      "imgs": 0,
-      "elapsed": 3779,
-      "resources": {
-        "entries": 165,
-        "queued": 11,
-        "active": 4,
-        "reads": 177,
-        "decodes": 177,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-2204.png",
-      "headers": [
-        "Images\n701",
-        "Videos\n699",
-        "Documents\n700",
-        "Spreadsheets\n700"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n701\nfile-2204.png\n0 KB\nfile-2208.png\n0 KB\nfile-2212.png\n0 KB\nfile-2216.png\n0 KB\nfile-2220.png\n0 KB\nfile-2224.png\n0 KB\nfile-2228.png\n0 KB\nfile-2232.png\n0 KB\nfile-2236.png\n0 KB\nfile-2240.png\n0 KB\nfile-2244.png\n0 KB\nfile-2248.png\n0 KB\nfile-2252.png\n0 KB\nfile-2256.png\n0 KB\nfile-2260.png\n0 KB\nfile-2264.png\n0 KB\nfile-2268.png\n0 KB\nfile-2272.png\n0 KB\nfile-2276.png\n0 KB\nfile-2280.png\n0 KB\nfile-2284.png\n0 KB\nfile-2288.png\n0 KB\nfile-2292.png\n0 KB\nfile-2296.png\n0 KB\nfile-2300.png\n0 KB\nfile-2304.png\n0 KB\nfile-2308.png\n0 KB\nVideos\n699\nDocuments\n700\nSpreadsheets\n700",
-      "loading": true,
-      "width": 560,
-      "imgs": 0,
-      "elapsed": 4044,
-      "resources": {
-        "entries": 165,
-        "queued": 11,
-        "active": 4,
-        "reads": 192,
-        "decodes": 192,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-2004.png",
-      "headers": [
-        "Images\n751",
-        "Videos\n749",
-        "Documents\n750",
-        "Spreadsheets\n750"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n751\nfile-2004.png\n0 KB\nfile-2008.png\n0 KB\nfile-2012.png\n0 KB\nfile-2016.png\n0 KB\nfile-2020.png\n0 KB\nfile-2024.png\n0 KB\nfile-2028.png\n0 KB\nfile-2032.png\n0 KB\nfile-2036.png\n0 KB\nfile-2040.png\n0 KB\nfile-2044.png\n0 KB\nfile-2048.png\n0 KB\nfile-2052.png\n0 KB\nfile-2056.png\n0 KB\nfile-2060.png\n0 KB\nfile-2064.png\n0 KB\nfile-2068.png\n0 KB\nfile-2072.png\n0 KB\nfile-2076.png\n0 KB\nfile-2080.png\n0 KB\nfile-2084.png\n0 KB\nfile-2088.png\n0 KB\nfile-2092.png\n0 KB\nfile-2096.png\n0 KB\nfile-2100.png\n0 KB\nfile-2104.png\n0 KB\nfile-2108.png\n0 KB\nVideos\n749\nDocuments\n750\nSpreadsheets\n750",
-      "loading": true,
-      "width": 560,
-      "imgs": 0,
-      "elapsed": 4315,
-      "resources": {
-        "entries": 165,
-        "queued": 11,
-        "active": 4,
-        "reads": 207,
-        "decodes": 207,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-1804.png",
-      "headers": [
-        "Images\n801",
-        "Videos\n799",
-        "Documents\n800",
-        "Spreadsheets\n800"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n801\nfile-1804.png\n0 KB\nfile-1808.png\n0 KB\nfile-1812.png\n0 KB\nfile-1816.png\n0 KB\nfile-1820.png\n0 KB\nfile-1824.png\n0 KB\nfile-1828.png\n0 KB\nfile-1832.png\n0 KB\nfile-1836.png\n0 KB\nfile-1840.png\n0 KB\nfile-1844.png\n0 KB\nfile-1848.png\n0 KB\nfile-1852.png\n0 KB\nfile-1856.png\n0 KB\nfile-1860.png\n0 KB\nfile-1864.png\n0 KB\nfile-1868.png\n0 KB\nfile-1872.png\n0 KB\nfile-1876.png\n0 KB\nfile-1880.png\n0 KB\nfile-1884.png\n0 KB\nfile-1888.png\n0 KB\nfile-1892.png\n0 KB\nfile-1896.png\n0 KB\nfile-1900.png\n0 KB\nfile-1904.png\n0 KB\nfile-1908.png\n0 KB\nVideos\n799\nDocuments\n800\nSpreadsheets\n800",
-      "loading": true,
-      "width": 560,
-      "imgs": 0,
-      "elapsed": 4585,
-      "resources": {
-        "entries": 165,
-        "queued": 11,
-        "active": 4,
-        "reads": 222,
-        "decodes": 222,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-1604.png",
-      "headers": [
-        "Images\n851",
-        "Videos\n849",
-        "Documents\n850",
-        "Spreadsheets\n850"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n851\nfile-1604.png\n0 KB\nfile-1608.png\n0 KB\nfile-1612.png\n0 KB\nfile-1616.png\n0 KB\nfile-1620.png\n0 KB\nfile-1624.png\n0 KB\nfile-1628.png\n0 KB\nfile-1632.png\n0 KB\nfile-1636.png\n0 KB\nfile-1640.png\n0 KB\nfile-1644.png\n0 KB\nfile-1648.png\n0 KB\nfile-1652.png\n0 KB\nfile-1656.png\n0 KB\nfile-1660.png\n0 KB\nfile-1664.png\n0 KB\nfile-1668.png\n0 KB\nfile-1672.png\n0 KB\nfile-1676.png\n0 KB\nfile-1680.png\n0 KB\nfile-1684.png\n0 KB\nfile-1688.png\n0 KB\nfile-1692.png\n0 KB\nfile-1696.png\n0 KB\nfile-1700.png\n0 KB\nfile-1704.png\n0 KB\nfile-1708.png\n0 KB\nVideos\n849\nDocuments\n850\nSpreadsheets\n850",
-      "loading": true,
-      "width": 560,
-      "imgs": 0,
-      "elapsed": 4856,
-      "resources": {
-        "entries": 165,
-        "queued": 11,
-        "active": 4,
-        "reads": 237,
-        "decodes": 237,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-1404.png",
-      "headers": [
-        "Images\n901",
-        "Videos\n899",
-        "Documents\n900",
-        "Spreadsheets\n900"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n901\nfile-1404.png\n0 KB\nfile-1408.png\n0 KB\nfile-1412.png\n0 KB\nfile-1416.png\n0 KB\nfile-1420.png\n0 KB\nfile-1424.png\n0 KB\nfile-1428.png\n0 KB\nfile-1432.png\n0 KB\nfile-1436.png\n0 KB\nfile-1440.png\n0 KB\nfile-1444.png\n0 KB\nfile-1448.png\n0 KB\nfile-1452.png\n0 KB\nfile-1456.png\n0 KB\nfile-1460.png\n0 KB\nfile-1464.png\n0 KB\nfile-1468.png\n0 KB\nfile-1472.png\n0 KB\nfile-1476.png\n0 KB\nfile-1480.png\n0 KB\nfile-1484.png\n0 KB\nfile-1488.png\n0 KB\nfile-1492.png\n0 KB\nfile-1496.png\n0 KB\nfile-1500.png\n0 KB\nfile-1504.png\n0 KB\nfile-1508.png\n0 KB\nVideos\n899\nDocuments\n900\nSpreadsheets\n900",
-      "loading": true,
-      "width": 560,
-      "imgs": 0,
-      "elapsed": 5126,
-      "resources": {
-        "entries": 165,
-        "queued": 11,
-        "active": 4,
-        "reads": 252,
-        "decodes": 252,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-1204.png",
-      "headers": [
-        "Images\n951",
-        "Videos\n949",
-        "Documents\n950",
-        "Spreadsheets\n950"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n951\nfile-1204.png\n0 KB\nfile-1208.png\n0 KB\nfile-1212.png\n0 KB\nfile-1216.png\n0 KB\nfile-1220.png\n0 KB\nfile-1224.png\n0 KB\nfile-1228.png\n0 KB\nfile-1232.png\n0 KB\nfile-1236.png\n0 KB\nfile-1240.png\n0 KB\nfile-1244.png\n0 KB\nfile-1248.png\n0 KB\nfile-1252.png\n0 KB\nfile-1256.png\n0 KB\nfile-1260.png\n0 KB\nfile-1264.png\n0 KB\nfile-1268.png\n0 KB\nfile-1272.png\n0 KB\nfile-1276.png\n0 KB\nfile-1280.png\n0 KB\nfile-1284.png\n0 KB\nfile-1288.png\n0 KB\nfile-1292.png\n0 KB\nfile-1296.png\n0 KB\nfile-1300.png\n0 KB\nfile-1304.png\n0 KB\nfile-1308.png\n0 KB\nVideos\n949\nDocuments\n950\nSpreadsheets\n950",
-      "loading": true,
-      "width": 560,
-      "imgs": 0,
-      "elapsed": 5393,
-      "resources": {
-        "entries": 165,
-        "queued": 11,
-        "active": 4,
-        "reads": 267,
-        "decodes": 267,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-1004.png",
-      "headers": [
-        "Images\n1,001",
-        "Videos\n999",
-        "Documents\n1,000",
-        "Spreadsheets\n1,000"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n1,001\nfile-1004.png\n0 KB\nfile-1008.png\n0 KB\nfile-1012.png\n0 KB\nfile-1016.png\n0 KB\nfile-1020.png\n0 KB\nfile-1024.png\n0 KB\nfile-1028.png\n0 KB\nfile-1032.png\n0 KB\nfile-1036.png\n0 KB\nfile-1040.png\n0 KB\nfile-1044.png\n0 KB\nfile-1048.png\n0 KB\nfile-1052.png\n0 KB\nfile-1056.png\n0 KB\nfile-1060.png\n0 KB\nfile-1064.png\n0 KB\nfile-1068.png\n0 KB\nfile-1072.png\n0 KB\nfile-1076.png\n0 KB\nfile-1080.png\n0 KB\nfile-1084.png\n0 KB\nfile-1088.png\n0 KB\nfile-1092.png\n0 KB\nfile-1096.png\n0 KB\nfile-1100.png\n0 KB\nfile-1104.png\n0 KB\nfile-1108.png\n0 KB\nVideos\n999\nDocuments\n1,000\nSpreadsheets\n1,000",
-      "loading": true,
-      "width": 560,
-      "imgs": 0,
-      "elapsed": 5664,
-      "resources": {
-        "entries": 165,
-        "queued": 11,
-        "active": 4,
-        "reads": 282,
-        "decodes": 282,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0804.png",
-      "headers": [
-        "Images\n1,051",
-        "Videos\n1,049",
-        "Documents\n1,050",
-        "Spreadsheets\n1,050"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n1,051\nfile-0804.png\n0 KB\nfile-0808.png\n0 KB\nfile-0812.png\n0 KB\nfile-0816.png\n0 KB\nfile-0820.png\n0 KB\nfile-0824.png\n0 KB\nfile-0828.png\n0 KB\nfile-0832.png\n0 KB\nfile-0836.png\n0 KB\nfile-0840.png\n0 KB\nfile-0844.png\n0 KB\nfile-0848.png\n0 KB\nfile-0852.png\n0 KB\nfile-0856.png\n0 KB\nfile-0860.png\n0 KB\nfile-0864.png\n0 KB\nfile-0868.png\n0 KB\nfile-0872.png\n0 KB\nfile-0876.png\n0 KB\nfile-0880.png\n0 KB\nfile-0884.png\n0 KB\nfile-0888.png\n0 KB\nfile-0892.png\n0 KB\nfile-0896.png\n0 KB\nfile-0900.png\n0 KB\nfile-0904.png\n0 KB\nfile-0908.png\n0 KB\nVideos\n1,049\nDocuments\n1,050\nSpreadsheets\n1,050",
-      "loading": true,
-      "width": 560,
-      "imgs": 0,
-      "elapsed": 5931,
-      "resources": {
-        "entries": 165,
-        "queued": 11,
-        "active": 4,
-        "reads": 297,
-        "decodes": 297,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0604.png",
-      "headers": [
-        "Images\n1,101",
-        "Videos\n1,099",
-        "Documents\n1,100",
-        "Spreadsheets\n1,100"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n1,101\nfile-0604.png\n0 KB\nfile-0608.png\n0 KB\nfile-0612.png\n0 KB\nfile-0616.png\n0 KB\nfile-0620.png\n0 KB\nfile-0624.png\n0 KB\nfile-0628.png\n0 KB\nfile-0632.png\n0 KB\nfile-0636.png\n0 KB\nfile-0640.png\n0 KB\nfile-0644.png\n0 KB\nfile-0648.png\n0 KB\nfile-0652.png\n0 KB\nfile-0656.png\n0 KB\nfile-0660.png\n0 KB\nfile-0664.png\n0 KB\nfile-0668.png\n0 KB\nfile-0672.png\n0 KB\nfile-0676.png\n0 KB\nfile-0680.png\n0 KB\nfile-0684.png\n0 KB\nfile-0688.png\n0 KB\nfile-0692.png\n0 KB\nfile-0696.png\n0 KB\nfile-0700.png\n0 KB\nfile-0704.png\n0 KB\nfile-0708.png\n0 KB\nVideos\n1,099\nDocuments\n1,100\nSpreadsheets\n1,100",
-      "loading": true,
-      "width": 560,
-      "imgs": 0,
-      "elapsed": 6201,
-      "resources": {
-        "entries": 165,
-        "queued": 11,
-        "active": 4,
-        "reads": 312,
-        "decodes": 312,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0404.png",
-      "headers": [
-        "Images\n1,151",
-        "Videos\n1,149",
-        "Documents\n1,150",
-        "Spreadsheets\n1,150"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n1,151\nfile-0404.png\n0 KB\nfile-0408.png\n0 KB\nfile-0412.png\n0 KB\nfile-0416.png\n0 KB\nfile-0420.png\n0 KB\nfile-0424.png\n0 KB\nfile-0428.png\n0 KB\nfile-0432.png\n0 KB\nfile-0436.png\n0 KB\nfile-0440.png\n0 KB\nfile-0444.png\n0 KB\nfile-0448.png\n0 KB\nfile-0452.png\n0 KB\nfile-0456.png\n0 KB\nfile-0460.png\n0 KB\nfile-0464.png\n0 KB\nfile-0468.png\n0 KB\nfile-0472.png\n0 KB\nfile-0476.png\n0 KB\nfile-0480.png\n0 KB\nfile-0484.png\n0 KB\nfile-0488.png\n0 KB\nfile-0492.png\n0 KB\nfile-0496.png\n0 KB\nfile-0500.png\n0 KB\nfile-0504.png\n0 KB\nfile-0508.png\n0 KB\nVideos\n1,149\nDocuments\n1,150\nSpreadsheets\n1,150",
-      "loading": true,
-      "width": 560,
-      "imgs": 0,
-      "elapsed": 6475,
-      "resources": {
-        "entries": 165,
-        "queued": 11,
-        "active": 4,
-        "reads": 327,
-        "decodes": 327,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0204.png",
-      "headers": [
-        "Images\n1,201",
-        "Videos\n1,199",
-        "Documents\n1,200",
-        "Spreadsheets\n1,200"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n1,201\nfile-0204.png\n0 KB\nfile-0208.png\n0 KB\nfile-0212.png\n0 KB\nfile-0216.png\n0 KB\nfile-0220.png\n0 KB\nfile-0224.png\n0 KB\nfile-0228.png\n0 KB\nfile-0232.png\n0 KB\nfile-0236.png\n0 KB\nfile-0240.png\n0 KB\nfile-0244.png\n0 KB\nfile-0248.png\n0 KB\nfile-0252.png\n0 KB\nfile-0256.png\n0 KB\nfile-0260.png\n0 KB\nfile-0264.png\n0 KB\nfile-0268.png\n0 KB\nfile-0272.png\n0 KB\nfile-0276.png\n0 KB\nfile-0280.png\n0 KB\nfile-0284.png\n0 KB\nfile-0288.png\n0 KB\nfile-0292.png\n0 KB\nfile-0296.png\n0 KB\nfile-0300.png\n0 KB\nfile-0304.png\n0 KB\nfile-0308.png\n0 KB\nVideos\n1,199\nDocuments\n1,200\nSpreadsheets\n1,200",
-      "loading": true,
-      "width": 560,
-      "imgs": 0,
-      "elapsed": 6746,
-      "resources": {
-        "entries": 165,
-        "queued": 11,
-        "active": 4,
-        "reads": 342,
-        "decodes": 342,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 27,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0204.png",
-      "headers": [
-        "Images\n1,201",
-        "Videos\n1,199",
-        "Documents\n1,200",
-        "Spreadsheets\n1,200"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Images\n1,201\nfile-0204.png\n0 KB\nfile-0208.png\n0 KB\nfile-0212.png\n0 KB\nfile-0216.png\n0 KB\nfile-0220.png\n0 KB\nfile-0224.png\n0 KB\nfile-0228.png\n0 KB\nfile-0232.png\n0 KB\nfile-0236.png\n0 KB\nfile-0240.png\n0 KB\nfile-0244.png\n0 KB\nfile-0248.png\n0 KB\nfile-0252.png\n0 KB\nfile-0256.png\n0 KB\nfile-0260.png\n0 KB\nfile-0264.png\n0 KB\nfile-0268.png\n0 KB\nfile-0272.png\n0 KB\nfile-0276.png\n0 KB\nfile-0280.png\n0 KB\nfile-0284.png\n0 KB\nfile-0288.png\n0 KB\nfile-0292.png\n0 KB\nfile-0296.png\n0 KB\nfile-0300.png\n0 KB\nfile-0304.png\n0 KB\nfile-0308.png\n0 KB\nVideos\n1,199\nDocuments\n1,200\nSpreadsheets\n1,200",
-      "loading": true,
-      "width": 560,
-      "imgs": 15,
-      "elapsed": 6998,
-      "resources": {
-        "entries": 150,
-        "queued": 0,
-        "active": 0,
-        "reads": 353,
-        "decodes": 353,
-        "peakActive": 4
-      }
-    },
-    {
-      "rows": 1,
-      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0002.md",
-      "headers": [
-        "Highlights\n1",
-        "Working files\n4,999"
-      ],
-      "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-      "body": "Highlights\n1\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n4,999",
-      "loading": true,
-      "width": 560,
-      "imgs": 0,
-      "elapsed": 7251,
-      "resources": {
-        "entries": 150,
-        "queued": 0,
-        "active": 0,
-        "reads": 353,
-        "decodes": 353,
-        "peakActive": 4
-      }
-    }
-  ],
-  "firstContent": {
-    "rows": 27,
-    "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-4804.png",
-    "headers": [
-      "Images\n51",
-      "Videos\n49",
-      "Documents\n50",
-      "Spreadsheets\n50"
-    ],
-    "head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
-    "body": "Images\n51\nfile-4804.png\n0 KB\nfile-4808.png\n0 KB\nfile-4812.png\n0 KB\nfile-4816.png\n0 KB\nfile-4820.png\n0 KB\nfile-4824.png\n0 KB\nfile-4828.png\n0 KB\nfile-4832.png\n0 KB\nfile-4836.png\n0 KB\nfile-4840.png\n0 KB\nfile-4844.png\n0 KB\nfile-4848.png\n0 KB\nfile-4852.png\n0 KB\nfile-4856.png\n0 KB\nfile-4860.png\n0 KB\nfile-4864.png\n0 KB\nfile-4868.png\n0 KB\nfile-4872.png\n0 KB\nfile-4876.png\n0 KB\nfile-4880.png\n0 KB\nfile-4884.png\n0 KB\nfile-4888.png\n0 KB\nfile-4892.png\n0 KB\nfile-4896.png\n0 KB\nfile-4900.png\n0 KB\nfile-4904.png\n0 KB\nfile-4908.png\n0 KB\nVideos\n49\nDocuments\n50\nSpreadsheets\n50",
-    "loading": true,
-    "width": 560,
-    "imgs": 1,
-    "elapsed": 618,
-    "resources": {
-      "entries": 15,
-      "queued": 10,
-      "active": 4,
-      "reads": 5,
-      "decodes": 4,
-      "peakActive": 4
-    }
-  },
-  "distinctFirst": [
-    "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-4804.png",
-    "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-4604.png",
-    "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-4404.png",
-    "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-4204.png",
-    "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-4004.png",
-    "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-3804.png",
-    "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-3604.png",
-    "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-3404.png",
-    "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-3204.png",
-    "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-3004.png",
-    "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-2804.png",
-    "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-2604.png",
-    "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-2404.png",
-    "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-2204.png",
-    "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-2004.png",
-    "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-1804.png",
-    "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-1604.png",
-    "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-1404.png",
-    "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-1204.png",
-    "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-1004.png",
-    "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0804.png",
-    "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0604.png",
-    "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0404.png",
-    "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0204.png",
-    "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0002.md",
-    "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png"
-  ],
-  "finalReads": 354,
-  "loadingMaxReads": 353
+	"label": "cold-before-dark",
+	"theme": "localOperatorDark",
+	"samples": [
+		{
+			"rows": 0,
+			"first": null,
+			"headers": [],
+			"head": "Mentioned\n\u2191\nFilter",
+			"body": "Loading session files\u2026",
+			"loading": true,
+			"width": 560,
+			"imgs": 0,
+			"elapsed": 58,
+			"resources": {
+				"entries": 0,
+				"queued": 0,
+				"active": 0,
+				"reads": 0,
+				"decodes": 0,
+				"peakActive": 0
+			}
+		},
+		{
+			"rows": 0,
+			"first": null,
+			"headers": [],
+			"head": "Mentioned\n\u2191\nFilter",
+			"body": "Loading session files\u2026",
+			"loading": true,
+			"width": 560,
+			"imgs": 0,
+			"elapsed": 365,
+			"resources": {
+				"entries": 0,
+				"queued": 0,
+				"active": 0,
+				"reads": 0,
+				"decodes": 0,
+				"peakActive": 0
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-4804.png",
+			"headers": [
+				"Images\n51",
+				"Videos\n49",
+				"Documents\n50",
+				"Spreadsheets\n50"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n51\nfile-4804.png\n0 KB\nfile-4808.png\n0 KB\nfile-4812.png\n0 KB\nfile-4816.png\n0 KB\nfile-4820.png\n0 KB\nfile-4824.png\n0 KB\nfile-4828.png\n0 KB\nfile-4832.png\n0 KB\nfile-4836.png\n0 KB\nfile-4840.png\n0 KB\nfile-4844.png\n0 KB\nfile-4848.png\n0 KB\nfile-4852.png\n0 KB\nfile-4856.png\n0 KB\nfile-4860.png\n0 KB\nfile-4864.png\n0 KB\nfile-4868.png\n0 KB\nfile-4872.png\n0 KB\nfile-4876.png\n0 KB\nfile-4880.png\n0 KB\nfile-4884.png\n0 KB\nfile-4888.png\n0 KB\nfile-4892.png\n0 KB\nfile-4896.png\n0 KB\nfile-4900.png\n0 KB\nfile-4904.png\n0 KB\nfile-4908.png\n0 KB\nVideos\n49\nDocuments\n50\nSpreadsheets\n50",
+			"loading": true,
+			"width": 560,
+			"imgs": 1,
+			"elapsed": 618,
+			"resources": {
+				"entries": 15,
+				"queued": 10,
+				"active": 4,
+				"reads": 5,
+				"decodes": 4,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-4604.png",
+			"headers": [
+				"Images\n101",
+				"Videos\n99",
+				"Documents\n100",
+				"Spreadsheets\n100"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n101\nfile-4604.png\n0 KB\nfile-4608.png\n0 KB\nfile-4612.png\n0 KB\nfile-4616.png\n0 KB\nfile-4620.png\n0 KB\nfile-4624.png\n0 KB\nfile-4628.png\n0 KB\nfile-4632.png\n0 KB\nfile-4636.png\n0 KB\nfile-4640.png\n0 KB\nfile-4644.png\n0 KB\nfile-4648.png\n0 KB\nfile-4652.png\n0 KB\nfile-4656.png\n0 KB\nfile-4660.png\n0 KB\nfile-4664.png\n0 KB\nfile-4668.png\n0 KB\nfile-4672.png\n0 KB\nfile-4676.png\n0 KB\nfile-4680.png\n0 KB\nfile-4684.png\n0 KB\nfile-4688.png\n0 KB\nfile-4692.png\n0 KB\nfile-4696.png\n0 KB\nfile-4700.png\n0 KB\nfile-4704.png\n0 KB\nfile-4708.png\n0 KB\nVideos\n99\nDocuments\n100\nSpreadsheets\n100",
+			"loading": true,
+			"width": 560,
+			"imgs": 6,
+			"elapsed": 880,
+			"resources": {
+				"entries": 23,
+				"queued": 5,
+				"active": 4,
+				"reads": 18,
+				"decodes": 17,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-4404.png",
+			"headers": [
+				"Images\n151",
+				"Videos\n149",
+				"Documents\n150",
+				"Spreadsheets\n150"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n151\nfile-4404.png\n0 KB\nfile-4408.png\n0 KB\nfile-4412.png\n0 KB\nfile-4416.png\n0 KB\nfile-4420.png\n0 KB\nfile-4424.png\n0 KB\nfile-4428.png\n0 KB\nfile-4432.png\n0 KB\nfile-4436.png\n0 KB\nfile-4440.png\n0 KB\nfile-4444.png\n0 KB\nfile-4448.png\n0 KB\nfile-4452.png\n0 KB\nfile-4456.png\n0 KB\nfile-4460.png\n0 KB\nfile-4464.png\n0 KB\nfile-4468.png\n0 KB\nfile-4472.png\n0 KB\nfile-4476.png\n0 KB\nfile-4480.png\n0 KB\nfile-4484.png\n0 KB\nfile-4488.png\n0 KB\nfile-4492.png\n0 KB\nfile-4496.png\n0 KB\nfile-4500.png\n0 KB\nfile-4504.png\n0 KB\nfile-4508.png\n0 KB\nVideos\n149\nDocuments\n150\nSpreadsheets\n150",
+			"loading": true,
+			"width": 560,
+			"imgs": 11,
+			"elapsed": 1134,
+			"resources": {
+				"entries": 38,
+				"queued": 0,
+				"active": 3,
+				"reads": 38,
+				"decodes": 38,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-4204.png",
+			"headers": [
+				"Images\n201",
+				"Videos\n199",
+				"Documents\n200",
+				"Spreadsheets\n200"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n201\nfile-4204.png\n0 KB\nfile-4208.png\n0 KB\nfile-4212.png\n0 KB\nfile-4216.png\n0 KB\nfile-4220.png\n0 KB\nfile-4224.png\n0 KB\nfile-4228.png\n0 KB\nfile-4232.png\n0 KB\nfile-4236.png\n0 KB\nfile-4240.png\n0 KB\nfile-4244.png\n0 KB\nfile-4248.png\n0 KB\nfile-4252.png\n0 KB\nfile-4256.png\n0 KB\nfile-4260.png\n0 KB\nfile-4264.png\n0 KB\nfile-4268.png\n0 KB\nfile-4272.png\n0 KB\nfile-4276.png\n0 KB\nfile-4280.png\n0 KB\nfile-4284.png\n0 KB\nfile-4288.png\n0 KB\nfile-4292.png\n0 KB\nfile-4296.png\n0 KB\nfile-4300.png\n0 KB\nfile-4304.png\n0 KB\nfile-4308.png\n0 KB\nVideos\n199\nDocuments\n200\nSpreadsheets\n200",
+			"loading": true,
+			"width": 560,
+			"imgs": 10,
+			"elapsed": 1388,
+			"resources": {
+				"entries": 53,
+				"queued": 1,
+				"active": 4,
+				"reads": 52,
+				"decodes": 52,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-4004.png",
+			"headers": [
+				"Images\n251",
+				"Videos\n249",
+				"Documents\n250",
+				"Spreadsheets\n250"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n251\nfile-4004.png\n0 KB\nfile-4008.png\n0 KB\nfile-4012.png\n0 KB\nfile-4016.png\n0 KB\nfile-4020.png\n0 KB\nfile-4024.png\n0 KB\nfile-4028.png\n0 KB\nfile-4032.png\n0 KB\nfile-4036.png\n0 KB\nfile-4040.png\n0 KB\nfile-4044.png\n0 KB\nfile-4048.png\n0 KB\nfile-4052.png\n0 KB\nfile-4056.png\n0 KB\nfile-4060.png\n0 KB\nfile-4064.png\n0 KB\nfile-4068.png\n0 KB\nfile-4072.png\n0 KB\nfile-4076.png\n0 KB\nfile-4080.png\n0 KB\nfile-4084.png\n0 KB\nfile-4088.png\n0 KB\nfile-4092.png\n0 KB\nfile-4096.png\n0 KB\nfile-4100.png\n0 KB\nfile-4104.png\n0 KB\nfile-4108.png\n0 KB\nVideos\n249\nDocuments\n250\nSpreadsheets\n250",
+			"loading": true,
+			"width": 560,
+			"imgs": 10,
+			"elapsed": 1646,
+			"resources": {
+				"entries": 68,
+				"queued": 0,
+				"active": 4,
+				"reads": 68,
+				"decodes": 67,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-3804.png",
+			"headers": [
+				"Images\n301",
+				"Videos\n299",
+				"Documents\n300",
+				"Spreadsheets\n300"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n301\nfile-3804.png\n0 KB\nfile-3808.png\n0 KB\nfile-3812.png\n0 KB\nfile-3816.png\n0 KB\nfile-3820.png\n0 KB\nfile-3824.png\n0 KB\nfile-3828.png\n0 KB\nfile-3832.png\n0 KB\nfile-3836.png\n0 KB\nfile-3840.png\n0 KB\nfile-3844.png\n0 KB\nfile-3848.png\n0 KB\nfile-3852.png\n0 KB\nfile-3856.png\n0 KB\nfile-3860.png\n0 KB\nfile-3864.png\n0 KB\nfile-3868.png\n0 KB\nfile-3872.png\n0 KB\nfile-3876.png\n0 KB\nfile-3880.png\n0 KB\nfile-3884.png\n0 KB\nfile-3888.png\n0 KB\nfile-3892.png\n0 KB\nfile-3896.png\n0 KB\nfile-3900.png\n0 KB\nfile-3904.png\n0 KB\nfile-3908.png\n0 KB\nVideos\n299\nDocuments\n300\nSpreadsheets\n300",
+			"loading": true,
+			"width": 560,
+			"imgs": 15,
+			"elapsed": 1966,
+			"resources": {
+				"entries": 83,
+				"queued": 0,
+				"active": 0,
+				"reads": 83,
+				"decodes": 83,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-3604.png",
+			"headers": [
+				"Images\n351",
+				"Videos\n349",
+				"Documents\n350",
+				"Spreadsheets\n350"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n351\nfile-3604.png\n0 KB\nfile-3608.png\n0 KB\nfile-3612.png\n0 KB\nfile-3616.png\n0 KB\nfile-3620.png\n0 KB\nfile-3624.png\n0 KB\nfile-3628.png\n0 KB\nfile-3632.png\n0 KB\nfile-3636.png\n0 KB\nfile-3640.png\n0 KB\nfile-3644.png\n0 KB\nfile-3648.png\n0 KB\nfile-3652.png\n0 KB\nfile-3656.png\n0 KB\nfile-3660.png\n0 KB\nfile-3664.png\n0 KB\nfile-3668.png\n0 KB\nfile-3672.png\n0 KB\nfile-3676.png\n0 KB\nfile-3680.png\n0 KB\nfile-3684.png\n0 KB\nfile-3688.png\n0 KB\nfile-3692.png\n0 KB\nfile-3696.png\n0 KB\nfile-3700.png\n0 KB\nfile-3704.png\n0 KB\nfile-3708.png\n0 KB\nVideos\n349\nDocuments\n350\nSpreadsheets\n350",
+			"loading": true,
+			"width": 560,
+			"imgs": 6,
+			"elapsed": 2218,
+			"resources": {
+				"entries": 98,
+				"queued": 4,
+				"active": 4,
+				"reads": 94,
+				"decodes": 93,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-3404.png",
+			"headers": [
+				"Images\n401",
+				"Videos\n399",
+				"Documents\n400",
+				"Spreadsheets\n400"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n401\nfile-3404.png\n0 KB\nfile-3408.png\n0 KB\nfile-3412.png\n0 KB\nfile-3416.png\n0 KB\nfile-3420.png\n0 KB\nfile-3424.png\n0 KB\nfile-3428.png\n0 KB\nfile-3432.png\n0 KB\nfile-3436.png\n0 KB\nfile-3440.png\n0 KB\nfile-3444.png\n0 KB\nfile-3448.png\n0 KB\nfile-3452.png\n0 KB\nfile-3456.png\n0 KB\nfile-3460.png\n0 KB\nfile-3464.png\n0 KB\nfile-3468.png\n0 KB\nfile-3472.png\n0 KB\nfile-3476.png\n0 KB\nfile-3480.png\n0 KB\nfile-3484.png\n0 KB\nfile-3488.png\n0 KB\nfile-3492.png\n0 KB\nfile-3496.png\n0 KB\nfile-3500.png\n0 KB\nfile-3504.png\n0 KB\nfile-3508.png\n0 KB\nVideos\n399\nDocuments\n400\nSpreadsheets\n400",
+			"loading": true,
+			"width": 560,
+			"imgs": 4,
+			"elapsed": 2473,
+			"resources": {
+				"entries": 113,
+				"queued": 6,
+				"active": 4,
+				"reads": 107,
+				"decodes": 106,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-3204.png",
+			"headers": [
+				"Images\n451",
+				"Videos\n449",
+				"Documents\n450",
+				"Spreadsheets\n450"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n451\nfile-3204.png\n0 KB\nfile-3208.png\n0 KB\nfile-3212.png\n0 KB\nfile-3216.png\n0 KB\nfile-3220.png\n0 KB\nfile-3224.png\n0 KB\nfile-3228.png\n0 KB\nfile-3232.png\n0 KB\nfile-3236.png\n0 KB\nfile-3240.png\n0 KB\nfile-3244.png\n0 KB\nfile-3248.png\n0 KB\nfile-3252.png\n0 KB\nfile-3256.png\n0 KB\nfile-3260.png\n0 KB\nfile-3264.png\n0 KB\nfile-3268.png\n0 KB\nfile-3272.png\n0 KB\nfile-3276.png\n0 KB\nfile-3280.png\n0 KB\nfile-3284.png\n0 KB\nfile-3288.png\n0 KB\nfile-3292.png\n0 KB\nfile-3296.png\n0 KB\nfile-3300.png\n0 KB\nfile-3304.png\n0 KB\nfile-3308.png\n0 KB\nVideos\n449\nDocuments\n450\nSpreadsheets\n450",
+			"loading": true,
+			"width": 560,
+			"imgs": 2,
+			"elapsed": 2734,
+			"resources": {
+				"entries": 128,
+				"queued": 9,
+				"active": 4,
+				"reads": 119,
+				"decodes": 119,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-3004.png",
+			"headers": [
+				"Images\n501",
+				"Videos\n499",
+				"Documents\n500",
+				"Spreadsheets\n500"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n501\nfile-3004.png\n0 KB\nfile-3008.png\n0 KB\nfile-3012.png\n0 KB\nfile-3016.png\n0 KB\nfile-3020.png\n0 KB\nfile-3024.png\n0 KB\nfile-3028.png\n0 KB\nfile-3032.png\n0 KB\nfile-3036.png\n0 KB\nfile-3040.png\n0 KB\nfile-3044.png\n0 KB\nfile-3048.png\n0 KB\nfile-3052.png\n0 KB\nfile-3056.png\n0 KB\nfile-3060.png\n0 KB\nfile-3064.png\n0 KB\nfile-3068.png\n0 KB\nfile-3072.png\n0 KB\nfile-3076.png\n0 KB\nfile-3080.png\n0 KB\nfile-3084.png\n0 KB\nfile-3088.png\n0 KB\nfile-3092.png\n0 KB\nfile-3096.png\n0 KB\nfile-3100.png\n0 KB\nfile-3104.png\n0 KB\nfile-3108.png\n0 KB\nVideos\n499\nDocuments\n500\nSpreadsheets\n500",
+			"loading": true,
+			"width": 560,
+			"imgs": 2,
+			"elapsed": 2993,
+			"resources": {
+				"entries": 143,
+				"queued": 8,
+				"active": 4,
+				"reads": 135,
+				"decodes": 134,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-2804.png",
+			"headers": [
+				"Images\n551",
+				"Videos\n549",
+				"Documents\n550",
+				"Spreadsheets\n550"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n551\nfile-2804.png\n0 KB\nfile-2808.png\n0 KB\nfile-2812.png\n0 KB\nfile-2816.png\n0 KB\nfile-2820.png\n0 KB\nfile-2824.png\n0 KB\nfile-2828.png\n0 KB\nfile-2832.png\n0 KB\nfile-2836.png\n0 KB\nfile-2840.png\n0 KB\nfile-2844.png\n0 KB\nfile-2848.png\n0 KB\nfile-2852.png\n0 KB\nfile-2856.png\n0 KB\nfile-2860.png\n0 KB\nfile-2864.png\n0 KB\nfile-2868.png\n0 KB\nfile-2872.png\n0 KB\nfile-2876.png\n0 KB\nfile-2880.png\n0 KB\nfile-2884.png\n0 KB\nfile-2888.png\n0 KB\nfile-2892.png\n0 KB\nfile-2896.png\n0 KB\nfile-2900.png\n0 KB\nfile-2904.png\n0 KB\nfile-2908.png\n0 KB\nVideos\n549\nDocuments\n550\nSpreadsheets\n550",
+			"loading": true,
+			"width": 560,
+			"imgs": 0,
+			"elapsed": 3254,
+			"resources": {
+				"entries": 158,
+				"queued": 11,
+				"active": 4,
+				"reads": 147,
+				"decodes": 147,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-2604.png",
+			"headers": [
+				"Images\n601",
+				"Videos\n599",
+				"Documents\n600",
+				"Spreadsheets\n600"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n601\nfile-2604.png\n0 KB\nfile-2608.png\n0 KB\nfile-2612.png\n0 KB\nfile-2616.png\n0 KB\nfile-2620.png\n0 KB\nfile-2624.png\n0 KB\nfile-2628.png\n0 KB\nfile-2632.png\n0 KB\nfile-2636.png\n0 KB\nfile-2640.png\n0 KB\nfile-2644.png\n0 KB\nfile-2648.png\n0 KB\nfile-2652.png\n0 KB\nfile-2656.png\n0 KB\nfile-2660.png\n0 KB\nfile-2664.png\n0 KB\nfile-2668.png\n0 KB\nfile-2672.png\n0 KB\nfile-2676.png\n0 KB\nfile-2680.png\n0 KB\nfile-2684.png\n0 KB\nfile-2688.png\n0 KB\nfile-2692.png\n0 KB\nfile-2696.png\n0 KB\nfile-2700.png\n0 KB\nfile-2704.png\n0 KB\nfile-2708.png\n0 KB\nVideos\n599\nDocuments\n600\nSpreadsheets\n600",
+			"loading": true,
+			"width": 560,
+			"imgs": 0,
+			"elapsed": 3512,
+			"resources": {
+				"entries": 165,
+				"queued": 11,
+				"active": 4,
+				"reads": 162,
+				"decodes": 162,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-2404.png",
+			"headers": [
+				"Images\n651",
+				"Videos\n649",
+				"Documents\n650",
+				"Spreadsheets\n650"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n651\nfile-2404.png\n0 KB\nfile-2408.png\n0 KB\nfile-2412.png\n0 KB\nfile-2416.png\n0 KB\nfile-2420.png\n0 KB\nfile-2424.png\n0 KB\nfile-2428.png\n0 KB\nfile-2432.png\n0 KB\nfile-2436.png\n0 KB\nfile-2440.png\n0 KB\nfile-2444.png\n0 KB\nfile-2448.png\n0 KB\nfile-2452.png\n0 KB\nfile-2456.png\n0 KB\nfile-2460.png\n0 KB\nfile-2464.png\n0 KB\nfile-2468.png\n0 KB\nfile-2472.png\n0 KB\nfile-2476.png\n0 KB\nfile-2480.png\n0 KB\nfile-2484.png\n0 KB\nfile-2488.png\n0 KB\nfile-2492.png\n0 KB\nfile-2496.png\n0 KB\nfile-2500.png\n0 KB\nfile-2504.png\n0 KB\nfile-2508.png\n0 KB\nVideos\n649\nDocuments\n650\nSpreadsheets\n650",
+			"loading": true,
+			"width": 560,
+			"imgs": 0,
+			"elapsed": 3779,
+			"resources": {
+				"entries": 165,
+				"queued": 11,
+				"active": 4,
+				"reads": 177,
+				"decodes": 177,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-2204.png",
+			"headers": [
+				"Images\n701",
+				"Videos\n699",
+				"Documents\n700",
+				"Spreadsheets\n700"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n701\nfile-2204.png\n0 KB\nfile-2208.png\n0 KB\nfile-2212.png\n0 KB\nfile-2216.png\n0 KB\nfile-2220.png\n0 KB\nfile-2224.png\n0 KB\nfile-2228.png\n0 KB\nfile-2232.png\n0 KB\nfile-2236.png\n0 KB\nfile-2240.png\n0 KB\nfile-2244.png\n0 KB\nfile-2248.png\n0 KB\nfile-2252.png\n0 KB\nfile-2256.png\n0 KB\nfile-2260.png\n0 KB\nfile-2264.png\n0 KB\nfile-2268.png\n0 KB\nfile-2272.png\n0 KB\nfile-2276.png\n0 KB\nfile-2280.png\n0 KB\nfile-2284.png\n0 KB\nfile-2288.png\n0 KB\nfile-2292.png\n0 KB\nfile-2296.png\n0 KB\nfile-2300.png\n0 KB\nfile-2304.png\n0 KB\nfile-2308.png\n0 KB\nVideos\n699\nDocuments\n700\nSpreadsheets\n700",
+			"loading": true,
+			"width": 560,
+			"imgs": 0,
+			"elapsed": 4044,
+			"resources": {
+				"entries": 165,
+				"queued": 11,
+				"active": 4,
+				"reads": 192,
+				"decodes": 192,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-2004.png",
+			"headers": [
+				"Images\n751",
+				"Videos\n749",
+				"Documents\n750",
+				"Spreadsheets\n750"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n751\nfile-2004.png\n0 KB\nfile-2008.png\n0 KB\nfile-2012.png\n0 KB\nfile-2016.png\n0 KB\nfile-2020.png\n0 KB\nfile-2024.png\n0 KB\nfile-2028.png\n0 KB\nfile-2032.png\n0 KB\nfile-2036.png\n0 KB\nfile-2040.png\n0 KB\nfile-2044.png\n0 KB\nfile-2048.png\n0 KB\nfile-2052.png\n0 KB\nfile-2056.png\n0 KB\nfile-2060.png\n0 KB\nfile-2064.png\n0 KB\nfile-2068.png\n0 KB\nfile-2072.png\n0 KB\nfile-2076.png\n0 KB\nfile-2080.png\n0 KB\nfile-2084.png\n0 KB\nfile-2088.png\n0 KB\nfile-2092.png\n0 KB\nfile-2096.png\n0 KB\nfile-2100.png\n0 KB\nfile-2104.png\n0 KB\nfile-2108.png\n0 KB\nVideos\n749\nDocuments\n750\nSpreadsheets\n750",
+			"loading": true,
+			"width": 560,
+			"imgs": 0,
+			"elapsed": 4315,
+			"resources": {
+				"entries": 165,
+				"queued": 11,
+				"active": 4,
+				"reads": 207,
+				"decodes": 207,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-1804.png",
+			"headers": [
+				"Images\n801",
+				"Videos\n799",
+				"Documents\n800",
+				"Spreadsheets\n800"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n801\nfile-1804.png\n0 KB\nfile-1808.png\n0 KB\nfile-1812.png\n0 KB\nfile-1816.png\n0 KB\nfile-1820.png\n0 KB\nfile-1824.png\n0 KB\nfile-1828.png\n0 KB\nfile-1832.png\n0 KB\nfile-1836.png\n0 KB\nfile-1840.png\n0 KB\nfile-1844.png\n0 KB\nfile-1848.png\n0 KB\nfile-1852.png\n0 KB\nfile-1856.png\n0 KB\nfile-1860.png\n0 KB\nfile-1864.png\n0 KB\nfile-1868.png\n0 KB\nfile-1872.png\n0 KB\nfile-1876.png\n0 KB\nfile-1880.png\n0 KB\nfile-1884.png\n0 KB\nfile-1888.png\n0 KB\nfile-1892.png\n0 KB\nfile-1896.png\n0 KB\nfile-1900.png\n0 KB\nfile-1904.png\n0 KB\nfile-1908.png\n0 KB\nVideos\n799\nDocuments\n800\nSpreadsheets\n800",
+			"loading": true,
+			"width": 560,
+			"imgs": 0,
+			"elapsed": 4585,
+			"resources": {
+				"entries": 165,
+				"queued": 11,
+				"active": 4,
+				"reads": 222,
+				"decodes": 222,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-1604.png",
+			"headers": [
+				"Images\n851",
+				"Videos\n849",
+				"Documents\n850",
+				"Spreadsheets\n850"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n851\nfile-1604.png\n0 KB\nfile-1608.png\n0 KB\nfile-1612.png\n0 KB\nfile-1616.png\n0 KB\nfile-1620.png\n0 KB\nfile-1624.png\n0 KB\nfile-1628.png\n0 KB\nfile-1632.png\n0 KB\nfile-1636.png\n0 KB\nfile-1640.png\n0 KB\nfile-1644.png\n0 KB\nfile-1648.png\n0 KB\nfile-1652.png\n0 KB\nfile-1656.png\n0 KB\nfile-1660.png\n0 KB\nfile-1664.png\n0 KB\nfile-1668.png\n0 KB\nfile-1672.png\n0 KB\nfile-1676.png\n0 KB\nfile-1680.png\n0 KB\nfile-1684.png\n0 KB\nfile-1688.png\n0 KB\nfile-1692.png\n0 KB\nfile-1696.png\n0 KB\nfile-1700.png\n0 KB\nfile-1704.png\n0 KB\nfile-1708.png\n0 KB\nVideos\n849\nDocuments\n850\nSpreadsheets\n850",
+			"loading": true,
+			"width": 560,
+			"imgs": 0,
+			"elapsed": 4856,
+			"resources": {
+				"entries": 165,
+				"queued": 11,
+				"active": 4,
+				"reads": 237,
+				"decodes": 237,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-1404.png",
+			"headers": [
+				"Images\n901",
+				"Videos\n899",
+				"Documents\n900",
+				"Spreadsheets\n900"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n901\nfile-1404.png\n0 KB\nfile-1408.png\n0 KB\nfile-1412.png\n0 KB\nfile-1416.png\n0 KB\nfile-1420.png\n0 KB\nfile-1424.png\n0 KB\nfile-1428.png\n0 KB\nfile-1432.png\n0 KB\nfile-1436.png\n0 KB\nfile-1440.png\n0 KB\nfile-1444.png\n0 KB\nfile-1448.png\n0 KB\nfile-1452.png\n0 KB\nfile-1456.png\n0 KB\nfile-1460.png\n0 KB\nfile-1464.png\n0 KB\nfile-1468.png\n0 KB\nfile-1472.png\n0 KB\nfile-1476.png\n0 KB\nfile-1480.png\n0 KB\nfile-1484.png\n0 KB\nfile-1488.png\n0 KB\nfile-1492.png\n0 KB\nfile-1496.png\n0 KB\nfile-1500.png\n0 KB\nfile-1504.png\n0 KB\nfile-1508.png\n0 KB\nVideos\n899\nDocuments\n900\nSpreadsheets\n900",
+			"loading": true,
+			"width": 560,
+			"imgs": 0,
+			"elapsed": 5126,
+			"resources": {
+				"entries": 165,
+				"queued": 11,
+				"active": 4,
+				"reads": 252,
+				"decodes": 252,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-1204.png",
+			"headers": [
+				"Images\n951",
+				"Videos\n949",
+				"Documents\n950",
+				"Spreadsheets\n950"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n951\nfile-1204.png\n0 KB\nfile-1208.png\n0 KB\nfile-1212.png\n0 KB\nfile-1216.png\n0 KB\nfile-1220.png\n0 KB\nfile-1224.png\n0 KB\nfile-1228.png\n0 KB\nfile-1232.png\n0 KB\nfile-1236.png\n0 KB\nfile-1240.png\n0 KB\nfile-1244.png\n0 KB\nfile-1248.png\n0 KB\nfile-1252.png\n0 KB\nfile-1256.png\n0 KB\nfile-1260.png\n0 KB\nfile-1264.png\n0 KB\nfile-1268.png\n0 KB\nfile-1272.png\n0 KB\nfile-1276.png\n0 KB\nfile-1280.png\n0 KB\nfile-1284.png\n0 KB\nfile-1288.png\n0 KB\nfile-1292.png\n0 KB\nfile-1296.png\n0 KB\nfile-1300.png\n0 KB\nfile-1304.png\n0 KB\nfile-1308.png\n0 KB\nVideos\n949\nDocuments\n950\nSpreadsheets\n950",
+			"loading": true,
+			"width": 560,
+			"imgs": 0,
+			"elapsed": 5393,
+			"resources": {
+				"entries": 165,
+				"queued": 11,
+				"active": 4,
+				"reads": 267,
+				"decodes": 267,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-1004.png",
+			"headers": [
+				"Images\n1,001",
+				"Videos\n999",
+				"Documents\n1,000",
+				"Spreadsheets\n1,000"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n1,001\nfile-1004.png\n0 KB\nfile-1008.png\n0 KB\nfile-1012.png\n0 KB\nfile-1016.png\n0 KB\nfile-1020.png\n0 KB\nfile-1024.png\n0 KB\nfile-1028.png\n0 KB\nfile-1032.png\n0 KB\nfile-1036.png\n0 KB\nfile-1040.png\n0 KB\nfile-1044.png\n0 KB\nfile-1048.png\n0 KB\nfile-1052.png\n0 KB\nfile-1056.png\n0 KB\nfile-1060.png\n0 KB\nfile-1064.png\n0 KB\nfile-1068.png\n0 KB\nfile-1072.png\n0 KB\nfile-1076.png\n0 KB\nfile-1080.png\n0 KB\nfile-1084.png\n0 KB\nfile-1088.png\n0 KB\nfile-1092.png\n0 KB\nfile-1096.png\n0 KB\nfile-1100.png\n0 KB\nfile-1104.png\n0 KB\nfile-1108.png\n0 KB\nVideos\n999\nDocuments\n1,000\nSpreadsheets\n1,000",
+			"loading": true,
+			"width": 560,
+			"imgs": 0,
+			"elapsed": 5664,
+			"resources": {
+				"entries": 165,
+				"queued": 11,
+				"active": 4,
+				"reads": 282,
+				"decodes": 282,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0804.png",
+			"headers": [
+				"Images\n1,051",
+				"Videos\n1,049",
+				"Documents\n1,050",
+				"Spreadsheets\n1,050"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n1,051\nfile-0804.png\n0 KB\nfile-0808.png\n0 KB\nfile-0812.png\n0 KB\nfile-0816.png\n0 KB\nfile-0820.png\n0 KB\nfile-0824.png\n0 KB\nfile-0828.png\n0 KB\nfile-0832.png\n0 KB\nfile-0836.png\n0 KB\nfile-0840.png\n0 KB\nfile-0844.png\n0 KB\nfile-0848.png\n0 KB\nfile-0852.png\n0 KB\nfile-0856.png\n0 KB\nfile-0860.png\n0 KB\nfile-0864.png\n0 KB\nfile-0868.png\n0 KB\nfile-0872.png\n0 KB\nfile-0876.png\n0 KB\nfile-0880.png\n0 KB\nfile-0884.png\n0 KB\nfile-0888.png\n0 KB\nfile-0892.png\n0 KB\nfile-0896.png\n0 KB\nfile-0900.png\n0 KB\nfile-0904.png\n0 KB\nfile-0908.png\n0 KB\nVideos\n1,049\nDocuments\n1,050\nSpreadsheets\n1,050",
+			"loading": true,
+			"width": 560,
+			"imgs": 0,
+			"elapsed": 5931,
+			"resources": {
+				"entries": 165,
+				"queued": 11,
+				"active": 4,
+				"reads": 297,
+				"decodes": 297,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0604.png",
+			"headers": [
+				"Images\n1,101",
+				"Videos\n1,099",
+				"Documents\n1,100",
+				"Spreadsheets\n1,100"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n1,101\nfile-0604.png\n0 KB\nfile-0608.png\n0 KB\nfile-0612.png\n0 KB\nfile-0616.png\n0 KB\nfile-0620.png\n0 KB\nfile-0624.png\n0 KB\nfile-0628.png\n0 KB\nfile-0632.png\n0 KB\nfile-0636.png\n0 KB\nfile-0640.png\n0 KB\nfile-0644.png\n0 KB\nfile-0648.png\n0 KB\nfile-0652.png\n0 KB\nfile-0656.png\n0 KB\nfile-0660.png\n0 KB\nfile-0664.png\n0 KB\nfile-0668.png\n0 KB\nfile-0672.png\n0 KB\nfile-0676.png\n0 KB\nfile-0680.png\n0 KB\nfile-0684.png\n0 KB\nfile-0688.png\n0 KB\nfile-0692.png\n0 KB\nfile-0696.png\n0 KB\nfile-0700.png\n0 KB\nfile-0704.png\n0 KB\nfile-0708.png\n0 KB\nVideos\n1,099\nDocuments\n1,100\nSpreadsheets\n1,100",
+			"loading": true,
+			"width": 560,
+			"imgs": 0,
+			"elapsed": 6201,
+			"resources": {
+				"entries": 165,
+				"queued": 11,
+				"active": 4,
+				"reads": 312,
+				"decodes": 312,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0404.png",
+			"headers": [
+				"Images\n1,151",
+				"Videos\n1,149",
+				"Documents\n1,150",
+				"Spreadsheets\n1,150"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n1,151\nfile-0404.png\n0 KB\nfile-0408.png\n0 KB\nfile-0412.png\n0 KB\nfile-0416.png\n0 KB\nfile-0420.png\n0 KB\nfile-0424.png\n0 KB\nfile-0428.png\n0 KB\nfile-0432.png\n0 KB\nfile-0436.png\n0 KB\nfile-0440.png\n0 KB\nfile-0444.png\n0 KB\nfile-0448.png\n0 KB\nfile-0452.png\n0 KB\nfile-0456.png\n0 KB\nfile-0460.png\n0 KB\nfile-0464.png\n0 KB\nfile-0468.png\n0 KB\nfile-0472.png\n0 KB\nfile-0476.png\n0 KB\nfile-0480.png\n0 KB\nfile-0484.png\n0 KB\nfile-0488.png\n0 KB\nfile-0492.png\n0 KB\nfile-0496.png\n0 KB\nfile-0500.png\n0 KB\nfile-0504.png\n0 KB\nfile-0508.png\n0 KB\nVideos\n1,149\nDocuments\n1,150\nSpreadsheets\n1,150",
+			"loading": true,
+			"width": 560,
+			"imgs": 0,
+			"elapsed": 6475,
+			"resources": {
+				"entries": 165,
+				"queued": 11,
+				"active": 4,
+				"reads": 327,
+				"decodes": 327,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0204.png",
+			"headers": [
+				"Images\n1,201",
+				"Videos\n1,199",
+				"Documents\n1,200",
+				"Spreadsheets\n1,200"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n1,201\nfile-0204.png\n0 KB\nfile-0208.png\n0 KB\nfile-0212.png\n0 KB\nfile-0216.png\n0 KB\nfile-0220.png\n0 KB\nfile-0224.png\n0 KB\nfile-0228.png\n0 KB\nfile-0232.png\n0 KB\nfile-0236.png\n0 KB\nfile-0240.png\n0 KB\nfile-0244.png\n0 KB\nfile-0248.png\n0 KB\nfile-0252.png\n0 KB\nfile-0256.png\n0 KB\nfile-0260.png\n0 KB\nfile-0264.png\n0 KB\nfile-0268.png\n0 KB\nfile-0272.png\n0 KB\nfile-0276.png\n0 KB\nfile-0280.png\n0 KB\nfile-0284.png\n0 KB\nfile-0288.png\n0 KB\nfile-0292.png\n0 KB\nfile-0296.png\n0 KB\nfile-0300.png\n0 KB\nfile-0304.png\n0 KB\nfile-0308.png\n0 KB\nVideos\n1,199\nDocuments\n1,200\nSpreadsheets\n1,200",
+			"loading": true,
+			"width": 560,
+			"imgs": 0,
+			"elapsed": 6746,
+			"resources": {
+				"entries": 165,
+				"queued": 11,
+				"active": 4,
+				"reads": 342,
+				"decodes": 342,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0204.png",
+			"headers": [
+				"Images\n1,201",
+				"Videos\n1,199",
+				"Documents\n1,200",
+				"Spreadsheets\n1,200"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n1,201\nfile-0204.png\n0 KB\nfile-0208.png\n0 KB\nfile-0212.png\n0 KB\nfile-0216.png\n0 KB\nfile-0220.png\n0 KB\nfile-0224.png\n0 KB\nfile-0228.png\n0 KB\nfile-0232.png\n0 KB\nfile-0236.png\n0 KB\nfile-0240.png\n0 KB\nfile-0244.png\n0 KB\nfile-0248.png\n0 KB\nfile-0252.png\n0 KB\nfile-0256.png\n0 KB\nfile-0260.png\n0 KB\nfile-0264.png\n0 KB\nfile-0268.png\n0 KB\nfile-0272.png\n0 KB\nfile-0276.png\n0 KB\nfile-0280.png\n0 KB\nfile-0284.png\n0 KB\nfile-0288.png\n0 KB\nfile-0292.png\n0 KB\nfile-0296.png\n0 KB\nfile-0300.png\n0 KB\nfile-0304.png\n0 KB\nfile-0308.png\n0 KB\nVideos\n1,199\nDocuments\n1,200\nSpreadsheets\n1,200",
+			"loading": true,
+			"width": 560,
+			"imgs": 15,
+			"elapsed": 6998,
+			"resources": {
+				"entries": 150,
+				"queued": 0,
+				"active": 0,
+				"reads": 353,
+				"decodes": 353,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 1,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0002.md",
+			"headers": ["Highlights\n1", "Working files\n4,999"],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Highlights\n1\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n4,999",
+			"loading": true,
+			"width": 560,
+			"imgs": 0,
+			"elapsed": 7251,
+			"resources": {
+				"entries": 150,
+				"queued": 0,
+				"active": 0,
+				"reads": 353,
+				"decodes": 353,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 2,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png",
+			"headers": ["Highlights\n2", "Working files\n5,000"],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files\nOpen folder",
+			"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5,000",
+			"loading": false,
+			"width": 560,
+			"imgs": 1,
+			"elapsed": 7503,
+			"resources": {
+				"entries": 150,
+				"queued": 0,
+				"active": 0,
+				"reads": 354,
+				"decodes": 354,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 2,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png",
+			"headers": ["Highlights\n2", "Working files\n5,000"],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files\nOpen folder",
+			"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5,000",
+			"loading": false,
+			"width": 560,
+			"imgs": 1,
+			"elapsed": 7754,
+			"resources": {
+				"entries": 150,
+				"queued": 0,
+				"active": 0,
+				"reads": 354,
+				"decodes": 354,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 2,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png",
+			"headers": ["Highlights\n2", "Working files\n5,000"],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files\nOpen folder",
+			"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5,000",
+			"loading": false,
+			"width": 560,
+			"imgs": 1,
+			"elapsed": 8006,
+			"resources": {
+				"entries": 150,
+				"queued": 0,
+				"active": 0,
+				"reads": 354,
+				"decodes": 354,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 2,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png",
+			"headers": ["Highlights\n2", "Working files\n5,000"],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files\nOpen folder",
+			"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5,000",
+			"loading": false,
+			"width": 560,
+			"imgs": 1,
+			"elapsed": 8259,
+			"resources": {
+				"entries": 150,
+				"queued": 0,
+				"active": 0,
+				"reads": 354,
+				"decodes": 354,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 2,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png",
+			"headers": ["Highlights\n2", "Working files\n5,000"],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files\nOpen folder",
+			"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5,000",
+			"loading": false,
+			"width": 560,
+			"imgs": 1,
+			"elapsed": 8513,
+			"resources": {
+				"entries": 150,
+				"queued": 0,
+				"active": 0,
+				"reads": 354,
+				"decodes": 354,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 2,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png",
+			"headers": ["Highlights\n2", "Working files\n5,000"],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files\nOpen folder",
+			"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5,000",
+			"loading": false,
+			"width": 560,
+			"imgs": 1,
+			"elapsed": 8765,
+			"resources": {
+				"entries": 150,
+				"queued": 0,
+				"active": 0,
+				"reads": 354,
+				"decodes": 354,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 2,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png",
+			"headers": ["Highlights\n2", "Working files\n5,000"],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files\nOpen folder",
+			"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5,000",
+			"loading": false,
+			"width": 560,
+			"imgs": 1,
+			"elapsed": 9019,
+			"resources": {
+				"entries": 150,
+				"queued": 0,
+				"active": 0,
+				"reads": 354,
+				"decodes": 354,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 2,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png",
+			"headers": ["Highlights\n2", "Working files\n5,000"],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files\nOpen folder",
+			"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5,000",
+			"loading": false,
+			"width": 560,
+			"imgs": 1,
+			"elapsed": 9272,
+			"resources": {
+				"entries": 150,
+				"queued": 0,
+				"active": 0,
+				"reads": 354,
+				"decodes": 354,
+				"peakActive": 4
+			}
+		}
+	],
+	"frames": {
+		"first": "cold-before-dark-first.png",
+		"progress": "cold-before-dark-progress.png",
+		"final": "cold-before-dark-final.png"
+	},
+	"facts": {
+		"windowMode": "headless",
+		"appVersion": "0.34.43",
+		"platform": "darwin",
+		"title": "Local Operator",
+		"windowSize": {
+			"width": 1380,
+			"height": 900
+		},
+		"contentBounds": {
+			"width": 1380,
+			"height": 900
+		},
+		"visible": false,
+		"focused": false,
+		"minimized": false,
+		"frames": [],
+		"outDir": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/cold/before-dark"
+	},
+	"requests": {
+		"pages": 26
+	},
+	"loadingSamples": [
+		{
+			"rows": 0,
+			"first": null,
+			"headers": [],
+			"head": "Mentioned\n\u2191\nFilter",
+			"body": "Loading session files\u2026",
+			"loading": true,
+			"width": 560,
+			"imgs": 0,
+			"elapsed": 58,
+			"resources": {
+				"entries": 0,
+				"queued": 0,
+				"active": 0,
+				"reads": 0,
+				"decodes": 0,
+				"peakActive": 0
+			}
+		},
+		{
+			"rows": 0,
+			"first": null,
+			"headers": [],
+			"head": "Mentioned\n\u2191\nFilter",
+			"body": "Loading session files\u2026",
+			"loading": true,
+			"width": 560,
+			"imgs": 0,
+			"elapsed": 365,
+			"resources": {
+				"entries": 0,
+				"queued": 0,
+				"active": 0,
+				"reads": 0,
+				"decodes": 0,
+				"peakActive": 0
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-4804.png",
+			"headers": [
+				"Images\n51",
+				"Videos\n49",
+				"Documents\n50",
+				"Spreadsheets\n50"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n51\nfile-4804.png\n0 KB\nfile-4808.png\n0 KB\nfile-4812.png\n0 KB\nfile-4816.png\n0 KB\nfile-4820.png\n0 KB\nfile-4824.png\n0 KB\nfile-4828.png\n0 KB\nfile-4832.png\n0 KB\nfile-4836.png\n0 KB\nfile-4840.png\n0 KB\nfile-4844.png\n0 KB\nfile-4848.png\n0 KB\nfile-4852.png\n0 KB\nfile-4856.png\n0 KB\nfile-4860.png\n0 KB\nfile-4864.png\n0 KB\nfile-4868.png\n0 KB\nfile-4872.png\n0 KB\nfile-4876.png\n0 KB\nfile-4880.png\n0 KB\nfile-4884.png\n0 KB\nfile-4888.png\n0 KB\nfile-4892.png\n0 KB\nfile-4896.png\n0 KB\nfile-4900.png\n0 KB\nfile-4904.png\n0 KB\nfile-4908.png\n0 KB\nVideos\n49\nDocuments\n50\nSpreadsheets\n50",
+			"loading": true,
+			"width": 560,
+			"imgs": 1,
+			"elapsed": 618,
+			"resources": {
+				"entries": 15,
+				"queued": 10,
+				"active": 4,
+				"reads": 5,
+				"decodes": 4,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-4604.png",
+			"headers": [
+				"Images\n101",
+				"Videos\n99",
+				"Documents\n100",
+				"Spreadsheets\n100"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n101\nfile-4604.png\n0 KB\nfile-4608.png\n0 KB\nfile-4612.png\n0 KB\nfile-4616.png\n0 KB\nfile-4620.png\n0 KB\nfile-4624.png\n0 KB\nfile-4628.png\n0 KB\nfile-4632.png\n0 KB\nfile-4636.png\n0 KB\nfile-4640.png\n0 KB\nfile-4644.png\n0 KB\nfile-4648.png\n0 KB\nfile-4652.png\n0 KB\nfile-4656.png\n0 KB\nfile-4660.png\n0 KB\nfile-4664.png\n0 KB\nfile-4668.png\n0 KB\nfile-4672.png\n0 KB\nfile-4676.png\n0 KB\nfile-4680.png\n0 KB\nfile-4684.png\n0 KB\nfile-4688.png\n0 KB\nfile-4692.png\n0 KB\nfile-4696.png\n0 KB\nfile-4700.png\n0 KB\nfile-4704.png\n0 KB\nfile-4708.png\n0 KB\nVideos\n99\nDocuments\n100\nSpreadsheets\n100",
+			"loading": true,
+			"width": 560,
+			"imgs": 6,
+			"elapsed": 880,
+			"resources": {
+				"entries": 23,
+				"queued": 5,
+				"active": 4,
+				"reads": 18,
+				"decodes": 17,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-4404.png",
+			"headers": [
+				"Images\n151",
+				"Videos\n149",
+				"Documents\n150",
+				"Spreadsheets\n150"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n151\nfile-4404.png\n0 KB\nfile-4408.png\n0 KB\nfile-4412.png\n0 KB\nfile-4416.png\n0 KB\nfile-4420.png\n0 KB\nfile-4424.png\n0 KB\nfile-4428.png\n0 KB\nfile-4432.png\n0 KB\nfile-4436.png\n0 KB\nfile-4440.png\n0 KB\nfile-4444.png\n0 KB\nfile-4448.png\n0 KB\nfile-4452.png\n0 KB\nfile-4456.png\n0 KB\nfile-4460.png\n0 KB\nfile-4464.png\n0 KB\nfile-4468.png\n0 KB\nfile-4472.png\n0 KB\nfile-4476.png\n0 KB\nfile-4480.png\n0 KB\nfile-4484.png\n0 KB\nfile-4488.png\n0 KB\nfile-4492.png\n0 KB\nfile-4496.png\n0 KB\nfile-4500.png\n0 KB\nfile-4504.png\n0 KB\nfile-4508.png\n0 KB\nVideos\n149\nDocuments\n150\nSpreadsheets\n150",
+			"loading": true,
+			"width": 560,
+			"imgs": 11,
+			"elapsed": 1134,
+			"resources": {
+				"entries": 38,
+				"queued": 0,
+				"active": 3,
+				"reads": 38,
+				"decodes": 38,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-4204.png",
+			"headers": [
+				"Images\n201",
+				"Videos\n199",
+				"Documents\n200",
+				"Spreadsheets\n200"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n201\nfile-4204.png\n0 KB\nfile-4208.png\n0 KB\nfile-4212.png\n0 KB\nfile-4216.png\n0 KB\nfile-4220.png\n0 KB\nfile-4224.png\n0 KB\nfile-4228.png\n0 KB\nfile-4232.png\n0 KB\nfile-4236.png\n0 KB\nfile-4240.png\n0 KB\nfile-4244.png\n0 KB\nfile-4248.png\n0 KB\nfile-4252.png\n0 KB\nfile-4256.png\n0 KB\nfile-4260.png\n0 KB\nfile-4264.png\n0 KB\nfile-4268.png\n0 KB\nfile-4272.png\n0 KB\nfile-4276.png\n0 KB\nfile-4280.png\n0 KB\nfile-4284.png\n0 KB\nfile-4288.png\n0 KB\nfile-4292.png\n0 KB\nfile-4296.png\n0 KB\nfile-4300.png\n0 KB\nfile-4304.png\n0 KB\nfile-4308.png\n0 KB\nVideos\n199\nDocuments\n200\nSpreadsheets\n200",
+			"loading": true,
+			"width": 560,
+			"imgs": 10,
+			"elapsed": 1388,
+			"resources": {
+				"entries": 53,
+				"queued": 1,
+				"active": 4,
+				"reads": 52,
+				"decodes": 52,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-4004.png",
+			"headers": [
+				"Images\n251",
+				"Videos\n249",
+				"Documents\n250",
+				"Spreadsheets\n250"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n251\nfile-4004.png\n0 KB\nfile-4008.png\n0 KB\nfile-4012.png\n0 KB\nfile-4016.png\n0 KB\nfile-4020.png\n0 KB\nfile-4024.png\n0 KB\nfile-4028.png\n0 KB\nfile-4032.png\n0 KB\nfile-4036.png\n0 KB\nfile-4040.png\n0 KB\nfile-4044.png\n0 KB\nfile-4048.png\n0 KB\nfile-4052.png\n0 KB\nfile-4056.png\n0 KB\nfile-4060.png\n0 KB\nfile-4064.png\n0 KB\nfile-4068.png\n0 KB\nfile-4072.png\n0 KB\nfile-4076.png\n0 KB\nfile-4080.png\n0 KB\nfile-4084.png\n0 KB\nfile-4088.png\n0 KB\nfile-4092.png\n0 KB\nfile-4096.png\n0 KB\nfile-4100.png\n0 KB\nfile-4104.png\n0 KB\nfile-4108.png\n0 KB\nVideos\n249\nDocuments\n250\nSpreadsheets\n250",
+			"loading": true,
+			"width": 560,
+			"imgs": 10,
+			"elapsed": 1646,
+			"resources": {
+				"entries": 68,
+				"queued": 0,
+				"active": 4,
+				"reads": 68,
+				"decodes": 67,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-3804.png",
+			"headers": [
+				"Images\n301",
+				"Videos\n299",
+				"Documents\n300",
+				"Spreadsheets\n300"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n301\nfile-3804.png\n0 KB\nfile-3808.png\n0 KB\nfile-3812.png\n0 KB\nfile-3816.png\n0 KB\nfile-3820.png\n0 KB\nfile-3824.png\n0 KB\nfile-3828.png\n0 KB\nfile-3832.png\n0 KB\nfile-3836.png\n0 KB\nfile-3840.png\n0 KB\nfile-3844.png\n0 KB\nfile-3848.png\n0 KB\nfile-3852.png\n0 KB\nfile-3856.png\n0 KB\nfile-3860.png\n0 KB\nfile-3864.png\n0 KB\nfile-3868.png\n0 KB\nfile-3872.png\n0 KB\nfile-3876.png\n0 KB\nfile-3880.png\n0 KB\nfile-3884.png\n0 KB\nfile-3888.png\n0 KB\nfile-3892.png\n0 KB\nfile-3896.png\n0 KB\nfile-3900.png\n0 KB\nfile-3904.png\n0 KB\nfile-3908.png\n0 KB\nVideos\n299\nDocuments\n300\nSpreadsheets\n300",
+			"loading": true,
+			"width": 560,
+			"imgs": 15,
+			"elapsed": 1966,
+			"resources": {
+				"entries": 83,
+				"queued": 0,
+				"active": 0,
+				"reads": 83,
+				"decodes": 83,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-3604.png",
+			"headers": [
+				"Images\n351",
+				"Videos\n349",
+				"Documents\n350",
+				"Spreadsheets\n350"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n351\nfile-3604.png\n0 KB\nfile-3608.png\n0 KB\nfile-3612.png\n0 KB\nfile-3616.png\n0 KB\nfile-3620.png\n0 KB\nfile-3624.png\n0 KB\nfile-3628.png\n0 KB\nfile-3632.png\n0 KB\nfile-3636.png\n0 KB\nfile-3640.png\n0 KB\nfile-3644.png\n0 KB\nfile-3648.png\n0 KB\nfile-3652.png\n0 KB\nfile-3656.png\n0 KB\nfile-3660.png\n0 KB\nfile-3664.png\n0 KB\nfile-3668.png\n0 KB\nfile-3672.png\n0 KB\nfile-3676.png\n0 KB\nfile-3680.png\n0 KB\nfile-3684.png\n0 KB\nfile-3688.png\n0 KB\nfile-3692.png\n0 KB\nfile-3696.png\n0 KB\nfile-3700.png\n0 KB\nfile-3704.png\n0 KB\nfile-3708.png\n0 KB\nVideos\n349\nDocuments\n350\nSpreadsheets\n350",
+			"loading": true,
+			"width": 560,
+			"imgs": 6,
+			"elapsed": 2218,
+			"resources": {
+				"entries": 98,
+				"queued": 4,
+				"active": 4,
+				"reads": 94,
+				"decodes": 93,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-3404.png",
+			"headers": [
+				"Images\n401",
+				"Videos\n399",
+				"Documents\n400",
+				"Spreadsheets\n400"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n401\nfile-3404.png\n0 KB\nfile-3408.png\n0 KB\nfile-3412.png\n0 KB\nfile-3416.png\n0 KB\nfile-3420.png\n0 KB\nfile-3424.png\n0 KB\nfile-3428.png\n0 KB\nfile-3432.png\n0 KB\nfile-3436.png\n0 KB\nfile-3440.png\n0 KB\nfile-3444.png\n0 KB\nfile-3448.png\n0 KB\nfile-3452.png\n0 KB\nfile-3456.png\n0 KB\nfile-3460.png\n0 KB\nfile-3464.png\n0 KB\nfile-3468.png\n0 KB\nfile-3472.png\n0 KB\nfile-3476.png\n0 KB\nfile-3480.png\n0 KB\nfile-3484.png\n0 KB\nfile-3488.png\n0 KB\nfile-3492.png\n0 KB\nfile-3496.png\n0 KB\nfile-3500.png\n0 KB\nfile-3504.png\n0 KB\nfile-3508.png\n0 KB\nVideos\n399\nDocuments\n400\nSpreadsheets\n400",
+			"loading": true,
+			"width": 560,
+			"imgs": 4,
+			"elapsed": 2473,
+			"resources": {
+				"entries": 113,
+				"queued": 6,
+				"active": 4,
+				"reads": 107,
+				"decodes": 106,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-3204.png",
+			"headers": [
+				"Images\n451",
+				"Videos\n449",
+				"Documents\n450",
+				"Spreadsheets\n450"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n451\nfile-3204.png\n0 KB\nfile-3208.png\n0 KB\nfile-3212.png\n0 KB\nfile-3216.png\n0 KB\nfile-3220.png\n0 KB\nfile-3224.png\n0 KB\nfile-3228.png\n0 KB\nfile-3232.png\n0 KB\nfile-3236.png\n0 KB\nfile-3240.png\n0 KB\nfile-3244.png\n0 KB\nfile-3248.png\n0 KB\nfile-3252.png\n0 KB\nfile-3256.png\n0 KB\nfile-3260.png\n0 KB\nfile-3264.png\n0 KB\nfile-3268.png\n0 KB\nfile-3272.png\n0 KB\nfile-3276.png\n0 KB\nfile-3280.png\n0 KB\nfile-3284.png\n0 KB\nfile-3288.png\n0 KB\nfile-3292.png\n0 KB\nfile-3296.png\n0 KB\nfile-3300.png\n0 KB\nfile-3304.png\n0 KB\nfile-3308.png\n0 KB\nVideos\n449\nDocuments\n450\nSpreadsheets\n450",
+			"loading": true,
+			"width": 560,
+			"imgs": 2,
+			"elapsed": 2734,
+			"resources": {
+				"entries": 128,
+				"queued": 9,
+				"active": 4,
+				"reads": 119,
+				"decodes": 119,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-3004.png",
+			"headers": [
+				"Images\n501",
+				"Videos\n499",
+				"Documents\n500",
+				"Spreadsheets\n500"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n501\nfile-3004.png\n0 KB\nfile-3008.png\n0 KB\nfile-3012.png\n0 KB\nfile-3016.png\n0 KB\nfile-3020.png\n0 KB\nfile-3024.png\n0 KB\nfile-3028.png\n0 KB\nfile-3032.png\n0 KB\nfile-3036.png\n0 KB\nfile-3040.png\n0 KB\nfile-3044.png\n0 KB\nfile-3048.png\n0 KB\nfile-3052.png\n0 KB\nfile-3056.png\n0 KB\nfile-3060.png\n0 KB\nfile-3064.png\n0 KB\nfile-3068.png\n0 KB\nfile-3072.png\n0 KB\nfile-3076.png\n0 KB\nfile-3080.png\n0 KB\nfile-3084.png\n0 KB\nfile-3088.png\n0 KB\nfile-3092.png\n0 KB\nfile-3096.png\n0 KB\nfile-3100.png\n0 KB\nfile-3104.png\n0 KB\nfile-3108.png\n0 KB\nVideos\n499\nDocuments\n500\nSpreadsheets\n500",
+			"loading": true,
+			"width": 560,
+			"imgs": 2,
+			"elapsed": 2993,
+			"resources": {
+				"entries": 143,
+				"queued": 8,
+				"active": 4,
+				"reads": 135,
+				"decodes": 134,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-2804.png",
+			"headers": [
+				"Images\n551",
+				"Videos\n549",
+				"Documents\n550",
+				"Spreadsheets\n550"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n551\nfile-2804.png\n0 KB\nfile-2808.png\n0 KB\nfile-2812.png\n0 KB\nfile-2816.png\n0 KB\nfile-2820.png\n0 KB\nfile-2824.png\n0 KB\nfile-2828.png\n0 KB\nfile-2832.png\n0 KB\nfile-2836.png\n0 KB\nfile-2840.png\n0 KB\nfile-2844.png\n0 KB\nfile-2848.png\n0 KB\nfile-2852.png\n0 KB\nfile-2856.png\n0 KB\nfile-2860.png\n0 KB\nfile-2864.png\n0 KB\nfile-2868.png\n0 KB\nfile-2872.png\n0 KB\nfile-2876.png\n0 KB\nfile-2880.png\n0 KB\nfile-2884.png\n0 KB\nfile-2888.png\n0 KB\nfile-2892.png\n0 KB\nfile-2896.png\n0 KB\nfile-2900.png\n0 KB\nfile-2904.png\n0 KB\nfile-2908.png\n0 KB\nVideos\n549\nDocuments\n550\nSpreadsheets\n550",
+			"loading": true,
+			"width": 560,
+			"imgs": 0,
+			"elapsed": 3254,
+			"resources": {
+				"entries": 158,
+				"queued": 11,
+				"active": 4,
+				"reads": 147,
+				"decodes": 147,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-2604.png",
+			"headers": [
+				"Images\n601",
+				"Videos\n599",
+				"Documents\n600",
+				"Spreadsheets\n600"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n601\nfile-2604.png\n0 KB\nfile-2608.png\n0 KB\nfile-2612.png\n0 KB\nfile-2616.png\n0 KB\nfile-2620.png\n0 KB\nfile-2624.png\n0 KB\nfile-2628.png\n0 KB\nfile-2632.png\n0 KB\nfile-2636.png\n0 KB\nfile-2640.png\n0 KB\nfile-2644.png\n0 KB\nfile-2648.png\n0 KB\nfile-2652.png\n0 KB\nfile-2656.png\n0 KB\nfile-2660.png\n0 KB\nfile-2664.png\n0 KB\nfile-2668.png\n0 KB\nfile-2672.png\n0 KB\nfile-2676.png\n0 KB\nfile-2680.png\n0 KB\nfile-2684.png\n0 KB\nfile-2688.png\n0 KB\nfile-2692.png\n0 KB\nfile-2696.png\n0 KB\nfile-2700.png\n0 KB\nfile-2704.png\n0 KB\nfile-2708.png\n0 KB\nVideos\n599\nDocuments\n600\nSpreadsheets\n600",
+			"loading": true,
+			"width": 560,
+			"imgs": 0,
+			"elapsed": 3512,
+			"resources": {
+				"entries": 165,
+				"queued": 11,
+				"active": 4,
+				"reads": 162,
+				"decodes": 162,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-2404.png",
+			"headers": [
+				"Images\n651",
+				"Videos\n649",
+				"Documents\n650",
+				"Spreadsheets\n650"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n651\nfile-2404.png\n0 KB\nfile-2408.png\n0 KB\nfile-2412.png\n0 KB\nfile-2416.png\n0 KB\nfile-2420.png\n0 KB\nfile-2424.png\n0 KB\nfile-2428.png\n0 KB\nfile-2432.png\n0 KB\nfile-2436.png\n0 KB\nfile-2440.png\n0 KB\nfile-2444.png\n0 KB\nfile-2448.png\n0 KB\nfile-2452.png\n0 KB\nfile-2456.png\n0 KB\nfile-2460.png\n0 KB\nfile-2464.png\n0 KB\nfile-2468.png\n0 KB\nfile-2472.png\n0 KB\nfile-2476.png\n0 KB\nfile-2480.png\n0 KB\nfile-2484.png\n0 KB\nfile-2488.png\n0 KB\nfile-2492.png\n0 KB\nfile-2496.png\n0 KB\nfile-2500.png\n0 KB\nfile-2504.png\n0 KB\nfile-2508.png\n0 KB\nVideos\n649\nDocuments\n650\nSpreadsheets\n650",
+			"loading": true,
+			"width": 560,
+			"imgs": 0,
+			"elapsed": 3779,
+			"resources": {
+				"entries": 165,
+				"queued": 11,
+				"active": 4,
+				"reads": 177,
+				"decodes": 177,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-2204.png",
+			"headers": [
+				"Images\n701",
+				"Videos\n699",
+				"Documents\n700",
+				"Spreadsheets\n700"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n701\nfile-2204.png\n0 KB\nfile-2208.png\n0 KB\nfile-2212.png\n0 KB\nfile-2216.png\n0 KB\nfile-2220.png\n0 KB\nfile-2224.png\n0 KB\nfile-2228.png\n0 KB\nfile-2232.png\n0 KB\nfile-2236.png\n0 KB\nfile-2240.png\n0 KB\nfile-2244.png\n0 KB\nfile-2248.png\n0 KB\nfile-2252.png\n0 KB\nfile-2256.png\n0 KB\nfile-2260.png\n0 KB\nfile-2264.png\n0 KB\nfile-2268.png\n0 KB\nfile-2272.png\n0 KB\nfile-2276.png\n0 KB\nfile-2280.png\n0 KB\nfile-2284.png\n0 KB\nfile-2288.png\n0 KB\nfile-2292.png\n0 KB\nfile-2296.png\n0 KB\nfile-2300.png\n0 KB\nfile-2304.png\n0 KB\nfile-2308.png\n0 KB\nVideos\n699\nDocuments\n700\nSpreadsheets\n700",
+			"loading": true,
+			"width": 560,
+			"imgs": 0,
+			"elapsed": 4044,
+			"resources": {
+				"entries": 165,
+				"queued": 11,
+				"active": 4,
+				"reads": 192,
+				"decodes": 192,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-2004.png",
+			"headers": [
+				"Images\n751",
+				"Videos\n749",
+				"Documents\n750",
+				"Spreadsheets\n750"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n751\nfile-2004.png\n0 KB\nfile-2008.png\n0 KB\nfile-2012.png\n0 KB\nfile-2016.png\n0 KB\nfile-2020.png\n0 KB\nfile-2024.png\n0 KB\nfile-2028.png\n0 KB\nfile-2032.png\n0 KB\nfile-2036.png\n0 KB\nfile-2040.png\n0 KB\nfile-2044.png\n0 KB\nfile-2048.png\n0 KB\nfile-2052.png\n0 KB\nfile-2056.png\n0 KB\nfile-2060.png\n0 KB\nfile-2064.png\n0 KB\nfile-2068.png\n0 KB\nfile-2072.png\n0 KB\nfile-2076.png\n0 KB\nfile-2080.png\n0 KB\nfile-2084.png\n0 KB\nfile-2088.png\n0 KB\nfile-2092.png\n0 KB\nfile-2096.png\n0 KB\nfile-2100.png\n0 KB\nfile-2104.png\n0 KB\nfile-2108.png\n0 KB\nVideos\n749\nDocuments\n750\nSpreadsheets\n750",
+			"loading": true,
+			"width": 560,
+			"imgs": 0,
+			"elapsed": 4315,
+			"resources": {
+				"entries": 165,
+				"queued": 11,
+				"active": 4,
+				"reads": 207,
+				"decodes": 207,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-1804.png",
+			"headers": [
+				"Images\n801",
+				"Videos\n799",
+				"Documents\n800",
+				"Spreadsheets\n800"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n801\nfile-1804.png\n0 KB\nfile-1808.png\n0 KB\nfile-1812.png\n0 KB\nfile-1816.png\n0 KB\nfile-1820.png\n0 KB\nfile-1824.png\n0 KB\nfile-1828.png\n0 KB\nfile-1832.png\n0 KB\nfile-1836.png\n0 KB\nfile-1840.png\n0 KB\nfile-1844.png\n0 KB\nfile-1848.png\n0 KB\nfile-1852.png\n0 KB\nfile-1856.png\n0 KB\nfile-1860.png\n0 KB\nfile-1864.png\n0 KB\nfile-1868.png\n0 KB\nfile-1872.png\n0 KB\nfile-1876.png\n0 KB\nfile-1880.png\n0 KB\nfile-1884.png\n0 KB\nfile-1888.png\n0 KB\nfile-1892.png\n0 KB\nfile-1896.png\n0 KB\nfile-1900.png\n0 KB\nfile-1904.png\n0 KB\nfile-1908.png\n0 KB\nVideos\n799\nDocuments\n800\nSpreadsheets\n800",
+			"loading": true,
+			"width": 560,
+			"imgs": 0,
+			"elapsed": 4585,
+			"resources": {
+				"entries": 165,
+				"queued": 11,
+				"active": 4,
+				"reads": 222,
+				"decodes": 222,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-1604.png",
+			"headers": [
+				"Images\n851",
+				"Videos\n849",
+				"Documents\n850",
+				"Spreadsheets\n850"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n851\nfile-1604.png\n0 KB\nfile-1608.png\n0 KB\nfile-1612.png\n0 KB\nfile-1616.png\n0 KB\nfile-1620.png\n0 KB\nfile-1624.png\n0 KB\nfile-1628.png\n0 KB\nfile-1632.png\n0 KB\nfile-1636.png\n0 KB\nfile-1640.png\n0 KB\nfile-1644.png\n0 KB\nfile-1648.png\n0 KB\nfile-1652.png\n0 KB\nfile-1656.png\n0 KB\nfile-1660.png\n0 KB\nfile-1664.png\n0 KB\nfile-1668.png\n0 KB\nfile-1672.png\n0 KB\nfile-1676.png\n0 KB\nfile-1680.png\n0 KB\nfile-1684.png\n0 KB\nfile-1688.png\n0 KB\nfile-1692.png\n0 KB\nfile-1696.png\n0 KB\nfile-1700.png\n0 KB\nfile-1704.png\n0 KB\nfile-1708.png\n0 KB\nVideos\n849\nDocuments\n850\nSpreadsheets\n850",
+			"loading": true,
+			"width": 560,
+			"imgs": 0,
+			"elapsed": 4856,
+			"resources": {
+				"entries": 165,
+				"queued": 11,
+				"active": 4,
+				"reads": 237,
+				"decodes": 237,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-1404.png",
+			"headers": [
+				"Images\n901",
+				"Videos\n899",
+				"Documents\n900",
+				"Spreadsheets\n900"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n901\nfile-1404.png\n0 KB\nfile-1408.png\n0 KB\nfile-1412.png\n0 KB\nfile-1416.png\n0 KB\nfile-1420.png\n0 KB\nfile-1424.png\n0 KB\nfile-1428.png\n0 KB\nfile-1432.png\n0 KB\nfile-1436.png\n0 KB\nfile-1440.png\n0 KB\nfile-1444.png\n0 KB\nfile-1448.png\n0 KB\nfile-1452.png\n0 KB\nfile-1456.png\n0 KB\nfile-1460.png\n0 KB\nfile-1464.png\n0 KB\nfile-1468.png\n0 KB\nfile-1472.png\n0 KB\nfile-1476.png\n0 KB\nfile-1480.png\n0 KB\nfile-1484.png\n0 KB\nfile-1488.png\n0 KB\nfile-1492.png\n0 KB\nfile-1496.png\n0 KB\nfile-1500.png\n0 KB\nfile-1504.png\n0 KB\nfile-1508.png\n0 KB\nVideos\n899\nDocuments\n900\nSpreadsheets\n900",
+			"loading": true,
+			"width": 560,
+			"imgs": 0,
+			"elapsed": 5126,
+			"resources": {
+				"entries": 165,
+				"queued": 11,
+				"active": 4,
+				"reads": 252,
+				"decodes": 252,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-1204.png",
+			"headers": [
+				"Images\n951",
+				"Videos\n949",
+				"Documents\n950",
+				"Spreadsheets\n950"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n951\nfile-1204.png\n0 KB\nfile-1208.png\n0 KB\nfile-1212.png\n0 KB\nfile-1216.png\n0 KB\nfile-1220.png\n0 KB\nfile-1224.png\n0 KB\nfile-1228.png\n0 KB\nfile-1232.png\n0 KB\nfile-1236.png\n0 KB\nfile-1240.png\n0 KB\nfile-1244.png\n0 KB\nfile-1248.png\n0 KB\nfile-1252.png\n0 KB\nfile-1256.png\n0 KB\nfile-1260.png\n0 KB\nfile-1264.png\n0 KB\nfile-1268.png\n0 KB\nfile-1272.png\n0 KB\nfile-1276.png\n0 KB\nfile-1280.png\n0 KB\nfile-1284.png\n0 KB\nfile-1288.png\n0 KB\nfile-1292.png\n0 KB\nfile-1296.png\n0 KB\nfile-1300.png\n0 KB\nfile-1304.png\n0 KB\nfile-1308.png\n0 KB\nVideos\n949\nDocuments\n950\nSpreadsheets\n950",
+			"loading": true,
+			"width": 560,
+			"imgs": 0,
+			"elapsed": 5393,
+			"resources": {
+				"entries": 165,
+				"queued": 11,
+				"active": 4,
+				"reads": 267,
+				"decodes": 267,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-1004.png",
+			"headers": [
+				"Images\n1,001",
+				"Videos\n999",
+				"Documents\n1,000",
+				"Spreadsheets\n1,000"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n1,001\nfile-1004.png\n0 KB\nfile-1008.png\n0 KB\nfile-1012.png\n0 KB\nfile-1016.png\n0 KB\nfile-1020.png\n0 KB\nfile-1024.png\n0 KB\nfile-1028.png\n0 KB\nfile-1032.png\n0 KB\nfile-1036.png\n0 KB\nfile-1040.png\n0 KB\nfile-1044.png\n0 KB\nfile-1048.png\n0 KB\nfile-1052.png\n0 KB\nfile-1056.png\n0 KB\nfile-1060.png\n0 KB\nfile-1064.png\n0 KB\nfile-1068.png\n0 KB\nfile-1072.png\n0 KB\nfile-1076.png\n0 KB\nfile-1080.png\n0 KB\nfile-1084.png\n0 KB\nfile-1088.png\n0 KB\nfile-1092.png\n0 KB\nfile-1096.png\n0 KB\nfile-1100.png\n0 KB\nfile-1104.png\n0 KB\nfile-1108.png\n0 KB\nVideos\n999\nDocuments\n1,000\nSpreadsheets\n1,000",
+			"loading": true,
+			"width": 560,
+			"imgs": 0,
+			"elapsed": 5664,
+			"resources": {
+				"entries": 165,
+				"queued": 11,
+				"active": 4,
+				"reads": 282,
+				"decodes": 282,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0804.png",
+			"headers": [
+				"Images\n1,051",
+				"Videos\n1,049",
+				"Documents\n1,050",
+				"Spreadsheets\n1,050"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n1,051\nfile-0804.png\n0 KB\nfile-0808.png\n0 KB\nfile-0812.png\n0 KB\nfile-0816.png\n0 KB\nfile-0820.png\n0 KB\nfile-0824.png\n0 KB\nfile-0828.png\n0 KB\nfile-0832.png\n0 KB\nfile-0836.png\n0 KB\nfile-0840.png\n0 KB\nfile-0844.png\n0 KB\nfile-0848.png\n0 KB\nfile-0852.png\n0 KB\nfile-0856.png\n0 KB\nfile-0860.png\n0 KB\nfile-0864.png\n0 KB\nfile-0868.png\n0 KB\nfile-0872.png\n0 KB\nfile-0876.png\n0 KB\nfile-0880.png\n0 KB\nfile-0884.png\n0 KB\nfile-0888.png\n0 KB\nfile-0892.png\n0 KB\nfile-0896.png\n0 KB\nfile-0900.png\n0 KB\nfile-0904.png\n0 KB\nfile-0908.png\n0 KB\nVideos\n1,049\nDocuments\n1,050\nSpreadsheets\n1,050",
+			"loading": true,
+			"width": 560,
+			"imgs": 0,
+			"elapsed": 5931,
+			"resources": {
+				"entries": 165,
+				"queued": 11,
+				"active": 4,
+				"reads": 297,
+				"decodes": 297,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0604.png",
+			"headers": [
+				"Images\n1,101",
+				"Videos\n1,099",
+				"Documents\n1,100",
+				"Spreadsheets\n1,100"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n1,101\nfile-0604.png\n0 KB\nfile-0608.png\n0 KB\nfile-0612.png\n0 KB\nfile-0616.png\n0 KB\nfile-0620.png\n0 KB\nfile-0624.png\n0 KB\nfile-0628.png\n0 KB\nfile-0632.png\n0 KB\nfile-0636.png\n0 KB\nfile-0640.png\n0 KB\nfile-0644.png\n0 KB\nfile-0648.png\n0 KB\nfile-0652.png\n0 KB\nfile-0656.png\n0 KB\nfile-0660.png\n0 KB\nfile-0664.png\n0 KB\nfile-0668.png\n0 KB\nfile-0672.png\n0 KB\nfile-0676.png\n0 KB\nfile-0680.png\n0 KB\nfile-0684.png\n0 KB\nfile-0688.png\n0 KB\nfile-0692.png\n0 KB\nfile-0696.png\n0 KB\nfile-0700.png\n0 KB\nfile-0704.png\n0 KB\nfile-0708.png\n0 KB\nVideos\n1,099\nDocuments\n1,100\nSpreadsheets\n1,100",
+			"loading": true,
+			"width": 560,
+			"imgs": 0,
+			"elapsed": 6201,
+			"resources": {
+				"entries": 165,
+				"queued": 11,
+				"active": 4,
+				"reads": 312,
+				"decodes": 312,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0404.png",
+			"headers": [
+				"Images\n1,151",
+				"Videos\n1,149",
+				"Documents\n1,150",
+				"Spreadsheets\n1,150"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n1,151\nfile-0404.png\n0 KB\nfile-0408.png\n0 KB\nfile-0412.png\n0 KB\nfile-0416.png\n0 KB\nfile-0420.png\n0 KB\nfile-0424.png\n0 KB\nfile-0428.png\n0 KB\nfile-0432.png\n0 KB\nfile-0436.png\n0 KB\nfile-0440.png\n0 KB\nfile-0444.png\n0 KB\nfile-0448.png\n0 KB\nfile-0452.png\n0 KB\nfile-0456.png\n0 KB\nfile-0460.png\n0 KB\nfile-0464.png\n0 KB\nfile-0468.png\n0 KB\nfile-0472.png\n0 KB\nfile-0476.png\n0 KB\nfile-0480.png\n0 KB\nfile-0484.png\n0 KB\nfile-0488.png\n0 KB\nfile-0492.png\n0 KB\nfile-0496.png\n0 KB\nfile-0500.png\n0 KB\nfile-0504.png\n0 KB\nfile-0508.png\n0 KB\nVideos\n1,149\nDocuments\n1,150\nSpreadsheets\n1,150",
+			"loading": true,
+			"width": 560,
+			"imgs": 0,
+			"elapsed": 6475,
+			"resources": {
+				"entries": 165,
+				"queued": 11,
+				"active": 4,
+				"reads": 327,
+				"decodes": 327,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0204.png",
+			"headers": [
+				"Images\n1,201",
+				"Videos\n1,199",
+				"Documents\n1,200",
+				"Spreadsheets\n1,200"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n1,201\nfile-0204.png\n0 KB\nfile-0208.png\n0 KB\nfile-0212.png\n0 KB\nfile-0216.png\n0 KB\nfile-0220.png\n0 KB\nfile-0224.png\n0 KB\nfile-0228.png\n0 KB\nfile-0232.png\n0 KB\nfile-0236.png\n0 KB\nfile-0240.png\n0 KB\nfile-0244.png\n0 KB\nfile-0248.png\n0 KB\nfile-0252.png\n0 KB\nfile-0256.png\n0 KB\nfile-0260.png\n0 KB\nfile-0264.png\n0 KB\nfile-0268.png\n0 KB\nfile-0272.png\n0 KB\nfile-0276.png\n0 KB\nfile-0280.png\n0 KB\nfile-0284.png\n0 KB\nfile-0288.png\n0 KB\nfile-0292.png\n0 KB\nfile-0296.png\n0 KB\nfile-0300.png\n0 KB\nfile-0304.png\n0 KB\nfile-0308.png\n0 KB\nVideos\n1,199\nDocuments\n1,200\nSpreadsheets\n1,200",
+			"loading": true,
+			"width": 560,
+			"imgs": 0,
+			"elapsed": 6746,
+			"resources": {
+				"entries": 165,
+				"queued": 11,
+				"active": 4,
+				"reads": 342,
+				"decodes": 342,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 27,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0204.png",
+			"headers": [
+				"Images\n1,201",
+				"Videos\n1,199",
+				"Documents\n1,200",
+				"Spreadsheets\n1,200"
+			],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Images\n1,201\nfile-0204.png\n0 KB\nfile-0208.png\n0 KB\nfile-0212.png\n0 KB\nfile-0216.png\n0 KB\nfile-0220.png\n0 KB\nfile-0224.png\n0 KB\nfile-0228.png\n0 KB\nfile-0232.png\n0 KB\nfile-0236.png\n0 KB\nfile-0240.png\n0 KB\nfile-0244.png\n0 KB\nfile-0248.png\n0 KB\nfile-0252.png\n0 KB\nfile-0256.png\n0 KB\nfile-0260.png\n0 KB\nfile-0264.png\n0 KB\nfile-0268.png\n0 KB\nfile-0272.png\n0 KB\nfile-0276.png\n0 KB\nfile-0280.png\n0 KB\nfile-0284.png\n0 KB\nfile-0288.png\n0 KB\nfile-0292.png\n0 KB\nfile-0296.png\n0 KB\nfile-0300.png\n0 KB\nfile-0304.png\n0 KB\nfile-0308.png\n0 KB\nVideos\n1,199\nDocuments\n1,200\nSpreadsheets\n1,200",
+			"loading": true,
+			"width": 560,
+			"imgs": 15,
+			"elapsed": 6998,
+			"resources": {
+				"entries": 150,
+				"queued": 0,
+				"active": 0,
+				"reads": 353,
+				"decodes": 353,
+				"peakActive": 4
+			}
+		},
+		{
+			"rows": 1,
+			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0002.md",
+			"headers": ["Highlights\n1", "Working files\n4,999"],
+			"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+			"body": "Highlights\n1\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n4,999",
+			"loading": true,
+			"width": 560,
+			"imgs": 0,
+			"elapsed": 7251,
+			"resources": {
+				"entries": 150,
+				"queued": 0,
+				"active": 0,
+				"reads": 353,
+				"decodes": 353,
+				"peakActive": 4
+			}
+		}
+	],
+	"firstContent": {
+		"rows": 27,
+		"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-4804.png",
+		"headers": [
+			"Images\n51",
+			"Videos\n49",
+			"Documents\n50",
+			"Spreadsheets\n50"
+		],
+		"head": "Mentioned\n\u2191\nFilter\n5,002 files \u00b7 Loading session files\u2026\nOpen folder",
+		"body": "Images\n51\nfile-4804.png\n0 KB\nfile-4808.png\n0 KB\nfile-4812.png\n0 KB\nfile-4816.png\n0 KB\nfile-4820.png\n0 KB\nfile-4824.png\n0 KB\nfile-4828.png\n0 KB\nfile-4832.png\n0 KB\nfile-4836.png\n0 KB\nfile-4840.png\n0 KB\nfile-4844.png\n0 KB\nfile-4848.png\n0 KB\nfile-4852.png\n0 KB\nfile-4856.png\n0 KB\nfile-4860.png\n0 KB\nfile-4864.png\n0 KB\nfile-4868.png\n0 KB\nfile-4872.png\n0 KB\nfile-4876.png\n0 KB\nfile-4880.png\n0 KB\nfile-4884.png\n0 KB\nfile-4888.png\n0 KB\nfile-4892.png\n0 KB\nfile-4896.png\n0 KB\nfile-4900.png\n0 KB\nfile-4904.png\n0 KB\nfile-4908.png\n0 KB\nVideos\n49\nDocuments\n50\nSpreadsheets\n50",
+		"loading": true,
+		"width": 560,
+		"imgs": 1,
+		"elapsed": 618,
+		"resources": {
+			"entries": 15,
+			"queued": 10,
+			"active": 4,
+			"reads": 5,
+			"decodes": 4,
+			"peakActive": 4
+		}
+	},
+	"distinctFirst": [
+		"~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-4804.png",
+		"~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-4604.png",
+		"~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-4404.png",
+		"~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-4204.png",
+		"~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-4004.png",
+		"~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-3804.png",
+		"~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-3604.png",
+		"~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-3404.png",
+		"~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-3204.png",
+		"~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-3004.png",
+		"~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-2804.png",
+		"~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-2604.png",
+		"~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-2404.png",
+		"~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-2204.png",
+		"~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-2004.png",
+		"~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-1804.png",
+		"~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-1604.png",
+		"~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-1404.png",
+		"~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-1204.png",
+		"~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-1004.png",
+		"~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0804.png",
+		"~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0604.png",
+		"~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0404.png",
+		"~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0204.png",
+		"~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0002.md",
+		"~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png"
+	],
+	"finalReads": 354,
+	"loadingMaxReads": 353
 }

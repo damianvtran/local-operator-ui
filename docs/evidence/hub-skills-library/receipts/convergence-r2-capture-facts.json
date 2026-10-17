@@ -1,12 +1,10 @@
 {
-  "baseline": "f114b314c9",
-  "capturedPngCount": 74,
-  "all74PngBytesIdentical": true,
-  "oldEnglishChatValuesChanged": [],
-  "addedEnglishChatKeys": [
-    "ui.chat.highlights.file_resolution_failed"
-  ],
-  "FrenchCatalogueFilesChanged": [],
-  "unresolvedLiteralGraphEdges": "two import-like vendor comments only; actual source grep errors.ts7/18 and ax-compact.ts19, both byte-unchanged",
-  "recordedNativeFacts": "R-I/J/K/M headless+unfocused; /agent-hub or /agents; no active browser/native menu chord; fresh isolated profile/default shortcut bindings. Config composer has no active run/frontend or draft_preview feature in stub."
+	"baseline": "f114b314c9",
+	"capturedPngCount": 74,
+	"all74PngBytesIdentical": true,
+	"oldEnglishChatValuesChanged": [],
+	"addedEnglishChatKeys": ["ui.chat.highlights.file_resolution_failed"],
+	"FrenchCatalogueFilesChanged": [],
+	"unresolvedLiteralGraphEdges": "two import-like vendor comments only; actual source grep errors.ts7/18 and ax-compact.ts19, both byte-unchanged",
+	"recordedNativeFacts": "R-I/J/K/M headless+unfocused; /agent-hub or /agents; no active browser/native menu chord; fresh isolated profile/default shortcut bindings. Config composer has no active run/frontend or draft_preview feature in stub."
 }

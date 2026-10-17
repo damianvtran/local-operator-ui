@@ -1,15 +1,15 @@
 {
-  "size": "1380x900",
-  "theme": "local-operator-dark",
-  "hasOrgChip": true,
-  "geometry": {
-    "unavailable": {
-      "x": 284,
-      "y": 225,
-      "w": 1072,
-      "h": 627,
-      "sw": 1072,
-      "cw": 1072
-    }
-  }
+	"size": "1380x900",
+	"theme": "local-operator-dark",
+	"hasOrgChip": true,
+	"geometry": {
+		"unavailable": {
+			"x": 284,
+			"y": 225,
+			"w": 1072,
+			"h": 627,
+			"sw": 1072,
+			"cw": 1072
+		}
+	}
 }
