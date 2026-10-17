@@ -60,6 +60,7 @@ import {
 	opensOnArrival,
 	tierFor,
 } from "../backend-settings-tiers";
+import { MODEL_EFFORT_SETTING_KEY } from "../promoted-setting-sections";
 import { DELEGATED_SECTION } from "../retention-duration";
 import { BackendSettingRow, type SettingGate } from "./backend-setting-row";
 import {
@@ -108,6 +109,11 @@ type BackendSettingsSectionProps = {
 	focusKey?: string | null;
 	/** General owns this one row; standalone registry hosts retain it. */
 	hideInterfaceLanguage?: boolean;
+	/**
+	 * General's Default effort row owns this key; the registry editor would be a
+	 * second control for it, with the global ladder as a second vocabulary.
+	 */
+	hideModelEffort?: boolean;
 	/** Initial search filter, e.g. "web-search" from /search. */
 	initialFilter?: string;
 };
@@ -141,6 +147,7 @@ const fold = (value: string) => value.toLowerCase().replace(/[-_.]/g, " ");
 export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	focusKey,
 	hideInterfaceLanguage = false,
+	hideModelEffort = false,
 	initialFilter = "",
 }) => {
 	useI18nLocale();
@@ -318,6 +325,8 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 		return settings.settings.filter((setting) => {
 			if (hideInterfaceLanguage && setting.key === LANGUAGE_SETTING_KEY)
 				return false;
+			if (hideModelEffort && setting.key === MODEL_EFFORT_SETTING_KEY)
+				return false;
 			if (!asking && tierFor(setting) === "advanced" && !showAdvanced) {
 				return false;
 			}
@@ -346,6 +355,7 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 		modifiedOnly,
 		isModified,
 		hideInterfaceLanguage,
+		hideModelEffort,
 	]);
 
 	const filtering = filter.trim().length > 0 || modifiedOnly;
@@ -364,9 +374,10 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 			(settings?.settings ?? []).filter(
 				(s) =>
 					s.section === name &&
-					!(hideInterfaceLanguage && s.key === LANGUAGE_SETTING_KEY),
+					!(hideInterfaceLanguage && s.key === LANGUAGE_SETTING_KEY) &&
+					!(hideModelEffort && s.key === MODEL_EFFORT_SETTING_KEY),
 			),
-		[settings, hideInterfaceLanguage],
+		[settings, hideInterfaceLanguage, hideModelEffort],
 	);
 	const matchingForSection = (name: string) =>
 		matching.filter((setting) => setting.section === name);

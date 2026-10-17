@@ -1,6 +1,10 @@
-import { draftPreviewQuery } from "@features/chat/draft-selection";
+import {
+	draftPreviewKey,
+	draftPreviewQuery,
+} from "@features/chat/draft-selection";
 import {
 	bandReadings,
+	effortDisplay,
 	effortLadder,
 	effortLevel,
 	specUnresolved,
@@ -24,6 +28,7 @@ import {
 	defaultEffortClampWrite,
 	defaultEffortState,
 } from "../default-effort-options";
+import { MODEL_EFFORT_SETTING_KEY } from "../promoted-setting-sections";
 import { backendSettingsKeys } from "./backend-settings-section";
 
 /**
@@ -54,6 +59,27 @@ import { backendSettingsKeys } from "./backend-settings-section";
  * WHY A SINGLE-RUNG MODEL IS DISABLED. Offering "Model default" beside the one
  * level a model accepts would be one outcome with two names; the control says
  * the model offers one level instead.
+ *
+ * WHY THE OPTIONS ARE FILTERED BY THE STORED KEY'S OWN CHOICES. A model's ladder
+ * is not the set `model_effort` accepts: Radient lists `auto` (the registry's
+ * LABEL for `""`), and a write of that spelling is rejected. The storable set
+ * comes from this page's `settings.list` row (`choices[].value`), so the row
+ * offers only rungs the registry can hold and the clamp never writes a
+ * sentinel.
+ *
+ * WHY THE STORED VALUE IS PART OF THE PREVIEW KEY. `reasoning_effort: null` is
+ * resolved by the backend against the STORED default, so the answer is a
+ * function of `model_effort` as well as the model. Without it in the key, the
+ * row's own write leaves the cached answer describing the previous stored
+ * value: clearing the row would still print "Runs at Max", and a model switch
+ * would clamp to the old value's resolution. `null` in the key means "settings
+ * not read yet", which is distinct from the storable `""`.
+ *
+ * WHY A WRITE IS ANNOUNCED. A clamp silently replaces the level the user chose,
+ * and the control's own spinner says only that something is being saved. The
+ * row therefore states the substitution after it succeeds, and shows the TARGET
+ * level while the write is in flight rather than falling back through "Model
+ * default" for the duration.
  */
 type DefaultEffortSelectProps = {
 	/** The configured hosting, from the page's config read. */
@@ -92,21 +118,54 @@ export const DefaultEffortSelect: FC<DefaultEffortSelectProps> = ({
 		staleTime: 10_000,
 	});
 
+	/*
+	 * The storable vocabulary, off the same registry row: `choices[].value` is
+	 * `""` plus the rungs the backend's validator accepts (`settings_io.py`).
+	 * Reading it here is what keeps a ladder sentinel (`auto`) out of the list
+	 * and out of a clamp write.
+	 */
+	const storedRow = settingsQuery.data?.settings.find(
+		(row) => row.key === MODEL_EFFORT_SETTING_KEY,
+	);
+	const stored = typeof storedRow?.value === "string" ? storedRow.value : "";
+	const storable = (storedRow?.choices ?? [])
+		.map((choice) => choice.value)
+		.filter((value): value is string => typeof value === "string");
+
+	/*
+	 * The preview target, built ONCE so its key and its request describe the
+	 * same selection.
+	 */
+	const previewTarget = {
+		// The preview needs a working directory; the home folder is the one
+		// the composer's draft pane uses and the only one Settings has. The
+		// request is NOT issued until the hook answers, so an empty string
+		// never reaches the wire.
+		cwd: homeDirectory ?? "",
+		model: hasModel
+			? {
+					provider: hosting,
+					model_id: modelName,
+					reasoning_effort: null,
+				}
+			: null,
+	};
+	/*
+	 * `stored` is part of the KEY because the answer depends on it: the backend
+	 * resolves `reasoning_effort: null` against the stored `model_effort`. The
+	 * request itself stays null (the same question the composer asks), and a
+	 * settings write changes this key, so the cached answer cannot outlive the
+	 * stored value it described. `null` here is "settings not read yet", which
+	 * is a different input from the storable empty string.
+	 */
+	const storedForQuery = settingsQuery.isSuccess ? stored : null;
 	const preview = useQuery({
-		...draftPreviewQuery({
-			// The preview needs a working directory; the home folder is the one
-			// the composer's draft pane uses and the only one Settings has. The
-			// request is NOT issued until the hook answers, so an empty string
-			// never reaches the wire.
-			cwd: homeDirectory ?? "",
-			model: hasModel
-				? {
-						provider: hosting,
-						model_id: modelName,
-						reasoning_effort: null,
-					}
-				: null,
-		}),
+		...draftPreviewQuery(previewTarget),
+		queryKey: [
+			...draftPreviewKey(previewTarget),
+			"model_effort",
+			storedForQuery,
+		],
 		enabled: supported && Boolean(homeDirectory) && hasModel,
 	});
 
@@ -128,13 +187,24 @@ export const DefaultEffortSelect: FC<DefaultEffortSelectProps> = ({
 	const specResolved =
 		effectiveModel !== null && !specUnresolved(effectiveModel);
 
-	const storedRow = settingsQuery.data?.settings.find(
-		(row) => row.key === "model_effort",
-	);
-	const stored = typeof storedRow?.value === "string" ? storedRow.value : "";
-
 	const [saving, setSaving] = useState(false);
 	const [saveFailed, setSaveFailed] = useState(false);
+	/*
+	 * The value an in-flight write is moving to. Shown as the chosen row while
+	 * the write settles (see `selectedOption`), so the clamp reads as one
+	 * substitution instead of passing through "Model default" a frame later.
+	 */
+	const [pendingValue, setPendingValue] = useState<string | null>(null);
+	/*
+	 * The clamp announcement carries the model it describes, so switching the
+	 * Model row HIDES it without an effect: a sentence about the previous model's
+	 * ladder must not sit under the new model's row.
+	 */
+	const [clampNotice, setClampNotice] = useState<{
+		text: string;
+		model: string;
+	} | null>(null);
+	const modelIdentity = `${hosting}\u0000${modelName}`;
 	const queryClient = useQueryClient();
 
 	/*
@@ -143,28 +213,45 @@ export const DefaultEffortSelect: FC<DefaultEffortSelectProps> = ({
 	 * failure the control is NOT reset — it keeps showing the stored value and
 	 * the helper says the new one was not saved, which is the difference
 	 * between a refusal and a silent revert.
+	 *
+	 * `notice` is the sentence to announce when a CLAMP succeeds. A user pick
+	 * passes null and clears whatever the last clamp said.
 	 */
 	const save = useCallback(
-		async (value: string) => {
+		async (value: string, notice: { text: string; model: string } | null) => {
 			setSaving(true);
+			setPendingValue(value);
 			setSaveFailed(false);
+			if (notice === null) setClampNotice(null);
 			try {
 				await desktopResult({
 					op: "settings.edit",
-					key: "model_effort",
+					key: MODEL_EFFORT_SETTING_KEY,
 					value,
 				});
 				await queryClient.invalidateQueries({
 					queryKey: backendSettingsKeys.all,
 				});
+				if (notice !== null) setClampNotice(notice);
 			} catch {
 				setSaveFailed(true);
 			} finally {
 				setSaving(false);
+				setPendingValue(null);
 			}
 		},
 		[queryClient],
 	);
+
+	/*
+	 * The model's own display name when the preview reported one; its id
+	 * otherwise. Read only by the clamp sentence, which is composed when the
+	 * preview for the new model HAS answered.
+	 */
+	const modelLabel =
+		(typeof effectiveModel?.display_name === "string" &&
+			effectiveModel.display_name.trim()) ||
+		modelName;
 
 	const state = defaultEffortState({
 		supported,
@@ -180,45 +267,90 @@ export const DefaultEffortSelect: FC<DefaultEffortSelectProps> = ({
 		specResolved,
 		stored,
 		resolvedLevel,
+		storable,
 	});
 
 	/*
 	 * The model-switch clamp. `defaultEffortClampWrite` decides; this effect
-	 * only performs the decision and remembers the last pair it performed, so a
-	 * failed write that leaves the stored value unchanged is not retried in a
-	 * loop (the next attempt needs either a different stored value or a
-	 * different model's resolution).
+	 * only performs the decision and remembers the last (provider, model,
+	 * stored, target) it performed, so a failed write that leaves the stored
+	 * value unchanged is not retried in a loop while a DIFFERENT model still
+	 * re-decides the same pair.
 	 */
 	const clampWrite = defaultEffortClampWrite({
 		stored,
 		ladder,
 		resolvedLevel,
 		resolved: fresh && specResolved && settingsQuery.isSuccess,
+		storable,
 	});
 	const performedClamp = useRef<string | null>(null);
 	useEffect(() => {
 		if (clampWrite === null || saving) return;
-		const pair = `${stored}\u0000${clampWrite}`;
+		const pair = `${hosting}\u0000${modelName}\u0000${stored}\u0000${clampWrite}`;
 		if (performedClamp.current === pair) return;
 		performedClamp.current = pair;
-		void save(clampWrite);
-	}, [clampWrite, stored, saving, save]);
+		/*
+		 * Composed BEFORE the write and announced only on success: a failed
+		 * clamp must not claim a substitution that did not land.
+		 */
+		const text =
+			clampWrite === ""
+				? t("ui.settings.model.default_effort.clamped_unset", {
+						level: effortDisplay(stored),
+						model: modelLabel,
+					})
+				: t("ui.settings.model.default_effort.clamped", {
+						level: effortDisplay(stored),
+						model: modelLabel,
+						resolved: effortDisplay(clampWrite),
+					});
+		void save(clampWrite, { text, model: modelIdentity });
+	}, [
+		clampWrite,
+		stored,
+		saving,
+		save,
+		hosting,
+		modelName,
+		modelLabel,
+		modelIdentity,
+	]);
 
 	const options = useMemo(
 		() => state.options.map(toSearchableOption),
 		[state.options],
 	);
+	const shownSelectedId = pendingValue ?? state.selectedId;
 	const selectedOption =
-		options.find((option) => option.id === state.selectedId) ?? null;
-	const helper = saveFailed ? (
+		options.find((option) => option.id === shownSelectedId) ??
+		/*
+		 * The target of an in-flight write is not in the list while the preview
+		 * refetches for the NEW stored value (its options collapse to the unset
+		 * row for that frame). Show the target itself until the fresh ladder
+		 * lands, so a clamp reads Max -> High rather than Max -> Model default ->
+		 * High.
+		 */
+		(pendingValue !== null
+			? { id: pendingValue, name: effortDisplay(pendingValue) }
+			: null);
+	/*
+	 * `role="status"` on an ALWAYS-PRESENT node is the announcement surface: a
+	 * live region that arrives already populated is not reliably announced.
+	 * It stays empty unless a clamp landed.
+	 */
+	const helper = (
 		<span className="flex flex-col gap-0.5">
 			<span>{state.helper}</span>
-			<span className="text-danger">
-				{t("ui.settings.model.default_effort.save_failed")}
-			</span>
+			{saveFailed && (
+				<span className="text-danger">
+					{t("ui.settings.model.default_effort.save_failed")}
+				</span>
+			)}
+			<output aria-live="polite">
+				{clampNotice?.model === modelIdentity ? clampNotice.text : ""}
+			</output>
 		</span>
-	) : (
-		state.helper
 	);
 
 	/* Unsupported is the one state that is not a row: see the gate above. */
@@ -232,12 +364,12 @@ export const DefaultEffortSelect: FC<DefaultEffortSelectProps> = ({
 			options={options}
 			selected={selectedOption}
 			onSelect={(option) => {
-				void save(option.id);
+				void save(option.id, null);
 			}}
 			helperText={helper}
 			busy={saving}
 			busyLabel={t("ui.settings.model.default_effort.busy")}
-			disabled={state.disabled}
+			disabled={state.disabled || saving}
 		/>
 	);
 };

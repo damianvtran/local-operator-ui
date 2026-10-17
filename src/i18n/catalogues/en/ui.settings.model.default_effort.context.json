@@ -95,6 +95,27 @@
 			"level": "The single level name, already title-cased for display. Insert as given."
 		}
 	},
+	"ui.settings.model.default_effort.clamped": {
+		"role": "Announcement at the Default effort row after a model switch rewrote the stored level",
+		"tone": "Matter-of-fact statement of what happened and what is now in force; it explains a value the reader did not choose.",
+		"length": "One line under the helper. English is 47 characters plus two level names and the model name.",
+		"note": "Shown in a polite live region after the clamp write succeeds, and only then. The level is named as the reader saw it, in the app's title case; the model is the preview's display name, or its id when it has none.",
+		"placeholders": {
+			"level": "The stored level that the new model does not offer, already title-cased for display.",
+			"model": "The selected model's display name, or its id when it reports none.",
+			"resolved": "The level now stored, already title-cased for display."
+		}
+	},
+	"ui.settings.model.default_effort.clamped_unset": {
+		"role": "Same announcement when the rewrite clears the value instead of naming a level",
+		"tone": "Matter-of-fact; it names the unset row rather than inventing a level.",
+		"length": "One line under the helper. English is 55 characters plus the level name and the model name.",
+		"note": "Used when the backend resolves no level for the new model, so the clamp writes the empty value. \"Model default\" is the row's own name for that value.",
+		"placeholders": {
+			"level": "The stored level that the new model does not offer, already title-cased for display.",
+			"model": "The selected model's display name, or its id when it reports none."
+		}
+	},
 	"ui.settings.model.default_effort.save_failed": {
 		"role": "Sentence beside the picker after a failed save",
 		"tone": "Plain statement of the failure; the previous value is still shown.",
