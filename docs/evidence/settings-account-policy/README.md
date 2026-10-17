@@ -105,7 +105,7 @@ these (full-frame pixel diff, both captures 2760x1800):
 
 Frame SHAs — first capture (`6d071ae02`) → re-capture (`3a7a4bd58`):
 
-- `search-found`: `96b9951f7c070e2a8b3a8309b742b4ea0db34fe91f3c0027ad578f20cf9904f` → `9bef4e084185ba9bbcadcde16cdfb5db5460d8b068eca0a8df4b13bb65a91a19`
+- `search-found`: `96b9951f7c070e2a8b3a88309b742b4ea0db34fe91f3c0027ad578f20cf9904f` → `9bef4e084185ba9bbcadcde16cdfb5db5460d8b068eca0a8df4b13bb65a91a19`
 - `rest`: `53a71ea8205b2be108a28cd80feeab8853f22ae041fcc4b22a93baba6afcf08d` → `8f165901659f4d78f4ec6c864acdecd53fa709bfe4f103dd344575f1be09dbc7`
 - `dirty`: `51e5ff130e0431de83302535c5ec5b631d5c81a1067f6b09de687d1be7fa33fd` → `8d7f4b4b4b35f01ac296f49e24f20336af007c84b57a67afec675e0e89c8be20`
 - `saved`: `4310e02a6d106a70f840371d4f461f5ec030823d6b6d7f3b92e3e98af2703ad3` → `7e0a74c72983268002037c35b3958eceee41b8d099504a5bd2934ad735ec2f66`

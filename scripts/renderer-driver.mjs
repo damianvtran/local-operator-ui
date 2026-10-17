@@ -30157,6 +30157,193 @@ async function sceneSettingsAccountPolicy(cdp) {
 	);
 
 	/* ---------------------------------------------------------------- */
+	/* 5b. The SECOND deep-link leg: the chip KEPT ON                    */
+	/* ---------------------------------------------------------------- */
+
+	/*
+	 * WHY A SECOND LEG, AND WHY IT IS A FRESH MOUNT (UX round 2, U2). The first
+	 * leg drives the link from Basic, where the ordering is structurally safe
+	 * (the focus loop is gated on the tier, so its first frame is scheduled
+	 * only AFTER the commit that reveals the tier and opens the section). The
+	 * state a palette reader can actually be in is different: the settings pane
+	 * is already mounted with `Show advanced` ON, the destination's section sits
+	 * CLOSED - the row behind its `[hidden]` wrapper at height 0 - and the link
+	 * is followed into THAT. There the ordering is not structurally safe:
+	 * `destinationReady` is true the moment `focusKey` changes (it does not
+	 * include the section-open state), so the close-the-distance loop's first
+	 * frame can run BEFORE the commit that opens the section, read the row
+	 * inside the `[hidden]` subtree - where `focus()` and `scrollIntoView` are
+	 * silent no-ops - latch, and never retry. The first run's record (README,
+	 * "The first run, kept as the record of what it found") named this reading
+	 * open; this leg settles it by measurement instead of assumption, on the
+	 * same build and daemon as the frames above.
+	 *
+	 * WHY A FRESH MOUNT RATHER THAN A REPLAY. `handledFocusKey` and
+	 * `revealedFocusKey` are per-mount refs that deliberately hold the last key
+	 * ACTIONED in this mount, so re-pointing the same link at the same key in
+	 * the same mount is a documented no-op by design - a leg built on that
+	 * would settle nothing about the ordering. The fresh mount (`/chat`, then
+	 * back) with the chip pressed ON reproduces exactly the reachable state:
+	 * pane mounted, tier already on, destination's section closed, the first
+	 * link for this key in this mount. No frame is captured here: the leg is a
+	 * reading, not a picture, and the committed set stays the four frames above.
+	 */
+
+	await verb(cdp, "navigate", "/chat");
+	await verb(cdp, "navigate", "/settings");
+	const surfaceSecond = await waitForCondition(
+		cdp,
+		`(() => {
+			const chip = [...document.querySelectorAll("button")].find((button) => (button.textContent || "").trim() === "Show advanced");
+			if (!chip) return null;
+			const headers = document.querySelectorAll("[data-section-header]");
+			return headers.length > 0
+				? {
+						chipPressed: chip.getAttribute("aria-pressed"),
+						headers: headers.length,
+						rowInBasic: Boolean(document.querySelector(${JSON.stringify(ACCOUNT_POLICY_ROW)})),
+					}
+				: null;
+		})()`,
+		30_000,
+	);
+	check(
+		"the second leg starts from a FRESH mount: the tier reads OFF again and the row is not in the Basic surface",
+		surfaceSecond.ok === true &&
+			surfaceSecond.last?.chipPressed === "false" &&
+			surfaceSecond.last?.rowInBasic === false &&
+			(surfaceSecond.last?.headers ?? 0) >= 30,
+		JSON.stringify(surfaceSecond.last ?? { waitedMs: surfaceSecond.waitedMs }),
+	);
+	await scrollFoundIntoView(cdp, chipFinder);
+	const chipSecond = await pressFoundElement(cdp, chipFinder);
+	note(
+		"pressed the Show advanced chip for the second leg (kept ON)",
+		JSON.stringify(chipSecond),
+	);
+	check(
+		"the second leg's chip press was found and pressed where it paints",
+		chipSecond !== null && chipSecond.text === "Show advanced",
+		JSON.stringify(chipSecond?.description ?? null),
+	);
+	const armed = await waitForCondition(
+		cdp,
+		`(() => {
+			const chip = [...document.querySelectorAll("button")].find((button) => (button.textContent || "").trim() === "Show advanced");
+			const row = document.querySelector(${JSON.stringify(ACCOUNT_POLICY_ROW)});
+			if (!row || !chip) return null;
+			const section = row.closest("[data-settings-section]");
+			const rect = row.getBoundingClientRect();
+			return {
+				chipPressed: chip.getAttribute("aria-pressed"),
+				section: section ? section.getAttribute("data-settings-section") : null,
+				sectionOpen: section ? section.getAttribute("data-open") : null,
+				rowHeight: Math.round(rect.height),
+			};
+		})()`,
+		10_000,
+	);
+	check(
+		"the link is about to be followed from the reachable state: chip ON, the destination's section CLOSED (the row behind `[hidden]`, height 0)",
+		armed.ok === true &&
+			armed.last?.chipPressed === "true" &&
+			armed.last?.sectionOpen === "false" &&
+			armed.last?.rowHeight === 0,
+		JSON.stringify(armed.last ?? { waitedMs: armed.waitedMs }),
+	);
+
+	await verb(cdp, "navigate", `/settings?setting=${ACCOUNT_POLICY_KEY}`);
+	const landedSecond = await waitForCondition(
+		cdp,
+		`(() => {
+			const chip = [...document.querySelectorAll("button")].find((button) => (button.textContent || "").trim() === "Show advanced");
+			const row = document.querySelector(${JSON.stringify(ACCOUNT_POLICY_ROW)});
+			if (!row) return null;
+			const section = row.closest("[data-settings-section]");
+			const trigger = row.querySelector('[data-setting-control] [role="combobox"]');
+			const active = document.activeElement;
+			const rect = row.getBoundingClientRect();
+			const reading = {
+				chipPressed: chip ? chip.getAttribute("aria-pressed") : null,
+				sectionOpen: section ? section.getAttribute("data-open") : null,
+				focused: active === trigger ? "trigger" : (active && row.contains(active) ? "row" : "elsewhere"),
+				activeDescription: active
+					? active.tagName.toLowerCase() +
+						" " +
+						JSON.stringify((active.getAttribute("aria-label") || active.textContent || "").trim().slice(0, 60))
+					: null,
+				top: Math.round(rect.top),
+				bottom: Math.round(rect.bottom),
+				viewport: window.innerHeight,
+				onScreen: rect.top >= 0 && rect.bottom <= window.innerHeight,
+			};
+			const arrived =
+				reading.chipPressed === "true" &&
+				reading.sectionOpen === "true" &&
+				reading.focused === "trigger" &&
+				reading.onScreen === true;
+			return arrived ? reading : null;
+		})()`,
+		30_000,
+	);
+	if (landedSecond.ok !== true) {
+		/*
+		 * The latch diagnosis, on the failure path only: what the settled wait saw
+		 * at its bound, so a FAIL separates "the section never opened" from "the
+		 * section opened after the loop had already latched on the hidden subtree".
+		 */
+		const stuckSecond = await cdp.evaluate(`(() => {
+			const row = document.querySelector(${JSON.stringify(ACCOUNT_POLICY_ROW)});
+			if (!row) return { row: "absent" };
+			const section = row.closest("[data-settings-section]");
+			const trigger = row.querySelector('[data-setting-control] [role="combobox"]');
+			const active = document.activeElement;
+			const rect = row.getBoundingClientRect();
+			return {
+				sectionOpen: section ? section.getAttribute("data-open") : null,
+				focused: active === trigger ? "trigger" : (active && row.contains(active) ? "row" : "elsewhere"),
+				activeDescription: active
+					? active.tagName.toLowerCase() +
+						" " +
+						JSON.stringify((active.getAttribute("aria-label") || active.textContent || "").trim().slice(0, 60))
+					: null,
+				top: Math.round(rect.top),
+				bottom: Math.round(rect.bottom),
+				viewport: window.innerHeight,
+				onScreen: rect.top >= 0 && rect.bottom <= window.innerHeight,
+			};
+		})()`);
+		note(
+			"the second leg at the settled wait's bound (the latch diagnosis)",
+			JSON.stringify(stuckSecond),
+		);
+	}
+	check(
+		"the second deep link (chip kept ON from a closed section) settled the same landing: the link opened the section and scrolled the row on screen",
+		landedSecond.ok === true &&
+			landedSecond.last?.chipPressed === "true" &&
+			landedSecond.last?.sectionOpen === "true" &&
+			landedSecond.last?.onScreen === true,
+		JSON.stringify(landedSecond.last ?? { waitedMs: landedSecond.waitedMs }),
+	);
+	check(
+		"the second deep link FOCUSED the row's own control from the tier-already-on state",
+		landedSecond.last?.focused === "trigger",
+		JSON.stringify(landedSecond.last),
+	);
+	const landedSecondHash = await cdp.evaluate("window.location.hash");
+	check(
+		"the second deep link is the one this scene asked for",
+		typeof landedSecondHash === "string" &&
+			landedSecondHash.includes(`setting=${ACCOUNT_POLICY_KEY}`),
+		`hash reads ${JSON.stringify(landedSecondHash)}`,
+	);
+	note(
+		"the second leg's settled reading",
+		JSON.stringify(landedSecond.last ?? { waitedMs: landedSecond.waitedMs }),
+	);
+
+	/* ---------------------------------------------------------------- */
 	/* 6. The closing survey: the run stayed out of the way              */
 	/* ---------------------------------------------------------------- */
 
