@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * The Projects tab's LOCAL text search: which rows a query admits, in what
  * order, and why — the compatibility engine and the in-flight fallback.
@@ -99,10 +100,16 @@ export function projectsSearchQuery(box: string): string {
  * the index on the project id).
  */
 export const SEARCH_SUBLINE: Record<"client" | "backend", string> = {
-	client:
-		"Searches names, descriptions, tags, owners and teams. Update text is not searched. Clearing the search and filters restores the list.",
-	backend:
-		"Searches names, descriptions, tags, owners, teams and update text. Clearing the search and filters restores the list.",
+	get client() {
+		return t(
+			"ui.projects.project_search.searches_names_descriptions_tags_owners_and_teams_update_text_is",
+		);
+	},
+	get backend() {
+		return t(
+			"ui.projects.project_search.searches_names_descriptions_tags_owners_teams_and_update_text_cle",
+		);
+	},
 };
 
 /**

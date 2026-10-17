@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * The detail page's updates feed: the project's append-only history, newest
  * first, day-grouped, each entry with its author, stamps, markdown body and
@@ -57,12 +58,13 @@ const PATH_SEPARATOR_REGEX = /[/\\]/;
 function attachmentName(attachment: DesktopProjectAttachment): string {
 	if (attachment.name) return attachment.name;
 	const parts = attachment.path.split(PATH_SEPARATOR_REGEX);
-	return parts[parts.length - 1] || "Attachment";
+	return parts[parts.length - 1] || t("ui.projects.project_updates.attachment");
 }
 
 const UpdateDataAttachment: FC<{ attachment: DesktopProjectAttachment }> = ({
 	attachment,
 }) => {
+	useI18nLocale();
 	const name = attachmentName(attachment);
 	const size = attachmentSizeText(attachment.bytes);
 	return (
@@ -73,7 +75,9 @@ const UpdateDataAttachment: FC<{ attachment: DesktopProjectAttachment }> = ({
 				onClick={() => {
 					void window.api?.openFile(attachment.path);
 				}}
-				title={`Open ${name}`}
+				title={t("ui.projects.project_updates.open_name", {
+					name: String(name),
+				})}
 			>
 				<File className="size-4 shrink-0 text-ink-dim" aria-hidden={true} />
 				<span className="truncate text-body-sm text-ink">{name}</span>
@@ -91,7 +95,9 @@ const UpdateDataAttachment: FC<{ attachment: DesktopProjectAttachment }> = ({
 			 */}
 			<FileActionsMenu
 				filePath={attachment.path}
-				aria-label={`File actions for ${name}`}
+				aria-label={t("ui.projects.project_updates.file_actions_for_name", {
+					name: String(name),
+				})}
 			/>
 		</div>
 	);
@@ -100,6 +106,7 @@ const UpdateDataAttachment: FC<{ attachment: DesktopProjectAttachment }> = ({
 const UpdateImageAttachment: FC<{ attachment: DesktopProjectAttachment }> = ({
 	attachment,
 }) => {
+	useI18nLocale();
 	const name = attachmentName(attachment);
 	const state = useFileBlobUrl(attachment.path, {
 		mimeType: mimeTypeForPath(attachment.name || attachment.path),
@@ -122,7 +129,10 @@ const UpdateImageAttachment: FC<{ attachment: DesktopProjectAttachment }> = ({
 		// (the frame's own design note).
 		return (
 			<AttachmentFrame>
-				<span className="sr-only">Loading {name}</span>
+				<span className="sr-only">
+					{t("ui.projects.project_updates.loading")}
+					{name}
+				</span>
 			</AttachmentFrame>
 		);
 	}
@@ -189,14 +199,17 @@ export const ProjectUpdates: FC<ProjectUpdatesProps> = ({ updates, nowMs }) => {
 	return (
 		<section className="flex flex-col gap-3">
 			<div className="flex items-baseline justify-between gap-3">
-				<h2 className="text-title text-ink">Updates</h2>
+				<h2 className="text-title text-ink">
+					{t("ui.projects.project_updates.updates")}
+				</h2>
 				{count && <span className="text-meta text-ink-muted">{count}</span>}
 			</div>
 
 			{updates.length === 0 ? (
 				<p className="text-body-sm text-ink-muted">
-					No updates yet. Progress reported by you or by the sessions working on
-					this project is appended here.
+					{t(
+						"ui.projects.project_updates.no_updates_yet_progress_reported_by_you_or_by_the_sessions_workin",
+					)}
 				</p>
 			) : (
 				<div className="flex flex-col gap-4">
