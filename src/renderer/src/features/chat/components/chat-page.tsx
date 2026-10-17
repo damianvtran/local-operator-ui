@@ -103,6 +103,7 @@ import {
 	reviseQueuedAsk,
 } from "../ask-answer";
 import {
+	type AskAnswerAttempt,
 	type AskDraft,
 	type AskOutcome,
 	askClaimsEscape,
@@ -2785,8 +2786,16 @@ function SessionPanel({
 	const answerAsk = async (
 		taskId: string,
 		answers: Record<string, string[]>,
-	) => {
-		if (!sessionId || sendLock.held) return;
+	): Promise<AskAnswerAttempt> => {
+		/*
+		 * THE TWO PRE-CONDITIONS ARE RETURNED AS THEMSELVES, not as `undefined`
+		 * (agent review round 1, M1). The composer's "Put in secret field" has to say
+		 * WHY nothing landed, and "a message is still sending" and "this pane cannot
+		 * answer" are different sentences; collapsing them into one falsy value is how
+		 * the press came to fail with no words at all.
+		 */
+		if (!sessionId) return { status: "unavailable" };
+		if (sendLock.held) return { status: "locked" };
 		setAdmitting(true);
 		setAskOutcomes((current) => ({
 			...current,
@@ -2804,10 +2813,9 @@ function SessionPanel({
 		settleAskOutcome(taskId, outcome);
 		/*
 		 * RETURNED for the composer's "Put in secret field" door, which has to know
-		 * whether the value landed before it clears the box (see
-		 * `ChatContentProps["canonical"].onFillSecretAnswer`). Undefined means this
-		 * page could not address the owner at all, which that door reads as not
-		 * accepted — the caller keeps the user's text.
+		 * whether the value landed before it clears the box. The mapping from this
+		 * status to the confirm's own outcome lives in `fillSecretField` (ask-queue.ts),
+		 * where a DOM-free test can drive it (agent review round 1, m3).
 		 */
 		return outcome;
 	};
@@ -4677,12 +4685,12 @@ function SessionPanel({
 							void answerAsk(taskId, answers),
 						/*
 						 * The composer's "Put in secret field" door: the same call as the
-						 * panel's, awaited so the composer clears the draft only on a success.
+						 * panel's, handed over as the outcome itself rather than as a boolean,
+						 * because a refusal and a lock say different things to the user
+						 * (agent review round 1, M1). `fillSecretField` owns the mapping from
+						 * this answer to what the confirm does.
 						 */
-						onFillSecretAnswer: async (
-							taskId: string,
-							answers: Record<string, string[]>,
-						) => (await answerAsk(taskId, answers))?.status === "sent",
+						onFillSecretAnswer: answerAsk,
 						onDeclineAsk: (taskId: string) => void declineAsk(taskId),
 						onReviseAsk: (taskId: string, answers: Record<string, string[]>) =>
 							void reviseAsk(taskId, answers),

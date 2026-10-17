@@ -3297,7 +3297,12 @@ export const QueuedSecretAsk: Story = {
 				messages={NONEMPTY}
 				conversationId="story-secret-ask"
 				onSendMessage={async () => true}
-				secretAsk={{ onOpen: () => {}, onFill: async () => true }}
+				secretAsk={{
+					key: "story-secret-1:api_token",
+					fillable: true,
+					onOpen: () => {},
+					onFill: async () => "sent",
+				}}
 			/>
 		</Frame>
 	),
@@ -3311,7 +3316,12 @@ export const SecretAskConfirm: Story = {
 				messages={NONEMPTY}
 				conversationId="story-secret-ask-confirm"
 				onSendMessage={async () => true}
-				secretAsk={{ onOpen: () => {}, onFill: async () => true }}
+				secretAsk={{
+					key: "story-secret-1:api_token",
+					fillable: true,
+					onOpen: () => {},
+					onFill: async () => "sent",
+				}}
 			/>
 		</Frame>
 	),

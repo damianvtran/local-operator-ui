@@ -713,6 +713,111 @@ export const askComposerHoldsSecret = (view: AskQueueView): boolean => {
 };
 
 /**
+ * THE FIELD A "Put in secret field" WOULD LAND IN, or `null` when one value
+ * names none.
+ *
+ * `key` is the confirm's BINDING (agent review round 1, m1; QA round 1, Q2):
+ * the composer records it when it arms the confirm and hands it back on the
+ * press, so a value typed for one ask can never be posted to a different one
+ * that became the head while the question was up. It names the ask AND the
+ * question, because an ask with several secret questions would otherwise keep
+ * the same key while the field under it changed.
+ *
+ * `questionId` is null for a multi-question ask (and for one whose single
+ * question is not secret): the gesture can put ONE value in ONE field, so there
+ * it degrades to opening the panel instead of guessing a question.
+ */
+export type SecretField = { key: string; questionId: string | null };
+
+export const askSecretField = (ask: PendingAsk): SecretField => {
+	const questions = ask.questions;
+	const single = questions.length === 1 && questions[0].secret === true;
+	return {
+		key: `${ask.ask_id}:${single ? questions[0].id : "*"}`,
+		questionId: single ? questions[0].id : null,
+	};
+};
+
+/**
+ * What one press of "Put in secret field" did, in terms the composer can act on.
+ *
+ * WHY IT IS NOT A BOOLEAN. The composer has to say WHY nothing landed (agent
+ * review round 1, M1; UX round 1, U1) and has to know whether the request can
+ * still address the ask at all, and `false` collapses four different facts into
+ * one. `sent` clears the draft; every other value keeps it, returns focus to the
+ * box and states the reason.
+ */
+export type SecretFillOutcome =
+	| "sent"
+	/** The value was posted and the owner or the transport refused it. */
+	| "refused"
+	/** Nothing was posted: a chat send holds the answer lock. */
+	| "locked"
+	/** Nothing was posted: this pane has no session to answer on. */
+	| "unavailable"
+	/** Nothing was posted: the ask the confirm was raised for is no longer head. */
+	| "stale"
+	/** Nothing was posted: the ask has more than one secret question. */
+	| "multi";
+
+/**
+ * The page's answer door, as the fill path sees it.
+ *
+ * `locked` and `unavailable` are the two states `chat-page.tsx`'s `answerAsk`
+ * used to return as `undefined`, which the composer could not tell apart. The
+ * rest is its own `AnswerOutcome`.
+ */
+export type AskAnswerAttempt =
+	| { status: "sent" }
+	| { status: "refused" }
+	| { status: "failed" }
+	| { status: "locked" }
+	| { status: "unavailable" };
+
+/**
+ * THE WHOLE "Put in secret field" WIRING, as one pure function: which field the
+ * press lands in, the payload shape, the trim, and what the answer's status
+ * means to the composer.
+ *
+ * WHY IT IS EXTRACTED FROM THE COMPONENTS. Both halves lived in `chat-content.tsx`
+ * (which head is filled) and `chat-page.tsx` (the `sent` mapping), and a jsdom rig
+ * that mounts the composer can only mock the result - so the map shape, the trim
+ * and the stale check had no test at all (agent review round 1, m3). Here they are
+ * one function a DOM-free test can drive with a fake head and a recording door.
+ *
+ * THE BINDING IS CHECKED HERE, not in the composer: the caller passes the `key`
+ * its confirm was armed under and the head it would fill now, and a mismatch is
+ * `stale` rather than a value posted to whatever ask happens to be head.
+ */
+export const fillSecretField = async (
+	head: AskPresentation | null,
+	key: string,
+	value: string,
+	fill: (
+		askId: string,
+		answers: Record<string, string[]>,
+	) => Promise<AskAnswerAttempt | undefined>,
+): Promise<SecretFillOutcome> => {
+	if (head === null) return "stale";
+	const field = askSecretField(head.ask);
+	if (field.key !== key) return "stale";
+	if (field.questionId === null) return "multi";
+	/*
+	 * THE VALUE IS TRIMMED ONCE, HERE, exactly as the panel's own answer body is
+	 * (`askAnswerMap` trims the same way): a draft's surrounding whitespace is
+	 * the box's, not the secret's.
+	 */
+	const outcome = await fill(head.ask.ask_id, {
+		[field.questionId]: [value.trim()],
+	});
+	if (outcome === undefined) return "unavailable";
+	if (outcome.status === "sent") return "sent";
+	if (outcome.status === "refused" || outcome.status === "failed")
+		return "refused";
+	return outcome.status;
+};
+
+/**
  * The ask lane's PANEL, marked on the one root the ask drawer renders.
  *
  * THE MARKER IS THE PANEL'S, AND ONLY THE PANEL'S (agent review round 1, F5; UX

@@ -390,6 +390,68 @@ test("the composer's refusal is the BLOCKING gate's, and the queued ask is a not
 });
 
 /*
+ * THE FILL WIRING IS ONE FUNCTION, AND BOTH COMPONENTS PASS THROUGH IT (agent
+ * review round 1, m3). `chat-content.tsx` owns "which head", `chat-page.tsx` owns
+ * "what the answer's status means", and `ask-queue.ts`'s `fillSecretField` owns
+ * the payload shape, the trim and the stale check - which is what a DOM-free test
+ * can drive (`ask-queue.test.mjs`). These pins keep the two components handing
+ * their facts to it rather than re-growing a second copy: a boolean `onFill`
+ * mapping is exactly the shape the round asked to retire.
+ */
+test("Put in secret field goes through the one fill function", () => {
+	const content = code(CONTENT);
+	assert.match(
+		content,
+		/fillSecretField\(/,
+		"the composer's fill is the shared function",
+	);
+	assert.match(
+		content,
+		/onFill: \(value: string, key: string\)/,
+		"and the confirm's key is handed back, not re-derived",
+	);
+	assert.match(
+		content,
+		/askSecretField\(head\.ask\)/,
+		"the key and the fillability come from the one field reading",
+	);
+
+	const page = code(PAGE);
+	assert.match(
+		page,
+		/onFillSecretAnswer: answerAsk,/,
+		"the page hands its own answer door over, not a boolean wrapper",
+	);
+	assert.match(
+		page,
+		/if \(!sessionId\) return \{ status: "unavailable" \};/,
+		"and an unaddressable pane says which it is",
+	);
+	assert.match(
+		page,
+		/if \(sendLock\.held\) return \{ status: "locked" \};/,
+		"as does a held lock (M1)",
+	);
+
+	const input = code(INPUT);
+	assert.match(
+		input,
+		/secretAsk\?: \{[\s\S]{0,400}?key: string;/,
+		"the composer's prop carries the binding key",
+	);
+	assert.match(
+		input,
+		/secretAsk\?: \{[\s\S]{0,400}?fillable: boolean;/,
+		"and whether a value can name a field (D2)",
+	);
+	assert.match(
+		input,
+		/onFill: \(value: string, key: string\) => Promise<SecretFillOutcome>/,
+		"and the outcome, not a boolean",
+	);
+});
+
+/*
  * THE MINI VIEW HAS NO ASKS DRAWER, so it has nowhere to send a secret and no
  * notice to show: a queued ask must leave that box unrefused too, and the
  * blocking gate's refusal stays. Read through `effectiveGate` so a mirrored ask is
