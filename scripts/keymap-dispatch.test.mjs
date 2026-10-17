@@ -93,10 +93,7 @@ const {
 /** A route every door is present on. */
 const ROUTE = {
 	mounted: true,
-	runDetails: true,
 	session: true,
-	codeReview: true,
-	asksOffered: true,
 };
 
 /** One press, as the decision reads it: a plain object, like the handler passes. */
@@ -214,12 +211,7 @@ test("an overlay owns its own keys (rule 4)", () => {
 	);
 });
 
-test("a door-absent action is a no-op, in every door shape", () => {
-	// The console needs a conversation.
-	assert.equal(
-		keymapEventAction(press(), source({ route: { ...ROUTE, session: false } })),
-		null,
-	);
+test("a door-absent action is a no-op: only a route with no chat surface has no doors", () => {
 	// No chat surface at all: browser, canvas and console all stand down.
 	const unmounted = { ...ROUTE, mounted: false };
 	assert.equal(
@@ -230,13 +222,12 @@ test("a door-absent action is a no-op, in every door shape", () => {
 		null,
 	);
 	assert.equal(keymapEventAction(press(), source({ route: unmounted })), null);
-	// The ask action needs the host to offer the door.
 	assert.equal(
 		keymapEventAction(
 			press({ key: "u" }),
 			source({
 				bindings: { "panel.ask": "primary+u" },
-				route: { ...ROUTE, asksOffered: false },
+				route: unmounted,
 			}),
 		),
 		null,
@@ -250,6 +241,28 @@ test("a door-absent action is a no-op, in every door shape", () => {
 		),
 		"panel.ask",
 	);
+});
+
+test("every panel chord acts on a draft: all six doors are present wherever the rail is (D1)", () => {
+	const draft = { mounted: true, session: false };
+	const bindings = {
+		"panel.run": "primary+u",
+		"panel.ask": "primary+g",
+		"panel.browser": "primary+h",
+		"panel.console": "primary+i",
+		"panel.canvas": "primary+e",
+		"panel.code": "primary+d",
+	};
+	for (const [action, chord] of Object.entries(bindings)) {
+		assert.equal(
+			keymapEventAction(
+				press({ key: chord.slice(-1) }),
+				source({ bindings, route: draft }),
+			),
+			action,
+			`${action} must act on a draft`,
+		);
+	}
 });
 
 /* ------------------------------------------------------------------ jsdom */
@@ -381,12 +394,87 @@ test("the router is registered in the BUBBLE phase: a descendant's stopPropagati
 			false,
 			"a descendant that consumed the press must keep the router from firing",
 		);
-		/* And the door-absent case runs no write either: with no session the
-		   console's chord is a no-op (and, being rule 5, without preventDefault). */
+		/* And on a draft the chord still acts (D1): the pane opens to its "needs a
+		   conversation" state, and no open request is filed - there is no working
+		   directory to spawn a console in. */
 		act(() => {
 			useCanonicalSessionsStore.setState({ activeSessionId: null });
+			useUiPreferencesStore.setState({
+				rightSlotRoute: { mounted: true, session: false },
+				consoleOpenIntent: null,
+			});
 		});
 		api.dispatch(child, { key: "j" });
-		assert.equal(useUiPreferencesStore.getState().isConsolePaneOpen, false);
+		assert.equal(useUiPreferencesStore.getState().isConsolePaneOpen, true);
+		assert.equal(useUiPreferencesStore.getState().consoleOpenIntent, null);
+	});
+});
+
+/*
+ * THE CHORD IS THE SAME DOOR (#1079). `panel.ask` routes through the same
+ * `togglePanelRailItem` the rail's item presses, so the chord's CLOSE has to be the
+ * pressed kind too: an empty slot rather than the borrowed pane handed back. This
+ * cell drives the real router (the registration, its door gate and the action), not
+ * the store's writer directly.
+ */
+test("the panel.ask chord closes the slot the way the lit item does (#1079)", async () => {
+	await mount(async (api) => {
+		const child = api.$('[data-testid="child"]');
+		const state = () => useUiPreferencesStore.getState();
+		act(() => {
+			useUiPreferencesStore.setState({
+				shortcutBindings: { "panel.ask": "primary+u" },
+				isBrowserPaneOpen: true,
+			});
+		});
+		/* The press is the chord's own: meta on this host, which `primary` collapses. */
+		api.dispatch(child, { key: "u" });
+		assert.equal(state().isAskDrawerOpen, true, "the chord opens the drawer");
+		assert.equal(
+			state().isBrowserPaneOpen,
+			false,
+			"borrowing the slot from the browser",
+		);
+		api.dispatch(child, { key: "u" });
+		assert.equal(state().isAskDrawerOpen, false);
+		assert.equal(
+			state().isBrowserPaneOpen,
+			false,
+			"and its close asks for an empty slot rather than handing the browser back",
+		);
+		/*
+		 * AND THE SAME PRESS IN BOUND MODE (#1079, agent review round 1 R3). The chord is one
+		 * path through `togglePanelRailItem`, so a chord that passed a different context - or
+		 * stopped passing `dismissSlot` - would fail as the conversation's MEMORY entry
+		 * surviving the close, which the unbound leg above cannot see: with no `rightSlotKey`
+		 * there is no entry to retract and the reading would look right either way. This is the
+		 * panel-rail bound cell's setup (Browser open, in the slot and in the memory).
+		 */
+		act(() => {
+			useUiPreferencesStore.setState({
+				rightSlotKey: "session-1",
+				rightSlotMemory: [["session-1", "browser"]],
+				isBrowserPaneOpen: true,
+			});
+		});
+		api.dispatch(child, { key: "u" });
+		assert.equal(
+			state().isAskDrawerOpen,
+			true,
+			"the chord opens the drawer over the conversation's remembered browser",
+		);
+		assert.equal(state().isBrowserPaneOpen, false, "taking the slot from it");
+		api.dispatch(child, { key: "u" });
+		assert.equal(state().isAskDrawerOpen, false, "the second press closes");
+		assert.equal(
+			state().isBrowserPaneOpen,
+			false,
+			"and the browser still does not come back",
+		);
+		assert.deepEqual(
+			state().rightSlotMemory,
+			[],
+			"because the chord's close RETRACTS the entry (`memoryDismiss`) rather than projecting it: switching away and back shows no panel, which is #1079's request",
+		);
 	});
 });

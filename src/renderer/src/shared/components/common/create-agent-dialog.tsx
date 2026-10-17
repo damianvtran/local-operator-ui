@@ -2,10 +2,12 @@ import type { AgentCreate } from "@shared/api/local-operator/types";
 import { Spinner } from "@shared/components/common/spinner";
 import { Button, Input, Label, Textarea } from "@shared/components/ui";
 import { useCreateAgent } from "@shared/hooks";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { Bot, ExternalLink } from "lucide-react";
 import type { FC, FormEvent } from "react";
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { t } from "../../../../../i18n/messages";
 import { BaseDialog, PrimaryButton, SecondaryButton } from "./base-dialog";
 
 type CreateAgentDialogProps = {
@@ -41,6 +43,8 @@ export const CreateAgentDialog: FC<CreateAgentDialogProps> = ({
 	onClose,
 	onAgentCreated,
 }) => {
+	// Language refresh must preserve entered fields and any open confirmation.
+	useI18nLocale();
 	const navigate = useNavigate();
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
@@ -94,7 +98,7 @@ export const CreateAgentDialog: FC<CreateAgentDialogProps> = ({
 	const dialogTitle = (
 		<>
 			<Bot size={19} className="text-accent" aria-hidden="true" />
-			Create new agent
+			{t("ui.agents.dialogs.create.title")}
 		</>
 	);
 
@@ -105,7 +109,7 @@ export const CreateAgentDialog: FC<CreateAgentDialogProps> = ({
 				disabled={isLoading}
 				data-tour-tag="create-agent-dialog-cancel-button"
 			>
-				Cancel
+				{t("ui.agents.dialogs.create.cancel")}
 			</SecondaryButton>
 			<PrimaryButton
 				type="submit"
@@ -113,7 +117,7 @@ export const CreateAgentDialog: FC<CreateAgentDialogProps> = ({
 				disabled={isSubmitDisabled}
 				startIcon={isLoading ? <Spinner /> : null}
 			>
-				Create agent
+				{t("ui.agents.dialogs.create.submit")}
 			</PrimaryButton>
 		</>
 	);
@@ -136,20 +140,22 @@ export const CreateAgentDialog: FC<CreateAgentDialogProps> = ({
 			}}
 		>
 			<p className="text-body-sm text-ink-muted">
-				Configure your new AI assistant with a name and optional description
+				{t("ui.agents.dialogs.create.intro")}
 			</p>
 			<Button
 				variant="link"
 				onClick={handleAgentHubClick}
 				className="mt-1 mb-4 text-body-sm"
 			>
-				Browse Agent hub to fetch ready-made agents
+				{t("ui.agents.dialogs.create.hub_link")}
 				<ExternalLink aria-hidden="true" />
 			</Button>
 			<form id="create-agent-form" onSubmit={handleSubmit}>
 				<div className="flex flex-col gap-5">
 					<div className="flex flex-col gap-2">
-						<Label htmlFor="create-agent-name">Agent name</Label>
+						<Label htmlFor="create-agent-name">
+							{t("ui.agents.dialogs.create.name_label")}
+						</Label>
 						<Input
 							ref={nameFieldRef}
 							id="create-agent-name"
@@ -158,12 +164,12 @@ export const CreateAgentDialog: FC<CreateAgentDialogProps> = ({
 							onChange={(e) => setName(e.target.value)}
 							required
 							disabled={isLoading}
-							placeholder="Enter a name for your agent"
+							placeholder={t("ui.agents.dialogs.create.name_hint")}
 						/>
 					</div>
 					<div className="flex flex-col gap-2">
 						<Label htmlFor="create-agent-description">
-							Description (optional)
+							{t("ui.agents.dialogs.create.description_label")}
 						</Label>
 						<Textarea
 							id="create-agent-description"
@@ -171,7 +177,7 @@ export const CreateAgentDialog: FC<CreateAgentDialogProps> = ({
 							value={description}
 							onChange={(e) => setDescription(e.target.value)}
 							disabled={isLoading}
-							placeholder="Describe what this agent does"
+							placeholder={t("ui.agents.dialogs.create.description_hint")}
 						/>
 					</div>
 				</div>

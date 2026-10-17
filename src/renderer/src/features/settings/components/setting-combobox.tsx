@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The settings row's provider and model field: a searchable combobox whose
  * options come from the desktop control plane.
@@ -100,6 +102,7 @@ export const SettingCombobox: FC<SettingComboboxProps> = ({
 	effectiveHosting,
 	helpId,
 }) => {
+	useI18nLocale();
 	const capabilities = useDesktopCapabilities();
 
 	/*
@@ -157,7 +160,8 @@ export const SettingCombobox: FC<SettingComboboxProps> = ({
 		[providers.data],
 	);
 
-	const options = useMemo(() => {
+	// Copy-bearing rows are resolved on render, not cached across locale switches.
+	const options = (() => {
 		if (kind === "provider")
 			return providers.data ? providerOptions(providers.data) : [];
 		return modelOptions(catalogue.data, {
@@ -172,19 +176,16 @@ export const SettingCombobox: FC<SettingComboboxProps> = ({
 			 */
 			providerNames,
 		});
-	}, [
-		kind,
-		providers.data,
-		catalogue.data,
-		effectiveHosting,
-		value,
-		providerNames,
-	]);
+	})();
 
 	const listing = catalogueListing(
 		catalogue.data,
 		catalogue,
-		(error) => backendLoadErrorMessage("Could not list models.", error),
+		(error) =>
+			backendLoadErrorMessage(
+				t("ui.settings.configuration.setting_combobox.could_not_list_models"),
+				error,
+			),
 		// This field draws the catalogue's own document and nothing else (`live: false`
 		// always, and no registry fallback), so a note over rows it DID draw is never
 		// a claim about the shipped registry's rows.
@@ -218,7 +219,7 @@ export const SettingCombobox: FC<SettingComboboxProps> = ({
 	 * too: it is one IPC call under the key the hosting row already uses, so the
 	 * page pays for it once either way.
 	 */
-	const listNotice = useMemo(() => {
+	const listNotice = (() => {
 		if (kind === "provider") return null;
 		return modelScopeNotice(
 			{
@@ -230,7 +231,7 @@ export const SettingCombobox: FC<SettingComboboxProps> = ({
 			},
 			catalogue.data,
 		);
-	}, [kind, effectiveHosting, providers.data, catalogue.data]);
+	})();
 
 	/*
 	 * The empty text is chosen from the OUTCOME, not from the capability. Three
@@ -244,22 +245,28 @@ export const SettingCombobox: FC<SettingComboboxProps> = ({
 	 * The fourth no-rows state - still fetching - never reaches here: the list
 	 * says so itself while `busy`.
 	 */
-	const emptyText = useMemo(() => {
+	const emptyText = (() => {
 		if (kind === "provider") {
-			if (providers.isError) return "Could not list providers";
-			return providersEnabled ? "No providers" : "Provider list unavailable";
+			if (providers.isError)
+				return t(
+					"ui.settings.configuration.setting_combobox.could_not_list_providers",
+				);
+			return providersEnabled
+				? t("ui.settings.configuration.setting_combobox.no_providers")
+				: t(
+						"ui.settings.configuration.setting_combobox.provider_list_unavailable",
+					);
 		}
-		if (listing.loadError) return "Could not list models";
+		if (listing.loadError)
+			return t(
+				"ui.settings.configuration.setting_combobox.could_not_list_models_2",
+			);
 		return modelsEnabled
-			? "Nothing matches that model"
-			: "Model list unavailable";
-	}, [
-		kind,
-		providers.isError,
-		providersEnabled,
-		listing.loadError,
-		modelsEnabled,
-	]);
+			? t(
+					"ui.settings.configuration.setting_combobox.nothing_matches_that_model",
+				)
+			: t("ui.settings.configuration.setting_combobox.model_list_unavailable");
+	})();
 
 	return (
 		<SearchableSelect
@@ -275,7 +282,11 @@ export const SettingCombobox: FC<SettingComboboxProps> = ({
 			selected={selected}
 			disabled={disabled}
 			busy={kind === "provider" ? providers.isFetching : catalogue.isFetching}
-			busyLabel={kind === "provider" ? "Loading providers" : "Loading models"}
+			busyLabel={
+				kind === "provider"
+					? t("ui.settings.configuration.setting_combobox.loading_providers")
+					: t("ui.settings.configuration.setting_combobox.loading_models")
+			}
 			onOpenChange={(open) => {
 				if (open) setOpened(true);
 			}}
@@ -296,7 +307,11 @@ export const SettingCombobox: FC<SettingComboboxProps> = ({
 			   typing a filter takes the row the list is SHOWING instead of
 			   silently storing the filter itself. */
 			onCustomSubmit={(text) => onValueChange(text)}
-			customRowLabel={(text) => `Use "${text}"`}
+			customRowLabel={(text) =>
+				t("ui.settings.configuration.setting_combobox.use_text", {
+					text: String(text),
+				})
+			}
 			listNotice={listNotice}
 			/* Clearing is an explicit gesture rather than an empty buffer, so that
 			   "unset" - which `empty_unsets` writes as the EMPTY STRING, the spelling

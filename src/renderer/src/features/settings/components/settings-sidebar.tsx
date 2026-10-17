@@ -1,6 +1,8 @@
 import { RadientMark } from "@shared/components/common/radient-mark";
 import { Tooltip } from "@shared/components/ui/tooltip";
 import { useMediaQuery } from "@shared/hooks/use-media-query";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	AudioLines,
@@ -87,7 +89,12 @@ const SECTION_GROUPS: { label: string; ids: string[] }[] = [
 	 * joined it for the same reason (issue #928) - and its document position
 	 * follows this list, per the rule below.
 	 */
-	{ label: "General", ids: ["general", "appearance", "speech", "keyboard"] },
+	{
+		get label() {
+			return t("ui.settings.navigation.settings_sidebar.general");
+		},
+		ids: ["general", "appearance", "speech", "keyboard"],
+	},
 	/*
 	 * Model providers first (design audit section 2 / D13): it is the section a
 	 * new install cannot work without, and "Radient account" ahead of it read as
@@ -95,13 +102,25 @@ const SECTION_GROUPS: { label: string; ids: string[] }[] = [
 	 * document order below follows the same order, per the rule above.
 	 */
 	{
-		label: "Account",
+		get label() {
+			return t("ui.settings.navigation.settings_sidebar.account");
+		},
 		ids: ["providers", "integrations", "radient"],
 	},
 	// The backend registry section was rendered but reachable only by deep
 	// link because it sat in no group; the rail filters by group membership.
-	{ label: "Backend", ids: ["backend"] },
-	{ label: "System", ids: ["updates"] },
+	{
+		get label() {
+			return t("ui.settings.navigation.settings_sidebar.backend");
+		},
+		ids: ["backend"],
+	},
+	{
+		get label() {
+			return t("ui.settings.navigation.settings_sidebar.system");
+		},
+		ids: ["updates"],
+	},
 ];
 
 /**
@@ -175,6 +194,7 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 	onSelectSection,
 	sections,
 }) => {
+	useI18nLocale();
 	/*
 	 * Paired with the `min-[1040px]:` width class on the rail's wrapper in
 	 * `settings-page`. The two carry the same breakpoint and have to move
@@ -271,7 +291,9 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 	 * re-acquiring a ground of its own fails - which is the defect above. */
 	return (
 		<nav
-			aria-label="Settings sections"
+			aria-label={t(
+				"ui.settings.navigation.settings_sidebar.settings_sections",
+			)}
 			className="flex h-full w-full flex-col overflow-hidden bg-surface"
 		>
 			{/* `gap-6` between groups rather than a margin on each: a stacking
@@ -316,47 +338,65 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 export const DEFAULT_SETTINGS_SECTIONS: SettingsSection[] = [
 	{
 		id: "general",
-		label: "General settings",
+		get label() {
+			return t("ui.settings.navigation.settings_sidebar.general_settings");
+		},
 		icon: Settings,
 	},
 	{
 		id: "radient",
-		label: "Radient account",
+		get label() {
+			return t("ui.settings.navigation.settings_sidebar.radient_account");
+		},
 		icon: RadientMark,
 	},
 	{
 		id: "integrations",
-		label: "Integrations",
+		get label() {
+			return t("ui.settings.navigation.settings_sidebar.integrations");
+		},
 		icon: Puzzle,
 	},
 	{
 		id: "appearance",
-		label: "Appearance",
+		get label() {
+			return t("ui.settings.navigation.settings_sidebar.appearance");
+		},
 		icon: Paintbrush,
 	},
 	{
 		id: "speech",
-		label: "Speech voicing",
+		get label() {
+			return t("ui.settings.navigation.settings_sidebar.speech_voicing");
+		},
 		icon: AudioLines,
 	},
 	{
 		id: "keyboard",
-		label: "Keyboard shortcuts",
+		get label() {
+			return t("ui.settings.navigation.settings_sidebar.keyboard_shortcuts");
+		},
 		icon: Keyboard,
 	},
 	{
 		id: "providers",
-		label: "Model providers",
+		get label() {
+			return t("ui.settings.navigation.settings_sidebar.model_providers");
+		},
 		icon: Plug,
 	},
 	{
 		id: "backend",
-		label: "Backend settings",
+		get label() {
+			return t("ui.settings.navigation.settings_sidebar.backend_settings");
+		},
 		icon: SlidersHorizontal,
 	},
 	{
 		id: "updates",
-		label: "Application updates",
+		get label() {
+			return t("ui.settings.navigation.settings_sidebar.application_updates");
+		},
 		icon: Download,
 	},
 ];

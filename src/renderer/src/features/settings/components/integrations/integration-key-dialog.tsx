@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * Adding the key(s) an integration's config references, from Settings.
  *
@@ -191,6 +193,7 @@ export const IntegrationKeyDialog: FC<IntegrationKeyDialogProps> = ({
 	onSave,
 	onClose,
 }) => {
+	useI18nLocale();
 	const [values, setValues] = useState<Record<string, string>>({});
 	const [replace, setReplace] = useState(false);
 	/*
@@ -212,14 +215,15 @@ export const IntegrationKeyDialog: FC<IntegrationKeyDialogProps> = ({
 			open
 			onClose={onClose}
 			maxWidth="xs"
-			title={
-				keyless || keyNames.length === 1
-					? `Add the key for ${name}`
-					: `Add keys for ${name}`
-			}
+			title={t(
+				"ui.settings.integrations.integration_key_dialog.add_keys_heading",
+				{ count: keyless ? 1 : keyNames.length, name },
+			)}
 			actions={
 				<>
-					<SecondaryButton onClick={onClose}>Cancel</SecondaryButton>
+					<SecondaryButton onClick={onClose}>
+						{t("ui.settings.integrations.integration_key_dialog.cancel")}
+					</SecondaryButton>
 					<PrimaryButton
 						disabled={!filled || saving}
 						onClick={() => {
@@ -235,7 +239,11 @@ export const IntegrationKeyDialog: FC<IntegrationKeyDialogProps> = ({
 							onSave(payload.values, payload.confirmedReplace, payload.header);
 						}}
 					>
-						{saving ? "Saving…" : "Save and test"}
+						{saving
+							? t("ui.settings.integrations.integration_key_dialog.saving")
+							: t(
+									"ui.settings.integrations.integration_key_dialog.save_and_test",
+								)}
 					</PrimaryButton>
 				</>
 			}
@@ -256,24 +264,33 @@ export const IntegrationKeyDialog: FC<IntegrationKeyDialogProps> = ({
 			>
 				<p className="-mx-1.5">
 					{keyless
-						? "Keys are saved encrypted on this computer. This one is stored under a name derived from this integration, so no other server shares it."
-						: "Keys are saved encrypted on this computer. Other integrations that use the same key name share it."}
+						? t(
+								"ui.settings.integrations.integration_key_dialog.keys_are_saved_encrypted_on_this_computer_this_one_is_stored_unde",
+							)
+						: t(
+								"ui.settings.integrations.integration_key_dialog.keys_are_saved_encrypted_on_this_computer_other_integrations_that",
+							)}
 				</p>
 				{keyless ? (
 					<div className="flex flex-col gap-1.5">
 						<Label htmlFor="integration-key-name">
-							The header this server wants the key in
+							{t(
+								"ui.settings.integrations.integration_key_dialog.the_header_this_server_wants_the_key_in",
+							)}
 						</Label>
 						<Input
 							id="integration-key-name"
 							autoComplete="off"
-							placeholder="e.g. Authorization or X-Api-Key"
+							placeholder={t(
+								"ui.settings.integrations.integration_key_dialog.e_g_authorization_or_x_api_key",
+							)}
 							value={freeName}
 							onChange={(event) => setFreeName(event.target.value)}
 						/>
 						<p className="-mx-1.5 text-ink-dim text-meta">
-							This server declares no key of its own, so Local Operator adds one
-							to its config for you.
+							{t(
+								"ui.settings.integrations.integration_key_dialog.this_server_declares_no_key_of_its_own_so_local_operator_adds_one",
+							)}
 						</p>
 					</div>
 				) : null}

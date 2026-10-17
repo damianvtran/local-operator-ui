@@ -2942,6 +2942,28 @@ test("session_pins is its own feature key, and its absence closes the feature", 
 	);
 	assert.equal(desktopFeatureEnabled(undefined, "session_pins"), false);
 });
+
+test("aside_adopt_queue is its own feature key, and its absence keeps the idle-only adopt", () => {
+	/*
+	 * Fails closed like every key: an owner that does not advertise the queue still
+	 * writes an adopt immediately, so the panel must keep its idle-only gate there.
+	 */
+	assert.equal(
+		desktopFeatureEnabled(
+			{ desktop_available: true, features: { aside_adopt_queue: 1 } },
+			"aside_adopt_queue",
+		),
+		true,
+	);
+	assert.equal(
+		desktopFeatureEnabled(
+			{ desktop_available: true, features: {} },
+			"aside_adopt_queue",
+		),
+		false,
+	);
+	assert.equal(desktopFeatureEnabled(undefined, "aside_adopt_queue"), false);
+});
 /**
  * The paged catalogue's four new parameters, and the one promise they carry.
  *

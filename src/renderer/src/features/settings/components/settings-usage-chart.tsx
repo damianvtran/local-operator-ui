@@ -1,5 +1,7 @@
 import { formatTokens } from "@features/chat/pickers/panels/formatters";
 import { ChartFrame } from "@features/chat/pickers/panels/primitives/chart-frame";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { Line, LineChart } from "recharts";
 
 /**
@@ -15,13 +17,22 @@ export function SettingsUsageChart({
 	metric: "credits" | "tokens";
 	data: { bucket: string; value: number }[];
 }) {
+	useI18nLocale();
 	return (
 		<ChartFrame
 			title=""
 			heightClassName="h-62"
 			yAxisWidth={48}
 			unit={metric === "credits" ? "credits" : "tokens"}
-			srSummary={`${metric === "credits" ? "Credits consumed" : "Tokens used"} over the last 30 days, plotted per day across ${data.length} days.`}
+			srSummary={
+				metric === "credits"
+					? t("ui.settings.account.settings_usage_chart.credits_summary", {
+							days: data.length,
+						})
+					: t("ui.settings.account.settings_usage_chart.tokens_summary", {
+							days: data.length,
+						})
+			}
 			xTickFormatter={(value) => value}
 			yTickFormatter={(value) =>
 				metric === "credits" ? `$${value.toFixed(2)}` : formatTokens(value)
@@ -34,7 +45,11 @@ export function SettingsUsageChart({
 					strokeWidth={2}
 					dot={false}
 					activeDot={{ r: 4, strokeWidth: 0 }}
-					name={metric === "credits" ? "Credits consumed" : "Tokens used"}
+					name={
+						metric === "credits"
+							? t("ui.settings.account.settings_usage_chart.credits_consumed")
+							: t("ui.settings.account.settings_usage_chart.tokens_used")
+					}
 				/>
 			</LineChart>
 		</ChartFrame>

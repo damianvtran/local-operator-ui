@@ -1,0 +1,120 @@
+{
+	"ui.settings.speech.speech_section.try_again": {
+		"role": "Button in the speech panel error fallback",
+		"tone": "Plain imperative; no exclamation, no please.",
+		"length": "Button label; one line, never wraps. English is 9 characters; keep it a short verb phrase of similar width.",
+		"note": "Reloads only the speech panel after it threw an error."
+	},
+	"ui.settings.speech.speech_section.retry": {
+		"role": "Button beside a failed availability read",
+		"tone": "Plain imperative; no exclamation, no please.",
+		"length": "Button label; one line, never wraps. English is 5 characters; keep it a short verb phrase of similar width.",
+		"note": "Re-reads which voice provider is available."
+	},
+	"ui.settings.speech.speech_section.speaks_through": {
+		"role": "Info-grid label",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Field or row label above/beside a control; one line. English is 14 characters.",
+		"note": "Names which provider is currently producing the assistant's voice. The value is a provider name, or \"Nothing yet\"."
+	},
+	"ui.settings.speech.speech_section.availability": {
+		"role": "Info-grid label",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Field or row label above/beside a control; one line. English is 12 characters.",
+		"note": "Whether any voice provider can speak right now. The value is \"Ready\" or \"No provider\"."
+	},
+	"ui.settings.speech.speech_section.the_setting_could_not_be_saved": {
+		"role": "Inline error under a speech row",
+		"tone": "Neutral warning; says what happened and the next step, never blames the user.",
+		"length": "Inline message that wraps in an alert or helper line. English is 31 characters.",
+		"note": "Shown when writing one speech setting fails. Appears next to the row that failed."
+	},
+	"ui.settings.speech.speech_section.the_setting_could_not_be_reset": {
+		"role": "Inline error under a speech row",
+		"tone": "Neutral warning; says what happened and the next step, never blames the user.",
+		"length": "Inline message that wraps in an alert or helper line. English is 31 characters.",
+		"note": "Shown when restoring one speech setting to default fails."
+	},
+	"ui.settings.speech.speech_section.speech_voicing": {
+		"role": "Settings section heading (h2)",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "Section or list heading; one line, sentence case. English is 14 characters.",
+		"note": "Heading of the section; same words as the sidebar entry."
+	},
+	"ui.settings.speech.speech_section.how_the_assistant_sounds_when_it_speaks_aloud": {
+		"role": "Description under the Speech voicing heading",
+		"tone": "Plain, friendly second person; explains rather than commands.",
+		"length": "Wrapping paragraph in the settings content column (about 60-70 characters per line); no length cap, keep every fact. English is 46 characters.",
+		"note": "One sentence. \"Speaks aloud\" means text-to-speech output, not microphone input."
+	},
+	"ui.settings.speech.speech_section.speech_settings_could_not_be_loaded": {
+		"role": "Alert shown when the speech registry read fails",
+		"tone": "Neutral warning; says what happened and the next step, never blames the user.",
+		"length": "Inline message that wraps in an alert or helper line. English is 36 characters.",
+		"note": "Whole sentence; a Retry button sits beside it."
+	},
+	"ui.settings.speech.speech_section.nothing_yet": {
+		"role": "Info-grid value for \"Speaks through\"",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 11 characters.",
+		"note": "Shown when no provider has spoken. Lowercase-sentence fragment is fine in languages where that reads naturally."
+	},
+	"ui.settings.speech.speech_section.no_provider": {
+		"role": "Info-grid value for \"Availability\"",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 11 characters.",
+		"note": "No voice provider is configured or reachable. A provider is a speech service."
+	},
+	"ui.settings.speech.speech_section.available": {
+		"role": "Parenthesised suffix after a provider name in a ranked list",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Part of a longer visible sentence, not standalone. English is 11 characters.",
+		"note": "Appended in brackets after a provider name, for example \"OpenAI (available)\". Keep the parentheses."
+	},
+	"ui.settings.speech.speech_section.not_available": {
+		"role": "Parenthesised suffix after a provider name in a ranked list",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Part of a longer visible sentence, not standalone. English is 15 characters.",
+		"note": "Appended in brackets after a provider name, for example \"ElevenLabs (not available)\". Keep the parentheses."
+	},
+	"ui.settings.speech.speech_settings_model.radient_pass": {
+		"role": "Provider name in the speech provider list",
+		"tone": "Technical register; keeps product and protocol names exactly.",
+		"length": "Field or row label above/beside a control; one line. English is 12 characters.",
+		"note": "\"Radient Pass\" is a product name (a paid pass); keep it as written."
+	},
+	"ui.settings.speech.speech_settings_model.no_provider": {
+		"role": "Provider name used when the resolver found none",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Field or row label above/beside a control; one line. English is 11 characters.",
+		"note": "Shown as the serving provider when nothing is available."
+	},
+	"ui.settings.speech.speech_section.copy_backend_older_sentence": {
+		"role": "Alert when the server is too old for the speech feature",
+		"tone": "Neutral warning; says what happened and the next step, never blames the user.",
+		"length": "Inline message that wraps in an alert or helper line. English is 101 characters.",
+		"note": "Tells the user to update the server. \"Voicing surface\" means the speech-settings feature of the server."
+	},
+	"ui.settings.speech.speech_section.copy_unavailable_sentence": {
+		"role": "Alert when availability could not be read",
+		"tone": "Neutral warning; says what happened and the next step, never blames the user.",
+		"length": "Inline message that wraps in an alert or helper line. English is 38 characters.",
+		"note": "Followed by the server error text on the same line, so end without extra punctuation concerns."
+	},
+	"ui.settings.speech.speech_section.ready": {
+		"role": "Info-grid value for \"Availability\"",
+		"tone": "Matter-of-fact state word; not a promise about the service.",
+		"length": "Single-line status readout beside a value; truncates rather than wraps. English is 5 characters.",
+		"note": "A voice provider can speak now."
+	},
+	"ui.settings.speech.speech_section.missing_voice_rows": {
+		"role": "Helper line under the speech settings",
+		"tone": "Calm, factual sentence; no blame, no alarm.",
+		"length": "Inline message that wraps in an alert or helper line. English is 171 characters.",
+		"note": "{rows} is a comma-separated list of setting keys, not prose. The English singular says \"that row\" and plural \"those rows\". Plural: English has one/other only. ru needs few/many; ar needs zero/two/few/many; supply every arm your language requires and keep # where the number belongs.",
+		"placeholders": {
+			"count": "How many settings are missing; selects the singular or plural arm.",
+			"rows": "Comma-separated technical setting keys such as speech.voice.language; insert verbatim."
+		}
+	}
+}

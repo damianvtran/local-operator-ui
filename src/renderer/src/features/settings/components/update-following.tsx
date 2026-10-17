@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The "how much of a change is news" control (issue #672).
  *
@@ -30,7 +32,6 @@ import { UpdateType } from "@shared/store/deferred-updates-store";
 import { useUpdateNoticeStore } from "@shared/store/update-notice-store";
 import {
 	FOLLOWED_SEGMENTS,
-	FOLLOWED_SEGMENT_COPY,
 	type FollowedSegment,
 } from "@shared/utils/update-segment";
 import type { FC } from "react";
@@ -53,11 +54,48 @@ import type { FC } from "react";
  * (the band is 720px wide with its text using about 110px of it, measured).
  */
 const SURFACE_LABELS: Record<UpdateType, string> = {
-	[UpdateType.UI]: "Application updates",
-	[UpdateType.BACKEND]: "Server updates",
+	get [UpdateType.UI]() {
+		return t("ui.settings.updates.update_following.application_updates");
+	},
+	get [UpdateType.BACKEND]() {
+		return t("ui.settings.updates.update_following.server_updates");
+	},
+};
+
+// Notification policy and its persisted enum belong to the shared utility.
+// These getters defer its settings presentation until the current-locale render.
+const SEGMENT_COPY: Record<
+	FollowedSegment,
+	{ label: string; description: string }
+> = {
+	patch: {
+		get label() {
+			return t("ui.settings.updates.update_following.patch_label");
+		},
+		get description() {
+			return t("ui.settings.updates.update_following.patch_help");
+		},
+	},
+	minor: {
+		get label() {
+			return t("ui.settings.updates.update_following.minor_label");
+		},
+		get description() {
+			return t("ui.settings.updates.update_following.minor_help");
+		},
+	},
+	major: {
+		get label() {
+			return t("ui.settings.updates.update_following.major_label");
+		},
+		get description() {
+			return t("ui.settings.updates.update_following.major_help");
+		},
+	},
 };
 
 const SurfaceRow: FC<{ type: UpdateType }> = ({ type }) => {
+	useI18nLocale();
 	const followed = useUpdateNoticeStore((state) => state.followed[type]);
 	const setFollowedSegment = useUpdateNoticeStore(
 		(state) => state.setFollowedSegment,
@@ -67,7 +105,7 @@ const SurfaceRow: FC<{ type: UpdateType }> = ({ type }) => {
 			<div className="min-w-0">
 				<div className="text-body-sm text-ink">{SURFACE_LABELS[type]}</div>
 				<div className="mt-0.5 text-meta text-ink-muted">
-					{FOLLOWED_SEGMENT_COPY[followed].description}
+					{SEGMENT_COPY[followed].description}
 				</div>
 			</div>
 			<Select
@@ -90,7 +128,10 @@ const SurfaceRow: FC<{ type: UpdateType }> = ({ type }) => {
 					 * label-in-name rule (WCAG 2.5.3) the band's own header cites, applied to
 					 * the one control on this page that did not follow it.
 					 */
-					aria-label={`${SURFACE_LABELS[type]}: ${FOLLOWED_SEGMENT_COPY[followed].label}`}
+					aria-label={t("ui.settings.updates.update_following.surface_choice", {
+						surface: SURFACE_LABELS[type],
+						choice: SEGMENT_COPY[followed].label,
+					})}
 					className="w-full sm:w-56"
 					data-followed-segment={type}
 				>
@@ -108,9 +149,9 @@ const SurfaceRow: FC<{ type: UpdateType }> = ({ type }) => {
 							 * a sentence laid out inside the item would be a visual change no
 							 * design round could review.
 							 */
-							title={FOLLOWED_SEGMENT_COPY[segment].description}
+							title={SEGMENT_COPY[segment].description}
 						>
-							{FOLLOWED_SEGMENT_COPY[segment].label}
+							{SEGMENT_COPY[segment].label}
 						</SelectItem>
 					))}
 				</SelectContent>
@@ -119,32 +160,38 @@ const SurfaceRow: FC<{ type: UpdateType }> = ({ type }) => {
 	);
 };
 
-export const UpdateFollowing: FC = () => (
-	<div className={cn("flex flex-col gap-3")}>
-		<div>
-			{/*
-			 * THE HEADING IS A HEADING (review D2). It was `text-body-sm`, the row labels'
-			 * own class, so three same-weight lines stacked before the first control and
-			 * the only thing distinguishing the block's top was a `gap-3` - which is the
-			 * step its neighbours use for a SECTION heading (`SettingsSection`'s own h2,
-			 * `mcp-management-section`'s inner h3), so the block now has a top rather
-			 * than a third label.
-			 */}
-			<h3 className="text-heading text-ink">Update notifications</h3>
-			{/*
-			 * WHAT THE READER SEES, NOT WHAT THE APP CALLS IT (review D6): "raises the
-			 * update indicator" named a component the user has never been shown. The
-			 * notice is the strip at the bottom of the window, and that is how the
-			 * sentence names it.
-			 */}
-			<p className="mt-1 text-meta text-ink-muted">
-				How much of a version change shows the update notice at the bottom of
-				the window. A check you run yourself always reports what it finds.
-			</p>
+export const UpdateFollowing: FC = () => {
+	useI18nLocale();
+	return (
+		<div className={cn("flex flex-col gap-3")}>
+			<div>
+				{/*
+				 * THE HEADING IS A HEADING (review D2). It was `text-body-sm`, the row labels'
+				 * own class, so three same-weight lines stacked before the first control and
+				 * the only thing distinguishing the block's top was a `gap-3` - which is the
+				 * step its neighbours use for a SECTION heading (`SettingsSection`'s own h2,
+				 * `mcp-management-section`'s inner h3), so the block now has a top rather
+				 * than a third label.
+				 */}
+				<h3 className="text-heading text-ink">
+					{t("ui.settings.updates.update_following.update_notifications")}
+				</h3>
+				{/*
+				 * WHAT THE READER SEES, NOT WHAT THE APP CALLS IT (review D6): "raises the
+				 * update indicator" named a component the user has never been shown. The
+				 * notice is the strip at the bottom of the window, and that is how the
+				 * sentence names it.
+				 */}
+				<p className="mt-1 text-meta text-ink-muted">
+					{t(
+						"ui.settings.updates.update_following.how_much_of_a_version_change_shows_the_update_notice_at_the_botto",
+					)}
+				</p>
+			</div>
+			<div className="flex flex-col gap-3">
+				<SurfaceRow type={UpdateType.UI} />
+				<SurfaceRow type={UpdateType.BACKEND} />
+			</div>
 		</div>
-		<div className="flex flex-col gap-3">
-			<SurfaceRow type={UpdateType.UI} />
-			<SurfaceRow type={UpdateType.BACKEND} />
-		</div>
-	</div>
-);
+	);
+};

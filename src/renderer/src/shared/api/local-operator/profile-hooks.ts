@@ -62,6 +62,87 @@ export type TeamMember = {
 	role: string;
 	count: number;
 	kind: "agent" | "team";
+	/**
+	 * The slot's MODEL tier override, or absent for "no override on this layer".
+	 *
+	 * ADDITIVE: a backend older than the member-override contract ignores the key
+	 * on write and never answers it on read, so absence is the only value such a
+	 * server can produce and every reader below treats it as the fall-through it
+	 * is. The words are the tier map's own (`lo` | `med` | `hi`).
+	 */
+	tier?: MemberTier | null;
+	/**
+	 * The slot's REASONING effort override, or absent for no override.
+	 *
+	 * `auto` is a VALUE, not an absence: it overrides the layer below to the
+	 * model's own default, where an absent key falls through to whatever the tier
+	 * map says. Cleared by sending `null` (the backend accepts it as "no
+	 * override").
+	 */
+	effort?: MemberEffort | null;
+};
+
+/** The tier words the wire and the tier map share. */
+export type MemberTier = "lo" | "med" | "hi";
+
+/**
+ * The reasoning efforts a slot may name, in the backend's own spelling.
+ *
+ * A UNION RATHER THAN `string`, so the payload's type and the vocabulary cannot
+ * drift: the contract refuses anything outside these eight words, and a member row
+ * that could hold a ninth would only be discoverable by a refused write.
+ */
+export type MemberEffort =
+	| "auto"
+	| "none"
+	| "minimal"
+	| "low"
+	| "medium"
+	| "high"
+	| "xhigh"
+	| "max";
+
+/*
+ * The `/effective` reading (P3).
+ *
+ * WHAT IT ANSWERS, and why it is a route rather than a client-side derivation:
+ * the model a member will run on is decided by up to three layers (the team's
+ * launch suggestion, the slot's own override, the agent row's `effort:` tag) and
+ * the answer is only true on the machine holding the tier map. Deriving it here
+ * would be a second opinion about a resolution the backend owns - the same
+ * reason `definition_revision` is never client-derived.
+ *
+ * EVERY `source` IS A LITERAL UNION rather than a string: the labels are drawn
+ * from them, and an unrecognised word must fail the type-check rather than
+ * render as an empty label. Both `value`s may be null, and each means something
+ * specific - see the fields.
+ */
+export type TeamEffectiveSource = "team" | "row" | "none";
+export type TeamEffectiveModelSource = "tier" | "session";
+export type TeamEffectiveEffortSource = "team" | "tier" | "model_default";
+export type TeamEffectiveMember = {
+	role: string;
+	kind: "agent" | "team";
+	tier: { value: string | null; source: TeamEffectiveSource };
+	/** `value: null` = this member runs on the LAUNCHING SESSION's model. */
+	model: { value: string | null; source: TeamEffectiveModelSource };
+	/**
+	 * `value` is clamped against the model's ladder when the model is known,
+	 * `requested` is what the layers actually asked for, and the two differ when a
+	 * model's own ladder tops out below the request.
+	 */
+	effort: {
+		value: string | null;
+		requested: string | null;
+		source: TeamEffectiveEffortSource;
+	};
+	/** False = this member could not start as configured; `reason` says why. */
+	available: boolean;
+	reason: string;
+};
+export type TeamEffective = {
+	team: string;
+	members: TeamEffectiveMember[];
 };
 export type ReusableTeam = {
 	id: string;
@@ -156,6 +237,39 @@ export function useTeamDetail(name: string | null, enabled: boolean) {
 		queryFn: () =>
 			desktopResult<ReusableTeam>({ op: "teams.get", name: name ?? "" }),
 		retry: false,
+	});
+}
+
+/**
+ * One team's EFFECTIVE model and reasoning effort per member, with the layer
+ * each was set on.
+ *
+ * WHY A SEPARATE QUERY RATHER THAN A FIELD ON THE TEAM. It is a resolution, not
+ * a stored value: it moves when the tier map in Settings moves, when the agent
+ * row's own pin moves, or when another window edits the roster - none of which
+ * touch this team's record. Folding it into `teams.get`'s answer would make
+ * every roster read pay for a resolution most of them do not display, and would
+ * give the reading the team record's cache lifetime, which is the wrong one.
+ *
+ * IT REFUSES TO RETRY for `useTeamDetail`'s reason, and one more: a 404 here is
+ * the CAPABILITY PROBE rather than a failure (an older server has no such route),
+ * so a retry would ask a question whose answer cannot change. The caller decides
+ * what a 404 means - the editor hides its override controls - and that decision
+ * lives in `features/agents/utils/member-overrides`.
+ */
+export function useTeamEffective(name: string | null, enabled: boolean) {
+	return useQuery<TeamEffective>({
+		queryKey: ["desktop", "team", name, "effective"],
+		enabled: enabled && Boolean(name),
+		queryFn: () =>
+			desktopResult<TeamEffective>({ op: "teams.effective", name: name ?? "" }),
+		retry: false,
+		/*
+		 * NOT `useAuthoringRefresh`'s subject, deliberately: that hook watches the
+		 * authoring revision, and a tier map edited in Settings publishes none of it.
+		 * The editor re-reads this after its own save, which is the write that can
+		 * change it from inside this app.
+		 */
 	});
 }
 

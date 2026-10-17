@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The Keyboard shortcuts group (issue #928): one row per registry action, each
  * recording and clearing its own chord.
@@ -72,6 +74,7 @@ const rowLabel = (action: KeymapAction): string => {
 };
 
 const ShortcutRow: FC<{ action: KeymapAction }> = ({ action }) => {
+	useI18nLocale();
 	const fieldId = useId();
 	const fieldRef = useRef<HTMLInputElement | null>(null);
 	/*
@@ -106,9 +109,16 @@ const ShortcutRow: FC<{ action: KeymapAction }> = ({ action }) => {
 					id={fieldId}
 					readOnly
 					value={
-						effective === null ? "No shortcut" : chordGlyph(effective, platform)
+						effective === null
+							? t(
+									"ui.settings.shortcuts.keyboard_shortcuts_section.no_shortcut",
+								)
+							: chordGlyph(effective, platform)
 					}
-					aria-label={`${label}: press the keys you want`}
+					aria-label={t(
+						"ui.settings.shortcuts.keyboard_shortcuts_section.label_press_the_keys_you_want",
+						{ label: String(label) },
+					)}
 					/*
 					 * The row's stable hook for stories and capture rigs: the label
 					 * above is copy and moves with the design, while this names the
@@ -210,7 +220,10 @@ const ShortcutRow: FC<{ action: KeymapAction }> = ({ action }) => {
 					<Button
 						variant="secondary"
 						size="sm"
-						aria-label={`Clear ${label}'s shortcut`}
+						aria-label={t(
+							"ui.settings.shortcuts.keyboard_shortcuts_section.clear_label_s_shortcut",
+							{ label: String(label) },
+						)}
 						onClick={() => {
 							/*
 							 * CLEAR IS NOT RESET (UX round 1's U4): the explicit no-chord
@@ -223,26 +236,31 @@ const ShortcutRow: FC<{ action: KeymapAction }> = ({ action }) => {
 							fieldRef.current?.focus();
 						}}
 					>
-						Clear
+						{t("ui.settings.shortcuts.keyboard_shortcuts_section.clear")}
 					</Button>
 				)}
 				{override !== undefined && (
 					<Button
 						variant="secondary"
 						size="sm"
-						aria-label={`Reset ${label} to its default`}
+						aria-label={t(
+							"ui.settings.shortcuts.keyboard_shortcuts_section.reset_label_to_its_default",
+							{ label: String(label) },
+						)}
 						onClick={() => {
 							setShortcutBinding(action.id, null);
 							fieldRef.current?.focus();
 						}}
 					>
-						Reset
+						{t("ui.settings.shortcuts.keyboard_shortcuts_section.reset")}
 					</Button>
 				)}
 			</div>
 			{recording && (
 				<span className="text-meta text-ink-dim">
-					Press the keys you want; Esc cancels.
+					{t(
+						"ui.settings.shortcuts.keyboard_shortcuts_section.press_the_keys_you_want_esc_cancels",
+					)}
 				</span>
 			)}
 			{refusal !== null && (
@@ -255,17 +273,24 @@ const ShortcutRow: FC<{ action: KeymapAction }> = ({ action }) => {
 export const KeyboardShortcutsSection: FC<{
 	/** Scroll target for the settings sidebar. */
 	sectionRef?: RefObject<HTMLDivElement>;
-}> = ({ sectionRef }) => (
-	<SettingsSection
-		title="Keyboard shortcuts"
-		icon={Keyboard}
-		description="Shortcuts for the panel rail. Focus a field and press the keys you want; Esc cancels, Reset restores an action's default, and Clear leaves it unbound."
-		sectionRef={sectionRef}
-	>
-		<div className="flex flex-col gap-4">
-			{KEYMAP_ACTIONS.map((action) => (
-				<ShortcutRow key={action.id} action={action} />
-			))}
-		</div>
-	</SettingsSection>
-);
+}> = ({ sectionRef }) => {
+	useI18nLocale();
+	return (
+		<SettingsSection
+			title={t(
+				"ui.settings.shortcuts.keyboard_shortcuts_section.keyboard_shortcuts",
+			)}
+			icon={Keyboard}
+			description={t(
+				"ui.settings.shortcuts.keyboard_shortcuts_section.shortcuts_for_the_panel_rail_focus_a_field_and_press_the_keys_you",
+			)}
+			sectionRef={sectionRef}
+		>
+			<div className="flex flex-col gap-4">
+				{KEYMAP_ACTIONS.map((action) => (
+					<ShortcutRow key={action.id} action={action} />
+				))}
+			</div>
+		</SettingsSection>
+	);
+};

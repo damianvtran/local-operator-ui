@@ -42,8 +42,6 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { useEffect } from "react";
 import "../../../styles/index.css";
 import { ChatHeader } from "./chat-header";
-import { deriveRunDetails } from "./run-details/run-detail-model";
-import * as fixtures from "./run-details/run-details.fixtures";
 
 const meta = {
 	title: "Chat/Header cluster",
@@ -66,7 +64,6 @@ type Story = StoryObj;
  * behind, and every number read off it would be about a different arrangement.
  */
 const Cluster = ({
-	details,
 	/*
 	 * THE ASKS ROW'S KNOBS (#896). `onToggleAsks` is handed in for every story - the
 	 * menu row is present whenever a host offers a door, which is what the
@@ -80,7 +77,6 @@ const Cluster = ({
 }: {
 	asksScope?: "session" | "fleet";
 	asksOpen?: boolean;
-	details: ReturnType<typeof deriveRunDetails>;
 }) => {
 	useEffect(() => {
 		useUiPreferencesStore.setState({
@@ -98,7 +94,6 @@ const Cluster = ({
 				onOpenOptions={() => undefined}
 				onToggleBrowser={() => undefined}
 				onOpenConsole={() => undefined}
-				runDetails={details}
 				onToggleAsks={() => undefined}
 				asksScope={asksScope}
 				asksOpen={asksOpen}
@@ -109,7 +104,7 @@ const Cluster = ({
 
 /** No badge: the cluster's own spacing and nothing else. */
 export const NoApproval: Story = {
-	render: () => <Cluster details={deriveRunDetails(fixtures.idle())} />,
+	render: () => <Cluster />,
 };
 
 /*
@@ -130,19 +125,11 @@ export const NoApproval: Story = {
  * there); this story is the menu's half of the same pairing.
  */
 export const AsksFleet: Story = {
-	render: () => (
-		<Cluster details={deriveRunDetails(fixtures.idle())} asksScope="fleet" />
-	),
+	render: () => <Cluster asksScope="fleet" />,
 };
 
 /** The row while its surface is up: mounted as a TOGGLE like the browser row, so
  * the label reads `Close asks` - the same one-string-two-directions idiom. */
 export const AsksOpen: Story = {
-	render: () => (
-		<Cluster
-			details={deriveRunDetails(fixtures.idle())}
-			asksScope="session"
-			asksOpen={true}
-		/>
-	),
+	render: () => <Cluster asksScope="session" asksOpen={true} />,
 };

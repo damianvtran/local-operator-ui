@@ -202,9 +202,9 @@ const FLEET_ROWS = [
 		question: "The phone portal deploy is ready. Push it?",
 		options: ["push", "wait"],
 	}),
-	/* A timed-out ask: still answerable (the backend folds `timed_out` into the
-	   outstanding set), and the panel must show it as its own state rather than
-	   hiding it or reading it as settled. */
+	/* A timed-out ask: LAPSED (D10, D11). The backend still folds `timed_out` into
+	   the outstanding set, but the panel files it with the settled rows, collapsed
+	   behind a `Timed out` badge, read-only. */
 	fleetRow({
 		ask_id: "a-f6",
 		session_id: TOOLS,
