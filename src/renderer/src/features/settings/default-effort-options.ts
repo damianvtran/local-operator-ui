@@ -28,8 +28,9 @@ import { t } from "@shared/i18n";
  * resolves. Showing the resolved level as a chosen one — or writing it on
  * mount — would pin a level the user never chose, and would keep pinning it
  * after the model's own default changed. The row is named "Model default" and
- * its description states the level the preview currently reports, which is
- * what the reader needs to understand the choice without the app making it.
+ * its description states the level the model resolves to with NOTHING stored -
+ * the only state in which the preview's report describes the unset row rather
+ * than the stored value's own clamp (see `defaultEffortOptions`).
  *
  * ## Why an off-ladder stored value is CLAMPED rather than merely shown
  *
@@ -71,14 +72,27 @@ export type DefaultEffortOption = {
  */
 export function defaultEffortOptions(input: {
 	ladder: readonly string[];
-	/** The level the backend resolves with no rung chosen, or null. */
+	/** The level the preview reports with no rung chosen, or null. */
 	resolvedLevel: string | null;
+	/**
+	 * The stored `model_effort`.
+	 *
+	 * REQUIRED, because it decides whether the resolved level describes the
+	 * unset row at all: with nothing stored the preview answers the model's own
+	 * default, which is exactly what `""` selects; with a value stored the
+	 * preview answers THAT value clamped into this model's ladder
+	 * (`resolve_effort_in` reads the configured level), which is a fact about
+	 * the selected row, not about the model's default. Describing `""` with it
+	 * would say "Model default runs at High" while clearing the row would run
+	 * the model's seeded level instead.
+	 */
+	stored: string;
 }): DefaultEffortOption[] {
 	const modelDefault: DefaultEffortOption = {
 		id: "",
 		name: t("ui.settings.model.default_effort.model_default"),
 	};
-	if (input.resolvedLevel) {
+	if (input.resolvedLevel && input.stored.trim() === "") {
 		modelDefault.description = t(
 			"ui.settings.model.default_effort.model_default_resolves",
 			{ level: effortDisplay(input.resolvedLevel) },
@@ -274,6 +288,7 @@ export function defaultEffortState(input: {
 		options: defaultEffortOptions({
 			ladder,
 			resolvedLevel: input.resolvedLevel,
+			stored: input.stored,
 		}),
 		selectedId: defaultEffortSelectedId(input.stored, ladder),
 		disabled: false,
@@ -288,7 +303,11 @@ function state(
 ): DefaultEffortState {
 	return {
 		kind,
-		options: defaultEffortOptions({ ladder: [], resolvedLevel: null }),
+		options: defaultEffortOptions({
+			ladder: [],
+			resolvedLevel: null,
+			stored: "",
+		}),
 		selectedId: "",
 		disabled: true,
 		helper,
