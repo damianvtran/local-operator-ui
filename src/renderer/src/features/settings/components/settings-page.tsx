@@ -1307,7 +1307,19 @@ export const SettingsPage: FC = () => {
 												<button
 													type="button"
 													className="text-accent underline underline-offset-2"
-													onClick={() => handleSelectSection("providers")}
+													onClick={() => {
+														handleSelectSection("providers");
+														/*
+														 * Keep the landing and make the jump keyboard-complete: the
+														 * container is focusable (`tabIndex={-1}` via its `id`), so
+														 * `preventScroll` keeps the smooth scroll's destination while
+														 * the next Tab continues INSIDE the section. Scoped to this
+														 * jump only; the sidebar keeps its pointer-first behaviour.
+														 */
+														sectionRefs.providers.current?.focus({
+															preventScroll: true,
+														});
+													}}
 												>
 													{t(
 														"ui.settings.model.provider_callout.providers_link",
@@ -1453,6 +1465,14 @@ export const SettingsPage: FC = () => {
 								"ui.settings.navigation.settings_page.sign_in_to_the_services_your_agents_think_with_new_chats_use_your",
 							)}
 							sectionRef={sectionRefs.providers}
+							/*
+							 * An anchor for the callout's jump: `id` makes the container a
+							 * `tabIndex={-1}` focus target, so activation can move focus INTO
+							 * the section (skip-link pattern) and the next Tab continues through
+							 * its controls instead of pulling the view back to where the link
+							 * sits in DOM order.
+							 */
+							id="model-providers"
 						>
 							<ProviderGrid
 								initialProviderId={providerFromQuery}
@@ -1513,10 +1533,12 @@ export const SettingsPage: FC = () => {
 						>
 							<BackendSettingsSection
 								hideInterfaceLanguage
+								hideModelEffort
 								focusKey={
-									settingFocusKey === LANGUAGE_SETTING_KEY
-										? null
-										: settingFocusKey
+									settingFocusKey &&
+									sectionForSettingKey(settingFocusKey, "backend") === "backend"
+										? settingFocusKey
+										: null
 								}
 								initialFilter={settingsSearchFilter}
 							/>

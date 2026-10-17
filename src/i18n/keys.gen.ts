@@ -3315,6 +3315,15 @@ export type MessageParams = {
 	"ui.settings.tour.description": undefined;
 	"ui.settings.tour.title": undefined;
 	"ui.settings.model.default_effort.busy": undefined;
+	"ui.settings.model.default_effort.clamped": {
+		level: string;
+		model: string;
+		resolved: string;
+	};
+	"ui.settings.model.default_effort.clamped_unset": {
+		level: string;
+		model: string;
+	};
 	"ui.settings.model.default_effort.empty": undefined;
 	"ui.settings.model.default_effort.error": undefined;
 	"ui.settings.model.default_effort.helper_ready": undefined;

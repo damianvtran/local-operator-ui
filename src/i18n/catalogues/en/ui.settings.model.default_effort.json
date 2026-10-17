@@ -14,5 +14,7 @@
 	"ui.settings.model.default_effort.unresolved": "This model has not reported its effort levels yet.",
 	"ui.settings.model.default_effort.empty": "Effort is not adjustable on this model.",
 	"ui.settings.model.default_effort.one_level": "This model offers one effort level: {level}.",
+	"ui.settings.model.default_effort.clamped": "{level} is not available on {model}. Using {resolved}.",
+	"ui.settings.model.default_effort.clamped_unset": "{level} is not available on {model}. Using Model default.",
 	"ui.settings.model.default_effort.save_failed": "Your default effort was not saved."
 }

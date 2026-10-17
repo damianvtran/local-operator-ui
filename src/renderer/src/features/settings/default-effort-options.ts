@@ -21,6 +21,17 @@ import { t } from "@shared/i18n";
  * carry the field at all (`local_operator/server/routes/desktop_catalogues.py`),
  * so a second source would be an invention.
  *
+ * ## The storable vocabulary is the backend's too
+ *
+ * The ladder is not the set of values `model_effort` accepts: Radient's ladder
+ * carries `auto` (`model/configure.py`), which is the registry's LABEL for its
+ * empty choice, not a value (`settings_io.py`). The storable set therefore comes
+ * from the settings row the page already reads: `settings.list` carries
+ * `choices[].value` for `model_effort` (`""` plus the rungs the validator
+ * accepts). A ladder rung outside that set is never offered and never written.
+ * This is deliberately not a local table of level names: the backend owns both
+ * vocabularies, and a second copy here would drift from either.
+ *
  * ## Why the unset row exists, and why an unset value is never turned into a level
  *
  * `model_effort` is a settings-registry key whose empty string means "no
@@ -66,10 +77,11 @@ export type DefaultEffortOption = {
  * backend's own ascending order.
  *
  * The unset row's description names the level the model currently resolves to
- * only when the backend reported one. A model whose spec names no level gets
- * no sentence rather than a synthesised "Auto", which is the same rule
- * `effortLevel` states: a level slot holds a level, never a state word.
- */
+ * only when the backend reported a level this key can store. A model whose spec
+ * names no level — or names only the `auto` sentinel — gets no sentence, because
+ * the sentence exists to state WHICH level clearing the row runs; an "Auto" in
+ * that slot would restate the absence of an opinion as if it were a level, the
+ * same rule `effortLevel` states. */
 export function defaultEffortOptions(input: {
 	ladder: readonly string[];
 	/** The level the preview reports with no rung chosen, or null. */
@@ -87,12 +99,27 @@ export function defaultEffortOptions(input: {
 	 * the model's seeded level instead.
 	 */
 	stored: string;
+	/**
+	 * The values `model_effort` can store, from the settings row's
+	 * `choices[].value`. `""` is always one of them; a ladder rung absent from
+	 * this set is a sentinel the registry cannot hold.
+	 */
+	storable: readonly string[];
 }): DefaultEffortOption[] {
 	const modelDefault: DefaultEffortOption = {
 		id: "",
 		name: t("ui.settings.model.default_effort.model_default"),
 	};
-	if (input.resolvedLevel && input.stored.trim() === "") {
+	if (
+		input.resolvedLevel &&
+		input.stored.trim() === "" &&
+		/*
+		 * `auto` is a sentinel, not a level: "Runs at Auto" would restate the
+		 * absence of an opinion in a level's slot. Only a value this key could
+		 * actually store is named by the sentence.
+		 */
+		storableEffortValue(input.resolvedLevel, input.storable) !== null
+	) {
 		modelDefault.description = t(
 			"ui.settings.model.default_effort.model_default_resolves",
 			{ level: effortDisplay(input.resolvedLevel) },
@@ -104,13 +131,43 @@ export function defaultEffortOptions(input: {
 	 * a second naming table for one vocabulary, which is the drift that function
 	 * exists to prevent.
 	 */
-	return [
-		modelDefault,
-		...input.ladder.map((rung) => ({
-			id: rung,
-			name: effortDisplay(rung),
-		})),
-	];
+	return [modelDefault, ...storableRungs(input.ladder, input.storable)];
+}
+
+/**
+ * The storable spelling of one ladder value, or null when `model_effort` cannot
+ * hold it.
+ *
+ * The match folds case because the two vocabularies are separate fields on the
+ * wire and only agree by convention; the RETURNED value is the settings row's
+ * own spelling, which is the one the validator was measured against.
+ */
+export function storableEffortValue(
+	value: string,
+	storable: readonly string[],
+): string | null {
+	const needle = value.trim().toLowerCase();
+	if (needle === "") return null;
+	return (
+		storable.find((entry) => entry.trim().toLowerCase() === needle) ?? null
+	);
+}
+
+/**
+ * The ladder's rungs this key can store, in the backend's order, as rows.
+ *
+ * A sentinel rung (`auto`) maps to no row: the unset row already stores the
+ * empty string that sentinel stands for, so adding one would give one outcome
+ * two names - the same rule the single-rung state states.
+ */
+function storableRungs(
+	ladder: readonly string[],
+	storable: readonly string[],
+): DefaultEffortOption[] {
+	return ladder.flatMap((rung) => {
+		const id = storableEffortValue(rung, storable);
+		return id === null ? [] : [{ id, name: effortDisplay(rung) }];
+	});
 }
 
 /**
@@ -145,22 +202,29 @@ export function defaultEffortSelectedId(
  *   - null when there is nothing to do (unresolved read, empty stored value,
  *     value already in the ladder, or the clamp would equal the stored value);
  *   - `""` when the stored value is off this ladder and the backend resolves
- *     no level for the model;
- *   - the resolved level when the stored value is off this ladder and the
- *     backend names one.
+ *     no level for the model, OR when the resolved level is not storable
+ *     (Radient's `auto` sentinel) — this key may only hold `""` or a member of
+ *     `EFFORT_ORDER` (`settings_io.py`), and a write the registry rejects is
+ *     not a clamp;
+ *   - the resolved level (in the settings row's own spelling) otherwise.
  */
 export function defaultEffortClampWrite(input: {
 	stored: string;
 	ladder: readonly string[] | null;
 	resolvedLevel: string | null;
 	resolved: boolean;
+	storable: readonly string[];
 }): string | null {
 	if (!input.resolved || input.ladder === null) return null;
 	const stored = input.stored.trim().toLowerCase();
 	if (stored === "") return null;
 	if (input.ladder.some((rung) => rung.toLowerCase() === stored)) return null;
-	const target = (input.resolvedLevel ?? "").trim().toLowerCase();
-	return target === stored ? null : target;
+	const resolved = (input.resolvedLevel ?? "").trim();
+	const target =
+		resolved === ""
+			? ""
+			: (storableEffortValue(resolved, input.storable) ?? "");
+	return target.trim().toLowerCase() === stored ? null : target;
 }
 
 /** Every state the row can be in. `unsupported` means "render nothing". */
@@ -181,13 +245,26 @@ export type DefaultEffortState = {
 	kind: DefaultEffortStateKind;
 	/** The rows to hand the control. `[unset]` in states with nothing to offer. */
 	options: DefaultEffortOption[];
-	/** The row the control shows as chosen. */
+	/**
+	 * The row the control shows as chosen, or `NO_EFFORT_SELECTION` when the
+	 * stored value is not known yet (the control then shows its placeholder).
+	 */
 	selectedId: string;
 	/** Whether the control accepts a pick. */
 	disabled: boolean;
 	/** The line under the control, always in the app's one helper register. */
 	helper: string;
 };
+
+/**
+ * The `selectedId` for a state where the stored value could NOT be read.
+ *
+ * Rendering the unset row as chosen would claim "Model default" for a value the
+ * app does not know - exactly what the helper beside it says it could not read.
+ * The control shows its placeholder instead, and matches no option because this
+ * spelling is not a `model_effort` value.
+ */
+export const NO_EFFORT_SELECTION = "\u0000unread";
 
 /**
  * The state machine of the row, from the facts its callers already hold.
@@ -215,6 +292,8 @@ export function defaultEffortState(input: {
 	specResolved: boolean;
 	stored: string;
 	resolvedLevel: string | null;
+	/** The values `model_effort` can store, from `settings.list`'s choices. */
+	storable: readonly string[];
 }): DefaultEffortState {
 	if (!input.supported) {
 		return {
@@ -229,18 +308,30 @@ export function defaultEffortState(input: {
 		return state("no-home", t("ui.settings.model.default_effort.no_home"));
 	}
 	if (!input.hasModel) {
-		return state("no-model", t("ui.settings.model.default_effort.no_model"));
+		/*
+		 * NO CHOSEN ROW: there is no model for a stored value to mean anything
+		 * about, so the field shows its placeholder rather than naming a default
+		 * of nothing. (The settings read may still be in flight here; the state
+		 * does not claim to know the stored value either way.)
+		 */
+		return state(
+			"no-model",
+			t("ui.settings.model.default_effort.no_model"),
+			NO_EFFORT_SELECTION,
+		);
 	}
 	if (input.settings === "loading") {
 		return state(
 			"settings-loading",
 			t("ui.settings.model.default_effort.settings_loading"),
+			NO_EFFORT_SELECTION,
 		);
 	}
 	if (input.settings === "error") {
 		return state(
 			"settings-error",
 			t("ui.settings.model.default_effort.settings_error"),
+			NO_EFFORT_SELECTION,
 		);
 	}
 	if (input.preview === "loading") {
@@ -265,21 +356,39 @@ export function defaultEffortState(input: {
 	if (ladder.length === 0) {
 		return state("empty", t("ui.settings.model.default_effort.empty"));
 	}
+	const rungs = storableRungs(ladder, input.storable);
+	if (rungs.length === 0) {
+		/*
+		 * NOTHING TO CHOOSE, because every rung is outside this key's vocabulary —
+		 * on a Radient model the ladder is `auto` (plus levels), and `auto` is the
+		 * registry's LABEL for `""`, not a storable value. The unset row already
+		 * stores that outcome, so the control names the single level and takes no
+		 * pick rather than offering a row whose write the validator would reject.
+		 */
+		const level = effortDisplay(ladder[0]);
+		return {
+			kind: "one-level",
+			options: [{ id: "", name: level }],
+			selectedId: "",
+			disabled: true,
+			helper: t("ui.settings.model.default_effort.one_level", { level }),
+		};
+	}
 	if (ladder.length === 1) {
-		const level = ladder[0];
 		/*
 		 * ONE RUNG IS NOT A CHOICE. The control renders disabled and shows the
 		 * only level the model accepts, rather than offering "Model default"
 		 * beside a level it cannot avoid: the two rows would be one outcome with
 		 * two names.
 		 */
+		const [rung] = rungs;
 		return {
 			kind: "one-level",
-			options: [{ id: level, name: effortDisplay(level) }],
-			selectedId: level,
+			options: [rung],
+			selectedId: rung.id,
 			disabled: true,
 			helper: t("ui.settings.model.default_effort.one_level", {
-				level: effortDisplay(level),
+				level: rung.name,
 			}),
 		};
 	}
@@ -289,8 +398,12 @@ export function defaultEffortState(input: {
 			ladder,
 			resolvedLevel: input.resolvedLevel,
 			stored: input.stored,
+			storable: input.storable,
 		}),
-		selectedId: defaultEffortSelectedId(input.stored, ladder),
+		selectedId: defaultEffortSelectedId(
+			input.stored,
+			rungs.map((rung) => rung.id),
+		),
 		disabled: false,
 		helper: t("ui.settings.model.default_effort.helper_ready"),
 	};
@@ -300,6 +413,7 @@ export function defaultEffortState(input: {
 function state(
 	kind: DefaultEffortStateKind,
 	helper: string,
+	selectedId = "",
 ): DefaultEffortState {
 	return {
 		kind,
@@ -307,8 +421,9 @@ function state(
 			ladder: [],
 			resolvedLevel: null,
 			stored: "",
+			storable: [],
 		}),
-		selectedId: "",
+		selectedId,
 		disabled: true,
 		helper,
 	};

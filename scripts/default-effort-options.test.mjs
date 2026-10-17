@@ -58,13 +58,36 @@ const ready = (overrides = {}) => ({
 	specResolved: true,
 	stored: "",
 	resolvedLevel: "medium",
+	storable: STORABLE,
 	...overrides,
 });
+
+/**
+ * The values `model_effort` stores on the shipped registry: `""` plus
+ * `EFFORT_ORDER` (`settings_io.py:1259-1283`). A test that varies this set names
+ * why in its own words.
+ */
+const STORABLE = [
+	"",
+	"none",
+	"minimal",
+	"low",
+	"medium",
+	"high",
+	"xhigh",
+	"max",
+];
+
+/** The shipped decisions, called with the shipped vocabulary unless a test says otherwise. */
+const rowsFor = (input) =>
+	defaultEffortOptions({ storable: STORABLE, ...input });
+const clampWrite = (input) =>
+	defaultEffortClampWrite({ storable: STORABLE, ...input });
 
 /* ------------------------------------------------------------------ rows */
 
 test("the unset member comes first and names the level it resolves to", () => {
-	const rows = defaultEffortOptions({
+	const rows = rowsFor({
 		ladder: ["low", "medium", "high"],
 		resolvedLevel: "medium",
 		stored: "",
@@ -88,10 +111,13 @@ test("the unset member comes first and names the level it resolves to", () => {
 });
 
 test("a level this file does not know is printed as the wire spells it", () => {
-	const rows = defaultEffortOptions({
+	const rows = rowsFor({
 		ladder: ["low", "paranoid"],
 		resolvedLevel: null,
 		stored: "",
+		/* A storable rung the display map does not know: the label falls back to
+		 * the wire spelling rather than dropping the row. */
+		storable: ["", "low", "paranoid"],
 	});
 	assert.deepEqual(
 		rows.map((row) => row.name),
@@ -105,7 +131,7 @@ test("a level this file does not know is printed as the wire spells it", () => {
 });
 
 test("xhigh keeps the composer's spelling", () => {
-	const rows = defaultEffortOptions({
+	const rows = rowsFor({
 		ladder: ["low", "medium", "high", "xhigh", "max"],
 		resolvedLevel: "high",
 		stored: "",
@@ -123,7 +149,7 @@ test("a stored level is not described as the model's own default", () => {
 	 * unset row with it would promise a level that clearing the row would not
 	 * run.
 	 */
-	const rows = defaultEffortOptions({
+	const rows = rowsFor({
 		ladder: ["low", "medium", "high"],
 		resolvedLevel: "high",
 		stored: "max",
@@ -151,7 +177,7 @@ test("a stored value off the ladder selects the unset row, never a lie", () => {
 
 test("a stored level in the new ladder is left alone", () => {
 	assert.equal(
-		defaultEffortClampWrite({
+		clampWrite({
 			stored: "high",
 			ladder: ["low", "medium", "high"],
 			resolvedLevel: "medium",
@@ -163,7 +189,7 @@ test("a stored level in the new ladder is left alone", () => {
 
 test("no opinion is never turned into a level", () => {
 	assert.equal(
-		defaultEffortClampWrite({
+		clampWrite({
 			stored: "",
 			ladder: ["low", "medium", "high"],
 			resolvedLevel: "medium",
@@ -176,7 +202,7 @@ test("no opinion is never turned into a level", () => {
 
 test("an off-ladder level is clamped to the level the backend resolves", () => {
 	assert.equal(
-		defaultEffortClampWrite({
+		clampWrite({
 			stored: "xhigh",
 			ladder: ["low", "medium", "high"],
 			resolvedLevel: "medium",
@@ -188,7 +214,7 @@ test("an off-ladder level is clamped to the level the backend resolves", () => {
 
 test("an off-ladder level on a model that resolves none is written as unset", () => {
 	assert.equal(
-		defaultEffortClampWrite({
+		clampWrite({
 			stored: "high",
 			ladder: [],
 			resolvedLevel: null,
@@ -200,7 +226,7 @@ test("an off-ladder level on a model that resolves none is written as unset", ()
 
 test("a clamp that would repeat the stored value is not written", () => {
 	assert.equal(
-		defaultEffortClampWrite({
+		clampWrite({
 			stored: "xhigh",
 			ladder: ["low"],
 			resolvedLevel: "xhigh",
@@ -213,7 +239,7 @@ test("a clamp that would repeat the stored value is not written", () => {
 
 test("no write unless the preview resolved for THIS model", () => {
 	assert.equal(
-		defaultEffortClampWrite({
+		clampWrite({
 			stored: "xhigh",
 			ladder: ["low"],
 			resolvedLevel: "low",
@@ -225,7 +251,7 @@ test("no write unless the preview resolved for THIS model", () => {
 
 test("a ladder that is not an array is not an empty ladder", () => {
 	assert.equal(
-		defaultEffortClampWrite({
+		clampWrite({
 			stored: "high",
 			ladder: null,
 			resolvedLevel: null,
@@ -244,10 +270,14 @@ test("an unsupported backend renders nothing", () => {
 });
 
 test("no model selected disables the row and says what to do", () => {
-	const state = defaultEffortState(ready({ hasModel: false }));
+	const state = defaultEffortState(ready({ hasModel: false, stored: "high" }));
 	assert.equal(state.kind, "no-model");
 	assert.equal(state.disabled, true);
 	assert.ok(state.helper.includes("Select a model"));
+	assert.ok(
+		state.options.every((row) => row.id !== state.selectedId),
+		"a value with no model to mean anything about is not shown as chosen",
+	);
 });
 
 test("no home directory disables the row without issuing anything", () => {
@@ -327,4 +357,99 @@ test("a settings read failure disables the row instead of offering a write", () 
 	const state = defaultEffortState(ready({ settings: "error" }));
 	assert.equal(state.kind, "settings-error");
 	assert.equal(state.disabled, true);
+});
+
+/* ------------------------------------------------- the storable vocabulary */
+
+/*
+ * THE LADDER IS NOT THE VALUE SPACE. Radient's ladder is `auto/low/medium/high`
+ * (`model/configure.py`), and `auto` there is the registry's LABEL for the
+ * empty choice, not a value `settings_io.py` accepts. These tests pin the rule
+ * the Radient-shaped ladder exposed: offer and write only what the backend's
+ * own choices say it can store.
+ */
+
+test("a Radient-shaped ladder never offers the auto sentinel", () => {
+	const state = defaultEffortState(
+		ready({
+			ladder: ["auto", "low", "medium", "high"],
+			resolvedLevel: "auto",
+			stored: "",
+		}),
+	);
+	assert.equal(state.kind, "ready");
+	assert.equal(state.disabled, false);
+	assert.deepEqual(
+		state.options.map((row) => row.id),
+		["", "low", "medium", "high"],
+		"the unset row already IS the storable spelling of auto, so there is no second row",
+	);
+	assert.equal(
+		state.options[0].description,
+		undefined,
+		"auto is not a level a sentence can name",
+	);
+});
+
+test("a clamp resolved to the auto sentinel writes the empty value", () => {
+	assert.equal(
+		clampWrite({
+			stored: "max",
+			ladder: ["auto", "low", "medium", "high"],
+			resolvedLevel: "auto",
+			resolved: true,
+		}),
+		"",
+		"writing 'auto' is rejected by the registry, so the honest clamp is unset",
+	);
+});
+
+test("an auto-only ladder is one outcome, named, and disabled", () => {
+	const state = defaultEffortState(
+		ready({ ladder: ["auto"], resolvedLevel: "auto" }),
+	);
+	assert.equal(state.kind, "one-level");
+	assert.equal(state.disabled, true);
+	assert.equal(state.options.length, 1);
+	assert.equal(state.options[0].id, "");
+	assert.equal(
+		state.options[0].name,
+		"Auto",
+		"the single outcome is named rather than replaced by a choice that cannot exist",
+	);
+	assert.ok(state.helper.includes("one effort level: Auto"));
+});
+
+test("a ladder with one storable rung beside the sentinel is two outcomes", () => {
+	const state = defaultEffortState(
+		ready({ ladder: ["auto", "high"], resolvedLevel: "auto" }),
+	);
+	assert.equal(state.kind, "ready");
+	assert.deepEqual(
+		state.options.map((row) => row.id),
+		["", "high"],
+		"Model default runs auto and High runs high: two outcomes, not one level",
+	);
+});
+
+test("a storable rung is written in the settings row's own spelling", () => {
+	assert.deepEqual(
+		rowsFor({
+			ladder: ["low", "HIGH"],
+			resolvedLevel: null,
+			stored: "",
+			storable: ["", "low", "high"],
+		}).map((row) => row.id),
+		["", "low", "high"],
+	);
+});
+
+test("an unknown stored value never renders as a chosen Model default", () => {
+	for (const settings of ["loading", "error"]) {
+		const state = defaultEffortState(ready({ settings, stored: "high" }));
+		assert.ok(
+			state.options.every((row) => row.id !== state.selectedId),
+			`${settings}: the control must show its placeholder, not claim the unset value`,
+		);
+	}
 });
