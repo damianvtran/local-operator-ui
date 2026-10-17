@@ -1402,6 +1402,59 @@ export const STORIES = [
 		},
 	],
 	/*
+	 * THE LIVE RECEIPT EPISODE FOLD'S OWN SEQUENCE (this change): one story's
+	 * four stages, driven through the story's own buttons - `before` (a single
+	 * received row while the turn waits: a lone opening receipt PAINTS, because
+	 * the bar would replace the reader's only content), `during` (the exchange's
+	 * receipts arriving while the turn thinks condense into ONE bar), `idle`
+	 * (settled: the same bar stands, no second one, the sentence once),
+	 * `expanded` (the reader's press through the bar's own control, which the
+	 * story exercises itself). `quiet-exchange-before`/`-during`/`-idle`/
+	 * `-expanded` are the STATE directories rather than the story leaf, so one
+	 * story writes four cells; the before half, shot on the pre-change tree,
+	 * lives in `../chat-turn-collapse-before/` and mirrors these names.
+	 * `lone-actionable-peer-negative` is the counterexample the rule must not
+	 * overreach: a run that OPENS with a single actionable receipt - no settled
+	 * answer precedes it - keeps painting loose, and no bar may replace it.
+	 */
+	[
+		"chat-turn-collapse--quiet-exchange-stages",
+		1280,
+		900,
+		{ dir: "quiet-exchange-before" },
+	],
+	[
+		"chat-turn-collapse--quiet-exchange-stages",
+		1280,
+		900,
+		{
+			dir: "quiet-exchange-during",
+			press: '[aria-label="Quiet exchange stages"] button:nth-of-type(2)',
+			pressSettleMs: 400,
+		},
+	],
+	[
+		"chat-turn-collapse--quiet-exchange-stages",
+		1280,
+		900,
+		{
+			dir: "quiet-exchange-idle",
+			press: '[aria-label="Quiet exchange stages"] button:nth-of-type(3)',
+			pressSettleMs: 400,
+		},
+	],
+	[
+		"chat-turn-collapse--quiet-exchange-stages",
+		1280,
+		900,
+		{
+			dir: "quiet-exchange-expanded",
+			press: '[aria-label="Quiet exchange stages"] button:nth-of-type(4)',
+			pressSettleMs: 600,
+		},
+	],
+	["chat-turn-collapse--lone-actionable-peer-negative", 1280, 900],
+	/*
 	 * A turn joined MID-STREAM, which is the one transcript surface whose evidence
 	 * is a SENTENCE rather than a row: the reducer marks a row whose text is real
 	 * but not whole, and the mark is the whole change on screen. `before-join` is
