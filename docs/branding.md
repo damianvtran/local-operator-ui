@@ -934,41 +934,92 @@ the content column (`canvas-content`) paints the canvas: opaque under *Sidebars 
 at its alpha under *Full app*.
 
 **What the guard measures.** `scripts/window-glass-cdp.test.mjs` boots the built app
-and, for each of the chat, Settings, Agents, Browser, Schedules and Agent hub routes,
-walks a grid of points through every region that route must contain and fails on a
-region it cannot find (a guard that skips what it cannot find measures nothing), on a
+and, for each of the chat, Settings, Agents, Projects, Browser, Schedules and Agent hub
+routes, walks a grid of points through every region that route must contain and fails on
+a region it cannot find (a guard that skips what it cannot find measures nothing), on a
 spread within a region, on an effective alpha that differs from the role variable, on
 the page column differing from the app sidebar beside it, on an opaque slab inside a
-glass region, and on anything not fully opaque outside the chosen coverage. It does NOT
-cover every route (Projects, Mesh, Console and others are not audited) or any state a
-fixture cannot reach, and it needs a display, so no CI job runs it (`pnpm
-test:window-glass`; a result quoted for it is a LOCAL display run, never a CI result).
+glass region, and on anything not fully opaque outside the chosen coverage. Round 2
+adds the composer (its own alpha must be the field overlay), the block veil (a project
+card's own alpha), the board's clear well, and the Browser chrome band (which must
+measure equal to the app sidebar). Projects cards are data-dependent: on a profile with
+no projects the test REPORTS that it could not measure them rather than passing over
+them. It does NOT cover every route (Mesh, Console and others are not audited) or any
+state a fixture cannot reach (a running tool row is a contract row plus a QA frame), and
+it needs a display, so no CI job runs it (`pnpm test:window-glass`; a result quoted for
+it is a LOCAL display run, never a CI result).
 Do not give a new ground inside a region its own `bg-surface`
 expecting it to stay solid: it will be cleared or it will show as a slab; add the region
 marker instead.
 
+**Blocks, wells and chrome (round 2).** A text-bearing BLOCK whose fill was its
+only boundary on the flat system (a user message bubble, a project card, an Agent
+hub card, a detail block) is a **tint** on glass, not a solid: the palette's `ink`
+at the derived `blockVeil` (dark 0.09 / light 0.12) over the canvas glass. Its step
+off the ground is held at ΔE00 4.0 on every palette and every material tier - the
+flat `messageSurface` floor's own promise, which no role alpha could keep (an
+`elevated`/`messageSurface` alpha floor measured 0.77 dark / 0.46 light and
+collapsed to ΔE00 0.9-1.2 off the canvas on rosewood/oneLight/iceberg). The block
+keeps no hover fill on glass: there is no AA room for a step above the veil
+(measured: +5% breaks `inkMuted` to 4.03 on synthwave), so the pointer affordance
+rides the cursor and the block's own controls. Off glass the flat hover is
+untouched.
+
+A WELL behind blocks (the Projects board's `bg-sunken` band, Mesh's graph frame)
+**paints nothing** on glass: a well never sits under a veiled block - two stacked
+inks break AA, and the alpha-owning law forbids it. A well that is a TRACK (a
+segmented control, the Settings usage and filter tracks) keeps the field overlay;
+`data-glass-well="clear"` is the painted-nothing kind, and the two are never
+confused. Sticky headers (scroll-under) stay **solid** - a translucent sticky
+shows rows through it, which is text over text - and so do the chips, badges and
+avatars inside a block.
+
+The **composer is a field**, not a pane: ink 5% over the canvas glass plus the
+derived `border-control` mix as its resting edge (drawn only on glass, so the flat
+no-edge geometry is unchanged). A **running tool row** is the selected step's ink
+overlay (`--lo-glass-a-row-work`, the same alpha as a selected row: both mean "this
+row is the subject"), never the `elevated` slab it wears flat; a failed row keeps
+its `danger-wash` until a danger overlay is derived (V2).
+
+A **chrome band** inside the Browser route (the tab strip and URL row) wears the
+app sidebar's own paint - `surface` at its floor, RAW over the desktop - and the
+route host paints nothing while a live page and its opaque webview cover it.
+Loading, error and empty states keep the host's pane paint. Under *Sidebars only*
+the whole route stays flat.
+
 **What stays solid under *Full app*, by design** (the Settings copy says so in one
-sentence): web pages in the browser view (the page paints itself), document and media
-viewers (PDF, image, video, audio), code and diff grounds, message blocks, inputs and
-cards that carry text (the Agent hub cards, the Projects board and its wells), and
-small deliberate marks. A panel's own *frame* (the Schedules list, the Agent hub
-category rail) is a surface and goes glass; the cards inside it do not.
+sentence): web pages in the browser view (the page paints itself), document and
+media viewers (PDF, image, video, audio), code and diff grounds, a message's reply
+quote and attachment tiles, leave-flow surfaces (menus, dialogs, popovers, the
+palette, toasts, drag previews), sticky scroll-under headers, theme preview tiles,
+and small deliberate marks. A panel's own *frame* (the Schedules list, the Agent hub
+category rail) is a surface and goes glass; the cards inside it are blocks (tints).
+Console, code-review and canvas panes are text-bearing panes and stay near-opaque
+on dark palettes by design, not by omission.
 
 **Per element, on glass:**
 
 | Element | On glass | Why |
 |---|---|---|
 | Column grounds (sidebar, rail, status band, canvas) | role at its derived alpha | AA ink over the worst backdrop, floors per material and scheme |
-| Text-bearing panes (composer, ask drawer, run panel, console, code review, browser) | `pane` region: `elevated` at its floor, near-opaque on dark palettes | text must stay legible over any desktop |
+| Text-bearing panes (ask drawer, run panel, console, code review, browser) | `pane` region: `elevated` at its floor, near-opaque on dark palettes | text must stay legible over any desktop |
+| Text-bearing blocks (message bubbles, project/hub/node cards, detail blocks) | `data-glass-block`: `ink` at `blockVeil` over the canvas glass | the fill is the block's only boundary; a relative ink step never vanishes |
+| Composer | `data-glass-region="composer"`: ink 5% + the derived edge at rest | it is the app's primary input: a field, not a slab |
+| Chrome band (Browser tab strip and URL row) | `data-glass-region="chrome"`: `surface` at its floor, raw over the desktop | it is the sidebar's rung, so the two read as one edge |
+| Running tool row | `data-glass-state="running"`: ink at the selected step | an in-flight row is the subject; an opaque rung was a slab |
+| Well behind blocks | `data-glass-well="clear"` paints nothing | a well never sits under a veil |
+| Segmented-control tracks, bands | ink overlay at 0.05 (`data-glass-well` or `role=tablist`) | a track is a well, not a block |
 | Row hover / selected (nav, list rows, rail, tabs, the active browser tab) | palette `ink` at 0.05 / 0.08 over the glass | an opaque pill is a hole; a faint tint vanishes over a bright desktop. An ink overlay is a step relative to whatever the ground is |
 | Text fields, outlined controls, segmented-control tracks | ink overlay at 0.05; `border-control` mixed toward `ink` by `controlMix` | the BORDER carries the 3:1 edge, the fill only lifts it |
 | Focus | `outline`, never a fill; `accent` held 3:1 against the glass ground | unchanged from section 6 |
 | Pressed (`active:bg-sunken`) | stays opaque `sunken` | a sub-200 ms state of the control, not a surface |
 | Primary buttons, avatars, brand mark, banners | unchanged, opaque | small deliberate marks, not grounds |
+| Sticky headers (scroll-under) | stay solid | a translucent sticky is text over text |
+| Popout (quick send) | card ground `surface` at its floor raw; input a field; picker sheet solid | a single floating HUD on the window's material |
 
 **The one relaxation:** `inkDim` (captions, placeholders) is held to 3.5:1, not 4.5:1,
-on a hovered or selected row and on a field's fill over glass; `ink` and `inkMuted`
-keep AA. No ink overlay can keep `inkDim` at 4.5:1 (the flat system already ships it
+on a hovered or selected row, on a field's fill over glass, and on the block veil (a
+node card's state caption is the case that ships); `ink` and `inkMuted` keep AA. No ink overlay can keep `inkDim` at 4.5:1 (the flat system already ships it
 at 5.0 on `rowSelected`), and holding it would force every dark ground to alpha 1.0,
 which switches glass off.
 
