@@ -1412,9 +1412,18 @@ test("a carried context reading does not claim to be measured now", () => {
 		),
 		"utf8",
 	);
+	/*
+	 * ALL FOUR, not "at least three": the strip has four sites that build the
+	 * context sentence or its held mark (the no-reading label, the measured
+	 * label, the tooltip's closing line, and the reading's own `held`), and a
+	 * count that tolerated three let the tooltip's site regress silently
+	 * (review round 4, MINOR). A fifth site is a change to this contract and
+	 * should fail here too.
+	 */
 	const qualified = source.match(/held \|\| contextHeld/g) ?? [];
-	assert.ok(
-		qualified.length >= 3,
+	assert.equal(
+		qualified.length,
+		4,
 		`every context sentence site must take the carried flag (found ${qualified.length})`,
 	);
 });
