@@ -1396,6 +1396,27 @@ test("a carried context reading does not claim to be measured now", () => {
 		!carried.includes("data-lo-session-strip-held"),
 		"the cluster is not held; only one reading is qualified",
 	);
+
+	/*
+	 * THE TOOLTIP IS A THIRD BUILD SITE, and static markup cannot see it: Radix
+	 * renders `TooltipContent` only when open, so a suite asserting aria-labels
+	 * alone let the carried reading say "Measured now" in the tooltip while its
+	 * name said the opposite (review round 3, M1). The three sites are pinned by
+	 * source: the no-reading sentence, the measured sentence, and the tooltip's
+	 * closing line.
+	 */
+	const source = readFileSync(
+		new URL(
+			"../src/renderer/src/features/chat/session-status/session-status-strip.tsx",
+			import.meta.url,
+		),
+		"utf8",
+	);
+	const qualified = source.match(/held \|\| contextHeld/g) ?? [];
+	assert.ok(
+		qualified.length >= 3,
+		`every context sentence site must take the carried flag (found ${qualified.length})`,
+	);
 });
 
 test("a held reading keeps its value, and the strip says once that it is the last one", () => {

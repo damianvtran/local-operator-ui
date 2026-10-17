@@ -5681,6 +5681,10 @@ export function useCanonicalSessionStream(
 			 * conversation nobody is looking at any more.
 			 */
 			heldFrontend: sameSession ? current.heldFrontend : null,
+			// The carried qualification follows the readings it qualifies: a genuine
+			// session change leaves nothing painted, so nothing is carried into it
+			// (review round 3, M2).
+			contextCarried: sameSession ? current.contextCarried : false,
 			// A different session's unconfirmed paint describes the model of a
 			// conversation that is no longer on screen.
 			pendingModel: null,

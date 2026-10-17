@@ -708,4 +708,9 @@ test("the first snapshot still paints the journal reading a cold open has", asyn
 		100000,
 		"nothing was painted before it, so there is nothing to hold",
 	);
+	assert.equal(
+		handle.contextCarried,
+		false,
+		"a first-open reading is not carried",
+	);
 });
