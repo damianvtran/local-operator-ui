@@ -7,6 +7,7 @@ import {
 import {
 	type ResolvedLaunchGlass,
 	type WindowGlassController,
+	type WindowGlassOptions,
 	attachWindowGlass,
 } from "./window-glass";
 
@@ -33,6 +34,8 @@ export function attachWindowSurface(options: {
 	userDataDir: string;
 	chrome: Omit<WindowChromeOptions, "window" | "isGlassActive" | "userDataDir">;
 	log: (line: string) => void;
+	/** Forwarded to the glass controller: the popout's second window. */
+	onGlassState?: WindowGlassOptions["onState"];
 }): { glass: WindowGlassController; chrome: WindowChromeController } {
 	let chromeController: WindowChromeController | null = null;
 	const glass = attachWindowGlass({
@@ -41,6 +44,7 @@ export function attachWindowSurface(options: {
 		userDataDir: options.userDataDir,
 		restoreGround: () => chromeController?.sync(),
 		log: options.log,
+		onState: options.onGlassState,
 	});
 	chromeController = attachWindowChrome({
 		...options.chrome,
