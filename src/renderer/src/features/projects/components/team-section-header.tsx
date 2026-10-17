@@ -108,6 +108,11 @@ export const TeamSectionHeader: FC<TeamSectionHeaderProps> = ({
 	return (
 		<div
 			{...rest}
+			/* A BAND, NOT A BLOCK: it sits behind the list's rows rather than being
+			 * one, so on glass it is a well (the field overlay), not a card veil.
+			 * The list view's own sticky headers stay solid by the scroll-under rule;
+			 * this band is the non-sticky one. */
+			data-glass-well=""
 			className={cn(
 				"flex h-8 cursor-default items-center gap-2 bg-surface px-3 text-meta",
 				className,
