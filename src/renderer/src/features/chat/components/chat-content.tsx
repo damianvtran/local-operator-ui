@@ -77,12 +77,19 @@ import {
 import { DelegatedCleanupNoticeBand } from "../../settings/components/delegated-cleanup-notice";
 import { settleQueuedAdoption } from "../aside";
 import { gateIsSecret } from "../ask-answer";
-import type { AskDraft, AskOutcome, AskScope } from "../ask-queue";
+import type {
+	AskAnswerAttempt,
+	AskDraft,
+	AskOutcome,
+	AskScope,
+} from "../ask-queue";
 import {
 	askAttentionCount,
 	askComposerHoldsSecret,
 	askQueueView,
+	askSecretField,
 	effectiveGate,
+	fillSecretField,
 } from "../ask-queue";
 import { CanonicalTranscript } from "../canonical/canonical-transcript";
 import type { UndeliveredTurn } from "../canonical/canonical-transcript";
@@ -501,15 +508,17 @@ type ChatContentProps = {
 		onAnswerAsk?: (askId: string, answers: Record<string, string[]>) => void;
 		/**
 		 * THE COMPOSER'S "Put in secret field" DOOR, and the one difference from
-		 * `onAnswerAsk` is its return value: the composer has to know whether the
-		 * value LANDED before it clears the box, or a refused answer would delete the
-		 * user's text. Same payload, same lock, same report — a promise around the
-		 * same call rather than a second route.
+		 * `onAnswerAsk` is its return value: the composer has to know what happened
+		 * before it clears the box (or keeps the user's text and says why). The
+		 * payload is the same, the lock is the same, the report is the same — a
+		 * promise around the same call rather than a second route — and the mapping
+		 * from this attempt to the confirm's outcome lives in `fillSecretField`
+		 * (ask-queue.ts; agent review round 1, m3).
 		 */
 		onFillSecretAnswer?: (
 			askId: string,
 			answers: Record<string, string[]>,
-		) => Promise<boolean>;
+		) => Promise<AskAnswerAttempt>;
 		/** "No answer — decide yourself" for a queued ask. */
 		onDeclineAsk?: (taskId: string) => void;
 		/**
@@ -1517,37 +1526,56 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 *
 		 * `onOpen` is the header asks control's own two calls, so the notice's door
 		 * lands on the surface the header's does rather than on a second notion of
-		 * "open the asks".
+		 * "open the asks". The request is written as a CHORD (`via: "chord"`), which
+		 * is the rail's spelling: the drawer latches the open as the user's and moves
+		 * the keyboard into the card, the same entry move the header chip gets (UX
+		 * round 1, U4). The `focus: false` arm exists for the paths that open the
+		 * drawer as a RESULT rather than as a press - a refused "Put in secret field"
+		 * must leave the caret in the box, not take it into the panel (QA round 1, Q3).
 		 */
-		const openAsksForSecret = useCallback(() => {
-			setAskDrawerOpen(true, "session");
-			requestAskOpen("session");
-		}, [setAskDrawerOpen, requestAskOpen]);
+		const openAsksForSecret = useCallback(
+			(options?: { focus?: boolean }) => {
+				setAskDrawerOpen(true, "session");
+				if (options?.focus !== false) requestAskOpen("session", "chord");
+			},
+			[setAskDrawerOpen, requestAskOpen],
+		);
 
 		const secretAsk = useMemo(() => {
-			if (!askComposerHoldsSecret(sessionAsksView)) return null;
+			const head = sessionAsksView.head;
+			if (!askComposerHoldsSecret(sessionAsksView) || head === null)
+				return null;
+			const field = askSecretField(head.ask);
 			return {
-				onOpen: openAsksForSecret,
 				/*
-				 * ONLY A SINGLE-QUESTION SECRET ASK CAN BE FILLED BY THIS GESTURE. With
-				 * more than one secret question the value names no question, so the
-				 * door degrades to opening the panel and keeps the draft — posting it to
-				 * an arbitrary question would be a guess about what the user meant.
+				 * THE BINDING (agent review round 1, m1; QA round 1, Q2). The confirm records
+				 * this key when it arms and hands it back on the press; `fillSecretField`
+				 * refuses a mismatch, so a value typed for one ask cannot be posted to a
+				 * different one that became the head meanwhile.
 				 */
-				onFill: async (value: string): Promise<boolean> => {
-					const head = sessionAsksView.head;
-					const questions = head?.ask.questions ?? [];
-					if (!head || questions.length !== 1 || questions[0].secret !== true) {
-						openAsksForSecret();
-						return false;
-					}
-					const accepted =
-						(await canonical?.onFillSecretAnswer?.(head.ask.ask_id, {
-							[questions[0].id]: [value.trim()],
-						})) ?? false;
-					if (accepted) openAsksForSecret();
-					return accepted;
-				},
+				key: field.key,
+				/*
+				 * ONLY A SINGLE-QUESTION SECRET ASK CAN BE FILLED BY THIS GESTURE. With more
+				 * than one secret question the value names no question, so the door degrades
+				 * to opening the panel and keeps the draft — posting it to an arbitrary
+				 * question would be a guess about what the user meant, and the label says so
+				 * (design round 1, D2).
+				 */
+				fillable: field.questionId !== null,
+				onOpen: openAsksForSecret,
+				onFill: (value: string, key: string) =>
+					fillSecretField(
+						head,
+						key,
+						value,
+						canonical?.onFillSecretAnswer ??
+							(async () => ({ status: "unavailable" as const })),
+					).then((outcome) => {
+						/* The panel is where the refusal sentence lives, so a landed value
+						 * opens it; every other outcome is answered in the composer as well. */
+						if (outcome === "sent") openAsksForSecret({ focus: false });
+						return outcome;
+					}),
 			};
 		}, [sessionAsksView, canonical?.onFillSecretAnswer, openAsksForSecret]);
 		/*
@@ -2844,27 +2872,19 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 * while this one stays open — the mix that re-opened the exposure.
 								 */
 								/*
-								 * AND AN OPEN ASK THAT IS SECRET-ONLY REFUSES IT TOO (agent review
-								 * round 3, F3). With `asks` on the wire the mirrored gate is
-								 * suppressed, so this term was false while a secret ask waited, and
-								 * the box would have stayed open while a credential was being asked
-								 * for - which is where a typed credential becomes a chat message.
-								 * The panel's masked field is the only door for it.
-								 *
-								 * THIS IS A CREDENTIAL-SAFETY RULE, NOT ROUTING. The composer no
-								 * longer answers an ask in any state (design 5.0's R7, reversed on
-								 * 2026-10-07), so nothing here says the box is "the answer box" or
-								 * "not the ask mode": a secret-only ask simply must not leave an
-								 * open box beside it. A question that is not secret leaves the box
-								 * an ordinary chat field.
-								 */
-								/*
 								 * BLOCKING GATES ONLY. A queued ask no longer closes this box
 								 * (the operator's ask, `a-9e0c`); it gets the notice and the
 								 * send confirm through `secretAsk` below. The refusal stays for
 								 * the blocking gate because there a send becomes a steer the
 								 * parked turn cannot read (backend `session/session.py`), which
 								 * no confirm can make safe.
+								 *
+								 * THE SECRET-ONLY-ASK HALF THAT USED TO SIT HERE IS GONE, not
+								 * hidden: it said a secret-only ask "simply must not leave an
+								 * open box beside it", and the operator overruled exactly that
+								 * for the queued lane (agent review round 1, m4). What replaces
+								 * it is `secretAsk` — a sentence, a door, and a confirm before a
+								 * password-shaped line leaves as a chat message.
 								 */
 								secretAnswer={gateIsSecret(gate)}
 								secretAsk={secretAsk}

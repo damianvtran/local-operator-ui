@@ -12,7 +12,7 @@ import {
 	composerFocusIsOurs,
 	shouldTabIntoAnswerOptions,
 } from "@features/chat/ask-answer";
-import type { AskOutcome } from "@features/chat/ask-queue";
+import type { AskOutcome, SecretFillOutcome } from "@features/chat/ask-queue";
 import { sendUnsettledForSession } from "@features/chat/canonical/working-line-model";
 import {
 	CHAT_COLUMN_CONTAINER,
@@ -263,6 +263,12 @@ const SECRET_CLOSURE_NOTICE =
  * user almost certainly meant.
  */
 const SECRET_ASK_NOTICE_ID = "composer-secret-ask-notice";
+/**
+ * The sentence a press that did not land leaves behind (agent review round 1,
+ * M1). Its own id beside the notice's, because it says the opposite thing: the
+ * notice is "the agent is asking", this is "your value did not go there".
+ */
+const SECRET_ASK_REFUSAL_ID = "composer-secret-ask-refusal";
 const SECRET_CONFIRM_ID = "composer-secret-confirm";
 const SECRET_CONFIRM_MESSAGE_ID = "composer-secret-confirm-message";
 
@@ -723,18 +729,28 @@ export type MessageInputProps = {
 	 * panel, the conversation is free, and refusing the box made the panel the
 	 * only thing the user could do -- including waiting on their own answer.
 	 *
-	 * WHAT THE PROP CARRIES. `onOpen` opens the asks panel (the notice's button,
-	 * the same act as the header's asks control). `onFill` posts one value as the
-	 * head ask's answer and resolves whether it landed; the caller clears the
-	 * draft only on `true`, so a refused answer keeps the user's text. The
-	 * composer never posts a chat message as an answer: `onFill` is the panel's
-	 * own route, reached by a press that says so.
+	 * WHAT THE PROP CARRIES. `key` names the FIELD a fill would land in (the ask
+	 * and its question, `ask-queue.ts`'s `askSecretField`); the confirm records it
+	 * at the press that armed it and hands it back, so a value typed for one ask
+	 * can never be posted to a different one that became the head meanwhile (agent
+	 * review round 1, m1; QA round 1, Q2). `fillable` is false for an ask with
+	 * more than one secret question: one value names no field there, so the
+	 * confirm's primary control opens the panel instead of putting anything
+	 * (design round 1, D2). `onOpen` opens the asks panel -- with `focus: false`
+	 * when the open is a RESULT of the composer (a refused fill) rather than a
+	 * press, so the caret stays in the box. `onFill` posts one value as that
+	 * field's answer and resolves WHAT HAPPENED, not merely whether it landed: a
+	 * refusal, a lock, an expired ask and a missing session are four different
+	 * sentences, and `false` collapsed them into "nothing happened" (agent review
+	 * round 1, M1; UX round 1, U1). The draft is cleared only on `sent`.
 	 *
 	 * `null` and `undefined` are the ordinary composer: no notice, no guard.
 	 */
 	secretAsk?: {
-		onOpen: () => void;
-		onFill: (value: string) => Promise<boolean>;
+		key: string;
+		fillable: boolean;
+		onOpen: (options?: { focus?: boolean }) => void;
+		onFill: (value: string, key: string) => Promise<SecretFillOutcome>;
 	} | null;
 	/**
 	 * The canonical session the aside panel addresses, or undefined on a pane that
@@ -4712,12 +4728,32 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * does not close this box. The guard sits on the SEND doors instead, which is
 		 * the one act the lock existed to stop.
 		 *
-		 * `secretConfirm` holds the TEXT the user tried to send rather than a boolean:
-		 * the confirm acts on that exact line (`Put in secret field` posts it, `Send as
-		 * message` sends it), so a box edited between the press and the confirm cannot
-		 * send a value nobody was asked about.
+		 * `secretConfirm` holds the LINE the user tried to send AND the field it was
+		 * raised for. The value is the box's, trimmed, so `Put in secret field` posts
+		 * exactly what was confirmed; the key is `secretAsk.key` at the press, so a
+		 * value typed for one ask cannot be posted to a different ask that became the
+		 * head while the question was up (agent review round 1, m1; QA round 1, Q2).
+		 *
+		 * AN EDIT RETIRES THE CONFIRM rather than riding under it: `Send as message`
+		 * has no text override (`submitMessage()` sends the box), so a box edited
+		 * under an open confirm would send text nobody confirmed (UX round 1, N2;
+		 * agent review round 1, m4). Retiring it is the honest answer - the next
+		 * press asks again, and the shape rule decides then, on the new line.
 		 */
-		const [secretConfirm, setSecretConfirm] = useState<string | null>(null);
+		const [secretConfirm, setSecretConfirm] = useState<{
+			value: string;
+			key: string;
+		} | null>(null);
+		/*
+		 * WHY THE LAST PRESS DID NOT LAND (agent review round 1, M1; UX round 1,
+		 * U1; QA round 1, Q1). A real owner's refusal is written onto the ask's CARD,
+		 * which is invisible while the drawer is shut, and the lock case has no card
+		 * sentence at all - so the press that failed said nothing anywhere. This is
+		 * the composer's own sentence for the same fact, cleared by the next edit.
+		 */
+		const [secretRefusal, setSecretRefusal] = useState<string | null>(null);
+		/** A "Put in secret field" is in flight; the confirm's controls are disabled. */
+		const [secretFilling, setSecretFilling] = useState(false);
 		const secretConfirmPrimary = useRef<HTMLButtonElement | null>(null);
 		/*
 		 * THE LATEST TEXT, for the reply that lands after the press. The confirm
@@ -4739,6 +4775,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		// biome-ignore lint/correctness/useExhaustiveDependencies: the effect's whole trigger IS the switch; reading `conversationId` in the body would say nothing the dependency does not.
 		useEffect(() => {
 			setSecretConfirm(null);
+			setSecretRefusal(null);
 		}, [conversationId]);
 
 		useEffect(() => {
@@ -4746,10 +4783,49 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			secretConfirmPrimary.current?.focus();
 		}, [secretConfirm]);
 
+		/*
+		 * THE CONFIRM IS BOUND TO ITS ASK (agent review round 1, m1; QA round 1,
+		 * Q1/Q2). If the ask goes away - answered in the panel, expired, declined -
+		 * or a different ask becomes the head, the question about the old one is
+		 * retired with a sentence and the caret goes back to the box. Leaving it up
+		 * would have made the default-focused `Put in secret field` a dead button
+		 * (the ask it addressed is gone) or, worse, posted this value to another ask.
+		 */
+		useEffect(() => {
+			if (secretConfirm === null) return;
+			if (secretAsk !== null && secretAsk.key === secretConfirm.key) return;
+			setSecretConfirm(null);
+			setSecretRefusal(
+				secretAsk === null
+					? t("ui.chat.composer.secret_fill_gone")
+					: t("ui.chat.composer.secret_fill_changed"),
+			);
+			textareaRef.current?.focus();
+		}, [secretAsk, secretConfirm, textareaRef]);
+
+		/*
+		 * AN EDIT UNDER THE CONFIRM RETIRES IT (see `secretConfirm`'s note), and
+		 * typing is also what clears the refusal sentence: a receipt the user has
+		 * started revising is no longer the answer to what they are looking at. The
+		 * two are separate effects so the sentence the BINDING effect above raises
+		 * survives the render that retires the confirm (a shared body would clear it
+		 * on the same pass that set it).
+		 */
+		// biome-ignore lint/correctness/useExhaustiveDependencies: `newMessage` IS the trigger, not an input: the sentence is a receipt for the text it was raised about, and the body deliberately reads nothing.
+		useEffect(() => {
+			setSecretRefusal(null);
+		}, [newMessage]);
+
+		useEffect(() => {
+			if (secretConfirm === null) return;
+			if (newMessage.trim() === secretConfirm.value) return;
+			setSecretConfirm(null);
+		}, [newMessage, secretConfirm]);
+
 		const guardSecretSend = useCallback(
 			(text: string): boolean => {
 				if (!secretAsk || !looksLikeSecret(text)) return false;
-				setSecretConfirm(text.trim());
+				setSecretConfirm({ value: text.trim(), key: secretAsk.key });
 				return true;
 			},
 			[secretAsk],
@@ -4760,33 +4836,103 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			textareaRef.current?.focus();
 		}, [textareaRef]);
 
-		const fillSecretConfirm = useCallback(() => {
-			if (secretConfirm === null || !secretAsk) return;
-			const value = secretConfirm;
-			void secretAsk.onFill(value).then((accepted) => {
+		/*
+		 * THE SENTENCE FOR A PRESS THAT DID NOT LAND, one per fact rather than one
+		 * for all of them (agent review round 1, M1). "Nothing happened" was the
+		 * defect: a lock, a refusal, an ask that changed under the confirm and a pane
+		 * with no session are different situations and the user can act on each.
+		 */
+		const secretFillSentence = useCallback(
+			(outcome: Exclude<SecretFillOutcome, "sent">): string => {
+				switch (outcome) {
+					case "locked":
+						return t("ui.chat.composer.secret_fill_locked");
+					case "stale":
+						return t("ui.chat.composer.secret_fill_changed");
+					case "multi":
+						return t("ui.chat.composer.secret_fill_multi");
+					case "refused":
+						return t("ui.chat.composer.secret_fill_refused");
+					case "unavailable":
+						return t("ui.chat.composer.secret_fill_unavailable");
+				}
+			},
+			[],
+		);
+
+		const fillSecretConfirm = useCallback(async () => {
+			if (secretConfirm === null || secretAsk === null || secretFilling) return;
+			/*
+			 * A MULTI-SECRET ASK CANNOT BE FILLED (design round 1, D2): one value names
+			 * no question, so the primary control is labelled for the act it performs
+			 * and this branch opens the panel, keeps the draft and says so.
+			 */
+			if (!secretAsk.fillable) {
 				setSecretConfirm(null);
-				if (!accepted) return;
+				setSecretRefusal(t("ui.chat.composer.secret_fill_multi"));
+				secretAsk.onOpen({ focus: false });
+				textareaRef.current?.focus();
+				return;
+			}
+			setSecretFilling(true);
+			let outcome: SecretFillOutcome;
+			try {
+				outcome = await secretAsk.onFill(
+					secretConfirm.value,
+					secretConfirm.key,
+				);
+			} catch {
+				/* A host that throws has still not posted the value; say so rather than
+				 * leaving the confirm up with no explanation. */
+				outcome = "unavailable";
+			} finally {
+				setSecretFilling(false);
+			}
+			setSecretConfirm(null);
+			if (outcome === "sent") {
 				/*
 				 * THE VALUE LEAVES THE BOX AND THE PERSISTED DRAFT TOGETHER. Clearing
 				 * only the box would leave the secret in `localStorage`, which is the
 				 * same disclosure one reload later -- and the box is cleared only while
 				 * it still holds the value that was filled, so text typed during the
 				 * request is not thrown away.
-				 */
-				if (latestText.current.trim() !== value) return;
-				/*
+				 *
 				 * `setNewMessage` IS the hook's `handleChange`, so this retires the
-				 * persisted draft in the same write a backspace takes -- the value must
-				 * not survive the box in `localStorage` for the next reload to restore.
+				 * persisted draft in the same write a backspace takes.
 				 */
-				setNewMessage("");
-			});
-		}, [secretAsk, secretConfirm, setNewMessage]);
+				if (latestText.current.trim() === secretConfirm.value)
+					setNewMessage("");
+				textareaRef.current?.focus();
+				return;
+			}
+			setSecretRefusal(secretFillSentence(outcome));
+			/*
+			 * THE PANEL IS WHERE THE ASK IS, so a refusal puts it on screen beside the
+			 * sentence - including the owner's own refusal on the card - without taking
+			 * the caret out of the box (`focus: false`, QA round 1, Q3). An
+			 * `unavailable` pane has no session to open onto, so it is left closed.
+			 */
+			if (outcome !== "unavailable") secretAsk.onOpen({ focus: false });
+			textareaRef.current?.focus();
+		}, [
+			secretAsk,
+			secretConfirm,
+			secretFilling,
+			secretFillSentence,
+			setNewMessage,
+			textareaRef,
+		]);
 
 		const sendSecretConfirm = useCallback(() => {
 			setSecretConfirm(null);
 			submitMessage();
-		}, [submitMessage]);
+			/*
+			 * THE PRESSED CONTROL UNMOUNTS WITH THE CONFIRM, so focus would fall to
+			 * <body> and the next keystroke go nowhere (UX round 1, U3; QA round 1,
+			 * Q3). Cancel already did this; every other exit does too.
+			 */
+			textareaRef.current?.focus();
+		}, [submitMessage, textareaRef]);
 		/*
 		 * THE TWO TERMS THAT REFUSE A SEND, AND THE SENTENCE THEY RAISE, IN ONE PLACE (UX
 		 * round 7, U27).
@@ -5367,6 +5513,21 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					return;
 				}
 				/*
+				 * ESCAPE IN THE BOX CANCELS AN OPEN SECRET CONFIRM (UX round 1, N1).
+				 * The confirm's own container handles Escape while focus is in it, but
+				 * the caret is in the box on three of the paths that leave it there
+				 * (an edit retired the confirm and re-armed it, a refusal put focus
+				 * back, or the user tabbed out and back), and there Escape reached the
+				 * window's interrupt rung with a question still on screen. Cancelling
+				 * is the safe reading of the key in that state, and it is the same act
+				 * the Cancel control performs, focus included.
+				 */
+				if (event.key === "Escape" && secretConfirm !== null) {
+					event.preventDefault();
+					cancelSecretConfirm();
+					return;
+				}
+				/*
 				 * THEN THE CLEAR'S UNDO (`handleClearedUndo`), which shares the key with the
 				 * locked run's below it and is asked first: see its own comment for why the
 				 * newer edit goes first and why the two are not an exclusion. It ignores the
@@ -5662,6 +5823,8 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				guardSecretSend,
 				handleKeyDown,
 				handleCredentialKeyDown,
+				secretConfirm,
+				cancelSecretConfirm,
 				planForDraft,
 				applyPlan,
 				newMessage,
@@ -8266,37 +8429,92 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 								type="button"
 								size="sm"
 								variant="secondary"
-								onClick={secretAsk.onOpen}
+								/*
+								 * THE USER'S OWN PRESS, so the drawer's entry move runs: the open
+								 * is requested as a chord, which is the rail's spelling, and the
+								 * keyboard lands on the card the way it does from the header
+								 * chip (UX round 1, U4).
+								 */
+								onClick={() => secretAsk.onOpen()}
 							>
 								{t("ui.chat.composer.secret_ask_open")}
 							</Button>
 						</output>
 					)}
+					{/*
+					 * THE SENTENCE FOR A PRESS THAT DID NOT LAND (agent review round 1, M1;
+					 * UX round 1, U1). It sits where the standing sentence does, says which
+					 * fact stopped the fill, and is cleared by the next edit -- the drawer is
+					 * already on screen beside it, so the card's own refusal is visible too.
+					 */}
+					{secretRefusal !== null && secretConfirm === null && (
+						<output
+							id={SECRET_ASK_REFUSAL_ID}
+							className={cn(secretAskNoticeLine, CHAT_MEASURE)}
+						>
+							<span className="min-w-0">{secretRefusal}</span>
+						</output>
+					)}
 					{secretConfirm !== null && (
-						<div
+						/*
+						 * A NAMED GROUP, and a real one (agent review round 1, N1; design round
+						 * 1, D5): focus moves into this row on the arm, and a screen reader
+						 * that announces `Put in secret field` with no question is announcing
+						 * a button whose subject is somewhere else on the page. `fieldset`
+						 * rather than `div role="group"` because it IS a group of related
+						 * controls and the element carries that role natively - the reset
+						 * classes below are what keep it drawn exactly as the div was.
+						 */
+						<fieldset
 							id={SECRET_CONFIRM_ID}
+							aria-labelledby={SECRET_CONFIRM_MESSAGE_ID}
+							aria-busy={secretFilling}
 							onKeyDown={(event) => {
 								if (event.key !== "Escape") return;
 								event.preventDefault();
 								cancelSecretConfirm();
 							}}
-							className={cn(secretAskNoticeLine, CHAT_MEASURE)}
+							className={cn(
+								"m-0 min-w-0 border-0 p-0",
+								secretAskNoticeLine,
+								CHAT_MEASURE,
+							)}
 						>
 							<span id={SECRET_CONFIRM_MESSAGE_ID} className="min-w-0">
-								{t("ui.chat.composer.secret_confirm_message")}
+								{secretFilling
+									? t("ui.chat.composer.secret_confirm_sending")
+									: t("ui.chat.composer.secret_confirm_message")}
+								{/*
+								 * HOW MUCH IS ABOUT TO GO (UX round 1, U5). The rule can be
+								 * wrong about a wrong-looking line, and the default is `Put`;
+								 * a count is the one fact that lets a reader notice that
+								 * `README.md` is not what they meant before a second Enter
+								 * puts it in the field.
+								 */}
+								{secretFilling ? null : (
+									<span className="ml-1">
+										{t("ui.chat.composer.secret_confirm_chars", {
+											count: secretConfirm.value.length,
+										})}
+									</span>
+								)}
 							</span>
 							<Button
 								ref={secretConfirmPrimary}
 								type="button"
 								size="sm"
+								disabled={secretFilling}
 								onClick={fillSecretConfirm}
 							>
-								{t("ui.chat.composer.secret_confirm_put")}
+								{secretAsk?.fillable
+									? t("ui.chat.composer.secret_confirm_put")
+									: t("ui.chat.composer.secret_confirm_put_multi")}
 							</Button>
 							<Button
 								type="button"
 								size="sm"
 								variant="secondary"
+								disabled={secretFilling}
 								onClick={sendSecretConfirm}
 							>
 								{t("ui.chat.composer.secret_confirm_send")}
@@ -8305,11 +8523,12 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 								type="button"
 								size="sm"
 								variant="ghost"
+								disabled={secretFilling}
 								onClick={cancelSecretConfirm}
 							>
 								{t("ui.chat.composer.secret_confirm_cancel")}
 							</Button>
-						</div>
+						</fieldset>
 					)}
 					{/*
 					 * The outside-workspace mentions, described rather than drawn: `sr-only`,

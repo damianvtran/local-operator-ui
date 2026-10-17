@@ -5839,8 +5839,16 @@ test("the offline sentence is for the server being down, not for a failed probe"
  * geometry are the evidence rig's business, not this file's.
  */
 const queuedSecretAsk = (overrides = {}) => ({
+	/*
+	 * THE FIELD THE CONFIRM BINDS TO (`ask-queue.ts`'s `askSecretField`): the ask
+	 * and its single question. A case that changes it between mounts is the ask
+	 * changing under the confirm.
+	 */
+	key: "qa-secret-1:api_token",
+	/* One secret question, so one value names one field (design round 1, D2). */
+	fillable: true,
 	onOpen: () => {},
-	onFill: async () => true,
+	onFill: async () => "sent",
 	...overrides,
 });
 
@@ -5852,6 +5860,26 @@ const confirmControl = (label) => {
 	);
 };
 
+/*
+ * FOCUS IS ASSERTED AS AN IDENTITY, NEVER AS A COMPARED NODE (measured, and the
+ * reason is worth keeping: `assert.equal(document.activeElement, <element>)` on
+ * failure hands node's diff a DOM node, React's `__reactFiber$` own property
+ * hangs off that node, and the inspector walks the whole fiber tree into one
+ * 269 MB string. A green assertion never sees it; the failing one took the
+ * process past 9 GB). Every focus assertion below is a boolean.
+ */
+const hasFocus = (element) =>
+	element !== null && window.document.activeElement === element;
+const boxHasFocus = (frame) => hasFocus(frame.textarea());
+
+const confirmMessage = () =>
+	window.document.getElementById("composer-secret-confirm-message")
+		?.textContent ?? "";
+
+const refusalText = () =>
+	window.document.getElementById("composer-secret-ask-refusal")?.textContent ??
+	null;
+
 const submitDoor = async (frame) => {
 	const form = frame.box().closest("form");
 	assert.ok(form, "the composer is a form");
@@ -5861,10 +5889,20 @@ const submitDoor = async (frame) => {
 	await settle();
 };
 
+const armConfirm = async (frame) => {
+	await type(frame, "correct-horse-9");
+	await enter(frame);
+	await settle();
+	assert.ok(
+		window.document.getElementById("composer-secret-confirm"),
+		"the confirm is up",
+	);
+};
+
 test("a queued secret ask keeps the box usable and says where the secret goes", async () => {
 	const opens = [];
 	const frame = await mount({
-		secretAsk: queuedSecretAsk({ onOpen: () => opens.push(true) }),
+		secretAsk: queuedSecretAsk({ onOpen: (...args) => opens.push(args) }),
 	});
 	const field = frame.textarea();
 	assert.equal(field.readOnly, false, "the queued ask does not close the box");
@@ -5902,6 +5940,11 @@ test("a queued secret ask keeps the box usable and says where the secret goes", 
 		open.click();
 	});
 	assert.equal(opens.length, 1, "and the door calls the page's opener once");
+	assert.deepEqual(
+		opens[0],
+		[],
+		"a press asks for the entry move (UX round 1, U4), not a silent open",
+	);
 	assert.match(
 		field.getAttribute("aria-describedby") ?? "",
 		/composer-secret-ask-notice/,
@@ -5918,6 +5961,7 @@ test("a password-shaped send asks first, and sends nothing until answered", asyn
 	 * the form alone would never see a keystroke.
 	 */
 	await enter(frame);
+	await settle();
 	assert.equal(
 		frame.sent.length,
 		0,
@@ -5938,9 +5982,25 @@ test("a password-shaped send asks first, and sends nothing until answered", asyn
 		"the text is kept, not consumed",
 	);
 	assert.equal(
-		window.document.activeElement,
-		confirmControl("Put in secret field"),
+		hasFocus(confirmControl("Put in secret field")),
+		true,
 		"the default destination takes focus, so Enter means it",
+	);
+	const group = window.document.getElementById("composer-secret-confirm");
+	assert.equal(
+		group.tagName,
+		"FIELDSET",
+		"the confirm is a real group of controls, not a bare div (N1/D5)",
+	);
+	assert.equal(
+		group.getAttribute("aria-labelledby"),
+		"composer-secret-confirm-message",
+		"and its name is the question beside the focused control",
+	);
+	assert.match(
+		confirmMessage(),
+		new RegExp(`\\b${"correct-horse-9".length} characters\\b`),
+		"the confirm says how much it is about to submit (U5)",
 	);
 
 	await act(async () => {
@@ -5957,12 +6017,13 @@ test("a password-shaped send asks first, and sends nothing until answered", asyn
 		"correct-horse-9",
 		"and keeps the text — the accepted risk recorded on the PR: a cancelled password stays in the draft",
 	);
+	assert.equal(boxHasFocus(frame), true, "and returns the caret to the box");
 	assert.equal(frame.sent.length, 0, "nothing was sent");
 });
 
-test("Send as message sends the line the confirm asked about", async () => {
+test("Send as message sends the line the confirm asked about, and returns the caret", async () => {
 	const frame = await mount({ secretAsk: queuedSecretAsk() });
-	await type(frame, "correct-horse-9");
+	await armConfirm(frame);
 	/* The FORM door this time: the Send control and a scripted submit reach it. */
 	await submitDoor(frame);
 	assert.ok(window.document.getElementById("composer-secret-confirm"));
@@ -5972,19 +6033,52 @@ test("Send as message sends the line the confirm asked about", async () => {
 	await settle();
 	assert.equal(frame.sent.length, 1, "the explicit second press is the send");
 	assert.equal(
+		frame.sent[0][0],
+		"correct-horse-9",
+		"and it is the confirmed line that goes out",
+	);
+	assert.equal(
 		window.document.getElementById("composer-secret-confirm"),
 		null,
 		"and the confirm is gone",
 	);
+	assert.equal(
+		boxHasFocus(frame),
+		true,
+		"the pressed control unmounted, so the caret comes back to the box (U3/Q3)",
+	);
+});
+
+test("an edit under the confirm retires it rather than riding under it", async () => {
+	const fills = [];
+	const frame = await mount({
+		secretAsk: queuedSecretAsk({
+			onFill: async (value) => {
+				fills.push(value);
+				return "sent";
+			},
+		}),
+	});
+	await armConfirm(frame);
+	/* Typing changes the line the question was asked about (UX round 1, N2). */
+	await type(frame, "X");
+	await settle();
+	assert.equal(
+		window.document.getElementById("composer-secret-confirm"),
+		null,
+		"the confirm is retired, so no press can act on a line nobody confirmed",
+	);
+	assert.equal(fills.length, 0, "and nothing was put");
+	assert.equal(frame.value(), "correct-horse-9X", "the edit is kept");
 });
 
 test("Put in secret field hands the value to the page's answer door and clears the draft", async () => {
 	const fills = [];
 	const frame = await mount({
 		secretAsk: queuedSecretAsk({
-			onFill: async (value) => {
-				fills.push(value);
-				return true;
+			onFill: async (value, key) => {
+				fills.push([value, key]);
+				return "sent";
 			},
 		}),
 	});
@@ -5997,8 +6091,8 @@ test("Put in secret field hands the value to the page's answer door and clears t
 	await settle();
 	assert.deepEqual(
 		fills,
-		["correct-horse-9"],
-		"the trimmed value is what is filled",
+		[["correct-horse-9", "qa-secret-1:api_token"]],
+		"the trimmed value is what is filled, bound to the field the confirm was raised for",
 	);
 	assert.equal(frame.sent.length, 0, "and it is never sent as a chat message");
 	assert.equal(frame.value(), "", "the box is cleared");
@@ -6008,14 +6102,22 @@ test("Put in secret field hands the value to the page's answer door and clears t
 		"and the persisted draft is retired with it, so no reload restores the secret",
 	);
 	assert.equal(window.document.getElementById("composer-secret-confirm"), null);
+	assert.equal(
+		boxHasFocus(frame),
+		true,
+		"and the caret is back in the box (Q3)",
+	);
 });
 
-test("a refused fill keeps the text rather than deleting a credential nobody received", async () => {
+test("a refused fill keeps the text, opens the panel and says why", async () => {
+	const opens = [];
 	const frame = await mount({
-		secretAsk: queuedSecretAsk({ onFill: async () => false }),
+		secretAsk: queuedSecretAsk({
+			onOpen: (...args) => opens.push(args),
+			onFill: async () => "refused",
+		}),
 	});
-	await type(frame, "correct-horse-9");
-	await submitDoor(frame);
+	await armConfirm(frame);
 	await act(async () => {
 		confirmControl("Put in secret field")?.click();
 	});
@@ -6026,6 +6128,154 @@ test("a refused fill keeps the text rather than deleting a credential nobody rec
 		"the value the panel did not take is still the user's to retry",
 	);
 	assert.equal(frame.sent.length, 0);
+	assert.equal(
+		opens.length,
+		1,
+		"the panel is opened, so the owner's own refusal on the card is on screen",
+	);
+	assert.deepEqual(
+		opens[0],
+		[{ focus: false }],
+		"and it is opened WITHOUT taking the caret (Q3): the refusal returns focus to the box",
+	);
+	assert.match(
+		refusalText() ?? "",
+		/did not take that value/i,
+		"the composer says the value did not land (M1/U1)",
+	);
+	assert.equal(boxHasFocus(frame), true, "and the caret is back in the box");
+});
+
+test("a fill the lock refused says so, and is not reported as a refusal by the owner", async () => {
+	const frame = await mount({
+		secretAsk: queuedSecretAsk({ onFill: async () => "locked" }),
+	});
+	await armConfirm(frame);
+	await act(async () => {
+		confirmControl("Put in secret field")?.click();
+	});
+	await settle();
+	assert.match(
+		refusalText() ?? "",
+		/still sending/i,
+		"the lock has its own sentence (M1): the value is kept and the reason is named",
+	);
+	assert.equal(frame.value(), "correct-horse-9");
+});
+
+test("the confirm is bound to its ask: a different head retires it, and nothing is posted", async () => {
+	const fills = [];
+	const conversationId = "conv-secret-ask-rebound";
+	const first = await mount({
+		conversationId,
+		secretAsk: queuedSecretAsk({
+			onFill: async (value, key) => {
+				fills.push([value, key]);
+				return "sent";
+			},
+		}),
+	});
+	await armConfirm(first);
+	/* The head ask changes under the open confirm (QA round 1, Q2). */
+	const second = await mount({
+		/* The same conversation, and the draft this test is about is NOT cleared. */
+		conversationId,
+		keepWorld: true,
+		secretAsk: queuedSecretAsk({ key: "qa-secret-B:db_password" }),
+	});
+	assert.equal(
+		window.document.getElementById("composer-secret-confirm"),
+		null,
+		"the question about the old ask is retired",
+	);
+	assert.match(refusalText() ?? "", /changed first/i, "and says why");
+	assert.equal(fills.length, 0, "the value reaches no other ask");
+	assert.equal(second.value(), "correct-horse-9", "and the text is kept");
+	assert.equal(boxHasFocus(second), true);
+});
+
+test("the confirm retires when its ask leaves the queue", async () => {
+	const conversationId = "conv-secret-ask-gone";
+	const first = await mount({ conversationId, secretAsk: queuedSecretAsk() });
+	await armConfirm(first);
+	const second = await mount({
+		conversationId,
+		keepWorld: true,
+		secretAsk: null,
+	});
+	assert.equal(
+		window.document.getElementById("composer-secret-confirm"),
+		null,
+		"the confirm cannot outlive its ask (m1/Q1) — its default button was a dead control",
+	);
+	assert.match(refusalText() ?? "", /no longer waiting/i, "and says so");
+	assert.equal(second.value(), "correct-horse-9", "the draft is kept");
+	assert.equal(boxHasFocus(second), true);
+});
+
+test("a multi-secret ask is opened, not filled, and says which field to choose", async () => {
+	const fills = [];
+	const opens = [];
+	const frame = await mount({
+		secretAsk: queuedSecretAsk({
+			key: "qa-secret-multi:*",
+			fillable: false,
+			onOpen: (...args) => opens.push(args),
+			onFill: async (value) => {
+				fills.push(value);
+				return "multi";
+			},
+		}),
+	});
+	await armConfirm(frame);
+	assert.equal(
+		confirmControl("Put in secret field"),
+		undefined,
+		"the confirm is up, and its label does not promise a put (design round 1, D2)",
+	);
+	await act(async () => {
+		confirmControl("Open asks panel")?.click();
+	});
+	await settle();
+	assert.deepEqual(fills, [], "nothing is posted to a guessed question");
+	assert.equal(opens.length, 1, "the panel is opened");
+	assert.deepEqual(opens[0], [{ focus: false }]);
+	assert.match(
+		refusalText() ?? "",
+		/more than one secret/i,
+		"and the reason is visible",
+	);
+	assert.equal(frame.value(), "correct-horse-9", "the draft is kept");
+	assert.equal(boxHasFocus(frame), true, "and the caret is back in the box");
+});
+
+test("while a Put is in flight its other controls are disabled and it says so", async () => {
+	let release;
+	const pending = new Promise((resolve) => {
+		release = resolve;
+	});
+	const frame = await mount({
+		secretAsk: queuedSecretAsk({ onFill: () => pending }),
+	});
+	await armConfirm(frame);
+	await act(async () => {
+		confirmControl("Put in secret field")?.click();
+	});
+	/* Deliberately NOT settled: this is the window a slow link shows (U2). */
+	assert.equal(confirmControl("Put in secret field")?.disabled, true);
+	assert.equal(confirmControl("Send as message")?.disabled, true);
+	assert.equal(confirmControl("Cancel")?.disabled, true);
+	assert.match(
+		confirmMessage(),
+		/Sending to the secret field/i,
+		"the row says what it is waiting for",
+	);
+	await act(async () => {
+		release("sent");
+	});
+	await settle();
+	assert.equal(window.document.getElementById("composer-secret-confirm"), null);
+	assert.equal(frame.sent.length, 0, "and Send as message never fired");
 });
 
 test("the Retry door answers to the same guard", async () => {
@@ -6058,6 +6308,31 @@ test("the Retry door answers to the same guard", async () => {
 		"a switch retires the confirm",
 	);
 	assert.equal(next.sent.length, 0);
+});
+
+test("Escape in the textarea cancels the confirm it left open", async () => {
+	const frame = await mount({ secretAsk: queuedSecretAsk() });
+	await armConfirm(frame);
+	/* Focus back in the box while the question is still up (UX round 1, N1). */
+	frame.textarea().focus();
+	await settle();
+	await act(async () => {
+		frame.textarea().dispatchEvent(
+			new window.KeyboardEvent("keydown", {
+				key: "Escape",
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+	});
+	await settle();
+	assert.equal(
+		window.document.getElementById("composer-secret-confirm"),
+		null,
+		"Escape from the box answers the question the same way Cancel does",
+	);
+	assert.equal(frame.value(), "correct-horse-9", "and the draft survives");
+	assert.equal(boxHasFocus(frame), true);
 });
 
 test("ordinary prose opens no confirm, even while a queued secret ask waits", async () => {
