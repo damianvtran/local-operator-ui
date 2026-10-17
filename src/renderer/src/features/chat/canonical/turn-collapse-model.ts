@@ -486,10 +486,15 @@ export type InternalEpisodeFacts = {
 	receipts: number;
 	/** Null at a loaded-head cut: no invented off-page start or elapsed time. */
 	firstTs: number | null;
-	/** Ongoing presentation, NOT successful/completed lifecycle. */
+	/**
+	 * Ongoing presentation, NOT successful/completed lifecycle. For the newest
+	 * WATCHED run `planRun` reads the pane's flag through the settle latch's
+	 * `anchored` (`live || watched`), so a liveness dip cannot flip it.
+	 */
 	live: boolean;
 	/**
-	 * The episode sits in the cycle STILL BEING WRITTEN: the pane is live and the
+	 * The episode sits in the cycle STILL BEING WRITTEN: the pane reads live
+	 * (for the newest watched run, through the settle latch's `anchored`) and the
 	 * span reaches `liveFrom`. Unlike `live` it carries no tail-position
 	 * condition, so it stays true when a streaming answer appends after the
 	 * episode. The settle announcement reads this, not `live` and not mere
@@ -2943,15 +2948,30 @@ function planRun(
 			 * LATER visible row exists anywhere in the load: only the conversation's
 			 * last run can grow from its tail, so only there can the group still grow.
 			 */
+			/*
+			 * THE SETTLE LATCH REACHES THE EPISODE FACTS (settle-latch convergence
+			 * round, 2026-10-17). These arguments were the pane's raw flag, and a
+			 * dip mid-cycle flipped both facts: the one-bar gate below stopped
+			 * suppressing (a SECOND bar flashed in and the re-entry took it back)
+			 * and `live`/`unsettled` moved on the plan - a painted change for the
+			 * run the latch protects. `anchored` is the reading the settledness
+			 * lines above already take (`live || watched`): for the watched run
+			 * the facts stop reading the flag, so any number of liveness
+			 * transitions reach the same plan; for every OTHER run `anchored ===
+			 * live` and a dip does what it always did (the R2 residual). The
+			 * `span.to >= liveFrom` half stays because settlement moves it: once
+			 * a settled close lands beyond the episode it reads false in EVERY
+			 * pass, which is what lets the gate stop and the bar arrive.
+			 */
 			const internal = internalEpisodeOf(
 				records,
 				span,
 				headLoaded,
-				live &&
+				anchored &&
 					span.to >= liveFrom &&
 					span.to === records.length - 1 &&
 					run.endIndex === rows.length - 1,
-				live && span.to >= liveFrom,
+				anchored && span.to >= liveFrom,
 				humanPendingBefore[span.from],
 				olderRowsExist,
 			);
