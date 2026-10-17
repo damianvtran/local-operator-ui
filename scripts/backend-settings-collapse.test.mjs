@@ -63,6 +63,10 @@ for (const key of Object.getOwnPropertyNames(bootstrapDOM.window)) {
 }
 globalThis.window = bootstrapDOM.window;
 globalThis.document = bootstrapDOM.window.document;
+// Match the repository's React18 DOM harnesses: act owns these updates; without
+// the flag React misclassifies the environment and floods each row with warnings.
+const previousActEnvironment = globalThis.IS_REACT_ACT_ENVIRONMENT;
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 /*
  * The reveal effect's two jsdom holes, stubbed the way this repo's other
  * DOM-driven suites stub them (`completion-view-ack.test.mjs`,
@@ -77,6 +81,7 @@ after(() => {
 	bootstrapDOM.window.close();
 	globalThis.window = undefined;
 	globalThis.document = undefined;
+	globalThis.IS_REACT_ACT_ENVIRONMENT = previousActEnvironment;
 });
 
 /*
@@ -327,6 +332,52 @@ const rowShown = (key) => {
 	return Boolean(el) && el.closest("[hidden]") === null;
 };
 
+const CONTROL_WHITESPACE = /\s+/g;
+const MODIFIED_COUNT_SUFFIX = /^Modified\s*\d+$/;
+const arrivalManifest = JSON.parse(
+	readFileSync(
+		"scripts/fixtures/backend-settings-arrival-manifest.json",
+		"utf8",
+	),
+);
+
+test(
+	"the shipped Basic surface exposes the frozen header, filter and arrival identities",
+	{ timeout: TEST_TIMEOUT_MS },
+	async (t) => {
+		const mounted = await mount(t);
+		const headers = [
+			...mounted.container.querySelectorAll("[data-settings-section]"),
+		].map((node) => node.getAttribute("data-settings-section"));
+		assert.deepEqual(headers, arrivalManifest.sectionIds);
+		const rows = [...mounted.container.querySelectorAll("[data-setting-key]")]
+			.filter((node) => node.closest("[hidden]") === null)
+			.map((node) => node.getAttribute("data-setting-key"));
+		assert.deepEqual(rows, arrivalManifest.arrivalKeys);
+		const bar = search().closest(".flex.flex-wrap");
+		const controls = [...bar.querySelectorAll("input, button")].map((node) =>
+			(node.getAttribute("aria-label") ?? node.textContent)
+				.replace(CONTROL_WHITESPACE, " ")
+				.trim()
+				.replace(MODIFIED_COUNT_SUFFIX, "Modified"),
+		);
+		assert.deepEqual(controls, arrivalManifest.filterControls);
+		assert.equal(
+			rowShown("retry.accountSelectionPolicy"),
+			false,
+			"no policy promotion into Basic",
+		);
+		await type(search(), "retry.accountSelectionPolicy");
+		assert.equal(
+			rowShown("retry.accountSelectionPolicy"),
+			true,
+			"search must reveal the canonical backend enum",
+		);
+		// jsdom binds identities/interactions, not layout or native tab geometry.
+		// Approved before/after browser frames and real focus/height remain required.
+	},
+);
+
 test(
 	"Collapse all, then a search: the search force-opens what it matched",
 	{ timeout: TEST_TIMEOUT_MS },
@@ -390,7 +441,7 @@ test(
 		assert.equal(
 			openSections(),
 			// Model, approvals, fork, web tools, plus `session` and `session_delegated`
-			// (see ARRIVAL_FOCUSABLE_BUDGET in backend-settings-tiers.test.mjs).
+			// (see ARRIVAL_FOCUSABLE_CENSUS in backend-settings-tiers.test.mjs).
 			6,
 			"clearing the query restores the arrival layout, not a query-shaped one",
 		);

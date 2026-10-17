@@ -61,6 +61,7 @@ export const CONFIGURED_WRITES = [
 	["providers.openrouter.sort", "price"],
 	["providers.openrouter.order", ["deepseek", "groq"]],
 	["retry.maxRetries", 5],
+	["retry.accountSelectionPolicy", "headroom"],
 	["tui.theme", "light"],
 	["tool_approval_mode", "ask"],
 	["session.cleanup.enabled", false],
@@ -143,7 +144,12 @@ try:
     fresh = project(ConfigManager(root / "fresh"))
     configured = ConfigManager(root / "configured")
     for key, value in plan["writes"]:
-        settings_io.write_setting(configured, settings_io.resolve_key(key), value)
+        # The fixture plan is not a capability promise. A newer desktop still
+        # describes an older backend honestly: absent rows stay absent rather
+        # than making the whole projection fail or inventing a saved setting.
+        setting = settings_io.resolve_key(key)
+        if setting is not None:
+            settings_io.write_setting(configured, setting, value)
     if plan["chains"]:
         settings_io.write_chains(configured, plan["chains"])
     configured = project(configured)
