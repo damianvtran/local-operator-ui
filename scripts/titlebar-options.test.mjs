@@ -551,10 +551,11 @@ test("the main window takes the frame and the ground from the closed decision", 
 	 * installer window.
 	 */
 	/*
-	 * The ground is composed by `groundWithGlass(chrome.colors.ground, ...)`, which for
-	 * glass off returns EXACTLY `{ backgroundColor: ground }` - proved byte for byte by
-	 * `scripts/window-glass.test.mjs` (G-3), the default-off guarantee. This asserts the
-	 * call still takes the palette's ground, so the first paint cannot lose its colour.
+	 * The ground is composed by `groundWithGlass(chrome.colors.ground, ...)`: glass
+	 * off keeps the palette ground on every platform and adds only darwin's inert
+	 * `visualEffectState: "active"`, pinned exactly by `scripts/window-glass.test.mjs`
+	 * (G-3), the default-off guarantee. This asserts the call still takes the
+	 * palette's ground, so the first paint cannot lose its colour.
 	 */
 	assert.match(
 		main,
