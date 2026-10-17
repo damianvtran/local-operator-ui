@@ -2112,6 +2112,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 					 */}
 					<div
 						ref={chatContainerRef}
+						data-glass-region="canvas"
 						className="flex h-full min-h-0 grow flex-col overflow-hidden rounded-none bg-canvas"
 					>
 						{/* Chat header */}

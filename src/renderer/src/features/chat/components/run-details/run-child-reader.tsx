@@ -869,6 +869,7 @@ export const RunChildReader = ({
 			 * cannot land unnoticed.
 			 */}
 			<div
+				data-glass-region="pane-leaf"
 				className={cn(
 					/*
 					 * `relative` because this div is the positioning context for the

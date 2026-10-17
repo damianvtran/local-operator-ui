@@ -167,6 +167,16 @@ export interface BrowserSurfaceProps {
 	 * because a draft is not a conversation to attribute anything to.
 	 */
 	hostSessionId: string | null;
+	/**
+	 * This host IS the whole page (the `/browser` route), as opposed to a pane inside
+	 * a conversation's rail slot. Window glass needs the fact explicitly: a page that
+	 * is its own column clears the `<main>` backing (`data-glass-split`), and a pane
+	 * in a conversation must NOT, or the conversation column behind it loses its
+	 * ground. It is NOT derivable from `hostSessionId === null`: the rail pane on a
+	 * session-less chat (a draft) also has a null session (QA round 2, Q2-1: the
+	 * conversation column read alpha 0.00 with that pane open).
+	 */
+	isRoutePage?: boolean;
 	/** This host's own evidence tag, so a run can say which host it drove (§9's
 	 * item 4: the hosts never co-mount, but a test has to know which one it is
 	 * driving, and PR 2's pane passes its own). */
@@ -203,6 +213,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	tabScope,
 	requestScope,
 	hostSessionId,
+	isRoutePage = false,
 	surfaceTag,
 	dockSurfaceTag,
 	approvalHeaderLabel = DEFAULT_APPROVAL_HEADER,
@@ -624,6 +635,12 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			// ring would be noise". Every focusable CHILD keeps its own ring.
 			tabIndex={-1}
 			className="flex h-full min-h-0 flex-col bg-elevated outline-none!"
+			/* The pane ground of the Browser ROUTE (inside the pane slot the enclosing
+			   `pane` region already owns the alpha and this one is cleared as nested).
+			   `data-glass-split` only on the route host: nothing may paint beneath the
+			   page, or its alpha would be the stack of the backing and the pane. */
+			data-glass-region="pane"
+			data-glass-split={isRoutePage ? "" : undefined}
 			data-tour-tag={surfaceTag}
 		>
 			{/* THE STRIP CONSUMES THESE TWO HANDS, so they are passed through rather than
@@ -796,6 +813,9 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 					// also names is a PANE-layout decision, not this class's: in a pane narrower
 					// than ~520px the dock takes the whole width and the page is given none
 					// (spec §4.4), which is PR 2's layout to choose.
+					/* The viewport host: the native page view paints over it, so its own
+					   ground is cleared and the pane above owns the alpha. */
+					data-glass-region="pane-leaf"
 					className="relative min-h-0 min-w-0 grow bg-elevated"
 					data-tour-tag="browser-content"
 					id={tabPanelId}

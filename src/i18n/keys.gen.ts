@@ -61,6 +61,7 @@ import enUiProviders from "./catalogues/en/ui.providers.json";
 import enUiSchedules from "./catalogues/en/ui.schedules.json";
 import enUiSettingsAccount from "./catalogues/en/ui.settings.account.json";
 import enUiSettingsAppearance from "./catalogues/en/ui.settings.appearance.json";
+import enUiSettingsAppearanceWindowGlass from "./catalogues/en/ui.settings.appearance.window_glass.json";
 import enUiSettingsConfiguration from "./catalogues/en/ui.settings.configuration.json";
 import enUiSettingsIntegrations from "./catalogues/en/ui.settings.integrations.json";
 import enUiSettings from "./catalogues/en/ui.settings.json";
@@ -141,6 +142,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiSchedules,
 	...enUiSettingsAccount,
 	...enUiSettingsAppearance,
+	...enUiSettingsAppearanceWindowGlass,
 	...enUiSettingsConfiguration,
 	...enUiSettingsIntegrations,
 	...enUiSettings,
@@ -2836,6 +2838,30 @@ export type MessageParams = {
 	"ui.settings.appearance.transcript_display_mode_setting.by_turn": undefined;
 	"ui.settings.appearance.transcript_display_mode_setting.by_turn_condenses_each_turn_to_its_answer_by_response_keeps_every": undefined;
 	"ui.settings.appearance.transcript_display_mode_setting.transcript_display": undefined;
+	"ui.settings.appearance.window_glass.coverage_description": undefined;
+	"ui.settings.appearance.window_glass.coverage_full": undefined;
+	"ui.settings.appearance.window_glass.coverage_label": undefined;
+	"ui.settings.appearance.window_glass.coverage_sidebars": undefined;
+	"ui.settings.appearance.window_glass.description": undefined;
+	"ui.settings.appearance.window_glass.intensity_description": undefined;
+	"ui.settings.appearance.window_glass.intensity_end": undefined;
+	"ui.settings.appearance.window_glass.intensity_label": undefined;
+	"ui.settings.appearance.window_glass.intensity_start": undefined;
+	"ui.settings.appearance.window_glass.intensity_value": { value: string };
+	"ui.settings.appearance.window_glass.label": undefined;
+	"ui.settings.appearance.window_glass.material_acrylic": undefined;
+	"ui.settings.appearance.window_glass.material_description": undefined;
+	"ui.settings.appearance.window_glass.material_label": undefined;
+	"ui.settings.appearance.window_glass.material_menu": undefined;
+	"ui.settings.appearance.window_glass.material_mica": undefined;
+	"ui.settings.appearance.window_glass.material_popover": undefined;
+	"ui.settings.appearance.window_glass.material_tabbed": undefined;
+	"ui.settings.appearance.window_glass.material_window": undefined;
+	"ui.settings.appearance.window_glass.restart_needed": undefined;
+	"ui.settings.appearance.window_glass.unsupported_linux": undefined;
+	"ui.settings.appearance.window_glass.unsupported_other": undefined;
+	"ui.settings.appearance.window_glass.unsupported_reduced_transparency": undefined;
+	"ui.settings.appearance.window_glass.unsupported_windows_too_old": undefined;
 	"ui.settings.configuration.backend_setting_row.gate_note": { gate: string };
 	"ui.settings.configuration.backend_setting_row.not_set": undefined;
 	"ui.settings.configuration.backend_setting_row.read_only": undefined;

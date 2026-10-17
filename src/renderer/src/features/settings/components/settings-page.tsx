@@ -25,6 +25,7 @@ import {
 } from "@shared/hooks/use-radient-user-query";
 import { useUpdateConfig } from "@shared/hooks/use-update-config";
 import { useUsageRollup } from "@shared/hooks/use-usage-rollup";
+import { useWindowGlass } from "@shared/hooks/use-window-glass";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
@@ -52,6 +53,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FC, RefObject } from "react";
 import { useLocation } from "react-router-dom";
+import { WindowGlassSetting } from "./window-glass-setting";
 
 import { LANGUAGE_SETTING_KEY } from "@shared/i18n";
 import { sectionForSettingKey } from "../promoted-setting-sections";
@@ -315,6 +317,7 @@ export const SettingsPage: FC = () => {
 	 */
 	useI18nLocale();
 	const laneLeadingColumn = useLaneLeadingColumn("surface");
+	const glass = useWindowGlass();
 	const showAgentReasoning = useUiPreferencesStore(
 		(state) => state.showAgentReasoning,
 	);
@@ -951,7 +954,11 @@ export const SettingsPage: FC = () => {
 	   no `max-*` breakpoint utilities at all, which is how the rest of the app
 	   is written. */
 	return (
-		<div className="flex h-full w-full overflow-hidden bg-canvas">
+		<div
+			data-glass-region="canvas"
+			data-glass-split=""
+			className="flex h-full w-full overflow-hidden bg-canvas"
+		>
 			{/*
 			 * No edge on this wrapper any more. The rail is `surface` (see
 			 * `settings-sidebar`'s ground note), so the boundary beside the content
@@ -1006,6 +1013,7 @@ export const SettingsPage: FC = () => {
 			<div
 				ref={contentContainerRef}
 				data-settings-content
+				data-glass-region="canvas-content"
 				data-tour-tag="settings-general-section"
 				className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 md:p-8"
 			>
@@ -1370,6 +1378,14 @@ export const SettingsPage: FC = () => {
 									value={parseTranscriptDisplayMode(transcriptDisplayMode)}
 									onChange={(next) => setTranscriptDisplayMode(next)}
 								/>
+								{/*
+								 * OPTIONAL WINDOW TRANSLUCENCY, default off. Owned by the main process
+								 * (it must know before the window exists), so this row reads and
+								 * writes through `useWindowGlass` rather than the preferences store.
+								 * Absent outside the desktop app; replaced by its reason where the
+								 * platform cannot do it. See `window-glass-setting.tsx`.
+								 */}
+								<WindowGlassSetting state={glass.state} onChange={glass.set} />
 							</div>
 						</SettingsSection>
 

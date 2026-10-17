@@ -804,7 +804,10 @@ const App: FC = () => {
 					<ChatLayout
 						sidebar={<SidebarNavigation />}
 						content={
-							<main className="flex grow flex-col overflow-hidden">
+							<main
+								data-glass-region="canvas-backing"
+								className="flex grow flex-col overflow-hidden"
+							>
 								{/*
 								 * THE NON-CHAT ROUTES' DRAG BAND, WHERE THE LANE IS NOT.
 								 *

@@ -1,4 +1,8 @@
 import { UndoToasts } from "@features/chat/components/undo-toasts";
+import {
+	applyGlassFacts,
+	subscribeGlassPaint,
+} from "@shared/hooks/use-window-glass";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { PostHogProvider } from "posthog-js/react";
@@ -130,6 +134,14 @@ document.addEventListener("DOMContentLoaded", () => {
 		root.dataset.chromeMode = chromeFacts.mode;
 		root.dataset.chromeFullscreen = "false";
 	}
+	/*
+	 * THE WINDOW GLASS, painted before the first render for the chrome's reason: a
+	 * window whose OS ground is already transparent must not first paint an opaque
+	 * app and then clear it. `null` (the default, and every launch that did not opt
+	 * in) leaves the document exactly as it was.
+	 */
+	applyGlassFacts(window.api?.windowGlass?.facts?.() ?? null);
+	subscribeGlassPaint();
 
 	const root = ReactDOM.createRoot(
 		document.getElementById("app") as HTMLElement,
