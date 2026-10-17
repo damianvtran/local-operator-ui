@@ -5912,11 +5912,16 @@ test("a queued secret ask keeps the box usable and says where the secret goes", 
 test("a password-shaped send asks first, and sends nothing until answered", async () => {
 	const frame = await mount({ secretAsk: queuedSecretAsk() });
 	await type(frame, "correct-horse-9");
-	await submitDoor(frame);
+	/*
+	 * THE KEY ROAD, which is where Enter actually leaves: the composer's handler
+	 * falls through to the hook's own submit rather than the form's, so a guard on
+	 * the form alone would never see a keystroke.
+	 */
+	await enter(frame);
 	assert.equal(
 		frame.sent.length,
 		0,
-		"the press sends nothing while the confirm is up",
+		"Enter sends nothing while the confirm is up",
 	);
 	assert.ok(
 		window.document.getElementById("composer-secret-confirm"),
@@ -5958,7 +5963,9 @@ test("a password-shaped send asks first, and sends nothing until answered", asyn
 test("Send as message sends the line the confirm asked about", async () => {
 	const frame = await mount({ secretAsk: queuedSecretAsk() });
 	await type(frame, "correct-horse-9");
+	/* The FORM door this time: the Send control and a scripted submit reach it. */
 	await submitDoor(frame);
+	assert.ok(window.document.getElementById("composer-secret-confirm"));
 	await act(async () => {
 		confirmControl("Send as message")?.click();
 	});

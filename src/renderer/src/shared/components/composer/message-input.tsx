@@ -5605,6 +5605,20 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						void applyPlan(plan, newMessage, caret);
 						return;
 					}
+					/*
+					 * THE QUEUED SECRET ASK'S CONFIRM, ON THE KEY ROAD ITSELF.
+					 *
+					 * THIS IS WHERE ENTER ACTUALLY LEAVES, and it is not the form: with a
+					 * `send` plan this branch falls through to `handleKeyDown`, which
+					 * `preventDefault`s the key and calls the hook's own submit — so a guard
+					 * on the form's `onSubmit` alone would never see a keystroke. Refusing
+					 * HERE (rather than wrapping the hook's `onSubmit`) keeps the confirm in
+					 * the same place as the plan decision it follows.
+					 */
+					if (guardSecretSend(newMessage)) {
+						event.preventDefault();
+						return;
+					}
 				}
 				handleKeyDown(event);
 			},
@@ -5645,6 +5659,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				handleSlashExtend,
 				skills,
 				handleSkillPick,
+				guardSecretSend,
 				handleKeyDown,
 				handleCredentialKeyDown,
 				planForDraft,
