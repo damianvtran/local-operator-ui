@@ -252,11 +252,18 @@ export const GLASS_TRANSPARENT = "#00000000";
 /**
  * The constructor options glass contributes, or `{}`.
  *
- * `{}` WHEN OFF IS THE DEFAULT-OFF GUARANTEE, and it is the thing
- * `window-glass.test.mjs` pins: the caller spreads this AFTER its own
- * `backgroundColor`, so an inactive glass must contribute nothing at all - not
- * `vibrancy: undefined`, not a transparent background - or the shipped window
- * changes for the people who never touched the setting.
+ * DEFAULT-OFF IS STILL THE GUARANTEE, with ONE inert exception on macOS. The caller
+ * spreads this AFTER its own `backgroundColor`, so an inactive glass must not add
+ * `vibrancy`, `backgroundMaterial` or a transparent background - or the shipped
+ * window changes for the people who never touched the setting. On darwin,
+ * `visualEffectState: "active"` is contributed EVEN WHEN GLASS IS OFF: it is inert
+ * without a vibrancy view, but it is what a LATER `setVibrancy` uses for the view it
+ * creates. Electron 44 has no setter for it (`setVibrancy` takes only
+ * `animationDuration`), and the default (`followWindow`) renders the material
+ * inactive whenever the window is not key - which is why a live-enabled window went
+ * flat on focus loss while a launch-enabled one did not. Constructing every darwin
+ * window with it makes both paths the same material. win32 and linux get `{}` when
+ * off (Windows' material is construction-time anyway, and Linux has none).
  *
  * `visualEffectState: "active"` keeps the material blurred while the window is not
  * key. The macOS default (`followWindow`) dims an inactive window's material, which
@@ -268,13 +275,16 @@ export const GLASS_TRANSPARENT = "#00000000";
 export function glassWindowOptions(
 	settings: GlassSettings,
 	capability: GlassCapability,
+	platform: NodeJS.Platform | string,
 ): {
 	backgroundColor?: string;
 	vibrancy?: MacVibrancy;
 	visualEffectState?: "active";
 	backgroundMaterial?: WinMaterial;
 } {
-	if (!glassIsActive(settings, capability)) return {};
+	const inactive =
+		platform === "darwin" ? { visualEffectState: "active" as const } : {};
+	if (!glassIsActive(settings, capability)) return inactive;
 	if (capability.mechanism === "vibrancy") {
 		return {
 			backgroundColor: GLASS_TRANSPARENT,
@@ -288,28 +298,30 @@ export function glassWindowOptions(
 			backgroundMaterial: winMaterialFor(settings.material),
 		};
 	}
-	return {};
+	return inactive;
 }
 
 /**
  * The window's first-paint ground WITH the glass applied over it, in the one
- * order that keeps default-off byte for byte.
+ * order that keeps the default path stable.
  *
  * WHY A FUNCTION. The order is the guarantee: the palette ground first, the glass
  * options after, so only an ACTIVE glass can override `backgroundColor` and an
- * inactive one contributes nothing at all. That used to be pinned by a regex over
- * `index.ts`'s source text (review R7), which proves a spelling; this is what
- * `index.ts` actually spreads, so the test drives the behaviour. Key order of the
- * result is part of the contract (`JSON.stringify` equality in the tests).
+ * inactive one contributes at most darwin's inert `visualEffectState` (above). That
+ * used to be pinned by a regex over `index.ts`'s source text (review R7), which
+ * proves a spelling; this is what `index.ts` actually spreads, so the test drives
+ * the behaviour. Key order of the result is part of the contract (`JSON.stringify`
+ * equality in the tests).
  */
 export function groundWithGlass(
 	ground: string,
 	settings: GlassSettings,
 	capability: GlassCapability,
+	platform: NodeJS.Platform | string,
 ): ReturnType<typeof glassWindowOptions> & { backgroundColor: string } {
 	return {
 		backgroundColor: ground,
-		...glassWindowOptions(settings, capability),
+		...glassWindowOptions(settings, capability, platform),
 	};
 }
 
