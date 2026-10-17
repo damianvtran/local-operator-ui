@@ -12142,13 +12142,24 @@ export const STORIES = [
 	["chat-turn-supplements--narrow", 560, 514],
 	["chat-turn-supplements--supplement-free", 900, 314],
 	/*
-	 * THE CONDENSED FORM'S OWN STATES (design round 1, D1/U3/R2): the folded
-	 * block per content shape, plus the same block at the shell's narrow width.
-	 * Each frame's turn really carries a closed bar (the stories drive the same
-	 * plan the app does), so these are the one-line form on the production walk.
+	 * THE CONDENSED FORM'S OWN STATES (design round 1, D1/U3/R2; reworked by
+	 * the operator decision of 2026-10-16): the folded block per content shape
+	 * — the SAME files section as its expanded self (actionable rows, the image
+	 * grid) with no slots and no frames; a graphics-only settle keeps its plain
+	 * count clause — plus the same block at the shell's narrow width. Each
+	 * frame's turn really carries a closed bar (the stories drive the same plan
+	 * the app does).
+	 *
+	 * TWO STATES SIT TALLER (agent review round 1's R3, the designer's D1): at
+	 * 900x400, `folded-condensed-counts` ended at the fourth featured row with
+	 * its `N more files` disclosure below the crop and
+	 * `folded-condensed-preparing-files` lost the `Preparing highlights…  Adjust…  Cancel` line the
+	 * same way, so both are taken at 900x540 — the height that carries each
+	 * state's own line. The count-valued siblings stay at 400: their content
+	 * fits, and a re-take would move bytes no finding named.
 	 */
 	["chat-turn-supplements--folded-condensed-files", 900, 400],
-	["chat-turn-supplements--folded-condensed-counts", 900, 400],
+	["chat-turn-supplements--folded-condensed-counts", 900, 540],
 	["chat-turn-supplements--folded-condensed-components", 900, 400],
 	["chat-turn-supplements--folded-condensed-mixed", 900, 400],
 	[
@@ -12156,6 +12167,83 @@ export const STORIES = [
 		560,
 		400,
 		{ dir: "folded-condensed-narrow" },
+	],
+	/*
+	 * THE 2026-10-16 REWORK'S OWN STATES (operator decision): the condensed
+	 * form's files are the expanded files section, and image-kind files are the
+	 * thumbnail grid behind the scripted file-read bridge — the polls wait for
+	 * the tile's DECODED picture (or its glyph receipt) rather than photographing
+	 * a reserved box under a painted state's name.
+	 */
+	["chat-turn-supplements--folded-condensed-one-file", 900, 400],
+	[
+		"chat-turn-supplements--folded-condensed-images",
+		900,
+		400,
+		{
+			expect: {
+				pollMs: 15000,
+				expression: `(() => {
+						const img = document.querySelector("[data-supplement-images] img");
+						if (!img) return "the grid has no painted picture yet";
+						if (!img.complete || img.naturalWidth === 0) return "the tile's picture has not decoded";
+						return true;
+					})()`,
+				message: "the folded grid's tiles are painted before the shutter",
+			},
+		},
+	],
+	["chat-turn-supplements--folded-condensed-preparing-files", 900, 540],
+	[
+		"chat-turn-supplements--images",
+		900,
+		300,
+		{
+			expect: {
+				pollMs: 15000,
+				expression: `(() => {
+						const img = document.querySelector("[data-supplement-images] img");
+						if (!img) return "the grid has no painted picture yet";
+						if (!img.complete || img.naturalWidth === 0) return "the tile's picture has not decoded";
+						return true;
+					})()`,
+				message: "the grid's tiles are painted before the shutter",
+			},
+		},
+	],
+	[
+		"chat-turn-supplements--images-mixed",
+		900,
+		330,
+		{
+			expect: {
+				pollMs: 15000,
+				expression: `(() => {
+						const img = document.querySelector("[data-supplement-images] img");
+						if (!img) return "the grid has no painted picture yet";
+						if (!img.complete || img.naturalWidth === 0) return "the tile's picture has not decoded";
+						if (!document.querySelector("[data-supplement-files] [data-supplement-file]") && !document.querySelector("[data-supplement-files-summary] [data-supplement-file]")) return "the non-image row is not drawn beside the grid";
+						return true;
+					})()`,
+				message:
+					"the mixed set's grid and row are both painted before the shutter",
+			},
+		},
+	],
+	[
+		"chat-turn-supplements--images-unavailable",
+		900,
+		300,
+		{
+			expect: {
+				pollMs: 15000,
+				expression: `(() => {
+						if (!document.querySelector("[data-supplement-image-fallback]")) return "the glyph receipt is not drawn yet";
+						return true;
+					})()`,
+				message: "the failed tile's glyph receipt is drawn before the shutter",
+			},
+		},
 	],
 	/*
 	 * THE IMAGE VIEWER'S CONTROLS AND CAROUSEL
