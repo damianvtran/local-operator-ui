@@ -250,7 +250,9 @@ export const glassIsActive = (
 export const GLASS_TRANSPARENT = "#00000000";
 
 /**
- * The constructor options glass contributes, or `{}`.
+ * The constructor options glass contributes. OFF contributes `{}` on win32/linux
+ * and, on darwin, only its inert `visualEffectState: "active"`; the palette ground
+ * is the caller's on every platform.
  *
  * DEFAULT-OFF IS STILL THE GUARANTEE, with ONE inert exception on macOS. The caller
  * spreads this AFTER its own `backgroundColor`, so an inactive glass must not add
