@@ -7542,7 +7542,10 @@ for (const row of ROW_STATE_MEASURED_SHORTFALL) {
 			 * A field layer under it was tried and withdrawn (review round 2, F1) - its
 			 * 5% ink put this row's `inkDim` (the tab's globe / loading spinner) at
 			 * 3.21:1 on cyberpunk and below 3.5 on 18 dark palettes, on both tiers.
-			 * This is the row that must fail if a layer is ever re-added here.
+			 * A re-added LAYER is invisible to this row (it models alphas, not the
+			 * background-image): the CDP guard's `backgroundImage === "none"` assert
+			 * is the tripwire, and this row is the model a layer must be re-derived
+			 * through before it may sit under the tab.
 			 */
 			{
 				const label = "glass chrome tab";
