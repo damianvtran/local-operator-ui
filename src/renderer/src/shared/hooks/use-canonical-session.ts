@@ -206,7 +206,10 @@ function subordinateOccupancy(
 		context_is_estimate:
 			painted.context_is_estimate ?? incoming.context_is_estimate,
 		context_window: painted.context_window ?? incoming.context_window,
-		last_usage: painted.last_usage ?? incoming.last_usage,
+		// NULL, not the incoming receipt: a number carried beside a receipt from
+		// another reading would state the pair two ways. The field is nullable
+		// for exactly this "we have the count, not its receipt" case.
+		last_usage: painted.last_usage ?? null,
 	};
 }
 
@@ -4774,6 +4777,17 @@ export function useCanonicalSessionStream(
 								...next,
 								frontend: {
 									...replaced.snapshot,
+									/*
+									 * A replacement can be published from the cold/attaching
+									 * window (`publish_frontend_replace` sends the facade's own
+									 * `state()`), so its occupancy is durable rather than live and
+									 * must obey the same rule as a cold snapshot's.
+									 */
+									...subordinateOccupancy(
+										next.frontend,
+										replaced.snapshot,
+										frame.payload.cold === true,
+									),
 									attention: mergeCompletionAttention(
 										next.frontend.attention,
 										replaced.snapshot.attention,
