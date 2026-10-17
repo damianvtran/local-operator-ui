@@ -11,7 +11,7 @@
 	"ui.settings.appearance.window_glass.coverage_sidebars": "Sidebars only",
 	"ui.settings.appearance.window_glass.coverage_full": "Full app",
 	"ui.settings.appearance.window_glass.intensity_label": "Frosted to see-through",
-	"ui.settings.appearance.window_glass.intensity_description": "Left is frosted: mostly solid with a hint of the desktop. Right is see-through, as clear as every theme's text allows. Message blocks, inputs and code stay solid either way.",
+	"ui.settings.appearance.window_glass.intensity_description": "Left is frosted: mostly solid with a hint of the desktop. Right is see-through, as clear as every theme's text allows. Message blocks and cards become tints, inputs keep a firm edge, and code, documents and images stay solid.",
 	"ui.settings.appearance.window_glass.material_label": "Material",
 	"ui.settings.appearance.window_glass.material_description": "The system material behind the app. It also sets how far see-through can go.",
 	"ui.settings.appearance.window_glass.material_window": "Window",

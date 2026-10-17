@@ -922,7 +922,13 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 			// `border-control`, not `hairline`: this is the strip's only boundary
 			// against the page area, so it is structural and carries a 3:1 floor
 			// (design 11.2). It is also the rule the active tab's notch interrupts.
-			data-glass-well=""
+			/*
+			 * A CHROME BAND, not a well and not a pane: on glass it wears the app
+			 * sidebar's own paint (`surface` at its floor, raw over the desktop), and
+			 * the active tab's `data-glass-active` overlay sits on it. Under Sidebars
+			 * only nothing selects it and the flat `sunken` track is unchanged.
+			 */
+			data-glass-region="chrome"
 			className="flex flex-col border-control border-b bg-sunken"
 			role="tablist"
 			aria-label={t("ui.browser.browser_tab_strip.browser_tabs")}

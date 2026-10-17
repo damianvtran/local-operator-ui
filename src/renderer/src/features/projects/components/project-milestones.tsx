@@ -112,7 +112,10 @@ export const ProjectMilestones: FC<ProjectMilestonesProps> = ({
 				 * Borderless group, main's card restyle (#608): surface ground, stepped
 				 * radius, no border.
 				 */
-				<ul className="flex flex-col divide-y divide-hairline rounded-md bg-surface">
+				<ul
+					data-glass-block=""
+					className="flex flex-col divide-y divide-hairline rounded-md bg-surface"
+				>
 					{milestones.map((milestone) => {
 						const meta = milestoneStatusMeta(milestone.status);
 						const completed = milestone.completed_at !== null;

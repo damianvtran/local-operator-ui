@@ -554,6 +554,15 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 		!chrome.pendingUrl;
 	const showingNewTab =
 		onStartPage && navFailure === null && !overlaySuppressing;
+	/*
+	 * WHETHER THE OPAQUE WEBVIEW IS WHAT THE BARS SIT ABOVE. Window glass keys the
+	 * route host's paint on this: with a live page the chrome band and the native
+	 * surface cover the host, so it paints nothing and the band stays the sidebar's
+	 * raw rung; on the start page, a failure or a loading state the host keeps its
+	 * pane paint, which is the ground those surfaces were designed on.
+	 */
+	const glassLivePage =
+		navFailure === null && !onStartPage && state?.activeTabId != null;
 	useSuppressBrowserView(onStartPage, "browser-start-page");
 
 	// A reachable IPC bridge is not a ready browser. In particular, startup's
@@ -641,6 +650,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			   page, or its alpha would be the stack of the backing and the pane. */
 			data-glass-region="pane"
 			data-glass-split={isRoutePage ? "" : undefined}
+			data-glass-chrome-live={isRoutePage && glassLivePage ? "" : undefined}
 			data-tour-tag={surfaceTag}
 		>
 			{/* THE STRIP CONSUMES THESE TWO HANDS, so they are passed through rather than

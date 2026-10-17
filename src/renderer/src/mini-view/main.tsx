@@ -19,6 +19,11 @@
  */
 
 import { ThemedToastContainer } from "@shared/components/common";
+import {
+	applyGlassFacts,
+	subscribeGlassPaint,
+	syncGlassScheme,
+} from "@shared/hooks/use-window-glass";
 import { installExternalOpenRefusalToasts } from "@shared/lib/external-open-refusal";
 import { installConversationInputSync } from "@shared/store/conversation-input-sync";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -28,6 +33,7 @@ import ReactDOM from "react-dom/client";
 import "../assets/fonts/fonts.css";
 import "@renderer/styles/index.css";
 import { MiniComposer } from "./mini-composer";
+import { adoptPreferencesWrite } from "./mini-state";
 
 /*
  * Published BEFORE `createRoot`: the palette lives in localStorage and the
@@ -40,6 +46,53 @@ import { MiniComposer } from "./mini-composer";
  * would hand the resolver a resolved option.
  */
 applyThemeToDocument(useUiPreferencesStore.getState().themeName);
+
+/*
+ * THE POPOUT'S GLASS, from the same two channels the main document reads: the
+ * synchronous argv fact for the FIRST frame (a window that opens opaque and then
+ * turns translucent is a visible jump on every summon) and main's pushes for
+ * every later state (the Settings row, the OS reduce-transparency switch). Main
+ * forwards its state to this window too; before this the popout had no glass
+ * wiring at all.
+ */
+applyGlassFacts(window.api?.windowGlass?.facts?.() ?? null);
+subscribeGlassPaint();
+
+/*
+ * THE THEME SYNC, and it is the operator's bug rather than a nicety. This
+ * document hydrates the preferences store once at import; a theme chosen in the
+ * main window afterwards wrote the persisted blob but never reached this store
+ * or this document, so the popout painted the theme it booted with. The
+ * `storage` event is the platform's own cross-document broadcast (the draft
+ * store's sync uses it for the same pair of windows): REHYDRATE the store so
+ * this document adopts the writer's whole blob, publish the theme, and re-derive
+ * the glass alphas because `blockVeil` differs by scheme.
+ *
+ * NEVER A SETTER. `setTheme` is the store's persist-wrapped `set`: it would
+ * write this document's hydrated snapshot - stale for every preference changed
+ * in the main window since the popout loaded - back over the shared key on
+ * EVERY preferences write (the blob always carries a themeName), so a sidebar
+ * resize in main would revert itself on the next launch. `rehydrate` is the
+ * read-only adoption the draft store's sync already uses; the mini never writes
+ * preferences. The comparison happens in `themeNameFromPreferencesWrite`, so a
+ * non-theme write adopts nothing at all.
+ */
+const preferencesStoreKey =
+	useUiPreferencesStore.persist?.getOptions?.()?.name ??
+	"ui-preferences-storage";
+window.addEventListener("storage", (event) => {
+	adoptPreferencesWrite({
+		eventKey: event.key,
+		storeKey: preferencesStoreKey,
+		newValue: event.newValue,
+		currentTheme: useUiPreferencesStore.getState().themeName,
+		rehydrate: () => useUiPreferencesStore.persist?.rehydrate?.(),
+		publish: () => {
+			applyThemeToDocument(useUiPreferencesStore.getState().themeName);
+			syncGlassScheme();
+		},
+	});
+});
 
 /*
  * The draft store's cross-document sync (risk R5). This document is the second

@@ -998,6 +998,15 @@ const UserRow = memo(function UserRow({
 			<div className={cn("group flex w-full flex-col items-end gap-1")}>
 				<div ref={turnRef} className="group relative flex w-full justify-end">
 					<div
+						/*
+						 * A BLOCK, not a page ground: the bubble's fill is its ONLY
+						 * boundary (D10), so on window glass it takes the derived block
+						 * veil rather than staying an opaque island (`styles/index.css`,
+						 * scoped to canvas coverage - Sidebars only leaves it flat). The
+						 * reply quote and attachment tiles inside stay solid: they are
+						 * payload/media, not the block's own fill.
+						 */
+						data-glass-block=""
 						className={cn(
 							// THE FILL IS THE BOUNDARY, NOT AN OUTLINE (D10).
 							//

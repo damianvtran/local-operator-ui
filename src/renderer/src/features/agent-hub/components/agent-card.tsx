@@ -181,7 +181,16 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 	const displayName = hubDisplayName(agent.name);
 
 	return (
-		<div className="flex h-full flex-col overflow-hidden rounded-md bg-surface transition-colors duration-fast ease-out-quart hover:bg-elevated">
+		/*
+		 * A BLOCK ON GLASS (the design note's recommendation): the surface fill is the
+		 * card's boundary, so it takes the derived veil. The hover fill is dropped
+		 * there by the stylesheet - no AA room above the veil - and is untouched off
+		 * glass.
+		 */
+		<div
+			data-glass-block=""
+			className="flex h-full flex-col overflow-hidden rounded-md bg-surface transition-colors duration-fast ease-out-quart hover:bg-elevated"
+		>
 			<button
 				type="button"
 				onClick={() => navigate(`/agent-hub/${agent.id}`)}

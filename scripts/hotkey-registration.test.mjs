@@ -90,16 +90,26 @@ const reg = await fromBundle(
 	{ external: ["yaml"] },
 );
 const shared = await fromBundle('export * from "./src/shared/mini-view";');
-const mini = await fromBundle('export * from "./src/main/mini-view";', {
-	alias: {
-		electron: join(process.cwd(), "scripts/mini-view-electron-stub.ts"),
+/*
+ * ONE BUNDLE FOR THE MODULE AND ITS ELECTRON (review round 2, F4). The stub is
+ * re-exported from the same bundle that aliases `electron` to it, so the test
+ * and the module share ONE copy of the opt-in flag and recorder - two bundles
+ * would give two module instances, and `__useFakeWindows()` in the test would
+ * not reach the copy the shipped module imports.
+ */
+const mini = await fromBundle(
+	[
+		'export * from "./src/main/mini-view";',
+		'export * from "./scripts/mini-view-electron-stub";',
+	].join("\n"),
+	{
+		alias: {
+			electron: join(process.cwd(), "scripts/mini-view-electron-stub.ts"),
+		},
 	},
-});
-/* The stub's own surface, so a test can inspect what the window module
- * registered without reaching through mini-view.ts's exports. */
-const stub = await fromBundle(
-	'export * from "./scripts/mini-view-electron-stub";',
 );
+/* The stub's own surface, for the window module's registrations. */
+const stub = mini;
 
 const {
 	DEFAULT_QUICK_SEND_VALUE,
@@ -679,6 +689,169 @@ test("the failure card is a dark, scriptless document that cannot fail with the 
 	);
 });
 
+/*
+ * THE WIRING, NOT JUST THE PLAN (review round 2, F4). `applyGlassState` is
+ * driven through `createMiniView` against the stub's opt-in recorder - the same
+ * shipped bytes, a fake window that records the calls it receives - so a future
+ * refactor that computes the right plan and then does something else with it
+ * fails here. The fake paints nothing: presentation and the material's look
+ * remain the evidence scene's question.
+ */
+test("applyGlassState drives the plan into the window, in order", async () => {
+	stub.__useFakeWindows();
+	const state = {
+		capability: {
+			supported: true,
+			mechanism: "background-material",
+			reason: null,
+			materials: ["mica", "acrylic", "tabbed"],
+			defaultMaterial: "mica",
+			liquid: false,
+			liveToggle: false,
+		},
+		settings: {
+			enabled: true,
+			coverage: "full",
+			intensity: 100,
+			material: "mica",
+		},
+		active: true,
+		restartRequired: false,
+	};
+	const view = mini.createMiniView({
+		url: "file:///tmp/mini.html",
+		preloadPath: "/tmp/preload.js",
+		show: "headless",
+		chromeMode: "native",
+		glass: {
+			capability: state.capability,
+			settings: state.settings,
+			scheme: "dark",
+			state,
+		},
+		report: () => {},
+	});
+	const before = stub.__windowCalls().length;
+	view.applyGlassState({ ...state, active: false });
+	view.applyGlassState(state);
+	const calls = stub
+		.__windowCalls()
+		.slice(before)
+		.filter((call) => /^(setBackground|setVibrancy)/.test(call.method))
+		.map((call) => [call.method, ...call.args]);
+	assert.deepEqual(
+		calls,
+		[
+			["setBackgroundMaterial", "none"],
+			["setBackgroundColor", mini.MINI_VIEW_GROUND],
+			["setBackgroundColor", "#00000000"],
+			["setBackgroundMaterial", "mica"],
+		],
+		"an off removes the material and restores the ground; the following on re-adds both, ground first",
+	);
+	const sent = stub
+		.__windowCalls()
+		.slice(before)
+		.filter((call) => call.method === "webContents.send")
+		.map((call) => call.args[1]);
+	assert.equal(sent.length, 2, "the document is told about both states");
+	assert.equal(
+		sent[1].restartRequired,
+		false,
+		"this popout was built with the material, so it can perform the off -> on itself",
+	);
+	view.dispose();
+});
+
+/*
+ * THE LIVE GLASS PLAN (review round 1, R3). The window construction is still the
+ * evidence scene's business, but the DECISION the Windows off -> on arm gets
+ * wrong is pure, and this drives it through the same bundle the shipped module
+ * is imported from - the stub refuses construction, so the plan is the half that
+ * can be exercised here. The first version gated the ON on the mechanism still
+ * being applied; an OFF sets `applied` to "none", so the following ON was
+ * skipped and the window stayed opaque under a translucent document.
+ */
+test("the popout can turn glass off and on again in one session, and its restart flag is its own", () => {
+	const windowsLaunchOn = {
+		mechanism: "background-material",
+		launchedGlassOn: true,
+		material: "mica",
+	};
+	const off = mini.miniGlassPlan({
+		...windowsLaunchOn,
+		active: false,
+		applied: "background-material",
+	});
+	assert.deepEqual(
+		off,
+		{
+			applied: "none",
+			steps: [
+				{ kind: "background-material", material: null },
+				{ kind: "opaque-ground" },
+			],
+		},
+		"an off removes the material and restores the opaque ground",
+	);
+	const backOn = mini.miniGlassPlan({
+		...windowsLaunchOn,
+		active: true,
+		applied: "none",
+	});
+	assert.deepEqual(
+		backOn,
+		{
+			applied: "background-material",
+			steps: [
+				{ kind: "transparent-ground" },
+				{ kind: "background-material", material: "mica" },
+			],
+		},
+		"the ON after a live OFF re-adds the material, ground first - a window BUILT with it can",
+	);
+	assert.deepEqual(
+		mini.miniGlassPlan({
+			...windowsLaunchOn,
+			launchedGlassOn: false,
+			active: true,
+			applied: "none",
+		}),
+		{ applied: "none", steps: [] },
+		"a window built without the material cannot enable it live",
+	);
+	assert.deepEqual(
+		mini.miniGlassPlan({
+			mechanism: "vibrancy",
+			launchedGlassOn: true,
+			material: "window",
+			active: false,
+			applied: "vibrancy",
+		}),
+		{
+			applied: "none",
+			steps: [{ kind: "vibrancy", material: null }, { kind: "opaque-ground" }],
+		},
+		"macOS off clears vibrancy and restores the ground",
+	);
+	const windowsState = {
+		active: true,
+		capability: { liveToggle: false, mechanism: "background-material" },
+		settings: { material: "mica" },
+		restartRequired: true,
+	};
+	assert.equal(
+		mini.miniDocumentState(windowsState, false).restartRequired,
+		true,
+		"a popout launched opaque must not paint translucent until the restart",
+	);
+	assert.equal(
+		mini.miniDocumentState(windowsState, true).restartRequired,
+		false,
+		"a popout launched with glass performs the off -> on itself, so it paints at once",
+	);
+});
+
 test("the load-failure and renderer-death paths are wired, and the window has a ground", () => {
 	/*
 	 * SOURCE PINS, for the halves the electron stub deliberately cannot drive:
@@ -695,8 +868,8 @@ test("the load-failure and renderer-death paths are wired, and the window has a 
 		"a load that failed or a renderer that died must reach the card, not a white void",
 	);
 	assert.ok(
-		source.includes("backgroundColor: MINI_VIEW_GROUND"),
-		"the window paints the dark ground itself, for the frames before any document lands",
+		/\.\.\.groundWithGlass\(\s*MINI_VIEW_GROUND,/.test(source),
+		"the window paints the dark ground itself (through groundWithGlass, whose FIRST option is backgroundColor: MINI_VIEW_GROUND and whose glass options may override it only while active), for the frames before any document lands",
 	);
 	assert.ok(
 		source.includes("MINI_VIEW_PAINTED"),

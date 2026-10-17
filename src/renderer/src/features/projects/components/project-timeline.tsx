@@ -409,7 +409,8 @@ const TimelineRow: FC<{
 			type="button"
 			onClick={onOpen}
 			data-project-name={project.name}
-			className="flex w-full items-stretch text-left transition-colors duration-fast ease-out-quart hover:bg-elevated"
+			/* The row hover role the glass rules rebind (see `project-list.tsx`). */
+			className="flex w-full items-stretch text-left transition-colors duration-fast ease-out-quart hover:bg-row-hover"
 		>
 			<span
 				className="sticky left-0 z-10 flex shrink-0 items-center gap-2 border-r border-hairline bg-canvas px-3"
