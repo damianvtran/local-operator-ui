@@ -984,8 +984,15 @@ its `danger-wash` until a danger overlay is derived (V2).
 A **chrome band** inside the Browser route (the tab strip and URL row) wears the
 app sidebar's own paint - `surface` at its floor, RAW over the desktop - and the
 route host paints nothing while a live page and its opaque webview cover it.
-Loading, error and empty states keep the host's pane paint. Under *Sidebars only*
-the whole route stays flat.
+The strip and the URL row are ONE band: the note's "strip = chrome + field
+overlay" composition was withdrawn because the field's 5% ink lifts a dark
+palette's band, and the active tab's own selected step over it put its `inkDim`
+mark (the globe / loading spinner) at 3.21:1 on cyberpunk and below the 3.5
+floor on 18 of 59 palettes, on both shipped tiers; any field alpha small enough
+to hold the floor measures ΔE00 0.45 off the band, which is not a step. Without
+a live page the bars paint **nothing** (their `sunken`/`elevated` utilities are
+cleared too), so the route host's pane rung is the only ground in the loading,
+error and empty states. Under *Sidebars only* the whole route stays flat.
 
 **What stays solid under *Full app*, by design** (the Settings copy says so in one
 sentence): web pages in the browser view (the page paints itself), document and

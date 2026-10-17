@@ -2071,7 +2071,7 @@ html[data-glass~="canvas"]
 }
 html[data-glass~="canvas"]
 	[data-glass-block]
-	[data-glass-block-row]:hover
+	[data-glass-block-row][class~="hover:bg-row-hover"]:hover
 	[data-glass-block-row-label] {
 	text-decoration: underline;
 	text-underline-offset: 2px;
@@ -2172,39 +2172,36 @@ html[data-glass~="pane"] [data-glass-region="composer"] {
  * A chrome band wears the app sidebar's own paint: `surface` at its floor, RAW
  * over the desktop, so the two read as one edge.
  *
- * THE ROUTE HOST STOPS PAINTING when the live page renders (`data-glass-chrome-
- * live`): the band and the opaque webview cover it. Loading, error and empty
- * states keep the host's pane paint, which is the state those surfaces were
- * designed on. Under *Sidebars only* the whole route stays flat (`pane` gate).
+ * ONE PAINT, NOT A STACK (review round 2, F1). The design note's section E
+ * composition - strip = chrome + field overlay, active tab = strip + selected -
+ * was tried in round 1 and withdrawn here: the field's 5% ink lifts a dark
+ * palette's band, and the active tab's own selected step over that layer put
+ * its `inkDim` mark (the globe on ordinary tabs, the spinner on loading ones)
+ * at 3.21:1 on cyberpunk and under the 3.5 floor on 18 of 59 palettes, on BOTH
+ * shipped tiers. A field alpha small enough to hold the floor (<= 1.5%,
+ * derived over every palette and tier) measures ΔE00 0.45 off the band -
+ * not a step at all. So the strip and the URL row are ONE band on glass: the
+ * `sunken` vs `elevated` roles they carry collapse into it, and the strip's
+ * own rule stays as the separation. The "glass chrome field" contract context
+ * is retired with the layer; the tab row now models the shipped stack.
+ *
+ * THE BAND PAINTS ONLY OVER A LIVE PAGE (`data-glass-chrome-live`); without
+ * one, the bars go CLEAR and the route host's pane rung is the only ground, so
+ * the loading, error and empty states keep the paint they were designed on
+ * instead of stacking a band over the role fills their utilities still carry.
+ * The first version of this gate left those fills at alpha 1.0 (review round
+ * 2, F2); clearing them is what makes the state coherent.
+ *
+ * Under *Sidebars only* the whole route stays flat (`pane` gate).
  */
+html[data-glass~="pane"] [data-glass-region="chrome"] {
+	background-color: transparent;
+}
 html[data-glass~="pane"] [data-glass-chrome-live] [data-glass-region="chrome"] {
 	background-color: color-mix(
 		in srgb,
 		var(--lo-surface) calc(var(--lo-glass-a-surface) * 100%),
 		transparent
-	);
-}
-/*
- * THE STRIP'S FIELD STEP (design note §E: strip = chrome + field overlay, active
- * tab = strip + selected). The strip carries `bg-sunken` and the URL row
- * `bg-elevated`; the band paint above replaces both colours, so the strip's step
- * is restored as a second LAYER on the one element (an ink field over the chrome
- * band, not a second opaque owner). The URL row keeps the band alone.
- */
-html[data-glass~="pane"]
-	[data-glass-chrome-live]
-	[data-glass-region="chrome"][class~="bg-sunken"] {
-	background-image: linear-gradient(
-		color-mix(
-			in srgb,
-			var(--lo-ink) calc(var(--lo-glass-a-field) * 100%),
-			transparent
-		),
-		color-mix(
-			in srgb,
-			var(--lo-ink) calc(var(--lo-glass-a-field) * 100%),
-			transparent
-		)
 	);
 }
 /*
@@ -2217,9 +2214,6 @@ html[data-glass~="pane"]
 	[data-glass-region="pane"]:not([data-glass-split])
 	[data-glass-region="chrome"] {
 	background-color: transparent;
-	/* Including the strip's field layer: the pane already owns the alpha, and a
-	 * gradient left behind is a second paint inside a cleared band. */
-	background-image: none;
 }
 html[data-glass~="pane"]
 	main[data-glass-region="canvas-backing"]

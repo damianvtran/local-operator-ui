@@ -90,16 +90,26 @@ const reg = await fromBundle(
 	{ external: ["yaml"] },
 );
 const shared = await fromBundle('export * from "./src/shared/mini-view";');
-const mini = await fromBundle('export * from "./src/main/mini-view";', {
-	alias: {
-		electron: join(process.cwd(), "scripts/mini-view-electron-stub.ts"),
+/*
+ * ONE BUNDLE FOR THE MODULE AND ITS ELECTRON (review round 2, F4). The stub is
+ * re-exported from the same bundle that aliases `electron` to it, so the test
+ * and the module share ONE copy of the opt-in flag and recorder - two bundles
+ * would give two module instances, and `__useFakeWindows()` in the test would
+ * not reach the copy the shipped module imports.
+ */
+const mini = await fromBundle(
+	[
+		'export * from "./src/main/mini-view";',
+		'export * from "./scripts/mini-view-electron-stub";',
+	].join("\n"),
+	{
+		alias: {
+			electron: join(process.cwd(), "scripts/mini-view-electron-stub.ts"),
+		},
 	},
-});
-/* The stub's own surface, so a test can inspect what the window module
- * registered without reaching through mini-view.ts's exports. */
-const stub = await fromBundle(
-	'export * from "./scripts/mini-view-electron-stub";',
 );
+/* The stub's own surface, for the window module's registrations. */
+const stub = mini;
 
 const {
 	DEFAULT_QUICK_SEND_VALUE,
@@ -677,6 +687,80 @@ test("the failure card is a dark, scriptless document that cannot fail with the 
 		/color-scheme: dark/,
 		"declared dark, so the platform does not draw white chrome around it",
 	);
+});
+
+/*
+ * THE WIRING, NOT JUST THE PLAN (review round 2, F4). `applyGlassState` is
+ * driven through `createMiniView` against the stub's opt-in recorder - the same
+ * shipped bytes, a fake window that records the calls it receives - so a future
+ * refactor that computes the right plan and then does something else with it
+ * fails here. The fake paints nothing: presentation and the material's look
+ * remain the evidence scene's question.
+ */
+test("applyGlassState drives the plan into the window, in order", async () => {
+	stub.__useFakeWindows();
+	const state = {
+		capability: {
+			supported: true,
+			mechanism: "background-material",
+			reason: null,
+			materials: ["mica", "acrylic", "tabbed"],
+			defaultMaterial: "mica",
+			liquid: false,
+			liveToggle: false,
+		},
+		settings: {
+			enabled: true,
+			coverage: "full",
+			intensity: 100,
+			material: "mica",
+		},
+		active: true,
+		restartRequired: false,
+	};
+	const view = mini.createMiniView({
+		url: "file:///tmp/mini.html",
+		preloadPath: "/tmp/preload.js",
+		show: "headless",
+		chromeMode: "native",
+		glass: {
+			capability: state.capability,
+			settings: state.settings,
+			scheme: "dark",
+			state,
+		},
+		report: () => {},
+	});
+	const before = stub.__windowCalls().length;
+	view.applyGlassState({ ...state, active: false });
+	view.applyGlassState(state);
+	const calls = stub
+		.__windowCalls()
+		.slice(before)
+		.filter((call) => /^(setBackground|setVibrancy)/.test(call.method))
+		.map((call) => [call.method, ...call.args]);
+	assert.deepEqual(
+		calls,
+		[
+			["setBackgroundMaterial", "none"],
+			["setBackgroundColor", mini.MINI_VIEW_GROUND],
+			["setBackgroundColor", "#00000000"],
+			["setBackgroundMaterial", "mica"],
+		],
+		"an off removes the material and restores the ground; the following on re-adds both, ground first",
+	);
+	const sent = stub
+		.__windowCalls()
+		.slice(before)
+		.filter((call) => call.method === "webContents.send")
+		.map((call) => call.args[1]);
+	assert.equal(sent.length, 2, "the document is told about both states");
+	assert.equal(
+		sent[1].restartRequired,
+		false,
+		"this popout was built with the material, so it can perform the off -> on itself",
+	);
+	view.dispose();
 });
 
 /*

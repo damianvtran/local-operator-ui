@@ -33,7 +33,7 @@ import ReactDOM from "react-dom/client";
 import "../assets/fonts/fonts.css";
 import "@renderer/styles/index.css";
 import { MiniComposer } from "./mini-composer";
-import { themeNameFromPreferencesWrite } from "./mini-state";
+import { adoptPreferencesWrite } from "./mini-state";
 
 /*
  * Published BEFORE `createRoot`: the palette lives in localStorage and the
@@ -81,20 +81,17 @@ const preferencesStoreKey =
 	useUiPreferencesStore.persist?.getOptions?.()?.name ??
 	"ui-preferences-storage";
 window.addEventListener("storage", (event) => {
-	const themeName = themeNameFromPreferencesWrite({
+	adoptPreferencesWrite({
 		eventKey: event.key,
 		storeKey: preferencesStoreKey,
 		newValue: event.newValue,
 		currentTheme: useUiPreferencesStore.getState().themeName,
-	});
-	if (!themeName) return;
-	Promise.resolve(useUiPreferencesStore.persist?.rehydrate?.()).then(
-		() => {
+		rehydrate: () => useUiPreferencesStore.persist?.rehydrate?.(),
+		publish: () => {
 			applyThemeToDocument(useUiPreferencesStore.getState().themeName);
 			syncGlassScheme();
 		},
-		() => {},
-	);
+	});
 });
 
 /*

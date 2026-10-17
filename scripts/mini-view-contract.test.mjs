@@ -392,40 +392,51 @@ test("a preferences write names a theme only when it is the store's own blob", (
 });
 
 /*
- * THE CLOBBER GUARD (review round 1, R1). The regression was not "a theme did
- * not arrive" but "every preferences write looked like a theme write": the
- * listener called the persist-wrapped `setTheme`, which serialises THIS
- * document's whole snapshot, so a sidebar resize in the main window made the
- * popout write its stale copy of every other key back. The pure half must
- * answer null for a write whose theme is unchanged, and the document must
- * adopt by rehydrating rather than by setting anything.
+ * THE CLOBBER GUARD (review round 1, R1; round 2, F5 asked for behaviour rather
+ * than a source pin). The regression was not "a theme did not arrive" but
+ * "every preferences write looked like a theme write": the listener called the
+ * persist-wrapped `setTheme`, which serialises THIS document's whole snapshot,
+ * so a sidebar resize in the main window made the popout write its stale copy
+ * of every other key back. The adapter is handed only `rehydrate` and
+ * `publish` - there is no write capability to call - and it must decline a
+ * write whose theme is unchanged.
  */
-test("a non-theme preferences write adopts nothing, and the mini never writes preferences", async () => {
-	const { themeNameFromPreferencesWrite } = miniView;
+test("a non-theme preferences write adopts nothing, and adoption cannot write", async () => {
+	const { adoptPreferencesWrite } = miniView;
 	const storeKey = "ui-preferences-storage";
-	const wrote = themeNameFromPreferencesWrite({
-		eventKey: storeKey,
-		storeKey,
-		newValue: JSON.stringify({
-			state: { themeName: "obsidian", sidebarWidth: 320 },
-			version: 1,
-		}),
-		currentTheme: "obsidian",
-	});
+	const calls = [];
+	const write = (value, currentTheme = "obsidian") =>
+		adoptPreferencesWrite({
+			eventKey: storeKey,
+			storeKey,
+			newValue: value,
+			currentTheme,
+			rehydrate: () => {
+				calls.push("rehydrate");
+			},
+			publish: () => {
+				calls.push("publish");
+			},
+		});
 	assert.equal(
-		wrote,
-		null,
+		write(
+			JSON.stringify({
+				state: { themeName: "obsidian", sidebarWidth: 320 },
+				version: 1,
+			}),
+		),
+		false,
 		"a blob whose theme is unchanged is not a theme change, whatever else it carries",
 	);
-	const { readFileSync } = await import("node:fs");
-	const source = readFileSync("src/renderer/src/mini-view/main.tsx", "utf8");
-	assert.ok(
-		!/\.setTheme\s*\(/.test(source),
-		"the listener must never call the persist-wrapped setter: it would write this document's stale snapshot over the shared key",
+	assert.deepEqual(calls, [], "nothing is adopted and nothing repaints");
+	assert.equal(
+		write(JSON.stringify({ state: { themeName: "localOperatorLight" } })),
+		true,
 	);
-	assert.match(
-		source,
-		/persist\?\.rehydrate\?\./,
-		"adoption is a rehydrate, so the writer's whole blob wins and this document only reads",
+	await new Promise((resolve) => setTimeout(resolve, 0));
+	assert.deepEqual(
+		calls,
+		["rehydrate", "publish"],
+		"a real theme change reads the writer's blob first, then repaints",
 	);
 });

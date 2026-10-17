@@ -98,6 +98,31 @@ export const miniFrameTransitions = {
  * is not the persisted `{ state: { themeName } }` shape all answer null, and the
  * caller leaves the palette it has.
  */
+/**
+ * THE WRITE ADAPTER the mini document installs.
+ *
+ * Behavioural, not a convention: the caller hands in exactly two capabilities -
+ * a read-only `rehydrate` and a `publish` that repaints - so there is no path
+ * from a preferences write to a preferences WRITE. A non-theme write (the blob's
+ * theme equals ours) adopts nothing at all. The first version called
+ * `setTheme`, the persist-wrapped setter, and every write to the shared key made
+ * the mini persist its stale snapshot over it (review round 1, R1; round 2, F5
+ * asked for this to be proved by behaviour rather than a source grep).
+ */
+export function adoptPreferencesWrite(input: {
+	eventKey: string | null;
+	storeKey: string;
+	newValue: string | null;
+	currentTheme: string;
+	rehydrate: () => unknown;
+	publish: () => void;
+}): boolean {
+	const themeName = themeNameFromPreferencesWrite(input);
+	if (!themeName) return false;
+	Promise.resolve(input.rehydrate()).then(input.publish, () => {});
+	return true;
+}
+
 export function themeNameFromPreferencesWrite(input: {
 	eventKey: string | null;
 	storeKey: string;
