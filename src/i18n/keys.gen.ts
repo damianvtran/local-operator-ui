@@ -60,6 +60,7 @@ import enUiProviders from "./catalogues/en/ui.providers.json";
 import enUiSchedules from "./catalogues/en/ui.schedules.json";
 import enUiSettingsAccount from "./catalogues/en/ui.settings.account.json";
 import enUiSettingsAppearance from "./catalogues/en/ui.settings.appearance.json";
+import enUiSettingsAppearanceWindowGlass from "./catalogues/en/ui.settings.appearance.window_glass.json";
 import enUiSettingsConfiguration from "./catalogues/en/ui.settings.configuration.json";
 import enUiSettingsIntegrations from "./catalogues/en/ui.settings.integrations.json";
 import enUiSettings from "./catalogues/en/ui.settings.json";
@@ -139,6 +140,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiSchedules,
 	...enUiSettingsAccount,
 	...enUiSettingsAppearance,
+	...enUiSettingsAppearanceWindowGlass,
 	...enUiSettingsConfiguration,
 	...enUiSettingsIntegrations,
 	...enUiSettings,
