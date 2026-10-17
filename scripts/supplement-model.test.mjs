@@ -321,11 +321,10 @@ test("the copy table is byte-identical to the TUI's constants", () => {
 	assert.equal(model.COPY_RETRY, "Retry");
 	assert.equal(model.moreText(1), "1 more file");
 	assert.equal(model.moreText(3), "3 more files");
-	assert.equal(
-		model.filesSummaryLine(["a.md", "b.csv"]),
-		"2 files: a.md, b.csv",
-	);
-	assert.equal(model.filesSummaryLine(["a.md"]), "1 file: a.md");
+	assert.equal(model.countClause(1, "file"), "1 file");
+	assert.equal(model.countClause(2, "file"), "2 files");
+	assert.equal(model.countClause(1, "graphic"), "1 graphic");
+	assert.equal(model.countClause(2, "graphic"), "2 graphics");
 });
 
 // --- the mount URL and the budget -------------------------------------------
@@ -447,7 +446,7 @@ test("row parsing keeps only the contract's fields and bounds the more list", ()
 	);
 });
 
-// --- the condensed copy table (design D1) and the budget's accrual (D5) ------
+// --- the budget's accrual (D5) ---------------------------------------------
 
 const blockRecord = (over) => ({
 	kind: "supplement",
@@ -465,76 +464,12 @@ const blockRecord = (over) => ({
 	live: false,
 	...over,
 });
-const fileRow = (path, name, sizeBytes) => ({
-	path,
-	name,
-	kind: "markdown",
-	sizeBytes,
-	mtime: 0,
-	why: "w",
-});
 const comp = (seed, hint) => ({
 	attachment: seed.padEnd(32, "0").slice(0, 32),
 	title: seed,
 	source: "s",
 	mime: "text/html",
 	heightHint: hint,
-});
-
-test("the condensed line follows the design's copy table for every arm", () => {
-	assert.equal(
-		model.condensedBlockLine(blockRecord({ components: [comp("a", 320)] })),
-		"1 graphic",
-	);
-	assert.equal(
-		model.condensedBlockLine(
-			blockRecord({ components: [comp("a", 320), comp("b", 320)] }),
-		),
-		"2 graphics",
-	);
-	assert.equal(
-		model.condensedBlockLine(
-			blockRecord({
-				files: [
-					fileRow("reports/latency.md", "latency.md", 4120),
-					fileRow("data/bench.csv", "bench.csv", 913),
-				],
-			}),
-		),
-		"2 files: latency.md, bench.csv",
-	);
-	assert.equal(
-		model.condensedBlockLine(
-			blockRecord({
-				files: [fileRow("a.md", "a.md", 1), fileRow("b.md", "b.md", 1)],
-				filesMore: 5,
-				more: ["c.md", "d.md", "e.md", "f.md", "g.md"],
-			}),
-		),
-		"7 files",
-	);
-	assert.equal(
-		model.condensedBlockLine(
-			blockRecord({
-				files: [fileRow("a.md", "a.md", 1), fileRow("b.md", "b.md", 1)],
-				components: [comp("a", 320)],
-			}),
-		),
-		"2 files · 1 graphic",
-	);
-	assert.equal(model.condensedBlockLine(blockRecord({})), null);
-	// The not-settled prefix: files in, files+more out, nothing when unknown.
-	assert.equal(
-		model.condensedCountPrefix(
-			blockRecord({
-				files: [fileRow("a.md", "a.md", 1)],
-				filesMore: 1,
-				more: ["b.md"],
-			}),
-		),
-		"2 files",
-	);
-	assert.equal(model.condensedCountPrefix(blockRecord({})), null);
 });
 
 test("the budget accrues RENDERED heights once measured, hints until then (D5)", () => {

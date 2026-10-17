@@ -869,6 +869,66 @@ export function collapsePlan(
 		focusHold?: string | null;
 		openRuns?: ReadonlySet<string>;
 		/**
+		 * THE SETTLE LATCH (operator report, 2026-10-16): the run this pane has
+		 * WATCHED live, named by its opening row id.
+		 *
+		 * THE REPORT: "when I send a steering message, it alternates between
+		 * condensing the messages before it and expanding them". The pane's
+		 * `live` flag (`canonical-transcript.tsx`'s `working !== null || gate !== null`)
+		 * dips at tool-segment boundaries - the runtime's `frontend.streaming`
+		 * reads false for a beat mid-turn (sampled through a real steer send in
+		 * `scripts/stt-dictation-proof.mjs`: "the snapshot's `streaming` flag was
+		 * dipping at a tool-segment boundary"). A dip lands here as `live: false`,
+		 * which reads as "the turn is over": every span condenses (`liveFrom = -1`),
+		 * and the return pass expands the in-flight spans again - a fold/unfold
+		 * pair per flip while the reader does nothing. The 2026-10-01 fix
+		 * (`settledCloseOf`) holds while `live` is steady; a dip bypasses it, and a
+		 * steer's delivery lands ON a boundary, so the reported alternation is
+		 * this pair repeating.
+		 *
+		 * WHY A LATCH RATHER THAN A SMARTER ARM. "Is this dip a transient?" is not
+		 * a question the rows can answer: a first-cycle dip and a genuinely dead
+		 * run are the same rows (no close, no marker), so any stateless rule that
+		 * refuses to condense one also refuses the other - and the "dead run"
+		 * residual is pinned behaviour (`turn-collapse-model.test.mjs`'s R2 case).
+		 * The pane therefore remembers WHICH RUN it has watched being written, and
+		 * a watched run's plan stops reading `live` at all: `liveFrom` is the
+		 * settled close + 1 in every pass, so any number of liveness transitions
+		 * reach the same plan. Condensation for a watched run is settledness-driven
+		 * alone - it moves when the rows move (a close lands, a marker lands), never
+		 * on the flag.
+		 *
+		 * WHAT THE LATCH DELIBERATELY TRADES. A watched run whose tail never
+		 * settles while the pane stays open keeps that tail drawn in place: an
+		 * invisible close (a tool-call-only answer) or a marker-less death defers
+		 * its bar until the next settled close claims it. That is the conservative
+		 * direction - the reader keeps reading what they watched instead of losing
+		 * it to a transient - and every real end (a visible answer, a completion
+		 * notice, a session incident) settles and folds as before. A FRESH pane
+		 * (reload, first open) holds no latch, so a finished transcript arrives in
+		 * today's collapsed shape; the accounting is the store's
+		 * (`shared/store/turn-collapse-watched.ts`) and the tests'.
+		 *
+		 * The anchor is the id the transcript wrote for the run while it watched -
+		 * its leading row as the pane saw it, which is the run's OPENING ROW when
+		 * the window covered it and the CUT EDGE when the window cut the run's
+		 * head. The check below is CONTAINMENT over the run's own rows rather than
+		 * an equality at its opening index, and that is load-bearing, not an
+		 * implementation detail (agent review round 1, R1-1): a head-cut run opens
+		 * at its first VISIBLE row (`openingIndex` is slice-relative), and the snap
+		 * grows the window into the run's true head on exactly the dip frame (the
+		 * completed-run allowance opens when the pane reads not-live), so an
+		 * equality there reads a different row precisely when the latch is needed
+		 * and the reported alternation survives for tall newest runs - the
+		 * reviewer's band: `300 < extra <= 720`, the shape the operator's journal
+		 * runs are. Containment is invariant to both moves. The id also survives
+		 * the run's live re-keying (a run keys on its last row while being written
+		 * and on its answer once settled - the key moves, the registered row does
+		 * not). Only the NEWEST run is ever watched: it is the only run liveness is
+		 * spent on.
+		 */
+		watchedRunId?: string | null;
+		/**
 		 * The reader's transcript display mode (issue #756). Threaded VERBATIM to
 		 * `partitionRun` and consulted there; this function has no rule of its own
 		 * over it, so the plan cannot grow a second opinion about what a mode means.
@@ -919,6 +979,7 @@ export function collapsePlan(
 	const runs = runsOf(rows);
 	const focusHold = options.focusHold ?? null;
 	const openRuns = options.openRuns ?? NO_OPEN_RUNS;
+	const watchedRunId = options.watchedRunId ?? null;
 	return {
 		runs: runs.map((run, index) =>
 			planRun(
@@ -931,6 +992,16 @@ export function collapsePlan(
 				options.runFacts,
 				options.hideCrossSession === true,
 				options.factPage,
+				/*
+				 * THE SETTLE LATCH, spent the way `live` is: on the NEWEST run only.
+				 * `watchedRunId` names the run the pane has watched being written; the
+				 * check is containment over the run's rows, never an equality at its
+				 * opening index - see `runHoldsRowId` for the window snap's move that
+				 * makes the difference (agent review round 1, R1-1).
+				 */
+				index === runs.length - 1 &&
+					watchedRunId !== null &&
+					runHoldsRowId(rows, run, watchedRunId),
 			),
 		),
 	};
@@ -938,6 +1009,28 @@ export function collapsePlan(
 
 /** The empty set `collapsePlan` reads when the caller hands it no `openRuns`. */
 const NO_OPEN_RUNS: ReadonlySet<string> = new Set();
+
+/**
+ * Does this run hold the row `id`, anywhere in its span?
+ *
+ * WHY CONTAINMENT AND NOT THE OPENING INDEX (agent review round 1, R1-1). A run
+ * whose head the window cuts opens at its first VISIBLE row - `openingIndex` is
+ * slice-relative (`transcript-rows.ts`) - so the id the transcript wrote while
+ * live names the slice's leading row, and the snap grows the window to the
+ * run's true head on exactly the dip frame (the completed-run allowance in
+ * `snapWindowToRunBoundary` opens when the pane reads not-live). An equality
+ * test at `openingIndex` therefore reads a DIFFERENT row on the one frame the
+ * latch exists for: the dip folds the tail and the re-entry unfolds it - the
+ * reported alternation, surviving for tall newest runs. Containment is
+ * invariant to both moves: the written row is always one of the run's own rows,
+ * head arrived or not.
+ */
+function runHoldsRowId(rows: Row[], run: TurnRun, id: string): boolean {
+	for (let index = run.openingIndex; index <= run.endIndex; index += 1) {
+		if (rows[index]?.record.id === id) return true;
+	}
+	return false;
+}
 
 /**
  * THE PAYLOAD PATHS the plan's signature does not carry.
@@ -1177,6 +1270,15 @@ export function collapsePlanOptionsKey(options: {
 	 * re-plan, never a wrong bar.
 	 */
 	factPage?: FactPageIdentity | null;
+	/**
+	 * The settle latch, in the key because it moves the plan's ANSWER for the
+	 * newest run (`collapsePlan`'s option, `turn-collapse-model.ts`): a watched
+	 * run's hide set stops reading `live`, so the two must be in the signature
+	 * together - a key that omitted either would let the memo serve one flag's
+	 * plan for the other's. Prefixed like the facts, for the same collision
+	 * reason, and only ever written when a run is actually latched.
+	 */
+	watchedRunId?: string | null;
 }): string {
 	const parts: string[] = [
 		options.live ? "live" : "settled",
@@ -1184,6 +1286,7 @@ export function collapsePlanOptionsKey(options: {
 		options.focusHold ?? "",
 		options.hideCrossSession ? "hide" : "show",
 	];
+	if (options.watchedRunId) parts.push(`watch:${options.watchedRunId}`);
 	if (options.openRuns) {
 		for (const key of [...options.openRuns].sort()) parts.push(`open:${key}`);
 	}
@@ -1240,6 +1343,14 @@ export function collapsePlanInputKey(
 		focusHold?: string | null;
 		openRuns?: ReadonlySet<string>;
 		mode?: TranscriptDisplayMode;
+		/*
+		 * Forwarded for the signature, not read here: `collapsePlanOptionsKey`
+		 * owns the serialisation (see its `watchedRunId` field). The type names
+		 * it because the component threads the whole options object through this
+		 * join, and a field the compiler cannot see here is a field the next
+		 * edit drops without a warning.
+		 */
+		watchedRunId?: string | null;
 	},
 ): string {
 	return `${rowsKey}\u0001${collapsePlanOptionsKey(options)}`;
@@ -1574,6 +1685,14 @@ export function paintedRows(
 		 * byte for byte.
 		 */
 		mode?: TranscriptDisplayMode;
+		/**
+		 * The settlement latch, forwarded into the `collapsePlan` below exactly as
+		 * `mode` is: this count is the widen's currency and the render paints from
+		 * the same option, so an un-threaded latch would let one watched run
+		 * measure two ways (`collapsePlan`'s `watchedRunId` option carries the
+		 * account of what it is for).
+		 */
+		watchedRunId?: string | null;
 		snapMaxExtra: number;
 		completedRunMaxExtra: number;
 	},
@@ -1595,6 +1714,13 @@ export function paintedRows(
 	const plan = collapsePlan(visible, {
 		live: options.live ?? false,
 		openRuns: options.openRuns,
+		/*
+		 * The settlement latch straight through: this count is the widen's own
+		 * currency and the same arithmetic the render paints with, so a watched
+		 * run's reading cannot differ between the two (`collapsePlan`'s
+		 * `watchedRunId` option owns the account).
+		 */
+		watchedRunId: options.watchedRunId,
 		/*
 		 * The reader's own mode, passed straight through: this function has no rule of
 		 * its own about what a mode means (see the option's doc).
@@ -1676,6 +1802,12 @@ export function widenTarget(
 		 * shipped `by-turn`.
 		 */
 		mode?: TranscriptDisplayMode;
+		/**
+		 * The settlement latch, forwarded to `paintedRows` unchanged with the rest
+		 * of `options` (see the option there; `collapsePlan`'s `watchedRunId`
+		 * carries the account).
+		 */
+		watchedRunId?: string | null;
 		snapMaxExtra: number;
 		completedRunMaxExtra: number;
 	},
@@ -2192,6 +2324,13 @@ function planRun(
 	 * exactly as it was.
 	 */
 	factPage: FactPageIdentity | null | undefined = undefined,
+	/**
+	 * Whether this run is the one the pane has WATCHED live (the settle latch,
+	 * see `collapsePlan`'s option). Threaded for the newest run only, the way
+	 * `live` is: a watched run's settledness reading is kept in every pass, so a
+	 * liveness dip or re-entry cannot move its hide set.
+	 */
+	watched = false,
 ): RunCollapsePlan {
 	const runRows = rows.slice(run.openingIndex, run.endIndex + 1);
 	const records = runRows.map((row) => row.record);
@@ -2329,9 +2468,21 @@ function planRun(
 	 * `settledAt` is the same reading BEFORE the +1 (the run's last settled row,
 	 * -1 when there is none), kept beside it because the group exemption below
 	 * reads it directly.
+	 *
+	 * THE SETTLE LATCH ANCHORS THE READING FOR A WATCHED RUN. `live` here is the
+	 * pane's instantaneous flag, and it dips mid-turn at tool-segment boundaries
+	 * (see `collapsePlan`'s `watchedRunId` option): a dip read as "the turn is
+	 * over" condensed every span, and the return expanded the in-flight ones
+	 * again - the fold/unfold alternation the operator reported when steering.
+	 * A run this pane has watched being written keeps its settledness reading in
+	 * BOTH directions of the flag, so `live: true` and `live: false` produce the
+	 * same plan for it; the flag still decides for every run the pane has NOT
+	 * watched (a fresh open, a finished transcript), which is what keeps the
+	 * idle-residual shape (R2) exactly as it was.
 	 */
-	const settledAt = live ? settledCloseOf(records, partition.cycles) : -1;
-	const liveFrom = live ? settledAt + 1 : -1;
+	const anchored = live || watched;
+	const settledAt = anchored ? settledCloseOf(records, partition.cycles) : -1;
+	const liveFrom = anchored ? settledAt + 1 : -1;
 
 	/*
 	 * THE ONE SPAN THE FACTS CAN COMPLETE. Only a span that OPENS at the loaded
@@ -2545,13 +2696,17 @@ function planRun(
 				 */
 				/*
 				 * `partial` also when the fact was corrected by rows that arrived after the
-				 * page (B2) and the run is still live: the figure is exact for the rows in
-				 * hand, but a pane whose turn is streaming cannot know it has them all.
+				 * page (B2) and the run is still live - OR is the watched run (agent review
+				 * round 1, R1-2): the latch keeps the run unfinished in every pass, so a
+				 * liveness dip must not drop the `+` for a frame while the hide set holds
+				 * still - one transient, one answer, in both readings.
 				 */
 				partial:
 					!factTotals.complete ||
 					cutIsFloor ||
-					(live && factAppended !== null && factAppended.length > 0),
+					((live || watched) &&
+						factAppended !== null &&
+						factAppended.length > 0),
 			},
 		};
 	}
@@ -2586,15 +2741,16 @@ function planRun(
 			worked,
 			/*
 			 * `partial` carries the bar's own live-correction term as well (agent review
-			 * round 4, m2): the bars beneath say `N+` while a live run is being corrected
-			 * by rows that arrived after the page, and a ladder summing them must not
-			 * state the same figure as final. Nothing reads this today, which is exactly
-			 * why the two must not drift before a reader arrives.
+			 * round 4, m2), read the anchored way (round 1, R1-2): the bars beneath say
+			 * `N+` while a live or watched run is being corrected by rows that arrived
+			 * after the page, and a ladder summing them must not state the same figure
+			 * as final. Nothing reads this today, which is exactly why the two must not
+			 * drift before a reader arrives.
 			 */
 			partial:
 				!factTotals.complete ||
 				cutIsFloor ||
-				(live && factAppended !== null && factAppended.length > 0),
+				((live || watched) && factAppended !== null && factAppended.length > 0),
 			/*
 			 * The run-level `failed` is the WIRE's own count for the run as
 			 * published - the same population `action_count` covers - so it cannot
