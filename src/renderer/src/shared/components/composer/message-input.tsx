@@ -129,6 +129,8 @@ import {
 	setDictationActive,
 	useSpeechToTextManager,
 } from "@shared/hooks/use-speech-to-text-manager";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import {
 	type RadientSpeechBlock,
 	speechUnavailableReason,
@@ -1759,6 +1761,8 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		},
 		ref,
 	) => {
+		// Copy follows backend locale changes without altering composer state or handlers.
+		useI18nLocale();
 		messageInputRenderCount.current += 1;
 		/*
 		 * The canonical session's cwd is the answer where there is one; the legacy
@@ -7808,7 +7812,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 										 * after it, and the visible label stays short on purpose (review
 										 * round 1, U8).
 										 */
-										aria-label="Clear message"
+										aria-label={t("ui.chat.composer.clear_message")}
 										className={cn(
 											"min-h-6 cursor-pointer text-ink-dim text-body-sm underline",
 										)}
@@ -8093,9 +8097,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					 */}
 					{deliveryRemediesReachable && (
 						<span id={DELIVERY_REMEDIES_HINT_ID} className="sr-only">
-							The message that could not be delivered has Send again and Edit
-							controls in the conversation above this box: press Shift+Tab to
-							reach them.
+							{t("ui.chat.composer.delivery_remedies_hint")}
 						</span>
 					)}
 					<div
@@ -8584,7 +8586,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 									 * `composer-refusal` pins exactly that.
 									 */
 									aria-disabled={isInputDisabled || undefined}
-									aria-label="Message"
+									aria-label={t("ui.chat.composer.message")}
 									role="combobox"
 									/*
 									 * All THREE descriptions, space-separated as the attribute demands: the
@@ -8749,7 +8751,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 								className="mt-1 flex items-center gap-2 px-2 [min-height:1.5rem]"
 							>
 								<span className="font-medium text-body-sm text-ink-muted">
-									Processing audio
+									{t("ui.chat.composer.processing_audio")}
 								</span>
 								<WaveformAnimation />
 							</div>
@@ -8908,7 +8910,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 								 * order needs both halves stated.
 								 */}
 								<div className="flex min-w-0 items-center gap-1 shrink-0">
-									<Tooltip content="Attach file">
+									<Tooltip content={t("ui.chat.composer.attach_file")}>
 										<span>
 											<Button
 												variant="ghost"
@@ -8916,7 +8918,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 												className="text-ink-dim hover:bg-elevated hover:text-ink"
 												onPointerDown={holdCaretOnRefusedPress}
 												onClick={handleAttachFile}
-												aria-label="Attach file"
+												aria-label={t("ui.chat.composer.attach_file")}
 												data-tour-tag="chat-input-attach-file-button"
 												disabled={
 													isInputDisabled || isRecording || isTranscribing
@@ -9053,17 +9055,22 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 											 */
 											className="shrink-0 font-medium text-body-sm text-ink-muted"
 										>
-											{isSmallView ? "Starting" : "Starting recording"}
+											{isSmallView
+												? t("ui.chat.composer.starting")
+												: t("ui.chat.composer.starting_recording")}
 										</output>
 									)}
 									{micControlShown && (
 										<Tooltip
 											content={
 												isPreparing
-													? "Starting recording"
+													? t("ui.chat.composer.starting_recording")
 													: !canEnableRecordingFeature
 														? recordingUnavailableReason
-														: `Start recording (${shortcutText} or hold ${resolvePushToTalkBinding().label})`
+														: t("ui.chat.composer.start_recording_hint", {
+																shortcut: shortcutText,
+																pushToTalk: resolvePushToTalkBinding().label,
+															})
 											}
 										>
 											<span>
@@ -9073,7 +9080,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 													className="text-ink-dim hover:bg-elevated hover:text-ink"
 													onPointerDown={holdCaretOnRefusedPress}
 													onClick={handleStartRecording}
-													aria-label="Start recording"
+													aria-label={t("ui.chat.composer.start_recording")}
 													/*
 													 * BUSY IS ITS OWN FACE (operator feedback via Aida,
 													 * 2026-10-01): while the recorder is being acquired the
@@ -9133,14 +9140,16 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 									)}
 									{isRecording && (
 										<>
-											<Tooltip content="Confirm recording (Enter)">
+											<Tooltip
+												content={t("ui.chat.composer.confirm_recording_hint")}
+											>
 												<span>
 													<Button
 														variant="ghost"
 														size={isSmallView ? "icon-sm" : "icon"}
 														className="text-success hover:bg-success-wash hover:text-success"
 														onClick={handleConfirmRecording}
-														aria-label="Confirm recording"
+														aria-label={t("ui.chat.composer.confirm_recording")}
 														/*
 														 * NO `disabled` HERE, and NOT gated on the composer's refusal either
 														 * (the refusal contract's own test forbids that gate anywhere in this
@@ -9156,14 +9165,16 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 													</Button>
 												</span>
 											</Tooltip>
-											<Tooltip content="Cancel recording (Esc)">
+											<Tooltip
+												content={t("ui.chat.composer.cancel_recording_hint")}
+											>
 												<span>
 													<Button
 														variant="ghost"
 														size={isSmallView ? "icon-sm" : "icon"}
 														className="text-danger hover:bg-danger-wash hover:text-danger"
 														onClick={handleCancelRecording}
-														aria-label="Cancel recording"
+														aria-label={t("ui.chat.composer.cancel_recording")}
 														// NO `disabled`: cancelling is the mic's own off switch and must work
 														// even where the box refuses input (see the confirm control above).
 													>
@@ -9364,14 +9375,14 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 										 * still says both in words. The VISIBLE cap is what went, not
 										 * the binding.
 										 */
-										<Tooltip content="Stop this session's current work (Esc)">
+										<Tooltip content={t("ui.chat.composer.stop_work_hint")}>
 											<span>
 												<Button
 													variant="danger"
 													size={isSmallView ? "icon-sm" : "icon"}
 													type="button"
 													onClick={canonicalStop.onStop}
-													aria-label="Stop"
+													aria-label={t("ui.chat.composer.stop")}
 													aria-keyshortcuts="Escape"
 													/*
 													 * THE PRESSED HOLD (design round 2, D6). While the press
@@ -9405,14 +9416,14 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 										</Tooltip>
 									)}
 									{isLoading && currentJobId ? (
-										<Tooltip content="Stop agent">
+										<Tooltip content={t("ui.chat.composer.stop_agent")}>
 											<span>
 												<Button
 													variant="danger"
 													size={isSmallView ? "icon-sm" : "icon"}
 													type="button"
 													onClick={() => onCancelJob?.(currentJobId)}
-													aria-label="Stop agent"
+													aria-label={t("ui.chat.composer.stop_agent")}
 												>
 													<Square aria-hidden="true" />
 												</Button>
@@ -9440,8 +9451,8 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 													 * to do.
 													 */
 													aside !== null && !awaitingAnswer
-														? "Ask the aside"
-														: "Send message"
+														? t("ui.chat.composer.ask_aside")
+														: t("ui.chat.composer.send_message")
 												}
 											>
 												<span>
@@ -9487,8 +9498,8 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 														className="rounded-full disabled:bg-surface"
 														aria-label={
 															aside !== null && !awaitingAnswer
-																? "Ask the aside"
-																: "Send message"
+																? t("ui.chat.composer.ask_aside")
+																: t("ui.chat.composer.send_message")
 														}
 													>
 														<Send aria-hidden="true" />
@@ -9724,7 +9735,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 								 */}
 								{noProvider ? null : (
 									<h2 className="text-center text-ink text-title">
-										What can I help you with today?
+										{t("ui.chat.composer.welcome")}
 									</h2>
 								)}
 								{noProvider ? (

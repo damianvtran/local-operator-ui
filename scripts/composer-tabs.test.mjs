@@ -2357,6 +2357,12 @@ test("the hidden scroll-to-bottom control is not hit-testable", () => {
 
 test("the empty-chat band keeps one wrapper, so a narrowing column cannot remount the row", () => {
 	const source = code(MESSAGE_INPUT);
+	assert.equal(
+		JSON.parse(
+			readFileSync("src/i18n/catalogues/en/ui.chat.composer.json", "utf8"),
+		)["ui.chat.composer.welcome"],
+		"What can I help you with today?",
+	);
 	/*
 	 * The band used to swap between a centred prompt `<div>` and a bare
 	 * `inputContent` on `!isSmallView`, a COLUMN measurement - so opening the pane
@@ -2380,7 +2386,7 @@ test("the empty-chat band keeps one wrapper, so a narrowing column cannot remoun
 	 */
 	assert.match(
 		source,
-		/\{noProvider \? null : \(\s*<h2[^>]*>\s*What can I help you with today\?/,
+		/\{noProvider \? null : \(\s*<h2[^>]*>\s*\{t\("ui\.chat\.composer\.welcome"\)\}/,
 	);
 });
 
