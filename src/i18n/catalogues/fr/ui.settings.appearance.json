@@ -1,0 +1,12 @@
+{
+	"ui.settings.appearance.settings_page.appearance": "Apparence",
+	"ui.settings.appearance.settings_page.customize_the_look_and_feel_of_local_operator": "Personnalisez l’apparence de Local Operator",
+	"ui.settings.appearance.settings_page.show_agent_reasoning": "Afficher le raisonnement des agents",
+	"ui.settings.appearance.settings_page.adds_the_agent_s_reasoning_and_thinking_rows_to_conversations_the": "Ajoute les lignes Reasoning et Thinking de l’agent aux conversations. Elles restent repliées tant que vous ne les ouvrez pas. Ce réglage ne concerne que le raisonnement : les commentaires rédigés par l’agent pendant son tour font partie de la transcription. Aucun mode d’affichage ne les supprime — Par tour les replie derrière les barres du tour, Par réponse les garde à l’écran.",
+	"ui.settings.appearance.theme_selector.dark": "Sombre",
+	"ui.settings.appearance.theme_selector.light": "Clair",
+	"ui.settings.appearance.transcript_display_mode_setting.transcript_display": "Affichage de la transcription",
+	"ui.settings.appearance.transcript_display_mode_setting.by_turn_condenses_each_turn_to_its_answer_by_response_keeps_every": "Par tour ne garde que la réponse finale de chaque tour. Par réponse garde chaque réponse terminée à l’écran, tout en signalant la réponse finale du tour.",
+	"ui.settings.appearance.transcript_display_mode_setting.by_turn": "Par tour",
+	"ui.settings.appearance.transcript_display_mode_setting.by_response": "Par réponse"
+}

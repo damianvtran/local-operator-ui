@@ -1612,6 +1612,519 @@
 					"status": "audited"
 				}
 			]
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.settings.account",
+			"source_sha256": "90960d5e885e5b617af91b7249b64828a049c0b9631bf5da4562a8f8c2f5c066",
+			"target_sha256": "c4ca293c33e916ad2a03b46eb2a12cc1ee226d0963981310fc5b40a05b45bbb0",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-14",
+				"note": "34 keys translated by LLM reasoning, no translation service. Programme glossary and French style guide from core i18n/; existing UI French terminology retained. Source PR #1057 at c0212c00b8fcb5f028f2ea09b227889fec2b3ad9. Independent audit pending; no rendered French frame."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-17",
+					"result": "clean",
+					"instance": "5a1e3239e69c",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/5a1e3239e69c.json",
+					"receipt_sha256": "569240f5e868624550ea73bfee1fa7df69e3f3ee58c1a707442bdb0cad240618",
+					"scope": "fr ui.settings.account vs en at the #1057 re-pinned sources - full-file re-audit incl. ::group-off token mirror",
+					"note": "Independent re-audit at the re-pinned head; receipt-backed. Prior comment-based audit records retained as history in superseded. Rendered pixel fit remains a separate PR check."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "f62724dfe75691f8bab3b5a9efb77a1cb7b95110427dc2e09e3f674fcdf2cfb6",
+					"target_sha256": "9a31c61ee1ced8fe61dcb2a7984ed92627047e82ec31041b9d5aec6dd407720c",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-14",
+							"result": "clean-with-findings",
+							"instance": "167e389423a9",
+							"note": "PR #1089 comments 6180988869 (full round 1) and 6181075670 (delta round 2 at 483205c9); T1/T3/T4 fixed, T2 nonblocking pending rendered-fit pass; 13 IDENTICAL_OK rows approved; rendered fit not signed off."
+						},
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-14",
+							"result": "clean-with-findings",
+							"instance": "d9c7f6717d13",
+							"note": "PR #1089 comments 6181141995 and 6181185569 cover all 465 keys at 483205c9; T2/S1/S2/S3 nonblocking pending rendered-fit pass (Partout and Enregistrer alternatives on record); all 13 IDENTICAL_OK rows approved; rendered fit not signed off."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.settings.appearance",
+			"source_sha256": "f5db8989cc542fededba171769b0fbaa940cec562de6eccc07347c0f41c784d1",
+			"target_sha256": "85a5a8aae6a375bc4c5ab14d489dd49f523bf1c3d153b0ad4085d7494cc7509a",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-14",
+				"note": "10 keys translated by LLM reasoning, no translation service. Programme glossary and French style guide from core i18n/; existing UI French terminology retained. Source PR #1057 at c0212c00b8fcb5f028f2ea09b227889fec2b3ad9. Independent audit pending; no rendered French frame."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-17",
+					"result": "clean",
+					"instance": "5a1e3239e69c",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/5a1e3239e69c.json",
+					"receipt_sha256": "569240f5e868624550ea73bfee1fa7df69e3f3ee58c1a707442bdb0cad240618",
+					"scope": "fr ui.settings.appearance vs en at the #1057 re-pinned sources - full-file re-audit incl. ::group-off token mirror",
+					"note": "Independent re-audit at the re-pinned head; receipt-backed. Prior comment-based audit records retained as history in superseded. Rendered pixel fit remains a separate PR check."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "f5db8989cc542fededba171769b0fbaa940cec562de6eccc07347c0f41c784d1",
+					"target_sha256": "85a5a8aae6a375bc4c5ab14d489dd49f523bf1c3d153b0ad4085d7494cc7509a",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-14",
+							"result": "clean-with-findings",
+							"instance": "167e389423a9",
+							"note": "PR #1089 comments 6180988869 (full round 1) and 6181075670 (delta round 2 at 483205c9); T1/T3/T4 fixed, T2 nonblocking pending rendered-fit pass; 13 IDENTICAL_OK rows approved; rendered fit not signed off."
+						},
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-14",
+							"result": "clean-with-findings",
+							"instance": "d9c7f6717d13",
+							"note": "PR #1089 comments 6181141995 and 6181185569 cover all 465 keys at 483205c9; T2/S1/S2/S3 nonblocking pending rendered-fit pass (Partout and Enregistrer alternatives on record); all 13 IDENTICAL_OK rows approved; rendered fit not signed off."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.settings.configuration",
+			"source_sha256": "d11a5170a0336449668b91a2b2aa1013ae36ee38c4b70fc69f90541aea3e5050",
+			"target_sha256": "7c4a415d6cf15c0399314032a2a9be8402b1aaa14de8ddff704a26cf26f8737a",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-14",
+				"note": "92 keys translated by LLM reasoning, no translation service. Programme glossary and French style guide from core i18n/; existing UI French terminology retained. Source PR #1057 at c0212c00b8fcb5f028f2ea09b227889fec2b3ad9. Independent audit pending; no rendered French frame."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-17",
+					"result": "clean",
+					"instance": "5a1e3239e69c",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/5a1e3239e69c.json",
+					"receipt_sha256": "569240f5e868624550ea73bfee1fa7df69e3f3ee58c1a707442bdb0cad240618",
+					"scope": "fr ui.settings.configuration vs en at the #1057 re-pinned sources - full-file re-audit incl. ::group-off token mirror",
+					"note": "Independent re-audit at the re-pinned head; receipt-backed. Prior comment-based audit records retained as history in superseded. Rendered pixel fit remains a separate PR check."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "7a6064e0d4109393839a0dcc1383b017f3fabaea3e78088c45ce21e77578546a",
+					"target_sha256": "4adfd0c7f889632acde4b92e9a560032d5062553de78328875863f5082a76a09",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-14",
+							"result": "clean-with-findings",
+							"instance": "167e389423a9",
+							"note": "PR #1089 comments 6180988869 (full round 1) and 6181075670 (delta round 2 at 483205c9); T1/T3/T4 fixed, T2 nonblocking pending rendered-fit pass; 13 IDENTICAL_OK rows approved; rendered fit not signed off."
+						},
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-14",
+							"result": "clean-with-findings",
+							"instance": "d9c7f6717d13",
+							"note": "PR #1089 comments 6181141995 and 6181185569 cover all 465 keys at 483205c9; T2/S1/S2/S3 nonblocking pending rendered-fit pass (Partout and Enregistrer alternatives on record); all 13 IDENTICAL_OK rows approved; rendered fit not signed off."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.settings.integrations",
+			"source_sha256": "36b3507993a0466100ca099c3c1c2b2852d66a81b14f3685031f0a35dfa0f5b3",
+			"target_sha256": "92928e4e67816e681d05220e1656a34ee9e07a0bf478a3ddfb5450ae0084e3ee",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-14",
+				"note": "218 keys translated by LLM reasoning, no translation service. Programme glossary and French style guide from core i18n/; existing UI French terminology retained. Source PR #1057 at c0212c00b8fcb5f028f2ea09b227889fec2b3ad9. Independent audit pending; no rendered French frame."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-17",
+					"result": "clean",
+					"instance": "5a1e3239e69c",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/5a1e3239e69c.json",
+					"receipt_sha256": "569240f5e868624550ea73bfee1fa7df69e3f3ee58c1a707442bdb0cad240618",
+					"scope": "fr ui.settings.integrations vs en at the #1057 re-pinned sources - full-file re-audit incl. ::group-off token mirror",
+					"note": "Independent re-audit at the re-pinned head; receipt-backed. Prior comment-based audit records retained as history in superseded. Rendered pixel fit remains a separate PR check."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "a2868a88c9948b353adaa78046aa78132c93d6181d6eedd637edba2ec18c6d8e",
+					"target_sha256": "688283ed37bf232328ba188b40f62095e254286ab6e1a628557684b07b1dcb89",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-14",
+							"result": "clean-with-findings",
+							"instance": "167e389423a9",
+							"note": "PR #1089 comments 6180988869 (full round 1) and 6181075670 (delta round 2 at 483205c9); T1/T3/T4 fixed, T2 nonblocking pending rendered-fit pass; 13 IDENTICAL_OK rows approved; rendered fit not signed off."
+						},
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-14",
+							"result": "clean-with-findings",
+							"instance": "d9c7f6717d13",
+							"note": "PR #1089 comments 6181141995 and 6181185569 cover all 465 keys at 483205c9; T2/S1/S2/S3 nonblocking pending rendered-fit pass (Partout and Enregistrer alternatives on record); all 13 IDENTICAL_OK rows approved; rendered fit not signed off."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.settings.model",
+			"source_sha256": "5a09b6ed49e8501d14a6f8052a70ce15ce5104ec8da3756c6b576e6e4d150cf1",
+			"target_sha256": "924425cecd9dca0c1201ab8830540b75e8e9b2300b867274c4ddaf10de55478b",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-14",
+				"note": "32 keys translated by LLM reasoning, no translation service. Programme glossary and French style guide from core i18n/; existing UI French terminology retained. Source PR #1057 at c0212c00b8fcb5f028f2ea09b227889fec2b3ad9. Independent audit pending; no rendered French frame."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-17",
+					"result": "clean",
+					"instance": "5a1e3239e69c",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/5a1e3239e69c.json",
+					"receipt_sha256": "569240f5e868624550ea73bfee1fa7df69e3f3ee58c1a707442bdb0cad240618",
+					"scope": "fr ui.settings.model vs en at the #1057 re-pinned sources - full-file re-audit incl. ::group-off token mirror",
+					"note": "Independent re-audit at the re-pinned head; receipt-backed. Prior comment-based audit records retained as history in superseded. Rendered pixel fit remains a separate PR check."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "5a09b6ed49e8501d14a6f8052a70ce15ce5104ec8da3756c6b576e6e4d150cf1",
+					"target_sha256": "924425cecd9dca0c1201ab8830540b75e8e9b2300b867274c4ddaf10de55478b",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-14",
+							"result": "clean-with-findings",
+							"instance": "167e389423a9",
+							"note": "PR #1089 comments 6180988869 (full round 1) and 6181075670 (delta round 2 at 483205c9); T1/T3/T4 fixed, T2 nonblocking pending rendered-fit pass; 13 IDENTICAL_OK rows approved; rendered fit not signed off."
+						},
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-14",
+							"result": "clean-with-findings",
+							"instance": "d9c7f6717d13",
+							"note": "PR #1089 comments 6181141995 and 6181185569 cover all 465 keys at 483205c9; T2/S1/S2/S3 nonblocking pending rendered-fit pass (Partout and Enregistrer alternatives on record); all 13 IDENTICAL_OK rows approved; rendered fit not signed off."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.settings.navigation",
+			"source_sha256": "b0db379acf4e4c13bed8f4fb3f7e551c0b1ebc3dd52ef4508a9797c5fdcf3dbc",
+			"target_sha256": "1f87d43f79c874f2621ba4995dffad112589e12004b0cea039fae1f0fae683d5",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-14",
+				"note": "22 keys translated by LLM reasoning, no translation service. Programme glossary and French style guide from core i18n/; existing UI French terminology retained. Source PR #1057 at c0212c00b8fcb5f028f2ea09b227889fec2b3ad9. Independent audit pending; no rendered French frame."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-17",
+					"result": "clean",
+					"instance": "5a1e3239e69c",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/5a1e3239e69c.json",
+					"receipt_sha256": "569240f5e868624550ea73bfee1fa7df69e3f3ee58c1a707442bdb0cad240618",
+					"scope": "fr ui.settings.navigation vs en at the #1057 re-pinned sources - full-file re-audit incl. ::group-off token mirror",
+					"note": "Independent re-audit at the re-pinned head; receipt-backed. Prior comment-based audit records retained as history in superseded. Rendered pixel fit remains a separate PR check."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "b0db379acf4e4c13bed8f4fb3f7e551c0b1ebc3dd52ef4508a9797c5fdcf3dbc",
+					"target_sha256": "1f87d43f79c874f2621ba4995dffad112589e12004b0cea039fae1f0fae683d5",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-14",
+							"result": "clean-with-findings",
+							"instance": "167e389423a9",
+							"note": "PR #1089 comments 6180988869 (full round 1) and 6181075670 (delta round 2 at 483205c9); T1/T3/T4 fixed, T2 nonblocking pending rendered-fit pass; 13 IDENTICAL_OK rows approved; rendered fit not signed off."
+						},
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-14",
+							"result": "clean-with-findings",
+							"instance": "d9c7f6717d13",
+							"note": "PR #1089 comments 6181141995 and 6181185569 cover all 465 keys at 483205c9; T2/S1/S2/S3 nonblocking pending rendered-fit pass (Partout and Enregistrer alternatives on record); all 13 IDENTICAL_OK rows approved; rendered fit not signed off."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.settings.shortcuts",
+			"source_sha256": "39560cc2eb681fae44113a3e237ea9a2a1d879366a34fae09e432abd42c765c9",
+			"target_sha256": "4831f744d9535947dc665c3d3c284d8a1a18b14f3ed03cc1c2c86468be127a8e",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-14",
+				"note": "9 keys translated by LLM reasoning, no translation service. Programme glossary and French style guide from core i18n/; existing UI French terminology retained. Source PR #1057 at c0212c00b8fcb5f028f2ea09b227889fec2b3ad9. Independent audit pending; no rendered French frame."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-17",
+					"result": "clean",
+					"instance": "5a1e3239e69c",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/5a1e3239e69c.json",
+					"receipt_sha256": "569240f5e868624550ea73bfee1fa7df69e3f3ee58c1a707442bdb0cad240618",
+					"scope": "fr ui.settings.shortcuts vs en at the #1057 re-pinned sources - full-file re-audit incl. ::group-off token mirror",
+					"note": "Independent re-audit at the re-pinned head; receipt-backed. Prior comment-based audit records retained as history in superseded. Rendered pixel fit remains a separate PR check."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "39560cc2eb681fae44113a3e237ea9a2a1d879366a34fae09e432abd42c765c9",
+					"target_sha256": "4831f744d9535947dc665c3d3c284d8a1a18b14f3ed03cc1c2c86468be127a8e",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-14",
+							"result": "clean-with-findings",
+							"instance": "167e389423a9",
+							"note": "PR #1089 comments 6180988869 (full round 1) and 6181075670 (delta round 2 at 483205c9); T1/T3/T4 fixed, T2 nonblocking pending rendered-fit pass; 13 IDENTICAL_OK rows approved; rendered fit not signed off."
+						},
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-14",
+							"result": "clean-with-findings",
+							"instance": "d9c7f6717d13",
+							"note": "PR #1089 comments 6181141995 and 6181185569 cover all 465 keys at 483205c9; T2/S1/S2/S3 nonblocking pending rendered-fit pass (Partout and Enregistrer alternatives on record); all 13 IDENTICAL_OK rows approved; rendered fit not signed off."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.settings.speech",
+			"source_sha256": "36b1321c4660c345b6c40dfa753e0e233228a66868cfe78218c4ce573609574d",
+			"target_sha256": "483d7fa4401fcf1d08d59830127d41f8bf202e9452425ccbe82968fd488833e7",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-14",
+				"note": "19 keys translated by LLM reasoning, no translation service. Programme glossary and French style guide from core i18n/; existing UI French terminology retained. Source PR #1057 at c0212c00b8fcb5f028f2ea09b227889fec2b3ad9. Independent audit pending; no rendered French frame."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-17",
+					"result": "clean",
+					"instance": "5a1e3239e69c",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/5a1e3239e69c.json",
+					"receipt_sha256": "569240f5e868624550ea73bfee1fa7df69e3f3ee58c1a707442bdb0cad240618",
+					"scope": "fr ui.settings.speech vs en at the #1057 re-pinned sources - full-file re-audit incl. ::group-off token mirror",
+					"note": "Independent re-audit at the re-pinned head; receipt-backed. Prior comment-based audit records retained as history in superseded. Rendered pixel fit remains a separate PR check."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "36b1321c4660c345b6c40dfa753e0e233228a66868cfe78218c4ce573609574d",
+					"target_sha256": "483d7fa4401fcf1d08d59830127d41f8bf202e9452425ccbe82968fd488833e7",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-14",
+							"result": "clean-with-findings",
+							"instance": "167e389423a9",
+							"note": "PR #1089 comments 6180988869 (full round 1) and 6181075670 (delta round 2 at 483205c9); T1/T3/T4 fixed, T2 nonblocking pending rendered-fit pass; 13 IDENTICAL_OK rows approved; rendered fit not signed off."
+						},
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-14",
+							"result": "clean-with-findings",
+							"instance": "d9c7f6717d13",
+							"note": "PR #1089 comments 6181141995 and 6181185569 cover all 465 keys at 483205c9; T2/S1/S2/S3 nonblocking pending rendered-fit pass (Partout and Enregistrer alternatives on record); all 13 IDENTICAL_OK rows approved; rendered fit not signed off."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.settings.updates",
+			"source_sha256": "6597aeea3a3a0495f1ba0d9a7ce8078f455d970b53647dbc8350e00fbc9099b2",
+			"target_sha256": "7eea13683957ef5dd0b20c66b61f1f33bf667ff898ce6927dc553a9b32bee658",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-10-14",
+				"note": "29 keys translated by LLM reasoning, no translation service. Programme glossary and French style guide from core i18n/; existing UI French terminology retained. Source PR #1057 at c0212c00b8fcb5f028f2ea09b227889fec2b3ad9. Independent audit pending; no rendered French frame."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-17",
+					"result": "clean",
+					"instance": "5a1e3239e69c",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/5a1e3239e69c.json",
+					"receipt_sha256": "569240f5e868624550ea73bfee1fa7df69e3f3ee58c1a707442bdb0cad240618",
+					"scope": "fr ui.settings.updates vs en at the #1057 re-pinned sources - full-file re-audit incl. ::group-off token mirror",
+					"note": "Independent re-audit at the re-pinned head; receipt-backed. Prior comment-based audit records retained as history in superseded. Rendered pixel fit remains a separate PR check."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "6597aeea3a3a0495f1ba0d9a7ce8078f455d970b53647dbc8350e00fbc9099b2",
+					"target_sha256": "7eea13683957ef5dd0b20c66b61f1f33bf667ff898ce6927dc553a9b32bee658",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-14",
+							"result": "clean-with-findings",
+							"instance": "167e389423a9",
+							"note": "PR #1089 comments 6180988869 (full round 1) and 6181075670 (delta round 2 at 483205c9); T1/T3/T4 fixed, T2 nonblocking pending rendered-fit pass; 13 IDENTICAL_OK rows approved; rendered fit not signed off."
+						},
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-14",
+							"result": "clean-with-findings",
+							"instance": "d9c7f6717d13",
+							"note": "PR #1089 comments 6181141995 and 6181185569 cover all 465 keys at 483205c9; T2/S1/S2/S3 nonblocking pending rendered-fit pass (Partout and Enregistrer alternatives on record); all 13 IDENTICAL_OK rows approved; rendered fit not signed off."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		}
 	]
 }

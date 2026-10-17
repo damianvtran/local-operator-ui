@@ -1,0 +1,90 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "radient/auto",
+  "instance": "5a1e3239e69c",
+  "locale": "fr",
+  "status": "passed",
+  "namespaces": {
+    "ui.settings.account": {
+      "status": "passed",
+      "keys_audited": 34,
+      "sha256": {
+        "fr": "c4ca293c33e916ad2a03b46eb2a12cc1ee226d0963981310fc5b40a05b45bbb0",
+        "en": "90960d5e885e5b617af91b7249b64828a049c0b9631bf5da4562a8f8c2f5c066"
+      },
+      "findings": []
+    },
+    "ui.settings.appearance": {
+      "status": "passed",
+      "keys_audited": 10,
+      "sha256": {
+        "fr": "85a5a8aae6a375bc4c5ab14d489dd49f523bf1c3d153b0ad4085d7494cc7509a",
+        "en": "f5db8989cc542fededba171769b0fbaa940cec562de6eccc07347c0f41c784d1"
+      },
+      "findings": []
+    },
+    "ui.settings.configuration": {
+      "status": "passed",
+      "keys_audited": 92,
+      "sha256": {
+        "fr": "7c4a415d6cf15c0399314032a2a9be8402b1aaa14de8ddff704a26cf26f8737a",
+        "en": "d11a5170a0336449668b91a2b2aa1013ae36ee38c4b70fc69f90541aea3e5050"
+      },
+      "findings": []
+    },
+    "ui.settings.integrations": {
+      "status": "passed",
+      "keys_audited": 218,
+      "sha256": {
+        "fr": "92928e4e67816e681d05220e1656a34ee9e07a0bf478a3ddfb5450ae0084e3ee",
+        "en": "36b3507993a0466100ca099c3c1c2b2852d66a81b14f3685031f0a35dfa0f5b3"
+      },
+      "findings": []
+    },
+    "ui.settings.model": {
+      "status": "passed",
+      "keys_audited": 32,
+      "sha256": {
+        "fr": "924425cecd9dca0c1201ab8830540b75e8e9b2300b867274c4ddaf10de55478b",
+        "en": "5a09b6ed49e8501d14a6f8052a70ce15ce5104ec8da3756c6b576e6e4d150cf1"
+      },
+      "findings": []
+    },
+    "ui.settings.navigation": {
+      "status": "passed",
+      "keys_audited": 22,
+      "sha256": {
+        "fr": "1f87d43f79c874f2621ba4995dffad112589e12004b0cea039fae1f0fae683d5",
+        "en": "b0db379acf4e4c13bed8f4fb3f7e551c0b1ebc3dd52ef4508a9797c5fdcf3dbc"
+      },
+      "findings": []
+    },
+    "ui.settings.shortcuts": {
+      "status": "passed",
+      "keys_audited": 9,
+      "sha256": {
+        "fr": "4831f744d9535947dc665c3d3c284d8a1a18b14f3ed03cc1c2c86468be127a8e",
+        "en": "39560cc2eb681fae44113a3e237ea9a2a1d879366a34fae09e432abd42c765c9"
+      },
+      "findings": []
+    },
+    "ui.settings.speech": {
+      "status": "passed",
+      "keys_audited": 19,
+      "sha256": {
+        "fr": "483d7fa4401fcf1d08d59830127d41f8bf202e9452425ccbe82968fd488833e7",
+        "en": "36b1321c4660c345b6c40dfa753e0e233228a66868cfe78218c4ce573609574d"
+      },
+      "findings": []
+    },
+    "ui.settings.updates": {
+      "status": "passed",
+      "keys_audited": 29,
+      "sha256": {
+        "fr": "7eea13683957ef5dd0b20c66b61f1f33bf667ff898ce6927dc553a9b32bee658",
+        "en": "6597aeea3a3a0495f1ba0d9a7ce8078f455d970b53647dbc8350e00fbc9099b2"
+      },
+      "findings": []
+    }
+  }
+}

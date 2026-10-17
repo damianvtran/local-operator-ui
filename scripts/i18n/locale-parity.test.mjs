@@ -57,6 +57,58 @@ const IDENTICAL_OK = new Map([
 		// invented punctuation. Identical is the correct translation here.
 		"language-neutral counter: only placeholders and '/', no words to translate",
 	],
+	[
+		"ui.settings.account.settings_page.radient_pass",
+		"Product name, preserved verbatim by the programme glossary.",
+	],
+	[
+		"ui.settings.account.settings_page.tokens",
+		"French technical term kept English by the French style guide (token).",
+	],
+	[
+		"ui.settings.configuration.settings_page.version",
+		"French cognate: « version » has the same spelling.",
+	],
+	[
+		"ui.settings.configuration.settings_page.description",
+		"French cognate: « description » has the same spelling.",
+	],
+	[
+		"ui.settings.integrations.add_integration_form.arguments",
+		"French command-line term: « arguments » has the same spelling.",
+	],
+	[
+		"ui.settings.integrations.add_integration_form.url",
+		"Standard technical abbreviation, unchanged in French.",
+	],
+	[
+		"ui.settings.integrations.add_integration_form.https_mcp_example_com_mcp",
+		"Literal sample URL; context requires it to remain byte-identical.",
+	],
+	[
+		"ui.settings.integrations.integration_model.claude_code",
+		"Product name, preserved verbatim by the programme glossary.",
+	],
+	[
+		"ui.settings.integrations.integration_model.vs_code",
+		"Product name, preserved verbatim by the programme glossary.",
+	],
+	[
+		"ui.settings.integrations.integration_model.codex_cli",
+		"Product name, preserved verbatim by the programme glossary.",
+	],
+	[
+		"ui.settings.integrations.integration_model.global",
+		"French scope adjective: « global » has the same spelling.",
+	],
+	[
+		"ui.settings.model.system_prompt.instructions",
+		"French cognate: « instructions » has the same spelling.",
+	],
+	[
+		"ui.settings.speech.speech_settings_model.radient_pass",
+		"Product name, preserved verbatim by the programme glossary.",
+	],
 ]);
 
 function localeDirs() {
