@@ -111,5 +111,41 @@
 		"role": "composer control accessible name, tooltip or status",
 		"tone": "short neutral sentence case; English punctuation unchanged",
 		"note": "Screen-reader-only navigation hint above textarea. Send again/Edit are controls in the conversation; Shift+Tab is a keyboard token."
+	},
+	"ui.chat.composer.secret_ask_notice": {
+		"role": "status sentence above the message box",
+		"tone": "plain sentence, second person; names the panel and the fact that the box still works",
+		"note": "Resolved during render; maxCells is an advisory translation target, not measured fit.",
+		"maxCells": 120
+	},
+	"ui.chat.composer.secret_ask_open": {
+		"role": "control label beside the status sentence",
+		"tone": "short imperative action, sentence case; no trailing punctuation",
+		"note": "Resolved during render; maxCells is an advisory translation target, not measured fit.",
+		"maxCells": 16
+	},
+	"ui.chat.composer.secret_confirm_message": {
+		"role": "confirm question above the message box",
+		"tone": "plain question, second person; asks where the value should go",
+		"note": "Resolved during render; maxCells is an advisory translation target, not measured fit.",
+		"maxCells": 80
+	},
+	"ui.chat.composer.secret_confirm_put": {
+		"role": "primary confirm action: answer the open ask with the typed value",
+		"tone": "short imperative action, sentence case; no trailing punctuation",
+		"note": "Resolved during render; maxCells is an advisory translation target, not measured fit.",
+		"maxCells": 24
+	},
+	"ui.chat.composer.secret_confirm_send": {
+		"role": "secondary confirm action: send the typed value as a chat message",
+		"tone": "short imperative action, sentence case; no trailing punctuation",
+		"note": "Resolved during render; maxCells is an advisory translation target, not measured fit.",
+		"maxCells": 24
+	},
+	"ui.chat.composer.secret_confirm_cancel": {
+		"role": "dismisses the confirm and keeps the typed text",
+		"tone": "single word, sentence case; no trailing punctuation",
+		"note": "Resolved during render; maxCells is an advisory translation target, not measured fit.",
+		"maxCells": 12
 	}
 }

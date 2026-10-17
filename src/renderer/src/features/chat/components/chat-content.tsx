@@ -499,6 +499,17 @@ type ChatContentProps = {
 		 * machinery a payload belongs to from the ask it happens to render.
 		 */
 		onAnswerAsk?: (askId: string, answers: Record<string, string[]>) => void;
+		/**
+		 * THE COMPOSER'S "Put in secret field" DOOR, and the one difference from
+		 * `onAnswerAsk` is its return value: the composer has to know whether the
+		 * value LANDED before it clears the box, or a refused answer would delete the
+		 * user's text. Same payload, same lock, same report — a promise around the
+		 * same call rather than a second route.
+		 */
+		onFillSecretAnswer?: (
+			askId: string,
+			answers: Record<string, string[]>,
+		) => Promise<boolean>;
 		/** "No answer — decide yourself" for a queued ask. */
 		onDeclineAsk?: (taskId: string) => void;
 		/**
@@ -1492,6 +1503,53 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			() => askQueueView(canonical?.view.frontend ?? null),
 			[canonical?.view.frontend],
 		);
+		/*
+		 * THE QUEUED SECRET ASK'S COMPOSER HOOKUP (the operator's ask, `a-9e0c`).
+		 *
+		 * The composer used to REFUSE ALL TYPING while a secret-only ask waited, on
+		 * the reading that an open box there is where a typed credential becomes a
+		 * chat message. The operator overruled that: the secret is entered in the
+		 * asks panel, and the chat should stay usable meanwhile. What replaces the
+		 * lock is this pair — a sentence that says where the secret goes, and a
+		 * confirm on a password-shaped send — because the hazard is real and the
+		 * refusal was the wrong shape for it. `ask-queue.ts`'s
+		 * `askComposerHoldsSecret` carries the decision itself.
+		 *
+		 * `onOpen` is the header asks control's own two calls, so the notice's door
+		 * lands on the surface the header's does rather than on a second notion of
+		 * "open the asks".
+		 */
+		const openAsksForSecret = useCallback(() => {
+			setAskDrawerOpen(true, "session");
+			requestAskOpen("session");
+		}, [setAskDrawerOpen, requestAskOpen]);
+
+		const secretAsk = useMemo(() => {
+			if (!askComposerHoldsSecret(sessionAsksView)) return null;
+			return {
+				onOpen: openAsksForSecret,
+				/*
+				 * ONLY A SINGLE-QUESTION SECRET ASK CAN BE FILLED BY THIS GESTURE. With
+				 * more than one secret question the value names no question, so the
+				 * door degrades to opening the panel and keeps the draft — posting it to
+				 * an arbitrary question would be a guess about what the user meant.
+				 */
+				onFill: async (value: string): Promise<boolean> => {
+					const head = sessionAsksView.head;
+					const questions = head?.ask.questions ?? [];
+					if (!head || questions.length !== 1 || questions[0].secret !== true) {
+						openAsksForSecret();
+						return false;
+					}
+					const accepted =
+						(await canonical?.onFillSecretAnswer?.(head.ask.ask_id, {
+							[questions[0].id]: [value.trim()],
+						})) ?? false;
+					if (accepted) openAsksForSecret();
+					return accepted;
+				},
+			};
+		}, [sessionAsksView, canonical?.onFillSecretAnswer, openAsksForSecret]);
 		/*
 		 * OPEN BY DEFAULT over pending asks (the open policy; `ask-open-policy.ts` states
 		 * the six-rule contract it shares with the TUI, the relay and the native app).
@@ -2800,10 +2858,16 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 * open box beside it. A question that is not secret leaves the box
 								 * an ordinary chat field.
 								 */
-								secretAnswer={
-									gateIsSecret(gate) ||
-									askComposerHoldsSecret(askQueueView(canonical?.view.frontend))
-								}
+								/*
+								 * BLOCKING GATES ONLY. A queued ask no longer closes this box
+								 * (the operator's ask, `a-9e0c`); it gets the notice and the
+								 * send confirm through `secretAsk` below. The refusal stays for
+								 * the blocking gate because there a send becomes a steer the
+								 * parked turn cannot read (backend `session/session.py`), which
+								 * no confirm can make safe.
+								 */
+								secretAnswer={gateIsSecret(gate)}
+								secretAsk={secretAsk}
 								// A conversation the backend says is gone is a KNOWN
 								// answer, so the composer refuses input rather than
 								// accepting a message that can only 404. The pane above

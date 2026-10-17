@@ -2802,6 +2802,14 @@ function SessionPanel({
 			setAdmitting(false);
 		}
 		settleAskOutcome(taskId, outcome);
+		/*
+		 * RETURNED for the composer's "Put in secret field" door, which has to know
+		 * whether the value landed before it clears the box (see
+		 * `ChatContentProps["canonical"].onFillSecretAnswer`). Undefined means this
+		 * page could not address the owner at all, which that door reads as not
+		 * accepted — the caller keeps the user's text.
+		 */
+		return outcome;
 	};
 	/*
 	 * THE REVISION DOOR (design §10, #1936). A third sibling of the two above, sharing
@@ -4667,6 +4675,14 @@ function SessionPanel({
 						 */
 						onAnswerAsk: (taskId: string, answers: Record<string, string[]>) =>
 							void answerAsk(taskId, answers),
+						/*
+						 * The composer's "Put in secret field" door: the same call as the
+						 * panel's, awaited so the composer clears the draft only on a success.
+						 */
+						onFillSecretAnswer: async (
+							taskId: string,
+							answers: Record<string, string[]>,
+						) => (await answerAsk(taskId, answers))?.status === "sent",
 						onDeclineAsk: (taskId: string) => void declineAsk(taskId),
 						onReviseAsk: (taskId: string, answers: Record<string, string[]>) =>
 							void reviseAsk(taskId, answers),

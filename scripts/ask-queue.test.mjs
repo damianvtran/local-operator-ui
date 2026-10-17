@@ -1141,7 +1141,7 @@ test("a SECRET-ONLY ask refuses the main box; any fillable question leaves it or
 	assert.equal(
 		queue.askComposerHoldsSecret(secretOnly),
 		true,
-		"the box must refuse",
+		"the box shows the notice and guards the send",
 	);
 
 	// Mixed: the secret question has its own masked field in the panel; the box
