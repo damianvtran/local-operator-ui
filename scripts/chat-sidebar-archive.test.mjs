@@ -609,6 +609,12 @@ test("the archived state is a pill badge with its own restore control beside it"
 });
 
 test("the header's menu is the session's actions, and its delete only ASKS", () => {
+	assert.equal(
+		JSON.parse(
+			readFileSync("src/i18n/catalogues/en/ui.chat.header.json", "utf8"),
+		)["ui.chat.header.delete"],
+		"Delete conversation…",
+	);
 	/*
 	 * THE SLICE STARTS AT THE TRIGGER rather than at the condition that gates it.
 	 * It used to read `between(HEADER, "(archiveEnabled || deleteEnabled) && (", …)`,
@@ -638,7 +644,7 @@ test("the header's menu is the session's actions, and its delete only ASKS", () 
 	 * stage a candidate, because the wire requires a confirmation and a menu pick is
 	 * not one.
 	 */
-	assert.match(menu, /Delete conversation…/);
+	assert.ok(menu.includes('t("ui.chat.header.delete")'));
 	assert.match(menu, /className="text-danger"/);
 	assert.match(menu, /onRequestDelete\?\.\(\)/);
 	assert.equal(
