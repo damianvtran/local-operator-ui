@@ -103,6 +103,7 @@ import {
 } from "@shared/store/canonical-sessions-store";
 import { dropPaint, readPaint, writePaint } from "@shared/store/paint-cache";
 import { forgetTurnCollapseOpen } from "@shared/store/turn-collapse-open";
+import { forgetWatchedRun } from "@shared/store/turn-collapse-watched";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { desktopRequestTimeoutMs } from "../../../../shared/desktop-contract";
 import {
@@ -5081,9 +5082,13 @@ export function useCanonicalSessionStream(
 							// go too (agent review round 1, R1-2): `forgetTurnCollapseOpen` is
 							// the same sibling of `dropPaint` the store's own doc names, and an
 							// id this host does not have should not keep a remembered set.
+							// The settle latch goes with them (agent review round 1 on #1142,
+							// R1-3): it remembers a run for the same conversation id, and the
+							// store's own doc names this event as its forget site.
 							if (sessionId) {
 								dropPaint(sessionId);
 								forgetTurnCollapseOpen(sessionId);
+								forgetWatchedRun(sessionId);
 							}
 							commitView((current) => ({
 								...current,
