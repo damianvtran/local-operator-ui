@@ -74,6 +74,9 @@ import esUiSettings from "./catalogues/es/ui.settings.json";
 import frUiConsole from "./catalogues/fr/ui.console.json";
 import frUiOnboarding from "./catalogues/fr/ui.onboarding.json";
 import frUiSettings from "./catalogues/fr/ui.settings.json";
+import ruUiConsole from "./catalogues/ru/ui.console.json";
+import ruUiOnboarding from "./catalogues/ru/ui.onboarding.json";
+import ruUiSettings from "./catalogues/ru/ui.settings.json";
 
 /** The bundled en catalogue: every `src/i18n/catalogues/en` message, flat. */
 export const bundledEnglish: Readonly<Record<string, string>> = {
@@ -140,6 +143,11 @@ export const bundledCatalogues: Readonly<
 		...frUiConsole,
 		...frUiOnboarding,
 		...frUiSettings,
+	},
+	ru: {
+		...ruUiConsole,
+		...ruUiOnboarding,
+		...ruUiSettings,
 	},
 };
 
