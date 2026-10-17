@@ -127,6 +127,17 @@ export type DisclosureProps = {
 	 */
 	summaryAlign?: SummaryAlign;
 	/**
+	 * DATA HOOKS FOR THE ELEMENT THAT PAINTS THE ROW'S GROUND, in both branches.
+	 *
+	 * One caller needs this: the transcript's tool row marks a running row
+	 * `data-glass-state="running"` so window glass can paint its state ground as a
+	 * relative ink overlay instead of an opaque slab (`styles/index.css`). The
+	 * marker has to sit on the element the GROUND class sits on, and which element
+	 * that is differs between the branches, so a prop on the caller's wrapper would
+	 * paint the wrong box (or tint the expanded detail).
+	 */
+	triggerData?: Record<`data-${string}`, string>;
+	/**
 	 * Extra classes on the ROW BOX, applied in both the interactive and the
 	 * `disabled` branch.
 	 *
@@ -307,6 +318,7 @@ export const Disclosure = ({
 	chevron = "leading",
 	className,
 	triggerClassName,
+	triggerData,
 	chevronClassName,
 	summaryAlign = "center",
 	rowClassName,
@@ -496,7 +508,7 @@ export const Disclosure = ({
 	// control here for a name to name or a tooltip to describe.
 	if (disabled) {
 		return (
-			<div className={className}>
+			<div {...triggerData} className={className}>
 				<div className={cn(ROW, rowAlign, "text-ink-dim", rowClassName)}>
 					{chevron === "leading" && (
 						<span className={cn("size-3.5", mark)} aria-hidden={true} />
@@ -522,6 +534,7 @@ export const Disclosure = ({
 		<Tooltip content={triggerTooltip} side="top" className={tooltipClassName}>
 			<button
 				type="button"
+				{...triggerData}
 				aria-expanded={isOpen}
 				aria-controls={children != null ? contentId : undefined}
 				aria-label={triggerLabel}
