@@ -4796,6 +4796,26 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			run.segments.filter((segment) => segment.collapsed),
 		);
 		/*
+		 * THE WATCHED RUN for the gate below (settle-latch convergence round,
+		 * 2026-10-17): the NEWEST run that holds the latch's row id - the exact
+		 * run the model spends `watched` on (`planRun`'s `anchored`), and therefore
+		 * the only run whose `internal.unsettled` stops reading the raw flag across
+		 * a liveness dip. Run-level, never segment-level: the model spends
+		 * `watched` on the RUN, and the episode segment rarely holds the id the run
+		 * was named by (the latch writes the run's leading row), so a containment
+		 * test over `segment.segmentIds` would miss precisely the segments this
+		 * exists for.
+		 */
+		const watchedRunId = collapseInputs.watchedRunId ?? null;
+		const newestRun = collapse.runs.at(-1);
+		const watchedRun =
+			watchedRunId !== null &&
+			newestRun !== undefined &&
+			newestRun.recordIds.includes(watchedRunId)
+				? newestRun
+				: null;
+		const watchedSegments = new Set(watchedRun?.segments ?? []);
+		/*
 		 * A LIVE internal episode is PRESENTATION, NOT A SETTLE. It compacted because
 		 * the turn is still thinking, so announcing it now would speak a transition
 		 * the reader did not experience (PR-4: nothing is announced while the cycle
@@ -4806,30 +4826,32 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		 * key becomes a genuine settle, appears once, and says its one sentence.
 		 */
 		/*
-		 * THE PANE IS LIVE, NOT THE SEGMENT'S TAIL. `internal.live` is derived
-		 * with a tail-position condition (`span.to === records.length - 1`), so it
-		 * reads false the moment a streaming answer appends AFTER the episode -
-		 * which is exactly when the turn is still thinking and PR-4 #1 requires
-		 * silence. That flip is what let `'Wake.'` through at state 1. The pane's
-		 * own live option (`collapseInputs.live`) covers the whole cycle, so gate on
-		 * it: while the turn is being written an internal episode is presentation,
-		 * never a settle. Its key is still left unannounced, so the ONE settle
-		 * sentence lands exactly once when the pane goes quiet.
+		 * THE QUIET HALF IS ANCHORED FOR THE WATCHED RUN (settle-latch convergence
+		 * round, 2026-10-17). `internal.live` is not the silencer - its tail-position
+		 * condition (`span.to === records.length - 1`) reads false the moment a
+		 * streaming answer appends after the episode, which is exactly when the turn
+		 * is still thinking and PR-4 #1 requires silence. The pane's flag beside the
+		 * episode's own settledness is not enough either: a liveness dip reads
+		 * not-live for a beat, so an episode still being written passed as settled -
+		 * the sentence spoke at the dip, the key was recorded, and the real settle
+		 * went silent. For the watched run the pane half therefore anchors like
+		 * everything else in `planRun` (`live || watched`): silence holds while
+		 * `internal.unsettled` does, and only a landed close (which flips it) lets
+		 * the ONE sentence land. For every other run the pane half is the raw flag
+		 * and the predicate is the shipped one - `unsettled` can only be true while
+		 * the pane is live there, so unwatched timing is unchanged.
 		 *
 		 * ONLY THE UNSETTLED EPISODE IS SILENCED (reviewer F2). Membership alone
 		 * (`internal != null`) also silenced every SETTLED history episode during a
 		 * live pass, so none was recorded in `previous.keys` and the first settle
-		 * announced them all again. `internal.unsettled` is the planner's own
-		 * "inside the cycle still being written" fact (it survives a streaming
-		 * answer appending after the episode, which `internal.live` does not).
+		 * announced them all again.
 		 */
-		const announced = (segment: {
-			collapsed: boolean;
-			internal?: { unsettled: boolean } | null;
-			key: string;
-		}) =>
+		const announced = (segment: SegmentPlan) =>
 			segment.collapsed &&
-			!(collapseInputs.live && segment.internal?.unsettled === true);
+			!(
+				(collapseInputs.live || watchedSegments.has(segment)) &&
+				segment.internal?.unsettled === true
+			);
 		const rowIds = planRowIds(collapse.runs);
 		const previous =
 			announcedPlan.current?.viewEpoch === transcript.viewEpoch

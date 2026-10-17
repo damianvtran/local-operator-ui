@@ -2668,21 +2668,15 @@ test("the settle latch: a dip in a watched episode's cycle moves nothing, and th
 	);
 });
 
-test("the settle latch: a quiet beat cannot move a watched episode's bar or its active presentation - the F1 shape", async (t) => {
+test("the settle latch: a dip cannot speak a watched episode's sentence early - the sentence waits for the close", async (t) => {
 	/*
-	 * THE EPISODE FACTS' HALF OF THE DIP (convergence round, 2026-10-17; the F2
-	 * case covers the gate). Here the episode IS the run's one bar, so nothing is
-	 * suppressed and the beat's damage was in the FACTS: `internal.live` (the
-	 * bar's active presentation and the footer's working line) flipped false for
-	 * a beat and back. It now rides `planRun`'s `anchored` reading like
-	 * `liveFrom`, so a beat with no landed close reaches the same painted bar.
-	 * (`internal.unsettled` rides the same reading - that is what keeps the gate
-	 * from flashing in the F2 shape.)
-	 *
-	 * NOT THIS CASE'S QUESTION: the SENTENCE's timing for this shape (the
-	 * announce effect reads the pane's quiet flag beside the episode's own
-	 * settledness - the branch's semantics, pinned by R3's pane-quiet case).
-	 * This case drives only the painted bar state the fix changes.
+	 * THE ANNOUNCE SEAM OF THE DIP (convergence round, 2026-10-17; the F2 case
+	 * covers the gate). The announce effect read the pane's RAW quiet flag beside
+	 * the episode's own settledness; on a dip the pane reads not-live for a beat,
+	 * so an episode STILL BEING WRITTEN passed as settled: the sentence landed at
+	 * the dip, its key was recorded, and the real settle went silent. The watched
+	 * run's half now anchors like everything else in `planRun`: silence follows
+	 * `internal.unsettled`, and only a landed close flips it.
 	 */
 	__resetTurnCollapseOpen();
 	__resetWatchedRuns();
@@ -2705,27 +2699,58 @@ test("the settle latch: a quiet beat cannot move a watched episode's bar or its 
 		"f1d-u",
 		"the live pass armed the latch for this conversation",
 	);
+	const region = () =>
+		mounted.container.querySelector("[data-condense-announcement]")
+			?.textContent ?? "";
+	assert.equal(region(), "", "nothing is announced while the cycle runs");
 	assert.equal(
 		first.getAttribute("data-segment-active"),
 		"true",
 		"while live it reads active",
 	);
-	// THE BEAT: same bar, same element, still active.
+	// THE DIP: silent, same bar, same element, still active.
 	await mounted.render(rows, { frontend, waiting: false });
-	assert.equal(barsOf(mounted).length, 1, "the beat adds no bar");
+	assert.equal(
+		region(),
+		"",
+		"a dip does not speak the sentence early - no close has landed",
+	);
+	assert.equal(barsOf(mounted).length, 1, "the dip adds no bar");
 	assert.ok(bar(mounted) === first, "the bar is the same element");
 	assert.equal(
 		bar(mounted).getAttribute("data-segment-active"),
 		"true",
-		"and it still reads active: no close has landed, the cycle still runs",
+		"and it still reads active: the cycle still runs",
 	);
-	// THE RE-ENTRY reaches it again.
+	// THE RE-ENTRY: silent again.
 	await mounted.render(rows, { frontend, waiting: true });
-	assert.ok(bar(mounted) === first, "the re-entry reaches the same bar");
+	assert.equal(region(), "", "nor the re-entry");
+	// THE CLOSE LANDS: the one sentence, here.
+	const settled = [
+		...rows,
+		answerRecord("f1d-a2", {
+			ts: TS + 15_000,
+			settledAt: TS + 15_000,
+			stopReason: "stop",
+		}),
+	];
+	await mounted.render(settled, { frontend, waiting: false });
 	assert.equal(
-		bar(mounted).getAttribute("data-segment-active"),
-		"true",
-		"which is still active",
+		region(),
+		"Peer message: took 4s, 1 action.",
+		"the sentence lands once, at the close",
+	);
+	// AND NOT AGAIN: a further pass holds the same one sentence.
+	await mounted.render(settled, { frontend, waiting: false });
+	assert.equal(
+		region(),
+		"Peer message: took 4s, 1 action.",
+		"the sentence does not repeat",
+	);
+	assert.equal(
+		barsOf(mounted).length,
+		1,
+		"the settled episode keeps its one bar",
 	);
 });
 
@@ -3747,8 +3772,23 @@ test("a settled head-cut bar keeps its key, open state and silence when the head
 	assert.equal(region(), "", "and nothing is announced");
 });
 
-test("R3: an announced closed appendable episode gains a visible anchor without re-announcing", async (t) => {
+test("R3: a closed appendable episode announces once - at its close, not at a quiet beat (settle-latch convergence round)", async (t) => {
 	__resetTurnCollapseOpen();
+	/*
+	 * RETIMED EXPRESSION (settle-latch convergence round, 2026-10-17). The
+	 * original case read the pane's quiet flag as the episode's arrival:
+	 * `waiting: false` with the tool done was treated as the settle, the sentence
+	 * was asserted at that beat, and the close was asserted silent. This pane is
+	 * one the latch has WATCHED (a session-less mount shares the `""` bucket, and
+	 * the live pass below arms it), and a liveness dip reads exactly like that
+	 * beat - flag quiet, no settled close landed, the next step re-enters live -
+	 * so the sentence may no longer land there. What moved is the dip expression
+	 * of (a)+(b): the quiet beat and the re-entry stay silent, and the close that
+	 * actually ends the cycle announces once. The intent is unchanged: a live
+	 * episode is not recorded as announced, the arrival announces exactly once,
+	 * re-entry does not repeat it, and the anchor the closed span gains adds no
+	 * second sentence.
+	 */
 	const head = [
 		userRecord("ak-user"),
 		answerRecord("ak-final", { stopReason: "stop" }),
@@ -3759,6 +3799,11 @@ test("R3: an announced closed appendable episode gains a visible anchor without 
 		toolRecord("ak-tool", { phase: "running" }),
 	];
 	const mounted = await mount(t, live, { waiting: true });
+	assert.equal(
+		watchedRunOf(null),
+		"ak-user",
+		"the live pass armed the latch for this pane's bucket",
+	);
 	const region = () =>
 		mounted.container.querySelector("[data-condense-announcement]")
 			?.textContent ?? "";
@@ -3768,25 +3813,27 @@ test("R3: an announced closed appendable episode gains a visible anchor without 
 		peerRecord("ak-peer"),
 		toolRecord("ak-tool", { phase: "done" }),
 	];
+	// THE QUIET BEAT: no sentence - the pane is quiet, but nothing has closed.
 	await mounted.render(settled, { waiting: false });
-	const first = region();
-	assert.ok(first.length > 0, "settlement announces once");
-	// Re-entering a live pass must not repeat the already-announced history.
-	await mounted.render(settled, { waiting: true });
-	assert.equal(region(), first);
-	await mounted.render(
-		[
-			...settled,
-			toolRecord("ak-tool2"),
-			answerRecord("ak-close", { stopReason: "stop" }),
-		],
-		{ waiting: false },
-	);
 	assert.equal(
 		region(),
-		first,
-		"already-announced closed episode gains its anchor silently",
+		"",
+		"a quiet beat does not announce the still-open episode",
 	);
+	// Re-entering a live pass must not speak it either.
+	await mounted.render(settled, { waiting: true });
+	assert.equal(region(), "", "nor does the re-entry");
+	// THE CLOSE lands: exactly one sentence, and the span gains its visible anchor.
+	const closed = [
+		...settled,
+		toolRecord("ak-tool2"),
+		answerRecord("ak-close", { stopReason: "stop" }),
+	];
+	await mounted.render(closed, { waiting: false });
+	const first = region();
+	assert.equal(first, "Peer message: 2 actions.", "the close announces once");
+	await mounted.render(closed, { waiting: false });
+	assert.equal(region(), first, "and never twice");
 	assert.ok(rowBox(mounted, "ak-final") !== null, "first final stays outside");
 	assert.ok(
 		rowBox(mounted, "ak-close") !== null,
