@@ -4,11 +4,16 @@
  * WHAT IT IS. A master switch and three controls beneath it - which surfaces go
  * translucent (coverage), how far (frosted to see-through) and which system
  * material sits behind - for the OS-drawn blur that `src/shared/window-glass.ts`
- * decides and `src/main/window-glass.ts` applies. Everything is live: the
- * answer main returns is what the page paints, so the window changes under the
- * pointer as the slider moves. The one exception is Windows' master switch (see
- * `GlassCapability.liveToggle`), which says so in a notice rather than half
- * applying.
+ * decides and `src/main/window-glass.ts` applies.
+ *
+ * WHAT IS LIVE. Everything below the master switch: the answer main returns is
+ * what the page paints, so the window changes under the pointer as the slider
+ * moves. The platform exception is the MASTER SWITCH itself: on Windows a change
+ * waits for a restart (the window is built with its material), and on macOS it is
+ * live only for a window LAUNCHED with glass on - a window built opaque cannot
+ * gain the native transparency (`transparent` is a construction-only flag), so an
+ * enable there reports `restartRequired` and paints nothing rather than half
+ * applying. This row shows that notice in both cases.
  *
  * WHY IT IS PRESENTATIONAL. It takes the state and a setter instead of reading the
  * bridge, so a story and a test can drive every branch (supported, each reason it

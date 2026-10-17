@@ -39,7 +39,13 @@
  */
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -133,11 +139,11 @@ const AUDIT = `(() => {
   return out;
 })()`;
 
-let root;
-let child;
-let exited = false;
 let cdp;
-let userData;
+/** The launched-active app every coverage test drives. */
+let firstApp;
+/** Every app this file booted, reaped in `after` by exact pid. */
+const apps = [];
 
 const free = () =>
 	new Promise((resolve) => {
@@ -164,9 +170,44 @@ async function until(fn, ms, what) {
 
 before(async () => {
 	if (skip) return;
-	root = mkdtempSync(join(tmpdir(), "glass-cdp-"));
-	userData = join(root, "ud");
+	/*
+	 * The FIRST app is booted with the persisted setting ON, i.e. the only macOS
+	 * window that can show glass at all: `transparent` is a constructor-only flag.
+	 * The matrix below therefore drives a LAUNCHED-ACTIVE window, which is the state
+	 * its "off" and per-coverage sections are about. The launch-off -> enable case
+	 * (restart demanded, nothing painted) boots its own app in its own test.
+	 */
+	const app = await launch({
+		enabled: true,
+		coverage: "full",
+		intensity: 50,
+		material: "window",
+	});
+	await until(
+		() => app.log().includes("[window-glass] launch"),
+		15_000,
+		"the launch log with the glass constructor options",
+	);
+	cdp = app.cdp;
+	firstApp = app;
+});
+
+/**
+ * One real app on its own scratch profile, driven over CDP. `glass` seeds
+ * `window-glass.json` BEFORE boot, which is what decides the constructor options;
+ * stdout/stderr are captured so the launch's own log line (the exact options object
+ * spread into the BrowserWindow) can be asserted. Nothing is ever shown: the run is
+ * `headless`, so it takes no focus and leaves no Dock tile.
+ */
+async function launch(glass) {
+	const root = mkdtempSync(join(tmpdir(), "glass-cdp-"));
+	const userData = join(root, "ud");
 	mkdirSync(userData, { recursive: true });
+	if (glass)
+		writeFileSync(
+			join(userData, "window-glass.json"),
+			JSON.stringify({ settings: glass, scheme: "dark" }),
+		);
 	const port = await free();
 	/*
 	 * THE ENVIRONMENT IS BUILT THROUGH THE SHARED SWITCHES, not set by hand: this
@@ -187,7 +228,9 @@ before(async () => {
 		LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
 	});
 	withTelemetryOff(spawnEnv);
-	child = spawn(
+	let exited = false;
+	let output = "";
+	const child = spawn(
 		electronPath,
 		[
 			repoRoot,
@@ -197,8 +240,16 @@ before(async () => {
 			`--remote-debugging-port=${port}`,
 			...withMockKeychain([]),
 		],
-		{ env: spawnEnv, detached: true, stdio: "ignore" },
+		{ env: spawnEnv, detached: true, stdio: ["ignore", "pipe", "pipe"] },
 	);
+	const capture = (chunk) => {
+		/* Bounded: this app is chatty and only the glass line is read. */
+		if (output.length < 200_000) output += chunk;
+	};
+	child.stdout.setEncoding("utf8");
+	child.stderr.setEncoding("utf8");
+	child.stdout.on("data", capture);
+	child.stderr.on("data", capture);
 	child.on("exit", () => {
 		exited = true;
 	});
@@ -240,17 +291,24 @@ before(async () => {
 			throw new Error(JSON.stringify(r.exceptionDetails).slice(0, 400));
 		return r.result.value;
 	};
-	cdp = { send, ev };
-});
+	const app = {
+		root,
+		userData,
+		child,
+		cdp: { send, ev },
+		log: () => output,
+		stop: async () => {
+			await stopAppTree({ pid: child.pid, userData, isExited: () => exited });
+			rmSync(root, { recursive: true, force: true });
+		},
+	};
+	apps.push(app);
+	return app;
+}
 
 after(async () => {
-	if (skip || !child) return;
-	await stopAppTree({
-		pid: child.pid,
-		userData,
-		isExited: () => exited,
-	});
-	rmSync(root, { recursive: true, force: true });
+	if (skip) return;
+	for (const app of apps) await app.stop();
 });
 
 /** Boot-seed: onboarding done (so the shell, not the tour, is what renders) and a palette. */
@@ -335,7 +393,7 @@ for (const [themeName, label] of [
 	["localOperatorLight", "light"],
 ]) {
 	test(
-		`${label}: glass off is opaque everywhere; each coverage is uniform per region and opaque outside, on every route`,
+		`${label}: off (a live tear-down here) is opaque everywhere; each coverage is uniform per region and opaque outside, on every route`,
 		{ skip, timeout: 420_000 },
 		async () => {
 			await loadTheme(themeName);
@@ -357,7 +415,31 @@ for (const [themeName, label] of [
 				await wait(300);
 			};
 
-			/* 1. DEFAULT OFF: every route opaque, no attribute. */
+			/*
+			 * 0. THE LAUNCH ITSELF. The material only exists for a window constructed
+			 * transparent: Electron's typings require `transparent: true` for a
+			 * `backgroundColor` alpha, and `NativeWindowMac::OnWidgetInitialized()` forces
+			 * an opaque window otherwise. The main process logs the exact options object;
+			 * the native composite cannot be photographed here (no Screen Recording), so
+			 * this line plus the renderer paint below are the observable evidence.
+			 */
+			const launchLine = firstApp
+				.log()
+				.split("\n")
+				.find((line) => line.includes("[window-glass] launch"));
+			assert.ok(launchLine, "the launch logged its glass state");
+			assert.match(launchLine, /active=true/);
+			assert.match(
+				launchLine,
+				/"transparent":true/,
+				`${label}: a glass-on macOS launch must construct a transparent window (saw ${launchLine})`,
+			);
+
+			/*
+			 * 1. OFF: a LIVE tear-down of this launched-active window (the only way to
+			 * reach off in a static app) must leave every route opaque with no attribute.
+			 */
+			await setGlass({ enabled: false });
 			for (const route of ROUTES) {
 				await go(route);
 				const off = await cdp.ev(AUDIT);
@@ -669,3 +751,70 @@ for (const [themeName, label] of [
 		},
 	);
 }
+
+/*
+ * THE LAUNCH-OFF CASE, which is the operator's report: a window built opaque cannot
+ * gain native transparency, because `transparent` is a construction-only flag. The
+ * app must say so (restart notice) and paint nothing - not translucent CSS over an
+ * opaque OS window, which is what the earlier build did while claiming it worked.
+ * This boots its own app: the launch profile is the input that decides the window's
+ * constructor options, so no live toggle can produce this state.
+ */
+test(
+	"launch off then enable: restart is demanded, no glass is painted, and the notice is shown",
+	{ skip, timeout: 180_000 },
+	async () => {
+		const app = await launch(null);
+		try {
+			const { ev } = app.cdp;
+			await until(
+				() => ev("document.documentElement.dataset.theme"),
+				30_000,
+				"theme attribute",
+			);
+			await wait(1200);
+			assert.equal(
+				await ev("document.documentElement.dataset.glass ?? null"),
+				null,
+				"a glass-off launch paints no glass",
+			);
+			const applied = await ev(`window.api.windowGlass
+				.set({ enabled: true, coverage: "full", intensity: 50, material: "window" })
+				.then((s) => ({ active: s.active, restartRequired: s.restartRequired, enabled: s.settings.enabled }))`);
+			assert.deepEqual(
+				applied,
+				{ active: false, restartRequired: true, enabled: true },
+				"the setting is recorded, but this window cannot show it",
+			);
+			await wait(1200);
+			assert.equal(
+				await ev("document.documentElement.dataset.glass ?? null"),
+				null,
+				"a restart-pending enable must NOT paint glass",
+			);
+
+			await ev('location.hash = "#/settings"');
+			await wait(1500);
+			for (let i = 0; i < 20; i++) {
+				const a = await ev(AUDIT);
+				if (a.sidebar && a.pageSidebar) break;
+				await wait(500);
+			}
+			const a = await ev(AUDIT);
+			for (const name of ["sidebar", "pageSidebar", "content"]) {
+				assert.ok(a[name], `settings: region ${name} is missing`);
+				assert.ok(
+					Math.min(...a[name].pts) >= 0.999,
+					`settings: ${name} must stay fully opaque, saw ${Math.min(...a[name].pts)}`,
+				);
+			}
+			assert.equal(
+				await ev("document.querySelector('[data-glass-restart]') !== null"),
+				true,
+				"the Settings row shows the restart notice",
+			);
+		} finally {
+			await app.stop();
+		}
+	},
+);

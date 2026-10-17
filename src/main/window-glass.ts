@@ -33,7 +33,9 @@ import { readJson, writeJsonAtomic } from "./browser/atomic-json";
  * `showAgentReasoning` lives). The window's construction options (a transparent
  * first-paint ground, a vibrancy material) are decided BEFORE a renderer exists,
  * so a setting kept in the renderer's storage could only ever apply to the SECOND
- * launch's second frame: a window that opens opaque and then turns see-through.
+ * launch's second frame: a window that opens opaque and then turns see-through -
+ * which on macOS is not possible at all once the window exists (`transparent` is a
+ * construction-only flag; see `stateFor`).
  * `window-chrome.ts` is the same shape for the same reason, and this file copies
  * its persistence rather than inventing a second way.
  *
@@ -112,17 +114,43 @@ export function resolveLaunchWindowGlass(input: {
 	};
 }
 
-const stateFor = (
+/**
+ * What the live window shows, and whether the setting in force needs a restart.
+ *
+ * `transparent` is a CONSTRUCTION-ONLY BrowserWindow flag, so only a launch that
+ * already asked for glass was built able to show it. `launchedActive` is that
+ * fact, fixed when the window was attached. On macOS a vibrancy window built
+ * opaque cannot gain see-through: `setVibrancy` adds the NSVisualEffectView but
+ * Electron's `NativeWindowMac::OnWidgetInitialized()` has already forced
+ * `setOpaque:YES`, and its typings require `transparent: true` for a
+ * `backgroundColor` alpha. So an enable from an opaque launch reports
+ * `restartRequired` while `active` stays false - the renderer paints no glass and
+ * Settings shows the restart note - instead of half-applying CSS over a window
+ * that will never be see-through. Windows keeps its launch-time material
+ * semantics: the master switch never applies live there (its `transparent` window
+ * could not be resized or maximised).
+ */
+export const stateFor = (
 	settings: GlassSettings,
 	capability: GlassCapability,
 	launchedActive = glassIsActive(settings, capability),
 ): WindowGlassState => {
-	const active = glassIsActive(settings, capability);
+	const wanted = glassIsActive(settings, capability);
+	/*
+	 * `mechanism !== "vibrancy"` is a statement about the window, not the platform:
+	 * vibrancy needs the construction-only transparent flag, so an opaque launch can
+	 * never gain it. The Windows branch has the same limitation for a different
+	 * reason (`liveToggle` is false there); both report it the same way.
+	 */
+	const showing =
+		wanted &&
+		(launchedActive ||
+			(capability.liveToggle && capability.mechanism !== "vibrancy"));
 	return {
 		capability,
 		settings,
-		active,
-		restartRequired: !capability.liveToggle && active !== launchedActive,
+		active: showing,
+		restartRequired: wanted !== showing,
 	};
 };
 
@@ -167,24 +195,26 @@ export function attachWindowGlass(
 		stateFor(settings, capability, launchedActive);
 
 	/*
-	 * Apply the material to the live window. macOS can flip the WHOLE thing (see
-	 * `GlassCapability.liveToggle`); Windows can only change the material of a
-	 * window that was built with one, so a Windows toggle is recorded and applied
-	 * by the next launch, and the state says so (`restartRequired`).
+	 * Apply the material to the live window, on the SAME notion of "showing" the
+	 * state reports (`stateFor`): an enable that needs a restart is NOT applied, so
+	 * an opaque macOS window never gets `setVibrancy` / a transparent ground it
+	 * cannot make see-through. Teardown follows `appliedMechanism` - what is
+	 * actually on the window - because the capability can drop to `none` while a
+	 * material is showing (the OS "Reduce transparency" switch).
 	 */
 	const applyToWindow = (): void => {
 		if (window.isDestroyed()) return;
-		const active = glassIsActive(settings, capability);
+		const showing = stateFor(settings, capability, launchedActive).active;
 		try {
-			if (active) {
+			if (showing) {
 				if (capability.mechanism === "vibrancy") {
 					window.setBackgroundColor(GLASS_TRANSPARENT);
 					/*
 					 * `visualEffectState` is a CONSTRUCTOR option only (Electron 44:
-					 * `setVibrancy` takes just `animationDuration`), so a window that was
-					 * built opaque and flipped on here keeps the default `followWindow`:
-					 * its material dims while the window is not key. A launch with glass
-					 * already on is built with `active`. Stated, not hidden (review R6).
+					 * `setVibrancy` takes just `animationDuration`), so an off -> on toggle
+					 * inside a launched-transparent window keeps the state it was built with
+					 * (`active`). No path here can flip an OPAQUE window on - `stateFor` refuses
+					 * that - so the `followWindow` dimming case does not exist. (review R6)
 					 */
 					window.setVibrancy(macVibrancyFor(settings.material));
 					appliedMechanism = "vibrancy";
@@ -218,10 +248,10 @@ export function attachWindowGlass(
 			);
 		}
 		/* The tone pin: held exactly while the material is on screen. */
-		if (active && !pinnedTheme) {
+		if (showing && !pinnedTheme) {
 			nativeTheme.themeSource = scheme;
 			pinnedTheme = true;
-		} else if (active) {
+		} else if (showing) {
 			nativeTheme.themeSource = scheme;
 		} else if (pinnedTheme) {
 			nativeTheme.themeSource = "system";
@@ -263,7 +293,7 @@ export function attachWindowGlass(
 			persist();
 			push();
 			log(
-				`[window-glass] applied enabled=${settings.enabled} active=${glassIsActive(settings, capability)} coverage=${settings.coverage} intensity=${settings.intensity} material=${settings.material} mechanism=${capability.mechanism}`,
+				`[window-glass] applied enabled=${settings.enabled} showing=${stateFor(settings, capability, launchedActive).active} restartRequired=${current().restartRequired} coverage=${settings.coverage} intensity=${settings.intensity} material=${settings.material} mechanism=${capability.mechanism}`,
 			);
 			return current();
 		},
@@ -274,7 +304,8 @@ export function attachWindowGlass(
 		if (next !== "dark" && next !== "light") return false;
 		if (next === scheme) return true;
 		scheme = next;
-		if (glassIsActive(settings, capability)) nativeTheme.themeSource = scheme;
+		if (stateFor(settings, capability, launchedActive).active)
+			nativeTheme.themeSource = scheme;
 		persist();
 		return true;
 	});
@@ -307,13 +338,13 @@ export function attachWindowGlass(
 
 	/* A launch with glass on already has the construction options; this brings
 	 * the process-wide tone pin in line without touching the window twice. */
-	if (glassIsActive(settings, capability)) {
+	if (stateFor(settings, capability, launchedActive).active) {
 		nativeTheme.themeSource = scheme;
 		pinnedTheme = true;
 	}
 
 	return {
-		isActive: () => glassIsActive(settings, capability),
+		isActive: () => stateFor(settings, capability, launchedActive).active,
 		dispose: () => {
 			ipcMain.removeHandler(WINDOW_GLASS_GET_CHANNEL);
 			ipcMain.removeHandler(WINDOW_GLASS_SET_CHANNEL);

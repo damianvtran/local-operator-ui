@@ -998,13 +998,7 @@ did on the flat panel tier, and giving the frame its own rung would stack a seco
 alpha over the backing. `scripts/window-glass-cdp.test.mjs` encodes it as
 `max(surface, canvas)`.
 
-**A window enabled live on macOS follows the window's key state.** `visualEffectState`
-is a CONSTRUCTOR option (Electron 44's `setVibrancy` takes only `animationDuration`), so a
-window launched with glass already on holds the material at full strength, while one
-flipped on from Settings keeps the default `followWindow` and dims its material while
-the window is not key. The next launch is built with the option. Nothing is hidden: the
-Settings copy does not promise otherwise, and this is the one visible difference between
-a live-enabled and a launch-enabled window.
+**The master switch on macOS, corrected.** `transparent` is a CONSTRUCTOR-only BrowserWindow flag, and Electron's own typings make an alpha `backgroundColor` conditional on it: without it, `NativeWindowMac::OnWidgetInitialized()` forces `setOpaque:YES`, and `setVibrancy` only adds the material view, so the material sits behind an opaque ground and the renderer's alphas composite over the app's own colour (measured as "nothing changed" on a shipped build that lacked the flag). Glass therefore builds every macOS glass-on window with `transparent: true`. The consequence is stated: the master switch is live only for a window LAUNCHED with glass on; enabling it on a window built opaque reports `restartRequired` and paints nothing until the next launch. That is what the Settings restart notice says, and what `scripts/window-glass.test.mjs` and `scripts/window-glass-main.test.mjs` assert. `visualEffectState: "active"` is a constructor option too (Electron 44's `setVibrancy` takes only `animationDuration`), so a launch with glass on holds the material at full strength even while the window is not key.
 
 ## 7. Showing agent work: the trace hierarchy
 

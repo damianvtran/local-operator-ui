@@ -49,7 +49,11 @@ import {
 	type WindowChromeMode,
 	windowChromeArgumentFor,
 } from "../shared/window-chrome";
-import { groundWithGlass, windowGlassArgument } from "../shared/window-glass";
+import {
+	glassWindowOptions,
+	groundWithGlass,
+	windowGlassArgument,
+} from "../shared/window-glass";
 import {
 	BackendInstaller,
 	BackendServiceManager,
@@ -904,6 +908,17 @@ function createWindow(
 	const glass = resolveLaunchWindowGlass({
 		userDataDir: app.getPath("userData"),
 	});
+	/*
+	 * The construction fact, in the log: `transparent` is the one glass option that
+	 * cannot be corrected on a running macOS window (`glassWindowOptions`), so a
+	 * report needs to show whether THIS window was built able to show the material.
+	 * Silent for a launch that never enabled glass, like the rest of the default
+	 * path; `options` is the exact object spread into the BrowserWindow below.
+	 */
+	if (glass.settings.enabled)
+		console.log(
+			`[window-glass] launch active=${glass.state.active} restartRequired=${glass.state.restartRequired} mechanism=${glass.capability.mechanism} options=${JSON.stringify(glassWindowOptions(glass.settings, glass.capability))}`,
+		);
 
 	/*
 	 * Resolved once, before any window exists, so an agent-driven run can say

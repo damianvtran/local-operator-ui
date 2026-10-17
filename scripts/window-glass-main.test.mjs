@@ -215,10 +215,66 @@ test("M-2 a launch that never enabled glass paints the palette ground and touche
 	}
 });
 
-test("M-3 live enable and disable apply and undo the material, and a restart is never demanded on macOS", async () => {
+test("M-3 enabling glass on a window LAUNCHED opaque demands a restart and paints nothing", async () => {
 	const dir = profile(null);
 	const b = boot(dir);
 	try {
+		electron.calls.length = 0;
+		const on = await invoke("window-glass:set", b.window, { enabled: true });
+		assert.equal(
+			on.active,
+			false,
+			"`transparent` is construction-only: this window cannot gain see-through",
+		);
+		assert.equal(on.restartRequired, true);
+		assert.deepEqual(
+			electron.calls.filter((c) =>
+				["vibrancy", "bg", "material"].includes(c[0]),
+			),
+			[],
+			"no vibrancy, no transparent ground and no material is pushed onto an opaque window",
+		);
+		assert.equal(
+			electron.nativeTheme.themeSource,
+			"system",
+			"no tone pin for a material that is not showing",
+		);
+		assert.equal(b.surface.glass.isActive(), false);
+		/* Abandoning the enable needs no restart: nothing was applied. */
+		const abandoned = await invoke("window-glass:set", b.window, {
+			enabled: false,
+		});
+		assert.equal(abandoned.active, false);
+		assert.equal(abandoned.restartRequired, false);
+	} finally {
+		b.restore();
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("M-8 a window LAUNCHED with glass on toggles live both ways and never demands a restart", async () => {
+	const dir = profile({
+		enabled: true,
+		coverage: "full",
+		intensity: 50,
+		material: "window",
+	});
+	const b = boot(dir);
+	try {
+		electron.calls.length = 0;
+		const off = await invoke("window-glass:set", b.window, { enabled: false });
+		assert.equal(off.active, false);
+		assert.equal(off.restartRequired, false);
+		assert.ok(
+			electron.calls.some((c) => c[0] === "vibrancy" && c[1] === null),
+			"disabling removes the vibrancy view",
+		);
+		assert.ok(
+			bgCalls().includes(COLORS.ground),
+			"and puts the palette ground back",
+		);
+		assert.equal(b.surface.glass.isActive(), false);
+
 		electron.calls.length = 0;
 		const on = await invoke("window-glass:set", b.window, { enabled: true });
 		assert.equal(on.active, true);
@@ -229,18 +285,9 @@ test("M-3 live enable and disable apply and undo the material, and a restart is 
 				["bg", "#00000000"],
 				["vibrancy", "under-window"],
 			],
+			"a launched-transparent window regains the material live",
 		);
-		electron.calls.length = 0;
-		const off = await invoke("window-glass:set", b.window, { enabled: false });
-		assert.equal(off.active, false);
-		assert.ok(
-			electron.calls.some((c) => c[0] === "vibrancy" && c[1] === null),
-			"disabling removes the vibrancy view",
-		);
-		assert.ok(
-			bgCalls().includes(COLORS.ground),
-			"and puts the palette ground back",
-		);
+		assert.equal(b.surface.glass.isActive(), true);
 	} finally {
 		b.restore();
 		rmSync(dir, { recursive: true, force: true });
@@ -332,7 +379,16 @@ test("M-6 an unwritable profile is said once and the in-memory state still appli
 		rmSync(dir, { recursive: true, force: true });
 		writeFileSync(dir, "not a directory");
 		const state = await invoke("window-glass:set", b.window, { enabled: true });
-		assert.equal(state.active, true, "this run still gets the glass");
+		assert.equal(
+			state.settings.enabled,
+			true,
+			"the in-memory setting still takes effect for this run",
+		);
+		assert.equal(
+			state.restartRequired,
+			true,
+			"and it is the same pending-restart state a writable profile would give this opaque launch",
+		);
 		assert.ok(
 			b.logs.some((l) => /could not be saved/.test(l)),
 			"the failed save is logged, not swallowed",

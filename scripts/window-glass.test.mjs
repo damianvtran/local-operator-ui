@@ -11,7 +11,9 @@
  * evidence, captured from the real app.
  */
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -32,6 +34,48 @@ const bundleOf = async (entry) => {
 };
 
 const glass = await bundleOf("./src/shared/window-glass");
+
+/*
+ * The main-process module is bundled too, with `electron` stubbed: `stateFor` and
+ * `resolveLaunchWindowGlass` ARE the live master-switch semantics this file pins,
+ * and reading their source would prove a spelling rather than a behaviour. The stub
+ * is deliberately tiny: only the two symbols those functions touch at import time.
+ */
+const STUB = `
+export const nativeTheme = { themeSource: "system", prefersReducedTransparency: false, on: () => {}, removeListener: () => {} };
+export const ipcMain = { handle: () => {}, removeHandler: () => {} };
+`;
+const mainGlass = await (async () => {
+	const bundle = await build({
+		stdin: {
+			contents: `export * from "./src/main/window-glass";`,
+			resolveDir: ROOT,
+		},
+		bundle: true,
+		format: "esm",
+		platform: "node",
+		write: false,
+		loader: { ".json": "json" },
+		plugins: [
+			{
+				name: "electron-stub",
+				setup(b) {
+					b.onResolve({ filter: /^electron$/ }, () => ({
+						path: "electron",
+						namespace: "stub",
+					}));
+					b.onLoad({ filter: /.*/, namespace: "stub" }, () => ({
+						contents: STUB,
+						loader: "js",
+					}));
+				},
+			},
+		],
+	});
+	return import(
+		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+	);
+})();
 const floorsFile = JSON.parse(
 	readFileSync(`${ROOT}/src/shared/window-glass-floors.json`, "utf8"),
 );
@@ -203,6 +247,7 @@ test("G-4 enabled + supported: the constructor options per mechanism", () => {
 	const mac = glass.glassWindowOptions(ON, glass.glassCapabilityFor(MAC));
 	assert.deepEqual(mac, {
 		backgroundColor: "#00000000",
+		transparent: true,
 		vibrancy: "under-window",
 		visualEffectState: "active",
 	});
@@ -228,6 +273,11 @@ test("G-4 enabled + supported: the constructor options per mechanism", () => {
 		backgroundColor: "#00000000",
 		backgroundMaterial: "acrylic",
 	});
+	assert.equal(
+		"transparent" in win,
+		false,
+		"Windows must NOT build a transparent window: it could not be resized or maximised",
+	);
 	assert.equal(
 		glass.glassWindowOptions(
 			{ ...ON, material: "window" },
@@ -506,11 +556,63 @@ test("G-9 argv round-trip: the first-frame fact fails closed", () => {
 	assert.equal(glass.readWindowGlassArgument([]), null, "no entry is off");
 });
 
-test("G-10 a restart is demanded exactly where the toggle cannot be live", () => {
-	/* The main-process half (`restartRequired` on a live enable) is driven by
-	 * `window-glass-main.test.mjs` M-3; here the capability that decides it. */
+test("G-10 the master switch is live exactly for a window built with glass on", () => {
+	const mac = glass.glassCapabilityFor(MAC);
+	const win = glass.glassCapabilityFor(WIN11);
 	assert.equal(glass.glassCapabilityFor(MAC).liveToggle, true);
 	assert.equal(glass.glassCapabilityFor(WIN11).liveToggle, false);
+
+	/* Launched with the persisted setting on: the window is built able to show it. */
+	const launchedOn = mkdtempSync(join(tmpdir(), "glass-launch-on-"));
+	writeFileSync(
+		join(launchedOn, "window-glass.json"),
+		JSON.stringify({ settings: ON, scheme: "dark" }),
+	);
+	try {
+		const launch = mainGlass.resolveLaunchWindowGlass({
+			userDataDir: launchedOn,
+			...MAC,
+		});
+		assert.equal(launch.state.active, true);
+		assert.equal(launch.state.restartRequired, false);
+		/* Switching it off/below the switch stays live; no restart is ever demanded. */
+		for (const next of [
+			mainGlass.stateFor(ON, mac, true),
+			mainGlass.stateFor({ ...ON, enabled: false }, mac, true),
+			mainGlass.stateFor({ ...ON, intensity: 80 }, mac, true),
+		]) {
+			assert.equal(next.active, next.settings.enabled);
+			assert.equal(next.restartRequired, false);
+		}
+	} finally {
+		rmSync(launchedOn, { recursive: true, force: true });
+	}
+
+	/* Launched opaque: an enable on macOS cannot paint until the next launch. */
+	const launchedOff = mkdtempSync(join(tmpdir(), "glass-launch-off-"));
+	try {
+		const launch = mainGlass.resolveLaunchWindowGlass({
+			userDataDir: launchedOff,
+			...MAC,
+		});
+		assert.equal(launch.state.active, false);
+		assert.equal(launch.state.restartRequired, false);
+		const enabled = mainGlass.stateFor(ON, mac, launch.state.active);
+		assert.equal(
+			enabled.active,
+			false,
+			"`transparent` is construction-only: an opaque window cannot gain see-through",
+		);
+		assert.equal(enabled.restartRequired, true);
+
+		/* Windows has the same answer for a different reason (built with its material). */
+		const winEnabled = mainGlass.stateFor(ON, win, false);
+		assert.equal(winEnabled.active, false);
+		assert.equal(winEnabled.restartRequired, true);
+		assert.equal(mainGlass.stateFor(ON, win, true).active, true);
+	} finally {
+		rmSync(launchedOff, { recursive: true, force: true });
+	}
 });
 
 test("G-11 every region the CSS names is a marker some component carries", async () => {

@@ -16,9 +16,11 @@
  * per-arch native build, signing and notarisation of one more binary, a universal
  * build story, a dependency this repository's "dependency weight is a commons" rule
  * has no room for, and a private-ish AppKit surface that Electron's own
- * `setVibrancy` already tracks release by release. Measured on macOS 27.0.1 /
- * Electron 44.3.0: `setVibrancy("under-window")` composites the live desktop behind
- * the window (see the PR's evidence), so the cheaper door gets the feature. The
+ * `setVibrancy` already tracks release by release. The material is only visible
+ * over a window the OS lets be see-through, which Electron expresses as the
+ * CONSTRUCTION option `transparent: true` (its typings: a `backgroundColor` alpha is
+ * "supported if `transparent` is set to `true`"). So the cheaper door gets the
+ * feature, and the window is built transparent (see `glassWindowOptions`). The
  * limit is stated rather than hidden: there is no lensing, and the blur radius is
  * the OS's, not ours.
  *
@@ -102,13 +104,23 @@ export type GlassCapability = {
 	/** macOS 26+: vibrancy renders with the Liquid Glass materials. A label only. */
 	liquid: boolean;
 	/**
-	 * Whether the MASTER switch can flip on a running window. macOS: yes, measured
-	 * (`setBackgroundColor("#00000000")` + `setVibrancy` on a window built opaque
-	 * composites the desktop, and `setVibrancy(null)` + the ground colour restores
-	 * it). Windows: no - Electron documents an alpha `backgroundColor` as honoured
-	 * only for a `transparent` window, which cannot be resized or maximised, so the
-	 * window is built with the material at launch and the toggle waits for a restart.
-	 * Coverage, intensity and material are live on both.
+	 * Whether the MASTER switch can flip on a RUNNING window that was BUILT with
+	 * glass on. macOS: yes - a window constructed with `transparent: true` can drop
+	 * or regain the material live (`setVibrancy(null)` + the ground colour, then
+	 * `setBackgroundColor(GLASS_TRANSPARENT)` + `setVibrancy`). Windows: no -
+	 * Electron documents an alpha `backgroundColor` as honoured only for a
+	 * `transparent` window, which cannot be resized or maximised, so the window is
+	 * built with the material at launch and a master-switch change waits for a
+	 * restart.
+	 *
+	 * A window launched with glass OFF cannot gain see-through on either platform.
+	 * `transparent` is a CONSTRUCTION-ONLY flag, and Electron v44.3.0's
+	 * `shell/browser/native_window_mac.mm` `OnWidgetInitialized()` forces
+	 * `[window setOpaque:YES]` on every window that was not built transparent;
+	 * `SetVibrancy()` only adds the NSVisualEffectView and never clears that flag.
+	 * So on macOS a live enable from an opaque launch is reported as
+	 * `restartRequired` and paints nothing, rather than half applying. Coverage,
+	 * intensity and material are live once glass is showing.
 	 */
 	liveToggle: boolean;
 };
@@ -264,12 +276,25 @@ export const GLASS_TRANSPARENT = "#00000000";
  * from another window flicker between two looks; it also is what a never-focused
  * agent-driven run (`headless`/`inactive`) would otherwise show: no blur at all
  * (measured: the same window reads the opaque tone until it is key).
+ *
+ * `transparent: true` IS WHAT MAKES THE MATERIAL VISIBLE AT ALL, and it exists only
+ * on the macOS branch. Electron's typings say a `backgroundColor` alpha is
+ * "supported if `transparent` is set to `true`"; without it, Electron v44.3.0's
+ * `NativeWindowMac::OnWidgetInitialized()` forces `setOpaque:YES` and replaces the
+ * clear window background, so the material view has an opaque ground behind it and
+ * the renderer's alphas composite over the app's own colour - the app looks
+ * unchanged (the defect this branch fixes). The reference stack for macOS vibrancy
+ * (MonoCode: Tauri + `window-vibrancy`) likewise sets `"transparent": true` in
+ * `tauri.conf.json`. It is NOT set on the Windows branch: transparent Windows
+ * windows cannot be resized or maximised, so there the material is applied to an
+ * opaque window and a master-switch change waits for a restart.
  */
 export function glassWindowOptions(
 	settings: GlassSettings,
 	capability: GlassCapability,
 ): {
 	backgroundColor?: string;
+	transparent?: true;
 	vibrancy?: MacVibrancy;
 	visualEffectState?: "active";
 	backgroundMaterial?: WinMaterial;
@@ -278,6 +303,7 @@ export function glassWindowOptions(
 	if (capability.mechanism === "vibrancy") {
 		return {
 			backgroundColor: GLASS_TRANSPARENT,
+			transparent: true,
 			vibrancy: macVibrancyFor(settings.material),
 			visualEffectState: "active",
 		};
