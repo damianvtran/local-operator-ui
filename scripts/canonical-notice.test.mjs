@@ -95,6 +95,239 @@ for (const [name, headline, detail] of [
 		null,
 	],
 ]) {
+	/*
+ * THE EPISODE-ORIGIN BOUNDARY, RENDERED — the rule an internal episode may
+ * collapse only on settled work.
+ *
+ * WHY THESE EXIST. The internal-episode eligibility classified an origin row
+ * and then condensed it wherever it sat. That is right when a run's work has
+ * already settled (the episode is a continuation of it) or when the episode is
+ * a genuine run of exchanges (>=2 receipts). It is wrong when the episode IS
+ * the run's opening content with a single receipt: there is nothing to
+ * continue and nothing to batch, so collapsing it hides the reader's only
+ * content - a failed background job's verdict, a peer's request, a wake's
+ * prompt.
+ *
+ * QA round 1 measured exactly these shapes absorbing (Q1: `[job_result, tool]`
+; Q2: a lone peer, wake or `subagent:` notice) while base painted them. The rule
+ * below is what the production code now enforces; each row pins one arm.
+ *
+ * WHAT THE ASSERTIONS CHECK. A row that PAINTS states its own headline/body in
+ * the rendered text. A row that is absorbed into an internal episode does not:
+ * the episode's bar label (e.g. "Job result", "Peer message", "Wake") replaces
+ * it. So `assert.ok(text.includes(SENTINEL))` is the paint/absorb discriminator,
+ * and the sentinel is unique per case so no other row can satisfy it.
+ */
+	/* A fixed clock, so a rendered row's stamp never decides a test's fate. */
+	const TS = 1_760_000_000_000;
+
+	const noticeRows = {
+		user: (id, text) => ({
+			kind: "user",
+			id,
+			ts: TS,
+			text,
+			images: [],
+			optimistic: false,
+		}),
+		tool: (id, extra = {}) => ({
+			kind: "tool",
+			id,
+			ts: TS,
+			toolCallId: id,
+			toolName: "bash",
+			intent: null,
+			args: {},
+			phase: "done",
+			argumentBytes: 0,
+			notRunReason: null,
+			neverSent: false,
+			isError: false,
+			stopped: false,
+			startedAt: TS,
+			endedAt: TS + 1_000,
+			durationS: 1,
+			outputBytes: null,
+			images: [],
+			...extra,
+		}),
+		answer: (id, extra = {}) => ({
+			kind: "assistant",
+			id,
+			ts: TS,
+			text: "Settled answer body.",
+			streaming: false,
+			complete: true,
+			stopReason: "stop",
+			images: [],
+			...extra,
+		}),
+		peer: (id, body, extra = {}) => ({
+			kind: "peer",
+			id,
+			ts: TS,
+			body,
+			sender: {
+				conversationName: "Other",
+				sessionId: "sess-other",
+				jobId: "",
+				label: "Other",
+				direction: "to_parent",
+			},
+			expectsReply: true,
+			steer: false,
+			...extra,
+		}),
+		wake: (id, text) => ({ kind: "wake", id, ts: TS, text }),
+		jobResult: (id, headline, level = "info") => ({
+			kind: "custom",
+			id,
+			ts: TS,
+			customType: "job_result",
+			level,
+			category: null,
+			provider: null,
+			headline,
+			text: headline,
+			attribution: "system",
+			detail: null,
+		}),
+		subagentNotice: (id, text) => ({
+			kind: "notice",
+			id,
+			ts: TS,
+			level: "info",
+			complete: false,
+			text,
+		}),
+	};
+
+	/* Render `records` through the real transcript and return the visible text. */
+	const visibleTextOf = (records) =>
+		renderToStaticMarkup(
+			h(
+				QueryClientProvider,
+				{ client: queryClient },
+				h(CanonicalTranscript, {
+					transcript: { ...EMPTY_TRANSCRIPT, records },
+					gate: null,
+					waiting: false,
+					loadingOlder: false,
+					onLoadOlder: async () => true,
+					containerRef: { current: null },
+					isSmallView: false,
+					status: "live",
+					failure: null,
+					hydrated: true,
+					onReconnect: () => {},
+				}),
+			),
+		)
+			.replace(/<[^>]*>/g, "")
+			.replaceAll("&#x27;", "'");
+
+	for (const [name, records, sentinel] of [
+		/*
+		 * ARM A - an episode that OPENS the run's content with ONE receipt paints it.
+		 * No answer precedes it and there is only one receipt, so there is neither
+		 * settled work to continue nor a run of exchanges to batch.
+		 */
+		[
+			"a lone peer receipt paints its request, not the bar label",
+			[noticeRows.peer("lone-peer", "UNIQUE-PEER-REQUEST-BODY")],
+			"UNIQUE-PEER-REQUEST-BODY",
+		],
+		[
+			"a lone wake paints its prompt, not the bar label",
+			[noticeRows.wake("lone-wake", "Wake: UNIQUE-WAKE-PROMPT-BODY")],
+			"UNIQUE-WAKE-PROMPT-BODY",
+		],
+		[
+			"a lone subagent notice paints its verdict, not the bar label",
+			[
+				noticeRows.subagentNotice(
+					"subagent:abc",
+					"Subagent reviewer finished: UNIQUE-SUBAGENT-VERDICT-BODY",
+				),
+			],
+			"UNIQUE-SUBAGENT-VERDICT-BODY",
+		],
+		/*
+		 * Q1 - the shape with a SIBLING but still no settled work before it. The
+		 * single receipt does not become batchable just because a tool row sits
+		 * after it, and a FAILED job must state its verdict: `job_result` failures
+		 * carry `level: "info"` (`canonical-notice.stories.tsx`), so the
+		 * error-level exemption does not cover them and the bar label does not say
+		 * which way the job went.
+		 */
+		[
+			"a failed job result beside a tool, opening the run, paints its verdict",
+			[
+				noticeRows.jobResult(
+					"no-answer-job",
+					"background job 'x' failed: UNIQUE-FAIL-HEADLINE",
+				),
+				noticeRows.tool("no-answer-job-tool"),
+			],
+			"UNIQUE-FAIL-HEADLINE",
+		],
+		[
+			"a completed job result beside a tool, opening the run, paints its headline",
+			[
+				noticeRows.jobResult(
+					"no-answer-job-ok",
+					"background job 'x' completed: UNIQUE-JOB-HEADLINE",
+				),
+				noticeRows.tool("no-answer-job-tool-2"),
+			],
+			"UNIQUE-JOB-HEADLINE",
+		],
+		/*
+		 * ARM B - the other side of the rule, so a future change cannot quietly
+		 * widen the exemption. Base ALREADY folded this shape (a settled answer
+		 * precedes the receipt), so it stays condensed: the episode is a
+		 * continuation of work that has finished. `assert.ok` on the ABSENCE of the
+		 * sentinel is therefore the pin, and it is stated as its own case rather
+		 * than left as an unasserted control.
+		 */
+	]) {
+		test(`internal episode paints its opening content: ${name}`, () => {
+			const text = visibleTextOf(records);
+			assert.ok(
+				text.includes(sentinel),
+				`${sentinel} must paint; got: ${text.slice(0, 200)}`,
+			);
+		});
+	}
+
+	/*
+	 * The rule's SECOND arm, rendered: once settled work precedes the receipt, the
+	 * same job_result row condenses again (base folded `[user, tool, answer, job,
+	 * tool]`). This is the guard against a fix that simply exempts the customType
+	 * and stops the feature working where it belongs.
+	 */
+	test("an internal episode after settled work still condenses", () => {
+		const records = [
+			noticeRows.user("settled-user", "hi"),
+			noticeRows.tool("settled-tool-1"),
+			noticeRows.answer("settled-answer"),
+			noticeRows.jobResult(
+				"settled-job",
+				"background job 'y' completed: SETTLED-JOB-HEADLINE",
+			),
+			noticeRows.tool("settled-tool-2"),
+		];
+		const text = visibleTextOf(records);
+		assert.ok(
+			!text.includes("SETTLED-JOB-HEADLINE"),
+			"the post-answer job result stays condensed (the feature's whole point)",
+		);
+		assert.ok(
+			text.includes("Settled answer body."),
+			"the settled answer that authorises the condensing is still painted",
+		);
+	});
+
 	test(`job result preserves label, glyph and full message: ${name}`, () => {
 		const markup = renderToStaticMarkup(
 			h(
