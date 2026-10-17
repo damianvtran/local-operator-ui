@@ -46,6 +46,7 @@ import { type FC, type ReactNode, useRef } from "react";
 import { foldMediaClause } from "../../canonical/trace-fold-model";
 import { TurnTimestamp } from "../message-item/turn-timestamp";
 import { formatDuration } from "./tool-row-model";
+import { WorkingLine, type WorkingLineProps } from "./working-line";
 
 /**
  * The dense ledger height the fold and tool rows share (see `trace-fold.tsx`:
@@ -144,6 +145,20 @@ export type TurnSummaryProps = {
 	 */
 	completed?: boolean;
 	/**
+	 * Private receipt presentation is independent of settlement. Phase facts are
+	 * the actual working-line facts, never elapsed since a receipt. A missing
+	 * producer phase anchor leaves the existing footer as clock owner instead
+	 * of remounting an invented zero here. No transcript-wide timer is added.
+	 */
+	episode?: {
+		receipts: number;
+		active: boolean;
+		phaseLine: Pick<
+			WorkingLineProps,
+			"activity" | "phase" | "startedAt" | "clock"
+		> | null;
+	} | null;
+	/**
 	 * The quiet group's clauses, when this bar is one (design §5, rev 2): the
 	 * count of delivery receipts and their span, printed INSTEAD of `Took`/`N
 	 * actions` - a group counts receipts, not work, and its expansion lists the
@@ -212,6 +227,7 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 	condensedMedia,
 	mediaCount = 0,
 	group = null,
+	episode = null,
 }) => {
 	/*
 	 * The count clause and the sentence behind it, derived once: the visible words
@@ -233,10 +249,11 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 	 * claim a head-cut group makes lives here, stated the way the action clause
 	 * states its own - never a second reading of the same number.
 	 */
+	const receiptCount = episode?.receipts ?? group?.count;
 	const groupClauseTitle =
-		group === null
+		receiptCount === undefined
 			? null
-			: `At least ${group.count} messages — earlier rows are not loaded`;
+			: `At least ${receiptCount} messages — earlier rows are not loaded`;
 
 	/*
 	 * The bar's root, held so the strip's `+N` press can hand focus to the bar's
@@ -287,7 +304,8 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 			data-turn-summary=""
 			data-run-ids={recordIds.join(" ")}
 			data-segment-ids={segmentIds?.join(" ")}
-			data-segment-complete={completed ? "true" : undefined}
+			data-segment-complete={completed && !episode?.active ? "true" : undefined}
+			data-segment-active={episode?.active ? "true" : undefined}
 			data-record-id={anchorRecordId}
 		>
 			<Disclosure
@@ -363,7 +381,7 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 								{label}
 							</span>
 						)}
-						{completed && (
+						{completed && !episode?.active && (
 							<>
 								{/*
 								 * THE COMPLETION MARK. `success` on `canvas` is asserted by the
@@ -386,7 +404,43 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 						 * `Took`, which would claim the bar counts work). A head-cut group
 						 * states `N+` and no duration, per the end-loaded rule.
 						 */}
-						{group !== null ? (
+						{episode?.active ? (
+							<>
+								{label !== null && <Dot />}
+								<span
+									className="shrink-0 text-body-sm text-ink-muted"
+									title={partial ? (groupClauseTitle ?? undefined) : undefined}
+									aria-label={
+										partial ? (groupClauseTitle ?? undefined) : undefined
+									}
+								>
+									{partial ? `${episode.receipts}+` : episode.receipts}
+								</span>
+								{actionCount > 0 && (
+									<>
+										<Dot />
+										<span
+											className="shrink-0 text-body-sm text-ink-muted"
+											title={partial ? actionClauseTitle : undefined}
+										>
+											{actionClause}
+										</span>
+									</>
+								)}
+								{episode.phaseLine !== null && (
+									<>
+										<Dot />
+										<WorkingLine
+											activity={episode.phaseLine.activity}
+											phase={episode.phaseLine.phase}
+											startedAt={episode.phaseLine.startedAt}
+											clock={episode.phaseLine.clock}
+											className="min-w-0"
+										/>
+									</>
+								)}
+							</>
+						) : group !== null ? (
 							<>
 								{label !== null && <Dot />}
 								<span
@@ -396,7 +450,9 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 										partial ? (groupClauseTitle ?? undefined) : undefined
 									}
 								>
-									{partial ? `${group.count}+` : `${group.count}`}
+									{partial
+										? `${episode?.receipts ?? group.count}+`
+										: `${episode?.receipts ?? group.count}`}
 								</span>
 								{group.spanS !== null && (
 									<>
@@ -453,7 +509,7 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 								</span>
 							</>
 						)}
-						{completed && (
+						{completed && !episode?.active && (
 							/*
 							 * The mark's meaning as WORDS, off-screen, and LAST in the row
 							 * (QA round 3, QA-3 + agent review R3-2). The trigger has no
