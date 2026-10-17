@@ -94,6 +94,7 @@ const bundle = await build({
 			export { useAskOpenPolicy } from "./src/renderer/src/features/chat/use-ask-open-policy";
 			export { askDismissals } from "./src/renderer/src/features/chat/ask-open-policy";
 			export { askQueueView } from "./src/renderer/src/features/chat/ask-queue";
+			export { askClaimsEscape } from "./src/renderer/src/features/chat/ask-queue";
 			export { registerComposerFocus } from "./src/renderer/src/features/chat/composer-field";
 			export { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";
 			export { useConversationInputStore } from "./src/renderer/src/shared/store/conversation-input-store";
@@ -155,6 +156,7 @@ const {
 	useAskOpenPolicy,
 	askDismissals,
 	askQueueView,
+	askClaimsEscape,
 	registerComposerFocus,
 	useUiPreferencesStore,
 	useConversationInputStore,
@@ -701,6 +703,73 @@ test("U1 - a drawer opened from a door still returns the keyboard to that door",
 		document.activeElement,
 		door,
 		"the remembered door, not the composer: the door arm is unchanged",
+	);
+});
+
+test("U6 - the composer's notice button is a door, and its press lands the keyboard in the card", async (t) => {
+	const view = await rig(t);
+	/*
+	 * THE COMPOSER'S "Open asks" BUTTON, reproduced by the marks it carries: the
+	 * `data-lo-ask-item-toggle` the composer chip publishes (UX round 2, U6), with
+	 * the keyboard ON the button. A real press leaves it there - the round-1 claim
+	 * held only for a programmatic click after `blur()`, which is why the jsdom case
+	 * that asserted `onOpen`'s arguments passed while the app did not move focus.
+	 *
+	 * THE DOOR HOLDS THE KEYBOARD BEFORE THE SHOW, deliberately: over a pending ask
+	 * the policy auto-opens the drawer when the keyboard is nowhere, and an already
+	 * open drawer has spent its entry move (`wasBootstrapped`) - the m-D state, not
+	 * this one. Focus on a control is the state in which the policy stands down and
+	 * the press below is the user's own.
+	 */
+	const door = document.createElement("button");
+	door.setAttribute("data-lo-ask-item-toggle", "");
+	door.setAttribute("data-test-door", "");
+	document.body.appendChild(door);
+	await act(async () => {
+		door.focus();
+	});
+	await view.show("c-a", withRows([ask("open")]));
+	assert.equal(
+		view.flag(),
+		false,
+		"the drawer is shut, so the press has something to open",
+	);
+	assert.equal(
+		document.activeElement === door,
+		true,
+		"the press starts on the button, which is the state the claim was false on",
+	);
+	/* `chat-content.tsx`'s door, verbatim: the flag first, then the chord request. */
+	await act(async () => {
+		door.dispatchEvent(
+			new window.MouseEvent("click", { bubbles: true, cancelable: true }),
+		);
+		useUiPreferencesStore.getState().setAskDrawerOpen(true, "session");
+		useUiPreferencesStore.getState().requestAskOpen("session", "chord");
+	});
+	await act(async () => {});
+	assert.equal(view.flag(), true, "the press opens the drawer");
+	const surface = view.container.querySelector("[data-lo-ask-surfaces]");
+	assert.ok(surface, "and it is drawn");
+	assert.equal(
+		surface.contains(document.activeElement),
+		true,
+		"and the keyboard is inside it, not left on the button (U6)",
+	);
+	assert.equal(
+		document.activeElement === door,
+		false,
+		"the button no longer holds focus after the press",
+	);
+	/*
+	 * AND THE ESCAPE CONSEQUENCE (UX round 2's derivation): while the drawer is up,
+	 * a press that lands on this control is the ask lane's, so it collapses the
+	 * panel instead of falling to the interrupt ladder and stopping the turn.
+	 */
+	assert.equal(
+		askClaimsEscape({ key: "Escape", target: door }),
+		true,
+		"Escape from the notice button is claimed by the ask lane, not the turn's stop",
 	);
 });
 
