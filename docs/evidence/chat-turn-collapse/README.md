@@ -23,7 +23,7 @@ stage cells are a sequence, not four states of different fixtures:
 | `quiet-exchange-during/localOperator{Dark,Light}.webp` | `during` | the exchange's receipts arriving while the turn thinks, condensed into ONE bar — `Peer messages · 2+ · 1+ actions`, no duration clause — the chevron at the line's end, the working line below |
 | `quiet-exchange-idle/localOperator{Dark,Light}.webp` | `idle` | settled: the same bar stands alone, no second one |
 | `quiet-exchange-expanded/localOperator{Dark,Light}.webp` | `expanded` | the reader's press through the bar's own control: the rows it stands for, revealed in place |
-| `lone-actionable-peer-negative/localOperator{Dark,Light}.webp` | — | the negative control: a run that OPENS with a single actionable receipt paints loose — no settled answer precedes it, so no bar may replace it |
+| `lone-actionable-peer-negative/localOperator{Dark,Light}.webp` | — | the negative control: a run that OPENS with a single actionable receipt and a visible answer still being written paints loose — no settled answer precedes it, so no bar may replace it (its two frames were re-shot at `1470f8a6b`; both rows show) |
 
 ## What produced them
 
@@ -40,6 +40,14 @@ against a Storybook dev server started from this worktree at head
 `5a1831622674695bcbd7a3fb7d368cc01bcff3ac`, `TZ` pinned to America/New_York by
 the rig. The same states on the base tree are the before half
 (`../chat-turn-collapse-before/quiet-exchange-*/`, base `64e1089099`).
+
+**The control was re-shot at `1470f8a6b`** (`20825fe0a`, design review D1): its
+answer previously never painted — the fixture opened it with a full
+`message_start` carrying the paragraph, and the reducer paints an empty row for
+that — so the old pair contradicted its caption. The re-shoot writes the
+sentence as the `message_update` delta the stream actually sends; both rows now
+show, and the working line one step below reads `responding 0s` where the
+answer-less fixture read `thinking 0s`.
 
 **MEASURED, not asserted** (`cmp` over the full files): `during` differs in both
 palettes — three loose rows on the base against ONE bar here; `idle` and
