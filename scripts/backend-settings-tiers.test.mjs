@@ -84,6 +84,33 @@ test("every key the wire can produce resolves to a tier", () => {
 	}
 });
 
+test("the canonical account policy keeps backend choices and an explicit advanced tier", () => {
+	for (const { name, payload } of fixtures) {
+		const policy = payload.settings.find(
+			(setting) => setting.key === "retry.accountSelectionPolicy",
+		);
+		assert.ok(policy, `${name}: the policy must come from backend metadata`);
+		assert.equal(policy.kind, "enum");
+		assert.equal(policy.section, "failover");
+		assert.equal(tierFor(policy), "advanced");
+		assert.equal(policy.default, "reset-soonest");
+		assert.deepEqual(
+			policy.choices.map((choice) => choice.value),
+			["reset-soonest", "headroom", "fair"],
+		);
+		assert.ok(
+			policy.label &&
+				policy.help &&
+				policy.choices.every((choice) => choice.label && choice.description),
+		);
+		assert.equal(
+			policy.value,
+			name.endsWith("-configured") ? "headroom" : "reset-soonest",
+		);
+		assert.equal(policy.is_default, !name.endsWith("-configured"));
+	}
+});
+
 test("the two fixture states name the same keys", () => {
 	assert.deepEqual(
 		keys(fixtures[0].payload),
@@ -258,6 +285,12 @@ test("arrival opens the core-heavy sections and nothing else", () => {
  * own height claim is the settings page's to re-measure when the voicing wave's
  * design round runs against the live surface; this constant is the tab order.
  */
+const arrivalManifest = JSON.parse(
+	readFileSync(
+		"scripts/fixtures/backend-settings-arrival-manifest.json",
+		"utf8",
+	),
+);
 const FILTER_BAR_CONTROLS = 5;
 /*
  * The sum moved again with the delegated-retention split, and deliberately: the
@@ -269,9 +302,20 @@ const FILTER_BAR_CONTROLS = 5;
  *
  * And once more with the `asks` section (local-operator-ui #1116; backend #2479,
  * D7): one header, and no arrival row, because its one key is `advanced`, the
- * same shape as `speech`. 23 + 5 + 10 = 38.
+ * same shape as `speech`. The census below reads 42 + 5 + 10 = 57 off the
+ * identity manifest rather than another written-down sum: 42 because the fixture
+ * now describes the whole registry rather than the hand-tended subset the sums
+ * above counted, the same 5 controls and the same 10 arrival rows, with this
+ * branch's account-policy wave moving no number either
+ * (`retry.accountSelectionPolicy` is `advanced`).
  */
-const ARRIVAL_FOCUSABLE_BUDGET = 38;
+// The historical 37 was a census of 22 headers, not a licence to conceal
+// newer backend sections. Strict independent identities below own growth;
+// rendered height/focus usability still requires the real browser evidence.
+const ARRIVAL_FOCUSABLE_CENSUS =
+	arrivalManifest.sectionIds.length +
+	arrivalManifest.filterControls.length +
+	arrivalManifest.arrivalKeys.length;
 
 /*
  * The reader's own sequence: collapse the index, then search it.
@@ -326,8 +370,24 @@ test("Collapse all, then a query: the query still force-opens what it matched", 
 	);
 });
 
-test("the arrival tab order stays inside its budget", () => {
-	const payload = fixtures[1].payload;
+const SECTION_IDENTITY_ERROR = /section identities/;
+const ARRIVAL_IDENTITY_ERROR = /row substitutions/;
+const FILTER_IDENTITY_ERROR = /filter identities/;
+function assertArrivalCensus(
+	payload,
+	filterControls = arrivalManifest.filterControls,
+) {
+	assert.deepEqual(
+		sectionNames(payload),
+		arrivalManifest.sectionIds,
+		"section identities and order require explicit review",
+	);
+	assert.deepEqual(
+		filterControls,
+		arrivalManifest.filterControls,
+		"filter identities require explicit review",
+	);
+	assert.equal(FILTER_BAR_CONTROLS, arrivalManifest.filterControls.length);
 	const bySection = new Map();
 	for (const setting of payload.settings) {
 		const rows = bySection.get(setting.section) ?? [];
@@ -339,10 +399,51 @@ test("the arrival tab order stays inside its budget", () => {
 		.flatMap((rows) => rows.filter((setting) => tierFor(setting) === "core"));
 	const total =
 		payload.sections.length + FILTER_BAR_CONTROLS + arrivalRows.length;
+	assert.deepEqual(
+		arrivalRows.map((setting) => setting.key),
+		arrivalManifest.arrivalKeys,
+		"same-count row substitutions and Basic promotions require explicit review",
+	);
 	assert.equal(
 		total,
-		ARRIVAL_FOCUSABLE_BUDGET,
-		`the closed default state costs ${total} focusables (${payload.sections.length} headers + ${FILTER_BAR_CONTROLS} filter-bar controls + ${arrivalRows.length} arrival rows); the budget is ${ARRIVAL_FOCUSABLE_BUDGET}`,
+		ARRIVAL_FOCUSABLE_CENSUS,
+		`structural census ${total}; this is not rendered height or usability approval`,
+	);
+}
+
+test("the arrival identity census matches its independent frozen manifest", () => {
+	for (const { payload } of fixtures) assertArrivalCensus(payload);
+});
+
+test("the arrival census rejects a 43rd header, same-count substitution and new arrival control", () => {
+	const extraSection = structuredClone(fixtures[1].payload);
+	extraSection.sections.push({ name: "unexpected-section" });
+	assert.throws(
+		() => assertArrivalCensus(extraSection),
+		SECTION_IDENTITY_ERROR,
+	);
+	const substitution = structuredClone(fixtures[1].payload);
+	substitution.settings.find(
+		(setting) => setting.key === arrivalManifest.arrivalKeys[0],
+	).key = "unexpected-model-key";
+	assert.throws(
+		() => assertArrivalCensus(substitution),
+		ARRIVAL_IDENTITY_ERROR,
+	);
+	const extraRow = structuredClone(fixtures[1].payload);
+	extraRow.settings.push({
+		key: "unexpected-arrival",
+		section: "model",
+		tier: "core",
+	});
+	assert.throws(() => assertArrivalCensus(extraRow), ARRIVAL_IDENTITY_ERROR);
+	assert.throws(
+		() =>
+			assertArrivalCensus(fixtures[1].payload, [
+				"replacement-filter",
+				...arrivalManifest.filterControls.slice(1),
+			]),
+		FILTER_IDENTITY_ERROR,
 	);
 });
 

@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-language|settings-transcript-display|settings-gate|palette|palette-recents|hit-zones|route-tops|project-detail|project-open|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|output-artifact|image-copy|hub-links|hub-skills|hub-skills-egress|none|skill-seal>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-language|settings-transcript-display|settings-account-policy|settings-gate|palette|palette-recents|hit-zones|route-tops|project-detail|project-open|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|output-artifact|image-copy|hub-links|hub-skills|hub-skills-egress|none|skill-seal>
  *                          which built-in scene to run (default: states)
  *   --drop-expect <accepted|discarded>  (with --scene composer-drop) which half of
  *                          the issue #789 pair this run records: the head tree,
@@ -29434,6 +29434,960 @@ async function sceneSettingsGate(cdp) {
 	return samples;
 }
 
+/**
+ * The row this scene is about: its key, the row's selectors, and the identity
+ * the frozen core that serves it must carry.
+ *
+ * THE PIN IS WHY THIS SCENE CAN NAME STRINGS AT ALL. Every other reading below
+ * compares the DOM against what THIS run's daemon answered, so a daemon that
+ * served the wrong row would agree with itself; the pin is what makes "the
+ * backend owns the copy" a claim about THIS row rather than about two readers
+ * sharing one mistake. It is pinned to the core this lane serves (`v0.73.10`,
+ * the same core the tier fixture was regenerated from), and a core that re-words
+ * the row fails this check by name instead of quietly re-baselining the frames.
+ */
+const ACCOUNT_POLICY_KEY = "retry.accountSelectionPolicy";
+const ACCOUNT_POLICY_ROW = `[data-setting-key="${ACCOUNT_POLICY_KEY}"]`;
+const ACCOUNT_POLICY_BUTTONS = `${ACCOUNT_POLICY_ROW} button`;
+/** The row's control on THIS kind (`enum`): Radix's trigger, `role=combobox`. */
+const ACCOUNT_POLICY_TRIGGER = `${ACCOUNT_POLICY_ROW} [data-setting-control] button[role="combobox"]`;
+const ACCOUNT_POLICY_EXPECTED = {
+	label: "account selection policy",
+	choices: [
+		{ value: "reset-soonest", label: "Reset soonest" },
+		{ value: "headroom", label: "Most headroom" },
+		{ value: "fair", label: "Fair spread" },
+	],
+};
+
+/**
+ * One registry row as the `--backend` daemon serves it.
+ *
+ * The daemon read is the CLAIM the pixels are beside (the same position
+ * `--scene project-inline-edit` takes): the row's copy, its choices and - after
+ * the save - its PERSISTED value are read from `GET /v1/settings` over the
+ * session bearer, never inferred from the UI that just wrote them.
+ */
+async function fetchDaemonSetting(key) {
+	const response = await fetch(`${BACKEND}/v1/settings`, {
+		headers: {
+			authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+		},
+	});
+	const body = await response.json().catch(() => null);
+	return {
+		status: response.status,
+		row: body?.result?.settings?.find((entry) => entry.key === key) ?? null,
+	};
+}
+
+/**
+ * Scroll a found element to the viewport's middle before pressing it.
+ *
+ * WHY `pressFoundElement` CANNOT DO THIS ITSELF: its finder resolves an element
+ * a CSS selector cannot name (a text-matched button), and its press dispatches
+ * at the element's centre READ IN THE SAME BREATH - so an element below the fold
+ * would be pressed at coordinates outside the viewport, the hit test would read
+ * as refused, and the scene would throw about a control that is merely out of
+ * view. This is the scroll-then-press order `pointerPressSelector` uses, for an
+ * element only a finder can name.
+ */
+async function scrollFoundIntoView(cdp, finder) {
+	const scrolled = await cdp.evaluate(`(() => {
+		const element = (${finder})();
+		if (element === null || element === undefined) return false;
+		element.scrollIntoView({ block: "center", inline: "center" });
+		return true;
+	})()`);
+	if (scrolled) await wait(400);
+	return scrolled;
+}
+
+/**
+ * THE ACCOUNT-POLICY ROW (`retry.accountSelectionPolicy`), the row this slice
+ * classifies, photographed and driven on the BUILT app.
+ *
+ * WHY A NEW SCENE. The row is this change's subject and its claims are claims a
+ * story cell cannot carry: the row is NOT in the Basic surface (the tier map
+ * holds it back), search reaches it by its canonical key at EVERY tier, and its
+ * label, help and choices are the DAEMON's copy - which only a run against a
+ * live isolated daemon can show. The story sweep renders the fixture registry
+ * offline and never reaches a save; this scene drives the row's own enum, saves
+ * through the app's own transport (IPC -> HTTP to the daemon) and reads the
+ * persisted value back from the daemon itself.
+ *
+ * WHAT IT DRIVES, in order, each state reached by a REAL control press (a CDP
+ * pointer event at the element's painted centre), never by a store write:
+ *   1. the plain `/settings` page, tier off: the row must NOT be in the DOM;
+ *   2. the search field, typed by the row's own canonical key: found ("1 result
+ *      in 1 section") while the tier is STILL OFF - the tier is a view of the
+ *      list, never a gate on a question;
+ *   3. clearing the search puts the Basic surface back (the row leaves again);
+ *   4. the `Show advanced` chip: the row is admitted, `data-tier="advanced"`;
+ *   5. the chip is pressed AGAIN to put the tier back the way the scene found
+ *      it, so the deep link performs its own reveal (the why is measured, see
+ *      below); the deep link then reveals the TIER, opens its section, scrolls
+ *      the row to the middle and FOCUSES the control - the link's
+ *      keyboard-usefulness, read from `document.activeElement` rather than
+ *      from a ring (see below);
+ *   6. the row's own help reveal: the advanced row's help is behind its
+ *      disclosure, so it is PRESSED open and the sentence is compared against
+ *      the daemon's;
+ *   7. the enum: the trigger opens a real listbox whose options are compared
+ *      (label and description) against the daemon's own choices, then `Most
+ *      headroom` is pressed;
+ *   8. Save, then the REAL readback: the app's own round-trip (a refetch through
+ *      the same transport that saved) plus the daemon's own `GET /v1/settings`
+ *      answer, which must hold `headroom` and `is_default: false`.
+ *
+ * WHY THE TIER IS PUT BACK BEFORE THE LINK, and why the landing wait never
+ * returns on the row's mere existence (both measured by this scene's first
+ * run, output in the frames README):
+ *
+ *   - The first run's wait returned the moment the ROW existed - `waitForCondition`
+ *     treats any truthy value as the answer, and the reading object always was
+ *     one - so it read a sub-second partial state (`focused: elsewhere`, the row
+ *     still below the fold) and failed both landing checks on a reveal that had
+ *     simply not run yet. The wait below therefore returns ONLY the settled
+ *     landing (tier on, section open, row on screen, control focused).
+ *   - The toggle-back removes an ordering dependency the revealed tier exposes:
+ *     with the tier already on, the reveal effect's first `requestAnimationFrame`
+ *     is scheduled in the same commit that queues the section's open state, and a
+ *     frame that wins that race would `focus()` a control still inside the
+ *     section's `[hidden]` subtree - refused silently, with the loop latching as
+ *     success, so neither the focus nor the `scrollIntoView` would happen. From
+ *     the Basic surface the same link cannot race that way: the focus effect is
+ *     gated on the tier (`destinationReady`), so its first frame is scheduled
+ *     only AFTER the commit that reveals the tier and opens the section. The
+ *     link therefore also exercises its FULL contract - reveal, open, scroll,
+ *     focus - from the state a reader is actually in.
+ *
+ * WHAT IT USES THAT IS NOT THE PRODUCT: `Emulation.setFocusEmulationEnabled`
+ * over CDP, enabled before the deep-link leg because a window that is never
+ * shown (`headless`) cannot be focused and the link's own focus contract would
+ * otherwise be unobservable. It moves the PAGE's focus, never the window's, and
+ * the closing survey below re-reads main's facts to prove the window stayed
+ * hidden and unfocused. What it CANNOT show is a `:focus-visible` ring as a
+ * keyboard user sees it: whether the ring paints for a script-focused control
+ * is Chromium's heuristics, so the evidence for the focus is the DOM reading
+ * (`document.activeElement` is the row's trigger) and the frames README says so.
+ *
+ * WHAT IT NEEDS: `--backend <url>` - an isolated daemon this run owns, the
+ * renderer built against the same URL - and `--seed-onboarding-complete`.
+ *
+ *   LOCAL_OPERATOR_DESKTOP_TOKEN="$TOKEN" node scripts/renderer-driver.mjs \
+ *     --scene settings-account-policy --backend http://127.0.0.1:<port> \
+ *     --backend-records <config>/run/serve --seed-onboarding-complete \
+ *     --out <dir>
+ */
+async function sceneSettingsAccountPolicy(cdp) {
+	const hello = await verb(cdp, "hello");
+	const facts = await factsOf(cdp);
+	check(
+		"the renderer reports this run's frames directory",
+		hello.outDir === FRAMES,
+		`${hello.outDir} (expected ${FRAMES})`,
+	);
+	check(
+		"the renderer sees the built app, not a bare Vite page",
+		ELECTRON_USER_AGENT.test(hello.userAgent),
+		hello.userAgent,
+	);
+	check(
+		"window mode is headless and the window is never shown",
+		facts.windowMode === "headless" && facts.visible === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	check(
+		"this scene is running against a live, isolated backend",
+		Boolean(BACKEND),
+		"the registry renders its offline surface without a daemon, and this row's copy and choices ARE the daemon's answer, so the frames need --backend",
+	);
+	if (!BACKEND) return [];
+
+	const collapse = (value) =>
+		String(value ?? "")
+			.replace(/\s+/g, " ")
+			.trim();
+
+	/*
+	 * The daemon's own row, read FIRST: everything the page shows is compared
+	 * against this answer, and the pinned identity check keeps a daemon serving
+	 * some OTHER registry from passing by agreeing with itself.
+	 */
+	const daemonAtRest = await fetchDaemonSetting(ACCOUNT_POLICY_KEY);
+	note(
+		"the daemon's own account-policy row at rest",
+		JSON.stringify(
+			daemonAtRest.row
+				? {
+						key: daemonAtRest.row.key,
+						label: daemonAtRest.row.label,
+						kind: daemonAtRest.row.kind,
+						value: daemonAtRest.row.value,
+						is_default: daemonAtRest.row.is_default,
+						choices: (daemonAtRest.row.choices ?? []).map((choice) => [
+							choice.value,
+							choice.label,
+						]),
+					}
+				: null,
+		),
+	);
+	check(
+		"the run's own daemon serves the account-policy row",
+		daemonAtRest.status === 200 && daemonAtRest.row !== null,
+		`status=${daemonAtRest.status} row=${daemonAtRest.row === null ? "absent" : "present"}`,
+	);
+	if (daemonAtRest.row === null) return [];
+	check(
+		"the daemon's row carries the identity this lane pins (label and choices)",
+		daemonAtRest.row.label === ACCOUNT_POLICY_EXPECTED.label &&
+			JSON.stringify(
+				(daemonAtRest.row.choices ?? []).map((choice) => [
+					choice.value,
+					choice.label,
+				]),
+			) ===
+				JSON.stringify(
+					ACCOUNT_POLICY_EXPECTED.choices.map((choice) => [
+						choice.value,
+						choice.label,
+					]),
+				),
+		JSON.stringify({
+			label: daemonAtRest.row.label,
+			choices: (daemonAtRest.row.choices ?? []).map((choice) => [
+				choice.value,
+				choice.label,
+			]),
+		}),
+	);
+	check(
+		"the row is at its shipped default on this fresh config root",
+		daemonAtRest.row.value === "reset-soonest" &&
+			daemonAtRest.row.is_default === true,
+		`value=${JSON.stringify(daemonAtRest.row.value)} is_default=${daemonAtRest.row.is_default}`,
+	);
+
+	await verb(cdp, "setTheme", "localOperatorDark");
+
+	/* ---------------------------------------------------------------- */
+	/* 1. The Basic surface: the row is not in it                        */
+	/* ---------------------------------------------------------------- */
+
+	await verb(cdp, "navigate", "/settings");
+	const surface = await waitForCondition(
+		cdp,
+		`(() => {
+			const chip = [...document.querySelectorAll("button")].find((button) => (button.textContent || "").trim() === "Show advanced");
+			if (!chip) return null;
+			const headers = document.querySelectorAll("[data-section-header]");
+			return headers.length > 0 ? { chipPressed: chip.getAttribute("aria-pressed"), headers: headers.length } : null;
+		})()`,
+		30_000,
+	);
+	check(
+		"the settings surface rendered with its tier filter and the section index",
+		surface.ok === true,
+		`after ${surface.waitedMs}ms`,
+	);
+	if (surface.ok !== true) return [];
+
+	const basic = await cdp.evaluate(`(() => {
+		const chip = [...document.querySelectorAll("button")].find((button) => (button.textContent || "").trim() === "Show advanced");
+		const header = [...document.querySelectorAll("[data-section-header]")].find((element) => /^Failover and retry/.test(element.getAttribute("data-section-header") ?? ""));
+		return {
+			rowInBasic: Boolean(document.querySelector(${JSON.stringify(ACCOUNT_POLICY_ROW)})),
+			chipPressed: chip ? chip.getAttribute("aria-pressed") : null,
+			headers: document.querySelectorAll("[data-section-header]").length,
+			failoverTrigger: header ? (header.querySelector("button")?.getAttribute("aria-expanded") ?? null) : null,
+		};
+	})()`);
+	note("the Basic surface, read", JSON.stringify(basic));
+	check(
+		"the account-policy row is NOT in the Basic surface (the advanced tier is holding it back)",
+		basic.rowInBasic === false && basic.chipPressed === "false",
+		JSON.stringify(basic),
+	);
+	check(
+		"the page is the registry's own section index, with the failover section among its headers",
+		basic.headers >= 30 && typeof basic.failoverTrigger === "string",
+		`headers=${basic.headers} failover trigger aria-expanded=${JSON.stringify(basic.failoverTrigger)}`,
+	);
+
+	/* ---------------------------------------------------------------- */
+	/* 2. Search by the canonical key, tier STILL OFF                    */
+	/* ---------------------------------------------------------------- */
+
+	const searchSelector = 'input[aria-label="Search settings"]';
+	const searchFocused = await focusField(cdp, searchSelector);
+	check(
+		"the search field took the caret",
+		searchFocused === true,
+		`${searchFocused}`,
+	);
+	await cdp.send("Input.insertText", { text: ACCOUNT_POLICY_KEY });
+	const found = await waitForCondition(
+		cdp,
+		`(() => {
+			const row = document.querySelector(${JSON.stringify(ACCOUNT_POLICY_ROW)});
+			const line = document.body.innerText.match(/\\d+ results? in \\d+ sections?/);
+			if (!row || !line) return null;
+			const section = row.closest("[data-settings-section]");
+			return {
+				line: line[0],
+				sectionOpen: section ? section.getAttribute("data-open") : null,
+			};
+		})()`,
+		10_000,
+	);
+	check(
+		"search finds the row by its canonical key, with the advanced tier STILL OFF (the tier is a view, not a gate)",
+		found.ok === true && found.last?.line === "1 result in 1 section",
+		JSON.stringify(found.last ?? { waitedMs: found.waitedMs }),
+	);
+	if (found.ok !== true) return [];
+	check(
+		"the search's own section is force-opened onto its match",
+		found.last?.sectionOpen === "true",
+		`section data-open=${JSON.stringify(found.last?.sectionOpen)}`,
+	);
+	const searchFrame = await captureSettled(
+		cdp,
+		"settings-account-policy-search-found-dark",
+	);
+
+	/*
+	 * The ✕ is the field's own control (the surface's own selector list names
+	 * it), and clearing must put the BASIC surface back: with the query gone the
+	 * tier filter applies again and the row leaves the list, which is the
+	 * reversal that proves the chip - not a residual DOM - is what admits it.
+	 */
+	const clearPress = await pressFoundElement(
+		cdp,
+		`() => document.querySelector('button[aria-label="Clear search"]') ?? null`,
+	);
+	note("pressed the search field's own ✕", JSON.stringify(clearPress));
+	const cleared = await waitForCondition(
+		cdp,
+		`(() => {
+			const field = document.querySelector('input[aria-label="Search settings"]');
+			const line = document.body.innerText.match(/\\d+ results? in \\d+ sections?/);
+			const row = document.querySelector(${JSON.stringify(ACCOUNT_POLICY_ROW)});
+			return field && field.value === "" && !line && !row ? true : null;
+		})()`,
+		10_000,
+	);
+	check(
+		"the ✕ clears the query, and the Basic surface comes back (the row leaves the list again)",
+		cleared.ok === true,
+		`after ${cleared.waitedMs}ms`,
+	);
+
+	/* ---------------------------------------------------------------- */
+	/* 3. The tier revealed: `Show advanced`, pressed                    */
+	/* ---------------------------------------------------------------- */
+
+	const chipFinder =
+		'() => [...document.querySelectorAll("button")].find((button) => (button.textContent || "").trim() === "Show advanced") ?? null';
+	await scrollFoundIntoView(cdp, chipFinder);
+	const chipPress = await pressFoundElement(cdp, chipFinder);
+	note("pressed the Show advanced chip", JSON.stringify(chipPress));
+	check(
+		"the Show advanced chip was found and pressed where it paints",
+		chipPress !== null && chipPress.text === "Show advanced",
+		JSON.stringify(chipPress?.description ?? null),
+	);
+	const revealed = await waitForCondition(
+		cdp,
+		`(() => {
+			const chip = [...document.querySelectorAll("button")].find((button) => (button.textContent || "").trim() === "Show advanced");
+			const row = document.querySelector(${JSON.stringify(ACCOUNT_POLICY_ROW)});
+			if (!row) return null;
+			const section = row.closest("[data-settings-section]");
+			return {
+				chipPressed: chip ? chip.getAttribute("aria-pressed") : null,
+				tier: row.getAttribute("data-tier"),
+				section: section ? section.getAttribute("data-settings-section") : null,
+				sectionOpen: section ? section.getAttribute("data-open") : null,
+			};
+		})()`,
+		10_000,
+	);
+	check(
+		"pressing Show advanced admits the account-policy row to the list, tiered `advanced`",
+		revealed.ok === true &&
+			revealed.last?.chipPressed === "true" &&
+			revealed.last?.tier === "advanced",
+		JSON.stringify(revealed.last ?? { waitedMs: revealed.waitedMs }),
+	);
+	note(
+		"the row's section is still closed on arrival",
+		`the tier admits the row to the list; the section's own header is what opens it too, which the deep link below does - ${JSON.stringify(revealed.last)}`,
+	);
+
+	/*
+	 * THE TOGGLE'S OTHER SIDE, BEFORE THE LINK RUNS: put the tier back the way
+	 * the scene found it, so the deep link below performs its own reveal. WHY is
+	 * in the docstring; what it buys here is that the reveal effect's first
+	 * animation frame is scheduled only AFTER the commit that reveals the tier
+	 * AND opens the section, instead of racing that commit's queued state.
+	 */
+	await scrollFoundIntoView(cdp, chipFinder);
+	const chipBack = await pressFoundElement(cdp, chipFinder);
+	note(
+		"pressed the Show advanced chip a second time (the toggle's other side)",
+		JSON.stringify(chipBack),
+	);
+	const restored = await waitForCondition(
+		cdp,
+		`(() => {
+			const chip = [...document.querySelectorAll("button")].find((button) => (button.textContent || "").trim() === "Show advanced");
+			const row = document.querySelector(${JSON.stringify(ACCOUNT_POLICY_ROW)});
+			return chip && chip.getAttribute("aria-pressed") === "false" && !row
+				? { chipPressed: chip.getAttribute("aria-pressed") }
+				: null;
+		})()`,
+		10_000,
+	);
+	check(
+		"the chip's other side restores the Basic surface (the row leaves the list again)",
+		restored.ok === true,
+		`after ${restored.waitedMs}ms`,
+	);
+
+	/* ---------------------------------------------------------------- */
+	/* 4. The deep link: revealed, scrolled to and FOCUSED               */
+	/* ---------------------------------------------------------------- */
+
+	/*
+	 * Focus emulation BEFORE the deep link (see the docstring): the link's own
+	 * contract includes FOCUSING the row's control, and a never-shown window
+	 * paints no `:focus` state without this. The closing survey is what proves
+	 * the window itself stayed hidden.
+	 */
+	await cdp.send("Emulation.setFocusEmulationEnabled", { enabled: true });
+	const emulated = await cdp.evaluate(
+		"({ hasFocus: document.hasFocus(), visibility: document.visibilityState })",
+	);
+	note(
+		"focus emulation",
+		`Emulation.setFocusEmulationEnabled is ON over CDP (the window is never shown): document.hasFocus()=${emulated.hasFocus} visibilityState=${emulated.visibility}`,
+	);
+	check(
+		"the run reads as focused through CDP focus emulation (the window is still never shown)",
+		emulated.hasFocus === true,
+		JSON.stringify(emulated),
+	);
+
+	await verb(cdp, "navigate", `/settings?setting=${ACCOUNT_POLICY_KEY}`);
+	/*
+	 * The wait returns ONLY the settled landing - tier revealed by the LINK, the
+	 * section open, the row on screen and its control focused - not the first
+	 * moment the row exists (the first run's defect: an always-truthy reading
+	 * object is an answer to `waitForCondition`).
+	 */
+	const landed = await waitForCondition(
+		cdp,
+		`(() => {
+			const chip = [...document.querySelectorAll("button")].find((button) => (button.textContent || "").trim() === "Show advanced");
+			const row = document.querySelector(${JSON.stringify(ACCOUNT_POLICY_ROW)});
+			if (!row) return null;
+			const section = row.closest("[data-settings-section]");
+			const trigger = row.querySelector('[data-setting-control] [role="combobox"]');
+			const active = document.activeElement;
+			const rect = row.getBoundingClientRect();
+			const reading = {
+				chipPressed: chip ? chip.getAttribute("aria-pressed") : null,
+				sectionOpen: section ? section.getAttribute("data-open") : null,
+				focused: active === trigger ? "trigger" : (active && row.contains(active) ? "row" : "elsewhere"),
+				activeDescription: active
+					? active.tagName.toLowerCase() +
+						" " +
+						JSON.stringify((active.getAttribute("aria-label") || active.textContent || "").trim().slice(0, 60))
+					: null,
+				top: Math.round(rect.top),
+				bottom: Math.round(rect.bottom),
+				viewport: window.innerHeight,
+				onScreen: rect.top >= 0 && rect.bottom <= window.innerHeight,
+			};
+			const arrived =
+				reading.chipPressed === "true" &&
+				reading.sectionOpen === "true" &&
+				reading.focused === "trigger" &&
+				reading.onScreen === true;
+			return arrived ? reading : null;
+		})()`,
+		30_000,
+	);
+	check(
+		"the deep link revealed the advanced tier, opened the section and scrolled the row on screen",
+		landed.ok === true &&
+			landed.last?.chipPressed === "true" &&
+			landed.last?.sectionOpen === "true" &&
+			landed.last?.onScreen === true,
+		JSON.stringify(landed.last ?? { waitedMs: landed.waitedMs }),
+	);
+	check(
+		"the deep link FOCUSED the row's own control (its keyboard-usefulness, not merely a scroll)",
+		landed.last?.focused === "trigger",
+		JSON.stringify(landed.last),
+	);
+	const landedHash = await cdp.evaluate("window.location.hash");
+	check(
+		"the deep link is the one this scene asked for",
+		typeof landedHash === "string" &&
+			landedHash.includes(`setting=${ACCOUNT_POLICY_KEY}`),
+		`hash reads ${JSON.stringify(landedHash)}`,
+	);
+
+	/*
+	 * The row at rest, and then its own help reveal: an advanced row keeps its
+	 * help behind its disclosure (there is no always-on help line), so the
+	 * sentence is PRESSED open and compared - normalised - against the daemon's.
+	 */
+	const restValue = await cdp.evaluate(`(() => {
+		const row = document.querySelector(${JSON.stringify(ACCOUNT_POLICY_ROW)});
+		if (!row) return null;
+		const trigger = row.querySelector('[data-setting-control] [role="combobox"]');
+		const buttons = [...row.querySelectorAll("button")].map((button) => (button.textContent || "").trim());
+		return {
+			value: trigger ? (trigger.textContent || "").trim() : null,
+			triggerLabel: trigger ? trigger.getAttribute("aria-label") : null,
+			expanded: trigger ? trigger.getAttribute("aria-expanded") : null,
+			dot: Boolean(row.querySelector('span[role="img"]')),
+			save: buttons.includes("Save") || buttons.includes("Saving"),
+		};
+	})()`);
+	note("the row at rest, off the deep link", JSON.stringify(restValue));
+	check(
+		"the control is the registry row's own select, named by the daemon's label",
+		restValue?.triggerLabel === daemonAtRest.row.label,
+		`aria-label=${JSON.stringify(restValue?.triggerLabel)} daemon label=${JSON.stringify(daemonAtRest.row.label)}`,
+	);
+	check(
+		"the row is at its shipped default: `Reset soonest`, no changed dot, no Save",
+		restValue?.value === "Reset soonest" &&
+			restValue?.dot === false &&
+			restValue?.save === false,
+		JSON.stringify(restValue),
+	);
+
+	const revealPress = await pressFoundElement(
+		cdp,
+		`() => document.querySelector(${JSON.stringify(ACCOUNT_POLICY_ROW)})?.querySelector("button[aria-expanded]") ?? null`,
+	);
+	note("pressed the row's own help reveal", JSON.stringify(revealPress));
+	const helpShown = await waitForCondition(
+		cdp,
+		`(() => {
+			const row = document.querySelector(${JSON.stringify(ACCOUNT_POLICY_ROW)});
+			const button = row ? row.querySelector("button[aria-expanded]") : null;
+			const help = row ? row.querySelector("span.text-meta") : null;
+			return button && button.getAttribute("aria-expanded") === "true" && help
+				? { help: (help.textContent || "").trim() }
+				: null;
+		})()`,
+		10_000,
+	);
+	check(
+		"the row's own disclosure reveals its help (the advanced row's copy, behind the row's reveal)",
+		helpShown.ok === true,
+		`after ${helpShown.waitedMs}ms`,
+	);
+	check(
+		"the help the row shows IS the daemon's sentence",
+		collapse(helpShown.last?.help) === collapse(daemonAtRest.row.help),
+		JSON.stringify({
+			dom: collapse(helpShown.last?.help).slice(0, 100),
+			daemon: collapse(daemonAtRest.row.help).slice(0, 100),
+		}),
+	);
+	const restFrame = await captureSettled(
+		cdp,
+		"settings-account-policy-rest-dark",
+	);
+
+	/* ---------------------------------------------------------------- */
+	/* 5. The choices, then a CHANGE through the row's own control       */
+	/* ---------------------------------------------------------------- */
+
+	const trigger = await pointerPressSelector(cdp, ACCOUNT_POLICY_TRIGGER);
+	note("pressed the row's select trigger", JSON.stringify(trigger));
+	const listOpen = await waitForCondition(
+		cdp,
+		`document.querySelectorAll('[role="listbox"] [role="option"]').length > 0 ? true : null`,
+		10_000,
+	);
+	check(
+		"pressing the trigger opened a real listbox",
+		listOpen.ok === true,
+		`after ${listOpen.waitedMs}ms`,
+	);
+	const openReading = await cdp.evaluate(`(() => {
+		const trigger = document.querySelector(${JSON.stringify(ACCOUNT_POLICY_TRIGGER)});
+		const options = [...document.querySelectorAll('[role="listbox"] [role="option"]')].map((option) => ({
+			text: (option.textContent || "").trim(),
+			title: option.getAttribute("title"),
+			disabled: option.getAttribute("data-disabled") === "",
+		}));
+		return { expanded: trigger ? trigger.getAttribute("aria-expanded") : null, options };
+	})()`);
+	note("the listbox open", JSON.stringify(openReading));
+	check(
+		"the listbox is open on the trigger, and offers the daemon's own choices (label and description)",
+		openReading.expanded === "true" &&
+			JSON.stringify(
+				openReading.options.map((option) => [option.text, option.title]),
+			) ===
+				JSON.stringify(
+					(daemonAtRest.row.choices ?? []).map((choice) => [
+						choice.label,
+						choice.description || null,
+					]),
+				),
+		JSON.stringify(openReading),
+	);
+
+	const choicePress = await pressFoundElement(
+		cdp,
+		`() => [...document.querySelectorAll('[role="listbox"] [role="option"]')].find((option) => (option.textContent || "").trim() === "Most headroom") ?? null`,
+	);
+	note("pressed the `Most headroom` option", JSON.stringify(choicePress));
+	check(
+		"the pressed option is the `Most headroom` choice",
+		choicePress !== null && choicePress.text === "Most headroom",
+		JSON.stringify(choicePress?.text ?? null),
+	);
+	const dirty = await waitForCondition(
+		cdp,
+		`(() => {
+			if (document.querySelector('[role="listbox"]') !== null) return null;
+			const row = document.querySelector(${JSON.stringify(ACCOUNT_POLICY_ROW)});
+			if (!row) return null;
+			const trigger = row.querySelector('[data-setting-control] [role="combobox"]');
+			const buttons = [...row.querySelectorAll("button")].map((button) => (button.textContent || "").trim());
+			return {
+				value: trigger ? (trigger.textContent || "").trim() : null,
+				save: buttons.includes("Save"),
+				dot: Boolean(row.querySelector('span[role="img"]')),
+				unsaved: /\\b1 unsaved change\\b/.test(document.body.innerText),
+			};
+		})()`,
+		10_000,
+	);
+	check(
+		"the change lands as a DRAFT: the row shows `Most headroom`, its Save and the changed dot, and the page counts 1 unsaved change",
+		dirty.ok === true &&
+			dirty.last?.value === "Most headroom" &&
+			dirty.last?.save === true &&
+			dirty.last?.dot === true &&
+			dirty.last?.unsaved === true,
+		JSON.stringify(dirty.last ?? { waitedMs: dirty.waitedMs }),
+	);
+	const dirtyFrame = await captureSettled(
+		cdp,
+		"settings-account-policy-dirty-dark",
+	);
+
+	/*
+	 * Save, then the REAL readback. The press is the row's own Save; the round
+	 * trip behind it is the app's transport (IPC -> HTTP to the daemon) followed
+	 * by ITS OWN refetch, and the claim is the daemon's `GET /v1/settings`
+	 * answer read from this process - the UI half and the daemon half are two
+	 * readings of one write, and either alone would pass a wrong implementation.
+	 */
+	const savePress = await pressFoundElement(
+		cdp,
+		`() => [...document.querySelectorAll(${JSON.stringify(ACCOUNT_POLICY_BUTTONS)})].find((button) => (button.textContent || "").trim() === "Save") ?? null`,
+	);
+	note("pressed the row's Save", JSON.stringify(savePress));
+	check(
+		"the row's own Save button was found and pressed where it paints",
+		savePress !== null && savePress.text === "Save",
+		JSON.stringify(savePress?.description ?? null),
+	);
+	const saved = await waitForCondition(
+		cdp,
+		`(() => {
+			const row = document.querySelector(${JSON.stringify(ACCOUNT_POLICY_ROW)});
+			if (!row) return null;
+			const trigger = row.querySelector('[data-setting-control] [role="combobox"]');
+			const buttons = [...row.querySelectorAll("button")].map((button) => (button.textContent || "").trim());
+			const value = trigger ? (trigger.textContent || "").trim() : null;
+			const done =
+				value === "Most headroom" &&
+				!buttons.includes("Save") &&
+				!buttons.includes("Saving") &&
+				buttons.some((button) => button.startsWith("Use default")) &&
+				Boolean(row.querySelector('span[role="img"]')) &&
+				!/\\d+ unsaved changes?/.test(document.body.innerText);
+			return done ? { value, buttons, unsaved: false } : null;
+		})()`,
+		15_000,
+	);
+	check(
+		"the app's own save round-trip completed: the row is clean, off the default, and shows the new value",
+		saved.ok === true,
+		JSON.stringify(saved.last ?? { waitedMs: saved.waitedMs }),
+	);
+	const daemonAfter = await fetchDaemonSetting(ACCOUNT_POLICY_KEY);
+	note(
+		"the daemon's own answer AFTER the save",
+		JSON.stringify(
+			daemonAfter.row
+				? {
+						value: daemonAfter.row.value,
+						is_default: daemonAfter.row.is_default,
+					}
+				: null,
+		),
+	);
+	check(
+		"the PERSISTED value read back from the daemon is the choice the control wrote",
+		daemonAfter.status === 200 &&
+			daemonAfter.row?.value === "headroom" &&
+			daemonAfter.row?.is_default === false,
+		`status=${daemonAfter.status} value=${JSON.stringify(daemonAfter.row?.value)} is_default=${daemonAfter.row?.is_default}`,
+	);
+	const savedFrame = await captureSettled(
+		cdp,
+		"settings-account-policy-saved-dark",
+	);
+
+	/* ---------------------------------------------------------------- */
+	/* 5b. The SECOND deep-link leg: the chip KEPT ON                    */
+	/* ---------------------------------------------------------------- */
+
+	/*
+	 * WHY A SECOND LEG, AND WHY IT IS A FRESH MOUNT (UX round 2, U2). The first
+	 * leg drives the link from Basic, where the ordering is structurally safe
+	 * (the focus loop is gated on the tier, so its first frame is scheduled
+	 * only AFTER the commit that reveals the tier and opens the section). The
+	 * state a palette reader can actually be in is different: the settings pane
+	 * is already mounted with `Show advanced` ON, the destination's section sits
+	 * CLOSED - the row behind its `[hidden]` wrapper at height 0 - and the link
+	 * is followed into THAT. There the ordering is not structurally safe:
+	 * `destinationReady` is true the moment `focusKey` changes (it does not
+	 * include the section-open state), so the close-the-distance loop's first
+	 * frame can run BEFORE the commit that opens the section, read the row
+	 * inside the `[hidden]` subtree - where `focus()` and `scrollIntoView` are
+	 * silent no-ops - latch, and never retry. The first run's record (README,
+	 * "The first run, kept as the record of what it found") named this reading
+	 * open; this leg settles it by measurement instead of assumption, on the
+	 * same build and daemon as the frames above.
+	 *
+	 * WHY A FRESH MOUNT RATHER THAN A REPLAY. `handledFocusKey` and
+	 * `revealedFocusKey` are per-mount refs that deliberately hold the last key
+	 * ACTIONED in this mount, so re-pointing the same link at the same key in
+	 * the same mount is a documented no-op by design - a leg built on that
+	 * would settle nothing about the ordering. The fresh mount (`/chat`, then
+	 * back) with the chip pressed ON reproduces exactly the reachable state:
+	 * pane mounted, tier already on, destination's section closed, the first
+	 * link for this key in this mount. No frame is captured here: the leg is a
+	 * reading, not a picture, and the committed set stays the four frames above.
+	 */
+
+	await verb(cdp, "navigate", "/chat");
+	await verb(cdp, "navigate", "/settings");
+	const surfaceSecond = await waitForCondition(
+		cdp,
+		`(() => {
+			const chip = [...document.querySelectorAll("button")].find((button) => (button.textContent || "").trim() === "Show advanced");
+			if (!chip) return null;
+			const headers = document.querySelectorAll("[data-section-header]");
+			return headers.length > 0
+				? {
+						chipPressed: chip.getAttribute("aria-pressed"),
+						headers: headers.length,
+						rowInBasic: Boolean(document.querySelector(${JSON.stringify(ACCOUNT_POLICY_ROW)})),
+					}
+				: null;
+		})()`,
+		30_000,
+	);
+	check(
+		"the second leg starts from a FRESH mount: the tier reads OFF again and the row is not in the Basic surface",
+		surfaceSecond.ok === true &&
+			surfaceSecond.last?.chipPressed === "false" &&
+			surfaceSecond.last?.rowInBasic === false &&
+			(surfaceSecond.last?.headers ?? 0) >= 30,
+		JSON.stringify(surfaceSecond.last ?? { waitedMs: surfaceSecond.waitedMs }),
+	);
+	await scrollFoundIntoView(cdp, chipFinder);
+	const chipSecond = await pressFoundElement(cdp, chipFinder);
+	note(
+		"pressed the Show advanced chip for the second leg (kept ON)",
+		JSON.stringify(chipSecond),
+	);
+	check(
+		"the second leg's chip press was found and pressed where it paints",
+		chipSecond !== null && chipSecond.text === "Show advanced",
+		JSON.stringify(chipSecond?.description ?? null),
+	);
+	const armed = await waitForCondition(
+		cdp,
+		`(() => {
+			const chip = [...document.querySelectorAll("button")].find((button) => (button.textContent || "").trim() === "Show advanced");
+			const row = document.querySelector(${JSON.stringify(ACCOUNT_POLICY_ROW)});
+			if (!row || !chip) return null;
+			const section = row.closest("[data-settings-section]");
+			const rect = row.getBoundingClientRect();
+			return {
+				chipPressed: chip.getAttribute("aria-pressed"),
+				section: section ? section.getAttribute("data-settings-section") : null,
+				sectionOpen: section ? section.getAttribute("data-open") : null,
+				rowHeight: Math.round(rect.height),
+			};
+		})()`,
+		10_000,
+	);
+	check(
+		"the link is about to be followed from the reachable state: chip ON, the destination's section CLOSED (the row behind `[hidden]`, height 0)",
+		armed.ok === true &&
+			armed.last?.chipPressed === "true" &&
+			armed.last?.sectionOpen === "false" &&
+			armed.last?.rowHeight === 0,
+		JSON.stringify(armed.last ?? { waitedMs: armed.waitedMs }),
+	);
+
+	await verb(cdp, "navigate", `/settings?setting=${ACCOUNT_POLICY_KEY}`);
+	const landedSecond = await waitForCondition(
+		cdp,
+		`(() => {
+			const chip = [...document.querySelectorAll("button")].find((button) => (button.textContent || "").trim() === "Show advanced");
+			const row = document.querySelector(${JSON.stringify(ACCOUNT_POLICY_ROW)});
+			if (!row) return null;
+			const section = row.closest("[data-settings-section]");
+			const trigger = row.querySelector('[data-setting-control] [role="combobox"]');
+			const active = document.activeElement;
+			const rect = row.getBoundingClientRect();
+			const reading = {
+				chipPressed: chip ? chip.getAttribute("aria-pressed") : null,
+				sectionOpen: section ? section.getAttribute("data-open") : null,
+				focused: active === trigger ? "trigger" : (active && row.contains(active) ? "row" : "elsewhere"),
+				activeDescription: active
+					? active.tagName.toLowerCase() +
+						" " +
+						JSON.stringify((active.getAttribute("aria-label") || active.textContent || "").trim().slice(0, 60))
+					: null,
+				top: Math.round(rect.top),
+				bottom: Math.round(rect.bottom),
+				viewport: window.innerHeight,
+				onScreen: rect.top >= 0 && rect.bottom <= window.innerHeight,
+			};
+			const arrived =
+				reading.chipPressed === "true" &&
+				reading.sectionOpen === "true" &&
+				reading.focused === "trigger" &&
+				reading.onScreen === true;
+			return arrived ? reading : null;
+		})()`,
+		30_000,
+	);
+	if (landedSecond.ok !== true) {
+		/*
+		 * The latch diagnosis, on the failure path only: what the settled wait saw
+		 * at its bound, so a FAIL separates "the section never opened" from "the
+		 * section opened after the loop had already latched on the hidden subtree".
+		 */
+		const stuckSecond = await cdp.evaluate(`(() => {
+			const row = document.querySelector(${JSON.stringify(ACCOUNT_POLICY_ROW)});
+			if (!row) return { row: "absent" };
+			const section = row.closest("[data-settings-section]");
+			const trigger = row.querySelector('[data-setting-control] [role="combobox"]');
+			const active = document.activeElement;
+			const rect = row.getBoundingClientRect();
+			return {
+				sectionOpen: section ? section.getAttribute("data-open") : null,
+				focused: active === trigger ? "trigger" : (active && row.contains(active) ? "row" : "elsewhere"),
+				activeDescription: active
+					? active.tagName.toLowerCase() +
+						" " +
+						JSON.stringify((active.getAttribute("aria-label") || active.textContent || "").trim().slice(0, 60))
+					: null,
+				top: Math.round(rect.top),
+				bottom: Math.round(rect.bottom),
+				viewport: window.innerHeight,
+				onScreen: rect.top >= 0 && rect.bottom <= window.innerHeight,
+			};
+		})()`);
+		note(
+			"the second leg at the settled wait's bound (the latch diagnosis)",
+			JSON.stringify(stuckSecond),
+		);
+	}
+	check(
+		"the second deep link (chip kept ON from a closed section) settled the same landing: the link opened the section and scrolled the row on screen",
+		landedSecond.ok === true &&
+			landedSecond.last?.chipPressed === "true" &&
+			landedSecond.last?.sectionOpen === "true" &&
+			landedSecond.last?.onScreen === true,
+		JSON.stringify(landedSecond.last ?? { waitedMs: landedSecond.waitedMs }),
+	);
+	check(
+		"the second deep link FOCUSED the row's own control from the tier-already-on state",
+		landedSecond.last?.focused === "trigger",
+		JSON.stringify(landedSecond.last),
+	);
+	const landedSecondHash = await cdp.evaluate("window.location.hash");
+	check(
+		"the second deep link is the one this scene asked for",
+		typeof landedSecondHash === "string" &&
+			landedSecondHash.includes(`setting=${ACCOUNT_POLICY_KEY}`),
+		`hash reads ${JSON.stringify(landedSecondHash)}`,
+	);
+	note(
+		"the second leg's settled reading",
+		JSON.stringify(landedSecond.last ?? { waitedMs: landedSecond.waitedMs }),
+	);
+
+	/* ---------------------------------------------------------------- */
+	/* 6. The closing survey: the run stayed out of the way              */
+	/* ---------------------------------------------------------------- */
+
+	const closing = await factsOf(cdp);
+	note("closing facts (from main)", JSON.stringify(closing));
+	check(
+		"the run stayed headless and invisible through the drive (closing survey, from main)",
+		closing.windowMode === "headless" &&
+			closing.visible === false &&
+			closing.focused === false &&
+			closing.minimized === false,
+		`mode=${closing.windowMode} visible=${closing.visible} focused=${closing.focused} minimized=${closing.minimized}`,
+	);
+
+	const frames = [searchFrame, restFrame, dirtyFrame, savedFrame];
+	check(
+		"every capture is a frame the app held still for, with no toast on it",
+		frames.every((frame) => frame.stable === true && frame.toastFree === true),
+		frames
+			.map(
+				(frame) =>
+					`${frame.label}: ${frame.stable === true ? `held still after ${frame.attempts} capture(s)` : `never held still in ${frame.attempts} capture(s)`}, toast-free ${frame.toastFree === true}`,
+			)
+			.join(" | "),
+	);
+	check(
+		"every capture wrote a PNG of the requested size",
+		frames.every(
+			(frame) =>
+				frame.bytes > 1000 &&
+				frame.pixels.width ===
+					frame.viewport.width * frame.viewport.devicePixelRatio &&
+				frame.pixels.height ===
+					frame.viewport.height * frame.viewport.devicePixelRatio,
+		),
+		frames
+			.map(
+				(f) => `${f.label}: ${f.pixels.width}x${f.pixels.height}, ${f.bytes}B`,
+			)
+			.join(" | "),
+	);
+	return frames;
+}
+
 async function scenePalette(cdp) {
 	const hello = await verb(cdp, "hello");
 	note("hello", JSON.stringify(hello, null, 2));
@@ -46626,6 +47580,15 @@ async function main() {
 			 * Needs `--backend`: an isolated daemon this run owns.
 			 */ else if (SCENE === "settings-transcript-display")
 				await sceneSettingsTranscriptDisplay(cdp);
+			/*
+			 * The account-policy row (`retry.accountSelectionPolicy`) in the failover
+			 * section: the tier claim this slice's classification makes, its
+			 * DAEMON-owned copy (label, help, choices) and a change driven through the
+			 * row's own enum and saved to a daemon this run owns. Needs `--backend`:
+			 * the registry renders its offline surface without one, and the readback
+			 * is the daemon's own answer.
+			 */ else if (SCENE === "settings-account-policy")
+				await sceneSettingsAccountPolicy(cdp);
 			else if (SCENE === "settings-gate") await sceneSettingsGate(cdp);
 			else if (SCENE === "settings-integrations")
 				await sceneSettingsIntegrations(cdp);
