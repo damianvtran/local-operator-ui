@@ -727,6 +727,12 @@ type TranscriptPayloadRecord =
 			components: readonly SupplementComponent[];
 			/** `superseded` renders nothing; a job-level failure renders its line. */
 			error: string;
+			/**
+			 * The failed line's typed cause (`provider_<kind>`, the allowlisted
+			 * vocabulary), bounded by the reader; "" when absent or unknown, and the
+			 * row then paints the bare failure sentence (memo §2.8).
+			 */
+			cause: string;
 			/** Additive typed facts; old rows keep generic failure copy. */
 			model?: string;
 			attempts?: readonly string[];

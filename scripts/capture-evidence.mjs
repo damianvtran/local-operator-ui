@@ -12188,6 +12188,7 @@ export const STORIES = [
 	["chat-turn-supplements--cancelled", 900, 237],
 	["chat-turn-supplements--cancelled-cold", 900, 237],
 	["chat-turn-supplements--failed", 900, 237],
+	["chat-turn-supplements--failed-cause-quota", 900, 360],
 	["chat-turn-supplements--done-empty", 900, 220],
 	["chat-turn-supplements--superseded", 900, 220],
 	["chat-turn-supplements--frame-error", 900, 237],
