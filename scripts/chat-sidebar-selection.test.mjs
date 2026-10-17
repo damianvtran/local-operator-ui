@@ -1320,6 +1320,8 @@ const BROWSER_TABS =
 	"src/renderer/src/features/browser/components/browser-tab-strip.tsx";
 const HUB_LINK_MARK =
 	"src/renderer/src/features/chat/components/hub-link-sidebar-mark.tsx";
+const PROJECT_TIMELINE =
+	"src/renderer/src/features/projects/components/project-timeline.tsx";
 
 /*
  * The regex metacharacters an anchor may carry, and the literal spaces that stand
@@ -2140,30 +2142,35 @@ const PLATES_INSIDE_ROW_STATES = [
 		what: "the rail's account plate",
 		file: ACCOUNT_ROW,
 		element: "AvatarFallback",
+		ground: "bg-elevated",
 		edge: true,
 	},
 	{
 		what: "the agents sidebar's avatar",
 		file: AGENTS_SIDEBAR,
 		element: "AvatarFallback",
+		ground: "bg-sunken",
 		edge: true,
 	},
 	{
 		what: "the schedules list's switch",
 		file: SCHEDULE_ROW,
 		element: "Switch",
+		ground: "bg-sunken",
 		edge: true,
 	},
 	{
 		what: "the hub link mark's origin-count badge",
 		file: HUB_LINK_MARK,
 		element: "span",
+		ground: "bg-surface",
 		edge: true,
 	},
 	{
 		what: "the canvas file row's media thumbnail plate",
 		file: FILE_ROW,
 		element: "RowThumbnail",
+		ground: "bg-sunken",
 		edge: false,
 		fact: "object-cover",
 	},
@@ -2171,8 +2178,38 @@ const PLATES_INSIDE_ROW_STATES = [
 		what: "the browser tab strip's notch",
 		file: BROWSER_TABS,
 		element: "span",
+		ground: "bg-elevated",
 		edge: false,
 		fact: "-bottom-px",
+	},
+	{
+		/*
+		 * The timeline's label rail is `bg-canvas` inside a row state: it is the
+		 * STICKY scroll-under column (the same role the timeline's sticky header
+		 * rails carry), deliberately solid, and it is the row's own label column
+		 * rather than a plate laid over the row's fill. Recorded as a sticky
+		 * ground, not as a plate needing an edge.
+		 */
+		what: "the timeline's sticky label rail",
+		file: PROJECT_TIMELINE,
+		element: "span",
+		ground: "bg-canvas",
+		edge: false,
+		fact: "sticky",
+	},
+	{
+		/*
+		 * A milestone mark is a SMALL DELIBERATE MARK (a 8px diamond, the same
+		 * class as a chip or a badge), and it already carries its own semantic
+		 * edge (`border-ink-muted`) rather than the control edge. It is not a
+		 * plate the row's fill can disappear into.
+		 */
+		what: "the timeline's upcoming milestone mark",
+		file: PROJECT_TIMELINE,
+		element: "span",
+		ground: "bg-surface",
+		edge: false,
+		fact: "border-ink-muted",
 	},
 ];
 
@@ -2219,15 +2256,28 @@ test("every object a row state can paint over keeps an edge, or records why it n
 	}
 
 	const found = await carriersInsideRowStates();
-	const key = (entry) => `${entry.file}#${entry.element}`;
+	/*
+	 * THE KEY CARRIES THE GROUND. One file can hold two `span` plates inside its
+	 * rows (the project timeline's sticky label rail and its milestone mark, both
+	 * added when the timeline row became a `row-hover` state); keyed on file and
+	 * tag alone the second is indistinguishable from the first and its own
+	 * exemption can never be read.
+	 */
+	const key = (entry) => `${entry.file}#${entry.element}#${entry.ground}`;
 	assert.deepEqual(
-		found.map(key).sort(),
+		found
+			.map((entry) => key({ ...entry, ground: entry.grounds.join(",") }))
+			.sort(),
 		PLATES_INSIDE_ROW_STATES.map(key).sort(),
 		`${found.length} object(s) inside a row state carry a ground of their own and ${PLATES_INSIDE_ROW_STATES.length} are named in \`PLATES_INSIDE_ROW_STATES\`. The rule is that an object inside a row state keeps its own edge — a row state is a step of the panel it sits on, so on some palette it lands on the object's own rung and the object disappears into the row (measured: \`elevated\` against \`rowHover\` is ΔE00 0.00 on \`arcade\`, \`sunken\` against \`rowSelected\` 0.44 on \`alucard\`). Either give the new object \`border-control\` and name it here, or name it with the fact that makes an edge unnecessary: ${JSON.stringify(found.map(key))} vs ${JSON.stringify(PLATES_INSIDE_ROW_STATES.map(key))}`,
 	);
 
 	for (const entry of PLATES_INSIDE_ROW_STATES) {
-		const hit = found.find((candidate) => key(candidate) === key(entry));
+		const hit = found.find(
+			(candidate) =>
+				key({ ...candidate, ground: candidate.grounds.join(",") }) ===
+				key(entry),
+		);
 		assert.notEqual(
 			hit,
 			undefined,
