@@ -194,6 +194,8 @@ export function useDesktopCapabilities() {
 
 export type DesktopFeature =
 	| "session_files"
+	/** Route presence only; dynamic organization eligibility is backend-owned. */
+	| "team_bridge"
 	| "auth"
 	| "settings"
 	| "commands"
