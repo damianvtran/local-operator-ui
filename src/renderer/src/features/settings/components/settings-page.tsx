@@ -2,6 +2,7 @@ import { formatDayBucket } from "@features/chat/pickers/panels/formatters";
 import { parseTranscriptDisplayMode } from "@features/chat/transcript-display-mode";
 import { useOnboardingTour } from "@features/onboarding/hooks/use-onboarding-tour";
 import { ProviderGrid } from "@features/providers/provider-grid";
+import { useProviderStatus } from "@features/providers/use-provider-status";
 import { pairingCardCopy } from "@shared/api/local-operator/backend-error";
 import type { ConfigUpdate } from "@shared/api/local-operator/types";
 import { useLaneLeadingColumn } from "@shared/components/common/chat-layout";
@@ -59,6 +60,7 @@ import { LANGUAGE_SETTING_KEY } from "@shared/i18n";
 import { sectionForSettingKey } from "../promoted-setting-sections";
 import { AppUpdatesSection } from "./app-updates-section";
 import { BackendSettingsSection } from "./backend-settings-section";
+import { DefaultEffortSelect } from "./default-effort-select";
 import { GeneralLanguageSetting } from "./language-dialog";
 
 import { KeyboardShortcutsSection } from "./keyboard-shortcuts-section";
@@ -342,6 +344,15 @@ export const SettingsPage: FC = () => {
 		error: configError,
 		refetch,
 	} = useConfig();
+	/*
+	 * Whether the contract below is worth showing at all. `needsProvider` is true
+	 * only when the answer is KNOWN - the provider census answered, no cloud
+	 * provider has a credential, and no default is configured - so the callout
+	 * never nags over a read this app could not complete. It reads the CENSUS and
+	 * the configured default, never keys in config: a provider signed in through
+	 * its own login is connected without any key of the user's.
+	 */
+	const { needsProvider } = useProviderStatus();
 
 	/*
 	 * THE CAUSE BEFORE THE SENTENCE, and at a top-level hook site rather than inside
@@ -1269,14 +1280,43 @@ export const SettingsPage: FC = () => {
 										allowCustom={true}
 										allowDefault={false}
 									/>
-									<Alert
-										variant="neutral"
-										icon={<Info className="size-4" aria-hidden="true" />}
-									>
-										{t(
-											"ui.settings.model.settings_page.you_need_a_radient_account_or_your_own_api_keys_to_reach_cloud_pr",
-										)}
-									</Alert>
+									{/*
+									 * Beside the two rows it depends on, in the same chrome: the
+									 * effort ladder is the SELECTED model's, read from the
+									 * preview the composer's own effort picker uses.
+									 */}
+									<DefaultEffortSelect
+										hosting={config.values.hosting}
+										modelName={config.values.model_name}
+									/>
+									{/*
+									 * ONLY WHEN NO PROVIDER IS CONNECTED. Leading with "sign in"
+									 * rather than API keys, because a subscription login is the
+									 * path most readers have: the sentence names it, and the inline
+									 * link jumps to the Providers section on this page (a real
+									 * button, not a hash href - this is a hash router, where a
+									 * hash link would read as a route change).
+									 */}
+									{needsProvider && (
+										<Alert
+											variant="neutral"
+											icon={<Info className="size-4" aria-hidden="true" />}
+										>
+											<span>
+												{t("ui.settings.model.provider_callout.sentence")}
+												<button
+													type="button"
+													className="text-accent underline underline-offset-2"
+													onClick={() => handleSelectSection("providers")}
+												>
+													{t(
+														"ui.settings.model.provider_callout.providers_link",
+													)}
+												</button>
+												.
+											</span>
+										</Alert>
+									)}
 								</div>
 							</SettingsSection>
 
