@@ -1149,18 +1149,40 @@ test("the operator's journal: the bar's totals belong to the turn, and the follo
 	);
 	assert.equal(toolsAfter, 8, "and 8 more belong to the follow-up");
 	const follow = run.segments.filter((s) => s.afterAnswer);
-	assert.equal(follow.length, 1);
-	assert.equal(follow[0].facts.actions, toolsAfter);
-	assert.equal(follow[0].label, "Peer message");
+	/*
+	 * R3 combined architect ruling: replace the old single-follow-up membership
+	 * expectation intentionally. The two peers form their own zero-action episode;
+	 * notice 1206 must remain inline between it and the eight-action tail. Folding
+	 * the notice or assigning whole-run totals to either bar would be dishonest.
+	 */
 	assert.equal(
-		follow[0].completed,
-		true,
-		"settled after the disposal: the receipt",
+		follow.length,
+		2,
+		"two truthful spans around the visible notice",
 	);
+	assert.deepEqual(follow[0].segmentIds, ["entry-001203", "entry-001204"]);
+	assert.equal(follow[0].facts.actions, 0);
+	assert.equal(follow[0].internal.receipts, 2);
+	assert.equal(follow[1].internal, null);
+	assert.equal(follow[1].facts.actions, toolsAfter);
+	assert.equal(follow[1].completed, true, "the ordinary tail has settled");
+	const hidden = new Set(run.segments.flatMap((segment) => segment.segmentIds));
+	assert.equal(
+		hidden.has("entry-001206"),
+		false,
+		"notice stays visible inline",
+	);
+	assert.equal(
+		hidden.has("entry-001196"),
+		false,
+		"genuine final stays visible",
+	);
+	assert.ok(indexOfId.get(follow[0].firstId) > 1196);
 	assert.ok(
-		indexOfId.get(follow[0].firstId) > 1196,
-		"the follow-up bar stands after the answer",
+		indexOfId.get(follow[0].segmentIds.at(-1)) < indexOfId.get("entry-001206"),
 	);
+	assert.ok(indexOfId.get("entry-001206") < indexOfId.get(follow[1].firstId));
+
 	assert.equal(
 		run.segments
 			.filter((s) => !s.afterAnswer)

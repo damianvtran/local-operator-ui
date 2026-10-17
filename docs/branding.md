@@ -931,7 +931,7 @@ equally important**, and the interface must not present them as though they are.
   answers "what is it doing right now?" by naming the call in flight (`Running
   pnpm vitest run`) beside its counts and its wall-clock span. It condenses
   the same way — the reader's press is the only close; no state update closes
-  a fold — and nothing condenses while a call in it is still running, nor
+  a fold — and ordinary human work does not condense while a call in it is still running, nor
   while the turn waits on the reader's own gate (an approval or question parks
   the turn; a parked turn is unsettled, so nothing condenses). A finished turn
   also carries one turn-foot line (`Worked for 1m 12s · 8 actions`) — EXCEPT a
@@ -1054,6 +1054,46 @@ text in the transcript — code, stdout and diffs share the treatment — opens
   response to it.
 
 ---
+
+### Live internal receipt episodes
+
+A positively typed incoming peer, hub note, wake, monitor or background
+completion and its contiguous private actions may condense into the existing
+summary while the turn is still being written. This does not lower the
+three-action fold threshold or reclassify unanswered human work merely because
+a peer arrives.
+
+**When an episode may condense.** Only on settled work: an answer already
+precedes it in the run, or it holds two or more receipts. An episode that opens
+the run's content with a single receipt PAINTS, whatever its type: the bar would
+replace the reader's only content (a failed job's verdict, a peer's request, a
+wake's prompt), and a failed `job_result` is `level: "info"`, so the bar label
+would not say which way it went. The check reads settled answers and counted
+receipts, never a row's text.
+
+**One bar.** While the turn thinks, a live episode condenses into ONE compact
+bar and yields to an ordinary (non-episode) bar already standing in the run, so
+the settled turn's own bar stays the same element. A reader who has opened the
+live episode keeps it open: their expansion outranks the bar count. At
+settlement the episode's own bar and its single announcement appear. A settled
+episode followed by a live one still shows two bars (one settled, one live):
+yielding to a fellow episode left the second episode's rows loose.
+
+**What the bar says.** Compact is presentation, not completion: no success
+check or finished `Took` clause while active. Reuse the actual working phase and
+its producer clock; never label time since a receipt as time spent thinking.
+With no phase anchor, leave the existing footer clock intact. A bar counts only
+the rows it contains (receipts separately from actions); a head-cut span states
+`N+` with no duration. The printed receipt count and the announced count are the
+same figure.
+
+**What stays outside.** User prose (including future/empty streaming rows),
+questions, errors and actual image/video/file owners remain outside. Media
+produced after the last settled answer before the first receipt stays inline;
+media a settled bar already owns keeps that bar. Final-owned files/frames do not
+close just because an ambient internal bar closes. Expansion belongs to the
+reader across append/settlement; paging identity transfer requires complete
+bounded canonical-ID overlap, never labels.
 
 ## 8. Voice
 
