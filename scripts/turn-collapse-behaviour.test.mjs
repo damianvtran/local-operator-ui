@@ -169,6 +169,8 @@ const bundle = await build({
 		contents: [
 			'export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";',
 			'export { __resetTurnCollapseOpen, writeRunExpanded, expandedRunsOf, forgetTurnCollapseOpen, __turnCollapseOpenStats } from "./src/renderer/src/shared/store/turn-collapse-open";',
+			/* The settle latch's store: the per-test reset the latch cases below owe, exactly as the expansions' is owed. */
+			'export { __resetWatchedRuns, watchedRunOf, writeWatchedRun } from "./src/renderer/src/shared/store/turn-collapse-watched";',
 			/* The gap tiers as VALUES, so the report's spacing asserts against the shipped table rather than a retyped class. */
 			'export { GAP } from "./src/renderer/src/features/chat/canonical/transcript-rows";',
 			/* The walk's bound, so the assertion below names the shipped number. */
@@ -231,6 +233,9 @@ const {
 	expandedRunsOf,
 	forgetTurnCollapseOpen,
 	__turnCollapseOpenStats,
+	__resetWatchedRuns,
+	watchedRunOf,
+	writeWatchedRun,
 	GAP,
 	ALIGN_WALK_MAX_PAGES,
 	SETTLE_MS,
@@ -1646,10 +1651,16 @@ test("a parked turn does not condense: the gate is half of the liveness", async 
 	 * question holds the stage, so the newest run's unsettledness cannot be
 	 * read from the working line alone — the call site composes it from
 	 * `working !== null || gate !== null`. This is the transcript half of the
-	 * composition: the same parked transcript condenses with no gate pending
-	 * (the pre-fix reading) and does not condense once the gate is set.
+	 * composition, in two halves: nothing condenses while the gate is set, and
+	 * the cleared gate alone does not fold the run either - the flip moves
+	 * nothing for a run the pane has watched (the settle latch, operator report
+	 * 2026-10-16; the assertion that used to sit here pinned the pre-latch
+	 * reading, a bare flip folding the run and the resume unfolding it again).
+	 * A structural end - the stopped notice - still condenses it, which is what
+	 * keeps the latch from meaning "never fold".
 	 */
 	__resetTurnCollapseOpen();
+	__resetWatchedRuns();
 	const parked = [
 		userRecord("user:1"),
 		toolRecord("tool:1", {
@@ -1677,9 +1688,126 @@ test("a parked turn does not condense: the gate is half of the liveness", async 
 		"nothing condenses while the turn waits on the gate",
 	);
 	await mounted.render(parked, { gate: null });
+	/*
+	 * THE GATE-CLEAR BEAT IS THE SAME TRANSIENT CLASS (operator report,
+	 * 2026-10-16). The assertion this replaces pinned a bare liveness flip as
+	 * enough to condense - gate cleared, nothing running - and the resume then
+	 * unfolded the run again: exactly the "condensed a parked turn and
+	 * un-condensed it when the call resumed, with no reader action" pair D3's own
+	 * story describes, minus the parked half. The settle latch (the model's
+	 * `watchedRunId`) refuses that pair for a run the pane has watched being
+	 * written, so the flip now moves nothing and only a STRUCTURAL end folds the
+	 * run - here the stopped notice a gate abandonment actually lands with.
+	 */
+	assert.equal(
+		bar(mounted),
+		null,
+		"the cleared gate alone does not fold a run the pane has watched",
+	);
+	assert.ok(
+		rowBox(mounted, "tool:1"),
+		"and its running row stays on screen through the beat",
+	);
+	await mounted.render(
+		[...parked, noticeRecord("notice:1", { text: "Interrupted" })],
+		{ gate: null },
+	);
 	assert.ok(
 		bar(mounted),
-		"the same transcript with no gate pending condenses — the gate is the difference",
+		"a real end (the stopped notice) still condenses the run",
+	);
+});
+
+test("the settle latch: a steering re-entry cannot move a watched run's hides (operator report, 2026-10-16)", async (t) => {
+	/*
+	 * THE MOUNTED REPRO. The operator: "when I send a steering message, it
+	 * alternates between condensing the messages before it and expanding them".
+	 * The model half is pinned in `turn-collapse-model.test.mjs`; this is the
+	 * shipped transcript, driven through the real render path, standing in for
+	 * the live send the mock backend cannot hold.
+	 *
+	 * THE SEQUENCE: a turn whose first cycle settled (`answer:1`), mid-work
+	 * after it, the reader's steer on screen, more work after it - the shape a
+	 * steer actually lands in (`steering is NOT marked on the durable wire`,
+	 * `transcript-rows.ts`): the steer folds INTO the run while its tail is
+	 * mid-work, and it is visible at its arrival slot (V3, `partitionRun`).
+	 * Then the liveness flag dips - the runtime's `frontend.streaming` reads
+	 * false for a beat at a tool-segment boundary (`scripts/stt-dictation-proof.mjs`
+	 * sampled exactly that through a real steer send) - and comes back, twice.
+	 * No reader action, no row change: the plan must not move, and the same
+	 * sequence without the latch is what the fix removes (the dip used to bar
+	 * t2/t3 and the re-entry handed them back).
+	 */
+	__resetTurnCollapseOpen();
+	__resetWatchedRuns();
+	const frontend = { session_id: "chat-steer" };
+	const steered = [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000, durationS: 3 }),
+		answerRecord("answer:1", {
+			ts: TS + 3_000,
+			settledAt: TS + 3_000,
+			stopReason: "stop",
+		}),
+		toolRecord("tool:2", { ts: TS + 4_000, durationS: 4 }),
+		userRecord("user:2", { ts: TS + 5_000, text: "also check the ledger" }),
+		toolRecord("tool:3", { ts: TS + 6_000, durationS: 5 }),
+	];
+	const mounted = await mount(t, steered, { frontend, waiting: true });
+	const barIds = () =>
+		barsOf(mounted).map((element) => element.getAttribute("data-record-id"));
+	assert.deepEqual(
+		barIds(),
+		["tool:1"],
+		"the settled span wears its bar; the work around the steer draws in place",
+	);
+	assert.ok(
+		rowBox(mounted, "tool:2"),
+		"the work before the steer is on screen",
+	);
+	assert.ok(rowBox(mounted, "user:2"), "the steer itself is on screen");
+	assert.ok(rowBox(mounted, "tool:3"), "and the work after it");
+	/*
+	 * The latch's own write, pinned where it is owed: the live pass armed the
+	 * latch for THIS conversation, naming the watched run by its opening row id.
+	 */
+	assert.equal(
+		watchedRunOf("chat-steer"),
+		"user:1",
+		"the live pass latched the watched run, by its opening row id",
+	);
+	// THE DIP, THE RE-ENTRY, A SECOND DIP: one plan throughout.
+	await mounted.render(steered, { frontend, waiting: false });
+	assert.deepEqual(
+		barIds(),
+		["tool:1"],
+		"the dip adds no bar: nothing the reader was watching folds",
+	);
+	assert.ok(rowBox(mounted, "tool:2"), "t2 stays mounted through the dip");
+	assert.ok(rowBox(mounted, "tool:3"), "t3 stays mounted through the dip");
+	await mounted.render(steered, { frontend, waiting: true });
+	await mounted.render(steered, { frontend, waiting: false });
+	assert.deepEqual(barIds(), ["tool:1"], "a second dip reaches the same plan");
+	assert.ok(rowBox(mounted, "tool:2"), "and nothing was handed back or taken");
+	// A STRUCTURAL END STILL FOLDS: the turn's answer lands.
+	const delivered = [
+		...steered,
+		answerRecord("answer:2", {
+			ts: TS + 8_000,
+			settledAt: TS + 8_000,
+			stopReason: "stop",
+		}),
+	];
+	await mounted.render(delivered, { frontend, waiting: false });
+	assert.deepEqual(
+		barIds(),
+		["tool:1", "tool:2", "tool:3"],
+		"the answer - a row the run itself states - condenses the work it settles",
+	);
+	assert.equal(
+		rowBox(mounted, "tool:2"),
+		null,
+		"and the rows move behind their bars once",
 	);
 });
 
