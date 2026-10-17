@@ -21,8 +21,10 @@ daemon's own `GET /v1/settings` answer.
 
 ## What produced these frames
 
-One scene run, after the app was built from this branch's tree (`6d071ae02` —
-the app's `src/` is that commit's; the scene itself is `scripts/`-only):
+One scene run, after the app was built from this branch's tree — FIRST captured at
+this branch's pre-rebase tip (`6d071ae02`), then RE-CAPTURED on the rebased head
+(`3a7a4bd58`, the tree that ships) — the app's `src/` is that tree's; the scene
+itself is `scripts/`-only:
 
 ```sh
 # 1. the app, built for the port this run owns (never 1111)
@@ -56,13 +58,57 @@ LOCAL_OPERATOR_DESKTOP_TOKEN="$TOKEN" node scripts/renderer-driver.mjs \
   --out <dir>
 ```
 
-The run reported **ALL CHECKS PASSED** (0 FAIL, 10.5s) at the default 1380x900,
+The run reported **ALL CHECKS PASSED** (0 FAIL; 10.5s on the first capture,
+10.2s on the re-capture) at the default 1380x900,
 with the harness's own isolation readings: `the app holds a connection to this
 run's backend (http://127.0.0.1:18437)`, `the app holds NO connection to the
 operator's own backend (http://localhost:1111)`, `window mode is headless and
 the window is never shown`, `no process from this run outlived its boot`, and a
 closing facts survey from MAIN (`visible=false focused=false minimized=false`).
 The daemon was started and reaped by this lane, by exact pid.
+
+## Rebase provenance (and why the frames were re-captured)
+
+The branch was rebased onto `6eb518c7d` (main at the time: #1137
+skill-invocation-seal, plus #1096's Vietnamese settings/console/onboarding
+catalogues), its six commits replayed, and the ONE conflict — the `--scene`
+list line in `scripts/renderer-driver.mjs`, where both sides registered a
+scene — resolved as the union: main's `skill-seal` work and this set's
+`settings-account-policy` scene both stand. The scene was then RE-RUN from the
+rebased tree (`3a7a4bd58`) with the recipe above, on the same frozen core:
+**ALL CHECKS PASSED** (0 FAIL, 10.2s), the same readings.
+
+The four frames were re-captured from that run because a byte comparison
+against the first capture showed the pixels had moved, and the deltas are
+these (full-frame pixel diff, both captures 2760x1800):
+
+- **Every difference is in the SIDEBAR.** `rest` differs by 66,367 px of
+  4,968,000: 66,259 sidebar, 108 settings pane. The empty-agents block ("No
+  agents yet", the paragraph, the button) sits ~42px higher in the re-capture;
+  the gap above it in the first capture is pure background (`#21272a`, one
+  distinct colour measured — no hidden content) — and the sidebar scrollbar is
+  caught at a different fade phase. The paragraph's text and line wraps are
+  identical. The other three frames split the same way (sidebar 66,259-66,264,
+  settings 13-41).
+- **The settings pane — every pixel this set's claims live on — matches the
+  first capture** except the settings scrollbar's own fade marks (13-108 px in
+  the 9px strip at x2662-2670).
+- **Run stability, measured across three runs on the rebased tree** (two build
+  envs): `search-found` and `saved` came back byte-identical between the first
+  two; every run-to-run difference found was the settings scrollbar's fade
+  phase (12-29 px in that same strip). The sidebar delta reproduces on both
+  builds, and `chat-sidebar.tsx` is unchanged in the rebase range — the
+  sidebar's empty-agents block position and scrollbar fade are the one region
+  of this screen whose capture is not byte-stable, which is why the set is
+  re-captured from the head that ships rather than kept behind a byte-equality
+  claim the re-run contradicts.
+
+Frame SHAs — first capture (`6d071ae02`) → re-capture (`3a7a4bd58`):
+
+- `search-found`: `96b9951f7c070e2a8b3a8309b742b4ea0db34fe91f3c0027ad578f20cf9904f` → `9bef4e084185ba9bbcadcde16cdfb5db5460d8b068eca0a8df4b13bb65a91a19`
+- `rest`: `53a71ea8205b2be108a28cd80feeab8853f22ae041fcc4b22a93baba6afcf08d` → `8f165901659f4d78f4ec6c864acdecd53fa709bfe4f103dd344575f1be09dbc7`
+- `dirty`: `51e5ff130e0431de83302535c5ec5b631d5c81a1067f6b09de687d1be7fa33fd` → `8d7f4b4b4b35f01ac296f49e24f20336af007c84b57a67afec675e0e89c8be20`
+- `saved`: `4310e02a6d106a70f840371d4f461f5ec030823d6b6d7f3b92e3e98af2703ad3` → `7e0a74c72983268002037c35b3958eceee41b8d099504a5bd2934ad735ec2f66`
 
 ## The frames
 
