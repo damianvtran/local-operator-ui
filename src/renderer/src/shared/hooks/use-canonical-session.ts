@@ -302,6 +302,19 @@ export type CanonicalSessionView = {
 	 */
 	heldFrontend: CanonicalFrontendState | null;
 	/**
+	 * Whether the context reading the pane is painting was CARRIED from before a
+	 * cold/attaching snapshot rather than measured by the live owner.
+	 *
+	 * `heldFrontend` answers "is this frontend the last one we were told", and it
+	 * is only true while `frontend` is null. This answers a narrower question the
+	 * strip's copy needs: the panes' OTHER readings (model, timer, cost) are live
+	 * again as soon as the snapshot lands, but the occupancy in that snapshot is
+	 * the DURABLE one, so a sentence calling it "Measured now" would be false.
+	 * Cleared by the next `frontend.update` (the owner speaking) or by a snapshot
+	 * whose own reading is not subordinate.
+	 */
+	contextCarried: boolean;
+	/**
 	 * A model the user just chose, painted before the owner confirms it.
 	 *
 	 * A PENDING value, never a claimed one: it is dropped as soon as an
@@ -2437,6 +2450,7 @@ export function useCanonicalSessionStream(
 			// that has never had a snapshot is genuinely without readings, and a
 			// held copy here would be a claim this mount never received.
 			heldFrontend: null,
+			contextCarried: false,
 			pendingModel: null,
 			history: null,
 			cold: false,
@@ -4600,8 +4614,14 @@ export function useCanonicalSessionStream(
 								"lop:open:seed:start",
 								"lop:open:seed:end",
 							);
+							const carriedReading = subordinateOccupancy(
+								next.frontend ?? next.heldFrontend,
+								snapshot.frontend.snapshot,
+								snapshot.cold === true || snapshot.attaching === true,
+							);
 							next = {
 								...next,
+								contextCarried: Object.keys(carriedReading).length > 0,
 								// The pulse is SEEDED here rather than merged: a snapshot is the
 								// authoritative statement of what this viewer has seen, and it is
 								// the frame that follows a reconnect or a fresh subscription —
@@ -4623,11 +4643,7 @@ export function useCanonicalSessionStream(
 									 * live one; it must not walk a painted measurement back. See
 									 * `subordinateOccupancy`.
 									 */
-									...subordinateOccupancy(
-										next.frontend ?? next.heldFrontend,
-										snapshot.frontend.snapshot,
-										snapshot.cold === true || snapshot.attaching === true,
-									),
+									...carriedReading,
 									attention: mergeCompletionAttention(
 										next.frontend?.attention,
 										snapshot.frontend.snapshot.attention,
@@ -4713,6 +4729,9 @@ export function useCanonicalSessionStream(
 							// keys over the current state.
 							next = {
 								...next,
+								// THE OWNER SPOKE: whatever it says about occupancy is its own
+								// live reading, so a carried qualification ends here.
+								contextCarried: false,
 								ownerEpoch: rollover ? update.epoch : next.ownerEpoch,
 								frontend: {
 									...next.frontend,
@@ -4773,8 +4792,14 @@ export function useCanonicalSessionStream(
 							acceptFrontendReplace(priorCursor, sessionId, frame)
 						) {
 							const replaced = frame.payload.frontend;
+							const carriedReplacement = subordinateOccupancy(
+								next.frontend,
+								replaced.snapshot,
+								frame.payload.cold === true,
+							);
 							next = {
 								...next,
+								contextCarried: Object.keys(carriedReplacement).length > 0,
 								frontend: {
 									...replaced.snapshot,
 									/*
@@ -4783,11 +4808,7 @@ export function useCanonicalSessionStream(
 									 * `state()`), so its occupancy is durable rather than live and
 									 * must obey the same rule as a cold snapshot's.
 									 */
-									...subordinateOccupancy(
-										next.frontend,
-										replaced.snapshot,
-										frame.payload.cold === true,
-									),
+									...carriedReplacement,
 									attention: mergeCompletionAttention(
 										next.frontend.attention,
 										replaced.snapshot.attention,
