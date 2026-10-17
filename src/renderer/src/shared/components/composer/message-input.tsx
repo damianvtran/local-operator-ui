@@ -1066,6 +1066,13 @@ export type MessageInputProps = {
 		 */
 		held?: boolean;
 		/**
+		 * The CONTEXT reading specifically was carried from before a cold/attaching
+		 * snapshot, while the rest of the cluster is live; see
+		 * `SessionStatusStripProps["contextHeld"]`. Forwarded verbatim for `held`'s
+		 * reason: the pane owns which frame produced the number.
+		 */
+		contextHeld?: boolean;
+		/**
 		 * The readings were dropped at a spent retry budget (task-17, U4); see
 		 * `SessionStatusStripProps["readingsDropped"]`. Forwarded verbatim, for
 		 * the reason `held` is: the pane owns the distinction between "never
@@ -8858,6 +8865,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 										onOpenDraftPicker={sessionStatus.onOpenDraftPicker}
 										draftResolution={sessionStatus.draftResolution}
 										held={sessionStatus.held}
+										contextHeld={sessionStatus.contextHeld}
 										readingsDropped={sessionStatus.readingsDropped}
 										pendingModel={sessionStatus.pendingModel}
 										costChannels={sessionStatus.costChannels}
