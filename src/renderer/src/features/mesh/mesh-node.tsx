@@ -269,7 +269,10 @@ export const MeshNetworkNode: FC<NetworkNodeProps> = ({
 		<li
 			data-mesh-network={network.id}
 			data-mesh-network-refused={refused ? "true" : undefined}
+			/* A node is a card: on glass it takes the block veil. */
+			data-glass-block=""
 			className={cn(
+				/* A node is a card: on glass it takes the block veil. */
 				"absolute flex items-center gap-2 rounded-md border bg-elevated px-3",
 				// A refusal is the WARNING role and never the accent: the accent is spent on
 				// "this device", and a lane that lit up in it would read as "drop here".
@@ -377,6 +380,8 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 			data-mesh-state={device.state}
 			data-mesh-drop={dropState ?? undefined}
 			aria-current={selected ? "true" : undefined}
+			/* A node is a card: on glass it takes the block veil. */
+			data-glass-block=""
 			className={cn(
 				/*
 				 * A CONTROL'S EDGE, per the system's own rule (`branding.md` § 2): the node is a
@@ -399,6 +404,7 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 				 * now holds the conversation chips as siblings (a `<button>` may not contain a
 				 * button), so the control whose boundary this describes is the node itself.
 				 */
+				/* A node is a card: on glass it takes the block veil. */
 				"absolute flex flex-col rounded-md border border-l-4 border-control bg-elevated",
 				/*
 				 * Hover is a colour step and nothing else: nothing lifts, scales or translates

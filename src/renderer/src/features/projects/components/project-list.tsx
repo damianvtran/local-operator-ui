@@ -464,7 +464,12 @@ export const ProjectList: FC<ProjectListProps> = ({
 											className={cn(
 												"flex w-full items-center gap-3 px-3 py-2 text-left",
 												"transition-colors duration-fast ease-out-quart",
-												"hover:bg-elevated",
+												/* `row-hover` is the role the glass rules rebind to an ink
+												 * overlay; `elevated` would be an opaque slab on glass. Off
+												 * glass the two are different VALUES from the same ladder
+												 * (the row-hover role, not the elevated step), which makes
+												 * the sweep a deliberate flat change rather than a no-op. */
+												"hover:bg-row-hover",
 											)}
 										>
 											<span

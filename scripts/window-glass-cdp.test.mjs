@@ -87,7 +87,13 @@ const AUDIT = `(() => {
     rail: '[data-panel-rail-host]',
     pageSidebar: 'main [data-glass-region="page-sidebar"]',
     content: 'main [data-glass-region="canvas-content"]',
-    browserPane: '#browser-route, [data-tour-tag="browser-route"]',
+    /* The round-2 surfaces: the Browser route's chrome band, the composer (a
+     * FIELD, not a pane), a veiled block (a project card) and the board's clear
+     * well. Their own computed alpha is asserted, not the stack they sit in. */
+    chrome: '[data-glass-region="chrome"]',
+    composer: 'main [data-glass-region="composer"]',
+    card: 'main [data-glass-block]',
+    boardWell: 'main [data-glass-well="clear"]',
     panel: 'main [data-glass-region="panel"]',
     canvas: 'main[data-glass-region="canvas-backing"]',
   };
@@ -122,12 +128,22 @@ const AUDIT = `(() => {
       const b = e.getBoundingClientRect();
       if (b.width * b.height < ${MAX_DELIBERATE_OPAQUE_AREA}) continue;
       if (b.bottom < 0 || b.top > innerHeight) continue;
-      slabs.push({ tag: e.tagName.toLowerCase(), w: Math.round(b.width), h: Math.round(b.height), cls: String(e.className).split(/\\s+/).filter((c) => /^bg-/.test(c)).join(" ") });
+      /* STICKY HEADERS STAY SOLID BY DECISION (docs/branding.md): a translucent
+       * sticky shows rows through it, which is text over text. The flag is
+       * recorded so the wide-slab filter can exempt exactly those, not every
+       * sunken band. */
+      /* The board's column and band headers are the DOCUMENTED solid grounds on
+       * the Projects route (scroll-under rule; they are also the drag handles).
+       * Their position is carried by the row they pin in, so position:sticky
+       * alone cannot recognize them - the data attributes identify them. */
+      slabs.push({ tag: e.tagName.toLowerCase(), w: Math.round(b.width), h: Math.round(b.height), sticky: getComputedStyle(e).position === "sticky", deliberate: e.matches("[data-board-column], [data-board-team]"), cls: String(e.className).split(/\\s+/).filter((c) => /^bg-/.test(c)).join(" ") });
     }
-    out[name] = { pts, slabs };
+    const own = alphaOf(getComputedStyle(el).backgroundColor);
+    const bg = getComputedStyle(el).backgroundColor;
+    out[name] = { pts, slabs, own, bg, bgImage: getComputedStyle(el).backgroundImage, cls: String(el.className) };
   }
   const root = getComputedStyle(document.documentElement);
-  out.vars = Object.fromEntries(["--lo-glass-a-canvas", "--lo-glass-a-surface", "--lo-glass-a-elevated", "--lo-glass-a-row-hover", "--lo-glass-a-row-selected", "--lo-glass-a-field"].map((n) => [n, root.getPropertyValue(n).trim() || null]));
+  out.vars = Object.fromEntries(["--lo-glass-a-canvas", "--lo-glass-a-surface", "--lo-glass-a-elevated", "--lo-glass-a-row-hover", "--lo-glass-a-row-selected", "--lo-glass-a-row-work", "--lo-glass-a-field", "--lo-glass-a-block-veil"].map((n) => [n, root.getPropertyValue(n).trim() || null]));
   out.glass = document.documentElement.dataset.glass ?? null;
   out.hash = location.hash;
   return out;
@@ -138,6 +154,9 @@ let child;
 let exited = false;
 let cdp;
 let userData;
+/* The debug port, module scope so a test can point the APP's browser at this
+ * run's own local endpoint for a live-page chrome measurement. */
+let debugPort;
 
 const free = () =>
 	new Promise((resolve) => {
@@ -168,6 +187,7 @@ before(async () => {
 	userData = join(root, "ud");
 	mkdirSync(userData, { recursive: true });
 	const port = await free();
+	debugPort = port;
 	/*
 	 * THE ENVIRONMENT IS BUILT THROUGH THE SHARED SWITCHES, not set by hand: this
 	 * boots the real app, so a missing notification or telemetry switch would banner
@@ -294,14 +314,34 @@ const mean = (pts) => pts.reduce((a, b) => a + b, 0) / pts.length;
  * which is what stays opaque canvas under "Sidebars only".
  */
 const ROUTES = [
-	{ hash: "#/chat", must: ["sidebar", "rail", "canvas"] },
+	/* The composer must be on the chat route: a guard that reads the transcript
+	 * and skips the app's primary input would call a total audit without it. */
+	{ hash: "#/chat", must: ["sidebar", "rail", "canvas", "composer"] },
 	{ hash: "#/settings", must: ["sidebar", "pageSidebar", "content"] },
 	{ hash: "#/agents", must: ["sidebar", "pageSidebar", "content"] },
-	/* The large grounds of the other routes (QA Q4): each must reach the alpha owner. */
-	{ hash: "#/browser", must: ["sidebar", "browserPane"] },
+	/* Projects: the page column and backing. Cards need real project data, so
+	 * they are asserted by the targeted test below (a profile with an empty
+	 * board cannot measure a card, and the test says which it measured). */
+	{ hash: "#/projects", must: ["sidebar", "canvas"] },
+	/* The Browser route: the chrome band is its large ground now; the host is
+	 * clear while a live page renders, so it is not read as the ground. */
+	{ hash: "#/browser", must: ["sidebar", "chrome"] },
 	{ hash: "#/schedules", must: ["sidebar", "panel"] },
 	{ hash: "#/agent-hub", must: ["sidebar", "panel"] },
 ];
+
+/**
+ * The overlay regions: name -> the published variable whose alpha its OWN
+ * background must be (a ground's own alpha is not meaningful - it composites).
+ *
+ * `composer` is the only overlay a route's `must` names; the card/well pair is
+ * measured by the dedicated Projects test below, which reads both on one board,
+ * so it is not repeated here (an entry nothing reads is a claim without a
+ * reader). Under *Sidebars only* the composer is the opaque flat fill.
+ */
+const OVERLAYS = {
+	composer: "--lo-glass-a-field",
+};
 
 /**
  * Which alpha role each region lands on, per coverage. null = must stay opaque.
@@ -316,7 +356,7 @@ const EXPECT = {
 		pageSidebar: "surface",
 		canvas: "canvas",
 		content: "canvas",
-		browserPane: "elevated",
+		chrome: "surface",
 		panel: "panel",
 	},
 	sidebars: {
@@ -325,7 +365,7 @@ const EXPECT = {
 		pageSidebar: "surface",
 		canvas: null,
 		content: null,
-		browserPane: null,
+		chrome: null,
 		panel: null,
 	},
 };
@@ -356,6 +396,64 @@ for (const [themeName, label] of [
 				}
 				await wait(300);
 			};
+			/*
+			 * THE CHROME BAND CAN ONLY BE MEASURED OVER A LIVE PAGE. The host paints
+			 * its pane rung on the loading, error and start states by design, so the
+			 * band composites over it there; with a live page the host is clear and
+			 * the band must read the app sidebar's raw surface. A scratch profile has
+			 * no tabs, so the guard opens one and points it at this run's own CDP
+			 * endpoint - a local URL, not the network - through the real URL bar
+			 * (native setter plus input event, so React sees the draft; Enter commits
+			 * it the way a user's would).
+			 */
+			const openLivePage = async () => {
+				await go({ hash: "#/browser", must: ["sidebar"] });
+				/*
+				 * THE NON-LIVE STATE IS ONE OWNER (review round 2, F2): with no live page the
+				 * bars must paint nothing, so the route host's pane rung is the only ground.
+				 * The first gate painted the band nothing but left the utilities' opaque
+				 * roles at alpha 1.0 - a start page made of two opaque bars over a film.
+				 * Read before a page is opened; on a reused app that already has one, the
+				 * state is not observable and the read is skipped.
+				 */
+				const startBars = await cdp.ev(`(() => {
+          if (!(document.documentElement.dataset.glass ?? "").split(" ").includes("pane")) return null;
+          if (document.querySelector("[data-glass-chrome-live]")) return null;
+          const alpha = (c) => { if (!c || c === "transparent") return 0; const m = c.match(/^rgba?\(([^)]+)\)$/); if (m) { const p = m[1].split(/[,\/]\s*|\s+/).filter(Boolean); return p.length > 3 ? Number(p[3]) : 1; } return 1; };
+          return [...document.querySelectorAll('[data-glass-region="chrome"]')].map((el) => alpha(getComputedStyle(el).backgroundColor));
+        })()`);
+				if (startBars !== null) {
+					assert.ok(
+						startBars.length > 0,
+						`${label}: the start page has chrome bars to measure`,
+					);
+					for (const a of startBars)
+						assert.ok(
+							a <= 0.006,
+							`${label}: a non-live chrome bar paints its own ground at ${a} - the host pane rung must be the only owner`,
+						);
+				}
+				await cdp.ev(
+					`(() => { const b = [...document.querySelectorAll("button")].find((n) => /new tab/i.test(n.getAttribute("aria-label") || n.textContent || "")); if (b) b.click(); return !!b; })()`,
+				);
+				await wait(1200);
+				const typed = await cdp.ev(`(() => {
+          const input = document.querySelector('[data-tour-tag="browser-url-bar"] input');
+          if (!input) return false;
+          const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+          set.call(input, "http://127.0.0.1:${debugPort}/json");
+          input.dispatchEvent(new Event("input", { bubbles: true }));
+          input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+          return true;
+        })()`);
+				await wait(2500);
+				return typed;
+			};
+
+			assert.ok(
+				await openLivePage(),
+				`${label}: the URL bar is present, so the chrome band can be measured over a live page`,
+			);
 
 			/* 1. DEFAULT OFF: every route opaque, no attribute. */
 			for (const route of ROUTES) {
@@ -411,6 +509,45 @@ for (const [themeName, label] of [
 								r,
 								`${tag}: region ${name} was not found, so it was not measured`,
 							);
+							/* AN OVERLAY owns its own alpha: a veiled card, a field and a
+							 * clear well are not ground roles, so the composite-uniformity
+							 * rule below would ask them for the wrong number. Under Sidebars
+							 * only (not covered) each is the flat opaque fill. */
+							if (name in OVERLAYS) {
+								const variable = OVERLAYS[name];
+								const want =
+									coverage === "full"
+										? variable === null
+											? 0
+											: Number(a.vars[variable])
+										: 1;
+								assert.ok(
+									Math.abs(r.own - want) <= TOLERANCE,
+									`${tag}: ${name} paints its own ground at ${r.own}, expected ${want} (${variable ?? "clear"})`,
+								);
+								continue;
+							}
+							if (name === "chrome") {
+								const live = await cdp.ev(
+									`!!document.querySelector("[data-glass-chrome-live]")`,
+								);
+								assert.ok(
+									live,
+									`${tag}: the chrome band is being measured without a live page, so the host is not cleared and the band composites over the pane`,
+								);
+								/*
+								 * ONE COLOUR, NO LAYER (review round 2, F1). The first version of
+								 * the strip's field step was a `background-image`, invisible to the
+								 * own-alpha read and to this guard; it put the active tab's inkDim
+								 * mark under its floor on 18 palettes. A band that paints a second
+								 * layer must fail here, because that is the shape that broke.
+								 */
+								assert.equal(
+									r.bgImage,
+									"none",
+									`${tag}: the chrome band paints a background layer (${r.bgImage}); the band must be one colour - a stack under the active tab breaks its inkDim floor`,
+								);
+							}
 							const role = covered[name];
 							const want = role === null ? 1 : roleAlpha[role];
 							assert.ok(
@@ -419,7 +556,7 @@ for (const [themeName, label] of [
 							);
 							assert.ok(
 								Math.abs(mean(r.pts) - want) <= TOLERANCE,
-								`${tag}: ${name} effective alpha ${mean(r.pts).toFixed(3)} != ${role === null ? "opaque (outside coverage)" : `the role variable ${want}`}`,
+								`${tag}: ${name} effective alpha ${mean(r.pts).toFixed(3)} != ${role === null ? "opaque (outside coverage)" : `the role variable ${want}`} (bg ${r.bg}; class ${r.cls})`,
 							);
 							if (role === "surface") sidebarMeans.push([name, mean(r.pts)]);
 							if (role) {
@@ -427,6 +564,8 @@ for (const [themeName, label] of [
 									(sl) =>
 										sl.w >= 100 &&
 										sl.h >= 20 &&
+										!sl.sticky &&
+										!sl.deliberate &&
 										!sl.cls.includes("bg-accent") &&
 										!sl.cls.includes("danger"),
 								);
@@ -496,14 +635,29 @@ for (const [themeName, label] of [
 					"[data-slot-pane-notice], [data-code-review-pane]",
 				],
 			]) {
-				const clicked = await cdp.ev(
-					`(() => { const b = document.querySelector('[data-tour-tag="${trigger}"]'); if (!b) return false; b.click(); return true; })()`,
-				);
+				/*
+				 * READINESS IS POLLED, not slept through once (QA round 1, Q1): the
+				 * rail mounts after the route's own paint, and a loaded host made the
+				 * single query land one frame early - the route loop above already
+				 * polls for the same reason.
+				 */
+				let clicked = false;
+				for (let waited = 0; waited < 6000; waited += 300) {
+					clicked = await cdp.ev(
+						`(() => { const b = document.querySelector('[data-tour-tag="${trigger}"]'); if (!b) return false; b.click(); return true; })()`,
+					);
+					if (clicked) break;
+					await wait(300);
+				}
 				assert.ok(clicked, `${label}: the ${trigger} rail control exists`);
-				await wait(1200);
-				const opened = await cdp.ev(
-					`!!document.querySelector(${JSON.stringify(paneSel)})`,
-				);
+				let opened = false;
+				for (let waited = 0; waited < 6000; waited += 300) {
+					opened = await cdp.ev(
+						`!!document.querySelector(${JSON.stringify(paneSel)})`,
+					);
+					if (opened) break;
+					await wait(300);
+				}
 				assert.ok(
 					opened,
 					`${label}: ${trigger} opened a pane (so the reading below is taken with it open)`,
@@ -540,6 +694,115 @@ for (const [themeName, label] of [
 				);
 				await wait(600);
 			}
+		},
+	);
+
+	test(
+		`${label}: a project card is veiled and the board's well is clear`,
+		{ skip, timeout: 180_000 },
+		async () => {
+			await loadTheme(themeName);
+			await setGlass({
+				enabled: true,
+				coverage: "full",
+				intensity: 100,
+				material: "window",
+			});
+			await cdp.ev(`location.hash = "#/projects"`);
+			await wait(1500);
+			/*
+			 * THE VIEW IS A PERSISTED PREFERENCE, so the board may not be the one on
+			 * screen. Select it with a REAL pointer sequence (Radix tabs activate on
+			 * pointerdown, not on a synthetic click), the way a user does; otherwise
+			 * a profile whose last view was List would report "no project data" while
+			 * the data exists.
+			 */
+			/* The switcher mounts with the page's data, so readiness is polled for the
+			 * same reason the rail control is (QA Q1): a single query at 1.5 s read a
+			 * still-loading page as a missing control. */
+			let switcher = false;
+			for (let waited = 0; waited < 6000; waited += 300) {
+				switcher = await cdp.ev(
+					`!!document.querySelector('[data-tour-tag="projects-view-switcher"]')`,
+				);
+				if (switcher) break;
+				await wait(300);
+			}
+			assert.ok(
+				switcher,
+				`${label}: the projects view switcher exists (a missing switcher is a control regression, not an empty profile)`,
+			);
+			const boardTab = await cdp.ev(`(() => {
+        const tab = [...document.querySelectorAll('[data-tour-tag="projects-view-switcher"] [role="tab"]')].find((n) => (n.textContent || "").trim() === "Board");
+        if (!tab) return null;
+        const r = tab.getBoundingClientRect();
+        return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+      })()`);
+			assert.ok(
+				boardTab,
+				`${label}: the Board tab exists in the view switcher (a renamed or removed tab must not read as "no project data")`,
+			);
+			if (boardTab) {
+				await cdp.send("Input.dispatchMouseEvent", {
+					type: "mousePressed",
+					x: boardTab.x,
+					y: boardTab.y,
+					button: "left",
+					clickCount: 1,
+				});
+				await cdp.send("Input.dispatchMouseEvent", {
+					type: "mouseReleased",
+					x: boardTab.x,
+					y: boardTab.y,
+					button: "left",
+					clickCount: 1,
+				});
+				await wait(900);
+			}
+			const read = await cdp.ev(`(() => {
+        const alpha = (c) => { if (!c || c === "transparent") return 0; const m = c.match(/^rgba?\\(([^)]+)\\)$/); if (m) { const p = m[1].split(/[,\\/]\\s*|\\s+/).filter(Boolean); return p.length > 3 ? Number(p[3]) : 1; } const s = c.match(/^color\\(srgb ([^)]+)\\)$/); if (s) { const p = s[1].split("/"); return p.length > 1 ? Number(p[1]) : 1; } return 1; };
+        const card = document.querySelector("main [data-glass-block]");
+        const well = document.querySelector('main [data-glass-well="clear"]');
+        const cell = document.querySelector("[data-board-cell]");
+        const veil = getComputedStyle(document.documentElement).getPropertyValue("--lo-glass-a-block-veil").trim();
+        return {
+          hasBoard: !!cell,
+          card: card ? alpha(getComputedStyle(card).backgroundColor) : null,
+          well: well ? alpha(getComputedStyle(well).backgroundColor) : null,
+          veil: Number(veil),
+        };
+      })()`);
+			/*
+			 * A profile with no projects has no board and therefore no card to
+			 * measure. The test says so instead of passing silently on a missing
+			 * region: a guard that skips what it cannot find measures nothing, so the
+			 * absence is REPORTED here and the PR's evidence run names the seeded
+			 * profile it measured. The well/card pair is checked whenever the data
+			 * exists, and the two are one condition (a board cell without its card or
+			 * its clear well is the defect).
+			 */
+			if (!read.hasBoard) {
+				console.log(
+					`[glass-cdp] ${label}/#/projects: no project data on this profile - cards and the clear well were not measured`,
+				);
+				return;
+			}
+			assert.ok(
+				read.card !== null,
+				`${label}: a board cell with no veiled card`,
+			);
+			assert.ok(
+				Math.abs(read.card - read.veil) <= 0.006,
+				`${label}: the project card paints ${read.card}, not the block veil ${read.veil}`,
+			);
+			assert.ok(
+				read.well !== null,
+				`${label}: a rendered board has no clear well marker`,
+			);
+			assert.ok(
+				read.well <= 0.006,
+				`${label}: the board well paints ${read.well} over the canvas glass - a well never sits under a veiled card`,
+			);
 		},
 	);
 

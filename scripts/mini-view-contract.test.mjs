@@ -353,3 +353,90 @@ test("the grown ceiling is above the base and the base is unchanged", () => {
 		"a ceiling at the base would make the measured resize a no-op",
 	);
 });
+
+/*
+ * THE POPOUT'S LIVE THEME SYNC (the operator's reported bug: the popout ran
+ * tokyoNightStorm while the app ran obsidian, because each document hydrated the
+ * persisted preferences once and nothing listened for the other's write).
+ *
+ * The reader is the pure half of the `storage` listener the mini document
+ * installs: it must accept exactly the persisted `{ state: { themeName } }`
+ * blob for the preferences key, and answer null for everything else - a foreign
+ * key, a cleared value, a malformed blob, a state without a theme - so a bad
+ * write leaves the palette it has instead of applying `undefined`.
+ */
+test("a preferences write names a theme only when it is the store's own blob", () => {
+	const { themeNameFromPreferencesWrite } = miniView;
+	const storeKey = "ui-preferences-storage";
+	const write = (value, key = storeKey, currentTheme = "localOperatorDark") =>
+		themeNameFromPreferencesWrite({
+			eventKey: key,
+			storeKey,
+			newValue: value,
+			currentTheme,
+		});
+	assert.equal(
+		write(JSON.stringify({ state: { themeName: "obsidian" }, version: 1 })),
+		"obsidian",
+	);
+	assert.equal(write(JSON.stringify({ state: { themeName: "" } })), null);
+	assert.equal(write(JSON.stringify({ state: {} })), null);
+	assert.equal(write(JSON.stringify({})), null);
+	assert.equal(write("{not json"), null);
+	assert.equal(write(null), null, "a cleared key names nothing");
+	assert.equal(
+		write(JSON.stringify({ state: { themeName: "obsidian" } }), "other"),
+		null,
+		"a different key is not a theme change",
+	);
+});
+
+/*
+ * THE CLOBBER GUARD (review round 1, R1; round 2, F5 asked for behaviour rather
+ * than a source pin). The regression was not "a theme did not arrive" but
+ * "every preferences write looked like a theme write": the listener called the
+ * persist-wrapped `setTheme`, which serialises THIS document's whole snapshot,
+ * so a sidebar resize in the main window made the popout write its stale copy
+ * of every other key back. The adapter is handed only `rehydrate` and
+ * `publish` - there is no write capability to call - and it must decline a
+ * write whose theme is unchanged.
+ */
+test("a non-theme preferences write adopts nothing, and adoption cannot write", async () => {
+	const { adoptPreferencesWrite } = miniView;
+	const storeKey = "ui-preferences-storage";
+	const calls = [];
+	const write = (value, currentTheme = "obsidian") =>
+		adoptPreferencesWrite({
+			eventKey: storeKey,
+			storeKey,
+			newValue: value,
+			currentTheme,
+			rehydrate: () => {
+				calls.push("rehydrate");
+			},
+			publish: () => {
+				calls.push("publish");
+			},
+		});
+	assert.equal(
+		write(
+			JSON.stringify({
+				state: { themeName: "obsidian", sidebarWidth: 320 },
+				version: 1,
+			}),
+		),
+		false,
+		"a blob whose theme is unchanged is not a theme change, whatever else it carries",
+	);
+	assert.deepEqual(calls, [], "nothing is adopted and nothing repaints");
+	assert.equal(
+		write(JSON.stringify({ state: { themeName: "localOperatorLight" } })),
+		true,
+	);
+	await new Promise((resolve) => setTimeout(resolve, 0));
+	assert.deepEqual(
+		calls,
+		["rehydrate", "publish"],
+		"a real theme change reads the writer's blob first, then repaints",
+	);
+});

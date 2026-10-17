@@ -799,6 +799,8 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 				endPan(event);
 			}}
 			data-mesh-gesture={drag.kind}
+			/* The frame is the well that holds the node cards. */
+			data-glass-well="clear"
 			onKeyDown={onKeyDown}
 			onDoubleClick={(event) => {
 				// Empty ground only, the same test the pan uses: a double-click on a node
@@ -806,6 +808,8 @@ export const MeshCanvas: FC<MeshCanvasProps> = ({
 				if (event.target === event.currentTarget) fit();
 			}}
 			className={cn(
+				/* The graph frame is a WELL behind node cards: clear on glass, never a
+				 * second ink under a veiled node (alpha-owning law). */
 				"relative min-h-0 flex-1 overflow-hidden rounded-lg border border-hairline bg-sunken",
 				/*
 				 * `touch-action: none` ON THE CANVAS ONLY, as the plan's § 2 requires: a

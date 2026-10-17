@@ -171,7 +171,10 @@ export const ProjectLinks: FC<ProjectLinksProps> = ({
 				 * around a list is what the three surfaces' pass removed. The 6px
 				 * hover pill on the rows that open something is this branch's.
 				 */
-				<ul className="flex flex-col divide-y divide-hairline rounded-md bg-surface">
+				<ul
+					data-glass-block=""
+					className="flex flex-col divide-y divide-hairline rounded-md bg-surface"
+				>
 					{links.map((link) => {
 						const meta = linkStateMeta(link);
 						const subagents = subagentChipLabel(link.subagents);
@@ -181,6 +184,11 @@ export const ProjectLinks: FC<ProjectLinksProps> = ({
 						return (
 							<li
 								key={link.session_id}
+								/* On glass this row is INSIDE a veiled block, so it takes no
+								 * hover fill: veil 9% + row-hover 5% stacks two inks and measured
+								 * `inkMuted` at 4.03:1 on synthwave (review round 1, R2). The
+								 * affordance is the underline the CSS draws on the label. */
+								data-glass-block-row=""
 								className={cn(
 									"flex items-center gap-2 rounded-sm px-2 py-2",
 									clickable && "hover:bg-row-hover",
@@ -198,6 +206,7 @@ export const ProjectLinks: FC<ProjectLinksProps> = ({
 									)}
 								>
 									<span
+										data-glass-block-row-label=""
 										className={cn(
 											"min-w-0 truncate text-body-sm",
 											link.title
