@@ -148,6 +148,68 @@ import { applySubagentPulse, seedSubagentPulses } from "./subagent-pulse";
  * on screen — a defect that would look like the model stuttering, and one the
  * authoritative settle would then hide at the end of the answer.
  */
+
+/**
+ * The occupancy a COLD or ATTACHING snapshot may install over a painted one.
+ *
+ * WHY THIS EXISTS. A session has two legitimate sources of the context reading,
+ * and they are not equally current:
+ *
+ * - the LIVE owner's state, carried by `frontend.update` frames and by a
+ *   snapshot served once the facade is attached. This is the authority.
+ * - the DURABLE journal, which is what a COLD facade can read (the newest
+ *   receipt persisted in `transcript.jsonl`), and what an ATTACHING facade is
+ *   still serving while its sync to the owner is in flight (`payload.cold` /
+ *   `payload.attaching` in `utils/desktop_sessions.py`).
+ *
+ * The second source is honest about what the journal knows, and it is exactly
+ * what a first open should paint. It is NOT a statement about the current turn:
+ * messages reach the journal at the owner's own boundaries, so during a turn the
+ * journal can sit at the length the conversation had at an earlier message while
+ * the live reading has moved on. A reconnect (or a re-target) that lands in that
+ * window therefore hands the pane an OLDER number, and before this rule the
+ * snapshot arm replaced the painted reading with it wholesale - a backwards
+ * step on a readout the operator watches, and the reason a long conversation's
+ * context number flickered between an earlier value and the current one.
+ *
+ * The rule is deliberately narrow, in both directions:
+ *
+ * - ONLY a `cold`/`attaching` snapshot is subordinate. A snapshot from an
+ *   ATTACHED owner is authoritative and may legitimately go DOWN (a compaction
+ *   shrinks the conversation), so it is never second-guessed here. The same is
+ *   true of `frontend.update`: compaction and off-record accruals both move the
+ *   reading, and the owner's clock orders those frames itself.
+ * - It never BLANKS: an absent incoming reading keeps the painted one, because
+ *   "we do not know yet" is not a state that may erase the last known value.
+ * - It never RAISES a stale figure over a newer one either: when the journal's
+ *   reading is the higher of the two (another viewer's turns are durable
+ *   already), the snapshot's number wins.
+ *
+ * `last_usage` travels WITH the carried reading: the strip and the cost chip
+ * read the pair, and a numerator carried beside a different receipt would state
+ * one reading two ways (the defect `session-cost.ts` calls out).
+ */
+function subordinateOccupancy(
+	painted: CanonicalFrontendState | null | undefined,
+	incoming: CanonicalFrontendState,
+	subordinate: boolean,
+): Partial<CanonicalFrontendState> {
+	if (!subordinate || !painted) return {};
+	const before = painted.context_tokens;
+	if (typeof before !== "number" || !Number.isFinite(before) || before <= 0)
+		return {};
+	const after = incoming.context_tokens;
+	if (typeof after === "number" && Number.isFinite(after) && after >= before)
+		return {};
+	return {
+		context_tokens: before,
+		context_is_estimate:
+			painted.context_is_estimate ?? incoming.context_is_estimate,
+		context_window: painted.context_window ?? incoming.context_window,
+		last_usage: painted.last_usage ?? incoming.last_usage,
+	};
+}
+
 function applyAsideDeltas(frames: DesktopSessionFrame[]): void {
 	for (const frame of frames) {
 		if (frame.type !== "aside_delta") continue;
@@ -4553,6 +4615,16 @@ export function useCanonicalSessionStream(
 								stale: false,
 								frontend: {
 									...snapshot.frontend.snapshot,
+									/*
+									 * A cold/attaching snapshot is the DURABLE reading, not the
+									 * live one; it must not walk a painted measurement back. See
+									 * `subordinateOccupancy`.
+									 */
+									...subordinateOccupancy(
+										next.frontend ?? next.heldFrontend,
+										snapshot.frontend.snapshot,
+										snapshot.cold === true || snapshot.attaching === true,
+									),
 									attention: mergeCompletionAttention(
 										next.frontend?.attention,
 										snapshot.frontend.snapshot.attention,
