@@ -55,7 +55,11 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import {
+	type InternalEpisodeIdentitySnapshot,
+	captureInternalEpisodeIdentity,
 	expandedRunsOf,
+	forgetTurnCollapseOpen,
+	retainInternalEpisodeKeys,
 	writeRunExpanded,
 } from "@shared/store/turn-collapse-open";
 import {
@@ -243,6 +247,7 @@ import {
 	collapsePlanInputKey,
 	collapseRowsKey,
 	initialAlignWalkState,
+	olderRowsThanWindow,
 	paintedRows,
 	runIsCondensed,
 	snapWindowToRunBoundary,
@@ -363,6 +368,19 @@ function quietGroupSpanS(group: {
  */
 function condenseSentence(segment: SegmentPlan): string {
 	const parts: string[] = [];
+	/*
+	 * THE SPOKEN FIGURE NEVER OUTRUNS THE PAINTED ONE (design review round 1,
+	 * U1). A PARTIAL segment - a head cut: earlier rows are not loaded - paints
+	 * its counts with the minimum marker (`turn-summary.tsx` states `2+`, and
+	 * the count span's own name says "At least 2 messages - earlier rows are
+	 * not loaded"), while the sentence stated the bare figure: a screen-reader
+	 * user was told an exact number the sighted bar refuses to claim. The
+	 * sentence is the live region's whole account of the bar, so it states the
+	 * same minimum in words - the way the action clause has always been titled
+	 * ("At least N actions - earlier rows of this turn are not loaded").
+	 */
+	const minimum = (stated: string) =>
+		segment.facts.partial ? `at least ${stated}` : stated;
 	if (segment.facts.group !== null) {
 		/*
 		 * A GROUP BAR'S SENTENCE IS THE GROUP'S OWN CLAUSES (design §5): the count
@@ -373,7 +391,16 @@ function condenseSentence(segment: SegmentPlan): string {
 		 * the noun twice (design round 1 nit). Same rule as below: the span clause
 		 * only when the bar carries one.
 		 */
-		parts.push(`${segment.facts.group.count}`);
+		/*
+		 * THE FIGURE IS THE ONE THE BAR PRINTS. `turn-summary.tsx` prints
+		 * `episode.receipts ?? group.count`; a `subagent:` notice is an episode
+		 * origin but not a quiet-group trigger, so the two can differ (`[wake,
+		 * subagent notice, wake]`: group 2, receipts 3) and a screen-reader user
+		 * was told a different number from the one on screen (reviewer F6).
+		 */
+		parts.push(
+			minimum(`${segment.internal?.receipts ?? segment.facts.group.count}`),
+		);
 		const spanS = quietGroupSpanS(segment.facts.group);
 		if (spanS !== null) parts.push(formatDuration(spanS));
 	} else {
@@ -382,9 +409,11 @@ function condenseSentence(segment: SegmentPlan): string {
 		}
 		if (segment.facts.actions > 0) {
 			parts.push(
-				segment.facts.actions === 1
-					? "1 action"
-					: `${segment.facts.actions} actions`,
+				minimum(
+					segment.facts.actions === 1
+						? "1 action"
+						: `${segment.facts.actions} actions`,
+				),
 			);
 		}
 	}
@@ -3291,6 +3320,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	const announcedPlan = useRef<{
 		keys: Set<string>;
 		rowIds: Set<string>;
+		viewEpoch: TranscriptState["viewEpoch"];
+		identity: InternalEpisodeIdentitySnapshot;
 	} | null>(null);
 	if (windowSession !== sessionId) {
 		setWindowSession(sessionId);
@@ -3386,6 +3417,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		openRuns: ReadonlySet<string> | undefined;
 		/** The reader's mode, for the widen's paint count (see this ref's note). */
 		mode: TranscriptDisplayMode;
+		/** The paging state's `hasMore`, for the widen's paint count (R2-3). */
+		hasMore: boolean;
 		/**
 		 * The settlement latch (operator report, 2026-10-16), threaded like
 		 * `live`/`openRuns` so the widen's painted count reads the plan the render
@@ -3408,15 +3441,53 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		openRuns: undefined,
 		mode: DEFAULT_TRANSCRIPT_DISPLAY_MODE,
 		watchedRunId: null,
+		hasMore: false,
 		mounted: 0,
 	});
+	// One previous loaded plan, bounded across ALL episodes. This is identity
+	// evidence only; openRuns/the existing store remain the sole disclosure owner.
+	const internalEpisodeKeys = useRef<{
+		sessionId: string | null;
+		viewEpoch: number | undefined;
+		evidence: InternalEpisodeIdentitySnapshot;
+	}>({
+		sessionId,
+		viewEpoch: transcript.viewEpoch,
+		evidence: captureInternalEpisodeIdentity([], new Set()),
+	});
+	// A changed clear epoch invalidates evidence; an unchanged epoch proves
+	// NOTHING about hydration, adoption, row order or segmentation continuity.
+	if (
+		internalEpisodeKeys.current.sessionId !== sessionId ||
+		internalEpisodeKeys.current.viewEpoch !== transcript.viewEpoch
+	)
+		internalEpisodeKeys.current = {
+			sessionId,
+			viewEpoch: transcript.viewEpoch,
+			evidence: captureInternalEpisodeIdentity([], new Set()),
+		};
 	const [openRuns, setOpenRuns] = useState<ReadonlySet<string>>(() =>
 		expandedRunsOf(sessionId),
 	);
 	const [openRunsSession, setOpenRunsSession] = useState(sessionId);
+	const [openRunsEpoch, setOpenRunsEpoch] = useState(transcript.viewEpoch);
 	if (openRunsSession !== sessionId) {
 		setOpenRunsSession(sessionId);
+		setOpenRunsEpoch(transcript.viewEpoch);
 		setOpenRuns(expandedRunsOf(sessionId));
+	} else if (openRunsEpoch !== transcript.viewEpoch) {
+		// An explicit clear invalidates reader ownership as well as alias evidence.
+		// Stable seg anchors can recur after the clear; retaining their old open
+		// bit would silently resurrect an expansion. An unchanged epoch proves no
+		// source transition and never reaches this branch (R3 prepend regression).
+		setOpenRunsEpoch(transcript.viewEpoch);
+		if (
+			typeof transcript.viewEpoch === "number" &&
+			transcript.viewEpoch > (openRunsEpoch ?? 0)
+		) {
+			forgetTurnCollapseOpen(sessionId);
+			setOpenRuns(new Set());
+		}
 	}
 	/*
 	 * THE SETTLE LATCH, readable per conversation (`shared/store/turn-collapse-watched.ts`).
@@ -4023,6 +4094,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					mode: widenInputs.current.mode,
 					/* The latch, same reason as the mode: one measurement, one plan (see the ref). */
 					watchedRunId: widenInputs.current.watchedRunId,
+					hasMore: widenInputs.current.hasMore,
 					snapMaxExtra: WINDOW_ALIGN_MAX_EXTRA,
 					// The render's OWN second bound (the completed-run allowance), so the
 					// step's painted delta is measured against the window the component
@@ -4063,6 +4135,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				openRuns: widenInputs.current.openRuns,
 				mode: widenInputs.current.mode,
 				watchedRunId: widenInputs.current.watchedRunId,
+				hasMore: widenInputs.current.hasMore,
 				snapMaxExtra: WINDOW_ALIGN_MAX_EXTRA,
 				completedRunMaxExtra: WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
 			}),
@@ -4327,6 +4400,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		openRuns,
 		mode: parseTranscriptDisplayMode(transcriptDisplayMode),
 		watchedRunId: watchedRun,
+		hasMore: Boolean(transcript.hasMore),
 		mounted: alignSize,
 	};
 
@@ -4577,14 +4651,25 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			 * cannot be split, must not be taken at all.
 			 */
 			hideCrossSession: hide,
+			/*
+			 * OLDER ROWS EXIST (architect ruling): the paging state says a page above
+			 * the loaded head is still to come (`hasMore`) or the render window is
+			 * hiding rows that are loaded (`hidden`). Either way the head of this
+			 * list is a CUT, not the conversation's start, and the plan must not
+			 * read a receipt at the edge as the run's opening content. In the plan's
+			 * options key, so a page landing re-plans.
+			 */
+			olderRowsExist: olderRowsThanWindow(transcript.hasMore, hidden),
 		}),
 		[
 			focusedRecordId,
 			selectedRecordId,
 			gate,
 			hide,
+			hidden,
 			openFrame,
 			openRuns,
+			transcript.hasMore,
 			transcriptDisplayMode,
 			watchedRun,
 			working,
@@ -4624,6 +4709,59 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		// the render mark beside them.
 		performance.mark("lop:transcript:plan:start");
 		const plan = collapsePlan(visible, collapseInputs);
+		const episodes = plan.runs.flatMap((run) => run.segments);
+		const identities = episodes.map((segment) => ({
+			...segment,
+			eligible: segment.internal != null,
+		}));
+		function* visibleIds() {
+			for (const row of visible) yield row.record.id;
+		}
+		// `rows` is a projection of the canonical reducer's ID-keyed records:
+		// applyHistoryPage merges byId; live upsert replaces an indexed existing ID.
+		// This supplies CURRENT uniqueness only. It does not certify loadOlder,
+		// hydration, prior membership, order or topology-preserving transitions.
+		const retained = retainInternalEpisodeKeys(
+			internalEpisodeKeys.current.evidence,
+			identities,
+			{ currentIdsUnique: true, outsideCurrentIds: visibleIds() },
+		).episodes;
+		for (let i = 0; i < episodes.length; i += 1) {
+			const segment = episodes[i];
+			const oldKey = retained[i].key;
+			if (oldKey === segment.key) continue;
+			segment.key = oldKey;
+			// The planner's internal episode is eligible; its only stand-down is
+			// focusHold. After a proved key transfer an explicitly OPEN bar still
+			// mounts that focused child, so do not replace its disclosure with loose
+			// rows solely because the earlier focus guard saw the pre-transfer key.
+			if (openRuns.has(oldKey)) segment.collapsed = true;
+		}
+		for (const run of plan.runs) {
+			run.collapses = run.segments.some((segment) => segment.collapsed);
+			run.hidden = run.segments
+				.filter((segment) => segment.collapsed)
+				.flatMap((segment) => segment.rows);
+			const firstBar = run.segments.find((segment) => segment.collapsed);
+			if (firstBar !== undefined) run.gap = firstBar.gap;
+		}
+		// Snapshot ALL prior owner relations when <=4096 IDs; only reader OPEN
+		// keys and one focused child are held. Capture overflow replaces the latest
+		// evidence with explicit incomplete state, never a stale smaller snapshot.
+		internalEpisodeKeys.current = {
+			sessionId,
+			viewEpoch: transcript.viewEpoch,
+			evidence: captureInternalEpisodeIdentity(
+				episodes.map((segment) => ({
+					key: segment.key,
+					segmentIds: segment.segmentIds,
+					eligible: segment.internal != null,
+				})),
+				openRuns,
+				focusedRecordId,
+				visibleIds(),
+			),
+		};
 		performance.mark("lop:transcript:plan:end");
 		performance.measure(
 			"lop:transcript:plan",
@@ -4631,7 +4769,22 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			"lop:transcript:plan:end",
 		);
 		return plan;
-	}, [collapseKey]);
+	}, [collapseKey, sessionId, transcript.viewEpoch]);
+	// A producer-anchored phase can move to the summary without resetting its
+	// clock. If old-core thinking has no anchor, leave the mounted footer clock
+	// intact: a new leaf must not call its own mount-time zero the phase's age.
+	const internalPhaseLine =
+		working !== null &&
+		(working.startedAt !== undefined || working.clock === false)
+			? working
+			: null;
+	const internalLiveLeaf =
+		internalPhaseLine !== null &&
+		collapse.runs.some((run) =>
+			run.segments.some(
+				(segment) => segment.collapsed && segment.internal?.live,
+			),
+		);
 	/*
 	 * THE SETTLE LATCH'S WRITE (operator report, 2026-10-16; the model's
 	 * `watchedRunId` option). While the pane reads live, the newest run on screen
@@ -4870,8 +5023,114 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		const collapsed = collapse.runs.flatMap((run) =>
 			run.segments.filter((segment) => segment.collapsed),
 		);
+		/*
+		 * THE WATCHED RUN for the gate below (settle-latch convergence round,
+		 * 2026-10-17): the NEWEST run that holds the latch's row id - the exact
+		 * run the model spends `watched` on (`planRun`'s `anchored`), and therefore
+		 * the only run whose `internal.unsettled` stops reading the raw flag across
+		 * a liveness dip. Run-level, never segment-level: the model spends
+		 * `watched` on the RUN, and the episode segment rarely holds the id the run
+		 * was named by (the latch writes the run's leading row), so a containment
+		 * test over `segment.segmentIds` would miss precisely the segments this
+		 * exists for.
+		 */
+		const watchedRunId = collapseInputs.watchedRunId ?? null;
+		const newestRun = collapse.runs.at(-1);
+		const watchedRun =
+			watchedRunId !== null &&
+			newestRun !== undefined &&
+			newestRun.recordIds.includes(watchedRunId)
+				? newestRun
+				: null;
+		const watchedSegments = new Set(watchedRun?.segments ?? []);
+		/*
+		 * A LIVE internal episode is PRESENTATION, NOT A SETTLE. It compacted because
+		 * the turn is still thinking, so announcing it now would speak a transition
+		 * the reader did not experience (PR-4: nothing is announced while the cycle
+		 * runs) - and it would burn the segment's key, so the settle that actually
+		 * ends the cycle could not announce once when it lands. So a live episode is
+		 * invisible to BOTH halves of the bookkeeping: it never enters `appeared`,
+		 * and its key is not remembered as announced. When the turn settles the same
+		 * key becomes a genuine settle, appears once, and says its one sentence.
+		 */
+		/*
+		 * THE QUIET HALF IS ANCHORED FOR THE WATCHED RUN (settle-latch convergence
+		 * round, 2026-10-17). `internal.live` is not the silencer - its tail-position
+		 * condition (`span.to === records.length - 1`) reads false the moment a
+		 * streaming answer appends after the episode, which is exactly when the turn
+		 * is still thinking and PR-4 #1 requires silence. The pane's flag beside the
+		 * episode's own settledness is not enough either: a liveness dip reads
+		 * not-live for a beat, so an episode still being written passed as settled -
+		 * the sentence spoke at the dip, the key was recorded, and the real settle
+		 * went silent. For the watched run the pane half therefore anchors like
+		 * everything else in `planRun` (`live || watched`): silence holds while
+		 * `internal.unsettled` does, and only a landed close (which flips it) lets
+		 * the ONE sentence land. For every other run the pane half is the raw flag
+		 * and the predicate is the shipped one - `unsettled` can only be true while
+		 * the pane is live there, so unwatched timing is unchanged.
+		 *
+		 * ONLY THE UNSETTLED EPISODE IS SILENCED (reviewer F2). Membership alone
+		 * (`internal != null`) also silenced every SETTLED history episode during a
+		 * live pass, so none was recorded in `previous.keys` and the first settle
+		 * announced them all again.
+		 */
+		const announced = (segment: SegmentPlan) =>
+			segment.collapsed &&
+			!(
+				(collapseInputs.live || watchedSegments.has(segment)) &&
+				segment.internal?.unsettled === true
+			);
 		const rowIds = planRowIds(collapse.runs);
-		const previous = announcedPlan.current;
+		const previous =
+			announcedPlan.current?.viewEpoch === transcript.viewEpoch
+				? announcedPlan.current
+				: null;
+		const segments = collapse.runs.flatMap((run) => run.segments);
+		const identities = segments.map((segment) => ({
+			key: segment.key,
+			segmentIds: segment.segmentIds,
+			eligible: segment.internal != null,
+		}));
+		/*
+		 * ANNOUNCEMENT OWNERSHIP IS NOT EXPANSION OWNERSHIP (R3). A CLOSED,
+		 * already-announced appendable qg episode gains a visible seg anchor when
+		 * an answer arrives. Expansion retains only OPEN keys, so it cannot certify
+		 * this history transition. Reuse its bounded overlap proof separately here:
+		 * <=4096 prior IDs / <=128 remembered qg identities, complete current overlap,
+		 * pinned-row exclusion and the same split/merge/reorder/head-loss/collision
+		 * refusals. Canonical records certify current uniqueness ONLY, not topology.
+		 * Alias the announcement bookkeeping, never the CLOSED rendered key. A live
+		 * unannounced episode has no known key and cannot consume its future sentence;
+		 * history already announced stays known even if the pane becomes live again.
+		 */
+		const retained =
+			previous === null
+				? identities
+				: retainInternalEpisodeKeys(previous.identity, identities, {
+						currentIdsUnique: true,
+						outsideCurrentIds: rowIds,
+					}).episodes;
+		const knownKeys = new Set(previous?.keys ?? []);
+		for (let i = 0; i < segments.length; i += 1) {
+			if (previous?.keys.has(retained[i].key)) knownKeys.add(segments[i].key);
+		}
+		const remember = () => {
+			for (const segment of collapsed.filter(announced))
+				knownKeys.add(segment.key);
+			return {
+				keys: knownKeys,
+				rowIds,
+				viewEpoch: transcript.viewEpoch,
+				// Retain the proved old qg identity in this metadata only. The rendered
+				// bounded span keeps its seg:<visible-anchor> key and its reader state.
+				identity: captureInternalEpisodeIdentity(
+					retained,
+					knownKeys,
+					null,
+					rowIds,
+				),
+			};
+		};
 		if (previous === null) {
 			/*
 			 * The first pass that has RUNS initialises without announcing: its
@@ -4880,28 +5139,20 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			 * initialisation for the first pass that paints rows.
 			 */
 			if (collapse.runs.length > 0) {
-				announcedPlan.current = {
-					keys: new Set(collapsed.map((segment) => segment.key)),
-					rowIds,
-				};
+				announcedPlan.current = remember();
 			}
 			return;
 		}
 		const appeared = collapsed.filter(
 			(segment) =>
-				!previous.keys.has(segment.key) &&
+				announced(segment) &&
+				!knownKeys.has(segment.key) &&
 				segment.segmentIds.some((id) => previous.rowIds.has(id)),
 		);
-		announcedPlan.current = {
-			keys: new Set([
-				...previous.keys,
-				...collapsed.map((segment) => segment.key),
-			]),
-			rowIds,
-		};
+		announcedPlan.current = remember();
 		if (appeared.length === 0) return;
 		setCondenseAnnouncement(appeared.map(condenseSentence).join(" "));
-	}, [collapse]);
+	}, [collapse, collapseInputs, transcript.viewEpoch]);
 
 	/*
 	 * THE LIST, RE-EXPRESSED AS ENTRIES. Every group renders exactly as today,
@@ -5563,6 +5814,17 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				stampTs={entry.segment.stampTs}
 				label={entry.segment.label}
 				completed={entry.segment.completed}
+				episode={
+					entry.segment.internal == null
+						? null
+						: {
+								receipts: entry.segment.internal.receipts,
+								active: entry.segment.internal.live,
+								phaseLine: entry.segment.internal.live
+									? internalPhaseLine
+									: null,
+							}
+				}
 				open={openRuns.has(entry.segment.key)}
 				onOpenChange={(next) =>
 					openBar(entry.segment.key, entry.segment.firstId, next)
@@ -5625,7 +5887,11 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				 * the entry. False for every row but the block's.
 				 */
 				entry.supplementRun !== undefined &&
-					runIsCondensed(entry.supplementRun, openRuns),
+					entry.group.kind === "row" &&
+					entry.group.row.record.kind === "supplement" &&
+					runIsCondensed(entry.supplementRun, openRuns, {
+						artifactOwner: entry.group.row.record.anchor,
+					}),
 			)
 		);
 
@@ -6333,7 +6599,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 										"min-h-[1lh] font-mono text-mono-sm",
 									)}
 								>
-									{working && (
+									{working && !internalLiveLeaf && (
 										<WorkingLine
 											activity={working.activity}
 											phase={working.phase}
