@@ -1543,7 +1543,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 										contextBreakdownLine(
 											reading.status,
 											Boolean(sessionDispatch),
-											held,
+											held || contextHeld,
 										),
 									]
 						}
@@ -1554,7 +1554,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 						? () => sessionDispatch({ name: "context", args: "" })
 						: undefined
 				}
-				held={held || contextHeld === true}
+				held={held || contextHeld}
 				/*
 				 * The ladder's last rung (issue #918; the order and the fit points
 				 * are in the duration reading's comment). The terminal band keeps the
