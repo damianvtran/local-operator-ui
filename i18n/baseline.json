@@ -17,7 +17,8 @@
     "src/renderer/src/features/projects/",
     "src/renderer/src/features/chat/components/delete-conversation-dialog.tsx",
     "src/renderer/src/features/chat/components/archive-conversation-dialog.tsx",
-    "src/renderer/src/shared/components/composer/message-input.tsx"
+    "src/renderer/src/shared/components/composer/message-input.tsx",
+    "src/renderer/src/features/chat/components/chat-header.tsx"
   ],
   "files": {
     "src/renderer/src/features/agent-hub/agent-details-page.tsx": 16,
@@ -84,7 +85,6 @@
     "src/renderer/src/features/chat/components/canvas/wysiwyg/text-style-dropdown.tsx": 1,
     "src/renderer/src/features/chat/components/chat-content.tsx": 2,
     "src/renderer/src/features/chat/components/chat-header-identity-menu.tsx": 2,
-    "src/renderer/src/features/chat/components/chat-header.tsx": 8,
     "src/renderer/src/features/chat/components/chat-options-sidebar.tsx": 5,
     "src/renderer/src/features/chat/components/chat-page.tsx": 2,
     "src/renderer/src/features/chat/components/chat-sidebar-view-menu.tsx": 4,
