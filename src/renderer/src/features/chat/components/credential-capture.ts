@@ -2632,9 +2632,17 @@ const SECRET_SHAPE_LONG_TOKEN = /^[A-Za-z0-9_\-+/=.]+$/;
  * secrets, because a confirm that fires on ordinary text teaches the user to
  * dismiss it.
  */
-/** An address, not a secret: `Ben.Tran@gominerva.com`. */
+/**
+ * An address, not a secret: `Ben.Tran@gominerva.com`.
+ *
+ * THE TLD MUST BE ALPHABETIC (agent review round 2, m-A): with any final label
+ * allowed, `P@ss.w0rd!` read as an address (`P` @ `ss.w0rd!`) and a password
+ * walked straight past the exclusion. Requiring letters after the last dot keeps
+ * every real address (`x@gominerva.com`, `a@b.co`) and hands the password back
+ * to the class count.
+ */
 const SECRET_SHAPE_EMAIL = new RegExp(
-	`^[^${SEPARATOR_CLASS}@]+@[^${SEPARATOR_CLASS}@]+\\.[^${SEPARATOR_CLASS}@]+$`,
+	`^[^${SEPARATOR_CLASS}@]+@[^${SEPARATOR_CLASS}@]+\\.[A-Za-z]{2,}$`,
 );
 /** A relative path: `feat/x`, `src/renderer/message-input.tsx`. */
 const SECRET_SHAPE_PATH = /^[\w.-]+(?:\/[\w.-]+)+$/;
@@ -2647,8 +2655,15 @@ const SECRET_SHAPE_ISO_TIME =
 	/^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)?$/;
 /** A host and port: `localhost:6193`, `127.0.0.1:8080`. */
 const SECRET_SHAPE_HOST_PORT = /^[\w.-]+:\d{2,5}$/;
-/** A commit SHA -- git's own lengths, so a longer hex key is still caught below. */
-const SECRET_SHAPE_HEX = /^[0-9a-f]{7,40}$/i;
+/**
+ * A commit SHA -- GIT'S OWN LENGTHS, so a 32-character HEX TOKEN is caught
+ * (agent review round 2, m-A). The clause used to cover `7-40`, which swallowed
+ * every key between them: a 32-character hex token (an MD5, and the length many
+ * API keys use) read as a commit and never reached the class count. Git spells
+ * a short SHA as 7-12 characters and a full one as 40; the gap between them is
+ * not a commit, and it lands on the long-token rule below.
+ */
+const SECRET_SHAPE_HEX = /^(?:[0-9a-f]{7,12}|[0-9a-f]{40})$/i;
 /** A snake_case identifier: `test_credential_composer`. */
 const SECRET_SHAPE_SNAKE = /^[a-z]+(?:_[a-z]+)+$/;
 /** A kebab-case identifier of pure words: `correct-horse-staple`. */
@@ -2689,11 +2704,18 @@ const SECRET_SHAPE_DATE_RUN = /\d{4,}/;
  * URL-safe token.
  *
  * WHAT IT DOES NOT CATCH, so the docblock does not promise more than the code
- * does (agent review round 1, m2): `password1`, `hunter22` and any other
- * two-class token shorter than 20 characters; any passphrase with a space; and
- * anything that opens with `/`, `@`, `$` or `#`. Those are deliberate -- the
- * notice, not this predicate, is the surface that tells the user where a secret
- * goes.
+ * does (agent review round 1, m2; round 2, m-A): `password1`, `hunter22` and any
+ * other two-class token shorter than 20 characters; any passphrase with a space;
+ * anything that opens with `/`, `@`, `$` or `#`; and a base64-shaped key that
+ * contains `/` and no `+`/`=` (the AWS secret-key shape, 40 URL-safe
+ * characters). The last one is the path clause's cost rather than a hole this
+ * round opened: `SECRET_SHAPE_PATH` reads its two runs as a relative path, and
+ * any rule separating the two would have to call some real path a secret -- so
+ * it stays a documented miss, like the rest of this list. Two shapes this round
+ * DID recover: a 32-character hex token (see `SECRET_SHAPE_HEX`) and
+ * `P@ss.w0rd!` (see `SECRET_SHAPE_EMAIL`). Those narrow spots are deliberate --
+ * the notice, not this predicate, is the surface that tells the user where a
+ * secret goes.
  *
  * WHAT IT STILL CATCHES BY MISTAKE: a random-looking token with three classes
  * that matches none of the exclusions above. That is why the confirm says how

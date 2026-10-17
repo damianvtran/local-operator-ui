@@ -319,6 +319,7 @@ const bundle = await build({
 			export { CHAT_MEASURE } from "./src/renderer/src/features/chat/chat-measure";
 			export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 			export { useConversationInputStore } from "./src/renderer/src/shared/store/conversation-input-store";
+			export { ASK_ITEM_SELECTOR } from "./src/renderer/src/features/chat/ask-queue";
 			export {
 				CREDENTIAL_ARMED_NOTICE,
 				CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE,
@@ -372,6 +373,7 @@ const {
 	HELD_TAKEN_BY,
 	MASK_CELL,
 	unredactedNotice,
+	ASK_ITEM_SELECTOR,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 
@@ -5936,6 +5938,16 @@ test("a queued secret ask keeps the box usable and says where the secret goes", 
 		(button.textContent ?? "").includes("Open asks"),
 	);
 	assert.ok(open, "the notice carries the door to the panel");
+	assert.equal(
+		open.getAttribute("data-lo-ask-item-toggle"),
+		"",
+		"and it carries the drawer's own door mark (UX round 2, U6): the chord only ASKS for the entry move, and the drawer runs it for a marked control",
+	);
+	assert.equal(
+		open.matches(ASK_ITEM_SELECTOR),
+		true,
+		"the mark is the drawer's own selector, not a lookalike attribute the entry move would ignore",
+	);
 	await act(async () => {
 		open.click();
 	});
@@ -6270,12 +6282,180 @@ test("while a Put is in flight its other controls are disabled and it says so", 
 		/Sending to the secret field/i,
 		"the row says what it is waiting for",
 	);
+	/*
+	 * U7 / D13: every control in the row is disabled, so Chromium blurs the one
+	 * that was pressed and focus falls to <body>. The row itself takes it.
+	 */
+	const group = window.document.getElementById("composer-secret-confirm");
+	assert.equal(
+		hasFocus(group),
+		true,
+		"the row holds the keyboard while the put is in flight, not <body>",
+	);
+	/*
+	 * m-B: Escape is CLAIMED and does nothing. The value is already posting, so a
+	 * cancel would say one thing while the request did another, and an unclaimed
+	 * key from <body> would fall to the interrupt ladder.
+	 */
+	const rowEscape = new window.KeyboardEvent("keydown", {
+		key: "Escape",
+		bubbles: true,
+		cancelable: true,
+	});
+	await act(async () => {
+		group.dispatchEvent(rowEscape);
+	});
+	assert.equal(
+		rowEscape.defaultPrevented,
+		true,
+		"Escape is claimed while the put is pending",
+	);
+	assert.ok(
+		window.document.getElementById("composer-secret-confirm"),
+		"and the confirm it did not cancel is still up",
+	);
+	/* The box's own rung is gated the same way, for a click into it mid-flight. */
+	frame.textarea().focus();
+	const boxEscape = new window.KeyboardEvent("keydown", {
+		key: "Escape",
+		bubbles: true,
+		cancelable: true,
+	});
+	await act(async () => {
+		frame.textarea().dispatchEvent(boxEscape);
+	});
+	assert.equal(boxEscape.defaultPrevented, true, "and so is Escape in the box");
+	assert.ok(window.document.getElementById("composer-secret-confirm"));
 	await act(async () => {
 		release("sent");
 	});
 	await settle();
 	assert.equal(window.document.getElementById("composer-secret-confirm"), null);
 	assert.equal(frame.sent.length, 0, "and Send as message never fired");
+});
+
+test("Cancel and Escape clear the last refusal with the attempt (UX round 2, U8)", async () => {
+	const frame = await mount({
+		secretAsk: queuedSecretAsk({ onFill: async () => "refused" }),
+	});
+	await armConfirm(frame);
+	await act(async () => {
+		confirmControl("Put in secret field")?.click();
+	});
+	await settle();
+	assert.match(
+		refusalText() ?? "",
+		/did not take that value/i,
+		"a receipt is up",
+	);
+	/* A new attempt hides it; cancelling that attempt must not bring it back. */
+	await enter(frame);
+	await settle();
+	assert.ok(window.document.getElementById("composer-secret-confirm"));
+	await act(async () => {
+		confirmControl("Cancel")?.click();
+	});
+	await settle();
+	assert.equal(
+		refusalText(),
+		null,
+		"Cancel returns to the plain notice, not to the previous attempt's receipt",
+	);
+
+	/* The same for Escape, which is Cancel's keyboard spelling. */
+	await enter(frame);
+	await settle();
+	await act(async () => {
+		confirmControl("Put in secret field")?.click();
+	});
+	await settle();
+	assert.match(refusalText() ?? "", /did not take that value/i);
+	await enter(frame);
+	await settle();
+	frame.textarea().focus();
+	await act(async () => {
+		frame.textarea().dispatchEvent(
+			new window.KeyboardEvent("keydown", {
+				key: "Escape",
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+	});
+	await settle();
+	assert.equal(refusalText(), null, "and Escape clears it too");
+});
+
+test("a retirement does not take a keyboard the user moved elsewhere (m-C)", async () => {
+	const conversationId = "conv-secret-ask-elsewhere";
+	await mount({ conversationId, secretAsk: queuedSecretAsk() });
+	const frame = await mount({ conversationId, secretAsk: queuedSecretAsk() });
+	await armConfirm(frame);
+	/* The user answers the ask in the panel, so the keyboard is in the panel. */
+	const elsewhere = window.document.createElement("button");
+	window.document.body.appendChild(elsewhere);
+	elsewhere.focus();
+	assert.equal(hasFocus(elsewhere), true);
+	await mount({
+		conversationId,
+		keepWorld: true,
+		secretAsk: queuedSecretAsk({ key: "second-ask-key" }),
+	});
+	assert.match(
+		refusalText() ?? "",
+		/changed first/i,
+		"the confirm retires as before",
+	);
+	assert.equal(
+		hasFocus(elsewhere),
+		true,
+		"and the keyboard stays where the user moved it, not in the box",
+	);
+	elsewhere.remove();
+});
+
+test("the count is one phrase, keeps its place while sending, and does not split (D11/D12/N-a)", async () => {
+	let release;
+	const pending = new Promise((resolve) => {
+		release = resolve;
+	});
+	const frame = await mount({
+		secretAsk: queuedSecretAsk({ onFill: () => pending }),
+	});
+	await armConfirm(frame);
+	assert.match(
+		confirmMessage(),
+		/\? 15 characters$/,
+		"the count is separated by a real space, so textContent and the group's name read one sentence (N-a)",
+	);
+	const count = window.document.querySelector(
+		"#composer-secret-confirm-message span:last-of-type",
+	);
+	assert.match(
+		count?.className ?? "",
+		/whitespace-nowrap/,
+		"and it cannot break between the number and its unit (D11)",
+	);
+	await act(async () => {
+		confirmControl("Put in secret field")?.click();
+	});
+	const sentCount = window.document.querySelector(
+		"#composer-secret-confirm-message span:last-of-type",
+	);
+	assert.ok(
+		sentCount,
+		"the count keeps its place in the row while sending (D12)",
+	);
+	assert.match(sentCount?.className ?? "", /invisible/);
+	assert.equal(
+		sentCount?.getAttribute("aria-hidden"),
+		"true",
+		"and is hidden from the reader rather than removed from the layout",
+	);
+	await act(async () => {
+		release("sent");
+	});
+	await settle();
 });
 
 test("the Retry door answers to the same guard", async () => {
