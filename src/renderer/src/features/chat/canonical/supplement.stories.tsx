@@ -245,6 +245,7 @@ const supplement = (
 	more: [],
 	components: [],
 	error: "",
+	cause: "",
 	dismissed: false,
 	live: false,
 	...over,
@@ -699,6 +700,38 @@ export const Failed: StoryObj = {
 				supplement({
 					id: "s1",
 					state: "failed",
+					error: "generator:ProviderError",
+					model: "openrouter/openai/gpt-6.1-sol",
+					attempts: [
+						"anthropic/claude-sonnet-5-5",
+						"openrouter/openai/gpt-6.1-sol",
+					],
+					detail: [
+						"turn 1: ProviderError status=None kind=quota",
+						"turn 2: ProviderError status=503 kind=transient",
+					],
+				}),
+			]}
+		/>
+	),
+};
+
+/**
+ * The failed line's typed-cause arm (core #2557; operator ask 2026-10-17): a row
+ * carrying `cause` names the wall the Retry would meet, in the one word list
+ * every surface transcribes (`CAUSE_PHRASES`). The bare `Failed` story above is
+ * the absent/unknown control — its line's bytes are unchanged by this arm.
+ */
+export const FailedCauseQuota: StoryObj = {
+	render: () => (
+		<Frame
+			height={360}
+			records={[
+				answer("m1", "The graphics did not make it."),
+				supplement({
+					id: "s1",
+					state: "failed",
+					cause: "provider_quota",
 					error: "generator:ProviderError",
 					model: "openrouter/openai/gpt-6.1-sol",
 					attempts: [
