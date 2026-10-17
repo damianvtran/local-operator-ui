@@ -44,6 +44,31 @@ import { v4 as uuidv4 } from "uuid";
 const REPLY_BLOCK = /^\s*<reply-to>([\s\S]*?)<\/reply-to>/;
 
 /**
+ * The leading quote markup a payload carries, and the payload after it.
+ *
+ * The same boundary `parseReplies` splits on, exposed as a SPLIT rather than as
+ * parsed replies for the callers that need the markup itself: a reader that
+ * rebuilds the payload from what it read (the `$skill` row's own text, which a
+ * re-send has to be able to re-assemble) needs the run verbatim, and a reader
+ * that only wants the words takes `rest`.
+ *
+ * `prefix` keeps the whitespace BETWEEN stacked blocks — it is part of how
+ * `buildSendPayload` writes the run — while `rest` keeps whatever whitespace
+ * follows the last block, which is where the speaker's own words begin.
+ */
+export const splitReplyPrefix = (
+	content: string,
+): { prefix: string; rest: string } => {
+	let rest = content;
+	for (;;) {
+		const match = REPLY_BLOCK.exec(rest);
+		if (match === null) break;
+		rest = rest.slice(match[0].length);
+	}
+	return { prefix: content.slice(0, content.length - rest.length), rest };
+};
+
+/**
  * The reply markup a payload carries, and the payload without it.
  *
  * Shared by the canonical transcript and the legacy `message-paper.tsx` path,
