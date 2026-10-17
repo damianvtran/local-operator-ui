@@ -110,6 +110,7 @@ import {
 	askRefusalSentence,
 	effectiveGate,
 } from "../ask-queue";
+import { editDraftOf } from "../canonical/skill-row";
 import { canonicalTranscriptTerminal } from "../canonical/transcript-pane";
 import { useOpenPrefetch } from "../canonical/use-open-prefetch";
 import {
@@ -3822,6 +3823,27 @@ function SessionPanel({
 						draft.errorRetry ?? retryOfferedForFailureCode(draft.errorCode),
 				}
 			: (draft.undelivered ?? null);
+	/*
+	 * WHAT `Edit` HANDS BACK, computed once so the press and the dimming beside it
+	 * cannot disagree: `retryDisabled` is spelled as a comparison against THIS
+	 * string, and comparing against the payload would leave the row offering a
+	 * second live press for a message the box already holds.
+	 *
+	 * The typed line rather than the payload, because a `$skill` send persists its
+	 * whole expansion: handing that back would put a wall of SKILL.md in the box to
+	 * edit - and it would not re-expand either, since the recognition rule reads the
+	 * FIRST token of what is submitted and the payload begins with the header
+	 * sentence (`skill-invocation.ts`).
+	 *
+	 * THE QUOTE IS A CHIP, NOT MARKUP IN THE BOX (UX round 1, U1). A quoted
+	 * invocation used to come home as `<reply-to>…</reply-to>` plus the line: the
+	 * composer stages a quote as a chip, so that markup was submitted literally,
+	 * the first token was no longer `$name`, and the skill was silently not
+	 * applied. `editDraftOf` is the one derivation, and the retry gate below
+	 * compares against the same string it hands back.
+	 */
+	const editDraft = deliveryTurn ? editDraftOf(deliveryTurn.text) : null;
+	const editText = deliveryTurn ? (editDraft?.text ?? deliveryTurn.text) : null;
 	const undeliveredTurn = deliveryTurn
 		? {
 				recordId: deliveryTurn.recordId,
@@ -3836,7 +3858,7 @@ function SessionPanel({
 				 * different message and the row's press is re-armed rather than dimmed.
 				 */
 				retryDisabled:
-					composerText.trim().length > 0 && composerText === deliveryTurn.text,
+					composerText.trim().length > 0 && composerText === editText,
 				onSendAgain: () => {
 					void send(deliveryTurn.text, [...deliveryTurn.attachments]);
 				},
@@ -3844,12 +3866,14 @@ function SessionPanel({
 					/*
 					 * The payload comes home, merged under the user's typing and refused while
 					 * an attempt is in flight (`returnPayload`), so pressing Edit twice cannot
-					 * double the message.
+					 * double the message. The quoted run rides the composer's own chip path
+					 * (`editDraftOf`), so a re-send re-assembles the quote AND re-expands the
+					 * `$name` the box now holds.
 					 */
 					useConversationInputStore.getState().returnPayload(identity, {
-						text: deliveryTurn.text,
+						text: editText ?? deliveryTurn.text,
 						attachments: [...deliveryTurn.attachments],
-						replies: [],
+						replies: editDraft?.replies ?? [],
 					});
 					/*
 					 * AND A PROVABLY-NOT-DELIVERED ROW RETIRES WITH THE PAYLOAD. The user

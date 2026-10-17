@@ -1,0 +1,12 @@
+{
+	"ui.chat.skill_invocation.instructions_label": {
+		"role": "label above the skill instructions a `$name` invocation sent",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"note": "Sits at the top of the recessed block a reader gets by expanding a `$skill` row's header. It names what the block is - the skill's own instructions, which the app sent on the reader's behalf - so keep it a description of the content and not an action. Space is a full-width prose column, so it may run to a line."
+	},
+	"ui.chat.skill_invocation.trigger_label": {
+		"role": "accessible name of the control that expands a `$name` invocation's header (a button whose visible summary is the token, a separator and the skill's one-line purpose)",
+		"tone": "noun phrase naming the control's content, sentence case, no trailing punctuation",
+		"note": "Read by a screen reader INSTEAD of the visible summary, which is a token plus a purpose sentence that can run to 150 characters - the name says what the press opens. `{token}` is the invocation's resolved skill token including its leading `$` (for example `$seal-demo`), so the translation keeps the placeholder and does not add or drop the sign. The purpose sentence stays visible on the row and in its `title`."
+	}
+}
