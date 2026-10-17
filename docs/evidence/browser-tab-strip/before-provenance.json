@@ -1,22 +1,22 @@
 [
-	{
-		"file": "before-one-tab-localoperatorlight.png",
-		"sha256": "cb665511236704d1d81abdeaf9c68f5a45902a129f9fdf095f8b2a53ae9f3e79",
-		"source": "../browser-find-zoom/r1/r1-find-closed-localoperatorlight.png",
-		"captureCommit": "41cec92350f5e70e5fd442271ef9b360612a82ee",
-		"captureSrcTree": "a4c4c0d4ea47d2c14b9043fd3ce01feaa51a95fe",
-		"baselineCommit": "422df121756df2f5e7348e4289a04256661edb9f",
-		"baselineSrcTree": "a4c4c0d4ea47d2c14b9043fd3ce01feaa51a95fe",
-		"label": "historical a2 capture, full src byte-identical to slice-b baseline; NOT fresh b capture"
-	},
-	{
-		"file": "before-one-tab-localoperatordark.png",
-		"sha256": "ad4c317d2af2889cae96e5194a8b8675504514cf932ec47045ed29898b0379aa",
-		"source": "../browser-find-zoom/r1/r1-find-closed-localoperatordark.png",
-		"captureCommit": "41cec92350f5e70e5fd442271ef9b360612a82ee",
-		"captureSrcTree": "a4c4c0d4ea47d2c14b9043fd3ce01feaa51a95fe",
-		"baselineCommit": "422df121756df2f5e7348e4289a04256661edb9f",
-		"baselineSrcTree": "a4c4c0d4ea47d2c14b9043fd3ce01feaa51a95fe",
-		"label": "historical a2 capture, full src byte-identical to slice-b baseline; NOT fresh b capture"
-	}
+  {
+    "file": "before-one-tab-localoperatorlight.png",
+    "sha256": "cb665511236704d1d81abdeaf9c68f5a45902a129f9fdf095f8b2a53ae9f3e79",
+    "source": "../browser-find-zoom/r1/r1-find-closed-localoperatorlight.png",
+    "captureCommit": "41cec92350f5e70e5fd442271ef9b360612a82ee",
+    "captureSrcTree": "a4c4c0d4ea47d2c14b9043fd3ce01feaa51a95fe",
+    "baselineCommit": "422df121756df2f5e7348e4289a04256661edb9f",
+    "baselineSrcTree": "a4c4c0d4ea47d2c14b9043fd3ce01feaa51a95fe",
+    "label": "historical a2 capture, full src byte-identical to slice-b baseline; NOT fresh b capture"
+  },
+  {
+    "file": "before-one-tab-localoperatordark.png",
+    "sha256": "ad4c317d2af2889cae96e5194a8b8675504514cf932ec47045ed29898b0379aa",
+    "source": "../browser-find-zoom/r1/r1-find-closed-localoperatordark.png",
+    "captureCommit": "41cec92350f5e70e5fd442271ef9b360612a82ee",
+    "captureSrcTree": "a4c4c0d4ea47d2c14b9043fd3ce01feaa51a95fe",
+    "baselineCommit": "422df121756df2f5e7348e4289a04256661edb9f",
+    "baselineSrcTree": "a4c4c0d4ea47d2c14b9043fd3ce01feaa51a95fe",
+    "label": "historical a2 capture, full src byte-identical to slice-b baseline; NOT fresh b capture"
+  }
 ]

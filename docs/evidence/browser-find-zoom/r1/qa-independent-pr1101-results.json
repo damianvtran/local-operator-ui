@@ -1,1334 +1,1334 @@
 [
-	{
-		"name": "preflight",
-		"actual": {
-			"hello": {
-				"armed": true,
-				"outDir": "/Users/damian/.local-operator/sessions/12bd9949bf0f/scratchpad/native-tmp/lo-browser-proof-56480/out",
-				"title": "Local Operator",
-				"route": "/chat",
-				"href": "file:///Users/damian/local-operator-ui/.worktrees/qa-pr1101-r1/out/renderer/index.html#/chat",
-				"theme": "localOperatorDark",
-				"viewport": {
-					"width": 1380,
-					"height": 900,
-					"devicePixelRatio": 2
-				},
-				"visibilityState": "visible",
-				"hasFocus": false,
-				"apiBaseUrl": "http://127.0.0.1:1",
-				"userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) LocalOperator/0.34.44 Chrome/152.0.7977.78 Electron/44.3.0 Safari/537.36"
-			},
-			"facts": {
-				"windowMode": "headless",
-				"appVersion": "0.34.44",
-				"platform": "darwin",
-				"title": "Local Operator",
-				"windowSize": {
-					"width": 1380,
-					"height": 900
-				},
-				"contentBounds": {
-					"width": 1380,
-					"height": 900
-				},
-				"visible": false,
-				"focused": false,
-				"minimized": false,
-				"frames": [],
-				"outDir": "/Users/damian/.local-operator/sessions/12bd9949bf0f/scratchpad/native-tmp/lo-browser-proof-56480/out"
-			},
-			"mf": [
-				{
-					"id": 2,
-					"destroyed": false,
-					"url": "file:///Users/damian/local-operator-ui/.worktrees/qa-pr1101-r1/out/renderer/index.html#/chat",
-					"visible": false,
-					"focused": false
-				},
-				{
-					"id": 1,
-					"destroyed": false,
-					"url": "file:///Users/damian/local-operator-ui/.worktrees/qa-pr1101-r1/out/renderer/mini.html",
-					"visible": false,
-					"focused": false
-				}
-			],
-			"unauthorized": 401
-		}
-	},
-	{
-		"name": "menu actual",
-		"actual": {
-			"menus": [
-				{
-					"path": "/Local Operator",
-					"id": null,
-					"role": "hide",
-					"label": "Hide Local Operator",
-					"accelerator": "Command+H"
-				},
-				{
-					"path": "/Local Operator",
-					"id": null,
-					"role": "hideothers",
-					"label": "Hide Others",
-					"accelerator": "Command+Alt+H"
-				},
-				{
-					"path": "/Local Operator",
-					"id": null,
-					"role": "quit",
-					"label": "Quit Local Operator",
-					"accelerator": "CommandOrControl+Q"
-				},
-				{
-					"path": "/File",
-					"id": null,
-					"role": "quit",
-					"label": "Quit Local Operator",
-					"accelerator": "CommandOrControl+Q"
-				},
-				{
-					"path": "/Edit",
-					"id": null,
-					"role": "undo",
-					"label": "Undo",
-					"accelerator": "CommandOrControl+Z"
-				},
-				{
-					"path": "/Edit",
-					"id": null,
-					"role": "redo",
-					"label": "Redo",
-					"accelerator": "Shift+CommandOrControl+Z"
-				},
-				{
-					"path": "/Edit",
-					"id": null,
-					"role": "cut",
-					"label": "Cut",
-					"accelerator": "CommandOrControl+X"
-				},
-				{
-					"path": "/Edit",
-					"id": null,
-					"role": "copy",
-					"label": "Copy",
-					"accelerator": "CommandOrControl+C"
-				},
-				{
-					"path": "/Edit",
-					"id": null,
-					"role": "paste",
-					"label": "Paste",
-					"accelerator": "CommandOrControl+V"
-				},
-				{
-					"path": "/Edit",
-					"id": null,
-					"role": "selectall",
-					"label": "Select All",
-					"accelerator": "CommandOrControl+A"
-				},
-				{
-					"path": "/View",
-					"id": "app-reload",
-					"role": null,
-					"label": "Reload",
-					"accelerator": "CmdOrCtrl+R"
-				},
-				{
-					"path": "/View",
-					"id": "app-force-reload",
-					"role": null,
-					"label": "Force Reload",
-					"accelerator": "CmdOrCtrl+Shift+R"
-				},
-				{
-					"path": "/View",
-					"id": "app-actual-size",
-					"role": null,
-					"label": "Actual Size",
-					"accelerator": "CmdOrCtrl+0"
-				},
-				{
-					"path": "/View",
-					"id": "app-zoom-in",
-					"role": null,
-					"label": "Zoom In",
-					"accelerator": "CmdOrCtrl+Plus"
-				},
-				{
-					"path": "/View",
-					"id": "app-zoom-out",
-					"role": null,
-					"label": "Zoom Out",
-					"accelerator": "CmdOrCtrl+-"
-				},
-				{
-					"path": "/View",
-					"id": null,
-					"role": "togglefullscreen",
-					"label": "Toggle Full Screen",
-					"accelerator": "Control+Command+F"
-				},
-				{
-					"path": "/Window",
-					"id": null,
-					"role": "minimize",
-					"label": "Minimize",
-					"accelerator": "CommandOrControl+M"
-				},
-				{
-					"path": "/Window",
-					"id": "app-close",
-					"role": null,
-					"label": "Close Tab or Window",
-					"accelerator": "CmdOrCtrl+W"
-				}
-			]
-		}
-	},
-	{
-		"name": "fixture/control",
-		"actual": {
-			"state": {
-				"pageControls": {
-					"find": null,
-					"zoom": 1,
-					"zoomAllowed": true,
-					"notice": null
-				},
-				"tabs": [
-					{
-						"tabId": 1,
-						"title": "QA /one",
-						"url": "http://127.0.0.1:64930/one",
-						"owner": "user",
-						"sessionId": null,
-						"active": true,
-						"restored": false,
-						"handedOver": false,
-						"failed": false,
-						"loading": false
-					},
-					{
-						"tabId": 2,
-						"title": "QA /two",
-						"url": "http://127.0.0.1:64930/two",
-						"owner": "user",
-						"sessionId": null,
-						"active": false,
-						"restored": false,
-						"handedOver": false,
-						"failed": false,
-						"loading": false
-					}
-				],
-				"activeTabId": 1,
-				"transfers": {
-					"active": null,
-					"dir": null,
-					"notes": [],
-					"activeTabId": 1,
-					"recent": null
-				},
-				"url": "http://127.0.0.1:64930/one",
-				"title": "QA /one",
-				"loading": false,
-				"canGoBack": true,
-				"canGoForward": false,
-				"navFailure": null,
-				"pendingConsent": [],
-				"approvals": [],
-				"availability": {
-					"status": "ready",
-					"attempt": 1,
-					"maxAttempts": 3,
-					"message": null,
-					"canRetry": false
-				}
-			},
-			"nativeViews": [
-				{
-					"id": 4,
-					"url": "http://127.0.0.1:64930/one",
-					"visible": true,
-					"zoom": 1,
-					"mode": "isolated"
-				},
-				{
-					"id": 5,
-					"url": "http://127.0.0.1:64930/two",
-					"visible": false,
-					"zoom": 1,
-					"mode": "isolated"
-				}
-			],
-			"text": {
-				"value": "hello alpha hello beta hello gamma\n\nTarget"
-			}
-		}
-	},
-	{
-		"name": "FIND real product first+followup",
-		"actual": {
-			"first": [
-				{
-					"seq": 3,
-					"op": "find",
-					"id": 4,
-					"query": "hello",
-					"options": {
-						"forward": true,
-						"findNext": false
-					},
-					"requestId": 1
-				}
-			],
-			"follow": [
-				{
-					"seq": 3,
-					"op": "find",
-					"id": 4,
-					"query": "hello",
-					"options": {
-						"forward": true,
-						"findNext": false
-					},
-					"requestId": 1
-				},
-				{
-					"seq": 4,
-					"op": "find",
-					"id": 4,
-					"query": "hello",
-					"options": {
-						"forward": true,
-						"findNext": true
-					},
-					"requestId": 2
-				},
-				{
-					"seq": 5,
-					"op": "native-found",
-					"id": 4,
-					"result": {
-						"requestId": 2,
-						"matches": 3,
-						"selectionArea": {
-							"x": 8,
-							"y": 8,
-							"width": 32,
-							"height": 19
-						},
-						"activeMatchOrdinal": 1,
-						"finalUpdate": true
-					}
-				}
-			],
-			"controls": {
-				"find": {
-					"tabId": 1,
-					"query": "hello",
-					"ordinal": 1,
-					"matches": 3,
-					"pending": false,
-					"unreported": false
-				},
-				"zoom": 1,
-				"zoomAllowed": true,
-				"notice": null
-			}
-		}
-	},
-	{
-		"name": "FIND opposite/control findNext=true",
-		"actual": {
-			"call": {
-				"id": 4,
-				"requestId": 3
-			},
-			"events": [
-				{
-					"seq": 6,
-					"op": "stop",
-					"id": 4,
-					"action": "clearSelection"
-				},
-				{
-					"seq": 7,
-					"op": "find",
-					"id": 4,
-					"query": "hello",
-					"options": {
-						"forward": true,
-						"findNext": true
-					},
-					"requestId": 3
-				},
-				{
-					"seq": 8,
-					"op": "native-found",
-					"id": 4,
-					"result": {
-						"requestId": 3,
-						"matches": 3,
-						"selectionArea": {
-							"x": 8,
-							"y": 8,
-							"width": 32,
-							"height": 19
-						},
-						"activeMatchOrdinal": 1,
-						"finalUpdate": true
-					}
-				}
-			]
-		}
-	},
-	{
-		"name": "FIND opposite/control findNext=false",
-		"actual": {
-			"call": {
-				"id": 4,
-				"requestId": 4
-			},
-			"events": [
-				{
-					"seq": 9,
-					"op": "stop",
-					"id": 4,
-					"action": "clearSelection"
-				},
-				{
-					"seq": 10,
-					"op": "find",
-					"id": 4,
-					"query": "hello",
-					"options": {
-						"forward": true,
-						"findNext": false
-					},
-					"requestId": 4
-				}
-			]
-		}
-	},
-	{
-		"name": "MATRIX F1-real-timeout",
-		"actual": {
-			"id": "F1-real-timeout",
-			"surface": "real 5s observation, native no callback",
-			"expected": "pending stops and output says No result reported (unless a REAL callback arrived)",
-			"actual": {
-				"elapsedMs": 5307,
-				"controls": {
-					"find": {
-						"tabId": 1,
-						"query": "silence-check",
-						"ordinal": 0,
-						"matches": 0,
-						"pending": false,
-						"unreported": true
-					},
-					"zoom": 1,
-					"zoomAllowed": true,
-					"notice": null
-				},
-				"rendered": "No result reported",
-				"nativeFound": [
-					{
-						"seq": 5,
-						"op": "native-found",
-						"id": 4,
-						"result": {
-							"requestId": 2,
-							"matches": 3,
-							"selectionArea": {
-								"x": 8,
-								"y": 8,
-								"width": 32,
-								"height": 19
-							},
-							"activeMatchOrdinal": 1,
-							"finalUpdate": true
-						}
-					},
-					{
-						"seq": 8,
-						"op": "native-found",
-						"id": 4,
-						"result": {
-							"requestId": 3,
-							"matches": 3,
-							"selectionArea": {
-								"x": 8,
-								"y": 8,
-								"width": 32,
-								"height": 19
-							},
-							"activeMatchOrdinal": 1,
-							"finalUpdate": true
-						}
-					}
-				]
-			},
-			"verdict": "PASS",
-			"fidelity": "real native call + real5s timer/UI; NOT synthetic result"
-		}
-	},
-	{
-		"name": "frame no-result-localoperatorlight",
-		"actual": {
-			"label": "no-result-localoperatorlight",
-			"path": "/Users/damian/.local-operator/sessions/12bd9949bf0f/scratchpad/native-tmp/lo-browser-proof-56480/out/no-result-localoperatorlight.png",
-			"bytes": 88667,
-			"pixels": {
-				"width": 2760,
-				"height": 1800
-			},
-			"viewport": {
-				"width": 1380,
-				"height": 900,
-				"devicePixelRatio": 2
-			}
-		}
-	},
-	{
-		"name": "frame no-result-localoperatordark",
-		"actual": {
-			"label": "no-result-localoperatordark",
-			"path": "/Users/damian/.local-operator/sessions/12bd9949bf0f/scratchpad/native-tmp/lo-browser-proof-56480/out/no-result-localoperatordark.png",
-			"bytes": 89054,
-			"pixels": {
-				"width": 2760,
-				"height": 1800
-			},
-			"viewport": {
-				"width": 1380,
-				"height": 900,
-				"devicePixelRatio": 2
-			}
-		}
-	},
-	{
-		"name": "MATRIX F2-request-fence",
-		"actual": {
-			"id": "F2-request-fence",
-			"surface": "wrong native request id then correct id",
-			"expected": "wrong ignored; correct synthetic result shows2/3",
-			"actual": {
-				"req": 6,
-				"bad": {
-					"find": {
-						"tabId": 1,
-						"query": "hello",
-						"ordinal": 0,
-						"matches": 0,
-						"pending": true,
-						"unreported": false
-					},
-					"zoom": 1,
-					"zoomAllowed": true,
-					"notice": null
-				},
-				"control": {
-					"find": {
-						"tabId": 1,
-						"query": "hello",
-						"ordinal": 2,
-						"matches": 3,
-						"pending": false,
-						"unreported": false
-					},
-					"zoom": 1,
-					"zoomAllowed": true,
-					"notice": null
-				}
-			},
-			"verdict": "PASS",
-			"fidelity": "SYNTHETIC found-in-page emission on installed real listener"
-		}
-	},
-	{
-		"name": "MATRIX F3-epoch-fence",
-		"actual": {
-			"id": "F3-epoch-fence",
-			"surface": "old captured listener called after document navigation",
-			"expected": "no find/count state leaks",
-			"actual": {
-				"epoch": {
-					"find": null,
-					"zoom": 1,
-					"zoomAllowed": true,
-					"notice": null
-				}
-			},
-			"verdict": "PASS",
-			"fidelity": "SYNTHETIC old listener invocation, real navigation epoch change"
-		}
-	},
-	{
-		"name": "MATRIX F4-explicit-tab",
-		"actual": {
-			"id": "F4-explicit-tab",
-			"surface": "search on nonpresented B while A active",
-			"expected": "refused",
-			"actual": {
-				"refused": true,
-				"message": "Error: Error invoking remote method 'browser-page-control': Error: The browser tab is no longer presented."
-			},
-			"verdict": "PASS",
-			"fidelity": "real IPC"
-		}
-	},
-	{
-		"name": "MATRIX S1-IPC",
-		"actual": {
-			"id": "S1-IPC",
-			"surface": "foreign real sender and invalid action",
-			"expected": "both refused",
-			"actual": {
-				"unauth": {
-					"refused": true,
-					"message": "This window cannot use the browser controls."
-				},
-				"invalid": {
-					"refused": true,
-					"message": "Error invoking remote method 'browser-page-control': Error: Invalid page control action."
-				}
-			},
-			"verdict": "PASS",
-			"fidelity": "actual registered handler/real renderer IPC"
-		}
-	},
-	{
-		"name": "MATRIX Z1-same-origin-isolation",
-		"actual": {
-			"id": "Z1-same-origin-isolation",
-			"surface": "human zoom A150, same-origin B100",
-			"expected": "isolated native view factors and app factor unchanged",
-			"actual": {
-				"zooms": [
-					{
-						"id": 4,
-						"url": "http://127.0.0.1:64930/one",
-						"visible": true,
-						"zoom": 1.5,
-						"mode": "isolated"
-					},
-					{
-						"id": 5,
-						"url": "http://127.0.0.1:64930/two",
-						"visible": false,
-						"zoom": 1,
-						"mode": "isolated"
-					}
-				],
-				"mainzoom": 1
-			},
-			"verdict": "PASS",
-			"fidelity": "DOM chords; real native getZoomFactor/getZoomMode"
-		}
-	},
-	{
-		"name": "frame zoom150-localoperatorlight",
-		"actual": {
-			"label": "zoom150-localoperatorlight",
-			"path": "/Users/damian/.local-operator/sessions/12bd9949bf0f/scratchpad/native-tmp/lo-browser-proof-56480/out/zoom150-localoperatorlight.png",
-			"bytes": 80791,
-			"pixels": {
-				"width": 2760,
-				"height": 1800
-			},
-			"viewport": {
-				"width": 1380,
-				"height": 900,
-				"devicePixelRatio": 2
-			}
-		}
-	},
-	{
-		"name": "frame zoom150-localoperatordark",
-		"actual": {
-			"label": "zoom150-localoperatordark",
-			"path": "/Users/damian/.local-operator/sessions/12bd9949bf0f/scratchpad/native-tmp/lo-browser-proof-56480/out/zoom150-localoperatordark.png",
-			"bytes": 81174,
-			"pixels": {
-				"width": 2760,
-				"height": 1800
-			},
-			"viewport": {
-				"width": 1380,
-				"height": 900,
-				"devicePixelRatio": 2
-			}
-		}
-	},
-	{
-		"name": "MATRIX S2-handover-reset",
-		"actual": {
-			"id": "S2-handover-reset",
-			"surface": "A150 user->synthetic session handover",
-			"expected": "view100 before capability is retrieved",
-			"actual": {
-				"afterHand": [
-					{
-						"id": 4,
-						"url": "http://127.0.0.1:64930/one",
-						"visible": true,
-						"zoom": 1,
-						"mode": "isolated"
-					},
-					{
-						"id": 5,
-						"url": "http://127.0.0.1:64930/two",
-						"visible": false,
-						"zoom": 1,
-						"mode": "isolated"
-					}
-				],
-				"sequence": [
-					{
-						"seq": 22,
-						"op": "zoom",
-						"id": 4,
-						"factor": 1
-					}
-				],
-				"tokenObtained": true,
-				"meta": {
-					"owner": "agent",
-					"url": "http://127.0.0.1:64930/one"
-				}
-			},
-			"verdict": "PASS",
-			"fidelity": "real handOver IPC then real tabs RPC; source ordering checked separately"
-		}
-	},
-	{
-		"name": "MATRIX S3-handed-zoom-chord",
-		"actual": {
-			"id": "S3-handed-zoom-chord",
-			"surface": "human zoom chord on handed view",
-			"expected": "100% + truthful notice",
-			"actual": {
-				"find": null,
-				"zoom": 1,
-				"zoomAllowed": false,
-				"notice": "Zoom is off for tabs an agent is driving"
-			},
-			"verdict": "PASS",
-			"fidelity": "DOM chord + real native zoom state"
-		}
-	},
-	{
-		"name": "MATRIX S4-agent-contract",
-		"actual": {
-			"id": "S4-agent-contract",
-			"surface": "agent read/styles/hit_test/screenshot after zoomed handover and find",
-			"expected": "find cleared100%,120x40 CSS target hits,nonempty native capture",
-			"actual": {
-				"beforeAgent": {
-					"find": {
-						"tabId": 1,
-						"query": "hello",
-						"ordinal": 0,
-						"matches": 0,
-						"pending": true,
-						"unreported": false
-					},
-					"zoom": 1,
-					"zoomAllowed": false,
-					"notice": "Zoom is off for tabs an agent is driving"
-				},
-				"afterAgent": {
-					"find": null,
-					"zoom": 1,
-					"zoomAllowed": false,
-					"notice": "Zoom is off for tabs an agent is driving"
-				},
-				"text": "Target",
-				"box": {
-					"x": 8,
-					"y": 42.5,
-					"top": 42.5,
-					"right": 128,
-					"bottom": 82.5,
-					"width": 120,
-					"height": 40
-				},
-				"top": "target",
-				"pngBytes": 24808
-			},
-			"verdict": "PASS",
-			"fidelity": "REAL agent RPC route"
-		}
-	},
-	{
-		"name": "MATRIX S5-agent-owned",
-		"actual": {
-			"id": "S5-agent-owned",
-			"surface": "zoom chord on independent agent-owned view",
-			"expected": "100% + notice and owner=agent",
-			"actual": {
-				"owner": "agent",
-				"controls": {
-					"find": null,
-					"zoom": 1,
-					"zoomAllowed": false,
-					"notice": "Zoom is off for tabs an agent is driving"
-				},
-				"pages": [
-					{
-						"id": 4,
-						"url": "http://127.0.0.1:64930/one",
-						"visible": false,
-						"zoom": 1,
-						"mode": "isolated"
-					},
-					{
-						"id": 5,
-						"url": "http://127.0.0.1:64930/two",
-						"visible": false,
-						"zoom": 1,
-						"mode": "isolated"
-					},
-					{
-						"id": 6,
-						"url": "http://127.0.0.1:64930/agent-owned",
-						"visible": true,
-						"zoom": 1,
-						"mode": "isolated"
-					}
-				]
-			},
-			"verdict": "PASS",
-			"fidelity": "DOM chord/real native ownership"
-		}
-	},
-	{
-		"name": "frame agent-notice-localoperatorlight",
-		"actual": {
-			"label": "agent-notice-localoperatorlight",
-			"path": "/Users/damian/.local-operator/sessions/12bd9949bf0f/scratchpad/native-tmp/lo-browser-proof-56480/out/agent-notice-localoperatorlight.png",
-			"bytes": 116809,
-			"pixels": {
-				"width": 2760,
-				"height": 1800
-			},
-			"viewport": {
-				"width": 1380,
-				"height": 900,
-				"devicePixelRatio": 2
-			}
-		}
-	},
-	{
-		"name": "frame agent-notice-localoperatordark",
-		"actual": {
-			"label": "agent-notice-localoperatordark",
-			"path": "/Users/damian/.local-operator/sessions/12bd9949bf0f/scratchpad/native-tmp/lo-browser-proof-56480/out/agent-notice-localoperatordark.png",
-			"bytes": 117695,
-			"pixels": {
-				"width": 2760,
-				"height": 1800
-			},
-			"viewport": {
-				"width": 1380,
-				"height": 900,
-				"devicePixelRatio": 2
-			}
-		}
-	},
-	{
-		"name": "MATRIX C1-chat-app",
-		"actual": {
-			"id": "C1-chat-app",
-			"surface": "chat +,-,0 thenF",
-			"expected": "app zoom1->1.1->1->1, browser find absent",
-			"actual": {
-				"chatBefore": 1,
-				"plus": 1.1,
-				"minus": 1,
-				"zero": 1,
-				"fkey": {
-					"prevented": false,
-					"find": false
-				},
-				"findState": {
-					"find": null,
-					"zoom": 1,
-					"zoomAllowed": false,
-					"notice": null
-				}
-			},
-			"verdict": "PASS",
-			"fidelity": "LISTENER app zoom; DOMF no literal transcript search claim"
-		}
-	},
-	{
-		"name": "MATRIX A1-double-close",
-		"actual": {
-			"id": "A1-double-close",
-			"surface": "keyboard CmdW twice from tab control",
-			"expected": "two distinct tabs gone,main alive",
-			"actual": {
-				"before": {
-					"label": "before",
-					"count": 4,
-					"active": 1,
-					"url": "http://127.0.0.1:64930/one",
-					"loading": false,
-					"tabs": [
-						{
-							"id": 1,
-							"url": "http://127.0.0.1:64930/one"
-						},
-						{
-							"id": 4,
-							"url": "http://127.0.0.1:64930/t0"
-						},
-						{
-							"id": 5,
-							"url": "http://127.0.0.1:64930/t1"
-						},
-						{
-							"id": 6,
-							"url": "http://127.0.0.1:64930/t2"
-						}
-					],
-					"domTabs": 4,
-					"presentedId": 4,
-					"presentedUrl": "http://127.0.0.1:64930/one"
-				},
-				"after": {
-					"label": "after",
-					"count": 2,
-					"active": 5,
-					"url": "http://127.0.0.1:64930/t1",
-					"loading": false,
-					"tabs": [
-						{
-							"id": 4,
-							"url": "http://127.0.0.1:64930/t0"
-						},
-						{
-							"id": 5,
-							"url": "http://127.0.0.1:64930/t1"
-						}
-					],
-					"domTabs": 2,
-					"presentedId": 8,
-					"presentedUrl": "http://127.0.0.1:64930/t1"
-				},
-				"windows": [
-					{
-						"id": 2,
-						"destroyed": false,
-						"url": "file:///Users/damian/local-operator-ui/.worktrees/qa-pr1101-r1/out/renderer/index.html#/browser",
-						"visible": false,
-						"focused": false
-					},
-					{
-						"id": 1,
-						"destroyed": false,
-						"url": "file:///Users/damian/local-operator-ui/.worktrees/qa-pr1101-r1/out/renderer/mini.html",
-						"visible": false,
-						"focused": false
-					}
-				]
-			},
-			"verdict": "PASS",
-			"fidelity": "DOM"
-		}
-	},
-	{
-		"name": "MATRIX A1-last-tab",
-		"actual": {
-			"id": "A1-last-tab",
-			"surface": "last tab close",
-			"expected": "fresh blank one tab",
-			"actual": {
-				"before": {
-					"label": "last before",
-					"count": 1,
-					"active": 4,
-					"url": "http://127.0.0.1:64930/one",
-					"loading": false,
-					"tabs": [
-						{
-							"id": 4,
-							"url": "http://127.0.0.1:64930/one"
-						}
-					],
-					"domTabs": 1,
-					"presentedId": 7,
-					"presentedUrl": "http://127.0.0.1:64930/one"
-				},
-				"after": {
-					"label": "last after",
-					"count": 1,
-					"active": 7,
-					"url": "about:blank",
-					"loading": false,
-					"tabs": [
-						{
-							"id": 7,
-							"url": "about:blank"
-						}
-					],
-					"domTabs": 1,
-					"presentedId": 10,
-					"presentedUrl": "about:blank"
-				}
-			},
-			"verdict": "PASS",
-			"fidelity": "DOM"
-		}
-	},
-	{
-		"name": "final",
-		"actual": {
-			"facts": {
-				"windowMode": "headless",
-				"appVersion": "0.34.44",
-				"platform": "darwin",
-				"title": "Local Operator",
-				"windowSize": {
-					"width": 1380,
-					"height": 900
-				},
-				"contentBounds": {
-					"width": 1380,
-					"height": 900
-				},
-				"visible": false,
-				"focused": false,
-				"minimized": false,
-				"frames": [
-					"no-result-localoperatorlight",
-					"no-result-localoperatordark",
-					"zoom150-localoperatorlight",
-					"zoom150-localoperatordark",
-					"agent-notice-localoperatorlight",
-					"agent-notice-localoperatordark"
-				],
-				"outDir": "/Users/damian/.local-operator/sessions/12bd9949bf0f/scratchpad/native-tmp/lo-browser-proof-56480/out"
-			},
-			"windows": [
-				{
-					"id": 2,
-					"destroyed": false,
-					"url": "file:///Users/damian/local-operator-ui/.worktrees/qa-pr1101-r1/out/renderer/index.html#/browser",
-					"visible": false,
-					"focused": false
-				},
-				{
-					"id": 1,
-					"destroyed": false,
-					"url": "file:///Users/damian/local-operator-ui/.worktrees/qa-pr1101-r1/out/renderer/mini.html",
-					"visible": false,
-					"focused": false
-				}
-			],
-			"observations": [
-				{
-					"seq": 1,
-					"op": "zoom",
-					"id": 4,
-					"factor": 1
-				},
-				{
-					"seq": 2,
-					"op": "zoom",
-					"id": 5,
-					"factor": 1
-				},
-				{
-					"seq": 3,
-					"op": "find",
-					"id": 4,
-					"query": "hello",
-					"options": {
-						"forward": true,
-						"findNext": false
-					},
-					"requestId": 1
-				},
-				{
-					"seq": 4,
-					"op": "find",
-					"id": 4,
-					"query": "hello",
-					"options": {
-						"forward": true,
-						"findNext": true
-					},
-					"requestId": 2
-				},
-				{
-					"seq": 5,
-					"op": "native-found",
-					"id": 4,
-					"result": {
-						"requestId": 2,
-						"matches": 3,
-						"selectionArea": {
-							"x": 8,
-							"y": 8,
-							"width": 32,
-							"height": 19
-						},
-						"activeMatchOrdinal": 1,
-						"finalUpdate": true
-					}
-				},
-				{
-					"seq": 6,
-					"op": "stop",
-					"id": 4,
-					"action": "clearSelection"
-				},
-				{
-					"seq": 7,
-					"op": "find",
-					"id": 4,
-					"query": "hello",
-					"options": {
-						"forward": true,
-						"findNext": true
-					},
-					"requestId": 3
-				},
-				{
-					"seq": 8,
-					"op": "native-found",
-					"id": 4,
-					"result": {
-						"requestId": 3,
-						"matches": 3,
-						"selectionArea": {
-							"x": 8,
-							"y": 8,
-							"width": 32,
-							"height": 19
-						},
-						"activeMatchOrdinal": 1,
-						"finalUpdate": true
-					}
-				},
-				{
-					"seq": 9,
-					"op": "stop",
-					"id": 4,
-					"action": "clearSelection"
-				},
-				{
-					"seq": 10,
-					"op": "find",
-					"id": 4,
-					"query": "hello",
-					"options": {
-						"forward": true,
-						"findNext": false
-					},
-					"requestId": 4
-				},
-				{
-					"seq": 11,
-					"op": "stop",
-					"id": 4,
-					"action": "clearSelection"
-				},
-				{
-					"seq": 12,
-					"op": "find",
-					"id": 4,
-					"query": "silence-check",
-					"options": {
-						"forward": true,
-						"findNext": false
-					},
-					"requestId": 5
-				},
-				{
-					"seq": 13,
-					"op": "stop",
-					"id": 4,
-					"action": "clearSelection"
-				},
-				{
-					"seq": 14,
-					"op": "stop",
-					"id": 4,
-					"action": "clearSelection"
-				},
-				{
-					"seq": 15,
-					"op": "find",
-					"id": 4,
-					"query": "hello",
-					"options": {
-						"forward": true,
-						"findNext": false
-					},
-					"requestId": 6
-				},
-				{
-					"seq": 16,
-					"op": "native-found",
-					"id": 4,
-					"result": {
-						"requestId": 10006,
-						"activeMatchOrdinal": 99,
-						"matches": 999,
-						"finalUpdate": true
-					}
-				},
-				{
-					"seq": 17,
-					"op": "native-found",
-					"id": 4,
-					"result": {
-						"requestId": 6,
-						"activeMatchOrdinal": 2,
-						"matches": 3,
-						"finalUpdate": true
-					}
-				},
-				{
-					"seq": 18,
-					"op": "stop",
-					"id": 4,
-					"action": "clearSelection"
-				},
-				{
-					"seq": 19,
-					"op": "zoom",
-					"id": 4,
-					"factor": 1.1
-				},
-				{
-					"seq": 20,
-					"op": "zoom",
-					"id": 4,
-					"factor": 1.25
-				},
-				{
-					"seq": 21,
-					"op": "zoom",
-					"id": 4,
-					"factor": 1.5
-				},
-				{
-					"seq": 22,
-					"op": "zoom",
-					"id": 4,
-					"factor": 1
-				},
-				{
-					"seq": 23,
-					"op": "find",
-					"id": 4,
-					"query": "hello",
-					"options": {
-						"forward": true,
-						"findNext": false
-					},
-					"requestId": 7
-				},
-				{
-					"seq": 24,
-					"op": "stop",
-					"id": 4,
-					"action": "clearSelection"
-				},
-				{
-					"seq": 25,
-					"op": "zoom",
-					"id": 4,
-					"factor": 1
-				},
-				{
-					"seq": 26,
-					"op": "zoom",
-					"id": 4,
-					"factor": 1
-				},
-				{
-					"seq": 27,
-					"op": "zoom",
-					"id": 4,
-					"factor": 1
-				},
-				{
-					"seq": 28,
-					"op": "zoom",
-					"id": 4,
-					"factor": 1
-				},
-				{
-					"seq": 29,
-					"op": "zoom",
-					"id": 6,
-					"factor": 1
-				},
-				{
-					"seq": 30,
-					"op": "zoom",
-					"id": 2,
-					"factor": 1.1
-				},
-				{
-					"seq": 31,
-					"op": "zoom",
-					"id": 2,
-					"factor": 1
-				},
-				{
-					"seq": 32,
-					"op": "zoom",
-					"id": 2,
-					"factor": 1
-				},
-				{
-					"seq": 33,
-					"op": "zoom",
-					"id": 7,
-					"factor": 1
-				},
-				{
-					"seq": 34,
-					"op": "zoom",
-					"id": 8,
-					"factor": 1
-				},
-				{
-					"seq": 35,
-					"op": "zoom",
-					"id": 9,
-					"factor": 1
-				},
-				{
-					"seq": 36,
-					"op": "zoom",
-					"id": 10,
-					"factor": 1
-				}
-			],
-			"resources": []
-		}
-	},
-	{
-		"name": "teardown",
-		"actual": {
-			"ownedPid": 56482,
-			"alive": false,
-			"scratch": "/Users/damian/.local-operator/sessions/12bd9949bf0f/scratchpad/native-tmp/lo-browser-proof-56480",
-			"out": "/Users/damian/.local-operator/sessions/12bd9949bf0f/scratchpad/native-tmp/lo-browser-proof-56480/out"
-		}
-	}
+  {
+    "name": "preflight",
+    "actual": {
+      "hello": {
+        "armed": true,
+        "outDir": "/Users/damian/.local-operator/sessions/12bd9949bf0f/scratchpad/native-tmp/lo-browser-proof-56480/out",
+        "title": "Local Operator",
+        "route": "/chat",
+        "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-pr1101-r1/out/renderer/index.html#/chat",
+        "theme": "localOperatorDark",
+        "viewport": {
+          "width": 1380,
+          "height": 900,
+          "devicePixelRatio": 2
+        },
+        "visibilityState": "visible",
+        "hasFocus": false,
+        "apiBaseUrl": "http://127.0.0.1:1",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) LocalOperator/0.34.44 Chrome/152.0.7977.78 Electron/44.3.0 Safari/537.36"
+      },
+      "facts": {
+        "windowMode": "headless",
+        "appVersion": "0.34.44",
+        "platform": "darwin",
+        "title": "Local Operator",
+        "windowSize": {
+          "width": 1380,
+          "height": 900
+        },
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        },
+        "visible": false,
+        "focused": false,
+        "minimized": false,
+        "frames": [],
+        "outDir": "/Users/damian/.local-operator/sessions/12bd9949bf0f/scratchpad/native-tmp/lo-browser-proof-56480/out"
+      },
+      "mf": [
+        {
+          "id": 2,
+          "destroyed": false,
+          "url": "file:///Users/damian/local-operator-ui/.worktrees/qa-pr1101-r1/out/renderer/index.html#/chat",
+          "visible": false,
+          "focused": false
+        },
+        {
+          "id": 1,
+          "destroyed": false,
+          "url": "file:///Users/damian/local-operator-ui/.worktrees/qa-pr1101-r1/out/renderer/mini.html",
+          "visible": false,
+          "focused": false
+        }
+      ],
+      "unauthorized": 401
+    }
+  },
+  {
+    "name": "menu actual",
+    "actual": {
+      "menus": [
+        {
+          "path": "/Local Operator",
+          "id": null,
+          "role": "hide",
+          "label": "Hide Local Operator",
+          "accelerator": "Command+H"
+        },
+        {
+          "path": "/Local Operator",
+          "id": null,
+          "role": "hideothers",
+          "label": "Hide Others",
+          "accelerator": "Command+Alt+H"
+        },
+        {
+          "path": "/Local Operator",
+          "id": null,
+          "role": "quit",
+          "label": "Quit Local Operator",
+          "accelerator": "CommandOrControl+Q"
+        },
+        {
+          "path": "/File",
+          "id": null,
+          "role": "quit",
+          "label": "Quit Local Operator",
+          "accelerator": "CommandOrControl+Q"
+        },
+        {
+          "path": "/Edit",
+          "id": null,
+          "role": "undo",
+          "label": "Undo",
+          "accelerator": "CommandOrControl+Z"
+        },
+        {
+          "path": "/Edit",
+          "id": null,
+          "role": "redo",
+          "label": "Redo",
+          "accelerator": "Shift+CommandOrControl+Z"
+        },
+        {
+          "path": "/Edit",
+          "id": null,
+          "role": "cut",
+          "label": "Cut",
+          "accelerator": "CommandOrControl+X"
+        },
+        {
+          "path": "/Edit",
+          "id": null,
+          "role": "copy",
+          "label": "Copy",
+          "accelerator": "CommandOrControl+C"
+        },
+        {
+          "path": "/Edit",
+          "id": null,
+          "role": "paste",
+          "label": "Paste",
+          "accelerator": "CommandOrControl+V"
+        },
+        {
+          "path": "/Edit",
+          "id": null,
+          "role": "selectall",
+          "label": "Select All",
+          "accelerator": "CommandOrControl+A"
+        },
+        {
+          "path": "/View",
+          "id": "app-reload",
+          "role": null,
+          "label": "Reload",
+          "accelerator": "CmdOrCtrl+R"
+        },
+        {
+          "path": "/View",
+          "id": "app-force-reload",
+          "role": null,
+          "label": "Force Reload",
+          "accelerator": "CmdOrCtrl+Shift+R"
+        },
+        {
+          "path": "/View",
+          "id": "app-actual-size",
+          "role": null,
+          "label": "Actual Size",
+          "accelerator": "CmdOrCtrl+0"
+        },
+        {
+          "path": "/View",
+          "id": "app-zoom-in",
+          "role": null,
+          "label": "Zoom In",
+          "accelerator": "CmdOrCtrl+Plus"
+        },
+        {
+          "path": "/View",
+          "id": "app-zoom-out",
+          "role": null,
+          "label": "Zoom Out",
+          "accelerator": "CmdOrCtrl+-"
+        },
+        {
+          "path": "/View",
+          "id": null,
+          "role": "togglefullscreen",
+          "label": "Toggle Full Screen",
+          "accelerator": "Control+Command+F"
+        },
+        {
+          "path": "/Window",
+          "id": null,
+          "role": "minimize",
+          "label": "Minimize",
+          "accelerator": "CommandOrControl+M"
+        },
+        {
+          "path": "/Window",
+          "id": "app-close",
+          "role": null,
+          "label": "Close Tab or Window",
+          "accelerator": "CmdOrCtrl+W"
+        }
+      ]
+    }
+  },
+  {
+    "name": "fixture/control",
+    "actual": {
+      "state": {
+        "pageControls": {
+          "find": null,
+          "zoom": 1,
+          "zoomAllowed": true,
+          "notice": null
+        },
+        "tabs": [
+          {
+            "tabId": 1,
+            "title": "QA /one",
+            "url": "http://127.0.0.1:64930/one",
+            "owner": "user",
+            "sessionId": null,
+            "active": true,
+            "restored": false,
+            "handedOver": false,
+            "failed": false,
+            "loading": false
+          },
+          {
+            "tabId": 2,
+            "title": "QA /two",
+            "url": "http://127.0.0.1:64930/two",
+            "owner": "user",
+            "sessionId": null,
+            "active": false,
+            "restored": false,
+            "handedOver": false,
+            "failed": false,
+            "loading": false
+          }
+        ],
+        "activeTabId": 1,
+        "transfers": {
+          "active": null,
+          "dir": null,
+          "notes": [],
+          "activeTabId": 1,
+          "recent": null
+        },
+        "url": "http://127.0.0.1:64930/one",
+        "title": "QA /one",
+        "loading": false,
+        "canGoBack": true,
+        "canGoForward": false,
+        "navFailure": null,
+        "pendingConsent": [],
+        "approvals": [],
+        "availability": {
+          "status": "ready",
+          "attempt": 1,
+          "maxAttempts": 3,
+          "message": null,
+          "canRetry": false
+        }
+      },
+      "nativeViews": [
+        {
+          "id": 4,
+          "url": "http://127.0.0.1:64930/one",
+          "visible": true,
+          "zoom": 1,
+          "mode": "isolated"
+        },
+        {
+          "id": 5,
+          "url": "http://127.0.0.1:64930/two",
+          "visible": false,
+          "zoom": 1,
+          "mode": "isolated"
+        }
+      ],
+      "text": {
+        "value": "hello alpha hello beta hello gamma\n\nTarget"
+      }
+    }
+  },
+  {
+    "name": "FIND real product first+followup",
+    "actual": {
+      "first": [
+        {
+          "seq": 3,
+          "op": "find",
+          "id": 4,
+          "query": "hello",
+          "options": {
+            "forward": true,
+            "findNext": false
+          },
+          "requestId": 1
+        }
+      ],
+      "follow": [
+        {
+          "seq": 3,
+          "op": "find",
+          "id": 4,
+          "query": "hello",
+          "options": {
+            "forward": true,
+            "findNext": false
+          },
+          "requestId": 1
+        },
+        {
+          "seq": 4,
+          "op": "find",
+          "id": 4,
+          "query": "hello",
+          "options": {
+            "forward": true,
+            "findNext": true
+          },
+          "requestId": 2
+        },
+        {
+          "seq": 5,
+          "op": "native-found",
+          "id": 4,
+          "result": {
+            "requestId": 2,
+            "matches": 3,
+            "selectionArea": {
+              "x": 8,
+              "y": 8,
+              "width": 32,
+              "height": 19
+            },
+            "activeMatchOrdinal": 1,
+            "finalUpdate": true
+          }
+        }
+      ],
+      "controls": {
+        "find": {
+          "tabId": 1,
+          "query": "hello",
+          "ordinal": 1,
+          "matches": 3,
+          "pending": false,
+          "unreported": false
+        },
+        "zoom": 1,
+        "zoomAllowed": true,
+        "notice": null
+      }
+    }
+  },
+  {
+    "name": "FIND opposite/control findNext=true",
+    "actual": {
+      "call": {
+        "id": 4,
+        "requestId": 3
+      },
+      "events": [
+        {
+          "seq": 6,
+          "op": "stop",
+          "id": 4,
+          "action": "clearSelection"
+        },
+        {
+          "seq": 7,
+          "op": "find",
+          "id": 4,
+          "query": "hello",
+          "options": {
+            "forward": true,
+            "findNext": true
+          },
+          "requestId": 3
+        },
+        {
+          "seq": 8,
+          "op": "native-found",
+          "id": 4,
+          "result": {
+            "requestId": 3,
+            "matches": 3,
+            "selectionArea": {
+              "x": 8,
+              "y": 8,
+              "width": 32,
+              "height": 19
+            },
+            "activeMatchOrdinal": 1,
+            "finalUpdate": true
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "FIND opposite/control findNext=false",
+    "actual": {
+      "call": {
+        "id": 4,
+        "requestId": 4
+      },
+      "events": [
+        {
+          "seq": 9,
+          "op": "stop",
+          "id": 4,
+          "action": "clearSelection"
+        },
+        {
+          "seq": 10,
+          "op": "find",
+          "id": 4,
+          "query": "hello",
+          "options": {
+            "forward": true,
+            "findNext": false
+          },
+          "requestId": 4
+        }
+      ]
+    }
+  },
+  {
+    "name": "MATRIX F1-real-timeout",
+    "actual": {
+      "id": "F1-real-timeout",
+      "surface": "real 5s observation, native no callback",
+      "expected": "pending stops and output says No result reported (unless a REAL callback arrived)",
+      "actual": {
+        "elapsedMs": 5307,
+        "controls": {
+          "find": {
+            "tabId": 1,
+            "query": "silence-check",
+            "ordinal": 0,
+            "matches": 0,
+            "pending": false,
+            "unreported": true
+          },
+          "zoom": 1,
+          "zoomAllowed": true,
+          "notice": null
+        },
+        "rendered": "No result reported",
+        "nativeFound": [
+          {
+            "seq": 5,
+            "op": "native-found",
+            "id": 4,
+            "result": {
+              "requestId": 2,
+              "matches": 3,
+              "selectionArea": {
+                "x": 8,
+                "y": 8,
+                "width": 32,
+                "height": 19
+              },
+              "activeMatchOrdinal": 1,
+              "finalUpdate": true
+            }
+          },
+          {
+            "seq": 8,
+            "op": "native-found",
+            "id": 4,
+            "result": {
+              "requestId": 3,
+              "matches": 3,
+              "selectionArea": {
+                "x": 8,
+                "y": 8,
+                "width": 32,
+                "height": 19
+              },
+              "activeMatchOrdinal": 1,
+              "finalUpdate": true
+            }
+          }
+        ]
+      },
+      "verdict": "PASS",
+      "fidelity": "real native call + real5s timer/UI; NOT synthetic result"
+    }
+  },
+  {
+    "name": "frame no-result-localoperatorlight",
+    "actual": {
+      "label": "no-result-localoperatorlight",
+      "path": "/Users/damian/.local-operator/sessions/12bd9949bf0f/scratchpad/native-tmp/lo-browser-proof-56480/out/no-result-localoperatorlight.png",
+      "bytes": 88667,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      }
+    }
+  },
+  {
+    "name": "frame no-result-localoperatordark",
+    "actual": {
+      "label": "no-result-localoperatordark",
+      "path": "/Users/damian/.local-operator/sessions/12bd9949bf0f/scratchpad/native-tmp/lo-browser-proof-56480/out/no-result-localoperatordark.png",
+      "bytes": 89054,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      }
+    }
+  },
+  {
+    "name": "MATRIX F2-request-fence",
+    "actual": {
+      "id": "F2-request-fence",
+      "surface": "wrong native request id then correct id",
+      "expected": "wrong ignored; correct synthetic result shows2/3",
+      "actual": {
+        "req": 6,
+        "bad": {
+          "find": {
+            "tabId": 1,
+            "query": "hello",
+            "ordinal": 0,
+            "matches": 0,
+            "pending": true,
+            "unreported": false
+          },
+          "zoom": 1,
+          "zoomAllowed": true,
+          "notice": null
+        },
+        "control": {
+          "find": {
+            "tabId": 1,
+            "query": "hello",
+            "ordinal": 2,
+            "matches": 3,
+            "pending": false,
+            "unreported": false
+          },
+          "zoom": 1,
+          "zoomAllowed": true,
+          "notice": null
+        }
+      },
+      "verdict": "PASS",
+      "fidelity": "SYNTHETIC found-in-page emission on installed real listener"
+    }
+  },
+  {
+    "name": "MATRIX F3-epoch-fence",
+    "actual": {
+      "id": "F3-epoch-fence",
+      "surface": "old captured listener called after document navigation",
+      "expected": "no find/count state leaks",
+      "actual": {
+        "epoch": {
+          "find": null,
+          "zoom": 1,
+          "zoomAllowed": true,
+          "notice": null
+        }
+      },
+      "verdict": "PASS",
+      "fidelity": "SYNTHETIC old listener invocation, real navigation epoch change"
+    }
+  },
+  {
+    "name": "MATRIX F4-explicit-tab",
+    "actual": {
+      "id": "F4-explicit-tab",
+      "surface": "search on nonpresented B while A active",
+      "expected": "refused",
+      "actual": {
+        "refused": true,
+        "message": "Error: Error invoking remote method 'browser-page-control': Error: The browser tab is no longer presented."
+      },
+      "verdict": "PASS",
+      "fidelity": "real IPC"
+    }
+  },
+  {
+    "name": "MATRIX S1-IPC",
+    "actual": {
+      "id": "S1-IPC",
+      "surface": "foreign real sender and invalid action",
+      "expected": "both refused",
+      "actual": {
+        "unauth": {
+          "refused": true,
+          "message": "This window cannot use the browser controls."
+        },
+        "invalid": {
+          "refused": true,
+          "message": "Error invoking remote method 'browser-page-control': Error: Invalid page control action."
+        }
+      },
+      "verdict": "PASS",
+      "fidelity": "actual registered handler/real renderer IPC"
+    }
+  },
+  {
+    "name": "MATRIX Z1-same-origin-isolation",
+    "actual": {
+      "id": "Z1-same-origin-isolation",
+      "surface": "human zoom A150, same-origin B100",
+      "expected": "isolated native view factors and app factor unchanged",
+      "actual": {
+        "zooms": [
+          {
+            "id": 4,
+            "url": "http://127.0.0.1:64930/one",
+            "visible": true,
+            "zoom": 1.5,
+            "mode": "isolated"
+          },
+          {
+            "id": 5,
+            "url": "http://127.0.0.1:64930/two",
+            "visible": false,
+            "zoom": 1,
+            "mode": "isolated"
+          }
+        ],
+        "mainzoom": 1
+      },
+      "verdict": "PASS",
+      "fidelity": "DOM chords; real native getZoomFactor/getZoomMode"
+    }
+  },
+  {
+    "name": "frame zoom150-localoperatorlight",
+    "actual": {
+      "label": "zoom150-localoperatorlight",
+      "path": "/Users/damian/.local-operator/sessions/12bd9949bf0f/scratchpad/native-tmp/lo-browser-proof-56480/out/zoom150-localoperatorlight.png",
+      "bytes": 80791,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      }
+    }
+  },
+  {
+    "name": "frame zoom150-localoperatordark",
+    "actual": {
+      "label": "zoom150-localoperatordark",
+      "path": "/Users/damian/.local-operator/sessions/12bd9949bf0f/scratchpad/native-tmp/lo-browser-proof-56480/out/zoom150-localoperatordark.png",
+      "bytes": 81174,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      }
+    }
+  },
+  {
+    "name": "MATRIX S2-handover-reset",
+    "actual": {
+      "id": "S2-handover-reset",
+      "surface": "A150 user->synthetic session handover",
+      "expected": "view100 before capability is retrieved",
+      "actual": {
+        "afterHand": [
+          {
+            "id": 4,
+            "url": "http://127.0.0.1:64930/one",
+            "visible": true,
+            "zoom": 1,
+            "mode": "isolated"
+          },
+          {
+            "id": 5,
+            "url": "http://127.0.0.1:64930/two",
+            "visible": false,
+            "zoom": 1,
+            "mode": "isolated"
+          }
+        ],
+        "sequence": [
+          {
+            "seq": 22,
+            "op": "zoom",
+            "id": 4,
+            "factor": 1
+          }
+        ],
+        "tokenObtained": true,
+        "meta": {
+          "owner": "agent",
+          "url": "http://127.0.0.1:64930/one"
+        }
+      },
+      "verdict": "PASS",
+      "fidelity": "real handOver IPC then real tabs RPC; source ordering checked separately"
+    }
+  },
+  {
+    "name": "MATRIX S3-handed-zoom-chord",
+    "actual": {
+      "id": "S3-handed-zoom-chord",
+      "surface": "human zoom chord on handed view",
+      "expected": "100% + truthful notice",
+      "actual": {
+        "find": null,
+        "zoom": 1,
+        "zoomAllowed": false,
+        "notice": "Zoom is off for tabs an agent is driving"
+      },
+      "verdict": "PASS",
+      "fidelity": "DOM chord + real native zoom state"
+    }
+  },
+  {
+    "name": "MATRIX S4-agent-contract",
+    "actual": {
+      "id": "S4-agent-contract",
+      "surface": "agent read/styles/hit_test/screenshot after zoomed handover and find",
+      "expected": "find cleared100%,120x40 CSS target hits,nonempty native capture",
+      "actual": {
+        "beforeAgent": {
+          "find": {
+            "tabId": 1,
+            "query": "hello",
+            "ordinal": 0,
+            "matches": 0,
+            "pending": true,
+            "unreported": false
+          },
+          "zoom": 1,
+          "zoomAllowed": false,
+          "notice": "Zoom is off for tabs an agent is driving"
+        },
+        "afterAgent": {
+          "find": null,
+          "zoom": 1,
+          "zoomAllowed": false,
+          "notice": "Zoom is off for tabs an agent is driving"
+        },
+        "text": "Target",
+        "box": {
+          "x": 8,
+          "y": 42.5,
+          "top": 42.5,
+          "right": 128,
+          "bottom": 82.5,
+          "width": 120,
+          "height": 40
+        },
+        "top": "target",
+        "pngBytes": 24808
+      },
+      "verdict": "PASS",
+      "fidelity": "REAL agent RPC route"
+    }
+  },
+  {
+    "name": "MATRIX S5-agent-owned",
+    "actual": {
+      "id": "S5-agent-owned",
+      "surface": "zoom chord on independent agent-owned view",
+      "expected": "100% + notice and owner=agent",
+      "actual": {
+        "owner": "agent",
+        "controls": {
+          "find": null,
+          "zoom": 1,
+          "zoomAllowed": false,
+          "notice": "Zoom is off for tabs an agent is driving"
+        },
+        "pages": [
+          {
+            "id": 4,
+            "url": "http://127.0.0.1:64930/one",
+            "visible": false,
+            "zoom": 1,
+            "mode": "isolated"
+          },
+          {
+            "id": 5,
+            "url": "http://127.0.0.1:64930/two",
+            "visible": false,
+            "zoom": 1,
+            "mode": "isolated"
+          },
+          {
+            "id": 6,
+            "url": "http://127.0.0.1:64930/agent-owned",
+            "visible": true,
+            "zoom": 1,
+            "mode": "isolated"
+          }
+        ]
+      },
+      "verdict": "PASS",
+      "fidelity": "DOM chord/real native ownership"
+    }
+  },
+  {
+    "name": "frame agent-notice-localoperatorlight",
+    "actual": {
+      "label": "agent-notice-localoperatorlight",
+      "path": "/Users/damian/.local-operator/sessions/12bd9949bf0f/scratchpad/native-tmp/lo-browser-proof-56480/out/agent-notice-localoperatorlight.png",
+      "bytes": 116809,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      }
+    }
+  },
+  {
+    "name": "frame agent-notice-localoperatordark",
+    "actual": {
+      "label": "agent-notice-localoperatordark",
+      "path": "/Users/damian/.local-operator/sessions/12bd9949bf0f/scratchpad/native-tmp/lo-browser-proof-56480/out/agent-notice-localoperatordark.png",
+      "bytes": 117695,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      }
+    }
+  },
+  {
+    "name": "MATRIX C1-chat-app",
+    "actual": {
+      "id": "C1-chat-app",
+      "surface": "chat +,-,0 thenF",
+      "expected": "app zoom1->1.1->1->1, browser find absent",
+      "actual": {
+        "chatBefore": 1,
+        "plus": 1.1,
+        "minus": 1,
+        "zero": 1,
+        "fkey": {
+          "prevented": false,
+          "find": false
+        },
+        "findState": {
+          "find": null,
+          "zoom": 1,
+          "zoomAllowed": false,
+          "notice": null
+        }
+      },
+      "verdict": "PASS",
+      "fidelity": "LISTENER app zoom; DOMF no literal transcript search claim"
+    }
+  },
+  {
+    "name": "MATRIX A1-double-close",
+    "actual": {
+      "id": "A1-double-close",
+      "surface": "keyboard CmdW twice from tab control",
+      "expected": "two distinct tabs gone,main alive",
+      "actual": {
+        "before": {
+          "label": "before",
+          "count": 4,
+          "active": 1,
+          "url": "http://127.0.0.1:64930/one",
+          "loading": false,
+          "tabs": [
+            {
+              "id": 1,
+              "url": "http://127.0.0.1:64930/one"
+            },
+            {
+              "id": 4,
+              "url": "http://127.0.0.1:64930/t0"
+            },
+            {
+              "id": 5,
+              "url": "http://127.0.0.1:64930/t1"
+            },
+            {
+              "id": 6,
+              "url": "http://127.0.0.1:64930/t2"
+            }
+          ],
+          "domTabs": 4,
+          "presentedId": 4,
+          "presentedUrl": "http://127.0.0.1:64930/one"
+        },
+        "after": {
+          "label": "after",
+          "count": 2,
+          "active": 5,
+          "url": "http://127.0.0.1:64930/t1",
+          "loading": false,
+          "tabs": [
+            {
+              "id": 4,
+              "url": "http://127.0.0.1:64930/t0"
+            },
+            {
+              "id": 5,
+              "url": "http://127.0.0.1:64930/t1"
+            }
+          ],
+          "domTabs": 2,
+          "presentedId": 8,
+          "presentedUrl": "http://127.0.0.1:64930/t1"
+        },
+        "windows": [
+          {
+            "id": 2,
+            "destroyed": false,
+            "url": "file:///Users/damian/local-operator-ui/.worktrees/qa-pr1101-r1/out/renderer/index.html#/browser",
+            "visible": false,
+            "focused": false
+          },
+          {
+            "id": 1,
+            "destroyed": false,
+            "url": "file:///Users/damian/local-operator-ui/.worktrees/qa-pr1101-r1/out/renderer/mini.html",
+            "visible": false,
+            "focused": false
+          }
+        ]
+      },
+      "verdict": "PASS",
+      "fidelity": "DOM"
+    }
+  },
+  {
+    "name": "MATRIX A1-last-tab",
+    "actual": {
+      "id": "A1-last-tab",
+      "surface": "last tab close",
+      "expected": "fresh blank one tab",
+      "actual": {
+        "before": {
+          "label": "last before",
+          "count": 1,
+          "active": 4,
+          "url": "http://127.0.0.1:64930/one",
+          "loading": false,
+          "tabs": [
+            {
+              "id": 4,
+              "url": "http://127.0.0.1:64930/one"
+            }
+          ],
+          "domTabs": 1,
+          "presentedId": 7,
+          "presentedUrl": "http://127.0.0.1:64930/one"
+        },
+        "after": {
+          "label": "last after",
+          "count": 1,
+          "active": 7,
+          "url": "about:blank",
+          "loading": false,
+          "tabs": [
+            {
+              "id": 7,
+              "url": "about:blank"
+            }
+          ],
+          "domTabs": 1,
+          "presentedId": 10,
+          "presentedUrl": "about:blank"
+        }
+      },
+      "verdict": "PASS",
+      "fidelity": "DOM"
+    }
+  },
+  {
+    "name": "final",
+    "actual": {
+      "facts": {
+        "windowMode": "headless",
+        "appVersion": "0.34.44",
+        "platform": "darwin",
+        "title": "Local Operator",
+        "windowSize": {
+          "width": 1380,
+          "height": 900
+        },
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        },
+        "visible": false,
+        "focused": false,
+        "minimized": false,
+        "frames": [
+          "no-result-localoperatorlight",
+          "no-result-localoperatordark",
+          "zoom150-localoperatorlight",
+          "zoom150-localoperatordark",
+          "agent-notice-localoperatorlight",
+          "agent-notice-localoperatordark"
+        ],
+        "outDir": "/Users/damian/.local-operator/sessions/12bd9949bf0f/scratchpad/native-tmp/lo-browser-proof-56480/out"
+      },
+      "windows": [
+        {
+          "id": 2,
+          "destroyed": false,
+          "url": "file:///Users/damian/local-operator-ui/.worktrees/qa-pr1101-r1/out/renderer/index.html#/browser",
+          "visible": false,
+          "focused": false
+        },
+        {
+          "id": 1,
+          "destroyed": false,
+          "url": "file:///Users/damian/local-operator-ui/.worktrees/qa-pr1101-r1/out/renderer/mini.html",
+          "visible": false,
+          "focused": false
+        }
+      ],
+      "observations": [
+        {
+          "seq": 1,
+          "op": "zoom",
+          "id": 4,
+          "factor": 1
+        },
+        {
+          "seq": 2,
+          "op": "zoom",
+          "id": 5,
+          "factor": 1
+        },
+        {
+          "seq": 3,
+          "op": "find",
+          "id": 4,
+          "query": "hello",
+          "options": {
+            "forward": true,
+            "findNext": false
+          },
+          "requestId": 1
+        },
+        {
+          "seq": 4,
+          "op": "find",
+          "id": 4,
+          "query": "hello",
+          "options": {
+            "forward": true,
+            "findNext": true
+          },
+          "requestId": 2
+        },
+        {
+          "seq": 5,
+          "op": "native-found",
+          "id": 4,
+          "result": {
+            "requestId": 2,
+            "matches": 3,
+            "selectionArea": {
+              "x": 8,
+              "y": 8,
+              "width": 32,
+              "height": 19
+            },
+            "activeMatchOrdinal": 1,
+            "finalUpdate": true
+          }
+        },
+        {
+          "seq": 6,
+          "op": "stop",
+          "id": 4,
+          "action": "clearSelection"
+        },
+        {
+          "seq": 7,
+          "op": "find",
+          "id": 4,
+          "query": "hello",
+          "options": {
+            "forward": true,
+            "findNext": true
+          },
+          "requestId": 3
+        },
+        {
+          "seq": 8,
+          "op": "native-found",
+          "id": 4,
+          "result": {
+            "requestId": 3,
+            "matches": 3,
+            "selectionArea": {
+              "x": 8,
+              "y": 8,
+              "width": 32,
+              "height": 19
+            },
+            "activeMatchOrdinal": 1,
+            "finalUpdate": true
+          }
+        },
+        {
+          "seq": 9,
+          "op": "stop",
+          "id": 4,
+          "action": "clearSelection"
+        },
+        {
+          "seq": 10,
+          "op": "find",
+          "id": 4,
+          "query": "hello",
+          "options": {
+            "forward": true,
+            "findNext": false
+          },
+          "requestId": 4
+        },
+        {
+          "seq": 11,
+          "op": "stop",
+          "id": 4,
+          "action": "clearSelection"
+        },
+        {
+          "seq": 12,
+          "op": "find",
+          "id": 4,
+          "query": "silence-check",
+          "options": {
+            "forward": true,
+            "findNext": false
+          },
+          "requestId": 5
+        },
+        {
+          "seq": 13,
+          "op": "stop",
+          "id": 4,
+          "action": "clearSelection"
+        },
+        {
+          "seq": 14,
+          "op": "stop",
+          "id": 4,
+          "action": "clearSelection"
+        },
+        {
+          "seq": 15,
+          "op": "find",
+          "id": 4,
+          "query": "hello",
+          "options": {
+            "forward": true,
+            "findNext": false
+          },
+          "requestId": 6
+        },
+        {
+          "seq": 16,
+          "op": "native-found",
+          "id": 4,
+          "result": {
+            "requestId": 10006,
+            "activeMatchOrdinal": 99,
+            "matches": 999,
+            "finalUpdate": true
+          }
+        },
+        {
+          "seq": 17,
+          "op": "native-found",
+          "id": 4,
+          "result": {
+            "requestId": 6,
+            "activeMatchOrdinal": 2,
+            "matches": 3,
+            "finalUpdate": true
+          }
+        },
+        {
+          "seq": 18,
+          "op": "stop",
+          "id": 4,
+          "action": "clearSelection"
+        },
+        {
+          "seq": 19,
+          "op": "zoom",
+          "id": 4,
+          "factor": 1.1
+        },
+        {
+          "seq": 20,
+          "op": "zoom",
+          "id": 4,
+          "factor": 1.25
+        },
+        {
+          "seq": 21,
+          "op": "zoom",
+          "id": 4,
+          "factor": 1.5
+        },
+        {
+          "seq": 22,
+          "op": "zoom",
+          "id": 4,
+          "factor": 1
+        },
+        {
+          "seq": 23,
+          "op": "find",
+          "id": 4,
+          "query": "hello",
+          "options": {
+            "forward": true,
+            "findNext": false
+          },
+          "requestId": 7
+        },
+        {
+          "seq": 24,
+          "op": "stop",
+          "id": 4,
+          "action": "clearSelection"
+        },
+        {
+          "seq": 25,
+          "op": "zoom",
+          "id": 4,
+          "factor": 1
+        },
+        {
+          "seq": 26,
+          "op": "zoom",
+          "id": 4,
+          "factor": 1
+        },
+        {
+          "seq": 27,
+          "op": "zoom",
+          "id": 4,
+          "factor": 1
+        },
+        {
+          "seq": 28,
+          "op": "zoom",
+          "id": 4,
+          "factor": 1
+        },
+        {
+          "seq": 29,
+          "op": "zoom",
+          "id": 6,
+          "factor": 1
+        },
+        {
+          "seq": 30,
+          "op": "zoom",
+          "id": 2,
+          "factor": 1.1
+        },
+        {
+          "seq": 31,
+          "op": "zoom",
+          "id": 2,
+          "factor": 1
+        },
+        {
+          "seq": 32,
+          "op": "zoom",
+          "id": 2,
+          "factor": 1
+        },
+        {
+          "seq": 33,
+          "op": "zoom",
+          "id": 7,
+          "factor": 1
+        },
+        {
+          "seq": 34,
+          "op": "zoom",
+          "id": 8,
+          "factor": 1
+        },
+        {
+          "seq": 35,
+          "op": "zoom",
+          "id": 9,
+          "factor": 1
+        },
+        {
+          "seq": 36,
+          "op": "zoom",
+          "id": 10,
+          "factor": 1
+        }
+      ],
+      "resources": []
+    }
+  },
+  {
+    "name": "teardown",
+    "actual": {
+      "ownedPid": 56482,
+      "alive": false,
+      "scratch": "/Users/damian/.local-operator/sessions/12bd9949bf0f/scratchpad/native-tmp/lo-browser-proof-56480",
+      "out": "/Users/damian/.local-operator/sessions/12bd9949bf0f/scratchpad/native-tmp/lo-browser-proof-56480/out"
+    }
+  }
 ]

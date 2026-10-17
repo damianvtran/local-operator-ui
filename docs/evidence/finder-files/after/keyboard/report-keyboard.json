@@ -1,179 +1,179 @@
 {
-	"label": "keyboard",
-	"session": "b1f1de000001",
-	"window": {
-		"width": 1380,
-		"height": 900
-	},
-	"themes": {
-		"dark": {
-			"frame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/keyboard/files-keyboard-dark.png",
-			"reading": {
-				"innerWidth": 1380,
-				"innerHeight": 900,
-				"dock": {
-					"x": 776,
-					"y": 32,
-					"w": 560,
-					"h": 868
-				},
-				"dockMode": "docked",
-				"scroller": {
-					"x": 776,
-					"y": 152,
-					"w": 560,
-					"h": 748
-				},
-				"rowCount": 2,
-				"rows": [
-					{
-						"text": "file-0000.png 10 KB A large chart promoted as the main deliverable.",
-						"box": {
-							"x": 784,
-							"y": 192,
-							"w": 544,
-							"h": 68
-						},
-						"insideDock": true,
-						"thumb": {
-							"decoded": true,
-							"naturalWidth": 640,
-							"naturalHeight": 384,
-							"srcScheme": "blob",
-							"box": {
-								"x": 788,
-								"y": 206,
-								"w": 40,
-								"h": 40
-							}
-						}
-					},
-					{
-						"text": "file-0002.md 0 KB Summary delivered alongside the chart.",
-						"box": {
-							"x": 784,
-							"y": 260,
-							"w": 544,
-							"h": 68
-						},
-						"insideDock": true,
-						"thumb": null
-					}
-				],
-				"header": "Mentioned ↑ Filter 5,002 files Open folder Highlights 2 file-0000.png 10 KB A large chart promoted as the main deliverable. file-0002.md 0 KB Summary delivered "
-			}
-		},
-		"light": {
-			"frame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/keyboard/files-keyboard-light.png",
-			"reading": {
-				"innerWidth": 1380,
-				"innerHeight": 900,
-				"dock": {
-					"x": 776,
-					"y": 32,
-					"w": 560,
-					"h": 868
-				},
-				"dockMode": "docked",
-				"scroller": {
-					"x": 776,
-					"y": 152,
-					"w": 560,
-					"h": 748
-				},
-				"rowCount": 2,
-				"rows": [
-					{
-						"text": "file-0000.png 10 KB A large chart promoted as the main deliverable.",
-						"box": {
-							"x": 784,
-							"y": 192,
-							"w": 544,
-							"h": 68
-						},
-						"insideDock": true,
-						"thumb": {
-							"decoded": true,
-							"naturalWidth": 640,
-							"naturalHeight": 384,
-							"srcScheme": "blob",
-							"box": {
-								"x": 788,
-								"y": 206,
-								"w": 40,
-								"h": 40
-							}
-						}
-					},
-					{
-						"text": "file-0002.md 0 KB Summary delivered alongside the chart.",
-						"box": {
-							"x": 784,
-							"y": 260,
-							"w": 544,
-							"h": 68
-						},
-						"insideDock": true,
-						"thumb": null
-					}
-				],
-				"header": "Mentioned ↑ Filter 5,002 files Open folder Highlights 2 file-0000.png 10 KB A large chart promoted as the main deliverable. file-0002.md 0 KB Summary delivered "
-			}
-		}
-	},
-	"facts": {
-		"windowMode": "headless",
-		"appVersion": "0.34.40",
-		"platform": "darwin",
-		"title": "Local Operator",
-		"windowSize": {
-			"width": 1380,
-			"height": 900
-		},
-		"contentBounds": {
-			"width": 1380,
-			"height": 900
-		},
-		"visible": false,
-		"focused": false,
-		"minimized": false,
-		"frames": [],
-		"outDir": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/keyboard"
-	},
-	"keyboard": [
-		{
-			"key": "ArrowDown",
-			"active": "file-0002.md\n0 KB\nSummary delivered alongside the chart."
-		},
-		{
-			"key": "ArrowDown",
-			"active": "Working files\n5000"
-		},
-		{
-			"key": "ArrowRight",
-			"active": "Working files\n5000"
-		},
-		{
-			"key": "ArrowDown",
-			"active": "Images\n1251"
-		},
-		{
-			"key": "ArrowDown",
-			"active": "file-0004.png\n0 KB"
-		},
-		{
-			"key": "ArrowRight",
-			"active": "file-0008.png\n0 KB"
-		}
-	],
-	"keyboardMenu": [
-		"Show in canvas",
-		"Expand image",
-		"Open file",
-		"Open folder",
-		"Copy file path",
-		"Copy image"
-	],
-	"keyboardFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/keyboard/finder-keyboard-keyboard-menu-light.png",
-	"slashSearch": "Search files by name or folder"
+  "label": "keyboard",
+  "session": "b1f1de000001",
+  "window": {
+    "width": 1380,
+    "height": 900
+  },
+  "themes": {
+    "dark": {
+      "frame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/keyboard/files-keyboard-dark.png",
+      "reading": {
+        "innerWidth": 1380,
+        "innerHeight": 900,
+        "dock": {
+          "x": 776,
+          "y": 32,
+          "w": 560,
+          "h": 868
+        },
+        "dockMode": "docked",
+        "scroller": {
+          "x": 776,
+          "y": 152,
+          "w": 560,
+          "h": 748
+        },
+        "rowCount": 2,
+        "rows": [
+          {
+            "text": "file-0000.png 10 KB A large chart promoted as the main deliverable.",
+            "box": {
+              "x": 784,
+              "y": 192,
+              "w": 544,
+              "h": 68
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 640,
+              "naturalHeight": 384,
+              "srcScheme": "blob",
+              "box": {
+                "x": 788,
+                "y": 206,
+                "w": 40,
+                "h": 40
+              }
+            }
+          },
+          {
+            "text": "file-0002.md 0 KB Summary delivered alongside the chart.",
+            "box": {
+              "x": 784,
+              "y": 260,
+              "w": 544,
+              "h": 68
+            },
+            "insideDock": true,
+            "thumb": null
+          }
+        ],
+        "header": "Mentioned ↑ Filter 5,002 files Open folder Highlights 2 file-0000.png 10 KB A large chart promoted as the main deliverable. file-0002.md 0 KB Summary delivered "
+      }
+    },
+    "light": {
+      "frame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/keyboard/files-keyboard-light.png",
+      "reading": {
+        "innerWidth": 1380,
+        "innerHeight": 900,
+        "dock": {
+          "x": 776,
+          "y": 32,
+          "w": 560,
+          "h": 868
+        },
+        "dockMode": "docked",
+        "scroller": {
+          "x": 776,
+          "y": 152,
+          "w": 560,
+          "h": 748
+        },
+        "rowCount": 2,
+        "rows": [
+          {
+            "text": "file-0000.png 10 KB A large chart promoted as the main deliverable.",
+            "box": {
+              "x": 784,
+              "y": 192,
+              "w": 544,
+              "h": 68
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 640,
+              "naturalHeight": 384,
+              "srcScheme": "blob",
+              "box": {
+                "x": 788,
+                "y": 206,
+                "w": 40,
+                "h": 40
+              }
+            }
+          },
+          {
+            "text": "file-0002.md 0 KB Summary delivered alongside the chart.",
+            "box": {
+              "x": 784,
+              "y": 260,
+              "w": 544,
+              "h": 68
+            },
+            "insideDock": true,
+            "thumb": null
+          }
+        ],
+        "header": "Mentioned ↑ Filter 5,002 files Open folder Highlights 2 file-0000.png 10 KB A large chart promoted as the main deliverable. file-0002.md 0 KB Summary delivered "
+      }
+    }
+  },
+  "facts": {
+    "windowMode": "headless",
+    "appVersion": "0.34.40",
+    "platform": "darwin",
+    "title": "Local Operator",
+    "windowSize": {
+      "width": 1380,
+      "height": 900
+    },
+    "contentBounds": {
+      "width": 1380,
+      "height": 900
+    },
+    "visible": false,
+    "focused": false,
+    "minimized": false,
+    "frames": [],
+    "outDir": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/keyboard"
+  },
+  "keyboard": [
+    {
+      "key": "ArrowDown",
+      "active": "file-0002.md\n0 KB\nSummary delivered alongside the chart."
+    },
+    {
+      "key": "ArrowDown",
+      "active": "Working files\n5000"
+    },
+    {
+      "key": "ArrowRight",
+      "active": "Working files\n5000"
+    },
+    {
+      "key": "ArrowDown",
+      "active": "Images\n1251"
+    },
+    {
+      "key": "ArrowDown",
+      "active": "file-0004.png\n0 KB"
+    },
+    {
+      "key": "ArrowRight",
+      "active": "file-0008.png\n0 KB"
+    }
+  ],
+  "keyboardMenu": [
+    "Show in canvas",
+    "Expand image",
+    "Open file",
+    "Open folder",
+    "Copy file path",
+    "Copy image"
+  ],
+  "keyboardFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/keyboard/finder-keyboard-keyboard-menu-light.png",
+  "slashSearch": "Search files by name or folder"
 }

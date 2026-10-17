@@ -26,9 +26,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 let page = null;
 for (let i = 0; i < 60; i += 1) {
 	try {
-		const list = await (
-			await fetch(`http://127.0.0.1:${PORT}/json/list`)
-		).json();
+		const list = await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json();
 		page = list.find((t) => t.type === "page" && t.url.includes("#/"));
 		if (page) break;
 	} catch {}
@@ -44,9 +42,7 @@ ws.onmessage = (event) => {
 	if (msg.id && pending.has(msg.id)) {
 		const { resolve, reject } = pending.get(msg.id);
 		pending.delete(msg.id);
-		msg.error
-			? reject(new Error(JSON.stringify(msg.error)))
-			: resolve(msg.result);
+		msg.error ? reject(new Error(JSON.stringify(msg.error))) : resolve(msg.result);
 	}
 };
 await new Promise((r) => (ws.onopen = r));
@@ -123,16 +119,13 @@ await wait(300);
 const chatBytes = await shot("frame-chat.png");
 
 const result = {
-	port: PORT,
-	route: ROUTE,
-	rafPerSecond,
-	shellFrameBytes: shellBytes,
-	chatFrameBytes: chatBytes,
-	...metrics,
+  port: PORT,
+  route: ROUTE,
+  rafPerSecond,
+  shellFrameBytes: shellBytes,
+  chatFrameBytes: chatBytes,
+  ...metrics,
 };
-writeFileSync(
-	join(OUT, "metrics.json"),
-	`${JSON.stringify(result, null, 2)}\n`,
-);
+writeFileSync(join(OUT, "metrics.json"), `${JSON.stringify(result, null, 2)}\n`);
 console.log(`DRIVE ${JSON.stringify(result)}`);
 process.exit(0);

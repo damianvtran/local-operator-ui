@@ -35,16 +35,12 @@
  */
 const [port, scratch, mode, appPid, route = "action"] = process.argv.slice(2);
 if (!port || !scratch || !mode || !appPid) {
-	console.error(
-		"usage: drive.mjs <inspectPort> <scratch> <mode> <appPid> [action|panel]",
-	);
+	console.error("usage: drive.mjs <inspectPort> <scratch> <mode> <appPid> [action|panel]");
 	process.exit(2);
 }
 
 /** The inspector's own answer for "which target", read once. */
-const targets = await (
-	await fetch(`http://127.0.0.1:${port}/json/list`)
-).json();
+const targets = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
 const target = targets[0];
 if (!target?.webSocketDebuggerUrl) {
 	console.error("FAIL: no inspector target on the port this rig owns");
@@ -180,15 +176,9 @@ const probe = `(() => {
 })()`;
 
 const before = await evaluate(probe);
-console.log(
-	`== app identity (its own answer): name=${before.appName} version=${before.appVersion} electron=${before.electronVersion} packaged=${before.isPackaged}`,
-);
-console.log(
-	`== About menu entries: ${before.aboutItems.join(" | ") || "(none)"}`,
-);
-console.log(
-	`== active before the action: ${before.isActive}; windows: ${JSON.stringify(before.windows)}`,
-);
+console.log(`== app identity (its own answer): name=${before.appName} version=${before.appVersion} electron=${before.electronVersion} packaged=${before.isPackaged}`);
+console.log(`== About menu entries: ${before.aboutItems.join(" | ") || "(none)"}`);
+console.log(`== active before the action: ${before.isActive}; windows: ${JSON.stringify(before.windows)}`);
 
 if (before.aboutItems.length === 0) {
 	console.error("FAIL: the application menu has no About entry to invoke");
@@ -230,9 +220,7 @@ const invoked = await evaluate(`(() => {
 	app.showAboutPanel();
 	return { invoked: entry.label, route: "app.showAboutPanel() (role=" + (entry.item.role ?? "none") + ")", reason: "the item is AppKit's own action, so the panel is raised through the call that action makes" };
 })()`);
-console.log(
-	`== invoked: ${invoked.invoked ?? "(none)"} via ${invoked.route ?? "(nothing)"} - ${invoked.reason}`,
-);
+console.log(`== invoked: ${invoked.invoked ?? "(none)"} via ${invoked.route ?? "(nothing)"} - ${invoked.reason}`);
 
 if (invoked.route === "none") {
 	console.error("FAIL: nothing was invoked, so this run measured nothing");
@@ -244,8 +232,6 @@ if (invoked.route === "none") {
 await new Promise((resolve) => setTimeout(resolve, 2_000));
 
 const after = await evaluate(probe);
-console.log(
-	`== active after the action: ${after.isActive}; windows: ${JSON.stringify(after.windows)}`,
-);
+console.log(`== active after the action: ${after.isActive}; windows: ${JSON.stringify(after.windows)}`);
 console.log(`== driver: mode=${mode} appPid=${appPid} scratch=${scratch}`);
 socket.close();

@@ -81,9 +81,7 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 let page = null;
 for (let i = 0; i < 60; i += 1) {
 	try {
-		const list = await (
-			await fetch(`http://127.0.0.1:${PORT}/json/list`)
-		).json();
+		const list = await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json();
 		page = list.find((t) => t.type === "page" && t.url.includes("#/"));
 		if (page) break;
 	} catch {}
@@ -99,9 +97,7 @@ ws.onmessage = (event) => {
 	if (msg.id && pending.has(msg.id)) {
 		const { resolve, reject } = pending.get(msg.id);
 		pending.delete(msg.id);
-		msg.error
-			? reject(new Error(JSON.stringify(msg.error)))
-			: resolve(msg.result);
+		msg.error ? reject(new Error(JSON.stringify(msg.error))) : resolve(msg.result);
 	}
 };
 await new Promise((r) => (ws.onopen = r));
@@ -364,8 +360,7 @@ for (let i = 0; i < 80; i += 1) {
 	if (heading !== null) break;
 	await wait(250);
 }
-if (heading === null)
-	throw new Error("no Previous chats heading in the sidebar");
+if (heading === null) throw new Error("no Previous chats heading in the sidebar");
 if (heading.expanded === "false") {
 	await mouse("mouseMoved", heading.x, heading.y);
 	await wait(150);
@@ -415,11 +410,7 @@ await wait(300);
 const above = selectedProbe.rows[selectedProbe.currentIndex - 1];
 if (above === undefined)
 	throw new Error("no sibling above the selected row to hover");
-await mouse(
-	"mouseMoved",
-	above.rect.x + above.rect.width / 2,
-	above.rect.y + above.rect.height / 2,
-);
+await mouse("mouseMoved", above.rect.x + above.rect.width / 2, above.rect.y + above.rect.height / 2);
 await wait(400);
 const siblingHover = await record(
 	"selected-sibling-hover",
@@ -538,10 +529,7 @@ if (process.env.COMPARISON === "1") {
 	  current.style.backgroundColor = ${JSON.stringify(tint.hex)};
 	})()`);
 	await wait(300);
-	await record(
-		"comparison-accent-tint",
-		await capture("comparison-accent-tint"),
-	);
+	await record("comparison-accent-tint", await capture("comparison-accent-tint"));
 	await evaluate(`(() => {
 	  const rows = [...document.querySelectorAll('[data-chat-row]')];
 	  const current = rows.find((r) => r.getAttribute('aria-current') === 'page');
@@ -551,10 +539,7 @@ if (process.env.COMPARISON === "1") {
 }
 
 await pressRow("All chats");
-const allChats = await record(
-	"all-chats",
-	await capture(`${PREFIX}-all-chats`),
-);
+const allChats = await record("all-chats", await capture(`${PREFIX}-all-chats`));
 await pressRow("All chats");
 
 await pressRow("New chat");
@@ -568,20 +553,14 @@ const newChat = await record("new-chat", await capture(`${PREFIX}-new-chat`));
  * judge because the store had no bound session in it.
  */
 await pressRow("Architect handoff");
-const bound = await record(
-	"selected-bound",
-	await capture(`${PREFIX}-selected-bound`),
-);
+const bound = await record("selected-bound", await capture(`${PREFIX}-selected-bound`));
 const boundText = await markedRowText();
 
 const disclosure = await rectFor("Expand architect chats");
 if (disclosure === null)
 	throw new Error("no `architect` entity row with a disclosure to expand");
 await pressRect(disclosure);
-const nested = await record(
-	"nested-current",
-	await capture(`${PREFIX}-nested-current`),
-);
+const nested = await record("nested-current", await capture(`${PREFIX}-nested-current`));
 
 /*
  * THE ENTITY ROW STAGING A TARGETED DRAFT — at rest, then under the pointer.
@@ -602,10 +581,7 @@ await mouse(
 );
 await wait(400);
 const entityDraftHover = await evaluate(ENTITY_PROBE("architect"));
-await record(
-	"entity-draft-hover",
-	await capture(`${PREFIX}-entity-draft-hover`),
-);
+await record("entity-draft-hover", await capture(`${PREFIX}-entity-draft-hover`));
 await mouse("mouseMoved", 4, 4);
 await wait(250);
 
@@ -769,10 +745,7 @@ const report = {
 		background: hex(hovered.current.background),
 		deltaEFromPanel: r2(deltaE(hex(hovered.current.background), panelGround)),
 		deltaEFromSelected: r2(
-			deltaE(
-				hex(hovered.current.background),
-				hex(selectedProbe.current.background),
-			),
+			deltaE(hex(hovered.current.background), hex(selectedProbe.current.background)),
 		),
 		classes: hovered.current.classes,
 	},
@@ -805,16 +778,9 @@ const report = {
 	siblingHover: {
 		label: sibling?.label ?? null,
 		background: sibling ? hex(sibling.background) : null,
-		deltaEFromPanel: sibling
-			? r2(deltaE(hex(sibling.background), panelGround))
-			: null,
+		deltaEFromPanel: sibling ? r2(deltaE(hex(sibling.background), panelGround)) : null,
 		deltaEFromSelected: sibling
-			? r2(
-					deltaE(
-						hex(sibling.background),
-						hex(selectedProbe.current.background),
-					),
-				)
+			? r2(deltaE(hex(sibling.background), hex(selectedProbe.current.background)))
 			: null,
 	},
 	bound: {
@@ -844,10 +810,7 @@ const report = {
 					active: hex(railSecond.active.background),
 					label: railSecond.active.label,
 					deltaE: r2(
-						deltaE(
-							hex(railSecond.active.background),
-							hex(railSecond.rail.background),
-						),
+						deltaE(hex(railSecond.active.background), hex(railSecond.rail.background)),
 					),
 				},
 	settingsRail: {

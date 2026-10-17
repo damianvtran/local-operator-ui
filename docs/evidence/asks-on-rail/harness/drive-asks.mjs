@@ -158,18 +158,11 @@ const at = (name) => `#/chat/${SESSION[name]}`;
 /* The conversation column, by the app's own layout handle (see `rig-lib.mjs`). */
 const COLUMN = `document.querySelector('[data-tour-tag="chat-column"]') !== null`;
 const paneDrawn = (pane) => {
-	const hook = {
-		canvas: "canvas-dock",
-		run: "run-panel-dock",
-		browser: "browser-pane-slot",
-		console: "console-pane-slot",
-		ask: "ask-drawer-slot",
-	}[pane];
+	const hook = { canvas: "canvas-dock", run: "run-panel-dock", browser: "browser-pane-slot", console: "console-pane-slot", ask: "ask-drawer-slot" }[pane];
 	return `document.querySelector('[data-tour-tag="${hook}"]') !== null`;
 };
 const drawerUp = `document.querySelector(${JSON.stringify(DRAWER)}) !== null`;
-const stateStep = (expression) =>
-	`window.__loDevDriver.call("state").${expression}`;
+const stateStep = (expression) => `window.__loDevDriver.call("state").${expression}`;
 
 /* ============================ page-side readers ============================== */
 
@@ -192,16 +185,12 @@ const doorSource = () => {
 	const door = document.querySelector('[data-tour-tag="ask-pane-trigger"]');
 	const rail = door ? door.closest("[data-panel-rail]") : null;
 	const header = door ? door.closest('[data-tour-tag="chat-header"]') : null;
-	const badge = door
-		? door.querySelector('[data-tour-tag="ask-pane-badge"]')
-		: null;
-	const items = [...document.querySelectorAll("[data-panel-rail-item]")].map(
-		(el) => ({
-			id: el.getAttribute("data-panel-rail-item"),
-			pressed: el.getAttribute("aria-pressed"),
-			label: (el.getAttribute("aria-label") ?? "").replace(/\s+/g, " ").trim(),
-		}),
-	);
+	const badge = door ? door.querySelector('[data-tour-tag="ask-pane-badge"]') : null;
+	const items = [...document.querySelectorAll("[data-panel-rail-item]")].map((el) => ({
+		id: el.getAttribute("data-panel-rail-item"),
+		pressed: el.getAttribute("aria-pressed"),
+		label: (el.getAttribute("aria-label") ?? "").replace(/\s+/g, " ").trim(),
+	}));
 	const surfaces = document.querySelector("[data-lo-ask-surfaces]");
 	return {
 		door: {
@@ -220,9 +209,7 @@ const doorSource = () => {
 			present: document.querySelector("[data-panel-rail]") !== null,
 			itemCount: items.length,
 			items,
-			lit: items
-				.filter((item) => item.pressed === "true")
-				.map((item) => item.id),
+			lit: items.filter((item) => item.pressed === "true").map((item) => item.id),
 		},
 		drawer: {
 			up: Boolean(surfaces),
@@ -252,14 +239,11 @@ const menuSource = () => {
 			el.getAttribute("aria-disabled") === "true" ||
 			el.hasAttribute("data-disabled"),
 	}));
-	const PANEL =
-		/^(Run details|Open asks|Close asks|Open browser|Close browser|Open console|Close console|Open canvas|Close canvas)$/;
+	const PANEL = /^(Run details|Open asks|Close asks|Open browser|Close browser|Open console|Close console|Open canvas|Close canvas)$/;
 	return {
 		open: true,
 		items,
-		panelRows: items
-			.map((item) => item.text)
-			.filter((text) => PANEL.test(text)),
+		panelRows: items.map((item) => item.text).filter((text) => PANEL.test(text)),
 		count: items.length,
 	};
 };
@@ -280,10 +264,7 @@ const openPageFor = (url, arm, outDir, options = {}) =>
 
 /** Wait for the composer: the conversation (or the draft) is up. */
 const ready = (page) =>
-	page.waitFor(
-		`document.querySelector('${COMPOSER}') !== null`,
-		"the composer",
-	);
+	page.waitFor(`document.querySelector('${COMPOSER}') !== null`, "the composer");
 
 const openAt = async (page, key) => {
 	await page.open(at(key));
@@ -351,10 +332,7 @@ const CASES = [
 			await openAt(page, "B");
 			await wait(SETTLE);
 			await page.press(MENU_TRIGGER, "the conversation-actions menu trigger");
-			await page.waitFor(
-				`document.querySelector('${MENU}') !== null`,
-				"the menu",
-			);
+			await page.waitFor(`document.querySelector('${MENU}') !== null`, "the menu");
 			await wait(600);
 			const reading = {
 				menu: await readMenu(page),
@@ -375,10 +353,7 @@ const CASES = [
 			await openAt(page, "B");
 			await wait(SETTLE);
 			await page.press(MENU_TRIGGER, "the conversation-actions menu trigger");
-			await page.waitFor(
-				`document.querySelector('${MENU}') !== null`,
-				"the menu",
-			);
+			await page.waitFor(`document.querySelector('${MENU}') !== null`, "the menu");
 			await wait(600);
 			const reading = {
 				menu: await readMenu(page),
@@ -489,10 +464,7 @@ const CASES = [
 			await openAt(page, "B");
 			await wait(SETTLE);
 			await page.pressNewChat();
-			await page.waitFor(
-				`${stateStep("activeDraftKey")} !== null`,
-				"the draft",
-			);
+			await page.waitFor(`${stateStep("activeDraftKey")} !== null`, "the draft");
 			await ready(page);
 			await wait(SETTLE);
 			/*
@@ -528,15 +500,7 @@ const CASES = [
  * cases run with B's queue empty for the same reason. Sorted rather than authored
  * in this order so the list above stays readable.
  */
-const RUN_ORDER = [
-	"rail-closed",
-	"pane-open",
-	"menu-open",
-	"menu-open-1024",
-	"swap",
-	"ask-open",
-	"fleet-draft",
-];
+const RUN_ORDER = ["rail-closed", "pane-open", "menu-open", "menu-open-1024", "swap", "ask-open", "fleet-draft"];
 for (const testCase of CASES) {
 	if (!RUN_ORDER.includes(testCase.name)) {
 		throw new Error(`case ${testCase.name} is missing from RUN_ORDER`);
@@ -603,18 +567,13 @@ try {
 		await wait(SETTLE);
 		out.railClosed = { probe: await page.probe(), door: await readDoor(page) };
 		await page.press(MENU_TRIGGER, "the conversation-actions menu trigger");
-		await page.waitFor(
-			`document.querySelector('${MENU}') !== null`,
-			"the menu",
-		);
+		await page.waitFor(`document.querySelector('${MENU}') !== null`, "the menu");
 		out.menu = await readMenu(page);
 		report.explore = out;
 		await page.close();
 	} else {
 		mkdirSync(OUT, { recursive: true });
-		const arms = ["before", "after"].filter((arm) =>
-			arm === "before" ? BEFORE : AFTER,
-		);
+		const arms = ["before", "after"].filter((arm) => (arm === "before" ? BEFORE : AFTER));
 		for (const arm of arms) {
 			report.arms[arm] = {};
 			for (const testCase of CASES) {

@@ -1,11 +1,11 @@
 [
-	{
-		"at": "2026-10-15T05:08:40.323723-04:00",
-		"phase": "lease granted before ONE build",
-		"availableKiB": 25939036,
-		"availableGiB": 24.73739242553711,
-		"swapFreeMiB": 1469.81,
-		"swapUsedDiagnosticMiB": 10818.19,
-		"memoryFreePct": 50
-	}
+  {
+    "at": "2026-10-15T05:08:40.323723-04:00",
+    "phase": "lease granted before ONE build",
+    "availableKiB": 25939036,
+    "availableGiB": 24.73739242553711,
+    "swapFreeMiB": 1469.81,
+    "swapUsedDiagnosticMiB": 10818.19,
+    "memoryFreePct": 50
+  }
 ]

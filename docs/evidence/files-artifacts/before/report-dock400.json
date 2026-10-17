@@ -1,99 +1,99 @@
 {
-	"label": "dock400",
-	"session": "a1f0c0de0001",
-	"window": {
-		"width": 1184,
-		"height": 800
-	},
-	"themes": {
-		"dark": {
-			"frame": "<scratch>/evidence/frames2/before/files-dock400-dark.png",
-			"reading": {
-				"innerWidth": 1184,
-				"innerHeight": 800,
-				"dock": {
-					"x": 740,
-					"y": 32,
-					"w": 400,
-					"h": 768
-				},
-				"dockMode": "docked",
-				"scroller": {
-					"x": 740,
-					"y": 116,
-					"w": 400,
-					"h": 684
-				},
-				"rowCount": 1,
-				"rows": [
-					{
-						"text": "promo-notes.md",
-						"box": {
-							"x": 748,
-							"y": 124,
-							"w": 384,
-							"h": 36
-						},
-						"insideDock": true,
-						"thumb": null
-					}
-				],
-				"header": "Filter 1 file promo-notes.md"
-			}
-		},
-		"light": {
-			"frame": "<scratch>/evidence/frames2/before/files-dock400-light.png",
-			"reading": {
-				"innerWidth": 1184,
-				"innerHeight": 800,
-				"dock": {
-					"x": 740,
-					"y": 32,
-					"w": 400,
-					"h": 768
-				},
-				"dockMode": "docked",
-				"scroller": {
-					"x": 740,
-					"y": 116,
-					"w": 400,
-					"h": 684
-				},
-				"rowCount": 1,
-				"rows": [
-					{
-						"text": "promo-notes.md",
-						"box": {
-							"x": 748,
-							"y": 124,
-							"w": 384,
-							"h": 36
-						},
-						"insideDock": true,
-						"thumb": null
-					}
-				],
-				"header": "Filter 1 file promo-notes.md"
-			}
-		}
-	},
-	"facts": {
-		"windowMode": "headless",
-		"appVersion": "0.34.40",
-		"platform": "darwin",
-		"title": "Local Operator",
-		"windowSize": {
-			"width": 1184,
-			"height": 800
-		},
-		"contentBounds": {
-			"width": 1184,
-			"height": 800
-		},
-		"visible": false,
-		"focused": false,
-		"minimized": false,
-		"frames": [],
-		"outDir": "<scratch>/evidence/frames2/before"
-	}
+  "label": "dock400",
+  "session": "a1f0c0de0001",
+  "window": {
+    "width": 1184,
+    "height": 800
+  },
+  "themes": {
+    "dark": {
+      "frame": "<scratch>/evidence/frames2/before/files-dock400-dark.png",
+      "reading": {
+        "innerWidth": 1184,
+        "innerHeight": 800,
+        "dock": {
+          "x": 740,
+          "y": 32,
+          "w": 400,
+          "h": 768
+        },
+        "dockMode": "docked",
+        "scroller": {
+          "x": 740,
+          "y": 116,
+          "w": 400,
+          "h": 684
+        },
+        "rowCount": 1,
+        "rows": [
+          {
+            "text": "promo-notes.md",
+            "box": {
+              "x": 748,
+              "y": 124,
+              "w": 384,
+              "h": 36
+            },
+            "insideDock": true,
+            "thumb": null
+          }
+        ],
+        "header": "Filter 1 file promo-notes.md"
+      }
+    },
+    "light": {
+      "frame": "<scratch>/evidence/frames2/before/files-dock400-light.png",
+      "reading": {
+        "innerWidth": 1184,
+        "innerHeight": 800,
+        "dock": {
+          "x": 740,
+          "y": 32,
+          "w": 400,
+          "h": 768
+        },
+        "dockMode": "docked",
+        "scroller": {
+          "x": 740,
+          "y": 116,
+          "w": 400,
+          "h": 684
+        },
+        "rowCount": 1,
+        "rows": [
+          {
+            "text": "promo-notes.md",
+            "box": {
+              "x": 748,
+              "y": 124,
+              "w": 384,
+              "h": 36
+            },
+            "insideDock": true,
+            "thumb": null
+          }
+        ],
+        "header": "Filter 1 file promo-notes.md"
+      }
+    }
+  },
+  "facts": {
+    "windowMode": "headless",
+    "appVersion": "0.34.40",
+    "platform": "darwin",
+    "title": "Local Operator",
+    "windowSize": {
+      "width": 1184,
+      "height": 800
+    },
+    "contentBounds": {
+      "width": 1184,
+      "height": 800
+    },
+    "visible": false,
+    "focused": false,
+    "minimized": false,
+    "frames": [],
+    "outDir": "<scratch>/evidence/frames2/before"
+  }
 }

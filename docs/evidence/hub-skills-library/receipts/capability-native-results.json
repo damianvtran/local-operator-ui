@@ -1,33 +1,33 @@
 {
-	"initial": {
-		"availableKiB": 23204872,
-		"availableGiB": 22.12989044189453,
-		"swapUsedMB": 10645.5,
-		"memoryFreePct": 41
-	},
-	"final": {
-		"availableKiB": 23260856,
-		"availableGiB": 22.18328094482422,
-		"swapUsedMB": 10629.5,
-		"memoryFreePct": 48
-	},
-	"actualReleasedCoreAbsent": {
-		"exit": 0,
-		"passCount": 16,
-		"failCount": 0,
-		"frames": [
-			"hub-skills-1380x900-local-operator-dark-adapter-absent-agents.png"
-		]
-	},
-	"explicitFixtureAndRealWithdrawal": {
-		"exit": 0,
-		"passCount": 21,
-		"failCount": 0,
-		"frames": [
-			"hub-skills-1380x900-local-operator-dark-adapter-withdrawn-agents.png",
-			"hub-skills-1380x900-local-operator-dark-loading.png",
-			"hub-skills-1380x900-local-operator-dark-populated.png"
-		]
-	},
-	"sourceUnchangedDuringCell": true
+  "initial": {
+    "availableKiB": 23204872,
+    "availableGiB": 22.12989044189453,
+    "swapUsedMB": 10645.5,
+    "memoryFreePct": 41
+  },
+  "final": {
+    "availableKiB": 23260856,
+    "availableGiB": 22.18328094482422,
+    "swapUsedMB": 10629.5,
+    "memoryFreePct": 48
+  },
+  "actualReleasedCoreAbsent": {
+    "exit": 0,
+    "passCount": 16,
+    "failCount": 0,
+    "frames": [
+      "hub-skills-1380x900-local-operator-dark-adapter-absent-agents.png"
+    ]
+  },
+  "explicitFixtureAndRealWithdrawal": {
+    "exit": 0,
+    "passCount": 21,
+    "failCount": 0,
+    "frames": [
+      "hub-skills-1380x900-local-operator-dark-adapter-withdrawn-agents.png",
+      "hub-skills-1380x900-local-operator-dark-loading.png",
+      "hub-skills-1380x900-local-operator-dark-populated.png"
+    ]
+  },
+  "sourceUnchangedDuringCell": true
 }

@@ -1,10 +1,10 @@
 {
-	"result": {
-		"status": "ok",
-		"pid": 26802,
-		"instance_id": "1adecc0b-748e-4abb-9475-edf366406865",
-		"version": "0.72.1",
-		"prefix": "/Users/damian/local-operator-ui/.worktrees/skills-library-evidence",
-		"install_kind": "stub"
-	}
+  "result": {
+    "status": "ok",
+    "pid": 26802,
+    "instance_id": "1adecc0b-748e-4abb-9475-edf366406865",
+    "version": "0.72.1",
+    "prefix": "/Users/damian/local-operator-ui/.worktrees/skills-library-evidence",
+    "install_kind": "stub"
+  }
 }

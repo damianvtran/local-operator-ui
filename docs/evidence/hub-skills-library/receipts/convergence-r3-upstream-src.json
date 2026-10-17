@@ -1,87 +1,87 @@
 [
-	{
-		"path": "src/main/browser/browser-chord.ts",
-		"oldSha256": "628d3ef8e882058eecd51e7de6a7e6df4f62e5c8801227da118144bb64c5b7da",
-		"mergedSha256": "decc625287f013963130c444287901d0f394241f9d7c5fc6ccc8dc2bbbbd138f"
-	},
-	{
-		"path": "src/main/browser/electron-types.ts",
-		"oldSha256": "5bff6ba52d895589410d3e21fe5ea13738bb97f83a16c00129fd34d6c61d3359",
-		"mergedSha256": "80b6ccd1d2e706f5158499a8b478646a15555b454e504bd3d75c83529b5c818b"
-	},
-	{
-		"path": "src/main/browser/host.ts",
-		"oldSha256": "9ab1ad7ebf5b4e2520359421e2437b83a9136b0ea73be4dcde250538cbd8ef76",
-		"mergedSha256": "8e2e2ef076caa157116415db89d75837662ee15ed667cccb18a26119ccc28451"
-	},
-	{
-		"path": "src/main/browser/index.ts",
-		"oldSha256": "70ae004c9468eefcd268daab112626d85c088be4a718b19d43930e8a600cb0fd",
-		"mergedSha256": "11f0a525884633c9461e3739981d44873a058d146e061f878af3a066080bf371"
-	},
-	{
-		"path": "src/main/browser/ipc.ts",
-		"oldSha256": "6a70a15d08a8926275db28414703235b9cc8dd2309a57d9ffe6c0fcd97e28e24",
-		"mergedSha256": "9d7e39b155cfcfef9b24d1c355367f7087d104bf1975a1216a4a564e5ce6bda7"
-	},
-	{
-		"path": "src/main/browser/page-controls.ts",
-		"oldSha256": null,
-		"mergedSha256": "6f878e7acc9e793bbf38e2677f62e3af35e7f19d4f1d5e1f20e8f227e4763fbf"
-	},
-	{
-		"path": "src/main/index.ts",
-		"oldSha256": "00e8050ee751078331c4c3823fb819af72e525c570acc3fb09051351473d6f79",
-		"mergedSha256": "f912d98a2eacd5023d3b960d028228e37fb42b93c637e9470106ab1d2ebc5b48"
-	},
-	{
-		"path": "src/preload/index.d.ts",
-		"oldSha256": "4bd184417f6353bf8e07bf54073421dc13f0004f361a8e55d3db541252b8bc17",
-		"mergedSha256": "42a49e3a0d0c482b39cc5641ca955590239d0b03dfb293df08f3220117b424cc"
-	},
-	{
-		"path": "src/preload/index.ts",
-		"oldSha256": "abe7f3dd854032f4ac61fd6e6749d85ec3703925ea02dd5c28cc56772cb510e2",
-		"mergedSha256": "cae15f742a7f9d5bd5310df7e50f911eacc3330de44ea7cc1b12d6c4032444a1"
-	},
-	{
-		"path": "src/renderer/src/features/browser/components/browser-find-row.tsx",
-		"oldSha256": null,
-		"mergedSha256": "7091374dfe770321a71c7033b9187a6370befddf17513a63989aa098c58304ae"
-	},
-	{
-		"path": "src/renderer/src/features/browser/components/browser-surface.tsx",
-		"oldSha256": "340df89fad4174a338b6a078ca6292861d3b29ef365ec1d8e4e5b12bbe1496ea",
-		"mergedSha256": "4a9852559680ad7f12e0c231ab77411a59a53dc758bfa29d038a3dbb1c6bb762"
-	},
-	{
-		"path": "src/renderer/src/features/browser/components/browser-url-bar.tsx",
-		"oldSha256": "5ef61ac66dfec50fa04a839675435921883f8001eb941adb580e65674d33c93f",
-		"mergedSha256": "db4cc17a3fe83b166e7c92c5e0f5191b867f6c27630cebc00755ed3855d82042"
-	},
-	{
-		"path": "src/renderer/src/features/browser/hooks/use-browser-chords.ts",
-		"oldSha256": "95dd81b664a6f4efa490d46162d3413dc68d39fd3c466eaa73ec18e8d7c9e0d2",
-		"mergedSha256": "05d20786a2f2fce7fef6e91d0c10b32d7c40fb82deae6cdcd06562b570dbbe53"
-	},
-	{
-		"path": "src/renderer/src/features/browser/hooks/use-browser-chrome.ts",
-		"oldSha256": "fac06f55ba9feb7e5d0d2b6295f59b683dc7b71b093fcff702fae0e7e85fbf31",
-		"mergedSha256": "32441a1a9fa29f8ba675416b2754b06840b5ea27c297dc77301360c1b8d4ab5b"
-	},
-	{
-		"path": "src/renderer/src/shared/keymap/keymap-chord.ts",
-		"oldSha256": "91f0287fd916affe256145f30875aace9b5f03c63c5675b116cca81db34e2f49",
-		"mergedSha256": "02976b6529c5b9659ac7ed9c0eff8240afd34d4db479a01bca7dca46309757d1"
-	},
-	{
-		"path": "src/renderer/src/shared/keymap/keymap-registry.ts",
-		"oldSha256": "50dcc119643bbab36f260c872fd86927fc81cab6345811edc8199ee08314fc64",
-		"mergedSha256": "5d3e989fea77259b0871c836c87579f9568fed994f5e109df69a9625cd7cf256"
-	},
-	{
-		"path": "src/shared/browser-chord.ts",
-		"oldSha256": "c22f536efc620e35063a84dff8c554f0c6319c53f5f97312c18dd4ff646633bf",
-		"mergedSha256": "afcc9f47ad21e9f88b3d6d71f8c69d0e278064e182e10ad9ef1658448c8c9870"
-	}
+  {
+    "path": "src/main/browser/browser-chord.ts",
+    "oldSha256": "628d3ef8e882058eecd51e7de6a7e6df4f62e5c8801227da118144bb64c5b7da",
+    "mergedSha256": "decc625287f013963130c444287901d0f394241f9d7c5fc6ccc8dc2bbbbd138f"
+  },
+  {
+    "path": "src/main/browser/electron-types.ts",
+    "oldSha256": "5bff6ba52d895589410d3e21fe5ea13738bb97f83a16c00129fd34d6c61d3359",
+    "mergedSha256": "80b6ccd1d2e706f5158499a8b478646a15555b454e504bd3d75c83529b5c818b"
+  },
+  {
+    "path": "src/main/browser/host.ts",
+    "oldSha256": "9ab1ad7ebf5b4e2520359421e2437b83a9136b0ea73be4dcde250538cbd8ef76",
+    "mergedSha256": "8e2e2ef076caa157116415db89d75837662ee15ed667cccb18a26119ccc28451"
+  },
+  {
+    "path": "src/main/browser/index.ts",
+    "oldSha256": "70ae004c9468eefcd268daab112626d85c088be4a718b19d43930e8a600cb0fd",
+    "mergedSha256": "11f0a525884633c9461e3739981d44873a058d146e061f878af3a066080bf371"
+  },
+  {
+    "path": "src/main/browser/ipc.ts",
+    "oldSha256": "6a70a15d08a8926275db28414703235b9cc8dd2309a57d9ffe6c0fcd97e28e24",
+    "mergedSha256": "9d7e39b155cfcfef9b24d1c355367f7087d104bf1975a1216a4a564e5ce6bda7"
+  },
+  {
+    "path": "src/main/browser/page-controls.ts",
+    "oldSha256": null,
+    "mergedSha256": "6f878e7acc9e793bbf38e2677f62e3af35e7f19d4f1d5e1f20e8f227e4763fbf"
+  },
+  {
+    "path": "src/main/index.ts",
+    "oldSha256": "00e8050ee751078331c4c3823fb819af72e525c570acc3fb09051351473d6f79",
+    "mergedSha256": "f912d98a2eacd5023d3b960d028228e37fb42b93c637e9470106ab1d2ebc5b48"
+  },
+  {
+    "path": "src/preload/index.d.ts",
+    "oldSha256": "4bd184417f6353bf8e07bf54073421dc13f0004f361a8e55d3db541252b8bc17",
+    "mergedSha256": "42a49e3a0d0c482b39cc5641ca955590239d0b03dfb293df08f3220117b424cc"
+  },
+  {
+    "path": "src/preload/index.ts",
+    "oldSha256": "abe7f3dd854032f4ac61fd6e6749d85ec3703925ea02dd5c28cc56772cb510e2",
+    "mergedSha256": "cae15f742a7f9d5bd5310df7e50f911eacc3330de44ea7cc1b12d6c4032444a1"
+  },
+  {
+    "path": "src/renderer/src/features/browser/components/browser-find-row.tsx",
+    "oldSha256": null,
+    "mergedSha256": "7091374dfe770321a71c7033b9187a6370befddf17513a63989aa098c58304ae"
+  },
+  {
+    "path": "src/renderer/src/features/browser/components/browser-surface.tsx",
+    "oldSha256": "340df89fad4174a338b6a078ca6292861d3b29ef365ec1d8e4e5b12bbe1496ea",
+    "mergedSha256": "4a9852559680ad7f12e0c231ab77411a59a53dc758bfa29d038a3dbb1c6bb762"
+  },
+  {
+    "path": "src/renderer/src/features/browser/components/browser-url-bar.tsx",
+    "oldSha256": "5ef61ac66dfec50fa04a839675435921883f8001eb941adb580e65674d33c93f",
+    "mergedSha256": "db4cc17a3fe83b166e7c92c5e0f5191b867f6c27630cebc00755ed3855d82042"
+  },
+  {
+    "path": "src/renderer/src/features/browser/hooks/use-browser-chords.ts",
+    "oldSha256": "95dd81b664a6f4efa490d46162d3413dc68d39fd3c466eaa73ec18e8d7c9e0d2",
+    "mergedSha256": "05d20786a2f2fce7fef6e91d0c10b32d7c40fb82deae6cdcd06562b570dbbe53"
+  },
+  {
+    "path": "src/renderer/src/features/browser/hooks/use-browser-chrome.ts",
+    "oldSha256": "fac06f55ba9feb7e5d0d2b6295f59b683dc7b71b093fcff702fae0e7e85fbf31",
+    "mergedSha256": "32441a1a9fa29f8ba675416b2754b06840b5ea27c297dc77301360c1b8d4ab5b"
+  },
+  {
+    "path": "src/renderer/src/shared/keymap/keymap-chord.ts",
+    "oldSha256": "91f0287fd916affe256145f30875aace9b5f03c63c5675b116cca81db34e2f49",
+    "mergedSha256": "02976b6529c5b9659ac7ed9c0eff8240afd34d4db479a01bca7dca46309757d1"
+  },
+  {
+    "path": "src/renderer/src/shared/keymap/keymap-registry.ts",
+    "oldSha256": "50dcc119643bbab36f260c872fd86927fc81cab6345811edc8199ee08314fc64",
+    "mergedSha256": "5d3e989fea77259b0871c836c87579f9568fed994f5e109df69a9625cd7cf256"
+  },
+  {
+    "path": "src/shared/browser-chord.ts",
+    "oldSha256": "c22f536efc620e35063a84dff8c554f0c6319c53f5f97312c18dd4ff646633bf",
+    "mergedSha256": "afcc9f47ad21e9f88b3d6d71f8c69d0e278064e182e10ad9ef1658448c8c9870"
+  }
 ]

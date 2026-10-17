@@ -1,84 +1,13 @@
-import { createHash } from "node:crypto";
-import { readFileSync, readdirSync, writeFileSync } from "node:fs"; // Proven bounded emitted-section extraction. NO TypeScript compiler API,
+// Proven bounded emitted-section extraction. NO TypeScript compiler API,
 // esbuild, app module import, network, source changes or recompilation.
-import { createRequire } from "node:module";
-import { join } from "node:path";
-const root = "/Users/damian/local-operator-ui/.worktrees/browser-tab-strip",
-	require = createRequire(join(root, "package.json")),
-	zod = require("zod");
-let proof;
-for (const file of readdirSync(join(root, "out/renderer/assets")).filter((n) =>
-	n.endsWith(".js"),
-)) {
-	const path = join(root, "out/renderer/assets", file),
-		text = readFileSync(path, "utf8"),
-		marker = text.indexOf("Configuration validation failed:");
-	if (marker < 0) continue;
-	const begin = text.lastIndexOf("function ", marker),
-		end = text.indexOf("const ", marker);
-	if (begin < 0 || end < 0) throw Error("config section boundary missing");
-	const loader = text.slice(begin, end),
-		name = loader.match(/^function (\w+)\(/)?.[1],
-		envName = loader.match(/Object\.entries\((\w+)\)/)?.[1],
-		schemaName = loader.match(/return (\w+)\.parse\(/)?.[1],
-		errorName = loader.match(/instanceof (\w+)/)?.[1];
-	if (!name || !envName || !schemaName || !errorName)
-		throw Error("loader bindings missing");
-	const schemaStart =
-			text.lastIndexOf(schemaName + "=", begin) + schemaName.length + 1,
-		envDeclaration = text.lastIndexOf(envName + "=", begin),
-		envStart = envDeclaration + envName.length + 1;
-	const schemaCode = text.slice(schemaStart, envDeclaration - 1),
-		envCode = text.slice(envStart, begin).replace(/;\s*$/, "");
-	const zodName = schemaCode.match(/^(\w+)\.object\(/)?.[1];
-	if (!zodName || !envCode.startsWith("{"))
-		throw Error("literal schema/env boundary missing");
-	const schema = new Function(zodName, "return (" + schemaCode + ")")(zod),
-		env = new Function("return (" + envCode + ")")();
-	const call = (e) =>
-		new Function(envName, schemaName, errorName, "return (" + loader + ")")(
-			e,
-			schema,
-			zod.ZodError,
-		)();
-	const config = call(env),
-		negative = { ...env };
-	delete negative.VITE_LOCAL_OPERATOR_API_URL;
-	const fallback = call(negative);
-	const getter = text.match(
-		/get baseUrl\(\)\{return (\w+)\?\?(\w+)\.VITE_LOCAL_OPERATOR_API_URL\}/,
-	);
-	if (!getter) throw Error("actual API getter missing");
-	const get = new Function(
-		getter[1],
-		getter[2],
-		"return " + getter[1] + "??" + getter[2] + ".VITE_LOCAL_OPERATOR_API_URL",
-	);
-	if (
-		config.VITE_LOCAL_OPERATOR_API_URL !== "http://127.0.0.1:1" ||
-		config.VITE_DISABLE_BACKEND_MANAGER !== "true" ||
-		fallback.VITE_LOCAL_OPERATOR_API_URL !== "http://localhost:1111" ||
-		get(null, config) !== "http://127.0.0.1:1" ||
-		get("http://127.0.0.1:2", config) !== "http://127.0.0.1:2"
-	)
-		throw Error("compiled winner/negative control mismatch");
-	proof = {
-		artifact: path,
-		sha256: createHash("sha256").update(text).digest("hex"),
-		method:
-			"execute exact emitted schema + VITE-env object + loader + API fallback getter with installed Zod; no parser/esbuild/app launch",
-		apiRoot: config.VITE_LOCAL_OPERATOR_API_URL,
-		disabledManager: config.VITE_DISABLE_BACKEND_MANAGER,
-		negativeRemovedBinding: fallback.VITE_LOCAL_OPERATOR_API_URL,
-		nullDiscovery: get(null, config),
-		syntheticDiscoveryOverride: get("http://127.0.0.1:2", config),
-		result: "PASS",
-	};
+import {createRequire} from 'node:module';import {readFileSync,writeFileSync,readdirSync} from 'node:fs';import {join} from 'node:path';import {createHash} from 'node:crypto';
+const root='/Users/damian/local-operator-ui/.worktrees/browser-tab-strip',require=createRequire(join(root,'package.json')),zod=require('zod');let proof;
+for(const file of readdirSync(join(root,'out/renderer/assets')).filter(n=>n.endsWith('.js'))){const path=join(root,'out/renderer/assets',file),text=readFileSync(path,'utf8'),marker=text.indexOf('Configuration validation failed:');if(marker<0)continue;
+ const begin=text.lastIndexOf('function ',marker),end=text.indexOf('const ',marker);if(begin<0||end<0)throw Error('config section boundary missing');const loader=text.slice(begin,end),name=loader.match(/^function (\w+)\(/)?.[1],envName=loader.match(/Object\.entries\((\w+)\)/)?.[1],schemaName=loader.match(/return (\w+)\.parse\(/)?.[1],errorName=loader.match(/instanceof (\w+)/)?.[1];if(!name||!envName||!schemaName||!errorName)throw Error('loader bindings missing');
+ const schemaStart=text.lastIndexOf(schemaName+'=',begin)+schemaName.length+1,envDeclaration=text.lastIndexOf(envName+'=',begin),envStart=envDeclaration+envName.length+1;const schemaCode=text.slice(schemaStart,envDeclaration-1),envCode=text.slice(envStart,begin).replace(/;\s*$/,'');const zodName=schemaCode.match(/^(\w+)\.object\(/)?.[1];if(!zodName||!envCode.startsWith('{'))throw Error('literal schema/env boundary missing');
+ const schema=new Function(zodName,'return ('+schemaCode+')')(zod),env=new Function('return ('+envCode+')')();const call=e=>new Function(envName,schemaName,errorName,'return ('+loader+')')(e,schema,zod.ZodError)();const config=call(env),negative={...env};delete negative.VITE_LOCAL_OPERATOR_API_URL;const fallback=call(negative);
+ const getter=text.match(/get baseUrl\(\)\{return (\w+)\?\?(\w+)\.VITE_LOCAL_OPERATOR_API_URL\}/);if(!getter)throw Error('actual API getter missing');const get=new Function(getter[1],getter[2],'return '+getter[1]+'??'+getter[2]+'.VITE_LOCAL_OPERATOR_API_URL');
+ if(config.VITE_LOCAL_OPERATOR_API_URL!=='http://127.0.0.1:1'||config.VITE_DISABLE_BACKEND_MANAGER!=='true'||fallback.VITE_LOCAL_OPERATOR_API_URL!=='http://localhost:1111'||get(null,config)!=='http://127.0.0.1:1'||get('http://127.0.0.1:2',config)!=='http://127.0.0.1:2')throw Error('compiled winner/negative control mismatch');
+ proof={artifact:path,sha256:createHash('sha256').update(text).digest('hex'),method:'execute exact emitted schema + VITE-env object + loader + API fallback getter with installed Zod; no parser/esbuild/app launch',apiRoot:config.VITE_LOCAL_OPERATOR_API_URL,disabledManager:config.VITE_DISABLE_BACKEND_MANAGER,negativeRemovedBinding:fallback.VITE_LOCAL_OPERATOR_API_URL,nullDiscovery:get(null,config),syntheticDiscoveryOverride:get('http://127.0.0.1:2',config),result:'PASS'};
 }
-if (!proof)
-	throw Error("exact emitted config section not found; STOP before native");
-writeFileSync(
-	join(process.env.LOCAL_OPERATOR_SCRATCHPAD, "b2-binding-proof.json"),
-	JSON.stringify(proof, null, 2),
-);
-console.log(JSON.stringify(proof));
+if(!proof)throw Error('exact emitted config section not found; STOP before native');writeFileSync(join(process.env.LOCAL_OPERATOR_SCRATCHPAD,'b2-binding-proof.json'),JSON.stringify(proof,null,2));console.log(JSON.stringify(proof));

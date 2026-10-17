@@ -200,7 +200,7 @@ createServer(async (req, res) => {
 				},
 			}),
 		);
-		// A real stream stays open; the heartbeat keeps it alive without
+	// A real stream stays open; the heartbeat keeps it alive without
 		// touching anything the renderer paints.
 		const beat = setInterval(() => res.write(": heartbeat\n\n"), 5_000);
 		req.on("close", () => clearInterval(beat));
@@ -222,7 +222,8 @@ createServer(async (req, res) => {
 		return json({
 			result: { entries: rows(), has_more: false, cursor_missing: false },
 		});
-	if (path.endsWith("/watch")) return json({ result: { lease_seconds: 45 } });
+	if (path.endsWith("/watch"))
+		return json({ result: { lease_seconds: 45 } });
 	if (path.endsWith("/refresh")) return json({ result: { refreshed: true } });
 	if (/^\/v1\/desktop\/sessions\/[a-f0-9]{12}$/.test(path))
 		return json({

@@ -1,875 +1,875 @@
 {
-	"source_sha": "8fe9b86350a4052463f43e7b23aedcfa7c18f970",
-	"source_tree": "2f6e8c14e6b69a61a4e101b377b77d61ef8243b3",
-	"command": [
-		"/Users/damian/local-operator/.venv/bin/python",
-		"/Users/damian/local-operator/scripts/run_bounded.py",
-		"--timeout",
-		"300",
-		"--grace",
-		"5",
-		"--",
-		"/Users/damian/local-operator-ui/.worktrees/browser-tab-strip/node_modules/.bin/electron-vite",
-		"build"
-	],
-	"build_mode": "build:npm equivalent; plain JS, no bytecode/Electron compiler launch",
-	"synthetic_oauth_credentials": true,
-	"backend_manager_disabled": true,
-	"renderer_api_root": "http://127.0.0.1:1",
-	"elapsed_seconds": 13.44,
-	"exit_code": 0,
-	"installed_lock_before": "fd0310b282d1a63560473655fccd3964102bef2015e43e4915502e0f0a4670ba",
-	"installed_lock_after": "fd0310b282d1a63560473655fccd3964102bef2015e43e4915502e0f0a4670ba",
-	"artifact_files": {
-		"out/main/index.js": {
-			"sha256": "da2182d336ab9bf6d61e587a662b177f53713cff3c440299b02077d9ee55f301",
-			"size": 2242287,
-			"mtime_ns": 1792066232283091672
-		},
-		"out/preload/index.js": {
-			"sha256": "092d8c4b0c5823ff0b9fa2596e50a13cc98385607680bacd13755307b95d7377",
-			"size": 174756,
-			"mtime_ns": 1792066232342072533
-		},
-		"out/renderer/console-capture.html": {
-			"sha256": "2f7c17c0b62ec41d945b15d05ded5b0f55bf5ab4518d75e42a304e4de537cd45",
-			"size": 825,
-			"mtime_ns": 1792066243579115602
-		},
-		"out/renderer/index.html": {
-			"sha256": "a639f6e4b1a2b7afdb19850e4abce15d195d43f9a708b17918e91542a2fa0d1c",
-			"size": 3940,
-			"mtime_ns": 1792066243580319774
-		},
-		"out/renderer/installer.html": {
-			"sha256": "b5e9ff83627db469115c59a08c3a22cd5543b744625d3b2b31f7e60f7fe0aa06",
-			"size": 931,
-			"mtime_ns": 1792066243579702438
-		},
-		"out/renderer/mini.html": {
-			"sha256": "f12979c1d7ae4b69a279b3be3aa16804092e1f2b238ac813c85fa973b1cf8179",
-			"size": 1004,
-			"mtime_ns": 1792066243580066440
-		},
-		"out/renderer/assets/KaTeX_Script-Regular-D3wIWfF6.woff2": {
-			"sha256": "036d4e95149b69ff9bcc0cd55771efeb25ffa3947293e69acd78d5ac328c684b",
-			"size": 9644,
-			"mtime_ns": 1792066243553873108
-		},
-		"out/renderer/assets/legacy-agents-page-DZbqI0Hg.js": {
-			"sha256": "ca808af3f8184ed9225411f04e0fdaba3ff631d70245c7aab47503692eff20f9",
-			"size": 53939,
-			"mtime_ns": 1792066243566713544
-		},
-		"out/renderer/assets/use-download-agent-mutation-DTM1gjS1.js": {
-			"sha256": "040eca12bf08021f90d5d6b619d0d2d4ab836330280f7c91879d73f857030218",
-			"size": 12278,
-			"mtime_ns": 1792066243566613835
-		},
-		"out/renderer/assets/mini-BROoz9VB.js": {
-			"sha256": "f4113dadd470db5e234e52cfbd2963bac479e03e3099fd1c9130f5ae1566fd44",
-			"size": 12323,
-			"mtime_ns": 1792066243565140453
-		},
-		"out/renderer/assets/messages-BrRl-Bfh.js": {
-			"sha256": "64dc990839f2870ea7665485a6aad8b6557a8e53df059a897f7346dffb5dbe34",
-			"size": 233298,
-			"mtime_ns": 1792066243566955378
-		},
-		"out/renderer/assets/KaTeX_AMS-Regular-DRggAlZN.ttf": {
-			"sha256": "68534840bcfdd2bffb6f0e8deb48684dd01e7f04ea2813267577afb906de1d13",
-			"size": 63632,
-			"mtime_ns": 1792066243560114429
-		},
-		"out/renderer/assets/timeline-definition-BDJGKUSR-friTTh0u.js": {
-			"sha256": "be154a8e1e9ff51c40ff434b7550e6e458230a7301ed210b3e2082a166c11a18",
-			"size": 23644,
-			"mtime_ns": 1792066243563830113
-		},
-		"out/renderer/assets/_basePickBy-CZ-cFv17.js": {
-			"sha256": "733435d0dd6091a788ecc34bed82fb5be3d332233419b0bdf22999bd2d691c25",
-			"size": 2587,
-			"mtime_ns": 1792066243566350500
-		},
-		"out/renderer/assets/flowDiagram-4HSFHLVR-BOMoVzvv.js": {
-			"sha256": "c9a049b30098062b9fbef542898fadb1bce8eb54d16a21b8d4f915df4384e02d",
-			"size": 60301,
-			"mtime_ns": 1792066243562715400
-		},
-		"out/renderer/assets/KaTeX_Fraktur-Regular-CTYiF6lA.woff2": {
-			"sha256": "51814d270d06ff0255dba0799994fa4d8c84d11f09951d47595f4abb1f3602dc",
-			"size": 11316,
-			"mtime_ns": 1792066243552608227
-		},
-		"out/renderer/assets/conversation-input-sync-BtgEuJcP.js": {
-			"sha256": "cb5142c6ff8712f21e4cbad5ffb72b669ac44a1930228c1c97e895577b8914bf",
-			"size": 3837173,
-			"mtime_ns": 1792066243581124695
-		},
-		"out/renderer/assets/KaTeX_Caligraphic-Regular-wX97UBjC.ttf": {
-			"sha256": "ed0b74372feefcbb9c0666b2e210da37b7e49fa7fbbf3eeb11db5f693dacfbb7",
-			"size": 12344,
-			"mtime_ns": 1792066243559345050
-		},
-		"out/renderer/assets/sequenceDiagram-X6HHIX6F-B7n7cfxM.js": {
-			"sha256": "ac5cc74f0553de11aedc8180f1d61d6bdfbfff05b6d8c13101d91704821d84f2",
-			"size": 88549,
-			"mtime_ns": 1792066243563715113
-		},
-		"out/renderer/assets/mermaid.core-Hd6TpjgO.js": {
-			"sha256": "f6c62ea5442fd8203478b8d13fde4ab44470bfe1bb032e3939e5507883c74cc9",
-			"size": 459874,
-			"mtime_ns": 1792066243578974810
-		},
-		"out/renderer/assets/icon-tV2fhamD.png": {
-			"sha256": "66fa5ba2d83b55130ca50d82c3cd437ee263516a9c507bcaa42af3b5730a02d1",
-			"size": 1109493,
-			"mtime_ns": 1792066243551734806
-		},
-		"out/renderer/assets/chunk-D6G4REZN-UwJTzoUc.js": {
-			"sha256": "6997b15a055aeeec236f6d128e0f63a97c89ebe3aecfbd16d2a8d9d5d86f8957",
-			"size": 1437,
-			"mtime_ns": 1792066243562710233
-		},
-		"out/renderer/assets/radient-icon-1024x1024-D_JJedvo.png": {
-			"sha256": "a24e9cb4976ad3b6e8590bbcae10e9946e84803efc3e2e11a3da47cda32b4cb6",
-			"size": 53271,
-			"mtime_ns": 1792066243550838052
-		},
-		"out/renderer/assets/channel-ChNDlUus.js": {
-			"sha256": "e1f2d3dd4d6d3a856521fee0aa63133f77919b891a5ed4fe1104bd34c333d108",
-			"size": 113,
-			"mtime_ns": 1792066243562752358
-		},
-		"out/renderer/assets/KaTeX_Main-Regular-Dr94JaBh.woff": {
-			"sha256": "c6368d87e8a1a3a5d337623d83d8dc4b868f242a9ad476237d6f8d1e0f168cdc",
-			"size": 30772,
-			"mtime_ns": 1792066243556820497
-		},
-		"out/renderer/assets/c4Diagram-VJAJSXHY-SLWKQvBv.js": {
-			"sha256": "2e6d2b7cee489e78e764b2273103ccedad60dbe3f3101e92906b41c3fb4038e9",
-			"size": 70238,
-			"mtime_ns": 1792066243562712816
-		},
-		"out/renderer/assets/KaTeX_Size3-Regular-DgpXs0kz.ttf": {
-			"sha256": "500e04d54f0d51666332c9d2089aa803be22aa878eca539e59fa53c6e522b082",
-			"size": 7588,
-			"mtime_ns": 1792066243561401144
-		},
-		"out/renderer/assets/dagre-OKDRZEBW-DWxF90I2.js": {
-			"sha256": "6293d1d32e2d9543b6184a35f765d16a23e6b9b5801736818d5c6236e451b0f8",
-			"size": 11119,
-			"mtime_ns": 1792066243564970244
-		},
-		"out/renderer/assets/brand-mark-Bv0Hu-Cz.png": {
-			"sha256": "30252bb0ec8bdbc92a099cab374d5577b9dc2388b7b808cf3d52f70de578e610",
-			"size": 6947,
-			"mtime_ns": 1792066243550603843
-		},
-		"out/renderer/assets/KaTeX_SansSerif-Regular-BNo7hRIc.ttf": {
-			"sha256": "f36ea897e19f4a2e571d1e900e4e3710e438deb05a842486045ba0a3e616a4ad",
-			"size": 19436,
-			"mtime_ns": 1792066243560667598
-		},
-		"out/renderer/assets/diagram-VNBRO52H-s_Xkg59Y.js": {
-			"sha256": "6ccc8199aecdc1b76d1bdf151da684e71256fa5186305558fd297ed88fd9080f",
-			"size": 3850,
-			"mtime_ns": 1792066243563851030
-		},
-		"out/renderer/assets/erDiagram-Q7BY3M3F-Bhj9vCiA.js": {
-			"sha256": "00937cafc6e5b8715cf299ddc6d4048698df97986ff8a9ffc031f6aa3d31db17",
-			"size": 25307,
-			"mtime_ns": 1792066243562742733
-		},
-		"out/renderer/assets/KaTeX_SansSerif-Bold-CFMepnvq.ttf": {
-			"sha256": "1ece03f79f95277d57dc7f6b435a74e1379b0d46104a8530286b60ff49369ea0",
-			"size": 24504,
-			"mtime_ns": 1792066243560526264
-		},
-		"out/renderer/assets/gitGraphDiagram-7IBYFJ6S-CfhbbSkm.js": {
-			"sha256": "9049578be614379e1e9484873d2686f91b4542f16e72822733b66a0deca9cc0f",
-			"size": 24175,
-			"mtime_ns": 1792066243562761733
-		},
-		"out/renderer/assets/schedules-page-D6QoZ2oo.js": {
-			"sha256": "0b22aad2153dd7cb9e4a70dc09884dc941d43e4df85d01c9ef89c8de3fb70616",
-			"size": 418859,
-			"mtime_ns": 1792066243579028435
-		},
-		"out/renderer/assets/KaTeX_Main-Regular-B22Nviop.woff2": {
-			"sha256": "c2342cd8b869e01752a9321dc17213fc40d4d04c79688c1d43f2cf316abd7866",
-			"size": 26272,
-			"mtime_ns": 1792066243552921770
-		},
-		"out/renderer/assets/page-header-MogLrHi_.js": {
-			"sha256": "4f1410b89b8f44b0a5b3f76e25dd057240833e1ff26fe95a6639b6cff65e3b75",
-			"size": 550,
-			"mtime_ns": 1792066243561787937
-		},
-		"out/renderer/assets/format-CZUObkkr.js": {
-			"sha256": "500ecf4a851347a5c48db0683cd5c638048a350742553d44e34ff3be6579c499",
-			"size": 12469,
-			"mtime_ns": 1792066243566212416
-		},
-		"out/renderer/assets/ttcn-cfg-B9xdYoR4.js": {
-			"sha256": "8d367f5c728e0a125912df85cc96c61e1bd2616e3617535c70783494e6361653",
-			"size": 4050,
-			"mtime_ns": 1792066243562698941
-		},
-		"out/renderer/assets/architectureDiagram-IEHRJDOE-BkC_OGgb.js": {
-			"sha256": "5ec70aa7257432b4b0238df50165f6f8e4a19afe92a3c896765dacbf0fdc5220",
-			"size": 148269,
-			"mtime_ns": 1792066243565244995
-		},
-		"out/renderer/assets/sql-D0XecflT.js": {
-			"sha256": "de179cb192745a50f178503fd65ae5ff2488f34b4d421de85961a1207930a125",
-			"size": 37052,
-			"mtime_ns": 1792066243562157731
-		},
-		"out/renderer/assets/projects-page-CUNZWsS1.js": {
-			"sha256": "85a4f3d88bddf8f16c6e1f8116cd89580be3f83709fc00e4f4e11324c69a305f",
-			"size": 136183,
-			"mtime_ns": 1792066243567640256
-		},
-		"out/renderer/assets/chat-full-view-e-eJPzrw.png": {
-			"sha256": "f160b23a307cd33590979075d6e4c4c2c4f5dc6fe0386b6e78f33358ebc7edd2",
-			"size": 1292439,
-			"mtime_ns": 1792066243551747348
-		},
-		"out/renderer/assets/kanban-definition-NDS4AKOZ-CymL9pOK.js": {
-			"sha256": "cdb49350c147efad2cea0d2504043137adc18a6ee774947d93ad60f30783f459",
-			"size": 20245,
-			"mtime_ns": 1792066243563851322
-		},
-		"out/renderer/assets/stateDiagram-v2-YXO3MK2T-CN4ctBxO.js": {
-			"sha256": "e13859cc2c6953e9bb80b7ba16fb51db060b598d29507dca4f3647e180ba1531",
-			"size": 468,
-			"mtime_ns": 1792066243563805863
-		},
-		"out/renderer/assets/canvas-overview-CruGEIRC.png": {
-			"sha256": "6dbb42d0287d2236f7688bcf7e85c7877bb9cf8b87e687da1cd7d8f28d7ea9c7",
-			"size": 565742,
-			"mtime_ns": 1792066243551474680
-		},
-		"out/renderer/assets/KaTeX_AMS-Regular-DMm9YOAa.woff": {
-			"sha256": "30da91e84c893f875e252689faebdc590b2871145e8adc7f9a9d4dbd8ce0b251",
-			"size": 33516,
-			"mtime_ns": 1792066243556759455
-		},
-		"out/renderer/assets/chat-input-CU-CA7Se.png": {
-			"sha256": "06b5ac735cb7daa83c3c812b41c17b15fa850ed417cf66a5bdc7818e1800c143",
-			"size": 92877,
-			"mtime_ns": 1792066243550624259
-		},
-		"out/renderer/assets/KaTeX_Math-BoldItalic-iY-2wyZ7.woff": {
-			"sha256": "850c0af5c2238497febaf5e461d880bf458c341f42f4f330f1b1ab5698b1998e",
-			"size": 18668,
-			"mtime_ns": 1792066243557052540
-		},
-		"out/renderer/assets/KaTeX_Main-BoldItalic-SpSLRI95.woff": {
-			"sha256": "a6f7ec0d846ac7ad975adb8959c37ed49b94acbc4ae436db9ce9e20287e4a64c",
-			"size": 19412,
-			"mtime_ns": 1792066243556342745
-		},
-		"out/renderer/assets/javascript-qCveANmP.js": {
-			"sha256": "a25df7ea81bbc864310bd608be88e813e76ac7bc1dde52e9d08927dab5781798",
-			"size": 17080,
-			"mtime_ns": 1792066243562659899
-		},
-		"out/renderer/assets/index-B_SjoUke.js": {
-			"sha256": "a9f674109d3d2d440f77ffdc060e34626bf66c799e6a172571f864867309b47c",
-			"size": 30869,
-			"mtime_ns": 1792066243564364657
-		},
-		"out/renderer/assets/KaTeX_Size2-Regular-oD1tc_U0.woff": {
-			"sha256": "2014c523c3210bcc166648c4d4cc57f05b747df07a24277bf71c51e67dc79e3d",
-			"size": 6188,
-			"mtime_ns": 1792066243558451713
-		},
-		"out/renderer/assets/chat-attachments-_3cRrONU.png": {
-			"sha256": "c735f0e2700c4dee851e0f2811276f81bf9b074733d0ef81e8254b11a8e7f765",
-			"size": 286759,
-			"mtime_ns": 1792066243550254383
-		},
-		"out/renderer/assets/agent-details-page-HSGLGerF.js": {
-			"sha256": "ba7bbb06a1e5964340a77266964794e7651ee5504f88dde402112259195783ac",
-			"size": 13531,
-			"mtime_ns": 1792066243565216036
-		},
-		"out/renderer/assets/KaTeX_Main-Italic-3WenGoN9.ttf": {
-			"sha256": "0d85ae7cc30f23790a7f1a58c4a112fdca8aae769b6ba11429af1d98b1b6cb3a",
-			"size": 33580,
-			"mtime_ns": 1792066243560450639
-		},
-		"out/renderer/assets/KaTeX_SansSerif-Regular-CS6fqUqJ.woff": {
-			"sha256": "11e4dc8a6471ff6d6ee561d53d10fde8f7489e798257ff449c5d37c197435605",
-			"size": 12316,
-			"mtime_ns": 1792066243558454296
-		},
-		"out/renderer/assets/quadrantDiagram-7GDLP6J5-DKIPdL8p.js": {
-			"sha256": "fc558782b9883b88a4eaba7181b33aaa2a70271307f98c6f493256463dd0fe74",
-			"size": 33857,
-			"mtime_ns": 1792066243563011818
-		},
-		"out/renderer/assets/KaTeX_Fraktur-Bold-BsDP51OF.woff": {
-			"sha256": "9be7ceb88004ab8ad124082246fbfcca4091e36385d4ec6ed1df67375dad50fb",
-			"size": 13296,
-			"mtime_ns": 1792066243554529611
-		},
-		"out/renderer/assets/browser-page-B2g8NXWs.js": {
-			"sha256": "e32bf53b5998a8cbc341c2ca144ff15d24d64524c89cfc2fdb5a6ce393a32349",
-			"size": 400,
-			"mtime_ns": 1792066243561744812
-		},
-		"out/renderer/assets/KaTeX_Caligraphic-Bold-Dq_IR9rO.woff2": {
-			"sha256": "de7701e42cf1f4cf0b766c03fb27977207eee2f4fd5d76fa82188406da43ea4c",
-			"size": 6912,
-			"mtime_ns": 1792066243550727260
-		},
-		"out/renderer/assets/journeyDiagram-U35MCT3I-DZ-XSzuA.js": {
-			"sha256": "f2e8f0a86d5019c20f286dde26004fae4b7ed19ed346e0f4db8e3dbc8176550b",
-			"size": 22812,
-			"mtime_ns": 1792066243563833780
-		},
-		"out/renderer/assets/arc-Mqdg__QH.js": {
-			"sha256": "e22f3c4daeed1991e9e038fc22407d5b5da946b27f1ab1ef42ffad7d67378a26",
-			"size": 3437,
-			"mtime_ns": 1792066243562981068
-		},
-		"out/renderer/assets/KaTeX_Caligraphic-Regular-CTRA-rTL.woff": {
-			"sha256": "3398dd02302557a793f2863f88e02d96ce10df2abffa07c8e9fa90775116e65c",
-			"size": 7656,
-			"mtime_ns": 1792066243555830367
-		},
-		"out/renderer/assets/chunk-RZ5BOZE2-CRFTpedA.js": {
-			"sha256": "f3844bf3b0545617e1e8e82f6c3916358ea4736f91468f2cda0355691c0064fe",
-			"size": 681,
-			"mtime_ns": 1792066243562747150
-		},
-		"out/renderer/assets/chunk-XZIHB7SX-DJbIPhoU.js": {
-			"sha256": "e11af936bac5587d426f018f5aefda8ae7241b777682a46dd1cc20b126c5b0f6",
-			"size": 195,
-			"mtime_ns": 1792066243562776192
-		},
-		"out/renderer/assets/canvas-code-inline-edit-DLji9b0m.png": {
-			"sha256": "b5f09006b3c75c3859228b318f4f39c9b5246d2e6a14e3b12fab35c342777b94",
-			"size": 239141,
-			"mtime_ns": 1792066243550156966
-		},
-		"out/renderer/assets/chunk-4BMEZGHF-BJBpG9u9.js": {
-			"sha256": "b384e1fcd73143b0c11ed89006b8f1abdb24aeb4d08a33a65b845d2184810eb1",
-			"size": 227,
-			"mtime_ns": 1792066243562759025
-		},
-		"out/renderer/assets/console-mirror-B8quHzHU.js": {
-			"sha256": "f57d738b7ae787536343d8c20c8387fe3403890bba35775417f6a0e74dadf489",
-			"size": 359816,
-			"mtime_ns": 1792066243565129578
-		},
-		"out/renderer/assets/KaTeX_Size4-Regular-BF-4gkZK.woff": {
-			"sha256": "99f9c6750b489c9462bf04900bd3f939df9b829339daaaaa99ef5495cdddea58",
-			"size": 5980,
-			"mtime_ns": 1792066243557298374
-		},
-		"out/renderer/assets/settings-page-CfzpZYay.js": {
-			"sha256": "928948f224024e5c52db7a18043de7e14691c4b83d265d79f3986c34bda2b3dd",
-			"size": 125331,
-			"mtime_ns": 1792066243572115277
-		},
-		"out/renderer/assets/KaTeX_Main-Italic-NWA7e6Wa.woff2": {
-			"sha256": "97479ca6cce906abc961ecac96faa5f9ca2e61b8e7670d475826bcdee9a7c267",
-			"size": 16988,
-			"mtime_ns": 1792066243553402439
-		},
-		"out/renderer/assets/notebook-pen-qUc64fN5.js": {
-			"sha256": "9ac2a74953321c33e6af75b1d9422333ebf360df4ae48bebd07111f2980d546e",
-			"size": 658,
-			"mtime_ns": 1792066243561810229
-		},
-		"out/renderer/assets/KaTeX_Size2-Regular-Dy4dx90m.woff2": {
-			"sha256": "d04c54219f9eaec6d4d4fd42dfb28785975a4794d6b2fc71e566b9cd6db842dd",
-			"size": 5208,
-			"mtime_ns": 1792066243554428152
-		},
-		"out/renderer/assets/KaTeX_Main-Bold-Jm3AIy58.woff": {
-			"sha256": "c76c5d696297d51b9cb1639c7da4334f0e7dec81b42b11213b5e25ef671bb822",
-			"size": 29912,
-			"mtime_ns": 1792066243556195327
-		},
-		"out/renderer/assets/KaTeX_SansSerif-Regular-DDBCnlJ7.woff2": {
-			"sha256": "68e8c73ef42afd3ccec58bf0fba302cce448938e7fc020a5e31f8a952eee1342",
-			"size": 10344,
-			"mtime_ns": 1792066243553995400
-		},
-		"out/renderer/assets/console-mirror-DOrYoP_4.css": {
-			"sha256": "9a4d604668a21c41191d8321ed53953b89cf9d605d29f89085f09f00ffdbad8c",
-			"size": 5175,
-			"mtime_ns": 1792066243561690145
-		},
-		"out/renderer/assets/classDiagram-GIVACNV2-MFBfRNSm.js": {
-			"sha256": "3fe74dec2ec7b42d5d9c3f1e09649aedfe50e709a468f5d0fe60d3d5d18ebaef",
-			"size": 470,
-			"mtime_ns": 1792066243563718946
-		},
-		"out/renderer/assets/book-open-ukyhTDdK.js": {
-			"sha256": "22336ec7cb945f1e341a9b96e9de9323db2286f5ea14d1b9f77ec89eb2a9bd40",
-			"size": 461,
-			"mtime_ns": 1792066243561759395
-		},
-		"out/renderer/assets/radient-auth-buttons-B5XbyL0j.js": {
-			"sha256": "d43f9e6a3bc923d4c336591846abf22e69e9fc0a5aca9808fe4adcf4f247ae7c",
-			"size": 1213,
-			"mtime_ns": 1792066243561790895
-		},
-		"out/renderer/assets/inline-edit-canvas-O9conTkE.png": {
-			"sha256": "7463bc8c04fef8a835e2d0ad3e9ab5437792868af3ea0f0f6e195c074391f31b",
-			"size": 143936,
-			"mtime_ns": 1792066243550321508
-		},
-		"out/renderer/assets/consoleCapture-DKxvugXg.js": {
-			"sha256": "56ab9715d9980d71653d636cd0a49224e602c517bc419d0c04f01e8f1a2ee0d6",
-			"size": 1275,
-			"mtime_ns": 1792066243564998161
-		},
-		"out/renderer/assets/layout-_eSxmETC.js": {
-			"sha256": "9c77d7e27c5f5c8880682eb6854cf0ceaea16852610f0342247e2dd4c9f4313e",
-			"size": 27206,
-			"mtime_ns": 1792066243567641340
-		},
-		"out/renderer/assets/parseISO-CZfAC2_J.js": {
-			"sha256": "e17fa8d499aa0fcbb38ec7ac7877ec6462eddead96d41dec1940540a82539029",
-			"size": 2764,
-			"mtime_ns": 1792066243564071906
-		},
-		"out/renderer/assets/browser-webauthn-prompt-BWBzYB6W.js": {
-			"sha256": "119efedc9d30d40d724d9776dd8b3cb5cdb4921cbcf93a2460de2bb5ceeb610a",
-			"size": 6473,
-			"mtime_ns": 1792066243565161245
-		},
-		"out/renderer/assets/mesh-page-CzGfX8pO.js": {
-			"sha256": "b825650a5b6db8418a42b642244d3cff711761a6f9d2a70110c218cb32f6726d",
-			"size": 46695,
-			"mtime_ns": 1792066243565313954
-		},
-		"out/renderer/assets/KaTeX_SansSerif-Bold-DbIhKOiC.woff": {
-			"sha256": "ece03cfd83e22c212cdef66feb8442d25a083beb988db3f1883f3f9738d750ba",
-			"size": 14408,
-			"mtime_ns": 1792066243557191374
-		},
-		"out/renderer/assets/radar-MK3ICKWK-DKqscj8G.js": {
-			"sha256": "fe370e2bdc848796f7259b4b9cd5548a75a6c451a52698c9cf3f3e0a31a708f1",
-			"size": 314652,
-			"mtime_ns": 1792066243579127727
-		},
-		"out/renderer/assets/KaTeX_Fraktur-Regular-CB_wures.ttf": {
-			"sha256": "1e6f9579e90e2cac37f8f60a597c436e075c114385652b7cbeb0dec0421291b3",
-			"size": 19572,
-			"mtime_ns": 1792066243559867303
-		},
-		"out/renderer/assets/index-Aa4g56M-.js": {
-			"sha256": "9e80f567db9c2e5f3f700a05d46aa3ce292e091966abd1c25963b39b63e023ec",
-			"size": 2775109,
-			"mtime_ns": 1792066243580783026
-		},
-		"out/renderer/assets/installer-DQ-dDLKd.js": {
-			"sha256": "1561e12d22f39c82f2ee60458d7edd6c1bd32b9f241f6c3836223f4b5526b1fd",
-			"size": 8799,
-			"mtime_ns": 1792066243565308662
-		},
-		"out/renderer/assets/KaTeX_Script-Regular-C5JkGWo-.ttf": {
-			"sha256": "1c67f068fea8bb09bf099c088b1cf64bd27516a6e07f4684344873564bb66a67",
-			"size": 16648,
-			"mtime_ns": 1792066243560467931
-		},
-		"out/renderer/assets/index-V0je55WX.js": {
-			"sha256": "5aa9eb2fca26116374a86dcf4d3ea6ba64f5f1212357a6c302faf8f8caac3387",
-			"size": 277319,
-			"mtime_ns": 1792066243578415390
-		},
-		"out/renderer/assets/chunk-A2AXSNBT-B_APg3eP.js": {
-			"sha256": "316f95f28a1c1d9131923dfac3aa4036b8a5c7ae873d6c2567a8d2d29ea32eb9",
-			"size": 45033,
-			"mtime_ns": 1792066243563725654
-		},
-		"out/renderer/assets/infoDiagram-PH2N3AL5-DOrh0b_e.js": {
-			"sha256": "f82d4b5af1e003d5c381610c2e766e197c09af2322a8270adfc65ef76c393905",
-			"size": 800,
-			"mtime_ns": 1792066243562941651
-		},
-		"out/renderer/assets/KaTeX_Main-BoldItalic-DzxPMmG6.ttf": {
-			"sha256": "70ee1f64a20f2048c21940ef46d0144fd215baa953ca69afd1e31e98544f708f",
-			"size": 32968,
-			"mtime_ns": 1792066243559864803
-		},
-		"out/renderer/assets/KaTeX_Size4-Regular-Dl5lxZxV.woff2": {
-			"sha256": "a4af7d414440a1c1790825cfb700cf9cf43b0f2c4b04f0ebc523011ad9853ec0",
-			"size": 4928,
-			"mtime_ns": 1792066243553941483
-		},
-		"out/renderer/assets/KaTeX_Main-Bold-waoOVXN0.ttf": {
-			"sha256": "138ac28d1663b3037e9c5f52371fa5c63d8324f4a38d22cd573e6ea3a3fd0cf8",
-			"size": 51336,
-			"mtime_ns": 1792066243559571468
-		},
-		"out/renderer/assets/KaTeX_Math-BoldItalic-B3XSjfu4.ttf": {
-			"sha256": "f9377ab0271cda59af24bcffbd46a4d0c8a3572ffafdbb38de2ad5ea7b0d5ee5",
-			"size": 31196,
-			"mtime_ns": 1792066243560458973
-		},
-		"out/renderer/assets/clone-B6wlEvr1.js": {
-			"sha256": "58cead956479eb1113236a3a587cafdac9b8f4bd43730756f153f270071a97f9",
-			"size": 96,
-			"mtime_ns": 1792066243562780733
-		},
-		"out/renderer/assets/index-DHKnfVbX.css": {
-			"sha256": "35a45f6a841a06a943716e1fca206baacd0463746f1fc917e34ea58b0b4e9710",
-			"size": 6074,
-			"mtime_ns": 1792066243561749895
-		},
-		"out/renderer/assets/mllike-CXdrOF99.js": {
-			"sha256": "0bf60c6883fe103d813759f1b69baa46af8b5dc0b502aae492c247838a5d8784",
-			"size": 4788,
-			"mtime_ns": 1792066243562418898
-		},
-		"out/renderer/assets/RobotoMono-Bold-CA4NrfZm.ttf": {
-			"sha256": "e8bb8a7d10eb2314cd2d3a22d6628017f852be2dcdfd7fd6c2be37ad59029d05",
-			"size": 79156,
-			"mtime_ns": 1792066243550246924
-		},
-		"out/renderer/assets/KaTeX_Caligraphic-Regular-Di6jR-x-.woff2": {
-			"sha256": "5d53e70ad607c2352162dec9e0923fb54ecdafaccbf604cd8dcf7d00facb989b",
-			"size": 6908,
-			"mtime_ns": 1792066243550603968
-		},
-		"out/renderer/assets/requirementDiagram-KVF5MWMF-BR7734IR.js": {
-			"sha256": "82d206529bba7b243c83e85f39703f8137bc873ded798f19733e6880ce2c7d66",
-			"size": 30151,
-			"mtime_ns": 1792066243563142152
-		},
-		"out/renderer/assets/KaTeX_Math-Italic-DA0__PXp.woff": {
-			"sha256": "8a8d244581371912b8f3f5a23e2437cb2a59cd9bcaebb0346e722c05737a2571",
-			"size": 18748,
-			"mtime_ns": 1792066243556756622
-		},
-		"out/renderer/assets/KaTeX_Script-Regular-D5yQViql.woff": {
-			"sha256": "d96cdf2b3bdd4d64a8fd5f74a4c467f123a8a73931cd435889f08ffaf9bf947a",
-			"size": 10588,
-			"mtime_ns": 1792066243557289166
-		},
-		"out/renderer/assets/publication-validation-CI1Szkme.js": {
-			"sha256": "27e1dcc0a4fb8efa210b031665c285902b2d0ddc1cd3eca2562eafaa996ee13d",
-			"size": 11463,
-			"mtime_ns": 1792066243565080911
-		},
-		"out/renderer/assets/agents-page-BKmYwfZC.js": {
-			"sha256": "abebdf307c1f8d923b465b509c4e0fa5eb8ce57dda9f657ed087e4dff07e715c",
-			"size": 92998,
-			"mtime_ns": 1792066243565690706
-		},
-		"out/renderer/assets/KaTeX_Caligraphic-Bold-BEiXGLvX.woff": {
-			"sha256": "1ae6bd7475590e97e7f145a89e09ccde322f7a6bc0b91607b1c8b8ee28290fed",
-			"size": 7716,
-			"mtime_ns": 1792066243554425986
-		},
-		"out/renderer/assets/KaTeX_SansSerif-Italic-DN2j7dab.woff": {
-			"sha256": "91ee67500cc0129aa0ace3ac5c61ff1692102f0f31d02b69347fba35dcb75bf2",
-			"size": 14112,
-			"mtime_ns": 1792066243557046373
-		},
-		"out/renderer/assets/KaTeX_Fraktur-Regular-Dxdc4cR9.woff": {
-			"sha256": "5e28753be717dac97f559f49bc10be9cf3c124ddcabda6659d11cb68febc6463",
-			"size": 13208,
-			"mtime_ns": 1792066243556270536
-		},
-		"out/renderer/assets/classDiagram-v2-COTLJTTW-MFBfRNSm.js": {
-			"sha256": "3fe74dec2ec7b42d5d9c3f1e09649aedfe50e709a468f5d0fe60d3d5d18ebaef",
-			"size": 470,
-			"mtime_ns": 1792066243563774071
-		},
-		"out/renderer/assets/KaTeX_Fraktur-Bold-CL6g_b3V.woff2": {
-			"sha256": "74444efd593c005e3f4573b44524704c0af0a937fe911cca9e94068d0d140d3f",
-			"size": 11348,
-			"mtime_ns": 1792066243550728552
-		},
-		"out/renderer/assets/katex-BCx1q_2Y.css": {
-			"sha256": "e8b159650a63723eb177c78984f643ef34b8917ccf8f2da100eee00211b595e0",
-			"size": 28459,
-			"mtime_ns": 1792066243561688728
-		},
-		"out/renderer/assets/KaTeX_Size1-Regular-C195tn64.woff": {
-			"sha256": "c943cc986384f59e86bea5fd7dc50a9c4dfe567a7c05eb40d6790720dead97c9",
-			"size": 6496,
-			"mtime_ns": 1792066243556877331
-		},
-		"out/renderer/assets/clojure-BMjYHr_A.js": {
-			"sha256": "498a60106d02e5d91242032d01e8c02c8405cc0dd2d089d69f55eab8e78d1a20",
-			"size": 10815,
-			"mtime_ns": 1792066243561996105
-		},
-		"out/renderer/assets/pieDiagram-IB7DONF6-CydFXo1E.js": {
-			"sha256": "d308410dafc03cafcafc45eeaa1e6bd8256a7754930e6a5380906e7268c587a6",
-			"size": 5002,
-			"mtime_ns": 1792066243565092328
-		},
-		"out/renderer/assets/python-BuPzkPfP.js": {
-			"sha256": "ac31cf70d1ebf5ecde918d2284e736615fab53442c2b3c230bfa83f85f806d78",
-			"size": 6475,
-			"mtime_ns": 1792066243562153355
-		},
-		"out/renderer/assets/sankeyDiagram-QLVOVGJD-Cl8IEKpA.js": {
-			"sha256": "f186a01fdf13480370c6ee19ed689527f8bf60a48a910d0df418b47986d77393",
-			"size": 22114,
-			"mtime_ns": 1792066243565355829
-		},
-		"out/renderer/assets/diagram-SSKATNLV-Bt-zaTQo.js": {
-			"sha256": "167304c782acbc4b24b3d62b77f308c0f0d5f1d917a1dd68bd2c42e9dcb5cebf",
-			"size": 6017,
-			"mtime_ns": 1792066243563874197
-		},
-		"out/renderer/assets/css-BnMrqG3P.js": {
-			"sha256": "aa3e47bd7d7e6f2b9aed7b342b7d6aa059ff6e770c86d64cb0eaf97b403ec98a",
-			"size": 27132,
-			"mtime_ns": 1792066243562152147
-		},
-		"out/renderer/assets/KaTeX_Size1-Regular-Dbsnue_I.ttf": {
-			"sha256": "95b6d2f1a50173bfedb8c63e1d1c99b10427d0a4df4201cb44513b226951a22b",
-			"size": 12228,
-			"mtime_ns": 1792066243560440514
-		},
-		"out/renderer/assets/conversation-input-sync-CAX4_ErH.css": {
-			"sha256": "f09f3754b5e32e8c9a5ce66de943ac2b4206914f0ef96816739efb45bd8b7d0c",
-			"size": 3340,
-			"mtime_ns": 1792066243561694437
-		},
-		"out/renderer/assets/KaTeX_Size4-Regular-DWFBv043.ttf": {
-			"sha256": "c647367d1dd4e162468717d020e1fc0f1dc5c26ebfdffbe55261713bf88c5877",
-			"size": 10364,
-			"mtime_ns": 1792066243560602890
-		},
-		"out/renderer/assets/KaTeX_Size3-Regular-CTq5MqoE.woff": {
-			"sha256": "6ab6b62e9b62dae2c00dd90f791bd10950be0ecc3490d7d6045f51c2e8fe0949",
-			"size": 4420,
-			"mtime_ns": 1792066243558514505
-		},
-		"out/renderer/assets/KaTeX_Main-BoldItalic-DxDJ3AOS.woff2": {
-			"sha256": "99cd42a3c072d918f2f44984a807cf7aa16e13545fd0875fc07c6c65f99e715b",
-			"size": 16780,
-			"mtime_ns": 1792066243550688843
-		},
-		"out/renderer/assets/cytoscape.esm-DHvQc-Lm.js": {
-			"sha256": "0cd9131942c1b6a544c48ebfcba1f2ca0ca69b73727ac44b56e8ef2f03d338ef",
-			"size": 438643,
-			"mtime_ns": 1792066243563877030
-		},
-		"out/renderer/assets/RobotoMono-Regular-BCiLwUa1.ttf": {
-			"sha256": "3514b70ce30836d7f0875728e200c155c4ff335b540572a498b90d8f043ea3be",
-			"size": 78992,
-			"mtime_ns": 1792066243550257716
-		},
-		"out/renderer/assets/stateDiagram-DGXRK772-De3RKKZ6.js": {
-			"sha256": "21da58985bcd179822436b001155ed9e3df21a744cfc570e5feef104116ae0fd",
-			"size": 10764,
-			"mtime_ns": 1792066243563921322
-		},
-		"out/renderer/assets/use-memberships-query-_4aZzud5.js": {
-			"sha256": "c68eca612048be602099fd3eb9f30341dd00a8b323fde4a6e55d9d69ed763f61",
-			"size": 2970,
-			"mtime_ns": 1792066243563902405
-		},
-		"out/renderer/assets/agentic-sequence-CExfswgi.png": {
-			"sha256": "6ece6e61f7d7ef7e9d04b4a6e23113f48dd10485bd1b1669a8e49af8e6709147",
-			"size": 433829,
-			"mtime_ns": 1792066243550187799
-		},
-		"out/renderer/assets/error-boundary-zdSGAufh.js": {
-			"sha256": "87340f9c4add9502a6b0768854b7c90fd271aa56a5e3039e6108ca69a846b83e",
-			"size": 191931,
-			"mtime_ns": 1792066243578341807
-		},
-		"out/renderer/assets/KaTeX_SansSerif-Italic-YYjJ1zSn.ttf": {
-			"sha256": "3931dd81faed86ba021bb2bbdc36f5bed9a38d6b4f4077aca59b265aa1b02083",
-			"size": 22364,
-			"mtime_ns": 1792066243560403764
-		},
-		"out/renderer/assets/index-DkhkrHSO.css": {
-			"sha256": "1d0a6adfaeabbcddfedb175a5eb9c5ffab02502fd555e7b210bc9beba6ad832d",
-			"size": 183312,
-			"mtime_ns": 1792066243561715728
-		},
-		"out/renderer/assets/KaTeX_Main-Bold-Cx986IdX.woff2": {
-			"sha256": "0f60d1b897938ec918c8ce073092411baf9438f6739465693ff18b0f9d20b021",
-			"size": 25324,
-			"mtime_ns": 1792066243550610718
-		},
-		"out/renderer/assets/KaTeX_Main-Regular-ypZvNtVU.ttf": {
-			"sha256": "d0332f52868370fd83ae7fa46470f90c8f2eab2fcf12bc4f88080b340c95a830",
-			"size": 53580,
-			"mtime_ns": 1792066243560407681
-		},
-		"out/renderer/assets/index-C4XBTbWT.js": {
-			"sha256": "728a389c2f07a770ad8065a4ef1a2758c24eab9f31cc205f511c752f065e6e3f",
-			"size": 12779,
-			"mtime_ns": 1792066243564251907
-		},
-		"out/renderer/assets/GeistMonoNerdFontMono-Regular-CWdDX7GJ.otf": {
-			"sha256": "58659ba839f49dbd0867dce44ea692a21e5a54fb145d17b066165fdd7699ca2c",
-			"size": 2244660,
-			"mtime_ns": 1792066243553653065
-		},
-		"out/renderer/assets/use-session-snapshot-BArEwiDL.js": {
-			"sha256": "120290c82df6ce567a2f4ca05f83b93efc43cf02ca0dd836420ec8af6d3519eb",
-			"size": 628,
-			"mtime_ns": 1792066243561729645
-		},
-		"out/renderer/assets/en-US-BcB1DWxG.js": {
-			"sha256": "3b5115804c48955b120baaa4420b560f96e097da1558cb0cc6216486d50b1344",
-			"size": 7705,
-			"mtime_ns": 1792066243565824873
-		},
-		"out/renderer/assets/KaTeX_Math-BoldItalic-CZnvNsCZ.woff2": {
-			"sha256": "dc47344dbb6cb5b655c8460d561f4df5f501b90c804ad3c6cec65fe322351ab1",
-			"size": 16400,
-			"mtime_ns": 1792066243553411106
-		},
-		"out/renderer/assets/KaTeX_AMS-Regular-BQhdFMY1.woff2": {
-			"sha256": "0cdd387c9590a1a9f9794560022dbb59654a7d86f187aa0c81495ad42d3a7308",
-			"size": 28076,
-			"mtime_ns": 1792066243552371101
-		},
-		"out/renderer/assets/KaTeX_Fraktur-Bold-BdnERNNW.ttf": {
-			"sha256": "9163df9c7122432e6495b4229fa9071cf9ae86a758ae5efc4924ec2e1a6dbce1",
-			"size": 19584,
-			"mtime_ns": 1792066243559558968
-		},
-		"out/renderer/assets/KaTeX_Typewriter-Regular-D3Ib7_Hf.ttf": {
-			"sha256": "f01f3e87d9c6a61c0c081ceb577abd864eb00a612f7ac1620dd6915fad2ef5aa",
-			"size": 27556,
-			"mtime_ns": 1792066243561693728
-		},
-		"out/renderer/assets/canvas-variables-view-DrA20zqs.png": {
-			"sha256": "d314e69657b4b445e5d1141d7e59271cc84d803e6e28b3813218446b1277bd44",
-			"size": 172326,
-			"mtime_ns": 1792066243550342842
-		},
-		"out/renderer/assets/KaTeX_Typewriter-Regular-CO6r4hn1.woff2": {
-			"sha256": "71d517d67827787cfabdf186914cc3358eda539e37931941f2b2fd4a21f68c0b",
-			"size": 13568,
-			"mtime_ns": 1792066243554085817
-		},
-		"out/renderer/assets/KaTeX_Math-Italic-flOr_0UB.ttf": {
-			"sha256": "08ce98e51b04d58945a301e639e02b6998af29fdfd61a7b8afdd07bbfc479d4a",
-			"size": 31308,
-			"mtime_ns": 1792066243559900095
-		},
-		"out/renderer/assets/graph-i93VHPjI.js": {
-			"sha256": "2772ee3900fed8577888a409c98699586b02d7692657c854f02d802855050884",
-			"size": 5920,
-			"mtime_ns": 1792066243564746409
-		},
-		"out/renderer/assets/_baseUniq-DL5vlaOE.js": {
-			"sha256": "a084869caee6f69e99d08ba3c7f2850ee47f91a4f67be981aae877c2157df451",
-			"size": 11891,
-			"mtime_ns": 1792066243572023110
-		},
-		"out/renderer/assets/KaTeX_Size1-Regular-mCD8mA8B.woff2": {
-			"sha256": "6b47c40166b6dbe21a5dfca7718413f2147fd2399be1ba605d8ad39cedf25dfe",
-			"size": 5468,
-			"mtime_ns": 1792066243553771316
-		},
-		"out/renderer/assets/KaTeX_Math-Italic-t53AETM-.woff2": {
-			"sha256": "7af58c5ec8f132a2ddde9027c6d7814decce4d3b822a11192a42a20e2e973264",
-			"size": 16440,
-			"mtime_ns": 1792066243553649690
-		},
-		"out/renderer/assets/pug-DukmZTjD.js": {
-			"sha256": "462a6d3467dbb8ab522cfcd5b84366e43875db05287021877a8e141e7bbb7759",
-			"size": 6674,
-			"mtime_ns": 1792066243562675691
-		},
-		"out/renderer/assets/KaTeX_Main-Italic-BMLOBm91.woff": {
-			"sha256": "f1d6ef86f3b11a528bd5185199bd2443ecb2b0dead96d88674b5a2c12be24bdf",
-			"size": 19676,
-			"mtime_ns": 1792066243556923706
-		},
-		"out/renderer/assets/asn1-EdZsLKOL.js": {
-			"sha256": "ae03ba33f00f6d244c134c98deb75db9ef27894ed42661b6b96cf897561e1bab",
-			"size": 3981,
-			"mtime_ns": 1792066243561809395
-		},
-		"out/renderer/assets/KaTeX_SansSerif-Bold-D1sUS0GD.woff2": {
-			"sha256": "e99ae51144bf1232efcc1bfe5add36262c6866b0faab24fa75740e1b98577a62",
-			"size": 12216,
-			"mtime_ns": 1792066243553871525
-		},
-		"out/renderer/assets/KaTeX_Size2-Regular-B7gKUWhC.ttf": {
-			"sha256": "a6b2099fb555c60e3a0db3a08842ebf1d732c6eb4e4bf44913613bed4fc4e39b",
-			"size": 11508,
-			"mtime_ns": 1792066243561455436
-		},
-		"out/renderer/assets/GeistMonoNerdFontMono-Bold-B9bGosAz.otf": {
-			"sha256": "eb9a2b2a81b94b795200a3d5b6baa4b4b379c8c2f5285c31b9b6f7185b780f3c",
-			"size": 2251544,
-			"mtime_ns": 1792066243554538986
-		},
-		"out/renderer/assets/ganttDiagram-APWFNJXF-Z4jGdhU9.js": {
-			"sha256": "672fcd5bb7c8022593d1789d6143d9d1644d6db763becfad1a36a5ad66ae0409",
-			"size": 47297,
-			"mtime_ns": 1792066243565362954
-		},
-		"out/renderer/assets/KaTeX_SansSerif-Italic-C3H0VqGB.woff2": {
-			"sha256": "00b26ac825e2095056396e0553b8ac26d3f8ad158c3826e28b4c45b385c4714a",
-			"size": 12028,
-			"mtime_ns": 1792066243553942442
-		},
-		"out/renderer/assets/KaTeX_Caligraphic-Bold-ATXxdsX0.ttf": {
-			"sha256": "07d8e303ce4fc12b4bb54f1004170dd190a1f3db45d400fe68060df3e0897268",
-			"size": 12368,
-			"mtime_ns": 1792066243559291967
-		},
-		"out/renderer/assets/org-surface-gate-BPyE3rV0.js": {
-			"sha256": "8f88346e474b27d85ad3f2a93ede7f6468acf5cef6e4b88ff49fd42c9924c453",
-			"size": 271,
-			"mtime_ns": 1792066243561782812
-		},
-		"out/renderer/assets/org-access-ClqBlRmh.js": {
-			"sha256": "c163a4d4b9ff0fb4fc8b2572e4f04eb84fe7025a6f12a8572d3eabfc4f0e422e",
-			"size": 3645,
-			"mtime_ns": 1792066243565009744
-		},
-		"out/renderer/assets/chunk-AEK57VVT-QKvx9LVx.js": {
-			"sha256": "1b4f7d172bb601542e9b41c8a5798e0f45b3b32c99f8fd0f4a5d56fe2995d547",
-			"size": 34498,
-			"mtime_ns": 1792066243563780280
-		},
-		"out/renderer/assets/mindmap-definition-ALO5MXBD-ssSa6RKa.js": {
-			"sha256": "838179c28e681476a05c484ff9938cc95eb4d01031ce67e3c5243e5373c4ca49",
-			"size": 101034,
-			"mtime_ns": 1792066243565241745
-		},
-		"out/renderer/assets/xychartDiagram-VJFVF3MP-DpNjpuYB.js": {
-			"sha256": "a861812ea7f4a37880fdb8564aee56115324ccfa1adf35fa1a5dfb87cd82fb8f",
-			"size": 37452,
-			"mtime_ns": 1792066243563123693
-		},
-		"out/renderer/assets/KaTeX_Typewriter-Regular-C0xS9mPB.woff": {
-			"sha256": "e14fed02b1aba7ce9f5afd5844b5d0321b22351febc720e0de8b8723527609f7",
-			"size": 16028,
-			"mtime_ns": 1792066243559242925
-		},
-		"out/renderer/assets/agent-hub-page-DOEG-2Bv.js": {
-			"sha256": "dbb8a3461f22579c8eceef15e93a75a076231538300de77e94e070ceac980d71",
-			"size": 54074,
-			"mtime_ns": 1792066243565986707
-		},
-		"out/renderer/assets/rpm-CTu-6PCP.js": {
-			"sha256": "60f8f25323f47996c1e5a299f87f42de42bd6c13a584733c4fe3d71ec48ba65a",
-			"size": 1622,
-			"mtime_ns": 1792066243562605608
-		},
-		"out/renderer/assets/blockDiagram-JOT3LUYC-BQ7g9AuI.js": {
-			"sha256": "7aedfb7a6c7515744530a4d2687b9e6c17c2ed87d43480f11437e9b0cc8452cd",
-			"size": 71622,
-			"mtime_ns": 1792066243563888697
-		}
-	}
+  "source_sha": "8fe9b86350a4052463f43e7b23aedcfa7c18f970",
+  "source_tree": "2f6e8c14e6b69a61a4e101b377b77d61ef8243b3",
+  "command": [
+    "/Users/damian/local-operator/.venv/bin/python",
+    "/Users/damian/local-operator/scripts/run_bounded.py",
+    "--timeout",
+    "300",
+    "--grace",
+    "5",
+    "--",
+    "/Users/damian/local-operator-ui/.worktrees/browser-tab-strip/node_modules/.bin/electron-vite",
+    "build"
+  ],
+  "build_mode": "build:npm equivalent; plain JS, no bytecode/Electron compiler launch",
+  "synthetic_oauth_credentials": true,
+  "backend_manager_disabled": true,
+  "renderer_api_root": "http://127.0.0.1:1",
+  "elapsed_seconds": 13.44,
+  "exit_code": 0,
+  "installed_lock_before": "fd0310b282d1a63560473655fccd3964102bef2015e43e4915502e0f0a4670ba",
+  "installed_lock_after": "fd0310b282d1a63560473655fccd3964102bef2015e43e4915502e0f0a4670ba",
+  "artifact_files": {
+    "out/main/index.js": {
+      "sha256": "da2182d336ab9bf6d61e587a662b177f53713cff3c440299b02077d9ee55f301",
+      "size": 2242287,
+      "mtime_ns": 1792066232283091672
+    },
+    "out/preload/index.js": {
+      "sha256": "092d8c4b0c5823ff0b9fa2596e50a13cc98385607680bacd13755307b95d7377",
+      "size": 174756,
+      "mtime_ns": 1792066232342072533
+    },
+    "out/renderer/console-capture.html": {
+      "sha256": "2f7c17c0b62ec41d945b15d05ded5b0f55bf5ab4518d75e42a304e4de537cd45",
+      "size": 825,
+      "mtime_ns": 1792066243579115602
+    },
+    "out/renderer/index.html": {
+      "sha256": "a639f6e4b1a2b7afdb19850e4abce15d195d43f9a708b17918e91542a2fa0d1c",
+      "size": 3940,
+      "mtime_ns": 1792066243580319774
+    },
+    "out/renderer/installer.html": {
+      "sha256": "b5e9ff83627db469115c59a08c3a22cd5543b744625d3b2b31f7e60f7fe0aa06",
+      "size": 931,
+      "mtime_ns": 1792066243579702438
+    },
+    "out/renderer/mini.html": {
+      "sha256": "f12979c1d7ae4b69a279b3be3aa16804092e1f2b238ac813c85fa973b1cf8179",
+      "size": 1004,
+      "mtime_ns": 1792066243580066440
+    },
+    "out/renderer/assets/KaTeX_Script-Regular-D3wIWfF6.woff2": {
+      "sha256": "036d4e95149b69ff9bcc0cd55771efeb25ffa3947293e69acd78d5ac328c684b",
+      "size": 9644,
+      "mtime_ns": 1792066243553873108
+    },
+    "out/renderer/assets/legacy-agents-page-DZbqI0Hg.js": {
+      "sha256": "ca808af3f8184ed9225411f04e0fdaba3ff631d70245c7aab47503692eff20f9",
+      "size": 53939,
+      "mtime_ns": 1792066243566713544
+    },
+    "out/renderer/assets/use-download-agent-mutation-DTM1gjS1.js": {
+      "sha256": "040eca12bf08021f90d5d6b619d0d2d4ab836330280f7c91879d73f857030218",
+      "size": 12278,
+      "mtime_ns": 1792066243566613835
+    },
+    "out/renderer/assets/mini-BROoz9VB.js": {
+      "sha256": "f4113dadd470db5e234e52cfbd2963bac479e03e3099fd1c9130f5ae1566fd44",
+      "size": 12323,
+      "mtime_ns": 1792066243565140453
+    },
+    "out/renderer/assets/messages-BrRl-Bfh.js": {
+      "sha256": "64dc990839f2870ea7665485a6aad8b6557a8e53df059a897f7346dffb5dbe34",
+      "size": 233298,
+      "mtime_ns": 1792066243566955378
+    },
+    "out/renderer/assets/KaTeX_AMS-Regular-DRggAlZN.ttf": {
+      "sha256": "68534840bcfdd2bffb6f0e8deb48684dd01e7f04ea2813267577afb906de1d13",
+      "size": 63632,
+      "mtime_ns": 1792066243560114429
+    },
+    "out/renderer/assets/timeline-definition-BDJGKUSR-friTTh0u.js": {
+      "sha256": "be154a8e1e9ff51c40ff434b7550e6e458230a7301ed210b3e2082a166c11a18",
+      "size": 23644,
+      "mtime_ns": 1792066243563830113
+    },
+    "out/renderer/assets/_basePickBy-CZ-cFv17.js": {
+      "sha256": "733435d0dd6091a788ecc34bed82fb5be3d332233419b0bdf22999bd2d691c25",
+      "size": 2587,
+      "mtime_ns": 1792066243566350500
+    },
+    "out/renderer/assets/flowDiagram-4HSFHLVR-BOMoVzvv.js": {
+      "sha256": "c9a049b30098062b9fbef542898fadb1bce8eb54d16a21b8d4f915df4384e02d",
+      "size": 60301,
+      "mtime_ns": 1792066243562715400
+    },
+    "out/renderer/assets/KaTeX_Fraktur-Regular-CTYiF6lA.woff2": {
+      "sha256": "51814d270d06ff0255dba0799994fa4d8c84d11f09951d47595f4abb1f3602dc",
+      "size": 11316,
+      "mtime_ns": 1792066243552608227
+    },
+    "out/renderer/assets/conversation-input-sync-BtgEuJcP.js": {
+      "sha256": "cb5142c6ff8712f21e4cbad5ffb72b669ac44a1930228c1c97e895577b8914bf",
+      "size": 3837173,
+      "mtime_ns": 1792066243581124695
+    },
+    "out/renderer/assets/KaTeX_Caligraphic-Regular-wX97UBjC.ttf": {
+      "sha256": "ed0b74372feefcbb9c0666b2e210da37b7e49fa7fbbf3eeb11db5f693dacfbb7",
+      "size": 12344,
+      "mtime_ns": 1792066243559345050
+    },
+    "out/renderer/assets/sequenceDiagram-X6HHIX6F-B7n7cfxM.js": {
+      "sha256": "ac5cc74f0553de11aedc8180f1d61d6bdfbfff05b6d8c13101d91704821d84f2",
+      "size": 88549,
+      "mtime_ns": 1792066243563715113
+    },
+    "out/renderer/assets/mermaid.core-Hd6TpjgO.js": {
+      "sha256": "f6c62ea5442fd8203478b8d13fde4ab44470bfe1bb032e3939e5507883c74cc9",
+      "size": 459874,
+      "mtime_ns": 1792066243578974810
+    },
+    "out/renderer/assets/icon-tV2fhamD.png": {
+      "sha256": "66fa5ba2d83b55130ca50d82c3cd437ee263516a9c507bcaa42af3b5730a02d1",
+      "size": 1109493,
+      "mtime_ns": 1792066243551734806
+    },
+    "out/renderer/assets/chunk-D6G4REZN-UwJTzoUc.js": {
+      "sha256": "6997b15a055aeeec236f6d128e0f63a97c89ebe3aecfbd16d2a8d9d5d86f8957",
+      "size": 1437,
+      "mtime_ns": 1792066243562710233
+    },
+    "out/renderer/assets/radient-icon-1024x1024-D_JJedvo.png": {
+      "sha256": "a24e9cb4976ad3b6e8590bbcae10e9946e84803efc3e2e11a3da47cda32b4cb6",
+      "size": 53271,
+      "mtime_ns": 1792066243550838052
+    },
+    "out/renderer/assets/channel-ChNDlUus.js": {
+      "sha256": "e1f2d3dd4d6d3a856521fee0aa63133f77919b891a5ed4fe1104bd34c333d108",
+      "size": 113,
+      "mtime_ns": 1792066243562752358
+    },
+    "out/renderer/assets/KaTeX_Main-Regular-Dr94JaBh.woff": {
+      "sha256": "c6368d87e8a1a3a5d337623d83d8dc4b868f242a9ad476237d6f8d1e0f168cdc",
+      "size": 30772,
+      "mtime_ns": 1792066243556820497
+    },
+    "out/renderer/assets/c4Diagram-VJAJSXHY-SLWKQvBv.js": {
+      "sha256": "2e6d2b7cee489e78e764b2273103ccedad60dbe3f3101e92906b41c3fb4038e9",
+      "size": 70238,
+      "mtime_ns": 1792066243562712816
+    },
+    "out/renderer/assets/KaTeX_Size3-Regular-DgpXs0kz.ttf": {
+      "sha256": "500e04d54f0d51666332c9d2089aa803be22aa878eca539e59fa53c6e522b082",
+      "size": 7588,
+      "mtime_ns": 1792066243561401144
+    },
+    "out/renderer/assets/dagre-OKDRZEBW-DWxF90I2.js": {
+      "sha256": "6293d1d32e2d9543b6184a35f765d16a23e6b9b5801736818d5c6236e451b0f8",
+      "size": 11119,
+      "mtime_ns": 1792066243564970244
+    },
+    "out/renderer/assets/brand-mark-Bv0Hu-Cz.png": {
+      "sha256": "30252bb0ec8bdbc92a099cab374d5577b9dc2388b7b808cf3d52f70de578e610",
+      "size": 6947,
+      "mtime_ns": 1792066243550603843
+    },
+    "out/renderer/assets/KaTeX_SansSerif-Regular-BNo7hRIc.ttf": {
+      "sha256": "f36ea897e19f4a2e571d1e900e4e3710e438deb05a842486045ba0a3e616a4ad",
+      "size": 19436,
+      "mtime_ns": 1792066243560667598
+    },
+    "out/renderer/assets/diagram-VNBRO52H-s_Xkg59Y.js": {
+      "sha256": "6ccc8199aecdc1b76d1bdf151da684e71256fa5186305558fd297ed88fd9080f",
+      "size": 3850,
+      "mtime_ns": 1792066243563851030
+    },
+    "out/renderer/assets/erDiagram-Q7BY3M3F-Bhj9vCiA.js": {
+      "sha256": "00937cafc6e5b8715cf299ddc6d4048698df97986ff8a9ffc031f6aa3d31db17",
+      "size": 25307,
+      "mtime_ns": 1792066243562742733
+    },
+    "out/renderer/assets/KaTeX_SansSerif-Bold-CFMepnvq.ttf": {
+      "sha256": "1ece03f79f95277d57dc7f6b435a74e1379b0d46104a8530286b60ff49369ea0",
+      "size": 24504,
+      "mtime_ns": 1792066243560526264
+    },
+    "out/renderer/assets/gitGraphDiagram-7IBYFJ6S-CfhbbSkm.js": {
+      "sha256": "9049578be614379e1e9484873d2686f91b4542f16e72822733b66a0deca9cc0f",
+      "size": 24175,
+      "mtime_ns": 1792066243562761733
+    },
+    "out/renderer/assets/schedules-page-D6QoZ2oo.js": {
+      "sha256": "0b22aad2153dd7cb9e4a70dc09884dc941d43e4df85d01c9ef89c8de3fb70616",
+      "size": 418859,
+      "mtime_ns": 1792066243579028435
+    },
+    "out/renderer/assets/KaTeX_Main-Regular-B22Nviop.woff2": {
+      "sha256": "c2342cd8b869e01752a9321dc17213fc40d4d04c79688c1d43f2cf316abd7866",
+      "size": 26272,
+      "mtime_ns": 1792066243552921770
+    },
+    "out/renderer/assets/page-header-MogLrHi_.js": {
+      "sha256": "4f1410b89b8f44b0a5b3f76e25dd057240833e1ff26fe95a6639b6cff65e3b75",
+      "size": 550,
+      "mtime_ns": 1792066243561787937
+    },
+    "out/renderer/assets/format-CZUObkkr.js": {
+      "sha256": "500ecf4a851347a5c48db0683cd5c638048a350742553d44e34ff3be6579c499",
+      "size": 12469,
+      "mtime_ns": 1792066243566212416
+    },
+    "out/renderer/assets/ttcn-cfg-B9xdYoR4.js": {
+      "sha256": "8d367f5c728e0a125912df85cc96c61e1bd2616e3617535c70783494e6361653",
+      "size": 4050,
+      "mtime_ns": 1792066243562698941
+    },
+    "out/renderer/assets/architectureDiagram-IEHRJDOE-BkC_OGgb.js": {
+      "sha256": "5ec70aa7257432b4b0238df50165f6f8e4a19afe92a3c896765dacbf0fdc5220",
+      "size": 148269,
+      "mtime_ns": 1792066243565244995
+    },
+    "out/renderer/assets/sql-D0XecflT.js": {
+      "sha256": "de179cb192745a50f178503fd65ae5ff2488f34b4d421de85961a1207930a125",
+      "size": 37052,
+      "mtime_ns": 1792066243562157731
+    },
+    "out/renderer/assets/projects-page-CUNZWsS1.js": {
+      "sha256": "85a4f3d88bddf8f16c6e1f8116cd89580be3f83709fc00e4f4e11324c69a305f",
+      "size": 136183,
+      "mtime_ns": 1792066243567640256
+    },
+    "out/renderer/assets/chat-full-view-e-eJPzrw.png": {
+      "sha256": "f160b23a307cd33590979075d6e4c4c2c4f5dc6fe0386b6e78f33358ebc7edd2",
+      "size": 1292439,
+      "mtime_ns": 1792066243551747348
+    },
+    "out/renderer/assets/kanban-definition-NDS4AKOZ-CymL9pOK.js": {
+      "sha256": "cdb49350c147efad2cea0d2504043137adc18a6ee774947d93ad60f30783f459",
+      "size": 20245,
+      "mtime_ns": 1792066243563851322
+    },
+    "out/renderer/assets/stateDiagram-v2-YXO3MK2T-CN4ctBxO.js": {
+      "sha256": "e13859cc2c6953e9bb80b7ba16fb51db060b598d29507dca4f3647e180ba1531",
+      "size": 468,
+      "mtime_ns": 1792066243563805863
+    },
+    "out/renderer/assets/canvas-overview-CruGEIRC.png": {
+      "sha256": "6dbb42d0287d2236f7688bcf7e85c7877bb9cf8b87e687da1cd7d8f28d7ea9c7",
+      "size": 565742,
+      "mtime_ns": 1792066243551474680
+    },
+    "out/renderer/assets/KaTeX_AMS-Regular-DMm9YOAa.woff": {
+      "sha256": "30da91e84c893f875e252689faebdc590b2871145e8adc7f9a9d4dbd8ce0b251",
+      "size": 33516,
+      "mtime_ns": 1792066243556759455
+    },
+    "out/renderer/assets/chat-input-CU-CA7Se.png": {
+      "sha256": "06b5ac735cb7daa83c3c812b41c17b15fa850ed417cf66a5bdc7818e1800c143",
+      "size": 92877,
+      "mtime_ns": 1792066243550624259
+    },
+    "out/renderer/assets/KaTeX_Math-BoldItalic-iY-2wyZ7.woff": {
+      "sha256": "850c0af5c2238497febaf5e461d880bf458c341f42f4f330f1b1ab5698b1998e",
+      "size": 18668,
+      "mtime_ns": 1792066243557052540
+    },
+    "out/renderer/assets/KaTeX_Main-BoldItalic-SpSLRI95.woff": {
+      "sha256": "a6f7ec0d846ac7ad975adb8959c37ed49b94acbc4ae436db9ce9e20287e4a64c",
+      "size": 19412,
+      "mtime_ns": 1792066243556342745
+    },
+    "out/renderer/assets/javascript-qCveANmP.js": {
+      "sha256": "a25df7ea81bbc864310bd608be88e813e76ac7bc1dde52e9d08927dab5781798",
+      "size": 17080,
+      "mtime_ns": 1792066243562659899
+    },
+    "out/renderer/assets/index-B_SjoUke.js": {
+      "sha256": "a9f674109d3d2d440f77ffdc060e34626bf66c799e6a172571f864867309b47c",
+      "size": 30869,
+      "mtime_ns": 1792066243564364657
+    },
+    "out/renderer/assets/KaTeX_Size2-Regular-oD1tc_U0.woff": {
+      "sha256": "2014c523c3210bcc166648c4d4cc57f05b747df07a24277bf71c51e67dc79e3d",
+      "size": 6188,
+      "mtime_ns": 1792066243558451713
+    },
+    "out/renderer/assets/chat-attachments-_3cRrONU.png": {
+      "sha256": "c735f0e2700c4dee851e0f2811276f81bf9b074733d0ef81e8254b11a8e7f765",
+      "size": 286759,
+      "mtime_ns": 1792066243550254383
+    },
+    "out/renderer/assets/agent-details-page-HSGLGerF.js": {
+      "sha256": "ba7bbb06a1e5964340a77266964794e7651ee5504f88dde402112259195783ac",
+      "size": 13531,
+      "mtime_ns": 1792066243565216036
+    },
+    "out/renderer/assets/KaTeX_Main-Italic-3WenGoN9.ttf": {
+      "sha256": "0d85ae7cc30f23790a7f1a58c4a112fdca8aae769b6ba11429af1d98b1b6cb3a",
+      "size": 33580,
+      "mtime_ns": 1792066243560450639
+    },
+    "out/renderer/assets/KaTeX_SansSerif-Regular-CS6fqUqJ.woff": {
+      "sha256": "11e4dc8a6471ff6d6ee561d53d10fde8f7489e798257ff449c5d37c197435605",
+      "size": 12316,
+      "mtime_ns": 1792066243558454296
+    },
+    "out/renderer/assets/quadrantDiagram-7GDLP6J5-DKIPdL8p.js": {
+      "sha256": "fc558782b9883b88a4eaba7181b33aaa2a70271307f98c6f493256463dd0fe74",
+      "size": 33857,
+      "mtime_ns": 1792066243563011818
+    },
+    "out/renderer/assets/KaTeX_Fraktur-Bold-BsDP51OF.woff": {
+      "sha256": "9be7ceb88004ab8ad124082246fbfcca4091e36385d4ec6ed1df67375dad50fb",
+      "size": 13296,
+      "mtime_ns": 1792066243554529611
+    },
+    "out/renderer/assets/browser-page-B2g8NXWs.js": {
+      "sha256": "e32bf53b5998a8cbc341c2ca144ff15d24d64524c89cfc2fdb5a6ce393a32349",
+      "size": 400,
+      "mtime_ns": 1792066243561744812
+    },
+    "out/renderer/assets/KaTeX_Caligraphic-Bold-Dq_IR9rO.woff2": {
+      "sha256": "de7701e42cf1f4cf0b766c03fb27977207eee2f4fd5d76fa82188406da43ea4c",
+      "size": 6912,
+      "mtime_ns": 1792066243550727260
+    },
+    "out/renderer/assets/journeyDiagram-U35MCT3I-DZ-XSzuA.js": {
+      "sha256": "f2e8f0a86d5019c20f286dde26004fae4b7ed19ed346e0f4db8e3dbc8176550b",
+      "size": 22812,
+      "mtime_ns": 1792066243563833780
+    },
+    "out/renderer/assets/arc-Mqdg__QH.js": {
+      "sha256": "e22f3c4daeed1991e9e038fc22407d5b5da946b27f1ab1ef42ffad7d67378a26",
+      "size": 3437,
+      "mtime_ns": 1792066243562981068
+    },
+    "out/renderer/assets/KaTeX_Caligraphic-Regular-CTRA-rTL.woff": {
+      "sha256": "3398dd02302557a793f2863f88e02d96ce10df2abffa07c8e9fa90775116e65c",
+      "size": 7656,
+      "mtime_ns": 1792066243555830367
+    },
+    "out/renderer/assets/chunk-RZ5BOZE2-CRFTpedA.js": {
+      "sha256": "f3844bf3b0545617e1e8e82f6c3916358ea4736f91468f2cda0355691c0064fe",
+      "size": 681,
+      "mtime_ns": 1792066243562747150
+    },
+    "out/renderer/assets/chunk-XZIHB7SX-DJbIPhoU.js": {
+      "sha256": "e11af936bac5587d426f018f5aefda8ae7241b777682a46dd1cc20b126c5b0f6",
+      "size": 195,
+      "mtime_ns": 1792066243562776192
+    },
+    "out/renderer/assets/canvas-code-inline-edit-DLji9b0m.png": {
+      "sha256": "b5f09006b3c75c3859228b318f4f39c9b5246d2e6a14e3b12fab35c342777b94",
+      "size": 239141,
+      "mtime_ns": 1792066243550156966
+    },
+    "out/renderer/assets/chunk-4BMEZGHF-BJBpG9u9.js": {
+      "sha256": "b384e1fcd73143b0c11ed89006b8f1abdb24aeb4d08a33a65b845d2184810eb1",
+      "size": 227,
+      "mtime_ns": 1792066243562759025
+    },
+    "out/renderer/assets/console-mirror-B8quHzHU.js": {
+      "sha256": "f57d738b7ae787536343d8c20c8387fe3403890bba35775417f6a0e74dadf489",
+      "size": 359816,
+      "mtime_ns": 1792066243565129578
+    },
+    "out/renderer/assets/KaTeX_Size4-Regular-BF-4gkZK.woff": {
+      "sha256": "99f9c6750b489c9462bf04900bd3f939df9b829339daaaaa99ef5495cdddea58",
+      "size": 5980,
+      "mtime_ns": 1792066243557298374
+    },
+    "out/renderer/assets/settings-page-CfzpZYay.js": {
+      "sha256": "928948f224024e5c52db7a18043de7e14691c4b83d265d79f3986c34bda2b3dd",
+      "size": 125331,
+      "mtime_ns": 1792066243572115277
+    },
+    "out/renderer/assets/KaTeX_Main-Italic-NWA7e6Wa.woff2": {
+      "sha256": "97479ca6cce906abc961ecac96faa5f9ca2e61b8e7670d475826bcdee9a7c267",
+      "size": 16988,
+      "mtime_ns": 1792066243553402439
+    },
+    "out/renderer/assets/notebook-pen-qUc64fN5.js": {
+      "sha256": "9ac2a74953321c33e6af75b1d9422333ebf360df4ae48bebd07111f2980d546e",
+      "size": 658,
+      "mtime_ns": 1792066243561810229
+    },
+    "out/renderer/assets/KaTeX_Size2-Regular-Dy4dx90m.woff2": {
+      "sha256": "d04c54219f9eaec6d4d4fd42dfb28785975a4794d6b2fc71e566b9cd6db842dd",
+      "size": 5208,
+      "mtime_ns": 1792066243554428152
+    },
+    "out/renderer/assets/KaTeX_Main-Bold-Jm3AIy58.woff": {
+      "sha256": "c76c5d696297d51b9cb1639c7da4334f0e7dec81b42b11213b5e25ef671bb822",
+      "size": 29912,
+      "mtime_ns": 1792066243556195327
+    },
+    "out/renderer/assets/KaTeX_SansSerif-Regular-DDBCnlJ7.woff2": {
+      "sha256": "68e8c73ef42afd3ccec58bf0fba302cce448938e7fc020a5e31f8a952eee1342",
+      "size": 10344,
+      "mtime_ns": 1792066243553995400
+    },
+    "out/renderer/assets/console-mirror-DOrYoP_4.css": {
+      "sha256": "9a4d604668a21c41191d8321ed53953b89cf9d605d29f89085f09f00ffdbad8c",
+      "size": 5175,
+      "mtime_ns": 1792066243561690145
+    },
+    "out/renderer/assets/classDiagram-GIVACNV2-MFBfRNSm.js": {
+      "sha256": "3fe74dec2ec7b42d5d9c3f1e09649aedfe50e709a468f5d0fe60d3d5d18ebaef",
+      "size": 470,
+      "mtime_ns": 1792066243563718946
+    },
+    "out/renderer/assets/book-open-ukyhTDdK.js": {
+      "sha256": "22336ec7cb945f1e341a9b96e9de9323db2286f5ea14d1b9f77ec89eb2a9bd40",
+      "size": 461,
+      "mtime_ns": 1792066243561759395
+    },
+    "out/renderer/assets/radient-auth-buttons-B5XbyL0j.js": {
+      "sha256": "d43f9e6a3bc923d4c336591846abf22e69e9fc0a5aca9808fe4adcf4f247ae7c",
+      "size": 1213,
+      "mtime_ns": 1792066243561790895
+    },
+    "out/renderer/assets/inline-edit-canvas-O9conTkE.png": {
+      "sha256": "7463bc8c04fef8a835e2d0ad3e9ab5437792868af3ea0f0f6e195c074391f31b",
+      "size": 143936,
+      "mtime_ns": 1792066243550321508
+    },
+    "out/renderer/assets/consoleCapture-DKxvugXg.js": {
+      "sha256": "56ab9715d9980d71653d636cd0a49224e602c517bc419d0c04f01e8f1a2ee0d6",
+      "size": 1275,
+      "mtime_ns": 1792066243564998161
+    },
+    "out/renderer/assets/layout-_eSxmETC.js": {
+      "sha256": "9c77d7e27c5f5c8880682eb6854cf0ceaea16852610f0342247e2dd4c9f4313e",
+      "size": 27206,
+      "mtime_ns": 1792066243567641340
+    },
+    "out/renderer/assets/parseISO-CZfAC2_J.js": {
+      "sha256": "e17fa8d499aa0fcbb38ec7ac7877ec6462eddead96d41dec1940540a82539029",
+      "size": 2764,
+      "mtime_ns": 1792066243564071906
+    },
+    "out/renderer/assets/browser-webauthn-prompt-BWBzYB6W.js": {
+      "sha256": "119efedc9d30d40d724d9776dd8b3cb5cdb4921cbcf93a2460de2bb5ceeb610a",
+      "size": 6473,
+      "mtime_ns": 1792066243565161245
+    },
+    "out/renderer/assets/mesh-page-CzGfX8pO.js": {
+      "sha256": "b825650a5b6db8418a42b642244d3cff711761a6f9d2a70110c218cb32f6726d",
+      "size": 46695,
+      "mtime_ns": 1792066243565313954
+    },
+    "out/renderer/assets/KaTeX_SansSerif-Bold-DbIhKOiC.woff": {
+      "sha256": "ece03cfd83e22c212cdef66feb8442d25a083beb988db3f1883f3f9738d750ba",
+      "size": 14408,
+      "mtime_ns": 1792066243557191374
+    },
+    "out/renderer/assets/radar-MK3ICKWK-DKqscj8G.js": {
+      "sha256": "fe370e2bdc848796f7259b4b9cd5548a75a6c451a52698c9cf3f3e0a31a708f1",
+      "size": 314652,
+      "mtime_ns": 1792066243579127727
+    },
+    "out/renderer/assets/KaTeX_Fraktur-Regular-CB_wures.ttf": {
+      "sha256": "1e6f9579e90e2cac37f8f60a597c436e075c114385652b7cbeb0dec0421291b3",
+      "size": 19572,
+      "mtime_ns": 1792066243559867303
+    },
+    "out/renderer/assets/index-Aa4g56M-.js": {
+      "sha256": "9e80f567db9c2e5f3f700a05d46aa3ce292e091966abd1c25963b39b63e023ec",
+      "size": 2775109,
+      "mtime_ns": 1792066243580783026
+    },
+    "out/renderer/assets/installer-DQ-dDLKd.js": {
+      "sha256": "1561e12d22f39c82f2ee60458d7edd6c1bd32b9f241f6c3836223f4b5526b1fd",
+      "size": 8799,
+      "mtime_ns": 1792066243565308662
+    },
+    "out/renderer/assets/KaTeX_Script-Regular-C5JkGWo-.ttf": {
+      "sha256": "1c67f068fea8bb09bf099c088b1cf64bd27516a6e07f4684344873564bb66a67",
+      "size": 16648,
+      "mtime_ns": 1792066243560467931
+    },
+    "out/renderer/assets/index-V0je55WX.js": {
+      "sha256": "5aa9eb2fca26116374a86dcf4d3ea6ba64f5f1212357a6c302faf8f8caac3387",
+      "size": 277319,
+      "mtime_ns": 1792066243578415390
+    },
+    "out/renderer/assets/chunk-A2AXSNBT-B_APg3eP.js": {
+      "sha256": "316f95f28a1c1d9131923dfac3aa4036b8a5c7ae873d6c2567a8d2d29ea32eb9",
+      "size": 45033,
+      "mtime_ns": 1792066243563725654
+    },
+    "out/renderer/assets/infoDiagram-PH2N3AL5-DOrh0b_e.js": {
+      "sha256": "f82d4b5af1e003d5c381610c2e766e197c09af2322a8270adfc65ef76c393905",
+      "size": 800,
+      "mtime_ns": 1792066243562941651
+    },
+    "out/renderer/assets/KaTeX_Main-BoldItalic-DzxPMmG6.ttf": {
+      "sha256": "70ee1f64a20f2048c21940ef46d0144fd215baa953ca69afd1e31e98544f708f",
+      "size": 32968,
+      "mtime_ns": 1792066243559864803
+    },
+    "out/renderer/assets/KaTeX_Size4-Regular-Dl5lxZxV.woff2": {
+      "sha256": "a4af7d414440a1c1790825cfb700cf9cf43b0f2c4b04f0ebc523011ad9853ec0",
+      "size": 4928,
+      "mtime_ns": 1792066243553941483
+    },
+    "out/renderer/assets/KaTeX_Main-Bold-waoOVXN0.ttf": {
+      "sha256": "138ac28d1663b3037e9c5f52371fa5c63d8324f4a38d22cd573e6ea3a3fd0cf8",
+      "size": 51336,
+      "mtime_ns": 1792066243559571468
+    },
+    "out/renderer/assets/KaTeX_Math-BoldItalic-B3XSjfu4.ttf": {
+      "sha256": "f9377ab0271cda59af24bcffbd46a4d0c8a3572ffafdbb38de2ad5ea7b0d5ee5",
+      "size": 31196,
+      "mtime_ns": 1792066243560458973
+    },
+    "out/renderer/assets/clone-B6wlEvr1.js": {
+      "sha256": "58cead956479eb1113236a3a587cafdac9b8f4bd43730756f153f270071a97f9",
+      "size": 96,
+      "mtime_ns": 1792066243562780733
+    },
+    "out/renderer/assets/index-DHKnfVbX.css": {
+      "sha256": "35a45f6a841a06a943716e1fca206baacd0463746f1fc917e34ea58b0b4e9710",
+      "size": 6074,
+      "mtime_ns": 1792066243561749895
+    },
+    "out/renderer/assets/mllike-CXdrOF99.js": {
+      "sha256": "0bf60c6883fe103d813759f1b69baa46af8b5dc0b502aae492c247838a5d8784",
+      "size": 4788,
+      "mtime_ns": 1792066243562418898
+    },
+    "out/renderer/assets/RobotoMono-Bold-CA4NrfZm.ttf": {
+      "sha256": "e8bb8a7d10eb2314cd2d3a22d6628017f852be2dcdfd7fd6c2be37ad59029d05",
+      "size": 79156,
+      "mtime_ns": 1792066243550246924
+    },
+    "out/renderer/assets/KaTeX_Caligraphic-Regular-Di6jR-x-.woff2": {
+      "sha256": "5d53e70ad607c2352162dec9e0923fb54ecdafaccbf604cd8dcf7d00facb989b",
+      "size": 6908,
+      "mtime_ns": 1792066243550603968
+    },
+    "out/renderer/assets/requirementDiagram-KVF5MWMF-BR7734IR.js": {
+      "sha256": "82d206529bba7b243c83e85f39703f8137bc873ded798f19733e6880ce2c7d66",
+      "size": 30151,
+      "mtime_ns": 1792066243563142152
+    },
+    "out/renderer/assets/KaTeX_Math-Italic-DA0__PXp.woff": {
+      "sha256": "8a8d244581371912b8f3f5a23e2437cb2a59cd9bcaebb0346e722c05737a2571",
+      "size": 18748,
+      "mtime_ns": 1792066243556756622
+    },
+    "out/renderer/assets/KaTeX_Script-Regular-D5yQViql.woff": {
+      "sha256": "d96cdf2b3bdd4d64a8fd5f74a4c467f123a8a73931cd435889f08ffaf9bf947a",
+      "size": 10588,
+      "mtime_ns": 1792066243557289166
+    },
+    "out/renderer/assets/publication-validation-CI1Szkme.js": {
+      "sha256": "27e1dcc0a4fb8efa210b031665c285902b2d0ddc1cd3eca2562eafaa996ee13d",
+      "size": 11463,
+      "mtime_ns": 1792066243565080911
+    },
+    "out/renderer/assets/agents-page-BKmYwfZC.js": {
+      "sha256": "abebdf307c1f8d923b465b509c4e0fa5eb8ce57dda9f657ed087e4dff07e715c",
+      "size": 92998,
+      "mtime_ns": 1792066243565690706
+    },
+    "out/renderer/assets/KaTeX_Caligraphic-Bold-BEiXGLvX.woff": {
+      "sha256": "1ae6bd7475590e97e7f145a89e09ccde322f7a6bc0b91607b1c8b8ee28290fed",
+      "size": 7716,
+      "mtime_ns": 1792066243554425986
+    },
+    "out/renderer/assets/KaTeX_SansSerif-Italic-DN2j7dab.woff": {
+      "sha256": "91ee67500cc0129aa0ace3ac5c61ff1692102f0f31d02b69347fba35dcb75bf2",
+      "size": 14112,
+      "mtime_ns": 1792066243557046373
+    },
+    "out/renderer/assets/KaTeX_Fraktur-Regular-Dxdc4cR9.woff": {
+      "sha256": "5e28753be717dac97f559f49bc10be9cf3c124ddcabda6659d11cb68febc6463",
+      "size": 13208,
+      "mtime_ns": 1792066243556270536
+    },
+    "out/renderer/assets/classDiagram-v2-COTLJTTW-MFBfRNSm.js": {
+      "sha256": "3fe74dec2ec7b42d5d9c3f1e09649aedfe50e709a468f5d0fe60d3d5d18ebaef",
+      "size": 470,
+      "mtime_ns": 1792066243563774071
+    },
+    "out/renderer/assets/KaTeX_Fraktur-Bold-CL6g_b3V.woff2": {
+      "sha256": "74444efd593c005e3f4573b44524704c0af0a937fe911cca9e94068d0d140d3f",
+      "size": 11348,
+      "mtime_ns": 1792066243550728552
+    },
+    "out/renderer/assets/katex-BCx1q_2Y.css": {
+      "sha256": "e8b159650a63723eb177c78984f643ef34b8917ccf8f2da100eee00211b595e0",
+      "size": 28459,
+      "mtime_ns": 1792066243561688728
+    },
+    "out/renderer/assets/KaTeX_Size1-Regular-C195tn64.woff": {
+      "sha256": "c943cc986384f59e86bea5fd7dc50a9c4dfe567a7c05eb40d6790720dead97c9",
+      "size": 6496,
+      "mtime_ns": 1792066243556877331
+    },
+    "out/renderer/assets/clojure-BMjYHr_A.js": {
+      "sha256": "498a60106d02e5d91242032d01e8c02c8405cc0dd2d089d69f55eab8e78d1a20",
+      "size": 10815,
+      "mtime_ns": 1792066243561996105
+    },
+    "out/renderer/assets/pieDiagram-IB7DONF6-CydFXo1E.js": {
+      "sha256": "d308410dafc03cafcafc45eeaa1e6bd8256a7754930e6a5380906e7268c587a6",
+      "size": 5002,
+      "mtime_ns": 1792066243565092328
+    },
+    "out/renderer/assets/python-BuPzkPfP.js": {
+      "sha256": "ac31cf70d1ebf5ecde918d2284e736615fab53442c2b3c230bfa83f85f806d78",
+      "size": 6475,
+      "mtime_ns": 1792066243562153355
+    },
+    "out/renderer/assets/sankeyDiagram-QLVOVGJD-Cl8IEKpA.js": {
+      "sha256": "f186a01fdf13480370c6ee19ed689527f8bf60a48a910d0df418b47986d77393",
+      "size": 22114,
+      "mtime_ns": 1792066243565355829
+    },
+    "out/renderer/assets/diagram-SSKATNLV-Bt-zaTQo.js": {
+      "sha256": "167304c782acbc4b24b3d62b77f308c0f0d5f1d917a1dd68bd2c42e9dcb5cebf",
+      "size": 6017,
+      "mtime_ns": 1792066243563874197
+    },
+    "out/renderer/assets/css-BnMrqG3P.js": {
+      "sha256": "aa3e47bd7d7e6f2b9aed7b342b7d6aa059ff6e770c86d64cb0eaf97b403ec98a",
+      "size": 27132,
+      "mtime_ns": 1792066243562152147
+    },
+    "out/renderer/assets/KaTeX_Size1-Regular-Dbsnue_I.ttf": {
+      "sha256": "95b6d2f1a50173bfedb8c63e1d1c99b10427d0a4df4201cb44513b226951a22b",
+      "size": 12228,
+      "mtime_ns": 1792066243560440514
+    },
+    "out/renderer/assets/conversation-input-sync-CAX4_ErH.css": {
+      "sha256": "f09f3754b5e32e8c9a5ce66de943ac2b4206914f0ef96816739efb45bd8b7d0c",
+      "size": 3340,
+      "mtime_ns": 1792066243561694437
+    },
+    "out/renderer/assets/KaTeX_Size4-Regular-DWFBv043.ttf": {
+      "sha256": "c647367d1dd4e162468717d020e1fc0f1dc5c26ebfdffbe55261713bf88c5877",
+      "size": 10364,
+      "mtime_ns": 1792066243560602890
+    },
+    "out/renderer/assets/KaTeX_Size3-Regular-CTq5MqoE.woff": {
+      "sha256": "6ab6b62e9b62dae2c00dd90f791bd10950be0ecc3490d7d6045f51c2e8fe0949",
+      "size": 4420,
+      "mtime_ns": 1792066243558514505
+    },
+    "out/renderer/assets/KaTeX_Main-BoldItalic-DxDJ3AOS.woff2": {
+      "sha256": "99cd42a3c072d918f2f44984a807cf7aa16e13545fd0875fc07c6c65f99e715b",
+      "size": 16780,
+      "mtime_ns": 1792066243550688843
+    },
+    "out/renderer/assets/cytoscape.esm-DHvQc-Lm.js": {
+      "sha256": "0cd9131942c1b6a544c48ebfcba1f2ca0ca69b73727ac44b56e8ef2f03d338ef",
+      "size": 438643,
+      "mtime_ns": 1792066243563877030
+    },
+    "out/renderer/assets/RobotoMono-Regular-BCiLwUa1.ttf": {
+      "sha256": "3514b70ce30836d7f0875728e200c155c4ff335b540572a498b90d8f043ea3be",
+      "size": 78992,
+      "mtime_ns": 1792066243550257716
+    },
+    "out/renderer/assets/stateDiagram-DGXRK772-De3RKKZ6.js": {
+      "sha256": "21da58985bcd179822436b001155ed9e3df21a744cfc570e5feef104116ae0fd",
+      "size": 10764,
+      "mtime_ns": 1792066243563921322
+    },
+    "out/renderer/assets/use-memberships-query-_4aZzud5.js": {
+      "sha256": "c68eca612048be602099fd3eb9f30341dd00a8b323fde4a6e55d9d69ed763f61",
+      "size": 2970,
+      "mtime_ns": 1792066243563902405
+    },
+    "out/renderer/assets/agentic-sequence-CExfswgi.png": {
+      "sha256": "6ece6e61f7d7ef7e9d04b4a6e23113f48dd10485bd1b1669a8e49af8e6709147",
+      "size": 433829,
+      "mtime_ns": 1792066243550187799
+    },
+    "out/renderer/assets/error-boundary-zdSGAufh.js": {
+      "sha256": "87340f9c4add9502a6b0768854b7c90fd271aa56a5e3039e6108ca69a846b83e",
+      "size": 191931,
+      "mtime_ns": 1792066243578341807
+    },
+    "out/renderer/assets/KaTeX_SansSerif-Italic-YYjJ1zSn.ttf": {
+      "sha256": "3931dd81faed86ba021bb2bbdc36f5bed9a38d6b4f4077aca59b265aa1b02083",
+      "size": 22364,
+      "mtime_ns": 1792066243560403764
+    },
+    "out/renderer/assets/index-DkhkrHSO.css": {
+      "sha256": "1d0a6adfaeabbcddfedb175a5eb9c5ffab02502fd555e7b210bc9beba6ad832d",
+      "size": 183312,
+      "mtime_ns": 1792066243561715728
+    },
+    "out/renderer/assets/KaTeX_Main-Bold-Cx986IdX.woff2": {
+      "sha256": "0f60d1b897938ec918c8ce073092411baf9438f6739465693ff18b0f9d20b021",
+      "size": 25324,
+      "mtime_ns": 1792066243550610718
+    },
+    "out/renderer/assets/KaTeX_Main-Regular-ypZvNtVU.ttf": {
+      "sha256": "d0332f52868370fd83ae7fa46470f90c8f2eab2fcf12bc4f88080b340c95a830",
+      "size": 53580,
+      "mtime_ns": 1792066243560407681
+    },
+    "out/renderer/assets/index-C4XBTbWT.js": {
+      "sha256": "728a389c2f07a770ad8065a4ef1a2758c24eab9f31cc205f511c752f065e6e3f",
+      "size": 12779,
+      "mtime_ns": 1792066243564251907
+    },
+    "out/renderer/assets/GeistMonoNerdFontMono-Regular-CWdDX7GJ.otf": {
+      "sha256": "58659ba839f49dbd0867dce44ea692a21e5a54fb145d17b066165fdd7699ca2c",
+      "size": 2244660,
+      "mtime_ns": 1792066243553653065
+    },
+    "out/renderer/assets/use-session-snapshot-BArEwiDL.js": {
+      "sha256": "120290c82df6ce567a2f4ca05f83b93efc43cf02ca0dd836420ec8af6d3519eb",
+      "size": 628,
+      "mtime_ns": 1792066243561729645
+    },
+    "out/renderer/assets/en-US-BcB1DWxG.js": {
+      "sha256": "3b5115804c48955b120baaa4420b560f96e097da1558cb0cc6216486d50b1344",
+      "size": 7705,
+      "mtime_ns": 1792066243565824873
+    },
+    "out/renderer/assets/KaTeX_Math-BoldItalic-CZnvNsCZ.woff2": {
+      "sha256": "dc47344dbb6cb5b655c8460d561f4df5f501b90c804ad3c6cec65fe322351ab1",
+      "size": 16400,
+      "mtime_ns": 1792066243553411106
+    },
+    "out/renderer/assets/KaTeX_AMS-Regular-BQhdFMY1.woff2": {
+      "sha256": "0cdd387c9590a1a9f9794560022dbb59654a7d86f187aa0c81495ad42d3a7308",
+      "size": 28076,
+      "mtime_ns": 1792066243552371101
+    },
+    "out/renderer/assets/KaTeX_Fraktur-Bold-BdnERNNW.ttf": {
+      "sha256": "9163df9c7122432e6495b4229fa9071cf9ae86a758ae5efc4924ec2e1a6dbce1",
+      "size": 19584,
+      "mtime_ns": 1792066243559558968
+    },
+    "out/renderer/assets/KaTeX_Typewriter-Regular-D3Ib7_Hf.ttf": {
+      "sha256": "f01f3e87d9c6a61c0c081ceb577abd864eb00a612f7ac1620dd6915fad2ef5aa",
+      "size": 27556,
+      "mtime_ns": 1792066243561693728
+    },
+    "out/renderer/assets/canvas-variables-view-DrA20zqs.png": {
+      "sha256": "d314e69657b4b445e5d1141d7e59271cc84d803e6e28b3813218446b1277bd44",
+      "size": 172326,
+      "mtime_ns": 1792066243550342842
+    },
+    "out/renderer/assets/KaTeX_Typewriter-Regular-CO6r4hn1.woff2": {
+      "sha256": "71d517d67827787cfabdf186914cc3358eda539e37931941f2b2fd4a21f68c0b",
+      "size": 13568,
+      "mtime_ns": 1792066243554085817
+    },
+    "out/renderer/assets/KaTeX_Math-Italic-flOr_0UB.ttf": {
+      "sha256": "08ce98e51b04d58945a301e639e02b6998af29fdfd61a7b8afdd07bbfc479d4a",
+      "size": 31308,
+      "mtime_ns": 1792066243559900095
+    },
+    "out/renderer/assets/graph-i93VHPjI.js": {
+      "sha256": "2772ee3900fed8577888a409c98699586b02d7692657c854f02d802855050884",
+      "size": 5920,
+      "mtime_ns": 1792066243564746409
+    },
+    "out/renderer/assets/_baseUniq-DL5vlaOE.js": {
+      "sha256": "a084869caee6f69e99d08ba3c7f2850ee47f91a4f67be981aae877c2157df451",
+      "size": 11891,
+      "mtime_ns": 1792066243572023110
+    },
+    "out/renderer/assets/KaTeX_Size1-Regular-mCD8mA8B.woff2": {
+      "sha256": "6b47c40166b6dbe21a5dfca7718413f2147fd2399be1ba605d8ad39cedf25dfe",
+      "size": 5468,
+      "mtime_ns": 1792066243553771316
+    },
+    "out/renderer/assets/KaTeX_Math-Italic-t53AETM-.woff2": {
+      "sha256": "7af58c5ec8f132a2ddde9027c6d7814decce4d3b822a11192a42a20e2e973264",
+      "size": 16440,
+      "mtime_ns": 1792066243553649690
+    },
+    "out/renderer/assets/pug-DukmZTjD.js": {
+      "sha256": "462a6d3467dbb8ab522cfcd5b84366e43875db05287021877a8e141e7bbb7759",
+      "size": 6674,
+      "mtime_ns": 1792066243562675691
+    },
+    "out/renderer/assets/KaTeX_Main-Italic-BMLOBm91.woff": {
+      "sha256": "f1d6ef86f3b11a528bd5185199bd2443ecb2b0dead96d88674b5a2c12be24bdf",
+      "size": 19676,
+      "mtime_ns": 1792066243556923706
+    },
+    "out/renderer/assets/asn1-EdZsLKOL.js": {
+      "sha256": "ae03ba33f00f6d244c134c98deb75db9ef27894ed42661b6b96cf897561e1bab",
+      "size": 3981,
+      "mtime_ns": 1792066243561809395
+    },
+    "out/renderer/assets/KaTeX_SansSerif-Bold-D1sUS0GD.woff2": {
+      "sha256": "e99ae51144bf1232efcc1bfe5add36262c6866b0faab24fa75740e1b98577a62",
+      "size": 12216,
+      "mtime_ns": 1792066243553871525
+    },
+    "out/renderer/assets/KaTeX_Size2-Regular-B7gKUWhC.ttf": {
+      "sha256": "a6b2099fb555c60e3a0db3a08842ebf1d732c6eb4e4bf44913613bed4fc4e39b",
+      "size": 11508,
+      "mtime_ns": 1792066243561455436
+    },
+    "out/renderer/assets/GeistMonoNerdFontMono-Bold-B9bGosAz.otf": {
+      "sha256": "eb9a2b2a81b94b795200a3d5b6baa4b4b379c8c2f5285c31b9b6f7185b780f3c",
+      "size": 2251544,
+      "mtime_ns": 1792066243554538986
+    },
+    "out/renderer/assets/ganttDiagram-APWFNJXF-Z4jGdhU9.js": {
+      "sha256": "672fcd5bb7c8022593d1789d6143d9d1644d6db763becfad1a36a5ad66ae0409",
+      "size": 47297,
+      "mtime_ns": 1792066243565362954
+    },
+    "out/renderer/assets/KaTeX_SansSerif-Italic-C3H0VqGB.woff2": {
+      "sha256": "00b26ac825e2095056396e0553b8ac26d3f8ad158c3826e28b4c45b385c4714a",
+      "size": 12028,
+      "mtime_ns": 1792066243553942442
+    },
+    "out/renderer/assets/KaTeX_Caligraphic-Bold-ATXxdsX0.ttf": {
+      "sha256": "07d8e303ce4fc12b4bb54f1004170dd190a1f3db45d400fe68060df3e0897268",
+      "size": 12368,
+      "mtime_ns": 1792066243559291967
+    },
+    "out/renderer/assets/org-surface-gate-BPyE3rV0.js": {
+      "sha256": "8f88346e474b27d85ad3f2a93ede7f6468acf5cef6e4b88ff49fd42c9924c453",
+      "size": 271,
+      "mtime_ns": 1792066243561782812
+    },
+    "out/renderer/assets/org-access-ClqBlRmh.js": {
+      "sha256": "c163a4d4b9ff0fb4fc8b2572e4f04eb84fe7025a6f12a8572d3eabfc4f0e422e",
+      "size": 3645,
+      "mtime_ns": 1792066243565009744
+    },
+    "out/renderer/assets/chunk-AEK57VVT-QKvx9LVx.js": {
+      "sha256": "1b4f7d172bb601542e9b41c8a5798e0f45b3b32c99f8fd0f4a5d56fe2995d547",
+      "size": 34498,
+      "mtime_ns": 1792066243563780280
+    },
+    "out/renderer/assets/mindmap-definition-ALO5MXBD-ssSa6RKa.js": {
+      "sha256": "838179c28e681476a05c484ff9938cc95eb4d01031ce67e3c5243e5373c4ca49",
+      "size": 101034,
+      "mtime_ns": 1792066243565241745
+    },
+    "out/renderer/assets/xychartDiagram-VJFVF3MP-DpNjpuYB.js": {
+      "sha256": "a861812ea7f4a37880fdb8564aee56115324ccfa1adf35fa1a5dfb87cd82fb8f",
+      "size": 37452,
+      "mtime_ns": 1792066243563123693
+    },
+    "out/renderer/assets/KaTeX_Typewriter-Regular-C0xS9mPB.woff": {
+      "sha256": "e14fed02b1aba7ce9f5afd5844b5d0321b22351febc720e0de8b8723527609f7",
+      "size": 16028,
+      "mtime_ns": 1792066243559242925
+    },
+    "out/renderer/assets/agent-hub-page-DOEG-2Bv.js": {
+      "sha256": "dbb8a3461f22579c8eceef15e93a75a076231538300de77e94e070ceac980d71",
+      "size": 54074,
+      "mtime_ns": 1792066243565986707
+    },
+    "out/renderer/assets/rpm-CTu-6PCP.js": {
+      "sha256": "60f8f25323f47996c1e5a299f87f42de42bd6c13a584733c4fe3d71ec48ba65a",
+      "size": 1622,
+      "mtime_ns": 1792066243562605608
+    },
+    "out/renderer/assets/blockDiagram-JOT3LUYC-BQ7g9AuI.js": {
+      "sha256": "7aedfb7a6c7515744530a4d2687b9e6c17c2ed87d43480f11437e9b0cc8452cd",
+      "size": 71622,
+      "mtime_ns": 1792066243563888697
+    }
+  }
 }

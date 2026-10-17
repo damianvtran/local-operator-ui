@@ -1,664 +1,664 @@
 [
-	{
-		"name": "preview-unconsented",
-		"body": {
-			"visibility": "public",
-			"tenant_id": null,
-			"source_skill": "release-notes",
-			"local_alias": "qa-unsafe-policy",
-			"subscribe": true,
-			"auto_push": true,
-			"confirm_public_egress": false,
-			"dry_run": true
-		},
-		"status": 200,
-		"result": {
-			"result": {
-				"preview": {
-					"preview_receipt": "receipt-stub-1",
-					"kind": "skill",
-					"direction": "push",
-					"publication": "create",
-					"source_skill": "release-notes",
-					"local_alias": "qa-unsafe-policy",
-					"hub_source": "https://hub.radient.local",
-					"visibility": "public",
-					"tenant_id": null,
-					"local_fingerprint": "fp-local-1",
-					"draft_fingerprint": "fp-draft-1",
-					"proposal_fingerprint": "fp-proposal-1",
-					"expires_at": "2026-10-15T05:09:15.638Z",
-					"policy": {
-						"subscribe": true,
-						"auto_push": true,
-						"confirm_public_egress": false
-					},
-					"proposal": {
-						"kind": "skill",
-						"fields": {
-							"document_version": 1,
-							"name": "qa-unsafe-policy",
-							"description": "Stub skill for the evidence run.",
-							"files": [
-								{
-									"path": "SKILL.md",
-									"content": "# stub\n"
-								}
-							]
-						}
-					},
-					"warnings": [],
-					"can_confirm": true,
-					"reason": null
-				},
-				"link": null,
-				"local_link_receipt": null,
-				"publication": null
-			}
-		}
-	},
-	{
-		"name": "confirm-unsafe-policy",
-		"body": {
-			"visibility": "public",
-			"tenant_id": null,
-			"source_skill": "release-notes",
-			"local_alias": "qa-unsafe-policy",
-			"subscribe": true,
-			"auto_push": true,
-			"confirm_public_egress": false,
-			"dry_run": false,
-			"preview_receipt": "receipt-stub-1",
-			"confirm_publish": true
-		},
-		"status": 200,
-		"result": {
-			"result": {
-				"preview": null,
-				"link": {
-					"link_id": "link-skill-pub-qa-unsafe-policy",
-					"kind": "skill",
-					"local_id": "qa-unsafe-policy",
-					"name": "qa-unsafe-policy",
-					"hub_id": "hub-skill-pub-stub",
-					"hub_source": "https://hub.radient.local",
-					"visibility": "public",
-					"tenant_id": null,
-					"tenant_name": null,
-					"policy": {
-						"subscribe": true,
-						"auto_push": true,
-						"revision": "rev-policy-skill-1"
-					},
-					"eligibility": {
-						"can_auto_push": true,
-						"reason": null
-					},
-					"baseline_state": "pull",
-					"remote_revision": "rev-remote-1",
-					"auto_will_apply": true,
-					"auto_will_push": false,
-					"pull": {
-						"state": "idle",
-						"classification": null,
-						"enabled": true,
-						"last_checked_at": null,
-						"last_success_at": "2026-10-14T22:00:00Z",
-						"attempts": 0,
-						"next_retry_at": null,
-						"error_class": null,
-						"error_subclass": null,
-						"safe_message": null,
-						"operation_id": null,
-						"model_used": null,
-						"summary": null,
-						"backup_receipt": null
-					},
-					"push": {
-						"state": "idle",
-						"classification": null,
-						"enabled": false,
-						"last_checked_at": null,
-						"last_success_at": null,
-						"attempts": 0,
-						"next_retry_at": null,
-						"error_class": null,
-						"error_subclass": null,
-						"safe_message": null,
-						"operation_id": null,
-						"model_used": null,
-						"summary": null,
-						"backup_receipt": null
-					}
-				},
-				"local_link_receipt": {
-					"state": "complete",
-					"operation_id": "op-publish-1",
-					"link_id": "link-skill-pub-qa-unsafe-policy",
-					"safe_message": null
-				},
-				"publication": {
-					"skill": {
-						"id": "skill-pub-1",
-						"name": "qa-unsafe-policy"
-					},
-					"accepted_document": {
-						"document_version": 1,
-						"name": "qa-unsafe-policy",
-						"description": "Stub skill for the evidence run.",
-						"files": [
-							{
-								"path": "SKILL.md",
-								"content": "# stub\n"
-							}
-						]
-					},
-					"revision": "\"rev-pub-1\"",
-					"content_revision": 1,
-					"operation_id": "op-publish-1",
-					"sync_contract": {
-						"revision_cas": 1,
-						"skills": 1
-					}
-				}
-			}
-		}
-	},
-	{
-		"name": "pull-unsafe-policy",
-		"body": {
-			"visibility": "public",
-			"tenant_id": null,
-			"source_skill": "release-notes",
-			"local_alias": "qa-unsafe-policy",
-			"subscribe": true,
-			"auto_push": true,
-			"confirm_public_egress": false
-		},
-		"status": 200,
-		"result": {
-			"result": {
-				"reports": [
-					{
-						"kind": "skill",
-						"link_id": "link-skill-qa-unsafe-policy",
-						"direction": "pull",
-						"operation_id": "op-skill-pull-1",
-						"remote_revision": "rev-remote-1",
-						"model_used": null,
-						"applied": true,
-						"outcome": "applied"
-					}
-				],
-				"link": {
-					"link_id": "link-skill-qa-unsafe-policy",
-					"kind": "skill",
-					"local_id": "qa-unsafe-policy",
-					"name": "qa-unsafe-policy",
-					"hub_id": "hub-skill-stub",
-					"hub_source": "https://hub.radient.local",
-					"visibility": "public",
-					"tenant_id": null,
-					"tenant_name": null,
-					"policy": {
-						"subscribe": true,
-						"auto_push": true,
-						"revision": "rev-policy-skill-1"
-					},
-					"eligibility": {
-						"can_auto_push": true,
-						"reason": null
-					},
-					"baseline_state": "pull",
-					"remote_revision": "rev-remote-1",
-					"auto_will_apply": true,
-					"auto_will_push": false,
-					"pull": {
-						"state": "idle",
-						"classification": null,
-						"enabled": true,
-						"last_checked_at": null,
-						"last_success_at": "2026-10-14T22:00:00Z",
-						"attempts": 0,
-						"next_retry_at": null,
-						"error_class": null,
-						"error_subclass": null,
-						"safe_message": null,
-						"operation_id": null,
-						"model_used": null,
-						"summary": null,
-						"backup_receipt": null
-					},
-					"push": {
-						"state": "idle",
-						"classification": null,
-						"enabled": false,
-						"last_checked_at": null,
-						"last_success_at": null,
-						"attempts": 0,
-						"next_retry_at": null,
-						"error_class": null,
-						"error_subclass": null,
-						"safe_message": null,
-						"operation_id": null,
-						"model_used": null,
-						"summary": null,
-						"backup_receipt": null
-					}
-				},
-				"links": {
-					"links": [
-						{
-							"link_id": "link-public-agent",
-							"kind": "agent",
-							"local_id": "agent-1",
-							"name": "reviewer",
-							"hub_id": "hub-agent-reviewer",
-							"hub_source": "https://hub.radient.local",
-							"visibility": "public",
-							"tenant_id": null,
-							"tenant_name": null,
-							"policy": {
-								"subscribe": true,
-								"auto_push": false,
-								"revision": "rev-agens-1"
-							},
-							"eligibility": {
-								"can_auto_push": true,
-								"reason": null
-							},
-							"baseline_state": "pull",
-							"remote_revision": "rev-remote-1",
-							"auto_will_apply": true,
-							"auto_will_push": false,
-							"pull": {
-								"state": "idle",
-								"classification": null,
-								"enabled": true,
-								"last_checked_at": null,
-								"last_success_at": "2026-10-13T10:00:00Z",
-								"attempts": 0,
-								"next_retry_at": null,
-								"error_class": null,
-								"error_subclass": null,
-								"safe_message": null,
-								"operation_id": null,
-								"model_used": null,
-								"summary": null,
-								"backup_receipt": null
-							},
-							"push": {
-								"state": "idle",
-								"classification": null,
-								"enabled": false,
-								"last_checked_at": null,
-								"last_success_at": null,
-								"attempts": 0,
-								"next_retry_at": null,
-								"error_class": null,
-								"error_subclass": null,
-								"safe_message": null,
-								"operation_id": null,
-								"model_used": null,
-								"summary": null,
-								"backup_receipt": null
-							}
-						},
-						{
-							"link_id": "link-org-team",
-							"kind": "team",
-							"local_id": "team-1",
-							"name": "lopdev",
-							"hub_id": "hub-team-lopdev",
-							"hub_source": "https://hub.radient.local",
-							"visibility": "org",
-							"tenant_id": "org-minerva",
-							"tenant_name": "Minerva",
-							"policy": {
-								"subscribe": false,
-								"auto_push": false,
-								"revision": "rev-team-1"
-							},
-							"eligibility": {
-								"can_auto_push": false,
-								"reason": "auto-push is not enabled for this destination"
-							},
-							"baseline_state": "adopt-unknown",
-							"remote_revision": null,
-							"auto_will_apply": false,
-							"auto_will_push": false,
-							"pull": {
-								"state": "failed",
-								"classification": null,
-								"enabled": true,
-								"last_checked_at": null,
-								"last_success_at": null,
-								"attempts": 3,
-								"next_retry_at": "2026-10-13T11:00:00Z",
-								"error_class": "hub-error/transport",
-								"error_subclass": null,
-								"safe_message": null,
-								"operation_id": null,
-								"model_used": null,
-								"summary": null,
-								"backup_receipt": null
-							},
-							"push": {
-								"state": "idle",
-								"classification": null,
-								"enabled": false,
-								"last_checked_at": null,
-								"last_success_at": null,
-								"attempts": 0,
-								"next_retry_at": null,
-								"error_class": null,
-								"error_subclass": null,
-								"safe_message": null,
-								"operation_id": null,
-								"model_used": null,
-								"summary": null,
-								"backup_receipt": null
-							}
-						},
-						{
-							"link_id": "link-public-coder",
-							"kind": "agent",
-							"local_id": "agent-2",
-							"name": "coder",
-							"hub_id": "hub-agent-coder",
-							"hub_source": "https://hub.radient.local",
-							"visibility": "public",
-							"tenant_id": null,
-							"tenant_name": null,
-							"policy": {
-								"subscribe": true,
-								"auto_push": false,
-								"revision": "rev-coder-1"
-							},
-							"eligibility": {
-								"can_auto_push": true,
-								"reason": null
-							},
-							"baseline_state": "pull",
-							"remote_revision": "rev-remote-coder",
-							"auto_will_apply": true,
-							"auto_will_push": false,
-							"pull": {
-								"state": "idle",
-								"classification": null,
-								"enabled": true,
-								"last_checked_at": null,
-								"last_success_at": null,
-								"attempts": 0,
-								"next_retry_at": null,
-								"error_class": null,
-								"error_subclass": null,
-								"safe_message": null,
-								"operation_id": null,
-								"model_used": null,
-								"summary": null,
-								"backup_receipt": null
-							},
-							"push": {
-								"state": "idle",
-								"classification": null,
-								"enabled": false,
-								"last_checked_at": null,
-								"last_success_at": null,
-								"attempts": 0,
-								"next_retry_at": null,
-								"error_class": null,
-								"error_subclass": null,
-								"safe_message": null,
-								"operation_id": null,
-								"model_used": null,
-								"summary": null,
-								"backup_receipt": null
-							}
-						},
-						{
-							"link_id": "link-public-agent-2",
-							"kind": "agent",
-							"local_id": "agent-1",
-							"name": "reviewer",
-							"hub_id": "hub-agent-reviewer-2",
-							"hub_source": "https://hub.radient.local",
-							"visibility": "org",
-							"tenant_id": "org-minerva",
-							"tenant_name": "Minerva",
-							"policy": {
-								"subscribe": false,
-								"auto_push": false,
-								"revision": "rev-agens-2"
-							},
-							"eligibility": {
-								"can_auto_push": false,
-								"reason": "auto-push is not enabled for this destination"
-							},
-							"baseline_state": "pull",
-							"remote_revision": null,
-							"auto_will_apply": false,
-							"auto_will_push": false,
-							"pull": {
-								"state": "idle",
-								"classification": null,
-								"enabled": true,
-								"last_checked_at": null,
-								"last_success_at": null,
-								"attempts": 0,
-								"next_retry_at": null,
-								"error_class": null,
-								"error_subclass": null,
-								"safe_message": null,
-								"operation_id": null,
-								"model_used": null,
-								"summary": null,
-								"backup_receipt": null
-							},
-							"push": {
-								"state": "idle",
-								"classification": null,
-								"enabled": false,
-								"last_checked_at": null,
-								"last_success_at": null,
-								"attempts": 0,
-								"next_retry_at": null,
-								"error_class": null,
-								"error_subclass": null,
-								"safe_message": null,
-								"operation_id": null,
-								"model_used": null,
-								"summary": null,
-								"backup_receipt": null
-							}
-						},
-						{
-							"link_id": "link-skill",
-							"kind": "skill",
-							"local_id": "skill-1",
-							"name": "release-notes",
-							"hub_id": "hub-skill-release-notes",
-							"hub_source": "https://hub.radient.local",
-							"visibility": "public",
-							"tenant_id": null,
-							"tenant_name": null,
-							"policy": {
-								"subscribe": true,
-								"auto_push": true,
-								"revision": "rev-skill-1"
-							},
-							"eligibility": {
-								"can_auto_push": true,
-								"reason": null
-							},
-							"baseline_state": "pull",
-							"remote_revision": "rev-remote-skill",
-							"auto_will_apply": true,
-							"auto_will_push": true,
-							"pull": {
-								"state": "idle",
-								"classification": null,
-								"enabled": true,
-								"last_checked_at": null,
-								"last_success_at": null,
-								"attempts": 0,
-								"next_retry_at": null,
-								"error_class": null,
-								"error_subclass": null,
-								"safe_message": null,
-								"operation_id": null,
-								"model_used": null,
-								"summary": null,
-								"backup_receipt": null
-							},
-							"push": {
-								"state": "idle",
-								"classification": null,
-								"enabled": true,
-								"last_checked_at": null,
-								"last_success_at": null,
-								"attempts": 0,
-								"next_retry_at": null,
-								"error_class": null,
-								"error_subclass": null,
-								"safe_message": null,
-								"operation_id": "op-push-1",
-								"model_used": null,
-								"summary": null,
-								"backup_receipt": null
-							}
-						},
-						{
-							"link_id": "link-skill-pub-qa-unsafe-policy",
-							"kind": "skill",
-							"local_id": "qa-unsafe-policy",
-							"name": "qa-unsafe-policy",
-							"hub_id": "hub-skill-pub-stub",
-							"hub_source": "https://hub.radient.local",
-							"visibility": "public",
-							"tenant_id": null,
-							"tenant_name": null,
-							"policy": {
-								"subscribe": true,
-								"auto_push": true,
-								"revision": "rev-policy-skill-1"
-							},
-							"eligibility": {
-								"can_auto_push": true,
-								"reason": null
-							},
-							"baseline_state": "pull",
-							"remote_revision": "rev-remote-1",
-							"auto_will_apply": true,
-							"auto_will_push": false,
-							"pull": {
-								"state": "idle",
-								"classification": null,
-								"enabled": true,
-								"last_checked_at": null,
-								"last_success_at": "2026-10-14T22:00:00Z",
-								"attempts": 0,
-								"next_retry_at": null,
-								"error_class": null,
-								"error_subclass": null,
-								"safe_message": null,
-								"operation_id": null,
-								"model_used": null,
-								"summary": null,
-								"backup_receipt": null
-							},
-							"push": {
-								"state": "idle",
-								"classification": null,
-								"enabled": false,
-								"last_checked_at": null,
-								"last_success_at": null,
-								"attempts": 0,
-								"next_retry_at": null,
-								"error_class": null,
-								"error_subclass": null,
-								"safe_message": null,
-								"operation_id": null,
-								"model_used": null,
-								"summary": null,
-								"backup_receipt": null
-							}
-						},
-						{
-							"link_id": "link-skill-qa-unsafe-policy",
-							"kind": "skill",
-							"local_id": "qa-unsafe-policy",
-							"name": "qa-unsafe-policy",
-							"hub_id": "hub-skill-stub",
-							"hub_source": "https://hub.radient.local",
-							"visibility": "public",
-							"tenant_id": null,
-							"tenant_name": null,
-							"policy": {
-								"subscribe": true,
-								"auto_push": true,
-								"revision": "rev-policy-skill-1"
-							},
-							"eligibility": {
-								"can_auto_push": true,
-								"reason": null
-							},
-							"baseline_state": "pull",
-							"remote_revision": "rev-remote-1",
-							"auto_will_apply": true,
-							"auto_will_push": false,
-							"pull": {
-								"state": "idle",
-								"classification": null,
-								"enabled": true,
-								"last_checked_at": null,
-								"last_success_at": "2026-10-14T22:00:00Z",
-								"attempts": 0,
-								"next_retry_at": null,
-								"error_class": null,
-								"error_subclass": null,
-								"safe_message": null,
-								"operation_id": null,
-								"model_used": null,
-								"summary": null,
-								"backup_receipt": null
-							},
-							"push": {
-								"state": "idle",
-								"classification": null,
-								"enabled": false,
-								"last_checked_at": null,
-								"last_success_at": null,
-								"attempts": 0,
-								"next_retry_at": null,
-								"error_class": null,
-								"error_subclass": null,
-								"safe_message": null,
-								"operation_id": null,
-								"model_used": null,
-								"summary": null,
-								"backup_receipt": null
-							}
-						}
-					],
-					"unresolved": [
-						{
-							"kind": "agent",
-							"local_id": "agent-legacy",
-							"name": "legacy-helper",
-							"hub_id": "hub-agent-legacy",
-							"reason": "source-unresolved"
-						},
-						{
-							"kind": "agent",
-							"local_id": "agent-legacy-solo",
-							"name": "legacy-solo",
-							"hub_id": "hub-agent-legacy-solo",
-							"reason": "source-unresolved"
-						}
-					]
-				}
-			}
-		}
-	}
+  {
+    "name": "preview-unconsented",
+    "body": {
+      "visibility": "public",
+      "tenant_id": null,
+      "source_skill": "release-notes",
+      "local_alias": "qa-unsafe-policy",
+      "subscribe": true,
+      "auto_push": true,
+      "confirm_public_egress": false,
+      "dry_run": true
+    },
+    "status": 200,
+    "result": {
+      "result": {
+        "preview": {
+          "preview_receipt": "receipt-stub-1",
+          "kind": "skill",
+          "direction": "push",
+          "publication": "create",
+          "source_skill": "release-notes",
+          "local_alias": "qa-unsafe-policy",
+          "hub_source": "https://hub.radient.local",
+          "visibility": "public",
+          "tenant_id": null,
+          "local_fingerprint": "fp-local-1",
+          "draft_fingerprint": "fp-draft-1",
+          "proposal_fingerprint": "fp-proposal-1",
+          "expires_at": "2026-10-15T05:09:15.638Z",
+          "policy": {
+            "subscribe": true,
+            "auto_push": true,
+            "confirm_public_egress": false
+          },
+          "proposal": {
+            "kind": "skill",
+            "fields": {
+              "document_version": 1,
+              "name": "qa-unsafe-policy",
+              "description": "Stub skill for the evidence run.",
+              "files": [
+                {
+                  "path": "SKILL.md",
+                  "content": "# stub\n"
+                }
+              ]
+            }
+          },
+          "warnings": [],
+          "can_confirm": true,
+          "reason": null
+        },
+        "link": null,
+        "local_link_receipt": null,
+        "publication": null
+      }
+    }
+  },
+  {
+    "name": "confirm-unsafe-policy",
+    "body": {
+      "visibility": "public",
+      "tenant_id": null,
+      "source_skill": "release-notes",
+      "local_alias": "qa-unsafe-policy",
+      "subscribe": true,
+      "auto_push": true,
+      "confirm_public_egress": false,
+      "dry_run": false,
+      "preview_receipt": "receipt-stub-1",
+      "confirm_publish": true
+    },
+    "status": 200,
+    "result": {
+      "result": {
+        "preview": null,
+        "link": {
+          "link_id": "link-skill-pub-qa-unsafe-policy",
+          "kind": "skill",
+          "local_id": "qa-unsafe-policy",
+          "name": "qa-unsafe-policy",
+          "hub_id": "hub-skill-pub-stub",
+          "hub_source": "https://hub.radient.local",
+          "visibility": "public",
+          "tenant_id": null,
+          "tenant_name": null,
+          "policy": {
+            "subscribe": true,
+            "auto_push": true,
+            "revision": "rev-policy-skill-1"
+          },
+          "eligibility": {
+            "can_auto_push": true,
+            "reason": null
+          },
+          "baseline_state": "pull",
+          "remote_revision": "rev-remote-1",
+          "auto_will_apply": true,
+          "auto_will_push": false,
+          "pull": {
+            "state": "idle",
+            "classification": null,
+            "enabled": true,
+            "last_checked_at": null,
+            "last_success_at": "2026-10-14T22:00:00Z",
+            "attempts": 0,
+            "next_retry_at": null,
+            "error_class": null,
+            "error_subclass": null,
+            "safe_message": null,
+            "operation_id": null,
+            "model_used": null,
+            "summary": null,
+            "backup_receipt": null
+          },
+          "push": {
+            "state": "idle",
+            "classification": null,
+            "enabled": false,
+            "last_checked_at": null,
+            "last_success_at": null,
+            "attempts": 0,
+            "next_retry_at": null,
+            "error_class": null,
+            "error_subclass": null,
+            "safe_message": null,
+            "operation_id": null,
+            "model_used": null,
+            "summary": null,
+            "backup_receipt": null
+          }
+        },
+        "local_link_receipt": {
+          "state": "complete",
+          "operation_id": "op-publish-1",
+          "link_id": "link-skill-pub-qa-unsafe-policy",
+          "safe_message": null
+        },
+        "publication": {
+          "skill": {
+            "id": "skill-pub-1",
+            "name": "qa-unsafe-policy"
+          },
+          "accepted_document": {
+            "document_version": 1,
+            "name": "qa-unsafe-policy",
+            "description": "Stub skill for the evidence run.",
+            "files": [
+              {
+                "path": "SKILL.md",
+                "content": "# stub\n"
+              }
+            ]
+          },
+          "revision": "\"rev-pub-1\"",
+          "content_revision": 1,
+          "operation_id": "op-publish-1",
+          "sync_contract": {
+            "revision_cas": 1,
+            "skills": 1
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "pull-unsafe-policy",
+    "body": {
+      "visibility": "public",
+      "tenant_id": null,
+      "source_skill": "release-notes",
+      "local_alias": "qa-unsafe-policy",
+      "subscribe": true,
+      "auto_push": true,
+      "confirm_public_egress": false
+    },
+    "status": 200,
+    "result": {
+      "result": {
+        "reports": [
+          {
+            "kind": "skill",
+            "link_id": "link-skill-qa-unsafe-policy",
+            "direction": "pull",
+            "operation_id": "op-skill-pull-1",
+            "remote_revision": "rev-remote-1",
+            "model_used": null,
+            "applied": true,
+            "outcome": "applied"
+          }
+        ],
+        "link": {
+          "link_id": "link-skill-qa-unsafe-policy",
+          "kind": "skill",
+          "local_id": "qa-unsafe-policy",
+          "name": "qa-unsafe-policy",
+          "hub_id": "hub-skill-stub",
+          "hub_source": "https://hub.radient.local",
+          "visibility": "public",
+          "tenant_id": null,
+          "tenant_name": null,
+          "policy": {
+            "subscribe": true,
+            "auto_push": true,
+            "revision": "rev-policy-skill-1"
+          },
+          "eligibility": {
+            "can_auto_push": true,
+            "reason": null
+          },
+          "baseline_state": "pull",
+          "remote_revision": "rev-remote-1",
+          "auto_will_apply": true,
+          "auto_will_push": false,
+          "pull": {
+            "state": "idle",
+            "classification": null,
+            "enabled": true,
+            "last_checked_at": null,
+            "last_success_at": "2026-10-14T22:00:00Z",
+            "attempts": 0,
+            "next_retry_at": null,
+            "error_class": null,
+            "error_subclass": null,
+            "safe_message": null,
+            "operation_id": null,
+            "model_used": null,
+            "summary": null,
+            "backup_receipt": null
+          },
+          "push": {
+            "state": "idle",
+            "classification": null,
+            "enabled": false,
+            "last_checked_at": null,
+            "last_success_at": null,
+            "attempts": 0,
+            "next_retry_at": null,
+            "error_class": null,
+            "error_subclass": null,
+            "safe_message": null,
+            "operation_id": null,
+            "model_used": null,
+            "summary": null,
+            "backup_receipt": null
+          }
+        },
+        "links": {
+          "links": [
+            {
+              "link_id": "link-public-agent",
+              "kind": "agent",
+              "local_id": "agent-1",
+              "name": "reviewer",
+              "hub_id": "hub-agent-reviewer",
+              "hub_source": "https://hub.radient.local",
+              "visibility": "public",
+              "tenant_id": null,
+              "tenant_name": null,
+              "policy": {
+                "subscribe": true,
+                "auto_push": false,
+                "revision": "rev-agens-1"
+              },
+              "eligibility": {
+                "can_auto_push": true,
+                "reason": null
+              },
+              "baseline_state": "pull",
+              "remote_revision": "rev-remote-1",
+              "auto_will_apply": true,
+              "auto_will_push": false,
+              "pull": {
+                "state": "idle",
+                "classification": null,
+                "enabled": true,
+                "last_checked_at": null,
+                "last_success_at": "2026-10-13T10:00:00Z",
+                "attempts": 0,
+                "next_retry_at": null,
+                "error_class": null,
+                "error_subclass": null,
+                "safe_message": null,
+                "operation_id": null,
+                "model_used": null,
+                "summary": null,
+                "backup_receipt": null
+              },
+              "push": {
+                "state": "idle",
+                "classification": null,
+                "enabled": false,
+                "last_checked_at": null,
+                "last_success_at": null,
+                "attempts": 0,
+                "next_retry_at": null,
+                "error_class": null,
+                "error_subclass": null,
+                "safe_message": null,
+                "operation_id": null,
+                "model_used": null,
+                "summary": null,
+                "backup_receipt": null
+              }
+            },
+            {
+              "link_id": "link-org-team",
+              "kind": "team",
+              "local_id": "team-1",
+              "name": "lopdev",
+              "hub_id": "hub-team-lopdev",
+              "hub_source": "https://hub.radient.local",
+              "visibility": "org",
+              "tenant_id": "org-minerva",
+              "tenant_name": "Minerva",
+              "policy": {
+                "subscribe": false,
+                "auto_push": false,
+                "revision": "rev-team-1"
+              },
+              "eligibility": {
+                "can_auto_push": false,
+                "reason": "auto-push is not enabled for this destination"
+              },
+              "baseline_state": "adopt-unknown",
+              "remote_revision": null,
+              "auto_will_apply": false,
+              "auto_will_push": false,
+              "pull": {
+                "state": "failed",
+                "classification": null,
+                "enabled": true,
+                "last_checked_at": null,
+                "last_success_at": null,
+                "attempts": 3,
+                "next_retry_at": "2026-10-13T11:00:00Z",
+                "error_class": "hub-error/transport",
+                "error_subclass": null,
+                "safe_message": null,
+                "operation_id": null,
+                "model_used": null,
+                "summary": null,
+                "backup_receipt": null
+              },
+              "push": {
+                "state": "idle",
+                "classification": null,
+                "enabled": false,
+                "last_checked_at": null,
+                "last_success_at": null,
+                "attempts": 0,
+                "next_retry_at": null,
+                "error_class": null,
+                "error_subclass": null,
+                "safe_message": null,
+                "operation_id": null,
+                "model_used": null,
+                "summary": null,
+                "backup_receipt": null
+              }
+            },
+            {
+              "link_id": "link-public-coder",
+              "kind": "agent",
+              "local_id": "agent-2",
+              "name": "coder",
+              "hub_id": "hub-agent-coder",
+              "hub_source": "https://hub.radient.local",
+              "visibility": "public",
+              "tenant_id": null,
+              "tenant_name": null,
+              "policy": {
+                "subscribe": true,
+                "auto_push": false,
+                "revision": "rev-coder-1"
+              },
+              "eligibility": {
+                "can_auto_push": true,
+                "reason": null
+              },
+              "baseline_state": "pull",
+              "remote_revision": "rev-remote-coder",
+              "auto_will_apply": true,
+              "auto_will_push": false,
+              "pull": {
+                "state": "idle",
+                "classification": null,
+                "enabled": true,
+                "last_checked_at": null,
+                "last_success_at": null,
+                "attempts": 0,
+                "next_retry_at": null,
+                "error_class": null,
+                "error_subclass": null,
+                "safe_message": null,
+                "operation_id": null,
+                "model_used": null,
+                "summary": null,
+                "backup_receipt": null
+              },
+              "push": {
+                "state": "idle",
+                "classification": null,
+                "enabled": false,
+                "last_checked_at": null,
+                "last_success_at": null,
+                "attempts": 0,
+                "next_retry_at": null,
+                "error_class": null,
+                "error_subclass": null,
+                "safe_message": null,
+                "operation_id": null,
+                "model_used": null,
+                "summary": null,
+                "backup_receipt": null
+              }
+            },
+            {
+              "link_id": "link-public-agent-2",
+              "kind": "agent",
+              "local_id": "agent-1",
+              "name": "reviewer",
+              "hub_id": "hub-agent-reviewer-2",
+              "hub_source": "https://hub.radient.local",
+              "visibility": "org",
+              "tenant_id": "org-minerva",
+              "tenant_name": "Minerva",
+              "policy": {
+                "subscribe": false,
+                "auto_push": false,
+                "revision": "rev-agens-2"
+              },
+              "eligibility": {
+                "can_auto_push": false,
+                "reason": "auto-push is not enabled for this destination"
+              },
+              "baseline_state": "pull",
+              "remote_revision": null,
+              "auto_will_apply": false,
+              "auto_will_push": false,
+              "pull": {
+                "state": "idle",
+                "classification": null,
+                "enabled": true,
+                "last_checked_at": null,
+                "last_success_at": null,
+                "attempts": 0,
+                "next_retry_at": null,
+                "error_class": null,
+                "error_subclass": null,
+                "safe_message": null,
+                "operation_id": null,
+                "model_used": null,
+                "summary": null,
+                "backup_receipt": null
+              },
+              "push": {
+                "state": "idle",
+                "classification": null,
+                "enabled": false,
+                "last_checked_at": null,
+                "last_success_at": null,
+                "attempts": 0,
+                "next_retry_at": null,
+                "error_class": null,
+                "error_subclass": null,
+                "safe_message": null,
+                "operation_id": null,
+                "model_used": null,
+                "summary": null,
+                "backup_receipt": null
+              }
+            },
+            {
+              "link_id": "link-skill",
+              "kind": "skill",
+              "local_id": "skill-1",
+              "name": "release-notes",
+              "hub_id": "hub-skill-release-notes",
+              "hub_source": "https://hub.radient.local",
+              "visibility": "public",
+              "tenant_id": null,
+              "tenant_name": null,
+              "policy": {
+                "subscribe": true,
+                "auto_push": true,
+                "revision": "rev-skill-1"
+              },
+              "eligibility": {
+                "can_auto_push": true,
+                "reason": null
+              },
+              "baseline_state": "pull",
+              "remote_revision": "rev-remote-skill",
+              "auto_will_apply": true,
+              "auto_will_push": true,
+              "pull": {
+                "state": "idle",
+                "classification": null,
+                "enabled": true,
+                "last_checked_at": null,
+                "last_success_at": null,
+                "attempts": 0,
+                "next_retry_at": null,
+                "error_class": null,
+                "error_subclass": null,
+                "safe_message": null,
+                "operation_id": null,
+                "model_used": null,
+                "summary": null,
+                "backup_receipt": null
+              },
+              "push": {
+                "state": "idle",
+                "classification": null,
+                "enabled": true,
+                "last_checked_at": null,
+                "last_success_at": null,
+                "attempts": 0,
+                "next_retry_at": null,
+                "error_class": null,
+                "error_subclass": null,
+                "safe_message": null,
+                "operation_id": "op-push-1",
+                "model_used": null,
+                "summary": null,
+                "backup_receipt": null
+              }
+            },
+            {
+              "link_id": "link-skill-pub-qa-unsafe-policy",
+              "kind": "skill",
+              "local_id": "qa-unsafe-policy",
+              "name": "qa-unsafe-policy",
+              "hub_id": "hub-skill-pub-stub",
+              "hub_source": "https://hub.radient.local",
+              "visibility": "public",
+              "tenant_id": null,
+              "tenant_name": null,
+              "policy": {
+                "subscribe": true,
+                "auto_push": true,
+                "revision": "rev-policy-skill-1"
+              },
+              "eligibility": {
+                "can_auto_push": true,
+                "reason": null
+              },
+              "baseline_state": "pull",
+              "remote_revision": "rev-remote-1",
+              "auto_will_apply": true,
+              "auto_will_push": false,
+              "pull": {
+                "state": "idle",
+                "classification": null,
+                "enabled": true,
+                "last_checked_at": null,
+                "last_success_at": "2026-10-14T22:00:00Z",
+                "attempts": 0,
+                "next_retry_at": null,
+                "error_class": null,
+                "error_subclass": null,
+                "safe_message": null,
+                "operation_id": null,
+                "model_used": null,
+                "summary": null,
+                "backup_receipt": null
+              },
+              "push": {
+                "state": "idle",
+                "classification": null,
+                "enabled": false,
+                "last_checked_at": null,
+                "last_success_at": null,
+                "attempts": 0,
+                "next_retry_at": null,
+                "error_class": null,
+                "error_subclass": null,
+                "safe_message": null,
+                "operation_id": null,
+                "model_used": null,
+                "summary": null,
+                "backup_receipt": null
+              }
+            },
+            {
+              "link_id": "link-skill-qa-unsafe-policy",
+              "kind": "skill",
+              "local_id": "qa-unsafe-policy",
+              "name": "qa-unsafe-policy",
+              "hub_id": "hub-skill-stub",
+              "hub_source": "https://hub.radient.local",
+              "visibility": "public",
+              "tenant_id": null,
+              "tenant_name": null,
+              "policy": {
+                "subscribe": true,
+                "auto_push": true,
+                "revision": "rev-policy-skill-1"
+              },
+              "eligibility": {
+                "can_auto_push": true,
+                "reason": null
+              },
+              "baseline_state": "pull",
+              "remote_revision": "rev-remote-1",
+              "auto_will_apply": true,
+              "auto_will_push": false,
+              "pull": {
+                "state": "idle",
+                "classification": null,
+                "enabled": true,
+                "last_checked_at": null,
+                "last_success_at": "2026-10-14T22:00:00Z",
+                "attempts": 0,
+                "next_retry_at": null,
+                "error_class": null,
+                "error_subclass": null,
+                "safe_message": null,
+                "operation_id": null,
+                "model_used": null,
+                "summary": null,
+                "backup_receipt": null
+              },
+              "push": {
+                "state": "idle",
+                "classification": null,
+                "enabled": false,
+                "last_checked_at": null,
+                "last_success_at": null,
+                "attempts": 0,
+                "next_retry_at": null,
+                "error_class": null,
+                "error_subclass": null,
+                "safe_message": null,
+                "operation_id": null,
+                "model_used": null,
+                "summary": null,
+                "backup_receipt": null
+              }
+            }
+          ],
+          "unresolved": [
+            {
+              "kind": "agent",
+              "local_id": "agent-legacy",
+              "name": "legacy-helper",
+              "hub_id": "hub-agent-legacy",
+              "reason": "source-unresolved"
+            },
+            {
+              "kind": "agent",
+              "local_id": "agent-legacy-solo",
+              "name": "legacy-solo",
+              "hub_id": "hub-agent-legacy-solo",
+              "reason": "source-unresolved"
+            }
+          ]
+        }
+      }
+    }
+  }
 ]

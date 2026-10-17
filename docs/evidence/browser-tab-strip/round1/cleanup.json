@@ -1,12 +1,15 @@
 {
-	"observedAt": "2026-10-15T14:18:13.405581+00:00",
-	"ownedPids": [22556, 36840],
-	"alive": false,
-	"exactGroupAndProfileSurvivors": [],
-	"outExists": false,
-	"frozenArtifactCloneExists": false,
-	"continuationRuntimeExists": false,
-	"preReapArtifactHashesChecked": 170,
-	"hashMismatches": [],
-	"diskFreeGiB": 38.01
+  "observedAt": "2026-10-15T14:18:13.405581+00:00",
+  "ownedPids": [
+    22556,
+    36840
+  ],
+  "alive": false,
+  "exactGroupAndProfileSurvivors": [],
+  "outExists": false,
+  "frozenArtifactCloneExists": false,
+  "continuationRuntimeExists": false,
+  "preReapArtifactHashesChecked": 170,
+  "hashMismatches": [],
+  "diskFreeGiB": 38.01
 }

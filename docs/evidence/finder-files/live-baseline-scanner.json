@@ -1,17 +1,17 @@
 {
-	"session": "48968d63f896",
-	"rows": 368,
-	"records": 254,
-	"generate_image_records": 1,
-	"distinct_generated_digests_in_transcript": 1,
-	"mentions_total": 16,
-	"mentions_by_source": {
-		"tool-arg": 11,
-		"prose": 5
-	},
-	"generated_digests_with_a_row": 0,
-	"dot_bin_path_tiles": 0,
-	"artifact_rows": 0,
-	"video_receipt_rows": 0,
-	"sample": []
+  "session": "48968d63f896",
+  "rows": 368,
+  "records": 254,
+  "generate_image_records": 1,
+  "distinct_generated_digests_in_transcript": 1,
+  "mentions_total": 16,
+  "mentions_by_source": {
+    "tool-arg": 11,
+    "prose": 5
+  },
+  "generated_digests_with_a_row": 0,
+  "dot_bin_path_tiles": 0,
+  "artifact_rows": 0,
+  "video_receipt_rows": 0,
+  "sample": []
 }

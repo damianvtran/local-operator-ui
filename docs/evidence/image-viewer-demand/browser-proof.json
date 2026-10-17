@@ -1,173 +1,173 @@
 [
-	{
-		"theme": "localOperatorDark",
-		"initialRequests": "image-viewer-controls--demand \u2014 http://localhost:6231/iframe.html?id=image-viewer-controls--demand&viewMode=story&args=theme%3AlocalOperatorDark\n\nRequests (9): 2, 24, 3, 4, 5, 6, 7, 8, 9",
-		"wrapRequests": "image-viewer-controls--demand \u2014 http://localhost:6231/iframe.html?id=image-viewer-controls--demand&viewMode=story&args=theme%3AlocalOperatorDark\n\nRequests (17): 2, 24, 3, 4, 5, 6, 7, 8, 9, 23, 16, 17, 18, 19, 20, 21, 22",
-		"before": {
-			"[data-image-filmstrip]": {
-				"x": 128,
-				"y": 617,
-				"top": 617,
-				"right": 1152,
-				"bottom": 704,
-				"width": 1024,
-				"height": 87
-			},
-			"[data-image-slot=\"1\"]": {
-				"x": 136,
-				"y": 621,
-				"top": 621,
-				"right": 253,
-				"bottom": 700,
-				"width": 117,
-				"height": 79
-			},
-			"[data-image-slot=\"2\"]": {
-				"x": 261,
-				"y": 621,
-				"top": 621,
-				"right": 378,
-				"bottom": 700,
-				"width": 117,
-				"height": 79
-			},
-			"[data-image-slot=\"12\"]": {
-				"x": 1511,
-				"y": 621,
-				"top": 621,
-				"right": 1628,
-				"bottom": 700,
-				"width": 117,
-				"height": 79
-			}
-		},
-		"after": {
-			"[data-image-filmstrip]": {
-				"x": 128,
-				"y": 617,
-				"top": 617,
-				"right": 1152,
-				"bottom": 704,
-				"width": 1024,
-				"height": 87
-			},
-			"[data-image-slot=\"1\"]": {
-				"x": 136,
-				"y": 621,
-				"top": 621,
-				"right": 253,
-				"bottom": 700,
-				"width": 117,
-				"height": 79
-			},
-			"[data-image-slot=\"2\"]": {
-				"x": 261,
-				"y": 621,
-				"top": 621,
-				"right": 378,
-				"bottom": 700,
-				"width": 117,
-				"height": 79
-			},
-			"[data-image-slot=\"12\"]": {
-				"x": 1511,
-				"y": 621,
-				"top": 621,
-				"right": 1628,
-				"bottom": 700,
-				"width": 117,
-				"height": 79
-			}
-		},
-		"note": "Previous-wrap drove real strip scrollIntoView; the root observer admitted non-adjacent visible slots 16..22. The browser scroll action did not move this element."
-	},
-	{
-		"theme": "localOperatorLight",
-		"initialRequests": "image-viewer-controls--demand \u2014 http://localhost:6231/iframe.html?id=image-viewer-controls--demand&viewMode=story&args=theme%3AlocalOperatorLight\n\nRequests (9): 2, 24, 3, 4, 5, 6, 7, 8, 9",
-		"wrapRequests": "image-viewer-controls--demand \u2014 http://localhost:6231/iframe.html?id=image-viewer-controls--demand&viewMode=story&args=theme%3AlocalOperatorLight\n\nRequests (17): 2, 24, 3, 4, 5, 6, 7, 8, 9, 23, 16, 17, 18, 19, 20, 21, 22",
-		"returnRequests": [
-			{
-				"type": "text",
-				"text": "image-viewer-controls--demand \u2014 http://localhost:6231/iframe.html?id=image-viewer-controls--demand&viewMode=story&args=theme%3AlocalOperatorLight\n\nRequests (17): 2, 24, 3, 4, 5, 6, 7, 8, 9, 23, 16, 17, 18, 19, 20, 21, 22"
-			}
-		],
-		"before": {
-			"[data-image-filmstrip]": {
-				"x": 128,
-				"y": 617,
-				"top": 617,
-				"right": 1152,
-				"bottom": 704,
-				"width": 1024,
-				"height": 87
-			},
-			"[data-image-slot=\"1\"]": {
-				"x": 136,
-				"y": 621,
-				"top": 621,
-				"right": 253,
-				"bottom": 700,
-				"width": 117,
-				"height": 79
-			},
-			"[data-image-slot=\"2\"]": {
-				"x": 261,
-				"y": 621,
-				"top": 621,
-				"right": 378,
-				"bottom": 700,
-				"width": 117,
-				"height": 79
-			},
-			"[data-image-slot=\"12\"]": {
-				"x": 1511,
-				"y": 621,
-				"top": 621,
-				"right": 1628,
-				"bottom": 700,
-				"width": 117,
-				"height": 79
-			}
-		},
-		"after": {
-			"[data-image-filmstrip]": {
-				"x": 128,
-				"y": 617,
-				"top": 617,
-				"right": 1152,
-				"bottom": 704,
-				"width": 1024,
-				"height": 87
-			},
-			"[data-image-slot=\"1\"]": {
-				"x": 136,
-				"y": 621,
-				"top": 621,
-				"right": 253,
-				"bottom": 700,
-				"width": 117,
-				"height": 79
-			},
-			"[data-image-slot=\"2\"]": {
-				"x": 261,
-				"y": 621,
-				"top": 621,
-				"right": 378,
-				"bottom": 700,
-				"width": 117,
-				"height": 79
-			},
-			"[data-image-slot=\"12\"]": {
-				"x": 1511,
-				"y": 621,
-				"top": 621,
-				"right": 1628,
-				"bottom": 700,
-				"width": 117,
-				"height": 79
-			}
-		},
-		"pendingSelection": "Image 2 of 24 before release",
-		"farSlot12Deferred": true
-	}
+  {
+    "theme": "localOperatorDark",
+    "initialRequests": "image-viewer-controls--demand \u2014 http://localhost:6231/iframe.html?id=image-viewer-controls--demand&viewMode=story&args=theme%3AlocalOperatorDark\n\nRequests (9): 2, 24, 3, 4, 5, 6, 7, 8, 9",
+    "wrapRequests": "image-viewer-controls--demand \u2014 http://localhost:6231/iframe.html?id=image-viewer-controls--demand&viewMode=story&args=theme%3AlocalOperatorDark\n\nRequests (17): 2, 24, 3, 4, 5, 6, 7, 8, 9, 23, 16, 17, 18, 19, 20, 21, 22",
+    "before": {
+      "[data-image-filmstrip]": {
+        "x": 128,
+        "y": 617,
+        "top": 617,
+        "right": 1152,
+        "bottom": 704,
+        "width": 1024,
+        "height": 87
+      },
+      "[data-image-slot=\"1\"]": {
+        "x": 136,
+        "y": 621,
+        "top": 621,
+        "right": 253,
+        "bottom": 700,
+        "width": 117,
+        "height": 79
+      },
+      "[data-image-slot=\"2\"]": {
+        "x": 261,
+        "y": 621,
+        "top": 621,
+        "right": 378,
+        "bottom": 700,
+        "width": 117,
+        "height": 79
+      },
+      "[data-image-slot=\"12\"]": {
+        "x": 1511,
+        "y": 621,
+        "top": 621,
+        "right": 1628,
+        "bottom": 700,
+        "width": 117,
+        "height": 79
+      }
+    },
+    "after": {
+      "[data-image-filmstrip]": {
+        "x": 128,
+        "y": 617,
+        "top": 617,
+        "right": 1152,
+        "bottom": 704,
+        "width": 1024,
+        "height": 87
+      },
+      "[data-image-slot=\"1\"]": {
+        "x": 136,
+        "y": 621,
+        "top": 621,
+        "right": 253,
+        "bottom": 700,
+        "width": 117,
+        "height": 79
+      },
+      "[data-image-slot=\"2\"]": {
+        "x": 261,
+        "y": 621,
+        "top": 621,
+        "right": 378,
+        "bottom": 700,
+        "width": 117,
+        "height": 79
+      },
+      "[data-image-slot=\"12\"]": {
+        "x": 1511,
+        "y": 621,
+        "top": 621,
+        "right": 1628,
+        "bottom": 700,
+        "width": 117,
+        "height": 79
+      }
+    },
+    "note": "Previous-wrap drove real strip scrollIntoView; the root observer admitted non-adjacent visible slots 16..22. The browser scroll action did not move this element."
+  },
+  {
+    "theme": "localOperatorLight",
+    "initialRequests": "image-viewer-controls--demand \u2014 http://localhost:6231/iframe.html?id=image-viewer-controls--demand&viewMode=story&args=theme%3AlocalOperatorLight\n\nRequests (9): 2, 24, 3, 4, 5, 6, 7, 8, 9",
+    "wrapRequests": "image-viewer-controls--demand \u2014 http://localhost:6231/iframe.html?id=image-viewer-controls--demand&viewMode=story&args=theme%3AlocalOperatorLight\n\nRequests (17): 2, 24, 3, 4, 5, 6, 7, 8, 9, 23, 16, 17, 18, 19, 20, 21, 22",
+    "returnRequests": [
+      {
+        "type": "text",
+        "text": "image-viewer-controls--demand \u2014 http://localhost:6231/iframe.html?id=image-viewer-controls--demand&viewMode=story&args=theme%3AlocalOperatorLight\n\nRequests (17): 2, 24, 3, 4, 5, 6, 7, 8, 9, 23, 16, 17, 18, 19, 20, 21, 22"
+      }
+    ],
+    "before": {
+      "[data-image-filmstrip]": {
+        "x": 128,
+        "y": 617,
+        "top": 617,
+        "right": 1152,
+        "bottom": 704,
+        "width": 1024,
+        "height": 87
+      },
+      "[data-image-slot=\"1\"]": {
+        "x": 136,
+        "y": 621,
+        "top": 621,
+        "right": 253,
+        "bottom": 700,
+        "width": 117,
+        "height": 79
+      },
+      "[data-image-slot=\"2\"]": {
+        "x": 261,
+        "y": 621,
+        "top": 621,
+        "right": 378,
+        "bottom": 700,
+        "width": 117,
+        "height": 79
+      },
+      "[data-image-slot=\"12\"]": {
+        "x": 1511,
+        "y": 621,
+        "top": 621,
+        "right": 1628,
+        "bottom": 700,
+        "width": 117,
+        "height": 79
+      }
+    },
+    "after": {
+      "[data-image-filmstrip]": {
+        "x": 128,
+        "y": 617,
+        "top": 617,
+        "right": 1152,
+        "bottom": 704,
+        "width": 1024,
+        "height": 87
+      },
+      "[data-image-slot=\"1\"]": {
+        "x": 136,
+        "y": 621,
+        "top": 621,
+        "right": 253,
+        "bottom": 700,
+        "width": 117,
+        "height": 79
+      },
+      "[data-image-slot=\"2\"]": {
+        "x": 261,
+        "y": 621,
+        "top": 621,
+        "right": 378,
+        "bottom": 700,
+        "width": 117,
+        "height": 79
+      },
+      "[data-image-slot=\"12\"]": {
+        "x": 1511,
+        "y": 621,
+        "top": 621,
+        "right": 1628,
+        "bottom": 700,
+        "width": 117,
+        "height": 79
+      }
+    },
+    "pendingSelection": "Image 2 of 24 before release",
+    "farSlot12Deferred": true
+  }
 ]

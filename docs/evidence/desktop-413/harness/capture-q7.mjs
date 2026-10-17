@@ -186,7 +186,9 @@ const main = async () => {
 			return area.value.length;
 		})()`);
 	const composerLength = () =>
-		evaluate(`document.querySelector('[aria-label="Message"]').value.length`);
+		evaluate(
+			`document.querySelector('[aria-label="Message"]').value.length`,
+		);
 	const banner = () =>
 		evaluate(`(() => {
 			const alerts = [...document.querySelectorAll('[role="alert"]')]
@@ -263,7 +265,9 @@ const main = async () => {
 
 	// 1. An over-cap slash command. Must be refused with a sentence naming the
 	//    CHARACTER limit, and must leave the draft in the composer.
-	const typed = await type(`'/theme ' + 'x'.repeat(${OVER_CAP})`);
+	const typed = await type(
+		`'/theme ' + 'x'.repeat(${OVER_CAP})`,
+	);
 	report.typedLength = typed;
 	await settle(1200);
 	await shoot("q7-composed");

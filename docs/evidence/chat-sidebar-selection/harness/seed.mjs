@@ -53,23 +53,11 @@ const BOUND = "b7b7b7b7b7b7";
 
 const SESSIONS = [
 	["b1b1b1b1b1b1", "Ledger reconciliation plan", "Reconcile the ledger for Q3"],
-	[
-		"b2b2b2b2b2b2",
-		"Loader cache invalidation",
-		"Why does the loader re-read the index",
-	],
+	["b2b2b2b2b2b2", "Loader cache invalidation", "Why does the loader re-read the index"],
 	["b3b3b3b3b3b3", "Retention sweep notes", "Summarise the retention sweep"],
-	[
-		"b4b4b4b4b4b4",
-		"Throughput investigation",
-		"Investigate the throughput drop",
-	],
+	["b4b4b4b4b4b4", "Throughput investigation", "Investigate the throughput drop"],
 	["b5b5b5b5b5b5", "Session cookie audit", "Audit the session cookies"],
-	[
-		"b6b6b6b6b6b6",
-		"Deploy window checklist",
-		"Draft the deploy window checklist",
-	],
+	["b6b6b6b6b6b6", "Deploy window checklist", "Draft the deploy window checklist"],
 	[
 		BOUND,
 		"Architect handoff: reconcile the retention sweep with the loader cache invalidation findings",

@@ -214,27 +214,26 @@ export const probeSource = (HOOKS) => {
 		slotBox,
 		/* The conversation's own column, by the marker the shell hands its route. */
 		/*
-		 * THE CONVERSATION COLUMN. `chat-content.tsx` names the three boxes its own
-		 * layout argument is written about (`data-tour-tag="pane-row"`, this one, and
-		 * whichever pane occupies the slot beside it), so the reading is the app's own
-		 * handle rather than a class match - the capture meter that walked every element
-		 * for a class is what missed the commit that halved this column.
-		 */
+	 * THE CONVERSATION COLUMN. `chat-content.tsx` names the three boxes its own
+	 * layout argument is written about (`data-tour-tag="pane-row"`, this one, and
+	 * whichever pane occupies the slot beside it), so the reading is the app's own
+	 * handle rather than a class match - the capture meter that walked every element
+	 * for a class is what missed the commit that halved this column.
+	 */
 		column: columnBox,
 		overlap,
 		paneRow: rect(q('[data-tour-tag="pane-row"]')),
 		rail,
 		railLit: lit,
 		railPresent: Object.values(rail).filter((v) => v !== null).length,
-		composer: composer ? { ...rect(composer), value: composer.value } : null,
+		composer: composer
+			? { ...rect(composer), value: composer.value }
+			: null,
 		active: active
 			? {
 					tag: active.tagName,
 					label: active.getAttribute("aria-label"),
-					text: (active.textContent ?? "")
-						.replace(/\s+/g, " ")
-						.trim()
-						.slice(0, 40),
+					text: (active.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 40),
 				}
 			: null,
 		ask: {
@@ -242,8 +241,7 @@ export const probeSource = (HOOKS) => {
 			drawer: count('[data-ask-drawer="session"]'),
 			close: count('[aria-label="Close asks"]'),
 			chip: count("[data-lo-ask-item-toggle]"),
-			chipExpanded:
-				q("[data-lo-ask-item-toggle]")?.getAttribute("aria-expanded") ?? null,
+			chipExpanded: q("[data-lo-ask-item-toggle]")?.getAttribute("aria-expanded") ?? null,
 			header: count('[data-tour-tag="ask-pane-trigger"]'),
 		},
 		draft: {
@@ -289,13 +287,9 @@ export const memorySource = () => {
 		 * instead (`probe().drawn` and `probe().ask`), which is why the report carries
 		 * both readings and says which is which.
 		 */
-		flagsAbsentFromVerb: [
-			"canvasOpen",
-			"runPanelOpen",
-			"browserPaneOpen",
-			"consolePaneOpen",
-			"isAskDrawerOpen",
-		].filter((name) => !(name in state)),
+		flagsAbsentFromVerb: ["canvasOpen", "runPanelOpen", "browserPaneOpen", "consolePaneOpen", "isAskDrawerOpen"].filter(
+			(name) => !(name in state),
+		),
 		activeSessionId: state.activeSessionId ?? null,
 		activeDraftKey: state.activeDraftKey ?? null,
 	};
@@ -337,8 +331,7 @@ export const samplerSource = (HOOKS, durationMs) => {
 		const slot = drawn.length
 			? q(PANES[drawn[0]]).getBoundingClientRect()
 			: null;
-		const column =
-			q('[data-tour-tag="chat-column"]')?.getBoundingClientRect() ?? null;
+		const column = q('[data-tour-tag="chat-column"]')?.getBoundingClientRect() ?? null;
 		const active = document.activeElement;
 		S.marks.push({
 			t: Math.round(performance.now() - S.t0),
@@ -386,9 +379,8 @@ export const targetSource = (selector) => {
 /** A sidebar conversation row, scrolled into view and hit-tested at its centre. */
 export const sessionRowSource = (sessionId) => {
 	const row =
-		document.querySelector(
-			`[data-session-row="${sessionId}"] [data-chat-row]`,
-		) ?? document.querySelector(`[data-session-row="${sessionId}"]`);
+		document.querySelector(`[data-session-row="${sessionId}"] [data-chat-row]`) ??
+		document.querySelector(`[data-session-row="${sessionId}"]`);
 	if (!row) return null;
 	row.scrollIntoView({ block: "center" });
 	const r = row.getBoundingClientRect();
@@ -506,19 +498,7 @@ export async function connect(chrome) {
  * A page in a fresh browser context, with the injected readers armed BEFORE the
  * app boots. Everything a case needs hangs off the returned object.
  */
-export async function openPage(
-	raw,
-	{
-		outDir,
-		arm,
-		sampler = false,
-		storage = {},
-		viewport = { width: 1380, height: 900 },
-		theme = "localOperatorDark",
-		url,
-		timeout = 30_000,
-	} = {},
-) {
+export async function openPage(raw, { outDir, arm, sampler = false, storage = {}, viewport = { width: 1380, height: 900 }, theme = "localOperatorDark", url, timeout = 30_000 } = {}) {
 	const { browserContextId } = await raw("Target.createBrowserContext", {});
 	const { targetId } = await raw("Target.createTarget", {
 		url: "about:blank",
@@ -541,9 +521,7 @@ export async function openPage(
 		send("Page.addScriptToEvaluateOnNewDocument", { source });
 	await armScript(ONBOARDING_SEED);
 	if (sampler)
-		await armScript(
-			`(${samplerSource.toString()})(${HOOKS_SOURCE}, ${sampler})`,
-		);
+		await armScript(`(${samplerSource.toString()})(${HOOKS_SOURCE}, ${sampler})`);
 	/*
 	 * Dark is the app's default, so it is NOT seeded: the dark frames are what a
 	 * first-run user sees. Light is seeded the way the other live sets seed it,
@@ -627,8 +605,7 @@ export async function openPage(
 			);
 			const row = await page.call(sessionRowSource, SESSION[key]);
 			if (!row) throw new Error(`no sidebar row for ${TITLE[key]}`);
-			if (!row.hittable)
-				throw new Error(`the ${TITLE[key]} row is not hittable`);
+			if (!row.hittable) throw new Error(`the ${TITLE[key]} row is not hittable`);
 			await page.click(row.x, row.y);
 			await page.waitFor(
 				`location.hash.includes(${JSON.stringify(SESSION[key])})`,
@@ -638,10 +615,7 @@ export async function openPage(
 		},
 		/** Press one of the rail's four items (the way a user opens a pane). */
 		async pressRail(id) {
-			return page.press(
-				`[data-panel-rail-item="${id}"]`,
-				`the ${id} rail item`,
-			);
+			return page.press(`[data-panel-rail-item="${id}"]`, `the ${id} rail item`);
 		},
 		/** Press the sidebar's `New chat` row (the draft's own door). */
 		async pressNewChat() {
@@ -658,7 +632,10 @@ export async function openPage(
 		},
 		/** Press the composer's asks chip (the hand-opened drawer's own door). */
 		async pressAskChip() {
-			return page.press("[data-lo-ask-item-toggle]", "the asks chip");
+			return page.press(
+				'[data-lo-ask-item-toggle]',
+				"the asks chip",
+			);
 		},
 		/**
 		 * Press the sidebar's `Search (⌘P) — chats (⌘K)` row, filter to one conversation
@@ -700,7 +677,8 @@ export async function openPage(
 			);
 		},
 		/** The store's own `state()` verb, through the rig's bridge. */
-		callDevState: () => page.evaluate("window.__loDevDriver.call('state')"),
+		callDevState: () =>
+			page.evaluate("window.__loDevDriver.call('state')"),
 		/** Navigate to a route and wait for the composer (the conversation is up). */
 		async open(path = "") {
 			await page.navigate(path);
@@ -737,8 +715,7 @@ export async function openPage(
 				.toFile(file);
 			return `${label}/${arm}/${theme}.webp`;
 		},
-		startSampler: (ms) =>
-			page.evaluate(`(${samplerSource.toString()})(${HOOKS_SOURCE}, ${ms})`),
+		startSampler: (ms) => page.evaluate(`(${samplerSource.toString()})(${HOOKS_SOURCE}, ${ms})`),
 		async timeline() {
 			const S = await page.evaluate("window.__timeline");
 			return S?.marks ?? [];
@@ -768,18 +745,8 @@ export async function openPage(
  * generation's mock copy; waiting for the transcript to hold an assistant message
  * is waiting for the same fact without borrowing the text.
  */
-export async function waitForAssistantTurn(
-	scratch,
-	sessionId,
-	timeoutMs = 30_000,
-) {
-	const file = join(
-		scratch,
-		"config",
-		"sessions",
-		sessionId,
-		"transcript.jsonl",
-	);
+export async function waitForAssistantTurn(scratch, sessionId, timeoutMs = 30_000) {
+	const file = join(scratch, "config", "sessions", sessionId, "transcript.jsonl");
 	const started = Date.now();
 	for (;;) {
 		if (existsSync(file)) {
@@ -787,7 +754,10 @@ export async function waitForAssistantTurn(
 			for (const line of lines) {
 				try {
 					const row = JSON.parse(line);
-					if (row?.type === "message" && row?.payload?.role === "assistant")
+					if (
+						row?.type === "message" &&
+						row?.payload?.role === "assistant"
+					)
 						return { lines: lines.length, waitedMs: Date.now() - started };
 				} catch {
 					/* a half-written line is not a verdict */
@@ -883,17 +853,7 @@ export const makeProfile = () =>
 	mkdtempSync(join(process.env.RIG_TMP ?? tmpdir(), "slot-rig-chrome-"));
 
 /** The trajectory a report's frames are read against: a lane of marks, as a table. */
-export const SAMPLER_COLUMNS = [
-	"t",
-	"hash",
-	"drawn",
-	"lit",
-	"slotW",
-	"colW",
-	"flags",
-	"key",
-	"mem",
-];
+export const SAMPLER_COLUMNS = ["t", "hash", "drawn", "lit", "slotW", "colW", "flags", "key", "mem"];
 
 export function summariseTimeline(marks) {
 	if (!marks || marks.length === 0) return { framesSampled: 0, marks: [] };

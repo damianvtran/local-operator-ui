@@ -40,13 +40,7 @@ export default defineConfig({
 			"@store": resolve(root, "src/renderer/src/store"),
 		},
 	},
-	plugins: [
-		react(),
-		tailwindcss(),
-		tsconfigPaths(),
-		desktopProxyPlugin(),
-		electronBridgeShim(),
-	],
+	plugins: [react(), tailwindcss(), tsconfigPaths(), desktopProxyPlugin(), electronBridgeShim()],
 	// `strictPort` so a busy port FAILS rather than silently serving on another
 	// one and photographing a surface nobody drove. Overridable because this box
 	// runs several agent sessions at once.

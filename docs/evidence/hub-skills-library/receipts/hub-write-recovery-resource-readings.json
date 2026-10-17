@@ -1,42 +1,42 @@
 [
-	{
-		"at": "2026-10-15T02:51:38.800098-04:00",
-		"label": "positive-only recovery lease",
-		"availableKiB": 25269784,
-		"availableGiB": 24.099143981933594,
-		"swapUsedMB": 13233.19,
-		"swapFreeMiB": 1102.81,
-		"policy": "PR1091 current: Data>=20GiB, mem>=35%, swapFREE>=500MiB; used diagnostic only",
-		"memoryFreePct": 55
-	},
-	{
-		"at": "2026-10-15T02:51:38.943374-04:00",
-		"label": "before fixture R-M-fixed-guard-capture-recovery",
-		"availableKiB": 25269752,
-		"availableGiB": 24.09911346435547,
-		"swapUsedMB": 13233.19,
-		"swapFreeMiB": 1102.81,
-		"policy": "PR1091 current: Data>=20GiB, mem>=35%, swapFREE>=500MiB; used diagnostic only",
-		"memoryFreePct": 55
-	},
-	{
-		"at": "2026-10-15T02:51:39.298700-04:00",
-		"label": "before Electron boot R-M-fixed-guard-capture-recovery",
-		"availableKiB": 25269564,
-		"availableGiB": 24.098934173583984,
-		"swapUsedMB": 13233.19,
-		"swapFreeMiB": 1102.81,
-		"policy": "PR1091 current: Data>=20GiB, mem>=35%, swapFREE>=500MiB; used diagnostic only",
-		"memoryFreePct": 55
-	},
-	{
-		"at": "2026-10-15T02:51:47.067517-04:00",
-		"label": "end positive-only recovery",
-		"availableKiB": 25270380,
-		"availableGiB": 24.099712371826172,
-		"swapUsedMB": 13233.19,
-		"swapFreeMiB": 1102.81,
-		"policy": "PR1091 current: Data>=20GiB, mem>=35%, swapFREE>=500MiB; used diagnostic only",
-		"memoryFreePct": 50
-	}
+  {
+    "at": "2026-10-15T02:51:38.800098-04:00",
+    "label": "positive-only recovery lease",
+    "availableKiB": 25269784,
+    "availableGiB": 24.099143981933594,
+    "swapUsedMB": 13233.19,
+    "swapFreeMiB": 1102.81,
+    "policy": "PR1091 current: Data>=20GiB, mem>=35%, swapFREE>=500MiB; used diagnostic only",
+    "memoryFreePct": 55
+  },
+  {
+    "at": "2026-10-15T02:51:38.943374-04:00",
+    "label": "before fixture R-M-fixed-guard-capture-recovery",
+    "availableKiB": 25269752,
+    "availableGiB": 24.09911346435547,
+    "swapUsedMB": 13233.19,
+    "swapFreeMiB": 1102.81,
+    "policy": "PR1091 current: Data>=20GiB, mem>=35%, swapFREE>=500MiB; used diagnostic only",
+    "memoryFreePct": 55
+  },
+  {
+    "at": "2026-10-15T02:51:39.298700-04:00",
+    "label": "before Electron boot R-M-fixed-guard-capture-recovery",
+    "availableKiB": 25269564,
+    "availableGiB": 24.098934173583984,
+    "swapUsedMB": 13233.19,
+    "swapFreeMiB": 1102.81,
+    "policy": "PR1091 current: Data>=20GiB, mem>=35%, swapFREE>=500MiB; used diagnostic only",
+    "memoryFreePct": 55
+  },
+  {
+    "at": "2026-10-15T02:51:47.067517-04:00",
+    "label": "end positive-only recovery",
+    "availableKiB": 25270380,
+    "availableGiB": 24.099712371826172,
+    "swapUsedMB": 13233.19,
+    "swapFreeMiB": 1102.81,
+    "policy": "PR1091 current: Data>=20GiB, mem>=35%, swapFREE>=500MiB; used diagnostic only",
+    "memoryFreePct": 50
+  }
 ]

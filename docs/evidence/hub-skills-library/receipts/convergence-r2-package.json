@@ -1,13 +1,17 @@
 {
-	"base": "51a2eccfb",
-	"ours": "f114b314c9",
-	"main": "b179da8e2198beffa37195d84111206ea60ea6f0",
-	"oursChangedPackageKeys": ["scripts"],
-	"oursChangedScripts": ["test:desktop"],
-	"oursAddedTokens": [
-		"scripts/hub-skills-capability.test.mjs",
-		"scripts/hub-mutation-safety.test.mjs"
-	],
-	"oursRemovedTokens": [],
-	"resolution": "exact current upstream package, reinsert only the two independent Hub test tokens; retain upstream consolidation/removals"
+  "base": "51a2eccfb",
+  "ours": "f114b314c9",
+  "main": "b179da8e2198beffa37195d84111206ea60ea6f0",
+  "oursChangedPackageKeys": [
+    "scripts"
+  ],
+  "oursChangedScripts": [
+    "test:desktop"
+  ],
+  "oursAddedTokens": [
+    "scripts/hub-skills-capability.test.mjs",
+    "scripts/hub-mutation-safety.test.mjs"
+  ],
+  "oursRemovedTokens": [],
+  "resolution": "exact current upstream package, reinsert only the two independent Hub test tokens; retain upstream consolidation/removals"
 }

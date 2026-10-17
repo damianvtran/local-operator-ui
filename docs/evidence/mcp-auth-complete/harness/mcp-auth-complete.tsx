@@ -210,11 +210,7 @@ const readState = () => {
 const main = async () => {
 	// The dialog's own primary: the press that starts the grant, clicked rather
 	// than simulated, and only once the probe has put it on screen.
-	for (
-		let attempt = 0;
-		attempt < 200 && buttons("Continue in browser").length === 0;
-		attempt++
-	)
+	for (let attempt = 0; attempt < 200 && buttons("Continue in browser").length === 0; attempt++)
 		await sleep(25);
 	const grant = buttons("Continue in browser")[0];
 	if (!grant) throw new Error("the probe never offered the grant control");

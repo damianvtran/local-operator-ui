@@ -1,402 +1,409 @@
 [
-	{
-		"name": "preflight",
-		"actual": {
-			"hello": {
-				"armed": true,
-				"outDir": "<scratch>/a1-r3-native-final/runtime/out",
-				"title": "Local Operator",
-				"route": "/chat",
-				"href": "file://~/local-operator-ui/.worktrees/browser-focused-chords/out/renderer/index.html#/chat",
-				"theme": "localOperatorDark",
-				"viewport": {
-					"width": 1380,
-					"height": 900,
-					"devicePixelRatio": 2
-				},
-				"visibilityState": "visible",
-				"hasFocus": false,
-				"apiBaseUrl": "http://127.0.0.1:1",
-				"userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) LocalOperator/0.34.44 Chrome/152.0.7977.78 Electron/44.3.0 Safari/537.36"
-			},
-			"facts": {
-				"windowMode": "headless",
-				"appVersion": "0.34.44",
-				"platform": "darwin",
-				"title": "Local Operator",
-				"windowSize": {
-					"width": 1380,
-					"height": 900
-				},
-				"contentBounds": {
-					"width": 1380,
-					"height": 900
-				},
-				"visible": false,
-				"focused": false,
-				"minimized": false,
-				"frames": [],
-				"outDir": "<scratch>/a1-r3-native-final/runtime/out"
-			}
-		}
-	},
-	{
-		"name": "content rect (the native view rect)",
-		"actual": {
-			"x": 260,
-			"y": 110,
-			"w": 1120,
-			"h": 790,
-			"right": 1380,
-			"bottom": 900
-		}
-	},
-	{
-		"name": "tooltip reload localOperatorLight",
-		"actual": {
-			"panel": {
-				"text": "Reload (\u2318R)",
-				"x": 302,
-				"y": 41.5,
-				"w": 88.046875,
-				"h": 27.3984375,
-				"right": 390.046875,
-				"bottom": 68.8984375,
-				"vw": 1380
-			},
-			"intersectsContentRect": false,
-			"marginToWindowRight": 989.953125
-		}
-	},
-	{
-		"name": "tooltip new-tab localOperatorLight",
-		"actual": {
-			"panel": {
-				"text": "New tab (\u2318T)",
-				"x": 1276,
-				"y": 2.5,
-				"w": 95.953125,
-				"h": 27.3984375,
-				"right": 1371.953125,
-				"bottom": 29.8984375,
-				"vw": 1380
-			},
-			"intersectsContentRect": false,
-			"marginToWindowRight": 8.046875
-		}
-	},
-	{
-		"name": "tooltip active-close localOperatorLight",
-		"actual": {
-			"panel": {
-				"text": "Close tab (\u2318W)",
-				"x": 1267.5,
-				"y": 5.5,
-				"w": 106.7578125,
-				"h": 27.3984375,
-				"right": 1374.2578125,
-				"bottom": 32.8984375,
-				"vw": 1380
-			},
-			"intersectsContentRect": false,
-			"marginToWindowRight": 5.7421875
-		}
-	},
-	{
-		"name": "tooltip inactive-close localOperatorLight",
-		"actual": {
-			"panel": {
-				"text": "Close tab",
-				"x": 572.5,
-				"y": 5,
-				"w": 71.578125,
-				"h": 27.3984375,
-				"right": 644.078125,
-				"bottom": 32.3984375,
-				"vw": 1380
-			},
-			"intersectsContentRect": false,
-			"marginToWindowRight": 735.921875
-		}
-	},
-	{
-		"name": "tooltip address localOperatorLight",
-		"actual": {
-			"panel": null,
-			"intersectsContentRect": null,
-			"marginToWindowRight": null
-		}
-	},
-	{
-		"name": "tooltip reload localOperatorDark",
-		"actual": {
-			"panel": {
-				"text": "Reload (\u2318R)",
-				"x": 302,
-				"y": 41.5,
-				"w": 88.046875,
-				"h": 27.3984375,
-				"right": 390.046875,
-				"bottom": 68.8984375,
-				"vw": 1380
-			},
-			"intersectsContentRect": false,
-			"marginToWindowRight": 989.953125
-		}
-	},
-	{
-		"name": "tooltip new-tab localOperatorDark",
-		"actual": {
-			"panel": {
-				"text": "New tab (\u2318T)",
-				"x": 1276,
-				"y": 2.5,
-				"w": 95.953125,
-				"h": 27.3984375,
-				"right": 1371.953125,
-				"bottom": 29.8984375,
-				"vw": 1380
-			},
-			"intersectsContentRect": false,
-			"marginToWindowRight": 8.046875
-		}
-	},
-	{
-		"name": "tooltip active-close localOperatorDark",
-		"actual": {
-			"panel": {
-				"text": "Close tab (\u2318W)",
-				"x": 1267.5,
-				"y": 5.5,
-				"w": 106.7578125,
-				"h": 27.3984375,
-				"right": 1374.2578125,
-				"bottom": 32.8984375,
-				"vw": 1380
-			},
-			"intersectsContentRect": false,
-			"marginToWindowRight": 5.7421875
-		}
-	},
-	{
-		"name": "tooltip inactive-close localOperatorDark",
-		"actual": {
-			"panel": {
-				"text": "Close tab",
-				"x": 572.5,
-				"y": 5,
-				"w": 71.578125,
-				"h": 27.3984375,
-				"right": 644.078125,
-				"bottom": 32.3984375,
-				"vw": 1380
-			},
-			"intersectsContentRect": false,
-			"marginToWindowRight": 735.921875
-		}
-	},
-	{
-		"name": "tooltip address localOperatorDark",
-		"actual": {
-			"panel": null,
-			"intersectsContentRect": null,
-			"marginToWindowRight": null
-		}
-	},
-	{
-		"name": "tooltip new-tab-r3 localOperatorLight",
-		"actual": {
-			"text": "New tab (\u2318T)",
-			"x": 1276,
-			"y": 2.5,
-			"width": 95.953125,
-			"height": 27.3984375,
-			"color": "rgb(33, 30, 24)",
-			"background": "rgb(254, 253, 250)",
-			"viewport": {
-				"w": 1380,
-				"h": 900
-			}
-		}
-	},
-	{
-		"name": "frame tooltip-new-tab-r3-localoperatorlight",
-		"actual": {
-			"label": "tooltip-new-tab-r3-localoperatorlight",
-			"path": "<scratch>/a1-r3-native-final/runtime/out/tooltip-new-tab-r3-localoperatorlight.png",
-			"bytes": 85115,
-			"pixels": {
-				"width": 2760,
-				"height": 1800
-			},
-			"viewport": {
-				"width": 1380,
-				"height": 900,
-				"devicePixelRatio": 2
-			}
-		}
-	},
-	{
-		"name": "tooltip closes when the pointer leaves: new-tab-r3 localOperatorLight",
-		"actual": {
-			"closedOnLeave": true
-		}
-	},
-	{
-		"name": "tooltip new-tab-r3 localOperatorDark",
-		"actual": {
-			"text": "New tab (\u2318T)",
-			"x": 1276,
-			"y": 2.5,
-			"width": 95.953125,
-			"height": 27.3984375,
-			"color": "rgb(241, 238, 230)",
-			"background": "rgb(50, 45, 34)",
-			"viewport": {
-				"w": 1380,
-				"h": 900
-			}
-		}
-	},
-	{
-		"name": "frame tooltip-new-tab-r3-localoperatordark",
-		"actual": {
-			"label": "tooltip-new-tab-r3-localoperatordark",
-			"path": "<scratch>/a1-r3-native-final/runtime/out/tooltip-new-tab-r3-localoperatordark.png",
-			"bytes": 85606,
-			"pixels": {
-				"width": 2760,
-				"height": 1800
-			},
-			"viewport": {
-				"width": 1380,
-				"height": 900,
-				"devicePixelRatio": 2
-			}
-		}
-	},
-	{
-		"name": "tooltip closes when the pointer leaves: new-tab-r3 localOperatorDark",
-		"actual": {
-			"closedOnLeave": true
-		}
-	},
-	{
-		"name": "U9 close dispatch",
-		"actual": {
-			"prevented": [true],
-			"before": {
-				"ids": [1, 2, 3, 4],
-				"active": 4,
-				"url": "about:blank",
-				"count": 4
-			}
-		}
-	},
-	{
-		"name": "U9 outline on the rest-stop root after keyboard close",
-		"actual": {
-			"tag": "DIV",
-			"tour": "browser-route",
-			"tabindex": "-1",
-			"matchesFocusVisible": true,
-			"outlineStyle": "none",
-			"outlineWidth": "2px",
-			"outlineColor": "rgb(56, 201, 106)"
-		}
-	},
-	{
-		"name": "frame keyclose-root-after-localoperatorlight",
-		"actual": {
-			"label": "keyclose-root-after-localoperatorlight",
-			"path": "<scratch>/a1-r3-native-final/runtime/out/keyclose-root-after-localoperatorlight.png",
-			"bytes": 79040,
-			"pixels": {
-				"width": 2760,
-				"height": 1800
-			},
-			"viewport": {
-				"width": 1380,
-				"height": 900,
-				"devicePixelRatio": 2
-			}
-		}
-	},
-	{
-		"name": "frame keyclose-root-after-localoperatordark",
-		"actual": {
-			"label": "keyclose-root-after-localoperatordark",
-			"path": "<scratch>/a1-r3-native-final/runtime/out/keyclose-root-after-localoperatordark.png",
-			"bytes": 79731,
-			"pixels": {
-				"width": 2760,
-				"height": 1800
-			},
-			"viewport": {
-				"width": 1380,
-				"height": 900,
-				"devicePixelRatio": 2
-			}
-		}
-	},
-	{
-		"name": "child ring unchanged (tab button)",
-		"actual": {
-			"tour": "browser-tab",
-			"focusVisible": true,
-			"outlineStyle": "solid",
-			"outlineWidth": "2px"
-		}
-	},
-	{
-		"name": "final isolation",
-		"actual": {
-			"final": {
-				"windowMode": "headless",
-				"appVersion": "0.34.44",
-				"platform": "darwin",
-				"title": "Local Operator",
-				"windowSize": {
-					"width": 1380,
-					"height": 900
-				},
-				"contentBounds": {
-					"width": 1380,
-					"height": 900
-				},
-				"visible": false,
-				"focused": false,
-				"minimized": false,
-				"frames": [
-					"tooltip-new-tab-r3-localoperatorlight",
-					"tooltip-new-tab-r3-localoperatordark",
-					"keyclose-root-after-localoperatorlight",
-					"keyclose-root-after-localoperatordark"
-				],
-				"outDir": "<scratch>/a1-r3-native-final/runtime/out"
-			},
-			"all": [
-				{
-					"visible": false,
-					"focused": false,
-					"url": "file://~/local-operator-ui/.worktrees/browser-focused-chords/out/renderer/index.html#/browser"
-				},
-				{
-					"visible": false,
-					"focused": false,
-					"url": "file://~/local-operator-ui/.worktrees/browser-focused-chords/out/renderer/mini.html"
-				}
-			],
-			"resources": []
-		}
-	},
-	{
-		"name": "teardown",
-		"actual": {
-			"ownedPid": 42640,
-			"alive": false,
-			"scratch": "<scratch>/a1-r3-native-final/runtime",
-			"out": "<scratch>/a1-r3-native-final/runtime/out"
-		}
-	}
+  {
+    "name": "preflight",
+    "actual": {
+      "hello": {
+        "armed": true,
+        "outDir": "<scratch>/a1-r3-native-final/runtime/out",
+        "title": "Local Operator",
+        "route": "/chat",
+        "href": "file://~/local-operator-ui/.worktrees/browser-focused-chords/out/renderer/index.html#/chat",
+        "theme": "localOperatorDark",
+        "viewport": {
+          "width": 1380,
+          "height": 900,
+          "devicePixelRatio": 2
+        },
+        "visibilityState": "visible",
+        "hasFocus": false,
+        "apiBaseUrl": "http://127.0.0.1:1",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) LocalOperator/0.34.44 Chrome/152.0.7977.78 Electron/44.3.0 Safari/537.36"
+      },
+      "facts": {
+        "windowMode": "headless",
+        "appVersion": "0.34.44",
+        "platform": "darwin",
+        "title": "Local Operator",
+        "windowSize": {
+          "width": 1380,
+          "height": 900
+        },
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        },
+        "visible": false,
+        "focused": false,
+        "minimized": false,
+        "frames": [],
+        "outDir": "<scratch>/a1-r3-native-final/runtime/out"
+      }
+    }
+  },
+  {
+    "name": "content rect (the native view rect)",
+    "actual": {
+      "x": 260,
+      "y": 110,
+      "w": 1120,
+      "h": 790,
+      "right": 1380,
+      "bottom": 900
+    }
+  },
+  {
+    "name": "tooltip reload localOperatorLight",
+    "actual": {
+      "panel": {
+        "text": "Reload (\u2318R)",
+        "x": 302,
+        "y": 41.5,
+        "w": 88.046875,
+        "h": 27.3984375,
+        "right": 390.046875,
+        "bottom": 68.8984375,
+        "vw": 1380
+      },
+      "intersectsContentRect": false,
+      "marginToWindowRight": 989.953125
+    }
+  },
+  {
+    "name": "tooltip new-tab localOperatorLight",
+    "actual": {
+      "panel": {
+        "text": "New tab (\u2318T)",
+        "x": 1276,
+        "y": 2.5,
+        "w": 95.953125,
+        "h": 27.3984375,
+        "right": 1371.953125,
+        "bottom": 29.8984375,
+        "vw": 1380
+      },
+      "intersectsContentRect": false,
+      "marginToWindowRight": 8.046875
+    }
+  },
+  {
+    "name": "tooltip active-close localOperatorLight",
+    "actual": {
+      "panel": {
+        "text": "Close tab (\u2318W)",
+        "x": 1267.5,
+        "y": 5.5,
+        "w": 106.7578125,
+        "h": 27.3984375,
+        "right": 1374.2578125,
+        "bottom": 32.8984375,
+        "vw": 1380
+      },
+      "intersectsContentRect": false,
+      "marginToWindowRight": 5.7421875
+    }
+  },
+  {
+    "name": "tooltip inactive-close localOperatorLight",
+    "actual": {
+      "panel": {
+        "text": "Close tab",
+        "x": 572.5,
+        "y": 5,
+        "w": 71.578125,
+        "h": 27.3984375,
+        "right": 644.078125,
+        "bottom": 32.3984375,
+        "vw": 1380
+      },
+      "intersectsContentRect": false,
+      "marginToWindowRight": 735.921875
+    }
+  },
+  {
+    "name": "tooltip address localOperatorLight",
+    "actual": {
+      "panel": null,
+      "intersectsContentRect": null,
+      "marginToWindowRight": null
+    }
+  },
+  {
+    "name": "tooltip reload localOperatorDark",
+    "actual": {
+      "panel": {
+        "text": "Reload (\u2318R)",
+        "x": 302,
+        "y": 41.5,
+        "w": 88.046875,
+        "h": 27.3984375,
+        "right": 390.046875,
+        "bottom": 68.8984375,
+        "vw": 1380
+      },
+      "intersectsContentRect": false,
+      "marginToWindowRight": 989.953125
+    }
+  },
+  {
+    "name": "tooltip new-tab localOperatorDark",
+    "actual": {
+      "panel": {
+        "text": "New tab (\u2318T)",
+        "x": 1276,
+        "y": 2.5,
+        "w": 95.953125,
+        "h": 27.3984375,
+        "right": 1371.953125,
+        "bottom": 29.8984375,
+        "vw": 1380
+      },
+      "intersectsContentRect": false,
+      "marginToWindowRight": 8.046875
+    }
+  },
+  {
+    "name": "tooltip active-close localOperatorDark",
+    "actual": {
+      "panel": {
+        "text": "Close tab (\u2318W)",
+        "x": 1267.5,
+        "y": 5.5,
+        "w": 106.7578125,
+        "h": 27.3984375,
+        "right": 1374.2578125,
+        "bottom": 32.8984375,
+        "vw": 1380
+      },
+      "intersectsContentRect": false,
+      "marginToWindowRight": 5.7421875
+    }
+  },
+  {
+    "name": "tooltip inactive-close localOperatorDark",
+    "actual": {
+      "panel": {
+        "text": "Close tab",
+        "x": 572.5,
+        "y": 5,
+        "w": 71.578125,
+        "h": 27.3984375,
+        "right": 644.078125,
+        "bottom": 32.3984375,
+        "vw": 1380
+      },
+      "intersectsContentRect": false,
+      "marginToWindowRight": 735.921875
+    }
+  },
+  {
+    "name": "tooltip address localOperatorDark",
+    "actual": {
+      "panel": null,
+      "intersectsContentRect": null,
+      "marginToWindowRight": null
+    }
+  },
+  {
+    "name": "tooltip new-tab-r3 localOperatorLight",
+    "actual": {
+      "text": "New tab (\u2318T)",
+      "x": 1276,
+      "y": 2.5,
+      "width": 95.953125,
+      "height": 27.3984375,
+      "color": "rgb(33, 30, 24)",
+      "background": "rgb(254, 253, 250)",
+      "viewport": {
+        "w": 1380,
+        "h": 900
+      }
+    }
+  },
+  {
+    "name": "frame tooltip-new-tab-r3-localoperatorlight",
+    "actual": {
+      "label": "tooltip-new-tab-r3-localoperatorlight",
+      "path": "<scratch>/a1-r3-native-final/runtime/out/tooltip-new-tab-r3-localoperatorlight.png",
+      "bytes": 85115,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      }
+    }
+  },
+  {
+    "name": "tooltip closes when the pointer leaves: new-tab-r3 localOperatorLight",
+    "actual": {
+      "closedOnLeave": true
+    }
+  },
+  {
+    "name": "tooltip new-tab-r3 localOperatorDark",
+    "actual": {
+      "text": "New tab (\u2318T)",
+      "x": 1276,
+      "y": 2.5,
+      "width": 95.953125,
+      "height": 27.3984375,
+      "color": "rgb(241, 238, 230)",
+      "background": "rgb(50, 45, 34)",
+      "viewport": {
+        "w": 1380,
+        "h": 900
+      }
+    }
+  },
+  {
+    "name": "frame tooltip-new-tab-r3-localoperatordark",
+    "actual": {
+      "label": "tooltip-new-tab-r3-localoperatordark",
+      "path": "<scratch>/a1-r3-native-final/runtime/out/tooltip-new-tab-r3-localoperatordark.png",
+      "bytes": 85606,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      }
+    }
+  },
+  {
+    "name": "tooltip closes when the pointer leaves: new-tab-r3 localOperatorDark",
+    "actual": {
+      "closedOnLeave": true
+    }
+  },
+  {
+    "name": "U9 close dispatch",
+    "actual": {
+      "prevented": [
+        true
+      ],
+      "before": {
+        "ids": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "active": 4,
+        "url": "about:blank",
+        "count": 4
+      }
+    }
+  },
+  {
+    "name": "U9 outline on the rest-stop root after keyboard close",
+    "actual": {
+      "tag": "DIV",
+      "tour": "browser-route",
+      "tabindex": "-1",
+      "matchesFocusVisible": true,
+      "outlineStyle": "none",
+      "outlineWidth": "2px",
+      "outlineColor": "rgb(56, 201, 106)"
+    }
+  },
+  {
+    "name": "frame keyclose-root-after-localoperatorlight",
+    "actual": {
+      "label": "keyclose-root-after-localoperatorlight",
+      "path": "<scratch>/a1-r3-native-final/runtime/out/keyclose-root-after-localoperatorlight.png",
+      "bytes": 79040,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      }
+    }
+  },
+  {
+    "name": "frame keyclose-root-after-localoperatordark",
+    "actual": {
+      "label": "keyclose-root-after-localoperatordark",
+      "path": "<scratch>/a1-r3-native-final/runtime/out/keyclose-root-after-localoperatordark.png",
+      "bytes": 79731,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      }
+    }
+  },
+  {
+    "name": "child ring unchanged (tab button)",
+    "actual": {
+      "tour": "browser-tab",
+      "focusVisible": true,
+      "outlineStyle": "solid",
+      "outlineWidth": "2px"
+    }
+  },
+  {
+    "name": "final isolation",
+    "actual": {
+      "final": {
+        "windowMode": "headless",
+        "appVersion": "0.34.44",
+        "platform": "darwin",
+        "title": "Local Operator",
+        "windowSize": {
+          "width": 1380,
+          "height": 900
+        },
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        },
+        "visible": false,
+        "focused": false,
+        "minimized": false,
+        "frames": [
+          "tooltip-new-tab-r3-localoperatorlight",
+          "tooltip-new-tab-r3-localoperatordark",
+          "keyclose-root-after-localoperatorlight",
+          "keyclose-root-after-localoperatordark"
+        ],
+        "outDir": "<scratch>/a1-r3-native-final/runtime/out"
+      },
+      "all": [
+        {
+          "visible": false,
+          "focused": false,
+          "url": "file://~/local-operator-ui/.worktrees/browser-focused-chords/out/renderer/index.html#/browser"
+        },
+        {
+          "visible": false,
+          "focused": false,
+          "url": "file://~/local-operator-ui/.worktrees/browser-focused-chords/out/renderer/mini.html"
+        }
+      ],
+      "resources": []
+    }
+  },
+  {
+    "name": "teardown",
+    "actual": {
+      "ownedPid": 42640,
+      "alive": false,
+      "scratch": "<scratch>/a1-r3-native-final/runtime",
+      "out": "<scratch>/a1-r3-native-final/runtime/out"
+    }
+  }
 ]
