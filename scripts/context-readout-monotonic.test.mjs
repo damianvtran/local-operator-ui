@@ -31,6 +31,10 @@ import { build } from "esbuild";
  */
 
 // `zustand/middleware` reaches for localStorage at import time.
+const DESKTOP_API_FILTER = /local-operator\/desktop-api$/;
+const ANY_FILE_FILTER = /.*/;
+const REACT_FILTER = /^react$/;
+
 const store = new Map();
 globalThis.localStorage = {
 	getItem: (key) => store.get(key) ?? null,
@@ -118,43 +122,39 @@ const bundle = await build({
 		{
 			name: "frontend-replace-fixture",
 			setup(builder) {
-				builder.onResolve({ filter: /local-operator\/desktop-api$/ }, () => ({
+				builder.onResolve({ filter: DESKTOP_API_FILTER }, () => ({
 					path: "transport",
 					namespace: "replace-fixture",
 				}));
-				builder.onLoad({ filter: /.*/, namespace: "replace-fixture" }, () => ({
-					contents: `
+				builder.onLoad(
+					{ filter: ANY_FILE_FILTER, namespace: "replace-fixture" },
+					() => ({
+						contents: `
 						export class DesktopControlError extends Error {}
 						export class UserFacingError extends Error {}
 						export const userFacingMessage = (error) => String(error?.message ?? error);
 						export const desktopResult = (request) => globalThis.__replaceRequest(request);
 						export const subscribeDesktopStream = (args, onEvent) => globalThis.__replaceSubscribe(args, onEvent);`,
-					loader: "js",
-					resolveDir: process.cwd(),
-				}));
-				builder.onResolve({ filter: /^react$/ }, () => ({
+						loader: "js",
+						resolveDir: process.cwd(),
+					}),
+				);
+				builder.onResolve({ filter: REACT_FILTER }, () => ({
 					path: "react",
 					namespace: "replace-react",
 				}));
-				builder.onLoad({ filter: /.*/, namespace: "replace-react" }, () => ({
-					contents: reactStandIn,
-					loader: "js",
-				}));
+				builder.onLoad(
+					{ filter: ANY_FILE_FILTER, namespace: "replace-react" },
+					() => ({
+						contents: reactStandIn,
+						loader: "js",
+					}),
+				);
 			},
 		},
 	],
 });
-const {
-	useCanonicalSessionStream,
-	paintPendingSend,
-	RECONCILE_WALK_MAX_REQUESTS,
-	useCanonicalSessionsStore,
-	acceptFrontendReplace,
-	writePaint,
-	__resetPaintCache,
-	EMPTY_TRANSCRIPT,
-	applyHistoryPage,
-} = await import(
+const { useCanonicalSessionStream, useCanonicalSessionsStore } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 
@@ -465,6 +465,36 @@ const updateFrame = (seq, ownerSequence, contextTokens) => ({
 	},
 });
 
+/**
+ * An accepted move's own repaint (`frontend.replace`). It can be published from
+ * the cold/attaching window, and its occupancy is the durable reading.
+ */
+const replaceFrame = (
+	seq,
+	{
+		cwd = "/new",
+		epoch = BRIDGE_EPOCH,
+		ownerSequence = 1,
+		cold = true,
+		contextTokens = 100000,
+	} = {},
+) => ({
+	session_id: SESSION,
+	epoch,
+	seq,
+	type: "frontend.replace",
+	payload: {
+		frontend: {
+			state_version: 1,
+			epoch: OWNER_EPOCH,
+			sequence: ownerSequence,
+			live_cursor: ROW_LATER,
+			snapshot: frontendState({ cwd, sequence: ownerSequence, contextTokens }),
+		},
+		cold,
+	},
+});
+
 /** A receipt gap: the painted frontend is dropped and held for the replacement. */
 const gapFrame = () => ({ session_id: SESSION, type: "gap" });
 
@@ -499,7 +529,7 @@ const _ids = (transcript) => transcript.records.map((record) => record.id);
  * subscription's cursor: reusing a handle would carry a cursor across cases and
  * make every "duplicate" assertion pass for the wrong reason.
  */
-async function run(cwdAtSnapshot, frames) {
+async function run(cwdAtSnapshot, frames, { prepaint = true } = {}) {
 	subscriptions.length = 0;
 	requests.length = 0;
 	rafQueue = [];
@@ -525,7 +555,7 @@ async function run(cwdAtSnapshot, frames) {
 
 	let seq = 1;
 	deliver(openFrame(seq++));
-	deliver(snapshotFrame(seq++, cwdAtSnapshot));
+	if (prepaint) deliver(snapshotFrame(seq++, cwdAtSnapshot));
 	await pump();
 	for (const frame of frames) deliver(frame);
 	await pump();
@@ -549,7 +579,7 @@ test("the same holds while the facade is still attaching", async () => {
 	const handle = await run("/old", [
 		updateFrame(3, 6, 150000),
 		gapFrame(),
-		coldSnapshotFrame(4, 100000, { cold: false, attaching: true }),
+		coldSnapshotFrame(4, 100000, { cold: true, attaching: true }),
 	]);
 	assert.equal(handle.frontend?.context_tokens, 150000);
 });
@@ -591,6 +621,19 @@ test("a snapshot from an ATTACHED owner may lower it: a compaction shrinks", asy
 	);
 });
 
+test("a cold frontend.replace does not walk the reading back either", async () => {
+	const handle = await run("/old", [
+		updateFrame(3, 6, 150000),
+		replaceFrame(4, { contextTokens: 100000 }),
+	]);
+	assert.equal(
+		handle.frontend?.context_tokens,
+		150000,
+		"a replacement published from the cold window carries the durable reading",
+	);
+	assert.equal(handle.frontend?.cwd, "/new", "and it still applies the move");
+});
+
 test("an owner delta may lower it for the same reason", async () => {
 	const handle = await run("/old", [
 		updateFrame(3, 6, 150000),
@@ -600,9 +643,11 @@ test("an owner delta may lower it for the same reason", async () => {
 });
 
 test("the first snapshot still paints the journal reading a cold open has", async () => {
-	const handle = await run("/old", [
-		coldSnapshotFrame(3, 100000, { epoch: undefined }),
-	]);
+	const handle = await run(
+		"/old",
+		[coldSnapshotFrame(3, 100000, { epoch: undefined })],
+		{ prepaint: false },
+	);
 	assert.equal(
 		handle.frontend?.context_tokens,
 		100000,
