@@ -46,7 +46,7 @@
 		"tone": "ongoing, same verb stem as the idle label",
 		"length": "One short word plus ellipsis where the language styles progress that way.",
 		"placeholders": {},
-		"note": "Shown while the enable request is in flight; both buttons are disabled in this state. Do not change the verb from the idle \"Enable\" label beyond the grammar the language needs."
+		"note": "Shown while the enable request is in flight; all three dialog controls — Enable, Not now and the close X — are disabled in this state, so the dialog cannot be dismissed until the request settles. Do not change the verb from the idle \"Enable\" label beyond the grammar the language needs."
 	},
 	"ui.agentMessages.dialog.not_now": {
 		"role": "secondary action button (initial focus)",
