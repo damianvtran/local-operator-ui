@@ -4424,19 +4424,27 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	/*
 	 * THE SETTLE LATCH'S WRITE (operator report, 2026-10-16; the model's
 	 * `watchedRunId` option). While the pane reads live, the newest run on screen
-	 * is one the reader is watching being written, so its OPENING ROW id is
-	 * latched - in the store (survives a switch away and back) and in state (the
-	 * plan's next passes read it through `collapseInputs`, so a dip cannot slip
-	 * between the write and the read). Idempotent: every live pass writes the same
-	 * id, a changed id means the pane is watching a NEWER run now, and a
-	 * setState with an unchanged value is React's own bail-out.
+	 * is one the reader is watching being written, so its LEADING VISIBLE ROW id
+	 * is latched - in the store (survives a switch away and back) and in state
+	 * (the plan's next passes read it through `collapseInputs`, so a dip cannot
+	 * slip between the write and the read). Idempotent: every live pass writes
+	 * the same id while the window holds still, a changed id means the pane is
+	 * watching a NEWER run now, and a setState with an unchanged value is React's
+	 * own bail-out.
 	 *
-	 * WHY THE OPENING ROW: it is the one anchor a LIVE run's re-keying cannot
-	 * rename (a run keys on its last row while being written and on its answer
-	 * once settled; see `collapsePlan`'s option). A pass with no live reading, or
-	 * with no run yet, writes nothing: the latch is armed by a live pass alone,
-	 * which is what leaves a fresh pane - a reload, a first open of a finished
-	 * transcript - holding no latch and arriving collapsed exactly as today.
+	 * WHY THE LEADING ROW - AND WHY A SLICE-RELATIVE ONE IS SAFE TO WRITE. It is
+	 * the one anchor a live run's re-keying cannot rename (a run keys on its last
+	 * row while being written and on its answer once settled; see `collapsePlan`'s
+	 * option). The window does move - the snap can grow the slice into the run's
+	 * true head on the dip frame itself - so the rows this reads are the SLICE's
+	 * rows; that is why the model's check is CONTAINMENT over the run's own rows
+	 * rather than an equality at the opening index (agent review round 1, R1-1:
+	 * an equality read the true opening on the dip frame, missed the cut-edge id
+	 * written here, and the reported alternation survived for tall newest runs).
+	 * A pass with no live reading, or with no run yet, writes nothing: the latch
+	 * is armed by a live pass alone, which is what leaves a fresh pane - a reload,
+	 * a first open of a finished transcript - holding no latch and arriving
+	 * collapsed exactly as today.
 	 */
 	useEffect(() => {
 		if (!collapseInputs.live) return;

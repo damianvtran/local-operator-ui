@@ -11,11 +11,13 @@
  * conversation, exactly as the reader's expansions (`turn-collapse-open.ts`) and
  * the paint cache (`paint-cache.ts`) do.
  *
- * WHAT IT HOLDS. Per conversation, the OPENING ROW id of the newest run the pane
- * has rendered while `live` was true (the run's one anchor a live re-keying
- * cannot rename - see `collapsePlan`'s option). One string per conversation, not
- * a set: only the newest run is ever watched, and a later run replaces the
- * record wholesale.
+ * WHAT IT HOLDS. Per conversation, the id of the newest run's LEADING VISIBLE
+ * ROW while `live` was true - the run's opening row when the window covered it,
+ * the cut edge when the window cut its head (the model's read is containment
+ * over the run's own rows, so both are carried; see `collapsePlan`'s
+ * `watchedRunId` option for why the distinction is load-bearing). One string per
+ * conversation, not a set: only the newest run is ever watched, and a later run
+ * replaces the record wholesale.
  *
  * THE RESET SEMANTICS, stated so the model's trade is spelled out in one place:
  *
@@ -26,9 +28,10 @@
  *   back to a mid-flight conversation restores the protection it had;
  * - a FRESH CONVERSATION (or a reload) holds no latch, so a finished transcript
  *   arrives collapsed exactly as today;
- * - `forgetWatchedRun` drops one conversation's entry on the same events that
- *   forget the reader's expansions (archive/delete), and the session cap below
- *   evicts least-recently-written conversations so the map cannot grow.
+ * - `forgetWatchedRun` drops one conversation's entry on the same event that
+ *   forgets the reader's expansions (the 404 drop in `use-canonical-session.ts`),
+ *   and the session cap below evicts least-recently-written conversations so the
+ *   map cannot grow.
  *
  * NOT RELOAD-PERSISTENT, deliberately: a reload is a fresh pane, and a fresh
  * pane's first read of a finished transcript is today's collapsed shape.
