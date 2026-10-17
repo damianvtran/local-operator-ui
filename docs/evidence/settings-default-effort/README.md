@@ -8,7 +8,7 @@ by its own Electron in the documented `headless` window mode, never shown and
 never focused — driven by `scripts/renderer-driver.mjs` (scene
 `settings-default-effort`, added by this change) and photographed by the app
 itself with `webContents.capturePage()`. Behind it is an **isolated
-`local-operator serve`** (v0.73.12) this run owns, on its own scratch port, with
+`local-operator serve`** (v0.73.13) this run owns, on its own scratch port, with
 its own `HOME`, config root, log dir and bearer. The operator's daemon on 1111 is
 never touched, and each run's own checks prove the app holds a connection to that
 run's backend and none to the operator's.
@@ -160,7 +160,7 @@ run_set no-model-light - - - no-model localOperatorLight present \
   docs/evidence/settings-default-effort/fresh-install-light
 ```
 
-Each run printed `ALL CHECKS PASSED`. The logs carry 58 PASS lines for a
+Each run printed `ALL CHECKS PASSED`. The logs carry 64 PASS lines for a
 callout-present full run, 51 for the callout-absent half, 23 for a seeded run and
 20 for a fresh-install run — harness checks and scene checks together. Every run's
 harness half proves it booted the BUILT app headless, against this run's daemon and
@@ -169,7 +169,7 @@ none on 1111, and that no process from it outlived its boot.
 ## What each frame shows
 
 `no-provider/` and `no-provider-light/` — the callout is VISIBLE (no provider has
-a credential); seven frames each:
+a credential); eight frames each:
 
 | Frame | State |
 | --- | --- |
@@ -180,6 +180,7 @@ a credential); seven frames each:
 | `settings-default-effort-model-switched.png` | The reopened list on `o3`'s ladder (`Model default`, `Low`, `Medium`, `High`), read from the daemon in the same run. `GET /v1/settings` holds `model_effort: "high"`. |
 | `settings-default-effort-callout.png` | The callout with the inline **Providers** link, list closed. |
 | `settings-default-effort-providers-jump.png` | After pressing **Providers**: the Model providers section, measured at 80px below the scroll container's top (the page's own `HEADER_ROOM`), the rail's current row on Model providers, scroll position moved from the top. The Keyboard shortcuts row visible above the heading is the section immediately above, seen through that 80px of header room. |
+| `settings-default-effort-providers-jump-keyboard.png` | The SAME landing reached without a pointer: REAL Tab from the Default effort row to the **Providers** link (no click), Enter activating it. The section is focusable only as a programmatic `tabIndex={-1}` rest-stop, so it lands with NO ring (measured as `:focus-visible` plus the computed `outline-style: none`), and the next Tab puts the caret in the providers search field. Pixels are identical to the pointer frame by construction: the landing is one state, reached two ways. |
 
 `provider-connected/` and `provider-connected-light/` — the callout is ABSENT (the
 census reports a credential for `openai`). Same steps, six frames each: the same
@@ -227,15 +228,27 @@ Every claim below is a reading taken in the same run, printed in its log:
   80px header room, and updates the rail — measured as numbers — and ONE Tab
   after the press keeps focus inside the Model providers section with the
   landing unmoved (the skip-link behaviour);
+- the SAME jump walked by keyboard: a real Tab from the effort row reaches the
+  link, Enter lands focus INSIDE the section at the same header room, the
+  landing target reports `:focus-visible` with a computed outline style of
+  `none` (the ring is withheld from a non-interactive rest-stop), and the next
+  Tab lands on the providers search field;
 - with no hosting at all, Hosting provider and Model are both empty, the effort
   row is disabled with its "Select a model" helper and shows no chosen row, and
   the callout is visible.
 
 ## What these frames do not prove
 
-- The **focus ring**: a headless window is never shown and cannot be focused, so
-  the ring while typing is not in any frame. (The jump's focus MOVE is measured
-  as `document.activeElement`, not by looking at a ring.)
+- The **focus ring's pixels**: a headless window is never shown and cannot be
+  focused, so no frame photographs a ring while typing. The jump's focus MOVE is
+  measured as `document.activeElement`, and its ring SUPPRESSION is measured as
+  the landing target's own `:focus-visible` state plus its computed
+  `outline-style` — property readings, not a looked-at ring.
+- A **stored level during the preview load** as a picture: the row's loading
+  states are transient and were never framed at any head; their corrected
+  selection (unset row only when nothing is stored, placeholder otherwise) is
+  pinned by `scripts/default-effort-options.test.mjs`, and the settled frames
+  are the same in both readings.
 - Anything about a **packaged** build, an **installed provider**, or a live
   **model call**: every option list and level here is the offline resolution of a
   shipped registry, and `sessions.preview` does not call a provider.
