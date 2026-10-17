@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-language|settings-transcript-display|settings-account-policy|settings-gate|palette|palette-recents|hit-zones|route-tops|project-detail|project-open|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|output-artifact|image-copy|hub-links|hub-skills|hub-skills-egress|none|skill-seal>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-gate|palette|palette-recents|hit-zones|route-tops|project-detail|project-open|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|output-artifact|image-copy|hub-links|hub-skills|hub-skills-egress|none|skill-seal>
  *                          which built-in scene to run (default: states)
  *   --drop-expect <accepted|discarded>  (with --scene composer-drop) which half of
  *                          the issue #789 pair this run records: the head tree,
@@ -28323,6 +28323,1367 @@ async function sceneSettingsFields(cdp) {
 	return frames;
 }
 
+/* ------------------------------------------------------------------------- *
+ * `settings-default-effort`: the Default effort row beside Hosting provider
+ * and Model, and the provider callout under them.
+ *
+ * WHY A NEW SCENE. The row's whole contract is that its options are the
+ * SELECTED MODEL's ladder as the BACKEND resolves it, and that a model switch
+ * clamps a stored level the new ladder does not carry. Neither claim is
+ * visible in a still on its own, and neither can be asserted against a
+ * Storybook fixture: the ladder comes from `POST /v1/desktop/sessions/preview`
+ * and the clamp lands in the settings registry, so both readings are the
+ * daemon's. This scene drives the real Settings page, reads the daemon's own
+ * answers, and asserts the two against each other.
+ *
+ * WHAT IT DRIVES, all through the page's own controls:
+ *
+ *   1. `/settings?section=general`, settled, the row at rest;
+ *   2. the Default effort list OPEN, with its option rows compared to the
+ *      preview's `reasoning_efforts` for the selected model (read here, never
+ *      hard-coded);
+ *   3. a rung picked and saved (read back from `GET /v1/settings`);
+ *   4. the Model row switched to a model with a DIFFERENT ladder, after which
+ *      the options must be the new ladder and `model_effort` must equal the
+ *      level the backend resolves for that model with no rung chosen — the
+ *      clamp the row's own module documents;
+ *   5. the provider callout, VISIBLE or ABSENT by `--callout-expect`, and the
+ *      "Providers" link pressed with the landing measured in numbers — once by
+ *      pointer, then again as a KEYBOARD walk (real Tab to the link, Enter) so
+ *      the landing target's ring suppression and the next Tab stop are pinned
+ *      rather than inferred.
+ *
+ * The callout needs two daemons, because its predicate is the provider CENSUS:
+ * a config root with no provider credential reports `needsProvider`, and one
+ * whose `openai` env key is present does not. Two runs, one scene, and the
+ * flag names which half is being recorded — see
+ * `docs/evidence/settings-default-effort/README.md`.
+ *
+ *   node scripts/renderer-driver.mjs --scene settings-default-effort \
+ *     --backend http://127.0.0.1:8080 --backend-records <config>/run/serve \
+ *     --seed-onboarding-complete --callout-expect present --out <dir>
+ */
+
+/** The section the three rows and the callout live in. */
+const DEFAULT_EFFORT_SECTION = "#model-settings";
+
+/**
+ * The control inside `<section> <label for=…>`, as an EXPRESSION that evaluates
+ * to the input or null.
+ *
+ * The scene reaches the rows by the labels a reader sees rather than by a
+ * component hook: `HostingSelect`, `ModelSelect` and the new row are all one
+ * `SearchableSelect`, whose input is what its `<label for>` names.
+ */
+function labeledControl(sectionSelector, labelText) {
+	return `(() => {
+		const section = document.querySelector(${JSON.stringify(sectionSelector)});
+		if (!section) return null;
+		const label = [...section.querySelectorAll("label")].find(
+			(node) => (node.textContent ?? "").trim() === ${JSON.stringify(labelText)},
+		);
+		if (!label) return null;
+		const input = label.control ?? (label.getAttribute("for") ? document.getElementById(label.getAttribute("for")) : null);
+		return input instanceof HTMLInputElement ? input : null;
+	})()`;
+}
+
+/** The row's state: value, disabled, expanded, and what it is telling the reader. */
+async function readLabeledRow(cdp, labelText) {
+	return cdp.evaluate(`(() => {
+		const input = ${labeledControl(DEFAULT_EFFORT_SECTION, labelText)};
+		if (!input) return { present: false };
+		const described = (input.getAttribute("aria-describedby") ?? "")
+			.split(/\\s+/)
+			.filter(Boolean)
+			.map((id) => document.getElementById(id))
+			.filter(Boolean)
+			.map((node) => (node.textContent ?? "").trim());
+		return {
+			present: true,
+			value: input.value,
+			disabled: input.disabled,
+			expanded: input.getAttribute("aria-expanded"),
+			helper: described.join(" "),
+		};
+	})()`);
+}
+
+/** The open list, read as text in render order, with label and description apart. */
+const DEFAULT_EFFORT_LIST = `(() => {
+	const list = document.querySelector('[role="listbox"]');
+	if (!list) return { open: false, options: [] };
+	return {
+		open: true,
+		options: [...list.querySelectorAll('[role="option"]')].map((node) => {
+			const head = node.children[0];
+			const detail = node.children[1];
+			return {
+				text: (node.textContent ?? "").replace(/\\s+/g, " ").trim(),
+				label: (head?.textContent ?? "").replace(/\\s+/g, " ").trim(),
+				description: (detail?.textContent ?? "").replace(/\\s+/g, " ").trim(),
+				disabled: node.getAttribute("data-disabled") === "" || node.getAttribute("aria-disabled") === "true",
+			};
+		}),
+	};
+})()`;
+
+/**
+ * The values `model_effort` can store, from the settings registry's own row.
+ *
+ * The scene compares the OFFERED rungs against this set rather than assuming
+ * the ladder is the value space: Radient's ladder carries the `auto` sentinel,
+ * which is the label of `""` and not a storable value.
+ */
+async function storableModelEfforts() {
+	const payload = await rigGetJson("/v1/settings");
+	const rows = payload?.result?.settings ?? [];
+	const row = rows.find((entry) => entry.key === "model_effort");
+	return Array.isArray(row?.choices)
+		? row.choices
+				.map((choice) => choice?.value)
+				.filter((value) => typeof value === "string")
+		: [];
+}
+
+/** The stored state the scene asserts before it starts driving the row. */
+async function waitForEffortRow(cdp, predicate) {
+	return waitForScene(
+		cdp,
+		`(() => {
+			const input = ${labeledControl(DEFAULT_EFFORT_SECTION, "Default effort")};
+			if (!input) return false;
+			return ${predicate};
+		})()`,
+		600,
+	);
+}
+
+/**
+ * Press an element the page found for itself: the row's input, or one option.
+ *
+ * A press at coordinates the component reported, with the topmost element at
+ * that point coming back with the reading — which is how a covered or
+ * disabled control is told from a broken press.
+ */
+async function pressResolved(cdp, expression) {
+	const point = await cdp.evaluate(`(() => {
+		const node = ${expression};
+		if (!node) return null;
+		node.scrollIntoView({ block: "center", inline: "nearest" });
+		const rect = node.getBoundingClientRect();
+		const x = rect.left + Math.min(24, Math.max(1, rect.width / 2));
+		const y = rect.top + rect.height / 2;
+		const top = document.elementFromPoint(x, y);
+		return {
+			x,
+			y,
+			hit: top !== null && (top === node || node.contains(top)),
+			disabled: node.disabled === true,
+			top: top === null ? "none" : top.tagName.toLowerCase(),
+		};
+	})()`);
+	if (!point) return null;
+	await wait(150);
+	await pressPointer(cdp, point.x, point.y);
+	return point;
+}
+
+/** The daemon's own JSON answer to one GET, with this run's bearer. */
+async function rigGetJson(path) {
+	const response = await fetch(`${BACKEND}${path}`, {
+		headers: {
+			authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+		},
+	});
+	return response.json().catch(() => null);
+}
+
+/** The model a preview resolves for a selection, asked exactly as the row asks. */
+async function previewModel(provider, modelId) {
+	const response = await fetch(`${BACKEND}/v1/desktop/sessions/preview`, {
+		method: "POST",
+		headers: {
+			authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+			"content-type": "application/json",
+		},
+		body: JSON.stringify({
+			/*
+			 * `request_id` is required by the route (it is carried for envelope
+			 * parity and deliberately not journalled): a body without it is a 422
+			 * that reads exactly like "this model has no ladder".
+			 */
+			request_id: crypto.randomUUID(),
+			cwd: HOME_DIR,
+			model: {
+				provider,
+				model_id: modelId,
+				reasoning_effort: null,
+			},
+		}),
+	});
+	const payload = await response.json().catch(() => null);
+	return payload?.result?.frontend?.snapshot?.effective_model ?? null;
+}
+
+/** `model_effort` as the settings registry holds it. */
+async function storedModelEffort() {
+	const payload = await rigGetJson("/v1/settings");
+	const rows = payload?.result?.settings ?? [];
+	const row = rows.find((entry) => entry.key === "model_effort");
+	return typeof row?.value === "string" ? row.value : null;
+}
+
+/** The configured pair, as `GET /v1/config` reports it. */
+async function backendConfigValues() {
+	const payload = await rigGetJson("/v1/config");
+	const values = payload?.result?.values ?? {};
+	return {
+		hosting: typeof values.hosting === "string" ? values.hosting : "",
+		model: typeof values.model_name === "string" ? values.model_name : "",
+	};
+}
+
+/** Poll until the daemon reports the value this scene is waiting for. */
+async function waitForStoredEffort(expected, attempts = 150) {
+	for (let attempt = 0; attempt < attempts; attempt += 1) {
+		if ((await storedModelEffort()) === expected) return true;
+		await wait(100);
+	}
+	return false;
+}
+
+/** The callout and its link, read out of the Model settings section. */
+const PROVIDER_CALLOUT = `(() => {
+	const section = document.querySelector(${JSON.stringify(DEFAULT_EFFORT_SECTION)});
+	if (!section) return { section: false };
+	const text = (section.textContent ?? "").replace(/\\s+/g, " ").trim();
+	const link = [...section.querySelectorAll("button")].find(
+		(node) => (node.textContent ?? "").trim() === "Providers",
+	);
+	return {
+		section: true,
+		present: text.includes("Sign in with a provider to reach more models"),
+		link: Boolean(link),
+		linkTag: link ? link.tagName : null,
+		hashAnchor: Boolean(section.querySelector('a[href="#providers"]')),
+	};
+})()`;
+
+/**
+ * Where the Providers section sits relative to the element that actually
+ * scrolls, and what the rail says is current.
+ *
+ * `handleSelectSection` moves whichever box can move and leaves `HEADER_ROOM`
+ * (80px) above the section, so the landing is asserted against that rule rather
+ * than against a zero that the page never promises.
+ */
+const PROVIDERS_LANDING = `(() => {
+	const grid = document.querySelector("[data-provider-grid]");
+	const scroller = document.querySelector("[data-settings-content]");
+	if (!grid || !scroller) return { found: false };
+	let section = grid;
+	while (section && !(section.querySelector("h2")?.textContent ?? "").trim().match(/^Model providers$/)) {
+		section = section.parentElement;
+	}
+	if (!section) return { found: false };
+	const rect = section.getBoundingClientRect();
+	const box = scroller.getBoundingClientRect();
+	const nav = document.querySelector('nav[aria-label="Settings sections"]');
+	const current = nav
+		? [...nav.querySelectorAll("button")]
+				.filter((row) => row.getAttribute("aria-current") === "page")
+				.map((row) => (row.textContent ?? "").trim())
+		: [];
+	return {
+		found: true,
+		top: Math.round(rect.top - box.top),
+		scrollerScrollTop: Math.round(scroller.scrollTop),
+		documentScrollTop: Math.round(window.scrollY),
+		current,
+	};
+})()`;
+
+async function sceneSettingsDefaultEffort(cdp) {
+	const hello = await verb(cdp, "hello");
+	const facts = await factsOf(cdp);
+	check(
+		"the renderer reports this run's frames directory",
+		hello.outDir === FRAMES,
+		`${hello.outDir} (expected ${FRAMES})`,
+	);
+	check(
+		"the renderer sees the built app, not a bare Vite page",
+		ELECTRON_USER_AGENT.test(hello.userAgent),
+		hello.userAgent,
+	);
+	check(
+		"window mode is headless and the window is never shown",
+		facts.windowMode === "headless" && facts.visible === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	check(
+		"this scene is running against a live, isolated backend",
+		Boolean(BACKEND),
+		"the row's options and its write both come from the daemon, so this needs --backend",
+	);
+	if (!BACKEND) return [];
+
+	const calloutFlag = argValue("--callout-expect", "present");
+	const calloutExpect = calloutFlag === "present" ? "present" : "absent";
+	check(
+		"--callout-expect names one of the two callout states",
+		["present", "absent"].includes(calloutFlag),
+		JSON.stringify(calloutFlag),
+	);
+	if (!["present", "absent"].includes(calloutFlag)) return [];
+	/*
+	 * THREE RUNS, ONE SCENE. `full` is the ladder/clamp/callout walk the original
+	 * set recorded. `seeded` is the state the unset row's description exists for:
+	 * a model whose own default the backend publishes, with nothing stored (D3).
+	 * `no-model` is the fresh-install composition with no hosting at all (D2):
+	 * empty Hosting provider and Model rows, the effort row's "Select a model"
+	 * helper, and the callout visible.
+	 */
+	const effortMode = argValue("--effort-mode", "full");
+	check(
+		"--effort-mode names one of the three runs",
+		["full", "seeded", "no-model"].includes(effortMode),
+		JSON.stringify(effortMode),
+	);
+	if (!["full", "seeded", "no-model"].includes(effortMode)) return [];
+	/*
+	 * Branding asks a new control for light AND dark. The palette is a flag so the
+	 * same bytes produce both sets; the scene's readings are theme-independent and
+	 * are asserted in both runs.
+	 */
+	const theme = argValue("--theme", "localOperatorDark");
+	check(
+		"--theme names one of the two palettes this change ships",
+		["localOperatorDark", "localOperatorLight"].includes(theme),
+		JSON.stringify(theme),
+	);
+	if (!["localOperatorDark", "localOperatorLight"].includes(theme)) return [];
+
+	const config = await backendConfigValues();
+	note("the daemon's configured pair", JSON.stringify(config));
+
+	if (effortMode === "no-model") {
+		check(
+			"the daemon has NO hosting configured, which is the state this run frames",
+			config.hosting === "" && config.model === "",
+			JSON.stringify(config),
+		);
+		await verb(cdp, "navigate", "/settings?section=general");
+		await verb(cdp, "setTheme", theme);
+		const rendered = await waitForEffortRow(
+			cdp,
+			"input !== null && input.disabled === true",
+		);
+		check(
+			"the Default effort row renders, disabled, with no model configured",
+			rendered === true,
+			"the row never appeared",
+		);
+		if (rendered !== true) return [];
+		const row = await readLabeledRow(cdp, "Default effort");
+		note("the row with no model configured", JSON.stringify(row));
+		check(
+			"the row says a model must be chosen before effort exists",
+			row.helper.includes("Select a model to choose its effort levels."),
+			JSON.stringify(row.helper),
+		);
+		/*
+		 * No chosen row: the stored value is knowable but there is no model for it to
+		 * mean anything about, and a field reading "Model default" beside an empty
+		 * Model row names a default of nothing. The placeholder is the honest fill.
+		 */
+		check(
+			"the field shows its placeholder rather than a chosen row",
+			row.value === "",
+			`value=${JSON.stringify(row.value)}`,
+		);
+		const above = await cdp.evaluate(`(() => {
+			const section = document.querySelector(${JSON.stringify(DEFAULT_EFFORT_SECTION)});
+			if (!section) return { section: false };
+			const value = (label) => {
+				const node = [...section.querySelectorAll("label")].find(
+					(candidate) => (candidate.textContent ?? "").trim() === label,
+				);
+				const input = node
+					? node.control ?? (node.getAttribute("for") ? document.getElementById(node.getAttribute("for")) : null)
+					: null;
+				return input instanceof HTMLInputElement ? input.value.trim() : null;
+			};
+			return { section: true, hosting: value("Hosting provider"), model: value("Model") };
+		})()`);
+		note("the two rows above the effort row", JSON.stringify(above));
+		check(
+			"Hosting provider and Model are both empty",
+			above.section === true && above.hosting === "" && above.model === "",
+			JSON.stringify(above),
+		);
+		const callout = await cdp.evaluate(PROVIDER_CALLOUT);
+		check(
+			"with no hosting and no provider credential the callout is VISIBLE",
+			callout.present === true && callout.link === true,
+			JSON.stringify(callout),
+		);
+		/*
+		 * Land the section at the page's own 80px header room rather than letting
+		 * `scrollIntoView` cut the heading on the scroller's edge: the frame's
+		 * subject is the whole composition, heading included.
+		 */
+		await cdp.evaluate(`(() => {
+			const section = document.querySelector(${JSON.stringify(DEFAULT_EFFORT_SECTION)});
+			const scroller = document.querySelector("[data-settings-content]");
+			if (!section || !scroller) return false;
+			const delta =
+				section.getBoundingClientRect().top -
+				scroller.getBoundingClientRect().top;
+			scroller.scrollTo({ top: Math.max(0, scroller.scrollTop + delta - 80) });
+			return true;
+		})()`);
+		await wait(400);
+		const frame = await captureSettled(
+			cdp,
+			"settings-default-effort-fresh-install",
+		);
+		return [frame];
+	}
+
+	check(
+		"the daemon is configured on a model this scene can read a ladder for",
+		config.hosting !== "" && config.model !== "",
+		JSON.stringify(config),
+	);
+	if (config.hosting === "" || config.model === "") return [];
+
+	await verb(cdp, "navigate", "/settings?section=general");
+	await verb(cdp, "setTheme", theme);
+
+	if (effortMode === "seeded") {
+		/*
+		 * D3: the unset row's description only ever renders while NOTHING is
+		 * stored, and only when the backend reports a level for the model. This
+		 * run pins both halves: the daemon's own seed is non-empty, and the open
+		 * list prints it under Model default.
+		 */
+		const rendered = await waitForEffortRow(
+			cdp,
+			"input !== null && input.disabled === false",
+		);
+		check(
+			"the Default effort row rendered, enabled, on the seeded model",
+			rendered === true,
+			"the row never became enabled: the preview or the settings read did not answer",
+		);
+		if (rendered !== true) return [];
+		const model = await previewModel(config.hosting, config.model);
+		const seed =
+			typeof model?.reasoning_effort === "string"
+				? model.reasoning_effort.trim()
+				: "";
+		note(
+			"the daemon's seeded level for this model",
+			`${config.hosting}/${config.model}: ${JSON.stringify(seed)}`,
+		);
+		check(
+			"with nothing stored the daemon resolves a level for this model",
+			seed !== "",
+			`reasoning_effort=${JSON.stringify(model?.reasoning_effort ?? null)}`,
+		);
+		check(
+			"this run starts with model_effort unset",
+			(await storedModelEffort()) === "",
+			`model_effort=${JSON.stringify(await storedModelEffort())}`,
+		);
+		const rest = await readLabeledRow(cdp, "Default effort");
+		check(
+			"the row reads Model default",
+			rest.value === "Model default",
+			`value=${JSON.stringify(rest.value)}`,
+		);
+		await cdp.evaluate(`(() => {
+			const input = ${labeledControl(DEFAULT_EFFORT_SECTION, "Default effort")};
+			input?.scrollIntoView({ block: "center" });
+			return true;
+		})()`);
+		await wait(400);
+		const seededRestFrame = await captureSettled(
+			cdp,
+			"settings-default-effort-rest",
+		);
+		const opened = await pressResolved(
+			cdp,
+			labeledControl(DEFAULT_EFFORT_SECTION, "Default effort"),
+		);
+		check(
+			"the row's own control took the press",
+			opened?.hit === true,
+			JSON.stringify(opened),
+		);
+		const listOpen = await waitForScene(
+			cdp,
+			`document.querySelectorAll('[role="listbox"] [role="option"]').length > 0`,
+		);
+		check("the list opened on the press", listOpen === true, "no listbox rows");
+		const open = await cdp.evaluate(DEFAULT_EFFORT_LIST);
+		note("the list open on the seeded model", JSON.stringify(open));
+		const unset = open.options[0] ?? {};
+		check(
+			"the unset row is first and reads Model default",
+			unset.label === "Model default",
+			JSON.stringify(open.options.map((option) => option.label)),
+		);
+		check(
+			"the unset row names the level this model resolves to with nothing stored",
+			typeof unset.description === "string" &&
+				unset.description.toLowerCase() ===
+					`runs at ${seed} for this model.`.toLowerCase(),
+			`description=${JSON.stringify(unset.description)} seed=${JSON.stringify(seed)}`,
+		);
+		const seededOpenFrame = await captureSettled(
+			cdp,
+			"settings-default-effort-open",
+		);
+		return [seededRestFrame, seededOpenFrame];
+	}
+
+	/*
+	 * The row is ready when its control is on screen and no longer waiting on
+	 * either read: the settings registry or the preview. A disabled row in this
+	 * configuration would be the defect, so the wait is for enabled.
+	 */
+	const ready = await waitForScene(
+		cdp,
+		`(() => {
+			const input = ${labeledControl(DEFAULT_EFFORT_SECTION, "Default effort")};
+			return Boolean(input) && input.disabled === false;
+		})()`,
+		600,
+	);
+	check(
+		"the Default effort row rendered, enabled, on the configured model",
+		ready === true,
+		"the row never became enabled: the preview or the settings read did not answer",
+	);
+	if (ready !== true) return [];
+
+	const firstModel = await previewModel(config.hosting, config.model);
+	const firstLadder = Array.isArray(firstModel?.reasoning_efforts)
+		? firstModel.reasoning_efforts
+		: [];
+	note(
+		"the daemon's ladder for the configured model",
+		`${config.hosting}/${config.model}: ${JSON.stringify(firstLadder)}`,
+	);
+	const storableValues = await storableModelEfforts();
+	note(
+		"the values model_effort can store, from the settings registry",
+		JSON.stringify(storableValues),
+	);
+	const storableLadder = firstLadder.filter((rung) =>
+		storableValues.some((value) => value.toLowerCase() === rung.toLowerCase()),
+	);
+	note("the ladder rungs this key can store", JSON.stringify(storableLadder));
+	check(
+		"every storable rung of the ladder is one the daemon listed",
+		storableLadder.length > 1,
+		`${JSON.stringify(storableLadder)} — the clamp half needs a multi-rung model with storable rungs`,
+	);
+	if (storableLadder.length < 2) return [];
+
+	const rest = await readLabeledRow(cdp, "Default effort");
+	note("the row at rest", JSON.stringify(rest));
+	check(
+		"the stored value is empty, so the row reads Model default",
+		rest.value === "Model default",
+		`value=${JSON.stringify(rest.value)}`,
+	);
+	/*
+	 * `reasoning_effort: null` is the backend's honest "no level is in force",
+	 * which is not a case to invent one for. The closed row's helper states the
+	 * RULE and never a level; the per-model fact is the unset option's own
+	 * description, read from the open list below and asserted there.
+	 */
+	const resolvedFirst = firstModel?.reasoning_effort ?? null;
+	check(
+		"the closed row's helper states the Model-default rule",
+		rest.helper.includes("Model default lets this model choose its own level."),
+		`helper=${JSON.stringify(rest.helper)}`,
+	);
+	/*
+	 * Put the row at the middle of the viewport before the frame: the Model
+	 * settings section starts below the fold on arrival, and a "rest" picture
+	 * whose subject is cut off at the bottom edge is not evidence of the row.
+	 */
+	await cdp.evaluate(`(() => {
+		const input = ${labeledControl(DEFAULT_EFFORT_SECTION, "Default effort")};
+		input?.scrollIntoView({ block: "center" });
+		return true;
+	})()`);
+	await wait(400);
+	const restFrame = await captureSettled(cdp, "settings-default-effort-rest");
+
+	/* ---------------------------------------------------------------- */
+	/* 2. The list open, against the daemon's ladder                      */
+	/* ---------------------------------------------------------------- */
+
+	const opened = await pressResolved(
+		cdp,
+		labeledControl(DEFAULT_EFFORT_SECTION, "Default effort"),
+	);
+	check(
+		"the row's own control took the press",
+		opened?.hit === true,
+		JSON.stringify(opened),
+	);
+	const listOpen = await waitForScene(
+		cdp,
+		`document.querySelectorAll('[role="listbox"] [role="option"]').length > 0`,
+	);
+	check("the list opened on the press", listOpen === true, "no listbox rows");
+
+	const open = await cdp.evaluate(DEFAULT_EFFORT_LIST);
+	note("the list open", JSON.stringify(open));
+	/*
+	 * THE OPTIONS ARE THE DAEMON'S LADDER, compared with the ladder this SCENE
+	 * read from `/v1/desktop/sessions/preview` — never a table in this file. The
+	 * row labels are the ladder's own values in the app's title case
+	 * (`effortDisplay`), so the comparison folds case rather than restating the
+	 * spelling map.
+	 */
+	/*
+	 * `textContent` glues an option's label to its description, so the comparison
+	 * is "each row STARTS WITH the expected label" rather than equality - the
+	 * unset row's description ("Runs at High for this model.") is part of its
+	 * text and deliberately not part of the ladder this scene reads.
+	 */
+	const offered = open.options.map((option) => option.text.toLowerCase());
+	const expected = [
+		"model default",
+		...storableLadder.map((rung) => rung.toLowerCase()),
+	];
+	check(
+		"the options are the unset member plus the STORABLE ladder, in its order",
+		offered.length === expected.length &&
+			expected.every((label, index) => offered[index].startsWith(label)),
+		`offered=${JSON.stringify(offered)} expected=${JSON.stringify(expected)}`,
+	);
+	/*
+	 * The unset row's description is the only place the model's own default is
+	 * named. With nothing stored and a backend answer of "no level" it must be
+	 * absent rather than carrying any level; when the backend names one (the
+	 * seeded run) it must name exactly that. A description surviving a stored
+	 * value is the stale-answer defect this key's stored value fixes (MAJOR 2).
+	 */
+	const unsetFirst = open.options[0] ?? {};
+	const resolvedIsStorable =
+		typeof resolvedFirst === "string" &&
+		resolvedFirst !== "" &&
+		storableValues.some(
+			(value) => value.toLowerCase() === resolvedFirst.toLowerCase(),
+		);
+	check(
+		"the unset row's description names this model's own default, or is absent when it reports none",
+		resolvedIsStorable
+			? unsetFirst.description.toLowerCase() ===
+					`runs at ${resolvedFirst} for this model.`.toLowerCase()
+			: unsetFirst.description === "",
+		`description=${JSON.stringify(unsetFirst.description)} resolved=${JSON.stringify(resolvedFirst)}`,
+	);
+	const openFrame = await captureSettled(cdp, "settings-default-effort-open");
+
+	/* ---------------------------------------------------------------- */
+	/* 3. Pick the top rung and save it                                  */
+	/* ---------------------------------------------------------------- */
+
+	const topRung = storableLadder[storableLadder.length - 1];
+	const topIndex = open.options.findIndex(
+		(option) => option.label.toLowerCase() === topRung.toLowerCase(),
+	);
+	const topLabel = open.options[topIndex]?.label ?? topRung;
+	check(
+		"the top rung is a row in the open list",
+		topIndex > 0,
+		`topRung=${JSON.stringify(topRung)} rows=${JSON.stringify(open.options.map((option) => option.label))}`,
+	);
+	const picked = await pressResolved(
+		cdp,
+		topIndex > 0
+			? `[...document.querySelectorAll('[role="listbox"] [role="option"]')][${topIndex}] ?? null`
+			: "null",
+	);
+	check(
+		"the top rung's row took the press",
+		picked?.hit === true,
+		JSON.stringify(picked),
+	);
+	const saved = await waitForStoredEffort(topRung);
+	check(
+		"the picked rung is what the daemon's settings registry holds",
+		saved === true,
+		`model_effort=${JSON.stringify(await storedModelEffort())}, expected ${JSON.stringify(topRung)}`,
+	);
+	const afterSave = await readLabeledRow(cdp, "Default effort");
+	check(
+		"the row shows the saved rung after the write lands",
+		afterSave.value.toLowerCase() === topRung.toLowerCase(),
+		`value=${JSON.stringify(afterSave.value)}`,
+	);
+	const savedFrame = await captureSettled(cdp, "settings-default-effort-saved");
+
+	/* ---------------------------------------------------------------- */
+	/* 3b. Clear the value: the preview must answer for the NEW input     */
+	/* ---------------------------------------------------------------- */
+
+	/*
+	 * MAJOR 2's discriminating step. The preview's answer depends on the STORED
+	 * `model_effort` (the backend resolves `reasoning_effort: null` against it),
+	 * so after this row's own write only a key that carries the stored value
+	 * refetches. With `max` stored the row's list would describe "Model default"
+	 * with the old clamp ("Runs at Max"); cleared, the backend answers the
+	 * model's own default, which for this model is "no level" - so the
+	 * description MUST be gone.
+	 */
+	const readyAfterSave = await waitForEffortRow(
+		cdp,
+		"input !== null && input.disabled === false",
+	);
+	check(
+		"the row is ready again after its own write",
+		readyAfterSave === true,
+		"the row stayed disabled after saving",
+	);
+	if (readyAfterSave !== true) return [restFrame, openFrame, savedFrame];
+	const reopenForClear = await pressResolved(
+		cdp,
+		labeledControl(DEFAULT_EFFORT_SECTION, "Default effort"),
+	);
+	check(
+		"the row opens again after the save",
+		reopenForClear?.hit === true,
+		JSON.stringify(reopenForClear),
+	);
+	await waitForScene(
+		cdp,
+		`document.querySelectorAll('[role="listbox"] [role="option"]').length > 0`,
+	);
+	const beforeClear = await cdp.evaluate(DEFAULT_EFFORT_LIST);
+	const unsetIndex = beforeClear.options.findIndex(
+		(option) => option.label === "Model default",
+	);
+	check(
+		"the unset row is in the list opened after the save",
+		unsetIndex === 0,
+		JSON.stringify(beforeClear.options.map((option) => option.label)),
+	);
+	const cleared = await pressResolved(
+		cdp,
+		unsetIndex >= 0
+			? `[...document.querySelectorAll('[role="listbox"] [role="option"]')][${unsetIndex}] ?? null`
+			: "null",
+	);
+	check(
+		"the unset row took the press",
+		cleared?.hit === true,
+		JSON.stringify(cleared),
+	);
+	const clearedStored = await waitForStoredEffort("");
+	check(
+		"clearing the row writes the empty value",
+		clearedStored === true,
+		`model_effort=${JSON.stringify(await storedModelEffort())}`,
+	);
+	const readyAfterClear = await waitForEffortRow(
+		cdp,
+		"input !== null && input.disabled === false",
+	);
+	check(
+		"the row is ready again after clearing",
+		readyAfterClear === true,
+		"the row stayed disabled after clearing",
+	);
+	const afterClear = await readLabeledRow(cdp, "Default effort");
+	check(
+		"the row reads Model default after clearing",
+		afterClear.value === "Model default",
+		`value=${JSON.stringify(afterClear.value)}`,
+	);
+	const reopenedAfterClear = await pressResolved(
+		cdp,
+		labeledControl(DEFAULT_EFFORT_SECTION, "Default effort"),
+	);
+	check(
+		"the row opens after clearing",
+		reopenedAfterClear?.hit === true,
+		JSON.stringify(reopenedAfterClear),
+	);
+	await waitForScene(
+		cdp,
+		`document.querySelectorAll('[role="listbox"] [role="option"]').length > 0`,
+	);
+	const clearedList = await cdp.evaluate(DEFAULT_EFFORT_LIST);
+	const clearedUnset = clearedList.options[0] ?? {};
+	note("the unset row after clearing", JSON.stringify(clearedUnset));
+	check(
+		"the unset row's description is re-derived for the CLEARED value, not the stale Max answer",
+		resolvedIsStorable
+			? clearedUnset.description.toLowerCase() ===
+					`runs at ${resolvedFirst} for this model.`.toLowerCase()
+			: clearedUnset.description === "",
+		`description=${JSON.stringify(clearedUnset.description)} (a stale answer would name the previous level)`,
+	);
+	/* Close without committing, then put the top rung back: the clamp half needs
+	 * an off-ladder stored value, and Escape is the row's own close path. */
+	for (const type of ["rawKeyDown", "keyUp"]) {
+		await cdp.send("Input.dispatchKeyEvent", {
+			type,
+			key: "Escape",
+			code: "Escape",
+			windowsVirtualKeyCode: 27,
+		});
+	}
+	await waitForScene(
+		cdp,
+		`document.querySelector('[role="listbox"]') === null`,
+	);
+	const reopenForTop = await pressResolved(
+		cdp,
+		labeledControl(DEFAULT_EFFORT_SECTION, "Default effort"),
+	);
+	check(
+		"the row opens for the second pick",
+		reopenForTop?.hit === true,
+		JSON.stringify(reopenForTop),
+	);
+	await waitForScene(
+		cdp,
+		`document.querySelectorAll('[role="listbox"] [role="option"]').length > 0`,
+	);
+	const repickList = await cdp.evaluate(DEFAULT_EFFORT_LIST);
+	const topIndexAgain = repickList.options.findIndex(
+		(option) => option.label.toLowerCase() === topRung.toLowerCase(),
+	);
+	const repicked = await pressResolved(
+		cdp,
+		topIndexAgain > 0
+			? `[...document.querySelectorAll('[role="listbox"] [role="option"]')][${topIndexAgain}] ?? null`
+			: "null",
+	);
+	check(
+		"the top rung is chosen again for the clamp half",
+		repicked?.hit === true && (await waitForStoredEffort(topRung)) === true,
+		`model_effort=${JSON.stringify(await storedModelEffort())}`,
+	);
+
+	/* ---------------------------------------------------------------- */
+	/* 4. Switch the model and watch the clamp                           */
+	/* ---------------------------------------------------------------- */
+
+	const secondModelId = "o3";
+	const focused = await cdp.evaluate(`(() => {
+		const input = ${labeledControl(DEFAULT_EFFORT_SECTION, "Model")};
+		if (!input) return false;
+		input.focus();
+		input.select();
+		return document.activeElement === input;
+	})()`);
+	check(
+		"the Model row's field took focus for the typed switch",
+		focused === true,
+		"the field was not focusable or did not take the caret",
+	);
+	/*
+	 * The canonical selector is typed rather than a row pressed: every model row
+	 * carries its own `provider/model` among its search terms, so this resolves
+	 * to exactly one row and Enter commits that row's id. It is also the honest
+	 * user path for a model a reader knows by name.
+	 */
+	await cdp.send("Input.insertText", {
+		text: `${config.hosting}/${secondModelId}`,
+	});
+	await wait(200);
+	for (const type of ["rawKeyDown", "keyUp"]) {
+		await cdp.send("Input.dispatchKeyEvent", {
+			type,
+			key: "Enter",
+			code: "Enter",
+			windowsVirtualKeyCode: 13,
+		});
+	}
+	const switched = await (async () => {
+		for (let attempt = 0; attempt < 150; attempt += 1) {
+			if ((await backendConfigValues()).model === secondModelId) return true;
+			await wait(100);
+		}
+		return false;
+	})();
+	check(
+		"the Model switch landed on the daemon's configured model",
+		switched === true,
+		`config model_name=${JSON.stringify((await backendConfigValues()).model)}`,
+	);
+	if (!switched) return [restFrame, openFrame, savedFrame];
+
+	const secondModel = await previewModel(config.hosting, secondModelId);
+	const secondLadder = Array.isArray(secondModel?.reasoning_efforts)
+		? secondModel.reasoning_efforts
+		: [];
+	const resolvedSecond =
+		typeof secondModel?.reasoning_effort === "string"
+			? secondModel.reasoning_effort.trim()
+			: "";
+	/*
+	 * What the row's own clamp writes: the daemon's resolved level when this key
+	 * can store it, and the empty value otherwise (the storable-set rule this
+	 * change introduced).
+	 */
+	const clampTarget =
+		resolvedSecond !== "" &&
+		storableValues.some(
+			(value) => value.toLowerCase() === resolvedSecond.toLowerCase(),
+		)
+			? resolvedSecond
+			: "";
+	note(
+		"the daemon's ladder and resolved level for the switched model",
+		`${config.hosting}/${secondModelId}: ladder=${JSON.stringify(secondLadder)} resolved=${JSON.stringify(clampTarget)}`,
+	);
+	check(
+		"the daemon accepted the model switch",
+		secondModel !== null,
+		"the preview did not resolve the switched model",
+	);
+	if (secondModel === null) return [restFrame, openFrame, savedFrame];
+	check(
+		"the switched model's ladder is different from the first model's",
+		secondLadder.length > 1 &&
+			JSON.stringify(secondLadder) !== JSON.stringify(firstLadder),
+		`first=${JSON.stringify(firstLadder)} second=${JSON.stringify(secondLadder)}`,
+	);
+	check(
+		"the stored rung is NOT in the new ladder, so the clamp has something to do",
+		!secondLadder
+			.map((rung) => rung.toLowerCase())
+			.includes(topRung.toLowerCase()),
+		`stored=${JSON.stringify(topRung)} second=${JSON.stringify(secondLadder)}`,
+	);
+
+	const clamped = await waitForStoredEffort(clampTarget);
+	check(
+		"the stored default equals the level the backend resolves for the new model",
+		clamped === true,
+		`model_effort=${JSON.stringify(await storedModelEffort())}, resolved=${JSON.stringify(clampTarget)}`,
+	);
+	const switchedRow = await readLabeledRow(cdp, "Default effort");
+	check(
+		"the row shows the clamped level rather than the previous rung",
+		clampTarget === ""
+			? switchedRow.value === "Model default"
+			: switchedRow.value.toLowerCase() === clampTarget.toLowerCase(),
+		`value=${JSON.stringify(switchedRow.value)} resolved=${JSON.stringify(clampTarget)}`,
+	);
+	/*
+	 * U1: a clamp replaces the level the user chose, so the row must SAY so at
+	 * the row - the toast in view belongs to the Model write. The announcement
+	 * names both the level that is unavailable and the one now in force.
+	 */
+	const clampNoticeExpected =
+		clampTarget === "" ? "using model default." : `using ${clampTarget}.`;
+	check(
+		"the clamp is announced at the row rather than substituted silently",
+		switchedRow.helper
+			.toLowerCase()
+			.includes(`${topLabel.toLowerCase()} is not available on`) &&
+			switchedRow.helper.toLowerCase().includes(clampNoticeExpected),
+		`helper=${JSON.stringify(switchedRow.helper)} expected level=${JSON.stringify(topLabel)} target=${JSON.stringify(clampTarget)}`,
+	);
+	/*
+	 * The announcement's own frame, taken BEFORE the list is reopened: the open
+	 * popover sits over the helper, so a picture of the ladder would hide the
+	 * sentence that says what happened to the stored level.
+	 */
+	const clampedFrame = await captureSettled(
+		cdp,
+		"settings-default-effort-clamped",
+	);
+
+	const reopened = await pressResolved(
+		cdp,
+		labeledControl(DEFAULT_EFFORT_SECTION, "Default effort"),
+	);
+	check(
+		"the switched model's row opens on its own control",
+		reopened?.hit === true,
+		JSON.stringify(reopened),
+	);
+	const secondOpen = await waitForScene(
+		cdp,
+		`document.querySelectorAll('[role="listbox"] [role="option"]').length > 0`,
+	);
+	check(
+		"the list opened after the model switch",
+		secondOpen === true,
+		"no listbox rows",
+	);
+	const switchedList = await cdp.evaluate(DEFAULT_EFFORT_LIST);
+	const offeredSecond = switchedList.options.map((option) =>
+		option.text.toLowerCase(),
+	);
+	const expectedSecond = [
+		"model default",
+		...secondLadder
+			.filter((rung) =>
+				storableValues.some(
+					(value) => value.toLowerCase() === rung.toLowerCase(),
+				),
+			)
+			.map((rung) => rung.toLowerCase()),
+	];
+	check(
+		"the options are the NEW model's ladder, read from the daemon",
+		offeredSecond.length === expectedSecond.length &&
+			expectedSecond.every((label, index) =>
+				offeredSecond[index].startsWith(label),
+			),
+		`offered=${JSON.stringify(offeredSecond)} expected=${JSON.stringify(expectedSecond)}`,
+	);
+	const switchedFrame = await captureSettled(
+		cdp,
+		"settings-default-effort-model-switched",
+	);
+
+	/* ---------------------------------------------------------------- */
+	/* 5. The callout, and the Providers jump                            */
+	/* ---------------------------------------------------------------- */
+
+	/*
+	 * The list is still open from the model-switch capture, and a popover
+	 * overlays the callout beneath the field: close it so the frame is the
+	 * callout rather than a list on top of it.
+	 */
+	for (const type of ["rawKeyDown", "keyUp"]) {
+		await cdp.send("Input.dispatchKeyEvent", {
+			type,
+			key: "Escape",
+			code: "Escape",
+			windowsVirtualKeyCode: 27,
+		});
+	}
+	await waitForScene(
+		cdp,
+		`document.querySelector('[role="listbox"]') === null`,
+	);
+	const callout = await cdp.evaluate(PROVIDER_CALLOUT);
+	note("the provider callout", JSON.stringify(callout));
+	check(
+		"the Model settings section rendered",
+		callout.section === true,
+		`no ${DEFAULT_EFFORT_SECTION} in the page`,
+	);
+	if (calloutExpect === "present") {
+		check(
+			"with NO provider connected the callout is VISIBLE",
+			callout.present === true && callout.link === true,
+			JSON.stringify(callout),
+		);
+		check(
+			'the "Providers" link is a real button, not a hash anchor',
+			callout.linkTag === "BUTTON" && callout.hashAnchor === false,
+			JSON.stringify(callout),
+		);
+		const calloutFrame = await captureSettled(
+			cdp,
+			"settings-default-effort-callout",
+		);
+		/*
+		 * A probe on the button itself, so a press that lands and a handler that
+		 * never ran are told apart: the counter is the DOM's own record of the
+		 * click, and the landing below is the handler's effect.
+		 */
+		await cdp.evaluate(`(() => {
+			const button = [...document.querySelectorAll(${JSON.stringify(`${DEFAULT_EFFORT_SECTION} button`)})].find(
+				(node) => (node.textContent ?? "").trim() === "Providers",
+			);
+			window.__providersClicks = 0;
+			if (button) {
+				button.addEventListener("click", () => {
+					window.__providersClicks += 1;
+				});
+			}
+			return Boolean(button);
+		})()`);
+		const jumped = await pressResolved(
+			cdp,
+			`[...document.querySelectorAll(${JSON.stringify(`${DEFAULT_EFFORT_SECTION} button`)})].find(
+				(node) => (node.textContent ?? "").trim() === "Providers",
+			) ?? null`,
+		);
+		const clicks = await cdp.evaluate("window.__providersClicks ?? -1");
+		note("clicks the Providers button recorded", JSON.stringify(clicks));
+		check(
+			"the Providers link took the press",
+			jumped?.hit === true,
+			JSON.stringify(jumped),
+		);
+		/*
+		 * Off the link at once. The page scrolls UNDER a stationary pointer, so
+		 * the rows that pass the old coordinates raise their own hover cards -
+		 * the first landing frame carried the Keyboard shortcuts row's "Code
+		 * review / No shortcut" field over the section. The pointer is parked in
+		 * the content's bottom padding, where nothing is a hover target.
+		 */
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x: WINDOW_WIDTH - 6,
+			y: WINDOW_HEIGHT - 6,
+			button: "none",
+			buttons: 0,
+		});
+		/*
+		 * The jump is smooth, so the landing is waited for rather than sampled:
+		 * poll until the offset stops moving, then read it.
+		 */
+		/*
+		 * The landing is SMOOTH, so a first sample is a picture of the scroll
+		 * before it starts. Waiting for "two equal samples" broke on exactly
+		 * that (measured: 574px of 3900 taken, the rail still on General), so
+		 * the wait is for the page's own stated destination - HEADER_ROOM of
+		 * 80px above the section - and a miss is a failed check, not a sleep.
+		 */
+		let landing = await cdp.evaluate(PROVIDERS_LANDING);
+		for (let attempt = 0; attempt < 120; attempt += 1) {
+			landing = await cdp.evaluate(PROVIDERS_LANDING);
+			if (landing.found && Math.abs(landing.top - 80) <= 2) break;
+			await wait(100);
+		}
+		await wait(250);
+		/*
+		 * Park the pointer before the shutter. The press leaves it at the old
+		 * coordinates, and after the jump a hover target sits under it - the
+		 * first landing frame carried a live "Code review / No shortcut" hint
+		 * over the section, which is the pointer's own state rather than the
+		 * page's.
+		 */
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x: 2,
+			y: 2,
+			button: "none",
+			buttons: 0,
+		});
+		await wait(300);
+		landing = await cdp.evaluate(PROVIDERS_LANDING);
+		note("where the Providers section landed", JSON.stringify(landing));
+		check(
+			"the jump MOVED the page rather than only updating the rail",
+			(landing.scrollerScrollTop ?? 0) > 0 ||
+				(landing.documentScrollTop ?? 0) > 0,
+			JSON.stringify(landing),
+		);
+		check(
+			"the Providers section's top sits at the page's own 80px header room",
+			landing.found === true && Math.abs(landing.top - 80) <= 2,
+			`top=${landing.top} (expected 80), scrollTop=${landing.scrollerScrollTop}`,
+		);
+		check(
+			"the rail names Model providers as the current section",
+			Array.isArray(landing.current) &&
+				landing.current.some((name) => name.includes("Model providers")),
+			JSON.stringify(landing.current),
+		);
+		const landingFrame = await captureSettled(
+			cdp,
+			"settings-default-effort-providers-jump",
+		);
+		/*
+		 * U2: the jump must leave the keyboard where it took the eye. Activation
+		 * moves focus into the section (skip-link pattern), so one Tab continues
+		 * INSIDE it instead of returning to the link's DOM neighbour and pulling
+		 * the scroller back up.
+		 */
+		const focusAfterJump = await cdp.evaluate(`(() => {
+			const section = document.getElementById("model-providers");
+			const active = document.activeElement;
+			return {
+				focusedInside: Boolean(section && active && section.contains(active)),
+				activeTag: active ? active.tagName.toLowerCase() : null,
+			};
+		})()`);
+		note("focus after the Providers jump", JSON.stringify(focusAfterJump));
+		await pressChord(cdp, { key: "Tab", code: "Tab", virtualKeyCode: 9 });
+		await wait(250);
+		const afterTabFocus = await cdp.evaluate(`(() => {
+			const section = document.getElementById("model-providers");
+			const active = document.activeElement;
+			return {
+				focusedInside: Boolean(section && active && section.contains(active)),
+				activeTag: active ? active.tagName.toLowerCase() : null,
+			};
+		})()`);
+		const afterTabLanding = await cdp.evaluate(PROVIDERS_LANDING);
+		note(
+			"where the section sits after one Tab",
+			JSON.stringify({ focus: afterTabFocus, landing: afterTabLanding }),
+		);
+		check(
+			"after the jump, one Tab stays inside the Model providers section",
+			afterTabFocus.focusedInside === true,
+			JSON.stringify(afterTabFocus),
+		);
+		check(
+			"the Tab does not pull the view back to the link's position",
+			afterTabLanding.found === true && Math.abs(afterTabLanding.top - 80) <= 4,
+			`top=${afterTabLanding.top} (expected 80), scrollTop=${afterTabLanding.scrollerScrollTop}`,
+		);
+		/*
+		 * D6: the same jump, walked WITHOUT a pointer. The callout is the next tab
+		 * stop after the effort row, so a real Tab from the row reaches the link;
+		 * Enter activates it like a keyboard user would. The section is a
+		 * programmatic `tabIndex={-1}` rest-stop, not a control, so it must land
+		 * without painting the app's 2px ring around its whole box - measured here
+		 * as `:focus-visible` (Chromium's own rule after keyboard activation) plus
+		 * the computed outline style, because a headless frame cannot be trusted to
+		 * photograph a ring the window may never focus.
+		 */
+		await cdp.evaluate(`(() => {
+			const input = ${labeledControl(DEFAULT_EFFORT_SECTION, "Default effort")};
+			input?.focus();
+			return Boolean(input);
+		})()`);
+		await wait(150);
+		await pressChord(cdp, { key: "Tab", code: "Tab", virtualKeyCode: 9 });
+		await wait(150);
+		const keyboardLink = await cdp.evaluate(`(() => {
+			const active = document.activeElement;
+			return {
+				tag: active ? active.tagName.toLowerCase() : null,
+				text: (active?.textContent ?? "").trim(),
+			};
+		})()`);
+		note("the tab stop after the effort row", JSON.stringify(keyboardLink));
+		check(
+			"a real Tab from the effort row reaches the Providers link",
+			keyboardLink.tag === "button" && keyboardLink.text === "Providers",
+			JSON.stringify(keyboardLink),
+		);
+		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+		/*
+		 * The jump is smooth; wait for the page's own stated destination rather than
+		 * a fixed sleep, the same rule the pointer leg follows.
+		 */
+		let keyboardLanding = await cdp.evaluate(PROVIDERS_LANDING);
+		for (let attempt = 0; attempt < 40; attempt += 1) {
+			const landed =
+				keyboardLanding.found === true &&
+				Math.abs(keyboardLanding.top - 80) <= 2 &&
+				(keyboardLanding.current ?? []).some((name) =>
+					name.includes("Model providers"),
+				);
+			if (landed) break;
+			await wait(100);
+			keyboardLanding = await cdp.evaluate(PROVIDERS_LANDING);
+		}
+		const keyboardFocus = await cdp.evaluate(`(() => {
+			const section = document.getElementById("model-providers");
+			const active = document.activeElement;
+			return {
+				sectionFocused: section !== null && active === section,
+				focusedInside: Boolean(section && active && section.contains(active)),
+				activeTag: active ? active.tagName.toLowerCase() : null,
+				focusVisible: section ? section.matches(":focus-visible") : null,
+				outlineStyle: section ? getComputedStyle(section).outlineStyle : null,
+			};
+		})()`);
+		note(
+			"the keyboard landing and its ring",
+			JSON.stringify({ focus: keyboardFocus, landing: keyboardLanding }),
+		);
+		check(
+			"Enter on the link moves focus INTO the Model providers section",
+			keyboardFocus.focusedInside === true,
+			JSON.stringify(keyboardFocus),
+		);
+		check(
+			"the keyboard landing sits at the page's own 80px header room",
+			keyboardLanding.found === true && Math.abs(keyboardLanding.top - 80) <= 2,
+			`top=${keyboardLanding.top} (expected 80), scrollTop=${keyboardLanding.scrollerScrollTop}`,
+		);
+		check(
+			"the programmatic landing target paints NO focus ring",
+			keyboardFocus.sectionFocused === true &&
+				keyboardFocus.focusVisible === true &&
+				keyboardFocus.outlineStyle === "none",
+			JSON.stringify({
+				focusVisible: keyboardFocus.focusVisible,
+				outlineStyle: keyboardFocus.outlineStyle,
+			}),
+		);
+		const keyboardFrame = await captureSettled(
+			cdp,
+			"settings-default-effort-providers-jump-keyboard",
+		);
+		await pressChord(cdp, { key: "Tab", code: "Tab", virtualKeyCode: 9 });
+		await wait(250);
+		const keyboardNext = await cdp.evaluate(`(() => {
+			const section = document.getElementById("model-providers");
+			const active = document.activeElement;
+			return {
+				focusedInside: Boolean(section && active && section.contains(active)),
+				activeTag: active ? active.tagName.toLowerCase() : null,
+				label: active?.getAttribute("aria-label") ?? null,
+			};
+		})()`);
+		const keyboardAfterTab = await cdp.evaluate(PROVIDERS_LANDING);
+		note(
+			"the tab stop after the keyboard jump",
+			JSON.stringify({ focus: keyboardNext, landing: keyboardAfterTab }),
+		);
+		check(
+			"after the keyboard jump, one Tab lands on the providers search field",
+			keyboardNext.focusedInside === true &&
+				keyboardNext.activeTag === "input" &&
+				(keyboardNext.label ?? "").toLowerCase().includes("search"),
+			JSON.stringify(keyboardNext),
+		);
+		check(
+			"the keyboard landing stays put after that Tab",
+			keyboardAfterTab.found === true &&
+				Math.abs(keyboardAfterTab.top - 80) <= 4,
+			`top=${keyboardAfterTab.top} (expected 80), scrollTop=${keyboardAfterTab.scrollerScrollTop}`,
+		);
+		return [
+			restFrame,
+			openFrame,
+			savedFrame,
+			clampedFrame,
+			switchedFrame,
+			calloutFrame,
+			landingFrame,
+			keyboardFrame,
+		];
+	}
+	check(
+		"with a provider connected the callout is ABSENT",
+		callout.present === false && callout.link === false,
+		JSON.stringify(callout),
+	);
+	const absentFrame = await captureSettled(
+		cdp,
+		"settings-default-effort-callout-absent",
+	);
+	return [
+		restFrame,
+		openFrame,
+		savedFrame,
+		clampedFrame,
+		switchedFrame,
+		absentFrame,
+	];
+}
+
 /**
  * THE INTERFACE LANGUAGE ROW, in the section that owns its control.
  *
@@ -47566,6 +48927,14 @@ async function main() {
 				await sceneUndoToastsStacked(cdp);
 			else if (SCENE === "settings-model") await sceneSettingsModel(cdp);
 			else if (SCENE === "settings-fields") await sceneSettingsFields(cdp);
+			/*
+			 * The Default effort row beside Hosting provider and Model: its options are
+			 * the selected model's ladder (the draft preview's own answer), a model switch
+			 * clamps a stored level the new ladder lacks, and the provider callout is
+			 * conditional on the provider census. Needs `--backend` plus a renderer built
+			 * against the same URL.
+			 */ else if (SCENE === "settings-default-effort")
+				await sceneSettingsDefaultEffort(cdp);
 			/*
 			 * The interface-language row in General — the one surface on this page that
 			 * needs a live backend to photograph its caption, and whose picker's open list

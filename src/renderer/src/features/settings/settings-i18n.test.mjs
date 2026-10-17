@@ -47,6 +47,11 @@ const themes = [
 	"configuration",
 	"integrations",
 	"model",
+	/* Default effort and the provider callout live in their own English-only
+	 * namespace files: `ui.settings.model` ships French with an audited ledger
+	 * entry over its bytes, so new copy beside it would make that entry stale. */
+	"model.default_effort",
+	"model.provider_callout",
 	"navigation",
 	"shortcuts",
 	"speech",

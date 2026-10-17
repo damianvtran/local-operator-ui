@@ -234,3 +234,38 @@ test("a promoted setting key names a live section, and the page reads the same m
 		"the settings page must resolve ?setting= targets through sectionForSettingKey so a promoted key needs one entry, not two edits",
 	);
 });
+
+test("the promoted model_effort row is revealed and focused by its deep link", () => {
+	/*
+	 * The route-map test above proves a key link resolves to General. That alone
+	 * lands the SECTION: the backend section's `focusKey` is suppressed for
+	 * promoted keys, so without a hand-off the reader arrives at General's top
+	 * and the row they named is neither scrolled to nor focused (round 2, m-A).
+	 *
+	 * The reveal is pinned at both ends of its source:
+	 *  - the page hands the effort row the same boolean the language row gets;
+	 *  - the row focuses its own combobox, which is also what scrolls it into
+	 *    view natively, so "revealed and focused" is one mechanism rather than
+	 *    an extra scroll that could disagree with the focus target.
+	 */
+	const page = readFileSync(
+		"src/renderer/src/features/settings/components/settings-page.tsx",
+		"utf8",
+	);
+	const row = page.match(/<DefaultEffortSelect[\s\S]*?\/>/);
+	assert.notEqual(row, null, "the page no longer renders DefaultEffortSelect");
+	assert.match(
+		row[0],
+		/focus=\{settingFocusKey === MODEL_EFFORT_SETTING_KEY\}/,
+		"the Default effort row must receive the deep link's focus target, or the promoted key lands General's top with nothing focused",
+	);
+	const component = readFileSync(
+		"src/renderer/src/features/settings/components/default-effort-select.tsx",
+		"utf8",
+	);
+	assert.match(
+		component,
+		/\[role=combobox\][\s\S]{0,80}\.focus\(/,
+		"the row must focus its own combobox when the deep link names it",
+	);
+});
