@@ -1,17 +1,17 @@
 {
-  "baseline": "3b6e1a905cc89e19ea2c0d7b4517da08ed568e1b",
-  "dirtySourceSha256": {
-    "src/renderer/src/features/agent-hub/agent-hub-page.tsx": "41899e9ec25984d84a9b42d9de04fb0fc042a911edbfa0af85df9f2634e4b813",
-    "src/renderer/src/features/agent-hub/hooks/use-hub-skills.ts": "34a1b6bf2173e3e8a9a14666322c3dd93bc7000ca35372cfc23694070286843c",
-    "src/renderer/src/shared/api/local-operator/desktop-hooks.ts": "b68831aeff35aeb2dd61d0b8448b5eaff74759b3752eba77d514d0dc7ca51d48",
-    "scripts/renderer-driver.mjs": "31610d3ee67a9e953b026714f46c133f17486d50e4450e1db6f81f68fc0b8a14",
-    "docs/evidence/hub-links/harness/stub-daemon.mjs": "2ec4a85a56df9c0adff6eb3f9c1aa7af10f1e638d3c2911b7b64e5fcbf645f4d",
-    "scripts/hub-skills-capability.test.mjs": "f27c096d732890fb6355f5d8770978c613f064a76c49a157938fa8bf6b9e995b",
-    "scripts/hub-links-scene.test.mjs": "8afd087f1f9ff7612656ac1c80d5a58840bdcb6559c7d32d3fa56d8c2b8b8bb3"
-  },
-  "existingFramesUnchanged": true,
-  "newBuildRequired": true,
-  "newBuildPerformed": true,
-  "compiledIdentityReceipt": "capability-compiled-identity.json",
-  "nativeProof": "BLOCKED before core/origin: exact Data-volume floor fell below24GiB after successful build"
+	"baseline": "3b6e1a905cc89e19ea2c0d7b4517da08ed568e1b",
+	"dirtySourceSha256": {
+		"src/renderer/src/features/agent-hub/agent-hub-page.tsx": "41899e9ec25984d84a9b42d9de04fb0fc042a911edbfa0af85df9f2634e4b813",
+		"src/renderer/src/features/agent-hub/hooks/use-hub-skills.ts": "34a1b6bf2173e3e8a9a14666322c3dd93bc7000ca35372cfc23694070286843c",
+		"src/renderer/src/shared/api/local-operator/desktop-hooks.ts": "b68831aeff35aeb2dd61d0b8448b5eaff74759b3752eba77d514d0dc7ca51d48",
+		"scripts/renderer-driver.mjs": "31610d3ee67a9e953b026714f46c133f17486d50e4450e1db6f81f68fc0b8a14",
+		"docs/evidence/hub-links/harness/stub-daemon.mjs": "2ec4a85a56df9c0adff6eb3f9c1aa7af10f1e638d3c2911b7b64e5fcbf645f4d",
+		"scripts/hub-skills-capability.test.mjs": "f27c096d732890fb6355f5d8770978c613f064a76c49a157938fa8bf6b9e995b",
+		"scripts/hub-links-scene.test.mjs": "8afd087f1f9ff7612656ac1c80d5a58840bdcb6559c7d32d3fa56d8c2b8b8bb3"
+	},
+	"existingFramesUnchanged": true,
+	"newBuildRequired": true,
+	"newBuildPerformed": true,
+	"compiledIdentityReceipt": "capability-compiled-identity.json",
+	"nativeProof": "BLOCKED before core/origin: exact Data-volume floor fell below24GiB after successful build"
 }

@@ -16,7 +16,13 @@
  *   settle (later) the upgraded-B settle.
  */
 import { spawn } from "node:child_process";
-import { mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import {
+	mkdirSync,
+	readFileSync,
+	rmSync,
+	statSync,
+	writeFileSync,
+} from "node:fs";
 import { createRequire } from "node:module";
 import { createServer } from "node:net";
 import { join } from "node:path";
@@ -43,7 +49,10 @@ const WT =
 		? join(HOME, "local-operator-ui-worktrees/read-ack-skew-before")
 		: join(HOME, "local-operator-ui-worktrees/read-ack-skew-tolerance");
 
-const TOKEN = readFileSync(join(RIG, ARM === "before" ? "desktop.token" : "desktop.token"), "utf8").trim();
+const TOKEN = readFileSync(
+	join(RIG, ARM === "before" ? "desktop.token" : "desktop.token"),
+	"utf8",
+).trim();
 const RUN = join(SCRATCH, "read-ack-skew", ARM, "run");
 const FRAMES = join(OUT, ARM);
 const CONFIG = join(RUN, "config");
@@ -96,7 +105,10 @@ class Cdp {
 				const text = (msg.params.args ?? [])
 					.map((a) => a.value ?? a.description ?? a.type)
 					.join(" ");
-				this.console.push({ type: msg.params.type, text: String(text).slice(0, 400) });
+				this.console.push({
+					type: msg.params.type,
+					text: String(text).slice(0, 400),
+				});
 			}
 			if (msg.id && this.pending.has(msg.id)) {
 				const { res, rej } = this.pending.get(msg.id);
@@ -210,7 +222,11 @@ async function press(cdp, rect) {
 		clickCount: 1,
 	});
 	await sleep(700);
-	await cdp.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: 4, y: 4 });
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mouseMoved",
+		x: 4,
+		y: 4,
+	});
 	await sleep(150);
 }
 
@@ -230,7 +246,13 @@ async function clickSelector(cdp, sel, label) {
 	return found.text;
 }
 
-async function clickText(cdp, scopeSel, matcher, label, controlSel = "button, [role=button], [role=menuitem], label") {
+async function clickText(
+	cdp,
+	scopeSel,
+	matcher,
+	label,
+	controlSel = "button, [role=button], [role=menuitem], label",
+) {
 	const found = await cdp.eval(`(() => {
 		const scope = document.querySelector(${JSON.stringify(scopeSel)}) || document;
 		const rx = new RegExp(${JSON.stringify(matcher)}, "i");
@@ -245,7 +267,9 @@ async function clickText(cdp, scopeSel, matcher, label, controlSel = "button, [r
 		return { rect, text: (hit.textContent || "").replace(/\\s+/g, " ").trim().slice(0, 120) };
 	})()`);
 	if (!found.rect)
-		throw new Error(`clickText ${label}: no ${matcher} in ${scopeSel}; saw ${JSON.stringify(found.seen).slice(0, 500)}`);
+		throw new Error(
+			`clickText ${label}: no ${matcher} in ${scopeSel}; saw ${JSON.stringify(found.seen).slice(0, 500)}`,
+		);
 	await press(cdp, found.rect);
 	return found.text;
 }
@@ -278,7 +302,9 @@ async function pressEnter(cdp) {
 /* ---- the create: a draft placed on cloud-node-1 through the device chip --- */
 
 async function runCreate(cdp) {
-	const hasChip = await cdp.eval(`Boolean(document.querySelector("[data-device-chip]"))`);
+	const hasChip = await cdp.eval(
+		`Boolean(document.querySelector("[data-device-chip]"))`,
+	);
 	if (!hasChip) {
 		step("new-chat", { action: "pressing cmd-N" });
 		for (const type of ["keyDown", "keyUp"]) {
@@ -297,7 +323,12 @@ async function runCreate(cdp) {
 		timeout: 90_000,
 	});
 	await sleep(1000);
-	step("chip-draft", await cdp.eval(`(() => { const el = document.querySelector("[data-device-chip]"); return el ? (el.textContent || "").trim() : null; })()`));
+	step(
+		"chip-draft",
+		await cdp.eval(
+			`(() => { const el = document.querySelector("[data-device-chip]"); return el ? (el.textContent || "").trim() : null; })()`,
+		),
+	);
 
 	await clickSelector(cdp, "[data-device-chip]", "chip");
 	await cdp.waitFor(`document.querySelector("[data-device-picker]")`, {
@@ -315,20 +346,38 @@ async function runCreate(cdp) {
 			}));
 		})()`),
 	);
-	const rowText = await clickSelector(cdp, '[data-device-row="candidate"]', "candidate row");
+	const rowText = await clickSelector(
+		cdp,
+		'[data-device-row="candidate"]',
+		"candidate row",
+	);
 	step("picked", { text: rowText });
 	await cdp
-		.waitFor(`(document.querySelector("[data-device-chip]")?.textContent || "").includes("New on")`, {
-			label: "the chip naming the picked peer",
-			timeout: 30_000,
-		})
+		.waitFor(
+			`(document.querySelector("[data-device-chip]")?.textContent || "").includes("New on")`,
+			{
+				label: "the chip naming the picked peer",
+				timeout: 30_000,
+			},
+		)
 		.catch(() => step("chip-wait", { outcome: "no 'New on' text within 30s" }));
 	await sleep(600);
-	step("chip-after-pick", await cdp.eval(`(document.querySelector("[data-device-chip]")?.textContent || "").trim()`));
+	step(
+		"chip-after-pick",
+		await cdp.eval(
+			`(document.querySelector("[data-device-chip]")?.textContent || "").trim()`,
+		),
+	);
 	await shutter(cdp, `create-draft-peer-${ARM}`);
 
-	await clickSelector(cdp, '[data-tour-tag="chat-input-textarea"] textarea', "composer");
-	await cdp.send("Input.insertText", { text: "Sweep the nightly audit for anomalies" });
+	await clickSelector(
+		cdp,
+		'[data-tour-tag="chat-input-textarea"] textarea',
+		"composer",
+	);
+	await cdp.send("Input.insertText", {
+		text: "Sweep the nightly audit for anomalies",
+	});
 	await sleep(500);
 	await pressEnter(cdp);
 	step("sent", { at: new Date().toISOString() });
@@ -343,7 +392,10 @@ async function runCreate(cdp) {
 			step("created", { id: newId, hashSeenAt: new Date().toISOString() });
 		}
 	}
-	if (!newId) throw new Error("the send never re-pointed the URL to a fresh conversation");
+	if (!newId)
+		throw new Error(
+			"the send never re-pointed the URL to a fresh conversation",
+		);
 	report.probes.newId = newId;
 
 	/* The mark: poll the sidebar row's screen-reader texts for the new id. */
@@ -394,7 +446,8 @@ async function main() {
 	let cdp = null;
 	try {
 		rmSync(RUN, { recursive: true, force: true });
-		for (const d of ["home", "logs", "cwd", "userdata"]) mkdirSync(join(RUN, d), { recursive: true });
+		for (const d of ["home", "logs", "cwd", "userdata"])
+			mkdirSync(join(RUN, d), { recursive: true });
 		mkdirSync(FRAMES, { recursive: true });
 		mkdirSync(join(CONFIG, "run"), { recursive: true });
 		try {
@@ -418,7 +471,8 @@ async function main() {
 		} catch {}
 		const cleanEnv = { ...process.env };
 		for (const key of Object.keys(cleanEnv)) {
-			if (key.startsWith("CMUX_") || key.startsWith("LOP_")) delete cleanEnv[key];
+			if (key.startsWith("CMUX_") || key.startsWith("LOP_"))
+				delete cleanEnv[key];
 		}
 		const env = {
 			...cleanEnv,
@@ -507,7 +561,12 @@ async function main() {
 		step("onboarding", { outcome: wizard });
 		await sleep(1500);
 
-		if (PHASE === "move" || PHASE === "dig" || PHASE === "create" || PHASE === "create2") {
+		if (
+			PHASE === "move" ||
+			PHASE === "dig" ||
+			PHASE === "create" ||
+			PHASE === "create2"
+		) {
 			await (PHASE === "move"
 				? runMove(cdp)
 				: PHASE === "dig"
@@ -515,11 +574,14 @@ async function main() {
 					: PHASE === "create"
 						? runCreate(cdp)
 						: runCreate2(cdp));
-			writeFileSync(join(FRAMES, `report-${PHASE}.json`), JSON.stringify(report, null, 1));
+			writeFileSync(
+				join(FRAMES, `report-${PHASE}.json`),
+				JSON.stringify(report, null, 1),
+			);
 			console.log(`[done] ${PHASE} complete`);
 		} else {
-		/* ---- the seam answer ------------------------------------------------ */
-		const seam = await cdp.eval(`(() => {
+			/* ---- the seam answer ------------------------------------------------ */
+			const seam = await cdp.eval(`(() => {
 			const out = {};
 			const d = Object.getOwnPropertyDescriptor(window, "api");
 			out.apiDescriptor = d ? { writable: d.writable, configurable: d.configurable, enumerable: d.enumerable, hasGetter: !!d.get, hasSetter: !!d.set } : null;
@@ -545,12 +607,12 @@ async function main() {
 			})();
 			return out;
 		})()`);
-		step("seam", seam);
-		report.probes.seam = seam;
+			step("seam", seam);
+			report.probes.seam = seam;
 
-		/* ---- the sidebar rows ----------------------------------------------- */
-		await sleep(3500);
-		const rows = await cdp.eval(`(() => {
+			/* ---- the sidebar rows ----------------------------------------------- */
+			await sleep(3500);
+			const rows = await cdp.eval(`(() => {
 			const rows = [...document.querySelectorAll("[data-chat-row]")].map((el) => ({
 				id: el.getAttribute("data-session-row") || el.getAttribute("data-chat-row") || "",
 				text: (el.textContent || "").trim().slice(0, 220),
@@ -558,29 +620,35 @@ async function main() {
 			const body = (document.body.innerText || "");
 			return { rows, hasSession: body.includes(${JSON.stringify(SESSION)}) || body.includes("Quarterly ledger") };
 		})()`);
-		step("sidebar", rows);
-		report.probes.sidebar = rows;
-		await shutter(cdp, `probe-sidebar-${ARM}`);
-		/* A cold store may re-learn peer rows from a later poll; watch for 60 s. */
-		for (let i = 1; i <= 6; i += 1) {
-			await sleep(10_000);
-			const later = await cdp.eval(`(() => {
+			step("sidebar", rows);
+			report.probes.sidebar = rows;
+			await shutter(cdp, `probe-sidebar-${ARM}`);
+			/* A cold store may re-learn peer rows from a later poll; watch for 60 s. */
+			for (let i = 1; i <= 6; i += 1) {
+				await sleep(10_000);
+				const later = await cdp.eval(`(() => {
 				const rows = [...document.querySelectorAll("[data-session-row]")].map((w) => ({
 					id: w.getAttribute("data-session-row"),
 					srs: [...w.querySelectorAll(".sr-only")].map((s) => (s.textContent || "").replace(/\\s+/g, " ").trim()),
 				}));
 				return { rows };
 			})()`);
-			step(`sidebar-${i * 10}s`, later);
-		}
-		await shutter(cdp, `probe-sidebar-late-${ARM}`);
+				step(`sidebar-${i * 10}s`, later);
+			}
+			await shutter(cdp, `probe-sidebar-late-${ARM}`);
 
-		writeFileSync(join(FRAMES, `report-${PHASE}.json`), JSON.stringify(report, null, 1));
-		console.log("[done] probe complete");
+			writeFileSync(
+				join(FRAMES, `report-${PHASE}.json`),
+				JSON.stringify(report, null, 1),
+			);
+			console.log("[done] probe complete");
 		}
 	} catch (error) {
 		fail("main", error);
-		writeFileSync(join(FRAMES, `report-${PHASE}.json`), JSON.stringify(report, null, 1));
+		writeFileSync(
+			join(FRAMES, `report-${PHASE}.json`),
+			JSON.stringify(report, null, 1),
+		);
 		throw error;
 	} finally {
 		try {
@@ -635,7 +703,10 @@ async function runMove(cdp) {
 		const rect = (${rectProbe})(hit);
 		return { rect, text: (hit.textContent || "").replace(/\\s+/g, " ").trim().slice(0, 160), state: hit.getAttribute("data-device-row") };
 	})()`);
-	if (!candidate) throw new Error(`no candidate row for cloud-node-1; picker saw ${JSON.stringify(picker)}`);
+	if (!candidate)
+		throw new Error(
+			`no candidate row for cloud-node-1; picker saw ${JSON.stringify(picker)}`,
+		);
 	step("candidate", { state: candidate.state, text: candidate.text });
 	await press(cdp, candidate.rect);
 	await sleep(1000);
@@ -649,7 +720,13 @@ async function runMove(cdp) {
 	await shutter(cdp, `move-dialog-${ARM}`);
 	if (!dlg.open) throw new Error("the confirm dialog did not open");
 
-	const said = await clickText(cdp, "[role=dialog]", "Move it|Recall it|Move to", "confirm", "button");
+	const said = await clickText(
+		cdp,
+		"[role=dialog]",
+		"Move it|Recall it|Move to",
+		"confirm",
+		"button",
+	);
 	step("confirmed", { said });
 
 	/* Wait for the receipt: the picker's busy flag and the chip's own sentence
@@ -668,13 +745,25 @@ async function runMove(cdp) {
 				body: (document.body.innerText || "").replace(/\\s+/g, " ").slice(0, 2000),
 			};
 		})()`);
-		if (i % 8 === 0) step(`wait-${Math.round((i * 1.5))}s`, { picker: st.picker, busy: st.busy, dialog: st.dialog, inFlight: st.inFlight });
-		if (!st.busy && (st.inFlight > 0 || /moved to|moved|receipt/i.test(st.body) || i > 40)) {
+		if (i % 8 === 0)
+			step(`wait-${Math.round(i * 1.5)}s`, {
+				picker: st.picker,
+				busy: st.busy,
+				dialog: st.dialog,
+				inFlight: st.inFlight,
+			});
+		if (
+			!st.busy &&
+			(st.inFlight > 0 || /moved to|moved|receipt/i.test(st.body) || i > 40)
+		) {
 			settled = st;
 			break;
 		}
 	}
-	step("settled", settled ? { busy: settled.busy, inFlight: settled.inFlight } : null);
+	step(
+		"settled",
+		settled ? { busy: settled.busy, inFlight: settled.inFlight } : null,
+	);
 	await sleep(1500);
 	await shutter(cdp, `move-settled-${ARM}`);
 	if (settled) {
@@ -698,10 +787,13 @@ async function runDig(cdp) {
 	/* The open flow (history/events/watch over the peer bridge) does not need a
 	 * sidebar row; wait for the pane, and watch whether a row materialises. */
 	await cdp
-		.waitFor(`document.querySelector("[data-device-chip]") || document.querySelector('[data-tour-tag="chat-input-textarea"]')`, {
-			label: "the conversation pane",
-			timeout: 90_000,
-		})
+		.waitFor(
+			`document.querySelector("[data-device-chip]") || document.querySelector('[data-tour-tag="chat-input-textarea"]')`,
+			{
+				label: "the conversation pane",
+				timeout: 90_000,
+			},
+		)
 		.catch(() => step("pane-wait", { outcome: "no pane within 90s" }));
 	await cdp.send("Emulation.setFocusEmulationEnabled", { enabled: true });
 	await sleep(400);
@@ -742,16 +834,24 @@ async function runDig(cdp) {
 async function admitTurnViaRig(sessionId, text) {
 	const token = readFileSync(join(RIG, "desktop.token"), "utf8").trim();
 	const request_id = globalThis.crypto.randomUUID();
-	const res = await fetch(`http://127.0.0.1:41241/v1/desktop/sessions/${sessionId}/messages`, {
-		method: "POST",
-		headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-		body: JSON.stringify({ request_id, text, images: [], mode: "prompt" }),
-	});
+	const res = await fetch(
+		`http://127.0.0.1:41241/v1/desktop/sessions/${sessionId}/messages`,
+		{
+			method: "POST",
+			headers: {
+				Authorization: `Bearer ${token}`,
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify({ request_id, text, images: [], mode: "prompt" }),
+		},
+	);
 	return { status: res.status, body: (await res.text()).slice(0, 300) };
 }
 
 async function runCreate2(cdp) {
-	const hasChip = await cdp.eval(`Boolean(document.querySelector("[data-device-chip]"))`);
+	const hasChip = await cdp.eval(
+		`Boolean(document.querySelector("[data-device-chip]"))`,
+	);
 	if (!hasChip) {
 		step("new-chat", { action: "pressing cmd-N" });
 		for (const type of ["keyDown", "keyUp"]) {
@@ -779,11 +879,22 @@ async function runCreate2(cdp) {
 	await sleep(500);
 	await clickSelector(cdp, '[data-device-row="candidate"]', "candidate row");
 	await sleep(800);
-	step("chip-after-pick", await cdp.eval(`(document.querySelector("[data-device-chip]")?.textContent || "").trim()`));
+	step(
+		"chip-after-pick",
+		await cdp.eval(
+			`(document.querySelector("[data-device-chip]")?.textContent || "").trim()`,
+		),
+	);
 	await shutter(cdp, `create2-draft-${ARM}`);
 
-	await clickSelector(cdp, '[data-tour-tag="chat-input-textarea"] textarea', "composer");
-	await cdp.send("Input.insertText", { text: "Sweep the nightly audit for anomalies" });
+	await clickSelector(
+		cdp,
+		'[data-tour-tag="chat-input-textarea"] textarea',
+		"composer",
+	);
+	await cdp.send("Input.insertText", {
+		text: "Sweep the nightly audit for anomalies",
+	});
 	await sleep(500);
 	await pressEnter(cdp);
 	step("sent", { at: new Date().toISOString() });
@@ -792,21 +903,35 @@ async function runCreate2(cdp) {
 	 * cache's 20 s TTL (a 404 the rig tolerates - the admission below is the
 	 * turn, sent exactly as the app's transport sends it). */
 	let newId = null;
-	const seen = new Set(["d7c2d1e7b496", "b3a7f9c2d1e4", "aa4d9d53fd34", "f381b0c58db7"]);
+	const seen = new Set([
+		"d7c2d1e7b496",
+		"b3a7f9c2d1e4",
+		"aa4d9d53fd34",
+		"f381b0c58db7",
+	]);
 	for (let i = 0; i < 120 && !newId; i += 1) {
 		await sleep(1000);
-		const ids = await cdp.eval(`[...document.querySelectorAll("[data-session-row]")].map((w) => w.getAttribute("data-session-row"))`);
+		const ids = await cdp.eval(
+			`[...document.querySelectorAll("[data-session-row]")].map((w) => w.getAttribute("data-session-row"))`,
+		);
 		const fresh = (ids ?? []).find((id) => !seen.has(id));
 		if (fresh) {
 			newId = fresh;
-			step("created", { id: newId, via: "sidebar row", at: new Date().toISOString() });
+			step("created", {
+				id: newId,
+				via: "sidebar row",
+				at: new Date().toISOString(),
+			});
 		}
 	}
 	if (!newId) throw new Error("no fresh row appeared after the create");
 	report.probes.newId = newId;
 
 	await sleep(25_000);
-	const admit = await admitTurnViaRig(newId, "Sweep the nightly audit for anomalies");
+	const admit = await admitTurnViaRig(
+		newId,
+		"Sweep the nightly audit for anomalies",
+	);
 	step("rig-admit", admit);
 
 	await cdp.eval(`location.hash = ${JSON.stringify(`#/chat/${newId}`)}`);
@@ -846,7 +971,12 @@ async function runCreate2(cdp) {
 				toasts: [...document.querySelectorAll("[data-sonner-toast]")].map((t) => (t.textContent || "").replace(/\\s+/g, " ").trim().slice(0, 260)),
 			};
 		})()`);
-		if (i % 4 === 0) step(`after-${i * 2}s`, { toasts: st.toasts, described: st.described, unread: st.srs.some((s) => /unseen/i.test(s)) });
+		if (i % 4 === 0)
+			step(`after-${i * 2}s`, {
+				toasts: st.toasts,
+				described: st.described,
+				unread: st.srs.some((s) => /unseen/i.test(s)),
+			});
 		if (st.toasts.length > 0) {
 			step("toast-seen", { toasts: st.toasts });
 			await shutter(cdp, `toast-${ARM}`);

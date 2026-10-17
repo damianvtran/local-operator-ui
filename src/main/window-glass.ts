@@ -192,6 +192,14 @@ export function attachWindowGlass(
 					capability.mechanism === "background-material" &&
 					launchedActive
 				) {
+					/*
+					 * The ground goes transparent BEFORE the material, exactly as the
+					 * constructor options build it: a live OFF restored the opaque palette
+					 * ground (below), and a material behind an opaque ground is invisible.
+					 * Without this a Windows off -> on in one session came back opaque
+					 * (review round 2, R2-2).
+					 */
+					window.setBackgroundColor(GLASS_TRANSPARENT);
 					window.setBackgroundMaterial(winMaterialFor(settings.material));
 					appliedMechanism = "background-material";
 				}

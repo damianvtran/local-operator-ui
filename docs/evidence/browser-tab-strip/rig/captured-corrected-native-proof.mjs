@@ -49,6 +49,8 @@ import { connect } from "node:net";
 import { networkInterfaces } from "node:os";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { withNotificationsOff } from "/Users/damian/local-operator-ui/.worktrees/browser-tab-strip/scripts/notifications-off.mjs";
+import { withTelemetryOff } from "/Users/damian/local-operator-ui/.worktrees/browser-tab-strip/scripts/telemetry-off.mjs";
 // The REAL Electron binary, not `node_modules/.bin/electron`. That path is a
 // shell -> `node cli.js` -> Electron chain, so the pid a harness holds is the
 // SHIM's: signalling it stops the shim and leaves the app running while the
@@ -56,11 +58,9 @@ import { join } from "node:path";
 // five in their own harness). Imported from `electron` in plain Node it resolves
 // to the binary itself, so the pid we hold is the app's.
 import electronPath from "/Users/damian/local-operator-ui/.worktrees/team-bridge-u1/node_modules/.pnpm/electron@44.3.0/node_modules/electron/index.js";
-import { withNotificationsOff } from "/Users/damian/local-operator-ui/.worktrees/browser-tab-strip/scripts/notifications-off.mjs";
-import { withTelemetryOff } from "/Users/damian/local-operator-ui/.worktrees/browser-tab-strip/scripts/telemetry-off.mjs";
 
 const ROOT = "/Users/damian/local-operator-ui/.worktrees/browser-tab-strip";
-const APP_CWD=join(process.env.AUDIT_OUT,"app-cwd");
+const APP_CWD = join(process.env.AUDIT_OUT, "app-cwd");
 const SCRATCH = join(process.env.AUDIT_OUT, "runtime");
 let NODE_PORT = 0;
 const HOME_DIR = join(SCRATCH, "home");
@@ -863,16 +863,18 @@ async function launchApp() {
 	 * configures from a value inlined at build time. See `telemetry-off.mjs`.
 	 */
 	const env = withNotificationsOff({
-		PATH: process.env.PATH, TMPDIR: process.env.TMPDIR, TERM: "xterm-256color",
+		PATH: process.env.PATH,
+		TMPDIR: process.env.TMPDIR,
+		TERM: "xterm-256color",
 		HOME: HOME_DIR,
 		LOCAL_OPERATOR_CONFIG_DIR: CONFIG_DIR,
 		// The operator's own log files are the one path HOME does not move; see the
 		// header's isolation note.
 		LOCAL_OPERATOR_LOG_DIR: LOG_DIR,
 		LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
-        VITE_LOCAL_OPERATOR_API_URL: "http://127.0.0.1:1",
-        LOCAL_OPERATOR_UI_DEV_DRIVER: "1",
-        LOCAL_OPERATOR_UI_DEV_DRIVER_OUT: OUT_DIR,
+		VITE_LOCAL_OPERATOR_API_URL: "http://127.0.0.1:1",
+		LOCAL_OPERATOR_UI_DEV_DRIVER: "1",
+		LOCAL_OPERATOR_UI_DEV_DRIVER_OUT: OUT_DIR,
 		// The app would otherwise try to install and start a Local Operator backend
 		// in this scratch HOME — a pip install, a dialog and a quit path that have
 		// nothing to do with the browser host. The same switch the repo's other
@@ -884,7 +886,13 @@ async function launchApp() {
 	// process is driven by a session that has them set, and an inherited workspace
 	// id has already renamed the operator's real workspaces in this project.
 	for (const key of Object.keys(env)) {
-		if (key.startsWith("CMUX_") || key.startsWith("LOP_") || key.startsWith("LOCAL_OPERATOR_DESKTOP_") || key === "ELECTRON_RENDERER_URL") delete env[key];
+		if (
+			key.startsWith("CMUX_") ||
+			key.startsWith("LOP_") ||
+			key.startsWith("LOCAL_OPERATOR_DESKTOP_") ||
+			key === "ELECTRON_RENDERER_URL"
+		)
+			delete env[key];
 	}
 	// A port nobody is listening on, checked immediately before the spawn: the
 	// check that used to run once per run is now per launch, which is where the
@@ -895,9 +903,9 @@ async function launchApp() {
 		electronPath,
 		[
 			"/Users/damian/.local-operator/sessions/291e40a1ea40/scratchpad/b2-native-carrier",
-            `--inspect=127.0.0.1:${NODE_PORT}`,
-            "--window-mode=headless",
-            "--use-mock-keychain",
+			`--inspect=127.0.0.1:${NODE_PORT}`,
+			"--window-mode=headless",
+			"--use-mock-keychain",
 			`--user-data-dir=${USER_DATA}`,
 			`--remote-debugging-port=${DEVTOOLS_PORT}`,
 		],
@@ -3315,78 +3323,547 @@ function run(command, args) {
 	});
 }
 
-
 // Round-3 delta: keyboard close focus ownership, address draft, selection, tooltips, 8 state frames.
-const rows=[];const evidenceFile=join(process.env.AUDIT_OUT,'b2-results.json');
-function evidence(name,actual){rows.push({name,actual});writeFileSync(evidenceFile,JSON.stringify(rows,null,2));say(JSON.stringify({name,actual}));}
-let fixture=null,ownedPid=null;
-async function re(e){const r=await rendererEvaluate(e);if(r.error)throw Error(r.error);return r.value;}
-async function until(label,fn){const start=Date.now();while(Date.now()-start<7000){if(await fn())return;await new Promise(r=>setTimeout(r,40));}throw Error('timeout '+label);}
-async function state(){return re('window.api.browser.state()');}
-async function shot(label){label=label.toLowerCase();evidence('frame '+label,await re(`window.__loDevDriver.capture(${JSON.stringify(label)})`));}
-async function theme(name){await re(`window.__loDevDriver.call('setTheme','${name}')`);}
-async function domKey(key,flags={}){return re(`(()=>{const a=document.querySelector('[data-tour-tag=browser-address]');a.focus();a.dispatchEvent(new FocusEvent('focusin',{bubbles:true}));const e=new KeyboardEvent('keydown',{key:${JSON.stringify(key)},metaKey:true,bubbles:true,cancelable:true,...${JSON.stringify(flags)}});a.dispatchEvent(e);return {prevented:e.defaultPrevented,route:location.hash}})()`);}
-async function mainEval(expression){const list=await(await fetch(`http://127.0.0.1:${NODE_PORT}/json/list`)).json();return cdpSequence(list[0],async send=>{const r=await send('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.exception?.description||r.exceptionDetails.text);return r.result.value;});}
-async function rendererTarget(){return (await targets()).find(t=>t.url.startsWith('file:')&&t.url.includes('index.html'));}
-const ids=async()=>{const s=await state();return {ids:s.tabs.map(t=>t.tabId),active:s.activeTabId??s.tabs.find(t=>t.active)?.tabId??null,url:s.url,count:s.tabs.length};};
-// Focus an element the way a click does, plus the focusin the HIDDEN rig never delivers on its own (labelled synthetic: listener/IPC logic, not OS focus).
-const focusTab=(id)=>re(`(()=>{const b=document.querySelector('[data-tab-id="${id}"] [role="tab"]');if(!b)throw Error('no tab button ${id}');b.focus();if(document.activeElement!==b)throw Error('focus not assigned');b.dispatchEvent(new FocusEvent('focusin',{bubbles:true}));return b.id||b.getAttribute('data-tab-id')||'tab'})()`);
-const keyOn=(selector,key,flags={},times=1)=>re(`(()=>{const el=document.querySelector(${JSON.stringify(selector)});const out=[];for(let i=0;i<${times};i++){const e=new KeyboardEvent('keydown',{key:${JSON.stringify(key)},metaKey:true,bubbles:true,cancelable:true,...${JSON.stringify(flags)}});el.dispatchEvent(e);out.push(e.defaultPrevented)}return out})()`);
-const where=()=>re(`(()=>{const a=document.activeElement;const root=document.querySelector('[data-tour-tag="browser-pane"],[data-tour-tag="browser-surface"]')||document.body;return {tag:a?.tagName,tour:a?.getAttribute('data-tour-tag'),role:a?.getAttribute('role'),inBrowserSurface:Boolean(a&&a.closest('[tabindex="-1"]')&&a.closest('[data-tour-tag]')),route:location.hash}})()`);
-const addr=()=>re(`(()=>{const a=document.querySelector('[data-tour-tag=browser-address]');return {value:a.value,start:a.selectionStart,end:a.selectionEnd,len:a.value.length,focused:document.activeElement===a}})()`);
-async function hover(selector,label,themeName){
-  const target=await rendererTarget();
-  const rect=await re(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});if(!e)return null;const r=e.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}})()`);
-  if(!rect)throw Error('no hover target '+selector);
-  await cdpSequence(target,async send=>{await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:rect.x-3,y:rect.y-3});await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:rect.x,y:rect.y});});
-  await until('tooltip '+label,()=>re('Boolean(document.querySelector("[data-lo-tooltip-panel]"))'));
-  await new Promise(r=>setTimeout(r,200));
-  const tip=await re(`(()=>{const p=document.querySelector('[data-lo-tooltip-panel]');const r=p.getBoundingClientRect();const s=getComputedStyle(p);return {text:p.textContent,x:r.x,y:r.y,width:r.width,height:r.height,color:s.color,background:s.backgroundColor,viewport:{w:innerWidth,h:innerHeight}}})()`);
-  evidence('tooltip '+label+' '+themeName,tip);
-  await shot('tooltip-'+label+'-'+themeName);
-  // Leave along a path (Radix's grace-area logic reads successive pointermoves, one jump is not a path), and RECORD whether leaving closed it:
-  // a tooltip that stays after the pointer left would be a product defect, not something to paper over with Escape.
-  await cdpSequence(target,async send=>{for(const f of [0.8,0.6,0.4,0.2,0]){await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:rect.x*f+5*(1-f),y:rect.y*f+300*(1-f)});}});
-  let closedOnLeave=true;
-  try{await until('tooltip closed',()=>re('!document.querySelector("[data-lo-tooltip-panel]")'));}catch{closedOnLeave=false;}
-  evidence('tooltip closes when the pointer leaves: '+label+' '+themeName,{closedOnLeave});
-  if(!closedOnLeave){await cdpSequence(target,async send=>{await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});});await new Promise(r=>setTimeout(r,300));}
+const rows = [];
+const evidenceFile = join(process.env.AUDIT_OUT, "b2-results.json");
+function evidence(name, actual) {
+	rows.push({ name, actual });
+	writeFileSync(evidenceFile, JSON.stringify(rows, null, 2));
+	say(JSON.stringify({ name, actual }));
 }
-async function audit(){
- for(const d of [HOME_DIR,CONFIG_DIR,USER_DATA,OUT_DIR,LOG_DIR,APP_CWD])mkdirSync(d,{recursive:true});
- writeFileSync(join(APP_CWD,'.env'),'VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.1:1\nVITE_DISABLE_BACKEND_MANAGER=true\n');
- const requests=new Map();fixture=createServer((req,res)=>{const path=new URL(req.url,'http://fixture').pathname,count=(requests.get(path)||0)+1;requests.set(path,count);if(path==='/fault-src'&&count>1){req.socket.destroy();return;}res.writeHead(200,{'Content-Type':'text/html','Cache-Control':'no-store'});res.end('<!doctype html><title>Fixture '+path+'</title><h1>Owned fixture</h1><p id="isolation"></p><script>document.getElementById("isolation").textContent="api="+typeof window.api+" require="+typeof require+" process="+typeof process</script>');});await new Promise(r=>fixture.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+fixture.address().port;
- NODE_PORT=await freeDevtoolsPort();app=await launchApp();ownedPid=app.child.pid;await waitForState();await waitForRenderer();await until('driver',()=>re('Boolean(window.__loDevDriver?.verbs().includes("hello"))'));
- const hello=await re('window.__loDevDriver.call("hello")'),facts=await re('window.__loDevDriver.facts()'),native=await mainEval('__b.facts()');evidence('PREFLIGHT',{hello,facts,native});const expect=(yes,label)=>{if(!yes)throw Error(label)};expect(hello.apiBaseUrl==='http://127.0.0.1:1'&&!facts.visible&&!facts.focused&&native.userData.startsWith(SCRATCH)&&native.windows.every(w=>!w.visible&&!w.focused),'SAFETY preflight');const wire=await waitForState();
- await re('window.__loDevDriver.call("navigate","/browser")');await until('address',()=>re('Boolean(document.querySelector("[data-tour-tag=browser-address]"))'));
- const snap=()=>mainEval('__b.snapshot()'),role=id=>`[data-tab-id="${id}"] [role=tab]`;
- async function add(path){await re('window.api.browser.newTab(null)');await re(`window.api.browser.navigate(${JSON.stringify(base+path)})`);await until('loaded '+path,async()=>!(await state()).loading);return (await state()).activeTabId;}
- async function context(id){await re(`document.querySelector(${JSON.stringify(role(id))}).dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true,button:2}))`);await until('actual context menu',()=>re(`Boolean(document.querySelector('[data-tour-tag=browser-tab-actions]'))`));}
- async function choose(text){await re(`(()=>{const e=[...document.querySelectorAll('[role=menuitem]')].find(e=>e.textContent.trim()===${JSON.stringify(text)});if(!e)throw Error('missing actual menu item');e.click();})()`);}
- async function action(id,kind,label){const n=await mainEval('__b.actions.length');evidence(label+' BEFORE raw',await snap());await context(id);await choose(kind==='duplicate'?'Duplicate tab':'Reload tab');await until(label+' settled outcome',()=>mainEval(`__b.actions.length>${n}&&__b.actions[${n}].status!=='pending'`));const row=await mainEval(`__b.actions[${n}]`);evidence(label+' SETTLED raw',row);expect(row.status==='settled',label+' rejected IPC handler');return row;}
- async function frames(label){for(const t of ['localOperatorLight','localOperatorDark']){await theme(t);await shot(label+'-'+t)}}
- // BOUNDARY FIRST. No screenshot/tooltip work can precede its decisive receipts.
- await re(`window.api.browser.navigate(${JSON.stringify(base+'/handed-src')})`);const handed=(await state()).activeTabId;await approve(wire,base,'site');const requester='session:proof';await rpcOk(wire,'open',{url:base+'/agent-src',requester});const agent=(await state()).tabs.find(t=>t.url===base+'/agent-src');expect(agent?.owner==='agent','fixture not agent-owned');
- const duplicates=[];
- for(const [kind,id] of [['agent-owned',agent.tabId],['handed-over',handed]]){
-  if(kind==='handed-over')await re(`window.api.browser.handOver(${id},'proof')`);
-  const listed=(await rpcOk(wire,'tabs',{requester})).tabs,source=(await snap()).tabs.find(t=>t.tabId===id),original=listed.find(t=>t.url===source.url);expect(original?.tab?.startsWith('ui:'),'source has no genuine capability');
-  const row=await action(id,'duplicate','BOUNDARY '+kind);expect(row.outcome.status==='completed','boundary duplicate failed');const after=await snap(),copy=after.tabs.find(t=>t.tabId===row.outcome.tabId);evidence('BOUNDARY '+kind+' RAW duplicate',{source,copy,allTabs:after.tabs});expect(copy&&copy.owner==='user'&&copy.sessionId===null&&!copy.handedOver&&copy.url===source.url,'boundary copied association/authority or did not commit URL');
-  const listing=(await rpcOk(wire,'tabs',{requester})).tabs,copyEntry=listing.find(t=>t.url===copy.url&&t.owner==='user');expect(copyEntry?.tab==='','plain user gained a capability');const rebound=original.tab.replace(/^ui:\d+:/,`ui:${copy.tabId}:`);const refusals=[];for(const [inputKind,tab]of [['numeric-id',copy.tabId],['rebound-source-nonce',rebound]]){const r=await rpc(wire,'read',{tab,requester,selector:'#isolation'});refusals.push({inputKind,status:r.status,ok:r.json?.ok,code:r.json?.error?.code});expect(r.json?.ok===false&&r.json?.error?.code==='tab_closed','agent drove duplicate');}evidence('BOUNDARY '+kind+' agent refusals',{tabId:copy.tabId,noncePublished:false,listingHandleEmpty:true,refusals});
-  const load=row.loads.filter(l=>l.url===source.url);expect(load.length===1&&load[0].status==='completed'&&!row.loads.some(l=>l.url==='about:blank'),'duplicate issued redundant blank or failed load');evidence('BOUNDARY '+kind+' one initial navigation',{loads:row.loads});duplicates.push(copy);
- }
- evidence('BOUNDARY COMPLETE',{agentOwned:true,handedOver:true,unattributed:true,capabilityRefused:true,rawSnapshotsBeforeTeardown:true});
- // Exercise an actual network rejection, not a forged owner/result flag.
- const fault=await add('/fault-src'),faultResult=await action(fault,'duplicate','TYPED FAILURE actual network');expect(faultResult.outcome.status==='failed'&&faultResult.outcome.error.code==='navigation_failed','native failure not typed');const failed=(await snap()).tabs.find(t=>t.tabId===faultResult.outcome.tabId);expect(failed&&failed.owner==='user'&&failed.sessionId===null&&!failed.handedOver&&failed.failed,'failure discarded/capabilitized tab');evidence('TYPED FAILURE retained RAW',{outcome:faultResult.outcome,copy:failed,requests:requests.get('/fault-src')});await frames('typed-navigation-failure');
- const plain=await add('/plain-src');await re(`window.api.browser.activateTab(${duplicates[0].tabId})`);const active=(await state()).activeTabId,before=requests.get('/plain-src')||0,row=await action(plain,'reload','BACKGROUND RELOAD');await until('specific reload request',()=>requests.get('/plain-src')>before);expect(row.outcome.status==='completed'&&(await state()).activeTabId===active,'reload changed active or wrong target');evidence('BACKGROUND RELOAD PASS',{target:plain,activeBefore:active,activeAfter:(await state()).activeTabId,requests:requests.get('/plain-src')});
- const negatives=await mainEval('__b.senderNegatives()');expect(negatives.every(n=>n.refused),'foreign sender');const malformed=await re(`Promise.all([window.api.browser.reorderTabs(['bad']),window.api.browser.reorderTabs([${plain},${plain}]),window.api.browser.actOnTab(${plain},'erase')].map(p=>p.then(()=>({refused:false}),e=>({refused:true,message:e.message}))))`);expect(malformed.every(n=>n.refused),'primitive accepted');const unauth=await rpc(wire,'tabs',{}, {omitKey:true});expect(unauth.status===401,'unkeyed RPC accepted');evidence('NATIVE IPC/RPC negatives PASS',{negatives,malformed,unkeyedStatus:unauth.status});
- await frames('current-source-normal');while((await state()).tabs.length<13)await add('/extra/'+(await state()).tabs.length);const activeId=(await state()).activeTabId;
- // LAST and non-fatal. An unverified tip is BLOCKED, never silently a PASS.
- for(const [selector,label]of [['[data-tour-tag=browser-reload]','reload'],['[data-tour-tag=browser-new-tab]','new-tab'],['[data-tab-id="'+activeId+'"] [data-tour-tag=browser-tab-close]','close'],['[aria-label="Scroll tabs left"]','scroll-left'],['[aria-label="Scroll tabs right"]','scroll-right']])for(const t of ['localOperatorLight','localOperatorDark']){
-  try{await theme(t);if(label.startsWith('scroll-')){await re(`(()=>{const s=document.querySelector('[data-tour-tag=browser-tab-strip-row] div[tabindex="-1"]');s.scrollLeft=(s.scrollWidth-s.clientWidth)/2})()`);await until('arrow enabled',()=>re(`!document.querySelector(${JSON.stringify(selector)}).disabled`));}else if(label==='close')await re(`document.querySelector(${JSON.stringify(selector)}).closest('[data-tab-id]').scrollIntoView({block:'nearest',inline:'nearest'})`);const p=await re(`(()=>{const r=document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`);await cdpSequence(await rendererTarget(),async send=>{await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:p.x-2,y:p.y-2});await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:p.x,y:p.y});});await until('pointer tooltip '+label,()=>re(`Boolean(document.querySelector('[data-lo-tooltip-panel]'))`));const box=await re(`(()=>{const e=document.querySelector('[data-lo-tooltip-panel]'),r=e.getBoundingClientRect();return{text:e.textContent,x:r.x,y:r.y,width:r.width,height:r.height}})()`),bounds=await mainEval('__b.bounds()'),n=bounds.actual;const intersects=box.x<n.x+n.width&&box.x+box.width>n.x&&box.y<n.y+n.height&&box.y+box.height>n.y;expect(!intersects,'native-view intersection');evidence('TOOLTIP PASS '+label+' '+t,{box,bounds,intersects,fidelity:'CDP pointer, NOT OS pointer'});await shot('tooltip-'+label+'-'+t);
-  }catch(error){evidence('TOOLTIP BLOCKED '+label+' '+t,{message:error.message});}finally{await cdpSequence(await rendererTarget(),async send=>{for(const y of [80,140,220,300])await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:5,y});await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});});}
- }
- const final=await mainEval('__b.facts()');expect(final.windows.every(w=>!w.visible&&!w.focused),'window raised');evidence('FINAL isolation',final);evidence('CORE COMPLETE',{agentBoundary:true,typedFailure:true,backgroundReload:true,IPCNegatives:true,tooltips:'see individual PASS/BLOCKED rows',physicalKeys:'unverified',physicalDrag:'unverified',clipboard:'not run'});
+let fixture = null,
+	ownedPid = null;
+async function re(e) {
+	const r = await rendererEvaluate(e);
+	if (r.error) throw Error(r.error);
+	return r.value;
+}
+async function until(label, fn) {
+	const start = Date.now();
+	while (Date.now() - start < 7000) {
+		if (await fn()) return;
+		await new Promise((r) => setTimeout(r, 40));
+	}
+	throw Error("timeout " + label);
+}
+async function state() {
+	return re("window.api.browser.state()");
+}
+async function shot(label) {
+	label = label.toLowerCase();
+	evidence(
+		"frame " + label,
+		await re(`window.__loDevDriver.capture(${JSON.stringify(label)})`),
+	);
+}
+async function theme(name) {
+	await re(`window.__loDevDriver.call('setTheme','${name}')`);
+}
+async function domKey(key, flags = {}) {
+	return re(
+		`(()=>{const a=document.querySelector('[data-tour-tag=browser-address]');a.focus();a.dispatchEvent(new FocusEvent('focusin',{bubbles:true}));const e=new KeyboardEvent('keydown',{key:${JSON.stringify(key)},metaKey:true,bubbles:true,cancelable:true,...${JSON.stringify(flags)}});a.dispatchEvent(e);return {prevented:e.defaultPrevented,route:location.hash}})()`,
+	);
+}
+async function mainEval(expression) {
+	const list = await (
+		await fetch(`http://127.0.0.1:${NODE_PORT}/json/list`)
+	).json();
+	return cdpSequence(list[0], async (send) => {
+		const r = await send("Runtime.evaluate", {
+			expression,
+			awaitPromise: true,
+			returnByValue: true,
+		});
+		if (r.exceptionDetails)
+			throw Error(
+				r.exceptionDetails.exception?.description || r.exceptionDetails.text,
+			);
+		return r.result.value;
+	});
+}
+async function rendererTarget() {
+	return (await targets()).find(
+		(t) => t.url.startsWith("file:") && t.url.includes("index.html"),
+	);
+}
+const ids = async () => {
+	const s = await state();
+	return {
+		ids: s.tabs.map((t) => t.tabId),
+		active: s.activeTabId ?? s.tabs.find((t) => t.active)?.tabId ?? null,
+		url: s.url,
+		count: s.tabs.length,
+	};
+};
+// Focus an element the way a click does, plus the focusin the HIDDEN rig never delivers on its own (labelled synthetic: listener/IPC logic, not OS focus).
+const focusTab = (id) =>
+	re(
+		`(()=>{const b=document.querySelector('[data-tab-id="${id}"] [role="tab"]');if(!b)throw Error('no tab button ${id}');b.focus();if(document.activeElement!==b)throw Error('focus not assigned');b.dispatchEvent(new FocusEvent('focusin',{bubbles:true}));return b.id||b.getAttribute('data-tab-id')||'tab'})()`,
+	);
+const keyOn = (selector, key, flags = {}, times = 1) =>
+	re(
+		`(()=>{const el=document.querySelector(${JSON.stringify(selector)});const out=[];for(let i=0;i<${times};i++){const e=new KeyboardEvent('keydown',{key:${JSON.stringify(key)},metaKey:true,bubbles:true,cancelable:true,...${JSON.stringify(flags)}});el.dispatchEvent(e);out.push(e.defaultPrevented)}return out})()`,
+	);
+const where = () =>
+	re(
+		`(()=>{const a=document.activeElement;const root=document.querySelector('[data-tour-tag="browser-pane"],[data-tour-tag="browser-surface"]')||document.body;return {tag:a?.tagName,tour:a?.getAttribute('data-tour-tag'),role:a?.getAttribute('role'),inBrowserSurface:Boolean(a&&a.closest('[tabindex="-1"]')&&a.closest('[data-tour-tag]')),route:location.hash}})()`,
+	);
+const addr = () =>
+	re(
+		`(()=>{const a=document.querySelector('[data-tour-tag=browser-address]');return {value:a.value,start:a.selectionStart,end:a.selectionEnd,len:a.value.length,focused:document.activeElement===a}})()`,
+	);
+async function hover(selector, label, themeName) {
+	const target = await rendererTarget();
+	const rect = await re(
+		`(()=>{const e=document.querySelector(${JSON.stringify(selector)});if(!e)return null;const r=e.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}})()`,
+	);
+	if (!rect) throw Error("no hover target " + selector);
+	await cdpSequence(target, async (send) => {
+		await send("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x: rect.x - 3,
+			y: rect.y - 3,
+		});
+		await send("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x: rect.x,
+			y: rect.y,
+		});
+	});
+	await until("tooltip " + label, () =>
+		re('Boolean(document.querySelector("[data-lo-tooltip-panel]"))'),
+	);
+	await new Promise((r) => setTimeout(r, 200));
+	const tip = await re(
+		`(()=>{const p=document.querySelector('[data-lo-tooltip-panel]');const r=p.getBoundingClientRect();const s=getComputedStyle(p);return {text:p.textContent,x:r.x,y:r.y,width:r.width,height:r.height,color:s.color,background:s.backgroundColor,viewport:{w:innerWidth,h:innerHeight}}})()`,
+	);
+	evidence("tooltip " + label + " " + themeName, tip);
+	await shot("tooltip-" + label + "-" + themeName);
+	// Leave along a path (Radix's grace-area logic reads successive pointermoves, one jump is not a path), and RECORD whether leaving closed it:
+	// a tooltip that stays after the pointer left would be a product defect, not something to paper over with Escape.
+	await cdpSequence(target, async (send) => {
+		for (const f of [0.8, 0.6, 0.4, 0.2, 0]) {
+			await send("Input.dispatchMouseEvent", {
+				type: "mouseMoved",
+				x: rect.x * f + 5 * (1 - f),
+				y: rect.y * f + 300 * (1 - f),
+			});
+		}
+	});
+	let closedOnLeave = true;
+	try {
+		await until("tooltip closed", () =>
+			re('!document.querySelector("[data-lo-tooltip-panel]")'),
+		);
+	} catch {
+		closedOnLeave = false;
+	}
+	evidence(
+		"tooltip closes when the pointer leaves: " + label + " " + themeName,
+		{ closedOnLeave },
+	);
+	if (!closedOnLeave) {
+		await cdpSequence(target, async (send) => {
+			await send("Input.dispatchKeyEvent", {
+				type: "keyDown",
+				key: "Escape",
+				code: "Escape",
+				windowsVirtualKeyCode: 27,
+			});
+			await send("Input.dispatchKeyEvent", {
+				type: "keyUp",
+				key: "Escape",
+				code: "Escape",
+				windowsVirtualKeyCode: 27,
+			});
+		});
+		await new Promise((r) => setTimeout(r, 300));
+	}
+}
+async function audit() {
+	for (const d of [HOME_DIR, CONFIG_DIR, USER_DATA, OUT_DIR, LOG_DIR, APP_CWD])
+		mkdirSync(d, { recursive: true });
+	writeFileSync(
+		join(APP_CWD, ".env"),
+		"VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.1:1\nVITE_DISABLE_BACKEND_MANAGER=true\n",
+	);
+	const requests = new Map();
+	fixture = createServer((req, res) => {
+		const path = new URL(req.url, "http://fixture").pathname,
+			count = (requests.get(path) || 0) + 1;
+		requests.set(path, count);
+		if (path === "/fault-src" && count > 1) {
+			req.socket.destroy();
+			return;
+		}
+		res.writeHead(200, {
+			"Content-Type": "text/html",
+			"Cache-Control": "no-store",
+		});
+		res.end(
+			"<!doctype html><title>Fixture " +
+				path +
+				'</title><h1>Owned fixture</h1><p id="isolation"></p><script>document.getElementById("isolation").textContent="api="+typeof window.api+" require="+typeof require+" process="+typeof process</script>',
+		);
+	});
+	await new Promise((r) => fixture.listen(0, "127.0.0.1", r));
+	const base = "http://127.0.0.1:" + fixture.address().port;
+	NODE_PORT = await freeDevtoolsPort();
+	app = await launchApp();
+	ownedPid = app.child.pid;
+	await waitForState();
+	await waitForRenderer();
+	await until("driver", () =>
+		re('Boolean(window.__loDevDriver?.verbs().includes("hello"))'),
+	);
+	const hello = await re('window.__loDevDriver.call("hello")'),
+		facts = await re("window.__loDevDriver.facts()"),
+		native = await mainEval("__b.facts()");
+	evidence("PREFLIGHT", { hello, facts, native });
+	const expect = (yes, label) => {
+		if (!yes) throw Error(label);
+	};
+	expect(
+		hello.apiBaseUrl === "http://127.0.0.1:1" &&
+			!facts.visible &&
+			!facts.focused &&
+			native.userData.startsWith(SCRATCH) &&
+			native.windows.every((w) => !w.visible && !w.focused),
+		"SAFETY preflight",
+	);
+	const wire = await waitForState();
+	await re('window.__loDevDriver.call("navigate","/browser")');
+	await until("address", () =>
+		re('Boolean(document.querySelector("[data-tour-tag=browser-address]"))'),
+	);
+	const snap = () => mainEval("__b.snapshot()"),
+		role = (id) => `[data-tab-id="${id}"] [role=tab]`;
+	async function add(path) {
+		await re("window.api.browser.newTab(null)");
+		await re(`window.api.browser.navigate(${JSON.stringify(base + path)})`);
+		await until("loaded " + path, async () => !(await state()).loading);
+		return (await state()).activeTabId;
+	}
+	async function context(id) {
+		await re(
+			`document.querySelector(${JSON.stringify(role(id))}).dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true,button:2}))`,
+		);
+		await until("actual context menu", () =>
+			re(
+				`Boolean(document.querySelector('[data-tour-tag=browser-tab-actions]'))`,
+			),
+		);
+	}
+	async function choose(text) {
+		await re(
+			`(()=>{const e=[...document.querySelectorAll('[role=menuitem]')].find(e=>e.textContent.trim()===${JSON.stringify(text)});if(!e)throw Error('missing actual menu item');e.click();})()`,
+		);
+	}
+	async function action(id, kind, label) {
+		const n = await mainEval("__b.actions.length");
+		evidence(label + " BEFORE raw", await snap());
+		await context(id);
+		await choose(kind === "duplicate" ? "Duplicate tab" : "Reload tab");
+		await until(label + " settled outcome", () =>
+			mainEval(`__b.actions.length>${n}&&__b.actions[${n}].status!=='pending'`),
+		);
+		const row = await mainEval(`__b.actions[${n}]`);
+		evidence(label + " SETTLED raw", row);
+		expect(row.status === "settled", label + " rejected IPC handler");
+		return row;
+	}
+	async function frames(label) {
+		for (const t of ["localOperatorLight", "localOperatorDark"]) {
+			await theme(t);
+			await shot(label + "-" + t);
+		}
+	}
+	// BOUNDARY FIRST. No screenshot/tooltip work can precede its decisive receipts.
+	await re(
+		`window.api.browser.navigate(${JSON.stringify(base + "/handed-src")})`,
+	);
+	const handed = (await state()).activeTabId;
+	await approve(wire, base, "site");
+	const requester = "session:proof";
+	await rpcOk(wire, "open", { url: base + "/agent-src", requester });
+	const agent = (await state()).tabs.find((t) => t.url === base + "/agent-src");
+	expect(agent?.owner === "agent", "fixture not agent-owned");
+	const duplicates = [];
+	for (const [kind, id] of [
+		["agent-owned", agent.tabId],
+		["handed-over", handed],
+	]) {
+		if (kind === "handed-over")
+			await re(`window.api.browser.handOver(${id},'proof')`);
+		const listed = (await rpcOk(wire, "tabs", { requester })).tabs,
+			source = (await snap()).tabs.find((t) => t.tabId === id),
+			original = listed.find((t) => t.url === source.url);
+		expect(
+			original?.tab?.startsWith("ui:"),
+			"source has no genuine capability",
+		);
+		const row = await action(id, "duplicate", "BOUNDARY " + kind);
+		expect(row.outcome.status === "completed", "boundary duplicate failed");
+		const after = await snap(),
+			copy = after.tabs.find((t) => t.tabId === row.outcome.tabId);
+		evidence("BOUNDARY " + kind + " RAW duplicate", {
+			source,
+			copy,
+			allTabs: after.tabs,
+		});
+		expect(
+			copy &&
+				copy.owner === "user" &&
+				copy.sessionId === null &&
+				!copy.handedOver &&
+				copy.url === source.url,
+			"boundary copied association/authority or did not commit URL",
+		);
+		const listing = (await rpcOk(wire, "tabs", { requester })).tabs,
+			copyEntry = listing.find((t) => t.url === copy.url && t.owner === "user");
+		expect(copyEntry?.tab === "", "plain user gained a capability");
+		const rebound = original.tab.replace(/^ui:\d+:/, `ui:${copy.tabId}:`);
+		const refusals = [];
+		for (const [inputKind, tab] of [
+			["numeric-id", copy.tabId],
+			["rebound-source-nonce", rebound],
+		]) {
+			const r = await rpc(wire, "read", {
+				tab,
+				requester,
+				selector: "#isolation",
+			});
+			refusals.push({
+				inputKind,
+				status: r.status,
+				ok: r.json?.ok,
+				code: r.json?.error?.code,
+			});
+			expect(
+				r.json?.ok === false && r.json?.error?.code === "tab_closed",
+				"agent drove duplicate",
+			);
+		}
+		evidence("BOUNDARY " + kind + " agent refusals", {
+			tabId: copy.tabId,
+			noncePublished: false,
+			listingHandleEmpty: true,
+			refusals,
+		});
+		const load = row.loads.filter((l) => l.url === source.url);
+		expect(
+			load.length === 1 &&
+				load[0].status === "completed" &&
+				!row.loads.some((l) => l.url === "about:blank"),
+			"duplicate issued redundant blank or failed load",
+		);
+		evidence("BOUNDARY " + kind + " one initial navigation", {
+			loads: row.loads,
+		});
+		duplicates.push(copy);
+	}
+	evidence("BOUNDARY COMPLETE", {
+		agentOwned: true,
+		handedOver: true,
+		unattributed: true,
+		capabilityRefused: true,
+		rawSnapshotsBeforeTeardown: true,
+	});
+	// Exercise an actual network rejection, not a forged owner/result flag.
+	const fault = await add("/fault-src"),
+		faultResult = await action(
+			fault,
+			"duplicate",
+			"TYPED FAILURE actual network",
+		);
+	expect(
+		faultResult.outcome.status === "failed" &&
+			faultResult.outcome.error.code === "navigation_failed",
+		"native failure not typed",
+	);
+	const failed = (await snap()).tabs.find(
+		(t) => t.tabId === faultResult.outcome.tabId,
+	);
+	expect(
+		failed &&
+			failed.owner === "user" &&
+			failed.sessionId === null &&
+			!failed.handedOver &&
+			failed.failed,
+		"failure discarded/capabilitized tab",
+	);
+	evidence("TYPED FAILURE retained RAW", {
+		outcome: faultResult.outcome,
+		copy: failed,
+		requests: requests.get("/fault-src"),
+	});
+	await frames("typed-navigation-failure");
+	const plain = await add("/plain-src");
+	await re(`window.api.browser.activateTab(${duplicates[0].tabId})`);
+	const active = (await state()).activeTabId,
+		before = requests.get("/plain-src") || 0,
+		row = await action(plain, "reload", "BACKGROUND RELOAD");
+	await until(
+		"specific reload request",
+		() => requests.get("/plain-src") > before,
+	);
+	expect(
+		row.outcome.status === "completed" &&
+			(await state()).activeTabId === active,
+		"reload changed active or wrong target",
+	);
+	evidence("BACKGROUND RELOAD PASS", {
+		target: plain,
+		activeBefore: active,
+		activeAfter: (await state()).activeTabId,
+		requests: requests.get("/plain-src"),
+	});
+	const negatives = await mainEval("__b.senderNegatives()");
+	expect(
+		negatives.every((n) => n.refused),
+		"foreign sender",
+	);
+	const malformed = await re(
+		`Promise.all([window.api.browser.reorderTabs(['bad']),window.api.browser.reorderTabs([${plain},${plain}]),window.api.browser.actOnTab(${plain},'erase')].map(p=>p.then(()=>({refused:false}),e=>({refused:true,message:e.message}))))`,
+	);
+	expect(
+		malformed.every((n) => n.refused),
+		"primitive accepted",
+	);
+	const unauth = await rpc(wire, "tabs", {}, { omitKey: true });
+	expect(unauth.status === 401, "unkeyed RPC accepted");
+	evidence("NATIVE IPC/RPC negatives PASS", {
+		negatives,
+		malformed,
+		unkeyedStatus: unauth.status,
+	});
+	await frames("current-source-normal");
+	while ((await state()).tabs.length < 13)
+		await add("/extra/" + (await state()).tabs.length);
+	const activeId = (await state()).activeTabId;
+	// LAST and non-fatal. An unverified tip is BLOCKED, never silently a PASS.
+	for (const [selector, label] of [
+		["[data-tour-tag=browser-reload]", "reload"],
+		["[data-tour-tag=browser-new-tab]", "new-tab"],
+		[
+			'[data-tab-id="' + activeId + '"] [data-tour-tag=browser-tab-close]',
+			"close",
+		],
+		['[aria-label="Scroll tabs left"]', "scroll-left"],
+		['[aria-label="Scroll tabs right"]', "scroll-right"],
+	])
+		for (const t of ["localOperatorLight", "localOperatorDark"]) {
+			try {
+				await theme(t);
+				if (label.startsWith("scroll-")) {
+					await re(
+						`(()=>{const s=document.querySelector('[data-tour-tag=browser-tab-strip-row] div[tabindex="-1"]');s.scrollLeft=(s.scrollWidth-s.clientWidth)/2})()`,
+					);
+					await until("arrow enabled", () =>
+						re(`!document.querySelector(${JSON.stringify(selector)}).disabled`),
+					);
+				} else if (label === "close")
+					await re(
+						`document.querySelector(${JSON.stringify(selector)}).closest('[data-tab-id]').scrollIntoView({block:'nearest',inline:'nearest'})`,
+					);
+				const p = await re(
+					`(()=>{const r=document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`,
+				);
+				await cdpSequence(await rendererTarget(), async (send) => {
+					await send("Input.dispatchMouseEvent", {
+						type: "mouseMoved",
+						x: p.x - 2,
+						y: p.y - 2,
+					});
+					await send("Input.dispatchMouseEvent", {
+						type: "mouseMoved",
+						x: p.x,
+						y: p.y,
+					});
+				});
+				await until("pointer tooltip " + label, () =>
+					re(`Boolean(document.querySelector('[data-lo-tooltip-panel]'))`),
+				);
+				const box = await re(
+						`(()=>{const e=document.querySelector('[data-lo-tooltip-panel]'),r=e.getBoundingClientRect();return{text:e.textContent,x:r.x,y:r.y,width:r.width,height:r.height}})()`,
+					),
+					bounds = await mainEval("__b.bounds()"),
+					n = bounds.actual;
+				const intersects =
+					box.x < n.x + n.width &&
+					box.x + box.width > n.x &&
+					box.y < n.y + n.height &&
+					box.y + box.height > n.y;
+				expect(!intersects, "native-view intersection");
+				evidence("TOOLTIP PASS " + label + " " + t, {
+					box,
+					bounds,
+					intersects,
+					fidelity: "CDP pointer, NOT OS pointer",
+				});
+				await shot("tooltip-" + label + "-" + t);
+			} catch (error) {
+				evidence("TOOLTIP BLOCKED " + label + " " + t, {
+					message: error.message,
+				});
+			} finally {
+				await cdpSequence(await rendererTarget(), async (send) => {
+					for (const y of [80, 140, 220, 300])
+						await send("Input.dispatchMouseEvent", {
+							type: "mouseMoved",
+							x: 5,
+							y,
+						});
+					await send("Input.dispatchKeyEvent", {
+						type: "keyDown",
+						key: "Escape",
+						code: "Escape",
+						windowsVirtualKeyCode: 27,
+					});
+					await send("Input.dispatchKeyEvent", {
+						type: "keyUp",
+						key: "Escape",
+						code: "Escape",
+						windowsVirtualKeyCode: 27,
+					});
+				});
+			}
+		}
+	const final = await mainEval("__b.facts()");
+	expect(
+		final.windows.every((w) => !w.visible && !w.focused),
+		"window raised",
+	);
+	evidence("FINAL isolation", final);
+	evidence("CORE COMPLETE", {
+		agentBoundary: true,
+		typedFailure: true,
+		backgroundReload: true,
+		IPCNegatives: true,
+		tooltips: "see individual PASS/BLOCKED rows",
+		physicalKeys: "unverified",
+		physicalDrag: "unverified",
+		clipboard: "not run",
+	});
 }
 
-process.on('SIGTERM',()=>stopApp().finally(()=>process.exit(143)));process.on('SIGINT',()=>stopApp().finally(()=>process.exit(130)));try{await audit()}catch(e){evidence('SETUP_OR_RUN_FAILURE',e.stack);process.exitCode=1}finally{await stopApp();if(fixture){fixture.closeAllConnections();await new Promise(r=>fixture.close(r));}let alive=false;try{process.kill(ownedPid,0);alive=true}catch{}evidence('teardown',{ownedPid,alive,scratch:SCRATCH,out:OUT_DIR});}
+process.on("SIGTERM", () => stopApp().finally(() => process.exit(143)));
+process.on("SIGINT", () => stopApp().finally(() => process.exit(130)));
+try {
+	await audit();
+} catch (e) {
+	evidence("SETUP_OR_RUN_FAILURE", e.stack);
+	process.exitCode = 1;
+} finally {
+	await stopApp();
+	if (fixture) {
+		fixture.closeAllConnections();
+		await new Promise((r) => fixture.close(r));
+	}
+	let alive = false;
+	try {
+		process.kill(ownedPid, 0);
+		alive = true;
+	} catch {}
+	evidence("teardown", { ownedPid, alive, scratch: SCRATCH, out: OUT_DIR });
+}

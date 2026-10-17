@@ -1,29 +1,29 @@
 [
-  {
-    "file": "qa-independent-no-result-localoperatordark.png",
-    "sha256": "28d9bc45da1153f8f5a9c5f8048b51cc0ed323bbf456f68f9adf3ddc4ab873b1",
-    "source": "independent QA12bd9949bf0f, not implementer; pre-remediation53f3f047",
-    "original": "~/.local-operator/sessions/12bd9949bf0f/scratchpad/native-tmp/lo-browser-proof-56480/out/no-result-localoperatordark.png"
-  },
-  {
-    "file": "qa-independent-no-result-localoperatorlight.png",
-    "sha256": "b9d3c5ecf3fff1f2b6ecf77da7e89186007e568fa0ac403913f4b80b0e448486",
-    "source": "independent QA12bd9949bf0f, not implementer; pre-remediation53f3f047",
-    "original": "~/.local-operator/sessions/12bd9949bf0f/scratchpad/native-tmp/lo-browser-proof-56480/out/no-result-localoperatorlight.png"
-  },
-  {
-    "file": "qa-independent-pr1101-results.json",
-    "sha256": "fe4d1c3c31378b23b703121feb4f8937f78faf6bffc253dce125770cb01a70dd",
-    "source": "independent QA12bd9949bf0f; not produced by implementer; head5b3e3bf425"
-  },
-  {
-    "file": "qa-independent-pr1101-build-identity.json",
-    "sha256": "8e627ba4b51eea96a9b437acfb99476558e53abf34286c72263d0ddb398a5ff2",
-    "source": "independent QA12bd9949bf0f; not produced by implementer; head5b3e3bf425"
-  },
-  {
-    "file": "qa-independent-pr1101-collisions.log",
-    "sha256": "dcf0d7cfc628fd9a2f1c1cafc7742e27719752431f9613249211af9ad01de457",
-    "source": "independent QA12bd9949bf0f; not produced by implementer; head5b3e3bf425"
-  }
+	{
+		"file": "qa-independent-no-result-localoperatordark.png",
+		"sha256": "28d9bc45da1153f8f5a9c5f8048b51cc0ed323bbf456f68f9adf3ddc4ab873b1",
+		"source": "independent QA12bd9949bf0f, not implementer; pre-remediation53f3f047",
+		"original": "~/.local-operator/sessions/12bd9949bf0f/scratchpad/native-tmp/lo-browser-proof-56480/out/no-result-localoperatordark.png"
+	},
+	{
+		"file": "qa-independent-no-result-localoperatorlight.png",
+		"sha256": "b9d3c5ecf3fff1f2b6ecf77da7e89186007e568fa0ac403913f4b80b0e448486",
+		"source": "independent QA12bd9949bf0f, not implementer; pre-remediation53f3f047",
+		"original": "~/.local-operator/sessions/12bd9949bf0f/scratchpad/native-tmp/lo-browser-proof-56480/out/no-result-localoperatorlight.png"
+	},
+	{
+		"file": "qa-independent-pr1101-results.json",
+		"sha256": "fe4d1c3c31378b23b703121feb4f8937f78faf6bffc253dce125770cb01a70dd",
+		"source": "independent QA12bd9949bf0f; not produced by implementer; head5b3e3bf425"
+	},
+	{
+		"file": "qa-independent-pr1101-build-identity.json",
+		"sha256": "8e627ba4b51eea96a9b437acfb99476558e53abf34286c72263d0ddb398a5ff2",
+		"source": "independent QA12bd9949bf0f; not produced by implementer; head5b3e3bf425"
+	},
+	{
+		"file": "qa-independent-pr1101-collisions.log",
+		"sha256": "dcf0d7cfc628fd9a2f1c1cafc7742e27719752431f9613249211af9ad01de457",
+		"source": "independent QA12bd9949bf0f; not produced by implementer; head5b3e3bf425"
+	}
 ]

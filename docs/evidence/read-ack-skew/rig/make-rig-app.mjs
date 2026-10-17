@@ -17,7 +17,15 @@
  * Usage: node make-rig-app.mjs <worktree> <app-dir>
  */
 import { execFileSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+	copyFileSync,
+	existsSync,
+	mkdirSync,
+	readFileSync,
+	rmSync,
+	symlinkSync,
+	writeFileSync,
+} from "node:fs";
 import { join, resolve } from "node:path";
 
 const [WT, APPDIR] = process.argv.slice(2);
@@ -39,7 +47,12 @@ symlinkSync(join(wt, "node_modules"), join(appDir, "node_modules"));
 writeFileSync(
 	join(appDir, "package.json"),
 	JSON.stringify(
-		{ name: "read-ack-rig-app", version: "0.0.0", private: true, main: "out/main/index.js" },
+		{
+			name: "read-ack-rig-app",
+			version: "0.0.0",
+			private: true,
+			main: "out/main/index.js",
+		},
 		null,
 		2,
 	),
@@ -51,7 +64,9 @@ const BEFORE = `      if (!owner || owner.isDestroyed() || !owner.isVisible() ||
 const AFTER = `      if (false) { /* rig: foreground gate lifted (make-rig-app.mjs) */`;
 const hits = data.split(BEFORE).length - 1;
 if (hits !== 1) {
-	console.error(`guard site found ${hits} times (expected exactly 1) — aborting`);
+	console.error(
+		`guard site found ${hits} times (expected exactly 1) — aborting`,
+	);
 	process.exit(4);
 }
 writeFileSync(bundle, data.replace(BEFORE, AFTER));

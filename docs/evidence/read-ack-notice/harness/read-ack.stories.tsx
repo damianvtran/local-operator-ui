@@ -133,13 +133,19 @@ if (typeof window !== "undefined") {
 const sonnerToastForProbe = sonnerToast as unknown as {
 	warning: (message: string, options?: unknown) => unknown;
 };
-const realWarningForProbe = sonnerToastForProbe.warning.bind(sonnerToastForProbe);
+const realWarningForProbe =
+	sonnerToastForProbe.warning.bind(sonnerToastForProbe);
 sonnerToastForProbe.warning = (message: string, options?: unknown) => {
-	const page = window as unknown as { __warningCalls?: number; __lastWarning?: string };
+	const page = window as unknown as {
+		__warningCalls?: number;
+		__lastWarning?: string;
+	};
 	page.__warningCalls = (page.__warningCalls ?? 0) + 1;
 	page.__lastWarning = message;
 	const out = realWarningForProbe(message, options);
-	page.__lastDismiss = (window as unknown as { __lastDismiss?: unknown }).__lastDismiss;
+	page.__lastDismiss = (
+		window as unknown as { __lastDismiss?: unknown }
+	).__lastDismiss;
 	return out;
 };
 
@@ -191,7 +197,13 @@ const LiveProbe: FC = () => {
 				__lastWarning?: string;
 			};
 			setReadout(
-				`probe notice=${notice ? `${notice.kind}/${notice.revision}` : "none"} toaster=${document.querySelectorAll("[data-sonner-toaster]").length} toasts=${document.querySelectorAll("[data-sonner-toast]").length} box=${(() => { const el = document.querySelector("[data-sonner-toast]"); if (!el) return "none"; const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); return `${Math.round(r.width)}x${Math.round(r.height)}@${Math.round(r.x)},${Math.round(r.y)} mounted=${el.getAttribute("data-mounted")} op=${cs.opacity} vis=${cs.visibility} disp=${cs.display}`; })()} warningCalls=${page.__warningCalls ?? 0} dismissCalls=${page.__dismissCalls ?? 0} last=${JSON.stringify(page.__lastWarning ?? null)}`,
+				`probe notice=${notice ? `${notice.kind}/${notice.revision}` : "none"} toaster=${document.querySelectorAll("[data-sonner-toaster]").length} toasts=${document.querySelectorAll("[data-sonner-toast]").length} box=${(() => {
+					const el = document.querySelector("[data-sonner-toast]");
+					if (!el) return "none";
+					const r = el.getBoundingClientRect();
+					const cs = getComputedStyle(el);
+					return `${Math.round(r.width)}x${Math.round(r.height)}@${Math.round(r.x)},${Math.round(r.y)} mounted=${el.getAttribute("data-mounted")} op=${cs.opacity} vis=${cs.visibility} disp=${cs.display}`;
+				})()} warningCalls=${page.__warningCalls ?? 0} dismissCalls=${page.__dismissCalls ?? 0} last=${JSON.stringify(page.__lastWarning ?? null)}`,
 			);
 		}, 250);
 		return () => clearInterval(timer);
@@ -215,10 +227,7 @@ const DomReadout: FC = () => {
 				`sonner toast elements: ${toasts.length}${
 					toasts.length
 						? ` → ${toasts
-								.map(
-									(t) =>
-										JSON.stringify(t.textContent?.trim() ?? ""),
-								)
+								.map((t) => JSON.stringify(t.textContent?.trim() ?? ""))
 								.join(" | ")}`
 						: ""
 				}`,
@@ -231,17 +240,19 @@ const DomReadout: FC = () => {
 			const tip = document.querySelector<HTMLElement>("[role='tooltip']");
 			if (tip) {
 				const box = tip.getBoundingClientRect();
-				const lines = Array.from(tip.querySelectorAll("span.block")).map((s) => {
-					const rect = s.getBoundingClientRect();
-					const lineHeight = Number.parseFloat(
-						getComputedStyle(s).lineHeight || "0",
-					);
-					return `${JSON.stringify(s.textContent?.trim().slice(-42) ?? "")} ${Math.round(rect.width)}x${Math.round(rect.height)}${
-						lineHeight > 0
-							? ` (~${Math.round(rect.height / lineHeight)} lines)`
-							: ""
-					}`;
-				});
+				const lines = Array.from(tip.querySelectorAll("span.block")).map(
+					(s) => {
+						const rect = s.getBoundingClientRect();
+						const lineHeight = Number.parseFloat(
+							getComputedStyle(s).lineHeight || "0",
+						);
+						return `${JSON.stringify(s.textContent?.trim().slice(-42) ?? "")} ${Math.round(rect.width)}x${Math.round(rect.height)}${
+							lineHeight > 0
+								? ` (~${Math.round(rect.height / lineHeight)} lines)`
+								: ""
+						}`;
+					},
+				);
 				next.push(
 					`flyout box: ${Math.round(box.width)}x${Math.round(box.height)} · ${lines.join(" | ")}`,
 				);
@@ -328,7 +339,9 @@ const DomReadout: FC = () => {
 				</button>
 			</div>
 			<LiveProbe />
-			<p className="text-ink">Accessible description per row, as the DOM has it</p>
+			<p className="text-ink">
+				Accessible description per row, as the DOM has it
+			</p>
 			{lines.map((line) => (
 				<p key={line} data-readout-desc>
 					{line}
@@ -366,7 +379,9 @@ const publish = (
 	reason?: unknown,
 	sessionId: string = WAITING,
 ) =>
-	useCanonicalSessionsStore.getState().publishReadAckNotice(sessionId, kind, reason);
+	useCanonicalSessionsStore
+		.getState()
+		.publishReadAckNotice(sessionId, kind, reason);
 
 const meta = {
 	title: "Design review/Read ack notice",
@@ -443,7 +458,8 @@ export const SilentAndWaiting: Story = {
  * `unsettled` — the REALISTIC refusal, raised by a press in the frame so the
  * toast's own four-second life is not spent before the capture.
  */
-export const GiveUpByPress: Story = {	parameters: { toastDuration: Number.POSITIVE_INFINITY },
+export const GiveUpByPress: Story = {
+	parameters: { toastDuration: Number.POSITIVE_INFINITY },
 	render: () => <Page />,
 	play: async () => {
 		await catalogueSettled(3);
@@ -463,10 +479,10 @@ export const UnsettledStoreBusy: Story = {
 	play: async () => {
 		await catalogueSettled(3);
 		publish("pending");
-			await sleep(700);
-			publish(
-				"unsettled",
-				new DesktopControlError(
+		await sleep(700);
+		publish(
+			"unsettled",
+			new DesktopControlError(
 				503,
 				"Read state is busy right now. It will catch up on its own.",
 				undefined,

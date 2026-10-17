@@ -1,23 +1,23 @@
 {
-  "status": "PARTIAL native evidence,60s bound expired; NOT a native pass",
-  "passCount": 9,
-  "failCount": 0,
-  "exit": 124,
-  "focusSamplesPerControl": 460,
-  "focusHoldMsPerControl": 11500,
-  "firstLostAtMs": null,
-  "sourcePinsIdentical": true,
-  "all172ConstrainedAssetsIdentical": true,
-  "old74PngIdentical": true,
-  "framesViewed": {
-    "r3-fixed-switch-held.png": "Dark wide Agents reviewer: Public Subscribe ON green focus ring; Minerva OFF copy now says incoming updates are off; no upgrade warning on supported backend.",
-    "r3-fixed-dialog-held.png": "Centered Public consent; Enable auto-push has bright green focus ring; background public Subscribe OFF after Space; dialog labels readable, no evident clipping."
-  },
-  "notReached": [
-    "Enter to confirmed auto-push PATCH200",
-    "backend-loss dialog copy",
-    "geometry JSON",
-    "CSP live violation control",
-    "other3boots"
-  ]
+	"status": "PARTIAL native evidence,60s bound expired; NOT a native pass",
+	"passCount": 9,
+	"failCount": 0,
+	"exit": 124,
+	"focusSamplesPerControl": 460,
+	"focusHoldMsPerControl": 11500,
+	"firstLostAtMs": null,
+	"sourcePinsIdentical": true,
+	"all172ConstrainedAssetsIdentical": true,
+	"old74PngIdentical": true,
+	"framesViewed": {
+		"r3-fixed-switch-held.png": "Dark wide Agents reviewer: Public Subscribe ON green focus ring; Minerva OFF copy now says incoming updates are off; no upgrade warning on supported backend.",
+		"r3-fixed-dialog-held.png": "Centered Public consent; Enable auto-push has bright green focus ring; background public Subscribe OFF after Space; dialog labels readable, no evident clipping."
+	},
+	"notReached": [
+		"Enter to confirmed auto-push PATCH200",
+		"backend-loss dialog copy",
+		"geometry JSON",
+		"CSP live violation control",
+		"other3boots"
+	]
 }

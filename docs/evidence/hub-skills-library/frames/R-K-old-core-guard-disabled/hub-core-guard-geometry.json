@@ -1,91 +1,91 @@
 {
-  "requestedSize": "1380x900",
-  "enabledFixture": false,
-  "mainStatus": {
-    "state": "attached",
-    "reconnecting": false,
-    "owned": false,
-    "url": "http://127.0.0.1:8127",
-    "instanceId": "c667d1fe-983b-44a9-9451-e001adb751dc",
-    "pid": 26669,
-    "version": "0.71.5",
-    "prefix": "/Users/damian/local-operator-ui/.worktrees/skills-library-evidence",
-    "installKind": "stub",
-    "desktopAvailable": true,
-    "pairing": {
-      "available": true,
-      "cause": null
-    },
-    "failures": 0,
-    "capabilityStatus": null,
-    "unanswered": 0,
-    "lastTransportAt": 1792044482523,
-    "detail": "Connected to the daemon on http://127.0.0.1:8127 (pid 26669, v0.71.5).",
-    "updatedAt": 1792044482523,
-    "addressSubstitution": null
-  },
-  "initialControlState": {
-    "warning": "Hub changes require core 0.72.1 or newer. Browsing is still available.",
-    "switches": [
-      {
-        "disabled": true,
-        "state": "checked"
-      },
-      {
-        "disabled": true,
-        "state": "unchecked"
-      }
-    ],
-    "buttons": [
-      {
-        "label": "Check now",
-        "disabled": true
-      },
-      {
-        "label": "Preview incoming changes",
-        "disabled": true
-      },
-      {
-        "label": "Preview publish",
-        "disabled": true
-      }
-    ]
-  },
-  "geometry": {
-    "viewport": {
-      "width": 1380,
-      "height": 900,
-      "devicePixelRatio": 2
-    },
-    "header": {
-      "x": 592,
-      "y": 48.1953125,
-      "w": 764,
-      "h": 22.3984375,
-      "cw": 764,
-      "ch": 22,
-      "sw": 764,
-      "sh": 22
-    },
-    "paintedChild": {
-      "x": 592,
-      "y": 32.1953125,
-      "w": 764,
-      "h": 350.1796875,
-      "cw": 764,
-      "ch": 349,
-      "sw": 764,
-      "sh": 349
-    },
-    "scrollContainer": {
-      "x": 548,
-      "y": 32,
-      "w": 832,
-      "h": 676.6015625,
-      "cw": 816,
-      "ch": 677,
-      "sw": 816,
-      "sh": 1576
-    }
-  }
+	"requestedSize": "1380x900",
+	"enabledFixture": false,
+	"mainStatus": {
+		"state": "attached",
+		"reconnecting": false,
+		"owned": false,
+		"url": "http://127.0.0.1:8127",
+		"instanceId": "c667d1fe-983b-44a9-9451-e001adb751dc",
+		"pid": 26669,
+		"version": "0.71.5",
+		"prefix": "/Users/damian/local-operator-ui/.worktrees/skills-library-evidence",
+		"installKind": "stub",
+		"desktopAvailable": true,
+		"pairing": {
+			"available": true,
+			"cause": null
+		},
+		"failures": 0,
+		"capabilityStatus": null,
+		"unanswered": 0,
+		"lastTransportAt": 1792044482523,
+		"detail": "Connected to the daemon on http://127.0.0.1:8127 (pid 26669, v0.71.5).",
+		"updatedAt": 1792044482523,
+		"addressSubstitution": null
+	},
+	"initialControlState": {
+		"warning": "Hub changes require core 0.72.1 or newer. Browsing is still available.",
+		"switches": [
+			{
+				"disabled": true,
+				"state": "checked"
+			},
+			{
+				"disabled": true,
+				"state": "unchecked"
+			}
+		],
+		"buttons": [
+			{
+				"label": "Check now",
+				"disabled": true
+			},
+			{
+				"label": "Preview incoming changes",
+				"disabled": true
+			},
+			{
+				"label": "Preview publish",
+				"disabled": true
+			}
+		]
+	},
+	"geometry": {
+		"viewport": {
+			"width": 1380,
+			"height": 900,
+			"devicePixelRatio": 2
+		},
+		"header": {
+			"x": 592,
+			"y": 48.1953125,
+			"w": 764,
+			"h": 22.3984375,
+			"cw": 764,
+			"ch": 22,
+			"sw": 764,
+			"sh": 22
+		},
+		"paintedChild": {
+			"x": 592,
+			"y": 32.1953125,
+			"w": 764,
+			"h": 350.1796875,
+			"cw": 764,
+			"ch": 349,
+			"sw": 764,
+			"sh": 349
+		},
+		"scrollContainer": {
+			"x": 548,
+			"y": 32,
+			"w": 832,
+			"h": 676.6015625,
+			"cw": 816,
+			"ch": 677,
+			"sw": 816,
+			"sh": 1576
+		}
+	}
 }

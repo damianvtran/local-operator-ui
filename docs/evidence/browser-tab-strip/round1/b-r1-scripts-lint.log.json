@@ -1,5 +1,5 @@
 {
-  "format": "verbatim captured output",
-  "sha256": "29622b21d03ba10dde93a4bf208c7b76795482260e5d59d5ff69b30ea8ddacfa",
-  "output": "check-scripts-lint: checking 1 changed file(s) under scripts/ against 39fd08f1 (39fd08f)\n  scripts/browser-chrome.test.mjs\ncheck-scripts-lint: 1 changed file(s) under scripts/ are lint-clean against 39fd08f1 (39fd08f).\n"
+	"format": "verbatim captured output",
+	"sha256": "29622b21d03ba10dde93a4bf208c7b76795482260e5d59d5ff69b30ea8ddacfa",
+	"output": "check-scripts-lint: checking 1 changed file(s) under scripts/ against 39fd08f1 (39fd08f)\n  scripts/browser-chrome.test.mjs\ncheck-scripts-lint: 1 changed file(s) under scripts/ are lint-clean against 39fd08f1 (39fd08f).\n"
 }

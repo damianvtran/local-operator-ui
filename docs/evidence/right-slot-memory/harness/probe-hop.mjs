@@ -56,7 +56,9 @@ if ((!AFTER && !BEFORE) || !SCRATCH) {
 	process.exit(2);
 }
 if (AFTER && BEFORE) {
-	console.error("probe-hop.mjs: one arm per invocation (see drive-slot.mjs's note)");
+	console.error(
+		"probe-hop.mjs: one arm per invocation (see drive-slot.mjs's note)",
+	);
 	process.exit(2);
 }
 const url = AFTER ?? BEFORE;
@@ -88,8 +90,9 @@ function readHop(marks, destination, leftBehind) {
 		distinctStates: hop.changes,
 		framesOnDestination: onDestination.length,
 		withAPane: onDestination.filter((mark) => mark.drawn !== "").length,
-		withTheLeftPanesPane: onDestination.filter((mark) => mark.drawn === leftBehind)
-			.length,
+		withTheLeftPanesPane: onDestination.filter(
+			(mark) => mark.drawn === leftBehind,
+		).length,
 		withALitItem: onDestination.filter((mark) => mark.lit !== "").length,
 		firstMarks: onDestination.slice(0, 6),
 		lastMarks: onDestination.slice(-3),
@@ -119,14 +122,20 @@ try {
 	await page.pressRow("B");
 	await wait(BURST_MS + 500);
 	report.hopAtoB = readHop(await page.timeline(), "B", "canvas");
-	report.settledOnB = { probe: await page.probe(), memory: await page.memory() };
+	report.settledOnB = {
+		probe: await page.probe(),
+		memory: await page.memory(),
+	};
 
 	await page.startSampler(BURST_MS);
 	await wait(150);
 	await page.pressRow("A");
 	await wait(BURST_MS + 500);
 	report.hopBtoA = readHop(await page.timeline(), "A", "canvas");
-	report.settledOnA = { probe: await page.probe(), memory: await page.memory() };
+	report.settledOnA = {
+		probe: await page.probe(),
+		memory: await page.memory(),
+	};
 
 	await page.close();
 } catch (error) {

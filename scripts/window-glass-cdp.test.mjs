@@ -339,14 +339,27 @@ for (const [themeName, label] of [
 		{ skip, timeout: 420_000 },
 		async () => {
 			await loadTheme(themeName);
-			const go = async (hash) => {
-				await cdp.ev(`location.hash = ${JSON.stringify(hash)}`);
-				await wait(1300);
+			/*
+			 * Wait for the route's regions to EXIST, not for a duration: the first visit to a
+			 * lazy route took longer than a fixed 1.3 s once (a cold run reported
+			 * "pageSidebar is missing" and passed on rerun). Readiness is polled for up to
+			 * 10 s; the assertions after it are unchanged, so a region that never appears
+			 * still FAILS - this only stops a slow load being read as an absent region.
+			 */
+			const go = async (route) => {
+				await cdp.ev(`location.hash = ${JSON.stringify(route.hash)}`);
+				await wait(900);
+				for (let i = 0; i < 20; i++) {
+					const a = await cdp.ev(AUDIT);
+					if (route.must.every((name) => a[name])) break;
+					await wait(500);
+				}
+				await wait(300);
 			};
 
 			/* 1. DEFAULT OFF: every route opaque, no attribute. */
 			for (const route of ROUTES) {
-				await go(route.hash);
+				await go(route);
 				const off = await cdp.ev(AUDIT);
 				assert.equal(off.glass, null, "no data-glass attribute while off");
 				for (const name of route.must) {
@@ -372,7 +385,7 @@ for (const [themeName, label] of [
 						material: "window",
 					});
 					for (const route of ROUTES) {
-						await go(route.hash);
+						await go(route);
 						const a = await cdp.ev(AUDIT);
 						const tag = `${label}/${coverage}/${intensity}${route.hash}`;
 						assert.ok(a.glass, `${tag}: data-glass is set`);
@@ -435,6 +448,87 @@ for (const [themeName, label] of [
 						}
 					}
 				}
+			}
+		},
+	);
+
+	test(
+		`${label}: a rail pane opened on a session-less chat leaves the conversation column's glass alone`,
+		{ skip, timeout: 120_000 },
+		async () => {
+			await loadTheme(themeName);
+			await setGlass({
+				enabled: true,
+				coverage: "full",
+				intensity: 50,
+				material: "window",
+			});
+			await cdp.ev(`location.hash = "#/chat"`);
+			await wait(1400);
+			/*
+			 * QA round 2, Q2-1: the Browser pane in the rail slot of a conversation with no
+			 * session got the page-level split marker (it was keyed on a null session, which
+			 * a draft shares with the route), and that cleared the <main> backing for the
+			 * WHOLE conversation column: alpha 0.77 became 0.00. The first guard audited the
+			 * chat with no pane open and the Browser as a route, so neither saw it. The
+			 * backing's own computed alpha is what the column's ground is, so it is read
+			 * directly: it must be the same number with the pane open as with it closed.
+			 */
+			const BACKING = `(() => {
+        const m = document.querySelector('main[data-glass-region="canvas-backing"]');
+        if (!m) return null;
+        const c = getComputedStyle(m).backgroundColor;
+        const t = c.match(/\\/\\s*([\\d.]+)\\)$/);
+        return c === "rgba(0, 0, 0, 0)" ? 0 : t ? Number(t[1]) : 1;
+      })()`;
+			const closed = await cdp.ev(BACKING);
+			assert.ok(
+				closed !== null && closed > 0.3,
+				`${label}: the chat backing paints a ground before any pane opens (saw ${closed})`,
+			);
+			for (const [trigger, paneSel] of [
+				[
+					"browser-pane-trigger",
+					'[data-tour-tag="browser-pane"], [data-tour-tag="browser-pane-surface"]',
+				],
+				[
+					"code-pane-trigger",
+					"[data-slot-pane-notice], [data-code-review-pane]",
+				],
+			]) {
+				const clicked = await cdp.ev(
+					`(() => { const b = document.querySelector('[data-tour-tag="${trigger}"]'); if (!b) return false; b.click(); return true; })()`,
+				);
+				assert.ok(clicked, `${label}: the ${trigger} rail control exists`);
+				await wait(1200);
+				const opened = await cdp.ev(
+					`!!document.querySelector(${JSON.stringify(paneSel)})`,
+				);
+				assert.ok(
+					opened,
+					`${label}: ${trigger} opened a pane (so the reading below is taken with it open)`,
+				);
+				const open = await cdp.ev(BACKING);
+				assert.ok(
+					Math.abs(open - closed) <= TOLERANCE,
+					`${label}: opening ${trigger} moved the conversation column's ground from ${closed} to ${open}`,
+				);
+				/* The pane itself must be glass, not an opaque slab (Q2-2). */
+				const slab = await cdp.ev(`(() => {
+          const el = document.querySelector(${JSON.stringify(paneSel)});
+          if (!el) return null;
+          const n = el.closest('[data-glass-region]') ?? el;
+          const c = getComputedStyle(n).backgroundColor;
+          return c;
+        })()`);
+				assert.ok(
+					slab !== null && !/^rgb\(/.test(slab),
+					`${label}: the ${trigger} pane paints an opaque ground inside Full app glass (${slab})`,
+				);
+				await cdp.ev(
+					`document.querySelector('[data-tour-tag="${trigger}"]')?.click()`,
+				);
+				await wait(600);
 			}
 		},
 	);

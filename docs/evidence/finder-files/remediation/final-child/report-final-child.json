@@ -1,159 +1,159 @@
 {
-  "label": "final-child",
-  "session": "b1f1de000001",
-  "window": {
-    "width": 1380,
-    "height": 900
-  },
-  "themes": {
-    "dark": {
-      "frame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/final-child/files-final-child-dark.png",
-      "reading": {
-        "innerWidth": 1380,
-        "innerHeight": 900,
-        "dock": {
-          "x": 776,
-          "y": 32,
-          "w": 560,
-          "h": 868
-        },
-        "dockMode": "docked",
-        "scroller": {
-          "x": 776,
-          "y": 152,
-          "w": 560,
-          "h": 748
-        },
-        "rowCount": 2,
-        "rows": [
-          {
-            "text": "file-0000.png 10 KB A large chart promoted as the main deliverable.",
-            "box": {
-              "x": 784,
-              "y": 184,
-              "w": 544,
-              "h": 68
-            },
-            "insideDock": true,
-            "thumb": {
-              "decoded": true,
-              "naturalWidth": 640,
-              "naturalHeight": 384,
-              "srcScheme": "blob",
-              "box": {
-                "x": 788,
-                "y": 198,
-                "w": 40,
-                "h": 40
-              }
-            }
-          },
-          {
-            "text": "file-0002.md 0 KB Summary delivered alongside the chart.",
-            "box": {
-              "x": 784,
-              "y": 252,
-              "w": 544,
-              "h": 68
-            },
-            "insideDock": true,
-            "thumb": null
-          }
-        ],
-        "header": "Mentioned ↑ Filter 5,002 files Open folder Highlights 2 file-0000.png 10 KB A large chart promoted as the main deliverable. file-0002.md 0 KB Summary delivered "
-      }
-    },
-    "light": {
-      "frame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/final-child/files-final-child-light.png",
-      "reading": {
-        "innerWidth": 1380,
-        "innerHeight": 900,
-        "dock": {
-          "x": 776,
-          "y": 32,
-          "w": 560,
-          "h": 868
-        },
-        "dockMode": "docked",
-        "scroller": {
-          "x": 776,
-          "y": 152,
-          "w": 560,
-          "h": 748
-        },
-        "rowCount": 2,
-        "rows": [
-          {
-            "text": "file-0000.png 10 KB A large chart promoted as the main deliverable.",
-            "box": {
-              "x": 784,
-              "y": 184,
-              "w": 544,
-              "h": 68
-            },
-            "insideDock": true,
-            "thumb": {
-              "decoded": true,
-              "naturalWidth": 640,
-              "naturalHeight": 384,
-              "srcScheme": "blob",
-              "box": {
-                "x": 788,
-                "y": 198,
-                "w": 40,
-                "h": 40
-              }
-            }
-          },
-          {
-            "text": "file-0002.md 0 KB Summary delivered alongside the chart.",
-            "box": {
-              "x": 784,
-              "y": 252,
-              "w": 544,
-              "h": 68
-            },
-            "insideDock": true,
-            "thumb": null
-          }
-        ],
-        "header": "Mentioned ↑ Filter 5,002 files Open folder Highlights 2 file-0000.png 10 KB A large chart promoted as the main deliverable. file-0002.md 0 KB Summary delivered "
-      }
-    }
-  },
-  "facts": {
-    "windowMode": "headless",
-    "appVersion": "0.34.42",
-    "platform": "darwin",
-    "title": "Local Operator",
-    "windowSize": {
-      "width": 1380,
-      "height": 900
-    },
-    "contentBounds": {
-      "width": 1380,
-      "height": 900
-    },
-    "visible": false,
-    "focused": false,
-    "minimized": false,
-    "frames": [],
-    "outDir": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/final-child"
-  },
-  "child": {
-    "rows": 1,
-    "text": "child-portrait.png\nIn session",
-    "naturalWidth": 80,
-    "naturalHeight": 120,
-    "decoded": true,
-    "materialisedPath": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/generated/child-portrait.png",
-    "listFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/final-child/finder-final-child-child-list-light.png",
-    "viewer": {
-      "label": "Canvas view\nFiles 5,002\nchild-portrait.png",
-      "width": 80,
-      "height": 120,
-      "decoded": true
-    },
-    "viewerFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/final-child/finder-final-child-child-viewer-light.png"
-  }
+	"label": "final-child",
+	"session": "b1f1de000001",
+	"window": {
+		"width": 1380,
+		"height": 900
+	},
+	"themes": {
+		"dark": {
+			"frame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/final-child/files-final-child-dark.png",
+			"reading": {
+				"innerWidth": 1380,
+				"innerHeight": 900,
+				"dock": {
+					"x": 776,
+					"y": 32,
+					"w": 560,
+					"h": 868
+				},
+				"dockMode": "docked",
+				"scroller": {
+					"x": 776,
+					"y": 152,
+					"w": 560,
+					"h": 748
+				},
+				"rowCount": 2,
+				"rows": [
+					{
+						"text": "file-0000.png 10 KB A large chart promoted as the main deliverable.",
+						"box": {
+							"x": 784,
+							"y": 184,
+							"w": 544,
+							"h": 68
+						},
+						"insideDock": true,
+						"thumb": {
+							"decoded": true,
+							"naturalWidth": 640,
+							"naturalHeight": 384,
+							"srcScheme": "blob",
+							"box": {
+								"x": 788,
+								"y": 198,
+								"w": 40,
+								"h": 40
+							}
+						}
+					},
+					{
+						"text": "file-0002.md 0 KB Summary delivered alongside the chart.",
+						"box": {
+							"x": 784,
+							"y": 252,
+							"w": 544,
+							"h": 68
+						},
+						"insideDock": true,
+						"thumb": null
+					}
+				],
+				"header": "Mentioned ↑ Filter 5,002 files Open folder Highlights 2 file-0000.png 10 KB A large chart promoted as the main deliverable. file-0002.md 0 KB Summary delivered "
+			}
+		},
+		"light": {
+			"frame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/final-child/files-final-child-light.png",
+			"reading": {
+				"innerWidth": 1380,
+				"innerHeight": 900,
+				"dock": {
+					"x": 776,
+					"y": 32,
+					"w": 560,
+					"h": 868
+				},
+				"dockMode": "docked",
+				"scroller": {
+					"x": 776,
+					"y": 152,
+					"w": 560,
+					"h": 748
+				},
+				"rowCount": 2,
+				"rows": [
+					{
+						"text": "file-0000.png 10 KB A large chart promoted as the main deliverable.",
+						"box": {
+							"x": 784,
+							"y": 184,
+							"w": 544,
+							"h": 68
+						},
+						"insideDock": true,
+						"thumb": {
+							"decoded": true,
+							"naturalWidth": 640,
+							"naturalHeight": 384,
+							"srcScheme": "blob",
+							"box": {
+								"x": 788,
+								"y": 198,
+								"w": 40,
+								"h": 40
+							}
+						}
+					},
+					{
+						"text": "file-0002.md 0 KB Summary delivered alongside the chart.",
+						"box": {
+							"x": 784,
+							"y": 252,
+							"w": 544,
+							"h": 68
+						},
+						"insideDock": true,
+						"thumb": null
+					}
+				],
+				"header": "Mentioned ↑ Filter 5,002 files Open folder Highlights 2 file-0000.png 10 KB A large chart promoted as the main deliverable. file-0002.md 0 KB Summary delivered "
+			}
+		}
+	},
+	"facts": {
+		"windowMode": "headless",
+		"appVersion": "0.34.42",
+		"platform": "darwin",
+		"title": "Local Operator",
+		"windowSize": {
+			"width": 1380,
+			"height": 900
+		},
+		"contentBounds": {
+			"width": 1380,
+			"height": 900
+		},
+		"visible": false,
+		"focused": false,
+		"minimized": false,
+		"frames": [],
+		"outDir": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/final-child"
+	},
+	"child": {
+		"rows": 1,
+		"text": "child-portrait.png\nIn session",
+		"naturalWidth": 80,
+		"naturalHeight": 120,
+		"decoded": true,
+		"materialisedPath": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/generated/child-portrait.png",
+		"listFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/final-child/finder-final-child-child-list-light.png",
+		"viewer": {
+			"label": "Canvas view\nFiles 5,002\nchild-portrait.png",
+			"width": 80,
+			"height": 120,
+			"decoded": true
+		},
+		"viewerFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/final-child/finder-final-child-child-viewer-light.png"
+	}
 }

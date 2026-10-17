@@ -1,53 +1,53 @@
 {
-  "phase": "authorized boot-only continuation; build24GiB already met, boots20GiB start/18GiB abort",
-  "at": "2026-10-15T01:35:18.320300-04:00",
-  "initial": {
-    "availableKiB": 23204872,
-    "availableGiB": 22.12989044189453,
-    "swapUsedMB": 10645.5,
-    "memoryFreePct": 41
-  },
-  "identityChecks": {
-    "src/renderer/src/features/agent-hub/agent-hub-page.tsx": {
-      "expected": "41899e9ec25984d84a9b42d9de04fb0fc042a911edbfa0af85df9f2634e4b813",
-      "actual": "41899e9ec25984d84a9b42d9de04fb0fc042a911edbfa0af85df9f2634e4b813",
-      "identical": true
-    },
-    "src/renderer/src/features/agent-hub/hooks/use-hub-skills.ts": {
-      "expected": "34a1b6bf2173e3e8a9a14666322c3dd93bc7000ca35372cfc23694070286843c",
-      "actual": "34a1b6bf2173e3e8a9a14666322c3dd93bc7000ca35372cfc23694070286843c",
-      "identical": true
-    },
-    "src/renderer/src/shared/api/local-operator/desktop-hooks.ts": {
-      "expected": "b68831aeff35aeb2dd61d0b8448b5eaff74759b3752eba77d514d0dc7ca51d48",
-      "actual": "b68831aeff35aeb2dd61d0b8448b5eaff74759b3752eba77d514d0dc7ca51d48",
-      "identical": true
-    },
-    "scripts/renderer-driver.mjs": {
-      "expected": "31610d3ee67a9e953b026714f46c133f17486d50e4450e1db6f81f68fc0b8a14",
-      "actual": "31610d3ee67a9e953b026714f46c133f17486d50e4450e1db6f81f68fc0b8a14",
-      "identical": true
-    },
-    "docs/evidence/hub-links/harness/stub-daemon.mjs": {
-      "expected": "2ec4a85a56df9c0adff6eb3f9c1aa7af10f1e638d3c2911b7b64e5fcbf645f4d",
-      "actual": "2ec4a85a56df9c0adff6eb3f9c1aa7af10f1e638d3c2911b7b64e5fcbf645f4d",
-      "identical": true
-    },
-    "out/renderer/index.html": {
-      "expected": "c930a863321a4ff1dd53d315f4ae69e815281c8c7eb889a9266519f3fc166bda",
-      "actual": "c930a863321a4ff1dd53d315f4ae69e815281c8c7eb889a9266519f3fc166bda",
-      "identical": true
-    },
-    "out/main/index.js": {
-      "expected": "9a0e2c5478d7c4b8188f0f9e27b5776453db3b6748d7a3ef735ee37132205046",
-      "actual": "9a0e2c5478d7c4b8188f0f9e27b5776453db3b6748d7a3ef735ee37132205046",
-      "identical": true
-    },
-    "out/renderer/assets/agent-hub-page-DQIxKetH.js": {
-      "expected": "d1ac59e9ff4a0729b2df5315cc352a901c25367e20010bfe8cad57afc5d056ee",
-      "actual": "d1ac59e9ff4a0729b2df5315cc352a901c25367e20010bfe8cad57afc5d056ee",
-      "identical": true
-    }
-  },
-  "rebuild": false
+	"phase": "authorized boot-only continuation; build24GiB already met, boots20GiB start/18GiB abort",
+	"at": "2026-10-15T01:35:18.320300-04:00",
+	"initial": {
+		"availableKiB": 23204872,
+		"availableGiB": 22.12989044189453,
+		"swapUsedMB": 10645.5,
+		"memoryFreePct": 41
+	},
+	"identityChecks": {
+		"src/renderer/src/features/agent-hub/agent-hub-page.tsx": {
+			"expected": "41899e9ec25984d84a9b42d9de04fb0fc042a911edbfa0af85df9f2634e4b813",
+			"actual": "41899e9ec25984d84a9b42d9de04fb0fc042a911edbfa0af85df9f2634e4b813",
+			"identical": true
+		},
+		"src/renderer/src/features/agent-hub/hooks/use-hub-skills.ts": {
+			"expected": "34a1b6bf2173e3e8a9a14666322c3dd93bc7000ca35372cfc23694070286843c",
+			"actual": "34a1b6bf2173e3e8a9a14666322c3dd93bc7000ca35372cfc23694070286843c",
+			"identical": true
+		},
+		"src/renderer/src/shared/api/local-operator/desktop-hooks.ts": {
+			"expected": "b68831aeff35aeb2dd61d0b8448b5eaff74759b3752eba77d514d0dc7ca51d48",
+			"actual": "b68831aeff35aeb2dd61d0b8448b5eaff74759b3752eba77d514d0dc7ca51d48",
+			"identical": true
+		},
+		"scripts/renderer-driver.mjs": {
+			"expected": "31610d3ee67a9e953b026714f46c133f17486d50e4450e1db6f81f68fc0b8a14",
+			"actual": "31610d3ee67a9e953b026714f46c133f17486d50e4450e1db6f81f68fc0b8a14",
+			"identical": true
+		},
+		"docs/evidence/hub-links/harness/stub-daemon.mjs": {
+			"expected": "2ec4a85a56df9c0adff6eb3f9c1aa7af10f1e638d3c2911b7b64e5fcbf645f4d",
+			"actual": "2ec4a85a56df9c0adff6eb3f9c1aa7af10f1e638d3c2911b7b64e5fcbf645f4d",
+			"identical": true
+		},
+		"out/renderer/index.html": {
+			"expected": "c930a863321a4ff1dd53d315f4ae69e815281c8c7eb889a9266519f3fc166bda",
+			"actual": "c930a863321a4ff1dd53d315f4ae69e815281c8c7eb889a9266519f3fc166bda",
+			"identical": true
+		},
+		"out/main/index.js": {
+			"expected": "9a0e2c5478d7c4b8188f0f9e27b5776453db3b6748d7a3ef735ee37132205046",
+			"actual": "9a0e2c5478d7c4b8188f0f9e27b5776453db3b6748d7a3ef735ee37132205046",
+			"identical": true
+		},
+		"out/renderer/assets/agent-hub-page-DQIxKetH.js": {
+			"expected": "d1ac59e9ff4a0729b2df5315cc352a901c25367e20010bfe8cad57afc5d056ee",
+			"actual": "d1ac59e9ff4a0729b2df5315cc352a901c25367e20010bfe8cad57afc5d056ee",
+			"identical": true
+		}
+	},
+	"rebuild": false
 }

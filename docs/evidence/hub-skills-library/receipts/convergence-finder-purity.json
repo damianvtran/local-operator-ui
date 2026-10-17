@@ -1,7 +1,7 @@
 {
-  "path": "src/renderer/src/features/chat/components/canvas/finder-layout.ts",
-  "sourceSha256": "849107519912e4d0f6ccbd981763e41d88d90a73a3fc1dd53612968e9e6c6b24",
-  "emittedSha256": "9ac64820b03df77e757f0c9fd03eecb81d2f91a4ad169e99129825cb63cf132c",
-  "emittedImports": 0,
-  "topLevelObservation": "Only DEFAULT_FINDER object, SORTS/KINDS literal arrays, sanitizer/layout function declarations and export list. No import-time fetch, listener, timer, DOM/storage operation or function invocation."
+	"path": "src/renderer/src/features/chat/components/canvas/finder-layout.ts",
+	"sourceSha256": "849107519912e4d0f6ccbd981763e41d88d90a73a3fc1dd53612968e9e6c6b24",
+	"emittedSha256": "9ac64820b03df77e757f0c9fd03eecb81d2f91a4ad169e99129825cb63cf132c",
+	"emittedImports": 0,
+	"topLevelObservation": "Only DEFAULT_FINDER object, SORTS/KINDS literal arrays, sanitizer/layout function declarations and export list. No import-time fetch, listener, timer, DOM/storage operation or function invocation."
 }

@@ -1,138 +1,138 @@
 {
-  "empty-after-localoperatordark.png": {
-    "sha256": "a779f8058f264c67d54cbea915cbb56524ffee34c899f34e61f4f82742dbc025",
-    "bytes": 67715
-  },
-  "empty-after-localoperatorlight.png": {
-    "sha256": "5436c61b852357f218b9214752d4f45665638040519c18cdf50ae378afac028a",
-    "bytes": 67515
-  },
-  "empty-before-localoperatordark.png": {
-    "sha256": "a779f8058f264c67d54cbea915cbb56524ffee34c899f34e61f4f82742dbc025",
-    "bytes": 67715
-  },
-  "empty-before-localoperatorlight.png": {
-    "sha256": "5436c61b852357f218b9214752d4f45665638040519c18cdf50ae378afac028a",
-    "bytes": 67515
-  },
-  "error-after-localoperatordark.png": {
-    "sha256": "518084db56befb8a7c903c6e5ca296c6a32a633cf6ae47025f752820a8b1f0ad",
-    "bytes": 131865
-  },
-  "error-after-localoperatorlight.png": {
-    "sha256": "8178e3d015e0888f7a7c662b843cacd62d6d974be29a1f9a84a02f5b7a7da0d4",
-    "bytes": 131955
-  },
-  "error-before-localoperatordark.png": {
-    "sha256": "c18a11b760a19174ba00c8b3373972d22ff611d6157cbcb122b3a89db243cd0a",
-    "bytes": 131852
-  },
-  "error-before-localoperatorlight.png": {
-    "sha256": "8178e3d015e0888f7a7c662b843cacd62d6d974be29a1f9a84a02f5b7a7da0d4",
-    "bytes": 131955
-  },
-  "focus-forced-after-localoperatordark.png": {
-    "sha256": "25b6a37a3ac3d63baa7e1593fc24d349a25670da00bcd704086b47b4ec421574",
-    "bytes": 79468
-  },
-  "focus-forced-after-localoperatorlight.png": {
-    "sha256": "567322773663b487e3f11f260c45732ed361e13a182f7d05c8cd47761304a127",
-    "bytes": 78960
-  },
-  "keyclose-root-after-localoperatordark.png": {
-    "sha256": "66367b4d4fe5d08f429b5b0c2d8a0dd0333044ff11506e40ede77ecf048cdc45",
-    "bytes": 79731
-  },
-  "keyclose-root-after-localoperatorlight.png": {
-    "sha256": "423bbf8837ef065c3960b096454b45a7be2a8ab01dd0a078fb4b789253c462c5",
-    "bytes": 79040
-  },
-  "lastclose-after-localoperatordark.png": {
-    "sha256": "fd7ffc06a2e010eea8f892d1852e69268c88fa83d88e784b66f08568fd53d0d8",
-    "bytes": 68916
-  },
-  "lastclose-after-localoperatorlight.png": {
-    "sha256": "e76450cbb28ec404ea3efed735f32122d4f52e0d8c0f590b079d213d0cd89c07",
-    "bytes": 68818
-  },
-  "loading-after-localoperatordark.png": {
-    "sha256": "413b33c2001ab2a936e95795c118988875787f0b4ebb272e6d7cc90e1fa5c8cb",
-    "bytes": 79335
-  },
-  "loading-after-localoperatorlight.png": {
-    "sha256": "926a36184e2be1c4e9f5a7800c23c4133124552f876970ad07e2dd61a4f9c9e3",
-    "bytes": 78968
-  },
-  "loading-before-localoperatordark.png": {
-    "sha256": "91d22732cf1425d52d85ab2eed786a3e320a4291e871dd9789e324402008e1c8",
-    "bytes": 79268
-  },
-  "loading-before-localoperatorlight.png": {
-    "sha256": "82c47913e319b2af1496e926081d5a77ccac90f8a10be0844382474e32492dd7",
-    "bytes": 78841
-  },
-  "populated-after-localoperatordark.png": {
-    "sha256": "85eb72a95dcf6829f2433b98b359968e637ee154fd4576d602cbe7b099d8da15",
-    "bytes": 78469
-  },
-  "populated-after-localoperatorlight.png": {
-    "sha256": "5924da4444dfb929ec0a7d50637d9b122ee1a6e15bc0b193833c3ba38f20f8ad",
-    "bytes": 77830
-  },
-  "populated-before-localoperatordark.png": {
-    "sha256": "31c009a0e2aee41e7e6f4ce16cda82d01f7601afcfd9bc935e2291df27d511c0",
-    "bytes": 78077
-  },
-  "populated-before-localoperatorlight.png": {
-    "sha256": "14f1bc2fde5126b0995cf424765fa76021a0aac67c63c03bbcf4d663cd0ef093",
-    "bytes": 77135
-  },
-  "tooltip-active-close-localoperatordark.png": {
-    "sha256": "16471f36c977ea2a26e5265d8e774e653f7e3dfc45c4d98648a582f28a2ca04c",
-    "bytes": 86379
-  },
-  "tooltip-active-close-localoperatorlight.png": {
-    "sha256": "31d2202df3aed836abf45ea9ad7206b21d5342fb471a579880a53f12485ff3e4",
-    "bytes": 86075
-  },
-  "tooltip-address-localoperatordark.png": {
-    "sha256": "71a93474410ad419100c5467cd8ae9dbf6028fc392722a8a6295c2c0ace7fd82",
-    "bytes": 84648
-  },
-  "tooltip-address-localoperatorlight.png": {
-    "sha256": "3d4f956fc98995354ae331af4953f303c3ac42c11947382d0c23bc06b59252f3",
-    "bytes": 84210
-  },
-  "tooltip-inactive-close-localoperatordark.png": {
-    "sha256": "f54fa5f646638d833a5b97dcc0c6a7daa32998a125c48dec319d132d2b149642",
-    "bytes": 84708
-  },
-  "tooltip-inactive-close-localoperatorlight.png": {
-    "sha256": "3db05865242aaa7936fd51e19d2d045f2e3ba754a7212417cb665e15f5e37205",
-    "bytes": 84503
-  },
-  "tooltip-new-tab-localoperatordark.png": {
-    "sha256": "296f3ac82f7199f15390a3e5cbb06be052a2266be5569f336ea31f3a57b945df",
-    "bytes": 84457
-  },
-  "tooltip-new-tab-localoperatorlight.png": {
-    "sha256": "d15454e9b12a6d698332d903ff4e052ef1279d8ff3bcd6406b6ee0a8c976742e",
-    "bytes": 84138
-  },
-  "tooltip-new-tab-r3-localoperatordark.png": {
-    "sha256": "6c4e7b960004c5b80c1126d26178842fe7a61480d8b724e90dc5aafcf78b70c6",
-    "bytes": 85606
-  },
-  "tooltip-new-tab-r3-localoperatorlight.png": {
-    "sha256": "6c2d3171b3d3b3ae714df11bf8a39ac9f68f202348d932fcacbc490ad4db66f4",
-    "bytes": 85115
-  },
-  "tooltip-reload-localoperatordark.png": {
-    "sha256": "404010f84bcf4dff39b59ef51cee30e9ed59907683b1461a64ec67ae8845781a",
-    "bytes": 82168
-  },
-  "tooltip-reload-localoperatorlight.png": {
-    "sha256": "ed08af43689fab526551e597e820a13e4bdf2ff771fa1dc97456530fb20b5fce",
-    "bytes": 81899
-  }
+	"empty-after-localoperatordark.png": {
+		"sha256": "a779f8058f264c67d54cbea915cbb56524ffee34c899f34e61f4f82742dbc025",
+		"bytes": 67715
+	},
+	"empty-after-localoperatorlight.png": {
+		"sha256": "5436c61b852357f218b9214752d4f45665638040519c18cdf50ae378afac028a",
+		"bytes": 67515
+	},
+	"empty-before-localoperatordark.png": {
+		"sha256": "a779f8058f264c67d54cbea915cbb56524ffee34c899f34e61f4f82742dbc025",
+		"bytes": 67715
+	},
+	"empty-before-localoperatorlight.png": {
+		"sha256": "5436c61b852357f218b9214752d4f45665638040519c18cdf50ae378afac028a",
+		"bytes": 67515
+	},
+	"error-after-localoperatordark.png": {
+		"sha256": "518084db56befb8a7c903c6e5ca296c6a32a633cf6ae47025f752820a8b1f0ad",
+		"bytes": 131865
+	},
+	"error-after-localoperatorlight.png": {
+		"sha256": "8178e3d015e0888f7a7c662b843cacd62d6d974be29a1f9a84a02f5b7a7da0d4",
+		"bytes": 131955
+	},
+	"error-before-localoperatordark.png": {
+		"sha256": "c18a11b760a19174ba00c8b3373972d22ff611d6157cbcb122b3a89db243cd0a",
+		"bytes": 131852
+	},
+	"error-before-localoperatorlight.png": {
+		"sha256": "8178e3d015e0888f7a7c662b843cacd62d6d974be29a1f9a84a02f5b7a7da0d4",
+		"bytes": 131955
+	},
+	"focus-forced-after-localoperatordark.png": {
+		"sha256": "25b6a37a3ac3d63baa7e1593fc24d349a25670da00bcd704086b47b4ec421574",
+		"bytes": 79468
+	},
+	"focus-forced-after-localoperatorlight.png": {
+		"sha256": "567322773663b487e3f11f260c45732ed361e13a182f7d05c8cd47761304a127",
+		"bytes": 78960
+	},
+	"keyclose-root-after-localoperatordark.png": {
+		"sha256": "66367b4d4fe5d08f429b5b0c2d8a0dd0333044ff11506e40ede77ecf048cdc45",
+		"bytes": 79731
+	},
+	"keyclose-root-after-localoperatorlight.png": {
+		"sha256": "423bbf8837ef065c3960b096454b45a7be2a8ab01dd0a078fb4b789253c462c5",
+		"bytes": 79040
+	},
+	"lastclose-after-localoperatordark.png": {
+		"sha256": "fd7ffc06a2e010eea8f892d1852e69268c88fa83d88e784b66f08568fd53d0d8",
+		"bytes": 68916
+	},
+	"lastclose-after-localoperatorlight.png": {
+		"sha256": "e76450cbb28ec404ea3efed735f32122d4f52e0d8c0f590b079d213d0cd89c07",
+		"bytes": 68818
+	},
+	"loading-after-localoperatordark.png": {
+		"sha256": "413b33c2001ab2a936e95795c118988875787f0b4ebb272e6d7cc90e1fa5c8cb",
+		"bytes": 79335
+	},
+	"loading-after-localoperatorlight.png": {
+		"sha256": "926a36184e2be1c4e9f5a7800c23c4133124552f876970ad07e2dd61a4f9c9e3",
+		"bytes": 78968
+	},
+	"loading-before-localoperatordark.png": {
+		"sha256": "91d22732cf1425d52d85ab2eed786a3e320a4291e871dd9789e324402008e1c8",
+		"bytes": 79268
+	},
+	"loading-before-localoperatorlight.png": {
+		"sha256": "82c47913e319b2af1496e926081d5a77ccac90f8a10be0844382474e32492dd7",
+		"bytes": 78841
+	},
+	"populated-after-localoperatordark.png": {
+		"sha256": "85eb72a95dcf6829f2433b98b359968e637ee154fd4576d602cbe7b099d8da15",
+		"bytes": 78469
+	},
+	"populated-after-localoperatorlight.png": {
+		"sha256": "5924da4444dfb929ec0a7d50637d9b122ee1a6e15bc0b193833c3ba38f20f8ad",
+		"bytes": 77830
+	},
+	"populated-before-localoperatordark.png": {
+		"sha256": "31c009a0e2aee41e7e6f4ce16cda82d01f7601afcfd9bc935e2291df27d511c0",
+		"bytes": 78077
+	},
+	"populated-before-localoperatorlight.png": {
+		"sha256": "14f1bc2fde5126b0995cf424765fa76021a0aac67c63c03bbcf4d663cd0ef093",
+		"bytes": 77135
+	},
+	"tooltip-active-close-localoperatordark.png": {
+		"sha256": "16471f36c977ea2a26e5265d8e774e653f7e3dfc45c4d98648a582f28a2ca04c",
+		"bytes": 86379
+	},
+	"tooltip-active-close-localoperatorlight.png": {
+		"sha256": "31d2202df3aed836abf45ea9ad7206b21d5342fb471a579880a53f12485ff3e4",
+		"bytes": 86075
+	},
+	"tooltip-address-localoperatordark.png": {
+		"sha256": "71a93474410ad419100c5467cd8ae9dbf6028fc392722a8a6295c2c0ace7fd82",
+		"bytes": 84648
+	},
+	"tooltip-address-localoperatorlight.png": {
+		"sha256": "3d4f956fc98995354ae331af4953f303c3ac42c11947382d0c23bc06b59252f3",
+		"bytes": 84210
+	},
+	"tooltip-inactive-close-localoperatordark.png": {
+		"sha256": "f54fa5f646638d833a5b97dcc0c6a7daa32998a125c48dec319d132d2b149642",
+		"bytes": 84708
+	},
+	"tooltip-inactive-close-localoperatorlight.png": {
+		"sha256": "3db05865242aaa7936fd51e19d2d045f2e3ba754a7212417cb665e15f5e37205",
+		"bytes": 84503
+	},
+	"tooltip-new-tab-localoperatordark.png": {
+		"sha256": "296f3ac82f7199f15390a3e5cbb06be052a2266be5569f336ea31f3a57b945df",
+		"bytes": 84457
+	},
+	"tooltip-new-tab-localoperatorlight.png": {
+		"sha256": "d15454e9b12a6d698332d903ff4e052ef1279d8ff3bcd6406b6ee0a8c976742e",
+		"bytes": 84138
+	},
+	"tooltip-new-tab-r3-localoperatordark.png": {
+		"sha256": "6c4e7b960004c5b80c1126d26178842fe7a61480d8b724e90dc5aafcf78b70c6",
+		"bytes": 85606
+	},
+	"tooltip-new-tab-r3-localoperatorlight.png": {
+		"sha256": "6c2d3171b3d3b3ae714df11bf8a39ac9f68f202348d932fcacbc490ad4db66f4",
+		"bytes": 85115
+	},
+	"tooltip-reload-localoperatordark.png": {
+		"sha256": "404010f84bcf4dff39b59ef51cee30e9ed59907683b1461a64ec67ae8845781a",
+		"bytes": 82168
+	},
+	"tooltip-reload-localoperatorlight.png": {
+		"sha256": "ed08af43689fab526551e597e820a13e4bdf2ff771fa1dc97456530fb20b5fce",
+		"bytes": 81899
+	}
 }

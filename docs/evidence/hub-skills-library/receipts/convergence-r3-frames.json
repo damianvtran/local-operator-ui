@@ -1,482 +1,482 @@
 [
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-A-dark-default/hub-skills-1380x900-local-operator-dark-consent.png",
-    "oldSha256": "c44ce49d16628eccc8dd248ba1f1e200ee0f5a8a54d93442c5a29e78e641ad70",
-    "mergedSha256": "c44ce49d16628eccc8dd248ba1f1e200ee0f5a8a54d93442c5a29e78e641ad70",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-A-dark-default/hub-skills-1380x900-local-operator-dark-detail.png",
-    "oldSha256": "d530449254f94e358f79b5f2dcd264bc02ca17d7d3130975714731da985f47be",
-    "mergedSha256": "d530449254f94e358f79b5f2dcd264bc02ca17d7d3130975714731da985f47be",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-A-dark-default/hub-skills-1380x900-local-operator-dark-loading.png",
-    "oldSha256": "ae9530302c6e0beaf3248e0bbd200b613aa3fb3c3f98b7a47364cd2ce5d56c84",
-    "mergedSha256": "ae9530302c6e0beaf3248e0bbd200b613aa3fb3c3f98b7a47364cd2ce5d56c84",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-A-dark-default/hub-skills-1380x900-local-operator-dark-populated.png",
-    "oldSha256": "db3a6f1d465dd920b8fc35397df917548f7d7557e2943d9754b90d1e74010f99",
-    "mergedSha256": "db3a6f1d465dd920b8fc35397df917548f7d7557e2943d9754b90d1e74010f99",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-A-dark-default/hub-skills-1380x900-local-operator-dark-publish-complete.png",
-    "oldSha256": "a70036daeaef533c358cdbfee3e37afeebcc9d85a05d2498e4864b8a55f067b1",
-    "mergedSha256": "a70036daeaef533c358cdbfee3e37afeebcc9d85a05d2498e4864b8a55f067b1",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-A-dark-default/hub-skills-1380x900-local-operator-dark-publish-preview.png",
-    "oldSha256": "77373e89e987ad2c6d8adde2bff605e51f26634cdc1d4183358c83d2a5d5d326",
-    "mergedSha256": "77373e89e987ad2c6d8adde2bff605e51f26634cdc1d4183358c83d2a5d5d326",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-A-dark-default/hub-skills-1380x900-local-operator-dark-pull-pending.png",
-    "oldSha256": "43138bcb8876002fb6a50e6d43d0026e0d3b26dfd269a50c911dad65e7af9649",
-    "mergedSha256": "43138bcb8876002fb6a50e6d43d0026e0d3b26dfd269a50c911dad65e7af9649",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-A-dark-default/hub-skills-1380x900-local-operator-dark-pull-success.png",
-    "oldSha256": "54cb7cd37fc3d9815e851940461eae61082a49fb191e54eb02815c5438aafbcf",
-    "mergedSha256": "54cb7cd37fc3d9815e851940461eae61082a49fb191e54eb02815c5438aafbcf",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-A-dark-default/hub-skills-1380x900-local-operator-dark-search-empty.png",
-    "oldSha256": "25e5796c68dd278999b542283d2b8a2a482403d595a3e7eab7391209fb04a1f6",
-    "mergedSha256": "25e5796c68dd278999b542283d2b8a2a482403d595a3e7eab7391209fb04a1f6",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-A-loading-pair/hub-skills-1380x900-local-operator-dark-loading-consecutive.png",
-    "oldSha256": "64388eb055444dd616e63644f52cd1334bef46459dd612487e977bd1b6ebe756",
-    "mergedSha256": "64388eb055444dd616e63644f52cd1334bef46459dd612487e977bd1b6ebe756",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-A-loading-pair/hub-skills-1380x900-local-operator-dark-loading.png",
-    "oldSha256": "cafe24a5c0a47eda90ca5804c7150cc6fa4cc5c4b014c90956e65bca7d839347",
-    "mergedSha256": "cafe24a5c0a47eda90ca5804c7150cc6fa4cc5c4b014c90956e65bca7d839347",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-A-loading-pair/hub-skills-1380x900-local-operator-dark-populated.png",
-    "oldSha256": "db3a6f1d465dd920b8fc35397df917548f7d7557e2943d9754b90d1e74010f99",
-    "mergedSha256": "db3a6f1d465dd920b8fc35397df917548f7d7557e2943d9754b90d1e74010f99",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-B-dark-remote-empty/hub-skills-1380x900-local-operator-dark-remote-empty.png",
-    "oldSha256": "1bc1598e318a40aa0aadde9883dbb52cedaa6ca720d41478479ceef50691bf3b",
-    "mergedSha256": "1bc1598e318a40aa0aadde9883dbb52cedaa6ca720d41478479ceef50691bf3b",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-B-dark-remote-empty/hub-skills-1380x900-local-operator-dark-search-empty.png",
-    "oldSha256": "efd306b6fb772eee736131f6bed7ec2074bf0344a86a7744219b7d10b76a8ce0",
-    "mergedSha256": "efd306b6fb772eee736131f6bed7ec2074bf0344a86a7744219b7d10b76a8ce0",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-C-corrected-unavailable/hub-skills-1380x900-local-operator-dark-unavailable.png",
-    "oldSha256": "7bda31de4f87f201b7cf0fd216077622c29a9d6e03f6cb7a707a8e5b105d25bf",
-    "mergedSha256": "7bda31de4f87f201b7cf0fd216077622c29a9d6e03f6cb7a707a8e5b105d25bf",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-C-dark-unsupported/hub-skills-1380x900-local-operator-dark-unavailable-with-filter.png",
-    "oldSha256": "20cb8ac1e372956e6ae62235e670a1e45c5098e234696b46c6f8dadc1951fa07",
-    "mergedSha256": "20cb8ac1e372956e6ae62235e670a1e45c5098e234696b46c6f8dadc1951fa07",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-C-dark-unsupported/hub-skills-1380x900-local-operator-dark-unavailable.png",
-    "oldSha256": "7bda31de4f87f201b7cf0fd216077622c29a9d6e03f6cb7a707a8e5b105d25bf",
-    "mergedSha256": "7bda31de4f87f201b7cf0fd216077622c29a9d6e03f6cb7a707a8e5b105d25bf",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-D-corrected-public-refuse/hub-skills-1380x900-local-operator-dark-consent.png",
-    "oldSha256": "50b75c79def69ba0d67d891e0123f8cee80852bfbee1a6a49903f6defa3dbac2",
-    "mergedSha256": "50b75c79def69ba0d67d891e0123f8cee80852bfbee1a6a49903f6defa3dbac2",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-D-corrected-public-refuse/hub-skills-1380x900-local-operator-dark-detail.png",
-    "oldSha256": "59b7931d033e443aa25cd985ce09065e46bffb90ca6c74735cf3ca46e1cb6182",
-    "mergedSha256": "59b7931d033e443aa25cd985ce09065e46bffb90ca6c74735cf3ca46e1cb6182",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-D-corrected-public-refuse/hub-skills-1380x900-local-operator-dark-loading.png",
-    "oldSha256": "a5e8417b8d718f01d8204635292a554d495c9807342643331df6bdb8cb3effe7",
-    "mergedSha256": "a5e8417b8d718f01d8204635292a554d495c9807342643331df6bdb8cb3effe7",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-D-corrected-public-refuse/hub-skills-1380x900-local-operator-dark-populated.png",
-    "oldSha256": "9c3d32c20ba95a2be2f095f56b6fd3184a5207213bf74f5308cb59a65531a8e5",
-    "mergedSha256": "9c3d32c20ba95a2be2f095f56b6fd3184a5207213bf74f5308cb59a65531a8e5",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-D-corrected-public-refuse/hub-skills-1380x900-local-operator-dark-publish-complete.png",
-    "oldSha256": "1007b47197eaa22b079f2cef584a34cba40727346dacbdf74911503eac985f89",
-    "mergedSha256": "1007b47197eaa22b079f2cef584a34cba40727346dacbdf74911503eac985f89",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-D-corrected-public-refuse/hub-skills-1380x900-local-operator-dark-publish-preview-payload.png",
-    "oldSha256": "2f0d04e3586fb028cf9ee523cfc513542f1e423727d4a1b12e4f59f7538c4834",
-    "mergedSha256": "2f0d04e3586fb028cf9ee523cfc513542f1e423727d4a1b12e4f59f7538c4834",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-D-corrected-public-refuse/hub-skills-1380x900-local-operator-dark-publish-preview.png",
-    "oldSha256": "8611c10659fc6ecd2173edfb4de8f53edf475010e2a5b832b5d12db729fb196c",
-    "mergedSha256": "8611c10659fc6ecd2173edfb4de8f53edf475010e2a5b832b5d12db729fb196c",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-D-corrected-public-refuse/hub-skills-1380x900-local-operator-dark-pull-failed.png",
-    "oldSha256": "8aab5dadc07519727bd65db1468308bbc90f834a8a51f005b5b6019781dc80e3",
-    "mergedSha256": "8aab5dadc07519727bd65db1468308bbc90f834a8a51f005b5b6019781dc80e3",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-D-corrected-public-refuse/hub-skills-1380x900-local-operator-dark-pull-pending.png",
-    "oldSha256": "6e57a4d4db0fb32f89c60fa968cb6ea2c6eab9c9e3d9f6be8d4a9890cbbf929a",
-    "mergedSha256": "6e57a4d4db0fb32f89c60fa968cb6ea2c6eab9c9e3d9f6be8d4a9890cbbf929a",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-D-corrected-public-refuse/hub-skills-1380x900-local-operator-dark-search-empty.png",
-    "oldSha256": "51d76d5588021d8597ba7dcdd0a8a6cb4a7a1872489a33b023f20a878975ac6a",
-    "mergedSha256": "51d76d5588021d8597ba7dcdd0a8a6cb4a7a1872489a33b023f20a878975ac6a",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-D-dark-public-refuse/hub-skills-1380x900-local-operator-dark-consent.png",
-    "oldSha256": "50b75c79def69ba0d67d891e0123f8cee80852bfbee1a6a49903f6defa3dbac2",
-    "mergedSha256": "50b75c79def69ba0d67d891e0123f8cee80852bfbee1a6a49903f6defa3dbac2",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-D-dark-public-refuse/hub-skills-1380x900-local-operator-dark-detail.png",
-    "oldSha256": "59b7931d033e443aa25cd985ce09065e46bffb90ca6c74735cf3ca46e1cb6182",
-    "mergedSha256": "59b7931d033e443aa25cd985ce09065e46bffb90ca6c74735cf3ca46e1cb6182",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-D-dark-public-refuse/hub-skills-1380x900-local-operator-dark-loading.png",
-    "oldSha256": "7b24470f793bcab8cfc5f9722e5e9759db2d73ae3f258dcec3383d9d719cc867",
-    "mergedSha256": "7b24470f793bcab8cfc5f9722e5e9759db2d73ae3f258dcec3383d9d719cc867",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-D-dark-public-refuse/hub-skills-1380x900-local-operator-dark-populated.png",
-    "oldSha256": "9c3d32c20ba95a2be2f095f56b6fd3184a5207213bf74f5308cb59a65531a8e5",
-    "mergedSha256": "9c3d32c20ba95a2be2f095f56b6fd3184a5207213bf74f5308cb59a65531a8e5",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-D-dark-public-refuse/hub-skills-1380x900-local-operator-dark-publish-complete.png",
-    "oldSha256": "1007b47197eaa22b079f2cef584a34cba40727346dacbdf74911503eac985f89",
-    "mergedSha256": "1007b47197eaa22b079f2cef584a34cba40727346dacbdf74911503eac985f89",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-D-dark-public-refuse/hub-skills-1380x900-local-operator-dark-publish-preview.png",
-    "oldSha256": "8611c10659fc6ecd2173edfb4de8f53edf475010e2a5b832b5d12db729fb196c",
-    "mergedSha256": "8611c10659fc6ecd2173edfb4de8f53edf475010e2a5b832b5d12db729fb196c",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-D-dark-public-refuse/hub-skills-1380x900-local-operator-dark-pull-failed.png",
-    "oldSha256": "8aab5dadc07519727bd65db1468308bbc90f834a8a51f005b5b6019781dc80e3",
-    "mergedSha256": "8aab5dadc07519727bd65db1468308bbc90f834a8a51f005b5b6019781dc80e3",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-D-dark-public-refuse/hub-skills-1380x900-local-operator-dark-pull-pending.png",
-    "oldSha256": "6e57a4d4db0fb32f89c60fa968cb6ea2c6eab9c9e3d9f6be8d4a9890cbbf929a",
-    "mergedSha256": "6e57a4d4db0fb32f89c60fa968cb6ea2c6eab9c9e3d9f6be8d4a9890cbbf929a",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-D-dark-public-refuse/hub-skills-1380x900-local-operator-dark-search-empty.png",
-    "oldSha256": "51d76d5588021d8597ba7dcdd0a8a6cb4a7a1872489a33b023f20a878975ac6a",
-    "mergedSha256": "51d76d5588021d8597ba7dcdd0a8a6cb4a7a1872489a33b023f20a878975ac6a",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-E-dark-publish-pending/hub-skills-1380x900-local-operator-dark-consent.png",
-    "oldSha256": "c44ce49d16628eccc8dd248ba1f1e200ee0f5a8a54d93442c5a29e78e641ad70",
-    "mergedSha256": "c44ce49d16628eccc8dd248ba1f1e200ee0f5a8a54d93442c5a29e78e641ad70",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-E-dark-publish-pending/hub-skills-1380x900-local-operator-dark-detail.png",
-    "oldSha256": "d530449254f94e358f79b5f2dcd264bc02ca17d7d3130975714731da985f47be",
-    "mergedSha256": "d530449254f94e358f79b5f2dcd264bc02ca17d7d3130975714731da985f47be",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-E-dark-publish-pending/hub-skills-1380x900-local-operator-dark-populated.png",
-    "oldSha256": "db3a6f1d465dd920b8fc35397df917548f7d7557e2943d9754b90d1e74010f99",
-    "mergedSha256": "db3a6f1d465dd920b8fc35397df917548f7d7557e2943d9754b90d1e74010f99",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-E-dark-publish-pending/hub-skills-1380x900-local-operator-dark-publish-pending.png",
-    "oldSha256": "197fe9b0a0a35f2977974e8138110a283f57610ad122fc71bf80c051242c4608",
-    "mergedSha256": "197fe9b0a0a35f2977974e8138110a283f57610ad122fc71bf80c051242c4608",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-E-dark-publish-pending/hub-skills-1380x900-local-operator-dark-publish-preview.png",
-    "oldSha256": "77373e89e987ad2c6d8adde2bff605e51f26634cdc1d4183358c83d2a5d5d326",
-    "mergedSha256": "77373e89e987ad2c6d8adde2bff605e51f26634cdc1d4183358c83d2a5d5d326",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-E-dark-publish-pending/hub-skills-1380x900-local-operator-dark-pull-success.png",
-    "oldSha256": "872f91b0015d888f1350c480f205f48bc06c0c0836752d24a181703db3969eaa",
-    "mergedSha256": "872f91b0015d888f1350c480f205f48bc06c0c0836752d24a181703db3969eaa",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-E-dark-publish-pending/hub-skills-1380x900-local-operator-dark-search-empty.png",
-    "oldSha256": "25e5796c68dd278999b542283d2b8a2a482403d595a3e7eab7391209fb04a1f6",
-    "mergedSha256": "25e5796c68dd278999b542283d2b8a2a482403d595a3e7eab7391209fb04a1f6",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-F-corrected-signed-out/hub-skills-1380x900-local-operator-dark-detail.png",
-    "oldSha256": "40e8e8781d1e4fa2847330f41baeca5f57bbf560abe2793fe8972cd2a1beb20b",
-    "mergedSha256": "40e8e8781d1e4fa2847330f41baeca5f57bbf560abe2793fe8972cd2a1beb20b",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-F-corrected-signed-out/hub-skills-1380x900-local-operator-dark-populated.png",
-    "oldSha256": "6938fa25bbbf4f0939a2b6c7dbbc46d7c1f0e0b91b6f332d635abf791d0c07cb",
-    "mergedSha256": "6938fa25bbbf4f0939a2b6c7dbbc46d7c1f0e0b91b6f332d635abf791d0c07cb",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-F-corrected-signed-out/hub-skills-1380x900-local-operator-dark-search-empty.png",
-    "oldSha256": "96913e7bad5136f8338b8b8a2494fc0d2a9dafaa19b6ded9a8617868d192752b",
-    "mergedSha256": "96913e7bad5136f8338b8b8a2494fc0d2a9dafaa19b6ded9a8617868d192752b",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-F-corrected-signed-out/hub-skills-1380x900-local-operator-dark-signed-out.png",
-    "oldSha256": "40e8e8781d1e4fa2847330f41baeca5f57bbf560abe2793fe8972cd2a1beb20b",
-    "mergedSha256": "40e8e8781d1e4fa2847330f41baeca5f57bbf560abe2793fe8972cd2a1beb20b",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-F-dark-signed-out/hub-skills-1380x900-local-operator-dark-detail.png",
-    "oldSha256": "40e8e8781d1e4fa2847330f41baeca5f57bbf560abe2793fe8972cd2a1beb20b",
-    "mergedSha256": "40e8e8781d1e4fa2847330f41baeca5f57bbf560abe2793fe8972cd2a1beb20b",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-F-dark-signed-out/hub-skills-1380x900-local-operator-dark-loading.png",
-    "oldSha256": "45b265b94dd4f7fa6c289e59e5c3d846aa5ebbf5e36cc7506bb69f301e8760e2",
-    "mergedSha256": "45b265b94dd4f7fa6c289e59e5c3d846aa5ebbf5e36cc7506bb69f301e8760e2",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-F-dark-signed-out/hub-skills-1380x900-local-operator-dark-populated.png",
-    "oldSha256": "6938fa25bbbf4f0939a2b6c7dbbc46d7c1f0e0b91b6f332d635abf791d0c07cb",
-    "mergedSha256": "6938fa25bbbf4f0939a2b6c7dbbc46d7c1f0e0b91b6f332d635abf791d0c07cb",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-F-dark-signed-out/hub-skills-1380x900-local-operator-dark-search-empty.png",
-    "oldSha256": "96913e7bad5136f8338b8b8a2494fc0d2a9dafaa19b6ded9a8617868d192752b",
-    "mergedSha256": "96913e7bad5136f8338b8b8a2494fc0d2a9dafaa19b6ded9a8617868d192752b",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-F-dark-signed-out/hub-skills-1380x900-local-operator-dark-signed-out.png",
-    "oldSha256": "40e8e8781d1e4fa2847330f41baeca5f57bbf560abe2793fe8972cd2a1beb20b",
-    "mergedSha256": "40e8e8781d1e4fa2847330f41baeca5f57bbf560abe2793fe8972cd2a1beb20b",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-G-light-default/hub-skills-1380x900-local-operator-light-consent.png",
-    "oldSha256": "d42323199224523ceded4ce6141774d8ecd1c37188f46e80bf653d11218c57c1",
-    "mergedSha256": "d42323199224523ceded4ce6141774d8ecd1c37188f46e80bf653d11218c57c1",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-G-light-default/hub-skills-1380x900-local-operator-light-detail.png",
-    "oldSha256": "3a7d633c2981874abd2da0fe7115f7f4bc9cb872475ae3d0b3cdd5a802fe26d4",
-    "mergedSha256": "3a7d633c2981874abd2da0fe7115f7f4bc9cb872475ae3d0b3cdd5a802fe26d4",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-G-light-default/hub-skills-1380x900-local-operator-light-populated.png",
-    "oldSha256": "cde8535249b05b3693df52fddf32cc57aec29486a5be027e8281a80db1d22a65",
-    "mergedSha256": "cde8535249b05b3693df52fddf32cc57aec29486a5be027e8281a80db1d22a65",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-G-light-default/hub-skills-1380x900-local-operator-light-publish-complete.png",
-    "oldSha256": "e53ed01841fc55a0989b30fecc450da7969735169279a90abd4f859fd2f2335d",
-    "mergedSha256": "e53ed01841fc55a0989b30fecc450da7969735169279a90abd4f859fd2f2335d",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-G-light-default/hub-skills-1380x900-local-operator-light-publish-preview.png",
-    "oldSha256": "1fafaaedf6173599922b258e100c393969acf0972a51aab845a7697524365b04",
-    "mergedSha256": "1fafaaedf6173599922b258e100c393969acf0972a51aab845a7697524365b04",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-G-light-default/hub-skills-1380x900-local-operator-light-pull-success.png",
-    "oldSha256": "68637633c28798ec478555c717a48baf39a1e0adce4d1dcb345bb06439e987cc",
-    "mergedSha256": "68637633c28798ec478555c717a48baf39a1e0adce4d1dcb345bb06439e987cc",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-G-light-default/hub-skills-1380x900-local-operator-light-search-empty.png",
-    "oldSha256": "ba5fa7c528468bece95c09ca3557f70e9de59283200e252e644ec3f97d928d9e",
-    "mergedSha256": "ba5fa7c528468bece95c09ca3557f70e9de59283200e252e644ec3f97d928d9e",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-H-dark-narrow/hub-skills-800x900-local-operator-dark-consent.png",
-    "oldSha256": "28430e83cb22a52f355af999a8e685343bd96e588b51f7bc5360a33a4d4bde9b",
-    "mergedSha256": "28430e83cb22a52f355af999a8e685343bd96e588b51f7bc5360a33a4d4bde9b",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-H-dark-narrow/hub-skills-800x900-local-operator-dark-detail.png",
-    "oldSha256": "5ca2218fbcd0485be75334022ce771b98718cda2ee5e7fee57e2e0cc48243b51",
-    "mergedSha256": "5ca2218fbcd0485be75334022ce771b98718cda2ee5e7fee57e2e0cc48243b51",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-H-dark-narrow/hub-skills-800x900-local-operator-dark-populated.png",
-    "oldSha256": "14a433afc9c0bcf7e1cd689c0537c65ee9af4f17d552ea0c86aecab49ef984db",
-    "mergedSha256": "14a433afc9c0bcf7e1cd689c0537c65ee9af4f17d552ea0c86aecab49ef984db",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-H-dark-narrow/hub-skills-800x900-local-operator-dark-publish-complete.png",
-    "oldSha256": "d503823b25384e0fc552306a5030af43d8e68e1556e7e4a419a21debb16f7f30",
-    "mergedSha256": "d503823b25384e0fc552306a5030af43d8e68e1556e7e4a419a21debb16f7f30",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-H-dark-narrow/hub-skills-800x900-local-operator-dark-publish-preview.png",
-    "oldSha256": "1153a8aa993e88d57e6ef6fb771d292b1d5c83d8817664149211321d40edebb7",
-    "mergedSha256": "1153a8aa993e88d57e6ef6fb771d292b1d5c83d8817664149211321d40edebb7",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-H-dark-narrow/hub-skills-800x900-local-operator-dark-pull-pending.png",
-    "oldSha256": "fdfe0d918bd97ea985e18989a0082c00b6c6f51c19d47974d7ea1c291225ca84",
-    "mergedSha256": "fdfe0d918bd97ea985e18989a0082c00b6c6f51c19d47974d7ea1c291225ca84",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-H-dark-narrow/hub-skills-800x900-local-operator-dark-pull-success.png",
-    "oldSha256": "a09754438dda1dcc35b16db3c36fa7295cab0fcacfc1daa37ad92acf81b62c0c",
-    "mergedSha256": "a09754438dda1dcc35b16db3c36fa7295cab0fcacfc1daa37ad92acf81b62c0c",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-H-dark-narrow/hub-skills-800x900-local-operator-dark-search-empty.png",
-    "oldSha256": "1cae85bdf4a05000cf78f92d346236aac312c9a9142ab236902b56506ac2198a",
-    "mergedSha256": "1cae85bdf4a05000cf78f92d346236aac312c9a9142ab236902b56506ac2198a",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-I-released-core-adapter-absent/hub-skills-1380x900-local-operator-dark-adapter-absent-agents.png",
-    "oldSha256": "6fa3c772dec1f5208c642a7eaa613114f2fc93655f1e0f90d761d67434040cee",
-    "mergedSha256": "6fa3c772dec1f5208c642a7eaa613114f2fc93655f1e0f90d761d67434040cee",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-J-enabled-and-withdrawn/hub-skills-1380x900-local-operator-dark-adapter-withdrawn-agents.png",
-    "oldSha256": "6edd0493c89f621dd467219abd0ddee44215e6ebcaec1b333dd286c55541488b",
-    "mergedSha256": "6edd0493c89f621dd467219abd0ddee44215e6ebcaec1b333dd286c55541488b",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-J-enabled-and-withdrawn/hub-skills-1380x900-local-operator-dark-loading.png",
-    "oldSha256": "b98950b2a537b24d480eb85e17f796a8fffa2f44f3bc0de58cebbfb14938b88e",
-    "mergedSha256": "b98950b2a537b24d480eb85e17f796a8fffa2f44f3bc0de58cebbfb14938b88e",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-J-enabled-and-withdrawn/hub-skills-1380x900-local-operator-dark-populated.png",
-    "oldSha256": "db3a6f1d465dd920b8fc35397df917548f7d7557e2943d9754b90d1e74010f99",
-    "mergedSha256": "db3a6f1d465dd920b8fc35397df917548f7d7557e2943d9754b90d1e74010f99",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-K-old-core-guard-disabled/hub-core-guard-1380x900-local-operator-dark-old-core-disabled.png",
-    "oldSha256": "2df6b9a8577731e0b18a28acaf902498f78403486424857b2ef2077b14f3500c",
-    "mergedSha256": "2df6b9a8577731e0b18a28acaf902498f78403486424857b2ef2077b14f3500c",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-M-fixed-guard-capture-recovery/hub-core-guard-1380x900-local-operator-dark-fixture-browse-zero.png",
-    "oldSha256": "1f25c4f7cb69e1aa56f25ab2a0cfd8ba6518ca7a791ba6b305d7a75482860b06",
-    "mergedSha256": "1f25c4f7cb69e1aa56f25ab2a0cfd8ba6518ca7a791ba6b305d7a75482860b06",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R-M-fixed-guard-capture-recovery/hub-core-guard-1380x900-local-operator-dark-fixture-policy-off.png",
-    "oldSha256": "0d7e8c974d0852c1ff38b3fbd3206d50626c41b15a8cccdd86e468696be9f849",
-    "mergedSha256": "0d7e8c974d0852c1ff38b3fbd3206d50626c41b15a8cccdd86e468696be9f849",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R3-fixed-focus-wide/r3-fixed-dialog-held.png",
-    "oldSha256": "52885e0c067f608605067faf240645c53049af09339ea599102f6eda5dd6240b",
-    "mergedSha256": "52885e0c067f608605067faf240645c53049af09339ea599102f6eda5dd6240b",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R3-fixed-focus-wide/r3-fixed-switch-held.png",
-    "oldSha256": "a128ff13a84713a6997f55d1d480b787a46bb470439718db39267f3bdd73b920",
-    "mergedSha256": "a128ff13a84713a6997f55d1d480b787a46bb470439718db39267f3bdd73b920",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R3-fixed-short-narrow-light/r3-disconnected-narrow-light.png",
-    "oldSha256": "47250585fafbe024097412cbfa82fd88a2be1146772b005935b6f3a91cc70909",
-    "mergedSha256": "47250585fafbe024097412cbfa82fd88a2be1146772b005935b6f3a91cc70909",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R3-fixed-short-narrow-light/r3-fixed-policy-confirmed.png",
-    "oldSha256": "ed7e7655a474ed02f9d2e39e31986bde61ce0615b1bfc4dc908ac9a04b7fd63c",
-    "mergedSha256": "ed7e7655a474ed02f9d2e39e31986bde61ce0615b1bfc4dc908ac9a04b7fd63c",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R3-old-wide/r3-old-wide.png",
-    "oldSha256": "26b0ec95430e0fbb56bfdb74948f41c661d29419321a401643b2680300dae71b",
-    "mergedSha256": "26b0ec95430e0fbb56bfdb74948f41c661d29419321a401643b2680300dae71b",
-    "identical": true
-  },
-  {
-    "path": "docs/evidence/hub-skills-library/frames/R3-prerelease-narrow-light/r3-prerelease-narrow-light.png",
-    "oldSha256": "8a0ae9cc463e1225a73f9efd9951440a854696befa8f49218db56b83b3aa1815",
-    "mergedSha256": "8a0ae9cc463e1225a73f9efd9951440a854696befa8f49218db56b83b3aa1815",
-    "identical": true
-  }
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-A-dark-default/hub-skills-1380x900-local-operator-dark-consent.png",
+		"oldSha256": "c44ce49d16628eccc8dd248ba1f1e200ee0f5a8a54d93442c5a29e78e641ad70",
+		"mergedSha256": "c44ce49d16628eccc8dd248ba1f1e200ee0f5a8a54d93442c5a29e78e641ad70",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-A-dark-default/hub-skills-1380x900-local-operator-dark-detail.png",
+		"oldSha256": "d530449254f94e358f79b5f2dcd264bc02ca17d7d3130975714731da985f47be",
+		"mergedSha256": "d530449254f94e358f79b5f2dcd264bc02ca17d7d3130975714731da985f47be",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-A-dark-default/hub-skills-1380x900-local-operator-dark-loading.png",
+		"oldSha256": "ae9530302c6e0beaf3248e0bbd200b613aa3fb3c3f98b7a47364cd2ce5d56c84",
+		"mergedSha256": "ae9530302c6e0beaf3248e0bbd200b613aa3fb3c3f98b7a47364cd2ce5d56c84",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-A-dark-default/hub-skills-1380x900-local-operator-dark-populated.png",
+		"oldSha256": "db3a6f1d465dd920b8fc35397df917548f7d7557e2943d9754b90d1e74010f99",
+		"mergedSha256": "db3a6f1d465dd920b8fc35397df917548f7d7557e2943d9754b90d1e74010f99",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-A-dark-default/hub-skills-1380x900-local-operator-dark-publish-complete.png",
+		"oldSha256": "a70036daeaef533c358cdbfee3e37afeebcc9d85a05d2498e4864b8a55f067b1",
+		"mergedSha256": "a70036daeaef533c358cdbfee3e37afeebcc9d85a05d2498e4864b8a55f067b1",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-A-dark-default/hub-skills-1380x900-local-operator-dark-publish-preview.png",
+		"oldSha256": "77373e89e987ad2c6d8adde2bff605e51f26634cdc1d4183358c83d2a5d5d326",
+		"mergedSha256": "77373e89e987ad2c6d8adde2bff605e51f26634cdc1d4183358c83d2a5d5d326",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-A-dark-default/hub-skills-1380x900-local-operator-dark-pull-pending.png",
+		"oldSha256": "43138bcb8876002fb6a50e6d43d0026e0d3b26dfd269a50c911dad65e7af9649",
+		"mergedSha256": "43138bcb8876002fb6a50e6d43d0026e0d3b26dfd269a50c911dad65e7af9649",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-A-dark-default/hub-skills-1380x900-local-operator-dark-pull-success.png",
+		"oldSha256": "54cb7cd37fc3d9815e851940461eae61082a49fb191e54eb02815c5438aafbcf",
+		"mergedSha256": "54cb7cd37fc3d9815e851940461eae61082a49fb191e54eb02815c5438aafbcf",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-A-dark-default/hub-skills-1380x900-local-operator-dark-search-empty.png",
+		"oldSha256": "25e5796c68dd278999b542283d2b8a2a482403d595a3e7eab7391209fb04a1f6",
+		"mergedSha256": "25e5796c68dd278999b542283d2b8a2a482403d595a3e7eab7391209fb04a1f6",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-A-loading-pair/hub-skills-1380x900-local-operator-dark-loading-consecutive.png",
+		"oldSha256": "64388eb055444dd616e63644f52cd1334bef46459dd612487e977bd1b6ebe756",
+		"mergedSha256": "64388eb055444dd616e63644f52cd1334bef46459dd612487e977bd1b6ebe756",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-A-loading-pair/hub-skills-1380x900-local-operator-dark-loading.png",
+		"oldSha256": "cafe24a5c0a47eda90ca5804c7150cc6fa4cc5c4b014c90956e65bca7d839347",
+		"mergedSha256": "cafe24a5c0a47eda90ca5804c7150cc6fa4cc5c4b014c90956e65bca7d839347",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-A-loading-pair/hub-skills-1380x900-local-operator-dark-populated.png",
+		"oldSha256": "db3a6f1d465dd920b8fc35397df917548f7d7557e2943d9754b90d1e74010f99",
+		"mergedSha256": "db3a6f1d465dd920b8fc35397df917548f7d7557e2943d9754b90d1e74010f99",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-B-dark-remote-empty/hub-skills-1380x900-local-operator-dark-remote-empty.png",
+		"oldSha256": "1bc1598e318a40aa0aadde9883dbb52cedaa6ca720d41478479ceef50691bf3b",
+		"mergedSha256": "1bc1598e318a40aa0aadde9883dbb52cedaa6ca720d41478479ceef50691bf3b",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-B-dark-remote-empty/hub-skills-1380x900-local-operator-dark-search-empty.png",
+		"oldSha256": "efd306b6fb772eee736131f6bed7ec2074bf0344a86a7744219b7d10b76a8ce0",
+		"mergedSha256": "efd306b6fb772eee736131f6bed7ec2074bf0344a86a7744219b7d10b76a8ce0",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-C-corrected-unavailable/hub-skills-1380x900-local-operator-dark-unavailable.png",
+		"oldSha256": "7bda31de4f87f201b7cf0fd216077622c29a9d6e03f6cb7a707a8e5b105d25bf",
+		"mergedSha256": "7bda31de4f87f201b7cf0fd216077622c29a9d6e03f6cb7a707a8e5b105d25bf",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-C-dark-unsupported/hub-skills-1380x900-local-operator-dark-unavailable-with-filter.png",
+		"oldSha256": "20cb8ac1e372956e6ae62235e670a1e45c5098e234696b46c6f8dadc1951fa07",
+		"mergedSha256": "20cb8ac1e372956e6ae62235e670a1e45c5098e234696b46c6f8dadc1951fa07",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-C-dark-unsupported/hub-skills-1380x900-local-operator-dark-unavailable.png",
+		"oldSha256": "7bda31de4f87f201b7cf0fd216077622c29a9d6e03f6cb7a707a8e5b105d25bf",
+		"mergedSha256": "7bda31de4f87f201b7cf0fd216077622c29a9d6e03f6cb7a707a8e5b105d25bf",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-D-corrected-public-refuse/hub-skills-1380x900-local-operator-dark-consent.png",
+		"oldSha256": "50b75c79def69ba0d67d891e0123f8cee80852bfbee1a6a49903f6defa3dbac2",
+		"mergedSha256": "50b75c79def69ba0d67d891e0123f8cee80852bfbee1a6a49903f6defa3dbac2",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-D-corrected-public-refuse/hub-skills-1380x900-local-operator-dark-detail.png",
+		"oldSha256": "59b7931d033e443aa25cd985ce09065e46bffb90ca6c74735cf3ca46e1cb6182",
+		"mergedSha256": "59b7931d033e443aa25cd985ce09065e46bffb90ca6c74735cf3ca46e1cb6182",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-D-corrected-public-refuse/hub-skills-1380x900-local-operator-dark-loading.png",
+		"oldSha256": "a5e8417b8d718f01d8204635292a554d495c9807342643331df6bdb8cb3effe7",
+		"mergedSha256": "a5e8417b8d718f01d8204635292a554d495c9807342643331df6bdb8cb3effe7",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-D-corrected-public-refuse/hub-skills-1380x900-local-operator-dark-populated.png",
+		"oldSha256": "9c3d32c20ba95a2be2f095f56b6fd3184a5207213bf74f5308cb59a65531a8e5",
+		"mergedSha256": "9c3d32c20ba95a2be2f095f56b6fd3184a5207213bf74f5308cb59a65531a8e5",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-D-corrected-public-refuse/hub-skills-1380x900-local-operator-dark-publish-complete.png",
+		"oldSha256": "1007b47197eaa22b079f2cef584a34cba40727346dacbdf74911503eac985f89",
+		"mergedSha256": "1007b47197eaa22b079f2cef584a34cba40727346dacbdf74911503eac985f89",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-D-corrected-public-refuse/hub-skills-1380x900-local-operator-dark-publish-preview-payload.png",
+		"oldSha256": "2f0d04e3586fb028cf9ee523cfc513542f1e423727d4a1b12e4f59f7538c4834",
+		"mergedSha256": "2f0d04e3586fb028cf9ee523cfc513542f1e423727d4a1b12e4f59f7538c4834",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-D-corrected-public-refuse/hub-skills-1380x900-local-operator-dark-publish-preview.png",
+		"oldSha256": "8611c10659fc6ecd2173edfb4de8f53edf475010e2a5b832b5d12db729fb196c",
+		"mergedSha256": "8611c10659fc6ecd2173edfb4de8f53edf475010e2a5b832b5d12db729fb196c",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-D-corrected-public-refuse/hub-skills-1380x900-local-operator-dark-pull-failed.png",
+		"oldSha256": "8aab5dadc07519727bd65db1468308bbc90f834a8a51f005b5b6019781dc80e3",
+		"mergedSha256": "8aab5dadc07519727bd65db1468308bbc90f834a8a51f005b5b6019781dc80e3",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-D-corrected-public-refuse/hub-skills-1380x900-local-operator-dark-pull-pending.png",
+		"oldSha256": "6e57a4d4db0fb32f89c60fa968cb6ea2c6eab9c9e3d9f6be8d4a9890cbbf929a",
+		"mergedSha256": "6e57a4d4db0fb32f89c60fa968cb6ea2c6eab9c9e3d9f6be8d4a9890cbbf929a",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-D-corrected-public-refuse/hub-skills-1380x900-local-operator-dark-search-empty.png",
+		"oldSha256": "51d76d5588021d8597ba7dcdd0a8a6cb4a7a1872489a33b023f20a878975ac6a",
+		"mergedSha256": "51d76d5588021d8597ba7dcdd0a8a6cb4a7a1872489a33b023f20a878975ac6a",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-D-dark-public-refuse/hub-skills-1380x900-local-operator-dark-consent.png",
+		"oldSha256": "50b75c79def69ba0d67d891e0123f8cee80852bfbee1a6a49903f6defa3dbac2",
+		"mergedSha256": "50b75c79def69ba0d67d891e0123f8cee80852bfbee1a6a49903f6defa3dbac2",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-D-dark-public-refuse/hub-skills-1380x900-local-operator-dark-detail.png",
+		"oldSha256": "59b7931d033e443aa25cd985ce09065e46bffb90ca6c74735cf3ca46e1cb6182",
+		"mergedSha256": "59b7931d033e443aa25cd985ce09065e46bffb90ca6c74735cf3ca46e1cb6182",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-D-dark-public-refuse/hub-skills-1380x900-local-operator-dark-loading.png",
+		"oldSha256": "7b24470f793bcab8cfc5f9722e5e9759db2d73ae3f258dcec3383d9d719cc867",
+		"mergedSha256": "7b24470f793bcab8cfc5f9722e5e9759db2d73ae3f258dcec3383d9d719cc867",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-D-dark-public-refuse/hub-skills-1380x900-local-operator-dark-populated.png",
+		"oldSha256": "9c3d32c20ba95a2be2f095f56b6fd3184a5207213bf74f5308cb59a65531a8e5",
+		"mergedSha256": "9c3d32c20ba95a2be2f095f56b6fd3184a5207213bf74f5308cb59a65531a8e5",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-D-dark-public-refuse/hub-skills-1380x900-local-operator-dark-publish-complete.png",
+		"oldSha256": "1007b47197eaa22b079f2cef584a34cba40727346dacbdf74911503eac985f89",
+		"mergedSha256": "1007b47197eaa22b079f2cef584a34cba40727346dacbdf74911503eac985f89",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-D-dark-public-refuse/hub-skills-1380x900-local-operator-dark-publish-preview.png",
+		"oldSha256": "8611c10659fc6ecd2173edfb4de8f53edf475010e2a5b832b5d12db729fb196c",
+		"mergedSha256": "8611c10659fc6ecd2173edfb4de8f53edf475010e2a5b832b5d12db729fb196c",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-D-dark-public-refuse/hub-skills-1380x900-local-operator-dark-pull-failed.png",
+		"oldSha256": "8aab5dadc07519727bd65db1468308bbc90f834a8a51f005b5b6019781dc80e3",
+		"mergedSha256": "8aab5dadc07519727bd65db1468308bbc90f834a8a51f005b5b6019781dc80e3",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-D-dark-public-refuse/hub-skills-1380x900-local-operator-dark-pull-pending.png",
+		"oldSha256": "6e57a4d4db0fb32f89c60fa968cb6ea2c6eab9c9e3d9f6be8d4a9890cbbf929a",
+		"mergedSha256": "6e57a4d4db0fb32f89c60fa968cb6ea2c6eab9c9e3d9f6be8d4a9890cbbf929a",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-D-dark-public-refuse/hub-skills-1380x900-local-operator-dark-search-empty.png",
+		"oldSha256": "51d76d5588021d8597ba7dcdd0a8a6cb4a7a1872489a33b023f20a878975ac6a",
+		"mergedSha256": "51d76d5588021d8597ba7dcdd0a8a6cb4a7a1872489a33b023f20a878975ac6a",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-E-dark-publish-pending/hub-skills-1380x900-local-operator-dark-consent.png",
+		"oldSha256": "c44ce49d16628eccc8dd248ba1f1e200ee0f5a8a54d93442c5a29e78e641ad70",
+		"mergedSha256": "c44ce49d16628eccc8dd248ba1f1e200ee0f5a8a54d93442c5a29e78e641ad70",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-E-dark-publish-pending/hub-skills-1380x900-local-operator-dark-detail.png",
+		"oldSha256": "d530449254f94e358f79b5f2dcd264bc02ca17d7d3130975714731da985f47be",
+		"mergedSha256": "d530449254f94e358f79b5f2dcd264bc02ca17d7d3130975714731da985f47be",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-E-dark-publish-pending/hub-skills-1380x900-local-operator-dark-populated.png",
+		"oldSha256": "db3a6f1d465dd920b8fc35397df917548f7d7557e2943d9754b90d1e74010f99",
+		"mergedSha256": "db3a6f1d465dd920b8fc35397df917548f7d7557e2943d9754b90d1e74010f99",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-E-dark-publish-pending/hub-skills-1380x900-local-operator-dark-publish-pending.png",
+		"oldSha256": "197fe9b0a0a35f2977974e8138110a283f57610ad122fc71bf80c051242c4608",
+		"mergedSha256": "197fe9b0a0a35f2977974e8138110a283f57610ad122fc71bf80c051242c4608",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-E-dark-publish-pending/hub-skills-1380x900-local-operator-dark-publish-preview.png",
+		"oldSha256": "77373e89e987ad2c6d8adde2bff605e51f26634cdc1d4183358c83d2a5d5d326",
+		"mergedSha256": "77373e89e987ad2c6d8adde2bff605e51f26634cdc1d4183358c83d2a5d5d326",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-E-dark-publish-pending/hub-skills-1380x900-local-operator-dark-pull-success.png",
+		"oldSha256": "872f91b0015d888f1350c480f205f48bc06c0c0836752d24a181703db3969eaa",
+		"mergedSha256": "872f91b0015d888f1350c480f205f48bc06c0c0836752d24a181703db3969eaa",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-E-dark-publish-pending/hub-skills-1380x900-local-operator-dark-search-empty.png",
+		"oldSha256": "25e5796c68dd278999b542283d2b8a2a482403d595a3e7eab7391209fb04a1f6",
+		"mergedSha256": "25e5796c68dd278999b542283d2b8a2a482403d595a3e7eab7391209fb04a1f6",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-F-corrected-signed-out/hub-skills-1380x900-local-operator-dark-detail.png",
+		"oldSha256": "40e8e8781d1e4fa2847330f41baeca5f57bbf560abe2793fe8972cd2a1beb20b",
+		"mergedSha256": "40e8e8781d1e4fa2847330f41baeca5f57bbf560abe2793fe8972cd2a1beb20b",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-F-corrected-signed-out/hub-skills-1380x900-local-operator-dark-populated.png",
+		"oldSha256": "6938fa25bbbf4f0939a2b6c7dbbc46d7c1f0e0b91b6f332d635abf791d0c07cb",
+		"mergedSha256": "6938fa25bbbf4f0939a2b6c7dbbc46d7c1f0e0b91b6f332d635abf791d0c07cb",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-F-corrected-signed-out/hub-skills-1380x900-local-operator-dark-search-empty.png",
+		"oldSha256": "96913e7bad5136f8338b8b8a2494fc0d2a9dafaa19b6ded9a8617868d192752b",
+		"mergedSha256": "96913e7bad5136f8338b8b8a2494fc0d2a9dafaa19b6ded9a8617868d192752b",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-F-corrected-signed-out/hub-skills-1380x900-local-operator-dark-signed-out.png",
+		"oldSha256": "40e8e8781d1e4fa2847330f41baeca5f57bbf560abe2793fe8972cd2a1beb20b",
+		"mergedSha256": "40e8e8781d1e4fa2847330f41baeca5f57bbf560abe2793fe8972cd2a1beb20b",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-F-dark-signed-out/hub-skills-1380x900-local-operator-dark-detail.png",
+		"oldSha256": "40e8e8781d1e4fa2847330f41baeca5f57bbf560abe2793fe8972cd2a1beb20b",
+		"mergedSha256": "40e8e8781d1e4fa2847330f41baeca5f57bbf560abe2793fe8972cd2a1beb20b",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-F-dark-signed-out/hub-skills-1380x900-local-operator-dark-loading.png",
+		"oldSha256": "45b265b94dd4f7fa6c289e59e5c3d846aa5ebbf5e36cc7506bb69f301e8760e2",
+		"mergedSha256": "45b265b94dd4f7fa6c289e59e5c3d846aa5ebbf5e36cc7506bb69f301e8760e2",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-F-dark-signed-out/hub-skills-1380x900-local-operator-dark-populated.png",
+		"oldSha256": "6938fa25bbbf4f0939a2b6c7dbbc46d7c1f0e0b91b6f332d635abf791d0c07cb",
+		"mergedSha256": "6938fa25bbbf4f0939a2b6c7dbbc46d7c1f0e0b91b6f332d635abf791d0c07cb",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-F-dark-signed-out/hub-skills-1380x900-local-operator-dark-search-empty.png",
+		"oldSha256": "96913e7bad5136f8338b8b8a2494fc0d2a9dafaa19b6ded9a8617868d192752b",
+		"mergedSha256": "96913e7bad5136f8338b8b8a2494fc0d2a9dafaa19b6ded9a8617868d192752b",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-F-dark-signed-out/hub-skills-1380x900-local-operator-dark-signed-out.png",
+		"oldSha256": "40e8e8781d1e4fa2847330f41baeca5f57bbf560abe2793fe8972cd2a1beb20b",
+		"mergedSha256": "40e8e8781d1e4fa2847330f41baeca5f57bbf560abe2793fe8972cd2a1beb20b",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-G-light-default/hub-skills-1380x900-local-operator-light-consent.png",
+		"oldSha256": "d42323199224523ceded4ce6141774d8ecd1c37188f46e80bf653d11218c57c1",
+		"mergedSha256": "d42323199224523ceded4ce6141774d8ecd1c37188f46e80bf653d11218c57c1",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-G-light-default/hub-skills-1380x900-local-operator-light-detail.png",
+		"oldSha256": "3a7d633c2981874abd2da0fe7115f7f4bc9cb872475ae3d0b3cdd5a802fe26d4",
+		"mergedSha256": "3a7d633c2981874abd2da0fe7115f7f4bc9cb872475ae3d0b3cdd5a802fe26d4",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-G-light-default/hub-skills-1380x900-local-operator-light-populated.png",
+		"oldSha256": "cde8535249b05b3693df52fddf32cc57aec29486a5be027e8281a80db1d22a65",
+		"mergedSha256": "cde8535249b05b3693df52fddf32cc57aec29486a5be027e8281a80db1d22a65",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-G-light-default/hub-skills-1380x900-local-operator-light-publish-complete.png",
+		"oldSha256": "e53ed01841fc55a0989b30fecc450da7969735169279a90abd4f859fd2f2335d",
+		"mergedSha256": "e53ed01841fc55a0989b30fecc450da7969735169279a90abd4f859fd2f2335d",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-G-light-default/hub-skills-1380x900-local-operator-light-publish-preview.png",
+		"oldSha256": "1fafaaedf6173599922b258e100c393969acf0972a51aab845a7697524365b04",
+		"mergedSha256": "1fafaaedf6173599922b258e100c393969acf0972a51aab845a7697524365b04",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-G-light-default/hub-skills-1380x900-local-operator-light-pull-success.png",
+		"oldSha256": "68637633c28798ec478555c717a48baf39a1e0adce4d1dcb345bb06439e987cc",
+		"mergedSha256": "68637633c28798ec478555c717a48baf39a1e0adce4d1dcb345bb06439e987cc",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-G-light-default/hub-skills-1380x900-local-operator-light-search-empty.png",
+		"oldSha256": "ba5fa7c528468bece95c09ca3557f70e9de59283200e252e644ec3f97d928d9e",
+		"mergedSha256": "ba5fa7c528468bece95c09ca3557f70e9de59283200e252e644ec3f97d928d9e",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-H-dark-narrow/hub-skills-800x900-local-operator-dark-consent.png",
+		"oldSha256": "28430e83cb22a52f355af999a8e685343bd96e588b51f7bc5360a33a4d4bde9b",
+		"mergedSha256": "28430e83cb22a52f355af999a8e685343bd96e588b51f7bc5360a33a4d4bde9b",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-H-dark-narrow/hub-skills-800x900-local-operator-dark-detail.png",
+		"oldSha256": "5ca2218fbcd0485be75334022ce771b98718cda2ee5e7fee57e2e0cc48243b51",
+		"mergedSha256": "5ca2218fbcd0485be75334022ce771b98718cda2ee5e7fee57e2e0cc48243b51",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-H-dark-narrow/hub-skills-800x900-local-operator-dark-populated.png",
+		"oldSha256": "14a433afc9c0bcf7e1cd689c0537c65ee9af4f17d552ea0c86aecab49ef984db",
+		"mergedSha256": "14a433afc9c0bcf7e1cd689c0537c65ee9af4f17d552ea0c86aecab49ef984db",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-H-dark-narrow/hub-skills-800x900-local-operator-dark-publish-complete.png",
+		"oldSha256": "d503823b25384e0fc552306a5030af43d8e68e1556e7e4a419a21debb16f7f30",
+		"mergedSha256": "d503823b25384e0fc552306a5030af43d8e68e1556e7e4a419a21debb16f7f30",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-H-dark-narrow/hub-skills-800x900-local-operator-dark-publish-preview.png",
+		"oldSha256": "1153a8aa993e88d57e6ef6fb771d292b1d5c83d8817664149211321d40edebb7",
+		"mergedSha256": "1153a8aa993e88d57e6ef6fb771d292b1d5c83d8817664149211321d40edebb7",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-H-dark-narrow/hub-skills-800x900-local-operator-dark-pull-pending.png",
+		"oldSha256": "fdfe0d918bd97ea985e18989a0082c00b6c6f51c19d47974d7ea1c291225ca84",
+		"mergedSha256": "fdfe0d918bd97ea985e18989a0082c00b6c6f51c19d47974d7ea1c291225ca84",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-H-dark-narrow/hub-skills-800x900-local-operator-dark-pull-success.png",
+		"oldSha256": "a09754438dda1dcc35b16db3c36fa7295cab0fcacfc1daa37ad92acf81b62c0c",
+		"mergedSha256": "a09754438dda1dcc35b16db3c36fa7295cab0fcacfc1daa37ad92acf81b62c0c",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-H-dark-narrow/hub-skills-800x900-local-operator-dark-search-empty.png",
+		"oldSha256": "1cae85bdf4a05000cf78f92d346236aac312c9a9142ab236902b56506ac2198a",
+		"mergedSha256": "1cae85bdf4a05000cf78f92d346236aac312c9a9142ab236902b56506ac2198a",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-I-released-core-adapter-absent/hub-skills-1380x900-local-operator-dark-adapter-absent-agents.png",
+		"oldSha256": "6fa3c772dec1f5208c642a7eaa613114f2fc93655f1e0f90d761d67434040cee",
+		"mergedSha256": "6fa3c772dec1f5208c642a7eaa613114f2fc93655f1e0f90d761d67434040cee",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-J-enabled-and-withdrawn/hub-skills-1380x900-local-operator-dark-adapter-withdrawn-agents.png",
+		"oldSha256": "6edd0493c89f621dd467219abd0ddee44215e6ebcaec1b333dd286c55541488b",
+		"mergedSha256": "6edd0493c89f621dd467219abd0ddee44215e6ebcaec1b333dd286c55541488b",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-J-enabled-and-withdrawn/hub-skills-1380x900-local-operator-dark-loading.png",
+		"oldSha256": "b98950b2a537b24d480eb85e17f796a8fffa2f44f3bc0de58cebbfb14938b88e",
+		"mergedSha256": "b98950b2a537b24d480eb85e17f796a8fffa2f44f3bc0de58cebbfb14938b88e",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-J-enabled-and-withdrawn/hub-skills-1380x900-local-operator-dark-populated.png",
+		"oldSha256": "db3a6f1d465dd920b8fc35397df917548f7d7557e2943d9754b90d1e74010f99",
+		"mergedSha256": "db3a6f1d465dd920b8fc35397df917548f7d7557e2943d9754b90d1e74010f99",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-K-old-core-guard-disabled/hub-core-guard-1380x900-local-operator-dark-old-core-disabled.png",
+		"oldSha256": "2df6b9a8577731e0b18a28acaf902498f78403486424857b2ef2077b14f3500c",
+		"mergedSha256": "2df6b9a8577731e0b18a28acaf902498f78403486424857b2ef2077b14f3500c",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-M-fixed-guard-capture-recovery/hub-core-guard-1380x900-local-operator-dark-fixture-browse-zero.png",
+		"oldSha256": "1f25c4f7cb69e1aa56f25ab2a0cfd8ba6518ca7a791ba6b305d7a75482860b06",
+		"mergedSha256": "1f25c4f7cb69e1aa56f25ab2a0cfd8ba6518ca7a791ba6b305d7a75482860b06",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R-M-fixed-guard-capture-recovery/hub-core-guard-1380x900-local-operator-dark-fixture-policy-off.png",
+		"oldSha256": "0d7e8c974d0852c1ff38b3fbd3206d50626c41b15a8cccdd86e468696be9f849",
+		"mergedSha256": "0d7e8c974d0852c1ff38b3fbd3206d50626c41b15a8cccdd86e468696be9f849",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R3-fixed-focus-wide/r3-fixed-dialog-held.png",
+		"oldSha256": "52885e0c067f608605067faf240645c53049af09339ea599102f6eda5dd6240b",
+		"mergedSha256": "52885e0c067f608605067faf240645c53049af09339ea599102f6eda5dd6240b",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R3-fixed-focus-wide/r3-fixed-switch-held.png",
+		"oldSha256": "a128ff13a84713a6997f55d1d480b787a46bb470439718db39267f3bdd73b920",
+		"mergedSha256": "a128ff13a84713a6997f55d1d480b787a46bb470439718db39267f3bdd73b920",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R3-fixed-short-narrow-light/r3-disconnected-narrow-light.png",
+		"oldSha256": "47250585fafbe024097412cbfa82fd88a2be1146772b005935b6f3a91cc70909",
+		"mergedSha256": "47250585fafbe024097412cbfa82fd88a2be1146772b005935b6f3a91cc70909",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R3-fixed-short-narrow-light/r3-fixed-policy-confirmed.png",
+		"oldSha256": "ed7e7655a474ed02f9d2e39e31986bde61ce0615b1bfc4dc908ac9a04b7fd63c",
+		"mergedSha256": "ed7e7655a474ed02f9d2e39e31986bde61ce0615b1bfc4dc908ac9a04b7fd63c",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R3-old-wide/r3-old-wide.png",
+		"oldSha256": "26b0ec95430e0fbb56bfdb74948f41c661d29419321a401643b2680300dae71b",
+		"mergedSha256": "26b0ec95430e0fbb56bfdb74948f41c661d29419321a401643b2680300dae71b",
+		"identical": true
+	},
+	{
+		"path": "docs/evidence/hub-skills-library/frames/R3-prerelease-narrow-light/r3-prerelease-narrow-light.png",
+		"oldSha256": "8a0ae9cc463e1225a73f9efd9951440a854696befa8f49218db56b83b3aa1815",
+		"mergedSha256": "8a0ae9cc463e1225a73f9efd9951440a854696befa8f49218db56b83b3aa1815",
+		"identical": true
+	}
 ]

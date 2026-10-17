@@ -1,2905 +1,2905 @@
 {
-  "label": "before-560",
-  "session": "b1f1de000001",
-  "window": {
-    "width": 1380,
-    "height": 900
-  },
-  "themes": {
-    "dark": {
-      "frame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/before-560/files-before-560-dark.png",
-      "reading": {
-        "innerWidth": 1380,
-        "innerHeight": 900,
-        "dock": {
-          "x": 776,
-          "y": 32,
-          "w": 560,
-          "h": 868
-        },
-        "dockMode": "docked",
-        "scroller": {
-          "x": 776,
-          "y": 152,
-          "w": 560,
-          "h": 748
-        },
-        "rowCount": 2,
-        "rows": [
-          {
-            "text": "file-0000.png 10 KB A large chart promoted as the main deliverable.",
-            "box": {
-              "x": 784,
-              "y": 192,
-              "w": 544,
-              "h": 68
-            },
-            "insideDock": true,
-            "thumb": {
-              "decoded": true,
-              "naturalWidth": 640,
-              "naturalHeight": 384,
-              "srcScheme": "blob",
-              "box": {
-                "x": 788,
-                "y": 206,
-                "w": 40,
-                "h": 40
-              }
-            }
-          },
-          {
-            "text": "file-0002.md 0 KB Summary delivered alongside the chart.",
-            "box": {
-              "x": 784,
-              "y": 260,
-              "w": 544,
-              "h": 68
-            },
-            "insideDock": true,
-            "thumb": null
-          }
-        ],
-        "header": "Mentioned ↑ Filter 5,002 files Open folder Highlights 2 file-0000.png 10 KB A large chart promoted as the main deliverable. file-0002.md 0 KB Summary delivered "
-      },
-      "delta": {
-        "initial": {
-          "dock": {
-            "x": 776,
-            "y": 32,
-            "w": 560,
-            "h": 868
-          },
-          "rows": 2,
-          "query": "",
-          "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5000",
-          "active": "Local Operator\nNew chat\n⌘\nN\nSearch\n⌘\nP\nAida\nAgents\nProjects\nSchedules\nBrowser\nAgent hub\n\nAgents\n\n \n\nNo agents yet\n\n11 built-in agents are ready to install — aida, architect, coder, copy-reviewer, designer, manager, qa-tester, reviewer, scout, tui-designer and ux-reviewer. You can edit them once installed.\n\nInstall all built-in agents\nCreate agent\nTeams\nCreate team\nPINNED\nScheduled (1 wake)\nAida\n· aida\n4h\n, last active 4 hours ago\nRight-click or press Shift+F10 (with Fn on most Mac keyboards) for its actions.\nTODAY\nRecent\nBrowse the files produced by this isolated test conversation.\n4h\n, last active 4 hours ago\nRight-click or press Shift+F10 (with Fn on most Mac keyboards) for its actions.\nRecent\nThis isolated session has no files yet.\n4h\n, last active 4 hours ago\nRight-click or press Shift+F10 (with Fn on most Mac keyboards) for its actions.\n\nShowing 3 of 3 chats\n\nUser\nBrowse the files produced by this isolated test conversation.\nNo agent\nNo team\n​\nOn this device\nEarlier history above — scroll up to load\n349+ actions\n·\n1 image\n1:53 PM\n\nThe working files and generated sky are ready.\n\nSign in to Radient in Settings to enable speaking aloud\n2 files: file-0000.png, file-0002.md\n~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home\n\nNo model provider connected ·\nConnect\n\nCanvas view\nFiles 5002\nMentioned\n↑\nFilter\n5,002 files\nOpen folder\nHighlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5000",
-          "scroll": {
-            "x": 776,
-            "y": 152,
-            "w": 560,
-            "h": 748
-          },
-          "controlBoxes": [
-            {
-              "x": 784,
-              "y": 80,
-              "w": 351.609375,
-              "h": 32
-            },
-            {
-              "x": 1143.609375,
-              "y": 82,
-              "w": 110.84375,
-              "h": 28
-            },
-            {
-              "x": 1262.453125,
-              "y": 82,
-              "w": 65.546875,
-              "h": 28
-            },
-            {
-              "x": 1225.8046875,
-              "y": 116,
-              "w": 102.1953125,
-              "h": 28
-            }
-          ],
-          "headers": [
-            {
-              "label": "Highlights\n2",
-              "top": 160
-            },
-            {
-              "label": "Working files\n5000",
-              "top": 328
-            }
-          ],
-          "overflow": {
-            "client": 560,
-            "scroll": 560
-          }
-        },
-        "expanded": {
-          "dock": {
-            "x": 776,
-            "y": 32,
-            "w": 560,
-            "h": 868
-          },
-          "rows": 26,
-          "query": "",
-          "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5000\nImages\n1251\nfile-0004.png\n0 KB\nfile-0008.png\n0 KB\nfile-0012.png\n0 KB\nfile-0016.png\n0 KB\nfile-0020.png\n0 KB\nfile-0024.png\n0 KB\nfile-0028.png\n0 KB\nfile-0032.png\n0 KB\nfile-0036.png\n0 KB\nfile-0040.png\n0 KB\nfile-0044.png\n0 KB\nfile-0048.png\n0 KB\nfile-0052.png\n0 KB\nfile-0056.png\n0 KB\nfile-0060.png\n0 KB\nfile-0064.png\n0 KB\nfile-0068.png\n0 KB\nfile-0072.png\n0 KB\nfile-0076.png\n0 KB\nfile-0080.png\n0 KB\nfile-0084.png\n0 KB\nfile-0088.png\n0 KB\nfile-0092.png\n0 KB\nfile-0096.png\n0 KB\nVideos\n1250\nDocuments\n1249\nSpreadsheets\n1250",
-          "active": "Working files\n5000",
-          "scroll": {
-            "x": 776,
-            "y": 152,
-            "w": 560,
-            "h": 748
-          },
-          "controlBoxes": [
-            {
-              "x": 784,
-              "y": 80,
-              "w": 351.609375,
-              "h": 32
-            },
-            {
-              "x": 1143.609375,
-              "y": 82,
-              "w": 110.84375,
-              "h": 28
-            },
-            {
-              "x": 1262.453125,
-              "y": 82,
-              "w": 65.546875,
-              "h": 28
-            },
-            {
-              "x": 1225.8046875,
-              "y": 116,
-              "w": 102.1953125,
-              "h": 28
-            }
-          ],
-          "headers": [
-            {
-              "label": "Highlights\n2",
-              "top": 160
-            },
-            {
-              "label": "Working files\n5000",
-              "top": 328
-            },
-            {
-              "label": "Images\n1251",
-              "top": 360
-            },
-            {
-              "label": "Videos\n1250",
-              "top": 66278
-            },
-            {
-              "label": "Documents\n1249",
-              "top": 456310
-            },
-            {
-              "label": "Spreadsheets\n1250",
-              "top": 501306
-            }
-          ],
-          "overflow": {
-            "client": 552,
-            "scroll": 552
-          }
-        },
-        "sortActivation": "pointer",
-        "sortFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/before-560/finder-before-560-sort-menu-dark.png",
-        "sortSamples": [
-          {
-            "dock": {
-              "x": 776,
-              "y": 32,
-              "w": 560,
-              "h": 868
-            },
-            "rows": 0,
-            "query": "",
-            "body": "Loading session files…\n\nFiles the agent creates or highlights appear here.",
-            "active": "Size\n↓",
-            "scroll": {
-              "x": 776,
-              "y": 152,
-              "w": 560,
-              "h": 748
-            },
-            "controlBoxes": [
-              {
-                "x": 784,
-                "y": 80,
-                "w": 388.625,
-                "h": 32
-              },
-              {
-                "x": 1180.625,
-                "y": 82,
-                "w": 73.828125,
-                "h": 28
-              },
-              {
-                "x": 1262.453125,
-                "y": 82,
-                "w": 65.546875,
-                "h": 28
-              },
-              {
-                "x": 1225.8046875,
-                "y": 116,
-                "w": 102.1953125,
-                "h": 28
-              }
-            ],
-            "headers": [],
-            "overflow": {
-              "client": 560,
-              "scroll": 560
-            }
-          },
-          {
-            "dock": {
-              "x": 776,
-              "y": 32,
-              "w": 560,
-              "h": 868
-            },
-            "rows": 0,
-            "query": "",
-            "body": "Loading session files…\n\nFiles the agent creates or highlights appear here.",
-            "active": "Size\n↓",
-            "scroll": {
-              "x": 776,
-              "y": 152,
-              "w": 560,
-              "h": 748
-            },
-            "controlBoxes": [
-              {
-                "x": 784,
-                "y": 80,
-                "w": 388.625,
-                "h": 32
-              },
-              {
-                "x": 1180.625,
-                "y": 82,
-                "w": 73.828125,
-                "h": 28
-              },
-              {
-                "x": 1262.453125,
-                "y": 82,
-                "w": 65.546875,
-                "h": 28
-              },
-              {
-                "x": 1225.8046875,
-                "y": 116,
-                "w": 102.1953125,
-                "h": 28
-              }
-            ],
-            "headers": [],
-            "overflow": {
-              "client": 560,
-              "scroll": 560
-            }
-          },
-          {
-            "dock": {
-              "x": 776,
-              "y": 32,
-              "w": 560,
-              "h": 868
-            },
-            "rows": 0,
-            "query": "",
-            "body": "No files yet\n\nFiles the agent creates or highlights appear here.",
-            "active": "Size\n↓",
-            "scroll": {
-              "x": 776,
-              "y": 152,
-              "w": 560,
-              "h": 748
-            },
-            "controlBoxes": [
-              {
-                "x": 784,
-                "y": 80,
-                "w": 388.625,
-                "h": 32
-              },
-              {
-                "x": 1180.625,
-                "y": 82,
-                "w": 73.828125,
-                "h": 28
-              },
-              {
-                "x": 1262.453125,
-                "y": 82,
-                "w": 65.546875,
-                "h": 28
-              },
-              {
-                "x": 1225.8046875,
-                "y": 116,
-                "w": 102.1953125,
-                "h": 28
-              }
-            ],
-            "headers": [],
-            "overflow": {
-              "client": 560,
-              "scroll": 560
-            }
-          },
-          {
-            "dock": {
-              "x": 776,
-              "y": 32,
-              "w": 560,
-              "h": 868
-            },
-            "rows": 0,
-            "query": "",
-            "body": "No files yet\n\nFiles the agent creates or highlights appear here.",
-            "active": "Size\n↓",
-            "scroll": {
-              "x": 776,
-              "y": 152,
-              "w": 560,
-              "h": 748
-            },
-            "controlBoxes": [
-              {
-                "x": 784,
-                "y": 80,
-                "w": 388.625,
-                "h": 32
-              },
-              {
-                "x": 1180.625,
-                "y": 82,
-                "w": 73.828125,
-                "h": 28
-              },
-              {
-                "x": 1262.453125,
-                "y": 82,
-                "w": 65.546875,
-                "h": 28
-              },
-              {
-                "x": 1225.8046875,
-                "y": 116,
-                "w": 102.1953125,
-                "h": 28
-              }
-            ],
-            "headers": [],
-            "overflow": {
-              "client": 560,
-              "scroll": 560
-            }
-          },
-          {
-            "dock": {
-              "x": 776,
-              "y": 32,
-              "w": 560,
-              "h": 868
-            },
-            "rows": 0,
-            "query": "",
-            "body": "No files yet\n\nFiles the agent creates or highlights appear here.",
-            "active": "Size\n↓",
-            "scroll": {
-              "x": 776,
-              "y": 152,
-              "w": 560,
-              "h": 748
-            },
-            "controlBoxes": [
-              {
-                "x": 784,
-                "y": 80,
-                "w": 388.625,
-                "h": 32
-              },
-              {
-                "x": 1180.625,
-                "y": 82,
-                "w": 73.828125,
-                "h": 28
-              },
-              {
-                "x": 1262.453125,
-                "y": 82,
-                "w": 65.546875,
-                "h": 28
-              },
-              {
-                "x": 1225.8046875,
-                "y": 116,
-                "w": 102.1953125,
-                "h": 28
-              }
-            ],
-            "headers": [],
-            "overflow": {
-              "client": 560,
-              "scroll": 560
-            }
-          },
-          {
-            "dock": {
-              "x": 776,
-              "y": 32,
-              "w": 560,
-              "h": 868
-            },
-            "rows": 0,
-            "query": "",
-            "body": "No files yet\n\nFiles the agent creates or highlights appear here.",
-            "active": "Size\n↓",
-            "scroll": {
-              "x": 776,
-              "y": 152,
-              "w": 560,
-              "h": 748
-            },
-            "controlBoxes": [
-              {
-                "x": 784,
-                "y": 80,
-                "w": 388.625,
-                "h": 32
-              },
-              {
-                "x": 1180.625,
-                "y": 82,
-                "w": 73.828125,
-                "h": 28
-              },
-              {
-                "x": 1262.453125,
-                "y": 82,
-                "w": 65.546875,
-                "h": 28
-              },
-              {
-                "x": 1225.8046875,
-                "y": 116,
-                "w": 102.1953125,
-                "h": 28
-              }
-            ],
-            "headers": [],
-            "overflow": {
-              "client": 560,
-              "scroll": 560
-            }
-          },
-          {
-            "dock": {
-              "x": 776,
-              "y": 32,
-              "w": 560,
-              "h": 868
-            },
-            "rows": 0,
-            "query": "",
-            "body": "No files yet\n\nFiles the agent creates or highlights appear here.",
-            "active": "Size\n↓",
-            "scroll": {
-              "x": 776,
-              "y": 152,
-              "w": 560,
-              "h": 748
-            },
-            "controlBoxes": [
-              {
-                "x": 784,
-                "y": 80,
-                "w": 388.625,
-                "h": 32
-              },
-              {
-                "x": 1180.625,
-                "y": 82,
-                "w": 73.828125,
-                "h": 28
-              },
-              {
-                "x": 1262.453125,
-                "y": 82,
-                "w": 65.546875,
-                "h": 28
-              },
-              {
-                "x": 1225.8046875,
-                "y": 116,
-                "w": 102.1953125,
-                "h": 28
-              }
-            ],
-            "headers": [],
-            "overflow": {
-              "client": 560,
-              "scroll": 560
-            }
-          },
-          {
-            "dock": {
-              "x": 776,
-              "y": 32,
-              "w": 560,
-              "h": 868
-            },
-            "rows": 0,
-            "query": "",
-            "body": "No files yet\n\nFiles the agent creates or highlights appear here.",
-            "active": "Size\n↓",
-            "scroll": {
-              "x": 776,
-              "y": 152,
-              "w": 560,
-              "h": 748
-            },
-            "controlBoxes": [
-              {
-                "x": 784,
-                "y": 80,
-                "w": 388.625,
-                "h": 32
-              },
-              {
-                "x": 1180.625,
-                "y": 82,
-                "w": 73.828125,
-                "h": 28
-              },
-              {
-                "x": 1262.453125,
-                "y": 82,
-                "w": 65.546875,
-                "h": 28
-              },
-              {
-                "x": 1225.8046875,
-                "y": 116,
-                "w": 102.1953125,
-                "h": 28
-              }
-            ],
-            "headers": [],
-            "overflow": {
-              "client": 560,
-              "scroll": 560
-            }
-          },
-          {
-            "dock": {
-              "x": 776,
-              "y": 32,
-              "w": 560,
-              "h": 868
-            },
-            "rows": 0,
-            "query": "",
-            "body": "No files yet\n\nFiles the agent creates or highlights appear here.",
-            "active": "Size\n↓",
-            "scroll": {
-              "x": 776,
-              "y": 152,
-              "w": 560,
-              "h": 748
-            },
-            "controlBoxes": [
-              {
-                "x": 784,
-                "y": 80,
-                "w": 388.625,
-                "h": 32
-              },
-              {
-                "x": 1180.625,
-                "y": 82,
-                "w": 73.828125,
-                "h": 28
-              },
-              {
-                "x": 1262.453125,
-                "y": 82,
-                "w": 65.546875,
-                "h": 28
-              },
-              {
-                "x": 1225.8046875,
-                "y": 116,
-                "w": 102.1953125,
-                "h": 28
-              }
-            ],
-            "headers": [],
-            "overflow": {
-              "client": 560,
-              "scroll": 560
-            }
-          },
-          {
-            "dock": {
-              "x": 776,
-              "y": 32,
-              "w": 560,
-              "h": 868
-            },
-            "rows": 0,
-            "query": "",
-            "body": "No files yet\n\nFiles the agent creates or highlights appear here.",
-            "active": "Size\n↓",
-            "scroll": {
-              "x": 776,
-              "y": 152,
-              "w": 560,
-              "h": 748
-            },
-            "controlBoxes": [
-              {
-                "x": 784,
-                "y": 80,
-                "w": 388.625,
-                "h": 32
-              },
-              {
-                "x": 1180.625,
-                "y": 82,
-                "w": 73.828125,
-                "h": 28
-              },
-              {
-                "x": 1262.453125,
-                "y": 82,
-                "w": 65.546875,
-                "h": 28
-              },
-              {
-                "x": 1225.8046875,
-                "y": 116,
-                "w": 102.1953125,
-                "h": 28
-              }
-            ],
-            "headers": [],
-            "overflow": {
-              "client": 560,
-              "scroll": 560
-            }
-          }
-        ],
-        "sortedFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/before-560/finder-before-560-sort-pointer-dark.png",
-        "filterFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/before-560/finder-before-560-filter-menu-dark.png",
-        "narrowed": {
-          "dock": {
-            "x": 776,
-            "y": 32,
-            "w": 560,
-            "h": 868
-          },
-          "rows": 0,
-          "query": "file-0000",
-          "body": "Highlights\n1",
-          "active": "",
-          "scroll": {
-            "x": 776,
-            "y": 152,
-            "w": 560,
-            "h": 748
-          },
-          "controlBoxes": [
-            {
-              "x": 784,
-              "y": 80,
-              "w": 388.625,
-              "h": 32
-            },
-            {
-              "x": 1180.625,
-              "y": 82,
-              "w": 73.828125,
-              "h": 28
-            },
-            {
-              "x": 1262.453125,
-              "y": 82,
-              "w": 65.546875,
-              "h": 28
-            },
-            {
-              "x": 1225.8046875,
-              "y": 116,
-              "w": 102.1953125,
-              "h": 28
-            }
-          ],
-          "headers": [
-            {
-              "label": "Highlights\n1",
-              "top": 160
-            }
-          ],
-          "overflow": {
-            "client": 560,
-            "scroll": 560
-          }
-        },
-        "narrowedFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/before-560/finder-before-560-narrowed-dark.png",
-        "searchEscape": {
-          "dock": null,
-          "rows": 0,
-          "active": "",
-          "scroll": null,
-          "controlBoxes": [],
-          "headers": [],
-          "overflow": null
-        },
-        "scrolling": {
-          "dock": {
-            "x": 776,
-            "y": 32,
-            "w": 560,
-            "h": 868
-          },
-          "rows": 8,
-          "query": "",
-          "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nWorking files\n5000\nImages\n1251\nVideos\n1250\nOpen to play\nfile-2645.mp4\n17 KB\nOpen to play\nfile-2649.mp4\n17 KB\nOpen to play\nfile-2653.mp4\n17 KB\nOpen to play\nfile-2657.mp4\n17 KB\nOpen to play\nfile-2661.mp4\n17 KB\nOpen to play\nfile-2665.mp4\n17 KB\nOpen to play\nfile-2669.mp4\n17 KB\nDocuments\n1249\nSpreadsheets\n1250",
-          "active": "Files 5002",
-          "scroll": {
-            "x": 776,
-            "y": 152,
-            "w": 560,
-            "h": 748
-          },
-          "controlBoxes": [
-            {
-              "x": 784,
-              "y": 80,
-              "w": 388.625,
-              "h": 32
-            },
-            {
-              "x": 1180.625,
-              "y": 82,
-              "w": 73.828125,
-              "h": 28
-            },
-            {
-              "x": 1262.453125,
-              "y": 82,
-              "w": 65.546875,
-              "h": 28
-            },
-            {
-              "x": 1225.8046875,
-              "y": 116,
-              "w": 102.1953125,
-              "h": 28
-            }
-          ],
-          "headers": [
-            {
-              "label": "Highlights\n2",
-              "top": -272801
-            },
-            {
-              "label": "Working files\n5000",
-              "top": -272769
-            },
-            {
-              "label": "Images\n1251",
-              "top": -206851
-            },
-            {
-              "label": "Videos\n1250",
-              "top": 160
-            },
-            {
-              "label": "Documents\n1249",
-              "top": 183213
-            },
-            {
-              "label": "Spreadsheets\n1250",
-              "top": 228209
-            }
-          ],
-          "overflow": {
-            "client": 552,
-            "scroll": 552
-          }
-        },
-        "scrollingFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/before-560/finder-before-560-scrolling-dark.png",
-        "resting": {
-          "dock": {
-            "x": 776,
-            "y": 32,
-            "w": 560,
-            "h": 868
-          },
-          "rows": 8,
-          "query": "",
-          "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nWorking files\n5000\nImages\n1251\nVideos\n1250\nOpen to play\nfile-2645.mp4\n17 KB\nOpen to play\nfile-2649.mp4\n17 KB\nOpen to play\nfile-2653.mp4\n17 KB\nOpen to play\nfile-2657.mp4\n17 KB\nOpen to play\nfile-2661.mp4\n17 KB\nOpen to play\nfile-2665.mp4\n17 KB\nOpen to play\nfile-2669.mp4\n17 KB\nDocuments\n1249\nSpreadsheets\n1250",
-          "active": "Files 5002",
-          "scroll": {
-            "x": 776,
-            "y": 152,
-            "w": 560,
-            "h": 748
-          },
-          "controlBoxes": [
-            {
-              "x": 784,
-              "y": 80,
-              "w": 388.625,
-              "h": 32
-            },
-            {
-              "x": 1180.625,
-              "y": 82,
-              "w": 73.828125,
-              "h": 28
-            },
-            {
-              "x": 1262.453125,
-              "y": 82,
-              "w": 65.546875,
-              "h": 28
-            },
-            {
-              "x": 1225.8046875,
-              "y": 116,
-              "w": 102.1953125,
-              "h": 28
-            }
-          ],
-          "headers": [
-            {
-              "label": "Highlights\n2",
-              "top": -272801
-            },
-            {
-              "label": "Working files\n5000",
-              "top": -272769
-            },
-            {
-              "label": "Images\n1251",
-              "top": -206851
-            },
-            {
-              "label": "Videos\n1250",
-              "top": 160
-            },
-            {
-              "label": "Documents\n1249",
-              "top": 183213
-            },
-            {
-              "label": "Spreadsheets\n1250",
-              "top": 228209
-            }
-          ],
-          "overflow": {
-            "client": 552,
-            "scroll": 552
-          }
-        },
-        "restingFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/before-560/finder-before-560-resting-dark.png",
-        "stickyOffset": 8,
-        "video": {
-          "dock": {
-            "x": 776,
-            "y": 32,
-            "w": 560,
-            "h": 868
-          },
-          "rows": 1,
-          "query": "file-0001.mp4",
-          "body": "Videos\n1\nOpen to play\nfile-0001.mp4\n17 KB",
-          "active": "",
-          "scroll": {
-            "x": 776,
-            "y": 152,
-            "w": 560,
-            "h": 748
-          },
-          "controlBoxes": [
-            {
-              "x": 784,
-              "y": 80,
-              "w": 388.625,
-              "h": 32
-            },
-            {
-              "x": 1180.625,
-              "y": 82,
-              "w": 73.828125,
-              "h": 28
-            },
-            {
-              "x": 1262.453125,
-              "y": 82,
-              "w": 65.546875,
-              "h": 28
-            },
-            {
-              "x": 1225.8046875,
-              "y": 116,
-              "w": 102.1953125,
-              "h": 28
-            }
-          ],
-          "headers": [
-            {
-              "label": "Videos\n1",
-              "top": 160
-            }
-          ],
-          "overflow": {
-            "client": 560,
-            "scroll": 560
-          }
-        },
-        "videoFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/before-560/finder-before-560-video-band-dark.png",
-        "menuClose": {
-          "dock": {
-            "x": 776,
-            "y": 32,
-            "w": 560,
-            "h": 868
-          },
-          "rows": 26,
-          "query": "",
-          "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5000\nImages\n1251\nfile-1300.png\n0 KB\nfile-1304.png\n0 KB\nfile-1308.png\n0 KB\nfile-1312.png\n0 KB\nfile-1316.png\n0 KB\nfile-1320.png\n0 KB\nfile-1324.png\n0 KB\nfile-1328.png\n0 KB\nfile-1332.png\n0 KB\nfile-1336.png\n0 KB\nfile-1340.png\n0 KB\nfile-1344.png\n0 KB\nfile-1348.png\n0 KB\nfile-1352.png\n0 KB\nfile-1356.png\n0 KB\nfile-1384.png\n0 KB\nfile-1520.png\n0 KB\nfile-1524.png\n0 KB\nfile-3612.png\n0 KB\nfile-3616.png\n0 KB\nfile-3620.png\n0 KB\nfile-3624.png\n0 KB\nfile-3628.png\n0 KB\nfile-3632.png\n0 KB\nVideos\n1250\nDocuments\n1249\nSpreadsheets\n1250",
-          "active": "",
-          "activeRow": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png",
-          "scroll": {
-            "x": 776,
-            "y": 152,
-            "w": 560,
-            "h": 748
-          },
-          "controlBoxes": [
-            {
-              "x": 784,
-              "y": 80,
-              "w": 388.625,
-              "h": 32
-            },
-            {
-              "x": 1180.625,
-              "y": 82,
-              "w": 73.828125,
-              "h": 28
-            },
-            {
-              "x": 1262.453125,
-              "y": 82,
-              "w": 65.546875,
-              "h": 28
-            },
-            {
-              "x": 1225.8046875,
-              "y": 116,
-              "w": 102.1953125,
-              "h": 28
-            }
-          ],
-          "headers": [
-            {
-              "label": "Highlights\n2",
-              "top": 160
-            },
-            {
-              "label": "Working files\n5000",
-              "top": 328
-            },
-            {
-              "label": "Images\n1251",
-              "top": 360
-            },
-            {
-              "label": "Videos\n1250",
-              "top": 66278
-            },
-            {
-              "label": "Documents\n1249",
-              "top": 456310
-            },
-            {
-              "label": "Spreadsheets\n1250",
-              "top": 501306
-            }
-          ],
-          "overflow": {
-            "client": 552,
-            "scroll": 552
-          }
-        },
-        "afterArrow": {
-          "dock": {
-            "x": 776,
-            "y": 32,
-            "w": 560,
-            "h": 868
-          },
-          "rows": 26,
-          "query": "",
-          "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5000\nImages\n1251\nfile-1300.png\n0 KB\nfile-1304.png\n0 KB\nfile-1308.png\n0 KB\nfile-1312.png\n0 KB\nfile-1316.png\n0 KB\nfile-1320.png\n0 KB\nfile-1324.png\n0 KB\nfile-1328.png\n0 KB\nfile-1332.png\n0 KB\nfile-1336.png\n0 KB\nfile-1340.png\n0 KB\nfile-1344.png\n0 KB\nfile-1348.png\n0 KB\nfile-1352.png\n0 KB\nfile-1356.png\n0 KB\nfile-1384.png\n0 KB\nfile-1520.png\n0 KB\nfile-1524.png\n0 KB\nfile-3612.png\n0 KB\nfile-3616.png\n0 KB\nfile-3620.png\n0 KB\nfile-3624.png\n0 KB\nfile-3628.png\n0 KB\nfile-3632.png\n0 KB\nVideos\n1250\nDocuments\n1249\nSpreadsheets\n1250",
-          "active": "Show in canvas",
-          "scroll": {
-            "x": 776,
-            "y": 152,
-            "w": 560,
-            "h": 748
-          },
-          "controlBoxes": [
-            {
-              "x": 784,
-              "y": 80,
-              "w": 388.625,
-              "h": 32
-            },
-            {
-              "x": 1180.625,
-              "y": 82,
-              "w": 73.828125,
-              "h": 28
-            },
-            {
-              "x": 1262.453125,
-              "y": 82,
-              "w": 65.546875,
-              "h": 28
-            },
-            {
-              "x": 1225.8046875,
-              "y": 116,
-              "w": 102.1953125,
-              "h": 28
-            }
-          ],
-          "headers": [
-            {
-              "label": "Highlights\n2",
-              "top": 160
-            },
-            {
-              "label": "Working files\n5000",
-              "top": 328
-            },
-            {
-              "label": "Images\n1251",
-              "top": 360
-            },
-            {
-              "label": "Videos\n1250",
-              "top": 66278
-            },
-            {
-              "label": "Documents\n1249",
-              "top": 456310
-            },
-            {
-              "label": "Spreadsheets\n1250",
-              "top": 501306
-            }
-          ],
-          "overflow": {
-            "client": 552,
-            "scroll": 552
-          }
-        },
-        "focusFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/before-560/finder-before-560-focus-dark.png"
-      }
-    },
-    "light": {
-      "frame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/before-560/files-before-560-light.png",
-      "reading": {
-        "innerWidth": 1380,
-        "innerHeight": 900,
-        "dock": {
-          "x": 776,
-          "y": 32,
-          "w": 560,
-          "h": 868
-        },
-        "dockMode": "docked",
-        "scroller": {
-          "x": 776,
-          "y": 152,
-          "w": 560,
-          "h": 748
-        },
-        "rowCount": 26,
-        "rows": [
-          {
-            "text": "file-0000.png 10 KB A large chart promoted as the main deliverable.",
-            "box": {
-              "x": 784,
-              "y": 192,
-              "w": 536,
-              "h": 68
-            },
-            "insideDock": true,
-            "thumb": {
-              "decoded": true,
-              "naturalWidth": 640,
-              "naturalHeight": 384,
-              "srcScheme": "blob",
-              "box": {
-                "x": 788,
-                "y": 206,
-                "w": 40,
-                "h": 40
-              }
-            }
-          },
-          {
-            "text": "file-0002.md 0 KB Summary delivered alongside the chart.",
-            "box": {
-              "x": 784,
-              "y": 260,
-              "w": 536,
-              "h": 68
-            },
-            "insideDock": true,
-            "thumb": null
-          },
-          {
-            "text": "file-1300.png 0 KB",
-            "box": {
-              "x": 784,
-              "y": 392,
-              "w": 176,
-              "h": 154
-            },
-            "insideDock": true,
-            "thumb": {
-              "decoded": true,
-              "naturalWidth": 192,
-              "naturalHeight": 144,
-              "srcScheme": "blob",
-              "box": {
-                "x": 788,
-                "y": 396,
-                "w": 168,
-                "h": 126
-              }
-            }
-          },
-          {
-            "text": "file-1304.png 0 KB",
-            "box": {
-              "x": 964,
-              "y": 392,
-              "w": 176,
-              "h": 154
-            },
-            "insideDock": true,
-            "thumb": {
-              "decoded": true,
-              "naturalWidth": 192,
-              "naturalHeight": 144,
-              "srcScheme": "blob",
-              "box": {
-                "x": 968,
-                "y": 396,
-                "w": 168,
-                "h": 126
-              }
-            }
-          },
-          {
-            "text": "file-1308.png 0 KB",
-            "box": {
-              "x": 1144,
-              "y": 392,
-              "w": 176,
-              "h": 154
-            },
-            "insideDock": true,
-            "thumb": {
-              "decoded": true,
-              "naturalWidth": 192,
-              "naturalHeight": 144,
-              "srcScheme": "blob",
-              "box": {
-                "x": 1148,
-                "y": 396,
-                "w": 168,
-                "h": 126
-              }
-            }
-          },
-          {
-            "text": "file-1312.png 0 KB",
-            "box": {
-              "x": 784,
-              "y": 550,
-              "w": 176,
-              "h": 154
-            },
-            "insideDock": true,
-            "thumb": {
-              "decoded": true,
-              "naturalWidth": 192,
-              "naturalHeight": 144,
-              "srcScheme": "blob",
-              "box": {
-                "x": 788,
-                "y": 554,
-                "w": 168,
-                "h": 126
-              }
-            }
-          },
-          {
-            "text": "file-1316.png 0 KB",
-            "box": {
-              "x": 964,
-              "y": 550,
-              "w": 176,
-              "h": 154
-            },
-            "insideDock": true,
-            "thumb": {
-              "decoded": true,
-              "naturalWidth": 192,
-              "naturalHeight": 144,
-              "srcScheme": "blob",
-              "box": {
-                "x": 968,
-                "y": 554,
-                "w": 168,
-                "h": 126
-              }
-            }
-          },
-          {
-            "text": "file-1320.png 0 KB",
-            "box": {
-              "x": 1144,
-              "y": 550,
-              "w": 176,
-              "h": 154
-            },
-            "insideDock": true,
-            "thumb": {
-              "decoded": true,
-              "naturalWidth": 192,
-              "naturalHeight": 144,
-              "srcScheme": "blob",
-              "box": {
-                "x": 1148,
-                "y": 554,
-                "w": 168,
-                "h": 126
-              }
-            }
-          },
-          {
-            "text": "file-1324.png 0 KB",
-            "box": {
-              "x": 784,
-              "y": 708,
-              "w": 176,
-              "h": 154
-            },
-            "insideDock": true,
-            "thumb": {
-              "decoded": true,
-              "naturalWidth": 192,
-              "naturalHeight": 144,
-              "srcScheme": "blob",
-              "box": {
-                "x": 788,
-                "y": 712,
-                "w": 168,
-                "h": 126
-              }
-            }
-          },
-          {
-            "text": "file-1328.png 0 KB",
-            "box": {
-              "x": 964,
-              "y": 708,
-              "w": 176,
-              "h": 154
-            },
-            "insideDock": true,
-            "thumb": {
-              "decoded": true,
-              "naturalWidth": 192,
-              "naturalHeight": 144,
-              "srcScheme": "blob",
-              "box": {
-                "x": 968,
-                "y": 712,
-                "w": 168,
-                "h": 126
-              }
-            }
-          },
-          {
-            "text": "file-1332.png 0 KB",
-            "box": {
-              "x": 1144,
-              "y": 708,
-              "w": 176,
-              "h": 154
-            },
-            "insideDock": true,
-            "thumb": {
-              "decoded": true,
-              "naturalWidth": 192,
-              "naturalHeight": 144,
-              "srcScheme": "blob",
-              "box": {
-                "x": 1148,
-                "y": 712,
-                "w": 168,
-                "h": 126
-              }
-            }
-          },
-          {
-            "text": "file-1336.png 0 KB",
-            "box": {
-              "x": 784,
-              "y": 866,
-              "w": 176,
-              "h": 154
-            },
-            "insideDock": true,
-            "thumb": {
-              "decoded": true,
-              "naturalWidth": 192,
-              "naturalHeight": 144,
-              "srcScheme": "blob",
-              "box": {
-                "x": 788,
-                "y": 870,
-                "w": 168,
-                "h": 126
-              }
-            }
-          },
-          {
-            "text": "file-1340.png 0 KB",
-            "box": {
-              "x": 964,
-              "y": 866,
-              "w": 176,
-              "h": 154
-            },
-            "insideDock": true,
-            "thumb": {
-              "decoded": true,
-              "naturalWidth": 192,
-              "naturalHeight": 144,
-              "srcScheme": "blob",
-              "box": {
-                "x": 968,
-                "y": 870,
-                "w": 168,
-                "h": 126
-              }
-            }
-          },
-          {
-            "text": "file-1344.png 0 KB",
-            "box": {
-              "x": 1144,
-              "y": 866,
-              "w": 176,
-              "h": 154
-            },
-            "insideDock": true,
-            "thumb": {
-              "decoded": true,
-              "naturalWidth": 192,
-              "naturalHeight": 144,
-              "srcScheme": "blob",
-              "box": {
-                "x": 1148,
-                "y": 870,
-                "w": 168,
-                "h": 126
-              }
-            }
-          },
-          {
-            "text": "file-1348.png 0 KB",
-            "box": {
-              "x": 784,
-              "y": 1024,
-              "w": 176,
-              "h": 154
-            },
-            "insideDock": true,
-            "thumb": null
-          },
-          {
-            "text": "file-1352.png 0 KB",
-            "box": {
-              "x": 964,
-              "y": 1024,
-              "w": 176,
-              "h": 154
-            },
-            "insideDock": true,
-            "thumb": null
-          },
-          {
-            "text": "file-1356.png 0 KB",
-            "box": {
-              "x": 1144,
-              "y": 1024,
-              "w": 176,
-              "h": 154
-            },
-            "insideDock": true,
-            "thumb": null
-          },
-          {
-            "text": "file-1384.png 0 KB",
-            "box": {
-              "x": 784,
-              "y": 1182,
-              "w": 176,
-              "h": 154
-            },
-            "insideDock": true,
-            "thumb": null
-          },
-          {
-            "text": "file-1520.png 0 KB",
-            "box": {
-              "x": 964,
-              "y": 1182,
-              "w": 176,
-              "h": 154
-            },
-            "insideDock": true,
-            "thumb": null
-          },
-          {
-            "text": "file-1524.png 0 KB",
-            "box": {
-              "x": 1144,
-              "y": 1182,
-              "w": 176,
-              "h": 154
-            },
-            "insideDock": true,
-            "thumb": null
-          },
-          {
-            "text": "file-3612.png 0 KB",
-            "box": {
-              "x": 784,
-              "y": 1340,
-              "w": 176,
-              "h": 154
-            },
-            "insideDock": true,
-            "thumb": null
-          },
-          {
-            "text": "file-3616.png 0 KB",
-            "box": {
-              "x": 964,
-              "y": 1340,
-              "w": 176,
-              "h": 154
-            },
-            "insideDock": true,
-            "thumb": null
-          },
-          {
-            "text": "file-3620.png 0 KB",
-            "box": {
-              "x": 1144,
-              "y": 1340,
-              "w": 176,
-              "h": 154
-            },
-            "insideDock": true,
-            "thumb": null
-          },
-          {
-            "text": "file-3624.png 0 KB",
-            "box": {
-              "x": 784,
-              "y": 1498,
-              "w": 176,
-              "h": 154
-            },
-            "insideDock": true,
-            "thumb": null
-          },
-          {
-            "text": "file-3628.png 0 KB",
-            "box": {
-              "x": 964,
-              "y": 1498,
-              "w": 176,
-              "h": 154
-            },
-            "insideDock": true,
-            "thumb": null
-          },
-          {
-            "text": "file-3632.png 0 KB",
-            "box": {
-              "x": 1144,
-              "y": 1498,
-              "w": 176,
-              "h": 154
-            },
-            "insideDock": true,
-            "thumb": null
-          }
-        ],
-        "header": "Size ↓ Filter 5,002 files Open folder Highlights 2 file-0000.png 10 KB A large chart promoted as the main deliverable. file-0002.md 0 KB Summary delivered along"
-      },
-      "delta": {
-        "initial": {
-          "dock": {
-            "x": 776,
-            "y": 32,
-            "w": 560,
-            "h": 868
-          },
-          "rows": 26,
-          "query": "",
-          "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5000\nImages\n1251\nfile-1300.png\n0 KB\nfile-1304.png\n0 KB\nfile-1308.png\n0 KB\nfile-1312.png\n0 KB\nfile-1316.png\n0 KB\nfile-1320.png\n0 KB\nfile-1324.png\n0 KB\nfile-1328.png\n0 KB\nfile-1332.png\n0 KB\nfile-1336.png\n0 KB\nfile-1340.png\n0 KB\nfile-1344.png\n0 KB\nfile-1348.png\n0 KB\nfile-1352.png\n0 KB\nfile-1356.png\n0 KB\nfile-1384.png\n0 KB\nfile-1520.png\n0 KB\nfile-1524.png\n0 KB\nfile-3612.png\n0 KB\nfile-3616.png\n0 KB\nfile-3620.png\n0 KB\nfile-3624.png\n0 KB\nfile-3628.png\n0 KB\nfile-3632.png\n0 KB\nVideos\n1250\nDocuments\n1249\nSpreadsheets\n1250",
-          "active": "Show in canvas",
-          "scroll": {
-            "x": 776,
-            "y": 152,
-            "w": 560,
-            "h": 748
-          },
-          "controlBoxes": [
-            {
-              "x": 784,
-              "y": 80,
-              "w": 388.625,
-              "h": 32
-            },
-            {
-              "x": 1180.625,
-              "y": 82,
-              "w": 73.828125,
-              "h": 28
-            },
-            {
-              "x": 1262.453125,
-              "y": 82,
-              "w": 65.546875,
-              "h": 28
-            },
-            {
-              "x": 1225.8046875,
-              "y": 116,
-              "w": 102.1953125,
-              "h": 28
-            }
-          ],
-          "headers": [
-            {
-              "label": "Highlights\n2",
-              "top": 160
-            },
-            {
-              "label": "Working files\n5000",
-              "top": 328
-            },
-            {
-              "label": "Images\n1251",
-              "top": 360
-            },
-            {
-              "label": "Videos\n1250",
-              "top": 66278
-            },
-            {
-              "label": "Documents\n1249",
-              "top": 456310
-            },
-            {
-              "label": "Spreadsheets\n1250",
-              "top": 501306
-            }
-          ],
-          "overflow": {
-            "client": 552,
-            "scroll": 552
-          }
-        },
-        "expanded": {
-          "dock": {
-            "x": 776,
-            "y": 32,
-            "w": 560,
-            "h": 868
-          },
-          "rows": 26,
-          "query": "",
-          "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5000\nImages\n1251\nfile-1300.png\n0 KB\nfile-1304.png\n0 KB\nfile-1308.png\n0 KB\nfile-1312.png\n0 KB\nfile-1316.png\n0 KB\nfile-1320.png\n0 KB\nfile-1324.png\n0 KB\nfile-1328.png\n0 KB\nfile-1332.png\n0 KB\nfile-1336.png\n0 KB\nfile-1340.png\n0 KB\nfile-1344.png\n0 KB\nfile-1348.png\n0 KB\nfile-1352.png\n0 KB\nfile-1356.png\n0 KB\nfile-1384.png\n0 KB\nfile-1520.png\n0 KB\nfile-1524.png\n0 KB\nfile-3612.png\n0 KB\nfile-3616.png\n0 KB\nfile-3620.png\n0 KB\nfile-3624.png\n0 KB\nfile-3628.png\n0 KB\nfile-3632.png\n0 KB\nVideos\n1250\nDocuments\n1249\nSpreadsheets\n1250",
-          "active": "Show in canvas",
-          "scroll": {
-            "x": 776,
-            "y": 152,
-            "w": 560,
-            "h": 748
-          },
-          "controlBoxes": [
-            {
-              "x": 784,
-              "y": 80,
-              "w": 388.625,
-              "h": 32
-            },
-            {
-              "x": 1180.625,
-              "y": 82,
-              "w": 73.828125,
-              "h": 28
-            },
-            {
-              "x": 1262.453125,
-              "y": 82,
-              "w": 65.546875,
-              "h": 28
-            },
-            {
-              "x": 1225.8046875,
-              "y": 116,
-              "w": 102.1953125,
-              "h": 28
-            }
-          ],
-          "headers": [
-            {
-              "label": "Highlights\n2",
-              "top": 160
-            },
-            {
-              "label": "Working files\n5000",
-              "top": 328
-            },
-            {
-              "label": "Images\n1251",
-              "top": 360
-            },
-            {
-              "label": "Videos\n1250",
-              "top": 66278
-            },
-            {
-              "label": "Documents\n1249",
-              "top": 456310
-            },
-            {
-              "label": "Spreadsheets\n1250",
-              "top": 501306
-            }
-          ],
-          "overflow": {
-            "client": 552,
-            "scroll": 552
-          }
-        },
-        "sortActivation": "keyboard-after-outside-dismissal",
-        "sortFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/before-560/finder-before-560-sort-menu-light.png",
-        "sortSamples": [
-          {
-            "dock": {
-              "x": 776,
-              "y": 32,
-              "w": 560,
-              "h": 868
-            },
-            "rows": 26,
-            "query": "",
-            "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5000\nImages\n1251\nfile-1300.png\n0 KB\nfile-1304.png\n0 KB\nfile-1308.png\n0 KB\nfile-1312.png\n0 KB\nfile-1316.png\n0 KB\nfile-1320.png\n0 KB\nfile-1324.png\n0 KB\nfile-1328.png\n0 KB\nfile-1332.png\n0 KB\nfile-1336.png\n0 KB\nfile-1340.png\n0 KB\nfile-1344.png\n0 KB\nfile-1348.png\n0 KB\nfile-1352.png\n0 KB\nfile-1356.png\n0 KB\nfile-1384.png\n0 KB\nfile-1520.png\n0 KB\nfile-1524.png\n0 KB\nfile-3612.png\n0 KB\nfile-3616.png\n0 KB\nfile-3620.png\n0 KB\nfile-3624.png\n0 KB\nfile-3628.png\n0 KB\nfile-3632.png\n0 KB\nVideos\n1250\nDocuments\n1249\nSpreadsheets\n1250",
-            "active": "Size\n↓",
-            "scroll": {
-              "x": 776,
-              "y": 152,
-              "w": 560,
-              "h": 748
-            },
-            "controlBoxes": [
-              {
-                "x": 784,
-                "y": 80,
-                "w": 388.625,
-                "h": 32
-              },
-              {
-                "x": 1180.625,
-                "y": 82,
-                "w": 73.828125,
-                "h": 28
-              },
-              {
-                "x": 1262.453125,
-                "y": 82,
-                "w": 65.546875,
-                "h": 28
-              },
-              {
-                "x": 1225.8046875,
-                "y": 116,
-                "w": 102.1953125,
-                "h": 28
-              }
-            ],
-            "headers": [
-              {
-                "label": "Highlights\n2",
-                "top": 160
-              },
-              {
-                "label": "Working files\n5000",
-                "top": 328
-              },
-              {
-                "label": "Images\n1251",
-                "top": 360
-              },
-              {
-                "label": "Videos\n1250",
-                "top": 66278
-              },
-              {
-                "label": "Documents\n1249",
-                "top": 456310
-              },
-              {
-                "label": "Spreadsheets\n1250",
-                "top": 501306
-              }
-            ],
-            "overflow": {
-              "client": 552,
-              "scroll": 552
-            }
-          },
-          {
-            "dock": {
-              "x": 776,
-              "y": 32,
-              "w": 560,
-              "h": 868
-            },
-            "rows": 26,
-            "query": "",
-            "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5000\nImages\n1251\nfile-1300.png\n0 KB\nfile-1304.png\n0 KB\nfile-1308.png\n0 KB\nfile-1312.png\n0 KB\nfile-1316.png\n0 KB\nfile-1320.png\n0 KB\nfile-1324.png\n0 KB\nfile-1328.png\n0 KB\nfile-1332.png\n0 KB\nfile-1336.png\n0 KB\nfile-1340.png\n0 KB\nfile-1344.png\n0 KB\nfile-1348.png\n0 KB\nfile-1352.png\n0 KB\nfile-1356.png\n0 KB\nfile-1384.png\n0 KB\nfile-1520.png\n0 KB\nfile-1524.png\n0 KB\nfile-3612.png\n0 KB\nfile-3616.png\n0 KB\nfile-3620.png\n0 KB\nfile-3624.png\n0 KB\nfile-3628.png\n0 KB\nfile-3632.png\n0 KB\nVideos\n1250\nDocuments\n1249\nSpreadsheets\n1250",
-            "active": "Size\n↓",
-            "scroll": {
-              "x": 776,
-              "y": 152,
-              "w": 560,
-              "h": 748
-            },
-            "controlBoxes": [
-              {
-                "x": 784,
-                "y": 80,
-                "w": 388.625,
-                "h": 32
-              },
-              {
-                "x": 1180.625,
-                "y": 82,
-                "w": 73.828125,
-                "h": 28
-              },
-              {
-                "x": 1262.453125,
-                "y": 82,
-                "w": 65.546875,
-                "h": 28
-              },
-              {
-                "x": 1225.8046875,
-                "y": 116,
-                "w": 102.1953125,
-                "h": 28
-              }
-            ],
-            "headers": [
-              {
-                "label": "Highlights\n2",
-                "top": 160
-              },
-              {
-                "label": "Working files\n5000",
-                "top": 328
-              },
-              {
-                "label": "Images\n1251",
-                "top": 360
-              },
-              {
-                "label": "Videos\n1250",
-                "top": 66278
-              },
-              {
-                "label": "Documents\n1249",
-                "top": 456310
-              },
-              {
-                "label": "Spreadsheets\n1250",
-                "top": 501306
-              }
-            ],
-            "overflow": {
-              "client": 552,
-              "scroll": 552
-            }
-          },
-          {
-            "dock": {
-              "x": 776,
-              "y": 32,
-              "w": 560,
-              "h": 868
-            },
-            "rows": 26,
-            "query": "",
-            "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5000\nImages\n1251\nfile-1300.png\n0 KB\nfile-1304.png\n0 KB\nfile-1308.png\n0 KB\nfile-1312.png\n0 KB\nfile-1316.png\n0 KB\nfile-1320.png\n0 KB\nfile-1324.png\n0 KB\nfile-1328.png\n0 KB\nfile-1332.png\n0 KB\nfile-1336.png\n0 KB\nfile-1340.png\n0 KB\nfile-1344.png\n0 KB\nfile-1348.png\n0 KB\nfile-1352.png\n0 KB\nfile-1356.png\n0 KB\nfile-1384.png\n0 KB\nfile-1520.png\n0 KB\nfile-1524.png\n0 KB\nfile-3612.png\n0 KB\nfile-3616.png\n0 KB\nfile-3620.png\n0 KB\nfile-3624.png\n0 KB\nfile-3628.png\n0 KB\nfile-3632.png\n0 KB\nVideos\n1250\nDocuments\n1249\nSpreadsheets\n1250",
-            "active": "Size\n↓",
-            "scroll": {
-              "x": 776,
-              "y": 152,
-              "w": 560,
-              "h": 748
-            },
-            "controlBoxes": [
-              {
-                "x": 784,
-                "y": 80,
-                "w": 388.625,
-                "h": 32
-              },
-              {
-                "x": 1180.625,
-                "y": 82,
-                "w": 73.828125,
-                "h": 28
-              },
-              {
-                "x": 1262.453125,
-                "y": 82,
-                "w": 65.546875,
-                "h": 28
-              },
-              {
-                "x": 1225.8046875,
-                "y": 116,
-                "w": 102.1953125,
-                "h": 28
-              }
-            ],
-            "headers": [
-              {
-                "label": "Highlights\n2",
-                "top": 160
-              },
-              {
-                "label": "Working files\n5000",
-                "top": 328
-              },
-              {
-                "label": "Images\n1251",
-                "top": 360
-              },
-              {
-                "label": "Videos\n1250",
-                "top": 66278
-              },
-              {
-                "label": "Documents\n1249",
-                "top": 456310
-              },
-              {
-                "label": "Spreadsheets\n1250",
-                "top": 501306
-              }
-            ],
-            "overflow": {
-              "client": 552,
-              "scroll": 552
-            }
-          },
-          {
-            "dock": {
-              "x": 776,
-              "y": 32,
-              "w": 560,
-              "h": 868
-            },
-            "rows": 26,
-            "query": "",
-            "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5000\nImages\n1251\nfile-1300.png\n0 KB\nfile-1304.png\n0 KB\nfile-1308.png\n0 KB\nfile-1312.png\n0 KB\nfile-1316.png\n0 KB\nfile-1320.png\n0 KB\nfile-1324.png\n0 KB\nfile-1328.png\n0 KB\nfile-1332.png\n0 KB\nfile-1336.png\n0 KB\nfile-1340.png\n0 KB\nfile-1344.png\n0 KB\nfile-1348.png\n0 KB\nfile-1352.png\n0 KB\nfile-1356.png\n0 KB\nfile-1384.png\n0 KB\nfile-1520.png\n0 KB\nfile-1524.png\n0 KB\nfile-3612.png\n0 KB\nfile-3616.png\n0 KB\nfile-3620.png\n0 KB\nfile-3624.png\n0 KB\nfile-3628.png\n0 KB\nfile-3632.png\n0 KB\nVideos\n1250\nDocuments\n1249\nSpreadsheets\n1250",
-            "active": "Size\n↓",
-            "scroll": {
-              "x": 776,
-              "y": 152,
-              "w": 560,
-              "h": 748
-            },
-            "controlBoxes": [
-              {
-                "x": 784,
-                "y": 80,
-                "w": 388.625,
-                "h": 32
-              },
-              {
-                "x": 1180.625,
-                "y": 82,
-                "w": 73.828125,
-                "h": 28
-              },
-              {
-                "x": 1262.453125,
-                "y": 82,
-                "w": 65.546875,
-                "h": 28
-              },
-              {
-                "x": 1225.8046875,
-                "y": 116,
-                "w": 102.1953125,
-                "h": 28
-              }
-            ],
-            "headers": [
-              {
-                "label": "Highlights\n2",
-                "top": 160
-              },
-              {
-                "label": "Working files\n5000",
-                "top": 328
-              },
-              {
-                "label": "Images\n1251",
-                "top": 360
-              },
-              {
-                "label": "Videos\n1250",
-                "top": 66278
-              },
-              {
-                "label": "Documents\n1249",
-                "top": 456310
-              },
-              {
-                "label": "Spreadsheets\n1250",
-                "top": 501306
-              }
-            ],
-            "overflow": {
-              "client": 552,
-              "scroll": 552
-            }
-          },
-          {
-            "dock": {
-              "x": 776,
-              "y": 32,
-              "w": 560,
-              "h": 868
-            },
-            "rows": 26,
-            "query": "",
-            "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5000\nImages\n1251\nfile-1300.png\n0 KB\nfile-1304.png\n0 KB\nfile-1308.png\n0 KB\nfile-1312.png\n0 KB\nfile-1316.png\n0 KB\nfile-1320.png\n0 KB\nfile-1324.png\n0 KB\nfile-1328.png\n0 KB\nfile-1332.png\n0 KB\nfile-1336.png\n0 KB\nfile-1340.png\n0 KB\nfile-1344.png\n0 KB\nfile-1348.png\n0 KB\nfile-1352.png\n0 KB\nfile-1356.png\n0 KB\nfile-1384.png\n0 KB\nfile-1520.png\n0 KB\nfile-1524.png\n0 KB\nfile-3612.png\n0 KB\nfile-3616.png\n0 KB\nfile-3620.png\n0 KB\nfile-3624.png\n0 KB\nfile-3628.png\n0 KB\nfile-3632.png\n0 KB\nVideos\n1250\nDocuments\n1249\nSpreadsheets\n1250",
-            "active": "Size\n↓",
-            "scroll": {
-              "x": 776,
-              "y": 152,
-              "w": 560,
-              "h": 748
-            },
-            "controlBoxes": [
-              {
-                "x": 784,
-                "y": 80,
-                "w": 388.625,
-                "h": 32
-              },
-              {
-                "x": 1180.625,
-                "y": 82,
-                "w": 73.828125,
-                "h": 28
-              },
-              {
-                "x": 1262.453125,
-                "y": 82,
-                "w": 65.546875,
-                "h": 28
-              },
-              {
-                "x": 1225.8046875,
-                "y": 116,
-                "w": 102.1953125,
-                "h": 28
-              }
-            ],
-            "headers": [
-              {
-                "label": "Highlights\n2",
-                "top": 160
-              },
-              {
-                "label": "Working files\n5000",
-                "top": 328
-              },
-              {
-                "label": "Images\n1251",
-                "top": 360
-              },
-              {
-                "label": "Videos\n1250",
-                "top": 66278
-              },
-              {
-                "label": "Documents\n1249",
-                "top": 456310
-              },
-              {
-                "label": "Spreadsheets\n1250",
-                "top": 501306
-              }
-            ],
-            "overflow": {
-              "client": 552,
-              "scroll": 552
-            }
-          },
-          {
-            "dock": {
-              "x": 776,
-              "y": 32,
-              "w": 560,
-              "h": 868
-            },
-            "rows": 26,
-            "query": "",
-            "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5000\nImages\n1251\nfile-1300.png\n0 KB\nfile-1304.png\n0 KB\nfile-1308.png\n0 KB\nfile-1312.png\n0 KB\nfile-1316.png\n0 KB\nfile-1320.png\n0 KB\nfile-1324.png\n0 KB\nfile-1328.png\n0 KB\nfile-1332.png\n0 KB\nfile-1336.png\n0 KB\nfile-1340.png\n0 KB\nfile-1344.png\n0 KB\nfile-1348.png\n0 KB\nfile-1352.png\n0 KB\nfile-1356.png\n0 KB\nfile-1384.png\n0 KB\nfile-1520.png\n0 KB\nfile-1524.png\n0 KB\nfile-3612.png\n0 KB\nfile-3616.png\n0 KB\nfile-3620.png\n0 KB\nfile-3624.png\n0 KB\nfile-3628.png\n0 KB\nfile-3632.png\n0 KB\nVideos\n1250\nDocuments\n1249\nSpreadsheets\n1250",
-            "active": "Size\n↓",
-            "scroll": {
-              "x": 776,
-              "y": 152,
-              "w": 560,
-              "h": 748
-            },
-            "controlBoxes": [
-              {
-                "x": 784,
-                "y": 80,
-                "w": 388.625,
-                "h": 32
-              },
-              {
-                "x": 1180.625,
-                "y": 82,
-                "w": 73.828125,
-                "h": 28
-              },
-              {
-                "x": 1262.453125,
-                "y": 82,
-                "w": 65.546875,
-                "h": 28
-              },
-              {
-                "x": 1225.8046875,
-                "y": 116,
-                "w": 102.1953125,
-                "h": 28
-              }
-            ],
-            "headers": [
-              {
-                "label": "Highlights\n2",
-                "top": 160
-              },
-              {
-                "label": "Working files\n5000",
-                "top": 328
-              },
-              {
-                "label": "Images\n1251",
-                "top": 360
-              },
-              {
-                "label": "Videos\n1250",
-                "top": 66278
-              },
-              {
-                "label": "Documents\n1249",
-                "top": 456310
-              },
-              {
-                "label": "Spreadsheets\n1250",
-                "top": 501306
-              }
-            ],
-            "overflow": {
-              "client": 552,
-              "scroll": 552
-            }
-          },
-          {
-            "dock": {
-              "x": 776,
-              "y": 32,
-              "w": 560,
-              "h": 868
-            },
-            "rows": 26,
-            "query": "",
-            "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5000\nImages\n1251\nfile-1300.png\n0 KB\nfile-1304.png\n0 KB\nfile-1308.png\n0 KB\nfile-1312.png\n0 KB\nfile-1316.png\n0 KB\nfile-1320.png\n0 KB\nfile-1324.png\n0 KB\nfile-1328.png\n0 KB\nfile-1332.png\n0 KB\nfile-1336.png\n0 KB\nfile-1340.png\n0 KB\nfile-1344.png\n0 KB\nfile-1348.png\n0 KB\nfile-1352.png\n0 KB\nfile-1356.png\n0 KB\nfile-1384.png\n0 KB\nfile-1520.png\n0 KB\nfile-1524.png\n0 KB\nfile-3612.png\n0 KB\nfile-3616.png\n0 KB\nfile-3620.png\n0 KB\nfile-3624.png\n0 KB\nfile-3628.png\n0 KB\nfile-3632.png\n0 KB\nVideos\n1250\nDocuments\n1249\nSpreadsheets\n1250",
-            "active": "Size\n↓",
-            "scroll": {
-              "x": 776,
-              "y": 152,
-              "w": 560,
-              "h": 748
-            },
-            "controlBoxes": [
-              {
-                "x": 784,
-                "y": 80,
-                "w": 388.625,
-                "h": 32
-              },
-              {
-                "x": 1180.625,
-                "y": 82,
-                "w": 73.828125,
-                "h": 28
-              },
-              {
-                "x": 1262.453125,
-                "y": 82,
-                "w": 65.546875,
-                "h": 28
-              },
-              {
-                "x": 1225.8046875,
-                "y": 116,
-                "w": 102.1953125,
-                "h": 28
-              }
-            ],
-            "headers": [
-              {
-                "label": "Highlights\n2",
-                "top": 160
-              },
-              {
-                "label": "Working files\n5000",
-                "top": 328
-              },
-              {
-                "label": "Images\n1251",
-                "top": 360
-              },
-              {
-                "label": "Videos\n1250",
-                "top": 66278
-              },
-              {
-                "label": "Documents\n1249",
-                "top": 456310
-              },
-              {
-                "label": "Spreadsheets\n1250",
-                "top": 501306
-              }
-            ],
-            "overflow": {
-              "client": 552,
-              "scroll": 552
-            }
-          },
-          {
-            "dock": {
-              "x": 776,
-              "y": 32,
-              "w": 560,
-              "h": 868
-            },
-            "rows": 26,
-            "query": "",
-            "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5000\nImages\n1251\nfile-1300.png\n0 KB\nfile-1304.png\n0 KB\nfile-1308.png\n0 KB\nfile-1312.png\n0 KB\nfile-1316.png\n0 KB\nfile-1320.png\n0 KB\nfile-1324.png\n0 KB\nfile-1328.png\n0 KB\nfile-1332.png\n0 KB\nfile-1336.png\n0 KB\nfile-1340.png\n0 KB\nfile-1344.png\n0 KB\nfile-1348.png\n0 KB\nfile-1352.png\n0 KB\nfile-1356.png\n0 KB\nfile-1384.png\n0 KB\nfile-1520.png\n0 KB\nfile-1524.png\n0 KB\nfile-3612.png\n0 KB\nfile-3616.png\n0 KB\nfile-3620.png\n0 KB\nfile-3624.png\n0 KB\nfile-3628.png\n0 KB\nfile-3632.png\n0 KB\nVideos\n1250\nDocuments\n1249\nSpreadsheets\n1250",
-            "active": "Size\n↓",
-            "scroll": {
-              "x": 776,
-              "y": 152,
-              "w": 560,
-              "h": 748
-            },
-            "controlBoxes": [
-              {
-                "x": 784,
-                "y": 80,
-                "w": 388.625,
-                "h": 32
-              },
-              {
-                "x": 1180.625,
-                "y": 82,
-                "w": 73.828125,
-                "h": 28
-              },
-              {
-                "x": 1262.453125,
-                "y": 82,
-                "w": 65.546875,
-                "h": 28
-              },
-              {
-                "x": 1225.8046875,
-                "y": 116,
-                "w": 102.1953125,
-                "h": 28
-              }
-            ],
-            "headers": [
-              {
-                "label": "Highlights\n2",
-                "top": 160
-              },
-              {
-                "label": "Working files\n5000",
-                "top": 328
-              },
-              {
-                "label": "Images\n1251",
-                "top": 360
-              },
-              {
-                "label": "Videos\n1250",
-                "top": 66278
-              },
-              {
-                "label": "Documents\n1249",
-                "top": 456310
-              },
-              {
-                "label": "Spreadsheets\n1250",
-                "top": 501306
-              }
-            ],
-            "overflow": {
-              "client": 552,
-              "scroll": 552
-            }
-          },
-          {
-            "dock": {
-              "x": 776,
-              "y": 32,
-              "w": 560,
-              "h": 868
-            },
-            "rows": 26,
-            "query": "",
-            "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5000\nImages\n1251\nfile-1300.png\n0 KB\nfile-1304.png\n0 KB\nfile-1308.png\n0 KB\nfile-1312.png\n0 KB\nfile-1316.png\n0 KB\nfile-1320.png\n0 KB\nfile-1324.png\n0 KB\nfile-1328.png\n0 KB\nfile-1332.png\n0 KB\nfile-1336.png\n0 KB\nfile-1340.png\n0 KB\nfile-1344.png\n0 KB\nfile-1348.png\n0 KB\nfile-1352.png\n0 KB\nfile-1356.png\n0 KB\nfile-1384.png\n0 KB\nfile-1520.png\n0 KB\nfile-1524.png\n0 KB\nfile-3612.png\n0 KB\nfile-3616.png\n0 KB\nfile-3620.png\n0 KB\nfile-3624.png\n0 KB\nfile-3628.png\n0 KB\nfile-3632.png\n0 KB\nVideos\n1250\nDocuments\n1249\nSpreadsheets\n1250",
-            "active": "Size\n↓",
-            "scroll": {
-              "x": 776,
-              "y": 152,
-              "w": 560,
-              "h": 748
-            },
-            "controlBoxes": [
-              {
-                "x": 784,
-                "y": 80,
-                "w": 388.625,
-                "h": 32
-              },
-              {
-                "x": 1180.625,
-                "y": 82,
-                "w": 73.828125,
-                "h": 28
-              },
-              {
-                "x": 1262.453125,
-                "y": 82,
-                "w": 65.546875,
-                "h": 28
-              },
-              {
-                "x": 1225.8046875,
-                "y": 116,
-                "w": 102.1953125,
-                "h": 28
-              }
-            ],
-            "headers": [
-              {
-                "label": "Highlights\n2",
-                "top": 160
-              },
-              {
-                "label": "Working files\n5000",
-                "top": 328
-              },
-              {
-                "label": "Images\n1251",
-                "top": 360
-              },
-              {
-                "label": "Videos\n1250",
-                "top": 66278
-              },
-              {
-                "label": "Documents\n1249",
-                "top": 456310
-              },
-              {
-                "label": "Spreadsheets\n1250",
-                "top": 501306
-              }
-            ],
-            "overflow": {
-              "client": 552,
-              "scroll": 552
-            }
-          },
-          {
-            "dock": {
-              "x": 776,
-              "y": 32,
-              "w": 560,
-              "h": 868
-            },
-            "rows": 26,
-            "query": "",
-            "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5000\nImages\n1251\nfile-1300.png\n0 KB\nfile-1304.png\n0 KB\nfile-1308.png\n0 KB\nfile-1312.png\n0 KB\nfile-1316.png\n0 KB\nfile-1320.png\n0 KB\nfile-1324.png\n0 KB\nfile-1328.png\n0 KB\nfile-1332.png\n0 KB\nfile-1336.png\n0 KB\nfile-1340.png\n0 KB\nfile-1344.png\n0 KB\nfile-1348.png\n0 KB\nfile-1352.png\n0 KB\nfile-1356.png\n0 KB\nfile-1384.png\n0 KB\nfile-1520.png\n0 KB\nfile-1524.png\n0 KB\nfile-3612.png\n0 KB\nfile-3616.png\n0 KB\nfile-3620.png\n0 KB\nfile-3624.png\n0 KB\nfile-3628.png\n0 KB\nfile-3632.png\n0 KB\nVideos\n1250\nDocuments\n1249\nSpreadsheets\n1250",
-            "active": "Size\n↓",
-            "scroll": {
-              "x": 776,
-              "y": 152,
-              "w": 560,
-              "h": 748
-            },
-            "controlBoxes": [
-              {
-                "x": 784,
-                "y": 80,
-                "w": 388.625,
-                "h": 32
-              },
-              {
-                "x": 1180.625,
-                "y": 82,
-                "w": 73.828125,
-                "h": 28
-              },
-              {
-                "x": 1262.453125,
-                "y": 82,
-                "w": 65.546875,
-                "h": 28
-              },
-              {
-                "x": 1225.8046875,
-                "y": 116,
-                "w": 102.1953125,
-                "h": 28
-              }
-            ],
-            "headers": [
-              {
-                "label": "Highlights\n2",
-                "top": 160
-              },
-              {
-                "label": "Working files\n5000",
-                "top": 328
-              },
-              {
-                "label": "Images\n1251",
-                "top": 360
-              },
-              {
-                "label": "Videos\n1250",
-                "top": 66278
-              },
-              {
-                "label": "Documents\n1249",
-                "top": 456310
-              },
-              {
-                "label": "Spreadsheets\n1250",
-                "top": 501306
-              }
-            ],
-            "overflow": {
-              "client": 552,
-              "scroll": 552
-            }
-          }
-        ],
-        "sortedFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/before-560/finder-before-560-sort-pointer-light.png",
-        "filterFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/before-560/finder-before-560-filter-menu-light.png",
-        "narrowed": {
-          "dock": {
-            "x": 776,
-            "y": 32,
-            "w": 560,
-            "h": 868
-          },
-          "rows": 0,
-          "query": "file-0000",
-          "body": "Highlights\n1",
-          "active": "",
-          "scroll": {
-            "x": 776,
-            "y": 152,
-            "w": 560,
-            "h": 748
-          },
-          "controlBoxes": [
-            {
-              "x": 784,
-              "y": 80,
-              "w": 388.625,
-              "h": 32
-            },
-            {
-              "x": 1180.625,
-              "y": 82,
-              "w": 73.828125,
-              "h": 28
-            },
-            {
-              "x": 1262.453125,
-              "y": 82,
-              "w": 65.546875,
-              "h": 28
-            },
-            {
-              "x": 1225.8046875,
-              "y": 116,
-              "w": 102.1953125,
-              "h": 28
-            }
-          ],
-          "headers": [
-            {
-              "label": "Highlights\n1",
-              "top": 160
-            }
-          ],
-          "overflow": {
-            "client": 560,
-            "scroll": 560
-          }
-        },
-        "narrowedFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/before-560/finder-before-560-narrowed-light.png",
-        "searchEscape": {
-          "dock": null,
-          "rows": 0,
-          "active": "",
-          "scroll": null,
-          "controlBoxes": [],
-          "headers": [],
-          "overflow": null
-        },
-        "scrolling": {
-          "dock": {
-            "x": 776,
-            "y": 32,
-            "w": 560,
-            "h": 868
-          },
-          "rows": 8,
-          "query": "",
-          "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nWorking files\n5000\nImages\n1251\nVideos\n1250\nOpen to play\nfile-2645.mp4\n17 KB\nOpen to play\nfile-2649.mp4\n17 KB\nOpen to play\nfile-2653.mp4\n17 KB\nOpen to play\nfile-2657.mp4\n17 KB\nOpen to play\nfile-2661.mp4\n17 KB\nOpen to play\nfile-2665.mp4\n17 KB\nOpen to play\nfile-2669.mp4\n17 KB\nDocuments\n1249\nSpreadsheets\n1250",
-          "active": "Files 5002",
-          "scroll": {
-            "x": 776,
-            "y": 152,
-            "w": 560,
-            "h": 748
-          },
-          "controlBoxes": [
-            {
-              "x": 784,
-              "y": 80,
-              "w": 388.625,
-              "h": 32
-            },
-            {
-              "x": 1180.625,
-              "y": 82,
-              "w": 73.828125,
-              "h": 28
-            },
-            {
-              "x": 1262.453125,
-              "y": 82,
-              "w": 65.546875,
-              "h": 28
-            },
-            {
-              "x": 1225.8046875,
-              "y": 116,
-              "w": 102.1953125,
-              "h": 28
-            }
-          ],
-          "headers": [
-            {
-              "label": "Highlights\n2",
-              "top": -272801
-            },
-            {
-              "label": "Working files\n5000",
-              "top": -272769
-            },
-            {
-              "label": "Images\n1251",
-              "top": -206851
-            },
-            {
-              "label": "Videos\n1250",
-              "top": 160
-            },
-            {
-              "label": "Documents\n1249",
-              "top": 183213
-            },
-            {
-              "label": "Spreadsheets\n1250",
-              "top": 228209
-            }
-          ],
-          "overflow": {
-            "client": 552,
-            "scroll": 552
-          }
-        },
-        "scrollingFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/before-560/finder-before-560-scrolling-light.png",
-        "resting": {
-          "dock": {
-            "x": 776,
-            "y": 32,
-            "w": 560,
-            "h": 868
-          },
-          "rows": 8,
-          "query": "",
-          "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nWorking files\n5000\nImages\n1251\nVideos\n1250\nOpen to play\nfile-2645.mp4\n17 KB\nOpen to play\nfile-2649.mp4\n17 KB\nOpen to play\nfile-2653.mp4\n17 KB\nOpen to play\nfile-2657.mp4\n17 KB\nOpen to play\nfile-2661.mp4\n17 KB\nOpen to play\nfile-2665.mp4\n17 KB\nOpen to play\nfile-2669.mp4\n17 KB\nDocuments\n1249\nSpreadsheets\n1250",
-          "active": "Files 5002",
-          "scroll": {
-            "x": 776,
-            "y": 152,
-            "w": 560,
-            "h": 748
-          },
-          "controlBoxes": [
-            {
-              "x": 784,
-              "y": 80,
-              "w": 388.625,
-              "h": 32
-            },
-            {
-              "x": 1180.625,
-              "y": 82,
-              "w": 73.828125,
-              "h": 28
-            },
-            {
-              "x": 1262.453125,
-              "y": 82,
-              "w": 65.546875,
-              "h": 28
-            },
-            {
-              "x": 1225.8046875,
-              "y": 116,
-              "w": 102.1953125,
-              "h": 28
-            }
-          ],
-          "headers": [
-            {
-              "label": "Highlights\n2",
-              "top": -272801
-            },
-            {
-              "label": "Working files\n5000",
-              "top": -272769
-            },
-            {
-              "label": "Images\n1251",
-              "top": -206851
-            },
-            {
-              "label": "Videos\n1250",
-              "top": 160
-            },
-            {
-              "label": "Documents\n1249",
-              "top": 183213
-            },
-            {
-              "label": "Spreadsheets\n1250",
-              "top": 228209
-            }
-          ],
-          "overflow": {
-            "client": 552,
-            "scroll": 552
-          }
-        },
-        "restingFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/before-560/finder-before-560-resting-light.png",
-        "stickyOffset": 8,
-        "video": {
-          "dock": {
-            "x": 776,
-            "y": 32,
-            "w": 560,
-            "h": 868
-          },
-          "rows": 1,
-          "query": "file-0001.mp4",
-          "body": "Videos\n1\nOpen to play\nfile-0001.mp4\n17 KB",
-          "active": "",
-          "scroll": {
-            "x": 776,
-            "y": 152,
-            "w": 560,
-            "h": 748
-          },
-          "controlBoxes": [
-            {
-              "x": 784,
-              "y": 80,
-              "w": 388.625,
-              "h": 32
-            },
-            {
-              "x": 1180.625,
-              "y": 82,
-              "w": 73.828125,
-              "h": 28
-            },
-            {
-              "x": 1262.453125,
-              "y": 82,
-              "w": 65.546875,
-              "h": 28
-            },
-            {
-              "x": 1225.8046875,
-              "y": 116,
-              "w": 102.1953125,
-              "h": 28
-            }
-          ],
-          "headers": [
-            {
-              "label": "Videos\n1",
-              "top": 160
-            }
-          ],
-          "overflow": {
-            "client": 560,
-            "scroll": 560
-          }
-        },
-        "videoFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/before-560/finder-before-560-video-band-light.png",
-        "menuClose": {
-          "dock": {
-            "x": 776,
-            "y": 32,
-            "w": 560,
-            "h": 868
-          },
-          "rows": 26,
-          "query": "",
-          "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5000\nImages\n1251\nfile-1300.png\n0 KB\nfile-1304.png\n0 KB\nfile-1308.png\n0 KB\nfile-1312.png\n0 KB\nfile-1316.png\n0 KB\nfile-1320.png\n0 KB\nfile-1324.png\n0 KB\nfile-1328.png\n0 KB\nfile-1332.png\n0 KB\nfile-1336.png\n0 KB\nfile-1340.png\n0 KB\nfile-1344.png\n0 KB\nfile-1348.png\n0 KB\nfile-1352.png\n0 KB\nfile-1356.png\n0 KB\nfile-1384.png\n0 KB\nfile-1520.png\n0 KB\nfile-1524.png\n0 KB\nfile-3612.png\n0 KB\nfile-3616.png\n0 KB\nfile-3620.png\n0 KB\nfile-3624.png\n0 KB\nfile-3628.png\n0 KB\nfile-3632.png\n0 KB\nVideos\n1250\nDocuments\n1249\nSpreadsheets\n1250",
-          "active": "",
-          "activeRow": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png",
-          "scroll": {
-            "x": 776,
-            "y": 152,
-            "w": 560,
-            "h": 748
-          },
-          "controlBoxes": [
-            {
-              "x": 784,
-              "y": 80,
-              "w": 388.625,
-              "h": 32
-            },
-            {
-              "x": 1180.625,
-              "y": 82,
-              "w": 73.828125,
-              "h": 28
-            },
-            {
-              "x": 1262.453125,
-              "y": 82,
-              "w": 65.546875,
-              "h": 28
-            },
-            {
-              "x": 1225.8046875,
-              "y": 116,
-              "w": 102.1953125,
-              "h": 28
-            }
-          ],
-          "headers": [
-            {
-              "label": "Highlights\n2",
-              "top": 160
-            },
-            {
-              "label": "Working files\n5000",
-              "top": 328
-            },
-            {
-              "label": "Images\n1251",
-              "top": 360
-            },
-            {
-              "label": "Videos\n1250",
-              "top": 66278
-            },
-            {
-              "label": "Documents\n1249",
-              "top": 456310
-            },
-            {
-              "label": "Spreadsheets\n1250",
-              "top": 501306
-            }
-          ],
-          "overflow": {
-            "client": 552,
-            "scroll": 552
-          }
-        },
-        "afterArrow": {
-          "dock": {
-            "x": 776,
-            "y": 32,
-            "w": 560,
-            "h": 868
-          },
-          "rows": 26,
-          "query": "",
-          "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5000\nImages\n1251\nfile-1300.png\n0 KB\nfile-1304.png\n0 KB\nfile-1308.png\n0 KB\nfile-1312.png\n0 KB\nfile-1316.png\n0 KB\nfile-1320.png\n0 KB\nfile-1324.png\n0 KB\nfile-1328.png\n0 KB\nfile-1332.png\n0 KB\nfile-1336.png\n0 KB\nfile-1340.png\n0 KB\nfile-1344.png\n0 KB\nfile-1348.png\n0 KB\nfile-1352.png\n0 KB\nfile-1356.png\n0 KB\nfile-1384.png\n0 KB\nfile-1520.png\n0 KB\nfile-1524.png\n0 KB\nfile-3612.png\n0 KB\nfile-3616.png\n0 KB\nfile-3620.png\n0 KB\nfile-3624.png\n0 KB\nfile-3628.png\n0 KB\nfile-3632.png\n0 KB\nVideos\n1250\nDocuments\n1249\nSpreadsheets\n1250",
-          "active": "Show in canvas",
-          "scroll": {
-            "x": 776,
-            "y": 152,
-            "w": 560,
-            "h": 748
-          },
-          "controlBoxes": [
-            {
-              "x": 784,
-              "y": 80,
-              "w": 388.625,
-              "h": 32
-            },
-            {
-              "x": 1180.625,
-              "y": 82,
-              "w": 73.828125,
-              "h": 28
-            },
-            {
-              "x": 1262.453125,
-              "y": 82,
-              "w": 65.546875,
-              "h": 28
-            },
-            {
-              "x": 1225.8046875,
-              "y": 116,
-              "w": 102.1953125,
-              "h": 28
-            }
-          ],
-          "headers": [
-            {
-              "label": "Highlights\n2",
-              "top": 160
-            },
-            {
-              "label": "Working files\n5000",
-              "top": 328
-            },
-            {
-              "label": "Images\n1251",
-              "top": 360
-            },
-            {
-              "label": "Videos\n1250",
-              "top": 66278
-            },
-            {
-              "label": "Documents\n1249",
-              "top": 456310
-            },
-            {
-              "label": "Spreadsheets\n1250",
-              "top": 501306
-            }
-          ],
-          "overflow": {
-            "client": 552,
-            "scroll": 552
-          }
-        },
-        "focusFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/before-560/finder-before-560-focus-light.png"
-      }
-    }
-  },
-  "facts": {
-    "windowMode": "headless",
-    "appVersion": "0.34.41",
-    "platform": "darwin",
-    "title": "Local Operator",
-    "windowSize": {
-      "width": 1380,
-      "height": 900
-    },
-    "contentBounds": {
-      "width": 1380,
-      "height": 900
-    },
-    "visible": false,
-    "focused": false,
-    "minimized": false,
-    "frames": [],
-    "outDir": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/before-560"
-  }
+	"label": "before-560",
+	"session": "b1f1de000001",
+	"window": {
+		"width": 1380,
+		"height": 900
+	},
+	"themes": {
+		"dark": {
+			"frame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/before-560/files-before-560-dark.png",
+			"reading": {
+				"innerWidth": 1380,
+				"innerHeight": 900,
+				"dock": {
+					"x": 776,
+					"y": 32,
+					"w": 560,
+					"h": 868
+				},
+				"dockMode": "docked",
+				"scroller": {
+					"x": 776,
+					"y": 152,
+					"w": 560,
+					"h": 748
+				},
+				"rowCount": 2,
+				"rows": [
+					{
+						"text": "file-0000.png 10 KB A large chart promoted as the main deliverable.",
+						"box": {
+							"x": 784,
+							"y": 192,
+							"w": 544,
+							"h": 68
+						},
+						"insideDock": true,
+						"thumb": {
+							"decoded": true,
+							"naturalWidth": 640,
+							"naturalHeight": 384,
+							"srcScheme": "blob",
+							"box": {
+								"x": 788,
+								"y": 206,
+								"w": 40,
+								"h": 40
+							}
+						}
+					},
+					{
+						"text": "file-0002.md 0 KB Summary delivered alongside the chart.",
+						"box": {
+							"x": 784,
+							"y": 260,
+							"w": 544,
+							"h": 68
+						},
+						"insideDock": true,
+						"thumb": null
+					}
+				],
+				"header": "Mentioned ↑ Filter 5,002 files Open folder Highlights 2 file-0000.png 10 KB A large chart promoted as the main deliverable. file-0002.md 0 KB Summary delivered "
+			},
+			"delta": {
+				"initial": {
+					"dock": {
+						"x": 776,
+						"y": 32,
+						"w": 560,
+						"h": 868
+					},
+					"rows": 2,
+					"query": "",
+					"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5000",
+					"active": "Local Operator\nNew chat\n⌘\nN\nSearch\n⌘\nP\nAida\nAgents\nProjects\nSchedules\nBrowser\nAgent hub\n\nAgents\n\n \n\nNo agents yet\n\n11 built-in agents are ready to install — aida, architect, coder, copy-reviewer, designer, manager, qa-tester, reviewer, scout, tui-designer and ux-reviewer. You can edit them once installed.\n\nInstall all built-in agents\nCreate agent\nTeams\nCreate team\nPINNED\nScheduled (1 wake)\nAida\n· aida\n4h\n, last active 4 hours ago\nRight-click or press Shift+F10 (with Fn on most Mac keyboards) for its actions.\nTODAY\nRecent\nBrowse the files produced by this isolated test conversation.\n4h\n, last active 4 hours ago\nRight-click or press Shift+F10 (with Fn on most Mac keyboards) for its actions.\nRecent\nThis isolated session has no files yet.\n4h\n, last active 4 hours ago\nRight-click or press Shift+F10 (with Fn on most Mac keyboards) for its actions.\n\nShowing 3 of 3 chats\n\nUser\nBrowse the files produced by this isolated test conversation.\nNo agent\nNo team\n​\nOn this device\nEarlier history above — scroll up to load\n349+ actions\n·\n1 image\n1:53 PM\n\nThe working files and generated sky are ready.\n\nSign in to Radient in Settings to enable speaking aloud\n2 files: file-0000.png, file-0002.md\n~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home\n\nNo model provider connected ·\nConnect\n\nCanvas view\nFiles 5002\nMentioned\n↑\nFilter\n5,002 files\nOpen folder\nHighlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5000",
+					"scroll": {
+						"x": 776,
+						"y": 152,
+						"w": 560,
+						"h": 748
+					},
+					"controlBoxes": [
+						{
+							"x": 784,
+							"y": 80,
+							"w": 351.609375,
+							"h": 32
+						},
+						{
+							"x": 1143.609375,
+							"y": 82,
+							"w": 110.84375,
+							"h": 28
+						},
+						{
+							"x": 1262.453125,
+							"y": 82,
+							"w": 65.546875,
+							"h": 28
+						},
+						{
+							"x": 1225.8046875,
+							"y": 116,
+							"w": 102.1953125,
+							"h": 28
+						}
+					],
+					"headers": [
+						{
+							"label": "Highlights\n2",
+							"top": 160
+						},
+						{
+							"label": "Working files\n5000",
+							"top": 328
+						}
+					],
+					"overflow": {
+						"client": 560,
+						"scroll": 560
+					}
+				},
+				"expanded": {
+					"dock": {
+						"x": 776,
+						"y": 32,
+						"w": 560,
+						"h": 868
+					},
+					"rows": 26,
+					"query": "",
+					"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5000\nImages\n1251\nfile-0004.png\n0 KB\nfile-0008.png\n0 KB\nfile-0012.png\n0 KB\nfile-0016.png\n0 KB\nfile-0020.png\n0 KB\nfile-0024.png\n0 KB\nfile-0028.png\n0 KB\nfile-0032.png\n0 KB\nfile-0036.png\n0 KB\nfile-0040.png\n0 KB\nfile-0044.png\n0 KB\nfile-0048.png\n0 KB\nfile-0052.png\n0 KB\nfile-0056.png\n0 KB\nfile-0060.png\n0 KB\nfile-0064.png\n0 KB\nfile-0068.png\n0 KB\nfile-0072.png\n0 KB\nfile-0076.png\n0 KB\nfile-0080.png\n0 KB\nfile-0084.png\n0 KB\nfile-0088.png\n0 KB\nfile-0092.png\n0 KB\nfile-0096.png\n0 KB\nVideos\n1250\nDocuments\n1249\nSpreadsheets\n1250",
+					"active": "Working files\n5000",
+					"scroll": {
+						"x": 776,
+						"y": 152,
+						"w": 560,
+						"h": 748
+					},
+					"controlBoxes": [
+						{
+							"x": 784,
+							"y": 80,
+							"w": 351.609375,
+							"h": 32
+						},
+						{
+							"x": 1143.609375,
+							"y": 82,
+							"w": 110.84375,
+							"h": 28
+						},
+						{
+							"x": 1262.453125,
+							"y": 82,
+							"w": 65.546875,
+							"h": 28
+						},
+						{
+							"x": 1225.8046875,
+							"y": 116,
+							"w": 102.1953125,
+							"h": 28
+						}
+					],
+					"headers": [
+						{
+							"label": "Highlights\n2",
+							"top": 160
+						},
+						{
+							"label": "Working files\n5000",
+							"top": 328
+						},
+						{
+							"label": "Images\n1251",
+							"top": 360
+						},
+						{
+							"label": "Videos\n1250",
+							"top": 66278
+						},
+						{
+							"label": "Documents\n1249",
+							"top": 456310
+						},
+						{
+							"label": "Spreadsheets\n1250",
+							"top": 501306
+						}
+					],
+					"overflow": {
+						"client": 552,
+						"scroll": 552
+					}
+				},
+				"sortActivation": "pointer",
+				"sortFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/before-560/finder-before-560-sort-menu-dark.png",
+				"sortSamples": [
+					{
+						"dock": {
+							"x": 776,
+							"y": 32,
+							"w": 560,
+							"h": 868
+						},
+						"rows": 0,
+						"query": "",
+						"body": "Loading session files…\n\nFiles the agent creates or highlights appear here.",
+						"active": "Size\n↓",
+						"scroll": {
+							"x": 776,
+							"y": 152,
+							"w": 560,
+							"h": 748
+						},
+						"controlBoxes": [
+							{
+								"x": 784,
+								"y": 80,
+								"w": 388.625,
+								"h": 32
+							},
+							{
+								"x": 1180.625,
+								"y": 82,
+								"w": 73.828125,
+								"h": 28
+							},
+							{
+								"x": 1262.453125,
+								"y": 82,
+								"w": 65.546875,
+								"h": 28
+							},
+							{
+								"x": 1225.8046875,
+								"y": 116,
+								"w": 102.1953125,
+								"h": 28
+							}
+						],
+						"headers": [],
+						"overflow": {
+							"client": 560,
+							"scroll": 560
+						}
+					},
+					{
+						"dock": {
+							"x": 776,
+							"y": 32,
+							"w": 560,
+							"h": 868
+						},
+						"rows": 0,
+						"query": "",
+						"body": "Loading session files…\n\nFiles the agent creates or highlights appear here.",
+						"active": "Size\n↓",
+						"scroll": {
+							"x": 776,
+							"y": 152,
+							"w": 560,
+							"h": 748
+						},
+						"controlBoxes": [
+							{
+								"x": 784,
+								"y": 80,
+								"w": 388.625,
+								"h": 32
+							},
+							{
+								"x": 1180.625,
+								"y": 82,
+								"w": 73.828125,
+								"h": 28
+							},
+							{
+								"x": 1262.453125,
+								"y": 82,
+								"w": 65.546875,
+								"h": 28
+							},
+							{
+								"x": 1225.8046875,
+								"y": 116,
+								"w": 102.1953125,
+								"h": 28
+							}
+						],
+						"headers": [],
+						"overflow": {
+							"client": 560,
+							"scroll": 560
+						}
+					},
+					{
+						"dock": {
+							"x": 776,
+							"y": 32,
+							"w": 560,
+							"h": 868
+						},
+						"rows": 0,
+						"query": "",
+						"body": "No files yet\n\nFiles the agent creates or highlights appear here.",
+						"active": "Size\n↓",
+						"scroll": {
+							"x": 776,
+							"y": 152,
+							"w": 560,
+							"h": 748
+						},
+						"controlBoxes": [
+							{
+								"x": 784,
+								"y": 80,
+								"w": 388.625,
+								"h": 32
+							},
+							{
+								"x": 1180.625,
+								"y": 82,
+								"w": 73.828125,
+								"h": 28
+							},
+							{
+								"x": 1262.453125,
+								"y": 82,
+								"w": 65.546875,
+								"h": 28
+							},
+							{
+								"x": 1225.8046875,
+								"y": 116,
+								"w": 102.1953125,
+								"h": 28
+							}
+						],
+						"headers": [],
+						"overflow": {
+							"client": 560,
+							"scroll": 560
+						}
+					},
+					{
+						"dock": {
+							"x": 776,
+							"y": 32,
+							"w": 560,
+							"h": 868
+						},
+						"rows": 0,
+						"query": "",
+						"body": "No files yet\n\nFiles the agent creates or highlights appear here.",
+						"active": "Size\n↓",
+						"scroll": {
+							"x": 776,
+							"y": 152,
+							"w": 560,
+							"h": 748
+						},
+						"controlBoxes": [
+							{
+								"x": 784,
+								"y": 80,
+								"w": 388.625,
+								"h": 32
+							},
+							{
+								"x": 1180.625,
+								"y": 82,
+								"w": 73.828125,
+								"h": 28
+							},
+							{
+								"x": 1262.453125,
+								"y": 82,
+								"w": 65.546875,
+								"h": 28
+							},
+							{
+								"x": 1225.8046875,
+								"y": 116,
+								"w": 102.1953125,
+								"h": 28
+							}
+						],
+						"headers": [],
+						"overflow": {
+							"client": 560,
+							"scroll": 560
+						}
+					},
+					{
+						"dock": {
+							"x": 776,
+							"y": 32,
+							"w": 560,
+							"h": 868
+						},
+						"rows": 0,
+						"query": "",
+						"body": "No files yet\n\nFiles the agent creates or highlights appear here.",
+						"active": "Size\n↓",
+						"scroll": {
+							"x": 776,
+							"y": 152,
+							"w": 560,
+							"h": 748
+						},
+						"controlBoxes": [
+							{
+								"x": 784,
+								"y": 80,
+								"w": 388.625,
+								"h": 32
+							},
+							{
+								"x": 1180.625,
+								"y": 82,
+								"w": 73.828125,
+								"h": 28
+							},
+							{
+								"x": 1262.453125,
+								"y": 82,
+								"w": 65.546875,
+								"h": 28
+							},
+							{
+								"x": 1225.8046875,
+								"y": 116,
+								"w": 102.1953125,
+								"h": 28
+							}
+						],
+						"headers": [],
+						"overflow": {
+							"client": 560,
+							"scroll": 560
+						}
+					},
+					{
+						"dock": {
+							"x": 776,
+							"y": 32,
+							"w": 560,
+							"h": 868
+						},
+						"rows": 0,
+						"query": "",
+						"body": "No files yet\n\nFiles the agent creates or highlights appear here.",
+						"active": "Size\n↓",
+						"scroll": {
+							"x": 776,
+							"y": 152,
+							"w": 560,
+							"h": 748
+						},
+						"controlBoxes": [
+							{
+								"x": 784,
+								"y": 80,
+								"w": 388.625,
+								"h": 32
+							},
+							{
+								"x": 1180.625,
+								"y": 82,
+								"w": 73.828125,
+								"h": 28
+							},
+							{
+								"x": 1262.453125,
+								"y": 82,
+								"w": 65.546875,
+								"h": 28
+							},
+							{
+								"x": 1225.8046875,
+								"y": 116,
+								"w": 102.1953125,
+								"h": 28
+							}
+						],
+						"headers": [],
+						"overflow": {
+							"client": 560,
+							"scroll": 560
+						}
+					},
+					{
+						"dock": {
+							"x": 776,
+							"y": 32,
+							"w": 560,
+							"h": 868
+						},
+						"rows": 0,
+						"query": "",
+						"body": "No files yet\n\nFiles the agent creates or highlights appear here.",
+						"active": "Size\n↓",
+						"scroll": {
+							"x": 776,
+							"y": 152,
+							"w": 560,
+							"h": 748
+						},
+						"controlBoxes": [
+							{
+								"x": 784,
+								"y": 80,
+								"w": 388.625,
+								"h": 32
+							},
+							{
+								"x": 1180.625,
+								"y": 82,
+								"w": 73.828125,
+								"h": 28
+							},
+							{
+								"x": 1262.453125,
+								"y": 82,
+								"w": 65.546875,
+								"h": 28
+							},
+							{
+								"x": 1225.8046875,
+								"y": 116,
+								"w": 102.1953125,
+								"h": 28
+							}
+						],
+						"headers": [],
+						"overflow": {
+							"client": 560,
+							"scroll": 560
+						}
+					},
+					{
+						"dock": {
+							"x": 776,
+							"y": 32,
+							"w": 560,
+							"h": 868
+						},
+						"rows": 0,
+						"query": "",
+						"body": "No files yet\n\nFiles the agent creates or highlights appear here.",
+						"active": "Size\n↓",
+						"scroll": {
+							"x": 776,
+							"y": 152,
+							"w": 560,
+							"h": 748
+						},
+						"controlBoxes": [
+							{
+								"x": 784,
+								"y": 80,
+								"w": 388.625,
+								"h": 32
+							},
+							{
+								"x": 1180.625,
+								"y": 82,
+								"w": 73.828125,
+								"h": 28
+							},
+							{
+								"x": 1262.453125,
+								"y": 82,
+								"w": 65.546875,
+								"h": 28
+							},
+							{
+								"x": 1225.8046875,
+								"y": 116,
+								"w": 102.1953125,
+								"h": 28
+							}
+						],
+						"headers": [],
+						"overflow": {
+							"client": 560,
+							"scroll": 560
+						}
+					},
+					{
+						"dock": {
+							"x": 776,
+							"y": 32,
+							"w": 560,
+							"h": 868
+						},
+						"rows": 0,
+						"query": "",
+						"body": "No files yet\n\nFiles the agent creates or highlights appear here.",
+						"active": "Size\n↓",
+						"scroll": {
+							"x": 776,
+							"y": 152,
+							"w": 560,
+							"h": 748
+						},
+						"controlBoxes": [
+							{
+								"x": 784,
+								"y": 80,
+								"w": 388.625,
+								"h": 32
+							},
+							{
+								"x": 1180.625,
+								"y": 82,
+								"w": 73.828125,
+								"h": 28
+							},
+							{
+								"x": 1262.453125,
+								"y": 82,
+								"w": 65.546875,
+								"h": 28
+							},
+							{
+								"x": 1225.8046875,
+								"y": 116,
+								"w": 102.1953125,
+								"h": 28
+							}
+						],
+						"headers": [],
+						"overflow": {
+							"client": 560,
+							"scroll": 560
+						}
+					},
+					{
+						"dock": {
+							"x": 776,
+							"y": 32,
+							"w": 560,
+							"h": 868
+						},
+						"rows": 0,
+						"query": "",
+						"body": "No files yet\n\nFiles the agent creates or highlights appear here.",
+						"active": "Size\n↓",
+						"scroll": {
+							"x": 776,
+							"y": 152,
+							"w": 560,
+							"h": 748
+						},
+						"controlBoxes": [
+							{
+								"x": 784,
+								"y": 80,
+								"w": 388.625,
+								"h": 32
+							},
+							{
+								"x": 1180.625,
+								"y": 82,
+								"w": 73.828125,
+								"h": 28
+							},
+							{
+								"x": 1262.453125,
+								"y": 82,
+								"w": 65.546875,
+								"h": 28
+							},
+							{
+								"x": 1225.8046875,
+								"y": 116,
+								"w": 102.1953125,
+								"h": 28
+							}
+						],
+						"headers": [],
+						"overflow": {
+							"client": 560,
+							"scroll": 560
+						}
+					}
+				],
+				"sortedFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/before-560/finder-before-560-sort-pointer-dark.png",
+				"filterFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/before-560/finder-before-560-filter-menu-dark.png",
+				"narrowed": {
+					"dock": {
+						"x": 776,
+						"y": 32,
+						"w": 560,
+						"h": 868
+					},
+					"rows": 0,
+					"query": "file-0000",
+					"body": "Highlights\n1",
+					"active": "",
+					"scroll": {
+						"x": 776,
+						"y": 152,
+						"w": 560,
+						"h": 748
+					},
+					"controlBoxes": [
+						{
+							"x": 784,
+							"y": 80,
+							"w": 388.625,
+							"h": 32
+						},
+						{
+							"x": 1180.625,
+							"y": 82,
+							"w": 73.828125,
+							"h": 28
+						},
+						{
+							"x": 1262.453125,
+							"y": 82,
+							"w": 65.546875,
+							"h": 28
+						},
+						{
+							"x": 1225.8046875,
+							"y": 116,
+							"w": 102.1953125,
+							"h": 28
+						}
+					],
+					"headers": [
+						{
+							"label": "Highlights\n1",
+							"top": 160
+						}
+					],
+					"overflow": {
+						"client": 560,
+						"scroll": 560
+					}
+				},
+				"narrowedFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/before-560/finder-before-560-narrowed-dark.png",
+				"searchEscape": {
+					"dock": null,
+					"rows": 0,
+					"active": "",
+					"scroll": null,
+					"controlBoxes": [],
+					"headers": [],
+					"overflow": null
+				},
+				"scrolling": {
+					"dock": {
+						"x": 776,
+						"y": 32,
+						"w": 560,
+						"h": 868
+					},
+					"rows": 8,
+					"query": "",
+					"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nWorking files\n5000\nImages\n1251\nVideos\n1250\nOpen to play\nfile-2645.mp4\n17 KB\nOpen to play\nfile-2649.mp4\n17 KB\nOpen to play\nfile-2653.mp4\n17 KB\nOpen to play\nfile-2657.mp4\n17 KB\nOpen to play\nfile-2661.mp4\n17 KB\nOpen to play\nfile-2665.mp4\n17 KB\nOpen to play\nfile-2669.mp4\n17 KB\nDocuments\n1249\nSpreadsheets\n1250",
+					"active": "Files 5002",
+					"scroll": {
+						"x": 776,
+						"y": 152,
+						"w": 560,
+						"h": 748
+					},
+					"controlBoxes": [
+						{
+							"x": 784,
+							"y": 80,
+							"w": 388.625,
+							"h": 32
+						},
+						{
+							"x": 1180.625,
+							"y": 82,
+							"w": 73.828125,
+							"h": 28
+						},
+						{
+							"x": 1262.453125,
+							"y": 82,
+							"w": 65.546875,
+							"h": 28
+						},
+						{
+							"x": 1225.8046875,
+							"y": 116,
+							"w": 102.1953125,
+							"h": 28
+						}
+					],
+					"headers": [
+						{
+							"label": "Highlights\n2",
+							"top": -272801
+						},
+						{
+							"label": "Working files\n5000",
+							"top": -272769
+						},
+						{
+							"label": "Images\n1251",
+							"top": -206851
+						},
+						{
+							"label": "Videos\n1250",
+							"top": 160
+						},
+						{
+							"label": "Documents\n1249",
+							"top": 183213
+						},
+						{
+							"label": "Spreadsheets\n1250",
+							"top": 228209
+						}
+					],
+					"overflow": {
+						"client": 552,
+						"scroll": 552
+					}
+				},
+				"scrollingFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/before-560/finder-before-560-scrolling-dark.png",
+				"resting": {
+					"dock": {
+						"x": 776,
+						"y": 32,
+						"w": 560,
+						"h": 868
+					},
+					"rows": 8,
+					"query": "",
+					"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nWorking files\n5000\nImages\n1251\nVideos\n1250\nOpen to play\nfile-2645.mp4\n17 KB\nOpen to play\nfile-2649.mp4\n17 KB\nOpen to play\nfile-2653.mp4\n17 KB\nOpen to play\nfile-2657.mp4\n17 KB\nOpen to play\nfile-2661.mp4\n17 KB\nOpen to play\nfile-2665.mp4\n17 KB\nOpen to play\nfile-2669.mp4\n17 KB\nDocuments\n1249\nSpreadsheets\n1250",
+					"active": "Files 5002",
+					"scroll": {
+						"x": 776,
+						"y": 152,
+						"w": 560,
+						"h": 748
+					},
+					"controlBoxes": [
+						{
+							"x": 784,
+							"y": 80,
+							"w": 388.625,
+							"h": 32
+						},
+						{
+							"x": 1180.625,
+							"y": 82,
+							"w": 73.828125,
+							"h": 28
+						},
+						{
+							"x": 1262.453125,
+							"y": 82,
+							"w": 65.546875,
+							"h": 28
+						},
+						{
+							"x": 1225.8046875,
+							"y": 116,
+							"w": 102.1953125,
+							"h": 28
+						}
+					],
+					"headers": [
+						{
+							"label": "Highlights\n2",
+							"top": -272801
+						},
+						{
+							"label": "Working files\n5000",
+							"top": -272769
+						},
+						{
+							"label": "Images\n1251",
+							"top": -206851
+						},
+						{
+							"label": "Videos\n1250",
+							"top": 160
+						},
+						{
+							"label": "Documents\n1249",
+							"top": 183213
+						},
+						{
+							"label": "Spreadsheets\n1250",
+							"top": 228209
+						}
+					],
+					"overflow": {
+						"client": 552,
+						"scroll": 552
+					}
+				},
+				"restingFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/before-560/finder-before-560-resting-dark.png",
+				"stickyOffset": 8,
+				"video": {
+					"dock": {
+						"x": 776,
+						"y": 32,
+						"w": 560,
+						"h": 868
+					},
+					"rows": 1,
+					"query": "file-0001.mp4",
+					"body": "Videos\n1\nOpen to play\nfile-0001.mp4\n17 KB",
+					"active": "",
+					"scroll": {
+						"x": 776,
+						"y": 152,
+						"w": 560,
+						"h": 748
+					},
+					"controlBoxes": [
+						{
+							"x": 784,
+							"y": 80,
+							"w": 388.625,
+							"h": 32
+						},
+						{
+							"x": 1180.625,
+							"y": 82,
+							"w": 73.828125,
+							"h": 28
+						},
+						{
+							"x": 1262.453125,
+							"y": 82,
+							"w": 65.546875,
+							"h": 28
+						},
+						{
+							"x": 1225.8046875,
+							"y": 116,
+							"w": 102.1953125,
+							"h": 28
+						}
+					],
+					"headers": [
+						{
+							"label": "Videos\n1",
+							"top": 160
+						}
+					],
+					"overflow": {
+						"client": 560,
+						"scroll": 560
+					}
+				},
+				"videoFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/before-560/finder-before-560-video-band-dark.png",
+				"menuClose": {
+					"dock": {
+						"x": 776,
+						"y": 32,
+						"w": 560,
+						"h": 868
+					},
+					"rows": 26,
+					"query": "",
+					"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5000\nImages\n1251\nfile-1300.png\n0 KB\nfile-1304.png\n0 KB\nfile-1308.png\n0 KB\nfile-1312.png\n0 KB\nfile-1316.png\n0 KB\nfile-1320.png\n0 KB\nfile-1324.png\n0 KB\nfile-1328.png\n0 KB\nfile-1332.png\n0 KB\nfile-1336.png\n0 KB\nfile-1340.png\n0 KB\nfile-1344.png\n0 KB\nfile-1348.png\n0 KB\nfile-1352.png\n0 KB\nfile-1356.png\n0 KB\nfile-1384.png\n0 KB\nfile-1520.png\n0 KB\nfile-1524.png\n0 KB\nfile-3612.png\n0 KB\nfile-3616.png\n0 KB\nfile-3620.png\n0 KB\nfile-3624.png\n0 KB\nfile-3628.png\n0 KB\nfile-3632.png\n0 KB\nVideos\n1250\nDocuments\n1249\nSpreadsheets\n1250",
+					"active": "",
+					"activeRow": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png",
+					"scroll": {
+						"x": 776,
+						"y": 152,
+						"w": 560,
+						"h": 748
+					},
+					"controlBoxes": [
+						{
+							"x": 784,
+							"y": 80,
+							"w": 388.625,
+							"h": 32
+						},
+						{
+							"x": 1180.625,
+							"y": 82,
+							"w": 73.828125,
+							"h": 28
+						},
+						{
+							"x": 1262.453125,
+							"y": 82,
+							"w": 65.546875,
+							"h": 28
+						},
+						{
+							"x": 1225.8046875,
+							"y": 116,
+							"w": 102.1953125,
+							"h": 28
+						}
+					],
+					"headers": [
+						{
+							"label": "Highlights\n2",
+							"top": 160
+						},
+						{
+							"label": "Working files\n5000",
+							"top": 328
+						},
+						{
+							"label": "Images\n1251",
+							"top": 360
+						},
+						{
+							"label": "Videos\n1250",
+							"top": 66278
+						},
+						{
+							"label": "Documents\n1249",
+							"top": 456310
+						},
+						{
+							"label": "Spreadsheets\n1250",
+							"top": 501306
+						}
+					],
+					"overflow": {
+						"client": 552,
+						"scroll": 552
+					}
+				},
+				"afterArrow": {
+					"dock": {
+						"x": 776,
+						"y": 32,
+						"w": 560,
+						"h": 868
+					},
+					"rows": 26,
+					"query": "",
+					"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5000\nImages\n1251\nfile-1300.png\n0 KB\nfile-1304.png\n0 KB\nfile-1308.png\n0 KB\nfile-1312.png\n0 KB\nfile-1316.png\n0 KB\nfile-1320.png\n0 KB\nfile-1324.png\n0 KB\nfile-1328.png\n0 KB\nfile-1332.png\n0 KB\nfile-1336.png\n0 KB\nfile-1340.png\n0 KB\nfile-1344.png\n0 KB\nfile-1348.png\n0 KB\nfile-1352.png\n0 KB\nfile-1356.png\n0 KB\nfile-1384.png\n0 KB\nfile-1520.png\n0 KB\nfile-1524.png\n0 KB\nfile-3612.png\n0 KB\nfile-3616.png\n0 KB\nfile-3620.png\n0 KB\nfile-3624.png\n0 KB\nfile-3628.png\n0 KB\nfile-3632.png\n0 KB\nVideos\n1250\nDocuments\n1249\nSpreadsheets\n1250",
+					"active": "Show in canvas",
+					"scroll": {
+						"x": 776,
+						"y": 152,
+						"w": 560,
+						"h": 748
+					},
+					"controlBoxes": [
+						{
+							"x": 784,
+							"y": 80,
+							"w": 388.625,
+							"h": 32
+						},
+						{
+							"x": 1180.625,
+							"y": 82,
+							"w": 73.828125,
+							"h": 28
+						},
+						{
+							"x": 1262.453125,
+							"y": 82,
+							"w": 65.546875,
+							"h": 28
+						},
+						{
+							"x": 1225.8046875,
+							"y": 116,
+							"w": 102.1953125,
+							"h": 28
+						}
+					],
+					"headers": [
+						{
+							"label": "Highlights\n2",
+							"top": 160
+						},
+						{
+							"label": "Working files\n5000",
+							"top": 328
+						},
+						{
+							"label": "Images\n1251",
+							"top": 360
+						},
+						{
+							"label": "Videos\n1250",
+							"top": 66278
+						},
+						{
+							"label": "Documents\n1249",
+							"top": 456310
+						},
+						{
+							"label": "Spreadsheets\n1250",
+							"top": 501306
+						}
+					],
+					"overflow": {
+						"client": 552,
+						"scroll": 552
+					}
+				},
+				"focusFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/before-560/finder-before-560-focus-dark.png"
+			}
+		},
+		"light": {
+			"frame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/before-560/files-before-560-light.png",
+			"reading": {
+				"innerWidth": 1380,
+				"innerHeight": 900,
+				"dock": {
+					"x": 776,
+					"y": 32,
+					"w": 560,
+					"h": 868
+				},
+				"dockMode": "docked",
+				"scroller": {
+					"x": 776,
+					"y": 152,
+					"w": 560,
+					"h": 748
+				},
+				"rowCount": 26,
+				"rows": [
+					{
+						"text": "file-0000.png 10 KB A large chart promoted as the main deliverable.",
+						"box": {
+							"x": 784,
+							"y": 192,
+							"w": 536,
+							"h": 68
+						},
+						"insideDock": true,
+						"thumb": {
+							"decoded": true,
+							"naturalWidth": 640,
+							"naturalHeight": 384,
+							"srcScheme": "blob",
+							"box": {
+								"x": 788,
+								"y": 206,
+								"w": 40,
+								"h": 40
+							}
+						}
+					},
+					{
+						"text": "file-0002.md 0 KB Summary delivered alongside the chart.",
+						"box": {
+							"x": 784,
+							"y": 260,
+							"w": 536,
+							"h": 68
+						},
+						"insideDock": true,
+						"thumb": null
+					},
+					{
+						"text": "file-1300.png 0 KB",
+						"box": {
+							"x": 784,
+							"y": 392,
+							"w": 176,
+							"h": 154
+						},
+						"insideDock": true,
+						"thumb": {
+							"decoded": true,
+							"naturalWidth": 192,
+							"naturalHeight": 144,
+							"srcScheme": "blob",
+							"box": {
+								"x": 788,
+								"y": 396,
+								"w": 168,
+								"h": 126
+							}
+						}
+					},
+					{
+						"text": "file-1304.png 0 KB",
+						"box": {
+							"x": 964,
+							"y": 392,
+							"w": 176,
+							"h": 154
+						},
+						"insideDock": true,
+						"thumb": {
+							"decoded": true,
+							"naturalWidth": 192,
+							"naturalHeight": 144,
+							"srcScheme": "blob",
+							"box": {
+								"x": 968,
+								"y": 396,
+								"w": 168,
+								"h": 126
+							}
+						}
+					},
+					{
+						"text": "file-1308.png 0 KB",
+						"box": {
+							"x": 1144,
+							"y": 392,
+							"w": 176,
+							"h": 154
+						},
+						"insideDock": true,
+						"thumb": {
+							"decoded": true,
+							"naturalWidth": 192,
+							"naturalHeight": 144,
+							"srcScheme": "blob",
+							"box": {
+								"x": 1148,
+								"y": 396,
+								"w": 168,
+								"h": 126
+							}
+						}
+					},
+					{
+						"text": "file-1312.png 0 KB",
+						"box": {
+							"x": 784,
+							"y": 550,
+							"w": 176,
+							"h": 154
+						},
+						"insideDock": true,
+						"thumb": {
+							"decoded": true,
+							"naturalWidth": 192,
+							"naturalHeight": 144,
+							"srcScheme": "blob",
+							"box": {
+								"x": 788,
+								"y": 554,
+								"w": 168,
+								"h": 126
+							}
+						}
+					},
+					{
+						"text": "file-1316.png 0 KB",
+						"box": {
+							"x": 964,
+							"y": 550,
+							"w": 176,
+							"h": 154
+						},
+						"insideDock": true,
+						"thumb": {
+							"decoded": true,
+							"naturalWidth": 192,
+							"naturalHeight": 144,
+							"srcScheme": "blob",
+							"box": {
+								"x": 968,
+								"y": 554,
+								"w": 168,
+								"h": 126
+							}
+						}
+					},
+					{
+						"text": "file-1320.png 0 KB",
+						"box": {
+							"x": 1144,
+							"y": 550,
+							"w": 176,
+							"h": 154
+						},
+						"insideDock": true,
+						"thumb": {
+							"decoded": true,
+							"naturalWidth": 192,
+							"naturalHeight": 144,
+							"srcScheme": "blob",
+							"box": {
+								"x": 1148,
+								"y": 554,
+								"w": 168,
+								"h": 126
+							}
+						}
+					},
+					{
+						"text": "file-1324.png 0 KB",
+						"box": {
+							"x": 784,
+							"y": 708,
+							"w": 176,
+							"h": 154
+						},
+						"insideDock": true,
+						"thumb": {
+							"decoded": true,
+							"naturalWidth": 192,
+							"naturalHeight": 144,
+							"srcScheme": "blob",
+							"box": {
+								"x": 788,
+								"y": 712,
+								"w": 168,
+								"h": 126
+							}
+						}
+					},
+					{
+						"text": "file-1328.png 0 KB",
+						"box": {
+							"x": 964,
+							"y": 708,
+							"w": 176,
+							"h": 154
+						},
+						"insideDock": true,
+						"thumb": {
+							"decoded": true,
+							"naturalWidth": 192,
+							"naturalHeight": 144,
+							"srcScheme": "blob",
+							"box": {
+								"x": 968,
+								"y": 712,
+								"w": 168,
+								"h": 126
+							}
+						}
+					},
+					{
+						"text": "file-1332.png 0 KB",
+						"box": {
+							"x": 1144,
+							"y": 708,
+							"w": 176,
+							"h": 154
+						},
+						"insideDock": true,
+						"thumb": {
+							"decoded": true,
+							"naturalWidth": 192,
+							"naturalHeight": 144,
+							"srcScheme": "blob",
+							"box": {
+								"x": 1148,
+								"y": 712,
+								"w": 168,
+								"h": 126
+							}
+						}
+					},
+					{
+						"text": "file-1336.png 0 KB",
+						"box": {
+							"x": 784,
+							"y": 866,
+							"w": 176,
+							"h": 154
+						},
+						"insideDock": true,
+						"thumb": {
+							"decoded": true,
+							"naturalWidth": 192,
+							"naturalHeight": 144,
+							"srcScheme": "blob",
+							"box": {
+								"x": 788,
+								"y": 870,
+								"w": 168,
+								"h": 126
+							}
+						}
+					},
+					{
+						"text": "file-1340.png 0 KB",
+						"box": {
+							"x": 964,
+							"y": 866,
+							"w": 176,
+							"h": 154
+						},
+						"insideDock": true,
+						"thumb": {
+							"decoded": true,
+							"naturalWidth": 192,
+							"naturalHeight": 144,
+							"srcScheme": "blob",
+							"box": {
+								"x": 968,
+								"y": 870,
+								"w": 168,
+								"h": 126
+							}
+						}
+					},
+					{
+						"text": "file-1344.png 0 KB",
+						"box": {
+							"x": 1144,
+							"y": 866,
+							"w": 176,
+							"h": 154
+						},
+						"insideDock": true,
+						"thumb": {
+							"decoded": true,
+							"naturalWidth": 192,
+							"naturalHeight": 144,
+							"srcScheme": "blob",
+							"box": {
+								"x": 1148,
+								"y": 870,
+								"w": 168,
+								"h": 126
+							}
+						}
+					},
+					{
+						"text": "file-1348.png 0 KB",
+						"box": {
+							"x": 784,
+							"y": 1024,
+							"w": 176,
+							"h": 154
+						},
+						"insideDock": true,
+						"thumb": null
+					},
+					{
+						"text": "file-1352.png 0 KB",
+						"box": {
+							"x": 964,
+							"y": 1024,
+							"w": 176,
+							"h": 154
+						},
+						"insideDock": true,
+						"thumb": null
+					},
+					{
+						"text": "file-1356.png 0 KB",
+						"box": {
+							"x": 1144,
+							"y": 1024,
+							"w": 176,
+							"h": 154
+						},
+						"insideDock": true,
+						"thumb": null
+					},
+					{
+						"text": "file-1384.png 0 KB",
+						"box": {
+							"x": 784,
+							"y": 1182,
+							"w": 176,
+							"h": 154
+						},
+						"insideDock": true,
+						"thumb": null
+					},
+					{
+						"text": "file-1520.png 0 KB",
+						"box": {
+							"x": 964,
+							"y": 1182,
+							"w": 176,
+							"h": 154
+						},
+						"insideDock": true,
+						"thumb": null
+					},
+					{
+						"text": "file-1524.png 0 KB",
+						"box": {
+							"x": 1144,
+							"y": 1182,
+							"w": 176,
+							"h": 154
+						},
+						"insideDock": true,
+						"thumb": null
+					},
+					{
+						"text": "file-3612.png 0 KB",
+						"box": {
+							"x": 784,
+							"y": 1340,
+							"w": 176,
+							"h": 154
+						},
+						"insideDock": true,
+						"thumb": null
+					},
+					{
+						"text": "file-3616.png 0 KB",
+						"box": {
+							"x": 964,
+							"y": 1340,
+							"w": 176,
+							"h": 154
+						},
+						"insideDock": true,
+						"thumb": null
+					},
+					{
+						"text": "file-3620.png 0 KB",
+						"box": {
+							"x": 1144,
+							"y": 1340,
+							"w": 176,
+							"h": 154
+						},
+						"insideDock": true,
+						"thumb": null
+					},
+					{
+						"text": "file-3624.png 0 KB",
+						"box": {
+							"x": 784,
+							"y": 1498,
+							"w": 176,
+							"h": 154
+						},
+						"insideDock": true,
+						"thumb": null
+					},
+					{
+						"text": "file-3628.png 0 KB",
+						"box": {
+							"x": 964,
+							"y": 1498,
+							"w": 176,
+							"h": 154
+						},
+						"insideDock": true,
+						"thumb": null
+					},
+					{
+						"text": "file-3632.png 0 KB",
+						"box": {
+							"x": 1144,
+							"y": 1498,
+							"w": 176,
+							"h": 154
+						},
+						"insideDock": true,
+						"thumb": null
+					}
+				],
+				"header": "Size ↓ Filter 5,002 files Open folder Highlights 2 file-0000.png 10 KB A large chart promoted as the main deliverable. file-0002.md 0 KB Summary delivered along"
+			},
+			"delta": {
+				"initial": {
+					"dock": {
+						"x": 776,
+						"y": 32,
+						"w": 560,
+						"h": 868
+					},
+					"rows": 26,
+					"query": "",
+					"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5000\nImages\n1251\nfile-1300.png\n0 KB\nfile-1304.png\n0 KB\nfile-1308.png\n0 KB\nfile-1312.png\n0 KB\nfile-1316.png\n0 KB\nfile-1320.png\n0 KB\nfile-1324.png\n0 KB\nfile-1328.png\n0 KB\nfile-1332.png\n0 KB\nfile-1336.png\n0 KB\nfile-1340.png\n0 KB\nfile-1344.png\n0 KB\nfile-1348.png\n0 KB\nfile-1352.png\n0 KB\nfile-1356.png\n0 KB\nfile-1384.png\n0 KB\nfile-1520.png\n0 KB\nfile-1524.png\n0 KB\nfile-3612.png\n0 KB\nfile-3616.png\n0 KB\nfile-3620.png\n0 KB\nfile-3624.png\n0 KB\nfile-3628.png\n0 KB\nfile-3632.png\n0 KB\nVideos\n1250\nDocuments\n1249\nSpreadsheets\n1250",
+					"active": "Show in canvas",
+					"scroll": {
+						"x": 776,
+						"y": 152,
+						"w": 560,
+						"h": 748
+					},
+					"controlBoxes": [
+						{
+							"x": 784,
+							"y": 80,
+							"w": 388.625,
+							"h": 32
+						},
+						{
+							"x": 1180.625,
+							"y": 82,
+							"w": 73.828125,
+							"h": 28
+						},
+						{
+							"x": 1262.453125,
+							"y": 82,
+							"w": 65.546875,
+							"h": 28
+						},
+						{
+							"x": 1225.8046875,
+							"y": 116,
+							"w": 102.1953125,
+							"h": 28
+						}
+					],
+					"headers": [
+						{
+							"label": "Highlights\n2",
+							"top": 160
+						},
+						{
+							"label": "Working files\n5000",
+							"top": 328
+						},
+						{
+							"label": "Images\n1251",
+							"top": 360
+						},
+						{
+							"label": "Videos\n1250",
+							"top": 66278
+						},
+						{
+							"label": "Documents\n1249",
+							"top": 456310
+						},
+						{
+							"label": "Spreadsheets\n1250",
+							"top": 501306
+						}
+					],
+					"overflow": {
+						"client": 552,
+						"scroll": 552
+					}
+				},
+				"expanded": {
+					"dock": {
+						"x": 776,
+						"y": 32,
+						"w": 560,
+						"h": 868
+					},
+					"rows": 26,
+					"query": "",
+					"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5000\nImages\n1251\nfile-1300.png\n0 KB\nfile-1304.png\n0 KB\nfile-1308.png\n0 KB\nfile-1312.png\n0 KB\nfile-1316.png\n0 KB\nfile-1320.png\n0 KB\nfile-1324.png\n0 KB\nfile-1328.png\n0 KB\nfile-1332.png\n0 KB\nfile-1336.png\n0 KB\nfile-1340.png\n0 KB\nfile-1344.png\n0 KB\nfile-1348.png\n0 KB\nfile-1352.png\n0 KB\nfile-1356.png\n0 KB\nfile-1384.png\n0 KB\nfile-1520.png\n0 KB\nfile-1524.png\n0 KB\nfile-3612.png\n0 KB\nfile-3616.png\n0 KB\nfile-3620.png\n0 KB\nfile-3624.png\n0 KB\nfile-3628.png\n0 KB\nfile-3632.png\n0 KB\nVideos\n1250\nDocuments\n1249\nSpreadsheets\n1250",
+					"active": "Show in canvas",
+					"scroll": {
+						"x": 776,
+						"y": 152,
+						"w": 560,
+						"h": 748
+					},
+					"controlBoxes": [
+						{
+							"x": 784,
+							"y": 80,
+							"w": 388.625,
+							"h": 32
+						},
+						{
+							"x": 1180.625,
+							"y": 82,
+							"w": 73.828125,
+							"h": 28
+						},
+						{
+							"x": 1262.453125,
+							"y": 82,
+							"w": 65.546875,
+							"h": 28
+						},
+						{
+							"x": 1225.8046875,
+							"y": 116,
+							"w": 102.1953125,
+							"h": 28
+						}
+					],
+					"headers": [
+						{
+							"label": "Highlights\n2",
+							"top": 160
+						},
+						{
+							"label": "Working files\n5000",
+							"top": 328
+						},
+						{
+							"label": "Images\n1251",
+							"top": 360
+						},
+						{
+							"label": "Videos\n1250",
+							"top": 66278
+						},
+						{
+							"label": "Documents\n1249",
+							"top": 456310
+						},
+						{
+							"label": "Spreadsheets\n1250",
+							"top": 501306
+						}
+					],
+					"overflow": {
+						"client": 552,
+						"scroll": 552
+					}
+				},
+				"sortActivation": "keyboard-after-outside-dismissal",
+				"sortFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/before-560/finder-before-560-sort-menu-light.png",
+				"sortSamples": [
+					{
+						"dock": {
+							"x": 776,
+							"y": 32,
+							"w": 560,
+							"h": 868
+						},
+						"rows": 26,
+						"query": "",
+						"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5000\nImages\n1251\nfile-1300.png\n0 KB\nfile-1304.png\n0 KB\nfile-1308.png\n0 KB\nfile-1312.png\n0 KB\nfile-1316.png\n0 KB\nfile-1320.png\n0 KB\nfile-1324.png\n0 KB\nfile-1328.png\n0 KB\nfile-1332.png\n0 KB\nfile-1336.png\n0 KB\nfile-1340.png\n0 KB\nfile-1344.png\n0 KB\nfile-1348.png\n0 KB\nfile-1352.png\n0 KB\nfile-1356.png\n0 KB\nfile-1384.png\n0 KB\nfile-1520.png\n0 KB\nfile-1524.png\n0 KB\nfile-3612.png\n0 KB\nfile-3616.png\n0 KB\nfile-3620.png\n0 KB\nfile-3624.png\n0 KB\nfile-3628.png\n0 KB\nfile-3632.png\n0 KB\nVideos\n1250\nDocuments\n1249\nSpreadsheets\n1250",
+						"active": "Size\n↓",
+						"scroll": {
+							"x": 776,
+							"y": 152,
+							"w": 560,
+							"h": 748
+						},
+						"controlBoxes": [
+							{
+								"x": 784,
+								"y": 80,
+								"w": 388.625,
+								"h": 32
+							},
+							{
+								"x": 1180.625,
+								"y": 82,
+								"w": 73.828125,
+								"h": 28
+							},
+							{
+								"x": 1262.453125,
+								"y": 82,
+								"w": 65.546875,
+								"h": 28
+							},
+							{
+								"x": 1225.8046875,
+								"y": 116,
+								"w": 102.1953125,
+								"h": 28
+							}
+						],
+						"headers": [
+							{
+								"label": "Highlights\n2",
+								"top": 160
+							},
+							{
+								"label": "Working files\n5000",
+								"top": 328
+							},
+							{
+								"label": "Images\n1251",
+								"top": 360
+							},
+							{
+								"label": "Videos\n1250",
+								"top": 66278
+							},
+							{
+								"label": "Documents\n1249",
+								"top": 456310
+							},
+							{
+								"label": "Spreadsheets\n1250",
+								"top": 501306
+							}
+						],
+						"overflow": {
+							"client": 552,
+							"scroll": 552
+						}
+					},
+					{
+						"dock": {
+							"x": 776,
+							"y": 32,
+							"w": 560,
+							"h": 868
+						},
+						"rows": 26,
+						"query": "",
+						"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5000\nImages\n1251\nfile-1300.png\n0 KB\nfile-1304.png\n0 KB\nfile-1308.png\n0 KB\nfile-1312.png\n0 KB\nfile-1316.png\n0 KB\nfile-1320.png\n0 KB\nfile-1324.png\n0 KB\nfile-1328.png\n0 KB\nfile-1332.png\n0 KB\nfile-1336.png\n0 KB\nfile-1340.png\n0 KB\nfile-1344.png\n0 KB\nfile-1348.png\n0 KB\nfile-1352.png\n0 KB\nfile-1356.png\n0 KB\nfile-1384.png\n0 KB\nfile-1520.png\n0 KB\nfile-1524.png\n0 KB\nfile-3612.png\n0 KB\nfile-3616.png\n0 KB\nfile-3620.png\n0 KB\nfile-3624.png\n0 KB\nfile-3628.png\n0 KB\nfile-3632.png\n0 KB\nVideos\n1250\nDocuments\n1249\nSpreadsheets\n1250",
+						"active": "Size\n↓",
+						"scroll": {
+							"x": 776,
+							"y": 152,
+							"w": 560,
+							"h": 748
+						},
+						"controlBoxes": [
+							{
+								"x": 784,
+								"y": 80,
+								"w": 388.625,
+								"h": 32
+							},
+							{
+								"x": 1180.625,
+								"y": 82,
+								"w": 73.828125,
+								"h": 28
+							},
+							{
+								"x": 1262.453125,
+								"y": 82,
+								"w": 65.546875,
+								"h": 28
+							},
+							{
+								"x": 1225.8046875,
+								"y": 116,
+								"w": 102.1953125,
+								"h": 28
+							}
+						],
+						"headers": [
+							{
+								"label": "Highlights\n2",
+								"top": 160
+							},
+							{
+								"label": "Working files\n5000",
+								"top": 328
+							},
+							{
+								"label": "Images\n1251",
+								"top": 360
+							},
+							{
+								"label": "Videos\n1250",
+								"top": 66278
+							},
+							{
+								"label": "Documents\n1249",
+								"top": 456310
+							},
+							{
+								"label": "Spreadsheets\n1250",
+								"top": 501306
+							}
+						],
+						"overflow": {
+							"client": 552,
+							"scroll": 552
+						}
+					},
+					{
+						"dock": {
+							"x": 776,
+							"y": 32,
+							"w": 560,
+							"h": 868
+						},
+						"rows": 26,
+						"query": "",
+						"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5000\nImages\n1251\nfile-1300.png\n0 KB\nfile-1304.png\n0 KB\nfile-1308.png\n0 KB\nfile-1312.png\n0 KB\nfile-1316.png\n0 KB\nfile-1320.png\n0 KB\nfile-1324.png\n0 KB\nfile-1328.png\n0 KB\nfile-1332.png\n0 KB\nfile-1336.png\n0 KB\nfile-1340.png\n0 KB\nfile-1344.png\n0 KB\nfile-1348.png\n0 KB\nfile-1352.png\n0 KB\nfile-1356.png\n0 KB\nfile-1384.png\n0 KB\nfile-1520.png\n0 KB\nfile-1524.png\n0 KB\nfile-3612.png\n0 KB\nfile-3616.png\n0 KB\nfile-3620.png\n0 KB\nfile-3624.png\n0 KB\nfile-3628.png\n0 KB\nfile-3632.png\n0 KB\nVideos\n1250\nDocuments\n1249\nSpreadsheets\n1250",
+						"active": "Size\n↓",
+						"scroll": {
+							"x": 776,
+							"y": 152,
+							"w": 560,
+							"h": 748
+						},
+						"controlBoxes": [
+							{
+								"x": 784,
+								"y": 80,
+								"w": 388.625,
+								"h": 32
+							},
+							{
+								"x": 1180.625,
+								"y": 82,
+								"w": 73.828125,
+								"h": 28
+							},
+							{
+								"x": 1262.453125,
+								"y": 82,
+								"w": 65.546875,
+								"h": 28
+							},
+							{
+								"x": 1225.8046875,
+								"y": 116,
+								"w": 102.1953125,
+								"h": 28
+							}
+						],
+						"headers": [
+							{
+								"label": "Highlights\n2",
+								"top": 160
+							},
+							{
+								"label": "Working files\n5000",
+								"top": 328
+							},
+							{
+								"label": "Images\n1251",
+								"top": 360
+							},
+							{
+								"label": "Videos\n1250",
+								"top": 66278
+							},
+							{
+								"label": "Documents\n1249",
+								"top": 456310
+							},
+							{
+								"label": "Spreadsheets\n1250",
+								"top": 501306
+							}
+						],
+						"overflow": {
+							"client": 552,
+							"scroll": 552
+						}
+					},
+					{
+						"dock": {
+							"x": 776,
+							"y": 32,
+							"w": 560,
+							"h": 868
+						},
+						"rows": 26,
+						"query": "",
+						"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5000\nImages\n1251\nfile-1300.png\n0 KB\nfile-1304.png\n0 KB\nfile-1308.png\n0 KB\nfile-1312.png\n0 KB\nfile-1316.png\n0 KB\nfile-1320.png\n0 KB\nfile-1324.png\n0 KB\nfile-1328.png\n0 KB\nfile-1332.png\n0 KB\nfile-1336.png\n0 KB\nfile-1340.png\n0 KB\nfile-1344.png\n0 KB\nfile-1348.png\n0 KB\nfile-1352.png\n0 KB\nfile-1356.png\n0 KB\nfile-1384.png\n0 KB\nfile-1520.png\n0 KB\nfile-1524.png\n0 KB\nfile-3612.png\n0 KB\nfile-3616.png\n0 KB\nfile-3620.png\n0 KB\nfile-3624.png\n0 KB\nfile-3628.png\n0 KB\nfile-3632.png\n0 KB\nVideos\n1250\nDocuments\n1249\nSpreadsheets\n1250",
+						"active": "Size\n↓",
+						"scroll": {
+							"x": 776,
+							"y": 152,
+							"w": 560,
+							"h": 748
+						},
+						"controlBoxes": [
+							{
+								"x": 784,
+								"y": 80,
+								"w": 388.625,
+								"h": 32
+							},
+							{
+								"x": 1180.625,
+								"y": 82,
+								"w": 73.828125,
+								"h": 28
+							},
+							{
+								"x": 1262.453125,
+								"y": 82,
+								"w": 65.546875,
+								"h": 28
+							},
+							{
+								"x": 1225.8046875,
+								"y": 116,
+								"w": 102.1953125,
+								"h": 28
+							}
+						],
+						"headers": [
+							{
+								"label": "Highlights\n2",
+								"top": 160
+							},
+							{
+								"label": "Working files\n5000",
+								"top": 328
+							},
+							{
+								"label": "Images\n1251",
+								"top": 360
+							},
+							{
+								"label": "Videos\n1250",
+								"top": 66278
+							},
+							{
+								"label": "Documents\n1249",
+								"top": 456310
+							},
+							{
+								"label": "Spreadsheets\n1250",
+								"top": 501306
+							}
+						],
+						"overflow": {
+							"client": 552,
+							"scroll": 552
+						}
+					},
+					{
+						"dock": {
+							"x": 776,
+							"y": 32,
+							"w": 560,
+							"h": 868
+						},
+						"rows": 26,
+						"query": "",
+						"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5000\nImages\n1251\nfile-1300.png\n0 KB\nfile-1304.png\n0 KB\nfile-1308.png\n0 KB\nfile-1312.png\n0 KB\nfile-1316.png\n0 KB\nfile-1320.png\n0 KB\nfile-1324.png\n0 KB\nfile-1328.png\n0 KB\nfile-1332.png\n0 KB\nfile-1336.png\n0 KB\nfile-1340.png\n0 KB\nfile-1344.png\n0 KB\nfile-1348.png\n0 KB\nfile-1352.png\n0 KB\nfile-1356.png\n0 KB\nfile-1384.png\n0 KB\nfile-1520.png\n0 KB\nfile-1524.png\n0 KB\nfile-3612.png\n0 KB\nfile-3616.png\n0 KB\nfile-3620.png\n0 KB\nfile-3624.png\n0 KB\nfile-3628.png\n0 KB\nfile-3632.png\n0 KB\nVideos\n1250\nDocuments\n1249\nSpreadsheets\n1250",
+						"active": "Size\n↓",
+						"scroll": {
+							"x": 776,
+							"y": 152,
+							"w": 560,
+							"h": 748
+						},
+						"controlBoxes": [
+							{
+								"x": 784,
+								"y": 80,
+								"w": 388.625,
+								"h": 32
+							},
+							{
+								"x": 1180.625,
+								"y": 82,
+								"w": 73.828125,
+								"h": 28
+							},
+							{
+								"x": 1262.453125,
+								"y": 82,
+								"w": 65.546875,
+								"h": 28
+							},
+							{
+								"x": 1225.8046875,
+								"y": 116,
+								"w": 102.1953125,
+								"h": 28
+							}
+						],
+						"headers": [
+							{
+								"label": "Highlights\n2",
+								"top": 160
+							},
+							{
+								"label": "Working files\n5000",
+								"top": 328
+							},
+							{
+								"label": "Images\n1251",
+								"top": 360
+							},
+							{
+								"label": "Videos\n1250",
+								"top": 66278
+							},
+							{
+								"label": "Documents\n1249",
+								"top": 456310
+							},
+							{
+								"label": "Spreadsheets\n1250",
+								"top": 501306
+							}
+						],
+						"overflow": {
+							"client": 552,
+							"scroll": 552
+						}
+					},
+					{
+						"dock": {
+							"x": 776,
+							"y": 32,
+							"w": 560,
+							"h": 868
+						},
+						"rows": 26,
+						"query": "",
+						"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5000\nImages\n1251\nfile-1300.png\n0 KB\nfile-1304.png\n0 KB\nfile-1308.png\n0 KB\nfile-1312.png\n0 KB\nfile-1316.png\n0 KB\nfile-1320.png\n0 KB\nfile-1324.png\n0 KB\nfile-1328.png\n0 KB\nfile-1332.png\n0 KB\nfile-1336.png\n0 KB\nfile-1340.png\n0 KB\nfile-1344.png\n0 KB\nfile-1348.png\n0 KB\nfile-1352.png\n0 KB\nfile-1356.png\n0 KB\nfile-1384.png\n0 KB\nfile-1520.png\n0 KB\nfile-1524.png\n0 KB\nfile-3612.png\n0 KB\nfile-3616.png\n0 KB\nfile-3620.png\n0 KB\nfile-3624.png\n0 KB\nfile-3628.png\n0 KB\nfile-3632.png\n0 KB\nVideos\n1250\nDocuments\n1249\nSpreadsheets\n1250",
+						"active": "Size\n↓",
+						"scroll": {
+							"x": 776,
+							"y": 152,
+							"w": 560,
+							"h": 748
+						},
+						"controlBoxes": [
+							{
+								"x": 784,
+								"y": 80,
+								"w": 388.625,
+								"h": 32
+							},
+							{
+								"x": 1180.625,
+								"y": 82,
+								"w": 73.828125,
+								"h": 28
+							},
+							{
+								"x": 1262.453125,
+								"y": 82,
+								"w": 65.546875,
+								"h": 28
+							},
+							{
+								"x": 1225.8046875,
+								"y": 116,
+								"w": 102.1953125,
+								"h": 28
+							}
+						],
+						"headers": [
+							{
+								"label": "Highlights\n2",
+								"top": 160
+							},
+							{
+								"label": "Working files\n5000",
+								"top": 328
+							},
+							{
+								"label": "Images\n1251",
+								"top": 360
+							},
+							{
+								"label": "Videos\n1250",
+								"top": 66278
+							},
+							{
+								"label": "Documents\n1249",
+								"top": 456310
+							},
+							{
+								"label": "Spreadsheets\n1250",
+								"top": 501306
+							}
+						],
+						"overflow": {
+							"client": 552,
+							"scroll": 552
+						}
+					},
+					{
+						"dock": {
+							"x": 776,
+							"y": 32,
+							"w": 560,
+							"h": 868
+						},
+						"rows": 26,
+						"query": "",
+						"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5000\nImages\n1251\nfile-1300.png\n0 KB\nfile-1304.png\n0 KB\nfile-1308.png\n0 KB\nfile-1312.png\n0 KB\nfile-1316.png\n0 KB\nfile-1320.png\n0 KB\nfile-1324.png\n0 KB\nfile-1328.png\n0 KB\nfile-1332.png\n0 KB\nfile-1336.png\n0 KB\nfile-1340.png\n0 KB\nfile-1344.png\n0 KB\nfile-1348.png\n0 KB\nfile-1352.png\n0 KB\nfile-1356.png\n0 KB\nfile-1384.png\n0 KB\nfile-1520.png\n0 KB\nfile-1524.png\n0 KB\nfile-3612.png\n0 KB\nfile-3616.png\n0 KB\nfile-3620.png\n0 KB\nfile-3624.png\n0 KB\nfile-3628.png\n0 KB\nfile-3632.png\n0 KB\nVideos\n1250\nDocuments\n1249\nSpreadsheets\n1250",
+						"active": "Size\n↓",
+						"scroll": {
+							"x": 776,
+							"y": 152,
+							"w": 560,
+							"h": 748
+						},
+						"controlBoxes": [
+							{
+								"x": 784,
+								"y": 80,
+								"w": 388.625,
+								"h": 32
+							},
+							{
+								"x": 1180.625,
+								"y": 82,
+								"w": 73.828125,
+								"h": 28
+							},
+							{
+								"x": 1262.453125,
+								"y": 82,
+								"w": 65.546875,
+								"h": 28
+							},
+							{
+								"x": 1225.8046875,
+								"y": 116,
+								"w": 102.1953125,
+								"h": 28
+							}
+						],
+						"headers": [
+							{
+								"label": "Highlights\n2",
+								"top": 160
+							},
+							{
+								"label": "Working files\n5000",
+								"top": 328
+							},
+							{
+								"label": "Images\n1251",
+								"top": 360
+							},
+							{
+								"label": "Videos\n1250",
+								"top": 66278
+							},
+							{
+								"label": "Documents\n1249",
+								"top": 456310
+							},
+							{
+								"label": "Spreadsheets\n1250",
+								"top": 501306
+							}
+						],
+						"overflow": {
+							"client": 552,
+							"scroll": 552
+						}
+					},
+					{
+						"dock": {
+							"x": 776,
+							"y": 32,
+							"w": 560,
+							"h": 868
+						},
+						"rows": 26,
+						"query": "",
+						"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5000\nImages\n1251\nfile-1300.png\n0 KB\nfile-1304.png\n0 KB\nfile-1308.png\n0 KB\nfile-1312.png\n0 KB\nfile-1316.png\n0 KB\nfile-1320.png\n0 KB\nfile-1324.png\n0 KB\nfile-1328.png\n0 KB\nfile-1332.png\n0 KB\nfile-1336.png\n0 KB\nfile-1340.png\n0 KB\nfile-1344.png\n0 KB\nfile-1348.png\n0 KB\nfile-1352.png\n0 KB\nfile-1356.png\n0 KB\nfile-1384.png\n0 KB\nfile-1520.png\n0 KB\nfile-1524.png\n0 KB\nfile-3612.png\n0 KB\nfile-3616.png\n0 KB\nfile-3620.png\n0 KB\nfile-3624.png\n0 KB\nfile-3628.png\n0 KB\nfile-3632.png\n0 KB\nVideos\n1250\nDocuments\n1249\nSpreadsheets\n1250",
+						"active": "Size\n↓",
+						"scroll": {
+							"x": 776,
+							"y": 152,
+							"w": 560,
+							"h": 748
+						},
+						"controlBoxes": [
+							{
+								"x": 784,
+								"y": 80,
+								"w": 388.625,
+								"h": 32
+							},
+							{
+								"x": 1180.625,
+								"y": 82,
+								"w": 73.828125,
+								"h": 28
+							},
+							{
+								"x": 1262.453125,
+								"y": 82,
+								"w": 65.546875,
+								"h": 28
+							},
+							{
+								"x": 1225.8046875,
+								"y": 116,
+								"w": 102.1953125,
+								"h": 28
+							}
+						],
+						"headers": [
+							{
+								"label": "Highlights\n2",
+								"top": 160
+							},
+							{
+								"label": "Working files\n5000",
+								"top": 328
+							},
+							{
+								"label": "Images\n1251",
+								"top": 360
+							},
+							{
+								"label": "Videos\n1250",
+								"top": 66278
+							},
+							{
+								"label": "Documents\n1249",
+								"top": 456310
+							},
+							{
+								"label": "Spreadsheets\n1250",
+								"top": 501306
+							}
+						],
+						"overflow": {
+							"client": 552,
+							"scroll": 552
+						}
+					},
+					{
+						"dock": {
+							"x": 776,
+							"y": 32,
+							"w": 560,
+							"h": 868
+						},
+						"rows": 26,
+						"query": "",
+						"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5000\nImages\n1251\nfile-1300.png\n0 KB\nfile-1304.png\n0 KB\nfile-1308.png\n0 KB\nfile-1312.png\n0 KB\nfile-1316.png\n0 KB\nfile-1320.png\n0 KB\nfile-1324.png\n0 KB\nfile-1328.png\n0 KB\nfile-1332.png\n0 KB\nfile-1336.png\n0 KB\nfile-1340.png\n0 KB\nfile-1344.png\n0 KB\nfile-1348.png\n0 KB\nfile-1352.png\n0 KB\nfile-1356.png\n0 KB\nfile-1384.png\n0 KB\nfile-1520.png\n0 KB\nfile-1524.png\n0 KB\nfile-3612.png\n0 KB\nfile-3616.png\n0 KB\nfile-3620.png\n0 KB\nfile-3624.png\n0 KB\nfile-3628.png\n0 KB\nfile-3632.png\n0 KB\nVideos\n1250\nDocuments\n1249\nSpreadsheets\n1250",
+						"active": "Size\n↓",
+						"scroll": {
+							"x": 776,
+							"y": 152,
+							"w": 560,
+							"h": 748
+						},
+						"controlBoxes": [
+							{
+								"x": 784,
+								"y": 80,
+								"w": 388.625,
+								"h": 32
+							},
+							{
+								"x": 1180.625,
+								"y": 82,
+								"w": 73.828125,
+								"h": 28
+							},
+							{
+								"x": 1262.453125,
+								"y": 82,
+								"w": 65.546875,
+								"h": 28
+							},
+							{
+								"x": 1225.8046875,
+								"y": 116,
+								"w": 102.1953125,
+								"h": 28
+							}
+						],
+						"headers": [
+							{
+								"label": "Highlights\n2",
+								"top": 160
+							},
+							{
+								"label": "Working files\n5000",
+								"top": 328
+							},
+							{
+								"label": "Images\n1251",
+								"top": 360
+							},
+							{
+								"label": "Videos\n1250",
+								"top": 66278
+							},
+							{
+								"label": "Documents\n1249",
+								"top": 456310
+							},
+							{
+								"label": "Spreadsheets\n1250",
+								"top": 501306
+							}
+						],
+						"overflow": {
+							"client": 552,
+							"scroll": 552
+						}
+					},
+					{
+						"dock": {
+							"x": 776,
+							"y": 32,
+							"w": 560,
+							"h": 868
+						},
+						"rows": 26,
+						"query": "",
+						"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5000\nImages\n1251\nfile-1300.png\n0 KB\nfile-1304.png\n0 KB\nfile-1308.png\n0 KB\nfile-1312.png\n0 KB\nfile-1316.png\n0 KB\nfile-1320.png\n0 KB\nfile-1324.png\n0 KB\nfile-1328.png\n0 KB\nfile-1332.png\n0 KB\nfile-1336.png\n0 KB\nfile-1340.png\n0 KB\nfile-1344.png\n0 KB\nfile-1348.png\n0 KB\nfile-1352.png\n0 KB\nfile-1356.png\n0 KB\nfile-1384.png\n0 KB\nfile-1520.png\n0 KB\nfile-1524.png\n0 KB\nfile-3612.png\n0 KB\nfile-3616.png\n0 KB\nfile-3620.png\n0 KB\nfile-3624.png\n0 KB\nfile-3628.png\n0 KB\nfile-3632.png\n0 KB\nVideos\n1250\nDocuments\n1249\nSpreadsheets\n1250",
+						"active": "Size\n↓",
+						"scroll": {
+							"x": 776,
+							"y": 152,
+							"w": 560,
+							"h": 748
+						},
+						"controlBoxes": [
+							{
+								"x": 784,
+								"y": 80,
+								"w": 388.625,
+								"h": 32
+							},
+							{
+								"x": 1180.625,
+								"y": 82,
+								"w": 73.828125,
+								"h": 28
+							},
+							{
+								"x": 1262.453125,
+								"y": 82,
+								"w": 65.546875,
+								"h": 28
+							},
+							{
+								"x": 1225.8046875,
+								"y": 116,
+								"w": 102.1953125,
+								"h": 28
+							}
+						],
+						"headers": [
+							{
+								"label": "Highlights\n2",
+								"top": 160
+							},
+							{
+								"label": "Working files\n5000",
+								"top": 328
+							},
+							{
+								"label": "Images\n1251",
+								"top": 360
+							},
+							{
+								"label": "Videos\n1250",
+								"top": 66278
+							},
+							{
+								"label": "Documents\n1249",
+								"top": 456310
+							},
+							{
+								"label": "Spreadsheets\n1250",
+								"top": 501306
+							}
+						],
+						"overflow": {
+							"client": 552,
+							"scroll": 552
+						}
+					}
+				],
+				"sortedFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/before-560/finder-before-560-sort-pointer-light.png",
+				"filterFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/before-560/finder-before-560-filter-menu-light.png",
+				"narrowed": {
+					"dock": {
+						"x": 776,
+						"y": 32,
+						"w": 560,
+						"h": 868
+					},
+					"rows": 0,
+					"query": "file-0000",
+					"body": "Highlights\n1",
+					"active": "",
+					"scroll": {
+						"x": 776,
+						"y": 152,
+						"w": 560,
+						"h": 748
+					},
+					"controlBoxes": [
+						{
+							"x": 784,
+							"y": 80,
+							"w": 388.625,
+							"h": 32
+						},
+						{
+							"x": 1180.625,
+							"y": 82,
+							"w": 73.828125,
+							"h": 28
+						},
+						{
+							"x": 1262.453125,
+							"y": 82,
+							"w": 65.546875,
+							"h": 28
+						},
+						{
+							"x": 1225.8046875,
+							"y": 116,
+							"w": 102.1953125,
+							"h": 28
+						}
+					],
+					"headers": [
+						{
+							"label": "Highlights\n1",
+							"top": 160
+						}
+					],
+					"overflow": {
+						"client": 560,
+						"scroll": 560
+					}
+				},
+				"narrowedFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/before-560/finder-before-560-narrowed-light.png",
+				"searchEscape": {
+					"dock": null,
+					"rows": 0,
+					"active": "",
+					"scroll": null,
+					"controlBoxes": [],
+					"headers": [],
+					"overflow": null
+				},
+				"scrolling": {
+					"dock": {
+						"x": 776,
+						"y": 32,
+						"w": 560,
+						"h": 868
+					},
+					"rows": 8,
+					"query": "",
+					"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nWorking files\n5000\nImages\n1251\nVideos\n1250\nOpen to play\nfile-2645.mp4\n17 KB\nOpen to play\nfile-2649.mp4\n17 KB\nOpen to play\nfile-2653.mp4\n17 KB\nOpen to play\nfile-2657.mp4\n17 KB\nOpen to play\nfile-2661.mp4\n17 KB\nOpen to play\nfile-2665.mp4\n17 KB\nOpen to play\nfile-2669.mp4\n17 KB\nDocuments\n1249\nSpreadsheets\n1250",
+					"active": "Files 5002",
+					"scroll": {
+						"x": 776,
+						"y": 152,
+						"w": 560,
+						"h": 748
+					},
+					"controlBoxes": [
+						{
+							"x": 784,
+							"y": 80,
+							"w": 388.625,
+							"h": 32
+						},
+						{
+							"x": 1180.625,
+							"y": 82,
+							"w": 73.828125,
+							"h": 28
+						},
+						{
+							"x": 1262.453125,
+							"y": 82,
+							"w": 65.546875,
+							"h": 28
+						},
+						{
+							"x": 1225.8046875,
+							"y": 116,
+							"w": 102.1953125,
+							"h": 28
+						}
+					],
+					"headers": [
+						{
+							"label": "Highlights\n2",
+							"top": -272801
+						},
+						{
+							"label": "Working files\n5000",
+							"top": -272769
+						},
+						{
+							"label": "Images\n1251",
+							"top": -206851
+						},
+						{
+							"label": "Videos\n1250",
+							"top": 160
+						},
+						{
+							"label": "Documents\n1249",
+							"top": 183213
+						},
+						{
+							"label": "Spreadsheets\n1250",
+							"top": 228209
+						}
+					],
+					"overflow": {
+						"client": 552,
+						"scroll": 552
+					}
+				},
+				"scrollingFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/before-560/finder-before-560-scrolling-light.png",
+				"resting": {
+					"dock": {
+						"x": 776,
+						"y": 32,
+						"w": 560,
+						"h": 868
+					},
+					"rows": 8,
+					"query": "",
+					"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nWorking files\n5000\nImages\n1251\nVideos\n1250\nOpen to play\nfile-2645.mp4\n17 KB\nOpen to play\nfile-2649.mp4\n17 KB\nOpen to play\nfile-2653.mp4\n17 KB\nOpen to play\nfile-2657.mp4\n17 KB\nOpen to play\nfile-2661.mp4\n17 KB\nOpen to play\nfile-2665.mp4\n17 KB\nOpen to play\nfile-2669.mp4\n17 KB\nDocuments\n1249\nSpreadsheets\n1250",
+					"active": "Files 5002",
+					"scroll": {
+						"x": 776,
+						"y": 152,
+						"w": 560,
+						"h": 748
+					},
+					"controlBoxes": [
+						{
+							"x": 784,
+							"y": 80,
+							"w": 388.625,
+							"h": 32
+						},
+						{
+							"x": 1180.625,
+							"y": 82,
+							"w": 73.828125,
+							"h": 28
+						},
+						{
+							"x": 1262.453125,
+							"y": 82,
+							"w": 65.546875,
+							"h": 28
+						},
+						{
+							"x": 1225.8046875,
+							"y": 116,
+							"w": 102.1953125,
+							"h": 28
+						}
+					],
+					"headers": [
+						{
+							"label": "Highlights\n2",
+							"top": -272801
+						},
+						{
+							"label": "Working files\n5000",
+							"top": -272769
+						},
+						{
+							"label": "Images\n1251",
+							"top": -206851
+						},
+						{
+							"label": "Videos\n1250",
+							"top": 160
+						},
+						{
+							"label": "Documents\n1249",
+							"top": 183213
+						},
+						{
+							"label": "Spreadsheets\n1250",
+							"top": 228209
+						}
+					],
+					"overflow": {
+						"client": 552,
+						"scroll": 552
+					}
+				},
+				"restingFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/before-560/finder-before-560-resting-light.png",
+				"stickyOffset": 8,
+				"video": {
+					"dock": {
+						"x": 776,
+						"y": 32,
+						"w": 560,
+						"h": 868
+					},
+					"rows": 1,
+					"query": "file-0001.mp4",
+					"body": "Videos\n1\nOpen to play\nfile-0001.mp4\n17 KB",
+					"active": "",
+					"scroll": {
+						"x": 776,
+						"y": 152,
+						"w": 560,
+						"h": 748
+					},
+					"controlBoxes": [
+						{
+							"x": 784,
+							"y": 80,
+							"w": 388.625,
+							"h": 32
+						},
+						{
+							"x": 1180.625,
+							"y": 82,
+							"w": 73.828125,
+							"h": 28
+						},
+						{
+							"x": 1262.453125,
+							"y": 82,
+							"w": 65.546875,
+							"h": 28
+						},
+						{
+							"x": 1225.8046875,
+							"y": 116,
+							"w": 102.1953125,
+							"h": 28
+						}
+					],
+					"headers": [
+						{
+							"label": "Videos\n1",
+							"top": 160
+						}
+					],
+					"overflow": {
+						"client": 560,
+						"scroll": 560
+					}
+				},
+				"videoFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/before-560/finder-before-560-video-band-light.png",
+				"menuClose": {
+					"dock": {
+						"x": 776,
+						"y": 32,
+						"w": 560,
+						"h": 868
+					},
+					"rows": 26,
+					"query": "",
+					"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5000\nImages\n1251\nfile-1300.png\n0 KB\nfile-1304.png\n0 KB\nfile-1308.png\n0 KB\nfile-1312.png\n0 KB\nfile-1316.png\n0 KB\nfile-1320.png\n0 KB\nfile-1324.png\n0 KB\nfile-1328.png\n0 KB\nfile-1332.png\n0 KB\nfile-1336.png\n0 KB\nfile-1340.png\n0 KB\nfile-1344.png\n0 KB\nfile-1348.png\n0 KB\nfile-1352.png\n0 KB\nfile-1356.png\n0 KB\nfile-1384.png\n0 KB\nfile-1520.png\n0 KB\nfile-1524.png\n0 KB\nfile-3612.png\n0 KB\nfile-3616.png\n0 KB\nfile-3620.png\n0 KB\nfile-3624.png\n0 KB\nfile-3628.png\n0 KB\nfile-3632.png\n0 KB\nVideos\n1250\nDocuments\n1249\nSpreadsheets\n1250",
+					"active": "",
+					"activeRow": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png",
+					"scroll": {
+						"x": 776,
+						"y": 152,
+						"w": 560,
+						"h": 748
+					},
+					"controlBoxes": [
+						{
+							"x": 784,
+							"y": 80,
+							"w": 388.625,
+							"h": 32
+						},
+						{
+							"x": 1180.625,
+							"y": 82,
+							"w": 73.828125,
+							"h": 28
+						},
+						{
+							"x": 1262.453125,
+							"y": 82,
+							"w": 65.546875,
+							"h": 28
+						},
+						{
+							"x": 1225.8046875,
+							"y": 116,
+							"w": 102.1953125,
+							"h": 28
+						}
+					],
+					"headers": [
+						{
+							"label": "Highlights\n2",
+							"top": 160
+						},
+						{
+							"label": "Working files\n5000",
+							"top": 328
+						},
+						{
+							"label": "Images\n1251",
+							"top": 360
+						},
+						{
+							"label": "Videos\n1250",
+							"top": 66278
+						},
+						{
+							"label": "Documents\n1249",
+							"top": 456310
+						},
+						{
+							"label": "Spreadsheets\n1250",
+							"top": 501306
+						}
+					],
+					"overflow": {
+						"client": 552,
+						"scroll": 552
+					}
+				},
+				"afterArrow": {
+					"dock": {
+						"x": 776,
+						"y": 32,
+						"w": 560,
+						"h": 868
+					},
+					"rows": 26,
+					"query": "",
+					"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5000\nImages\n1251\nfile-1300.png\n0 KB\nfile-1304.png\n0 KB\nfile-1308.png\n0 KB\nfile-1312.png\n0 KB\nfile-1316.png\n0 KB\nfile-1320.png\n0 KB\nfile-1324.png\n0 KB\nfile-1328.png\n0 KB\nfile-1332.png\n0 KB\nfile-1336.png\n0 KB\nfile-1340.png\n0 KB\nfile-1344.png\n0 KB\nfile-1348.png\n0 KB\nfile-1352.png\n0 KB\nfile-1356.png\n0 KB\nfile-1384.png\n0 KB\nfile-1520.png\n0 KB\nfile-1524.png\n0 KB\nfile-3612.png\n0 KB\nfile-3616.png\n0 KB\nfile-3620.png\n0 KB\nfile-3624.png\n0 KB\nfile-3628.png\n0 KB\nfile-3632.png\n0 KB\nVideos\n1250\nDocuments\n1249\nSpreadsheets\n1250",
+					"active": "Show in canvas",
+					"scroll": {
+						"x": 776,
+						"y": 152,
+						"w": 560,
+						"h": 748
+					},
+					"controlBoxes": [
+						{
+							"x": 784,
+							"y": 80,
+							"w": 388.625,
+							"h": 32
+						},
+						{
+							"x": 1180.625,
+							"y": 82,
+							"w": 73.828125,
+							"h": 28
+						},
+						{
+							"x": 1262.453125,
+							"y": 82,
+							"w": 65.546875,
+							"h": 28
+						},
+						{
+							"x": 1225.8046875,
+							"y": 116,
+							"w": 102.1953125,
+							"h": 28
+						}
+					],
+					"headers": [
+						{
+							"label": "Highlights\n2",
+							"top": 160
+						},
+						{
+							"label": "Working files\n5000",
+							"top": 328
+						},
+						{
+							"label": "Images\n1251",
+							"top": 360
+						},
+						{
+							"label": "Videos\n1250",
+							"top": 66278
+						},
+						{
+							"label": "Documents\n1249",
+							"top": 456310
+						},
+						{
+							"label": "Spreadsheets\n1250",
+							"top": 501306
+						}
+					],
+					"overflow": {
+						"client": 552,
+						"scroll": 552
+					}
+				},
+				"focusFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/before-560/finder-before-560-focus-light.png"
+			}
+		}
+	},
+	"facts": {
+		"windowMode": "headless",
+		"appVersion": "0.34.41",
+		"platform": "darwin",
+		"title": "Local Operator",
+		"windowSize": {
+			"width": 1380,
+			"height": 900
+		},
+		"contentBounds": {
+			"width": 1380,
+			"height": 900
+		},
+		"visible": false,
+		"focused": false,
+		"minimized": false,
+		"frames": [],
+		"outDir": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/before-560"
+	}
 }

@@ -1,220 +1,220 @@
 [
-  {
-    "name": "preflight",
-    "actual": {
-      "hello": {
-        "armed": true,
-        "outDir": "<scratch>/a2-final-native/runtime/out",
-        "title": "Local Operator",
-        "route": "/chat",
-        "href": "file://<worktree>/out/renderer/index.html#/chat",
-        "theme": "localOperatorDark",
-        "viewport": {
-          "width": 1380,
-          "height": 900,
-          "devicePixelRatio": 2
-        },
-        "visibilityState": "visible",
-        "hasFocus": false,
-        "apiBaseUrl": "http://127.0.0.1:1",
-        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) LocalOperator/44.3.0 Chrome/152.0.7977.78 Electron/44.3.0 Safari/537.36"
-      },
-      "facts": {
-        "windowMode": "headless",
-        "appVersion": "44.3.0",
-        "platform": "darwin",
-        "title": "Local Operator",
-        "windowSize": {
-          "width": 1380,
-          "height": 900
-        },
-        "contentBounds": {
-          "width": 1380,
-          "height": 900
-        },
-        "visible": false,
-        "focused": false,
-        "minimized": false,
-        "frames": [],
-        "outDir": "<scratch>/a2-final-native/runtime/out"
-      }
-    }
-  },
-  {
-    "name": "frame find-closed-zoom100-localoperatorlight",
-    "actual": {
-      "label": "find-closed-zoom100-localoperatorlight",
-      "path": "<scratch>/a2-final-native/runtime/out/find-closed-zoom100-localoperatorlight.png",
-      "bytes": 80866,
-      "pixels": {
-        "width": 2760,
-        "height": 1800
-      },
-      "viewport": {
-        "width": 1380,
-        "height": 900,
-        "devicePixelRatio": 2
-      }
-    }
-  },
-  {
-    "name": "frame find-closed-zoom100-localoperatordark",
-    "actual": {
-      "label": "find-closed-zoom100-localoperatordark",
-      "path": "<scratch>/a2-final-native/runtime/out/find-closed-zoom100-localoperatordark.png",
-      "bytes": 81403,
-      "pixels": {
-        "width": 2760,
-        "height": 1800
-      },
-      "viewport": {
-        "width": 1380,
-        "height": 900,
-        "devicePixelRatio": 2
-      }
-    }
-  },
-  {
-    "name": "find opened by browser chord",
-    "actual": {
-      "state": {
-        "find": {
-          "tabId": 1,
-          "query": "",
-          "ordinal": 0,
-          "matches": 0,
-          "pending": false,
-          "unreported": false
-        },
-        "zoom": 1,
-        "zoomAllowed": true,
-        "notice": null
-      },
-      "focus": "Find in page"
-    }
-  },
-  {
-    "name": "frame find-open-localoperatorlight",
-    "actual": {
-      "label": "find-open-localoperatorlight",
-      "path": "<scratch>/a2-final-native/runtime/out/find-open-localoperatorlight.png",
-      "bytes": 85292,
-      "pixels": {
-        "width": 2760,
-        "height": 1800
-      },
-      "viewport": {
-        "width": 1380,
-        "height": 900,
-        "devicePixelRatio": 2
-      }
-    }
-  },
-  {
-    "name": "frame find-open-localoperatordark",
-    "actual": {
-      "label": "find-open-localoperatordark",
-      "path": "<scratch>/a2-final-native/runtime/out/find-open-localoperatordark.png",
-      "bytes": 85696,
-      "pixels": {
-        "width": 2760,
-        "height": 1800
-      },
-      "viewport": {
-        "width": 1380,
-        "height": 900,
-        "devicePixelRatio": 2
-      }
-    }
-  },
-  {
-    "name": "native find observer",
-    "actual": 4
-  },
-  {
-    "name": "original native search call (counts NOT observed)",
-    "actual": {
-      "controls": {
-        "find": {
-          "tabId": 1,
-          "query": "hello",
-          "ordinal": 0,
-          "matches": 0,
-          "pending": true,
-          "unreported": false
-        },
-        "zoom": 1,
-        "zoomAllowed": true,
-        "notice": null
-      },
-      "raw": [
-        {
-          "call": [
-            "hello",
-            {
-              "forward": true,
-              "findNext": false
-            }
-          ],
-          "returnedId": 1
-        }
-      ]
-    }
-  },
-  {
-    "name": "frame find-pending-localoperatorlight",
-    "actual": {
-      "label": "find-pending-localoperatorlight",
-      "path": "<scratch>/a2-final-native/runtime/out/find-pending-localoperatorlight.png",
-      "bytes": 86795,
-      "pixels": {
-        "width": 2760,
-        "height": 1800
-      },
-      "viewport": {
-        "width": 1380,
-        "height": 900,
-        "devicePixelRatio": 2
-      }
-    }
-  },
-  {
-    "name": "frame find-pending-localoperatordark",
-    "actual": {
-      "label": "find-pending-localoperatordark",
-      "path": "<scratch>/a2-final-native/runtime/out/find-pending-localoperatordark.png",
-      "bytes": 87207,
-      "pixels": {
-        "width": 2760,
-        "height": 1800
-      },
-      "viewport": {
-        "width": 1380,
-        "height": 900,
-        "devicePixelRatio": 2
-      }
-    }
-  },
-  {
-    "name": "synthetic found-in-page result - many",
-    "actual": {
-      "synthetic": true,
-      "requestId": 1,
-      "matches": 80,
-      "ordinal": 1
-    }
-  },
-  {
-    "name": "SETUP_OR_RUN_FAILURE",
-    "actual": "Error: Error: Error invoking remote method 'dev-driver-capture': Error: Invalid frame label: lowercase letters, digits, dash and underscore only.\n    at re (file://<scratch>/a2-native-proof.mjs:3323:73)\n    at async shot (file://<scratch>/a2-native-proof.mjs:3326:78)\n    at async frames (file://<scratch>/a2-native-proof.mjs:3374:64)\n    at async audit (file://<scratch>/a2-native-proof.mjs:3387:139)\n    at async file://<scratch>/a2-native-proof.mjs:3454:5"
-  },
-  {
-    "name": "teardown",
-    "actual": {
-      "ownedPid": 9812,
-      "alive": false,
-      "scratch": "<scratch>/a2-final-native/runtime",
-      "out": "<scratch>/a2-final-native/runtime/out"
-    }
-  }
+	{
+		"name": "preflight",
+		"actual": {
+			"hello": {
+				"armed": true,
+				"outDir": "<scratch>/a2-final-native/runtime/out",
+				"title": "Local Operator",
+				"route": "/chat",
+				"href": "file://<worktree>/out/renderer/index.html#/chat",
+				"theme": "localOperatorDark",
+				"viewport": {
+					"width": 1380,
+					"height": 900,
+					"devicePixelRatio": 2
+				},
+				"visibilityState": "visible",
+				"hasFocus": false,
+				"apiBaseUrl": "http://127.0.0.1:1",
+				"userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) LocalOperator/44.3.0 Chrome/152.0.7977.78 Electron/44.3.0 Safari/537.36"
+			},
+			"facts": {
+				"windowMode": "headless",
+				"appVersion": "44.3.0",
+				"platform": "darwin",
+				"title": "Local Operator",
+				"windowSize": {
+					"width": 1380,
+					"height": 900
+				},
+				"contentBounds": {
+					"width": 1380,
+					"height": 900
+				},
+				"visible": false,
+				"focused": false,
+				"minimized": false,
+				"frames": [],
+				"outDir": "<scratch>/a2-final-native/runtime/out"
+			}
+		}
+	},
+	{
+		"name": "frame find-closed-zoom100-localoperatorlight",
+		"actual": {
+			"label": "find-closed-zoom100-localoperatorlight",
+			"path": "<scratch>/a2-final-native/runtime/out/find-closed-zoom100-localoperatorlight.png",
+			"bytes": 80866,
+			"pixels": {
+				"width": 2760,
+				"height": 1800
+			},
+			"viewport": {
+				"width": 1380,
+				"height": 900,
+				"devicePixelRatio": 2
+			}
+		}
+	},
+	{
+		"name": "frame find-closed-zoom100-localoperatordark",
+		"actual": {
+			"label": "find-closed-zoom100-localoperatordark",
+			"path": "<scratch>/a2-final-native/runtime/out/find-closed-zoom100-localoperatordark.png",
+			"bytes": 81403,
+			"pixels": {
+				"width": 2760,
+				"height": 1800
+			},
+			"viewport": {
+				"width": 1380,
+				"height": 900,
+				"devicePixelRatio": 2
+			}
+		}
+	},
+	{
+		"name": "find opened by browser chord",
+		"actual": {
+			"state": {
+				"find": {
+					"tabId": 1,
+					"query": "",
+					"ordinal": 0,
+					"matches": 0,
+					"pending": false,
+					"unreported": false
+				},
+				"zoom": 1,
+				"zoomAllowed": true,
+				"notice": null
+			},
+			"focus": "Find in page"
+		}
+	},
+	{
+		"name": "frame find-open-localoperatorlight",
+		"actual": {
+			"label": "find-open-localoperatorlight",
+			"path": "<scratch>/a2-final-native/runtime/out/find-open-localoperatorlight.png",
+			"bytes": 85292,
+			"pixels": {
+				"width": 2760,
+				"height": 1800
+			},
+			"viewport": {
+				"width": 1380,
+				"height": 900,
+				"devicePixelRatio": 2
+			}
+		}
+	},
+	{
+		"name": "frame find-open-localoperatordark",
+		"actual": {
+			"label": "find-open-localoperatordark",
+			"path": "<scratch>/a2-final-native/runtime/out/find-open-localoperatordark.png",
+			"bytes": 85696,
+			"pixels": {
+				"width": 2760,
+				"height": 1800
+			},
+			"viewport": {
+				"width": 1380,
+				"height": 900,
+				"devicePixelRatio": 2
+			}
+		}
+	},
+	{
+		"name": "native find observer",
+		"actual": 4
+	},
+	{
+		"name": "original native search call (counts NOT observed)",
+		"actual": {
+			"controls": {
+				"find": {
+					"tabId": 1,
+					"query": "hello",
+					"ordinal": 0,
+					"matches": 0,
+					"pending": true,
+					"unreported": false
+				},
+				"zoom": 1,
+				"zoomAllowed": true,
+				"notice": null
+			},
+			"raw": [
+				{
+					"call": [
+						"hello",
+						{
+							"forward": true,
+							"findNext": false
+						}
+					],
+					"returnedId": 1
+				}
+			]
+		}
+	},
+	{
+		"name": "frame find-pending-localoperatorlight",
+		"actual": {
+			"label": "find-pending-localoperatorlight",
+			"path": "<scratch>/a2-final-native/runtime/out/find-pending-localoperatorlight.png",
+			"bytes": 86795,
+			"pixels": {
+				"width": 2760,
+				"height": 1800
+			},
+			"viewport": {
+				"width": 1380,
+				"height": 900,
+				"devicePixelRatio": 2
+			}
+		}
+	},
+	{
+		"name": "frame find-pending-localoperatordark",
+		"actual": {
+			"label": "find-pending-localoperatordark",
+			"path": "<scratch>/a2-final-native/runtime/out/find-pending-localoperatordark.png",
+			"bytes": 87207,
+			"pixels": {
+				"width": 2760,
+				"height": 1800
+			},
+			"viewport": {
+				"width": 1380,
+				"height": 900,
+				"devicePixelRatio": 2
+			}
+		}
+	},
+	{
+		"name": "synthetic found-in-page result - many",
+		"actual": {
+			"synthetic": true,
+			"requestId": 1,
+			"matches": 80,
+			"ordinal": 1
+		}
+	},
+	{
+		"name": "SETUP_OR_RUN_FAILURE",
+		"actual": "Error: Error: Error invoking remote method 'dev-driver-capture': Error: Invalid frame label: lowercase letters, digits, dash and underscore only.\n    at re (file://<scratch>/a2-native-proof.mjs:3323:73)\n    at async shot (file://<scratch>/a2-native-proof.mjs:3326:78)\n    at async frames (file://<scratch>/a2-native-proof.mjs:3374:64)\n    at async audit (file://<scratch>/a2-native-proof.mjs:3387:139)\n    at async file://<scratch>/a2-native-proof.mjs:3454:5"
+	},
+	{
+		"name": "teardown",
+		"actual": {
+			"ownedPid": 9812,
+			"alive": false,
+			"scratch": "<scratch>/a2-final-native/runtime",
+			"out": "<scratch>/a2-final-native/runtime/out"
+		}
+	}
 ]

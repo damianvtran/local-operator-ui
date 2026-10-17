@@ -26,14 +26,15 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { withMockKeychain } from "../../../../scripts/chrome-keychain.mjs";
 
-const ROOT = resolve(join(dirname(fileURLToPath(import.meta.url)), "../../../.."));
+const ROOT = resolve(
+	join(dirname(fileURLToPath(import.meta.url)), "../../../.."),
+);
 const ARGS = process.argv.slice(2);
 const flag = (name) =>
 	ARGS.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
 const STATE = flag("state") ?? "after";
 const THEME = flag("theme") ?? "localOperatorDark";
-const OUT =
-	flag("out") ?? join(ROOT, "docs/evidence/read-ack-skew/frames");
+const OUT = flag("out") ?? join(ROOT, "docs/evidence/read-ack-skew/frames");
 const PORT = Number(flag("port") ?? 5447);
 const ORIGIN = `http://127.0.0.1:${PORT}`;
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
@@ -70,7 +71,9 @@ class Cdp {
 	send(method, params = {}) {
 		const id = ++this.next;
 		this.ws.send(JSON.stringify({ id, method, params }));
-		return new Promise((res, rej) => this.pending.set(id, { resolve: res, reject: rej }));
+		return new Promise((res, rej) =>
+			this.pending.set(id, { resolve: res, reject: rej }),
+		);
 	}
 	async eval(expression) {
 		const { result } = await this.send("Runtime.evaluate", {
@@ -156,7 +159,10 @@ try {
 	);
 	const wsUrl = await new Promise((res, rej) => {
 		let buf = "";
-		const t = setTimeout(() => rej(new Error("Chrome did not report a debug port")), 30_000);
+		const t = setTimeout(
+			() => rej(new Error("Chrome did not report a debug port")),
+			30_000,
+		);
 		chrome.stderr.on("data", (d) => {
 			buf += d.toString();
 			const m = buf.match(/DevTools listening on (ws:\/\/[^\s]+)/);
@@ -165,7 +171,9 @@ try {
 				res(m[1]);
 			}
 		});
-		chrome.on("exit", (code) => rej(new Error(`Chrome exited early (${code})`)));
+		chrome.on("exit", (code) =>
+			rej(new Error(`Chrome exited early (${code})`)),
+		);
 	});
 	const { host } = new URL(wsUrl);
 	const list = await fetch(`http://${host}/json`).then((r) => r.json());
@@ -212,7 +220,9 @@ try {
 	}
 	await sleep(400);
 
-	const readoutText = await cdp.eval("document.getElementById('readout').textContent");
+	const readoutText = await cdp.eval(
+		"document.getElementById('readout').textContent",
+	);
 	const toasts = await cdp.eval(
 		`(() => [...document.querySelectorAll("[data-sonner-toast]")].map((t) => (t.textContent || "").replace(/\\\\s+/g, " ").trim()))()`,
 	);

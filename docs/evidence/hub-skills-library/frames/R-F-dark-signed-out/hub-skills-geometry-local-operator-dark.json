@@ -1,23 +1,23 @@
 {
-  "size": "1380x900",
-  "theme": "local-operator-dark",
-  "hasOrgChip": false,
-  "geometry": {
-    "library": {
-      "x": 284,
-      "y": 225,
-      "w": 1064,
-      "h": 734,
-      "sw": 1064,
-      "cw": 1064
-    },
-    "detail": {
-      "x": 284,
-      "y": 503,
-      "w": 1064,
-      "h": 433,
-      "sw": 1064,
-      "cw": 1064
-    }
-  }
+	"size": "1380x900",
+	"theme": "local-operator-dark",
+	"hasOrgChip": false,
+	"geometry": {
+		"library": {
+			"x": 284,
+			"y": 225,
+			"w": 1064,
+			"h": 734,
+			"sw": 1064,
+			"cw": 1064
+		},
+		"detail": {
+			"x": 284,
+			"y": 503,
+			"w": 1064,
+			"h": 433,
+			"sw": 1064,
+			"cw": 1064
+		}
+	}
 }

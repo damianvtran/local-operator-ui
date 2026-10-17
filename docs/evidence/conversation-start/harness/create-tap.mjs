@@ -157,7 +157,8 @@ const server = createServer((req, res) => {
 		return;
 	}
 	const isMessage =
-		req.method === "POST" && /^\/v1\/desktop\/sessions\/[^/]+\/messages$/.test(req.url);
+		req.method === "POST" &&
+		/^\/v1\/desktop\/sessions\/[^/]+\/messages$/.test(req.url);
 	if (isMessage && failMessages > 0) {
 		failMessages -= 1;
 		log(`POST ${req.url} <- answered 503 runtime_unreachable (tap arm)`);
@@ -225,7 +226,9 @@ const server = createServer((req, res) => {
 });
 
 server.listen(PORT, "127.0.0.1", () => {
-	log(`tap listening on 127.0.0.1:${PORT} -> ${TARGET.origin} (create held ${DELAY_MS}ms)`);
+	log(
+		`tap listening on 127.0.0.1:${PORT} -> ${TARGET.origin} (create held ${DELAY_MS}ms)`,
+	);
 	console.log(
 		`create-tap: 127.0.0.1:${PORT} -> ${TARGET.origin}, POST /v1/desktop/sessions held ${DELAY_MS}ms${LOG ? `, log ${LOG}` : ""}`,
 	);

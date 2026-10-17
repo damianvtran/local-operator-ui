@@ -139,10 +139,17 @@ const at = (name) => `#/chat/${SESSION[name]}`;
 /* The conversation column, by the app's own layout handle (see `rig-lib.mjs`). */
 const COLUMN = `document.querySelector('[data-tour-tag="chat-column"]') !== null`;
 const paneDrawn = (pane) => {
-	const hook = { canvas: "canvas-dock", run: "run-panel-dock", browser: "browser-pane-slot", console: "console-pane-slot", ask: "ask-drawer-slot" }[pane];
+	const hook = {
+		canvas: "canvas-dock",
+		run: "run-panel-dock",
+		browser: "browser-pane-slot",
+		console: "console-pane-slot",
+		ask: "ask-drawer-slot",
+	}[pane];
 	return `document.querySelector('[data-tour-tag="${hook}"]') !== null`;
 };
-const stateStep = (expression) => `window.__loDevDriver.call("state").${expression}`;
+const stateStep = (expression) =>
+	`window.__loDevDriver.call("state").${expression}`;
 /** Which shape the canvas is in at this width - the app writes its own `docked`/`overlay` fact. */
 const canvasMode = (page) =>
 	page.evaluate(
@@ -165,7 +172,10 @@ const openPageFor = (url, arm, outDir, options = {}) =>
 
 /** Wait for the composer: the conversation (or the draft) is up. */
 const ready = (page) =>
-	page.waitFor(`document.querySelector('${COMPOSER}') !== null`, "the composer");
+	page.waitFor(
+		`document.querySelector('${COMPOSER}') !== null`,
+		"the composer",
+	);
 
 const openAt = async (page, key) => {
 	await page.open(at(key));
@@ -231,77 +241,77 @@ const holdFileFor = (key) => join(SCRATCH, "hold", SESSION[key]);
 
 /* --------------------------------------------------------------------- the cases ---- */
 
-	/*
-	 * THE NARROW ARRIVAL, AT THE TWO WIDTHS THAT MATTER. The decision record's
-	 * [call] is that a remembered panel is STILL RESTORED at a width where the canvas
-	 * would cover the conversation rather than dock, because whether the destination
-	 * will overlay depends on the sidebar yield the pane itself causes - a fixpoint
-	 * that cannot be decided at bind time. The width in the brief (1024x900) is
-	 * measured here rather than assumed, and it does NOT overlay: the canvas DOCKs at
-	 * 444px and the SIDEBAR yields to its icon rail instead (`nav` absent, no
-	 * `[data-session-row]`), which is why the hop goes through the palette - the door
-	 * the rail's own Search row carries the chord for. The app's declared floor
-	 * (`WINDOW_MIN_WIDTH` x `WINDOW_MIN_HEIGHT`, 800x600) is where the canvas really
-	 * does overlay (220px over the conversation, `overlap > 0`), so that width is
-	 * captured too: the [call]'s own shape is the second cell, and the first is the
-	 * width the brief named, with the mode each frame carries recorded as a number.
-	 */
-	const narrowCase = (name, label, width, height) => ({
-		name,
-		label,
-		title: `the same hop in a ${width}x${height} window`,
-		arms: ["before", "after"],
-		viewport: { width, height },
-		async run(page) {
-			await openAt(page, "A");
-			await wait(SETTLE);
-			await page.pressRail("canvas");
-			await page.waitFor(paneDrawn("canvas"), "the canvas pane");
-			await wait(SETTLE);
-			const onA = {
-				probe: await page.probe(),
-				memory: await page.memory(),
-				mode: await canvasMode(page),
-			};
-			const frames = { onA: await page.shot(`${label}-canvas-on-a`) };
+/*
+ * THE NARROW ARRIVAL, AT THE TWO WIDTHS THAT MATTER. The decision record's
+ * [call] is that a remembered panel is STILL RESTORED at a width where the canvas
+ * would cover the conversation rather than dock, because whether the destination
+ * will overlay depends on the sidebar yield the pane itself causes - a fixpoint
+ * that cannot be decided at bind time. The width in the brief (1024x900) is
+ * measured here rather than assumed, and it does NOT overlay: the canvas DOCKs at
+ * 444px and the SIDEBAR yields to its icon rail instead (`nav` absent, no
+ * `[data-session-row]`), which is why the hop goes through the palette - the door
+ * the rail's own Search row carries the chord for. The app's declared floor
+ * (`WINDOW_MIN_WIDTH` x `WINDOW_MIN_HEIGHT`, 800x600) is where the canvas really
+ * does overlay (220px over the conversation, `overlap > 0`), so that width is
+ * captured too: the [call]'s own shape is the second cell, and the first is the
+ * width the brief named, with the mode each frame carries recorded as a number.
+ */
+const narrowCase = (name, label, width, height) => ({
+	name,
+	label,
+	title: `the same hop in a ${width}x${height} window`,
+	arms: ["before", "after"],
+	viewport: { width, height },
+	async run(page) {
+		await openAt(page, "A");
+		await wait(SETTLE);
+		await page.pressRail("canvas");
+		await page.waitFor(paneDrawn("canvas"), "the canvas pane");
+		await wait(SETTLE);
+		const onA = {
+			probe: await page.probe(),
+			memory: await page.memory(),
+			mode: await canvasMode(page),
+		};
+		const frames = { onA: await page.shot(`${label}-canvas-on-a`) };
 
-			await page.pressPaletteChat("B");
-			await page.waitFor(COLUMN, "B's transcript column");
-			const arrival = await page.probe();
-			await wait(SETTLE);
-			const settled = {
-				probe: await page.probe(),
-				memory: await page.memory(),
-				mode: await canvasMode(page),
-			};
-			frames.arrival = await page.shot(`${label}-arrival-b`);
+		await page.pressPaletteChat("B");
+		await page.waitFor(COLUMN, "B's transcript column");
+		const arrival = await page.probe();
+		await wait(SETTLE);
+		const settled = {
+			probe: await page.probe(),
+			memory: await page.memory(),
+			mode: await canvasMode(page),
+		};
+		frames.arrival = await page.shot(`${label}-arrival-b`);
 
-			/*
-			 * AND BACK, WHICH IS THE DECISION RECORD'S OWN [call]: at a width where the
-			 * pane competes for the row, a conversation that REMEMBERS one still gets it
-			 * restored - the record refuses "suppress on arrival" because whether the
-			 * destination will overlay depends on the sidebar yield the pane itself
-			 * causes, a fixpoint no bind-time rule can settle. The arrival at B above is
-			 * the other half (B remembers nothing, so B is empty); this hop is the
-			 * remembered one, and it is what the [call] is about.
-			 */
-			await page.pressPaletteChat("A");
-			await page.waitFor(COLUMN, "A's transcript column");
-			await wait(SETTLE);
-			const backOnA = {
-				probe: await page.probe(),
-				memory: await page.memory(),
-				mode: await canvasMode(page),
-			};
-			frames.backOnA = await page.shot(`${label}-back-on-a`);
+		/*
+		 * AND BACK, WHICH IS THE DECISION RECORD'S OWN [call]: at a width where the
+		 * pane competes for the row, a conversation that REMEMBERS one still gets it
+		 * restored - the record refuses "suppress on arrival" because whether the
+		 * destination will overlay depends on the sidebar yield the pane itself
+		 * causes, a fixpoint no bind-time rule can settle. The arrival at B above is
+		 * the other half (B remembers nothing, so B is empty); this hop is the
+		 * remembered one, and it is what the [call] is about.
+		 */
+		await page.pressPaletteChat("A");
+		await page.waitFor(COLUMN, "A's transcript column");
+		await wait(SETTLE);
+		const backOnA = {
+			probe: await page.probe(),
+			memory: await page.memory(),
+			mode: await canvasMode(page),
+		};
+		frames.backOnA = await page.shot(`${label}-back-on-a`);
 
-			return { frames, readings: { onA, arrival, settled, backOnA } };
-		},
-	});
-	const NARROW_CASES = [
-		narrowCase("s5a", "s5a-narrow-1024", 1024, 900),
-		narrowCase("s5b", "s5b-overlay-800", 800, 600),
-	];
+		return { frames, readings: { onA, arrival, settled, backOnA } };
+	},
+});
+const NARROW_CASES = [
+	narrowCase("s5a", "s5a-narrow-1024", 1024, 900),
+	narrowCase("s5b", "s5b-overlay-800", 800, 600),
+];
 
 const CASES = [
 	...NARROW_CASES,
@@ -317,7 +327,10 @@ const CASES = [
 			await page.pressRail("canvas");
 			await page.waitFor(paneDrawn("canvas"), "the canvas pane");
 			await wait(SETTLE);
-			const canvasOnA = { probe: await page.probe(), memory: await page.memory() };
+			const canvasOnA = {
+				probe: await page.probe(),
+				memory: await page.memory(),
+			};
 			const frames = { canvasOnA: await page.shot("s1-canvas-on-a") };
 
 			await page.startSampler(HOP_MS);
@@ -326,7 +339,10 @@ const CASES = [
 			await page.waitFor(COLUMN, "B's transcript column");
 			const arrivalB = await page.probe();
 			await wait(SETTLE);
-			const settledB = { probe: await page.probe(), memory: await page.memory() };
+			const settledB = {
+				probe: await page.probe(),
+				memory: await page.memory(),
+			};
 			const timelineAB = summariseTimeline(await page.timeline());
 			frames.arrivalB = await page.shot("s1-arrival-b");
 
@@ -336,7 +352,10 @@ const CASES = [
 			await page.waitFor(COLUMN, "A's transcript column");
 			const arrivalA = await page.probe();
 			await wait(SETTLE);
-			const settledA = { probe: await page.probe(), memory: await page.memory() };
+			const settledA = {
+				probe: await page.probe(),
+				memory: await page.memory(),
+			};
 			const timelineBA = summariseTimeline(await page.timeline());
 			frames.backOnA = await page.shot("s1-back-on-a");
 
@@ -359,7 +378,10 @@ const CASES = [
 			await page.pressRail("canvas");
 			await page.waitFor(paneDrawn("canvas"), "the canvas pane");
 			await wait(SETTLE);
-			const canvasOnA = { probe: await page.probe(), memory: await page.memory() };
+			const canvasOnA = {
+				probe: await page.probe(),
+				memory: await page.memory(),
+			};
 			const frames = { canvasOnA: await page.shot("s2-canvas-on-a") };
 
 			await hop(page, "B");
@@ -380,16 +402,25 @@ const CASES = [
 			const firstPaint = await page.probe();
 			frames.firstPaint = await page.shot("s2-b-first-paint");
 			await wait(SETTLE);
-			const settled = { probe: await page.probe(), memory: await page.memory() };
+			const settled = {
+				probe: await page.probe(),
+				memory: await page.memory(),
+			};
 			frames.settled = await page.shot("s2-b-settled");
 
 			await hop(page, "A");
 			await page.waitFor(COLUMN, "A's transcript column");
 			await wait(SETTLE);
-			const backOnA = { probe: await page.probe(), memory: await page.memory() };
+			const backOnA = {
+				probe: await page.probe(),
+				memory: await page.memory(),
+			};
 			frames.backOnA = await page.shot("s2-a-still-remembers");
 
-			return { frames, readings: { canvasOnA, onB, firstPaint, settled, backOnA } };
+			return {
+				frames,
+				readings: { canvasOnA, onB, firstPaint, settled, backOnA },
+			};
 		},
 	},
 	{
@@ -407,16 +438,25 @@ const CASES = [
 			const frames = { onA: await page.shot("s3-a-canvas-open") };
 
 			await page.pressNewChat();
-			await page.waitFor(`${stateStep("activeDraftKey")} !== null`, "the draft");
+			await page.waitFor(
+				`${stateStep("activeDraftKey")} !== null`,
+				"the draft",
+			);
 			await ready(page);
 			await wait(SETTLE);
-			const draftClean = { probe: await page.probe(), memory: await page.memory() };
+			const draftClean = {
+				probe: await page.probe(),
+				memory: await page.memory(),
+			};
 			frames.draftClean = await page.shot("s3-draft-clean");
 
 			await page.pressRail("browser");
 			await page.waitFor(paneDrawn("browser"), "the browser pane on the draft");
 			await wait(SETTLE);
-			const draftPanel = { probe: await page.probe(), memory: await page.memory() };
+			const draftPanel = {
+				probe: await page.probe(),
+				memory: await page.memory(),
+			};
 			frames.draftPanel = await page.shot("s3-draft-panel-open");
 
 			const beforeAdmission = backendSessions(SCRATCH);
@@ -425,7 +465,11 @@ const CASES = [
 			await page.type(MESSAGE);
 			await wait(300);
 			await page.key("Enter", "Enter", 13, "\r");
-			await page.waitFor(`${stateStep("activeDraftKey")} === null`, "the admission", 30_000);
+			await page.waitFor(
+				`${stateStep("activeDraftKey")} === null`,
+				"the admission",
+				30_000,
+			);
 			const atAdmission = await page.probe();
 			await page.waitFor(
 				`document.body.innerText.includes(${JSON.stringify(MESSAGE.slice(0, 40))})`,
@@ -445,12 +489,17 @@ const CASES = [
 			const turn = await waitForAssistantTurn(SCRATCH, createdId);
 			const atReply = await page.probe();
 			await wait(SETTLE);
-			const admitted = { probe: await page.probe(), memory: await page.memory() };
+			const admitted = {
+				probe: await page.probe(),
+				memory: await page.memory(),
+			};
 			frames.admitted = await page.shot("s3-after-admission");
 			const timeline = summariseTimeline(await page.timeline());
 
 			const afterAdmission = backendSessions(SCRATCH);
-			const created = afterAdmission.filter((id) => !beforeAdmission.includes(id));
+			const created = afterAdmission.filter(
+				(id) => !beforeAdmission.includes(id),
+			);
 			const notes = created.map((id) => ({
 				session: id,
 				...backendReading(SCRATCH, id, MESSAGE.slice(0, 40)),
@@ -458,7 +507,14 @@ const CASES = [
 
 			return {
 				frames,
-				readings: { onA, draftClean, draftPanel, atAdmission, atReply, admitted },
+				readings: {
+					onA,
+					draftClean,
+					draftPanel,
+					atAdmission,
+					atReply,
+					admitted,
+				},
 				admission: {
 					before: beforeAdmission,
 					after: afterAdmission,
@@ -481,29 +537,49 @@ const CASES = [
 			await page.pressRail("canvas");
 			await page.waitFor(paneDrawn("canvas"), "the canvas pane on B");
 			await wait(SETTLE);
-			const remembersCanvas = { probe: await page.probe(), memory: await page.memory() };
-			const frames = { remembersCanvas: await page.shot("s4-b-remembers-canvas") };
+			const remembersCanvas = {
+				probe: await page.probe(),
+				memory: await page.memory(),
+			};
+			const frames = {
+				remembersCanvas: await page.shot("s4-b-remembers-canvas"),
+			};
 
 			const enqueued = await ask({
 				op: "enqueue",
 				question: "Which environment should I deploy the release candidate to?",
 				options: ["Staging", "Production", "Hold off"],
 			});
-			await page.waitFor(`document.querySelector('${CHIP}') !== null`, "the asks chip", 20_000);
+			await page.waitFor(
+				`document.querySelector('${CHIP}') !== null`,
+				"the asks chip",
+				20_000,
+			);
 			await wait(SETTLE);
 			const chipUp = { probe: await page.probe(), memory: await page.memory() };
 			frames.chipUp = await page.shot("s4-ask-arrives-over-the-canvas");
 
 			await page.pressAskChip();
-			await page.waitFor(`document.querySelector('${DRAWER}') !== null`, "the drawer", 15_000);
+			await page.waitFor(
+				`document.querySelector('${DRAWER}') !== null`,
+				"the drawer",
+				15_000,
+			);
 			await wait(1200);
 			const borrow = { probe: await page.probe(), memory: await page.memory() };
 			frames.borrow = await page.shot("s4-drawer-borrows-the-slot");
 
 			await page.press(CLOSE_ASKS, "the Close asks dismiss");
-			await page.waitFor(`document.querySelector('${DRAWER}') === null`, "the drawer to close", 15_000);
+			await page.waitFor(
+				`document.querySelector('${DRAWER}') === null`,
+				"the drawer to close",
+				15_000,
+			);
 			await wait(SETTLE);
-			const restored = { probe: await page.probe(), memory: await page.memory() };
+			const restored = {
+				probe: await page.probe(),
+				memory: await page.memory(),
+			};
 			frames.restored = await page.shot("s4-canvas-returns");
 
 			/*
@@ -524,7 +600,10 @@ const CASES = [
 				15_000,
 			);
 			await wait(1200);
-			const escapeOpen = { probe: await page.probe(), memory: await page.memory() };
+			const escapeOpen = {
+				probe: await page.probe(),
+				memory: await page.memory(),
+			};
 			await page.key("Escape", "Escape", 27);
 			await page.waitFor(
 				`document.querySelector('${DRAWER}') === null`,
@@ -532,12 +611,22 @@ const CASES = [
 				15_000,
 			);
 			await wait(SETTLE);
-			const escaped = { probe: await page.probe(), memory: await page.memory() };
+			const escaped = {
+				probe: await page.probe(),
+				memory: await page.memory(),
+			};
 			frames.escapeReturn = await page.shot("s4-canvas-returns-via-escape");
 
 			return {
 				frames,
-				readings: { remembersCanvas, chipUp, borrow, restored, escapeOpen, escaped },
+				readings: {
+					remembersCanvas,
+					chipUp,
+					borrow,
+					restored,
+					escapeOpen,
+					escaped,
+				},
 				enqueued: enqueued.ask_id ?? null,
 				backend: backendReading(SCRATCH, SESSION.B, null),
 			};
@@ -547,7 +636,8 @@ const CASES = [
 	{
 		name: "s6",
 		label: "s6-run-frame-arrival",
-		title: "B remembers the run panel; the pre-frame arrival after the hop vs settled",
+		title:
+			"B remembers the run panel; the pre-frame arrival after the hop vs settled",
 		arms: ["before", "after"],
 		async run(page, arm) {
 			await openAt(page, "A");
@@ -565,7 +655,10 @@ const CASES = [
 			await page.pressRail("run");
 			await page.waitFor(paneDrawn("run"), "the run pane", 20_000);
 			await wait(SETTLE);
-			const openOnB = { probe: await page.probe(), memory: await page.memory() };
+			const openOnB = {
+				probe: await page.probe(),
+				memory: await page.memory(),
+			};
 			const frames = { openOnB: await page.shot("s6-b-run-panel-open") };
 
 			await hop(page, "A");
@@ -616,7 +709,10 @@ const CASES = [
 				);
 			}
 			await wait(SETTLE);
-			const settled = { probe: await page.probe(), memory: await page.memory() };
+			const settled = {
+				probe: await page.probe(),
+				memory: await page.memory(),
+			};
 			frames.settled = await page.shot("s6-back-settled");
 
 			/* Clear the plan so the conversation is left as the other cases found it. */
@@ -637,7 +733,8 @@ const CASES = [
 	{
 		name: "s7",
 		label: "s7-console-restore",
-		title: "B remembers the console; hop to A; hop back - the pane returns and draws its empty state",
+		title:
+			"B remembers the console; hop to A; hop back - the pane returns and draws its empty state",
 		arms: ["before", "after"],
 		async run(page) {
 			/*
@@ -654,7 +751,10 @@ const CASES = [
 			await page.pressRail("console");
 			await page.waitFor(paneDrawn("console"), "the console pane on B", 20_000);
 			await wait(SETTLE);
-			const openOnB = { probe: await page.probe(), memory: await page.memory() };
+			const openOnB = {
+				probe: await page.probe(),
+				memory: await page.memory(),
+			};
 			const frames = { openOnB: await page.shot("s7-console-on-b") };
 
 			await hop(page, "A");
@@ -666,7 +766,10 @@ const CASES = [
 			await hop(page, "B");
 			await page.waitFor(COLUMN, "B's transcript column");
 			await wait(SETTLE);
-			const restored = { probe: await page.probe(), memory: await page.memory() };
+			const restored = {
+				probe: await page.probe(),
+				memory: await page.memory(),
+			};
 			frames.restored = await page.shot("s7-console-restored");
 
 			return { frames, readings: { openOnB, onA, restored } };
@@ -733,8 +836,6 @@ async function runCase(testCase, arm, url, theme) {
 	}
 }
 
-
-
 try {
 	if (EXPLORE) {
 		const arm = AFTER ? "after" : "before";
@@ -771,7 +872,9 @@ try {
 		await page.close();
 	} else {
 		mkdirSync(OUT, { recursive: true });
-		const arms = ["before", "after"].filter((arm) => (arm === "before" ? BEFORE : AFTER));
+		const arms = ["before", "after"].filter((arm) =>
+			arm === "before" ? BEFORE : AFTER,
+		);
 		for (const arm of arms) {
 			report.arms[arm] = {};
 			for (const testCase of CASES) {

@@ -1,254 +1,254 @@
 [
-  {
-    "at": "2026-10-15T05:25:15.961303-04:00",
-    "phase": "lease granted before remaining THREE boots; NO BUILD",
-    "availableKiB": 25155368,
-    "availableGiB": 23.990028381347656,
-    "swapFreeMiB": 1493.81,
-    "swapUsedDiagnosticMiB": 10794.19,
-    "memoryFreePct": 53
-  },
-  {
-    "at": "2026-10-15T05:25:15.972614-04:00",
-    "phase": "before R3-fixed-short-narrow-light",
-    "availableKiB": 25155364,
-    "availableGiB": 23.99002456665039,
-    "swapFreeMiB": 1493.81,
-    "swapUsedDiagnosticMiB": 10794.19,
-    "memoryFreePct": 53
-  },
-  {
-    "at": "2026-10-15T05:25:20.983070-04:00",
-    "phase": "mid-cell",
-    "availableKiB": 25178320,
-    "availableGiB": 24.011917114257812,
-    "swapFreeMiB": 1493.81,
-    "swapUsedDiagnosticMiB": 10794.19,
-    "memoryFreePct": 50
-  },
-  {
-    "at": "2026-10-15T05:25:26.013754-04:00",
-    "phase": "mid-cell",
-    "availableKiB": 25175228,
-    "availableGiB": 24.008968353271484,
-    "swapFreeMiB": 1493.81,
-    "swapUsedDiagnosticMiB": 10794.19,
-    "memoryFreePct": 50
-  },
-  {
-    "at": "2026-10-15T05:25:31.041600-04:00",
-    "phase": "mid-cell",
-    "availableKiB": 25179024,
-    "availableGiB": 24.012588500976562,
-    "swapFreeMiB": 1493.81,
-    "swapUsedDiagnosticMiB": 10794.19,
-    "memoryFreePct": 50
-  },
-  {
-    "at": "2026-10-15T05:25:36.067343-04:00",
-    "phase": "mid-cell",
-    "availableKiB": 25177528,
-    "availableGiB": 24.01116180419922,
-    "swapFreeMiB": 1493.81,
-    "swapUsedDiagnosticMiB": 10794.19,
-    "memoryFreePct": 51
-  },
-  {
-    "at": "2026-10-15T05:25:41.102795-04:00",
-    "phase": "mid-cell",
-    "availableKiB": 25136248,
-    "availableGiB": 23.97179412841797,
-    "swapFreeMiB": 1493.81,
-    "swapUsedDiagnosticMiB": 10794.19,
-    "memoryFreePct": 47
-  },
-  {
-    "at": "2026-10-15T05:25:46.120847-04:00",
-    "phase": "mid-cell",
-    "availableKiB": 25120764,
-    "availableGiB": 23.957027435302734,
-    "swapFreeMiB": 1493.81,
-    "swapUsedDiagnosticMiB": 10794.19,
-    "memoryFreePct": 50
-  },
-  {
-    "at": "2026-10-15T05:25:51.143359-04:00",
-    "phase": "mid-cell",
-    "availableKiB": 25097388,
-    "availableGiB": 23.934734344482422,
-    "swapFreeMiB": 1493.81,
-    "swapUsedDiagnosticMiB": 10794.19,
-    "memoryFreePct": 50
-  },
-  {
-    "at": "2026-10-15T05:25:56.191841-04:00",
-    "phase": "mid-cell",
-    "availableKiB": 25102528,
-    "availableGiB": 23.93963623046875,
-    "swapFreeMiB": 1493.81,
-    "swapUsedDiagnosticMiB": 10794.19,
-    "memoryFreePct": 49
-  },
-  {
-    "at": "2026-10-15T05:25:58.680284-04:00",
-    "phase": "before R3-old-wide",
-    "availableKiB": 25104444,
-    "availableGiB": 23.941463470458984,
-    "swapFreeMiB": 1493.81,
-    "swapUsedDiagnosticMiB": 10794.19,
-    "memoryFreePct": 50
-  },
-  {
-    "at": "2026-10-15T05:26:01.228080-04:00",
-    "phase": "mid-cell",
-    "availableKiB": 25077452,
-    "availableGiB": 23.915721893310547,
-    "swapFreeMiB": 1493.81,
-    "swapUsedDiagnosticMiB": 10794.19,
-    "memoryFreePct": 47
-  },
-  {
-    "at": "2026-10-15T05:26:06.269158-04:00",
-    "phase": "mid-cell",
-    "availableKiB": 25097812,
-    "availableGiB": 23.935138702392578,
-    "swapFreeMiB": 1493.81,
-    "swapUsedDiagnosticMiB": 10794.19,
-    "memoryFreePct": 49
-  },
-  {
-    "at": "2026-10-15T05:26:11.302502-04:00",
-    "phase": "mid-cell",
-    "availableKiB": 25088964,
-    "availableGiB": 23.926700592041016,
-    "swapFreeMiB": 1493.81,
-    "swapUsedDiagnosticMiB": 10794.19,
-    "memoryFreePct": 49
-  },
-  {
-    "at": "2026-10-15T05:26:16.340775-04:00",
-    "phase": "mid-cell",
-    "availableKiB": 25062388,
-    "availableGiB": 23.901355743408203,
-    "swapFreeMiB": 1493.81,
-    "swapUsedDiagnosticMiB": 10794.19,
-    "memoryFreePct": 49
-  },
-  {
-    "at": "2026-10-15T05:26:21.381492-04:00",
-    "phase": "mid-cell",
-    "availableKiB": 25083280,
-    "availableGiB": 23.921279907226562,
-    "swapFreeMiB": 1493.81,
-    "swapUsedDiagnosticMiB": 10794.19,
-    "memoryFreePct": 49
-  },
-  {
-    "at": "2026-10-15T05:26:26.449061-04:00",
-    "phase": "mid-cell",
-    "availableKiB": 25045492,
-    "availableGiB": 23.885242462158203,
-    "swapFreeMiB": 1493.81,
-    "swapUsedDiagnosticMiB": 10794.19,
-    "memoryFreePct": 47
-  },
-  {
-    "at": "2026-10-15T05:26:31.483088-04:00",
-    "phase": "mid-cell",
-    "availableKiB": 25051304,
-    "availableGiB": 23.890785217285156,
-    "swapFreeMiB": 1493.81,
-    "swapUsedDiagnosticMiB": 10794.19,
-    "memoryFreePct": 46
-  },
-  {
-    "at": "2026-10-15T05:26:35.664166-04:00",
-    "phase": "before R3-prerelease-narrow-light",
-    "availableKiB": 25056936,
-    "availableGiB": 23.896156311035156,
-    "swapFreeMiB": 1493.81,
-    "swapUsedDiagnosticMiB": 10794.19,
-    "memoryFreePct": 48
-  },
-  {
-    "at": "2026-10-15T05:26:36.516807-04:00",
-    "phase": "mid-cell",
-    "availableKiB": 25063132,
-    "availableGiB": 23.90206527709961,
-    "swapFreeMiB": 1493.81,
-    "swapUsedDiagnosticMiB": 10794.19,
-    "memoryFreePct": 48
-  },
-  {
-    "at": "2026-10-15T05:26:41.564247-04:00",
-    "phase": "mid-cell",
-    "availableKiB": 25055228,
-    "availableGiB": 23.894527435302734,
-    "swapFreeMiB": 1493.81,
-    "swapUsedDiagnosticMiB": 10794.19,
-    "memoryFreePct": 47
-  },
-  {
-    "at": "2026-10-15T05:26:46.603901-04:00",
-    "phase": "mid-cell",
-    "availableKiB": 25058916,
-    "availableGiB": 23.89804458618164,
-    "swapFreeMiB": 1493.81,
-    "swapUsedDiagnosticMiB": 10794.19,
-    "memoryFreePct": 48
-  },
-  {
-    "at": "2026-10-15T05:26:51.639663-04:00",
-    "phase": "mid-cell",
-    "availableKiB": 25024800,
-    "availableGiB": 23.865509033203125,
-    "swapFreeMiB": 1493.81,
-    "swapUsedDiagnosticMiB": 10794.19,
-    "memoryFreePct": 46
-  },
-  {
-    "at": "2026-10-15T05:26:56.679328-04:00",
-    "phase": "mid-cell",
-    "availableKiB": 25019352,
-    "availableGiB": 23.860313415527344,
-    "swapFreeMiB": 1493.81,
-    "swapUsedDiagnosticMiB": 10794.19,
-    "memoryFreePct": 47
-  },
-  {
-    "at": "2026-10-15T05:27:01.720778-04:00",
-    "phase": "mid-cell",
-    "availableKiB": 24970088,
-    "availableGiB": 23.813331604003906,
-    "swapFreeMiB": 1493.81,
-    "swapUsedDiagnosticMiB": 10794.19,
-    "memoryFreePct": 47
-  },
-  {
-    "at": "2026-10-15T05:27:06.763261-04:00",
-    "phase": "mid-cell",
-    "availableKiB": 24978268,
-    "availableGiB": 23.82113265991211,
-    "swapFreeMiB": 1493.81,
-    "swapUsedDiagnosticMiB": 10794.19,
-    "memoryFreePct": 48
-  },
-  {
-    "at": "2026-10-15T05:27:11.797749-04:00",
-    "phase": "mid-cell",
-    "availableKiB": 24980672,
-    "availableGiB": 23.82342529296875,
-    "swapFreeMiB": 1493.81,
-    "swapUsedDiagnosticMiB": 10794.19,
-    "memoryFreePct": 48
-  },
-  {
-    "at": "2026-10-15T05:27:12.766885-04:00",
-    "phase": "end",
-    "availableKiB": 24982196,
-    "availableGiB": 23.824878692626953,
-    "swapFreeMiB": 1493.81,
-    "swapUsedDiagnosticMiB": 10794.19,
-    "memoryFreePct": 47
-  }
+	{
+		"at": "2026-10-15T05:25:15.961303-04:00",
+		"phase": "lease granted before remaining THREE boots; NO BUILD",
+		"availableKiB": 25155368,
+		"availableGiB": 23.990028381347656,
+		"swapFreeMiB": 1493.81,
+		"swapUsedDiagnosticMiB": 10794.19,
+		"memoryFreePct": 53
+	},
+	{
+		"at": "2026-10-15T05:25:15.972614-04:00",
+		"phase": "before R3-fixed-short-narrow-light",
+		"availableKiB": 25155364,
+		"availableGiB": 23.99002456665039,
+		"swapFreeMiB": 1493.81,
+		"swapUsedDiagnosticMiB": 10794.19,
+		"memoryFreePct": 53
+	},
+	{
+		"at": "2026-10-15T05:25:20.983070-04:00",
+		"phase": "mid-cell",
+		"availableKiB": 25178320,
+		"availableGiB": 24.011917114257812,
+		"swapFreeMiB": 1493.81,
+		"swapUsedDiagnosticMiB": 10794.19,
+		"memoryFreePct": 50
+	},
+	{
+		"at": "2026-10-15T05:25:26.013754-04:00",
+		"phase": "mid-cell",
+		"availableKiB": 25175228,
+		"availableGiB": 24.008968353271484,
+		"swapFreeMiB": 1493.81,
+		"swapUsedDiagnosticMiB": 10794.19,
+		"memoryFreePct": 50
+	},
+	{
+		"at": "2026-10-15T05:25:31.041600-04:00",
+		"phase": "mid-cell",
+		"availableKiB": 25179024,
+		"availableGiB": 24.012588500976562,
+		"swapFreeMiB": 1493.81,
+		"swapUsedDiagnosticMiB": 10794.19,
+		"memoryFreePct": 50
+	},
+	{
+		"at": "2026-10-15T05:25:36.067343-04:00",
+		"phase": "mid-cell",
+		"availableKiB": 25177528,
+		"availableGiB": 24.01116180419922,
+		"swapFreeMiB": 1493.81,
+		"swapUsedDiagnosticMiB": 10794.19,
+		"memoryFreePct": 51
+	},
+	{
+		"at": "2026-10-15T05:25:41.102795-04:00",
+		"phase": "mid-cell",
+		"availableKiB": 25136248,
+		"availableGiB": 23.97179412841797,
+		"swapFreeMiB": 1493.81,
+		"swapUsedDiagnosticMiB": 10794.19,
+		"memoryFreePct": 47
+	},
+	{
+		"at": "2026-10-15T05:25:46.120847-04:00",
+		"phase": "mid-cell",
+		"availableKiB": 25120764,
+		"availableGiB": 23.957027435302734,
+		"swapFreeMiB": 1493.81,
+		"swapUsedDiagnosticMiB": 10794.19,
+		"memoryFreePct": 50
+	},
+	{
+		"at": "2026-10-15T05:25:51.143359-04:00",
+		"phase": "mid-cell",
+		"availableKiB": 25097388,
+		"availableGiB": 23.934734344482422,
+		"swapFreeMiB": 1493.81,
+		"swapUsedDiagnosticMiB": 10794.19,
+		"memoryFreePct": 50
+	},
+	{
+		"at": "2026-10-15T05:25:56.191841-04:00",
+		"phase": "mid-cell",
+		"availableKiB": 25102528,
+		"availableGiB": 23.93963623046875,
+		"swapFreeMiB": 1493.81,
+		"swapUsedDiagnosticMiB": 10794.19,
+		"memoryFreePct": 49
+	},
+	{
+		"at": "2026-10-15T05:25:58.680284-04:00",
+		"phase": "before R3-old-wide",
+		"availableKiB": 25104444,
+		"availableGiB": 23.941463470458984,
+		"swapFreeMiB": 1493.81,
+		"swapUsedDiagnosticMiB": 10794.19,
+		"memoryFreePct": 50
+	},
+	{
+		"at": "2026-10-15T05:26:01.228080-04:00",
+		"phase": "mid-cell",
+		"availableKiB": 25077452,
+		"availableGiB": 23.915721893310547,
+		"swapFreeMiB": 1493.81,
+		"swapUsedDiagnosticMiB": 10794.19,
+		"memoryFreePct": 47
+	},
+	{
+		"at": "2026-10-15T05:26:06.269158-04:00",
+		"phase": "mid-cell",
+		"availableKiB": 25097812,
+		"availableGiB": 23.935138702392578,
+		"swapFreeMiB": 1493.81,
+		"swapUsedDiagnosticMiB": 10794.19,
+		"memoryFreePct": 49
+	},
+	{
+		"at": "2026-10-15T05:26:11.302502-04:00",
+		"phase": "mid-cell",
+		"availableKiB": 25088964,
+		"availableGiB": 23.926700592041016,
+		"swapFreeMiB": 1493.81,
+		"swapUsedDiagnosticMiB": 10794.19,
+		"memoryFreePct": 49
+	},
+	{
+		"at": "2026-10-15T05:26:16.340775-04:00",
+		"phase": "mid-cell",
+		"availableKiB": 25062388,
+		"availableGiB": 23.901355743408203,
+		"swapFreeMiB": 1493.81,
+		"swapUsedDiagnosticMiB": 10794.19,
+		"memoryFreePct": 49
+	},
+	{
+		"at": "2026-10-15T05:26:21.381492-04:00",
+		"phase": "mid-cell",
+		"availableKiB": 25083280,
+		"availableGiB": 23.921279907226562,
+		"swapFreeMiB": 1493.81,
+		"swapUsedDiagnosticMiB": 10794.19,
+		"memoryFreePct": 49
+	},
+	{
+		"at": "2026-10-15T05:26:26.449061-04:00",
+		"phase": "mid-cell",
+		"availableKiB": 25045492,
+		"availableGiB": 23.885242462158203,
+		"swapFreeMiB": 1493.81,
+		"swapUsedDiagnosticMiB": 10794.19,
+		"memoryFreePct": 47
+	},
+	{
+		"at": "2026-10-15T05:26:31.483088-04:00",
+		"phase": "mid-cell",
+		"availableKiB": 25051304,
+		"availableGiB": 23.890785217285156,
+		"swapFreeMiB": 1493.81,
+		"swapUsedDiagnosticMiB": 10794.19,
+		"memoryFreePct": 46
+	},
+	{
+		"at": "2026-10-15T05:26:35.664166-04:00",
+		"phase": "before R3-prerelease-narrow-light",
+		"availableKiB": 25056936,
+		"availableGiB": 23.896156311035156,
+		"swapFreeMiB": 1493.81,
+		"swapUsedDiagnosticMiB": 10794.19,
+		"memoryFreePct": 48
+	},
+	{
+		"at": "2026-10-15T05:26:36.516807-04:00",
+		"phase": "mid-cell",
+		"availableKiB": 25063132,
+		"availableGiB": 23.90206527709961,
+		"swapFreeMiB": 1493.81,
+		"swapUsedDiagnosticMiB": 10794.19,
+		"memoryFreePct": 48
+	},
+	{
+		"at": "2026-10-15T05:26:41.564247-04:00",
+		"phase": "mid-cell",
+		"availableKiB": 25055228,
+		"availableGiB": 23.894527435302734,
+		"swapFreeMiB": 1493.81,
+		"swapUsedDiagnosticMiB": 10794.19,
+		"memoryFreePct": 47
+	},
+	{
+		"at": "2026-10-15T05:26:46.603901-04:00",
+		"phase": "mid-cell",
+		"availableKiB": 25058916,
+		"availableGiB": 23.89804458618164,
+		"swapFreeMiB": 1493.81,
+		"swapUsedDiagnosticMiB": 10794.19,
+		"memoryFreePct": 48
+	},
+	{
+		"at": "2026-10-15T05:26:51.639663-04:00",
+		"phase": "mid-cell",
+		"availableKiB": 25024800,
+		"availableGiB": 23.865509033203125,
+		"swapFreeMiB": 1493.81,
+		"swapUsedDiagnosticMiB": 10794.19,
+		"memoryFreePct": 46
+	},
+	{
+		"at": "2026-10-15T05:26:56.679328-04:00",
+		"phase": "mid-cell",
+		"availableKiB": 25019352,
+		"availableGiB": 23.860313415527344,
+		"swapFreeMiB": 1493.81,
+		"swapUsedDiagnosticMiB": 10794.19,
+		"memoryFreePct": 47
+	},
+	{
+		"at": "2026-10-15T05:27:01.720778-04:00",
+		"phase": "mid-cell",
+		"availableKiB": 24970088,
+		"availableGiB": 23.813331604003906,
+		"swapFreeMiB": 1493.81,
+		"swapUsedDiagnosticMiB": 10794.19,
+		"memoryFreePct": 47
+	},
+	{
+		"at": "2026-10-15T05:27:06.763261-04:00",
+		"phase": "mid-cell",
+		"availableKiB": 24978268,
+		"availableGiB": 23.82113265991211,
+		"swapFreeMiB": 1493.81,
+		"swapUsedDiagnosticMiB": 10794.19,
+		"memoryFreePct": 48
+	},
+	{
+		"at": "2026-10-15T05:27:11.797749-04:00",
+		"phase": "mid-cell",
+		"availableKiB": 24980672,
+		"availableGiB": 23.82342529296875,
+		"swapFreeMiB": 1493.81,
+		"swapUsedDiagnosticMiB": 10794.19,
+		"memoryFreePct": 48
+	},
+	{
+		"at": "2026-10-15T05:27:12.766885-04:00",
+		"phase": "end",
+		"availableKiB": 24982196,
+		"availableGiB": 23.824878692626953,
+		"swapFreeMiB": 1493.81,
+		"swapUsedDiagnosticMiB": 10794.19,
+		"memoryFreePct": 47
+	}
 ]
