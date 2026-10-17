@@ -695,8 +695,8 @@ test("the load-failure and renderer-death paths are wired, and the window has a 
 		"a load that failed or a renderer that died must reach the card, not a white void",
 	);
 	assert.ok(
-		source.includes("backgroundColor: MINI_VIEW_GROUND"),
-		"the window paints the dark ground itself, for the frames before any document lands",
+		/\.\.\.groundWithGlass\(\s*MINI_VIEW_GROUND,/.test(source),
+		"the window paints the dark ground itself (through groundWithGlass, whose FIRST option is backgroundColor: MINI_VIEW_GROUND and whose glass options may override it only while active), for the frames before any document lands",
 	);
 	assert.ok(
 		source.includes("MINI_VIEW_PAINTED"),

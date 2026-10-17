@@ -1008,6 +1008,15 @@ export function MiniComposer() {
 
 	return (
 		<div
+			/*
+			 * THE POPOUT'S ONE GROUND. With window glass on, this is `surface` at its
+			 * floor, RAW over the material - the window's material is beneath it and
+			 * nothing else is in this window, so it reads as a small floating glass HUD
+			 * (`styles/index.css`). Glass off: exactly the shipped opaque `canvas`
+			 * card, untouched. The marker also scopes the composer inside it to the
+			 * field treatment, since coverage is meaningless for a one-surface window.
+			 */
+			data-glass-region="mini-ground"
 			className="flex h-screen w-screen flex-col overflow-hidden bg-canvas text-ink"
 			onKeyDown={onFrameKeyDown}
 			data-tour-tag="mini-frame"

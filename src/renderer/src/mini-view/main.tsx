@@ -19,15 +19,21 @@
  */
 
 import { ThemedToastContainer } from "@shared/components/common";
+import {
+	applyGlassFacts,
+	subscribeGlassPaint,
+	syncGlassScheme,
+} from "@shared/hooks/use-window-glass";
 import { installExternalOpenRefusalToasts } from "@shared/lib/external-open-refusal";
 import { installConversationInputSync } from "@shared/store/conversation-input-sync";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import { applyThemeToDocument } from "@shared/themes";
+import { type ThemeName, applyThemeToDocument } from "@shared/themes";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import "../assets/fonts/fonts.css";
 import "@renderer/styles/index.css";
 import { MiniComposer } from "./mini-composer";
+import { themeNameFromPreferencesWrite } from "./mini-state";
 
 /*
  * Published BEFORE `createRoot`: the palette lives in localStorage and the
@@ -40,6 +46,43 @@ import { MiniComposer } from "./mini-composer";
  * would hand the resolver a resolved option.
  */
 applyThemeToDocument(useUiPreferencesStore.getState().themeName);
+
+/*
+ * THE POPOUT'S GLASS, from the same two channels the main document reads: the
+ * synchronous argv fact for the FIRST frame (a window that opens opaque and then
+ * turns translucent is a visible jump on every summon) and main's pushes for
+ * every later state (the Settings row, the OS reduce-transparency switch). Main
+ * forwards its state to this window too; before this the popout had no glass
+ * wiring at all.
+ */
+applyGlassFacts(window.api?.windowGlass?.facts?.() ?? null);
+subscribeGlassPaint();
+
+/*
+ * THE THEME SYNC, and it is the operator's bug rather than a nicety. This
+ * document hydrates the preferences store once at import; a theme chosen in the
+ * main window afterwards wrote the persisted blob but never reached this store
+ * or this document, so the popout painted the theme it booted with. The
+ * `storage` event is the platform's own cross-document broadcast (the draft
+ * store's sync uses it for the same pair of windows): adopt the written theme,
+ * publish it, and re-derive the glass alphas because `blockVeil` differs by
+ * scheme. `setTheme` keeps the store copy current so the summon path, which
+ * re-applies `getState().themeName`, cannot put the stale palette back.
+ */
+const preferencesStoreKey =
+	useUiPreferencesStore.persist?.getOptions?.()?.name ??
+	"ui-preferences-storage";
+window.addEventListener("storage", (event) => {
+	const themeName = themeNameFromPreferencesWrite({
+		eventKey: event.key,
+		storeKey: preferencesStoreKey,
+		newValue: event.newValue,
+	});
+	if (!themeName) return;
+	useUiPreferencesStore.getState().setTheme(themeName as ThemeName);
+	applyThemeToDocument(themeName as ThemeName);
+	syncGlassScheme();
+});
 
 /*
  * The draft store's cross-document sync (risk R5). This document is the second

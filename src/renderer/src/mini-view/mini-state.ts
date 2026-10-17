@@ -71,3 +71,38 @@ export const miniFrameTransitions = {
 		return { ...state, sent: false };
 	},
 };
+
+/**
+ * THE THEME A PREFERENCES WRITE CARRIES, for the popout's live sync.
+ *
+ * WHY THIS EXISTS. `ui-preferences-store` is zustand-persist: each document
+ * hydrates ONE copy at import and zustand does not listen for other documents'
+ * writes. The mini published its theme once at boot and re-read its own stale
+ * in-memory copy on every summon, so a theme selected in the main window never
+ * reached the popout - the operator photographed the popout on tokyoNightStorm
+ * while the app ran obsidian. The platform's own `storage` event is the
+ * transport the draft store already uses across these two documents
+ * (`conversation-input-sync.ts`); this is the reader that says which write is a
+ * theme change and what it says.
+ *
+ * Pure and import-free so the desktop suite drives malformed blobs without a
+ * window: a foreign key, a missing value and anything that is not the persisted
+ * `{ state: { themeName } }` shape all answer null, and the caller leaves the
+ * palette it has.
+ */
+export function themeNameFromPreferencesWrite(input: {
+	eventKey: string | null;
+	storeKey: string;
+	newValue: string | null;
+}): string | null {
+	if (input.eventKey !== input.storeKey || input.newValue === null) return null;
+	try {
+		const parsed = JSON.parse(input.newValue) as {
+			state?: { themeName?: unknown };
+		};
+		const name = parsed.state?.themeName;
+		return typeof name === "string" && name.length > 0 ? name : null;
+	} catch {
+		return null;
+	}
+}
