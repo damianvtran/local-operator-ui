@@ -57,7 +57,10 @@ import { useLocation } from "react-router-dom";
 import { WindowGlassSetting } from "./window-glass-setting";
 
 import { LANGUAGE_SETTING_KEY } from "@shared/i18n";
-import { sectionForSettingKey } from "../promoted-setting-sections";
+import {
+	MODEL_EFFORT_SETTING_KEY,
+	sectionForSettingKey,
+} from "../promoted-setting-sections";
 import { AppUpdatesSection } from "./app-updates-section";
 import { BackendSettingsSection } from "./backend-settings-section";
 import { DefaultEffortSelect } from "./default-effort-select";
@@ -1288,6 +1291,12 @@ export const SettingsPage: FC = () => {
 									<DefaultEffortSelect
 										hosting={config.values.hosting}
 										modelName={config.values.model_name}
+										/*
+										 * The same reveal the language row gets: this key is promoted
+										 * out of the backend registry, so the section's `focusKey` is
+										 * suppressed for it and the row has to focus itself.
+										 */
+										focus={settingFocusKey === MODEL_EFFORT_SETTING_KEY}
 									/>
 									{/*
 									 * ONLY WHEN NO PROVIDER IS CONNECTED. Leading with "sign in"
@@ -1473,6 +1482,21 @@ export const SettingsPage: FC = () => {
 							 * sits in DOM order.
 							 */
 							id="model-providers"
+							/*
+							 * The landing target draws NO ring. `tabIndex={-1}` makes it a
+							 * programmatic rest-stop, not a control, and Chromium counts a
+							 * scripted `.focus()` after keyboard input as `:focus-visible` - so
+							 * the app's 2px accent ring would outline the whole section,
+							 * heading through provider grid, with nothing actionable in it.
+							 * `index.css` allows `outline-none` exactly when "focus is moved
+							 * there programmatically and a ring would be noise"; the `!` is
+							 * required because the ring is an unlayered `html :focus-visible`
+							 * rule that outranks utilities (same escape the browser pane's
+							 * U9 rest-stop uses). Every focusable CHILD keeps its own ring,
+							 * and the landing is already unmistakable: the scroll puts the
+							 * heading at the header room and the rail moves to this section.
+							 */
+							className="focus-visible:outline-none!"
 						>
 							<ProviderGrid
 								initialProviderId={providerFromQuery}

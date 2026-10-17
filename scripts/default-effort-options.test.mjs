@@ -417,7 +417,25 @@ test("an auto-only ladder is one outcome, named, and disabled", () => {
 		"Auto",
 		"the single outcome is named rather than replaced by a choice that cannot exist",
 	);
-	assert.ok(state.helper.includes("one effort level: Auto"));
+	assert.ok(
+		state.helper.includes("has no effort level to choose"),
+		"the sentinel is a delegation to the model, not a level the reader picks",
+	);
+	assert.ok(
+		!state.helper.includes("one effort level"),
+		"calling Auto one effort level would put a state word in a level's slot",
+	);
+});
+
+test("a real single level keeps the one-effort-level sentence", () => {
+	const state = defaultEffortState(
+		ready({ ladder: ["high"], resolvedLevel: "high" }),
+	);
+	assert.equal(state.kind, "one-level");
+	assert.ok(
+		state.helper.includes("one effort level: High"),
+		"a real level is still named as the level the model offers",
+	);
 });
 
 test("a ladder with one storable rung beside the sentinel is two outcomes", () => {
@@ -450,6 +468,59 @@ test("an unknown stored value never renders as a chosen Model default", () => {
 		assert.ok(
 			state.options.every((row) => row.id !== state.selectedId),
 			`${settings}: the control must show its placeholder, not claim the unset value`,
+		);
+	}
+});
+
+/*
+ * U3: a stored level is never shown as "Model default" while the MODEL's ladder
+ * is still out. The settings read may know the value, but the row cannot say
+ * which level is in force - or that the unset row means anything - until the
+ * preview answers. With nothing stored the unset row IS the truth and stays
+ * selected, so the honest loading state does not lose its label.
+ */
+test("a stored level shows no chosen row while the model's ladder is unknown", () => {
+	const states = [
+		["loading", ready({ preview: "loading", ladder: null, stored: "high" })],
+		["error", ready({ preview: "error", ladder: null, stored: "high" })],
+		[
+			"unresolved",
+			ready({ ladder: null, specResolved: false, stored: "high" }),
+		],
+		["empty", ready({ ladder: [], specResolved: true, stored: "high" })],
+	];
+	for (const [kind, input] of states) {
+		const state = defaultEffortState(input);
+		assert.equal(state.kind, kind);
+		assert.ok(
+			state.options.every((row) => row.id !== state.selectedId),
+			`${kind}: the control must show its placeholder rather than claim Model default for a stored level`,
+		);
+		assert.ok(
+			state.selectedId.length > 0,
+			`${kind}: the unset id is a real option id, so "no selection" needs its own spelling`,
+		);
+	}
+});
+
+test("with nothing stored the unset row stays chosen while the ladder loads", () => {
+	const states = [
+		["loading", ready({ preview: "loading", ladder: null, stored: "" })],
+		["error", ready({ preview: "error", ladder: null, stored: "" })],
+		["unresolved", ready({ ladder: null, specResolved: false, stored: "" })],
+		["empty", ready({ ladder: [], specResolved: true, stored: "" })],
+	];
+	for (const [kind, input] of states) {
+		const state = defaultEffortState(input);
+		assert.equal(state.kind, kind);
+		assert.equal(
+			state.selectedId,
+			"",
+			`${kind}: nothing is stored, so Model default is what the row means`,
+		);
+		assert.ok(
+			state.options.some((row) => row.id === state.selectedId),
+			`${kind}: the unset row is an offered row and may be shown`,
 		);
 	}
 });

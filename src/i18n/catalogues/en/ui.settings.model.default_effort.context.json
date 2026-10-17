@@ -95,6 +95,12 @@
 			"level": "The single level name, already title-cased for display. Insert as given."
 		}
 	},
+	"ui.settings.model.default_effort.one_level_sentinel": {
+		"role": "Helper line under the disabled one-outcome default-effort picker when the model's only value is the auto sentinel",
+		"tone": "Matter-of-fact delegation: the model decides, the reader has no level to choose.",
+		"length": "Wrapping helper paragraph under the field. English is 76 characters.",
+		"note": "Replaces the one-level sentence for the `auto` sentinel only. `auto` is the registry's LABEL for the empty value (no opinion), not a level, so this sentence must never call it a level; a real single rung keeps \"This model offers one effort level: {level}.\""
+	},
 	"ui.settings.model.default_effort.clamped": {
 		"role": "Announcement at the Default effort row after a model switch rewrote the stored level",
 		"tone": "Matter-of-fact statement of what happened and what is now in force; it explains a value the reader did not choose.",

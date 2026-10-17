@@ -80,17 +80,31 @@ import { backendSettingsKeys } from "./backend-settings-section";
  * row therefore states the substitution after it succeeds, and shows the TARGET
  * level while the write is in flight rather than falling back through "Model
  * default" for the duration.
+ *
+ * WHY `focus` EXISTS. A `/settings?setting=model_effort` deep link resolves to
+ * General because this control was promoted out of the backend registry (see
+ * `promoted-setting-sections.ts`), and the page suppresses the backend section's
+ * own `focusKey` for promoted keys. Landing the section alone would leave the
+ * reader at General's top with nothing naming the row they asked for, so the
+ * page hands this component the same boolean the General language row receives
+ * and the row focuses its own combobox once the control can take focus. The
+ * wait for an ENABLED control is the part this row adds: its input is disabled
+ * while the settings registry or the model's ladder is still out, and a disabled
+ * input cannot be focused.
  */
 type DefaultEffortSelectProps = {
 	/** The configured hosting, from the page's config read. */
 	hosting: string;
 	/** The configured model id, from the page's config read. */
 	modelName: string;
+	/** Whether a deep link named this row and it should be revealed and focused. */
+	focus?: boolean;
 };
 
 export const DefaultEffortSelect: FC<DefaultEffortSelectProps> = ({
 	hosting,
 	modelName,
+	focus = false,
 }) => {
 	/* Copy-bearing projections recompute after a locale change, as every
 	 * surface's do: `t()` reads the active locale at call time, and this hook is
@@ -206,6 +220,11 @@ export const DefaultEffortSelect: FC<DefaultEffortSelectProps> = ({
 	} | null>(null);
 	const modelIdentity = `${hosting}\u0000${modelName}`;
 	const queryClient = useQueryClient();
+	/* The row's own subtree, so the deep link can find the combobox it focuses. */
+	const container = useRef<HTMLDivElement>(null);
+	/* Focus once per link, not on every repaint: refocusing a settled row would
+	 * steal the caret from a reader already typing in it. */
+	const focused = useRef(false);
 
 	/*
 	 * The one write path. On success the registry is invalidated so this row
@@ -321,6 +340,22 @@ export const DefaultEffortSelect: FC<DefaultEffortSelectProps> = ({
 		() => state.options.map(toSearchableOption),
 		[state.options],
 	);
+	/*
+	 * The deep link's reveal (see the `focus` prop). Mirrors the General language
+	 * row's mechanism; the addition is waiting for `state.disabled === false`,
+	 * because this input is disabled while either read is out and `focus()` on a
+	 * disabled input is a no-op. Native `focus()` also scrolls the row into view,
+	 * which is what "revealed" means for a link that lands the section.
+	 */
+	useEffect(() => {
+		if (!focus) {
+			focused.current = false;
+			return;
+		}
+		if (state.disabled || focused.current) return;
+		container.current?.querySelector<HTMLElement>("[role=combobox]")?.focus();
+		focused.current = true;
+	}, [focus, state.disabled]);
 	const shownSelectedId = pendingValue ?? state.selectedId;
 	const selectedOption =
 		options.find((option) => option.id === shownSelectedId) ??
@@ -335,9 +370,11 @@ export const DefaultEffortSelect: FC<DefaultEffortSelectProps> = ({
 			? { id: pendingValue, name: effortDisplay(pendingValue) }
 			: null);
 	/*
-	 * `role="status"` on an ALWAYS-PRESENT node is the announcement surface: a
-	 * live region that arrives already populated is not reliably announced.
-	 * It stays empty unless a clamp landed.
+	 * The announcement surface is this ALWAYS-PRESENT `<output>`: a live region
+	 * that arrives already populated is not reliably announced. It carries the
+	 * spec's implicit ARIA role `status` (nothing sets the attribute, and none
+	 * is needed), plus `aria-live="polite"` for clients that do not map the
+	 * element to the role. It stays empty unless a clamp landed.
 	 */
 	const helper = (
 		<span className="flex flex-col gap-0.5">
@@ -357,20 +394,22 @@ export const DefaultEffortSelect: FC<DefaultEffortSelectProps> = ({
 	if (state.kind === "unsupported") return null;
 
 	return (
-		<SearchableSelect
-			label={t("ui.settings.model.default_effort.label")}
-			icon={<Gauge size={16} aria-hidden="true" />}
-			placeholder={t("ui.settings.model.default_effort.placeholder")}
-			options={options}
-			selected={selectedOption}
-			onSelect={(option) => {
-				void save(option.id, null);
-			}}
-			helperText={helper}
-			busy={saving}
-			busyLabel={t("ui.settings.model.default_effort.busy")}
-			disabled={state.disabled || saving}
-		/>
+		<div ref={container} data-setting-key={MODEL_EFFORT_SETTING_KEY}>
+			<SearchableSelect
+				label={t("ui.settings.model.default_effort.label")}
+				icon={<Gauge size={16} aria-hidden="true" />}
+				placeholder={t("ui.settings.model.default_effort.placeholder")}
+				options={options}
+				selected={selectedOption}
+				onSelect={(option) => {
+					void save(option.id, null);
+				}}
+				helperText={helper}
+				busy={saving}
+				busyLabel={t("ui.settings.model.default_effort.busy")}
+				disabled={state.disabled || saving}
+			/>
+		</div>
 	);
 };
 
