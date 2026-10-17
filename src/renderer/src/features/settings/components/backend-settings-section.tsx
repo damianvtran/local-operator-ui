@@ -724,6 +724,9 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	 *
 	 * Keyed on `destinationReady` rather than on the filter, so a filter-clearing
 	 * re-run RESTARTS the loop instead of cancelling it with nothing left to try.
+	 * "On screen" includes the section the row lives in: an element behind
+	 * `[hidden]` is IN the DOM but not laid out, and `focus()`/`scrollIntoView()`
+	 * on it are silent no-ops (see the visibility gate below).
 	 */
 	useEffect(() => {
 		if (!destinationReady || !focusKey) return;
@@ -752,7 +755,23 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 				row?.querySelector<HTMLElement>(
 					`[data-setting-control] :is(input, textarea, select, button[role="switch"], button)`,
 				) ?? row;
-			if (el) {
+			/*
+			 * A ROW BEHIND `[hidden]` IS NOT A CURSOR THAT ARRIVED. `focus()` and
+			 * `scrollIntoView()` are silent no-ops on an element inside a closed
+			 * section's `[hidden]` subtree, and the deep link lands in exactly that
+			 * state from the tier-already-on surface: the section the link must open
+			 * is opened by a commit this loop's first frame can beat (the
+			 * `destinationReady` memo above does not include the section-open state),
+			 * so latching here recorded a landing that never happened and no retry
+			 * ever came - measured on the `settings-account-policy` scene's second
+			 * leg (UX round 2, U2): section open, row at top 1036 against a 900px
+			 * viewport, focus still on the chip. The row counts as reachable only
+			 * when no ancestor carries `hidden` - the same visibility contract
+			 * `backend-settings-collapse.test.mjs` pins, and one that survives a
+			 * layout-less test host where `getClientRects()` is always empty. The
+			 * section-open commit lands well inside FOCUS_ATTEMPTS frames.
+			 */
+			if (el && el.closest("[hidden]") === null) {
 				if (el === row) el.tabIndex = -1;
 				el.focus();
 				el.scrollIntoView({ block: "center" });
