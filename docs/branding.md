@@ -942,7 +942,8 @@ the page column differing from the app sidebar beside it, on an opaque slab insi
 glass region, and on anything not fully opaque outside the chosen coverage. It does NOT
 cover every route (Projects, Mesh, Console and others are not audited) or any state a
 fixture cannot reach, and it needs a display, so no CI job runs it (`pnpm
-test:window-glass`; a result quoted for it is a LOCAL display run, never a CI result). Do not give a new ground inside a region its own `bg-surface`
+test:window-glass`; a result quoted for it is a LOCAL display run, never a CI result).
+Do not give a new ground inside a region its own `bg-surface`
 expecting it to stay solid: it will be cleared or it will show as a slab; add the region
 marker instead.
 
