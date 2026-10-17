@@ -1,0 +1,27 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "radient/auto",
+  "instance": "47b1ae9de266",
+  "locale": "es",
+  "status": "passed",
+  "namespaces": {
+    "ui.console": {
+      "status": "passed",
+      "keys_audited": 57,
+      "sha256": {
+        "es": "bd6bb3f24c379216e4e10c5cf6d139f4c3dca62b6c721ebe8c28517a0ecc0ff9",
+        "en": "65a71fecf4d10d1d2e2c1de1489101a752115cccaceee6d59bb98910273d4de0"
+      },
+      "findings": []
+    },
+    "ui.onboarding": {
+      "status": "passed",
+      "keys_audited": 47,
+      "sha256": {
+        "es": "e1361851bf6bef98295feef9b0b8245e1af32db75584f57223c1a54a816dfe29",
+        "en": "a04d3feacdef1168af407cb82b94173cb95d37092e8722d46df2cae4e4fc9e53"
+      },
+      "findings": []
+    }
+  }
+}
