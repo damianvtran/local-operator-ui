@@ -47,6 +47,9 @@ import { after, before, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import electronPath from "electron";
 import { reapOnExit, stopAppTree } from "./app-tree-teardown.mjs";
+import { withMockKeychain } from "./chrome-keychain.mjs";
+import { withNotificationsOff } from "./notifications-off.mjs";
+import { withTelemetryOff } from "./telemetry-off.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, "..");
@@ -160,19 +163,25 @@ before(async () => {
 	userData = join(root, "ud");
 	mkdirSync(userData, { recursive: true });
 	const port = await free();
-	const env = Object.fromEntries(
-		Object.entries(process.env).filter(
-			([k]) =>
-				!k.startsWith("CMUX_") &&
-				k !== "ELECTRON_RUN_AS_NODE" &&
-				k !== "XPC_FLAGS",
+	/*
+	 * THE ENVIRONMENT IS BUILT THROUGH THE SHARED SWITCHES, not set by hand: this
+	 * boots the real app, so a missing notification or telemetry switch would banner
+	 * the operator's Notification Center or count a test as a product user
+	 * (`notification-spawn-sites.test.mjs` pins the site; `chrome-keychain.test.mjs`
+	 * pins the keychain switch to its one module).
+	 */
+	const spawnEnv = withNotificationsOff({
+		...Object.fromEntries(
+			Object.entries(process.env).filter(
+				([k]) =>
+					!k.startsWith("CMUX_") &&
+					k !== "ELECTRON_RUN_AS_NODE" &&
+					k !== "XPC_FLAGS",
+			),
 		),
-	);
-	Object.assign(env, {
-		LOCAL_OPERATOR_NO_NOTIFICATIONS: "1",
-		LOCAL_OPERATOR_UI_TELEMETRY: "off",
 		LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
 	});
+	withTelemetryOff(spawnEnv);
 	child = spawn(
 		electronPath,
 		[
@@ -181,9 +190,9 @@ before(async () => {
 			"--window-size=1240x820",
 			`--user-data-dir=${userData}`,
 			`--remote-debugging-port=${port}`,
-			"--use-mock-keychain",
+			...withMockKeychain([]),
 		],
-		{ env, detached: true, stdio: "ignore" },
+		{ env: spawnEnv, detached: true, stdio: "ignore" },
 	);
 	child.on("exit", () => {
 		exited = true;
