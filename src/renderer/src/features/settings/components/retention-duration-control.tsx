@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The control for the delegated-work retention window: named stops plus an
  * exact entry, over a number of HOURS.
@@ -90,6 +92,7 @@ export const RetentionDurationControl: FC<RetentionDurationControlProps> = ({
 	onValueChange,
 	helpId,
 }) => {
+	useI18nLocale();
 	const spec = durationSpec(setting);
 	const ids = useId();
 	const [entry, setEntry] = useState(() => entryFromDraft(value));
@@ -123,7 +126,10 @@ export const RetentionDurationControl: FC<RetentionDurationControlProps> = ({
 		>
 			<Tabs value={activeStop} onValueChange={(next) => onValueChange(next)}>
 				<TabsList
-					aria-label={`${setting.label}: common choices`}
+					aria-label={t(
+						"ui.settings.configuration.retention_duration_control.label_common_choices",
+						{ label: String(setting.label) },
+					)}
 					// The track is `h-8 w-fit` for a short list; nine stops wrap inside it
 					// at a narrow column instead of overflowing the row.
 					className="h-auto max-w-full flex-wrap"
@@ -135,7 +141,10 @@ export const RetentionDurationControl: FC<RetentionDurationControlProps> = ({
 							disabled={disabled}
 							title={
 								hours === spec.defaultHours
-									? `${formatHours(hours)} (default)`
+									? t(
+											"ui.settings.configuration.retention_duration_control.duration_default",
+											{ duration: String(formatHours(hours)) },
+										)
 									: formatHours(hours)
 							}
 							className={cn("px-2.5", DISABLED_ACTIVE_INK)}
@@ -156,7 +165,7 @@ export const RetentionDurationControl: FC<RetentionDurationControlProps> = ({
 						disabled ? "text-ink-disabled" : "text-ink-muted",
 					)}
 				>
-					Exact time
+					{t("ui.settings.configuration.retention_duration_control.exact_time")}
 				</label>
 				<Input
 					id={`${ids}-count`}
@@ -183,15 +192,22 @@ export const RetentionDurationControl: FC<RetentionDurationControlProps> = ({
 					}
 				>
 					<SelectTrigger
-						aria-label={`${setting.label}: unit`}
+						aria-label={t(
+							"ui.settings.configuration.retention_duration_control.label_unit",
+							{ label: String(setting.label) },
+						)}
 						selectSize="sm"
 						className="w-24"
 					>
 						<SelectValue />
 					</SelectTrigger>
 					<SelectContent>
-						<SelectItem value="hours">hours</SelectItem>
-						<SelectItem value="days">days</SelectItem>
+						<SelectItem value="hours">
+							{t("ui.settings.configuration.retention_duration_control.hours")}
+						</SelectItem>
+						<SelectItem value="days">
+							{t("ui.settings.configuration.retention_duration_control.days")}
+						</SelectItem>
 					</SelectContent>
 				</Select>
 			</div>
@@ -204,8 +220,13 @@ export const RetentionDurationControl: FC<RetentionDurationControlProps> = ({
 						disabled ? "text-ink-disabled" : "text-ink-muted",
 					)}
 				>
-					{formatHours(verdict.hours)} with no activity
-					{verdict.hours === spec.defaultHours ? " (default)" : ""}
+					{t(
+						"ui.settings.configuration.retention_duration_control.idle_window_status",
+						{
+							duration: formatHours(verdict.hours),
+							isDefault: verdict.hours === spec.defaultHours ? "yes" : "no",
+						},
+					)}
 				</p>
 			) : (
 				// Announced politely as it changes: this appears while typing, so it is
@@ -224,7 +245,10 @@ export const RetentionDurationControl: FC<RetentionDurationControlProps> = ({
 							disabled={disabled}
 							onClick={() => onValueChange(String(verdict.nearest))}
 						>
-							Use {formatHours(verdict.nearest)}
+							{t(
+								"ui.settings.configuration.retention_duration_control.use_duration",
+								{ duration: formatHours(verdict.nearest) },
+							)}
 						</Button>
 					)}
 				</div>

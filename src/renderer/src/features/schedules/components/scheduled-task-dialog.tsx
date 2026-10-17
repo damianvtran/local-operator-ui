@@ -71,6 +71,8 @@ import {
 	SelectValue,
 	Textarea,
 } from "@shared/components/ui";
+import { formatNumber, t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
@@ -118,11 +120,21 @@ const MINUTE_MS = 60_000;
 const REPEAT_UNITS = ["minutes", "hours", "days", "weeks"] as const;
 type RepeatUnit = (typeof REPEAT_UNITS)[number];
 
+// The wire vocabulary is fixed, but its visible labels are read after language
+// changes too; eager module-level t() values would retain the previous locale.
 const REPEAT_UNIT_LABEL: Record<RepeatUnit, string> = {
-	minutes: "Minutes",
-	hours: "Hours",
-	days: "Days",
-	weeks: "Weeks",
+	get minutes() {
+		return t("ui.schedules.scheduled_task_dialog.minutes");
+	},
+	get hours() {
+		return t("ui.schedules.scheduled_task_dialog.hours");
+	},
+	get days() {
+		return t("ui.schedules.scheduled_task_dialog.days");
+	},
+	get weeks() {
+		return t("ui.schedules.scheduled_task_dialog.weeks");
+	},
 };
 
 const REPEAT_UNIT_MS: Record<RepeatUnit, number> = {
@@ -192,6 +204,7 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 	nowMs = Date.now(),
 	edit = null,
 }) => {
+	useI18nLocale();
 	const isEdit = edit !== null;
 	const [destination, setDestination] = useState<Destination>("new");
 	const [conversationId, setConversationId] = useState<string | null>(null);
@@ -439,7 +452,11 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 						? { limit: endsRuns }
 						: {}),
 				});
-				showSuccessToast(`Wake updated — ${wakePromptHead(prompt.trim())}`);
+				showSuccessToast(
+					t("ui.schedules.scheduled_task_dialog.wake_updated_trim", {
+						trim: String(wakePromptHead(prompt.trim())),
+					}),
+				);
 				onClose();
 				return;
 			}
@@ -473,8 +490,14 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 			 */
 			showSuccessToast(
 				created.index_written
-					? `Scheduled task created — ${wakePromptHead(prompt.trim())}`
-					: `Scheduled task created — ${wakePromptHead(prompt.trim())}. The list may lag until the index catches up.`,
+					? t(
+							"ui.schedules.scheduled_task_dialog.scheduled_task_created_trim",
+							{ trim: String(wakePromptHead(prompt.trim())) },
+						)
+					: t(
+							"ui.schedules.scheduled_task_dialog.scheduled_task_created_trim_the_list_may_lag_until_the_index_catc",
+							{ trim: String(wakePromptHead(prompt.trim())) },
+						),
 			);
 			/*
 			 * The page does not navigate away. The user just made a row on this
@@ -485,10 +508,25 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 		} catch (error) {
 			showErrorToast(
 				error instanceof Error
-					? `${isEdit ? "Could not save the wake" : "Could not create the scheduled task"}: ${error.message}`
+					? t("ui.schedules.scheduled_task_dialog.value1_message", {
+							value1: String(
+								isEdit
+									? t(
+											"ui.schedules.scheduled_task_dialog.could_not_save_the_wake",
+										)
+									: t(
+											"ui.schedules.scheduled_task_dialog.could_not_create_the_scheduled_task",
+										),
+							),
+							message: String(error.message),
+						})
 					: isEdit
-						? "Could not save the wake."
-						: "Could not create the scheduled task.",
+						? t(
+								"ui.schedules.scheduled_task_dialog.could_not_save_the_wake_490",
+							)
+						: t(
+								"ui.schedules.scheduled_task_dialog.could_not_create_the_scheduled_task_491",
+							),
 			);
 		}
 	};
@@ -496,7 +534,7 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 	const actions = (
 		<>
 			<SecondaryButton onClick={onClose} disabled={pending}>
-				Cancel
+				{t("ui.schedules.scheduled_task_dialog.cancel")}
 			</SecondaryButton>
 			<PrimaryButton
 				onClick={handleSubmit}
@@ -505,11 +543,11 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 			>
 				{isEdit
 					? pending
-						? "Saving"
-						: "Save"
+						? t("ui.schedules.scheduled_task_dialog.saving")
+						: t("ui.schedules.scheduled_task_dialog.save")
 					: pending
-						? "Creating"
-						: "Create"}
+						? t("ui.schedules.scheduled_task_dialog.creating")
+						: t("ui.schedules.scheduled_task_dialog.create")}
 			</PrimaryButton>
 		</>
 	);
@@ -518,7 +556,11 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 		<BaseDialog
 			open={open}
 			onClose={onClose}
-			title={isEdit ? "Edit wake" : "New scheduled task"}
+			title={
+				isEdit
+					? t("ui.schedules.scheduled_task_dialog.edit_wake")
+					: t("ui.schedules.scheduled_task_dialog.new_scheduled_task")
+			}
 			actions={actions}
 			maxWidth="sm"
 			fullWidth
@@ -528,7 +570,11 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 			    `keep` controls below are keeping, named the way the row names it. */}
 			{edit && (
 				<p className="text-body-sm text-ink-dim">
-					{edit.conversationName} · wake {edit.position} of {edit.count}
+					{edit.conversationName}
+					{t("ui.schedules.scheduled_task_dialog.wake")}
+					{formatNumber(edit.position, { useGrouping: false })}
+					{t("ui.schedules.scheduled_task_dialog.of")}
+					{formatNumber(edit.count, { useGrouping: false })}
 				</p>
 			)}
 			{/* One column: the fields are long strings, and the two-column grid this
@@ -537,7 +583,8 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 			<div className="flex flex-col gap-4">
 				<div className="flex flex-col gap-1.5">
 					<Label htmlFor={`${ids}-prompt`}>
-						Prompt <span className="text-danger">*</span>
+						{t("ui.schedules.scheduled_task_dialog.prompt")}
+						<span className="text-danger">*</span>
 					</Label>
 					<Textarea
 						id={`${ids}-prompt`}
@@ -546,10 +593,14 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 						onChange={(event) => setPrompt(event.target.value)}
 						rows={3}
 						disabled={pending}
-						placeholder="Send me an email with a detailed world news breakdown"
+						placeholder={t(
+							"ui.schedules.scheduled_task_dialog.send_me_an_email_with_a_detailed_world_news_breakdown",
+						)}
 					/>
 					<p className="text-body-sm text-ink-muted">
-						This is the message the conversation receives when it wakes up.
+						{t(
+							"ui.schedules.scheduled_task_dialog.this_is_the_message_the_conversation_receives_when_it_wakes_up",
+						)}
 					</p>
 					{/* The wire's own ceiling, stated where the value is: past it the main
 					    process would refuse the whole request with "Invalid desktop
@@ -563,16 +614,26 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 				    no destination to choose. */}
 				{!isEdit && (
 					<fieldset className="m-0 flex flex-col gap-1.5 border-0 p-0">
-						<legend className="sr-only">Run in</legend>
-						<Label>Run in</Label>
+						<legend className="sr-only">
+							{t("ui.schedules.scheduled_task_dialog.run_in")}
+						</legend>
+						<Label>{t("ui.schedules.scheduled_task_dialog.run_in")}</Label>
 						{/* A segmented pair rather than `Tabs`: the two options change what
 					    runs, they do not swap panels, so `aria-pressed` describes what
 					    these are (the idiom the Settings page's metric pair uses). */}
 						<div className="flex w-fit gap-0.5 rounded-md bg-sunken p-0.5">
 							{(
 								[
-									["new", "A new conversation"],
-									["existing", "An existing conversation"],
+									[
+										"new",
+										t("ui.schedules.scheduled_task_dialog.a_new_conversation"),
+									],
+									[
+										"existing",
+										t(
+											"ui.schedules.scheduled_task_dialog.an_existing_conversation",
+										),
+									],
 								] as const
 							).map(([id, label]) => (
 								<Button
@@ -596,14 +657,20 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 
 				{!isEdit && destination === "existing" && (
 					<div className="flex flex-col gap-1.5">
-						<Label htmlFor={`${ids}-conversation`}>Conversation</Label>
+						<Label htmlFor={`${ids}-conversation`}>
+							{t("ui.schedules.scheduled_task_dialog.conversation")}
+						</Label>
 						<Select
 							value={conversationId ?? ""}
 							onValueChange={setConversationId}
 							disabled={pending}
 						>
 							<SelectTrigger id={`${ids}-conversation`}>
-								<SelectValue placeholder="Pick a conversation" />
+								<SelectValue
+									placeholder={t(
+										"ui.schedules.scheduled_task_dialog.pick_a_conversation",
+									)}
+								/>
 							</SelectTrigger>
 							<SelectContent>
 								{conversations.map((entry) => (
@@ -612,7 +679,11 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 										value={entry.id}
 										textValue={entry.name || entry.id.slice(0, 8)}
 									>
-										{entry.name || `Untitled ${entry.id.slice(0, 8)}`}
+										{entry.name ||
+											t(
+												"ui.schedules.scheduled_task_dialog.untitled_slice_0_8",
+												{ slice_0__8: String(entry.id.slice(0, 8)) },
+											)}
 										<span className="pl-2 text-ink-dim">
 											{/* `mtime` is epoch seconds on this wire (see
 											    `ConversationChoice`); the dialog's own clock is ms. */}
@@ -629,19 +700,29 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 						 * use this" are different sentences and only one of them is true.
 						 */}
 						{choices.isLoading && (
-							<p className="text-meta text-ink-dim">Loading conversations…</p>
+							<p className="text-meta text-ink-dim">
+								{t("ui.schedules.scheduled_task_dialog.loading_conversations")}
+							</p>
 						)}
 						{choices.error && (
 							<p className="text-meta text-danger">
-								Could not read your conversations: {choices.error.message}
+								{t(
+									"ui.schedules.scheduled_task_dialog.could_not_read_your_conversations",
+								)}
+								{choices.error.message}
 							</p>
 						)}
 						{!choices.isLoading &&
 							!choices.error &&
 							conversations.length === 0 && (
 								<p className="text-meta text-ink-dim">
-									No conversations yet — start one in chat, or choose{" "}
-									<em>A new conversation</em>.
+									{t(
+										"ui.schedules.scheduled_task_dialog.no_conversations_yet_start_one_in_chat_or_choose",
+									)}{" "}
+									<em>
+										{t("ui.schedules.scheduled_task_dialog.a_new_conversation")}
+									</em>
+									.
 								</p>
 							)}
 					</div>
@@ -649,7 +730,9 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 
 				{!isEdit && destination === "new" && (
 					<p className="text-body-sm text-ink-dim">
-						Starts in {workspaceDirectory} with your default model.
+						{t("ui.schedules.scheduled_task_dialog.starts_in")}
+						{workspaceDirectory}
+						{t("ui.schedules.scheduled_task_dialog.with_your_default_model")}
 					</p>
 				)}
 				{/*
@@ -667,7 +750,11 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 				 */}
 				{!isEdit && destination === "existing" && selectedConversation && (
 					<p className="text-body-sm text-ink-dim">
-						Runs in {selectedConversation.name}, as a turn in that conversation.
+						{t("ui.schedules.scheduled_task_dialog.runs_in")}
+						{selectedConversation.name}
+						{t(
+							"ui.schedules.scheduled_task_dialog.as_a_turn_in_that_conversation",
+						)}
 					</p>
 				)}
 				{!isEdit && refusals.conversation && (
@@ -675,7 +762,9 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 				)}
 
 				<div className="flex flex-col gap-1.5">
-					<Label htmlFor={`${ids}-first-run`}>First run</Label>
+					<Label htmlFor={`${ids}-first-run`}>
+						{t("ui.schedules.scheduled_task_dialog.first_run")}
+					</Label>
 					<Select
 						value={preset}
 						onValueChange={(value) => setPreset(value as FirstRunPreset)}
@@ -690,18 +779,28 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 									{keepFirstRunLabel(edit.wake, nowMs, edit.parked)}
 								</SelectItem>
 							)}
-							<SelectItem value="in-an-hour">In an hour</SelectItem>
-							<SelectItem value="in-30-minutes">In 30 minutes</SelectItem>
+							<SelectItem value="in-an-hour">
+								{t("ui.schedules.scheduled_task_dialog.in_an_hour")}
+							</SelectItem>
+							<SelectItem value="in-30-minutes">
+								{t("ui.schedules.scheduled_task_dialog.in_30_minutes")}
+							</SelectItem>
 							{tonight && (
-								<SelectItem value="tonight">Tonight at 8:00 PM</SelectItem>
+								<SelectItem value="tonight">
+									{t("ui.schedules.scheduled_task_dialog.tonight_at_8_00_pm")}
+								</SelectItem>
 							)}
-							<SelectItem value="tomorrow">Tomorrow at 9:00 AM</SelectItem>
-							<SelectItem value="pick">Pick a time…</SelectItem>
+							<SelectItem value="tomorrow">
+								{t("ui.schedules.scheduled_task_dialog.tomorrow_at_9_00_am")}
+							</SelectItem>
+							<SelectItem value="pick">
+								{t("ui.schedules.scheduled_task_dialog.pick_a_time")}
+							</SelectItem>
 						</SelectContent>
 					</Select>
 					{preset === "pick" && (
 						<DateTimePicker
-							label="First run at"
+							label={t("ui.schedules.scheduled_task_dialog.first_run_at")}
 							value={pickedAt}
 							onChange={setPickedAt}
 							disabled={pending}
@@ -710,7 +809,9 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 				</div>
 
 				<div className="flex flex-col gap-1.5">
-					<Label htmlFor={`${ids}-repeat`}>Repeat</Label>
+					<Label htmlFor={`${ids}-repeat`}>
+						{t("ui.schedules.scheduled_task_dialog.repeat")}
+					</Label>
 					<Select
 						value={repeatMode}
 						onValueChange={(value) => setRepeatMode(value as RepeatMode)}
@@ -725,8 +826,12 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 									{keepRepeatLabel(edit.wake)}
 								</SelectItem>
 							)}
-							<SelectItem value="never">Don't repeat</SelectItem>
-							<SelectItem value="every">Every</SelectItem>
+							<SelectItem value="never">
+								{t("ui.schedules.scheduled_task_dialog.don_t_repeat")}
+							</SelectItem>
+							<SelectItem value="every">
+								{t("ui.schedules.scheduled_task_dialog.every")}
+							</SelectItem>
 						</SelectContent>
 					</Select>
 					{repeatMode === "every" && (
@@ -739,7 +844,9 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 								// does not stop a typed decimal).
 								min={1}
 								step={1}
-								aria-label="Repeat interval"
+								aria-label={t(
+									"ui.schedules.scheduled_task_dialog.repeat_interval",
+								)}
 								className="w-24"
 								value={repeatCount}
 								onChange={(event) => setRepeatCount(event.target.value)}
@@ -750,7 +857,12 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 								onValueChange={(value) => setRepeatUnit(value as RepeatUnit)}
 								disabled={pending}
 							>
-								<SelectTrigger aria-label="Repeat unit" className="w-36">
+								<SelectTrigger
+									aria-label={t(
+										"ui.schedules.scheduled_task_dialog.repeat_unit",
+									)}
+									className="w-36"
+								>
 									<SelectValue />
 								</SelectTrigger>
 								<SelectContent>
@@ -785,7 +897,9 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 				    whatever the wake already has, which this control must not restate. */}
 				{(repeatMode === "every" || ends !== "never") && (
 					<div className="flex flex-col gap-1.5">
-						<Label htmlFor={`${ids}-ends`}>Ends</Label>
+						<Label htmlFor={`${ids}-ends`}>
+							{t("ui.schedules.scheduled_task_dialog.ends")}
+						</Label>
 						<Select
 							value={ends}
 							onValueChange={(value) => setEnds(value as Ends)}
@@ -800,14 +914,20 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 										{keepEndsLabel(edit.wake, nowMs)}
 									</SelectItem>
 								)}
-								<SelectItem value="never">Never</SelectItem>
-								<SelectItem value="date">On a date…</SelectItem>
-								<SelectItem value="runs">After N runs</SelectItem>
+								<SelectItem value="never">
+									{t("ui.schedules.scheduled_task_dialog.never")}
+								</SelectItem>
+								<SelectItem value="date">
+									{t("ui.schedules.scheduled_task_dialog.on_a_date")}
+								</SelectItem>
+								<SelectItem value="runs">
+									{t("ui.schedules.scheduled_task_dialog.after_n_runs")}
+								</SelectItem>
 							</SelectContent>
 						</Select>
 						{ends === "date" && (
 							<DateTimePicker
-								label="Last run"
+								label={t("ui.schedules.scheduled_task_dialog.last_run")}
 								value={endsAt}
 								onChange={setEndsAt}
 								disabled={pending}
@@ -817,7 +937,9 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 							<Input
 								type="number"
 								min={1}
-								aria-label="Number of runs"
+								aria-label={t(
+									"ui.schedules.scheduled_task_dialog.number_of_runs",
+								)}
 								className="w-24"
 								value={endsRuns}
 								onChange={(event) =>
@@ -846,9 +968,9 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 				    `yolo=True` runs were. Stated here because the difference is
 				    invisible until something waits. */}
 				<p className="text-body-sm text-ink-dim">
-					If a tool needs approval, the wake parks and waits for you rather than
-					acting on its own; a wait that runs out stops the turn without running
-					the tool.
+					{t(
+						"ui.schedules.scheduled_task_dialog.if_a_tool_needs_approval_the_wake_parks_and_waits_for_you_rather",
+					)}
 				</p>
 				{/*
 				 * What a save DOES, in one sentence, because the cases are one rule:
@@ -866,17 +988,18 @@ export const ScheduledTaskDialog: FC<ScheduledTaskDialogProps> = ({
 				 */}
 				{isEdit && (
 					<p className="text-body-sm text-ink-dim">
-						A new first run moves the next wake to that time, and a new repeat
-						carries on from it. Runs already made still count, and the wake
-						keeps its place in the conversation.
+						{t(
+							"ui.schedules.scheduled_task_dialog.a_new_first_run_moves_the_next_wake_to_that_time_and_a_new_repeat",
+						)}
 					</p>
 				)}
 				{/* The chat route LAST rather than first: it is honest and it is not
 				    the form's first instruction (design finding D8). */}
 				{!isEdit && (
 					<p className="text-body-sm text-ink-dim">
-						It is usually quicker to ask an agent in chat — "send me the latest
-						news at 8am every day" — and it will set this up for you.
+						{t(
+							"ui.schedules.scheduled_task_dialog.it_is_usually_quicker_to_ask_an_agent_in_chat_send_me_the_latest",
+						)}
 					</p>
 				)}
 			</div>

@@ -145,14 +145,17 @@ test("the legacy mirror is suppressed only when it actually is one", () => {
 
 /* ------------------------------------------------------- classification ---- */
 
-test("a timed-out ask is still answerable, and its own state is `movedOn`, not `waiting`", () => {
+test("a timed-out ask is LAPSED: still outstanding to the backend, read-only on this surface (D10, D11)", () => {
 	// The pair the surfaces have to keep apart: the BACKEND's outstanding set folds
-	// `timed_out` in (a late answer still reaches the agent, so every surface keeps
-	// offering the row), but the agent is no longer WAITING on it - so the copy is
-	// a different sentence over the same controls.
+	// `timed_out` in (the tally and the chat path still count it), but the agent is no
+	// longer WAITING on it and no surface offers a late answer any more (D10) - so the
+	// row is `lapsed`: no answer, no decline.
 	const open = queue.presentAsk(ask({ status: "open" }));
 	assert.equal(open.waiting, true);
 	assert.equal(open.movedOn, false);
+	assert.equal(open.lapsed, false);
+	assert.equal(open.canAnswer, true);
+	assert.equal(open.canDecline, true);
 
 	const timedOut = queue.presentAsk(ask({ status: "timed_out" }));
 	assert.equal(
@@ -164,11 +167,13 @@ test("a timed-out ask is still answerable, and its own state is `movedOn`, not `
 	assert.equal(
 		timedOut.open,
 		true,
-		"still outstanding: a late answer reaches the model",
+		"still in the backend's outstanding set: `asks_open` counts it (D10)",
 	);
-	assert.equal(timedOut.canAnswer, true);
+	assert.equal(timedOut.lapsed, true);
+	assert.equal(timedOut.canAnswer, false, "a lapsed ask takes no late answer");
+	assert.equal(timedOut.canDecline, false, "nor a decline");
 
-	// Every terminal state is neither waiting nor moved on.
+	// Every terminal state is neither waiting nor moved on, and none is lapsed.
 	for (const status of [
 		"answered",
 		"declined",
@@ -179,6 +184,7 @@ test("a timed-out ask is still answerable, and its own state is `movedOn`, not `
 		const settled = queue.presentAsk(ask({ status }));
 		assert.equal(settled.waiting, false, `${status} is settled`);
 		assert.equal(settled.movedOn, false, `${status} is settled`);
+		assert.equal(settled.lapsed, false, `${status} is settled, not lapsed`);
 	}
 
 	// `late` means the answer LANDED after the deadline and the model was told, so
@@ -221,6 +227,7 @@ test("an unknown status is its own case, never coerced into `open`", () => {
 	const unknown = queue.presentAsk(ask({ status: "something_new" }));
 	assert.equal(unknown.status, "unknown");
 	assert.equal(unknown.canAnswer, false);
+	assert.equal(unknown.lapsed, false);
 });
 
 test("`delivering` is the recorded-and-undelivered reading, `answered` OR `late`", () => {
@@ -750,7 +757,7 @@ test("the copy contract mirrors the backend's own sentences", () => {
 	);
 	assert.equal(
 		queue.askTimeoutSummary({ askId: "a-1", waitedS: 900 }),
-		"Timed out after 15m — the agent moved on; you can still answer (ask a-1)",
+		"Timed out after 15m — the agent goes ahead without your answer (ask a-1)",
 	);
 });
 
@@ -781,11 +788,36 @@ test("the status-row item's clause reads one state at a time", () => {
 	});
 	assert.equal(queue.askChipCountClause(two), "2 questions waiting");
 
-	// MOVED ON: quiet, and its own word - the agent is not waiting on it.
+	// TIMED OUT: quiet, and the badge's own word (design round 1 on #1116, D2): the
+	// agent is not waiting on it and no surface answers it.
 	const moved = queue.askQueueView({
 		asks: [single({ ask_id: "a-1", status: "timed_out" })],
 	});
-	assert.equal(queue.askChipCountClause(moved), "1 question moved on");
+	assert.equal(queue.askChipCountClause(moved), "1 question timed out");
+	assert.equal(
+		queue.askChipCountClause(
+			queue.askQueueView({
+				asks: [
+					single({ ask_id: "a-1", status: "timed_out" }),
+					single({ ask_id: "a-2", status: "timed_out" }),
+				],
+			}),
+		),
+		"2 questions timed out",
+	);
+	// An answer still being delivered is the user's to change, so it outranks a
+	// timed-out ask nobody can act on (the clause's own "actionable first" order).
+	assert.equal(
+		queue.askChipCountClause(
+			queue.askQueueView({
+				asks: [
+					single({ ask_id: "a-1", status: "timed_out" }),
+					single({ ask_id: "a-2", status: "answered" }),
+				],
+			}),
+		),
+		"1 answer not yet delivered — you can still change it",
+	);
 
 	// SETTLED: the queue is finished, and it stays on screen like a resolved plan.
 	// `delivered: true` is what makes it finished: the response row exists, so the
@@ -860,7 +892,23 @@ test("the item's clause never claims a split the frame cannot know", () => {
 	assert.equal(queue.askChipCountClause(exact), "1 question waiting");
 	assert.equal(
 		queue.askChipLabel(exact, false, TS),
-		"Expand this conversation's asks — 1 question waiting · expires in 1h · 1 moved on",
+		"Expand this conversation's asks — 1 question waiting · expires in 1h · 1 timed out",
+	);
+
+	/*
+	 * AN UNDELIVERED ANSWER BESIDE A TIMED-OUT ASK (QA round 2 on #1116, Q-2): the chip
+	 * leads with the delivering clause, and the announced name still carries the
+	 * timed-out tail rather than dropping the row a screen-reader user cannot see.
+	 */
+	const deliveringBeside = queue.askQueueView({
+		asks: [
+			single({ ask_id: "a-1", status: "answered", delivered: false }),
+			single({ ask_id: "a-2", status: "timed_out" }),
+		],
+	});
+	assert.equal(
+		queue.askChipLabel(deliveringBeside, false, TS),
+		"Expand this conversation's asks — 1 answer not yet delivered — you can still change it · 1 timed out",
 	);
 });
 
@@ -879,11 +927,11 @@ test("the item's clause never claims a split the frame cannot know", () => {
 test("the rail door's name carries its verb, its scope and the count it stands for", () => {
 	assert.equal(
 		queue.askRailToggleLabel({ open: false, scope: "session", count: 1 }),
-		"Open asks \u2014 This conversation, 1 waiting or moved on",
+		"Open asks \u2014 This conversation, 1 waiting",
 	);
 	assert.equal(
 		queue.askRailToggleLabel({ open: true, scope: "fleet", count: 2 }),
-		"Close asks \u2014 All conversations, 2 waiting or moved on",
+		"Close asks \u2014 All conversations, 2 waiting",
 	);
 	/*
 	 * AT ZERO IT STILL NAMES ITS SCOPE, which is the U3 remediation stated as a string:
@@ -935,7 +983,7 @@ test("the item's announced name leads with its action and carries the whole clau
 	);
 	assert.equal(
 		queue.askChipLabel(mixed, false, TS),
-		"Expand this conversation's asks — 1 question waiting · expires in 1h · 1 moved on",
+		"Expand this conversation's asks — 1 question waiting · expires in 1h · 1 timed out",
 	);
 	/*
 	 * THE COUNTDOWNS DO NOT BREAK THE ONE-SENTENCE RULE: the name appends the
@@ -1403,41 +1451,83 @@ test("the wire's `urgent` flag reaches the view, and only for the asks the item 
  * load-bearing - that a `timed_out` ask can never reach the settled half at all,
  * which is a fact about the VIEW rather than about the copy.
  */
-test("a row's word is the copy contract's, and the settled half holds no moved-on row", () => {
+test("a row's word is the copy contract's, and a lapsed row collapses with the settled half (D11)", () => {
 	const view = queue.askQueueView({
 		asks: [
 			single({ status: "declined" }),
 			single({ ask_id: "a-moved", status: "timed_out" }),
-			single({ ask_id: "a-answered", status: "answered" }),
+			single({ ask_id: "a-answered", status: "answered", delivered: true }),
+			single({ ask_id: "a-open", status: "open" }),
 		],
 	});
-	/** The section's own predicate, spelled once here: the rows the panel collapses. */
-	const settled = view.rows.filter((row) => !row.open);
+	/** The panel's own predicate (`askPanelHalves`): the rows it collapses. */
+	const { pending, settled } = queue.askPanelHalves(view.rows);
+	assert.deepEqual(
+		pending.map((row) => row.ask.ask_id),
+		["a-open"],
+		"only the answerable ask is a card",
+	);
 	assert.deepEqual(
 		[...new Set(settled.map((row) => queue.askStatusWord(row.status)))].sort(),
-		["Answered", "Declined"],
+		["Answered", "Declined", "Timed out"],
+		"the lapsed row wears the `Timed out` word on its collapsed line",
 	);
 	assert.ok(
-		!settled.some((row) => row.status === "timed_out"),
-		"a `timed_out` row is in the outstanding set, so it can never be in the settled half",
+		settled.some((row) => row.ask.ask_id === "a-moved"),
+		"a `timed_out` row is lapsed, so it sits behind a badge like a declined one",
 	);
+	assert.equal(
+		queue.ASK_STATUS_COPY.timed_out,
+		"Timed out — the agent goes ahead without your answer",
+		"the sentence no longer promises a late answer no surface offers (D10)",
+	);
+});
+
+test("the composer's secret guard reads the oldest ANSWERABLE ask, never a lapsed head", () => {
+	/*
+	 * `head` is what `askComposerHoldsSecret` reads. A lapsed ask is older than any open
+	 * one, so a head of "oldest outstanding" would be the lapsed row and its
+	 * `canAnswer: false` would release the guard over a secret-only ask that IS open.
+	 */
+	const view = queue.askQueueView({
+		asks: [
+			single({ ask_id: "a-lapsed", status: "timed_out", created_at: TS }),
+			single({
+				ask_id: "a-secret",
+				created_at: TS + 10,
+				questions: [{ id: "k", question: "Paste the key", secret: true }],
+			}),
+		],
+	});
+	assert.equal(view.head?.ask.ask_id, "a-secret");
+	assert.equal(queue.askComposerHoldsSecret(view), true);
+	const lapsedOnly = queue.askQueueView({
+		asks: [
+			single({
+				status: "timed_out",
+				questions: [{ id: "k", question: "Paste the key", secret: true }],
+			}),
+		],
+	});
+	assert.equal(lapsedOnly.head, null, "nothing answerable, so no head");
+	assert.equal(queue.askComposerHoldsSecret(lapsedOnly), false);
 });
 
 /* ------------------------------------------------------- the drawer's bar ---- */
 
-test("the drawer's scope line counts every answerable card, and still falls through", () => {
+test("the drawer's scope line counts answerable asks only, and still falls through", () => {
 	const view = (asks, over = {}) => queue.askQueueView({ asks, ...over });
-	// A mixed queue: one the agent waits on, one that timed out and is STILL
-	// answerable. The chip's clause names only the first; the drawer draws a card
-	// for each, so its own line names both halves.
+	// A mixed queue: one the agent waits on, one that timed out. The timed-out ask is a
+	// settled row (D11), and settled rows are not in the title (design round 1 on
+	// #1116, D2), so the bar says what the Pending half holds.
 	const mixed = view([
 		single({ status: "open" }),
 		single({ ask_id: "a-moved", status: "timed_out" }),
 	]);
-	assert.equal(queue.askDrawerCountClause(mixed), "1 waiting, 1 moved on");
+	assert.equal(queue.askDrawerCountClause(mixed), "1 question waiting");
 	assert.equal(
 		queue.askScopeLine("session", mixed),
-		"This conversation · 1 waiting, 1 moved on",
+		"This conversation · 1 question waiting",
 	);
 	// Every single-state queue keeps the chip's own clause, so the two surfaces
 	// cannot describe one queue differently when there is nothing to split.
@@ -1457,9 +1547,10 @@ test("the drawer's scope line counts every answerable card, and still falls thro
 		queue.askDrawerCountClause(view([single({ status: "answered" })])),
 		"1 answer not yet delivered — you can still change it",
 	);
+	// A queue of only timed-out asks is a settled drawer, as the TUI's is.
 	assert.equal(
 		queue.askDrawerCountClause(view([single({ status: "timed_out" })])),
-		"1 question moved on",
+		"All asks settled",
 	);
 	// A truncated frame's split is a split of the visible prefix, so the drawer states
 	// the backend's own tally exactly as the chip does.
@@ -1476,5 +1567,90 @@ test("the drawer's scope line counts every answerable card, and still falls thro
 	assert.equal(
 		queue.askScopeLine("fleet", view([single()])),
 		"All conversations · 1 question waiting",
+	);
+});
+
+test("the rail badge counts ANSWERABLE asks when the list is complete, the tally when it is not", () => {
+	/*
+	 * Complete list: a lapsed ask is read-only (D10), so it pulls no attention and the
+	 * badge agrees with the fleet marks (`fleetAsksBySession`).
+	 */
+	const complete = queue.askQueueView({
+		asks: [
+			single({ ask_id: "a-open", status: "open" }),
+			single({ ask_id: "a-lapsed", status: "timed_out" }),
+		],
+		asks_open: 2,
+	});
+	assert.equal(queue.askAttentionCount(complete), 1);
+	const lapsedOnly = queue.askQueueView({
+		asks: [single({ status: "timed_out" })],
+		asks_open: 1,
+	});
+	assert.equal(
+		queue.askAttentionCount(lapsedOnly),
+		0,
+		"a lapsed-only queue draws no badge",
+	);
+	/*
+	 * Truncated, or a tally above the rows: only the tally is known, and some of the
+	 * asks it counts are not in the list - so the badge keeps the tally. Over-counting a
+	 * lapsed ask is the safe side of hiding a real open one.
+	 */
+	const truncated = queue.askQueueView({
+		asks: [single({ status: "timed_out" })],
+		asks_open: 5,
+		asks_truncated: true,
+	});
+	assert.equal(queue.askAttentionCount(truncated), 5);
+	const lagging = queue.askQueueView({
+		asks: [single({ status: "timed_out" })],
+		asks_open: 3,
+	});
+	assert.equal(queue.askAttentionCount(lagging), 3);
+	assert.equal(queue.askAttentionCount(queue.askQueueView(null)), 0);
+});
+
+test("a row that lapses while the panel is mounted is HELD in place until the next mount (UX U1)", () => {
+	const rows = (statusOfFirst) =>
+		queue.askQueueView({
+			asks: [
+				single({ ask_id: "a-1", status: statusOfFirst, created_at: TS }),
+				single({ ask_id: "a-2", created_at: TS + 10 }),
+				single({
+					ask_id: "a-old",
+					status: "declined",
+					created_at: TS - 10,
+				}),
+			],
+		}).rows;
+	// The mount saw a-1 answerable; it lapses under the reader's pointer.
+	const held = new Set(["a-1", "a-2"]);
+	const live = queue.askPanelHalves(rows("timed_out"), held);
+	assert.deepEqual(
+		live.pending.map((row) => row.ask.ask_id),
+		["a-1", "a-2"],
+		"the lapsed card keeps its slot above a-2, so a-2's controls do not move into it",
+	);
+	assert.equal(live.pending[0].canAnswer, false, "held, but read-only");
+	assert.deepEqual(
+		live.settled.map((row) => row.ask.ask_id),
+		["a-old"],
+	);
+	// The next mount has seen nothing: the lapsed row files with the settled ones.
+	const next = queue.askPanelHalves(rows("timed_out"));
+	assert.deepEqual(
+		next.pending.map((row) => row.ask.ask_id),
+		["a-2"],
+	);
+	assert.deepEqual(
+		next.settled.map((row) => row.ask.ask_id),
+		["a-1", "a-old"],
+	);
+	// Only a LAPSED row is held: a settled one moves as it always did.
+	const answered = queue.askPanelHalves(rows("declined"), held);
+	assert.deepEqual(
+		answered.pending.map((row) => row.ask.ask_id),
+		["a-2"],
 	);
 });

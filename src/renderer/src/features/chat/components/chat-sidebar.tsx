@@ -4931,6 +4931,13 @@ export function ChatSidebar({
 				disableHoverableContent
 				collisionPadding={FLYOUT_COLLISION_PADDING}
 				/*
+				 * The card opens RIGHT, into the content area, so with the Browser route open
+				 * it lands on the native view and hides it while it is painted there (the
+				 * shared `Tooltip`'s measured registration). Named so the paused page's
+				 * `data-suppressed-by` says which overlay paused it.
+				 */
+				overlayName="sidebar-row-flyout"
+				/*
 				 * NO FLYOUT WHILE A DRAG IS ARMED (design round 1, D4; measured on `drag-mid`).
 				 *
 				 * The card names the row the POINTER is on, and during a drag the pointer is not

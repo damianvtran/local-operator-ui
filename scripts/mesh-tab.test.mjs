@@ -4336,17 +4336,20 @@ test("mesh extraction keeps pinned labels and source-language plural fallback", 
 	const en = JSON.parse(
 		readFileSync("src/i18n/catalogues/en/ui.mesh.json", "utf8"),
 	);
+	// The three count pins below gained the `::group-off` skeleton with the
+	// count-fidelity fix (a bare numeric sink groups at 1000: `1,000` where the
+	// pre-extraction source rendered `1000`); the English words are unchanged.
 	assert.equal(
 		en["ui.mesh.mesh_node.memberships"],
-		"· {count, plural, one {# networks} other {# networks}}",
+		"· {count, plural, one {{count, number, ::group-off} networks} other {{count, number, ::group-off} networks}}",
 	);
 	assert.equal(
 		en["ui.mesh.mesh_node.shown_conversations"],
-		"Showing {shown, number} of {total, plural, one {# conversations} other {# conversations}}",
+		"Showing {shown, number, ::group-off} of {total, plural, one {{total, number, ::group-off} conversations} other {{total, number, ::group-off} conversations}}",
 	);
 	assert.equal(
 		en["ui.mesh.mesh_node.show_all_conversations"],
-		"Show all {count, plural, one {# conversations} other {# conversations}}",
+		"Show all {count, plural, one {{count, number, ::group-off} conversations} other {{count, number, ::group-off} conversations}}",
 	);
 	assert.equal(
 		en["ui.mesh.mesh_actions.invite_to_a_network"],
@@ -4373,7 +4376,7 @@ test("mesh extraction keeps pinned labels and source-language plural fallback", 
 		});
 		mesh.setLocale("fr");
 		assert.equal(mesh.reachWords("unanswered"), "Fixture no answer");
-		for (const count of [0, 1, 21]) {
+		for (const count of [0, 1, 21, 1000]) {
 			assert.equal(
 				mesh.t("ui.mesh.mesh_graph.network_count", { count }),
 				`${count} ${count === 1 ? "network" : "networks"}`,

@@ -266,8 +266,12 @@ const FILTER_BAR_CONTROLS = 5;
  * alone in its section, and the delegated switch and window. 22 + 5 + 10 = 37.
  * The two new sections are visible on arrival on purpose: a default-ON policy that
  * removes data is not something to leave behind a click.
+ *
+ * And once more with the `asks` section (local-operator-ui #1116; backend #2479,
+ * D7): one header, and no arrival row, because its one key is `advanced`, the
+ * same shape as `speech`. 23 + 5 + 10 = 38.
  */
-const ARRIVAL_FOCUSABLE_BUDGET = 37;
+const ARRIVAL_FOCUSABLE_BUDGET = 38;
 
 /*
  * The reader's own sequence: collapse the index, then search it.

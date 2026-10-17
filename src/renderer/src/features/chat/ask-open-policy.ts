@@ -199,6 +199,12 @@ export type AskOpenInput = {
 	/** Outstanding rows queued AFTER the view began: arrivals, which never open it. */
 	arrivedRows: number;
 	/**
+	 * Outstanding rows the frame carries that have LAPSED (`timed_out`): counted by the
+	 * tally, answerable on no surface (D10), so neither pending nor an arrival. Read for
+	 * ONE purpose: a tally made only of these rows has nothing left to wait for (D12).
+	 */
+	lapsedRows: number;
+	/**
 	 * The wire's own outstanding tally (`AskQueueView.open`). Read for ONE purpose: to
 	 * tell a queue with nothing in it from a queue whose rows were dropped (see
 	 * `tally-only`). It never opens anything by itself.
@@ -298,8 +304,12 @@ export const decideAskAutoOpen = (input: AskOpenInput): AskOpenVerdict => {
 	if (!input.resolved) return wait("unresolved");
 	if (input.pendingRows <= 0) {
 		if (input.arrivedRows > 0) return leave("arrived");
-		/* Rows absent but a tally present: asks exist that no surface can draw yet. */
-		return input.outstanding > 0
+		/*
+		 * A tally ABOVE the rows the frame names: asks exist that no surface can draw yet.
+		 * The lapsed rows are subtracted because the tally counts them too, and a queue of
+		 * nothing but lapsed asks would otherwise wait for rows it already has (D12).
+		 */
+		return input.outstanding > input.lapsedRows
 			? wait("tally-only")
 			: leave("nothing-pending");
 	}
@@ -315,10 +325,14 @@ export const decideAskAutoOpen = (input: AskOpenInput): AskOpenVerdict => {
  *
  * `resolved` is `published`, not "a frame arrived": a frame with no `asks` and no
  * `asks_open` has not answered (see the module note). The rows are the OUTSTANDING ones
- * (`open` is the backend's fold: `open` plus `timed_out`, because a late answer still
- * reaches the agent - the same set the header badge counts), never the wire's tally:
+ * (`open` is the backend's fold: `open` plus `timed_out` - the same set the header
+ * badge counts), never the wire's tally:
  * rule 5 opens only over rows that are actually there. An unknown status is not
  * outstanding: `presentAsk` refuses to coerce it into `open`, and this inherits that.
+ *
+ * A LAPSED row is outstanding but never pending or an arrival (D12): it has no control
+ * for an open to put in front of anyone, so it is counted apart (`lapsedRows`) and a
+ * lapsed ask never opens the drawer or takes the keyboard.
  *
  * Each outstanding row is split by whether it EXISTED BEFORE the view began
  * (`startedAtMs`, on this machine's clock; `created_at` is epoch milliseconds from the
@@ -330,14 +344,19 @@ export const askOpenFacts = (
 	startedAtMs: number,
 ): Pick<
 	AskOpenInput,
-	"resolved" | "pendingRows" | "arrivedRows" | "outstanding"
+	"resolved" | "pendingRows" | "arrivedRows" | "lapsedRows" | "outstanding"
 > &
 	AskOutstandingReading => {
 	const cutoff = startedAtMs + ASK_ARRIVAL_SKEW_MS;
 	let pendingRows = 0;
 	let arrivedRows = 0;
+	let lapsedRows = 0;
 	for (const row of view.rows) {
 		if (!row.open) continue;
+		if (row.lapsed) {
+			lapsedRows += 1;
+			continue;
+		}
 		const createdAt = Number(row.ask.created_at);
 		if (Number.isFinite(createdAt) && createdAt > cutoff) arrivedRows += 1;
 		else pendingRows += 1;
@@ -346,6 +365,7 @@ export const askOpenFacts = (
 		resolved: view.published,
 		pendingRows,
 		arrivedRows,
+		lapsedRows,
 		outstanding: view.open,
 		...askOutstandingReading(view),
 	};
@@ -384,6 +404,13 @@ export const askOpenFacts = (
  * out. That was this function's first cut, and the live capture (s16) is what caught it.
  * The tally says everything the flag was being read for, and it says it per frame.
  *
+ * THE IDS ARE THE ANSWERABLE ROWS; THE COMPLETENESS TEST COUNTS EVERY OUTSTANDING ROW.
+ * A lapsed ask (D12) is outstanding to the tally but nothing a close can wave off, and
+ * it stays outstanding for up to `LATE_WINDOW_S` (seven days): naming it here held a
+ * dismissal - and muted the conversation's auto-open - for a week after the open ask
+ * beside it was answered. It still counts toward `listComplete`, because the tally
+ * counts it, and leaving it out there would read every lapsed row as a dropped one.
+ *
  * WHAT THE WIRE CANNOT SAY, derived rather than assumed: `ask_wire` (core,
  * `session/frontend_state.py`) counts `asks_open` over the rows `AskQueue.projection` has
  * already clipped to `PROJECTION_CAP` (20 rows: open asks first, then everything else
@@ -399,12 +426,15 @@ export const askOutstandingReading = (
 	view: Pick<AskQueueView, "published" | "rows" | "open">,
 ): AskOutstandingReading => {
 	const outstandingIds: string[] = [];
+	let named = 0;
 	for (const row of view.rows) {
-		if (row.open) outstandingIds.push(row.ask.ask_id);
+		if (!row.open) continue;
+		named += 1;
+		if (!row.lapsed) outstandingIds.push(row.ask.ask_id);
 	}
 	return {
 		outstandingIds,
-		listComplete: view.published && view.open <= outstandingIds.length,
+		listComplete: view.published && view.open <= named,
 	};
 };
 
@@ -474,7 +504,10 @@ export const shouldCloseCarriedDrawer = (facts: {
  * (its tally is above the rows), and a frame can carry the tally with no rows at all.
  */
 export type AskOutstandingReading = {
-	/** The ids of the outstanding rows (open, or timed out and still answerable) the frame carries. */
+	/**
+	 * The ids of the ANSWERABLE outstanding rows the frame carries: `open`, never a
+	 * lapsed (`timed_out`) one, which no close can wave off (D12).
+	 */
 	outstandingIds: readonly string[];
 	/**
 	 * Whether `outstandingIds` is EVERY outstanding ask. False for a frame that has not
@@ -726,15 +759,17 @@ export const createAskOpenView = (
 				} else if (
 					frame.pendingRows > 0 ||
 					frame.arrivedRows > 0 ||
-					frame.outstanding > 0
+					frame.outstanding > frame.lapsedRows
 				) {
 					/*
 					 * ASKS REMAIN - an outstanding row (old or arrived: the user turned the
 					 * surface away over live asks either way), or a tally the frame could not
-					 * show rows for (the chip still counts them). That is the rule-4 dismissal,
-					 * recorded AGAINST THE IDS the frame names: those are the asks waved off, and
-					 * a frame that could not name them all says so (`listComplete`), which makes
-					 * the record hold until a complete frame shows an empty queue.
+					 * show rows for (the chip still counts them). Lapsed rows are not asks that
+					 * remain: closing over them waves nothing off (D12). That is the rule-4
+					 * dismissal, recorded AGAINST THE IDS the frame names: those are the asks
+					 * waved off, and a frame that could not name them all says so
+					 * (`listComplete`), which makes the record hold until a complete frame
+					 * shows an empty queue.
 					 */
 					dismissals.record(frame.conversationId, reading);
 					closeWatch = "dismissed";

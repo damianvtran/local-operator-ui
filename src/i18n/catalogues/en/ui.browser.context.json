@@ -504,6 +504,36 @@
 		"tone": "Short imperative",
 		"note": "Failed-navigation panel: names/explains try again. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined."
 	},
+	"ui.browser.browser_new_tab.wordmark": {
+		"role": "brand label and accessible name",
+		"tone": "Product name; do not translate.",
+		"note": "Wordmark on the browser's own start page, beside the app mark. Length: two-word product name."
+	},
+	"ui.browser.browser_new_tab.enter_an_address_to_open_a_page": {
+		"role": "status or explanatory text \u2014 browser surface/startup and empty states",
+		"tone": "Factual and restrained",
+		"note": "Browser start page: explains that a page is opened by entering an address. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_new_tab.address": {
+		"role": "accessible control/region name \u2014 address and navigation bar",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Address field on the browser start page: its accessible name. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_new_tab.address_placeholder": {
+		"role": "input hint; browser start page address field",
+		"tone": "Factual and restrained",
+		"note": "Placeholder shown in the empty address field on the start page; an illustrative host rather than a real destination. Length: keep the input hint compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_new_tab.go": {
+		"role": "button/menu choice \u2014 browser surface/startup and empty states",
+		"tone": "Short imperative",
+		"note": "Browser start page: submits the typed address. Length: keep the button/menu choice compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.browser.browser_new_tab.agents_can_only_open_sites_you_approve": {
+		"role": "status or explanatory text \u2014 browser surface/startup and empty states",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Browser start page: states that agents reach only approved sites and that the user's tabs stay theirs. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	},
 	"ui.browser.browser_pane.browser": {
 		"role": "status or explanatory text \u2014 conversation browser pane",
 		"tone": "Factual and restrained",

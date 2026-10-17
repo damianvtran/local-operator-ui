@@ -1630,10 +1630,22 @@ class CdpClient {
 	static async attach(port, targetUrlPart, timeoutMs = 60_000) {
 		const started = Date.now();
 		for (;;) {
-			const list = await (
-				await fetch(`http://127.0.0.1:${port}/json/list`)
-			).json();
-			const target = list.find(
+			/*
+			 * A port nothing is listening on makes `fetch` REJECT, and the first
+			 * version of this loop let that rejection escape: a caller that attached
+			 * without waiting for the endpoint came back with a bare
+			 * `TypeError: fetch failed`, which names neither the port nor the fact that
+			 * the app was still starting. The wait's own contract is "retry until the
+			 * target exists", so an unanswered port is one more not-yet and is caught
+			 * here rather than reported as a transport failure.
+			 */
+			let list = null;
+			try {
+				list = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
+			} catch {
+				/* not listening yet */
+			}
+			const target = list?.find(
 				(entry) => entry.type === "page" && entry.url.includes(targetUrlPart),
 			);
 			if (target) {
@@ -1650,7 +1662,7 @@ class CdpClient {
 			}
 			if (Date.now() - started > timeoutMs) {
 				const seen = JSON.stringify(
-					list.map((e) => ({ type: e.type, url: e.url })),
+					(list ?? []).map((e) => ({ type: e.type, url: e.url })),
 				);
 				throw new Error(
 					`no renderer target for ${targetUrlPart} on port ${port} after ${timeoutMs}ms: ${seen}`,
@@ -1865,6 +1877,26 @@ export const rendererDriverApi = Object.freeze({
 	CdpClient,
 	launchApp,
 	prepareDriverContext,
+	/*
+	 * Exported for callers that drive a boot themselves. `CdpClient.attach`
+	 * tolerates a port that is not listening yet, but the endpoint answering
+	 * `/json/version` is what tells a caller the app PROCESS is up, so the
+	 * documented order is still "wait for the endpoint, then attach" — and this is
+	 * the one wait every in-repo caller already uses before its own attach.
+	 */
+	waitForDevtools,
+	/*
+	 * The two readiness waits every in-repo scene takes after attaching and
+	 * before its first verb. They were internal until the CI asks producer needed
+	 * them: it waited on `Boolean(window.__loDevDriver)` - which is true as soon
+	 * as the object exists, BEFORE it has registered a verb - and then called
+	 * `navigate`, failing with "no dev driver verb navigate (have: none yet)".
+	 * Waiting for the page to paint and for the bridge to answer is the same
+	 * contract the driver's own scenes use, so a caller that cannot see them
+	 * repeats them badly. Exported for that reason and no other.
+	 */
+	waitForPage,
+	waitForBridge,
 	verb,
 	capture,
 	reapLiveBoots,

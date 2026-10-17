@@ -379,7 +379,7 @@ const recordPaint = (container) => {
 	if (paints[paints.length - 1] !== text) paints.push(text);
 };
 
-const mountPane = async () => {
+const mountPane = async ({ sessionId = SESSION, onClose = () => {} } = {}) => {
 	/*
 	 * A CONTAINER PER TEST, appended to the body, because the shared `#root` of the
 	 * mirror suite's harness is not enough here: a test that fails before its unmount
@@ -393,10 +393,7 @@ const mountPane = async () => {
 		harness.createElement(
 			harness.Profiler,
 			{ id: "console-pane", onRender: () => recordPaint(container) },
-			harness.createElement(harness.ConsolePane, {
-				sessionId: SESSION,
-				onClose: () => {},
-			}),
+			harness.createElement(harness.ConsolePane, { sessionId, onClose }),
 		),
 	);
 	await settle(1);
@@ -717,6 +714,57 @@ test("a request made for another conversation is not answered here", async () =>
 	} finally {
 		root.unmount();
 		container.remove();
+	}
+});
+
+test("the draft state closes on an unclaimed Escape; a live console keeps the key (UX U2)", async () => {
+	/*
+	 * The Run details and Code review notices a draft's doors open close on Escape,
+	 * and the console's draft state is their sibling, so it does too. A LIVE console
+	 * does not: Escape belongs to the program running in the terminal.
+	 */
+	resetIntent();
+	installBridge({ create: async ({ setListing }) => setListing([]) });
+	const pressEscape = () =>
+		document.body.dispatchEvent(
+			new window.KeyboardEvent("keydown", {
+				key: "Escape",
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+	let closes = 0;
+	const draft = await mountPane({
+		sessionId: null,
+		onClose: () => {
+			closes += 1;
+		},
+	});
+	try {
+		await settle(5);
+		pressEscape();
+		assert.equal(closes, 1, "the draft state closed on Escape");
+	} finally {
+		draft.root.unmount();
+		draft.container.remove();
+	}
+	closes = 0;
+	const live = await mountPane({
+		onClose: () => {
+			closes += 1;
+		},
+	});
+	try {
+		await settle(5);
+		pressEscape();
+		assert.equal(
+			closes,
+			0,
+			"a conversation's console leaves Escape to its terminal",
+		);
+	} finally {
+		live.root.unmount();
+		live.container.remove();
 	}
 });
 

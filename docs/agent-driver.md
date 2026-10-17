@@ -214,6 +214,60 @@ The frames below came from exactly that command —
 | --- | --- |
 | `chat-dark.png` | `/chat`, `localOperatorDark` || `chat-light.png` | `/chat`, `localOperatorLight` — the same screen, same size |
 
+## The CI producer's case table
+
+`scripts/asks-app-regression.mjs` runs in `ci.yml`'s macOS NPX leg on every pull
+request, and it is what supplies the frames a design or UX round reads for a
+CHANGE (the scenes above are how a surface is photographed deliberately, by
+hand). It boots the real assembled app once per case per leg — a **candidate** leg
+built from the checkout, and a **control** leg built from a real historical revision
+(`resolveAsksControl`: the merge-base of `origin/main` and `HEAD`, the pinned
+`2461cfa3` only when that cannot be resolved) — drives the same case on both, and
+uploads every leg's PNGs and `measurements.json` as one artifact. Each leg's
+rail-close frame carries a `railClosePolicy` reading — the candidate's post-state is
+asserted and the control's is only recorded, so the pair shows which close policy
+each revision has without hard-asserting one revision's. Main and preload
+are reused byte-identically across the two legs and only the renderer is rebuilt
+for the control, which is why `prepareControl` asserts the four reused parts
+(`src/main`, `src/preload`, `electron.vite.config.js`, `pnpm-lock.yaml`) agree
+before it builds anything: a case whose branch moves one of those is refused
+rather than photographed against a control that is not the code under review.
+
+What a UI head supplies is only its **case**, an entry in the table near the top
+of that file: `purpose` (prose for the reviewer), `route`, `frames` (a contract —
+the runner fails the run if a promised label was not captured), optional
+`legacyOutputLayout` for the first case's `<output>/control|candidate` paths, and
+`drive(ctx)`, which gets the generic doors only (`press`, `pressEscape`, `wait`,
+`waitFor`, `facts`, `frame`, `fixtureMode`, `session`, `cdp`, `api`, `kind`).
+Driving through `press` and reading state back through the driver's `state` verb
+is the point: a case that reaches into React or calls a store directly would
+prove the store works, not that the surface a user presses does. The legs are run
+by the same table, so a case is added, removed or renamed in one place, and
+`--case <name> --leg control|candidate` outside the table refuses before any
+artifact root or Electron binary is resolved.
+
+What it cannot do is photograph the native `WebContentsView` plane: `capturePage`
+sees the renderer document, not a sibling native view or the macOS z-order, so
+`physical1106` in the manifest records that gap by name rather than letting a
+green frame imply coverage it does not have.
+
+Some screens are recorded as **not yet caseable**, because a case there would
+photograph the wrong thing rather than nothing. `settings` is the example that
+matters most, and it was rejected on source rather than on taste: the settings
+read travels `GET /v1/settings`, and the fixture models no answer for that path,
+so a settings case would capture the fixture's `404 No fixture for /v1/settings`
+fallthrough as though it were the screen a user sees. The Radient read door is a
+separate matter: its allowlist carries `quota.notice` alone, which is why the
+credit census is answered and anything else on that door is refused — that is
+not what stops a settings case, and widening it would not unblock one. Making
+`settings` a case means modelling the settings answer in the fixture, which is
+its own reviewed change rather than an edit smuggled in beside a frame capture.
+Until then, settings frames come from the Storybook locale rig
+(`.storybook/preview.tsx`, whose evidence-locale global landed in #1125) rather
+than from here. The test generalises: a case that would photograph a read the
+fixture does not model, or a refusal the fixture raises, is not evidence of the
+screen — that surface is recorded here instead of being added to the table.
+
 ## The gate: off unless the launch asked for it
 
 Arming needs **both** `LOCAL_OPERATOR_UI_DEV_DRIVER=1` (or `true`) and an

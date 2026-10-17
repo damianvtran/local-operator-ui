@@ -1,6 +1,6 @@
 {
 	"ui.shell.rail.ask.aria": "Asks{chord}, {subject}",
-	"ui.shell.rail.ask.aria_count": "Asks{chord}, {subject}, {count, plural, one {{countText} waiting or moved on} other {{countText} waiting or moved on}}",
+	"ui.shell.rail.ask.aria_count": "Asks{chord}, {subject}, {count, plural, one {{countText} waiting} other {{countText} waiting}}",
 	"ui.shell.rail.browser.aria": "Browser{chord}",
 	"ui.shell.rail.browser.aria_count": "Browser{chord}, {count, plural, one {{countText} waiting} other {{countText} waiting}}",
 	"ui.shell.rail.browser.tooltip": "{state, select, open {Close browser{chord}} other {Open browser{chord}}}",

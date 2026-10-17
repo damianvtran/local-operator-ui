@@ -54,6 +54,7 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export { AskDrawer } from "./src/renderer/src/features/chat/components/asks/ask-drawer";
+			export { LAPSE_NOTE_CLEAR_MS } from "./src/renderer/src/features/chat/components/asks/ask-panel";
 			export { useConversationInputStore } from "./src/renderer/src/shared/store/conversation-input-store";
 		`,
 		loader: "tsx",
@@ -97,7 +98,8 @@ const bundlePath = new URL(
 	import.meta.url,
 );
 await writeFile(bundlePath, bundle.outputFiles[0].text);
-const { AskDrawer, useConversationInputStore } = await import(bundlePath.href);
+const { AskDrawer, LAPSE_NOTE_CLEAR_MS, useConversationInputStore } =
+	await import(bundlePath.href);
 await unlink(bundlePath).catch(() => {});
 
 const h = React.createElement;
@@ -451,6 +453,30 @@ test("the close door fires ONCE per emptying", async () => {
 	assert.deepEqual(calls, [true], "the transition fires once, not per render");
 });
 
+/*
+ * A RECONNECT GAP IS NOT AN EMPTYING (agent review m3 of the always-visible rail). A
+ * gap nulls the session frame for ~1.5-4 s; the drawer used to read that as "the rows
+ * went away" and close while the user was answering. The frame that comes back
+ * decides: rows keep the drawer, an empty queue is a real emptying and closes it.
+ */
+test("a reconnect gap under a populated drawer closes nothing; the frame after it decides", async (t) => {
+	const calls = [];
+	const props = { scope: "session", onClose: () => calls.push(true) };
+	const view = await mountFor(
+		t,
+		h(AskDrawer, { frontend: frontend([openAsk]), ...props }),
+	);
+	await view.rerender(h(AskDrawer, { frontend: null, ...props }));
+	assert.deepEqual(calls, [], "the gap's unread frame closed the drawer");
+	await view.rerender(
+		h(AskDrawer, { frontend: frontend([openAsk]), ...props }),
+	);
+	assert.deepEqual(calls, [], "the same rows back after the gap: still open");
+	await view.rerender(h(AskDrawer, { frontend: null, ...props }));
+	await view.rerender(h(AskDrawer, { frontend: frontend([]), ...props }));
+	assert.deepEqual(calls, [true], "the ask settled during the gap: one close");
+});
+
 /* ---------------------------------------------------------- the authority ---- */
 
 test("only the app's writer bumps the revision the composer mirrors on", () => {
@@ -603,14 +629,15 @@ test("a settled-only queue lands on the first settled row, never on the filter (
 	chip.remove();
 });
 
-test("a filter whose half is empty says so, and the boundary label goes with the boundary (design D1 = UX U2)", async () => {
+test("a filter whose half is empty says so, and the boundary label goes with the boundary (design D1 = UX U2)", async (t) => {
 	/*
 	 * THE REPORTED REPRO, on the shipped panel: one open ask, press the chip whose count
 	 * is zero. Before the fix the pane went blank under the chips - no empty copy at all
 	 * - which reads as "there are no asks" over a queue that has one, and the drawer's
 	 * own bar was still saying "1 question waiting" above it.
 	 */
-	const view = await mount(
+	const view = await mountFor(
+		t,
 		h(AskDrawer, { frontend: frontend([radioAsk]), scope: "session" }),
 	);
 	const chip = [
@@ -632,8 +659,14 @@ test("a filter whose half is empty says so, and the boundary label goes with the
 		"the empty half states its own emptiness rather than leaving the pane blank",
 	);
 	assert.ok(
-		text.includes("Waiting or moved on"),
+		text.includes("They are all still pending."),
 		"and names the half that does hold the asks, so it cannot read as an empty queue",
+	);
+	assert.ok(
+		[...view.container.querySelectorAll("[data-lo-ask-filter] button")].some(
+			(b) => b.textContent === "Pending · 1",
+		),
+		"the half is named `Pending`, the opposite of `Settled` (design round 1 on #1116, D1)",
 	);
 	assert.equal(
 		view.container.querySelectorAll("[data-lo-ask-row]").length,
@@ -659,7 +692,6 @@ test("a filter whose half is empty says so, and the boundary label goes with the
 		null,
 		"with one pending ask and none settled, there is no group to head",
 	);
-	await view.unmount();
 });
 
 test("the settled group labels only what it holds, and each row carries its own word (M1 = U1 = D1)", async () => {
@@ -710,9 +742,10 @@ test("the settled group labels only what it holds, and each row carries its own 
 	await view.unmount();
 });
 
-test("the bar counts what the surface shows, not only what the agent waits on (UX U5)", async () => {
+test("the bar counts the Pending half, and a timed-out-only drawer is settled (design D2, UX U2)", async (t) => {
 	const movedOn = { ...radioAsk, ask_id: "a-moved", status: "timed_out" };
-	const view = await mount(
+	const view = await mountFor(
+		t,
 		h(AskDrawer, {
 			frontend: frontend([radioAsk, movedOn]),
 			scope: "session",
@@ -721,10 +754,1017 @@ test("the bar counts what the surface shows, not only what the agent waits on (U
 	const scope = view.container.querySelector("[data-ask-scope]");
 	assert.equal(
 		scope?.textContent,
-		"This conversation · 1 waiting, 1 moved on",
-		"both answerable cards the drawer draws are counted",
+		"This conversation · 1 question waiting",
+		"the timed-out ask is a settled row, and settled rows are not in the title",
 	);
-	await view.unmount();
+	const lapsedOnly = await mountFor(
+		t,
+		h(AskDrawer, { frontend: frontend([movedOn]), scope: "session" }),
+	);
+	assert.equal(
+		lapsedOnly.container.querySelector("[data-ask-scope]")?.textContent,
+		"This conversation · All asks settled",
+	);
+	const pendingChip = [
+		...lapsedOnly.container.querySelectorAll("[data-lo-ask-filter] button"),
+	].find((b) => (b.textContent ?? "").startsWith("Pending"));
+	if (!pendingChip) throw new Error("the Pending chip is not rendered");
+	await act(async () => {
+		pendingChip.click();
+	});
+	assert.equal(
+		lapsedOnly.container.querySelector("[data-lo-ask-empty]")?.textContent,
+		"No asks are pending. They have all settled — see Settled.",
+		"the empty Pending half and the bar now say the same thing",
+	);
+});
+
+/*
+ * AN ASK THAT LAPSES UNDER THE READER (UX round 1 on #1116, U1, MAJOR). The card used
+ * to leave the pending half on the frame that lapsed it, so the next card slid up into
+ * its place: that card's one-click, irreversible Decline landed exactly where the
+ * reader's pointer was, and keyboard focus fell to BODY. The lapsed card now stays in
+ * its slot, read-only, until the next mount files it under Settled.
+ */
+test("a card that lapses while the drawer is open stays in its slot, read-only (UX U1)", async (t) => {
+	const a1 = { ...radioAsk, ask_id: "a-1", created_at: TS };
+	const a2 = { ...radioAsk, ask_id: "a-2", created_at: TS + 10 };
+	/*
+	 * Document order of the cards and of a HELD row (a card that lapsed in place,
+	 * `data-lo-ask-held`); a collapsed settled row paints no card, so it is absent.
+	 */
+	const order = (view) =>
+		[
+			...view.container.querySelectorAll(
+				"[data-lo-ask-row], [data-lo-ask-held]",
+			),
+		].map((row) =>
+			row.hasAttribute("data-lo-ask-held")
+				? `${row.getAttribute("data-lo-ask-held")}:held`
+				: `${row.getAttribute("data-lo-ask-row")}:pending`,
+		);
+	const props = { scope: "session" };
+	const view = await mountFor(
+		t,
+		h(AskDrawer, { frontend: frontend([a1, a2]), ...props }),
+	);
+	assert.deepEqual(order(view), ["a-1:pending", "a-2:pending"]);
+	await view.rerender(
+		h(AskDrawer, {
+			frontend: frontend([{ ...a1, status: "timed_out" }, a2]),
+			...props,
+		}),
+	);
+	assert.deepEqual(
+		order(view),
+		["a-1:held", "a-2:pending"],
+		"the lapsed card collapses in its own slot, above a-2, not at the bottom",
+	);
+	const lapsed = view.container.querySelector('[data-lo-ask-held="a-1"]');
+	const header = lapsed.querySelector("button[aria-expanded]");
+	assert.equal(header?.getAttribute("aria-expanded"), "false", "collapsed");
+	assert.match(header?.getAttribute("aria-label") ?? "", /^Timed out - /);
+	assert.ok(
+		!lapsed.closest("[data-lo-ask-settled]"),
+		"held in the pending half, not filed under Settled yet",
+	);
+	/* Opened by the reader, it is read-only: no option, no Send answer, no Decline. */
+	await act(async () => {
+		header.click();
+	});
+	assert.equal(
+		lapsed.querySelectorAll("button[data-ask-option]:not([disabled])").length,
+		0,
+		"held, but read-only: no enabled option",
+	);
+	assert.ok(
+		![...lapsed.querySelectorAll("button")].some((b) =>
+			["Send answer", "Decline"].includes(b.textContent ?? ""),
+		),
+		"no Send answer or Decline on the held row",
+	);
+	/* The next open of the drawer files it with the settled rows. */
+	const reopened = await mountFor(
+		t,
+		h(AskDrawer, {
+			frontend: frontend([{ ...a1, status: "timed_out" }, a2]),
+			...props,
+		}),
+	);
+	assert.deepEqual(order(reopened), ["a-2:pending"], "nothing is held");
+	assert.ok(
+		reopened.container.querySelector("[data-lo-ask-settled]"),
+		"the lapsed ask is a collapsed settled row on the next open",
+	);
+});
+
+test("focus inside a card that lapses stays on that card, never on BODY (UX U1)", async (t) => {
+	const a1 = { ...radioAsk, ask_id: "a-1", created_at: TS };
+	const a2 = { ...radioAsk, ask_id: "a-2", created_at: TS + 10 };
+	const props = { scope: "session" };
+	const view = await mountFor(
+		t,
+		h(AskDrawer, { frontend: frontend([a1, a2]), ...props }),
+	);
+	const option = view.container.querySelector(
+		'[data-lo-ask-row="a-1"] [data-ask-option="production"]',
+	);
+	option.focus();
+	assert.equal(document.activeElement, option);
+	await view.rerender(
+		h(AskDrawer, {
+			frontend: frontend([{ ...a1, status: "timed_out" }, a2]),
+			...props,
+		}),
+	);
+	const active = document.activeElement;
+	assert.notEqual(active, document.body, "focus must not fall to BODY");
+	const header = view.container.querySelector(
+		'[data-lo-ask-held="a-1"] button[aria-expanded]',
+	);
+	assert.equal(
+		active,
+		header,
+		`focus lands on the lapsed row's own header, got ${active?.outerHTML?.slice(0, 80)}`,
+	);
+	assert.ok(
+		!view.container.querySelector('[data-lo-ask-row="a-2"]').contains(active),
+		"never on the next ask's controls",
+	);
+});
+
+/*
+ * THE HELD SLOT KEEPS THE CARD'S HEIGHT (agent review round 2 on #1116, M1 = QA Q-3).
+ * Collapsing the held card to its 32px header still slid everything below it up by the
+ * card's height less the header's, and when the lapsing card had one more option row than
+ * the next one that shift put the next card's live Decline exactly under the old Decline
+ * point (QA: `onDecline("a-2")` fired). The slot now reserves the card's last measured
+ * height until the next mount, header at the top, so nothing below it moves.
+ *
+ * jsdom has no layout, so the card's height is STUBBED per option count and the
+ * assertion is on the reservation itself: a slot whose min-height equals the card it
+ * replaced cannot move anything below it. The real-layout half (the next card's buttons
+ * at the same point, and nothing actionable under the old Decline) is the Chrome rig's
+ * measurement in the PR thread.
+ */
+const optionAsk = (id, count, at) => ({
+	...radioAsk,
+	ask_id: id,
+	created_at: at,
+	questions: [
+		{
+			id: "target",
+			question: `Question ${id}?`,
+			options: Array.from({ length: count }, (_, i) => ({
+				label: `${id}-opt-${i + 1}`,
+			})),
+		},
+	],
+});
+const cardHeight = (options) => 120 + 46 * options;
+const stubCardLayout = (t) => {
+	const proto = window.HTMLElement.prototype;
+	const original = proto.getBoundingClientRect;
+	proto.getBoundingClientRect = function () {
+		const id = this.getAttribute?.("data-lo-ask-row");
+		if (id !== null && id !== undefined) {
+			const options = this.querySelectorAll("[data-ask-option]").length;
+			const height = cardHeight(options);
+			return {
+				x: 0,
+				y: 0,
+				top: 0,
+				left: 0,
+				width: 536,
+				height,
+				right: 536,
+				bottom: height,
+			};
+		}
+		return original.call(this);
+	};
+	t.after(() => {
+		proto.getBoundingClientRect = original;
+	});
+};
+
+test("a held slot reserves the lapsed card's last height, so nothing below it moves (M1 = Q-3)", async (t) => {
+	stubCardLayout(t);
+	for (const [above, below] of [
+		[3, 2],
+		[4, 3],
+		[3, 3],
+	]) {
+		const a1 = optionAsk("a-1", above, TS);
+		const a2 = optionAsk("a-2", below, TS + 10);
+		const view = await mountFor(
+			t,
+			h(AskDrawer, { frontend: frontend([a1, a2]), scope: "session" }),
+		);
+		await view.rerender(
+			h(AskDrawer, {
+				frontend: frontend([{ ...a1, status: "timed_out" }, a2]),
+				scope: "session",
+			}),
+		);
+		const slot = view.container.querySelector('[data-lo-ask-held="a-1"]');
+		if (!slot) throw new Error(`${above}-over-${below}: no held slot`);
+		assert.equal(
+			slot.style.minHeight,
+			`${cardHeight(above)}px`,
+			`${above}-over-${below}: the slot reserves the card's own height`,
+		);
+		assert.match(
+			slot.firstElementChild
+				?.querySelector("button[aria-expanded]")
+				?.getAttribute("aria-label") ?? "",
+			/^Timed out - Question a-1\?/,
+			`${above}-over-${below}: the collapsed header sits at the top of the slot`,
+		);
+		assert.equal(
+			slot.nextElementSibling?.getAttribute("data-lo-ask-row"),
+			"a-2",
+			`${above}-over-${below}: the next card follows the reserved slot directly`,
+		);
+	}
+});
+
+test("a filter press releases every hold, and a lapse under Pending leaves only an aria-hidden spacer (m1 = U4)", async (t) => {
+	stubCardLayout(t);
+	const a1 = optionAsk("a-1", 3, TS);
+	const a2 = optionAsk("a-2", 2, TS + 10);
+	const props = { scope: "session" };
+	const chip = (view, name) => {
+		const found = [
+			...view.container.querySelectorAll("[data-lo-ask-filter] button"),
+		].find((b) => (b.textContent ?? "").startsWith(name));
+		if (!found) throw new Error(`no ${name} chip`);
+		return found;
+	};
+	const press = async (view, name) => {
+		const target = chip(view, name);
+		await act(async () => {
+			target.click();
+		});
+	};
+	const view = await mountFor(
+		t,
+		h(AskDrawer, { frontend: frontend([a1, a2]), ...props }),
+	);
+	await press(view, "Pending");
+	await view.rerender(
+		h(AskDrawer, {
+			frontend: frontend([{ ...a1, status: "timed_out" }, a2]),
+			...props,
+		}),
+	);
+	assert.equal(
+		view.container.querySelector("[data-lo-ask-held]") === null,
+		true,
+		"no held ROW is drawn under Pending: it is not a pending ask",
+	);
+	const spacer = view.container.querySelector('[data-lo-ask-spacer="a-1"]');
+	if (!spacer) throw new Error("no spacer holds the lapsed card's slot");
+	assert.equal(spacer.getAttribute("aria-hidden"), "true");
+	assert.equal(spacer.textContent, "", "the spacer says and offers nothing");
+	assert.equal(spacer.style.minHeight, `${cardHeight(3)}px`);
+	assert.equal(
+		spacer.nextElementSibling?.getAttribute("data-lo-ask-row"),
+		"a-2",
+		"the still-pending card keeps its place under the spacer",
+	);
+	assert.equal(
+		view.container.querySelector("[data-lo-ask-empty]") === null,
+		true,
+		"Pending is not empty, so no sentence is inserted above a-2",
+	);
+	assert.equal(chip(view, "Pending").textContent, "Pending · 1");
+	/* The last pending ask lapses too: Pending is truly 0, so the sentence is owed. */
+	await view.rerender(
+		h(AskDrawer, {
+			frontend: frontend([
+				{ ...a1, status: "timed_out" },
+				{ ...a2, status: "timed_out" },
+			]),
+			...props,
+		}),
+	);
+	assert.equal(
+		view.container.querySelector("[data-lo-ask-empty]")?.textContent,
+		"No asks are pending. They have all settled — see Settled.",
+	);
+	/* A deliberate press is the reader's own act: it releases every hold. */
+	await press(view, "Settled");
+	await press(view, "Pending");
+	assert.equal(
+		view.container.querySelectorAll("[data-lo-ask-spacer], [data-lo-ask-held]")
+			.length,
+		0,
+		"after a filter press nothing is held",
+	);
+	assert.equal(
+		view.container.querySelector("[data-lo-ask-empty]")?.textContent,
+		"No asks are pending. They have all settled — see Settled.",
+	);
+	await press(view, "All");
+	assert.equal(
+		view.container.querySelectorAll("[data-lo-ask-settled] [data-lo-ask-row]")
+			.length +
+			view.container.querySelectorAll(
+				"[data-lo-ask-settled] button[aria-expanded]",
+			).length,
+		2,
+		"under All both asks are filed under Settled, where the counts already put them",
+	);
+	/* Pressing the filter that is already selected releases too. */
+	const again = await mountFor(
+		t,
+		h(AskDrawer, { frontend: frontend([a1, a2]), ...props }),
+	);
+	await again.rerender(
+		h(AskDrawer, {
+			frontend: frontend([{ ...a1, status: "timed_out" }, a2]),
+			...props,
+		}),
+	);
+	assert.ok(again.container.querySelector('[data-lo-ask-held="a-1"]') !== null);
+	await press(again, "All");
+	assert.equal(
+		again.container.querySelector("[data-lo-ask-held]") === null,
+		true,
+		"a press on the selected chip is still the reader's act",
+	);
+});
+
+/*
+ * AFTER A LAPSE UNDER `Pending`, NO REFLEX KEY REACHES A RELEASE (UX round 4, U10/U11 =
+ * QA round 5, Q-5). Landing on the selected chip let Space/Enter press it (U7); landing
+ * on the filter group let Tab+Space press `All` (Q-5). Focus now lands on a hidden,
+ * named, `tabIndex=-1` element AFTER the chips and BEFORE the first card, so the next
+ * Tab goes forward into a-2 - never onto a chip - and only Shift+Tab reaches the chips.
+ *
+ * jsdom has no Tab traversal and no key-to-click activation, so the rig models the
+ * browser's: Tab focuses the next tabbable element in document order (the drawer's own
+ * tabbable selector), and Space/Enter on a button click it unless the keydown was
+ * cancelled. Layout is the stub's; scrolling is pinned by the focus call's options.
+ */
+const TABBABLE =
+	'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])';
+const realKey = async (key) => {
+	await act(async () => {
+		const target = document.activeElement ?? document.body;
+		if (key === "Tab") {
+			const all = [...document.querySelectorAll(TABBABLE)];
+			const next = all.find(
+				(el) =>
+					target.compareDocumentPosition(el) &
+					window.Node.DOCUMENT_POSITION_FOLLOWING,
+			);
+			next?.focus();
+			return;
+		}
+		const down = new window.KeyboardEvent("keydown", {
+			key,
+			bubbles: true,
+			cancelable: true,
+		});
+		target.dispatchEvent(down);
+		target.dispatchEvent(
+			new window.KeyboardEvent("keyup", {
+				key,
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+		if (
+			!down.defaultPrevented &&
+			(key === " " || key === "Enter") &&
+			target.tagName === "BUTTON"
+		)
+			target.click();
+	});
+};
+const lapseUnderPending = async (t, focusIn = "a-1") => {
+	stubCardLayout(t);
+	const calls = [];
+	const a1 = optionAsk("a-1", 3, TS);
+	const a2 = optionAsk("a-2", 3, TS + 10);
+	const a3 = optionAsk("a-3", 2, TS + 20);
+	const props = {
+		scope: "session",
+		onAnswer: (id) => calls.push(`answer:${id}`),
+		onDecline: (id) => calls.push(`decline:${id}`),
+	};
+	const view = await mountFor(
+		t,
+		h(AskDrawer, { frontend: frontend([a1, a2, a3]), ...props }),
+	);
+	const pending = [
+		...view.container.querySelectorAll("[data-lo-ask-filter] button"),
+	].find((b) => (b.textContent ?? "").startsWith("Pending"));
+	await act(async () => {
+		pending.click();
+	});
+	view.container
+		.querySelector(`[data-lo-ask-row="${focusIn}"] [data-ask-option]`)
+		.focus();
+	await view.rerender(
+		h(AskDrawer, {
+			frontend: frontend([{ ...a1, status: "timed_out" }, a2, a3]),
+			...props,
+		}),
+	);
+	return { view, calls };
+};
+
+test("a lapse under Pending lands on a named landing after the chips, before the first card (U10 = Q-5, U11)", async (t) => {
+	const focusCalls = [];
+	const original = window.HTMLElement.prototype.focus;
+	window.HTMLElement.prototype.focus = function (options) {
+		focusCalls.push({ el: this, options });
+		return original.call(this, options);
+	};
+	t.after(() => {
+		window.HTMLElement.prototype.focus = original;
+	});
+	const { view } = await lapseUnderPending(t);
+	const landing = document.activeElement;
+	assert.equal(
+		landing?.hasAttribute("data-lo-ask-lapse-landing"),
+		true,
+		`focus lands on the lapse landing, got ${landing?.outerHTML?.slice(0, 80)}`,
+	);
+	assert.equal(
+		landing.textContent,
+		"Question timed out",
+		"it says why focus moved",
+	);
+	assert.equal(landing.getAttribute("tabindex"), "-1");
+	const chips = view.container.querySelector("[data-lo-ask-filter]");
+	const firstCard = view.container.querySelector("[data-lo-ask-row]");
+	assert.ok(
+		chips.compareDocumentPosition(landing) &
+			window.Node.DOCUMENT_POSITION_FOLLOWING,
+		"after the chips",
+	);
+	assert.ok(
+		landing.compareDocumentPosition(firstCard) &
+			window.Node.DOCUMENT_POSITION_FOLLOWING,
+		"before the first card",
+	);
+	assert.equal(
+		chips.hasAttribute("tabindex"),
+		false,
+		"the filter group is no longer a focus target",
+	);
+	const call = focusCalls.find((c) => c.el === landing);
+	assert.equal(
+		call?.options?.preventScroll,
+		true,
+		"the landing never scrolls the list (U10)",
+	);
+});
+
+test("a lapse under All lands on the held header without scrolling (U10)", async (t) => {
+	stubCardLayout(t);
+	const focusCalls = [];
+	const original = window.HTMLElement.prototype.focus;
+	window.HTMLElement.prototype.focus = function (options) {
+		focusCalls.push({ el: this, options });
+		return original.call(this, options);
+	};
+	t.after(() => {
+		window.HTMLElement.prototype.focus = original;
+	});
+	const a1 = optionAsk("a-1", 3, TS);
+	const a2 = optionAsk("a-2", 3, TS + 10);
+	const view = await mountFor(
+		t,
+		h(AskDrawer, { frontend: frontend([a1, a2]), scope: "session" }),
+	);
+	view.container
+		.querySelector('[data-lo-ask-row="a-1"] [data-ask-option]')
+		.focus();
+	await view.rerender(
+		h(AskDrawer, {
+			frontend: frontend([{ ...a1, status: "timed_out" }, a2]),
+			scope: "session",
+		}),
+	);
+	const header = view.container.querySelector(
+		'[data-lo-ask-held="a-1"] button[aria-expanded]',
+	);
+	assert.ok(document.activeElement === header, "focus is on the held header");
+	assert.equal(
+		focusCalls.find((c) => c.el === header)?.options?.preventScroll,
+		true,
+		"and the move does not scroll the list",
+	);
+});
+
+test("after a lapse under Pending, reflex keys answer and decline nothing and move nothing (Q-5)", async (t) => {
+	for (const keys of [
+		[" "],
+		["Enter"],
+		["Tab", " "],
+		["Tab", "Enter"],
+		["Tab", "Tab", " "],
+		["u", "s", " ", "e", "a", "s", "t"],
+	]) {
+		const { view, calls } = await lapseUnderPending(t);
+		const before = view.container.querySelector('[data-lo-ask-spacer="a-1"]');
+		assert.equal(before === null, false, `${keys}: the spacer is there`);
+		for (const key of keys) await realKey(key);
+		const spacer = view.container.querySelector('[data-lo-ask-spacer="a-1"]');
+		assert.equal(
+			spacer === null,
+			false,
+			`${JSON.stringify(keys)}: the hold stays`,
+		);
+		assert.equal(
+			spacer.nextElementSibling?.getAttribute("data-lo-ask-row"),
+			"a-2",
+			`${JSON.stringify(keys)}: a-2 keeps its place under the spacer`,
+		);
+		assert.deepEqual(
+			calls,
+			[],
+			`${JSON.stringify(keys)}: nothing answered or declined`,
+		);
+		assert.equal(
+			view.container
+				.querySelector("[data-lo-ask-filter]")
+				?.getAttribute("data-lo-ask-filter"),
+			"outstanding",
+			`${JSON.stringify(keys)}: the filter did not change`,
+		);
+		if (keys[0] === "Tab")
+			assert.ok(
+				view.container
+					.querySelector('[data-lo-ask-row="a-2"]')
+					.contains(document.activeElement),
+				`${JSON.stringify(keys)}: Tab goes forward into a-2, not onto a chip`,
+			);
+	}
+});
+
+test("Space is cancelled on the landing only: a chip still takes it (review m1)", async (t) => {
+	const { view } = await lapseUnderPending(t);
+	const landing = document.activeElement;
+	const onLanding = new window.KeyboardEvent("keydown", {
+		key: " ",
+		bubbles: true,
+		cancelable: true,
+	});
+	landing.dispatchEvent(onLanding);
+	assert.equal(
+		onLanding.defaultPrevented,
+		true,
+		"Space on the landing does not scroll",
+	);
+	const chip = [
+		...view.container.querySelectorAll("[data-lo-ask-filter] button"),
+	].find((b) => (b.textContent ?? "").startsWith("All"));
+	const onChip = new window.KeyboardEvent("keydown", {
+		key: " ",
+		bubbles: true,
+		cancelable: true,
+	});
+	chip.dispatchEvent(onChip);
+	assert.equal(
+		onChip.defaultPrevented,
+		false,
+		"Space on a chip keeps its default",
+	);
+	/* And a deliberate press on a chip still releases (U4). */
+	await act(async () => {
+		chip.click();
+	});
+	assert.equal(
+		view.container.querySelector("[data-lo-ask-spacer]") === null,
+		true,
+		"a chip press releases the hold",
+	);
+});
+
+/*
+ * A SECOND LAPSE UNDER `Pending` LANDS TOO, AND A SPENT REQUEST NEVER FIRES LATER (agent
+ * review round 6, M1 = QA round 6, Q-6). The second lapse set the SAME landing text, so
+ * React bailed out of the update, nothing committed, focus stayed on BODY - and the
+ * focus request stayed armed, so a later unrelated render (a clock tick, a new ask) took
+ * the keyboard to the landing from wherever the reader had gone, even a textarea outside
+ * the panel.
+ */
+const pendingDrawer = async (t, asks, extra = {}) => {
+	stubCardLayout(t);
+	const props = { scope: "session", ...extra };
+	const view = await mountFor(
+		t,
+		h(AskDrawer, { frontend: frontend(asks), ...props }),
+	);
+	const pending = [
+		...view.container.querySelectorAll("[data-lo-ask-filter] button"),
+	].find((b) => (b.textContent ?? "").startsWith("Pending"));
+	await act(async () => {
+		pending.click();
+	});
+	const render = (rows, more = {}) =>
+		view.rerender(
+			h(AskDrawer, { frontend: frontend(rows), ...props, ...more }),
+		);
+	return { view, render };
+};
+const isLanding = (el) =>
+	el?.hasAttribute?.("data-lo-ask-lapse-landing") === true;
+
+test("a second lapse under Pending lands on the landing again (M1 = Q-6)", async (t) => {
+	const a1 = optionAsk("a-1", 3, TS);
+	const a2 = optionAsk("a-2", 3, TS + 10);
+	const a3 = optionAsk("a-3", 3, TS + 20);
+	const { view, render } = await pendingDrawer(t, [a1, a2, a3]);
+	view.container
+		.querySelector('[data-lo-ask-row="a-1"] [data-ask-option]')
+		.focus();
+	await render([{ ...a1, status: "timed_out" }, a2, a3]);
+	assert.ok(isLanding(document.activeElement), "the first lapse lands");
+	/* Tab forward into a-2, as the landing invites. */
+	await realKey("Tab");
+	assert.ok(
+		view.container
+			.querySelector('[data-lo-ask-row="a-2"]')
+			.contains(document.activeElement),
+		"Tab reached a-2",
+	);
+	await render([
+		{ ...a1, status: "timed_out" },
+		{ ...a2, status: "timed_out" },
+		a3,
+	]);
+	assert.ok(
+		isLanding(document.activeElement),
+		`the second lapse lands too, got ${document.activeElement?.outerHTML?.slice(0, 80)}`,
+	);
+});
+
+test("a spent landing request never takes focus on a later render (M1)", async (t) => {
+	const a1 = optionAsk("a-1", 3, TS);
+	const a2 = optionAsk("a-2", 3, TS + 10);
+	const a3 = optionAsk("a-3", 3, TS + 20);
+	const { view, render } = await pendingDrawer(t, [a1, a2, a3]);
+	view.container
+		.querySelector('[data-lo-ask-row="a-1"] [data-ask-option]')
+		.focus();
+	await render([{ ...a1, status: "timed_out" }, a2, a3]);
+	await realKey("Tab");
+	await render([
+		{ ...a1, status: "timed_out" },
+		{ ...a2, status: "timed_out" },
+		a3,
+	]);
+	/* The reader moves on, into a-3; then a clock tick and a new ask arrive. */
+	const a3Option = view.container.querySelector(
+		'[data-lo-ask-row="a-3"] [data-ask-option]',
+	);
+	a3Option.focus();
+	const lapsed = [
+		{ ...a1, status: "timed_out" },
+		{ ...a2, status: "timed_out" },
+		a3,
+	];
+	await render(lapsed, { nowMs: TS + 60_000 });
+	assert.ok(
+		document.activeElement === a3Option,
+		"a clock tick does not move focus",
+	);
+	await render([...lapsed, optionAsk("a-4", 2, TS + 30)], {
+		nowMs: TS + 61_000,
+	});
+	assert.ok(
+		document.activeElement === a3Option,
+		"a new ask does not move focus",
+	);
+});
+
+test("focus in a textarea outside the panel is never taken by a landing (M1)", async (t) => {
+	const composer = document.createElement("textarea");
+	document.body.appendChild(composer);
+	t.after(() => composer.remove());
+	const a1 = optionAsk("a-1", 3, TS);
+	const a2 = optionAsk("a-2", 3, TS + 10);
+	const { view, render } = await pendingDrawer(t, [a1, a2]);
+	view.container
+		.querySelector('[data-lo-ask-row="a-1"] [data-ask-option]')
+		.focus();
+	await render([{ ...a1, status: "timed_out" }, a2]);
+	assert.ok(isLanding(document.activeElement), "the lapse lands");
+	await realKey("Tab");
+	await render([
+		{ ...a1, status: "timed_out" },
+		{ ...a2, status: "timed_out" },
+	]);
+	composer.focus();
+	await render([
+		{ ...a1, status: "timed_out" },
+		{ ...a2, status: "timed_out" },
+		optionAsk("a-3", 2, TS + 20),
+	]);
+	assert.ok(document.activeElement === composer, "the composer keeps focus");
+	/* And a lapse while the composer holds focus does not take it either. */
+	await render([
+		{ ...a1, status: "timed_out" },
+		{ ...a2, status: "timed_out" },
+		{ ...optionAsk("a-3", 2, TS + 20), status: "timed_out" },
+	]);
+	assert.ok(document.activeElement === composer, "nor does a lapse elsewhere");
+});
+
+test("the landing's sentence leaves reading order once focus leaves it (review m1 = UX U14)", async (t) => {
+	const a1 = optionAsk("a-1", 3, TS);
+	const a2 = optionAsk("a-2", 3, TS + 10);
+	const { view, render } = await pendingDrawer(t, [a1, a2]);
+	view.container
+		.querySelector('[data-lo-ask-row="a-1"] [data-ask-option]')
+		.focus();
+	await render([{ ...a1, status: "timed_out" }, a2]);
+	const landing = view.container.querySelector("[data-lo-ask-lapse-landing]");
+	assert.equal(landing?.textContent, "Question timed out");
+	await realKey("Tab");
+	assert.equal(
+		view.container.querySelector("[data-lo-ask-lapse-landing]")?.textContent ??
+			"",
+		"",
+		"no stale sentence stays between the chips and the first card",
+	);
+});
+
+test("two lapses under Pending are counted on the landing (U11)", async (t) => {
+	stubCardLayout(t);
+	const asks = ["a-1", "a-2", "a-3"].map((id, i) => optionAsk(id, 2, TS + i));
+	const view = await mountFor(
+		t,
+		h(AskDrawer, { frontend: frontend(asks), scope: "session" }),
+	);
+	const pending = [
+		...view.container.querySelectorAll("[data-lo-ask-filter] button"),
+	].find((b) => (b.textContent ?? "").startsWith("Pending"));
+	await act(async () => {
+		pending.click();
+	});
+	view.container
+		.querySelector('[data-lo-ask-row="a-1"] [data-ask-option]')
+		.focus();
+	await view.rerender(
+		h(AskDrawer, {
+			frontend: frontend(
+				asks.map((ask) =>
+					ask.ask_id === "a-3" ? ask : { ...ask, status: "timed_out" },
+				),
+			),
+			scope: "session",
+		}),
+	);
+	assert.equal(document.activeElement?.textContent, "2 questions timed out");
+});
+
+test("the reserved slot is drawn as the card's empty footprint (design D1 = UX U8)", async (t) => {
+	stubCardLayout(t);
+	const a1 = optionAsk("a-1", 3, TS);
+	const a2 = optionAsk("a-2", 2, TS + 10);
+	const props = { scope: "session" };
+	for (const filter of ["All", "Pending"]) {
+		const view = await mountFor(
+			t,
+			h(AskDrawer, { frontend: frontend([a1, a2]), ...props }),
+		);
+		const chip = [
+			...view.container.querySelectorAll("[data-lo-ask-filter] button"),
+		].find((b) => (b.textContent ?? "").startsWith(filter));
+		await act(async () => {
+			chip.click();
+		});
+		const card = view.container.querySelector('[data-lo-ask-row="a-1"]');
+		const frame = ["rounded-md", "border", "border-hairline"];
+		for (const name of frame)
+			assert.ok(card.classList.contains(name), `the card wears ${name}`);
+		await view.rerender(
+			h(AskDrawer, {
+				frontend: frontend([{ ...a1, status: "timed_out" }, a2]),
+				...props,
+			}),
+		);
+		const slot = view.container.querySelector(
+			'[data-lo-ask-held="a-1"], [data-lo-ask-spacer="a-1"]',
+		);
+		if (!slot) throw new Error(`${filter}: no reserved slot`);
+		for (const name of frame)
+			assert.ok(
+				slot.classList.contains(name),
+				`${filter}: the slot wears ${name}`,
+			);
+		if (filter === "All")
+			assert.ok(
+				slot
+					.querySelector("button[aria-expanded]")
+					?.classList.contains("rounded-t-[9px]"),
+				"the held header's hover and ring follow the frame's inner radius (design D6)",
+			);
+		assert.ok(
+			![...slot.classList].some((name) => name.startsWith("bg-")),
+			`${filter}: and no fill`,
+		);
+	}
+});
+
+test("two answers lost in one lapse are counted, not called one (UX U9)", async (t) => {
+	const asks = ["a-1", "a-2", "a-3"].map((id, i) => optionAsk(id, 2, TS + i));
+	const drafts = {
+		"a-1": { target: ["a-1-opt-1"] },
+		"a-2": { target: ["a-2-opt-2"] },
+	};
+	const props = { scope: "session", onDraftChange: () => undefined, drafts };
+	const view = await mountFor(
+		t,
+		h(AskDrawer, { frontend: frontend(asks), ...props }),
+	);
+	await view.rerender(
+		h(AskDrawer, {
+			frontend: frontend(
+				asks.map((ask) =>
+					ask.ask_id === "a-3" ? ask : { ...ask, status: "timed_out" },
+				),
+			),
+			...props,
+		}),
+	);
+	assert.equal(
+		view.container.querySelector("[data-lo-ask-lapse-note]")?.textContent,
+		"2 questions timed out; your answers were not sent.",
+	);
+});
+
+test("an answer in progress on a card that lapses is announced as not sent (UX U5)", async (t) => {
+	const a1 = optionAsk("a-1", 3, TS);
+	const a2 = optionAsk("a-2", 2, TS + 10);
+	const props = { scope: "session", onDraftChange: () => undefined };
+	const note = (view) =>
+		view.container.querySelector("[data-lo-ask-lapse-note]");
+	const drafted = await mountFor(
+		t,
+		h(AskDrawer, {
+			frontend: frontend([a1, a2]),
+			drafts: { "a-1": { target: ["use blu"] } },
+			...props,
+		}),
+	);
+	assert.equal(note(drafted)?.textContent, "", "the region is mounted empty");
+	await drafted.rerender(
+		h(AskDrawer, {
+			frontend: frontend([{ ...a1, status: "timed_out" }, a2]),
+			drafts: { "a-1": { target: ["use blu"] } },
+			...props,
+		}),
+	);
+	assert.equal(
+		note(drafted)?.textContent,
+		"That question timed out; your answer was not sent.",
+	);
+	const blank = await mountFor(
+		t,
+		h(AskDrawer, { frontend: frontend([a1, a2]), ...props }),
+	);
+	await blank.rerender(
+		h(AskDrawer, {
+			frontend: frontend([{ ...a1, status: "timed_out" }, a2]),
+			...props,
+		}),
+	);
+	assert.equal(
+		note(blank)?.textContent,
+		"",
+		"a card with nothing typed or picked loses nothing, so nothing is said",
+	);
+});
+
+test("every drafted lapse is a fresh announcement, and the sentence does not linger (review m1 = QA Q-4)", async (t) => {
+	/*
+	 * A live region speaks on a DOM CHANGE. Writing the same sentence a second time
+	 * changed nothing (QA counted one mutation across two lapses), so the second dropped
+	 * answer went unsaid; and the stale sentence stayed for a reader browsing later.
+	 */
+	const asks = ["a-1", "a-2", "a-3"].map((id, i) => optionAsk(id, 2, TS + i));
+	const drafts = {
+		"a-1": { target: ["a-1-opt-1"] },
+		"a-2": { target: ["a-2-opt-2"] },
+	};
+	const props = { scope: "session", onDraftChange: () => undefined, drafts };
+	const lapse = (...ids) =>
+		frontend(
+			asks.map((ask) =>
+				ids.includes(ask.ask_id) ? { ...ask, status: "timed_out" } : ask,
+			),
+		);
+	const view = await mountFor(t, h(AskDrawer, { frontend: lapse(), ...props }));
+	const region = view.container.querySelector("[data-lo-ask-lapse-note]");
+	if (!region) throw new Error("no lapse-note region");
+	const writes = [];
+	const observer = new window.MutationObserver((records) => {
+		for (const record of records)
+			if (record.type === "childList" && record.addedNodes.length > 0)
+				writes.push(region.textContent);
+	});
+	observer.observe(region, {
+		childList: true,
+		subtree: true,
+		characterData: true,
+	});
+	t.after(() => observer.disconnect());
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	await view.rerender(h(AskDrawer, { frontend: lapse("a-1"), ...props }));
+	await view.rerender(
+		h(AskDrawer, { frontend: lapse("a-1", "a-2"), ...props }),
+	);
+	await act(async () => {});
+	assert.deepEqual(
+		writes,
+		[
+			"That question timed out; your answer was not sent.",
+			"That question timed out; your answer was not sent.",
+		],
+		"each drafted lapse writes the sentence into the region anew",
+	);
+	await act(async () => {
+		t.mock.timers.tick(LAPSE_NOTE_CLEAR_MS);
+	});
+	assert.equal(
+		region.textContent,
+		"",
+		"once it has had time to be read, the region empties",
+	);
+});
+
+test("opening Other without typing is not an answer in progress (review m2)", async (t) => {
+	const a1 = optionAsk("a-1", 2, TS);
+	const a2 = optionAsk("a-2", 2, TS + 10);
+	const props = {
+		scope: "session",
+		onDraftChange: () => undefined,
+		drafts: { "a-1": { target: [""] } },
+	};
+	const view = await mountFor(
+		t,
+		h(AskDrawer, { frontend: frontend([a1, a2]), ...props }),
+	);
+	await view.rerender(
+		h(AskDrawer, {
+			frontend: frontend([{ ...a1, status: "timed_out" }, a2]),
+			...props,
+		}),
+	);
+	assert.equal(
+		view.container.querySelector("[data-lo-ask-lapse-note]")?.textContent,
+		"",
+		"an opened, empty Other field held nothing that could have been sent",
+	);
+});
+
+test("the session drawer is remounted per conversation, so a hold never crosses one (UX U6)", async () => {
+	/*
+	 * The hold lives for the panel's mount. The session drawer is mounted inside
+	 * `ChatContent`, which renders only inside `SessionPanel`, and the page keys that by
+	 * the conversation's identity - so a switch is an unmount and a mount, and A -> B -> A
+	 * files a lapsed A ask under Settled. `ChatPage` cannot be mounted in a node test, so
+	 * the chain is pinned by source.
+	 */
+	const { readFileSync } = await import("node:fs");
+	const page = readFileSync(
+		"src/renderer/src/features/chat/components/chat-page.tsx",
+		"utf8",
+	);
+	const panelStart = page.indexOf("function SessionPanel(");
+	const pageStart = page.indexOf("export function ChatPage(");
+	const content = page.indexOf("<ChatContent", panelStart);
+	assert.ok(
+		panelStart !== -1 && content > panelStart && content < pageStart,
+		"ChatContent renders inside SessionPanel",
+	);
+	assert.match(
+		page.slice(pageStart),
+		/<SessionPanel\s+key=\{identity\}/,
+		"SessionPanel is keyed by the conversation's identity",
+	);
+	assert.match(
+		page.slice(pageStart),
+		/const identity = panelIdentityFor\(draftKey, id\);/,
+		"and that identity is the conversation (session id, else draft key)",
+	);
+	const chat = readFileSync(
+		"src/renderer/src/features/chat/components/chat-content.tsx",
+		"utf8",
+	);
+	assert.ok(
+		chat.includes("<AskDrawer"),
+		"ChatContent mounts the session drawer",
+	);
 });
 
 test("an answer that is not one of the labels is DRAWN as Other (design D2)", async (t) => {

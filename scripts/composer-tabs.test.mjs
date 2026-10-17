@@ -1253,7 +1253,7 @@ test("the ask item states the queue's own reading, in two registers", () => {
 	const cases = [
 		[[wireAsk("a-1")], "1 question waiting"],
 		[[wireAsk("a-1"), wireAsk("a-2")], "2 questions waiting"],
-		[[wireAsk("a-1", "timed_out")], "1 question moved on"],
+		[[wireAsk("a-1", "timed_out")], "1 question timed out"],
 		/*
 		 * A DELIVERED answered ask is the finished queue; an UNDELIVERED one is §10's
 		 * window - the answer is still the user's to change - so it takes the clause that
@@ -1468,7 +1468,13 @@ test("the item's press drives the door the host supplied, driven", async () => {
 				createElement(ComposerStatusRow, {
 					frontend: askFrontend([wireAsk("a-1")]),
 					runDetails: NO_DETAILS,
-					onAskToggle: (next) => calls.push(next),
+					/*
+					 * THE SECOND ARGUMENT IS PART OF THE DOOR'S CONTRACT (#1079): the chip is the
+					 * session scope's most discoverable way in, so its CLOSE has to carry
+					 * `dismissSlot` - the kind of close the user asked for, which empties the right
+					 * slot rather than handing the pane it displaced back. An open carries nothing.
+					 */
+					onAskToggle: (next, options) => calls.push([next, options]),
 				}),
 			);
 		});
@@ -1483,11 +1489,22 @@ test("the item's press drives the door the host supplied, driven", async () => {
 				);
 			});
 		await press();
-		assert.deepEqual(calls, [true], "the press tells the host to open");
+		assert.deepEqual(
+			calls,
+			[[true, undefined]],
+			"the press tells the host to open, and an open names no close kind",
+		);
 		assert.equal(chip.getAttribute("aria-expanded"), "true");
 		assert.equal(chip.getAttribute("data-lo-ask-item"), "expanded");
 		await press();
-		assert.deepEqual(calls, [true, false], "and the second press to close");
+		assert.deepEqual(
+			calls,
+			[
+				[true, undefined],
+				[false, { dismissSlot: true }],
+			],
+			"and the second press to close - as the PRESSED kind (#1079): the chip is a door the user aimed at, so its close asks for an empty slot, exactly as the rail item, the header menu's row and the drawer's X do",
+		);
 		assert.equal(chip.getAttribute("aria-expanded"), "false");
 	} finally {
 		await cleanup();
@@ -1772,13 +1789,15 @@ test("the wake chip, the pane and the page are ONE derivation", () => {
 	assert.match(row, /\{wakeClause\(wakes\.length\)\}/);
 
 	const page = code(CHAT_PAGE);
-	assert.match(page, /wakes: canonical\.frontend\.wakes,/);
+	/* The derivation reads the frame through the hold (`runFrontend`, the
+	   always-visible rail's change 9) - still the one read of the field. */
+	assert.match(page, /wakes: runFrontend\.wakes,/);
 	/*
 	 * The page is the ONLY reader of the wire's field: a second `.wakes` read
 	 * anywhere in the renderer is the second source of truth this pins against.
 	 */
 	assert.equal(
-		(page.match(/canonical\.frontend\.wakes/g) ?? []).length,
+		(page.match(/(?:canonical\.frontend|runFrontend)\.wakes/g) ?? []).length,
 		1,
 		"one read of the wire, threaded into the one derivation",
 	);
@@ -5969,9 +5988,11 @@ test("the monitor chip, the pane and the page are ONE derivation", () => {
 	assert.match(row, /\{monitorClause\(monitors\.length\)\}/);
 
 	const page = code(CHAT_PAGE);
-	assert.match(page, /monitors: canonical\.frontend\.monitors,/);
+	/* The derivation reads the frame through the hold (`runFrontend`, the
+	   always-visible rail's change 9) - still the one read of the field. */
+	assert.match(page, /monitors: runFrontend\.monitors,/);
 	assert.equal(
-		(page.match(/canonical\.frontend\.monitors/g) ?? []).length,
+		(page.match(/(?:canonical\.frontend|runFrontend)\.monitors/g) ?? []).length,
 		1,
 		"one read of the wire, threaded into the one derivation",
 	);

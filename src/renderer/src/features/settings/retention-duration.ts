@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * The duration model behind the delegated-work retention control.
  *
@@ -118,8 +119,8 @@ export function durationSpec(
 	};
 }
 
-const plural = (count: number, one: string, many: string) =>
-	`${count} ${count === 1 ? one : many}`;
+// ICU owns grammatical number; hand-picked singulars would use English rules
+// even after a translated catalogue supplies different plural categories.
 
 /**
  * Hours as words: "6 hours", "48 hours", "3 days", "100 hours", "1 month".
@@ -132,12 +133,18 @@ const plural = (count: number, one: string, many: string) =>
  */
 export function formatHours(hours: number): string {
 	if (hours > 0 && hours % HOURS_PER_MONTH === 0) {
-		return plural(hours / HOURS_PER_MONTH, "month", "months");
+		return t("ui.settings.configuration.retention_duration.month_count", {
+			count: hours / HOURS_PER_MONTH,
+		});
 	}
 	if (hours >= DAYS_FROM_HOURS && hours % HOURS_PER_DAY === 0) {
-		return plural(hours / HOURS_PER_DAY, "day", "days");
+		return t("ui.settings.configuration.retention_duration.day_count", {
+			count: hours / HOURS_PER_DAY,
+		});
 	}
-	return plural(hours, "hour", "hours");
+	return t("ui.settings.configuration.retention_duration.hour_count", {
+		count: hours,
+	});
 }
 
 /** The compact stop label: "6h", "48h", "3d", "30d". */
@@ -191,9 +198,15 @@ export type DurationVerdict =
 export function rangeSentence(spec: Pick<DurationSpec, "min" | "max">): string {
 	const upper =
 		spec.max % HOURS_PER_MONTH === 0
-			? `${formatHours(spec.max)} (${spec.max / HOURS_PER_DAY} days)`
+			? t("ui.settings.configuration.retention_duration.maximum_days", {
+					duration: formatHours(spec.max),
+					days: spec.max / HOURS_PER_DAY,
+				})
 			: formatHours(spec.max);
-	return `between ${formatHours(spec.min)} and ${upper}`;
+	return t("ui.settings.configuration.retention_duration.range", {
+		minimum: formatHours(spec.min),
+		maximum: upper,
+	});
 }
 
 /** Clamp a number of hours into the spec's range. */
@@ -225,7 +238,9 @@ export function validateHours(
 	if (!WHOLE_NUMBER_TEXT.test(text)) {
 		return {
 			ok: false,
-			error: "Enter a whole number of hours or days.",
+			error: t(
+				"ui.settings.configuration.retention_duration.enter_a_whole_number_of_hours_or_days",
+			),
 			nearest: null,
 		};
 	}
@@ -234,7 +249,15 @@ export function validateHours(
 		const tooLong = hours > spec.max;
 		return {
 			ok: false,
-			error: `${formatHours(hours)} is too ${tooLong ? "long" : "short"}. Choose a time ${rangeSentence(spec)}.`,
+			error: tooLong
+				? t("ui.settings.configuration.retention_duration.too_long", {
+						duration: formatHours(hours),
+						range: rangeSentence(spec),
+					})
+				: t("ui.settings.configuration.retention_duration.too_short", {
+						duration: formatHours(hours),
+						range: rangeSentence(spec),
+					}),
 			nearest: clampHours(hours, spec),
 		};
 	}

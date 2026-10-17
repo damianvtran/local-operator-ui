@@ -90,7 +90,10 @@
 
 import { Button, Tooltip } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
-import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import {
+	type AskDrawerCloseOptions,
+	useUiPreferencesStore,
+} from "@shared/store/ui-preferences-store";
 import { PanelRightClose } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import type { CanonicalFrontendState } from "../../../../../../shared/desktop-session-contract";
@@ -226,9 +229,14 @@ export type AskDrawerProps = {
 	scope: AskScope;
 	/**
 	 * The door that closes the drawer WITHOUT answering. The caller owns the flag
-	 * (the store does), so this reports the request rather than applying it.
+	 * (the store does), so this reports the request rather than applying it - AND
+	 * IT CARRIES WHICH KIND OF CLOSE IT IS (#1079): the X below is the user asking
+	 * for the slot to be EMPTY and passes `dismissSlot`, while the two closes the
+	 * user did NOT ask for pass nothing and keep the give-back - the queue emptying
+	 * under this surface, and Escape, which reads as dismissing an overlay rather
+	 * than as a request for an empty slot (see `AskDrawerCloseOptions`).
 	 */
-	onClose: () => void;
+	onClose: (options?: AskDrawerCloseOptions) => void;
 	/**
 	 * The three doors, addressed by ASK ID rather than by the record: the caller
 	 * posts to a session by id and has no use for the rest of the row, and passing
@@ -370,10 +378,10 @@ export const AskDrawer = ({
 	 * One close per mount, whatever the caller's `onClose` identity does. The effect
 	 * re-runs whenever a dependency's identity changes, and one caller passes an inline
 	 * arrow (`chat-layout.tsx` mounts the fleet drawer with
-	 * `onClose={() => setAskDrawerOpen(false, "fleet")}`), so a rule that only compares
-	 * deps would re-close on every render it happened to see. The drawer unmounts on a
-	 * close, so a per-mount latch is exactly "fire once" rather than a weakening of the
-	 * per-emptying rule.
+	 * `onClose={(options) => setAskDrawerOpen(false, "fleet", options)}`), so a rule that
+	 * only compares deps would re-close on every render it happened to see. The drawer
+	 * unmounts on a close, so a per-mount latch is exactly "fire once" rather than a
+	 * weakening of the per-emptying rule.
 	 */
 	const closedOnce = useRef(false);
 	/*
@@ -414,6 +422,15 @@ export const AskDrawer = ({
 			hadRows.current = true;
 			return;
 		}
+		/*
+		 * AN UNREAD FRAME IS NEVER A JUDGEMENT about the queue - not on a mount (the switch
+		 * case below) and not mid-life either. It is checked BEFORE the emptying arm (agent
+		 * review m3 of the always-visible rail): a reconnect gap nulls the session frame
+		 * for ~1.5-4 s, and reading that as "the rows went away" closed a drawer the user
+		 * was answering in. `hadRows` is left as it was, so the frame that comes back
+		 * decides: rows keep the drawer, an empty queue is a real emptying and closes it.
+		 */
+		if (frameUnread) return;
 		const wasPopulated = hadRows.current === true;
 		hadRows.current = false;
 		if (wasPopulated) {
@@ -421,12 +438,7 @@ export const AskDrawer = ({
 			onClose();
 			return;
 		}
-		/*
-		 * A MOUNT over a queue with nothing to show: the switch case. Never a judgement about the
-		 * read - an unread frame is not an empty one, and the map it would close on is
-		 * exactly the read's own pending state.
-		 */
-		if (frameUnread) return;
+		/* A MOUNT over a queue with nothing to show: the switch case. */
 		if (openedByDoor.current) return;
 		closedOnce.current = true;
 		onClose();
@@ -465,6 +477,8 @@ export const AskDrawer = ({
 	 * promise in this file.
 	 */
 	const requestedOpen = useRef(false);
+	/* Whether that request came from the `…` menu (vs a chord); see the entry effect. */
+	const viaMenu = useRef(false);
 	/*
 	 * THE MENU'S RESTORE, ANSWERED (round-1 Q1, second half).
 	 *
@@ -666,7 +680,7 @@ export const AskDrawer = ({
 		 * this check sits ABOVE the bootstrap guard rather than inside the
 		 * consumption branch.
 		 */
-		if (requestedOpen.current) armMenuClaim();
+		if (requestedOpen.current && viaMenu.current) armMenuClaim();
 		if (wasBootstrapped.current) return;
 		const active = document.activeElement;
 		if (active === null || typeof active.matches !== "function") return;
@@ -690,9 +704,17 @@ export const AskDrawer = ({
 		 * below. A request for the other queue is left alone: the drawer that was
 		 * asked for answers it.
 		 */
-		if (askOpenIntent === scope) {
+		if (askOpenIntent?.scope === scope) {
 			clearAskOpenIntent(scope);
 			requestedOpen.current = true;
+			/*
+			 * A CHORD'S REQUEST HAS NO MENU BEHIND IT (the always-visible rail, Q1): it
+			 * latches the mount as the user's and moves the keyboard in, but there is
+			 * no `…` trigger to give the keyboard back to and no Radix restore to
+			 * answer - so neither the return target nor the claim below is armed for
+			 * it. A stranded close then takes the drawer's no-door path (the composer).
+			 */
+			viaMenu.current = askOpenIntent.via === "menu";
 			/*
 			 * THE RETURN TARGET IS RECORDED AT THE PRESS, not at the resolve: the
 			 * trigger is what the keyboard ends on once Radix's own restore lands,
@@ -701,9 +723,11 @@ export const AskDrawer = ({
 			 * move and a StrictMode pass tears the mount down once. See
 			 * `MENU_TRIGGER_SELECTOR`.
 			 */
-			doorRef.current = menuReturnTarget(active);
-			/* And the claim is armed for the restore that is coming (see `claimRef`). */
-			armMenuClaim();
+			if (viaMenu.current) {
+				doorRef.current = menuReturnTarget(active);
+				/* And the claim is armed for the restore that is coming (see `claimRef`). */
+				armMenuClaim();
+			}
 		}
 		const requested = door === null && requestedOpen.current;
 		/*
@@ -765,7 +789,7 @@ export const AskDrawer = ({
 		if (door !== null) doorRef.current = door;
 		/* The request's target was recorded when the request was SEEN (above); this
 		 * is the fallback for a paint that could not find one then. */
-		doorRef.current ??= menuReturnTarget(active);
+		if (viaMenu.current) doorRef.current ??= menuReturnTarget(active);
 		if (door === null && !keyboardLeftOnMenuPress(active)) return;
 		/*
 		 * THE LIST'S FIRST CONTROL, not the bar's and not the filter's (UX round 1, U4;
@@ -954,6 +978,12 @@ export const AskDrawer = ({
 			 * `preventDefault` so the app-wide interrupt ladder does not also treat it as
 			 * a stop - the same claim `chat-page.tsx`'s window listener makes, which then
 			 * stands down on `defaultPrevented`.
+			 *
+			 * AND IT CLOSES AS A WITHDRAWAL, NOT AS A REQUEST FOR AN EMPTY SLOT (#1079):
+			 * no options, so the displaced pane is given back. Escape is a key rather
+			 * than a labelled control - a user pressing it is putting an overlay away,
+			 * and the pane they had before it is what "away" means. The X below is the
+			 * opposite case and the only difference between them is this argument.
 			 */
 			onKeyDown={(event) => {
 				if (event.key !== "Escape") return;
@@ -997,7 +1027,13 @@ export const AskDrawer = ({
 						variant="ghost"
 						size="icon-sm"
 						aria-label="Close asks"
-						onClick={onClose}
+						/*
+						 * THE PRESSED KIND (#1079): this is the control the user aimed at, so it
+						 * asks for an EMPTY SLOT rather than handing the pane it displaced back.
+						 * `dismissSlot` is the whole difference between this door and the Escape
+						 * arm above, which is why they share one prop.
+						 */
+						onClick={() => onClose({ dismissSlot: true })}
 						data-tour-tag="close-asks-button"
 					>
 						<PanelRightClose aria-hidden="true" />

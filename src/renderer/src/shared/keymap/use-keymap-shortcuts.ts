@@ -133,6 +133,7 @@ function runKeymapAction(actionId: ActionId): void {
 	togglePanelRailItem(railIdOf(actionId), {
 		sessionId,
 		askScope: sessionId === null ? "fleet" : "session",
+		via: "chord",
 	});
 }
 

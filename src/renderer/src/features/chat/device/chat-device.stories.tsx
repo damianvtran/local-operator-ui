@@ -21,8 +21,6 @@ import { type ReactNode, useLayoutEffect } from "react";
 import "../../../styles/index.css";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { ChatHeader } from "../../chat/components/chat-header";
-import { deriveRunDetails } from "../../chat/components/run-details/run-detail-model";
-import * as fixtures from "../../chat/components/run-details/run-details.fixtures";
 import type { TransferReceipt } from "../../mesh/mesh-types";
 import { ChatDeviceNotice } from "./chat-device-notice";
 import { ChatDeviceSlot } from "./chat-device-slot";
@@ -295,7 +293,6 @@ const Mount = ({
 					onOpenOptions={() => undefined}
 					onToggleBrowser={() => undefined}
 					onOpenConsole={() => undefined}
-					runDetails={deriveRunDetails(fixtures.idle())}
 					deviceSlot={
 						withoutDevice ? undefined : live ? (
 							<ChatDeviceSlot sessionId={live} />
@@ -341,7 +338,6 @@ const NarrowBands = () => {
 							}}
 							onOpenOptions={() => undefined}
 							onToggleBrowser={() => undefined}
-							runDetails={deriveRunDetails(fixtures.idle())}
 							deviceSlot={<ChatDeviceSlot sessionId={SESSION} />}
 						/>
 					</Band>

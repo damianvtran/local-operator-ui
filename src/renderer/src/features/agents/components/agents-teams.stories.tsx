@@ -325,16 +325,37 @@ const Scene: FC<{
 	extraTeams?: ReusableTeam[];
 	/** The capabilities the stub backend advertises; live (composer on) by default. */
 	capabilities?: typeof LIVE_CAPABILITIES;
-}> = ({ at, children, extraTeams = [], capabilities = LIVE_CAPABILITIES }) => {
+	/** Refuse `teams.effective` with this status, for the frame with no reading. */
+	effectiveFails?: number;
+	/**
+	 * Patch a catalogue row for this story alone.
+	 *
+	 * The frame that shows the pin's reach needs an agent that HAS an effort pin, and
+	 * the shared fixture deliberately has none: giving one to the module's rows would
+	 * change every other frame this world draws, so the patch is per story.
+	 */
+	agentOverrides?: Record<string, Partial<WorldProfile>>;
+}> = ({
+	at,
+	children,
+	extraTeams = [],
+	capabilities = LIVE_CAPABILITIES,
+	effectiveFails,
+	agentOverrides,
+}) => {
 	const rows = useRef<WorldProfile[] | null>(null);
-	rows.current ??= AGENTS.map((row) => ({ ...row }));
+	rows.current ??= AGENTS.map((row) => ({
+		...row,
+		...(agentOverrides?.[row.name] ?? {}),
+	}));
 	// A LAYOUT effect so the bridge exists before any query effect reads it.
 	useLayoutEffect(() => {
 		installBridge(rows.current as WorldProfile[], {
 			teams: [...TEAMS, ...extraTeams],
 			capabilities,
+			effectiveFails,
 		});
-	}, [extraTeams, capabilities]);
+	}, [extraTeams, capabilities, effectiveFails]);
 	return (
 		<div className="flex h-screen flex-col overflow-hidden bg-canvas">
 			{/*
@@ -434,6 +455,23 @@ export const AgentSelected: Story = {
 	render: () => (
 		<Scene at="/agents?kind=agent&name=trend-scout">
 			<HoldShutterUntil done={paneSays("Watches a handful of sources")} />
+		</Scene>
+	),
+};
+
+/**
+ * THE PIN'S OWN FRAME: the same agent pane, on a world where the agent CARRIES an
+ * effort pin. The note beside the pin is the reach of a tier that is machine-wide,
+ * and a reach has to have a source: with no pin the pane says nothing there at all
+ * (design round 1, D9), which is the pair `agent-pin-reach` in the base tree shows.
+ */
+export const AgentPinReachPinned: Story = {
+	render: () => (
+		<Scene
+			at="/agents?kind=agent&name=trend-scout"
+			agentOverrides={{ "trend-scout": { effort: "high" } }}
+		>
+			<HoldShutterUntil done={paneSays("Effort tier")} />
 		</Scene>
 	),
 };
@@ -942,6 +980,93 @@ export const TeamComposerUnavailable: Story = {
 			capabilities={CAPABILITIES as typeof LIVE_CAPABILITIES}
 		>
 			<HoldShutterUntil done={paneSays("Collaboration instructions")} />
+		</Scene>
+	),
+};
+
+/**
+ * A roster that CARRIES per-member model overrides, which none of the shared
+ * catalogue's teams do: the shared teams are the world every other frame (and the
+ * before frames on the base tree) was photographed in, so the overrides live on a
+ * team of their own rather than moving those rosters.
+ *
+ * `med` IS THE UNCONFIGURED ONE, deliberately. The rig's tier map
+ * (`STORY_TIER_MAP` in `agent-class.stories.tsx`) configures `lo` and `hi` only,
+ * which is how the editor's unavailable state - the warning the operator must see
+ * before a launch fails - gets on screen at all. The other three members cover the
+ * three layers in one frame: a tier with an explicit effort, a tier asking for the
+ * model's own effort (`auto`), and a slot with no override, which falls through to
+ * the session.
+ */
+const OVERRIDES_TEAM = team(
+	"model-overrides",
+	"One member on the tier map's strongest model, one asking for the model's own effort, and one on a tier this machine has not configured.",
+	"manager",
+	[],
+	{ label: "Model overrides", instructions: "Work through the list." },
+);
+OVERRIDES_TEAM.members = [
+	{ role: "manager", count: 1, kind: "agent" },
+	{ role: "coder", count: 1, kind: "agent", tier: "hi", effort: "xhigh" },
+	/*
+	 * THE UNCONFIGURED TIER IS THIRD OF FOUR, on purpose (design round 1, D6): the
+	 * first frame set put it last, which hid the one thing the reason row can get
+	 * wrong - whose member it belongs to.
+	 *
+	 * AND IT IS THE LONGEST REAL ROLE ON THE MACHINE (design round 2, D13): the
+	 * Member column is fixed at 96 px, so `content-designer` is the name that clips
+	 * at 480 and proves the tooltip is doing something on a name the fixture really
+	 * has (it is a member of the Content team in the same world).
+	 */
+	{ role: "content-designer", count: 1, kind: "agent", tier: "med" },
+	{ role: "reviewer", count: 1, kind: "agent", tier: "hi", effort: "auto" },
+];
+const OVERRIDES_EXTRA = [OVERRIDES_TEAM];
+
+/**
+ * THE EFFECTIVE READING: each member's resolved model and reasoning effort, with
+ * the layer that set each one, and the one member whose tier this machine has not
+ * configured. The design note calls this the single most important surface of the
+ * member-override layers (design §4).
+ */
+export const TeamMemberOverrides: Story = {
+	render: () => (
+		<Scene
+			at={`/agents?kind=team&name=${OVERRIDES_TEAM.name}`}
+			extraTeams={OVERRIDES_EXTRA}
+		>
+			<HoldShutterUntil done={paneSays("Model and effort")} />
+		</Scene>
+	),
+};
+
+/**
+ * NO READING AT ALL: the probe failed with a status that is not the route's absence,
+ * so the pane says so instead of drawing an empty table (design round 1, D10 - the
+ * copy had no frame, and a sentence nobody has seen is a sentence nobody has read).
+ */
+export const TeamEffectiveReadFailed: Story = {
+	render: () => (
+		<Scene
+			at={`/agents?kind=team&name=${OVERRIDES_TEAM.name}`}
+			extraTeams={OVERRIDES_EXTRA}
+			effectiveFails={500}
+		>
+			<HoldShutterUntil
+				done={paneSays("The effective models could not be read")}
+			/>
+		</Scene>
+	),
+};
+
+/** THE SAME TEAM, Edit pressed: the two override selects on every member row. */
+export const TeamMemberOverridesEditing: Story = {
+	render: () => (
+		<Scene
+			at={`/agents?kind=team&name=${OVERRIDES_TEAM.name}`}
+			extraTeams={OVERRIDES_EXTRA}
+		>
+			<PressEdit />
 		</Scene>
 	),
 };
