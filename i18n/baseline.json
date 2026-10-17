@@ -16,7 +16,8 @@
     "src/renderer/src/features/chat/components/attachments-preview.tsx",
     "src/renderer/src/features/projects/",
     "src/renderer/src/features/chat/components/delete-conversation-dialog.tsx",
-    "src/renderer/src/features/chat/components/archive-conversation-dialog.tsx"
+    "src/renderer/src/features/chat/components/archive-conversation-dialog.tsx",
+    "src/renderer/src/shared/components/composer/message-input.tsx"
   ],
   "files": {
     "src/renderer/src/features/agent-hub/agent-details-page.tsx": 16,
@@ -196,7 +197,6 @@
     "src/renderer/src/shared/components/common/update-foot-icon.tsx": 2,
     "src/renderer/src/shared/components/common/update-notification.tsx": 50,
     "src/renderer/src/shared/components/common/update-quiet-indicator.tsx": 1,
-    "src/renderer/src/shared/components/composer/message-input.tsx": 11,
     "src/renderer/src/shared/components/hosting/hosting-select.tsx": 1,
     "src/renderer/src/shared/components/hosting/model-select.tsx": 2,
     "src/renderer/src/shared/components/inline-edit/inline-edit-feedback.tsx": 1,
