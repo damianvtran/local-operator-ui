@@ -577,6 +577,123 @@ test("the live run does not collapse; finished runs above it still do", () => {
 	);
 });
 
+/*
+ * THE SETTLE LATCH (operator report, 2026-10-16): "when I send a steering
+ * message, it alternates between condensing the messages before it and
+ * expanding them".
+ *
+ * WHY A LATCH AND NOT ANOTHER STATELESS ARM. The pane's `live` flag dips at
+ * tool-segment boundaries (`frontend.streaming`, sampled through a real steer
+ * send: `scripts/stt-dictation-proof.mjs`, "the snapshot's `streaming` flag was
+ * dipping at a tool-segment boundary"). Every flip used to re-decide the newest
+ * run's in-flight spans: the dip read as "the turn is over" and condensed them
+ * (`liveFrom = -1`), the re-entry handed them back - a fold/unfold pair per
+ * flip, no reader action, the reported alternation. The 2026-10-01 settled-close
+ * rule (`de9575328`) fixes the steady-live case; a dip bypasses it entirely.
+ *
+ * The distinction a dip needs is "will this turn resume?" - which the rows
+ * cannot state (a first-cycle dip and a genuinely dead run are the SAME rows:
+ * no close, no marker). So the pane LATCHES the run it has watched live
+ * (`watchedRunId`: the newest run's opening row id), and a watched run's plan
+ * stops reading `live` at all: its hide set is a function of the rows alone.
+ * That makes it idempotent under any number of liveness transitions, which is
+ * the property these tests pin.
+ */
+const latchRows = () => [
+	user("u1"),
+	tool("t1", { ts: TS + 1_000, durationS: 3 }),
+	answer("a1", { ts: TS + 3_000, settledAt: TS + 3_000, stopReason: "stop" }),
+	tool("t2", { ts: TS + 4_000, durationS: 4 }),
+	user("s1", { ts: TS + 5_000, text: "steer" }),
+	tool("t3", { ts: TS + 6_000, durationS: 5 }),
+];
+
+/** The rows behind CLOSED bars - the operator-visible unmount set. */
+const hidesOf = (plan) =>
+	plan.runs.flatMap((run) =>
+		run.segments
+			.filter((segment) => segment.collapsed)
+			.flatMap((segment) => segment.rows.map((r) => r.record.id)),
+	);
+
+test("the settle latch: a liveness flip cannot move a watched run's hide set (operator report, 2026-10-16)", () => {
+	const rows = latchRows();
+	const live = planOf(rows, true);
+	/*
+	 * The steer folds into the run (its tail is mid-work), so the newest run is
+	 * `u1..t3`; `settledCloseOf` reads `a1` as the settled close, so `t1` keeps
+	 * its bar and the rows after the close - the work before AND after the steer
+	 * - draw in place. THIS is the hide set the reader has on screen.
+	 */
+	assert.deepEqual(hidesOf(live), ["t1"]);
+	const dip = collapsePlan(rows, { live: false, watchedRunId: "u1" });
+	assert.deepEqual(
+		hidesOf(dip),
+		hidesOf(live),
+		"the dip (a liveness flip) does not move the watch run's hide set",
+	);
+	// Repeated transitions reach the same plan: idempotent, not just stable once.
+	assert.deepEqual(
+		hidesOf(collapsePlan(rows, { live: true, watchedRunId: "u1" })),
+		hidesOf(live),
+		"the re-entry hands back the same hide set",
+	);
+	assert.deepEqual(
+		hidesOf(collapsePlan(rows, watchedOptions())),
+		hidesOf(dip),
+		"a second dip stays put",
+	);
+	// And the per-segment shapes, so a change to the bars' own arithmetic is seen.
+	const run = live.runs.at(-1);
+	assert.deepEqual(
+		run?.segments.map((segment) => segment.collapsed),
+		[true, false, false],
+		"t1 barred; t2 and t3 (the work around the steer) drawn in place",
+	);
+});
+
+/** The same options object twice, because the idempotence claim is about a
+ * second pass over the SAME inputs rather than a new shape. */
+const watchedOptions = () => ({ live: false, watchedRunId: "u1" });
+
+test("the latch names ONE run: an unwatched newest run keeps the idle shape (the residual edge)", () => {
+	const rows = [user("u2"), tool("t4")];
+	const unwatched = collapsePlan(rows, { live: false, watchedRunId: "u1" });
+	assert.equal(
+		unwatched.runs[0].collapses,
+		true,
+		"a run this pane never watched still folds when the pane reads not-live (R2's residual edge)",
+	);
+	const watched = collapsePlan(rows, { live: false, watchedRunId: "u2" });
+	assert.equal(
+		watched.runs[0].collapses,
+		false,
+		"the watched run draws in place: a flip cannot fold rows the reader is watching",
+	);
+	assert.deepEqual(
+		hidesOf(watched),
+		[],
+		"and hands nothing to a bar it did not ask for",
+	);
+	// The settle still folds it, ladder-free: the rows are the decider once more.
+	const settled = collapsePlan(
+		[
+			...rows,
+			answer("a2", {
+				ts: TS + 7_000,
+				settledAt: TS + 7_000,
+				stopReason: "stop",
+			}),
+		],
+		{ live: false, watchedRunId: "u2" },
+	);
+	assert.equal(
+		settled.runs[0].collapses,
+		true,
+		"the run's own answer condenses it",
+	);
+});
+
 test("in-turn receipts hide with the work; the pinned kinds keep their place", () => {
 	// §5 case 15, NARROWED for the operator's feedback (2026-09-29, issue #5):
 	// peer and wake receipts collapse with the work, and the rows that remain
