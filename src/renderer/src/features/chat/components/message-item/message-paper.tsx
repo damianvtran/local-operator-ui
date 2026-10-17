@@ -113,6 +113,10 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 			return (
 				<div className="group relative flex w-full justify-end">
 					<div
+						/* The canonical bubble's twin: same block veil on glass (see
+						 * `canonical-transcript.tsx`), so whichever surface renders the
+						 * turn does not change treatment. */
+						data-glass-block=""
 						className={cn(
 							// D10: a FILL, not an outline, and the same 544px width as the
 							// canonical surface (85% of the 640 column, §D2). This legacy twin
