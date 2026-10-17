@@ -1,0 +1,10 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "radient/auto",
+  "instance": "7c3a91e5d40f",
+  "locale": "es",
+  "status": "passed",
+  "namespace": "ui.console",
+  "sha256": { "es": "1a95664f9be29b001f31bf75e11166d4c3da1ec4db0509c49ad79945ed4a0d11", "en": "4fe88a76de4992e0b890a15c6faafe594ac345e7f62a7deb849b486ec3c14c7e" },
+  "findings": []
+}
