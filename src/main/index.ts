@@ -897,9 +897,10 @@ function createWindow(
 	 * construction half (a transparent first-paint ground and a vibrancy or
 	 * background material) has to be in the constructor options, before any
 	 * renderer exists. OPT-IN AND DEFAULT OFF: with no persisted setting, a
-	 * platform that cannot do it, or the OS's Reduce transparency on, this resolves
-	 * to a state whose `glassWindowOptions` is `{}`, and the window below is the
-	 * one this app always built. See `src/shared/window-glass.ts`.
+	 * platform that cannot do it, or the OS's Reduce transparency on, the window
+	 * below is the shipped opaque one - the palette ground on every platform, plus
+	 * darwin's inert `visualEffectState: "active"` (no vibrancy, material or
+	 * transparent ground). See `src/shared/window-glass.ts`.
 	 */
 	const glass = resolveLaunchWindowGlass({
 		userDataDir: app.getPath("userData"),
@@ -932,9 +933,9 @@ function createWindow(
 		 * over it when it is active. Without a ground Electron's default is `#FFF`, so
 		 * every launch on a dark palette opened with a white flash - the same defect
 		 * `INSTALL_WINDOW_CANVAS` fixed for the installer window. The palette ground
-		 * comes first and the glass overrides it only when ACTIVE; inactive is `{}`
-		 * and the ground stands byte for byte (`groundWithGlass`, pinned by
-		 * `scripts/window-glass.test.mjs`).
+		 * comes first and the glass overrides it only when ACTIVE; inactive keeps that
+		 * ground on every platform and darwin adds only the inert `visualEffectState`
+		 * above (`groundWithGlass`, pinned by `scripts/window-glass.test.mjs`).
 		 */
 		...groundWithGlass(
 			chrome.colors.ground,

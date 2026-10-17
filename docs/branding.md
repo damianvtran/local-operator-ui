@@ -999,13 +999,15 @@ alpha over the backing. `scripts/window-glass-cdp.test.mjs` encodes it as
 `max(surface, canvas)`.
 
 **A window enabled live on macOS stays active when unfocused.** `visualEffectState` is a
-CONSTRUCTOR option (Electron 44's `setVibrancy` takes only `animationDuration`), so every
-darwin window is built with `visualEffectState: "active"` - inert without vibrancy, and
-only one key added to an otherwise off window. A live `setVibrancy` therefore creates the
-same active-state material a launch with glass already on gets. Before this, the live view
-kept the `followWindow` default and went flat whenever the window lost key - the operator
-reported exactly that on 0.34.53 (the glass appeared after a focus change, no restart) -
-which is the defect this construction value fixes.
+CONSTRUCTOR option (Electron 44's `setVibrancy` takes only `animationDuration`), so the
+main window - the only window `glassWindowOptions` is applied to; the mini view never
+attaches glass - is built with `visualEffectState: "active"`, including when glass is off:
+without vibrancy it is inert, and it is only one key added to an otherwise off window. A
+live `setVibrancy` therefore creates the same active-state material a launch with glass
+already on gets. Before this, the live view kept the `followWindow` default and went flat
+whenever the window lost key - the operator reported exactly that on 0.34.53 (the glass
+appeared after a focus change, no restart) - which is the defect this construction value
+fixes.
 
 ## 7. Showing agent work: the trace hierarchy
 
