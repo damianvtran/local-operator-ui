@@ -2601,6 +2601,134 @@ test("PR-4: the cycle settling adds ONE bar at the tail, announces once, and mov
 	assert.equal(barsOf(mounted).length, 2);
 });
 
+test("the settle latch: a dip in a watched episode's cycle moves nothing, and the settle still adds its one bar and sentence", async (t) => {
+	/*
+	 * THE F2 DIP, MOUNTED (convergence round, 2026-10-17; the model half is
+	 * `turn-collapse-model.test.mjs`'s dip-invariance case). Mid-cycle the
+	 * runtime's `frontend.streaming` dips - measured through a real steer send,
+	 * `scripts/stt-dictation-proof.mjs` - and the one-bar gate used to pause on
+	 * the dip: a second bar flashed in and the re-entry took it back. The run is
+	 * one the pane has WATCHED (the latch arms on the live pass below), so the
+	 * dip must reach the plan the reader already has; the settle - a row that
+	 * lands, not a flag that flaps - still adds the bar and its one sentence.
+	 */
+	__resetTurnCollapseOpen();
+	__resetWatchedRuns();
+	const frontend = { session_id: "chat-f2-dip" };
+	const running = [
+		...settledTurn,
+		...wakeCycle([toolRecord("tool:2", { ts: TS + 11_000, durationS: 4 })]),
+	];
+	const mounted = await mount(t, running, { frontend, waiting: true });
+	const first = bar(mounted);
+	assert.equal(barsOf(mounted).length, 1, "one bar while the cycle runs");
+	assert.equal(
+		watchedRunOf("chat-f2-dip"),
+		"user:1",
+		"the live pass armed the latch for this conversation, by its opening row",
+	);
+	const region = () =>
+		mounted.container.querySelector("[data-condense-announcement]")
+			?.textContent ?? "";
+	// THE DIP: one bar, the same element, the episode's row in place, silence.
+	await mounted.render(running, { frontend, waiting: false });
+	assert.equal(barsOf(mounted).length, 1, "the dip adds no bar");
+	assert.ok(bar(mounted) === first, "the standing bar is the same element");
+	assert.ok(rowBox(mounted, "tool:2"), "the episode's row stays in place");
+	assert.equal(region(), "", "nothing is announced while the cycle runs");
+	// THE RE-ENTRY reaches the same plan again.
+	await mounted.render(running, { frontend, waiting: true });
+	assert.equal(barsOf(mounted).length, 1, "the re-entry reaches the same bar");
+	assert.ok(bar(mounted) === first);
+	// THE SETTLE: the row that ends the cycle adds the second bar, and the one
+	// sentence lands HERE, not at a dip.
+	const settled = [
+		...running,
+		answerRecord("answer:2", {
+			ts: TS + 15_000,
+			settledAt: TS + 15_000,
+			stopReason: "stop",
+		}),
+	];
+	await mounted.render(settled, { frontend, waiting: false });
+	assert.equal(barsOf(mounted).length, 2, "the settled cycle is now a bar");
+	assert.ok(
+		barsOf(mounted)[0] === first,
+		"the standing bar is still the same element",
+	);
+	assert.equal(
+		barsOf(mounted)[1].getAttribute("data-record-id"),
+		"wake:1",
+		"the new bar sits at the tail, in the cycle's own first slot",
+	);
+	assert.equal(
+		region(),
+		"Wake: took 4s, 1 action.",
+		"exactly one sentence, and it arrives at the settle",
+	);
+});
+
+test("the settle latch: a quiet beat cannot move a watched episode's bar or its active presentation - the F1 shape", async (t) => {
+	/*
+	 * THE EPISODE FACTS' HALF OF THE DIP (convergence round, 2026-10-17; the F2
+	 * case covers the gate). Here the episode IS the run's one bar, so nothing is
+	 * suppressed and the beat's damage was in the FACTS: `internal.live` (the
+	 * bar's active presentation and the footer's working line) flipped false for
+	 * a beat and back. It now rides `planRun`'s `anchored` reading like
+	 * `liveFrom`, so a beat with no landed close reaches the same painted bar.
+	 * (`internal.unsettled` rides the same reading - that is what keeps the gate
+	 * from flashing in the F2 shape.)
+	 *
+	 * NOT THIS CASE'S QUESTION: the SENTENCE's timing for this shape (the
+	 * announce effect reads the pane's quiet flag beside the episode's own
+	 * settledness - the branch's semantics, pinned by R3's pane-quiet case).
+	 * This case drives only the painted bar state the fix changes.
+	 */
+	__resetTurnCollapseOpen();
+	__resetWatchedRuns();
+	const frontend = { session_id: "chat-f1-dip" };
+	const rows = [
+		userRecord("f1d-u"),
+		answerRecord("f1d-a", {
+			ts: TS + 2_000,
+			settledAt: TS + 2_000,
+			stopReason: "stop",
+		}),
+		peerRecord("f1d-p", { ts: TS + 3_000 }),
+		toolRecord("f1d-t", { ts: TS + 4_000, durationS: 4 }),
+	];
+	const mounted = await mount(t, rows, { frontend, waiting: true });
+	const first = bar(mounted);
+	assert.equal(barsOf(mounted).length, 1, "the live episode is the one bar");
+	assert.equal(
+		watchedRunOf("chat-f1-dip"),
+		"f1d-u",
+		"the live pass armed the latch for this conversation",
+	);
+	assert.equal(
+		first.getAttribute("data-segment-active"),
+		"true",
+		"while live it reads active",
+	);
+	// THE BEAT: same bar, same element, still active.
+	await mounted.render(rows, { frontend, waiting: false });
+	assert.equal(barsOf(mounted).length, 1, "the beat adds no bar");
+	assert.ok(bar(mounted) === first, "the bar is the same element");
+	assert.equal(
+		bar(mounted).getAttribute("data-segment-active"),
+		"true",
+		"and it still reads active: no close has landed, the cycle still runs",
+	);
+	// THE RE-ENTRY reaches it again.
+	await mounted.render(rows, { frontend, waiting: true });
+	assert.ok(bar(mounted) === first, "the re-entry reaches the same bar");
+	assert.equal(
+		bar(mounted).getAttribute("data-segment-active"),
+		"true",
+		"which is still active",
+	);
+});
+
 test("PR-4: a bar the reader opened stays that bar, and open, across the wake and the settle", async (t) => {
 	__resetTurnCollapseOpen();
 	const mounted = await mount(t, settledTurn);

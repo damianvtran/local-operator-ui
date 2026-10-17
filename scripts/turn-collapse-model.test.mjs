@@ -5068,6 +5068,118 @@ test("F2: an episode stays unsettled when a streaming answer appends after it", 
 	assert.equal(span.internal.unsettled, true);
 });
 
+test("the settle latch: a watched episode's gate cannot move on a liveness flip - the F2 dip", () => {
+	/*
+	 * THE DIP THE LATCH MISSED (convergence round, 2026-10-17). `liveFrom` is
+	 * frozen for a watched run, but the one-bar gate and the episode facts still
+	 * read the raw flag: on a dip the episode's suppression paused (a SECOND bar
+	 * flashed in) and `live`/`unsettled` flipped - the painted plan of the run
+	 * the latch exists to protect moved on a transient. The gate and the facts
+	 * now ride the same `anchored` reading `liveFrom` does (see `planRun`).
+	 */
+	const rows = [
+		user("dip-u"),
+		tool("dip-t0", { durationS: 3 }),
+		answer("dip-a0", { settledAt: TS + 3_000, stopReason: "stop" }),
+		peerRow("dip-w1"),
+		tool("dip-t1", { phase: "running", output: null }),
+	];
+	/** Every segment's paint-relevant outcome, in one stable shape. */
+	const outcomes = (plan) =>
+		plan.runs.flatMap((run) =>
+			run.segments.map((segment) => ({
+				key: segment.key,
+				collapsed: segment.collapsed,
+				completed: segment.completed,
+				internal:
+					segment.internal === null || segment.internal === undefined
+						? null
+						: {
+								live: segment.internal.live,
+								unsettled: segment.internal.unsettled,
+								receipts: segment.internal.receipts,
+							},
+			})),
+		);
+	const live = outcomes(
+		collapsePlan(rows, { live: true, watchedRunId: "dip-u" }),
+	);
+	const dipped = outcomes(
+		collapsePlan(rows, { live: false, watchedRunId: "dip-u" }),
+	);
+	assert.deepEqual(
+		dipped,
+		live,
+		"the dip reaches the SAME plan for the watched run",
+	);
+	assert.deepEqual(
+		outcomes(collapsePlan(rows, { live: true, watchedRunId: "dip-u" })),
+		live,
+		"and the re-entry reaches it again - idempotent, not stable once",
+	);
+	/*
+	 * THE F2 SHAPE, spelled: the episode is suppressed (paints loose) while the
+	 * settled turn's own bar stands - on BOTH sides of the flip.
+	 */
+	const episodeOf = (plan) => internalSpanOf(plan, "dip-w1");
+	assert.equal(
+		episodeOf(collapsePlan(rows, { live: true, watchedRunId: "dip-u" }))
+			.collapsed,
+		false,
+		"the live pass suppresses the episode's second bar",
+	);
+	assert.equal(
+		episodeOf(collapsePlan(rows, { live: false, watchedRunId: "dip-u" }))
+			.collapsed,
+		false,
+		"and the dip does not hand it back",
+	);
+	/*
+	 * UNWATCHED CONTROL (the R2 residual, unchanged): the same dip still folds -
+	 * the freeze is the latch's, not a blanket rule.
+	 */
+	assert.notDeepEqual(
+		outcomes(collapsePlan(rows, { live: false })),
+		outcomes(collapsePlan(rows, { live: true })),
+		"an unwatched run is not frozen: its dip still moves the plan",
+	);
+	assert.equal(
+		episodeOf(collapsePlan(rows, { live: false })).collapsed,
+		true,
+		"the unwatched dip folds the episode into its bar",
+	);
+});
+
+test("the settle latch: the watched episode's bar still arrives when the settle lands - no permanent suppression", () => {
+	/*
+	 * The anchored reading must not suppress past settlement: once a settled
+	 * close lands beyond the episode, `span.to >= liveFrom` reads false for the
+	 * watched run too, the gate stops, and the bar is the settle outcome PR-4 #2
+	 * expects (the mounted half pins the one announcement).
+	 */
+	const rows = [
+		user("pst-u"),
+		tool("pst-t0", { durationS: 3 }),
+		answer("pst-a0", { settledAt: TS + 3_000, stopReason: "stop" }),
+		peerRow("pst-w1"),
+		tool("pst-t1", { durationS: 4 }),
+		answer("pst-a1", { settledAt: TS + 15_000, stopReason: "stop" }),
+	];
+	const settled = collapsePlan(rows, { live: false, watchedRunId: "pst-u" });
+	const episode = internalSpanOf(settled, "pst-w1");
+	assert.equal(
+		episode.collapsed,
+		true,
+		"the settled episode wears its own bar",
+	);
+	assert.equal(
+		episode.internal.unsettled,
+		false,
+		"and it is no longer unsettled",
+	);
+	assert.equal(episode.internal.live, false, "nor live");
+});
+
 test("F3: a settled bar's own media keeps that bar when a receipt arrives after it", () => {
 	/*
 	 * Pinning media run-wide once ANY receipt existed tore the picture out of the
