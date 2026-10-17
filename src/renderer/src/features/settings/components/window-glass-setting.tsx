@@ -54,9 +54,7 @@ type WindowGlassSettingProps = {
 const coverageLabel = (coverage: GlassCoverage): string =>
 	coverage === "sidebars"
 		? t("ui.settings.appearance.window_glass.coverage_sidebars")
-		: coverage === "chrome"
-			? t("ui.settings.appearance.window_glass.coverage_chrome")
-			: t("ui.settings.appearance.window_glass.coverage_full");
+		: t("ui.settings.appearance.window_glass.coverage_full");
 
 const materialLabel = (material: GlassMaterial): string => {
 	switch (material) {
@@ -155,6 +153,14 @@ export const WindowGlassSetting: FC<WindowGlassSettingProps> = ({
 		);
 	}
 
+	/*
+	 * ONE WRITE IN FLIGHT, THE LATEST VALUE WINS. `pending` holds the newest value
+	 * seen while a write was out; when it settles the newest is sent. The local
+	 * `dragValue` is cleared only once nothing is pending or in flight: clearing it on
+	 * key-up while a write was still out snapped the thumb back to the OLD stored
+	 * value, and the next key repeat stepped from that, dropping steps (QA Q6:
+	 * six taps 0 ms apart moved +10, not +30).
+	 */
 	const send = async (value: number): Promise<void> => {
 		if (inFlight.current) {
 			pending.current = value;
@@ -168,6 +174,7 @@ export const WindowGlassSetting: FC<WindowGlassSettingProps> = ({
 			const next = pending.current;
 			pending.current = null;
 			if (next !== null && next !== value) void send(next);
+			else setDragValue(null);
 		}
 	};
 
@@ -207,12 +214,21 @@ export const WindowGlassSetting: FC<WindowGlassSettingProps> = ({
 						}))}
 					/>
 					<div>
-						<label
-							htmlFor={sliderId}
-							className="flex min-h-6 items-center text-body text-ink"
-						>
-							{t("ui.settings.appearance.window_glass.intensity_label")}
-						</label>
+						{/* The value rides the label row, as in `SliderSetting`: a sighted
+						    reader gets "what is this set to" without reading the fill. */}
+						<div className="flex min-h-6 items-center justify-between gap-3">
+							<label htmlFor={sliderId} className="text-body text-ink">
+								{t("ui.settings.appearance.window_glass.intensity_label")}
+							</label>
+							<span
+								data-glass-readout=""
+								className="shrink-0 text-meta text-ink-dim tabular-nums"
+							>
+								{t("ui.settings.appearance.window_glass.intensity_value", {
+									value: String(shown),
+								})}
+							</span>
+						</div>
 						<p
 							id={descriptionId}
 							className="mt-0.5 max-w-2xl text-body-sm text-ink-muted"
@@ -227,15 +243,15 @@ export const WindowGlassSetting: FC<WindowGlassSettingProps> = ({
 							step={5}
 							value={shown}
 							aria-describedby={descriptionId}
-							aria-valuetext={`${shown}%`}
+							aria-valuetext={t(
+								"ui.settings.appearance.window_glass.intensity_value",
+								{ value: String(shown) },
+							)}
 							onChange={(event) => {
 								const value = Number(event.target.value);
 								setDragValue(value);
 								void send(value);
 							}}
-							onPointerUp={() => setDragValue(null)}
-							onKeyUp={() => setDragValue(null)}
-							onBlur={() => setDragValue(null)}
 							style={
 								{
 									"--fill": `${shown}%`,
@@ -252,6 +268,17 @@ export const WindowGlassSetting: FC<WindowGlassSettingProps> = ({
 								"[&::-webkit-slider-thumb]:hover:bg-accent-hover"
 							}
 						/>
+						<div
+							aria-hidden="true"
+							className="mt-1 flex justify-between text-meta text-ink-dim"
+						>
+							<span>
+								{t("ui.settings.appearance.window_glass.intensity_start")}
+							</span>
+							<span>
+								{t("ui.settings.appearance.window_glass.intensity_end")}
+							</span>
+						</div>
 					</div>
 					<SegmentRow
 						label={t("ui.settings.appearance.window_glass.material_label")}

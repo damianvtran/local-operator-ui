@@ -956,6 +956,7 @@ export const SettingsPage: FC = () => {
 	return (
 		<div
 			data-glass-region="canvas"
+			data-glass-split=""
 			className="flex h-full w-full overflow-hidden bg-canvas"
 		>
 			{/*
@@ -1012,6 +1013,7 @@ export const SettingsPage: FC = () => {
 			<div
 				ref={contentContainerRef}
 				data-settings-content
+				data-glass-region="canvas-content"
 				data-tour-tag="settings-general-section"
 				className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 md:p-8"
 			>

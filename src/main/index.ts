@@ -49,10 +49,7 @@ import {
 	type WindowChromeMode,
 	windowChromeArgumentFor,
 } from "../shared/window-chrome";
-import {
-	glassWindowOptions,
-	windowGlassArgument,
-} from "../shared/window-glass";
+import { groundWithGlass, windowGlassArgument } from "../shared/window-glass";
 import {
 	BackendInstaller,
 	BackendServiceManager,
@@ -132,10 +129,9 @@ import { titlebarOptions } from "./titlebar-options";
 import { UpdateService, holdLaunchForLiveInstall } from "./update-service";
 import { ViewerEndpoint } from "./viewer-endpoint";
 import { ViewerRecordPublisher } from "./viewer-record";
-import { attachWindowChrome, resolveLaunchWindowChrome } from "./window-chrome";
+import { resolveLaunchWindowChrome } from "./window-chrome";
 import {
 	type ResolvedLaunchGlass,
-	attachWindowGlass,
 	resolveLaunchWindowGlass,
 } from "./window-glass";
 import { openVettedExternal, popupVerdict } from "./window-guards";
@@ -180,6 +176,7 @@ import {
 	reportParksAtQuit,
 	reportSkippedWhileQuitting,
 } from "./window-raise";
+import { attachWindowSurface } from "./window-surface";
 
 const BASE64_FILE_EXTENSIONS = ["csv", "tsv", "xls", "xlsx", "ods"];
 
@@ -931,19 +928,15 @@ function createWindow(
 			colors: chrome.colors,
 		}),
 		/*
-		 * The ground the OS paints before the renderer's first frame. Without it
-		 * Electron's default is `#FFF`, so every launch on a dark palette opened with a
-		 * white flash - the same defect `INSTALL_WINDOW_CANVAS` fixed for the installer
-		 * window, and a hard-coded palette value that a test keeps honest.
+		 * The ground the OS paints before the renderer's first frame, WITH the glass
+		 * over it when it is active. Without a ground Electron's default is `#FFF`, so
+		 * every launch on a dark palette opened with a white flash - the same defect
+		 * `INSTALL_WINDOW_CANVAS` fixed for the installer window. The palette ground
+		 * comes first and the glass overrides it only when ACTIVE; inactive is `{}`
+		 * and the ground stands byte for byte (`groundWithGlass`, pinned by
+		 * `scripts/window-glass.test.mjs`).
 		 */
-		backgroundColor: chrome.colors.ground,
-		/*
-		 * Glass, AFTER the ground on purpose: when active it overrides
-		 * `backgroundColor` with the transparent ground and adds the material; when
-		 * not, it is `{}` and the line above stands byte for byte
-		 * (`scripts/window-glass.test.mjs` pins that).
-		 */
-		...glassWindowOptions(glass.settings, glass.capability),
+		...groundWithGlass(chrome.colors.ground, glass.settings, glass.capability),
 		width: windowLaunch.width,
 		height: windowLaunch.height,
 		// The layout is verified down to 800x600 and not below: the app rail,
@@ -1037,25 +1030,24 @@ function createWindow(
 	 * screen. `scripts/window-mode.test.mjs` scans for that family and names this
 	 * module among the ones that must not contain one.
 	 */
-	let glassController: ReturnType<typeof attachWindowGlass> | null = null;
-	const chromeController = attachWindowChrome({
+	/*
+	 * The glass is attached BEFORE the chrome, inside `attachWindowSurface`, which is
+	 * where the ordering (and why it matters) lives and is tested.
+	 */
+	const surface = attachWindowSurface({
 		window: mainWindow,
-		isGlassActive: () => glassController?.isActive() ?? false,
-		mode: chrome.mode,
-		colors: chrome.colors,
+		glass,
 		userDataDir: app.getPath("userData"),
-		headless: windowLaunch.mode === "headless",
+		chrome: {
+			mode: chrome.mode,
+			colors: chrome.colors,
+			headless: windowLaunch.mode === "headless",
+			log: (line) => logger.info(line, LogFileType.BACKEND),
+		},
 		log: (line) => logger.info(line, LogFileType.BACKEND),
 	});
-	mainWindow.on("closed", () => chromeController.dispose());
-	glassController = attachWindowGlass({
-		window: mainWindow,
-		initial: glass,
-		userDataDir: app.getPath("userData"),
-		restoreGround: () => chromeController.sync(),
-		log: (line) => logger.info(line, LogFileType.BACKEND),
-	});
-	mainWindow.on("closed", () => glassController?.dispose());
+	mainWindow.on("closed", () => surface.chrome.dispose());
+	mainWindow.on("closed", () => surface.glass.dispose());
 	/*
 	 * THE MINI VIEW MUST NOT DEFEAT THE WINDOWS/LINUX QUIT CONTRACT (quick-send
 	 * design §C.5's platform note, read against this app's existing behaviour).

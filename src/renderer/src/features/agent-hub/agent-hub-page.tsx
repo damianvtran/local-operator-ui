@@ -876,6 +876,7 @@ export const AgentHubPage: React.FC = () => {
 								 */}
 								<div
 									className="mr-6 hidden w-60 shrink-0 rounded-md bg-surface p-2 md:block"
+									data-glass-region="panel"
 									data-tour-tag="agent-hub-sidebar-container"
 								>
 									{/*

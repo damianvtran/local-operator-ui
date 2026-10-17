@@ -152,6 +152,16 @@ export function attachWindowGlass(
 	let scheme = options.initial.scheme;
 	const launchedActive = glassIsActive(settings, capability);
 	let pinnedTheme = false;
+	/*
+	 * WHAT IS ON THE WINDOW RIGHT NOW, which is not what the current capability
+	 * says. The capability can drop to `none` while a material is showing (the OS
+	 * "Reduce transparency" switch), and a teardown keyed on the CURRENT mechanism
+	 * has no branch for `none`: the vibrancy view and the transparent ground stayed
+	 * while the renderer went opaque (review R1). Teardown follows what was applied.
+	 */
+	let appliedMechanism: GlassCapability["mechanism"] = launchedActive
+		? capability.mechanism
+		: "none";
 
 	const current = (): WindowGlassState =>
 		stateFor(settings, capability, launchedActive);
@@ -166,21 +176,33 @@ export function attachWindowGlass(
 		if (window.isDestroyed()) return;
 		const active = glassIsActive(settings, capability);
 		try {
-			if (capability.mechanism === "vibrancy") {
-				if (active) {
+			if (active) {
+				if (capability.mechanism === "vibrancy") {
 					window.setBackgroundColor(GLASS_TRANSPARENT);
+					/*
+					 * `visualEffectState` is a CONSTRUCTOR option only (Electron 44:
+					 * `setVibrancy` takes just `animationDuration`), so a window that was
+					 * built opaque and flipped on here keeps the default `followWindow`:
+					 * its material dims while the window is not key. A launch with glass
+					 * already on is built with `active`. Stated, not hidden (review R6).
+					 */
 					window.setVibrancy(macVibrancyFor(settings.material));
-				} else {
-					window.setVibrancy(null);
-					restoreGround();
+					appliedMechanism = "vibrancy";
+				} else if (
+					capability.mechanism === "background-material" &&
+					launchedActive
+				) {
+					window.setBackgroundMaterial(winMaterialFor(settings.material));
+					appliedMechanism = "background-material";
 				}
-			} else if (
-				capability.mechanism === "background-material" &&
-				launchedActive
-			) {
-				window.setBackgroundMaterial(
-					active ? winMaterialFor(settings.material) : "none",
-				);
+			} else if (appliedMechanism === "vibrancy") {
+				window.setVibrancy(null);
+				restoreGround();
+				appliedMechanism = "none";
+			} else if (appliedMechanism === "background-material") {
+				window.setBackgroundMaterial("none");
+				restoreGround();
+				appliedMechanism = "none";
 			}
 		} catch (error) {
 			log(
@@ -200,7 +222,17 @@ export function attachWindowGlass(
 	};
 
 	const persist = (): void => {
-		writeJsonAtomic(windowGlassFilePath(userDataDir), { settings, scheme });
+		/*
+		 * `writeJsonAtomic` reports failure by return value. A read-only profile would
+		 * otherwise lose the setting at the next launch with nothing said; the
+		 * in-memory state stays authoritative for this run (review R9).
+		 */
+		if (
+			!writeJsonAtomic(windowGlassFilePath(userDataDir), { settings, scheme })
+		)
+			log(
+				"[window-glass] the setting could not be saved - it applies to this run and will not survive a restart",
+			);
 	};
 
 	const push = (): void => {

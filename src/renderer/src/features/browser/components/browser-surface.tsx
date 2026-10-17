@@ -624,6 +624,12 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			// ring would be noise". Every focusable CHILD keeps its own ring.
 			tabIndex={-1}
 			className="flex h-full min-h-0 flex-col bg-elevated outline-none!"
+			/* The pane ground of the Browser ROUTE (inside the pane slot the enclosing
+			   `pane` region already owns the alpha and this one is cleared as nested).
+			   `data-glass-split` only on the route host: nothing may paint beneath the
+			   page, or its alpha would be the stack of the backing and the pane. */
+			data-glass-region="pane"
+			data-glass-split={hostSessionId === null ? "" : undefined}
 			data-tour-tag={surfaceTag}
 		>
 			{/* THE STRIP CONSUMES THESE TWO HANDS, so they are passed through rather than
@@ -796,6 +802,9 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 					// also names is a PANE-layout decision, not this class's: in a pane narrower
 					// than ~520px the dock takes the whole width and the page is given none
 					// (spec §4.4), which is PR 2's layout to choose.
+					/* The viewport host: the native page view paints over it, so its own
+					   ground is cleared and the pane above owns the alpha. */
+					data-glass-region="pane-leaf"
 					className="relative min-h-0 min-w-0 grow bg-elevated"
 					data-tour-tag="browser-content"
 					id={tabPanelId}

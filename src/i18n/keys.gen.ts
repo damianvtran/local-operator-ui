@@ -2824,14 +2824,16 @@ export type MessageParams = {
 	"ui.settings.appearance.transcript_display_mode_setting.by_turn": undefined;
 	"ui.settings.appearance.transcript_display_mode_setting.by_turn_condenses_each_turn_to_its_answer_by_response_keeps_every": undefined;
 	"ui.settings.appearance.transcript_display_mode_setting.transcript_display": undefined;
-	"ui.settings.appearance.window_glass.coverage_chrome": undefined;
 	"ui.settings.appearance.window_glass.coverage_description": undefined;
 	"ui.settings.appearance.window_glass.coverage_full": undefined;
 	"ui.settings.appearance.window_glass.coverage_label": undefined;
 	"ui.settings.appearance.window_glass.coverage_sidebars": undefined;
 	"ui.settings.appearance.window_glass.description": undefined;
 	"ui.settings.appearance.window_glass.intensity_description": undefined;
+	"ui.settings.appearance.window_glass.intensity_end": undefined;
 	"ui.settings.appearance.window_glass.intensity_label": undefined;
+	"ui.settings.appearance.window_glass.intensity_start": undefined;
+	"ui.settings.appearance.window_glass.intensity_value": { value: string };
 	"ui.settings.appearance.window_glass.label": undefined;
 	"ui.settings.appearance.window_glass.material_acrylic": undefined;
 	"ui.settings.appearance.window_glass.material_description": undefined;

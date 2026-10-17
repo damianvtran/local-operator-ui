@@ -81,10 +81,14 @@ const AUDIT = `(() => {
     if (m) { const p = m[1].split("/"); return p.length > 1 ? Number(p[1]) : 1; }
     return 1;
   };
+  /* THE REGIONS, by selector. pageSidebar is matched by its own marker, not by tag: nav[data-glass-region="sidebar"] also matched the CHAT sidebar's nested nav (QA Q1) and so audited the wrong element. */
   const regions = {
     sidebar: '[data-sidebar-shell]',
     rail: '[data-panel-rail-host]',
-    settingsNav: 'nav[data-glass-region="sidebar"]',
+    pageSidebar: 'main [data-glass-region="page-sidebar"]',
+    content: 'main [data-glass-region="canvas-content"]',
+    browserPane: '#browser-route, [data-tour-tag="browser-route"]',
+    panel: 'main [data-glass-region="panel"]',
     canvas: 'main[data-glass-region="canvas-backing"]',
   };
   const out = {};
@@ -125,6 +129,7 @@ const AUDIT = `(() => {
   const root = getComputedStyle(document.documentElement);
   out.vars = Object.fromEntries(["--lo-glass-a-canvas", "--lo-glass-a-surface", "--lo-glass-a-elevated", "--lo-glass-a-row-hover", "--lo-glass-a-row-selected", "--lo-glass-a-field"].map((n) => [n, root.getPropertyValue(n).trim() || null]));
   out.glass = document.documentElement.dataset.glass ?? null;
+  out.hash = location.hash;
   return out;
 })()`;
 
@@ -275,61 +280,90 @@ const setGlass = async (patch) => {
 const uniform = (pts) => Math.max(...pts) - Math.min(...pts);
 const mean = (pts) => pts.reduce((a, b) => a + b, 0) / pts.length;
 
-/** [coverage, which regions are glass, intensity] */
-const MODES = [
-	[
-		"full",
-		{
-			sidebar: "surface",
-			rail: "surface",
-			settingsNav: "surface",
-			canvas: "canvas",
-		},
-	],
-	[
-		"chrome",
-		{
-			sidebar: "surface",
-			rail: "surface",
-			settingsNav: "surface",
-			canvas: null,
-		},
-	],
-	[
-		"sidebars",
-		{
-			sidebar: "surface",
-			rail: "surface",
-			settingsNav: "surface",
-			canvas: null,
-		},
-	],
+/**
+ * THE ROUTES THE AUDIT VISITS, and the regions each MUST show.
+ *
+ * The first version audited the chat route only and skipped a region that was not
+ * there (`if (!r) continue`), so the Settings nav and the Agents roster - which sit
+ * inside <main> and compounded over its backing - were never measured and the
+ * "sidebar, rail and settings nav agree" assertion could not fail (review R3 / QA
+ * Q1). Now a route names what it must contain and a missing region FAILS: a guard
+ * that silently measures nothing is the defect.
+ *
+ * `content` is the page's own content column on the split pages (Settings, Agents),
+ * which is what stays opaque canvas under "Sidebars only".
+ */
+const ROUTES = [
+	{ hash: "#/chat", must: ["sidebar", "rail", "canvas"] },
+	{ hash: "#/settings", must: ["sidebar", "pageSidebar", "content"] },
+	{ hash: "#/agents", must: ["sidebar", "pageSidebar", "content"] },
+	/* The large grounds of the other routes (QA Q4): each must reach the alpha owner. */
+	{ hash: "#/browser", must: ["sidebar", "browserPane"] },
+	{ hash: "#/schedules", must: ["sidebar", "panel"] },
+	{ hash: "#/agent-hub", must: ["sidebar", "panel"] },
 ];
+
+/**
+ * Which alpha role each region lands on, per coverage. null = must stay opaque.
+ * The Browser, Schedules and Agent hub routes audit their own large ground only
+ * (`browserPane`, `panel`): the page's backing beneath it would otherwise be
+ * counted into the same reading.
+ */
+const EXPECT = {
+	full: {
+		sidebar: "surface",
+		rail: "surface",
+		pageSidebar: "surface",
+		canvas: "canvas",
+		content: "canvas",
+		browserPane: "elevated",
+		panel: "panel",
+	},
+	sidebars: {
+		sidebar: "surface",
+		rail: "surface",
+		pageSidebar: "surface",
+		canvas: null,
+		content: null,
+		browserPane: null,
+		panel: null,
+	},
+};
 
 for (const [themeName, label] of [
 	["localOperatorDark", "dark"],
 	["localOperatorLight", "light"],
 ]) {
 	test(
-		`${label}: glass off is opaque everywhere; each coverage is uniform per region and opaque outside`,
-		{ skip, timeout: 240_000 },
+		`${label}: glass off is opaque everywhere; each coverage is uniform per region and opaque outside, on every route`,
+		{ skip, timeout: 420_000 },
 		async () => {
 			await loadTheme(themeName);
-			await cdp.ev(`location.hash = "#/chat"`);
-			await wait(1200);
+			const go = async (hash) => {
+				await cdp.ev(`location.hash = ${JSON.stringify(hash)}`);
+				await wait(1300);
+			};
 
-			/* 1. DEFAULT OFF */
-			const off = await cdp.ev(AUDIT);
-			assert.equal(off.glass, null, "no data-glass attribute while off");
-			for (const name of ["sidebar", "rail", "canvas"]) {
-				if (!off[name]) continue;
-				assert.ok(
-					Math.min(...off[name].pts) >= 0.999,
-					`${label} off: ${name} must be fully opaque, saw ${Math.min(...off[name].pts)}`,
-				);
+			/* 1. DEFAULT OFF: every route opaque, no attribute. */
+			for (const route of ROUTES) {
+				await go(route.hash);
+				const off = await cdp.ev(AUDIT);
+				assert.equal(off.glass, null, "no data-glass attribute while off");
+				for (const name of route.must) {
+					assert.ok(
+						off[name],
+						`${label} off ${route.hash}: region ${name} is missing`,
+					);
+					assert.ok(
+						Math.min(...off[name].pts) >= 0.999,
+						`${label} off ${route.hash}: ${name} must be fully opaque, saw ${Math.min(...off[name].pts)}`,
+					);
+				}
 			}
 
-			for (const [coverage, covered] of MODES) {
+			/* 2. EACH COVERAGE x INTENSITY x ROUTE. */
+			for (const coverage of ["full", "sidebars"]) {
+				const covered = EXPECT[coverage];
 				for (const intensity of [0, 50, 100]) {
 					await setGlass({
 						enabled: true,
@@ -337,53 +371,100 @@ for (const [themeName, label] of [
 						intensity,
 						material: "window",
 					});
-					const a = await cdp.ev(AUDIT);
-					const tag = `${label}/${coverage}/${intensity}`;
-					assert.ok(a.glass, `${tag}: data-glass is set`);
-					const surface = Number(a.vars["--lo-glass-a-surface"]);
-					const canvas = Number(a.vars["--lo-glass-a-canvas"]);
-					const sidebarMeans = [];
-					for (const [name, role] of Object.entries(covered)) {
-						const r = a[name];
-						if (!r) continue; // settings nav only exists on the settings route
-						const want =
-							role === "surface" ? surface : role === "canvas" ? canvas : 1;
-						assert.ok(
-							uniform(r.pts) <= TOLERANCE,
-							`${tag}: ${name} is not uniform (spread ${uniform(r.pts).toFixed(3)}: ${[...new Set(r.pts)].join(",")}) - nested grounds are compounding`,
-						);
-						assert.ok(
-							Math.abs(mean(r.pts) - want) <= TOLERANCE,
-							`${tag}: ${name} effective alpha ${mean(r.pts).toFixed(3)} != the role variable ${want}`,
-						);
-						if (role === "surface") sidebarMeans.push(mean(r.pts));
-						if (role) {
-							const wide = r.slabs.filter(
-								(s) =>
-									s.w >= 0.5 * 200 &&
-									s.h >= 0.5 * 40 &&
-									!s.cls.includes("bg-accent") &&
-									!s.cls.includes("danger"),
+					for (const route of ROUTES) {
+						await go(route.hash);
+						const a = await cdp.ev(AUDIT);
+						const tag = `${label}/${coverage}/${intensity}${route.hash}`;
+						assert.ok(a.glass, `${tag}: data-glass is set`);
+						const roleAlpha = {
+							surface: Number(a.vars["--lo-glass-a-surface"]),
+							canvas: Number(a.vars["--lo-glass-a-canvas"]),
+							elevated: Number(a.vars["--lo-glass-a-elevated"]),
+						};
+						/*
+						 * A PANEL sits ON the canvas backing, and the net-alpha arithmetic
+						 * clamps at 0: it can be no more see-through than the backing it rests
+						 * on. On a light palette the canvas target (0.78) is higher than the
+						 * surface one (0.73), so the panel reads the backing's 0.78, not 0.73.
+						 * That is a limit of a stack, stated in docs/branding.md, not a bug.
+						 */
+						roleAlpha.panel = Math.max(roleAlpha.surface, roleAlpha.canvas);
+						const sidebarMeans = [];
+						for (const name of route.must) {
+							const r = a[name];
+							/* A missing region FAILS: an audit that skips what it cannot find
+							 * measures nothing and passes (review R3). */
+							assert.ok(
+								r,
+								`${tag}: region ${name} was not found, so it was not measured`,
 							);
-							assert.deepEqual(
-								wide,
-								[],
-								`${tag}: ${name} holds an opaque ground inside a glass region`,
+							const role = covered[name];
+							const want = role === null ? 1 : roleAlpha[role];
+							assert.ok(
+								uniform(r.pts) <= TOLERANCE,
+								`${tag}: ${name} is not uniform (spread ${uniform(r.pts).toFixed(3)}: ${[...new Set(r.pts)].join(",")}) - nested grounds are compounding`,
+							);
+							assert.ok(
+								Math.abs(mean(r.pts) - want) <= TOLERANCE,
+								`${tag}: ${name} effective alpha ${mean(r.pts).toFixed(3)} != ${role === null ? "opaque (outside coverage)" : `the role variable ${want}`}`,
+							);
+							if (role === "surface") sidebarMeans.push([name, mean(r.pts)]);
+							if (role) {
+								const wide = r.slabs.filter(
+									(sl) =>
+										sl.w >= 100 &&
+										sl.h >= 20 &&
+										!sl.cls.includes("bg-accent") &&
+										!sl.cls.includes("danger"),
+								);
+								assert.deepEqual(
+									wide,
+									[],
+									`${tag}: ${name} holds an opaque ground inside a glass region (${JSON.stringify(wide)})`,
+								);
+							}
+						}
+						/* The page columns must equal the APP sidebar on the same route: they
+						 * read as one sidebar to the person looking at it. */
+						if (sidebarMeans.length > 1) {
+							const vals = sidebarMeans.map(([, v]) => v);
+							assert.ok(
+								Math.max(...vals) - Math.min(...vals) <= TOLERANCE,
+								`${tag}: the sidebar columns disagree: ${sidebarMeans.map(([n, v]) => `${n}=${v.toFixed(3)}`).join(" vs ")}`,
 							);
 						}
 					}
-					assert.ok(
-						Math.max(...sidebarMeans) - Math.min(...sidebarMeans) <= TOLERANCE,
-						`${tag}: the sidebar and the rail disagree: ${sidebarMeans.join(" vs ")}`,
-					);
-					if (covered.canvas === null && a.canvas) {
-						assert.ok(
-							Math.min(...a.canvas.pts) >= 0.999,
-							`${tag}: the chat canvas must stay opaque outside coverage, saw ${Math.min(...a.canvas.pts)}`,
-						);
-					}
 				}
 			}
+		},
+	);
+
+	test(
+		`${label}: the two coverages are provably different pages, not one page twice`,
+		{ skip, timeout: 240_000 },
+		async () => {
+			await loadTheme(themeName);
+			await setGlass({
+				enabled: true,
+				coverage: "sidebars",
+				intensity: 50,
+				material: "window",
+			});
+			await cdp.ev(`location.hash = "#/chat"`);
+			await wait(1300);
+			const a = await cdp.ev(AUDIT);
+			await setGlass({ coverage: "full" });
+			await wait(500);
+			const b = await cdp.ev(AUDIT);
+			assert.notEqual(
+				a.glass,
+				b.glass,
+				"the two tiers set different data-glass kinds",
+			);
+			assert.ok(
+				Math.min(...a.canvas.pts) >= 0.999 && Math.max(...b.canvas.pts) < 0.999,
+				`Sidebars only leaves the chat canvas opaque (${Math.min(...a.canvas.pts)}) and Full app does not (${Math.max(...b.canvas.pts)})`,
+			);
 		},
 	);
 
@@ -441,8 +522,14 @@ for (const [themeName, label] of [
 			const p = await cdp.ev(
 				`(() => { const li = [...document.querySelectorAll("[data-sidebar-shell] li")].find((n) => n.textContent.trim().startsWith("Projects")) ?? document.querySelector("[data-sidebar-shell] li"); const r = li.getBoundingClientRect(); li.setAttribute("data-glass-probe", "1"); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`,
 			);
-			/* Leave first: a pointer already parked on the row from the previous theme's
-			 * run raises no enter event, and the :hover would never apply. */
+			/*
+			 * Leave first, then enter, and RETRY the enter until :hover is real. A pointer
+			 * already parked on the row raises no enter event, and a headless window that
+			 * never took focus can drop the first synthetic move; a single move plus a
+			 * fixed wait made this assertion flaky on an unchanged head (2 of 3 runs
+			 * failed, measured). The retry loop waits for the cascade the user would get
+			 * (the row matching :hover) instead of for a duration.
+			 */
 			await cdp.send("Input.dispatchMouseEvent", {
 				type: "mouseMoved",
 				x: 5,
@@ -450,13 +537,24 @@ for (const [themeName, label] of [
 				button: "none",
 			});
 			await wait(300);
-			await cdp.send("Input.dispatchMouseEvent", {
-				type: "mouseMoved",
-				x: p.x,
-				y: p.y,
-				button: "none",
-			});
-			await wait(900);
+			let hovering = false;
+			for (let attempt = 0; attempt < 8 && !hovering; attempt++) {
+				await cdp.send("Input.dispatchMouseEvent", {
+					type: "mouseMoved",
+					x: p.x + (attempt % 2),
+					y: p.y,
+					button: "none",
+				});
+				await wait(250);
+				hovering = await cdp.ev(
+					`document.querySelector('[data-glass-probe]')?.matches(':hover') === true`,
+				);
+			}
+			assert.ok(
+				hovering,
+				`${label}: the pointer never registered :hover on the row`,
+			);
+			await wait(300);
 			const hover = await cdp.ev(
 				`(() => { const c = getComputedStyle(document.querySelector('[data-glass-probe]')).backgroundColor; const m = c.match(/\\/\\s*([\\d.]+)\\)$/); return m ? Number(m[1]) : c === "rgba(0, 0, 0, 0)" ? 0 : 1; })()`,
 			);

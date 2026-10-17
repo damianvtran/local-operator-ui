@@ -39,8 +39,20 @@
 
 import GLASS_FLOORS from "./window-glass-floors.json";
 
-/** Which surfaces the glass covers. Each one includes the one before it. */
-export const GLASS_COVERAGES = ["sidebars", "chrome", "full"] as const;
+/**
+ * Which surfaces the glass covers. `full` includes `sidebars`.
+ *
+ * TWO TIERS, NOT THREE. A middle "sidebars and chrome" tier shipped in the first
+ * round and was removed after design review D1 / QA Q5: its only extra element was
+ * the window-foot status band, 0 px tall except while an update offer shows, so the
+ * option painted zero differing pixels from "sidebars" (measured: byte-identical
+ * frames) under a jargon label. A header or toolbar tier cannot be made real
+ * cheaply either - a glass strip over the opaque canvas backing would show the
+ * canvas, not the desktop - so the band folds into `sidebars` (it is the sidebars'
+ * surface rung along the window's foot) and `chrome` is read back as `sidebars`
+ * from a profile written by that build (`migrateCoverage`).
+ */
+export const GLASS_COVERAGES = ["sidebars", "full"] as const;
 export type GlassCoverage = (typeof GLASS_COVERAGES)[number];
 
 /** `(typeof ...)[number]` rather than a hand list so the tuple is the one source. */
@@ -171,6 +183,10 @@ export function glassCapabilityFor(input: {
 const isCoverage = (value: unknown): value is GlassCoverage =>
 	(GLASS_COVERAGES as readonly unknown[]).includes(value);
 
+/** A stored coverage from any build: the retired `chrome` tier becomes `sidebars`. */
+export const migrateCoverage = (value: unknown): unknown =>
+	value === "chrome" ? "sidebars" : value;
+
 /**
  * A settings value from an untrusted source (the persisted file, an IPC payload),
  * merged over `base`. Every field is judged on its own, so one bad field keeps its
@@ -193,15 +209,32 @@ export function sanitizeGlassSettings(
 			: base.intensity;
 	const requested =
 		typeof record.material === "string" ? record.material : base.material;
-	const material = (capability.materials as readonly string[]).includes(
-		requested,
-	)
-		? (requested as GlassMaterial)
-		: capability.defaultMaterial;
+	/*
+	 * An UNSUPPORTED capability offers no materials, which is a fact about this
+	 * moment (Reduce transparency is on), not about the user's choice: falling to
+	 * the default there rewrote a stored `menu` as `window` across a round trip
+	 * (review R4 / QA Q2). So when nothing is offered the stored value is kept if it
+	 * is a material at all; only the APPLIED one degrades, and that is `none`.
+	 */
+	const offered = capability.materials as readonly string[];
+	const known = [
+		...GLASS_MAC_MATERIALS,
+		...GLASS_WIN_MATERIALS,
+	] as readonly string[];
+	const material: GlassMaterial =
+		offered.length === 0
+			? known.includes(requested)
+				? (requested as GlassMaterial)
+				: base.material
+			: offered.includes(requested)
+				? (requested as GlassMaterial)
+				: capability.defaultMaterial;
 	return {
 		enabled:
 			typeof record.enabled === "boolean" ? record.enabled : base.enabled,
-		coverage: isCoverage(record.coverage) ? record.coverage : base.coverage,
+		coverage: isCoverage(migrateCoverage(record.coverage))
+			? (migrateCoverage(record.coverage) as GlassCoverage)
+			: base.coverage,
 		intensity,
 		material,
 	};
@@ -258,14 +291,36 @@ export function glassWindowOptions(
 	return {};
 }
 
-/** The AppKit material for a UI material id. `under-window` is Apple's own
- * material for "the window's background"; `sidebar` measured identical. */
+/**
+ * The window's first-paint ground WITH the glass applied over it, in the one
+ * order that keeps default-off byte for byte.
+ *
+ * WHY A FUNCTION. The order is the guarantee: the palette ground first, the glass
+ * options after, so only an ACTIVE glass can override `backgroundColor` and an
+ * inactive one contributes nothing at all. That used to be pinned by a regex over
+ * `index.ts`'s source text (review R7), which proves a spelling; this is what
+ * `index.ts` actually spreads, so the test drives the behaviour. Key order of the
+ * result is part of the contract (`JSON.stringify` equality in the tests).
+ */
+export function groundWithGlass(
+	ground: string,
+	settings: GlassSettings,
+	capability: GlassCapability,
+): ReturnType<typeof glassWindowOptions> & { backgroundColor: string } {
+	return {
+		backgroundColor: ground,
+		...glassWindowOptions(settings, capability),
+	};
+}
+
 /** The subset of Electron's vibrancy names this feature uses, spelled out so the
  * options object type-checks against `BrowserWindowConstructorOptions` without
  * this file importing Electron. */
 export type MacVibrancy = "under-window" | "menu" | "popover";
 export type WinMaterial = "mica" | "acrylic" | "tabbed";
 
+/** The AppKit material for a UI material id. `under-window` is Apple's own
+ * material for "the window's background"; `sidebar` measured identical. */
 export function macVibrancyFor(material: GlassMaterial): MacVibrancy {
 	return material === "menu"
 		? "menu"
@@ -429,7 +484,6 @@ export function readWindowGlassArgument(
  *
  *  - `sidebar` - the navigation columns (chat, settings and agents sidebars, the
  *    collapsed strip, the right-hand panel rail) and the top lane's `surface` stops.
- *  - `chrome`  - the surface-rung status band along the window's foot.
  *  - `canvas`  - the ground the conversation and every page read on: `<main>` is the
  *    BACKING, and the page grounds inside it go transparent so one alpha applies.
  *    The worst case for contrast (hours of prose), which is why it is last.
@@ -444,8 +498,7 @@ export function readWindowGlassArgument(
 export const GLASS_KINDS_BY_COVERAGE: Record<GlassCoverage, readonly string[]> =
 	{
 		sidebars: ["sidebar"],
-		chrome: ["sidebar", "chrome"],
-		full: ["sidebar", "chrome", "canvas", "pane"],
+		full: ["sidebar", "canvas", "pane"],
 	};
 
 export type GlassPaint = {
