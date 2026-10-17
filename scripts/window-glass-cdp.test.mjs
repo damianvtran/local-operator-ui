@@ -140,7 +140,7 @@ const AUDIT = `(() => {
     }
     const own = alphaOf(getComputedStyle(el).backgroundColor);
     const bg = getComputedStyle(el).backgroundColor;
-    out[name] = { pts, slabs, own, bg, cls: String(el.className) };
+    out[name] = { pts, slabs, own, bg, bgImage: getComputedStyle(el).backgroundImage, cls: String(el.className) };
   }
   const root = getComputedStyle(document.documentElement);
   out.vars = Object.fromEntries(["--lo-glass-a-canvas", "--lo-glass-a-surface", "--lo-glass-a-elevated", "--lo-glass-a-row-hover", "--lo-glass-a-row-selected", "--lo-glass-a-row-work", "--lo-glass-a-field", "--lo-glass-a-block-veil"].map((n) => [n, root.getPropertyValue(n).trim() || null]));
@@ -408,6 +408,31 @@ for (const [themeName, label] of [
 			 */
 			const openLivePage = async () => {
 				await go({ hash: "#/browser", must: ["sidebar"] });
+				/*
+				 * THE NON-LIVE STATE IS ONE OWNER (review round 2, F2): with no live page the
+				 * bars must paint nothing, so the route host's pane rung is the only ground.
+				 * The first gate painted the band nothing but left the utilities' opaque
+				 * roles at alpha 1.0 - a start page made of two opaque bars over a film.
+				 * Read before a page is opened; on a reused app that already has one, the
+				 * state is not observable and the read is skipped.
+				 */
+				const startBars = await cdp.ev(`(() => {
+          if (!(document.documentElement.dataset.glass ?? "").split(" ").includes("pane")) return null;
+          if (document.querySelector("[data-glass-chrome-live]")) return null;
+          const alpha = (c) => { if (!c || c === "transparent") return 0; const m = c.match(/^rgba?\(([^)]+)\)$/); if (m) { const p = m[1].split(/[,\/]\s*|\s+/).filter(Boolean); return p.length > 3 ? Number(p[3]) : 1; } return 1; };
+          return [...document.querySelectorAll('[data-glass-region="chrome"]')].map((el) => alpha(getComputedStyle(el).backgroundColor));
+        })()`);
+				if (startBars !== null) {
+					assert.ok(
+						startBars.length > 0,
+						`${label}: the start page has chrome bars to measure`,
+					);
+					for (const a of startBars)
+						assert.ok(
+							a <= 0.006,
+							`${label}: a non-live chrome bar paints its own ground at ${a} - the host pane rung must be the only owner`,
+						);
+				}
 				await cdp.ev(
 					`(() => { const b = [...document.querySelectorAll("button")].find((n) => /new tab/i.test(n.getAttribute("aria-label") || n.textContent || "")); if (b) b.click(); return !!b; })()`,
 				);
@@ -509,6 +534,18 @@ for (const [themeName, label] of [
 								assert.ok(
 									live,
 									`${tag}: the chrome band is being measured without a live page, so the host is not cleared and the band composites over the pane`,
+								);
+								/*
+								 * ONE COLOUR, NO LAYER (review round 2, F1). The first version of
+								 * the strip's field step was a `background-image`, invisible to the
+								 * own-alpha read and to this guard; it put the active tab's inkDim
+								 * mark under its floor on 18 palettes. A band that paints a second
+								 * layer must fail here, because that is the shape that broke.
+								 */
+								assert.equal(
+									r.bgImage,
+									"none",
+									`${tag}: the chrome band paints a background layer (${r.bgImage}); the band must be one colour - a stack under the active tab breaks its inkDim floor`,
 								);
 							}
 							const role = covered[name];

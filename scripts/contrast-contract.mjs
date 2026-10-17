@@ -7442,9 +7442,10 @@ for (const row of ROW_STATE_MEASURED_SHORTFALL) {
  *     `surface` at its floor RAW over the desktop - the app sidebar's own paint,
  *     so the two measure equal. Inks on the band are held to AA, `inkDim`
  *     included (this is a ground, not a state: the 3.5 relaxation does not
- *     apply). The strip is the band plus the field overlay and the active tab
- *     the band plus the selected overlay - contexts of the same derived alphas,
- *     asserted here so a future role change cannot quietly reuse them elsewhere.
+ *     apply). The active tab is the band plus the selected overlay, and that
+ *     pair is the SHIPPED stack: the strip's field layer was withdrawn because
+ *     the tab's `inkDim` mark fell under its floor on 18 palettes (review round
+ *     2, F1). A future layer here has to come back through this row.
  *
  * The composer is a field on the CANVAS ground, which the block above already
  * asserts ("glass text field" over canvas); it needs no separate row, and its
@@ -7536,13 +7537,18 @@ for (const row of ROW_STATE_MEASURED_SHORTFALL) {
 					);
 				chromeMin[ink] = Math.min(chromeMin[ink], r);
 			}
-			for (const [state, label] of [
-				["field", "glass chrome field"],
-				["selected", "glass chrome tab"],
-			]) {
+			/*
+			 * THE ACTIVE TAB IS THE REAL STACK: selected over chrome, nothing else.
+			 * A field layer under it was tried and withdrawn (review round 2, F1) - its
+			 * 5% ink put this row's `inkDim` (the tab's globe / loading spinner) at
+			 * 3.21:1 on cyberpunk and below 3.5 on 18 dark palettes, on both tiers.
+			 * This is the row that must fail if a layer is ever re-added here.
+			 */
+			{
+				const label = "glass chrome tab";
 				const fill = glassComposite(
 					palette.ink,
-					committed.stateAlpha[state],
+					committed.stateAlpha.selected,
 					chrome,
 				);
 				for (const ink of GLASS_INKS) {
@@ -7555,15 +7561,13 @@ for (const row of ROW_STATE_MEASURED_SHORTFALL) {
 							`${id}: ${label} (${tier}/${scheme}) ${ink} on the fill is ${r2(r)}:1, floor ${floor}`,
 						);
 				}
-				if (state === "selected") {
-					assertions++;
-					const step = deltaE(fill, chrome);
-					chromeMin.tabStep = Math.min(chromeMin.tabStep, step);
-					if (step < 2.5)
-						fail(
-							`${id}: glass chrome tab (${tier}/${scheme}) is ΔE00 ${r2(step)} off the band, floor 2.5`,
-						);
-				}
+				assertions++;
+				const step = deltaE(fill, chrome);
+				chromeMin.tabStep = Math.min(chromeMin.tabStep, step);
+				if (step < 2.5)
+					fail(
+						`${id}: glass chrome tab (${tier}/${scheme}) is ΔE00 ${r2(step)} off the band, floor 2.5`,
+					);
 			}
 		}
 	}
