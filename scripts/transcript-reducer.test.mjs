@@ -5422,7 +5422,16 @@ test("a tail read never answers the paging question, and never repaints a cleare
 	);
 
 	// And the bracket QA ran: `/clear`, a new message, then the pass.
-	const afterNewMessage = appendPendingUser(afterTail, "and now compact again");
+	// The id and the media array were missing here, so the record this appended
+	// carried `undefined` for both -- invisible while the assertion below only
+	// counts kinds, and a `TypeError` the moment anything read the text (found by
+	// this PR's stricter reader, agent review round 1 remediation).
+	const afterNewMessage = appendPendingUser(
+		afterTail,
+		"req-compact-again",
+		"and now compact again",
+		[],
+	);
 	assert.deepEqual(rows(afterNewMessage), ["compaction", "user"]);
 	const afterSecondPass = applyHistoryPage(afterNewMessage, twoPasses, {
 		keepPaging: true,
@@ -8314,5 +8323,174 @@ test("an error notice folds into an error row and survives an authoritative page
 			(record) => record.kind === "notice" && record.level === "error",
 		),
 		true,
+	);
+});
+/* ------------------------------------------------------------------ */
+/* `$skill` rows: one derivation, shared by every construction site     */
+/* ------------------------------------------------------------------ */
+
+/*
+ * A persisted `$skill` payload, as the wire holds it: the header sentence, the
+ * attribute-carrying tag, the SKILL.md body verbatim (front matter included —
+ * the resolver returns the file, not a stripped copy) and the request last.
+ * LITERAL rather than rendered, for the reason `scripts/skill-row.test.mjs`
+ * states: the write half is pinned against the harness in its own suite, and an
+ * expectation recomputed here would pin nothing.
+ */
+const SKILL_PAYLOAD = [
+	"The user invoked the `seal-demo` skill directly. Follow it for this request. Its reference files, if any, are listed at the end of the body and are read with `skill://<name>/<path>`.",
+	'<skill name="seal-demo" invocation="$seal-demo review the diff">',
+	"---\nname: seal-demo\ndescription: Review a diff for the seal demo\n---\n\n# Seal demo\n\nAnswer with one line.\n</skill>",
+	"review the diff",
+].join("\n");
+const SKILL_ROW = {
+	name: "seal-demo",
+	token: "$seal-demo",
+	request: "review the diff",
+	purpose: "Review a diff for the seal demo",
+	body: "# Seal demo\n\nAnswer with one line.",
+};
+
+test("a `$skill` payload is stamped the same way by the page and by the frame", () => {
+	/*
+	 * The two arms are different code over different payload shapes, which is why
+	 * the harness suppression beside them is spelled twice as well. A row that
+	 * painted the seal live and the payload wall after a reload is the defect
+	 * the harness repo's `docs/design/history-fold-convergence.md` row D8 records,
+	 * and it is exactly the shape a one-sided derivation produces.
+	 */
+	const durable = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			{
+				id: "u1",
+				ts: 10,
+				type: "message",
+				payload: { kind: "message", ...user("u1", SKILL_PAYLOAD) },
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	const live = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: user("u1", SKILL_PAYLOAD) },
+		5,
+	);
+	assert.deepEqual(durable.records[0].skill, SKILL_ROW);
+	assert.deepEqual(live.records[0].skill, SKILL_ROW);
+	// The row's own text stays the payload: `Send again` re-sends it, and the
+	// display side reads the line back off it (`skill-row.ts`).
+	assert.equal(durable.records[0].text, SKILL_PAYLOAD);
+	assert.equal(live.records[0].text, SKILL_PAYLOAD);
+	// And a re-read of the same page stays a no-op: the fresh parse must not
+	// count as a changed field, or every history merge would replace (and
+	// re-render) every invocation row in the pane.
+	assert.equal(
+		applyHistoryPage(durable, {
+			entries: [
+				{
+					id: "u1",
+					ts: 10,
+					type: "message",
+					payload: { kind: "message", ...user("u1", SKILL_PAYLOAD) },
+				},
+			],
+			has_more: false,
+			cursor_missing: false,
+		}),
+		durable,
+		"an unchanged invocation row keeps its identity",
+	);
+});
+
+test("the `$skill` echo equals the durable row apart from local/provisional", () => {
+	/*
+	 * The echo is what the sender sees for the length of the send, so it has to
+	 * paint the same shape the owner's row will: a payload wall collapsing into a
+	 * seal when the row lands would be one message shown as two.
+	 */
+	const echo = appendPendingUser(EMPTY_TRANSCRIPT, "u1", SKILL_PAYLOAD, [], 7);
+	const echoed = echo.records[0];
+	assert.equal(echoed.local, true);
+	assert.equal(echoed.provisional, true);
+	assert.deepEqual(echoed.skill, SKILL_ROW);
+	const { local, provisional, ts, ...withoutEchoFlags } = echoed;
+	assert.equal(local, true);
+	assert.equal(provisional, true);
+	const durable = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			{
+				id: "u1",
+				ts: 10,
+				type: "message",
+				payload: { kind: "message", ...user("u1", SKILL_PAYLOAD) },
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	}).records[0];
+	const { ts: durableTs, ...withoutStamp } = durable;
+	assert.deepEqual(withoutEchoFlags, withoutStamp);
+	// `ts` is the one other difference, and by design: the echo is stamped on the
+	// client clock and the owner's row on its own (see `monotonicStamp`).
+	assert.equal(typeof ts, "number");
+	assert.equal(typeof durableTs, "number");
+});
+
+test("a row sent before the seal existed folds on the next read", () => {
+	/*
+	 * The recogniser reads the PAYLOAD rather than a wire field, which is the
+	 * whole reason it reaches the rows an older session already holds. This is
+	 * that session: a payload written by a build that had no seal, with the
+	 * resolver's own reference listing appended and no front matter (a skill
+	 * whose SKILL.md is prose and files).
+	 */
+	const old = [
+		"The user invoked the `seal-demo` skill directly. Follow it for this request. Its reference files, if any, are listed at the end of the body and are read with `skill://<name>/<path>`.",
+		'<skill name="seal-demo" invocation="$seal-demo tidy the notes">',
+		"# Seal demo\n\nAnswer with one line.\n\nReferences:\n- skill://seal-demo/references/style.md\n</skill>",
+		"tidy the notes",
+	].join("\n");
+	const state = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			{
+				id: "u-old",
+				ts: 9,
+				type: "message",
+				payload: { kind: "message", ...user("u-old", old) },
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.deepEqual(state.records[0].skill, {
+		name: "seal-demo",
+		token: "$seal-demo",
+		request: "tidy the notes",
+		purpose: null,
+		body: "# Seal demo\n\nAnswer with one line.\n\nReferences:\n- skill://seal-demo/references/style.md",
+	});
+});
+
+test("an ordinary message carries no seal", () => {
+	const state = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			{
+				id: "u-plain",
+				ts: 3,
+				type: "message",
+				payload: {
+					kind: "message",
+					...user("u-plain", "plain words about a skill"),
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.equal(
+		Object.prototype.hasOwnProperty.call(state.records[0], "skill"),
+		false,
+		"the key is absent, not undefined: the gate compares key counts",
 	);
 });
