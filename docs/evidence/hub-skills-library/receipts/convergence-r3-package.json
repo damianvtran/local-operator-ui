@@ -1,11 +1,11 @@
 {
-	"oursAddedTokens": [
-		"scripts/hub-skills-capability.test.mjs",
-		"scripts/hub-mutation-safety.test.mjs"
-	],
-	"oursRemovedTokens": [],
-	"upstreamPreservedExactExceptAddedTokens": true,
-	"noDuplicateTokens": true,
-	"upstreamCount": 456,
-	"mergedCount": 458
+  "oursAddedTokens": [
+    "scripts/hub-skills-capability.test.mjs",
+    "scripts/hub-mutation-safety.test.mjs"
+  ],
+  "oursRemovedTokens": [],
+  "upstreamPreservedExactExceptAddedTokens": true,
+  "noDuplicateTokens": true,
+  "upstreamCount": 456,
+  "mergedCount": 458
 }

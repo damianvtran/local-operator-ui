@@ -229,9 +229,8 @@ const installBridge = () => {
 					return {
 						status: 503,
 						body: {
-							detail:
-								"the backend refused: the session is not accepting commands",
-						},
+						detail: "the backend refused: the session is not accepting commands",
+					},
 					};
 				}
 				return {

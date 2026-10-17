@@ -1,319 +1,319 @@
 {
-	"label": "narrow",
-	"session": "a1f0c0de0001",
-	"window": {
-		"width": 800,
-		"height": 800
-	},
-	"themes": {
-		"dark": {
-			"frame": "<scratch>/evidence/frames2/after/files-narrow-dark.png",
-			"reading": {
-				"innerWidth": 800,
-				"innerHeight": 800,
-				"dock": {
-					"x": 536,
-					"y": 32,
-					"w": 220,
-					"h": 768
-				},
-				"dockMode": "overlay",
-				"scroller": {
-					"x": 536,
-					"y": 116,
-					"w": 220,
-					"h": 684
-				},
-				"rowCount": 7,
-				"rows": [
-					{
-						"text": "fixture-model-01.jpg 412b2a3d",
-						"box": {
-							"x": 544,
-							"y": 124,
-							"w": 204,
-							"h": 36
-						},
-						"insideDock": true,
-						"thumb": {
-							"decoded": true,
-							"naturalWidth": 576,
-							"naturalHeight": 1024,
-							"srcScheme": "blob",
-							"box": {
-								"x": 552,
-								"y": 128,
-								"w": 28,
-								"h": 28
-							}
-						}
-					},
-					{
-						"text": "fixture-model-01.jpg 0466de15",
-						"box": {
-							"x": 544,
-							"y": 160,
-							"w": 204,
-							"h": 36
-						},
-						"insideDock": true,
-						"thumb": {
-							"decoded": true,
-							"naturalWidth": 576,
-							"naturalHeight": 1024,
-							"srcScheme": "blob",
-							"box": {
-								"x": 552,
-								"y": 164,
-								"w": 28,
-								"h": 28
-							}
-						}
-					},
-					{
-						"text": "fixture-model-02.jpg",
-						"box": {
-							"x": 544,
-							"y": 196,
-							"w": 204,
-							"h": 36
-						},
-						"insideDock": true,
-						"thumb": {
-							"decoded": true,
-							"naturalWidth": 1024,
-							"naturalHeight": 576,
-							"srcScheme": "blob",
-							"box": {
-								"x": 552,
-								"y": 200,
-								"w": 28,
-								"h": 28
-							}
-						}
-					},
-					{
-						"text": "Video f07be5f5",
-						"box": {
-							"x": 544,
-							"y": 232,
-							"w": 204,
-							"h": 36
-						},
-						"insideDock": true,
-						"thumb": null
-					},
-					{
-						"text": "paper-ground.png",
-						"box": {
-							"x": 544,
-							"y": 268,
-							"w": 204,
-							"h": 36
-						},
-						"insideDock": true,
-						"thumb": {
-							"decoded": true,
-							"naturalWidth": 480,
-							"naturalHeight": 480,
-							"srcScheme": "blob",
-							"box": {
-								"x": 552,
-								"y": 272,
-								"w": 28,
-								"h": 28
-							}
-						}
-					},
-					{
-						"text": "gone.png",
-						"box": {
-							"x": 544,
-							"y": 304,
-							"w": 204,
-							"h": 36
-						},
-						"insideDock": true,
-						"thumb": null
-					},
-					{
-						"text": "promo-notes.md",
-						"box": {
-							"x": 544,
-							"y": 340,
-							"w": 204,
-							"h": 36
-						},
-						"insideDock": true,
-						"thumb": null
-					}
-				],
-				"header": "Filter 7 files fixture-model-01.jpg 412b2a3d fixture-model-01.jpg 0466de15 fixture-model-02.jpg Video f07be5f5 paper-ground.png gone.png promo-notes.md"
-			}
-		},
-		"light": {
-			"frame": "<scratch>/evidence/frames2/after/files-narrow-light.png",
-			"reading": {
-				"innerWidth": 800,
-				"innerHeight": 800,
-				"dock": {
-					"x": 536,
-					"y": 32,
-					"w": 220,
-					"h": 768
-				},
-				"dockMode": "overlay",
-				"scroller": {
-					"x": 536,
-					"y": 116,
-					"w": 220,
-					"h": 684
-				},
-				"rowCount": 7,
-				"rows": [
-					{
-						"text": "fixture-model-01.jpg 412b2a3d",
-						"box": {
-							"x": 544,
-							"y": 124,
-							"w": 204,
-							"h": 36
-						},
-						"insideDock": true,
-						"thumb": {
-							"decoded": true,
-							"naturalWidth": 576,
-							"naturalHeight": 1024,
-							"srcScheme": "blob",
-							"box": {
-								"x": 552,
-								"y": 128,
-								"w": 28,
-								"h": 28
-							}
-						}
-					},
-					{
-						"text": "fixture-model-01.jpg 0466de15",
-						"box": {
-							"x": 544,
-							"y": 160,
-							"w": 204,
-							"h": 36
-						},
-						"insideDock": true,
-						"thumb": {
-							"decoded": true,
-							"naturalWidth": 576,
-							"naturalHeight": 1024,
-							"srcScheme": "blob",
-							"box": {
-								"x": 552,
-								"y": 164,
-								"w": 28,
-								"h": 28
-							}
-						}
-					},
-					{
-						"text": "fixture-model-02.jpg",
-						"box": {
-							"x": 544,
-							"y": 196,
-							"w": 204,
-							"h": 36
-						},
-						"insideDock": true,
-						"thumb": {
-							"decoded": true,
-							"naturalWidth": 1024,
-							"naturalHeight": 576,
-							"srcScheme": "blob",
-							"box": {
-								"x": 552,
-								"y": 200,
-								"w": 28,
-								"h": 28
-							}
-						}
-					},
-					{
-						"text": "Video f07be5f5",
-						"box": {
-							"x": 544,
-							"y": 232,
-							"w": 204,
-							"h": 36
-						},
-						"insideDock": true,
-						"thumb": null
-					},
-					{
-						"text": "paper-ground.png",
-						"box": {
-							"x": 544,
-							"y": 268,
-							"w": 204,
-							"h": 36
-						},
-						"insideDock": true,
-						"thumb": {
-							"decoded": true,
-							"naturalWidth": 480,
-							"naturalHeight": 480,
-							"srcScheme": "blob",
-							"box": {
-								"x": 552,
-								"y": 272,
-								"w": 28,
-								"h": 28
-							}
-						}
-					},
-					{
-						"text": "gone.png",
-						"box": {
-							"x": 544,
-							"y": 304,
-							"w": 204,
-							"h": 36
-						},
-						"insideDock": true,
-						"thumb": null
-					},
-					{
-						"text": "promo-notes.md",
-						"box": {
-							"x": 544,
-							"y": 340,
-							"w": 204,
-							"h": 36
-						},
-						"insideDock": true,
-						"thumb": null
-					}
-				],
-				"header": "Filter 7 files fixture-model-01.jpg 412b2a3d fixture-model-01.jpg 0466de15 fixture-model-02.jpg Video f07be5f5 paper-ground.png gone.png promo-notes.md"
-			}
-		}
-	},
-	"facts": {
-		"windowMode": "headless",
-		"appVersion": "0.34.40",
-		"platform": "darwin",
-		"title": "Local Operator",
-		"windowSize": {
-			"width": 800,
-			"height": 800
-		},
-		"contentBounds": {
-			"width": 800,
-			"height": 800
-		},
-		"visible": false,
-		"focused": false,
-		"minimized": false,
-		"frames": [],
-		"outDir": "<scratch>/evidence/frames2/after"
-	}
+  "label": "narrow",
+  "session": "a1f0c0de0001",
+  "window": {
+    "width": 800,
+    "height": 800
+  },
+  "themes": {
+    "dark": {
+      "frame": "<scratch>/evidence/frames2/after/files-narrow-dark.png",
+      "reading": {
+        "innerWidth": 800,
+        "innerHeight": 800,
+        "dock": {
+          "x": 536,
+          "y": 32,
+          "w": 220,
+          "h": 768
+        },
+        "dockMode": "overlay",
+        "scroller": {
+          "x": 536,
+          "y": 116,
+          "w": 220,
+          "h": 684
+        },
+        "rowCount": 7,
+        "rows": [
+          {
+            "text": "fixture-model-01.jpg 412b2a3d",
+            "box": {
+              "x": 544,
+              "y": 124,
+              "w": 204,
+              "h": 36
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 576,
+              "naturalHeight": 1024,
+              "srcScheme": "blob",
+              "box": {
+                "x": 552,
+                "y": 128,
+                "w": 28,
+                "h": 28
+              }
+            }
+          },
+          {
+            "text": "fixture-model-01.jpg 0466de15",
+            "box": {
+              "x": 544,
+              "y": 160,
+              "w": 204,
+              "h": 36
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 576,
+              "naturalHeight": 1024,
+              "srcScheme": "blob",
+              "box": {
+                "x": 552,
+                "y": 164,
+                "w": 28,
+                "h": 28
+              }
+            }
+          },
+          {
+            "text": "fixture-model-02.jpg",
+            "box": {
+              "x": 544,
+              "y": 196,
+              "w": 204,
+              "h": 36
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 1024,
+              "naturalHeight": 576,
+              "srcScheme": "blob",
+              "box": {
+                "x": 552,
+                "y": 200,
+                "w": 28,
+                "h": 28
+              }
+            }
+          },
+          {
+            "text": "Video f07be5f5",
+            "box": {
+              "x": 544,
+              "y": 232,
+              "w": 204,
+              "h": 36
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "paper-ground.png",
+            "box": {
+              "x": 544,
+              "y": 268,
+              "w": 204,
+              "h": 36
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 480,
+              "naturalHeight": 480,
+              "srcScheme": "blob",
+              "box": {
+                "x": 552,
+                "y": 272,
+                "w": 28,
+                "h": 28
+              }
+            }
+          },
+          {
+            "text": "gone.png",
+            "box": {
+              "x": 544,
+              "y": 304,
+              "w": 204,
+              "h": 36
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "promo-notes.md",
+            "box": {
+              "x": 544,
+              "y": 340,
+              "w": 204,
+              "h": 36
+            },
+            "insideDock": true,
+            "thumb": null
+          }
+        ],
+        "header": "Filter 7 files fixture-model-01.jpg 412b2a3d fixture-model-01.jpg 0466de15 fixture-model-02.jpg Video f07be5f5 paper-ground.png gone.png promo-notes.md"
+      }
+    },
+    "light": {
+      "frame": "<scratch>/evidence/frames2/after/files-narrow-light.png",
+      "reading": {
+        "innerWidth": 800,
+        "innerHeight": 800,
+        "dock": {
+          "x": 536,
+          "y": 32,
+          "w": 220,
+          "h": 768
+        },
+        "dockMode": "overlay",
+        "scroller": {
+          "x": 536,
+          "y": 116,
+          "w": 220,
+          "h": 684
+        },
+        "rowCount": 7,
+        "rows": [
+          {
+            "text": "fixture-model-01.jpg 412b2a3d",
+            "box": {
+              "x": 544,
+              "y": 124,
+              "w": 204,
+              "h": 36
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 576,
+              "naturalHeight": 1024,
+              "srcScheme": "blob",
+              "box": {
+                "x": 552,
+                "y": 128,
+                "w": 28,
+                "h": 28
+              }
+            }
+          },
+          {
+            "text": "fixture-model-01.jpg 0466de15",
+            "box": {
+              "x": 544,
+              "y": 160,
+              "w": 204,
+              "h": 36
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 576,
+              "naturalHeight": 1024,
+              "srcScheme": "blob",
+              "box": {
+                "x": 552,
+                "y": 164,
+                "w": 28,
+                "h": 28
+              }
+            }
+          },
+          {
+            "text": "fixture-model-02.jpg",
+            "box": {
+              "x": 544,
+              "y": 196,
+              "w": 204,
+              "h": 36
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 1024,
+              "naturalHeight": 576,
+              "srcScheme": "blob",
+              "box": {
+                "x": 552,
+                "y": 200,
+                "w": 28,
+                "h": 28
+              }
+            }
+          },
+          {
+            "text": "Video f07be5f5",
+            "box": {
+              "x": 544,
+              "y": 232,
+              "w": 204,
+              "h": 36
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "paper-ground.png",
+            "box": {
+              "x": 544,
+              "y": 268,
+              "w": 204,
+              "h": 36
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 480,
+              "naturalHeight": 480,
+              "srcScheme": "blob",
+              "box": {
+                "x": 552,
+                "y": 272,
+                "w": 28,
+                "h": 28
+              }
+            }
+          },
+          {
+            "text": "gone.png",
+            "box": {
+              "x": 544,
+              "y": 304,
+              "w": 204,
+              "h": 36
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "promo-notes.md",
+            "box": {
+              "x": 544,
+              "y": 340,
+              "w": 204,
+              "h": 36
+            },
+            "insideDock": true,
+            "thumb": null
+          }
+        ],
+        "header": "Filter 7 files fixture-model-01.jpg 412b2a3d fixture-model-01.jpg 0466de15 fixture-model-02.jpg Video f07be5f5 paper-ground.png gone.png promo-notes.md"
+      }
+    }
+  },
+  "facts": {
+    "windowMode": "headless",
+    "appVersion": "0.34.40",
+    "platform": "darwin",
+    "title": "Local Operator",
+    "windowSize": {
+      "width": 800,
+      "height": 800
+    },
+    "contentBounds": {
+      "width": 800,
+      "height": 800
+    },
+    "visible": false,
+    "focused": false,
+    "minimized": false,
+    "frames": [],
+    "outDir": "<scratch>/evidence/frames2/after"
+  }
 }

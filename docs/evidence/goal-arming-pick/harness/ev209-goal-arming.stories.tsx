@@ -1,4 +1,3 @@
-import { MessageInput } from "@features/chat/components/message-input";
 /*
  * EV209 — the composer's goal-arming surfaces, driven through the REAL component.
  *
@@ -27,13 +26,13 @@ import { MessageInput } from "@features/chat/components/message-input";
  */
 import type { Meta, StoryObj } from "@storybook/react";
 import { useCallback, useRef, useState } from "react";
+import { MessageInput } from "@features/chat/components/message-input";
 
 /* The catalogue the composer's `commands.list` op answers with (real rows). */
 const COMMANDS = __EV209_CATALOGUE__;
 
 (function installDesktopFixture() {
-	const api =
-		(window as unknown as { api?: Record<string, unknown> }).api ?? {};
+	const api = (window as unknown as { api?: Record<string, unknown> }).api ?? {};
 	(window as unknown as { api: Record<string, unknown> }).api = api;
 	/*
 	 * The daemon bridge, so the health probe is a function of THIS tree rather
@@ -256,14 +255,10 @@ function Harness() {
 				{button("type-loop", "1c. type /loop sentence", () =>
 					typeDraft(area(), "please run /loop on 3 tasks"),
 				)}
-				{button(
-					"type-loop-token",
-					"1e. type /loop with the caret on the word",
-					() => {
-						fresh();
-						typeDraft(area(), "please run /loop");
-					},
-				)}
+				{button("type-loop-token", "1e. type /loop with the caret on the word", () => {
+					fresh();
+					typeDraft(area(), "please run /loop");
+				})}
 				{button("type-multiline", "1d. type multi-line + /goal", () => {
 					fresh();
 					typeDraft(
@@ -363,7 +358,9 @@ function Harness() {
 					 */
 					sessionStatus={{
 						frontend: {} as never,
-						onCommand: session ? async () => "consumed" as const : undefined,
+						onCommand: session
+							? async () => "consumed" as const
+							: undefined,
 						draft: !session,
 					}}
 					paneHasSession={session}

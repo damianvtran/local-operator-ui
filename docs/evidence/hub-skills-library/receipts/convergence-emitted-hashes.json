@@ -1,51 +1,51 @@
 {
-	"tool": "existing esbuild.transform; loader ts, format esm, target es2022, no sourcemap",
-	"old": "43fc66a1b",
-	"incoming": "51a2eccfb",
-	"results": [
-		{
-			"path": "src/renderer/src/shared/api/local-operator/desktop-hooks.ts",
-			"oldSourceSha256": "37b1298c04a9a7559133c728be10075388db5ae073a7ddebd32b87363affae00",
-			"incomingSourceSha256": "3ace05e6e6613a61d79959edc917bf6c9cdbab16092eebdd21dccb566bd52869",
-			"oldEmittedSha256": "86fcf11093c829de865594b8dd9c7c76eaece700d8d9568ed1b04e99ec40ec58",
-			"incomingEmittedSha256": "86fcf11093c829de865594b8dd9c7c76eaece700d8d9568ed1b04e99ec40ec58",
-			"emittedEqual": true
-		},
-		{
-			"path": "src/renderer/src/shared/store/ui-preferences-store.ts",
-			"oldSourceSha256": "5f7bd77b9437b82d17fa061e2cab86838db2c0509a482e78cddcb1beb51f85a7",
-			"incomingSourceSha256": "f34dfe9fc2a7c5ec4dbef13fb7fed791f1e3ae72aef35e5d585a2f9d64db6a39",
-			"oldEmittedSha256": "4a82ffe94ccb42dd7afabd6a0bd1668095d7d8eed65c3b337b55dd9d8179be68",
-			"incomingEmittedSha256": "05123a70327e9005e7ef4929d91b1a0b90c12a3bc1131aec1fb7828f6a4d4e09",
-			"emittedEqual": false
-		},
-		{
-			"path": "src/shared/desktop-contract.ts",
-			"oldSourceSha256": "3d82ccf0704990db56e048e12227204b6f8b2d1f2bfdd5f3eb948c4116379c5b",
-			"incomingSourceSha256": "2f1c1fa19ff54ee4377c96c691d34c9e31571bb2587cfd9b503219bc736519d8",
-			"oldEmittedSha256": "9c9564508487f19a39c64c37d0888c72f067c3fed18d261c1938eb3367207666",
-			"incomingEmittedSha256": "15495c7a19f30b6b983dbf7ecf3e569f5b303b2fab3863b43ec5573b95a93207",
-			"emittedEqual": false
-		},
-		{
-			"path": "src/i18n/keys.gen.ts",
-			"oldSourceSha256": "77140782076e24449b26076860043ddfcbd0a758128d4d11c7d05c542cdf80de",
-			"incomingSourceSha256": "075af37cbe1d0572b374cd04cbec662c3c77578fc47f0149c509ff181a14575c",
-			"oldEmittedSha256": "2a654037e77168e9b9172bf3c43de273d50e5cf50d3dcdfa72d0bf244baab0e8",
-			"incomingEmittedSha256": "9522354632e3dfc69d3ffb8a3f7c77f4fe18447df5ea48f7c64d91fdd2f9bb37",
-			"emittedEqual": false
-		},
-		{
-			"proof": "preferences: remove only added type import and two state type fields",
-			"fullEmittedSha256": "05123a70327e9005e7ef4929d91b1a0b90c12a3bc1131aec1fb7828f6a4d4e09",
-			"withoutAddedTypesEmittedSha256": "05123a70327e9005e7ef4929d91b1a0b90c12a3bc1131aec1fb7828f6a4d4e09",
-			"equal": true
-		},
-		{
-			"proof": "keys.gen: retain all new MessageParams, remove only runtime canvas import/spread",
-			"oldEmittedSha256": "2a654037e77168e9b9172bf3c43de273d50e5cf50d3dcdfa72d0bf244baab0e8",
-			"newWithOnlyTypeDeltaEmittedSha256": "2a654037e77168e9b9172bf3c43de273d50e5cf50d3dcdfa72d0bf244baab0e8",
-			"equal": true
-		}
-	]
+  "tool": "existing esbuild.transform; loader ts, format esm, target es2022, no sourcemap",
+  "old": "43fc66a1b",
+  "incoming": "51a2eccfb",
+  "results": [
+    {
+      "path": "src/renderer/src/shared/api/local-operator/desktop-hooks.ts",
+      "oldSourceSha256": "37b1298c04a9a7559133c728be10075388db5ae073a7ddebd32b87363affae00",
+      "incomingSourceSha256": "3ace05e6e6613a61d79959edc917bf6c9cdbab16092eebdd21dccb566bd52869",
+      "oldEmittedSha256": "86fcf11093c829de865594b8dd9c7c76eaece700d8d9568ed1b04e99ec40ec58",
+      "incomingEmittedSha256": "86fcf11093c829de865594b8dd9c7c76eaece700d8d9568ed1b04e99ec40ec58",
+      "emittedEqual": true
+    },
+    {
+      "path": "src/renderer/src/shared/store/ui-preferences-store.ts",
+      "oldSourceSha256": "5f7bd77b9437b82d17fa061e2cab86838db2c0509a482e78cddcb1beb51f85a7",
+      "incomingSourceSha256": "f34dfe9fc2a7c5ec4dbef13fb7fed791f1e3ae72aef35e5d585a2f9d64db6a39",
+      "oldEmittedSha256": "4a82ffe94ccb42dd7afabd6a0bd1668095d7d8eed65c3b337b55dd9d8179be68",
+      "incomingEmittedSha256": "05123a70327e9005e7ef4929d91b1a0b90c12a3bc1131aec1fb7828f6a4d4e09",
+      "emittedEqual": false
+    },
+    {
+      "path": "src/shared/desktop-contract.ts",
+      "oldSourceSha256": "3d82ccf0704990db56e048e12227204b6f8b2d1f2bfdd5f3eb948c4116379c5b",
+      "incomingSourceSha256": "2f1c1fa19ff54ee4377c96c691d34c9e31571bb2587cfd9b503219bc736519d8",
+      "oldEmittedSha256": "9c9564508487f19a39c64c37d0888c72f067c3fed18d261c1938eb3367207666",
+      "incomingEmittedSha256": "15495c7a19f30b6b983dbf7ecf3e569f5b303b2fab3863b43ec5573b95a93207",
+      "emittedEqual": false
+    },
+    {
+      "path": "src/i18n/keys.gen.ts",
+      "oldSourceSha256": "77140782076e24449b26076860043ddfcbd0a758128d4d11c7d05c542cdf80de",
+      "incomingSourceSha256": "075af37cbe1d0572b374cd04cbec662c3c77578fc47f0149c509ff181a14575c",
+      "oldEmittedSha256": "2a654037e77168e9b9172bf3c43de273d50e5cf50d3dcdfa72d0bf244baab0e8",
+      "incomingEmittedSha256": "9522354632e3dfc69d3ffb8a3f7c77f4fe18447df5ea48f7c64d91fdd2f9bb37",
+      "emittedEqual": false
+    },
+    {
+      "proof": "preferences: remove only added type import and two state type fields",
+      "fullEmittedSha256": "05123a70327e9005e7ef4929d91b1a0b90c12a3bc1131aec1fb7828f6a4d4e09",
+      "withoutAddedTypesEmittedSha256": "05123a70327e9005e7ef4929d91b1a0b90c12a3bc1131aec1fb7828f6a4d4e09",
+      "equal": true
+    },
+    {
+      "proof": "keys.gen: retain all new MessageParams, remove only runtime canvas import/spread",
+      "oldEmittedSha256": "2a654037e77168e9b9172bf3c43de273d50e5cf50d3dcdfa72d0bf244baab0e8",
+      "newWithOnlyTypeDeltaEmittedSha256": "2a654037e77168e9b9172bf3c43de273d50e5cf50d3dcdfa72d0bf244baab0e8",
+      "equal": true
+    }
+  ]
 }

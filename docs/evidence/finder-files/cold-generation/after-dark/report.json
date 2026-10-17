@@ -1,1313 +1,1340 @@
 {
-	"label": "cold-after-dark",
-	"theme": "localOperatorDark",
-	"samples": [
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 96,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n200 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 416,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n400 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 669,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n600 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 927,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n800 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 1180,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n800 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 1432,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n1,000 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 1685,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n1,200 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 1988,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n1,400 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 2243,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n1,600 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 2496,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n1,800 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 2748,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n2,000 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 3001,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n2,200 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 3254,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n2,400 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 3505,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n2,600 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 3757,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n2,600 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 4009,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n2,800 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 4261,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n3,000 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 4514,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n3,200 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 4767,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n3,400 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 5022,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n3,600 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 5277,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n3,800 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 5529,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n4,000 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 5783,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n4,200 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 6036,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n4,400 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 6289,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n4,400 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 6541,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n4,600 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 6794,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n4,800 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 7046,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n5,000 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 7299,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 2,
-			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png",
-			"headers": ["Highlights\n2", "Working files\n5,000"],
-			"head": "Mentioned\n\u2191\nFilter\n5,002 files\nOpen folder",
-			"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5,000",
-			"loading": false,
-			"width": 560,
-			"imgs": 1,
-			"elapsed": 7552,
-			"resources": {
-				"entries": 1,
-				"queued": 0,
-				"active": 0,
-				"reads": 1,
-				"decodes": 1,
-				"peakActive": 1
-			}
-		},
-		{
-			"rows": 2,
-			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png",
-			"headers": ["Highlights\n2", "Working files\n5,000"],
-			"head": "Mentioned\n\u2191\nFilter\n5,002 files\nOpen folder",
-			"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5,000",
-			"loading": false,
-			"width": 560,
-			"imgs": 1,
-			"elapsed": 7805,
-			"resources": {
-				"entries": 1,
-				"queued": 0,
-				"active": 0,
-				"reads": 1,
-				"decodes": 1,
-				"peakActive": 1
-			}
-		},
-		{
-			"rows": 2,
-			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png",
-			"headers": ["Highlights\n2", "Working files\n5,000"],
-			"head": "Mentioned\n\u2191\nFilter\n5,002 files\nOpen folder",
-			"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5,000",
-			"loading": false,
-			"width": 560,
-			"imgs": 1,
-			"elapsed": 8059,
-			"resources": {
-				"entries": 1,
-				"queued": 0,
-				"active": 0,
-				"reads": 1,
-				"decodes": 1,
-				"peakActive": 1
-			}
-		},
-		{
-			"rows": 2,
-			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png",
-			"headers": ["Highlights\n2", "Working files\n5,000"],
-			"head": "Mentioned\n\u2191\nFilter\n5,002 files\nOpen folder",
-			"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5,000",
-			"loading": false,
-			"width": 560,
-			"imgs": 1,
-			"elapsed": 8312,
-			"resources": {
-				"entries": 1,
-				"queued": 0,
-				"active": 0,
-				"reads": 1,
-				"decodes": 1,
-				"peakActive": 1
-			}
-		},
-		{
-			"rows": 2,
-			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png",
-			"headers": ["Highlights\n2", "Working files\n5,000"],
-			"head": "Mentioned\n\u2191\nFilter\n5,002 files\nOpen folder",
-			"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5,000",
-			"loading": false,
-			"width": 560,
-			"imgs": 1,
-			"elapsed": 8565,
-			"resources": {
-				"entries": 1,
-				"queued": 0,
-				"active": 0,
-				"reads": 1,
-				"decodes": 1,
-				"peakActive": 1
-			}
-		},
-		{
-			"rows": 2,
-			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png",
-			"headers": ["Highlights\n2", "Working files\n5,000"],
-			"head": "Mentioned\n\u2191\nFilter\n5,002 files\nOpen folder",
-			"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5,000",
-			"loading": false,
-			"width": 560,
-			"imgs": 1,
-			"elapsed": 8819,
-			"resources": {
-				"entries": 1,
-				"queued": 0,
-				"active": 0,
-				"reads": 1,
-				"decodes": 1,
-				"peakActive": 1
-			}
-		},
-		{
-			"rows": 2,
-			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png",
-			"headers": ["Highlights\n2", "Working files\n5,000"],
-			"head": "Mentioned\n\u2191\nFilter\n5,002 files\nOpen folder",
-			"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5,000",
-			"loading": false,
-			"width": 560,
-			"imgs": 1,
-			"elapsed": 9077,
-			"resources": {
-				"entries": 1,
-				"queued": 0,
-				"active": 0,
-				"reads": 1,
-				"decodes": 1,
-				"peakActive": 1
-			}
-		},
-		{
-			"rows": 2,
-			"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png",
-			"headers": ["Highlights\n2", "Working files\n5,000"],
-			"head": "Mentioned\n\u2191\nFilter\n5,002 files\nOpen folder",
-			"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5,000",
-			"loading": false,
-			"width": 560,
-			"imgs": 1,
-			"elapsed": 9331,
-			"resources": {
-				"entries": 1,
-				"queued": 0,
-				"active": 0,
-				"reads": 1,
-				"decodes": 1,
-				"peakActive": 1
-			}
-		}
-	],
-	"frames": {
-		"first": "cold-after-dark-first.png",
-		"progress": "cold-after-dark-progress.png",
-		"final": "cold-after-dark-final.png"
-	},
-	"facts": {
-		"windowMode": "headless",
-		"appVersion": "0.34.43",
-		"platform": "darwin",
-		"title": "Local Operator",
-		"windowSize": {
-			"width": 1380,
-			"height": 900
-		},
-		"contentBounds": {
-			"width": 1380,
-			"height": 900
-		},
-		"visible": false,
-		"focused": false,
-		"minimized": false,
-		"frames": [],
-		"outDir": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/cold/after-dark"
-	},
-	"requests": {
-		"pages": 26
-	},
-	"loadingSamples": [
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 96,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n200 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 416,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n400 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 669,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n600 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 927,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n800 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 1180,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n800 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 1432,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n1,000 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 1685,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n1,200 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 1988,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n1,400 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 2243,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n1,600 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 2496,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n1,800 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 2748,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n2,000 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 3001,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n2,200 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 3254,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n2,400 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 3505,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n2,600 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 3757,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n2,600 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 4009,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n2,800 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 4261,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n3,000 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 4514,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n3,200 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 4767,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n3,400 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 5022,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n3,600 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 5277,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n3,800 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 5529,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n4,000 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 5783,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n4,200 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 6036,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n4,400 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 6289,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n4,400 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 6541,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n4,600 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 6794,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n4,800 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 7046,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		},
-		{
-			"rows": 0,
-			"first": null,
-			"headers": [],
-			"head": "Mentioned\n\u2191\nFilter\n5,000 of 5,002 loaded\nOpen folder",
-			"body": "Loading session files\u2026",
-			"loading": true,
-			"width": 560,
-			"imgs": 0,
-			"elapsed": 7299,
-			"resources": {
-				"entries": 0,
-				"queued": 0,
-				"active": 0,
-				"reads": 0,
-				"decodes": 0,
-				"peakActive": 0
-			}
-		}
-	],
-	"firstContent": {
-		"rows": 2,
-		"first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png",
-		"headers": ["Highlights\n2", "Working files\n5,000"],
-		"head": "Mentioned\n\u2191\nFilter\n5,002 files\nOpen folder",
-		"body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5,000",
-		"loading": false,
-		"width": 560,
-		"imgs": 1,
-		"elapsed": 7552,
-		"resources": {
-			"entries": 1,
-			"queued": 0,
-			"active": 0,
-			"reads": 1,
-			"decodes": 1,
-			"peakActive": 1
-		}
-	},
-	"distinctFirst": [
-		"~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png"
-	],
-	"finalReads": 1,
-	"loadingMaxReads": 0
+  "label": "cold-after-dark",
+  "theme": "localOperatorDark",
+  "samples": [
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 96,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n200 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 416,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n400 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 669,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n600 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 927,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n800 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 1180,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n800 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 1432,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n1,000 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 1685,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n1,200 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 1988,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n1,400 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 2243,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n1,600 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 2496,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n1,800 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 2748,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n2,000 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 3001,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n2,200 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 3254,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n2,400 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 3505,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n2,600 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 3757,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n2,600 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 4009,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n2,800 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 4261,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n3,000 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 4514,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n3,200 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 4767,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n3,400 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 5022,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n3,600 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 5277,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n3,800 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 5529,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n4,000 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 5783,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n4,200 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 6036,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n4,400 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 6289,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n4,400 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 6541,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n4,600 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 6794,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n4,800 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 7046,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n5,000 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 7299,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 2,
+      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png",
+      "headers": [
+        "Highlights\n2",
+        "Working files\n5,000"
+      ],
+      "head": "Mentioned\n\u2191\nFilter\n5,002 files\nOpen folder",
+      "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5,000",
+      "loading": false,
+      "width": 560,
+      "imgs": 1,
+      "elapsed": 7552,
+      "resources": {
+        "entries": 1,
+        "queued": 0,
+        "active": 0,
+        "reads": 1,
+        "decodes": 1,
+        "peakActive": 1
+      }
+    },
+    {
+      "rows": 2,
+      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png",
+      "headers": [
+        "Highlights\n2",
+        "Working files\n5,000"
+      ],
+      "head": "Mentioned\n\u2191\nFilter\n5,002 files\nOpen folder",
+      "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5,000",
+      "loading": false,
+      "width": 560,
+      "imgs": 1,
+      "elapsed": 7805,
+      "resources": {
+        "entries": 1,
+        "queued": 0,
+        "active": 0,
+        "reads": 1,
+        "decodes": 1,
+        "peakActive": 1
+      }
+    },
+    {
+      "rows": 2,
+      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png",
+      "headers": [
+        "Highlights\n2",
+        "Working files\n5,000"
+      ],
+      "head": "Mentioned\n\u2191\nFilter\n5,002 files\nOpen folder",
+      "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5,000",
+      "loading": false,
+      "width": 560,
+      "imgs": 1,
+      "elapsed": 8059,
+      "resources": {
+        "entries": 1,
+        "queued": 0,
+        "active": 0,
+        "reads": 1,
+        "decodes": 1,
+        "peakActive": 1
+      }
+    },
+    {
+      "rows": 2,
+      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png",
+      "headers": [
+        "Highlights\n2",
+        "Working files\n5,000"
+      ],
+      "head": "Mentioned\n\u2191\nFilter\n5,002 files\nOpen folder",
+      "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5,000",
+      "loading": false,
+      "width": 560,
+      "imgs": 1,
+      "elapsed": 8312,
+      "resources": {
+        "entries": 1,
+        "queued": 0,
+        "active": 0,
+        "reads": 1,
+        "decodes": 1,
+        "peakActive": 1
+      }
+    },
+    {
+      "rows": 2,
+      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png",
+      "headers": [
+        "Highlights\n2",
+        "Working files\n5,000"
+      ],
+      "head": "Mentioned\n\u2191\nFilter\n5,002 files\nOpen folder",
+      "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5,000",
+      "loading": false,
+      "width": 560,
+      "imgs": 1,
+      "elapsed": 8565,
+      "resources": {
+        "entries": 1,
+        "queued": 0,
+        "active": 0,
+        "reads": 1,
+        "decodes": 1,
+        "peakActive": 1
+      }
+    },
+    {
+      "rows": 2,
+      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png",
+      "headers": [
+        "Highlights\n2",
+        "Working files\n5,000"
+      ],
+      "head": "Mentioned\n\u2191\nFilter\n5,002 files\nOpen folder",
+      "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5,000",
+      "loading": false,
+      "width": 560,
+      "imgs": 1,
+      "elapsed": 8819,
+      "resources": {
+        "entries": 1,
+        "queued": 0,
+        "active": 0,
+        "reads": 1,
+        "decodes": 1,
+        "peakActive": 1
+      }
+    },
+    {
+      "rows": 2,
+      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png",
+      "headers": [
+        "Highlights\n2",
+        "Working files\n5,000"
+      ],
+      "head": "Mentioned\n\u2191\nFilter\n5,002 files\nOpen folder",
+      "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5,000",
+      "loading": false,
+      "width": 560,
+      "imgs": 1,
+      "elapsed": 9077,
+      "resources": {
+        "entries": 1,
+        "queued": 0,
+        "active": 0,
+        "reads": 1,
+        "decodes": 1,
+        "peakActive": 1
+      }
+    },
+    {
+      "rows": 2,
+      "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png",
+      "headers": [
+        "Highlights\n2",
+        "Working files\n5,000"
+      ],
+      "head": "Mentioned\n\u2191\nFilter\n5,002 files\nOpen folder",
+      "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5,000",
+      "loading": false,
+      "width": 560,
+      "imgs": 1,
+      "elapsed": 9331,
+      "resources": {
+        "entries": 1,
+        "queued": 0,
+        "active": 0,
+        "reads": 1,
+        "decodes": 1,
+        "peakActive": 1
+      }
+    }
+  ],
+  "frames": {
+    "first": "cold-after-dark-first.png",
+    "progress": "cold-after-dark-progress.png",
+    "final": "cold-after-dark-final.png"
+  },
+  "facts": {
+    "windowMode": "headless",
+    "appVersion": "0.34.43",
+    "platform": "darwin",
+    "title": "Local Operator",
+    "windowSize": {
+      "width": 1380,
+      "height": 900
+    },
+    "contentBounds": {
+      "width": 1380,
+      "height": 900
+    },
+    "visible": false,
+    "focused": false,
+    "minimized": false,
+    "frames": [],
+    "outDir": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/cold/after-dark"
+  },
+  "requests": {
+    "pages": 26
+  },
+  "loadingSamples": [
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 96,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n200 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 416,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n400 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 669,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n600 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 927,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n800 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 1180,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n800 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 1432,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n1,000 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 1685,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n1,200 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 1988,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n1,400 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 2243,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n1,600 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 2496,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n1,800 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 2748,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n2,000 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 3001,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n2,200 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 3254,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n2,400 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 3505,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n2,600 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 3757,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n2,600 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 4009,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n2,800 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 4261,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n3,000 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 4514,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n3,200 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 4767,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n3,400 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 5022,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n3,600 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 5277,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n3,800 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 5529,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n4,000 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 5783,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n4,200 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 6036,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n4,400 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 6289,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n4,400 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 6541,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n4,600 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 6794,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n4,800 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 7046,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    },
+    {
+      "rows": 0,
+      "first": null,
+      "headers": [],
+      "head": "Mentioned\n\u2191\nFilter\n5,000 of 5,002 loaded\nOpen folder",
+      "body": "Loading session files\u2026",
+      "loading": true,
+      "width": 560,
+      "imgs": 0,
+      "elapsed": 7299,
+      "resources": {
+        "entries": 0,
+        "queued": 0,
+        "active": 0,
+        "reads": 0,
+        "decodes": 0,
+        "peakActive": 0
+      }
+    }
+  ],
+  "firstContent": {
+    "rows": 2,
+    "first": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png",
+    "headers": [
+      "Highlights\n2",
+      "Working files\n5,000"
+    ],
+    "head": "Mentioned\n\u2191\nFilter\n5,002 files\nOpen folder",
+    "body": "Highlights\n2\nfile-0000.png\n10 KB\nA large chart promoted as the main deliverable.\nfile-0002.md\n0 KB\nSummary delivered alongside the chart.\nWorking files\n5,000",
+    "loading": false,
+    "width": 560,
+    "imgs": 1,
+    "elapsed": 7552,
+    "resources": {
+      "entries": 1,
+      "queued": 0,
+      "active": 0,
+      "reads": 1,
+      "decodes": 1,
+      "peakActive": 1
+    }
+  },
+  "distinctFirst": [
+    "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/home/.local-operator/sessions/b1f1de000001/scratchpad/file-0000.png"
+  ],
+  "finalReads": 1,
+  "loadingMaxReads": 0
 }

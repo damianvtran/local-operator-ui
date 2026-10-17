@@ -43,19 +43,13 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import {
-	onInterrupted,
-	reapOnExit,
-	stopAppTree,
-} from "../../../../scripts/app-tree-teardown.mjs";
+import { onInterrupted, reapOnExit, stopAppTree } from "../../../../scripts/app-tree-teardown.mjs";
 import { withNotificationsOff } from "../../../../scripts/notifications-off.mjs";
 
 const OUT = process.argv[2] ?? "/tmp/lo-notes-frames";
 const SESSION = process.argv[3];
 if (!SESSION) {
-	console.error(
-		"usage: node scratchpad-files-proof.mjs <out-dir> <session-id>",
-	);
+	console.error("usage: node scratchpad-files-proof.mjs <out-dir> <session-id>");
 	process.exit(2);
 }
 
@@ -85,9 +79,7 @@ if (!SCRATCH) {
 }
 const TOKEN = process.env.LOCAL_OPERATOR_DESKTOP_TOKEN;
 if (!TOKEN) {
-	console.error(
-		"LOCAL_OPERATOR_DESKTOP_TOKEN is unset; the app would be unpaired",
-	);
+	console.error("LOCAL_OPERATOR_DESKTOP_TOKEN is unset; the app would be unpaired");
 	process.exit(2);
 }
 
@@ -239,9 +231,7 @@ const finish = (code) =>
 		return code === 0 && !result.clean ? 1 : code;
 	});
 onInterrupted(async (signal) => {
-	console.error(
-		`teardown: ${signal} received; stopping the app this run booted`,
-	);
+	console.error(`teardown: ${signal} received; stopping the app this run booted`);
 	return finish(0);
 });
 
@@ -344,9 +334,7 @@ try {
 	const deadline = Date.now() + 90_000;
 	const cdp = await attachToRenderer(deadline);
 	if (!cdp) {
-		console.error(
-			`no renderer target armed its preload bridge; log:\n${log.join("")}`,
-		);
+		console.error(`no renderer target armed its preload bridge; log:\n${log.join("")}`);
 		process.exit(await finish(1));
 	}
 
@@ -361,11 +349,9 @@ try {
 	const bridgeDeadline = Date.now() + 30_000;
 	let bridge = false;
 	while (Date.now() < bridgeDeadline && !bridge) {
-		bridge = await cdp
-			.evaluate(
-				`Boolean(window.api && window.api.desktop && window.api.desktop.request)`,
-			)
-			.catch(() => false);
+		bridge = await cdp.evaluate(
+			`Boolean(window.api && window.api.desktop && window.api.desktop.request)`,
+		).catch(() => false);
 		if (!bridge) await sleep(500);
 	}
 	report.preloadBridge = bridge;
@@ -379,9 +365,7 @@ try {
 	// an empty panel, which looks exactly like a producer that never fired.
 	report.firstRunSetup = await dismissFirstRunSetup(cdp);
 	if (!report.firstRunSetup.dismissed) {
-		console.error(
-			"the first-run setup would not close; refusing to photograph behind it",
-		);
+		console.error("the first-run setup would not close; refusing to photograph behind it");
 		cdp.close();
 		process.exit(await finish(5));
 	}
@@ -407,8 +391,7 @@ try {
 	while (Date.now() < scanDeadline) {
 		stored = await cdp.evaluate(`localStorage.getItem("canvas-store")`);
 		const found = stored
-			? (JSON.parse(stored)?.state?.conversations?.[SESSION]?.mentionedFiles ??
-				[])
+			? (JSON.parse(stored)?.state?.conversations?.[SESSION]?.mentionedFiles ?? [])
 			: [];
 		if (found.length > 0) break;
 		await sleep(1000);
@@ -448,11 +431,7 @@ try {
 			const head = document.querySelector('[data-tour-tag="files-scanner-head"]');
 			return { count: conversation?.mentionedFiles?.length ?? 0, head: head ? head.innerText.trim() : null };
 		})()`);
-		if (
-			samples.length === 0 ||
-			sample.count !== samples[samples.length - 1].count
-		)
-			samples.push(sample);
+		if (samples.length === 0 || sample.count !== samples[samples.length - 1].count) samples.push(sample);
 		if (sample.count === previous) stable += 1;
 		else stable = 0;
 		previous = sample.count;
@@ -505,15 +484,12 @@ try {
 	 * Files view - the grid is the entry point, so that is the path a user takes.
 	 */
 	const clickTile = async (needle) =>
-		cdp
-			.evaluate(`(() => {
+		cdp.evaluate(`(() => {
 			const button = document.querySelector('button[aria-label^="Files view"]');
 			if (button) button.click();
 			return true;
-		})()`)
-			.then(() => sleep(400))
-			.then(() =>
-				cdp.evaluate(`(() => {
+		})()`).then(() => sleep(400)).then(() =>
+			cdp.evaluate(`(() => {
 				const grid = document.querySelector('[data-tour-tag="files-grid"]');
 				if (!grid) return "no-grid";
 				const tile = [...grid.querySelectorAll("button")].find((b) => b.innerText.includes(${JSON.stringify(needle)}));
@@ -521,7 +497,7 @@ try {
 				tile.click();
 				return "clicked";
 			})()`),
-			);
+		);
 
 	const viewerReadings = [];
 	for (const [needle, name] of [

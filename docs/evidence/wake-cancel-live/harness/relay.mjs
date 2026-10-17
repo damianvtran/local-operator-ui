@@ -41,14 +41,12 @@
  * which is where the captured frames' wire claims are read from.
  */
 
-import { appendFileSync, readFileSync } from "node:fs";
 import { createServer, request as httpRequest } from "node:http";
+import { appendFileSync, readFileSync } from "node:fs";
 
 const arg = (name, fallback) => {
 	const index = process.argv.indexOf(`--${name}`);
-	return index >= 0 && process.argv[index + 1]
-		? process.argv[index + 1]
-		: fallback;
+	return index >= 0 && process.argv[index + 1] ? process.argv[index + 1] : fallback;
 };
 const LISTEN = Number(arg("listen", "8080"));
 const TARGET = Number(arg("target", "8081"));
@@ -94,8 +92,7 @@ const server = createServer((incoming, outgoing) => {
 	const isDelete = method === "DELETE" && url.startsWith("/v1/desktop/wakes/");
 	const isEvents =
 		method === "GET" && /\/v1\/desktop\/sessions\/[^/]+\/events/.test(url);
-	const isDesktopEvents =
-		method === "GET" && url.startsWith("/v1/desktop/events");
+	const isDesktopEvents = method === "GET" && url.startsWith("/v1/desktop/events");
 	const delay = isListing
 		? listDelayMs
 		: isDelete
@@ -111,9 +108,7 @@ const server = createServer((incoming, outgoing) => {
 		{ host: "127.0.0.1", port: TARGET, path: url, method, headers },
 		(upstream) => {
 			const finish = () => {
-				log(
-					`${method} ${url} -> ${upstream.statusCode}${delay ? ` (held ${delay}ms)` : ""}`,
-				);
+				log(`${method} ${url} -> ${upstream.statusCode}${delay ? ` (held ${delay}ms)` : ""}`);
 				outgoing.writeHead(upstream.statusCode ?? 502, upstream.headers);
 				upstream.pipe(outgoing);
 			};
@@ -130,7 +125,5 @@ const server = createServer((incoming, outgoing) => {
 });
 
 server.listen(LISTEN, "127.0.0.1", () => {
-	say(
-		`relay: 127.0.0.1:${LISTEN} -> 127.0.0.1:${TARGET} (control ${CONTROL || "none"})`,
-	);
+	say(`relay: 127.0.0.1:${LISTEN} -> 127.0.0.1:${TARGET} (control ${CONTROL || "none"})`);
 });

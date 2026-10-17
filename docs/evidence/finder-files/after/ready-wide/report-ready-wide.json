@@ -1,1063 +1,1063 @@
 {
-	"label": "ready-wide",
-	"session": "b1f1de000001",
-	"window": {
-		"width": 1380,
-		"height": 900
-	},
-	"themes": {
-		"dark": {
-			"frame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/repaired/ready-wide/files-ready-wide-dark.png",
-			"reading": {
-				"innerWidth": 1380,
-				"innerHeight": 900,
-				"dock": {
-					"x": 776,
-					"y": 32,
-					"w": 560,
-					"h": 868
-				},
-				"dockMode": "docked",
-				"scroller": {
-					"x": 776,
-					"y": 152,
-					"w": 560,
-					"h": 748
-				},
-				"rowCount": 26,
-				"rows": [
-					{
-						"text": "file-0000.png 10 KB A large chart promoted as the main deliverable.",
-						"box": {
-							"x": 784,
-							"y": 192,
-							"w": 536,
-							"h": 68
-						},
-						"insideDock": true,
-						"thumb": {
-							"decoded": true,
-							"naturalWidth": 640,
-							"naturalHeight": 384,
-							"srcScheme": "blob",
-							"box": {
-								"x": 788,
-								"y": 206,
-								"w": 40,
-								"h": 40
-							}
-						}
-					},
-					{
-						"text": "file-0002.md 0 KB Summary delivered alongside the chart.",
-						"box": {
-							"x": 784,
-							"y": 260,
-							"w": 536,
-							"h": 68
-						},
-						"insideDock": true,
-						"thumb": null
-					},
-					{
-						"text": "file-0004.png 0 KB",
-						"box": {
-							"x": 784,
-							"y": 392,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": {
-							"decoded": true,
-							"naturalWidth": 192,
-							"naturalHeight": 144,
-							"srcScheme": "blob",
-							"box": {
-								"x": 788,
-								"y": 396,
-								"w": 168,
-								"h": 126
-							}
-						}
-					},
-					{
-						"text": "file-0008.png 0 KB",
-						"box": {
-							"x": 964,
-							"y": 392,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": {
-							"decoded": true,
-							"naturalWidth": 192,
-							"naturalHeight": 144,
-							"srcScheme": "blob",
-							"box": {
-								"x": 968,
-								"y": 396,
-								"w": 168,
-								"h": 126
-							}
-						}
-					},
-					{
-						"text": "file-0012.png 0 KB",
-						"box": {
-							"x": 1144,
-							"y": 392,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": {
-							"decoded": true,
-							"naturalWidth": 192,
-							"naturalHeight": 144,
-							"srcScheme": "blob",
-							"box": {
-								"x": 1148,
-								"y": 396,
-								"w": 168,
-								"h": 126
-							}
-						}
-					},
-					{
-						"text": "file-0016.png 0 KB",
-						"box": {
-							"x": 784,
-							"y": 550,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": {
-							"decoded": true,
-							"naturalWidth": 192,
-							"naturalHeight": 144,
-							"srcScheme": "blob",
-							"box": {
-								"x": 788,
-								"y": 554,
-								"w": 168,
-								"h": 126
-							}
-						}
-					},
-					{
-						"text": "file-0020.png 0 KB",
-						"box": {
-							"x": 964,
-							"y": 550,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": {
-							"decoded": true,
-							"naturalWidth": 192,
-							"naturalHeight": 144,
-							"srcScheme": "blob",
-							"box": {
-								"x": 968,
-								"y": 554,
-								"w": 168,
-								"h": 126
-							}
-						}
-					},
-					{
-						"text": "file-0024.png 0 KB",
-						"box": {
-							"x": 1144,
-							"y": 550,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": {
-							"decoded": true,
-							"naturalWidth": 192,
-							"naturalHeight": 144,
-							"srcScheme": "blob",
-							"box": {
-								"x": 1148,
-								"y": 554,
-								"w": 168,
-								"h": 126
-							}
-						}
-					},
-					{
-						"text": "file-0028.png 0 KB",
-						"box": {
-							"x": 784,
-							"y": 708,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": {
-							"decoded": true,
-							"naturalWidth": 192,
-							"naturalHeight": 144,
-							"srcScheme": "blob",
-							"box": {
-								"x": 788,
-								"y": 712,
-								"w": 168,
-								"h": 126
-							}
-						}
-					},
-					{
-						"text": "file-0032.png 0 KB",
-						"box": {
-							"x": 964,
-							"y": 708,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": {
-							"decoded": true,
-							"naturalWidth": 192,
-							"naturalHeight": 144,
-							"srcScheme": "blob",
-							"box": {
-								"x": 968,
-								"y": 712,
-								"w": 168,
-								"h": 126
-							}
-						}
-					},
-					{
-						"text": "file-0036.png 0 KB",
-						"box": {
-							"x": 1144,
-							"y": 708,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": {
-							"decoded": true,
-							"naturalWidth": 192,
-							"naturalHeight": 144,
-							"srcScheme": "blob",
-							"box": {
-								"x": 1148,
-								"y": 712,
-								"w": 168,
-								"h": 126
-							}
-						}
-					},
-					{
-						"text": "file-0040.png 0 KB",
-						"box": {
-							"x": 784,
-							"y": 866,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": {
-							"decoded": true,
-							"naturalWidth": 192,
-							"naturalHeight": 144,
-							"srcScheme": "blob",
-							"box": {
-								"x": 788,
-								"y": 870,
-								"w": 168,
-								"h": 126
-							}
-						}
-					},
-					{
-						"text": "file-0044.png 0 KB",
-						"box": {
-							"x": 964,
-							"y": 866,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": {
-							"decoded": true,
-							"naturalWidth": 192,
-							"naturalHeight": 144,
-							"srcScheme": "blob",
-							"box": {
-								"x": 968,
-								"y": 870,
-								"w": 168,
-								"h": 126
-							}
-						}
-					},
-					{
-						"text": "file-0048.png 0 KB",
-						"box": {
-							"x": 1144,
-							"y": 866,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": {
-							"decoded": true,
-							"naturalWidth": 192,
-							"naturalHeight": 144,
-							"srcScheme": "blob",
-							"box": {
-								"x": 1148,
-								"y": 870,
-								"w": 168,
-								"h": 126
-							}
-						}
-					},
-					{
-						"text": "file-0052.png 0 KB",
-						"box": {
-							"x": 784,
-							"y": 1024,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": null
-					},
-					{
-						"text": "file-0056.png 0 KB",
-						"box": {
-							"x": 964,
-							"y": 1024,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": null
-					},
-					{
-						"text": "file-0060.png 0 KB",
-						"box": {
-							"x": 1144,
-							"y": 1024,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": null
-					},
-					{
-						"text": "file-0064.png 0 KB",
-						"box": {
-							"x": 784,
-							"y": 1182,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": null
-					},
-					{
-						"text": "file-0068.png 0 KB",
-						"box": {
-							"x": 964,
-							"y": 1182,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": null
-					},
-					{
-						"text": "file-0072.png 0 KB",
-						"box": {
-							"x": 1144,
-							"y": 1182,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": null
-					},
-					{
-						"text": "file-0076.png 0 KB",
-						"box": {
-							"x": 784,
-							"y": 1340,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": null
-					},
-					{
-						"text": "file-0080.png 0 KB",
-						"box": {
-							"x": 964,
-							"y": 1340,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": null
-					},
-					{
-						"text": "file-0084.png 0 KB",
-						"box": {
-							"x": 1144,
-							"y": 1340,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": null
-					},
-					{
-						"text": "file-0088.png 0 KB",
-						"box": {
-							"x": 784,
-							"y": 1498,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": null
-					},
-					{
-						"text": "file-0092.png 0 KB",
-						"box": {
-							"x": 964,
-							"y": 1498,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": null
-					},
-					{
-						"text": "file-0096.png 0 KB",
-						"box": {
-							"x": 1144,
-							"y": 1498,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": null
-					}
-				],
-				"header": "Mentioned \u2191 Filter 5,002 files Open folder Highlights 2 file-0000.png 10 KB A large chart promoted as the main deliverable. file-0002.md 0 KB Summary delivered "
-			},
-			"scale": {
-				"first": {
-					"mounted": 26,
-					"domNodes": 1136,
-					"heapBytes": 139000000,
-					"visible": 14,
-					"scrollTop": 0,
-					"scrollHeight": 546194,
-					"clientHeight": 748,
-					"clientWidth": 552,
-					"scrollWidth": 552,
-					"tabStops": 1,
-					"lastVisible": "file-0048.png\n0 KB",
-					"lastBottom": 1020,
-					"scrollerBottom": 900
-				},
-				"resourcesFirst": {
-					"entries": 13,
-					"queued": 0,
-					"active": 0,
-					"reads": 13,
-					"decodes": 13,
-					"peakActive": 4
-				},
-				"middle": {
-					"mounted": 8,
-					"domNodes": 780,
-					"heapBytes": 139000000,
-					"visible": 3,
-					"scrollTop": 273097,
-					"scrollHeight": 546194,
-					"clientHeight": 748,
-					"clientWidth": 552,
-					"scrollWidth": 552,
-					"tabStops": 1,
-					"lastVisible": "Open to play\nfile-2661.mp4\n17 KB",
-					"lastBottom": 1001,
-					"scrollerBottom": 900
-				},
-				"end": {
-					"mounted": 39,
-					"domNodes": 1317,
-					"heapBytes": 139000000,
-					"visible": 21,
-					"scrollTop": 545446,
-					"scrollHeight": 546194,
-					"clientHeight": 748,
-					"clientWidth": 552,
-					"scrollWidth": 552,
-					"tabStops": 1,
-					"lastVisible": "file-4999.csv\n0 KB",
-					"lastBottom": 892,
-					"scrollerBottom": 900
-				},
-				"resourcesEnd": {
-					"entries": 13,
-					"queued": 0,
-					"active": 0,
-					"reads": 13,
-					"decodes": 13,
-					"peakActive": 4
-				},
-				"endFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/repaired/ready-wide/finder-ready-wide-end-dark.png"
-			}
-		},
-		"light": {
-			"frame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/repaired/ready-wide/files-ready-wide-light.png",
-			"reading": {
-				"innerWidth": 1380,
-				"innerHeight": 900,
-				"dock": {
-					"x": 776,
-					"y": 32,
-					"w": 560,
-					"h": 868
-				},
-				"dockMode": "docked",
-				"scroller": {
-					"x": 776,
-					"y": 152,
-					"w": 560,
-					"h": 748
-				},
-				"rowCount": 26,
-				"rows": [
-					{
-						"text": "file-0000.png 10 KB A large chart promoted as the main deliverable.",
-						"box": {
-							"x": 784,
-							"y": 192,
-							"w": 536,
-							"h": 68
-						},
-						"insideDock": true,
-						"thumb": {
-							"decoded": true,
-							"naturalWidth": 640,
-							"naturalHeight": 384,
-							"srcScheme": "blob",
-							"box": {
-								"x": 788,
-								"y": 206,
-								"w": 40,
-								"h": 40
-							}
-						}
-					},
-					{
-						"text": "file-0002.md 0 KB Summary delivered alongside the chart.",
-						"box": {
-							"x": 784,
-							"y": 260,
-							"w": 536,
-							"h": 68
-						},
-						"insideDock": true,
-						"thumb": null
-					},
-					{
-						"text": "file-0004.png 0 KB",
-						"box": {
-							"x": 784,
-							"y": 392,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": {
-							"decoded": true,
-							"naturalWidth": 192,
-							"naturalHeight": 144,
-							"srcScheme": "blob",
-							"box": {
-								"x": 788,
-								"y": 396,
-								"w": 168,
-								"h": 126
-							}
-						}
-					},
-					{
-						"text": "file-0008.png 0 KB",
-						"box": {
-							"x": 964,
-							"y": 392,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": {
-							"decoded": true,
-							"naturalWidth": 192,
-							"naturalHeight": 144,
-							"srcScheme": "blob",
-							"box": {
-								"x": 968,
-								"y": 396,
-								"w": 168,
-								"h": 126
-							}
-						}
-					},
-					{
-						"text": "file-0012.png 0 KB",
-						"box": {
-							"x": 1144,
-							"y": 392,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": {
-							"decoded": true,
-							"naturalWidth": 192,
-							"naturalHeight": 144,
-							"srcScheme": "blob",
-							"box": {
-								"x": 1148,
-								"y": 396,
-								"w": 168,
-								"h": 126
-							}
-						}
-					},
-					{
-						"text": "file-0016.png 0 KB",
-						"box": {
-							"x": 784,
-							"y": 550,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": {
-							"decoded": true,
-							"naturalWidth": 192,
-							"naturalHeight": 144,
-							"srcScheme": "blob",
-							"box": {
-								"x": 788,
-								"y": 554,
-								"w": 168,
-								"h": 126
-							}
-						}
-					},
-					{
-						"text": "file-0020.png 0 KB",
-						"box": {
-							"x": 964,
-							"y": 550,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": {
-							"decoded": true,
-							"naturalWidth": 192,
-							"naturalHeight": 144,
-							"srcScheme": "blob",
-							"box": {
-								"x": 968,
-								"y": 554,
-								"w": 168,
-								"h": 126
-							}
-						}
-					},
-					{
-						"text": "file-0024.png 0 KB",
-						"box": {
-							"x": 1144,
-							"y": 550,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": {
-							"decoded": true,
-							"naturalWidth": 192,
-							"naturalHeight": 144,
-							"srcScheme": "blob",
-							"box": {
-								"x": 1148,
-								"y": 554,
-								"w": 168,
-								"h": 126
-							}
-						}
-					},
-					{
-						"text": "file-0028.png 0 KB",
-						"box": {
-							"x": 784,
-							"y": 708,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": {
-							"decoded": true,
-							"naturalWidth": 192,
-							"naturalHeight": 144,
-							"srcScheme": "blob",
-							"box": {
-								"x": 788,
-								"y": 712,
-								"w": 168,
-								"h": 126
-							}
-						}
-					},
-					{
-						"text": "file-0032.png 0 KB",
-						"box": {
-							"x": 964,
-							"y": 708,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": {
-							"decoded": true,
-							"naturalWidth": 192,
-							"naturalHeight": 144,
-							"srcScheme": "blob",
-							"box": {
-								"x": 968,
-								"y": 712,
-								"w": 168,
-								"h": 126
-							}
-						}
-					},
-					{
-						"text": "file-0036.png 0 KB",
-						"box": {
-							"x": 1144,
-							"y": 708,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": {
-							"decoded": true,
-							"naturalWidth": 192,
-							"naturalHeight": 144,
-							"srcScheme": "blob",
-							"box": {
-								"x": 1148,
-								"y": 712,
-								"w": 168,
-								"h": 126
-							}
-						}
-					},
-					{
-						"text": "file-0040.png 0 KB",
-						"box": {
-							"x": 784,
-							"y": 866,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": {
-							"decoded": true,
-							"naturalWidth": 192,
-							"naturalHeight": 144,
-							"srcScheme": "blob",
-							"box": {
-								"x": 788,
-								"y": 870,
-								"w": 168,
-								"h": 126
-							}
-						}
-					},
-					{
-						"text": "file-0044.png 0 KB",
-						"box": {
-							"x": 964,
-							"y": 866,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": {
-							"decoded": true,
-							"naturalWidth": 192,
-							"naturalHeight": 144,
-							"srcScheme": "blob",
-							"box": {
-								"x": 968,
-								"y": 870,
-								"w": 168,
-								"h": 126
-							}
-						}
-					},
-					{
-						"text": "file-0048.png 0 KB",
-						"box": {
-							"x": 1144,
-							"y": 866,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": {
-							"decoded": true,
-							"naturalWidth": 192,
-							"naturalHeight": 144,
-							"srcScheme": "blob",
-							"box": {
-								"x": 1148,
-								"y": 870,
-								"w": 168,
-								"h": 126
-							}
-						}
-					},
-					{
-						"text": "file-0052.png 0 KB",
-						"box": {
-							"x": 784,
-							"y": 1024,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": null
-					},
-					{
-						"text": "file-0056.png 0 KB",
-						"box": {
-							"x": 964,
-							"y": 1024,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": null
-					},
-					{
-						"text": "file-0060.png 0 KB",
-						"box": {
-							"x": 1144,
-							"y": 1024,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": null
-					},
-					{
-						"text": "file-0064.png 0 KB",
-						"box": {
-							"x": 784,
-							"y": 1182,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": null
-					},
-					{
-						"text": "file-0068.png 0 KB",
-						"box": {
-							"x": 964,
-							"y": 1182,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": null
-					},
-					{
-						"text": "file-0072.png 0 KB",
-						"box": {
-							"x": 1144,
-							"y": 1182,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": null
-					},
-					{
-						"text": "file-0076.png 0 KB",
-						"box": {
-							"x": 784,
-							"y": 1340,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": null
-					},
-					{
-						"text": "file-0080.png 0 KB",
-						"box": {
-							"x": 964,
-							"y": 1340,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": null
-					},
-					{
-						"text": "file-0084.png 0 KB",
-						"box": {
-							"x": 1144,
-							"y": 1340,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": null
-					},
-					{
-						"text": "file-0088.png 0 KB",
-						"box": {
-							"x": 784,
-							"y": 1498,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": null
-					},
-					{
-						"text": "file-0092.png 0 KB",
-						"box": {
-							"x": 964,
-							"y": 1498,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": null
-					},
-					{
-						"text": "file-0096.png 0 KB",
-						"box": {
-							"x": 1144,
-							"y": 1498,
-							"w": 176,
-							"h": 154
-						},
-						"insideDock": true,
-						"thumb": null
-					}
-				],
-				"header": "Mentioned \u2191 Filter 5,002 files Open folder Highlights 2 file-0000.png 10 KB A large chart promoted as the main deliverable. file-0002.md 0 KB Summary delivered "
-			},
-			"scale": {
-				"first": {
-					"mounted": 26,
-					"domNodes": 1136,
-					"heapBytes": 139000000,
-					"visible": 14,
-					"scrollTop": 0,
-					"scrollHeight": 546194,
-					"clientHeight": 748,
-					"clientWidth": 552,
-					"scrollWidth": 552,
-					"tabStops": 1,
-					"lastVisible": "file-0048.png\n0 KB",
-					"lastBottom": 1020,
-					"scrollerBottom": 900
-				},
-				"resourcesFirst": {
-					"entries": 13,
-					"queued": 0,
-					"active": 0,
-					"reads": 13,
-					"decodes": 13,
-					"peakActive": 4
-				},
-				"middle": {
-					"mounted": 8,
-					"domNodes": 780,
-					"heapBytes": 139000000,
-					"visible": 3,
-					"scrollTop": 273097,
-					"scrollHeight": 546194,
-					"clientHeight": 748,
-					"clientWidth": 552,
-					"scrollWidth": 552,
-					"tabStops": 1,
-					"lastVisible": "Open to play\nfile-2661.mp4\n17 KB",
-					"lastBottom": 1001,
-					"scrollerBottom": 900
-				},
-				"end": {
-					"mounted": 39,
-					"domNodes": 1317,
-					"heapBytes": 139000000,
-					"visible": 21,
-					"scrollTop": 545446,
-					"scrollHeight": 546194,
-					"clientHeight": 748,
-					"clientWidth": 552,
-					"scrollWidth": 552,
-					"tabStops": 1,
-					"lastVisible": "file-4999.csv\n0 KB",
-					"lastBottom": 892,
-					"scrollerBottom": 900
-				},
-				"resourcesEnd": {
-					"entries": 13,
-					"queued": 0,
-					"active": 0,
-					"reads": 13,
-					"decodes": 13,
-					"peakActive": 4
-				},
-				"endFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/repaired/ready-wide/finder-ready-wide-end-light.png"
-			}
-		}
-	},
-	"facts": {
-		"windowMode": "headless",
-		"appVersion": "0.34.40",
-		"platform": "darwin",
-		"title": "Local Operator",
-		"windowSize": {
-			"width": 1380,
-			"height": 900
-		},
-		"contentBounds": {
-			"width": 1380,
-			"height": 900
-		},
-		"visible": false,
-		"focused": false,
-		"minimized": false,
-		"frames": [],
-		"outDir": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/repaired/ready-wide"
-	}
+  "label": "ready-wide",
+  "session": "b1f1de000001",
+  "window": {
+    "width": 1380,
+    "height": 900
+  },
+  "themes": {
+    "dark": {
+      "frame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/repaired/ready-wide/files-ready-wide-dark.png",
+      "reading": {
+        "innerWidth": 1380,
+        "innerHeight": 900,
+        "dock": {
+          "x": 776,
+          "y": 32,
+          "w": 560,
+          "h": 868
+        },
+        "dockMode": "docked",
+        "scroller": {
+          "x": 776,
+          "y": 152,
+          "w": 560,
+          "h": 748
+        },
+        "rowCount": 26,
+        "rows": [
+          {
+            "text": "file-0000.png 10 KB A large chart promoted as the main deliverable.",
+            "box": {
+              "x": 784,
+              "y": 192,
+              "w": 536,
+              "h": 68
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 640,
+              "naturalHeight": 384,
+              "srcScheme": "blob",
+              "box": {
+                "x": 788,
+                "y": 206,
+                "w": 40,
+                "h": 40
+              }
+            }
+          },
+          {
+            "text": "file-0002.md 0 KB Summary delivered alongside the chart.",
+            "box": {
+              "x": 784,
+              "y": 260,
+              "w": 536,
+              "h": 68
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "file-0004.png 0 KB",
+            "box": {
+              "x": 784,
+              "y": 392,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 192,
+              "naturalHeight": 144,
+              "srcScheme": "blob",
+              "box": {
+                "x": 788,
+                "y": 396,
+                "w": 168,
+                "h": 126
+              }
+            }
+          },
+          {
+            "text": "file-0008.png 0 KB",
+            "box": {
+              "x": 964,
+              "y": 392,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 192,
+              "naturalHeight": 144,
+              "srcScheme": "blob",
+              "box": {
+                "x": 968,
+                "y": 396,
+                "w": 168,
+                "h": 126
+              }
+            }
+          },
+          {
+            "text": "file-0012.png 0 KB",
+            "box": {
+              "x": 1144,
+              "y": 392,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 192,
+              "naturalHeight": 144,
+              "srcScheme": "blob",
+              "box": {
+                "x": 1148,
+                "y": 396,
+                "w": 168,
+                "h": 126
+              }
+            }
+          },
+          {
+            "text": "file-0016.png 0 KB",
+            "box": {
+              "x": 784,
+              "y": 550,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 192,
+              "naturalHeight": 144,
+              "srcScheme": "blob",
+              "box": {
+                "x": 788,
+                "y": 554,
+                "w": 168,
+                "h": 126
+              }
+            }
+          },
+          {
+            "text": "file-0020.png 0 KB",
+            "box": {
+              "x": 964,
+              "y": 550,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 192,
+              "naturalHeight": 144,
+              "srcScheme": "blob",
+              "box": {
+                "x": 968,
+                "y": 554,
+                "w": 168,
+                "h": 126
+              }
+            }
+          },
+          {
+            "text": "file-0024.png 0 KB",
+            "box": {
+              "x": 1144,
+              "y": 550,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 192,
+              "naturalHeight": 144,
+              "srcScheme": "blob",
+              "box": {
+                "x": 1148,
+                "y": 554,
+                "w": 168,
+                "h": 126
+              }
+            }
+          },
+          {
+            "text": "file-0028.png 0 KB",
+            "box": {
+              "x": 784,
+              "y": 708,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 192,
+              "naturalHeight": 144,
+              "srcScheme": "blob",
+              "box": {
+                "x": 788,
+                "y": 712,
+                "w": 168,
+                "h": 126
+              }
+            }
+          },
+          {
+            "text": "file-0032.png 0 KB",
+            "box": {
+              "x": 964,
+              "y": 708,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 192,
+              "naturalHeight": 144,
+              "srcScheme": "blob",
+              "box": {
+                "x": 968,
+                "y": 712,
+                "w": 168,
+                "h": 126
+              }
+            }
+          },
+          {
+            "text": "file-0036.png 0 KB",
+            "box": {
+              "x": 1144,
+              "y": 708,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 192,
+              "naturalHeight": 144,
+              "srcScheme": "blob",
+              "box": {
+                "x": 1148,
+                "y": 712,
+                "w": 168,
+                "h": 126
+              }
+            }
+          },
+          {
+            "text": "file-0040.png 0 KB",
+            "box": {
+              "x": 784,
+              "y": 866,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 192,
+              "naturalHeight": 144,
+              "srcScheme": "blob",
+              "box": {
+                "x": 788,
+                "y": 870,
+                "w": 168,
+                "h": 126
+              }
+            }
+          },
+          {
+            "text": "file-0044.png 0 KB",
+            "box": {
+              "x": 964,
+              "y": 866,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 192,
+              "naturalHeight": 144,
+              "srcScheme": "blob",
+              "box": {
+                "x": 968,
+                "y": 870,
+                "w": 168,
+                "h": 126
+              }
+            }
+          },
+          {
+            "text": "file-0048.png 0 KB",
+            "box": {
+              "x": 1144,
+              "y": 866,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 192,
+              "naturalHeight": 144,
+              "srcScheme": "blob",
+              "box": {
+                "x": 1148,
+                "y": 870,
+                "w": 168,
+                "h": 126
+              }
+            }
+          },
+          {
+            "text": "file-0052.png 0 KB",
+            "box": {
+              "x": 784,
+              "y": 1024,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "file-0056.png 0 KB",
+            "box": {
+              "x": 964,
+              "y": 1024,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "file-0060.png 0 KB",
+            "box": {
+              "x": 1144,
+              "y": 1024,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "file-0064.png 0 KB",
+            "box": {
+              "x": 784,
+              "y": 1182,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "file-0068.png 0 KB",
+            "box": {
+              "x": 964,
+              "y": 1182,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "file-0072.png 0 KB",
+            "box": {
+              "x": 1144,
+              "y": 1182,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "file-0076.png 0 KB",
+            "box": {
+              "x": 784,
+              "y": 1340,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "file-0080.png 0 KB",
+            "box": {
+              "x": 964,
+              "y": 1340,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "file-0084.png 0 KB",
+            "box": {
+              "x": 1144,
+              "y": 1340,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "file-0088.png 0 KB",
+            "box": {
+              "x": 784,
+              "y": 1498,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "file-0092.png 0 KB",
+            "box": {
+              "x": 964,
+              "y": 1498,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "file-0096.png 0 KB",
+            "box": {
+              "x": 1144,
+              "y": 1498,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": null
+          }
+        ],
+        "header": "Mentioned \u2191 Filter 5,002 files Open folder Highlights 2 file-0000.png 10 KB A large chart promoted as the main deliverable. file-0002.md 0 KB Summary delivered "
+      },
+      "scale": {
+        "first": {
+          "mounted": 26,
+          "domNodes": 1136,
+          "heapBytes": 139000000,
+          "visible": 14,
+          "scrollTop": 0,
+          "scrollHeight": 546194,
+          "clientHeight": 748,
+          "clientWidth": 552,
+          "scrollWidth": 552,
+          "tabStops": 1,
+          "lastVisible": "file-0048.png\n0 KB",
+          "lastBottom": 1020,
+          "scrollerBottom": 900
+        },
+        "resourcesFirst": {
+          "entries": 13,
+          "queued": 0,
+          "active": 0,
+          "reads": 13,
+          "decodes": 13,
+          "peakActive": 4
+        },
+        "middle": {
+          "mounted": 8,
+          "domNodes": 780,
+          "heapBytes": 139000000,
+          "visible": 3,
+          "scrollTop": 273097,
+          "scrollHeight": 546194,
+          "clientHeight": 748,
+          "clientWidth": 552,
+          "scrollWidth": 552,
+          "tabStops": 1,
+          "lastVisible": "Open to play\nfile-2661.mp4\n17 KB",
+          "lastBottom": 1001,
+          "scrollerBottom": 900
+        },
+        "end": {
+          "mounted": 39,
+          "domNodes": 1317,
+          "heapBytes": 139000000,
+          "visible": 21,
+          "scrollTop": 545446,
+          "scrollHeight": 546194,
+          "clientHeight": 748,
+          "clientWidth": 552,
+          "scrollWidth": 552,
+          "tabStops": 1,
+          "lastVisible": "file-4999.csv\n0 KB",
+          "lastBottom": 892,
+          "scrollerBottom": 900
+        },
+        "resourcesEnd": {
+          "entries": 13,
+          "queued": 0,
+          "active": 0,
+          "reads": 13,
+          "decodes": 13,
+          "peakActive": 4
+        },
+        "endFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/repaired/ready-wide/finder-ready-wide-end-dark.png"
+      }
+    },
+    "light": {
+      "frame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/repaired/ready-wide/files-ready-wide-light.png",
+      "reading": {
+        "innerWidth": 1380,
+        "innerHeight": 900,
+        "dock": {
+          "x": 776,
+          "y": 32,
+          "w": 560,
+          "h": 868
+        },
+        "dockMode": "docked",
+        "scroller": {
+          "x": 776,
+          "y": 152,
+          "w": 560,
+          "h": 748
+        },
+        "rowCount": 26,
+        "rows": [
+          {
+            "text": "file-0000.png 10 KB A large chart promoted as the main deliverable.",
+            "box": {
+              "x": 784,
+              "y": 192,
+              "w": 536,
+              "h": 68
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 640,
+              "naturalHeight": 384,
+              "srcScheme": "blob",
+              "box": {
+                "x": 788,
+                "y": 206,
+                "w": 40,
+                "h": 40
+              }
+            }
+          },
+          {
+            "text": "file-0002.md 0 KB Summary delivered alongside the chart.",
+            "box": {
+              "x": 784,
+              "y": 260,
+              "w": 536,
+              "h": 68
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "file-0004.png 0 KB",
+            "box": {
+              "x": 784,
+              "y": 392,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 192,
+              "naturalHeight": 144,
+              "srcScheme": "blob",
+              "box": {
+                "x": 788,
+                "y": 396,
+                "w": 168,
+                "h": 126
+              }
+            }
+          },
+          {
+            "text": "file-0008.png 0 KB",
+            "box": {
+              "x": 964,
+              "y": 392,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 192,
+              "naturalHeight": 144,
+              "srcScheme": "blob",
+              "box": {
+                "x": 968,
+                "y": 396,
+                "w": 168,
+                "h": 126
+              }
+            }
+          },
+          {
+            "text": "file-0012.png 0 KB",
+            "box": {
+              "x": 1144,
+              "y": 392,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 192,
+              "naturalHeight": 144,
+              "srcScheme": "blob",
+              "box": {
+                "x": 1148,
+                "y": 396,
+                "w": 168,
+                "h": 126
+              }
+            }
+          },
+          {
+            "text": "file-0016.png 0 KB",
+            "box": {
+              "x": 784,
+              "y": 550,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 192,
+              "naturalHeight": 144,
+              "srcScheme": "blob",
+              "box": {
+                "x": 788,
+                "y": 554,
+                "w": 168,
+                "h": 126
+              }
+            }
+          },
+          {
+            "text": "file-0020.png 0 KB",
+            "box": {
+              "x": 964,
+              "y": 550,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 192,
+              "naturalHeight": 144,
+              "srcScheme": "blob",
+              "box": {
+                "x": 968,
+                "y": 554,
+                "w": 168,
+                "h": 126
+              }
+            }
+          },
+          {
+            "text": "file-0024.png 0 KB",
+            "box": {
+              "x": 1144,
+              "y": 550,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 192,
+              "naturalHeight": 144,
+              "srcScheme": "blob",
+              "box": {
+                "x": 1148,
+                "y": 554,
+                "w": 168,
+                "h": 126
+              }
+            }
+          },
+          {
+            "text": "file-0028.png 0 KB",
+            "box": {
+              "x": 784,
+              "y": 708,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 192,
+              "naturalHeight": 144,
+              "srcScheme": "blob",
+              "box": {
+                "x": 788,
+                "y": 712,
+                "w": 168,
+                "h": 126
+              }
+            }
+          },
+          {
+            "text": "file-0032.png 0 KB",
+            "box": {
+              "x": 964,
+              "y": 708,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 192,
+              "naturalHeight": 144,
+              "srcScheme": "blob",
+              "box": {
+                "x": 968,
+                "y": 712,
+                "w": 168,
+                "h": 126
+              }
+            }
+          },
+          {
+            "text": "file-0036.png 0 KB",
+            "box": {
+              "x": 1144,
+              "y": 708,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 192,
+              "naturalHeight": 144,
+              "srcScheme": "blob",
+              "box": {
+                "x": 1148,
+                "y": 712,
+                "w": 168,
+                "h": 126
+              }
+            }
+          },
+          {
+            "text": "file-0040.png 0 KB",
+            "box": {
+              "x": 784,
+              "y": 866,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 192,
+              "naturalHeight": 144,
+              "srcScheme": "blob",
+              "box": {
+                "x": 788,
+                "y": 870,
+                "w": 168,
+                "h": 126
+              }
+            }
+          },
+          {
+            "text": "file-0044.png 0 KB",
+            "box": {
+              "x": 964,
+              "y": 866,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 192,
+              "naturalHeight": 144,
+              "srcScheme": "blob",
+              "box": {
+                "x": 968,
+                "y": 870,
+                "w": 168,
+                "h": 126
+              }
+            }
+          },
+          {
+            "text": "file-0048.png 0 KB",
+            "box": {
+              "x": 1144,
+              "y": 866,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": {
+              "decoded": true,
+              "naturalWidth": 192,
+              "naturalHeight": 144,
+              "srcScheme": "blob",
+              "box": {
+                "x": 1148,
+                "y": 870,
+                "w": 168,
+                "h": 126
+              }
+            }
+          },
+          {
+            "text": "file-0052.png 0 KB",
+            "box": {
+              "x": 784,
+              "y": 1024,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "file-0056.png 0 KB",
+            "box": {
+              "x": 964,
+              "y": 1024,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "file-0060.png 0 KB",
+            "box": {
+              "x": 1144,
+              "y": 1024,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "file-0064.png 0 KB",
+            "box": {
+              "x": 784,
+              "y": 1182,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "file-0068.png 0 KB",
+            "box": {
+              "x": 964,
+              "y": 1182,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "file-0072.png 0 KB",
+            "box": {
+              "x": 1144,
+              "y": 1182,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "file-0076.png 0 KB",
+            "box": {
+              "x": 784,
+              "y": 1340,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "file-0080.png 0 KB",
+            "box": {
+              "x": 964,
+              "y": 1340,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "file-0084.png 0 KB",
+            "box": {
+              "x": 1144,
+              "y": 1340,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "file-0088.png 0 KB",
+            "box": {
+              "x": 784,
+              "y": 1498,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "file-0092.png 0 KB",
+            "box": {
+              "x": 964,
+              "y": 1498,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": null
+          },
+          {
+            "text": "file-0096.png 0 KB",
+            "box": {
+              "x": 1144,
+              "y": 1498,
+              "w": 176,
+              "h": 154
+            },
+            "insideDock": true,
+            "thumb": null
+          }
+        ],
+        "header": "Mentioned \u2191 Filter 5,002 files Open folder Highlights 2 file-0000.png 10 KB A large chart promoted as the main deliverable. file-0002.md 0 KB Summary delivered "
+      },
+      "scale": {
+        "first": {
+          "mounted": 26,
+          "domNodes": 1136,
+          "heapBytes": 139000000,
+          "visible": 14,
+          "scrollTop": 0,
+          "scrollHeight": 546194,
+          "clientHeight": 748,
+          "clientWidth": 552,
+          "scrollWidth": 552,
+          "tabStops": 1,
+          "lastVisible": "file-0048.png\n0 KB",
+          "lastBottom": 1020,
+          "scrollerBottom": 900
+        },
+        "resourcesFirst": {
+          "entries": 13,
+          "queued": 0,
+          "active": 0,
+          "reads": 13,
+          "decodes": 13,
+          "peakActive": 4
+        },
+        "middle": {
+          "mounted": 8,
+          "domNodes": 780,
+          "heapBytes": 139000000,
+          "visible": 3,
+          "scrollTop": 273097,
+          "scrollHeight": 546194,
+          "clientHeight": 748,
+          "clientWidth": 552,
+          "scrollWidth": 552,
+          "tabStops": 1,
+          "lastVisible": "Open to play\nfile-2661.mp4\n17 KB",
+          "lastBottom": 1001,
+          "scrollerBottom": 900
+        },
+        "end": {
+          "mounted": 39,
+          "domNodes": 1317,
+          "heapBytes": 139000000,
+          "visible": 21,
+          "scrollTop": 545446,
+          "scrollHeight": 546194,
+          "clientHeight": 748,
+          "clientWidth": 552,
+          "scrollWidth": 552,
+          "tabStops": 1,
+          "lastVisible": "file-4999.csv\n0 KB",
+          "lastBottom": 892,
+          "scrollerBottom": 900
+        },
+        "resourcesEnd": {
+          "entries": 13,
+          "queued": 0,
+          "active": 0,
+          "reads": 13,
+          "decodes": 13,
+          "peakActive": 4
+        },
+        "endFrame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/repaired/ready-wide/finder-ready-wide-end-light.png"
+      }
+    }
+  },
+  "facts": {
+    "windowMode": "headless",
+    "appVersion": "0.34.40",
+    "platform": "darwin",
+    "title": "Local Operator",
+    "windowSize": {
+      "width": 1380,
+      "height": 900
+    },
+    "contentBounds": {
+      "width": 1380,
+      "height": 900
+    },
+    "visible": false,
+    "focused": false,
+    "minimized": false,
+    "frames": [],
+    "outDir": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/repaired/ready-wide"
+  }
 }

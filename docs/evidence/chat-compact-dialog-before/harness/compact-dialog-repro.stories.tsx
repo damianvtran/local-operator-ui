@@ -1,4 +1,3 @@
-import type { CanonicalSessionHandle } from "@renderer/shared/hooks/use-canonical-session";
 /**
  * The PRE-CHANGE reproduction of `/compact`'s stuck dialog (base `9adf108dc`).
  *
@@ -30,7 +29,11 @@ import type { CanonicalSessionHandle } from "@renderer/shared/hooks/use-canonica
  */
 import type { Meta, StoryObj } from "@storybook/react";
 import { useState } from "react";
-import { EMPTY_TRANSCRIPT, applyEvent } from "../canonical/transcript-reducer";
+import type { CanonicalSessionHandle } from "@renderer/shared/hooks/use-canonical-session";
+import {
+	EMPTY_TRANSCRIPT,
+	applyEvent,
+} from "../canonical/transcript-reducer";
 import { CompactView } from "./destination-pickers";
 
 /** The owner's answer to a `/compact` receipt, verbatim from `_compact_slash`. */
@@ -87,9 +90,7 @@ const settledRecords = () => {
 	return state.records;
 };
 
-const Dialog = ({
-	records,
-}: { records: CanonicalSessionHandle["transcript"]["records"] }) => {
+const Dialog = ({ records }: { records: CanonicalSessionHandle["transcript"]["records"] }) => {
 	/*
 	 * Armed in the RENDER PHASE, not at module scope and not in an effect.
 	 *
@@ -113,9 +114,7 @@ const Dialog = ({
 				// of `PickerContext` is required by the type and unused here, so each
 				// is a no-op rather than a second behaviour this rig would be
 				// reproducing by accident.
-				action={
-					{ kind: "native_action", destination: "session.compact" } as never
-				}
+				action={{ kind: "native_action", destination: "session.compact" } as never}
 				spec={{} as never}
 				sessionId="repro-session"
 				canonical={handle(records)}

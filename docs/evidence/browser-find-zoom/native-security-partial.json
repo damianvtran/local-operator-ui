@@ -1,717 +1,725 @@
 [
-	{
-		"name": "preflight",
-		"actual": {
-			"hello": {
-				"armed": true,
-				"outDir": "<scratch>/a2-security-final/runtime/out",
-				"title": "Local Operator",
-				"route": "/chat",
-				"href": "file://<worktree>/out/renderer/index.html#/chat",
-				"theme": "localOperatorDark",
-				"viewport": {
-					"width": 1380,
-					"height": 900,
-					"devicePixelRatio": 2
-				},
-				"visibilityState": "visible",
-				"hasFocus": false,
-				"apiBaseUrl": "http://127.0.0.1:1",
-				"userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) LocalOperator/44.3.0 Chrome/152.0.7977.78 Electron/44.3.0 Safari/537.36"
-			},
-			"facts": {
-				"windowMode": "headless",
-				"appVersion": "44.3.0",
-				"platform": "darwin",
-				"title": "Local Operator",
-				"windowSize": {
-					"width": 1380,
-					"height": 900
-				},
-				"contentBounds": {
-					"width": 1380,
-					"height": 900
-				},
-				"visible": false,
-				"focused": false,
-				"minimized": false,
-				"frames": [],
-				"outDir": "<scratch>/a2-security-final/runtime/out"
-			}
-		}
-	},
-	{
-		"name": "native find observer",
-		"actual": 4
-	},
-	{
-		"name": "boundary start",
-		"actual": {
-			"first": 1,
-			"second": 2,
-			"source": "c75cddf13dc3241d65e14f0ab3f60e1e1baf574a"
-		}
-	},
-	{
-		"name": "native150 before handover",
-		"actual": {
-			"first": [
-				{
-					"id": 4,
-					"zoom": 1.5,
-					"mode": "isolated",
-					"url": "http://127.0.0.1:56715/one"
-				}
-			],
-			"sameOriginOther": [
-				{
-					"id": 5,
-					"zoom": 1,
-					"mode": "isolated",
-					"url": "http://127.0.0.1:56715/two"
-				}
-			]
-		}
-	},
-	{
-		"name": "native handover resets zoom",
-		"actual": {
-			"controls": {
-				"find": null,
-				"zoom": 1,
-				"zoomAllowed": false,
-				"notice": null
-			},
-			"pages": [
-				{
-					"id": 4,
-					"zoom": 1,
-					"mode": "isolated",
-					"url": "http://127.0.0.1:56715/one"
-				}
-			]
-		}
-	},
-	{
-		"name": "handed-over tab zoom CHORD refused honestly",
-		"actual": {
-			"input": "DOM KeyboardEvent primary+plus scoped route, not OS key",
-			"controls": {
-				"find": null,
-				"zoom": 1,
-				"zoomAllowed": false,
-				"notice": "Zoom is off for tabs an agent is driving"
-			},
-			"pages": [
-				{
-					"id": 4,
-					"zoom": 1,
-					"mode": "isolated",
-					"url": "http://127.0.0.1:56715/one"
-				}
-			]
-		}
-	},
-	{
-		"name": "agent adopted zoom-normalized capability",
-		"actual": {
-			"url": "http://127.0.0.1:56715/one",
-			"zoom": 1
-		}
-	},
-	{
-		"name": "agent CSS geometry after zoomed handover",
-		"actual": {
-			"count": 1,
-			"matches": [
-				{
-					"tag": "button",
-					"id": "target",
-					"role": "",
-					"className": "",
-					"rect": {
-						"x": 8,
-						"y": 137.94,
-						"top": 137.94,
-						"right": 128,
-						"bottom": 177.94,
-						"width": 120,
-						"height": 40
-					},
-					"styles": {
-						"display": "inline-block",
-						"position": "static",
-						"visibility": "visible",
-						"opacity": "1",
-						"z-index": "auto",
-						"transform": "none",
-						"transform-origin": "60px 20px",
-						"top": "auto",
-						"right": "auto",
-						"bottom": "auto",
-						"left": "auto",
-						"width": "120px",
-						"height": "40px",
-						"contain": "none",
-						"filter": "none",
-						"will-change": "auto",
-						"overflow": "visible",
-						"overflow-x": "visible",
-						"overflow-y": "visible",
-						"pointer-events": "auto"
-					},
-					"inline": {}
-				}
-			],
-			"truncated": false,
-			"url": "http://127.0.0.1:56715/one",
-			"title": "Find fixture /one"
-		}
-	},
-	{
-		"name": "agent hit-test CSS center",
-		"actual": {
-			"elements": [
-				{
-					"id": "target",
-					"rect": {
-						"x": 8,
-						"y": 137.94,
-						"top": 137.94,
-						"right": 128,
-						"bottom": 177.94,
-						"width": 120,
-						"height": 40
-					}
-				},
-				{
-					"id": "",
-					"rect": {
-						"x": 8,
-						"y": 8,
-						"top": 8,
-						"right": 1112,
-						"bottom": 719,
-						"width": 1104,
-						"height": 711
-					}
-				},
-				{
-					"id": "",
-					"rect": {
-						"x": 0,
-						"y": 0,
-						"top": 0,
-						"right": 1120,
-						"bottom": 727,
-						"width": 1120,
-						"height": 727
-					}
-				}
-			]
-		}
-	},
-	{
-		"name": "agent read after zoom/handover",
-		"actual": {
-			"url": "http://127.0.0.1:56715/one",
-			"keys": ["text", "url", "title"],
-			"text": "Target",
-			"zoom": [
-				{
-					"id": 4,
-					"zoom": 1,
-					"mode": "isolated",
-					"url": "http://127.0.0.1:56715/one"
-				}
-			],
-			"queryWasPending": true,
-			"findCleared": true
-		}
-	},
-	{
-		"name": "agent screenshot after zoom/handover",
-		"actual": {
-			"url": "http://127.0.0.1:56715/one",
-			"keys": ["data", "url", "title"],
-			"zoom": [
-				{
-					"id": 4,
-					"zoom": 1,
-					"mode": "isolated",
-					"url": "http://127.0.0.1:56715/one"
-				}
-			],
-			"queryWasPending": true,
-			"findCleared": true,
-			"pngBytes": 33867
-		}
-	},
-	{
-		"name": "AGENT-OWNED tab zoom CHORD refuses at100",
-		"actual": {
-			"input": "DOM KeyboardEvent primary+plus scoped route, not OS key",
-			"controls": {
-				"find": null,
-				"zoom": 1,
-				"zoomAllowed": false,
-				"notice": "Zoom is off for tabs an agent is driving"
-			},
-			"pages": [
-				{
-					"id": 6,
-					"zoom": 1,
-					"mode": "isolated",
-					"url": "http://127.0.0.1:56715/agent-owned"
-				}
-			]
-		}
-	},
-	{
-		"name": "frame agent-zoom-notice-localoperatorlight",
-		"actual": {
-			"label": "agent-zoom-notice-localoperatorlight",
-			"path": "<scratch>/a2-security-final/runtime/out/agent-zoom-notice-localoperatorlight.png",
-			"bytes": 111547,
-			"pixels": {
-				"width": 2760,
-				"height": 1800
-			},
-			"viewport": {
-				"width": 1380,
-				"height": 900,
-				"devicePixelRatio": 2
-			}
-		}
-	},
-	{
-		"name": "frame agent-zoom-notice-localoperatordark",
-		"actual": {
-			"label": "agent-zoom-notice-localoperatordark",
-			"path": "<scratch>/a2-security-final/runtime/out/agent-zoom-notice-localoperatordark.png",
-			"bytes": 112305,
-			"pixels": {
-				"width": 2760,
-				"height": 1800
-			},
-			"viewport": {
-				"width": 1380,
-				"height": 900,
-				"devicePixelRatio": 2
-			}
-		}
-	},
-	{
-		"name": "agent-owned screenshot stays100",
-		"actual": {
-			"url": "http://127.0.0.1:56715/agent-owned",
-			"pngBytes": 34553,
-			"pages": [
-				{
-					"id": 6,
-					"zoom": 1,
-					"mode": "isolated",
-					"url": "http://127.0.0.1:56715/agent-owned"
-				}
-			]
-		}
-	},
-	{
-		"name": "SECURITY BOUNDARY COMPLETE",
-		"actual": {
-			"handoverReset": true,
-			"read": true,
-			"styles": true,
-			"hitTest": true,
-			"screenshot": true,
-			"handedChordNotice": true,
-			"agentOwnedChordNotice": true
-		}
-	},
-	{
-		"name": "frame find-closed-zoom100-localoperatorlight",
-		"actual": {
-			"label": "find-closed-zoom100-localoperatorlight",
-			"path": "<scratch>/a2-security-final/runtime/out/find-closed-zoom100-localoperatorlight.png",
-			"bytes": 90045,
-			"pixels": {
-				"width": 2760,
-				"height": 1800
-			},
-			"viewport": {
-				"width": 1380,
-				"height": 900,
-				"devicePixelRatio": 2
-			}
-		}
-	},
-	{
-		"name": "frame find-closed-zoom100-localoperatordark",
-		"actual": {
-			"label": "find-closed-zoom100-localoperatordark",
-			"path": "<scratch>/a2-security-final/runtime/out/find-closed-zoom100-localoperatordark.png",
-			"bytes": 90301,
-			"pixels": {
-				"width": 2760,
-				"height": 1800
-			},
-			"viewport": {
-				"width": 1380,
-				"height": 900,
-				"devicePixelRatio": 2
-			}
-		}
-	},
-	{
-		"name": "find opened by browser chord",
-		"actual": {
-			"state": {
-				"find": {
-					"tabId": 1,
-					"query": "",
-					"ordinal": 0,
-					"matches": 0,
-					"pending": false,
-					"unreported": false
-				},
-				"zoom": 1,
-				"zoomAllowed": true,
-				"notice": null
-			},
-			"focus": "Find in page"
-		}
-	},
-	{
-		"name": "frame find-open-localoperatorlight",
-		"actual": {
-			"label": "find-open-localoperatorlight",
-			"path": "<scratch>/a2-security-final/runtime/out/find-open-localoperatorlight.png",
-			"bytes": 94045,
-			"pixels": {
-				"width": 2760,
-				"height": 1800
-			},
-			"viewport": {
-				"width": 1380,
-				"height": 900,
-				"devicePixelRatio": 2
-			}
-		}
-	},
-	{
-		"name": "frame find-open-localoperatordark",
-		"actual": {
-			"label": "find-open-localoperatordark",
-			"path": "<scratch>/a2-security-final/runtime/out/find-open-localoperatordark.png",
-			"bytes": 94157,
-			"pixels": {
-				"width": 2760,
-				"height": 1800
-			},
-			"viewport": {
-				"width": 1380,
-				"height": 900,
-				"devicePixelRatio": 2
-			}
-		}
-	},
-	{
-		"name": "original native search call (counts NOT observed)",
-		"actual": {
-			"controls": {
-				"find": {
-					"tabId": 1,
-					"query": "hello",
-					"ordinal": 0,
-					"matches": 0,
-					"pending": true,
-					"unreported": false
-				},
-				"zoom": 1,
-				"zoomAllowed": true,
-				"notice": null
-			},
-			"raw": [
-				{
-					"call": [
-						"hello",
-						{
-							"forward": true,
-							"findNext": false
-						}
-					],
-					"returnedId": 1
-				},
-				{
-					"call": [
-						"hello",
-						{
-							"forward": true,
-							"findNext": false
-						}
-					],
-					"returnedId": 2
-				},
-				{
-					"call": [
-						"hello",
-						{
-							"forward": true,
-							"findNext": false
-						}
-					],
-					"returnedId": 3
-				}
-			]
-		}
-	},
-	{
-		"name": "frame find-pending-localoperatorlight",
-		"actual": {
-			"label": "find-pending-localoperatorlight",
-			"path": "<scratch>/a2-security-final/runtime/out/find-pending-localoperatorlight.png",
-			"bytes": 95428,
-			"pixels": {
-				"width": 2760,
-				"height": 1800
-			},
-			"viewport": {
-				"width": 1380,
-				"height": 900,
-				"devicePixelRatio": 2
-			}
-		}
-	},
-	{
-		"name": "frame find-pending-localoperatordark",
-		"actual": {
-			"label": "find-pending-localoperatordark",
-			"path": "<scratch>/a2-security-final/runtime/out/find-pending-localoperatordark.png",
-			"bytes": 95507,
-			"pixels": {
-				"width": 2760,
-				"height": 1800
-			},
-			"viewport": {
-				"width": 1380,
-				"height": 900,
-				"devicePixelRatio": 2
-			}
-		}
-	},
-	{
-		"name": "synthetic found-in-page result - many",
-		"actual": {
-			"synthetic": true,
-			"requestId": 3,
-			"matches": 80,
-			"ordinal": 1
-		}
-	},
-	{
-		"name": "frame find-many-synthetic-localoperatorlight",
-		"actual": {
-			"label": "find-many-synthetic-localoperatorlight",
-			"path": "<scratch>/a2-security-final/runtime/out/find-many-synthetic-localoperatorlight.png",
-			"bytes": 94255,
-			"pixels": {
-				"width": 2760,
-				"height": 1800
-			},
-			"viewport": {
-				"width": 1380,
-				"height": 900,
-				"devicePixelRatio": 2
-			}
-		}
-	},
-	{
-		"name": "frame find-many-synthetic-localoperatordark",
-		"actual": {
-			"label": "find-many-synthetic-localoperatordark",
-			"path": "<scratch>/a2-security-final/runtime/out/find-many-synthetic-localoperatordark.png",
-			"bytes": 94407,
-			"pixels": {
-				"width": 2760,
-				"height": 1800
-			},
-			"viewport": {
-				"width": 1380,
-				"height": 900,
-				"devicePixelRatio": 2
-			}
-		}
-	},
-	{
-		"name": "synthetic next result",
-		"actual": {
-			"synthetic": true,
-			"requestId": 4,
-			"matches": 80,
-			"ordinal": 2
-		}
-	},
-	{
-		"name": "synthetic previous result",
-		"actual": {
-			"synthetic": true,
-			"requestId": 5,
-			"matches": 80,
-			"ordinal": 1
-		}
-	},
-	{
-		"name": "Enter and Shift+Enter native API requests, synthetic ordinal",
-		"actual": {
-			"tabId": 1,
-			"query": "hello",
-			"ordinal": 1,
-			"matches": 80,
-			"pending": false,
-			"unreported": false
-		}
-	},
-	{
-		"name": "synthetic found-in-page result - no-match",
-		"actual": {
-			"synthetic": true,
-			"requestId": 6,
-			"matches": 0,
-			"ordinal": 0
-		}
-	},
-	{
-		"name": "frame find-no-match-synthetic-localoperatorlight",
-		"actual": {
-			"label": "find-no-match-synthetic-localoperatorlight",
-			"path": "<scratch>/a2-security-final/runtime/out/find-no-match-synthetic-localoperatorlight.png",
-			"bytes": 97514,
-			"pixels": {
-				"width": 2760,
-				"height": 1800
-			},
-			"viewport": {
-				"width": 1380,
-				"height": 900,
-				"devicePixelRatio": 2
-			}
-		}
-	},
-	{
-		"name": "frame find-no-match-synthetic-localoperatordark",
-		"actual": {
-			"label": "find-no-match-synthetic-localoperatordark",
-			"path": "<scratch>/a2-security-final/runtime/out/find-no-match-synthetic-localoperatordark.png",
-			"bytes": 97620,
-			"pixels": {
-				"width": 2760,
-				"height": 1800
-			},
-			"viewport": {
-				"width": 1380,
-				"height": 900,
-				"devicePixelRatio": 2
-			}
-		}
-	},
-	{
-		"name": "tab switch clears find",
-		"actual": {
-			"find": null,
-			"zoom": 1,
-			"zoomAllowed": true,
-			"notice": null
-		}
-	},
-	{
-		"name": "stale explicit tab IPC",
-		"actual": {
-			"accepted": false,
-			"message": "Error invoking remote method 'browser-page-control': Error: The browser tab is no longer presented."
-		}
-	},
-	{
-		"name": "per-tab isolated zoom150",
-		"actual": {
-			"chrome": {
-				"find": null,
-				"zoom": 1.5,
-				"zoomAllowed": true,
-				"notice": null
-			},
-			"pages": [
-				{
-					"id": 4,
-					"zoom": 1.5,
-					"mode": "isolated",
-					"url": "http://127.0.0.1:56715/one"
-				}
-			],
-			"sameOriginOther": [
-				{
-					"id": 5,
-					"zoom": 1,
-					"mode": "isolated",
-					"url": "http://127.0.0.1:56715/two"
-				}
-			]
-		}
-	},
-	{
-		"name": "frame zoom150-localoperatorlight",
-		"actual": {
-			"label": "zoom150-localoperatorlight",
-			"path": "<scratch>/a2-security-final/runtime/out/zoom150-localoperatorlight.png",
-			"bytes": 92380,
-			"pixels": {
-				"width": 2760,
-				"height": 1800
-			},
-			"viewport": {
-				"width": 1380,
-				"height": 900,
-				"devicePixelRatio": 2
-			}
-		}
-	},
-	{
-		"name": "frame zoom150-localoperatordark",
-		"actual": {
-			"label": "zoom150-localoperatordark",
-			"path": "<scratch>/a2-security-final/runtime/out/zoom150-localoperatordark.png",
-			"bytes": 92613,
-			"pixels": {
-				"width": 2760,
-				"height": 1800
-			},
-			"viewport": {
-				"width": 1380,
-				"height": 900,
-				"devicePixelRatio": 2
-			}
-		}
-	},
-	{
-		"name": "real before-input listener emitted once",
-		"actual": {
-			"emitted": {
-				"prevented": 1,
-				"contentsId": 2
-			},
-			"zoom": 1.25
-		}
-	},
-	{
-		"name": "SETUP_OR_RUN_FAILURE",
-		"actual": "Error: timeout find editor present\n    at until (file://<scratch>/a2-native-final-proof.mjs:3324:151)\n    at async typeFind (file://<scratch>/a2-native-final-proof.mjs:3370:3)\n    at async audit (file://<scratch>/a2-native-final-proof.mjs:3454:2)\n    at async file://<scratch>/a2-native-final-proof.mjs:3484:5"
-	},
-	{
-		"name": "teardown",
-		"actual": {
-			"ownedPid": 51289,
-			"alive": false,
-			"scratch": "<scratch>/a2-security-final/runtime",
-			"out": "<scratch>/a2-security-final/runtime/out"
-		}
-	}
+  {
+    "name": "preflight",
+    "actual": {
+      "hello": {
+        "armed": true,
+        "outDir": "<scratch>/a2-security-final/runtime/out",
+        "title": "Local Operator",
+        "route": "/chat",
+        "href": "file://<worktree>/out/renderer/index.html#/chat",
+        "theme": "localOperatorDark",
+        "viewport": {
+          "width": 1380,
+          "height": 900,
+          "devicePixelRatio": 2
+        },
+        "visibilityState": "visible",
+        "hasFocus": false,
+        "apiBaseUrl": "http://127.0.0.1:1",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) LocalOperator/44.3.0 Chrome/152.0.7977.78 Electron/44.3.0 Safari/537.36"
+      },
+      "facts": {
+        "windowMode": "headless",
+        "appVersion": "44.3.0",
+        "platform": "darwin",
+        "title": "Local Operator",
+        "windowSize": {
+          "width": 1380,
+          "height": 900
+        },
+        "contentBounds": {
+          "width": 1380,
+          "height": 900
+        },
+        "visible": false,
+        "focused": false,
+        "minimized": false,
+        "frames": [],
+        "outDir": "<scratch>/a2-security-final/runtime/out"
+      }
+    }
+  },
+  {
+    "name": "native find observer",
+    "actual": 4
+  },
+  {
+    "name": "boundary start",
+    "actual": {
+      "first": 1,
+      "second": 2,
+      "source": "c75cddf13dc3241d65e14f0ab3f60e1e1baf574a"
+    }
+  },
+  {
+    "name": "native150 before handover",
+    "actual": {
+      "first": [
+        {
+          "id": 4,
+          "zoom": 1.5,
+          "mode": "isolated",
+          "url": "http://127.0.0.1:56715/one"
+        }
+      ],
+      "sameOriginOther": [
+        {
+          "id": 5,
+          "zoom": 1,
+          "mode": "isolated",
+          "url": "http://127.0.0.1:56715/two"
+        }
+      ]
+    }
+  },
+  {
+    "name": "native handover resets zoom",
+    "actual": {
+      "controls": {
+        "find": null,
+        "zoom": 1,
+        "zoomAllowed": false,
+        "notice": null
+      },
+      "pages": [
+        {
+          "id": 4,
+          "zoom": 1,
+          "mode": "isolated",
+          "url": "http://127.0.0.1:56715/one"
+        }
+      ]
+    }
+  },
+  {
+    "name": "handed-over tab zoom CHORD refused honestly",
+    "actual": {
+      "input": "DOM KeyboardEvent primary+plus scoped route, not OS key",
+      "controls": {
+        "find": null,
+        "zoom": 1,
+        "zoomAllowed": false,
+        "notice": "Zoom is off for tabs an agent is driving"
+      },
+      "pages": [
+        {
+          "id": 4,
+          "zoom": 1,
+          "mode": "isolated",
+          "url": "http://127.0.0.1:56715/one"
+        }
+      ]
+    }
+  },
+  {
+    "name": "agent adopted zoom-normalized capability",
+    "actual": {
+      "url": "http://127.0.0.1:56715/one",
+      "zoom": 1
+    }
+  },
+  {
+    "name": "agent CSS geometry after zoomed handover",
+    "actual": {
+      "count": 1,
+      "matches": [
+        {
+          "tag": "button",
+          "id": "target",
+          "role": "",
+          "className": "",
+          "rect": {
+            "x": 8,
+            "y": 137.94,
+            "top": 137.94,
+            "right": 128,
+            "bottom": 177.94,
+            "width": 120,
+            "height": 40
+          },
+          "styles": {
+            "display": "inline-block",
+            "position": "static",
+            "visibility": "visible",
+            "opacity": "1",
+            "z-index": "auto",
+            "transform": "none",
+            "transform-origin": "60px 20px",
+            "top": "auto",
+            "right": "auto",
+            "bottom": "auto",
+            "left": "auto",
+            "width": "120px",
+            "height": "40px",
+            "contain": "none",
+            "filter": "none",
+            "will-change": "auto",
+            "overflow": "visible",
+            "overflow-x": "visible",
+            "overflow-y": "visible",
+            "pointer-events": "auto"
+          },
+          "inline": {}
+        }
+      ],
+      "truncated": false,
+      "url": "http://127.0.0.1:56715/one",
+      "title": "Find fixture /one"
+    }
+  },
+  {
+    "name": "agent hit-test CSS center",
+    "actual": {
+      "elements": [
+        {
+          "id": "target",
+          "rect": {
+            "x": 8,
+            "y": 137.94,
+            "top": 137.94,
+            "right": 128,
+            "bottom": 177.94,
+            "width": 120,
+            "height": 40
+          }
+        },
+        {
+          "id": "",
+          "rect": {
+            "x": 8,
+            "y": 8,
+            "top": 8,
+            "right": 1112,
+            "bottom": 719,
+            "width": 1104,
+            "height": 711
+          }
+        },
+        {
+          "id": "",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "top": 0,
+            "right": 1120,
+            "bottom": 727,
+            "width": 1120,
+            "height": 727
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "agent read after zoom/handover",
+    "actual": {
+      "url": "http://127.0.0.1:56715/one",
+      "keys": [
+        "text",
+        "url",
+        "title"
+      ],
+      "text": "Target",
+      "zoom": [
+        {
+          "id": 4,
+          "zoom": 1,
+          "mode": "isolated",
+          "url": "http://127.0.0.1:56715/one"
+        }
+      ],
+      "queryWasPending": true,
+      "findCleared": true
+    }
+  },
+  {
+    "name": "agent screenshot after zoom/handover",
+    "actual": {
+      "url": "http://127.0.0.1:56715/one",
+      "keys": [
+        "data",
+        "url",
+        "title"
+      ],
+      "zoom": [
+        {
+          "id": 4,
+          "zoom": 1,
+          "mode": "isolated",
+          "url": "http://127.0.0.1:56715/one"
+        }
+      ],
+      "queryWasPending": true,
+      "findCleared": true,
+      "pngBytes": 33867
+    }
+  },
+  {
+    "name": "AGENT-OWNED tab zoom CHORD refuses at100",
+    "actual": {
+      "input": "DOM KeyboardEvent primary+plus scoped route, not OS key",
+      "controls": {
+        "find": null,
+        "zoom": 1,
+        "zoomAllowed": false,
+        "notice": "Zoom is off for tabs an agent is driving"
+      },
+      "pages": [
+        {
+          "id": 6,
+          "zoom": 1,
+          "mode": "isolated",
+          "url": "http://127.0.0.1:56715/agent-owned"
+        }
+      ]
+    }
+  },
+  {
+    "name": "frame agent-zoom-notice-localoperatorlight",
+    "actual": {
+      "label": "agent-zoom-notice-localoperatorlight",
+      "path": "<scratch>/a2-security-final/runtime/out/agent-zoom-notice-localoperatorlight.png",
+      "bytes": 111547,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      }
+    }
+  },
+  {
+    "name": "frame agent-zoom-notice-localoperatordark",
+    "actual": {
+      "label": "agent-zoom-notice-localoperatordark",
+      "path": "<scratch>/a2-security-final/runtime/out/agent-zoom-notice-localoperatordark.png",
+      "bytes": 112305,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      }
+    }
+  },
+  {
+    "name": "agent-owned screenshot stays100",
+    "actual": {
+      "url": "http://127.0.0.1:56715/agent-owned",
+      "pngBytes": 34553,
+      "pages": [
+        {
+          "id": 6,
+          "zoom": 1,
+          "mode": "isolated",
+          "url": "http://127.0.0.1:56715/agent-owned"
+        }
+      ]
+    }
+  },
+  {
+    "name": "SECURITY BOUNDARY COMPLETE",
+    "actual": {
+      "handoverReset": true,
+      "read": true,
+      "styles": true,
+      "hitTest": true,
+      "screenshot": true,
+      "handedChordNotice": true,
+      "agentOwnedChordNotice": true
+    }
+  },
+  {
+    "name": "frame find-closed-zoom100-localoperatorlight",
+    "actual": {
+      "label": "find-closed-zoom100-localoperatorlight",
+      "path": "<scratch>/a2-security-final/runtime/out/find-closed-zoom100-localoperatorlight.png",
+      "bytes": 90045,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      }
+    }
+  },
+  {
+    "name": "frame find-closed-zoom100-localoperatordark",
+    "actual": {
+      "label": "find-closed-zoom100-localoperatordark",
+      "path": "<scratch>/a2-security-final/runtime/out/find-closed-zoom100-localoperatordark.png",
+      "bytes": 90301,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      }
+    }
+  },
+  {
+    "name": "find opened by browser chord",
+    "actual": {
+      "state": {
+        "find": {
+          "tabId": 1,
+          "query": "",
+          "ordinal": 0,
+          "matches": 0,
+          "pending": false,
+          "unreported": false
+        },
+        "zoom": 1,
+        "zoomAllowed": true,
+        "notice": null
+      },
+      "focus": "Find in page"
+    }
+  },
+  {
+    "name": "frame find-open-localoperatorlight",
+    "actual": {
+      "label": "find-open-localoperatorlight",
+      "path": "<scratch>/a2-security-final/runtime/out/find-open-localoperatorlight.png",
+      "bytes": 94045,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      }
+    }
+  },
+  {
+    "name": "frame find-open-localoperatordark",
+    "actual": {
+      "label": "find-open-localoperatordark",
+      "path": "<scratch>/a2-security-final/runtime/out/find-open-localoperatordark.png",
+      "bytes": 94157,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      }
+    }
+  },
+  {
+    "name": "original native search call (counts NOT observed)",
+    "actual": {
+      "controls": {
+        "find": {
+          "tabId": 1,
+          "query": "hello",
+          "ordinal": 0,
+          "matches": 0,
+          "pending": true,
+          "unreported": false
+        },
+        "zoom": 1,
+        "zoomAllowed": true,
+        "notice": null
+      },
+      "raw": [
+        {
+          "call": [
+            "hello",
+            {
+              "forward": true,
+              "findNext": false
+            }
+          ],
+          "returnedId": 1
+        },
+        {
+          "call": [
+            "hello",
+            {
+              "forward": true,
+              "findNext": false
+            }
+          ],
+          "returnedId": 2
+        },
+        {
+          "call": [
+            "hello",
+            {
+              "forward": true,
+              "findNext": false
+            }
+          ],
+          "returnedId": 3
+        }
+      ]
+    }
+  },
+  {
+    "name": "frame find-pending-localoperatorlight",
+    "actual": {
+      "label": "find-pending-localoperatorlight",
+      "path": "<scratch>/a2-security-final/runtime/out/find-pending-localoperatorlight.png",
+      "bytes": 95428,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      }
+    }
+  },
+  {
+    "name": "frame find-pending-localoperatordark",
+    "actual": {
+      "label": "find-pending-localoperatordark",
+      "path": "<scratch>/a2-security-final/runtime/out/find-pending-localoperatordark.png",
+      "bytes": 95507,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      }
+    }
+  },
+  {
+    "name": "synthetic found-in-page result - many",
+    "actual": {
+      "synthetic": true,
+      "requestId": 3,
+      "matches": 80,
+      "ordinal": 1
+    }
+  },
+  {
+    "name": "frame find-many-synthetic-localoperatorlight",
+    "actual": {
+      "label": "find-many-synthetic-localoperatorlight",
+      "path": "<scratch>/a2-security-final/runtime/out/find-many-synthetic-localoperatorlight.png",
+      "bytes": 94255,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      }
+    }
+  },
+  {
+    "name": "frame find-many-synthetic-localoperatordark",
+    "actual": {
+      "label": "find-many-synthetic-localoperatordark",
+      "path": "<scratch>/a2-security-final/runtime/out/find-many-synthetic-localoperatordark.png",
+      "bytes": 94407,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      }
+    }
+  },
+  {
+    "name": "synthetic next result",
+    "actual": {
+      "synthetic": true,
+      "requestId": 4,
+      "matches": 80,
+      "ordinal": 2
+    }
+  },
+  {
+    "name": "synthetic previous result",
+    "actual": {
+      "synthetic": true,
+      "requestId": 5,
+      "matches": 80,
+      "ordinal": 1
+    }
+  },
+  {
+    "name": "Enter and Shift+Enter native API requests, synthetic ordinal",
+    "actual": {
+      "tabId": 1,
+      "query": "hello",
+      "ordinal": 1,
+      "matches": 80,
+      "pending": false,
+      "unreported": false
+    }
+  },
+  {
+    "name": "synthetic found-in-page result - no-match",
+    "actual": {
+      "synthetic": true,
+      "requestId": 6,
+      "matches": 0,
+      "ordinal": 0
+    }
+  },
+  {
+    "name": "frame find-no-match-synthetic-localoperatorlight",
+    "actual": {
+      "label": "find-no-match-synthetic-localoperatorlight",
+      "path": "<scratch>/a2-security-final/runtime/out/find-no-match-synthetic-localoperatorlight.png",
+      "bytes": 97514,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      }
+    }
+  },
+  {
+    "name": "frame find-no-match-synthetic-localoperatordark",
+    "actual": {
+      "label": "find-no-match-synthetic-localoperatordark",
+      "path": "<scratch>/a2-security-final/runtime/out/find-no-match-synthetic-localoperatordark.png",
+      "bytes": 97620,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      }
+    }
+  },
+  {
+    "name": "tab switch clears find",
+    "actual": {
+      "find": null,
+      "zoom": 1,
+      "zoomAllowed": true,
+      "notice": null
+    }
+  },
+  {
+    "name": "stale explicit tab IPC",
+    "actual": {
+      "accepted": false,
+      "message": "Error invoking remote method 'browser-page-control': Error: The browser tab is no longer presented."
+    }
+  },
+  {
+    "name": "per-tab isolated zoom150",
+    "actual": {
+      "chrome": {
+        "find": null,
+        "zoom": 1.5,
+        "zoomAllowed": true,
+        "notice": null
+      },
+      "pages": [
+        {
+          "id": 4,
+          "zoom": 1.5,
+          "mode": "isolated",
+          "url": "http://127.0.0.1:56715/one"
+        }
+      ],
+      "sameOriginOther": [
+        {
+          "id": 5,
+          "zoom": 1,
+          "mode": "isolated",
+          "url": "http://127.0.0.1:56715/two"
+        }
+      ]
+    }
+  },
+  {
+    "name": "frame zoom150-localoperatorlight",
+    "actual": {
+      "label": "zoom150-localoperatorlight",
+      "path": "<scratch>/a2-security-final/runtime/out/zoom150-localoperatorlight.png",
+      "bytes": 92380,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      }
+    }
+  },
+  {
+    "name": "frame zoom150-localoperatordark",
+    "actual": {
+      "label": "zoom150-localoperatordark",
+      "path": "<scratch>/a2-security-final/runtime/out/zoom150-localoperatordark.png",
+      "bytes": 92613,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      }
+    }
+  },
+  {
+    "name": "real before-input listener emitted once",
+    "actual": {
+      "emitted": {
+        "prevented": 1,
+        "contentsId": 2
+      },
+      "zoom": 1.25
+    }
+  },
+  {
+    "name": "SETUP_OR_RUN_FAILURE",
+    "actual": "Error: timeout find editor present\n    at until (file://<scratch>/a2-native-final-proof.mjs:3324:151)\n    at async typeFind (file://<scratch>/a2-native-final-proof.mjs:3370:3)\n    at async audit (file://<scratch>/a2-native-final-proof.mjs:3454:2)\n    at async file://<scratch>/a2-native-final-proof.mjs:3484:5"
+  },
+  {
+    "name": "teardown",
+    "actual": {
+      "ownedPid": 51289,
+      "alive": false,
+      "scratch": "<scratch>/a2-security-final/runtime",
+      "out": "<scratch>/a2-security-final/runtime/out"
+    }
+  }
 ]

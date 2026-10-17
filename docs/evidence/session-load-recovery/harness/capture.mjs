@@ -50,8 +50,7 @@ import { withMockKeychain } from "../../../../scripts/chrome-keychain.mjs";
 
 const OUT = process.argv[2];
 const CASE = process.argv[3] ?? "recovered";
-const ORIGIN =
-	process.argv[4] ?? process.env.SESSION_LOAD_ORIGIN ?? "http://localhost:5211";
+const ORIGIN = process.argv[4] ?? process.env.SESSION_LOAD_ORIGIN ?? "http://localhost:5211";
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 /** The session the stub catalogue lists. Clicked, not assumed. */
 const SESSION = process.env.SESSION_LOAD_SESSION ?? "92602660eb9e";
@@ -192,32 +191,21 @@ const main = async () => {
 		return result.value;
 	};
 	const shoot = async (name) => {
-		const { data } = await cdp.send("Page.captureScreenshot", {
-			format: "png",
-		});
+		const { data } = await cdp.send("Page.captureScreenshot", { format: "png" });
 		writeFileSync(join(OUT, `${name}.png`), Buffer.from(data, "base64"));
 		process.stdout.write(`captured ${name}.png\n`);
 	};
 
 	cdp.ws.addEventListener("message", (ev) => {
 		const msg = JSON.parse(ev.data);
-		if (
-			msg.method === "Runtime.consoleAPICalled" &&
-			msg.params.type === "error"
-		)
-			process.stdout.write(
-				`page error: ${JSON.stringify(msg.params.args.map((a) => a.value ?? a.description))}\n`,
-			);
+		if (msg.method === "Runtime.consoleAPICalled" && msg.params.type === "error")
+			process.stdout.write(`page error: ${JSON.stringify(msg.params.args.map((a) => a.value ?? a.description))}\n`);
 		if (msg.method === "Runtime.exceptionThrown")
-			process.stdout.write(
-				`page exception: ${msg.params.exceptionDetails.text}\n`,
-			);
+			process.stdout.write(`page exception: ${msg.params.exceptionDetails.text}\n`);
 	});
 	await cdp.send("Page.navigate", { url: `${ORIGIN}/` });
-
-	process.stdout.write(
-		`body: ${JSON.stringify((await evaluate("document.body.innerText")).slice(0, 600))}\n`,
-	);
+	
+	process.stdout.write(`body: ${JSON.stringify((await evaluate("document.body.innerText")).slice(0, 600))}\n`);
 
 	/** What the page is showing, read from the DOM rather than assumed. */
 	const readState = () =>
@@ -297,12 +285,8 @@ const main = async () => {
 		return false;
 	})();
 	if (!opened) {
-		process.stdout.write(
-			`body: ${JSON.stringify((await evaluate("document.body.innerText")).slice(0, 800))}\n`,
-		);
-		process.stdout.write(
-			`matches: ${JSON.stringify(await evaluate(`(() => [...document.querySelectorAll("*")].filter((el) => el.children.length === 0 && el.textContent.includes("Failing")).map((el) => el.tagName + "." + el.className))()`))}\n`,
-		);
+		process.stdout.write(`body: ${JSON.stringify((await evaluate("document.body.innerText")).slice(0, 800))}\n`);
+		process.stdout.write(`matches: ${JSON.stringify(await evaluate(`(() => [...document.querySelectorAll("*")].filter((el) => el.children.length === 0 && el.textContent.includes("Failing")).map((el) => el.tagName + "." + el.className))()`))}\n`);
 		throw new Error("the sidebar never listed the conversation");
 	}
 	// Long enough for the retry schedule to run out in `refused` (23.5s of
@@ -310,11 +294,7 @@ const main = async () => {
 	// short enough in `loading` to photograph the window rather than its end
 	// (the first backoff step is 500ms and the budget is 23.5s).
 	await settle(
-		CASE === "refused" || CASE === "narrow"
-			? 30_000
-			: CASE === "loading"
-				? 2_500
-				: 4_000,
+		CASE === "refused" || CASE === "narrow" ? 30_000 : CASE === "loading" ? 2_500 : 4_000,
 	);
 	// One more settle for the transcript's own layout pass.
 	await settle(1_000);
@@ -326,19 +306,13 @@ const main = async () => {
 		// The whole point: the app must NOT claim this conversation is empty, and
 		// it must offer a way back rather than sitting silent.
 		if (state.greeting)
-			throw new Error(
-				`${CASE}: the greeting is painted over a conversation that is not empty`,
-			);
+			throw new Error(`${CASE}: the greeting is painted over a conversation that is not empty`);
 		if (state.reconnect < 1)
 			throw new Error(`${CASE}: no Reconnect control reached the user`);
 		if (state.rows < 1)
-			throw new Error(
-				`${CASE}: the failure notice is not rendered where the reader can see it`,
-			);
+			throw new Error(`${CASE}: the failure notice is not rendered where the reader can see it`);
 		if ((state.notice ?? "").trim() === "")
-			throw new Error(
-				`${CASE}: the transcript pane is blank, so the app failed silently`,
-			);
+			throw new Error(`${CASE}: the transcript pane is blank, so the app failed silently`);
 		if (!state.failure?.text)
 			throw new Error(`${CASE}: no failure notice was found in the pane`);
 	} else if (CASE === "loading") {
@@ -350,21 +324,13 @@ const main = async () => {
 		 * that clipped the line above it.
 		 */
 		if (state.greeting)
-			throw new Error(
-				"loading: the greeting claims the conversation is empty while the app is still reading it",
-			);
+			throw new Error("loading: the greeting claims the conversation is empty while the app is still reading it");
 		if (state.failure)
-			throw new Error(
-				"loading: a settled failure notice is painted, so this is not the retry window",
-			);
+			throw new Error("loading: a settled failure notice is painted, so this is not the retry window");
 		if (!(state.loading || /reconnecting/i.test(state.notice ?? "")))
-			throw new Error(
-				"loading: the retry window is not perceivable - neither the skeleton nor the pane's own line is rendered",
-			);
+			throw new Error("loading: the retry window is not perceivable - neither the skeleton nor the pane's own line is rendered");
 		if (!(state.scrollerHeight > 0))
-			throw new Error(
-				`loading: the transcript scroller is collapsed (h ${state.scrollerHeight}), so the pane cannot name the state (D3)`,
-			);
+			throw new Error(`loading: the transcript scroller is collapsed (h ${state.scrollerHeight}), so the pane cannot name the state (D3)`);
 	} else if (CASE === "empty") {
 		/*
 		 * D5(b), the counter-case: a conversation with no rows that the app CAN
@@ -372,17 +338,11 @@ const main = async () => {
 		 * and "load forever" are indistinguishable.
 		 */
 		if (state.rows !== 0)
-			throw new Error(
-				`empty: expected an empty transcript, got ${state.rows} rows`,
-			);
+			throw new Error(`empty: expected an empty transcript, got ${state.rows} rows`);
 		if (state.loading)
-			throw new Error(
-				"empty: the app is still loading a conversation it has already read",
-			);
+			throw new Error("empty: the app is still loading a conversation it has already read");
 		if (!state.greeting)
-			throw new Error(
-				"empty: a readable empty conversation must be stated as empty",
-			);
+			throw new Error("empty: a readable empty conversation must be stated as empty");
 	} else if (CASE === "before") {
 		/*
 		 * The defect frame, captured from the tree WITHOUT the fix and asserted so
@@ -392,24 +352,16 @@ const main = async () => {
 		 * halves of the claim being made about this frame.
 		 */
 		if (!state.greeting)
-			throw new Error(
-				"before: the greeting is missing, so this tree already carries the fix",
-			);
+			throw new Error("before: the greeting is missing, so this tree already carries the fix");
 		if (state.rows !== 0)
-			throw new Error(
-				`before: expected an empty transcript, got ${state.rows} rows`,
-			);
+			throw new Error(`before: expected an empty transcript, got ${state.rows} rows`);
 		if (state.reconnect > 0)
-			throw new Error(
-				"before: a Reconnect control exists, so this tree is not the pre-fix behaviour",
-			);
+			throw new Error("before: a Reconnect control exists, so this tree is not the pre-fix behaviour");
 	} else {
 		if (state.rows < 2)
 			throw new Error(`recovered: the transcript painted ${state.rows} rows`);
 		if (state.greeting)
-			throw new Error(
-				"recovered: the greeting is painted over a conversation with rows",
-			);
+			throw new Error("recovered: the greeting is painted over a conversation with rows");
 	}
 
 	await shoot(`${CASE}`);

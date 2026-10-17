@@ -1,40 +1,46 @@
 {
-	"methods": ["closeTab", "handOver", "navigate", "newTab", "reorderTabs"],
-	"sourceVocabCheckedAgainst": "src/preload/index.ts",
-	"agentCalls": [
-		"request_access/await_access through established approve helper",
-		"open with session:proof-a/session:proof-b"
-	],
-	"carrierWrappers": [
-		"__b.snapshot",
-		"__b.facts",
-		"__b.bounds",
-		"__b.resize",
-		"__b.actions"
-	],
-	"staticSyntax": "node --check passed for driver and carrier",
-	"hostOwnershipIpcPreloadAndTypedOutcomeBytes": "unchanged vs39fd08f1",
-	"scopedPaneNative": "NOT EXERCISED; no backend/interception; real hook+literal Surface callback functional tests separate",
-	"cellOrder": [
-		"safety",
-		"1/3/12 title+glyph geometry",
-		"consecutive overflow viewport",
-		"A/B/A headings",
-		"route failed-copy typed outcome+retention",
-		"affected frames",
-		"nonfatal approvals tooltip last"
-	],
-	"nativeHasNotRun": true,
-	"frozenHead": "c7d766d92dabf63b39ca1607a4ccba958fe161c5",
-	"frozenSrcTree": "4ce1f33a53a55b6d9a3202ae6d3be03681fd1158",
-	"unitResults": {
-		"oldCode": "4 FAIL / 0 PASS",
-		"current": "97 PASS / 0 FAIL",
-		"nodeAppTypes": "PASS",
-		"scriptsRatchet": "PASS",
-		"i18nGenerator": "byte-identical",
-		"i18nStrings": "PASS/advisories report-only"
-	},
-	"rigSha256": "c6e9174592aa86442a52642878a3dcd755c8c62623d73a3d01e62d60040f183d",
-	"carrierSha256": "101c789440596fc1a597d609d753f6871a88f5b27f86c194787f88fa1b345da4"
+  "methods": [
+    "closeTab",
+    "handOver",
+    "navigate",
+    "newTab",
+    "reorderTabs"
+  ],
+  "sourceVocabCheckedAgainst": "src/preload/index.ts",
+  "agentCalls": [
+    "request_access/await_access through established approve helper",
+    "open with session:proof-a/session:proof-b"
+  ],
+  "carrierWrappers": [
+    "__b.snapshot",
+    "__b.facts",
+    "__b.bounds",
+    "__b.resize",
+    "__b.actions"
+  ],
+  "staticSyntax": "node --check passed for driver and carrier",
+  "hostOwnershipIpcPreloadAndTypedOutcomeBytes": "unchanged vs39fd08f1",
+  "scopedPaneNative": "NOT EXERCISED; no backend/interception; real hook+literal Surface callback functional tests separate",
+  "cellOrder": [
+    "safety",
+    "1/3/12 title+glyph geometry",
+    "consecutive overflow viewport",
+    "A/B/A headings",
+    "route failed-copy typed outcome+retention",
+    "affected frames",
+    "nonfatal approvals tooltip last"
+  ],
+  "nativeHasNotRun": true,
+  "frozenHead": "c7d766d92dabf63b39ca1607a4ccba958fe161c5",
+  "frozenSrcTree": "4ce1f33a53a55b6d9a3202ae6d3be03681fd1158",
+  "unitResults": {
+    "oldCode": "4 FAIL / 0 PASS",
+    "current": "97 PASS / 0 FAIL",
+    "nodeAppTypes": "PASS",
+    "scriptsRatchet": "PASS",
+    "i18nGenerator": "byte-identical",
+    "i18nStrings": "PASS/advisories report-only"
+  },
+  "rigSha256": "c6e9174592aa86442a52642878a3dcd755c8c62623d73a3d01e62d60040f183d",
+  "carrierSha256": "101c789440596fc1a597d609d753f6871a88f5b27f86c194787f88fa1b345da4"
 }

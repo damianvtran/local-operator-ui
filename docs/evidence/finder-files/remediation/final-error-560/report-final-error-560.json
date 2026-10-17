@@ -1,75 +1,75 @@
 {
-	"label": "final-error-560",
-	"session": "b1f1de000001",
-	"window": {
-		"width": 1380,
-		"height": 900
-	},
-	"themes": {
-		"dark": {
-			"frame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/final-error-560/files-final-error-560-dark.png",
-			"reading": {
-				"innerWidth": 1380,
-				"innerHeight": 900,
-				"dock": {
-					"x": 776,
-					"y": 32,
-					"w": 560,
-					"h": 868
-				},
-				"dockMode": "docked",
-				"scroller": {
-					"x": 776,
-					"y": 152,
-					"w": 560,
-					"h": 748
-				},
-				"rowCount": 0,
-				"rows": [],
-				"header": "Mentioned ↑ Filter Open folder The file index could not be read. Retry to reconnect. Retry"
-			}
-		},
-		"light": {
-			"frame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/final-error-560/files-final-error-560-light.png",
-			"reading": {
-				"innerWidth": 1380,
-				"innerHeight": 900,
-				"dock": {
-					"x": 776,
-					"y": 32,
-					"w": 560,
-					"h": 868
-				},
-				"dockMode": "docked",
-				"scroller": {
-					"x": 776,
-					"y": 152,
-					"w": 560,
-					"h": 748
-				},
-				"rowCount": 0,
-				"rows": [],
-				"header": "Mentioned ↑ Filter Open folder The file index could not be read. Retry to reconnect. Retry"
-			}
-		}
-	},
-	"facts": {
-		"windowMode": "headless",
-		"appVersion": "0.34.42",
-		"platform": "darwin",
-		"title": "Local Operator",
-		"windowSize": {
-			"width": 1380,
-			"height": 900
-		},
-		"contentBounds": {
-			"width": 1380,
-			"height": 900
-		},
-		"visible": false,
-		"focused": false,
-		"minimized": false,
-		"frames": [],
-		"outDir": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/final-error-560"
-	}
+  "label": "final-error-560",
+  "session": "b1f1de000001",
+  "window": {
+    "width": 1380,
+    "height": 900
+  },
+  "themes": {
+    "dark": {
+      "frame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/final-error-560/files-final-error-560-dark.png",
+      "reading": {
+        "innerWidth": 1380,
+        "innerHeight": 900,
+        "dock": {
+          "x": 776,
+          "y": 32,
+          "w": 560,
+          "h": 868
+        },
+        "dockMode": "docked",
+        "scroller": {
+          "x": 776,
+          "y": 152,
+          "w": 560,
+          "h": 748
+        },
+        "rowCount": 0,
+        "rows": [],
+        "header": "Mentioned ↑ Filter Open folder The file index could not be read. Retry to reconnect. Retry"
+      }
+    },
+    "light": {
+      "frame": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/final-error-560/files-final-error-560-light.png",
+      "reading": {
+        "innerWidth": 1380,
+        "innerHeight": 900,
+        "dock": {
+          "x": 776,
+          "y": 32,
+          "w": 560,
+          "h": 868
+        },
+        "dockMode": "docked",
+        "scroller": {
+          "x": 776,
+          "y": 152,
+          "w": 560,
+          "h": 748
+        },
+        "rowCount": 0,
+        "rows": [],
+        "header": "Mentioned ↑ Filter Open folder The file index could not be read. Retry to reconnect. Retry"
+      }
+    }
+  },
+  "facts": {
+    "windowMode": "headless",
+    "appVersion": "0.34.42",
+    "platform": "darwin",
+    "title": "Local Operator",
+    "windowSize": {
+      "width": 1380,
+      "height": 900
+    },
+    "contentBounds": {
+      "width": 1380,
+      "height": 900
+    },
+    "visible": false,
+    "focused": false,
+    "minimized": false,
+    "frames": [],
+    "outDir": "~/.local-operator/sessions/88686b805c6b/scratchpad/finder-rig/r2/final-error-560"
+  }
 }

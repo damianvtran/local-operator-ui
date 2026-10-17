@@ -1,16 +1,19 @@
 {
-	"observedAt": "2026-10-15T12:48:49.571696+00:00",
-	"ownedPids": [16811, 45175],
-	"processGroupAndProfileMarkerSurvivors": [],
-	"removedGeneratedPaths": [
-		"/Users/damian/local-operator-ui/.worktrees/browser-tab-strip/out",
-		"/Users/damian/.local-operator/sessions/291e40a1ea40/scratchpad/b-native/runtime",
-		"/Users/damian/.local-operator/sessions/291e40a1ea40/scratchpad/b2-native/runtime",
-		"/Users/damian/.local-operator/sessions/291e40a1ea40/scratchpad/b-native/app-cwd",
-		"/Users/damian/.local-operator/sessions/291e40a1ea40/scratchpad/b2-native/app-cwd"
-	],
-	"outExists": false,
-	"firstRuntimeExists": false,
-	"correctedRuntimeExists": false,
-	"diskFreeGiB": 27.79
+  "observedAt": "2026-10-15T12:48:49.571696+00:00",
+  "ownedPids": [
+    16811,
+    45175
+  ],
+  "processGroupAndProfileMarkerSurvivors": [],
+  "removedGeneratedPaths": [
+    "/Users/damian/local-operator-ui/.worktrees/browser-tab-strip/out",
+    "/Users/damian/.local-operator/sessions/291e40a1ea40/scratchpad/b-native/runtime",
+    "/Users/damian/.local-operator/sessions/291e40a1ea40/scratchpad/b2-native/runtime",
+    "/Users/damian/.local-operator/sessions/291e40a1ea40/scratchpad/b-native/app-cwd",
+    "/Users/damian/.local-operator/sessions/291e40a1ea40/scratchpad/b2-native/app-cwd"
+  ],
+  "outExists": false,
+  "firstRuntimeExists": false,
+  "correctedRuntimeExists": false,
+  "diskFreeGiB": 27.79
 }

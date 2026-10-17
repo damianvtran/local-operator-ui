@@ -1,263 +1,263 @@
 {
-	"MODE": "unknown",
-	"VERSION": "0.72.2-dev",
-	"SIZE": "800x900",
-	"fails": 0,
-	"results": [
-		{
-			"name": "stub reports the requested core version",
-			"ok": true,
-			"detail": "0.72.2-dev"
-		},
-		{
-			"k": "app",
-			"v": {
-				"pid": 48619,
-				"port": 49391,
-				"size": "800x900"
-			}
-		},
-		{
-			"name": "linked profile is browsable (expander present)",
-			"ok": true,
-			"detail": ""
-		},
-		{
-			"name": "headless never shown/focused",
-			"ok": true,
-			"detail": {
-				"windowMode": "headless",
-				"appVersion": "0.34.44",
-				"platform": "darwin",
-				"title": "Local Operator",
-				"windowSize": {
-					"width": 800,
-					"height": 900
-				},
-				"contentBounds": {
-					"width": 800,
-					"height": 900
-				},
-				"visible": false,
-				"focused": false,
-				"minimized": false,
-				"frames": [],
-				"outDir": "/Users/damian/local-operator-ui/.worktrees/skills-library-evidence/docs/evidence/hub-skills-library/frames/R3-prerelease-narrow-light"
-			}
-		},
-		{
-			"name": "old/prerelease keeps every write control disabled",
-			"ok": true,
-			"detail": [
-				{
-					"disabled": true,
-					"text": ""
-				},
-				{
-					"disabled": true,
-					"text": ""
-				},
-				{
-					"disabled": true,
-					"text": "Check now"
-				},
-				{
-					"disabled": true,
-					"text": "Preview incoming changes"
-				},
-				{
-					"disabled": true,
-					"text": "Preview publish"
-				}
-			]
-		},
-		{
-			"name": "action names backend published release minimum",
-			"ok": true,
-			"detail": "PublicreviewerHub source: https://hub.radient.localUpdate the Local Operator backend to a published release 0.72.1 or newer to change Hub settings. Browsing is still available.SubscribeReceive updates from Public.Auto-pushPublish local changes to Public automatically when safe.Incoming updateNot checked yet.Last successful action: 10/13/2026Outgoing publicationNot checked yet.Check nowPreview incoming changesPreview publish"
-		},
-		{
-			"name": "blocked row never promises manual availability",
-			"ok": true,
-			"detail": ""
-		},
-		{
-			"name": "blocked controls send zero PATCH",
-			"ok": true,
-			"detail": []
-		},
-		{
-			"name": "actual viewport matches planned size",
-			"ok": true,
-			"detail": {
-				"w": 800,
-				"h": 900,
-				"dpr": 2
-			}
-		},
-		{
-			"name": "actual nonzero painted row and no horizontal overflow",
-			"ok": true,
-			"detail": {
-				"viewport": {
-					"w": 800,
-					"h": 900,
-					"dpr": 2
-				},
-				"row": {
-					"x": 100,
-					"y": 130.6953125,
-					"w": 676,
-					"h": 367.578125,
-					"cw": 676,
-					"ch": 367,
-					"sw": 676
-				},
-				"scroller": {
-					"x": 56,
-					"y": 77,
-					"w": 744,
-					"h": 631.6015625,
-					"cw": 728,
-					"ch": 632,
-					"sw": 728
-				},
-				"dialog": null
-			}
-		},
-		{
-			"name": "painted scroller positive accepted",
-			"ok": true,
-			"detail": ""
-		},
-		{
-			"name": "zero-wrapper negative refused",
-			"ok": true,
-			"detail": ""
-		},
-		{
-			"name": "horizontal-overflow negative refused",
-			"ok": true,
-			"detail": ""
-		},
-		{
-			"name": "all observed renderer HTTP intents confined to stub plus denied control",
-			"ok": true,
-			"detail": []
-		},
-		{
-			"name": "no live Radient request",
-			"ok": true,
-			"detail": ""
-		},
-		{
-			"k": "request observation",
-			"v": [
-				{
-					"at": 1792056398158,
-					"url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/browser-webauthn-prompt-Dea0HEAw.js",
-					"requestId": "48630.16"
-				},
-				{
-					"at": 1792056398158,
-					"url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/brand-mark-Bv0Hu-Cz.png",
-					"requestId": "48630.17"
-				},
-				{
-					"at": 1792056398211,
-					"url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/GeistMonoNerdFontMono-Regular-CWdDX7GJ.otf",
-					"requestId": "48630.14"
-				},
-				{
-					"at": 1792056398233,
-					"url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/index.html",
-					"requestId": "3545D754AFDA652B485B85681FD4DEE8"
-				},
-				{
-					"at": 1792056398262,
-					"url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/index-DDzHtYVE.js",
-					"requestId": "48630.19"
-				},
-				{
-					"at": 1792056398262,
-					"url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/index-CZcfD1iz.js",
-					"requestId": "48630.20"
-				},
-				{
-					"at": 1792056398263,
-					"url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/messages-Cri5tDcQ.js",
-					"requestId": "48630.21"
-				},
-				{
-					"at": 1792056398263,
-					"url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/error-boundary-Dvcu2ooG.js",
-					"requestId": "48630.22"
-				},
-				{
-					"at": 1792056398263,
-					"url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/conversation-input-sync-Cf1vWoht.js",
-					"requestId": "48630.23"
-				},
-				{
-					"at": 1792056398264,
-					"url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/console-mirror-DmNVb7FD.js",
-					"requestId": "48630.24"
-				},
-				{
-					"at": 1792056398264,
-					"url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/index-B4im30ZU.css",
-					"requestId": "48630.25"
-				},
-				{
-					"at": 1792056398264,
-					"url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/conversation-input-sync-CAX4_ErH.css",
-					"requestId": "48630.26"
-				},
-				{
-					"at": 1792056398264,
-					"url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/console-mirror-DOrYoP_4.css",
-					"requestId": "48630.27"
-				},
-				{
-					"at": 1792056398264,
-					"url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/index-DHKnfVbX.css",
-					"requestId": "48630.28"
-				},
-				{
-					"at": 1792056398331,
-					"url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/browser-webauthn-prompt-Dea0HEAw.js",
-					"requestId": "48630.33"
-				},
-				{
-					"at": 1792056398331,
-					"url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/brand-mark-Bv0Hu-Cz.png",
-					"requestId": "48630.34"
-				},
-				{
-					"at": 1792056398349,
-					"url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/GeistMonoNerdFontMono-Regular-CWdDX7GJ.otf",
-					"requestId": "48630.31"
-				},
-				{
-					"at": 1792056401045,
-					"url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/agents-page-D2AYAbfM.js",
-					"requestId": "48630.35"
-				},
-				{
-					"at": 1792056401045,
-					"url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/use-memberships-query-qnF8_K83.js",
-					"requestId": "48630.36"
-				},
-				{
-					"at": 1792056401045,
-					"url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/org-access-CfvuRKKW.js",
-					"requestId": "48630.37"
-				}
-			]
-		},
-		{
-			"k": "actual fixture PATCHes",
-			"v": []
-		}
-	]
+  "MODE": "unknown",
+  "VERSION": "0.72.2-dev",
+  "SIZE": "800x900",
+  "fails": 0,
+  "results": [
+    {
+      "name": "stub reports the requested core version",
+      "ok": true,
+      "detail": "0.72.2-dev"
+    },
+    {
+      "k": "app",
+      "v": {
+        "pid": 48619,
+        "port": 49391,
+        "size": "800x900"
+      }
+    },
+    {
+      "name": "linked profile is browsable (expander present)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "headless never shown/focused",
+      "ok": true,
+      "detail": {
+        "windowMode": "headless",
+        "appVersion": "0.34.44",
+        "platform": "darwin",
+        "title": "Local Operator",
+        "windowSize": {
+          "width": 800,
+          "height": 900
+        },
+        "contentBounds": {
+          "width": 800,
+          "height": 900
+        },
+        "visible": false,
+        "focused": false,
+        "minimized": false,
+        "frames": [],
+        "outDir": "/Users/damian/local-operator-ui/.worktrees/skills-library-evidence/docs/evidence/hub-skills-library/frames/R3-prerelease-narrow-light"
+      }
+    },
+    {
+      "name": "old/prerelease keeps every write control disabled",
+      "ok": true,
+      "detail": [
+        {
+          "disabled": true,
+          "text": ""
+        },
+        {
+          "disabled": true,
+          "text": ""
+        },
+        {
+          "disabled": true,
+          "text": "Check now"
+        },
+        {
+          "disabled": true,
+          "text": "Preview incoming changes"
+        },
+        {
+          "disabled": true,
+          "text": "Preview publish"
+        }
+      ]
+    },
+    {
+      "name": "action names backend published release minimum",
+      "ok": true,
+      "detail": "PublicreviewerHub source: https://hub.radient.localUpdate the Local Operator backend to a published release 0.72.1 or newer to change Hub settings. Browsing is still available.SubscribeReceive updates from Public.Auto-pushPublish local changes to Public automatically when safe.Incoming updateNot checked yet.Last successful action: 10/13/2026Outgoing publicationNot checked yet.Check nowPreview incoming changesPreview publish"
+    },
+    {
+      "name": "blocked row never promises manual availability",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "blocked controls send zero PATCH",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "name": "actual viewport matches planned size",
+      "ok": true,
+      "detail": {
+        "w": 800,
+        "h": 900,
+        "dpr": 2
+      }
+    },
+    {
+      "name": "actual nonzero painted row and no horizontal overflow",
+      "ok": true,
+      "detail": {
+        "viewport": {
+          "w": 800,
+          "h": 900,
+          "dpr": 2
+        },
+        "row": {
+          "x": 100,
+          "y": 130.6953125,
+          "w": 676,
+          "h": 367.578125,
+          "cw": 676,
+          "ch": 367,
+          "sw": 676
+        },
+        "scroller": {
+          "x": 56,
+          "y": 77,
+          "w": 744,
+          "h": 631.6015625,
+          "cw": 728,
+          "ch": 632,
+          "sw": 728
+        },
+        "dialog": null
+      }
+    },
+    {
+      "name": "painted scroller positive accepted",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "zero-wrapper negative refused",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "horizontal-overflow negative refused",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "all observed renderer HTTP intents confined to stub plus denied control",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "name": "no live Radient request",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "k": "request observation",
+      "v": [
+        {
+          "at": 1792056398158,
+          "url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/browser-webauthn-prompt-Dea0HEAw.js",
+          "requestId": "48630.16"
+        },
+        {
+          "at": 1792056398158,
+          "url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/brand-mark-Bv0Hu-Cz.png",
+          "requestId": "48630.17"
+        },
+        {
+          "at": 1792056398211,
+          "url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/GeistMonoNerdFontMono-Regular-CWdDX7GJ.otf",
+          "requestId": "48630.14"
+        },
+        {
+          "at": 1792056398233,
+          "url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/index.html",
+          "requestId": "3545D754AFDA652B485B85681FD4DEE8"
+        },
+        {
+          "at": 1792056398262,
+          "url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/index-DDzHtYVE.js",
+          "requestId": "48630.19"
+        },
+        {
+          "at": 1792056398262,
+          "url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/index-CZcfD1iz.js",
+          "requestId": "48630.20"
+        },
+        {
+          "at": 1792056398263,
+          "url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/messages-Cri5tDcQ.js",
+          "requestId": "48630.21"
+        },
+        {
+          "at": 1792056398263,
+          "url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/error-boundary-Dvcu2ooG.js",
+          "requestId": "48630.22"
+        },
+        {
+          "at": 1792056398263,
+          "url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/conversation-input-sync-Cf1vWoht.js",
+          "requestId": "48630.23"
+        },
+        {
+          "at": 1792056398264,
+          "url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/console-mirror-DmNVb7FD.js",
+          "requestId": "48630.24"
+        },
+        {
+          "at": 1792056398264,
+          "url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/index-B4im30ZU.css",
+          "requestId": "48630.25"
+        },
+        {
+          "at": 1792056398264,
+          "url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/conversation-input-sync-CAX4_ErH.css",
+          "requestId": "48630.26"
+        },
+        {
+          "at": 1792056398264,
+          "url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/console-mirror-DOrYoP_4.css",
+          "requestId": "48630.27"
+        },
+        {
+          "at": 1792056398264,
+          "url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/index-DHKnfVbX.css",
+          "requestId": "48630.28"
+        },
+        {
+          "at": 1792056398331,
+          "url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/browser-webauthn-prompt-Dea0HEAw.js",
+          "requestId": "48630.33"
+        },
+        {
+          "at": 1792056398331,
+          "url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/brand-mark-Bv0Hu-Cz.png",
+          "requestId": "48630.34"
+        },
+        {
+          "at": 1792056398349,
+          "url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/GeistMonoNerdFontMono-Regular-CWdDX7GJ.otf",
+          "requestId": "48630.31"
+        },
+        {
+          "at": 1792056401045,
+          "url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/agents-page-D2AYAbfM.js",
+          "requestId": "48630.35"
+        },
+        {
+          "at": 1792056401045,
+          "url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/use-memberships-query-qnF8_K83.js",
+          "requestId": "48630.36"
+        },
+        {
+          "at": 1792056401045,
+          "url": "file:///Users/damian/local-operator-ui/.worktrees/skills-library-evidence/out/renderer/assets/org-access-CfvuRKKW.js",
+          "requestId": "48630.37"
+        }
+      ]
+    },
+    {
+      "k": "actual fixture PATCHes",
+      "v": []
+    }
+  ]
 }

@@ -1,6 +1,6 @@
 {
-	"format": "verbatim captured command output",
-	"originalFilename": "i18n-generator.log",
-	"sha256": "17363cee2a03d40a5d532ac89d46d8d564268833294c80e0d13b5a12f9a6d5ee",
-	"output": "/Users/damian/local-operator-ui/.worktrees/browser-tab-strip/src/i18n/keys.gen.ts is byte-identical to a fresh generation.\n"
+  "format": "verbatim captured command output",
+  "originalFilename": "i18n-generator.log",
+  "sha256": "17363cee2a03d40a5d532ac89d46d8d564268833294c80e0d13b5a12f9a6d5ee",
+  "output": "/Users/damian/local-operator-ui/.worktrees/browser-tab-strip/src/i18n/keys.gen.ts is byte-identical to a fresh generation.\n"
 }

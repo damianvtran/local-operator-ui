@@ -1,17 +1,20 @@
 {
-	"phase": "STOP before native; no automatic recovery",
-	"job": "48fa20fefbe3",
-	"actualAppBuilds": 0,
-	"actualNativeBoots": 0,
-	"wrapperPids": [32467, 32469],
-	"executedNoOp": "node scripts/build-env.mjs ./node_modules/.bin/electron-vite build",
-	"actualPackageBuild": "electron-vite build",
-	"preexistingHtmlMtime": 1792047099.769934,
-	"preexistingHtmlSha256": "04d1f60f33484a91b4ed3d6e3a4ffc63512173fe84f17ba5d4c2efebcdddb077",
-	"oldHtmlConnectDirectiveMatches": 2,
-	"proposedBuildExecutableExists": true,
-	"proposedBuildExecutableExecutable": true,
-	"head": "be25940359e9c19dd7b68c091f69e83d7f4aa515",
-	"codeCommitted": false,
-	"pushed": false
+  "phase": "STOP before native; no automatic recovery",
+  "job": "48fa20fefbe3",
+  "actualAppBuilds": 0,
+  "actualNativeBoots": 0,
+  "wrapperPids": [
+    32467,
+    32469
+  ],
+  "executedNoOp": "node scripts/build-env.mjs ./node_modules/.bin/electron-vite build",
+  "actualPackageBuild": "electron-vite build",
+  "preexistingHtmlMtime": 1792047099.769934,
+  "preexistingHtmlSha256": "04d1f60f33484a91b4ed3d6e3a4ffc63512173fe84f17ba5d4c2efebcdddb077",
+  "oldHtmlConnectDirectiveMatches": 2,
+  "proposedBuildExecutableExists": true,
+  "proposedBuildExecutableExecutable": true,
+  "head": "be25940359e9c19dd7b68c091f69e83d7f4aa515",
+  "codeCommitted": false,
+  "pushed": false
 }

@@ -1,8 +1,8 @@
+// Per-module type erasure only: no bundle, app build, dependency install or boot.
+import { transform } from "esbuild";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { writeFileSync } from "node:fs";
-// Per-module type erasure only: no bundle, app build, dependency install or boot.
-import { transform } from "esbuild";
 const old = "43fc66a1b",
 	incoming = "51a2eccfb";
 const src = (ref, p) =>

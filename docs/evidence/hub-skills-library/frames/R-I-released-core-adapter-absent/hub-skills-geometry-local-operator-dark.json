@@ -1,22 +1,22 @@
 {
-	"size": "1380x900",
-	"theme": "local-operator-dark",
-	"hasOrgChip": false,
-	"requestedSize": "1380x900",
-	"actualSizeProvenance": "Measured renderer innerWidth/innerHeight/devicePixelRatio in this run; requested native size retained separately.",
-	"viewport": {
-		"width": 1380,
-		"height": 900,
-		"devicePixelRatio": 2
-	},
-	"geometry": {
-		"fallback": {
-			"x": 0,
-			"y": 0,
-			"w": 0,
-			"h": 0,
-			"sw": 0,
-			"cw": 0
-		}
-	}
+  "size": "1380x900",
+  "theme": "local-operator-dark",
+  "hasOrgChip": false,
+  "requestedSize": "1380x900",
+  "actualSizeProvenance": "Measured renderer innerWidth/innerHeight/devicePixelRatio in this run; requested native size retained separately.",
+  "viewport": {
+    "width": 1380,
+    "height": 900,
+    "devicePixelRatio": 2
+  },
+  "geometry": {
+    "fallback": {
+      "x": 0,
+      "y": 0,
+      "w": 0,
+      "h": 0,
+      "sw": 0,
+      "cw": 0
+    }
+  }
 }

@@ -1,15 +1,21 @@
 {
-	"old": "43fc66a1b",
-	"base": "8057f32ff",
-	"incoming": "51a2eccfb",
-	"merge": "1912dc7fac252a30fb66d02f65fc9e6a436617ec",
-	"original_commits_equal": 7,
-	"task_file_sets_equal": true,
-	"task_line_multisets_equal": true,
-	"original_numstat": [2674, 9],
-	"converged_numstat": [2674, 9],
-	"resolution_deviations": [],
-	"fullDiffBytesEqual": true,
-	"originalPatchSha256": "17289c2914dc3e49000d0f3fdad7fd30ec43b8127730d5cdfa120fcec97ed120",
-	"convergedPatchSha256": "17289c2914dc3e49000d0f3fdad7fd30ec43b8127730d5cdfa120fcec97ed120"
+  "old": "43fc66a1b",
+  "base": "8057f32ff",
+  "incoming": "51a2eccfb",
+  "merge": "1912dc7fac252a30fb66d02f65fc9e6a436617ec",
+  "original_commits_equal": 7,
+  "task_file_sets_equal": true,
+  "task_line_multisets_equal": true,
+  "original_numstat": [
+    2674,
+    9
+  ],
+  "converged_numstat": [
+    2674,
+    9
+  ],
+  "resolution_deviations": [],
+  "fullDiffBytesEqual": true,
+  "originalPatchSha256": "17289c2914dc3e49000d0f3fdad7fd30ec43b8127730d5cdfa120fcec97ed120",
+  "convergedPatchSha256": "17289c2914dc3e49000d0f3fdad7fd30ec43b8127730d5cdfa120fcec97ed120"
 }

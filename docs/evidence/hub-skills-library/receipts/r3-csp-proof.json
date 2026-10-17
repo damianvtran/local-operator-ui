@@ -1,20 +1,20 @@
 {
-	"commentOnlyNegative": "REFUSED without writing",
-	"commentPlusActualMeta": "comment exact, only attribute edited",
-	"positive": {
-		"actualCspMetas": 1,
-		"connectDirective": "connect-src 'self' http://127.0.0.1:8127",
-		"commentCountUnchanged": 1,
-		"nonContentBytesUnchanged": true
-	},
-	"actualMeta": {
-		"actualCspMetas": 1,
-		"connectDirective": "connect-src 'self' http://127.0.0.1:8127",
-		"commentCountUnchanged": 1,
-		"nonContentBytesUnchanged": true
-	},
-	"beforeHtmlSha256": "9add3736276ce9ddadec8285f55505f7b18537a6e880b2543261bd07ed2a455a",
-	"afterHtmlSha256": "ac4fba5a7a0a34e91258c0b2822587c2abe7ca586c2cdb8e32af9d049897a9fd",
-	"reuseOneSuccessfulBuild": true,
-	"noSecondBuild": true
+  "commentOnlyNegative": "REFUSED without writing",
+  "commentPlusActualMeta": "comment exact, only attribute edited",
+  "positive": {
+    "actualCspMetas": 1,
+    "connectDirective": "connect-src 'self' http://127.0.0.1:8127",
+    "commentCountUnchanged": 1,
+    "nonContentBytesUnchanged": true
+  },
+  "actualMeta": {
+    "actualCspMetas": 1,
+    "connectDirective": "connect-src 'self' http://127.0.0.1:8127",
+    "commentCountUnchanged": 1,
+    "nonContentBytesUnchanged": true
+  },
+  "beforeHtmlSha256": "9add3736276ce9ddadec8285f55505f7b18537a6e880b2543261bd07ed2a455a",
+  "afterHtmlSha256": "ac4fba5a7a0a34e91258c0b2822587c2abe7ca586c2cdb8e32af9d049897a9fd",
+  "reuseOneSuccessfulBuild": true,
+  "noSecondBuild": true
 }
