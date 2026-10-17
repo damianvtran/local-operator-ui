@@ -131,6 +131,7 @@ export type Arrival = "typing" | "completion" | "caret" | "arrival";
 /** The cell painted in place of each character of a typed secret. */
 export const MASK_CELL = "\u2022";
 
+import { approvalAnswerValue } from "../ask-answer";
 import { SEPARATOR, SEPARATOR_CLASS, pyTrim } from "./slash-token";
 
 /**
@@ -2569,3 +2570,88 @@ const randomSuffix = (length: number, draw: Draw): string => {
  */
 export const isStorableCredentialKey = (key: string): boolean =>
 	key.length <= CREDENTIAL_KEY_MAX_LENGTH && CREDENTIAL_KEY_PATTERN.test(key);
+
+/**
+ * The shortest and longest values {@link looksLikeSecret} will call a credential.
+ *
+ * The floor is above every shipped approval token (`yes`, `approve`, `deny`) and
+ * above an option ordinal, and the ceiling is the point where a single token is
+ * no longer a password or a key but a blob -- pasted data, a base64 document, a
+ * long path. A `secret: true` answer can be longer than this, but a value that
+ * long typed into a chat box is not the shape this guard exists to catch, and
+ * flagging it would put a confirm in front of ordinary prose that happens to end
+ * in a long token.
+ */
+const SECRET_SHAPE_MIN = 8;
+const SECRET_SHAPE_MAX = 256;
+/** A URL, an arming word or a chat grammar: text that is visibly not a secret. */
+const SECRET_SHAPE_PREFIX = /^[/@$#]/;
+const SECRET_SHAPE_URL = /^\w+:\/\//;
+const SECRET_SHAPE_LETTERS = /^[A-Za-z]+$/;
+const SECRET_SHAPE_DIGITS = /^\d+$/;
+/**
+ * How a token's character classes are counted: lowercase, uppercase, digit, and
+ * anything that is not one of those three.
+ */
+const SECRET_SHAPE_CLASSES = [/[a-z]/, /[A-Z]/, /\d/, /[^A-Za-z0-9]/];
+/** Three of the four classes is the mixed-case-and-symbol shape of a credential. */
+const SECRET_SHAPE_CLASS_FLOOR = 3;
+/**
+ * A long token drawn only from the URL-safe/base64 alphabet.
+ *
+ * The length is what replaces the class count here: a 20-character
+ * `[A-Za-z0-9_\-+/=.]` string with no case or digit mix is still far more likely
+ * to be a key than a sentence (sentences contain spaces, and a whitespace-free
+ * token this long is not prose).
+ */
+const SECRET_SHAPE_LONG = 20;
+const SECRET_SHAPE_LONG_TOKEN = /^[A-Za-z0-9_\-+/=.]+$/;
+
+/**
+ * Whether text the user is about to SEND looks like a credential.
+ *
+ * THE HAZARD THIS NAMES. The composer is usable while a queued secret ask waits
+ * (the operator's ask, a-9e0c): the ask is answered in its own panel, and the
+ * chat box is an ordinary chat box meanwhile. That leaves one thing the removed
+ * lock did cover -- a password typed into the chat box and sent as a message,
+ * visible while typed and persisted in the draft store and the transcript -- so
+ * the send is CONFIRMED rather than refused. A refusal would be the lock back,
+ * one keystroke later.
+ *
+ * WHY IT IS A SHAPE RULE AND NOT A LIST. There is no vocabulary of credentials
+ * to check against; the only fact available before the send is what the text
+ * looks like. Every clause below therefore excludes a class the app already
+ * sends on purpose, and the rule is deliberately narrow: a false negative is a
+ * message the user sent deliberately (the panel is one click away and says so),
+ * while a false positive is a confirm over ordinary text, which teaches the
+ * user to dismiss it.
+ *
+ * The clauses, in order: one whitespace-free token of 8-256 characters; not an
+ * arming word or a chat grammar (`/credential`, `@file`, `$skill`, `#tag`); not
+ * a URL; not a reply to the approval pair (read through `approvalAnswerValue`, so
+ * `yes`/`approve`/a bare ordinal can never be called a secret here while the
+ * answer door still accepts them -- one definition, not a second list that
+ * drifts); not purely letters or purely digits; and then either three of the
+ * four character classes or a long URL-safe token.
+ *
+ * PURE, so the table in `credential-capture.test.mjs` is the whole of the claim
+ * and a browser is not needed to change it.
+ */
+export const looksLikeSecret = (text: string): boolean => {
+	const value = text.trim();
+	if (value.length < SECRET_SHAPE_MIN || value.length > SECRET_SHAPE_MAX)
+		return false;
+	if (/\s/.test(value)) return false;
+	if (SECRET_SHAPE_PREFIX.test(value)) return false;
+	if (SECRET_SHAPE_URL.test(value)) return false;
+	if (approvalAnswerValue(value) !== null) return false;
+	if (SECRET_SHAPE_LETTERS.test(value) || SECRET_SHAPE_DIGITS.test(value))
+		return false;
+	const classes = SECRET_SHAPE_CLASSES.filter((pattern) =>
+		pattern.test(value),
+	).length;
+	if (classes >= SECRET_SHAPE_CLASS_FLOOR) return true;
+	return (
+		value.length >= SECRET_SHAPE_LONG && SECRET_SHAPE_LONG_TOKEN.test(value)
+	);
+};

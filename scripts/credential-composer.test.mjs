@@ -532,6 +532,21 @@ async function mount({
 	 * absent probe reads as "no key".
 	 */
 	withRecordingProbe = false,
+	/*
+	 * THE QUEUED SECRET ASK'S PROP (the operator's ask, `a-9e0c`). A mount that
+	 * passes it is the state a real page is in while a secret question waits in
+	 * the asks panel: the box is NOT refused (`secretAnswer` above is the blocking
+	 * gate, a different state), a notice says where the value goes, and a
+	 * password-shaped send opens the confirm.
+	 */
+	secretAsk = null,
+	/*
+	 * The composer's imperative handle, when a case needs a door that is not a
+	 * control: the failed-send Retry calls `submitNow()`, which the page reaches
+	 * through `messageInputRef`. Handed in rather than kept by the rig so a case
+	 * that does not ask for it mounts exactly what the page mounts.
+	 */
+	composerRef = null,
 } = {}) {
 	const sent = [];
 	/*
@@ -619,6 +634,7 @@ async function mount({
 		sessionStatus,
 		unavailable,
 		secretAnswer,
+		secretAsk,
 		currentJobId,
 		deliveryRemediesReachable,
 		onSendMessage: async (...args) => {
@@ -640,7 +656,7 @@ async function mount({
 				{ client },
 				withRecordingProbe
 					? h(MicProbeHost, { baseProps: composerProps })
-					: h(MessageInput, composerProps),
+					: h(MessageInput, { ...composerProps, ref: composerRef }),
 			),
 		);
 	});
@@ -5803,4 +5819,248 @@ test("the offline sentence is for the server being down, not for a failed probe"
 		healthFails = false;
 		transportOverride = null;
 	}
+});
+
+/*
+ * THE QUEUED SECRET ASK LEAVES THE CHAT USABLE (the operator's ask, `a-9e0c`).
+ *
+ * The composer used to refuse ALL typing while a secret-only ask waited. The
+ * operator overruled that: the value is typed into the asks panel, so locking the
+ * conversation beside it bought nothing. What replaced the lock is a sentence that
+ * says where the secret goes, a door to the panel, and a confirm on a
+ * password-shaped send — because the hazard (a credential typed into the chat box
+ * and sent as a message, visible while typed and persisted in the draft store) is
+ * real, and refusing the box was the wrong shape for it.
+ *
+ * THE RIG'S BOUNDS, stated: jsdom has no native form submission, so the send door
+ * here is `form.requestSubmit()` — the same seam the refused-state case above uses
+ * — and the confirm's focus move is asserted through `document.activeElement`
+ * rather than through a real browser's focus ring. Layout, colour and the band's
+ * geometry are the evidence rig's business, not this file's.
+ */
+const queuedSecretAsk = (overrides = {}) => ({
+	onOpen: () => {},
+	onFill: async () => true,
+	...overrides,
+});
+
+const confirmControl = (label) => {
+	const confirm = window.document.getElementById("composer-secret-confirm");
+	if (!confirm) return null;
+	return [...confirm.querySelectorAll("button")].find(
+		(button) => button.textContent.trim() === label,
+	);
+};
+
+const submitDoor = async (frame) => {
+	const form = frame.box().closest("form");
+	assert.ok(form, "the composer is a form");
+	await act(async () => {
+		form.requestSubmit();
+	});
+	await settle();
+};
+
+test("a queued secret ask keeps the box usable and says where the secret goes", async () => {
+	const opens = [];
+	const frame = await mount({
+		secretAsk: queuedSecretAsk({ onOpen: () => opens.push(true) }),
+	});
+	const field = frame.textarea();
+	assert.equal(field.readOnly, false, "the queued ask does not close the box");
+	assert.equal(field.disabled, false);
+	assert.equal(
+		field.getAttribute("aria-disabled"),
+		null,
+		"and it makes no disabled claim",
+	);
+
+	await type(frame, "hello there");
+	assert.equal(
+		frame.value(),
+		"hello there",
+		"typing lands, which the lock refused",
+	);
+	assert.equal(
+		frame.draft(),
+		"hello there",
+		"and the draft is an ordinary draft",
+	);
+
+	const notice = window.document.getElementById("composer-secret-ask-notice");
+	assert.ok(notice, "the notice renders while the queued ask waits");
+	assert.match(
+		notice.textContent ?? "",
+		/asking for a secret.*asks panel.*keep chatting/isu,
+		"and it says where the value goes and that the box still works",
+	);
+	const open = [...notice.querySelectorAll("button")].find((button) =>
+		(button.textContent ?? "").includes("Open asks"),
+	);
+	assert.ok(open, "the notice carries the door to the panel");
+	await act(async () => {
+		open.click();
+	});
+	assert.equal(opens.length, 1, "and the door calls the page's opener once");
+	assert.match(
+		field.getAttribute("aria-describedby") ?? "",
+		/composer-secret-ask-notice/,
+		"the box is described by the sentence while it renders",
+	);
+});
+
+test("a password-shaped send asks first, and sends nothing until answered", async () => {
+	const frame = await mount({ secretAsk: queuedSecretAsk() });
+	await type(frame, "correct-horse-9");
+	await submitDoor(frame);
+	assert.equal(
+		frame.sent.length,
+		0,
+		"the press sends nothing while the confirm is up",
+	);
+	assert.ok(
+		window.document.getElementById("composer-secret-confirm"),
+		"the confirm renders",
+	);
+	assert.equal(
+		window.document.getElementById("composer-secret-ask-notice"),
+		null,
+		"and it replaces the standing sentence rather than stacking on it",
+	);
+	assert.equal(
+		frame.value(),
+		"correct-horse-9",
+		"the text is kept, not consumed",
+	);
+	assert.equal(
+		window.document.activeElement,
+		confirmControl("Put in secret field"),
+		"the default destination takes focus, so Enter means it",
+	);
+
+	await act(async () => {
+		confirmControl("Cancel")?.click();
+	});
+	await settle();
+	assert.equal(
+		window.document.getElementById("composer-secret-confirm"),
+		null,
+		"Cancel closes the confirm",
+	);
+	assert.equal(
+		frame.value(),
+		"correct-horse-9",
+		"and keeps the text — the accepted risk recorded on the PR: a cancelled password stays in the draft",
+	);
+	assert.equal(frame.sent.length, 0, "nothing was sent");
+});
+
+test("Send as message sends the line the confirm asked about", async () => {
+	const frame = await mount({ secretAsk: queuedSecretAsk() });
+	await type(frame, "correct-horse-9");
+	await submitDoor(frame);
+	await act(async () => {
+		confirmControl("Send as message")?.click();
+	});
+	await settle();
+	assert.equal(frame.sent.length, 1, "the explicit second press is the send");
+	assert.equal(
+		window.document.getElementById("composer-secret-confirm"),
+		null,
+		"and the confirm is gone",
+	);
+});
+
+test("Put in secret field hands the value to the page's answer door and clears the draft", async () => {
+	const fills = [];
+	const frame = await mount({
+		secretAsk: queuedSecretAsk({
+			onFill: async (value) => {
+				fills.push(value);
+				return true;
+			},
+		}),
+	});
+	await type(frame, "  correct-horse-9  ");
+	assert.equal(frame.draft(), "  correct-horse-9  ");
+	await submitDoor(frame);
+	await act(async () => {
+		confirmControl("Put in secret field")?.click();
+	});
+	await settle();
+	assert.deepEqual(
+		fills,
+		["correct-horse-9"],
+		"the trimmed value is what is filled",
+	);
+	assert.equal(frame.sent.length, 0, "and it is never sent as a chat message");
+	assert.equal(frame.value(), "", "the box is cleared");
+	assert.equal(
+		frame.draft() ?? "",
+		"",
+		"and the persisted draft is retired with it, so no reload restores the secret",
+	);
+	assert.equal(window.document.getElementById("composer-secret-confirm"), null);
+});
+
+test("a refused fill keeps the text rather than deleting a credential nobody received", async () => {
+	const frame = await mount({
+		secretAsk: queuedSecretAsk({ onFill: async () => false }),
+	});
+	await type(frame, "correct-horse-9");
+	await submitDoor(frame);
+	await act(async () => {
+		confirmControl("Put in secret field")?.click();
+	});
+	await settle();
+	assert.equal(
+		frame.value(),
+		"correct-horse-9",
+		"the value the panel did not take is still the user's to retry",
+	);
+	assert.equal(frame.sent.length, 0);
+});
+
+test("the Retry door answers to the same guard", async () => {
+	const ref = React.createRef();
+	const frame = await mount({ secretAsk: queuedSecretAsk(), composerRef: ref });
+	await type(frame, "correct-horse-9");
+	await act(async () => {
+		ref.current?.submitNow();
+	});
+	await settle();
+	assert.equal(
+		frame.sent.length,
+		0,
+		"Retry does not replay a password without asking",
+	);
+	assert.ok(window.document.getElementById("composer-secret-confirm"));
+
+	/*
+	 * AND THE QUESTION DOES NOT FOLLOW THE BOX INTO ANOTHER CONVERSATION. The same
+	 * composer instance serves the next conversation (the element type and position
+	 * are unchanged), and the confirm's text belongs to the draft it was asked in.
+	 */
+	const next = await mount({
+		conversationId: "conv-secret-confirm-next",
+		secretAsk: queuedSecretAsk(),
+	});
+	assert.equal(
+		window.document.getElementById("composer-secret-confirm"),
+		null,
+		"a switch retires the confirm",
+	);
+	assert.equal(next.sent.length, 0);
+});
+
+test("ordinary prose opens no confirm, even while a queued secret ask waits", async () => {
+	const frame = await mount({ secretAsk: queuedSecretAsk() });
+	await type(frame, "please look at this");
+	await submitDoor(frame);
+	assert.equal(frame.sent.length, 1);
+	assert.equal(
+		window.document.getElementById("composer-secret-confirm"),
+		null,
+		"ordinary prose opens no confirm",
+	);
 });

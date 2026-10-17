@@ -678,18 +678,32 @@ export const askChipLabel = (
 /**
  * Whether the head open ask can ONLY be answered in the panel's masked field.
  *
- * The composer refuses input in this state (the same refusal the blocking dock's
- * secret gate uses), rather than leaving an ordinary box that would carry the
- * credential into the transcript as a chat message.
+ * THIS IS THE OPERATOR'S DECISION, TAKEN (operator ask `a-9e0c`, which timed out
+ * and was answered by its recommended option). The previous version of this note
+ * said that dropping the composer's refusal "is a separate decision about that
+ * hazard, and the operator's to make"; this is that decision, so the refusal is
+ * gone and the predicate means something else.
  *
- * THIS IS A CREDENTIAL-SAFETY RULE, NOT ROUTING, and it stays when the routing
- * goes. The main composer used to ANSWER the ask while the drawer was open (design
- * §5.0, R7); that is retired - a send is an ordinary chat message in every state -
- * but this refusal never depended on it. It covers the one state where the ask's only
- * question is secret: an open box there is where a typed credential becomes a chat
- * message, and the panel's masked field is the only door for the value. Dropping it
- * is a separate decision about that hazard, and the operator's to make rather than a
- * clean-up that rides along with removing the routing.
+ * WHAT IT MEANS NOW: "show the composer's secret-ask notice, and guard a
+ * password-shaped send." The chat box stays usable while the secret waits in the
+ * panel — the operator's report was that the panel is where the value is typed,
+ * so locking the conversation he is having beside it bought nothing but a dead
+ * box. A queued ask does not park the turn (that is what "queued" means), so a
+ * message sent meanwhile is an ordinary message.
+ *
+ * WHY THE BLOCKING GATE KEEPS ITS REFUSAL AND THIS ONE DOES NOT. While a gate
+ * parks the turn, a send becomes `sessions.answer`, or a steer the parked turn
+ * cannot read (backend `session/session.py`); a queued ask leaves the turn free.
+ * Blocking asks are only reachable on the `LOP_ASK_NONBLOCKING=0` escape hatch
+ * (backend `asks/policy.py`), which is why that arm is the smaller one. A backend
+ * route that starts a new turn while a blocking gate is parked would overturn
+ * this.
+ *
+ * THE HAZARD IS ANSWERED, NOT IGNORED: a typed credential in a chat box is still
+ * visible while typed and still persists in the draft store, so the composer asks
+ * before sending a password-shaped line and offers the panel's own field as the
+ * default destination. See `looksLikeSecret` in `credential-capture.ts` for the
+ * shape rule and its deliberate narrowness.
  */
 export const askComposerHoldsSecret = (view: AskQueueView): boolean => {
 	const head = view.head;

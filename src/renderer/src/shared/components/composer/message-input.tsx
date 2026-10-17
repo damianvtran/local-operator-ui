@@ -57,6 +57,7 @@ import {
 	holdsCancelledToken,
 	isArmed,
 	isTyping,
+	looksLikeSecret,
 	mintTypedCredential,
 	noticeLineFor,
 	pastedCredentialRun,
@@ -245,6 +246,25 @@ const CREDENTIAL_NOTICE_ID = "composer-credential-notice";
 const SECRET_CLOSURE_NOTICE_ID = "composer-secret-closure-notice";
 const SECRET_CLOSURE_NOTICE =
 	"Answer the secret request in the asks panel — this box is paused until it is answered, and your draft is kept.";
+
+/**
+ * The QUEUED secret ask's notice, and the confirm a password-shaped send opens.
+ *
+ * THE NOTICE IS A SENTENCE AND A DOOR, not a refusal: the box stays usable and
+ * this line is how the user learns the secret has its own field (the operator's
+ * ask, `a-9e0c`; `askComposerHoldsSecret` records the decision). It renders
+ * whether the box is empty or not -- unlike the closure notice above, whose
+ * empty case the placeholder covers -- because this is not a refusal's reason
+ * but the standing state of the conversation.
+ *
+ * THE CONFIRM IS THE ONE REMAINING COVER FOR THE HAZARD THE LOCK USED TO COVER:
+ * a credential typed into a chat box and sent as a message. It names the three
+ * outcomes, and `Put in secret field` is the default because that is what the
+ * user almost certainly meant.
+ */
+const SECRET_ASK_NOTICE_ID = "composer-secret-ask-notice";
+const SECRET_CONFIRM_ID = "composer-secret-confirm";
+const SECRET_CONFIRM_MESSAGE_ID = "composer-secret-confirm-message";
 
 /**
  * The id the mention layer's description carries, so the field can name it.
@@ -691,6 +711,31 @@ export type MessageInputProps = {
 	 * surface that posts the value (`answerWithSecret` -> `answerGateSecret`).
 	 */
 	secretAnswer?: boolean;
+	/**
+	 * A QUEUED secret ask is waiting: the box stays usable, and a password-shaped
+	 * send is confirmed first.
+	 *
+	 * THIS REPLACES THE LOCK, IT DOES NOT WIDEN IT (the operator's ask, `a-9e0c`;
+	 * the decision `ask-queue.ts`'s `askComposerHoldsSecret` records). While a
+	 * blocking secret gate waits, the composer still refuses input
+	 * (`secretAnswer`), because a send in that state becomes a steer the parked
+	 * turn cannot read. A queued ask is different: it is answered in the asks
+	 * panel, the conversation is free, and refusing the box made the panel the
+	 * only thing the user could do -- including waiting on their own answer.
+	 *
+	 * WHAT THE PROP CARRIES. `onOpen` opens the asks panel (the notice's button,
+	 * the same act as the header's asks control). `onFill` posts one value as the
+	 * head ask's answer and resolves whether it landed; the caller clears the
+	 * draft only on `true`, so a refused answer keeps the user's text. The
+	 * composer never posts a chat message as an answer: `onFill` is the panel's
+	 * own route, reached by a press that says so.
+	 *
+	 * `null` and `undefined` are the ordinary composer: no notice, no guard.
+	 */
+	secretAsk?: {
+		onOpen: () => void;
+		onFill: (value: string) => Promise<boolean>;
+	} | null;
 	/**
 	 * The canonical session the aside panel addresses, or undefined on a pane that
 	 * has none (a draft, a legacy pane).
@@ -1714,6 +1759,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			deviceHold,
 			hostNotice,
 			secretAnswer = false,
+			secretAsk = null,
 			asideSessionId,
 			asideStreaming = false,
 			asideAdoptQueue = false,
@@ -4661,6 +4707,87 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			secretAnswerPending ||
 			Boolean(hostNotice?.blocksInput);
 		/*
+		 * THE QUEUED SECRET ASK'S GUARD (see the `secretAsk` prop's note). It is NOT a
+		 * refusal term: `isInputDisabled` above is untouched, because a queued ask
+		 * does not close this box. The guard sits on the SEND doors instead, which is
+		 * the one act the lock existed to stop.
+		 *
+		 * `secretConfirm` holds the TEXT the user tried to send rather than a boolean:
+		 * the confirm acts on that exact line (`Put in secret field` posts it, `Send as
+		 * message` sends it), so a box edited between the press and the confirm cannot
+		 * send a value nobody was asked about.
+		 */
+		const [secretConfirm, setSecretConfirm] = useState<string | null>(null);
+		const secretConfirmPrimary = useRef<HTMLButtonElement | null>(null);
+		/*
+		 * THE LATEST TEXT, for the reply that lands after the press. The confirm
+		 * answers an ASYNCHRONOUS request, and the box is editable throughout it, so
+		 * the clear has to compare against what the box holds NOW rather than the
+		 * text the closure was built with.
+		 */
+		const latestText = useRef(newMessage);
+		useEffect(() => {
+			latestText.current = newMessage;
+		}, [newMessage]);
+		/*
+		 * A CONFIRM BELONGS TO THE BOX IT WAS ASKED IN. The composer instance
+		 * survives a conversation switch (the element is the same type in the same
+		 * position), so without this the question about one conversation's password
+		 * stayed over the next conversation's empty box -- and its text, which is
+		 * what the answer would have posted, belonged to a draft nobody is looking at.
+		 */
+		// biome-ignore lint/correctness/useExhaustiveDependencies: the effect's whole trigger IS the switch; reading `conversationId` in the body would say nothing the dependency does not.
+		useEffect(() => {
+			setSecretConfirm(null);
+		}, [conversationId]);
+
+		useEffect(() => {
+			if (secretConfirm === null) return;
+			secretConfirmPrimary.current?.focus();
+		}, [secretConfirm]);
+
+		const guardSecretSend = useCallback(
+			(text: string): boolean => {
+				if (!secretAsk || !looksLikeSecret(text)) return false;
+				setSecretConfirm(text.trim());
+				return true;
+			},
+			[secretAsk],
+		);
+
+		const cancelSecretConfirm = useCallback(() => {
+			setSecretConfirm(null);
+			textareaRef.current?.focus();
+		}, [textareaRef]);
+
+		const fillSecretConfirm = useCallback(() => {
+			if (secretConfirm === null || !secretAsk) return;
+			const value = secretConfirm;
+			void secretAsk.onFill(value).then((accepted) => {
+				setSecretConfirm(null);
+				if (!accepted) return;
+				/*
+				 * THE VALUE LEAVES THE BOX AND THE PERSISTED DRAFT TOGETHER. Clearing
+				 * only the box would leave the secret in `localStorage`, which is the
+				 * same disclosure one reload later -- and the box is cleared only while
+				 * it still holds the value that was filled, so text typed during the
+				 * request is not thrown away.
+				 */
+				if (latestText.current.trim() !== value) return;
+				/*
+				 * `setNewMessage` IS the hook's `handleChange`, so this retires the
+				 * persisted draft in the same write a backspace takes -- the value must
+				 * not survive the box in `localStorage` for the next reload to restore.
+				 */
+				setNewMessage("");
+			});
+		}, [secretAsk, secretConfirm, setNewMessage]);
+
+		const sendSecretConfirm = useCallback(() => {
+			setSecretConfirm(null);
+			submitMessage();
+		}, [submitMessage]);
+		/*
 		 * THE TWO TERMS THAT REFUSE A SEND, AND THE SENTENCE THEY RAISE, IN ONE PLACE (UX
 		 * round 7, U27).
 		 *
@@ -5588,7 +5715,16 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			openWorkingDirectoryMenu: () => {
 				cwdChipRef.current?.openMenu();
 			},
-			submitNow: () => submitMessage(),
+			submitNow: () => {
+				/*
+				 * THE RETRY DOOR ANSWERS TO THE SAME GUARD AS ENTER. Retry replays this
+				 * box's text without the user typing it again, so a password left in the
+				 * box by a failed send would otherwise leave through the one door the
+				 * written word did not open.
+				 */
+				if (guardSecretSend(newMessage)) return;
+				submitMessage();
+			},
 			consumeApprovalAnswerDraft,
 		}));
 
@@ -6727,6 +6863,14 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				void applyPlan(plan, newMessage, caret);
 				return;
 			}
+			/*
+			 * THE QUEUED SECRET ASK'S CONFIRM, on exactly the line the planner called
+			 * prose: the confirm exists for the send this text would make, so it sits at
+			 * that decision rather than on every draft. It ARMS rather than refuses --
+			 * `Send as message` on the confirm reaches `submitMessage` directly, which is
+			 * that press's whole meaning.
+			 */
+			if (guardSecretSend(newMessage)) return;
 			submitMessage();
 		};
 
@@ -7345,6 +7489,17 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			// The unredact is the one state where the next Enter discloses a
 			// secret, so it takes the warning role rather than muted ink.
 			unredactedChars !== null ? "text-warning" : "text-ink-muted",
+		);
+
+		/*
+		 * THE QUEUED SECRET ASK'S LINE, kept out of `credentialNoticeLine` on purpose:
+		 * that line turns warning-coloured while an inline capture is unredacted, and
+		 * this sentence is neither a warning nor about that capture. The geometry is
+		 * the same one the sentence above uses, so the two share a text edge.
+		 */
+		const secretAskNoticeLine = cn(
+			"flex flex-wrap items-center gap-2 text-body-sm text-ink-muted",
+			isSmallView ? "px-2 pb-1" : "px-4 pb-2",
 		);
 
 		/*
@@ -8074,6 +8229,74 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						</output>
 					)}
 					{/*
+					 * THE QUEUED SECRET ASK'S STANDING SENTENCE, and its door. It is an
+					 * `<output>` for the reason the two sentences above are: the ask can arrive
+					 * while the user is mid-sentence, which is news, and it is not an error.
+					 * The empty box is covered too -- unlike the closure notice, whose empty
+					 * case is the placeholder's -- because this is a fact about the
+					 * conversation rather than the reason a refusal has no words.
+					 *
+					 * REPLACED, NOT STACKED, BY THE CONFIRM: the confirm is the answer to this
+					 * state, and two blocks saying what to do with one password is noise.
+					 */}
+					{secretAsk && secretConfirm === null && (
+						<output
+							id={SECRET_ASK_NOTICE_ID}
+							className={cn(secretAskNoticeLine, CHAT_MEASURE)}
+						>
+							<span className="min-w-0">
+								{t("ui.chat.composer.secret_ask_notice")}
+							</span>
+							<Button
+								type="button"
+								size="sm"
+								variant="secondary"
+								onClick={secretAsk.onOpen}
+							>
+								{t("ui.chat.composer.secret_ask_open")}
+							</Button>
+						</output>
+					)}
+					{secretConfirm !== null && (
+						<div
+							id={SECRET_CONFIRM_ID}
+							onKeyDown={(event) => {
+								if (event.key !== "Escape") return;
+								event.preventDefault();
+								cancelSecretConfirm();
+							}}
+							className={cn(secretAskNoticeLine, CHAT_MEASURE)}
+						>
+							<span id={SECRET_CONFIRM_MESSAGE_ID} className="min-w-0">
+								{t("ui.chat.composer.secret_confirm_message")}
+							</span>
+							<Button
+								ref={secretConfirmPrimary}
+								type="button"
+								size="sm"
+								onClick={fillSecretConfirm}
+							>
+								{t("ui.chat.composer.secret_confirm_put")}
+							</Button>
+							<Button
+								type="button"
+								size="sm"
+								variant="secondary"
+								onClick={sendSecretConfirm}
+							>
+								{t("ui.chat.composer.secret_confirm_send")}
+							</Button>
+							<Button
+								type="button"
+								size="sm"
+								variant="ghost"
+								onClick={cancelSecretConfirm}
+							>
+								{t("ui.chat.composer.secret_confirm_cancel")}
+							</Button>
+						</div>
+					)}
+					{/*
 					 * The outside-workspace mentions, described rather than drawn: `sr-only`,
 					 * because the fill already says it to a sighted reader and a second visible
 					 * line under the box is the geometry every round of this composer has had to
@@ -8651,6 +8874,14 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 												: null,
 											credentialNotice ? CREDENTIAL_NOTICE_ID : null,
 											secretClosureNotice ? SECRET_CLOSURE_NOTICE_ID : null,
+											/*
+											 * The queued ask's sentence, while it renders: the box stays
+											 * usable in that state, so this is the one place a reader
+											 * learns the secret has its own field before they type it.
+											 */
+											secretAsk && secretConfirm === null
+												? SECRET_ASK_NOTICE_ID
+												: null,
 											outsideMentions > 0 ? MENTION_OUTSIDE_NOTICE_ID : null,
 											unavailable ? MISSING_SESSION_NOTICE_ID : null,
 											deliveryRemediesReachable
