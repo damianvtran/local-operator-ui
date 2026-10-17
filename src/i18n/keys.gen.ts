@@ -74,12 +74,18 @@ import esUiSettings from "./catalogues/es/ui.settings.json";
 import frUiConsole from "./catalogues/fr/ui.console.json";
 import frUiOnboarding from "./catalogues/fr/ui.onboarding.json";
 import frUiSettings from "./catalogues/fr/ui.settings.json";
+import hiUiConsole from "./catalogues/hi/ui.console.json";
+import hiUiOnboarding from "./catalogues/hi/ui.onboarding.json";
+import hiUiSettings from "./catalogues/hi/ui.settings.json";
 import ruUiConsole from "./catalogues/ru/ui.console.json";
 import ruUiOnboarding from "./catalogues/ru/ui.onboarding.json";
 import ruUiSettings from "./catalogues/ru/ui.settings.json";
 import viUiConsole from "./catalogues/vi/ui.console.json";
 import viUiOnboarding from "./catalogues/vi/ui.onboarding.json";
 import viUiSettings from "./catalogues/vi/ui.settings.json";
+import zhCNUiConsole from "./catalogues/zh-CN/ui.console.json";
+import zhCNUiOnboarding from "./catalogues/zh-CN/ui.onboarding.json";
+import zhCNUiSettings from "./catalogues/zh-CN/ui.settings.json";
 
 /** The bundled en catalogue: every `src/i18n/catalogues/en` message, flat. */
 export const bundledEnglish: Readonly<Record<string, string>> = {
@@ -147,6 +153,11 @@ export const bundledCatalogues: Readonly<
 		...frUiOnboarding,
 		...frUiSettings,
 	},
+	hi: {
+		...hiUiConsole,
+		...hiUiOnboarding,
+		...hiUiSettings,
+	},
 	ru: {
 		...ruUiConsole,
 		...ruUiOnboarding,
@@ -156,6 +167,11 @@ export const bundledCatalogues: Readonly<
 		...viUiConsole,
 		...viUiOnboarding,
 		...viUiSettings,
+	},
+	"zh-CN": {
+		...zhCNUiConsole,
+		...zhCNUiOnboarding,
+		...zhCNUiSettings,
 	},
 };
 
