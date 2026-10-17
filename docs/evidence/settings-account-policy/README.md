@@ -110,6 +110,42 @@ Frame SHAs — first capture (`6d071ae02`) → re-capture (`3a7a4bd58`):
 - `dirty`: `51e5ff130e0431de83302535c5ec5b631d5c81a1067f6b09de687d1be7fa33fd` → `8d7f4b4b4b35f01ac296f49e24f20336af007c84b57a67afec675e0e89c8be20`
 - `saved`: `4310e02a6d106a70f840371d4f461f5ec030823d6b6d7f3b92e3e98af2703ad3` → `7e0a74c72983268002037c35b3958eceee41b8d099504a5bd2934ad735ec2f66`
 
+## The fold onto main after the capture, and the byte proof it moved nothing
+
+After the capture the branch folded `origin/main` again (`git merge origin/main`,
+main at `1914559db`, result `de2239edd`), which brought BOTH i18n lanes that had
+landed since the last fold — #1097 (Hindi) and #1098 (Simplified Chinese): 22
+files under `i18n/`, `scripts/i18n/` and `src/i18n/`, plus the `test:desktop`
+file list in `package.json`. `docs/evidence/manifest.json` was NOT touched by
+the merge (main carried no change to it since the branch's last fold; the
+merge's first-parent diff for it is empty), so the repo's evidence-fold tooling
+had nothing to re-resolve, and `pnpm check-evidence` was not run — none of its
+inputs moved.
+
+The scene was re-run from the folded tree (rebuild; same lane recipe, frozen
+core and port): **ALL CHECKS PASSED** (0 FAIL). The byte comparisons:
+
+- **Fold isolation: all four frames byte-identical, full-frame.** The run
+  before the fold and the run after it (same build env, same port 18441) hash
+  every frame identically — `rest`
+  `8f165901659f4d78f4ec6c864acdecd53fa709bfe4f103dd344575f1be09dbc7`, `saved`
+  `7e0a74c72983268002037c35b3958eceee41b8d099504a5bd2934ad735ec2f66`, `dirty`
+  `74c67af39ceec8be8a5e1d997d08ab909e778bd99b3d64efdba368eaaaa4e65b`,
+  `search-found`
+  `0dce0de652026cc0709e5677ddf5f514b9a801086fe131dc8a280fa890c70451`
+  (`cmp` byte equality and a 0-pixel full-frame `sharp` diff agree). The i18n
+  folds do not move one pixel of this surface.
+- **Against the committed set**: `rest` and `saved` are byte-identical; `dirty`
+  differs only in the disclosed settings-scrollbar fade strip (19 px at
+  x2662-2670, worst channel delta 2 of 255 — invisible); `search-found` differs
+  by 540 px, and all of them sit on the info row at the page foot: the
+  `Application version 0.34.51 → 0.34.52` glyphs (the shipping tree's own
+  version; the committed capture was taken at 0.34.51) and the server line's
+  port — `127.0.0.1:18437` in the committed capture, `18441` in this lane's
+  re-runs, because the recipe requires each run to own its port (only 1111 is
+  forbidden). Same digit-class of move as the version bump; none of it touches
+  the content this set's claims live on, so the frames were NOT re-captured.
+
 ## The frames
 
 | Frame | What it shows |
@@ -172,7 +208,9 @@ frame is the row plus its revealed help, not a focus-ring study.
 
 This scene's first run failed both landing checks and its help press, and the
 fix it drove is IN this tree's scene (its wait now returns only the settled
-landing; the chip is toggled back so the deep link performs its own reveal):
+landing; the chip is toggled back so the deep link performs its own reveal;
+and the OTHER ordering state — the link followed with the tier already on —
+is settled by the scene's own second leg, below):
 
 ```
 [FAIL] the deep link opened the section and scrolled the row on screen
@@ -199,8 +237,47 @@ Two facts were measured, and neither is smoothed over here:
   AFTER the commit that reveals the tier and opens the section. That is the
   state the scene now drives, and the landing passes there — with the link
   exercising its full contract (reveal, open, scroll, focus) rather than
-  scrolling an already-open section. The ordering question in the OTHER state
-  remains open for the reviewer.
+  scrolling an already-open section.
+
+## The second leg, and the latch it caught (settled by execution)
+
+The ordering question in the OTHER state — first believed unseparable — is
+now settled by its own leg (UX round 2's U2): the scene's step 5b follows
+the same link with the chip KEPT ON. A fresh mount first (`/chat`, then
+back — `handledFocusKey`/`revealedFocusKey` are per-mount refs, so the same
+key cannot be re-driven inside one mount), the chip pressed and left ON,
+the destination's section asserted CLOSED behind `[hidden]` at height 0,
+then `/settings?setting=retry.accountSelectionPolicy`: the same landing
+assertions as the first leg — tier on, section open, row scrolled on
+screen, trigger focused. No frame is captured here; it is a reading, not a
+picture.
+
+- **With the scene change only, the latch was real, and this is its
+  measurement.** The leg's first run FAILED both landing checks:
+
+  ```
+  [FAIL] the second deep link (chip kept ON from a closed section) settled the same landing...
+          {"waitedMs":30049}
+  [FAIL] the second deep link FOCUSED the row's own control from the tier-already-on state
+  [note] the second leg at the settled wait's bound (the latch diagnosis)
+          {"sectionOpen":"true","focused":"elsewhere","activeDescription":"button \"Show advanced\"","top":1036,"bottom":1089,"viewport":900,"onScreen":false}
+  ```
+
+  The section opened (the link's own open ran); the row stayed below the
+  900px viewport at top 1036 with focus still on the chip, thirty seconds
+  on. The loop's first frame really did run before the commit that opens
+  the section, `focus()`/`scrollIntoView()` no-op'd on the `[hidden]`
+  subtree, and the latch recorded a landing that never happened — the first
+  run's two candidate causes are separated here, and it was the silent
+  no-op.
+- **The fix is in this tree** (`backend-settings-section.tsx`, the
+  close-the-distance loop): "any ancestor carries `hidden`" now means "not
+  there yet", the attempt stays alive inside `FOCUS_ATTEMPTS` frames, and
+  only an element with no `hidden` ancestor latches — the same visibility
+  contract `backend-settings-collapse.test.mjs` already pins. The re-run
+  flipped both checks to `[PASS]`, and it has held twice — pre-fold and
+  post-fold (below):
+  `{"chipPressed":"true","sectionOpen":"true","focused":"trigger","activeDescription":"button \"account selection policy\"","top":424,"bottom":477,"viewport":900,"onScreen":true}`.
 
 ## What these frames do not prove
 
