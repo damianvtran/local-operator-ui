@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-language|settings-transcript-display|settings-gate|palette|palette-recents|hit-zones|route-tops|project-detail|project-open|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|output-artifact|image-copy|hub-links|hub-skills|hub-skills-egress|none>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-language|settings-transcript-display|settings-gate|palette|palette-recents|hit-zones|route-tops|project-detail|project-open|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|output-artifact|image-copy|hub-links|hub-skills|hub-skills-egress|none>
  *                          which built-in scene to run (default: states)
  *   --drop-expect <accepted|discarded>  (with --scene composer-drop) which half of
  *                          the issue #789 pair this run records: the head tree,
@@ -24900,6 +24900,766 @@ async function sceneUndoToastsStacked(cdp) {
 	return frames;
 }
 
+async function scenePlainNewchatLifecycle(cdp) {
+	const facts = await factsOf(cdp);
+	note("facts (from main)", JSON.stringify(facts, null, 2));
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+
+	/*
+	 * THE PROBE'S OWN WORDS. Unique per run so the row can be found among
+	 * others, plus two topic words the searches ask about, one per turn.
+	 */
+	const run = Date.now().toString(36);
+	const firstWords = "tessellate quokka";
+	const laterWord = "pomegranate";
+	const firstMessage = `Plain new chat lifecycle ${run}: mark ${firstWords} together.`;
+	const laterMessage = `Second turn, later prose: ${laterWord} chronicles for ${run}.`;
+
+	const at = () => new Date().toISOString();
+	const authHeaders = {
+		authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+	};
+	const apiGet = async (path) => {
+		const response = await fetch(`${BACKEND}${path}`, { headers: authHeaders });
+		return {
+			status: response.status,
+			body: await response.json().catch(() => null),
+		};
+	};
+	/* Every catalogue page, so "membership" is the whole store, not one page. */
+	const catalogueRows = async () => {
+		const rows = [];
+		let cursor = null;
+		for (let page = 0; page < 8; page += 1) {
+			const query = `limit=500&include_archived=true${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`;
+			const answer = await apiGet(`/v1/desktop/sessions?${query}`);
+			const result = answer.body?.result ?? {};
+			rows.push(...(result.sessions ?? []));
+			if (!result.truncated || !result.next_cursor) break;
+			cursor = result.next_cursor;
+		}
+		return rows;
+	};
+	const rowSummary = (row) =>
+		row === undefined || row === null
+			? null
+			: {
+					id: row.id,
+					name: row.name ?? "",
+					status: row.status?.code ?? null,
+					unseen: row.attention?.unseen ?? null,
+					live: row.live_state ?? "",
+					created_at: row.created_at ?? null,
+					pinned: row.pinned ?? null,
+					archived: row.archived ?? null,
+				};
+	/* The catalogue read EVERY phase uses, resolved to OUR row and its rank. */
+	const ourRow = async (id) => {
+		const rows = await catalogueRows();
+		const index = rows.findIndex((row) => row.id === id);
+		return {
+			total: rows.length,
+			rank: index >= 0 ? index + 1 : null,
+			row: index >= 0 ? rowSummary(rows[index]) : null,
+		};
+	};
+
+	/*
+	 * The page's rendered sidebar: rows, drafts, the scroller's numbers and the
+	 * page foot. `[data-sidebar-region="chats"]` is the chats region the panel
+	 * and its own keyboard walk both scope to; `[data-chat-row]` is one row.
+	 */
+	const sidebarRead = () =>
+		cdp.evaluate(`(() => {
+			const squeeze = (el) => el.textContent.replace(/\\s+/g, " ").trim();
+			const rows = [
+				...document.querySelectorAll('[data-sidebar-region="chats"] [data-chat-row]'),
+			];
+			const drafts = [...document.querySelectorAll("[data-draft-row]")].map((el) =>
+				el.getAttribute("data-draft-row"),
+			);
+			const scroller = document.querySelector('[data-sidebar-region="scroller"]');
+			const more = document.querySelector("[data-sidebar-page-more]");
+			return {
+				route: location.hash,
+				rows: rows.map((el) => ({
+					id:
+						el
+							.closest("[data-session-row]")
+							?.getAttribute("data-session-row") ?? null,
+					section:
+						el.closest("[data-chat-section]")?.getAttribute("data-chat-section") ??
+						null,
+					text: squeeze(el).slice(0, 90),
+				})),
+				draftKeys: drafts,
+				more: more === null ? null : squeeze(more),
+				scroller:
+					scroller === null
+						? null
+						: {
+								scrollTop: scroller.scrollTop,
+								scrollHeight: scroller.scrollHeight,
+								clientHeight: scroller.clientHeight,
+							},
+			};
+		})()`);
+
+	/*
+	 * THE SEARCH BOX, through the app's own affordances: its button opens the
+	 * field, its clear control empties it, and typing goes through CDP's input
+	 * pipeline (the field is a React-controlled input).
+	 */
+	const openSearch = async () => {
+		await clickAt(cdp, "[data-sidebar-search]");
+		const opened = await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector('input[aria-label="Search chats and agents"]'))`,
+			5000,
+		);
+		return opened.ok;
+	};
+	const clearSearchField = () =>
+		cdp.evaluate(
+			`(() => { const button = document.querySelector('[aria-label="Clear search"]'); if (button !== null) button.click(); return button !== null; })()`,
+		);
+	const searchQueries = () =>
+		verb(cdp, "queries")
+			.then((all) =>
+				(Array.isArray(all) ? all : []).filter((entry) =>
+					String(JSON.stringify(entry.key)).includes("search"),
+				),
+			)
+			.catch(() => []);
+	const setSearchQuery = async (text) => {
+		await clearSearchField();
+		await wait(150);
+		await clickAt(cdp, 'input[aria-label="Search chats and agents"]');
+		await cdp.send("Input.insertText", { text });
+		/*
+		 * The settle: the app's OWN search query state must read success with a
+		 * fresh answer, and two consecutive sidebar reads must agree - a fixed
+		 * sleep would either be slower than needed or photograph the box mid-
+		 * debounce.
+		 */
+		let previous = null;
+		for (let attempt = 0; attempt < 40; attempt += 1) {
+			await wait(250);
+			const entries = await searchQueries();
+			const success = entries.some(
+				(entry) => entry.status === "success" && (entry.dataUpdatedAt ?? 0) > 0,
+			);
+			const current = JSON.stringify(await sidebarRead());
+			if (attempt >= 5 && success && current === previous) break;
+			previous = current;
+		}
+	};
+	const apiSearch = async (q) => {
+		const answer = await apiGet(
+			`/v1/desktop/sessions/search?q=${encodeURIComponent(q)}&limit=100`,
+		);
+		const sessions = answer.body?.result?.sessions ?? [];
+		return {
+			q,
+			status: answer.status,
+			total: sessions.length,
+			ids: sessions.map((hit) => hit.id),
+			top: sessions.slice(0, 5).map((hit) => ({
+				id: hit.id,
+				name: hit.name ?? "",
+				rank: hit.rank ?? null,
+				body_match: hit.body_match ?? null,
+			})),
+		};
+	};
+
+	/*
+	 * The completion token, from the machine feed's own open frame. The feed is
+	 * the one channel that carries it (the catalogue redacts it), and it is the
+	 * same channel the app itself reads - the rig takes the token off the wire,
+	 * not out of a store file.
+	 */
+	const feedCompletionToken = async (id) => {
+		const controller = new AbortController();
+		const timer = setTimeout(() => controller.abort(), 8000);
+		try {
+			const response = await fetch(`${BACKEND}/v1/desktop/events`, {
+				headers: authHeaders,
+				signal: controller.signal,
+			});
+			const reader = response.body.getReader();
+			const decoder = new TextDecoder();
+			let buffer = "";
+			while (true) {
+				const { value, done } = await reader.read();
+				if (done) break;
+				buffer += decoder.decode(value, { stream: true });
+				let index = buffer.indexOf("\n\n");
+				while (index !== -1) {
+					const frame = buffer.slice(0, index);
+					buffer = buffer.slice(index + 2);
+					index = buffer.indexOf("\n\n");
+					for (const line of frame.split("\n")) {
+						if (!line.startsWith("data:")) continue;
+						try {
+							const payload = JSON.parse(line.slice(5).trim());
+							const state =
+								payload?.payload?.attention?.[`session/${id}`] ??
+								payload?.attention?.[`session/${id}`];
+							if (state?.completion_token) {
+								controller.abort();
+								return state.completion_token;
+							}
+						} catch {
+							/* a non-JSON frame is not this helper's business */
+						}
+					}
+				}
+			}
+			return null;
+		} catch {
+			return null;
+		} finally {
+			clearTimeout(timer);
+		}
+	};
+
+	/*
+	 * THE ACKNOWLEDGEMENT, as two recorded steps. (1) The app's own completion
+	 * receipt is attempted (bounded): its page-side gate passes under CDP focus
+	 * emulation, but the request leaves through the app's MAIN process, which
+	 * refuses every receipt from a window that is not foreground ("View these
+	 * completions in the foreground before marking them read") - a headless
+	 * window can never be foreground, so the attempt proves itself and not the
+	 * receipt. (2) The rig completes the write the reader's own read would have
+	 * made: the completion token comes off the machine feed's open frame (the
+	 * one channel that carries it; the catalogue redacts it) and goes back
+	 * through the daemon's own seen route. Everything before step (2) is the
+	 * app's own; step (2) is disclosed here and in the run notes.
+	 */
+	const acknowledge = async (id, tag) => {
+		let attention = (await ourRow(id)).row?.unseen ?? null;
+		for (let attempt = 0; attempt < 6 && attention === null; attempt += 1) {
+			await wait(1000);
+			attention = (await ourRow(id)).row?.unseen ?? null;
+		}
+		const pageState = await cdp.evaluate(
+			"({ focus: document.hasFocus(), visibility: document.visibilityState })",
+		);
+		note(
+			`phase ${tag} page state`,
+			JSON.stringify({ at: at(), ...pageState, unseen: attention }),
+		);
+		if (attention === false) {
+			note(
+				`phase ${tag} acknowledgement`,
+				JSON.stringify({
+					at: at(),
+					path: "nothing to clear",
+					unseen: attention,
+				}),
+			);
+			return attention;
+		}
+		await cdp.send("Emulation.setFocusEmulationEnabled", { enabled: true });
+		for (let attempt = 0; attempt < 8 && attention !== false; attempt += 1) {
+			await wait(1000);
+			attention = (await ourRow(id)).row?.unseen;
+		}
+		await cdp.send("Emulation.setFocusEmulationEnabled", { enabled: false });
+		note(
+			`phase ${tag} app receipt attempt`,
+			JSON.stringify({ at: at(), cleared: attention === false }),
+		);
+		let path = "nothing to clear";
+		if (attention !== false) {
+			path = "rig: the feed's token through the daemon's seen route";
+			const token = await feedCompletionToken(id);
+			if (token === null) {
+				path = "rig: no token on the feed";
+			} else {
+				const seen = await fetch(`${BACKEND}/v1/desktop/sessions/${id}/seen`, {
+					method: "POST",
+					headers: { ...authHeaders, "content-type": "application/json" },
+					body: JSON.stringify({ completion_token: token }),
+				});
+				note(
+					`phase ${tag} receipt`,
+					JSON.stringify({ at: at(), status: seen.status }),
+				);
+				for (
+					let attempt = 0;
+					attempt < 15 && attention !== false;
+					attempt += 1
+				) {
+					await wait(1000);
+					attention = (await ourRow(id)).row?.unseen;
+				}
+			}
+		}
+		note(
+			`phase ${tag} acknowledgement`,
+			JSON.stringify({ at: at(), path, unseen: attention }),
+		);
+		return attention;
+	};
+
+	/*
+	 * PHASE 0 - the baseline, on the chat route with no conversation open.
+	 */
+	await verb(cdp, "setTheme", THEME ?? "localOperatorDark");
+	await verb(cdp, "navigate", "/agent-hub");
+	await verb(cdp, "navigate", "/chat");
+	await wait(1200);
+	const baselineSidebar = await sidebarRead();
+	const baselineCatalogue = await catalogueRows();
+	note(
+		"phase 0 baseline",
+		JSON.stringify({
+			at: at(),
+			sidebar: baselineSidebar,
+			catalogueTotal: baselineCatalogue.length,
+			catalogue: baselineCatalogue.map(rowSummary),
+		}),
+	);
+	const baselineFrame = await captureSettled(cdp, "plain-00-baseline");
+	note("frame", JSON.stringify(baselineFrame));
+
+	/*
+	 * PHASE 1 - the plain New chat: the app-wide chord, from a route that is
+	 * not the chat route, exactly as `sceneNewChat` proves it.
+	 */
+	await verb(cdp, "navigate", "/agent-hub");
+	await pressChord(cdp, {
+		key: "n",
+		code: "KeyN",
+		virtualKeyCode: 78,
+		modifiers: MODIFIER.meta,
+	});
+	const landed = await waitForRoute(cdp, "/chat");
+	const stagedKey = await stagedDraft(cdp);
+	check(
+		"⌘N moved the app to the chat route and staged a fresh draft",
+		landed.route === "/chat" &&
+			typeof stagedKey === "string" &&
+			stagedKey.startsWith("draft:"),
+		`route ${landed.route}, activeDraftKey ${JSON.stringify(stagedKey)}`,
+	);
+	await wait(800);
+	const openSidebar = await sidebarRead();
+	note(
+		"phase 1 new chat open",
+		JSON.stringify({ at: at(), sidebar: openSidebar }),
+	);
+	const openFrame = await captureSettled(cdp, "plain-01-new-chat-open");
+	note("frame", JSON.stringify(openFrame));
+
+	/*
+	 * PHASE 2 - type and send the first message.
+	 */
+	await clickAt(cdp, '[data-tour-tag="chat-input-textarea"] textarea');
+	await cdp.send("Input.insertText", { text: firstMessage });
+	await wait(250);
+	const typedFrame = await captureSettled(cdp, "plain-02-typed");
+	note("frame", JSON.stringify(typedFrame));
+	await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+	const reached = await waitForCondition(
+		cdp,
+		`(() => { const log = document.querySelector('[role="log"]'); return Boolean(log && log.textContent.includes("tessellate")); })()`,
+		45_000,
+	);
+	check(
+		"the first message reached the transcript",
+		reached.ok,
+		`after ${reached.waitedMs ?? "?"}ms: ${JSON.stringify(reached.last)}`,
+	);
+	await wait(1000);
+	const sentSidebar = await sidebarRead();
+	note("phase 2 sent", JSON.stringify({ at: at(), sidebar: sentSidebar }));
+	const sentFrame = await captureSettled(cdp, "plain-02-sent");
+	note("frame", JSON.stringify(sentFrame));
+
+	/*
+	 * PHASE 3 - the turn completes; the state the row must carry moves to the
+	 * completed/unseen face of the lifecycle.
+	 */
+	const answered = await waitForCondition(
+		cdp,
+		`(() => { const log = document.querySelector('[role="log"]'); return Boolean(log && log.textContent.includes("from the mock provider")); })()`,
+		60_000,
+	);
+	check(
+		"the mock answered the first turn",
+		answered.ok,
+		`after ${answered.waitedMs ?? "?"}ms`,
+	);
+	await wait(1500);
+	const stateNow = await verb(cdp, "state");
+	/*
+	 * THE SESSION ID, from the two places the app itself keeps it: the store's
+	 * active session, and the route (the pane moves to `#/chat/<id>` when the
+	 * create's answer lands). The route is the fallback because `state`'s own
+	 * field is the store's, which is null for a beat after a reload.
+	 */
+	const routeSession = await cdp.evaluate(
+		"(() => { const m = location.hash.match(/#\\/chat\\/([a-f0-9]{12})/); return m === null ? null : m[1]; })()",
+	);
+	const sessionId = stateNow.activeSessionId ?? routeSession ?? null;
+	note(
+		"phase 3 answered",
+		JSON.stringify({
+			at: at(),
+			activeSession: sessionId,
+			sidebar: await sidebarRead(),
+			catalogue: sessionId ? await ourRow(sessionId) : null,
+		}),
+	);
+	const answeredFrame = await captureSettled(cdp, "plain-03-answered");
+	note("frame", JSON.stringify(answeredFrame));
+
+	/*
+	 * PHASE 4 - acknowledge the first turn's completion (see `acknowledge`).
+	 */
+	await acknowledge(sessionId, "4");
+	const ackFrame = await captureSettled(cdp, "plain-04-acknowledged");
+	note("frame", JSON.stringify(ackFrame));
+
+	/*
+	 * PHASE 5 - later prose: one more turn, so the store holds a word that is
+	 * in neither the name nor the opening message.
+	 */
+	await clickAt(cdp, '[data-tour-tag="chat-input-textarea"] textarea');
+	await cdp.send("Input.insertText", { text: laterMessage });
+	await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+	const laterReached = await waitForCondition(
+		cdp,
+		`(() => { const log = document.querySelector('[role="log"]'); return Boolean(log && log.textContent.includes("${laterWord}")); })()`,
+		45_000,
+	);
+	check(
+		"the second message reached the transcript",
+		laterReached.ok,
+		`after ${laterReached.waitedMs ?? "?"}ms`,
+	);
+	await wait(1500);
+	const secondAnswered = await waitForCondition(
+		cdp,
+		`(() => { const log = document.querySelector('[role="log"]'); const text = log ? log.textContent : ""; return text.split("from the mock provider").length >= 2; })()`,
+		60_000,
+	);
+	check(
+		"the mock answered the second turn",
+		secondAnswered.ok,
+		`after ${secondAnswered.waitedMs ?? "?"}ms`,
+	);
+	note(
+		"phase 5 later prose",
+		JSON.stringify({ at: at(), sidebar: await sidebarRead() }),
+	);
+
+	/*
+	 * PHASE 5B - acknowledge the second turn's completion, so the drain below
+	 * lands on the state a reader who actually looked at the chat leaves behind.
+	 */
+	await wait(1500);
+	await acknowledge(sessionId, "5");
+
+	/*
+	 * PHASE 6 - let the runtime drain: leave the conversation so its watch
+	 * lease lapses (WATCH_TTL 45 s + the drain beside it), and poll the
+	 * catalogue's own live_state until the row is cold.
+	 */
+	await verb(cdp, "navigate", "/agent-hub");
+	let drained = null;
+	const drainStarted = Date.now();
+	for (let attempt = 0; attempt < 40; attempt += 1) {
+		await wait(5000);
+		drained = sessionId ? await ourRow(sessionId) : null;
+		if (drained?.row && drained.row.live === "" && drained.row.unseen === false)
+			break;
+	}
+	note(
+		"phase 6 drain",
+		JSON.stringify({
+			at: at(),
+			drainMs: Date.now() - drainStarted,
+			drained: drained,
+		}),
+	);
+	/*
+	 * THE FRESH FIRST PAINT, which is the state the operator's report describes:
+	 * the app comes back and the sidebar re-reads from scratch. A reload is the
+	 * same door the app's relaunch uses ("the RELAUNCH step is a `Page.reload`"),
+	 * and a running app reaches the same membership whenever its page is fetched
+	 * anew; the doorbell alone did NOT drop a held row (measured: the client
+	 * keeps a stale copy until a full re-read), so the reload is what proves the
+	 * membership the page actually carries now.
+	 */
+	await verb(cdp, "navigate", "/chat");
+	await wait(1000);
+	await cdp.send("Page.reload", { ignoreCache: false });
+	await waitForBridge(cdp, 90_000);
+	const sidebarBack = await waitForCondition(
+		cdp,
+		`document.querySelector('[data-sidebar-region="chats"]') !== null && document.querySelectorAll('[data-sidebar-region="chats"] [data-session-row]').length > 0`,
+		30_000,
+	);
+	await wait(1500);
+	note(
+		"phase 6 reload",
+		JSON.stringify({
+			at: at(),
+			sidebarBack: sidebarBack.ok,
+			waitedMs: sidebarBack.waitedMs,
+		}),
+	);
+	await verb(cdp, "navigate", "/chat");
+	await wait(1500);
+	const steadySidebar = await sidebarRead();
+	const steadyState = await verb(cdp, "state");
+	const steady = sessionId ? await ourRow(sessionId) : null;
+	const steadyRendered = steadySidebar.rows.some(
+		(row) => row.id !== null && row.id === sessionId,
+	);
+	note(
+		"phase 6 steady state",
+		JSON.stringify({
+			at: at(),
+			sidebar: steadySidebar,
+			activeSessionId: steadyState.activeSessionId ?? null,
+			catalogue: steady,
+			rowRendered: steadyRendered,
+			/*
+				WHICH PATH PRODUCED THE READS, beside the outcome: the activity flag
+				must be live and the store must hold the HEAD PAGE rather than the
+				legacy whole-catalogue read - on a 62-row store that read carries the
+				row trivially, so the flags are what tell a real pass from a vacuous
+				one.
+			 */
+			catalogueActivityHead: steadyState.catalogueActivityHead ?? false,
+			cataloguePageable: steadyState.cataloguePageable ?? false,
+			sessionCount: steadyState.sessionCount ?? null,
+			cataloguePinnedCount: steadyState.cataloguePinnedCount ?? null,
+		}),
+	);
+	const steadyFrame = await captureSettled(cdp, "plain-06-drained");
+	note("frame", JSON.stringify(steadyFrame));
+	/*
+	 * THE FIRST CLAIM, the operator's "does not appear in the sidebar": on a
+	 * store small enough that the whole catalogue fits one page, the row must
+	 * be rendered in the sidebar's own membership at the drained steady state.
+	 */
+	check(
+		"the conversation is rendered in the sidebar at the drained steady state",
+		steadyRendered,
+		`rows ${JSON.stringify(steadySidebar.rows.map((row) => row.text.slice(0, 40)))}`,
+		`rows ${JSON.stringify(steadySidebar.rows.map((row) => row.text.slice(0, 40)))}`,
+	);
+	/*
+	 * THE PATH, ASSERTED BESIDE THE OUTCOME. The row rendering above is evidence
+	 * about the fix only if the read that carried it was the activity head. The
+	 * rig's daemon advertises `session_catalogue_sort`, so the pane must have
+	 * published the flag and the store must hold the HEAD PAGE; on this store a
+	 * legacy whole-catalogue read carries the row for free, which is exactly the
+	 * vacuous pass these two checks refuse.
+	 */
+	check(
+		"the catalogue is read in the sidebar's own order (session_catalogue_sort live)",
+		steadyState.catalogueActivityHead === true,
+		`catalogueActivityHead=${steadyState.catalogueActivityHead} cataloguePageable=${steadyState.cataloguePageable}`,
+		`catalogueActivityHead=${steadyState.catalogueActivityHead} cataloguePageable=${steadyState.cataloguePageable}`,
+	);
+	check(
+		"the store holds the head page, not the legacy whole-catalogue read",
+		/*
+		 * EXACT FOR PINNED EXTRAS, NOT LOOSE FOR EVERY STORE (QA round 1, Q1). The
+		 * daemon appends pinned rows that fall off the page below the page's own rows
+		 * (the route's own docs: `len(sessions)` may exceed `limit`), so a bound on
+		 * `sessionCount` alone false-fails a correct read the moment one pin falls off
+		 * the page - QA measured 50 page rows + 1 off-page pin = 51, which this check
+		 * would have called a legacy read and failed. Subtracting the pinned count
+		 * keeps the bound tight where it matters: the legacy whole-catalogue read (the
+		 * 500 an early take's store held) still fails it, and an ordinary head page
+		 * passes with or without extras.
+		 */
+		typeof steadyState.sessionCount === "number" &&
+			typeof steadyState.cataloguePinnedCount === "number" &&
+			steadyState.sessionCount - steadyState.cataloguePinnedCount <=
+				LAZY_CATALOGUE_HEAD_PAGE,
+		`sessionCount=${steadyState.sessionCount} pinnedCount=${steadyState.cataloguePinnedCount}`,
+		`sessionCount=${steadyState.sessionCount} minus ${steadyState.cataloguePinnedCount} pinned extra(s) (<= ${LAZY_CATALOGUE_HEAD_PAGE} is the head page)`,
+	);
+
+	/*
+	 * THE SCROLLED FRAME (design round 1, D1). The drained frame above proves
+	 * membership in the DOM; it cannot prove VISIBILITY. On this store the panel's
+	 * fold falls between the pinned row and the first TODAY row - the sidebar
+	 * columns of the before/after pair were pixel-identical, with the cured row
+	 * just past the scroller's edge - so the pair made a membership fix read as
+	 * "no visible change". This step scrolls the chats scroller until the subject
+	 * row sits about a third down the window and captures THAT state, reading back
+	 * where it landed rather than asserting the scroll it asked for. In the before
+	 * half the row is not in the DOM at all and the same step lands on the first
+	 * TODAY row instead: the pair then shows the same window position with and
+	 * without the conversation in it.
+	 */
+	const scrollShot = await cdp.evaluate(`(() => {
+		const rows = [...document.querySelectorAll('[data-sidebar-region="chats"] [data-session-row]')];
+		const subject = rows.find((el) => el.getAttribute("data-session-row") === ${JSON.stringify(sessionId)});
+		const target = subject ?? rows.find((el) => el.closest('[data-chat-section]')?.getAttribute("data-chat-section") === "today") ?? null;
+		if (!target) return { ok: false, reason: "no target row" };
+		let list = target.parentElement;
+		while (list && !String(list.className).includes("overflow-y-auto")) list = list.parentElement;
+		if (!list) return { ok: false, reason: "no scroller" };
+		const lr = list.getBoundingClientRect();
+		const tr = target.getBoundingClientRect();
+		list.scrollTop += tr.top - lr.top - lr.height * 0.3;
+		return { ok: true, isSubject: subject !== undefined, scrollTop: list.scrollTop, maxScroll: list.scrollHeight - list.clientHeight };
+	})()`);
+	await wait(450);
+	const scrolledRead = await cdp.evaluate(`(() => {
+		const rows = [...document.querySelectorAll('[data-sidebar-region="chats"] [data-session-row]')];
+		const subject = rows.find((el) => el.getAttribute("data-session-row") === ${JSON.stringify(sessionId)});
+		const pick = subject ?? rows.find((el) => el.closest('[data-chat-section]')?.getAttribute("data-chat-section") === "today");
+		const scroller = document.querySelector('[data-sidebar-region="scroller"]');
+		if (!pick || !scroller) return null;
+		const sr = scroller.getBoundingClientRect();
+		const pr = pick.getBoundingClientRect();
+		return {
+			isSubject: subject !== undefined,
+			scrollTop: scroller.scrollTop,
+			clientHeight: scroller.clientHeight,
+			scrollHeight: scroller.scrollHeight,
+			rowTop: pr.top,
+			rowBottom: pr.bottom,
+			windowTop: sr.top,
+			windowBottom: sr.bottom,
+		};
+	})()`);
+	note(
+		"phase 6 scrolled read",
+		JSON.stringify({ at: at(), scrollShot, scrolledRead }),
+	);
+	check(
+		"the scrolled frame is taken with the list's subject (or first TODAY) row inside the window",
+		scrolledRead !== null &&
+			scrolledRead.rowBottom > scrolledRead.windowTop &&
+			scrolledRead.rowTop < scrolledRead.windowBottom,
+		`scrolledRead=${JSON.stringify(scrolledRead)}`,
+		`scrolledRead=${JSON.stringify(scrolledRead)}`,
+	);
+	const scrolledFrame = await captureSettled(cdp, "plain-06-scrolled");
+	note("frame", JSON.stringify(scrolledFrame));
+	await cdp.evaluate(`(() => {
+		const scroller = document.querySelector('[data-sidebar-region="scroller"]');
+		if (scroller) scroller.scrollTop = 0;
+		return scroller ? scroller.scrollTop : null;
+	})()`);
+	await wait(250);
+
+	/*
+	 * INVARIANT 1, MEASURED: the conversation the reader is IN, even one the
+	 * page no longer carries. Opening it BY ROUTE is the design's own scenario
+	 * ("a reader who opens a conversation from a notification, a link or the
+	 * terminal"). The row must be drawn - as the lifted `current` section -
+	 * whatever the page holds.
+	 */
+	await verb(cdp, "navigate", `/chat/${sessionId}`);
+	await wait(2500);
+	const openedSidebar = await sidebarRead();
+	const openRendered = openedSidebar.rows.some(
+		(row) => row.id !== null && row.id === sessionId,
+	);
+	note(
+		"phase 6 open by route",
+		JSON.stringify({
+			at: at(),
+			sidebar: openedSidebar,
+			rowRendered: openRendered,
+		}),
+	);
+	const openRouteFrame = await captureSettled(cdp, "plain-06-open-by-route");
+	note("frame", JSON.stringify(openRouteFrame));
+	check(
+		"the conversation being viewed is on screen even when the page no longer carries it (invariant 1)",
+		openRendered,
+		`rows ${JSON.stringify(openedSidebar.rows.map((row) => row.text.slice(0, 40)))}`,
+	);
+	await verb(cdp, "navigate", "/chat");
+	await wait(1000);
+
+	/*
+	 * PHASE 7 - search, for the words a user remembers: the first message's,
+	 * the topic words, and the later prose's. Both halves of the answer are
+	 * read: the daemon's own search result, and the sidebar's rendered rows
+	 * under the query.
+	 */
+	await openSearch();
+	const searchReads = [];
+	for (const query of ["provider", "tessellate", laterWord, run]) {
+		await setSearchQuery(query);
+		const rendered = await sidebarRead();
+		const api = await apiSearch(query);
+		searchReads.push({
+			query,
+			api,
+			apiFound: sessionId !== null && api.ids.includes(sessionId),
+			renderedRows: rendered.rows,
+			renderedFound: rendered.rows.some(
+				(row) => row.id !== null && row.id === sessionId,
+			),
+		});
+		const searchFrame = await captureSettled(
+			cdp,
+			`plain-07-search-${query.replace(/[^a-z0-9]/gi, "-")}`,
+		);
+		note("frame", JSON.stringify(searchFrame));
+	}
+	await clearSearchField();
+	await wait(200);
+	await pressChord(cdp, { key: "Escape", code: "Escape", virtualKeyCode: 27 });
+	const searchFrame = await captureSettled(cdp, "plain-07-search-closed");
+	note("frame", JSON.stringify(searchFrame));
+	note("phase 7 search", JSON.stringify({ at: at(), reads: searchReads }));
+	/*
+	 * THE SECOND CLAIM, the operator's "cannot be found by search": the words
+	 * below are ones the user remembers from the conversation itself (the
+	 * first message's topic word, and one that only exists in later prose) -
+	 * both within the digest's own scan window, so a miss here is the defect
+	 * rather than the digest bound.
+	 */
+	for (const read of searchReads.filter(
+		(entry) => entry.query === "tessellate" || entry.query === laterWord,
+	)) {
+		check(
+			`search for "${read.query}" finds the conversation`,
+			read.apiFound || read.renderedFound,
+			JSON.stringify({
+				api: read.api.top,
+				apiTotal: read.api.total,
+				rows: read.renderedRows.map((row) => row.text.slice(0, 60)),
+			}),
+		);
+	}
+
+	return [
+		baselineFrame,
+		openFrame,
+		typedFrame,
+		sentFrame,
+		answeredFrame,
+		ackFrame,
+		steadyFrame,
+		searchFrame,
+	];
+}
+
 async function sceneNewChat(cdp) {
 	/*
 	 * Start anywhere but the chat route: `navigate("/chat")` is 80% of what this
@@ -45316,6 +46076,8 @@ async function main() {
 			else if (SCENE === "new-chat") await sceneNewChat(cdp);
 			else if (SCENE === "btw-aside") await sceneBtwAside(cdp);
 			else if (SCENE === "sessionless-slash") await sceneSessionlessSlash(cdp);
+			else if (SCENE === "plain-newchat-lifecycle")
+				await scenePlainNewchatLifecycle(cdp);
 			else if (SCENE === "authoring-refresh") await sceneAuthoringRefresh(cdp);
 			else if (SCENE === "sidebar-bin-promptness")
 				await sceneSidebarBinPromptness(cdp);

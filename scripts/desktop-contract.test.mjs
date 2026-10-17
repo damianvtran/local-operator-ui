@@ -3033,6 +3033,50 @@ test("the catalogue's paging parameters are optional, typed, and inert when unse
 });
 
 /**
+ * The catalogue's SORT parameter: optional, single-valued, and appended last.
+ *
+ * WHY THE WIRE IS THE PLACE FOR THIS, on the same rule the paging test above
+ * states: a daemon that predates the parameter IGNORES it silently, so the
+ * compatibility promise is about bytes - a request that names no sort must
+ * serialize exactly as it always did - and the vocabulary is closed HERE,
+ * because a typo the route never sees would be answered as the rank order under
+ * a request that asked for another, with nothing in the answer to tell.
+ */
+test("the catalogue's sort parameter rides only when asked for, and only as activity", () => {
+	const plain = desktopRequestSchema.safeParse({
+		op: "sessions.list",
+		limit: 50,
+	});
+	assert.equal(plain.success, true);
+	assert.equal(
+		rendererDesktopEndpoint(plain.data).path,
+		"/v1/desktop/sessions?limit=50",
+		"a request that names no sort is byte-identical to the one this app always sent",
+	);
+
+	const activity = desktopRequestSchema.safeParse({
+		op: "sessions.list",
+		limit: 50,
+		include_archived: true,
+		sort: "activity",
+	});
+	assert.equal(activity.success, true);
+	assert.equal(
+		rendererDesktopEndpoint(activity.data).path,
+		"/v1/desktop/sessions?limit=50&include_archived=true&sort=activity",
+		"sort appends after every parameter that predates it, so nothing without it moves",
+	);
+
+	// The closed vocabulary, refused by name before the wire: a value the schema
+	// admits is a value the route must answer, and the route admits one.
+	assert.equal(
+		desktopRequestSchema.safeParse({ op: "sessions.list", sort: "sideways" })
+			.success,
+		false,
+	);
+});
+
+/**
  * The projects search op, the ranked read it builds, and the version that gates it.
  *
  * WHY THE WIRE IS THE PLACE FOR THIS: the route is a STATIC path declared before

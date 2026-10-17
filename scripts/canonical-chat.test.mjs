@@ -502,6 +502,66 @@ test("the daemon's unread reads are carried, and an absent marker is not an empt
 });
 
 /**
+ * The activity head: what the catalogue read asks for, and when.
+ *
+ * WHY THIS IS THE STORE'S TEST AND NOT THE SIDEBAR'S: the sidebar publishes the
+ * flag (`setCatalogueActivityHead`, resolved from the capability answer), and
+ * the store is what turns it into the request. The promise has two halves, both
+ * about the REQUEST: with no capability the read is byte-identical to the one
+ * this app has always sent (no `sort` key at all), and with it the HEAD read and
+ * the TAIL extension ask for the same order - a tail request in the other order
+ * would be answered as a foreign cursor (the store's first page), and the
+ * extension would re-read the top and append nothing.
+ */
+test("the catalogue read asks for the activity head only when the daemon advertises it", async () => {
+	reset();
+	store.setState({ catalogueActivityHead: false });
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		return { sessions: [], truncated: false, next_cursor: null };
+	};
+
+	await store.getState().fetchSessions(50);
+	assert.equal(
+		"sort" in calls[0],
+		false,
+		"no capability: the request is the one this app has always sent",
+	);
+
+	store.setState({ catalogueActivityHead: true });
+	await store.getState().fetchSessions(50);
+	assert.equal(
+		calls.at(-1).sort,
+		"activity",
+		"the capability turns the head read into the sidebar's own order",
+	);
+
+	// The tail continues from a cursor the HEAD page minted, so it must name the
+	// same order; the cursor carries it and the server refuses a mismatch.
+	store.setState({
+		head: {
+			tailIds: [],
+			pageIds: [],
+			nextCursor: null,
+			tailCursor: "cursor-1",
+			tailStarted: true,
+			complete: false,
+			loading: false,
+			error: null,
+			at: 0,
+		},
+	});
+	await store.getState().fetchCatalogueTail();
+	const tail = calls.at(-1);
+	assert.equal(tail.cursor, "cursor-1");
+	assert.equal(
+		tail.sort,
+		"activity",
+		"the extension rides the same order as its cursor",
+	);
+});
+
+/**
  * The sentence half of the same marker, asserted on the source in the shape
  * this file already uses for a JSX-level rule (U16, D2): rendering the sidebar
  * needs the whole chat feature tree, while the state that feeds it is pinned
