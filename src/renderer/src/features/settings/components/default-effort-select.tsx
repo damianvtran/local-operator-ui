@@ -14,6 +14,7 @@ import {
 import { SearchableSelect } from "@shared/components/ui";
 import { useHomeDirectory } from "@shared/hooks";
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Gauge } from "lucide-react";
 import type { FC } from "react";
@@ -65,6 +66,10 @@ export const DefaultEffortSelect: FC<DefaultEffortSelectProps> = ({
 	hosting,
 	modelName,
 }) => {
+	/* Copy-bearing projections recompute after a locale change, as every
+	 * surface's do: `t()` reads the active locale at call time, and this hook is
+	 * what repaints the row when the interface language moves. */
+	useI18nLocale();
 	const capabilities = useDesktopCapabilities();
 	/*
 	 * The gate, not a fallback: `sessions.preview` is the only source of a
