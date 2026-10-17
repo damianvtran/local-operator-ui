@@ -1,4 +1,5 @@
 import type { WebauthnChoiceRequest } from "@features/browser/model/webauthn-chooser";
+import type { WebauthnEnding } from "@features/browser/model/webauthn-panel";
 import { useCallback, useSyncExternalStore } from "react";
 
 /**
@@ -31,6 +32,60 @@ const listeners = new Set<() => void>();
 function publish(next: WebauthnChoiceRequest[]): void {
 	pending = next;
 	for (const listener of listeners) listener();
+}
+
+/**
+ * The acknowledgement an UNATTENDED settlement leaves behind - mirrored here,
+ * not kept inside the prompt (round-2 R3). The prompt used to hold this in
+ * component state, which made "is a passkey dialog open" a question the rest
+ * of the app could not answer: `chooserPanel` returns `kind: "ending"`
+ * whenever the queue is empty and an ending is set (`webauthn-panel.ts`), and
+ * the dialog stays open until `onDismissEnding` - there is NO timed lifetime
+ * for an unattended expiry or cancellation. Anything deriving the modal's
+ * open state from the queue alone therefore misses an open modal, and a safe
+ * boundary would stack over it. One mirror for the panel's whole open
+ * lifetime: pending requests OR ending.
+ */
+let ending: WebauthnEnding | null = null;
+const endingListeners = new Set<() => void>();
+
+/**
+ * Set (or replace) the ending the panel is showing. Callers set the ending
+ * BEFORE dropping its request - that order is load-bearing for the prompt's
+ * focus restore (the component's settle handler carries the argument); this
+ * module keeps the two mirrors separate so the order is the caller's, not an
+ * accident of one state.
+ */
+export function noteWebauthnEnding(next: WebauthnEnding | null): void {
+	if (ending === next) return;
+	ending = next;
+	for (const listener of endingListeners) listener();
+}
+
+/** The ending's own dismissal - what closes the panel when nothing is answerable. */
+export function clearWebauthnEnding(): void {
+	noteWebauthnEnding(null);
+}
+
+/** The ending currently showing, if any. */
+export function webauthnEndingSnapshot(): WebauthnEnding | null {
+	return ending;
+}
+
+export function subscribeWebauthnEnding(listener: () => void): () => void {
+	endingListeners.add(listener);
+	return () => {
+		endingListeners.delete(listener);
+	};
+}
+
+/** The ending, as a subscription - the panel's open half beside the queue. */
+export function useWebauthnEnding(): WebauthnEnding | null {
+	return useSyncExternalStore(
+		useCallback(subscribeWebauthnEnding, []),
+		webauthnEndingSnapshot,
+		webauthnEndingSnapshot,
+	);
 }
 
 /**
