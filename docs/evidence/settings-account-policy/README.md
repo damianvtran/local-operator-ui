@@ -110,7 +110,7 @@ Frame SHAs — first capture (`6d071ae02`) → re-capture (`3a7a4bd58`):
 - `dirty`: `51e5ff130e0431de83302535c5ec5b631d5c81a1067f6b09de687d1be7fa33fd` → `8d7f4b4b4b35f01ac296f49e24f20336af007c84b57a67afec675e0e89c8be20`
 - `saved`: `4310e02a6d106a70f840371d4f461f5ec030823d6b6d7f3b92e3e98af2703ad3` → `7e0a74c72983268002037c35b3958eceee41b8d099504a5bd2934ad735ec2f66`
 
-## The fold onto main after the capture, and the byte proof it moved nothing
+## The folds onto main after the capture, and the byte proof they moved nothing
 
 After the capture the branch folded `origin/main` again (`git merge origin/main`,
 main at `1914559db`, result `de2239edd`), which brought BOTH i18n lanes that had
@@ -138,13 +138,35 @@ core and port): **ALL CHECKS PASSED** (0 FAIL). The byte comparisons:
 - **Against the committed set**: `rest` and `saved` are byte-identical; `dirty`
   differs only in the disclosed settings-scrollbar fade strip (19 px at
   x2662-2670, worst channel delta 2 of 255 — invisible); `search-found` differs
-  by 540 px, and all of them sit on the info row at the page foot: the
-  `Application version 0.34.51 → 0.34.52` glyphs (the shipping tree's own
-  version; the committed capture was taken at 0.34.51) and the server line's
-  port — `127.0.0.1:18437` in the committed capture, `18441` in this lane's
-  re-runs, because the recipe requires each run to own its port (only 1111 is
-  forbidden). Same digit-class of move as the version bump; none of it touches
-  the content this set's claims live on, so the frames were NOT re-captured.
+  by 540 px in two classes, neither substantive: **480 px** are the info row at
+  the page foot — the `Application version 0.34.51 → 0.34.52` glyphs (the
+  shipping tree's own version; the committed capture was taken at 0.34.51) and
+  the server line's port (`127.0.0.1:18437` in the committed capture, `18441`
+  in this lane's re-runs, because the recipe requires each run to own its port;
+  only 1111 is forbidden) — and **60 px** at y917-946 × x1442-1443, a
+  2 × 30 px stroke right after the typed query, are the search input's caret,
+  lit in this run's capture and not in the committed one. Neither class is
+  substantive, like the scrollbar fade; no content this set's claims live on
+  changes, so the frames were NOT re-captured.
+
+After the first fold, main moved once more: `git merge origin/main` (main at
+`4932fee30`, #1034) conflicted on `docs/evidence/manifest.json` alone. The
+repo's own fold tooling resolved it where a hand-merge would have been the
+defect: the merge driver during the merge, then `pnpm evidence:fold`, which
+re-derived the counts against the merged tree and amended the merge commit
+(result `b562350df`). The fold brought #1034's chat turn-collapse work (five
+chat modules under `src/`, their script suites, two new evidence sets) and
+nothing of ours: the first-parent diff is exactly #1034's 31 files, and this
+set's README and four PNGs are sha256-identical across it. `pnpm check-evidence`
+held: rc 0, `Evidence holds: 17810 frames are pictures of their own theme` (the
+standing NOTE lines; one names #1034's own `chat-turn-collapse-before` set,
+whose `capturedAtHead` predates a later touch of its story file — that set's
+condition on main, not this fold's). The scene was re-run from the folded tree
+as before — re-run rather than assumed, because #1034's changes do reach the
+sidebar's import closure (`use-canonical-session` → `turn-collapse-open` /
+`turn-collapse-model`) — and the reading settles it: **ALL CHECKS PASSED**, and
+**all four frames byte-identical to the pre-fold run** (`cmp` plus a 0-pixel
+full-frame diff).
 
 ## The frames
 
