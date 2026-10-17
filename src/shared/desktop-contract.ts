@@ -1357,6 +1357,17 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			scope_name: catalogueScopeName.optional(),
 			cursor: catalogueCursor.optional(),
 			with_counts: z.boolean().optional(),
+			/*
+			 * THE ORDER THE PAGE IS READ IN (`session_catalogue_sort`), optional and
+			 * gated on that capability for the same reason the paging four are: a daemon
+			 * that predates the parameter IGNORES it silently, so an un-gated client
+			 * would receive the rank order under a request that asked for the activity
+			 * one - a page whose membership is a wake band, which is the exact defect
+			 * this parameter exists to remove. `activity` is the one value today; a
+			 * literal rather than a string so a typo is a type error here rather than a
+			 * refusal from the route.
+			 */
+			sort: z.literal("activity").optional(),
 		})
 		.strict(),
 	/*
@@ -6637,6 +6648,11 @@ export function desktopEndpoint(request: DesktopRequest): {
 			// the paging three's: it is a boolean whose route default is false, so the
 			// ordinary request keeps the exact bytes it sent before this flag existed.
 			if (request.include_peers) params.set("include_peers", "true");
+			// AFTER `include_peers`, and omitted when absent, so every request that
+			// predates this parameter keeps its exact byte order too: `sort` is the
+			// newest member of the query string, and nothing that never asks for it
+			// may move.
+			if (request.sort) params.set("sort", request.sort);
 			return {
 				path: `/v1/desktop/sessions?${params}`,
 				method: "GET",
