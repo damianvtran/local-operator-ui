@@ -1,0 +1,131 @@
+{
+	"ui.settings.model.default_effort.label": {
+		"role": "Label above the default-effort picker in Model settings",
+		"tone": "Plain noun phrase naming what is stored, in the same register as the Hosting provider and Model labels beside it.",
+		"length": "One label line, a few words. English is 14 characters.",
+		"note": "Sits directly under the Model picker. The value is the reasoning-effort level a NEW conversation starts at. Sentence case."
+	},
+	"ui.settings.model.default_effort.placeholder": {
+		"role": "Empty-field hint inside the default-effort picker",
+		"tone": "Plain imperative; no exclamation.",
+		"length": "Clipped at the field width (~24-40 characters). English is 22 characters.",
+		"note": "Shown before a value is shown; the field is a chooser, not free text."
+	},
+	"ui.settings.model.default_effort.busy": {
+		"role": "Accessible busy label while the default effort is being saved",
+		"tone": "Quiet status, present participle.",
+		"length": "Spinner label; English is 26 characters.",
+		"note": "Replaces the chevron with a spinner. Screen readers hear it; sighted readers see the spinner only."
+	},
+	"ui.settings.model.default_effort.model_default": {
+		"role": "The unset row in the default-effort picker",
+		"tone": "Plain noun phrase; it names the absence of an opinion rather than a level.",
+		"length": "One row label beside level names such as High or Medium. English is 13 characters.",
+		"note": "Selecting it stores an empty value, which means new conversations use whatever level the model itself resolves. It must never be described as a level."
+	},
+	"ui.settings.model.default_effort.model_default_resolves": {
+		"role": "Description under the Model default row",
+		"tone": "Matter-of-fact statement of what will run.",
+		"length": "One short sentence under a row. English is 30 characters plus the level name.",
+		"note": "Shown only when the backend reported a resolved level for the selected model.",
+		"placeholders": {
+			"level": "A level name such as High, Medium or Low, already title-cased for display. Insert as given."
+		}
+	},
+	"ui.settings.model.default_effort.helper_ready": {
+		"role": "Helper line under the default-effort picker when a ladder is offerable",
+		"tone": "Helpful explanation in second person; states scope, not a promise.",
+		"length": "Wrapping helper paragraph under the field. English is 92 characters.",
+		"note": "Also tells the reader what \"Model default\" means without repeating the level."
+	},
+	"ui.settings.model.default_effort.loading": {
+		"role": "Helper line while the backend resolves the selected model's effort ladder",
+		"tone": "Quiet status sentence, no spinner in the copy.",
+		"length": "One helper line. English is 40 characters.",
+		"note": "The control is disabled while this is shown."
+	},
+	"ui.settings.model.default_effort.error": {
+		"role": "Helper line when the model's effort ladder could not be read",
+		"tone": "Plain statement of the failure; no blame, no raw exception.",
+		"length": "One helper line. English is 47 characters.",
+		"note": "No list of levels is offered in this state."
+	},
+	"ui.settings.model.default_effort.no_model": {
+		"role": "Helper line when no hosting or model is configured",
+		"tone": "Plain instruction.",
+		"length": "One helper line. English is 48 characters.",
+		"note": "The control is disabled; the reader chooses a model in the row above."
+	},
+	"ui.settings.model.default_effort.no_home": {
+		"role": "Helper line when the app has not reported a home directory",
+		"tone": "Plain statement of a wait, not an error.",
+		"length": "One helper line. English is 77 characters.",
+		"note": "The picker issues no preview request until a home directory is known."
+	},
+	"ui.settings.model.default_effort.settings_loading": {
+		"role": "Helper line while the stored default effort is being read",
+		"tone": "Quiet status sentence.",
+		"length": "One helper line. English is 39 characters.",
+		"note": "Distinct from the model-ladder read: this one is the saved value from the settings registry."
+	},
+	"ui.settings.model.default_effort.settings_error": {
+		"role": "Helper line when the stored default effort could not be read",
+		"tone": "Plain statement of the failure.",
+		"length": "One helper line. English is 42 characters.",
+		"note": "The chooser is disabled; a write here could overwrite a value the app could not see."
+	},
+	"ui.settings.model.default_effort.unresolved": {
+		"role": "Helper line when the model's spec is not resolved yet",
+		"tone": "Plain statement of a wait.",
+		"length": "One helper line. English is 49 characters.",
+		"note": "Same fact the composer's effort picker states: an unresolved spec is not a model without levels."
+	},
+	"ui.settings.model.default_effort.empty": {
+		"role": "Helper line when the model's ladder is known to be empty",
+		"tone": "Plain statement; no advice to pick another model in Settings.",
+		"length": "One helper line. English is 39 characters.",
+		"note": "Reuses the composer's wording so the two surfaces describe one fact the same way."
+	},
+	"ui.settings.model.default_effort.one_level": {
+		"role": "Helper line when the model's ladder has exactly one rung",
+		"tone": "Matter-of-fact; it states there is no choice.",
+		"length": "One helper line. English is 45 characters plus the level name.",
+		"note": "The control is disabled in this state rather than pretending to offer a choice.",
+		"placeholders": {
+			"level": "The single level name, already title-cased for display. Insert as given."
+		}
+	},
+	"ui.settings.model.default_effort.one_level_sentinel": {
+		"role": "Helper line under the disabled one-outcome default-effort picker when the model's only value is the auto sentinel",
+		"tone": "Matter-of-fact delegation: the model decides, the reader has no level to choose.",
+		"length": "Wrapping helper paragraph under the field. English is 76 characters.",
+		"note": "Replaces the one-level sentence for the `auto` sentinel only. `auto` is the registry's LABEL for the empty value (no opinion), not a level, so this sentence must never call it a level; a real single rung keeps \"This model offers one effort level: {level}.\""
+	},
+	"ui.settings.model.default_effort.clamped": {
+		"role": "Announcement at the Default effort row after a model switch rewrote the stored level",
+		"tone": "Matter-of-fact statement of what happened and what is now in force; it explains a value the reader did not choose.",
+		"length": "One line under the helper. English is 47 characters plus two level names and the model name.",
+		"note": "Shown in a polite live region after the clamp write succeeds, and only then. The level is named as the reader saw it, in the app's title case; the model is the preview's display name, or its id when it has none.",
+		"placeholders": {
+			"level": "The stored level that the new model does not offer, already title-cased for display.",
+			"model": "The selected model's display name, or its id when it reports none.",
+			"resolved": "The level now stored, already title-cased for display."
+		}
+	},
+	"ui.settings.model.default_effort.clamped_unset": {
+		"role": "Same announcement when the rewrite clears the value instead of naming a level",
+		"tone": "Matter-of-fact; it names the unset row rather than inventing a level.",
+		"length": "One line under the helper. English is 55 characters plus the level name and the model name.",
+		"note": "Used when the backend resolves no level for the new model, so the clamp writes the empty value. \"Model default\" is the row's own name for that value.",
+		"placeholders": {
+			"level": "The stored level that the new model does not offer, already title-cased for display.",
+			"model": "The selected model's display name, or its id when it reports none."
+		}
+	},
+	"ui.settings.model.default_effort.save_failed": {
+		"role": "Sentence beside the picker after a failed save",
+		"tone": "Plain statement of the failure; the previous value is still shown.",
+		"length": "One line under the helper. English is 33 characters.",
+		"note": "Never resets the control silently: the stored value stays on screen and this says why the new one did not take."
+	}
+}
