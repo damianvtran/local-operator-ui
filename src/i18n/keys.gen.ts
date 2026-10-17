@@ -65,7 +65,9 @@ import enUiSettingsAppearanceWindowGlass from "./catalogues/en/ui.settings.appea
 import enUiSettingsConfiguration from "./catalogues/en/ui.settings.configuration.json";
 import enUiSettingsIntegrations from "./catalogues/en/ui.settings.integrations.json";
 import enUiSettings from "./catalogues/en/ui.settings.json";
+import enUiSettingsModelDefaultEffort from "./catalogues/en/ui.settings.model.default_effort.json";
 import enUiSettingsModel from "./catalogues/en/ui.settings.model.json";
+import enUiSettingsModelProviderCallout from "./catalogues/en/ui.settings.model.provider_callout.json";
 import enUiSettingsNavigation from "./catalogues/en/ui.settings.navigation.json";
 import enUiSettingsShortcuts from "./catalogues/en/ui.settings.shortcuts.json";
 import enUiSettingsSpeech from "./catalogues/en/ui.settings.speech.json";
@@ -146,7 +148,9 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiSettingsConfiguration,
 	...enUiSettingsIntegrations,
 	...enUiSettings,
+	...enUiSettingsModelDefaultEffort,
 	...enUiSettingsModel,
+	...enUiSettingsModelProviderCallout,
 	...enUiSettingsNavigation,
 	...enUiSettingsShortcuts,
 	...enUiSettingsSpeech,
@@ -3310,6 +3314,32 @@ export type MessageParams = {
 	"ui.settings.tour.action": undefined;
 	"ui.settings.tour.description": undefined;
 	"ui.settings.tour.title": undefined;
+	"ui.settings.model.default_effort.busy": undefined;
+	"ui.settings.model.default_effort.clamped": {
+		level: string;
+		model: string;
+		resolved: string;
+	};
+	"ui.settings.model.default_effort.clamped_unset": {
+		level: string;
+		model: string;
+	};
+	"ui.settings.model.default_effort.empty": undefined;
+	"ui.settings.model.default_effort.error": undefined;
+	"ui.settings.model.default_effort.helper_ready": undefined;
+	"ui.settings.model.default_effort.label": undefined;
+	"ui.settings.model.default_effort.loading": undefined;
+	"ui.settings.model.default_effort.model_default": undefined;
+	"ui.settings.model.default_effort.model_default_resolves": { level: string };
+	"ui.settings.model.default_effort.no_home": undefined;
+	"ui.settings.model.default_effort.no_model": undefined;
+	"ui.settings.model.default_effort.one_level": { level: string };
+	"ui.settings.model.default_effort.one_level_sentinel": undefined;
+	"ui.settings.model.default_effort.placeholder": undefined;
+	"ui.settings.model.default_effort.save_failed": undefined;
+	"ui.settings.model.default_effort.settings_error": undefined;
+	"ui.settings.model.default_effort.settings_loading": undefined;
+	"ui.settings.model.default_effort.unresolved": undefined;
 	"ui.settings.model.backend_setting_combos.search_models": undefined;
 	"ui.settings.model.backend_setting_combos.search_providers": undefined;
 	"ui.settings.model.model_setting_options.copy_current_value_group": undefined;
@@ -3348,6 +3378,8 @@ export type MessageParams = {
 	"ui.settings.model.system_prompt.saving": undefined;
 	"ui.settings.model.system_prompt.system_prompt": undefined;
 	"ui.settings.model.system_prompt.unknown_error": undefined;
+	"ui.settings.model.provider_callout.providers_link": undefined;
+	"ui.settings.model.provider_callout.sentence": undefined;
 	"ui.settings.navigation.settings_page.backend_settings": undefined;
 	"ui.settings.navigation.settings_page.every_setting_the_backend_registry_owns_searchable_with_typed_edi": undefined;
 	"ui.settings.navigation.settings_page.loading_settings": undefined;

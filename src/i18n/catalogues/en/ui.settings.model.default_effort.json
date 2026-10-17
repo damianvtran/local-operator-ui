@@ -1,0 +1,21 @@
+{
+	"ui.settings.model.default_effort.label": "Default effort",
+	"ui.settings.model.default_effort.placeholder": "Select an effort level",
+	"ui.settings.model.default_effort.busy": "Saving the default effort",
+	"ui.settings.model.default_effort.model_default": "Model default",
+	"ui.settings.model.default_effort.model_default_resolves": "Runs at {level} for this model.",
+	"ui.settings.model.default_effort.helper_ready": "Applies to new conversations. Model default lets this model choose its own level.",
+	"ui.settings.model.default_effort.loading": "Checking this model's effort levels…",
+	"ui.settings.model.default_effort.error": "This model's effort levels could not be read.",
+	"ui.settings.model.default_effort.no_model": "Select a model to choose its effort levels.",
+	"ui.settings.model.default_effort.no_home": "Your home folder is not available yet, so effort levels cannot be read.",
+	"ui.settings.model.default_effort.settings_loading": "Checking your saved default effort…",
+	"ui.settings.model.default_effort.settings_error": "Your saved default effort could not be read.",
+	"ui.settings.model.default_effort.unresolved": "This model has not reported its effort levels yet.",
+	"ui.settings.model.default_effort.empty": "Effort is not adjustable on this model.",
+	"ui.settings.model.default_effort.one_level": "This model offers one effort level: {level}.",
+	"ui.settings.model.default_effort.one_level_sentinel": "This model has no effort level to choose: it always runs at its own default.",
+	"ui.settings.model.default_effort.clamped": "{level} is not available on {model}. Using {resolved}.",
+	"ui.settings.model.default_effort.clamped_unset": "{level} is not available on {model}. Using Model default.",
+	"ui.settings.model.default_effort.save_failed": "Your default effort was not saved."
+}
