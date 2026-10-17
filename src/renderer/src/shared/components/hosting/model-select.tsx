@@ -33,6 +33,28 @@ type ModelOption = SearchableOption & {
 	recommended?: boolean;
 };
 
+/**
+ * Resolve presentation against catalogue IDs before rescuing a custom value.
+ * Only the CURRENT known hosting's outer prefix is equivalent: OpenRouter's
+ * upstream `openai/model` is its actual ID, not a prefix we may discard. Names
+ * are not IDs, and this lookup never rewrites the stored value or saves it.
+ */
+const matchModelOption = (
+	options: ModelOption[],
+	value: string,
+	hostingId: string,
+): ModelOption | undefined => {
+	const exact = options.find((option) => option.id === value);
+	if (exact) return exact;
+	if (!hostingId || !getHostingProviderById(hostingId)) return undefined;
+	const prefix = `${hostingId}/`;
+	if (value.startsWith(prefix)) {
+		const bare = value.slice(prefix.length);
+		return bare ? options.find((option) => option.id === bare) : undefined;
+	}
+	return options.find((option) => option.id === `${prefix}${value}`);
+};
+
 type ModelSelectProps = {
 	/**
 	 * Current model ID
@@ -264,10 +286,21 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 	const modelOptions: ModelOption[] = (() => {
 		const finalOptions: ModelOption[] = [];
 		const addedIds = new Set<string>();
+		const catalogueIds = new Set(availableModels.map((model) => model.id));
+		const knownHosting = Boolean(getHostingProviderById(hostingId));
 
 		const toOption = (model: Model): ModelOption => ({
 			id: model.id,
 			name: model.name,
+			// Human labels need not contain the API ID. Keep that ID searchable,
+			// plus its authorized selector unless another row owns it as an exact
+			// canonical ID (exact identity outranks presentation equivalence).
+			keywords: [
+				model.id,
+				...(knownHosting && !catalogueIds.has(`${hostingId}/${model.id}`)
+					? [`${hostingId}/${model.id}`]
+					: []),
+			],
 			description: model.description ? (
 				<ModelDescription markdown={model.description} />
 			) : undefined,
@@ -308,8 +341,13 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 			}
 		}
 
-		// 4. Add the current 'value' as a custom option if it's not empty and not already in finalOptions
-		if (value && value.trim() !== "" && !addedIds.has(value)) {
+		// Rescue only truly unlisted values. Injecting an exact custom row first
+		// shadows the real catalogue's provider-aware presentation match.
+		if (
+			value &&
+			value.trim() !== "" &&
+			!matchModelOption(finalOptions, value, hostingId)
+		) {
 			finalOptions.push({
 				id: value,
 				name: value,
@@ -371,24 +409,8 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 		}
 		if (!value || value.trim() === "") return null;
 
-		// Check if the value exists exactly in the available options
-		const exactMatch = modelOptions.find((option) => option.id === value);
-		if (exactMatch) {
-			return exactMatch;
-		}
-
-		// Check if the value is a model name without provider prefix
-		if (!value.includes("/") && hostingId) {
-			// Try to find a model with this name in the current hosting provider
-			const matchByName = modelOptions.find(
-				(option) =>
-					option.id.endsWith(`/${value}`) ||
-					option.name.toLowerCase() === value.toLowerCase(),
-			);
-			if (matchByName) {
-				return matchByName;
-			}
-		}
+		const match = matchModelOption(modelOptions, value, hostingId);
+		if (match) return match;
 
 		// Return a custom option if no match is found
 		return {
