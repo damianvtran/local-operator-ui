@@ -679,6 +679,95 @@ test("the failure card is a dark, scriptless document that cannot fail with the 
 	);
 });
 
+/*
+ * THE LIVE GLASS PLAN (review round 1, R3). The window construction is still the
+ * evidence scene's business, but the DECISION the Windows off -> on arm gets
+ * wrong is pure, and this drives it through the same bundle the shipped module
+ * is imported from - the stub refuses construction, so the plan is the half that
+ * can be exercised here. The first version gated the ON on the mechanism still
+ * being applied; an OFF sets `applied` to "none", so the following ON was
+ * skipped and the window stayed opaque under a translucent document.
+ */
+test("the popout can turn glass off and on again in one session, and its restart flag is its own", () => {
+	const windowsLaunchOn = {
+		mechanism: "background-material",
+		launchedGlassOn: true,
+		material: "mica",
+	};
+	const off = mini.miniGlassPlan({
+		...windowsLaunchOn,
+		active: false,
+		applied: "background-material",
+	});
+	assert.deepEqual(
+		off,
+		{
+			applied: "none",
+			steps: [
+				{ kind: "background-material", material: null },
+				{ kind: "opaque-ground" },
+			],
+		},
+		"an off removes the material and restores the opaque ground",
+	);
+	const backOn = mini.miniGlassPlan({
+		...windowsLaunchOn,
+		active: true,
+		applied: "none",
+	});
+	assert.deepEqual(
+		backOn,
+		{
+			applied: "background-material",
+			steps: [
+				{ kind: "transparent-ground" },
+				{ kind: "background-material", material: "mica" },
+			],
+		},
+		"the ON after a live OFF re-adds the material, ground first - a window BUILT with it can",
+	);
+	assert.deepEqual(
+		mini.miniGlassPlan({
+			...windowsLaunchOn,
+			launchedGlassOn: false,
+			active: true,
+			applied: "none",
+		}),
+		{ applied: "none", steps: [] },
+		"a window built without the material cannot enable it live",
+	);
+	assert.deepEqual(
+		mini.miniGlassPlan({
+			mechanism: "vibrancy",
+			launchedGlassOn: true,
+			material: "window",
+			active: false,
+			applied: "vibrancy",
+		}),
+		{
+			applied: "none",
+			steps: [{ kind: "vibrancy", material: null }, { kind: "opaque-ground" }],
+		},
+		"macOS off clears vibrancy and restores the ground",
+	);
+	const windowsState = {
+		active: true,
+		capability: { liveToggle: false, mechanism: "background-material" },
+		settings: { material: "mica" },
+		restartRequired: true,
+	};
+	assert.equal(
+		mini.miniDocumentState(windowsState, false).restartRequired,
+		true,
+		"a popout launched opaque must not paint translucent until the restart",
+	);
+	assert.equal(
+		mini.miniDocumentState(windowsState, true).restartRequired,
+		false,
+		"a popout launched with glass performs the off -> on itself, so it paints at once",
+	);
+});
+
 test("the load-failure and renderer-death paths are wired, and the window has a ground", () => {
 	/*
 	 * SOURCE PINS, for the halves the electron stub deliberately cannot drive:

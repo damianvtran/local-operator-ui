@@ -665,9 +665,35 @@ test("G-11 every region, state and well the CSS names is a marker some component
 			carried("data-glass-well", well),
 			`CSS names well "${well}" but no component carries it`,
 		);
+	/*
+	 * THE STACKED INK IS FORBIDDEN, NOT MEASURED. A row inside a veiled
+	 * block once took `hover:bg-row-hover` over the veil - ink 5% over ink 9% -
+	 * and the stack measured `inkMuted` 4.03:1 on synthwave and `inkDim` 3.11 on
+	 * cyberpunk (review round 1, R2). The decision is suppression (the card's own
+	 * no-hover rule one level down), so the assertion is that the suppression
+	 * still exists; a contract row would certify a paint nothing may wear.
+	 */
+	assert.match(
+		css,
+		/\[data-glass-block\]\s*\[class~="hover:bg-row-hover"\]:hover\s*\{\s*background-color:\s*transparent;/,
+		"a row inside a veiled block must paint no hover fill: veil + row-hover stacks two inks and breaks AA",
+	);
 	if (/\[data-glass-block\]/.test(css))
 		assert.ok(
 			sources.some((source) => /data-glass-block/.test(source)),
 			"CSS names data-glass-block but no component carries it",
 		);
+	/* The row hooks the veil's nested-row rule selects (round 1, R2): a CSS rule
+	 * keyed on an attribute no component wears reads as coverage and measures
+	 * nothing, the same rule the block/state/well checks above enforce. */
+	for (const attribute of [
+		"data-glass-block-row",
+		"data-glass-block-row-label",
+	]) {
+		if (!new RegExp(`\\[${attribute}\\]`).test(css)) continue;
+		assert.ok(
+			sources.some((source) => new RegExp(attribute).test(source)),
+			`CSS names ${attribute} but no component carries it`,
+		);
+	}
 });

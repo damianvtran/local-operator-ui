@@ -85,15 +85,24 @@ export const miniFrameTransitions = {
  * (`conversation-input-sync.ts`); this is the reader that says which write is a
  * theme change and what it says.
  *
+ * ONLY A CHANGED THEME IS A THEME WRITE. Every persisted blob carries
+ * `themeName` (`partialize: persistedUiPreferences` serialises the whole
+ * preference object), so "the blob has a theme" is true of EVERY preferences
+ * write - a sidebar resize included. The caller must therefore adopt only when
+ * the written theme differs from the one it holds; reacting to the rest is what
+ * made the popout persist its stale whole-preferences snapshot over the main
+ * window's key (review round 1, R1).
+ *
  * Pure and import-free so the desktop suite drives malformed blobs without a
- * window: a foreign key, a missing value and anything that is not the persisted
- * `{ state: { themeName } }` shape all answer null, and the caller leaves the
- * palette it has.
+ * window: a foreign key, a missing value, an unchanged theme and anything that
+ * is not the persisted `{ state: { themeName } }` shape all answer null, and the
+ * caller leaves the palette it has.
  */
 export function themeNameFromPreferencesWrite(input: {
 	eventKey: string | null;
 	storeKey: string;
 	newValue: string | null;
+	currentTheme: string;
 }): string | null {
 	if (input.eventKey !== input.storeKey || input.newValue === null) return null;
 	try {
@@ -101,7 +110,8 @@ export function themeNameFromPreferencesWrite(input: {
 			state?: { themeName?: unknown };
 		};
 		const name = parsed.state?.themeName;
-		return typeof name === "string" && name.length > 0 ? name : null;
+		if (typeof name !== "string" || name.length === 0) return null;
+		return name === input.currentTheme ? null : name;
 	} catch {
 		return null;
 	}

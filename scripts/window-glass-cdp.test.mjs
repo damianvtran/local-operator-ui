@@ -140,8 +140,7 @@ const AUDIT = `(() => {
     }
     const own = alphaOf(getComputedStyle(el).backgroundColor);
     const bg = getComputedStyle(el).backgroundColor;
-    const borderWidth = getComputedStyle(el).borderTopWidth;
-    out[name] = { pts, slabs, own, bg, borderWidth, cls: String(el.className) };
+    out[name] = { pts, slabs, own, bg, cls: String(el.className) };
   }
   const root = getComputedStyle(document.documentElement);
   out.vars = Object.fromEntries(["--lo-glass-a-canvas", "--lo-glass-a-surface", "--lo-glass-a-elevated", "--lo-glass-a-row-hover", "--lo-glass-a-row-selected", "--lo-glass-a-row-work", "--lo-glass-a-field", "--lo-glass-a-block-veil"].map((n) => [n, root.getPropertyValue(n).trim() || null]));
@@ -335,13 +334,13 @@ const ROUTES = [
  * The overlay regions: name -> the published variable whose alpha its OWN
  * background must be (a ground's own alpha is not meaningful - it composites).
  *
- * `card` is the block veil, `composer` the field overlay, `boardWell` the clear
- * well (0). Under *Sidebars only* every one of them is the opaque flat fill.
+ * `composer` is the only overlay a route's `must` names; the card/well pair is
+ * measured by the dedicated Projects test below, which reads both on one board,
+ * so it is not repeated here (an entry nothing reads is a claim without a
+ * reader). Under *Sidebars only* the composer is the opaque flat fill.
  */
 const OVERLAYS = {
 	composer: "--lo-glass-a-field",
-	card: "--lo-glass-a-block-veil",
-	boardWell: null,
 };
 
 /**
@@ -599,14 +598,29 @@ for (const [themeName, label] of [
 					"[data-slot-pane-notice], [data-code-review-pane]",
 				],
 			]) {
-				const clicked = await cdp.ev(
-					`(() => { const b = document.querySelector('[data-tour-tag="${trigger}"]'); if (!b) return false; b.click(); return true; })()`,
-				);
+				/*
+				 * READINESS IS POLLED, not slept through once (QA round 1, Q1): the
+				 * rail mounts after the route's own paint, and a loaded host made the
+				 * single query land one frame early - the route loop above already
+				 * polls for the same reason.
+				 */
+				let clicked = false;
+				for (let waited = 0; waited < 6000; waited += 300) {
+					clicked = await cdp.ev(
+						`(() => { const b = document.querySelector('[data-tour-tag="${trigger}"]'); if (!b) return false; b.click(); return true; })()`,
+					);
+					if (clicked) break;
+					await wait(300);
+				}
 				assert.ok(clicked, `${label}: the ${trigger} rail control exists`);
-				await wait(1200);
-				const opened = await cdp.ev(
-					`!!document.querySelector(${JSON.stringify(paneSel)})`,
-				);
+				let opened = false;
+				for (let waited = 0; waited < 6000; waited += 300) {
+					opened = await cdp.ev(
+						`!!document.querySelector(${JSON.stringify(paneSel)})`,
+					);
+					if (opened) break;
+					await wait(300);
+				}
 				assert.ok(
 					opened,
 					`${label}: ${trigger} opened a pane (so the reading below is taken with it open)`,
@@ -666,12 +680,31 @@ for (const [themeName, label] of [
 			 * a profile whose last view was List would report "no project data" while
 			 * the data exists.
 			 */
+			/* The switcher mounts with the page's data, so readiness is polled for the
+			 * same reason the rail control is (QA Q1): a single query at 1.5 s read a
+			 * still-loading page as a missing control. */
+			let switcher = false;
+			for (let waited = 0; waited < 6000; waited += 300) {
+				switcher = await cdp.ev(
+					`!!document.querySelector('[data-tour-tag="projects-view-switcher"]')`,
+				);
+				if (switcher) break;
+				await wait(300);
+			}
+			assert.ok(
+				switcher,
+				`${label}: the projects view switcher exists (a missing switcher is a control regression, not an empty profile)`,
+			);
 			const boardTab = await cdp.ev(`(() => {
         const tab = [...document.querySelectorAll('[data-tour-tag="projects-view-switcher"] [role="tab"]')].find((n) => (n.textContent || "").trim() === "Board");
         if (!tab) return null;
         const r = tab.getBoundingClientRect();
         return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
       })()`);
+			assert.ok(
+				boardTab,
+				`${label}: the Board tab exists in the view switcher (a renamed or removed tab must not read as "no project data")`,
+			);
 			if (boardTab) {
 				await cdp.send("Input.dispatchMouseEvent", {
 					type: "mousePressed",

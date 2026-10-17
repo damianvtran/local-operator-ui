@@ -184,6 +184,11 @@ export const ProjectLinks: FC<ProjectLinksProps> = ({
 						return (
 							<li
 								key={link.session_id}
+								/* On glass this row is INSIDE a veiled block, so it takes no
+								 * hover fill: veil 9% + row-hover 5% stacks two inks and measured
+								 * `inkMuted` at 4.03:1 on synthwave (review round 1, R2). The
+								 * affordance is the underline the CSS draws on the label. */
+								data-glass-block-row=""
 								className={cn(
 									"flex items-center gap-2 rounded-sm px-2 py-2",
 									clickable && "hover:bg-row-hover",
@@ -201,6 +206,7 @@ export const ProjectLinks: FC<ProjectLinksProps> = ({
 									)}
 								>
 									<span
+										data-glass-block-row-label=""
 										className={cn(
 											"min-w-0 truncate text-body-sm",
 											link.title
