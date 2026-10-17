@@ -513,17 +513,27 @@ for (const [themeName, label] of [
 					Math.abs(open - closed) <= TOLERANCE,
 					`${label}: opening ${trigger} moved the conversation column's ground from ${closed} to ${open}`,
 				);
-				/* The pane itself must be glass, not an opaque slab (Q2-2). */
-				const slab = await cdp.ev(`(() => {
+				/*
+				 * The pane ITSELF must own a glass region and paint glass, not an opaque
+				 * slab (Q2-2). It reads the element's OWN marker and background: the first
+				 * version used closest('[data-glass-region]'), which starts at the element
+				 * and so climbs to <main> (legitimately glass) the moment the pane loses its
+				 * marker, passing on exactly the regression it names (review R3-1; proved by
+				 * stripping the marker from the built bundle, which still passed).
+				 */
+				const own = await cdp.ev(`(() => {
           const el = document.querySelector(${JSON.stringify(paneSel)});
           if (!el) return null;
-          const n = el.closest('[data-glass-region]') ?? el;
-          const c = getComputedStyle(n).backgroundColor;
-          return c;
+          return { marked: el.matches("[data-glass-region]"), bg: getComputedStyle(el).backgroundColor };
         })()`);
+				assert.ok(own, `${label}: the ${trigger} pane element is present`);
 				assert.ok(
-					slab !== null && !/^rgb\(/.test(slab),
-					`${label}: the ${trigger} pane paints an opaque ground inside Full app glass (${slab})`,
+					own.marked,
+					`${label}: the ${trigger} pane carries no data-glass-region of its own, so nothing owns its alpha`,
+				);
+				assert.ok(
+					!/^rgb\(/.test(own.bg),
+					`${label}: the ${trigger} pane paints an opaque ground inside Full app glass (${own.bg})`,
 				);
 				await cdp.ev(
 					`document.querySelector('[data-tour-tag="${trigger}"]')?.click()`,
