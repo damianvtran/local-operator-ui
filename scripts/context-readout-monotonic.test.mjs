@@ -286,6 +286,7 @@ const frontendState = ({
 	contextTokens = 100000,
 	window = 1_000_000,
 	estimate = false,
+	lastUsage = null,
 }) => ({
 	state_version: 1,
 	session_id: sessionId,
@@ -315,6 +316,7 @@ const frontendState = ({
 	context_window: window,
 	context_is_estimate: estimate,
 	context_breakdown: null,
+	last_usage: lastUsage,
 });
 
 const openFrame = (seq) => ({
@@ -451,7 +453,7 @@ const coldSnapshotFrame = (
 });
 
 /** The owner's own delta: same epoch, the next sequence. */
-const updateFrame = (seq, ownerSequence, contextTokens) => ({
+const updateFrame = (seq, ownerSequence, contextTokens, lastUsage = null) => ({
 	session_id: SESSION,
 	epoch: BRIDGE_EPOCH,
 	seq,
@@ -459,7 +461,10 @@ const updateFrame = (seq, ownerSequence, contextTokens) => ({
 	payload: {
 		epoch: OWNER_EPOCH,
 		sequence: ownerSequence,
-		changes: { context_tokens: contextTokens },
+		changes: {
+			context_tokens: contextTokens,
+			...(lastUsage ? { last_usage: lastUsage } : {}),
+		},
 		job_trajectory_appends: {},
 		job_trajectory_replacements: [],
 	},
@@ -582,6 +587,25 @@ test("the same holds while the facade is still attaching", async () => {
 		coldSnapshotFrame(4, 100000, { cold: true, attaching: true }),
 	]);
 	assert.equal(handle.frontend?.context_tokens, 150000);
+});
+
+test("the carried reading keeps its own receipt, and null when it has none", async () => {
+	const receipt = {
+		input_tokens: 150000,
+		output_tokens: 10,
+		context_tokens: 150000,
+	};
+	const handle = await run("/old", [
+		updateFrame(3, 6, 150000, receipt),
+		gapFrame(),
+		coldSnapshotFrame(4, 100000),
+	]);
+	assert.equal(handle.frontend?.context_tokens, 150000);
+	assert.deepEqual(
+		handle.frontend?.last_usage,
+		receipt,
+		"a carried numerator is stated with the receipt it was measured with",
+	);
 });
 
 test("a journal reading that is genuinely newer still raises it", async () => {
