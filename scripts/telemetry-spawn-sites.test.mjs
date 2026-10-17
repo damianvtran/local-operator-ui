@@ -368,6 +368,14 @@ const APP_SPAWN_SITES = [
 		"drives the composer's dictation press end to end in the built app to time the acknowledgment, so the renderer's provider is live in it and would report the run as a session",
 		/withTelemetryOff\(spawnEnv\);/,
 	),
+	guarded(
+		"scripts/window-glass-cdp.test.mjs",
+		"spawn",
+		1,
+		/env:\s*spawnEnv,/,
+		"boots the BUILT app headless on a scratch profile to read the window glass back at a grid of points, so the renderer's provider is live in it and would report the test as a session",
+		/withTelemetryOff\(spawnEnv\);/,
+	),
 	exempt(
 		"scripts/session-cookie-electron.test.mjs",
 		"spawn",
