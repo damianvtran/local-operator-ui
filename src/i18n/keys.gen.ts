@@ -77,6 +77,9 @@ import frUiSettings from "./catalogues/fr/ui.settings.json";
 import ruUiConsole from "./catalogues/ru/ui.console.json";
 import ruUiOnboarding from "./catalogues/ru/ui.onboarding.json";
 import ruUiSettings from "./catalogues/ru/ui.settings.json";
+import viUiConsole from "./catalogues/vi/ui.console.json";
+import viUiOnboarding from "./catalogues/vi/ui.onboarding.json";
+import viUiSettings from "./catalogues/vi/ui.settings.json";
 
 /** The bundled en catalogue: every `src/i18n/catalogues/en` message, flat. */
 export const bundledEnglish: Readonly<Record<string, string>> = {
@@ -148,6 +151,11 @@ export const bundledCatalogues: Readonly<
 		...ruUiConsole,
 		...ruUiOnboarding,
 		...ruUiSettings,
+	},
+	vi: {
+		...viUiConsole,
+		...viUiOnboarding,
+		...viUiSettings,
 	},
 };
 
@@ -699,6 +707,8 @@ export type MessageParams = {
 	"ui.chat.composer_media.recording": undefined;
 	"ui.chat.composer_media.remove_attachment": undefined;
 	"ui.chat.highlights.file_resolution_failed": undefined;
+	"ui.chat.skill_invocation.instructions_label": undefined;
+	"ui.chat.skill_invocation.trigger_label": { token: string };
 	"ui.chat.usage.blocked": undefined;
 	"ui.chat.usage.continue": undefined;
 	"ui.chat.usage.eligibility_unknown": undefined;
