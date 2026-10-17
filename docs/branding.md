@@ -3,11 +3,13 @@
 The visual and verbal system for the Local Operator desktop app, and the rules
 that keep it consistent as it changes.
 
-This is the app-side companion to the design kit that owns the marketing site
-(`docs/design-kit/` in the `local-operator-site` repo). Where the two disagree
-about the brand, the kit wins; where they disagree about *how a desktop app
-should behave*, this file wins, because a tool read for hours at arm's length is
-not a page read once.
+This is the app-side companion to the design kit at
+`damianvtran/local-operator-design` — the home of record for the brand — of
+which this repository vendors a pinned slice under
+[`docs/design-kit/`](./design-kit/README.md). Where the two disagree about the
+brand, the kit wins; where they disagree about *how a desktop app should
+behave*, this file wins, because a tool read for hours at arm's length is not a
+page read once.
 
 **Read this before changing any visual surface.** The parts of this system that
 are enforceable are enforced by `pnpm check-themes`; the rest is here because a
@@ -37,11 +39,22 @@ One source, two consumers. Do not add a third.
 
 ```mermaid
 graph LR
-  A["palettes/*.ts<br/>ThemePalette x59"] --> B["createBaseTheme()<br/>MUI, hex values"]
+  K["damianvtran/local-operator-design<br/>the kit, pinned v1.2.0"] -->|"brand values — the two<br/>localOperator* palettes only"| A["palettes/*.ts<br/>ThemePalette x59"]
+  K -.->|"vendored slice<br/>docs/design-kit/"| F["check-design-kit.mjs<br/>the parity gate"]
+  A --> B["createBaseTheme()<br/>MUI, hex values"]
   A --> C["generate-theme-css.mjs<br/>--lo-* variables"]
   C --> D["styles/index.css<br/>@theme role utilities"]
   A --> E["contrast-contract.mjs<br/>the floors"]
+  A --> F
 ```
+
+The kit is **upstream** of the brand values, not a parallel source. It feeds
+only the two `localOperator*` palettes — the other fifty-seven are
+community-owned identities the kit never authors — and it arrives here as the
+pinned slice under `docs/design-kit/`. "One source, two consumers. Do not add a
+third." still stands for the app's internal pipeline: `palettes/*.ts` remains
+the single source the app renders from, and the parity gate is an additional
+*consumer* of that source.
 
 - **`src/renderer/src/shared/themes/palettes/*.ts`** — the single source of
   truth. Fifty-nine `ThemePalette` objects, 38 roles each, every value a literal
@@ -53,6 +66,13 @@ graph LR
   `styles/themes.generated.css`; never hand-edit it.
 - **`pnpm check-themes`** verifies the generated file is current and that every
   palette clears the floors in § 3.
+- **The kit is upstream, pinned in [`docs/design-kit/`](./design-kit/README.md)** —
+  a locked slice of `app-family.json`, `divergences.json` and `LICENSE`.
+  `scripts/check-design-kit.mjs`, the third step of `pnpm check-themes`, proves
+  the slice equals the kit at the pinned ref and that both `localOperator*`
+  palettes re-derive to it. Pins move only by a deliberate pin-bump PR recording
+  its reason, and a sanctioned departure from the kit is recorded in the kit's
+  `divergences.json` before it lands here — never edited into the slice.
 
 The theme provider sets `document.documentElement.dataset.theme`. That attribute
 is what every Tailwind role utility resolves against — without it, the ported
