@@ -1051,8 +1051,9 @@ alpha over the backing. `scripts/window-glass-cdp.test.mjs` encodes it as
 
 **A window enabled live on macOS stays active when unfocused.** `visualEffectState` is a
 CONSTRUCTOR option (Electron 44's `setVibrancy` takes only `animationDuration`), so the
-main window - the only window `glassWindowOptions` is applied to; the mini view never
-attaches glass - is built with `visualEffectState: "active"`, including when glass is off:
+main window and the mini view are both built through `glassWindowOptions` (the popout
+carries the same `visualEffectState` and the same argv glass fact), so both are built
+with `visualEffectState: "active"`, including when glass is off:
 without vibrancy it is inert, and it is only one key added to an otherwise off window. A
 live `setVibrancy` therefore creates the same active-state material a launch with glass
 already on gets. Before this, the live view kept the `followWindow` default and went flat

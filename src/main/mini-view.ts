@@ -59,11 +59,13 @@ import { windowChromeArgumentFor } from "../shared/window-chrome";
 import type { WindowChromeMode } from "../shared/window-chrome";
 import {
 	GLASS_TRANSPARENT,
+	type GlassMaterial,
 	WINDOW_GLASS_STATE_CHANNEL,
 	type WindowGlassState,
 	glassIsActive,
 	groundWithGlass,
 	macVibrancyFor,
+	winMaterialFor,
 	windowGlassArgument,
 } from "../shared/window-glass";
 import { telemetryArgument } from "./telemetry-launch";
@@ -187,6 +189,93 @@ export function miniViewErrorSurfaceHtml(): string {
 	strong { font-weight: 600; color: #ef8078; }
 </style></head>
 <body><p><strong>Quick send could not open.</strong> Try the hotkey again, or restart Local Operator if it keeps failing.</p></body></html>`;
+}
+
+/**
+ * THE LIVE GLASS PLAN.
+ *
+ * Extracted from `applyGlassState` so the arm the Windows off -> on rides can be
+ * tested without constructing a window (`scripts/mini-view-electron-stub.ts`
+ * refuses construction by design, and a second fake window would be a second
+ * description of the options). The rule mirrors `window-glass.ts`'s
+ * `applyToWindow`: the material ON requires a window BUILT with it
+ * (`launchedGlassOn`), the ground goes transparent before the material, and an
+ * OFF is performed whenever the window currently wears the mechanism - which is
+ * `applied`, not the setting. Gating the ON on `applied === "background-
+ * material"` instead (the first version) skipped exactly the off -> on sequence,
+ * because the OFF had already set `applied` to `"none"` (review round 1, R3).
+ */
+export type MiniGlassStep =
+	| { kind: "transparent-ground" }
+	| { kind: "vibrancy"; material: GlassMaterial | null }
+	| { kind: "background-material"; material: GlassMaterial | null }
+	| { kind: "opaque-ground" };
+
+export type MiniGlassMechanism = "vibrancy" | "background-material" | "none";
+
+export function miniGlassPlan(input: {
+	mechanism: MiniGlassMechanism;
+	active: boolean;
+	applied: MiniGlassMechanism;
+	launchedGlassOn: boolean;
+	material: GlassMaterial;
+}): { applied: MiniGlassMechanism; steps: MiniGlassStep[] } {
+	const { mechanism, active, applied, launchedGlassOn, material } = input;
+	if (mechanism === "vibrancy") {
+		if (active)
+			return {
+				applied: "vibrancy",
+				steps: [{ kind: "transparent-ground" }, { kind: "vibrancy", material }],
+			};
+		if (applied === "vibrancy")
+			return {
+				applied: "none",
+				steps: [
+					{ kind: "vibrancy", material: null },
+					{ kind: "opaque-ground" },
+				],
+			};
+		return { applied, steps: [] };
+	}
+	if (mechanism === "background-material") {
+		if (active && launchedGlassOn)
+			return {
+				applied: "background-material",
+				steps: [
+					{ kind: "transparent-ground" },
+					{ kind: "background-material", material },
+				],
+			};
+		if (!active && applied === "background-material")
+			return {
+				applied: "none",
+				steps: [
+					{ kind: "background-material", material: null },
+					{ kind: "opaque-ground" },
+				],
+			};
+	}
+	return { applied, steps: [] };
+}
+
+/**
+ * The state the MINI DOCUMENT should paint.
+ *
+ * `restartRequired` means "the window cannot show what the setting says until
+ * the next launch", and its launch fact is THIS window's, not the main
+ * window's. The main process forwards its own state (whose flag is computed
+ * against the main window's build), so a popout launched with glass on would
+ * have held its paint back after an off/on the window itself can perform.
+ */
+export function miniDocumentState(
+	state: WindowGlassState,
+	launchedGlassOn: boolean,
+): WindowGlassState {
+	return {
+		...state,
+		restartRequired:
+			!state.capability.liveToggle && state.active !== launchedGlassOn,
+	};
 }
 
 export interface MiniViewOptions {
@@ -321,36 +410,49 @@ export function createMiniView(options: MiniViewOptions): MiniView {
 	const applyGlassState = (state: WindowGlassState): void => {
 		if (window.isDestroyed()) return;
 		const active = state.active && state.capability.mechanism !== "none";
+		const plan = miniGlassPlan({
+			mechanism: state.capability.mechanism,
+			active,
+			applied: appliedMechanism,
+			launchedGlassOn,
+			material: state.settings.material,
+		});
 		try {
-			if (state.capability.mechanism === "vibrancy") {
-				if (active) {
-					window.setBackgroundColor(GLASS_TRANSPARENT);
-					window.setVibrancy(macVibrancyFor(state.settings.material));
-					appliedMechanism = "vibrancy";
-				} else if (appliedMechanism === "vibrancy") {
-					window.setVibrancy(null);
-					window.setBackgroundColor(MINI_VIEW_GROUND);
-					appliedMechanism = "none";
-				}
-			} else if (
-				state.capability.mechanism === "background-material" &&
-				launchedGlassOn &&
-				appliedMechanism === "background-material"
-			) {
-				/* Live OFF only: a live ON needs a window built with the material. */
-				if (!active) {
-					window.setBackgroundMaterial("none");
-					window.setBackgroundColor(MINI_VIEW_GROUND);
-					appliedMechanism = "none";
+			for (const step of plan.steps) {
+				switch (step.kind) {
+					case "transparent-ground":
+						window.setBackgroundColor(GLASS_TRANSPARENT);
+						break;
+					case "vibrancy":
+						window.setVibrancy(
+							step.material === null ? null : macVibrancyFor(step.material),
+						);
+						break;
+					case "background-material":
+						window.setBackgroundMaterial(
+							step.material === null ? "none" : winMaterialFor(step.material),
+						);
+						break;
+					case "opaque-ground":
+						window.setBackgroundColor(MINI_VIEW_GROUND);
+						break;
 				}
 			}
+			appliedMechanism = plan.applied;
 		} catch (error) {
 			options.report?.(
 				`[mini-view] applying the window glass was refused (${String(error)}) - the popout keeps its previous look`,
 			);
 		}
-		/* The DOCUMENT repaints from the same state the main window's does. */
-		window.webContents.send(WINDOW_GLASS_STATE_CHANNEL, state);
+		/*
+		 * The DOCUMENT repaints from the state THIS window can show: the restart
+		 * flag is recomputed against the popout's own launch fact, because the
+		 * forwarded copy is computed against the main window's.
+		 */
+		window.webContents.send(
+			WINDOW_GLASS_STATE_CHANNEL,
+			miniDocumentState(state, launchedGlassOn),
+		);
 	};
 
 	/*

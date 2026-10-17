@@ -27,7 +27,7 @@ import {
 import { installExternalOpenRefusalToasts } from "@shared/lib/external-open-refusal";
 import { installConversationInputSync } from "@shared/store/conversation-input-sync";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import { type ThemeName, applyThemeToDocument } from "@shared/themes";
+import { applyThemeToDocument } from "@shared/themes";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import "../assets/fonts/fonts.css";
@@ -64,10 +64,18 @@ subscribeGlassPaint();
  * main window afterwards wrote the persisted blob but never reached this store
  * or this document, so the popout painted the theme it booted with. The
  * `storage` event is the platform's own cross-document broadcast (the draft
- * store's sync uses it for the same pair of windows): adopt the written theme,
- * publish it, and re-derive the glass alphas because `blockVeil` differs by
- * scheme. `setTheme` keeps the store copy current so the summon path, which
- * re-applies `getState().themeName`, cannot put the stale palette back.
+ * store's sync uses it for the same pair of windows): REHYDRATE the store so
+ * this document adopts the writer's whole blob, publish the theme, and re-derive
+ * the glass alphas because `blockVeil` differs by scheme.
+ *
+ * NEVER A SETTER. `setTheme` is the store's persist-wrapped `set`: it would
+ * write this document's hydrated snapshot - stale for every preference changed
+ * in the main window since the popout loaded - back over the shared key on
+ * EVERY preferences write (the blob always carries a themeName), so a sidebar
+ * resize in main would revert itself on the next launch. `rehydrate` is the
+ * read-only adoption the draft store's sync already uses; the mini never writes
+ * preferences. The comparison happens in `themeNameFromPreferencesWrite`, so a
+ * non-theme write adopts nothing at all.
  */
 const preferencesStoreKey =
 	useUiPreferencesStore.persist?.getOptions?.()?.name ??
@@ -77,11 +85,16 @@ window.addEventListener("storage", (event) => {
 		eventKey: event.key,
 		storeKey: preferencesStoreKey,
 		newValue: event.newValue,
+		currentTheme: useUiPreferencesStore.getState().themeName,
 	});
 	if (!themeName) return;
-	useUiPreferencesStore.getState().setTheme(themeName as ThemeName);
-	applyThemeToDocument(themeName as ThemeName);
-	syncGlassScheme();
+	Promise.resolve(useUiPreferencesStore.persist?.rehydrate?.()).then(
+		() => {
+			applyThemeToDocument(useUiPreferencesStore.getState().themeName);
+			syncGlassScheme();
+		},
+		() => {},
+	);
 });
 
 /*
