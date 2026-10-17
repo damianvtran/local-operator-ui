@@ -55,6 +55,10 @@ import {
 	expandedRunsOf,
 	writeRunExpanded,
 } from "@shared/store/turn-collapse-open";
+import {
+	watchedRunOf,
+	writeWatchedRun,
+} from "@shared/store/turn-collapse-watched";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { showInfoToast } from "@shared/utils/toast-manager";
 import {
@@ -3172,6 +3176,13 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		/** The reader's mode, for the widen's paint count (see this ref's note). */
 		mode: TranscriptDisplayMode;
 		/**
+		 * The settlement latch (operator report, 2026-10-16), threaded like
+		 * `live`/`openRuns` so the widen's painted count reads the plan the render
+		 * actually paints (`collapsePlan`'s `watchedRunId` option owns the
+		 * account of what it is for).
+		 */
+		watchedRunId: string | null;
+		/**
 		 * The size the reader is LOOKING at (`alignSize`, the snap's output), which is
 		 * the widen's measuring baseline (agent review round 1, R1-1): the raw
 		 * `windowSize` can be far smaller than what is mounted, and a search measured
@@ -3185,6 +3196,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		live: false,
 		openRuns: undefined,
 		mode: DEFAULT_TRANSCRIPT_DISPLAY_MODE,
+		watchedRunId: null,
 		mounted: 0,
 	});
 	const [openRuns, setOpenRuns] = useState<ReadonlySet<string>>(() =>
@@ -3194,6 +3206,22 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	if (openRunsSession !== sessionId) {
 		setOpenRunsSession(sessionId);
 		setOpenRuns(expandedRunsOf(sessionId));
+	}
+	/*
+	 * THE SETTLE LATCH, readable per conversation (`shared/store/turn-collapse-watched.ts`).
+	 * The store is a sibling of the reader's expansions and for the same reason: the
+	 * latch must survive a switch away and back, and a reload arrives with no latch
+	 * - which is exactly the "finished transcript arrives collapsed" default. The
+	 * render-phase adjustment mirrors `openRunsSession` above: a switch must read
+	 * the NEW conversation's latch in its first paint.
+	 */
+	const [watchedRun, setWatchedRun] = useState<string | null>(() =>
+		watchedRunOf(sessionId),
+	);
+	const [watchedRunSession, setWatchedRunSession] = useState(sessionId);
+	if (watchedRunSession !== sessionId) {
+		setWatchedRunSession(sessionId);
+		setWatchedRun(watchedRunOf(sessionId));
 	}
 	const setRunOpen = useCallback(
 		(runKey: string, open: boolean) => {
@@ -3782,6 +3810,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					 * commits a larger window than one gesture promises. See `widenInputs`.
 					 */
 					mode: widenInputs.current.mode,
+					/* The latch, same reason as the mode: one measurement, one plan (see the ref). */
+					watchedRunId: widenInputs.current.watchedRunId,
 					snapMaxExtra: WINDOW_ALIGN_MAX_EXTRA,
 					// The render's OWN second bound (the completed-run allowance), so the
 					// step's painted delta is measured against the window the component
@@ -3821,6 +3851,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				live: widenInputs.current.live,
 				openRuns: widenInputs.current.openRuns,
 				mode: widenInputs.current.mode,
+				watchedRunId: widenInputs.current.watchedRunId,
 				snapMaxExtra: WINDOW_ALIGN_MAX_EXTRA,
 				completedRunMaxExtra: WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
 			}),
@@ -4084,6 +4115,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		live: paneIsLive,
 		openRuns,
 		mode: parseTranscriptDisplayMode(transcriptDisplayMode),
+		watchedRunId: watchedRun,
 		mounted: alignSize,
 	};
 
@@ -4293,6 +4325,16 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			focusHold: focusedRecordId ?? selectedRecordId,
 			openRuns,
 			/*
+			 * THE SETTLE LATCH (operator report, 2026-10-16; the model's
+			 * `watchedRunId` option carries the full account): the run this pane has
+			 * watched live, so a dip in `live` - the runtime's `frontend.streaming`
+			 * reading false for a beat at a tool-segment boundary - cannot condense
+			 * the rows the reader is watching and the re-entry cannot hand them back.
+			 * Read from a store keyed by conversation and refreshed on a session
+			 * switch above, so switching away and back restores the protection.
+			 */
+			watchedRunId: watchedRun,
+			/*
 			 * THE READER'S DISPLAY MODE (issue #756), read HERE and parsed on the way
 			 * in: the store rehydrates past its setters, so a token this build does
 			 * not know must land on the default rather than reach the partition.
@@ -4333,6 +4375,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			openFrame,
 			openRuns,
 			transcriptDisplayMode,
+			watchedRun,
 			working,
 		],
 	);
@@ -4378,6 +4421,31 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		);
 		return plan;
 	}, [collapseKey]);
+	/*
+	 * THE SETTLE LATCH'S WRITE (operator report, 2026-10-16; the model's
+	 * `watchedRunId` option). While the pane reads live, the newest run on screen
+	 * is one the reader is watching being written, so its OPENING ROW id is
+	 * latched - in the store (survives a switch away and back) and in state (the
+	 * plan's next passes read it through `collapseInputs`, so a dip cannot slip
+	 * between the write and the read). Idempotent: every live pass writes the same
+	 * id, a changed id means the pane is watching a NEWER run now, and a
+	 * setState with an unchanged value is React's own bail-out.
+	 *
+	 * WHY THE OPENING ROW: it is the one anchor a LIVE run's re-keying cannot
+	 * rename (a run keys on its last row while being written and on its answer
+	 * once settled; see `collapsePlan`'s option). A pass with no live reading, or
+	 * with no run yet, writes nothing: the latch is armed by a live pass alone,
+	 * which is what leaves a fresh pane - a reload, a first open of a finished
+	 * transcript - holding no latch and arriving collapsed exactly as today.
+	 */
+	useEffect(() => {
+		if (!collapseInputs.live) return;
+		const newest = collapse.runs.at(-1);
+		const runId = newest ? visible[newest.run.openingIndex]?.record.id : null;
+		if (!runId) return;
+		writeWatchedRun(sessionId, runId);
+		setWatchedRun((current) => (current === runId ? current : runId));
+	}, [collapse, collapseInputs.live, sessionId, visible]);
 	/*
 	 * THE WALK'S CUT-RUN KEY (UI perf audit A3, corrected by review round 1 R1).
 	 * The completion walk below asks "is there a run whose bar is PAINTED and
