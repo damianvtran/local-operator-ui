@@ -9,7 +9,8 @@ where the TUI and the phone read the typed line back via `_typed_line_of`), and
 the desktop's write half shipped without its reader (`adf86a39c`, PR #690).
 
 These fourteen frames are the SAME seeded conversation, read by two trees: the
-base at `origin/main` `af6de1dd9` and the branch `feat/skill-invocation-seal`.
+base at `origin/main` `af6de1dd9` and the branch `feat/skill-invocation-seal`
+(`f014b46e7`).
 
 | File | Tree | State |
 | --- | --- | --- |
