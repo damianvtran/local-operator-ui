@@ -577,6 +577,297 @@ test("the live run does not collapse; finished runs above it still do", () => {
 	);
 });
 
+/*
+ * THE SETTLE LATCH (operator report, 2026-10-16): "when I send a steering
+ * message, it alternates between condensing the messages before it and
+ * expanding them".
+ *
+ * WHY A LATCH AND NOT ANOTHER STATELESS ARM. The pane's `live` flag dips at
+ * tool-segment boundaries (`frontend.streaming`, sampled through a real steer
+ * send: `scripts/stt-dictation-proof.mjs`, "the snapshot's `streaming` flag was
+ * dipping at a tool-segment boundary"). Every flip used to re-decide the newest
+ * run's in-flight spans: the dip read as "the turn is over" and condensed them
+ * (`liveFrom = -1`), the re-entry handed them back - a fold/unfold pair per
+ * flip, no reader action, the reported alternation. The 2026-10-01 settled-close
+ * rule (`de9575328`) fixes the steady-live case; a dip bypasses it entirely.
+ *
+ * The distinction a dip needs is "will this turn resume?" - which the rows
+ * cannot state (a first-cycle dip and a genuinely dead run are the SAME rows:
+ * no close, no marker). So the pane LATCHES the run it has watched live
+ * (`watchedRunId`: the newest run's opening row id), and a watched run's plan
+ * stops reading `live` at all: its hide set is a function of the rows alone.
+ * That makes it idempotent under any number of liveness transitions, which is
+ * the property these tests pin.
+ */
+const latchRows = () => [
+	user("u1"),
+	tool("t1", { ts: TS + 1_000, durationS: 3 }),
+	answer("a1", { ts: TS + 3_000, settledAt: TS + 3_000, stopReason: "stop" }),
+	tool("t2", { ts: TS + 4_000, durationS: 4 }),
+	user("s1", { ts: TS + 5_000, text: "steer" }),
+	tool("t3", { ts: TS + 6_000, durationS: 5 }),
+];
+
+/** The rows behind CLOSED bars - the operator-visible unmount set. */
+const hidesOf = (plan) =>
+	plan.runs.flatMap((run) =>
+		run.segments
+			.filter((segment) => segment.collapsed)
+			.flatMap((segment) => segment.rows.map((r) => r.record.id)),
+	);
+
+test("the settle latch: a liveness flip cannot move a watched run's hide set (operator report, 2026-10-16)", () => {
+	const rows = latchRows();
+	const live = planOf(rows, true);
+	/*
+	 * The steer folds into the run (its tail is mid-work), so the newest run is
+	 * `u1..t3`; `settledCloseOf` reads `a1` as the settled close, so `t1` keeps
+	 * its bar and the rows after the close - the work before AND after the steer
+	 * - draw in place. THIS is the hide set the reader has on screen.
+	 */
+	assert.deepEqual(hidesOf(live), ["t1"]);
+	const dip = collapsePlan(rows, { live: false, watchedRunId: "u1" });
+	assert.deepEqual(
+		hidesOf(dip),
+		hidesOf(live),
+		"the dip (a liveness flip) does not move the watch run's hide set",
+	);
+	// Repeated transitions reach the same plan: idempotent, not just stable once.
+	assert.deepEqual(
+		hidesOf(collapsePlan(rows, { live: true, watchedRunId: "u1" })),
+		hidesOf(live),
+		"the re-entry hands back the same hide set",
+	);
+	assert.deepEqual(
+		hidesOf(collapsePlan(rows, watchedOptions())),
+		hidesOf(dip),
+		"a second dip stays put",
+	);
+	// And the per-segment shapes, so a change to the bars' own arithmetic is seen.
+	const run = live.runs.at(-1);
+	assert.deepEqual(
+		run?.segments.map((segment) => segment.collapsed),
+		[true, false, false],
+		"t1 barred; t2 and t3 (the work around the steer) drawn in place",
+	);
+});
+
+/** The same options object twice, because the idempotence claim is about a
+ * second pass over the SAME inputs rather than a new shape. */
+const watchedOptions = () => ({ live: false, watchedRunId: "u1" });
+
+test("the latch names ONE run: an unwatched newest run keeps the idle shape (the residual edge)", () => {
+	const rows = [user("u2"), tool("t4")];
+	const unwatched = collapsePlan(rows, { live: false, watchedRunId: "u1" });
+	assert.equal(
+		unwatched.runs[0].collapses,
+		true,
+		"a run this pane never watched still folds when the pane reads not-live (R2's residual edge)",
+	);
+	const watched = collapsePlan(rows, { live: false, watchedRunId: "u2" });
+	assert.equal(
+		watched.runs[0].collapses,
+		false,
+		"the watched run draws in place: a flip cannot fold rows the reader is watching",
+	);
+	assert.deepEqual(
+		hidesOf(watched),
+		[],
+		"and hands nothing to a bar it did not ask for",
+	);
+	// The settle still folds it, ladder-free: the rows are the decider once more.
+	const settled = collapsePlan(
+		[
+			...rows,
+			answer("a2", {
+				ts: TS + 7_000,
+				settledAt: TS + 7_000,
+				stopReason: "stop",
+			}),
+		],
+		{ live: false, watchedRunId: "u2" },
+	);
+	assert.equal(
+		settled.runs[0].collapses,
+		true,
+		"the run's own answer condenses it",
+	);
+});
+
+/*
+ * THE WINDOW SNAP MOVES THE SLICE ON THE DIP FRAME (agent review round 1,
+ * R1-1). `openingIndex` is slice-relative: for a run whose head the window
+ * cuts it names the run's first VISIBLE row, and the snap grows the window to
+ * the run's true head exactly when the pane reads not-live (the completed-run
+ * allowance in `snapWindowToRunBoundary` opens from 300 to 720) - so an
+ * equality test at the opening index reads a DIFFERENT row on the one frame
+ * the latch exists for, folds the tail (the reviewer measured: 60 rows painted
+ * -> 3, the 59 post-steer work rows behind bars), and the re-entry unfolds it:
+ * the reported alternation survives for tall newest runs. Containment over the
+ * run's own rows is the invariant both moves preserve.
+ */
+const BAND_WINDOW = 60;
+/* The component's own `WINDOW_ALIGN_MAX_EXTRA` (canonical-transcript.tsx); the
+ * completed-run allowance is the model's exported 720. Named for the band,
+ * because `SNAP_MAX_EXTRA` already belongs to the align tests below. */
+const BAND_MAX_EXTRA = 300;
+
+/** The reviewer's failing shape: one 644-row newest run, head-cut at a 60-row window. */
+const tallRunRows = () => {
+	const rows = [user("u1")];
+	for (let i = 1; i <= 12; i += 1)
+		rows.push(tool(`t${i}`, { ts: TS + i * 1_000 }));
+	rows.push(
+		answer("a1", {
+			ts: TS + 20_000,
+			settledAt: TS + 20_000,
+			stopReason: "stop",
+		}),
+	);
+	for (let i = 13; i <= 582; i += 1)
+		rows.push(tool(`t${i}`, { ts: TS + 30_000 + i * 1_000 }));
+	rows.push(user("s1", { ts: TS + 900_000, text: "also check the ledger" }));
+	for (let i = 0; i < 59; i += 1)
+		rows.push(tool(`w${i}`, { ts: TS + 950_000 + i * 1_000 }));
+	return rows;
+};
+
+/** One component frame: the snap at `live`, the slice it hands the plan, and the plan. */
+const snapFrame = (rows, live, watchedRunId) => {
+	const align = snapWindowToRunBoundary(
+		rows,
+		BAND_WINDOW,
+		BAND_MAX_EXTRA,
+		WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
+		live,
+		windowTopRun(rows, BAND_WINDOW),
+	);
+	const visible = rows.slice(rows.length - align);
+	return {
+		align,
+		visible,
+		plan: collapsePlan(visible, { live, watchedRunId }),
+	};
+};
+
+/** The rows a frame PAINTS - visible minus everything behind a closed bar. */
+const paintedOf = (frame) => {
+	const hidden = new Set(hidesOf(frame.plan));
+	return new Set(
+		frame.visible
+			.filter((row) => !hidden.has(row.record.id))
+			.map((row) => row.record.id),
+	);
+};
+
+test("a head-cut window whose snap grows on the dip frame cannot fold a watched run (R1-1)", () => {
+	const rows = tallRunRows();
+	assert.equal(
+		rows.length,
+		644,
+		"the reviewer's shape: one 644-row newest run",
+	);
+	const live = snapFrame(rows, true, null);
+	/*
+	 * WHILE LIVE THE SNAP STAYS AT THE ORDINARY BOUND: the run extends past it,
+	 * the window cuts its head, and the id the write side latches is the run's
+	 * first VISIBLE row - `s1`, not the true opening `u1`.
+	 */
+	assert.equal(live.align, BAND_WINDOW, "the live frame keeps the raw window");
+	const newest = live.plan.runs.at(-1);
+	assert.equal(
+		live.visible[newest.run.openingIndex]?.record.id,
+		"s1",
+		"a head-cut run's opening AS THE SLICE SEES IT is its first visible row",
+	);
+	/*
+	 * THE DIP: the snap's completed-run allowance opens and the slice grows to the
+	 * run's true head - and the latch's id must still be found, because it is one
+	 * of the run's own rows. The hides are then the pre-close span alone, and no
+	 * row the live frame painted may be lost (the reviewer's own metric; under the
+	 * opening-index equality this frame hid 641 rows and lost the 59 `w*` rows).
+	 */
+	const latchId = "s1";
+	const dip = snapFrame(rows, false, latchId);
+	assert.equal(dip.align, 644, "the dip frame's snap reaches the true opening");
+	assert.deepEqual(
+		hidesOf(dip.plan),
+		Array.from({ length: 12 }, (_, i) => `t${i + 1}`),
+		"the dip folds only the settled pre-close span, never the post-steer work",
+	);
+	const paintedLive = paintedOf(live);
+	const paintedDip = paintedOf(dip);
+	const lost = [...paintedLive].filter((id) => !paintedDip.has(id));
+	assert.deepEqual(
+		lost,
+		[],
+		"no row the live frame painted is lost to the dip",
+	);
+	assert.ok(
+		paintedDip.has("s1"),
+		"the steer row stays on screen through the dip",
+	);
+	// The re-entry: back to the raw window; the same latch, nothing handed back.
+	const again = snapFrame(rows, true, latchId);
+	const paintedAgain = paintedOf(again);
+	assert.deepEqual(
+		[...paintedAgain].filter((id) => !paintedDip.has(id)),
+		[],
+		"the re-entry paints what the dip painted; the fold/unfold pair is gone",
+	);
+});
+
+/*
+ * THE BAR'S `+` READS THE ANCHORED LIVENESS TOO (agent review round 1, R1-2):
+ * `partial` spent raw `live`, so a watched run whose fact was corrected by rows
+ * that arrived after the page (the B2 shape) dropped the `+` for a frame at
+ * every dip while the hide set held still - a transient leaking into a visual.
+ */
+test("the latch's partial `+` does not flicker with `live` (R1-2)", () => {
+	const page = { ids: new Set(["tool:t1", "tool:t2", "a0"]), newestKey: "a0" };
+	const rows = [
+		tool("tool:t1", { ts: TS, durationS: 20 }),
+		tool("tool:t2", { ts: TS + 1, durationS: 20 }),
+		answer("a0", { ts: TS + 2 }),
+		tool("tool:w1", { ts: TS + 3, durationS: 1 }),
+		tool("tool:w2", { ts: TS + 4, durationS: 1 }),
+		tool("tool:w3", { ts: TS + 5, durationS: 1 }),
+		answer("a1", { ts: TS + 6 }),
+	];
+	const options = (live) => ({
+		live,
+		watchedRunId: "tool:t1",
+		runFacts: new Map([
+			[
+				"a0",
+				{
+					actions: 30,
+					workedSeconds: 60,
+					failed: 0,
+					complete: true,
+					closingAnswerId: "a1",
+				},
+			],
+		]),
+		factPage: page,
+	});
+	let hides = null;
+	for (const live of [true, false, true, false]) {
+		const run = collapsePlan(rows, options(live)).runs[0];
+		assert.equal(
+			run.segments[0].facts.partial,
+			true,
+			`the watched run's corrected fact keeps its floor reading on live=${live}`,
+		);
+		const next = hidesOf(collapsePlan(rows, options(live)));
+		if (hides !== null) {
+			assert.deepEqual(next, hides, `the hide set holds still on live=${live}`);
+		} else {
+			hides = next;
+		}
+	}
+});
+
 test("in-turn receipts hide with the work; the pinned kinds keep their place", () => {
 	// §5 case 15, NARROWED for the operator's feedback (2026-09-29, issue #5):
 	// peer and wake receipts collapse with the work, and the rows that remain
