@@ -29,8 +29,8 @@
 	"ui.settings.account.settings_page.tokens": "Tokens",
 	"ui.settings.account.settings_usage_chart.credits_consumed": "Crédits consommés",
 	"ui.settings.account.settings_usage_chart.tokens_used": "Tokens utilisés",
-	"ui.settings.account.settings_usage_chart.credits_summary": "Crédits consommés sur les 30 derniers jours, avec un point par jour sur {days, plural, one {# jour} many {# de jours} other {# jours}}.",
-	"ui.settings.account.settings_usage_chart.tokens_summary": "Tokens utilisés sur les 30 derniers jours, avec un point par jour sur {days, plural, one {# jour} many {# de jours} other {# jours}}.",
+	"ui.settings.account.settings_usage_chart.credits_summary": "Crédits consommés sur les 30 derniers jours, avec un point par jour sur {days, plural, one {{days, number, ::group-off} jour} many {{days, number, ::group-off} de jours} other {{days, number, ::group-off} jours}}.",
+	"ui.settings.account.settings_usage_chart.tokens_summary": "Tokens utilisés sur les 30 derniers jours, avec un point par jour sur {days, plural, one {{days, number, ::group-off} jour} many {{days, number, ::group-off} de jours} other {{days, number, ::group-off} jours}}.",
 	"ui.settings.account.settings_page.credit_balance_load_failed": "Impossible de charger votre solde de crédits. {reason}",
 	"ui.settings.account.settings_page.usage_load_failed": "Impossible de charger vos données d’utilisation. {reason}"
 }
