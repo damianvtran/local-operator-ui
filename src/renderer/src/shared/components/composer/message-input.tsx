@@ -8660,12 +8660,13 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						/*
 						 * GLASS: THE COMPOSER IS A FIELD, NOT A PANE. Round 1 marked it `pane`
 						 * (the `elevated` role at its floor), which is a near-opaque slab by
-						 * construction on dark palettes - exactly the operator's island. In the
-						 * system's own words an input is "a faintly lifted well with a firm
-						 * edge": ink 5% over the canvas glass plus the derived border mix as
-						 * its resting edge (`styles/index.css`), drawn only on glass so the
-						 * shipped no-edge geometry (D12) is untouched. The `pane` COVERAGE gate
-						 * is kept: Sidebars only leaves the composer flat.
+						 * construction on dark palettes - exactly the operator's island. It
+						 * is a field: ink 5% over the canvas glass (`styles/index.css`), NO
+						 * edge at rest - the borderless-chrome contract holds on glass too, so
+						 * the shipped no-edge geometry (D12) is the geometry in every mode
+						 * (v0.34.55 briefly drew a glass-only edge here; reverted, operator
+						 * report 2026-10-17). The `pane` COVERAGE gate is kept: Sidebars only
+						 * leaves the composer flat.
 						 */
 						data-glass-region="composer"
 						className={cn(
