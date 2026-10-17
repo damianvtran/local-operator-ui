@@ -364,6 +364,19 @@ function quietGroupSpanS(group: {
  */
 function condenseSentence(segment: SegmentPlan): string {
 	const parts: string[] = [];
+	/*
+	 * THE SPOKEN FIGURE NEVER OUTRUNS THE PAINTED ONE (design review round 1,
+	 * U1). A PARTIAL segment - a head cut: earlier rows are not loaded - paints
+	 * its counts with the minimum marker (`turn-summary.tsx` states `2+`, and
+	 * the count span's own name says "At least 2 messages - earlier rows are
+	 * not loaded"), while the sentence stated the bare figure: a screen-reader
+	 * user was told an exact number the sighted bar refuses to claim. The
+	 * sentence is the live region's whole account of the bar, so it states the
+	 * same minimum in words - the way the action clause has always been titled
+	 * ("At least N actions - earlier rows of this turn are not loaded").
+	 */
+	const minimum = (stated: string) =>
+		segment.facts.partial ? `at least ${stated}` : stated;
 	if (segment.facts.group !== null) {
 		/*
 		 * A GROUP BAR'S SENTENCE IS THE GROUP'S OWN CLAUSES (design §5): the count
@@ -381,7 +394,9 @@ function condenseSentence(segment: SegmentPlan): string {
 		 * subagent notice, wake]`: group 2, receipts 3) and a screen-reader user
 		 * was told a different number from the one on screen (reviewer F6).
 		 */
-		parts.push(`${segment.internal?.receipts ?? segment.facts.group.count}`);
+		parts.push(
+			minimum(`${segment.internal?.receipts ?? segment.facts.group.count}`),
+		);
 		const spanS = quietGroupSpanS(segment.facts.group);
 		if (spanS !== null) parts.push(formatDuration(spanS));
 	} else {
@@ -390,9 +405,11 @@ function condenseSentence(segment: SegmentPlan): string {
 		}
 		if (segment.facts.actions > 0) {
 			parts.push(
-				segment.facts.actions === 1
-					? "1 action"
-					: `${segment.facts.actions} actions`,
+				minimum(
+					segment.facts.actions === 1
+						? "1 action"
+						: `${segment.facts.actions} actions`,
+				),
 			);
 		}
 	}

@@ -1888,12 +1888,26 @@ export const LoneActionablePeerNegative: Story = {
 			transcript,
 			{
 				type: "message_start",
-				message: assistantMessage(
-					"negative-final",
-					"The deployment is paused pending the requested check.",
-				),
+				message: assistantMessage("negative-final", ""),
 			},
 			NOW,
+		);
+		/*
+		 * THE TEXT ARRIVES AS A DELTA, the way the stream writes it. The row is
+		 * opened EMPTY on purpose: the producer assembles `message.content` only
+		 * at the end of a call (`harness/loop.py`), so a `message_start` carrying
+		 * the paragraph painted nothing at all and the caption claimed a row the
+		 * fixture never produced (design review round 1, D1). The delta below is
+		 * the sentence SO FAR - a mid-stream snapshot with both rows readable.
+		 */
+		transcript = applyEvent(
+			transcript,
+			{
+				type: "message_update",
+				delta: "The deployment is paused pending the requested check.",
+				message: assistantMessage("negative-final", ""),
+			},
+			NOW + 500,
 		);
 		return (
 			<Frame
