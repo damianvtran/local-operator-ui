@@ -427,7 +427,13 @@ const _nextOwnerDeltaFrame = (seq, cwd) => ({
 const coldSnapshotFrame = (
 	seq,
 	contextTokens,
-	{ cold = true, attaching = false, epoch = "cold-3", ownerSequence = 0 } = {},
+	{
+		cold = true,
+		attaching = false,
+		epoch = "cold-3",
+		ownerSequence = 0,
+		lastUsage = null,
+	} = {},
 ) => ({
 	session_id: SESSION,
 	epoch: "bridge-2",
@@ -444,6 +450,7 @@ const coldSnapshotFrame = (
 				sequence: ownerSequence,
 				contextTokens,
 				epoch,
+				lastUsage,
 			}),
 		},
 		history: { entries: DURABLE_ROWS, has_more: false, cursor_missing: false },
@@ -606,6 +613,23 @@ test("the carried reading keeps its own receipt, and null when it has none", asy
 		receipt,
 		"a carried numerator is stated with the receipt it was measured with",
 	);
+
+	// The other half of the name: with no painted receipt, the carried reading
+	// pairs with NULL rather than adopting the cold snapshot's receipt, which
+	// would state one reading two ways.
+	const bare = await run("/old", [
+		updateFrame(3, 6, 150000),
+		gapFrame(),
+		coldSnapshotFrame(4, 100000, {
+			lastUsage: {
+				input_tokens: 100000,
+				output_tokens: 5,
+				context_tokens: 100000,
+			},
+		}),
+	]);
+	assert.equal(bare.frontend?.context_tokens, 150000);
+	assert.equal(bare.frontend?.last_usage, null);
 });
 
 test("a journal reading that is genuinely newer still raises it", async () => {
