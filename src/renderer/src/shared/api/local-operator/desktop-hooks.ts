@@ -194,6 +194,8 @@ export function useDesktopCapabilities() {
 
 export type DesktopFeature =
 	| "session_files"
+	/** Route presence only; dynamic organization eligibility is backend-owned. */
+	| "team_bridge"
 	| "auth"
 	| "settings"
 	| "commands"
@@ -275,6 +277,26 @@ export type DesktopFeature =
 	 * over that one page.
 	 */
 	| "session_catalogue_page"
+	/**
+	 * `sessions.list` can be read in the SIDEBAR'S OWN ORDER: the `sort` parameter,
+	 * whose one value today is `activity` - rows that need the reader first, then
+	 * everything else newest-activity-first.
+	 *
+	 * ITS OWN KEY, on the same rule the entry above states: the parameter is
+	 * IGNORED by a daemon that predates it (FastAPI ignores unknown query
+	 * parameters), and an un-gated `sort=activity` against such a daemon would
+	 * silently receive the RANK order - a page whose membership is a wake band
+	 * rather than the reader's own recent conversations. The client has to be able
+	 * to ASK, and a client that cannot ask keeps sending the request it always
+	 * did.
+	 *
+	 * IT GATES THE MEMBERSHIP OF THE HEAD PAGE, not the shape of a row: a client
+	 * without it renders the rank head exactly as before (which is why this is a
+	 * capability rather than a `session_catalogue` bump), and a client WITH it
+	 * gets the order the sidebar's own sections and its "show the latest 10"
+	 * pagination already assume.
+	 */
+	| "session_catalogue_sort"
 	/*
 	 * A session's code memory (the `sessions.variables.*` ops). A backend that
 	 * predates the surface simply does not advertise the key, so

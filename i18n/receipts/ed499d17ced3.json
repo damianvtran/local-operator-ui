@@ -1,0 +1,27 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "radient/auto",
+  "instance": "ed499d17ced3",
+  "locale": "ru",
+  "status": "passed",
+  "namespaces": {
+    "ui.console": {
+      "status": "passed",
+      "keys_audited": 57,
+      "sha256": {
+        "ru": "3140cfa18ff8bb03f74602e868eee5d268ef82e25fe598e9dcef36e8bffcc339",
+        "en": "65a71fecf4d10d1d2e2c1de1489101a752115cccaceee6d59bb98910273d4de0"
+      },
+      "findings": []
+    },
+    "ui.onboarding": {
+      "status": "passed",
+      "keys_audited": 47,
+      "sha256": {
+        "ru": "ee101670a030b2a28c51581c26316395e5e243c3c8d7a8796b34915e446184c1",
+        "en": "a04d3feacdef1168af407cb82b94173cb95d37092e8722d46df2cae4e4fc9e53"
+      },
+      "findings": []
+    }
+  }
+}
